@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
+import { CampaignsModule } from "./campaigns/campaigns.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -12,6 +13,7 @@ import { UsersModule } from "./users/users.module";
     PrismaModule,
     UsersModule,
     AuthModule,
+    CampaignsModule,
   ],
 })
 export class AppModule {}

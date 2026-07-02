@@ -7,10 +7,138 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  DM
+  PLAYER
+}
+
+enum Visibility {
+  PUBLIC
+  PLAYERS
+  SPECIFIC_PLAYERS
+  OWNER_DM
+  DM_ONLY
+}
+
+enum EntityType {
+  NPC
+  LOCATION
+  QUEST
+  FACTION
+  OBJECT
+  EVENT
+  DOCUMENT
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
   displayName  String
+  isAdmin      Boolean  @default(false)
   createdAt    DateTime @default(now())
+}
+
+model Campaign {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime         @default(now())
+  members     CampaignMember[]
+  entities    Entity[]
+  sessions    Session[]
+  invites     Invite[]
+  characters  Character[]
+}
+
+model CampaignMember {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  role       Role
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+}
+
+model Invite {
+  id         String    @id @default(cuid())
+  campaignId String
+  token      String    @unique
+  role       Role      @default(PLAYER)
+  createdAt  DateTime  @default(now())
+  usedAt     DateTime?
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Entity {
+  id          String                  @id @default(cuid())
+  campaignId  String
+  type        EntityType
+  name        String
+  body        Json?
+  tags        String[]                @default([])
+  visibility  Visibility              @default(DM_ONLY)
+  createdById String
+  createdAt   DateTime                @default(now())
+  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  grants      EntityVisibilityGrant[]
+  linksFrom   EntityLink[]            @relation("linkFrom")
+  linksTo     EntityLink[]            @relation("linkTo")
+  comments    Comment[]
+}
+
+model EntityLink {
+  id     String  @id @default(cuid())
+  fromId String
+  toId   String
+  label  String?
+  from   Entity  @relation("linkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to     Entity  @relation("linkTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId, label])
+}
+
+model EntityVisibilityGrant {
+  id       String @id @default(cuid())
+  entityId String
+  userId   String
+  entity   Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  entityId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  entity    Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id          String     @id @default(cuid())
+  campaignId  String
+  title       String
+  scheduledAt DateTime?
+  notes       Json?
+  visibility  Visibility @default(PLAYERS)
+  createdAt   DateTime   @default(now())
+  campaign    Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Character {
+  id         String     @id @default(cuid())
+  campaignId String
+  ownerId    String
+  name       String
+  race       String?
+  class      String?
+  level      Int        @default(1)
+  bio        String?
+  visibility Visibility @default(PLAYERS)
+  createdAt  DateTime   @default(now())
+  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }

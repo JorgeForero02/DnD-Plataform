@@ -140,6 +140,7 @@ packages:
 {
   "name": "dnd-platform",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "engines": { "node": ">=20" },
   "scripts": {
     "dev:api": "pnpm --filter @dnd/api start:dev",
@@ -1110,15 +1111,26 @@ git commit -m "feat(api): auth controller, jwt strategy+guard, e2e"
 
 `apps/web/vite.config.ts`:
 ```ts
+import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    // Alias @dnd/shared to its TS source: rollup cannot resolve named exports
+    // from the compiled CJS dist (`export *` → `__exportStar`), which breaks
+    // `vite build`. Vite compiles the TS source directly — works in dev, test,
+    // and prod (source is present in the Docker build context).
+    alias: {
+      "@dnd/shared": path.resolve(__dirname, "../../packages/shared/src/index.ts"),
+    },
+  },
   server: { port: 5173, proxy: { "/api": "http://localhost:3000" } },
   test: { environment: "jsdom", globals: true, setupFiles: "./src/setupTests.ts" },
 });
 ```
+> Note: Task 0.8 later refines the `/api` proxy to add a rewrite (`{ target, rewrite: p => p.replace(/^\/api/, "") }`). Keep the `resolve.alias` block through that edit.
 
 `apps/web/index.html`:
 ```html

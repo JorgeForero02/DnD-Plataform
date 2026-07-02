@@ -5,6 +5,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { CampaignsModule } from "./campaigns/campaigns.module";
 import { InvitesModule } from "./invites/invites.module";
+import { EntitiesModule } from "./entities/entities.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -16,6 +17,7 @@ import { UsersModule } from "./users/users.module";
     AuthModule,
     CampaignsModule,
     InvitesModule,
+    EntitiesModule,
   ],
 })
 export class AppModule {}

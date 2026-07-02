@@ -1,0 +1,143 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
+import { PrismaService } from "../prisma/prisma.service";
+import { MembershipService } from "../campaigns/membership.service";
+import { canView, Viewer } from "../common/visibility";
+
+@Injectable()
+export class EntitiesService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly membership: MembershipService,
+    private readonly events: EventEmitter2,
+  ) {}
+
+  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
+    const [member, user] = await Promise.all([
+      this.membership.getMembership(campaignId, userId),
+      this.prisma.user.findUnique({ where: { id: userId } }),
+    ]);
+    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
+  }
+
+  async create(userId: string, campaignId: string, input: CreateEntityInput) {
+    await this.membership.requireMember(campaignId, userId);
+    const { specificPlayerIds, ...rest } = input;
+    const entity = await this.prisma.entity.create({
+      data: {
+        campaignId,
+        type: rest.type,
+        name: rest.name,
+        body: rest.body === undefined ? undefined : (rest.body as object),
+        tags: rest.tags,
+        visibility: rest.visibility,
+        createdById: userId,
+        grants:
+          rest.visibility === "SPECIFIC_PLAYERS" && specificPlayerIds?.length
+            ? { create: specificPlayerIds.map((uid) => ({ userId: uid })) }
+            : undefined,
+      },
+      include: { grants: true },
+    });
+    this.events.emit("entity.created", {
+      campaignId,
+      entityId: entity.id,
+      type: entity.type,
+    });
+    return entity;
+  }
+
+  async list(userId: string, campaignId: string, type?: EntityType) {
+    await this.membership.requireMember(campaignId, userId);
+    const viewer = await this.viewerFor(userId, campaignId);
+    const entities = await this.prisma.entity.findMany({
+      where: { campaignId, ...(type ? { type } : {}) },
+      include: { grants: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return entities.filter((e) =>
+      canView(viewer, {
+        visibility: e.visibility,
+        createdById: e.createdById,
+        grantedUserIds: e.grants.map((g) => g.userId),
+      }),
+    );
+  }
+
+  async get(userId: string, campaignId: string, entityId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const viewer = await this.viewerFor(userId, campaignId);
+    const entity = await this.prisma.entity.findFirst({
+      where: { id: entityId, campaignId },
+      include: { grants: true },
+    });
+    if (
+      !entity ||
+      !canView(viewer, {
+        visibility: entity.visibility,
+        createdById: entity.createdById,
+        grantedUserIds: entity.grants.map((g) => g.userId),
+      })
+    ) {
+      throw new NotFoundException("Entity not found");
+    }
+    return entity;
+  }
+
+  private async requireEditable(userId: string, campaignId: string, entityId: string) {
+    const entity = await this.prisma.entity.findFirst({
+      where: { id: entityId, campaignId },
+    });
+    if (!entity) throw new NotFoundException("Entity not found");
+    const member = await this.membership.getMembership(campaignId, userId);
+    if (member?.role !== "DM" && entity.createdById !== userId) {
+      throw new ForbiddenException("Only the DM or the creator can modify this");
+    }
+    return entity;
+  }
+
+  async update(
+    userId: string,
+    campaignId: string,
+    entityId: string,
+    input: UpdateEntityInput,
+  ) {
+    await this.membership.requireMember(campaignId, userId);
+    await this.requireEditable(userId, campaignId, entityId);
+    const { specificPlayerIds, ...rest } = input;
+    const data: Record<string, unknown> = {};
+    if (rest.type !== undefined) data.type = rest.type;
+    if (rest.name !== undefined) data.name = rest.name;
+    if (rest.body !== undefined) data.body = rest.body as object;
+    if (rest.tags !== undefined) data.tags = rest.tags;
+    if (rest.visibility !== undefined) data.visibility = rest.visibility;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (specificPlayerIds !== undefined) {
+        await tx.entityVisibilityGrant.deleteMany({ where: { entityId } });
+        if (specificPlayerIds.length) {
+          await tx.entityVisibilityGrant.createMany({
+            data: specificPlayerIds.map((uid) => ({ entityId, userId: uid })),
+          });
+        }
+      }
+      return tx.entity.update({
+        where: { id: entityId },
+        data,
+        include: { grants: true },
+      });
+    });
+  }
+
+  async remove(userId: string, campaignId: string, entityId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    await this.requireEditable(userId, campaignId, entityId);
+    await this.prisma.entity.delete({ where: { id: entityId } });
+    return { deleted: true };
+  }
+}

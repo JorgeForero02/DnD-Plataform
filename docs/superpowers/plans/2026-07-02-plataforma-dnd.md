@@ -1627,8 +1627,9 @@ jobs:
       JWT_SECRET: ci-secret
     steps:
       - uses: actions/checkout@v4
+      # pnpm version comes from package.json "packageManager" — do NOT also pass
+      # a `version` input, or action-setup errors "Multiple versions specified".
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile

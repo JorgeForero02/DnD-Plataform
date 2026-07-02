@@ -1,0 +1,16 @@
+{
+  "name": "dnd-platform",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:api": "pnpm --filter @dnd/api start:dev",
+    "dev:web": "pnpm --filter @dnd/web dev",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0"
+  }
+}

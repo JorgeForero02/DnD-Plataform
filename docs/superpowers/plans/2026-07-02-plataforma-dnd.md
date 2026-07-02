@@ -927,10 +927,24 @@ export class JwtAuthGuard extends AuthGuard("jwt") {}
 - [ ] **Step 4: Controller**
 
 `apps/api/src/auth/auth.controller.ts`:
+> **Note (execution deviation):** instead of `nestjs-zod`'s `ZodValidationPipe` (its raw-schema API varies by version), the build uses a tiny custom pipe `apps/api/src/common/zod-validation.pipe.ts` that `safeParse`s the Zod schema and throws `BadRequestException` on failure. Same behavior, no version risk. Create it:
+> ```ts
+> import { BadRequestException, PipeTransform } from "@nestjs/common";
+> import { ZodSchema } from "zod";
+> export class ZodValidationPipe implements PipeTransform {
+>   constructor(private readonly schema: ZodSchema) {}
+>   transform(value: unknown) {
+>     const result = this.schema.safeParse(value);
+>     if (!result.success) throw new BadRequestException(result.error.flatten());
+>     return result.data;
+>   }
+> }
+> ```
+
 ```ts
 import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
-import { ZodValidationPipe } from "nestjs-zod";
 import { registerSchema, loginSchema } from "@dnd/shared";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 

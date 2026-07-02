@@ -146,7 +146,8 @@ packages:
     "dev:web": "pnpm --filter @dnd/web dev",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "prepare": "pnpm --filter @dnd/shared build"
   },
   "devDependencies": {
     "prettier": "^3.3.0",
@@ -242,8 +243,9 @@ git commit -m "chore: init pnpm workspace, tsconfig base, docker postgres"
 {
   "name": "@dnd/shared",
   "version": "0.0.1",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
@@ -254,12 +256,15 @@ git commit -m "chore: init pnpm workspace, tsconfig base, docker postgres"
 }
 ```
 
+> **Critical (runtime resolution):** `main`/`types` point to `dist`, not `src`. If they point to `src/index.ts`, dev/tests still work (ts-jest/vite compile TS) but the **production** `node dist/src/main.js` crashes: the compiled API does `require("@dnd/shared")`, Node resolves it to a `.ts` file, and Node cannot parse TypeScript. Building `@dnd/shared` to JS + the root `prepare` script (which runs on every `pnpm install`, including CI and Docker) guarantees `dist` exists before anything imports it.
+
 `packages/shared/tsconfig.json`:
 ```json
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "outDir": "dist", "rootDir": "src" },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["**/*.test.ts"]
 }
 ```
 
@@ -1617,7 +1622,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @dnd/api prisma:generate
       - run: pnpm --filter @dnd/api exec prisma migrate deploy
-      - run: pnpm lint
+      # NOTE: `pnpm lint` is intentionally omitted until ESLint is set up
+      # (deferred follow-up — no eslint config exists yet in Phase 0).
       - run: pnpm test
       - run: pnpm --filter @dnd/api test:e2e
 ```
@@ -2006,6 +2012,6 @@ model Character {
 - **Risks** (scope creep, rules-engine complexity, AI cost) → mitigated by phase gates + "manual first" rules + AI last. ✅
 - **Legal (SRD only)** → Global Constraints + Phase 2 scope. ✅
 
-**Known deferrals (tracked, not dropped):** entity image/file attachments (Phase 3, needs S3), email invites (needs mail service), `TimelineEvent` as a dedicated timeline view (Phase 1 stores `EVENT` entities; chronology UI later). Each is called out in the plan body where relevant.
+**Known deferrals (tracked, not dropped):** entity image/file attachments (Phase 3, needs S3), email invites (needs mail service), `TimelineEvent` as a dedicated timeline view (Phase 1 stores `EVENT` entities; chronology UI later), **ESLint setup** (package `lint` scripts exist but no eslint config/deps yet — CI skips lint until a dedicated follow-up configures ESLint 9 flat config across the workspace). Each is called out in the plan body where relevant.
 
 **Placeholder note:** Phases 2–5 are intentionally scope-level, not bite-sized. This is a deliberate planning decision (their design depends on real usage feedback), NOT a placeholder omission — each MUST be expanded into its own detailed TDD plan via the writing-plans skill before implementation. Phases 0 and 1 contain the actionable near-term work; Phase 0 is fully bite-sized, Phase 1 is task-level with an explicit instruction to expand each task using the Phase 0 pattern.

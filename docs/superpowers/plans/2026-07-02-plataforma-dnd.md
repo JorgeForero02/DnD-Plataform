@@ -26,6 +26,8 @@
 - **Observability from Phase 0.** Sentry wired in the API for error tracking. OpenTelemetry/Grafana deferred until scale demands it.
 - **TDD, DRY, YAGNI, frequent commits.** Every code change is preceded by a failing test.
 - **Commit convention:** Conventional Commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`).
+- **pnpm 10 build scripts:** root `package.json` must include `"pnpm": { "onlyBuiltDependencies": ["esbuild", "@prisma/client", "prisma", "argon2", "@sentry/node"] }` — pnpm 10 blocks postinstall builds by default, which otherwise breaks Prisma/argon2/esbuild. Also add a `.gitattributes` with `* text=auto eol=lf` (cross-platform line endings).
+- **Windows + `&` in the repo path:** the folder is `D&D-Plataform`. `nest start --watch` breaks because the Nest CLI spawns a child with the unquoted path (`Cannot find module '…\D'`). Workaround baked into the API `start:dev` script: `concurrently` running `nest build --watch` + `node --watch dist/src/main.js` (Node's built-in watcher, cwd-safe). Do not revert `start:dev` to `nest start --watch`. Production uses `start:prod` (`node dist/src/main.js`).
 
 ---
 
@@ -356,7 +358,8 @@ git commit -m "feat(shared): auth zod schemas and types"
   "version": "0.0.1",
   "engines": { "node": ">=20" },
   "scripts": {
-    "start:dev": "nest start --watch",
+    "start:dev": "concurrently -k -n build,run \"nest build --watch\" \"node --watch dist/src/main.js\"",
+    "start:prod": "node dist/src/main.js",
     "build": "nest build",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json",
@@ -386,6 +389,7 @@ git commit -m "feat(shared): auth zod schemas and types"
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
     "@nestjs/testing": "^10.3.0",
+    "concurrently": "^9.0.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.14.0",
     "@types/passport-jwt": "^4.0.0",
@@ -539,11 +543,22 @@ git commit -m "feat(api): nest+fastify skeleton, prisma, user model"
 ### Task 0.4: Users service (create + find)
 
 **Files:**
-- Create: `apps/api/src/users/users.module.ts`, `apps/api/src/users/users.service.ts`, `apps/api/src/users/users.service.spec.ts`
+- Create: `apps/api/jest.config.js` (unit-test config — no jest config existed before this task), `apps/api/src/users/users.module.ts`, `apps/api/src/users/users.service.ts`, `apps/api/src/users/users.service.spec.ts`
 
 **Interfaces:**
 - Consumes: `PrismaService`.
 - Produces: `UsersService` with `create(email: string, passwordHash: string, displayName: string): Promise<User>` and `findByEmail(email: string): Promise<User | null>`.
+
+`apps/api/jest.config.js` (needed so `pnpm --filter @dnd/api test` discovers `*.spec.ts` under `src`):
+```js
+module.exports = {
+  moduleFileExtensions: ["js", "json", "ts"],
+  rootDir: "src",
+  testRegex: ".*\\.spec\\.ts$",
+  transform: { "^.+\\.(t|j)s$": "ts-jest" },
+  testEnvironment: "node",
+};
+```
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1607,7 +1622,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @dnd/api prisma:generate
 RUN pnpm --filter @dnd/api build
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm --filter @dnd/api exec prisma migrate deploy && node apps/api/dist/apps/api/src/main.js"]
+CMD ["sh", "-c", "pnpm --filter @dnd/api exec prisma migrate deploy && node apps/api/dist/src/main.js"]
 ```
 
 - [ ] **Step 3: Web Dockerfile**

@@ -6,6 +6,7 @@ import { AuthModule } from "./auth/auth.module";
 import { CampaignsModule } from "./campaigns/campaigns.module";
 import { InvitesModule } from "./invites/invites.module";
 import { EntitiesModule } from "./entities/entities.module";
+import { LinksModule } from "./links/links.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { UsersModule } from "./users/users.module";
     CampaignsModule,
     InvitesModule,
     EntitiesModule,
+    LinksModule,
   ],
 })
 export class AppModule {}

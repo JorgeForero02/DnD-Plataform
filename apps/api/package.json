@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "engines": { "node": ">=20" },
   "scripts": {
-    "start:dev": "nest start --watch",
+    "start:dev": "concurrently -k -n build,run \"nest build --watch\" \"node --watch dist/src/main.js\"",
+    "start:prod": "node dist/src/main.js",
     "build": "nest build",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
     "@nestjs/testing": "^10.3.0",
+    "concurrently": "^9.0.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.14.0",
     "@types/passport-jwt": "^4.0.0",

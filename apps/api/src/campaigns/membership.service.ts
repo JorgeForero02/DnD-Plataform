@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from "@nestjs/common";
-import { CampaignMember } from "@prisma/client";
+import { CampaignMember, Role } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -22,5 +22,23 @@ export class MembershipService {
     const member = await this.requireMember(campaignId, userId);
     if (member.role !== "DM") throw new ForbiddenException("DM role required");
     return member;
+  }
+
+  async listMembers(
+    campaignId: string,
+  ): Promise<{ userId: string; displayName: string; role: Role }[]> {
+    const members = await this.prisma.campaignMember.findMany({
+      where: { campaignId },
+    });
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: members.map((m) => m.userId) } },
+      select: { id: true, displayName: true },
+    });
+    const nameById = new Map(users.map((u) => [u.id, u.displayName]));
+    return members.map((m) => ({
+      userId: m.userId,
+      displayName: nameById.get(m.userId) ?? "",
+      role: m.role,
+    }));
   }
 }

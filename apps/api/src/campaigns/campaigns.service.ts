@@ -38,4 +38,9 @@ export class CampaignsService {
     if (!campaign) throw new NotFoundException("Campaign not found");
     return campaign;
   }
+
+  async listMembers(userId: string, campaignId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    return this.membership.listMembers(campaignId);
+  }
 }

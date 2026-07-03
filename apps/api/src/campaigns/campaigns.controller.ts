@@ -26,4 +26,9 @@ export class CampaignsController {
   get(@Req() req: { user: { id: string } }, @Param("id") id: string) {
     return this.campaigns.getById(req.user.id, id);
   }
+
+  @Get(":id/members")
+  listMembers(@Req() req: { user: { id: string } }, @Param("id") id: string) {
+    return this.campaigns.listMembers(req.user.id, id);
+  }
 }

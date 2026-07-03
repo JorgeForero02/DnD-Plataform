@@ -9,6 +9,7 @@ import { EntitiesModule } from "./entities/entities.module";
 import { LinksModule } from "./links/links.module";
 import { CommentsModule } from "./comments/comments.module";
 import { SessionsModule } from "./sessions/sessions.module";
+import { CharactersModule } from "./characters/characters.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -24,6 +25,7 @@ import { UsersModule } from "./users/users.module";
     LinksModule,
     CommentsModule,
     SessionsModule,
+    CharactersModule,
   ],
 })
 export class AppModule {}

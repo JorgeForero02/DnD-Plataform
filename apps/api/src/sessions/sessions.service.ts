@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { CreateSessionInput } from "@dnd/shared";
+import { CreateSessionInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
@@ -21,9 +21,9 @@ export class SessionsService {
     return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
   }
 
-  private canSee(viewer: Viewer, visibility: string): boolean {
+  private canSee(viewer: Viewer, visibility: Visibility): boolean {
     return canView(viewer, {
-      visibility: visibility as any,
+      visibility,
       createdById: "",
       grantedUserIds: [],
     });

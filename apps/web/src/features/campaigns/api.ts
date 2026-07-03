@@ -13,6 +13,10 @@ export function fetchCampaigns(): Promise<Campaign[]> {
   return apiFetch<Campaign[]>("/campaigns");
 }
 
+export function fetchCampaign(id: string): Promise<Campaign> {
+  return apiFetch<Campaign>(`/campaigns/${id}`);
+}
+
 export function createCampaign(input: CreateCampaignInput): Promise<Campaign> {
   return apiFetch<Campaign>("/campaigns", {
     method: "POST",

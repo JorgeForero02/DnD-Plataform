@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { CampaignDetailPage } from "./pages/CampaignDetailPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export function App() {
@@ -15,6 +16,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:id"
+          element={
+            <ProtectedRoute>
+              <CampaignDetailPage />
             </ProtectedRoute>
           }
         />

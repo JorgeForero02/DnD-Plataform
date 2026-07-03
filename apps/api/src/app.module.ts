@@ -8,6 +8,7 @@ import { InvitesModule } from "./invites/invites.module";
 import { EntitiesModule } from "./entities/entities.module";
 import { LinksModule } from "./links/links.module";
 import { CommentsModule } from "./comments/comments.module";
+import { SessionsModule } from "./sessions/sessions.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -22,6 +23,7 @@ import { UsersModule } from "./users/users.module";
     EntitiesModule,
     LinksModule,
     CommentsModule,
+    SessionsModule,
   ],
 })
 export class AppModule {}

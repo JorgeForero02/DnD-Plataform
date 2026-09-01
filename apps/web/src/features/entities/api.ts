@@ -12,8 +12,22 @@ export interface Entity {
   createdAt: string;
 }
 
+export interface EntityGrant {
+  id: string;
+  entityId: string;
+  userId: string;
+}
+
+export interface EntityDetail extends Entity {
+  grants: EntityGrant[];
+}
+
 export function fetchEntities(campaignId: string, type: EntityType): Promise<Entity[]> {
   return apiFetch<Entity[]>(`/campaigns/${campaignId}/entities?type=${type}`);
+}
+
+export function fetchEntity(campaignId: string, entityId: string): Promise<EntityDetail> {
+  return apiFetch<EntityDetail>(`/campaigns/${campaignId}/entities/${entityId}`);
 }
 
 export function createEntity(campaignId: string, input: CreateEntityInput): Promise<Entity> {

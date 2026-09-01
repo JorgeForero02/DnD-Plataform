@@ -45,6 +45,17 @@ Más el `isAdmin` del sistema, que ve todo.
 Por defecto una `Entity` nace `DM_ONLY` (el mundo es secreto hasta que el DM lo revela);
 `Session` y `Character` nacen `PLAYERS`.
 
+**El formulario de creación de entidades arranca en `OWNER_DM`, no en `DM_ONLY`**, aunque el
+modelo y el esquema de `@dnd/shared` sigan por defecto en `DM_ONLY` (ese valor por defecto no
+se toca). Es solo el punto de partida del editor (`EntityEditor.tsx`): con `DM_ONLY` como
+inicial, cualquier miembro podía crear una entidad — `entities.service.ts:25` deja crear a
+cualquier miembro, no solo al DM — que quedaba invisible incluso para su propio creador
+(`canView` devuelve `false` en `DM_ONLY` también para quien la creó). Un jugador escribía la
+ficha de su contacto, recibía 201 y la entidad desaparecía sin error. `OWNER_DM` no cambia nada
+para el DM (`canView` ya devuelve `true` para cualquier DM antes de mirar la visibilidad, así
+que `OWNER_DM` y `DM_ONLY` son indistinguibles desde ese lado); solo arregla el caso roto del
+jugador. En modo edición se sigue respetando la visibilidad que la entidad ya tenga.
+
 ### Límites reales de hoy (MVP, aceptados a conciencia)
 
 - **`Session` y `Character` no tienen `grants` ni `createdById` propio.** Por eso

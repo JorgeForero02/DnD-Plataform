@@ -6,6 +6,61 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-08-31 — Editor de entidades: se arregla la pérdida de datos silenciosa
+
+**Qué.** Cinco arreglos sobre el editor de entidades (commit `7714833`), encontrados en su
+revisión independiente:
+
+1. **Crítico.** Editar una entidad `SPECIFIC_PLAYERS` sin tocar la selección de jugadores
+   mandaba `specificPlayerIds: []`, y el servicio lo interpretaba como "borra todas las
+   concesiones y no crees ninguna" (`entities.service.ts:112-119`). Se arregló con precarga
+   real: `useEntity` (nuevo hook, `features/entities/hooks.ts`) pide el detalle —que ya traía
+   `grants`— solo en modo edición, y siembra la selección una vez llega. Mientras el detalle
+   no ha llegado, `specificPlayerIds` no se manda (guarda de la carrera: si se pulsa Guardar
+   en ese hueco, no se destruye nada).
+2. El `fieldset` "Jugadores con acceso" mostraba todas las casillas vacías al editar, aunque
+   hubiera concesiones vivas. Se cae solo con el arreglo 1; lleva su propia prueba porque
+   afirma sobre lo que se ve, no sobre el payload.
+3. Un jugador que creaba una entidad heredaba el `DM_ONLY` por defecto del modelo y su
+   entidad desaparecía (invisible incluso para él). El formulario de creación arranca ahora
+   en `OWNER_DM` — una línea en `EntityEditor.tsx`, sin tocar `canView` ni los valores por
+   defecto del esquema o de Prisma. Ver [05-datos.md](./05-datos.md).
+4. Un error del servidor (400 de Zod, 403) se pintaba como JSON crudo dentro del modal.
+   `lib/api.ts` ahora extrae un mensaje legible (`fieldErrors`/`formErrors` de Zod
+   concatenados, o `message` si es una cadena) y solo cae al texto crudo si el cuerpo no es
+   JSON entendible.
+5. `useMembers` se pedía siempre al abrir el editor, aunque la visibilidad nunca fuera
+   `SPECIFIC_PLAYERS`, y un fallo o una carga en curso dejaba el `fieldset` vacío —el mismo
+   estado, visualmente, que "cero concesiones". Ahora solo se pide cuando la visibilidad lo
+   necesita (`useMembers(campaignId, { enabled })`, extensión mínima y compatible hacia atrás
+   de `features/campaigns/members.ts`) y `isLoading`/`isError` tienen su propio texto.
+
+**Por qué.** El arreglo 1 no era un riesgo eventual: era determinista. Abrir cualquier entidad
+`SPECIFIC_PLAYERS`, corregir una coma del nombre y guardar destruía el 100 % de sus
+concesiones, siempre, sin aviso — la entidad quedaba en `SPECIFIC_PLAYERS` con cero
+concesiones, que nadie salvo el DM ve, y la lista seguía pintando la misma insignia.
+
+**Pruebas.** 6 nuevas (`EntityEditor.test.tsx`: arreglos 1, 2, 3 y la carrera del arreglo 1,
+más la guarda del camino "quitar SPECIFIC_PLAYERS" que ya funcionaba y no tenía prueba;
+`lib/__tests__/api.test.ts`: arreglo 4, tres casos). Las 6 se vieron en rojo antes del arreglo
+correspondiente. La prueba de creación existente no se tocó.
+
+**Verificación.** `pnpm verify` limpio (build + lint + formato + 62 unitarias: shared 10, api
+37, web 15) y `pnpm --filter @dnd/web e2e` en verde (2/2) — se comprobó explícitamente que la
+prueba que selecciona `DM_ONLY` a mano seguía pasando tras cambiar el valor inicial del
+selector.
+
+**No arreglado, dado de alta en [06-pendientes.md](./06-pendientes.md):** las filas de la
+lista de entidades son botón de editar aunque el servidor vaya a devolver 403;
+`auth.store.ts:13` deja `user: null` tras recargar; falta `key` en `EntityTab` al cambiar de
+pestaña; el modal no tiene `role="dialog"` ni cierra con Escape.
+
+**Cómo revertir.** `git revert` del commit: devuelve `EntityEditor.tsx`, `features/entities/
+{api,hooks}.ts`, `features/campaigns/members.ts` y `lib/api.ts` a su estado anterior. No toca
+`apps/api` ni `packages/shared` — no hay migración que revertir.
+
+---
+
 ## 2026-08-31 — Playwright: la primera prueba que abre un navegador
 
 **Qué.** Playwright con Chromium en `apps/web`: `playwright.config.ts`, especificaciones en

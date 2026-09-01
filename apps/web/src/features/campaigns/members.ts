@@ -16,9 +16,10 @@ export function fetchMembers(campaignId: string): Promise<Member[]> {
 
 export const membersKey = (campaignId: string) => ["campaigns", campaignId, "members"] as const;
 
-export function useMembers(campaignId: string) {
+export function useMembers(campaignId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: membersKey(campaignId),
     queryFn: () => membersApi.fetchMembers(campaignId),
+    enabled: options?.enabled,
   });
 }

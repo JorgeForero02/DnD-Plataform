@@ -8,6 +8,19 @@ un efecto colateral de la siguiente funcionalidad.**
 
 ## Cerrados
 
+**~~El modo edición del editor de entidades no precarga los `specificPlayerIds`
+existentes~~ — CERRADO el 2026-08-31 (tarea 1.12a-fix).** La consecuencia real era peor de lo
+que decía esta ficha: no era un riesgo eventual, era **destrucción determinista y silenciosa**.
+Cualquier edición de una entidad `SPECIFIC_PLAYERS` — aunque solo tocara el nombre — mandaba
+`specificPlayerIds: []`, el servicio interpretaba el array vacío como "borra todo y no crees
+nada" (`entities.service.ts:112-119`), y la entidad quedaba en `SPECIFIC_PLAYERS` con cero
+concesiones: un `DM_ONLY` disfrazado, sin ningún aviso en pantalla. Se arregló con precarga
+real (`GET .../entities/:entityId` ya devolvía `grants`; ahora se pide en modo edición vía
+`useEntity` y siembra la selección) y una guarda de carrera: mientras el detalle no ha llegado,
+`specificPlayerIds` no se manda. De paso se cerró el fallo hermano de que el selector de
+jugadores mostraba todas las casillas vacías aunque hubiera concesiones vivas (misma causa raíz,
+prueba propia). Ver [07-historial.md](./07-historial.md).
+
 **~~Playwright no está instalado~~ — CERRADO el 2026-08-31.** Chromium, dos recorridos
 cubiertos (registro → campaña → NPC → verlo; y cerrar sesión), trabajo `e2e-browser` propio en
 CI con el informe como artefacto. Se comprobó que las pruebas **pueden fallar**: con la guarda
@@ -63,8 +76,19 @@ comportamiento:
 - **`Session` y `Character` no tienen `grants` ni creador propio** → `SPECIFIC_PLAYERS` es
   inerte en ellos y **el dueño de un personaje no ve el suyo si lo marca `DM_ONLY`**.
   Tareas 1.8 y 1.9.
-- **El modo edición del editor de entidades no precarga los `specificPlayerIds` existentes**:
-  quien edita y guarda puede borrar sin querer las concesiones que había. Tarea 1.12a.
+- **Las filas de la lista de entidades son botón de editar aunque el servidor vaya a devolver
+  403.** `CampaignDetailPage.tsx` no distingue si el usuario puede modificar la entidad antes
+  de pintar el botón; se descubre el 403 al intentar guardar. Detectado en la revisión de
+  1.12a, no arreglado (fuera del alcance de 1.12a-fix).
+- **`auth.store.ts:13` deja `user: null` tras recargar la página**: el token persiste en
+  `localStorage` pero el usuario no, así que la web no conoce su propio identificador hasta el
+  siguiente login. Detectado en la revisión de 1.12a, no arreglado.
+- **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:135`): hoy es
+  inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
+  riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).
+  Observación del revisor de 1.12a, no arreglado.
+- **El modal del editor de entidades no tiene `role="dialog"` ni se cierra con Escape**
+  (`EntityEditor.tsx`). Observación del revisor de 1.12a, no arreglado.
 
 ## P4 — Limpieza
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { EntityType, Visibility } from "@dnd/shared";
 import { useMembers } from "../campaigns/members";
-import { useCreateEntity, useUpdateEntity } from "./hooks";
+import { useCreateEntity, useEntity, useUpdateEntity } from "./hooks";
 import type { Entity } from "./api";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "PLAYERS", "SPECIFIC_PLAYERS", "OWNER_DM", "DM_ONLY"];
@@ -27,11 +27,35 @@ export function EntityEditor({
   const isEdit = !!entity;
   const [name, setName] = useState(entity?.name ?? "");
   const [tagsRaw, setTagsRaw] = useState((entity?.tags ?? []).join(", "));
-  const [visibility, setVisibility] = useState<Visibility>(entity?.visibility ?? "DM_ONLY");
+  // A player creating with the model default (DM_ONLY) gets a 201 and an entity nobody but
+  // the DM can see, including the player who just wrote it (visibility.ts:28-29). The DM is
+  // unaffected: canView short-circuits true for any DM before it even looks at visibility
+  // (visibility.ts:17), so OWNER_DM and DM_ONLY are indistinguishable from that side. This is
+  // only the form's starting value — canView and the schema/Prisma defaults are untouched.
+  const [visibility, setVisibility] = useState<Visibility>(entity?.visibility ?? "OWNER_DM");
   const [specificPlayerIds, setSpecificPlayerIds] = useState<string[]>([]);
+  // Tracks which entity's grants are already loaded into specificPlayerIds, so the seeding
+  // below runs exactly once per fetched entity instead of on every render.
+  const [seededFor, setSeededFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const members = useMembers(campaignId);
+  // Only asked for when editing, and only while the picker can matter.
+  const detail = useEntity(campaignId, type, entity?.id, isEdit);
+  // While editing, until the entity's own grants have loaded we don't know what the current
+  // selection should be. Sending specificPlayerIds in that window would wipe every grant the
+  // entity already has (see docs/06-pendientes.md). Once fetched, detailReady flips to true;
+  // for a brand-new entity there is nothing to preload, so it's true immediately.
+  const detailReady = !isEdit || detail.isSuccess;
+
+  // Adjusting state during render (not in an effect) for the one-time preload: React explicitly
+  // supports this pattern for "reset/derive state when an input changes" and it avoids the
+  // extra render an effect-based setState would cause.
+  if (detail.data && seededFor !== detail.data.id) {
+    setSeededFor(detail.data.id);
+    setSpecificPlayerIds(detail.data.grants.map((g) => g.userId));
+  }
+
+  const members = useMembers(campaignId, { enabled: visibility === "SPECIFIC_PLAYERS" });
   const create = useCreateEntity(campaignId, type);
   const update = useUpdateEntity(campaignId, type);
   const pending = create.isPending || update.isPending;
@@ -49,7 +73,7 @@ export function EntityEditor({
       name,
       tags: parseTags(tagsRaw),
       visibility,
-      ...(visibility === "SPECIFIC_PLAYERS" ? { specificPlayerIds } : {}),
+      ...(visibility === "SPECIFIC_PLAYERS" && detailReady ? { specificPlayerIds } : {}),
     };
     try {
       if (isEdit && entity) {
@@ -111,6 +135,13 @@ export function EntityEditor({
         {visibility === "SPECIFIC_PLAYERS" && (
           <fieldset className="rounded border border-slate-600 p-2">
             <legend className="text-sm">Jugadores con acceso</legend>
+            {members.isLoading && <p className="text-sm text-slate-400">Cargando jugadores…</p>}
+            {members.isError && (
+              <p className="text-sm text-red-400">
+                No se pudo cargar la lista de jugadores. Un fieldset vacío aquí no significa que la
+                campaña no tenga jugadores.
+              </p>
+            )}
             {members.data
               ?.filter((m) => m.role === "PLAYER")
               .map((m) => (

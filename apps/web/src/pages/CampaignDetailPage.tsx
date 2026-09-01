@@ -11,6 +11,7 @@ import type { Session } from "../features/sessions/api";
 import { useCharacters } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
 import type { Character } from "../features/characters/api";
+import { InvitePanel } from "../features/invites/InvitePanel";
 
 type Tab =
   | { kind: "overview"; label: string }
@@ -178,7 +179,14 @@ export function CampaignDetailPage() {
       </nav>
       <section className="mt-4">
         {tab.kind === "overview" && (
-          <p className="text-slate-300">{campaign?.description || "Sin descripción."}</p>
+          <div className="space-y-4">
+            <p className="text-slate-300">{campaign?.description || "Sin descripción."}</p>
+            {/* Generating an invite is DM-only, but the web doesn't know its own user id
+                after a reload yet (auth.store.ts:13, docs/06-pendientes.md) — same call as
+                the sessions/characters tabs: show the button to everyone and let the server's
+                403 speak if a player clicks it, instead of guessing the role. */}
+            <InvitePanel campaignId={id} />
+          </div>
         )}
         {tab.kind === "entity" && <EntityTab campaignId={id} type={tab.type} />}
         {tab.kind === "sessions" && <SessionsTab campaignId={id} />}

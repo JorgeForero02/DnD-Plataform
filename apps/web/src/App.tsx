@@ -3,6 +3,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
+import { JoinPage } from "./pages/JoinPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export function App() {
@@ -11,6 +12,9 @@ export function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Not behind ProtectedRoute: JoinPage.tsx handles "no session yet" itself, one of
+            the three paths this route has to cover. */}
+        <Route path="/join/:token" element={<JoinPage />} />
         <Route
           path="/"
           element={

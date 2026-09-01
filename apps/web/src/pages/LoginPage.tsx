@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { loginSchema, type LoginInput } from "@dnd/shared";
 import { login } from "../lib/api";
 import { useAuthStore } from "../store/auth.store";
+import { peekPendingInvite } from "../features/invites/api";
 import { useState } from "react";
 
 export function LoginPage() {
@@ -20,7 +21,10 @@ export function LoginPage() {
     try {
       const res = await login(data);
       setAuth(res);
-      navigate("/");
+      // A pending invite (JoinPage.tsx, saved because there was no session yet) resumes on its
+      // own instead of landing on the dashboard: the user shouldn't have to paste the link again.
+      const pendingInvite = peekPendingInvite();
+      navigate(pendingInvite ? `/join/${pendingInvite}` : "/");
     } catch (e) {
       setError((e as Error).message);
     }

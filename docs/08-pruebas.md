@@ -15,8 +15,8 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-Estado medido el 2026-08-31 (tarea 1.13): **78 unitarias** (shared 10, api 37, web 31) y
-**19 e2e de API** en 9 suites más **4 e2e de navegador** en 1 suite, todas verdes. Las
+Estado medido el 2026-09-01 (tarea 1.14-fix): **106 unitarias** (shared 10, api 37, web 59) y
+**19 e2e de API** en 9 suites más **5 e2e de navegador** en 2 suites, todas verdes. Las
 unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
 quedan fuera del gancho pero dentro de CI.
 
@@ -152,13 +152,78 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   pese a que el informe de 1.13 lo daba por cubierto. Ver la entrada de 1.13-fix en
   [07-historial.md](./07-historial.md).
 
-### Lo que falta cubrir, en orden
+- **Flujo de invitación con dos sesiones de navegador, y el jugador no ve la entidad
+  `DM_ONLY`** (1.14). `apps/web/e2e/invitacion.spec.ts` es la primera suite de este proyecto
+  con dos `BrowserContext` — el DM y el jugador tienen cookies y `localStorage` propios,
+  como dos navegadores distintos de verdad. El DM se registra, crea una campaña, crea un NPC
+  `DM_ONLY` desde su pestaña, y genera una invitación desde `InvitePanel.tsx` (pestaña
+  Resumen); el recorrido **lee el enlace del campo `Enlace de invitación` con
+  `inputValue()`**, no lo construye a mano — así prueba que la pantalla lo pinta de verdad,
+  no que el token generado en el backend es correcto. Un segundo contexto (el jugador, sin
+  sesión) visita ese enlace con `page.goto(inviteUrl)`: comprueba el aviso de "Necesitas
+  iniciar sesión…" (uno de los tres caminos de `JoinPage.tsx`), se registra desde el enlace
+  "Crear cuenta" de esa misma pantalla, y **sin volver a pegar el enlace** — resume
+  automáticamente porque `RegisterPage.tsx` lee el token pendiente que `JoinPage.tsx` guardó
+  en `localStorage` y navega de vuelta a `/join/:token` — termina en la página de la campaña
+  del DM. Ahí abre la pestaña NPCs y comprueba **las dos cosas a la vez**: la lista dice "Sin
+  elementos." y el botón con el nombre del NPC `DM_ONLY` tiene `toHaveCount(0)`. Es la
+  comprobación que la fase llevaba debiendo desde el principio — el mismo caso que el e2e de
+  API prueba por HTTP (`docs/08-pruebas.md` de fases anteriores), hecho por fin sobre el DOM
+  real.
 
-- **El DM copia el enlace de invitación → el jugador lo acepta → entra en la campaña**
-  (cuando exista la interfaz, tarea 1.14).
-- **El jugador no ve la entidad `DM_ONLY` en pantalla** — el mismo caso que el e2e de API
-  prueba por HTTP, comprobado sobre el DOM real. Necesita dos sesiones de navegador y el
-  flujo de invitación.
+  **Un defecto real, cazado solo por esto:** la primera versión de `createInvite`/
+  `acceptInvite` (`features/invites/api.ts`) llamaba a `apiFetch` con `method: "POST"` y sin
+  `body`. `apiFetch` (`lib/api.ts`) siempre manda `Content-Type: application/json`, y Fastify
+  rechaza esa combinación — cuerpo vacío con ese content-type — con 500 ("Body cannot be
+  empty…") antes de que la petición llegue al controlador. Las unitarias de `InvitePanel` y
+  `JoinPage` no lo vieron porque simulan `api.ts` entero; solo la corrida contra la API real
+  compilada lo mostró. Arreglado enviando `JSON.stringify({})` en las dos llamadas — cambio
+  solo en `apps/web`, la API no se tocó.
+
+  **Un segundo defecto, más sutil, también solo visible aquí:** la primera versión de
+  `JoinPage.tsx` disparaba la aceptación con `useMutation` (`useAcceptInvite`,
+  `features/invites/hooks.ts`) dentro de un `useEffect` de montaje. Contra la API real, con
+  React 18 `StrictMode` (`main.tsx`) montando el componente dos veces en desarrollo, el `201`
+  de `/invites/:token/accept` volvía del servidor pero el `isSuccess` de la mutación nunca se
+  reflejaba en un nuevo render: la pantalla se quedaba en "Aceptando invitación…" para
+  siempre, con la aceptación ya hecha en la base de datos. Ninguna prueba de componente lo
+  vio porque ahí `createInvite`/`acceptInvite` están simulados y se resuelven en el mismo
+  tick, sin la ventana de tiempo real donde el problema aparece. Se cambió `JoinPage.tsx` a
+  llamar `acceptInvite` (`api.ts`) directamente y guardar el resultado con `useState`, sin
+  pasar por `useMutation`; `useAcceptInvite` se quitó de `hooks.ts` por no tener ya quien lo
+  use. El detalle completo, con la secuencia de logs que lo confirmó, está en
+  [07-historial.md](./07-historial.md).
+
+  **Corrección (1.14-fix):** lo de arriba generalizaba de más. Lo que hace segura la
+  aceptación contra una doble invocación no es haber dejado `useMutation`, es la ref
+  `attempted = useRef(false)`, añadida en el mismo cambio — con esa guarda, la versión con
+  `useMutation` habría cortado la segunda llamada igual. "La suscripción de `useMutation` se
+  rompe con montaje + StrictMode" no quedó demostrado como regla general; ver la corrección
+  completa en [07-historial.md](./07-historial.md).
+
+  **Actualizado en 1.14-fix: la aceptación exige un clic explícito.** El Crítico de la
+  revisión independiente era peor que los dos defectos de arriba: una invitación pendiente
+  sin caducidad, que ni `logout()` ni nada más borraba, se auto-consumía en `/join/:token`
+  con **cualquier** login posterior en el mismo navegador, porque la aceptación se disparaba
+  sola al montar sin pedir confirmación. `JoinPage.tsx` ya no acepta en el efecto de montaje:
+  con sesión activa muestra una confirmación ("vas a unirte…, aceptar consume el enlace") y
+  espera el clic en "Unirse a la campaña". El recorrido de `invitacion.spec.ts` ejerce ese
+  clic explícito (`playerPage.getByRole("button", { name: "Unirse a la campaña" }).click()`)
+  después de que el registro resuma la invitación pendiente, y antes de eso comprueba que la
+  pantalla de confirmación es visible — la aceptación no ocurre sola. Se añadió además el caso
+  del DM que abre su propio enlace para comprobar que funciona: ve la misma confirmación,
+  pulsa "Cancelar" sin aceptar, y **el enlace sigue funcionando** cuando el jugador lo usa
+  después — antes de este arreglo, visitarlo ya autenticado bastaba para marcarlo `usedAt` y
+  dejarlo inservible para el jugador real. Detalle completo, con las tres partes del arreglo,
+  en la entrada de 1.14-fix en [07-historial.md](./07-historial.md).
+
+### Lo que falta cubrir
+
+Nada del catálogo de recorridos de la fase 1 queda pendiente: registro, campaña, entidades
+con visibilidad, enlaces y comentarios en modo edición, sesiones y personajes, cerrar sesión,
+y ahora invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real.
+Lo que sigue sin cubrir es lo de siempre — accesibilidad, responsive, rendimiento — ver la
+sección de arriba.
 
 ## Definición de terminado
 

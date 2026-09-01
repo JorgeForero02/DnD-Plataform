@@ -6,6 +6,198 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Arreglos de la revisión del flujo de invitación (1.14-fix)
+
+**Qué.** Una revisión independiente de 1.14 encontró un **Crítico** verificado en el código:
+una invitación pendiente quedaba en `localStorage` para siempre — nada la borraba si el
+invitado no volvía (`logout()` solo quitaba `dnd_token`; no había caducidad) — y **cualquier**
+autenticación posterior en ese navegador la leía y navegaba a `/join/:token`, donde la
+aceptación se disparaba sola al montar sin pedir confirmación. En una mesa con un portátil
+compartido, el siguiente que iniciara sesión ahí —otro jugador, el DM— acababa dentro de la
+campaña como `PLAYER` sin pulsar nada, y el token quedaba quemado: el invitado legítimo
+recibía "Invalid or already-used invite".
+
+**Arreglo 1 (el Crítico), con sus tres partes:**
+
+1. **`/join/:token` ya no acepta al montar.** Con sesión activa, la página muestra una
+   confirmación ("Estás a punto de unirte a una campaña con esta invitación.") y espera un
+   clic en "Unirse a la campaña" (`JoinPage.tsx`). La guarda `attempted = useRef(false)` sigue
+   ahí, sin tocar — ahora protege el clic explícito de un doble clic rápido en vez del efecto
+   de montaje bajo StrictMode.
+2. **`logout()` borra la invitación pendiente** (`auth.store.ts`), igual que borra
+   `dnd_token`.
+3. **La invitación pendiente caduca a los 5 minutos** (`PENDING_INVITE_TTL_MS`,
+   `features/invites/api.ts`): el guardado ahora lleva un sello de tiempo
+   (`{ token, savedAt }` en vez del token suelto) y `peekPendingInvite()` descarta y borra la
+   entrada si ya pasó el plazo. Cinco minutos alcanza para completar un login o un registro
+   corto sin tener que volver a pegar el enlace, y es corto a propósito: quien se aleja de un
+   portátil compartido en la mesa no debería dejarle a la siguiente persona una invitación
+   utilizable pasado ese rato. Una entrada con formato antiguo (token suelto, sin `savedAt`,
+   de antes de este cambio) se trata como caducada.
+
+**Arreglo 2 (Importante).** Mismo origen: antes, quien abriera el enlace ya autenticado lo
+consumía aunque solo quisiera mirarlo — el caso típico es el DM comprobando su propio enlace
+antes de mandarlo. Lo cierra el clic explícito del arreglo 1, y la pantalla de confirmación
+dice explícitamente que aceptar consume el enlace. `apps/web/e2e/invitacion.spec.ts` ahora
+comprueba este caso: el DM visita su propio enlace, ve la confirmación, pulsa "Cancelar" sin
+aceptar, y el mismo enlace **sigue funcionando** cuando el jugador lo usa después.
+
+**Arreglo 3 (Importante).** `LoginPage.tsx`/`RegisterPage.tsx` seguían desviando a
+`/join/...` mientras existiera la clave en `localStorage`, sin distinguir una invitación
+reciente de una de hace semanas ya usada. Lo cierra la caducidad del arreglo 1: expirada la
+entrada, `peekPendingInvite()` devuelve `null` y el login/registro navegan a `/` como
+siempre. Se añadió la prueba que faltaba: `LoginPage.test.tsx` (y, por simetría,
+`RegisterPage.test.tsx`) comprueban que sin invitación pendiente el flujo normal navega al
+listado.
+
+**Arreglo 4 (Importante).** La guarda `attempted` no la protegía ninguna prueba unitaria:
+`JoinPage.test.tsx` usaba `toHaveBeenCalledWith`, que no cuenta invocaciones, y
+`setupTests.ts` no probaba nada bajo `<React.StrictMode>`. Se añadieron las tres pruebas que
+faltaban (todas vistas en rojo antes del arreglo correspondiente):
+- `JoinPage` bajo `<React.StrictMode>`, dos clics rápidos en "Unirse a la campaña" →
+  `acceptInvite` se llama una sola vez.
+- Tras un intento de aceptar (éxito o error), `peekPendingInvite()` es `null`.
+- `LoginPage` sin invitación pendiente navega a `/`.
+
+Y se corrigió `InvitePanel.test.tsx:61-64` ("una sola persona"), que comprobaba un párrafo
+estático pintado siempre, sin depender de ninguna interacción — pasaba por construcción. Se
+quitó y se sustituyó por dos pruebas que sí dependen del estado: el aviso de "no anula el
+anterior" (arreglo 6) solo aparece tras generar un enlace, y el mensaje de error traducido
+(arreglo 8) solo aparece cuando `createInvite` falla.
+
+**Arreglo 5 (Menor).** `JoinPage.tsx` no invalidaba la consulta de campañas al aceptar: un
+jugador que ya había cargado "Mis campañas" podía tardar hasta 30 s
+(`staleTime`, `lib/queryClient.ts`) en verla ahí. Ahora invalida `campaignsKey`
+(`features/campaigns/hooks.ts`) justo antes de navegar a la campaña.
+
+**Arreglo 6 (Menor).** Generar un enlace nuevo no anula el anterior en el servidor —no hay
+revocación—, y `InvitePanel.tsx` no lo decía. Ahora, una vez hay un enlace en pantalla,
+aparece un aviso explícito de que generar otro no invalida los anteriores. La revocación de
+verdad necesita API que no existe hoy: fichada en [06-pendientes.md](./06-pendientes.md), sin
+tocar `apps/api`.
+
+**Arreglo 7 (Menor).** Corrección de una lección falsa que este mismo documento y
+`08-pruebas.md` habían dejado: "la suscripción de `useMutation` se rompe con montaje +
+StrictMode" no está demostrado como regla general — ver la nota de corrección en la entrada
+de 1.14 más abajo y en [08-pruebas.md](./08-pruebas.md).
+
+**Arreglo 8 (Menor).** Los dos mensajes de error conocidos del servidor
+("Invalid or already-used invite", "DM role required") llegaban en inglés a una interfaz en
+español, justo a alguien que acaba de entrar por un enlace sin más contexto.
+`translateInviteError` (`features/invites/api.ts`) traduce esos dos casos exactos y deja
+pasar cualquier otro mensaje tal cual, sin inventar uno que tape la causa real.
+
+**Prohibido, respetado.** No se tocó `apps/api` ni `packages/shared` — la caducidad y
+revocación del token en el servidor quedan en [06-pendientes.md](./06-pendientes.md). No se
+quitó la guarda `attempted`. La aserción `DM_ONLY` del e2e sigue exactamente igual.
+
+**Pruebas.** TDD: cada prueba nueva se vio en rojo por el comportamiento que le falta al
+código, no por fichero ausente — confirmado corriendo `vitest run` contra la implementación
+anterior antes de escribir cada arreglo. Unitarias nuevas o reescritas: `api.test.ts` en
+`features/invites/__tests__/` (8, nuevo — expiración de la invitación pendiente y
+`translateInviteError`), `JoinPage.test.tsx` (6, reescrito para el flujo de clic explícito),
+`auth.store.test.ts` (+1, logout borra la invitación pendiente), `LoginPage.test.tsx` y
+`RegisterPage.test.tsx` (+1 cada uno), `InvitePanel.test.tsx` (4, una prueba estática
+quitada, dos nuevas dependientes de estado). Total: **106 unitarias** (shared 10, api 37, web
+59). `apps/web/e2e/invitacion.spec.ts` se actualizó para el clic explícito del jugador y para
+el caso del DM que abre su propio enlace sin unirse por accidente; las 5 suites de e2e siguen
+verdes.
+
+**Revertir.** `git revert` del commit de esta tarea. No toca `apps/api` ni `packages/shared`;
+no hay migración que deshacer.
+
+---
+
+## 2026-08-31 — Flujo de invitación en la interfaz (1.14)
+
+**Qué.** Última tarea de construcción de la fase 1: hasta ahora no había forma de meter a un
+jugador en una campaña desde el navegador.
+
+- `features/invites/api.ts` + `hooks.ts` — `createInvite`/`acceptInvite` contra
+  `POST /campaigns/:id/invites` y `POST /invites/:token/accept` (API sin tocar); solo
+  `useCreateInvite` (mutación) en `hooks.ts` — ver el porqué de que no haya
+  `useAcceptInvite` más abajo. `api.ts` también guarda el token de invitación pendiente en
+  `localStorage` (`savePendingInvite`/`peekPendingInvite`/`clearPendingInvite`), junto a
+  `dnd_token`, para que sobreviva a un login/registro.
+- `features/invites/InvitePanel.tsx` — lado DM, montado en la pestaña Resumen de
+  `CampaignDetailPage.tsx`. Un botón genera la invitación; el enlace completo
+  (`origen + /join/token`) aparece en un `<input readOnly>` seleccionable con su propia
+  etiqueta, y un botón de copiar. Si `navigator.clipboard.writeText` falla (permiso
+  bloqueado), se muestra el fallo y **el enlace sigue en pantalla** — nunca un "copiado" que
+  mienta. Generar la invitación es solo del DM en el servidor (`requireDM`); el botón se
+  muestra a todo el mundo igual que en 1.13, porque `auth.store.ts:13` sigue sin conocer el
+  id del usuario tras recargar — es el 403 del servidor el que corrige a quien no debería
+  pulsarlo.
+- `pages/JoinPage.tsx` — ruta `/join/:token`, deliberadamente fuera de `ProtectedRoute`
+  (`App.tsx`) porque "sin sesión" es uno de los tres caminos que tiene que cubrir por sí
+  sola: sin sesión guarda el token pendiente y muestra enlaces a iniciar sesión o
+  registrarse; con sesión llama a aceptar el token de la URL y navega a
+  `/campaigns/<campaignId>` con el id que **devuelve el servidor**; token inválido o ya usado
+  muestra el mensaje legible de `lib/api.ts` con salida al listado de campañas.
+- `pages/LoginPage.tsx` y `pages/RegisterPage.tsx` — tras autenticar, si hay una invitación
+  pendiente guardada, navegan a `/join/<token>` en vez de al listado: la invitación se
+  completa sola, sin que el jugador tenga que volver a pegar el enlace.
+
+**Dos defectos reales, cazados solo por Playwright contra la API real** (las unitarias de
+componente simulan `features/invites/api.ts` entero y no los ejercitan):
+
+1. `createInvite`/`acceptInvite` mandaban `POST` sin cuerpo. `apiFetch` (`lib/api.ts`)
+   siempre añade `Content-Type: application/json`, y Fastify rechaza esa combinación con 500
+   ("Body cannot be empty…") antes de llegar al controlador. Arreglado enviando
+   `JSON.stringify({})` — cambio solo en `apps/web`.
+2. La primera versión de `JoinPage.tsx` disparaba la aceptación con `useMutation`
+   (`useAcceptInvite`) dentro de un `useEffect` de montaje. Contra la API real, con
+   `React.StrictMode` (`main.tsx`) montando el componente dos veces en desarrollo, el `201`
+   volvía del servidor (confirmado con logs: `RESPONSE: 201 …/accept`) pero ninguna llamada
+   a `onSuccess` ni ningún nuevo render con `isSuccess: true` llegaba a producirse — la
+   pantalla se quedaba en "Aceptando invitación…" para siempre, con la invitación ya
+   aceptada en la base de datos. Se comprobó también con un segundo enfoque (efecto separado
+   observando `accept.isSuccess`/`accept.data` en vez de un callback ligado a la llamada de
+   `mutate()`) y el bloqueo persistía igual, así que la causa no era el callback puntual sino
+   la suscripción de `useMutation` en sí bajo ese patrón concreto (montaje + StrictMode).
+   Arreglado quitando `useMutation` de esta ruta: `JoinPage.tsx` llama `acceptInvite`
+   (`api.ts`) directamente y guarda el resultado con `useState`, ajeno al ciclo de vida de
+   react-query. `useAcceptInvite` se quitó de `hooks.ts` por quedarse sin nadie que lo use;
+   `useCreateInvite` (el botón del DM, disparado por clic, no por montaje) no tiene este
+   problema y se queda igual.
+
+   **Corrección (revisión de 1.14-fix, 2026-09-01):** el párrafo de arriba generaliza más de
+   lo que se comprobó. Lo que hace seguro el código de hoy contra la doble invocación del
+   efecto de montaje es la ref `attempted = useRef(false)`, que se añadió a la vez que se
+   quitó `useMutation` — el experimento nunca aisló las dos variables. Con esa misma guarda,
+   la versión con `useMutation` habría dejado de disparar una segunda aceptación igual: la ref
+   corta la segunda llamada antes de que le importe si la primera se está siguiendo con una
+   mutación o con `useState`. "La suscripción de `useMutation` se rompe con montaje +
+   StrictMode" **no es una regla general del proyecto** — es una generalización no
+   demostrada a partir de un síntoma real (el `201` sin `isSuccess` visible), y no debe
+   tratarse como lección para tareas futuras. Ver la entrada de 1.14-fix más abajo.
+
+**Pruebas.** TDD: cada prueba se vio roja por comportamiento (elemento/texto/navegación que
+no existía, capturado con `vitest run` antes de escribir la implementación), no por fichero
+ausente — el detalle línea a línea vive en el informe de la tarea (fuera de `docs/`; ver el
+ledger `.superpowers/sdd/progress.md`). Unitarias nuevas: `InvitePanel.test.tsx` (3),
+`JoinPage.test.tsx` (3), `LoginPage.test.tsx` y `RegisterPage.test.tsx` (1 cada una, el caso
+"resume la invitación pendiente") — 8 pruebas nuevas, 91 unitarias en total (shared 10, api
+37, web 44).
+Playwright: `apps/web/e2e/invitacion.spec.ts`, primera suite del proyecto con dos
+`BrowserContext` (DM y jugador, cookies y `localStorage` independientes); lee el enlace de
+invitación con `inputValue()` sobre el campo real de la pantalla en vez de construirlo a
+mano, y comprueba a la vez que la lista de NPCs del jugador dice "Sin elementos." y que el
+NPC `DM_ONLY` del DM tiene `toHaveCount(0)` — la comprobación que la fase llevaba debiendo
+desde que se instaló Playwright.
+
+**Documentación.** `08-pruebas.md` (estado 91/19/5, recorrido nuevo documentado con los dos
+defectos que cazó, "lo que falta cubrir" reducido a accesibilidad/responsive/rendimiento),
+`06-pendientes.md` (cierra el flujo de invitación; abre que el token ahora es visible para
+el usuario sin caducar ni poder revocarse; `InvitePanel.tsx` añadido a la lista de botones
+que no se ocultan por rol), `00-INDEX.md` (fase 1 con la construcción completa, pendiente de
+uso real en mesa).
+
+**Revertir.** `git revert` del commit de esta tarea. No toca `apps/api` ni
+`packages/shared`; no hay migración que deshacer.
+
+---
+
 ## 2026-08-31 — Editores de sesión y personaje (1.13)
 
 **Qué.** `SessionsTab` y `CharactersTab` (`CampaignDetailPage.tsx`) eran de solo lectura;

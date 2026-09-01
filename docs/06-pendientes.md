@@ -4,9 +4,73 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: 2026-08-31.
+Última revisión: 2026-09-01.
 
 ## Cerrados
+
+**~~Una invitación pendiente huérfana mete a cualquiera en la campaña ajena~~ — CERRADO el
+2026-09-01 (tarea 1.14-fix). Crítico verificado en el código por una revisión independiente.**
+`JoinPage.tsx` guardaba el token en `localStorage` sin caducidad si el invitado no volvía;
+nada lo borraba —`logout()` solo quitaba `dnd_token`— y **cualquier** autenticación posterior
+en ese navegador (`LoginPage.tsx`/`RegisterPage.tsx`) lo leía y navegaba a `/join/:token`,
+donde la aceptación se disparaba sola al montar sin pedir confirmación. En un portátil
+compartido de mesa, el siguiente en iniciar sesión ahí acababa dentro de la campaña como
+`PLAYER` sin pulsar nada, y el token quedaba quemado para el invitado real. Arreglo de tres
+partes: (1) `/join/:token` ya no acepta al montar — con sesión, muestra una confirmación y
+espera un clic explícito en "Unirse a la campaña", y dice que aceptar consume el enlace
+(cierra también el caso del DM que abre su propio enlace y lo quemaba sin querer); (2)
+`logout()` borra la invitación pendiente igual que borra `dnd_token`; (3) la invitación
+pendiente caduca a los 5 minutos (sello de tiempo junto al token en `localStorage`), lo que
+también cierra el caso de un token viejo desviando un login normal a una pantalla de error.
+La guarda `attempted = useRef(false)` no se tocó — sigue protegiendo un doble clic rápido en
+vez del efecto de montaje. Detalle completo, con las ocho partes de la revisión, en la
+entrada de 1.14-fix en [07-historial.md](./07-historial.md).
+
+**~~Falta el flujo de invitación en la interfaz~~ — CERRADO el 2026-08-31 (tarea 1.14).** El
+DM genera un enlace de invitación desde `features/invites/InvitePanel.tsx` (montado en la
+pestaña Resumen de `CampaignDetailPage.tsx`) y lo ve completo en pantalla, seleccionable, con
+un botón de copiar que **muestra el fallo en vez de mentir** si el portapapeles del navegador
+lo rechaza — el enlace sigue visible en cualquier caso. `/join/:token`
+(`pages/JoinPage.tsx`), fuera de `ProtectedRoute` a propósito, cubre los tres caminos: sin
+sesión guarda el token en `localStorage` (junto a `dnd_token`, que es donde ya vive el estado
+de sesión) y lo limpia al consumirlo; con sesión acepta contra la API real y navega a
+`/campaigns/<campaignId>` con el id que devuelve el servidor; token inválido o ya usado
+muestra el mensaje del servidor con salida al listado. `LoginPage.tsx`/`RegisterPage.tsx`
+resumen la invitación pendiente en vez de aterrizar en el listado, para que el jugador no
+tenga que volver a pegar el enlace. Generar la invitación es solo del DM en el servidor
+(`requireDM`), pero el botón se muestra a todo el mundo — mismo bloqueante de siempre,
+`auth.store.ts:13` — y es el 403 del servidor el que habla si un jugador lo pulsa.
+
+Dos defectos reales, cazados solo por el e2e de Playwright contra la API real (las unitarias
+simulan `api.ts` y no los veían): `createInvite`/`acceptInvite` mandaban un `POST` sin cuerpo
+con `Content-Type: application/json`, que Fastify rechaza con 500 antes de llegar al
+controlador — arreglado enviando `{}`. Y la primera versión de `JoinPage.tsx` disparaba la
+aceptación con `useMutation` dentro de un `useEffect` de montaje: contra la API real, con
+`React.StrictMode` montando dos veces en desarrollo, el `201` volvía del servidor pero el
+`isSuccess` de la mutación nunca llegaba a reflejarse en un render nuevo, y la pantalla se
+quedaba en "Aceptando invitación…" para siempre con la invitación ya aceptada en la base de
+datos. Se cambió a llamar `acceptInvite` directamente y guardar el resultado con `useState`,
+sin pasar por `useMutation` — ver la entrada de 1.14 en [07-historial.md](./07-historial.md)
+para la secuencia de logs que lo confirmó.
+
+Nuevo pendiente que esto deja abierto: **el token de invitación no caduca y no es
+revocable** (servidor, desde la tarea 1.4 — `invites.service.ts`), y hasta ahora era un
+detalle interno; con esta tarea el DM lo ve y lo comparte, así que un enlace filtrado o
+reenviado por error sigue siendo válido indefinidamente hasta que alguien lo use. No se
+arregla aquí — tocaría `apps/api`, fuera de alcance de 1.14 — pero conviene que su ficha
+quede junto a la interfaz que lo hace visible, no solo en la fila de servidor de abajo.
+
+**Sigue abierto tras 1.14-fix, mismo motivo, ahora más visible.** `InvitePanel.tsx` deja
+generar un enlace nuevo cuantas veces el DM quiera, y cada uno anterior **sigue válido en el
+servidor**: no hay listado de invitaciones vivas ni forma de revocar una desde la interfaz. Un
+DM que pulsa "Generar invitación" dos veces creyendo que refresca el enlace deja el primero
+flotando, sin verlo ni poder anularlo. El arreglo mínimo de 1.14-fix es honesto, no funcional:
+la pantalla avisa de que generar otro enlace no anula los anteriores
+(`features/invites/InvitePanel.tsx`). Arreglarlo de verdad pide un endpoint de listado y otro
+de revocación en `apps/api` (fuera de alcance del brief de 1.14-fix, que prohíbe tocar
+`apps/api`) — misma familia de deuda que la caducidad del párrafo de arriba: los dos piden
+tocar `invites.service.ts`/`invites.controller.ts`, así que conviene resolverlos juntos en la
+misma tarea de servidor cuando se aborde.
 
 **~~Faltan editores de sesión y personaje~~ — CERRADO el 2026-08-31 (tarea 1.13).**
 `SessionsTab` y `CharactersTab` (`CampaignDetailPage.tsx`) eran de solo lectura; ahora ganan
@@ -68,10 +132,6 @@ espiar. Ver [07-historial.md](./07-historial.md).
 
 ## P1 — Huecos de verificación
 
-**Los e2e de navegador cubren cuatro recorridos, no el catálogo.** Faltan, en orden: el flujo
-de invitación con dos sesiones, y que un jugador **no vea** en pantalla una entidad
-`DM_ONLY`. Lista en [08-pruebas.md](./08-pruebas.md).
-
 **No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
 hoy.
 
@@ -122,7 +182,9 @@ comportamiento:
   `EntityLink`). Tarea 1.6.
 - **Crear un enlace no comprueba la visibilidad del destino** → sirve de oráculo de
   existencia para un identificador ajeno. Tarea 1.6.
-- **Aceptar una invitación no es transaccional** y **el token no caduca**. Tarea 1.4.
+- **Aceptar una invitación no es transaccional** y **el token no caduca ni es revocable**.
+  Tarea 1.4; visible desde la interfaz desde la 1.14 (ver "Cerrados" arriba) — el DM ahora ve
+  y comparte el enlace, así que la falta de caducidad deja de ser un detalle interno.
 - **`specificPlayerIds` no se valida contra los miembros de la campaña**: se puede conceder
   acceso a alguien de fuera. Queda inerte, pero se guarda. Tarea 1.5.
 - **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
@@ -139,7 +201,10 @@ comportamiento:
   1.13 lo pide explícitamente — "no intentes ocultar botones según permiso: no tienes con qué"
   — porque `auth.store.ts:13` sigue sin conocer el id del usuario tras recargar; lo que sí
   hacen `SessionEditor.tsx` y `CharacterEditor.tsx` es pintar el 403 del servidor en el
-  formulario en vez de fallar en silencio. Mismo bloqueante que la línea de abajo.
+  formulario en vez de fallar en silencio. Mismo bloqueante que la línea de abajo. **La 1.14
+  hace la misma elección con `InvitePanel.tsx`**: el botón "Generar invitación" se muestra a
+  todo el mundo en la pestaña Resumen, aunque el servidor lo rechace con 403 si quien pulsa
+  no es el DM (`invites.service.ts`, `requireDM`) — mismo bloqueante, mismo motivo.
 - **No hay botón de borrar sesión o personaje en la interfaz**, aunque la API lo soporte
   (`DELETE /campaigns/:id/sessions/:sessionId`, `DELETE /campaigns/:id/characters/:characterId`,
   ambos ya probados). El brief de 1.13 pedía dos editores de creación/edición, no borrado;

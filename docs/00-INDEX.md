@@ -35,22 +35,27 @@ limitado a SRD 5.1 / OGL.
 > el detalle por tarea que escribe el orquestador durante la ejecución; el 07 es el
 > resumen por hito que sobrevive a la sesión.
 
-## Estado actual (2026-08-31)
+## Estado actual (2026-09-01)
 
-**Fase 0 completa. Fase 1 en curso, en `main`, todo empujado a GitHub**
-(`JorgeForero02/DnD-Plataform`).
+**Fase 0 completa. Fase 1 — construcción COMPLETA, en `main`, todo empujado a GitHub**
+(`JorgeForero02/DnD-Plataform`). Falta usarla en una mesa real antes de dar la fase por
+cerrada (ver la regla de fase abajo).
 
 - **API de la fase 1: completa.** Campañas, membresías, invitaciones, entidades,
   enlaces, comentarios, sesiones, personajes y listado de miembros.
-- **Web de la fase 1: en curso.** Hechos: login/registro, lista de campañas, detalle con
-  pestañas, editor de entidades con panel de enlaces y comentarios (1.12b), editores de
-  sesión y personaje (1.13). Falta: flujo de invitación (1.14).
+- **Web de la fase 1: completa.** Login/registro, lista de campañas, detalle con pestañas,
+  editor de entidades con panel de enlaces y comentarios (1.12b), editores de sesión y
+  personaje (1.13), y flujo de invitación de punta a punta (1.14, endurecido en 1.14-fix): el
+  DM genera y copia un enlace de un solo uso, y `/join/:token` lo acepta cubriendo los tres
+  casos — sin sesión, confirmación con clic explícito antes de aceptar, token inválido o ya
+  usado.
 - **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
-  (type-check) + ESLint + Prettier + 78 unitarias, aplicado por `.githooks/pre-commit`.
-  Medido el 2026-08-31: ✅, más 19 e2e de API contra Postgres real ✅.
-  **Playwright (Chromium)** cubre cuatro recorridos de navegador, fuera del gancho y en su
-  propio trabajo de CI. Ver [08-pruebas.md](./08-pruebas.md) y
-  [06-pendientes.md](./06-pendientes.md).
+  (type-check) + ESLint + Prettier + 106 unitarias, aplicado por `.githooks/pre-commit`.
+  Medido el 2026-09-01: ✅, más 19 e2e de API contra Postgres real ✅.
+  **Playwright (Chromium)** cubre cinco recorridos de navegador en dos suites — incluida la
+  invitación con dos sesiones de navegador y la comprobación de que un jugador no ve una
+  entidad `DM_ONLY` sobre el DOM real —, fuera del gancho y en su propio trabajo de CI. Ver
+  [08-pruebas.md](./08-pruebas.md) y [06-pendientes.md](./06-pendientes.md).
 - **Sin desplegar.** No hay VPS asignado a este proyecto; el despliegue está diferido.
 
 **Salida de la fase 1:** jugar una sesión real en la mesa. Regla de fase: no se empieza la

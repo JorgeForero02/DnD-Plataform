@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { registerSchema, type RegisterInput } from "@dnd/shared";
 import { register as registerApi } from "../lib/api";
 import { useAuthStore } from "../store/auth.store";
+import { peekPendingInvite } from "../features/invites/api";
 import { useState } from "react";
 
 export function RegisterPage() {
@@ -20,7 +21,10 @@ export function RegisterPage() {
     try {
       const res = await registerApi(data);
       setAuth(res);
-      navigate("/");
+      // Same resume as LoginPage.tsx: a player who registered from a /join link lands in the
+      // campaign, not the dashboard.
+      const pendingInvite = peekPendingInvite();
+      navigate(pendingInvite ? `/join/${pendingInvite}` : "/");
     } catch (e) {
       setError((e as Error).message);
     }

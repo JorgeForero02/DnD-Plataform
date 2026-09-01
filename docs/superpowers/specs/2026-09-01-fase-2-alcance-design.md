@@ -365,6 +365,102 @@ El autor quiere que ese momento sea un aviso que aparece a la vez en la pantalla
 y cada jugador recarga su pantalla. **No se construye el aviso hasta que la infraestructura lo
 sostenga** — y cuando llegue, el modelo no cambia: se sustituye el sondeo por un empujón.
 
+## Respuestas del DM asesor (2026-09-01) — y lo que cambian
+
+Se le pasó al DM que asesora al autor la presentación del producto con siete preguntas. Sus
+respuestas están abajo **con lo que cambian del diseño**, porque tres de ellas lo cambian de
+verdad y una **corrige un error de este documento**.
+
+### A · El personaje pertenece a la campaña — CONFIRMADO, y con mejor razón que la nuestra
+
+Su argumento, que no se nos había ocurrido: **las características se tiran con dados**. Dos
+personajes del mismo concepto en dos campañas **no son el mismo personaje**, porque su fuerza,
+su constitución y su carisma salieron de tiradas distintas. La portabilidad no es que sea cara:
+**es que no tiene sentido en las reglas**.
+
+**Se queda el modelo actual.** Ficha decidida.
+
+**Pero añade un matiz que sí vale:** *"estaría bien que el trasfondo, el nombre y el rol se
+puedan compartir entre campañas"*. Eso **no** es portar un personaje: es **reutilizar el
+concepto**. La versión barata es un *"crear a partir de uno anterior"* que copia nombre, raza,
+clase y trasfondo — **y no las características**, que se vuelven a tirar. Anotado para 2A.
+
+### B · Las condiciones necesitan un reloj de juego — **esto corrige el documento**
+
+La pregunta que hicimos era si bastaban las condiciones indefinidas o hacía falta contar turnos.
+**Su respuesta va por un tercer sitio que no habíamos visto:**
+
+> *"Hay efectos que duran cierto tiempo, por ejemplo de 1 hora. ¿Cómo sé cuándo ha pasado 1
+> hora en D&D? El tiempo no pasa igual que en la vida real."*
+
+Tiene razón y **este documento estaba mal planteado**. Las duraciones de D&D se expresan en
+**varias escalas** —asaltos de 6 segundos, minutos, horas, días— y **solo la más pequeña
+depende de la iniciativa**. Un efecto de una hora no se cuenta en turnos: se cuenta en **tiempo
+de juego**, que hoy **el sistema no modela en absoluto** (una sesión tiene fecha del mundo real,
+no del mundo).
+
+**Consecuencia para el plan:** hace falta un **reloj de campaña** —tiempo de juego que el DM
+avanza: *"pasan dos horas"*, *"descansáis ocho"*— y que **cada condición lleve su contador**
+contra ese reloj.
+
+Y lo importante: **eso no depende del combate**. Sirve fuera de él —viajes, antorchas,
+duraciones de conjuro, descansos— y **puede entrar antes que la iniciativa**. Cuando llegue el
+combate, un asalto son 6 segundos del mismo reloj: **un solo mecanismo, dos escalas**.
+
+**Se mueve a 2C**, junto a los dados, en vez de esperar a Encuentros.
+
+### C · Temporizador de turno, configurable por el DM
+
+> *"A veces los turnos se alargan demasiado y los jugadores están distraídos… que el DM pueda
+> definir los tiempos de reacción al inicio de la campaña, de 1 minuto o más."*
+
+Es una funcionalidad que no habíamos considerado, y es **social, no de reglas**: sirve para que
+el combate no se eternice. Se configura **por campaña**, y **avisa, no expulsa** — la decisión
+de saltar un turno sigue siendo del DM, coherente con el principio rector.
+
+Necesita que exista el orden de turnos, así que **va en Encuentros**.
+
+### D · Los objetos necesitan descripción, no solo números
+
+> *"Me las apañaría [con los números], pero sería conveniente que tuvieran una descripción…
+> que se ve oxidado, que huele raro. Los números son lo más importante, pero me gustaría verles
+> un poco de personalidad."*
+
+Confirma la lista cerrada de efectos **y añade lo que le faltaba**: un **texto libre** junto a
+los números. Es la misma lección que el cuerpo de las fichas del mundo: **los números son la
+parte de la máquina, el texto es la parte del humano**, y una herramienta que solo guarda
+números convierte un objeto mágico en una fila de una hoja de cálculo.
+
+**Entra en 2B**, y es barato.
+
+### E · Mostrar u ocultar cada tirada del DM — CONFIRMADO
+
+> *"Me gustaría que me dieras la opción de mostrar o no mostrar mis tiradas siendo DM, ya que
+> hay algunas que no es necesario mostrar."*
+
+Es exactamente lo diseñado: **elección tirada a tirada**. Sin cambios.
+
+### Extra · Una ayuda para poner la dificultad de las tiradas
+
+> *"Me interesaría un recurso que me apoye con la dificultad de las tiradas, ya sea abrir una
+> puerta o persuadir a alguien."*
+
+Pidió algo que no estaba en ninguna de nuestras preguntas: al pedir una tirada, **una guía de
+CD** con la escala habitual y ejemplos, para no inventarse el número cada vez.
+
+Es barato y encaja en 2C junto al tirador. **Comprobar antes si la tabla de dificultades típicas
+está en el SRD 5.1**; si no lo está, se ofrece la escala como ayuda propia sin copiar texto
+ajeno (ver el apartado de derechos de este documento).
+
+Abre además una interacción interesante: **que el DM pida una tirada y le aparezca al jugador
+en su pantalla**. Eso ya roza el tiempo real, así que con sondeo primero.
+
+### Lo que NO cambia
+
+Ninguna respuesta contradice los dos principios —**la máquina ejecuta, el DM arbitra** y **el
+azar vive fuera del motor**—. Al contrario: la C y la E los refuerzan, porque en las dos pide
+**decidir él** en vez de que el sistema decida por él.
+
 ## Lo que queda explícitamente fuera de la fase 2
 
 - **Comparar la tirada contra la CA del objetivo**, decidir acierto o fallo, y **aplicar daño a

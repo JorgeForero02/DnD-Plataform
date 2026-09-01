@@ -41,6 +41,12 @@ describe("Auth (e2e)", () => {
       .get("/auth/me")
       .set("Authorization", `Bearer ${login.body.token}`);
     expect(me.status).toBe(200);
-    expect(me.body.email).toBe(email);
+    expect(me.body).toEqual({ id: expect.any(String), email, displayName: "Gandalf" });
+  });
+
+  it("rejects /auth/me with no token", async () => {
+    const server = app.getHttpServer();
+    const res = await request(server).get("/auth/me");
+    expect(res.status).toBe(401);
   });
 });

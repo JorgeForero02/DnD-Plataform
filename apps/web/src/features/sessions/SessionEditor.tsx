@@ -35,10 +35,17 @@ export function SessionEditor({
   campaignId,
   session,
   onClose,
+  readOnly = false,
+  readOnlyReason,
 }: {
   campaignId: string;
   session?: Session;
   onClose: () => void;
+  // Arreglo 1 (1.15-fix): see the same prop on EntityEditor.tsx — the row that opens this now
+  // opens unconditionally, and this is what a player who can view but not manage the session
+  // gets instead of an editable form.
+  readOnly?: boolean;
+  readOnlyReason?: string;
 }) {
   const isEdit = !!session;
   const [title, setTitle] = useState(session?.title ?? "");
@@ -64,6 +71,7 @@ export function SessionEditor({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     setError(null);
     const trimmedNotes = notes.trim();
     // createSessionSchema.scheduledAt is z.coerce.date(): the *output* TS type is Date, but
@@ -105,6 +113,11 @@ export function SessionEditor({
     <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/50 py-8">
       <form onSubmit={onSubmit} className="w-[28rem] space-y-3 rounded-lg bg-slate-800 p-6">
         <h2 className="text-lg font-bold">{isEdit ? "Editar sesión" : "Nueva sesión"}</h2>
+        {readOnly && (
+          <p className="rounded bg-slate-700/50 p-2 text-xs text-amber-400">
+            {readOnlyReason ?? "Solo puedes ver esta sesión."}
+          </p>
+        )}
         <div>
           <label htmlFor="session-title" className="block text-sm">
             Título
@@ -113,7 +126,8 @@ export function SessionEditor({
             id="session-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
           />
         </div>
         <div>
@@ -125,7 +139,8 @@ export function SessionEditor({
             type="datetime-local"
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
           />
         </div>
         <div>
@@ -136,7 +151,8 @@ export function SessionEditor({
             id="session-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             rows={3}
           />
         </div>
@@ -148,7 +164,8 @@ export function SessionEditor({
             id="session-visibility"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as Visibility)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
           >
             {visibilityOptions.map((v) => (
               <option key={v} value={v}>
@@ -165,7 +182,8 @@ export function SessionEditor({
           </button>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || readOnly}
+            title={readOnly ? readOnlyReason : undefined}
             className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
           >
             Guardar

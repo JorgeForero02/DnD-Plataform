@@ -14,10 +14,17 @@ export function CharacterEditor({
   campaignId,
   character,
   onClose,
+  readOnly = false,
+  readOnlyReason,
 }: {
   campaignId: string;
   character?: Character;
   onClose: () => void;
+  // Arreglo 1 (1.15-fix): see the same prop on EntityEditor.tsx — the row that opens this now
+  // opens unconditionally, and this is what a player who can view but not edit the character
+  // gets instead of an editable form.
+  readOnly?: boolean;
+  readOnlyReason?: string;
 }) {
   const isEdit = !!character;
   const [name, setName] = useState(character?.name ?? "");
@@ -41,6 +48,7 @@ export function CharacterEditor({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     setError(null);
     const trimmedRace = race.trim();
     const trimmedClass = charClass.trim();
@@ -76,6 +84,11 @@ export function CharacterEditor({
     <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/50 py-8">
       <form onSubmit={onSubmit} className="w-[28rem] space-y-3 rounded-lg bg-slate-800 p-6">
         <h2 className="text-lg font-bold">{isEdit ? "Editar personaje" : "Nuevo personaje"}</h2>
+        {readOnly && (
+          <p className="rounded bg-slate-700/50 p-2 text-xs text-amber-400">
+            {readOnlyReason ?? "Solo puedes ver este personaje."}
+          </p>
+        )}
         <div>
           <label htmlFor="character-name" className="block text-sm">
             Nombre
@@ -84,7 +97,8 @@ export function CharacterEditor({
             id="character-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
           />
         </div>
         <div className="flex gap-2">
@@ -96,7 +110,8 @@ export function CharacterEditor({
               id="character-race"
               value={race}
               onChange={(e) => setRace(e.target.value)}
-              className="w-full rounded bg-slate-700 p-2"
+              disabled={readOnly}
+              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             />
           </div>
           <div className="flex-1">
@@ -107,7 +122,8 @@ export function CharacterEditor({
               id="character-class"
               value={charClass}
               onChange={(e) => setCharClass(e.target.value)}
-              className="w-full rounded bg-slate-700 p-2"
+              disabled={readOnly}
+              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             />
           </div>
           <div className="w-24">
@@ -121,7 +137,8 @@ export function CharacterEditor({
               max={20}
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="w-full rounded bg-slate-700 p-2"
+              disabled={readOnly}
+              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             />
           </div>
         </div>
@@ -133,7 +150,8 @@ export function CharacterEditor({
             id="character-bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             rows={3}
           />
         </div>
@@ -145,7 +163,8 @@ export function CharacterEditor({
             id="character-visibility"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as Visibility)}
-            className="w-full rounded bg-slate-700 p-2"
+            disabled={readOnly}
+            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
           >
             {visibilityOptions.map((v) => (
               <option key={v} value={v}>
@@ -162,7 +181,8 @@ export function CharacterEditor({
           </button>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || readOnly}
+            title={readOnly ? readOnlyReason : undefined}
             className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
           >
             Guardar

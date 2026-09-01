@@ -15,8 +15,8 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-Estado medido el 2026-09-01 (tarea 1.14-fix): **106 unitarias** (shared 10, api 37, web 59) y
-**19 e2e de API** en 9 suites más **5 e2e de navegador** en 2 suites, todas verdes. Las
+Estado medido el 2026-09-01 (tarea 1.15-fix): **135 unitarias** (shared 10, api 40, web 85) y
+**20 e2e de API** en 9 suites más **5 e2e de navegador** en 2 suites, todas verdes. Las
 unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
 quedan fuera del gancho pero dentro de CI.
 
@@ -216,6 +216,20 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   después — antes de este arreglo, visitarlo ya autenticado bastaba para marcarlo `usedAt` y
   dejarlo inservible para el jugador real. Detalle completo, con las tres partes del arreglo,
   en la entrada de 1.14-fix en [07-historial.md](./07-historial.md).
+
+  **Ampliado en 1.15-fix: el jugador abre y lee una entidad ajena que no puede editar.** La
+  única entidad del DM en el recorrido era `DM_ONLY`, así que el jugador solo veía "Sin
+  elementos." y nunca existía una fila visible-pero-no-editable que abrir — el recorrido
+  entero podía pasar en verde sin ejecutar ni una línea del arreglo 1 de 1.15-fix (la fila deja
+  de deshabilitarse; el editor se abre en modo lectura). El DM crea además un NPC `PLAYERS`
+  (`Gundren Rockseeker`) y le pone un comentario antes de invitar. Tras unirse, el jugador ve
+  esa fila `toBeEnabled()`, la abre, comprueba que el campo Nombre precarga
+  `"Gundren Rockseeker"` de verdad (no un formulario vacío) y está `toBeDisabled()`, que
+  Guardar está deshabilitado con su motivo ("Solo el DM o quien lo creó puede editarlo."), que
+  el comentario del DM es visible, y que puede publicar el suyo propio y verlo aparecer —
+  comentar es de cualquiera que pueda ver la entidad (`comments.service.ts` exige solo
+  `canView`), así que el modo lectura del formulario no lo apaga. Ver la entrada de 1.15-fix
+  en [07-historial.md](./07-historial.md).
 
 ### Lo que falta cubrir
 

@@ -35,4 +35,13 @@ describe("UsersService", () => {
     });
     expect(r).toBeNull();
   });
+
+  it("findById() queries by unique id", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ id: "1", displayName: "Gandalf" });
+    const r = await service.findById("1");
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+      where: { id: "1" },
+    });
+    expect(r).toEqual({ id: "1", displayName: "Gandalf" });
+  });
 });

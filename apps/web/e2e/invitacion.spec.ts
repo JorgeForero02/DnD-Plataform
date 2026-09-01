@@ -52,6 +52,30 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(dmOnlyNpc).toBeVisible();
   await expect(dmOnlyNpc).toContainText("DM_ONLY");
 
+  // Arreglo 1 (1.15-fix), Crítico: además un NPC PLAYERS, creado por el DM, con un comentario
+  // suyo ya puesto — es la entidad que el jugador va a abrir y LEER más abajo sin poder
+  // editarla. Sin este NPC, el recorrido de invitación nunca ejercía la fila
+  // visible-pero-no-editable: la única entidad del DM era DM_ONLY, así que el jugador solo
+  // veía "Sin elementos." y el defecto de la fila deshabilitada (fila = único botón de
+  // editar, sin ninguna vista de lectura separada) pasaba desapercibido.
+  await dmPage.getByRole("button", { name: "Nuevo" }).click();
+  await dmPage.getByLabel("Nombre").fill("Gundren Rockseeker");
+  await dmPage.getByLabel("Visibilidad").selectOption("PLAYERS");
+  await dmPage.getByRole("button", { name: "Guardar" }).click();
+  await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
+  const playersNpcRowDm = dmPage.getByRole("button", { name: /Gundren Rockseeker/ });
+  await expect(playersNpcRowDm).toBeVisible();
+  await expect(playersNpcRowDm).toContainText("PLAYERS");
+  await playersNpcRowDm.click();
+  await dmPage
+    .getByLabel("Nuevo comentario")
+    .fill("Gundren contrató a los aventureros en Piedra del Fuego.");
+  await dmPage.getByRole("button", { name: "Publicar" }).click();
+  await expect(
+    dmPage.getByText("Gundren contrató a los aventureros en Piedra del Fuego."),
+  ).toBeVisible();
+  await dmPage.getByRole("button", { name: "Cancelar" }).click();
+
   // Generar la invitación desde el resumen, donde vive InvitePanel.
   await dmPage.getByRole("button", { name: "Resumen" }).click();
   await dmPage.getByRole("button", { name: "Generar invitación" }).click();
@@ -107,8 +131,61 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
 
   // La comprobación que llevaba toda la fase debiendo: el jugador no ve la entidad DM_ONLY.
   await playerPage.getByRole("button", { name: "NPCs" }).click();
-  await expect(playerPage.getByText("Sin elementos.")).toBeVisible();
   await expect(playerPage.getByRole("button", { name: /El secreto de Cragmaw/ })).toHaveCount(0);
+
+  // Arreglo 1 (1.15-fix), Crítico: el jugador SÍ ve la entidad PLAYERS, y la fila abre —
+  // nunca se deshabilita, porque es la única vista de detalle que existe. Lo que cambia con
+  // el permiso es que el editor que se abre está en modo lectura.
+  const playersNpcRowPlayer = playerPage.getByRole("button", { name: /Gundren Rockseeker/ });
+  await expect(playersNpcRowPlayer).toBeVisible();
+  await expect(playersNpcRowPlayer).toBeEnabled();
+  await playersNpcRowPlayer.click();
+  await expect(playerPage.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  // Lee su contenido: el nombre real, no un formulario vacío.
+  await expect(playerPage.getByLabel("Nombre")).toHaveValue("Gundren Rockseeker");
+  await expect(playerPage.getByLabel("Nombre")).toBeDisabled();
+  await expect(playerPage.getByRole("button", { name: "Guardar" })).toBeDisabled();
+  // getByText alone matches both the row's badge (still in the DOM behind the modal) and the
+  // editor's own read-only notice — scope to the paragraph the editor renders.
+  await expect(
+    playerPage.getByRole("paragraph").filter({ hasText: "Solo el DM o quien lo creó" }),
+  ).toBeVisible();
+  // Y el hilo de comentarios: lee el que puso el DM y publica el suyo — comentar es de
+  // cualquiera que pueda ver la entidad (comments.service.ts exige solo canView), así que
+  // el modo lectura del formulario no debe apagar esto.
+  await expect(
+    playerPage.getByText("Gundren contrató a los aventureros en Piedra del Fuego."),
+  ).toBeVisible();
+  await playerPage.getByLabel("Nuevo comentario").fill("¡Encontramos la mina!");
+  await playerPage.getByRole("button", { name: "Publicar" }).click();
+  await expect(playerPage.getByText("¡Encontramos la mina!")).toBeVisible();
+  await playerPage.getByRole("button", { name: "Cancelar" }).click();
+
+  // 1.15: la interfaz ya conoce el rol de quien la usa (useMyRole,
+  // features/campaigns/members.ts), así que "Nuevo" en Sesiones deja de ofrecer una acción
+  // que el servidor (sessions.service.ts, requireDM) va a rechazar. Deshabilitado, no oculto
+  // — con un motivo, no en silencio.
+  await playerPage.getByRole("button", { name: "Sesiones" }).click();
+  const playerNewSession = playerPage.getByRole("button", { name: "Nuevo" });
+  await expect(playerNewSession).toBeDisabled();
+  await expect(playerPage.getByText("Solo el DM puede crear o editar sesiones.")).toBeVisible();
+
+  // El DM, en su propia sesión de navegador, sí puede: sin esto la comprobación de arriba
+  // pasaría igual con todo deshabilitado para todo el mundo. El DM está en el listado de
+  // campañas (canceló su propio enlace más arriba), así que vuelve a entrar primero.
+  await dmPage.getByRole("link", { name: "La Mina Perdida de Phandelver" }).click();
+  await expect(
+    dmPage.getByRole("heading", { name: "La Mina Perdida de Phandelver" }),
+  ).toBeVisible();
+  await dmPage.getByRole("button", { name: "Sesiones" }).click();
+  const dmNewSession = dmPage.getByRole("button", { name: "Nuevo" });
+  await expect(dmNewSession).toBeEnabled();
+  await dmNewSession.click();
+  await expect(dmPage.getByRole("heading", { name: "Nueva sesión" })).toBeVisible();
+  await dmPage.getByLabel("Título").fill("Sesión de prueba del DM");
+  await dmPage.getByRole("button", { name: "Guardar" }).click();
+  await expect(dmPage.getByRole("heading", { name: "Nueva sesión" })).toBeHidden();
+  await expect(dmPage.getByRole("button", { name: /Sesión de prueba del DM/ })).toBeVisible();
 
   await dmContext.close();
   await playerContext.close();

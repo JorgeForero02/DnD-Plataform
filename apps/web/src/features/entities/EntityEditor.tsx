@@ -20,11 +20,23 @@ export function EntityEditor({
   type,
   entity,
   onClose,
+  readOnly = false,
+  readOnlyReason,
 }: {
   campaignId: string;
   type: EntityType;
   entity?: Entity;
   onClose: () => void;
+  // Arreglo 1 (1.15-fix): the row that opens this editor now opens unconditionally — it's the
+  // only detail view this app has, and hiding it behind edit permission left a player who
+  // *can* view an entity (canView, apps/api/src/common/visibility.ts) unable to read its
+  // description, tags, links or comments. `readOnly` is what the row's permission check now
+  // controls instead: the form renders disabled and Guardar stays off, with `readOnlyReason`
+  // shown next to it — but LinksPanel and CommentThread below are unaffected, because reading
+  // and commenting were never gated on edit permission on the server to begin with
+  // (comments.service.ts requires only canView; links.service.ts requires only membership).
+  readOnly?: boolean;
+  readOnlyReason?: string;
 }) {
   const isEdit = !!entity;
   const [name, setName] = useState(entity?.name ?? "");
@@ -69,6 +81,7 @@ export function EntityEditor({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     setError(null);
     const payload = {
       type,
@@ -96,6 +109,11 @@ export function EntityEditor({
           <h2 className="text-lg font-bold">
             {isEdit ? "Editar" : "Nuevo"} {type}
           </h2>
+          {readOnly && (
+            <p className="rounded bg-slate-700/50 p-2 text-xs text-amber-400">
+              {readOnlyReason ?? "Solo puedes ver esta entidad."}
+            </p>
+          )}
           <div>
             <label htmlFor="name" className="block text-sm">
               Nombre
@@ -104,7 +122,8 @@ export function EntityEditor({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded bg-slate-700 p-2"
+              disabled={readOnly}
+              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             />
           </div>
           <div>
@@ -115,7 +134,8 @@ export function EntityEditor({
               id="tags"
               value={tagsRaw}
               onChange={(e) => setTagsRaw(e.target.value)}
-              className="w-full rounded bg-slate-700 p-2"
+              disabled={readOnly}
+              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             />
           </div>
           <div>
@@ -126,7 +146,8 @@ export function EntityEditor({
               id="visibility"
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as Visibility)}
-              className="w-full rounded bg-slate-700 p-2"
+              disabled={readOnly}
+              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             >
               {VISIBILITIES.map((v) => (
                 <option key={v} value={v}>
@@ -153,6 +174,7 @@ export function EntityEditor({
                       type="checkbox"
                       checked={specificPlayerIds.includes(m.userId)}
                       onChange={() => togglePlayer(m.userId)}
+                      disabled={readOnly}
                     />
                     {m.displayName}
                   </label>
@@ -166,7 +188,8 @@ export function EntityEditor({
             </button>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || readOnly}
+              title={readOnly ? readOnlyReason : undefined}
               className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
             >
               Guardar

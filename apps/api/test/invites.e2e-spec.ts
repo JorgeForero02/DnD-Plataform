@@ -7,8 +7,12 @@ import { PrismaService } from "../src/prisma/prisma.service";
 describe("Invites (e2e)", () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
-  const emailA = `dm${Date.now()}@b.com`;
-  const emailB = `pl${Date.now()}@b.com`;
+  // Date.now() alone (ms resolution) collides when two Jest workers start in the same
+  // millisecond — the second register() 400s and one worker's afterAll deletes the other's
+  // user mid-run. See docs/06-pendientes.md (arreglo 5, tarea 1.15-fix).
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+  const emailA = `dm${suffix}@b.com`;
+  const emailB = `pl${suffix}@b.com`;
   let tokenA = "";
   let tokenB = "";
   let campaignId = "";

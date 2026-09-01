@@ -40,4 +40,22 @@ describe("auth store", () => {
 
     expect(peekPendingInvite()).toBeNull();
   });
+
+  // setUser is what rehydration (features/auth/hooks.ts) calls after fetching /auth/me: it
+  // fills in the user the store lost on reload without touching the token that was already
+  // there, and without re-writing it to localStorage (setAuth already did that at login).
+  it("setUser fills in the user without touching the token", () => {
+    localStorage.setItem("dnd_token", "already-there");
+    useAuthStore.setState({ token: "already-there", user: null });
+
+    useAuthStore.getState().setUser({ id: "1", email: "a@b.com", displayName: "Gandalf" });
+
+    expect(useAuthStore.getState().user).toEqual({
+      id: "1",
+      email: "a@b.com",
+      displayName: "Gandalf",
+    });
+    expect(useAuthStore.getState().token).toBe("already-there");
+    expect(localStorage.getItem("dnd_token")).toBe("already-there");
+  });
 });

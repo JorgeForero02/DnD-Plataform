@@ -1,11 +1,38 @@
 import { useState } from "react";
+import { useMyRole } from "../campaigns/members";
 import { useCreateInvite } from "./hooks";
 import { translateInviteError } from "./api";
 
 export function InvitePanel({ campaignId }: { campaignId: string }) {
   const create = useCreateInvite(campaignId);
+  const {
+    role,
+    isLoading: roleLoading,
+    isError: roleError,
+    retry: retryRole,
+  } = useMyRole(campaignId);
+  const isDM = role === "DM";
   const [copyError, setCopyError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Generating an invite is DM-only on the server (invites.service.ts, requireDM) — this is
+  // honesty, not the enforcement: a player who forces the click still gets the server's 403,
+  // this only stops the interface from offering an action it knows will fail. Disabled, not
+  // hidden, and consistently so across the four spots this task touches (sessions, characters,
+  // entities, invites): a hidden button leaves a player thinking the feature doesn't exist at
+  // all, while a disabled one with a reason teaches the permission model. While the role is
+  // still unknown (own user id not rehydrated yet, the members list in flight, or the members
+  // request failed — arreglo 4 of 1.15-fix: a failed request must read exactly like "still
+  // loading", never like "confirmed not the DM", so a legitimate DM isn't told they can't
+  // generate invitations on their own campaign) this also disables rather than showing an
+  // enabled button that would offer a doomed action, or hiding it and flickering once the real
+  // role arrives.
+  const roleUnresolved = roleLoading || roleError;
+  const disabledReason = roleUnresolved
+    ? "Comprobando permisos…"
+    : !isDM
+      ? "Solo el DM de la campaña puede generar invitaciones."
+      : undefined;
 
   const link = create.data ? `${window.location.origin}/join/${create.data.token}` : null;
 
@@ -38,11 +65,22 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
       </p>
       <button
         onClick={onGenerate}
-        disabled={create.isPending}
+        disabled={create.isPending || !!disabledReason}
+        title={disabledReason}
         className="mt-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold disabled:opacity-50"
       >
         Generar invitación
       </button>
+      {disabledReason && <p className="mt-1 text-xs text-slate-400">{disabledReason}</p>}
+      {roleError && (
+        <button
+          type="button"
+          onClick={retryRole}
+          className="mt-1 text-xs text-indigo-400 underline"
+        >
+          Reintentar
+        </button>
+      )}
       {create.isError && (
         <p className="mt-2 text-sm text-red-400">
           {translateInviteError((create.error as Error).message)}

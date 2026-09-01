@@ -13,6 +13,10 @@ export default tseslint.config(
       "**/coverage/**",
       "apps/web/dist/**",
       "apps/api/prisma/migrations/**",
+      // Salidas de Playwright: informe generado, no codigo del repositorio.
+      "apps/web/test-results/**",
+      "apps/web/playwright-report/**",
+      "apps/web/blob-report/**",
     ],
   },
 

@@ -6,6 +6,123 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Arreglos de la revisión de identidad y permisos (tarea 1.15-fix)
+
+**Qué.** Dos Críticos, dos Importantes y un Menor de la revisión independiente de 1.15.
+
+1. **La fila de una entidad, sesión o personaje volvía a abrir siempre** (Crítico). 1.15
+   deshabilitaba la fila cuando el usuario no podía editar, confundiendo "editar" con "ver": la
+   fila es la única vista de detalle que existe (el editor es el único consumidor de
+   `useEntity`/`useSession`/`useCharacter`, y `LinksPanel`/`CommentThread` solo se pintan
+   dentro de él). `EntityEditor.tsx`, `SessionEditor.tsx` y `CharacterEditor.tsx` ganaron un
+   prop `readOnly`/`readOnlyReason`: campos e inputs deshabilitados, Guardar deshabilitado con
+   su motivo, pero enlaces y comentarios siguen pintándose y siendo usables sin condición —
+   nunca estuvieron gateados por permiso de edición en el servidor
+   (`comments.service.ts`/`links.service.ts` solo exigen `canView`/membresía).
+   `CampaignDetailPage.tsx` deja de poner `disabled` en las tres filas y en su lugar decide
+   `readOnly` al abrir el editor.
+2. **`AuthGate` dejaba la pantalla en blanco para siempre tras un token caducado** (Crítico).
+   Devolvía `<Navigate to="/login" replace/>` **en lugar de** sus hijos, montado **por fuera**
+   de `<Routes>` (`App.tsx`): `<Routes>` —que contiene `/login`— nunca se renderizaba, así que
+   la URL cambiaba pero la pantalla se quedaba vacía. `AuthGate.tsx` ya no redirige nunca —
+   solo dispara `useAuthRehydration` y renderiza siempre sus hijos; `ProtectedRoute` (que ya
+   redirigía a `/login` sin token) es quien lo hace ahora. La prueba nueva monta `<App/>` real
+   en vez de `AuthGate` suelto dentro de una `<Route>` — la topología anterior sí lo desmontaba
+   al navegar y por eso nunca vio el defecto.
+3. **Cualquier fallo de red o del servidor cerraba la sesión, no solo un 401** (Importante).
+   `apiFetch` (`lib/api.ts`) ganó `ApiError`, que propaga el `status` real; `hooks.ts` solo
+   cierra la sesión si `err instanceof ApiError && err.status === 401`. El mensaje legible de
+   1.14 sigue igual, ahora dentro de `ApiError` en vez de `Error`.
+4. **Un solo fallo al listar los miembros hacía que un DM legítimo se leyera a sí mismo como
+   no-DM** (Importante). `useMyRole` (`features/campaigns/members.ts`) expone `isError` (nunca
+   tratado como "no soy miembro") y `retry()`; `CampaignDetailPage.tsx` e `InvitePanel.tsx`
+   enlazan `retry()` a un botón "Reintentar" junto al "Comprobando permisos…".
+5. **La inestabilidad de `invites.e2e-spec.ts`/`members.e2e-spec.ts` no estaba anotada**
+   (Menor). Ambas construían `dm${Date.now()}@b.com`/`pl${Date.now()}@b.com` — resolución de
+   milisegundo, colisión posible entre workers de Jest. Arreglado con un sufijo aleatorio
+   además de `Date.now()`; ficha en [06-pendientes.md](./06-pendientes.md), que también anota
+   el mismo patrón (sin arreglar) en las demás suites e2e.
+
+**Por qué.** Los dos Críticos los verificó el propio autor del brief en el código antes de
+encargar la tarea. El primero rompía el movimiento central del producto (revelar algo a la
+mesa); el segundo dejaba a cualquiera que volviera pasados los 7 días del JWT
+(`auth.module.ts`) sin formulario de acceso.
+
+**Prohibido y respetado.** No se tocó ningún guardia del servidor (`canView`, `requireDM`,
+`requireMember`, `requireEditable`); `/auth/me` no se tocó más allá de lo ya hecho en 1.15; el
+mensaje legible de `apiFetch` (1.14) no se perdió; no se desactivó ninguna prueba, ni se
+silenció ningún aviso, ni se subió ningún `timeout`; no hubo commits intermedios ni push.
+
+**Verificación.** `pnpm verify`: build + lint + formato + **135 unitarias** (shared 10, api
+40, web 85) en verde. `pnpm --filter @dnd/api test:e2e`: **20 e2e** en verde (9 suites).
+`pnpm --filter @dnd/web e2e`: **5 recorridos** en verde. `invitacion.spec.ts` se amplió con un
+NPC `PLAYERS` (`Gundren Rockseeker`, con un comentario del DM ya puesto) que el jugador abre y
+lee tras unirse: comprueba que la fila está `toBeEnabled()`, que el campo Nombre precarga el
+valor real y está `toBeDisabled()`, que Guardar está deshabilitado con su motivo, que el
+comentario del DM es visible, y que el jugador puede publicar el suyo propio y verlo aparecer
+— la comprobación que le faltaba al recorrido: antes la única entidad del DM era `DM_ONLY`, así
+que el jugador solo veía "Sin elementos." y nunca existía una fila visible-pero-no-editable
+que abrir.
+
+**Cómo revertir.** `git revert` del commit de la tarea. `AuthGate.tsx` vuelve a redirigir con
+`<Navigate>`; `apiFetch` vuelve a lanzar `Error` sin `status`; `useMyRole` pierde `isError` y
+`retry`; las tres filas (`CampaignDetailPage.tsx`) y los tres editores pierden `readOnly` y
+vuelven a `disabled` en la fila.
+
+---
+
+## 2026-09-01 — La interfaz sabe quién es quien la usa (tarea 1.15)
+
+**Qué.** `/auth/me` (único cambio permitido en `apps/api` para esta tarea) devuelve ahora
+`{ id, email, displayName }` en vez de solo `{ id, email }` —`UsersService.findById` es
+nuevo—, con su unitaria (`auth.controller.spec.ts`, `users.service.spec.ts`) y su e2e
+(`auth.e2e-spec.ts`: displayName correcto, y 401 sin token). En la web, `AuthGate` +
+`useAuthRehydration` (`apps/web/src/features/auth/`) piden ese endpoint una vez, al arrancar,
+cuando hay token en `localStorage` pero no hay usuario en memoria — `auth.store.ts` ganó
+`setUser` para esto —, sin bloquear el pintado (`ProtectedRoute` sigue mirando solo el token);
+si `/auth/me` devuelve 401, cierra la sesión y redirige a `/login`. `useMyRole`
+(`features/campaigns/members.ts`) cruza el `id` ya conocido con
+`GET /campaigns/:id/members` para responder "¿soy DM o jugador aquí?", con un tercer estado
+explícito de "aún no lo sé" mientras carga cualquiera de los dos. Con eso, cuatro pantallas
+dejan de mentir: crear/editar sesión (solo DM), editar personaje (dueño o DM), editar entidad
+(DM o creador) y generar invitación (solo DM) se **deshabilitan con una explicación visible**
+en vez de ofrecer una acción que el servidor iba a rechazar con 403 — elegido sobre ocultar
+porque un botón oculto hace pensar que la función no existe. Mientras el rol es
+"aún no lo sé", también se deshabilita: ni se muestra activo (ofrecería algo que puede acabar
+en 403) ni se oculta (parpadearía al llegar la respuesta real). Las filas de sesión, personaje
+y entidad que el usuario no puede editar dejan de comportarse como botón de editar (dos fichas
+de P3 cerradas).
+
+**Por qué.** `auth.store.ts` guardaba el token pero no el usuario; tras cualquier recarga la
+web no sabía ni quién era ni qué rol tenía, así que ningún botón podía ocultarse ni
+deshabilitarse por permiso. Detectado en la revisión de 1.12a, bloqueaba dos fichas de P3
+desde entonces y estaba explícitamente anotado como "antes de la primera partida" en
+[06-pendientes.md](./06-pendientes.md).
+
+**Esto es honestidad de la interfaz, no seguridad.** `canView`, `requireDM`, `requireMember`
+y `requireEditable` (`apps/api/src/common/visibility.ts` y cada servicio) no se tocaron: si
+todo el código de esta tarea desapareciera, el servidor seguiría rechazando exactamente igual.
+
+**Fuera de alcance a propósito.** Los botones "Quitar" (`LinksPanel.tsx`) y "Borrar"
+(`CommentThread.tsx`) tienen el mismo problema y no se tocaron — el brief pedía exactamente
+cuatro superficies (sesiones, personajes, entidades, invitaciones); `useMyRole` queda
+disponible para resolverlos del mismo modo cuando se aborden.
+
+**Verificación.** `pnpm verify`: build + lint + formato + **128 unitarias** (shared 10, api
+40, web 78) en verde. `pnpm --filter @dnd/api test:e2e`: **20 e2e** en verde (uno nuevo: 401
+sin token en `/auth/me`). `pnpm --filter @dnd/web e2e`: **5 recorridos** en verde —
+`invitacion.spec.ts` se amplió para comprobar, sobre el DOM real, que el jugador recién unido
+ve "Nuevo" en Sesiones **deshabilitado** con el motivo "Solo el DM puede crear o editar
+sesiones.", y que el DM, en su propia sesión de navegador, sí puede crear una.
+
+**Cómo revertir.** `git revert` del commit de la tarea. `apps/api`: revertir
+`auth.controller.ts`, `users.service.ts` y sus pruebas deja `/auth/me` como antes
+(`{ id, email }`). `apps/web`: quitar `AuthGate` de `App.tsx` devuelve a `ProtectedRoute` solo;
+borrar `features/auth/` y `useMyRole` (`features/campaigns/members.ts`) y revertir
+`CampaignDetailPage.tsx`/`InvitePanel.tsx` deja los cuatro botones sin gatear, como antes.
+
+---
+
 ## 2026-09-01 — Cierre de la construcción de la fase 1
 
 **Qué.** Con la tarea 1.14 y sus arreglos, **la fase 1 queda construida**: el mundo, las

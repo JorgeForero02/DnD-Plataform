@@ -11,8 +11,8 @@ un efecto colateral de la siguiente funcionalidad.**
 > **La primera partida queda aplazada por decisión del autor (2026-09-01):** no se juega hasta
 > tener al menos el tablero 2D de la fase 3, y quizá tampoco antes de las reglas de la fase 2.
 > **Eso suspende la regla de fase del plan**, que exigía usar una fase antes de empezar la
-> siguiente. Las tres carencias de abajo dejan de bloquear nada inmediato, pero siguen abiertas
-> y las dos primeras entran igual como tareas 1.15 y 1.16.
+> siguiente. Las carencias de abajo dejan de bloquear nada inmediato, pero siguen abiertas —
+> la de identidad/rol se cerró igual como tarea 1.15, y la de borrado entra como 1.16.
 >
 > **El riesgo que se acepta, escrito para que nadie lo descubra tarde:** los planes de las
 > fases 2 a 5 se escribirán **sin realimentación de uso real**, que es exactamente lo que la
@@ -22,28 +22,120 @@ un efecto colateral de la siguiente funcionalidad.**
 > de prueba aunque sea con lo que haya.
 
 La fase 1 está construida y verificada (ver
-[09-primera-partida.md](./09-primera-partida.md) para el guion de esa sesión cuando llegue). Estas tres son las que se notan en la
+[09-primera-partida.md](./09-primera-partida.md) para el guion de esa sesión cuando llegue). Estas dos son las que se notan en la
 mesa, en orden de cuánto estorban:
 
 **1 · No se puede borrar casi nada desde la interfaz.** Solo enlaces y comentarios tienen
 botón. Una entidad, una sesión o un personaje creados por error **se quedan para siempre**,
 aunque `DELETE` exista y esté probado en la API para los tres. Es la carencia que más se va a
-notar: en una partida se crean cosas mal. **Es trabajo solo de web.**
+notar: en una partida se crean cosas mal. **Es trabajo solo de web.** (Sigue abierta — tarea
+1.16.)
 
-**2 · La web no conoce su propio identificador de usuario.** `auth.store.ts` deja `user: null`
-tras recargar, así que ningún botón se oculta por permiso: un jugador ve "Nuevo" en Sesiones,
-lo pulsa y recibe un 403. El error **se ve** —eso se arregló en 1.12b— pero la pantalla ofrece
-lo que el servidor va a rechazar. Bloquea además dos fichas de P3 (las filas que son botón de
-editar sin poder editarlas). **La autorización del servidor no depende de esto**: es
-honestidad de la interfaz, no seguridad.
-
-**3 · No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que
+**2 · No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que
 estar en la misma red. Si se quiere que entren desde sus casas, esto **sí** es bloqueante.
 Decisión aparte, no configuración. Ver [03-despliegue.md](./03-despliegue.md).
 
-Las dos primeras se pueden cerrar antes de jugar; la tercera es una decisión de alcance.
+La primera se puede cerrar antes de jugar; la segunda es una decisión de alcance.
 
 ## Cerrados
+
+**~~Pantalla en blanco perpetua tras un token caducado~~ — CERRADO el 2026-09-01 (tarea
+1.15-fix, Crítico verificado en el código por una revisión independiente).** `AuthGate.tsx`
+devolvía `<Navigate to="/login" replace/>` **en lugar de** sus hijos, y estaba montado **por
+fuera** de `<Routes>` (`App.tsx`). `setInvalidToken(true)` (`features/auth/hooks.ts`) nunca
+volvía a `false`, y como `AuthGate` no estaba dentro del árbol de rutas, navegar no lo
+desmontaba: en cada render volvía a devolver `<Navigate>`, y `<Routes>` —que contiene la
+propia ruta `/login`— no se renderizaba jamás. La URL cambiaba a `/login` pero la pantalla se
+quedaba vacía hasta recargar a mano. El JWT caduca a los 7 días
+(`apps/api/src/auth/auth.module.ts`): a cualquiera que volviera la semana siguiente le tocaba
+esto. La prueba de entonces (`AuthGate.test.tsx`) pasaba por construcción: montaba `AuthGate`
+dentro de una `<Route>`, una topología que sí lo desmonta al navegar — no la de producción.
+**Arreglado eliminando el estado pegajoso en vez de remendarlo:** `AuthGate` ya no redirige
+nunca — solo dispara `useAuthRehydration` y renderiza siempre sus hijos; `logout()` ya ponía
+el token a `null`, y `ProtectedRoute` ya redirigía a `/login` cuando no hay token, así que no
+hacía falta que `AuthGate` supiera redirigir nada. La prueba nueva monta `<App/>` real
+(`AuthGate.test.tsx`). Ver la entrada de 1.15-fix en [07-historial.md](./07-historial.md).
+
+**~~Cualquier fallo de red o del servidor cerraba la sesión, no solo un token inválido~~ —
+CERRADO el 2026-09-01 (tarea 1.15-fix, Importante).** `apiFetch` (`lib/api.ts`) lanzaba el
+mismo `Error` genérico para un 401, un 500, un 502 del proxy de Vite o un fallo de red, y
+`hooks.ts` cerraba la sesión (`logout()`, que borra `dnd_token`) en cualquiera de esos casos —
+al revés de lo que ya afirmaban `01-arquitectura.md` y `07-historial.md`. Con el arreglo de
+arriba, eso significaba: la API se reinicia o hay un microcorte mientras el DM recarga en
+plena partida → se le borra el token y se queda mirando el formulario de login sin saber por
+qué. **Arreglado con `ApiError` (`lib/api.ts`)**, que propaga el `status` real de la
+respuesta; `useAuthRehydration` solo cierra la sesión si `err instanceof ApiError && err.status
+=== 401`. Cualquier otro fallo deja el token en paz. El mensaje legible de errores que se
+arregló en 1.14 no se tocó — sigue viviendo en `readableErrorMessage()`, ahora envuelto en
+`ApiError` en vez de `Error`. Ver la entrada de 1.15-fix en [07-historial.md](./07-historial.md).
+
+**~~Un solo fallo al listar los miembros hace que el DM se lea a sí mismo como no-DM~~ —
+CERRADO el 2026-09-01 (tarea 1.15-fix, Importante).** `useMyRole` (`features/campaigns/
+members.ts`) calculaba `isLoading = !userId || members.isLoading` y el rol de
+`members.data?.find(...)`. Con `retry: false` (`lib/queryClient.ts`), un solo fallo de
+`GET /campaigns/:id/members` dejaba `isLoading === false` y `role === undefined` —
+indistinguible de "confirmado que no es miembro". Un DM legítimo veía "Solo el DM puede
+crear o editar sesiones." en su propia campaña, sin poder crear la sesión que estaba narrando
+en ese momento, y solo se recuperaba si cambiaba de pestaña y volvía
+(`refetchOnWindowFocus`), sin nada en pantalla que lo sugiriera. **Arreglado** exponiendo
+`isError` como señal propia (nunca tratado como "no soy miembro", siempre como "aún no lo
+sé") y `retry()` para forzar un nuevo intento; los cuatro consumidores (`CampaignDetailPage.
+tsx`, `InvitePanel.tsx`) lo enlazan a un botón "Reintentar" junto al mensaje "Comprobando
+permisos…". Ver la entrada de 1.15-fix en [07-historial.md](./07-historial.md).
+
+**~~La web no conoce su propio identificador de usuario~~ — CERRADO el 2026-09-01 (tarea
+1.15).** `auth.store.ts` dejaba `user: null` tras recargar la página: el token sobrevivía en
+`localStorage`, pero el usuario solo vivía en memoria, así que ningún botón podía ocultarse ni
+deshabilitarse por permiso. Arreglado con `/auth/me` devolviendo también `displayName`
+(`apps/api/src/auth/auth.controller.ts`, único cambio permitido en `apps/api` para esta
+tarea) y `AuthGate` + `useAuthRehydration` (`apps/web/src/features/auth/`) pidiéndolo una vez
+al arrancar, cuando hay token y no hay usuario, sin bloquear el pintado de `ProtectedRoute`
+(que sigue mirando solo el token); si `/auth/me` devuelve 401, cierra la sesión y redirige a
+`/login`. Con el `id` disponible, `useMyRole` (`features/campaigns/members.ts`) cruza
+`GET /campaigns/:id/members` para saber si el usuario es DM o jugador en la campaña, con un
+tercer estado explícito de "aún no lo sé" mientras `members` o la identidad siguen cargando.
+**Decisión, coherente en los cuatro sitios que se tocaron** (crear/editar sesión, editar
+personaje, editar entidad, generar invitación): se **deshabilita con una explicación visible**,
+nunca se oculta — un botón oculto hace pensar que la acción no existe; uno deshabilitado con
+motivo enseña el modelo de permisos. Mientras el rol o la identidad todavía se están
+resolviendo, también se deshabilita (no se muestra activo ni se oculta): mostrarlo activo
+ofrecería una acción que puede acabar en 403 al llegar la respuesta real, y ocultarlo
+parpadearía en cuanto ésta llega. Esto es honestidad de la interfaz, no seguridad: `canView`,
+`requireDM`, `requireMember` y `requireEditable` no se tocaron y siguen rechazando exactamente
+igual si este código desaparece. Ver la entrada de 1.15 en [07-historial.md](./07-historial.md).
+
+**~~Las filas de la lista de entidades son botón de editar aunque el servidor vaya a devolver
+403~~ y ~~lo mismo en sesiones y personajes~~ — CERRADO el 2026-09-01 (tarea 1.15), y
+CORREGIDO el mismo día (tarea 1.15-fix, Crítico).** `InvitePanel.tsx` recibe el criterio
+correcto de "deshabilitar con explicación, no ocultar" para "Generar invitación" (no hay nada
+que leer si no puedes generar una invitación). Los botones "Quitar" (`LinksPanel.tsx`) y
+"Borrar" (`CommentThread.tsx`) **no** se tocaron — quedan fuera de las "cuatro" que pedía el
+brief de 1.15; su ficha sigue abierta en P3.
+>
+> **1.15 se equivocó al aplicar el mismo criterio a la fila de una entidad, sesión o
+> personaje.** La versión de 1.15 deshabilitaba la fila entera cuando el usuario no podía
+> editar. Eso confundía "editar" con "ver": la fila **es la única vista de detalle que
+> existe** — el editor es el único consumidor de `useEntity`/`useSession`/`useCharacter`, y
+> `LinksPanel`/`CommentThread` solo se pintan dentro de él (`EntityEditor.tsx`). Un jugador
+> que **sí** puede ver una entidad por `canView` (por ejemplo `PLAYERS`, o `DM_ONLY` recién
+> revelada) pero no puede editarla —no es el DM ni el creador— dejaba de poder leer su
+> descripción, sus etiquetas, sus enlaces y sus comentarios: la fila deshabilitada rompía el
+> movimiento central de la mesa que describe
+> [09-primera-partida.md](./09-primera-partida.md) — "pasar algo de `DM_ONLY` a `PLAYERS`
+> cuando la mesa lo descubre". Y en Sesiones, la fecha y las notas que un jugador sí puede ver
+> por `canView` dejaban de abrirse igual. `apps/web/e2e/invitacion.spec.ts` no lo cazó en su
+> momento porque la única entidad del DM en ese recorrido era `DM_ONLY` — el jugador nunca
+> veía "Sin elementos." y una fila visible-pero-no-editable a la vez.
+>
+> **Arreglado en 1.15-fix:** la fila ahora **abre siempre** — es honestidad de lectura, no de
+> escritura. Lo que el rol decide es si el editor que se abre lo hace en **modo lectura**
+> (`readOnly` en `EntityEditor.tsx`/`SessionEditor.tsx`/`CharacterEditor.tsx`: campos
+> deshabilitados, Guardar deshabilitado con su motivo) o en modo edición normal. `LinksPanel`
+> y `CommentThread` siguen pintándose sin condición dentro del editor — nunca estuvieron
+> gateados por permiso de edición en el servidor (`comments.service.ts` solo exige `canView`;
+> `links.service.ts` solo exige ser miembro), así que no había honestidad que ganar
+> deshabilitándolos también aquí. Ver la entrada de 1.15-fix en
+> [07-historial.md](./07-historial.md).
 
 **~~Una invitación pendiente huérfana mete a cualquiera en la campaña ajena~~ — CERRADO el
 2026-09-01 (tarea 1.14-fix). Crítico verificado en el código por una revisión independiente.**
@@ -172,6 +264,22 @@ espiar. Ver [07-historial.md](./07-historial.md).
 **No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
 hoy.
 
+**~~`invites.e2e-spec.ts` y `members.e2e-spec.ts` podían colisionar de correo entre workers de
+Jest~~ — CERRADO el 2026-09-01 (tarea 1.15-fix, Menor).** Ambas suites construían sus correos
+como `dm${Date.now()}@b.com` / `pl${Date.now()}@b.com` — resolución de milisegundo. Dos
+workers de Jest que arrancaran en el mismo milisegundo generaban correos idénticos: el
+segundo `register()` fallaba con 400 (email duplicado) y el `afterAll` de un worker borraba
+el usuario que el otro seguía usando, produciendo fallos intermitentes sin relación con el
+código bajo prueba. Detectado y explicado durante la revisión de 1.15 (explicación verificada
+por el revisor), no corregido en su momento porque quedaba fuera del arreglo que se estaba
+revisando. **Arreglado** añadiendo un sufijo aleatorio a `Date.now()` en los dos ficheros
+(`${Date.now()}${Math.floor(Math.random() * 1e6)}`). **El mismo patrón de correo
+(`Date.now()` a secas) existe también en `auth.e2e-spec.ts`, `campaigns.e2e-spec.ts`,
+`characters.e2e-spec.ts`, `comments.e2e-spec.ts`, `entities.e2e-spec.ts`,
+`links.e2e-spec.ts` y `sessions.e2e-spec.ts`** — comparten el mismo riesgo teórico, pero no
+fueron los que la revisión de 1.15 vio fallar y el brief de 1.15-fix pedía arreglar
+específicamente los dos de arriba; se deja anotado aquí en vez de corregido en silencio.
+
 ## P2 — Ruta de mejora del nivel
 
 **Linting sin información de tipos.** `typescript-eslint` corre en modo básico; el modo
@@ -229,34 +337,19 @@ comportamiento:
 - **`Session` y `Character` no tienen `grants` ni creador propio** → `SPECIFIC_PLAYERS` es
   inerte en ellos y **el dueño de un personaje no ve el suyo si lo marca `DM_ONLY`**.
   Tareas 1.8 y 1.9.
-- **Las filas de la lista de entidades son botón de editar aunque el servidor vaya a devolver
-  403.** `CampaignDetailPage.tsx` no distingue si el usuario puede modificar la entidad antes
-  de pintar el botón; se descubre el 403 al intentar guardar. Detectado en la revisión de
-  1.12a, no arreglado (fuera del alcance de 1.12a-fix). **La tarea 1.13 repite el mismo
-  patrón a propósito** en `SessionsTab` y `CharactersTab`: toda fila abre el editor, y crear
-  o editar una sesión es solo del DM (editar un personaje, del dueño o el DM). El brief de
-  1.13 lo pide explícitamente — "no intentes ocultar botones según permiso: no tienes con qué"
-  — porque `auth.store.ts:13` sigue sin conocer el id del usuario tras recargar; lo que sí
-  hacen `SessionEditor.tsx` y `CharacterEditor.tsx` es pintar el 403 del servidor en el
-  formulario en vez de fallar en silencio. Mismo bloqueante que la línea de abajo. **La 1.14
-  hace la misma elección con `InvitePanel.tsx`**: el botón "Generar invitación" se muestra a
-  todo el mundo en la pestaña Resumen, aunque el servidor lo rechace con 403 si quien pulsa
-  no es el DM (`invites.service.ts`, `requireDM`) — mismo bloqueante, mismo motivo.
 - **No hay botón de borrar sesión o personaje en la interfaz**, aunque la API lo soporte
   (`DELETE /campaigns/:id/sessions/:sessionId`, `DELETE /campaigns/:id/characters/:characterId`,
   ambos ya probados). El brief de 1.13 pedía dos editores de creación/edición, no borrado;
   queda fuera a propósito, no es un olvido.
-- **`auth.store.ts:13` deja `user: null` tras recargar la página**: el token persiste en
-  `localStorage` pero el usuario no, así que la web no conoce su propio identificador hasta el
-  siguiente login. Detectado en la revisión de 1.12a, no arreglado.
 - **Los botones "Quitar" (`LinksPanel.tsx`) y "Borrar" (`CommentThread.tsx`) se pintan en
   todas las filas, sin mirar si el usuario es DM o autor.** El servidor sí rechaza
   (`links.service.ts:75`, `comments.service.ts:65`, ambos 403), y desde 1.12b-fix el fallo ya
   se ve como mensaje en vez de callar; pero el botón sigue ahí para quien nunca podrá usarlo.
-  Es el mismo problema de fondo que la fila de la entidad de arriba: no se puede ocultar el
-  botón con criterio hasta que la web conozca su propio identificador de usuario — mismo
-  bloqueante que `auth.store.ts:13`. Detectado en la revisión de 1.12b, no arreglado a
-  propósito (fuera del alcance de 1.12b-fix).
+  **La tarea 1.15 cerró el mismo problema en sesiones, personajes, entidades e invitaciones**
+  (ver "Cerrados") pero su brief pedía exactamente esas cuatro superficies — `LinksPanel.tsx`
+  y `CommentThread.tsx` quedaron fuera a propósito, ya con `useMyRole`
+  (`features/campaigns/members.ts`) disponible para resolverlo del mismo modo cuando se
+  aborde. Detectado en la revisión de 1.12b, no arreglado.
 - **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:135`): hoy es
   inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
   riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).

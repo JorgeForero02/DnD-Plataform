@@ -76,9 +76,6 @@ porque es lo que se nota jugando.
 - **No se puede borrar casi nada desde la web.** Solo enlaces y comentarios. Una entidad, una
   sesión o un personaje creados por error **se quedan**, aunque la API sí sepa borrarlos.
   Es la carencia que más se va a notar.
-- **Ningún botón se oculta por permiso.** La web no conoce todavía su propio identificador de
-  usuario, así que un jugador ve el botón de crear sesión, lo pulsa, y recibe un error del
-  servidor. El error **se ve** (no falla en silencio), pero es feo.
 - **No se puede quitar la fecha de una sesión** una vez puesta.
 - **El token de invitación no caduca en el servidor** ni se puede revocar.
 - **Nada de adjuntos ni imágenes**: llegan en la fase 3, con el almacenamiento.

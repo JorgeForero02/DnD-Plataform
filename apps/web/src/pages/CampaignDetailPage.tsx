@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "../features/campaigns/hooks";
+import { useMyRole } from "../features/campaigns/members";
+import { useAuthStore } from "../store/auth.store";
 import { useEntities } from "../features/entities/hooks";
 import { EntityEditor } from "../features/entities/EntityEditor";
 import type { Entity } from "../features/entities/api";
@@ -12,6 +14,28 @@ import { useCharacters } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
 import type { Character } from "../features/characters/api";
 import { InvitePanel } from "../features/invites/InvitePanel";
+
+// Same wording and same choice everywhere it's used in this file and in InvitePanel.tsx:
+// disabled, not hidden — a hidden button reads as "this doesn't exist"; a disabled one with a
+// reason reads as "this exists, but not for you right now" — and while the role/identity is
+// still unknown (rehydration or the members list in flight or failed — arreglo 4 of 1.15-fix
+// treats a failed request exactly like "still loading", never like "confirmed not a member")
+// this also disables rather than guessing, to avoid offering an action that would fail once
+// the real answer arrives. None of this is enforcement: the server (requireDM/requireEditable,
+// apps/api/src/common) rejects the same request exactly the same way whether or not the
+// button was ever disabled.
+const CHECKING_PERMISSIONS = "Comprobando permisos…";
+
+// Arreglo 4 (1.15-fix): a small, reusable retry affordance for when useMyRole's `isError` is
+// true — the "still don't know" state must have a way out that doesn't depend on
+// refetchOnWindowFocus happening to fire.
+function RetryPermissions({ onRetry }: { onRetry: () => void }) {
+  return (
+    <button type="button" onClick={onRetry} className="ml-2 text-xs text-indigo-400 underline">
+      Reintentar
+    </button>
+  );
+}
 
 type Tab =
   | { kind: "overview"; label: string }
@@ -34,32 +58,65 @@ const TABS: Tab[] = [
 
 function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType }) {
   const { data, isLoading, isError, error } = useEntities(campaignId, type);
+  const {
+    role,
+    isLoading: roleLoading,
+    isError: roleError,
+    retry: retryRole,
+  } = useMyRole(campaignId);
+  const userId = useAuthStore((s) => s.user?.id);
+  const isDM = role === "DM";
+  const roleUnresolved = roleLoading || roleError;
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Entity | null>(null);
 
   return (
     <div>
+      {/* Creating is open to any campaign member on the server (entities.service.ts,
+          requireMember), so it isn't gated here. */}
       <button
         onClick={() => setCreating(true)}
         className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
       >
         Nuevo
       </button>
+      {roleError && <p className="mb-3 text-xs text-amber-400">No se pudo comprobar tu permiso.</p>}
+      {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="text-slate-400">Cargando…</p>}
       {isError && <p className="text-red-400">{(error as Error).message}</p>}
       {data && data.length === 0 && <p className="text-slate-400">Sin elementos.</p>}
       <ul className="space-y-2">
-        {data?.map((e) => (
-          <li key={e.id}>
-            <button
-              onClick={() => setEditing(e)}
-              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
-            >
-              <span className="font-semibold">{e.name}</span>
-              <span className="ml-2 text-xs text-slate-500">{e.visibility}</span>
-            </button>
-          </li>
-        ))}
+        {data?.map((e) => {
+          // Editing is DM-or-creator (entities.service.ts:requireEditable). While the role is
+          // unresolved (still loading, or the members request failed — arreglo 4), `isDM`
+          // reads false and `userId` may be stale/undefined, so canEdit would otherwise be
+          // wrong for a DM or the creator during that window — roleUnresolved is checked first
+          // specifically to avoid that.
+          const canEdit = !roleUnresolved && (isDM || e.createdById === userId);
+          const reason = roleUnresolved
+            ? CHECKING_PERMISSIONS
+            : canEdit
+              ? undefined
+              : "Solo el DM o quien lo creó puede editarlo.";
+          return (
+            <li key={e.id}>
+              {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — it's the only detail
+                  view this app has (the editor is the only consumer of useEntity, and
+                  LinksPanel/CommentThread only ever render inside it). What the permission
+                  check controls now is whether the editor opens read-only, not whether the
+                  row can be clicked at all — see EntityEditor.tsx's `readOnly` prop. */}
+              <button
+                onClick={() => setEditing(e)}
+                title={reason}
+                className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
+              >
+                <span className="font-semibold">{e.name}</span>
+                <span className="ml-2 text-xs text-slate-500">{e.visibility}</span>
+                {reason && <span className="ml-2 text-xs text-amber-400">{reason}</span>}
+              </button>
+            </li>
+          );
+        })}
       </ul>
       {creating && (
         <EntityEditor campaignId={campaignId} type={type} onClose={() => setCreating(false)} />
@@ -70,6 +127,10 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
           type={type}
           entity={editing}
           onClose={() => setEditing(null)}
+          readOnly={roleUnresolved || !(isDM || editing.createdById === userId)}
+          readOnlyReason={
+            roleUnresolved ? CHECKING_PERMISSIONS : "Solo el DM o quien lo creó puede editarlo."
+          }
         />
       )}
     </div>
@@ -78,6 +139,24 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
 
 function SessionsTab({ campaignId }: { campaignId: string }) {
   const { data, isLoading, isError, error } = useSessions(campaignId);
+  const {
+    role,
+    isLoading: roleLoading,
+    isError: roleError,
+    retry: retryRole,
+  } = useMyRole(campaignId);
+  const isDM = role === "DM";
+  const roleUnresolved = roleLoading || roleError;
+  // Creating and editing a session are both DM-only on the server (sessions.service.ts,
+  // requireDM for both). Creating stays gated on the button itself (there's nothing to read
+  // if you can't create it), but editing (arreglo 1, 1.15-fix) no longer gates the row —
+  // only whether the editor it opens is read-only, same as EntityTab above.
+  const canManage = !roleUnresolved && isDM;
+  const reason = roleUnresolved
+    ? CHECKING_PERMISSIONS
+    : canManage
+      ? undefined
+      : "Solo el DM puede crear o editar sesiones.";
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Session | null>(null);
 
@@ -85,18 +164,26 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
     <div>
       <button
         onClick={() => setCreating(true)}
-        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
+        disabled={!canManage}
+        title={reason}
+        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
       >
         Nuevo
       </button>
+      {reason && <p className="mb-3 text-xs text-slate-400">{reason}</p>}
+      {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="text-slate-400">Cargando…</p>}
       {isError && <p className="text-red-400">{(error as Error).message}</p>}
       {data && data.length === 0 && <p className="text-slate-400">Sin sesiones.</p>}
       <ul className="space-y-2">
         {data?.map((s) => (
           <li key={s.id}>
+            {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — the fecha and notas a
+                player can already see via canView were unreachable while the row itself was
+                disabled. */}
             <button
               onClick={() => setEditing(s)}
+              title={reason}
               className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
             >
               <span className="font-semibold">{s.title}</span>
@@ -107,7 +194,13 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
       </ul>
       {creating && <SessionEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
       {editing && (
-        <SessionEditor campaignId={campaignId} session={editing} onClose={() => setEditing(null)} />
+        <SessionEditor
+          campaignId={campaignId}
+          session={editing}
+          onClose={() => setEditing(null)}
+          readOnly={!canManage}
+          readOnlyReason={reason}
+        />
       )}
     </div>
   );
@@ -115,32 +208,57 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
 
 function CharactersTab({ campaignId }: { campaignId: string }) {
   const { data, isLoading, isError, error } = useCharacters(campaignId);
+  const {
+    role,
+    isLoading: roleLoading,
+    isError: roleError,
+    retry: retryRole,
+  } = useMyRole(campaignId);
+  const userId = useAuthStore((s) => s.user?.id);
+  const isDM = role === "DM";
+  const roleUnresolved = roleLoading || roleError;
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Character | null>(null);
 
   return (
     <div>
+      {/* Creating is open to any campaign member on the server (characters.service.ts,
+          requireMember), so it isn't gated here. */}
       <button
         onClick={() => setCreating(true)}
         className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
       >
         Nuevo
       </button>
+      {roleError && <p className="mb-3 text-xs text-amber-400">No se pudo comprobar tu permiso.</p>}
+      {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="text-slate-400">Cargando…</p>}
       {isError && <p className="text-red-400">{(error as Error).message}</p>}
       {data && data.length === 0 && <p className="text-slate-400">Sin personajes.</p>}
       <ul className="space-y-2">
-        {data?.map((c) => (
-          <li key={c.id}>
-            <button
-              onClick={() => setEditing(c)}
-              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
-            >
-              <span className="font-semibold">{c.name}</span>
-              <span className="ml-2 text-xs text-slate-500">Nivel {c.level}</span>
-            </button>
-          </li>
-        ))}
+        {data?.map((c) => {
+          // Editing is DM-or-owner (characters.service.ts:requireEditable).
+          const canEdit = !roleUnresolved && (isDM || c.ownerId === userId);
+          const reason = roleUnresolved
+            ? CHECKING_PERMISSIONS
+            : canEdit
+              ? undefined
+              : "Solo el dueño o el DM puede editar este personaje.";
+          return (
+            <li key={c.id}>
+              {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — see EntityTab above. */}
+              <button
+                onClick={() => setEditing(c)}
+                title={reason}
+                className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
+              >
+                <span className="font-semibold">{c.name}</span>
+                <span className="ml-2 text-xs text-slate-500">Nivel {c.level}</span>
+                {reason && <span className="ml-2 text-xs text-amber-400">{reason}</span>}
+              </button>
+            </li>
+          );
+        })}
       </ul>
       {creating && <CharacterEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
       {editing && (
@@ -148,6 +266,12 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
           campaignId={campaignId}
           character={editing}
           onClose={() => setEditing(null)}
+          readOnly={roleUnresolved || !(isDM || editing.ownerId === userId)}
+          readOnlyReason={
+            roleUnresolved
+              ? CHECKING_PERMISSIONS
+              : "Solo el dueño o el DM puede editar este personaje."
+          }
         />
       )}
     </div>
@@ -181,10 +305,8 @@ export function CampaignDetailPage() {
         {tab.kind === "overview" && (
           <div className="space-y-4">
             <p className="text-slate-300">{campaign?.description || "Sin descripción."}</p>
-            {/* Generating an invite is DM-only, but the web doesn't know its own user id
-                after a reload yet (auth.store.ts:13, docs/06-pendientes.md) — same call as
-                the sessions/characters tabs: show the button to everyone and let the server's
-                403 speak if a player clicks it, instead of guessing the role. */}
+            {/* InvitePanel gates its own "Generar invitación" button against useMyRole
+                (features/campaigns/members.ts) — see the comment there. */}
             <InvitePanel campaignId={id} />
           </div>
         )}

@@ -712,3 +712,39 @@ mundo, o sea autoría de aventuras.
 **Recomendación registrada:** los disparadores automáticos se deciden **aparte y explícitamente**,
 con su coste sobre la mesa, y no se cuelan dentro del alcance de 2B. La decisión es del autor;
 esto solo la deja separada para que se tome a propósito.
+
+### P7 · Críticos y pifias — hueco real, detectado por el autor (2026-09-01)
+
+**No aparecen en ninguna parte de este documento.** Ni en la sección de dados, ni en la de
+ataques, ni en lo que queda fuera. Es una ausencia, no una decisión, y en la mesa se nota
+enseguida.
+
+**La respuesta se parte en dos, y la mitad barata cae dentro de 2C:**
+
+- **Detectar** que el dado sacó un 20 o un 1 natural es una propiedad de la tirada. El evaluador
+  de expresiones ya la conoce en el momento de tirar, y marcarla en el registro es prácticamente
+  gratis. Va con el log de tiradas, en **2C**.
+- **Aplicar la consecuencia** —doblar los dados de daño, acierto automático, fallo automático—
+  es comparar contra una CA y tocar los PG de alguien. Eso es combate, y está **explícitamente
+  fuera de la fase 2** (ver "Lo que queda explícitamente fuera"). Va a **Encuentros**.
+
+Es exactamente el principio de siempre: *la máquina ejecuta, el DM arbitra*. El sistema dice
+**qué salió**; qué significa lo decide el DM.
+
+**Cuatro detalles que hay que acertar y que no son obvios:**
+
+1. **Con ventaja o desventaja, el natural cuenta sobre el dado que se queda**, no sobre el
+   descartado. `2d20kh1 → [20, 3]` es un crítico; `2d20kl1 → [20, 3]` no lo es.
+2. **En las reglas, solo las tiradas de ataque hacen crítico.** Un 20 natural en una prueba de
+   característica o en una salvación no es un éxito automático (salvo salvaciones de muerte).
+   Así que el registro necesita saber **de qué tipo es la tirada** para marcarlo con sentido —
+   y eso empuja a que una tirada lleve su intención, no solo su expresión.
+3. **La pifia como tabla de torpezas es homebrew, no SRD.** En las reglas, un 1 natural en un
+   ataque es simplemente un fallo. Como el proyecto solo publica contenido SRD, el sistema puede
+   **marcar** el 1 natural, pero no puede traer una tabla de pifias: esa es homebrew del DM.
+4. **Las salvaciones de muerte son la excepción** que sí tiene consecuencia mecánica clara
+   (20 natural recupera 1 PG; 1 natural cuenta como dos fallos). Si entran, entran con
+   Encuentros, no con los dados.
+
+**Recomendación:** que 2C marque el natural en el registro y lo muestre, y nada más. Es barato,
+es honesto, y deja la puerta abierta a que Encuentros añada la consecuencia sin rehacer nada.

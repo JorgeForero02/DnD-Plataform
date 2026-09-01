@@ -101,6 +101,104 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await expect(page.getByText("Cuidado con el mercado de almas")).toBeVisible();
 });
 
+test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", async ({ page }) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("Fuera del Abismo");
+  await page.getByRole("button", { name: "Crear" }).click();
+
+  await page.getByRole("link", { name: "Fuera del Abismo" }).click();
+  await expect(page.getByRole("heading", { name: "Fuera del Abismo" })).toBeVisible();
+
+  // Pestaña de Sesiones: hoy no la visita ningún recorrido de Playwright, así que
+  // SessionsTab, el botón "Nuevo" propio y SessionEditor nunca se habían pintado en un
+  // navegador real.
+  await page.getByRole("button", { name: "Sesiones" }).click();
+  await expect(page.getByText("Sin sesiones.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await expect(page.getByRole("heading", { name: "Nueva sesión" })).toBeVisible();
+  await page.getByLabel("Título").fill("Sesión 1: la entrada al abismo");
+  await page.getByLabel("Fecha y hora").fill("2026-10-03T19:00");
+  await page.getByLabel("Notas").fill("Traer las miniaturas de demonios");
+  await page.getByLabel("Visibilidad").selectOption("DM_ONLY");
+  await page.getByRole("button", { name: "Guardar" }).click();
+
+  await expect(page.getByRole("heading", { name: "Nueva sesión" })).toBeHidden();
+  const sessionRow = page.getByRole("button", { name: /Sesión 1: la entrada al abismo/ });
+  await expect(sessionRow).toBeVisible();
+  await expect(sessionRow).toContainText("DM_ONLY");
+
+  // Abrir la sesión recién creada en modo edición: comprueba la precarga de un formulario
+  // real contra la API real, no solo contra un espía.
+  await sessionRow.click();
+  await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeVisible();
+  await expect(page.getByLabel("Título")).toHaveValue("Sesión 1: la entrada al abismo");
+  await expect(page.getByLabel("Notas")).toHaveValue("Traer las miniaturas de demonios");
+
+  // Arreglo 1, de punta a punta contra la API real: vaciar las notas y guardar debe borrarlas
+  // de verdad, no dejar el valor viejo porque la clave se omitió del PATCH. Se cambia también
+  // el título para distinguir esta fila de otras filas "Sesión 1..." en la lista.
+  await page.getByLabel("Título").fill("Sesión 1: notas borradas");
+  await page.getByLabel("Notas").fill("");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeHidden();
+
+  const renamedSessionRow = page.getByRole("button", { name: /Sesión 1: notas borradas/ });
+  await expect(renamedSessionRow).toBeVisible();
+
+  // Reabrir para comprobar, contra la API real (no un espía), que las notas siguen vacías:
+  // es el hallazgo que arregla 1.13-fix — un PATCH que omite la clave deja el valor viejo.
+  await renamedSessionRow.click();
+  await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeVisible();
+  await expect(page.getByLabel("Título")).toHaveValue("Sesión 1: notas borradas");
+  await expect(page.getByLabel("Notas")).toHaveValue("");
+  await page.getByRole("button", { name: "Cancelar" }).click();
+
+  // Pestaña de Personajes: mismo hueco — CharactersTab, su botón "Nuevo" y CharacterEditor
+  // tampoco los pintaba nunca un navegador real.
+  await page.getByRole("button", { name: "Personajes" }).click();
+  await expect(page.getByText("Sin personajes.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeVisible();
+  await page.getByLabel("Nombre").fill("Kaelith");
+  await page.getByLabel("Raza").fill("Tiefling");
+  await page.getByLabel("Clase").fill("Brujo");
+  await page.getByLabel("Nivel").fill("3");
+  await page.getByLabel("Biografía").fill("Pactó con un demonio para salvar a su aldea");
+  await page.getByLabel("Visibilidad").selectOption("PUBLIC");
+  await page.getByRole("button", { name: "Guardar" }).click();
+
+  await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeHidden();
+  const characterRow = page.getByRole("button", { name: /Kaelith/ });
+  await expect(characterRow).toBeVisible();
+  await expect(characterRow).toContainText("Nivel 3");
+
+  // Abrir el personaje en modo edición y comprobar que raza, clase y biografía —
+  // los campos que la interfaz de solo lectura ni siquiera mostraba — precargan de verdad.
+  await characterRow.click();
+  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
+  await expect(page.getByLabel("Raza")).toHaveValue("Tiefling");
+  await expect(page.getByLabel("Clase")).toHaveValue("Brujo");
+  await expect(page.getByLabel("Nivel")).toHaveValue("3");
+  await expect(page.getByLabel("Biografía")).toHaveValue(
+    "Pactó con un demonio para salvar a su aldea",
+  );
+  await expect(page.getByLabel("Visibilidad")).toHaveValue("PUBLIC");
+
+  // Guardar la edición de verdad: subir el nivel a 4 y comprobar en la lista que el `PATCH`
+  // se ejecutó contra la API real, no solo que el formulario se cerró.
+  await page.getByLabel("Nivel").fill("4");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeHidden();
+
+  const updatedCharacterRow = page.getByRole("button", { name: /Kaelith/ });
+  await expect(updatedCharacterRow).toBeVisible();
+  await expect(updatedCharacterRow).toContainText("Nivel 4");
+});
+
 test("salir cierra la sesion y la ruta protegida deja de abrirse", async ({ page }) => {
   await registrarse(page);
 

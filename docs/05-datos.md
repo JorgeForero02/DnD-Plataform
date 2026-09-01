@@ -59,9 +59,27 @@ jugador. En modo edición se sigue respetando la visibilidad que la entidad ya t
 ### Límites reales de hoy (MVP, aceptados a conciencia)
 
 - **`Session` y `Character` no tienen `grants` ni `createdById` propio.** Por eso
-  `SPECIFIC_PLAYERS` en ellos es inerte, y `OWNER_DM` en una sesión se resuelve como
-  "solo DM". En `Character` se usa `ownerId` como creador, con la consecuencia de que
-  **el dueño no ve su propio personaje si lo marca `DM_ONLY`**.
+  `SPECIFIC_PLAYERS` es inerte en los dos. En `Character` se usa `ownerId` como creador, con
+  la consecuencia de que **el dueño no ve su propio personaje si lo marca `DM_ONLY`**. En
+  `Session` no hay ningún campo de creador: `sessions.service.ts` pasa `createdById: ""` al
+  comprobar visibilidad, así que la comparación de `OWNER_DM` (`createdById === viewer.userId`)
+  es falsa para cualquier jugador — y como `visibility.ts` ya devuelve `true` para cualquier
+  DM antes de mirar la visibilidad, `OWNER_DM`, `SPECIFIC_PLAYERS` y `DM_ONLY` producen en una
+  sesión **exactamente el mismo conjunto de espectadores: solo el DM**. `OWNER_DM` en una
+  sesión no es "funcional con nombre redundante" — es tan inerte como `SPECIFIC_PLAYERS`,
+  porque el DM la ve igual pase lo que pase; el nombre sugiere que alguien más la verá, y no
+  la ve nadie.
+  **Decisión (tarea 1.13-fix):** el selector de visibilidad de `CharacterEditor.tsx` ofrece
+  `PUBLIC`, `PLAYERS`, `OWNER_DM` y `DM_ONLY`, sin `SPECIFIC_PLAYERS`; el de
+  `SessionEditor.tsx` ofrece solo `PUBLIC`, `PLAYERS` y `DM_ONLY`, sin `SPECIFIC_PLAYERS` **ni
+  `OWNER_DM`**. En `Character`, `OWNER_DM` es correcto sin matices (`ownerId` existe, así que
+  "el dueño y el DM" es literal). En `Session` no hay ningún campo que distinga "el creador"
+  de "el DM", así que no hay forma de hacer que `OWNER_DM` signifique algo distinto de
+  `DM_ONLY` sin tocar el esquema — fuera de alcance de esta tarea (`apps/api` y
+  `packages/shared` no se tocan). Frente a ofrecer los cinco niveles como en
+  `EntityEditor.tsx` (coherencia visual) se prefirió recortar: la entidad no tiene ningún
+  nivel muerto, así que ahí la coherencia no cuesta nada; en sesión y personaje sí, y el
+  brief es explícito en que ninguna opción puede ser un placebo sin aviso en pantalla.
 - **`specificPlayerIds` no se valida contra la lista de miembros**: se puede conceder acceso
   a un usuario que no pertenece a la campaña. La concesión queda inerte, pero se guarda.
 - **Un `grant` creado con una visibilidad distinta de `SPECIFIC_PLAYERS` no hace nada** y

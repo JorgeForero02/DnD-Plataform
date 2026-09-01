@@ -6,6 +6,90 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-08-31 — Editores de sesión y personaje (1.13)
+
+**Qué.** `SessionsTab` y `CharactersTab` (`CampaignDetailPage.tsx`) eran de solo lectura;
+ganan botón "Nuevo" y sus filas abren el editor correspondiente en modo edición, igual que la
+pestaña de entidades:
+
+- `features/sessions/SessionEditor.tsx` — título, fecha/hora opcional (`<input
+  type="datetime-local">`, convertida a ISO al enviar), notas opcionales y visibilidad.
+  `features/sessions/api.ts`/`hooks.ts` ganan `createSession`/`updateSession` y sus
+  mutaciones; `Session` gana el campo `notes` que ya devolvía el servidor pero el tipo no
+  declaraba.
+- `features/characters/CharacterEditor.tsx` — nombre, raza, clase, nivel (convertido a
+  `Number(...)`, nunca la cadena cruda del `<input type="number">`) y biografía, más
+  visibilidad. `features/characters/api.ts`/`hooks.ts` ganan `createCharacter`/
+  `updateCharacter` y sus mutaciones; `Character` gana el campo `bio`.
+- Los dos siguen la convención `api.ts` + `hooks.ts` + componente + `__tests__` en ficheros
+  separados de `features/links` y `features/comments`, y la lección de la tarea anterior: la
+  edición pasa el objeto ya cargado por la lista (sin `useEntity` porque ni `Session` ni
+  `Character` tienen datos ocultos como `grants`) y cada mutación fallida pinta su error en
+  el formulario en vez de fallar en silencio.
+- **Selector de visibilidad recortado a `PUBLIC`/`PLAYERS`/`OWNER_DM`/`DM_ONLY`**, sin
+  `SPECIFIC_PLAYERS` (inerte en los dos modelos). Justificación completa en
+  [05-datos.md](./05-datos.md).
+- **Playwright**: nuevo recorrido en `apps/web/e2e/campana.spec.ts` que crea una sesión
+  `DM_ONLY` y un personaje `PUBLIC` desde sus pestañas, comprueba que aparecen en su lista
+  con lo que corresponde, y reabre los dos en modo edición para comprobar la precarga —
+  título/notas de la sesión, raza/clase/nivel/biografía del personaje— contra la API real.
+  Antes de esta tarea ningún recorrido visitaba `SessionsTab` ni `CharactersTab`; ver
+  [08-pruebas.md](./08-pruebas.md).
+
+**Arreglos de la revisión independiente (2026-08-31, tarea 1.13-fix), sobre el mismo trabajo
+sin commitear.** Tres hallazgos Importantes y dos Menores:
+
+1. **Vaciar un campo opcional en edición no lo borraba, en silencio.**
+   `SessionEditor.tsx` y `CharacterEditor.tsx` construían el `PATCH` con propagación
+   condicional (`...(trimmedX ? { x: trimmedX } : {})`), correcto para crear pero no para
+   editar: si el usuario borraba el contenido de un campo, la clave se omitía del `PATCH` y
+   el servicio (`if (input.x !== undefined) data.x = ...`, tanto en `sessions.service.ts`
+   como en `characters.service.ts`) dejaba el valor viejo tal cual. El editor se cerraba como
+   si hubiera guardado y el dato seguía en la base. Arreglado enviando la cadena vacía en modo
+   edición (`notes`, `race`, `class`, `bio` — ninguno tiene `min` en el esquema). **Excepción
+   que se documenta, no se arregla:** `scheduledAt` es `z.coerce.date()` sin `.nullable()`, así
+   que "quitar la fecha de una sesión" no es expresable contra la API de hoy sin tocar
+   `packages/shared`/`apps/api` — ver [06-pendientes.md](./06-pendientes.md).
+2. **`OWNER_DM` en una sesión no significaba lo que decía.** `sessions.service.ts` pasa
+   `createdById: ""` a `canView`, así que la comparación de `OWNER_DM` es falsa para
+   cualquier jugador, y `visibility.ts` ya devuelve `true` para cualquier DM antes de mirar
+   la visibilidad: en una sesión, `OWNER_DM`, `SPECIFIC_PLAYERS` y `DM_ONLY` producían
+   exactamente el mismo conjunto de espectadores. Se quitó `OWNER_DM` del selector de
+   `SessionEditor.tsx` (se queda en `CharacterEditor.tsx`, donde `ownerId` sí lo hace
+   literal). Ver [05-datos.md](./05-datos.md) para la corrección del párrafo que lo
+   justificaba con un razonamiento circular.
+3. **El recorrido de Playwright nunca guardaba una edición.** El paso de sesión pulsaba
+   "Cancelar" tras comprobar la precarga, y el de personaje terminaba en la aserción de
+   precarga sin pulsar "Guardar": `updateSession` y `updateCharacter` no se ejecutaban ni una
+   vez en un navegador real, pese a que el informe de 1.13 afirmaba que sí. Arreglado para
+   que los dos bloques guarden de verdad y comprueben el resultado en la lista, y para que el
+   paso de sesión cubra el arreglo 1 de punta a punta: vacía las notas, guarda, reabre y
+   comprueba contra la API real que siguen vacías.
+4. **Menor.** Un valor de visibilidad guardado que el `<select>` no ofrece (p. ej.
+   `SPECIFIC_PLAYERS` por curl o siembra) dejaba el desplegable en blanco sin explicación.
+   Ahora se añade como opción extra, marcada como "valor guardado, no seleccionable aquí".
+5. **Menor.** Faltaba la prueba que ata el arreglo 1 (vaciar un campo en edición envía la
+   cadena vacía) en los dos editores, y `CharacterEditor.test.tsx` nunca afirmaba el payload
+   completo de `updateCharacter`. Las dos se añadieron, vistas en rojo antes del arreglo. Se
+   dejó constancia, con comentario en el fixture y ficha en
+   [06-pendientes.md](./06-pendientes.md), de que la prueba de precarga de la fecha de sesión
+   solo cuadra porque el fixture tiene los segundos a cero.
+
+**Por qué.** Cierra el hueco que dejaban abierto 1.8/1.9 (API) y P1 de
+[06-pendientes.md](./06-pendientes.md): la API de sesiones y personajes existía y estaba
+probada, pero no había forma de crearlos o editarlos desde la web.
+
+**Qué queda abierto, a propósito.** Ni `SessionsTab` ni `CharactersTab` ocultan el botón de
+edición según permiso (crear/editar sesión es solo del DM; editar personaje, del dueño o el
+DM) — mismo bloqueante que las entidades y los enlaces/comentarios: la web no conoce su
+propio id de usuario tras recargar (`auth.store.ts:13`). No hay UI de borrado, aunque la API
+la soporte: el brief pedía creación y edición, no borrado.
+
+**Cómo revertir.** `git revert` del commit de esta tarea. Sin migraciones ni cambios en
+`apps/api` o `packages/shared`: solo web y documentación.
+
+---
+
 ## 2026-08-31 — Editor de entidades: se arregla la pérdida de datos silenciosa
 
 **Qué.** Cinco arreglos sobre el editor de entidades (commit `7714833`), encontrados en su

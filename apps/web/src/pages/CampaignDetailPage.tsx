@@ -6,7 +6,11 @@ import { useEntities } from "../features/entities/hooks";
 import { EntityEditor } from "../features/entities/EntityEditor";
 import type { Entity } from "../features/entities/api";
 import { useSessions } from "../features/sessions/hooks";
+import { SessionEditor } from "../features/sessions/SessionEditor";
+import type { Session } from "../features/sessions/api";
 import { useCharacters } from "../features/characters/hooks";
+import { CharacterEditor } from "../features/characters/CharacterEditor";
+import type { Character } from "../features/characters/api";
 
 type Tab =
   | { kind: "overview"; label: string }
@@ -73,35 +77,79 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
 
 function SessionsTab({ campaignId }: { campaignId: string }) {
   const { data, isLoading, isError, error } = useSessions(campaignId);
-  if (isLoading) return <p className="text-slate-400">Cargando…</p>;
-  if (isError) return <p className="text-red-400">{(error as Error).message}</p>;
-  if (!data || data.length === 0) return <p className="text-slate-400">Sin sesiones.</p>;
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Session | null>(null);
+
   return (
-    <ul className="space-y-2">
-      {data.map((s) => (
-        <li key={s.id} className="rounded bg-slate-800 p-3">
-          <span className="font-semibold">{s.title}</span>
-          <span className="ml-2 text-xs text-slate-500">{s.visibility}</span>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <button
+        onClick={() => setCreating(true)}
+        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
+      >
+        Nuevo
+      </button>
+      {isLoading && <p className="text-slate-400">Cargando…</p>}
+      {isError && <p className="text-red-400">{(error as Error).message}</p>}
+      {data && data.length === 0 && <p className="text-slate-400">Sin sesiones.</p>}
+      <ul className="space-y-2">
+        {data?.map((s) => (
+          <li key={s.id}>
+            <button
+              onClick={() => setEditing(s)}
+              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
+            >
+              <span className="font-semibold">{s.title}</span>
+              <span className="ml-2 text-xs text-slate-500">{s.visibility}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {creating && <SessionEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
+      {editing && (
+        <SessionEditor campaignId={campaignId} session={editing} onClose={() => setEditing(null)} />
+      )}
+    </div>
   );
 }
 
 function CharactersTab({ campaignId }: { campaignId: string }) {
   const { data, isLoading, isError, error } = useCharacters(campaignId);
-  if (isLoading) return <p className="text-slate-400">Cargando…</p>;
-  if (isError) return <p className="text-red-400">{(error as Error).message}</p>;
-  if (!data || data.length === 0) return <p className="text-slate-400">Sin personajes.</p>;
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Character | null>(null);
+
   return (
-    <ul className="space-y-2">
-      {data.map((c) => (
-        <li key={c.id} className="rounded bg-slate-800 p-3">
-          <span className="font-semibold">{c.name}</span>
-          <span className="ml-2 text-xs text-slate-500">Nivel {c.level}</span>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <button
+        onClick={() => setCreating(true)}
+        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
+      >
+        Nuevo
+      </button>
+      {isLoading && <p className="text-slate-400">Cargando…</p>}
+      {isError && <p className="text-red-400">{(error as Error).message}</p>}
+      {data && data.length === 0 && <p className="text-slate-400">Sin personajes.</p>}
+      <ul className="space-y-2">
+        {data?.map((c) => (
+          <li key={c.id}>
+            <button
+              onClick={() => setEditing(c)}
+              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
+            >
+              <span className="font-semibold">{c.name}</span>
+              <span className="ml-2 text-xs text-slate-500">Nivel {c.level}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {creating && <CharacterEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
+      {editing && (
+        <CharacterEditor
+          campaignId={campaignId}
+          character={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </div>
   );
 }
 

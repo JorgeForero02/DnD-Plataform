@@ -43,12 +43,12 @@ limitado a SRD 5.1 / OGL.
 - **API de la fase 1: completa.** Campañas, membresías, invitaciones, entidades,
   enlaces, comentarios, sesiones, personajes y listado de miembros.
 - **Web de la fase 1: en curso.** Hechos: login/registro, lista de campañas, detalle con
-  pestañas, editor de entidades con panel de enlaces y comentarios (1.12b). Faltan:
-  editores de sesión y personaje (1.13), flujo de invitación (1.14).
+  pestañas, editor de entidades con panel de enlaces y comentarios (1.12b), editores de
+  sesión y personaje (1.13). Falta: flujo de invitación (1.14).
 - **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
-  (type-check) + ESLint + Prettier + 66 unitarias, aplicado por `.githooks/pre-commit`.
+  (type-check) + ESLint + Prettier + 78 unitarias, aplicado por `.githooks/pre-commit`.
   Medido el 2026-08-31: ✅, más 19 e2e de API contra Postgres real ✅.
-  **Playwright (Chromium)** cubre dos recorridos de navegador, fuera del gancho y en su
+  **Playwright (Chromium)** cubre cuatro recorridos de navegador, fuera del gancho y en su
   propio trabajo de CI. Ver [08-pruebas.md](./08-pruebas.md) y
   [06-pendientes.md](./06-pendientes.md).
 - **Sin desplegar.** No hay VPS asignado a este proyecto; el despliegue está diferido.

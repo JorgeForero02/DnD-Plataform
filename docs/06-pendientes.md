@@ -8,6 +8,22 @@ un efecto colateral de la siguiente funcionalidad.**
 
 ## Cerrados
 
+**~~Faltan editores de sesión y personaje~~ — CERRADO el 2026-08-31 (tarea 1.13).**
+`SessionsTab` y `CharactersTab` (`CampaignDetailPage.tsx`) eran de solo lectura; ahora ganan
+botón "Nuevo" y sus filas abren el editor correspondiente en modo edición, igual que la
+pestaña de entidades. `SessionEditor.tsx` y `CharacterEditor.tsx` siguen el patrón
+`api.ts` + `hooks.ts` + componente + `__tests__` de `features/links` y `features/comments`.
+El selector de visibilidad de `CharacterEditor.tsx` recorta `SPECIFIC_PLAYERS` (inerte) y
+conserva `PUBLIC`/`PLAYERS`/`OWNER_DM`/`DM_ONLY`. El de `SessionEditor.tsx` recorta además
+`OWNER_DM` (revisión de 1.13-fix: en una sesión resuelve exactamente igual que `DM_ONLY`, no
+solo "con nombre redundante"), y ofrece `PUBLIC`/`PLAYERS`/`DM_ONLY`; la justificación
+completa está en [05-datos.md](./05-datos.md). Se añadió el recorrido de Playwright que
+faltaba: crear una sesión `DM_ONLY` y un personaje `PUBLIC` desde sus pestañas, reabrir los
+dos en modo edición para comprobar la precarga contra la API real, **guardar la edición de
+los dos** y comprobar el resultado en la lista, y vaciar y guardar las notas de la sesión
+para comprobar que el `PATCH` real las borra en vez de omitir la clave.
+Ver [07-historial.md](./07-historial.md).
+
 **~~El modo edición del editor de entidades no precarga los `specificPlayerIds`
 existentes~~ — CERRADO el 2026-08-31 (tarea 1.12a-fix).** La consecuencia real era peor de lo
 que decía esta ficha: no era un riesgo eventual, era **destrucción determinista y silenciosa**.
@@ -52,10 +68,9 @@ espiar. Ver [07-historial.md](./07-historial.md).
 
 ## P1 — Huecos de verificación
 
-**Los e2e de navegador cubren tres recorridos, no el catálogo.** Faltan, en orden: el flujo de
-invitación con dos sesiones, que un jugador **no vea** en pantalla una entidad `DM_ONLY`, y
-las pantallas que aún no existen (editores de sesión y personaje). Lista en
-[08-pruebas.md](./08-pruebas.md).
+**Los e2e de navegador cubren cuatro recorridos, no el catálogo.** Faltan, en orden: el flujo
+de invitación con dos sesiones, y que un jugador **no vea** en pantalla una entidad
+`DM_ONLY`. Lista en [08-pruebas.md](./08-pruebas.md).
 
 **No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
 hoy.
@@ -72,6 +87,31 @@ mejora, no compromiso.
 
 **No hay prueba de rechazo por validación** en personajes (`level > 20` devuelve 400 y nadie
 lo comprueba). Detectado en la tarea 1.9.
+
+## P3.5 — Limitaciones conocidas de la tarea 1.13-fix
+
+- **No se puede borrar la fecha de una sesión desde la web.** `createSessionSchema.scheduledAt`
+  es `z.coerce.date().optional()`, **sin `.nullable()`**
+  (`packages/shared/src/session.schema.ts`), así que no existe ningún valor que
+  `SessionEditor.tsx` pueda enviar en el `PATCH` que signifique "quita la fecha que ya tenía
+  la sesión": omitir la clave dice "no la toques", y no hay una representación de "vacío" que
+  el esquema acepte para `Date`. Arreglarlo pide `.nullable()` en el esquema y `data.scheduledAt
+  = null` en `sessions.service.ts` cuando llega `null` — cambios en `packages/shared` y
+  `apps/api`, fuera de alcance de esta tarea (prohibido tocarlos en el brief de 1.13-fix). El
+  resto de campos opcionales de sesión y personaje (`notes`, `race`, `class`, `bio`) sí se
+  pueden vaciar desde el editor, enviando la cadena vacía en vez de omitir la clave.
+- **La precarga de la fecha de una sesión en `SessionEditor.test.tsx` solo cuadra por
+  coincidencia.** `<input type="datetime-local">` tiene precisión de minutos;
+  `toDatetimeLocal` (`SessionEditor.tsx`) descarta los segundos al convertir el ISO del
+  servidor al valor del input. El fixture de la prueba usa una hora con segundos en `:00`
+  (`20:00:00Z`), así que el ida y vuelta (ISO → input → `new Date(...).toISOString()`) da el
+  mismo valor y la aserción pasa. Con una hora real como `20:00:30Z` el input truncaría a
+  `20:00` y la vuelta a ISO perdería los `:30`, así que la misma aserción **fallaría**. No es
+  un fallo del código de producción — es una limitación real y aceptada de
+  `datetime-local` (no hay forma de teclear segundos con ese tipo de input) — pero la
+  prueba no lo demuestra hoy: pasa por la casualidad del fixture, no porque compruebe la
+  pérdida. Comentario dejado en el propio fixture
+  (`apps/web/src/features/sessions/__tests__/SessionEditor.test.tsx`).
 
 ## P3 — Correcciones funcionales conocidas
 
@@ -93,7 +133,17 @@ comportamiento:
 - **Las filas de la lista de entidades son botón de editar aunque el servidor vaya a devolver
   403.** `CampaignDetailPage.tsx` no distingue si el usuario puede modificar la entidad antes
   de pintar el botón; se descubre el 403 al intentar guardar. Detectado en la revisión de
-  1.12a, no arreglado (fuera del alcance de 1.12a-fix).
+  1.12a, no arreglado (fuera del alcance de 1.12a-fix). **La tarea 1.13 repite el mismo
+  patrón a propósito** en `SessionsTab` y `CharactersTab`: toda fila abre el editor, y crear
+  o editar una sesión es solo del DM (editar un personaje, del dueño o el DM). El brief de
+  1.13 lo pide explícitamente — "no intentes ocultar botones según permiso: no tienes con qué"
+  — porque `auth.store.ts:13` sigue sin conocer el id del usuario tras recargar; lo que sí
+  hacen `SessionEditor.tsx` y `CharacterEditor.tsx` es pintar el 403 del servidor en el
+  formulario en vez de fallar en silencio. Mismo bloqueante que la línea de abajo.
+- **No hay botón de borrar sesión o personaje en la interfaz**, aunque la API lo soporte
+  (`DELETE /campaigns/:id/sessions/:sessionId`, `DELETE /campaigns/:id/characters/:characterId`,
+  ambos ya probados). El brief de 1.13 pedía dos editores de creación/edición, no borrado;
+  queda fuera a propósito, no es un olvido.
 - **`auth.store.ts:13` deja `user: null` tras recargar la página**: el token persiste en
   `localStorage` pero el usuario no, así que la web no conoce su propio identificador hasta el
   siguiente login. Detectado en la revisión de 1.12a, no arreglado.

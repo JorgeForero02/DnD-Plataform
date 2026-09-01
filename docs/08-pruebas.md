@@ -15,8 +15,8 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-Estado medido el 2026-08-31 (tarea 1.12b-fix): **71 unitarias** (shared 10, api 37, web 24) y
-**19 e2e de API** en 9 suites más **3 e2e de navegador** en 1 suite, todas verdes. Las
+Estado medido el 2026-08-31 (tarea 1.13): **78 unitarias** (shared 10, api 37, web 31) y
+**19 e2e de API** en 9 suites más **4 e2e de navegador** en 1 suite, todas verdes. Las
 unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
 quedan fuera del gancho pero dentro de CI.
 
@@ -129,6 +129,28 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   1.12b tenía cobertura de componente para los dos paneles pero **ningún** recorrido de
   navegador entraba en modo edición, así que el e2e pasó sin ejecutar ni una línea del código
   nuevo. Ver la entrada de 1.12b-fix en [07-historial.md](./07-historial.md).
+- **Editores de sesión y personaje** (1.13, ampliado en 1.13-fix): crea una sesión visible
+  solo para el DM y un personaje `PUBLIC` desde sus pestañas — hasta la tarea 1.13
+  `SessionsTab` y `CharactersTab` eran de solo lectura y ningún recorrido de Playwright las
+  visitaba, así que `SessionEditor.tsx` y `CharacterEditor.tsx` nunca se habían pintado en un
+  navegador real. El recorrido rellena título, fecha (`<input type="datetime-local">`), notas
+  y visibilidad de la sesión; guarda y comprueba que aparece en la lista con `DM_ONLY`; la
+  reabre en modo edición y comprueba que título y notas precargan de verdad contra la API
+  real (no un espía). **A partir de ahí guarda una edición real**: cambia el título, vacía
+  las notas y pulsa "Guardar" — ejerce el `PATCH` real de `updateSession` y, con las notas
+  vacías, el arreglo 1.13-fix de punta a punta (una clave omitida en el `PATCH` deja el valor
+  viejo; una cadena vacía sí lo borra) — comprueba la fila renombrada en la lista, y **la
+  reabre otra vez** para comprobar contra la API real que las notas siguen vacías. Repite lo
+  mismo con el personaje —nombre, raza, clase, nivel y biografía—, comprueba que aparece con
+  "Nivel 3", y al reabrirlo en modo edición comprueba que raza, clase, nivel y biografía
+  precargan: son justo los campos que `CharactersTab` nunca mostró en su lista de solo
+  lectura, así que solo el formulario de edición demuestra que el servidor los guardó. **Y
+  guarda una edición real**: sube el nivel a 4 con "Guardar" — ejerce `updateCharacter` de
+  verdad — y comprueba "Nivel 4" en la lista. Antes de 1.13-fix este recorrido pulsaba
+  "Cancelar" tras la precarga de la sesión y terminaba sin guardar en el bloque del
+  personaje: `updateSession` y `updateCharacter` no se ejecutaban nunca en un navegador real,
+  pese a que el informe de 1.13 lo daba por cubierto. Ver la entrada de 1.13-fix en
+  [07-historial.md](./07-historial.md).
 
 ### Lo que falta cubrir, en orden
 
@@ -137,7 +159,6 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
 - **El jugador no ve la entidad `DM_ONLY` en pantalla** — el mismo caso que el e2e de API
   prueba por HTTP, comprobado sobre el DOM real. Necesita dos sesiones de navegador y el
   flujo de invitación.
-- Editores de sesión y personaje (1.13).
 
 ## Definición de terminado
 

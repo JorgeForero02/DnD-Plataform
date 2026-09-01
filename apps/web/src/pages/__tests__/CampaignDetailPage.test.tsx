@@ -52,6 +52,7 @@ describe("CampaignDetailPage", () => {
         campaignId: "c1",
         title: "Session Zero",
         scheduledAt: null,
+        notes: null,
         visibility: "PLAYERS",
         createdAt: "x",
       },

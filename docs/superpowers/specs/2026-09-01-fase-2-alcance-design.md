@@ -307,6 +307,64 @@ hacer el **producto** es venir con ella dentro.
 Si esto llega a SaaS, esa línea es la diferencia entre un proyecto y un problema legal — por
 eso queda escrita aquí y no en la memoria de una conversación.
 
+## Ataques y combate — partidos en dos, y el segundo tiene bloque propio
+
+Añadido el 2026-09-01. El autor pidió un cuadro de ataques estilo RPG que compare contra la CA
+del objetivo y aplique daño. **Eso cruza la línea que este mismo documento dibujó** más abajo
+("fuera de la fase 2: comparar contra la CA, aplicar daño"), así que se parte en dos: lo barato
+entra en 2C, y lo que arrastra un sistema entero recibe **su propio bloque**.
+
+### En 2C — el cuadro de ataques, sin objetivo
+
+La ficha muestra los ataques disponibles como en cualquier RPG:
+
+```
+Espada larga        +7 al ataque      1d8+4 cortante
+Arco corto          +5 al ataque      1d6+2 perforante
+Rayo de fuego       CD 14 Destreza    2d6 fuego
+```
+
+Pulsas, **el servidor tira**, y la pantalla enseña el desglose. **El jugador canta el número y
+el DM dice si entra.** Eso da la mayor parte de la sensación por una fracción del trabajo, y no
+necesita nada que no esté ya diseñado en 2C.
+
+### Bloque propio: **Encuentros** — entre la fase 2 y la 3
+
+Lo demás no son funcionalidades sueltas: es **la semilla del control de combate**, y todas sus
+piezas se necesitan entre sí. Nombrarlo aparte evita que la fase 2 —ya la más arriesgada, ya
+crecida dos veces— se convierta en un año de trabajo.
+
+Lo que va junto:
+
+- **Statblocks de NPC con PG vivos.** No basta el dato: los PG tienen que bajar.
+- **El encuentro**: quién participa. Sin eso, "el objetivo" no significa nada.
+- **Iniciativa y orden de turnos.**
+- **Ataque contra un objetivo**, con las dos reglas de abajo.
+- **Aplicar daño**, decisión del DM.
+- **Condiciones con duración en turnos** — aplazadas hasta aquí precisamente porque *"un turno
+  no existe en el sistema"*. **Aquí es donde nacen.**
+
+### Dos reglas de diseño que hay que fijar antes de construirlo
+
+**1 · La comparación ocurre en el servidor, y la CA no viaja.**
+Si el navegador del jugador compara, **tiene que conocer la CA del enemigo** — y eso es metajuego
+servido en bandeja: cuenta los fallos y deduce el número. El servidor compara y devuelve
+**"impacto" o "fallo"**, nunca la cifra. Es exactamente el mismo principio que ya impide que un
+jugador reciba una entidad `DM_ONLY`: **la pieza ya está construida y probada**.
+
+**2 · El sistema propone; el DM confirma o cambia.**
+Si la máquina sentencia *"fallo"* delante de toda la mesa, **el DM pierde la capacidad de
+perdonar una vida o de dejar entrar un golpe porque la escena lo pide**, que es una herramienta
+de dirección, no un capricho. La pantalla dice *"21 contra CA 15 → impacto"* y el DM acepta o
+corrige. Es el principio rector de la fase aplicado aquí: **la máquina ejecuta, el DM arbitra**.
+
+### "Tirad iniciativa" necesita tiempo real para no caerse
+
+El autor quiere que ese momento sea un aviso que aparece a la vez en la pantalla de todos.
+**Eso es la fase 4.** Sin actualización en vivo el momento se deshace: el DM lo dice en voz alta
+y cada jugador recarga su pantalla. **No se construye el aviso hasta que la infraestructura lo
+sostenga** — y cuando llegue, el modelo no cambia: se sustituye el sondeo por un empujón.
+
 ## Lo que queda explícitamente fuera de la fase 2
 
 - **Comparar la tirada contra la CA del objetivo**, decidir acierto o fallo, y **aplicar daño a

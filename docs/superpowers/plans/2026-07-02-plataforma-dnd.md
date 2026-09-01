@@ -1995,6 +1995,14 @@ model Character {
 
 # PHASE 3 — Maps 2D (scope only — write its own plan when reached)
 
+> **ANTES DE ESTA FASE VA UN BLOQUE NUEVO: "Encuentros"** (decidido el 2026-09-01, detalle en
+> `docs/superpowers/specs/2026-09-01-fase-2-alcance-design.md`). Statblocks de NPC con PG vivos,
+> iniciativa y orden de turnos, ataque contra objetivo **comparado en el servidor** (la CA nunca
+> viaja al navegador del jugador) y **propuesto al DM para que confirme o corrija**, daño
+> aplicado por el DM, y **las condiciones con duración en turnos**, que nacen aquí porque un
+> turno no existe en el sistema hasta que hay iniciativa. Es el compañero natural del tablero,
+> así que va pegado a esta fase.
+
 > **ACOTADA el 2026-09-01.** Decisión sobre editores y contenido visual en
 > **`docs/superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md`**, que **manda sobre
 > esta sección**: **no se construyen editores de arte**. Se suben imágenes, se curan en una

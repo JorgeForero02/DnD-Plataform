@@ -35,7 +35,10 @@ describe("CampaignsService", () => {
         members: { create: { userId: "u1", role: "DM" } },
       },
     });
-    expect(events.emit).toHaveBeenCalledWith("campaign.created", { campaignId: "c1", ownerId: "u1" });
+    expect(events.emit).toHaveBeenCalledWith("campaign.created", {
+      campaignId: "c1",
+      ownerId: "u1",
+    });
   });
 
   it("getById() rejects a non-member (requireMember throws)", async () => {

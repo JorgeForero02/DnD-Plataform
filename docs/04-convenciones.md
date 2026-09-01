@@ -1,37 +1,52 @@
 # Convenciones
 
-## Nivel de verificación: **N1 incompleto** (excepción declarada)
+## Nivel de verificación: **N1**
 
 El comando que define el nivel es:
 
 ```
-pnpm verify   =   pnpm build && pnpm test
+pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm test
 ```
 
-`pnpm build` compila los tres paquetes con `tsc` / `nest build` / `vite build`, así que
-**hace de type-check**; `pnpm test` corre las 54 unitarias. Medido el 2026-08-31: pasa.
+- `pnpm build` compila los tres paquetes (`tsc` / `nest build` / `vite build`) y hace de
+  **type-check**.
+- `pnpm lint` es **ESLint 9 con configuración plana única en la raíz** (`eslint.config.mjs`):
+  recomendadas de JS y de typescript-eslint, más `react-hooks` y `react-refresh` en la web.
+  `eslint-config-prettier` va **el último** para que el formato no lo discutan dos
+  herramientas.
+- `pnpm format:check` es **Prettier** (`.prettierrc.json`: 100 columnas, comillas dobles,
+  comas finales). `pnpm format` lo aplica.
+  **El Markdown está excluido a propósito** (`.prettierignore`): la documentación se escribe a
+  mano y sus saltos de línea y tablas son deliberados.
+- `pnpm test` corre las 54 unitarias.
 
-**Lo que falta para ser N1 de verdad, según `~/.claude/dev-rules.md`: el linter y el
-formateador.** ESLint **no está instalado** — los tres paquetes declaran un script `lint`
-que falla con *"eslint no se reconoce"*, y el workflow de CI omite el lint con un comentario
-explícito. Prettier está en las dependencias de la raíz pero **sin configuración y sin
-script**, o sea que tampoco se aplica.
+**Lo aplica `.githooks/pre-commit`, que bloquea el commit si `pnpm verify` falla.** El gancho
+se conecta solo en el `prepare` de la raíz (`scripts/install-git-hooks.mjs`), que **nunca
+falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. CI
+corre lo mismo, más los e2e.
 
-> Esto es una **excepción declarada, no un descuido**: el proyecto no puede exigir N1 hoy
-> porque no tiene el comando que lo prueba, y `dev-rules` prohíbe declarar un nivel sin él.
-> Cerrarla es la **P1** de [06-pendientes.md](./06-pendientes.md) y es **una tarea propia**,
-> no un efecto colateral de la próxima funcionalidad. Cuando entre, `verify` pasa a ser
-> `build && lint && test` y esta sección se reescribe.
+**No se desactiva el gancho para saltárselo.** Si el control molesta, se arregla el código o
+se cambia el control como decisión declarada aquí.
 
-Reglas que sí aplican desde ya, sin excepción:
+Medido el 2026-08-31 tras instalar la herramienta: `pnpm verify` pasa, 54 unitarias y 19 e2e
+verdes.
+
+**Fuera de N1, a propósito:** los e2e de API (necesitan Docker) y los de navegador (cuando
+existan: necesitan Docker y dos servidores vivos). Encadenarlos al gancho lo haría
+inservible. **No por eso son opcionales** — ver [08-pruebas.md](./08-pruebas.md).
+
+N2 (cobertura) y N3 (mutación) **no están declarados** y no se prometen. Tampoco está
+activado el linting con información de tipos (`typescript-eslint` en modo *type-checked*):
+es la ruta de mejora, con su ficha en [06-pendientes.md](./06-pendientes.md).
+
+Reglas que aplican sin excepción:
 
 - **Ninguna tarea se marca completa sin prueba real en verde.** API: unitaria + e2e. Web:
-  RTL + `build` limpio. Ver [08-pruebas.md](./08-pruebas.md).
+  RTL + `pnpm verify` limpio. Ver [08-pruebas.md](./08-pruebas.md).
 - **Nunca** desactivar una prueba, bajar un umbral ni silenciar un aviso para que pase el
   build.
 - **Evidencia antes que afirmación:** no se dice "pasa" sin haber corrido el comando y
   mirado la salida. Si falla, se pega la salida.
-- N2 (cobertura) y N3 (mutación) **no están declarados** y no se prometen.
 
 ## Idioma
 
@@ -86,9 +101,31 @@ ejecución es idéntico. Ejemplo vivo: `src/features/campaigns/members.ts`.
   estado en 01–05, deuda nueva en 06, una línea en 07. Una funcionalidad sin su
   documentación al día no está terminada.
 
+## Revisión
+
+**Cada tarea se revisa antes de darse por cerrada.** La revisión la hace un agente distinto
+del que implementó, con contexto limpio y el paquete de revisión delante (rango de commits,
+`diff --stat` y el diff completo).
+
+- **Modelo del revisor: Opus.** No se revisa con un modelo más barato que el que implementó:
+  la revisión es donde se decide si el trabajo entra, y es el único punto del proceso que
+  sustituye a leer el código a mano. Implementadores: Sonnet.
+- **Skill:** `superpowers:requesting-code-review` (y `receiving-code-review` para procesar la
+  respuesta: se verifica antes de aceptar, no se implementa por complacencia).
+- **Auditoría de funcionalidad completa:** al cerrar una fase, o antes de dar por terminada
+  una funcionalidad grande, se usa `auditoria-por-funcionalidad`. Sus dos reglas mandan:
+  el encargo va **por camino concreto, nunca "recorre esta superficie"** (un encargo de
+  superficie produce citas inventadas), y **cada frente lleva su refutador adversario**, cuyo
+  trabajo es tumbar el hallazgo, no confirmarlo. Sin `archivo:línea` abierto no hay hallazgo.
+
+**Cuando el revisor y quien implementó no se ponen de acuerdo, las dos posturas se anotan en
+`06-pendientes.md`** —con el argumento de cada uno— y se dice cuál se aplicó. Una objeción
+razonada que se descarta sin dejar rastro vuelve a aparecer dentro de tres meses sin su
+contexto. Práctica tomada del proyecto de grado, donde una ficha diferida conserva la
+propuesta del revisor y la razón de no aplicarla.
+
 ## Precedencia
 
 Instrucción del usuario en la sesión > este documento y el `CLAUDE.md` del repositorio >
 `~/.claude/dev-rules.md` y `~/.claude/docs-protocol.md` > comportamiento por defecto.
-Toda contradicción con las reglas globales se declara **aquí**, no se deja implícita. Hoy
-hay exactamente una: el nivel N1 incompleto de arriba.
+Toda contradicción con las reglas globales se declara **aquí**, no se deja implícita. Hoy **no hay ninguna**: el nivel N1 quedó completo el 2026-08-31.

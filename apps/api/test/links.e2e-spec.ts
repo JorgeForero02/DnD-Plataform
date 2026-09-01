@@ -29,11 +29,26 @@ describe("Entity links (e2e)", () => {
     await app.getHttpAdapter().getInstance().ready();
     prisma = app.get(PrismaService);
     const s = app.getHttpServer();
-    tokenDM = (await request(s).post("/auth/register").send({ email: emailDM, password: "password123", displayName: "DM" })).body.token;
-    const regPL = await request(s).post("/auth/register").send({ email: emailPL, password: "password123", displayName: "PL" });
+    tokenDM = (
+      await request(s)
+        .post("/auth/register")
+        .send({ email: emailDM, password: "password123", displayName: "DM" })
+    ).body.token;
+    const regPL = await request(s)
+      .post("/auth/register")
+      .send({ email: emailPL, password: "password123", displayName: "PL" });
     tokenPL = regPL.body.token;
-    campaignId = (await request(s).post("/campaigns").set("Authorization", `Bearer ${tokenDM}`).send({ name: "C" })).body.id;
-    const invite = (await request(s).post(`/campaigns/${campaignId}/invites`).set("Authorization", `Bearer ${tokenDM}`)).body.token;
+    campaignId = (
+      await request(s)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ name: "C" })
+    ).body.id;
+    const invite = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/invites`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.token;
     await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${tokenPL}`);
     npcId = (await mkEntity(tokenDM, "Strahd", "NPC", "PLAYERS")).body.id;
     pubLocId = (await mkEntity(tokenDM, "Village", "LOCATION", "PLAYERS")).body.id;
@@ -48,19 +63,32 @@ describe("Entity links (e2e)", () => {
 
   it("DM links the NPC to both locations; self-link is rejected", async () => {
     const s = app.getHttpServer();
-    const l1 = await request(s).post(`/entities/${npcId}/links`).set("Authorization", `Bearer ${tokenDM}`).send({ toId: pubLocId, label: "lives in" });
+    const l1 = await request(s)
+      .post(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ toId: pubLocId, label: "lives in" });
     expect(l1.status).toBe(201);
-    const l2 = await request(s).post(`/entities/${npcId}/links`).set("Authorization", `Bearer ${tokenDM}`).send({ toId: secretLocId });
+    const l2 = await request(s)
+      .post(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ toId: secretLocId });
     expect(l2.status).toBe(201);
-    const self = await request(s).post(`/entities/${npcId}/links`).set("Authorization", `Bearer ${tokenDM}`).send({ toId: npcId });
+    const self = await request(s)
+      .post(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ toId: npcId });
     expect(self.status).toBe(400);
   });
 
   it("DM sees both links, player sees only the public-target link", async () => {
     const s = app.getHttpServer();
-    const dm = await request(s).get(`/entities/${npcId}/links`).set("Authorization", `Bearer ${tokenDM}`);
+    const dm = await request(s)
+      .get(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenDM}`);
     expect(dm.body.length).toBe(2);
-    const pl = await request(s).get(`/entities/${npcId}/links`).set("Authorization", `Bearer ${tokenPL}`);
+    const pl = await request(s)
+      .get(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenPL}`);
     expect(pl.body.map((l: any) => l.to.id)).toEqual([pubLocId]); // secret lair hidden
   });
 });

@@ -7,4 +7,7 @@ export const createSessionSchema = z.object({
   notes: z.unknown().optional(),
   visibility: visibilitySchema.default("PLAYERS"),
 });
+export const updateSessionSchema = createSessionSchema.partial();
+
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;

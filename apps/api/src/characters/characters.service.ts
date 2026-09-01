@@ -1,14 +1,8 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
-import { CreateCharacterInput, Visibility } from "@dnd/shared";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { CreateCharacterInput, UpdateCharacterInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
-
-type UpdateCharacterInput = Partial<CreateCharacterInput>;
 
 @Injectable()
 export class CharactersService {

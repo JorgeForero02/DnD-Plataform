@@ -1,14 +1,5 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
-import { createEntityLinkSchema } from "@dnd/shared";
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { createEntityLinkSchema, CreateEntityLinkInput } from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { LinksService } from "./links.service";
@@ -22,7 +13,7 @@ export class LinksController {
   create(
     @Req() req: { user: { id: string } },
     @Param("entityId") entityId: string,
-    @Body(new ZodValidationPipe(createEntityLinkSchema)) body: any,
+    @Body(new ZodValidationPipe(createEntityLinkSchema)) body: CreateEntityLinkInput,
   ) {
     return this.links.create(req.user.id, entityId, body);
   }

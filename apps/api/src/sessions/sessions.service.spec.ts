@@ -7,7 +7,13 @@ import { PrismaService } from "../prisma/prisma.service";
 describe("SessionsService", () => {
   let service: SessionsService;
   const prisma = {
-    session: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    session: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     user: { findUnique: jest.fn() },
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn(), getMembership: jest.fn() };
@@ -26,7 +32,9 @@ describe("SessionsService", () => {
 
   it("create() requires DM", async () => {
     membership.requireDM.mockRejectedValue(new ForbiddenException());
-    await expect(service.create("p1", "c1", { title: "S1", visibility: "PLAYERS" } as any)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.create("p1", "c1", { title: "S1", visibility: "PLAYERS" } as any),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it("list() hides DM_ONLY sessions from a player", async () => {

@@ -26,23 +26,43 @@ describe("CommentsService", () => {
   });
 
   it("create() forbids commenting on an entity the user cannot see", async () => {
-    prisma.entity.findUnique.mockResolvedValue({ id: "e1", campaignId: "c1", visibility: "DM_ONLY", createdById: "dm1", grants: [] });
+    prisma.entity.findUnique.mockResolvedValue({
+      id: "e1",
+      campaignId: "c1",
+      visibility: "DM_ONLY",
+      createdById: "dm1",
+      grants: [],
+    });
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
-    await expect(service.create("player1", "e1", { body: "hi" })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.create("player1", "e1", { body: "hi" })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it("create() allows commenting on a visible entity", async () => {
-    prisma.entity.findUnique.mockResolvedValue({ id: "e1", campaignId: "c1", visibility: "PLAYERS", createdById: "dm1", grants: [] });
+    prisma.entity.findUnique.mockResolvedValue({
+      id: "e1",
+      campaignId: "c1",
+      visibility: "PLAYERS",
+      createdById: "dm1",
+      grants: [],
+    });
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.comment.create.mockResolvedValue({ id: "cm1" });
     await service.create("player1", "e1", { body: "hi" });
-    expect(prisma.comment.create).toHaveBeenCalledWith({ data: { entityId: "e1", authorId: "player1", body: "hi" } });
+    expect(prisma.comment.create).toHaveBeenCalledWith({
+      data: { entityId: "e1", authorId: "player1", body: "hi" },
+    });
   });
 
   it("remove() forbids a non-author non-DM", async () => {
-    prisma.comment.findUnique.mockResolvedValue({ id: "cm1", authorId: "someoneElse", entity: { campaignId: "c1" } });
+    prisma.comment.findUnique.mockResolvedValue({
+      id: "cm1",
+      authorId: "someoneElse",
+      entity: { campaignId: "c1" },
+    });
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     await expect(service.remove("player1", "cm1")).rejects.toBeInstanceOf(ForbiddenException);
   });

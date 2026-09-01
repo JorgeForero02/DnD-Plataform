@@ -13,10 +13,15 @@ export function DashboardPage() {
         <h1 className="text-2xl font-bold">Mis campañas</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-slate-400">{user?.displayName}</span>
-          <button onClick={() => setCreating(true)} className="rounded bg-indigo-600 px-3 py-1 font-semibold">
+          <button
+            onClick={() => setCreating(true)}
+            className="rounded bg-indigo-600 px-3 py-1 font-semibold"
+          >
             Nueva campaña
           </button>
-          <button onClick={logout} className="rounded bg-slate-700 px-3 py-1">Salir</button>
+          <button onClick={logout} className="rounded bg-slate-700 px-3 py-1">
+            Salir
+          </button>
         </div>
       </header>
       <CampaignList />

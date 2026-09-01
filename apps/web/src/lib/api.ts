@@ -3,10 +3,7 @@ import { useAuthStore } from "../store/auth.store";
 
 const BASE = "/api";
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token;
   const res = await fetch(`${BASE}${path}`, {
     ...options,

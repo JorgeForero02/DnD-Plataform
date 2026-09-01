@@ -14,9 +14,11 @@ export function fetchMembers(campaignId: string): Promise<Member[]> {
   return apiFetch<Member[]>(`/campaigns/${campaignId}/members`);
 }
 
-export const membersKey = (campaignId: string) =>
-  ["campaigns", campaignId, "members"] as const;
+export const membersKey = (campaignId: string) => ["campaigns", campaignId, "members"] as const;
 
 export function useMembers(campaignId: string) {
-  return useQuery({ queryKey: membersKey(campaignId), queryFn: () => membersApi.fetchMembers(campaignId) });
+  return useQuery({
+    queryKey: membersKey(campaignId),
+    queryFn: () => membersApi.fetchMembers(campaignId),
+  });
 }

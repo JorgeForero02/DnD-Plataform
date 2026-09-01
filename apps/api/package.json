@@ -10,7 +10,6 @@
     "build": "nest build",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json",
-    "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

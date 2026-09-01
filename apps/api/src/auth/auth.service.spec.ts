@@ -32,7 +32,11 @@ describe("AuthService", () => {
   it("register() creates user and returns token", async () => {
     users.findByEmail.mockResolvedValue(null);
     users.create.mockResolvedValue({ id: "1", email: "a@b.com", displayName: "G" });
-    const r = await service.register({ email: "a@b.com", password: "password123", displayName: "G" });
+    const r = await service.register({
+      email: "a@b.com",
+      password: "password123",
+      displayName: "G",
+    });
     expect(users.create).toHaveBeenCalled();
     expect(r.token).toBe("token123");
     expect(r.user).toEqual({ id: "1", email: "a@b.com", displayName: "G" });
@@ -40,15 +44,25 @@ describe("AuthService", () => {
 
   it("login() rejects wrong password", async () => {
     const hash = await argon2.hash("password123");
-    users.findByEmail.mockResolvedValue({ id: "1", email: "a@b.com", displayName: "G", passwordHash: hash });
-    await expect(
-      service.login({ email: "a@b.com", password: "wrongpass" }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    users.findByEmail.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      displayName: "G",
+      passwordHash: hash,
+    });
+    await expect(service.login({ email: "a@b.com", password: "wrongpass" })).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it("login() succeeds with right password", async () => {
     const hash = await argon2.hash("password123");
-    users.findByEmail.mockResolvedValue({ id: "1", email: "a@b.com", displayName: "G", passwordHash: hash });
+    users.findByEmail.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      displayName: "G",
+      passwordHash: hash,
+    });
     const r = await service.login({ email: "a@b.com", password: "password123" });
     expect(r.token).toBe("token123");
   });

@@ -21,9 +21,22 @@ describe("Invites (e2e)", () => {
     await app.getHttpAdapter().getInstance().ready();
     prisma = app.get(PrismaService);
     const s = app.getHttpServer();
-    tokenA = (await request(s).post("/auth/register").send({ email: emailA, password: "password123", displayName: "DM" })).body.token;
-    tokenB = (await request(s).post("/auth/register").send({ email: emailB, password: "password123", displayName: "Player" })).body.token;
-    campaignId = (await request(s).post("/campaigns").set("Authorization", `Bearer ${tokenA}`).send({ name: "C" })).body.id;
+    tokenA = (
+      await request(s)
+        .post("/auth/register")
+        .send({ email: emailA, password: "password123", displayName: "DM" })
+    ).body.token;
+    tokenB = (
+      await request(s)
+        .post("/auth/register")
+        .send({ email: emailB, password: "password123", displayName: "Player" })
+    ).body.token;
+    campaignId = (
+      await request(s)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ name: "C" })
+    ).body.id;
   });
 
   afterAll(async () => {
@@ -34,7 +47,9 @@ describe("Invites (e2e)", () => {
 
   it("DM creates an invite", async () => {
     const s = app.getHttpServer();
-    const res = await request(s).post(`/campaigns/${campaignId}/invites`).set("Authorization", `Bearer ${tokenA}`);
+    const res = await request(s)
+      .post(`/campaigns/${campaignId}/invites`)
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(res.status).toBe(201);
     expect(res.body.token).toBeDefined();
     inviteToken = res.body.token;
@@ -42,21 +57,29 @@ describe("Invites (e2e)", () => {
 
   it("a non-DM cannot create an invite (403)", async () => {
     const s = app.getHttpServer();
-    const res = await request(s).post(`/campaigns/${campaignId}/invites`).set("Authorization", `Bearer ${tokenB}`);
+    const res = await request(s)
+      .post(`/campaigns/${campaignId}/invites`)
+      .set("Authorization", `Bearer ${tokenB}`);
     expect(res.status).toBe(403);
   });
 
   it("player accepts the invite and becomes a member", async () => {
     const s = app.getHttpServer();
-    const accept = await request(s).post(`/invites/${inviteToken}/accept`).set("Authorization", `Bearer ${tokenB}`);
+    const accept = await request(s)
+      .post(`/invites/${inviteToken}/accept`)
+      .set("Authorization", `Bearer ${tokenB}`);
     expect(accept.status).toBe(201);
-    const read = await request(s).get(`/campaigns/${campaignId}`).set("Authorization", `Bearer ${tokenB}`);
+    const read = await request(s)
+      .get(`/campaigns/${campaignId}`)
+      .set("Authorization", `Bearer ${tokenB}`);
     expect(read.status).toBe(200);
   });
 
   it("the same invite cannot be reused (400)", async () => {
     const s = app.getHttpServer();
-    const res = await request(s).post(`/invites/${inviteToken}/accept`).set("Authorization", `Bearer ${tokenB}`);
+    const res = await request(s)
+      .post(`/invites/${inviteToken}/accept`)
+      .set("Authorization", `Bearer ${tokenB}`);
     expect(res.status).toBe(400);
   });
 });

@@ -15,7 +15,8 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 
 Estado medido el 2026-08-31: **54 unitarias** (shared 10, api 37, web 7) y **19 e2e** en 9
-suites, todas verdes.
+suites, todas verdes. Las unitarias, el lint y el formato los exige `pnpm verify` en el
+gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
 
 ## Qué escribe una tarea de API
 
@@ -64,7 +65,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 
 ## Playwright: la regla que aún no tiene herramienta
 
-**Playwright todavía NO está instalado en este repositorio** — es la **P2** de
+**Playwright todavía NO está instalado en este repositorio** — es la **P1** de
 [06-pendientes.md](./06-pendientes.md). La regla se escribe ahora para que el plan la
 respete desde el primer día en que exista, porque la lección viene de otro proyecto y ya
 costó defectos ahí:

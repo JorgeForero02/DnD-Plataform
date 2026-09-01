@@ -25,13 +25,24 @@ describe("EntityEditor (create)", () => {
 
   it("submits parsed payload with tags and specificPlayerIds", async () => {
     const spy = vi.spyOn(entitiesApi, "createEntity").mockResolvedValue({
-      id: "e1", campaignId: "c1", type: "NPC", name: "Strahd", tags: [], visibility: "SPECIFIC_PLAYERS", createdById: "u1", createdAt: "x",
+      id: "e1",
+      campaignId: "c1",
+      type: "NPC",
+      name: "Strahd",
+      tags: [],
+      visibility: "SPECIFIC_PLAYERS",
+      createdById: "u1",
+      createdAt: "x",
     });
     renderEditor();
 
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Strahd" } });
-    fireEvent.change(screen.getByLabelText("Etiquetas (separadas por coma)"), { target: { value: "villano, jefe" } });
-    fireEvent.change(screen.getByLabelText("Visibilidad"), { target: { value: "SPECIFIC_PLAYERS" } });
+    fireEvent.change(screen.getByLabelText("Etiquetas (separadas por coma)"), {
+      target: { value: "villano, jefe" },
+    });
+    fireEvent.change(screen.getByLabelText("Visibilidad"), {
+      target: { value: "SPECIFIC_PLAYERS" },
+    });
 
     // per-player picker appears after members load
     const alice = await screen.findByLabelText("Alice");

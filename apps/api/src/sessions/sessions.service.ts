@@ -1,10 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { CreateSessionInput, Visibility } from "@dnd/shared";
+import { CreateSessionInput, UpdateSessionInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
-
-type UpdateSessionInput = Partial<CreateSessionInput>;
 
 @Injectable()
 export class SessionsService {

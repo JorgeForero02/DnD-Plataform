@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
 import { RegisterInput, LoginInput, AuthResponse } from "@dnd/shared";
@@ -19,11 +15,7 @@ export class AuthService {
     const existing = await this.users.findByEmail(input.email);
     if (existing) throw new ConflictException("Email already registered");
     const passwordHash = await argon2.hash(input.password);
-    const user = await this.users.create(
-      input.email,
-      passwordHash,
-      input.displayName,
-    );
+    const user = await this.users.create(input.email, passwordHash, input.displayName);
     return this.buildResponse(user);
   }
 

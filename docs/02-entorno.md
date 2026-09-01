@@ -32,10 +32,12 @@ en el mismo commit. **Ningún secreto en el código.**
 ## Comandos
 
 ```bash
-pnpm test                              # unitarias de los tres paquetes
+pnpm verify                            # build + lint + formato + unitarias. Lo exige el pre-commit
+pnpm test                              # solo las unitarias de los tres paquetes
 pnpm --filter @dnd/api test:e2e        # e2e de API contra el Postgres real (docker arriba)
 pnpm build                             # compila los tres paquetes (hace de type-check)
-pnpm lint                              # HOY FALLA: ESLint no está instalado (ver 06)
+pnpm lint                              # ESLint 9, configuración plana en la raíz
+pnpm format                            # aplica Prettier (format:check solo comprueba)
 ```
 
 Base de datos:

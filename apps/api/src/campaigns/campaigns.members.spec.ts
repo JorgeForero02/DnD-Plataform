@@ -22,9 +22,7 @@ describe("CampaignsService.listMembers", () => {
   });
 
   it("requires membership then returns the member list", async () => {
-    membership.listMembers.mockResolvedValue([
-      { userId: "u1", displayName: "DM", role: "DM" },
-    ]);
+    membership.listMembers.mockResolvedValue([{ userId: "u1", displayName: "DM", role: "DM" }]);
     const res = await service.listMembers("u1", "c1");
     expect(membership.requireMember).toHaveBeenCalledWith("c1", "u1");
     expect(res).toEqual([{ userId: "u1", displayName: "DM", role: "DM" }]);

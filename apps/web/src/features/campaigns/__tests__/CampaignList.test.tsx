@@ -21,8 +21,20 @@ describe("CampaignList", () => {
 
   it("renders campaigns returned by the API", async () => {
     vi.spyOn(api, "fetchCampaigns").mockResolvedValue([
-      { id: "c1", name: "Curse of Strahd", description: null, ownerId: "u1", createdAt: "2026-01-01" },
-      { id: "c2", name: "Lost Mine", description: "starter", ownerId: "u1", createdAt: "2026-01-02" },
+      {
+        id: "c1",
+        name: "Curse of Strahd",
+        description: null,
+        ownerId: "u1",
+        createdAt: "2026-01-01",
+      },
+      {
+        id: "c2",
+        name: "Lost Mine",
+        description: "starter",
+        ownerId: "u1",
+        createdAt: "2026-01-02",
+      },
     ]);
     renderList();
     expect(await screen.findByText("Curse of Strahd")).toBeInTheDocument();

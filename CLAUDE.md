@@ -34,8 +34,8 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 - **Nada de secretos en el código.** Todo por variable de entorno, con `.env.example` al día.
 - **Ninguna tarea se marca completa sin prueba real en verde** y sin haber mirado la salida:
   API unitaria + e2e, web RTL + `pnpm build` limpio. Ver `docs/08-pruebas.md`.
-- **Nunca** desactives una prueba, bajes un umbral ni silencies un aviso para que pase el
-  build. Si el control molesta, se arregla el código o se cambia el control como decisión
+- **Nunca** desactives una prueba, bajes un umbral, silencies una regla ni saltes el gancho de
+  pre-commit para que pase el build. Si el control molesta, se arregla el código o se cambia el control como decisión
   declarada en `docs/04-convenciones.md`.
 - **Evidencia antes que afirmación.** Si algo falla, se dice que falla y se pega la salida.
 - **Un commit por tarea**, mensaje en inglés (Conventional Commits), ledger y memoria al día.
@@ -46,9 +46,9 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 
 ```bash
 docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
-pnpm verify                              # build (type-check) + 54 unitarias
+pnpm verify                              # build + lint + formato + 54 unitarias (lo exige el pre-commit)
 pnpm --filter @dnd/api test:e2e          # 19 e2e contra Postgres real
 pnpm dev:api                             # API en :3000
 pnpm dev:web                             # web en :5173
-pnpm lint                                # HOY FALLA: ESLint no instalado (P1 en docs/06)
+pnpm format                              # aplica Prettier
 ```

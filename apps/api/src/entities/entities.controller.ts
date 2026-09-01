@@ -10,7 +10,13 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { createEntitySchema, updateEntitySchema, EntityType } from "@dnd/shared";
+import {
+  createEntitySchema,
+  updateEntitySchema,
+  CreateEntityInput,
+  UpdateEntityInput,
+  EntityType,
+} from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { EntitiesService } from "./entities.service";
@@ -24,7 +30,7 @@ export class EntitiesController {
   create(
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
-    @Body(new ZodValidationPipe(createEntitySchema)) body: any,
+    @Body(new ZodValidationPipe(createEntitySchema)) body: CreateEntityInput,
   ) {
     return this.entities.create(req.user.id, campaignId, body);
   }
@@ -52,7 +58,7 @@ export class EntitiesController {
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
     @Param("entityId") entityId: string,
-    @Body(new ZodValidationPipe(updateEntitySchema)) body: any,
+    @Body(new ZodValidationPipe(updateEntitySchema)) body: UpdateEntityInput,
   ) {
     return this.entities.update(req.user.id, campaignId, entityId, body);
   }

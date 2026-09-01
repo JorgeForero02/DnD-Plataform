@@ -11,13 +11,7 @@ const resource = (visibility: Visibility) => ({
   grantedUserIds: [GRANTED],
 });
 
-const ALL: Visibility[] = [
-  "PUBLIC",
-  "PLAYERS",
-  "SPECIFIC_PLAYERS",
-  "OWNER_DM",
-  "DM_ONLY",
-];
+const ALL: Visibility[] = ["PUBLIC", "PLAYERS", "SPECIFIC_PLAYERS", "OWNER_DM", "DM_ONLY"];
 
 describe("canView", () => {
   it("admin sees every visibility", () => {

@@ -1,14 +1,5 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
-import { createCommentSchema } from "@dnd/shared";
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { createCommentSchema, CreateCommentInput } from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CommentsService } from "./comments.service";
@@ -22,7 +13,7 @@ export class CommentsController {
   create(
     @Req() req: { user: { id: string } },
     @Param("entityId") entityId: string,
-    @Body(new ZodValidationPipe(createCommentSchema)) body: any,
+    @Body(new ZodValidationPipe(createCommentSchema)) body: CreateCommentInput,
   ) {
     return this.comments.create(req.user.id, entityId, body);
   }

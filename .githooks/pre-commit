@@ -1,0 +1,9 @@
+#!/bin/sh
+# N1 de dev-rules: nada entra al repositorio sin type-check, lint, formato y pruebas en verde.
+# Los e2e de API y de navegador quedan fuera a propósito: necesitan Docker y servidores vivos.
+pnpm verify || {
+  echo ""
+  echo "pnpm verify fallo. El commit se detiene."
+  echo "Arregla el codigo; no desactives el gancho."
+  exit 1
+}

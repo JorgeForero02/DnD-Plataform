@@ -29,6 +29,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @dnd/api prisma:generate
       - run: pnpm --filter @dnd/api exec prisma migrate deploy
-      # lint intentionally omitted: no ESLint config yet (deferred follow-up)
+      - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm test
       - run: pnpm --filter @dnd/api test:e2e

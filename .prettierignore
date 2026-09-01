@@ -1,0 +1,8 @@
+**/dist/**
+**/node_modules/**
+**/coverage/**
+pnpm-lock.yaml
+apps/api/prisma/migrations/**
+
+# Docs are hand-written prose: line breaks and tables are deliberate.
+**/*.md

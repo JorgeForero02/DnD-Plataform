@@ -1,20 +1,13 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
-import { createSessionSchema } from "@dnd/shared";
+  createSessionSchema,
+  updateSessionSchema,
+  CreateSessionInput,
+  UpdateSessionInput,
+} from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { SessionsService } from "./sessions.service";
-
-const updateSessionSchema = createSessionSchema.partial();
 
 @UseGuards(JwtAuthGuard)
 @Controller("campaigns/:campaignId/sessions")
@@ -25,7 +18,7 @@ export class SessionsController {
   create(
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
-    @Body(new ZodValidationPipe(createSessionSchema)) body: any,
+    @Body(new ZodValidationPipe(createSessionSchema)) body: CreateSessionInput,
   ) {
     return this.sessions.create(req.user.id, campaignId, body);
   }
@@ -49,7 +42,7 @@ export class SessionsController {
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
     @Param("sessionId") sessionId: string,
-    @Body(new ZodValidationPipe(updateSessionSchema)) body: any,
+    @Body(new ZodValidationPipe(updateSessionSchema)) body: UpdateSessionInput,
   ) {
     return this.sessions.update(req.user.id, campaignId, sessionId, body);
   }

@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -101,12 +97,7 @@ export class EntitiesService {
     return entity;
   }
 
-  async update(
-    userId: string,
-    campaignId: string,
-    entityId: string,
-    input: UpdateEntityInput,
-  ) {
+  async update(userId: string, campaignId: string, entityId: string, input: UpdateEntityInput) {
     await this.membership.requireMember(campaignId, userId);
     await this.requireEditable(userId, campaignId, entityId);
     const { specificPlayerIds, ...rest } = input;

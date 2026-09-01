@@ -34,24 +34,39 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
 
   return (
     <div>
-      <button onClick={() => setCreating(true)}
-        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold">Nuevo</button>
+      <button
+        onClick={() => setCreating(true)}
+        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
+      >
+        Nuevo
+      </button>
       {isLoading && <p className="text-slate-400">Cargando…</p>}
       {isError && <p className="text-red-400">{(error as Error).message}</p>}
       {data && data.length === 0 && <p className="text-slate-400">Sin elementos.</p>}
       <ul className="space-y-2">
         {data?.map((e) => (
           <li key={e.id}>
-            <button onClick={() => setEditing(e)}
-              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700">
+            <button
+              onClick={() => setEditing(e)}
+              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
+            >
               <span className="font-semibold">{e.name}</span>
               <span className="ml-2 text-xs text-slate-500">{e.visibility}</span>
             </button>
           </li>
         ))}
       </ul>
-      {creating && <EntityEditor campaignId={campaignId} type={type} onClose={() => setCreating(false)} />}
-      {editing && <EntityEditor campaignId={campaignId} type={type} entity={editing} onClose={() => setEditing(null)} />}
+      {creating && (
+        <EntityEditor campaignId={campaignId} type={type} onClose={() => setCreating(false)} />
+      )}
+      {editing && (
+        <EntityEditor
+          campaignId={campaignId}
+          type={type}
+          entity={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -98,10 +113,10 @@ export function CampaignDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-8">
-      <Link to="/" className="text-sm text-indigo-400">&larr; Mis campañas</Link>
-      <h1 className="mt-2 text-2xl font-bold">
-        {isLoading ? "Cargando…" : campaign?.name}
-      </h1>
+      <Link to="/" className="text-sm text-indigo-400">
+        &larr; Mis campañas
+      </Link>
+      <h1 className="mt-2 text-2xl font-bold">{isLoading ? "Cargando…" : campaign?.name}</h1>
       <nav className="mt-4 flex flex-wrap gap-2 border-b border-slate-700 pb-2">
         {TABS.map((t, i) => (
           <button

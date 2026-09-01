@@ -9,4 +9,7 @@ export const createCharacterSchema = z.object({
   bio: z.string().max(5000).optional(),
   visibility: visibilitySchema.default("PLAYERS"),
 });
+export const updateCharacterSchema = createCharacterSchema.partial();
+
 export type CreateCharacterInput = z.infer<typeof createCharacterSchema>;
+export type UpdateCharacterInput = z.infer<typeof updateCharacterSchema>;

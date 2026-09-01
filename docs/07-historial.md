@@ -6,6 +6,45 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-08-31 — ESLint, Prettier y gancho de pre-commit: el nivel pasa a N1 real
+
+**Qué.** ESLint 9 con configuración plana única en la raíz (`eslint.config.mjs`), Prettier
+con `.prettierrc.json` y `.prettierignore` (Markdown excluido: la documentación se escribe a
+mano), `pnpm verify` ampliado a `build && lint && format:check && test`, y
+`.githooks/pre-commit` que lo ejecuta y bloquea el commit. El gancho se conecta solo desde el
+`prepare` de la raíz vía `scripts/install-git-hooks.mjs`, escrito para **no fallar nunca sin
+`.git`**, porque las imágenes Docker se construyen desde una copia sin repositorio. CI deja
+de omitir el lint y añade el chequeo de formato.
+
+**Por qué.** Era la P1 de `06-pendientes.md` y la única excepción declarada en
+`04-convenciones.md`: el proyecto no podía exigir N1 sin linter desde la fase 0.
+
+**Los 15 errores de la primera pasada se arreglaron corrigiendo el código, no las reglas:**
+
+- Diez cuerpos de controlador tipados como `any` pasaron a los tipos de `@dnd/shared`
+  (`RegisterInput`, `CreateEntityInput`, `UpdateSessionInput`…). El pipe de Zod ya garantizaba
+  la forma; el `any` solo la escondía del compilador.
+- `updateSessionSchema` y `updateCharacterSchema` estaban **definidos en el controlador**
+  mientras el servicio redefinía a mano su `Partial<...>`: dos declaraciones de la misma
+  forma. Se mudaron a `@dnd/shared`, que es donde la convención dice que vive la forma de los
+  datos, y ambos las importan.
+- Tres `require("supertest")` dentro del cuerpo de un test pasaron a un `import` normal.
+- Un `ForbiddenException` importado y nunca usado, fuera.
+- Los ficheros de configuración CommonJS (`jest.config.js`) declaran su entorno en la
+  configuración de ESLint en vez de llevar un comentario que silencie la regla.
+
+Prettier reformateó 57 ficheros de código. Ningún cambio de conducta.
+
+**Evidencia.** `pnpm verify` ✅ (build + lint + formato + 54 unitarias) y
+`pnpm --filter @dnd/api test:e2e` ✅ 19 en 9 suites, corridos después del cambio de tipos.
+
+**Cómo revertir.** `git revert` del commit devuelve `any` a los controladores, los esquemas
+de actualización al controlador, y `verify` a `build && test`; borra la configuración de
+ESLint y Prettier y el gancho. Para desconectar solo el gancho sin revertir nada:
+`git config --unset core.hooksPath`.
+
+---
+
 ## 2026-08-31 — Se adopta la estructura de documentación numerada
 
 **Qué.** Se crean `docs/00-INDEX.md` y `01`–`08` describiendo lo que el repositorio **es

@@ -45,12 +45,23 @@ describe("InvitesService", () => {
   });
 
   it("accept() adds member, marks used, emits member_joined", async () => {
-    prisma.invite.findUnique.mockResolvedValue({ id: "i1", campaignId: "c1", role: "PLAYER", usedAt: null });
+    prisma.invite.findUnique.mockResolvedValue({
+      id: "i1",
+      campaignId: "c1",
+      role: "PLAYER",
+      usedAt: null,
+    });
     prisma.campaignMember.upsert.mockResolvedValue({ role: "PLAYER" });
     const r = await service.accept("abc", "u2");
     expect(prisma.campaignMember.upsert).toHaveBeenCalled();
-    expect(prisma.invite.update).toHaveBeenCalledWith({ where: { id: "i1" }, data: { usedAt: expect.any(Date) } });
-    expect(events.emit).toHaveBeenCalledWith("campaign.member_joined", { campaignId: "c1", userId: "u2" });
+    expect(prisma.invite.update).toHaveBeenCalledWith({
+      where: { id: "i1" },
+      data: { usedAt: expect.any(Date) },
+    });
+    expect(events.emit).toHaveBeenCalledWith("campaign.member_joined", {
+      campaignId: "c1",
+      userId: "u2",
+    });
     expect(r).toEqual({ campaignId: "c1", role: "PLAYER" });
   });
 });

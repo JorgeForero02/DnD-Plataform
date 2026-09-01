@@ -24,15 +24,37 @@ describe("CampaignDetailPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
-      id: "c1", name: "Curse of Strahd", description: "spooky", ownerId: "u1", createdAt: "2026-01-01",
+      id: "c1",
+      name: "Curse of Strahd",
+      description: "spooky",
+      ownerId: "u1",
+      createdAt: "2026-01-01",
     });
     vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
       type === "NPC"
-        ? [{ id: "e1", campaignId: "c1", type: "NPC", name: "Strahd von Zarovich", tags: [], visibility: "PLAYERS", createdById: "u1", createdAt: "x" }]
+        ? [
+            {
+              id: "e1",
+              campaignId: "c1",
+              type: "NPC",
+              name: "Strahd von Zarovich",
+              tags: [],
+              visibility: "PLAYERS",
+              createdById: "u1",
+              createdAt: "x",
+            },
+          ]
         : [],
     );
     vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([
-      { id: "s1", campaignId: "c1", title: "Session Zero", scheduledAt: null, visibility: "PLAYERS", createdAt: "x" },
+      {
+        id: "s1",
+        campaignId: "c1",
+        title: "Session Zero",
+        scheduledAt: null,
+        visibility: "PLAYERS",
+        createdAt: "x",
+      },
     ]);
   });
 

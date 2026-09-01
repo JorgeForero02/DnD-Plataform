@@ -1,20 +1,13 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
-import { createCharacterSchema } from "@dnd/shared";
+  createCharacterSchema,
+  updateCharacterSchema,
+  CreateCharacterInput,
+  UpdateCharacterInput,
+} from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CharactersService } from "./characters.service";
-
-const updateCharacterSchema = createCharacterSchema.partial();
 
 @UseGuards(JwtAuthGuard)
 @Controller("campaigns/:campaignId/characters")
@@ -25,7 +18,7 @@ export class CharactersController {
   create(
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
-    @Body(new ZodValidationPipe(createCharacterSchema)) body: any,
+    @Body(new ZodValidationPipe(createCharacterSchema)) body: CreateCharacterInput,
   ) {
     return this.characters.create(req.user.id, campaignId, body);
   }
@@ -49,7 +42,7 @@ export class CharactersController {
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
     @Param("characterId") characterId: string,
-    @Body(new ZodValidationPipe(updateCharacterSchema)) body: any,
+    @Body(new ZodValidationPipe(updateCharacterSchema)) body: UpdateCharacterInput,
   ) {
     return this.characters.update(req.user.id, campaignId, characterId, body);
   }

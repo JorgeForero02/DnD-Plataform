@@ -4,13 +4,17 @@ import { registerSchema, loginSchema } from "./auth.schema";
 describe("registerSchema", () => {
   it("accepts valid input", () => {
     const r = registerSchema.safeParse({
-      email: "a@b.com", password: "password123", displayName: "Gandalf"
+      email: "a@b.com",
+      password: "password123",
+      displayName: "Gandalf",
     });
     expect(r.success).toBe(true);
   });
   it("rejects short password", () => {
     const r = registerSchema.safeParse({
-      email: "a@b.com", password: "short", displayName: "Gandalf"
+      email: "a@b.com",
+      password: "short",
+      displayName: "Gandalf",
     });
     expect(r.success).toBe(false);
   });

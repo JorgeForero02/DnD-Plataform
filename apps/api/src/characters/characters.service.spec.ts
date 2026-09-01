@@ -7,7 +7,13 @@ import { PrismaService } from "../prisma/prisma.service";
 describe("CharactersService", () => {
   let service: CharactersService;
   const prisma = {
-    character: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    character: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     user: { findUnique: jest.fn() },
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
@@ -28,7 +34,12 @@ describe("CharactersService", () => {
     prisma.character.create.mockResolvedValue({ id: "ch1" });
     await service.create("p1", "c1", { name: "Aragorn", level: 3, visibility: "PLAYERS" } as any);
     expect(prisma.character.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ campaignId: "c1", ownerId: "p1", name: "Aragorn", visibility: "PLAYERS" }),
+      data: expect.objectContaining({
+        campaignId: "c1",
+        ownerId: "p1",
+        name: "Aragorn",
+        visibility: "PLAYERS",
+      }),
     });
   });
 
@@ -46,10 +57,14 @@ describe("CharactersService", () => {
   });
 
   it("update() rejects a non-owner non-DM player (403)", async () => {
-    prisma.character.findFirst.mockResolvedValue({ id: "ch1", ownerId: "p2", visibility: "PLAYERS" });
+    prisma.character.findFirst.mockResolvedValue({
+      id: "ch1",
+      ownerId: "p2",
+      visibility: "PLAYERS",
+    });
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
-    await expect(
-      service.update("p1", "c1", "ch1", { name: "hax" }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.update("p1", "c1", "ch1", { name: "hax" })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

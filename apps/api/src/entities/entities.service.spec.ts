@@ -39,7 +39,11 @@ describe("EntitiesService", () => {
     const arg = prisma.entity.create.mock.calls[0][0];
     expect(arg.data.grants).toEqual({ create: [{ userId: "p1" }, { userId: "p2" }] });
     expect(arg.data.createdById).toBe("dm1");
-    expect(events.emit).toHaveBeenCalledWith("entity.created", { campaignId: "c1", entityId: "e1", type: "NPC" });
+    expect(events.emit).toHaveBeenCalledWith("entity.created", {
+      campaignId: "c1",
+      entityId: "e1",
+      type: "NPC",
+    });
   });
 
   it("list() hides entities the viewer cannot see (real canView)", async () => {

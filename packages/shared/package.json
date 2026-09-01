@@ -3,12 +3,17 @@
   "version": "0.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "vitest run",
-    "lint": "eslint src --ext .ts",
     "build": "tsc -p tsconfig.json"
   },
-  "dependencies": { "zod": "^3.23.0" },
-  "devDependencies": { "vitest": "^2.0.0" }
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  }
 }

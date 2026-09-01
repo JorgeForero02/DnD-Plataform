@@ -21,13 +21,26 @@ describe("Entities visibility (e2e)", () => {
     await app.getHttpAdapter().getInstance().ready();
     prisma = app.get(PrismaService);
     const s = app.getHttpServer();
-    const regDM = await request(s).post("/auth/register").send({ email: emailDM, password: "password123", displayName: "DM" });
+    const regDM = await request(s)
+      .post("/auth/register")
+      .send({ email: emailDM, password: "password123", displayName: "DM" });
     tokenDM = regDM.body.token;
-    const regPL = await request(s).post("/auth/register").send({ email: emailPL, password: "password123", displayName: "PL" });
+    const regPL = await request(s)
+      .post("/auth/register")
+      .send({ email: emailPL, password: "password123", displayName: "PL" });
     tokenPL = regPL.body.token;
     playerId = regPL.body.user.id;
-    campaignId = (await request(s).post("/campaigns").set("Authorization", `Bearer ${tokenDM}`).send({ name: "C" })).body.id;
-    const invite = (await request(s).post(`/campaigns/${campaignId}/invites`).set("Authorization", `Bearer ${tokenDM}`)).body.token;
+    campaignId = (
+      await request(s)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ name: "C" })
+    ).body.id;
+    const invite = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/invites`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.token;
     await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${tokenPL}`);
   });
 
@@ -40,7 +53,9 @@ describe("Entities visibility (e2e)", () => {
   it("filters NPCs by visibility for the player", async () => {
     const s = app.getHttpServer();
     const mk = (name: string, visibility: string, extra: object = {}) =>
-      request(s).post(`/campaigns/${campaignId}/entities`).set("Authorization", `Bearer ${tokenDM}`)
+      request(s)
+        .post(`/campaigns/${campaignId}/entities`)
+        .set("Authorization", `Bearer ${tokenDM}`)
         .send({ type: "NPC", name, visibility, ...extra });
 
     await mk("Public NPC", "PUBLIC");
@@ -48,11 +63,15 @@ describe("Entities visibility (e2e)", () => {
     await mk("Secret NPC", "DM_ONLY");
     await mk("Just You NPC", "SPECIFIC_PLAYERS", { specificPlayerIds: [playerId] });
 
-    const dmList = await request(s).get(`/campaigns/${campaignId}/entities?type=NPC`).set("Authorization", `Bearer ${tokenDM}`);
+    const dmList = await request(s)
+      .get(`/campaigns/${campaignId}/entities?type=NPC`)
+      .set("Authorization", `Bearer ${tokenDM}`);
     expect(dmList.status).toBe(200);
     expect(dmList.body.length).toBe(4); // DM sees all
 
-    const plList = await request(s).get(`/campaigns/${campaignId}/entities?type=NPC`).set("Authorization", `Bearer ${tokenPL}`);
+    const plList = await request(s)
+      .get(`/campaigns/${campaignId}/entities?type=NPC`)
+      .set("Authorization", `Bearer ${tokenPL}`);
     expect(plList.status).toBe(200);
     const names = plList.body.map((e: any) => e.name).sort();
     expect(names).toEqual(["Just You NPC", "Players NPC", "Public NPC"]); // NOT "Secret NPC"

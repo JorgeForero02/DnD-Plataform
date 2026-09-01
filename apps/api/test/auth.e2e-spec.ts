@@ -1,8 +1,6 @@
+import request from "supertest";
 import { Test } from "@nestjs/testing";
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from "@nestjs/platform-fastify";
+import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
 
@@ -15,9 +13,7 @@ describe("Auth (e2e)", () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
     prisma = app.get(PrismaService);
@@ -30,18 +26,18 @@ describe("Auth (e2e)", () => {
 
   it("registers, logs in, and reads /auth/me", async () => {
     const server = app.getHttpServer();
-    const reg = await require("supertest")(server)
+    const reg = await request(server)
       .post("/auth/register")
       .send({ email, password: "password123", displayName: "Gandalf" });
     expect(reg.status).toBe(201);
     expect(reg.body.token).toBeDefined();
 
-    const login = await require("supertest")(server)
+    const login = await request(server)
       .post("/auth/login")
       .send({ email, password: "password123" });
     expect(login.status).toBe(201);
 
-    const me = await require("supertest")(server)
+    const me = await request(server)
       .get("/auth/me")
       .set("Authorization", `Bearer ${login.body.token}`);
     expect(me.status).toBe(200);

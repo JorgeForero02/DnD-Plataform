@@ -20,9 +20,13 @@ describe("Campaigns (e2e)", () => {
     await app.getHttpAdapter().getInstance().ready();
     prisma = app.get(PrismaService);
     const server = app.getHttpServer();
-    const regA = await request(server).post("/auth/register").send({ email: emailA, password: "password123", displayName: "DM" });
+    const regA = await request(server)
+      .post("/auth/register")
+      .send({ email: emailA, password: "password123", displayName: "DM" });
     tokenA = regA.body.token;
-    const regB = await request(server).post("/auth/register").send({ email: emailB, password: "password123", displayName: "Player" });
+    const regB = await request(server)
+      .post("/auth/register")
+      .send({ email: emailB, password: "password123", displayName: "Player" });
     tokenB = regB.body.token;
   });
 
@@ -49,13 +53,17 @@ describe("Campaigns (e2e)", () => {
 
   it("a non-member cannot read the campaign (403)", async () => {
     const server = app.getHttpServer();
-    const res = await request(server).get(`/campaigns/${campaignId}`).set("Authorization", `Bearer ${tokenB}`);
+    const res = await request(server)
+      .get(`/campaigns/${campaignId}`)
+      .set("Authorization", `Bearer ${tokenB}`);
     expect(res.status).toBe(403);
   });
 
   it("the owner can read the campaign (200)", async () => {
     const server = app.getHttpServer();
-    const res = await request(server).get(`/campaigns/${campaignId}`).set("Authorization", `Bearer ${tokenA}`);
+    const res = await request(server)
+      .get(`/campaigns/${campaignId}`)
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("Curse of Strahd");
   });

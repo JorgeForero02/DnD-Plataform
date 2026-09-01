@@ -6,21 +6,30 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-08-31.
 
-## P1 — Bloquean el nivel declarado
+## Cerrados
 
-**ESLint no existe.** Los tres paquetes declaran `lint: eslint src ...` pero ni la
-dependencia ni la configuración están; `pnpm lint` falla con *"eslint no se reconoce como un
-comando interno o externo"*. El workflow de CI omite el paso a propósito, con comentario.
-Prettier está en las dependencias de la raíz **sin configuración y sin script**.
-→ Impide declarar N1 ([04-convenciones.md](./04-convenciones.md)). Al cerrarse, `pnpm verify`
-pasa a `build && lint && test`. Deuda abierta desde la fase 0.
+**~~P1 · ESLint no existe~~ — CERRADO el 2026-08-31.** ESLint 9 con configuración plana en la
+raíz, Prettier, `pnpm verify` completo y gancho de pre-commit que bloquea. CI corre lint y
+formato. Los 15 errores que encontró la primera pasada se arreglaron **corrigiendo el
+código**, no silenciando reglas: diez `any` en los cuerpos de los controladores pasaron a los
+tipos de `@dnd/shared`, tres `require("supertest")` a `import`, un import sin usar fuera, y
+los `updateSessionSchema` / `updateCharacterSchema` que vivían duplicados en un controlador y
+en un servicio se mudaron a `@dnd/shared`, que es donde la convención dice que vive la forma
+de los datos. Ver [07-historial.md](./07-historial.md).
 
-## P2 — Huecos de verificación
+## P1 — Huecos de verificación
 
 **Playwright no está instalado.** No hay ninguna prueba que abra un navegador, así que nada
 cubre pintado, navegación, foco, contraste ni responsive.
 → Reglas y guiones iniciales ya escritos en [08-pruebas.md](./08-pruebas.md); falta la
-herramienta.
+herramienta. **Es la siguiente ficha en cerrarse.**
+
+## P2 — Ruta de mejora del nivel
+
+**Linting sin información de tipos.** `typescript-eslint` corre en modo básico; el modo
+*type-checked* (que ve los tipos y caza promesas sin esperar, comparaciones imposibles y
+`any` implícitos que hoy pasan) exige apuntar cada paquete a su `tsconfig` y cuesta tiempo de
+CI. Decisión: se activa como tarea propia, no de rebote.
 
 **Sin umbral de cobertura (N2) ni mutación (N3).** No declarados y no prometidos. Ruta de
 mejora, no compromiso.
@@ -56,7 +65,8 @@ comportamiento:
   Tarea 1.10.
 - **Avisos ruidosos que conviene callar bien, no silenciar**: `ts-jest` se queja de compilar
   los `.js` de `packages/shared/dist` en los e2e, y Vite avisa de que
-  `apps/web/postcss.config.js` no declara tipo de módulo.
+  `apps/web/postcss.config.js` no declara tipo de módulo. Ninguno lo tapa ESLint: son de
+  otras herramientas.
 - **No hay política de retención de datos escrita.** Hace falta antes de que el sistema deje
   de ser de uso personal. Ver [05-datos.md](./05-datos.md).
 

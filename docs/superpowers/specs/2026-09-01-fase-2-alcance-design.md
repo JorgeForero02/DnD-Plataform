@@ -748,3 +748,58 @@ Es exactamente el principio de siempre: *la máquina ejecuta, el DM arbitra*. El
 
 **Recomendación:** que 2C marque el natural en el registro y lo muestre, y nada más. Es barato,
 es honesto, y deja la puerta abierta a que Encuentros añada la consecuencia sin rehacer nada.
+
+### P7-bis · Cómo se configuran críticos y pifias (ampliación pedida por el autor)
+
+El autor pidió apoyarse en las reglas clásicas y **dejar que el DM haga cosas con esto**, porque
+*"son muchos factores para las pifias"*. Correcto, y la asimetría entre las dos es justamente la
+clave del diseño.
+
+**Los críticos están en las reglas; las pifias no.** El SRD define el crítico (un 20 natural en
+una tirada de ataque duplica los dados de daño, no el modificador) y define las salvaciones de
+muerte (20 natural recupera 1 PG; 1 natural cuenta como dos fallos). **Un 1 natural en un ataque
+es, en las reglas, simplemente un fallo**: no existe tabla de torpezas en el SRD ni en el manual.
+Todo lo que la gente llama "pifia" es costumbre de mesa.
+
+Eso decide la forma:
+
+- **El crítico se puede implementar**, porque tiene una regla escrita. Con una opción por
+  campaña, porque las variantes de mesa son pocas y conocidas: *duplicar los dados* (regla),
+  *dado máximo + tirada* (variante muy común), o *duplicar el total* (variante que el manual
+  desaconseja pero mucha gente usa).
+- **La pifia no se puede implementar: se puede alojar.** El sistema marca el 1 natural y
+  después *no decide nada*. Lo que ocurra lo pone el DM.
+
+**Y aquí está la pieza que abarata todo: una tabla de pifias escrita por el DM es exactamente el
+mismo mecanismo que una tabla de botín (P4).** Una tabla de entradas + una tirada + un resultado
+con visibilidad. No son dos funcionalidades: es una, usada dos veces. Si 2C construye "tablas del
+DM" como primitiva, las pifias salen gratis, y las tablas de encuentros aleatorios, de rumores de
+taberna y de clima también.
+
+Lo que el plan debe fijar, entonces:
+
+1. **Una opción de campaña para el crítico** (cuál de las tres variantes), con la regla del SRD
+   por defecto.
+2. **Marcar el natural siempre**, en el registro, independientemente de la opción — el hecho es
+   del log; la consecuencia, del DM.
+3. **Tablas del DM como primitiva de 2C**, no como característica de las pifias. Las pifias son
+   su primer inquilino; el botín, el segundo.
+4. **Nada automático sin que el DM lo pida.** Coherente con *la máquina ejecuta, el DM arbitra*:
+   como mucho, el sistema ofrece («ha salido un 1 natural, ¿tiras en tu tabla de pifias?»).
+
+### P8 · Dados con física — decisión del autor (2026-09-01)
+
+El autor **quiere dados físicos** y quiere verlos en el diseño de pantallas al desplegar, tras
+cerrar la fase 1. Queda registrado como decisión suya, no como recomendación.
+
+- **La librería existe:** `@3d-dice/dice-box` (three.js + física, los siete dados, temas). En la
+  aplicación real funciona porque Vite empaqueta y sirve sus recursos localmente.
+- **No se puede enseñar en un artefacto publicado**: el CSP bloquea las descargas que la librería
+  hace en tiempo de ejecución (el WASM del motor de física y los modelos). La maqueta de la
+  dirección visual usa por eso dados dibujados a mano, sin dependencias.
+- **Objeción registrada, y el autor decide igualmente:** la tirada la ejecuta el servidor, así
+  que la física es una representación de un resultado ya decidido — como en todos los VTT. Cuesta
+  dos o tres segundos por tirada y es una dependencia pesada. **Recomendación practicable:** que
+  los dados con física sean una **opción por campaña o por usuario** sobre el mismo resultado del
+  servidor, para que quien los quiera los tenga y quien tenga prisa en la mesa pueda apagarlos.
+- **Momento:** se evalúa al desplegar, junto con el diseño de pantallas, no dentro de 2A.

@@ -488,3 +488,227 @@ hoja de personaje que nadie ha usado nunca**. La recomendación es que, al termi
 monte su propio personaje real y lo mire diez minutos — no es jugar una partida, es abrir la
 ficha. Si la hoja está mal pensada, es infinitamente más barato descubrirlo ahí que después de
 construir el inventario encima.
+
+---
+
+## Preguntas abiertas que decide el plan de 2A (planteadas por el autor, 2026-09-01)
+
+Ninguna está decidida. Se dejan escritas **antes** de escribir el plan de 2A para que se
+decidan a propósito y no de pasada.
+
+### P1 · El estado de la partida tiene que sobrevivir a que todos se vayan
+
+El autor lo planteó así: *"mi personaje quedó en esta casilla, el DM ejecutó tantos eventos"* —
+y que cerrar la sesión declarando descanso se tome como **suspenso**, no como pérdida.
+
+**Estado de hoy, comprobado en el código, no supuesto:** la plataforma sobrevive a un corte de
+luz por accidente, no por diseño. Guarda **documentos** (fichas, enlaces, comentarios,
+personajes, notas), cada uno escrito en el momento en que se edita. No guarda **partida**: no
+existe el concepto de sesión en curso. `Session` es
+`{ id, campaignId, title, scheduledAt?, notes?, visibility, createdAt }` y nada más — sin
+estado, sin duración, sin relación con lo que ocurrió durante ella. Si el DM no lo teclea en
+`notes`, la partida del sábado no dejó rastro.
+
+**Por qué esto choca de frente con 2C:** el registro de tiradas es un log inmutable, y para
+escribir una tirada hay que saber **a qué sesión pertenece**. Con el modelo actual esa pregunta
+no tiene respuesta. En cuanto además existan PG, condiciones con duración y —en la fase 3— una
+posición en un tablero, aparece **estado mutable de juego** por primera vez en el proyecto.
+
+**El principio que hay que fijar en el plan, porque decide la arquitectura:** si cada cambio de
+estado se escribe **en el momento en que ocurre** —igual que ya se hace con las entidades—,
+entonces suspender y reanudar **no cuestan nada, porque no hay nada que guardar**. Un botón de
+"guardar partida" sería la señal de que el estado vivía en memoria, que es justo lo que hay que
+evitar. "El DM declara un descanso" pasa a ser **una etiqueta en la línea de tiempo**, no una
+operación de guardado.
+
+Lo que el plan de 2A tiene que decidir, con su motivo:
+
+1. **Si una sesión gana estado** (planificada / en curso / cerrada) y quién lo cambia. Sin eso
+   no hay dónde colgar el log de tiradas.
+2. **Estado actual almacenado, o derivado del log.** El registro inmutable de tiradas empuja
+   hacia el log; pero el principio *la máquina ejecuta, el DM arbitra* exige que el DM pueda
+   corregir cualquier valor a mano, y un log puro no admite correcciones arbitrarias sin
+   volverse retorcido. La opción probablemente correcta es **las dos cosas**: filas con el
+   estado actual (PG, condiciones) **más** un log append-only de qué lo cambió — que además es
+   gratis el resumen de "qué pasó la última vez" que el DM quiere, y encaja con el
+   "diff contra la instantánea anterior" que ya se usa para las subidas de nivel.
+3. **Dinámico en el *cuándo*, nunca en la *forma*.** Escribir cada cambio en el instante en que
+   ocurre es lo correcto. Guardar "el estado" como un JSON libre **no**: se pierde poder
+   consultar ("¿qué personajes están envenenados?"), se pierde poder migrar cuando la forma
+   cambie, y se pierde poder **diferenciar** — y la subida de nivel ya está diseñada como
+   *diff contra la instantánea anterior*, que sobre un blob no se puede hacer. Este proyecto ya
+   pisó esa trampa: `Entity.body` era `z.unknown()` y hubo que sustituirlo por una forma
+   explícita en 1.17b. Columnas y filas con tipo; el log append-only al lado.
+4. **Guardar lo *decidido*, derivar lo *calculado*.** PG actuales, condiciones activas,
+   elecciones de subida de nivel y —en la fase 3— la posición son **decisiones**: se guardan.
+   La CA, los modificadores que vienen de raza y clase y el bono de competencia se **calculan**,
+   y se recalculan cada vez. Guardar lo calculado significa que el día que se corrija una
+   fórmula habrá mil filas mintiendo sin forma de saber cuáles.
+5. **Escrituras concurrentes.** Con sondeo en vez de tiempo real, dos jugadores tocando los PG
+   del mismo personaje a la vez acaban en "gana el último que escribe". Hay que decidirlo, no
+   descubrirlo en la mesa.
+6. **El log crece.** Una campaña larga son muchas filas. Barato en Postgres, pero hay que
+   decidir qué se enseña, con qué visibilidad y hasta cuándo.
+7. **La casilla es de la fase 3**, no de esta. Lo que 2A debe garantizar es que añadir una
+   posición más adelante sea **añadir filas, no rehacer la arquitectura**.
+
+Recordatorio de que son **dos relojes distintos** y no hay que mezclarlos: el tiempo real de la
+mesa (empezamos a las 20:00, cenamos, seguimos) y el tiempo de ficción (el reloj de campaña de
+la respuesta B del DM asesor). Tres horas de sobremesa pueden ser diez minutos de ficción.
+Esta pregunta va del primero; el reloj de campaña ya está recogido para 2C.
+
+### P2 · Notificaciones de próximas sesiones — decidir **cuándo**, no si
+
+Planteado por el autor pensando en gente que se conoció **a través del sistema**, que es
+precisamente cuando nadie puede avisar por el grupo de siempre.
+
+**Estado de hoy:** no hay servicio de correo. Se aplazó a propósito desde la fase 0, y por eso
+las invitaciones son un enlace que se copia y se pega a mano.
+
+Lo que habría que decidir, con lo que cuesta cada cosa:
+
+- **Avisos dentro de la aplicación** (tabla + sondeo): lo más barato, y encaja con la decisión
+  ya tomada de sondear en vez de usar WebSockets. Pero solo avisa a quien ya tiene la
+  aplicación abierta, que es cuando no hace falta.
+- **Correo**: es lo que de verdad resuelve "la sesión es mañana". Necesita un proveedor
+  transaccional, aceptar que los datos salen a un tercero, y consentimiento y baja en cuanto
+  haya gente que no sea el autor. De paso arregla las invitaciones.
+- **Push del navegador**: lo más cómodo, con una trampa que hay que saber antes de ilusionarse
+  — en escritorio y Android funciona, pero **en iPhone solo si el usuario añade la web a la
+  pantalla de inicio**. Para una mesa donde la mitad lleva iPhone, la mitad no recibe el aviso.
+- **Algo tiene que mirar el reloj** para saber que faltan 24 horas. Sin romper la regla de
+  minimalismo (nada de Redis ni colas hasta que una fase lo pida), basta una tarea programada
+  dentro de la propia API que busque recordatorios vencidos.
+
+**Y una pieza que se pasa por alto y luego duele: no hay zona horaria por usuario.**
+`scheduledAt` se guarda en UTC, pero el formulario usa `datetime-local`, que toma la hora del
+navegador del DM. Mientras la mesa sea presencial da igual; con gente en husos distintos,
+"la sesión es a las 21:00" deja de significar lo mismo para todos. Hay que decidirlo **antes**
+de mandar el primer recordatorio.
+
+**Recomendación, no decisión:** las notificaciones encajan mejor **justo después del
+despliegue** —que es cuando dejan de ser un adorno, con el DM asesor usando la plataforma sin
+estar sentado al lado—, y no dentro de 2A.
+
+### P3 · Permisos por campo en la hoja de personaje
+
+Planteado por el autor al preguntar si el DM puede asignar **puntos de inspiración**.
+
+**Estado de hoy, comprobado en el código:** el DM ya ve y edita todas las hojas de su campaña.
+`canView` corta en seco con `if (viewer.role === "DM") return true;`
+(`apps/api/src/common/visibility.ts:17`), antes de mirar la visibilidad; y modificar exige ser
+DM **o** dueño (`characters.service.ts:70`). Así que un campo nuevo tipo inspiración es una
+columna más y **el permiso para que el DM lo asigne ya existe**.
+
+**Lo que el autor pidió (2026-09-01), y es mejor que como estaba planteado aquí:** que **el DM
+decida, tras la creación del personaje, qué campos puede tocar el jugador y cuáles no** — un
+mecanismo configurable, en vez de reglas fijas cableadas una a una en el sistema. Su caso real:
+*"que yo tenga 50 de daño haciendo solo 20"*. Encaja con *el DM arbitra* y con el principio P0
+de abajo (preparar una vez).
+
+Dos cosas que hay que hacer bien: **el bloqueo es autorización, así que se comprueba en el
+servidor** — si vive solo en la interfaz no bloquea nada, cualquiera manda el `PATCH` a mano; y
+se monta afinando el permiso que ya existe (DM o dueño, `characters.service.ts:70`): el dueño
+toca todo **menos** lo que el DM haya cerrado.
+
+**Lo que no está decidido:** el permiso es hoy **de hoja entera**, no por campo. La inspiración es
+conceptualmente **solo del DM** — un jugador no debería poder concedérsela a sí mismo — y en
+cuanto la hoja crezca aparecerán más casos iguales (PG máximos, competencias concedidas,
+objetos mágicos sintonizados). Hay que decidir en 2A si se pasa a permisos por campo o si se
+acepta que el jugador puede tocarlo y el DM lo ve. **No hay que reimplementar la matriz de
+visibilidad para esto**: `canView` sigue siendo el dueño único de "quién ve qué"; esto es
+"quién puede escribir qué campo", que es otra pregunta.
+
+### P4 · Contenedores y botín — son tres cosas distintas, no una
+
+Planteado por el autor: *"abro este cofre, ejecuta un combate porque era una trampa de un
+mímico, o me da estos objetos de una pool aleatoria, o un objeto fijo"*.
+
+Se descompone, y cada pieza ya tiene sitio:
+
+1. **Cofre con contenido fijo** → inventario puro. **2B**, ya en alcance.
+2. **Botín de tabla aleatoria** → **es una tirada, no una función de inventario**. Encaja con
+   el pilar de dados de **2C**: se ejecuta en el servidor, queda en el log inmutable y hereda
+   la visibilidad tirada a tirada, así que el DM puede tirar el botín en oculto y decidir si lo
+   enseña. Es literalmente el principio ya escrito: *el azar vive fuera del motor de reglas* —
+   la tabla es datos, el dado es el mecanismo.
+3. **"Era un mímico y hay combate"** → **no es botín**: es el DM lanzando un encuentro. Va al
+   bloque **Encuentros**, entre la fase 2 y la 3.
+
+**El riesgo que hay que nombrar antes de diseñarlo:** un cofre que *ejecuta* cosas al abrirse es
+un **sistema de disparadores** — condiciones, eventos encadenados, estado del mundo. Eso es
+autoría de aventuras, un producto entero, no una funcionalidad; y choca de frente con
+*el DM arbitra*: si el cofre decide solo, el DM deja de decidir.
+
+La versión barata y correcta, y la que se recomienda: el contenedor tiene su contenido y su
+tabla, el DM pulsa **resolver**, el sistema tira y reparte, y si era un mímico **el DM lanza el
+encuentro porque quiere**. La máquina ejecuta lo tedioso; la sorpresa la decide él.
+
+### P0 (principio, no pregunta) · Preparar una vez, usar muchas en la mesa
+
+Formulado por el autor el 2026-09-01: *"bajar las tareas tediosas, o que se hagan una vez y las
+haga el DM armando la campaña"*. **No es una funcionalidad: es un criterio de diseño**, al mismo
+nivel que *la máquina ejecuta, el DM arbitra* y *el azar vive fuera del motor de reglas*.
+
+Zanja discusiones por sí solo. Ante dos formas de construir algo, gana la que traslada el
+trabajo del momento de la partida al momento de la preparación. En la mesa, el DM pulsa; en casa,
+el DM prepara.
+
+### P5 · Recursos consumibles — no construir "inspiración"
+
+El autor pidió que **un punto de inspiración se gaste al usarlo** y aplique la ventaja que digan
+las reglas.
+
+**La palanca está en no construir la inspiración.** Un punto de inspiración, un espacio de
+conjuro, un dado de golpe, un uso por descanso, la furia y el ki son **el mismo mecanismo**: un
+contador con máximo, algo que lo gasta, y un descanso que lo repone. Construir **recursos
+consumibles** una vez entrega los seis; construir "inspiración" entrega uno. Es el principio P0
+aplicado al propio código.
+
+La inspiración es entonces el **primer caso de uso**, no el objetivo. Y su efecto cae limpio en
+el pilar de dados: la ventaja es un **parámetro de la tirada** (2d20, se queda el mejor),
+ejecutada en el servidor y registrada en el log. No rompe *el azar vive fuera del motor*: el
+motor decide **que hay ventaja**, el dado sigue siendo un dado.
+
+Va a **2A** (el recurso y su gasto), con el efecto aterrizando en **2C** (la tirada).
+
+### P6 · Mecánica de inspección — datos ocultos que una tirada revela
+
+Pedida por el autor: *"elementos que el DM decide colocar y que con ciertos atributos y
+lanzamientos muestran cosas — por ejemplo, que un cofre es un mímico antes de abrirlo"*.
+
+**Es la que más entrega por lo que cuesta, porque el sustrato ya está construido y probado.** Un
+dato oculto que se revela a **una persona concreta** es exactamente `SPECIFIC_PLAYERS` más una
+concesión de visibilidad: `EntityVisibilityGrant`, con la matriz `canView` probada al completo
+desde la fase 1. No hay que inventar un modelo nuevo.
+
+La mecánica se reduce a: el DM cuelga un dato oculto de algo, con su característica y su
+dificultad; el jugador tira; si supera, **el servidor añade la concesión** y el dato aparece en
+su pantalla y solo en la suya. Una acción que escribe una fila que el proyecto ya sabe escribir.
+
+**Y resuelve el mímico sin ningún motor de disparadores**: el mímico es un dato oculto con su
+dificultad de Percepción. Quien la supera lo sabe antes de abrir; el DM sigue decidiendo si lanza
+el encuentro. Enlaza con la ayuda para fijar la dificultad (respuesta Extra del DM asesor).
+
+Depende de la tirada, así que va **después de 2C**. Decidir entonces si es bloque propio o entra
+con Encuentros.
+
+### P4-bis · La raya en los cofres, tras la aclaración del autor (2026-09-01)
+
+El autor confirmó que quiere el motor de cofres, y explicó su motivación: **reducir lo tedioso y
+que el DM lo prepare una vez**. Esa motivación **no necesita el motor**, y conviene dejarlo
+escrito antes de planificar 2B:
+
+- cofre con su contenido, preparado al armar la campaña → inventario (**2B**);
+- tabla de botín que se resuelve tirando, en oculto si el DM quiere → **2C**;
+- "era un mímico" → dato oculto de inspección (**P6**);
+- el encuentro lo lanza el DM porque quiere.
+
+Con eso el DM prepara la mazmorra una tarde y en la mesa solo pulsa *resolver* — que es
+literalmente lo que pidió. **La parte automática —que el cofre se dispare solo— es el 10% más
+caro y el que menos compra**, y es la que arrastra condiciones, eventos encadenados y estado del
+mundo, o sea autoría de aventuras.
+
+**Recomendación registrada:** los disparadores automáticos se deciden **aparte y explícitamente**,
+con su coste sobre la mesa, y no se cuelan dentro del alcance de 2B. La decisión es del autor;
+esto solo la deja separada para que se tome a propósito.

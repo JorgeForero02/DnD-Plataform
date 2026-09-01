@@ -17,7 +17,51 @@ Lo que **sí** está cubierto (comprobado, no supuesto): inyección SQL, XSS, va
 entrada, contraseñas con argon2, autorización en el servidor y ausencia de secretos en el
 código.
 
-Lo que falta, y va como **tarea 1.17**:
+Lo que falta, y va como **tarea 1.18**:
+
+| | Hallazgo | Gravedad |
+|---|---|---|
+| 1 | **`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios. Si falta la variable en producción, la API firma tokens con una cadena que está en el repositorio público | **Crítico** |
+| 2 | **29 vulnerabilidades en dependencias de producción** (1 crítica, 16 altas) y CI no audita | Alto |
+| 3 | **Sin límite de peticiones**: fuerza bruta en login y en tokens de invitación | Alto |
+| 4 | **Sin cabeceras de seguridad** (`helmet`) | Medio |
+| 5 | **CORS abierto**, y además innecesario: nginx hace de proxy | Medio |
+| 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
+| 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
+
+## Tarea 1.17 — cierre real de la fase 1
+
+**Contraste sistemático entre lo que el modelo y la API permiten y lo que la pantalla ofrece**,
+hecho el 2026-09-01 al preguntar el autor si había un cuaderno para escribir la historia.
+Detalle y evidencia en
+**[`superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md`](./superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md)**.
+**Hasta que esto entre, la fase 1 no está cerrada.**
+
+| | Hallazgo | Dónde falla |
+|---|---|---|
+| A1 | **Las fichas del mundo no tienen cuerpo de texto.** `Entity.body` existe en el modelo y la API lo aceptaría; el editor ni lo pinta ni lo envía. **La wiki es un índice sin páginas** | Solo web |
+| A2 | **Las etiquetas se guardan y no se ven en ninguna parte** ni se puede filtrar por ellas: escritura sin lectura | Solo web |
+| B1 | **Una campaña no se puede editar ni borrar**: el controlador no tiene `PATCH` ni `DELETE` | API + web |
+| B2 | **No se puede expulsar a un jugador ni salirse**: la membresía es permanente. Incoherente con un producto cuyo argumento es el control de quién ve qué | API + web |
+| B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida | API + web |
+| C1 | **No hay búsqueda ni filtro en ninguna pantalla** | Solo web |
+
+**Por qué ninguna prueba lo encontró:** las 167 unitarias y los 6 recorridos verifican que
+**lo que existe** funciona; ninguna puede gritar por lo que falta. Es el punto ciego
+estructural de una suite, y por eso este contraste **se repite al cerrar cada fase**.
+
+## Antes de desplegar — seguridad
+
+**Auditoría hecha el 2026-09-01 sobre el commit `4a3fe43`, con todos los hallazgos verificados
+en el código.** El detalle, la evidencia y el orden de arreglo están en
+**[`superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md`](./superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md)**
+— ahí está todo, para no tener que auditar otra vez.
+
+Lo que **sí** está cubierto (comprobado, no supuesto): inyección SQL, XSS, validación de
+entrada, contraseñas con argon2, autorización en el servidor y ausencia de secretos en el
+código.
+
+Lo que falta, y va como **tarea 1.18**:
 
 | | Hallazgo | Gravedad |
 |---|---|---|

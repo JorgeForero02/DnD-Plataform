@@ -15,16 +15,24 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-> **Este documento es la fuente única de los conteos de pruebas.** Si los necesitas en otro
-> sitio, enlaza aquí en vez de copiarlos: el 2026-09-01 el `00` decía 106, el `04` decía 66 y
-> este decía 166 — tres cifras distintas y las tres falsas. Un dato repetido en cuatro
-> documentos es un dato que va a mentir en tres.
+> **Este documento es la fuente única de los conteos de pruebas — con una excepción
+> declarada.** Las unitarias las genera `scripts/update-estado.mjs` en el bloque de estado de
+> [00-INDEX.md](./00-INDEX.md); un número generado no puede desincronizarse de sí mismo, así
+> que esa es ahora su fuente y aquí se enlaza en vez de repetirlo. Los conteos de e2e, que
+> nada genera, siguen viviendo solo aquí. Si necesitas cualquiera de los dos en otro sitio,
+> enlaza en vez de copiar: el 2026-09-01 el `00` decía 106, el `04` decía 66 y este decía
+> 166 para las unitarias — tres cifras distintas y las tres falsas. Un dato repetido en
+> cuatro documentos es un dato que va a mentir en tres.
 
-Estado medido el 2026-09-01, tras la segunda ronda de correcciones de revisión de la tarea
-1.17d (B1 + B2, ajustes de campaña y miembros en la pantalla): **237 unitarias** (shared 20,
-api 54, web 163), **32 e2e de API** en 9 suites y **9 e2e de navegador** en 2 suites, todas
-verdes. Las unitarias, el lint y el formato los exige `pnpm verify` en el gancho de
-pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
+**Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
+`pnpm update:estado` y `pnpm verify` falla si no coincide.
+
+**E2e**, medidos el 2026-09-01 tras la segunda ronda de correcciones de revisión de la tarea
+1.17d (B1 + B2, ajustes de campaña y miembros en la pantalla): **32 e2e de API** en 9 suites y
+**9 e2e de navegador** en 2 suites, todas verdes.
+
+Las unitarias, el lint, el formato y `check:docs`/`check:estado` los exige `pnpm verify` en el
+gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
 
 ## Qué escribe una tarea de API
 

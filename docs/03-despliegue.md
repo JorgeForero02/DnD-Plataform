@@ -5,8 +5,8 @@
 > cada punto**. La tarea 1.14 incluía desplegar en Coolify y **esa parte queda diferida**;
 > lo único que se construye ahora es la interfaz de invitación.
 
-Sustituye a `docs/DEPLOY.md`, que se eliminó el 2026-08-31 al adoptar la estructura
-numerada.
+Sustituye a `docs/DEPLOY.md` <!-- docs-lint-ignore -->, que se eliminó el 2026-08-31 al
+adoptar la estructura numerada.
 
 ## Lo que sí está verificado
 
@@ -15,10 +15,11 @@ numerada.
   (tarea 0.10 / commit `53ac276`).
 - **CI en GitHub Actions verde** en cada push a `main` y en cada PR (`.github/workflows/ci.yml`),
   con dos trabajos: `test` (instala, genera Prisma, aplica migraciones contra un Postgres de
-  servicio, y corre `pnpm lint`, `pnpm format:check`, `pnpm test` y `pnpm --filter @dnd/api
-  test:e2e`) y `e2e-browser` (instala Playwright y corre `pnpm --filter @dnd/web e2e` contra
-  la API y la web reales, subiendo el reporte como artefacto si falla). **El lint corre desde
-  el 2026-08-31**; ver [07-historial.md](./07-historial.md).
+  servicio, y corre `pnpm lint`, `pnpm format:check`, `pnpm check:docs`, `pnpm check:estado`,
+  `pnpm test` y `pnpm --filter @dnd/api test:e2e` — **`pnpm build` no está entre ellos**, ver
+  [06-pendientes.md](./06-pendientes.md)) y `e2e-browser` (instala Playwright y corre `pnpm
+  --filter @dnd/web e2e` contra la API y la web reales, subiendo el reporte como artefacto si
+  falla). **El lint corre desde el 2026-08-31**; ver [07-historial.md](./07-historial.md).
 
 ## Procedimiento previsto (Coolify sobre VPS propio)
 

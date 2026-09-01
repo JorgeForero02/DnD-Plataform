@@ -68,7 +68,7 @@ Windows: el shell parte la ruta en dos. Por eso `start:dev` es
 esto.
 
 **`@dnd/shared` se consume compilado en Node y en fuente en Vite.** El `package.json`
-apunta a `dist/index.js` porque el `node` de producción necesita JavaScript; el `prepare`
+apunta a `dist/index.js` <!-- docs-lint-ignore --> porque el `node` de producción necesita JavaScript; el `prepare`
 de la raíz lo compila tras cada `pnpm install`. Pero **`vite.config.ts` tiene un alias
 `@dnd/shared` → `src`**, porque rollup no resuelve las exportaciones nombradas del CommonJS
 (`__exportStar`) del `dist`. Los dos caminos son necesarios; no quites ninguno.

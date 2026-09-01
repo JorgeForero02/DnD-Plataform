@@ -5,7 +5,8 @@
 El comando que define el nivel es:
 
 ```
-pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm test
+pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:docs
+                  && pnpm check:estado && pnpm test
 ```
 
 - `pnpm build` compila los tres paquetes (`tsc` / `nest build` / `vite build`) y hace de
@@ -18,19 +19,31 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm test
   comas finales). `pnpm format` lo aplica.
   **El Markdown está excluido a propósito** (`.prettierignore`): la documentación se escribe a
   mano y sus saltos de línea y tablas son deliberados.
-- `pnpm test` corre la suite unitaria. **El conteo vive en
-  [08-pruebas.md](./08-pruebas.md)**, que es su fuente única; no se copia aquí.
+- `pnpm check:docs` (`scripts/check-docs.mjs`) comprueba mecánicamente tres reglas de
+  documentación: rutas citadas entre comillas invertidas que no existen, `fichero:NN` con la
+  línea fuera de rango, y conteos de pruebas escritos fuera de su fuente única. Antes de
+  `test` a propósito: falla rápido y barato.
+- `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba que el bloque de estado
+  de [00-INDEX.md](./00-INDEX.md) (commit, rama y conteo de unitarias) coincide con lo que el
+  script generaría; falla si alguien lo editó a mano. `pnpm update:estado` lo regenera.
+- `pnpm test` corre la suite unitaria. **El conteo de unitarias lo genera
+  `scripts/update-estado.mjs`** en el bloque de estado de [00-INDEX.md](./00-INDEX.md) — esa
+  es ahora su fuente única, no escrita a mano. **Los conteos de e2e siguen viviendo en
+  [08-pruebas.md](./08-pruebas.md)**, que enlaza al bloque de arriba en vez de repetir las
+  unitarias.
 
 **Lo aplica `.githooks/pre-commit`, que bloquea el commit si `pnpm verify` falla.** El gancho
 se conecta solo en el `prepare` de la raíz (`scripts/install-git-hooks.mjs`), que **nunca
-falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. CI
-corre lo mismo, más los e2e.
+falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. **CI no
+corre exactamente lo mismo**: repite `lint`, `format:check`, `check:docs`, `check:estado` y
+`test` paso a paso y añade los e2e, pero **no llama a `pnpm build`** — hueco real, sin ficha
+todavía, ver [06-pendientes.md](./06-pendientes.md).
 
 **No se desactiva el gancho para saltárselo.** Si el control molesta, se arregla el código o
 se cambia el control como decisión declarada aquí.
 
-Medido tras cada tarea: `pnpm verify` pasa. Cifras al día en
-[08-pruebas.md](./08-pruebas.md).
+Medido tras cada tarea: `pnpm verify` pasa. Cifras de unitarias al día en el bloque generado
+de [00-INDEX.md](./00-INDEX.md); de e2e, en [08-pruebas.md](./08-pruebas.md).
 
 **Fuera de N1, a propósito:** los e2e de API y los de navegador (ambos existen desde
 `c6fa899`; ambos necesitan Docker, y los de navegador además dos servidores vivos).
@@ -138,6 +151,23 @@ del que implementó, con contexto limpio y el paquete de revisión delante (rang
 razonada que se descarta sin dejar rastro vuelve a aparecer dentro de tres meses sin su
 contexto. Práctica tomada del proyecto de grado, donde una ficha diferida conserva la
 propuesta del revisor y la razón de no aplicarla.
+
+**Toda revisión de un cambio comprueba cada afirmación de la documentación de ese cambio
+contra el código que describe.** `pnpm check:docs` solo pilla mentiras mecánicas: una ruta que
+no existe, una línea fuera de rango, un conteo copiado. De los siete casos que motivaron esta
+tarea (`.superpowers/sdd/2026-09-01-tarea-1.17-cierre-fase-1/task-antideriva-brief.md`), seis
+eran **mentiras semánticas** — una frase que describe un comportamiento que el código no
+tiene, con toda la sintaxis en regla — y ningún script las detecta; salieron por esta misma
+línea en el prompt del revisor. No se borra pensando que el lint ya lo cubre: el lint cubre
+la forma, esta regla cubre el contenido.
+
+**Un fichero no mezcla tipos de documento.** Si un documento explica, guía, sirve de
+referencia **y** declara estado actual a la vez, se parte. Es la causa raíz de por qué
+`00-INDEX.md` fue el fichero que más mintió: mezclaba el mapa de documentos (punteros, que no
+afirman nada) con estado escrito a mano, y las afirmaciones se fueron acumulando entre los
+enlaces sin que nadie las revisara como tal. La distinción viene de Diátaxis (tutorial / guía
+práctica / referencia / explicación) — se adopta la regla, no el framework completo: `01` a
+`05` ya están razonablemente bien formados y no se migran solo por esto.
 
 ## Precedencia
 

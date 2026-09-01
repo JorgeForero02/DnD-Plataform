@@ -36,12 +36,10 @@ Lo que falta, y va como **tarea 1.18**:
 hecho el 2026-09-01 al preguntar el autor si había un cuaderno para escribir la historia.
 Detalle y evidencia en
 **[`superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md`](./superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md)**.
-**Las cuatro subtareas (1.17a-d) están hechas.** Las tres primeras (1.17a-c) están en `main`,
-empujadas a GitHub; la cuarta (1.17d) está terminada y verificada, pendiente de su propio
-commit — mismo estado que declara [00-INDEX.md](./00-INDEX.md), para que los dos ficheros
-digan lo mismo en todo momento y no solo después del commit. Lo único que queda para cerrar
-la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido a propósito, ver
-[00-INDEX.md](./00-INDEX.md).
+**Las cuatro subtareas (1.17a-d) están hechas y comiteadas en `main`**: 1.17a en
+`cafc434`, 1.17b en `ede6d1e`, 1.17c en `64b1a67`, 1.17d en `158e72d`. Lo único que queda para
+cerrar la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido a propósito, ver
+"Antes de la primera partida" más abajo en este mismo documento.
 
 | | Hallazgo | Dónde falla |
 |---|---|---|
@@ -96,8 +94,9 @@ la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido a prop�
   esquema**: decidir si una etiqueta duplicada debe rechazarse al guardar es una decisión
   aparte de esta tarea, no un efecto colateral de pintar la lista.
 
-**Por qué ninguna prueba lo encontró:** la suite entera (recuento actualizado en
-[08-pruebas.md](./08-pruebas.md), la fuente única) verifica que **lo que existe** funciona;
+**Por qué ninguna prueba lo encontró:** la suite entera (unitarias: bloque generado de
+[00-INDEX.md](./00-INDEX.md); e2e: [08-pruebas.md](./08-pruebas.md)) verifica que **lo que
+existe** funciona;
 ninguna puede gritar por lo que falta. Es el punto ciego estructural de una suite, y por eso
 este contraste **se repite al cerrar cada fase**.
 
@@ -138,7 +137,7 @@ tocó a propósito, ver [05-datos.md](./05-datos.md).
 
 `Entity.body` existe en el modelo (`schema.prisma:80`, `Json?`) y en el esquema compartido
 (`entity.schema.ts:7`, `body: z.unknown().optional()`), y la API lo aceptaría sin problema.
-**Pero `EntityEditor.tsx` no lo pinta ni lo envía**, y `entities/api.ts` tampoco: los únicos
+**Pero `EntityEditor.tsx` no lo pinta ni lo envía**, y `features/entities/api.ts` tampoco: los únicos
 `body` que hay en la web son cuerpos de peticiones HTTP.
 
 **Consecuencia:** una entidad es hoy **nombre + etiquetas + visibilidad + enlaces +
@@ -466,6 +465,13 @@ espiar. Ver [07-historial.md](./07-historial.md).
 **No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
 hoy.
 
+**CI nunca ejecuta `pnpm build`.** `.github/workflows/ci.yml` corre `lint`, `format:check`,
+`check:docs`, `check:estado`, `test` y `test:e2e` en el job `test`, pero no llama a `pnpm
+build` en ningún paso — el type-check completo de `tsc`/`nest build`/`vite build` de `pnpm
+verify` no corre en CI. Detectado durante la revisión de la tarea antideriva (2026-09-01);
+decisión explícita del revisor no arreglarlo en esa tarea (fuera de su alcance), dejarlo
+anotado aquí en su lugar.
+
 **~~`invites.e2e-spec.ts` y `members.e2e-spec.ts` podían colisionar de correo entre workers de
 Jest~~ — CERRADO el 2026-09-01 (tarea 1.15-fix, Menor).** Ambas suites construían sus correos
 como `dm${Date.now()}@b.com` / `pl${Date.now()}@b.com` — resolución de milisegundo. Dos
@@ -572,3 +578,23 @@ comportamiento:
 - **Fases 2–5** (reglas, mapas, tiempo real, 3D/IA) solo tienen alcance, no plan. Cada una
   recibe el suyo al llegar, y **no se empieza la siguiente hasta usar la anterior en una
   sesión real**.
+
+## P5 — Dejado fuera a propósito de la tarea antideriva (2026-09-01)
+
+- **`lychee` 0.24.2 queda instalado en la máquina del autor, sin enganchar a nada.** Se
+  engancha en un commit aparte. **No sustituye a `scripts/check-docs.mjs`** — se afirmó eso
+  antes de comprobarlo, y era falso: `lychee` mira enlaces Markdown `[texto](ruta)` y URLs; el
+  lint propio mira rutas citadas en prosa entre comillas invertidas, referencias
+  `fichero.ts:NN` con la línea fuera de rango, y conteos de pruebas fuera de su fuente. Una
+  ruta escrita como `` `features/entities/hooks.ts` `` no es un enlace Markdown y `lychee` ni
+  la ve. Medido en este repo: 128 enlaces, 15 únicos, `--offline` en 15 ms, cero errores — son
+  comprobaciones complementarias, no la misma.
+- **MADR (4.0.0) se adopta solo hacia adelante, no con migración retroactiva.** Migrar los
+  specs existentes a ese formato contradice la regla de que un documento fechado es un
+  registro y no se reescribe (ver `scripts/check-docs.mjs` y la regla de revisión en
+  [04-convenciones.md](./04-convenciones.md)). Su primer uso previsto es concreto: las
+  preguntas abiertas P0–P8 se han ido amontonando dentro de
+  `superpowers/specs/2026-09-01-fase-2-alcance-design.md`, que ya funciona como cajón de
+  sastre — cada una es en realidad una decisión pendiente con sus alternativas, o sea un ADR.
+  Salen a registros MADR numerados con estado cuando se escriba el plan de la fase 2, no
+  antes.

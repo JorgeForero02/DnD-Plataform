@@ -40,75 +40,33 @@ limitado a SRD 5.1 / OGL.
 > el detalle por tarea que escribe el orquestador durante la ejecución; el 07 es el
 > resumen por hito que sobrevive a la sesión.
 
-## Estado actual (2026-09-01)
+## Dónde está el estado actual
 
-**Fase 0 completa. Fase 1 CONSTRUIDA. Las cuatro subtareas de la tarea 1.17** (contraste
-sistemático entre lo que el sistema permite y lo que la pantalla ofrece) **están hechas**. Las
-tres primeras (1.17a-c) están en `main`, empujadas a GitHub
-(`JorgeForero02/DnD-Plataform`); la cuarta (1.17d) está terminada y verificada, pendiente de
-su propio commit — este párrafo se actualizará cuando lo tenga, sin fingir uno que todavía no
-existe. El plan (`docs/superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md`) la partía en
-cuatro subtareas:
+Este documento es un mapa: enlaza y explica para qué sirve cada cosa, y no afirma nada sobre
+en qué punto está el código. Esa separación es deliberada — en una sola sesión este fichero
+mintió tres veces porque mezclaba el mapa con estado escrito a mano, y un documento que solo
+apunta no puede contradecir nada. Para saber qué es cierto **hoy**:
 
-- ✅ **1.17a — API: editar/borrar campaña y expulsar/salir** (commit `cafc434`). `PATCH
-  /campaigns/:id`, `DELETE /campaigns/:id`, `DELETE /campaigns/:id/members/:userId`. Solo
-  API: la pantalla no los consumía todavía, eso era 1.17d. Detalle en
-  [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17a en
-  [07-historial.md](./07-historial.md).
-- ✅ **1.17b — A1: el cuerpo de texto de las fichas, en Markdown** (2026-09-01). Las
-  fichas del mundo ya tienen `Entity.body`. Detalle en [05-datos.md](./05-datos.md), sección
-  P0 (cerrada) de [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17b en
-  [07-historial.md](./07-historial.md).
-- ✅ **1.17c — A2 + C1: etiquetas visibles, filtro por etiqueta y búsqueda por nombre**
-  (2026-09-01). Las etiquetas se pintan en la fila de cada ficha y `EntityFilterBar` filtra
-  por ellas (Y lógico) y por nombre — cerrado para las siete pestañas de entidades;
-  `SessionsTab` y `CharactersTab` se quedan sin buscador, deliberadamente fuera de esta
-  tarea. Detalle en [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17c en
-  [07-historial.md](./07-historial.md).
-- ✅ **1.17d — B1 + B2 en la pantalla: ajustes de campaña y miembros** (2026-09-01). La API
-  de 1.17a ya tenía sitio: `CampaignSettings.tsx` y `MembersPanel.tsx` (pestaña "Resumen" de
-  `CampaignDetailPage.tsx`) ofrecen editar/borrar campaña y expulsar/salir, deshabilitado con
-  el motivo visible mientras el rol no se conoce. Detalle en
-  [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17d en
-  [07-historial.md](./07-historial.md).
+- **Qué se ha entregado, cuándo y por qué** (tarea a tarea, con cómo revertir cada una):
+  [07-historial.md](./07-historial.md), entrada más reciente primero.
+- **Qué queda abierto, con prioridad y motivo**: [06-pendientes.md](./06-pendientes.md).
+- **Qué prueba cada capa y los conteos de pruebas**: [08-pruebas.md](./08-pruebas.md).
+- **El guion de la primera partida y qué falta antes de jugarla**:
+  [09-primera-partida.md](./09-primera-partida.md).
 
-**Lo que sigue bloqueando el cierre de la fase 1 es sobre todo jugarla.** La tarea 1.17
-cerró B1, B2, A1 y A2 — las incongruencias entre lo que el sistema permite y lo que la
-pantalla ofrece que tenían ficha propia y bloqueaban el cierre. Quedan, sin bloquear nada,
-**B3** (cambiar contraseña y nombre visible — no es de 1.17, va con la tarea 1.18 de
-seguridad) y el resto de **C1** (Sesiones y Personajes siguen sin buscador ni filtro,
-deliberadamente fuera de 1.17c) — ambas con su ficha abierta en
-[06-pendientes.md](./06-pendientes.md), ninguna de las dos reabre la pregunta que 1.17
-contestaba. La regla de fase del plan —jugar antes de la fase N+1— hoy está **suspendida por
-decisión del autor** (ver más abajo): se sigue construyendo sin esperar a esa realimentación,
-a conciencia.
+Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 
-- **API de la fase 1: completa.** Campañas, membresías, invitaciones, entidades,
-  enlaces, comentarios, sesiones, personajes y listado de miembros.
-- **Web de la fase 1: construida**, con las dos fichas menores de arriba (B3, resto de C1)
-  abiertas sin bloquear nada. Login/registro, lista de campañas, detalle con pestañas, editor
-  de entidades con panel de enlaces y comentarios (1.12b), su cuerpo de texto en Markdown
-  (1.17b · A1), editores de sesión y personaje (1.13), flujo de invitación de punta a punta
-  (1.14, endurecido en 1.14-fix) —el DM genera y copia un enlace de un solo uso, y
-  `/join/:token` lo acepta cubriendo los tres casos: sin sesión, confirmación con clic
-  explícito antes de aceptar, token inválido o ya usado— y ajustes de campaña y miembros
-  (1.17d): editar nombre/descripción, borrar la campaña, y expulsar o salirse.
-- **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
-  (type-check) + ESLint + Prettier + la suite unitaria, aplicado por `.githooks/pre-commit`.
-  **Los conteos viven solo en [08-pruebas.md](./08-pruebas.md)** y no se repiten aquí.
-  **Playwright (Chromium)** cubre los recorridos de navegador — incluida la
-  invitación con dos sesiones de navegador y la comprobación de que un jugador no ve una
-  entidad `DM_ONLY` sobre el DOM real —, fuera del gancho y en su propio trabajo de CI. Ver
-  [08-pruebas.md](./08-pruebas.md) y [06-pendientes.md](./06-pendientes.md).
-- **Sin desplegar.** No hay VPS asignado a este proyecto; el despliegue está diferido.
-
-**Salida de la fase 1: la regla de fase queda SUSPENDIDA por decisión del autor (2026-09-01).**
-El plan exige jugar una sesión real antes de empezar la fase N+1. El autor decide **no jugar
-hasta tener al menos el tablero 2D (fase 3)**, y posiblemente esperar también a las reglas
-(fase 2). Se sigue construyendo sin esa realimentación, **a conciencia y con su riesgo
-declarado** en [06-pendientes.md](./06-pendientes.md).
-
-**Cuando se juegue, el guion está escrito.** El guion, las carencias que se van a notar y qué
-anotar durante la partida están en [09-primera-partida.md](./09-primera-partida.md). Lo que
-conviene arreglar **antes** de sentarse está priorizado en
-[06-pendientes.md](./06-pendientes.md), sección "Antes de la primera partida".
+<!-- estado:inicio -->
+> **Este bloque lo escribe una máquina (`pnpm update:estado`) y no se edita a mano.**
+> `pnpm verify` falla si no coincide con lo que el script generaría — ver
+> `scripts/update-estado.mjs`.
+>
+> - **Generado sobre el commit** `027d03e` **(rama `main`)** — instantánea de la
+>   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
+>   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
+>   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
+>   necesariamente solo uno — sin que `check:estado` lo detecte.
+> - **Pruebas unitarias:** 237 (shared 20, api 54, web 163). Recuento por declaración, no por
+>   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
+>   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
+<!-- estado:fin -->

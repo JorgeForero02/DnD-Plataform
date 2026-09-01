@@ -8,14 +8,16 @@
   "scripts": {
     "dev:api": "pnpm --filter @dnd/api start:dev",
     "dev:web": "pnpm --filter @dnd/web dev",
-    "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm test",
+    "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm check:docs && pnpm check:estado && pnpm test",
     "test": "pnpm -r test",
     "lint": "eslint .",
     "build": "pnpm -r build",
     "prepare": "node scripts/install-git-hooks.mjs && pnpm --filter @dnd/shared build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:docs": "node scripts/check-docs.mjs ."
+    "check:docs": "node scripts/check-docs.mjs .",
+    "update:estado": "node scripts/update-estado.mjs .",
+    "check:estado": "node scripts/update-estado.mjs . --check"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

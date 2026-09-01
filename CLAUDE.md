@@ -9,7 +9,7 @@ ni 3D: eso son fases posteriores.
 
 | Archivo | Qué contiene |
 |---|---|
-| `docs/00-INDEX.md` | Índice y estado actual. **Empieza aquí.** |
+| `docs/00-INDEX.md` | Mapa de documentos, con el commit/rama/conteo de unitarias actuales en su bloque generado. **Empieza aquí.** |
 | `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
 | `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
 | `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, y la regla de Playwright** |
@@ -46,12 +46,15 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 
 ## Comandos
 
-**Conteos de pruebas: solo en [docs/08-pruebas.md](docs/08-pruebas.md).** No se repiten aquí
-ni en ningún otro documento — es su fuente única declarada.
+**Conteos de pruebas unitarias: los genera `scripts/update-estado.mjs` en el bloque de
+estado de [docs/00-INDEX.md](docs/00-INDEX.md)**, comprobado por `pnpm verify`; no se
+escriben a mano. **Conteos de e2e: solo en [docs/08-pruebas.md](docs/08-pruebas.md)**, que
+enlaza al bloque de arriba en vez de repetir las unitarias. Ninguno de los dos se copia en
+más sitios — es su fuente única declarada.
 
 ```bash
 docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
-pnpm verify                              # build + lint + formato + unitarias (lo exige el pre-commit)
+pnpm verify                              # build + lint + formato + check:docs + check:estado + unitarias (lo exige el pre-commit)
 pnpm --filter @dnd/api test:e2e          # e2e de API contra Postgres real
 pnpm --filter @dnd/web e2e               # Playwright, Chromium
 pnpm dev:api                             # API en :3000

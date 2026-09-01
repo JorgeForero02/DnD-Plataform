@@ -6,6 +6,32 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Antideriva: la regla de documentación pasa a comprobarla una máquina (tarea 1.17e)
+
+**Qué.** `scripts/check-docs.mjs` (ya existía, sin enganchar) entra en `pnpm verify`, y se
+arreglan sus 16 hallazgos: cinco citas al fichero de despliegue ya borrado, con la marca de
+escape puesta donde la mención es legítima —explican que se borró—, sin tocar nada donde es
+un registro fechado del plan de julio (excluido entero, con su motivo, en el propio script);
+varias rutas abreviadas sin `features/` corregidas, y una base nueva (`packages/shared`) para
+que el propio `dist/index.js` de `package.json` resuelva. Se añade
+`scripts/update-estado.mjs`, que regenera un bloque delimitado en `docs/00-INDEX.md` (commit,
+rama, conteo de unitarias por declaración) y falla en modo `--check` si alguien lo edita a
+mano; `00-INDEX.md` deja de llevar estado escrito por una persona junto al mapa de
+documentos. Las unitarias pasan a tener como fuente única ese bloque generado;
+`08-pruebas.md` enlaza en vez de repetirlas. `docs/04-convenciones.md` gana dos reglas: toda
+revisión comprueba cada afirmación de la documentación del cambio contra el código, y un
+fichero no mezcla tipos de documento. CI gana los pasos `check:docs` y `check:estado`, que
+antes solo corrían en el gancho local.
+
+**Por qué.** Siete afirmaciones de la documentación contradijeron el código en una sola
+sesión; lo mecánicamente comprobable ya tenía script pero nada lo obligaba a pasar.
+
+**Cómo revertir.** Un commit propio; revertirlo quita `check:docs`/`check:estado` de
+`verify` y de CI, restaura el estado escrito a mano en `00-INDEX.md` y borra
+`scripts/update-estado.mjs`. No toca `apps/` ni `packages/`.
+
+---
+
 ## 2026-09-01 — Web: ajustes de campaña y miembros en la pantalla (tarea 1.17d · B1 + B2, última de 1.17)
 
 **Qué.** Los hallazgos B1 y B2 de `06-pendientes.md`, cerrados del todo: la API de editar/
@@ -773,7 +799,7 @@ este fallo.
    mensaje ni cambio. Arreglado reutilizando el `error` que ya existía para el camino de
    añadir/publicar, con `mutate(id, { onError: ... })`.
 2. **El selector de destinos de enlace quedaba obsoleto hasta 30 s.** `allEntitiesKey` es una
-   rama distinta de `entitiesKey(campaignId, type)` (`entities/hooks.ts`), y las mutaciones de
+   rama distinta de `entitiesKey(campaignId, type)` (`features/entities/hooks.ts`), y las mutaciones de
    crear/actualizar entidad solo invalidaban la segunda; con `staleTime: 30_000`
    (`lib/queryClient.ts`) tampoco se refrescaba al montar. Un DM que creaba una entidad y
    abría otra para enlazarla no la veía en el desplegable durante medio minuto. Arreglado
@@ -806,7 +832,7 @@ edición de `CampaignDetailPage.tsx`. Ver [06-pendientes.md](./06-pendientes.md)
 
 **Pruebas.** 5 nuevas vistas en rojo antes de su arreglo: borrado con error en `LinksPanel` y
 en `CommentThread` (fix 1), exclusión del desplegable en `LinksPanel` (fix 4, más la aserción
-que faltaba en la prueba semivacía existente), y dos de `entities/hooks.test.tsx` (nuevo
+que faltaba en la prueba semivacía existente), y dos de `features/entities/__tests__/hooks.test.tsx` (nuevo
 fichero) que comprueban `isInvalidated` en `allEntitiesKey` tras crear y tras actualizar (fix
 2). El fix 5 no añade una prueba en rojo propia — espiar un fetcher no cambia el resultado de
 una prueba que ya pasaba por `retry: false` — así que se declara aquí en vez de fingir un rojo
@@ -818,7 +844,7 @@ recorrido nuevo de enlaces y comentarios, que sí ejecuta `LinksPanel` y `Commen
 navegador real.
 
 **Cómo revertir.** `git revert` del commit: devuelve `LinksPanel.tsx`, `CommentThread.tsx`,
-`entities/hooks.ts`, `campana.spec.ts` y los ficheros de prueba tocados a su estado anterior.
+`features/entities/hooks.ts`, `campana.spec.ts` y los ficheros de prueba tocados a su estado anterior.
 No toca `apps/api` ni `packages/shared`.
 
 ---
@@ -895,7 +921,7 @@ ESLint y Prettier y el gancho. Para desconectar solo el gancho sin revertir nada
 ## 2026-08-31 — Se adopta la estructura de documentación numerada
 
 **Qué.** Se crean `docs/00-INDEX.md` y `01`–`08` describiendo lo que el repositorio **es
-hoy**, no lo que debería ser. `docs/DEPLOY.md` se elimina y su contenido pasa, traducido y
+hoy**, no lo que debería ser. `docs/DEPLOY.md` <!-- docs-lint-ignore --> se elimina y su contenido pasa, traducido y
 ampliado con el estado real, a `03-despliegue.md`. `CLAUDE.md` y `AGENTS.md` de la raíz
 quedan como punteros cortos. Se añade el script `pnpm verify`.
 
@@ -909,7 +935,7 @@ como P1, en vez de seguir implícito.
 api 37, web 7) · `pnpm --filter @dnd/api test:e2e` ✅ 19 en 9 suites contra Postgres real ·
 `pnpm lint` ❌ *"eslint no se reconoce"*.
 
-**Cómo revertir.** `git revert` del commit: borra `docs/00`–`08`, restaura `docs/DEPLOY.md`
+**Cómo revertir.** `git revert` del commit: borra `docs/00`–`08`, restaura `docs/DEPLOY.md` <!-- docs-lint-ignore -->
 y quita el script `verify`. No toca código de aplicación ni pruebas.
 
 ---

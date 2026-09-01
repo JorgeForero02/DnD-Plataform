@@ -31,6 +31,8 @@ jobs:
       - run: pnpm --filter @dnd/api exec prisma migrate deploy
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm check:docs
+      - run: pnpm check:estado
       - run: pnpm test
       - run: pnpm --filter @dnd/api test:e2e
 

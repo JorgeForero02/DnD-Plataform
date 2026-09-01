@@ -1,0 +1,54 @@
+# D&D Platform — instrucciones del proyecto
+
+Plataforma para gestionar campañas de D&D: mundo tipo wiki (entidades enlazadas entre sí),
+sesiones y personajes, con **cinco niveles de visibilidad** por objeto. Herramienta propia
+para la mesa del autor primero; SaaS después. **No es** motor de reglas, mapas, tiempo real
+ni 3D: eso son fases posteriores.
+
+## Lee esto antes de tocar código
+
+| Archivo | Qué contiene |
+|---|---|
+| `docs/00-INDEX.md` | Índice y estado actual. **Empieza aquí.** |
+| `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
+| `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
+| `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, y la regla de Playwright** |
+| `docs/01-arquitectura.md` | Monorepo, capas, módulos, dirección de dependencias |
+| `docs/02-entorno.md` | Cómo levantar todo, variables, gotchas de Windows |
+| `docs/05-datos.md` | Esquema, migraciones y semántica de la visibilidad |
+| `docs/superpowers/plans/` | Plan maestro por fases |
+| `.superpowers/sdd/progress.md` | Ledger de ejecución, una línea por tarea |
+
+**Al terminar un cambio relevante, actualiza la documentación en el mismo commit**: estado
+en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es peor que ausente.
+
+## Reglas que no se negocian
+
+- **La autorización se comprueba en el servidor, siempre.** Esconder un botón no es control
+  de acceso. Las mutaciones exigen DM, creador o dueño; los listados filtran por `canView`.
+- **`canView` (`apps/api/src/common/visibility.ts`) es el dueño único de "quién ve qué".**
+  Nadie reimplementa la matriz de visibilidad por su cuenta.
+- **La validación de entrada es Zod desde `@dnd/shared`**, vía `ZodValidationPipe`. Ningún
+  DTO a mano.
+- **La forma de los datos vive una sola vez**, en `packages/shared/src`.
+- **Nada de secretos en el código.** Todo por variable de entorno, con `.env.example` al día.
+- **Ninguna tarea se marca completa sin prueba real en verde** y sin haber mirado la salida:
+  API unitaria + e2e, web RTL + `pnpm build` limpio. Ver `docs/08-pruebas.md`.
+- **Nunca** desactives una prueba, bajes un umbral ni silencies un aviso para que pase el
+  build. Si el control molesta, se arregla el código o se cambia el control como decisión
+  declarada en `docs/04-convenciones.md`.
+- **Evidencia antes que afirmación.** Si algo falla, se dice que falla y se pega la salida.
+- **Un commit por tarea**, mensaje en inglés (Conventional Commits), ledger y memoria al día.
+- **Código en inglés, interfaz y documentación en español.**
+- **Nada se despliega**: no hay VPS asignado. Ver `docs/03-despliegue.md`.
+
+## Comandos
+
+```bash
+docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
+pnpm verify                              # build (type-check) + 54 unitarias
+pnpm --filter @dnd/api test:e2e          # 19 e2e contra Postgres real
+pnpm dev:api                             # API en :3000
+pnpm dev:web                             # web en :5173
+pnpm lint                                # HOY FALLA: ESLint no instalado (P1 en docs/06)
+```

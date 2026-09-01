@@ -6,6 +6,36 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Cierre de sesión: auditoría de seguridad y alineación de la documentación
+
+**Qué.** Se audita la seguridad del sistema a petición del autor y se escribe
+`superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md` con los siete hallazgos, su
+evidencia y el orden de arreglo — será la **tarea 1.17**, en sesión aparte. Y se alinea la
+documentación entera, que había empezado a contradecirse.
+
+**Lo que la auditoría encontró.** Bien cubiertos: inyección SQL (cero SQL crudo), XSS (cero
+`innerHTML`), validación de entrada, argon2, autorización en el servidor y ausencia de secretos
+en el código. Faltan siete cosas, y una es **Crítica**: `JWT_SECRET` tiene un valor por defecto
+escrito en el código, en dos sitios, así que un despliegue al que se le olvide la variable
+firmaría tokens con una cadena **que está en el repositorio público**. Además, 29
+vulnerabilidades en dependencias de producción sin que CI audite, sin límite de peticiones, sin
+cabeceras de seguridad, CORS abierto —y además innecesario, porque nginx hace de proxy—, y **ni
+pantalla de 404 ni red de errores**: una URL inventada da pantalla en blanco.
+
+**La alineación, y por qué hacía falta.** Los conteos de pruebas vivían repetidos en cuatro
+documentos y ya se habían desincronizado: el `00` decía 106, el `04` decía 66 y el `08` decía
+166, cuando eran **167**. Tres cifras distintas y las tres falsas. Ahora
+[08-pruebas.md](./08-pruebas.md) es la **fuente única** y los demás enlazan en vez de copiar.
+
+Es la cuarta vez en la jornada que un documento afirma algo que el código no hace: pasó con el
+401 de `/auth/me` en 1.15, con la lección falsa sobre `useMutation` en 1.14, con el motivo
+"visible" que era un tooltip en 1.16, y ahora con los conteos. **Un dato repetido en cuatro
+sitios es un dato que va a mentir en tres**, y por eso la regla queda escrita donde se aplica.
+
+**Cómo revertir.** Solo añade documentación; `git revert` del commit no toca código ni pruebas.
+
+---
+
 ## 2026-09-01 — Borrar desde la interfaz (tarea 1.16)
 
 **Qué.** La carencia que más se notaba usando la herramienta: desde la web no se podía borrar

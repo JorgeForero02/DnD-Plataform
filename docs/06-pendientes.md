@@ -6,6 +6,29 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Antes de desplegar — seguridad
+
+**Auditoría hecha el 2026-09-01 sobre el commit `4a3fe43`, con todos los hallazgos verificados
+en el código.** El detalle, la evidencia y el orden de arreglo están en
+**[`superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md`](./superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md)**
+— ahí está todo, para no tener que auditar otra vez.
+
+Lo que **sí** está cubierto (comprobado, no supuesto): inyección SQL, XSS, validación de
+entrada, contraseñas con argon2, autorización en el servidor y ausencia de secretos en el
+código.
+
+Lo que falta, y va como **tarea 1.17**:
+
+| | Hallazgo | Gravedad |
+|---|---|---|
+| 1 | **`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios. Si falta la variable en producción, la API firma tokens con una cadena que está en el repositorio público | **Crítico** |
+| 2 | **29 vulnerabilidades en dependencias de producción** (1 crítica, 16 altas) y CI no audita | Alto |
+| 3 | **Sin límite de peticiones**: fuerza bruta en login y en tokens de invitación | Alto |
+| 4 | **Sin cabeceras de seguridad** (`helmet`) | Medio |
+| 5 | **CORS abierto**, y además innecesario: nginx hace de proxy | Medio |
+| 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
+| 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
+
 ## Antes de la primera partida
 
 > **La primera partida queda aplazada por decisión del autor (2026-09-01):** no se juega hasta

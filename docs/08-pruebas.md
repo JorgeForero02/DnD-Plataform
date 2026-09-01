@@ -15,8 +15,13 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-Estado medido el 2026-09-01 (tarea 1.16): **166 unitarias** (shared 10, api 40, web 116) y
-**20 e2e de API** en 9 suites más **6 e2e de navegador** en 2 suites, todas verdes. Las
+> **Este documento es la fuente única de los conteos de pruebas.** Si los necesitas en otro
+> sitio, enlaza aquí en vez de copiarlos: el 2026-09-01 el `00` decía 106, el `04` decía 66 y
+> este decía 166 — tres cifras distintas y las tres falsas. Un dato repetido en cuatro
+> documentos es un dato que va a mentir en tres.
+
+Estado medido el 2026-09-01, tras la tarea 1.16: **167 unitarias** (shared 10, api 40,
+web 117), **20 e2e de API** en 9 suites y **6 e2e de navegador** en 2 suites, todas verdes. Las
 unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
 quedan fuera del gancho pero dentro de CI.
 

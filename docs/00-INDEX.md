@@ -29,6 +29,9 @@ limitado a SRD 5.1 / OGL.
 
 | Documento | Contenido |
 |---|---|
+| `superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md` | **Auditoría de seguridad con evidencia y el orden de arreglo.** Es la tarea 1.17 |
+| `superpowers/specs/2026-09-01-fase-2-alcance-design.md` | **Alcance de la fase 2**: objetos, dados, razas, clases, niveles y la línea de derechos. Manda sobre el plan maestro |
+| `superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md` | **Alcance de la fase 3**: nada de editores de arte; subir, curar e importar |
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión |
 
@@ -38,7 +41,8 @@ limitado a SRD 5.1 / OGL.
 
 ## Estado actual (2026-09-01)
 
-**Fase 0 completa. Fase 1 — construcción COMPLETA, en `main`, todo empujado a GitHub**
+**Fase 0 completa. Fase 1 COMPLETA —construcción y deuda de interfaz—, en `main`, todo empujado
+a GitHub**
 (`JorgeForero02/DnD-Plataform`). Falta usarla en una mesa real antes de dar la fase por
 cerrada (ver la regla de fase abajo).
 
@@ -51,9 +55,9 @@ cerrada (ver la regla de fase abajo).
   casos — sin sesión, confirmación con clic explícito antes de aceptar, token inválido o ya
   usado.
 - **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
-  (type-check) + ESLint + Prettier + 106 unitarias, aplicado por `.githooks/pre-commit`.
-  Medido el 2026-09-01: ✅, más 19 e2e de API contra Postgres real ✅.
-  **Playwright (Chromium)** cubre cinco recorridos de navegador en dos suites — incluida la
+  (type-check) + ESLint + Prettier + la suite unitaria, aplicado por `.githooks/pre-commit`.
+  **Los conteos viven solo en [08-pruebas.md](./08-pruebas.md)** y no se repiten aquí.
+  **Playwright (Chromium)** cubre los recorridos de navegador — incluida la
   invitación con dos sesiones de navegador y la comprobación de que un jugador no ve una
   entidad `DM_ONLY` sobre el DOM real —, fuera del gancho y en su propio trabajo de CI. Ver
   [08-pruebas.md](./08-pruebas.md) y [06-pendientes.md](./06-pendientes.md).

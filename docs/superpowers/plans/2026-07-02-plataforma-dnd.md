@@ -1995,6 +1995,14 @@ model Character {
 
 # PHASE 3 — Maps 2D (scope only — write its own plan when reached)
 
+> **ACOTADA el 2026-09-01.** Decisión sobre editores y contenido visual en
+> **`docs/superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md`**, que **manda sobre
+> esta sección**: **no se construyen editores de arte**. Se suben imágenes, se curan en una
+> biblioteca por campaña y se importan formatos estándar (Tiled para mapas, PNG + atlas para
+> spritesheets). Orden de valor: subir y organizar con visibilidad → reproducir animaciones de
+> un spritesheet → importar Tiled → y solo entonces, si el uso lo pide, un editor pequeño y
+> específico. **El mismo criterio se aplicará al creador de avatares de la fase 5.**
+
 **Scope:** Object storage for uploads (introduce S3-compatible storage + `Asset` model here — self-host **MinIO** as a Coolify resource on the same VPS, or use an external S3 bucket), `Map` + `MapMarker` models, marker→entity links, simple fog toggle, DM vs player layer views. **Also delivers entity image/file attachments and character portraits** (deferred from Phase 1 because they need this storage). First point where file storage is justified.
 
 **Exit criteria:** Used for at least one map during a real session, with player-hidden markers actually hidden.

@@ -1967,6 +1967,17 @@ model Character {
 
 # PHASE 2 — Characters + minimal rules engine (scope only — write its own plan when reached)
 
+> **AMPLIADA el 2026-09-01.** El alcance de abajo se quedaba corto: no mencionaba objetos,
+> inventario, equipar ni tiradas, que el documento fuente sí pide. La decisión acordada con el
+> autor está en **`docs/superpowers/specs/2026-09-01-fase-2-alcance-design.md`** y **manda
+> sobre esta sección**. En resumen: la fase se parte en **2A** (motor + hoja + traza de
+> derivación), **2B** (objetos con datos + inventario + equipar, alimentando el motor con una
+> **lista cerrada de efectos numéricos**), **2C** (tirador de dados con ventaja/desventaja
+> marcada por el DM y condiciones **indefinidas**) y **2D opcional** (statblocks de NPC).
+> Dos principios: **la máquina ejecuta, el DM arbitra**, y **el azar vive fuera del motor**.
+> Fuera de la fase: comparar contra la CA, aplicar daño, iniciativa, duraciones por turnos y
+> tiempo real.
+
 **Scope:**
 - `Character`, `CharacterSheet` models (structured columns + JSONB flexible part).
 - SRD 5.1 data ingested as seed data (races, classes, ability scores) — SRD/OGL only.

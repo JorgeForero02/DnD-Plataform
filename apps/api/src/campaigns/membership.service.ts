@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { CampaignMember, Role } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -40,5 +40,41 @@ export class MembershipService {
       displayName: nameById.get(m.userId) ?? "",
       role: m.role,
     }));
+  }
+
+  // Covers both kicking a member out (targetUserId !== actorId) and leaving on your own
+  // (targetUserId === actorId): the API has a single route for both, see campaigns.controller.ts.
+  async removeMember(
+    campaignId: string,
+    actorId: string,
+    targetUserId: string,
+  ): Promise<{ removed: true }> {
+    await this.requireMember(campaignId, actorId);
+    const target = await this.getMembership(campaignId, targetUserId);
+    if (!target) throw new NotFoundException("Member not found");
+
+    if (targetUserId === actorId) {
+      if (target.role === "DM") {
+        throw new ForbiddenException("The DM cannot leave their own campaign; delete it instead");
+      }
+    } else {
+      await this.requireDM(campaignId, actorId);
+      if (target.role === "DM") {
+        throw new ForbiddenException("A DM cannot be removed");
+      }
+    }
+
+    // The membership goes; deliberately NOT deleted: characters this person owns and
+    // entities they created stay in the campaign (see docs/05-datos.md).
+    await this.prisma.$transaction(async (tx) => {
+      await tx.entityVisibilityGrant.deleteMany({
+        where: { userId: targetUserId, entity: { campaignId } },
+      });
+      await tx.campaignMember.delete({
+        where: { campaignId_userId: { campaignId, userId: targetUserId } },
+      });
+    });
+
+    return { removed: true };
   }
 }

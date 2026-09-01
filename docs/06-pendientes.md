@@ -40,18 +40,24 @@ Detalle y evidencia en
 | | Hallazgo | Dónde falla |
 |---|---|---|
 | A2 | **Las etiquetas se guardan y no se ven en ninguna parte** ni se puede filtrar por ellas: escritura sin lectura | Solo web |
-| B1 | **Una campaña no se puede editar ni borrar**: el controlador no tiene `PATCH` ni `DELETE` | API + web |
-| B2 | **No se puede expulsar a un jugador ni salirse**: la membresía es permanente. Incoherente con un producto cuyo argumento es el control de quién ve qué | API + web |
+| B1 | ~~Una campaña no se puede editar ni borrar~~ — **API cerrada en 1.17a** (`PATCH`/`DELETE` en `campaigns.controller.ts`); **la pantalla sigue sin ofrecerlo, va en 1.17d** | Solo web |
+| B2 | ~~No se puede expulsar a un jugador ni salirse~~ — **API cerrada en 1.17a** (`DELETE /campaigns/:id/members/:userId`); **la pantalla sigue sin ofrecerlo, va en 1.17d** | Solo web |
 | B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida | API + web |
 | C1 | **No hay búsqueda ni filtro en ninguna pantalla** | Solo web |
+
+> **B1 y B2 no se marcan cerrados del todo:** la tarea 1.17a (2026-09-01) entregó los tres
+> endpoints con sus pruebas — ver [05-datos.md](./05-datos.md) y la entrada de 1.17a en
+> [07-historial.md](./07-historial.md) — pero la pantalla no consume ninguno todavía. La
+> columna "Dónde falla" pasa de "API + web" a "Solo web" para reflejarlo.
 
 > **A1 (las fichas sin cuerpo de texto) no está en esta tabla a propósito**: tiene su propia
 > sección, **P0** (abajo), porque va **antes** que el resto de 1.17, no dentro. Las dos
 > secciones lo situaban de forma contradictoria — aquí se deja solo la remisión.
 
-**Por qué ninguna prueba lo encontró:** las 167 unitarias y los 6 recorridos verifican que
-**lo que existe** funciona; ninguna puede gritar por lo que falta. Es el punto ciego
-estructural de una suite, y por eso este contraste **se repite al cerrar cada fase**.
+**Por qué ninguna prueba lo encontró:** la suite entera (recuento actualizado en
+[08-pruebas.md](./08-pruebas.md), la fuente única) verifica que **lo que existe** funciona;
+ninguna puede gritar por lo que falta. Es el punto ciego estructural de una suite, y por eso
+este contraste **se repite al cerrar cada fase**.
 
 ## P0 — Las fichas del mundo no tienen texto
 
@@ -67,8 +73,8 @@ comentarios**, y nada más. Una ficha de tipo `DOCUMENT` **no puede contener un 
 NPC no puede tener su descripción. La wiki es un índice sin páginas.
 
 **Por qué nadie lo vio:** ninguna prueba lo echa en falta, porque **nunca se escribió la prueba
-de que se pueda escribir**. Las 167 unitarias y los 6 recorridos de navegador comprueban con
-detalle que el texto que no existe se oculta a quien no debe verlo.
+de que se pueda escribir**. La suite entera (recuento en [08-pruebas.md](./08-pruebas.md))
+comprueba con detalle que el texto que no existe se oculta a quien no debe verlo.
 
 **Es lo más barato de arreglar y lo que más cambia el producto**: el modelo, el esquema y la
 API ya están. Es trabajo de web —un campo de texto en el editor y su prueba— y va **antes que

@@ -6,6 +6,46 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — API: editar/borrar campaña y expulsar/salir (tarea 1.17a)
+
+**Qué.** Los hallazgos B1 y B2 del contraste de 1.17 (`06-pendientes.md`) decían que una
+campaña no se podía editar ni borrar, y que un miembro no se podía expulsar ni salirse — la
+API no tenía esos endpoints. Esta tarea es solo la mitad de API: **`apps/web` no se toca**,
+así que B1/B2 siguen abiertos hasta 1.17d.
+
+1. **`packages/shared/src/campaign.schema.ts`**: `updateCampaignSchema =
+   createCampaignSchema.partial()`. `description` sigue sin `.nullable()` — vaciarla se hace
+   mandando `""`, la misma trampa ya pagada en 1.13.
+2. **`MembershipService.removeMember(campaignId, actorId, targetUserId)`**
+   (`apps/api/src/campaigns/membership.service.ts`): un único método cubre expulsar y
+   salirse, distinguidos solo por si `targetUserId === actorId`. Un DM no puede salirse de su
+   propia campaña (hay que borrarla) ni ser expulsado. El borrado va en una transacción que
+   limpia también las `EntityVisibilityGrant` de esa persona en la campaña — retirar acceso
+   es el argumento del producto, y una concesión huérfana lo devolvería si reingresara.
+   **Lo que no se borra**: los personajes que posee y las entidades que creó se quedan en la
+   campaña (detalle completo en [05-datos.md](./05-datos.md)).
+3. **`CampaignsService`**: `update` (requiere DM, escribe solo las claves presentes),
+   `remove` (requiere DM, un `delete` de una línea porque el esquema ya cascadea todo) y
+   `removeMember` (delega en `MembershipService`). Los tres emiten su evento
+   (`campaign.updated`, `campaign.deleted`, `campaign.member.removed`).
+4. **`CampaignsController`**: `PATCH /campaigns/:id`, `DELETE /campaigns/:id`,
+   `DELETE /campaigns/:id/members/:userId` — este último sirve para expulsar y para salirse;
+   deliberadamente no hay ruta `/members/me` (en Nest `:userId` capturaría el literal `me`
+   según el orden de declaración).
+
+**Pruebas.** Unitarias nuevas con Prisma simulado en `membership.service.spec.ts` y
+`campaigns.service.spec.ts`, y e2e nuevas contra Postgres real en `campaigns.e2e-spec.ts` y
+`members.e2e-spec.ts` — el recuento vive solo en [08-pruebas.md](./08-pruebas.md), la fuente
+única; no se repite aquí. Incluida la prueba de cascada real que crea una campaña con
+entidad, enlace, comentario, concesión, sesión, personaje e invitación, la borra, y comprueba
+con `prisma.*.count()` que las siete tablas quedan en 0 — es la prueba que justifica que
+`remove` sea un `delete` de una línea.
+
+**Cómo revertir.** Un solo commit; `git revert` quita los tres endpoints, el método de
+`MembershipService`, el esquema `updateCampaignSchema` y las pruebas. No hay migración nueva.
+
+---
+
 ## 2026-09-01 — Cierre de sesión: auditoría de seguridad y alineación de la documentación
 
 **Qué.** Se audita la seguridad del sistema a petición del autor y se escribe

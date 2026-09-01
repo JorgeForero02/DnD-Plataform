@@ -5,3 +5,6 @@ export const createCampaignSchema = z.object({
   description: z.string().max(5000).optional(),
 });
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
+
+export const updateCampaignSchema = createCampaignSchema.partial();
+export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>;

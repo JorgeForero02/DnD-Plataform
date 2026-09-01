@@ -32,6 +32,49 @@ porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGra
 `Comment`. `Session` y `Character` no tienen ninguna tabla colgando de ellos, así que borrar
 uno de los dos no se lleva nada más por delante.
 
+## Editar y borrar campañas; expulsar y salir (tarea 1.17a)
+
+Tres endpoints nuevos en `apps/api/src/campaigns/campaigns.controller.ts`, los tres exigen
+sesión y comprueban el rol **en el servidor** (`MembershipService`, nunca en el cliente):
+
+- **`PATCH /campaigns/:id`** — solo el DM. Body `UpdateCampaignInput`
+  (`packages/shared/src/campaign.schema.ts`, `createCampaignSchema.partial()`). Igual que
+  `entities.service.ts`, el servidor solo escribe la clave que llega
+  (`if (input.name !== undefined) data.name = ...`): mandar `{ description: "" }` vacía la
+  descripción; omitir la clave la deja igual. Emite `campaign.updated`.
+- **`DELETE /campaigns/:id`** — solo el DM. Un único
+  `prisma.campaign.delete({ where: { id } })`: el esquema ya cascadea (arriba) miembros,
+  invitaciones, entidades —con sus enlaces en ambas direcciones, concesiones y
+  comentarios—, sesiones y personajes. No hace falta borrar nada a mano. Emite
+  `campaign.deleted`. Probado con recuentos reales de las siete tablas, no solo por el código
+  de estado — ver [08-pruebas.md](./08-pruebas.md).
+- **`DELETE /campaigns/:id/members/:userId`** — expulsar y salirse son **el mismo endpoint**
+  (`MembershipService.removeMember`, `apps/api/src/campaigns/membership.service.ts`):
+  `userId === quien llama` es salirse; cualquier otro valor es expulsar y exige que quien
+  llama sea DM. No hay ruta `/members/me` a propósito (en Nest, `:userId` capturaría el
+  literal `me` según el orden de declaración).
+  - **Expulsar un DM está prohibido** (`ForbiddenException("A DM cannot be removed")`) — una
+    campaña sin DM queda huérfana.
+  - **El DM no puede salirse de su propia campaña**
+    (`ForbiddenException("The DM cannot leave their own campaign; delete it instead")`): para
+    eso está `DELETE /campaigns/:id`.
+  - Al borrar la membresía, la misma transacción (`prisma.$transaction`) borra también las
+    `EntityVisibilityGrant` de esa persona en las entidades de esa campaña
+    (`where: { userId, entity: { campaignId } }` — `EntityVisibilityGrant` no tiene clave
+    foránea a `User`, así que el filtro anidado por `entity.campaignId` es la única forma de
+    acotar la limpieza a una campaña). Motivo: retirar el acceso es el argumento central del
+    producto; dejar una concesión huérfana volvería a conceder acceso si esa persona
+    reingresara más tarde.
+  - **Lo que NO se borra**: los personajes que esa persona posee (`Character.ownerId`) y las
+    entidades que creó (`Entity.createdById`) se quedan en la campaña, con su dueño/creador
+    original intacto. Es deliberado — el DM conserva el registro de la partida — y significa
+    que, tras una expulsión, `ownerId`/`createdById` puede apuntar a alguien que ya no es
+    miembro. Ningún endpoint hoy trata ese caso como un error.
+  Emite `campaign.member.removed`.
+
+`packages/shared` no gana ningún esquema nuevo para expulsar/salir: la ruta no lleva body, el
+`userId` viaja en la URL.
+
 ## El modelo de visibilidad
 
 Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**

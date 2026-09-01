@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createCampaignSchema } from "./campaign.schema";
+import { createCampaignSchema, updateCampaignSchema } from "./campaign.schema";
 import { createEntitySchema, createEntityLinkSchema } from "./entity.schema";
 import { visibilitySchema } from "./visibility.schema";
 import { createCharacterSchema } from "./character.schema";
@@ -34,5 +34,10 @@ describe("phase1 schemas", () => {
   it("createEntityLink requires toId", () => {
     expect(createEntityLinkSchema.safeParse({ label: "lives in" }).success).toBe(false);
     expect(createEntityLinkSchema.safeParse({ toId: "abc" }).success).toBe(true);
+  });
+  it("updateCampaign accepts an empty object and an empty description (both optional)", () => {
+    expect(updateCampaignSchema.safeParse({}).success).toBe(true);
+    expect(updateCampaignSchema.safeParse({ description: "" }).success).toBe(true);
+    expect(updateCampaignSchema.safeParse({ name: "" }).success).toBe(false); // still min(1) if present
   });
 });

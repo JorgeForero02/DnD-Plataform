@@ -20,10 +20,10 @@
 > este decía 166 — tres cifras distintas y las tres falsas. Un dato repetido en cuatro
 > documentos es un dato que va a mentir en tres.
 
-Estado medido el 2026-09-01, tras la tarea 1.16: **167 unitarias** (shared 10, api 40,
-web 117), **20 e2e de API** en 9 suites y **6 e2e de navegador** en 2 suites, todas verdes. Las
-unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
-quedan fuera del gancho pero dentro de CI.
+Estado medido el 2026-09-01, tras la tarea 1.17a y su ronda de correcciones de revisión:
+**182 unitarias** (shared 11, api 54, web 117), **29 e2e de API** en 9 suites y **6 e2e de
+navegador** en 2 suites, todas verdes. Las unitarias, el lint y el formato los exige
+`pnpm verify` en el gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
 
 ## Qué escribe una tarea de API
 

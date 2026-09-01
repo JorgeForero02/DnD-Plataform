@@ -90,6 +90,14 @@ nombres de las cosas del código, no.
   error), textos en español.
 - **Sin sistema de diseño para el MVP.** Decisión explícita: interfaz funcional y limpia,
   YAGNI. Cuando haga falta, será una tarea con su ficha.
+- **Un filtro o una búsqueda en pantalla es de cliente, nunca control de acceso** (tarea
+  1.17c · A2/C1, `features/entities/filter.ts`). Opera sobre una lista que el servidor **ya**
+  filtró por `canView`; solo puede **quitar de la vista** filas que la persona ya tenía
+  derecho a ver — nunca puede añadir ni decidir qué entra en esa lista. Confundir "el
+  servidor no lo mandó" con "el cliente lo escondió" es el error exacto que `canView` existe
+  para no cometer. Si una tarea futura necesitase filtrar algo que el servidor no manda hoy
+  (p. ej. buscar por texto dentro del cuerpo), la búsqueda tiene que hacerse **en el
+  servidor**, no ampliando este filtro de cliente para que reciba más de lo que debería.
 
 ## Trampa de vitest que ya nos mordió
 

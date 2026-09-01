@@ -20,10 +20,11 @@
 > este decía 166 — tres cifras distintas y las tres falsas. Un dato repetido en cuatro
 > documentos es un dato que va a mentir en tres.
 
-Estado medido el 2026-09-01, tras la tarea 1.17b (A1, el cuerpo Markdown de las fichas):
-**204 unitarias** (shared 20, api 54, web 130), **32 e2e de API** en 9 suites y **7 e2e de
-navegador** en 2 suites, todas verdes. Las unitarias, el lint y el formato los exige
-`pnpm verify` en el gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
+Estado medido el 2026-09-01, tras la tarea 1.17c (A2 + C1, etiquetas visibles y filtro,
+búsqueda por nombre): **218 unitarias** (shared 20, api 54, web 144), **32 e2e de API** en 9
+suites y **8 e2e de navegador** en 2 suites, todas verdes. Las unitarias, el lint y el
+formato los exige `pnpm verify` en el gancho de pre-commit; los e2e quedan fuera del gancho
+pero dentro de CI.
 
 ## Qué escribe una tarea de API
 
@@ -270,13 +271,27 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   después y la suite completa (7 recorridos) volvió a verde. Ver la entrada de 1.17b en
   [07-historial.md](./07-historial.md).
 
+- **Filtrar por etiqueta oculta lo que no coincide, y quitar el filtro lo devuelve** (1.17c ·
+  A2 + C1): `apps/web/e2e/campana.spec.ts` crea dos NPCs con etiquetas distintas ("lich,
+  villano" y "aliado"), comprueba que las etiquetas guardadas ahora se leen en la fila (A2:
+  antes de esta tarea `EntityEditor.tsx` era el único lector de `entity.tags` en toda la
+  web), pulsa el botón de la etiqueta "lich" y comprueba con `toHaveCount(0)` que el NPC sin
+  esa etiqueta desaparece de verdad del DOM — no solo que queda oculto por CSS — y que pulsar
+  "Quitar filtros" devuelve la lista completa. **Comprobación por mutación**: se rompió a
+  mano `filterEntities` (`features/entities/filter.ts`) para que siempre devolviera la lista
+  entera sin filtrar, se corrió la suite de nuevo y el recorrido nuevo falló exactamente en
+  el `toHaveCount(0)`, con los otros siete recorridos intactos en verde — confirma que el
+  recorrido ejercita el filtro real y no pasa en falso. El cambio se restauró y la suite
+  completa (8 recorridos) volvió a verde. Ver la entrada de 1.17c en
+  [07-historial.md](./07-historial.md).
+
 ### Lo que falta cubrir
 
 Nada del catálogo de recorridos de la fase 1 queda pendiente: registro, campaña, entidades
 con visibilidad, enlaces y comentarios en modo edición, sesiones y personajes, cerrar sesión,
-invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real, y ahora
-borrar con su cascada real. Lo que sigue sin cubrir es lo de siempre — accesibilidad,
-responsive, rendimiento — ver la sección de arriba.
+invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real, borrar
+con su cascada real, y ahora filtrar por etiqueta. Lo que sigue sin cubrir es lo de siempre —
+accesibilidad, responsive, rendimiento — ver la sección de arriba.
 
 ## Definición de terminado
 

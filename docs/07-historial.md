@@ -6,6 +6,59 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Web: etiquetas visibles, filtro por etiqueta y búsqueda por nombre (tarea 1.17c · A2 + C1)
+
+**Qué.** Los hallazgos A2 y C1 de `06-pendientes.md`: las etiquetas de una entidad se
+guardaban y no las leía nadie salvo el propio campo de edición (`EntityEditor.tsx`), y no
+había búsqueda ni filtro en ninguna pantalla. `EntityTab` (dentro de
+`CampaignDetailPage.tsx`) ahora pinta las `tags` de cada fila (nada si la ficha no tiene
+ninguna) y monta `EntityFilterBar` (`features/entities/EntityFilterBar.tsx`, nuevo) encima de
+la lista: un `<input type="search">` con etiqueta "Buscar" (subcadena, insensible a
+mayúsculas con `toLocaleLowerCase("es")`) y un botón por cada etiqueta presente en la lista
+ya cargada de esa pestaña (deduplicadas y ordenadas), conmutable con `aria-pressed`. Varias
+etiquetas seleccionadas exigen todas (Y lógico). El filtrado en sí vive en una función pura
+y exportable, `filterEntities` (`features/entities/filter.ts`), separada del componente por
+la misma razón que `body.ts`: para no disparar `react-refresh/only-export-components` con un
+segundo export en un `.tsx`. Con algún filtro activo aparece un contador "N de M" y un botón
+"Quitar filtros"; si el filtro no deja nada, el mensaje es "Ningún elemento coincide con el
+filtro.", distinto del "Sin elementos." que ya existía para una lista genuinamente vacía.
+
+**Es un filtro de cliente, nunca control de acceso**: opera sobre una lista que el servidor
+ya filtró por `canView` y solo puede quitar de la vista filas que la persona ya podía ver.
+Detalle y la razón completa en [04-convenciones.md](./04-convenciones.md).
+
+**Alcance deliberado.** El brief acotaba el trabajo a `EntityTab` para no invadir la zona de
+`overview` que 1.17d edita en paralelo: `SessionsTab` y `CharactersTab` (mismo fichero) se
+quedan sin buscador — C1 se cierra solo para las siete pestañas de entidades, ver
+[06-pendientes.md](./06-pendientes.md).
+
+**Un defecto real, encontrado y arreglado durante la propia tarea, no por el brief**:
+`EntityTab` no se remonta solo porque cambie su prop `type` — es la misma posición del árbol
+con el mismo componente, así que React reutiliza la instancia entre pestañas de entidad. Sin
+`key={tab.type}` en la llamada (`CampaignDetailPage.tsx`), el nuevo estado de filtro (y ya
+antes, sin que nada lo notara, `creating`/`editing`) se colaba de una pestaña a otra: escribir
+"strahd" en NPCs seguía filtrando la lista de Lugares al cambiar de pestaña. Confirmado con
+una comprobación de RTL desechable antes de corregirlo, y cubierto ahora con una prueba
+permanente.
+
+**Pruebas.** Unitarias nuevas de `filterEntities` en `features/entities/__tests__/filter.test.ts`,
+y de pantalla en `pages/__tests__/CampaignDetailPage.test.tsx` (etiquetas pintadas en la fila,
+buscar reduce filas, una etiqueta reduce filas, dos etiquetas exigen las dos, "Quitar
+filtros" restaura la lista, mensaje de cero-resultados correcto, y el filtro no se cuela
+entre pestañas). Un recorrido de Playwright nuevo en `campana.spec.ts`: crea dos NPCs con
+etiquetas distintas, filtra por una, comprueba con `toHaveCount(0)` que el otro desaparece de
+verdad del DOM, y que "Quitar filtros" lo devuelve. **Comprobación por mutación**: se rompió
+a mano `filterEntities` para que siempre devolviera la lista completa sin filtrar: el
+recorrido nuevo falló exactamente en el `toHaveCount(0)` esperado, los otros siete siguieron
+en verde, y se restauró. El recuento vive solo en [08-pruebas.md](./08-pruebas.md), la fuente
+única; no se repite aquí.
+
+**Cómo revertir.** Un commit propio; revertirlo deja `entity.tags` de nuevo sin más lector
+que `EntityEditor.tsx` y ninguna pantalla con búsqueda ni filtro — sin pérdida de datos,
+porque el filtro nunca escribió nada.
+
+---
+
 ## 2026-09-01 — Web: el cuerpo Markdown de las fichas (tarea 1.17b · A1)
 
 **Qué.** El hallazgo P0 de `06-pendientes.md`: `Entity.body` existía en el modelo y en el

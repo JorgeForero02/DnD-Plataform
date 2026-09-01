@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "../features/campaigns/hooks";
@@ -6,6 +6,8 @@ import { useMyRole } from "../features/campaigns/members";
 import { useAuthStore } from "../store/auth.store";
 import { useEntities } from "../features/entities/hooks";
 import { EntityEditor } from "../features/entities/EntityEditor";
+import { EntityFilterBar } from "../features/entities/EntityFilterBar";
+import { filterEntities, type EntityFilterValue } from "../features/entities/filter";
 import type { Entity } from "../features/entities/api";
 import { useSessions } from "../features/sessions/hooks";
 import { SessionEditor } from "../features/sessions/SessionEditor";
@@ -69,6 +71,20 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
   const roleUnresolved = roleLoading || roleError;
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Entity | null>(null);
+  const [filter, setFilter] = useState<EntityFilterValue>({ query: "", tags: [] });
+
+  // Tags present in THIS tab's already-loaded list only (not the whole campaign) — entities
+  // are listed per type, so that's the set that makes sense to filter by here. Deduped and
+  // sorted for a stable, readable button order.
+  const availableTags = useMemo(() => {
+    const seen = new Set<string>();
+    data?.forEach((e) => e.tags.forEach((t) => seen.add(t)));
+    return Array.from(seen).sort((a, b) => a.localeCompare(b, "es"));
+  }, [data]);
+
+  // Client-side only, over a list the server already filtered by canView — see filter.ts.
+  // Never a substitute for that check, only ever a further narrowing of it.
+  const filtered = data ? filterEntities(data, filter) : undefined;
 
   return (
     <div>
@@ -82,11 +98,23 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
       </button>
       {roleError && <p className="mb-3 text-xs text-amber-400">No se pudo comprobar tu permiso.</p>}
       {roleError && <RetryPermissions onRetry={retryRole} />}
+      {data && data.length > 0 && (
+        <EntityFilterBar
+          availableTags={availableTags}
+          value={filter}
+          onChange={setFilter}
+          totalCount={data.length}
+          visibleCount={filtered?.length ?? 0}
+        />
+      )}
       {isLoading && <p className="text-slate-400">Cargando…</p>}
       {isError && <p className="text-red-400">{(error as Error).message}</p>}
       {data && data.length === 0 && <p className="text-slate-400">Sin elementos.</p>}
+      {data && data.length > 0 && filtered && filtered.length === 0 && (
+        <p className="text-slate-400">Ningún elemento coincide con el filtro.</p>
+      )}
       <ul className="space-y-2">
-        {data?.map((e) => {
+        {filtered?.map((e) => {
           // Editing is DM-or-creator (entities.service.ts:requireEditable). While the role is
           // unresolved (still loading, or the members request failed — arreglo 4), `isDM`
           // reads false and `userId` may be stale/undefined, so canEdit would otherwise be
@@ -112,6 +140,25 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
               >
                 <span className="font-semibold">{e.name}</span>
                 <span className="ml-2 text-xs text-slate-500">{e.visibility}</span>
+                {/* A2 (1.17c): tags were written and never read anywhere but the editor's own
+                    field. An entity with none paints nothing — no gap, no dash, no "sin
+                    etiquetas" — see the brief this task followed. Deduped here (not in
+                    parseTags/entity.schema.ts, which allow "lich, lich" through as
+                    ["lich","lich"] — tightening what gets persisted is a different decision,
+                    see docs/06-pendientes.md) so a duplicate tag doesn't paint the same badge
+                    twice or emit a duplicate React key warning. */}
+                {e.tags.length > 0 && (
+                  <span className="ml-2 inline-flex flex-wrap gap-1">
+                    {Array.from(new Set(e.tags)).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </span>
+                )}
                 {reason && <span className="ml-2 text-xs text-amber-400">{reason}</span>}
               </button>
             </li>
@@ -310,7 +357,11 @@ export function CampaignDetailPage() {
             <InvitePanel campaignId={id} />
           </div>
         )}
-        {tab.kind === "entity" && <EntityTab campaignId={id} type={tab.type} />}
+        {/* `key={tab.type}` (1.17c): without it, switching between two entity-type tabs
+            reuses the same EntityTab instance instead of remounting — the new filter/search
+            state (and `creating`/`editing`) would otherwise leak from one type's list into
+            another's. Confirmed with a throwaway RTL check before adding this. */}
+        {tab.kind === "entity" && <EntityTab key={tab.type} campaignId={id} type={tab.type} />}
         {tab.kind === "sessions" && <SessionsTab campaignId={id} />}
         {tab.kind === "characters" && <CharactersTab campaignId={id} />}
       </section>

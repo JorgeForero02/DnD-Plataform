@@ -478,3 +478,154 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     expect(screen.getByRole("button", { name: /Kaelith/ })).toBeInTheDocument();
   });
 });
+
+// Task 1.17c · A2 + C1: tags were written and never read anywhere but EntityEditor.tsx's own
+// field, and there was no search or tag filter on any screen. This exercises EntityFilterBar
+// (features/entities/EntityFilterBar.tsx) wired into EntityTab, and the tags now painted on
+// each row.
+describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiqueta/nombre", () => {
+  const strahd = {
+    id: "e1",
+    campaignId: "c1",
+    type: "NPC" as const,
+    name: "Strahd von Zarovich",
+    tags: ["Barovia", "villano"],
+    visibility: "PLAYERS" as const,
+    createdById: "dm1",
+    createdAt: "x",
+  };
+  const ismark = { ...strahd, id: "e2", name: "Ismark", tags: ["Barovia"] };
+  const zariel = { ...strahd, id: "e3", name: "Zariel", tags: ["Avernus"] };
+  const sinEtiquetas = { ...strahd, id: "e4", name: "NPC vacío", tags: [] };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+    ]);
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: "spooky",
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
+      type === "NPC" ? [strahd, ismark, zariel, sinEtiquetas] : [],
+    );
+  });
+
+  it("pinta las etiquetas en la fila, y una ficha sin etiquetas no pinta nada", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+
+    const strahdRow = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    expect(strahdRow).toHaveTextContent("Barovia");
+    expect(strahdRow).toHaveTextContent("villano");
+
+    const untaggedRow = screen.getByRole("button", { name: /NPC vacío/ });
+    // Exact match, not a substring: a regression that "improves" the empty state with a
+    // placeholder (e.g. a dash after the tags block) would still CONTAIN "NPC vacíoPLAYERS"
+    // and pass a substring check silently. Anchored so the row's whole text is exactly the
+    // name and the visibility, nothing tag-related tacked on — no dash, no placeholder, no
+    // "sin etiquetas" text.
+    expect(untaggedRow).toHaveTextContent(/^NPC vacíoPLAYERS$/);
+  });
+
+  it("escribir en el buscador reduce las filas", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
+
+    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Zariel/ })).not.toBeInTheDocument();
+  });
+
+  it("pulsar una etiqueta reduce las filas", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+
+    const avernusTag = screen.getByRole("button", { name: "Avernus", pressed: false });
+    fireEvent.click(avernusTag);
+
+    expect(screen.getByRole("button", { name: /Zariel/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Strahd von Zarovich/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+  });
+
+  it("dos etiquetas seleccionadas exigen las dos: una ficha con solo una de ellas desaparece", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+
+    fireEvent.click(screen.getByRole("button", { name: "Barovia", pressed: false }));
+    // Both Strahd and Ismark carry "Barovia" alone.
+    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Ismark/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "villano", pressed: false }));
+    // Only Strahd carries both — Ismark, which carries only "Barovia", must disappear.
+    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+    expect(screen.getByText("1 de 4")).toBeInTheDocument();
+  });
+
+  it('"Quitar filtros" restaura la lista completa', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
+    expect(screen.queryByRole("button", { name: /^Zariel/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar filtros" }));
+
+    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Ismark/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Zariel/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /NPC vacío/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Quitar filtros" })).not.toBeInTheDocument();
+  });
+
+  it('con filtro activo y cero resultados sale el mensaje de filtro, no "Sin elementos."', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
+
+    expect(screen.getByText("Ningún elemento coincide con el filtro.")).toBeInTheDocument();
+    expect(screen.queryByText("Sin elementos.")).not.toBeInTheDocument();
+  });
+
+  // EntityTab isn't remounted just because `type` changes (same component, same position in
+  // the tree) — without `key={tab.type}` on the render call in CampaignDetailPage, a search
+  // typed on NPCs would silently keep filtering the Lugares list too, hiding entities that
+  // have nothing to do with what was typed. Confirmed as a real bug with a throwaway RTL
+  // check before adding the `key`; this test is the permanent guard against it coming back.
+  it("el filtro no se cuela de una pestaña de entidad a otra", async () => {
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
+      type === "NPC"
+        ? [strahd, ismark, zariel, sinEtiquetas]
+        : type === "LOCATION"
+          ? [{ ...strahd, id: "e5", type: "LOCATION", name: "Barovia", tags: [] }]
+          : [],
+    );
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
+    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lugares" }));
+    const barovia = await screen.findByRole("button", { name: /Barovia/ });
+    expect(barovia).toBeInTheDocument();
+    expect(screen.getByLabelText("Buscar")).toHaveValue("");
+  });
+});

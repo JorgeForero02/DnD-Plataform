@@ -347,3 +347,53 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await expect(page.getByRole("heading", { name: "Título" })).toBeVisible();
   await expect(page.getByText("## Título")).toHaveCount(0);
 });
+
+// Task 1.17c · A2 + C1: las etiquetas se guardaban y no se leían en ninguna parte, y no había
+// filtro ni búsqueda en ninguna pantalla. De punta a punta contra la API real: crea dos
+// fichas con etiquetas distintas, filtra por una y comprueba que la otra desaparece de
+// verdad del DOM, y que quitar el filtro la devuelve.
+test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtro las devuelve", async ({
+  page,
+}) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("El Refugio del Contrabandista");
+  await page.getByRole("button", { name: "Crear" }).click();
+
+  await page.getByRole("link", { name: "El Refugio del Contrabandista" }).click();
+  await expect(page.getByRole("heading", { name: "El Refugio del Contrabandista" })).toBeVisible();
+
+  await page.getByRole("button", { name: "NPCs" }).click();
+  await expect(page.getByText("Sin elementos.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Acererak");
+  await page.getByLabel("Etiquetas (separadas por coma)").fill("lich, villano");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Vlaakith");
+  await page.getByLabel("Etiquetas (separadas por coma)").fill("aliado");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  const acererak = page.getByRole("button", { name: /Acererak/ });
+  const vlaakith = page.getByRole("button", { name: /Vlaakith/ });
+  await expect(acererak).toBeVisible();
+  await expect(vlaakith).toBeVisible();
+  // Las etiquetas guardadas ahora se leen en la fila: A2 corregido.
+  await expect(acererak).toContainText("lich");
+  await expect(acererak).toContainText("villano");
+
+  // Filtrar por "lich": Vlaakith, que no lleva esa etiqueta, desaparece del DOM.
+  await page.getByRole("button", { name: "lich", exact: true }).click();
+  await expect(vlaakith).toHaveCount(0);
+  await expect(acererak).toBeVisible();
+
+  // Quitar el filtro: la lista completa vuelve.
+  await page.getByRole("button", { name: "Quitar filtros" }).click();
+  await expect(vlaakith).toBeVisible();
+  await expect(acererak).toBeVisible();
+});

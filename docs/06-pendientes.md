@@ -39,20 +39,51 @@ Detalle y evidencia en
 
 | | Hallazgo | Dónde falla |
 |---|---|---|
-| A2 | **Las etiquetas se guardan y no se ven en ninguna parte** ni se puede filtrar por ellas: escritura sin lectura | Solo web |
+| A2 | ~~Las etiquetas se guardan y no se ven en ninguna parte ni se puede filtrar por ellas~~ — **CERRADO en 1.17c**: se pintan en la fila y `EntityFilterBar` filtra por ellas (Y lógico) | — |
 | B1 | ~~Una campaña no se puede editar ni borrar~~ — **API cerrada en 1.17a** (`PATCH`/`DELETE` en `campaigns.controller.ts`); **la pantalla sigue sin ofrecerlo, va en 1.17d** | Solo web |
 | B2 | ~~No se puede expulsar a un jugador ni salirse~~ — **API cerrada en 1.17a** (`DELETE /campaigns/:id/members/:userId`); **la pantalla sigue sin ofrecerlo, va en 1.17d** | Solo web |
 | B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida | API + web |
-| C1 | **No hay búsqueda ni filtro en ninguna pantalla** | Solo web |
+| C1 | ~~No hay búsqueda ni filtro en ninguna pantalla~~ — **cerrado en 1.17c para las siete pestañas de entidades**; **Sesiones y Personajes se quedan sin buscador, ver la nota debajo de la tabla** | Solo web |
 
 > **B1 y B2 no se marcan cerrados del todo:** la tarea 1.17a (2026-09-01) entregó los tres
 > endpoints con sus pruebas — ver [05-datos.md](./05-datos.md) y la entrada de 1.17a en
 > [07-historial.md](./07-historial.md) — pero la pantalla no consume ninguno todavía. La
 > columna "Dónde falla" pasa de "API + web" a "Solo web" para reflejarlo.
 
+> **C1 tampoco se marca cerrado del todo:** la tarea 1.17c (2026-09-01) entregó
+> `EntityFilterBar` (`features/entities/EntityFilterBar.tsx`) — buscar por nombre y filtrar
+> por etiqueta — pero su brief acotaba el trabajo a `EntityTab` a propósito, para no invadir
+> la zona de `overview` que 1.17d edita en paralelo. `SessionsTab` y `CharactersTab` (mismo
+> fichero, `CampaignDetailPage.tsx`) siguen sin buscador ni filtro. Ver la entrada de 1.17c en
+> [07-historial.md](./07-historial.md).
+
 > **A1 (las fichas sin cuerpo de texto) no está en esta tabla a propósito**: tiene su propia
 > sección, **P0** (abajo), porque va **antes** que el resto de 1.17, no dentro. Las dos
 > secciones lo situaban de forma contradictoria — aquí se deja solo la remisión.
+
+**Deuda nueva, aceptada a conciencia al cerrar 1.17c:**
+
+- **Una etiqueta seleccionada puede sobrevivir a su propio botón.** Si se borra la única
+  entidad de la pestaña que llevaba una etiqueta mientras esa etiqueta está seleccionada en
+  el filtro, `availableTags` se recalcula sin ella (ya no hay ninguna entidad que la lleve) y
+  su botón desaparece de `EntityFilterBar`, pero `filter.tags` sigue conteniéndola — la
+  lista queda en "Ningún elemento coincide con el filtro." de forma permanente hasta que se
+  pulse "Quitar filtros". Es recuperable: "Quitar filtros" sigue visible porque se renderiza
+  según `value.tags.length`, no según si esas etiquetas siguen teniendo botón. **Decisión
+  deliberada, no un descuido**: reconciliar las etiquetas seleccionadas contra las disponibles
+  (quitando en silencio la que ya no exista) haría que el contador "N de M" mintiera sobre
+  qué se está filtrando de verdad en ese instante. Si esto molesta en uso real, la tarea es
+  mostrar la etiqueta huérfana en el filtro igualmente (con algún indicio de que ya no existe
+  en la lista), no borrarla del estado sin decirlo.
+- **`entity.schema.ts` no impone unicidad en `tags`**: es `z.array(z.string().min(1).max(40)).max(50)`,
+  y `parseTags` (`EntityEditor.tsx`) solo recorta espacios y descarta vacíos — escribir
+  "lich, lich" persiste `["lich","lich"]` sin que nada lo impida, ni en el cliente ni en el
+  esquema compartido. Los distintivos de la fila (`CampaignDetailPage.tsx`, `EntityTab`)
+  dedupan con `Array.from(new Set(e.tags))` solo en el render, para no pintar el mismo
+  distintivo dos veces ni emitir el aviso de clave de React duplicada; los botones del filtro
+  ya eran seguros porque `availableTags` pasa por un `Set`. **No se tocó `parseTags` ni el
+  esquema**: decidir si una etiqueta duplicada debe rechazarse al guardar es una decisión
+  aparte de esta tarea, no un efecto colateral de pintar la lista.
 
 **Por qué ninguna prueba lo encontró:** la suite entera (recuento actualizado en
 [08-pruebas.md](./08-pruebas.md), la fuente única) verifica que **lo que existe** funciona;
@@ -67,11 +98,11 @@ Markdown (`{ format: "markdown", text }`), con vista previa renderizada por
 `Markdown.tsx` (`react-markdown`). Detalle completo en [05-datos.md](./05-datos.md) y la
 entrada de 1.17b en [07-historial.md](./07-historial.md).
 
-**Queda abierto, deliberadamente fuera de esta tarea:** las tareas 1.19 (sistema de diseño;
-el Markdown renderizado hoy lleva solo clases mínimas, sin plugin de tipografía de Tailwind)
-y A2 (las etiquetas se guardan y no se ven en ninguna parte — sigue sin arreglar, tabla de
-arriba). `Session.notes` sigue siendo una cadena pelada sin formato: no se tocó a propósito,
-ver [05-datos.md](./05-datos.md).
+**Queda abierto, deliberadamente fuera de esta tarea:** la tarea 1.19 (sistema de diseño; el
+Markdown renderizado hoy lleva solo clases mínimas, sin plugin de tipografía de Tailwind).
+A2 (las etiquetas se guardaban y no se veían en ninguna parte) se cerró después, en 1.17c —
+ver la tabla de arriba. `Session.notes` sigue siendo una cadena pelada sin formato: no se
+tocó a propósito, ver [05-datos.md](./05-datos.md).
 
 **Deuda nueva, aceptada a conciencia al cerrar 1.17b:**
 

@@ -16,28 +16,9 @@ import { useCharacters } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
 import type { Character } from "../features/characters/api";
 import { InvitePanel } from "../features/invites/InvitePanel";
-
-// Same wording and same choice everywhere it's used in this file and in InvitePanel.tsx:
-// disabled, not hidden — a hidden button reads as "this doesn't exist"; a disabled one with a
-// reason reads as "this exists, but not for you right now" — and while the role/identity is
-// still unknown (rehydration or the members list in flight or failed — arreglo 4 of 1.15-fix
-// treats a failed request exactly like "still loading", never like "confirmed not a member")
-// this also disables rather than guessing, to avoid offering an action that would fail once
-// the real answer arrives. None of this is enforcement: the server (requireDM/requireEditable,
-// apps/api/src/common) rejects the same request exactly the same way whether or not the
-// button was ever disabled.
-const CHECKING_PERMISSIONS = "Comprobando permisos…";
-
-// Arreglo 4 (1.15-fix): a small, reusable retry affordance for when useMyRole's `isError` is
-// true — the "still don't know" state must have a way out that doesn't depend on
-// refetchOnWindowFocus happening to fire.
-function RetryPermissions({ onRetry }: { onRetry: () => void }) {
-  return (
-    <button type="button" onClick={onRetry} className="ml-2 text-xs text-indigo-400 underline">
-      Reintentar
-    </button>
-  );
-}
+import { CampaignSettings } from "../features/campaigns/CampaignSettings";
+import { MembersPanel } from "../features/campaigns/MembersPanel";
+import { CHECKING_PERMISSIONS, RetryPermissions } from "../features/campaigns/PermissionStatus";
 
 type Tab =
   | { kind: "overview"; label: string }
@@ -351,7 +332,13 @@ export function CampaignDetailPage() {
       <section className="mt-4">
         {tab.kind === "overview" && (
           <div className="space-y-4">
-            <p className="text-slate-300">{campaign?.description || "Sin descripción."}</p>
+            {/* CampaignSettings fetches its own campaign (1.17d) and mounts unconditionally,
+                same as MembersPanel and InvitePanel below — see the comment on
+                CampaignSettings.tsx for why that (and not gating the mount on `campaign` here)
+                is what keeps every consumer of useMyRole subscribing to the members query on
+                the same render. */}
+            <CampaignSettings campaignId={id} />
+            <MembersPanel campaignId={id} />
             {/* InvitePanel gates its own "Generar invitación" button against useMyRole
                 (features/campaigns/members.ts) — see the comment there. */}
             <InvitePanel campaignId={id} />

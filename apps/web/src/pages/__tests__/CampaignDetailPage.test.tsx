@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { CampaignDetailPage } from "../CampaignDetailPage";
+import { CampaignList } from "../../features/campaigns/CampaignList";
 import * as campaignsApi from "../../features/campaigns/api";
 import * as entitiesApi from "../../features/entities/api";
 import * as sessionsApi from "../../features/sessions/api";
@@ -18,6 +19,44 @@ function renderPage() {
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={["/campaigns/c1"]}>
         <Routes>
+          <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+// Same as renderPage, plus a "/" route with a marker heading — 1.17d's delete-campaign and
+// leave-campaign flows navigate to "/" with react-router's useNavigate (never
+// window.location), and this is how a test can tell that actually happened instead of just
+// trusting the mutation resolved.
+function renderPageWithHome() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={["/campaigns/c1"]}>
+        <Routes>
+          <Route path="/" element={<h1>Mis campañas</h1>} />
+          <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+// Same shape as renderPage, but "/" renders the real CampaignList (not a marker heading) and
+// starts there — so campaignsKey gets a real fetch-and-cache before anything navigates into
+// the campaign. staleTime is set to match production (lib/queryClient.ts) instead of the 0
+// vitest would otherwise default to: with staleTime 0, a remount always refetches on its own
+// regardless of any invalidateQueries call, which would make a missing invalidation
+// invisible to this exact kind of test — see CRITICAL 1 in task-4-report.md, "Fix round 1".
+function renderPageWithRealHome() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<CampaignList />} />
           <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
         </Routes>
       </MemoryRouter>
@@ -320,14 +359,19 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
 
     const generateButton = await screen.findByRole("button", { name: "Generar invitación" });
+    // 1.17d mounts CampaignSettings and MembersPanel in the same tab, and both show their own
+    // "Comprobando permisos…"/"Reintentar" while their own useMyRole is unresolved — scoped to
+    // InvitePanel's own container so this stays about InvitePanel specifically, not whichever
+    // of the three happens to settle first.
+    const invitePanel = generateButton.closest("div") as HTMLElement;
     await waitFor(() => expect(generateButton).toBeDisabled());
     // Never the "no permission" message — the legitimate DM must not be told they aren't one.
-    expect(screen.getByText("Comprobando permisos…")).toBeInTheDocument();
+    expect(within(invitePanel).getByText("Comprobando permisos…")).toBeInTheDocument();
     expect(
-      screen.queryByText("Solo el DM de la campaña puede generar invitaciones."),
+      within(invitePanel).queryByText("Solo el DM de la campaña puede generar invitaciones."),
     ).not.toBeInTheDocument();
 
-    const retryButton = screen.getByRole("button", { name: "Reintentar" });
+    const retryButton = within(invitePanel).getByRole("button", { name: "Reintentar" });
     fireEvent.click(retryButton);
 
     await waitFor(() => expect(generateButton).not.toBeDisabled());
@@ -627,5 +671,361 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
     const barovia = await screen.findByRole("button", { name: /Barovia/ });
     expect(barovia).toBeInTheDocument();
     expect(screen.getByLabelText("Buscar")).toHaveValue("");
+  });
+});
+
+// Task 1.17d · B1 + B2: the API existed since 1.17a (PATCH/DELETE campaigns.controller.ts)
+// but no screen consumed it. These tests exercise CampaignSettings.tsx and MembersPanel.tsx,
+// both mounted in the "Resumen" tab of CampaignDetailPage.tsx (the only section this task
+// was allowed to touch).
+describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: "spooky",
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    vi.spyOn(entitiesApi, "fetchEntities").mockResolvedValue([]);
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+  });
+
+  function asPlayer() {
+    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Jugadora" } });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+      { userId: "p1", displayName: "Jugadora", role: "PLAYER" },
+    ]);
+  }
+
+  function asDM() {
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+      { userId: "p1", displayName: "Jugadora", role: "PLAYER" },
+    ]);
+  }
+
+  it("el formulario de ajustes sale deshabilitado con el motivo para un jugador", async () => {
+    asPlayer();
+    renderPage();
+    expect(await screen.findByDisplayValue("Curse of Strahd")).toBeDisabled();
+    expect(screen.getByDisplayValue("spooky")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    expect(screen.getByText("Solo el DM puede editar la campaña.")).toBeInTheDocument();
+    // Fix round 2, IMPORTANT B: DeleteButton only ever exposes disabledReason via title=,
+    // invisible on touch and to a screen reader — CampaignSettings.tsx has to put the
+    // delete-specific wording ("borrar", not "editar") on screen itself for it to satisfy
+    // "disabled, never hidden, with the reason visible" for the delete control specifically.
+    expect(screen.getByText("Solo el DM puede borrar la campaña.")).toBeInTheDocument();
+  });
+
+  it("el formulario de ajustes sale habilitado para el DM", async () => {
+    asDM();
+    renderPage();
+    expect(await screen.findByDisplayValue("Curse of Strahd")).not.toBeDisabled();
+    expect(screen.getByDisplayValue("spooky")).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+    expect(screen.queryByText("Solo el DM puede editar la campaña.")).not.toBeInTheDocument();
+  });
+
+  // Fix round 2, MINOR D: this prose paragraph has already vanished once without a test
+  // catching it (Spec Gap 3 of fix round 1). A paragraph element is not the same node as the
+  // <textarea>'s own initial text content, which jsdom also renders as "spooky" — scoped with
+  // getByRole("paragraph") so this genuinely checks the prose view, not the form control.
+  it("la descripción se ve como texto legible, no solo dentro del campo de edición", async () => {
+    asPlayer();
+    renderPage();
+    await screen.findByDisplayValue("Curse of Strahd");
+    // jsdom also renders the controlled <textarea>'s initial value as its own text node, so
+    // "spooky" matches more than one element — the paragraph is the one this test actually
+    // cares about (Spec Gap 3, fix round 1: it disappeared once without any test noticing).
+    const prose = screen.getAllByText("spooky").find((el) => el.tagName === "P");
+    expect(prose).toBeInTheDocument();
+  });
+
+  it("una campaña sin descripción muestra 'Sin descripción.' en la vista legible", async () => {
+    asPlayer();
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: null,
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    renderPage();
+    await screen.findByDisplayValue("Curse of Strahd");
+    expect(await screen.findByText("Sin descripción.")).toBeInTheDocument();
+  });
+
+  it("guardar manda el PATCH con el nombre y la descripción actuales", async () => {
+    asDM();
+    const spy = vi.spyOn(campaignsApi, "updateCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd (revisada)",
+      description: "spooky",
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    renderPage();
+    const nameInput = await screen.findByDisplayValue("Curse of Strahd");
+    fireEvent.change(nameInput, { target: { value: "Curse of Strahd (revisada)" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith("c1", {
+        name: "Curse of Strahd (revisada)",
+        description: "spooky",
+      }),
+    );
+  });
+
+  it("vaciar la descripción manda una cadena vacía, no omite la clave", async () => {
+    asDM();
+    const spy = vi.spyOn(campaignsApi, "updateCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: "",
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    renderPage();
+    const descInput = await screen.findByDisplayValue("spooky");
+    fireEvent.change(descInput, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith("c1", { name: "Curse of Strahd", description: "" }),
+    );
+  });
+
+  it("un error del servidor al guardar se ve en pantalla", async () => {
+    asDM();
+    vi.spyOn(campaignsApi, "updateCampaign").mockRejectedValue(
+      new Error("El nombre es obligatorio"),
+    );
+    renderPage();
+    await screen.findByDisplayValue("Curse of Strahd");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("El nombre es obligatorio")).toBeInTheDocument();
+  });
+
+  it("borrar la campaña, al confirmar, navega a /", async () => {
+    asDM();
+    vi.spyOn(campaignsApi, "deleteCampaign").mockResolvedValue({ deleted: true });
+    renderPageWithHome();
+    await screen.findByDisplayValue("Curse of Strahd");
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+    expect(await screen.findByRole("heading", { name: "Mis campañas" })).toBeInTheDocument();
+  });
+
+  it("un error del servidor al borrar la campaña se ve en pantalla", async () => {
+    asDM();
+    vi.spyOn(campaignsApi, "deleteCampaign").mockRejectedValue(new Error("No se pudo borrar"));
+    renderPage();
+    await screen.findByDisplayValue("Curse of Strahd");
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+    expect(await screen.findByText("No se pudo borrar")).toBeInTheDocument();
+  });
+
+  it('"Expulsar" se ofrece al DM', async () => {
+    asDM();
+    renderPage();
+    await screen.findByText("Jugadora");
+    expect(await screen.findByRole("button", { name: "Expulsar" })).toBeInTheDocument();
+  });
+
+  it('un jugador no ve "Expulsar", y ve "Salir de la campaña" en su lugar', async () => {
+    asPlayer();
+    renderPage();
+    await screen.findByText("Jugadora");
+    expect(screen.queryByRole("button", { name: "Expulsar" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Salir de la campaña" })).toBeInTheDocument();
+  });
+
+  it('el DM no ve "Salir de la campaña": ve el motivo que da el servidor', async () => {
+    asDM();
+    renderPage();
+    await screen.findByText("Jugadora");
+    expect(screen.queryByRole("button", { name: "Salir de la campaña" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("El DM no puede salir de su propia campaña; bórrala."),
+    ).toBeInTheDocument();
+  });
+
+  it("expulsar manda el DELETE con el userId de la jugadora, no el propio", async () => {
+    asDM();
+    const spy = vi.spyOn(membersApi, "removeMember").mockResolvedValue({ removed: true });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Expulsar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, expulsar" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("c1", "p1"));
+  });
+
+  it("un error del servidor al expulsar se ve en pantalla", async () => {
+    asDM();
+    vi.spyOn(membersApi, "removeMember").mockRejectedValue(new Error("A DM cannot be removed"));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Expulsar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, expulsar" }));
+    expect(await screen.findByText("A DM cannot be removed")).toBeInTheDocument();
+  });
+
+  it("salir de la campaña, al confirmar, navega a /", async () => {
+    asPlayer();
+    vi.spyOn(membersApi, "removeMember").mockResolvedValue({ removed: true });
+    renderPageWithHome();
+    // A disabled "Salir de la campaña" renders first, while the role is still unresolved
+    // (SPEC GAP 2 of the fix round) — wait for the settled, enabled one before clicking, or
+    // the click lands on a button whose onClick a real <button disabled> never fires.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Salir de la campaña" })).not.toBeDisabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Salir de la campaña" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, salir" }));
+    expect(await screen.findByRole("heading", { name: "Mis campañas" })).toBeInTheDocument();
+  });
+
+  // Fix round 1, CRITICAL 1: renderPageWithHome's "/" is a literal <h1> marker with no
+  // useCampaigns query at all, so it could never have caught a missing campaignsKey
+  // invalidation — removing that branch in useRemoveMember left every test in this file
+  // green. renderPageWithRealHome mounts the actual CampaignList (a real useCampaigns query)
+  // with a production-like staleTime, so a campaign that's still within that window only
+  // drops off the list if something actually invalidated campaignsKey — never because a
+  // remount happened to refetch on its own.
+  it("salir actualiza la lista de campañas sin recargar — importa la invalidación de campaignsKey dentro del staleTime", async () => {
+    asPlayer();
+    const fetchCampaigns = vi
+      .spyOn(campaignsApi, "fetchCampaigns")
+      .mockResolvedValueOnce([
+        {
+          id: "c1",
+          name: "Curse of Strahd",
+          description: null,
+          ownerId: "dm1",
+          createdAt: "2026-01-01",
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    vi.spyOn(membersApi, "removeMember").mockResolvedValue({ removed: true });
+
+    renderPageWithRealHome();
+
+    fireEvent.click(await screen.findByRole("link", { name: "Curse of Strahd" }));
+    await screen.findByRole("heading", { name: "Curse of Strahd" });
+
+    // Same race as the test above: wait for the disabled-while-checking button to settle
+    // into its enabled form before clicking it.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Salir de la campaña" })).not.toBeDisabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Salir de la campaña" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, salir" }));
+
+    // Fix round 2, IMPORTANT A: a negative query (queryByRole().not.toBeInTheDocument()) is
+    // true the instant this callback first runs — we're still on /campaigns/c1 at that exact
+    // tick, where a link named "Curse of Strahd" never existed anyway, invalidation or not.
+    // waitFor never actually retries, so the one assertion that matters ended up unguarded.
+    // Wait on the real signal instead: the second fetchCampaigns call, and then the positive
+    // empty-state text CampaignList renders once that response (an empty array) lands.
+    await waitFor(() => expect(fetchCampaigns).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Aún no tienes campañas.")).toBeInTheDocument();
+  });
+
+  // Fix round 1, CRITICAL 1 (same hole, useUpdateCampaign): renaming the campaign must also
+  // reach the list on "/" without a reload, inside the same staleTime window.
+  it("guardar el nombre actualiza la lista de campañas sin recargar — invalidación de campaignsKey en useUpdateCampaign", async () => {
+    asDM();
+    const fetchCampaigns = vi
+      .spyOn(campaignsApi, "fetchCampaigns")
+      .mockResolvedValueOnce([
+        {
+          id: "c1",
+          name: "Curse of Strahd",
+          description: null,
+          ownerId: "dm1",
+          createdAt: "2026-01-01",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "c1",
+          name: "Curse of Strahd (revisada)",
+          description: null,
+          ownerId: "dm1",
+          createdAt: "2026-01-01",
+        },
+      ]);
+    vi.spyOn(campaignsApi, "updateCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd (revisada)",
+      description: "spooky",
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+
+    renderPageWithRealHome();
+
+    fireEvent.click(await screen.findByRole("link", { name: "Curse of Strahd" }));
+    const nameInput = await screen.findByDisplayValue("Curse of Strahd");
+    fireEvent.change(nameInput, { target: { value: "Curse of Strahd (revisada)" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    fireEvent.click(await screen.findByRole("link", { name: /Mis campañas/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Curse of Strahd (revisada)" })).toBeInTheDocument(),
+    );
+    expect(fetchCampaigns).toHaveBeenCalledTimes(2);
+  });
+
+  // Fix round 1, IMPORTANT 4: no test exercised the unknown-role window for either new
+  // component. This is the regression the reviewer named: swap roleUnresolved for !isDM in
+  // CampaignSettings.tsx and a real DM would be told "Solo el DM puede editar/borrar la
+  // campaña." while their own members request is still in flight — that's a false "no
+  // permission" claim, exactly what arreglo 4 (1.15-fix) exists to prevent everywhere else.
+  it("mientras el rol está en vuelo, ambos paneles dicen 'Comprobando permisos…' y nunca afirman que no eres DM", async () => {
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
+
+    renderPage();
+
+    expect((await screen.findAllByText("Comprobando permisos…")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Solo el DM puede editar la campaña.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Solo el DM puede borrar la campaña.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("El DM no puede salir de su propia campaña; bórrala."),
+    ).not.toBeInTheDocument();
+
+    const nameInput = await screen.findByDisplayValue("Curse of Strahd");
+    expect(nameInput).toBeDisabled();
+
+    // The bottom "Salir de la campaña" slot: disabled and visible, never hidden, while the
+    // role — DM or player — isn't known yet (SPEC GAP 2 of the fix round).
+    const leaveButton = screen.getByRole("button", { name: "Salir de la campaña" });
+    expect(leaveButton).toBeDisabled();
+  });
+
+  it("con un fallo al comprobar el rol, ambos paneles siguen diciendo 'Comprobando permisos…', nunca 'no eres DM', y ofrecen Reintentar", async () => {
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockRejectedValue(new Error("network error"));
+
+    renderPage();
+
+    // "Comprobando permisos…" is also true DURING the loading window before the rejection
+    // even lands, so it's not a safe signal that the query has actually settled into its
+    // error state — "Reintentar" only renders once isError is true, so wait on that instead.
+    const retryButtons = await screen.findAllByRole("button", { name: "Reintentar" });
+    expect(retryButtons.length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Comprobando permisos…").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Solo el DM puede editar la campaña.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Solo el DM puede borrar la campaña.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("El DM no puede salir de su propia campaña; bórrala."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salir de la campaña" })).toBeDisabled();
   });
 });

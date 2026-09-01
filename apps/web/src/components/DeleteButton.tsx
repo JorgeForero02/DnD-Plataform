@@ -1,24 +1,28 @@
 import { useState } from "react";
 
-// Shared irreversible-action control for the three editors (entity, session, character).
-// Deliberately not window.confirm: the native dialog is awkward to drive from jsdom and from
-// Playwright, and this is the one action in the app where the test matters more than
-// anywhere else (task 1.16). A plain component state plus two buttons is all that's needed,
-// and it's the same shape everywhere this action appears.
+// Shared irreversible-action control. Started with the three editors (entity, session,
+// character, task 1.16); 1.17d added two more call sites that aren't deletes at all —
+// CampaignSettings.tsx's "Borrar" and MembersPanel.tsx's "Expulsar"/"Salir de la campaña" —
+// via the `label`/`confirmLabel` props below. Deliberately not window.confirm: the native
+// dialog is awkward to drive from jsdom and from Playwright, and this is the kind of action
+// in the app where the test matters more than anywhere else (task 1.16). A plain component
+// state plus two buttons is all that's needed, and it's the same shape everywhere this
+// pattern appears.
 //
-// "disabled" mirrors exactly the same permission the editor itself is already gated on
-// (readOnly/readOnlyReason from CampaignDetailPage.tsx): editing and deleting an entity or a
-// character are both DM-or-creator/owner on the server, and editing and deleting a session are
-// both DM-only, so no separate permission check is computed here — see EntityEditor.tsx,
-// SessionEditor.tsx and CharacterEditor.tsx. Disabled, never hidden, with the reason visible,
-// same choice as the rest of the interface: if this control disappeared, the server would
-// reject the DELETE exactly the same way.
+// "disabled" mirrors exactly the same permission the caller has already worked out for
+// itself (readOnly/readOnlyReason from CampaignDetailPage.tsx for the three editors;
+// roleUnresolved/isDM from CampaignSettings.tsx and MembersPanel.tsx for the other two) — no
+// separate permission check is computed here. Every caller is expected to keep to the same
+// rule this component exists to make easy: disabled, never hidden, with the reason visible —
+// if this control disappeared, the server would reject the request exactly the same way.
 export function DeleteButton({
   message,
   onConfirm,
   pending,
   disabled,
   disabledReason,
+  label = "Borrar",
+  confirmLabel = "Sí, borrar definitivamente",
 }: {
   // Full sentence explaining what disappears — including cascade effects when there are any
   // (schema.prisma's onDelete: Cascade) — shown before the irreversible click, not after.
@@ -27,6 +31,11 @@ export function DeleteButton({
   pending: boolean;
   disabled?: boolean;
   disabledReason?: string;
+  // 1.17d: the campaign's members panel reuses this same confirm-in-place mechanism for
+  // "Expulsar" and "Salir de la campaña" — neither of which deletes anything. Defaults keep
+  // every existing caller (entity/session/character) exactly as it read before.
+  label?: string;
+  confirmLabel?: string;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -56,7 +65,7 @@ export function DeleteButton({
             disabled={pending || disabled}
             className="rounded bg-red-700 px-3 py-1 font-semibold disabled:opacity-50"
           >
-            Sí, borrar definitivamente
+            {confirmLabel}
           </button>
         </div>
       </div>
@@ -71,7 +80,7 @@ export function DeleteButton({
       title={disabled ? disabledReason : undefined}
       className="rounded border border-red-800 px-3 py-1 text-sm text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      Borrar
+      {label}
     </button>
   );
 }

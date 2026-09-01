@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAllEntities } from "../entities/hooks";
 import { useMyRole } from "../campaigns/members";
+import { CHECKING_PERMISSIONS } from "../campaigns/PermissionStatus";
 import { useAuthStore } from "../../store/auth.store";
 import { useCreateLink, useDeleteLink, useLinks } from "./hooks";
 
@@ -34,7 +35,7 @@ export function LinksPanel({
   const roleUnresolved = roleLoading || roleError;
   const canRemoveLinks = !roleUnresolved && (role === "DM" || entityCreatedById === userId);
   const removeReason = roleUnresolved
-    ? "Comprobando permisos…"
+    ? CHECKING_PERMISSIONS
     : "Solo el DM o quien creó esta entidad puede quitar enlaces.";
 
   // An entity linking to itself doesn't mean anything, and re-picking an already-linked

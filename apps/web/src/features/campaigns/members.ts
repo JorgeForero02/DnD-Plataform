@@ -15,6 +15,19 @@ export function fetchMembers(campaignId: string): Promise<Member[]> {
   return apiFetch<Member[]>(`/campaigns/${campaignId}/members`);
 }
 
+// One endpoint for both kicking (userId of someone else) and leaving (userId === your own):
+// see campaigns.controller.ts. The server tells the two apart by comparing userId to the
+// caller's own id, not by a separate route.
+export function removeMember(campaignId: string, userId: string): Promise<{ removed: boolean }> {
+  return apiFetch<{ removed: boolean }>(`/campaigns/${campaignId}/members/${userId}`, {
+    method: "DELETE",
+    // Same trap as deleteCampaign (features/campaigns/api.ts) and the five DELETEs from
+    // task 1.16: apiFetch always sends Content-Type: application/json, and Fastify 500s on
+    // that combined with a genuinely empty body.
+    body: JSON.stringify({}),
+  });
+}
+
 export const membersKey = (campaignId: string) => ["campaigns", campaignId, "members"] as const;
 
 export function useMembers(campaignId: string, options?: { enabled?: boolean }) {

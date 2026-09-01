@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMyRole } from "../campaigns/members";
+import { CHECKING_PERMISSIONS, RetryPermissions } from "../campaigns/PermissionStatus";
 import { useCreateInvite } from "./hooks";
 import { translateInviteError } from "./api";
 
@@ -29,7 +30,7 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
   // role arrives.
   const roleUnresolved = roleLoading || roleError;
   const disabledReason = roleUnresolved
-    ? "Comprobando permisos…"
+    ? CHECKING_PERMISSIONS
     : !isDM
       ? "Solo el DM de la campaña puede generar invitaciones."
       : undefined;
@@ -72,15 +73,7 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
         Generar invitación
       </button>
       {disabledReason && <p className="mt-1 text-xs text-slate-400">{disabledReason}</p>}
-      {roleError && (
-        <button
-          type="button"
-          onClick={retryRole}
-          className="mt-1 text-xs text-indigo-400 underline"
-        >
-          Reintentar
-        </button>
-      )}
+      {roleError && <RetryPermissions onRetry={retryRole} />}
       {create.isError && (
         <p className="mt-2 text-sm text-red-400">
           {translateInviteError((create.error as Error).message)}

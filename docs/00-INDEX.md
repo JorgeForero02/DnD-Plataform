@@ -42,15 +42,17 @@ limitado a SRD 5.1 / OGL.
 
 ## Estado actual (2026-09-01)
 
-**Fase 0 completa. Fase 1 CONSTRUIDA, pero NO cerrada**, en `main`, todo empujado a GitHub
-(`JorgeForero02/DnD-Plataform`). **La tarea 1.17** (contraste sistemático entre lo que el
-sistema permite y lo que la pantalla ofrece) la bloquea, y no es solo "falta jugar". El plan
-(`docs/superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md`) la parte en cuatro
-subtareas, y ya han entrado tres:
+**Fase 0 completa. Fase 1 CONSTRUIDA. Las cuatro subtareas de la tarea 1.17** (contraste
+sistemático entre lo que el sistema permite y lo que la pantalla ofrece) **están hechas**. Las
+tres primeras (1.17a-c) están en `main`, empujadas a GitHub
+(`JorgeForero02/DnD-Plataform`); la cuarta (1.17d) está terminada y verificada, pendiente de
+su propio commit — este párrafo se actualizará cuando lo tenga, sin fingir uno que todavía no
+existe. El plan (`docs/superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md`) la partía en
+cuatro subtareas:
 
 - ✅ **1.17a — API: editar/borrar campaña y expulsar/salir** (commit `cafc434`). `PATCH
   /campaigns/:id`, `DELETE /campaigns/:id`, `DELETE /campaigns/:id/members/:userId`. Solo
-  API: la pantalla todavía no los consume, eso es 1.17d. Detalle en
+  API: la pantalla no los consumía todavía, eso era 1.17d. Detalle en
   [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17a en
   [07-historial.md](./07-historial.md).
 - ✅ **1.17b — A1: el cuerpo de texto de las fichas, en Markdown** (2026-09-01). Las
@@ -63,24 +65,34 @@ subtareas, y ya han entrado tres:
   `SessionsTab` y `CharactersTab` se quedan sin buscador, deliberadamente fuera de esta
   tarea. Detalle en [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17c en
   [07-historial.md](./07-historial.md).
+- ✅ **1.17d — B1 + B2 en la pantalla: ajustes de campaña y miembros** (2026-09-01). La API
+  de 1.17a ya tenía sitio: `CampaignSettings.tsx` y `MembersPanel.tsx` (pestaña "Resumen" de
+  `CampaignDetailPage.tsx`) ofrecen editar/borrar campaña y expulsar/salir, deshabilitado con
+  el motivo visible mientras el rol no se conoce. Detalle en
+  [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17d en
+  [07-historial.md](./07-historial.md).
 
-**Queda, y hasta que entre la fase 1 no cierra:**
-
-- **1.17d — B1 + B2 en la pantalla: ajustes de campaña y miembros.** La API de 1.17a existe
-  pero ninguna pantalla la usa: editar/borrar campaña, expulsar a alguien o salirse siguen
-  sin un sitio donde hacerlo. Ver [06-pendientes.md](./06-pendientes.md).
-
-Aparte de eso, falta usarla en una mesa real (ver la regla de fase abajo, hoy suspendida).
+**Lo que sigue bloqueando el cierre de la fase 1 es sobre todo jugarla.** La tarea 1.17
+cerró B1, B2, A1 y A2 — las incongruencias entre lo que el sistema permite y lo que la
+pantalla ofrece que tenían ficha propia y bloqueaban el cierre. Quedan, sin bloquear nada,
+**B3** (cambiar contraseña y nombre visible — no es de 1.17, va con la tarea 1.18 de
+seguridad) y el resto de **C1** (Sesiones y Personajes siguen sin buscador ni filtro,
+deliberadamente fuera de 1.17c) — ambas con su ficha abierta en
+[06-pendientes.md](./06-pendientes.md), ninguna de las dos reabre la pregunta que 1.17
+contestaba. La regla de fase del plan —jugar antes de la fase N+1— hoy está **suspendida por
+decisión del autor** (ver más abajo): se sigue construyendo sin esperar a esa realimentación,
+a conciencia.
 
 - **API de la fase 1: completa.** Campañas, membresías, invitaciones, entidades,
   enlaces, comentarios, sesiones, personajes y listado de miembros.
-- **Web de la fase 1: construida, con el hueco de 1.17d de arriba.**
-  Login/registro, lista de campañas, detalle con pestañas, editor de entidades con panel de
-  enlaces y comentarios (1.12b), su cuerpo de texto en Markdown (1.17b · A1), editores de
-  sesión y personaje (1.13), y flujo de invitación de punta a punta (1.14, endurecido en
-  1.14-fix): el DM genera y copia un enlace de un solo uso, y `/join/:token` lo acepta
-  cubriendo los tres casos — sin sesión, confirmación con clic explícito antes de aceptar,
-  token inválido o ya usado.
+- **Web de la fase 1: construida**, con las dos fichas menores de arriba (B3, resto de C1)
+  abiertas sin bloquear nada. Login/registro, lista de campañas, detalle con pestañas, editor
+  de entidades con panel de enlaces y comentarios (1.12b), su cuerpo de texto en Markdown
+  (1.17b · A1), editores de sesión y personaje (1.13), flujo de invitación de punta a punta
+  (1.14, endurecido en 1.14-fix) —el DM genera y copia un enlace de un solo uso, y
+  `/join/:token` lo acepta cubriendo los tres casos: sin sesión, confirmación con clic
+  explícito antes de aceptar, token inválido o ya usado— y ajustes de campaña y miembros
+  (1.17d): editar nombre/descripción, borrar la campaña, y expulsar o salirse.
 - **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
   (type-check) + ESLint + Prettier + la suite unitaria, aplicado por `.githooks/pre-commit`.
   **Los conteos viven solo en [08-pruebas.md](./08-pruebas.md)** y no se repiten aquí.

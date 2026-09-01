@@ -28,6 +28,7 @@ Lo que falta, y va como **tarea 1.18**:
 | 5 | **CORS abierto**, y además innecesario: nginx hace de proxy | Medio |
 | 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
 | 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
+| 8 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida — es **B3** del inventario de la tarea 1.17 (tabla de abajo); se resuelve aquí, no en 1.17, porque es superficie de cuenta/autenticación | API + web |
 
 ## Tarea 1.17 — cierre real de la fase 1
 
@@ -35,25 +36,35 @@ Lo que falta, y va como **tarea 1.18**:
 hecho el 2026-09-01 al preguntar el autor si había un cuaderno para escribir la historia.
 Detalle y evidencia en
 **[`superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md`](./superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md)**.
-**Hasta que esto entre, la fase 1 no está cerrada.**
+**Las cuatro subtareas (1.17a-d) están hechas.** Las tres primeras (1.17a-c) están en `main`,
+empujadas a GitHub; la cuarta (1.17d) está terminada y verificada, pendiente de su propio
+commit — mismo estado que declara [00-INDEX.md](./00-INDEX.md), para que los dos ficheros
+digan lo mismo en todo momento y no solo después del commit. Lo único que queda para cerrar
+la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido a propósito, ver
+[00-INDEX.md](./00-INDEX.md).
 
 | | Hallazgo | Dónde falla |
 |---|---|---|
 | A2 | ~~Las etiquetas se guardan y no se ven en ninguna parte ni se puede filtrar por ellas~~ — **CERRADO en 1.17c**: se pintan en la fila y `EntityFilterBar` filtra por ellas (Y lógico) | — |
-| B1 | ~~Una campaña no se puede editar ni borrar~~ — **API cerrada en 1.17a** (`PATCH`/`DELETE` en `campaigns.controller.ts`); **la pantalla sigue sin ofrecerlo, va en 1.17d** | Solo web |
-| B2 | ~~No se puede expulsar a un jugador ni salirse~~ — **API cerrada en 1.17a** (`DELETE /campaigns/:id/members/:userId`); **la pantalla sigue sin ofrecerlo, va en 1.17d** | Solo web |
-| B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida | API + web |
+| B1 | ~~Una campaña no se puede editar ni borrar~~ — **CERRADO en 1.17d**: `CampaignSettings.tsx` (pestaña Resumen) consume el `PATCH`/`DELETE` que 1.17a ya tenía probados | — |
+| B2 | ~~No se puede expulsar a un jugador ni salirse~~ — **CERRADO en 1.17d**: `MembersPanel.tsx` (pestaña Resumen) consume el `DELETE /campaigns/:id/members/:userId` de 1.17a | — |
+| B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida — va con la **tarea 1.18** (seguridad), no con 1.17 | API + web |
 | C1 | ~~No hay búsqueda ni filtro en ninguna pantalla~~ — **cerrado en 1.17c para las siete pestañas de entidades**; **Sesiones y Personajes se quedan sin buscador, ver la nota debajo de la tabla** | Solo web |
 
-> **B1 y B2 no se marcan cerrados del todo:** la tarea 1.17a (2026-09-01) entregó los tres
-> endpoints con sus pruebas — ver [05-datos.md](./05-datos.md) y la entrada de 1.17a en
-> [07-historial.md](./07-historial.md) — pero la pantalla no consume ninguno todavía. La
-> columna "Dónde falla" pasa de "API + web" a "Solo web" para reflejarlo.
+> **B1 y B2, cerrados del todo en 1.17d (2026-09-01).** La tarea 1.17a (mismo día) había
+> entregado los tres endpoints con sus pruebas — ver [05-datos.md](./05-datos.md) y la entrada
+> de 1.17a en [07-historial.md](./07-historial.md) — pero ninguna pantalla los consumía.
+> `CampaignSettings.tsx` y `MembersPanel.tsx` (nuevos, montados en la pestaña "Resumen" de
+> `CampaignDetailPage.tsx`) cierran ese hueco: editar nombre/descripción, borrar la campaña,
+> expulsar a un jugador y salirse, los cuatro con el mismo criterio de honestidad del resto de
+> la pantalla (deshabilitar con el motivo visible, nunca esconder ni afirmar "no tienes
+> permiso" mientras el rol se está comprobando). Detalle completo en la entrada de 1.17d en
+> [07-historial.md](./07-historial.md).
 
 > **C1 tampoco se marca cerrado del todo:** la tarea 1.17c (2026-09-01) entregó
 > `EntityFilterBar` (`features/entities/EntityFilterBar.tsx`) — buscar por nombre y filtrar
 > por etiqueta — pero su brief acotaba el trabajo a `EntityTab` a propósito, para no invadir
-> la zona de `overview` que 1.17d edita en paralelo. `SessionsTab` y `CharactersTab` (mismo
+> la zona de `overview` que 1.17d editaba en paralelo. `SessionsTab` y `CharactersTab` (mismo
 > fichero, `CampaignDetailPage.tsx`) siguen sin buscador ni filtro. Ver la entrada de 1.17c en
 > [07-historial.md](./07-historial.md).
 

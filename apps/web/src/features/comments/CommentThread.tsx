@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMembers, useMyRole } from "../campaigns/members";
+import { CHECKING_PERMISSIONS } from "../campaigns/PermissionStatus";
 import { useAuthStore } from "../../store/auth.store";
 import { useComments, useCreateComment, useDeleteComment } from "./hooks";
 
@@ -56,7 +57,7 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
       <ul className="space-y-1">
         {comments.data?.map((c) => {
           const canDelete = canDeleteComment(c.authorId);
-          const rowReason = roleUnresolved ? "Comprobando permisos…" : deleteReason;
+          const rowReason = roleUnresolved ? CHECKING_PERMISSIONS : deleteReason;
           return (
             <li key={c.id} className="flex items-start justify-between gap-2 text-sm">
               <span>

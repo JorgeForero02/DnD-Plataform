@@ -6,6 +6,33 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Web: ajustes de campaña y miembros en la pantalla (tarea 1.17d · B1 + B2, última de 1.17)
+
+**Qué.** Los hallazgos B1 y B2 de `06-pendientes.md`, cerrados del todo: la API de editar/
+borrar campaña y expulsar/salir (1.17a) existía pero ninguna pantalla la ofrecía.
+`CampaignSettings.tsx` y `MembersPanel.tsx` (nuevos, montados en la pestaña "Resumen" de
+`CampaignDetailPage.tsx`, la única sección que este brief tocó de ese fichero) añaden el
+formulario de editar nombre/descripción, borrar la campaña, expulsar a un jugador y salirse
+—el DM nunca ve "Salir": ve el motivo que da el servidor—, todo deshabilitado con el motivo
+visible en pantalla mientras el rol no se conoce, nunca escondido. Borrar campaña y salir
+navegan a `/` con `useNavigate`, no `window.location`. `DeleteButton.tsx` gana dos props
+opcionales (`label`, `confirmLabel`) para poder decir "Expulsar"/"Salir de la campaña" en vez
+de "Borrar" sin tocar ninguno de sus otros usos. Con esto entran las cuatro subtareas de la
+1.17 — ver [06-pendientes.md](./06-pendientes.md) y [00-INDEX.md](./00-INDEX.md).
+
+**Pruebas.** Unitarias nuevas en `pages/__tests__/CampaignDetailPage.test.tsx` (incluidas,
+en una segunda ronda de revisión, dos que montan la lista de campañas real para probar que
+salir y renombrar actualizan "/" sin recargar dentro del `staleTime` de producción — un
+`reload()` de Playwright no puede probar esa invalidación de caché, así que no basta con el
+recorrido de navegador) y un recorrido nuevo de Playwright en `campana.spec.ts` (dos sesiones
+de navegador), con comprobación por mutación. El recuento vive solo en
+[08-pruebas.md](./08-pruebas.md).
+
+**Cómo revertir.** Un commit propio; revertirlo deja la API de 1.17a sin ninguna pantalla que
+la consuma, como antes de esta tarea — sin pérdida de datos.
+
+---
+
 ## 2026-09-01 — Web: etiquetas visibles, filtro por etiqueta y búsqueda por nombre (tarea 1.17c · A2 + C1)
 
 **Qué.** Los hallazgos A2 y C1 de `06-pendientes.md`: las etiquetas de una entidad se

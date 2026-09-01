@@ -20,11 +20,11 @@
 > este decía 166 — tres cifras distintas y las tres falsas. Un dato repetido en cuatro
 > documentos es un dato que va a mentir en tres.
 
-Estado medido el 2026-09-01, tras la tarea 1.17c (A2 + C1, etiquetas visibles y filtro,
-búsqueda por nombre): **218 unitarias** (shared 20, api 54, web 144), **32 e2e de API** en 9
-suites y **8 e2e de navegador** en 2 suites, todas verdes. Las unitarias, el lint y el
-formato los exige `pnpm verify` en el gancho de pre-commit; los e2e quedan fuera del gancho
-pero dentro de CI.
+Estado medido el 2026-09-01, tras la segunda ronda de correcciones de revisión de la tarea
+1.17d (B1 + B2, ajustes de campaña y miembros en la pantalla): **237 unitarias** (shared 20,
+api 54, web 163), **32 e2e de API** en 9 suites y **9 e2e de navegador** en 2 suites, todas
+verdes. Las unitarias, el lint y el formato los exige `pnpm verify` en el gancho de
+pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
 
 ## Qué escribe una tarea de API
 
@@ -285,12 +285,57 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   completa (8 recorridos) volvió a verde. Ver la entrada de 1.17c en
   [07-historial.md](./07-historial.md).
 
+- **Editar el nombre de una campaña, expulsar a un jugador y borrar una segunda campaña, todo
+  desde "Resumen"** (1.17d · B1 + B2): `apps/web/e2e/campana.spec.ts` añade un noveno
+  recorrido, el segundo con dos sesiones de navegador (mismo patrón que
+  `invitacion.spec.ts`). El DM crea una campaña, cambia su nombre desde `CampaignSettings.tsx`
+  y lo ve cambiado en la cabecera (`PATCH` real); invita a un jugador, que se une y comprueba
+  que la campaña está de verdad en su lista antes de que nadie la toque — si no, la
+  comprobación de después pasaría por construcción. El DM recarga (la lista de miembros que
+  ya tenía cargada queda cacheada 30 s, `staleTime`, `lib/queryClient.ts`, y no se entera sola
+  de que alguien se unió) y expulsa al jugador desde "Miembros"; de paso comprueba que él
+  mismo, como DM, nunca ve el botón "Salir de la campaña" — ve el motivo que da el servidor.
+  El jugador recarga y la campaña ya no está en su lista: el `DELETE` real borró la
+  membresía. Por último el DM crea una **segunda** campaña, la borra desde
+  `CampaignSettings.tsx`, y comprueba que **solo esa** desaparece de "Mis campañas" —la
+  primera, ya renombrada, sigue ahí— la misma exigencia de "no borres lo primero que
+  encuentres" que 1.16 aplicó a las filas de entidad.
+
+  **Comprobación por mutación**: se quitó el `JSON.stringify({})` del `DELETE` en
+  `removeMember` (`features/campaigns/members.ts`): el recorrido **falló** exactamente donde
+  se esperaba (`playerRow` seguía teniendo una fila tras pulsar "Sí, expulsar", con un 500
+  real de Fastify en el log del servidor — "Body cannot be empty when content-type is set to
+  'application/json'"), confirmando que este recorrido ejercita el código nuevo. Se restauró
+  y la suite completa (9 recorridos) volvió a verde.
+
+  **Un segundo intento de mutación, sobre `campaignsKey` en `useRemoveMember`
+  (`features/campaigns/hooks.ts`), demostró que este recorrido concreto no puede probar esa
+  invalidación — no que la invalidación en sí no se pueda probar.** Quitándola, la suite
+  **siguió en verde**: el paso del jugador usa `playerPage.reload()`, y una recarga real de
+  navegador crea un `QueryClient` nuevo, así que siempre pide todo por red sin que ninguna
+  invalidación de caché pueda importar; además esa invalidación corre en el `QueryClient` del
+  **DM**, nunca en el del jugador (son dos procesos de navegador distintos), así que ni
+  siquiera en teoría podría cambiar lo que ve el jugador tras recargar. Restaurada sin contar
+  como comprobación válida de esa línea. **La invalidación sí se prueba**, pero por dos
+  recorridos que no recargan: dos pruebas RTL nuevas en
+  `pages/__tests__/CampaignDetailPage.test.tsx` (misma tarea, misma corrección) montan
+  `CampaignList` de verdad en "/" con un `staleTime` de producción (30 s,
+  `lib/queryClient.ts`) en vez del `0` por defecto de las pruebas — con `staleTime: 0` un
+  remontaje siempre volvería a pedir datos por sí solo y la invalidación sería igual de
+  invisible para la prueba que un `reload()` de Playwright. Una entra a la campaña, sale, y
+  comprueba que la lista pierde la fila sin recargar (`useRemoveMember`); la otra entra,
+  cambia el nombre, vuelve a "/" con el enlace "&larr; Mis campañas" (navegación de cliente,
+  no recarga) y comprueba que la lista ya dice el nombre nuevo (`useUpdateCampaign`). Las dos
+  comprueban además que `fetchCampaigns` se llamó dos veces, no una — la prueba de que hubo
+  una invalidación real, no solo que el dato final coincidía por casualidad.
+
 ### Lo que falta cubrir
 
 Nada del catálogo de recorridos de la fase 1 queda pendiente: registro, campaña, entidades
 con visibilidad, enlaces y comentarios en modo edición, sesiones y personajes, cerrar sesión,
 invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real, borrar
-con su cascada real, y ahora filtrar por etiqueta. Lo que sigue sin cubrir es lo de siempre —
+con su cascada real, filtrar por etiqueta, y ahora editar/expulsar/borrar desde "Resumen". Lo
+que sigue sin cubrir es lo de siempre —
 accesibilidad, responsive, rendimiento — ver la sección de arriba.
 
 ## Definición de terminado

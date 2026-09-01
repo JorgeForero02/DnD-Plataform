@@ -1,13 +1,13 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Browser, type Page } from "@playwright/test";
 
 // Cada corrida crea su propio usuario: las pruebas no dependen de datos sembrados
 // ni se pisan entre si al repetirse contra la misma base de desarrollo.
-function nuevaCuenta() {
+function nuevaCuenta(prefijo = "DM") {
   const marca = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   return {
     email: `e2e-${marca}@example.com`,
     password: "password123",
-    displayName: `DM ${marca}`,
+    displayName: `${prefijo} ${marca}`,
   };
 }
 
@@ -396,4 +396,135 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
   await page.getByRole("button", { name: "Quitar filtros" }).click();
   await expect(vlaakith).toBeVisible();
   await expect(acererak).toBeVisible();
+});
+
+// Task 1.17d · B1 + B2: la API de editar/borrar campaña y expulsar/salir existía desde 1.17a
+// (cafc434) pero ninguna pantalla la ofrecía. De punta a punta contra la API real, con dos
+// sesiones de navegador para la parte de expulsión (mismo patrón que invitacion.spec.ts): el
+// DM edita el nombre de su campaña y lo ve cambiado en la cabecera; invita a un jugador, que
+// entra y ve la campaña en su lista; el DM lo expulsa desde "Miembros", y el jugador —tras
+// recargar— ya no la ve. El DM crea después una segunda campaña y la borra, comprobando que
+// solo esa desaparece de "Mis campañas" y la primera (ya renombrada) sigue ahí — la misma
+// exigencia de "no borres lo primero que encuentres" que 1.16 aplicó a las filas de entidad.
+test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, todo desde Resumen", async ({
+  browser,
+}: {
+  browser: Browser;
+}) => {
+  const dmContext = await browser.newContext();
+  const dmPage = await dmContext.newPage();
+  await registrarse(dmPage);
+
+  await dmPage.getByRole("button", { name: "Nueva campaña" }).click();
+  await dmPage.getByLabel("Nombre").fill("La Ciudadela de los Vientos");
+  await dmPage.getByRole("button", { name: "Crear" }).click();
+  await dmPage.getByRole("link", { name: "La Ciudadela de los Vientos" }).click();
+  await expect(dmPage.getByRole("heading", { name: "La Ciudadela de los Vientos" })).toBeVisible();
+
+  // 1. Editar el nombre desde Resumen (pestaña por defecto) y verlo cambiado en la cabecera:
+  // el PATCH real invalida tanto la campaña como la lista (features/campaigns/hooks.ts).
+  const nameInput = dmPage.getByLabel("Nombre");
+  await expect(nameInput).toHaveValue("La Ciudadela de los Vientos");
+  await nameInput.fill("La Ciudadela de los Vientos Eternos");
+  await dmPage.getByRole("button", { name: "Guardar" }).click();
+  await expect(
+    dmPage.getByRole("heading", { name: "La Ciudadela de los Vientos Eternos" }),
+  ).toBeVisible();
+
+  // 2. Invitar a un jugador (mismo recorrido que invitacion.spec.ts: leer el enlace de la
+  // pantalla, no construirlo a mano) para poder expulsarlo de verdad.
+  await dmPage.getByRole("button", { name: "Generar invitación" }).click();
+  const linkField = dmPage.getByLabel("Enlace de invitación");
+  await expect(linkField).toBeVisible();
+  const inviteUrl = await linkField.inputValue();
+  expect(inviteUrl).toMatch(/\/join\/.+/);
+
+  const playerContext = await browser.newContext();
+  const playerPage = await playerContext.newPage();
+  await playerPage.goto(inviteUrl);
+  await expect(
+    playerPage.getByText("Necesitas iniciar sesión para aceptar esta invitación."),
+  ).toBeVisible();
+  await playerPage.getByRole("link", { name: "Crear cuenta" }).click();
+  const jugador = nuevaCuenta("Jugador");
+  await playerPage.getByLabel("Nombre").fill(jugador.displayName);
+  await playerPage.getByLabel("Email").fill(jugador.email);
+  await playerPage.getByLabel("Password").fill(jugador.password);
+  await playerPage.getByRole("button", { name: "Register" }).click();
+  await expect(
+    playerPage.getByText("Estás a punto de unirte a una campaña con esta invitación."),
+  ).toBeVisible();
+  await playerPage.getByRole("button", { name: "Unirse a la campaña" }).click();
+  await expect(
+    playerPage.getByRole("heading", { name: "La Ciudadela de los Vientos Eternos" }),
+  ).toBeVisible();
+
+  // Antes de expulsarlo: comprueba que la campaña está de verdad en la lista del jugador —
+  // si no, la comprobación de después ("ya no está") pasaría por construcción.
+  await playerPage.goto("/");
+  await expect(
+    playerPage.getByRole("link", { name: "La Ciudadela de los Vientos Eternos" }),
+  ).toBeVisible();
+
+  // 3. El DM expulsa al jugador desde "Miembros". Recarga primero: la lista de miembros del
+  // DM se pidió antes de que el jugador se uniera y queda cacheada 30 s (staleTime,
+  // lib/queryClient.ts) — sin recargar, la fila del jugador aún no existiría en su pantalla.
+  // La fila se identifica por su nombre para no confundirla con la propia fila del DM, que
+  // comparte panel.
+  await dmPage.reload();
+  await expect(
+    dmPage.getByRole("heading", { name: "La Ciudadela de los Vientos Eternos" }),
+  ).toBeVisible();
+  const playerRow = dmPage.getByRole("listitem").filter({ hasText: jugador.displayName });
+  await expect(playerRow).toBeVisible();
+  // El DM nunca ve "Salir de la campaña": ve el motivo que da el servidor.
+  await expect(dmPage.getByRole("button", { name: "Salir de la campaña" })).toHaveCount(0);
+  await expect(
+    dmPage.getByText("El DM no puede salir de su propia campaña; bórrala."),
+  ).toBeVisible();
+  await playerRow.getByRole("button", { name: "Expulsar" }).click();
+  await dmPage.getByRole("button", { name: "Sí, expulsar" }).click();
+  await expect(playerRow).toHaveCount(0);
+
+  // 4. El jugador recarga y la campaña ya no está en su lista: el DELETE real borró la
+  // membresía en el servidor. No es la invalidación de campaignsKey la que hace esto — el
+  // DM expulsó al jugador, así que en el QueryClient del DM userId !== myUserId y esa rama
+  // de useRemoveMember (hooks.ts) nunca corre; y aunque corriera, invalidaría el caché del
+  // DM, nunca el del jugador (dos procesos de navegador distintos). Lo que hace que el
+  // jugador deje de ver la campaña es que reload() descarta todo su caché y vuelve a pedir
+  // /campaigns por red — la misma razón por la que este recorrido, con reload(), nunca pudo
+  // servir de comprobación de esa invalidación (ver docs/08-pruebas.md y la entrada de
+  // 1.17d en 07-historial.md).
+  await playerPage.reload();
+  await expect(playerPage.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(
+    playerPage.getByRole("link", { name: "La Ciudadela de los Vientos Eternos" }),
+  ).toHaveCount(0);
+
+  // 5. El DM crea una segunda campaña, la borra, y solo esa desaparece de su lista — la
+  // primera (ya renombrada) sigue en pie.
+  await dmPage.getByRole("link", { name: /Mis campañas/ }).click();
+  await dmPage.getByRole("button", { name: "Nueva campaña" }).click();
+  await dmPage.getByLabel("Nombre").fill("El Templo Sumergido");
+  await dmPage.getByRole("button", { name: "Crear" }).click();
+  await expect(dmPage.getByRole("link", { name: "El Templo Sumergido" })).toBeVisible();
+
+  await dmPage.getByRole("link", { name: "El Templo Sumergido" }).click();
+  await expect(dmPage.getByRole("heading", { name: "El Templo Sumergido" })).toBeVisible();
+  await dmPage.getByRole("button", { name: "Borrar" }).click();
+  await expect(
+    dmPage.getByText(
+      /Se borrarán también sus fichas, sesiones, personajes, invitaciones y miembros/,
+    ),
+  ).toBeVisible();
+  await dmPage.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
+
+  await expect(dmPage.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(dmPage.getByRole("link", { name: "El Templo Sumergido" })).toHaveCount(0);
+  await expect(
+    dmPage.getByRole("link", { name: "La Ciudadela de los Vientos Eternos" }),
+  ).toBeVisible();
+
+  await dmContext.close();
+  await playerContext.close();
 });

@@ -1,4 +1,4 @@
-import type { CreateEntityInput, EntityType, Visibility } from "@dnd/shared";
+import type { CreateEntityInput, EntityBody, EntityType, Visibility } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 export interface Entity {
@@ -6,6 +6,7 @@ export interface Entity {
   campaignId: string;
   type: EntityType;
   name: string;
+  body?: EntityBody | null;
   tags: string[];
   visibility: Visibility;
   createdById: string;

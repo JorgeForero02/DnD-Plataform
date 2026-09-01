@@ -76,4 +76,49 @@ describe("Entities visibility (e2e)", () => {
     const names = plList.body.map((e: any) => e.name).sort();
     expect(names).toEqual(["Just You NPC", "Players NPC", "Public NPC"]); // NOT "Secret NPC"
   });
+
+  // Task 1.17b · A1: Entity.body, an explicit { format, text } shape (entity.schema.ts),
+  // validated by the same ZodValidationPipe as the rest of the entity input.
+  it("rejects a body whose format is not markdown", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        type: "NPC",
+        name: "Formato inválido",
+        body: { format: "html", text: "<p>hi</p>" },
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a body text over 50000 characters", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        type: "NPC",
+        name: "Texto demasiado largo",
+        body: { format: "markdown", text: "a".repeat(50001) },
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it("saves a well-formed body and returns it identical on GET", async () => {
+    const s = app.getHttpServer();
+    const body = { format: "markdown", text: "## Título\n\nDescripción del NPC" };
+    const created = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "Con cuerpo", body });
+    expect(created.status).toBe(201);
+    expect(created.body.body).toEqual(body);
+
+    const fetched = await request(s)
+      .get(`/campaigns/${campaignId}/entities/${created.body.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.body).toEqual(body);
+  });
 });

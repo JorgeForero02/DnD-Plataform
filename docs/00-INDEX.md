@@ -43,25 +43,41 @@ limitado a SRD 5.1 / OGL.
 ## Estado actual (2026-09-01)
 
 **Fase 0 completa. Fase 1 CONSTRUIDA, pero NO cerrada**, en `main`, todo empujado a GitHub
-(`JorgeForero02/DnD-Plataform`). Dos cosas la bloquean, y ninguna es solo "falta jugar":
+(`JorgeForero02/DnD-Plataform`). **La tarea 1.17** (contraste sistemático entre lo que el
+sistema permite y lo que la pantalla ofrece) la bloquea, y no es solo "falta jugar". El plan
+(`docs/superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md`) la parte en cuatro
+subtareas, y ya han entrado dos:
 
-- **Las fichas del mundo todavía no tienen cuerpo de texto** (`Entity.body` existe en el
-  modelo y la API lo aceptaría; el editor no lo pinta ni lo envía). Detalle en
-  [06-pendientes.md](./06-pendientes.md), sección P0.
-- **La tarea 1.17** (contraste sistemático entre lo que el sistema permite y lo que la
-  pantalla ofrece) **no ha entrado todavía.** Hasta que entre, la fase 1 no está cerrada —ver
+- ✅ **1.17a — API: editar/borrar campaña y expulsar/salir** (commit `cafc434`). `PATCH
+  /campaigns/:id`, `DELETE /campaigns/:id`, `DELETE /campaigns/:id/members/:userId`. Solo
+  API: la pantalla todavía no los consume, eso es 1.17d. Detalle en
+  [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17a en
+  [07-historial.md](./07-historial.md).
+- ✅ **1.17b — A1: el cuerpo de texto de las fichas, en Markdown** (2026-09-01). Las
+  fichas del mundo ya tienen `Entity.body`. Detalle en [05-datos.md](./05-datos.md), sección
+  P0 (cerrada) de [06-pendientes.md](./06-pendientes.md) y la entrada de 1.17b en
+  [07-historial.md](./07-historial.md).
+
+**Quedan, y hasta que entren la fase 1 no cierra:**
+
+- **1.17c — A2 + C1: etiquetas visibles, filtro por etiqueta y búsqueda por nombre.** Hoy las
+  etiquetas se guardan y no se ven en ninguna pantalla, y no hay forma de buscar. Ver
   [06-pendientes.md](./06-pendientes.md).
+- **1.17d — B1 + B2 en la pantalla: ajustes de campaña y miembros.** La API de 1.17a existe
+  pero ninguna pantalla la usa: editar/borrar campaña, expulsar a alguien o salirse siguen
+  sin un sitio donde hacerlo. Ver [06-pendientes.md](./06-pendientes.md).
 
 Aparte de eso, falta usarla en una mesa real (ver la regla de fase abajo, hoy suspendida).
 
 - **API de la fase 1: completa.** Campañas, membresías, invitaciones, entidades,
   enlaces, comentarios, sesiones, personajes y listado de miembros.
-- **Web de la fase 1: construida, con el hueco de arriba.** Login/registro, lista de
-  campañas, detalle con pestañas, editor de entidades con panel de enlaces y comentarios
-  (1.12b) —**pero sin cuerpo de texto, ver P0**—, editores de sesión y personaje (1.13), y
-  flujo de invitación de punta a punta (1.14, endurecido en 1.14-fix): el DM genera y copia
-  un enlace de un solo uso, y `/join/:token` lo acepta cubriendo los tres casos — sin sesión,
-  confirmación con clic explícito antes de aceptar, token inválido o ya usado.
+- **Web de la fase 1: construida, con los huecos de 1.17c/1.17d de arriba.**
+  Login/registro, lista de campañas, detalle con pestañas, editor de entidades con panel de
+  enlaces y comentarios (1.12b), su cuerpo de texto en Markdown (1.17b · A1), editores de
+  sesión y personaje (1.13), y flujo de invitación de punta a punta (1.14, endurecido en
+  1.14-fix): el DM genera y copia un enlace de un solo uso, y `/join/:token` lo acepta
+  cubriendo los tres casos — sin sesión, confirmación con clic explícito antes de aceptar,
+  token inválido o ya usado.
 - **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
   (type-check) + ESLint + Prettier + la suite unitaria, aplicado por `.githooks/pre-commit`.
   **Los conteos viven solo en [08-pruebas.md](./08-pruebas.md)** y no se repiten aquí.

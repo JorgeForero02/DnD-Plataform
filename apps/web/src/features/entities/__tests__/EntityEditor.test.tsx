@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EntityEditor } from "../EntityEditor";
+import { bodyToText } from "../body";
 import * as entitiesApi from "../api";
 import * as membersApi from "../../campaigns/members";
 import * as linksApi from "../../links/api";
@@ -329,5 +330,167 @@ describe("EntityEditor (delete)", () => {
     ).toBeInTheDocument();
     // The editor stays open on failure — nothing was actually deleted.
     expect(screen.getByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+  });
+});
+
+// Task 1.17b · A1: the entity's Markdown body — write it, preview it, read it back.
+describe("EntityEditor (body)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "p1", displayName: "Alice", role: "PLAYER" },
+      { userId: "p2", displayName: "Bob", role: "PLAYER" },
+    ]);
+    vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([]);
+    vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+  });
+
+  it("creating: writing text sends the exact body payload", async () => {
+    const spy = vi.spyOn(entitiesApi, "createEntity").mockResolvedValue({
+      id: "e1",
+      campaignId: "c1",
+      type: "NPC",
+      name: "Strahd",
+      tags: [],
+      visibility: "OWNER_DM",
+      createdById: "u1",
+      createdAt: "x",
+    });
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Strahd" } });
+    fireEvent.change(screen.getByLabelText("Texto"), {
+      target: { value: "## Título\n\nDescripción" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith("c1", {
+      type: "NPC",
+      name: "Strahd",
+      tags: [],
+      visibility: "OWNER_DM",
+      body: { format: "markdown", text: "## Título\n\nDescripción" },
+    });
+  });
+
+  it("creating: an empty text does not send a body key", async () => {
+    const spy = vi.spyOn(entitiesApi, "createEntity").mockResolvedValue({
+      id: "e1",
+      campaignId: "c1",
+      type: "NPC",
+      name: "Strahd",
+      tags: [],
+      visibility: "OWNER_DM",
+      createdById: "u1",
+      createdAt: "x",
+    });
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Strahd" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    const [, input] = spy.mock.calls[0];
+    expect(input).not.toHaveProperty("body");
+  });
+
+  it("editing: clearing the text sends an explicit empty body, not an omitted key", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue({
+      ...editedEntity,
+      body: { format: "markdown", text: "algo viejo" },
+      grants: [],
+    });
+    const spy = vi.spyOn(entitiesApi, "updateEntity").mockResolvedValue(editedEntity);
+    renderEditEditor({ ...editedEntity, body: { format: "markdown", text: "algo viejo" } });
+
+    const textarea = await screen.findByLabelText("Texto");
+    expect(textarea).toHaveValue("algo viejo");
+    fireEvent.change(textarea, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith(
+      "c1",
+      "e1",
+      expect.objectContaining({ body: { format: "markdown", text: "" } }),
+    );
+  });
+
+  it("does not re-seed the body from the detail fetch once the user has started typing", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue({
+      ...editedEntity,
+      body: { format: "markdown", text: "del detalle" },
+      grants: [{ id: "g1", entityId: "e1", userId: "p1" }],
+    });
+    vi.spyOn(entitiesApi, "updateEntity").mockResolvedValue(editedEntity);
+    renderEditEditor({ ...editedEntity, body: { format: "markdown", text: "de la lista" } });
+
+    // Seeded from the list response immediately, not left blank waiting for the detail.
+    expect(screen.getByLabelText("Texto")).toHaveValue("de la lista");
+    fireEvent.change(screen.getByLabelText("Texto"), { target: { value: "escribiendo…" } });
+
+    // Wait for the detail fetch to actually resolve and re-render (signalled by the grants
+    // preload, which does re-seed on the same render) before checking the body did not follow.
+    await waitFor(() => expect(screen.getByLabelText("Alice")).toBeChecked());
+    expect(screen.getByLabelText("Texto")).toHaveValue("escribiendo…");
+  });
+
+  it("preview renders ## as an accessible heading, not literal text", async () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText("Texto"), { target: { value: "## Título" } });
+    fireEvent.click(screen.getByRole("button", { name: "Vista previa" }));
+
+    expect(await screen.findByRole("heading", { name: "Título" })).toBeInTheDocument();
+    expect(screen.queryByText("## Título")).not.toBeInTheDocument();
+  });
+
+  it('readOnly: no textarea exists, only the rendered text, still labelled "Texto"', async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue({
+      ...editedEntity,
+      body: { format: "markdown", text: "## Ficha secreta" },
+      grants: [],
+    });
+    renderEditEditor(
+      { ...editedEntity, body: { format: "markdown", text: "## Ficha secreta" } },
+      { readOnly: true, readOnlyReason: "Solo puedes ver esta entidad." },
+    );
+
+    // No editable control named "Texto" survives in read-only mode. queryByLabelText would
+    // now also match the read-only region below (it's aria-labelledby'd, not just the old
+    // textarea), and a bare queryByRole("textbox") would also match CommentThread's own
+    // comment field (mounted alongside in edit mode) — naming the role narrows it to ours.
+    expect(screen.queryByRole("textbox", { name: "Texto" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Ficha secreta" })).toBeInTheDocument();
+    // Not an <htmlFor> label (there's no control left to point at), but still an accessible
+    // name for the rendered body via aria-labelledby — a player reading a PUBLIC NPC must not
+    // land on an unnamed block of prose between "Etiquetas" and "Visibilidad", and a screen
+    // reader must be able to announce it, not just a sighted user seeing the text.
+    expect(screen.getByRole("region", { name: "Texto" })).toBeInTheDocument();
+  });
+
+  it("bodyToText reads a plain string", () => {
+    expect(bodyToText("texto viejo")).toBe("texto viejo");
+  });
+  it("bodyToText treats null as no body", () => {
+    expect(bodyToText(null)).toBe("");
+  });
+  it("bodyToText treats undefined as no body", () => {
+    expect(bodyToText(undefined)).toBe("");
+  });
+  it("bodyToText treats an unknown shape as no body", () => {
+    expect(bodyToText({ format: "html", text: "<p>x</p>" })).toBe("");
+    expect(bodyToText(42)).toBe("");
+  });
+  it("bodyToText treats a markdown body missing text as no body", () => {
+    expect(bodyToText({ format: "markdown" })).toBe("");
+  });
+  it("bodyToText treats a markdown body with a non-string text as no body", () => {
+    expect(bodyToText({ format: "markdown", text: 123 })).toBe("");
+  });
+  it("bodyToText reads a well-formed markdown body", () => {
+    expect(bodyToText({ format: "markdown", text: "hola" })).toBe("hola");
   });
 });

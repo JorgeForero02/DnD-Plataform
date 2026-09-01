@@ -20,8 +20,8 @@
 > este decía 166 — tres cifras distintas y las tres falsas. Un dato repetido en cuatro
 > documentos es un dato que va a mentir en tres.
 
-Estado medido el 2026-09-01, tras la tarea 1.17a y su ronda de correcciones de revisión:
-**182 unitarias** (shared 11, api 54, web 117), **29 e2e de API** en 9 suites y **6 e2e de
+Estado medido el 2026-09-01, tras la tarea 1.17b (A1, el cuerpo Markdown de las fichas):
+**204 unitarias** (shared 20, api 54, web 130), **32 e2e de API** en 9 suites y **7 e2e de
 navegador** en 2 suites, todas verdes. Las unitarias, el lint y el formato los exige
 `pnpm verify` en el gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
 
@@ -255,6 +255,20 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   `staleTime`. El mismo recorrido borra también un personaje y una sesión (incluida una
   cancelación) contra la API real, en las pantallas donde el botón "Borrar" se pintó por
   primera vez. Ver la entrada de 1.16 en [07-historial.md](./07-historial.md).
+
+- **El cuerpo Markdown de una ficha, de punta a punta contra la API real** (1.17b · A1):
+  `apps/web/e2e/campana.spec.ts` crea un NPC con `## Título\n\nUn herrero enano legendario.`
+  en el campo "Texto", guarda, cierra el editor, lo reabre y comprueba dos cosas — que el
+  `<textarea>` precarga el Markdown crudo exactamente como se escribió (prueba que el `GET`
+  devuelve lo que el `POST` mandó) y que, al pulsar "Vista previa", el `## Título` se pinta
+  como un encabezado accesible (`getByRole("heading", { name: "Título" })`), no como texto
+  literal con almohadillas. **Comprobación por mutación**: se quitó a mano la clave `body`
+  del payload en `EntityEditor.tsx` (`onSubmit`) y se corrió de nuevo — el recorrido falló
+  exactamente donde se esperaba, con el `textarea` volviendo vacío tras reabrir
+  (`Expected: "## Título\n\nUn herrero enano legendario." · Received: ""`), confirmando que
+  el recorrido de verdad ejercita el código nuevo y no pasa en falso. El cambio se restauró
+  después y la suite completa (7 recorridos) volvió a verde. Ver la entrada de 1.17b en
+  [07-historial.md](./07-historial.md).
 
 ### Lo que falta cubrir
 

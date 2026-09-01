@@ -6,6 +6,30 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Web: el cuerpo Markdown de las fichas (tarea 1.17b · A1)
+
+**Qué.** El hallazgo P0 de `06-pendientes.md`: `Entity.body` existía en el modelo y en el
+esquema compartido, pero `EntityEditor.tsx` nunca lo pintaba ni lo mandaba — la wiki era un
+índice sin páginas. Forma explícita en `entity.schema.ts`
+(`entityBodySchema = { format: z.literal("markdown"), text: z.string().max(50000) }`), campo
+"Texto" en el editor con conmutador Editar/Vista previa, y `Markdown.tsx`
+(`react-markdown@9`, sin `remark-gfm` ni `rehype-raw`) como único punto del proyecto que
+renderiza Markdown. Detalle completo de la forma, cómo se vacía y por qué difiere de
+`Session.notes` en [05-datos.md](./05-datos.md).
+
+**Pruebas.** Unitarias de esquema nuevas en `packages/shared/src/entity.schema.test.ts`,
+e2e de API nuevas en `entities.e2e-spec.ts` (formato inválido → 400, texto > 50000 → 400, ida
+y vuelta idéntica), RTL nuevas en `EntityEditor.test.tsx`, y un recorrido de Playwright nuevo
+en `campana.spec.ts`, comprobado por mutación (se quitó a mano la clave `body` del payload, el
+recorrido falló donde tocaba, se restauró y volvió a verde). El recuento vive solo en
+[08-pruebas.md](./08-pruebas.md), la fuente única; no se repite aquí.
+
+**Cómo revertir.** Un commit propio; revertirlo deja `Entity.body` en el modelo pero de nuevo
+sin pantalla que lo escriba o lo lea — ninguna fila tiene datos que perder porque, antes de
+esta tarea, ninguna escritura real llegó a producirse.
+
+---
+
 ## 2026-09-01 — API: editar/borrar campaña y expulsar/salir (tarea 1.17a)
 
 **Qué.** Los hallazgos B1 y B2 del contraste de 1.17 (`06-pendientes.md`) decían que una

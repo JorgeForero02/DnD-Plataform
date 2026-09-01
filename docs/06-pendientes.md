@@ -59,7 +59,38 @@ Detalle y evidencia en
 ninguna puede gritar por lo que falta. Es el punto ciego estructural de una suite, y por eso
 este contraste **se repite al cerrar cada fase**.
 
-## P0 — Las fichas del mundo no tienen texto
+## P0 — Las fichas del mundo no tienen texto — CERRADO en 1.17b (2026-09-01)
+
+**Descubierto el 2026-09-01 respondiendo a una pregunta del autor, no por una prueba.
+Cerrado el mismo día en la tarea 1.17b.** `EntityEditor.tsx` ya pinta y manda `body` como
+Markdown (`{ format: "markdown", text }`), con vista previa renderizada por
+`Markdown.tsx` (`react-markdown`). Detalle completo en [05-datos.md](./05-datos.md) y la
+entrada de 1.17b en [07-historial.md](./07-historial.md).
+
+**Queda abierto, deliberadamente fuera de esta tarea:** las tareas 1.19 (sistema de diseño;
+el Markdown renderizado hoy lleva solo clases mínimas, sin plugin de tipografía de Tailwind)
+y A2 (las etiquetas se guardan y no se ven en ninguna parte — sigue sin arreglar, tabla de
+arriba). `Session.notes` sigue siendo una cadena pelada sin formato: no se tocó a propósito,
+ver [05-datos.md](./05-datos.md).
+
+**Deuda nueva, aceptada a conciencia al cerrar 1.17b:**
+
+- **El `<textarea>` de "Texto" no lleva `maxLength`.** El servidor rechaza un texto de más de
+  50 000 caracteres con un 400 cuyo mensaje de Zod es en inglés y poco legible — deliberado,
+  no un descuido: un `maxLength` en el HTML **trunca en silencio** un texto pegado que se
+  pasa del límite, y eso pierde contenido sin avisar. Un rechazo con mensaje feo pero
+  explícito es preferible a una pérdida silenciosa. Si el mensaje molesta, la tarea es dar
+  formato al error en español, no poner `maxLength`.
+- **Nada de la suite comprueba que `Markdown.tsx` no renderiza HTML crudo.** La garantía hoy
+  descansa en la convención (sin `rehype-raw`, sin `remark-gfm`) y en la revisión de código,
+  no en una prueba roja si alguien la rompe: si una tarea futura añade `rehype-raw` a
+  `Markdown.tsx` para pedir alguna funcionalidad, **ninguna prueba existente se pondría en
+  rojo** — la revisión de esta tarea confirmó por trazado manual (react-markdown +
+  hast-util-to-jsx-runtime) que los nodos HTML crudos se descartan, no una prueba automatizada
+  que lo siga vigilando.
+
+<details>
+<summary>Redacción original del hallazgo (2026-09-01, antes de cerrarse)</summary>
 
 **Descubierto el 2026-09-01 respondiendo a una pregunta del autor, no por una prueba.**
 
@@ -83,6 +114,8 @@ API ya están. Es trabajo de web —un campo de texto en el editor y su prueba�
 Al hacerlo, decidir **si el texto es plano o con formato** (negritas, listas, encabezados). Si
 va a ser con formato, mejor decidirlo ahora que migrar después: `body` es `Json?`, así que el
 modelo aguanta las dos cosas.
+
+</details>
 
 ## Antes de la primera partida
 

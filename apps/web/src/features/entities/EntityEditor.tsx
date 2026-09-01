@@ -5,6 +5,8 @@ import { LinksPanel } from "../links/LinksPanel";
 import { CommentThread } from "../comments/CommentThread";
 import { useComments } from "../comments/hooks";
 import { DeleteButton } from "../../components/DeleteButton";
+import { Markdown } from "./Markdown";
+import { bodyToText } from "./body";
 import { useCreateEntity, useDeleteEntity, useEntity, useUpdateEntity } from "./hooks";
 import type { Entity } from "./api";
 
@@ -49,6 +51,12 @@ export function EntityEditor({
   // (visibility.ts:17), so OWNER_DM and DM_ONLY are indistinguishable from that side. This is
   // only the form's starting value — canView and the schema/Prisma defaults are untouched.
   const [visibility, setVisibility] = useState<Visibility>(entity?.visibility ?? "OWNER_DM");
+  // Unlike specificPlayerIds, body already arrives on the list response (unlike grants,
+  // which need the detail fetch), so it seeds straight from `entity` and is deliberately
+  // NOT part of the `seededFor` re-seeding below: re-seeding from `detail.data` once it
+  // resolves would overwrite whatever the person is mid-typing in the textarea.
+  const [bodyText, setBodyText] = useState(bodyToText(entity?.body));
+  const [bodyView, setBodyView] = useState<"edit" | "preview">("edit");
   const [specificPlayerIds, setSpecificPlayerIds] = useState<string[]>([]);
   // Tracks which entity's grants are already loaded into specificPlayerIds, so the seeding
   // below runs exactly once per fetched entity instead of on every render.
@@ -127,6 +135,14 @@ export function EntityEditor({
       name,
       tags: parseTags(tagsRaw),
       visibility,
+      // Editing always sends the key, even empty, so an emptied textarea actually clears the
+      // body on the server (entities.service.ts only writes a key that's present — trap paid
+      // for in 1.13). Creating only sends it when there's something to save.
+      ...(isEdit
+        ? { body: { format: "markdown" as const, text: bodyText } }
+        : bodyText.trim()
+          ? { body: { format: "markdown" as const, text: bodyText } }
+          : {}),
       ...(visibility === "SPECIFIC_PLAYERS" && detailReady ? { specificPlayerIds } : {}),
     };
     try {
@@ -176,6 +192,59 @@ export function EntityEditor({
               disabled={readOnly}
               className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
             />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              {readOnly ? (
+                // Not a <label>: there is no control here for it to point at (the textarea
+                // is gone below). Still a visible, findable name for the rendered body — both
+                // visually (the <p> itself) and for assistive tech (id + aria-labelledby on
+                // the region below) — so a player reading a PUBLIC NPC doesn't see an
+                // unlabelled block of prose between "Etiquetas" and "Visibilidad".
+                <p id="body-readonly-label" className="block text-sm">
+                  Texto
+                </p>
+              ) : (
+                <label htmlFor="body" className="block text-sm">
+                  Texto
+                </label>
+              )}
+              {!readOnly && (
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    aria-pressed={bodyView === "edit"}
+                    onClick={() => setBodyView("edit")}
+                    className="rounded bg-slate-700 px-2 py-0.5 text-xs aria-pressed:bg-indigo-600"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={bodyView === "preview"}
+                    onClick={() => setBodyView("preview")}
+                    className="rounded bg-slate-700 px-2 py-0.5 text-xs aria-pressed:bg-indigo-600"
+                  >
+                    Vista previa
+                  </button>
+                </div>
+              )}
+            </div>
+            {readOnly ? (
+              <div role="region" aria-labelledby="body-readonly-label">
+                <Markdown text={bodyText} />
+              </div>
+            ) : bodyView === "edit" ? (
+              <textarea
+                id="body"
+                value={bodyText}
+                onChange={(e) => setBodyText(e.target.value)}
+                rows={6}
+                className="w-full rounded bg-slate-700 p-2"
+              />
+            ) : (
+              <Markdown text={bodyText} />
+            )}
           </div>
           <div>
             <label htmlFor="visibility" className="block text-sm">

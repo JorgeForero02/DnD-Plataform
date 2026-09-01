@@ -312,3 +312,38 @@ test("salir cierra la sesion y la ruta protegida deja de abrirse", async ({ page
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Mis campañas" })).toHaveCount(0);
 });
+
+// Task 1.17b · A1: el cuerpo Markdown de una ficha, de punta a punta contra la API real —
+// crear con un ## Título, cerrar, reabrir y ver el título como encabezado accesible en la
+// vista previa, no como texto literal con almohadillas.
+test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabrirla", async ({
+  page,
+}) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("La Forja de la Ira");
+  await page.getByRole("button", { name: "Crear" }).click();
+
+  await page.getByRole("link", { name: "La Forja de la Ira" }).click();
+  await expect(page.getByRole("heading", { name: "La Forja de la Ira" })).toBeVisible();
+
+  await page.getByRole("button", { name: "NPCs" }).click();
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Durgeddin el Negro");
+  await page.getByLabel("Texto").fill("## Título\n\nUn herrero enano legendario.");
+  await page.getByRole("button", { name: "Guardar" }).click();
+
+  // El editor se cierra: el body viajó de verdad en el POST, no solo en el estado local.
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  // Reabrir la ficha: el textarea precarga el markdown crudo desde la respuesta del GET.
+  await page.getByRole("button", { name: /Durgeddin el Negro/ }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await expect(page.getByLabel("Texto")).toHaveValue("## Título\n\nUn herrero enano legendario.");
+
+  // Cambiar a vista previa: el ## se pinta como encabezado accesible, no como texto literal.
+  await page.getByRole("button", { name: "Vista previa" }).click();
+  await expect(page.getByRole("heading", { name: "Título" })).toBeVisible();
+  await expect(page.getByText("## Título")).toHaveCount(0);
+});

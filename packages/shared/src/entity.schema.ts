@@ -1,10 +1,16 @@
 import { z } from "zod";
 import { visibilitySchema, entityTypeSchema } from "./visibility.schema";
 
+export const entityBodySchema = z.object({
+  format: z.literal("markdown"),
+  text: z.string().max(50000),
+});
+export type EntityBody = z.infer<typeof entityBodySchema>;
+
 export const createEntitySchema = z.object({
   type: entityTypeSchema,
   name: z.string().min(1).max(160),
-  body: z.unknown().optional(),
+  body: entityBodySchema.optional(),
   tags: z.array(z.string().min(1).max(40)).max(50).default([]),
   visibility: visibilitySchema.default("DM_ONLY"),
   specificPlayerIds: z.array(z.string()).optional(),

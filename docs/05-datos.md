@@ -75,6 +75,47 @@ sesión y comprueban el rol **en el servidor** (`MembershipService`, nunca en el
 `packages/shared` no gana ningún esquema nuevo para expulsar/salir: la ruta no lleva body, el
 `userId` viaja en la URL.
 
+## El cuerpo de texto de una ficha (`Entity.body`, tarea 1.17b · A1)
+
+`Entity.body` (`schema.prisma:80`, `Json?`) ya existía, pero hasta esta tarea la pantalla
+nunca lo pintaba ni lo mandaba: una ficha era nombre + etiquetas + visibilidad + enlaces +
+comentarios, y nada más. Ahora tiene una forma explícita en `packages/shared/src/entity.schema.ts`:
+
+```ts
+export const entityBodySchema = z.object({
+  format: z.literal("markdown"),
+  text: z.string().max(50000),
+});
+```
+
+**Se guarda como Markdown**, decisión ya tomada por el autor. El objeto `{format, text}` —y
+no una cadena pelada— deja el formato escrito en el propio dato: el día que se admita otro
+formato (o ninguno), `format` ya distingue de qué se trata sin adivinar por la forma del
+contenido.
+
+- **Vaciar el cuerpo se manda como `{ format: "markdown", text: "" }`**, nunca `null`: un
+  `Json?` de Prisma necesita `Prisma.DbNull` para anularse de verdad, y no compensa el
+  esfuerzo por un campo que ya sabe representar "vacío" con su propio `text`. El lector
+  tolerante de la web (`bodyToText`, `EntityEditor.tsx`) trata un `text` vacío igual que un
+  `body` ausente.
+- **Como con cualquier `PATCH` de esta API, la clave solo se escribe si llega**
+  (`entities.service.ts`: `if (rest.body !== undefined) data.body = rest.body as object`) —
+  la misma trampa que 1.13 pagó con `Session.notes`. Por eso el editor manda `body` siempre
+  que está editando, incluso vacío: omitir la clave para "vaciar" guardaría con éxito sin
+  cambiar nada.
+- **Por qué difiere de `Session.notes`** (`schema.prisma:126`, también `Json?`): `notes` no
+  tiene forma propia en el esquema (`session.schema.ts`: `notes: z.unknown().optional()`) y
+  la web lo guarda como una cadena pelada dentro de la columna JSON — sin `format`, porque
+  nunca se decidió que las notas de sesión llevaran texto enriquecido. `Entity.body` sí lo
+  decide, así que necesita el campo extra. **Esta tarea no toca `Session.notes`.**
+- Hoy ninguna fila tenía `body` — la pantalla nunca lo escribió — así que no hubo datos
+  heredados que migrar al introducir la forma explícita.
+
+**Render**: `apps/web/src/features/entities/Markdown.tsx` es el único punto del proyecto que
+renderiza Markdown (`react-markdown` v9, sin `remark-gfm` ni `rehype-raw` — CommonMark basta y
+cada plugin es superficie nueva). No usa `innerHTML` ni `dangerouslySetInnerHTML`: esa es la
+razón de elegir esa biblioteca, no una casualidad.
+
 ## El modelo de visibilidad
 
 Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**

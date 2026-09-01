@@ -1,5 +1,10 @@
 # La primera partida
 
+> **Aplazado por decisión del autor (2026-09-01):** no se juega hasta tener al menos el
+> tablero 2D (fase 3), quizá tampoco antes de las reglas (fase 2). Este documento queda listo
+> para cuando toque; el riesgo de construir sin realimentación real está declarado en
+> [06-pendientes.md](./06-pendientes.md).
+
 **Este documento es la puerta de salida de la fase 1.** El plan tiene una regla dura: no se
 empieza la fase N+1 hasta usar la N de verdad. La fase 1 está construida y verificada, pero
 "verificada" y "usada" no son lo mismo — las cuatro revisiones de la fase encontraron fallos

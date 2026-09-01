@@ -8,8 +8,21 @@ un efecto colateral de la siguiente funcionalidad.**
 
 ## Antes de la primera partida
 
-La fase 1 está construida y verificada, pero **jugar es la puerta de salida** (ver
-[09-primera-partida.md](./09-primera-partida.md)). Estas tres son las que se notan en la
+> **La primera partida queda aplazada por decisión del autor (2026-09-01):** no se juega hasta
+> tener al menos el tablero 2D de la fase 3, y quizá tampoco antes de las reglas de la fase 2.
+> **Eso suspende la regla de fase del plan**, que exigía usar una fase antes de empezar la
+> siguiente. Las tres carencias de abajo dejan de bloquear nada inmediato, pero siguen abiertas
+> y las dos primeras entran igual como tareas 1.15 y 1.16.
+>
+> **El riesgo que se acepta, escrito para que nadie lo descubra tarde:** los planes de las
+> fases 2 a 5 se escribirán **sin realimentación de uso real**, que es exactamente lo que la
+> regla quería evitar. Para la fase 2 es tolerable —las reglas de 5e están escritas y no
+> dependen de esta mesa—; **para la fase 3 no**, porque un tablero se diseña alrededor de cómo
+> juega la gente. Si se llega a la 3 sin haber jugado, su plan debería empezar por una sesión
+> de prueba aunque sea con lo que haya.
+
+La fase 1 está construida y verificada (ver
+[09-primera-partida.md](./09-primera-partida.md) para el guion de esa sesión cuando llegue). Estas tres son las que se notan en la
 mesa, en orden de cuánto estorban:
 
 **1 · No se puede borrar casi nada desde la interfaz.** Solo enlaces y comentarios tienen

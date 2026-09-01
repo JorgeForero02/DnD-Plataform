@@ -59,10 +59,13 @@ cerrada (ver la regla de fase abajo).
   [08-pruebas.md](./08-pruebas.md) y [06-pendientes.md](./06-pendientes.md).
 - **Sin desplegar.** No hay VPS asignado a este proyecto; el despliegue está diferido.
 
-**Salida de la fase 1:** jugar una sesión real en la mesa. Regla de fase: no se empieza la
-fase N+1 hasta que la fase N se haya usado de verdad.
+**Salida de la fase 1: la regla de fase queda SUSPENDIDA por decisión del autor (2026-09-01).**
+El plan exige jugar una sesión real antes de empezar la fase N+1. El autor decide **no jugar
+hasta tener al menos el tablero 2D (fase 3)**, y posiblemente esperar también a las reglas
+(fase 2). Se sigue construyendo sin esa realimentación, **a conciencia y con su riesgo
+declarado** en [06-pendientes.md](./06-pendientes.md).
 
-**Lo siguiente no es código: es jugar.** El guion, las carencias que se van a notar y qué
+**Cuando se juegue, el guion está escrito.** El guion, las carencias que se van a notar y qué
 anotar durante la partida están en [09-primera-partida.md](./09-primera-partida.md). Lo que
 conviene arreglar **antes** de sentarse está priorizado en
 [06-pendientes.md](./06-pendientes.md), sección "Antes de la primera partida".

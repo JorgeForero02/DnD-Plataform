@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EntityEditor } from "../EntityEditor";
 import * as entitiesApi from "../api";
 import * as membersApi from "../../campaigns/members";
+import * as linksApi from "../../links/api";
+import * as commentsApi from "../../comments/api";
 import type { Entity } from "../api";
 
 function renderEditor() {
@@ -94,6 +96,13 @@ describe("EntityEditor (edit)", () => {
       { userId: "p1", displayName: "Alice", role: "PLAYER" },
       { userId: "p2", displayName: "Bob", role: "PLAYER" },
     ]);
+    // Edit mode now mounts LinksPanel and CommentThread, which call these three fetchers.
+    // Spy them here (fix 5) so every "edit" case exercises jsdom + mocks instead of firing
+    // three real `fetch`es that only pass today because `retry: false` turns the failure
+    // into a silent `isError` nobody asserts on.
+    vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([]);
+    vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
   });
 
   it("keeps existing grants when only the name changes (fix 1: the critical silent data loss)", async () => {

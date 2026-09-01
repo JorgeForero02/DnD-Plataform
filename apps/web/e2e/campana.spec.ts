@@ -48,6 +48,59 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await expect(npc).toContainText("DM_ONLY");
 });
 
+test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad", async ({
+  page,
+}) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("Descenso a Avernus");
+  await page.getByRole("button", { name: "Crear" }).click();
+
+  await page.getByRole("link", { name: "Descenso a Avernus" }).click();
+  await expect(page.getByRole("heading", { name: "Descenso a Avernus" })).toBeVisible();
+
+  await page.getByRole("button", { name: "NPCs" }).click();
+
+  // Hacen falta dos NPCs: uno para abrir en modo edición y otro para enlazarlo.
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Zariel");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Mahadi");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  // Abrir Zariel en modo edición: EntityEditor solo pinta LinksPanel y CommentThread
+  // cuando `isEdit && entity` (EntityEditor.tsx), así que este clic es el paso que el
+  // único recorrido anterior nunca daba.
+  await page.getByRole("button", { name: /Zariel/ }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enlaces" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Comentarios" })).toBeVisible();
+
+  // Enlazar Zariel con Mahadi y comprobar que aparece en la lista de enlaces. Se acota al
+  // panel "Enlaces" con un hijo directo `> h3`: CampaignDetailPage envuelve toda la pestaña
+  // (lista de NPCs incluida) en su propio `<section>`, así que "has" sin combinador de hijo
+  // directo también lo capturaría a él.
+  const linksSection = page
+    .locator("section")
+    .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
+  await linksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (NPC)" });
+  await linksSection.getByLabel("Etiqueta del enlace").fill("rival");
+  await linksSection.getByRole("button", { name: "Añadir enlace" }).click();
+  const linkRow = linksSection.locator("li").filter({ hasText: "Mahadi" });
+  await expect(linkRow).toBeVisible();
+  await expect(linkRow).toContainText("rival");
+
+  // Publicar un comentario y comprobar que aparece con su texto.
+  await page.getByLabel("Nuevo comentario").fill("Cuidado con el mercado de almas");
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByText("Cuidado con el mercado de almas")).toBeVisible();
+});
+
 test("salir cierra la sesion y la ruta protegida deja de abrirse", async ({ page }) => {
   await registrarse(page);
 

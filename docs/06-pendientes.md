@@ -36,12 +36,26 @@ los `updateSessionSchema` / `updateCharacterSchema` que vivían duplicados en un
 en un servicio se mudaron a `@dnd/shared`, que es donde la convención dice que vive la forma
 de los datos. Ver [07-historial.md](./07-historial.md).
 
+**~~El e2e verde de 1.12b no ejecutaba el código nuevo~~ — CERRADO el 2026-08-31
+(1.12b-fix).** El único recorrido de Playwright existente pulsaba `Nuevo` y guardaba: nunca
+entraba en modo edición, y los dos paneles (`LinksPanel`, `CommentThread`) solo se pintan con
+`isEdit && entity` (`EntityEditor.tsx`). El e2e pasaba sin haber pintado nunca esos
+componentes en un navegador real. Se añadió el recorrido que faltaba —crear dos NPCs, abrir
+uno en modo edición, enlazarlo con el otro y publicar un comentario, contra la API real— y de
+paso se cerraron cinco hallazgos más de una revisión independiente: el borrado de un enlace o
+un comentario ajeno fallaba en silencio (sin `onError`, arreglado reusando el `error` que ya
+existía), el selector de destinos de enlace quedaba obsoleto hasta 30 s tras crear o renombrar
+una entidad (`allEntitiesKey` es una rama distinta de `entitiesKey` y no se invalidaba), el
+desplegable ofrecía destinos ya enlazados (choca con `@@unique([fromId, toId, label])` y da
+500 en crudo), y las pruebas de `EntityEditor` en modo edición disparaban `fetch` reales sin
+espiar. Ver [07-historial.md](./07-historial.md).
+
 ## P1 — Huecos de verificación
 
-**Los e2e de navegador cubren dos recorridos, no el catálogo.** Faltan, en orden: el flujo de
+**Los e2e de navegador cubren tres recorridos, no el catálogo.** Faltan, en orden: el flujo de
 invitación con dos sesiones, que un jugador **no vea** en pantalla una entidad `DM_ONLY`, y
-las pantallas que aún no existen (enlaces y comentarios, editores de sesión y personaje).
-Lista en [08-pruebas.md](./08-pruebas.md).
+las pantallas que aún no existen (editores de sesión y personaje). Lista en
+[08-pruebas.md](./08-pruebas.md).
 
 **No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
 hoy.
@@ -83,6 +97,14 @@ comportamiento:
 - **`auth.store.ts:13` deja `user: null` tras recargar la página**: el token persiste en
   `localStorage` pero el usuario no, así que la web no conoce su propio identificador hasta el
   siguiente login. Detectado en la revisión de 1.12a, no arreglado.
+- **Los botones "Quitar" (`LinksPanel.tsx`) y "Borrar" (`CommentThread.tsx`) se pintan en
+  todas las filas, sin mirar si el usuario es DM o autor.** El servidor sí rechaza
+  (`links.service.ts:75`, `comments.service.ts:65`, ambos 403), y desde 1.12b-fix el fallo ya
+  se ve como mensaje en vez de callar; pero el botón sigue ahí para quien nunca podrá usarlo.
+  Es el mismo problema de fondo que la fila de la entidad de arriba: no se puede ocultar el
+  botón con criterio hasta que la web conozca su propio identificador de usuario — mismo
+  bloqueante que `auth.store.ts:13`. Detectado en la revisión de 1.12b, no arreglado a
+  propósito (fuera del alcance de 1.12b-fix).
 - **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:135`): hoy es
   inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
   riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).

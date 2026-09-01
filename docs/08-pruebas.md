@@ -15,9 +15,10 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-Estado medido el 2026-08-31: **54 unitarias** (shared 10, api 37, web 7) y **19 e2e** en 9
-suites, todas verdes. Las unitarias, el lint y el formato los exige `pnpm verify` en el
-gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
+Estado medido el 2026-08-31 (tarea 1.12b-fix): **71 unitarias** (shared 10, api 37, web 24) y
+**19 e2e de API** en 9 suites más **3 e2e de navegador** en 1 suite, todas verdes. Las
+unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
+quedan fuera del gancho pero dentro de CI.
 
 ## Qué escribe una tarea de API
 
@@ -120,6 +121,14 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
 - **Registro → crear campaña → crear NPC → verlo en su pestaña**, con etiquetas y
   visibilidad, comprobando que el editor se cierra y la entidad aparece con su `DM_ONLY`.
 - **Salir cierra la sesión** y volver a la ruta protegida a mano devuelve a `/login`.
+- **Modo edición del editor de entidades, con enlaces y comentarios reales** (1.12b-fix):
+  crea dos NPCs, abre uno pulsando su fila (el único paso que activa `isEdit && entity` en
+  `EntityEditor.tsx` y monta `LinksPanel`/`CommentThread`), comprueba que los dos paneles se
+  pintan, enlaza el NPC con el otro y ve el enlace aparecer en la lista, y publica un
+  comentario y lo ve aparecer con su texto. Es la prueba que faltaba: la tanda anterior de
+  1.12b tenía cobertura de componente para los dos paneles pero **ningún** recorrido de
+  navegador entraba en modo edición, así que el e2e pasó sin ejecutar ni una línea del código
+  nuevo. Ver la entrada de 1.12b-fix en [07-historial.md](./07-historial.md).
 
 ### Lo que falta cubrir, en orden
 
@@ -128,7 +137,7 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
 - **El jugador no ve la entidad `DM_ONLY` en pantalla** — el mismo caso que el e2e de API
   prueba por HTTP, comprobado sobre el DOM real. Necesita dos sesiones de navegador y el
   flujo de invitación.
-- Enlaces y comentarios de una entidad (tarea 1.12b), editores de sesión y personaje (1.13).
+- Editores de sesión y personaje (1.13).
 
 ## Definición de terminado
 

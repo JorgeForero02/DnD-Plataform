@@ -61,6 +61,81 @@ pestaña; el modal no tiene `role="dialog"` ni cierra con Escape.
 
 ---
 
+## 2026-08-31 — Enlaces y comentarios en el editor de entidades (1.12b), y su revisión
+(1.12b-fix)
+
+**Qué.** `LinksPanel` y `CommentThread`, montados dentro de `EntityEditor` solo en modo
+edición (`isEdit && entity`): panel de enlaces con selector de destino y etiqueta opcional,
+hilo de comentarios con nombre de autor resuelto contra `useMembers`. El selector de destino
+usa `useAllEntities` (`fetchAllEntities`, sin filtro `type`) porque un enlace puede apuntar a
+cualquier tipo de entidad, no solo al de la pestaña activa.
+
+**Por qué falló la primera revisión.** El único e2e de Playwright que existía entonces
+(`campana.spec.ts`) pulsaba `Nuevo` y guardaba: nunca pulsaba la fila de una entidad ya creada,
+así que nunca activaba `isEdit`. Como los dos paneles solo se pintan en ese modo, **ningún
+navegador había pintado jamás `LinksPanel` ni `CommentThread`**, y el e2e pasó en verde sin
+ejecutar una sola línea del código nuevo. `docs/08-pruebas.md` regla 3 describe exactamente
+este fallo.
+
+**Los arreglos de la revisión independiente (1.12b-fix), en el mismo commit:**
+
+1. **El borrado de un enlace o un comentario ajeno fallaba en silencio.**
+   `deleteLink.mutate(l.id)` / `deleteComment.mutate(c.id)` no tenían `onError`; el servidor sí
+   rechazaba con 403 (`links.service.ts:75`, `comments.service.ts:65`) pero la interfaz no
+   cambiaba nada, así que un jugador que pulsaba "Borrar" en un comentario ajeno no veía ni
+   mensaje ni cambio. Arreglado reutilizando el `error` que ya existía para el camino de
+   añadir/publicar, con `mutate(id, { onError: ... })`.
+2. **El selector de destinos de enlace quedaba obsoleto hasta 30 s.** `allEntitiesKey` es una
+   rama distinta de `entitiesKey(campaignId, type)` (`entities/hooks.ts`), y las mutaciones de
+   crear/actualizar entidad solo invalidaban la segunda; con `staleTime: 30_000`
+   (`lib/queryClient.ts`) tampoco se refrescaba al montar. Un DM que creaba una entidad y
+   abría otra para enlazarla no la veía en el desplegable durante medio minuto. Arreglado
+   invalidando también `allEntitiesKey(campaignId)` en `useCreateEntity` y `useUpdateEntity`.
+3. **El e2e verde no probaba nada nuevo** (visto arriba). Se añadió el recorrido que faltaba a
+   `campana.spec.ts`: crea dos NPCs, abre uno en modo edición, comprueba que los dos paneles
+   se pintan, enlaza el NPC con el otro y ve el enlace en la lista, publica un comentario y lo
+   ve con su texto — contra la API real, sin mocks.
+4. **El desplegable ofrecía destinos ya enlazados**, y volver a elegirlo chocaba contra
+   `@@unique([fromId, toId, label])` (`schema.prisma:100`) sin que `links.service.create`
+   comprobara duplicados antes: 500 en crudo o fila repetida. Arreglado excluyendo del
+   desplegable lo que ya está en `links.data`, además de la propia entidad. De paso se cerró
+   una prueba semivacía (`LinksPanel.test.tsx`) que metía la entidad propia en el resultado de
+   `fetchAllEntities` sin afirmar nunca que no apareciera como opción.
+5. **Las pruebas de `EntityEditor` en modo edición disparaban `fetch` reales.** Los cuatro
+   casos de edición ahora montan `LinksPanel` y `CommentThread`, que llaman a `fetchLinks`,
+   `fetchAllEntities` y `fetchComments`; ninguno estaba espiado en `EntityEditor.test.tsx`, así
+   que pasaban por `retry: false` convirtiendo el fallo real en un `isError` que nadie miraba.
+   Arreglado espiando los tres fetchers en ese fichero.
+6. `CommentThread` llama a `useMembers(campaignId)` sin `enabled`, a diferencia del
+   `EntityEditor`, que lo hace perezoso a propósito. **Se dejó así, deliberadamente**: el hilo
+   necesita los nombres para atribuir comentarios y se pinta siempre en modo edición; comparte
+   clave de consulta con el picker de jugadores, así que sigue siendo una sola petición, no
+   dos. Documentado con un comentario en `CommentThread.tsx`.
+
+**No arreglado a propósito.** Los botones "Quitar"/"Borrar" se pintan en todas las filas sin
+mirar permiso: ocultarlos con criterio necesita que la web conozca su propio identificador de
+usuario, y `auth.store.ts:13` todavía lo pierde al recargar. Mismo bloqueante que la fila de
+edición de `CampaignDetailPage.tsx`. Ver [06-pendientes.md](./06-pendientes.md).
+
+**Pruebas.** 5 nuevas vistas en rojo antes de su arreglo: borrado con error en `LinksPanel` y
+en `CommentThread` (fix 1), exclusión del desplegable en `LinksPanel` (fix 4, más la aserción
+que faltaba en la prueba semivacía existente), y dos de `entities/hooks.test.tsx` (nuevo
+fichero) que comprueban `isInvalidated` en `allEntitiesKey` tras crear y tras actualizar (fix
+2). El fix 5 no añade una prueba en rojo propia — espiar un fetcher no cambia el resultado de
+una prueba que ya pasaba por `retry: false` — así que se declara aquí en vez de fingir un rojo
+que no existió.
+
+**Verificación.** `pnpm verify` limpio (build + lint + formato + 71 unitarias: shared 10, api
+37, web 24) y `pnpm --filter @dnd/web e2e` en verde (3/3): las dos suites anteriores más el
+recorrido nuevo de enlaces y comentarios, que sí ejecuta `LinksPanel` y `CommentThread` en un
+navegador real.
+
+**Cómo revertir.** `git revert` del commit: devuelve `LinksPanel.tsx`, `CommentThread.tsx`,
+`entities/hooks.ts`, `campana.spec.ts` y los ficheros de prueba tocados a su estado anterior.
+No toca `apps/api` ni `packages/shared`.
+
+---
+
 ## 2026-08-31 — Playwright: la primera prueba que abre un navegador
 
 **Qué.** Playwright con Chromium en `apps/web`: `playwright.config.ts`, especificaciones en
@@ -162,8 +237,14 @@ selector de jugadores de la web.
 
 **Web en curso.** Lista de campañas con creación; detalle con pestañas de entidades,
 sesiones y personajes; editor de entidades con etiquetas, visibilidad y selección de
-jugadores concretos (commit `7714833`). Quedan el panel de enlaces y comentarios, los
-editores de sesión y personaje, y el flujo de invitación.
+jugadores concretos (commit `7714833`, con su arreglo de pérdida de concesiones en
+`1d27a52`); panel de enlaces y hilo de comentarios dentro del modo edición del editor de
+entidades (tarea 1.12b), montados como componentes propios (`LinksPanel`, `CommentThread`)
+solo cuando la entidad ya existe. El selector de destino de un enlace pide **todas** las
+entidades de la campaña con una sola llamada (`useAllEntities`, sin filtro `type`), en vez
+de siete listas por tipo: el endpoint ya aceptaba `type` como opcional
+(`entities.controller.ts`) y un enlace puede apuntar a cualquier tipo. Quedan los editores
+de sesión y personaje, y el flujo de invitación.
 
 Los límites aceptados a conciencia de esta fase están en
 [05-datos.md](./05-datos.md) y abiertos en [06-pendientes.md](./06-pendientes.md).

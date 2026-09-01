@@ -26,6 +26,13 @@ export function fetchEntities(campaignId: string, type: EntityType): Promise<Ent
   return apiFetch<Entity[]>(`/campaigns/${campaignId}/entities?type=${type}`);
 }
 
+// No `type` query param: GET /campaigns/:id/entities treats it as optional
+// (entities.controller.ts) and returns every type in the campaign. Used by the link
+// target picker, which — unlike the per-tab lists — needs to offer any entity type.
+export function fetchAllEntities(campaignId: string): Promise<Entity[]> {
+  return apiFetch<Entity[]>(`/campaigns/${campaignId}/entities`);
+}
+
 export function fetchEntity(campaignId: string, entityId: string): Promise<EntityDetail> {
   return apiFetch<EntityDetail>(`/campaigns/${campaignId}/entities/${entityId}`);
 }

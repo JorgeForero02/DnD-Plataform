@@ -18,7 +18,7 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm test
   comas finales). `pnpm format` lo aplica.
   **El Markdown está excluido a propósito** (`.prettierignore`): la documentación se escribe a
   mano y sus saltos de línea y tablas son deliberados.
-- `pnpm test` corre las 54 unitarias.
+- `pnpm test` corre las 66 unitarias.
 
 **Lo aplica `.githooks/pre-commit`, que bloquea el commit si `pnpm verify` falla.** El gancho
 se conecta solo en el `prepare` de la raíz (`scripts/install-git-hooks.mjs`), que **nunca
@@ -28,7 +28,7 @@ corre lo mismo, más los e2e.
 **No se desactiva el gancho para saltárselo.** Si el control molesta, se arregla el código o
 se cambia el control como decisión declarada aquí.
 
-Medido el 2026-08-31 tras instalar la herramienta: `pnpm verify` pasa, 54 unitarias y 19 e2e
+Medido el 2026-08-31 tras instalar la herramienta: `pnpm verify` pasa, 66 unitarias y 19 e2e
 verdes.
 
 **Fuera de N1, a propósito:** los e2e de API (necesitan Docker) y los de navegador (cuando

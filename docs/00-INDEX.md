@@ -21,6 +21,7 @@ limitado a SRD 5.1 / OGL.
 | [05-datos.md](./05-datos.md) | Esquema Prisma, migraciones, el modelo de visibilidad |
 | [06-pendientes.md](./06-pendientes.md) | Deuda técnica y decisiones abiertas, con prioridad |
 | [07-historial.md](./07-historial.md) | Qué se entregó, por qué y cómo revertirlo |
+| [09-primera-partida.md](./09-primera-partida.md) | **Cómo jugar la primera sesión, qué no se puede hacer todavía y qué anotar.** Es la puerta de salida de la fase 1 |
 | [08-pruebas.md](./08-pruebas.md) | **Estrategia de pruebas completa.** Qué prueba cada capa, qué NO cubre, y la regla de Playwright. Léelo antes de dar una tarea por terminada |
 | [plataforma-dnd-documentacion.md](./plataforma-dnd-documentacion.md) | Documento fuente original del producto (visión, alcance por fases) |
 
@@ -60,3 +61,8 @@ cerrada (ver la regla de fase abajo).
 
 **Salida de la fase 1:** jugar una sesión real en la mesa. Regla de fase: no se empieza la
 fase N+1 hasta que la fase N se haya usado de verdad.
+
+**Lo siguiente no es código: es jugar.** El guion, las carencias que se van a notar y qué
+anotar durante la partida están en [09-primera-partida.md](./09-primera-partida.md). Lo que
+conviene arreglar **antes** de sentarse está priorizado en
+[06-pendientes.md](./06-pendientes.md), sección "Antes de la primera partida".

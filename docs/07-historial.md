@@ -6,6 +6,62 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Cierre de la construcción de la fase 1
+
+**Qué.** Con la tarea 1.14 y sus arreglos, **la fase 1 queda construida**: el mundo, las
+sesiones, los personajes y las invitaciones se manejan enteros desde el navegador, con los
+cinco niveles de visibilidad comprobados de punta a punta. Se añade
+[09-primera-partida.md](./09-primera-partida.md) —el guion de la sesión real, lo que todavía no
+se puede hacer y qué anotar mientras se juega— y una sección "Antes de la primera partida" en
+[06-pendientes.md](./06-pendientes.md) que prioriza lo que se nota en la mesa.
+
+**Por qué.** La fase no se cierra por tener el código: se cierra por haberla usado. El plan lo
+exige y la sesión real es lo único que puede decir qué falta de verdad para la fase 2, cuyo
+plan a propósito no está escrito todavía.
+
+**Dónde quedó la verificación.** `pnpm verify` en verde: build, ESLint, Prettier y **106
+pruebas unitarias** (shared 10, api 37, web 59), aplicado por `.githooks/pre-commit`. Más **19
+e2e de API** contra Postgres real y **5 recorridos de navegador** en Chromium, incluido el de
+dos sesiones simultáneas que comprueba sobre el DOM que un jugador **no ve** una entidad
+`DM_ONLY`. Al empezar la jornada eran 54 unitarias, cero recorridos de navegador y `pnpm lint`
+fallaba con *"eslint no se reconoce"*.
+
+### Lo que enseñaron las revisiones, y que vale más que el código entregado
+
+Las **cuatro** revisiones independientes de la jornada salieron con hallazgos; **ninguna
+limpia**. Tres eran pérdida de datos o acceso indebido, y ninguna la habría encontrado una
+prueba existente:
+
+- Editar una entidad `SPECIFIC_PLAYERS` **borraba todas sus concesiones**, siempre y en
+  silencio, dejándola invisible para toda la mesa. Llevaba días anotado en el ledger como
+  *"hueco conocido, aceptable para el MVP"*: la ficha subestimaba un fallo determinista.
+- Vaciar las notas de una sesión **no las borraba**: el formulario cerraba como si hubiera
+  guardado y el texto seguía publicado.
+- Una invitación huérfana en `localStorage` **metía en la campaña al siguiente que iniciara
+  sesión** en ese navegador, quemando el enlace del jugador legítimo.
+
+**Tres reglas de proceso salieron de ahí, y están escritas donde se aplican:**
+
+1. **Correr una suite que no llega al código nuevo no es evidencia.** La regla de Playwright
+   de [08-pruebas.md](./08-pruebas.md) falló en su primer uso porque el encargo decía *correr*
+   el e2e, no *extenderlo*: pasó en verde sin ejecutar una línea de lo nuevo. Desde entonces
+   cada encargo nombra **qué recorrido debe ejercer el cambio**.
+2. **El informe de quien implementa no es evidencia.** Dos veces afirmó una cobertura que no
+   existía —una de ellas, que el recorrido ejercía un `PATCH` que nunca se ejecutaba en un
+   navegador—. La salida se comprueba aparte, siempre.
+3. **En un arreglo de pérdida de datos, se reintroduce el fallo a mano** y se mira la prueba en
+   rojo. Se hizo en las tres últimas tareas; en la última, quitar la limpieza del cierre de
+   sesión y la caducidad de la invitación tumbó una prueba cada uno.
+
+También se **retiró una lección falsa** de esta misma documentación: afirmaba que
+`useMutation` se rompe con el modo estricto de React, cuando lo comprobable era otra cosa. Una
+lección falsa en los documentos es peor que ninguna, porque la siguiente tarea la obedece.
+
+**Cómo revertir.** Nada que revertir: este cierre solo añade documentación. El código de la
+fase son los commits `1c2d31f`…`5a49912`, cada tarea el suyo.
+
+---
+
 ## 2026-09-01 — Arreglos de la revisión del flujo de invitación (1.14-fix)
 
 **Qué.** Una revisión independiente de 1.14 encontró un **Crítico** verificado en el código:

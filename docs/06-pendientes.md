@@ -6,6 +6,30 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Antes de la primera partida
+
+La fase 1 está construida y verificada, pero **jugar es la puerta de salida** (ver
+[09-primera-partida.md](./09-primera-partida.md)). Estas tres son las que se notan en la
+mesa, en orden de cuánto estorban:
+
+**1 · No se puede borrar casi nada desde la interfaz.** Solo enlaces y comentarios tienen
+botón. Una entidad, una sesión o un personaje creados por error **se quedan para siempre**,
+aunque `DELETE` exista y esté probado en la API para los tres. Es la carencia que más se va a
+notar: en una partida se crean cosas mal. **Es trabajo solo de web.**
+
+**2 · La web no conoce su propio identificador de usuario.** `auth.store.ts` deja `user: null`
+tras recargar, así que ningún botón se oculta por permiso: un jugador ve "Nuevo" en Sesiones,
+lo pulsa y recibe un 403. El error **se ve** —eso se arregló en 1.12b— pero la pantalla ofrece
+lo que el servidor va a rechazar. Bloquea además dos fichas de P3 (las filas que son botón de
+editar sin poder editarlas). **La autorización del servidor no depende de esto**: es
+honestidad de la interfaz, no seguridad.
+
+**3 · No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que
+estar en la misma red. Si se quiere que entren desde sus casas, esto **sí** es bloqueante.
+Decisión aparte, no configuración. Ver [03-despliegue.md](./03-despliegue.md).
+
+Las dos primeras se pueden cerrar antes de jugar; la tercera es una decisión de alcance.
+
 ## Cerrados
 
 **~~Una invitación pendiente huérfana mete a cualquiera en la campaña ajena~~ — CERRADO el

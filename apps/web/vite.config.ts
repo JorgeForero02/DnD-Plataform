@@ -20,5 +20,11 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: "jsdom", globals: true, setupFiles: "./src/setupTests.ts" },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/setupTests.ts",
+    // e2e/ es de Playwright: mismo sufijo .spec.ts, otro runner.
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+  },
 });

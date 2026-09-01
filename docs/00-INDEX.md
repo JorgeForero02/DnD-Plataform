@@ -48,8 +48,9 @@ limitado a SRD 5.1 / OGL.
 - **Verificación: nivel N1, con el comando que lo prueba.** `pnpm verify` = build
   (type-check) + ESLint + Prettier + 54 unitarias, aplicado por `.githooks/pre-commit`.
   Medido el 2026-08-31: ✅, más 19 e2e de API contra Postgres real ✅.
-  **Falta Playwright** — ninguna prueba abre un navegador todavía. Ver
-  [08-pruebas.md](./08-pruebas.md) y [06-pendientes.md](./06-pendientes.md).
+  **Playwright (Chromium)** cubre dos recorridos de navegador, fuera del gancho y en su
+  propio trabajo de CI. Ver [08-pruebas.md](./08-pruebas.md) y
+  [06-pendientes.md](./06-pendientes.md).
 - **Sin desplegar.** No hay VPS asignado a este proyecto; el despliegue está diferido.
 
 **Salida de la fase 1:** jugar una sesión real en la mesa. Regla de fase: no se empieza la

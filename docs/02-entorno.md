@@ -38,6 +38,7 @@ pnpm --filter @dnd/api test:e2e        # e2e de API contra el Postgres real (doc
 pnpm build                             # compila los tres paquetes (hace de type-check)
 pnpm lint                              # ESLint 9, configuración plana en la raíz
 pnpm format                            # aplica Prettier (format:check solo comprueba)
+pnpm --filter @dnd/web e2e             # Playwright: levanta API+web y abre Chromium
 ```
 
 Base de datos:

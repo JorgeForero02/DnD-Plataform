@@ -33,7 +33,9 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 - **La forma de los datos vive una sola vez**, en `packages/shared/src`.
 - **Nada de secretos en el código.** Todo por variable de entorno, con `.env.example` al día.
 - **Ninguna tarea se marca completa sin prueba real en verde** y sin haber mirado la salida:
-  API unitaria + e2e, web RTL + `pnpm build` limpio. Ver `docs/08-pruebas.md`.
+  API unitaria + e2e, web RTL + `pnpm verify` limpio. **Si tocas una pantalla, abres el
+  navegador** (`pnpm --filter @dnd/web e2e`), y si la tarea toca una pantalla ya cubierta, su
+  brief lleva el e2e dentro. Ver `docs/08-pruebas.md`.
 - **Nunca** desactives una prueba, bajes un umbral, silencies una regla ni saltes el gancho de
   pre-commit para que pase el build. Si el control molesta, se arregla el código o se cambia el control como decisión
   declarada en `docs/04-convenciones.md`.
@@ -47,7 +49,8 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 ```bash
 docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
 pnpm verify                              # build + lint + formato + 54 unitarias (lo exige el pre-commit)
-pnpm --filter @dnd/api test:e2e          # 19 e2e contra Postgres real
+pnpm --filter @dnd/api test:e2e          # 19 e2e de API contra Postgres real
+pnpm --filter @dnd/web e2e               # Playwright: 2 recorridos en Chromium
 pnpm dev:api                             # API en :3000
 pnpm dev:web                             # web en :5173
 pnpm format                              # aplica Prettier

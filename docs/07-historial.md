@@ -6,6 +6,36 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-08-31 — Playwright: la primera prueba que abre un navegador
+
+**Qué.** Playwright con Chromium en `apps/web`: `playwright.config.ts`, especificaciones en
+`apps/web/e2e/`, scripts `e2e` y `e2e:ui`, y un trabajo `e2e-browser` aparte en CI que sube el
+informe como artefacto cuando falla. La configuración levanta sola los dos servidores —la API
+**compilada** (`start:prod`, como en producción) y Vite haciendo de proxy de `/api`— así que
+la prueba recorre la misma cadena que un usuario. El `include` de vitest se acotó a `src/`
+para que los dos corredores no se disputen los `.spec.ts`.
+
+Cubierto: **registro → crear campaña → crear un NPC con etiquetas y visibilidad → verlo en su
+pestaña**, y **salir cierra la sesión** y volver a mano a la ruta protegida devuelve a
+`/login`.
+
+**Por qué.** Era la P1 tras cerrar el linter, y `08-pruebas.md` ya llevaba escritas sus reglas
+esperando la herramienta: jsdom no pinta ni navega, así que nada cubría sesión, rutas ni
+pintado.
+
+**Evidencia de que las pruebas sirven, no solo de que pasan.** Se rompió a propósito la guarda
+de autenticación (`ProtectedRoute` dejando pasar sin token) y se corrieron las dos suites: las
+**7 pruebas de componente siguieron en verde** y **el e2e de sesión falló** con su captura. La
+guarda se restauró y los dos e2e volvieron a pasar. Es el mismo defecto que en english-log
+llegó dos veces a producción con toda la suite verde.
+
+**Cómo revertir.** `git revert` del commit: quita la configuración, las especificaciones, los
+scripts y el trabajo de CI, y devuelve a vitest su `include` por defecto. Los binarios del
+navegador quedan en la caché del usuario (`~/AppData/Local/ms-playwright`) y se borran a mano
+si molestan.
+
+---
+
 ## 2026-08-31 — ESLint, Prettier y gancho de pre-commit: el nivel pasa a N1 real
 
 **Qué.** ESLint 9 con configuración plana única en la raíz (`eslint.config.mjs`), Prettier

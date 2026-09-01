@@ -33,3 +33,40 @@ jobs:
       - run: pnpm format:check
       - run: pnpm test
       - run: pnpm --filter @dnd/api test:e2e
+
+  # Los e2e de navegador van aparte: necesitan los binarios de Playwright y dos
+  # servidores vivos, y tardan bastante mas que la suite unitaria.
+  e2e-browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dnd
+          POSTGRES_PASSWORD: dnd
+          POSTGRES_DB: dnd
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://dnd:dnd@localhost:5432/dnd
+      JWT_SECRET: ci-secret
+      JWT_EXPIRES_IN: 7d
+      PORT: 3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @dnd/api prisma:generate
+      - run: pnpm --filter @dnd/api exec prisma migrate deploy
+      - run: pnpm --filter @dnd/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @dnd/web e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

@@ -8,6 +8,12 @@ un efecto colateral de la siguiente funcionalidad.**
 
 ## Cerrados
 
+**~~Playwright no está instalado~~ — CERRADO el 2026-08-31.** Chromium, dos recorridos
+cubiertos (registro → campaña → NPC → verlo; y cerrar sesión), trabajo `e2e-browser` propio en
+CI con el informe como artefacto. Se comprobó que las pruebas **pueden fallar**: con la guarda
+de `ProtectedRoute` rota a mano, las 7 de componente siguen verdes y el e2e la caza. Ver
+[08-pruebas.md](./08-pruebas.md).
+
 **~~P1 · ESLint no existe~~ — CERRADO el 2026-08-31.** ESLint 9 con configuración plana en la
 raíz, Prettier, `pnpm verify` completo y gancho de pre-commit que bloquea. CI corre lint y
 formato. Los 15 errores que encontró la primera pasada se arreglaron **corrigiendo el
@@ -19,10 +25,13 @@ de los datos. Ver [07-historial.md](./07-historial.md).
 
 ## P1 — Huecos de verificación
 
-**Playwright no está instalado.** No hay ninguna prueba que abra un navegador, así que nada
-cubre pintado, navegación, foco, contraste ni responsive.
-→ Reglas y guiones iniciales ya escritos en [08-pruebas.md](./08-pruebas.md); falta la
-herramienta. **Es la siguiente ficha en cerrarse.**
+**Los e2e de navegador cubren dos recorridos, no el catálogo.** Faltan, en orden: el flujo de
+invitación con dos sesiones, que un jugador **no vea** en pantalla una entidad `DM_ONLY`, y
+las pantallas que aún no existen (enlaces y comentarios, editores de sesión y personaje).
+Lista en [08-pruebas.md](./08-pruebas.md).
+
+**No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
+hoy.
 
 ## P2 — Ruta de mejora del nivel
 

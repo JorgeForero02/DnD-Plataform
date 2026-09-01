@@ -13,6 +13,7 @@
 | **Unitarias de servicio** | jest + Prisma simulado | Las reglas de negocio y de autorización: quién puede escribir, qué se filtra al listar | `apps/api/src/**/*.spec.ts` |
 | **e2e de API** | jest + supertest + **Postgres real** | Que la cadena completa funciona: HTTP → guardia → pipe → servicio → base, con los códigos de estado correctos | `apps/api/test/*.e2e-spec.ts` |
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
+| **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
 Estado medido el 2026-08-31: **54 unitarias** (shared 10, api 37, web 7) y **19 e2e** en 9
 suites, todas verdes. Las unitarias, el lint y el formato los exige `pnpm verify` en el
@@ -60,45 +61,78 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
   redirige mal: invisible para RTL.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
-- **No hay prueba de accesibilidad, ni de responsive, ni de rendimiento.**
+- **No hay prueba de accesibilidad, ni de responsive, ni de rendimiento.** Playwright cubre
+  hoy dos recorridos, no el catálogo.
 - **No hay mutación ni umbral de cobertura** (N2/N3 no declarados).
 
-## Playwright: la regla que aún no tiene herramienta
+## Playwright
 
-**Playwright todavía NO está instalado en este repositorio** — es la **P1** de
-[06-pendientes.md](./06-pendientes.md). La regla se escribe ahora para que el plan la
-respete desde el primer día en que exista, porque la lección viene de otro proyecto y ya
-costó defectos ahí:
+Instalado el 2026-08-31. **Chromium**, `apps/web/playwright.config.ts`, especificaciones en
+`apps/web/e2e/`.
 
-> En english-log, la fase 0 entregó una pantalla de ingreso con contraste 1.1:1 y la fase 1A
-> entregó un "cerrar sesión" roto, **las dos veces con toda la suite en verde**. Y un plan
-> posterior metió un componente en cuatro pantallas, creó un segundo enlace con el mismo
-> nombre accesible y dejó un `spec` roto en la rama; no lo vio ninguna prueba de componente,
-> ni la captura, ni la revisión de la tarea. Lo encontró, dos tareas más tarde, la primera
-> tarea que tenía instrucción de abrir un navegador. **La culpa fue del plan, no de quien
-> implementó.**
+```bash
+docker compose up -d                     # los e2e necesitan Postgres
+pnpm --filter @dnd/web e2e               # levanta API compilada + Vite y abre el navegador
+pnpm --filter @dnd/web e2e:ui            # modo interactivo
+```
 
-Reglas, cuando Playwright entre:
+La configuración levanta los dos servidores sola: la **API compilada** (`start:prod`, que es
+como corre en producción) y Vite, que hace de proxy de `/api` igual que nginx. Cada prueba
+registra su propio usuario con correo único, así que **no dependen de datos sembrados ni se
+pisan entre sí** al repetirse contra la misma base.
+
+`vitest` tiene su `include` acotado a `src/`: los `.spec.ts` de `e2e/` son de Playwright, y
+sin eso los recogerían los dos corredores.
+
+### Por qué existen: la comprobación que se hizo al instalarlos
+
+No basta con que una prueba pase. **Se comprobó que puede fallar.** Con la guarda de
+autenticación desactivada a mano (`ProtectedRoute` dejando pasar sin token):
+
+| Suite | Resultado con la guarda rota |
+|---|---|
+| 7 pruebas de componente (jsdom) | **las 7 en verde** |
+| 2 e2e de navegador | **la de sesión falla**, con captura |
+
+Ese es exactamente el defecto que en english-log llegó a producción dos veces con toda la
+suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" roto.
+
+### Las reglas
 
 1. **Los e2e de navegador no entran en `pnpm verify` ni en el gancho de pre-commit.**
-   Necesitan Docker, base sembrada y dos servidores vivos; encadenarlos a cada commit haría
-   el gancho inservible. Van en un script propio (`pnpm --filter @dnd/web e2e`) y en CI como
-   trabajo aparte.
+   Necesitan Docker y dos servidores vivos; encadenarlos a cada commit haría el gancho
+   inservible. Van en su script y en CI como **trabajo aparte** (`e2e-browser`), que sube el
+   informe como artefacto cuando falla.
 2. **Eso no los hace opcionales. Si una tarea toca una pantalla, corre el e2e antes de darla
    por terminada.**
 3. **La regla también aplica al plan, no solo al código:** si una tarea toca una pantalla que
    ya recorre un `*.spec.ts`, **su brief lleva el e2e dentro**. Quien escribe el brief es
    responsable de ponerlo.
+   > En english-log un plan metió un componente en cuatro pantallas, creó un segundo enlace
+   > con el mismo nombre accesible y dejó un `spec` roto en la rama. No lo vio ninguna prueba
+   > de componente, ni la captura, ni la revisión de la tarea: lo encontró, dos tareas más
+   > tarde, la primera con instrucción de abrir un navegador. **La culpa fue del plan.**
 4. **Al medir en el navegador, mide los dos ejes.** Una revisión que solo comprueba posición
    y anchura deja pasar celdas estiradas por un `align-items` que nadie miró.
-5. Los primeros guiones que hay que cubrir, en este orden: **registrarse → crear campaña →
-   crear entidad → verla en la pestaña**; **el DM copia el enlace de invitación → el jugador
-   lo acepta → entra en la campaña**; y **el jugador no ve la entidad `DM_ONLY` en pantalla**
-   (el mismo caso que el e2e de API prueba por HTTP, comprobado ahora sobre el DOM real).
+
+### Cubierto hoy
+
+- **Registro → crear campaña → crear NPC → verlo en su pestaña**, con etiquetas y
+  visibilidad, comprobando que el editor se cierra y la entidad aparece con su `DM_ONLY`.
+- **Salir cierra la sesión** y volver a la ruta protegida a mano devuelve a `/login`.
+
+### Lo que falta cubrir, en orden
+
+- **El DM copia el enlace de invitación → el jugador lo acepta → entra en la campaña**
+  (cuando exista la interfaz, tarea 1.14).
+- **El jugador no ve la entidad `DM_ONLY` en pantalla** — el mismo caso que el e2e de API
+  prueba por HTTP, comprobado sobre el DOM real. Necesita dos sesiones de navegador y el
+  flujo de invitación.
+- Enlaces y comentarios de una entidad (tarea 1.12b), editores de sesión y personaje (1.13).
 
 ## Definición de terminado
 
 Una tarea está terminada solo si: los criterios de aceptación pasan · las unitarias y los
 e2e que le tocan pasan **y se ha visto la salida** · `pnpm build` está limpio · la
 arquitectura y las convenciones se respetan · **la documentación está actualizada** · y, si
-tocó una pantalla cubierta por Playwright, **se abrió el navegador**.
+tocó una pantalla, **se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde.

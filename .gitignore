@@ -4,3 +4,6 @@ dist/
 *.log
 coverage/
 .superpowers/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/

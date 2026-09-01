@@ -56,6 +56,8 @@ export default tseslint.config(
       "**/*.test.tsx",
       "**/*.e2e-spec.ts",
       "**/setupTests.ts",
+      "apps/web/e2e/**/*.ts",
+      "apps/web/playwright.config.ts",
     ],
     languageOptions: { globals: { ...globals.node, ...globals.jest } },
     rules: {

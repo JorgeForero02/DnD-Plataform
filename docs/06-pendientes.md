@@ -29,6 +29,31 @@ Lo que falta, y va como **tarea 1.17**:
 | 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
 | 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
 
+## P0 — Las fichas del mundo no tienen texto
+
+**Descubierto el 2026-09-01 respondiendo a una pregunta del autor, no por una prueba.**
+
+`Entity.body` existe en el modelo (`schema.prisma:80`, `Json?`) y en el esquema compartido
+(`entity.schema.ts:7`, `body: z.unknown().optional()`), y la API lo aceptaría sin problema.
+**Pero `EntityEditor.tsx` no lo pinta ni lo envía**, y `entities/api.ts` tampoco: los únicos
+`body` que hay en la web son cuerpos de peticiones HTTP.
+
+**Consecuencia:** una entidad es hoy **nombre + etiquetas + visibilidad + enlaces +
+comentarios**, y nada más. Una ficha de tipo `DOCUMENT` **no puede contener un documento**; un
+NPC no puede tener su descripción. La wiki es un índice sin páginas.
+
+**Por qué nadie lo vio:** ninguna prueba lo echa en falta, porque **nunca se escribió la prueba
+de que se pueda escribir**. Las 167 unitarias y los 6 recorridos de navegador comprueban con
+detalle que el texto que no existe se oculta a quien no debe verlo.
+
+**Es lo más barato de arreglar y lo que más cambia el producto**: el modelo, el esquema y la
+API ya están. Es trabajo de web —un campo de texto en el editor y su prueba— y va **antes que
+1.17**, porque sin esto no hay nada que enseñarle a nadie.
+
+Al hacerlo, decidir **si el texto es plano o con formato** (negritas, listas, encabezados). Si
+va a ser con formato, mejor decidirlo ahora que migrar después: `body` es `Json?`, así que el
+modelo aguanta las dos cosas.
+
 ## Antes de la primera partida
 
 > **La primera partida queda aplazada por decisión del autor (2026-09-01):** no se juega hasta

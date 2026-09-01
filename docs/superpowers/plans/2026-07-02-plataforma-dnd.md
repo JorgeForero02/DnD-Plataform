@@ -1,5 +1,16 @@
 # Plataforma D&D — Implementation Plan
 
+> **ESTADO REAL, 2026-09-01 — no leído en las casillas de abajo.** Las 72 casillas `- [ ]` de
+> las fases 0 y 1 siguen sin marcar aunque **0.1–0.10 y 1.1–1.14 están construidas,
+> commiteadas y en `main`** — este plan nunca se actualizó tarea a tarea durante la ejecución.
+> **No se han marcado una a una** porque el trabajo real ya no coincide 1:1 con la lista: hay
+> tareas de corrección que no existen aquí (`1.12a-fix`, `1.12b-fix`, `1.13-fix`, `1.14-fix`,
+> `1.15`, `1.15-fix`, `1.16`) y marcar solo las originales daría una foto incompleta. **El
+> estado verdadero, tarea por tarea, vive en `.superpowers/sdd/progress.md`** (el ledger, local
+> y fuera de `.git`) **y en [`07-historial.md`](../../07-historial.md)** (el resumen que sí
+> viaja con el repositorio). Fase 1 no está cerrada todavía — ver
+> [`06-pendientes.md`](../../06-pendientes.md) y [`00-INDEX.md`](../../00-INDEX.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a web platform where a D&D group manages campaigns, worldbuilding, sessions, characters and a rules engine in one place — starting as a personal tool, evolving toward SaaS.
@@ -33,6 +44,11 @@
 
 ## Phase Roadmap
 
+> **La regla de fase de esta tabla —jugar una sesión real antes de pasar a la siguiente— está
+> SUSPENDIDA por decisión del autor desde el 2026-09-01.** No se juega hasta tener al menos el
+> tablero 2D (fase 3). Se sigue construyendo sin esa validación, a conciencia. Ver
+> [00-INDEX.md](../../00-INDEX.md) y [06-pendientes.md](../../06-pendientes.md).
+
 | Phase | Scope | Exit criteria (must all be true to proceed) |
 |---|---|---|
 | **0 — Foundation** | Monorepo, tooling, Postgres via Docker, NestJS API skeleton + event-emitter + Sentry, React shell, auth (register/login/JWT), first Coolify deploy on VPS, CI green | Can register + log in against deployed VPS URL (HTTPS); CI passes; `pnpm test` green |
@@ -48,7 +64,7 @@
 
 ---
 
-# PHASE 0 — Foundation
+# PHASE 0 — Foundation ✅ CONSTRUIDA (ver el aviso de estado real al principio del documento)
 
 ## File Structure (Phase 0)
 
@@ -156,6 +172,11 @@ packages:
   }
 }
 ```
+
+> **`"lint": "pnpm -r lint"` no es el real.** El `package.json` de hoy tiene `"lint": "eslint
+> ."` — una única configuración plana en la raíz (`eslint.config.mjs`), no un script por
+> paquete. Ningún paquete tiene ya un script `lint` propio, así que `pnpm -r lint` fallaría
+> si se ejecutara hoy.
 
 `tsconfig.base.json`:
 ```json
@@ -654,7 +675,7 @@ export class UsersModule {}
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @dnd/api test users.service`
-Expected: PASS (2 tests).
+Expected: PASS, all tests matching `users.service` green.
 
 - [ ] **Step 5: Commit**
 
@@ -1031,7 +1052,10 @@ Run:
 docker compose up -d
 pnpm --filter @dnd/api test:e2e
 ```
-Expected: PASS (1 test) — register 201, login 201, `/auth/me` 200.
+Expected: PASS — this runs the whole e2e suite, which grows with every later task; at this
+point of the plan it should show only the auth flow green (register 201, login 201,
+`/auth/me` 200). Its exact count today is not tracked here — see
+[08-pruebas.md](../../08-pruebas.md).
 
 - [ ] **Step 7: Commit**
 
@@ -1379,7 +1403,8 @@ server: {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @dnd/web test`
-Expected: PASS (2 tests).
+Expected: PASS — this runs the whole web suite, which grows with every later task. Its exact
+count today is not tracked here — see [08-pruebas.md](../../08-pruebas.md).
 
 - [ ] **Step 5: Commit**
 
@@ -1595,7 +1620,9 @@ git commit -m "feat(web): login/register/dashboard pages + protected route"
 ### Task 0.10: CI (GitHub Actions) + Coolify deploy config
 
 **Files:**
-- Create: `.github/workflows/ci.yml`, `apps/api/Dockerfile`, `apps/web/Dockerfile`, `apps/web/nginx.conf`, `docs/DEPLOY.md`
+- Create: `.github/workflows/ci.yml`, `apps/api/Dockerfile`, `apps/web/Dockerfile`, `apps/web/nginx.conf`, `docs/DEPLOY.md` — **`docs/DEPLOY.md` no existe ya: se eliminó el
+  2026-08-31 al adoptar la estructura numerada; el documento real es
+  [`docs/03-despliegue.md`](../../03-despliegue.md).
 
 **Interfaces:**
 - Produces: CI running lint + tests on push/PR with a Postgres service; Dockerfiles + Coolify deploy notes (VPS, managed Postgres, Traefik SSL). Web container reverse-proxies `/api` to the API service over Coolify's internal network, so the frontend's `BASE = "/api"` (Task 0.8) works identically in dev and prod with no CORS.
@@ -1640,6 +1667,12 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @dnd/api test:e2e
 ```
+
+> **Esto es el estado de Fase 0. El `.github/workflows/ci.yml` real de hoy ya no es este**:
+> desde el 2026-08-31 el trabajo `test` también corre `pnpm lint` y `pnpm format:check`, y
+> desde el 2026-08-31 hay un segundo trabajo, `e2e-browser`, que instala Playwright y corre
+> `pnpm --filter @dnd/web e2e`. Ver el fichero real y
+> [03-despliegue.md](../../03-despliegue.md).
 
 - [ ] **Step 2: API Dockerfile**
 
@@ -1774,11 +1807,18 @@ git commit -m "chore: CI workflow, dockerfiles, coolify deploy notes"
 
 ---
 
-# PHASE 1 — Campaign core
+# PHASE 1 — Campaign core ✅ CONSTRUIDA, NO cerrada (ver el aviso de estado real al principio del documento)
 
 **Goal:** A DM creates a campaign, invites players, records worldbuilding entities (NPCs, locations, quests) and session notes, with per-entity visibility enforced. This is the phase you validate at a real table.
 
 ## File Structure (Phase 1)
+
+> **Plan original, no el árbol real.** El módulo de entidades nunca se llamó `worldbuilding`:
+> **no existe esa carpeta.** El árbol real es `apps/api/src/entities/`,
+> `apps/api/src/links/links.service.ts`, `apps/api/src/comments/`,
+> `apps/api/src/invites/` (separado de `campaigns/`), y en la web
+> `apps/web/src/features/entities/`, `apps/web/src/features/links/`,
+> `apps/web/src/features/comments/`, `apps/web/src/features/invites/`.
 
 ```
 apps/api/prisma/schema.prisma       # + Campaign, CampaignMember, Invite, Entity,
@@ -1963,6 +2003,9 @@ model Character {
 
 **Phase 1 exit check:** Run one real session at your table. DM + at least one player account. Verify each visibility level behaves (player never sees `DM_ONLY`; a `SPECIFIC_PLAYERS` secret reaches only its target; entities link to each other and links respect visibility). If it survives a real session, proceed to Phase 2.
 
+> **Suspendido — ver el aviso en "Phase Roadmap" arriba.** No se está jugando esa sesión real
+> a propósito; se sigue construyendo sin ella.
+
 ---
 
 # PHASE 2 — Characters + minimal rules engine (scope only — write its own plan when reached)
@@ -2052,6 +2095,6 @@ model Character {
 - **Risks** (scope creep, rules-engine complexity, AI cost) → mitigated by phase gates + "manual first" rules + AI last. ✅
 - **Legal (SRD only)** → Global Constraints + Phase 2 scope. ✅
 
-**Known deferrals (tracked, not dropped):** entity image/file attachments (Phase 3, needs S3), email invites (needs mail service), `TimelineEvent` as a dedicated timeline view (Phase 1 stores `EVENT` entities; chronology UI later), **ESLint setup** (package `lint` scripts exist but no eslint config/deps yet — CI skips lint until a dedicated follow-up configures ESLint 9 flat config across the workspace). Each is called out in the plan body where relevant.
+**Known deferrals (tracked, not dropped):** entity image/file attachments (Phase 3, needs S3), email invites (needs mail service), `TimelineEvent` as a dedicated timeline view (Phase 1 stores `EVENT` entities; chronology UI later). **ESLint setup was a deferral when this plan was written — it no longer is:** configured 2026-08-31, ESLint 9 flat config at the repo root (`eslint.config.mjs`), and CI runs it. Ver [07-historial.md](../../07-historial.md).
 
 **Placeholder note:** Phases 2–5 are intentionally scope-level, not bite-sized. This is a deliberate planning decision (their design depends on real usage feedback), NOT a placeholder omission — each MUST be expanded into its own detailed TDD plan via the writing-plans skill before implementation. Phases 0 and 1 contain the actionable near-term work; Phase 0 is fully bite-sized, Phase 1 is task-level with an explicit instruction to expand each task using the Phase 0 pattern.

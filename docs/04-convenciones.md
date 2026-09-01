@@ -32,9 +32,10 @@ se cambia el control como decisión declarada aquí.
 Medido tras cada tarea: `pnpm verify` pasa. Cifras al día en
 [08-pruebas.md](./08-pruebas.md).
 
-**Fuera de N1, a propósito:** los e2e de API (necesitan Docker) y los de navegador (cuando
-existan: necesitan Docker y dos servidores vivos). Encadenarlos al gancho lo haría
-inservible. **No por eso son opcionales** — ver [08-pruebas.md](./08-pruebas.md).
+**Fuera de N1, a propósito:** los e2e de API y los de navegador (ambos existen desde
+`c6fa899`; ambos necesitan Docker, y los de navegador además dos servidores vivos).
+Encadenarlos al gancho lo haría inservible. **No por eso son opcionales** — corren en su
+propio trabajo de CI y no son menos exigibles; ver [08-pruebas.md](./08-pruebas.md).
 
 N2 (cobertura) y N3 (mutación) **no están declarados** y no se prometen. Tampoco está
 activado el linting con información de tipos (`typescript-eslint` en modo *type-checked*):
@@ -77,7 +78,12 @@ nombres de las cosas del código, no.
 - Un feature = carpeta con `api.ts` (fetchers) + `hooks.ts` (TanStack Query) + componentes +
   `__tests__`. Las páginas componen features.
 - **Claves de consulta jerárquicas**: `["campaigns", id, "entities"]`. Invalidar el prefijo
-  invalida lo de dentro.
+  invalida lo de dentro. **Ojo: hay dos raíces, no una.** Entidades, sesiones, personajes y
+  miembros cuelgan de `["campaigns", id, ...]`; enlaces y comentarios cuelgan de una raíz
+  aparte, `["entities", entityId, ...]` (`linksKey`/`commentsKey`), que invalidar el prefijo
+  de `campaigns` **no toca**. Fue el fallo real de la tarea 1.16 (ver
+  [06-pendientes.md](./06-pendientes.md)): borrar una entidad tenía que invalidar por
+  predicado sobre la raíz `"entities"` aparte, porque no hay un solo prefijo común.
 - Formularios: React Hook Form + `zodResolver` para los simples; `useState` controlado para
   los dinámicos (listas de etiquetas, selección de jugadores).
 - Estilo: Tailwind, oscuro (`bg-slate-900/800/700`, `indigo-600` para acción, `red-400` para

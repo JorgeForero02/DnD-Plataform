@@ -39,39 +39,19 @@ Detalle y evidencia en
 
 | | Hallazgo | Dónde falla |
 |---|---|---|
-| A1 | **Las fichas del mundo no tienen cuerpo de texto.** `Entity.body` existe en el modelo y la API lo aceptaría; el editor ni lo pinta ni lo envía. **La wiki es un índice sin páginas** | Solo web |
 | A2 | **Las etiquetas se guardan y no se ven en ninguna parte** ni se puede filtrar por ellas: escritura sin lectura | Solo web |
 | B1 | **Una campaña no se puede editar ni borrar**: el controlador no tiene `PATCH` ni `DELETE` | API + web |
 | B2 | **No se puede expulsar a un jugador ni salirse**: la membresía es permanente. Incoherente con un producto cuyo argumento es el control de quién ve qué | API + web |
 | B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida | API + web |
 | C1 | **No hay búsqueda ni filtro en ninguna pantalla** | Solo web |
 
+> **A1 (las fichas sin cuerpo de texto) no está en esta tabla a propósito**: tiene su propia
+> sección, **P0** (abajo), porque va **antes** que el resto de 1.17, no dentro. Las dos
+> secciones lo situaban de forma contradictoria — aquí se deja solo la remisión.
+
 **Por qué ninguna prueba lo encontró:** las 167 unitarias y los 6 recorridos verifican que
 **lo que existe** funciona; ninguna puede gritar por lo que falta. Es el punto ciego
 estructural de una suite, y por eso este contraste **se repite al cerrar cada fase**.
-
-## Antes de desplegar — seguridad
-
-**Auditoría hecha el 2026-09-01 sobre el commit `4a3fe43`, con todos los hallazgos verificados
-en el código.** El detalle, la evidencia y el orden de arreglo están en
-**[`superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md`](./superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md)**
-— ahí está todo, para no tener que auditar otra vez.
-
-Lo que **sí** está cubierto (comprobado, no supuesto): inyección SQL, XSS, validación de
-entrada, contraseñas con argon2, autorización en el servidor y ausencia de secretos en el
-código.
-
-Lo que falta, y va como **tarea 1.18**:
-
-| | Hallazgo | Gravedad |
-|---|---|---|
-| 1 | **`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios. Si falta la variable en producción, la API firma tokens con una cadena que está en el repositorio público | **Crítico** |
-| 2 | **29 vulnerabilidades en dependencias de producción** (1 crítica, 16 altas) y CI no audita | Alto |
-| 3 | **Sin límite de peticiones**: fuerza bruta en login y en tokens de invitación | Alto |
-| 4 | **Sin cabeceras de seguridad** (`helmet`) | Medio |
-| 5 | **CORS abierto**, y además innecesario: nginx hace de proxy | Medio |
-| 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
-| 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
 
 ## P0 — Las fichas del mundo no tienen texto
 
@@ -215,9 +195,12 @@ crear o editar sesiones." en su propia campaña, sin poder crear la sesión que 
 en ese momento, y solo se recuperaba si cambiaba de pestaña y volvía
 (`refetchOnWindowFocus`), sin nada en pantalla que lo sugiriera. **Arreglado** exponiendo
 `isError` como señal propia (nunca tratado como "no soy miembro", siempre como "aún no lo
-sé") y `retry()` para forzar un nuevo intento; los cuatro consumidores (`CampaignDetailPage.
-tsx`, `InvitePanel.tsx`) lo enlazan a un botón "Reintentar" junto al mensaje "Comprobando
-permisos…". Ver la entrada de 1.15-fix en [07-historial.md](./07-historial.md).
+sé") y `retry()` para forzar un nuevo intento; de los seis consumidores de `useMyRole` de hoy
+(tres en `CampaignDetailPage.tsx`, más `InvitePanel.tsx`, `LinksPanel.tsx` y
+`CommentThread.tsx`), los de `CampaignDetailPage.tsx` e `InvitePanel.tsx` lo enlazan a un
+botón "Reintentar" junto al mensaje "Comprobando permisos…"; `LinksPanel.tsx:30` y
+`CommentThread.tsx:20` leen `isError` pero **no** ofrecen ese botón. Ver la entrada de
+1.15-fix en [07-historial.md](./07-historial.md).
 
 **~~La web no conoce su propio identificador de usuario~~ — CERRADO el 2026-09-01 (tarea
 1.15).** `auth.store.ts` dejaba `user: null` tras recargar la página: el token sobrevivía en
@@ -303,8 +286,10 @@ de sesión) y lo limpia al consumirlo; con sesión acepta contra la API real y n
 muestra el mensaje del servidor con salida al listado. `LoginPage.tsx`/`RegisterPage.tsx`
 resumen la invitación pendiente en vez de aterrizar en el listado, para que el jugador no
 tenga que volver a pegar el enlace. Generar la invitación es solo del DM en el servidor
-(`requireDM`), pero el botón se muestra a todo el mundo — mismo bloqueante de siempre,
-`auth.store.ts:13` — y es el 403 del servidor el que habla si un jugador lo pulsa.
+(`requireDM`). **Esta frase quedó superada por la tarea 1.15**: desde entonces
+`InvitePanel.tsx:68` deshabilita "Generar invitación" con motivo visible para quien no es DM,
+así que el botón ya no se muestra activo a todo el mundo — ver la entrada de 1.15 en
+[07-historial.md](./07-historial.md).
 
 Dos defectos reales, cazados solo por el e2e de Playwright contra la API real (las unitarias
 simulan `api.ts` y no los veían): `createInvite`/`acceptInvite` mandaban un `POST` sin cuerpo
@@ -478,7 +463,7 @@ comportamiento:
 - ~~Los botones "Quitar" (`LinksPanel.tsx`) y "Borrar" (`CommentThread.tsx`) se pintan en
   todas las filas, sin mirar si el usuario es DM o autor~~ — CERRADO, tarea 1.16 (ver
   "Cerrados").
-- **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:135`): hoy es
+- **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:313`): hoy es
   inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
   riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).
   Observación del revisor de 1.12a, no arreglado.

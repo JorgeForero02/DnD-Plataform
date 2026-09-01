@@ -93,10 +93,15 @@ cruza `GET /campaigns/:id/members` para responder "¿soy DM o jugador en esta ca
 tercer estado explícito de "aún no lo sé" mientras carga **o si la petición falla**
 (`isError`, tratado siempre como "aún no lo sé", nunca como "no soy miembro") — con
 `retry: false` (`lib/queryClient.ts`) un solo fallo no se reintenta solo, así que `useMyRole`
-expone `retry()` y los cuatro consumidores lo enlazan a un botón "Reintentar". Los botones de
-**crear** una sesión, un personaje o una entidad, y de **generar invitación**, usan ese rol
-para **deshabilitar** (no ocultar) lo que el servidor va a rechazar, con una explicación
-visible. La **fila** de una entidad, sesión o personaje **nunca se deshabilita** (arreglo 1,
+expone `retry()`; de sus seis consumidores hoy (tres en `CampaignDetailPage.tsx`, más
+`InvitePanel.tsx`, `LinksPanel.tsx` y `CommentThread.tsx`), solo los cuatro primeros lo
+enlazan a un botón "Reintentar" — `LinksPanel.tsx` y `CommentThread.tsx` leen `isError` pero
+no ofrecen reintento. **Crear** una entidad o un personaje queda sin gatear en el botón a
+propósito: el servidor deja crear a cualquier miembro (`entities.service.ts`,
+`characters.service.ts`), así que no hay nada que el servidor vaya a rechazar. Lo que sí usa
+el rol para **deshabilitar** (no ocultar) con una explicación visible es **crear y editar una
+sesión** (ambas DM-only en el servidor), **editar un personaje o una entidad**, y **generar
+invitación**. La **fila** de una entidad, sesión o personaje **nunca se deshabilita** (arreglo 1,
 1.15-fix): es la única vista de detalle que existe — el editor es el único consumidor de
 `useEntity`/`useSession`/`useCharacter`, y enlaces y comentarios solo se pintan dentro de él
 — así que lo que el rol decide es si el editor que la fila abre lo hace en modo lectura
@@ -119,7 +124,10 @@ origen.
   llegar al SaaS y al 3D.
 - **Minimalismo de infraestructura.** Sin Redis, sin colas, sin S3, sin WebSockets, sin
   servicio de IA hasta que una fase los necesite. Hoy: Postgres + Nest + React y nada más.
-- **Eventos de dominio** vía `@nestjs/event-emitter` — en proceso, sin infraestructura.
+- **Eventos de dominio** vía `@nestjs/event-emitter` — en proceso, sin infraestructura. **Hoy
+  solo se emiten** (`campaign.created`, `entity.created`, `campaign.member_joined`): no existe
+  ningún `@OnEvent` en `apps/api/src` que reaccione a ellos. "En proceso" describe el
+  mecanismo de transporte, no que algo los consuma todavía.
 - **Sentry** desde la fase 0 (`SENTRY_DSN` opcional; vacío lo desactiva).
 - **Visibilidad de primera clase desde la fase 1**, no añadida después: es el rasgo que
   distingue al producto y meterla tarde habría tocado todas las consultas.

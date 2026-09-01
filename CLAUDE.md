@@ -17,7 +17,7 @@ ni 3D: eso son fases posteriores.
 | `docs/02-entorno.md` | Cómo levantar todo, variables, gotchas de Windows |
 | `docs/05-datos.md` | Esquema, migraciones y semántica de la visibilidad |
 | `docs/superpowers/plans/` | Plan maestro por fases |
-| `.superpowers/sdd/progress.md` | Ledger de ejecución, una línea por tarea |
+| `.superpowers/sdd/progress.md` | Ledger de ejecución, una línea por tarea. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
 
 **Al terminar un cambio relevante, actualiza la documentación en el mismo commit**: estado
 en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es peor que ausente.
@@ -46,11 +46,14 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 
 ## Comandos
 
+**Conteos de pruebas: solo en [docs/08-pruebas.md](docs/08-pruebas.md).** No se repiten aquí
+ni en ningún otro documento — es su fuente única declarada.
+
 ```bash
 docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
-pnpm verify                              # build + lint + formato + 54 unitarias (lo exige el pre-commit)
-pnpm --filter @dnd/api test:e2e          # 19 e2e de API contra Postgres real
-pnpm --filter @dnd/web e2e               # Playwright: 2 recorridos en Chromium
+pnpm verify                              # build + lint + formato + unitarias (lo exige el pre-commit)
+pnpm --filter @dnd/api test:e2e          # e2e de API contra Postgres real
+pnpm --filter @dnd/web e2e               # Playwright, Chromium
 pnpm dev:api                             # API en :3000
 pnpm dev:web                             # web en :5173
 pnpm format                              # aplica Prettier

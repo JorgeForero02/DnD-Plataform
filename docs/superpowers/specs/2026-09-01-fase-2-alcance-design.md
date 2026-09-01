@@ -156,7 +156,11 @@ Por tanto:
 
 Esta es la parte buena: **una tirada es un recurso más con su nivel de visibilidad**, y la
 matriz de cinco niveles con su `canView` ya existe, con la matriz completa probada y filtrando
-en todos los listados desde la fase 1.
+en todos los listados **de recursos con visibilidad** desde la fase 1 (entidades, sesiones,
+personajes, enlaces, comentarios). **No cubre `GET /campaigns` ni `/campaigns/:id/members`**,
+que no tienen campo `visibility` — se filtran por membresía, no por `canView`. Si una tirada
+se modela como recurso con visibilidad de verdad, hereda la matriz sin más; no hace falta
+tocar esos dos listados.
 
 - **Tirada de jugador → `PLAYERS`** (o `PUBLIC`): la ve toda la mesa. Por defecto.
 - **Tirada del DM → la decide él, tirada a tirada**: `PLAYERS` si quiere enseñarla, `DM_ONLY` si

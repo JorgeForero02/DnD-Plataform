@@ -5,7 +5,7 @@
 > la calidad*. Ese proceso es este documento. **Que compile no prueba nada más que la
 > sintaxis.**
 
-## Las cuatro capas y qué prueba cada una
+## Las cinco capas y qué prueba cada una
 
 | Capa | Herramienta | Qué demuestra | Dónde vive |
 |---|---|---|---|
@@ -68,7 +68,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **No hay prueba de accesibilidad, ni de responsive, ni de rendimiento.** Playwright cubre
-  hoy dos recorridos, no el catálogo.
+  hoy seis recorridos en dos especificaciones, no el catálogo.
 - **No hay mutación ni umbral de cobertura** (N2/N3 no declarados).
 
 ## Playwright

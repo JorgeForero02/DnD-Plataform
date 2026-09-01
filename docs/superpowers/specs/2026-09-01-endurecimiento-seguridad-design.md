@@ -3,7 +3,7 @@
 **Fecha de la auditoría:** 2026-09-01. **Estado:** hallazgos verificados, pendientes de arreglar.
 **Esta tarea se ejecuta en una sesión limpia**, después del cierre de la fase 1
 (`2026-09-01-cierre-fase-1-congruencia-design.md`, tarea 1.17) y antes de la capa visual (1.19)
-y del plan de la fase 2. **El hallazgo 3 de aquel documento —cambiar la contraseña— encaja
+y del plan de la fase 2. **El hallazgo B3 de aquel documento —cambiar la contraseña— encaja
 mejor en esta tarea que en aquélla.**
 
 Auditoría hecha a petición del autor sobre el sistema tal como está en el commit `4a3fe43`.

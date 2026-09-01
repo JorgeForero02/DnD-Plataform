@@ -13,10 +13,12 @@ numerada.
 - **Ambas imágenes Docker construyen** (`dnd-api`, `dnd-web`), comprobado en la tarea 0.10.
 - **`node dist/src/main.js` arranca en modo producción** y mapea las rutas de auth
   (tarea 0.10 / commit `53ac276`).
-- **CI en GitHub Actions verde** en cada push a `main`: instala, genera Prisma, aplica
-  migraciones contra un Postgres de servicio, corre `pnpm test` y los e2e.
-  **El lint está omitido a propósito** en el workflow, con comentario, porque no hay
-  configuración de ESLint. Ver [06-pendientes.md](./06-pendientes.md).
+- **CI en GitHub Actions verde** en cada push a `main` y en cada PR (`.github/workflows/ci.yml`),
+  con dos trabajos: `test` (instala, genera Prisma, aplica migraciones contra un Postgres de
+  servicio, y corre `pnpm lint`, `pnpm format:check`, `pnpm test` y `pnpm --filter @dnd/api
+  test:e2e`) y `e2e-browser` (instala Playwright y corre `pnpm --filter @dnd/web e2e` contra
+  la API y la web reales, subiendo el reporte como artefacto si falla). **El lint corre desde
+  el 2026-08-31**; ver [07-historial.md](./07-historial.md).
 
 ## Procedimiento previsto (Coolify sobre VPS propio)
 

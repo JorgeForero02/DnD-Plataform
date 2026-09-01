@@ -4,10 +4,16 @@ Requisitos: Node ≥ 20, pnpm 10.32.1 (lo fija `packageManager`), Docker Desktop
 
 ## Arranque
 
+**El `.env` que lee la API es `apps/api/.env`, no uno en la raíz.** `ConfigModule.forRoot({
+isGlobal: true })` (`apps/api/src/app.module.ts`) no fija `envFilePath`, así que Nest lee
+relativo al directorio de trabajo del proceso — que con `pnpm --filter @dnd/api ...` es
+`apps/api/`. Prisma resuelve `DATABASE_URL` igual (`apps/api/prisma/schema.prisma`). El
+`.env.example` de la raíz sigue siendo la plantilla; se copia dentro de `apps/api/`.
+
 ```bash
 pnpm install                                  # el script `prepare` compila @dnd/shared a dist/
 docker compose up -d                          # Postgres 16 en localhost:5432 (volumen dnd_pgdata)
-cp .env.example .env                          # y edita JWT_SECRET
+cp .env.example apps/api/.env                 # y edita JWT_SECRET
 pnpm --filter @dnd/api prisma:generate
 pnpm --filter @dnd/api exec prisma migrate deploy
 
@@ -28,6 +34,10 @@ pnpm dev:web                                  # web en :5173, proxy /api -> :300
 
 `.env.example` es la fuente de verdad de esta lista: si añades una variable, se añade ahí
 en el mismo commit. **Ningún secreto en el código.**
+
+**`API_URL` no está en `.env.example`** porque no la usa el desarrollo local: solo la lee el
+contenedor de `apps/web` en producción (`apps/web/nginx.conf`), que se configura al desplegar,
+no al copiar la plantilla local.
 
 ## Comandos
 

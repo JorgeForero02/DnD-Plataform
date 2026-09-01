@@ -45,7 +45,16 @@ Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**
 | `OWNER_DM` | el creador y el DM |
 | `DM_ONLY` | solo el DM |
 
-Más el `isAdmin` del sistema, que ve todo.
+Más el `isAdmin` del sistema, que ve todo — existe en el modelo (`User.isAdmin`, por defecto
+`false`) y `canView` lo respeta, pero **ningún endpoint lo pone a `true`** hoy: no hay forma de
+convertirse en admin desde la API. Es un límite conocido, no un mecanismo activo.
+
+**`PUBLIC` y `PLAYERS` producen hoy el mismo conjunto de espectadores.** `canView`
+(`visibility.ts:21-23`) devuelve `true` para ambos sin distinguirlos, y todo listado exige
+antes ser miembro de la campaña (`requireMember`) — así que, mientras no exista un modo de
+"campaña pública" que deje entrar a alguien sin membresía, `PUBLIC` no amplía nada frente a
+`PLAYERS`. La distinción está en el modelo y en el selector de visibilidad, lista para el día
+en que algo no exija membresía.
 
 Por defecto una `Entity` nace `DM_ONLY` (el mundo es secreto hasta que el DM lo revela);
 `Session` y `Character` nacen `PLAYERS`.

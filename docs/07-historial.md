@@ -10,7 +10,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 **Qué.** Se audita la seguridad del sistema a petición del autor y se escribe
 `superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md` con los siete hallazgos, su
-evidencia y el orden de arreglo — será la **tarea 1.17**, en sesión aparte. Y se alinea la
+evidencia y el orden de arreglo — será la **tarea 1.18**, en sesión aparte. Y se alinea la
 documentación entera, que había empezado a contradecirse.
 
 **Lo que la auditoría encontró.** Bien cubiertos: inyección SQL (cero SQL crudo), XSS (cero
@@ -92,7 +92,7 @@ sabiendo quién la usa.
 `packages/shared` — los cinco `DELETE` del servidor ya existían y seguían probados antes de
 empezar. Sin migraciones de base de datos.
 
-**Verificación.** `pnpm verify`: 166 unitarias (shared 10, api 40, web 116), build/lint/formato
+**Verificación.** `pnpm verify`: 167 unitarias (shared 10, api 40, web 117), build/lint/formato
 limpios. `pnpm --filter @dnd/api test:e2e`: 20/20, sin tocar. `pnpm --filter @dnd/web e2e`:
 6/6 (las 5 anteriores más la nueva de cascada).
 
@@ -324,8 +324,10 @@ faltaban (todas vistas en rojo antes del arreglo correspondiente):
 - Tras un intento de aceptar (éxito o error), `peekPendingInvite()` es `null`.
 - `LoginPage` sin invitación pendiente navega a `/`.
 
-Y se corrigió `InvitePanel.test.tsx:61-64` ("una sola persona"), que comprobaba un párrafo
-estático pintado siempre, sin depender de ninguna interacción — pasaba por construcción. Se
+Y se corrigió, en su versión de entonces, la prueba de `InvitePanel.test.tsx` que comprobaba
+el párrafo estático "una sola persona" ya pintado siempre, sin depender de ninguna
+interacción — pasaba por construcción (la cita de línea de esta entrada ya no corresponde: el
+fichero se ha reescrito desde entonces). Se
 quitó y se sustituyó por dos pruebas que sí dependen del estado: el aviso de "no anula el
 anterior" (arreglo 6) solo aparece tras generar un enlace, y el mensaje de error traducido
 (arreglo 8) solo aparece cuando `createInvite` falla.
@@ -390,7 +392,7 @@ jugador en una campaña desde el navegador.
   etiqueta, y un botón de copiar. Si `navigator.clipboard.writeText` falla (permiso
   bloqueado), se muestra el fallo y **el enlace sigue en pantalla** — nunca un "copiado" que
   mienta. Generar la invitación es solo del DM en el servidor (`requireDM`); el botón se
-  muestra a todo el mundo igual que en 1.13, porque `auth.store.ts:13` sigue sin conocer el
+  muestra a todo el mundo igual que en 1.13, porque `auth.store.ts:15` sigue sin conocer el
   id del usuario tras recargar — es el 403 del servidor el que corrige a quien no debería
   pulsarlo.
 - `pages/JoinPage.tsx` — ruta `/join/:token`, deliberadamente fuera de `ProtectedRoute`
@@ -539,7 +541,7 @@ probada, pero no había forma de crearlos o editarlos desde la web.
 **Qué queda abierto, a propósito.** Ni `SessionsTab` ni `CharactersTab` ocultan el botón de
 edición según permiso (crear/editar sesión es solo del DM; editar personaje, del dueño o el
 DM) — mismo bloqueante que las entidades y los enlaces/comentarios: la web no conoce su
-propio id de usuario tras recargar (`auth.store.ts:13`). No hay UI de borrado, aunque la API
+propio id de usuario tras recargar (`auth.store.ts:15`). No hay UI de borrado, aunque la API
 la soporte: el brief pedía creación y edición, no borrado.
 
 **Cómo revertir.** `git revert` del commit de esta tarea. Sin migraciones ni cambios en
@@ -593,7 +595,7 @@ selector.
 
 **No arreglado, dado de alta en [06-pendientes.md](./06-pendientes.md):** las filas de la
 lista de entidades son botón de editar aunque el servidor vaya a devolver 403;
-`auth.store.ts:13` deja `user: null` tras recargar; falta `key` en `EntityTab` al cambiar de
+`auth.store.ts:15` deja `user: null` tras recargar; falta `key` en `EntityTab` al cambiar de
 pestaña; el modal no tiene `role="dialog"` ni cierra con Escape.
 
 **Cómo revertir.** `git revert` del commit: devuelve `EntityEditor.tsx`, `features/entities/
@@ -655,7 +657,7 @@ este fallo.
 
 **No arreglado a propósito.** Los botones "Quitar"/"Borrar" se pintan en todas las filas sin
 mirar permiso: ocultarlos con criterio necesita que la web conozca su propio identificador de
-usuario, y `auth.store.ts:13` todavía lo pierde al recargar. Mismo bloqueante que la fila de
+usuario, y `auth.store.ts:15` todavía lo pierde al recargar. Mismo bloqueante que la fila de
 edición de `CampaignDetailPage.tsx`. Ver [06-pendientes.md](./06-pendientes.md).
 
 **Pruebas.** 5 nuevas vistas en rojo antes de su arreglo: borrado con error en `LinksPanel` y
@@ -808,4 +810,5 @@ Correcciones de la fase que siguen vigentes y explican decisiones raras del repo
 `nest --watch` en Windows; `@dnd/shared` se publica a `dist` **y** se aliasa a `src` en Vite;
 y `packageManager` queda fijado a pnpm 10.32.1.
 
-**Deuda que nació aquí y sigue abierta:** ESLint nunca se configuró y CI omite el lint.
+**Deuda que nació aquí:** ESLint no se configuró y CI omitía el lint. **Cerrado el
+2026-08-31** — ver la entrada "ESLint, Prettier y gancho de pre-commit" de esa fecha, arriba.

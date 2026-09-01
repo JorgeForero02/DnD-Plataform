@@ -38,3 +38,15 @@ export function updateCharacter(
     body: JSON.stringify(input),
   });
 }
+
+export function deleteCharacter(
+  campaignId: string,
+  characterId: string,
+): Promise<{ deleted: boolean }> {
+  return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/characters/${characterId}`, {
+    method: "DELETE",
+    // See the same comment in features/entities/api.ts: apiFetch always sends a JSON
+    // Content-Type, and Fastify rejects that paired with a truly empty body.
+    body: JSON.stringify({}),
+  });
+}

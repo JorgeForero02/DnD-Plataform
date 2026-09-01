@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchCharacters, createCharacter, updateCharacter } from "./api";
+import { fetchCharacters, createCharacter, updateCharacter, deleteCharacter } from "./api";
 
 export const charactersKey = (campaignId: string) =>
   ["campaigns", campaignId, "characters"] as const;
@@ -25,6 +25,14 @@ export function useUpdateCharacter(campaignId: string) {
   return useMutation({
     mutationFn: (vars: { characterId: string; input: Parameters<typeof updateCharacter>[2] }) =>
       updateCharacter(campaignId, vars.characterId, vars.input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: charactersKey(campaignId) }),
+  });
+}
+
+export function useDeleteCharacter(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (characterId: string) => deleteCharacter(campaignId, characterId),
     onSuccess: () => qc.invalidateQueries({ queryKey: charactersKey(campaignId) }),
   });
 }

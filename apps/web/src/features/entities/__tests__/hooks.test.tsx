@@ -2,7 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { allEntitiesKey, entitiesKey, useCreateEntity, useUpdateEntity } from "../hooks";
+import {
+  allEntitiesKey,
+  entitiesKey,
+  useCreateEntity,
+  useUpdateEntity,
+  useDeleteEntity,
+} from "../hooks";
+import { linksKey } from "../../links/hooks";
+import { commentsKey } from "../../comments/hooks";
 import * as entitiesApi from "../api";
 import type { Entity } from "../api";
 
@@ -68,5 +76,38 @@ describe("entities hooks — cache invalidation across the two key branches (fix
 
     await waitFor(() => expect(qc.getQueryState(allEntitiesKey("c1"))?.isInvalidated).toBe(true));
     expect(qc.getQueryState(entitiesKey("c1", "NPC"))?.isInvalidated).toBe(true);
+  });
+
+  // Found while building task 1.16's real-browser cascade test: deleting an entity cascades
+  // (schema.prisma, onDelete: Cascade in both directions on EntityLink) to links that some
+  // *other* entity's LinksPanel already has cached under its own linksKey(otherEntityId) — a
+  // key this hook can't name directly, since it has no way to know which other entities
+  // linked to the one just deleted. Reopening that other entity's editor within staleTime
+  // (queryClient.ts, 30s) painted the deleted entity as still linked, straight against the
+  // real API — a spy could never have shown this, because it doesn't share a real cache with
+  // a second entity's LinksPanel the way this test (and the browser) does.
+  it("deleting an entity invalidates another entity's links and comments too, not just its own lists", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(entitiesKey("c1", "NPC"), []);
+    qc.setQueryData(allEntitiesKey("c1"), []);
+    // "e-other" stands in for Zariel: an entity that links to the one being deleted, with its
+    // own links/comments queries already cached — exactly the shape a mounted LinksPanel and
+    // CommentThread leave behind.
+    qc.setQueryData(linksKey("e-other"), []);
+    qc.setQueryData(commentsKey("e-other"), []);
+    vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
+
+    const { result } = renderHook(() => useDeleteEntity("c1", "NPC"), {
+      wrapper: makeWrapper(qc),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync("e1");
+    });
+
+    await waitFor(() => expect(qc.getQueryState(linksKey("e-other"))?.isInvalidated).toBe(true));
+    expect(qc.getQueryState(commentsKey("e-other"))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(entitiesKey("c1", "NPC"))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(allEntitiesKey("c1"))?.isInvalidated).toBe(true);
   });
 });

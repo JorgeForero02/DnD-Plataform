@@ -54,3 +54,14 @@ export function updateEntity(
     body: JSON.stringify(input),
   });
 }
+
+export function deleteEntity(campaignId: string, entityId: string): Promise<{ deleted: boolean }> {
+  return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/entities/${entityId}`, {
+    method: "DELETE",
+    // apiFetch (lib/api.ts) always sends Content-Type: application/json; Fastify 500s on
+    // that combined with a genuinely empty body ("Body cannot be empty…") — the exact bug
+    // 1.14 hit and fixed for invites' POST calls. A DELETE has nothing to say, but it still
+    // needs a body to match its own header.
+    body: JSON.stringify({}),
+  });
+}

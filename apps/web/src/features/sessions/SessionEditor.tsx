@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CreateSessionInput, UpdateSessionInput, Visibility } from "@dnd/shared";
-import { useCreateSession, useUpdateSession } from "./hooks";
+import { DeleteButton } from "../../components/DeleteButton";
+import { useCreateSession, useDeleteSession, useUpdateSession } from "./hooks";
 import type { Session } from "./api";
 
 // SPECIFIC_PLAYERS and OWNER_DM are both dropped, and for the same reason: Session has no
@@ -57,6 +58,25 @@ export function SessionEditor({
   const create = useCreateSession(campaignId);
   const update = useUpdateSession(campaignId);
   const pending = create.isPending || update.isPending;
+
+  const deleteSession = useDeleteSession(campaignId);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const onConfirmDelete = async () => {
+    if (!session) return;
+    setDeleteError(null);
+    try {
+      await deleteSession.mutateAsync(session.id);
+      onClose();
+    } catch (err) {
+      setDeleteError((err as Error).message);
+    }
+  };
+
+  // Session has no cascading children in schema.prisma — nothing else disappears with it.
+  const deleteMessage = session
+    ? `Vas a borrar la sesión "${session.title}". No se puede deshacer.`
+    : "";
 
   // A session can arrive with a visibility this editor doesn't itself offer (curl, a seed, a
   // future client all pass the API's own schema). Without this, the <select> renders with no
@@ -176,19 +196,31 @@ export function SessionEditor({
           </select>
         </div>
         {error && <p className="text-sm text-red-400">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={pending || readOnly}
-            title={readOnly ? readOnlyReason : undefined}
-            className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
-          >
-            Guardar
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          {isEdit && (
+            <DeleteButton
+              message={deleteMessage}
+              onConfirm={onConfirmDelete}
+              pending={deleteSession.isPending}
+              disabled={readOnly}
+              disabledReason={readOnlyReason}
+            />
+          )}
+          <div className="flex flex-1 justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={pending || readOnly}
+              title={readOnly ? readOnlyReason : undefined}
+              className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
+            >
+              Guardar
+            </button>
+          </div>
         </div>
+        {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
       </form>
     </div>
   );

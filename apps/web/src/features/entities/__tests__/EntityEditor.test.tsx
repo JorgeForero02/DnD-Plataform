@@ -17,11 +17,21 @@ function renderEditor() {
   );
 }
 
-function renderEditEditor(entity: Entity) {
+function renderEditEditor(
+  entity: Entity,
+  props: { onClose?: () => void; readOnly?: boolean; readOnlyReason?: string } = {},
+) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <EntityEditor campaignId="c1" type="NPC" entity={entity} onClose={() => {}} />
+      <EntityEditor
+        campaignId="c1"
+        type="NPC"
+        entity={entity}
+        onClose={props.onClose ?? (() => {})}
+        readOnly={props.readOnly}
+        readOnlyReason={props.readOnlyReason}
+      />
     </QueryClientProvider>,
   );
 }
@@ -180,5 +190,144 @@ describe("EntityEditor (edit)", () => {
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     const [, , input] = spy.mock.calls[0];
     expect(input).not.toHaveProperty("specificPlayerIds");
+  });
+});
+
+// Task 1.16: the only irreversible action in the app. Borrar shows up next to Guardar, only
+// in edit mode, and reuses the exact same readOnly/readOnlyReason the editor already gets
+// from CampaignDetailPage.tsx for editing — entities.service.ts:requireEditable (DM or
+// creator) gates both edit and delete identically, so there's no separate permission to
+// compute here.
+describe("EntityEditor (delete)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([]);
+    vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([]);
+    vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+  });
+
+  function entityWith(grants: { id: string; entityId: string; userId: string }[]) {
+    return { ...editedEntity, grants };
+  }
+
+  it("shows Borrar only in edit mode, not while creating", () => {
+    renderEditor();
+    expect(screen.queryByRole("button", { name: "Borrar" })).not.toBeInTheDocument();
+  });
+
+  it("pide confirmación: el primer clic no llama a la mutación (comportamiento 1)", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(entityWith([]));
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+    const spy = vi.spyOn(entitiesApi, "deleteEntity");
+    renderEditEditor(editedEntity);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
+
+    expect(spy).not.toHaveBeenCalled();
+    // The confirmation text must say what disappears with it — the schema cascades
+    // (schema.prisma: Entity -> EntityLink/EntityVisibilityGrant/Comment, onDelete: Cascade).
+    expect(
+      await screen.findByText(
+        /No se puede deshacer: se borrarán también todos los enlaces en los que aparece/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("cuenta comentarios y concesiones reales en el aviso, no un texto genérico", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(
+      entityWith([
+        { id: "g1", entityId: "e1", userId: "p1" },
+        { id: "g2", entityId: "e1", userId: "p2" },
+      ]),
+    );
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([
+      { id: "c1", entityId: "e1", authorId: "u1", body: "hola", createdAt: "x" },
+      { id: "c2", entityId: "e1", authorId: "u1", body: "adiós", createdAt: "x" },
+      { id: "c3", entityId: "e1", authorId: "u1", body: "otra vez", createdAt: "x" },
+    ]);
+    renderEditEditor(editedEntity);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
+
+    expect(
+      await screen.findByText(
+        'Vas a borrar "Old Name". No se puede deshacer: se borrarán también todos los enlaces en los que aparece, salgan de ella o apunten a ella, 3 comentarios y 2 concesiones de visibilidad.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("confirmar borra, con el identificador correcto, y cierra el editor (comportamiento 2)", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(entityWith([]));
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+    const spy = vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
+    const onClose = vi.fn();
+    renderEditEditor(editedEntity, { onClose });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith("c1", "e1");
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("cancelar no borra y deja el editor abierto (comportamiento 3)", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(entityWith([]));
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+    const spy = vi.spyOn(entitiesApi, "deleteEntity");
+    const onClose = vi.fn();
+    renderEditEditor(editedEntity, { onClose });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "No, cancelar" }));
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    // Back to the normal footer, editor still open.
+    expect(screen.getByRole("button", { name: "Borrar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+  });
+
+  it("quien no puede editar tampoco puede borrar: deshabilitado con su motivo, el clic no llama a nada (comportamiento 4)", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(entityWith([]));
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+    const spy = vi.spyOn(entitiesApi, "deleteEntity");
+    renderEditEditor(editedEntity, {
+      readOnly: true,
+      readOnlyReason: "Solo el DM o quien lo creó puede editarlo.",
+    });
+
+    const deleteButton = await screen.findByRole("button", { name: "Borrar" });
+    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toHaveAttribute("title", "Solo el DM o quien lo creó puede editarlo.");
+    fireEvent.click(deleteButton);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("quien sí puede editar, sí puede borrar (comportamiento 5)", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(entityWith([]));
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+    renderEditEditor(editedEntity, { readOnly: false });
+
+    const deleteButton = await screen.findByRole("button", { name: "Borrar" });
+    expect(deleteButton).not.toBeDisabled();
+  });
+
+  it("el fallo del servidor al borrar se ve (comportamiento 6)", async () => {
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue(entityWith([]));
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+    vi.spyOn(entitiesApi, "deleteEntity").mockRejectedValue(
+      new Error("Only the DM or the creator can modify this"),
+    );
+    renderEditEditor(editedEntity);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+
+    expect(
+      await screen.findByText("Only the DM or the creator can modify this"),
+    ).toBeInTheDocument();
+    // The editor stays open on failure — nothing was actually deleted.
+    expect(screen.getByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
   });
 });

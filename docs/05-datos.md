@@ -25,7 +25,12 @@ por campo en vez de siete tablas porque la relación wiki (`EntityLink`) tiene q
 cualquier tipo con cualquier tipo; con siete tablas ese enlace sería una tabla de uniones
 por par.
 
-Todo lo colgado de una campaña se borra en cascada con ella (`onDelete: Cascade`).
+Todo lo colgado de una campaña se borra en cascada con ella (`onDelete: Cascade`). Dentro de
+una campaña, borrar una `Entity` se lleva también sus `EntityLink` (**en las dos
+direcciones**: tanto los que salen de ella como los que otras entidades tienen hacia ella,
+porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGrant` y sus
+`Comment`. `Session` y `Character` no tienen ninguna tabla colgando de ellos, así que borrar
+uno de los dos no se lleva nada más por delante.
 
 ## El modelo de visibilidad
 

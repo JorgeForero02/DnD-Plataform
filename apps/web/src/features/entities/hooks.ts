@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EntityType } from "@dnd/shared";
-import { fetchEntities, fetchAllEntities, fetchEntity, createEntity, updateEntity } from "./api";
+import {
+  fetchEntities,
+  fetchAllEntities,
+  fetchEntity,
+  createEntity,
+  updateEntity,
+  deleteEntity,
+} from "./api";
 
 export const entitiesKey = (campaignId: string, type: EntityType) =>
   ["campaigns", campaignId, "entities", type] as const;
@@ -66,6 +73,33 @@ export function useUpdateEntity(campaignId: string, type: EntityType) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: entitiesKey(campaignId, type) });
       qc.invalidateQueries({ queryKey: allEntitiesKey(campaignId) });
+    },
+  });
+}
+
+export function useDeleteEntity(campaignId: string, type: EntityType) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (entityId: string) => deleteEntity(campaignId, entityId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: entitiesKey(campaignId, type) });
+      // Same trap as create/update (1.12b): allEntitiesKey is a sibling branch, not a
+      // prefix of entitiesKey(campaignId, type) — without this, the link target picker
+      // (useAllEntities) keeps offering the deleted entity for up to staleTime
+      // (queryClient.ts, 30s) after it's gone.
+      qc.invalidateQueries({ queryKey: allEntitiesKey(campaignId) });
+      // A new bite of the same trap, found while testing this task: the schema cascades a
+      // deleted entity's EntityLink rows in BOTH directions (schema.prisma — `to` also has
+      // onDelete: Cascade), so some *other* entity's outgoing link list can point at the one
+      // just deleted. Its query key is linksKey(otherEntityId) = ["entities", otherEntityId,
+      // "links"] (features/links/hooks.ts) — a branch this hook has no way to name, because
+      // it doesn't know which other entities linked to this one. Importing linksKey/
+      // commentsKey here would only fix the two kinds of query that exist today; a predicate
+      // over the shared "entities" root invalidates every entity-scoped query (both links and
+      // comments, for every entity, not just this campaign's) instead — broader than strictly
+      // necessary, but the alternative is exactly the stale-picker bug this comment is next
+      // to, just for a panel instead of a picker.
+      qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === "entities" });
     },
   });
 }

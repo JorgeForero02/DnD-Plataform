@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useMembers } from "../campaigns/members";
+import { useMembers, useMyRole } from "../campaigns/members";
+import { useAuthStore } from "../../store/auth.store";
 import { useComments, useCreateComment, useDeleteComment } from "./hooks";
 
 export function CommentThread({ campaignId, entityId }: { campaignId: string; entityId: string }) {
@@ -12,6 +13,16 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
   const deleteComment = useDeleteComment(entityId);
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // The task 1.15 gap this task closes: this thread used to paint "Borrar" unconditionally.
+  // The server rule (comments.service.ts:65) is DM or the comment's own author — per comment,
+  // not per entity, unlike LinksPanel.
+  const { role, isLoading: roleLoading, isError: roleError } = useMyRole(campaignId);
+  const userId = useAuthStore((s) => s.user?.id);
+  const roleUnresolved = roleLoading || roleError;
+  const canDeleteComment = (authorId: string) =>
+    !roleUnresolved && (role === "DM" || authorId === userId);
+  const deleteReason = "Solo el autor o el DM puede borrar este comentario.";
 
   // authorId is all the API sends. If the author isn't in the member list (left the
   // campaign, or the list failed to load), fall back to the raw id instead of hiding
@@ -43,24 +54,36 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
         <p className="text-sm text-slate-400">Sin comentarios.</p>
       )}
       <ul className="space-y-1">
-        {comments.data?.map((c) => (
-          <li key={c.id} className="flex items-start justify-between gap-2 text-sm">
-            <span>
-              <strong>{authorName(c.authorId)}:</strong> {c.body}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                deleteComment.mutate(c.id, {
-                  onError: (err) => setError((err as Error).message),
-                })
-              }
-              className="shrink-0 text-red-400"
-            >
-              Borrar
-            </button>
-          </li>
-        ))}
+        {comments.data?.map((c) => {
+          const canDelete = canDeleteComment(c.authorId);
+          const rowReason = roleUnresolved ? "Comprobando permisos…" : deleteReason;
+          return (
+            <li key={c.id} className="flex items-start justify-between gap-2 text-sm">
+              <span>
+                <strong>{authorName(c.authorId)}:</strong> {c.body}
+              </span>
+              {/* Arreglo 2 (1.16-fix): the reason "Borrar" is disabled used to live only in
+                  `title`, which touch has no way to reveal and screen readers don't announce.
+                  This permission is per row (canDeleteComment(authorId), unlike LinksPanel's
+                  single boolean), so the visible text is per row too. */}
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    deleteComment.mutate(c.id, {
+                      onError: (err) => setError((err as Error).message),
+                    })
+                  }
+                  disabled={!canDelete}
+                  className="text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Borrar
+                </button>
+                {!canDelete && <span className="text-xs text-slate-400">{rowReason}</span>}
+              </span>
+            </li>
+          );
+        })}
       </ul>
       <form onSubmit={onSubmit} className="flex items-center gap-2">
         <label htmlFor="comment-body" className="sr-only">

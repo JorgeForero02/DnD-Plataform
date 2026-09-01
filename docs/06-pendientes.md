@@ -22,22 +22,66 @@ un efecto colateral de la siguiente funcionalidad.**
 > de prueba aunque sea con lo que haya.
 
 La fase 1 está construida y verificada (ver
-[09-primera-partida.md](./09-primera-partida.md) para el guion de esa sesión cuando llegue). Estas dos son las que se notan en la
-mesa, en orden de cuánto estorban:
+[09-primera-partida.md](./09-primera-partida.md) para el guion de esa sesión cuando llegue).
+La única carencia que quedaba de la lista original —no se podía borrar casi nada desde la
+interfaz— se cerró como tarea 1.16 (ver "Cerrados"). Queda esta:
 
-**1 · No se puede borrar casi nada desde la interfaz.** Solo enlaces y comentarios tienen
-botón. Una entidad, una sesión o un personaje creados por error **se quedan para siempre**,
-aunque `DELETE` exista y esté probado en la API para los tres. Es la carencia que más se va a
-notar: en una partida se crean cosas mal. **Es trabajo solo de web.** (Sigue abierta — tarea
-1.16.)
-
-**2 · No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que
+**No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que
 estar en la misma red. Si se quiere que entren desde sus casas, esto **sí** es bloqueante.
 Decisión aparte, no configuración. Ver [03-despliegue.md](./03-despliegue.md).
 
-La primera se puede cerrar antes de jugar; la segunda es una decisión de alcance.
-
 ## Cerrados
+
+**~~No se puede borrar casi nada desde la interfaz~~, y ~~"Quitar"/"Borrar" en `LinksPanel`/
+`CommentThread` se pintan sin mirar permiso~~ — CERRADO el 2026-09-01 (tarea 1.16).** Los tres
+editores (`EntityEditor.tsx`, `SessionEditor.tsx`, `CharacterEditor.tsx`) ganan un botón
+"Borrar" en modo edición, con confirmación **en la propia pantalla** — un `DeleteButton`
+compartido (`apps/web/src/components/DeleteButton.tsx`), no `window.confirm` — que reutiliza
+exactamente el mismo `readOnly`/`readOnlyReason` que el editor ya recibía para editar: los
+tres recursos gatean borrar con la misma regla que editar (`entities.service.ts` y
+`characters.service.ts`: DM o creador/dueño vía `requireEditable`; `sessions.service.ts`: DM
+vía `requireDM`), así que no hace falta una segunda comprobación de permiso. La confirmación
+de entidad dice qué se lleva la cascada real del esquema (`schema.prisma`: `EntityLink` en
+ambas direcciones, `EntityVisibilityGrant` y `Comment`, los tres `onDelete: Cascade`), con
+números reales de comentarios y concesiones cuando ya están cargados (comparten clave de
+consulta con `CommentThread`/el propio detalle de la entidad, así que no hay una petición
+extra) — el número de enlaces no se muestra porque `/entities/:id/links` solo lista los
+salientes visibles para quien mira, no los entrantes de otras entidades, así que no hay forma
+honesta de contarlos desde aquí. Sesión y personaje no tienen hijos en cascada
+(`schema.prisma`), así que su aviso es solo "no se puede deshacer".
+
+`LinksPanel.tsx` y `CommentThread.tsx` ganan el mismo criterio de honestidad que 1.15 le dio a
+los otros cuatro sitios: "Quitar" se deshabilita (nunca se oculta) para quien no es DM ni creó
+la entidad (`links.service.ts:75`), y "Borrar" para quien no es DM ni el propio autor del
+comentario (`comments.service.ts:65`), ambos con el motivo visible — la ficha que 1.15 dejó
+abierta a propósito porque su brief pedía otras cuatro superficies.
+
+**Invalidación de caché — dos mordiscos nuevos del mismo tipo que 1.12b, encontrados
+escribiendo las pruebas de esta tarea, no adivinados:**
+- Borrar una entidad invalida `entitiesKey`/`allEntitiesKey` (mismo patrón que crear/editar).
+- La cascada del esquema borra `EntityLink` **en las dos direcciones**: al borrar una entidad
+  puede desaparecer un enlace que **otra** entidad ya tenía cacheado bajo su propio
+  `linksKey(otraEntidadId)` — una clave que `useDeleteEntity` no puede nombrar porque no sabe
+  qué otras entidades la enlazaban. Se prueba y se cazó primero en el navegador real (reabrir
+  el editor de la primera entidad seguía mostrando el enlace hacia la segunda, ya borrada, en
+  Postgres) — ni un espía ni la unitaria original lo habrían visto, porque ninguna comparte
+  cache real entre dos entidades. Arreglado invalidando por predicado sobre la raíz
+  `"entities"` (`features/entities/hooks.ts`), que cubre `linksKey`/`commentsKey` de
+  cualquier entidad — más ancho de lo estrictamente necesario, pero la alternativa es
+  exactamente este bug. Regresión cubierta en
+  `apps/web/src/features/entities/__tests__/hooks.test.tsx` y en el recorrido de navegador
+  `apps/web/e2e/campana.spec.ts`.
+
+**Bug real encontrado y arreglado de paso, mismo tipo que el de 1.14 con las invitaciones:**
+las cinco llamadas `DELETE` de la web (`deleteEntity`, `deleteSession`, `deleteCharacter`,
+y las ya existentes `deleteLink`, `deleteComment`) no mandaban cuerpo. `apiFetch` (`lib/api.ts`)
+manda siempre `Content-Type: application/json`, y Fastify rechaza esa combinación con 500
+("Body cannot be empty…") antes de llegar al controlador — visible solo contra la API real
+compilada, nunca en una unitaria con `api.ts` simulado. `deleteLink`/`deleteComment` llevaban
+este defecto latente desde que existen (nunca los ejercitó un recorrido de navegador hasta
+ahora); arreglado enviando `JSON.stringify({})` en las cinco. Cambio solo en `apps/web`.
+
+Ver la entrada de 1.16 en [07-historial.md](./07-historial.md).
 
 **~~Pantalla en blanco perpetua tras un token caducado~~ — CERRADO el 2026-09-01 (tarea
 1.15-fix, Crítico verificado en el código por una revisión independiente).** `AuthGate.tsx`
@@ -337,19 +381,11 @@ comportamiento:
 - **`Session` y `Character` no tienen `grants` ni creador propio** → `SPECIFIC_PLAYERS` es
   inerte en ellos y **el dueño de un personaje no ve el suyo si lo marca `DM_ONLY`**.
   Tareas 1.8 y 1.9.
-- **No hay botón de borrar sesión o personaje en la interfaz**, aunque la API lo soporte
-  (`DELETE /campaigns/:id/sessions/:sessionId`, `DELETE /campaigns/:id/characters/:characterId`,
-  ambos ya probados). El brief de 1.13 pedía dos editores de creación/edición, no borrado;
-  queda fuera a propósito, no es un olvido.
-- **Los botones "Quitar" (`LinksPanel.tsx`) y "Borrar" (`CommentThread.tsx`) se pintan en
-  todas las filas, sin mirar si el usuario es DM o autor.** El servidor sí rechaza
-  (`links.service.ts:75`, `comments.service.ts:65`, ambos 403), y desde 1.12b-fix el fallo ya
-  se ve como mensaje en vez de callar; pero el botón sigue ahí para quien nunca podrá usarlo.
-  **La tarea 1.15 cerró el mismo problema en sesiones, personajes, entidades e invitaciones**
-  (ver "Cerrados") pero su brief pedía exactamente esas cuatro superficies — `LinksPanel.tsx`
-  y `CommentThread.tsx` quedaron fuera a propósito, ya con `useMyRole`
-  (`features/campaigns/members.ts`) disponible para resolverlo del mismo modo cuando se
-  aborde. Detectado en la revisión de 1.12b, no arreglado.
+- ~~No hay botón de borrar sesión o personaje en la interfaz~~ — CERRADO, tarea 1.16 (ver
+  "Cerrados").
+- ~~Los botones "Quitar" (`LinksPanel.tsx`) y "Borrar" (`CommentThread.tsx`) se pintan en
+  todas las filas, sin mirar si el usuario es DM o autor~~ — CERRADO, tarea 1.16 (ver
+  "Cerrados").
 - **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:135`): hoy es
   inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
   riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).

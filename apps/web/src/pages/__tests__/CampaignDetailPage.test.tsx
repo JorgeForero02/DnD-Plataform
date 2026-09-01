@@ -8,6 +8,8 @@ import * as entitiesApi from "../../features/entities/api";
 import * as sessionsApi from "../../features/sessions/api";
 import * as charactersApi from "../../features/characters/api";
 import * as membersApi from "../../features/campaigns/members";
+import * as linksApi from "../../features/links/api";
+import * as commentsApi from "../../features/comments/api";
 import { useAuthStore } from "../../store/auth.store";
 
 function renderPage() {
@@ -330,5 +332,149 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
 
     await waitFor(() => expect(generateButton).not.toBeDisabled());
     expect(fetchMembers).toHaveBeenCalledTimes(2);
+  });
+});
+
+// Task 1.16, comportamiento 2 del brief: "si la lista tiene una sola fila, la prueba pasa
+// por construcción — pon dos y borra la segunda". Wired through the real list -> row click ->
+// editor flow (not the editor in isolation, which only ever knows about the one entity/session/
+// character it was opened with), so a bug that deleted "whatever is first" or "whatever is
+// cached" instead of the row that was actually opened would show up here.
+describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+    ]);
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: "spooky",
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([]);
+    vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+    vi.spyOn(commentsApi, "fetchComments").mockResolvedValue([]);
+  });
+
+  it("borra la segunda entidad de dos, no la primera, y la lista queda con solo la primera", async () => {
+    const first = {
+      id: "e1",
+      campaignId: "c1",
+      type: "NPC" as const,
+      name: "Ireena",
+      tags: [],
+      visibility: "PLAYERS" as const,
+      createdById: "dm1",
+      createdAt: "x",
+    };
+    const second = { ...first, id: "e2", name: "Strahd" };
+    // Toggled right after the confirm click (before any microtask from mutateAsync runs), so
+    // the refetch the invalidation triggers sees the post-delete list — same shape as the real
+    // server, whose GET after a successful DELETE simply no longer includes the row.
+    let deleted = false;
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
+      type === "NPC" ? (deleted ? [first] : [first, second]) : [],
+    );
+    vi.spyOn(entitiesApi, "fetchEntity").mockResolvedValue({ ...second, grants: [] });
+    const spy = vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    await screen.findByRole("button", { name: /Strahd/ });
+
+    fireEvent.click(screen.getByRole("button", { name: /Strahd/ }));
+    expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+    deleted = true;
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith("c1", "e2");
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "Editar NPC" })).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Strahd/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /Ireena/ })).toBeInTheDocument();
+  });
+
+  it("borra la segunda sesión de dos, no la primera", async () => {
+    const first = {
+      id: "s1",
+      campaignId: "c1",
+      title: "Sesión Cero",
+      scheduledAt: null,
+      notes: null,
+      visibility: "PLAYERS" as const,
+      createdAt: "x",
+    };
+    const second = { ...first, id: "s2", title: "Sesión Uno" };
+    let deleted = false;
+    vi.spyOn(sessionsApi, "fetchSessions").mockImplementation(async () =>
+      deleted ? [first] : [first, second],
+    );
+    const spy = vi.spyOn(sessionsApi, "deleteSession").mockResolvedValue({ deleted: true });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Sesiones" }));
+    await screen.findByRole("button", { name: /Sesión Uno/ });
+
+    fireEvent.click(screen.getByRole("button", { name: /Sesión Uno/ }));
+    expect(await screen.findByRole("heading", { name: "Editar sesión" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+    deleted = true;
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith("c1", "s2");
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Sesión Uno/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /Sesión Cero/ })).toBeInTheDocument();
+  });
+
+  it("borra el segundo personaje de dos, no el primero", async () => {
+    const first = {
+      id: "ch1",
+      campaignId: "c1",
+      ownerId: "dm1",
+      name: "Kaelith",
+      race: null,
+      class: null,
+      level: 1,
+      bio: null,
+      visibility: "PLAYERS" as const,
+      createdAt: "x",
+    };
+    const second = { ...first, id: "ch2", name: "Elara" };
+    let deleted = false;
+    vi.spyOn(charactersApi, "fetchCharacters").mockImplementation(async () =>
+      deleted ? [first] : [first, second],
+    );
+    const spy = vi.spyOn(charactersApi, "deleteCharacter").mockResolvedValue({ deleted: true });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
+    await screen.findByRole("button", { name: /Elara/ });
+
+    fireEvent.click(screen.getByRole("button", { name: /Elara/ }));
+    expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
+    deleted = true;
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith("c1", "ch2");
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Elara/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /Kaelith/ })).toBeInTheDocument();
   });
 });

@@ -3,7 +3,9 @@ import type { EntityType, Visibility } from "@dnd/shared";
 import { useMembers } from "../campaigns/members";
 import { LinksPanel } from "../links/LinksPanel";
 import { CommentThread } from "../comments/CommentThread";
-import { useCreateEntity, useEntity, useUpdateEntity } from "./hooks";
+import { useComments } from "../comments/hooks";
+import { DeleteButton } from "../../components/DeleteButton";
+import { useCreateEntity, useDeleteEntity, useEntity, useUpdateEntity } from "./hooks";
 import type { Entity } from "./api";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "PLAYERS", "SPECIFIC_PLAYERS", "OWNER_DM", "DM_ONLY"];
@@ -73,6 +75,43 @@ export function EntityEditor({
   const create = useCreateEntity(campaignId, type);
   const update = useUpdateEntity(campaignId, type);
   const pending = create.isPending || update.isPending;
+
+  // Only to read a real count for the delete-confirmation text below — shares its query key
+  // with CommentThread's own useComments(entityId) call, so this doesn't add a second request.
+  const comments = useComments(entity?.id ?? "", { enabled: isEdit });
+  const deleteEntity = useDeleteEntity(campaignId, type);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const onConfirmDelete = async () => {
+    if (!entity) return;
+    setDeleteError(null);
+    try {
+      await deleteEntity.mutateAsync(entity.id);
+      onClose();
+    } catch (err) {
+      setDeleteError((err as Error).message);
+    }
+  };
+
+  // The schema borra en cascada (schema.prisma: Entity -> EntityLink onDelete Cascade in both
+  // directions, EntityVisibilityGrant onDelete Cascade, Comment onDelete Cascade) — deleting
+  // this entity also deletes every link it's part of (as source or as target, which this UI
+  // has no way to count: /entities/:id/links only lists this entity's own outgoing links,
+  // filtered by what the viewer can see), every comment on it, and every visibility grant it
+  // has. Comments and grants have real counts on hand; links don't, honestly, so the sentence
+  // names them without inventing a number.
+  const grantsCount = detail.data?.grants.length;
+  const commentsCount = comments.data?.length;
+  const deleteMessage = entity
+    ? `Vas a borrar "${entity.name}". No se puede deshacer: se borrarán también todos los ` +
+      `enlaces en los que aparece, salgan de ella o apunten a ella` +
+      (commentsCount !== undefined
+        ? `, ${commentsCount} comentario${commentsCount === 1 ? "" : "s"}`
+        : ", sus comentarios") +
+      (grantsCount !== undefined
+        ? ` y ${grantsCount} ${grantsCount === 1 ? "concesión" : "concesiones"} de visibilidad.`
+        : " y sus concesiones de visibilidad.")
+    : "";
 
   const togglePlayer = (userId: string) =>
     setSpecificPlayerIds((prev) =>
@@ -182,26 +221,42 @@ export function EntityEditor({
             </fieldset>
           )}
           {error && <p className="text-red-400 text-sm">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={pending || readOnly}
-              title={readOnly ? readOnlyReason : undefined}
-              className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
-            >
-              Guardar
-            </button>
+          <div className="flex items-center justify-between gap-2">
+            {isEdit && (
+              <DeleteButton
+                message={deleteMessage}
+                onConfirm={onConfirmDelete}
+                pending={deleteEntity.isPending}
+                disabled={readOnly}
+                disabledReason={readOnlyReason}
+              />
+            )}
+            <div className="flex flex-1 justify-end gap-2">
+              <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={pending || readOnly}
+                title={readOnly ? readOnlyReason : undefined}
+                className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
+              >
+                Guardar
+              </button>
+            </div>
           </div>
+          {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
         </form>
         {/* Links and comments only make sense once the entity exists: a brand-new entity
           has no entityId to hang them off yet. Kept as siblings of the form, not nested
           inside it — HTML forms don't nest, and each panel owns its own submit. */}
         {isEdit && entity && (
           <>
-            <LinksPanel campaignId={campaignId} entityId={entity.id} />
+            <LinksPanel
+              campaignId={campaignId}
+              entityId={entity.id}
+              entityCreatedById={entity.createdById}
+            />
             <CommentThread campaignId={campaignId} entityId={entity.id} />
           </>
         )}

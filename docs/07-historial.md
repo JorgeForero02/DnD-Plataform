@@ -6,6 +6,68 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Borrar desde la interfaz (tarea 1.16)
+
+**Qué.** La carencia que más se notaba usando la herramienta: desde la web no se podía borrar
+casi nada, aunque la API ya supiera hacerlo. Ahora sí, con confirmación en pantalla y sin
+esconder botones.
+
+1. **Botón "Borrar" en modo edición de los tres editores** (entidad, sesión, personaje), con
+   confirmación **en la propia pantalla** — `apps/web/src/components/DeleteButton.tsx`, un
+   componente pequeño y compartido, nunca `window.confirm` (incómodo de probar en jsdom y en
+   Playwright, y aquí la prueba importa más que en ningún otro sitio). Reutiliza el mismo
+   `readOnly`/`readOnlyReason` que el editor ya recibía para editar: borrar y editar están
+   gateados por la misma regla del servidor en los tres recursos (`entities.service.ts` y
+   `characters.service.ts`: DM o creador/dueño vía `requireEditable`;
+   `sessions.service.ts`: DM vía `requireDM`), así que no hace falta calcular un permiso
+   aparte — deshabilitado con el motivo a la vista, nunca escondido, igual que 1.15.
+2. **La confirmación de entidad dice qué se lleva la cascada real** (`schema.prisma`:
+   `EntityLink` en ambas direcciones, `EntityVisibilityGrant` y `Comment`, los tres
+   `onDelete: Cascade`), con números reales de comentarios y concesiones cuando ya están
+   cargados — comparten clave de consulta con `CommentThread` y con el detalle de la entidad,
+   así que no hay petición extra. El número de enlaces no se muestra: `/entities/:id/links`
+   solo lista los salientes visibles para quien mira, no los entrantes de otras entidades, y
+   mostrar un número parcial habría sido peor que no mostrarlo. Sesión y personaje no tienen
+   hijos en cascada, así que su aviso es solo "no se puede deshacer".
+3. **`LinksPanel.tsx` y `CommentThread.tsx` dejan de pintar "Quitar"/"Borrar" sin mirar
+   permiso** — el hueco que 1.15 dejó declarado a propósito. "Quitar" se deshabilita para
+   quien no es DM ni creó la entidad (`links.service.ts:75`); "Borrar" para quien no es DM ni
+   el propio autor del comentario (`comments.service.ts:65`); los dos con el motivo visible.
+4. **Dos bugs reales encontrados por el recorrido de navegador nuevo, invisibles a cualquier
+   prueba con espías:**
+   - Las cinco llamadas `DELETE` de la web (las tres nuevas más `deleteLink`/`deleteComment`,
+     que llevaban el defecto latente desde que existen) no mandaban cuerpo; `apiFetch`
+     (`lib/api.ts`) manda siempre `Content-Type: application/json`, y Fastify rechaza esa
+     combinación con 500 ("Body cannot be empty…") — el mismo error que 1.14 encontró en las
+     invitaciones. Arreglado enviando `JSON.stringify({})` en las cinco.
+   - La cascada de `EntityLink` en ambas direcciones deja el `linksKey`/`commentsKey`
+     (`features/links/hooks.ts`, `features/comments/hooks.ts`) de una **entidad distinta** a
+     la borrada sin invalidar — nadie puede nombrar esa clave de antemano porque no se sabe
+     qué otras entidades enlazaban a la que se borra. `useDeleteEntity`
+     (`features/entities/hooks.ts`) invalida ahora por predicado sobre la raíz `"entities"`,
+     más ancho de lo estrictamente necesario pero suficiente para cubrir cualquier entidad.
+5. **`apps/web/e2e/campana.spec.ts`** gana la prueba que exige el brief: crea dos NPCs, enlaza
+   el primero con el segundo, comenta en el segundo, lo borra confirmando en pantalla,
+   comprueba que desaparece de la lista, y **reabre el panel de enlaces del primero** para
+   comprobar que el enlace hacia el segundo ya no aparece — la cascada contra Postgres real,
+   no un mock. El mismo recorrido de sesión/personaje borra también un personaje y una sesión
+   (con una cancelación) contra la API real.
+
+**Por qué.** Era la primera carencia de "Antes de la primera partida"
+(`docs/06-pendientes.md`): en una partida se crean cosas mal, y sin borrado se quedan para
+siempre. Construida encima de 1.15 (`useMyRole`, `readOnly`/`readOnlyReason`), que dejó la web
+sabiendo quién la usa.
+
+**Cómo revertir.** `git revert` del commit de esta tarea. No toca `apps/api` ni
+`packages/shared` — los cinco `DELETE` del servidor ya existían y seguían probados antes de
+empezar. Sin migraciones de base de datos.
+
+**Verificación.** `pnpm verify`: 166 unitarias (shared 10, api 40, web 116), build/lint/formato
+limpios. `pnpm --filter @dnd/api test:e2e`: 20/20, sin tocar. `pnpm --filter @dnd/web e2e`:
+6/6 (las 5 anteriores más la nueva de cascada).
+
+---
+
 ## 2026-09-01 — Arreglos de la revisión de identidad y permisos (tarea 1.15-fix)
 
 **Qué.** Dos Críticos, dos Importantes y un Menor de la revisión independiente de 1.15.

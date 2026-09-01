@@ -15,8 +15,8 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-Estado medido el 2026-09-01 (tarea 1.15-fix): **135 unitarias** (shared 10, api 40, web 85) y
-**20 e2e de API** en 9 suites más **5 e2e de navegador** en 2 suites, todas verdes. Las
+Estado medido el 2026-09-01 (tarea 1.16): **166 unitarias** (shared 10, api 40, web 116) y
+**20 e2e de API** en 9 suites más **6 e2e de navegador** en 2 suites, todas verdes. Las
 unitarias, el lint y el formato los exige `pnpm verify` en el gancho de pre-commit; los e2e
 quedan fuera del gancho pero dentro de CI.
 
@@ -231,13 +231,33 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   `canView`), así que el modo lectura del formulario no lo apaga. Ver la entrada de 1.15-fix
   en [07-historial.md](./07-historial.md).
 
+- **Borrar una entidad se lleva sus enlaces consigo, cascada real** (1.16, renombrado en
+  1.16-fix — el nombre anterior prometía cubrir también la cascada de comentarios y no la
+  comprobaba): `apps/web/e2e/campana.spec.ts` crea dos NPCs, enlaza el primero con el segundo,
+  comenta en el segundo (ejerce "Publicar" contra la API real, pero no verifica la cascada del
+  comentario: la entidad que lo contenía ya no existe tras borrarla, así que no hay dónde
+  comprobarlo desde la interfaz), lo borra confirmando en pantalla (nunca `window.confirm`),
+  comprueba que desaparece de la lista, y **reabre el panel de enlaces del primero** para
+  comprobar que el enlace hacia el segundo ya no aparece — la única forma de probar la cascada
+  del esquema (`schema.prisma`, `onDelete: Cascade`) contra la base real, algo que ninguna
+  prueba con espías puede demostrar. Esto cazó dos defectos reales que solo aparecían contra la
+  API real:
+  las cinco llamadas `DELETE` de la web mandaban `Content-Type: application/json` sin cuerpo
+  (Fastify las rechazaba con 500, el mismo error que 1.14 encontró en las invitaciones), y la
+  cascada bidireccional de `EntityLink` dejaba el `linksKey` de la **otra** entidad
+  (`features/links/hooks.ts`) sin invalidar — el panel de enlaces del primer NPC seguía
+  mostrando el enlace hacia el segundo, ya borrado en Postgres, durante los 30 s de
+  `staleTime`. El mismo recorrido borra también un personaje y una sesión (incluida una
+  cancelación) contra la API real, en las pantallas donde el botón "Borrar" se pintó por
+  primera vez. Ver la entrada de 1.16 en [07-historial.md](./07-historial.md).
+
 ### Lo que falta cubrir
 
 Nada del catálogo de recorridos de la fase 1 queda pendiente: registro, campaña, entidades
 con visibilidad, enlaces y comentarios en modo edición, sesiones y personajes, cerrar sesión,
-y ahora invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real.
-Lo que sigue sin cubrir es lo de siempre — accesibilidad, responsive, rendimiento — ver la
-sección de arriba.
+invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real, y ahora
+borrar con su cascada real. Lo que sigue sin cubrir es lo de siempre — accesibilidad,
+responsive, rendimiento — ver la sección de arriba.
 
 ## Definición de terminado
 

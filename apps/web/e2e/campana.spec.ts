@@ -101,6 +101,84 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await expect(page.getByText("Cuidado con el mercado de almas")).toBeVisible();
 });
 
+// Task 1.16: ejerce la cascada del esquema (schema.prisma: Entity -> EntityLink, onDelete:
+// Cascade) contra la base real, no un espía. Un espía nunca podría probar esto: al borrar
+// Mahadi de verdad en Postgres, el enlace que Zariel tenía hacia él desaparece con él, y solo
+// se ve reabriendo el panel de enlaces de Zariel y comprobando que ya no está. Se comenta en
+// Mahadi antes de borrarlo (paso 2) para ejercer también la ruta de "Publicar", pero la
+// cascada de comentarios no es verificable desde aquí: la entidad que los contenía ya no
+// existe tras borrarla, así que no hay dónde comprobarlos.
+test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ page }) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("La Maldición de Strahd");
+  await page.getByRole("button", { name: "Crear" }).click();
+
+  await page.getByRole("link", { name: "La Maldición de Strahd" }).click();
+  await expect(page.getByRole("heading", { name: "La Maldición de Strahd" })).toBeVisible();
+
+  await page.getByRole("button", { name: "NPCs" }).click();
+
+  // Dos NPCs: Zariel enlaza con Mahadi, y Mahadi recibe un comentario. Borrar Mahadi debe
+  // llevarse los dos consigo.
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Zariel");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByLabel("Nombre").fill("Mahadi");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  // 1. Enlazar Zariel con Mahadi.
+  await page.getByRole("button", { name: /Zariel/ }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  const zarielLinksSection = page
+    .locator("section")
+    .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
+  await zarielLinksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (NPC)" });
+  await zarielLinksSection.getByRole("button", { name: "Añadir enlace" }).click();
+  await expect(zarielLinksSection.locator("li").filter({ hasText: "Mahadi" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+
+  // 2. Comentar en Mahadi.
+  await page.getByRole("button", { name: /Mahadi/ }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await page.getByLabel("Nuevo comentario").fill("No confíes en sus tratos");
+  await page.getByRole("button", { name: "Publicar" }).click();
+  await expect(page.getByText("No confíes en sus tratos")).toBeVisible();
+
+  // 3. Borrar Mahadi, confirmando en la propia pantalla — nada de window.confirm. Scoped to
+  // <form>: the entity's own "Borrar" and the comment thread's "Borrar" (on the comment just
+  // posted) share the same accessible name once a comment exists.
+  const entityForm = page
+    .locator("form")
+    .filter({ has: page.getByRole("heading", { name: "Editar NPC" }) });
+  await entityForm.getByRole("button", { name: "Borrar" }).click();
+  await expect(
+    page.getByText(
+      /No se puede deshacer: se borrarán también todos los enlaces en los que aparece/,
+    ),
+  ).toBeVisible();
+  await entityForm.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeHidden();
+
+  // 4a. Desaparece de la lista.
+  await expect(page.getByRole("button", { name: /Mahadi/ })).toHaveCount(0);
+
+  // 4b. El panel de enlaces de Zariel ya no lo muestra: la cascada borró el EntityLink de
+  // verdad en Postgres, no solo la fila de la lista de Mahadi.
+  await page.getByRole("button", { name: /Zariel/ }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  const reopenedLinksSection = page
+    .locator("section")
+    .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
+  await expect(reopenedLinksSection.getByText("Sin enlaces.")).toBeVisible();
+  await expect(reopenedLinksSection.locator("li").filter({ hasText: "Mahadi" })).toHaveCount(0);
+});
+
 test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", async ({ page }) => {
   await registrarse(page);
 
@@ -197,6 +275,30 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   const updatedCharacterRow = page.getByRole("button", { name: /Kaelith/ });
   await expect(updatedCharacterRow).toBeVisible();
   await expect(updatedCharacterRow).toContainText("Nivel 4");
+
+  // Task 1.16: borrar el personaje de verdad contra la API real — el botón "Borrar" y su
+  // confirmación en pantalla nunca se habían pintado en un navegador antes de esta tarea.
+  await updatedCharacterRow.click();
+  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
+  await page.getByRole("button", { name: "Borrar" }).click();
+  await expect(page.getByText('Vas a borrar a "Kaelith". No se puede deshacer.')).toBeVisible();
+  await page.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
+  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeHidden();
+  await expect(page.getByRole("button", { name: /Kaelith/ })).toHaveCount(0);
+
+  // Y la sesión, contra la API real, incluyendo la cancelación: pulsar "No, cancelar" no borra
+  // y deja el editor abierto.
+  await page.getByRole("button", { name: "Sesiones" }).click();
+  const finalSessionRow = page.getByRole("button", { name: /Sesión 1: notas borradas/ });
+  await finalSessionRow.click();
+  await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeVisible();
+  await page.getByRole("button", { name: "Borrar" }).click();
+  await page.getByRole("button", { name: "No, cancelar" }).click();
+  await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeVisible();
+  await page.getByRole("button", { name: "Borrar" }).click();
+  await page.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
+  await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeHidden();
+  await expect(page.getByRole("button", { name: /Sesión 1: notas borradas/ })).toHaveCount(0);
 });
 
 test("salir cierra la sesion y la ruta protegida deja de abrirse", async ({ page }) => {

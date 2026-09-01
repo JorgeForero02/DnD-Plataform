@@ -73,9 +73,6 @@ el formulario arranca en `OWNER_DM` para que no la pierda de vista al instante.
 Esto no son sorpresas: está todo en [06-pendientes.md](./06-pendientes.md), y lo repito aquí
 porque es lo que se nota jugando.
 
-- **No se puede borrar casi nada desde la web.** Solo enlaces y comentarios. Una entidad, una
-  sesión o un personaje creados por error **se quedan**, aunque la API sí sepa borrarlos.
-  Es la carencia que más se va a notar.
 - **No se puede quitar la fecha de una sesión** una vez puesta.
 - **El token de invitación no caduca en el servidor** ni se puede revocar.
 - **Nada de adjuntos ni imágenes**: llegan en la fase 3, con el almacenamiento.

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Visibility } from "@dnd/shared";
-import { useCreateCharacter, useUpdateCharacter } from "./hooks";
+import { DeleteButton } from "../../components/DeleteButton";
+import { useCreateCharacter, useDeleteCharacter, useUpdateCharacter } from "./hooks";
 import type { Character } from "./api";
 
 // SPECIFIC_PLAYERS is dropped on purpose, same reasoning as SessionEditor.tsx: Character has
@@ -38,6 +39,25 @@ export function CharacterEditor({
   const create = useCreateCharacter(campaignId);
   const update = useUpdateCharacter(campaignId);
   const pending = create.isPending || update.isPending;
+
+  const deleteCharacter = useDeleteCharacter(campaignId);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const onConfirmDelete = async () => {
+    if (!character) return;
+    setDeleteError(null);
+    try {
+      await deleteCharacter.mutateAsync(character.id);
+      onClose();
+    } catch (err) {
+      setDeleteError((err as Error).message);
+    }
+  };
+
+  // Character has no cascading children in schema.prisma — nothing else disappears with it.
+  const deleteMessage = character
+    ? `Vas a borrar a "${character.name}". No se puede deshacer.`
+    : "";
 
   // Same reasoning and same fix as SessionEditor.tsx: a character can arrive with a
   // visibility this editor doesn't itself offer, and without this the <select> would paint
@@ -175,19 +195,31 @@ export function CharacterEditor({
           </select>
         </div>
         {error && <p className="text-sm text-red-400">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={pending || readOnly}
-            title={readOnly ? readOnlyReason : undefined}
-            className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
-          >
-            Guardar
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          {isEdit && (
+            <DeleteButton
+              message={deleteMessage}
+              onConfirm={onConfirmDelete}
+              pending={deleteCharacter.isPending}
+              disabled={readOnly}
+              disabledReason={readOnlyReason}
+            />
+          )}
+          <div className="flex flex-1 justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={pending || readOnly}
+              title={readOnly ? readOnlyReason : undefined}
+              className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
+            >
+              Guardar
+            </button>
+          </div>
         </div>
+        {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
       </form>
     </div>
   );

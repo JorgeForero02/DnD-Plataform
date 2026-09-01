@@ -29,5 +29,13 @@ export function createLink(
 }
 
 export function deleteLink(linkId: string): Promise<{ deleted: boolean }> {
-  return apiFetch<{ deleted: boolean }>(`/links/${linkId}`, { method: "DELETE" });
+  // Task 1.16: found while testing this task's own delete buttons and fixed here too, since
+  // it's the same class of bug — apiFetch always sends a JSON Content-Type, and Fastify
+  // rejects that paired with a truly empty body ("Body cannot be empty…", the exact error
+  // 1.14 hit and fixed for invites' POST calls). A real click on "Quitar" against the real
+  // API would have 500'd; no browser test had exercised it before this task.
+  return apiFetch<{ deleted: boolean }>(`/links/${linkId}`, {
+    method: "DELETE",
+    body: JSON.stringify({}),
+  });
 }

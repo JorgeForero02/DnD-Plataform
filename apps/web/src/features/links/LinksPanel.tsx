@@ -1,8 +1,24 @@
 import { useState } from "react";
 import { useAllEntities } from "../entities/hooks";
+import { useMyRole } from "../campaigns/members";
+import { useAuthStore } from "../../store/auth.store";
 import { useCreateLink, useDeleteLink, useLinks } from "./hooks";
 
-export function LinksPanel({ campaignId, entityId }: { campaignId: string; entityId: string }) {
+// The task 1.15 gap this task closes: this panel used to paint "Quitar" unconditionally,
+// without looking at who was looking at it. The server rule (links.service.ts:75) is DM or
+// the creator of the *source* entity (`link.from.createdById`) — every link listed here has
+// this panel's own entity as its `from` (LinksPanel is only ever mounted for one entity's own
+// outgoing links, see EntityEditor.tsx), so `entityCreatedById` is that one value for every
+// row, not per-link.
+export function LinksPanel({
+  campaignId,
+  entityId,
+  entityCreatedById,
+}: {
+  campaignId: string;
+  entityId: string;
+  entityCreatedById: string;
+}) {
   const links = useLinks(entityId);
   const targets = useAllEntities(campaignId);
   const createLink = useCreateLink(entityId);
@@ -10,6 +26,16 @@ export function LinksPanel({ campaignId, entityId }: { campaignId: string; entit
   const [toId, setToId] = useState("");
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const { role, isLoading: roleLoading, isError: roleError } = useMyRole(campaignId);
+  const userId = useAuthStore((s) => s.user?.id);
+  // Same "still don't know" treatment as everywhere else in this app (CampaignDetailPage.tsx):
+  // a failed or in-flight role check disables rather than guesses.
+  const roleUnresolved = roleLoading || roleError;
+  const canRemoveLinks = !roleUnresolved && (role === "DM" || entityCreatedById === userId);
+  const removeReason = roleUnresolved
+    ? "Comprobando permisos…"
+    : "Solo el DM o quien creó esta entidad puede quitar enlaces.";
 
   // An entity linking to itself doesn't mean anything, and re-picking an already-linked
   // target would hit the schema's @@unique([fromId, toId, label]) (schema.prisma:100).
@@ -51,13 +77,23 @@ export function LinksPanel({ campaignId, entityId }: { campaignId: string; entit
                   onError: (err) => setError((err as Error).message),
                 })
               }
-              className="shrink-0 text-red-400"
+              disabled={!canRemoveLinks}
+              title={!canRemoveLinks ? removeReason : undefined}
+              className="shrink-0 text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Quitar
             </button>
           </li>
         ))}
       </ul>
+      {/* Arreglo 2 (1.16-fix): the reason a row's "Quitar" is disabled used to live only in
+          `title`, which touch has no way to reveal and screen readers don't announce. Same
+          boolean for every row (see the comment above `canRemoveLinks`), so one visible line
+          for the whole panel says it, matching CampaignDetailPage.tsx's disabled-with-visible-
+          explanation pattern. */}
+      {!canRemoveLinks && links.data && links.data.length > 0 && (
+        <p className="text-xs text-slate-400">{removeReason}</p>
+      )}
       <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
         <label htmlFor="link-target" className="sr-only">
           Entidad destino

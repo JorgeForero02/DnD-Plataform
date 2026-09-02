@@ -281,23 +281,18 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Reseño 2026-09-02: la fila lleva a la hoja del personaje —con la forma de la hoja de 5.ª
   // edición— y el editor se abre desde ella.
   await expect(page.getByRole("heading", { name: "Kaelith" })).toBeVisible();
-  await page
-    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
-    .click();
-  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
-  await expect(page.getByLabel("Raza")).toHaveValue("Tiefling");
-  await expect(page.getByLabel("Clase")).toHaveValue("Brujo");
-  await expect(page.getByLabel("Nivel")).toHaveValue("3");
-  await expect(page.getByLabel("Biografía")).toHaveValue(
-    "Pactó con un demonio para salvar a su aldea",
-  );
-  await expect(page.getByRole("radio", { name: /Público/ })).toBeChecked();
 
-  // Guardar la edición de verdad: subir el nivel a 4 y comprobar en la lista que el `PATCH`
-  // se ejecutó contra la API real, no solo que el formulario se cerró.
-  await page.getByLabel("Nivel").fill("4");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeHidden();
+  // **Ya no hay diálogo.** La hoja se toca donde se lee, así que lo que se comprueba es que los
+  // campos en el sitio traen lo guardado: nivel y la historia, que antes ni se veían fuera del
+  // formulario. La raza y la clase de este personaje son texto libre heredado y no claves del
+  // catálogo, así que sus desplegables salen «sin elegir» a propósito.
+  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("3");
+  await expect(page.getByText("Pactó con un demonio para salvar a su aldea")).toBeVisible();
+
+  // Guardar de verdad: subir el nivel a 4 saliendo del campo, y comprobar en la lista que el
+  // `PATCH` se ejecutó contra la API real, no que un formulario se cerró.
+  await page.getByLabel("Nivel", { exact: true }).fill("4");
+  await page.getByLabel("Nivel", { exact: true }).blur();
 
   // Guardar deja al lector en la hoja, no lo devuelve a la lista: la cabecera de la propia
   // hoja ya muestra el nivel nuevo. Se vuelve por las migas para comprobar también la fila.
@@ -310,9 +305,9 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Task 1.16: borrar el personaje de verdad contra la API real — el botón "Borrar" y su
   // confirmación en pantalla nunca se habían pintado en un navegador antes de esta tarea.
   await updatedCharacterRow.click();
-  await page
-    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
-    .click();
+  // Borrar es lo único que sigue tras un botón, y a propósito: es irreversible y no debe estar
+  // a un clic de distancia de lo que se lee.
+  await page.getByRole("button", { name: "Ajustes y borrado" }).click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
   await page.getByRole("button", { name: "Borrar" }).click();
   await expect(page.getByText('Vas a borrar a "Kaelith". No se puede deshacer.')).toBeVisible();

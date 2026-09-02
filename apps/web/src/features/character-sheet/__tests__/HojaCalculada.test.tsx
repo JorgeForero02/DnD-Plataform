@@ -216,6 +216,6 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
     expect(screen.getByRole("region", { name: "elecciones pendientes" }).textContent).toMatch(
       /Elige 1 habilidad/,
     );
-    expect(screen.getByText(/Con De cuero tendrías CA 13/)).toBeInTheDocument();
+    expect(screen.getByText(/Con Cuero tendrías CA 13/)).toBeInTheDocument();
   });
 });

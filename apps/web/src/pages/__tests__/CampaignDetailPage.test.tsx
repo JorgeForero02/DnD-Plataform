@@ -301,7 +301,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // entre consultar una ficha en mitad de una partida y modificarla.
     fireEvent.click(
       await screen.findByRole("button", {
-        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+        name: /Editar|Ver el texto completo/,
       }),
     );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
@@ -350,7 +350,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // que es justo la diferencia entre leer una ficha y editarla.
     fireEvent.click(
       await screen.findByRole("button", {
-        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+        name: /Editar|Ver el texto completo/,
       }),
     );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
@@ -370,18 +370,15 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
 
-    // La fila lleva a la hoja del personaje; el editor se abre desde ella.
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: /Editar|Ver el texto completo|Ver la hoja completa/,
-      }),
-    );
-    expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Nombre")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
-    expect(
-      screen.getAllByText("Solo el dueño o el DM puede editar este personaje.").length,
-    ).toBeGreaterThan(0);
+    // **Ya no hay diálogo de edición**: la hoja se toca donde se lee. Lo que se comprueba es que
+    // a quien no puede editar no se le ofrece — ni el botón de ajustes, ni los campos en el
+    // sitio, y el motivo se lee al pasar el ratón.
+    // El nombre accesible del control ES el nombre del personaje: si fuera «Editar…», el
+    // encabezado de la página dejaría de llamarse como el personaje.
+    const nombre = await screen.findByRole("button", { name: "Strahd" });
+    expect(nombre).toBeDisabled();
+    expect(nombre).toHaveAttribute("title", "Solo el dueño o el DM puede editar este personaje.");
+    expect(screen.queryByRole("button", { name: "Ajustes y borrado" })).not.toBeInTheDocument();
     // Fix round 1 (post-1.18b review), Important 9: this row-shape (a muted "Nivel N" chip
     // followed by the reason) was left on --muted while EntityTab's identical shape was fixed
     // — the same sentence read as two different things in two tabs of one screen. Revert the
@@ -416,14 +413,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     const row = await screen.findByRole("link", { name: /Mi propio personaje/ });
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: /Editar|Ver el texto completo|Ver la hoja completa/,
-      }),
-    );
-    expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+
+    // El dueño edita donde lee: el nombre y la historia son campos, no un diálogo.
+    expect(await screen.findByRole("button", { name: "Mi propio personaje" })).not.toBeDisabled();
+    expect(screen.getByTitle("Editar Historia del personaje")).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ajustes y borrado" })).toBeInTheDocument();
   });
 
   // Arreglo 4: a failed members fetch must read as "still don't know", never as "not a
@@ -536,7 +530,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     fireEvent.click(screen.getByRole("link", { name: /Strahd/ }));
     fireEvent.click(
       await screen.findByRole("button", {
-        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+        name: /Editar|Ver el texto completo/,
       }),
     );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
@@ -623,7 +617,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     fireEvent.click(screen.getByRole("link", { name: /Elara/ }));
     fireEvent.click(
       await screen.findByRole("button", {
-        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+        name: "Ajustes y borrado",
       }),
     );
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { AbilityKey, SkillKey } from "@dnd/shared";
 import { ABILITY_KEYS, SKILLS } from "@dnd/shared";
 import { useCharacterSheet } from "./hooks";
@@ -12,17 +11,9 @@ import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
 import { Anulaciones } from "./Anulaciones";
 import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
-import { EditorFicha } from "./EditorFicha";
-import { Button } from "../../ui/Button";
+import { IdentidadEditable } from "./IdentidadEditable";
 import { EmptyState } from "../../ui/Collection";
-import {
-  ABREVIATURA_CARACTERISTICA,
-  NOMBRE_CARACTERISTICA,
-  NOMBRE_HABILIDAD,
-  nombreClase,
-  nombreRaza,
-  nombreSubraza,
-} from "./vocabulario";
+import { ABREVIATURA_CARACTERISTICA, NOMBRE_CARACTERISTICA, NOMBRE_HABILIDAD } from "./vocabulario";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje: lee `GET .../sheet` y enseña la traza de
 // cada número derivado, los avisos, las elecciones pendientes, los PG con su delta, recursos y
@@ -57,7 +48,6 @@ export function HojaCalculada({
   puedeEditar: boolean;
 }) {
   const { data, isLoading, isError } = useCharacterSheet(campaignId, characterId);
-  const [editando, setEditando] = useState(false);
 
   if (isLoading) {
     return <p className="font-chrome text-chrome-sm text-muted">Calculando la hoja…</p>;
@@ -78,47 +68,49 @@ export function HojaCalculada({
         <EmptyState title="La hoja de 5.ª edición está a medias">
           {reason ?? "Faltan datos para calcular la hoja."}
         </EmptyState>
-        {puedeEditar && (
-          <div>
-            <Button variant="primary" onClick={() => setEditando(true)}>
-              Completar características, raza y clase
-            </Button>
-          </div>
-        )}
-        {editando && (
-          <EditorFicha
-            campaignId={campaignId}
-            characterId={characterId}
-            character={character}
-            onClose={() => setEditando(false)}
-          />
-        )}
+        {/* **Una ficha a medias se completa aquí, no en otra pantalla.** Antes había un botón
+            que abría un diálogo: quien acaba de crear un personaje veía un aviso, pulsaba, y
+            aterrizaba en un formulario distinto del sitio donde iba a leer el resultado. */}
+        <IdentidadEditable
+          campaignId={campaignId}
+          characterId={characterId}
+          character={character}
+          sheet={null}
+          puedeEditar={puedeEditar}
+        />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-s5">
-      <div className="flex flex-wrap items-center justify-between gap-s2">
-        <p className="font-chrome text-chrome-sm text-muted">
-          {nombreRaza(sheet.raceKey)}
-          {sheet.subraceKey ? ` (${nombreSubraza(sheet.subraceKey)})` : ""} ·{" "}
-          {nombreClase(sheet.classKey)} · nivel {character.level}
-        </p>
+      {/* **Aquí había un resumen en prosa** —«Enano (de las colinas) · Guerrero · nivel 3»— que
+          repetía exactamente lo que ahora dicen los controles de debajo, con etiqueta y
+          editables. Dos sitios con el mismo dato es cómo se acaba con uno de los dos mintiendo,
+          y encima lo cazó la prueba que vigila que ninguna clave llegue a pantalla: «Semielfo»
+          aparecía dos veces y el buscador no sabía a cuál referirse. */}
+      <div className="flex flex-wrap items-start justify-end gap-s3">
+        {/* La subida de nivel vive en su propia feature (2A.11): esta hoja solo la monta. */}
         {puedeEditar && (
-          <div className="flex flex-wrap items-center gap-s2">
-            {/* La subida de nivel vive en su propia feature (2A.11): esta hoja solo la monta. */}
-            <BotonSubirNivel
-              campaignId={campaignId}
-              characterId={characterId}
-              level={character.level}
-            />
-            <Button variant="ghost" onClick={() => setEditando(true)}>
-              Editar clase, raza y características
-            </Button>
-          </div>
+          <BotonSubirNivel
+            campaignId={campaignId}
+            characterId={characterId}
+            level={character.level}
+          />
         )}
       </div>
+
+      {/* **Aquí estaba el segundo botón de «Editar».** Ya no hay diálogo: la identidad y las seis
+          características se tocan donde se leen, y el modificador de cada una vive pegado a su
+          puntuación — que es como lo dibuja la hoja de papel, y por un motivo: la contigüidad ES
+          la explicación de por qué el número es el que es. */}
+      <IdentidadEditable
+        campaignId={campaignId}
+        characterId={characterId}
+        character={character}
+        sheet={sheet}
+        puedeEditar={puedeEditar}
+      />
 
       <Avisos warnings={sheet.warnings} />
       <EleccionesPendientes
@@ -143,17 +135,8 @@ export function HojaCalculada({
         puedeEditar={puedeEditar}
       />
 
-      {/* Características, salvaciones y habilidades — lo que decide si una acción tiene éxito */}
-      <div className="grid grid-cols-3 gap-s2 sm:grid-cols-6">
-        {ABILITY_KEYS.map((ability) => (
-          <ValorDerivado
-            key={ability}
-            etiqueta={ABREVIATURA_CARACTERISTICA[ability]}
-            valor={sheet.derived[`abilityMod.${ability}`]}
-          />
-        ))}
-      </div>
-
+      {/* Salvaciones y habilidades — lo que decide si una acción tiene éxito. Las
+          características ya no se repiten aquí: viven arriba, con su puntuación editable. */}
       <div className="grid gap-s5 md:grid-cols-2">
         <section aria-label="salvaciones">
           <p className="mb-s2 font-chrome text-chrome-sm font-semibold text-text">Salvaciones</p>
@@ -264,15 +247,6 @@ export function HojaCalculada({
             ))}
           </ul>
         </section>
-      )}
-
-      {editando && (
-        <EditorFicha
-          campaignId={campaignId}
-          characterId={characterId}
-          character={character}
-          onClose={() => setEditando(false)}
-        />
       )}
     </div>
   );

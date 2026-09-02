@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
-import { useCharacters } from "../features/characters/hooks";
+import { useCharacters, useUpdateCharacter } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
 import { HojaCalculada } from "../features/character-sheet/HojaCalculada";
+import { TextoEditable } from "../features/character-sheet/EdicionEnSitio";
 import { CHECKING_PERMISSIONS } from "../features/campaigns/PermissionStatus";
 import { useAuthStore } from "../store/auth.store";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
@@ -36,6 +37,7 @@ export function CharacterDetailPage() {
   const { role, isLoading: roleLoading, isError: roleError } = useMyRole(id);
   const { user, logout } = useAuthStore();
   const [editing, setEditing] = useState(false);
+  const actualizar = useUpdateCharacter(id ?? "");
   const navigate = useNavigate();
 
   const personaje = personajes?.find((c) => c.id === characterId);
@@ -80,7 +82,15 @@ export function CharacterDetailPage() {
     <AppShell header={header}>
       <PageHeader
         crumbs={[...migas, { label: "Personaje" }]}
-        title={personaje.name}
+        title={
+          <TextoEditable
+            etiqueta="Nombre del personaje"
+            valor={personaje.name}
+            disabled={!puedeEditar}
+            motivoDeshabilitado={motivo}
+            onGuardar={async (n) => actualizar.mutateAsync({ characterId, input: { name: n } })}
+          />
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-s2">
             <span className="font-data text-chrome-sm text-copper-text">
@@ -91,9 +101,15 @@ export function CharacterDetailPage() {
           </span>
         }
         actions={
-          <Button variant="secondary" onClick={() => setEditing(true)} title={motivo}>
-            {puedeEditar ? "Editar" : "Ver la hoja completa"}
-          </Button>
+          /* **Aquí estaba el primero de los dos botones de «Editar».** Lo que abría —nombre,
+             historia y visibilidad— se toca ahora donde se lee: el nombre en el propio título,
+             la historia en su sección. Lo único que queda tras un botón es **borrar**, que es
+             irreversible y no debe estar a un clic de distancia de lo que se lee. */
+          puedeEditar ? (
+            <Button variant="ghost" onClick={() => setEditing(true)} title={motivo}>
+              Ajustes y borrado
+            </Button>
+          ) : undefined
         }
       />
 
@@ -102,25 +118,31 @@ export function CharacterDetailPage() {
 
         <section>
           <OrnamentRule className="mb-s3">Historia</OrnamentRule>
-          {personaje.bio?.trim() ? (
-            <Panel tone="vellum" className="max-w-none">
-              <p className="whitespace-pre-wrap">{personaje.bio}</p>
-            </Panel>
-          ) : (
-            <EmptyState
-              title="Sin historia todavía"
-              action={
-                puedeEditar ? (
-                  <Button variant="primary" onClick={() => setEditing(true)}>
-                    Escribirla
-                  </Button>
-                ) : undefined
-              }
+          {/* La historia es **lo que se lee**, así que va sobre vitela; y se edita ahí mismo,
+              sin salir a un diálogo. El texto libre lleva guardado explícito: teclear es un
+              proceso, no un gesto. */}
+          <Panel tone="vellum" className="max-w-none">
+            <TextoEditable
+              etiqueta="Historia del personaje"
+              valor={personaje.bio ?? ""}
+              multilinea
+              disabled={!puedeEditar}
+              motivoDeshabilitado={motivo}
+              placeholder="De dónde viene, qué dejó atrás y por qué se levanta cada mañana. Tres líneas valen más que tres páginas que nadie relee."
+              onGuardar={async (t) => actualizar.mutateAsync({ characterId, input: { bio: t } })}
             >
-              De dónde viene, qué dejó atrás y por qué se levanta cada mañana. Tres líneas valen más
-              que tres páginas que nadie relee.
-            </EmptyState>
-          )}
+              {(v) =>
+                v.trim() ? (
+                  <span className="whitespace-pre-wrap">{v}</span>
+                ) : (
+                  <span className="text-muted">
+                    Sin historia todavía. De dónde viene, qué dejó atrás y por qué se levanta cada
+                    mañana.
+                  </span>
+                )
+              }
+            </TextoEditable>
+          </Panel>
         </section>
       </div>
 

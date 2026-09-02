@@ -57,26 +57,30 @@ async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
  * cometer a mano, cometido a mano en la prueba de la derivación.
  */
 async function completarFichaDeGuerreroEnano(page: Page) {
-  await page.getByRole("button", { name: "Completar características, raza y clase" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Editar clase, raza y características" }),
-  ).toBeVisible();
-
-  // `exact: true` en las seis: "CAR" es subcadena de "características", el propio título del
-  // diálogo (misma trampa documentada en hoja.spec.ts).
-  await page.getByLabel("FUE", { exact: true }).fill("16");
-  await page.getByLabel("DES", { exact: true }).fill("12");
-  await page.getByLabel("CON", { exact: true }).fill("14");
-  await page.getByLabel("INT", { exact: true }).fill("10");
-  await page.getByLabel("SAB", { exact: true }).fill("10");
-  await page.getByLabel("CAR", { exact: true }).fill("8");
+  // Edición en el sitio: ya no hay diálogo. Los desplegables guardan al elegir; los números, al
+  // salir del campo — y sin ese `blur` la petición no sale, que es la regla de la pantalla.
   await page.getByLabel("Raza", { exact: true }).selectOption("dwarf");
   await page.getByLabel("Clase", { exact: true }).selectOption("fighter");
   await page.getByLabel("Nivel", { exact: true }).fill("1");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Editar clase, raza y características" }),
-  ).toBeHidden();
+  await page.getByLabel("Nivel", { exact: true }).blur();
+
+  const caracteristicas: [string, string][] = [
+    ["Fuerza", "16"],
+    ["Destreza", "12"],
+    ["Constitución", "14"],
+    ["Inteligencia", "10"],
+    ["Sabiduría", "10"],
+    ["Carisma", "8"],
+  ];
+  for (const [nombre, valor] of caracteristicas) {
+    const campo = page.getByLabel(nombre, { exact: true });
+    await campo.fill(valor);
+    await campo.blur();
+  }
+
+  // La hoja está derivada cuando aparece la sección de salvaciones, que solo existe si el
+  // catálogo resolvió raza y clase.
+  await expect(page.getByText("Salvaciones")).toBeVisible({ timeout: 15_000 });
 }
 
 test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confirmar deja la hoja al nivel nuevo", async ({
@@ -85,7 +89,8 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
   await registrarse(page);
   await crearPersonajeYAbrirFicha(page, "Dain Yunquefirme");
   await completarFichaDeGuerreroEnano(page);
-  await expect(page.getByText(/Enano · Guerrero · nivel 1/)).toBeVisible();
+  await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("dwarf");
+  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
 
   // Los PG máximos de partida, leídos de la hoja antes de tocar nada: el diff tiene que
   // coincidir con ellos, no con un número inventado por la prueba.
@@ -117,7 +122,8 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
   await expect(dialogo.getByText(/Nivel 1 → 2/)).toBeVisible();
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(dialogo).toBeHidden();
-  await expect(page.getByText(/Enano · Guerrero · nivel 1/)).toBeVisible();
+  await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("dwarf");
+  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
   await expect(page.getByRole("button", { name: "Subir a nivel 2" })).toBeVisible();
 
   // --- Confirmar ---
@@ -128,7 +134,8 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
 
   // La hoja se refresca sola —sin recargar— porque la mutación invalida su clave. Si esta
   // aserción se hiciera tras un `reload()`, pasaría por construcción y no probaría nada.
-  await expect(page.getByText(/Enano · Guerrero · nivel 2/)).toBeVisible({ timeout: 10_000 });
+  // El nivel nuevo se lee en su propio campo, que es ahora la única fuente en pantalla.
+  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("2", { timeout: 10_000 });
   await expect(bloquePg).toContainText(`/ ${maximoAntes + 9}`, { timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Subir a nivel 3" })).toBeVisible();
 });

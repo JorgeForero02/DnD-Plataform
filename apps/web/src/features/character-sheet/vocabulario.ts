@@ -127,23 +127,27 @@ export const NOMBRE_CONCEDIDO_POR: Record<string, string> = {
 // calcula y la comprueba el servidor; esto es exclusivamente la forma legible de la clave. ---
 export const NOMBRE_ARMADURA: Record<string, string> = {
   padded: "Acolchada",
-  leather: "De cuero",
-  "studded-leather": "De cuero tachonado",
-  hide: "De pieles",
-  "chain-shirt": "Camisote de mallas",
+  leather: "Cuero",
+  "studded-leather": "Cuero tachonado",
+  hide: "Pieles",
+  "chain-shirt": "Camisa de malla",
   "scale-mail": "Cota de escamas",
   breastplate: "Coraza",
-  "half-plate": "Media placa",
-  "ring-mail": "Cota de anillas",
+  "half-plate": "Media armadura",
+  "ring-mail": "Cota guarnecida",
   "chain-mail": "Cota de malla",
-  splint: "De bandas",
-  plate: "De placas",
+  splint: "Armadura de bandas",
+  plate: "Armadura de placas",
   shield: "Escudo",
 };
 
 // --- Nombres de razas, subrazas, clases y armaduras ---
 //
-// **Ya NO son la fuente de las opciones**: eso lo da `GET /catalog`. Siguen aquí porque una
+// **Ya NO son la fuente de las opciones**: eso lo da `GET /catalog`. Y desde el 2026-09-02
+// llevan los **nombres oficiales del SRD 5.1 en español**, los que publica Wizards — no una
+// traducción nuestra. Cuando se adoptaron en el servidor, esta copia se quedó contradiciéndolo
+// en diez claves durante un rato; lo cazó el propio agente que hizo el cambio. Si algún día
+// vuelven a separarse, la de la API manda. Siguen aquí porque una
 // clave guardada se pinta en sitios donde no hay catálogo cargado (una traza, un aviso, un
 // personaje de otra campaña), y ahí más vale un nombre que una clave cruda. Si una clave nueva
 // del servidor no está aquí, se ve «Sin traducir: <clave>» — visible y no silencioso.
@@ -161,8 +165,8 @@ export const NOMBRE_RAZA: Record<string, string> = {
 
 export const NOMBRE_SUBRAZA: Record<string, string> = {
   "dwarf-hill": "Enano de las colinas",
-  "elf-high": "Elfo alto",
-  "halfling-lightfoot": "Mediano piesligeros",
+  "elf-high": "Alto elfo",
+  "halfling-lightfoot": "Piesligeros",
   "gnome-rock": "Gnomo de las rocas",
 };
 

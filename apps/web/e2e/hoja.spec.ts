@@ -45,28 +45,41 @@ async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
   await expect(page.getByRole("heading", { name: nombrePersonaje })).toBeVisible();
 }
 
-/** Completa raza (Enano), clase (Guerrero), nivel 1 y características fijas, desde el editor. */
+/**
+ * Completa raza, clase, nivel y las seis características **en el sitio**, sin diálogo.
+ *
+ * Esto era un formulario aparte que se abría con un botón. La hoja ya no tiene botones de
+ * «Editar»: cada valor decidido se toca donde se lee, y el modificador aparece pegado a su
+ * puntuación. Los números guardan al salir del campo; los desplegables, al elegir.
+ */
 async function completarFichaDeGuerreroEnano(page: Page) {
-  await page.getByRole("button", { name: "Completar características, raza y clase" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Editar clase, raza y características" }),
-  ).toBeVisible();
-
-  // `exact: true` en las seis: "CAR" (Carisma) es subcadena de "características", el propio
-  // título del diálogo, y `getByLabel` sin exactitud lo encontraba también ahí.
-  await page.getByLabel("FUE", { exact: true }).fill("16");
-  await page.getByLabel("DES", { exact: true }).fill("12");
-  await page.getByLabel("CON", { exact: true }).fill("14");
-  await page.getByLabel("INT", { exact: true }).fill("10");
-  await page.getByLabel("SAB", { exact: true }).fill("10");
-  await page.getByLabel("CAR", { exact: true }).fill("8");
+  // Los desplegables primero: sin raza y clase no hay hoja que derivar, y así el resto de la
+  // pantalla ya está en su forma final cuando se teclean las características.
   await page.getByLabel("Raza", { exact: true }).selectOption("dwarf");
   await page.getByLabel("Clase", { exact: true }).selectOption("fighter");
   await page.getByLabel("Nivel", { exact: true }).fill("1");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Editar clase, raza y características" }),
-  ).toBeHidden();
+  await page.getByLabel("Nivel", { exact: true }).blur();
+
+  const caracteristicas: [string, string][] = [
+    ["Fuerza", "16"],
+    ["Destreza", "12"],
+    ["Constitución", "14"],
+    ["Inteligencia", "10"],
+    ["Sabiduría", "10"],
+    ["Carisma", "8"],
+  ];
+  for (const [nombre, valor] of caracteristicas) {
+    const campo = page.getByLabel(nombre, { exact: true });
+    await campo.fill(valor);
+    // **Salir del campo ES el guardado.** Sin esto la petición no sale, que es exactamente la
+    // regla que la pantalla implementa: teclear no escribe, terminar de teclear sí.
+    await campo.blur();
+  }
+
+  // La hoja está completa cuando el catálogo ya resolvió: la CA derivada aparece.
+  // La hoja está derivada cuando aparece la sección de salvaciones, que solo existe si el
+  // catálogo resolvió raza y clase.
+  await expect(page.getByText("Salvaciones")).toBeVisible({ timeout: 15_000 });
 }
 
 test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y cambiar PG con un delta", async ({
@@ -82,7 +95,11 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   await completarFichaDeGuerreroEnano(page);
 
   // Identidad calculada, en español — nunca "dwarf" ni "fighter".
-  await expect(page.getByText(/Enano · Guerrero · nivel 1/)).toBeVisible();
+  // **El resumen en prosa ya no existe**: repetía lo que dicen los controles editables, y dos
+  // sitios con el mismo dato acaban con uno de los dos mintiendo. Se comprueba en la fuente.
+  await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("dwarf");
+  await expect(page.getByLabel("Clase", { exact: true })).toHaveValue("fighter");
+  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
   const cuerpoTrasCompletar = await page.locator("body").innerText();
   expect(cuerpoTrasCompletar).not.toContain("dwarf");
   expect(cuerpoTrasCompletar).not.toContain("fighter");
@@ -90,8 +107,11 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   // La traza: al desplegar la CA, se ve de dónde sale el número (§4.3 de la especificación).
   const casillaCA = page.getByText("CA", { exact: true }).locator("..").getByRole("button");
   await casillaCA.click();
-  await expect(page.getByText("Sin armadura")).toBeVisible();
-  await expect(page.getByText("Modificador de Destreza")).toBeVisible();
+  // Acotado a la LISTA de la traza: desde que existe la fórmula de una línea, «Sin armadura»
+  // aparece dos veces —en el resumen y en el paso— y sin acotar la aserción es ambigua.
+  const listaTraza = page.getByRole("list").filter({ hasText: "Sin armadura" }).first();
+  await expect(listaTraza.getByText("Sin armadura")).toBeVisible();
+  await expect(listaTraza.getByText("Modificador de Destreza")).toBeVisible();
 
   // Tirar una salvación desde la hoja: 1d20+mod con su etiqueta, de verdad contra el servidor.
   const filaFuerza = page.getByText("Salvación de Fuerza").locator("..");
@@ -265,7 +285,11 @@ test("contraste medido en la hoja: traza desplegada, aviso, y chip de condición
   // Un texto de traza (--muted sobre --surface, dentro de la casilla de CA desplegada).
   const casillaCA = page.getByText("CA", { exact: true }).locator("..").getByRole("button");
   await casillaCA.click();
-  const pasoTraza = page.getByText("Sin armadura");
+  const pasoTraza = page
+    .getByRole("list")
+    .filter({ hasText: "Sin armadura" })
+    .first()
+    .getByText("Sin armadura");
   {
     const { color, bg } = await effectiveTextColours(pasoTraza);
     record("hoja: paso de traza texto", contrastRatio(color, bg), 4.5);

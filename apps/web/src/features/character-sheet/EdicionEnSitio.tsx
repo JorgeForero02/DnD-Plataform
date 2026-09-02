@@ -70,22 +70,32 @@ export function NumeroEditable({
   ancho = "w-12",
   disabled,
   motivoDeshabilitado,
+  placeholder,
 }: {
   etiqueta: string;
-  valor: number;
+  /**
+   * `null` cuando **todavía no hay valor**, y entonces el campo sale vacío.
+   *
+   * No se finge un 10 por defecto. La primera versión lo hacía y era un fallo silencioso: la
+   * casilla enseñaba «10», el dato guardado era nulo, y teclear 10 no contaba como cambio — así
+   * que no se guardaba nada y la hoja seguía diciendo «faltan datos» delante de un campo que
+   * parecía relleno. Lo cazó el recorrido de navegador; ninguna unitaria lo veía.
+   */
+  valor: number | null;
   onGuardar: (nuevo: number) => Promise<unknown>;
   min?: number;
   max?: number;
   ancho?: string;
   disabled?: boolean;
   motivoDeshabilitado?: string;
+  placeholder?: string;
 }) {
-  const [texto, setTexto] = useState(String(valor));
+  const [texto, setTexto] = useState(valor === null ? "" : String(valor));
   const [estado, setEstado] = useState<Estado>("quieto");
   const [error, setError] = useState<string | null>(null);
   // Lo último que el servidor aceptó. **Estado y no `ref`**: una `ref` no se puede escribir
   // durante el render, y el ajuste de abajo ocurre justo ahí. Lo cazó el linter.
-  const [guardado, setGuardado] = useState(String(valor));
+  const [guardado, setGuardado] = useState(valor === null ? "" : String(valor));
 
   // Si el valor cambia por fuera (otra pantalla, una regla del motor), se refleja — **salvo que
   // se esté escribiendo**. Pisar lo que alguien está tecleando es imperdonable.
@@ -97,8 +107,9 @@ export function NumeroEditable({
   if (valor !== ultimoVisto) {
     setUltimoVisto(valor);
     if (estado === "quieto") {
-      setGuardado(String(valor));
-      setTexto(String(valor));
+      const texto = valor === null ? "" : String(valor);
+      setGuardado(texto);
+      setTexto(texto);
     }
   }
 
@@ -130,6 +141,7 @@ export function NumeroEditable({
         value={texto}
         min={min}
         max={max}
+        placeholder={placeholder}
         disabled={disabled}
         title={disabled ? motivoDeshabilitado : undefined}
         onChange={(e) => setTexto(e.target.value)}
@@ -166,6 +178,7 @@ export function SelectorEditable({
   opciones,
   onGuardar,
   vacio,
+  nombrarHuerfano,
   disabled,
   motivoDeshabilitado,
 }: {
@@ -175,6 +188,15 @@ export function SelectorEditable({
   onGuardar: (nuevo: string) => Promise<unknown>;
   /** Qué dice la opción vacía. Si no se pasa, no hay opción vacía. */
   vacio?: string;
+  /**
+   * Cómo se llama, en español, un valor guardado que la lista ya no ofrece.
+   *
+   * Hace falta porque **la clave cruda no puede llegar a la pantalla**: la primera versión
+   * pintaba «(half-elf)» y lo cazó la prueba que vigila justo eso. Los diccionarios de
+   * `vocabulario.ts` existen precisamente para este caso — una clave guardada que hay que
+   * nombrar sin tener el catálogo delante.
+   */
+  nombrarHuerfano?: (clave: string) => string;
   disabled?: boolean;
   motivoDeshabilitado?: string;
 }) {
@@ -210,7 +232,7 @@ export function SelectorEditable({
         ))}
         {huerfano && (
           <option value={huerfano} disabled>
-            Guardado y ya no disponible ({huerfano})
+            {nombrarHuerfano ? nombrarHuerfano(huerfano) : huerfano} — guardado, ya no disponible
           </option>
         )}
       </select>
@@ -260,8 +282,17 @@ export function TextoEditable({
       <button
         type="button"
         disabled={disabled}
-        title={disabled ? motivoDeshabilitado : undefined}
-        aria-label={`Editar ${etiqueta}`}
+        /**
+         * **El nombre accesible es el VALOR, no «Editar X».**
+         *
+         * Con `aria-label="Editar Nombre del personaje"` el `<h1>` de la página pasaba a
+         * llamarse así y **el nombre del personaje desaparecía del encabezado**: un lector de
+         * pantalla anunciaba la acción en vez del contenido, y el recorrido de navegador dejó de
+         * encontrar el título. Lo cazó Playwright, no `jsdom`.
+         *
+         * Que se puede pulsar ya lo dice el papel de botón; para qué sirve, el `title`.
+         */
+        title={disabled ? motivoDeshabilitado : `Editar ${etiqueta}`}
         onClick={() => {
           setTexto(valor);
           setEditando(true);

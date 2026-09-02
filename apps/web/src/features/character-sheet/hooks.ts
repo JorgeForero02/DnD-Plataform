@@ -70,7 +70,15 @@ export function useUpdateSheet(campaignId: string, characterId: string) {
   return useMutation({
     mutationFn: (input: UpdateCharacterSheetInput) =>
       characterSheetApi.updateSheet(campaignId, characterId, input),
-    onSuccess: (data) => qc.setQueryData(sheetKey(campaignId, characterId), data),
+    onSuccess: (data) => {
+      qc.setQueryData(sheetKey(campaignId, characterId), data);
+      // **Y la lista de personajes, que también enseña el nivel.** Antes solo se refrescaba la
+      // hoja: con el editor en un diálogo daba igual, porque al cerrarlo se volvía a la lista y
+      // se recargaba. Al editar en el sitio no se cierra nada, así que el nivel del subtítulo y
+      // el de la fila se quedaban viejos delante de quien los acababa de cambiar. Lo cazó el
+      // recorrido de navegador; ninguna unitaria lo veía.
+      void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "characters"] });
+    },
   });
 }
 

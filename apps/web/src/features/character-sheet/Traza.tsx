@@ -8,6 +8,55 @@ import { NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
 // desplegable que enseña de dónde sale cada punto: «CA 18 = 14 cota de malla + 2 escudo +
 // 2 Destreza».
 
+/**
+ * El chevron del desplegable, **dibujado**. Era `▾`/`▸`, glifos de fuente: prohibidos por
+ * `docs/04-convenciones.md` salvo los cinco declarados de `ui/Badge.tsx`. Un glifo se pinta a
+ * todo color en unos sistemas y como un cuadrado vacío en otros.
+ */
+function Chevron({ abierta }: { abierta: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={`h-3 w-3 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`}
+    >
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+/**
+ * **La fórmula de una línea, siempre visible.** Bajo el número y en pequeño: «10 +2 destreza».
+ *
+ * Es el nivel que la hoja de papel nunca pudo dar y el que hace que la mayoría **no tenga que
+ * desplegar nada**. Sale de la misma traza que el desglose largo, así que no puede discrepar de
+ * él — que es justo el fallo que la investigación documentó en las hojas digitales: un número
+ * calculado sin contexto se cree ciegamente aunque esté mal.
+ *
+ * **Se resume a partir de tres pasos.** Con doce sumandos esto ya no es una línea: es la traza
+ * otra vez, peor maquetada y compitiendo con ella. Se enseñan la base y los dos que más pesan.
+ */
+function formulaDeUnaLinea(valor: DerivedValue): string {
+  // Un paso que no mueve el total no explica nada. La excepción es `base`, que es de dónde parte.
+  const pasos = valor.steps.filter((p) => p.op === "base" || p.amount !== 0);
+  if (pasos.length === 0) return "";
+  const nombrar = (p: TraceStep) => {
+    const { texto } = traducirLabelKey(p.labelKey);
+    const n = Math.abs(p.amount);
+    if (p.op === "base") return `${n} ${texto.toLowerCase()}`;
+    return `${p.amount >= 0 ? "+" : "−"}${n} ${texto.toLowerCase()}`;
+  };
+  if (pasos.length <= 3) return pasos.map(nombrar).join(" ");
+  const [base, ...resto] = pasos;
+  const mayores = [...resto].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0, 2);
+  return `${[base, ...mayores].map(nombrar).join(" ")} y ${pasos.length - 3} más`;
+}
+
 function signoDe(paso: TraceStep): string {
   if (paso.op === "base") return "";
   return paso.amount >= 0 ? "+" : "−";
@@ -72,9 +121,7 @@ export function ValorDerivado({
             aria-controls={listId}
             className="flex flex-1 items-center gap-s2 text-left font-chrome text-chrome-sm text-text hover:text-accent-text"
           >
-            <span aria-hidden="true" className="text-muted">
-              {abierta ? "▾" : "▸"}
-            </span>
+            <Chevron abierta={abierta} />
             {etiqueta}
           </button>
           <span className="font-data text-chrome-md text-text">
@@ -83,6 +130,7 @@ export function ValorDerivado({
           </span>
           {accion}
         </div>
+        <p className="ml-s5 font-chrome text-chrome-xs text-muted">{formulaDeUnaLinea(valor)}</p>
         {abierta && (
           <ul id={listId} className="ml-s5 mt-1 border-l border-muted/40 pl-s3">
             {valor.steps.map((paso, i) => (
@@ -108,6 +156,7 @@ export function ValorDerivado({
       >
         {valor.total}
       </button>
+      <p className="mt-0.5 font-chrome text-chrome-xs text-muted">{formulaDeUnaLinea(valor)}</p>
       {accion}
       {abierta && (
         <ul id={listId} className="mt-s2 border-t border-muted/40 pt-s2 text-left">

@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { CartographicGrid } from "./Ornament";
 import { Logo } from "./Logo";
+import { LegalNotice } from "./LegalNotice";
 
 export interface Crumb {
   label: string;
@@ -183,7 +184,13 @@ export function AppShell({
               <div className="sticky top-20">{aside}</div>
             </aside>
           )}
-          <main className="min-w-0 flex-1">{children}</main>
+          <main className="min-w-0 flex-1">
+            {children}
+            {/* La atribucion del SRD va AQUI y no en cada pantalla: la CC BY la pide en la obra
+                distribuida, y el armazon es lo unico que toda pantalla con sesion comparte.
+                Ponerla pantalla por pantalla seria una regla que se olvida en la siguiente. */}
+            <LegalNotice />
+          </main>
         </div>
       </div>
     </div>

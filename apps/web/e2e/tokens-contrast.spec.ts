@@ -595,6 +595,43 @@ for (const theme of ["dark", "light"] as const) {
     }
   });
 
+  // Deuda S1 — la atribucion del SRD, medida en el navegador y no en jsdom.
+  //
+  // **Por que en el navegador.** El pie es texto pequeno en `--muted` sobre el fondo de la
+  // aplicacion, y ese es exactamente el sitio donde un contraste se cae sin que nadie lo note:
+  // jsdom no maqueta ni calcula color efectivo, asi que una suite verde no dice nada de si se
+  // lee. Y **un aviso legal que no se puede leer no cumple** la licencia mejor que no ponerlo.
+  test(`contraste de la atribucion del SRD en /acerca-de (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    await page.goto("/acerca-de");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByText("Wizards of the Coast LLC", { exact: false }).first(),
+      );
+      record(theme, "acerca de: atribucion del SRD", contrastRatio(color, bg), 4.5);
+    }
+    {
+      // La nota de modificacion es la mitad que se olvida, y va en negrita: se mide aparte.
+      const { color, bg } = await effectiveTextColours(
+        page.getByText("Modificaciones:", { exact: false }).first(),
+      );
+      record(theme, "acerca de: nota de modificacion", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("link", { name: "System Reference Document 5.1" }).last(),
+      );
+      record(theme, "acerca de: pie, enlace al SRD", contrastRatio(color, bg), 4.5);
+    }
+    {
+      // El pie es texto pequeno en `--muted`: el candidato numero uno a no llegar a 4.5:1.
+      const { color, bg } = await effectiveTextColours(page.locator("footer p").first());
+      record(theme, "acerca de: pie, texto de atribucion", contrastRatio(color, bg), 4.5);
+    }
+  });
+
   test(`contraste medido en la pantalla de cuenta (${theme})`, async ({ page }) => {
     await setStoredTheme(page, theme);
     const cuenta = nuevaCuentaCuenta();

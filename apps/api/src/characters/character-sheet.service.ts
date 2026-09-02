@@ -1,0 +1,513 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  Optional,
+  Inject,
+} from "@nestjs/common";
+import type { Character } from "@prisma/client";
+import type {
+  ChangeHpInput,
+  CharacterChoices,
+  DeathSaveInput,
+  DeathState,
+  GameEventPayload,
+  SetHpInput,
+  UpdateCharacterSheetInput,
+} from "@dnd/shared";
+import {
+  deriveCharacter,
+  findClass,
+  findRace,
+  findSubrace,
+  InvalidEquipmentError,
+  UnknownContentError,
+  type CharacterBuild,
+  type CharacterSheet,
+} from "../rules/catalog";
+import { rollExpression, type Roller } from "../dice/dice";
+import { DICE_ROLLER } from "../rolls/rolls.service";
+import { MembershipService } from "../campaigns/membership.service";
+import { GameEventsService } from "../game-events/game-events.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { CharactersService } from "./characters.service";
+import { canView, Viewer } from "../common/visibility";
+
+// Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
+//
+// **Se guarda lo decidido; se calcula lo derivado**, siempre por `deriveCharacter`. Este
+// servicio nunca escribe `maxHp`, CA ni ningún modificador en una columna: los lee de la hoja
+// que el catálogo deriva en el momento, con las seis características, la raza y la clase que sí
+// están en la fila.
+
+/** El personaje tal y como sale de la base, con las columnas que hacen falta para derivar. */
+type FilaPersonaje = Character;
+
+type ResultadoConstruccion = { build: CharacterBuild } | { reason: string };
+
+/**
+ * De fila persistida a `CharacterBuild`, o al motivo por el que no se puede construir uno.
+ *
+ * **No lanza.** Una ficha a medias —sin clase todavía, por ejemplo— es un estado legítimo de
+ * la mesa (alguien está creando personaje), no un error: por eso esto devuelve un motivo en vez
+ * de una excepción, y quien llama decide si esa falta es tolerable (la lectura de la hoja lo es;
+ * gestionar los PG no, porque no hay `maxHp` que recortar).
+ */
+function construirBuild(character: FilaPersonaje): ResultadoConstruccion {
+  const faltantes: string[] = [];
+  const claves = ["str", "dex", "con", "int", "wis", "cha"] as const;
+  for (const clave of claves) if (character[clave] == null) faltantes.push(clave);
+  if (!character.raceKey) faltantes.push("raza");
+  if (!character.classKey) faltantes.push("clase");
+  if (faltantes.length > 0) {
+    return { reason: `Faltan datos para calcular la hoja: ${faltantes.join(", ")}.` };
+  }
+  return {
+    build: {
+      abilities: {
+        str: character.str!,
+        dex: character.dex!,
+        con: character.con!,
+        int: character.int!,
+        wis: character.wis!,
+        cha: character.cha!,
+      },
+      race: { source: "SRD", key: character.raceKey! },
+      subrace: character.subraceKey ? { source: "SRD", key: character.subraceKey } : undefined,
+      class: { source: "SRD", key: character.classKey! },
+      level: character.level,
+      choices: (character.choices as CharacterChoices | null) ?? undefined,
+    },
+  };
+}
+
+/**
+ * Deriva, o traduce un catálogo que no reconoce una clave a un motivo legible. **Nunca deja
+ * pasar un 500**: una clave de raza o clase que ya no existe en el catálogo (dato viejo) es
+ * exactamente el caso que `resolveBuild` documenta como "no es un dato inválido, es caduco".
+ */
+function derivarOMotivo(build: CharacterBuild): { sheet: CharacterSheet } | { reason: string } {
+  try {
+    return { sheet: deriveCharacter(build) };
+  } catch (error) {
+    if (error instanceof UnknownContentError || error instanceof InvalidEquipmentError) {
+      return { reason: `La hoja no se puede calcular: ${error.message}` };
+    }
+    throw error;
+  }
+}
+
+function clamp(valor: number, minimo: number, maximo: number): number {
+  return Math.max(minimo, Math.min(maximo, valor));
+}
+
+/**
+ * En 2A solo hay contenido SRD (2B abrirá `CAMPAIGN`). Extrae la clave o rechaza con 400 —nunca
+ * con el 500 que daría dejar pasar una referencia que el catálogo no sabe resolver.
+ */
+function claveSrd(
+  ref: { source: "SRD"; key: string } | { source: "CAMPAIGN"; id: string },
+): string {
+  if (ref.source !== "SRD")
+    throw new BadRequestException("En esta fase solo hay contenido del SRD.");
+  return ref.key;
+}
+
+@Injectable()
+export class CharacterSheetService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly membership: MembershipService,
+    private readonly events: GameEventsService,
+    private readonly characters: CharactersService,
+    // Mismo patrón que `RollsService`: inyectable solo en pruebas, `undefined` en producción.
+    @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
+  ) {}
+
+  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
+    const [member, user] = await Promise.all([
+      this.membership.getMembership(campaignId, userId),
+      this.prisma.user.findUnique({ where: { id: userId } }),
+    ]);
+    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
+  }
+
+  private canSee(viewer: Viewer, character: FilaPersonaje): boolean {
+    return canView(viewer, {
+      visibility: character.visibility,
+      createdById: character.ownerId,
+      grantedUserIds: [],
+    });
+  }
+
+  /** `min(currentHp, maxHp)`, con el aviso de que el dato guardado va por delante. */
+  private estadoDeMuerte(character: FilaPersonaje, currentHpCrudo: number | null): DeathState {
+    const successes = character.deathSaveSuccesses;
+    const failures = character.deathSaveFailures;
+    let status: DeathState["status"] = "alive";
+    if (currentHpCrudo === 0) {
+      if (failures >= 3) status = "dead";
+      else if (successes >= 3) status = "stable";
+      else status = "dying";
+    }
+    return { successes, failures, status };
+  }
+
+  /**
+   * La respuesta de lectura, compartida entre el `GET` y el retorno de cada mutación.
+   *
+   * **Clamp al leer, nunca al recalcular**: `hp.current` es `min(currentHp, maxHp)` con
+   * `hp.exceedsMax` si el dato guardado se pasa; la fila no se reescribe aquí.
+   */
+  private buildResponse(character: FilaPersonaje) {
+    const resuelto = construirBuild(character);
+    let sheet: CharacterSheet | null = null;
+    let reason: string | undefined;
+    if ("build" in resuelto) {
+      const derivado = derivarOMotivo(resuelto.build);
+      if ("sheet" in derivado) sheet = derivado.sheet;
+      else reason = derivado.reason;
+    } else {
+      reason = resuelto.reason;
+    }
+
+    const maxHp = sheet ? sheet.derived.maxHp.total : null;
+    const currentHpCrudo = character.currentHp ?? maxHp;
+    const currentHpMostrado =
+      maxHp !== null && currentHpCrudo !== null ? Math.min(currentHpCrudo, maxHp) : currentHpCrudo;
+    const exceedsMax = maxHp !== null && currentHpCrudo !== null ? currentHpCrudo > maxHp : false;
+
+    return {
+      character,
+      sheet,
+      ...(sheet ? {} : { reason }),
+      hp: {
+        current: currentHpMostrado,
+        max: maxHp,
+        temp: character.tempHp,
+        version: character.version,
+        exceedsMax,
+      },
+      deathSaves: this.estadoDeMuerte(character, currentHpCrudo),
+    };
+  }
+
+  async getSheet(userId: string, campaignId: string, characterId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const viewer = await this.viewerFor(userId, campaignId);
+    const character = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character || !this.canSee(viewer, character)) {
+      throw new NotFoundException("Character not found");
+    }
+    return this.buildResponse(character);
+  }
+
+  /**
+   * Valida una referencia de catálogo contra el borde: aquí una clave que no existe **sí** es
+   * un 400, al contrario que al derivar una fila ya guardada — es la diferencia entre un dato
+   * caduco (2A.3) y una entrada que se rechaza antes de guardarse.
+   */
+  async updateSheet(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    input: UpdateCharacterSheetInput,
+  ) {
+    await this.membership.requireMember(campaignId, userId);
+    const character = await this.characters.requireEditable(userId, campaignId, characterId);
+
+    const data: Record<string, unknown> = {};
+    if (input.abilities) {
+      for (const clave of ["str", "dex", "con", "int", "wis", "cha"] as const) {
+        const valor = input.abilities[clave];
+        if (valor !== undefined) data[clave] = valor;
+      }
+    }
+
+    try {
+      if (input.race !== undefined) {
+        const raceKey = claveSrd(input.race);
+        findRace(input.race);
+        data.raceKey = raceKey;
+      }
+      if (input.subrace !== undefined) {
+        if (input.subrace === null) {
+          data.subraceKey = null;
+        } else {
+          const subraceKey = claveSrd(input.subrace);
+          const raceKeyEfectiva = (data.raceKey as string | undefined) ?? character.raceKey;
+          if (!raceKeyEfectiva)
+            throw new BadRequestException("No se puede fijar una subraza sin raza.");
+          findSubrace(findRace({ source: "SRD", key: raceKeyEfectiva }), input.subrace);
+          data.subraceKey = subraceKey;
+        }
+      }
+      if (input.class !== undefined) {
+        const classKey = claveSrd(input.class);
+        findClass(input.class);
+        data.classKey = classKey;
+      }
+    } catch (error) {
+      if (error instanceof UnknownContentError) throw new BadRequestException(error.message);
+      throw error;
+    }
+
+    if (input.level !== undefined) data.level = input.level;
+    if (input.choices !== undefined) data.choices = input.choices;
+
+    const actualizado = await this.prisma.character.update({
+      where: { id: characterId },
+      data,
+    });
+    return this.buildResponse(actualizado);
+  }
+
+  /**
+   * La hoja derivada, o el 400 honesto de "no se puede sin raza/clase/características": ninguna
+   * mutación de PG puede recortar contra un `maxHp` que no existe.
+   */
+  private async construirODenegar(character: FilaPersonaje): Promise<CharacterSheet> {
+    const resuelto = construirBuild(character);
+    if (!("build" in resuelto))
+      throw new BadRequestException(`No se pueden gestionar los PG: ${resuelto.reason}`);
+    const derivado = derivarOMotivo(resuelto.build);
+    if (!("sheet" in derivado)) throw new BadRequestException(derivado.reason);
+    return derivado.sheet;
+  }
+
+  async changeHp(userId: string, campaignId: string, characterId: string, input: ChangeHpInput) {
+    await this.membership.requireMember(campaignId, userId);
+    // Comprueba dueño-o-DM antes de bloquear la fila: es una lectura de más, pero evita
+    // mantener el candado abierto mientras se resuelve un 403.
+    await this.characters.requireEditable(userId, campaignId, characterId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const filas = await tx.$queryRaw<
+        FilaPersonaje[]
+      >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+      const character = filas[0];
+      if (!character) throw new NotFoundException("Character not found");
+
+      const sheet = await this.construirODenegar(character);
+      const maxHp = sheet.derived.maxHp.total;
+      const before = character.currentHp ?? maxHp;
+
+      let tempHp = character.tempHp;
+      let after: number;
+      if (input.delta < 0) {
+        // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
+        const danio = -input.delta;
+        const gastoTemporal = Math.min(tempHp, danio);
+        tempHp -= gastoTemporal;
+        after = clamp(before - (danio - gastoTemporal), 0, maxHp);
+      } else {
+        after = clamp(before + input.delta, 0, maxHp);
+      }
+
+      const actualizado = await tx.character.update({
+        where: { id: characterId },
+        data: { currentHp: after, tempHp, version: character.version + 1 },
+      });
+
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: character.visibility,
+          payload: {
+            type: "HP_CHANGED",
+            delta: input.delta,
+            from: before,
+            to: after,
+            reason: input.reason,
+          },
+        },
+        tx,
+      );
+
+      return this.buildResponse(actualizado);
+    });
+  }
+
+  async setHp(userId: string, campaignId: string, characterId: string, input: SetHpInput) {
+    // Solo el DM: es la corrección absoluta, no el gasto de la mesa.
+    await this.membership.requireDM(campaignId, userId);
+    const existe = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!existe) throw new NotFoundException("Character not found");
+
+    return this.prisma.$transaction(async (tx) => {
+      const filas = await tx.$queryRaw<
+        FilaPersonaje[]
+      >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+      const character = filas[0];
+      if (!character) throw new NotFoundException("Character not found");
+
+      // Concurrencia optimista: una versión vieja es un 409 con el estado actual, no un pisotón.
+      if (character.version !== input.expectedVersion) {
+        throw new ConflictException({
+          message: "La versión enviada ya no es la actual.",
+          ...this.buildResponse(character),
+        });
+      }
+
+      const sheet = await this.construirODenegar(character);
+      const maxHp = sheet.derived.maxHp.total;
+      const data: Record<string, unknown> = { version: character.version + 1 };
+      const eventosAEscribir: GameEventPayload[] = [];
+
+      if (input.currentHp !== undefined) {
+        const antes = character.currentHp ?? maxHp;
+        if (antes !== input.currentHp) {
+          data.currentHp = input.currentHp;
+          eventosAEscribir.push({
+            type: "HP_CHANGED",
+            delta: input.currentHp - antes,
+            from: antes,
+            to: input.currentHp,
+            reason: input.reason,
+          });
+        }
+      }
+      if (input.tempHp !== undefined) {
+        // Dos fuentes no se suman: al fijar PG temporales gana la mayor, no la suma.
+        const nuevo = Math.max(character.tempHp, input.tempHp);
+        if (nuevo !== character.tempHp) {
+          data.tempHp = nuevo;
+          eventosAEscribir.push({
+            type: "TEMP_HP_SET",
+            from: character.tempHp,
+            to: nuevo,
+            reason: input.reason,
+          });
+        }
+      }
+
+      const actualizado = await tx.character.update({ where: { id: characterId }, data });
+      for (const payload of eventosAEscribir) {
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            subjectId: characterId,
+            visibility: character.visibility,
+            payload,
+          },
+          tx,
+        );
+      }
+      return this.buildResponse(actualizado);
+    });
+  }
+
+  async rollDeathSave(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    input: DeathSaveInput,
+  ) {
+    await this.membership.requireMember(campaignId, userId);
+    await this.characters.requireEditable(userId, campaignId, characterId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const filas = await tx.$queryRaw<
+        FilaPersonaje[]
+      >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+      const character = filas[0];
+      if (!character) throw new NotFoundException("Character not found");
+
+      const sheet = await this.construirODenegar(character);
+      const maxHp = sheet.derived.maxHp.total;
+      const currentHp = character.currentHp ?? maxHp;
+      if (currentHp !== 0)
+        throw new BadRequestException("Solo se puede tirar salvación de muerte a 0 PG.");
+
+      const tirada = rollExpression("1d20", this.roller);
+      const dado = tirada.total;
+
+      let successes = character.deathSaveSuccesses;
+      let failures = character.deathSaveFailures;
+      let nuevoCurrentHp = 0;
+      let result: "SUCCESS" | "FAILURE" | "CRIT_SUCCESS" | "CRIT_FAILURE";
+
+      let revivido = false;
+      let estabilizado = false;
+
+      if (dado === 20) {
+        // Un 20 natural no es "un éxito más": devuelve a la mesa a 1 PG y borra la cuenta.
+        result = "CRIT_SUCCESS";
+        successes = 0;
+        failures = 0;
+        nuevoCurrentHp = 1;
+        revivido = true;
+      } else if (dado === 1) {
+        // Un 1 natural cuenta como DOS fracasos.
+        result = "CRIT_FAILURE";
+        failures = Math.min(3, failures + 2);
+      } else if (dado >= 10) {
+        result = "SUCCESS";
+        successes = Math.min(3, successes + 1);
+      } else {
+        result = "FAILURE";
+        failures = Math.min(3, failures + 1);
+      }
+
+      // Tres éxitos estabilizan: los contadores vuelven a cero y el personaje sigue a 0 PG.
+      if (!revivido && successes >= 3) {
+        estabilizado = true;
+        successes = 0;
+        failures = 0;
+      }
+
+      const actualizado = await tx.character.update({
+        where: { id: characterId },
+        data: {
+          currentHp: nuevoCurrentHp,
+          deathSaveSuccesses: successes,
+          deathSaveFailures: failures,
+          version: character.version + 1,
+        },
+      });
+
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          // La visibilidad de la tirada la puede fijar quien tira —igual que en `RollsService`—;
+          // por defecto, la de la ficha, para que no haga falta decidirlo cada vez.
+          visibility: input.visibility ?? character.visibility,
+          payload: { type: "DEATH_SAVE", roll: dado, result, successes, failures },
+        },
+        tx,
+      );
+
+      // **Por qué el `status` de esta respuesta no sale del genérico `estadoDeMuerte`.** Al
+      // estabilizar o revivir, los contadores vuelven a cero — es lo que pide la especificación
+      // ("contadores a cero")—, así que una lectura posterior con esos ceros ya no puede
+      // distinguir "acaba de estabilizarse" de "recién llegó a 0 PG sin tirar todavía". El
+      // esquema no tiene una columna `stable` (2A.7 no la pide), así que ese matiz solo se
+      // conoce **en el instante de esta tirada**, y es aquí donde se informa.
+      const status: DeathState["status"] = revivido
+        ? "alive"
+        : failures >= 3
+          ? "dead"
+          : estabilizado
+            ? "stable"
+            : "dying";
+
+      return {
+        ...this.buildResponse(actualizado),
+        deathSaves: { successes, failures, status },
+      };
+    });
+  }
+}

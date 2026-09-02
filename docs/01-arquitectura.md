@@ -51,9 +51,12 @@ por su cuenta**.
 | `links` | Relaciones wiki entre entidades | DM o creador |
 | `comments` | Hilo de comentarios de una entidad | quien pueda ver la entidad |
 | `sessions` | Sesiones de juego | solo DM |
-| `characters` | Personajes | dueño o DM |
+| `characters` | Personajes y **la hoja de 5.ª edición** (2A.6) con sus PG mutables y sus tiradas de muerte (2A.7) | dueño o DM |
+| `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
 | `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
 | `rolls` | Tirar de verdad (2A.13). **El azar vive aquí y solo aquí**: el servidor tira y escribe la tirada antes de devolverla | miembro de la campaña |
+| `notifications` | Bandeja de avisos (2A.14). **Sin tiempo real**: se pide al cargar. Escucha los eventos de dominio que ya se emitían y nadie escuchaba | nadie, por HTTP; solo marcar leídas las propias |
+| `world-state` | Marcas, conjuntos y señales de la campaña (2A.15). Lo que el motor de reglas escuchará | solo DM |
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |
 | `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |
@@ -70,6 +73,12 @@ catalog/  ──→  engine.ts        (el catálogo conoce al motor; el motor NO
 engine.ts ──→  @dnd/shared      (la traza vive en shared, porque la web la pinta)
 dice/     ──→  (nada)
 ```
+
+**Y los dos módulos que calculan una hoja no dependen uno del otro.** `characters` y
+`character-state` necesitan los mismos PG máximos —uno para recortar al leer, otro para no
+curar por encima—, y **los dos los derivan del catálogo** en vez de pedírselos al vecino:
+`character-state/common/max-hp.ts` llama a `deriveCharacter` igual que hace la hoja. Cuelgan
+del mismo cálculo y ninguno del otro, que es lo que evita el ciclo.
 
 **El motor no importa nada de `catalog/`**, y esa es la regla que hace útil la separación: si
 el motor conociera las razas, un `+1` transcrito mal parecería un fallo del motor y se buscaría

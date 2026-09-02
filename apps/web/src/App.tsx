@@ -8,6 +8,7 @@ import { CharacterDetailPage } from "./pages/CharacterDetailPage";
 import { AccountPage } from "./pages/AccountPage";
 import { JoinPage } from "./pages/JoinPage";
 import { DesignTokensPage } from "./pages/DesignTokensPage";
+import { AcercaDePage } from "./pages/AcercaDePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./features/auth/AuthGate";
@@ -41,6 +42,9 @@ export function App() {
               or DM ever navigates here — it exists for the Playwright contrast spec (see
               e2e/tokens-contrast.spec.ts). */}
           <Route path="/design-tokens" element={<DesignTokensPage />} />
+          {/* Sin ProtectedRoute a proposito: una atribucion que exige iniciar sesion no esta
+              en la obra distribuida, esta detras de ella. La CC BY la pide accesible. */}
+          <Route path="/acerca-de" element={<AcercaDePage />} />
           <Route
             path="/"
             element={

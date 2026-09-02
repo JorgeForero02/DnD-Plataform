@@ -6,6 +6,155 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — 2A.6, 2A.7, 2A.8 y 2A.12: la hoja deja de ser un formulario
+
+**Que.** Cuatro tareas a la vez, escritas por dos implementadores en paralelo sobre una migracion
+y unos contratos que se escribieron **antes** de repartir, precisamente para que nadie se
+disputara `schema.prisma`.
+
+**2A.6 — la hoja persistida.** `GET`/`PATCH .../sheet`. Se guardan las seis caracteristicas en
+seis columnas, las claves de raza, subraza y clase, y las elecciones resueltas. **Los PG maximos,
+la CA y los modificadores no se guardan: se calculan** en cada lectura con `deriveCharacter`.
+Guardar lo calculado significa que el dia que se corrija una formula habra mil filas mintiendo
+sin forma de saber cuales.
+
+**Y una hoja a medio hacer no es un error.** Sin caracteristicas o sin clase no hay nada que
+derivar, y el `GET` devuelve `sheet: null` con su motivo en vez de un 500.
+
+**2A.7 — PG mutables, partidos por intencion.** Un `POST` de **delta** para el caso normal —en la
+mesa nadie dice «tengo 12», dice «recibo 5»— aplicado con la fila bloqueada, asi que **dos
+jugadores aplicando −5 y −3 aterrizan los dos**; y un `PATCH` **absoluto** con `expectedVersion`
+para la correccion del DM, que da **409** si alguien cambio los PG mientras miraba. Un DM que
+corrige a mano quiere pisar, pero quiere saber que pisa.
+
+**Los PG temporales se gastan primero y no se acumulan**: dos fuentes no se suman, se queda la
+mayor. Es el error clasico y esta probado por mutacion.
+
+**Tiradas de muerte, con sus cuatro resultados.** Un 20 natural devuelve a 1 PG; un 1 natural
+cuenta **dos** fracasos. Meterlos en exito/fracaso seria perder justo lo que hace tensa esa
+tirada.
+
+**2A.8 — recursos, descansos y dados de golpe.** Inspiracion, furia, ki, dados de golpe y
+espacios de conjuro son **el mismo mecanismo**, y por eso son una tabla y no cinco
+funcionalidades. El descanso largo recupera **la mitad de los dados de golpe redondeando hacia
+arriba, minimo uno** —«todos» es el error clasico— y **el brujo repone sus espacios en descanso
+CORTO**, que es lo que distingue la magia de pacto.
+
+**2A.12 — condiciones y velocidad efectiva.** Con la regla que habia que acertar: **la condicion
+que deja la velocidad a 0 gana, y dos mitades NO se multiplican.** Derribado y agotado nivel 2 a
+la vez sigue siendo la mitad, nunca un cuarto: el SRD no compone reducciones de movimiento, y un
+modelo que las multiplicara inventaria una regla que no existe. **La traza nombra todas las
+causas**, no solo la primera.
+
+**Dos cosas que encontro mi revision y los informes no traian:**
+
+- **La traza de velocidad no era sumable.** Con dos condiciones a cero, cada paso restaba la base
+  entera, asi que sumar los pasos daba un negativo donde la hoja dice 0 — y el motor de
+  derivacion **si** mantiene esa invariante (`override` guarda el delta). Ahora la primera causa
+  lleva el delta y las demas llevan cero: siguen nombradas y ya no mueven un total que no vuelven
+  a mover.
+- **La curacion por dados de golpe no se topaba contra los PG maximos.** Lo dejo anotado quien lo
+  escribio, porque el maximo no se guarda y su modulo no lo tenia a mano. Ahora lo deriva
+  (`character-state/common/max-hp.ts`), y **las dos carpetas cuelgan del mismo calculo y ninguna
+  de la otra**, que es lo que evita el ciclo.
+
+**Mutacion comprobada por el orquestador, seis veces y sin fiarme de los informes:** el 409 de
+version obsoleta, los PG temporales gastandose primero, el 1 natural contando dos, el candado del
+recurso `DM_ONLY`, la mitad de los dados de golpe y el cero ganando sobre la mitad. **Las seis en
+rojo**, restauradas, y una septima propia sobre el tope de curacion. 585 unitarias y **90 e2e en
+18 suites**, corridos **en serie** al final porque tres agentes compartieron base de datos.
+
+**Tres cabos declarados en 06**, y uno importa mas de lo que parece: **«estable» no sobrevive a la
+peticion que lo produce**, porque estabilizarse pone los contadores a cero y un `GET` posterior no
+lo distingue de «acaba de caer». La solucion no necesita migracion — `CharacterCondition` acepta
+clave libre desde 2A.12, y «estable» es una condicion.
+
+**Como revertirlo.** Borrar `apps/api/src/character-state/`, los ficheros `character-sheet.*` de
+`characters/`, sus e2e, y quitar `CharacterStateModule` de `app.module.ts`. Las columnas y las
+tablas se quedan sin usar, que no molesta.
+
+---
+
+## 2026-09-02 (tarde) — 2A.14 y 2A.15: la aplicacion empieza a avisar, y el mundo a recordar
+
+**Que.** Dos tareas que el motor de reglas necesita antes de existir. La **bandeja de avisos**
+(`GET /notifications`, `POST /notifications/read`) y el **estado del mundo**: marcas con nombre,
+conjuntos con nombre y senales, todos con su `GameEvent`.
+
+**Por que estan en 2A y no despues.** El efecto «avisar» del motor **no tiene donde escribir**
+sin la bandeja, y sin «avisar» el modo propuesta no puede existir. Y las marcas y los conjuntos
+son sobre lo que el motor condiciona: sin ellos, «SI el puente esta caido» no se puede escribir.
+
+**Lo que la bandeja arregla, y llevaba tiempo:** la aplicacion **no le contaba nada a nadie**.
+Habia eventos de dominio emitiendose desde la fase 1 —`campaign.member_joined`,
+`entity.created`— que **nadie escuchaba**. Ahora los escucha, y con un cuidado que merece
+decirse: el aviso de entidad creada **se reparte a traves de `canView`**, no a todos los
+miembros. Avisar a ciegas de que existe una ficha `DM_ONLY` filtra su existencia, que es la
+mitad del secreto.
+
+**Aislamiento entre usuarios, comprobado donde importa:** `userId` va **en el `where` de la
+consulta**, no en una comprobacion posterior; tanto al listar como al marcar leidas. Comprobado
+por mutacion: quitandolo de `list()`, los avisos del DM se colaban en la bandeja del jugador.
+
+**Y el payload lleva datos, nunca la frase.** Guardar «Ana te invito a Ceniza» en la base seria
+escribir espanol en una columna y perder la posibilidad de cambiarlo. Es la misma regla que
+`labelKey` en el motor.
+
+**Idempotencia, que no es un adorno:** anadir dos veces el mismo miembro a un conjunto **no lo
+duplica ni falla**, y ademas **no escribe una segunda linea en el log**. Los efectos del motor
+se van a encadenar hasta diez saltos; un efecto que no sea idempotente produce basura que crece
+sola. Comprobado por mutacion: cambiando el `upsert` por un `create`, la segunda llamada daba
+500.
+
+**Lo que NO se enganicho, y se dice en vez de inventarlo.** Cinco tipos de aviso existen en el
+contrato y **nada los emite todavia** (`ENTITY_REVEALED`, `SESSION_STARTED`,
+`SESSION_SCHEDULED`, `COMMENT_ADDED`, `RULE_PROPOSAL`), y cuatro eventos de dominio que si se
+emiten no tienen tipo de aviso que les corresponda. Y `recordEntityOpened` —el suceso que el
+motor escuchara, escrito con visibilidad `DM_ONLY` como exige el hueco H3— **esta implementado
+y no esta conectado** al modulo de entidades. Va a 06.
+
+**Como revertirlo.** Borrar `apps/api/src/notifications/`, `apps/api/src/world-state/` y sus dos
+e2e, y quitar los dos modulos de `app.module.ts`. Las tablas se quedan vacias sin molestar.
+
+---
+
+## 2026-09-02 (tarde) — La atribucion del SRD, vista desde la aplicacion (deuda S1)
+
+**Que.** Un pie en toda pantalla con sesion (`apps/web/src/ui/LegalNotice.tsx`, montado dentro de
+`AppShell`) y una pantalla `/acerca-de` con el texto completo de la atribucion CC BY 4.0.
+
+**Por que ahora y no con 2A.10.** La ficha S1 llevaba una condicion de disparo, no una fecha:
+*«deja de ser opcional en cuanto una pantalla pinte datos del SRD»*. La hoja de personaje los va
+a pintar, y cerrar esto **antes** cuesta lo mismo y quita el riesgo de que se recorte junto con
+la tarea que lo arrastraba.
+
+**Tres decisiones que merecen leerse:**
+
+- **El aviso va en ingles y no se traduce.** Es el texto de atribucion que la licencia
+  especifica; traducirlo seria modificar justo lo que da fe de la modificacion. Lo que si va en
+  espanol es la nota de modificacion, porque describe lo que hicimos nosotros.
+- **`/acerca-de` no lleva `ProtectedRoute`.** Una atribucion que exige iniciar sesion no esta en
+  la obra distribuida: esta detras de ella.
+- **El pie vive en el armazon y no en cada pantalla.** La CC BY la pide en la obra distribuida, y
+  el armazon es lo unico que todas las pantallas con sesion comparten; ponerla una por una seria
+  una regla que se olvida en la siguiente.
+
+**Un efecto secundario aceptado y dicho:** en `/acerca-de` la atribucion sale dos veces, porque
+la pagina vive dentro del armazon que ya lleva el pie. No molesta a nadie y evita una excepcion
+—«ocultar el pie en esta ruta»— que habria que recordar en cada rediseno. Las pruebas lo dicen
+en vez de romperse por ello.
+
+**Mutacion comprobada.** Quitando la nota de modificacion del pie, la prueba se pone roja. Es la
+mitad que se olvida: omitirla incumple igual que omitir el nombre del autor.
+
+**256 pruebas de web verdes**, ocho de ellas nuevas.
+
+**Como revertirlo.** Borrar `LegalNotice.tsx`, `AcercaDePage.tsx` y su prueba, y quitar la ruta y
+la llamada al pie. **Pero entonces vuelve el incumplimiento** en cuanto una pantalla ensene datos
+del SRD, asi que revertir esto exige quitar tambien esa pantalla.
+
+---
+
 ## 2026-09-02 (tarde) — 2A.13: tirar de verdad
 
 **Qué.** `POST /campaigns/:id/rolls`. El servidor tira con el evaluador de 2A.1, escribe un

@@ -61,7 +61,11 @@ export class CharactersService {
     return character;
   }
 
-  private async requireEditable(userId: string, campaignId: string, characterId: string) {
+  /**
+   * Pública a propósito: la comparte `CharacterSheetService` (2A.6/2A.7), que necesita el mismo
+   * "dueño o DM" para la hoja y los PG en vez de reimplementarlo.
+   */
+  async requireEditable(userId: string, campaignId: string, characterId: string) {
     const character = await this.prisma.character.findFirst({
       where: { id: characterId, campaignId },
     });

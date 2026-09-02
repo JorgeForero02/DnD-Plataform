@@ -16,3 +16,10 @@ export { CartographicGrid, DrawnHorizon, CompassMark, OrnamentRule } from "./Orn
 export { AppShell, AppHeader, PageHeader, Breadcrumbs } from "./AppShell";
 export type { Crumb } from "./AppShell";
 export { Toolbar, FilterChip, ListRow, EmptyState } from "./Collection";
+export {
+  LegalNotice,
+  SRD_URL,
+  CC_BY_URL,
+  SRD_ATTRIBUTION_EN,
+  SRD_MODIFICATION_ES,
+} from "./LegalNotice";

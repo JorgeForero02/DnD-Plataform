@@ -6,6 +6,7 @@ import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
+import { ResourcesService } from "../character-state/resources/resources.service";
 import { CharacterSheetService } from "./character-sheet.service";
 
 // Tareas 2A.6 y 2A.7 — Prisma simulado, como el resto de la carpeta.
@@ -77,14 +78,17 @@ function montar(roller?: Roller) {
   const characters = { requireEditable: jest.fn() };
   prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
 
+  const resources = { seedResourcesFor: jest.fn().mockResolvedValue(undefined) };
+
   const service = new CharacterSheetService(
     prisma as unknown as PrismaService,
     membership as unknown as MembershipService,
     events as unknown as GameEventsService,
     characters as unknown as CharactersService,
     roller,
+    resources as unknown as ResourcesService,
   );
-  return { service, prisma, membership, events, characters };
+  return { service, prisma, membership, events, characters, resources };
 }
 
 /** Simula `prisma.$transaction`, con un `tx` que solo sabe bloquear la fila dada y actualizarla. */
@@ -187,7 +191,7 @@ describe("CharacterSheetService — 2A.7 PG mutables", () => {
     // 4 de temporal absorben 4; los 2 restantes bajan del máximo.
     expect(tx.character.update).toHaveBeenCalledWith({
       where: { id: "ch1" },
-      data: { currentHp: MAX_HP - 2, tempHp: 0, version: 1 },
+      data: expect.objectContaining({ currentHp: MAX_HP - 2, tempHp: 0, version: 1 }),
     });
     expect(res.hp.current).toBe(MAX_HP - 2);
     expect(events.record).toHaveBeenCalledWith(
@@ -340,5 +344,130 @@ describe("CharacterSheetService — 2A.7 PG mutables", () => {
     montarTransaccion(prisma2, filaEstable);
     const estable = await service2.rollDeathSave("p1", "c1", "ch1", {});
     expect(estable.deathSaves).toEqual({ successes: 0, failures: 0, status: "stable" });
+  });
+});
+
+describe("lo que el daño y la curación le hacen a las salvaciones de muerte", () => {
+  // Las tres reglas del SRD que vivían en la cabeza de la mesa y no en el código. La segunda
+  // —curar a alguien a 0 PG sin borrar sus fracasos— **era un fallo activo sobre código ya
+  // desplegado**: el clérigo te levantaba con dos fracasos encima y ahí seguían la sesión
+  // siguiente. Lo encontró una investigación de huecos de mecánica, no una prueba.
+
+  it("golpear a quien ya está a 0 PG suma UN fracaso", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: 0, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -3 });
+
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: "ch1" },
+      data: expect.objectContaining({ deathSaveFailures: 1 }),
+    });
+  });
+
+  it("y DOS si el golpe fue crítico — es la mitad que se olvida al implementarlo", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: 0, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -3, critical: true });
+
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: "ch1" },
+      data: expect.objectContaining({ deathSaveFailures: 2 }),
+    });
+  });
+
+  it("curar aunque sea UN punto desde 0 borra los dos contadores", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(
+      prisma,
+      personaje({ currentHp: 0, tempHp: 0, deathSaveSuccesses: 1, deathSaveFailures: 2 }),
+    );
+
+    await service.changeHp("p1", "c1", "ch1", { delta: 1 });
+
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: "ch1" },
+      data: expect.objectContaining({ deathSaveSuccesses: 0, deathSaveFailures: 0 }),
+    });
+  });
+
+  it("el daño que sobra e iguala los PG máximos mata en el acto, sin tiradas", async () => {
+    // Muerte masiva. El sobrante se calcula **antes** de recortar a 0: si se recorta primero,
+    // la evidencia desaparece y el personaje solo queda inconsciente.
+    const { service, prisma, characters, events } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    montarTransaccion(prisma, personaje({ currentHp: 5, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -(5 + MAX_HP) });
+
+    expect(events.record).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ payload: expect.objectContaining({ massive: true }) }),
+      expect.anything(),
+    );
+  });
+
+  it("un golpe fuerte que NO llega a los PG máximos deja inconsciente, no muerto", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: 5, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -(5 + MAX_HP - 1) });
+
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: "ch1" },
+      data: expect.objectContaining({ currentHp: 0, deathSaveFailures: 0 }),
+    });
+  });
+
+  it("un golpe normal a alguien en pie no toca los contadores", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: MAX_HP, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -2 });
+
+    expect(tx.character.update).toHaveBeenCalledWith({
+      where: { id: "ch1" },
+      data: expect.objectContaining({ deathSaveSuccesses: 0, deathSaveFailures: 0 }),
+    });
+  });
+});
+
+describe("la siembra de recursos al terminar la ficha", () => {
+  // Este agujero estuvo abierto desde 2A.8: `seedResourcesFor` tenía su prueba y **no lo
+  // llamaba nadie**, así que ningún personaje tenía dados de golpe ni espacios de conjuro y el
+  // panel de recursos salía vacío para todos. Lo encontró la revisión de la pantalla, no la
+  // suite.
+
+  it("al fijar clase y nivel, siembra con la hoja derivada y el nivel guardado", async () => {
+    const { service, prisma, characters, resources } = montar();
+    const guardado = personaje({ classKey: "wizard", level: 3 });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue(guardado);
+
+    await service.updateSheet("owner1", "cmp1", "ch1", { level: 3 });
+
+    expect(resources.seedResourcesFor).toHaveBeenCalledWith(
+      "ch1",
+      expect.objectContaining({ classKey: "wizard" }),
+      3,
+    );
+  });
+
+  it("una ficha a medias no siembra nada — no hay clase de la que sembrar", async () => {
+    const { service, prisma, characters, resources } = montar();
+    const aMedias = personaje({ classKey: null, raceKey: null });
+    characters.requireEditable.mockResolvedValue(aMedias);
+    prisma.character.update.mockResolvedValue(aMedias);
+
+    await service.updateSheet("owner1", "cmp1", "ch1", { level: 2 });
+
+    expect(resources.seedResourcesFor).not.toHaveBeenCalled();
   });
 });

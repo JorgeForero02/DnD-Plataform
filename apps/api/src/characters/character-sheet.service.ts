@@ -32,6 +32,7 @@ import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
+import { ResourcesService } from "../character-state/resources/resources.service";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -123,6 +124,12 @@ export class CharacterSheetService {
     private readonly characters: CharactersService,
     // Mismo patrón que `RollsService`: inyectable solo en pruebas, `undefined` en producción.
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
+    /**
+     * Opcional porque casi todas las pruebas unitarias de este servicio se montan a mano y no
+     * les interesa la siembra. En la aplicación real siempre está: `CharactersModule` importa
+     * `CharacterStateModule`, que la exporta.
+     */
+    @Optional() private readonly resources?: ResourcesService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -262,7 +269,31 @@ export class CharacterSheetService {
       where: { id: characterId },
       data,
     });
-    return this.buildResponse(actualizado);
+    const respuesta = this.buildResponse(actualizado);
+    await this.sembrarRecursos(characterId, respuesta.sheet, actualizado.level);
+    return respuesta;
+  }
+
+  /**
+   * Los dados de golpe y los espacios de conjuro que la clase implica.
+   *
+   * **Esto faltaba y era un agujero real, no una mejora**: `ResourcesService.seedResourcesFor`
+   * existía desde 2A.8 con su prueba, y no lo llamaba nadie —lo encontró la revisión de la
+   * pantalla de la hoja al ver que el panel de recursos salía vacío para todos los personajes—.
+   * Sin esto, un guerrero de nivel 5 no tenía dados de golpe que gastar en un descanso corto y
+   * un mago no tenía espacios: dos mecánicas centrales que la interfaz pintaba como «vacío».
+   *
+   * Se llama **al terminar la ficha, no al crear el personaje**, porque al crearlo todavía no
+   * hay clase ni nivel de los que sembrar nada. Es idempotente (`upsert`), así que repetirlo en
+   * cada edición sube el tope si el nivel subió y deja en paz lo ya gastado.
+   */
+  private async sembrarRecursos(
+    characterId: string,
+    sheet: CharacterSheet | null,
+    level: number,
+  ): Promise<void> {
+    if (!sheet || !this.resources) return;
+    await this.resources.seedResourcesFor(characterId, sheet, level);
   }
 
   /**
@@ -297,19 +328,59 @@ export class CharacterSheetService {
 
       let tempHp = character.tempHp;
       let after: number;
+
+      // --- Lo que el daño y la curación le hacen a las salvaciones de muerte -------------
+      //
+      // Estas tres reglas del SRD vivían en la cabeza de la mesa y no en el código, y la
+      // consecuencia era un fallo activo: **curar a un personaje a 0 PG le dejaba los fracasos
+      // encima**, sesión tras sesión. Lo encontró una investigación de huecos de mecánica.
+      let successes = character.deathSaveSuccesses;
+      let failures = character.deathSaveFailures;
+      let massive = false;
+
       if (input.delta < 0) {
         // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
         const danio = -input.delta;
         const gastoTemporal = Math.min(tempHp, danio);
         tempHp -= gastoTemporal;
-        after = clamp(before - (danio - gastoTemporal), 0, maxHp);
+        const efectivo = danio - gastoTemporal;
+
+        // **El sobrante se calcula ANTES de recortar**, o el `clamp` borra la evidencia: si lo
+        // que pasa de 0 iguala o supera los PG máximos, el personaje muere en el acto, sin
+        // tiradas. Recortar primero y preguntar después es el error que hace desaparecer esa
+        // muerte.
+        const sobrante = efectivo - before;
+        if (before > 0 && sobrante >= maxHp) {
+          massive = true;
+          failures = 3;
+        } else if (before === 0 && efectivo > 0) {
+          // **Golpear a quien ya está a 0 suma un fracaso, y dos si el golpe fue crítico.** Es
+          // el momento más frecuente del juego —el remate al que está en el suelo— y hasta hoy
+          // no dejaba ningún rastro.
+          failures = Math.min(3, failures + (input.critical ? 2 : 1));
+        }
+
+        after = clamp(before - efectivo, 0, maxHp);
       } else {
         after = clamp(before + input.delta, 0, maxHp);
+        // **Recuperar un solo PG estando a 0 borra los dos contadores.** No es una cortesía: el
+        // SRD dice que vuelves en ti, y arrastrar fracasos de una caída anterior mataría a
+        // alguien por algo que ya sobrevivió.
+        if (before === 0 && after > 0) {
+          successes = 0;
+          failures = 0;
+        }
       }
 
       const actualizado = await tx.character.update({
         where: { id: characterId },
-        data: { currentHp: after, tempHp, version: character.version + 1 },
+        data: {
+          currentHp: after,
+          tempHp,
+          version: character.version + 1,
+          deathSaveSuccesses: successes,
+          deathSaveFailures: failures,
+        },
       });
 
       await this.events.record(
@@ -324,6 +395,10 @@ export class CharacterSheetService {
             delta: input.delta,
             from: before,
             to: after,
+            ...(input.critical ? { critical: true } : {}),
+            // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
+            // error de la herramienta.
+            ...(massive ? { massive: true } : {}),
             reason: input.reason,
           },
         },

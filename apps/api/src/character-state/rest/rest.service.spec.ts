@@ -102,7 +102,7 @@ describe("RestService", () => {
     await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
     expect(prisma.character.update).toHaveBeenCalledWith({
       where: { id: "c1" },
-      data: { currentHp: null },
+      data: expect.objectContaining({ currentHp: null }),
     });
   });
 

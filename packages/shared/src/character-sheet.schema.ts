@@ -36,6 +36,13 @@ export type UpdateCharacterSheetInput = z.infer<typeof updateCharacterSheetSchem
  */
 export const changeHpSchema = z.object({
   delta: z.number().int().min(-9999).max(9999),
+  /**
+   * Si el golpe fue crítico. **Existe desde el principio a propósito, aunque hoy solo lo use una
+   * regla:** recibir daño estando a 0 PG suma **un** fracaso de salvación de muerte, y **dos** si
+   * el golpe fue crítico. Sin este campo, esa segunda mitad no se puede aplicar — y añadirlo
+   * después es migrar el payload del evento que más veces se escribe en una sesión.
+   */
+  critical: z.boolean().optional(),
   reason: z.string().max(280).optional(),
 });
 export type ChangeHpInput = z.infer<typeof changeHpSchema>;

@@ -73,6 +73,14 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     delta: z.number().int(),
     from: z.number().int(),
     to: z.number().int(),
+    /** Si el golpe fue crítico: cuenta **dos** fracasos de muerte en vez de uno. */
+    critical: z.boolean().optional(),
+    /**
+     * **Muerte masiva**: el daño sobrante tras llegar a 0 igualó o superó los PG máximos, así
+     * que el personaje muere en el acto. Se guarda porque es una muerte sin tiradas, y sin esto
+     * la línea de tiempo no puede explicar por qué alguien murió sin fallar ninguna.
+     */
+    massive: z.boolean().optional(),
     reason,
   }),
   z.object({

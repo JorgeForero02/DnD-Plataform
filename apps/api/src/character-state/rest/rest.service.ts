@@ -59,7 +59,14 @@ export class RestService {
         // (`schema.prisma`, comentario de `Character.currentHp`): no hace falta calcular el
         // máximo real —eso pertenece a la derivación completa de la hoja, fuera de esta
         // frontera— para saber que "al máximo" es "sin materializar".
-        await tx.character.update({ where: { id: characterId }, data: { currentHp: null } });
+        // **Y se borran las salvaciones de muerte.** Un descanso largo devuelve los PG al
+        // máximo, así que arrastrar fracasos de una caída anterior mataría a alguien por algo
+        // que ya sobrevivió. Es la misma regla que aplica `changeHp` al curar desde 0, y estaba
+        // igual de ausente en los dos caminos.
+        await tx.character.update({
+          where: { id: characterId },
+          data: { currentHp: null, deathSaveSuccesses: 0, deathSaveFailures: 0 },
+        });
         await this.recuperarMitadDadosDeGolpe(tx, recursos);
         await this.bajarAgotamiento(tx, characterId);
       }

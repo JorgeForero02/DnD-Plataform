@@ -18,6 +18,72 @@
 Sustituye a `docs/DEPLOY.md` <!-- docs-lint-ignore -->, que se eliminó el 2026-08-31 al
 adoptar la estructura numerada.
 
+## La pila se probó entera en local antes de desplegar (2026-09-02)
+
+No es teoría: `docker-compose.prod.yml` se levantó completo en la máquina del autor, con las
+imágenes construidas desde cero y una base de datos vacía, publicando solo `web` en un puerto
+del host — porque en producción **no se publica ninguno**, entra Traefik.
+
+Lo que se comprobó, en orden:
+
+| Comprobación | Resultado |
+|---|---|
+| Las dos imágenes construyen | `dndprodtest-api` y `dndprodtest-web` |
+| Arranque en orden, esperando salud | `db` sana → `api` sana → `web` |
+| Migraciones sobre base vacía | Las **tres** aplicadas por el `CMD` de la imagen |
+| La SPA se sirve | `GET /` → **200**, con su `<title>` |
+| El proxy `/api` llega a la API | `GET /api/auth/me` → **401** (sin token, correcto) |
+| Escritura real de punta a punta | `POST /api/auth/register` → **201** con su token |
+| El límite de intentos actúa | Sexto intento de login → **429** |
+
+Y una que hay que leer con cuidado, porque **enseña dónde está de verdad la seguridad**:
+
+```
+Rotando X-Forwarded-For falso:  401 401 401 401 401 401   <- NUNCA limita
+Sin cabecera falsa:             401 401 401 401 401 429   <- limita al sexto
+```
+
+**En local eso es correcto y esperable.** Delante de la API hay **un solo** proxy (el nginx de
+`web`), así que la cabecera que le llega es `<falsa>, <gateway>` y `TRUST_PROXY=2` alcanza la
+entrada de la izquierda — la que puso el cliente. Con un proxy menos del que se declara, el
+contador se queda con lo que mandó quien llamó.
+
+**En producción no ocurre, y el motivo no es el número:** `coolify-proxy` (Traefik) corre **sin
+`forwardedHeaders.trustedIPs`**, así que **descarta la cabecera que manda el cliente** y escribe
+la suya con la conexión real. La cadena pasa a ser `<cliente real>, <traefik>`, y el 2 alcanza al
+cliente real.
+
+> **La protección la da Traefik descartando la cabecera; el 2 solo llega hasta ella.** Si algún
+> día se pone la API detrás de otro proxy, o se le da dominio propio, o alguien configura
+> `trustedIPs` en Traefik, **este razonamiento deja de valer** y hay que rehacerlo. Por eso la
+> regla escrita es *cuenta los proxies*, y no un número que copiar.
+
+### Comprobación obligatoria el primer día
+
+Con la pila ya desplegada, desde **fuera** del servidor:
+
+```bash
+# 1. Seis intentos de login con credenciales malas. El sexto tiene que ser 429.
+for i in 1 2 3 4 5 6; do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST https://dnd.supportive.pro/api/auth/login \
+    -H "Content-Type: application/json" -d '{"email":"nadie@nada.invalid","password":"mal"}'
+done
+
+# 2. Lo mismo, pero falsificando la cabecera. TIENE que seguir dando 429 al sexto:
+#    si da 401 seis veces, Traefik NO está saneando y el límite no protege a nadie.
+for i in 1 2 3 4 5 6; do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST https://dnd.supportive.pro/api/auth/login \
+    -H "X-Forwarded-For: 9.9.9.$i" -H "Content-Type: application/json" \
+    -d '{"email":"nadie@nada.invalid","password":"mal"}'
+done
+```
+
+Espera un minuto entre tandas: la ventana del limitador es de 60 segundos.
+
+**El segundo comando es el que importa**, y es el que nadie hace. Si sale 401 seis veces, el
+límite de intentos no existe en la práctica y hay que revisar `TRUST_PROXY` y la configuración
+de Traefik antes de dar el despliegue por bueno.
+
 ## Lo que está verificado
 
 - **Ambas imágenes Docker construyen** (`dnd-api`, `dnd-web`), comprobado en la tarea 0.10.

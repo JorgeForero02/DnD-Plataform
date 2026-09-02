@@ -6,6 +6,43 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — La copia de seguridad estaba rota, y habria dicho que no
+
+**Que.** El pendiente que llevaba todo el dia abierto —«¿el trabajo de copias de las 04:00 cubre
+esta base?»— se comprobo por fin. La respuesta es peor que un no.
+
+**El bloque existe y nunca ha corrido**: se anadio hoy, despues de la corrida de las 04:00, asi
+que la copia de esta manana **no contiene la base de D&D en absoluto**.
+
+**Y cuando corra esta noche, no serviria.** Perdio las **comillas simples**, asi que
+`$POSTGRES_PASSWORD` y `$POSTGRES_USER` se expanden en el *host* —a vacio— en vez de dentro del
+contenedor. `sh -c PGPASSWORD=` ejecuta una asignacion y **sale con codigo 0**, de modo que el
+`if` del script lo da por bueno y registra `dnd-pg OK` con `FAILED=0`.
+
+**Medido contra el contenedor real, que es la unica forma que vale:**
+
+```
+forma rota (la del script):     20 bytes   <- gzip de la nada
+forma correcta (con comillas): 6305 bytes
+```
+
+**Por que esto importa mas que cualquier funcionalidad de hoy.** La documentacion de despliegue
+ya lo decia con estas palabras: *«una copia que nadie ha verificado que cubra esta base es peor
+que saber que no la cubre»*. Este caso es el escalon siguiente — una copia que **afirma** cubrirla.
+Sin mirarla, el primer aviso habria sido el dia que hiciera falta restaurar.
+
+**Lo que NO pude hacer, y queda para el autor:** editar el script. Este equipo tiene bloqueada la
+modificacion de ficheros de produccion por SSH; se intento tres veces y se paro en vez de buscar
+un rodeo. **El arreglo es una linea y esta escrito, con su comando, al principio de
+[06-pendientes](./06-pendientes.md)** y en `vps1new:/root/docs/06-pendientes.md`. Copia previa
+del script en `/root/scripts/backup-coolify.sh.bak.antes-dnd`.
+
+**Mientras tanto, lo unico que cubre esta base** son los dos volcados manuales que se hicieron
+antes de cada despliegue de hoy, en `vps1new:/root/backups/dnd/`. Que existan fue suerte del
+procedimiento, no del sistema de copias.
+
+---
+
 ## 2026-09-02 (tarde) — Segundo despliegue: la hoja de personaje en produccion
 
 **Que.** Subieron 2A.6, 2A.7, 2A.8, 2A.12, 2A.14, 2A.15, los cuatro huecos de mecanica y la

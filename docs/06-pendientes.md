@@ -1,5 +1,41 @@
 # Pendientes
 
+> ## ⚠ URGENTE, y es lo único de este documento que puede perder datos
+>
+> **La copia de seguridad de la base de producción está rota, y además mentiría.** Encontrado el
+> 2026-09-02 al comprobar por fin el pendiente que llevaba todo el día abierto.
+>
+> El bloque de D&D de `vps1new:/root/scripts/backup-coolify.sh` perdió las **comillas simples**,
+> así que `$POSTGRES_PASSWORD` y `$POSTGRES_USER` se expanden en el *host* —a vacío— en lugar de
+> dentro del contenedor. `sh -c PGPASSWORD=` ejecuta una asignación, **sale con código 0**, y el
+> `if` lo da por bueno.
+>
+> **Medido contra el contenedor real, no supuesto:** la forma rota produce **20 bytes** (gzip de
+> la nada) y la correcta **6305**. El registro habría dicho `dnd-pg OK` y `FAILED=0`.
+>
+> Además, **la copia de las 04:00 de hoy no incluye esta base en absoluto**: el bloque se añadió
+> después de esa corrida y todavía no se ha ejecutado nunca.
+>
+> **El arreglo es una línea**, y hay que ejecutarlo en el servidor porque este equipo no tiene
+> permiso para editar ese script:
+>
+> ```bash
+> ssh vps1new
+> # en /root/scripts/backup-coolify.sh, bloque "3c. D&D Platform postgres":
+> #   docker exec "$DND" sh -c 'PGPASSWORD=$POSTGRES_PASSWORD pg_dumpall -U $POSTGRES_USER' 2>>"$LOG" | gzip > "$DEST/dnd-pg.sql.gz"
+> # (las comillas simples son el arreglo; copia previa en backup-coolify.sh.bak.antes-dnd)
+> bash -n /root/scripts/backup-coolify.sh && /root/scripts/backup-coolify.sh
+> ```
+>
+> **Y después, lo que de verdad cierra esto: una restauración probada** en un contenedor
+> desechable, comparando conteos de filas. Hasta eso, la copia es una hipótesis. Ojo con la
+> trampa ya documentada del servidor: `pg_dumpall` no crea la base por defecto ni actualiza la
+> contraseña de un rol que ya existe.
+>
+> Mientras tanto, lo único que cubre esta base son los dos volcados manuales de los despliegues
+> de hoy, en `vps1new:/root/backups/dnd/`.
+
+
 Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la evidencia de
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**

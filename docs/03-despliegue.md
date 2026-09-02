@@ -436,7 +436,14 @@ aritmetica. Si alguna de las dos cambia, se recuenta y se vuelven a correr.
 De la lista original de siete puntos del primer día, **quedan estos**, y son los que importan
 de verdad porque hablan de perder datos:
 
-1. **El trabajo de copias de las 04:00 ¿incluye esta base?** Un Postgres dentro de una pila de
+1. ~~**El trabajo de copias de las 04:00 ¿incluye esta base?**~~ **COMPROBADO el 2026-09-02, y
+   la respuesta da miedo: el bloque existe, nunca ha corrido, y está roto de una forma que
+   habría registrado `OK`.** Perdió las comillas simples, así que las credenciales se expanden
+   en el host a vacío y el volcado sale de 20 bytes con código de salida 0. Medido contra el
+   contenedor real: 20 bytes la forma rota, 6305 la correcta. **El arreglo y su comando están
+   al principio de [06-pendientes](./06-pendientes.md)**, y hay que ejecutarlo en el servidor.
+   Lo de abajo se conserva porque explica por qué había que mirarlo:
+   **El trabajo de copias de las 04:00 ¿incluye esta base?** Un Postgres dentro de una pila de
    Compose **no es un recurso de base de datos de Coolify** y no hereda su pantalla de copias.
    Hay que mirar `ssh vps1new "cat /root/docs/00-INDEX.md"` y su documento de copias: si la
    lista de contenedores es fija, **añadir este es parte del despliegue**, no un pendiente.

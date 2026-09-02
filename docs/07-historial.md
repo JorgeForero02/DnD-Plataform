@@ -6,6 +6,78 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — De dónde salen los números de tarea 1.18c, 1.19b, 1.20, 1.21 y 1.22
+
+El plan maestro llega hasta **1.19**. Los números de arriba **no estaban en él**: los creó el
+orquestador durante la sesión del 2026-09-01, para trabajo que apareció **por hallazgos de la
+propia sesión**, no por el plan. Se registran aquí porque un número de tarea que solo existe en
+los mensajes de commit es exactamente la clase de deriva que este proyecto persigue — y porque
+el autor preguntó, con razón, de dónde había salido el 21.
+
+| Número | Qué es | Por qué existe |
+|---|---|---|
+| **1.18a** | Endurecimiento de la API (cabeceras, CORS, límite de intentos, dependencias, cuenta) | Partición por capa del 1.18 del plan, para poder trabajarlo en paralelo con 1.19 |
+| **1.18b** | 404, `ErrorBoundary` y pantallas de cuenta | La otra mitad de 1.18, la de web |
+| **1.18c** | El límite de intentos, configurable por entorno | **Rotura descubierta al integrar**: el límite de 1.18a dejaba sin sesión a la suite de navegador, que registra usuarios desde una sola IP |
+| **1.19b** | Vestir las 19 pantallas con la capa de tokens | 1.19 construyó la capa y convirtió dos consumidores a propósito; sin esto el tema claro no servía de nada |
+| **1.20** | Acciones de CI al runtime actual | Aviso de GitHub durante la sesión |
+| **1.21** | Aislamiento por ranura (puertos y base de datos) | El paralelismo se serializaba solo por recursos globales |
+| **1.22** | Convenciones de trabajo multiagente | La sesión llegó a cinco agentes y las reglas no estaban escritas en ninguna parte |
+
+**Regla que sale de esto:** si se inventa un número de tarea fuera del plan, se registra en el
+mismo commit que lo estrena. Un número sin ficha es un número que nadie podrá explicar en tres
+meses.
+
+---
+
+## 2026-09-01 — Una ranura por worktree: puertos y base de datos aislados (tarea 1.21)
+
+**Qué.** `scripts/worktree-slot.mjs` (nuevo) es la única fuente de la aritmética: la ranura N usa
+el puerto `3000+N·100` para la API, `5173+N·100` para la web, y la base `dnd_wtN`. La **ranura 0
+es exactamente lo de hoy** — puertos 3000/5173 y base `dnd` — y quien no defina nada no nota
+nada, CI incluido. `pnpm db:slot` crea y migra la base de la ranura, y termina imprimiendo el par
+`PORT=` / `DATABASE_URL=` para pegar en el `apps/api/.env` de ese worktree.
+
+**Por qué.** Cuatro copias del repositorio compartían puerto y base de datos, así que dos agentes
+no podían probar a la vez: toda la sesión hubo que serializar Playwright a mano, y una rotura de
+CI vino exactamente de ese reparto. El paralelismo no lo limitaba el modelo, lo limitaba un
+puerto.
+
+**Dos trampas que encontró la revisión doble** —dos revisores sobre el mismo diff, uno en
+correctitud y otro en CI, seguridad y Windows—, y que son la lección de la tarea:
+
+1. **La variable estaba documentada en el único fichero donde no hace nada.** `.env.example` se
+   copia a `apps/api/.env`, que solo lee la API; Vite y Playwright leen el entorno del shell.
+   Quien siguiera la instrucción del propio fichero habría creído estar aislado mientras escribía
+   en la base compartida: el fallo que la tarea existe para evitar, servido por su documentación.
+   Ahora se documenta **solo como variable de shell**.
+2. **La ranura 0 no era idéntica a lo de hoy.** La primera versión inyectaba siempre `PORT` y un
+   `DATABASE_URL` reconstruido, ignorando `apps/api/.env`. Coincidía en las cuatro copias y en
+   CI, así que la regresión estaba **latente**: `verify` seguía verde. Ahora en la ranura 0 no se
+   inyecta nada y el proceso hereda exactamente lo que tenía.
+
+Además: la validación pasa de `Number()` a solo dígitos con tope (`" "`, `".0"`, `"0x1f"`, `"1e2"`
+dejaban de ser errores y se convertían en ranuras silenciosas, y `" "` caía en la **ranura 0**);
+la aritmética deja de estar duplicada en dos ficheros que decían vivir en uno; y `db-slot.mjs`
+deja de poner un valor del entorno en una línea de comandos con `shell: true` —pasa la URL por
+`env` y usa `--stdin`—, con lo que el comentario que afirmaba "todos los argumentos son
+literales" pasa a ser verdad.
+
+**Prueba.** 23 pruebas del módulo nuevo, 92 unitarias y 43 e2e de API. Y la que importa: la suite
+de navegador en la **ranura 1 con los puertos 3000 y 5173 deliberadamente ocupados**, 16/16 en
+verde, con la base `dnd` intacta (760/539/84) mientras `dnd_wt1` pasaba de vacía a 13/10/1. Eso
+es aislamiento **observado**, no configurado.
+
+**Lo que sigue sin resolver.** Los e2e de API **no** son conscientes de la ranura: leen
+`apps/api/.env` y nada más, así que aislarlos sigue siendo editar ese fichero a mano. Está
+documentado en [02-entorno.md](./02-entorno.md) y anotado en
+[06-pendientes.md](./06-pendientes.md).
+
+**Cómo revertir.** Un commit propio. Revertirlo devuelve los puertos y la base fijos; no toca
+`apps/api/src` ni la aplicación.
+
+---
+
 ## 2026-09-01 — Las pantallas se visten con la capa de tokens (tarea 1.19b)
 
 **Qué.** Las 19 pantallas y componentes que quedaban pasan a los tokens y a las primitivas de

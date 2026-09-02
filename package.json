@@ -8,6 +8,7 @@
   "scripts": {
     "dev:api": "pnpm --filter @dnd/api start:dev",
     "dev:web": "pnpm --filter @dnd/web dev",
+    "db:slot": "node scripts/db-slot.mjs",
     "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm check:docs && pnpm check:estado && pnpm test",
     "test": "pnpm -r test",
     "lint": "eslint .",

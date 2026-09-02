@@ -12,7 +12,7 @@
 // signing in is work, not atmosphere.
 
 import type { ReactNode } from "react";
-import { CartographicGrid, DrawnHorizon, OrnamentRule } from "../../ui/Ornament";
+import { CartographicGrid, OrnamentRule } from "../../ui/Ornament";
 import { Logo } from "../../ui/Logo";
 
 export function AuthLayout({
@@ -28,8 +28,11 @@ export function AuthLayout({
 }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-bg px-s4 py-s8 text-text">
+      {/* Reseño 2026-09-02, tercera pasada: fuera el horizonte dibujado. Se probaron dos
+          versiones —rectas y curvas— y ninguna convenció al autor: "quita esas líneas, no me
+          gustan nada". Queda solo la cuadrícula, que enmarca sin dibujar nada. El componente
+          sigue en ui/Ornament.tsx por si algún día vuelve, pero **no lo usa nadie**. */}
       <CartographicGrid />
-      <DrawnHorizon />
 
       <div className="relative w-full max-w-sm">
         <div className="mb-s5 text-center">

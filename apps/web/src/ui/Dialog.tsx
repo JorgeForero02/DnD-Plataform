@@ -87,7 +87,13 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
       // No opacity modifier on the overlay: Tailwind's alpha channel syntax needs an
       // rgb()-shaped token, and the token rule here is "never a literal, never rgb()" — a
       // solid backdrop still separates the dialog from the page behind it.
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg"
+      // Reseño 2026-09-02, tercera pasada — el velo era `bg-bg`, **opaco**: pintaba la pantalla
+      // entera del color de la página, así que un diálogo no se leía como una capa sobre la
+      // aplicación sino como otra pantalla. El autor lo describió exacto: "parecen abrir otra
+      // pestaña". Un velo translúcido con desenfoque deja ver de dónde vienes, que es lo único
+      // que un modal tiene que hacer bien. El panel es opaco por dentro, así que ni el
+      // contraste del texto ni su medición cambian.
+      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/75 p-s4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -110,7 +116,10 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
         // romperla tres veces, y escribir en una columna estrecha es exactamente lo que hace
         // que un DM prefiera otra herramienta.
         className={[
-          "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s4 font-chrome text-chrome-sm text-text",
+          // La elevación es lo que dice "esto está encima": borde de cobre —el acento del
+          // marco— y una sombra de verdad. Sin ellas, un panel del color de las tarjetas sobre
+          // un velo tenue sigue pareciendo parte de la página.
+          "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-copper/50 bg-surface p-s4 font-chrome text-chrome-sm text-text shadow-2xl",
           size === "lg" ? "max-w-2xl" : "max-w-md",
         ].join(" ")}
       >

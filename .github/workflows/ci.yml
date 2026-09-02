@@ -20,11 +20,11 @@ jobs:
       DATABASE_URL: postgresql://dnd:dnd@localhost:5432/dnd
       JWT_SECRET: ci-secret-value-at-least-32-characters-long
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # pnpm version comes from package.json "packageManager" — do NOT also pass
       # a `version` input here, or action-setup errors "Multiple versions specified".
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with: { node-version: 20, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       # Threshold is "high", not "moderate": `pnpm audit --prod` still finds 4 moderate
@@ -75,16 +75,16 @@ jobs:
       # asserting a 429 at the real AUTH_RATE_LIMIT_DEFAULT.
       AUTH_RATE_LIMIT: "1000"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with: { node-version: 20, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @dnd/api prisma:generate
       - run: pnpm --filter @dnd/api exec prisma migrate deploy
       - run: pnpm --filter @dnd/web exec playwright install --with-deps chromium
       - run: pnpm --filter @dnd/web e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report

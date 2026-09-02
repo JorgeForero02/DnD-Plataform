@@ -648,3 +648,24 @@ comportamiento:
   sastre — cada una es en realidad una decisión pendiente con sus alternativas, o sea un ADR.
   Salen a registros MADR numerados con estado cuando se escriba el plan de la fase 2, no
   antes.
+
+## P6 — Node 20 del proyecto, sin migrar (2026-09-01)
+
+- **La tarea 1.20 solo actualizó el runtime en el que corren las *acciones* de
+  `.github/workflows/ci.yml`** (`actions/checkout` a v7, `pnpm/action-setup` a v6,
+  `actions/setup-node` a v7, `actions/upload-artifact` a v7 — las cuatro corren ya sobre
+  Node 24, según su propio `action.yml`), porque GitHub avisaba de que las forzaba a correr
+  sobre un runtime distinto del que declaran. **Eso no toca el Node del propio proyecto**, que
+  sigue fijado en 20 en tres sitios distintos y ninguno de ellos se tocó:
+  `ci.yml` (`node-version: 20` en los dos jobs), `apps/api/package.json` y
+  `apps/web/package.json` (`engines.node: ">=20"`), y `apps/api/Dockerfile` /
+  `apps/web/Dockerfile` (`FROM node:20-slim`).
+- **Importa porque Node 20 deja soporte de mantenimiento (LTS) el 2026-04-30** — para cuando
+  se lea esto puede que ya lo haya dejado —, y a partir de ahí no recibe parches de seguridad.
+  No es urgente hoy, pero es deuda con fecha de caducidad conocida, no indefinida.
+- Migrar el Node del proyecto (probablemente a 22 LTS, o a la LTS vigente en el momento) es
+  una tarea aparte, con su propio alcance: subir `engines`, `ci.yml` y ambos Dockerfiles a la
+  vez para que no queden desincronizados, y comprobar con pruebas reales (`pnpm verify`,
+  `pnpm --filter @dnd/api test:e2e`, `pnpm --filter @dnd/web e2e`, y build de las imágenes
+  Docker) que nada se rompe con el cambio de runtime — no basta con que el CI actualizado en
+  esta tarea siga en verde, porque eso no ejercita esa migración en absoluto.

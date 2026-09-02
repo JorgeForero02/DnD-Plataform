@@ -32,6 +32,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md` | **Lo que el sistema puede y la pantalla no ofrece.** Es la tarea 1.17 y **cierra la fase 1** |
 | `superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md` | **Auditoría de seguridad con evidencia y el orden de arreglo.** Es la tarea 1.18 |
 | `superpowers/specs/2026-09-01-fase-2-alcance-design.md` | **Alcance de la fase 2**: objetos, dados, razas, clases, niveles y la línea de derechos. Manda sobre el plan maestro |
+| `superpowers/specs/2026-09-02-respuestas-jugadores-design.md` | **Lo que contestaron los jugadores a las ocho preguntas, y qué cambia.** Tres cambian el diseño y una contradice una exclusión declarada de la fase 2 (los conjuros). **Se lee con el informe de huecos** |
 | `superpowers/specs/2026-09-01-huecos-fase-2-design.md` | **Lo que una mesa real necesita y el alcance de la fase 2 no modela.** Doce huecos con su coste de construir ahora y de añadir después, más 16 preguntas para el autor. **Se lee antes de ejecutar 2A**, porque cuatro de ellos cambian la forma de una tabla |
 | `superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md` | **Alcance de la fase 3**: nada de editores de arte; subir, curar e importar |
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
@@ -64,7 +65,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `c568ae1` **(rama `1.18b-errores-y-cuenta`)** — instantánea de la
+> - **Generado sobre el commit** `d470ec4` **(rama `1.24-respuestas-jugadores`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

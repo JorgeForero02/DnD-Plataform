@@ -6,6 +6,26 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Lo que dijeron los jugadores (2026-09-02)
+
+Respondieron a las ocho preguntas de la presentación *"Delante de la pantalla"*. El detalle y el
+razonamiento están en
+[`superpowers/specs/2026-09-02-respuestas-jugadores-design.md`](./superpowers/specs/2026-09-02-respuestas-jugadores-design.md).
+Lo que mueve algo:
+
+| | Qué pidieron | Consecuencia |
+|---|---|---|
+| **Ranuras de equipo** | *"sí, es muy importante"* | El hueco H1 deja de ser recomendación: entra en 2B, con el objeto en **tres** estados (llevado / equipado / sintonizado, tope 3) |
+| **Inventario de hechizos** | Es lo primero que nombran al preguntarles qué llevan a mano | **Contradice la exclusión** de la spec de la fase 2. Recomendación: los espacios de conjuro entran como **recurso consumible** en 2A — el mismo contador que la inspiración— y fuera queda solo interpretar cada conjuro |
+| **Atributos temporales** | *"subidas y bajadas de atributos temporales"* | Hueco nuevo: un **modificador con caducidad** no está escrito ni en 2A ni en 2C |
+| **El DM edita sin avisar** | Con ejemplo: la **hidra falsa** | Hace falta **revocar** una concesión de visibilidad —hoy solo se puede conceder— y un interruptor de edición silenciosa. **Las notas del propio jugador no se borran**: es lo que hace que el truco funcione en la mesa |
+| **Compartir lo revelado** | *"si la quiero o no compartir"* | Capacidad nueva: que un jugador pase a otro lo que le contaron. Decidir si crea concesión (y el DM la ve y puede revocarla) |
+| **Varios personajes** | *"que se queden guardados como recuerdos… te pueden revivir"* | Un personaje **se archiva, no se borra**. Barato ahora; el borrado de hoy es definitivo |
+| **Móvil** | *"aunque es incómodo, sería interesante"* | Cada pantalla nueva se decide también en estrecho. Ya hay medio pago hecho: suelo de 16 px en controles táctiles (1.19b) |
+
+Sin cambios, y confirmado por ellos: no hace falta ver las tiradas ajenas en vivo (el sondeo
+basta) y los dados con física siguen siendo una opción, no una prioridad.
+
 ## Antes de ejecutar 2A — huecos del alcance, sin decidir (2026-09-01)
 
 Salieron de una pregunta del autor: *"¿hay un sistema de manos? me pongo un escudo que me da más

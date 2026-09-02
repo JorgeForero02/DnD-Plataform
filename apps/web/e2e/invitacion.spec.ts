@@ -22,6 +22,11 @@ async function registrarse(page: Page, prefijo: string) {
   return cuenta;
 }
 
+// Reseño 2026-09-02: este recorrido cruza ahora dos páginas más por cada ficha que abre —
+// leer y editar dejaron de ser la misma pantalla— y con dos navegadores en juego se pasaba de
+// los 30 s por defecto. Se le da su propio presupuesto en vez de recortar lo que comprueba.
+test.setTimeout(90_000);
+
 test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", async ({
   browser,
 }: {
@@ -48,7 +53,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await dmPage.getByLabel("Visibilidad").selectOption("DM_ONLY");
   await dmPage.getByRole("button", { name: "Guardar" }).click();
   await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
-  const dmOnlyNpc = dmPage.getByRole("button", { name: /El secreto de Cragmaw/ });
+  const dmOnlyNpc = dmPage.getByRole("link", { name: /El secreto de Cragmaw/ });
   await expect(dmOnlyNpc).toBeVisible();
   // Task 1.19 converted the raw "DM_ONLY" text to the Badge primitive — icon + Spanish label,
   // not the enum value. The row still carries the real visibility level as data-visibility.
@@ -66,7 +71,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await dmPage.getByLabel("Visibilidad").selectOption("PLAYERS");
   await dmPage.getByRole("button", { name: "Guardar" }).click();
   await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
-  const playersNpcRowDm = dmPage.getByRole("button", { name: /Gundren Rockseeker/ });
+  const playersNpcRowDm = dmPage.getByRole("link", { name: /Gundren Rockseeker/ });
   await expect(playersNpcRowDm).toBeVisible();
   // Task 1.19 converted the raw "PLAYERS" text to the Badge primitive — icon + Spanish label,
   // not the enum value. The row still carries the real visibility level as data-visibility.
@@ -80,10 +85,13 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(
     dmPage.getByText("Gundren contrató a los aventureros en Piedra del Fuego."),
   ).toBeVisible();
-  await dmPage.getByRole("button", { name: "Cancelar" }).click();
+  // Reseño 2026-09-02: comentar ya no ocurre dentro de un modal, así que no hay nada que
+  // cerrar; se sigue navegando desde la propia página.
 
-  // Reseño 2026-09-02: InvitePanel vive ahora en "Ajustes", no en la primera sección — el
-  // resumen dejó de ser un formulario de administración y pasó a decir qué ocurre en la mesa.
+  // Reseño 2026-09-02: se sale de la ficha por las migas, e InvitePanel vive ahora en
+  // "Ajustes" y no en la primera sección — el resumen dejó de ser un formulario de
+  // administración y pasó a decir qué ocurre en la mesa.
+  await dmPage.getByRole("link", { name: "La Mina Perdida de Phandelver" }).click();
   await dmPage.getByRole("tab", { name: "Ajustes" }).click();
   await dmPage.getByRole("button", { name: "Generar invitación" }).click();
 
@@ -138,15 +146,18 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
 
   // La comprobación que llevaba toda la fase debiendo: el jugador no ve la entidad DM_ONLY.
   await playerPage.getByRole("tab", { name: "PNJ" }).click();
-  await expect(playerPage.getByRole("button", { name: /El secreto de Cragmaw/ })).toHaveCount(0);
+  await expect(playerPage.getByRole("link", { name: /El secreto de Cragmaw/ })).toHaveCount(0);
 
-  // Arreglo 1 (1.15-fix), Crítico: el jugador SÍ ve la entidad PLAYERS, y la fila abre —
-  // nunca se deshabilita, porque es la única vista de detalle que existe. Lo que cambia con
-  // el permiso es que el editor que se abre está en modo lectura.
-  const playersNpcRowPlayer = playerPage.getByRole("button", { name: /Gundren Rockseeker/ });
+  // Arreglo 1 (1.15-fix), Crítico: el jugador SÍ ve la entidad PLAYERS y la fila abre.
+  // Reseño 2026-09-02: abre la PÁGINA DE LECTURA, que es la mejora — leer una ficha ya no
+  // exige abrir un formulario. Lo que el permiso cambia sigue siendo lo mismo: el editor al
+  // que llega desde ahí está en modo lectura.
+  const playersNpcRowPlayer = playerPage.getByRole("link", { name: /Gundren Rockseeker/ });
   await expect(playersNpcRowPlayer).toBeVisible();
   await expect(playersNpcRowPlayer).toBeEnabled();
   await playersNpcRowPlayer.click();
+  await expect(playerPage.getByRole("heading", { name: "Gundren Rockseeker" })).toBeVisible();
+  await playerPage.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
   await expect(playerPage.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
   // Lee su contenido: el nombre real, no un formulario vacío.
   await expect(playerPage.getByLabel("Nombre")).toHaveValue("Gundren Rockseeker");
@@ -157,6 +168,11 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(
     playerPage.getByRole("paragraph").filter({ hasText: "Solo el DM o quien lo creó" }),
   ).toBeVisible();
+  // Cerrar el editor y volver a la ficha: desde el reseño del 2026-09-02 los comentarios
+  // viven en la página, no dentro del diálogo, así que hay que salir de él para llegar.
+  await playerPage.getByRole("button", { name: "Cancelar" }).click();
+  await expect(playerPage.getByRole("heading", { name: "Editar NPC" })).toBeHidden();
+
   // Y el hilo de comentarios: lee el que puso el DM y publica el suyo — comentar es de
   // cualquiera que pueda ver la entidad (comments.service.ts exige solo canView), así que
   // el modo lectura del formulario no debe apagar esto.
@@ -166,7 +182,9 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await playerPage.getByLabel("Nuevo comentario").fill("¡Encontramos la mina!");
   await playerPage.getByRole("button", { name: "Publicar" }).click();
   await expect(playerPage.getByText("¡Encontramos la mina!")).toBeVisible();
-  await playerPage.getByRole("button", { name: "Cancelar" }).click();
+  // Reseño 2026-09-02: comentar ocurre en la página de la ficha, así que aquí no hay modal
+  // que cerrar; se vuelve a la campaña por las migas de pan.
+  await playerPage.getByRole("link", { name: "La Mina Perdida de Phandelver" }).click();
 
   // 1.15: la interfaz ya conoce el rol de quien la usa (useMyRole,
   // features/campaigns/members.ts), así que "Nuevo" en Sesiones deja de ofrecer una acción

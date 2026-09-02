@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
@@ -8,7 +8,6 @@ import { useEntities } from "../features/entities/hooks";
 import { EntityEditor } from "../features/entities/EntityEditor";
 import { EntityFilterBar } from "../features/entities/EntityFilterBar";
 import { filterEntities, type EntityFilterValue } from "../features/entities/filter";
-import type { Entity } from "../features/entities/api";
 import { useSessions } from "../features/sessions/hooks";
 import { SessionEditor } from "../features/sessions/SessionEditor";
 import type { Session } from "../features/sessions/api";
@@ -117,7 +116,6 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
   const isDM = role === "DM";
   const roleUnresolved = roleLoading || roleError;
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Entity | null>(null);
   const [filter, setFilter] = useState<EntityFilterValue>({ query: "", tags: [] });
 
   // Tags present in THIS tab's already-loaded list only (not the whole campaign) — entities
@@ -185,7 +183,15 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                   LinksPanel/CommentThread only ever render inside it). What the permission
                   check controls now is whether the editor opens read-only, not whether the
                   row can be clicked at all — see EntityEditor.tsx's `readOnly` prop. */}
-              <button onClick={() => setEditing(e)} title={reason} className={ROW_BUTTON_CLASS}>
+              {/* Reseño 2026-09-02 — audit A3. The row used to be a <button> that opened the
+                  EDITOR: the only way to read an NPC was to open a form with its description
+                  inside a textarea. It is a link to the reading page now, and editing is a
+                  deliberate act from there. */}
+              <Link
+                to={`/campaigns/${campaignId}/entidades/${e.id}`}
+                title={reason}
+                className={ROW_BUTTON_CLASS}
+              >
                 <span className="block font-title text-chrome-md text-text">{e.name}</span>
                 {/* Reseño 2026-09-02 — audit B1. The body text was ALREADY in this response
                     and the row threw it away, so a list of nine NPCs told you nine names and
@@ -232,25 +238,13 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                     {reason}
                   </span>
                 )}
-              </button>
+              </Link>
             </li>
           );
         })}
       </ul>
       {creating && (
         <EntityEditor campaignId={campaignId} type={type} onClose={() => setCreating(false)} />
-      )}
-      {editing && (
-        <EntityEditor
-          campaignId={campaignId}
-          type={type}
-          entity={editing}
-          onClose={() => setEditing(null)}
-          readOnly={roleUnresolved || !(isDM || editing.createdById === userId)}
-          readOnlyReason={
-            roleUnresolved ? CHECKING_PERMISSIONS : "Solo el DM o quien lo creó puede editarlo."
-          }
-        />
       )}
     </div>
   );

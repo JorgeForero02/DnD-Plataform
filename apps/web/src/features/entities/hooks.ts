@@ -65,14 +65,34 @@ export function useCreateEntity(campaignId: string, type: EntityType) {
   });
 }
 
+// Reseño 2026-09-02 — the reading page (EntityDetailPage) knows an entity's id from the URL
+// but not its type, so it cannot build entityKey(campaignId, type, id). Its own branch:
+// ["campaigns", id, "entities", "detalle", entityId]. Kept under the same "entities" segment
+// so the broad predicate invalidation in useDeleteEntity below still reaches it, and refreshed
+// explicitly by useUpdateEntity — otherwise saving an edit would leave the page you are
+// looking at showing the old text for up to staleTime.
+export const entityDetailKey = (campaignId: string, entityId: string) =>
+  ["campaigns", campaignId, "entities", "detalle", entityId] as const;
+
+export function useEntityDetail(campaignId: string, entityId: string) {
+  return useQuery({
+    queryKey: entityDetailKey(campaignId, entityId),
+    queryFn: () => fetchEntity(campaignId, entityId),
+    enabled: Boolean(campaignId && entityId),
+  });
+}
+
 export function useUpdateEntity(campaignId: string, type: EntityType) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (vars: { entityId: string; input: Parameters<typeof updateEntity>[2] }) =>
       updateEntity(campaignId, vars.entityId, vars.input),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: entitiesKey(campaignId, type) });
       qc.invalidateQueries({ queryKey: allEntitiesKey(campaignId) });
+      // The reading page's own branch — without this, saving from the detail page leaves that
+      // very page showing what you just changed away from.
+      qc.invalidateQueries({ queryKey: entityDetailKey(campaignId, vars.entityId) });
     },
   });
 }

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import type { EntityType, Visibility } from "@dnd/shared";
 import { useMembers } from "../campaigns/members";
-import { LinksPanel } from "../links/LinksPanel";
-import { CommentThread } from "../comments/CommentThread";
 import { useComments } from "../comments/hooks";
 import { DeleteButton } from "../../components/DeleteButton";
 import { Markdown } from "./Markdown";
@@ -27,6 +25,7 @@ export function EntityEditor({
   type,
   entity,
   onClose,
+  onDeleted,
   readOnly = false,
   readOnlyReason,
 }: {
@@ -34,6 +33,11 @@ export function EntityEditor({
   type: EntityType;
   entity?: Entity;
   onClose: () => void;
+  // Reseño 2026-09-02 — the editor now opens from a page dedicated to ONE entity
+  // (EntityDetailPage), and deleting that entity leaves the reader standing on a page whose
+  // subject no longer exists. Closing after a delete is not the same event as closing after a
+  // cancel, so the caller gets to tell them apart instead of guessing.
+  onDeleted?: () => void;
   // Arreglo 1 (1.15-fix): the row that opens this editor now opens unconditionally — it's the
   // only detail view this app has, and hiding it behind edit permission left a player who
   // *can* view an entity (canView, apps/api/src/common/visibility.ts) unable to read its
@@ -98,7 +102,8 @@ export function EntityEditor({
     setDeleteError(null);
     try {
       await deleteEntity.mutateAsync(entity.id);
-      onClose();
+      if (onDeleted) onDeleted();
+      else onClose();
     } catch (err) {
       setDeleteError((err as Error).message);
     }
@@ -315,19 +320,11 @@ export function EntityEditor({
           </div>
           {deleteError && <p className="text-chrome-sm text-danger-text">{deleteError}</p>}
         </form>
-        {/* Links and comments only make sense once the entity exists: a brand-new entity
-          has no entityId to hang them off yet. Kept as siblings of the form, not nested
-          inside it — HTML forms don't nest, and each panel owns its own submit. */}
-        {isEdit && entity && (
-          <>
-            <LinksPanel
-              campaignId={campaignId}
-              entityId={entity.id}
-              entityCreatedById={entity.createdById}
-            />
-            <CommentThread campaignId={campaignId} entityId={entity.id} />
-          </>
-        )}
+        {/* Reseño 2026-09-02 — links and comments used to live in here, because this modal was
+          the only screen an entity had: opening it was the only way to read one. Now that the
+          reading page exists (EntityDetailPage) they belong to it, and this dialog goes back to
+          doing one job — changing the fields of a record. Keeping both would also have rendered
+          each panel twice on the same screen, which is how the browser suite found it. */}
       </div>
     </Dialog>
   );

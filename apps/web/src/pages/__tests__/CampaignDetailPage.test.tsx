@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { CampaignDetailPage } from "../CampaignDetailPage";
+import { EntityDetailPage } from "../EntityDetailPage";
 import { CampaignList } from "../../features/campaigns/CampaignList";
 import * as campaignsApi from "../../features/campaigns/api";
 import * as entitiesApi from "../../features/entities/api";
@@ -20,6 +21,9 @@ function renderPage() {
       <MemoryRouter initialEntries={["/campaigns/c1"]}>
         <Routes>
           <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+          {/* Reseño 2026-09-02 — las filas de fichas son enlaces a la página de lectura, así
+              que sin esta ruta el clic navegaría a ninguna parte y la prueba mediría un vacío. */}
+          <Route path="/campaigns/:id/entidades/:entityId" element={<EntityDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -204,6 +208,13 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         createdAt: "x",
       },
     ]);
+    // Reseño 2026-09-02: la fila lleva a EntityDetailPage, que pide la ficha por su id. Sin
+    // este doble, la página pintaría su pantalla de "no disponible" y la prueba mediría eso.
+    vi.spyOn(entitiesApi, "fetchEntity").mockImplementation(async (_cid, entityId) => {
+      const lista = await entitiesApi.fetchEntities("c1", "NPC");
+      const encontrada = lista.find((e) => e.id === entityId) ?? lista[0];
+      return { ...encontrada, grants: [] };
+    });
   });
 
   function asPlayer() {
@@ -271,10 +282,13 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // editing someone else's is gated.
     await waitFor(() => expect(newButton).not.toBeDisabled());
 
-    const row = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    const row = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
 
+    // La fila lleva a la página de lectura; el editor se abre desde ahí, que es la diferencia
+    // entre consultar una ficha en mitad de una partida y modificarla.
+    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
     expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
@@ -314,9 +328,12 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
-    const row = await screen.findByRole("button", { name: /Mi propio NPC/ });
+    const row = await screen.findByRole("link", { name: /Mi propio NPC/ });
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
+    // Reseño 2026-09-02: la fila lleva a la página de lectura; el editor se abre desde ella,
+    // que es justo la diferencia entre leer una ficha y editarla.
+    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
     expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
@@ -429,7 +446,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
-    const row = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    const row = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     const placeholder = within(row).getByText("Comprobando permisos…");
     expect(placeholder).toHaveClass("text-muted");
     expect(placeholder).not.toHaveClass("text-warning-text");
@@ -484,9 +501,10 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
 
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd/ });
+    await screen.findByRole("link", { name: /Strahd/ });
 
-    fireEvent.click(screen.getByRole("button", { name: /Strahd/ }));
+    fireEvent.click(screen.getByRole("link", { name: /Strahd/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
     expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
@@ -499,9 +517,9 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
       expect(screen.queryByRole("heading", { name: "Editar NPC" })).not.toBeInTheDocument(),
     );
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: /Strahd/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("link", { name: /Strahd/ })).not.toBeInTheDocument(),
     );
-    expect(screen.getByRole("button", { name: /Ireena/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Ireena/ })).toBeInTheDocument();
   });
 
   it("borra la segunda sesión de dos, no la primera", async () => {
@@ -621,11 +639,11 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
-    const strahdRow = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    const strahdRow = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     expect(strahdRow).toHaveTextContent("Barovia");
     expect(strahdRow).toHaveTextContent("villano");
 
-    const untaggedRow = screen.getByRole("button", { name: /NPC vacío/ });
+    const untaggedRow = screen.getByRole("link", { name: /NPC vacío/ });
     // Exact match, not a substring: a regression that "improves" the empty state with a
     // placeholder (e.g. a dash after the tags block) would still CONTAIN the name and the
     // visibility badge and pass a substring check silently. Anchored so the row's whole text
@@ -638,66 +656,66 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
   it("escribir en el buscador reduce las filas", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
 
-    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Zariel/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Ismark/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Zariel/ })).not.toBeInTheDocument();
   });
 
   it("pulsar una etiqueta reduce las filas", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     const avernusTag = screen.getByRole("button", { name: "Avernus", pressed: false });
     fireEvent.click(avernusTag);
 
-    expect(screen.getByRole("button", { name: /Zariel/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Strahd von Zarovich/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Zariel/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Strahd von Zarovich/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Ismark/ })).not.toBeInTheDocument();
   });
 
   it("dos etiquetas seleccionadas exigen las dos: una ficha con solo una de ellas desaparece", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.click(screen.getByRole("button", { name: "Barovia", pressed: false }));
     // Both Strahd and Ismark carry "Barovia" alone.
-    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Ismark/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Ismark/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "villano", pressed: false }));
     // Only Strahd carries both — Ismark, which carries only "Barovia", must disappear.
-    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Ismark/ })).not.toBeInTheDocument();
     expect(screen.getByText("1 de 4")).toBeInTheDocument();
   });
 
   it('"Quitar filtros" restaura la lista completa', async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
-    expect(screen.queryByRole("button", { name: /^Zariel/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Zariel/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Quitar filtros" }));
 
-    expect(screen.getByRole("button", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Ismark/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Zariel/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /NPC vacío/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Ismark/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Zariel/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /NPC vacío/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Quitar filtros" })).not.toBeInTheDocument();
   });
 
   it("con filtro activo y cero resultados sale el mensaje de filtro, no el de sección vacía", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
 
@@ -723,13 +741,13 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
     );
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
-    await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
-    expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Ismark/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Lugares" }));
-    const barovia = await screen.findByRole("button", { name: /Barovia/ });
+    const barovia = await screen.findByRole("link", { name: /Barovia/ });
     expect(barovia).toBeInTheDocument();
     expect(screen.getByLabelText("Buscar")).toHaveValue("");
   });

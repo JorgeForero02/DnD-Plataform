@@ -3,6 +3,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
+import { EntityDetailPage } from "./pages/EntityDetailPage";
 import { AccountPage } from "./pages/AccountPage";
 import { JoinPage } from "./pages/JoinPage";
 import { DesignTokensPage } from "./pages/DesignTokensPage";
@@ -52,6 +53,18 @@ export function App() {
             element={
               <ProtectedRoute>
                 <CampaignDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Reseño 2026-09-02 — audit A3: an entity's name looked like a link and behaved
+              like nothing at all, because there was no page to go to. Now there is, and the
+              row is a real link to it. The path is in Spanish like the rest of the interface;
+              /campaigns stays as it is because links to it already exist in the wild. */}
+          <Route
+            path="/campaigns/:id/entidades/:entityId"
+            element={
+              <ProtectedRoute>
+                <EntityDetailPage />
               </ProtectedRoute>
             }
           />

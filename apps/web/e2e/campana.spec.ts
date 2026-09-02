@@ -43,7 +43,7 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
 
   // El editor se cierra y la entidad aparece en la lista con su visibilidad.
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
-  const npc = page.getByRole("button", { name: /Acererak/ });
+  const npc = page.getByRole("link", { name: /Acererak/ });
   await expect(npc).toBeVisible();
   // Task 1.19 converted the raw "DM_ONLY" text to the Badge primitive — icon + Spanish label,
   // not the enum value. The row still carries the real visibility level as data-visibility.
@@ -76,18 +76,17 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
-  // Abrir Zariel en modo edición: EntityEditor solo pinta LinksPanel y CommentThread
-  // cuando `isEdit && entity` (EntityEditor.tsx), así que este clic es el paso que el
-  // único recorrido anterior nunca daba.
-  await page.getByRole("button", { name: /Zariel/ }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  // Abrir la ficha de Zariel. Reseño 2026-09-02: enlaces y comentarios ya no viven dentro del
+  // editor —donde solo se veían si abrías un formulario para leer— sino en la página de la
+  // ficha, que es donde se consultan en mitad de una partida.
+  await page.getByRole("link", { name: /Zariel/ }).click();
+  await expect(page.getByRole("heading", { name: "Zariel" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Enlaces" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Comentarios" })).toBeVisible();
 
   // Enlazar Zariel con Mahadi y comprobar que aparece en la lista de enlaces. Se acota al
-  // panel "Enlaces" con un hijo directo `> h3`: CampaignDetailPage envuelve toda la pestaña
-  // (lista de NPCs incluida) en su propio `<section>`, así que "has" sin combinador de hijo
-  // directo también lo capturaría a él.
+  // panel "Enlaces" con un hijo directo `> h3`: la página envuelve secciones dentro de
+  // secciones, así que "has" sin combinador de hijo directo capturaría también a la de fuera.
   const linksSection = page
     .locator("section")
     .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
@@ -136,19 +135,20 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
   // 1. Enlazar Zariel con Mahadi.
-  await page.getByRole("button", { name: /Zariel/ }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await page.getByRole("link", { name: /Zariel/ }).click();
+  await expect(page.getByRole("heading", { name: "Zariel" })).toBeVisible();
   const zarielLinksSection = page
     .locator("section")
     .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
   await zarielLinksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (NPC)" });
   await zarielLinksSection.getByRole("button", { name: "Añadir enlace" }).click();
   await expect(zarielLinksSection.locator("li").filter({ hasText: "Mahadi" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancelar" }).click();
 
-  // 2. Comentar en Mahadi.
-  await page.getByRole("button", { name: /Mahadi/ }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  // 2. Comentar en Mahadi. Se vuelve por las migas de pan, que llevan a la SECCIÓN de la que
+  // salió la ficha y no al resumen — antes esto era cerrar un modal.
+  await page.getByRole("link", { name: "La Maldición de Strahd" }).click();
+  await page.getByRole("link", { name: /Mahadi/ }).click();
+  await expect(page.getByRole("heading", { name: "Mahadi" })).toBeVisible();
   await page.getByLabel("Nuevo comentario").fill("No confíes en sus tratos");
   await page.getByRole("button", { name: "Publicar" }).click();
   await expect(page.getByText("No confíes en sus tratos")).toBeVisible();
@@ -161,6 +161,9 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   // descendant of it, so a heading-inside-form filter no longer matches anything. "Nombre" is
   // still unique to the entity's own form: LinksPanel's and CommentThread's forms (also open
   // here, both real <form> elements) have no field with that label.
+  // Borrar sigue viviendo en el editor, que ahora se abre a propósito desde la ficha.
+  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
+  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
   const entityForm = page.locator("form").filter({ has: page.getByLabel("Nombre") });
   await entityForm.getByRole("button", { name: "Borrar" }).click();
   await expect(
@@ -172,12 +175,12 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeHidden();
 
   // 4a. Desaparece de la lista.
-  await expect(page.getByRole("button", { name: /Mahadi/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Mahadi/ })).toHaveCount(0);
 
   // 4b. El panel de enlaces de Zariel ya no lo muestra: la cascada borró el EntityLink de
   // verdad en Postgres, no solo la fila de la lista de Mahadi.
-  await page.getByRole("button", { name: /Zariel/ }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await page.getByRole("link", { name: /Zariel/ }).click();
+  await expect(page.getByRole("heading", { name: "Zariel" })).toBeVisible();
   const reopenedLinksSection = page
     .locator("section")
     .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
@@ -347,13 +350,18 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
   // Reabrir la ficha: el textarea precarga el markdown crudo desde la respuesta del GET.
-  await page.getByRole("button", { name: /Durgeddin el Negro/ }).click();
+  await page.getByRole("link", { name: /Durgeddin el Negro/ }).click();
+  // Reseño 2026-09-02: la fila abre la página de lectura; el editor se abre desde ella.
+  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
   await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
   await expect(page.getByLabel("Texto")).toHaveValue("## Título\n\nUn herrero enano legendario.");
 
   // Cambiar a vista previa: el ## se pinta como encabezado accesible, no como texto literal.
+  // Acotado al diálogo: desde el reseño del 2026-09-02 la página de la ficha ya pinta ese
+  // mismo encabezado sobre la vitela, así que sin acotar habría dos y la aserción sería
+  // ambigua — que es precisamente lo que hay que comprobar por separado, más abajo.
   await page.getByRole("button", { name: "Vista previa" }).click();
-  await expect(page.getByRole("heading", { name: "Título" })).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: "Título" })).toBeVisible();
   await expect(page.getByText("## Título")).toHaveCount(0);
 });
 
@@ -388,8 +396,8 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
-  const acererak = page.getByRole("button", { name: /Acererak/ });
-  const vlaakith = page.getByRole("button", { name: /Vlaakith/ });
+  const acererak = page.getByRole("link", { name: /Acererak/ });
+  const vlaakith = page.getByRole("link", { name: /Vlaakith/ });
   await expect(acererak).toBeVisible();
   await expect(vlaakith).toBeVisible();
   // Las etiquetas guardadas ahora se leen en la fila: A2 corregido.

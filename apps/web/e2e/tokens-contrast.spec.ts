@@ -509,7 +509,9 @@ for (const theme of ["dark", "light"] as const) {
       const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "Resumen" }));
       record(theme, "detalle de campaña: tab inactivo texto", contrastRatio(color, bg), 4.5);
     }
-    const row = page.getByRole("button", { name: /Strahd von Zarovich/ });
+    // Reseño 2026-09-02: la fila de una ficha es un enlace a su página de lectura, no un
+    // botón que abre un formulario.
+    const row = page.getByRole("link", { name: /Strahd von Zarovich/ });
     {
       const { color, bg } = await effectiveTextColours(row);
       record(theme, "detalle de campaña: fila de entidad texto", contrastRatio(color, bg), 4.5);

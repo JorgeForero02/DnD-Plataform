@@ -138,10 +138,31 @@ vitela en los dos temas**, porque `jsdom` no maqueta.
 
 | # | Tarea | Frontera | Depende |
 |---|---|---|---|
-| **E0** | **La prueba de ida y vuelta.** `MD → TipTap → MD` sobre el contenido real, diff vacío como criterio. Una tarde, y decide si E1 se hace | `scripts/` | D2 |
+| **E0** ✅ | **La prueba de ida y vuelta.** `MD → TipTap → MD` sobre el contenido real, diff vacío como criterio. **Hecha: veredicto abajo.** | `scripts/` | D2 |
 | **E1** ⛔ | **El editor enriquecido**, con la barra **fuera del papel**, en la piel oscura. Markdown sigue siendo el formato almacenado | `features/entities/`, `ui/` | E0 |
 | **E2** ⛔ | **Bloque secreto** (`:::dm`). Y la parte que no es de interfaz: **el servidor lo borra del documento antes de enviarlo**. Ocultar un bloque no es control de acceso, igual que esconder un botón no lo es | `apps/api/src/entities/`, `packages/shared/` | E1 |
 | **E3** ⛔ | **Dibujo incrustado** con Excalidraw (MIT; tldraw dejó de ser abierto en 2025 y exige licencia comercial). Patrón de Obsidian: **escena JSON editable + SVG sincronizado**, dos artefactos, para que el dibujo siga significando algo si el editor desaparece | `features/entities/`, almacenamiento | E1 |
+
+**Veredicto de E0 (2026-09-02) — sí, con condiciones.** `scripts/e0-tiptap-roundtrip.mjs`
+somete 28 casos al viaje `MD → TipTap → MD`, incluidas las plantillas reales de
+`plantillas.ts` y el bloque secreto `:::dm`. Con las extensiones puestas
+(`node scripts/e0-tiptap-roundtrip.mjs --completo`): **0 casos pierden palabras y 0
+revientan**; los que difieren lo hacen normalizando (`*` → `-`, `_x_` → `*x*`, la
+contrabarra de salto duro → dos espacios), y **todos son estables**, es decir, el segundo
+viaje ya no cambia nada. Una normalización estable es aceptable; una que siga moviéndose
+en cada guardado no lo sería, y por eso el script comprueba las dos vueltas y no una.
+
+**La condición, y es la que muerde:** sin registrar `TableKit`, `Image`, `TaskList` y
+`TaskItem`, TipTap **se come tablas, imágenes y listas de tareas en silencio** — sin error,
+sin aviso: el Markdown entra con la tabla y sale sin ella. Corriendo el script sin
+`--completo`, que es el `StarterKit` pelado, salen **4 casos con pérdida de palabras**,
+entre ellos el documento largo del DM. Por eso E1 no puede montar el editor con la
+configuración por defecto, y por eso el script se queda en el repositorio: es la prueba
+que hay que volver a pasar el día que alguien toque las extensiones.
+
+Las dependencias de TipTap entran como **`devDependencies`** porque hoy su único
+consumidor es este script. **E1 tendrá que moverlas a `dependencies`** al importarlas
+desde `src/`, o el paquete instalado en producción no las traerá.
 
 ### Bloque C — contenido
 

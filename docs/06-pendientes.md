@@ -39,6 +39,24 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-02 (cierre de la fase 2A).
 
+## Dejado por E0, la prueba de ida y vuelta de TipTap (2026-09-02)
+
+- **Las dependencias de TipTap están en `devDependencies`.** Hoy su único consumidor es
+  `scripts/e0-tiptap-roundtrip.mjs`, que no se empaqueta. **E1 tiene que moverlas a
+  `dependencies` en cuanto las importe desde `src/`**, o la imagen de producción se
+  construirá sin ellas y el editor no existirá allí. Es un fallo que no se ve en local,
+  porque en local están instaladas igual.
+- **TipTap descarta tablas, imágenes y listas de tareas sin decir nada** si no se registran
+  `TableKit`, `Image`, `TaskList` y `TaskItem`. No lanza, no avisa: el Markdown entra con la
+  tabla y sale sin ella. El script lo demuestra corriéndolo sin `--completo`. Cuando E1
+  monte el editor, **esa lista de extensiones es parte del contrato**, no una preferencia,
+  y conviene que una prueba la fije.
+- **La normalización de Markdown es real aunque sea inofensiva:** `*` pasa a `-`, `_x_` a
+  `*x*`, la contrabarra de salto duro a dos espacios. Es estable —el segundo viaje ya no
+  cambia nada—, pero significa que **abrir un documento en el editor y guardarlo sin tocar
+  nada produce un diff**. Si algún día hay historial de versiones, habrá que decidir si eso
+  cuenta como una edición.
+
 ## Huecos abiertos de la fase 2A (2026-09-02)
 
 Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo están viven en

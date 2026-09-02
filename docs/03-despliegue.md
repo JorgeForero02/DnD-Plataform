@@ -408,6 +408,29 @@ pendiente de abajo.
 variables de entorno y las etiquetas de Traefik. Si alguna de las tres cambia, la aritmética de
 `TRUST_PROXY` hay que **recontarla**, no heredarla.
 
+### Segundo despliegue del dia: la hoja de personaje (2026-09-02, tarde)
+
+Misma via —API de Coolify desde dentro de la VPS— y **mismo volcado previo**, porque volvia a
+haber migracion: `/root/backups/dnd/pre-hoja-<fecha>.dump`.
+
+| Comprobacion | Salida real |
+|---|---|
+| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up ... (healthy)` |
+| **La segunda migracion se aplica sola** | `20260902141641_character_sheet_state_and_world`, quinta de la lista |
+| **Las seis tablas nuevas existen** | `CampaignFlag`, `CampaignSet`, `CampaignSetMember`, `CharacterCondition`, `CharacterResource`, `Notification` |
+| **Las dieciseis columnas de la hoja existen** | conteo `16` sobre `information_schema.columns` |
+| La SPA y la pantalla legal se sirven | `GET /` y `GET /acerca-de` → **200** |
+| Los endpoints nuevos exigen sesion | `/api/notifications`, `/api/campaigns/:id/flags`, `.../sheet`, `.../resources` y `POST .../rolls` → **401** |
+| El certificado sigue siendo el del dominio | `subject=CN=dnd.supportive.pro`, medido desde `127.0.0.1:443` |
+
+**Un detalle que confunde y conviene dejar escrito:** `GET /api/campaigns/:id/rolls` devuelve
+**404**, y es correcto — esa ruta solo existe como `POST`. Comprobarla con un `GET` y asustarse
+es el error facil; el `POST` sin token da 401, que es lo que se queria ver.
+
+**No se repitieron las dos tandas del limite de intentos.** Este despliegue **no toco la
+topologia de proxies ni las variables de entorno**, que es de lo unico que depende esa
+aritmetica. Si alguna de las dos cambia, se recuenta y se vuelven a correr.
+
 ## Lo que sigue sin comprobarse
 
 De la lista original de siete puntos del primer día, **quedan estos**, y son los que importan

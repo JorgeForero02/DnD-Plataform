@@ -6,6 +6,26 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — Segundo despliegue: la hoja de personaje en produccion
+
+**Que.** Subieron 2A.6, 2A.7, 2A.8, 2A.12, 2A.14, 2A.15, los cuatro huecos de mecanica y la
+pantalla legal. Volcado previo en `vps1new:/root/backups/dnd/pre-hoja-<fecha>.dump`.
+
+**Comprobado con salida real, no con configuracion:** los tres contenedores sanos; la segunda
+migracion del dia aplicada sola por el `CMD` de la imagen; **las seis tablas nuevas y las
+dieciseis columnas de la hoja presentes en la base de produccion**; `/` y `/acerca-de` en 200;
+y los cinco endpoints nuevos devolviendo **401** sin sesion.
+
+**Y 26 recorridos de navegador verdes** antes de subir, incluidas las cuatro medidas de
+contraste del aviso legal —5,39:1 y 6,17:1 sobre el 4,5:1 exigido—, porque **un aviso legal que
+no se puede leer no cumple mejor que no ponerlo**, y eso solo se mide en un navegador.
+
+**Lo que este despliegue NO vuelve a comprobar, y por que:** las dos tandas del limite de
+intentos. No cambio la topologia de proxies ni las variables de entorno, que es de lo unico que
+depende esa aritmetica.
+
+---
+
 ## 2026-09-02 (tarde) — 2A.6, 2A.7, 2A.8 y 2A.12: la hoja deja de ser un formulario
 
 **Que.** Cuatro tareas a la vez, escritas por dos implementadores en paralelo sobre una migracion

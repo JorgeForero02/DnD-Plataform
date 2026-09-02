@@ -29,7 +29,7 @@
 
 **E2e**, medidos el 2026-09-02 tras cerrar 2A.6, 2A.7, 2A.8, 2A.12, 2A.14 y 2A.15: **90 e2e
 de API** en 18 suites y
-**24 e2e de navegador** en 4 suites, todas verdes. Los catorce nuevos del dia son `test/game-state.e2e-spec.ts` (seis) y
+**26 e2e de navegador** en 4 suites, todas verdes. Los catorce nuevos del dia son `test/game-state.e2e-spec.ts` (seis) y
 `test/rolls.e2e-spec.ts` (ocho), y uno de los primeros —«arrancar una segunda sesión en la misma
 campaña falla»— **solo puede vivir aquí**: lo que lo impide es un índice único parcial de
 Postgres, y el Prisma simulado de las unitarias no valida SQL.

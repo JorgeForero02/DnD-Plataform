@@ -6,6 +6,44 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — Despliegue de la tanda 2A.3-2A.5, con su migracion
+
+**Que.** Subieron a `dnd.supportive.pro` las tareas 2A.3, 2A.4, 2A.5 y el commit de arreglos de
+la revision. Lanzado por la API de Coolify desde **dentro** de la VPS, no desde este PC.
+
+**Volcado previo, porque una migracion cambia el esquema y eso no se hace a ciegas:**
+`pg_dump --format=custom` en `vps1new:/root/backups/dnd/pre-2A5-<fecha>.dump`. Es una red de
+seguridad del despliegue, no el sistema de copias — ese sigue sin verificarse que cubra esta
+base, y es el primer pendiente de [03](./03-despliegue.md).
+
+**Comprobado en produccion, con salida real:** los tres contenedores vuelven `healthy`; la
+migracion `20260902131046_session_state_and_game_event` se aplica sola por el `CMD` de la
+imagen; **el indice unico parcial `session_one_in_progress_per_campaign` existe en la base de
+produccion**; `GET /` da 200; `/api/auth/me` y el `/events` nuevo dan 401 sin token; el
+certificado es de Let's Encrypt para el dominio, medido **desde dentro** con `openssl s_client`
+porque Norton intercepta el TLS en el PC del autor.
+
+**Y las dos tandas del limite de intentos, incluida la que casi nadie hace:** sin cabecera
+falsa, `401 401 401 401 401 429`; **falsificando `X-Forwarded-For`, exactamente lo mismo**. Eso
+confirma que Traefik sigue descartando la cabecera del cliente y que `TRUST_PROXY=2` alcanza al
+cliente real. Si hubiera dado seis 401, el limite no protegeria a nadie.
+
+**Lo que este despliegue NO comprueba, dicho para que nadie lo suponga:** que dos visitantes
+distintos tengan cubos separados. La prueba se hizo desde una sola red —la del propio
+servidor—, y para eso hacen falta dos origenes reales. Sigue pendiente en 03.
+
+**Y una mentira de documentacion corregida:** `03-despliegue.md` seguia diciendo en su cabecera
+«TODAVIA NO SE HA DESPLEGADO NADA», falso desde el primer despliegue del mismo dia. Importa mas
+de lo que parece, porque el resto del documento se lee distinto segun si su lista del primer dia
+ya se hizo o no. Ahora hay una seccion con lo comprobado y su evidencia, y otra con lo que sigue
+sin comprobarse.
+
+**Como revertirlo.** Volver a desplegar el commit anterior desde Coolify. La migracion es
+**aditiva** —columnas y una tabla nuevas, ningun borrado—, asi que el esquema viejo convive con
+los datos; si hubiera que deshacerla, el volcado de arriba es el punto de partida.
+
+---
+
 ## 2026-09-02 (tarde) — La revisión de 2A.3 y 2A.4, y lo que destapó
 
 **Qué.** Dos agentes revisaron el rango `51a0daa..f268a7c` en paralelo, de solo lectura y con

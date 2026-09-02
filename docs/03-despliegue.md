@@ -1,10 +1,14 @@
 # Despliegue
 
-> **Estado (2026-09-02): hay servidor asignado y el despliegue está autorizado, pero
-> TODAVÍA NO SE HA DESPLEGADO NADA.** Este documento y `docker-compose.prod.yml` se
-> escribieron para revisarse **antes** del primer despliegue. Nada de lo que hay aquí abajo
-> se ha ejecutado contra el servidor: lo que sí se ha comprobado está en "Lo que está
-> verificado" y lo que no, en "Lo que hay que comprobar el primer día".
+> **Estado: EN PRODUCCIÓN desde el 2026-09-02.** `https://dnd.supportive.pro` sirve la
+> aplicación desde `vps1new`, con los tres contenedores de la pila en `healthy`.
+>
+> **Esta cabecera decía «TODAVÍA NO SE HA DESPLEGADO NADA» y era falsa** desde el primer
+> despliegue de ese mismo día: se corrige aquí y no se deja como anécdota, porque el resto del
+> documento —«lo que hay que comprobar el primer día»— se lee distinto según si ya se hizo o
+> no. Lo que sigue pendiente de comprobar está ahora en «Lo que sigue sin comprobarse», más
+> abajo, y **no es lo mismo que la lista original**: tres de sus siete puntos ya están hechos y
+> con su evidencia.
 
 - **Servidor:** `vps1new` (`159.195.240.38`), Debian 13 dedicado, **Coolify 4.3.10** con
   **Traefik** (`coolify-proxy`) de proxy inverso y Let's Encrypt para los certificados. Ya
@@ -376,7 +380,58 @@ Documentadas en `vps1new:/root/docs/`, y todas nos afectan:
   publica ninguno**, que es la forma barata de no tener ese problema.
 - **`acme.json` de Traefik**: hay que **parar** Traefik antes de restaurarlo, no reiniciarlo.
 
-## Lo que hay que comprobar el primer día
+## Lo comprobado EN PRODUCCIÓN, con su evidencia (2026-09-02)
+
+Esto ya no es una lista de intenciones: son comandos que se ejecutaron contra el servidor y su
+salida. Se repiten en cada despliegue que toque el esquema o la topología.
+
+**Despliegue de la tanda 2A.3–2A.5**, lanzado por la API de Coolify
+(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`) desde dentro de la VPS, no desde este PC:
+
+| Comprobación | Salida real |
+|---|---|
+| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up ... (healthy)` |
+| **La migración nueva se aplica sola** | `20260902131046_session_state_and_game_event` con `finished_at` no nulo, junto a las tres anteriores |
+| **El índice único parcial existe en producción** | `session_one_in_progress_per_campaign` presente en `pg_indexes` |
+| La SPA se sirve | `GET /` → **200** |
+| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/campaigns/x/events` → **401** |
+| El certificado es de Let's Encrypt y es el del dominio | `issuer=... Let's Encrypt`, `subject=CN=dnd.supportive.pro`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro** con `openssl s_client` contra `127.0.0.1:443`, porque Norton intercepta el TLS en el PC del autor |
+| El límite de intentos actúa | `401 401 401 401 401 429` |
+| **El límite NO se puede esquivar falsificando la cabecera** | Con `X-Forwarded-For: 9.9.9.N` rotando: `401 401 401 401 401 429`. **Esta es la comprobación que de verdad importa** y la que casi nadie hace: confirma que Traefik descarta la cabecera del cliente y que `TRUST_PROXY=2` alcanza al cliente real |
+
+**Volcado previo a la migración**, porque una migración cambia el esquema y eso no se hace a
+ciegas: `pg_dump --format=custom` en `vps1new:/root/backups/dnd/pre-2A5-<fecha>.dump`. Es una
+red de seguridad puntual del despliegue, **no** el sistema de copias: eso sigue siendo el punto
+pendiente de abajo.
+
+**Lo que esta tanda NO cambió y por eso no se volvió a medir:** la topología de proxies, las
+variables de entorno y las etiquetas de Traefik. Si alguna de las tres cambia, la aritmética de
+`TRUST_PROXY` hay que **recontarla**, no heredarla.
+
+## Lo que sigue sin comprobarse
+
+De la lista original de siete puntos del primer día, **quedan estos**, y son los que importan
+de verdad porque hablan de perder datos:
+
+1. **El trabajo de copias de las 04:00 ¿incluye esta base?** Un Postgres dentro de una pila de
+   Compose **no es un recurso de base de datos de Coolify** y no hereda su pantalla de copias.
+   Hay que mirar `ssh vps1new "cat /root/docs/00-INDEX.md"` y su documento de copias: si la
+   lista de contenedores es fija, **añadir este es parte del despliegue**, no un pendiente.
+   Una copia que nadie ha verificado que cubra esta base es peor que saber que no la cubre.
+2. **Una restauración de prueba en un contenedor desechable, comparando conteos de filas.**
+   Hasta hacer eso, la copia es una hipótesis. Es como se validó el resto del servidor.
+3. **El consumo real de la pila** (`docker stats`) contra la holgura de la máquina, para
+   confirmar que los límites de memoria del compose no están estrangulando a nadie.
+4. **La prueba de `TRUST_PROXY` desde dos redes distintas.** La de arriba se hizo desde una
+   sola —la del propio servidor— y eso demuestra que el límite existe y que la cabecera falsa
+   no lo esquiva, pero **no** demuestra que dos visitantes distintos tengan cubos separados.
+   Para eso hacen falta dos orígenes reales, y el autor tiene que hacerla desde su casa y desde
+   datos móviles.
+
+### La lista original del primer día, conservada
+
+Se conserva porque explica **por qué** cada punto está ahí, y porque el 4 y el 5 siguen
+vivos. Los puntos 1, 2 y 3 ya están hechos, con su evidencia arriba.
 
 Nada de esto se puede verificar desde una máquina de desarrollo. Es la lista literal:
 

@@ -33,9 +33,9 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await expect(page.getByRole("heading", { name: "La Tumba de la Aniquilación" })).toBeVisible();
 
   await page.getByRole("tab", { name: "PNJ" }).click();
-  await expect(page.getByText("Sin elementos.")).toBeVisible();
+  await expect(page.getByText("Ningún personaje del mundo todavía")).toBeVisible();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Acererak");
   await page.getByLabel("Etiquetas (separadas por coma)").fill("lich, villano");
   await page.getByLabel("Visibilidad").selectOption("DM_ONLY");
@@ -66,12 +66,12 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await page.getByRole("tab", { name: "PNJ" }).click();
 
   // Hacen falta dos NPCs: uno para abrir en modo edición y otro para enlazarlo.
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Zariel");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Mahadi");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
@@ -125,12 +125,12 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
 
   // Dos NPCs: Zariel enlaza con Mahadi, y Mahadi recibe un comentario. Borrar Mahadi debe
   // llevarse los dos consigo.
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Zariel");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Mahadi");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
@@ -199,9 +199,9 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // SessionsTab, el botón "Nuevo" propio y SessionEditor nunca se habían pintado en un
   // navegador real.
   await page.getByRole("tab", { name: "Sesiones" }).click();
-  await expect(page.getByText("Sin sesiones.")).toBeVisible();
+  await expect(page.getByText("Ninguna sesión todavía")).toBeVisible();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nueva sesión" }).click();
   await expect(page.getByRole("heading", { name: "Nueva sesión" })).toBeVisible();
   await page.getByLabel("Título").fill("Sesión 1: la entrada al abismo");
   await page.getByLabel("Fecha y hora").fill("2026-10-03T19:00");
@@ -246,9 +246,9 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Pestaña de Personajes: mismo hueco — CharactersTab, su botón "Nuevo" y CharacterEditor
   // tampoco los pintaba nunca un navegador real.
   await page.getByRole("tab", { name: "Personajes" }).click();
-  await expect(page.getByText("Sin personajes.")).toBeVisible();
+  await expect(page.getByText("Ningún personaje todavía")).toBeVisible();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeVisible();
   await page.getByLabel("Nombre").fill("Kaelith");
   await page.getByLabel("Raza").fill("Tiefling");
@@ -338,7 +338,7 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await expect(page.getByRole("heading", { name: "La Forja de la Ira" })).toBeVisible();
 
   await page.getByRole("tab", { name: "PNJ" }).click();
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Durgeddin el Negro");
   await page.getByLabel("Texto").fill("## Título\n\nUn herrero enano legendario.");
   await page.getByRole("button", { name: "Guardar" }).click();
@@ -374,15 +374,15 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
   await expect(page.getByRole("heading", { name: "El Refugio del Contrabandista" })).toBeVisible();
 
   await page.getByRole("tab", { name: "PNJ" }).click();
-  await expect(page.getByText("Sin elementos.")).toBeVisible();
+  await expect(page.getByText("Ningún personaje del mundo todavía")).toBeVisible();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Acererak");
   await page.getByLabel("Etiquetas (separadas por coma)").fill("lich, villano");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
-  await page.getByRole("button", { name: "Nuevo" }).click();
+  await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Vlaakith");
   await page.getByLabel("Etiquetas (separadas por coma)").fill("aliado");
   await page.getByRole("button", { name: "Guardar" }).click();

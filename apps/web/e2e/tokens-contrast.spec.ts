@@ -486,7 +486,7 @@ for (const theme of ["dark", "light"] as const) {
     await expect(page.getByRole("heading", { name: "Campaña de contraste" })).toBeVisible();
 
     await page.getByRole("tab", { name: "PNJ" }).click();
-    await page.getByRole("button", { name: "Nuevo" }).click();
+    await page.getByRole("button", { name: "Nuevo PNJ" }).click();
     await page.getByLabel("Nombre").fill("Strahd von Zarovich");
     await page.getByLabel("Etiquetas (separadas por coma)").fill("villano");
     // DM_ONLY is the danger tone — the worst-case badge pair, and the one 1.19's own report
@@ -531,7 +531,9 @@ for (const theme of ["dark", "light"] as const) {
       record(theme, "detalle de campaña: etiqueta texto", contrastRatio(color, bg), 4.5);
     }
     {
-      const { color, bg } = await effectiveTextColours(page.getByRole("button", { name: "Nuevo" }));
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("button", { name: "Nuevo PNJ" }),
+      );
       record(theme, "detalle de campaña: botón Nuevo texto", contrastRatio(color, bg), 4.5);
     }
 

@@ -142,23 +142,10 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
       </section>
 
       {porTipo.size > 0 && (
-        <section>
-          <OrnamentRule className="mb-s3">Lo que puedes ver</OrnamentRule>
-          <ul className="flex flex-wrap gap-s2">
-            {Array.from(porTipo.entries()).map(([tipo, n]) => (
-              <li
-                key={tipo}
-                className="rounded-radius-sm border border-muted/50 px-s3 py-1 font-chrome text-chrome-xs text-muted"
-              >
-                {ETIQUETA_DE_TIPO[tipo]} <span className="font-data text-text">{n}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-s2 max-w-[60ch] font-chrome text-chrome-xs text-muted">
-            Estas cifras cuentan lo que <em>tú</em> puedes ver. Lo que esté oculto para ti no
-            aparece aquí, y tampoco se insinúa contándolo.
-          </p>
-        </section>
+        <p className="max-w-[62ch] font-chrome text-chrome-xs text-muted">
+          Los números de la izquierda cuentan lo que <em>tú</em> puedes ver. Lo que esté oculto para
+          ti no aparece ahí, y tampoco se insinúa contándolo.
+        </p>
       )}
     </div>
   );

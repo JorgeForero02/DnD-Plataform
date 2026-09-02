@@ -43,7 +43,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // Crear una entidad DM_ONLY antes de invitar: es la comprobación que le falta a la fase,
   // hecha por fin sobre el DOM real, no solo por HTTP (apps/api/test/*.e2e-spec.ts).
   await dmPage.getByRole("tab", { name: "PNJ" }).click();
-  await dmPage.getByRole("button", { name: "Nuevo" }).click();
+  await dmPage.getByRole("button", { name: "Nuevo PNJ" }).click();
   await dmPage.getByLabel("Nombre").fill("El secreto de Cragmaw");
   await dmPage.getByLabel("Visibilidad").selectOption("DM_ONLY");
   await dmPage.getByRole("button", { name: "Guardar" }).click();
@@ -61,7 +61,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // visible-pero-no-editable: la única entidad del DM era DM_ONLY, así que el jugador solo
   // veía "Sin elementos." y el defecto de la fila deshabilitada (fila = único botón de
   // editar, sin ninguna vista de lectura separada) pasaba desapercibido.
-  await dmPage.getByRole("button", { name: "Nuevo" }).click();
+  await dmPage.getByRole("button", { name: "Nuevo PNJ" }).click();
   await dmPage.getByLabel("Nombre").fill("Gundren Rockseeker");
   await dmPage.getByLabel("Visibilidad").selectOption("PLAYERS");
   await dmPage.getByRole("button", { name: "Guardar" }).click();
@@ -173,7 +173,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // que el servidor (sessions.service.ts, requireDM) va a rechazar. Deshabilitado, no oculto
   // — con un motivo, no en silencio.
   await playerPage.getByRole("tab", { name: "Sesiones" }).click();
-  const playerNewSession = playerPage.getByRole("button", { name: "Nuevo" });
+  const playerNewSession = playerPage.getByRole("button", { name: "Nueva sesión" });
   await expect(playerNewSession).toBeDisabled();
   await expect(playerPage.getByText("Solo el DM puede crear o editar sesiones.")).toBeVisible();
 
@@ -185,7 +185,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
     dmPage.getByRole("heading", { name: "La Mina Perdida de Phandelver" }),
   ).toBeVisible();
   await dmPage.getByRole("tab", { name: "Sesiones" }).click();
-  const dmNewSession = dmPage.getByRole("button", { name: "Nuevo" });
+  const dmNewSession = dmPage.getByRole("button", { name: "Nueva sesión" });
   await expect(dmNewSession).toBeEnabled();
   await dmNewSession.click();
   await expect(dmPage.getByRole("heading", { name: "Nueva sesión" })).toBeVisible();

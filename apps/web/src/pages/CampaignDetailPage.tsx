@@ -53,6 +53,51 @@ const TABS: TabConfig[] = [
   { kind: "settings", label: "Ajustes", group: "La campaña" },
 ];
 
+// Reseño 2026-09-02 — "Nuevo" told you nothing unless you already knew which section you were
+// in, and "Sin elementos." told you nothing at all. Both say what they are about now.
+const NUEVO_POR_TIPO: Record<EntityType, string> = {
+  NPC: "Nuevo PNJ",
+  LOCATION: "Nuevo lugar",
+  QUEST: "Nueva misión",
+  FACTION: "Nueva facción",
+  OBJECT: "Nuevo objeto",
+  EVENT: "Nuevo evento",
+  DOCUMENT: "Nuevo documento",
+};
+
+const VACIO_POR_TIPO: Record<EntityType, { titulo: string; texto: string }> = {
+  NPC: {
+    titulo: "Ningún personaje del mundo todavía",
+    texto:
+      "Quien tiene un nombre vuelve a aparecer. Empieza por quien tus jugadores van a conocer primero.",
+  },
+  LOCATION: {
+    titulo: "Ningún lugar todavía",
+    texto: "Un sitio donde ocurra algo: una ciudad, una posada, una cueva con algo dentro.",
+  },
+  QUEST: {
+    titulo: "Ninguna misión todavía",
+    texto: "Lo que la mesa persigue ahora mismo, y lo que ganan o pierden si sale mal.",
+  },
+  FACTION: {
+    titulo: "Ninguna facción todavía",
+    texto:
+      "Un grupo con intereses propios. Las facciones son lo que hace que el mundo se mueva solo.",
+  },
+  OBJECT: {
+    titulo: "Ningún objeto todavía",
+    texto: "Un arma, una reliquia, una llave: cosas que cambian de manos y de dueño.",
+  },
+  EVENT: {
+    titulo: "Ningún evento todavía",
+    texto: "Lo que ya pasó y explica el presente, o lo que va a pasar tanto si miran como si no.",
+  },
+  DOCUMENT: {
+    titulo: "Ningún documento todavía",
+    texto: "Cartas, mapas, notas y pistas que los jugadores puedan leer con sus propios ojos.",
+  },
+};
+
 // Row buttons (entity/session/character lists) share this chrome recipe: a bordered card,
 // keyed by --surface, with the border picking up --accent on hover/focus instead of a bg
 // swap — the token palette has no third dark shade between --bg and --surface to fake the
@@ -90,29 +135,35 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
 
   return (
     <div>
-      {/* Creating is open to any campaign member on the server (entities.service.ts,
-          requireMember), so it isn't gated here. */}
-      <Button variant="primary" onClick={() => setCreating(true)} className="mb-3">
-        Nuevo
-      </Button>
       {roleError && (
         <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
       )}
       {roleError && <RetryPermissions onRetry={retryRole} />}
-      {data && data.length > 0 && (
-        <EntityFilterBar
-          availableTags={availableTags}
-          value={filter}
-          onChange={setFilter}
-          totalCount={data.length}
-          visibleCount={filtered?.length ?? 0}
-        />
-      )}
+      {/* Creating is open to any campaign member on the server (entities.service.ts,
+          requireMember), so it isn't gated here. The label says WHAT gets created: "Nuevo" on
+          its own was the audit's C3, a button that only made sense if you already knew which
+          tab you were on. */}
+      <EntityFilterBar
+        availableTags={availableTags}
+        value={filter}
+        onChange={setFilter}
+        totalCount={data?.length ?? 0}
+        visibleCount={filtered?.length ?? 0}
+        action={
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            {NUEVO_POR_TIPO[type]}
+          </Button>
+        }
+      />
       {isLoading && <p className="text-muted">Cargando…</p>}
       {isError && <p className="text-danger-text">{(error as Error).message}</p>}
-      {data && data.length === 0 && <p className="text-muted">Sin elementos.</p>}
+      {data && data.length === 0 && (
+        <EmptyState title={VACIO_POR_TIPO[type].titulo}>{VACIO_POR_TIPO[type].texto}</EmptyState>
+      )}
       {data && data.length > 0 && filtered && filtered.length === 0 && (
-        <p className="text-muted">Ningún elemento coincide con el filtro.</p>
+        <EmptyState title="Nada coincide con el filtro">
+          Prueba con menos etiquetas, o borra lo que hayas escrito en la búsqueda.
+        </EmptyState>
       )}
       <ul className="space-y-2">
         {filtered?.map((e) => {
@@ -237,7 +288,7 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
         title={reason}
         className="mb-3"
       >
-        Nuevo
+        Nueva sesión
       </Button>
       {/* Fix round 1 (post-1.18b review), Important 9: stays --muted on purpose, unlike the
           per-row reasons in EntityTab/CharactersTab below — this is a PANEL-level notice above
@@ -249,7 +300,12 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
       {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="text-muted">Cargando…</p>}
       {isError && <p className="text-danger-text">{(error as Error).message}</p>}
-      {data && data.length === 0 && <p className="text-muted">Sin sesiones.</p>}
+      {data && data.length === 0 && (
+        <EmptyState title="Ninguna sesión todavía">
+          Apunta la próxima con su fecha y los jugadores sabrán cuándo se juega. Las notas de lo que
+          pasó se escriben después, en la misma ficha.
+        </EmptyState>
+      )}
       <ul className="space-y-2">
         {data?.map((s) => (
           <li key={s.id}>
@@ -314,7 +370,7 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
       {/* Creating is open to any campaign member on the server (characters.service.ts,
           requireMember), so it isn't gated here. */}
       <Button variant="primary" onClick={() => setCreating(true)} className="mb-3">
-        Nuevo
+        Nuevo personaje
       </Button>
       {roleError && (
         <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
@@ -322,7 +378,12 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
       {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="text-muted">Cargando…</p>}
       {isError && <p className="text-danger-text">{(error as Error).message}</p>}
-      {data && data.length === 0 && <p className="text-muted">Sin personajes.</p>}
+      {data && data.length === 0 && (
+        <EmptyState title="Ningún personaje todavía">
+          Cada jugador crea el suyo; el DM puede crearlos también. Nombre, raza, clase y nivel
+          bastan para empezar.
+        </EmptyState>
+      )}
       <ul className="space-y-2">
         {data?.map((c) => {
           // Editing is DM-or-owner (characters.service.ts:requireEditable).

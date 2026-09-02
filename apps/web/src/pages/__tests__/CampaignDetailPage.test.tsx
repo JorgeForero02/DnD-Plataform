@@ -227,7 +227,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
 
-    const newButton = await screen.findByRole("button", { name: "Nuevo" });
+    const newButton = await screen.findByRole("button", { name: "Nueva sesión" });
     await waitFor(() => expect(newButton).toBeDisabled());
 
     // The row itself is never disabled: it's the only detail view. Clicking it opens the
@@ -251,7 +251,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
 
-    const newButton = await screen.findByRole("button", { name: "Nuevo" });
+    const newButton = await screen.findByRole("button", { name: "Nueva sesión" });
     await waitFor(() => expect(newButton).not.toBeDisabled());
 
     const row = await screen.findByRole("button", { name: /Session Zero/ });
@@ -266,7 +266,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
-    const newButton = await screen.findByRole("button", { name: "Nuevo" });
+    const newButton = await screen.findByRole("button", { name: "Nuevo PNJ" });
     // Any campaign member can create an entity (entities.service.ts requireMember) — only
     // editing someone else's is gated.
     await waitFor(() => expect(newButton).not.toBeDisabled());
@@ -327,7 +327,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
 
-    const newButton = await screen.findByRole("button", { name: "Nuevo" });
+    const newButton = await screen.findByRole("button", { name: "Nuevo personaje" });
     await waitFor(() => expect(newButton).not.toBeDisabled());
 
     const row = await screen.findByRole("button", { name: /Strahd/ });
@@ -694,15 +694,18 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
     expect(screen.queryByRole("button", { name: "Quitar filtros" })).not.toBeInTheDocument();
   });
 
-  it('con filtro activo y cero resultados sale el mensaje de filtro, no "Sin elementos."', async () => {
+  it("con filtro activo y cero resultados sale el mensaje de filtro, no el de sección vacía", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
 
-    expect(screen.getByText("Ningún elemento coincide con el filtro.")).toBeInTheDocument();
-    expect(screen.queryByText("Sin elementos.")).not.toBeInTheDocument();
+    expect(screen.getByText("Nada coincide con el filtro")).toBeInTheDocument();
+    // Reseño 2026-09-02: ambos mensajes son ahora estados vacíos con nombre propio. Lo que se
+    // comprueba sigue siendo lo mismo: "no hay nada aquí" y "tu filtro no encuentra nada" son
+    // dos situaciones distintas y no pueden decir lo mismo.
+    expect(screen.queryByText("Ningún personaje del mundo todavía")).not.toBeInTheDocument();
   });
 
   // EntityTab isn't remounted just because `type` changes (same component, same position in

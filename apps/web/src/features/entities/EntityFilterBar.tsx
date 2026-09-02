@@ -1,15 +1,24 @@
+import type { ReactNode } from "react";
 import type { EntityFilterValue } from "./filter";
-import { Field, fieldControlClass } from "../../ui/Field";
+import { fieldControlClass } from "../../ui/Field";
+import { Toolbar, FilterChip } from "../../ui/Collection";
 
 // Controlled component: EntityTab (CampaignDetailPage.tsx) owns the filter state and passes
 // it down, so switching entity type or resetting the tab is a single source of truth. See
 // filter.ts for why this filter can never be treated as access control.
+//
+// Reseño 2026-09-02 — audit C3. The controls used to float separately down the page: a
+// "Nuevo" button that never said new WHAT, then a search box with its label stacked above it,
+// then the tags as plain buttons with no visible pressed state at all — so you could not tell
+// what was filtering. They are one instrument now, and the action that creates lives in it
+// rather than above it.
 export function EntityFilterBar({
   availableTags,
   value,
   onChange,
   totalCount,
   visibleCount,
+  action,
 }: {
   // Tags present in the currently loaded list (already deduped and sorted by the caller) —
   // per entity type, not the whole campaign, since that's what's loaded per tab.
@@ -18,6 +27,7 @@ export function EntityFilterBar({
   onChange: (next: EntityFilterValue) => void;
   totalCount: number;
   visibleCount: number;
+  action?: ReactNode;
 }) {
   const hasActiveFilter = value.query.trim() !== "" || value.tags.length > 0;
 
@@ -31,41 +41,59 @@ export function EntityFilterBar({
   const clearFilters = () => onChange({ query: "", tags: [] });
 
   return (
-    <div className="mb-3 space-y-2">
-      <div className="max-w-xs">
-        <Field label="Buscar">
+    <Toolbar
+      action={action}
+      search={
+        <>
+          {/* The label is visually hidden rather than removed: a placeholder is not a label,
+              and a search box with neither is unusable with a screen reader. */}
+          <label htmlFor="entity-search" className="sr-only">
+            Buscar
+          </label>
           <input
             id="entity-search"
             type="search"
             value={value.query}
+            placeholder="Buscar por nombre…"
             onChange={(e) => onChange({ ...value, query: e.target.value })}
             className={fieldControlClass}
           />
-        </Field>
-      </div>
-      {availableTags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {availableTags.map((tag) => (
+        </>
+      }
+      count={
+        hasActiveFilter ? (
+          <span className="flex items-center gap-s2">
+            <span>{`${visibleCount} de ${totalCount}`}</span>
             <button
-              key={tag}
               type="button"
-              aria-pressed={value.tags.includes(tag)}
-              onClick={() => toggleTag(tag)}
-              className="rounded-radius-sm border border-muted bg-surface px-2 py-0.5 text-chrome-xs text-text aria-pressed:border-accent aria-pressed:bg-bg aria-pressed:text-accent-text"
+              onClick={clearFilters}
+              className="font-chrome text-accent-text underline"
             >
-              {tag}
+              Quitar filtros
             </button>
-          ))}
-        </div>
-      )}
-      {hasActiveFilter && (
-        <div className="flex items-center gap-2 text-chrome-xs text-muted">
-          <span>{`${visibleCount} de ${totalCount}`}</span>
-          <button type="button" onClick={clearFilters} className="text-accent-text underline">
-            Quitar filtros
-          </button>
-        </div>
-      )}
-    </div>
+          </span>
+        ) : (
+          `${totalCount}`
+        )
+      }
+      filters={
+        availableTags.length > 0 ? (
+          <>
+            <span className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+              Etiquetas
+            </span>
+            {availableTags.map((tag) => (
+              <FilterChip
+                key={tag}
+                active={value.tags.includes(tag)}
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </FilterChip>
+            ))}
+          </>
+        ) : undefined
+      }
+    />
   );
 }

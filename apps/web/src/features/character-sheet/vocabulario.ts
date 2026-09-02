@@ -373,3 +373,12 @@ export function describirAviso(warning: {
       return `Sin traducir: ${warning.code}`;
   }
 }
+
+/** Los valores derivados que el DM puede anular a mano (`OVERRIDABLE_KEYS` de `@dnd/shared`). */
+export const NOMBRE_ANULABLE: Record<string, string> = {
+  ac: "Clase de armadura",
+  maxHp: "Puntos de golpe máximos",
+  initiative: "Iniciativa",
+  "speed.walk": "Velocidad al caminar",
+  passivePerception: "Percepción pasiva",
+};

@@ -1,12 +1,27 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   changeHpSchema,
   deathSaveSchema,
+  overridableKeySchema,
   setHpSchema,
+  setOverrideSchema,
   updateCharacterSheetSchema,
   type ChangeHpInput,
   type DeathSaveInput,
+  type OverridableKey,
   type SetHpInput,
+  type SetOverrideInput,
   type UpdateCharacterSheetInput,
 } from "@dnd/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -68,5 +83,30 @@ export class CharacterSheetController {
     @Body(new ZodValidationPipe(deathSaveSchema)) body: DeathSaveInput,
   ) {
     return this.sheets.rollDeathSave(req.user.id, campaignId, characterId, body);
+  }
+
+  // --- Anulaciones manuales (solo DM; el servicio lo impone, no esta capa) ---
+
+  @Put("overrides/:target")
+  setOverride(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+    // La clave va en la URL porque identifica el recurso; validarla con el mismo enum de
+    // `@dnd/shared` evita que un `target` inventado llegue al servicio como texto libre.
+    @Param("target", new ZodValidationPipe(overridableKeySchema)) target: OverridableKey,
+    @Body(new ZodValidationPipe(setOverrideSchema)) body: SetOverrideInput,
+  ) {
+    return this.sheets.setOverride(req.user.id, campaignId, characterId, target, body);
+  }
+
+  @Delete("overrides/:target")
+  clearOverride(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+    @Param("target", new ZodValidationPipe(overridableKeySchema)) target: OverridableKey,
+  ) {
+    return this.sheets.clearOverride(req.user.id, campaignId, characterId, target);
   }
 }

@@ -31,6 +31,24 @@ export const conditionsKey = (campaignId: string, characterId: string) =>
  */
 export const catalogKey = ["catalog"] as const;
 
+export function useSetOverride(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { target: string; value: number; reason?: string }) =>
+      characterSheetApi.setOverride(campaignId, characterId, v.target, v.value, v.reason),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) }),
+  });
+}
+
+export function useClearOverride(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (target: string) =>
+      characterSheetApi.clearOverride(campaignId, characterId, target),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) }),
+  });
+}
+
 export function useCatalog() {
   return useQuery({
     queryKey: catalogKey,

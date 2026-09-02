@@ -45,6 +45,8 @@ export interface CharacterRow {
   version: number;
   deathSaveSuccesses: number;
   deathSaveFailures: number;
+  /** Anulaciones manuales del DM sobre valores derivados: `{ "ac": 18 }`. */
+  overrides: Record<string, number> | null;
 }
 
 export interface PendingChoiceDto {
@@ -106,6 +108,34 @@ export interface SheetResponse {
    * vive una sola vez, donde vive el resto de las reglas.
    */
   effectiveSpeeds?: Record<string, { total: number; steps: DerivedValue["steps"] }>;
+}
+
+// --- Anulaciones manuales (solo DM; el servidor lo impone) ---
+
+export function setOverride(
+  campaignId: string,
+  characterId: string,
+  target: string,
+  value: number,
+  reason?: string,
+): Promise<SheetResponse> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/overrides/${target}`, {
+    method: "PUT",
+    body: JSON.stringify({ value, reason }),
+  });
+}
+
+export function clearOverride(
+  campaignId: string,
+  characterId: string,
+  target: string,
+): Promise<SheetResponse> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/overrides/${target}`, {
+    method: "DELETE",
+    // Mismo motivo que en `removeCondition`: `apiFetch` siempre manda Content-Type JSON y
+    // Fastify rechaza esa cabecera con el cuerpo vacío de verdad.
+    body: JSON.stringify({}),
+  });
 }
 
 // --- Catálogo SRD (para los selectores; el servidor sigue validando) ---

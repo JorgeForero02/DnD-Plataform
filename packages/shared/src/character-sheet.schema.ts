@@ -82,3 +82,38 @@ export const deathStateSchema = z.object({
   status: z.enum(["alive", "dying", "stable", "dead"]),
 });
 export type DeathState = z.infer<typeof deathStateSchema>;
+
+// --- Anulaciones manuales del DM sobre valores derivados ---
+
+/**
+ * Las claves que se pueden anular a mano. **Cerrada a propósito**: una anulación es la válvula
+ * de escape del catálogo, no una puerta abierta a inventar campos derivados. Si falta una,
+ * añadirla es una decisión con su ficha.
+ *
+ * Son las que una mesa necesita corregir de verdad: la CA (un objeto mágico, una regla de la
+ * casa), los PG máximos (un don, un PNJ que el DM decide), la iniciativa, la velocidad de
+ * caminar y la percepción pasiva.
+ */
+export const OVERRIDABLE_KEYS = [
+  "ac",
+  "maxHp",
+  "initiative",
+  "speed.walk",
+  "passivePerception",
+] as const;
+export const overridableKeySchema = z.enum(OVERRIDABLE_KEYS);
+export type OverridableKey = z.infer<typeof overridableKeySchema>;
+
+/**
+ * Fijar una anulación. **El motivo es opcional**, como en todo este dominio: obligar a
+ * explicarse en mitad de una sesión molesta más de lo que documenta.
+ */
+export const setOverrideSchema = z.object({
+  value: z.number().int().min(-999).max(999),
+  reason: z.string().max(280).optional(),
+});
+export type SetOverrideInput = z.infer<typeof setOverrideSchema>;
+
+/** El mapa guardado: clave derivada → número. */
+export const overridesSchema = z.record(overridableKeySchema, z.number().int());
+export type Overrides = z.infer<typeof overridesSchema>;

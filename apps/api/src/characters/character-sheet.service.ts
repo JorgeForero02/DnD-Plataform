@@ -14,13 +14,18 @@ import type {
   DeathState,
   GameEventPayload,
   SetHpInput,
+  Overrides,
+  OverridableKey,
+  SetOverrideInput,
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
+import type { Modifier } from "../rules/engine";
 import {
   deriveCharacter,
   findClass,
   findRace,
   findSubrace,
+  InvalidChoiceError,
   InvalidEquipmentError,
   UnknownContentError,
   type CharacterBuild,
@@ -92,9 +97,12 @@ function construirBuild(character: FilaPersonaje): ResultadoConstruccion {
  * pasar un 500**: una clave de raza o clase que ya no existe en el catálogo (dato viejo) es
  * exactamente el caso que `resolveBuild` documenta como "no es un dato inválido, es caduco".
  */
-function derivarOMotivo(build: CharacterBuild): { sheet: CharacterSheet } | { reason: string } {
+function derivarOMotivo(
+  build: CharacterBuild,
+  overrides: Modifier[] = [],
+): { sheet: CharacterSheet } | { reason: string } {
   try {
-    return { sheet: deriveCharacter(build) };
+    return { sheet: deriveCharacter(build, overrides) };
   } catch (error) {
     if (error instanceof UnknownContentError || error instanceof InvalidEquipmentError) {
       return { reason: `La hoja no se puede calcular: ${error.message}` };
@@ -105,6 +113,35 @@ function derivarOMotivo(build: CharacterBuild): { sheet: CharacterSheet } | { re
 
 function clamp(valor: number, minimo: number, maximo: number): number {
   return Math.max(minimo, Math.min(maximo, valor));
+}
+
+/**
+ * Las anulaciones guardadas, convertidas en modificadores `override` del motor.
+ *
+ * **No se aplican aquí a mano.** El motor ya sabe qué es un `override` —va al final, sustituye
+ * el total, y **anota el delta en la traza para que la traza siga sumando**—; escribir esa
+ * misma regla otra vez en el servicio sería tener dos versiones de ella, una sin las pruebas
+ * del motor. Y la traza es justo lo que hace que una anulación no sea magia: el jugador ve
+ * «CA 18 — anulación del DM (+3)» en vez de un número sin origen.
+ *
+ * Una clave guardada que ya no se puede anular (porque la lista se cerró más) **se ignora en
+ * silencio aquí y se avisa en `warnings`**: no se borra el dato del DM por un cambio nuestro.
+ */
+function modificadoresDeAnulacion(character: FilaPersonaje): Modifier[] {
+  const guardado = (character.overrides ?? {}) as Record<string, unknown>;
+  const salida: Modifier[] = [];
+  for (const [clave, valor] of Object.entries(guardado)) {
+    if (typeof valor !== "number") continue;
+    salida.push({
+      target: clave,
+      op: "override",
+      amount: valor,
+      sourceType: "manual",
+      sourceKey: clave,
+      labelKey: "override.manual",
+    });
+  }
+  return salida;
 }
 
 /**
@@ -176,7 +213,7 @@ export class CharacterSheetService {
     let sheet: CharacterSheet | null = null;
     let reason: string | undefined;
     if ("build" in resuelto) {
-      const derivado = derivarOMotivo(resuelto.build);
+      const derivado = derivarOMotivo(resuelto.build, modificadoresDeAnulacion(character));
       if ("sheet" in derivado) sheet = derivado.sheet;
       else reason = derivado.reason;
     } else {
@@ -301,6 +338,51 @@ export class CharacterSheetService {
     if (input.level !== undefined) data.level = input.level;
     if (input.choices !== undefined) data.choices = input.choices;
 
+    // **Se valida ANTES de guardar, contra la ficha que quedaría.**
+    //
+    // Dos fallos vivos que cerró una auditoría del 2026-09-02, los dos del mismo tipo —media
+    // función construida— y los dos visibles solo por HTTP:
+    //
+    // 1. `InvalidChoiceError` no lo capturaba nadie. `derivarOMotivo` solo traduce
+    //    `UnknownContentError` e `InvalidEquipmentError`; el resto sube. Así que mandar dos
+    //    veces la misma habilidad en `choices` daba un **500**, no un 400 con su motivo.
+    // 2. Una clave de concesión inventada se guardaba en silencio. Al derivar es un aviso a
+    //    propósito —un dato caduco no puede volver ilegible un personaje— pero **al escribir es
+    //    un error**, y así estaba escrito en `resolve.ts` desde 2A.4 esperando a que alguien lo
+    //    llamara. La diferencia entre las dos mitades es justo esta: se rechaza lo que llega en
+    //    ESTA petición, y lo que ya estaba guardado sigue siendo un aviso.
+    const prospectivo = { ...character, ...data } as FilaPersonaje;
+    const construido = construirBuild(prospectivo);
+    if ("build" in construido) {
+      let hoja: CharacterSheet | null = null;
+      try {
+        hoja = deriveCharacter(construido.build, modificadoresDeAnulacion(prospectivo));
+      } catch (error) {
+        if (error instanceof InvalidChoiceError) throw new BadRequestException(error.message);
+        // **Lo demás NO se convierte en 400 aquí, y esa distinción la encontró una prueba.**
+        // Una referencia de catálogo mala que llegue en ESTA petición ya se rechaza arriba con
+        // `findRace`/`findClass`. Si la derivación falla igualmente, es por un dato **ya
+        // guardado** —una subraza que quedó huérfana al cambiar de raza—, y rechazar por eso
+        // dejaría al personaje imposible de editar, **incluida la edición que lo arreglaría**.
+        // Ese caso ya tiene su camino: `buildResponse` lo devuelve como `reason` y la pantalla
+        // lo enseña. Un dato viejo no es una entrada inválida.
+        if (!(error instanceof UnknownContentError || error instanceof InvalidEquipmentError))
+          throw error;
+      }
+      if (hoja && input.choices) {
+        // **`choices` se sustituye entera, no se fusiona** (`data.choices = input.choices`), así
+        // que dentro de este `if` todo aviso `stale_choice` viene por fuerza de ESTA petición.
+        // La primera versión filtraba además por «¿venía en el cuerpo?», y una mutación demostró
+        // que ese filtro no podía ponerse rojo: era código muerto fingiendo ser una salvaguarda.
+        const desconocida = hoja.warnings.find((a) => a.code === "stale_choice");
+        if (desconocida) {
+          throw new BadRequestException(
+            `La elección «${desconocida.key}» no corresponde a ninguna concesión de esta ficha.`,
+          );
+        }
+      }
+    }
+
     const actualizado = await this.prisma.character.update({
       where: { id: characterId },
       data,
@@ -330,6 +412,75 @@ export class CharacterSheetService {
   ): Promise<void> {
     if (!sheet || !this.resources) return;
     await this.resources.seedResourcesFor(characterId, sheet, level);
+  }
+
+  /**
+   * Fija una anulación manual sobre un valor derivado. **Solo el DM.**
+   *
+   * Y esa restricción es la que da sentido a la función: una anulación que el dueño del
+   * personaje puede escribir por su cuenta no es una anulación, es un campo libre donde poner
+   * la CA que a uno le apetezca. El DM decide, y queda escrito en el log de la partida con el
+   * valor anterior al lado, porque un número que cambia sin rastro es exactamente lo que esta
+   * aplicación existe para evitar.
+   */
+  async setOverride(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    target: OverridableKey,
+    input: SetOverrideInput,
+  ) {
+    await this.membership.requireDM(campaignId, userId);
+    const character = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character) throw new NotFoundException("Character not found");
+
+    const actuales = { ...((character.overrides ?? {}) as Overrides) };
+    const previous = actuales[target];
+    actuales[target] = input.value;
+
+    const actualizado = await this.prisma.character.update({
+      where: { id: characterId },
+      data: { overrides: actuales },
+    });
+    await this.events.record(userId, campaignId, {
+      subjectType: "character",
+      subjectId: characterId,
+      visibility: character.visibility,
+      payload: {
+        type: "MANUAL_OVERRIDE_SET",
+        target,
+        value: input.value,
+        ...(previous !== undefined ? { previous } : {}),
+        ...(input.reason ? { reason: input.reason } : {}),
+      },
+    });
+    return this.buildResponse(actualizado);
+  }
+
+  /** Quita una anulación y devuelve el valor al que el catálogo calcule. También solo el DM. */
+  async clearOverride(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    target: OverridableKey,
+  ) {
+    await this.membership.requireDM(campaignId, userId);
+    const character = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character) throw new NotFoundException("Character not found");
+
+    const actuales = { ...((character.overrides ?? {}) as Overrides) };
+    if (actuales[target] === undefined) return this.buildResponse(character);
+    delete actuales[target];
+
+    const actualizado = await this.prisma.character.update({
+      where: { id: characterId },
+      data: { overrides: actuales },
+    });
+    return this.buildResponse(actualizado);
   }
 
   /**

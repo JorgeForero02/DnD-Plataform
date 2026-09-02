@@ -62,6 +62,7 @@ const character: CharacterRow = {
   version: 2,
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  overrides: null,
 };
 
 const sheet: CalculatedSheet = {

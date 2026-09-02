@@ -500,3 +500,158 @@ describe("la velocidad efectiva la calcula el servidor, no la pantalla", () => {
     expect(r.effectiveSpeeds.walk.total).toBeGreaterThan(0);
   });
 });
+
+describe("las anulaciones manuales del DM", () => {
+  // El evento `MANUAL_OVERRIDE_SET` existía en el esquema desde 2A.5 y **no lo escribía nadie**,
+  // porque no había columna: media función construida. Sin ella, la única salida cuando el
+  // catálogo no cubre algo —un objeto mágico, una regla de la casa, un PNJ con la CA que el DM
+  // decide— era mentirle a la ficha subiendo una característica.
+
+  it("la anulación gana sobre lo derivado y deja su delta en la traza", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ overrides: { ac: 18 } }));
+
+    const r = await service.getSheet("owner1", "cmp1", "ch1");
+
+    expect(r.sheet!.derived.ac.total).toBe(18);
+    const anulacion = r.sheet!.derived.ac.steps.find((p) => p.sourceType === "manual");
+    expect(anulacion).toBeDefined();
+    // La traza sigue sumando: el paso guarda el DELTA hasta el valor nuevo, no el valor.
+    expect(r.sheet!.derived.ac.steps.reduce((a, p) => a + p.amount, 0)).toBe(18);
+  });
+
+  it("un jugador no puede ponerla: eso sería un campo libre, no una anulación", async () => {
+    // **Esta prueba estaba mal escrita y una mutación lo demostró.** Solo comprobaba que la
+    // llamada fallaba, y fallaba igual con la comprobación de DM quitada: sin ella el mock de
+    // `update` devolvía `undefined` y reventaba más abajo. Verde por el motivo equivocado.
+    // Ahora exige lo que de verdad importa: que se pregunte por el DM y que NO se escriba nada.
+    const { service, prisma, membership } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+    membership.requireDM.mockRejectedValue(new ForbiddenException("solo el DM"));
+
+    await expect(
+      service.setOverride("jugador", "cmp1", "ch1", "ac", { value: 25 }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(membership.requireDM).toHaveBeenCalledWith("cmp1", "jugador");
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("al fijarla queda en el log con el valor anterior al lado", async () => {
+    const { service, prisma, events } = montar();
+    const fila = personaje({ overrides: { ac: 14 } });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+
+    await service.setOverride("dm1", "cmp1", "ch1", "ac", { value: 18, reason: "Anillo" });
+
+    expect(events.record).toHaveBeenCalledWith(
+      "dm1",
+      "cmp1",
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          type: "MANUAL_OVERRIDE_SET",
+          target: "ac",
+          value: 18,
+          previous: 14,
+        }),
+      }),
+    );
+  });
+
+  it("quitarla devuelve el valor al que calcula el catálogo", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ overrides: { ac: 18 } }));
+    prisma.character.update.mockImplementation(({ data }: { data: { overrides: object } }) => ({
+      ...personaje(),
+      ...data,
+    }));
+
+    const r = await service.clearOverride("dm1", "cmp1", "ch1", "ac");
+
+    expect(r.sheet!.derived.ac.total).not.toBe(18);
+  });
+});
+
+describe("las elecciones se validan al escribir, no solo al derivar", () => {
+  // Dos mitades sin terminar que una auditoría encontró el 2026-09-02, las dos invisibles desde
+  // las unitarias y visibles por HTTP:
+  //   1. `InvalidChoiceError` no lo capturaba nadie → una elección duplicada daba un 500.
+  //   2. `assertNoUnknownChoices` existía con su prueba desde 2A.4 y no lo llamaba nadie → una
+  //      clave inventada se guardaba en silencio y reaparecía como basura al subir de nivel.
+
+  it("una habilidad repetida es un 400 con su motivo, no un 500", async () => {
+    const { service, prisma, characters } = montar();
+    const guardado = personaje({ classKey: "rogue", raceKey: "human", subraceKey: null });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue(guardado);
+
+    await expect(
+      service.updateSheet("owner1", "cmp1", "ch1", {
+        // `rogue-skills` es el identificador de la concesión; `class.rogue.skills` es su
+        // etiqueta. La primera versión de esta prueba usó la etiqueta, así que pasaba por la
+        // rama de «concesión desconocida» y **nunca ejecutaba la del duplicado** — verde por el
+        // camino equivocado, destapado por la mutación que quitó la traducción del error.
+        choices: { "rogue-skills": ["stealth", "stealth", "perception", "acrobatics"] },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("una concesión que esta ficha no tiene se rechaza en vez de guardarse", async () => {
+    const { service, prisma, characters } = montar();
+    const guardado = personaje({ classKey: "rogue", raceKey: "human", subraceKey: null });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue(guardado);
+
+    await expect(
+      service.updateSheet("owner1", "cmp1", "ch1", {
+        choices: { "concesion-que-no-existe": ["str"] },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("una elección ya guardada y caduca no contamina otra que sí es válida", async () => {
+    // La mitad fina de la regla: se rechaza lo que llega en ESTA petición, no lo que ya estaba.
+    const { service, prisma, characters } = montar();
+    const guardado = personaje({
+      classKey: "rogue",
+      raceKey: "human",
+      subraceKey: null,
+      choices: { "wizard-skills": ["arcana"] },
+    });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue(guardado);
+
+    await expect(
+      service.updateSheet("owner1", "cmp1", "ch1", {
+        choices: { "rogue-skills": ["stealth"], "wizard-skills": ["arcana"] },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    // Y con solo la buena, pasa.
+    await expect(
+      service.updateSheet("owner1", "cmp1", "ch1", { choices: { "rogue-skills": ["stealth"] } }),
+    ).resolves.toBeDefined();
+  });
+
+  it("pero una elección YA guardada que quedó caduca no bloquea otras ediciones", async () => {
+    // La otra mitad de la regla, y la que hace que no sea una simple validación: cambiar de
+    // clase deja elecciones viejas en la fila. Si eso rechazara cualquier edición posterior, el
+    // personaje quedaría bloqueado por un dato que él mismo dejó atrás. Al derivar es un aviso.
+    const { service, prisma, characters } = montar();
+    const guardado = personaje({
+      classKey: "rogue",
+      raceKey: "human",
+      subraceKey: null,
+      choices: { "class.wizard.skills": ["arcana"] },
+    });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue(guardado);
+
+    await expect(service.updateSheet("owner1", "cmp1", "ch1", { level: 2 })).resolves.toBeDefined();
+    expect(prisma.character.update).toHaveBeenCalled();
+  });
+});

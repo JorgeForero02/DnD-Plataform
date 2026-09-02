@@ -277,6 +277,17 @@ model Character {
   // Casillas de equipo. **Vacia en 2A**: se modela en 2B, pero la columna existe desde ahora
   // porque anadirla despues de que existan mil personajes cuesta una migracion con datos.
   equippedSlots Json?
+  // Anulaciones manuales del DM sobre valores DERIVADOS: { "ac": 18, "maxHp": 40 }.
+  //
+  // **La valvula de escape del "se guarda lo decidido, se calcula lo derivado".** El catalogo
+  // del SRD no lo cubre todo —un objeto magico, un don, una regla de la casa, un PNJ con una CA
+  // que el DM decide y punto— y sin esto la unica salida era mentirle a la ficha (subir una
+  // caracteristica para que cuadre la CA) o no usar la aplicacion en esa mesa.
+  //
+  // No sustituye al equipo (2B): un dia habra armadura de verdad y esto seguira existiendo,
+  // porque siempre habra un numero que el DM decide. Se aplica como un `override` del motor,
+  // asi que **sale en la traza con su delta** y nadie se pregunta de donde viene el numero.
+  overrides     Json?
 
   // --- Estado mutable (2A.7). PG maximos NO se guardan: se calculan ---
   // `null` = a PG maximos; se materializa al primer cambio.

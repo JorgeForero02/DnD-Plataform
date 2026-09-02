@@ -28,7 +28,7 @@ export * from "./spell-slots";
 export * from "./resolve";
 
 import type { DerivationResult } from "@dnd/shared";
-import { derive } from "../engine";
+import { derive, type Modifier } from "../engine";
 import { SRD_ARMOR } from "./armor";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
@@ -77,9 +77,23 @@ export interface CharacterSheet extends DerivationResult {
  * de ellas acaba sin pintarse. Los del catálogo van primero: un `unresolved_choice` explica por
  * qué los números de abajo son los que son.
  */
-export function deriveCharacter(build: CharacterBuild): CharacterSheet {
+export function deriveCharacter(
+  build: CharacterBuild,
+  /**
+   * Modificadores que no salen del catálogo: hoy, **las anulaciones manuales del DM**.
+   *
+   * Entran por aquí y no por un camino propio porque el motor ya sabe qué es un `override` —va
+   * al final, sustituye el resultado, y **guarda el delta en la traza para que siga sumando**—
+   * y reimplementar eso en el servicio sería tener dos versiones de la misma regla, una de ellas
+   * sin las pruebas del motor.
+   */
+  extraModifiers: Modifier[] = [],
+): CharacterSheet {
   const resuelto = resolveBuild(build);
-  const derivado = derive(resuelto.input);
+  const derivado = derive({
+    ...resuelto.input,
+    modifiers: [...resuelto.input.modifiers, ...extraModifiers],
+  });
   return {
     derived: derivado.derived,
     warnings: [...resuelto.warnings, ...derivado.warnings],

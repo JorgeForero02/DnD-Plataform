@@ -169,6 +169,33 @@ enlaces sin que nadie las revisara como tal. La distinción viene de Diátaxis (
 práctica / referencia / explicación) — se adopta la regla, no el framework completo: `01` a
 `05` ya están razonablemente bien formados y no se migran solo por esto.
 
+## Un control de seguridad que depende del entorno declara aquí por qué
+
+**El límite de intentos por IP en `/auth/login`, `/auth/register`, `/invites/:token/accept` y
+`PATCH /auth/password` (`AUTH_RATE_LIMIT_DEFAULT`, `apps/api/src/common/rate-limit.constants.ts`)
+es ahora configurable por variable de entorno (`AUTH_RATE_LIMIT`), en vez de una constante fija.**
+Motivo: la suite de Playwright (`apps/web/e2e`) registra e inicia sesión con un usuario nuevo en
+casi cada prueba, y todas comparten `127.0.0.1` — un único cubo del limitador. Con el límite real
+de 5/min, la sexta prueba en adelante recibía 429 en vez de sesión, y `campana.spec.ts` e
+`invitacion.spec.ts` fallaban sin que el código de la aplicación tuviera ningún defecto.
+
+La regla que esto respeta: no se sube el umbral para que pase una suite — se hace el control
+dependiente del entorno, con el valor real intacto en todo entorno que importa:
+
+- **El valor por defecto no cambia**: `AUTH_RATE_LIMIT_DEFAULT` sigue en 5/min, y es lo que corre
+  en producción (variable sin fijar) y en la suite e2e de la API (`test` job de CI,
+  `apps/api/test/rate-limit.e2e-spec.ts`), que sigue afirmando un 429 real al límite real.
+- **La variable se fija alta en exactamente dos sitios**, los dos entornos de prueba de
+  navegador y ninguno de producción: el `webServer` de la API en
+  `apps/web/playwright.config.ts` (`env: { AUTH_RATE_LIMIT: "1000" }`) y el job `e2e-browser`
+  de `.github/workflows/ci.yml`.
+- **Un valor inválido nunca desactiva el control**: `parseAuthRateLimit` (mismo fichero) cae al
+  valor por defecto ante cualquier entrada no numérica, no entera o no positiva — probado en
+  `rate-limit.constants.spec.ts`. Una variable mal escrita se comporta como si no existiera, no
+  como "sin límite".
+- **Documentado en `.env.example`**, dejando explícito que existe solo para el problema de IP
+  compartida de la suite de navegador y que nunca debe subirse en producción.
+
 ## Precedencia
 
 Instrucción del usuario en la sesión > este documento y el `CLAUDE.md` del repositorio >

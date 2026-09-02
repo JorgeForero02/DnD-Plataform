@@ -68,6 +68,12 @@ jobs:
       JWT_SECRET: ci-secret-value-at-least-32-characters-long
       JWT_EXPIRES_IN: 7d
       PORT: 3000
+      # Every spec in this job registers/logs in from the CI runner's one IP — see the same
+      # comment on the webServer entry in apps/web/playwright.config.ts (which sets this too;
+      # kept here as well so the job's own environment reflects why it differs from `test`).
+      # Never set on the `test` job above: apps/api/test/rate-limit.e2e-spec.ts must keep
+      # asserting a 429 at the real AUTH_RATE_LIMIT_DEFAULT.
+      AUTH_RATE_LIMIT: "1000"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

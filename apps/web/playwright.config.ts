@@ -26,6 +26,13 @@ export default defineConfig({
       port: 3000,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
+      // Casi todos los specs registran e inician sesión con un usuario nuevo, y todos
+      // comparten 127.0.0.1: un solo cubo del limitador por IP. AUTH_RATE_LIMIT_DEFAULT
+      // (5/min, apps/api/src/common/rate-limit.constants.ts) protege producción de fuerza
+      // bruta y no se toca; esta variable, fijada solo aquí y en el job e2e-browser de CI
+      // (.github/workflows/ci.yml), es la única forma permitida de darle margen a esta suite.
+      // Nunca se sube en producción — ver .env.example.
+      env: { AUTH_RATE_LIMIT: "1000" },
     },
     {
       // Vite hace de proxy de /api hacia :3000, igual que nginx en produccion.

@@ -65,6 +65,29 @@ enum ResourceGrantor {
   OWNER
 }
 
+enum RuleMode {
+  AUTOMATIC
+  PROPOSAL
+}
+
+enum RuleStatus {
+  ARMED
+  DISARMED
+  // Apunta a algo que ya no existe. **Rota y marcada, nunca descartada en silencio** (hueco H7).
+  BROKEN
+}
+
+enum RuleTraceStatus {
+  APPLIED
+  // Modo propuesta: la regla decidio, y espera al DM. No ha cambiado nada.
+  PROPOSED
+  REJECTED
+  // Se corto por el tope de saltos, por el tope de disparos, o por el interruptor de campana.
+  STOPPED
+  // Dos reglas igual de especificas se contradicen: se marca, no se resuelve a escondidas.
+  CONFLICT
+}
+
 enum RestKind {
   SHORT
   LONG
@@ -107,6 +130,11 @@ model Campaign {
   gameEvents  GameEvent[]
   flags       CampaignFlag[]
   sets        CampaignSet[]
+  rules       Rule[]
+
+  // Interruptor general del motor, por campana (contencion operativa, punto 6 de la spec de
+  // autoridad). Un DM que ve algo raro lo apaga entero sin tener que desarmar regla por regla.
+  rulesEnabled Boolean @default(true)
 }
 
 model CampaignMember {
@@ -359,4 +387,81 @@ model CampaignSetMember {
 
   // Anadir dos veces el mismo elemento NO lo duplica: los efectos son idempotentes.
   @@unique([setId, memberType, memberId])
+}
+
+// Tarea 2A.16 — una regla del motor de eventos.
+//
+// **El objetivo se fija al ARMARLA, nunca al dispararla.** Es la frontera de seguridad de todo
+// esto y esta razonada en `docs/superpowers/specs/2026-09-02-autoridad-de-las-reglas-design.md`:
+// una regla es una "sentencia preparada" cuya forma queda congelada al crearla. Los objetivos
+// dinamicos por etiqueta quedan FUERA de la v1 porque un jugador puede poner una etiqueta, y eso
+// convierte un dato que el jugador controla en una via de escalada.
+//
+// **Corre con la autoridad del DM que la armo**, nunca con la del jugador que la dispara, y la
+// escritura pasa igualmente por `canView`. El actor que queda registrado es "regla X, delegada
+// por el DM Y, disparada por Z".
+model Rule {
+  id          String     @id @default(cuid())
+  campaignId  String
+  name        String
+  /// El DM que la armo. **Su autoridad es con la que corre el efecto.**
+  createdById String
+  mode        RuleMode   @default(AUTOMATIC)
+  status      RuleStatus @default(ARMED)
+  /// Sube en cada edicion. La traza guarda con QUE version se disparo, para que auditar una
+  /// cascada vieja no dependa de que nadie haya tocado la regla desde entonces.
+  version     Int        @default(1)
+
+  /// Las tres partes de la frase, validadas por uniones discriminadas de Zod al escribir.
+  trigger    Json
+  conditions Json
+  effects    Json
+
+  /// Tope de disparos (contencion, punto 6). `null` = sin tope.
+  maxFires    Int?
+  fireCount   Int        @default(0)
+  /// Para la condicion «esta regla no se ha disparado nunca» — el «once» de Ink.
+  lastFiredAt DateTime?
+  /// Por que quedo rota. Se ensena; no se borra la regla.
+  brokenReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  traces    RuleTrace[]
+
+  @@index([campaignId, status])
+}
+
+// La traza de un disparo. **Es la funcionalidad, no un adorno**: responde «por que se revelo
+// esto» y, con el antes y el despues de cada efecto, permite deshacerlo.
+model RuleTrace {
+  id          String          @id @default(cuid())
+  campaignId  String
+  ruleId      String
+  /// La version de la regla que se disparo, no la actual.
+  ruleVersion Int
+
+  /// Auditoria completa (punto 5 de la spec de autoridad): quien disparo y quien delego.
+  triggeredByUserId String
+  delegatedByUserId String
+  /// El `GameEvent` que la disparo, si lo hubo.
+  triggerEventId    String?
+
+  /// Salto dentro de la cascada, y el identificador que agrupa la cascada entera.
+  depth   Int    @default(0)
+  chainId String
+
+  status RuleTraceStatus
+  /// Un elemento por efecto, cada uno con su ANTES y su DESPUES. Sin eso, deshacer es imposible.
+  effects Json
+  /// Por que se paro, por que hay conflicto, o el motivo que escribio el DM al aplicar.
+  reason  String?
+
+  createdAt DateTime @default(now())
+  rule      Rule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([chainId])
+  @@index([status])
 }

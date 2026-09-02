@@ -6,6 +6,64 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Capa de tokens y seis primitivas: "la mesa y el manual" (tarea 1.19)
+
+**Qué.** `apps/web/src/ui/` (nuevo): `tokens.css` con la paleta por tema, `theme.ts` con el
+interruptor, y seis primitivas —`Button`, `Field`, `Panel`, `Badge`, `Dialog`, `Tabs`—, cada una
+con sus pruebas. `/design-tokens` las muestra todas. Se convierten **solo dos consumidores**, a
+propósito: el Markdown del mundo pasa a `Panel tone="vellum"` y el distintivo de visibilidad a
+`Badge`.
+
+**La dirección visual la eligió el autor** en conversación, antes de escribir el brief:
+**chrome oscuro sobrio, tipo instrumento; el contenido del mundo sobre pergamino con serifa**.
+El tema claro no es un extra — **es el modo de lectura en pergamino**. Oscuro por defecto,
+`prefers-color-scheme` la primera vez, elección guardada. Elemento firma único: el panel de
+pergamino dentro del chrome oscuro. Tipografías por pila del sistema, sin fuentes de red, para
+que la medición de contraste sea estable.
+
+**Ocho tokens por tema**, y ninguno se escribe como literal en ningún componente. Acento
+**cardenillo** (`#3F8C79`) y destructivo **lacre** (`#B4463C`), más dos variantes de texto que
+la medición obligó a añadir: `--accent-text` (`#469b86`) y `--danger-text` (`#cb6b62`). Ese es
+el resultado más útil de la tarea: **en oscuro, ningún par ponía `--danger` como texto por
+encima de 4,5:1** —lo mejor era 3,43:1—, así que la tabla original estaba incompleta. La
+alternativa que llegó primero era pintar el mensaje de error con el color del texto normal, es
+decir, un error que no se distingue de un párrafo; se descartó.
+
+**El contraste se mide, no se supone.** `e2e/tokens-contrast.spec.ts` lee los colores calculados
+del DOM en los dos temas —componiendo el alfa contra el fondo real— y falla por debajo del
+umbral. Ver [08-pruebas.md](./08-pruebas.md).
+
+**Las tres trampas que encontró la revisión, y que son la lección de la tarea:**
+
+1. **`tailwind.config.js` remaquetaba la aplicación entera.** `extend` con las **mismas claves**
+   que Tailwind (`fontSize`, `spacing`, y también `borderRadius`) **sustituye**, no añade:
+   `.text-base` pasaba de 1rem a 0.875rem, `.text-sm` perdía su `line-height`, `.p-6` de 1.5rem
+   a 2rem. 124 usos en pantallas que esta tarea no debía tocar. Ninguna prueba lo veía, porque
+   RTL y Playwright seleccionan por rol y por texto. Se renombran a `chrome-*`, `world-*`,
+   `s1..s8` y `radius-*`, y se comprueba compilando el CSS.
+2. **Medir solo lo que uno eligió medir no es medir.** Dos pares incumplían el umbral de la
+   propia tarea —enlaces sobre pergamino a 4,14:1, botón fantasma sobre `--surface` a 4,26:1— y
+   la prueba no los veía porque la página de muestra no tenía ningún enlace dentro del panel de
+   pergamino. Se añaden las muestras que faltaban y una lista cerrada de qué puede medirse sin
+   bloquear.
+3. **El `body` bajaba la base de 16 a 14 px** en 17 ficheros no revisados —98 elementos de texto
+   sin clase de tamaño, 28 de ellos controles de formulario, y por debajo de 16 px iOS Safari
+   hace zoom al enfocar—. Era la misma remaquetación por otra puerta. Se quita: la densidad se
+   decide en 1.19b, con las pantallas delante.
+
+**Lo que NO entra, y por qué.** `ThemeToggle` está construido y probado, pero **solo se alcanza
+en `/design-tokens`**: mientras las pantallas sigan clavadas a `bg-slate-900`, pulsarlo no
+mejora nada y deja los distintivos de visibilidad a **1,10:1** sobre la fila sin convertir. Un
+interruptor que anuncia un modo que la aplicación todavía no tiene es una regresión, no una
+funcionalidad. Se monta en **1.19b**, que convierte las pantallas. Ver
+[06-pendientes.md](./06-pendientes.md).
+
+**Cómo revertir.** Un commit propio. Revertirlo borra `src/ui/`, la página de tokens y la suite
+de contraste, y devuelve el Markdown y el distintivo a su forma anterior. No toca `apps/api` ni
+`packages/`.
+
+---
+
 ## 2026-09-01 — Endurecimiento de la API: cabeceras, CORS, límite de intentos, dependencias y cuenta (tarea 1.18a)
 
 **Qué.** Los hallazgos 2, 3, 4, 5 y la mitad de servidor del 8 de la auditoría del 2026-09-01,

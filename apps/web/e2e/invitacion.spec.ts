@@ -50,7 +50,10 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
   const dmOnlyNpc = dmPage.getByRole("button", { name: /El secreto de Cragmaw/ });
   await expect(dmOnlyNpc).toBeVisible();
-  await expect(dmOnlyNpc).toContainText("DM_ONLY");
+  // Task 1.19 converted the raw "DM_ONLY" text to the Badge primitive — icon + Spanish label,
+  // not the enum value. The row still carries the real visibility level as data-visibility.
+  await expect(dmOnlyNpc).toContainText("Solo DM");
+  await expect(dmOnlyNpc.locator('[data-visibility="DM_ONLY"]')).toBeVisible();
 
   // Arreglo 1 (1.15-fix), Crítico: además un NPC PLAYERS, creado por el DM, con un comentario
   // suyo ya puesto — es la entidad que el jugador va a abrir y LEER más abajo sin poder
@@ -65,7 +68,10 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
   const playersNpcRowDm = dmPage.getByRole("button", { name: /Gundren Rockseeker/ });
   await expect(playersNpcRowDm).toBeVisible();
-  await expect(playersNpcRowDm).toContainText("PLAYERS");
+  // Task 1.19 converted the raw "PLAYERS" text to the Badge primitive — icon + Spanish label,
+  // not the enum value. The row still carries the real visibility level as data-visibility.
+  await expect(playersNpcRowDm).toContainText("Jugadores");
+  await expect(playersNpcRowDm.locator('[data-visibility="PLAYERS"]')).toBeVisible();
   await playersNpcRowDm.click();
   await dmPage
     .getByLabel("Nuevo comentario")

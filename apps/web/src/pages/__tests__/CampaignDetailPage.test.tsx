@@ -570,11 +570,12 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
     const untaggedRow = screen.getByRole("button", { name: /NPC vacío/ });
     // Exact match, not a substring: a regression that "improves" the empty state with a
-    // placeholder (e.g. a dash after the tags block) would still CONTAIN "NPC vacíoPLAYERS"
-    // and pass a substring check silently. Anchored so the row's whole text is exactly the
-    // name and the visibility, nothing tag-related tacked on — no dash, no placeholder, no
+    // placeholder (e.g. a dash after the tags block) would still CONTAIN the name and the
+    // visibility badge and pass a substring check silently. Anchored so the row's whole text
+    // is exactly the name and the visibility badge (task 1.19: icon + Spanish label, not the
+    // raw "PLAYERS" enum value), nothing tag-related tacked on — no dash, no placeholder, no
     // "sin etiquetas" text.
-    expect(untaggedRow).toHaveTextContent(/^NPC vacíoPLAYERS$/);
+    expect(untaggedRow).toHaveTextContent(/^NPC vacío◐Jugadores$/);
   });
 
   it("escribir en el buscador reduce las filas", async () => {

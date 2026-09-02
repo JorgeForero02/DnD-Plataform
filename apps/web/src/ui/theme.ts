@@ -1,0 +1,51 @@
+// Theme switch: writes the explicit choice to localStorage and honours
+// prefers-color-scheme on first visit (no stored choice yet). Dark is the default when
+// neither a stored choice nor a light OS preference exists — see tokens.css, which applies
+// the same precedence in pure CSS for the very first paint (before this module runs) via
+// :root:not([data-theme="dark"]) under the light media query.
+export type Theme = "dark" | "light";
+
+// index.html has a hand-synced copy of this exact string, in the inline blocking script
+// that stamps [data-theme] before the stylesheet loads (fix round 1, Important 7) — an
+// inline <head> script can't import this module, so if this key ever changes, that copy
+// has to change with it or the flash-prevention script silently stops finding anything.
+const STORAGE_KEY = "dnd-theme";
+
+export function getStoredTheme(): Theme | null {
+  try {
+    const value = localStorage.getItem(STORAGE_KEY);
+    return value === "dark" || value === "light" ? value : null;
+  } catch {
+    // Private browsing / storage disabled: fall back as if nothing were stored.
+    return null;
+  }
+}
+
+export function getPreferredTheme(): Theme {
+  const stored = getStoredTheme();
+  if (stored) return stored;
+  const prefersLight =
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches;
+  return prefersLight ? "light" : "dark";
+}
+
+export function applyTheme(theme: Theme): void {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+export function setTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // Ignore — the theme still applies for this page load, it just won't persist.
+  }
+  applyTheme(theme);
+}
+
+// Call once at startup (main.tsx) to stamp the resolved theme onto <html> so components can
+// rely on [data-theme] being present rather than re-deriving the preference themselves.
+export function initTheme(): Theme {
+  const theme = getPreferredTheme();
+  applyTheme(theme);
+  return theme;
+}

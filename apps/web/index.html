@@ -4,6 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Plataforma D&D</title>
+    <!--
+      Task 1.19, fix round 1, Important 7: main.tsx's initTheme() only runs once React has
+      mounted — a user on a light OS who explicitly chose dark still gets a flash of the
+      parchment palette on first paint, because tokens.css's own light-media-query fallback
+      wins until JS catches up. This has to run before the stylesheet loads (Vite injects it
+      after this point in <head>), synchronously, so [data-theme] is already correct by the
+      time the CSS is parsed. Same storage key and try/catch as ui/theme.ts (getStoredTheme) —
+      kept in sync by hand since this can't import that module.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("dnd-theme");
+          if (stored === "dark" || stored === "light") {
+            document.documentElement.setAttribute("data-theme", stored);
+          }
+        } catch (e) {
+          // Private browsing / storage disabled — tokens.css's prefers-color-scheme fallback
+          // still applies with no [data-theme] attribute set.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

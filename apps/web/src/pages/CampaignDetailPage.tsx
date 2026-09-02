@@ -19,6 +19,7 @@ import { InvitePanel } from "../features/invites/InvitePanel";
 import { CampaignSettings } from "../features/campaigns/CampaignSettings";
 import { MembersPanel } from "../features/campaigns/MembersPanel";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "../features/campaigns/PermissionStatus";
+import { Badge } from "../ui/Badge";
 
 type Tab =
   | { kind: "overview"; label: string }
@@ -120,7 +121,9 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                 className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
               >
                 <span className="font-semibold">{e.name}</span>
-                <span className="ml-2 text-xs text-slate-500">{e.visibility}</span>
+                <span className="ml-2 inline-block align-middle">
+                  <Badge visibility={e.visibility} />
+                </span>
                 {/* A2 (1.17c): tags were written and never read anywhere but the editor's own
                     field. An entity with none paints nothing — no gap, no dash, no "sin
                     etiquetas" — see the brief this task followed. Deduped here (not in
@@ -215,7 +218,9 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
               className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
             >
               <span className="font-semibold">{s.title}</span>
-              <span className="ml-2 text-xs text-slate-500">{s.visibility}</span>
+              <span className="ml-2 inline-block align-middle">
+                <Badge visibility={s.visibility} />
+              </span>
             </button>
           </li>
         ))}

@@ -1,0 +1,133 @@
+/* Task 1.19 — the token layer.
+ *
+ * "La mesa y el manual": chrome (navigation, forms, buttons) is a sober dark instrument;
+ * world content (Markdown bodies) is a warm parchment reading surface. Both themes ship,
+ * dark is the default, light is the parchment reading mode — not an afterthought.
+ *
+ * Nine tokens now, not the original seven. Fix round 1 (Critical 2 / Important 4): --accent
+ * and --danger measured below 4.5:1 as normal-size TEXT on some of our surfaces in the dark
+ * theme (accent-on-surface 4.26:1, danger-on-bg/surface/vellum 3.43/3.15/3.07:1) — legible
+ * enough for borders/icons (3:1) but not for a link or an error message. --accent-text and
+ * --danger-text are the same hue and saturation as --accent/--danger, lightness raised until
+ * all three dark surfaces (--bg/--surface/--vellum) clear 4.5:1 — computed, not eyeballed (see
+ * the report for the derivation and the measured ratios). Use --accent/--danger for fills,
+ * borders and icons; use --accent-text/--danger-text for anything that IS the readable text.
+ * In the light theme both already pass at 4.5:1+ everywhere, so the *-text variants alias
+ * straight to the base tone — no second light value to keep in sync.
+ */
+
+:root {
+  /* Dark is the default palette on bare :root. */
+  --bg: #121316;
+  --surface: #1a1c20;
+  --vellum: #221e17;
+  --text: #e8e6e1;
+  --muted: #8a8f98;
+  --accent: #3f8c79;
+  --accent-text: #469b86;
+  --danger: #b4463c;
+  --danger-text: #cb6b62;
+
+  /* Type stacks — no network fonts, Playwright measures a stable page. */
+  --font-chrome: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-world: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-data: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  /* Chrome type scale — dense, instrument-like. Exposed in tailwind.config.js under
+   * "chrome-*" keys, NOT the bare Tailwind scale names (sm/base/xl/2xl) — fix round 1,
+   * Critical 1: the bare names silently replace Tailwind's built-in scale for every
+   * untouched screen in the app. See the report for the before/after CSS proof. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+
+  /* World type scale — the manual register: bigger, roomier leading, a short measure. */
+  --text-world-base: 1.0625rem;
+  --text-world-lg: 1.375rem;
+  --text-world-xl: 1.75rem;
+  --world-measure: 66ch;
+
+  /* Spacing scale, 4px base unit. Exposed under "s1".."s8" — bare numeric keys would replace
+   * Tailwind's default spacing scale the same way the font sizes did (Critical 1). */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  /* Small radii — an instrument, not a poster. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  color-scheme: dark;
+}
+
+/* Light — the parchment reading mode. Honours the OS preference on first visit; an explicit
+ * choice (written to localStorage by src/ui/theme.ts) is stamped as [data-theme] and always
+ * wins over the media query, in both directions. index.html also stamps [data-theme] inline,
+ * before this stylesheet loads, so there is no flash of the wrong theme on first paint. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e9e2ce;
+    --surface: #f3eee0;
+    --vellum: #f7f1e1;
+    --text: #23211c;
+    --muted: #5e5b52;
+    --accent: #2f6b5c;
+    --accent-text: #2f6b5c;
+    --danger: #9b3a31;
+    --danger-text: #9b3a31;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #e9e2ce;
+  --surface: #f3eee0;
+  --vellum: #f7f1e1;
+  --text: #23211c;
+  --muted: #5e5b52;
+  --accent: #2f6b5c;
+  --accent-text: #2f6b5c;
+  --danger: #9b3a31;
+  --danger-text: #9b3a31;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #121316;
+  --surface: #1a1c20;
+  --vellum: #221e17;
+  --text: #e8e6e1;
+  --muted: #8a8f98;
+  --accent: #3f8c79;
+  --accent-text: #469b86;
+  --danger: #b4463c;
+  --danger-text: #cb6b62;
+  color-scheme: dark;
+}
+
+/* Fix round 2: no font-size here. --text-base (0.875rem = 14px) would have dropped the
+ * unclassed baseline from the browser default (16px) across every untouched screen this task
+ * is forbidden to restyle — the reviewer counted 98 leaf text elements with no size class in
+ * untouched files (186 elements across 17 files counting containers), 28 of them form
+ * controls, where under-16px text triggers iOS Safari's auto-zoom-on-focus. Critical 1's
+ * fontSize/spacing key collision, with a different delivery mechanism: not a Tailwind utility
+ * silently overwritten, but the cascade's own root size silently overwritten. Every primitive
+ * in ui/ names its own size class, so removing this moves no primitive it built; the one
+ * consequence anywhere in the app today is Tabs' tabpanel content (Tabs.tsx, no size class of
+ * its own), which currently only renders on /design-tokens. If 14px turns out to be the right
+ * body default, 1.19b re-adds this line in the same commit that converts the screens, where
+ * someone actually looks at the result.
+ */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-chrome);
+}

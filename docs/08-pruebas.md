@@ -27,9 +27,17 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-01 tras la segunda ronda de correcciones de revisión de la tarea
-1.17d (B1 + B2, ajustes de campaña y miembros en la pantalla): **32 e2e de API** en 9 suites y
-**9 e2e de navegador** en 2 suites, todas verdes.
+**E2e**, medidos el 2026-09-01 tras las tareas 1.18a (endurecimiento de la API) y 1.19 (capa de
+tokens): **43 e2e de API** en 12 suites y **11 e2e de navegador** en 3 suites, todas verdes.
+
+La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
+otra hace: **mide**. Recorre `/design-tokens` en los dos temas, lee los colores **calculados**
+del DOM —componiendo el alfa contra el fondo real, no leyendo el color declarado— y falla por
+debajo de 4,5:1 en texto y 3:1 en bordes y anillos de foco. Setenta mediciones bloquean la
+prueba; diez más se registran sin bloquear, y **solo esas diez**: hay una lista de etiquetas
+permitidas y un recuento fijo, de modo que degradar una medición que debería bloquear pone la
+suite en rojo. Esa distinción existe porque la primera versión medía únicamente los pares que su
+autor había elegido medir, y así se le escaparon dos que incumplían su propio umbral.
 
 Las unitarias, el lint, el formato y `check:docs`/`check:estado` los exige `pnpm verify` en el
 gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.

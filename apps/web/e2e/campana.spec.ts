@@ -45,7 +45,10 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
   const npc = page.getByRole("button", { name: /Acererak/ });
   await expect(npc).toBeVisible();
-  await expect(npc).toContainText("DM_ONLY");
+  // Task 1.19 converted the raw "DM_ONLY" text to the Badge primitive — icon + Spanish label,
+  // not the enum value. The row still carries the real visibility level as data-visibility.
+  await expect(npc).toContainText("Solo DM");
+  await expect(npc.locator('[data-visibility="DM_ONLY"]')).toBeVisible();
 });
 
 test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad", async ({
@@ -206,7 +209,10 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(page.getByRole("heading", { name: "Nueva sesión" })).toBeHidden();
   const sessionRow = page.getByRole("button", { name: /Sesión 1: la entrada al abismo/ });
   await expect(sessionRow).toBeVisible();
-  await expect(sessionRow).toContainText("DM_ONLY");
+  // Task 1.19 converted the raw "DM_ONLY" text to the Badge primitive — icon + Spanish label,
+  // not the enum value. The row still carries the real visibility level as data-visibility.
+  await expect(sessionRow).toContainText("Solo DM");
+  await expect(sessionRow.locator('[data-visibility="DM_ONLY"]')).toBeVisible();
 
   // Abrir la sesión recién creada en modo edición: comprueba la precarga de un formulario
   // real contra la API real, no solo contra un espía.

@@ -56,6 +56,13 @@ export class DiceExpressionError extends Error {
 export interface DiceTermResult {
   /** El trozo de la expresión que produjo este término, tal cual se escribió. */
   source: string;
+  /**
+   * Caras del dado, o `0` en una constante. Lo añadió 2A.13: para decir si una tirada es un
+   * **20 natural** hay que saber que el dado era de veinte, y la alternativa era volver a
+   * analizar `source` con una segunda copia del analizador — que es como dos copias del mismo
+   * dato acaban discrepando.
+   */
+  sides: number;
   /** `+1` o `-1`: el signo con el que entra en el total. */
   sign: 1 | -1;
   /** Todos los dados tirados, en el orden en que salieron. Vacío en una constante. */
@@ -133,7 +140,7 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   const constante = TERMINO_CONSTANTE.exec(source);
   if (constante) {
     const valor = Number(constante[1]);
-    return { source, sign, rolled: [], kept: [valor], dropped: [], value: valor };
+    return { source, sign, sides: 0, rolled: [], kept: [valor], dropped: [], value: valor };
   }
 
   const dados = TERMINO_DADOS.exec(source);
@@ -172,7 +179,15 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   for (let i = 0; i < cuenta; i++) rolled.push(roller(caras));
 
   if (!modo) {
-    return { source, sign, rolled, kept: [...rolled], dropped: [], value: suma(rolled) };
+    return {
+      source,
+      sign,
+      sides: caras,
+      rolled,
+      kept: [...rolled],
+      dropped: [],
+      value: suma(rolled),
+    };
   }
 
   const conservar = Number(conservarCrudo);
@@ -199,7 +214,7 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
     else dropped.push(valor);
   });
 
-  return { source, sign, rolled, kept, dropped, value: suma(kept) };
+  return { source, sign, sides: caras, rolled, kept, dropped, value: suma(kept) };
 }
 
 function suma(valores: number[]): number {

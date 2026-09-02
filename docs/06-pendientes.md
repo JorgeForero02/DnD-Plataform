@@ -39,7 +39,13 @@ quedan aquí para que no se deshagan sin darse cuenta.
 | **S9** | **[revisión] Las velocidades no pasan por el motor y por tanto no tienen traza** | `speeds` se asigna directamente en el resolutor, sin `Modifier` ni paso de traza. **Postura del revisor:** 2A.12 tendrá que rehacer esta pieza, así que conviene emitirlas ya como modificadores y derivar `speed.*` en el motor. **Postura de quien implementó, y lo que se aplicó:** 2A.12 es literalmente «velocidades, condiciones y velocidad efectiva **con su traza**», así que ese trabajo es *planificado*, no *repetido*, y adelantarlo mete en 2A.3 un cambio al motor que la propia tarea declaraba no tocar. Se deja para 2A.12 **con la obligación explícita de convertir `speeds` en modificadores allí**, y no de apilar una segunda representación al lado |
 | **S10** | **[revisión] El nivel y el nombre de las ~203 aptitudes de clase no están fijados por ninguna prueba** | `reference.spec.ts` fija dado de golpe, salvaciones, `asiLevels`, número de habilidades, lanzamiento, subclase y su nivel, y todas las cifras de razas y armaduras — **mover una aptitud de nivel, en cambio, no pone nada en rojo** (comprobado: la mutación «evasión del pícaro del 7 al 4» sigue pasando). Fijarlas sería transcribir los mismos datos **dos veces**, y dos copias derivan. Lo que protege esas filas es que el diff se entregó legible y se revisó con el SRD delante |
 
-## Pedido por el autor el 2026-09-02## Huecos de mecánica declarados a mitad de 2A (2026-09-02)
+## Pedido por el autor el 2026-09-02## Encontrado al escribir 2A.13 (2026-09-02)
+
+| | Qué | Por qué importa |
+|---|---|---|
+| **R1** | **El límite global de 100 peticiones por minuto y por IP puede quedarse corto en una mesa real.** Lo descubrió una prueba: cien tiradas seguidas empezaban a recibir 429 a mitad de bucle, y la prueba estaba midiendo el limitador en vez de los dados | No es teórico. Una mesa juega **desde la casa de una persona o por una VPN compartida**, así que los cinco jugadores pueden salir por **una sola IP**; y el sondeo del log de la sesión gasta del mismo presupuesto que las tiradas. Un combate largo con la línea de tiempo abierta podría rozarlo. **No se sube el número a ciegas** —eso es aflojar un control de seguridad sin datos—: lo que hace falta es **medir** cuántas peticiones gasta de verdad una sesión con la pantalla del motor abierta (2A.17), y entonces decidir si el reparto correcto es por usuario en vez de por IP para las rutas con sesión iniciada, dejando el límite por IP donde de verdad protege, que es el acceso sin autenticar |
+
+## Huecos de mecánica declarados a mitad de 2A (2026-09-02)
 
 Salieron de un repaso pedido por el autor con 2A.1-2A.5 ya en producción, razonado en
 [huecos de mecánica](./superpowers/specs/2026-09-02-huecos-de-mecanica-2A.md). **Cuatro se

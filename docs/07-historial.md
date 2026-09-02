@@ -6,6 +6,50 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — 2A.13: tirar de verdad
+
+**Qué.** `POST /campaigns/:id/rolls`. El servidor tira con el evaluador de 2A.1, escribe un
+`GameEvent` de tipo `ABILITY_ROLL` con la expresión, los dados, lo conservado, lo descartado, el
+total, la CD si la había y el resultado, y lo devuelve. La visibilidad la elige quien tira.
+
+**Por qué era una tarea y no un detalle.** 2A.1 solo evaluaba; **nadie ejecutaba una tirada**.
+De esto dependen tres cosas: las tiradas de creación de personaje (2A.6), el disparador «una
+tirada falla» del motor de eventos, y la línea de tiempo de la sesión.
+
+**El azar vive en el servidor y en ningún otro sitio.** Si tirara el cliente, una tirada sería
+una afirmación del navegador, y la mesa no tendría forma de distinguir un 20 de un 20 escrito a
+mano.
+
+**`natural` y `outcome` son dos campos porque son dos hechos.** Un 20 natural que no llega a la
+CD sigue siendo un 20 natural, y un 1 que la supera sigue siendo un 1; en la mesa se cantan los
+dos. Y el natural es **el dado que se conserva**, no el que se tira: con desventaja, un 20
+descartado no es un 20 natural. Cuando no hay exactamente un d20 con un solo dado conservado
+—`3d20`, dos términos de veinte— se dice `NONE` en vez de elegir uno por orden de aparición.
+
+**Dos comodidades que se ganan gratis:** si quien tira no dice la sesión, **se usa la que esté
+en curso**; y no tener ninguna abierta no es un error, la tirada queda fuera de sesión, que es
+un estado que el log ya sabía representar.
+
+**Una adición a 2A.1:** `DiceTermResult` gana `sides`. Para decir si una tirada es un 20 natural
+hay que saber que el dado era de veinte, y la alternativa era volver a analizar la expresión con
+una segunda copia del analizador — que es como dos copias del mismo dato acaban discrepando.
+
+**Mutación comprobada, tres veces.** Mirando el dado tirado en vez del conservado: cae la prueba
+de la desventaja. Cambiando `>=` por `>` contra la CD: cae la del éxito justo. Invirtiendo la
+comprobación de propiedad del personaje: caen dos. Restauradas; 20 unitarias y 8 e2e verdes.
+
+**Un hallazgo que salió de una prueba fallida, y se queda anotado.** La prueba de cien tiradas se
+ponía roja sola: no por los dados, sino por el **límite global de 100 peticiones por minuto y por
+IP**, que empezaba a devolver 429 a mitad de bucle. La prueba se bajó a treinta —medir el
+limitador no era su trabajo— y **la pregunta que abre va a 06 como R1**: una mesa entera puede
+salir por una sola IP, y el sondeo del log gasta del mismo presupuesto.
+
+**Cómo revertirlo.** Borrar `apps/api/src/rolls/`, `packages/shared/src/roll.schema.ts` y
+`apps/api/test/rolls.e2e-spec.ts`, y quitar `RollsModule` de `app.module.ts`. `sides` en el
+evaluador puede quedarse: no molesta a nadie.
+
+---
+
 ## 2026-09-02 (tarde) — Once huecos de mecánica, y los cuatro que no podían esperar
 
 **Qué.** El autor pidió un repaso de mecánicas faltantes con 2A.1-2A.5 ya en producción. Salieron

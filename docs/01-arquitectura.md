@@ -53,6 +53,7 @@ por su cuenta**.
 | `sessions` | Sesiones de juego | solo DM |
 | `characters` | Personajes | dueño o DM |
 | `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
+| `rolls` | Tirar de verdad (2A.13). **El azar vive aquí y solo aquí**: el servidor tira y escribe la tirada antes de devolverla | miembro de la campaña |
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |
 | `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |

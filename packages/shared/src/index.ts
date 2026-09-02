@@ -4,3 +4,4 @@ export * from "./campaign.schema";
 export * from "./entity.schema";
 export * from "./session.schema";
 export * from "./character.schema";
+export * from "./rules/trace.schema";

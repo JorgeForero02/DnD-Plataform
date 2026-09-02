@@ -3,6 +3,9 @@ import { useMyRole } from "../campaigns/members";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "../campaigns/PermissionStatus";
 import { useCreateInvite } from "./hooks";
 import { translateInviteError } from "./api";
+import { Button } from "../../ui/Button";
+import { Field, fieldControlClass } from "../../ui/Field";
+import { Panel } from "../../ui/Panel";
 
 export function InvitePanel({ campaignId }: { campaignId: string }) {
   const create = useCreateInvite(campaignId);
@@ -58,24 +61,24 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
   };
 
   return (
-    <div className="rounded bg-slate-800 p-4">
-      <h3 className="text-sm font-semibold">Invitar jugador</h3>
-      <p className="mt-1 text-xs text-slate-400">
+    <Panel tone="chrome">
+      <h3 className="text-chrome-sm font-semibold">Invitar jugador</h3>
+      <p className="mt-1 text-chrome-xs text-muted">
         Cada enlace sirve para una sola persona: si quieres invitar a varios jugadores, genera un
         enlace nuevo para cada uno.
       </p>
-      <button
+      <Button
         onClick={onGenerate}
         disabled={create.isPending || !!disabledReason}
         title={disabledReason}
-        className="mt-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold disabled:opacity-50"
+        className="mt-3"
       >
         Generar invitación
-      </button>
-      {disabledReason && <p className="mt-1 text-xs text-slate-400">{disabledReason}</p>}
+      </Button>
+      {disabledReason && <p className="mt-1 text-chrome-xs text-muted">{disabledReason}</p>}
       {roleError && <RetryPermissions onRetry={retryRole} />}
       {create.isError && (
-        <p className="mt-2 text-sm text-red-400">
+        <p className="mt-2 text-chrome-sm text-danger-text">
           {translateInviteError((create.error as Error).message)}
         </p>
       )}
@@ -83,32 +86,33 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
         <div className="mt-3">
           {/* Server has no revocation for a link that's already out (docs/06-pendientes.md):
               generating a new one leaves the old token valid and unlisted, so the DM needs to
-              know pressing this button again is not a "refresh". */}
-          <p className="text-xs text-amber-400">
+              know pressing this button again is not a "refresh". Fix round 1 (post-1.19b
+              review): this is the only irreversible-consequence warning left in the product —
+              it had gone text-muted, identical in size and colour to the purely explanatory
+              paragraph below it, and read as help text instead of a warning. --danger-text
+              plus the bordered-box treatment the read-only banners kept (not a new "warning"
+              token — that's a separate decision the author is making right now, see the
+              report) puts it back on a different visual register from ordinary prose. */}
+          <p className="rounded-radius-sm border border-danger bg-bg p-2 text-chrome-xs text-danger-text">
             Generar otro enlace no anula este ni los anteriores: todos siguen siendo válidos hasta
             que alguien los use.
           </p>
-          <label htmlFor="invite-link" className="mt-2 block text-sm">
-            Enlace de invitación
-          </label>
-          <input
-            id="invite-link"
-            readOnly
-            value={link}
-            onFocus={(e) => e.currentTarget.select()}
-            className="w-full rounded bg-slate-900 p-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={onCopy}
-            className="mt-2 rounded bg-slate-700 px-3 py-1 text-sm"
-          >
+          <Field label="Enlace de invitación">
+            <input
+              id="invite-link"
+              readOnly
+              value={link}
+              onFocus={(e) => e.currentTarget.select()}
+              className={`mt-2 ${fieldControlClass}`}
+            />
+          </Field>
+          <Button type="button" variant="secondary" onClick={onCopy} className="mt-2">
             Copiar enlace
-          </button>
-          {copied && <p className="mt-1 text-xs text-emerald-400">Copiado.</p>}
-          {copyError && <p className="mt-1 text-xs text-red-400">{copyError}</p>}
+          </Button>
+          {copied && <p className="mt-1 text-chrome-xs text-accent-text">Copiado.</p>}
+          {copyError && <p className="mt-1 text-chrome-xs text-danger-text">{copyError}</p>}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

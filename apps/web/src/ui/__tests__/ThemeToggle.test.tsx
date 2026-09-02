@@ -18,10 +18,10 @@ describe("ThemeToggle", () => {
 
   // Task 1.19, fix round 1, Important 8 — this test renders ThemeToggle directly, so it
   // proves the component's own click → setTheme → re-render wiring, not that anything mounts
-  // it anywhere. Fix round 2: ThemeToggle is mounted on /design-tokens only (not app-wide, see
-  // App.tsx and the report) — no RTL test exercises that mount point today, the same way none
-  // exercises DesignTokensPage's other primitives; Playwright's contrast spec is what actually
-  // renders /design-tokens and would be what breaks if the mount were removed there.
+  // it anywhere. Task 1.19b: ThemeToggle now mounts app-wide (App.tsx), once every real screen
+  // follows the theme — no RTL test exercises that mount point, the same way none exercises
+  // App.tsx's routing; Playwright is what actually renders the app shell and would be what
+  // breaks if the mount were removed there.
   it("clicking switches the theme, persists it, and updates its own label", () => {
     document.documentElement.setAttribute("data-theme", "dark");
     render(<ThemeToggle />);

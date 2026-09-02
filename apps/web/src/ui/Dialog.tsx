@@ -95,7 +95,15 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-radius-sm border border-muted bg-surface p-4 font-chrome text-chrome-sm text-text"
+        // Fix round 1 (post-1.19b review): max-h + overflow-y-auto here, once, instead of
+        // every consumer re-adding it at screen level. The overlays this primitive replaced
+        // were `fixed inset-0 … overflow-y-auto py-8`, so tall content scrolled; this
+        // centred-flex container had no overflow handling at all, and only one of the four
+        // converted editors (EntityEditor.tsx, the one with LinksPanel/CommentThread nested
+        // in it) had added its own fix — CharacterEditor and SessionEditor's Guardar/Cancelar
+        // row could overflow a short viewport with nothing to scroll. 85vh leaves at least
+        // ~7.5vh clear above and below even on the shortest realistic viewport.
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-radius-sm border border-muted bg-surface p-4 font-chrome text-chrome-sm text-text"
       >
         <h2 id={titleId} className="mb-3 text-chrome-md font-semibold">
           {title}

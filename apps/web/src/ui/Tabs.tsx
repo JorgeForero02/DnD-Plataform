@@ -51,7 +51,13 @@ export function Tabs({ items, active: controlledActive, onChange }: TabsProps) {
 
   return (
     <div>
-      <div role="tablist" className="flex gap-1 border-b border-muted">
+      {/* Fix round 1 (post-1.19b review): flex-wrap restored. The old hand-rolled strip
+          CampaignDetailPage.tsx replaced with this primitive was `flex flex-wrap gap-2`; this
+          tablist had silently dropped the wrap, and with no overflow-x either, a 10-item strip
+          (CampaignDetailPage's real tab count) could push past a narrow container instead of
+          wrapping the way its predecessor did. Roles, key handling and the primitive's own
+          tests are unaffected — this is layout only. */}
+      <div role="tablist" className="flex flex-wrap gap-1 border-b border-muted">
         {items.map((item, index) => {
           const isActive = item.id === active;
           return (

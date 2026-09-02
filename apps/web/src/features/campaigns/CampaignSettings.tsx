@@ -4,6 +4,9 @@ import { DeleteButton } from "../../components/DeleteButton";
 import { useCampaign, useDeleteCampaign, useUpdateCampaign } from "./hooks";
 import { useMyRole } from "./members";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "./PermissionStatus";
+import { Button } from "../../ui/Button";
+import { Field, fieldControlClass } from "../../ui/Field";
+import { Panel } from "../../ui/Panel";
 
 // Fetches its own campaign (useCampaign shares the query cache and key with
 // CampaignDetailPage's own call, so this is not a second network request) instead of
@@ -86,52 +89,44 @@ export function CampaignSettings({ campaignId }: { campaignId: string }) {
 
   if (!campaign) {
     return (
-      <div className="rounded bg-slate-800 p-4">
-        <h3 className="text-sm font-semibold">Ajustes de la campaña</h3>
-        <p className="mt-2 text-slate-400">Cargando…</p>
-      </div>
+      <Panel tone="chrome">
+        <h3 className="text-chrome-sm font-semibold">Ajustes de la campaña</h3>
+        <p className="mt-2 text-muted">Cargando…</p>
+      </Panel>
     );
   }
 
   return (
-    <div className="rounded bg-slate-800 p-4">
-      <h3 className="text-sm font-semibold">Ajustes de la campaña</h3>
+    <Panel tone="chrome">
+      <h3 className="text-chrome-sm font-semibold">Ajustes de la campaña</h3>
       {/* Readable prose view of the description, independent of the disabled/enabled
           <textarea> below — an empty description must still say "Sin descripción."
           somewhere, and a disabled textarea (opacity-60, unreadable-ish for a player on most
           of this screen) isn't that place. Restored after an earlier draft of this task
           dropped it without noticing; see the fix-round note in task-4-report.md. */}
-      <p className="mt-1 text-sm text-slate-300">{campaign.description || "Sin descripción."}</p>
+      <p className="mt-1 text-chrome-sm text-muted">{campaign.description || "Sin descripción."}</p>
       <form onSubmit={onSubmit} className="mt-3 space-y-3">
-        {disabledReason && (
-          <p className="rounded bg-slate-700/50 p-2 text-xs text-amber-400">{disabledReason}</p>
-        )}
+        {disabledReason && <p className="text-chrome-xs text-muted">{disabledReason}</p>}
         {roleError && <RetryPermissions onRetry={retryRole} />}
-        <div>
-          <label htmlFor="campaign-name" className="block text-sm">
-            Nombre
-          </label>
+        <Field label="Nombre">
           <input
             id="campaign-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={roleUnresolved || !isDM}
-            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+            className={fieldControlClass}
           />
-        </div>
-        <div>
-          <label htmlFor="campaign-description" className="block text-sm">
-            Descripción
-          </label>
+        </Field>
+        <Field label="Descripción">
           <textarea
             id="campaign-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             disabled={roleUnresolved || !isDM}
-            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+            className={fieldControlClass}
           />
-        </div>
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        </Field>
+        {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
         <div className="flex items-start justify-between gap-2">
           <div>
             {/* The cascade this warns about is real, not decorative: schema.prisma cascades
@@ -154,19 +149,15 @@ export function CampaignSettings({ campaignId }: { campaignId: string }) {
                 "editar" reason above the form fields doesn't cover it because it names a
                 different action. */}
             {deleteDisabledReason && (
-              <p className="mt-1 text-xs text-amber-400">{deleteDisabledReason}</p>
+              <p className="mt-1 text-chrome-xs text-muted">{deleteDisabledReason}</p>
             )}
           </div>
-          <button
-            type="submit"
-            disabled={update.isPending || roleUnresolved || !isDM}
-            className="rounded bg-indigo-600 px-3 py-1 text-sm font-semibold disabled:opacity-50"
-          >
+          <Button type="submit" disabled={update.isPending || roleUnresolved || !isDM}>
             Guardar
-          </button>
+          </Button>
         </div>
-        {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
+        {deleteError && <p className="text-chrome-sm text-danger-text">{deleteError}</p>}
       </form>
-    </div>
+    </Panel>
   );
 }

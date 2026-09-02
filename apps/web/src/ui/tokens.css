@@ -113,21 +113,33 @@
   color-scheme: dark;
 }
 
-/* Fix round 2: no font-size here. --text-base (0.875rem = 14px) would have dropped the
- * unclassed baseline from the browser default (16px) across every untouched screen this task
- * is forbidden to restyle — the reviewer counted 98 leaf text elements with no size class in
- * untouched files (186 elements across 17 files counting containers), 28 of them form
- * controls, where under-16px text triggers iOS Safari's auto-zoom-on-focus. Critical 1's
- * fontSize/spacing key collision, with a different delivery mechanism: not a Tailwind utility
- * silently overwritten, but the cascade's own root size silently overwritten. Every primitive
- * in ui/ names its own size class, so removing this moves no primitive it built; the one
- * consequence anywhere in the app today is Tabs' tabpanel content (Tabs.tsx, no size class of
- * its own), which currently only renders on /design-tokens. If 14px turns out to be the right
- * body default, 1.19b re-adds this line in the same commit that converts the screens, where
- * someone actually looks at the result.
+/* Task 1.19b — the density decision 1.19 deliberately deferred (see the fix round 2 note this
+ * replaced, and the report). Baseline is --text-base, 14px: this is the chrome register's OWN
+ * default size — every chrome primitive (Button, Field's label, Panel's chrome tone) already
+ * sets text-chrome-sm (13px) for its own text, so a 16px root would have fought the density
+ * those primitives were already built at, not matched it. 14px reads as the "cool, dense,
+ * instrument" register the brief asks chrome for.
+ *
+ * Fix round 1 (post-1.19b review): the first version of this comment argued the iOS Safari
+ * zoom-on-focus risk "never applied" here because every control carries an EXPLICIT size
+ * class (Field/fieldControlClass) instead of inheriting this root value. That was the wrong
+ * test — Safari zooms on the COMPUTED size, not on whether a class set it — and
+ * fieldControlClass's explicit class is text-chrome-sm, 13px, which is UNDER the 16px
+ * threshold same as an inherited 14px would have been. 29 typeable controls across the
+ * converted screens were affected.
+ *
+ * Fix round 2: fix round 1's own fix — an element-selector override right here
+ * (`input, textarea, select { font-size: var(--text-md) }`, specificity 0,0,1) — never took
+ * effect. text-chrome-sm on fieldControlClass compiles to a CLASS selector (0,1,0), which
+ * beats an element selector regardless of source order; confirmed against the real compiled
+ * CSS. The rule shipped, and lost, silently. Deleted rather than left here as a comment that
+ * reads as "handled". The real fix now lives where the specificity fight can actually be won —
+ * a Tailwind arbitrary variant ON fieldControlClass itself (`ui/Field.tsx`), same specificity
+ * as the base utility it overrides, winning on source order the way Tailwind intends.
  */
 body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-chrome);
+  font-size: var(--text-base);
 }

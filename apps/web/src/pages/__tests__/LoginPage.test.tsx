@@ -57,4 +57,20 @@ describe("LoginPage", () => {
 
     await waitFor(() => expect(screen.getByText("Mis campañas")).toBeInTheDocument());
   });
+
+  // Fix round 1 (post-1.19b review): LoginPage.tsx gained role="alert" on the submit-error
+  // paragraph as part of the token conversion, but nothing asserted it — an unasserted
+  // behaviour change the reviewer flagged. A screen reader announces role="alert" content
+  // immediately, unprompted; a plain <p> only gets read if something happens to have focus
+  // there already, which nothing does on this screen.
+  it("announces a failed login as an alert, not silent text", async () => {
+    vi.spyOn(api, "login").mockRejectedValue(new Error("Invalid credentials"));
+    renderLogin();
+
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@a.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrong-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid credentials");
+  });
 });

@@ -7,20 +7,20 @@ import { JoinPage } from "./pages/JoinPage";
 import { DesignTokensPage } from "./pages/DesignTokensPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./features/auth/AuthGate";
+import { ThemeToggle } from "./ui/ThemeToggle";
 
 export function App() {
   return (
     <BrowserRouter>
-      {/* Fix round 2: ThemeToggle is deliberately NOT mounted here. Every real screen is
-          hard-pinned bg-slate-900/text-slate-100 (untouched, out of this task's authority),
-          so a click here would change nothing a user can see except the visibility Badge —
-          which, on CampaignDetailPage's untouched bg-slate-800 row, actually gets WORSE in
-          light (PUBLIC/OWNER_DM 1.10:1, the others 2.12–2.35:1; the toggle itself would sit at
-          2.87:1 in light, its own way back out). A global toggle would advertise a mode this
-          app does not functionally have yet and hand back a regression. ThemeToggle is still
-          built, tested, and mounted on /design-tokens (see DesignTokensPage.tsx) — 1.19b
-          mounts it app-wide in the same commit that makes the real screens follow the theme.
-          See the report for the full reasoning. */}
+      {/* Task 1.19b: ThemeToggle now mounts here, app-wide, on every route. 1.19 held it back
+          deliberately — every real screen was hard-pinned to a dark Tailwind palette literal, so
+          switching to light changed nothing a user could see except the visibility Badge,
+          which on the untouched entity row actually got WORSE in light (measured 1.10:1). That
+          screen is converted now (CampaignDetailPage.tsx and every consumer in features/ reads
+          tokens, not literals), so the toggle does what it claims: the whole product follows,
+          not just /design-tokens. Fixed position, outside <Routes> so it survives every
+          navigation without remounting or losing its own local state. */}
+      <ThemeToggle />
       {/* AuthGate wraps every route, not just the protected ones: it's what turns a token
           that survives a reload in localStorage back into a user in memory
           (auth.store.ts, docs/01-arquitectura.md), and a token that no longer resolves can

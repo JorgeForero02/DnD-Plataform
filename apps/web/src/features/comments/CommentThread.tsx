@@ -3,6 +3,8 @@ import { useMembers, useMyRole } from "../campaigns/members";
 import { CHECKING_PERMISSIONS } from "../campaigns/PermissionStatus";
 import { useAuthStore } from "../../store/auth.store";
 import { useComments, useCreateComment, useDeleteComment } from "./hooks";
+import { Button } from "../../ui/Button";
+import { fieldControlClass } from "../../ui/Field";
 
 export function CommentThread({ campaignId, entityId }: { campaignId: string; entityId: string }) {
   const comments = useComments(entityId);
@@ -45,21 +47,21 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
   };
 
   return (
-    <section className="space-y-2 rounded border border-slate-700 p-3">
-      <h3 className="text-sm font-semibold">Comentarios</h3>
-      {comments.isLoading && <p className="text-sm text-slate-400">Cargando comentarios…</p>}
+    <section className="space-y-2 rounded-radius-sm border border-muted p-3">
+      <h3 className="text-chrome-sm font-semibold">Comentarios</h3>
+      {comments.isLoading && <p className="text-chrome-sm text-muted">Cargando comentarios…</p>}
       {comments.isError && (
-        <p className="text-sm text-red-400">No se pudieron cargar los comentarios.</p>
+        <p className="text-chrome-sm text-danger-text">No se pudieron cargar los comentarios.</p>
       )}
       {comments.data && comments.data.length === 0 && (
-        <p className="text-sm text-slate-400">Sin comentarios.</p>
+        <p className="text-chrome-sm text-muted">Sin comentarios.</p>
       )}
       <ul className="space-y-1">
         {comments.data?.map((c) => {
           const canDelete = canDeleteComment(c.authorId);
           const rowReason = roleUnresolved ? CHECKING_PERMISSIONS : deleteReason;
           return (
-            <li key={c.id} className="flex items-start justify-between gap-2 text-sm">
+            <li key={c.id} className="flex items-start justify-between gap-2 text-chrome-sm">
               <span>
                 <strong>{authorName(c.authorId)}:</strong> {c.body}
               </span>
@@ -76,11 +78,11 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
                     })
                   }
                   disabled={!canDelete}
-                  className="text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="text-chrome-sm text-danger-text disabled:cursor-not-allowed disabled:text-muted"
                 >
                   Borrar
                 </button>
-                {!canDelete && <span className="text-xs text-slate-400">{rowReason}</span>}
+                {!canDelete && <span className="text-chrome-xs text-muted">{rowReason}</span>}
               </span>
             </li>
           );
@@ -95,17 +97,13 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Escribe un comentario…"
-          className="flex-1 rounded bg-slate-700 p-1 text-sm"
+          className={`flex-1 ${fieldControlClass}`}
         />
-        <button
-          type="submit"
-          disabled={!body.trim() || createComment.isPending}
-          className="rounded bg-indigo-600 px-2 py-1 text-sm font-semibold disabled:opacity-50"
-        >
+        <Button type="submit" disabled={!body.trim() || createComment.isPending}>
           Publicar
-        </button>
+        </Button>
       </form>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
     </section>
   );
 }

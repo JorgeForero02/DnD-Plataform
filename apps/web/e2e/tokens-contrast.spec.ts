@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, devices, type Locator, type Page } from "@playwright/test";
 
 // Task 1.19 — "Contrast is MEASURED, never assumed." This spec renders /design-tokens (every
 // primitive + every visibility badge at once, see src/pages/DesignTokensPage.tsx), reads the
@@ -195,44 +195,26 @@ function record(theme: string, label: string, ratio: number, threshold: number) 
   expect(ratio, `${label} in ${theme} theme`).toBeGreaterThanOrEqual(threshold);
 }
 
-// Fix round 2, item 4: the only thing that used to stop a future edit from turning a gating
-// record() into a silent observe() was a comment. That is not structural. Two things pin it
-// now: observe() refuses any label that doesn't match the one pattern it exists for (the
-// Badge-on-bg-slate-800 measurement), and afterAll() asserts the observed count is exactly the
-// 10 this spec is supposed to produce (5 visibility levels × 2 themes) — not 9, not 11. Widening
-// what observe() accepts, or how many times it's called, now has to be a deliberate, visible
-// edit to this allowlist and this count, not a one-line swap three hundred lines away.
-const OBSERVE_ALLOWLIST = /^badge .+ texto \(fila bg-slate-800 real\)$/;
-const EXPECTED_OBSERVE_COUNT = 10;
-let observeCallCount = 0;
-
-// Same measurement and the same log line as record(), but does NOT fail the run. Reserved for
-// exactly one pair below: the Badge measured against CampaignDetailPage.tsx's real, untouched
-// `bg-slate-800` row — a background this task has no authority to change (the brief forbids
-// redesigning existing screens; the coordinator separately logs the app's remaining literal
-// Tailwind classes as project debt, not this task's job). Failing this spec on it would force a
-// choice between touching a screen this task must not redesign, or leaving the whole gate red
-// forever over debt someone else owns — neither is right. It still gets measured and reported,
-// so the gap is evidence on record, not silently dropped the way "all passing" would drop it.
-function observe(theme: string, label: string, ratio: number, threshold: number) {
-  if (!OBSERVE_ALLOWLIST.test(label)) {
-    throw new Error(
-      `observe() was called with "${label}", which is outside its pinned allowlist ` +
-        `(${OBSERVE_ALLOWLIST}). observe() exists ONLY for the Badge-on-bg-slate-800 ` +
-        `measurement — every other pair must use record(), which actually gates the run. If ` +
-        `this is a genuine new out-of-scope pair, widen OBSERVE_ALLOWLIST deliberately here, ` +
-        `don't just call observe() with a new label.`,
-    );
-  }
-  observeCallCount += 1;
-  const status =
-    ratio >= threshold ? "PASS" : "FAIL (pre-existing debt, out of scope — see report)";
-  results.push(`[${theme}] ${label}: ${ratio.toFixed(2)}:1 (needs ${threshold}:1) — ${status}`);
-}
+// Task 1.19b: the observe()/OBSERVE_ALLOWLIST escape hatch from 1.19 is gone. It existed for
+// exactly one pair — the visibility Badge measured against CampaignDetailPage.tsx's real,
+// untouched `bg-slate-800` row, debt this task had no authority to fix. That row is converted
+// now (ROW_BUTTON_CLASS, CampaignDetailPage.tsx reads --surface/--muted like everything else),
+// so there is no more out-of-scope background to protect a measurement from — every pair below,
+// on /design-tokens and on the real screens, goes through record() and actually gates the run.
 
 async function gotoTheme(page: Page, theme: "dark" | "light") {
   await page.goto(`/design-tokens?theme=${theme}`);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+}
+
+// Task 1.19b: sets the theme via the same localStorage key ui/theme.ts and index.html's
+// flash-prevention script read (getStoredTheme/STORAGE_KEY), via an init script so it is
+// already in place before the FIRST navigation of the test — unlike gotoTheme() above (which
+// only ever visits /design-tokens with its own ?theme= query param), the real-screen
+// measurements below cross several navigations (register → create campaign → open it), and the
+// theme has to survive every one of them the way a real visitor's stored choice would.
+async function setStoredTheme(page: Page, theme: "dark" | "light") {
+  await page.addInitScript((t) => localStorage.setItem("dnd-theme", t), theme);
 }
 
 for (const theme of ["dark", "light"] as const) {
@@ -287,26 +269,16 @@ for (const theme of ["dark", "light"] as const) {
       record(theme, `badge ${label} borde`, contrastRatio(border, borderBg), 3);
     }
 
-    // --- Important 6: the same five badges, but on the real product's row background
-    // (bg-slate-800, CampaignDetailPage.tsx's untouched entity/session rows) instead of ours.
-    // observe(), not record(): the first real run of this found PLAYERS/SPECIFIC_PLAYERS
-    // (--accent-text tone) at 4.38:1 and DM_ONLY (--danger-text tone) at 4.05:1 in dark, and
-    // PUBLIC at 1.10:1 in light — a genuine, measured failure, but of a background this task
-    // has no authority to touch (see the comment on observe() above and the report's coverage
-    // section). Measured and printed either way, not swept under "all passing".
+    // --- Task 1.19b: the same five badges, on a bordered chrome row (--surface), which is what
+    // CampaignDetailPage.tsx's entity/session/character rows actually paint now that they read
+    // tokens instead of bg-slate-800. record(), not the old observe() — there is no more
+    // out-of-scope background here to protect a measurement from.
     {
-      const realRow = page.locator(
-        '[aria-label="badges sobre la fila real de CampaignDetailPage"]',
-      );
+      const row = page.locator('[aria-label="badges sobre una fila de la campaña"]');
       for (const [level, label] of Object.entries(badgeLabels)) {
-        const badge = realRow.locator(`[data-visibility="${level}"]`);
+        const badge = row.locator(`[data-visibility="${level}"]`);
         const { color, bg } = await effectiveTextColours(badge);
-        observe(
-          theme,
-          `badge ${label} texto (fila bg-slate-800 real)`,
-          contrastRatio(color, bg),
-          4.5,
-        );
+        record(theme, `badge ${label} texto (fila --surface)`, contrastRatio(color, bg), 4.5);
       }
     }
 
@@ -409,17 +381,163 @@ for (const theme of ["dark", "light"] as const) {
   });
 }
 
-test.afterAll(() => {
-  console.log(
-    "\n=== Contraste WCAG medido (task 1.19, fix round 2) ===\n" + results.join("\n") + "\n",
-  );
-  // Fix round 2, item 4: the count half of the pin. Not 9, not 11 -- exactly the 5 visibility
-  // levels x 2 theme runs this spec is supposed to produce via observe(). A different count
-  // means either a new observe() call snuck in (caught structurally above if its label doesn't
-  // match OBSERVE_ALLOWLIST, but not if someone widens the allowlist carelessly) or one of the
-  // 10 expected calls silently stopped happening.
+// Task 1.19b — the measurement this task exists for: /design-tokens above is a synthetic
+// showcase, and the 1.10:1 defect that started this task lived on a REAL screen, not there.
+// These two blocks repeat the same measured-not-assumed discipline against the actual login
+// screen (a form, unauthenticated) and the actual campaign detail screen (chrome + tabs + a
+// row + a badge, authenticated, seeded through the real UI, not fixtures), in both themes.
+function nuevaCuentaContraste() {
+  const marca = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  return {
+    email: `contraste-${marca}@example.com`,
+    password: "password123",
+    displayName: `Contraste ${marca}`,
+  };
+}
+
+for (const theme of ["dark", "light"] as const) {
+  test(`contraste medido en la pantalla de login (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    await page.goto("/login");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("heading", { name: "Iniciar sesión" }),
+      );
+      record(theme, "login: título", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(page.getByText("Email", { exact: true }));
+      record(theme, "login: etiqueta de campo", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const input = page.getByLabel("Email");
+      const { border, bg } = await borderColourAgainstBg(input);
+      record(theme, "login: borde del campo", contrastRatio(border, bg), 3);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("button", { name: "Log in" }),
+      );
+      record(theme, "login: texto del botón", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("link", { name: "Regístrate" }),
+      );
+      record(theme, "login: enlace de registro", contrastRatio(color, bg), 4.5);
+    }
+  });
+
+  test(`contraste medido en la pantalla de detalle de campaña (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuentaContraste();
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Email").fill(cuenta.email);
+    await page.getByLabel("Password").fill(cuenta.password);
+    await page.getByRole("button", { name: "Register" }).click();
+    await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Nueva campaña" }).click();
+    await page.getByLabel("Nombre").fill("Campaña de contraste");
+    await page.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("link", { name: "Campaña de contraste" }).click();
+    await expect(page.getByRole("heading", { name: "Campaña de contraste" })).toBeVisible();
+
+    await page.getByRole("tab", { name: "NPCs" }).click();
+    await page.getByRole("button", { name: "Nuevo" }).click();
+    await page.getByLabel("Nombre").fill("Strahd von Zarovich");
+    await page.getByLabel("Etiquetas (separadas por coma)").fill("villano");
+    // DM_ONLY is the danger tone — the worst-case badge pair, and the one 1.19's own report
+    // flagged as needing --danger-text instead of --danger for exactly this reason.
+    await page.getByLabel("Visibilidad").selectOption("DM_ONLY");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("heading", { name: "Campaña de contraste" }),
+      );
+      record(theme, "detalle de campaña: título", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "NPCs" }));
+      record(theme, "detalle de campaña: tab activo texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "Resumen" }));
+      record(theme, "detalle de campaña: tab inactivo texto", contrastRatio(color, bg), 4.5);
+    }
+    const row = page.getByRole("button", { name: /Strahd von Zarovich/ });
+    {
+      const { color, bg } = await effectiveTextColours(row);
+      record(theme, "detalle de campaña: fila de entidad texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { border, bg } = await borderColourAgainstBg(row);
+      record(theme, "detalle de campaña: fila de entidad borde", contrastRatio(border, bg), 3);
+    }
+    {
+      const badge = row.locator('[data-visibility="DM_ONLY"]');
+      const { color, bg } = await effectiveTextColours(badge);
+      record(theme, "detalle de campaña: badge DM_ONLY texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(badge);
+      record(theme, "detalle de campaña: badge DM_ONLY borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const tag = row.getByText("villano", { exact: true });
+      const { color, bg } = await effectiveTextColours(tag);
+      record(theme, "detalle de campaña: etiqueta texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(page.getByRole("button", { name: "Nuevo" }));
+      record(theme, "detalle de campaña: botón Nuevo texto", contrastRatio(color, bg), 4.5);
+    }
+  });
+}
+
+// Fix round 2 (post-1.19b review): fix round 1's "computed size, not explicitness"
+// argument was correct about the test, then lost to the very cascade it was reasoning
+// about -- the element-selector override it shipped in tokens.css never beat
+// fieldControlClass's text-chrome-sm class selector, so every real control still computed
+// to 13px on a coarse pointer. This measures the ACTUAL computed font-size on a real
+// screen, under real touch emulation, instead of asserting a class string is present (the
+// exact kind of test that let the broken fix through). devices["iPhone 13"] sets
+// hasTouch/isMobile, which is what makes Chromium itself report (pointer: coarse) --
+// verified below, not assumed, because the brief asked to say so plainly if it turned out
+// not to match.
+test("un control de formulario real no dispara el zoom de iOS Safari en un puntero basto", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ ...devices["iPhone 13"] });
+  const page = await context.newPage();
+  await page.goto("/login");
+
+  const reportsCoarsePointer = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
   expect(
-    observeCallCount,
-    `expected exactly ${EXPECTED_OBSERVE_COUNT} observe() calls (5 badge levels x 2 themes), got ${observeCallCount}`,
-  ).toBe(EXPECTED_OBSERVE_COUNT);
+    reportsCoarsePointer,
+    "devices['iPhone 13'] should make Chromium itself report (pointer: coarse); if this is " +
+      "false the media query this fix relies on cannot match and a different query is needed",
+  ).toBe(true);
+
+  const email = page.getByLabel("Email");
+  await email.focus();
+  const fontSizePx = await email.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  results.push(
+    `[touch] login: campo Email tamano de fuente: ${fontSizePx}px (necesita >=16px) -- ` +
+      (fontSizePx >= 16 ? "PASS" : "FAIL"),
+  );
+  expect(
+    fontSizePx,
+    "computed font-size on a real <input> under (pointer: coarse)",
+  ).toBeGreaterThanOrEqual(16);
+
+  await context.close();
+});
+
+test.afterAll(() => {
+  console.log("\n=== Contraste WCAG medido (task 1.19 + 1.19b) ===\n" + results.join("\n") + "\n");
 });

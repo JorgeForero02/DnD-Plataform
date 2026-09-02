@@ -31,7 +31,7 @@
 tokens): **43 e2e de API** en 12 suites y **11 e2e de navegador** en 3 suites, todas verdes.
 
 La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
-otra hace: **mide**. Recorre `/design-tokens` en los dos temas, lee los colores **calculados**
+otra hace: **mide**. Recorre `/design-tokens` **y dos pantallas reales** (entrar y el detalle de campaña) en los dos temas, lee los colores **calculados**
 del DOM —componiendo el alfa contra el fondo real, no leyendo el color declarado— y falla por
 debajo de 4,5:1 en texto y 3:1 en bordes y anillos de foco. Setenta mediciones bloquean la
 prueba; diez más se registran sin bloquear, y **solo esas diez**: hay una lista de etiquetas

@@ -30,26 +30,33 @@ Lo que falta, y va como **tarea 1.18**:
 | 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
 | 8 | **HECHO a medias** (1.18a, mitad de servidor): ya se puede cambiar el nombre visible y la contraseña por API —exigiendo la actual, verificada con argon2—, y cambiarla **invalida los tokens anteriores**. Falta la **pantalla** (va en 1.18b). **Recuperarla si se olvida sigue BLOQUEADO**: necesita servicio de correo, que no existe; se decide junto al despliegue | web |
 
-### Deuda de la capa visual, tras 1.19 (2026-09-01)
+### Deuda de la capa visual, tras 1.19b (2026-09-01)
 
-La capa de tokens y las seis primitivas existen (`apps/web/src/ui/`), pero **gobiernan casi
-nada de lo que se ve todavía**: 1.19 convirtió a propósito solo dos consumidores.
+Las 19 pantallas están convertidas: cero clases de paleta de Tailwind en `apps/web/src`, el
+interruptor de tema vive en el chrome, y el contraste se mide sobre pantallas **reales** en los
+dos temas. El defecto que motivó la tarea está cerrado: el distintivo `DM_ONLY` en tema claro
+pasó de **1,10:1 a 5,95:1**.
 
-- **202 clases de paleta de Tailwind en 19 ficheros** siguen sin convertir (`bg-slate-900`,
-  `text-amber-400`, `text-red-400`…), y cada pantalla está clavada a `bg-slate-900
-  text-slate-100`, así que **no siguen el tema**. Es la tarea **1.19b**, decidida con el autor
-  el 2026-09-01 y colocada **antes de 1.18b** para no maquetar dos veces las pantallas de error.
-- **El `Badge` real es ilegible en tema claro sobre la fila sin convertir**: medido, `1.10:1`
-  para PUBLIC y OWNER_DM sobre `bg-slate-800`, `2.35:1` y `2.12:1` para los demás (en oscuro:
-  11.73 / 4.38 / 4.05). Lo cierra 1.19b al convertir la fila.
-- **`ThemeToggle` existe, se prueba, y solo es alcanzable en `/design-tokens`.** No se monta en
-  el chrome a propósito: mientras las pantallas no sigan el tema, el único efecto visible de
-  pulsarlo sería dejar los distintivos de visibilidad ilegibles. Se monta en 1.19b.
-- **La densidad está sin decidir.** 1.19 quitó el `font-size` del `body` porque bajaba la base
-  de 16 a 14 px en 17 ficheros que nadie había revisado —98 elementos de texto sin clase de
-  tamaño, 28 de ellos controles de formulario, y por debajo de 16 px iOS Safari hace zoom al
-  enfocar—. La decisión se toma en 1.19b **con las pantallas delante**, no como efecto
-  colateral.
+Lo que queda abierto:
+
+- **Faltan `--warning` y `--success`, y tres sitios pagan por ello.** Los usos viejos de `amber`
+  y `emerald` se remapearon a los tokens existentes; siete de los once quedaron bien o mejor
+  (dos eran avisos mal etiquetados que ahora son rojos de verdad), pero tres perdieron su
+  registro: el aviso de que generar otro enlace **no anula los anteriores** (arreglado en
+  falso con `--danger-text`, que dice "peligro" donde toca decir "cuidado"), la razón por la
+  que no puedes editar una fila —que hoy se lee como metadato, igual que las etiquetas— y el
+  "Copiado." del panel de invitaciones, que usa el color de los enlaces. **Está esperando una
+  decisión del autor entre dos direcciones de paleta**, con los hexadecimales ya medidos en los
+  dos temas. No se inventa un color mientras tanto.
+- **La densidad quedó en 14 px de base**, decidida con las pantallas delante y no como efecto
+  colateral. Los controles de formulario llevan **suelo de 16 px en pantallas táctiles**
+  (`@media (pointer: coarse)`), porque por debajo de eso iOS Safari hace zoom al enfocar — la
+  primera versión del arreglo argumentaba que el riesgo no aplicaba "porque cada control lleva
+  clase explícita", y lo que dispara el zoom es el tamaño **calculado**.
+- **La interfaz sigue mezclando idiomas**: la pantalla de entrar dice *Email*, *Password* y
+  *Log in* en inglés, contra la regla del proyecto (interfaz en español). No se tocó dentro de
+  una tarea de color; es tarea propia, y arrastra los localizadores de los recorridos de
+  navegador.
 
 ### Deuda nueva aceptada en 1.18a (2026-09-01)
 

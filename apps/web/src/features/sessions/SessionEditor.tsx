@@ -3,6 +3,9 @@ import type { CreateSessionInput, UpdateSessionInput, Visibility } from "@dnd/sh
 import { DeleteButton } from "../../components/DeleteButton";
 import { useCreateSession, useDeleteSession, useUpdateSession } from "./hooks";
 import type { Session } from "./api";
+import { Button } from "../../ui/Button";
+import { Field, fieldControlClass } from "../../ui/Field";
+import { Dialog } from "../../ui/Dialog";
 
 // SPECIFIC_PLAYERS and OWNER_DM are both dropped, and for the same reason: Session has no
 // `createdById` distinct from the DM (sessions.service.ts passes createdById: "" to
@@ -130,62 +133,49 @@ export function SessionEditor({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/50 py-8">
-      <form onSubmit={onSubmit} className="w-[28rem] space-y-3 rounded-lg bg-slate-800 p-6">
-        <h2 className="text-lg font-bold">{isEdit ? "Editar sesión" : "Nueva sesión"}</h2>
+    <Dialog open onClose={onClose} title={isEdit ? "Editar sesión" : "Nueva sesión"}>
+      <form onSubmit={onSubmit} className="space-y-3">
         {readOnly && (
-          <p className="rounded bg-slate-700/50 p-2 text-xs text-amber-400">
+          <p className="rounded-radius-sm border border-muted bg-bg p-2 text-chrome-xs text-muted">
             {readOnlyReason ?? "Solo puedes ver esta sesión."}
           </p>
         )}
-        <div>
-          <label htmlFor="session-title" className="block text-sm">
-            Título
-          </label>
+        <Field label="Título">
           <input
             id="session-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={readOnly}
-            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+            className={fieldControlClass}
           />
-        </div>
-        <div>
-          <label htmlFor="session-scheduled-at" className="block text-sm">
-            Fecha y hora
-          </label>
+        </Field>
+        <Field label="Fecha y hora">
           <input
             id="session-scheduled-at"
             type="datetime-local"
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
             disabled={readOnly}
-            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+            className={fieldControlClass}
           />
-        </div>
-        <div>
-          <label htmlFor="session-notes" className="block text-sm">
-            Notas
-          </label>
+        </Field>
+        <Field label="Notas">
           <textarea
             id="session-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={readOnly}
-            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+            className={fieldControlClass}
             rows={3}
           />
-        </div>
-        <div>
-          <label htmlFor="session-visibility" className="block text-sm">
-            Visibilidad
-          </label>
+        </Field>
+        <Field label="Visibilidad">
           <select
             id="session-visibility"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as Visibility)}
             disabled={readOnly}
-            className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+            className={fieldControlClass}
           >
             {visibilityOptions.map((v) => (
               <option key={v} value={v}>
@@ -194,8 +184,8 @@ export function SessionEditor({
               </option>
             ))}
           </select>
-        </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        </Field>
+        {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
         <div className="flex items-center justify-between gap-2">
           {isEdit && (
             <DeleteButton
@@ -207,21 +197,20 @@ export function SessionEditor({
             />
           )}
           <div className="flex flex-1 justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={pending || readOnly}
               title={readOnly ? readOnlyReason : undefined}
-              className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
             >
               Guardar
-            </button>
+            </Button>
           </div>
         </div>
-        {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
+        {deleteError && <p className="text-chrome-sm text-danger-text">{deleteError}</p>}
       </form>
-    </div>
+    </Dialog>
   );
 }

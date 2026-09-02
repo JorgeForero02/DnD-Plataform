@@ -57,4 +57,18 @@ describe("RegisterPage", () => {
 
     await waitFor(() => expect(screen.getByText("Mis campañas")).toBeInTheDocument());
   });
+
+  // Fix round 1 (post-1.19b review): same gap as LoginPage.test.tsx — RegisterPage.tsx gained
+  // role="alert" on the submit-error paragraph but nothing asserted it.
+  it("announces a failed registration as an alert, not silent text", async () => {
+    vi.spyOn(api, "register").mockRejectedValue(new Error("Email already in use"));
+    renderRegister();
+
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "B" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "b@b.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Email already in use");
+  });
 });

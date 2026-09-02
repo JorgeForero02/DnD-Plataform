@@ -9,12 +9,17 @@ import {
   translateInviteError,
 } from "../features/invites/api";
 import { campaignsKey } from "../features/campaigns/hooks";
+import { Button } from "../ui/Button";
 
 type AcceptState =
   | { status: "idle" }
   | { status: "pending" }
   | { status: "success"; campaignId: string }
   | { status: "error"; message: string };
+
+const SCREEN_CLASS = "flex min-h-screen items-center justify-center bg-bg text-text";
+const CARD_CLASS =
+  "w-96 space-y-3 rounded-radius-sm border border-muted bg-surface p-6 text-center";
 
 // /join/:token is deliberately NOT behind ProtectedRoute (App.tsx): "no session yet" is one of
 // the three paths this page has to cover on its own, not a case ProtectedRoute can redirect
@@ -85,18 +90,18 @@ export function JoinPage() {
 
   if (!authToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
-        <div className="w-96 space-y-3 rounded-lg bg-slate-800 p-6 text-center">
+      <div className={SCREEN_CLASS}>
+        <div className={CARD_CLASS}>
           <p>Necesitas iniciar sesión para aceptar esta invitación.</p>
-          <p className="text-sm text-slate-400">
+          <p className="text-chrome-sm text-muted">
             Al volver, la invitación se completará sola: no hace falta que pegues el enlace otra
             vez.
           </p>
-          <div className="flex justify-center gap-4 text-sm">
-            <Link to="/login" className="text-indigo-400">
+          <div className="flex justify-center gap-4 text-chrome-sm">
+            <Link to="/login" className="text-accent-text">
               Iniciar sesión
             </Link>
-            <Link to="/register" className="text-indigo-400">
+            <Link to="/register" className="text-accent-text">
               Crear cuenta
             </Link>
           </div>
@@ -107,10 +112,10 @@ export function JoinPage() {
 
   if (state.status === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
-        <div className="w-96 space-y-3 rounded-lg bg-slate-800 p-6 text-center">
-          <p className="text-red-400">{state.message}</p>
-          <Link to="/" className="text-indigo-400">
+      <div className={SCREEN_CLASS}>
+        <div className={CARD_CLASS}>
+          <p className="text-danger-text">{state.message}</p>
+          <Link to="/" className="text-accent-text">
             Volver a mis campañas
           </Link>
         </div>
@@ -120,17 +125,17 @@ export function JoinPage() {
 
   if (state.status === "idle") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
-        <div className="w-96 space-y-3 rounded-lg bg-slate-800 p-6 text-center">
+      <div className={SCREEN_CLASS}>
+        <div className={CARD_CLASS}>
           <p>Estás a punto de unirte a una campaña con esta invitación.</p>
-          <p className="text-sm text-slate-400">
+          <p className="text-chrome-sm text-muted">
             Aceptar consume el enlace: dejará de funcionar para cualquier otra persona que lo use
             después.
           </p>
-          <button onClick={onAccept} className="w-full rounded bg-indigo-600 p-2 font-semibold">
+          <Button onClick={onAccept} className="w-full">
             Unirse a la campaña
-          </button>
-          <Link to="/" className="block text-sm text-indigo-400">
+          </Button>
+          <Link to="/" className="block text-chrome-sm text-accent-text">
             Cancelar
           </Link>
         </div>
@@ -139,7 +144,7 @@ export function JoinPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
+    <div className={SCREEN_CLASS}>
       <p>Aceptando invitación…</p>
     </div>
   );

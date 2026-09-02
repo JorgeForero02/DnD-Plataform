@@ -16,8 +16,20 @@ export interface FieldProps {
 
 // Shared class string for the control itself (input/textarea/select) — Field only owns the
 // label/error scaffolding and aria wiring around whatever control is passed in.
+//
+// Fix round 2 (post-1.19b review): the first fix for the iOS Safari zoom-on-focus risk added
+// an element-selector override in tokens.css (`@media (pointer: coarse) { input, textarea,
+// select { font-size: var(--text-md) } }`, specificity 0,0,1). It never took effect —
+// text-chrome-sm below compiles to a CLASS selector (0,1,0), and a class beats an element
+// selector regardless of source order, confirmed against the real compiled CSS. Fixed at the
+// source instead of fighting the cascade: the coarse-pointer size is a Tailwind arbitrary
+// variant on THIS class, same specificity as the base utility it overrides (Tailwind emits the
+// variant after the base, so it wins honestly on source order, not `!important`). The
+// element-selector block in tokens.css is deleted, not left as dead weight that reads as
+// "handled" to the next person.
 export const fieldControlClass =
   "w-full rounded-radius-sm border border-muted bg-surface px-2 py-1.5 font-chrome text-chrome-sm text-text " +
+  "[@media(pointer:coarse)]:text-chrome-md " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent " +
   "aria-[invalid=true]:border-danger disabled:cursor-not-allowed disabled:text-muted";
 

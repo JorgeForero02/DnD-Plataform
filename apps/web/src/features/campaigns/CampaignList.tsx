@@ -4,9 +4,9 @@ import { useCampaigns } from "./hooks";
 export function CampaignList() {
   const { data, isLoading, isError, error } = useCampaigns();
 
-  if (isLoading) return <p className="text-slate-400">Cargando campañas…</p>;
-  if (isError) return <p className="text-red-400">{(error as Error).message}</p>;
-  if (!data || data.length === 0) return <p className="text-slate-400">Aún no tienes campañas.</p>;
+  if (isLoading) return <p className="mt-4 text-muted">Cargando campañas…</p>;
+  if (isError) return <p className="mt-4 text-danger-text">{(error as Error).message}</p>;
+  if (!data || data.length === 0) return <p className="mt-4 text-muted">Aún no tienes campañas.</p>;
 
   return (
     <ul className="mt-4 space-y-2">
@@ -14,10 +14,12 @@ export function CampaignList() {
         <li key={c.id}>
           <Link
             to={`/campaigns/${c.id}`}
-            className="block rounded bg-slate-800 p-4 hover:bg-slate-700"
+            className="block rounded-radius-sm border border-muted bg-surface p-4 text-text hover:border-accent"
           >
             <span className="font-semibold">{c.name}</span>
-            {c.description && <span className="block text-sm text-slate-400">{c.description}</span>}
+            {c.description && (
+              <span className="block text-chrome-sm text-muted">{c.description}</span>
+            )}
           </Link>
         </li>
       ))}

@@ -4,6 +4,8 @@ import { useMyRole } from "../campaigns/members";
 import { CHECKING_PERMISSIONS } from "../campaigns/PermissionStatus";
 import { useAuthStore } from "../../store/auth.store";
 import { useCreateLink, useDeleteLink, useLinks } from "./hooks";
+import { Button } from "../../ui/Button";
+import { fieldControlClass } from "../../ui/Field";
 
 // The task 1.15 gap this task closes: this panel used to paint "Quitar" unconditionally,
 // without looking at who was looking at it. The server rule (links.service.ts:75) is DM or
@@ -57,18 +59,20 @@ export function LinksPanel({
   };
 
   return (
-    <section className="space-y-2 rounded border border-slate-700 p-3">
-      <h3 className="text-sm font-semibold">Enlaces</h3>
-      {links.isLoading && <p className="text-sm text-slate-400">Cargando enlaces…</p>}
-      {links.isError && <p className="text-sm text-red-400">No se pudieron cargar los enlaces.</p>}
+    <section className="space-y-2 rounded-radius-sm border border-muted p-3">
+      <h3 className="text-chrome-sm font-semibold">Enlaces</h3>
+      {links.isLoading && <p className="text-chrome-sm text-muted">Cargando enlaces…</p>}
+      {links.isError && (
+        <p className="text-chrome-sm text-danger-text">No se pudieron cargar los enlaces.</p>
+      )}
       {links.data && links.data.length === 0 && (
-        <p className="text-sm text-slate-400">Sin enlaces.</p>
+        <p className="text-chrome-sm text-muted">Sin enlaces.</p>
       )}
       <ul className="space-y-1">
         {links.data?.map((l) => (
-          <li key={l.id} className="flex items-center justify-between gap-2 text-sm">
+          <li key={l.id} className="flex items-center justify-between gap-2 text-chrome-sm">
             <span>
-              {l.to.name} <span className="text-slate-400">({l.to.type})</span>
+              {l.to.name} <span className="text-muted">({l.to.type})</span>
               {l.label ? ` — ${l.label}` : ""}
             </span>
             <button
@@ -80,7 +84,7 @@ export function LinksPanel({
               }
               disabled={!canRemoveLinks}
               title={!canRemoveLinks ? removeReason : undefined}
-              className="shrink-0 text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 text-chrome-sm text-danger-text disabled:cursor-not-allowed disabled:text-muted"
             >
               Quitar
             </button>
@@ -93,7 +97,7 @@ export function LinksPanel({
           for the whole panel says it, matching CampaignDetailPage.tsx's disabled-with-visible-
           explanation pattern. */}
       {!canRemoveLinks && links.data && links.data.length > 0 && (
-        <p className="text-xs text-slate-400">{removeReason}</p>
+        <p className="text-chrome-xs text-muted">{removeReason}</p>
       )}
       <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
         <label htmlFor="link-target" className="sr-only">
@@ -103,7 +107,7 @@ export function LinksPanel({
           id="link-target"
           value={toId}
           onChange={(e) => setToId(e.target.value)}
-          className="rounded bg-slate-700 p-1 text-sm"
+          className={fieldControlClass}
         >
           <option value="">Elige un destino…</option>
           {candidates.map((c) => (
@@ -120,17 +124,13 @@ export function LinksPanel({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Etiqueta (opcional)"
-          className="rounded bg-slate-700 p-1 text-sm"
+          className={fieldControlClass}
         />
-        <button
-          type="submit"
-          disabled={!toId || createLink.isPending}
-          className="rounded bg-indigo-600 px-2 py-1 text-sm font-semibold disabled:opacity-50"
-        >
+        <Button type="submit" disabled={!toId || createLink.isPending}>
           Añadir enlace
-        </button>
+        </Button>
       </form>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
     </section>
   );
 }

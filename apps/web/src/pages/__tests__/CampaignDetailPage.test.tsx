@@ -107,10 +107,10 @@ describe("CampaignDetailPage", () => {
     renderPage();
     expect(await screen.findByText("Curse of Strahd")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "NPCs" }));
+    fireEvent.click(screen.getByRole("tab", { name: "NPCs" }));
     expect(await screen.findByText("Strahd von Zarovich")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Sesiones" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Sesiones" }));
     expect(await screen.findByText("Session Zero")).toBeInTheDocument();
   });
 });
@@ -199,7 +199,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets a player open a session they can view but not manage, in a read-only editor", async () => {
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Sesiones" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo" });
     await waitFor(() => expect(newButton).toBeDisabled());
@@ -223,7 +223,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets the DM open and edit a session normally", async () => {
     asDM();
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Sesiones" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo" });
     await waitFor(() => expect(newButton).not.toBeDisabled());
@@ -238,7 +238,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets a player open an entity created by someone else and read it, but not save changes", async () => {
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo" });
     // Any campaign member can create an entity (entities.service.ts requireMember) — only
@@ -280,7 +280,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         : [],
     );
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
 
     const row = await screen.findByRole("button", { name: /Mi propio NPC/ });
     await waitFor(() => expect(row).not.toBeDisabled());
@@ -293,7 +293,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets a player open another player's character and read it, but not save changes", async () => {
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo" });
     await waitFor(() => expect(newButton).not.toBeDisabled());
@@ -331,7 +331,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
       },
     ]);
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
 
     const row = await screen.findByRole("button", { name: /Mi propio personaje/ });
     await waitFor(() => expect(row).not.toBeDisabled());
@@ -426,7 +426,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     const spy = vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd/ });
 
     fireEvent.click(screen.getByRole("button", { name: /Strahd/ }));
@@ -465,7 +465,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     const spy = vi.spyOn(sessionsApi, "deleteSession").mockResolvedValue({ deleted: true });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Sesiones" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
     await screen.findByRole("button", { name: /Sesión Uno/ });
 
     fireEvent.click(screen.getByRole("button", { name: /Sesión Uno/ }));
@@ -504,7 +504,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     const spy = vi.spyOn(charactersApi, "deleteCharacter").mockResolvedValue({ deleted: true });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
     await screen.findByRole("button", { name: /Elara/ });
 
     fireEvent.click(screen.getByRole("button", { name: /Elara/ }));
@@ -562,7 +562,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("pinta las etiquetas en la fila, y una ficha sin etiquetas no pinta nada", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
 
     const strahdRow = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
     expect(strahdRow).toHaveTextContent("Barovia");
@@ -580,7 +580,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("escribir en el buscador reduce las filas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -592,7 +592,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("pulsar una etiqueta reduce las filas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     const avernusTag = screen.getByRole("button", { name: "Avernus", pressed: false });
@@ -605,7 +605,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("dos etiquetas seleccionadas exigen las dos: una ficha con solo una de ellas desaparece", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.click(screen.getByRole("button", { name: "Barovia", pressed: false }));
@@ -622,7 +622,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it('"Quitar filtros" restaura la lista completa', async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -639,7 +639,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it('con filtro activo y cero resultados sale el mensaje de filtro, no "Sin elementos."', async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
@@ -662,13 +662,13 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
           : [],
     );
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
     expect(screen.queryByRole("button", { name: /^Ismark/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Lugares" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Lugares" }));
     const barovia = await screen.findByRole("button", { name: /Barovia/ });
     expect(barovia).toBeInTheDocument();
     expect(screen.getByLabelText("Buscar")).toHaveValue("");

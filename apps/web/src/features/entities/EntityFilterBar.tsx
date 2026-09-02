@@ -1,4 +1,5 @@
 import type { EntityFilterValue } from "./filter";
+import { Field, fieldControlClass } from "../../ui/Field";
 
 // Controlled component: EntityTab (CampaignDetailPage.tsx) owns the filter state and passes
 // it down, so switching entity type or resetting the tab is a single source of truth. See
@@ -31,17 +32,16 @@ export function EntityFilterBar({
 
   return (
     <div className="mb-3 space-y-2">
-      <div>
-        <label htmlFor="entity-search" className="block text-sm">
-          Buscar
-        </label>
-        <input
-          id="entity-search"
-          type="search"
-          value={value.query}
-          onChange={(e) => onChange({ ...value, query: e.target.value })}
-          className="w-full max-w-xs rounded bg-slate-700 p-2 text-sm"
-        />
+      <div className="max-w-xs">
+        <Field label="Buscar">
+          <input
+            id="entity-search"
+            type="search"
+            value={value.query}
+            onChange={(e) => onChange({ ...value, query: e.target.value })}
+            className={fieldControlClass}
+          />
+        </Field>
       </div>
       {availableTags.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -51,7 +51,7 @@ export function EntityFilterBar({
               type="button"
               aria-pressed={value.tags.includes(tag)}
               onClick={() => toggleTag(tag)}
-              className="rounded bg-slate-700 px-2 py-0.5 text-xs aria-pressed:bg-indigo-600"
+              className="rounded-radius-sm border border-muted bg-surface px-2 py-0.5 text-chrome-xs text-text aria-pressed:border-accent aria-pressed:bg-bg aria-pressed:text-accent-text"
             >
               {tag}
             </button>
@@ -59,9 +59,9 @@ export function EntityFilterBar({
         </div>
       )}
       {hasActiveFilter && (
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-chrome-xs text-muted">
           <span>{`${visibleCount} de ${totalCount}`}</span>
-          <button type="button" onClick={clearFilters} className="text-indigo-400 underline">
+          <button type="button" onClick={clearFilters} className="text-accent-text underline">
             Quitar filtros
           </button>
         </div>

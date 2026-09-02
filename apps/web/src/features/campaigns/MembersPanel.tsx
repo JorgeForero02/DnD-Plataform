@@ -5,6 +5,7 @@ import { useAuthStore } from "../../store/auth.store";
 import { useRemoveMember } from "./hooks";
 import { useMembers, useMyRole } from "./members";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "./PermissionStatus";
+import { Panel } from "../../ui/Panel";
 
 // Exactly what the server answers (membership.service.ts: "The DM cannot leave their own
 // campaign; delete it instead"), translated for the Spanish-language interface — not a
@@ -76,21 +77,23 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
   };
 
   return (
-    <div className="rounded bg-slate-800 p-4">
-      <h3 className="text-sm font-semibold">Miembros</h3>
-      {roleUnresolved && <p className="mt-1 text-xs text-slate-400">{CHECKING_PERMISSIONS}</p>}
+    <Panel tone="chrome">
+      <h3 className="text-chrome-sm font-semibold">Miembros</h3>
+      {roleUnresolved && <p className="mt-1 text-chrome-xs text-muted">{CHECKING_PERMISSIONS}</p>}
       {roleError && <RetryPermissions onRetry={retryRole} />}
-      {isLoading && <p className="mt-2 text-slate-400">Cargando…</p>}
-      {isError && <p className="mt-2 text-red-400">{(error as Error).message}</p>}
+      {isLoading && <p className="mt-2 text-muted">Cargando…</p>}
+      {isError && <p className="mt-2 text-danger-text">{(error as Error).message}</p>}
       <ul className="mt-2 space-y-2">
         {members?.map((m) => (
           <li
             key={m.userId}
-            className="flex items-center justify-between gap-2 rounded bg-slate-900 p-2 text-sm"
+            className="flex items-center justify-between gap-2 rounded-radius-sm border border-muted bg-bg p-2 text-chrome-sm"
           >
             <span>
               {m.displayName}{" "}
-              <span className="text-xs text-slate-500">({m.role === "DM" ? "DM" : "Jugador"})</span>
+              <span className="text-chrome-xs text-muted">
+                ({m.role === "DM" ? "DM" : "Jugador"})
+              </span>
             </span>
             {/* Fix round 3, MINOR E (corrects a wrong claim from fix round 2): the render
                 gate stays isDM-only — a confirmed non-DM never sees a permanently disabled
@@ -119,7 +122,7 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
           </li>
         ))}
       </ul>
-      {actionError && <p className="mt-2 text-sm text-red-400">{actionError}</p>}
+      {actionError && <p className="mt-2 text-chrome-sm text-danger-text">{actionError}</p>}
       <div className="mt-3">
         {roleUnresolved ? (
           // Same disabled-not-hidden treatment as "Expulsar" above, for the same reason: an
@@ -138,7 +141,7 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
           // The DM never sees "Salir" at all — only the reason, matching exactly what the
           // server would answer if the button existed and were pressed
           // (membership.service.ts).
-          <p className="text-xs text-slate-400">{DM_CANNOT_LEAVE}</p>
+          <p className="text-chrome-xs text-muted">{DM_CANNOT_LEAVE}</p>
         ) : (
           <DeleteButton
             label="Salir de la campaña"
@@ -149,6 +152,6 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
           />
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

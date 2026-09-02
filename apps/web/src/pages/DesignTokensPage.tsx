@@ -6,7 +6,6 @@ import { Panel } from "../ui/Panel";
 import { Badge } from "../ui/Badge";
 import { Dialog } from "../ui/Dialog";
 import { Tabs } from "../ui/Tabs";
-import { ThemeToggle } from "../ui/ThemeToggle";
 import { setTheme, type Theme } from "../ui/theme";
 import { Markdown } from "../features/entities/Markdown";
 
@@ -28,16 +27,14 @@ const VELLUM_SAMPLE_MARKDOWN =
 // convenient background (mostly --bg) and never rendered a link inside vellum or a ghost
 // button inside a chrome Panel — exactly the two pairs that turned out to fail. This version
 // renders the real Markdown component (not a hand-built substitute) so the link and inline
-// code measured here are byte-identical to what CampaignDetailPage actually paints, adds a
-// ghost button nested inside a chrome Panel, and a badge row on the same bg-slate-800 the
-// real, untouched CampaignDetailPage entity rows still use (see the coverage note in the
-// report — this page still doesn't cover everything the app can paint).
+// code measured here are byte-identical to what CampaignDetailPage actually paints, and adds
+// a ghost button nested inside a chrome Panel (see the coverage note in the report — this
+// page still doesn't cover everything the app can paint).
 //
-// Fix round 2: ThemeToggle mounts HERE, not app-wide (see App.tsx) — every real screen is
-// still hard-pinned dark, so a global toggle would advertise a mode the app doesn't
-// functionally have yet. This is the one page where flipping the theme is safe and useful:
-// it is what the contrast spec's ?theme= parameter is standing in for manually when a human
-// opens this route.
+// Task 1.19b: ThemeToggle no longer mounts here — it mounts once, app-wide, in App.tsx, now
+// that every real screen follows the theme instead of being hard-pinned dark. This route still
+// reads ?theme= itself (below), which is what the contrast spec drives directly instead of
+// clicking a button; the global toggle renders on this route too, same as on every other.
 export function DesignTokensPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -50,7 +47,6 @@ export function DesignTokensPage() {
 
   return (
     <div className="min-h-screen bg-bg p-6 text-text">
-      <ThemeToggle />
       <h1 className="mb-4 text-chrome-xl font-bold">Tokens — vista de control</h1>
 
       <section aria-label="botones" className="mb-6 flex flex-wrap gap-2">
@@ -81,20 +77,16 @@ export function DesignTokensPage() {
         ))}
       </section>
 
-      {/* Important 6: the real Badge on CampaignDetailPage.tsx sits on that screen's untouched
-          `bg-slate-800` row, not on --bg or --surface — a badge measured only against our own
-          tokens describes a surface the badge never actually appears on in the product. This
-          literal is a deliberate exception: it exists only to replicate that pre-existing,
-          out-of-scope background for the measurement, not as styling choice of this page. */}
-      <section aria-label="badges sobre la fila real de CampaignDetailPage" className="mb-6">
-        {/* Fix round 2, item 5: the one literal Tailwind colour class in this task's own code.
-            bg-slate-800 is CampaignDetailPage.tsx's real, untouched row background (entity and
-            session rows, e.g. CampaignDetailPage.tsx around the entity <li> — that screen was
-            never converted to tokens, on purpose, per the brief's "not a redesign" rule). It is
-            copied here verbatim, not approximated with a token, because the whole point of this
-            block is to measure the Badge against the EXACT colour it actually sits on in the
-            product — a token stand-in would measure a surface the badge never appears on. */}
-        <div className="flex flex-wrap gap-2 rounded bg-slate-800 p-3">
+      {/* Task 1.19b: the literal Tailwind-palette exception this section used to carry is gone —
+          CampaignDetailPage.tsx's entity/session/character rows are converted (ROW_BUTTON_CLASS,
+          CampaignDetailPage.tsx) and now sit on --surface with a --muted border, same as every
+          other chrome row in the app. There is no more unconverted row to stand in for, so this
+          renders the real token pair instead of a copied literal — still worth its own section
+          because it is the one place a Badge sits inside a bordered row rather than directly on
+          --bg, and that nesting is exactly what the dark-theme fix round 1 pairs above exist to
+          catch. */}
+      <section aria-label="badges sobre una fila de la campaña" className="mb-6">
+        <div className="flex flex-wrap gap-2 rounded-radius-sm border border-muted bg-surface p-3">
           {VISIBILITIES.map((v) => (
             <Badge key={`row-${v}`} visibility={v} />
           ))}

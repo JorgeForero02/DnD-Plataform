@@ -6,6 +6,62 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Las pantallas se visten con la capa de tokens (tarea 1.19b)
+
+**Qué.** Las 19 pantallas y componentes que quedaban pasan a los tokens y a las primitivas de
+1.19: **cero clases de paleta de Tailwind** en `apps/web/src` (eran 202 en 19 ficheros), la tira
+de pestañas pasa a `Tabs`, los cuatro editores modales a `Dialog`, los formularios a `Field`, y
+`ThemeToggle` se monta por fin en el chrome, en todas las rutas.
+
+**Por qué ahora y no con 1.19.** 1.19 construyó la capa y convirtió solo dos consumidores a
+propósito, para no mezclar "construir el sistema" con "rediseñar la aplicación". El resultado
+era honesto pero incompleto: con las pantallas clavadas a `bg-slate-900`, el interruptor de tema
+no mejoraba nada y dejaba el distintivo de visibilidad a **1,10:1** en claro. Convertir las
+pantallas es lo que hace que el modo pergamino exista de verdad. Ese distintivo mide ahora
+**5,95:1**, y la suite de contraste ya no mide solo la página de muestra: mide **pantallas
+reales** —entrar y el detalle de campaña, con una entidad `DM_ONLY`, que es el peor caso— en los
+dos temas.
+
+**La densidad, decidida a propósito.** 14 px de base, la misma que ya usaban las primitivas, con
+un **suelo de 16 px para los controles de formulario en pantallas táctiles**
+(`@media (pointer: coarse)`): por debajo de 16 px, iOS Safari hace zoom al enfocar un campo. La
+primera versión del arreglo sostenía que el riesgo no aplicaba "porque cada control lleva su
+clase explícita"; lo que dispara el zoom es el tamaño **calculado**, y eran 29 controles a 13 px.
+
+**Lo que la conversión se dejó por el camino, y que la revisión recuperó.** Cambiar a una
+primitiva no es solo cambiar clases: la tira de pestañas **perdió el `flex-wrap`** que sí tenía
+antes, y los editores modales perdieron el `overflow-y-auto` del overlay viejo, con lo que en
+una ventana baja los botones de guardar quedaban fuera sin nada que desplazar. El scroll se
+arregla **una vez dentro de `Dialog`**, no tres veces en las pantallas.
+
+**Lo que NO se hizo, a propósito.** Faltan un token de aviso y otro de éxito, y hay tres sitios
+que hoy dicen menos de lo que decían. Está esperando una decisión del autor entre dos
+direcciones de paleta; no se inventa un color mientras tanto. Ver
+[06-pendientes.md](./06-pendientes.md).
+
+**El arreglo que no se aplicaba, y cómo se cazó.** El suelo de 16 px se escribió primero como
+`@media (pointer: coarse) { input, textarea, select { ... } }` en `tokens.css`. **No hacía
+nada**: son selectores de elemento (0,0,1) y todos los controles llevan la clase
+`text-chrome-sm` (0,1,0) sin media query, así que la clase gana pase lo que pase con el orden.
+Se comprobó compilando y leyendo el CSS de `dist`. Se arregla en el origen —una variante
+`[@media(pointer:coarse)]:text-chrome-md` dentro de `fieldControlClass`, misma especificidad y
+emitida después— y **se borra la regla inerte**: dejarla al lado del arreglo bueno haría creer
+al siguiente que el problema ya estaba resuelto.
+
+Es la tercera vez en la misma sesión con la misma forma —una prueba que confirma que la pieza
+existe pero no que actúa—, así que el criterio de aceptación dejó de ser "que la clase esté":
+hay un recorrido que **emula un dispositivo táctil, enfoca un campo real y mide
+`getComputedStyle().fontSize`**. Quitando la variante, mide 13 px y falla; con ella, 16 px.
+
+**Prueba.** 204 unitarias de web y **16 recorridos de navegador**, con las mediciones de
+contraste sobre pantallas reales bloqueando la suite. Corridos por el orquestador sobre el árbol
+final, no tomados del informe, incluida la mutación de arriba.
+
+**Cómo revertir.** Un commit propio. Revertirlo devuelve las pantallas a las clases de paleta y
+desmonta el interruptor de tema; no toca `apps/api` ni `packages/`.
+
+---
+
 ## 2026-09-01 — Capa de tokens y seis primitivas: "la mesa y el manual" (tarea 1.19)
 
 **Qué.** `apps/web/src/ui/` (nuevo): `tokens.css` con la paleta por tema, `theme.ts` con el

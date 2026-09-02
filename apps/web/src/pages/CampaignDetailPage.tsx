@@ -20,14 +20,16 @@ import { CampaignSettings } from "../features/campaigns/CampaignSettings";
 import { MembersPanel } from "../features/campaigns/MembersPanel";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "../features/campaigns/PermissionStatus";
 import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import { Tabs, type TabItem } from "../ui/Tabs";
 
-type Tab =
+type TabConfig =
   | { kind: "overview"; label: string }
   | { kind: "entity"; label: string; type: EntityType }
   | { kind: "sessions"; label: string }
   | { kind: "characters"; label: string };
 
-const TABS: Tab[] = [
+const TABS: TabConfig[] = [
   { kind: "overview", label: "Resumen" },
   { kind: "entity", label: "NPCs", type: "NPC" },
   { kind: "entity", label: "Lugares", type: "LOCATION" },
@@ -39,6 +41,13 @@ const TABS: Tab[] = [
   { kind: "sessions", label: "Sesiones" },
   { kind: "characters", label: "Personajes" },
 ];
+
+// Row buttons (entity/session/character lists) share this chrome recipe: a bordered card,
+// keyed by --surface, with the border picking up --accent on hover/focus instead of a bg
+// swap — the token palette has no third dark shade between --bg and --surface to fake the
+// old pre-token dark-card/hover-lighter pair with.
+const ROW_BUTTON_CLASS =
+  "w-full rounded-radius-sm border border-muted bg-surface p-3 text-left font-chrome text-chrome-sm text-text hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType }) {
   const { data, isLoading, isError, error } = useEntities(campaignId, type);
@@ -72,13 +81,12 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
     <div>
       {/* Creating is open to any campaign member on the server (entities.service.ts,
           requireMember), so it isn't gated here. */}
-      <button
-        onClick={() => setCreating(true)}
-        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
-      >
+      <Button variant="primary" onClick={() => setCreating(true)} className="mb-3">
         Nuevo
-      </button>
-      {roleError && <p className="mb-3 text-xs text-amber-400">No se pudo comprobar tu permiso.</p>}
+      </Button>
+      {roleError && (
+        <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
+      )}
       {roleError && <RetryPermissions onRetry={retryRole} />}
       {data && data.length > 0 && (
         <EntityFilterBar
@@ -89,11 +97,11 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
           visibleCount={filtered?.length ?? 0}
         />
       )}
-      {isLoading && <p className="text-slate-400">Cargando…</p>}
-      {isError && <p className="text-red-400">{(error as Error).message}</p>}
-      {data && data.length === 0 && <p className="text-slate-400">Sin elementos.</p>}
+      {isLoading && <p className="text-muted">Cargando…</p>}
+      {isError && <p className="text-danger-text">{(error as Error).message}</p>}
+      {data && data.length === 0 && <p className="text-muted">Sin elementos.</p>}
       {data && data.length > 0 && filtered && filtered.length === 0 && (
-        <p className="text-slate-400">Ningún elemento coincide con el filtro.</p>
+        <p className="text-muted">Ningún elemento coincide con el filtro.</p>
       )}
       <ul className="space-y-2">
         {filtered?.map((e) => {
@@ -115,11 +123,7 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                   LinksPanel/CommentThread only ever render inside it). What the permission
                   check controls now is whether the editor opens read-only, not whether the
                   row can be clicked at all — see EntityEditor.tsx's `readOnly` prop. */}
-              <button
-                onClick={() => setEditing(e)}
-                title={reason}
-                className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
-              >
+              <button onClick={() => setEditing(e)} title={reason} className={ROW_BUTTON_CLASS}>
                 <span className="font-semibold">{e.name}</span>
                 <span className="ml-2 inline-block align-middle">
                   <Badge visibility={e.visibility} />
@@ -136,14 +140,14 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                     {Array.from(new Set(e.tags)).map((tag) => (
                       <span
                         key={tag}
-                        className="rounded bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300"
+                        className="rounded-radius-sm border border-muted bg-surface px-1.5 py-0.5 text-chrome-xs text-muted"
                       >
                         {tag}
                       </span>
                     ))}
                   </span>
                 )}
-                {reason && <span className="ml-2 text-xs text-amber-400">{reason}</span>}
+                {reason && <span className="ml-2 text-chrome-xs text-muted">{reason}</span>}
               </button>
             </li>
           );
@@ -193,30 +197,27 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
 
   return (
     <div>
-      <button
+      <Button
+        variant="primary"
         onClick={() => setCreating(true)}
         disabled={!canManage}
         title={reason}
-        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+        className="mb-3"
       >
         Nuevo
-      </button>
-      {reason && <p className="mb-3 text-xs text-slate-400">{reason}</p>}
+      </Button>
+      {reason && <p className="mb-3 text-chrome-xs text-muted">{reason}</p>}
       {roleError && <RetryPermissions onRetry={retryRole} />}
-      {isLoading && <p className="text-slate-400">Cargando…</p>}
-      {isError && <p className="text-red-400">{(error as Error).message}</p>}
-      {data && data.length === 0 && <p className="text-slate-400">Sin sesiones.</p>}
+      {isLoading && <p className="text-muted">Cargando…</p>}
+      {isError && <p className="text-danger-text">{(error as Error).message}</p>}
+      {data && data.length === 0 && <p className="text-muted">Sin sesiones.</p>}
       <ul className="space-y-2">
         {data?.map((s) => (
           <li key={s.id}>
             {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — the fecha and notas a
                 player can already see via canView were unreachable while the row itself was
                 disabled. */}
-            <button
-              onClick={() => setEditing(s)}
-              title={reason}
-              className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
-            >
+            <button onClick={() => setEditing(s)} title={reason} className={ROW_BUTTON_CLASS}>
               <span className="font-semibold">{s.title}</span>
               <span className="ml-2 inline-block align-middle">
                 <Badge visibility={s.visibility} />
@@ -257,17 +258,16 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
     <div>
       {/* Creating is open to any campaign member on the server (characters.service.ts,
           requireMember), so it isn't gated here. */}
-      <button
-        onClick={() => setCreating(true)}
-        className="mb-3 rounded bg-indigo-600 px-3 py-1 text-sm font-semibold"
-      >
+      <Button variant="primary" onClick={() => setCreating(true)} className="mb-3">
         Nuevo
-      </button>
-      {roleError && <p className="mb-3 text-xs text-amber-400">No se pudo comprobar tu permiso.</p>}
+      </Button>
+      {roleError && (
+        <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
+      )}
       {roleError && <RetryPermissions onRetry={retryRole} />}
-      {isLoading && <p className="text-slate-400">Cargando…</p>}
-      {isError && <p className="text-red-400">{(error as Error).message}</p>}
-      {data && data.length === 0 && <p className="text-slate-400">Sin personajes.</p>}
+      {isLoading && <p className="text-muted">Cargando…</p>}
+      {isError && <p className="text-danger-text">{(error as Error).message}</p>}
+      {data && data.length === 0 && <p className="text-muted">Sin personajes.</p>}
       <ul className="space-y-2">
         {data?.map((c) => {
           // Editing is DM-or-owner (characters.service.ts:requireEditable).
@@ -280,14 +280,10 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
           return (
             <li key={c.id}>
               {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — see EntityTab above. */}
-              <button
-                onClick={() => setEditing(c)}
-                title={reason}
-                className="w-full rounded bg-slate-800 p-3 text-left hover:bg-slate-700"
-              >
+              <button onClick={() => setEditing(c)} title={reason} className={ROW_BUTTON_CLASS}>
                 <span className="font-semibold">{c.name}</span>
-                <span className="ml-2 text-xs text-slate-500">Nivel {c.level}</span>
-                {reason && <span className="ml-2 text-xs text-amber-400">{reason}</span>}
+                <span className="ml-2 text-chrome-xs text-muted">Nivel {c.level}</span>
+                {reason && <span className="ml-2 text-chrome-xs text-muted">{reason}</span>}
               </button>
             </li>
           );
@@ -314,28 +310,22 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
 export function CampaignDetailPage() {
   const { id = "" } = useParams();
   const { data: campaign, isLoading } = useCampaign(id);
-  const [active, setActive] = useState(0);
-  const tab = TABS[active];
 
-  return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-8">
-      <Link to="/" className="text-sm text-indigo-400">
-        &larr; Mis campañas
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold">{isLoading ? "Cargando…" : campaign?.name}</h1>
-      <nav className="mt-4 flex flex-wrap gap-2 border-b border-slate-700 pb-2">
-        {TABS.map((t, i) => (
-          <button
-            key={t.label}
-            onClick={() => setActive(i)}
-            className={`rounded px-3 py-1 text-sm ${i === active ? "bg-indigo-600" : "bg-slate-800 hover:bg-slate-700"}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-      <section className="mt-4">
-        {tab.kind === "overview" && (
+  // Task 1.19b: the hand-rolled button strip becomes the Tabs primitive (WAI-ARIA tabs
+  // pattern — role="tab", roving tabindex, arrow-key navigation for free). Uncontrolled: no
+  // consumer outside this page ever needed to read or drive which tab is active, so the
+  // `active`/`setActive` index state this replaced was pure bookkeeping Tabs now owns itself.
+  // `key={type}` on each EntityTab (1.17c) still matters: without it, switching between two
+  // entity-type tabs would update the same mounted EntityTab instance in place instead of
+  // remounting it, and its filter/creating/editing state would leak from one type into the
+  // next — Tabs renders whichever item.content is active, but the element identity inside it
+  // is still ordinary React reconciliation.
+  const items: TabItem[] = TABS.map((t) => {
+    if (t.kind === "overview") {
+      return {
+        id: "overview",
+        label: t.label,
+        content: (
           <div className="space-y-4">
             {/* CampaignSettings fetches its own campaign (1.17d) and mounts unconditionally,
                 same as MembersPanel and InvitePanel below — see the comment on
@@ -348,14 +338,30 @@ export function CampaignDetailPage() {
                 (features/campaigns/members.ts) — see the comment there. */}
             <InvitePanel campaignId={id} />
           </div>
-        )}
-        {/* `key={tab.type}` (1.17c): without it, switching between two entity-type tabs
-            reuses the same EntityTab instance instead of remounting — the new filter/search
-            state (and `creating`/`editing`) would otherwise leak from one type's list into
-            another's. Confirmed with a throwaway RTL check before adding this. */}
-        {tab.kind === "entity" && <EntityTab key={tab.type} campaignId={id} type={tab.type} />}
-        {tab.kind === "sessions" && <SessionsTab campaignId={id} />}
-        {tab.kind === "characters" && <CharactersTab campaignId={id} />}
+        ),
+      };
+    }
+    if (t.kind === "entity") {
+      return {
+        id: t.type,
+        label: t.label,
+        content: <EntityTab key={t.type} campaignId={id} type={t.type} />,
+      };
+    }
+    if (t.kind === "sessions") {
+      return { id: "sessions", label: t.label, content: <SessionsTab campaignId={id} /> };
+    }
+    return { id: "characters", label: t.label, content: <CharactersTab campaignId={id} /> };
+  });
+
+  return (
+    <div className="min-h-screen bg-bg p-8 text-text">
+      <Link to="/" className="text-chrome-sm text-accent-text">
+        &larr; Mis campañas
+      </Link>
+      <h1 className="mt-2 text-chrome-2xl font-bold">{isLoading ? "Cargando…" : campaign?.name}</h1>
+      <section className="mt-4">
+        <Tabs items={items} />
       </section>
     </div>
   );

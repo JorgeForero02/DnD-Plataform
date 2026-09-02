@@ -32,7 +32,7 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await page.getByRole("link", { name: "La Tumba de la Aniquilación" }).click();
   await expect(page.getByRole("heading", { name: "La Tumba de la Aniquilación" })).toBeVisible();
 
-  await page.getByRole("button", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "NPCs" }).click();
   await expect(page.getByText("Sin elementos.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -63,7 +63,7 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await page.getByRole("link", { name: "Descenso a Avernus" }).click();
   await expect(page.getByRole("heading", { name: "Descenso a Avernus" })).toBeVisible();
 
-  await page.getByRole("button", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "NPCs" }).click();
 
   // Hacen falta dos NPCs: uno para abrir en modo edición y otro para enlazarlo.
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -121,7 +121,7 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   await page.getByRole("link", { name: "La Maldición de Strahd" }).click();
   await expect(page.getByRole("heading", { name: "La Maldición de Strahd" })).toBeVisible();
 
-  await page.getByRole("button", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "NPCs" }).click();
 
   // Dos NPCs: Zariel enlaza con Mahadi, y Mahadi recibe un comentario. Borrar Mahadi debe
   // llevarse los dos consigo.
@@ -155,10 +155,13 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
 
   // 3. Borrar Mahadi, confirmando en la propia pantalla — nada de window.confirm. Scoped to
   // <form>: the entity's own "Borrar" and the comment thread's "Borrar" (on the comment just
-  // posted) share the same accessible name once a comment exists.
-  const entityForm = page
-    .locator("form")
-    .filter({ has: page.getByRole("heading", { name: "Editar NPC" }) });
+  // posted) share the same accessible name once a comment exists. Task 1.19b: filtered by the
+  // "Nombre" field instead of the "Editar NPC" heading — EntityEditor.tsx now renders inside
+  // the Dialog primitive, which paints the title itself as a sibling of <form>, not a
+  // descendant of it, so a heading-inside-form filter no longer matches anything. "Nombre" is
+  // still unique to the entity's own form: LinksPanel's and CommentThread's forms (also open
+  // here, both real <form> elements) have no field with that label.
+  const entityForm = page.locator("form").filter({ has: page.getByLabel("Nombre") });
   await entityForm.getByRole("button", { name: "Borrar" }).click();
   await expect(
     page.getByText(
@@ -195,7 +198,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Pestaña de Sesiones: hoy no la visita ningún recorrido de Playwright, así que
   // SessionsTab, el botón "Nuevo" propio y SessionEditor nunca se habían pintado en un
   // navegador real.
-  await page.getByRole("button", { name: "Sesiones" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
   await expect(page.getByText("Sin sesiones.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -242,7 +245,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
 
   // Pestaña de Personajes: mismo hueco — CharactersTab, su botón "Nuevo" y CharacterEditor
   // tampoco los pintaba nunca un navegador real.
-  await page.getByRole("button", { name: "Personajes" }).click();
+  await page.getByRole("tab", { name: "Personajes" }).click();
   await expect(page.getByText("Sin personajes.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -294,7 +297,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
 
   // Y la sesión, contra la API real, incluyendo la cancelación: pulsar "No, cancelar" no borra
   // y deja el editor abierto.
-  await page.getByRole("button", { name: "Sesiones" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
   const finalSessionRow = page.getByRole("button", { name: /Sesión 1: notas borradas/ });
   await finalSessionRow.click();
   await expect(page.getByRole("heading", { name: "Editar sesión" })).toBeVisible();
@@ -334,7 +337,7 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await page.getByRole("link", { name: "La Forja de la Ira" }).click();
   await expect(page.getByRole("heading", { name: "La Forja de la Ira" })).toBeVisible();
 
-  await page.getByRole("button", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "NPCs" }).click();
   await page.getByRole("button", { name: "Nuevo" }).click();
   await page.getByLabel("Nombre").fill("Durgeddin el Negro");
   await page.getByLabel("Texto").fill("## Título\n\nUn herrero enano legendario.");
@@ -370,7 +373,7 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
   await page.getByRole("link", { name: "El Refugio del Contrabandista" }).click();
   await expect(page.getByRole("heading", { name: "El Refugio del Contrabandista" })).toBeVisible();
 
-  await page.getByRole("button", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "NPCs" }).click();
   await expect(page.getByText("Sin elementos.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo" }).click();

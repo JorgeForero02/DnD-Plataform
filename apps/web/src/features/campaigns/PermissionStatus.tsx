@@ -26,7 +26,11 @@ export const CHECKING_PERMISSIONS = "Comprobando permisos…";
 // refetchOnWindowFocus happening to fire.
 export function RetryPermissions({ onRetry }: { onRetry: () => void }) {
   return (
-    <button type="button" onClick={onRetry} className="ml-2 text-xs text-indigo-400 underline">
+    <button
+      type="button"
+      onClick={onRetry}
+      className="ml-2 text-chrome-xs text-accent-text underline"
+    >
       Reintentar
     </button>
   );

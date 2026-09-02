@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "../ui/Button";
 
 // Shared irreversible-action control. Started with the three editors (entity, session,
 // character, task 1.16); 1.17d added two more call sites that aren't deletes at all —
@@ -49,38 +50,29 @@ export function DeleteButton({
 
   if (showingConfirm) {
     return (
-      <div className="w-full rounded border border-red-900 bg-red-950/40 p-3 text-sm">
-        <p className="text-red-300">{message}</p>
+      <div className="w-full rounded-radius-sm border border-danger bg-surface p-3 text-chrome-sm">
+        <p className="text-danger-text">{message}</p>
         <div className="mt-2 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            className="rounded bg-slate-700 px-3 py-1"
-          >
+          <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
             No, cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={pending || disabled}
-            className="rounded bg-red-700 px-3 py-1 font-semibold disabled:opacity-50"
-          >
+          </Button>
+          <Button type="button" variant="danger" onClick={onConfirm} disabled={pending || disabled}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="danger"
       onClick={() => setConfirming(true)}
       disabled={disabled}
       title={disabled ? disabledReason : undefined}
-      className="rounded border border-red-800 px-3 py-1 text-sm text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {label}
-    </button>
+    </Button>
   );
 }

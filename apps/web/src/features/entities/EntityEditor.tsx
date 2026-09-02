@@ -9,6 +9,9 @@ import { Markdown } from "./Markdown";
 import { bodyToText } from "./body";
 import { useCreateEntity, useDeleteEntity, useEntity, useUpdateEntity } from "./hooks";
 import type { Entity } from "./api";
+import { Button } from "../../ui/Button";
+import { Field, fieldControlClass } from "../../ui/Field";
+import { Dialog } from "../../ui/Dialog";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "PLAYERS", "SPECIFIC_PLAYERS", "OWNER_DM", "DM_ONLY"];
 
@@ -158,41 +161,36 @@ export function EntityEditor({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/50 py-8">
-      <div className="w-[28rem] space-y-4">
-        <form onSubmit={onSubmit} className="space-y-3 rounded-lg bg-slate-800 p-6">
-          <h2 className="text-lg font-bold">
-            {isEdit ? "Editar" : "Nuevo"} {type}
-          </h2>
+    // Fix round 1 (post-1.19b review): the scroll handling that used to live on this wrapper
+    // (max-h-[80vh] overflow-y-auto) moved into Dialog itself (ui/Dialog.tsx), so every
+    // consumer gets it once instead of re-adding it — CharacterEditor and SessionEditor never
+    // had it here to begin with.
+    <Dialog open onClose={onClose} title={`${isEdit ? "Editar" : "Nuevo"} ${type}`}>
+      <div className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-3">
           {readOnly && (
-            <p className="rounded bg-slate-700/50 p-2 text-xs text-amber-400">
+            <p className="rounded-radius-sm border border-muted bg-bg p-2 text-chrome-xs text-muted">
               {readOnlyReason ?? "Solo puedes ver esta entidad."}
             </p>
           )}
-          <div>
-            <label htmlFor="name" className="block text-sm">
-              Nombre
-            </label>
+          <Field label="Nombre">
             <input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={readOnly}
-              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+              className={fieldControlClass}
             />
-          </div>
-          <div>
-            <label htmlFor="tags" className="block text-sm">
-              Etiquetas (separadas por coma)
-            </label>
+          </Field>
+          <Field label="Etiquetas (separadas por coma)">
             <input
               id="tags"
               value={tagsRaw}
               onChange={(e) => setTagsRaw(e.target.value)}
               disabled={readOnly}
-              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+              className={fieldControlClass}
             />
-          </div>
+          </Field>
           <div>
             <div className="mb-1 flex items-center justify-between">
               {readOnly ? (
@@ -201,11 +199,11 @@ export function EntityEditor({
                 // visually (the <p> itself) and for assistive tech (id + aria-labelledby on
                 // the region below) — so a player reading a PUBLIC NPC doesn't see an
                 // unlabelled block of prose between "Etiquetas" and "Visibilidad".
-                <p id="body-readonly-label" className="block text-sm">
+                <p id="body-readonly-label" className="text-chrome-sm text-text">
                   Texto
                 </p>
               ) : (
-                <label htmlFor="body" className="block text-sm">
+                <label htmlFor="body" className="text-chrome-sm text-text">
                   Texto
                 </label>
               )}
@@ -215,7 +213,7 @@ export function EntityEditor({
                     type="button"
                     aria-pressed={bodyView === "edit"}
                     onClick={() => setBodyView("edit")}
-                    className="rounded bg-slate-700 px-2 py-0.5 text-xs aria-pressed:bg-indigo-600"
+                    className="rounded-radius-sm border border-muted bg-surface px-2 py-0.5 text-chrome-xs text-text aria-pressed:border-accent aria-pressed:bg-bg aria-pressed:text-accent-text"
                   >
                     Editar
                   </button>
@@ -223,7 +221,7 @@ export function EntityEditor({
                     type="button"
                     aria-pressed={bodyView === "preview"}
                     onClick={() => setBodyView("preview")}
-                    className="rounded bg-slate-700 px-2 py-0.5 text-xs aria-pressed:bg-indigo-600"
+                    className="rounded-radius-sm border border-muted bg-surface px-2 py-0.5 text-chrome-xs text-text aria-pressed:border-accent aria-pressed:bg-bg aria-pressed:text-accent-text"
                   >
                     Vista previa
                   </button>
@@ -240,22 +238,19 @@ export function EntityEditor({
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value)}
                 rows={6}
-                className="w-full rounded bg-slate-700 p-2"
+                className={fieldControlClass}
               />
             ) : (
               <Markdown text={bodyText} />
             )}
           </div>
-          <div>
-            <label htmlFor="visibility" className="block text-sm">
-              Visibilidad
-            </label>
+          <Field label="Visibilidad">
             <select
               id="visibility"
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as Visibility)}
               disabled={readOnly}
-              className="w-full rounded bg-slate-700 p-2 disabled:opacity-60"
+              className={fieldControlClass}
             >
               {VISIBILITIES.map((v) => (
                 <option key={v} value={v}>
@@ -263,13 +258,15 @@ export function EntityEditor({
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
           {visibility === "SPECIFIC_PLAYERS" && (
-            <fieldset className="rounded border border-slate-600 p-2">
-              <legend className="text-sm">Jugadores con acceso</legend>
-              {members.isLoading && <p className="text-sm text-slate-400">Cargando jugadores…</p>}
+            <fieldset className="rounded-radius-sm border border-muted p-2">
+              <legend className="text-chrome-sm text-text">Jugadores con acceso</legend>
+              {members.isLoading && (
+                <p className="text-chrome-sm text-muted">Cargando jugadores…</p>
+              )}
               {members.isError && (
-                <p className="text-sm text-red-400">
+                <p className="text-chrome-sm text-danger-text">
                   No se pudo cargar la lista de jugadores. Un fieldset vacío aquí no significa que
                   la campaña no tenga jugadores.
                 </p>
@@ -277,7 +274,10 @@ export function EntityEditor({
               {members.data
                 ?.filter((m) => m.role === "PLAYER")
                 .map((m) => (
-                  <label key={m.userId} className="flex items-center gap-2 text-sm">
+                  <label
+                    key={m.userId}
+                    className="flex items-center gap-2 text-chrome-sm text-text"
+                  >
                     <input
                       type="checkbox"
                       checked={specificPlayerIds.includes(m.userId)}
@@ -289,7 +289,7 @@ export function EntityEditor({
                 ))}
             </fieldset>
           )}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
           <div className="flex items-center justify-between gap-2">
             {isEdit && (
               <DeleteButton
@@ -301,20 +301,19 @@ export function EntityEditor({
               />
             )}
             <div className="flex flex-1 justify-end gap-2">
-              <button type="button" onClick={onClose} className="rounded bg-slate-700 px-3 py-1">
+              <Button type="button" variant="secondary" onClick={onClose}>
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={pending || readOnly}
                 title={readOnly ? readOnlyReason : undefined}
-                className="rounded bg-indigo-600 px-3 py-1 font-semibold disabled:opacity-50"
               >
                 Guardar
-              </button>
+              </Button>
             </div>
           </div>
-          {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
+          {deleteError && <p className="text-chrome-sm text-danger-text">{deleteError}</p>}
         </form>
         {/* Links and comments only make sense once the entity exists: a brand-new entity
           has no entityId to hang them off yet. Kept as siblings of the form, not nested
@@ -330,6 +329,6 @@ export function EntityEditor({
           </>
         )}
       </div>
-    </div>
+    </Dialog>
   );
 }

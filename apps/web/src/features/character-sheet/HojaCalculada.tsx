@@ -10,6 +10,8 @@ import { PuntosDeGolpe } from "./PuntosDeGolpe";
 import { RecursosYDescansos } from "./RecursosYDescansos";
 import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
+import { Anulaciones } from "./Anulaciones";
+import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
 import { EditorFicha } from "./EditorFicha";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/Collection";
@@ -104,9 +106,17 @@ export function HojaCalculada({
           {nombreClase(sheet.classKey)} · nivel {character.level}
         </p>
         {puedeEditar && (
-          <Button variant="ghost" onClick={() => setEditando(true)}>
-            Editar clase, raza y características
-          </Button>
+          <div className="flex flex-wrap items-center gap-s2">
+            {/* La subida de nivel vive en su propia feature (2A.11): esta hoja solo la monta. */}
+            <BotonSubirNivel
+              campaignId={campaignId}
+              characterId={characterId}
+              level={character.level}
+            />
+            <Button variant="ghost" onClick={() => setEditando(true)}>
+              Editar clase, raza y características
+            </Button>
+          </div>
         )}
       </div>
 
@@ -187,6 +197,12 @@ export function HojaCalculada({
           )}
         </section>
       </div>
+
+      <Anulaciones
+        campaignId={campaignId}
+        characterId={characterId}
+        overrides={data.character.overrides}
+      />
 
       <VelocidadYSentidos
         speeds={sheet.speeds}

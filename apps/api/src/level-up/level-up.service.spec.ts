@@ -275,3 +275,39 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
     });
   });
 });
+
+describe("el bono racial cuenta, y los dos caminos del previo tienen que cuadrar", () => {
+  // El fallo que encontró el recorrido de navegador y no la suite: las unitarias montaban
+  // humanos, que no tocan la Constitución. Un enano suma +2, y el previo leía la columna en vez
+  // de la hoja derivada — así que decía «13 → 22 (+8)»: destino bien, delta mal, suma imposible.
+
+  it("un enano usa la Constitución de la HOJA (14+2=16, +3), no la declarada", async () => {
+    const { service, prisma } = montar();
+    const enano = personaje({
+      level: 1,
+      classKey: "fighter",
+      raceKey: "dwarf",
+      subraceKey: null,
+      con: 14,
+    });
+    prisma.character.findFirst.mockResolvedValue(enano);
+
+    const previo = await service.preview("p1", "c1", "ch1", false);
+
+    expect(previo.hp.conModifier).toBe(3);
+    expect(previo.hp.delta).toBe(9); // media del d10 (6) + 3
+  });
+
+  it("`current + delta` es exactamente `next` — la igualdad que el comentario daba por hecha", async () => {
+    const { service, prisma } = montar();
+    for (const raceKey of ["dwarf", "human", "elf"]) {
+      prisma.character.findFirst.mockResolvedValue(
+        personaje({ level: 1, classKey: "fighter", raceKey, subraceKey: null, con: 14 }),
+      );
+
+      const previo = await service.preview("p1", "c1", "ch1", false);
+
+      expect(previo.hp.current + previo.hp.delta).toBe(previo.hp.next);
+    }
+  });
+});

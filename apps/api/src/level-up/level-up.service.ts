@@ -15,7 +15,7 @@ import {
   type CharacterBuild,
   type SpellSlot,
 } from "../rules/catalog";
-import { abilityModifier, averageHitDie } from "../rules/engine";
+import { averageHitDie } from "../rules/engine";
 import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER } from "../rolls/rolls.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -160,9 +160,18 @@ export class LevelUpService {
     const sheetFrom = deriveCharacter(this.buildFor(character, from));
     const sheetTo = deriveCharacter(this.buildFor(character, to));
 
-    // Constitución no puede faltar si `buildFor` no lanzó: la comprobación de arriba ya exigió
-    // las seis características.
-    const conMod = abilityModifier(character.con!);
+    // **El modificador se lee de la hoja derivada, no de la columna.**
+    //
+    // Era `abilityModifier(character.con!)`, es decir, la Constitución **declarada**, sin los
+    // bonos raciales que el motor suma. Un guerrero enano con Constitución 14 tiene 16 en la
+    // hoja (+3), así que el previo decía «13 → 22 (+8)»: el destino salía de `sheetTo` y estaba
+    // bien, el delta salía de aquí y estaba mal, y **la suma que el jugador lee en pantalla no
+    // cuadraba**. El comentario de abajo llegó a afirmar que los dos caminos daban el mismo
+    // número «para no calcularlo dos veces»; discrepaban, y nada lo comprobaba. Ahora lo
+    // comprueba una prueba, además de leerse de un solo sitio.
+    //
+    // Lo cazó el recorrido de navegador de 2A.11, no la suite: las unitarias montaban humanos.
+    const conMod = sheetTo.derived["abilityMod.con"].total;
     const media = averageHitDie(claseSrd.hitDie);
 
     let hp: LevelUpPreview["hp"];

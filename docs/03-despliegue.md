@@ -58,6 +58,19 @@ cliente real.
 > `trustedIPs` en Traefik, **este razonamiento deja de valer** y hay que rehacerlo. Por eso la
 > regla escrita es *cuenta los proxies*, y no un número que copiar.
 
+### Desplegar corta el servicio unos segundos
+
+Medido el 2026-09-02, tras ocho despliegues seguidos: **`docker compose up` recrea los tres
+contenedores**, y durante esa ventana el dominio responde **503**. Dura del orden de medio
+minuto —la primera petición tras el `finished` de Coolify puede fallar y la siguiente ya va—,
+así que **un 503 justo después de desplegar no es un fallo: es el arranque**. Solo hay motivo
+para preocuparse si sigue ahí pasado un minuto, y entonces se mira
+`docker ps --filter name=5awvsn1dnkexhcjzg7kjwom6`, que dice si los tres están `healthy`.
+
+No hay despliegue sin corte porque no hay réplicas: un solo contenedor por servicio. Montarlo
+sería otra tarea, y para una mesa de cinco personas no compensa todavía — pero **conviene no
+desplegar en mitad de una partida**.
+
 ### Comprobación obligatoria el primer día
 
 Con la pila ya desplegada, desde **fuera** del servidor:

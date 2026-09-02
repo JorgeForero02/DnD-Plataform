@@ -196,6 +196,45 @@ dependiente del entorno, con el valor real intacto en todo entorno que importa:
 - **Documentado en `.env.example`**, dejando explícito que existe solo para el problema de IP
   compartida de la suite de navegador y que nunca debe subirse en producción.
 
+## Trabajo con varios agentes a la vez
+
+Escrito el 2026-09-01, después de una sesión con hasta cinco agentes en paralelo sobre este
+repositorio. Nadie perdió trabajo, pero hubo tres roces y uno de ellos fue del orquestador. Las
+reglas de abajo son lo que evitó los demás, no teoría.
+
+**Un worktree por rama, y una frontera de ficheros escrita en el encargo.** El encargo dice qué
+rutas puede tocar el agente (`solo apps/api` + `packages/shared`, `solo apps/web`) y qué pasa si
+cree que necesita salirse: **lo reporta, no lo hace**. Esa línea es la que impidió que las dos
+ramas paralelas de 1.18a y 1.19 se pisaran, tocando ambas el mismo monorepo a la vez.
+
+**El `pnpm-lock.yaml` es único del monorepo y va a chocar.** Es esperado: la segunda rama que
+integre lo regenera con `pnpm install`. No se intenta evitar el choque no instalando.
+
+**La documentación la escribe el orquestador cuando el implementador ha terminado**, nunca
+mientras trabaja en ese mismo árbol. Si se hace a la vez, el agente ve ficheros modificados que
+no escribió y tiene que decidir si son suyos — en esta sesión lo reportó como sospecha, y con
+mala suerte habría sido una edición perdida.
+
+**Un revisor de solo lectura también escribe.** Uno compiló (`vite build`) para inspeccionar el
+CSS y dejó un `dist/` sin rastrear. El encargo de revisión dice explícitamente: no commitear, no
+editar, y si se compila para diagnosticar, limpiar después.
+
+**Playwright y los e2e de API se serializan mientras los puertos y la base sean globales.** Dos
+corridas a la vez dan fallos falsos — ya costó una tanda de cuatro. Cuando exista la ranura por
+worktree (puertos y base de datos propios), esta regla se sustituye por "cada carril, su ranura".
+
+**Techo de cinco agentes.** Por encima, las compilaciones se comen la máquina y el cuello deja de
+ser el modelo. La recomendación general es 3-5; cinco es sostenible en un equipo con 32 GB.
+
+**El paralelismo mueve el cuello de generar a revisar, y esa es la parte que no se recorta.**
+Toda rama pasa por revisión antes de commitear. En la sesión que originó esta sección, los tres
+hallazgos críticos los encontró la revisión y ninguno el implementador — y dos de ellos anulaban
+justo la protección que su propia tarea añadía.
+
+**Las revisiones sí se paralelizan**, porque son de solo lectura: varias dimensiones a la vez
+(seguridad, calidad de pruebas, cascada y accesibilidad) sobre el mismo diff, y el orquestador
+junta los hallazgos.
+
 ## Precedencia
 
 Instrucción del usuario en la sesión > este documento y el `CLAUDE.md` del repositorio >

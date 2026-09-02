@@ -12,7 +12,10 @@
 Y después: **«que se puedan hacer cosas complejas con cosas sencillas»**.
 
 Este documento responde a eso. Su tesis es que la potencia **no viene de tener muchas piezas**,
-sino de **cuatro decisiones** que hacen que pocas piezas se combinen.
+sino de **siete decisiones** que hacen que pocas piezas se combinen. Cuatro son mías; tres
+salieron del [estudio de sistemas reales](./2026-09-02-cajas-estudio.md) y **corrigieron el
+diseño**: los conjuntos con nombre, el orden por especificidad y el antipatrón de las primitivas
+disfrazadas.
 
 ---
 
@@ -60,11 +63,13 @@ llegue**. El lienzo no es otro sistema: es otra forma de editar lo mismo.
 
 ---
 
-## 2 · Las cuatro decisiones que dan potencia sin complejidad
+## 2 · Las siete decisiones que dan potencia sin complejidad
 
-Aquí está la respuesta a «cosas complejas con cosas sencillas». No son cuatro funcionalidades;
-son cuatro propiedades del sistema, y cada una multiplica lo que se puede expresar **sin añadir
-un concepto que el DM tenga que aprender**.
+Aquí está la respuesta a «cosas complejas con cosas sencillas». No son funcionalidades; son
+**propiedades del sistema**, y cada una multiplica lo que se puede expresar **sin añadir un
+concepto que el DM tenga que aprender**. Esa es la prueba que tiene que pasar cada una: *¿cuánto
+más se puede decir con ella, y cuánto más hay que aprender?* Si lo segundo crece tanto como lo
+primero, no entra.
 
 ### 2.1 · Un efecto también es un suceso — las reglas se encadenan solas
 
@@ -104,42 +109,71 @@ ENTONCES poner la marca «lleva {n} pistas»
 Y de aquí sale, casi gratis, el patrón más común de toda aventura: **«cuando tengan tres de las
 cinco llaves»**. Que es la decisión siguiente.
 
-### 2.3 · Contar es la única aritmética que se permite
+### 2.3 · La memoria son marcas **y conjuntos** con nombre
 
-Prohibir la aritmética entera cuesta demasiado: *«cuando se hayan revelado 3 fichas con la
-etiqueta pista»* es el patrón de la mitad de las aventuras publicadas. Así que la única
-operación numérica del sistema es **contar un conjunto y compararlo con un número**:
+Aquí el [estudio de sistemas reales](./2026-09-02-cajas-estudio.md) mejoró el diseño. La primera
+versión solo tenía **banderas** (puesta / no puesta). Los sistemas que llegan lejos tienen
+además **conjuntos con nombre**: cajas donde se meten cosas.
+
+| Memoria | Ejemplo | Para qué |
+|---|---|---|
+| **Marca** (bandera) | «el pasadizo es conocido» | Sí o no. Fases, puertas que se abren una vez |
+| **Conjunto** | «llaves encontradas», «quién ha visto el cuerpo» | Acumular cosas y **contarlas** |
+
+Y con eso, la única operación numérica del sistema deja de ser un caso especial: es una
+condición sobre un conjunto.
 
 ```
-SI  se han revelado  ≥ 3  fichas con la etiqueta «pista»
+SI  el conjunto «llaves encontradas» tiene al menos 3 elementos
+SI  «Nyx» está en el conjunto «quién ha visto el cuerpo»
 ```
 
-**No hay** variables, ni sumas, ni expresiones. Hay *«cuántas cosas de este tipo cumplen esto»*,
-comparado con una constante. Es un techo deliberado: en cuanto haya variables y expresiones,
-esto deja de ser una herramienta de DM y pasa a ser un lenguaje que hay que depurar — y el DM
-no ha venido a depurar.
+Eso da el patrón de media aventura publicada —*«cuando tengan tres de las cinco llaves»*— y
+también el que no había previsto: **acumular personas**, no solo cosas. *«Cuando todos los
+jugadores hayan leído la carta»* es un conjunto y una comparación, no una funcionalidad nueva.
 
-### 2.4 · Estado: solo marcas con nombre, y efectos declarativos
+**No hay** variables, ni sumas, ni expresiones. Hay *pertenecer* y *cuántos*, comparado con una
+constante. Es un techo deliberado: en cuanto haya aritmética, esto deja de ser una herramienta
+de DM y pasa a ser un lenguaje que hay que depurar — y el DM no ha venido a depurar.
 
-La única memoria del sistema son **marcas de campaña**: banderas con nombre, puestas o quitadas
-(`CampaignFlag`). No hay números guardados, no hay cadenas, no hay estructuras.
+### 2.4 · Señales con nombre: el DM inventa su propio vocabulario
 
-Con marcas + encadenamiento se consigue lo que normalmente pide una máquina de estados:
-fases de la aventura, puertas que se abren una sola vez, condiciones que dependen de lo que pasó
-tres sesiones atrás.
+Un efecto puede **lanzar una señal con el nombre que el DM quiera** —«el ritual ha comenzado»—,
+y cualquier regla puede escucharla. Es el `broadcast` de Scratch, y es **un solo concepto que
+multiplica todo lo demás**: en vez de repetir las mismas condiciones en cinco reglas, una regla
+lanza la señal y cinco reaccionan.
 
-Y **todo efecto es declarativo**: se dice *en qué queda* algo, no *cuánto cambia*.
+```
+Regla 1: CUANDO se revela «Altar profanado» · ENTONCES lanzar la señal «el ritual ha comenzado»
+Regla 2: CUANDO la señal «el ritual ha comenzado» · ENTONCES revelar «Cánticos en la cripta»
+Regla 3: CUANDO la señal «el ritual ha comenzado» · ENTONCES avisar al DM
+```
+
+El DM **no aprende un concepto nuevo** —es otro «cuando» y otro «entonces»— y gana el poder de
+nombrar los momentos de su propia aventura.
+
+### 2.5 · Efectos declarativos: una regla que se repite no hace daño
+
+Todo efecto dice **en qué queda** algo, no *cuánto cambia*.
 
 | Sí | No |
 |---|---|
 | «la visibilidad **queda en** Jugadores» | «sube un nivel la visibilidad» |
 | «la marca **queda** puesta» | «alterna la marca» |
+| «añadir «Nyx» al conjunto» *(ya estaba: no pasa nada)* | «incrementar el contador» |
 
-Motivo: una regla que se dispara dos veces **no puede hacer daño**. Con efectos incrementales,
-un doble disparo —que va a ocurrir, porque hay encadenamiento y reintentos— rompe la partida en
-silencio.
+Motivo: con encadenamiento y reintentos, **un efecto se va a aplicar dos veces**. Con efectos
+incrementales eso rompe la partida en silencio; con efectos declarativos no se nota.
 
----
+### 2.6 · Cuando dos reglas se contradicen: gana la más específica
+
+Del patrón de **Inform 7** y de los motores de reglas: las reglas **no se ordenan a mano**. Si
+dos se disparan con el mismo suceso, **gana la que tiene más condiciones** —la más específica—,
+porque describe un caso más concreto y eso es casi siempre lo que el autor quiso.
+
+Si empatan, **el sistema no adivina**: pide un desempate explícito y, mientras no lo tenga, lo
+**marca como conflicto** en el ensayo en seco. Un sistema que resuelve empates en secreto es un
+sistema en el que un DM deja de confiar la primera vez que le sorprende.
 
 ## 3 · El vocabulario inicial, cerrado a propósito
 
@@ -157,6 +191,7 @@ silencio.
 | Alguien comenta una ficha | el comentario ya existe; falta persistir el evento |
 | **Se revela una ficha** | `ENTITY_REVEALED` — el que permite encadenar (§2.1) |
 | Se pone una marca | `FLAG_SET` — encadenar sin revelar nada |
+| **Se lanza la señal ⟨nombre⟩** | La señal que inventa el DM (§2.4) |
 | **El DM pulsa un botón** | la regla manual: el DM decide cuándo, la automatización hace el resto |
 | Un jugador se une a la campaña | `campaign.member_joined`, que ya se emite |
 | *(cuando 2A tenga dados)* una tirada supera una CD | `ABILITY_ROLL` |
@@ -166,6 +201,8 @@ silencio.
 | Condición |
 |---|
 | La marca ⟨X⟩ está puesta / no está puesta |
+| **El conjunto ⟨X⟩ tiene al menos N elementos** |
+| **⟨alguien o algo⟩ está en el conjunto ⟨X⟩** |
 | **Están todos los jugadores presentes** *(exige sesión en curso — por eso 2A.5 va antes)* |
 | La ficha del suceso tiene la etiqueta ⟨X⟩ |
 | Se han revelado **≥ N** fichas con la etiqueta ⟨X⟩ |
@@ -180,11 +217,13 @@ silencio.
 | Revelar **todas** las fichas con la etiqueta ⟨X⟩ |
 | **Ocultar** una ficha: su visibilidad queda en ⟨nivel⟩ |
 | Poner / quitar la marca ⟨X⟩ |
+| **Añadir / quitar ⟨algo⟩ del conjunto ⟨X⟩** |
+| **Lanzar la señal ⟨nombre⟩** (§2.4) |
 | **Avisar** (a los jugadores, o solo al DM) — sale por la bandeja de notificaciones |
 | Añadir una nota a la sesión en curso |
 | **Armar / desarmar** otra regla |
 
-Siete efectos, nueve sucesos, seis condiciones. **Con eso y el encadenamiento se escribe una
+Nueve efectos, diez sucesos, ocho condiciones. **Con eso y el encadenamiento se escribe una
 aventura entera**, y cabe en una pantalla de ayuda.
 
 ---
@@ -220,6 +259,19 @@ herramienta exige escribir código.
 
 ---
 
+### 2.7 · El vocabulario es del dominio, nunca primitivas disfrazadas
+
+El fracaso mejor documentado de este tipo de sistemas —**Godot VisualScript**, retirado del
+motor— fue ofrecer las primitivas de un lenguaje de programación (variable, bucle, condición)
+con aspecto de cajas bonitas. Quien no programa no entiende una variable por mucho color que
+tenga, y quien programa prefiere escribir código.
+
+Así que aquí **cada pieza habla del juego**: «un jugador abre una ficha», «revelar», «marca de
+campaña», «están todos presentes». Ninguna dice «variable», «bucle» ni «expresión». Si algún día
+una pieza necesita esas palabras para explicarse, **esa pieza está mal diseñada**.
+
+---
+
 ## 5 · Las cuatro cosas que hay que hacer bien, o no hacerlo
 
 1. **Una regla escribe un dato; nunca decide un permiso.** Un efecto pone
@@ -232,7 +284,9 @@ herramienta exige escribir código.
    y qué efectos se aplicaron*. Una automatización sin registro es magia, y **la magia asusta y
    se desactiva**. La traza es una tabla propia, no un campo del `payload`: se consulta por
    regla y por ficha, y la regla del plan de 2A es explícita — *si hace falta consultar por un
-   campo, ese campo es una columna*.
+   campo, ese campo es una columna*. **Y es un registro con la causa escrita, no un depurador
+   con pasos**: los sistemas que obligan a «ejecutar paso a paso» para entender qué pasó son los
+   que la gente abandona.
 
 3. **Ensayo en seco.** Poder simular «empieza la sesión 3 con todos presentes» y ver **qué se
    dispararía**, sin que se dispare. Es lo que separa una herramienta de preparación de una

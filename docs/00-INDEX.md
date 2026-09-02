@@ -43,6 +43,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/specs/2026-09-02-formularios-estudio.md` | Diseño de formularios y diálogos (NN/g, GOV.UK, Adam Silver). De aquí salieron los radios de visibilidad |
 | `superpowers/specs/2026-09-02-seis-peticiones-analisis.md` | **Qué se hace con las seis peticiones del autor y dónde va cada una.** Incluye el diseño del **sistema de eventos suceso–condición–efecto** y por qué el lienzo de cajas va después |
 | `superpowers/specs/2026-09-02-sistema-de-eventos-design.md` | **El sistema de eventos «por cajas»**: la frase de tres partes y las **cuatro decisiones** que dan potencia sin complejidad. Entra en 2A |
+| `superpowers/specs/2026-09-02-cajas-estudio.md` | Scratch, Blockly, Twine, Ink, Inform 7, Blueprints, Godot, IFTTT/Zapier, Foundry y los motores ECA. **Tres de sus conclusiones cambiaron el diseño** |
 | `superpowers/specs/2026-09-02-distancias-y-movimiento-design.md` | **Velocidad, condiciones que la limitan, alcances y áreas** (SRD 5.1). Pies en la base, metros en pantalla, y qué **no** se puede hacer sin mapa |
 | `superpowers/plans/2026-09-02-reseno-interfaz.md` | **Plan del reseño de interfaz**: las seis tandas y sus dos fronteras |
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |

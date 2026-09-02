@@ -28,10 +28,16 @@ Eso necesita exactamente lo mismo que **P1** venía preguntando —**saber qué 
 que P1 deja de ser una duda y pasa a ser un requisito con dos clientes: el registro de dados de
 2C y el motor de reglas del autor. **Se construye una vez, en 2A**, o se construirá dos veces.
 
-Lo que entra en 2A, según [el análisis de las seis peticiones](../specs/2026-09-02-seis-peticiones-analisis.md):
-**estado de campaña/sesión**, **registro de sucesos**, **marcas de campaña** y **reglas
-suceso–condición–efecto** con el efecto «revelar» y su **traza**. En un formulario de tres
-partes, no en un lienzo: el lienzo de cajas es 2B/2C, cuando el vocabulario esté probado.
+Lo que entra en 2A está diseñado en
+[el sistema de eventos](../specs/2026-09-02-sistema-de-eventos-design.md): **estado de
+campaña/sesión**, **registro de sucesos**, **marcas y conjuntos con nombre**, **señales que el
+DM inventa** y **reglas suceso–condición–efecto** con el efecto «revelar» y su **traza**. En un
+formulario de tres partes, no en un lienzo: el lienzo de cajas es 2B/2C, cuando el vocabulario
+esté probado con una aventura real.
+
+Sus tareas son **2A.12** (marcas, conjuntos y sucesos de mundo), **2A.13** (el motor, con
+encadenamiento acotado, orden por especificidad, traza y ensayo en seco) y **2A.14** (la
+pantalla). Van después de 2A.5, que es de quien dependen.
 
 **La regla que no se negocia:** un efecto **escribe** `visibility`; **nunca decide** quién ve
 qué. `canView` sigue siendo el dueño único, o habría dos matrices y la fuga que este producto

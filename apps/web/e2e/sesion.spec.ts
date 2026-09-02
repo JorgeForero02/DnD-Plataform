@@ -182,10 +182,8 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
     return salida;
   });
 
-  // eslint-disable-next-line no-console
   console.log("\n=== Contraste WCAG medido (barra de sesión) ===");
   for (const m of medido) {
-    // eslint-disable-next-line no-console
     console.log(
       `${m.que}: ${m.valor.toFixed(2)}:1 (necesita ${m.minimo}:1) — ${m.valor >= m.minimo ? "PASS" : "FAIL"}`,
     );

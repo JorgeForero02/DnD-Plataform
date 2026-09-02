@@ -5,6 +5,7 @@ import { CHECKING_PERMISSIONS } from "../campaigns/PermissionStatus";
 import { useAuthStore } from "../../store/auth.store";
 import { useCreateLink, useDeleteLink, useLinks } from "./hooks";
 import { Button } from "../../ui/Button";
+import { ETIQUETA_DE_TIPO } from "../entities/resumen";
 import { fieldControlClass } from "../../ui/Field";
 
 // The task 1.15 gap this task closes: this panel used to paint "Quitar" unconditionally,
@@ -72,7 +73,7 @@ export function LinksPanel({
         {links.data?.map((l) => (
           <li key={l.id} className="flex items-center justify-between gap-2 text-chrome-sm">
             <span>
-              {l.to.name} <span className="text-muted">({l.to.type})</span>
+              {l.to.name} <span className="text-muted">({ETIQUETA_DE_TIPO[l.to.type]})</span>
               {l.label ? ` — ${l.label}` : ""}
             </span>
             <button
@@ -112,7 +113,7 @@ export function LinksPanel({
           <option value="">Elige un destino…</option>
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name} ({c.type})
+              {c.name} ({ETIQUETA_DE_TIPO[c.type]})
             </option>
           ))}
         </select>

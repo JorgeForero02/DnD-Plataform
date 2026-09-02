@@ -90,7 +90,7 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   const linksSection = page
     .locator("section")
     .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
-  await linksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (NPC)" });
+  await linksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (PNJ)" });
   await linksSection.getByLabel("Etiqueta del enlace").fill("rival");
   await linksSection.getByRole("button", { name: "Añadir enlace" }).click();
   const linkRow = linksSection.locator("li").filter({ hasText: "Mahadi" });
@@ -140,7 +140,7 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   const zarielLinksSection = page
     .locator("section")
     .filter({ has: page.locator("> h3", { hasText: "Enlaces" }) });
-  await zarielLinksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (NPC)" });
+  await zarielLinksSection.getByLabel("Entidad destino").selectOption({ label: "Mahadi (PNJ)" });
   await zarielLinksSection.getByRole("button", { name: "Añadir enlace" }).click();
   await expect(zarielLinksSection.locator("li").filter({ hasText: "Mahadi" })).toBeVisible();
 

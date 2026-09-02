@@ -72,6 +72,20 @@ src/store/auth.store.ts Zustand: token (persistido en localStorage) y usuario (e
 src/features/auth/      AuthGate + useAuthRehydration: rellena el usuario tras recargar
 src/features/<x>/       api.ts (fetchers) + hooks.ts (TanStack Query) + componentes + __tests__
 src/pages/              pantallas enrutadas
+
+Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
+
+| Ruta | Pantalla |
+|---|---|
+| `/login`, `/register` | Entrada, con su propio armazón y su ornamento |
+| `/` | Panel de campañas |
+| `/campaigns/:id` | Campaña. La **sección abierta viaja en `?seccion=`**, así que es enlazable y sobrevive a una recarga |
+| `/campaigns/:id/entidades/:entityId` | **Lectura** de una ficha del mundo: cuerpo en vitela, relaciones y comentarios |
+| `/campaigns/:id/personajes/:characterId` | Hoja de personaje con la forma de 5.ª edición |
+| `/account`, `/join/:token`, `/design-tokens`, `*` | Cuenta, invitación, control de tokens y 404 |
+
+Las tres primeras pantallas comparten `ui/AppShell.tsx`: cabecera global, migas y una medida
+máxima. **Editar es un diálogo que se abre desde la lectura**, nunca la puerta de entrada.
 src/components/         ProtectedRoute y compartidos
 ```
 

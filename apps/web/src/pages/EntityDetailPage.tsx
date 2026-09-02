@@ -112,7 +112,7 @@ export function EntityDetailPage() {
       <div className="grid gap-s6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-s5">
           {cuerpo ? (
-            <Panel tone="vellum" className="max-w-none">
+            <Panel tone="vellum">
               <Markdown text={cuerpo} />
             </Panel>
           ) : (
@@ -132,14 +132,13 @@ export function EntityDetailPage() {
           )}
 
           <section>
-            <OrnamentRule className="mb-s3">Comentarios</OrnamentRule>
+            <OrnamentRule className="mb-s3" />
             <CommentThread campaignId={id} entityId={entity.id} />
           </section>
         </div>
 
         <aside className="space-y-s5">
           <section>
-            <OrnamentRule className="mb-s3">Relaciones</OrnamentRule>
             <LinksPanel
               campaignId={id}
               entityId={entity.id}

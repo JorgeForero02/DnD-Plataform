@@ -27,8 +27,15 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-01 tras las tareas 1.18a (endurecimiento de la API) y 1.19 (capa de
-tokens): **45 e2e de API** en 12 suites y **11 e2e de navegador** en 3 suites, todas verdes.
+**E2e**, medidos el 2026-09-02 tras el reseño de interfaz: **45 e2e de API** en 12 suites y
+**24 e2e de navegador** en 4 suites, todas verdes.
+
+> **El reseño reescribió nueve recorridos del navegador, y merece decirse por qué.** No se
+> tocaron sus comprobaciones: se tocó el **camino**. Antes, leer una ficha era abrir su
+> formulario, así que los recorridos hacían clic en una fila y esperaban un editor. Ahora la
+> fila lleva a una página de lectura y el editor se abre desde ella, de modo que el recorrido
+> tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
+> sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
 
 La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
 otra hace: **mide**. Recorre `/design-tokens` **y dos pantallas reales** (entrar y el detalle de campaña) en los dos temas, lee los colores **calculados**

@@ -6,6 +6,21 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Reseño de interfaz (2026-09-02) — lo que dejó abierto
+
+Lo entregado está en [07-historial](./07-historial.md) y su porqué en
+[la auditoría](./superpowers/specs/2026-09-02-auditoria-interfaz.md). Lo que **no** entró:
+
+| | Qué | Por qué importa |
+|---|---|---|
+| **U1** | **Las sesiones no tienen página de lectura.** Fichas y personajes sí; una sesión se sigue abriendo en su formulario | Es justo la pantalla que el DM mira **durante** la partida. El patrón ya está construido dos veces, así que sale barato |
+| **U2** | **La columna de secciones desaparece por debajo de 768 px** y nada la sustituye | En móvil se llega a una sección por URL pero no se puede navegar a ella. Hace falta un desplegable o una tira horizontal |
+| **U3** | **Buscar solo mira el nombre**, no el cuerpo de las fichas | Buscar dentro del texto exige hacerlo **en el servidor**: el filtro de pantalla opera sobre lo que `canView` ya dejó pasar, y ampliarlo sería confundir *esconder* con *no mandar*. Ver [04-convenciones](./04-convenciones.md) |
+| **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
+| **U5** | **La hoja de personaje es solo la forma**: todas sus casillas dicen «—» | A propósito, y anunciado en la propia pantalla. El motor es la [fase 2A](./superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md), que ya no tiene que decidir la disposición |
+| **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
+| **U7** | **El ornamento no se puede apagar.** La cuadrícula y el horizonte se pintan siempre | No se mueven, así que `prefers-reduced-motion` no aplica, pero no hay forma de dejar la pantalla desnuda para quien la prefiera así |
+
 ## Lo que dijeron los jugadores (2026-09-02)
 
 Respondieron a las ocho preguntas de la presentación *"Delante de la pantalla"*. El detalle y el

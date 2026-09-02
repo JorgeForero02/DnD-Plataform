@@ -1,10 +1,13 @@
-import type { CreateEntityLinkInput } from "@dnd/shared";
+import type { CreateEntityLinkInput, EntityType } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 export interface EntityLink {
   id: string;
   label?: string | null;
-  to: { id: string; name: string; type: string };
+  // Reseño 2026-09-02: era `type: string`, así que la interfaz lo pintaba en crudo —un enlace
+  // decía "Ciudad Ceniza (LOCATION)" en una interfaz en español. Tipado como EntityType para
+  // poder traducirlo con la misma tabla que el resto de la aplicación.
+  to: { id: string; name: string; type: EntityType };
 }
 
 export interface CreatedEntityLink {

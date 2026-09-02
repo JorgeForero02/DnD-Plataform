@@ -6,6 +6,48 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 — Reseño completo de la interfaz
+
+**Qué.** La identidad, la navegación y todas las pantallas. El autor entró en producción por
+primera vez y dijo, con razón, que la interfaz *"se ve terrible"* y que *"cada cosa es super
+incomoda de usar"*.
+
+**Cómo se decidió qué arreglar.** No leyendo el código: se sembró una campaña real en
+producción —nueve fichas de los siete tipos, cuatro enlaces, dos sesiones, tres personajes— y
+se fotografió cada pantalla en escritorio y en móvil. Los hallazgos y su evidencia están en
+[la auditoría](./superpowers/specs/2026-09-02-auditoria-interfaz.md), que es un registro
+fechado y no se reescribe.
+
+**Lo entregado, en cinco commits:**
+
+| | Qué |
+|---|---|
+| Identidad | Paleta «Sala de guerra» (pizarra naval y cobre) y cuatro voces tipográficas: Marcellus, Public Sans, EB Garamond, IBM Plex Mono. Medievo por cartografía y grabado, no por pergamino |
+| Esqueleto | Cabecera global, migas de pan, y las diez secciones agrupadas en una columna: el mundo por un lado, la mesa por otro |
+| Listas | Cada fila con su resumen —el texto ya venía en la respuesta y nadie lo pintaba—, una sola barra de herramientas, botones que dicen qué crean, estados vacíos que invitan |
+| Lectura | Página propia para cada ficha y para cada personaje. Leer un PNJ ya no exige abrir un formulario |
+| Hoja 5.ª ed. | La **forma** de la hoja real, con todas las casillas a su tamaño y vacías, diciendo que lo están. El motor es la fase 2A |
+
+**Por qué la interfaz cuenta lo que cuenta.** Los contadores por tipo se calculan **en el
+cliente** sobre listas que el servidor ya filtró por `canView`, así que significan «lo que tú
+puedes ver». `listForUser` añadió el rol del visitante y cuántas personas hay en la mesa, y
+**no** cuenta fichas: «12 lugares» dicho a quien solo ve 4 delata los otros 8.
+
+**Tres fallos que solo aparecieron al ejecutar, no al mirar:**
+
+1. El conmutador de tema, fijo en la esquina, **tapaba «Cuenta» y «Salir»** de la cabecera
+   nueva; los clics no llegaban.
+2. Un contador en una pestaña se colaba en su **nombre accesible** («PNJ 12»), de modo que un
+   lector de pantalla anunciaba un número como parte del nombre de la sección.
+3. Las migas decidían enlace-o-texto **por posición**, y convertían «Mis campañas» en texto
+   muerto cuando era la única. Una miga es enlace cuando tiene destino.
+
+**Revertir.** Cada tanda es un commit propio y se puede revertir por separado; la capa de
+tokens (`apps/web/src/ui/tokens.css`) es el único punto por el que pasa el color, así que
+volver a la paleta anterior es cambiar un bloque de valores, no repintar pantallas.
+
+---
+
 ## 2026-09-02 — Primera puesta en producción: dnd.supportive.pro
 
 **Qué.** La plataforma corre en el servidor dedicado (`vps1new`) tras Coolify 4.3.10 + Traefik,

@@ -6,6 +6,17 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Pedido por el autor el 2026-09-02, colocado — antes de 2A
+
+Razonado en [el análisis de las seis peticiones](./superpowers/specs/2026-09-02-seis-peticiones-analisis.md).
+Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en el plan de 2A.
+
+| | Qué | Por qué aquí y no después |
+|---|---|---|
+| **A1** | **Bandeja de notificaciones.** Tabla `Notification` alimentada por los eventos de dominio que ya se emiten, y una bandeja en la cabecera. **Sin tiempo real**: se pide al cargar | Hoy la aplicación no le cuenta nada a nadie: ni invitaciones, ni sesión el viernes, ni comentarios. Y **el motor de reglas de 2A no tiene dónde avisar** sin esto |
+| **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
+| **A3** | **Invitaciones con usos máximos, caducidad y revocación** | Hoy es un enlace por persona —decisión declarada— y montar una mesa de cuatro exige generar cuatro. **Un enlace eterno no**: acaba circulando por un grupo y la visibilidad se apoya en quién es miembro |
+
 ## Reseño de interfaz (2026-09-02) — lo que dejó abierto
 
 Lo entregado está en [07-historial](./07-historial.md) y su porqué en

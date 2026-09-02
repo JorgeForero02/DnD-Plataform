@@ -18,6 +18,27 @@ sustituye al plan maestro en todo lo que toque el alcance de la fase 2).
 
 ---
 
+## 0 ter · P1 ya no es una pregunta abierta (2026-09-02)
+
+El autor pidió **un sistema de eventos por cajas**: *"cuando → jugador → revisa con → detalle →
+se desvela → camino secreto"*, y reglas que bloqueen cosas hasta que todos estén presentes o
+hasta que ciertos secretos se hayan mirado.
+
+Eso necesita exactamente lo mismo que **P1** venía preguntando —**saber qué ha pasado**—, así
+que P1 deja de ser una duda y pasa a ser un requisito con dos clientes: el registro de dados de
+2C y el motor de reglas del autor. **Se construye una vez, en 2A**, o se construirá dos veces.
+
+Lo que entra en 2A, según [el análisis de las seis peticiones](../specs/2026-09-02-seis-peticiones-analisis.md):
+**estado de campaña/sesión**, **registro de sucesos**, **marcas de campaña** y **reglas
+suceso–condición–efecto** con el efecto «revelar» y su **traza**. En un formulario de tres
+partes, no en un lienzo: el lienzo de cajas es 2B/2C, cuando el vocabulario esté probado.
+
+**La regla que no se negocia:** un efecto **escribe** `visibility`; **nunca decide** quién ve
+qué. `canView` sigue siendo el dueño único, o habría dos matrices y la fuga que este producto
+existe para evitar entraría por la puerta de atrás.
+
+---
+
 ## 0 bis · La forma de la hoja ya está decidida y desplegada (2026-09-02)
 
 El reseño de interfaz del 2026-09-02 entregó **la disposición** de la hoja, no su motor:

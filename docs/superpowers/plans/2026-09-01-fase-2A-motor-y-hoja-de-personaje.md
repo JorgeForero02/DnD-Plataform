@@ -18,6 +18,14 @@ sustituye al plan maestro en todo lo que toque el alcance de la fase 2).
 
 ---
 
+> **Este plan tiene una segunda parte, y sin ella está incompleto:**
+> [Fase 2A · Parte 2](./2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md) **falla las
+> ocho preguntas del §8**, añade seis tareas (eventos, distancias, notificaciones, tiradas) y
+> fija **el orden final de las diecisiete**. Lo de aquí sigue vigente; lo que estaba sin decidir,
+> allí está decidido.
+
+---
+
 ## 0 ter · P1 ya no es una pregunta abierta (2026-09-02)
 
 El autor pidió **un sistema de eventos por cajas**: *"cuando → jugador → revisa con → detalle →
@@ -551,7 +559,12 @@ que `scripts/check-docs.mjs` hizo con las reglas de documentación.
 
 ---
 
-## 5 · B · Secuencia: once tareas, cada una verde y commiteable por separado
+## 5 · B · Secuencia: las once tareas de la primera mitad
+
+> **Ya no son once en total.** La [parte 2](./2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md)
+> añadió seis —eventos, distancias, notificaciones y tiradas— y **el orden final de las
+> diecisiete está allí, en su §3**. Lo de aquí es la descripción de estas once; el orden en que
+> se ejecutan, no.
 
 Cada tarea termina con `pnpm verify` limpio, sus pruebas en verde, la documentación en el mismo
 commit (estado en 01–05, deuda en 06, una línea en 07) y **un commit por tarea**. El orden está
@@ -800,7 +813,12 @@ Un plan que no nombra sus exclusiones crece una. Esta es la lista, con destino:
 
 ---
 
-## 8 · Lo que el autor tiene que responder antes de empezar la tarea 1 de 2A
+## 8 · Lo que el autor tenía que responder — **contestado el 2026-09-02**
+
+> **Las ocho están falladas** en
+> [la parte 2, §1](./2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md), con su motivo y
+> lo que cuesta si el fallo está mal. El autor autorizó decidir en su ausencia; se dejan aquí
+> escritas tal cual se plantearon, porque **una pregunta bien formulada explica su respuesta**.
 
 Ocho preguntas. Cada una se contesta con un **sí/no** o eligiendo una opción.
 

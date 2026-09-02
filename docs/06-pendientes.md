@@ -6,6 +6,20 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Huecos abiertos de la fase 2A (2026-09-02)
+
+Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo están viven en
+[la parte 2 del plan, §4](./superpowers/plans/2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md).
+
+| | Qué | Por qué importa |
+|---|---|---|
+| **H6** | **¿Con qué autoridad escribe una regla?** Un jugador abre una ficha, eso dispara una regla, y la regla revela algo **que ese jugador no podría haber revelado** | Propuesta: se aplica con la autoridad **del DM que armó la regla**, y la traza lo dice. **Necesita su propia revisión de seguridad antes de 2A.16** — es el único hueco de esta lista que puede convertirse en una fuga |
+| **H7** | Una regla que apunta a una ficha **borrada** | Queda **rota y marcada**, nunca se descarta en silencio. Falta decidir si se puede seguir armando |
+| **H8** | El motor evalúa **dentro de la petición** que escribió el suceso | Con diez saltos y varias reglas, abrir una ficha puede tardar. Propuesta: síncrono con tope y cola si molesta — **hay que medirlo, no suponerlo** |
+| **H9** | **Las propuestas caducan.** Una propuesta de hace tres sesiones es ruido | Falta decidir el plazo |
+| **H10** | Las formas de área (cono, esfera, línea, cubo, cilindro) las necesitan el motor (2A) y los conjuros (2B) | Propuesta: viven en `@dnd/shared` desde 2A, aunque en 2A todavía no alcancen a nadie |
+| **H11** | **Nada ata el texto de la interfaz a `canView`** | Es el mismo U10 de más abajo, visto desde 2A: las frases de visibilidad **ya mintieron una vez** |
+
 ## Pedido por el autor el 2026-09-02, colocado — antes de 2A
 
 Razonado en [el análisis de las seis peticiones](./superpowers/specs/2026-09-02-seis-peticiones-analisis.md).
@@ -64,6 +78,14 @@ mesa lo toca pronto, y el alcance no tiene dónde ponerlo— aparecieron **doce*
 [`superpowers/specs/2026-09-01-huecos-fase-2-design.md`](./superpowers/specs/2026-09-01-huecos-fase-2-design.md),
 con 16 preguntas para el autor.
 
+> **Los cuatro de abajo están decididos desde el 2026-09-02**, en ausencia del autor y con su
+> permiso expreso: manos **reservadas como columna en 2A y modeladas en 2B**; descansos y dados
+> de golpe **en 2A**; PG temporales **en 2A, como columna propia**; pericia **en 2A, como tercer
+> estado por habilidad**. El razonamiento, y lo que cuesta si algún fallo está mal, en
+> [la parte 2 del plan, §1](./superpowers/plans/2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md).
+> Se conserva el planteamiento tal cual porque explica **por qué** había que decidirlos antes de
+> la primera migración:
+>
 **Los cuatro que hay que decidir antes de la primera migración**, porque cambian la **forma** de
 una tabla y después salen caros:
 

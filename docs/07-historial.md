@@ -6,6 +6,45 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (mediodía) — El plan de 2A, completo; y su primera tarea
+
+**Qué.** El plan de la fase 2A estaba a medias: once tareas y **ocho preguntas sin responder**,
+esperando al autor. El autor pidió además tres cosas nuevas —el sistema de eventos «por cajas»,
+las distancias y una bandeja de notificaciones— y se fue a la universidad dejando la fase en
+marcha. Así que el plan se cierra: [parte 2](./superpowers/plans/2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md).
+
+**Las ocho preguntas, falladas** en ausencia del autor y con su permiso expreso, cada una con su
+motivo y **lo que cuesta si el fallo está mal**. Y los cuatro huecos de forma que llevaban desde
+el 2026-09-01 sin decidir —manos, descansos y dados de golpe, PG temporales, pericia— también,
+porque cambian la forma de una tabla y decidirlos después de la primera migración sale caro.
+
+**Seis tareas nuevas**, hasta diecisiete: tirar de verdad (endpoint y registro), velocidades y
+condiciones, bandeja de notificaciones, marcas y conjuntos, el motor de reglas y su pantalla.
+Con su orden final y su punto de corte declarado por si no da tiempo: **el bloque del motor no
+se parte por la mitad**, porque un motor sin pantalla no lo usa nadie y una pantalla sin motor
+es una mentira.
+
+**Once huecos** aparecieron al juntarlo todo. Cinco resueltos ahí mismo —las condiciones
+bajaron de 2C a 2A porque la velocidad efectiva las necesita; nada ejecutaba una tirada; el
+efecto «avisar» no tenía dónde escribir; deshacer exige guardar el antes y el después—. **Seis
+siguen abiertos** y están en 06, y uno de ellos importa más que el resto: **con qué autoridad
+escribe una regla**. Si un jugador abre una ficha y eso revela algo, la escritura la hace
+alguien que no podía hacerla. La propuesta es que se aplique con la autoridad del DM que armó la
+regla, pero **eso necesita su propia revisión de seguridad antes de construir el motor**.
+
+**Y la primera tarea, hecha:** el evaluador de expresiones de dados (2A.1), con 27 pruebas y sus
+dos mutaciones comprobadas.
+
+**Un error propio, anotado para no repetirlo:** un `git add -A` metió el evaluador **sin sus
+pruebas** dentro de un commit de documentación. No se reescribió historia ya empujada; la tarea
+se cerró en el commit siguiente y quedó dicho. `add -A` no se usa con trabajo a medias en el
+árbol.
+
+**Revertir.** Todo esto es documentación salvo `apps/api/src/dice/`, que es puro y no lo importa
+nadie todavía.
+
+---
+
 ## 2026-09-02 (tarde) — Segunda pasada del reseño: lo que el autor señaló al verlo
 
 **Qué.** El autor miró la interfaz desplegada y mandó dos capturas con tres cosas: el logotipo

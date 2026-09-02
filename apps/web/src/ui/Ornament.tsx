@@ -52,63 +52,73 @@ export function CartographicGrid({ className = "" }: { className?: string }) {
 }
 
 /**
- * A horizon of hills, drawn the way a cartographer sketches a coastline: one unbroken line,
- * unfinished on purpose. Sits at the foot of the entry screens.
+ * A landscape, drawn the way a cartographer sketches one: an unbroken line for the far range,
+ * a heavier one for the near hills, and a ruin standing where the two meet.
+ *
+ * The first version of this was a zigzag of straight segments and read as a line CHART, not as
+ * ground — the author spotted it immediately. Hills are curves: every stroke here is a
+ * quadratic path with real shoulders and valleys, and the far range sits higher, lighter and
+ * flatter than the near one because distance does that to a silhouette.
+ *
+ * The gaps in the near range are deliberate — a drawing put down mid-line, which is what the
+ * author asked for: "dibujos a medio hacer".
  */
 export function DrawnHorizon({ className = "" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
-      viewBox="0 0 1200 220"
+      viewBox="0 0 1200 260"
       preserveAspectRatio="none"
-      className={["pointer-events-none absolute inset-x-0 bottom-0 h-56 w-full", className].join(
+      className={["pointer-events-none absolute inset-x-0 bottom-0 h-64 w-full", className].join(
         " ",
       )}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Far range — lighter, so distance reads without haze or blur. */}
+      {/* Far range: distant peaks, thin and pale, with the softer shoulders of old mountains. */}
       <path
-        d="M0 168 L92 128 L148 150 L214 104 L286 146 L352 118 L430 158 L512 122 L586 152
-           L664 116 L742 154 L822 126 L904 160 L982 130 L1062 156 L1132 134 L1200 162"
+        d="M0 150 Q 70 96 132 132 Q 190 166 244 118 Q 300 68 356 116 Q 410 162 470 128
+           Q 528 96 586 132 Q 646 168 704 124 Q 762 82 820 126 Q 878 168 936 134
+           Q 996 100 1054 136 Q 1112 170 1200 128"
         fill="none"
         stroke="var(--copper)"
-        strokeOpacity="0.22"
+        strokeOpacity="0.18"
         strokeWidth="1.5"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      {/* Near range, and the gap in the stroke is the point: a drawing put down mid-line. */}
+
+      {/* Near hills, in two strokes with a gap between them: the drawing stops and starts. */}
       <path
-        d="M0 196 L118 162 L196 186 L268 148 L344 184 L420 158"
+        d="M0 214 Q 80 176 150 200 Q 216 222 274 188 Q 330 156 392 190 Q 430 210 462 202"
         fill="none"
         stroke="var(--copper)"
         strokeOpacity="0.4"
         strokeWidth="2"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
       <path
-        d="M486 176 L560 150 L648 190 L724 156 L806 188 L890 152 L968 186 L1052 158
-           L1128 182 L1200 164"
+        d="M540 198 Q 600 168 660 192 Q 716 214 776 186 Q 836 158 894 194
+           Q 952 228 1014 196 Q 1078 164 1200 200"
         fill="none"
         stroke="var(--copper)"
         strokeOpacity="0.4"
         strokeWidth="2"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      {/* A tower, half drawn. */}
-      <path
-        d="M660 190 L660 138 L688 138 L688 190"
-        fill="none"
-        stroke="var(--copper)"
-        strokeOpacity="0.34"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M652 138 L696 138 M666 128 L666 138 M682 130 L682 138"
-        fill="none"
-        stroke="var(--copper)"
-        strokeOpacity="0.24"
-        strokeWidth="1.5"
-      />
+
+      {/* A watchtower on the near ridge: broken at the top, because it is a ruin and because the
+          drawing was never finished. */}
+      <g stroke="var(--copper)" strokeOpacity="0.34" strokeWidth="1.6" fill="none">
+        <path d="M672 196 L672 140 M700 196 L700 146" strokeLinecap="round" />
+        <path d="M666 140 L706 140" />
+        <path d="M670 130 L670 140 M678 126 L678 140 M690 132 L690 140" strokeOpacity="0.22" />
+        <path d="M682 176 L690 176" strokeOpacity="0.22" />
+      </g>
+
+      {/* Two firs at the foot of the slope — a scale cue, so the hills read as land. */}
+      <g stroke="var(--copper)" strokeOpacity="0.26" strokeWidth="1.4" fill="none">
+        <path d="M232 216 L232 200 M226 208 L232 198 L238 208 M228 213 L232 205 L236 213" />
+        <path d="M964 212 L964 198 M958 205 L964 196 L970 205" />
+      </g>
     </svg>
   );
 }

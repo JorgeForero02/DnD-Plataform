@@ -10,7 +10,8 @@
 
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { CartographicGrid, CompassMark } from "./Ornament";
+import { CartographicGrid } from "./Ornament";
+import { Logo } from "./Logo";
 
 export interface Crumb {
   label: string;
@@ -107,40 +108,49 @@ export function AppHeader({
   right?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-muted/40 bg-surface/95 backdrop-blur">
-      {/* pr-14 reserves the top-right corner that ThemeToggle occupies — it is `fixed`, mounted
-          once in App.tsx so it exists on every route including the ones with no header, and it
-          sat directly on top of "Cuenta" and "Salir" here. Playwright caught it as a click that
-          never landed ("waiting for element to be visible, enabled and stable"), which is
-          exactly the kind of thing a screenshot review would have missed. */}
-      <div className="mx-auto flex h-12 max-w-[1400px] items-center gap-s4 px-s4 pr-14">
+    // Reseño 2026-09-02, segunda pasada. La primera cabecera medía 48 px, iba del mismo color
+    // que las tarjetas y se separaba con un filete gris: el autor dijo que "casi no se nota", y
+    // tenía razón — no se distinguía del contenido que debía enmarcar. Ahora:
+    //  · 64 px de alto, que es lo que hace falta para que el logotipo respire;
+    //  · un fondo propio, más oscuro que la superficie de las tarjetas, para que sea el marco
+    //    y no una tarjeta más;
+    //  · un filete de cobre abajo, que es la única línea de acento de toda la pantalla;
+    //  · y las acciones agrupadas a la derecha, separadas del nombre por una barra vertical, en
+    //    vez de tres enlaces sueltos flotando a la misma distancia.
+    <header className="sticky top-0 z-30 border-b border-copper/40 bg-bg/95 shadow-[0_1px_0_0_var(--surface)] backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-s4 px-s5 pr-16">
         <Link
           to="/"
-          className="flex items-center gap-s2 font-title text-chrome-md text-text hover:text-copper-text"
+          className="rounded-radius-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          aria-label="Ir a mis campañas"
         >
-          <CompassMark className="text-copper" />
-          <span>Plataforma D&amp;D</span>
+          <Logo />
         </Link>
         <div className="flex-1" />
         {right}
         {userName && (
-          <span className="hidden font-chrome text-chrome-xs text-muted sm:inline">{userName}</span>
+          <span className="hidden items-center gap-s3 font-chrome text-chrome-xs text-muted sm:flex">
+            <span className="h-4 w-px bg-muted/40" aria-hidden="true" />
+            {userName}
+          </span>
         )}
-        <Link
-          to="/account"
-          className="font-chrome text-chrome-xs text-muted hover:text-accent-text hover:underline"
-        >
-          Cuenta
-        </Link>
-        {onLogout && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="font-chrome text-chrome-xs text-muted hover:text-danger-text hover:underline"
+        <nav className="flex items-center gap-s3" aria-label="Tu cuenta">
+          <Link
+            to="/account"
+            className="font-chrome text-chrome-xs text-muted hover:text-accent-text hover:underline"
           >
-            Salir
-          </button>
-        )}
+            Cuenta
+          </Link>
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="font-chrome text-chrome-xs text-muted hover:text-danger-text hover:underline"
+            >
+              Salir
+            </button>
+          )}
+        </nav>
       </div>
     </header>
   );
@@ -170,7 +180,7 @@ export function AppShell({
         <div className="mx-auto flex max-w-[1400px] gap-s6 px-s4 py-s5">
           {aside && (
             <aside className="hidden w-56 shrink-0 lg:block">
-              <div className="sticky top-16">{aside}</div>
+              <div className="sticky top-20">{aside}</div>
             </aside>
           )}
           <main className="min-w-0 flex-1">{children}</main>

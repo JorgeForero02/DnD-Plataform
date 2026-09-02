@@ -12,7 +12,8 @@
 // signing in is work, not atmosphere.
 
 import type { ReactNode } from "react";
-import { CartographicGrid, DrawnHorizon, CompassMark, OrnamentRule } from "../../ui/Ornament";
+import { CartographicGrid, DrawnHorizon, OrnamentRule } from "../../ui/Ornament";
+import { Logo } from "../../ui/Logo";
 
 export function AuthLayout({
   title,
@@ -32,11 +33,8 @@ export function AuthLayout({
 
       <div className="relative w-full max-w-sm">
         <div className="mb-s5 text-center">
-          <div className="mb-s3 flex items-center justify-center gap-s2 text-copper">
-            <CompassMark className="h-6 w-6" />
-            <span className="font-title text-chrome-lg tracking-wide text-text">
-              Plataforma D&amp;D
-            </span>
+          <div className="mb-s4 flex justify-center">
+            <Logo size="lg" />
           </div>
           <h1 className="font-title text-chrome-2xl leading-tight text-text">{title}</h1>
           {lead && <p className="mt-s2 font-world text-chrome-base text-muted">{lead}</p>}

@@ -8,17 +8,23 @@ import type { Visibility } from "@dnd/shared";
 // "every level has a distinct icon and a distinct border style" assertion fails.
 const VISIBILITY_CONFIG: Record<
   Visibility,
-  { label: string; icon: string; border: string; tone: "text" | "accent" | "danger" }
+  { label: string; icon: string; border: string; tone: "muted" | "text" | "accent" | "danger" }
 > = {
-  PUBLIC: { label: "Público", icon: "○", border: "border-solid", tone: "text" },
+  // Reseño 2026-09-02, segunda pasada: el tono de PUBLIC baja a --muted. Público es el estado
+  // por defecto de un mundo compartido y no tiene por qué llamar la atención; lo que un DM
+  // necesita encontrar de un vistazo en una lista es lo que está OCULTO, no lo que está a la
+  // vista de todos. Antes los cinco niveles gritaban igual.
+  PUBLIC: { label: "Público", icon: "○", border: "border-solid", tone: "muted" },
   PLAYERS: { label: "Jugadores", icon: "◐", border: "border-solid", tone: "accent" },
   SPECIFIC_PLAYERS: {
     label: "Jugadores concretos",
+    // Línea discontinua para "solo algunos": el borde roto dice lo mismo que la palabra, y lo
+    // dice sin depender del color.
     icon: "◈",
     border: "border-dashed",
     tone: "accent",
   },
-  OWNER_DM: { label: "DM y creador", icon: "◆", border: "border-double", tone: "text" },
+  OWNER_DM: { label: "DM y creador", icon: "◆", border: "border-solid", tone: "text" },
   DM_ONLY: { label: "Solo DM", icon: "●", border: "border-solid", tone: "danger" },
 };
 
@@ -30,15 +36,27 @@ const VISIBILITY_CONFIG: Record<
 // theme — see tokens.css), the label and icon both carry real colour again; "text" tone stays
 // on plain --text because it was never a contrast problem (PUBLIC/OWNER_DM are neutral by
 // design, not a workaround).
-const TONE_TEXT: Record<"text" | "accent" | "danger", string> = {
+const TONE_TEXT: Record<"muted" | "text" | "accent" | "danger", string> = {
+  muted: "text-muted",
   text: "text-text",
   accent: "text-accent-text",
   danger: "text-danger-text",
 };
-const TONE_BORDER: Record<"text" | "accent" | "danger", string> = {
+const TONE_BORDER: Record<"muted" | "text" | "accent" | "danger", string> = {
+  muted: "border-muted",
   text: "border-muted",
   accent: "border-accent",
   danger: "border-danger",
+};
+// Sólo lo secreto lleva relleno. Es el único nivel que un DM tiene que localizar de un vistazo
+// en una lista de treinta filas, y el relleno es lo que hace que salte sin recurrir a más
+// tamaño ni a más borde. El alfa se compone contra el fondo real en la prueba de contraste, así
+// que este tinte está medido, no supuesto.
+const TONE_FILL: Record<"muted" | "text" | "accent" | "danger", string> = {
+  muted: "",
+  text: "",
+  accent: "",
+  danger: "bg-danger/10",
 };
 
 export function Badge({ visibility }: { visibility: Visibility }) {
@@ -46,14 +64,22 @@ export function Badge({ visibility }: { visibility: Visibility }) {
   return (
     <span
       data-visibility={visibility}
+      // Reseño 2026-09-02, segunda pasada: el borde era de 3 px, y con él la insignia pesaba
+      // más que el nombre de la ficha al que acompañaba — el autor lo señaló en cuanto lo vio.
+      // Un píxel basta: la señal que distingue los cinco niveles sin depender del color es el
+      // GLIFO, que es distinto en los cinco, más la línea discontinua de "jugadores concretos".
+      // El grosor nunca fue esa señal, y el contraste no depende de él.
       className={[
-        "inline-flex items-center gap-1 rounded-radius-sm border-[3px] px-1.5 py-0.5 font-chrome text-chrome-xs font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-radius-sm border px-1.5 py-px font-chrome text-chrome-xs",
         config.border,
         TONE_BORDER[config.tone],
         TONE_TEXT[config.tone],
+        TONE_FILL[config.tone],
       ].join(" ")}
     >
-      <span aria-hidden="true">{config.icon}</span>
+      <span aria-hidden="true" className="text-[0.9em] leading-none">
+        {config.icon}
+      </span>
       {config.label}
     </span>
   );

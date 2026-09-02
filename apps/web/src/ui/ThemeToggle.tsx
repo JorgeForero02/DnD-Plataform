@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "./Button";
+import { IconSol, IconLuna } from "./Logo";
 import { getPreferredTheme, setTheme, type Theme } from "./theme";
 
 function currentTheme(): Theme {
@@ -35,7 +36,10 @@ export function ThemeToggle() {
       title={label}
       className="fixed right-2 top-2 z-40"
     >
-      <span aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
+      {/* Reseño 2026-09-02: era "☾"/"☀", un glifo de fuente que en algunos sistemas se pinta
+          como emoji a todo color y en otros como un cuadrado vacío, y que además no se parecía
+          a nada más de la interfaz. Dibujados, con el mismo trazo que el logotipo. */}
+      {theme === "dark" ? <IconLuna /> : <IconSol />}
     </Button>
   );
 }

@@ -73,7 +73,9 @@ export function EntityFilterBar({
             </button>
           </span>
         ) : (
-          `${totalCount}`
+          // "2" suelto junto al buscador no dice de qué. Con la palabra, sí — y en singular
+          // cuando toca, que es la diferencia entre una interfaz escrita y una generada.
+          `${totalCount} ${totalCount === 1 ? "ficha" : "fichas"}`
         )
       }
       filters={

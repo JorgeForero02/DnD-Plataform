@@ -91,8 +91,14 @@ const VACIO_POR_TIPO: Record<EntityType, { titulo: string; texto: string }> = {
 // keyed by --surface, with the border picking up --accent on hover/focus instead of a bg
 // swap — the token palette has no third dark shade between --bg and --surface to fake the
 // old pre-token dark-card/hover-lighter pair with.
+// Reseño 2026-09-02, segunda pasada — `block` no es cosmético, es el arreglo de un defecto
+// visible: cuando estas filas pasaron de <button> a <a>, heredaron `display: inline`, y un
+// borde sobre un elemento en línea que ocupa varias líneas se dibuja **partido** — un trozo
+// vertical suelto a la izquierda de cada fila, que es exactamente lo que el autor fotografió.
+// Un <button> es `inline-block` por defecto y nunca tuvo el problema, así que el cambio de
+// etiqueta lo introdujo en silencio.
 const ROW_BUTTON_CLASS =
-  "w-full rounded-radius-sm border border-muted bg-surface p-3 text-left font-chrome text-chrome-sm text-text hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "block w-full rounded-radius-sm border border-muted bg-surface p-3 text-left font-chrome text-chrome-sm text-text hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType }) {
   const { data, isLoading, isError, error } = useEntities(campaignId, type);

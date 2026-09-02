@@ -44,6 +44,13 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   // El editor se cierra y la entidad aparece en la lista con su visibilidad.
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
   const npc = page.getByRole("link", { name: /Acererak/ });
+  // Reseño 2026-09-02, segunda pasada — alarma de maquetación. Cuando la fila pasó de <button>
+  // a <a> heredó `display: inline`, y un borde sobre un elemento en línea que ocupa varias
+  // líneas se dibuja PARTIDO: un trozo vertical suelto a la izquierda de cada fila. Ninguna
+  // prueba unitaria puede ver esto —jsdom no maqueta— y ninguna aserción de texto lo nota.
+  // Quita el `block` de ROW_BUTTON_CLASS y esta comprobación se pone roja.
+  await expect(npc).toBeVisible();
+  expect(await npc.evaluate((el) => getComputedStyle(el).display)).not.toBe("inline");
   await expect(npc).toBeVisible();
   // Task 1.19 converted the raw "DM_ONLY" text to the Badge primitive — icon + Spanish label,
   // not the enum value. The row still carries the real visibility level as data-visibility.

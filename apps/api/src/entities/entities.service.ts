@@ -1,9 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
+import { WorldStateService } from "../world-state/world-state.service";
 
 @Injectable()
 export class EntitiesService {
@@ -11,6 +12,11 @@ export class EntitiesService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: EventEmitter2,
+    /**
+     * Opcional para no romper las unitarias que montan este servicio a mano. En la aplicación
+     * real siempre está: `EntitiesModule` importa `WorldStateModule`, que lo exporta.
+     */
+    @Optional() private readonly worldState?: WorldStateService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -82,6 +88,28 @@ export class EntitiesService {
     ) {
       throw new NotFoundException("Entity not found");
     }
+
+    // **Aquí es donde el motor de reglas se entera de que alguien abrió una ficha.**
+    //
+    // `recordEntityOpened` existía desde 2A.15 con el comentario «queda listo para que quien
+    // toque `entities` lo llame», y no lo llamaba nadie: el disparador `ENTITY_OPENED` estaba
+    // probado en unitarias y era **inalcanzable en producción**. Y resulta que es el ejemplo con
+    // el que se definió el sistema entero —«cuando un jugador revise el detalle, se desvela el
+    // camino secreto»—, así que el motor tenía muerto justo el caso que lo justificaba.
+    //
+    // El suceso se escribe siempre `DM_ONLY` (lo fija `recordEntityOpened`): registrar quién
+    // mira qué es vigilancia si no se dice, y por eso el hueco H3 exige además que la interfaz
+    // avise al jugador. Las dos mitades, o ninguna.
+    //
+    // **No se espera a que termine ni se deja caer la petición si falla**: abrir una ficha tiene
+    // que funcionar aunque el registro o una regla revienten. El puente ya aísla los fallos de
+    // las reglas; este `catch` aísla los del propio registro.
+    if (this.worldState) {
+      await this.worldState
+        .recordEntityOpened(userId, campaignId, entity.id, entity.type, entity.name)
+        .catch(() => undefined);
+    }
+
     return entity;
   }
 

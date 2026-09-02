@@ -337,6 +337,8 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
       // **Solo si el nivel llega.** Paladin y explorador no lanzan hasta el 2; pasarla
       // siempre hacia que el motor emitiera CD de conjuro y bono de ataque de conjuro a un
       // nivel 1 que no los tiene.
+      // La visión en la oscuridad la da la raza, y la subraza no la modifica en el SRD.
+      darkvisionFeet: race.darkvisionFeet,
       spellcastingAbility:
         characterClass.spellcastingAbility &&
         build.level >= (characterClass.spellcastingFromLevel ?? 1)

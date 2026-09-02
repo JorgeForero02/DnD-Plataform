@@ -75,6 +75,15 @@ export interface EngineInput {
   }[];
   /** La característica de lanzamiento de conjuros, si la clase lanza. */
   spellcastingAbility?: AbilityKey;
+  /**
+   * Visión en la oscuridad **en pies**, de la raza. `0` o ausente = no ve en la oscuridad.
+   *
+   * Está aquí y no solo en el catálogo porque la mesa pregunta *«¿tú ves en la oscuridad?»* y la
+   * hoja tiene que contestar sin que nadie mire una tabla. **Es un sentido, no una regla de
+   * iluminación**: dice cuánto alcanza la vista, no qué hay iluminado — eso necesita posiciones
+   * y es la fase 3 (ver la especificación de distancias, §12 bis).
+   */
+  darkvisionFeet?: number;
 }
 
 /**
@@ -218,6 +227,16 @@ export function derive(input: EngineInput): DerivationResult {
       paso("add", percepcion, "proficiency", "perception", "skill.perception"),
     ],
   };
+
+  // --- Sentidos ---
+  derived["senses.darkvision"] = aplicar(
+    "senses.darkvision",
+    {
+      total: input.darkvisionFeet ?? 0,
+      steps: [paso("base", input.darkvisionFeet ?? 0, "race", "darkvision", "senses.darkvision")],
+    },
+    input.modifiers,
+  );
 
   // --- Ataques ---
   derived["attack.melee"] = {

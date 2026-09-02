@@ -382,6 +382,56 @@ la ficha del personaje con sus estados activos, sin ningún mapa:
   de regla pura.
 - «Tu Dash de este turno te da 30 pies adicionales de movimiento» — dato de acción.
 
+## 12 bis. Iluminación y visión (pregunta del autor, 2026-09-02)
+
+> *«hay habilidades o debufos o atributos de razas que restringen la visión de un personaje; el
+> DM también puede restringir la visión de un personaje, esto se ve en un arco o radio. ¿Esto
+> está contemplado?»*
+
+**A medias, y la mitad que falta es la interesante.**
+
+**Lo que sí está construido:** la **visión en la oscuridad por raza, en pies**, transcrita del
+SRD con su cifra fijada por prueba (60 en enano, elfo, gnomo, semielfo, semiorco y tiefling; 0
+en humano, mediano y dracónido), y la condición **`blinded`**, que se guarda y se enseña pero
+**no calcula nada** — igual que los rasgos raciales sin efecto numérico.
+
+**Lo que no existe:** ninguna noción de **luz** (ni fuentes, ni los tres niveles del SRD —
+brillante, tenue, oscuridad), ningún **arco ni radio de visión**, y ninguna forma de que el DM
+**restrinja** la visión de alguien.
+
+**El obstáculo es el mismo que el del barril de explosivos:** un arco necesita origen y
+dirección, un radio necesita saber quién cae dentro. **Sin posiciones se puede escribir la regla
+y no se puede resolver**, que es exactamente lo que dice el §13 de abajo. Es fase 3.
+
+### La trampa que hay que dejar clavada: **la visión NO es `canView`**
+
+Son dos preguntas que se parecen y no lo son:
+
+| | Pregunta | Quién responde |
+|---|---|---|
+| **`canView`** | ¿Este **jugador** tiene derecho a leer este registro? | La matriz de visibilidad, en el servidor |
+| **Visión** | ¿Qué percibe este **personaje** en la ficción? | Estado del mundo: luz, sentidos, condiciones |
+
+Confundirlas tiene dos finales malos, y los dos son peores que no tener iluminación: un personaje
+cegado en la ficción **pierde el acceso a sus propias notas**, o una ceguera de ficción se
+convierte en un permiso y **empieza a filtrar por el mismo camino que protege los secretos**.
+
+**El matiz honesto**, para cuando llegue el tablero: «el jugador literalmente no ve esta ficha en
+el mapa» **sí** es una decisión de autorización sobre datos del mapa, y tiene que ir por
+`canView` sobre la ficha o la escena — **no** por un cálculo de iluminación. El cálculo decide
+**cómo se pinta**; `canView` decide **qué se envía**. Un motor de iluminación que se limite a
+oscurecer en el navegador algo que el servidor ya mandó no es niebla de guerra: es un filtro de
+CSS sobre un secreto.
+
+### Lo que sí es barato ahora, y se hace
+
+Que los **sentidos lleguen a la hoja** como valor derivado —`senses.darkvision` en pies— en vez
+de quedarse en el catálogo. Es una línea del motor, la hoja de 2A.10 lo va a pedir, y responde
+en la mesa a *«¿tú ves en la oscuridad?» — «creo que sí, soy enano»*, que es media pregunta del
+hueco **H5**.
+
+---
+
 ## 13. Qué NO se puede hacer sin mapa
 
 Para no prometer de más:

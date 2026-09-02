@@ -79,12 +79,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `55ca964` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `b70bee4` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Pruebas unitarias:** 607 (shared 20, api 344, web 243). Recuento por declaración, no por
+> - **Pruebas unitarias:** 609 (shared 20, api 346, web 243). Recuento por declaración, no por
 >   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
 >   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

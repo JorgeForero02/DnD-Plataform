@@ -72,7 +72,20 @@ quedan aquí para que no se deshagan sin darse cuenta.
 | **S9** | **[revisión] Las velocidades no pasan por el motor y por tanto no tienen traza** | `speeds` se asigna directamente en el resolutor, sin `Modifier` ni paso de traza. **Postura del revisor:** 2A.12 tendrá que rehacer esta pieza, así que conviene emitirlas ya como modificadores y derivar `speed.*` en el motor. **Postura de quien implementó, y lo que se aplicó:** 2A.12 es literalmente «velocidades, condiciones y velocidad efectiva **con su traza**», así que ese trabajo es *planificado*, no *repetido*, y adelantarlo mete en 2A.3 un cambio al motor que la propia tarea declaraba no tocar. Se deja para 2A.12 **con la obligación explícita de convertir `speeds` en modificadores allí**, y no de apilar una segunda representación al lado |
 | **S10** | **[revisión] El nivel y el nombre de las ~203 aptitudes de clase no están fijados por ninguna prueba** | `reference.spec.ts` fija dado de golpe, salvaciones, `asiLevels`, número de habilidades, lanzamiento, subclase y su nivel, y todas las cifras de razas y armaduras — **mover una aptitud de nivel, en cambio, no pone nada en rojo** (comprobado: la mutación «evasión del pícaro del 7 al 4» sigue pasando). Fijarlas sería transcribir los mismos datos **dos veces**, y dos copias derivan. Lo que protege esas filas es que el diff se entregó legible y se revisó con el SRD delante |
 
-## Pedido por el autor el 2026-09-02## Cabos sueltos de 2A.6, 2A.7, 2A.8 y 2A.12 (2026-09-02)
+## Pedido por el autor el 2026-09-02## Iluminación y visión (pregunta del autor, 2026-09-02)
+
+Razonado en [distancias y movimiento, §12 bis](./superpowers/specs/2026-09-02-distancias-y-movimiento-design.md).
+**Cerrado hoy:** los sentidos llegan a la hoja (`senses.darkvision` en pies, derivado y con
+traza). Lo demás queda colocado, no olvidado.
+
+| | Qué | Dónde va |
+|---|---|---|
+| **L1** | **Niveles de luz** (brillante / tenue / oscuridad) y fuentes de luz | **Fase 3**: sin posiciones no hay «qué hay iluminado desde aquí». Se puede escribir la regla, no resolverla |
+| **L2** | **Arco y radio de visión**, y que el DM restrinja la visión de alguien | **Fase 3**, por lo mismo: un arco necesita origen y dirección |
+| **L3** | **`blinded` no calcula nada.** Se guarda y se enseña, como los rasgos raciales sin efecto numérico | **2C**, con el resto de la automatización de condiciones. Hoy es coherente con la decisión ya tomada, no un olvido |
+| **L4** | **La visión NO es `canView`, y esto es una invariante** | `canView` responde «¿este **jugador** puede leer este registro?»; la visión, «¿qué percibe este **personaje** en la ficción?». Confundirlas deja a un personaje cegado sin acceso a sus propias notas, o convierte una ceguera de ficción en un permiso que filtra por el camino que protege los secretos. **Cuando llegue el tablero**, «el jugador no ve esta ficha en el mapa» sí es autorización y va por `canView` sobre la ficha o la escena — un motor de iluminación que solo oscurezca en el navegador algo que el servidor ya mandó **no es niebla de guerra, es un filtro de CSS sobre un secreto** |
+
+## Cabos sueltos de 2A.6, 2A.7, 2A.8 y 2A.12 (2026-09-02)
 
 | | Qué | Por qué importa |
 |---|---|---|

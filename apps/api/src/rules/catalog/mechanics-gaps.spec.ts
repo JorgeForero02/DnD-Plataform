@@ -214,3 +214,37 @@ describe("M4 · la iniciativa, que estaba en la hoja y no se derivaba", () => {
     expect(hoja.derived.initiative.total).toBe(4);
   });
 });
+
+describe("los sentidos llegan a la hoja, no se quedan en el catálogo", () => {
+  // Media pregunta del hueco H5, y la que se oye en la mesa: «¿tú ves en la oscuridad?».
+  // **Es un sentido, no iluminación**: dice cuánto alcanza la vista, no qué hay iluminado.
+  // Lo segundo necesita posiciones y es la fase 3 (spec de distancias, §12 bis).
+  it.each([
+    ["dwarf", 60],
+    ["elf", 60],
+    ["gnome", 60],
+    ["half-elf", 60],
+    ["half-orc", 60],
+    ["tiefling", 60],
+    ["human", 0],
+    ["halfling", 0],
+    ["dragonborn", 0],
+  ])("%s ve %i pies en la oscuridad", (raza, pies) => {
+    const hoja = deriveCharacter(ficha({ race: { source: "SRD", key: raza } }));
+    expect(hoja.derived["senses.darkvision"].total).toBe(pies);
+  });
+
+  it("la traza dice que viene de la raza, como todo lo demás", () => {
+    const hoja = deriveCharacter(ficha({ race: { source: "SRD", key: "dwarf" } }));
+    expect(hoja.derived["senses.darkvision"].steps[0]).toMatchObject({
+      sourceType: "race",
+      sourceKey: "darkvision",
+    });
+  });
+
+  it("no ver en la oscuridad es cero, no la ausencia del valor: la hoja siempre puede decirlo", () => {
+    const hoja = deriveCharacter(ficha({ race: { source: "SRD", key: "human" } }));
+    expect(hoja.derived["senses.darkvision"]).toBeDefined();
+    expect(hoja.derived["senses.darkvision"].total).toBe(0);
+  });
+});

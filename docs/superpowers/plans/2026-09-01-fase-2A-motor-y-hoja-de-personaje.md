@@ -39,6 +39,28 @@ existe para evitar entraría por la puerta de atrás.
 
 ---
 
+## 0 quater · Distancias y movimiento (2026-09-02)
+
+El autor señaló un hueco real: **no hay sistema de distancias**. Ni velocidad, ni cuánto se mueve
+alguien derribado o agotado, ni alcance de un arma, ni radio de un área.
+
+Decidido en [su especificación](../specs/2026-09-02-distancias-y-movimiento-design.md):
+
+- **Se guarda en pies** (el SRD lo está, y todo son múltiplos de 5) y **se enseña en metros** si
+  la persona lo prefiere. La conversión es presentación; el dato nunca es ambiguo.
+- **La velocidad efectiva se calcula, nunca se guarda**, con su traza — la misma regla que el
+  resto de la hoja (§1.2, pieza 4).
+- **Sin mapa hay media mitad del valor, y es la buena**: *«tu velocidad ahora: 7,5 pies, porque
+  estás derribado y en terreno difícil»* se puede decir hoy. *«¿llego hasta allí?»* y *«¿a quién
+  alcanza esta bola de fuego?»* necesitan posiciones, y las posiciones son la **fase 3**. No se
+  prometen antes.
+
+**Qué entra en 2A:** las velocidades del personaje (andar, trepar, nadar, volar, excavar), las
+condiciones que las modifican con sus cifras exactas, y la velocidad efectiva derivada.
+**Qué es 2B:** alcance y área de los conjuros, con su catálogo.
+
+---
+
 ## 0 bis · La forma de la hoja ya está decidida y desplegada (2026-09-02)
 
 El reseño de interfaz del 2026-09-02 entregó **la disposición** de la hoja, no su motor:

@@ -7,7 +7,7 @@
 
 import { Link } from "react-router-dom";
 import { AppShell, AppHeader, PageHeader, Panel } from "../ui";
-import { CC_BY_URL, SRD_ATTRIBUTION_EN, SRD_MODIFICATION_ES, SRD_URL } from "../ui/LegalNotice";
+import { CC_BY_URL, SRD_ATTRIBUTION_ES, SRD_MODIFICATION_ES, SRD_URL } from "../ui/LegalNotice";
 
 export function AcercaDePage() {
   return (
@@ -19,7 +19,7 @@ export function AcercaDePage() {
         {/* El aviso va en inglés y **no se traduce**: es el texto de atribución que la licencia
             especifica, y traducirlo sería modificar justo lo que da fe de la modificación. */}
         <p className="mt-s3 font-world text-text" lang="en">
-          {SRD_ATTRIBUTION_EN}
+          {SRD_ATTRIBUTION_ES}
         </p>
         <p className="mt-s3 font-world text-text">
           <strong>{SRD_MODIFICATION_ES}</strong>

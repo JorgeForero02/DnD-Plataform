@@ -134,7 +134,7 @@ describe("las aptitudes de clase llegan a la hoja", () => {
   it("los rasgos raciales siguen ahí, junto a los de clase", () => {
     const hoja = deriveCharacter(ficha({ race: { source: "SRD", key: "dwarf" }, level: 1 }));
     expect(hoja.features.map((f) => f.name)).toContain("Resistencia enana");
-    expect(hoja.features.map((f) => f.name)).toContain("Nuevo aliento");
+    expect(hoja.features.map((f) => f.name)).toContain("Tomar aliento");
   });
 });
 

@@ -230,9 +230,22 @@ describe("la línea legal está protegida por una prueba, no por buena voluntad"
     const notice = readFileSync(join(raiz, "NOTICE.md"), "utf8");
     expect(notice).toContain("System Reference Document 5.1");
     expect(notice).toContain("Wizards of the Coast LLC");
-    expect(notice).toContain("Creative Commons Attribution 4.0");
-    // CC BY exige **indicar si se han hecho modificaciones**, y traducir es una.
+    // **La línea de atribución es la ESPAÑOLA desde el 2026-09-02**, porque es la edición
+    // española del SRD la que usamos: los nombres son los de la traducción oficial de Wizards,
+    // no una nuestra. Wizards da esa línea literalmente en ese PDF y pide que no se añada
+    // ningún otro reconocimiento.
+    expect(notice).toContain("Creative Commons Atribución/Reconocimiento 4.0");
+    expect(notice).toContain("legalcode.es");
+    // CC BY exige **indicar si se han hecho modificaciones**. La nuestra ya no es traducir
+    // —eso ahora lo pone Wizards—, sino reorganizar y seleccionar.
     expect(notice).toContain("Modificaciones:");
+    // Se mira **la línea de modificaciones**, no el fichero entero: el aviso explica más abajo
+    // por qué antes decía otra cosa, y una búsqueda a lo bruto cazaría esa nota histórica.
+    // El párrafo entero, no su primer renglón: la nota envuelve, y mirar solo la primera línea
+    // dejaba la puerta abierta a colar la frase vieja en la segunda.
+    const modificaciones = /\*\*Modificaciones:\*\*[\s\S]*?\r?\n\s*\r?\n/.exec(notice)?.[0] ?? "";
+    expect(modificaciones).toContain("reorganizado como datos estructurados");
+    expect(modificaciones).not.toContain("traducido al español");
   });
 
   it.each(["races.ts", "classes.ts", "armor.ts", "types.ts", "index.ts"])(

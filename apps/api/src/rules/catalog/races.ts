@@ -1,11 +1,13 @@
 // Tarea 2A.3 — las nueve razas del SRD 5.1 y sus subrazas.
 //
 // **Atribución:** material del System Reference Document 5.1, © Wizards of the Coast LLC,
-// CC BY 4.0. Nombres y textos **traducidos al español** y reorganizados como datos
-// estructurados; eso es una modificación y va declarada en `NOTICE.md` de la raíz.
+// CC BY 4.0. **Los nombres son los de la traducción oficial al español publicada por Wizards**
+// («Documento de referencia del sistema 5.1», el PDF `SRD_CC_v5.1_ES.pdf`), no una traducción
+// nuestra; la modificación que sí hacemos es reorganizarlos como datos estructurados. El aviso
+// completo, con la nota de modificación, está en `NOTICE.md` de la raíz. Tarea C0.
 //
-// **El SRD trae una subraza por raza** (enano de las colinas, elfo alto, mediano piesligeros,
-// gnomo de las rocas) y ninguna para humano, dracónido, semielfo, semiorco y tiefling. No se
+// **El SRD trae una subraza por raza** (Enano de las colinas, Alto elfo, Piesligeros,
+// Gnomo de las rocas) y ninguna para humano, dracónido, semielfo, semiorco y tiefling. No se
 // inventan las que faltan: lo que no está en el SRD no entra (§4.5 del plan de 2A).
 
 import { ABILITY_KEYS, SKILLS, type SkillKey } from "@dnd/shared";
@@ -37,13 +39,13 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "dwarf-combat-training",
         kind: "feature",
-        name: "Entrenamiento enano de combate",
+        name: "Entrenamiento de combate enano",
         labelKey: "race.dwarf.combatTraining",
       },
       {
         id: "dwarf-stonecunning",
         kind: "feature",
-        name: "Perspicacia con la piedra",
+        name: "Afinidad con la piedra",
         labelKey: "race.dwarf.stonecunning",
       },
     ],
@@ -96,7 +98,7 @@ export const SRD_RACES: SrdRace[] = [
     subraces: [
       {
         key: "elf-high",
-        name: "Elfo alto",
+        name: "Alto elfo",
         grants: [
           {
             id: "elf-high-int",
@@ -108,7 +110,7 @@ export const SRD_RACES: SrdRace[] = [
           {
             id: "elf-high-weapon-training",
             kind: "feature",
-            name: "Entrenamiento élfico con armas",
+            name: "Entrenamiento con armas élficas",
             labelKey: "subrace.elfHigh.weaponTraining",
           },
           {
@@ -141,19 +143,24 @@ export const SRD_RACES: SrdRace[] = [
         feet: 25,
         labelKey: "race.halfling.speed",
       },
-      { id: "halfling-lucky", kind: "feature", name: "Suertudo", labelKey: "race.halfling.lucky" },
+      {
+        id: "halfling-lucky",
+        kind: "feature",
+        name: "Afortunado",
+        labelKey: "race.halfling.lucky",
+      },
       { id: "halfling-brave", kind: "feature", name: "Valiente", labelKey: "race.halfling.brave" },
       {
         id: "halfling-nimbleness",
         kind: "feature",
-        name: "Agilidad mediana",
+        name: "Agilidad de mediano",
         labelKey: "race.halfling.nimbleness",
       },
     ],
     subraces: [
       {
         key: "halfling-lightfoot",
-        name: "Mediano piesligeros",
+        name: "Piesligeros",
         grants: [
           {
             id: "halfling-lightfoot-cha",
@@ -195,7 +202,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "human-language",
         kind: "feature",
-        name: "Idioma adicional",
+        name: "Idiomas",
         labelKey: "race.human.language",
       },
     ],
@@ -237,7 +244,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "dragonborn-breath",
         kind: "feature",
-        name: "Arma de aliento",
+        name: "Ataque de aliento",
         labelKey: "race.dragonborn.breath",
       },
       {
@@ -285,7 +292,7 @@ export const SRD_RACES: SrdRace[] = [
           {
             id: "gnome-rock-artificers-lore",
             kind: "feature",
-            name: "Saber del artificiero",
+            name: "Saber del artífice",
             labelKey: "subrace.gnomeRock.artificersLore",
           },
           {
@@ -382,7 +389,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "half-orc-relentless",
         kind: "feature",
-        name: "Aguante implacable",
+        name: "Aguante incansable",
         labelKey: "race.halfOrc.relentless",
       },
       {
@@ -430,7 +437,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "tiefling-infernal-legacy",
         kind: "feature",
-        name: "Legado infernal",
+        name: "Linaje infernal",
         labelKey: "race.tiefling.infernalLegacy",
       },
     ],

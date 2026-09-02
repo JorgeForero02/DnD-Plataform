@@ -6,30 +6,36 @@
 // `docs/06-pendientes.md` con una fecha implícita: **deja de ser opcional en cuanto una pantalla
 // pinte datos del SRD**, y la hoja de personaje (2A.10) los va a pintar.
 //
-// **Y la nota de modificación importa tanto como la atribución.** Traducir al español *es* una
-// modificación, y la licencia obliga a decirlo. Omitir esa frase es incumplir igual que omitir
-// el nombre del autor.
+// **Y la nota de modificación importa tanto como la atribución.** La licencia obliga a declarar
+// lo que se ha cambiado, y omitir esa frase incumple igual que omitir el nombre del autor.
+//
+// **Lo que declara cambió el 2026-09-02.** Decía que los nombres «se han traducido al español»,
+// como modificación nuestra; desde que el catálogo usa la **traducción oficial al español que
+// publica Wizards** —bajo la misma CC BY— eso es falso. Nuestra modificación es reorganizar y
+// seleccionar, y es lo único que se declara. Y la línea de atribución pasa a ser **la española**,
+// que es la edición que de verdad se está usando: Wizards la da literalmente en su PDF y añade
+// que no se incluya ningún otro reconocimiento aparte del suyo.
 
 import { Link } from "react-router-dom";
 
 /** El enlace al SRD y a la licencia, que la atribución tiene que llevar. */
-export const SRD_URL = "https://dnd.wizards.com/resources/systems-reference-document";
-export const CC_BY_URL = "https://creativecommons.org/licenses/by/4.0/legalcode";
+export const SRD_URL = "https://dnd.wizards.com/es/resources/systems-reference-document";
+export const CC_BY_URL = "https://creativecommons.org/licenses/by/4.0/legalcode.es";
 
 /**
- * El aviso legal en inglés, **tal cual lo pide la licencia**. No se traduce: es el texto de
- * atribución, y traducirlo sería modificar justo lo que da fe de la modificación.
+ * El aviso legal **tal cual lo da Wizards en la edición española del SRD**, palabra por palabra.
+ * No se reescribe: es el texto de atribución, y tocarlo sería modificar justo lo que da fe.
  */
-export const SRD_ATTRIBUTION_EN =
-  'This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by ' +
-  "Wizards of the Coast LLC, available at " +
-  `${SRD_URL}. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 ` +
-  `International License, ${CC_BY_URL}.`;
+export const SRD_ATTRIBUTION_ES =
+  'Esta obra incluye materiales extraídos del Documento de referencia del sistema 5.1 ("SRD 5.1") ' +
+  "de Wizards of the Coast LLC, que está disponible en " +
+  `${SRD_URL}. El SRD 5.1 tiene la licencia Creative Commons Atribución/Reconocimiento 4.0 ` +
+  `Licencia Pública Internacional, que está disponible en ${CC_BY_URL}.`;
 
-/** La nota de modificación, en español porque describe lo que hicimos nosotros. */
+/** La nota de modificación: lo que hicimos NOSOTROS, que ya no incluye traducir. */
 export const SRD_MODIFICATION_ES =
-  "Modificaciones: los nombres y textos de reglas se han traducido al español y reorganizado " +
-  "como datos estructurados.";
+  "Modificaciones: el material se ha reorganizado como datos estructurados y se ha seleccionado " +
+  "un subconjunto. Los nombres son los de la traducción oficial al español de Wizards.";
 
 /**
  * El pie que va en toda pantalla con sesión.
@@ -60,7 +66,7 @@ export function LegalNotice() {
         >
           CC BY 4.0
         </a>
-        , traducido al español y reorganizado.{" "}
+        , reorganizado como datos estructurados.{" "}
         <Link to="/acerca-de" className="underline hover:text-accent-text">
           Acerca de
         </Link>

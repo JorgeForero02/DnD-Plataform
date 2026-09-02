@@ -2,14 +2,25 @@
 
 ## System Reference Document 5.1
 
-This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by
-Wizards of the Coast LLC, available at
-https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under
-the Creative Commons Attribution 4.0 International License,
-https://creativecommons.org/licenses/by/4.0/legalcode.
+Esta obra incluye materiales extraídos del Documento de referencia del sistema 5.1 ("SRD 5.1")
+de Wizards of the Coast LLC, que está disponible en
+https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia
+Creative Commons Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está
+disponible en https://creativecommons.org/licenses/by/4.0/legalcode.es.
 
-**Modificaciones:** los nombres y textos de reglas se han traducido al español y reorganizado
-como datos estructurados.
+> Esta es la línea de atribución **tal y como la da Wizards en la edición española del SRD**, y
+> se usa esa porque **es la edición española la que estamos usando**. El propio documento añade:
+> «No incluyas ningún otro reconocimiento en relación con Wizards, excepto el facilitado
+> anteriormente».
+
+**Modificaciones:** el material se ha **reorganizado como datos estructurados** y se ha
+seleccionado un subconjunto.
+
+> **Aquí decía que los nombres «se han traducido al español», y desde el 2026-09-02 ya no es
+> cierto.** Los nombres son los de la **traducción oficial al español que publica Wizards**,
+> distribuida bajo la misma CC BY 4.0 — no una traducción nuestra. Reclamarla como modificación
+> propia era lo peor de los dos mundos: sobreatribuía nuestro trabajo y subatribuía el suyo. Lo
+> que sigue siendo modificación nuestra es reorganizar y seleccionar, y eso es lo que se declara.
 
 ### Qué entra y qué no
 

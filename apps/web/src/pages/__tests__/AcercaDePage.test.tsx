@@ -38,11 +38,15 @@ describe("la pantalla Acerca de lleva la atribución completa", () => {
   });
 
   it("**dice que hay modificaciones**, que es la mitad que se olvida", () => {
-    // Traducir al español ES una modificación, y la licencia obliga a indicarlo. Omitir esta
-    // frase incumple igual que omitir el nombre del autor.
+    // La licencia obliga a declarar lo que se cambió. Y desde el 2026-09-02 lo que cambiamos ya
+    // no incluye traducir: los nombres son los de la **traducción oficial de Wizards**, así que
+    // reclamarla como modificación nuestra sobreatribuía nuestro trabajo y subatribuía el suyo.
     pintarAcercaDe();
     expect(screen.getByText(/Modificaciones:/)).toBeInTheDocument();
-    expect(screen.getAllByText(/traducido al español/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/reorganizado como datos estructurados/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/traducción oficial al español de Wizards/).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("enlaza al SRD y al texto legal de la licencia, y los abre fuera", () => {
@@ -81,7 +85,7 @@ describe("el pie que acompaña a toda pantalla con sesión", () => {
         <LegalNotice />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/traducido al español/)).toBeInTheDocument();
+    expect(screen.getByText(/reorganizado como datos estructurados/)).toBeInTheDocument();
   });
 
   it("es un <footer>, para que un lector de pantalla sepa que es el pie", () => {

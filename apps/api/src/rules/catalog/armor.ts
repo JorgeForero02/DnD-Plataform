@@ -1,7 +1,9 @@
 // Tarea 2A.3 — armaduras y escudos del SRD 5.1, con su fórmula de CA.
 //
 // **Atribución:** material del System Reference Document 5.1, © Wizards of the Coast LLC,
-// CC BY 4.0. Nombres traducidos al español. Ver `NOTICE.md` de la raíz.
+// CC BY 4.0. **Los nombres son los de la traducción oficial al español publicada por Wizards**
+// (tabla «Armaduras» del «Documento de referencia del sistema 5.1»), no una traducción nuestra.
+// Ver `NOTICE.md` de la raíz.
 //
 // **Solo lo que hace falta para calcular la CA.** Precio y peso son inventario, y el
 // inventario es 2B; meterlos aquí ahora sería transcribir el doble de cifras que nada
@@ -26,7 +28,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   },
   {
     key: "leather",
-    name: "De cuero",
+    name: "Cuero",
     category: "LIGHT",
     baseAc: 11,
     strengthRequirement: 0,
@@ -34,7 +36,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   },
   {
     key: "studded-leather",
-    name: "De cuero tachonado",
+    name: "Cuero tachonado",
     category: "LIGHT",
     baseAc: 12,
     strengthRequirement: 0,
@@ -44,7 +46,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   // --- Media: la Destreza suma como mucho +2 ---
   {
     key: "hide",
-    name: "De pieles",
+    name: "Pieles",
     category: "MEDIUM",
     baseAc: 12,
     dexCap: 2,
@@ -53,7 +55,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   },
   {
     key: "chain-shirt",
-    name: "Camisote de mallas",
+    name: "Camisa de malla",
     category: "MEDIUM",
     baseAc: 13,
     dexCap: 2,
@@ -80,7 +82,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   },
   {
     key: "half-plate",
-    name: "Media placa",
+    name: "Media armadura",
     category: "MEDIUM",
     baseAc: 15,
     dexCap: 2,
@@ -91,7 +93,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   // --- Pesada: la Destreza no suma nada ---
   {
     key: "ring-mail",
-    name: "Cota de anillas",
+    name: "Cota guarnecida",
     category: "HEAVY",
     baseAc: 14,
     dexCap: 0,
@@ -109,7 +111,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   },
   {
     key: "splint",
-    name: "De bandas",
+    name: "Armadura de bandas",
     category: "HEAVY",
     baseAc: 17,
     dexCap: 0,
@@ -118,7 +120,7 @@ export const SRD_ARMOR: SrdArmor[] = [
   },
   {
     key: "plate",
-    name: "De placas",
+    name: "Armadura de placas",
     category: "HEAVY",
     baseAc: 18,
     dexCap: 0,

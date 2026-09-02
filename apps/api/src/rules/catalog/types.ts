@@ -2,7 +2,8 @@
 //
 // **Atribución:** los datos de este directorio proceden del System Reference Document 5.1,
 // © Wizards of the Coast LLC, bajo licencia CC BY 4.0. Texto completo del aviso, y la nota de
-// modificación (están traducidos al español y reorganizados), en `NOTICE.md` de la raíz.
+// modificación (reorganizados como datos estructurados; **los nombres son los de la traducción
+// oficial al español de Wizards, no una traducción nuestra**), en `NOTICE.md` de la raíz.
 //
 // **Esto es una forma, no datos.** Los datos viven en `races.ts`, `classes.ts` y `armor.ts`.
 // El motor (`../engine.ts`) no importa nada de aquí: recibe modificadores ya resueltos, y esa

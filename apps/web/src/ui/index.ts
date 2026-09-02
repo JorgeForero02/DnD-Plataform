@@ -20,6 +20,6 @@ export {
   LegalNotice,
   SRD_URL,
   CC_BY_URL,
-  SRD_ATTRIBUTION_EN,
+  SRD_ATTRIBUTION_ES,
   SRD_MODIFICATION_ES,
 } from "./LegalNotice";

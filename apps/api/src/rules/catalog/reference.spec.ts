@@ -308,3 +308,223 @@ describe("las cuatro subrazas del SRD 5.1", () => {
     expect(grant.kind === "hpPerLevel" ? grant.amount : 0).toBe(1);
   });
 });
+
+// --- Tarea C0: los nombres OFICIALES en español ---
+//
+// Añadido al adoptar la traducción oficial al español del SRD 5.1 que publica Wizards
+// (`SRD_CC_v5.1_ES.pdf`, «Documento de referencia del sistema 5.1»). Antes el catálogo llevaba
+// una traducción hecha a mano —«Cota de malla» acertaba, pero «Cota de anillas», «Suertudo»,
+// «Legado infernal» o «Senda primaria» no son los términos que el jugador ve en la traducción
+// oficial— y nada impedía que volviera a deslizarse.
+//
+// Esta tabla fija **los nombres visibles que la pantalla enseña**: razas, subrazas, clases,
+// subclases, armaduras, y los rasgos raciales y de clase donde la traducción a mano y la oficial
+// discrepaban. No fija los ~200 nombres de aptitud restantes, por la misma razón que la nota de
+// arriba: dos copias del mismo dato derivan. Fija los que costaron una corrección, que son los
+// que un cambio futuro puede volver a estropear en silencio.
+//
+// **La caja es la del proyecto, no la del SRD.** El SRD titula «Ataque Adicional»; aquí se
+// escribe «Ataque adicional». Las palabras son las suyas.
+//
+// **Las claves NO son traducibles.** `dwarf`, `chain-mail`, `life-domain` viajan en la base de
+// datos y en las fichas ya guardadas: cambiarlas rompe datos de producción. Por eso esta tabla
+// mira `key -> name` y nunca al revés.
+
+const NOMBRES_RAZA: Record<string, string> = {
+  dwarf: "Enano",
+  elf: "Elfo",
+  halfling: "Mediano",
+  human: "Humano",
+  dragonborn: "Dracónido",
+  gnome: "Gnomo",
+  "half-elf": "Semielfo",
+  "half-orc": "Semiorco",
+  tiefling: "Tiefling",
+};
+
+const NOMBRES_SUBRAZA: Record<string, string> = {
+  "dwarf-hill": "Enano de las colinas",
+  "elf-high": "Alto elfo",
+  "halfling-lightfoot": "Piesligeros",
+  "gnome-rock": "Gnomo de las rocas",
+};
+
+/** Los rasgos raciales cuyo nombre cambió al adoptar la traducción oficial, y los vecinos que
+ * comparten familia con ellos: si alguien «arregla» uno, que salte también el de al lado. */
+const NOMBRES_RASGO_RACIAL: Record<string, string> = {
+  "dwarf-resilience": "Resistencia enana",
+  "dwarf-combat-training": "Entrenamiento de combate enano",
+  "dwarf-stonecunning": "Afinidad con la piedra",
+  "elf-fey-ancestry": "Linaje feérico",
+  "elf-high-weapon-training": "Entrenamiento con armas élficas",
+  "halfling-lucky": "Afortunado",
+  "halfling-brave": "Valiente",
+  "halfling-nimbleness": "Agilidad de mediano",
+  "halfling-lightfoot-stealthy": "Sigiloso por naturaleza",
+  "human-language": "Idiomas",
+  "dragonborn-ancestry": "Linaje dracónico",
+  "dragonborn-breath": "Ataque de aliento",
+  "dragonborn-resistance": "Resistencia al daño",
+  "gnome-cunning": "Astucia gnoma",
+  "gnome-rock-artificers-lore": "Saber del artífice",
+  "gnome-rock-tinker": "Manitas",
+  "half-elf-fey-ancestry": "Linaje feérico",
+  "half-orc-relentless": "Aguante incansable",
+  "half-orc-savage-attacks": "Ataques salvajes",
+  "tiefling-hellish-resistance": "Resistencia infernal",
+  "tiefling-infernal-legacy": "Linaje infernal",
+};
+
+const NOMBRES_CLASE: Record<string, string> = {
+  barbarian: "Bárbaro",
+  bard: "Bardo",
+  cleric: "Clérigo",
+  druid: "Druida",
+  fighter: "Guerrero",
+  monk: "Monje",
+  paladin: "Paladín",
+  ranger: "Explorador",
+  rogue: "Pícaro",
+  sorcerer: "Hechicero",
+  warlock: "Brujo",
+  wizard: "Mago",
+};
+
+const NOMBRES_SUBCLASE: Record<string, string> = {
+  berserker: "Senda del berserker",
+  lore: "Colegio del conocimiento",
+  "life-domain": "Dominio de la vida",
+  "circle-of-the-land": "Círculo de la tierra",
+  champion: "Campeón",
+  "open-hand": "Camino de la mano abierta",
+  "oath-of-devotion": "Juramento de entrega",
+  hunter: "Cazador",
+  thief: "Ladrón",
+  "draconic-bloodline": "Linaje dracónico",
+  "the-fiend": "El Infernal",
+  evocation: "Escuela de evocación",
+};
+
+const NOMBRES_ARMADURA: Record<string, string> = {
+  padded: "Acolchada",
+  leather: "Cuero",
+  "studded-leather": "Cuero tachonado",
+  hide: "Pieles",
+  "chain-shirt": "Camisa de malla",
+  "scale-mail": "Cota de escamas",
+  breastplate: "Coraza",
+  "half-plate": "Media armadura",
+  "ring-mail": "Cota guarnecida",
+  "chain-mail": "Cota de malla",
+  splint: "Armadura de bandas",
+  plate: "Armadura de placas",
+  shield: "Escudo",
+};
+
+/** Aptitudes de clase y subclase cuyo nombre corrigió la tarea C0, por `contenedor/aptitud`. */
+const NOMBRES_APTITUD: Record<string, string> = {
+  "barbarian/danger-sense": "Sentir el peligro",
+  "barbarian/primal-path": "Senda primordial",
+  "barbarian/indomitable-might": "Poderío indómito",
+  "barbarian/primal-champion": "Campeón primordial",
+  "bard/bardic-inspiration-d6": "Inspiración bárdica (d6)",
+  "bard/jack-of-all-trades": "Aprendiz de mucho",
+  "bard/bard-college": "Colegio bárdico",
+  "bard/countercharm": "Contraencantamiento",
+  "lore/cutting-words": "Palabras cortantes",
+  "lore/peerless-skill": "Habilidad sin parangón",
+  "cleric/divine-intervention": "Intercesión divina",
+  "cleric/divine-intervention-improvement": "Mejora de intercesión divina",
+  "life-domain/preserve-life": "Canalizar divinidad: Preservar vida",
+  "druid/druidic": "Druídico",
+  "druid/wild-shape-improvement-1": "Mejora de forma salvaje",
+  "druid/timeless-body": "Cuerpo atemporal",
+  "druid/beast-spells": "Conjurar como bestia",
+  "circle-of-the-land/circle-spells": "Conjuros de círculo",
+  "circle-of-the-land/lands-stride": "Paso de la tierra",
+  "fighter/second-wind": "Tomar aliento",
+  "fighter/action-surge-1": "Acción súbita (un uso)",
+  "fighter/indomitable-1": "Indómito (un uso)",
+  "champion/remarkable-athlete": "Atleta sobresaliente",
+  "monk/ki-empowered-strikes": "Golpes potenciados con ki",
+  "monk/unarmored-movement-improvement": "Mejora de movimiento sin armadura",
+  "monk/purity-of-body": "Pureza de cuerpo",
+  "monk/diamond-soul": "Alma diamantina",
+  "monk/timeless-body": "Cuerpo atemporal",
+  "monk/perfect-self": "Yo perfecto",
+  "open-hand/wholeness-of-body": "Plenitud de cuerpo",
+  "open-hand/quivering-palm": "Palma estremecedora",
+  "paladin/divine-sense": "Sentidos divinos",
+  "paladin/lay-on-hands": "Imponer las manos",
+  "paladin/aura-improvements": "Mejoras de auras",
+  "oath-of-devotion/oath-spells": "Conjuros de juramento",
+  "oath-of-devotion/aura-of-devotion": "Aura de entrega",
+  "oath-of-devotion/holy-nimbus": "Halo sagrado",
+  "ranger/natural-explorer": "Explorador nato",
+  "ranger/lands-stride": "Paso de la tierra",
+  "ranger/hide-in-plain-sight": "Esconderse a plena vista",
+  "ranger/foe-slayer": "Azote de enemigos",
+  "hunter/hunters-prey": "El cazador y la presa",
+  "hunter/superior-hunters-defense": "Defensa de cazador experto",
+  "rogue/reliable-talent": "Talentos fiables",
+  "rogue/blindsense": "Sentir sin ver",
+  "thief/second-story-work": "Balconero",
+  "thief/use-magic-device": "Usar objetos mágicos",
+  "sorcerer/sorcerous-origin": "Origen mágico",
+  "sorcerer/sorcerous-restoration": "Recuperación mágica",
+  "warlock/otherworldly-patron": "Patrón sobrenatural",
+  "warlock/pact-magic": "Magia del pacto",
+  "warlock/pact-boon": "Beneficio del pacto",
+  "warlock/mystic-arcanum-6": "Arcanum místico (nivel 6)",
+  "the-fiend/dark-ones-blessing": "Bendición del Oscuro",
+  "the-fiend/dark-ones-own-luck": "La suerte del Oscuro",
+  "the-fiend/fiendish-resilience": "Resistencia infernal",
+  "the-fiend/hurl-through-hell": "Arrastrar por el infierno",
+  "wizard/spell-mastery": "Maestría sobre conjuros",
+  "wizard/signature-spells": "Conjuros característicos",
+  "evocation/evocation-savant": "Experto en evocación",
+};
+
+describe("los nombres en español son los de la traducción oficial del SRD 5.1", () => {
+  it.each(Object.entries(NOMBRES_RAZA))("la raza %s se llama «%s»", (clave, nombre) => {
+    expect(SRD_RACES.find((r) => r.key === clave)!.name).toBe(nombre);
+  });
+
+  it.each(Object.entries(NOMBRES_SUBRAZA))("la subraza %s se llama «%s»", (clave, nombre) => {
+    const subraza = SRD_RACES.flatMap((r) => r.subraces).find((s) => s.key === clave)!;
+    expect(subraza.name).toBe(nombre);
+  });
+
+  it.each(Object.entries(NOMBRES_RASGO_RACIAL))("el rasgo %s se llama «%s»", (id, nombre) => {
+    const grant = SRD_RACES.flatMap((r) => [
+      ...r.grants,
+      ...r.subraces.flatMap((s) => s.grants),
+    ]).find((g) => g.id === id);
+    expect(grant).toBeDefined();
+    expect(grant!.kind === "feature" ? grant!.name : undefined).toBe(nombre);
+  });
+
+  it.each(Object.entries(NOMBRES_CLASE))("la clase %s se llama «%s»", (clave, nombre) => {
+    expect(SRD_CLASSES.find((c) => c.key === clave)!.name).toBe(nombre);
+  });
+
+  it.each(Object.entries(NOMBRES_SUBCLASE))("la subclase %s se llama «%s»", (clave, nombre) => {
+    const sub = SRD_CLASSES.flatMap((c) => c.subclasses).find((s) => s.key === clave)!;
+    expect(sub.name).toBe(nombre);
+  });
+
+  it.each(Object.entries(NOMBRES_ARMADURA))("la armadura %s se llama «%s»", (clave, nombre) => {
+    expect(SRD_ARMOR.find((a) => a.key === clave)!.name).toBe(nombre);
+  });
+
+  it.each(Object.entries(NOMBRES_APTITUD))("la aptitud %s se llama «%s»", (ruta, nombre) => {
+    const [contenedor, aptitud] = ruta.split("/");
+    const clase = SRD_CLASSES.find((c) => c.key === contenedor);
+    const features = clase
+      ? clase.features
+      : SRD_CLASSES.flatMap((c) => c.subclasses).find((s) => s.key === contenedor)!.features;
+    const encontrada = features.find((f) => f.key === aptitud);
+    expect(encontrada).toBeDefined();
+    expect(encontrada!.name).toBe(nombre);
+  });
+});

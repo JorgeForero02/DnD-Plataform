@@ -259,7 +259,7 @@ Esto es, literalmente, la batuta: el sistema **prepara la entrada** y el DM **da
 | Efecto |
 |---|
 | **Revelar** una ficha: su visibilidad **queda en** ⟨nivel⟩ |
-| Revelar **todas** las fichas con la etiqueta ⟨X⟩ |
+| ~~Revelar **todas** las fichas con la etiqueta ⟨X⟩~~ **Fuera de la v1** — ver [autoridad de las reglas](./2026-09-02-autoridad-de-las-reglas-design.md): un objetivo dinámico que un jugador puede influir (poniendo la etiqueta) es una vía de escalada |
 | **Ocultar** una ficha: su visibilidad queda en ⟨nivel⟩ |
 | Poner / quitar la marca ⟨X⟩ |
 | **Añadir / quitar ⟨algo⟩ del conjunto ⟨X⟩** |

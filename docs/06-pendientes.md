@@ -13,7 +13,7 @@ Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo
 
 | | Qué | Por qué importa |
 |---|---|---|
-| **H6** | **¿Con qué autoridad escribe una regla?** Un jugador abre una ficha, eso dispara una regla, y la regla revela algo **que ese jugador no podría haber revelado** | Propuesta: se aplica con la autoridad **del DM que armó la regla**, y la traza lo dice. **Necesita su propia revisión de seguridad antes de 2A.16** — es el único hueco de esta lista que puede convertirse en una fuga |
+| ~~**H6**~~ | ~~**¿Con qué autoridad escribe una regla?**~~ **CERRADO el 2026-09-02** — es un diputado confundido, y su fallo en siete puntos está en [autoridad de las reglas](./superpowers/specs/2026-09-02-autoridad-de-las-reglas-design.md). Lo esencial: el objetivo se fija **al armar**, no al disparar, y los objetivos dinámicos por etiqueta **salen de la v1**. Lo de abajo se conserva porque explica el riesgo: Un jugador abre una ficha, eso dispara una regla, y la regla revela algo **que ese jugador no podría haber revelado** | Propuesta: se aplica con la autoridad **del DM que armó la regla**, y la traza lo dice. **Necesita su propia revisión de seguridad antes de 2A.16** — es el único hueco de esta lista que puede convertirse en una fuga |
 | **H7** | Una regla que apunta a una ficha **borrada** | Queda **rota y marcada**, nunca se descarta en silencio. Falta decidir si se puede seguir armando |
 | **H8** | El motor evalúa **dentro de la petición** que escribió el suceso | Con diez saltos y varias reglas, abrir una ficha puede tardar. Propuesta: síncrono con tope y cola si molesta — **hay que medirlo, no suponerlo** |
 | **H9** | **Las propuestas caducan.** Una propuesta de hace tres sesiones es ruido | Falta decidir el plazo |

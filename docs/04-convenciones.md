@@ -123,6 +123,13 @@ nombres de las cosas del código, no.
   las cifras. Cada pila conserva su reserva local completa y el enlace lleva `display=swap`,
   así que una red de tipografías lenta o bloqueada cambia **cómo se ve** la página y nunca
   **si funciona** — Playwright sigue midiendo una página que pintó.
+- **Una regla del motor de eventos fija su objetivo al armarse, nunca al dispararse**, y se
+  ejecuta con la autoridad del DM que la delegó, siempre a través de `canView`. Es un
+  **diputado confundido** de manual: un jugador dispara una escritura que él no podía hacer.
+  Objetivos dinámicos que un jugador pueda influir: **prohibidos**. Razonamiento completo y las
+  siete reglas en
+  [autoridad de las reglas](./superpowers/specs/2026-09-02-autoridad-de-las-reglas-design.md).
+
 ### Reglas de interfaz que salieron del reseño (2026-09-02) — vinculantes
 
 Cada una nació de un defecto real, encontrado en producción o señalado por el autor. Se

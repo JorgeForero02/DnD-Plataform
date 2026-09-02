@@ -99,10 +99,30 @@ nombres de las cosas del código, no.
   predicado sobre la raíz `"entities"` aparte, porque no hay un solo prefijo común.
 - Formularios: React Hook Form + `zodResolver` para los simples; `useState` controlado para
   los dinámicos (listas de etiquetas, selección de jugadores).
-- Estilo: Tailwind, oscuro (`bg-slate-900/800/700`, `indigo-600` para acción, `red-400` para
-  error), textos en español.
-- **Sin sistema de diseño para el MVP.** Decisión explícita: interfaz funcional y limpia,
-  YAGNI. Cuando haga falta, será una tarea con su ficha.
+- Estilo: Tailwind **a través de tokens**, nunca colores literales. Todo utilitario de color
+  resuelve una propiedad personalizada de `src/ui/tokens.css` (`bg-surface`, `text-accent`,
+  `border-copper`…), que es lo que hace que el tema cambie solo. **No se añaden `slate`, `gray`
+  ni `indigo`.** Textos en español.
+
+- **Sí hay sistema de diseño, desde el 2026-09-02.** Esta línea decía «sin sistema de diseño
+  para el MVP» y describía el estilo como `bg-slate-900` + `indigo-600`; llevaba desfasada
+  desde la tarea 1.19, que introdujo la capa de tokens y las primitivas. **Documentación que
+  miente es peor que ausente**, así que se corrige aquí, no se deja como anécdota.
+  La identidad es [«Sala de guerra»](./superpowers/specs/2026-09-02-identidad-visual-design.md):
+  cromado digital sobrio para lo que se opera, superficie de vitela para lo que se lee.
+
+- **Tres acentos, tres oficios, y no se mezclan.** `--accent` (azul señal) significa *esto se
+  puede pulsar*; `--copper` significa *esto pertenece al mundo* (filetes, capitulares, marcas
+  de tipo, la cuadrícula cartográfica); `--warning` avisa. Un cobre nunca es un botón. Tres
+  tonos distintos para tres trabajos distintos, para que ninguno se distinga de otro solo por
+  dónde está colocado.
+
+- **Las tipografías se cargan de Google Fonts**, y eso revierte a propósito el «no network
+  fonts» de 1.19. Son cuatro voces con un trabajo cada una: **Marcellus** en títulos,
+  **Public Sans** en la interfaz, **EB Garamond** en el texto del mundo, **IBM Plex Mono** en
+  las cifras. Cada pila conserva su reserva local completa y el enlace lleva `display=swap`,
+  así que una red de tipografías lenta o bloqueada cambia **cómo se ve** la página y nunca
+  **si funciona** — Playwright sigue midiendo una página que pintó.
 - **Un filtro o una búsqueda en pantalla es de cliente, nunca control de acceso** (tarea
   1.17c · A2/C1, `features/entities/filter.ts`). Opera sobre una lista que el servidor **ya**
   filtró por `canView`; solo puede **quitar de la vista** filas que la persona ya tenía

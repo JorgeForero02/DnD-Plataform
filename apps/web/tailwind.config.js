@@ -22,8 +22,16 @@ export default {
         // fill/border" the same way accent/accent-text and danger/danger-text do.
         warning: "var(--warning)",
         "warning-text": "var(--warning-text)",
+        // Reseño 2026-09-02 — copper is the identity's warm accent, and it is NOT an action
+        // colour: --accent (signal blue) means "you can click this", copper means "this
+        // belongs to the world" (rules, capitals, type marks, the cartographic grid). Three
+        // separate hues for three separate jobs — action, world, warning — so none of them
+        // has to be told apart from another by position alone.
+        copper: "var(--copper)",
+        "copper-text": "var(--copper-text)",
       },
       fontFamily: {
+        title: "var(--font-title)",
         chrome: "var(--font-chrome)",
         world: "var(--font-world)",
         data: "var(--font-data)",

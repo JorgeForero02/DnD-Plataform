@@ -221,6 +221,19 @@ for (const theme of ["dark", "light"] as const) {
   test(`contraste medido en tema ${theme}`, async ({ page }) => {
     await gotoTheme(page, theme);
 
+    // --- Reseño 2026-09-02: copper. It is the identity's warm accent and it is NOT an action
+    // colour, so it gets measured in both of the jobs it actually does: as readable text
+    // (4.5:1) and as a rule/boundary (3:1). A colour that only looks right in the mock is not
+    // a token — this is where it either holds in both themes or gets changed. ---
+    {
+      const { color, bg } = await effectiveTextColours(page.locator('[data-token="copper-text"]'));
+      record(theme, "cobre como texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: ruleBg } = await borderColourAgainstBg(
+        page.locator('[data-token="copper-rule"]'),
+      );
+      record(theme, "cobre como filete", contrastRatio(border, ruleBg), 3);
+    }
+
     // --- Buttons: label text, normal-size body text, needs 4.5:1 ---
     for (const name of ["Guardar", "Cancelar", "Ver más", "Borrar", "Abrir diálogo"]) {
       const { color, bg } = await effectiveTextColours(

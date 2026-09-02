@@ -18,15 +18,17 @@
 
 :root {
   /* Dark is the default palette on bare :root. */
-  --bg: #121316;
-  --surface: #1a1c20;
-  --vellum: #221e17;
-  --text: #e8e6e1;
-  --muted: #8a8f98;
-  --accent: #3f8c79;
-  --accent-text: #469b86;
-  --danger: #b4463c;
-  --danger-text: #cb6b62;
+  --bg: #10171c;
+  --surface: #1a2329;
+  --vellum: #201c15;
+  --text: #dce3e6;
+  --muted: #8b99a1;
+  --accent: #4a9bb8;
+  --accent-text: #6fb6ce;
+  --copper: #c97d46;
+  --copper-text: #dd9663;
+  --danger: #c4564b;
+  --danger-text: #e08076;
   /* Task 1.18b — the tenth token, and a reversible decision the author can still overturn (see
    * the report). "Orpiment" (dark #E0A83C, light #7A5310), added for exactly three sites that
    * were saying less than they should on --danger (overstating: a second link generation isn't
@@ -43,10 +45,16 @@
   --warning: #e0a83c;
   --warning-text: #e0a83c;
 
-  /* Type stacks — no network fonts, Playwright measures a stable page. */
-  --font-chrome: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-world: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-data: ui-monospace, "Cascadia Code", Consolas, monospace;
+  /* Type stacks — four voices, one per job (see specs/2026-09-02-identidad-visual-design.md).
+   * Reverses 1.19's "no network fonts": the faces now load from Google Fonts, the one font host
+   * this project can reach. Every stack keeps its full local fallback and the link carries
+   * display=swap, so a slow or blocked font network changes how the page LOOKS and never
+   * whether it works — Playwright still measures a page that painted. The reversal is declared
+   * in docs/04-convenciones.md, not left implicit here. */
+  --font-title: Marcellus, "Trajan Pro", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-chrome: "Public Sans", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-world: "EB Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
 
   /* Chrome type scale — dense, instrument-like. Exposed in tailwind.config.js under
    * "chrome-*" keys, NOT the bare Tailwind scale names (sm/base/xl/2xl) — fix round 1,
@@ -89,13 +97,15 @@
  * before this stylesheet loads, so there is no flash of the wrong theme on first paint. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #e9e2ce;
-    --surface: #f3eee0;
-    --vellum: #f7f1e1;
-    --text: #23211c;
-    --muted: #5e5b52;
-    --accent: #2f6b5c;
-    --accent-text: #2f6b5c;
+    --bg: #dfe5e9;
+    --surface: #edf1f3;
+    --vellum: #f4efe2;
+    --text: #16232b;
+    --muted: #4c5d66;
+    --accent: #1f5c73;
+    --accent-text: #1f5c73;
+    --copper: #8f5228;
+    --copper-text: #8f5228;
     --danger: #9b3a31;
     --danger-text: #9b3a31;
     --warning: #7a5310;
@@ -105,13 +115,15 @@
 }
 
 :root[data-theme="light"] {
-  --bg: #e9e2ce;
-  --surface: #f3eee0;
-  --vellum: #f7f1e1;
-  --text: #23211c;
-  --muted: #5e5b52;
-  --accent: #2f6b5c;
-  --accent-text: #2f6b5c;
+  --bg: #dfe5e9;
+  --surface: #edf1f3;
+  --vellum: #f4efe2;
+  --text: #16232b;
+  --muted: #4c5d66;
+  --accent: #1f5c73;
+  --accent-text: #1f5c73;
+  --copper: #8f5228;
+  --copper-text: #8f5228;
   --danger: #9b3a31;
   --danger-text: #9b3a31;
   --warning: #7a5310;
@@ -120,15 +132,17 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #121316;
-  --surface: #1a1c20;
-  --vellum: #221e17;
-  --text: #e8e6e1;
-  --muted: #8a8f98;
-  --accent: #3f8c79;
-  --accent-text: #469b86;
-  --danger: #b4463c;
-  --danger-text: #cb6b62;
+  --bg: #10171c;
+  --surface: #1a2329;
+  --vellum: #201c15;
+  --text: #dce3e6;
+  --muted: #8b99a1;
+  --accent: #4a9bb8;
+  --accent-text: #6fb6ce;
+  --copper: #c97d46;
+  --copper-text: #dd9663;
+  --danger: #c4564b;
+  --danger-text: #e08076;
   --warning: #e0a83c;
   --warning-text: #e0a83c;
   color-scheme: dark;

@@ -49,6 +49,32 @@ export function DesignTokensPage() {
     <div className="min-h-screen bg-bg p-6 text-text">
       <h1 className="mb-4 text-chrome-xl font-bold">Tokens — vista de control</h1>
 
+      {/* Reseño 2026-09-02 — the four voices and the copper accent, rendered here so the
+          contrast spec measures them the same way it measures everything else. Copper is the
+          world's accent, never an action: the spec gates its readable variant at 4.5:1 as
+          text, and the plain tone at 3:1 as a rule or a fill. */}
+      <section aria-label="voces tipográficas" className="mb-6 space-y-2">
+        <p className="font-title text-chrome-xl" data-voice="title">
+          Marcellus — títulos grabados
+        </p>
+        <p className="font-chrome text-chrome-base" data-voice="chrome">
+          Public Sans — la voz de la herramienta
+        </p>
+        <p className="font-world text-world-base" data-voice="world">
+          EB Garamond — la voz del mundo
+        </p>
+        <p className="font-data text-chrome-base" data-voice="data">
+          IBM Plex Mono — 18 · CA 16 · 4d6+2
+        </p>
+      </section>
+
+      <section aria-label="acento de cobre" className="mb-6 space-y-2">
+        <p className="text-copper-text text-chrome-base" data-token="copper-text">
+          Cobre legible — pertenece al mundo, no es un botón
+        </p>
+        <hr className="border-t border-copper" data-token="copper-rule" />
+      </section>
+
       <section aria-label="botones" className="mb-6 flex flex-wrap gap-2">
         <Button variant="primary">Guardar</Button>
         <Button variant="secondary">Cancelar</Button>

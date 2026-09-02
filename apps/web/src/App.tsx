@@ -5,6 +5,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
 import { EntityDetailPage } from "./pages/EntityDetailPage";
 import { CharacterDetailPage } from "./pages/CharacterDetailPage";
+import { SesionPage } from "./pages/SesionPage";
 import { AccountPage } from "./pages/AccountPage";
 import { JoinPage } from "./pages/JoinPage";
 import { DesignTokensPage } from "./pages/DesignTokensPage";
@@ -65,6 +66,16 @@ export function App() {
               like nothing at all, because there was no page to go to. Now there is, and the
               row is a real link to it. The path is in Spanish like the rest of the interface;
               /campaigns stays as it is because links to it already exist in the wild. */}
+          {/* La mesa: la pantalla que se mira mientras se juega. Ruta propia para que el DM
+              pueda tenerla en una pestaña aparte mientras navega el mundo en otra. */}
+          <Route
+            path="/campaigns/:id/sesion"
+            element={
+              <ProtectedRoute>
+                <SesionPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/campaigns/:id/entidades/:entityId"
             element={

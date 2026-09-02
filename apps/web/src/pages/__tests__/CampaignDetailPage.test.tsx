@@ -105,6 +105,10 @@ describe("CampaignDetailPage", () => {
         notes: null,
         visibility: "PLAYERS",
         createdAt: "x",
+        status: "PLANNED" as const,
+        startedAt: null,
+        endedAt: null,
+        attendance: null,
       },
     ]);
   });
@@ -194,6 +198,10 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         notes: null,
         visibility: "PLAYERS",
         createdAt: "x",
+        status: "PLANNED" as const,
+        startedAt: null,
+        endedAt: null,
+        attendance: null,
       },
     ]);
     vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([
@@ -536,6 +544,10 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
       notes: null,
       visibility: "PLAYERS" as const,
       createdAt: "x",
+      status: "PLANNED" as const,
+      startedAt: null,
+      endedAt: null,
+      attendance: null,
     };
     const second = { ...first, id: "s2", title: "Sesión Uno" };
     let deleted = false;

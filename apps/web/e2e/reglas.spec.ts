@@ -114,7 +114,7 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
   const resultado = page.getByRole("region", { name: "Resultado de la simulación" });
   await expect(resultado).toBeVisible();
   // El motor real dice que se aplicaría, y lo dice en español.
-  await expect(resultado).toContainText("Aplicada");
+  await expect(resultado).toContainText("Se aplicaría");
   await expect(resultado).toContainText("El heraldo de la puerta");
   await expect(resultado).not.toContainText("APPLIED");
 

@@ -10,6 +10,7 @@ import { EntityFilterBar } from "../features/entities/EntityFilterBar";
 import { filterEntities, type EntityFilterValue } from "../features/entities/filter";
 import { useSessions } from "../features/sessions/hooks";
 import { SessionEditor } from "../features/sessions/SessionEditor";
+import { ControlesDeSesion } from "../features/sessions/ControlesDeSesion";
 import type { Session } from "../features/sessions/api";
 import { useCharacters } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
@@ -329,6 +330,11 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
                 <Badge visibility={s.visibility} />
               </span>
             </button>
+            {/* Los controles van FUERA del botón de la fila: un botón dentro de otro botón no es
+                HTML válido y el clic se lo comería el de fuera. */}
+            <div className="mt-1 flex flex-wrap items-center gap-s2 px-s3">
+              <ControlesDeSesion campaignId={campaignId} session={s} puedeGestionar={canManage} />
+            </div>
           </li>
         ))}
       </ul>

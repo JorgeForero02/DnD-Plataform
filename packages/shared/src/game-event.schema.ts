@@ -45,6 +45,9 @@ export const GAME_EVENT_TYPES = [
   "FLAG_SET",
   "SET_CHANGED",
   "SIGNAL_RAISED",
+  // Sello rapido de mesa (pantalla de sesion). Es lo que el DM pulsa mientras dirige, y por eso
+  // es un tipo propio y no una nota suelta: el resumen de la sesion se construye con ellos.
+  "SESSION_NOTE",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -191,6 +194,24 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     reason,
   }),
 
+  /**
+   * **El sello rapido**: lo que el DM pulsa mientras dirige, sin dejar de mirar a la mesa.
+   *
+   * `kind` es una **lista cerrada y corta a proposito**. Escribir durante una partida cuesta y
+   * por eso no se hace; pulsar no cuesta nada. Y como el sello lleva su clase, el resumen que se
+   * escribe al cerrar la sesion sale **ya agrupado**, en vez de ser un muro de texto que nadie
+   * relee. La idea viene de una herramienta de preparacion de partidas de Foundry, y es la mejor
+   * que dio la investigacion de interfaces del 2026-09-02.
+   */
+  z.object({
+    type: z.literal("SESSION_NOTE"),
+    kind: z.enum(["ITEM", "NPC", "DECISION", "COMBAT", "DISCOVERY", "NOTE"]),
+    /** Lo que se teclea al lado del sello. Opcional: el sello solo ya dice algo. */
+    text: z.string().max(500).optional(),
+    /** La ficha del mundo a la que apunta, si se selló desde una. */
+    entityId: z.string().cuid().optional(),
+  }),
+
   z.object({
     type: z.literal("MANUAL_OVERRIDE_SET"),
     /** Clave del valor derivado que el DM anula: `"ac"`, `"maxHp"`, `"speed.walk"`. */
@@ -221,5 +242,17 @@ export const listGameEventsSchema = z.object({
   /** Identificador del último evento de la página anterior. */
   cursor: z.string().cuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  /**
+   * **Ver el log por los ojos de otro jugador.** Solo el DM, y solo sobre un miembro de la
+   * campaña.
+   *
+   * No es una comodidad: es la única forma honesta de que el DM confíe en los cinco niveles de
+   * visibilidad. Todos los VTT acabaron construyendo esto —Roll20 lo lanzó en 2026 porque sus
+   * DMs se creaban segundas cuentas para comprobar qué se veía— y ninguno lo tuvo el primer día.
+   *
+   * **No relaja nada**: el filtro sigue siendo `canView`, solo que con otro espectador. Un DM no
+   * ve *más* con esto, ve *menos*, que es justo el punto.
+   */
+  as: z.string().cuid().optional(),
 });
 export type ListGameEventsInput = z.infer<typeof listGameEventsSchema>;

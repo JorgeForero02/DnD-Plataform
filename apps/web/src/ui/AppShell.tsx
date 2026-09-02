@@ -9,10 +9,11 @@
 // Panels with tone="vellum" are where the world is READ. A settings form is never parchment.
 
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useMatch } from "react-router-dom";
 import { CartographicGrid } from "./Ornament";
 import { Logo } from "./Logo";
 import { LegalNotice } from "./LegalNotice";
+import { BarraDeSesion } from "../features/sessions/BarraDeSesion";
 
 export interface Crumb {
   label: string;
@@ -173,11 +174,20 @@ export function AppShell({
   aside?: ReactNode;
   header?: ReactNode;
 }) {
+  // La barra de sesión solo existe dentro de una campaña. Se decide aquí, mirando la ruta, y no
+  // dentro de la barra: consultar la sesión es una llamada de datos, y `/acerca-de` es pública y
+  // se monta sin cliente de consultas.
+  const enCampana = useMatch("/campaigns/:id");
+  const bajoCampana = useMatch("/campaigns/:id/*");
+  const campaignId = (enCampana ?? bajoCampana)?.params.id;
   return (
     <div className="relative min-h-screen bg-bg text-text">
       <CartographicGrid />
       <div className="relative">
         {header}
+        {/* Una sola vez para toda la aplicación: pasarla por parámetro desde cada página sería
+            una regla que se olvida en la siguiente pantalla que alguien añada. */}
+        {campaignId && <BarraDeSesion campaignId={campaignId} />}
         <div className="mx-auto flex max-w-[1400px] gap-s6 px-s4 py-s5">
           {aside && (
             <aside className="hidden w-56 shrink-0 lg:block">

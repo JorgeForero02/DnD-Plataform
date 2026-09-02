@@ -6,6 +6,63 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (noche) — La sesión de juego tiene por fin pantalla, y con ella el registro deja de mentir
+
+**Qué.** La API distinguía `PLANNED`, `IN_PROGRESS` y `CLOSED` desde 2A.5, con un índice único
+parcial que garantiza una sola sesión en curso por campaña, y **ninguna pantalla los enseñaba**.
+La consecuencia no era estética: como nadie empezaba una sesión, todo lo que pasaba se escribía
+con `sessionId` nulo y el registro de la partida no se podía reconstruir. Era la ficha **D9**.
+
+**Lo que se construyó**, con la investigación de once VTT y herramientas de mesa detrás:
+
+- **Una barra global de «en juego»**, presente en toda la campaña. El patrón salió sin
+  excepciones de la investigación: el estado «se está jugando» se comunica con **un solo elemento
+  persistente**, no con un rediseño — la pausa de Foundry, el nombre de escena de Alchemy.
+- **Los sellos rápidos** —Combate, PNJ, Decisión, Hallazgo, Objeto, Nota—, la mejor idea que dio
+  el estudio. **Escribir en mesa cuesta; pulsar no.** Y como cada sello lleva su clase, la crónica
+  sale agrupada en vez de ser un muro de texto. Los puede poner **cualquier miembro**, no solo el
+  DM: la crítica más repetida a estas herramientas es que un bloque que solo escribe el DM se
+  queda vacío.
+- **La mesa** (`/campaigns/:id/sesion`): elenco con asistencia, registro en vivo y consulta del
+  mundo, para atacar lo que todos los foros describen — **el DM con quince pestañas abiertas**.
+- **Cerrar con la crónica ya escrita**, derivada de los sellos. Ninguno de los once productos
+  estudiados deriva la crónica del registro; Shard es el que más se acerca y ni él la convierte
+  en prosa.
+- **«Ver el registro como» otro jugador.** Solo el DM, y solo sobre un miembro. No relaja nada:
+  sigue filtrando `canView` con otro espectador, así que el DM ve *menos*, que es el punto. Todos
+  los VTT acabaron construyéndolo y ninguno lo tuvo el primer día — Roll20 lo lanzó en 2026
+  porque sus DMs se creaban segundas cuentas para comprobar qué se veía.
+- **La asistencia se declara** (`Session.attendance`), porque aquí no hay conexiones en vivo: los
+  VTT saben quién está por el socket, y esto no tiene socket.
+- **El log se lee en prosa**: `linea-de-log.ts` traduce los veinte tipos de suceso. Hasta hoy el
+  registro solo se podía leer con un cliente HTTP.
+
+**Tres fallos que encontraron las pruebas y que conviene que consten.**
+
+1. **La medición de contraste daba 1,03:1 y era mentira mía.** Medía contra `document.body`, cuyo
+   fondo es transparente porque el color lo pinta un `div` del armazón: comparaba negro por
+   defecto contra negro por defecto y habría dejado pasar cualquier cosa. Con el fondo real, el
+   filete da 4,85:1.
+2. **Montar la barra en el armazón rompió `/acerca-de`**, que es una pantalla **pública** y se
+   monta sin cliente de consultas. Pedir la sesión es una llamada de datos: ahora es `AppShell`
+   quien decide, mirando la ruta, y fuera de una campaña la barra ni se monta.
+3. **El e2e del motor de reglas afirmaba «Aplicada»** en un ensayo en seco — estaba fijando el
+   comportamiento que se corrigió esta misma mañana. Ahora exige «Se aplicaría».
+
+Y una del contrato: empezar una sesión sin declarar asistencia daba **400**, porque Zod no sabe
+parsear un cuerpo ausente como objeto. Lo destapó la suite e2e que ya existía. Los esquemas de
+empezar y cerrar llevan `.default({})`.
+
+**Verificación.** 699 unitarias de API, 405 de web, 117 e2e de API y 32 recorridos de navegador,
+todos verdes. Diez mutaciones aplicadas a mano y comprobadas rojas, cinco de ellas sobre lo que
+tiene riesgo: quién puede mirar por los ojos de otro, que `as` no se ignore al filtrar, que
+sellar sin sesión falle, que «solo el DM» viaje, y que la crónica no salga en blanco.
+
+**Cómo revertirlo.** Una migración, `20260902185824_session_attendance_and_notes`, que **solo
+añade**: un valor al enum de sucesos y una columna anulable. El código viejo convive con ella.
+
+---
+
 ## 2026-09-02 (13:00) — Despliegue de los cuatro arreglos de la mesa, sin migración
 
 **Qué.** `5329da6` a producción por la API de Coolify (`deployment 6mwyrpiifuviluwzsro8km5v`,

@@ -27,6 +27,10 @@ const existingSession: Session = {
   notes: "Traer velas",
   visibility: "PLAYERS",
   createdAt: "x",
+  status: "PLANNED" as const,
+  startedAt: null,
+  endedAt: null,
+  attendance: null,
 };
 
 function renderEditEditor(

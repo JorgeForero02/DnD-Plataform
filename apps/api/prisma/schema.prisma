@@ -50,6 +50,7 @@ enum GameEventType {
   FLAG_SET
   SET_CHANGED
   SIGNAL_RAISED
+  SESSION_NOTE
 }
 
 enum ResourceReset {
@@ -214,6 +215,16 @@ model Session {
   status      SessionStatus @default(PLANNED)
   startedAt   DateTime?
   endedAt     DateTime?
+  // Quien vino y con que personaje: [{ userId, characterId? }]. Se declara al empezar la sesion.
+  //
+  // **Json y no tabla, a proposito y con su motivo.** La convencion del proyecto manda promover a
+  // columna todo lo que se consulte o se filtre; de la asistencia hoy no se consulta nada — se
+  // lee entera con la sesion y se pinta. El dia que haga falta "en cuantas sesiones estuvo este
+  // jugador", se promociona a tabla y esa consulta es la que lo justifica, no una sospecha.
+  //
+  // Y hace falta declararla porque **esto no tiene conexiones en vivo**: los VTT saben quien esta
+  // porque hay un socket abierto. Aqui no lo hay, asi que quien vino es un dato que alguien dice.
+  attendance  Json?
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   // Como maximo una sesion IN_PROGRESS por campana. Lo garantiza un indice unico PARCIAL, que

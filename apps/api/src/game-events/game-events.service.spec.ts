@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { GAME_EVENT_TYPES, gameEventPayloadSchema } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
@@ -172,5 +173,69 @@ describe("GameEventsService", () => {
       }),
     ).rejects.toThrow();
     expect(emitter.emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("ver el log por los ojos de otro jugador", () => {
+  let service: GameEventsService;
+  const prisma = {
+    gameEvent: { create: jest.fn(), findMany: jest.fn() },
+    user: { findUnique: jest.fn() },
+  };
+  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const emitter = { emit: jest.fn() };
+
+  const eventos = [
+    { id: "e1", visibility: "PLAYERS", actorUserId: "dm1" },
+    { id: "e2", visibility: "DM_ONLY", actorUserId: "dm1" },
+  ];
+
+  beforeEach(async () => {
+    const ref = await Test.createTestingModule({
+      providers: [
+        GameEventsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: EventEmitter2, useValue: emitter },
+      ],
+    }).compile();
+    service = ref.get(GameEventsService);
+    jest.resetAllMocks();
+    prisma.gameEvent.findMany.mockResolvedValue(eventos);
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+  });
+
+  it("el DM ve los suyos y los DM_ONLY; mirando como jugador, ve MENOS", async () => {
+    // El punto entero: `as` no relaja nada, aprieta. Sigue filtrando `canView`, con otro
+    // espectador. Es la única forma honesta de que el DM confíe en los cinco niveles.
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const suyo = await service.list("dm1", "c1", { limit: 50 });
+    expect(suyo.events.map((e) => e.id)).toEqual(["e1", "e2"]);
+
+    membership.getMembership.mockImplementation((_c: string, u: string) =>
+      Promise.resolve({ role: u === "dm1" ? "DM" : "PLAYER" }),
+    );
+    const comoJugador = await service.list("dm1", "c1", { limit: 50, as: "jug1" });
+    expect(comoJugador.events.map((e) => e.id)).toEqual(["e1"]);
+  });
+
+  it("un jugador NO puede mirar por los ojos de otro", async () => {
+    membership.requireMember.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(service.list("jug1", "c1", { limit: 50, as: "jug2" })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(prisma.gameEvent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("pedir por alguien que no es de la campaña es 404, no un oráculo de existencia", async () => {
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    membership.getMembership.mockResolvedValue(null);
+
+    await expect(service.list("dm1", "c1", { limit: 50, as: "ajeno" })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

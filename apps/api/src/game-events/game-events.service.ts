@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   gameEventPayloadSchema,
@@ -100,8 +100,17 @@ export class GameEventsService {
    * exactamente lo que `canView` existe para que nadie haga.
    */
   async list(userId: string, campaignId: string, query: ListGameEventsInput) {
-    await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const propio = await this.membership.requireMember(campaignId, userId);
+    // **Mirar por los ojos de otro exige ser DM**, y que ese otro sea miembro de esta campaña.
+    // Sin la segunda comprobación, `as` sería un oráculo: pedir por un identificador cualquiera y
+    // deducir de la respuesta si pertenece a la campaña.
+    if (query.as && query.as !== userId) {
+      if (propio.role !== "DM")
+        throw new ForbiddenException("Solo el DM puede mirar por los ojos de otro jugador.");
+      const objetivo = await this.membership.getMembership(campaignId, query.as);
+      if (!objetivo) throw new NotFoundException("Ese jugador no está en esta campaña.");
+    }
+    const viewer = await this.viewerFor(query.as ?? userId, campaignId);
 
     const rows = await this.prisma.gameEvent.findMany({
       where: {

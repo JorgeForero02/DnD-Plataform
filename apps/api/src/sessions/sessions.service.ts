@@ -1,5 +1,12 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { CreateSessionInput, UpdateSessionInput, Visibility } from "@dnd/shared";
+import {
+  CreateSessionInput,
+  UpdateSessionInput,
+  Visibility,
+  type CloseSessionInput,
+  type StampSessionNoteInput,
+  type StartSessionInput,
+} from "@dnd/shared";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -96,7 +103,12 @@ export class SessionsService {
    * en cuanto el DM tenga dos pestañas abiertas; lo que hace el código es traducir el choque de
    * la base a un 409 legible.
    */
-  async start(userId: string, campaignId: string, sessionId: string) {
+  async start(
+    userId: string,
+    campaignId: string,
+    sessionId: string,
+    input: StartSessionInput = {},
+  ) {
     await this.membership.requireDM(campaignId, userId);
     const session = await this.prisma.session.findFirst({ where: { id: sessionId, campaignId } });
     if (!session) throw new NotFoundException("Session not found");
@@ -108,7 +120,13 @@ export class SessionsService {
       return await this.prisma.$transaction(async (tx) => {
         const started = await tx.session.update({
           where: { id: sessionId },
-          data: { status: "IN_PROGRESS", startedAt: new Date() },
+          data: {
+            status: "IN_PROGRESS",
+            startedAt: new Date(),
+            // Solo se escribe si viene: empezar sin decir quién vino es legítimo, y machacar
+            // con `null` una asistencia ya declarada al re-arrancar sería perder un dato.
+            ...(input.attendance ? { attendance: input.attendance } : {}),
+          },
         });
         // El evento y el cambio de estado, o los dos o ninguno: una sesión en curso sin su
         // línea en el log es una partida cuya historia empieza a mentir desde el minuto cero.
@@ -135,7 +153,12 @@ export class SessionsService {
   }
 
   /** Cierra la sesión. Solo DM. Cerrar lo que no está en curso es un 409, no un silencio. */
-  async close(userId: string, campaignId: string, sessionId: string) {
+  async close(
+    userId: string,
+    campaignId: string,
+    sessionId: string,
+    input: CloseSessionInput = { recapVisibility: "PLAYERS" },
+  ) {
     await this.membership.requireDM(campaignId, userId);
     const session = await this.prisma.session.findFirst({ where: { id: sessionId, campaignId } });
     if (!session) throw new NotFoundException("Session not found");
@@ -146,7 +169,12 @@ export class SessionsService {
     return this.prisma.$transaction(async (tx) => {
       const closed = await tx.session.update({
         where: { id: sessionId },
-        data: { status: "CLOSED", endedAt },
+        data: {
+          status: "CLOSED",
+          endedAt,
+          // El resumen va a `notes`, que ya existía y no lo usaba nadie desde una pantalla.
+          ...(input.recap !== undefined ? { notes: { recap: input.recap } } : {}),
+        },
       });
       await this.events.record(
         userId,
@@ -175,5 +203,42 @@ export class SessionsService {
       );
       return closed;
     });
+  }
+
+  /**
+   * **El sello rápido.** Escribe una línea en el log de la sesión en curso, de un clic.
+   *
+   * Lo puede pulsar **cualquier miembro**, no solo el DM, y eso es una decisión: la crítica más
+   * repetida a las herramientas de crónica es que **un bloque que solo escribe el DM se queda
+   * vacío**. Lo que el DM sí controla, sello a sello, es quién lo ve.
+   *
+   * **Exige sesión en curso.** Un sello fuera de sesión no tendría dónde colgarse, y el motivo
+   * de que esta pantalla exista es justamente que hoy el combate se graba con `sessionId` nulo.
+   */
+  async stampNote(userId: string, campaignId: string, input: StampSessionNoteInput) {
+    await this.membership.requireMember(campaignId, userId);
+    const enCurso = await this.prisma.session.findFirst({
+      where: { campaignId, status: "IN_PROGRESS" },
+    });
+    if (!enCurso) throw new ConflictException("No hay ninguna sesión en curso donde anotar esto.");
+
+    return this.events.record(userId, campaignId, {
+      sessionId: enCurso.id,
+      subjectType: "session",
+      subjectId: enCurso.id,
+      visibility: input.visibility,
+      payload: {
+        type: "SESSION_NOTE",
+        kind: input.kind,
+        ...(input.text ? { text: input.text } : {}),
+        ...(input.entityId ? { entityId: input.entityId } : {}),
+      },
+    });
+  }
+
+  /** La sesión en curso de la campaña, o `null`. Es lo que pinta la barra global. */
+  async current(userId: string, campaignId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    return this.prisma.session.findFirst({ where: { campaignId, status: "IN_PROGRESS" } });
   }
 }

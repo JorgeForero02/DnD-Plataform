@@ -45,38 +45,144 @@ describe("LinksService", () => {
     );
   });
 
+  // Ayudante: `entityLink.findMany` se llama ahora **dos veces** —salientes por `fromId`,
+  // entrantes por `toId`—, así que un `mockResolvedValue` único devolvería filas con la forma
+  // equivocada en la segunda llamada. Se despacha por el `where` real, y **comparando con el id
+  // de la ficha**: la primera versión solo miraba si existía la clave `fromId`, y con eso una
+  // consulta que preguntara por otra ficha seguía devolviendo filas — la prueba de mutación lo
+  // cazó, se quedó verde con `where: { toId: "__mutacion__" }`.
+  function conEnlaces(entityId: string, salientes: unknown[], entrantes: unknown[]) {
+    prisma.entityLink.findMany.mockImplementation((args: { where: Record<string, string> }) => {
+      if (args.where.fromId === entityId) return Promise.resolve(salientes);
+      if (args.where.toId === entityId) return Promise.resolve(entrantes);
+      return Promise.resolve([]);
+    });
+  }
+
+  const publica = {
+    id: "pub",
+    name: "Town",
+    type: "LOCATION",
+    visibility: "PLAYERS",
+    createdById: "dm1",
+    grants: [],
+  };
+  const secreta = {
+    id: "sec",
+    name: "Lair",
+    type: "LOCATION",
+    visibility: "DM_ONLY",
+    createdById: "dm1",
+    grants: [],
+  };
+
   it("listFor() hides links whose target the viewer cannot see (real canView)", async () => {
-    prisma.entity.findUnique.mockResolvedValue({ id: "e1", campaignId: "c1" });
+    prisma.entity.findUnique.mockResolvedValue({ id: "e1", campaignId: "c1", createdById: "dm1" });
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
-    prisma.entityLink.findMany.mockResolvedValue([
-      {
-        id: "l1",
-        label: null,
-        to: {
-          id: "pub",
-          name: "Town",
-          type: "LOCATION",
-          visibility: "PLAYERS",
-          createdById: "dm1",
-          grants: [],
-        },
-      },
-      {
-        id: "l2",
-        label: null,
-        to: {
-          id: "sec",
-          name: "Lair",
-          type: "LOCATION",
-          visibility: "DM_ONLY",
-          createdById: "dm1",
-          grants: [],
-        },
-      },
-    ]);
+    conEnlaces(
+      "e1",
+      [
+        { id: "l1", label: null, to: publica },
+        { id: "l2", label: null, to: secreta },
+      ],
+      [],
+    );
     const res = await service.listFor("player1", "e1");
     expect(res.map((l) => l.to.id)).toEqual(["pub"]);
+  });
+
+  // L1: el fallo que motivó el bloque. «Corvin vive en la Torre Gris» se guarda una sola vez,
+  // desde Corvin; al abrir la Torre, Corvin no aparecía por ningún lado.
+  it("listFor() devuelve también los enlaces entrantes, marcados como retroenlace", async () => {
+    prisma.entity.findUnique.mockResolvedValue({
+      id: "torre",
+      campaignId: "c1",
+      createdById: "dm1",
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    conEnlaces(
+      "torre",
+      [],
+      [
+        {
+          id: "l9",
+          label: "vive en",
+          from: {
+            id: "corvin",
+            name: "Maestre Corvin",
+            type: "NPC",
+            visibility: "PLAYERS",
+            createdById: "dm1",
+            grants: [],
+          },
+        },
+      ],
+    );
+
+    const res = await service.listFor("player1", "torre");
+    expect(res).toHaveLength(1);
+    expect(res[0].direction).toBe("INCOMING");
+    expect(res[0].to.name).toBe("Maestre Corvin");
+    expect(res[0].label).toBe("vive en");
+  });
+
+  it("un retroenlace no revela una ficha que quien mira no puede ver", async () => {
+    prisma.entity.findUnique.mockResolvedValue({
+      id: "torre",
+      campaignId: "c1",
+      createdById: "dm1",
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    conEnlaces(
+      "torre",
+      [],
+      [
+        { id: "l8", label: "se reúne en", from: secreta },
+        { id: "l9", label: "vive en", from: publica },
+      ],
+    );
+
+    const res = await service.listFor("player1", "torre");
+    expect(res.map((l) => l.to.id)).toEqual(["pub"]);
+  });
+
+  it("el DM sí ve el retroenlace secreto, y puede quitarlo", async () => {
+    prisma.entity.findUnique.mockResolvedValue({
+      id: "torre",
+      campaignId: "c1",
+      createdById: "dm1",
+    });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    conEnlaces("torre", [], [{ id: "l8", label: "se reúne en", from: secreta }]);
+
+    const res = await service.listFor("dm1", "torre");
+    expect(res.map((l) => l.to.id)).toEqual(["sec"]);
+    expect(res[0].canRemove).toBe(true);
+  });
+
+  // `remove` exige DM **o creador del origen**; en un entrante el origen es la otra ficha, así
+  // que quien creó esta no puede quitarlo y la pantalla no debe ofrecérselo.
+  it("canRemove de un entrante mira al creador de la otra ficha, no al de esta", async () => {
+    prisma.entity.findUnique.mockResolvedValue({
+      id: "torre",
+      campaignId: "c1",
+      createdById: "jugador",
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    conEnlaces(
+      "torre",
+      [{ id: "sal", label: null, to: publica }],
+      [{ id: "ent", label: null, from: { ...publica, id: "otra", createdById: "dm1" } }],
+    );
+
+    const res = await service.listFor("jugador", "torre");
+    expect(res.find((l) => l.id === "sal")!.canRemove).toBe(true);
+    expect(res.find((l) => l.id === "ent")!.canRemove).toBe(false);
   });
 
   it("enlazar exige ser DM: un enlace revela que dos cosas tienen que ver", async () => {

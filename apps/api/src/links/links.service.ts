@@ -9,6 +9,14 @@ import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
 
+/**
+ * De qué lado de la flecha está el enlace **visto desde la ficha que se está leyendo**.
+ * `OUTGOING` es el que esa ficha escribió («Corvin → vive en → Torre Gris», leído desde
+ * Corvin); `INCOMING` es el retroenlace, el mismo registro leído desde la Torre Gris.
+ * No hay dos filas en la base: hay una, leída desde sus dos extremos.
+ */
+export type LinkDirection = "OUTGOING" | "INCOMING";
+
 @Injectable()
 export class LinksService {
   constructor(
@@ -43,27 +51,75 @@ export class LinksService {
     });
   }
 
+  /**
+   * Los enlaces de una ficha **por sus dos lados**. Hasta el bloque L esto filtraba solo por
+   * `fromId`: quien abría la Torre Gris no veía que Corvin vivía en ella, y para que el enlace
+   * se leyera desde los dos extremos había que crearlo dos veces y acordarse de borrar los dos.
+   *
+   * La respuesta sigue siendo **una lista plana**, no `{ salientes, entrantes }`: cada fila
+   * lleva su `direction`. Es lo que deja intacto a quien ya la consumía (`links.e2e-spec.ts`
+   * cuenta `body.length` y mapea `l.to.id`) y la pantalla agrupa sola.
+   *
+   * `to` significa aquí **la ficha del otro extremo**, que en un retroenlace es el `from` del
+   * registro. El nombre se conserva por compatibilidad; `other` describiría mejor lo que es.
+   */
   async listFor(userId: string, entityId: string) {
-    const from = await this.prisma.entity.findUnique({ where: { id: entityId } });
-    if (!from) throw new NotFoundException("Entity not found");
-    await this.membership.requireMember(from.campaignId, userId);
-    const viewer = await this.viewerFor(userId, from.campaignId);
-    const links = await this.prisma.entityLink.findMany({
-      where: { fromId: entityId },
-      include: { to: { include: { grants: true } } },
-    });
-    return links
-      .filter((l) =>
+    const entity = await this.prisma.entity.findUnique({ where: { id: entityId } });
+    if (!entity) throw new NotFoundException("Entity not found");
+    await this.membership.requireMember(entity.campaignId, userId);
+    const viewer = await this.viewerFor(userId, entity.campaignId);
+
+    const [outgoing, incoming] = await Promise.all([
+      this.prisma.entityLink.findMany({
+        where: { fromId: entityId },
+        include: { to: { include: { grants: true } } },
+      }),
+      this.prisma.entityLink.findMany({
+        where: { toId: entityId },
+        include: { from: { include: { grants: true } } },
+      }),
+    ]);
+
+    // Deliberadamente **sin** `isAdmin`: `remove` solo mira rol DM o creador del origen, y una
+    // interfaz que ofrece un botón que el servidor va a rechazar miente.
+    const isDM = viewer.role === "DM";
+    const rows = [
+      ...outgoing.map((l) => ({
+        id: l.id,
+        label: l.label as string | null,
+        direction: "OUTGOING" as LinkDirection,
+        // Quitar exige DM o el creador del **origen** (ver `remove`). En un enlace saliente el
+        // origen es esta misma ficha; en uno entrante, la de enfrente.
+        canRemove: isDM || entity.createdById === viewer.userId,
+        other: l.to,
+      })),
+      ...incoming.map((l) => ({
+        id: l.id,
+        label: l.label as string | null,
+        direction: "INCOMING" as LinkDirection,
+        canRemove: isDM || l.from.createdById === viewer.userId,
+        other: l.from,
+      })),
+    ];
+
+    // **El retroenlace no puede revelar una ficha que quien mira no puede ver.** Es la misma
+    // `canView` de siempre —el dueño único de «quién ve qué»— aplicada ahora a los dos
+    // extremos: sin esto, abrir un lugar público delataría la existencia del culto `DM_ONLY`
+    // que lo tiene enlazado.
+    return rows
+      .filter((r) =>
         canView(viewer, {
-          visibility: l.to.visibility,
-          createdById: l.to.createdById,
-          grantedUserIds: l.to.grants.map((g) => g.userId),
+          visibility: r.other.visibility,
+          createdById: r.other.createdById,
+          grantedUserIds: r.other.grants.map((g) => g.userId),
         }),
       )
-      .map((l) => ({
-        id: l.id,
-        label: l.label,
-        to: { id: l.to.id, name: l.to.name, type: l.to.type },
+      .map((r) => ({
+        id: r.id,
+        label: r.label,
+        direction: r.direction,
+        canRemove: r.canRemove,
+        to: { id: r.other.id, name: r.other.name, type: r.other.type },
       }));
   }
 

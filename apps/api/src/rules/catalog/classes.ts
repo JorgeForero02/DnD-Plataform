@@ -48,6 +48,7 @@ export const SRD_CLASSES: SrdClass[] = [
     armorProficiencies: ["Armadura ligera", "Armadura media", "Escudos"],
     weaponProficiencies: ["Armas sencillas", "Armas marciales"],
     skillChoice: { choose: 2, from: HABILIDADES_BARBARO },
+    attacksPerAction: [{ fromLevel: 5, attacks: 2 }],
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "rage", "Furia"),
@@ -95,6 +96,7 @@ export const SRD_CLASSES: SrdClass[] = [
     ],
     skillChoice: { choose: 3, from: TODAS_LAS_HABILIDADES },
     spellcastingAbility: "cha",
+    spellProgression: "FULL",
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "spellcasting", "Lanzamiento de conjuros"),
@@ -143,6 +145,7 @@ export const SRD_CLASSES: SrdClass[] = [
       from: ["history", "insight", "medicine", "persuasion", "religion"],
     },
     spellcastingAbility: "wis",
+    spellProgression: "FULL",
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "spellcasting", "Lanzamiento de conjuros"),
@@ -210,6 +213,7 @@ export const SRD_CLASSES: SrdClass[] = [
       ],
     },
     spellcastingAbility: "wis",
+    spellProgression: "FULL",
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "druidic", "Drúidico"),
@@ -259,6 +263,11 @@ export const SRD_CLASSES: SrdClass[] = [
       ],
     },
     // El guerrero es la única clase con **siete** mejoras de característica.
+    attacksPerAction: [
+      { fromLevel: 5, attacks: 2 },
+      { fromLevel: 11, attacks: 3 },
+      { fromLevel: 20, attacks: 4 },
+    ],
     asiLevels: [4, 6, 8, 12, 14, 16, 19],
     features: [
       f(1, "fighting-style", "Estilo de combate"),
@@ -299,6 +308,7 @@ export const SRD_CLASSES: SrdClass[] = [
       choose: 2,
       from: ["acrobatics", "athletics", "history", "insight", "religion", "stealth"],
     },
+    attacksPerAction: [{ fromLevel: 5, attacks: 2 }],
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "unarmored-defense", "Defensa sin armadura"),
@@ -349,6 +359,8 @@ export const SRD_CLASSES: SrdClass[] = [
     spellcastingAbility: "cha",
     // Desde el 2, no desde el 1. Antes esto era un comentario que el código no aplicaba.
     spellcastingFromLevel: 2,
+    spellProgression: "HALF",
+    attacksPerAction: [{ fromLevel: 5, attacks: 2 }],
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "divine-sense", "Sentido divino"),
@@ -402,6 +414,8 @@ export const SRD_CLASSES: SrdClass[] = [
     },
     spellcastingAbility: "wis",
     spellcastingFromLevel: 2,
+    spellProgression: "HALF",
+    attacksPerAction: [{ fromLevel: 5, attacks: 2 }],
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "favored-enemy", "Enemigo predilecto"),
@@ -507,6 +521,7 @@ export const SRD_CLASSES: SrdClass[] = [
       from: ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"],
     },
     spellcastingAbility: "cha",
+    spellProgression: "FULL",
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "spellcasting", "Lanzamiento de conjuros"),
@@ -552,6 +567,7 @@ export const SRD_CLASSES: SrdClass[] = [
       ],
     },
     spellcastingAbility: "cha",
+    spellProgression: "PACT",
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "otherworldly-patron", "Patrón de otro mundo"),
@@ -591,6 +607,7 @@ export const SRD_CLASSES: SrdClass[] = [
       from: ["arcana", "history", "insight", "investigation", "medicine", "religion"],
     },
     spellcastingAbility: "int",
+    spellProgression: "FULL",
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "spellcasting", "Lanzamiento de conjuros"),

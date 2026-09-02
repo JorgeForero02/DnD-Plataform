@@ -39,7 +39,21 @@ quedan aquí para que no se deshagan sin darse cuenta.
 | **S9** | **[revisión] Las velocidades no pasan por el motor y por tanto no tienen traza** | `speeds` se asigna directamente en el resolutor, sin `Modifier` ni paso de traza. **Postura del revisor:** 2A.12 tendrá que rehacer esta pieza, así que conviene emitirlas ya como modificadores y derivar `speed.*` en el motor. **Postura de quien implementó, y lo que se aplicó:** 2A.12 es literalmente «velocidades, condiciones y velocidad efectiva **con su traza**», así que ese trabajo es *planificado*, no *repetido*, y adelantarlo mete en 2A.3 un cambio al motor que la propia tarea declaraba no tocar. Se deja para 2A.12 **con la obligación explícita de convertir `speeds` en modificadores allí**, y no de apilar una segunda representación al lado |
 | **S10** | **[revisión] El nivel y el nombre de las ~203 aptitudes de clase no están fijados por ninguna prueba** | `reference.spec.ts` fija dado de golpe, salvaciones, `asiLevels`, número de habilidades, lanzamiento, subclase y su nivel, y todas las cifras de razas y armaduras — **mover una aptitud de nivel, en cambio, no pone nada en rojo** (comprobado: la mutación «evasión del pícaro del 7 al 4» sigue pasando). Fijarlas sería transcribir los mismos datos **dos veces**, y dos copias derivan. Lo que protege esas filas es que el diff se entregó legible y se revisó con el SRD delante |
 
-## Pedido por el autor el 2026-09-02## Pedido por el autor el 2026-09-02, colocado — antes de 2A
+## Pedido por el autor el 2026-09-02## Huecos de mecánica declarados a mitad de 2A (2026-09-02)
+
+Salieron de un repaso pedido por el autor con 2A.1-2A.5 ya en producción, razonado en
+[huecos de mecánica](./superpowers/specs/2026-09-02-huecos-de-mecanica-2A.md). **Cuatro se
+cerraron ese mismo día** (media competencia, Ataque Extra, espacios de conjuro e iniciativa) y
+**tres están colocados** en 2A.6, 2A.7 y 2A.12. Estos cuatro quedan abiertos.
+
+| | Qué | Dónde va, y por qué no ahora |
+|---|---|---|
+| **M8** | **Modificadores temporales con caducidad** — *«+2 a Fuerza durante una hora»*. Lo pidieron los jugadores y **no está escrito en ningún plan**: no es un estado con nombre ni un objeto equipado, es un modificador con fecha de fin | Necesita el **reloj de campaña**, que es 2C. El modelo de modificadores de 2A ya sabría aplicarlo; falta quién decide que ha caducado. Meterlo sin reloj sería un campo que nadie limpia |
+| **M9** | **El personaje se archiva, no se borra.** Respuesta 6 de los jugadores: *«que se queden guardados como recuerdos; hay campañas donde te pueden revivir por items»*. Hoy el borrado es **definitivo** | Toca `characters`, que es de la fase 1, así que no es de 2A. **Pero el reloj corre**: la aplicación está en producción y cada personaje borrado ya no vuelve. Es lo más barato de esta tabla y **lo único que pierde datos mientras espera** |
+| **M10** | **Revocar una concesión de visibilidad y editar en silencio** — la hidra falsa (respuesta 2). Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
+| **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
+
+## Pedido por el autor el 2026-09-02, colocado — antes de 2A
 
 Razonado en [el análisis de las seis peticiones](./superpowers/specs/2026-09-02-seis-peticiones-analisis.md).
 Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en el plan de 2A.

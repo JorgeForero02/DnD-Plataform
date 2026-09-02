@@ -24,6 +24,7 @@ export * from "./races";
 export * from "./classes";
 export * from "./armor";
 export * from "./choices";
+export * from "./spell-slots";
 export * from "./resolve";
 
 import type { DerivationResult } from "@dnd/shared";
@@ -60,6 +61,11 @@ export interface CharacterSheet extends DerivationResult {
   raceKey: string;
   subraceKey?: string;
   classKey: string;
+  /** Cuantos ataques da una accion de Ataque (hueco M2). */
+  attacksPerAction: number;
+  /** Espacios de conjuro y donde se reponen (hueco M3). */
+  spellSlots: ResolvedBuild["spellSlots"];
+  spellSlotResetOn: ResolvedBuild["spellSlotResetOn"];
 }
 
 /**
@@ -87,6 +93,9 @@ export function deriveCharacter(build: CharacterBuild): CharacterSheet {
     raceKey: resuelto.race.key,
     subraceKey: resuelto.subrace?.key,
     classKey: resuelto.characterClass.key,
+    attacksPerAction: resuelto.attacksPerAction,
+    spellSlots: resuelto.spellSlots,
+    spellSlotResetOn: resuelto.spellSlotResetOn,
   };
 }
 

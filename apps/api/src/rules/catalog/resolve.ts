@@ -23,6 +23,7 @@ import { SRD_ARMOR } from "./armor";
 import { validatePicks, type ChoiceGrant } from "./choices";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
+import { spellSlotResetOn, spellSlotsFor, type SpellSlot } from "./spell-slots";
 import type { ContentRef, Grant, SrdArmor, SrdClass, SrdRace, SrdSubrace } from "./types";
 
 /**
@@ -62,6 +63,18 @@ export interface ResolvedBuild {
   features: ResolvedFeature[];
   /** Velocidades **en pies**. 2A.12 les aplicará las condiciones. */
   speeds: Partial<Record<"walk" | "climb" | "swim" | "fly" | "burrow", number>>;
+  /**
+   * Cuantos ataques da una accion de Ataque a este nivel (hueco M2). Uno salvo que la clase
+   * diga otra cosa. **El boton de «tira los dos» es 2C**; el numero es de aqui.
+   */
+  attacksPerAction: number;
+  /**
+   * Espacios de conjuro a este nivel (hueco M3). Vacio = no lanza todavia, que es un estado
+   * legitimo —el paladin de nivel 1— y no un error.
+   */
+  spellSlots: SpellSlot[];
+  /** Donde se reponen. **El brujo, en descanso CORTO.** Lo necesita 2A.8. */
+  spellSlotResetOn: "SHORT_REST" | "LONG_REST" | "NONE";
   race: SrdRace;
   subrace?: SrdSubrace;
   characterClass: SrdClass;
@@ -125,10 +138,15 @@ export function findArmor(ref: ContentRef): SrdArmor {
   return armor;
 }
 
+// `none < half < proficient < expertise`. Cuando dos fuentes conceden la misma habilidad **gana
+// la mejor y no se suman**, que es la regla de 5.ª edicion y ademas lo unico que no rompe la
+// media competencia: un bardo competente en Sigilo no gana ademas la mitad por «Aprendiz de
+// todo».
 const ORDEN_COMPETENCIA: Record<ProficiencyLevel, number> = {
   none: 0,
-  proficient: 1,
-  expertise: 2,
+  half: 1,
+  proficient: 2,
+  expertise: 3,
 };
 
 export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
@@ -329,6 +347,9 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     warnings,
     features,
     speeds,
+    attacksPerAction: ataquesPorAccion(characterClass, build.level),
+    spellSlots: spellSlotsFor(characterClass.spellProgression, build.level),
+    spellSlotResetOn: spellSlotResetOn(characterClass.spellProgression),
     race,
     subrace,
     characterClass,
@@ -379,4 +400,13 @@ function formulasDeArmadura(refs: ContentRef[]): {
   }
 
   return { acFormulas, acBonuses };
+}
+
+/**
+ * La banda de mayor `fromLevel` que no supere el nivel. Sin entradas, **uno** — que es lo que
+ * tiene todo el mundo, y por eso el catalogo solo declara las excepciones.
+ */
+function ataquesPorAccion(clase: SrdClass, level: number): number {
+  const bandas = (clase.attacksPerAction ?? []).filter((b) => level >= b.fromLevel);
+  return bandas.length ? bandas[bandas.length - 1].attacks : 1;
 }

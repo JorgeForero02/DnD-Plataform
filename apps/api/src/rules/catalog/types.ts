@@ -9,6 +9,7 @@
 // separación es lo que permite que un fallo de transcripción no parezca un fallo del motor.
 
 import type { AbilityKey, ProficiencyLevel, SkillKey } from "@dnd/shared";
+import type { SpellProgression } from "./spell-slots";
 
 /**
  * De dónde sale un trozo de contenido. **Existe desde 2A aunque en 2A solo haya una rama**:
@@ -143,6 +144,23 @@ export interface SrdClass {
    * y bono de ataque de conjuro que el SRD no le da. `1` cuando lanza desde el principio.
    */
   spellcastingFromLevel?: number;
+  /**
+   * Qué tabla de espacios de conjuro le toca (hueco M3). `undefined` = no lanza.
+   *
+   * Son **tres** y confundirlas es el error obvio: completa (bardo, clérigo, druida, hechicero,
+   * mago), media (paladín y explorador) y de pacto (brujo, que además repone en descanso
+   * **corto**).
+   */
+  spellProgression?: SpellProgression;
+  /**
+   * Cuántos ataques da una acción de Ataque, por nivel (hueco M2). **Ataque Extra no es un
+   * rasgo condicional como Ataque Furtivo: es un número**, y clasificarlo como texto hacía que
+   * la hoja del personaje más común de una mesa —el guerrero de nivel 5— mintiera.
+   *
+   * Se lee como bandas: la entrada de mayor `fromLevel` que no supere el nivel actual. Sin
+   * entradas, un ataque.
+   */
+  attacksPerAction?: { fromLevel: number; attacks: number }[];
   /** Niveles de mejora de característica. Guerrero y pícaro tienen más. */
   asiLevels: number[];
   features: ClassFeature[];

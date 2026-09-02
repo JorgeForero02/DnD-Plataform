@@ -83,11 +83,20 @@ export const abilityKeySchema = z.enum(ABILITY_KEYS);
 export type AbilityKey = z.infer<typeof abilityKeySchema>;
 
 /**
- * Tres estados, no un booleano — y esta es una de las decisiones de forma que se tomaron el
- * 2026-09-02 precisamente para no tener que migrar filas después. La **pericia** (*expertise*)
- * duplica el bonificador de competencia; un `boolean` no puede representarla.
+ * **Cuatro estados, no un booleano ni tres.** Es una de las decisiones de forma que se tomaron
+ * el 2026-09-02 precisamente para no tener que migrar filas después:
+ *
+ * - `expertise` **duplica** el bonificador de competencia; un `boolean` no puede representarla,
+ *   y por eso el enum nació con tres estados.
+ * - `half` suma **la mitad, redondeando hacia abajo**. Se añadió el mismo día, al descubrir que
+ *   el enum de tres se había quedado corto: **dos clases del SRD ya transcritas la usan** —
+ *   «Aprendiz de todo» del bardo (nivel 2) y «Atleta excepcional» del campeón (nivel 7)—, así
+ *   que la hoja las anunciaba y no las aplicaba.
+ *
+ * El orden importa y es `none < half < proficient < expertise`: cuando dos fuentes conceden la
+ * misma habilidad, **gana la mejor y no se suman**.
  */
-export const proficiencyLevelSchema = z.enum(["none", "proficient", "expertise"]);
+export const proficiencyLevelSchema = z.enum(["none", "half", "proficient", "expertise"]);
 export type ProficiencyLevel = z.infer<typeof proficiencyLevelSchema>;
 
 /** Las dieciocho del SRD 5.1, con la característica de la que cuelga cada una. */

@@ -6,6 +6,61 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — Once huecos de mecánica, y los cuatro que no podían esperar
+
+**Qué.** El autor pidió un repaso de mecánicas faltantes con 2A.1-2A.5 ya en producción. Salieron
+once huecos, en [su propia spec](./superpowers/specs/2026-09-02-huecos-de-mecanica-2A.md): no
+repite los informes anteriores, los lee **contra el código que ya existe** y contra lo que
+contestaron los jugadores.
+
+**El criterio para cerrar uno ya no es nuevo:** si cerrarlo hoy es cambiar una forma de datos y
+cerrarlo mañana es migrar filas escritas, se cierra hoy. Y hay una circunstancia que aprieta —
+**la aplicación está en producción**, así que cada hora puede haber filas reales.
+
+**M1 · La media competencia no existía, y dos clases del SRD ya la usaban.** El enum era
+`none / proficient / expertise`; la 5.ª edición necesita **cuatro**. «Aprendiz de todo» del bardo
+(nivel 2) y «Atleta excepcional» del campeón (nivel 7) suman **la mitad** del bonificador, y las
+dos estaban ya transcritas en el catálogo: **la hoja las anunciaba y no las aplicaba**. Es el
+mismo argumento con el que la pericia entró siendo un enum de tres en vez de un booleano — se
+había cerrado media puerta.
+
+**M2 · Ataque Extra.** El informe de huecos dijo que el dato iba en 2A con el catálogo de
+clases; 2A.3 transcribió el catálogo y no lo incluyó. No era un hueco futuro: era una tarea
+cerrada a la que le faltaba una columna. Y la corrección que hacía ese informe era buena: Ataque
+Extra **no es un rasgo condicional como Ataque Furtivo, es un número**.
+
+**M3 · Los espacios de conjuro, que los jugadores pidieron por su nombre.** El documento de
+respuestas ya los había fallado dentro de 2A y **las diecisiete tareas no los nombraban**. Entra
+la tabla, no la matemática de conjuros: un espacio es el mismo mecanismo que la inspiración, un
+contador con máximo que un descanso repone. Con sus **tres progresiones**, porque confundirlas es
+el error obvio: completa, media —que empieza al nivel 2, y por eso su primera fila está vacía a
+propósito— y de pacto, que tiene pocos espacios del mismo nivel y **repone en descanso corto**.
+
+**M4 · La iniciativa.** Estaba en la anatomía de la hoja al lado de la CA y la velocidad, y el
+motor no la derivaba. Una línea, y evita que 2A.10 tenga que volver a tocar el motor.
+
+**Mutación comprobada, cinco veces.** Media competencia devolviendo el bonificador entero: 12
+pruebas en rojo. El guerrero perdiendo su tercer ataque: 2. El paladín lanzando desde el nivel 1:
+1. El brujo reponiendo en descanso largo: 1. La iniciativa dejando de derivarse: 4. Todas
+restauradas; 322 pruebas verdes en `src/rules`.
+
+**Tres huecos colocados en una tarea concreta**, para que la tarea no los redecida:
+`Character.equippedSlots` —que la parte 2 del plan mandaba crear en 2A y sigue sin existir— va en
+**2A.6**; las tiradas de salvación contra muerte van en **2A.7**, porque la mecánica empieza justo
+cuando los PG llegan a 0; y la **clave libre de condiciones** va en **2A.12** — el informe de
+huecos avisó de que un enum cerrado deja fuera la concentración, y la parte 2 del plan escribió
+«lista cerrada» pisando el aviso.
+
+**Cuatro declarados en 06**, y uno de ellos con prisa: **el personaje se archiva, no se borra**.
+Lo pidieron los jugadores, hoy el borrado es definitivo, y es lo único de esa lista que pierde
+datos mientras espera.
+
+**Cómo revertirlo.** Quitar `spell-slots.ts` y `mechanics-gaps.spec.ts`, y devolver el enum a
+tres estados. **Ojo con el orden:** si ya hay personajes guardados con `half`, revertir el enum
+es una migración de datos, que es exactamente lo que este cambio existía para evitar.
+
+---
+
 ## 2026-09-02 (tarde) — Despliegue de la tanda 2A.3-2A.5, con su migracion
 
 **Que.** Subieron a `dnd.supportive.pro` las tareas 2A.3, 2A.4, 2A.5 y el commit de arreglos de

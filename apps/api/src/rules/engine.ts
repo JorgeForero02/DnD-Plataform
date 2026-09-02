@@ -77,6 +77,24 @@ export interface EngineInput {
   spellcastingAbility?: AbilityKey;
 }
 
+/**
+ * Lo que aporta cada estado de competencia. **Cuatro estados, no tres**: la media competencia
+ * suma la mitad redondeando hacia abajo, y con ella el bardo de nivel 2 y el guerrero campeón
+ * de nivel 7 dejan de tener una hoja que anuncia una aptitud que no aplica.
+ */
+export function bonoDeCompetencia(nivel: ProficiencyLevel, prof: number): number {
+  switch (nivel) {
+    case "expertise":
+      return prof * 2;
+    case "proficient":
+      return prof;
+    case "half":
+      return Math.floor(prof / 2);
+    default:
+      return 0;
+  }
+}
+
 /** SRD 5.1: modificador = redondeo hacia abajo de (puntuación − 10) / 2. */
 export function abilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
@@ -135,6 +153,18 @@ export function derive(input: EngineInput): DerivationResult {
   // --- CA: se evalúan todas las fórmulas y gana la mayor ---
   derived.ac = calcularCa(input, mods, warnings);
 
+  // --- Iniciativa: el modificador de Destreza, y lo que le sumen ---
+  // Estaba en la anatomía de la hoja (§1.6) desde el principio y el motor no la derivaba. Es
+  // una línea, y tenerla aquí evita que la pantalla de 2A.10 tenga que volver a tocar el motor.
+  derived.initiative = aplicar(
+    "initiative",
+    {
+      total: mods.dex,
+      steps: [paso("base", mods.dex, "ability", "dex", "abilityMod.dex")],
+    },
+    input.modifiers,
+  );
+
   // --- PG máximos ---
   derived.maxHp = calcularPgMaximos(input, mods);
 
@@ -152,15 +182,19 @@ export function derive(input: EngineInput): DerivationResult {
     );
   }
 
-  // --- Habilidades, con pericia como tercer estado ---
+  // --- Habilidades, con los cuatro estados de competencia ---
   for (const [skill, ability] of Object.entries(SKILLS) as [SkillKey, AbilityKey][]) {
     const nivel: ProficiencyLevel = input.skillProficiencies[skill] ?? "none";
-    const extra = nivel === "expertise" ? prof * 2 : nivel === "proficient" ? prof : 0;
+    const extra = bonoDeCompetencia(nivel, prof);
     const steps: TraceStep[] = [
       paso("base", mods[ability], "ability", ability, `abilityMod.${ability}`),
     ];
     if (nivel === "proficient")
       steps.push(paso("add", prof, "proficiency", skill, "proficiencyBonus"));
+    // **La mitad, redondeando hacia abajo.** Con competencia +3 son +1, no +1,5: la 5.ª edición
+    // redondea siempre hacia abajo salvo que diga lo contrario, y esta no lo dice.
+    if (nivel === "half")
+      steps.push(paso("add", Math.floor(prof / 2), "proficiency", skill, "halfProficiency"));
     // La pericia **duplica** el bonificador; se cuenta como dos pasos para que la traza lo
     // enseñe en vez de esconder un ×2 dentro de un número.
     if (nivel === "expertise") {

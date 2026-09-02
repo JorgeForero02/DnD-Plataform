@@ -45,6 +45,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/specs/2026-09-02-seis-peticiones-analisis.md` | **Qué se hace con las seis peticiones del autor y dónde va cada una.** Incluye el diseño del **sistema de eventos suceso–condición–efecto** y por qué el lienzo de cajas va después |
 | `superpowers/specs/2026-09-02-sistema-de-eventos-design.md` | **El sistema de eventos «por cajas»**: la frase de tres partes y las **cuatro decisiones** que dan potencia sin complejidad. Entra en 2A |
 | `superpowers/specs/2026-09-02-cajas-estudio.md` | Scratch, Blockly, Twine, Ink, Inform 7, Blueprints, Godot, IFTTT/Zapier, Foundry y los motores ECA. **Tres de sus conclusiones cambiaron el diseño** |
+| `superpowers/specs/2026-09-02-huecos-de-mecanica-2A.md` | **Once huecos de mecánica encontrados a mitad de la fase 2A**, con 2A.1-2A.5 ya en producción. Cuatro se cerraron el mismo día porque eran forma de datos; tres están colocados en 2A.6, 2A.7 y 2A.12; cuatro declarados. **Se lee antes de 2A.6** |
 | `superpowers/specs/2026-09-02-distancias-y-movimiento-design.md` | **Velocidad, condiciones que la limitan, alcances y áreas** (SRD 5.1). Pies en la base, metros en pantalla, y qué **no** se puede hacer sin mapa |
 | `superpowers/plans/2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md` | **La segunda mitad del plan de 2A**: las ocho preguntas falladas, seis tareas nuevas, el orden final de las diecisiete y **once huecos**. Sin esto, el plan de 2A está incompleto |
 | `superpowers/plans/2026-09-02-reseno-interfaz.md` | **Plan del reseño de interfaz**: las seis tandas y sus dos fronteras |
@@ -78,12 +79,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `44aa43f` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `cea1edf` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Pruebas unitarias:** 468 (shared 20, api 213, web 235). Recuento por declaración, no por
+> - **Pruebas unitarias:** 487 (shared 20, api 232, web 235). Recuento por declaración, no por
 >   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
 >   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

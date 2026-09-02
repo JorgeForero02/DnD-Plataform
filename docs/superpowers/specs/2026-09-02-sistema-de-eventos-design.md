@@ -455,6 +455,42 @@ Concretamente, tres decisiones que se toman **hoy** aunque no sirvan hasta la fa
 
 ---
 
+## 8 bis · ¿Puede esto desencadenar animaciones? (pregunta del autor, 2026-09-02)
+
+> *«¿el sistema de eventos por bloques puede desencadenar animaciones? ¿como animaciones de
+> explosión y tal?»*
+
+**Sí, y la costura ya está dibujada en este documento — pero no como un efecto nuevo.**
+
+**Ningún efecto del §3 anima nada, y es deliberado.** «Reproducir explosion.webm» es una
+primitiva de interfaz, no un verbo del mundo, y meterla en el vocabulario rompería §2.7. Lo que
+sí está en el vocabulario es **la señal**, que el propio ejemplo del barril (§5a) ya usa:
+
+```
+ENTONCES lanzar la señal «explosión» con origen «Barril de aceite» y radio 20 pies
+```
+
+**El motor afirma el hecho; la pantalla decide cómo se ve.** Es la misma regla que ya gobierna
+`labelKey`: el motor nunca devuelve prosa en español, la escribe la pantalla. Aquí igual — el
+motor nunca devuelve un fichero de vídeo, y la pantalla mantiene una tabla **clave de señal →
+animación**. El DM inventa su vocabulario («explosión», «trueno», «derrumbe») y las animaciones
+se le enganchan sin que el motor sepa nada de gráficos.
+
+**Los tres obstáculos, de mayor a menor, y ninguno se arregla en 2A:**
+
+| | Obstáculo | Dónde se resuelve |
+|---|---|---|
+| **1** | **No hay posiciones.** «Alcanza a esta ficha» es espacial: la regla se puede escribir, no resolver. Ya lo dice §5a y §8 | **Fase 3**, con el tablero |
+| **2** | **No hay tiempo real.** Se decidió sondeo y no empujón, porque los jugadores dijeron que ver las tiradas en el momento no hacía falta. Quien dispara la explosión la ve al instante; los demás, al sondear. **Una animación que llega diez segundos tarde no es una animación, es un aviso** | **Fase 4**, con el empujón |
+| **3** | **`canView` también manda aquí.** Una animación **es información**: dibujar una explosión donde un jugador no puede ver el barril le dice que ahí había algo. No es decoración, es una vía de fuga, y pasa por la misma matriz que todo lo demás | Ahora, cuando se construya |
+
+**Lo que sí es barato hoy**, sobre datos que ya circulan y sin mapa ni tiempo real: el dado
+animándose al tirar (2A.13 ya devuelve los dados uno a uno), la hoja parpadeando al perder PG
+(2A.7 devuelve el antes y el después), un fogonazo cuando **a ti** te llega una señal, la
+bandeja latiendo. Eso es presentación sobre hechos que ya existen, y no toca el motor.
+
+---
+
 ## 9 · Lo que este sistema **no** va a hacer
 
 Dicho para no prometerlo:

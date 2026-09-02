@@ -42,11 +42,11 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 - **Evidencia antes que afirmación.** Si algo falla, se dice que falla y se pega la salida.
 - **Un commit por tarea**, mensaje en inglés (Conventional Commits), ledger y memoria al día.
 - **Código en inglés, interfaz y documentación en español.**
-- **Hay servidor y dominio asignados** (`vps1new`, `dnd.supportive.pro`, Coolify + Traefik)
-  y el despliegue está autorizado, pero **todavía no se ha desplegado nada**: lo que existe
-  es `docker-compose.prod.yml` y su procedimiento, para revisar antes de ejecutarlo. Ver
-  `docs/03-despliegue.md`, y en particular por qué `TRUST_PROXY` vale **2** ahí (Traefik y
-  nginx son **dos** proxies) y no el `1` que decía la documentación anterior.
+- **Está en producción desde el 2026-09-02**: `dnd.supportive.pro`, en `vps1new` tras
+  Coolify + Traefik, desde `docker-compose.prod.yml`. Ver `docs/03-despliegue.md`, y en
+  particular por qué `TRUST_PROXY` vale **2** (Traefik y nginx son **dos** proxies).
+  **Lo que de verdad protege el límite de intentos es que Traefik descarte el
+  `X-Forwarded-For` del cliente, no el número 2**: si cambia la topología, hay que recontar.
 
 ## Comandos
 

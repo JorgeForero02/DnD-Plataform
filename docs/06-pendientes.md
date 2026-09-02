@@ -56,16 +56,18 @@ las decisiones que salgan de aquí entran en el plan de 2A, con su firma.
 
 Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y existe
 `docker-compose.prod.yml` con su procedimiento en [03-despliegue.md](./03-despliegue.md).
-**Nada de eso se ha ejecutado todavía contra el servidor.** Lo que queda abierto:
+**Ejecutado contra el servidor el 2026-09-02**: la plataforma está en producción en
+`dnd.supportive.pro`. Con ello se cierran **D1, D2, D4 y D6** (ver
+[07-historial.md](./07-historial.md)). Lo que sigue abierto:
 
 | | Qué | Por qué importa |
 |---|---|---|
-| **D1** | **[02-entorno.md](./02-entorno.md) sigue diciendo `TRUST_PROXY=1` detrás de nginx** | Se escribió cuando el único proxy previsto era nginx. Detrás de Traefik **son dos**, y `1` hace que el limitador agrupe a todo internet por la IP de Traefik: cualquiera deja a todos los usuarios fuera del login. `.env.example` y el 03 ya están corregidos; ese documento no, porque quedaba fuera de la superficie de esta tarea. **Es una contradicción viva entre dos documentos y se arregla antes de desplegar** |
-| **D2** | **[00-INDEX.md](./00-INDEX.md) sigue anunciando "No desplegado: no hay VPS asignado"** | Mismo motivo y misma urgencia: es la línea que `CLAUDE.md` manda leer primero |
+| **D1** | ~~`02-entorno.md` decía `TRUST_PROXY=1`~~ | **Cerrado.** El documento ya dice que en producción son **dos** saltos y por qué |
+| **D2** | ~~`00-INDEX.md` anunciaba "no desplegado"~~ | **Cerrado el 2026-09-02**, junto con la misma afirmación en `CLAUDE.md` |
 | **D3** | **La API no tiene endpoint de salud** | No hay `@Controller("health")` ni controlador raíz: `GET /` responde 404. La comprobación del compose acepta ese 404 como señal de vida, así que **detecta un proceso caído pero no una base de datos caída**. Un `/health` que haga un `SELECT 1` es un cambio de código con su propia ficha, no un efecto colateral |
-| **D4** | **El Postgres de la pila no es un recurso gestionado de Coolify**, y por tanto no hereda su pantalla de copias | El trabajo diario de las 04:00 del servidor existe y su restauración está probada, pero **no se ha comprobado si descubre contenedores nuevos solo o lleva una lista escrita a mano**. Se mira el día del despliegue. La base es lo único irreemplazable de la pila |
-| **D5** | **Nadie ha restaurado nunca una copia de *esta* base** | Una copia sin restauración probada es una hipótesis. Requisitos reales de la restauración en [03-despliegue.md](./03-despliegue.md) |
-| **D6** | **`TRUST_PROXY` no está verificado contra el sistema real** | La aritmética está comprobada contra el resolvedor de Fastify, pero la topología no se puede probar desde un portátil. La prueba de las dos redes del 03 es obligatoria el primer día: **si está mal, todo funciona igual y el límite no protege a nadie** |
+| **D4** | ~~¿Descubre el respaldo diario los contenedores nuevos?~~ | **Cerrado: no los descubre.** El trabajo de las 04:00 lleva **una lista escrita a mano**. Se le añadió un bloque para esta base (`dnd-pg.sql.gz`), resolviendo el contenedor por prefijo de uuid porque su nombre cambia en cada despliegue. Volcado verificado por contenido: 11 tablas y la cuenta del autor dentro |
+| **D5** | **Nadie ha restaurado nunca una copia de *esta* base** — ahora con más motivo: ya existen copias diarias reales que nadie ha probado a restaurar | Una copia sin restauración probada es una hipótesis. Requisitos reales de la restauración en [03-despliegue.md](./03-despliegue.md) |
+| **D6** | ~~`TRUST_PROXY` sin verificar contra el sistema real~~ | **Cerrado el 2026-09-02 con la prueba de las dos tandas.** Seis logins fallidos → 429; seis **con `X-Forwarded-For` falsificado y rotando** → **también 429**. Traefik descarta la cabecera del cliente, que es de donde viene la protección |
 | **D7** | **Corregir `TRUST_PROXY` en Coolify sale caro** | Ahí las variables de entorno son argumentos de construcción: cambiar una **recompila la imagen**. Por eso el valor vive en el compose y no en la UI |
 | **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |
 

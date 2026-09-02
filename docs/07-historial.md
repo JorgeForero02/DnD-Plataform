@@ -6,6 +6,54 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 — Primera puesta en producción: dnd.supportive.pro
+
+**Qué.** La plataforma corre en el servidor dedicado (`vps1new`) tras Coolify 4.3.10 + Traefik,
+desde `docker-compose.prod.yml`: `db` (postgres:16, volumen `dnd_pgdata_prod`), `api` (aplica
+las migraciones de Prisma al arrancar) y `web` (nginx, sirve la SPA y hace de proxy de `/api`).
+**Ningún puerto publicado**: el único que entra es Traefik, y solo contra `web`.
+
+**Por qué.** El autor va a enseñar la plataforma a sus jugadores, y una demostración en local
+no es una demostración.
+
+**Lo que costó, para que no vuelva a costar:**
+
+- **El primer despliegue falló** con `Permission denied (publickey)`: la clave de Coolify no
+  estaba autorizada en el repositorio. Se arregló añadiendo su pública como **deploy key de
+  solo lectura** en GitHub.
+- **Coolify rechaza el dominio hasta haber leído el compose del repositorio**
+  (`Cannot set docker_compose_domains without docker_compose_raw`). El orden obligatorio es:
+  desplegar → poner el dominio → redesplegar. No se puede hacer en un solo paso.
+
+**Verificado desde fuera, con evidencia y no con configuración:**
+
+| Comprobación | Resultado |
+|---|---|
+| Los tres contenedores | `healthy` |
+| Migraciones de Prisma | las **tres** aplicadas en el arranque |
+| Certificado | Let's Encrypt para `dnd.supportive.pro`, hasta 2026-12-01 |
+| `GET /` | 200, con `<title>Plataforma D&D</title>` |
+| `GET /api/auth/me` sin token | 401 |
+| `POST /api/auth/register` | 201 — escritura real contra Postgres |
+| Sexto login fallido | **429** |
+| Sexto login **con `X-Forwarded-For` falsificado y rotando** | **429** |
+
+**La última fila es la que vale.** Prueba que **Traefik descarta la cabecera que manda el
+cliente** (corre sin `forwardedHeaders.trustedIPs`), y que ahí — no en el número 2 de
+`TRUST_PROXY` — está la protección. Si algún día la API sale a un dominio propio, se mete otro
+proxy delante, o alguien configura `trustedIPs`, **este razonamiento deja de valer** y hay que
+recontar los saltos. Ver `docs/03-despliegue.md`.
+
+**Además.** La base entró en el respaldo diario del servidor (`dnd-pg.sql.gz`), con el volcado
+verificado por contenido —11 tablas y la cuenta dentro—, no por tamaño de fichero.
+**El restore no se ha probado todavía**: un volcado que nunca se restauró no es un respaldo, y
+así queda anotado en el 06 del servidor.
+
+**Revertir.** Borrar la aplicación desde el panel de Coolify. El volumen `dnd_pgdata_prod`
+**sobrevive al borrado**; eliminarlo aparte solo si se quieren tirar los datos.
+
+---
+
 ## 2026-09-01 — 404, red de errores y las pantallas de cuenta (tarea 1.18b)
 
 **Qué.** Cierra el hallazgo 6 de la auditoría de seguridad y la mitad de web del 8 (B3), sobre

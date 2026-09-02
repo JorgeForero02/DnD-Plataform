@@ -13,6 +13,7 @@ import { SessionEditor } from "../features/sessions/SessionEditor";
 import { ControlesDeSesion } from "../features/sessions/ControlesDeSesion";
 import type { Session } from "../features/sessions/api";
 import { useCharacters } from "../features/characters/hooks";
+import { descriptorDePersonaje } from "../features/characters/descriptor";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
 import { InvitePanel } from "../features/invites/InvitePanel";
 import { CampaignSettings } from "../features/campaigns/CampaignSettings";
@@ -412,9 +413,9 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
                   {/* Reseño 2026-09-02 — a character row that says only a name and a level is
                       a row you have to open to recognise. Race and class are what people
                       actually call each other by at the table. */}
-                  {(c.race || c.class) && (
+                  {descriptorDePersonaje(c) && (
                     <span className="font-world text-chrome-base text-muted">
-                      {[c.race, c.class].filter(Boolean).join(" · ")}
+                      {descriptorDePersonaje(c)}
                     </span>
                   )}
                   <span className="flex-1" />

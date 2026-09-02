@@ -210,7 +210,13 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         campaignId: "c1",
         ownerId: "dm1",
         name: "Strahd",
+        // **Las claves del catálogo, y el texto libre heredado vacío**, que es exactamente la
+        // forma que tiene un personaje montado desde la hoja: es el caso que la lista pintaba
+        // en blanco hasta el 2026-09-02.
         race: null,
+        raceKey: "human",
+        subraceKey: null,
+        classKey: "wizard",
         class: null,
         level: 10,
         bio: null,
@@ -358,6 +364,21 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
   });
 
+  it("la fila de un personaje dice su raza y su clase aunque solo tenga las claves de la hoja", async () => {
+    // La regresión, fijada donde se veía: la hoja escribe `raceKey`/`classKey` y esta fila leía
+    // solo el texto libre heredado, así que un personaje montado desde la hoja salía sin raza y
+    // sin clase mientras su propia hoja decía «Humano · Mago».
+    asPlayer();
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
+
+    const row = await screen.findByRole("link", { name: /Strahd/ });
+    expect(row).toHaveTextContent("Humano · Mago");
+    // Y ninguna clave cruda llega a la pantalla.
+    expect(row).not.toHaveTextContent("human");
+    expect(row).not.toHaveTextContent("wizard");
+  });
+
   it("lets a player open another player's character and read it, but not save changes", async () => {
     asPlayer();
     renderPage();
@@ -378,7 +399,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     const nombre = await screen.findByRole("button", { name: "Strahd" });
     expect(nombre).toBeDisabled();
     expect(nombre).toHaveAttribute("title", "Solo el dueño o el DM puede editar este personaje.");
+    // H6: tampoco queda el botón «Ajustes y borrado» que abría el segundo camino de edición.
+    // La visibilidad y el borrado viven ahora en la propia página, deshabilitados con su motivo
+    // — lo comprueba pages/__tests__/CharacterDetailPage.test.tsx.
     expect(screen.queryByRole("button", { name: "Ajustes y borrado" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Borrar" })).toBeDisabled();
     // Fix round 1 (post-1.18b review), Important 9: this row-shape (a muted "Nivel N" chip
     // followed by the reason) was left on --muted while EntityTab's identical shape was fixed
     // — the same sentence read as two different things in two tabs of one screen. Revert the
@@ -400,6 +425,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         ownerId: "owner1",
         name: "Mi propio personaje",
         race: null,
+        raceKey: null,
+        subraceKey: null,
+        classKey: null,
         class: null,
         level: 1,
         bio: null,
@@ -417,7 +445,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // El dueño edita donde lee: el nombre y la historia son campos, no un diálogo.
     expect(await screen.findByRole("button", { name: "Mi propio personaje" })).not.toBeDisabled();
     expect(screen.getByTitle("Editar Historia del personaje")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Ajustes y borrado" })).toBeInTheDocument();
+    // H6: la visibilidad se elige aquí mismo, en radios, sin abrir nada.
+    expect(
+      screen.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }),
+    ).toBeChecked();
+    expect(screen.getByRole("button", { name: "Borrar" })).not.toBeDisabled();
   });
 
   // Arreglo 4: a failed members fetch must read as "still don't know", never as "not a
@@ -597,6 +629,9 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
       ownerId: "dm1",
       name: "Kaelith",
       race: null,
+      raceKey: null,
+      subraceKey: null,
+      classKey: null,
       class: null,
       level: 1,
       bio: null,
@@ -615,14 +650,9 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     await screen.findByRole("link", { name: /Elara/ });
 
     fireEvent.click(screen.getByRole("link", { name: /Elara/ }));
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Ajustes y borrado",
-      }),
-    );
-    expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    // H6: ya no se abre ningún diálogo. Borrar está en la propia página del personaje, detrás
+    // de su botón y su confirmación, que es lo único irreversible que queda tras un clic.
+    fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
     deleted = true;
 

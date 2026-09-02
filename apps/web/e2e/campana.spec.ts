@@ -302,17 +302,27 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(updatedCharacterRow).toBeVisible();
   await expect(updatedCharacterRow).toContainText("Nivel 4");
 
-  // Task 1.16: borrar el personaje de verdad contra la API real — el botón "Borrar" y su
-  // confirmación en pantalla nunca se habían pintado en un navegador antes de esta tarea.
   await updatedCharacterRow.click();
-  // Borrar es lo único que sigue tras un botón, y a propósito: es irreversible y no debe estar
-  // a un clic de distancia de lo que se lee.
-  await page.getByRole("button", { name: "Ajustes y borrado" }).click();
-  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
+
+  // H6 — **un solo camino de edición.** Ya no existe el diálogo de «Ajustes y borrado»: lo único
+  // que tenía en exclusiva, la visibilidad, se elige aquí mismo en radios con su frase, y elegir
+  // ES la acción entera, así que se guarda sola sin ningún "Guardar". Se espera el PATCH real y
+  // se recarga: lo que demuestra que se guardó es que el radio vuelve marcado desde el servidor,
+  // no que la pantalla se pintara.
+  const guardadoDeVisibilidad = page.waitForResponse(
+    (r) => r.request().method() === "PATCH" && /\/characters\//.test(r.url()),
+  );
+  await page.getByRole("radio", { name: /Solo el DM/ }).check();
+  await guardadoDeVisibilidad;
+  await page.reload();
+  await expect(page.getByRole("radio", { name: /Solo el DM/ })).toBeChecked();
+
+  // Task 1.16: borrar el personaje de verdad contra la API real. Borrar es lo único que sigue
+  // tras un botón, y a propósito: es irreversible y no debe estar a un clic de lo que se lee.
   await page.getByRole("button", { name: "Borrar" }).click();
   await expect(page.getByText('Vas a borrar a "Kaelith". No se puede deshacer.')).toBeVisible();
   await page.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
-  await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeHidden();
+  // Borrar deja al lector fuera de una página que ya no existe: vuelve a la lista de la campaña.
   await expect(page.getByRole("link", { name: /Kaelith/ })).toHaveCount(0);
 
   // Y la sesión, contra la API real, incluyendo la cancelación: pulsar "No, cancelar" no borra

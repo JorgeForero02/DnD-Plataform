@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
 import { useCharacters, useUpdateCharacter } from "../features/characters/hooks";
-import { CharacterEditor } from "../features/characters/CharacterEditor";
+import { AjustesDePersonaje } from "../features/characters/AjustesDePersonaje";
+import { descriptorDePersonaje } from "../features/characters/descriptor";
 import { HojaCalculada } from "../features/character-sheet/HojaCalculada";
 import { TextoEditable } from "../features/character-sheet/EdicionEnSitio";
 import { CHECKING_PERMISSIONS } from "../features/campaigns/PermissionStatus";
@@ -11,7 +11,6 @@ import { useAuthStore } from "../store/auth.store";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { Panel } from "../ui/Panel";
 import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/Collection";
 import { OrnamentRule } from "../ui/Ornament";
 
@@ -36,7 +35,6 @@ export function CharacterDetailPage() {
   const { data: personajes, isLoading, isError } = useCharacters(id);
   const { role, isLoading: roleLoading, isError: roleError } = useMyRole(id);
   const { user, logout } = useAuthStore();
-  const [editing, setEditing] = useState(false);
   const actualizar = useUpdateCharacter(id ?? "");
   const navigate = useNavigate();
 
@@ -76,7 +74,10 @@ export function CharacterDetailPage() {
     );
   }
 
-  const descripcion = [personaje.race, personaje.class].filter(Boolean).join(" · ");
+  // Del catálogo si lo hay, del texto libre heredado si no. La regla vive en `descriptor.ts`
+  // porque esta misma frase se pinta también en la fila de la lista, y eran dos copias que ya
+  // habían empezado a discrepar.
+  const descripcion = descriptorDePersonaje(personaje);
 
   return (
     <AppShell header={header}>
@@ -100,17 +101,11 @@ export function CharacterDetailPage() {
             <Badge visibility={personaje.visibility} />
           </span>
         }
-        actions={
-          /* **Aquí estaba el primero de los dos botones de «Editar».** Lo que abría —nombre,
-             historia y visibilidad— se toca ahora donde se lee: el nombre en el propio título,
-             la historia en su sección. Lo único que queda tras un botón es **borrar**, que es
-             irreversible y no debe estar a un clic de distancia de lo que se lee. */
-          puedeEditar ? (
-            <Button variant="ghost" onClick={() => setEditing(true)} title={motivo}>
-              Ajustes y borrado
-            </Button>
-          ) : undefined
-        }
+        /* **Aquí estaba el primero de los dos botones de «Editar»**, y hasta H6 siguió vivo como
+           «Ajustes y borrado». Ya no queda ninguno: el nombre se toca en el propio título, la
+           historia en su sección, y lo que aquel diálogo tenía en exclusiva —la visibilidad y el
+           borrado— vive abajo, en «Quién lo ve y qué se hace con él». Borrar sigue detrás de un
+           botón con confirmación; lo irreversible no se pone a un clic de lo que se lee. */
       />
 
       <div className="space-y-s6">
@@ -144,18 +139,23 @@ export function CharacterDetailPage() {
             </TextoEditable>
           </Panel>
         </section>
-      </div>
 
-      {editing && (
-        <CharacterEditor
-          campaignId={id}
-          character={personaje}
-          onClose={() => setEditing(false)}
-          onDeleted={() => navigate(`/campaigns/${id}?seccion=characters`, { replace: true })}
-          readOnly={!puedeEditar}
-          readOnlyReason={motivo}
-        />
-      )}
+        <section>
+          <OrnamentRule className="mb-s3">Quién lo ve y qué se hace con él</OrnamentRule>
+          {/* El último trozo que se editaba por un segundo camino. La visibilidad no cabía en la
+              hoja —no es un número de la ficha, es quién puede leerla— así que se queda aquí, en
+              el sitio donde se lee, y no en un diálogo. */}
+          <Panel className="max-w-[66ch]">
+            <AjustesDePersonaje
+              campaignId={id}
+              character={personaje}
+              puedeEditar={puedeEditar}
+              motivo={motivo}
+              onDeleted={() => navigate(`/campaigns/${id}?seccion=characters`, { replace: true })}
+            />
+          </Panel>
+        </section>
+      </div>
     </AppShell>
   );
 }

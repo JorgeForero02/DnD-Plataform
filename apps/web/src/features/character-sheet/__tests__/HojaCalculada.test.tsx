@@ -1,11 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { HojaCalculada } from "../HojaCalculada";
 import * as characterSheetApi from "../api";
 import type {
+  Catalog,
   CalculatedSheet,
   CharacterRow,
   ConditionRow,
@@ -67,7 +68,13 @@ const character: CharacterRow = {
 
 const sheet: CalculatedSheet = {
   derived: {
-    ac: valor(12, "ac.unarmored"),
+    // La CA lleva dos pasos a propósito: uno **sin** causa editable (la armadura llega en 2B) y
+    // otro que sí la tiene (el modificador de Destreza). Es lo que H5 tiene que distinguir.
+    ac: {
+      key: "ac",
+      total: 12,
+      steps: [paso("ac.unarmored", 10, "base"), paso("abilityMod.dex", 2)],
+    },
     initiative: valor(2, "abilityMod.dex"),
     passivePerception: valor(10, "passive.base"),
     "abilityMod.str": valor(0, "abilityMod.str"),
@@ -105,6 +112,7 @@ const sheet: CalculatedSheet = {
     "attack.ranged": valor(4, "abilityMod.dex"),
     "attack.spell": valor(5, "abilityMod.int"),
     spellSaveDc: valor(13, "spellSaveDc.base"),
+    proficiencyBonus: valor(2, "proficiencyBonus"),
   },
   warnings: [
     { code: "unresolved_choice", key: "human-language", data: { needed: 1, picked: 0 } },
@@ -217,5 +225,129 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
       /Elige 1 habilidad/,
     );
     expect(screen.getByText(/Con Cuero tendrías CA 13/)).toBeInTheDocument();
+  });
+});
+
+// --- H3 · cabecera fija + dos columnas, y H5 · la traza navega hasta su causa ---------------
+//
+// Lo que jsdom SÍ puede demostrar aquí es la **estructura**: qué números viven en la cabecera,
+// qué va en cada columna y en qué orden, y a dónde lleva el foco un paso de la traza. Lo que NO
+// puede es que la cabecera se quede pegada arriba al desplazar —no hay maquetación, ni alto, ni
+// `position` calculada—, y por eso eso se mide en `apps/web/e2e/hoja.spec.ts` y no aquí.
+
+const catalogo: Catalog = {
+  races: [{ key: "half-elf", name: "Semielfo", subraces: [] }],
+  classes: [{ key: "wizard", name: "Mago", hitDie: 6 }],
+  armor: [],
+};
+
+function pintarHoja(puedeEditar = false) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<HojaCalculada campaignId="c1" characterId="ch1" puedeEditar={puedeEditar} />, {
+    wrapper: wrapper(qc),
+  });
+}
+
+describe("H3 — la cabecera fija y las dos columnas", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(resources);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions);
+    vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
+  });
+
+  it("la cabecera reúne los cinco números que se consultan en mitad de un turno", async () => {
+    pintarHoja();
+    const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
+    const texto = cabecera.textContent ?? "";
+
+    for (const rotulo of ["CA", "Iniciativa", "Velocidad (pies)", "PG", "Competencia"]) {
+      expect(texto.includes(rotulo), `«${rotulo}» tiene que estar en la cabecera`).toBe(true);
+    }
+    // Y sus valores, no solo los rótulos: la CA (12) y la velocidad (30) se despliegan desde
+    // aquí, y los PG se leen enteros.
+    const dentro = within(cabecera);
+    expect(dentro.getByRole("button", { name: "12" })).toBeInTheDocument();
+    expect(dentro.getByRole("button", { name: "30" })).toBeInTheDocument();
+    expect(texto).toContain("15 / 22");
+  });
+
+  it("los PG de la cabecera no traen el control de daño: la acción vive en su bloque", async () => {
+    pintarHoja(true);
+    const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
+    expect(cabecera.querySelector("input")).toBeNull();
+    // El control sí existe, pero fuera de la cabecera.
+    const campo = await screen.findByLabelText("Cambio de puntos de golpe");
+    expect(cabecera.contains(campo)).toBe(false);
+  });
+
+  it("características → salvaciones → habilidades bajan seguidas por la misma columna", async () => {
+    pintarHoja();
+    const caracteristicas = await screen.findByRole("region", { name: "características" });
+    const salvaciones = screen.getByRole("region", { name: "salvaciones" });
+    const habilidades = screen.getByRole("region", { name: "habilidades" });
+
+    // Las tres en la MISMA columna. Si alguien parte la cadena entre dos columnas, esto se rompe.
+    const columna = salvaciones.parentElement!;
+    expect(columna.contains(caracteristicas)).toBe(true);
+    expect(columna.contains(habilidades)).toBe(true);
+
+    // Y en ese orden: la contigüidad es la explicación, así que el orden es parte del contrato.
+    const orden = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(orden(caracteristicas, salvaciones)).toBe(true);
+    expect(orden(salvaciones, habilidades)).toBe(true);
+
+    // Nada accionable entre medias: condiciones, descansos y PG viven en la otra columna.
+    const condiciones = await screen.findByRole("region", { name: "condiciones" });
+    expect(columna.contains(condiciones)).toBe(false);
+  });
+
+  it("el hueco del inventario está rotulado y dice cuándo llega", async () => {
+    pintarHoja();
+    const hueco = await screen.findByRole("region", { name: "inventario" });
+    expect(hueco.textContent).toMatch(/2B/);
+    // Dibujado, no un glifo de fuente (regla vinculante de iconos).
+    expect(hueco.querySelector("svg")).not.toBeNull();
+  });
+});
+
+describe("H5 — cada paso de la traza lleva a su causa editable", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(resources);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions);
+    vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
+  });
+
+  it("«+2 Modificador de Destreza» en la traza de la CA lleva el foco a la casilla de Destreza", async () => {
+    pintarHoja(true);
+    const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
+
+    // Desplegar la traza de la CA.
+    const casillaCA = await screen.findByRole("button", { name: "12" });
+    expect(cabecera.contains(casillaCA)).toBe(true);
+    fireEvent.click(casillaCA);
+
+    const paso = screen.getByRole("button", { name: /Modificador de Destreza/ });
+    fireEvent.click(paso);
+
+    // El foco acaba en la PUNTUACIÓN de Destreza, que es lo editable — no en el modificador,
+    // que es otro número derivado.
+    expect(document.activeElement).toBe(screen.getByLabelText("Destreza"));
+  });
+
+  it("un paso sin causa editable no finge ser navegable", async () => {
+    pintarHoja(true);
+    const casillaCA = await screen.findByRole("button", { name: "12" });
+    fireEvent.click(casillaCA);
+
+    // «Sin armadura» sale de un equipo que todavía no existe (fase 2B): es texto, no un botón.
+    const sinArmadura = screen.getAllByText("Sin armadura");
+    for (const nodo of sinArmadura) {
+      expect(nodo.closest("button")).toBeNull();
+    }
   });
 });

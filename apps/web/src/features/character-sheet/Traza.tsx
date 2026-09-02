@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
-import type { DerivedValue, TraceStep } from "@dnd/shared";
-import { NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
+import type { AbilityKey, DerivedValue, TraceStep } from "@dnd/shared";
+import { NOMBRE_CARACTERISTICA, NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
 
 // Tarea 2A.10 — la traza es la funcionalidad, no un adorno (docs/superpowers/specs/
 // 2026-09-02-hoja-5e-design.md, §3). Cada valor calculado se pinta ya resuelto, con un
@@ -62,22 +62,88 @@ function signoDe(paso: TraceStep): string {
   return paso.amount >= 0 ? "+" : "−";
 }
 
+/**
+ * **Tarea H5 — la traza deja de ser solo explicación y pasa a ser la navegación de la edición.**
+ *
+ * Devuelve el rótulo del campo editable que *causa* este paso, o `null` si el paso no sale de
+ * nada que se pueda tocar en esta pantalla (una armadura, por ejemplo: el inventario llega en la
+ * fase 2B). Ese rótulo es el nombre accesible del control en `IdentidadEditable.tsx`, y **sale
+ * del mismo diccionario que lo escribió allí** (`vocabulario.ts`) — no se copia el texto a mano,
+ * porque entonces habría dos fuentes para el mismo nombre y una de las dos acabaría mintiendo.
+ *
+ * **Esto NO convierte el valor derivado en editable.** El total sigue sin subrayado de edición:
+ * la afordancia es información de dominio, y su ausencia significa «esto lo calculo yo». Lo que
+ * H5 añade es un camino hacia la causa, con la afordancia de un enlace, no la de un campo.
+ */
+function causaEditableDe(paso: TraceStep): string | null {
+  const caracteristica = /^(?:ability\.([a-z]+)\.base|abilityMod\.([a-z]+))$/.exec(paso.labelKey);
+  const clave = caracteristica?.[1] ?? caracteristica?.[2];
+  if (clave && clave in NOMBRE_CARACTERISTICA) return NOMBRE_CARACTERISTICA[clave as AbilityKey];
+
+  // El bonificador de competencia no se teclea: sale del nivel, que sí. Llevar el foco al propio
+  // bonificador sería llevarlo a otro número derivado, y la traza dejaría de explicar nada.
+  if (paso.labelKey === "proficiencyBonus") return "Nivel";
+
+  // La subraza queda fuera a propósito: su selector solo existe cuando la raza tiene subrazas, y
+  // un enlace que a veces no lleva a ninguna parte es peor que no tenerlo.
+  if (/^race\./.test(paso.labelKey)) return "Raza";
+  if (/^class\./.test(paso.labelKey)) return "Clase";
+
+  return null;
+}
+
+/**
+ * Lleva el foco al control cuyo nombre accesible es `etiqueta`.
+ *
+ * Se busca por `aria-label` porque es lo que hace que el control **se llame así** para un lector
+ * de pantalla: si alguien lo renombra, el enlace deja de encontrarlo y la prueba se pone roja, en
+ * vez de quedarse apuntando a un `id` que ya no significa nada.
+ */
+function enfocarCausa(etiqueta: string) {
+  const destino = document.querySelector<HTMLElement>(`[aria-label="${etiqueta}"]`);
+  if (!destino) return;
+  // `scrollIntoView` no existe en jsdom; la llamada opcional deja que la prueba de componente
+  // compruebe el foco sin fingir una maquetación que jsdom no tiene.
+  destino.scrollIntoView?.({ block: "center" });
+  destino.focus();
+}
+
 function PasoDeTraza({ paso }: { paso: TraceStep }) {
   const { texto, conocida } = traducirLabelKey(paso.labelKey);
+  const causa = causaEditableDe(paso);
+  const clase = ["font-chrome text-chrome-xs", conocida ? "text-muted" : "text-danger-text"].join(
+    " ",
+  );
+  const contenido = (
+    <>
+      <span aria-hidden="true" className="mr-1 text-[0.85em] uppercase tracking-wide">
+        {NOMBRE_OPERACION_TRAZA[paso.op]}
+      </span>
+      <span>{texto}</span>
+    </>
+  );
+
   return (
     <li className="flex items-baseline justify-between gap-s2 py-0.5">
-      <span
-        className={[
-          "font-chrome text-chrome-xs",
-          conocida ? "text-muted" : "text-danger-text",
-        ].join(" ")}
-        data-untranslated={conocida ? undefined : "true"}
-      >
-        <span aria-hidden="true" className="mr-1 text-[0.85em] uppercase tracking-wide">
-          {NOMBRE_OPERACION_TRAZA[paso.op]}
+      {causa ? (
+        <button
+          type="button"
+          data-causa={causa}
+          data-untranslated={conocida ? undefined : "true"}
+          // El nombre accesible es el texto del paso: nada de `aria-label="Ir a Destreza"`, que
+          // dejaría al lector de pantalla anunciando la acción en lugar del contenido — el mismo
+          // fallo que ya se pagó una vez en `TextoEditable`.
+          title={`Ir a ${causa}, que es de donde sale este paso`}
+          onClick={() => enfocarCausa(causa)}
+          className={`${clase} text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+        >
+          {contenido}
+        </button>
+      ) : (
+        <span className={clase} data-untranslated={conocida ? undefined : "true"}>
+          {contenido}
         </span>
-        <span>{texto}</span>
-      </span>
+      )}
       <span className="font-data text-chrome-xs text-text">
         {signoDe(paso)}
         {Math.abs(paso.amount)}

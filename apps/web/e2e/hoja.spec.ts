@@ -152,6 +152,80 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   await expect(page.getByText("System Reference Document 5.1", { exact: false })).toBeVisible();
 });
 
+test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza lleva el foco a su causa", async ({
+  page,
+}) => {
+  // **Esta prueba solo puede vivir aquí.** `jsdom` no maqueta: no hay alto, ni ventana, ni
+  // `position` calculada, así que ninguna prueba de componente puede ver si la cabecera se queda
+  // pegada arriba o se va con el resto del documento. Se mide el estilo **computado** y las cajas
+  // reales, igual que el contraste desde 1.19 (docs/04-convenciones.md).
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Dania Yelmo de Hierro");
+  await completarFichaDeGuerreroEnano(page);
+
+  const cabecera = page.getByRole("region", { name: "resumen de combate" });
+  await expect(cabecera).toBeVisible();
+
+  // 1. La posición es la COMPUTADA, no la clase declarada: si un contenedor de arriba tuviera
+  //    `overflow` la clase seguiría escrita y el pegado no ocurriría.
+  expect(await cabecera.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
+
+  const cabeceraAntes = (await cabecera.boundingBox())!;
+  const salvaciones = page.getByText("Salvaciones", { exact: true });
+  const cuerpoAntes = (await salvaciones.boundingBox())!;
+
+  // 2. Desplazar de verdad, hasta el final **de la hoja** — que no es el final de la página.
+  //
+  //    Esta distinción costó una prueba roja y merece quedar escrita: **`sticky` se pega dentro
+  //    de su padre**, y el padre de esta cabecera es la hoja. Debajo de la hoja siguen
+  //    «Historia» y «Ajustes», que son de la página y no de ella. La primera versión de esta
+  //    prueba desplazaba a `document.body.scrollHeight`, se metía en esos dos bloques y medía
+  //    la cabecera en `y = -106`, o sea suelta — y estaba en lo cierto: ahí ya no tiene por qué
+  //    seguir pegada. El punto 7 fija ese límite en vez de dejarlo al azar.
+  const hoja = page.getByRole("region", { name: "inventario" });
+  await hoja.evaluate((el) => el.scrollIntoView({ block: "end" }));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+
+  const cabeceraDespues = (await cabecera.boundingBox())!;
+  const cuerpoDespues = (await salvaciones.boundingBox())!;
+  const altoVentana = await page.evaluate(() => window.innerHeight);
+
+  // 3. El cuerpo SÍ se ha movido —si no, la prueba pasaría sin haber desplazado nada— y la
+  //    cabecera se ha quedado, más arriba de donde empezó y entera dentro de la ventana.
+  expect(cuerpoDespues.y).toBeLessThan(cuerpoAntes.y - 300);
+  expect(cabeceraDespues.y).toBeLessThan(cabeceraAntes.y);
+  expect(cabeceraDespues.y).toBeGreaterThanOrEqual(0);
+  expect(cabeceraDespues.y + cabeceraDespues.height).toBeLessThanOrEqual(altoVentana);
+
+  // 4. Y se apoya justo debajo de la cabecera de la aplicación, que también es fija: ni una se
+  //    esconde detrás de la otra. Se mide con un píxel de tolerancia por el redondeo.
+  const cabeceraApp = (await page.locator("header").first().boundingBox())!;
+  expect(cabeceraDespues.y).toBeGreaterThanOrEqual(cabeceraApp.y + cabeceraApp.height - 1);
+
+  // 5. Los cinco números siguen legibles con la hoja desplazada hasta el final.
+  for (const rotulo of ["CA", "Iniciativa", "Velocidad (pies)", "PG", "Competencia"]) {
+    await expect(cabecera.getByText(rotulo, { exact: true })).toBeInViewport();
+  }
+
+  // 7. **El límite, dicho a propósito.** Pasado el final de la hoja, la cabecera se suelta,
+  //    porque «Historia» y «Ajustes» ya no son la hoja. Sin esta comprobación, el día que
+  //    alguien envolviera la página entera en el contenedor pegajoso nadie se enteraría, y la
+  //    cabecera de combate seguiría plantada sobre la biografía.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect.poll(async () => (await cabecera.boundingBox())!.y).toBeLessThan(0);
+  // Y se vuelve a la hoja para lo que queda de prueba.
+  await hoja.evaluate((el) => el.scrollIntoView({ block: "end" }));
+
+  // 6. H5 — la traza es navegación: se despliega la CA desde la cabecera fija y el paso
+  //    «Modificador de Destreza» lleva el foco a la casilla de Destreza, que es su causa.
+  await cabecera.getByText("CA", { exact: true }).locator("..").getByRole("button").click();
+  await page
+    .getByRole("button", { name: /Modificador de Destreza/ })
+    .first()
+    .click();
+  await expect(page.getByLabel("Destreza", { exact: true })).toBeFocused();
+});
+
 // --- Contraste medido en el navegador (docs/04-convenciones.md: "un defecto de maquetación
 // exige una prueba de navegador"; jsdom no maqueta, esto sí). Mismo patrón que
 // e2e/tokens-contrast.spec.ts: colores COMPUTADOS, compuestos contra el fondo real, nunca

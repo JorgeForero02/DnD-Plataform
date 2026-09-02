@@ -271,3 +271,111 @@ export function describirEfecto(
       return `Sin traducir: ${(efecto as { kind: string }).kind}`;
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Tarea R4 — «ocurrió algo» no es lo mismo que «algo es verdad»
+// ---------------------------------------------------------------------------------------------
+//
+// Es el malentendido número uno de la programación por reglas disparador-acción: la gente no
+// separa el **suceso** (un instante que pasa y ya no está) del **estado** (algo que es verdad y
+// se comprueba cuando hace falta). El vocabulario del motor ya los separa —son tres uniones
+// distintas en `@dnd/shared`, y por eso R4 **no necesitó tocar el esquema compartido**—, pero
+// hasta ahora la pantalla no lo decía en ninguna parte: los tres desplegables se parecían.
+//
+// Estas frases no definen nada. Describen lo que hace `rules-engine.service.ts`; si algún día
+// discrepan, el que miente es el texto (docs/04-convenciones.md).
+
+/** Las tres partes de una regla. Una pieza pertenece a una y solo a una. */
+export type ParteDeRegla = "SUCESO" | "ESTADO" | "ACCION";
+
+/** Cómo se llama la parte cuando se nombra a secas. */
+export const NOMBRE_PARTE: Record<ParteDeRegla, string> = {
+  SUCESO: "Suceso",
+  ESTADO: "Estado",
+  ACCION: "Acción",
+};
+
+/** Cómo se llama el carril donde cae esa parte. */
+export const CARRIL_DE_PARTE: Record<ParteDeRegla, string> = {
+  SUCESO: "Cuando",
+  ESTADO: "Si",
+  ACCION: "Entonces",
+};
+
+/** La distinción, en una línea, dentro de la propia caja. */
+export const QUE_ES_PARTE: Record<ParteDeRegla, string> = {
+  SUCESO: "Ocurrió algo. Pasa en un instante y despierta la regla.",
+  ESTADO: "Algo es verdad. No ocurre: se comprueba en el momento del suceso.",
+  ACCION: "Cambia el mundo. Es la única parte de la regla que escribe algo.",
+};
+
+/** La misma distinción, contada para el carril vacío. */
+export const QUE_PIDE_CARRIL: Record<ParteDeRegla, string> = {
+  SUCESO:
+    "Arrastra aquí el suceso que despierta la regla. Solo cabe uno: una regla escucha un suceso, no dos.",
+  ESTADO:
+    "Arrastra aquí lo que tiene que ser verdad en ese momento. Puedes dejarlo vacío: entonces la regla se dispara siempre que llegue su suceso.",
+  ACCION: "Arrastra aquí lo que hace la regla. Sin ninguna acción, la regla no sirve de nada.",
+};
+
+/** El artículo con el que se nombra la parte en una frase de aviso. */
+export const ARTICULO_PARTE: Record<ParteDeRegla, string> = {
+  SUCESO: "un suceso",
+  ESTADO: "un estado",
+  ACCION: "una acción",
+};
+
+/**
+ * La parte a la que pertenece cada clave del vocabulario cerrado. Se deriva de las tres listas,
+ * que a su vez salen del esquema compartido: una clave nueva en `@dnd/shared` aparece aquí sola.
+ */
+export function parteDe(clave: string): ParteDeRegla | undefined {
+  if ((DISPARADORES as string[]).includes(clave)) return "SUCESO";
+  if ((CONDICIONES as string[]).includes(clave)) return "ESTADO";
+  if ((EFECTOS as string[]).includes(clave)) return "ACCION";
+  return undefined;
+}
+
+/** El nombre legible de una clave cualquiera, mire a la parte que mire. */
+export function nombreDePieza(clave: string): string {
+  const parte = parteDe(clave);
+  if (parte === "SUCESO") return nombreDisparador(clave);
+  if (parte === "ESTADO") return nombreCondicion(clave);
+  if (parte === "ACCION") return nombreEfecto(clave);
+  return `Sin traducir: ${clave}`;
+}
+
+/**
+ * Las parejas que de verdad se confunden en nuestro vocabulario, y no una lista teórica: son
+ * las que se dicen casi igual en español y viven en partes distintas. «Se pone una marca» es un
+ * instante; «una marca está puesta» es un estado que sigue siendo verdad al día siguiente.
+ */
+export const PAREJAS_CONFUNDIBLES: Record<string, string[]> = {
+  FLAG_SET: ["FLAG_IS", "SET_FLAG"],
+  FLAG_IS: ["FLAG_SET", "SET_FLAG"],
+  SET_FLAG: ["FLAG_SET", "FLAG_IS"],
+  SESSION_STARTED: ["SESSION_NUMBER_AT_LEAST"],
+  SESSION_NUMBER_AT_LEAST: ["SESSION_STARTED"],
+  MEMBER_JOINED: ["ALL_PLAYERS_PRESENT"],
+  ALL_PLAYERS_PRESENT: ["MEMBER_JOINED"],
+  ENTITY_REVEALED: ["REVEALED_WITH_TAG_AT_LEAST", "REVEAL_ENTITY"],
+  REVEALED_WITH_TAG_AT_LEAST: ["ENTITY_REVEALED"],
+  REVEAL_ENTITY: ["ENTITY_REVEALED"],
+  IS_IN_SET: ["CHANGE_SET_MEMBER"],
+  CHANGE_SET_MEMBER: ["IS_IN_SET"],
+  SIGNAL_RAISED: ["RAISE_SIGNAL"],
+  RAISE_SIGNAL: ["SIGNAL_RAISED"],
+};
+
+/**
+ * La frase de desambiguación que va **dentro de la caja**, no en una ayuda que nadie abre.
+ * Devuelve una lista vacía cuando la pieza no se parece a ninguna otra.
+ */
+export function avisosDeConfusion(clave: string): string[] {
+  const parejas = PAREJAS_CONFUNDIBLES[clave] ?? [];
+  return parejas.flatMap((otra) => {
+    const parte = parteDe(otra);
+    if (!parte) return [];
+    return [`No es «${nombreDePieza(otra)}», que es ${ARTICULO_PARTE[parte]}.`];
+  });
+}

@@ -7,30 +7,28 @@ import {
   NIVELES_DE_VISIBILIDAD,
   RESULTADOS_DE_TIRADA,
   TIPOS_DE_MIEMBRO,
-  condicionPorDefecto,
   disparadorPorDefecto,
-  efectoPorDefecto,
 } from "./formularios";
 import {
-  CONDICIONES,
   DISPARADORES,
-  EFECTOS,
   NOMBRE_ACCION_CONJUNTO,
   NOMBRE_AUDIENCIA,
   NOMBRE_RESULTADO_TIRADA,
   NOMBRE_TIPO_MIEMBRO,
-  nombreCondicion,
   nombreDisparador,
-  nombreEfecto,
   traducir,
 } from "./vocabulario";
 
 // Tarea 2A.17 — las tres piezas de la frase CUANDO / SI / ENTONCES.
+// Tarea R1 — cada pieza se parte en dos: los **campos** de una clase ya elegida
+// (`CamposDe…`), que es lo que va dentro de una caja colocada en su carril, y la versión con
+// desplegable (`EditorDeDisparador`), que sobrevive únicamente donde no se escribe una regla:
+// el ensayo en seco.
 //
-// **El vocabulario es cerrado y estos formularios lo respetan literalmente**: las opciones de
-// los tres desplegables salen de `DISPARADORES`, `CONDICIONES` y `EFECTOS`, que a su vez salen
-// de las uniones discriminadas de `@dnd/shared`. No hay forma de ofrecer aquí un valor que el
-// servidor no acepte, porque la lista no está escrita aquí.
+// **El vocabulario es cerrado y esta pantalla lo respeta literalmente**: las opciones salen de
+// `DISPARADORES`, `CONDICIONES` y `EFECTOS` (`vocabulario.ts`), que a su vez salen de las
+// uniones discriminadas de `@dnd/shared`. No hay forma de ofrecer aquí un valor que el servidor
+// no acepte, porque la lista no está escrita aquí.
 //
 // **Nada de reglas del servidor reimplementadas.** Estos componentes recogen datos; quien
 // decide si la regla vale es `createRuleSchema` (el mismo esquema que corre en la API) y, al
@@ -129,7 +127,13 @@ function SelectorDeVisibilidad({
 // CUANDO
 // ---------------------------------------------------------------------------------------------
 
-export function EditorDeDisparador({
+/**
+ * Los campos de un suceso ya elegido. **No lleva selector de clase**: desde R1 la clase se
+ * elige arrastrando (o pulsando) su caja desde la paleta, y la caja colocada solo pide sus
+ * parámetros. `EditorDeDisparador`, más abajo, es la versión con desplegable que sigue usando
+ * el ensayo en seco, donde no se está escribiendo una regla sino eligiendo qué simular.
+ */
+export function CamposDeDisparador({
   value,
   entities,
   onChange,
@@ -140,22 +144,6 @@ export function EditorDeDisparador({
 }) {
   return (
     <div className="space-y-s3">
-      <Field label="Cuando">
-        <select
-          className={fieldControlClass}
-          value={value.kind}
-          // Cambiar de clase reconstruye el objeto: fusionar dejaría campos de la clase
-          // anterior que el esquema del servidor rechaza.
-          onChange={(e) => onChange(disparadorPorDefecto(e.target.value as RuleTrigger["kind"]))}
-        >
-          {DISPARADORES.map((kind) => (
-            <option key={kind} value={kind}>
-              {nombreDisparador(kind)}
-            </option>
-          ))}
-        </select>
-      </Field>
-
       {(value.kind === "ENTITY_OPENED" ||
         value.kind === "ENTITY_COMMENTED" ||
         value.kind === "ENTITY_REVEALED" ||
@@ -233,11 +221,49 @@ export function EditorDeDisparador({
   );
 }
 
+/**
+ * El suceso **con** su desplegable de clase. Lo usa `EnsayoEnSeco`, que no escribe una regla:
+ * elige qué suceso simular contra una regla ya escrita. Ahí un desplegable es lo correcto —no
+ * se está construyendo nada— y además es lo que mantiene viva la comprobación de que la lista
+ * de opciones sale del esquema compartido y no de una copia a mano.
+ */
+export function EditorDeDisparador({
+  value,
+  entities,
+  onChange,
+}: {
+  value: RuleTrigger;
+  entities: Entity[];
+  onChange: (t: RuleTrigger) => void;
+}) {
+  return (
+    <div className="space-y-s3">
+      <Field label="Cuando">
+        <select
+          className={fieldControlClass}
+          value={value.kind}
+          // Cambiar de clase reconstruye el objeto: fusionar dejaría campos de la clase
+          // anterior que el esquema del servidor rechaza.
+          onChange={(e) => onChange(disparadorPorDefecto(e.target.value as RuleTrigger["kind"]))}
+        >
+          {DISPARADORES.map((kind) => (
+            <option key={kind} value={kind}>
+              {nombreDisparador(kind)}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <CamposDeDisparador value={value} entities={entities} onChange={onChange} />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------------------------
 // SI
 // ---------------------------------------------------------------------------------------------
 
-export function EditorDeCondicion({
+/** Los campos de una condición ya elegida. La clase la eligió la caja de la paleta. */
+export function CamposDeCondicion({
   value,
   onChange,
 }: {
@@ -246,20 +272,6 @@ export function EditorDeCondicion({
 }) {
   return (
     <div className="space-y-s2">
-      <Field label="Condición">
-        <select
-          className={fieldControlClass}
-          value={value.kind}
-          onChange={(e) => onChange(condicionPorDefecto(e.target.value as RuleCondition["kind"]))}
-        >
-          {CONDICIONES.map((kind) => (
-            <option key={kind} value={kind}>
-              {nombreCondicion(kind)}
-            </option>
-          ))}
-        </select>
-      </Field>
-
       {value.kind === "FLAG_IS" && (
         <div className="grid gap-s2 sm:grid-cols-2">
           <Field label="Marca">
@@ -396,7 +408,8 @@ export function EditorDeCondicion({
 // ENTONCES
 // ---------------------------------------------------------------------------------------------
 
-export function EditorDeEfecto({
+/** Los campos de un efecto ya elegido. La clase la eligió la caja de la paleta. */
+export function CamposDeEfecto({
   value,
   entities,
   reglas,
@@ -410,20 +423,6 @@ export function EditorDeEfecto({
 }) {
   return (
     <div className="space-y-s2">
-      <Field label="Efecto">
-        <select
-          className={fieldControlClass}
-          value={value.kind}
-          onChange={(e) => onChange(efectoPorDefecto(e.target.value as RuleEffect["kind"]))}
-        >
-          {EFECTOS.map((kind) => (
-            <option key={kind} value={kind}>
-              {nombreEfecto(kind)}
-            </option>
-          ))}
-        </select>
-      </Field>
-
       {(value.kind === "REVEAL_ENTITY" || value.kind === "HIDE_ENTITY") && (
         <div className="space-y-s2">
           <SelectorDeFicha

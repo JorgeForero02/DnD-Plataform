@@ -2,6 +2,11 @@ import { test, expect, type Page } from "@playwright/test";
 
 // Tarea 2A.17 — la pantalla del motor de reglas, contra la API real (Docker + Postgres).
 //
+// Actualizado en R1: la regla ya no se escribe en tres desplegables, sino colocando cajas en
+// tres carriles fijos. Este recorrido usa la ruta que **no** necesita ratón —pulsar la pieza de
+// la paleta—; el gesto de arrastrar de verdad, y la forma de cada pieza, se miden en
+// `reglas-arrastrar.spec.ts`.
+//
 // Cubre el viaje que ninguna prueba de componente puede cubrir: el DM escribe una regla entera
 // (CUANDO / SI / ENTONCES) contra las fichas reales de su campaña, la desarma y la vuelve a
 // armar con `PATCH` de verdad, hace un ensayo en seco contra el motor real, y comprueba en la
@@ -60,16 +65,27 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
 
   await page.getByLabel("Nombre de la regla").fill("Al empezar, se revela el heraldo");
 
-  // CUANDO. El desplegable ofrece exactamente el vocabulario cerrado: ningún valor del enum se
-  // ve en pantalla, así que se elige por su etiqueta en español.
-  await page.getByLabel("Cuando", { exact: true }).selectOption({ label: "Empieza una sesión" });
+  // Tarea R1 — los tres carriles arrancan vacíos y cada uno dice qué pide. Antes de R1 el
+  // editor abría con un suceso y un efecto ya elegidos que nadie había elegido.
+  const carrilCuando = page.getByRole("region", { name: "Carril Cuando" });
+  await expect(carrilCuando).toContainText("Arrastra aquí el suceso que despierta la regla");
 
-  // SI — una condición, para ejercitar la lista dinámica.
-  await page.getByRole("button", { name: "Añadir condición" }).click();
-  await page.getByLabel("Condición").selectOption({ label: "Esta regla no se ha disparado nunca" });
+  // Se colocan las tres cajas pulsando su pieza de la paleta — la ruta que no necesita ratón.
+  await page
+    .getByRole("button", { name: "Empieza una sesión — poner en el carril Cuando" })
+    .click();
+  await page
+    .getByRole("button", { name: "Esta regla no se ha disparado nunca — poner en el carril Si" })
+    .click();
+  await page
+    .getByRole("button", { name: "Revelar una entrada del mundo — poner en el carril Entonces" })
+    .click();
 
-  // ENTONCES. El primer efecto ya viene como "Revelar una entrada del mundo".
-  await page.getByLabel("Efecto").selectOption({ label: "Revelar una entrada del mundo" });
+  // R4: la caja dice de qué parte es, y de cuál no. En la pantalla, no en una ayuda.
+  await expect(carrilCuando).toContainText("Es un suceso.");
+  await expect(carrilCuando).toContainText("Ocurrió algo.");
+  await expect(page.getByRole("region", { name: "Carril Si" })).toContainText("Es un estado.");
+
   await page.getByLabel("Qué entrada del mundo").selectOption({ label: "El heraldo de la puerta" });
   await page
     .getByRole("radio", { name: /Jugadores/ })

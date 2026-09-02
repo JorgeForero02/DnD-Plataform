@@ -101,3 +101,62 @@ export function IconoCadena({ className }: IconoProps) {
     </Marco>
   );
 }
+
+// --- Tarea R1/R4 — la forma dice de qué parte es la pieza -------------------------------------
+//
+// El dibujo repite lo que ya dicen la silueta, el color y la palabra de la caja. Es redundancia
+// a propósito: el color solo nunca puede ser la única señal, y la silueta se pierde cuando la
+// caja se estrecha en un móvil.
+
+/** Suceso: el instante. Una chispa — llega, pasa y ya no está. */
+export function IconoSuceso({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M9 1.5L4 8.5h3.5L7 14.5l5-7H8.5z" />
+    </Marco>
+  );
+}
+
+/** Estado: la comprobación. Un rombo con su marca — es verdad o no lo es. */
+export function IconoEstado({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M8 1.5L14.5 8 8 14.5 1.5 8z" />
+      <path d="M5.5 8l1.8 1.8L10.5 6.5" />
+    </Marco>
+  );
+}
+
+/** Acción: lo que escribe. Una punta que empuja contra un muro. */
+export function IconoAccion({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M1.5 8h8" />
+      <path d="M6.5 5l3 3-3 3" />
+      <path d="M13 2.5v11" />
+    </Marco>
+  );
+}
+
+/** Agarre: las seis marcas de «esto se arrastra». */
+export function IconoAgarre({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <circle cx="6" cy="3.5" r="0.9" />
+      <circle cx="10" cy="3.5" r="0.9" />
+      <circle cx="6" cy="8" r="0.9" />
+      <circle cx="10" cy="8" r="0.9" />
+      <circle cx="6" cy="12.5" r="0.9" />
+      <circle cx="10" cy="12.5" r="0.9" />
+    </Marco>
+  );
+}
+
+/** Ranura vacía: el hueco de puntos donde cae una caja. */
+export function IconoRanura({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <rect x="1.5" y="4" width="13" height="8" rx="1.5" strokeDasharray="2.5 2" />
+    </Marco>
+  );
+}

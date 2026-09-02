@@ -1,23 +1,37 @@
 import { useState } from "react";
-import { createRuleSchema, type CreateRuleInput } from "@dnd/shared";
+import type { CreateRuleInput, RuleCondition, RuleEffect, RuleTrigger } from "@dnd/shared";
 import { Button, Dialog, Field, fieldControlClass } from "../../ui";
 import type { Entity } from "../entities/api";
 import type { RuleRow } from "./api";
+import { CajaColocada, CarrilDeCajas, PaletaDeCajas } from "./CajasDeRegla";
 import {
   borradorDesde,
   condicionPorDefecto,
+  disparadorPorDefecto,
   efectoPorDefecto,
+  revisarBorrador,
   type BorradorDeRegla,
 } from "./formularios";
 import { ModoDeRegla } from "./ModoDeRegla";
-import { EditorDeCondicion, EditorDeDisparador, EditorDeEfecto } from "./PiezasDeRegla";
+import { CamposDeCondicion, CamposDeDisparador, CamposDeEfecto } from "./PiezasDeRegla";
+import { CARRIL_DE_PARTE, nombreDePieza, type ParteDeRegla } from "./vocabulario";
 
-// Tarea 2A.17 — crear y editar una regla: CUANDO / SI / ENTONCES.
+// Tareas R1 y R4 — crear y editar una regla arrastrando cajas a carriles fijos.
 //
-// **La validación es Zod desde `@dnd/shared`** (docs/04-convenciones.md): el botón de guardar
-// pasa el borrador por `createRuleSchema`, el mismo esquema que corre en la API, en vez de
-// inventarse aquí una lista de comprobaciones que se desincronice. Esto **no** es control de
-// acceso ni sustituye a la validación del servidor: es cortesía para no mandar un 400 seguro.
+// **Qué se tiró y por qué.** Los tres desplegables («Cuando», «Condición», «Efecto») se han
+// ido. No estaban mal escritos: estaban mal planteados. Los tres se veían iguales, así que la
+// pantalla no decía en ninguna parte que un suceso y una condición son cosas distintas —el
+// malentendido número uno de este tipo de editores— y elegir una clase era un gesto invisible
+// que no dejaba rastro en pantalla. El DM del autor lo probó y no entendió nada.
+//
+// **Qué se conservó.** Todo lo que ya era correcto: los campos de cada clase
+// (`PiezasDeRegla.tsx`, ahora partidos en `CamposDe…`), el vocabulario en español
+// (`vocabulario.ts`), el modo propuesta (`ModoDeRegla.tsx`) y la validación con el mismo
+// esquema que corre en la API. Lo que cambió es cómo se elige una pieza, no qué se puede
+// elegir: el vocabulario sigue siendo exactamente el cerrado de `@dnd/shared`.
+//
+// **La validación sigue siendo Zod desde `@dnd/shared`** (docs/04-convenciones.md), y sigue sin
+// ser control de acceso: quien decide de verdad es la API.
 
 /** Los topes que el propio esquema declara — se citan en pantalla, no se reimplementan. */
 const MAX_CONDICIONES = 10;
@@ -45,18 +59,49 @@ export function EditorDeRegla({
 }) {
   const [borrador, setBorrador] = useState<BorradorDeRegla>(() => borradorDesde(regla));
   const [intentado, setIntentado] = useState(false);
+  // Colocar con el teclado no mueve nada por la pantalla, así que hay que decir lo que pasó.
+  const [aviso, setAviso] = useState("");
 
   // Remontar el diálogo con una regla distinta tiene que recargar el borrador. `key` en el sitio
   // de uso es lo que lo garantiza; aquí solo se guarda el valor inicial.
-  const analisis = createRuleSchema.safeParse(borrador);
-  const problemas = analisis.success
-    ? []
-    : analisis.error.issues.map((issue) => `${issue.path.join(".") || "regla"}: ${issue.message}`);
+  const revision = revisarBorrador(borrador);
 
   function enviar() {
     setIntentado(true);
-    if (!analisis.success) return;
-    onGuardar(analisis.data);
+    if (!revision.entrada) return;
+    onGuardar(revision.entrada);
+  }
+
+  /**
+   * La única puerta por la que entra una caja al carril, la use el ratón o el teclado. Que las
+   * dos rutas compartan esta función es lo que hace que probar una pruebe la otra.
+   */
+  function colocar(parte: ParteDeRegla, clave: string) {
+    if (parte === "SUCESO") {
+      const anterior = borrador.trigger;
+      setBorrador({ ...borrador, trigger: disparadorPorDefecto(clave as RuleTrigger["kind"]) });
+      setAviso(
+        anterior
+          ? `«${nombreDePieza(clave)}» sustituye a «${nombreDePieza(anterior.kind)}» en el carril «${CARRIL_DE_PARTE.SUCESO}». Un suceso por regla.`
+          : `«${nombreDePieza(clave)}» colocado en el carril «${CARRIL_DE_PARTE.SUCESO}».`,
+      );
+      return;
+    }
+    if (parte === "ESTADO") {
+      if (borrador.conditions.length >= MAX_CONDICIONES) return;
+      setBorrador({
+        ...borrador,
+        conditions: [...borrador.conditions, condicionPorDefecto(clave as RuleCondition["kind"])],
+      });
+      setAviso(`«${nombreDePieza(clave)}» colocado en el carril «${CARRIL_DE_PARTE.ESTADO}».`);
+      return;
+    }
+    if (borrador.effects.length >= MAX_EFECTOS) return;
+    setBorrador({
+      ...borrador,
+      effects: [...borrador.effects, efectoPorDefecto(clave as RuleEffect["kind"])],
+    });
+    setAviso(`«${nombreDePieza(clave)}» colocado en el carril «${CARRIL_DE_PARTE.ACCION}».`);
   }
 
   const otrasReglas = reglas.filter((r) => r.id !== regla?.id);
@@ -69,6 +114,13 @@ export function EditorDeRegla({
       title={regla ? `Editar «${regla.name}»` : "Nueva regla"}
     >
       <div className="space-y-s4">
+        <p className="font-chrome text-chrome-sm leading-snug text-muted">
+          Una regla es una frase de tres partes. Arrastra una caja de la paleta al carril que le
+          toca, o púlsala y cae sola.{" "}
+          <strong className="text-text">La ranura es la conexión</strong>: lo que está dentro de un
+          carril forma parte de la regla, y lo que está fuera, no.
+        </p>
+
         <Field label="Nombre de la regla">
           <input
             className={fieldControlClass}
@@ -78,125 +130,121 @@ export function EditorDeRegla({
           />
         </Field>
 
-        <section className="rounded-radius-sm border border-copper/40 p-s3">
-          <h3 className="mb-s2 font-title text-chrome-md text-text">Cuando</h3>
-          <EditorDeDisparador
-            value={borrador.trigger}
-            entities={entities}
-            onChange={(trigger) => setBorrador({ ...borrador, trigger })}
+        <section
+          aria-label="Paleta de piezas"
+          className="rounded-radius-sm border border-copper/40 p-s3"
+        >
+          <h3 className="font-title text-chrome-md text-text">Paleta</h3>
+          <p className="mb-s3 mt-1 font-chrome text-chrome-xs leading-snug text-muted">
+            Todo lo que el motor entiende, sin nada escondido. Cada pieza tiene la forma y el color
+            de su carril: la forma dice dónde encaja antes de que lo intentes.
+          </p>
+          <PaletaDeCajas
+            topes={{
+              ESTADO:
+                borrador.conditions.length >= MAX_CONDICIONES
+                  ? "Diez condiciones es el tope que admite el servidor. Quita una para poder poner otra."
+                  : undefined,
+              ACCION:
+                borrador.effects.length >= MAX_EFECTOS
+                  ? "Diez acciones es el tope que admite el servidor. Quita una para poder poner otra."
+                  : undefined,
+            }}
+            onColocar={colocar}
           />
         </section>
 
-        <section className="rounded-radius-sm border border-copper/40 p-s3">
-          <h3 className="mb-s2 font-title text-chrome-md text-text">Si</h3>
-          <p className="mb-s2 font-chrome text-chrome-xs text-muted">
-            Sin condiciones, la regla se dispara siempre que llegue su suceso. Es legítimo.
-          </p>
-          <div className="space-y-s3">
-            {borrador.conditions.map((condicion, i) => (
-              <div key={i} className="rounded-radius-sm border border-muted/50 p-s2">
-                <div className="mb-s2 flex items-center justify-between">
-                  <span className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                    Condición {i + 1}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    onClick={() =>
-                      setBorrador({
-                        ...borrador,
-                        conditions: borrador.conditions.filter((_, j) => j !== i),
-                      })
-                    }
-                  >
-                    Quitar
-                  </Button>
-                </div>
-                <EditorDeCondicion
-                  value={condicion}
-                  onChange={(nueva) =>
-                    setBorrador({
-                      ...borrador,
-                      conditions: borrador.conditions.map((c, j) => (j === i ? nueva : c)),
-                    })
-                  }
-                />
-              </div>
-            ))}
-          </div>
-          <Button
-            variant="secondary"
-            type="button"
-            className="mt-s2"
-            disabled={borrador.conditions.length >= MAX_CONDICIONES}
-            onClick={() =>
-              setBorrador({
-                ...borrador,
-                conditions: [...borrador.conditions, condicionPorDefecto("FLAG_IS")],
-              })
-            }
-          >
-            Añadir condición
-          </Button>
-          {borrador.conditions.length >= MAX_CONDICIONES && (
-            <p className="mt-1 font-chrome text-chrome-xs text-muted">
-              Diez condiciones es el tope que admite el servidor.
-            </p>
-          )}
-        </section>
+        {/* Lo que se coloca con el teclado no se ve moverse: se dice. */}
+        <p aria-live="polite" className="font-chrome text-chrome-xs text-muted">
+          {aviso}
+        </p>
 
-        <section className="rounded-radius-sm border border-copper/40 p-s3">
-          <h3 className="mb-s2 font-title text-chrome-md text-text">Entonces</h3>
-          <div className="space-y-s3">
-            {borrador.effects.map((efecto, i) => (
-              <div key={i} className="rounded-radius-sm border border-muted/50 p-s2">
-                <div className="mb-s2 flex items-center justify-between">
-                  <span className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                    Efecto {i + 1}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    disabled={borrador.effects.length <= 1}
-                    onClick={() =>
-                      setBorrador({
-                        ...borrador,
-                        effects: borrador.effects.filter((_, j) => j !== i),
-                      })
-                    }
-                  >
-                    Quitar
-                  </Button>
-                </div>
-                <EditorDeEfecto
-                  value={efecto}
-                  entities={entities}
-                  reglas={otrasReglas}
-                  onChange={(nuevo) =>
-                    setBorrador({
-                      ...borrador,
-                      effects: borrador.effects.map((e, j) => (j === i ? nuevo : e)),
-                    })
-                  }
-                />
-              </div>
-            ))}
-          </div>
-          <Button
-            variant="secondary"
-            type="button"
-            className="mt-s2"
-            disabled={borrador.effects.length >= MAX_EFECTOS}
-            onClick={() =>
-              setBorrador({
-                ...borrador,
-                effects: [...borrador.effects, efectoPorDefecto("SET_FLAG")],
-              })
-            }
-          >
-            Añadir efecto
-          </Button>
-        </section>
+        <CarrilDeCajas
+          parte="SUCESO"
+          vacio={borrador.trigger === null}
+          onSoltar={(clave) => colocar("SUCESO", clave)}
+        >
+          {borrador.trigger && (
+            <CajaColocada
+              parte="SUCESO"
+              clave={borrador.trigger.kind}
+              onQuitar={() => {
+                setAviso(
+                  `Carril «${CARRIL_DE_PARTE.SUCESO}» vacío otra vez. Sin suceso, la regla no se despierta.`,
+                );
+                setBorrador({ ...borrador, trigger: null });
+              }}
+            >
+              <CamposDeDisparador
+                value={borrador.trigger}
+                entities={entities}
+                onChange={(trigger) => setBorrador({ ...borrador, trigger })}
+              />
+            </CajaColocada>
+          )}
+        </CarrilDeCajas>
+
+        <CarrilDeCajas
+          parte="ESTADO"
+          vacio={borrador.conditions.length === 0}
+          onSoltar={(clave) => colocar("ESTADO", clave)}
+        >
+          {borrador.conditions.map((condicion, i) => (
+            <CajaColocada
+              key={`${condicion.kind}-${i}`}
+              parte="ESTADO"
+              clave={condicion.kind}
+              onQuitar={() =>
+                setBorrador({
+                  ...borrador,
+                  conditions: borrador.conditions.filter((_, j) => j !== i),
+                })
+              }
+            >
+              <CamposDeCondicion
+                value={condicion}
+                onChange={(nueva) =>
+                  setBorrador({
+                    ...borrador,
+                    conditions: borrador.conditions.map((c, j) => (j === i ? nueva : c)),
+                  })
+                }
+              />
+            </CajaColocada>
+          ))}
+        </CarrilDeCajas>
+
+        <CarrilDeCajas
+          parte="ACCION"
+          vacio={borrador.effects.length === 0}
+          onSoltar={(clave) => colocar("ACCION", clave)}
+        >
+          {borrador.effects.map((efecto, i) => (
+            <CajaColocada
+              key={`${efecto.kind}-${i}`}
+              parte="ACCION"
+              clave={efecto.kind}
+              onQuitar={() =>
+                setBorrador({
+                  ...borrador,
+                  effects: borrador.effects.filter((_, j) => j !== i),
+                })
+              }
+            >
+              <CamposDeEfecto
+                value={efecto}
+                entities={entities}
+                reglas={otrasReglas}
+                onChange={(nuevo) =>
+                  setBorrador({
+                    ...borrador,
+                    effects: borrador.effects.map((e, j) => (j === i ? nuevo : e)),
+                  })
+                }
+              />
+            </CajaColocada>
+          ))}
+        </CarrilDeCajas>
 
         <ModoDeRegla
           value={borrador.mode}
@@ -222,14 +270,14 @@ export function EditorDeRegla({
           />
         </Field>
 
-        {intentado && problemas.length > 0 && (
+        {intentado && revision.problemas.length > 0 && (
           <div role="alert" className="rounded-radius-sm border border-danger p-s2">
             <p className="font-chrome text-chrome-sm text-danger-text">
               La regla todavía no está completa:
             </p>
             <ul className="mt-1 list-disc pl-s5 font-chrome text-chrome-xs text-danger-text">
-              {problemas.map((problema, i) => (
-                <li key={i}>{problema}</li>
+              {revision.problemas.map((problema) => (
+                <li key={problema}>{problema}</li>
               ))}
             </ul>
           </div>
@@ -245,6 +293,7 @@ export function EditorDeRegla({
           <Button variant="secondary" type="button" onClick={onCerrar}>
             Cancelar
           </Button>
+          {/* El botón de guardar nunca se deshabilita: deshabilitado no recibe foco de teclado. */}
           <Button type="button" disabled={guardando} onClick={enviar}>
             {guardando ? "Guardando…" : "Guardar regla"}
           </Button>

@@ -9,9 +9,8 @@ import { useCreateEntity, useDeleteEntity, useEntity, useUpdateEntity } from "./
 import type { Entity } from "./api";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
+import { VisibilityChooser } from "./VisibilityChooser";
 import { Dialog } from "../../ui/Dialog";
-
-const VISIBILITIES: Visibility[] = ["PUBLIC", "PLAYERS", "SPECIFIC_PLAYERS", "OWNER_DM", "DM_ONLY"];
 
 function parseTags(raw: string): string[] {
   return raw
@@ -170,7 +169,7 @@ export function EntityEditor({
     // (max-h-[80vh] overflow-y-auto) moved into Dialog itself (ui/Dialog.tsx), so every
     // consumer gets it once instead of re-adding it — CharacterEditor and SessionEditor never
     // had it here to begin with.
-    <Dialog open onClose={onClose} title={`${isEdit ? "Editar" : "Nuevo"} ${type}`}>
+    <Dialog open onClose={onClose} size="lg" title={`${isEdit ? "Editar" : "Nuevo"} ${type}`}>
       <div className="space-y-4">
         <form onSubmit={onSubmit} className="space-y-3">
           {readOnly && (
@@ -249,31 +248,23 @@ export function EntityEditor({
               <Markdown text={bodyText} />
             )}
           </div>
-          <Field label="Visibilidad">
-            <select
-              id="visibility"
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as Visibility)}
-              disabled={readOnly}
-              className={fieldControlClass}
-            >
-              {VISIBILITIES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {visibility === "SPECIFIC_PLAYERS" && (
-            <fieldset className="rounded-radius-sm border border-muted p-2">
-              <legend className="text-chrome-sm text-text">Jugadores con acceso</legend>
+          <VisibilityChooser value={visibility} onChange={setVisibility} disabled={readOnly}>
+            <fieldset className="rounded-radius-sm border border-muted/60 p-s2">
+              <legend className="px-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                Jugadores con acceso
+              </legend>
               {members.isLoading && (
-                <p className="text-chrome-sm text-muted">Cargando jugadores…</p>
+                <p className="font-chrome text-chrome-sm text-muted">Cargando jugadores…</p>
               )}
               {members.isError && (
-                <p className="text-chrome-sm text-danger-text">
+                <p className="font-chrome text-chrome-sm text-danger-text">
                   No se pudo cargar la lista de jugadores. Un fieldset vacío aquí no significa que
                   la campaña no tenga jugadores.
+                </p>
+              )}
+              {members.data?.filter((m) => m.role === "PLAYER").length === 0 && (
+                <p className="font-chrome text-chrome-sm text-muted">
+                  Todavía no hay jugadores en la campaña a quienes dar acceso.
                 </p>
               )}
               {members.data
@@ -281,21 +272,25 @@ export function EntityEditor({
                 .map((m) => (
                   <label
                     key={m.userId}
-                    className="flex items-center gap-2 text-chrome-sm text-text"
+                    className="flex items-center gap-2 py-0.5 font-chrome text-chrome-sm text-text"
                   >
                     <input
                       type="checkbox"
                       checked={specificPlayerIds.includes(m.userId)}
                       onChange={() => togglePlayer(m.userId)}
                       disabled={readOnly}
+                      className="accent-[var(--accent)]"
                     />
                     {m.displayName}
                   </label>
                 ))}
             </fieldset>
-          )}
+          </VisibilityChooser>
           {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
-          <div className="flex items-center justify-between gap-2">
+          {/* Pegada al fondo: con un cuerpo en markdown largo, "Guardar" se iba fuera de la
+              vista y había que desplazarse para encontrarlo. El fondo es opaco a propósito, para
+              que el texto que pasa por debajo no se lea a través de los botones. */}
+          <div className="sticky bottom-0 -mx-s4 -mb-s4 flex items-center justify-between gap-s3 border-t border-muted/40 bg-surface px-s4 py-s3">
             {isEdit && (
               <DeleteButton
                 message={deleteMessage}

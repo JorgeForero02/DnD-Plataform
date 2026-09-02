@@ -38,7 +38,7 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Acererak");
   await page.getByLabel("Etiquetas (separadas por coma)").fill("lich, villano");
-  await page.getByLabel("Visibilidad").selectOption("DM_ONLY");
+  await page.getByRole("radio", { name: /Solo DM/ }).check();
   await page.getByRole("button", { name: "Guardar" }).click();
 
   // El editor se cierra y la entidad aparece en la lista con su visibilidad.
@@ -209,7 +209,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await page.getByLabel("Título").fill("Sesión 1: la entrada al abismo");
   await page.getByLabel("Fecha y hora").fill("2026-10-03T19:00");
   await page.getByLabel("Notas").fill("Traer las miniaturas de demonios");
-  await page.getByLabel("Visibilidad").selectOption("DM_ONLY");
+  await page.getByRole("radio", { name: /Solo DM/ }).check();
   await page.getByRole("button", { name: "Guardar" }).click();
 
   await expect(page.getByRole("heading", { name: "Nueva sesión" })).toBeHidden();
@@ -258,7 +258,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await page.getByLabel("Clase").fill("Brujo");
   await page.getByLabel("Nivel").fill("3");
   await page.getByLabel("Biografía").fill("Pactó con un demonio para salvar a su aldea");
-  await page.getByLabel("Visibilidad").selectOption("PUBLIC");
+  await page.getByRole("radio", { name: /Público/ }).check();
   await page.getByRole("button", { name: "Guardar" }).click();
 
   await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeHidden();
@@ -280,7 +280,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(page.getByLabel("Biografía")).toHaveValue(
     "Pactó con un demonio para salvar a su aldea",
   );
-  await expect(page.getByLabel("Visibilidad")).toHaveValue("PUBLIC");
+  await expect(page.getByRole("radio", { name: /Público/ })).toBeChecked();
 
   // Guardar la edición de verdad: subir el nivel a 4 y comprobar en la lista que el `PATCH`
   // se ejecutó contra la API real, no solo que el formulario se cerró.

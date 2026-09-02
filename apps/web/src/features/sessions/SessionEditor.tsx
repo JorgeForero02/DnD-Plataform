@@ -5,6 +5,7 @@ import { useCreateSession, useDeleteSession, useUpdateSession } from "./hooks";
 import type { Session } from "./api";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
+import { VisibilityChooser } from "../entities/VisibilityChooser";
 import { Dialog } from "../../ui/Dialog";
 
 // SPECIFIC_PLAYERS and OWNER_DM are both dropped, and for the same reason: Session has no
@@ -88,9 +89,6 @@ export function SessionEditor({
   // holds it unchanged if the DM saves without touching the field. Once the DM picks anything
   // else, this option disappears — there is no way back to it from here, which is correct:
   // this form still can't express SPECIFIC_PLAYERS.
-  const visibilityOptions = VISIBILITIES.includes(visibility)
-    ? VISIBILITIES
-    : [...VISIBILITIES, visibility];
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,22 +167,12 @@ export function SessionEditor({
             rows={3}
           />
         </Field>
-        <Field label="Visibilidad">
-          <select
-            id="session-visibility"
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as Visibility)}
-            disabled={readOnly}
-            className={fieldControlClass}
-          >
-            {visibilityOptions.map((v) => (
-              <option key={v} value={v}>
-                {v}
-                {!VISIBILITIES.includes(v) ? " (valor guardado, no seleccionable aquí)" : ""}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <VisibilityChooser
+          value={visibility}
+          onChange={setVisibility}
+          disabled={readOnly}
+          niveles={VISIBILITIES}
+        />
         {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
         <div className="flex items-center justify-between gap-2">
           {isEdit && (

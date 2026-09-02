@@ -6,6 +6,8 @@ export interface DialogProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** "lg" para formularios con texto largo (markdown + vista previa). */
+  size?: "sm" | "lg";
 }
 
 const FOCUSABLE_SELECTOR =
@@ -16,7 +18,7 @@ const FOCUSABLE_SELECTOR =
 // Escape calls onClose, and focus returns to whatever triggered the dialog once it closes.
 // Remove the useEffect below (or the keydown handler) and every one of those assertions fails
 // while the dialog still renders its content — the trap is the whole point, not the markup.
-export function Dialog({ open, onClose, title, children }: DialogProps) {
+export function Dialog({ open, onClose, title, children, size = "sm" }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
   const titleId = useId();
@@ -103,7 +105,14 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
         // in it) had added its own fix — CharacterEditor and SessionEditor's Guardar/Cancelar
         // row could overflow a short viewport with nothing to scroll. 85vh leaves at least
         // ~7.5vh clear above and below even on the shortest realistic viewport.
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-radius-sm border border-muted bg-surface p-4 font-chrome text-chrome-sm text-text"
+        // Reseño 2026-09-02, segunda pasada: `size="lg"` para los formularios que llevan un
+        // cuerpo en markdown con su vista previa. En 28rem no cabe una frase de manual sin
+        // romperla tres veces, y escribir en una columna estrecha es exactamente lo que hace
+        // que un DM prefiera otra herramienta.
+        className={[
+          "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s4 font-chrome text-chrome-sm text-text",
+          size === "lg" ? "max-w-2xl" : "max-w-md",
+        ].join(" ")}
       >
         <h2 id={titleId} className="mb-3 text-chrome-md font-semibold">
           {title}

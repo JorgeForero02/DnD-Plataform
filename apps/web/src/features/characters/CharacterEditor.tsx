@@ -5,6 +5,7 @@ import { useCreateCharacter, useDeleteCharacter, useUpdateCharacter } from "./ho
 import type { Character } from "./api";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
+import { VisibilityChooser } from "../entities/VisibilityChooser";
 import { Dialog } from "../../ui/Dialog";
 
 // SPECIFIC_PLAYERS is dropped on purpose, same reasoning as SessionEditor.tsx: Character has
@@ -73,9 +74,6 @@ export function CharacterEditor({
   // Same reasoning and same fix as SessionEditor.tsx: a character can arrive with a
   // visibility this editor doesn't itself offer, and without this the <select> would paint
   // blank with no explanation.
-  const visibilityOptions = VISIBILITIES.includes(visibility)
-    ? VISIBILITIES
-    : [...VISIBILITIES, visibility];
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,22 +174,12 @@ export function CharacterEditor({
             rows={3}
           />
         </Field>
-        <Field label="Visibilidad">
-          <select
-            id="character-visibility"
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as Visibility)}
-            disabled={readOnly}
-            className={fieldControlClass}
-          >
-            {visibilityOptions.map((v) => (
-              <option key={v} value={v}>
-                {v}
-                {!VISIBILITIES.includes(v) ? " (valor guardado, no seleccionable aquí)" : ""}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <VisibilityChooser
+          value={visibility}
+          onChange={setVisibility}
+          disabled={readOnly}
+          niveles={VISIBILITIES}
+        />
         {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
         <div className="flex items-center justify-between gap-2">
           {isEdit && (

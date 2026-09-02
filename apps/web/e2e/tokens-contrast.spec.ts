@@ -491,7 +491,7 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByLabel("Etiquetas (separadas por coma)").fill("villano");
     // DM_ONLY is the danger tone — the worst-case badge pair, and the one 1.19's own report
     // flagged as needing --danger-text instead of --danger for exactly this reason.
-    await page.getByLabel("Visibilidad").selectOption("DM_ONLY");
+    await page.getByRole("radio", { name: /Solo DM/ }).check();
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 

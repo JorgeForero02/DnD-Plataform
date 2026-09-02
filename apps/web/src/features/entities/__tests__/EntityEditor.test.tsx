@@ -74,9 +74,10 @@ describe("EntityEditor (create)", () => {
     fireEvent.change(screen.getByLabelText("Etiquetas (separadas por coma)"), {
       target: { value: "villano, jefe" },
     });
-    fireEvent.change(screen.getByLabelText("Visibilidad"), {
-      target: { value: "SPECIFIC_PLAYERS" },
-    });
+    // Reseño 2026-09-02: la visibilidad dejó de ser un desplegable con los valores del enum en
+    // crudo ("PUBLIC", "DM_ONLY"…) y pasó a ser un grupo de radios con su etiqueta en español y
+    // una frase que explica quién ve qué. Se elige como lo elige una persona: pulsando.
+    fireEvent.click(screen.getByRole("radio", { name: /Jugadores concretos/ }));
 
     // per-player picker appears after members load
     const alice = await screen.findByLabelText("Alice");
@@ -96,7 +97,7 @@ describe("EntityEditor (create)", () => {
 
   it("starts the visibility picker at OWNER_DM (fix 3: a player's DM_ONLY creation vanished)", () => {
     renderEditor();
-    expect(screen.getByLabelText("Visibilidad")).toHaveValue("OWNER_DM");
+    expect(screen.getByRole("radio", { name: /DM y creador/ })).toBeChecked();
   });
 });
 
@@ -185,7 +186,7 @@ describe("EntityEditor (edit)", () => {
 
     await waitFor(() => expect(screen.getByLabelText("Alice")).toBeChecked());
     fireEvent.click(screen.getByLabelText("Bob"));
-    fireEvent.change(screen.getByLabelText("Visibilidad"), { target: { value: "PLAYERS" } });
+    fireEvent.click(screen.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }));
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));

@@ -74,50 +74,71 @@ export function DrawnHorizon({ className = "" }: { className?: string }) {
       )}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Far range: distant peaks, thin and pale, with the softer shoulders of old mountains. */}
+      {/* Far range. Curved, but with summits: a mountain has a shoulder on one side and a
+          scarp on the other, never the same slope twice. The wavelengths are deliberately
+          uneven — the first version used one repeating amplitude and read as a sine wave. */}
       <path
-        d="M0 150 Q 70 96 132 132 Q 190 166 244 118 Q 300 68 356 116 Q 410 162 470 128
-           Q 528 96 586 132 Q 646 168 704 124 Q 762 82 820 126 Q 878 168 936 134
-           Q 996 100 1054 136 Q 1112 170 1200 128"
+        d="M0 146 Q 46 118 78 132 Q 110 146 138 108 Q 166 70 196 96 Q 222 118 246 110
+           Q 274 100 300 62 Q 330 20 360 74 Q 384 118 408 104 Q 436 88 462 118
+           Q 486 146 512 128 Q 546 104 574 52 Q 604 -2 634 64 Q 658 116 684 100
+           Q 712 82 740 122 Q 764 156 792 132 Q 824 104 852 60 Q 882 14 910 78
+           Q 934 132 962 116 Q 992 98 1020 132 Q 1046 162 1074 140 Q 1108 112 1140 128
+           Q 1170 142 1200 118"
         fill="none"
         stroke="var(--copper)"
-        strokeOpacity="0.18"
-        strokeWidth="1.5"
+        strokeOpacity="0.26"
+        strokeWidth="1.4"
         strokeLinecap="round"
       />
 
-      {/* Near hills, in two strokes with a gap between them: the drawing stops and starts. */}
+      {/* Near hills, in two strokes with a gap: the drawing stops and starts again. Low, broad
+          and unequal, so they read as ground rather than as a graph. */}
       <path
-        d="M0 214 Q 80 176 150 200 Q 216 222 274 188 Q 330 156 392 190 Q 430 210 462 202"
+        d="M0 210 Q 64 190 104 202 Q 150 216 196 178 Q 244 138 292 176 Q 326 202 358 196
+           Q 396 188 428 206 Q 448 216 470 212"
         fill="none"
         stroke="var(--copper)"
-        strokeOpacity="0.4"
+        strokeOpacity="0.44"
         strokeWidth="2"
         strokeLinecap="round"
       />
       <path
-        d="M540 198 Q 600 168 660 192 Q 716 214 776 186 Q 836 158 894 194
-           Q 952 228 1014 196 Q 1078 164 1200 200"
+        d="M552 206 Q 590 196 618 178 Q 656 152 700 174 Q 736 192 772 186
+           Q 818 178 856 204 Q 892 228 934 210 Q 984 188 1030 202 Q 1084 218 1132 196
+           Q 1166 180 1200 190"
         fill="none"
         stroke="var(--copper)"
-        strokeOpacity="0.4"
+        strokeOpacity="0.44"
         strokeWidth="2"
         strokeLinecap="round"
       />
 
-      {/* A watchtower on the near ridge: broken at the top, because it is a ruin and because the
-          drawing was never finished. */}
-      <g stroke="var(--copper)" strokeOpacity="0.34" strokeWidth="1.6" fill="none">
-        <path d="M672 196 L672 140 M700 196 L700 146" strokeLinecap="round" />
-        <path d="M666 140 L706 140" />
-        <path d="M670 130 L670 140 M678 126 L678 140 M690 132 L690 140" strokeOpacity="0.22" />
-        <path d="M682 176 L690 176" strokeOpacity="0.22" />
+      {/* A ruined watchtower, standing ON the near ridge (y=174 at x=700) rather than floating
+          above it: battlements broken on one side, one window, and the far wall left undrawn. */}
+      <g stroke="var(--copper)" fill="none" strokeLinecap="round">
+        <path d="M684 176 L684 122 M716 176 L716 132" strokeOpacity="0.42" strokeWidth="1.7" />
+        <path
+          d="M678 122 L684 122 L684 114 L692 114 L692 122 L700 122 L700 112 L708 112 L708 124 L716 124"
+          strokeOpacity="0.34"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        <rect x="694" y="140" width="8" height="12" rx="4" strokeOpacity="0.26" strokeWidth="1.3" />
+        <path d="M700 176 L700 160" strokeOpacity="0.16" strokeWidth="1.2" />
       </g>
 
-      {/* Two firs at the foot of the slope — a scale cue, so the hills read as land. */}
-      <g stroke="var(--copper)" strokeOpacity="0.26" strokeWidth="1.4" fill="none">
-        <path d="M232 216 L232 200 M226 208 L232 198 L238 208 M228 213 L232 205 L236 213" />
-        <path d="M964 212 L964 198 M958 205 L964 196 L970 205" />
+      {/* Three firs, at the scale a tree has next to a hill — a cue that says "this is land",
+          which a bare line never can. */}
+      <g
+        stroke="var(--copper)"
+        strokeOpacity="0.3"
+        strokeWidth="1.3"
+        fill="none"
+        strokeLinecap="round"
+      >
+        <path d="M244 176 L244 156 M236 168 L244 152 L252 168 M239 174 L244 162 L249 174" />
+        <path d="M262 180 L262 166 M256 174 L262 162 L268 174" />
+        <path d="M968 208 L968 190 M961 200 L968 186 L975 200 M964 206 L968 196 L972 206" />
       </g>
     </svg>
   );

@@ -65,9 +65,9 @@ describe("SessionEditor (create)", () => {
     fireEvent.change(screen.getByLabelText("Fecha y hora"), {
       target: { value: "2026-09-12T19:30" },
     });
-    fireEvent.change(screen.getByLabelText("Visibilidad"), {
-      target: { value: "DM_ONLY" },
-    });
+    // Reseño 2026-09-02: la visibilidad es un grupo de radios con etiqueta en español y una
+    // frase que explica quién ve qué, no un desplegable con los valores del enum en crudo.
+    fireEvent.click(screen.getByRole("radio", { name: /Solo DM/ }));
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
@@ -102,7 +102,9 @@ describe("SessionEditor (edit)", () => {
 
     expect(screen.getByLabelText("Título")).toHaveValue("Sesión 1: la Tumba");
     expect(screen.getByLabelText("Notas")).toHaveValue("Traer velas");
-    expect(screen.getByLabelText("Visibilidad")).toHaveValue("PLAYERS");
+    expect(
+      screen.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }),
+    ).toBeChecked();
 
     fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Sesión 1, revisada" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
@@ -147,7 +149,12 @@ describe("SessionEditor (edit)", () => {
     const session: Session = { ...existingSession, visibility: "SPECIFIC_PLAYERS" };
     renderEditEditor(session);
 
-    expect(screen.getByLabelText("Visibilidad")).toHaveValue("SPECIFIC_PLAYERS");
+    // Sigue apareciendo, marcada y **no seleccionable**, con su motivo escrito: una opción que
+    // desapareciera dejaría al DM guardando un valor distinto del que había sin enterarse.
+    const guardada = screen.getByRole("radio", { name: /Jugadores concretos/ });
+    expect(guardada).toBeChecked();
+    expect(guardada).toBeDisabled();
+    expect(screen.getByText(/Valor guardado por otra pantalla/)).toBeInTheDocument();
   });
 });
 

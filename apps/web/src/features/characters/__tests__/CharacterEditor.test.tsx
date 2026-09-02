@@ -78,7 +78,9 @@ describe("CharacterEditor (edit)", () => {
     expect(screen.getByLabelText("Clase")).toHaveValue("Maga");
     expect(screen.getByLabelText("Nivel")).toHaveValue(4);
     expect(screen.getByLabelText("Biografía")).toHaveValue("Buscadora de conocimiento arcano");
-    expect(screen.getByLabelText("Visibilidad")).toHaveValue("PLAYERS");
+    expect(
+      screen.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }),
+    ).toBeChecked();
   });
 
   it("shows the server error instead of failing silently", async () => {
@@ -132,7 +134,9 @@ describe("CharacterEditor (edit)", () => {
     const character: Character = { ...existingCharacter, visibility: "SPECIFIC_PLAYERS" };
     renderEditEditor(character);
 
-    expect(screen.getByLabelText("Visibilidad")).toHaveValue("SPECIFIC_PLAYERS");
+    const guardada = screen.getByRole("radio", { name: /Jugadores concretos/ });
+    expect(guardada).toBeChecked();
+    expect(guardada).toBeDisabled();
   });
 });
 

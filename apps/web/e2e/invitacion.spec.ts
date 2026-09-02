@@ -50,7 +50,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await dmPage.getByRole("tab", { name: "PNJ" }).click();
   await dmPage.getByRole("button", { name: "Nuevo PNJ" }).click();
   await dmPage.getByLabel("Nombre").fill("El secreto de Cragmaw");
-  await dmPage.getByLabel("Visibilidad").selectOption("DM_ONLY");
+  await dmPage.getByRole("radio", { name: /Solo DM/ }).check();
   await dmPage.getByRole("button", { name: "Guardar" }).click();
   await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
   const dmOnlyNpc = dmPage.getByRole("link", { name: /El secreto de Cragmaw/ });
@@ -68,7 +68,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // editar, sin ninguna vista de lectura separada) pasaba desapercibido.
   await dmPage.getByRole("button", { name: "Nuevo PNJ" }).click();
   await dmPage.getByLabel("Nombre").fill("Gundren Rockseeker");
-  await dmPage.getByLabel("Visibilidad").selectOption("PLAYERS");
+  await dmPage.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }).check();
   await dmPage.getByRole("button", { name: "Guardar" }).click();
   await expect(dmPage.getByRole("button", { name: "Guardar" })).toBeHidden();
   const playersNpcRowDm = dmPage.getByRole("link", { name: /Gundren Rockseeker/ });

@@ -5,9 +5,11 @@ import { registerSchema, type RegisterInput } from "@dnd/shared";
 import { register as registerApi } from "../lib/api";
 import { useAuthStore } from "../store/auth.store";
 import { peekPendingInvite } from "../features/invites/api";
+import { traducirErrorDeAcceso } from "../features/auth/errores";
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
+import { AuthLayout } from "../features/auth/AuthLayout";
 
 export function RegisterPage() {
   const {
@@ -23,32 +25,55 @@ export function RegisterPage() {
     try {
       const res = await registerApi(data);
       setAuth(res);
-      // Same resume as LoginPage.tsx: a player who registered from a /join link lands in the
-      // campaign, not the dashboard.
+      // Same as LoginPage: a pending invitation resumes instead of dropping you on the
+      // dashboard with no idea what happened to the link you clicked.
       const pendingInvite = peekPendingInvite();
       navigate(pendingInvite ? `/join/${pendingInvite}` : "/");
     } catch (e) {
-      setError((e as Error).message);
+      setError(traducirErrorDeAcceso(e));
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg text-text">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-80 space-y-4 rounded-radius-sm border border-muted bg-surface p-6"
-      >
-        <h1 className="text-chrome-xl font-bold">Crear cuenta</h1>
+    <AuthLayout
+      title="Crear cuenta"
+      lead="Para dirigir tu mesa o para sentarte en ella."
+      footer={
+        <>
+          ¿Ya tienes cuenta?{" "}
+          <Link to="/login" className="text-accent-text hover:underline">
+            Entrar
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-s4">
         <Field label="Nombre" error={errors.displayName?.message}>
-          <input id="displayName" className={fieldControlClass} {...register("displayName")} />
+          <input
+            id="displayName"
+            autoComplete="nickname"
+            className={fieldControlClass}
+            {...register("displayName")}
+          />
         </Field>
-        <Field label="Email" error={errors.email?.message}>
-          <input id="email" type="email" className={fieldControlClass} {...register("email")} />
+        <Field label="Correo" error={errors.email?.message}>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            className={fieldControlClass}
+            {...register("email")}
+          />
         </Field>
-        <Field label="Password" error={errors.password?.message}>
+        <Field
+          label="Contraseña"
+          error={errors.password?.message}
+          hint="Al menos 8 caracteres. No hay servicio de correo todavía, así que apúntala: hoy no se puede recuperar."
+        >
           <input
             id="password"
             type="password"
+            autoComplete="new-password"
             className={fieldControlClass}
             {...register("password")}
           />
@@ -59,15 +84,9 @@ export function RegisterPage() {
           </p>
         )}
         <Button type="submit" className="w-full">
-          Register
+          Crear cuenta
         </Button>
-        <p className="text-chrome-xs text-text">
-          ¿Ya tienes cuenta?{" "}
-          <Link to="/login" className="text-accent-text">
-            Entra
-          </Link>
-        </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

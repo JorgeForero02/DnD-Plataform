@@ -25,9 +25,9 @@ function nuevaCuenta() {
 async function registrarse(page: Page, cuenta: ReturnType<typeof nuevaCuenta>) {
   await page.goto("/register");
   await page.getByLabel("Nombre").fill(cuenta.displayName);
-  await page.getByLabel("Email").fill(cuenta.email);
-  await page.getByLabel("Password").fill(cuenta.password);
-  await page.getByRole("button", { name: "Register" }).click();
+  await page.getByLabel("Correo").fill(cuenta.email);
+  await page.getByLabel("Contraseña").fill(cuenta.password);
+  await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
 }
 
@@ -66,15 +66,15 @@ test("cambiar la contraseña invalida el token viejo de verdad, contra la API re
   expect(respuestaConTokenViejo.status()).toBe(401);
 
   // The old password is really dead too.
-  await page.getByLabel("Email").fill(cuenta.email);
-  await page.getByLabel("Password").fill(cuenta.password);
-  await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByLabel("Correo").fill(cuenta.email);
+  await page.getByLabel("Contraseña").fill(cuenta.password);
+  await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mis campañas" })).not.toBeVisible();
 
   // And the new one really works.
-  await page.getByLabel("Password").fill(nuevaPassword);
-  await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByLabel("Contraseña").fill(nuevaPassword);
+  await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
 });
 
@@ -125,6 +125,6 @@ test("un id de campaña inexistente dice que no existe, no un título vacío", a
 
   await page.goto("/campaigns/no-existe-esta-campana");
   await expect(
-    page.getByText("Esta campaña no existe o no tienes acceso.", { exact: false }),
+    page.getByText("Esta campaña no existe o no tienes acceso", { exact: false }),
   ).toBeVisible();
 });

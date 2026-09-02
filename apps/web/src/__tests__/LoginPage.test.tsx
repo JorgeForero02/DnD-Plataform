@@ -10,8 +10,8 @@ describe("LoginPage", () => {
         <LoginPage />
       </MemoryRouter>,
     );
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /log in/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/correo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/contraseña/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
   });
 });

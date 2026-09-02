@@ -1,43 +1,33 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/auth.store";
 import { CampaignList } from "../features/campaigns/CampaignList";
 import { CreateCampaignModal } from "../features/campaigns/CreateCampaignModal";
 import { Button } from "../ui/Button";
+import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
+
+// Reseño 2026-09-02 — audit B3 and C1. This screen used to own its own ad-hoc header (title
+// on the left, four unrelated controls jammed on the right, including "Salir" at the same
+// visual weight as everything else) and then dropped ~700px of empty page below two bars.
+// The global chrome now lives in AppHeader, where it is the same on every screen, and this
+// page is left holding only what is actually its own: your campaigns.
 
 export function DashboardPage() {
   const { user, logout } = useAuthStore();
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="min-h-screen bg-bg p-8 text-text">
-      {/* Fix round 1 (post-1.19b review): pr-12 reserves the top-right corner ThemeToggle
-          occupies (fixed, right-2 top-2 — App.tsx). Computed, not measured: the page's own p-8
-          right padding put "Salir" close enough to that corner (roughly a 10x6px band) to
-          intercept a click meant for the toggle. Reserved locally, on this header, because
-          this is the only converted screen the reviewer found the overlap on — every other
-          screen's own top-right content sits clear of it already. Reserving it globally in the
-          app chrome instead would be a defensible alternative if a future screen puts content
-          up there too; left as a decision for whoever hits that, not done speculatively here. */}
-      <header className="flex items-center justify-between pr-12">
-        <h1 className="text-chrome-2xl font-bold">Mis campañas</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-chrome-sm text-muted">{user?.displayName}</span>
+    <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
+      <PageHeader
+        title="Mis campañas"
+        subtitle="Cada campaña guarda su mundo, sus sesiones y sus personajes, con sus propios secretos."
+        actions={
           <Button variant="primary" onClick={() => setCreating(true)}>
             Nueva campaña
           </Button>
-          {/* Task 1.18b — the account screen's only entry point from the app chrome: change
-              display name and change password (App.tsx: /account). */}
-          <Link to="/account" className="text-chrome-sm text-accent-text">
-            Cuenta
-          </Link>
-          <Button variant="secondary" onClick={logout}>
-            Salir
-          </Button>
-        </div>
-      </header>
-      <CampaignList />
+        }
+      />
+      <CampaignList onCreate={() => setCreating(true)} />
       {creating && <CreateCampaignModal onClose={() => setCreating(false)} />}
-    </div>
+    </AppShell>
   );
 }

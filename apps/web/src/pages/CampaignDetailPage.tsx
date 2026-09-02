@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
@@ -22,24 +22,35 @@ import { CHECKING_PERMISSIONS, RetryPermissions } from "../features/campaigns/Pe
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Tabs, type TabItem } from "../ui/Tabs";
+import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
+import { EmptyState } from "../ui/Collection";
+import { CampaignOverview } from "../features/campaigns/CampaignOverview";
+import { useAllEntities } from "../features/entities/hooks";
+import { resumenDeCuerpo } from "../features/entities/resumen";
 
 type TabConfig =
-  | { kind: "overview"; label: string }
-  | { kind: "entity"; label: string; type: EntityType }
-  | { kind: "sessions"; label: string }
-  | { kind: "characters"; label: string };
+  | { kind: "overview"; label: string; group?: string }
+  | { kind: "entity"; label: string; type: EntityType; group?: string }
+  | { kind: "sessions"; label: string; group?: string }
+  | { kind: "characters"; label: string; group?: string }
+  | { kind: "settings"; label: string; group?: string };
 
+// Reseño 2026-09-02 — audit B4. These ten used to sit in one flat strip, which said that
+// "Documentos" and "Sesiones" were the same kind of thing. They are not: one is a filing
+// cabinet, the other is what happens on Friday. Two groups, and the table comes second only
+// because the world is what you build between sessions.
 const TABS: TabConfig[] = [
   { kind: "overview", label: "Resumen" },
-  { kind: "entity", label: "NPCs", type: "NPC" },
-  { kind: "entity", label: "Lugares", type: "LOCATION" },
-  { kind: "entity", label: "Misiones", type: "QUEST" },
-  { kind: "entity", label: "Facciones", type: "FACTION" },
-  { kind: "entity", label: "Objetos", type: "OBJECT" },
-  { kind: "entity", label: "Eventos", type: "EVENT" },
-  { kind: "entity", label: "Documentos", type: "DOCUMENT" },
-  { kind: "sessions", label: "Sesiones" },
-  { kind: "characters", label: "Personajes" },
+  { kind: "entity", label: "PNJ", type: "NPC", group: "El mundo" },
+  { kind: "entity", label: "Lugares", type: "LOCATION", group: "El mundo" },
+  { kind: "entity", label: "Misiones", type: "QUEST", group: "El mundo" },
+  { kind: "entity", label: "Facciones", type: "FACTION", group: "El mundo" },
+  { kind: "entity", label: "Objetos", type: "OBJECT", group: "El mundo" },
+  { kind: "entity", label: "Eventos", type: "EVENT", group: "El mundo" },
+  { kind: "entity", label: "Documentos", type: "DOCUMENT", group: "El mundo" },
+  { kind: "sessions", label: "Sesiones", group: "La mesa" },
+  { kind: "characters", label: "Personajes", group: "La mesa" },
+  { kind: "settings", label: "Ajustes", group: "La campaña" },
 ];
 
 // Row buttons (entity/session/character lists) share this chrome recipe: a bordered card,
@@ -124,29 +135,34 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                   check controls now is whether the editor opens read-only, not whether the
                   row can be clicked at all — see EntityEditor.tsx's `readOnly` prop. */}
               <button onClick={() => setEditing(e)} title={reason} className={ROW_BUTTON_CLASS}>
-                <span className="font-semibold">{e.name}</span>
-                <span className="ml-2 inline-block align-middle">
+                <span className="block font-title text-chrome-md text-text">{e.name}</span>
+                {/* Reseño 2026-09-02 — audit B1. The body text was ALREADY in this response
+                    and the row threw it away, so a list of nine NPCs told you nine names and
+                    nothing else. One line of who they are costs no extra request. */}
+                {resumenDeCuerpo(e.body, 180) && (
+                  <span className="mt-1 line-clamp-2 block font-world text-chrome-base leading-snug text-muted">
+                    {resumenDeCuerpo(e.body, 180)}
+                  </span>
+                )}
+                <span className="mt-s2 flex flex-wrap items-center gap-s2">
                   <Badge visibility={e.visibility} />
-                </span>
-                {/* A2 (1.17c): tags were written and never read anywhere but the editor's own
+                  {/* A2 (1.17c): tags were written and never read anywhere but the editor's own
                     field. An entity with none paints nothing — no gap, no dash, no "sin
                     etiquetas" — see the brief this task followed. Deduped here (not in
                     parseTags/entity.schema.ts, which allow "lich, lich" through as
                     ["lich","lich"] — tightening what gets persisted is a different decision,
                     see docs/06-pendientes.md) so a duplicate tag doesn't paint the same badge
                     twice or emit a duplicate React key warning. */}
-                {e.tags.length > 0 && (
-                  <span className="ml-2 inline-flex flex-wrap gap-1">
-                    {Array.from(new Set(e.tags)).map((tag) => (
+                  {e.tags.length > 0 &&
+                    Array.from(new Set(e.tags)).map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-radius-sm border border-muted bg-surface px-1.5 py-0.5 text-chrome-xs text-muted"
+                        className="rounded-radius-sm border border-muted/60 px-1.5 py-0.5 font-chrome text-chrome-xs text-muted"
                       >
                         {tag}
                       </span>
                     ))}
-                  </span>
-                )}
+                </span>
                 {/* Task 1.18b: this used to be --muted, the exact colour and size of the tag
                     chips right above it — the reason a row can't be edited read as one more
                     piece of metadata instead of the permission notice it is. --warning-text
@@ -241,8 +257,24 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
                 player can already see via canView were unreachable while the row itself was
                 disabled. */}
             <button onClick={() => setEditing(s)} title={reason} className={ROW_BUTTON_CLASS}>
-              <span className="font-semibold">{s.title}</span>
-              <span className="ml-2 inline-block align-middle">
+              <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
+                <span className="font-title text-chrome-md text-text">{s.title}</span>
+                <span className="flex-1" />
+                {/* A session with no date is a session nobody can plan around, so the row says
+                    so instead of leaving the space blank and letting you wonder. */}
+                <span className="font-data text-chrome-xs text-copper-text">
+                  {s.scheduledAt
+                    ? new Date(s.scheduledAt).toLocaleDateString("es-ES", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "sin fecha"}
+                </span>
+              </span>
+              <span className="mt-s2 block">
                 <Badge visibility={s.visibility} />
               </span>
             </button>
@@ -304,8 +336,19 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
             <li key={c.id}>
               {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — see EntityTab above. */}
               <button onClick={() => setEditing(c)} title={reason} className={ROW_BUTTON_CLASS}>
-                <span className="font-semibold">{c.name}</span>
-                <span className="ml-2 text-chrome-xs text-muted">Nivel {c.level}</span>
+                <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
+                  <span className="font-title text-chrome-md text-text">{c.name}</span>
+                  {/* Reseño 2026-09-02 — a character row that says only a name and a level is
+                      a row you have to open to recognise. Race and class are what people
+                      actually call each other by at the table. */}
+                  {(c.race || c.class) && (
+                    <span className="font-world text-chrome-base text-muted">
+                      {[c.race, c.class].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                  <span className="flex-1" />
+                  <span className="font-data text-chrome-xs text-copper-text">Nivel {c.level}</span>
+                </span>
                 {/* Fix round 1 (post-1.18b review), Important 9: the identical construct one tab
                     over (EntityTab above) was fixed and this one — same shape, a muted reason
                     right after a muted "Nivel N" chip — was left behind, which is verbatim the
@@ -347,6 +390,32 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
 export function CampaignDetailPage() {
   const { id = "" } = useParams();
   const { data: campaign, isLoading, isError } = useCampaign(id);
+  const { user, logout } = useAuthStore();
+  const { data: todasLasEntidades } = useAllEntities(id);
+
+  // Reseño 2026-09-02 — the open section lives in the URL. Two reasons, and the second is the
+  // one that matters: a section becomes linkable and survives a reload, and an uncontrolled
+  // Tabs silently threw that away — a real Playwright journey reloaded the page mid-test and
+  // landed back on the first section without saying so, which is exactly what happens to a
+  // person who refreshes while editing settings.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const seccionActiva = searchParams.get("seccion") ?? "overview";
+  const abrirSeccion = (id: string) => {
+    const siguiente = new URLSearchParams(searchParams);
+    if (id === "overview") siguiente.delete("seccion");
+    else siguiente.set("seccion", id);
+    // replace: switching section is not a place you should have to press Back through ten
+    // times to leave a campaign.
+    setSearchParams(siguiente, { replace: true });
+  };
+
+  // One pass over the list the sidebar badges all read from, instead of nine separate counts.
+  const conteoPorTipo = useMemo(() => {
+    if (!todasLasEntidades) return undefined;
+    const conteo = new Map<EntityType, number>();
+    for (const e of todasLasEntidades) conteo.set(e.type, (conteo.get(e.type) ?? 0) + 1);
+    return conteo;
+  }, [todasLasEntidades]);
 
   // Task 1.19b: the hand-rolled button strip becomes the Tabs primitive (WAI-ARIA tabs
   // pattern — role="tab", roving tabindex, arrow-key navigation for free). Uncontrolled: no
@@ -362,8 +431,17 @@ export function CampaignDetailPage() {
       return {
         id: "overview",
         label: t.label,
+        group: t.group,
+        content: <CampaignOverview campaignId={id} />,
+      };
+    }
+    if (t.kind === "settings") {
+      return {
+        id: "settings",
+        label: t.label,
+        group: t.group,
         content: (
-          <div className="space-y-4">
+          <div className="space-y-s4">
             {/* CampaignSettings fetches its own campaign (1.17d) and mounts unconditionally,
                 same as MembersPanel and InvitePanel below — see the comment on
                 CampaignSettings.tsx for why that (and not gating the mount on `campaign` here)
@@ -382,13 +460,28 @@ export function CampaignDetailPage() {
       return {
         id: t.type,
         label: t.label,
+        group: t.group,
+        // The count comes from the campaign-wide entity list, which the server already
+        // filtered by canView — so it is "how many of these you can see", never a hint that
+        // there are more you cannot. See CampaignOverview.tsx for the same reasoning.
+        badge: conteoPorTipo?.get(t.type) ?? undefined,
         content: <EntityTab key={t.type} campaignId={id} type={t.type} />,
       };
     }
     if (t.kind === "sessions") {
-      return { id: "sessions", label: t.label, content: <SessionsTab campaignId={id} /> };
+      return {
+        id: "sessions",
+        label: t.label,
+        group: t.group,
+        content: <SessionsTab campaignId={id} />,
+      };
     }
-    return { id: "characters", label: t.label, content: <CharactersTab campaignId={id} /> };
+    return {
+      id: "characters",
+      label: t.label,
+      group: t.group,
+      content: <CharactersTab campaignId={id} />,
+    };
   });
 
   // Fix round 1 (post-1.18b review), Important 12: /campaigns/:id matches ANY segment, so a
@@ -402,26 +495,28 @@ export function CampaignDetailPage() {
   // the three apart, same as every other 404-vs-403 decision in this app).
   if (isError) {
     return (
-      <div className="min-h-screen bg-bg p-8 text-text">
-        <Link to="/" className="text-chrome-sm text-accent-text">
-          &larr; Mis campañas
-        </Link>
-        <p className="mt-4 text-chrome-sm text-danger-text">
-          Esta campaña no existe o no tienes acceso.
-        </p>
-      </div>
+      <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
+        <PageHeader title="Campaña no disponible" crumbs={[{ label: "Mis campañas", to: "/" }]} />
+        <EmptyState title="Esta campaña no existe o no tienes acceso">
+          Puede que se haya borrado, que el enlace esté mal, o que no seas miembro de ella.
+          Distinguir esos tres casos diría más de lo que debe, así que no se distinguen.
+        </EmptyState>
+      </AppShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg p-8 text-text">
-      <Link to="/" className="text-chrome-sm text-accent-text">
-        &larr; Mis campañas
-      </Link>
-      <h1 className="mt-2 text-chrome-2xl font-bold">{isLoading ? "Cargando…" : campaign?.name}</h1>
-      <section className="mt-4">
-        <Tabs items={items} />
-      </section>
-    </div>
+    <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
+      <PageHeader
+        title={isLoading ? "Cargando…" : (campaign?.name ?? "")}
+        // Only one crumb: the campaign's own name is the <h1> directly below, and a
+        // breadcrumb whose last item repeats the heading under it is noise, not orientation.
+        crumbs={[{ label: "Mis campañas", to: "/" }]}
+      />
+      {/* layout="sidebar": the same WAI-ARIA tablist, standing up. Ten sections in a flat
+          strip said everything here was the same kind of thing (audit B4); a grouped column
+          says which of them is the world and which is the table. */}
+      <Tabs items={items} layout="sidebar" active={seccionActiva} onChange={abrirSeccion} />
+    </AppShell>
   );
 }

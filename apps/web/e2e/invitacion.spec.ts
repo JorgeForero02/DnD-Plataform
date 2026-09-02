@@ -15,9 +15,9 @@ async function registrarse(page: Page, prefijo: string) {
   const cuenta = nuevaCuenta(prefijo);
   await page.goto("/register");
   await page.getByLabel("Nombre").fill(cuenta.displayName);
-  await page.getByLabel("Email").fill(cuenta.email);
-  await page.getByLabel("Password").fill(cuenta.password);
-  await page.getByRole("button", { name: "Register" }).click();
+  await page.getByLabel("Correo").fill(cuenta.email);
+  await page.getByLabel("Contraseña").fill(cuenta.password);
+  await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
   return cuenta;
 }
@@ -42,7 +42,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
 
   // Crear una entidad DM_ONLY antes de invitar: es la comprobación que le falta a la fase,
   // hecha por fin sobre el DOM real, no solo por HTTP (apps/api/test/*.e2e-spec.ts).
-  await dmPage.getByRole("tab", { name: "NPCs" }).click();
+  await dmPage.getByRole("tab", { name: "PNJ" }).click();
   await dmPage.getByRole("button", { name: "Nuevo" }).click();
   await dmPage.getByLabel("Nombre").fill("El secreto de Cragmaw");
   await dmPage.getByLabel("Visibilidad").selectOption("DM_ONLY");
@@ -82,8 +82,9 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   ).toBeVisible();
   await dmPage.getByRole("button", { name: "Cancelar" }).click();
 
-  // Generar la invitación desde el resumen, donde vive InvitePanel.
-  await dmPage.getByRole("tab", { name: "Resumen" }).click();
+  // Reseño 2026-09-02: InvitePanel vive ahora en "Ajustes", no en la primera sección — el
+  // resumen dejó de ser un formulario de administración y pasó a decir qué ocurre en la mesa.
+  await dmPage.getByRole("tab", { name: "Ajustes" }).click();
   await dmPage.getByRole("button", { name: "Generar invitación" }).click();
 
   // Leer el enlace DE LA PANTALLA, no construirlo a mano: si se construyera con el token
@@ -119,9 +120,9 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await playerPage.getByRole("link", { name: "Crear cuenta" }).click();
   const jugador = nuevaCuenta("jugador");
   await playerPage.getByLabel("Nombre").fill(jugador.displayName);
-  await playerPage.getByLabel("Email").fill(jugador.email);
-  await playerPage.getByLabel("Password").fill(jugador.password);
-  await playerPage.getByRole("button", { name: "Register" }).click();
+  await playerPage.getByLabel("Correo").fill(jugador.email);
+  await playerPage.getByLabel("Contraseña").fill(jugador.password);
+  await playerPage.getByRole("button", { name: "Crear cuenta" }).click();
 
   // Sin volver a pegar el enlace: cae en la pantalla de confirmación de /join/:token (arreglo 1
   // del Crítico), que el DM comprobó arriba que no se salta sola. El jugador sí pulsa "Unirse":
@@ -136,7 +137,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   ).toBeVisible();
 
   // La comprobación que llevaba toda la fase debiendo: el jugador no ve la entidad DM_ONLY.
-  await playerPage.getByRole("tab", { name: "NPCs" }).click();
+  await playerPage.getByRole("tab", { name: "PNJ" }).click();
   await expect(playerPage.getByRole("button", { name: /El secreto de Cragmaw/ })).toHaveCount(0);
 
   // Arreglo 1 (1.15-fix), Crítico: el jugador SÍ ve la entidad PLAYERS, y la fila abre —

@@ -107,7 +107,7 @@ describe("CampaignDetailPage", () => {
     renderPage();
     expect(await screen.findByText("Curse of Strahd")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: "NPCs" }));
+    fireEvent.click(screen.getByRole("tab", { name: "PNJ" }));
     expect(await screen.findByText("Strahd von Zarovich")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Sesiones" }));
@@ -124,9 +124,19 @@ describe("CampaignDetailPage", () => {
     renderPage();
 
     expect(
-      await screen.findByText("Esta campaña no existe o no tienes acceso."),
+      // Reseño 2026-09-02: same statement, now the title of an EmptyState instead of a loose
+      // red paragraph — and still deliberately refusing to say WHICH of the three cases it is
+      // (deleted / never existed / you are not a member), because telling them apart would
+      // leak exactly what canView exists to protect.
+      await screen.findByText("Esta campaña no existe o no tienes acceso"),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    // Reseño 2026-09-02: the failure screen now HAS a heading — "Campaña no disponible" — and
+    // that is the improvement, not a regression: the original bug was an EMPTY <h1>, not the
+    // existence of one. What still must not appear is a heading carrying no text, and the
+    // tab list of panels that each used to fail separately.
+    const encabezados = screen.queryAllByRole("heading");
+    expect(encabezados.length).toBeGreaterThan(0);
+    for (const h of encabezados) expect(h.textContent?.trim()).not.toBe("");
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 });
@@ -254,7 +264,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets a player open an entity created by someone else and read it, but not save changes", async () => {
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo" });
     // Any campaign member can create an entity (entities.service.ts requireMember) — only
@@ -302,7 +312,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         : [],
     );
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
     const row = await screen.findByRole("button", { name: /Mi propio NPC/ });
     await waitFor(() => expect(row).not.toBeDisabled());
@@ -386,6 +396,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
 
     renderPage();
 
+    fireEvent.click(await screen.findByRole("tab", { name: "Ajustes" }));
     const generateButton = await screen.findByRole("button", { name: "Generar invitación" });
     // 1.17d mounts CampaignSettings and MembersPanel in the same tab, and both show their own
     // "Comprobando permisos…"/"Reintentar" while their own useMyRole is unresolved — scoped to
@@ -416,7 +427,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
 
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
     const row = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
     const placeholder = within(row).getByText("Comprobando permisos…");
@@ -472,7 +483,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     const spy = vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd/ });
 
     fireEvent.click(screen.getByRole("button", { name: /Strahd/ }));
@@ -608,7 +619,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("pinta las etiquetas en la fila, y una ficha sin etiquetas no pinta nada", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
     const strahdRow = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
     expect(strahdRow).toHaveTextContent("Barovia");
@@ -626,7 +637,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("escribir en el buscador reduce las filas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -638,7 +649,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("pulsar una etiqueta reduce las filas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     const avernusTag = screen.getByRole("button", { name: "Avernus", pressed: false });
@@ -651,7 +662,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("dos etiquetas seleccionadas exigen las dos: una ficha con solo una de ellas desaparece", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.click(screen.getByRole("button", { name: "Barovia", pressed: false }));
@@ -668,7 +679,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it('"Quitar filtros" restaura la lista completa', async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -685,7 +696,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it('con filtro activo y cero resultados sale el mensaje de filtro, no "Sin elementos."', async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
@@ -708,7 +719,7 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
           : [],
     );
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
     await screen.findByRole("button", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -725,7 +736,12 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 // but no screen consumed it. These tests exercise CampaignSettings.tsx and MembersPanel.tsx,
 // both mounted in the "Resumen" tab of CampaignDetailPage.tsx (the only section this task
 // was allowed to touch).
-describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)", () => {
+// Reseño 2026-09-02 — audit B2: these panels used to live in the FIRST tab, so opening your
+// own campaign put an editable name field and a "Borrar" button in front of you before it told
+// you anything about your table. They moved to a section of their own called "Ajustes", and
+// every test below now opens that section first — which is exactly the behaviour change this
+// suite should be asserting, rather than being edited into silence.
+describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
@@ -739,6 +755,13 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);
     vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
   });
+
+  // Opens the Ajustes section, then waits for its form to arrive. Every test in this block
+  // used to land there by default; now it is one deliberate click, the same one a person makes.
+  async function renderAjustes() {
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Ajustes" }));
+  }
 
   function asPlayer() {
     useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Jugadora" } });
@@ -758,7 +781,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
 
   it("el formulario de ajustes sale deshabilitado con el motivo para un jugador", async () => {
     asPlayer();
-    renderPage();
+    await renderAjustes();
     expect(await screen.findByDisplayValue("Curse of Strahd")).toBeDisabled();
     expect(screen.getByDisplayValue("spooky")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
@@ -772,7 +795,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
 
   it("el formulario de ajustes sale habilitado para el DM", async () => {
     asDM();
-    renderPage();
+    await renderAjustes();
     expect(await screen.findByDisplayValue("Curse of Strahd")).not.toBeDisabled();
     expect(screen.getByDisplayValue("spooky")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
@@ -785,7 +808,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
   // getByRole("paragraph") so this genuinely checks the prose view, not the form control.
   it("la descripción se ve como texto legible, no solo dentro del campo de edición", async () => {
     asPlayer();
-    renderPage();
+    await renderAjustes();
     await screen.findByDisplayValue("Curse of Strahd");
     // jsdom also renders the controlled <textarea>'s initial value as its own text node, so
     // "spooky" matches more than one element — the paragraph is the one this test actually
@@ -803,7 +826,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
       ownerId: "dm1",
       createdAt: "2026-01-01",
     });
-    renderPage();
+    await renderAjustes();
     await screen.findByDisplayValue("Curse of Strahd");
     expect(await screen.findByText("Sin descripción.")).toBeInTheDocument();
   });
@@ -817,7 +840,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
       ownerId: "dm1",
       createdAt: "2026-01-01",
     });
-    renderPage();
+    await renderAjustes();
     const nameInput = await screen.findByDisplayValue("Curse of Strahd");
     fireEvent.change(nameInput, { target: { value: "Curse of Strahd (revisada)" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
@@ -838,7 +861,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
       ownerId: "dm1",
       createdAt: "2026-01-01",
     });
-    renderPage();
+    await renderAjustes();
     const descInput = await screen.findByDisplayValue("spooky");
     fireEvent.change(descInput, { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
@@ -852,7 +875,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     vi.spyOn(campaignsApi, "updateCampaign").mockRejectedValue(
       new Error("El nombre es obligatorio"),
     );
-    renderPage();
+    await renderAjustes();
     await screen.findByDisplayValue("Curse of Strahd");
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(await screen.findByText("El nombre es obligatorio")).toBeInTheDocument();
@@ -862,6 +885,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     asDM();
     vi.spyOn(campaignsApi, "deleteCampaign").mockResolvedValue({ deleted: true });
     renderPageWithHome();
+    fireEvent.click(await screen.findByRole("tab", { name: "Ajustes" }));
     await screen.findByDisplayValue("Curse of Strahd");
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
@@ -871,7 +895,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
   it("un error del servidor al borrar la campaña se ve en pantalla", async () => {
     asDM();
     vi.spyOn(campaignsApi, "deleteCampaign").mockRejectedValue(new Error("No se pudo borrar"));
-    renderPage();
+    await renderAjustes();
     await screen.findByDisplayValue("Curse of Strahd");
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
@@ -880,14 +904,14 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
 
   it('"Expulsar" se ofrece al DM', async () => {
     asDM();
-    renderPage();
+    await renderAjustes();
     await screen.findByText("Jugadora");
     expect(await screen.findByRole("button", { name: "Expulsar" })).toBeInTheDocument();
   });
 
   it('un jugador no ve "Expulsar", y ve "Salir de la campaña" en su lugar', async () => {
     asPlayer();
-    renderPage();
+    await renderAjustes();
     await screen.findByText("Jugadora");
     expect(screen.queryByRole("button", { name: "Expulsar" })).not.toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Salir de la campaña" })).toBeInTheDocument();
@@ -895,7 +919,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
 
   it('el DM no ve "Salir de la campaña": ve el motivo que da el servidor', async () => {
     asDM();
-    renderPage();
+    await renderAjustes();
     await screen.findByText("Jugadora");
     expect(screen.queryByRole("button", { name: "Salir de la campaña" })).not.toBeInTheDocument();
     expect(
@@ -906,7 +930,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
   it("expulsar manda el DELETE con el userId de la jugadora, no el propio", async () => {
     asDM();
     const spy = vi.spyOn(membersApi, "removeMember").mockResolvedValue({ removed: true });
-    renderPage();
+    await renderAjustes();
     fireEvent.click(await screen.findByRole("button", { name: "Expulsar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, expulsar" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("c1", "p1"));
@@ -915,7 +939,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
   it("un error del servidor al expulsar se ve en pantalla", async () => {
     asDM();
     vi.spyOn(membersApi, "removeMember").mockRejectedValue(new Error("A DM cannot be removed"));
-    renderPage();
+    await renderAjustes();
     fireEvent.click(await screen.findByRole("button", { name: "Expulsar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, expulsar" }));
     expect(await screen.findByText("A DM cannot be removed")).toBeInTheDocument();
@@ -925,6 +949,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     asPlayer();
     vi.spyOn(membersApi, "removeMember").mockResolvedValue({ removed: true });
     renderPageWithHome();
+    fireEvent.click(await screen.findByRole("tab", { name: "Ajustes" }));
     // A disabled "Salir de la campaña" renders first, while the role is still unresolved
     // (SPEC GAP 2 of the fix round) — wait for the settled, enabled one before clicking, or
     // the click lands on a button whose onClick a real <button disabled> never fires.
@@ -963,6 +988,10 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
 
     fireEvent.click(await screen.findByRole("link", { name: "Curse of Strahd" }));
     await screen.findByRole("heading", { name: "Curse of Strahd" });
+    // Settings live in their own section since the 2026-09-02 redesign, so the click that
+    // used to be implicit (they were on the first tab) is explicit now — and it can only
+    // happen once we are actually inside the campaign.
+    fireEvent.click(await screen.findByRole("tab", { name: "Ajustes" }));
 
     // Same race as the test above: wait for the disabled-while-checking button to settle
     // into its enabled form before clicking it.
@@ -979,7 +1008,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     // Wait on the real signal instead: the second fetchCampaigns call, and then the positive
     // empty-state text CampaignList renders once that response (an empty array) lands.
     await waitFor(() => expect(fetchCampaigns).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("Aún no tienes campañas.")).toBeInTheDocument();
+    expect(await screen.findByText("Todavía no hay ninguna campaña")).toBeInTheDocument();
   });
 
   // Fix round 1, CRITICAL 1 (same hole, useUpdateCampaign): renaming the campaign must also
@@ -1017,6 +1046,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     renderPageWithRealHome();
 
     fireEvent.click(await screen.findByRole("link", { name: "Curse of Strahd" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Ajustes" }));
     const nameInput = await screen.findByDisplayValue("Curse of Strahd");
     fireEvent.change(nameInput, { target: { value: "Curse of Strahd (revisada)" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
@@ -1038,7 +1068,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
 
-    renderPage();
+    await renderAjustes();
 
     expect((await screen.findAllByText("Comprobando permisos…")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Solo el DM puede editar la campaña.")).not.toBeInTheDocument();
@@ -1060,7 +1090,7 @@ describe("CampaignDetailPage — Resumen: ajustes de campaña y miembros (1.17d)
     useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
     vi.spyOn(membersApi, "fetchMembers").mockRejectedValue(new Error("network error"));
 
-    renderPage();
+    await renderAjustes();
 
     // "Comprobando permisos…" is also true DURING the loading window before the rejection
     // even lands, so it's not a safe signal that the query has actually settled into its

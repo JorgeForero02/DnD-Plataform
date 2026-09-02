@@ -5,9 +5,11 @@ import { loginSchema, type LoginInput } from "@dnd/shared";
 import { login } from "../lib/api";
 import { useAuthStore } from "../store/auth.store";
 import { peekPendingInvite } from "../features/invites/api";
+import { traducirErrorDeAcceso } from "../features/auth/errores";
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
+import { AuthLayout } from "../features/auth/AuthLayout";
 
 export function LoginPage() {
   const {
@@ -42,17 +44,25 @@ export function LoginPage() {
       const pendingInvite = peekPendingInvite();
       navigate(pendingInvite ? `/join/${pendingInvite}` : "/");
     } catch (e) {
-      setError((e as Error).message);
+      // Reseño 2026-09-02 (audit A1): the server speaks English and this interface does not.
+      setError(traducirErrorDeAcceso(e));
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg text-text">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-80 space-y-4 rounded-radius-sm border border-muted bg-surface p-6"
-      >
-        <h1 className="text-chrome-xl font-bold">Iniciar sesión</h1>
+    <AuthLayout
+      title="Entrar"
+      lead="Tus campañas, tu mundo y tus secretos, donde los dejaste."
+      footer={
+        <>
+          ¿Todavía sin cuenta?{" "}
+          <Link to="/register" className="text-accent-text hover:underline">
+            Crear una
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-s4">
         {flash && (
           // role="status" (not "alert"): this is good news, announced politely instead of
           // interrupting — screen-reader users get nothing at all here without it, the same
@@ -62,13 +72,20 @@ export function LoginPage() {
             {flash}
           </p>
         )}
-        <Field label="Email" error={errors.email?.message}>
-          <input id="email" type="email" className={fieldControlClass} {...register("email")} />
+        <Field label="Correo" error={errors.email?.message}>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            className={fieldControlClass}
+            {...register("email")}
+          />
         </Field>
-        <Field label="Password" error={errors.password?.message}>
+        <Field label="Contraseña" error={errors.password?.message}>
           <input
             id="password"
             type="password"
+            autoComplete="current-password"
             className={fieldControlClass}
             {...register("password")}
           />
@@ -79,15 +96,9 @@ export function LoginPage() {
           </p>
         )}
         <Button type="submit" className="w-full">
-          Log in
+          Entrar
         </Button>
-        <p className="text-chrome-xs text-text">
-          ¿Sin cuenta?{" "}
-          <Link to="/register" className="text-accent-text">
-            Regístrate
-          </Link>
-        </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

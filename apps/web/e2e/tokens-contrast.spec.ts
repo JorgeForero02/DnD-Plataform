@@ -441,28 +441,28 @@ for (const theme of ["dark", "light"] as const) {
 
     {
       const { color, bg } = await effectiveTextColours(
-        page.getByRole("heading", { name: "Iniciar sesión" }),
+        page.getByRole("heading", { name: "Entrar" }),
       );
       record(theme, "login: título", contrastRatio(color, bg), 4.5);
     }
     {
-      const { color, bg } = await effectiveTextColours(page.getByText("Email", { exact: true }));
+      const { color, bg } = await effectiveTextColours(page.getByText("Correo", { exact: true }));
       record(theme, "login: etiqueta de campo", contrastRatio(color, bg), 4.5);
     }
     {
-      const input = page.getByLabel("Email");
+      const input = page.getByLabel("Correo");
       const { border, bg } = await borderColourAgainstBg(input);
       record(theme, "login: borde del campo", contrastRatio(border, bg), 3);
     }
     {
       const { color, bg } = await effectiveTextColours(
-        page.getByRole("button", { name: "Log in" }),
+        page.getByRole("button", { name: "Entrar" }),
       );
       record(theme, "login: texto del botón", contrastRatio(color, bg), 4.5);
     }
     {
       const { color, bg } = await effectiveTextColours(
-        page.getByRole("link", { name: "Regístrate" }),
+        page.getByRole("link", { name: "Crear una" }),
       );
       record(theme, "login: enlace de registro", contrastRatio(color, bg), 4.5);
     }
@@ -474,9 +474,9 @@ for (const theme of ["dark", "light"] as const) {
     await page.goto("/register");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.getByLabel("Nombre").fill(cuenta.displayName);
-    await page.getByLabel("Email").fill(cuenta.email);
-    await page.getByLabel("Password").fill(cuenta.password);
-    await page.getByRole("button", { name: "Register" }).click();
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
     await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
 
     await page.getByRole("button", { name: "Nueva campaña" }).click();
@@ -485,7 +485,7 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByRole("link", { name: "Campaña de contraste" }).click();
     await expect(page.getByRole("heading", { name: "Campaña de contraste" })).toBeVisible();
 
-    await page.getByRole("tab", { name: "NPCs" }).click();
+    await page.getByRole("tab", { name: "PNJ" }).click();
     await page.getByRole("button", { name: "Nuevo" }).click();
     await page.getByLabel("Nombre").fill("Strahd von Zarovich");
     await page.getByLabel("Etiquetas (separadas por coma)").fill("villano");
@@ -502,7 +502,7 @@ for (const theme of ["dark", "light"] as const) {
       record(theme, "detalle de campaña: título", contrastRatio(color, bg), 4.5);
     }
     {
-      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "NPCs" }));
+      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "PNJ" }));
       record(theme, "detalle de campaña: tab activo texto", contrastRatio(color, bg), 4.5);
     }
     {
@@ -539,10 +539,10 @@ for (const theme of ["dark", "light"] as const) {
     // /design-tokens' synthetic page before this — this journey creates a fresh account that is
     // DM and creator of everything in it, so the per-row "you can't edit this" reason never has
     // a reason to paint (canEdit is always true) and the InvitePanel warning box was never
-    // reached either, because Resumen was never opened. Revert text-warning-text back to
-    // text-danger-text on InvitePanel.tsx's "no anula" box and this block goes red — the real
-    // screen, not a stand-in.
-    await page.getByRole("tab", { name: "Resumen" }).click();
+    // reached either, because the section holding it was never opened. Revert text-warning-text
+    // back to text-danger-text on InvitePanel.tsx's "no anula" box and this block goes red —
+    // the real screen, not a stand-in. (Reseño 2026-09-02: that section is "Ajustes" now.)
+    await page.getByRole("tab", { name: "Ajustes" }).click();
     await page.getByRole("button", { name: "Generar invitación" }).click();
     const warningBox = page.getByText("Generar otro enlace no anula este ni los anteriores");
     {
@@ -597,9 +597,9 @@ for (const theme of ["dark", "light"] as const) {
     await page.goto("/register");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.getByLabel("Nombre").fill(cuenta.displayName);
-    await page.getByLabel("Email").fill(cuenta.email);
-    await page.getByLabel("Password").fill(cuenta.password);
-    await page.getByRole("button", { name: "Register" }).click();
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
     await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
 
     await page.getByRole("link", { name: "Cuenta" }).click();
@@ -676,7 +676,7 @@ test("un control de formulario real no dispara el zoom de iOS Safari en un punte
       "false the media query this fix relies on cannot match and a different query is needed",
   ).toBe(true);
 
-  const email = page.getByLabel("Email");
+  const email = page.getByLabel("Correo");
   await email.focus();
   const fontSizePx = await email.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
   results.push(

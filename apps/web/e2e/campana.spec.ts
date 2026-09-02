@@ -15,9 +15,9 @@ async function registrarse(page: Page) {
   const cuenta = nuevaCuenta();
   await page.goto("/register");
   await page.getByLabel("Nombre").fill(cuenta.displayName);
-  await page.getByLabel("Email").fill(cuenta.email);
-  await page.getByLabel("Password").fill(cuenta.password);
-  await page.getByRole("button", { name: "Register" }).click();
+  await page.getByLabel("Correo").fill(cuenta.email);
+  await page.getByLabel("Contraseña").fill(cuenta.password);
+  await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
   return cuenta;
 }
@@ -32,7 +32,7 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await page.getByRole("link", { name: "La Tumba de la Aniquilación" }).click();
   await expect(page.getByRole("heading", { name: "La Tumba de la Aniquilación" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "PNJ" }).click();
   await expect(page.getByText("Sin elementos.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -63,7 +63,7 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await page.getByRole("link", { name: "Descenso a Avernus" }).click();
   await expect(page.getByRole("heading", { name: "Descenso a Avernus" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "PNJ" }).click();
 
   // Hacen falta dos NPCs: uno para abrir en modo edición y otro para enlazarlo.
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -121,7 +121,7 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   await page.getByRole("link", { name: "La Maldición de Strahd" }).click();
   await expect(page.getByRole("heading", { name: "La Maldición de Strahd" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "PNJ" }).click();
 
   // Dos NPCs: Zariel enlaza con Mahadi, y Mahadi recibe un comentario. Borrar Mahadi debe
   // llevarse los dos consigo.
@@ -337,7 +337,7 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await page.getByRole("link", { name: "La Forja de la Ira" }).click();
   await expect(page.getByRole("heading", { name: "La Forja de la Ira" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "PNJ" }).click();
   await page.getByRole("button", { name: "Nuevo" }).click();
   await page.getByLabel("Nombre").fill("Durgeddin el Negro");
   await page.getByLabel("Texto").fill("## Título\n\nUn herrero enano legendario.");
@@ -373,7 +373,7 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
   await page.getByRole("link", { name: "El Refugio del Contrabandista" }).click();
   await expect(page.getByRole("heading", { name: "El Refugio del Contrabandista" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "NPCs" }).click();
+  await page.getByRole("tab", { name: "PNJ" }).click();
   await expect(page.getByText("Sin elementos.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo" }).click();
@@ -415,7 +415,7 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
 // recargar— ya no la ve. El DM crea después una segunda campaña y la borra, comprobando que
 // solo esa desaparece de "Mis campañas" y la primera (ya renombrada) sigue ahí — la misma
 // exigencia de "no borres lo primero que encuentres" que 1.16 aplicó a las filas de entidad.
-test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, todo desde Resumen", async ({
+test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, todo desde Ajustes", async ({
   browser,
 }: {
   browser: Browser;
@@ -430,8 +430,11 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   await dmPage.getByRole("link", { name: "La Ciudadela de los Vientos" }).click();
   await expect(dmPage.getByRole("heading", { name: "La Ciudadela de los Vientos" })).toBeVisible();
 
-  // 1. Editar el nombre desde Resumen (pestaña por defecto) y verlo cambiado en la cabecera:
-  // el PATCH real invalida tanto la campaña como la lista (features/campaigns/hooks.ts).
+  // 1. Editar el nombre desde Ajustes y verlo cambiado en la cabecera: el PATCH real invalida
+  // tanto la campaña como la lista (features/campaigns/hooks.ts). Desde el reseño del
+  // 2026-09-02 los ajustes tienen su propia sección, así que hay que abrirla — la primera ya
+  // no es un formulario con "Borrar" al lado de "Guardar".
+  await dmPage.getByRole("tab", { name: "Ajustes" }).click();
   const nameInput = dmPage.getByLabel("Nombre");
   await expect(nameInput).toHaveValue("La Ciudadela de los Vientos");
   await nameInput.fill("La Ciudadela de los Vientos Eternos");
@@ -457,9 +460,9 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   await playerPage.getByRole("link", { name: "Crear cuenta" }).click();
   const jugador = nuevaCuenta("Jugador");
   await playerPage.getByLabel("Nombre").fill(jugador.displayName);
-  await playerPage.getByLabel("Email").fill(jugador.email);
-  await playerPage.getByLabel("Password").fill(jugador.password);
-  await playerPage.getByRole("button", { name: "Register" }).click();
+  await playerPage.getByLabel("Correo").fill(jugador.email);
+  await playerPage.getByLabel("Contraseña").fill(jugador.password);
+  await playerPage.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(
     playerPage.getByText("Estás a punto de unirte a una campaña con esta invitación."),
   ).toBeVisible();
@@ -520,6 +523,10 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
 
   await dmPage.getByRole("link", { name: "El Templo Sumergido" }).click();
   await expect(dmPage.getByRole("heading", { name: "El Templo Sumergido" })).toBeVisible();
+  // Reseño 2026-09-02 (audit B2): "Borrar" ya no aparece a un clic de abrir la campaña, junto
+  // a "Guardar" y del mismo tamaño. Vive en Ajustes, que hay que abrir a propósito — este paso
+  // extra ES la mejora, no un rodeo de la prueba.
+  await dmPage.getByRole("tab", { name: "Ajustes" }).click();
   await dmPage.getByRole("button", { name: "Borrar" }).click();
   await expect(
     dmPage.getByText(

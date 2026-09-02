@@ -33,9 +33,9 @@ describe("LoginPage", () => {
     });
     renderLogin();
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@a.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "a@a.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => expect(screen.getByText("Página de invitación")).toBeInTheDocument());
   });
@@ -51,9 +51,9 @@ describe("LoginPage", () => {
     });
     renderLogin();
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@a.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "a@a.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => expect(screen.getByText("Mis campañas")).toBeInTheDocument());
   });
@@ -67,10 +67,13 @@ describe("LoginPage", () => {
     vi.spyOn(api, "login").mockRejectedValue(new Error("Invalid credentials"));
     renderLogin();
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@a.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrong-password" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "a@a.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "wrong-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid credentials");
+    // Reseño 2026-09-02 (audit A1): the API answers in English and this interface is in
+    // Spanish. Asserting the translated text is what makes the translation load-bearing —
+    // delete traducirErrorDeAcceso and this fails instead of passing on the raw message.
+    expect(await screen.findByRole("alert")).toHaveTextContent("Correo o contraseña incorrectos.");
   });
 });

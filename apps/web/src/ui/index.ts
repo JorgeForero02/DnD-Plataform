@@ -12,3 +12,7 @@ export type { TabItem, TabsProps } from "./Tabs";
 export { ThemeToggle } from "./ThemeToggle";
 export { getStoredTheme, getPreferredTheme, applyTheme, setTheme, initTheme } from "./theme";
 export type { Theme } from "./theme";
+export { CartographicGrid, DrawnHorizon, CompassMark, OrnamentRule } from "./Ornament";
+export { AppShell, AppHeader, PageHeader, Breadcrumbs } from "./AppShell";
+export type { Crumb } from "./AppShell";
+export { Toolbar, FilterChip, ListRow, EmptyState } from "./Collection";

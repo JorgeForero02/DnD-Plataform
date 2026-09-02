@@ -34,9 +34,9 @@ describe("RegisterPage", () => {
     renderRegister();
 
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "B" } });
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "b@b.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "b@b.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
     await waitFor(() => expect(screen.getByText("Página de invitación")).toBeInTheDocument());
   });
@@ -51,9 +51,9 @@ describe("RegisterPage", () => {
     renderRegister();
 
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "B" } });
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "b@b.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "b@b.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
     await waitFor(() => expect(screen.getByText("Mis campañas")).toBeInTheDocument());
   });
@@ -65,10 +65,12 @@ describe("RegisterPage", () => {
     renderRegister();
 
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "B" } });
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "b@b.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "b@b.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Email already in use");
+    // Same as LoginPage: the assertion is on the Spanish text, so the translation is
+    // load-bearing rather than decorative.
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ya hay una cuenta con ese correo.");
   });
 });

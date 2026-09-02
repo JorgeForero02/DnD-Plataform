@@ -44,6 +44,6 @@ describe("CampaignList", () => {
   it("shows empty state when there are no campaigns", async () => {
     vi.spyOn(api, "fetchCampaigns").mockResolvedValue([]);
     renderList();
-    expect(await screen.findByText("Aún no tienes campañas.")).toBeInTheDocument();
+    expect(await screen.findByText("Todavía no hay ninguna campaña")).toBeInTheDocument();
   });
 });

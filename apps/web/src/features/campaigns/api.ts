@@ -7,6 +7,14 @@ export interface Campaign {
   description: string | null;
   ownerId: string;
   createdAt: string;
+  // Reseño 2026-09-02 — only present on the LIST endpoint (campaigns.service.ts#listForUser),
+  // which is why both are optional: /campaigns/:id returns the campaign on its own. `members`
+  // holds the VIEWER's membership row and nobody else's, so it says what you are at this
+  // table without listing who else is at it. No entity/session counts here on purpose — see
+  // the comment in listForUser: counting objects that carry five visibility levels would leak
+  // the existence of the ones you cannot see.
+  members?: { role: string }[];
+  _count?: { members: number };
 }
 
 export function fetchCampaigns(): Promise<Campaign[]> {

@@ -25,10 +25,27 @@ export class CampaignsService {
     return campaign;
   }
 
+  // Reseño 2026-09-02 (audit C4): the dashboard listed campaigns as bare name + description,
+  // so it could not say a single useful thing about any of them. This adds the two facts that
+  // are safe to add — the viewer's OWN role, and how many people are at the table — plus the
+  // campaign's own timestamps, which the client already had a right to.
+  //
+  // What it deliberately does NOT add is a count of entities, sessions or characters, and the
+  // reason is the whole point of this product: those objects carry five visibility levels, and
+  // "12 lugares" told to a player who may only see 4 of them leaks the existence of the other
+  // 8. Counting them correctly means applying the visibility matrix, and
+  // common/visibility.ts's canView is its single owner — a Prisma where-clause that
+  // re-derives it here would be exactly the duplication CLAUDE.md forbids. A per-viewer count
+  // is its own task, built on canView, not a side effect of a dashboard tidy-up.
+  // Recorded in docs/06-pendientes.md.
   listForUser(userId: string) {
     return this.prisma.campaign.findMany({
       where: { members: { some: { userId } } },
       orderBy: { createdAt: "desc" },
+      include: {
+        members: { where: { userId }, select: { role: true } },
+        _count: { select: { members: true } },
+      },
     });
   }
 

@@ -34,7 +34,7 @@ describe("AuthGate — real app topology", () => {
     vi.spyOn(campaignsApi, "fetchCampaigns").mockResolvedValue([]);
     renderApp();
     expect(screen.getByRole("heading", { name: "Mis campañas" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Iniciar sesión" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
   });
 
   // The Critical this reproduces: AuthGate used to return <Navigate> INSTEAD OF its children,
@@ -46,7 +46,7 @@ describe("AuthGate — real app topology", () => {
     useAuthStore.setState({ token: "tok-caducado", user: null });
     vi.spyOn(authApi, "fetchMe").mockRejectedValue(new ApiError("Unauthorized", 401));
     renderApp();
-    expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     // Not just present in the DOM somewhere: it's what the screen actually shows.
     expect(screen.queryByRole("heading", { name: "Mis campañas" })).not.toBeInTheDocument();
   });

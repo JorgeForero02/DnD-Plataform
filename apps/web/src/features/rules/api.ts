@@ -109,7 +109,10 @@ export function leerPaquete(effects: unknown): PaqueteDeTraza {
 
 /** Una entrada de traza que el ensayo en seco devuelve — el mismo `EngineTraceEntry` del núcleo. */
 export interface EntradaDeEnsayo {
-  status: RuleTraceStatus;
+  // El ensayo NO usa los mismos estados que una traza real: `APPLIED`/`PROPOSED` se reescriben a
+  // `WOULD_APPLY`/`WOULD_PROPOSE` en el servidor, porque en una simulación nada se aplicó. Por eso
+  // es `string` y no `RuleTraceStatus`.
+  status: string;
   depth: number;
   event: RuleTrigger;
   ruleId?: string;
@@ -122,6 +125,8 @@ export interface EntradaDeEnsayo {
 
 /** La respuesta de `POST :ruleId/dry-run`: la decisión, sin ninguna escritura. */
 export interface ResultadoDeEnsayo {
+  /** Siempre `true`: lo devuelve `dry-run` para que nadie confunda su respuesta con una real. */
+  simulated?: boolean;
   traces: EntradaDeEnsayo[];
   brokenRules: { ruleId: string; reason: string }[];
   fireCountDeltas: Record<string, number>;

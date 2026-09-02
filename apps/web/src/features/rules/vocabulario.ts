@@ -6,7 +6,6 @@ import {
   type RuleEffect,
   type RuleMode,
   type RuleStatus,
-  type RuleTraceStatus,
   type RuleTrigger,
 } from "@dnd/shared";
 
@@ -103,16 +102,20 @@ export const EXPLICACION_MODO: Record<RuleMode, string> = {
     "Cuando se cumple, no cambia nada todavía: te llega a «Propuestas» y decides tú si se aplica o se rechaza.",
 };
 
-export const NOMBRE_ESTADO_TRAZA: Record<RuleTraceStatus, string> = {
+export const NOMBRE_ESTADO_TRAZA: Record<string, string> = {
   APPLIED: "Aplicada",
+  WOULD_APPLY: "Se aplicaría",
+  WOULD_PROPOSE: "Se propondría",
   PROPOSED: "Pendiente de tu decisión",
   REJECTED: "Rechazada",
   STOPPED: "Detenida",
   CONFLICT: "En conflicto",
 };
 
-export const EXPLICACION_ESTADO_TRAZA: Record<RuleTraceStatus, string> = {
+export const EXPLICACION_ESTADO_TRAZA: Record<string, string> = {
   APPLIED: "Se hizo de verdad: el mundo cambió.",
+  WOULD_APPLY: "En un disparo real cambiaría el mundo. Aquí no: es una simulación.",
+  WOULD_PROPOSE: "En un disparo real quedaría pendiente de tu decisión. Aquí no ha pasado nada.",
   PROPOSED: "No ha cambiado nada todavía. Espera a que la apliques o la rechaces.",
   REJECTED: "La rechazaste. No se hizo nada.",
   STOPPED:

@@ -6,6 +6,45 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (mesa de agentes) — Un DM y un tramposo jugaron contra la API, y encontraron cuatro fallos de corrección
+
+**Qué.** Dos agentes usaron la aplicación como personas: uno dirigió una partida entera contra
+una PNJ, otro intentó romper la autorización desde fuera. El tramposo **no encontró ni un hueco
+de seguridad** —todo 403/404, `canView` aguantó— y eso también es un resultado. El DM encontró
+cuatro fallos de corrección, arreglados el mismo día:
+
+- **Curar a un muerto lo resucitaba.** A 0 PG con tres fracasos, un delta positivo lo devolvía a
+  la vida con el contador a cero y sin aviso — un clérigo deshacía una muerte por accidente.
+  Ahora es un 400 que dice que hace falta resurrección; bajarle los PG a un cadáver sigue
+  permitido.
+- **El ensayo en seco decía «Aplicada».** El núcleo marca `APPLIED` la traza que *se aplicaría*,
+  porque en un disparo real eso pasa; pero en un ensayo no ha pasado nada, y la palabra que
+  sostiene toda la promesa del dry-run era la que mentía. Se reetiqueta a `WOULD_APPLY` y la
+  respuesta lleva `simulated: true`. El enum persistido no se toca.
+- **`ENTITY_OPENED` se disparaba con las lecturas del propio DM.** Lo enganché esta misma
+  mañana, y el DM descubrió el efecto: preparar la sesión abriendo sus fichas le disparaba las
+  reglas contra sí mismo y le llenaba la bandeja. El suceso capta que **un jugador** examinó
+  algo; ahora no se registra cuando quien mira es el DM o el creador.
+- **El combate se grababa fuera de sesión.** `changeHp` y `rollDeathSave` no sabían en qué
+  sesión ocurrían, así que `GET /events?sessionId` devolvía dos sucesos de diecinueve. Ahora
+  averiguan la sesión en curso y la graban, como ya hacía `RollsService`.
+
+**Por qué importa la forma de encontrarlos.** Ninguno de los cuatro lo veía una prueba unitaria:
+tres solo se notan jugando una partida, y el cuarto es un comportamiento emergente entre dos
+piezas que por separado estaban bien. Es el argumento entero de haber puesto a un agente a
+dirigir de verdad en vez de a leer el código.
+
+**Lo que el DM dejó fichado y no se arregló** (J5–J11 en `docs/06-pendientes.md`): la muerte no
+deja evento propio, `ENTITY_REVEALED` viaja vacío, la anulación se ve como delta sin el motivo,
+la invitación es de un solo uso sin listar, los errores de Zod salen crudos, la CA llega a 999 y
+el modificador de tirada no tiene tope. Y su veredicto: la preparación aguanta una sesión real;
+el combate no, por los monstruos sin PG y la falta de iniciativa (M13, M14).
+
+**Cómo revertirlo.** Cuatro cambios independientes de servicio, sin migración; revertir cada
+commit por separado.
+
+---
+
 ## 2026-09-02 (19:25) — Despliegue de la fase 2A completa a producción, con su migración
 
 **Qué.** `adb110c` en `dnd.supportive.pro`, lanzado a mano por la API de Coolify

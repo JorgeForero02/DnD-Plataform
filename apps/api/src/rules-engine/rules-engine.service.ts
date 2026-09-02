@@ -207,8 +207,19 @@ export class RulesEngineService {
     // Nada de lo que devuelve se persiste: ni traza, ni disparo, ni escritura real. Es
     // exactamente la misma decisión que tomaría `evaluate()`, congelada antes del último paso.
     const outcome = runEngine(engineRules, input.trigger, world);
+
+    // **`APPLIED` en un ensayo es una mentira, y la que más importa.** El núcleo marca así una
+    // traza que *se aplicaría*, porque en un disparo real eso es lo que pasa; pero aquí no ha
+    // pasado nada, y un DM que lee «Aplicada» en su ensayo cree que acaba de destripar el
+    // secreto de la campaña. La palabra que sostiene toda la promesa del ensayo —«esto es una
+    // simulación»— era la que estaba mal. Se reetiqueta a la forma condicional; el enum
+    // persistido de `RuleTrace` no se toca, porque esto no se persiste. Lo encontró un DM en una
+    // partida de prueba.
+    const ENSAYO: Record<string, string> = { APPLIED: "WOULD_APPLY", PROPOSED: "WOULD_PROPOSE" };
     return {
       ...outcome,
+      simulated: true,
+      traces: outcome.traces.map((t) => ({ ...t, status: ENSAYO[t.status] ?? t.status })),
       // No se finge que un disparador sin `GameEventType` correspondiente va a llegar nunca:
       // el ensayo dice qué pasaría **si** el suceso ocurriera, y aquí dice si hoy puede ocurrir.
       triggerReachableToday: isTriggerReachableToday(input.trigger.kind),

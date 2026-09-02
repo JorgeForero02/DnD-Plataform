@@ -101,10 +101,18 @@ export class EntitiesService {
     // mira qué es vigilancia si no se dice, y por eso el hueco H3 exige además que la interfaz
     // avise al jugador. Las dos mitades, o ninguna.
     //
-    // **No se espera a que termine ni se deja caer la petición si falla**: abrir una ficha tiene
-    // que funcionar aunque el registro o una regla revienten. El puente ya aísla los fallos de
-    // las reglas; este `catch` aísla los del propio registro.
-    if (this.worldState) {
+    // **No se registra cuando quien mira es el DM o el creador de la ficha.** El suceso existe
+    // para captar que **un jugador** examinó algo —«cuando un jugador revise el detalle, se
+    // desvela el camino secreto»—; el DM preparando la sesión abre sus propias fichas una y otra
+    // vez, y sin esta condición cada lectura suya dispararía la regla contra sí mismo y le
+    // llenaría la bandeja de propuestas falsas. Lo encontró un DM en una partida de prueba:
+    // «leer mis propias notas dispara reglas contra mí». La comprobación de permiso de arriba ya
+    // dejó pasar solo a quien puede ver la ficha; esto solo decide si su lectura es un *suceso*.
+    const esDelPropioDm = viewer.role === "DM" || entity.createdById === userId;
+    if (this.worldState && !esDelPropioDm) {
+      // **No se espera a que termine ni se deja caer la petición si falla**: abrir una ficha
+      // tiene que funcionar aunque el registro o una regla revienten. El puente ya aísla los
+      // fallos de las reglas; este `catch` aísla los del propio registro.
       await this.worldState
         .recordEntityOpened(userId, campaignId, entity.id, entity.type, entity.name)
         .catch(() => undefined);

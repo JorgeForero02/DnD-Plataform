@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { ForbiddenException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { WorldStateService } from "../world-state/world-state.service";
 import { EntitiesService } from "./entities.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -13,6 +14,7 @@ describe("EntitiesService", () => {
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { emit: jest.fn() };
+  const worldState = { recordEntityOpened: jest.fn().mockResolvedValue(undefined) };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -21,6 +23,7 @@ describe("EntitiesService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: EventEmitter2, useValue: events },
+        { provide: WorldStateService, useValue: worldState },
       ],
     }).compile();
     service = ref.get(EntitiesService);
@@ -62,5 +65,52 @@ describe("EntitiesService", () => {
     prisma.entity.findFirst.mockResolvedValue({ id: "e1", createdById: "someoneElse" });
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     await expect(service.remove("player1", "c1", "e1")).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  describe("get() y el suceso ENTITY_OPENED", () => {
+    const laFicha = {
+      id: "e9",
+      type: "NPC",
+      name: "Cripta",
+      visibility: "PLAYERS",
+      createdById: "dm1",
+      grants: [],
+    };
+
+    it("un jugador que la abre SÍ dispara el suceso (es el caso que justifica el motor)", async () => {
+      prisma.entity.findFirst.mockResolvedValue(laFicha);
+      prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+      await service.get("jugador", "c1", "e9");
+
+      expect(worldState.recordEntityOpened).toHaveBeenCalledWith(
+        "jugador",
+        "c1",
+        "e9",
+        "NPC",
+        "Cripta",
+      );
+    });
+
+    it("el DM abriendo sus propias notas NO lo dispara: prepararía la sesión disparándose reglas a sí mismo", async () => {
+      prisma.entity.findFirst.mockResolvedValue(laFicha);
+      prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+
+      await service.get("dm1", "c1", "e9");
+
+      expect(worldState.recordEntityOpened).not.toHaveBeenCalled();
+    });
+
+    it("el creador de la ficha tampoco lo dispara, aunque no sea el DM", async () => {
+      prisma.entity.findFirst.mockResolvedValue({ ...laFicha, createdById: "autor" });
+      prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+      await service.get("autor", "c1", "e9");
+
+      expect(worldState.recordEntityOpened).not.toHaveBeenCalled();
+    });
   });
 });

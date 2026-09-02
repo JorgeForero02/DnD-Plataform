@@ -1073,3 +1073,34 @@ La recuperación de contraseña **sigue bloqueada** (no hay servicio de correo) 
 reiniciar la de nadie. Con cinco personas y cuentas creadas hace un día, que alguien no pueda
 entrar el día de la partida no es improbable. **Mitigación de coste cero:** que cada jugador
 compruebe que entra *antes* del día, y que guarde su contraseña donde pueda recuperarla.
+
+
+### Mesa de agentes del 2026-09-02 — un DM y un tramposo contra la API real
+
+Un agente jugó una partida entera de prueba contra la API y otro intentó romper la
+autorización. **El tramposo no encontró ni un hueco de seguridad**: lectura, escritura,
+escalada por regla con entidad ajena, tirada por personaje ajeno y superficie de cuenta, todo
+403/404. `canView` + `requireMember`/`requireDM` aguantan. El DM, en cambio, encontró cuatro
+fallos de corrección que **se arreglaron el mismo día**, y una lista de lo que le impediría
+dirigir tres horas de verdad.
+
+| # | Qué encontró el DM | Estado |
+|---|---|---|
+| ~~**J1**~~ | **Curar a un muerto lo resucitaba**: a 0 PG con tres fracasos, echarle diez puntos lo devolvía a la vida con el contador a cero y sin aviso | **CERRADO**: `changeHp` lo rechaza con un 400 que dice que hace falta resurrección; bajarle los PG a un cadáver sigue permitido |
+| ~~**J2**~~ | **El ensayo en seco decía `status: "APPLIED"`**, la palabra que sostiene toda la promesa del dry-run | **CERRADO**: el ensayo reetiqueta a `WOULD_APPLY`/`WOULD_PROPOSE` y devuelve `simulated: true`; el enum persistido de `RuleTrace` no se toca |
+| ~~**J3**~~ | **`ENTITY_OPENED` se disparaba con las lecturas del propio DM**: preparar la sesión le llenaba la bandeja de propuestas disparadas por sí mismo | **CERRADO**: no se registra cuando quien mira es el DM o el creador; el suceso capta que **un jugador** examinó algo, que es su razón de ser |
+| ~~**J4**~~ | **El combate se grababa fuera de sesión**: `GET /events?sessionId` devolvía 2 de 19 sucesos aunque la sesión estuviera abierta | **CERRADO** para el daño y las salvaciones de muerte: `changeHp` y `rollDeathSave` averiguan la sesión en curso y la graban, como ya hacía `RollsService` |
+| **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta |
+| **J6** | **`ENTITY_REVEALED` viaja con la carga vacía** (`{type}`): no dice qué ficha ni a qué visibilidad, y es el momento dramático de la campaña | Abierto. El puente ya sabe el `entityId`; falta enriquecer el payload |
+| **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto. El motivo sí queda en `GET /events`; la traza podría enseñar «fijada a 18» en vez del delta |
+| **J8** | **La invitación es de un solo uso y no se pueden listar ni revocar**: el DM emite códigos a ciegas | Abierto. Un `GET /campaigns/:id/invites` y un estado de la invitación |
+| **J9** | **Los errores de Zod salen crudos al usuario** (`fieldErrors {"kind":["Required"]}`, «Required» en inglés) | Abierto. Un filtro que traduzca el error de validación a un mensaje de dominio |
+| **J10** | **La CA admite hasta 999 y el modificador de tirada no tiene tope** (`1d20+9999` → 10005) | Abierto, y menor: trampas a ojos vista que el DM vigila a mano, no fallos de seguridad. Un tope razonable las cerraría |
+| **J11** | **`POST /rules` no valida al armar que la entidad del efecto sea de tu campaña** | Abierto e inerte: `applyRealEffects` y la auditoría acotan por `campaignId`, así que la regla queda `BROKEN`. Sería más limpio rechazar al armar |
+
+**El veredicto del DM, sin diplomacia:** la fase de **preparación** (wiki, cinco visibilidades,
+enlaces, comentarios, y el motor de reglas con su ensayo, propuestas y traza) la usaría el
+martes para preparar la partida del sábado. Lo que **no** aguanta el sábado es el combate, y por
+tres cosas que ya están fichadas arriba como huecos de mecánica: **no puede llevar los PG de un
+monstruo (M13), no hay iniciativa (M14), y el registro no reconstruye la sesión (J4/J5, en
+parte cerrado)**. Son la misma lista que las auditorías, vista desde la silla del director.

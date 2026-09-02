@@ -222,6 +222,43 @@ describe("Motor de reglas (e2e)", () => {
     });
   });
 
+  describe("el ensayo en seco no miente sobre lo que hizo", () => {
+    it("dice qué PASARÍA, no que pasó: nunca devuelve APPLIED, y no persiste", async () => {
+      // El fallo que encontró un DM: el `dry-run` marcaba la traza como APPLIED, así que quien lo
+      // leía creía haber destripado el secreto. La palabra que sostiene la promesa del ensayo era
+      // la que estaba mal.
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro del ensayo");
+      const objetivo = await crearFicha("Secreto del ensayo", "DM_ONLY");
+
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Regla que se ensaya",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "REVEAL_ENTITY", entityId: objetivo, visibility: "PLAYERS" }],
+        });
+
+      const ensayo = await request(s)
+        .post(`/campaigns/${campaignId}/rules/${regla.body.id}/dry-run`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ trigger: { kind: "ENTITY_OPENED", entityId: muro } });
+
+      expect(ensayo.status).toBe(201);
+      expect(ensayo.body.simulated).toBe(true);
+      const estados = ensayo.body.traces.map((t: { status: string }) => t.status);
+      expect(estados).toContain("WOULD_APPLY");
+      expect(estados).not.toContain("APPLIED");
+
+      const entidad = await prisma.entity.findUnique({ where: { id: objetivo } });
+      expect(entidad?.visibility).toBe("DM_ONLY");
+      const trazas = await prisma.ruleTrace.count({ where: { ruleId: regla.body.id } });
+      expect(trazas).toBe(0);
+    });
+  });
+
   describe("el interruptor de campaña apagado impide que nada dispare", () => {
     it("con rulesEnabled en falso, una regla automática que matchea no hace nada", async () => {
       const s = app.getHttpServer();

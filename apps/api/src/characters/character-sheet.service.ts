@@ -35,6 +35,7 @@ import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER } from "../rolls/rolls.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
@@ -239,6 +240,28 @@ export class CharacterSheetService {
       },
       deathSaves: this.estadoDeMuerte(character, currentHpCrudo),
     };
+  }
+
+  /**
+   * La sesión en curso de la campaña, o `null` si no hay ninguna abierta.
+   *
+   * **Por qué existe.** Un DM dirigiendo una partida de prueba descubrió que el combate entero
+   * —daño, curación, salvaciones de muerte— se grababa con `sessionId: null` aunque la sesión
+   * estuviera en curso, así que `GET /events?sessionId=…` devolvía dos de diecinueve sucesos: el
+   * filtro por sesión existía y salía vacío. El estado mutable **no** sabe en qué sesión ocurre;
+   * lo averigua aquí, igual que hace `RollsService` con las tiradas. Sin sesión abierta el
+   * suceso queda fuera de sesión, que es un estado legítimo (se juega también sin haber pulsado
+   * «empezar»).
+   */
+  private async sesionActiva(
+    campaignId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<string | null> {
+    const enCurso = await tx.session.findFirst({
+      where: { campaignId, status: "IN_PROGRESS" },
+      select: { id: true },
+    });
+    return enCurso?.id ?? null;
   }
 
   async getSheet(userId: string, campaignId: string, characterId: string) {
@@ -513,6 +536,18 @@ export class CharacterSheetService {
       const maxHp = sheet.derived.maxHp.total;
       const before = character.currentHp ?? maxHp;
 
+      // **Un personaje muerto no se cura con puntos de golpe.** A 0 PG y con tres fracasos está
+      // muerto (SRD): la magia de curación no lo levanta, hace falta resurrección, que esta
+      // fase no modela. Hasta hoy, echarle diez puntos lo devolvía a la vida con el contador a
+      // cero y sin aviso — un clérigo deshacía una muerte por accidente y nadie se enteraba. Lo
+      // encontró un DM dirigiendo una partida de prueba. Se rechaza con un motivo en vez de
+      // resucitar en silencio; bajar los PG de un cadáver (un delta negativo) sigue permitido.
+      if (before === 0 && character.deathSaveFailures >= 3 && input.delta > 0) {
+        throw new BadRequestException(
+          "Este personaje está muerto: los puntos de golpe no lo reviven. Hace falta magia de resurrección, que aún no se modela.",
+        );
+      }
+
       let tempHp = character.tempHp;
       let after: number;
 
@@ -574,6 +609,7 @@ export class CharacterSheetService {
         userId,
         campaignId,
         {
+          sessionId: await this.sesionActiva(campaignId, tx),
           subjectType: "character",
           subjectId: characterId,
           visibility: character.visibility,
@@ -743,6 +779,7 @@ export class CharacterSheetService {
         campaignId,
         {
           subjectType: "character",
+          sessionId: await this.sesionActiva(campaignId, tx),
           subjectId: characterId,
           // La visibilidad de la tirada la puede fijar quien tira —igual que en `RollsService`—;
           // por defecto, la de la ficha, para que no haga falta decidirlo cada vez.

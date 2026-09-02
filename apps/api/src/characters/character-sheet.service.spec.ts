@@ -99,6 +99,9 @@ function montarTransaccion(prisma: { $transaction: jest.Mock }, fila: Character)
     character: {
       update: jest.fn(({ data }: { data: Partial<Character> }) => ({ ...fila, ...data })),
     },
+    // Por defecto, ninguna sesión abierta: el suceso queda fuera de sesión salvo que el test
+    // diga lo contrario. Sobrescríbelo con `tx.session.findFirst.mockResolvedValue(...)`.
+    session: { findFirst: jest.fn().mockResolvedValue(null) },
   };
   prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   return tx;
@@ -653,5 +656,49 @@ describe("las elecciones se validan al escribir, no solo al derivar", () => {
 
     await expect(service.updateSheet("owner1", "cmp1", "ch1", { level: 2 })).resolves.toBeDefined();
     expect(prisma.character.update).toHaveBeenCalled();
+  });
+});
+
+describe("un muerto no se cura con puntos de golpe, y el combate se graba en su sesión", () => {
+  it("curar a un personaje con tres fracasos a 0 PG es un 400, no una resurrección silenciosa", async () => {
+    // Lo encontró un DM en una partida de prueba: echar diez puntos a un muerto lo devolvía a la
+    // vida con el contador a cero y sin aviso. El SRD pide magia de resurrección; esta fase no la
+    // modela, así que se rechaza con su motivo en vez de mentir.
+    const { service, prisma, characters } = montar();
+    const muerto = personaje({ currentHp: 0, deathSaveFailures: 3 });
+    characters.requireEditable.mockResolvedValue(muerto);
+    montarTransaccion(prisma, muerto);
+
+    await expect(service.changeHp("p1", "c1", "ch1", { delta: 10 })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("pero bajarle los PG a un cadáver (delta negativo) sigue permitido", async () => {
+    const { service, prisma, characters } = montar();
+    const muerto = personaje({ currentHp: 0, deathSaveFailures: 3 });
+    characters.requireEditable.mockResolvedValue(muerto);
+    montarTransaccion(prisma, muerto);
+
+    await expect(service.changeHp("p1", "c1", "ch1", { delta: -1 })).resolves.toBeDefined();
+  });
+
+  it("el daño se graba con la sesión en curso, no fuera de sesión", async () => {
+    // El registro no reconstruía la partida: el combate se grababa con `sessionId: null` aunque
+    // la sesión estuviera abierta, así que `GET /events?sessionId` salía casi vacío.
+    const { service, prisma, characters, events } = montar();
+    const fila = personaje({ currentHp: MAX_HP });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.session.findFirst.mockResolvedValue({ id: "sess-en-curso" });
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -5 });
+
+    expect(events.record).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ sessionId: "sess-en-curso" }),
+      expect.anything(),
+    );
   });
 });

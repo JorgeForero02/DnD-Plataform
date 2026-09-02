@@ -9,10 +9,20 @@
 > jugadores estén presentes y hagan algo, o hasta que ciertas cosas pasen, o por revisar
 > algunos secretos»
 
-Y después: **«que se puedan hacer cosas complejas con cosas sencillas»**.
+Y después, dos cosas que cambiaron el diseño:
+
+> **«que se puedan hacer cosas complejas con cosas sencillas»**
+
+> **«quiero una herramienta que sirva de batuta para el DM: si él es el maestro de orquesta, el
+> mundo, los personajes y lo demás son sus músicos»**
+
+**La segunda es la estrella polar de todo el documento**, y no es una frase bonita: una batuta
+no toca. Marca. De ahí salen tres consecuencias que están escritas más abajo y que no se
+negocian —el modo propuesta (§2.8), el ensayo en seco y el deshacer desde la traza (§6)—. Un sistema que actúa por su cuenta mientras el DM mira no es una batuta: es un músico
+más, y encima uno que no escucha.
 
 Este documento responde a eso. Su tesis es que la potencia **no viene de tener muchas piezas**,
-sino de **siete decisiones** que hacen que pocas piezas se combinen. Cuatro son mías; tres
+sino de **ocho decisiones** que hacen que pocas piezas se combinen. Cuatro son mías; tres
 salieron del [estudio de sistemas reales](./2026-09-02-cajas-estudio.md) y **corrigieron el
 diseño**: los conjuntos con nombre, el orden por especificidad y el antipatrón de las primitivas
 disfrazadas.
@@ -63,7 +73,7 @@ llegue**. El lienzo no es otro sistema: es otra forma de editar lo mismo.
 
 ---
 
-## 2 · Las siete decisiones que dan potencia sin complejidad
+## 2 · Las ocho decisiones que dan potencia sin complejidad
 
 Aquí está la respuesta a «cosas complejas con cosas sencillas». No son funcionalidades; son
 **propiedades del sistema**, y cada una multiplica lo que se puede expresar **sin añadir un
@@ -175,6 +185,38 @@ Si empatan, **el sistema no adivina**: pide un desempate explícito y, mientras 
 **marca como conflicto** en el ensayo en seco. Un sistema que resuelve empates en secreto es un
 sistema en el que un DM deja de confiar la primera vez que le sorprende.
 
+### 2.7 · El vocabulario es del dominio, nunca primitivas disfrazadas
+
+El fracaso mejor documentado de este tipo de sistemas —**Godot VisualScript**, retirado del
+motor— fue ofrecer las primitivas de un lenguaje de programación (variable, bucle, condición)
+con aspecto de cajas bonitas. Quien no programa no entiende una variable por mucho color que
+tenga, y quien programa prefiere escribir código.
+
+Así que aquí **cada pieza habla del juego**: «un jugador abre una ficha», «revelar», «marca de
+campaña», «están todos presentes». Ninguna dice «variable», «bucle» ni «expresión». Si algún día
+una pieza necesita esas palabras para explicarse, **esa pieza está mal diseñada**.
+
+---
+
+### 2.8 · El modo propuesta: la batuta marca, no toca
+
+De la metáfora del autor sale una decisión que no estaba en el diseño original: **cada regla
+elige cómo actúa**.
+
+| Modo | Qué hace | Para qué |
+|---|---|---|
+| **Automático** | Aplica los efectos y lo apunta en la traza | Lo que da igual que pase solo: apuntar en la bitácora, avisar, poner una marca |
+| **Propuesta** | **No aplica nada.** Avisa al DM: *«"Detalle del muro" se abrió. ¿Revelo el camino secreto?»* con un botón de aplicar y otro de descartar | Todo lo que cambia lo que los jugadores ven |
+
+Por defecto, **cualquier efecto que revele algo nace en modo propuesta**. Un DM que se fía puede
+pasarlo a automático regla por regla; un DM al que le revelaron un secreto tres minutos antes de
+tiempo **no vuelve a usar el sistema jamás**. El coste de equivocarse es asimétrico, así que el
+valor por defecto también.
+
+Esto es, literalmente, la batuta: el sistema **prepara la entrada** y el DM **da la señal**.
+
+---
+
 ## 3 · El vocabulario inicial, cerrado a propósito
 
 > Cerrado significa **cerrado**: añadir un suceso, una condición o un efecto es una decisión con
@@ -192,7 +234,10 @@ sistema en el que un DM deja de confiar la primera vez que le sorprende.
 | **Se revela una ficha** | `ENTITY_REVEALED` — el que permite encadenar (§2.1) |
 | Se pone una marca | `FLAG_SET` — encadenar sin revelar nada |
 | **Se lanza la señal ⟨nombre⟩** | La señal que inventa el DM (§2.4) |
-| **El DM pulsa un botón** | la regla manual: el DM decide cuándo, la automatización hace el resto |
+| **El DM ejecuta esta ficha** | La batuta literal: el DM lee el diálogo en voz alta, pulsa, y pasa lo que tenía que pasar |
+| **Se crea un enlace ⟨etiqueta⟩ entre dos fichas** | La llave en la ranura. `EntityLink` ya existe (§5b) |
+| **Una tirada de ⟨habilidad⟩ ⟨falla / supera / saca 1 / saca 20⟩** | `ABILITY_ROLL`. **Los cuatro resultados**, no solo el éxito (§5d) |
+| **Se ataca esta ficha** | El barril (§5a) |
 | Un jugador se une a la campaña | `campaign.member_joined`, que ya se emite |
 | *(cuando 2A tenga dados)* una tirada supera una CD | `ABILITY_ROLL` |
 
@@ -218,17 +263,17 @@ sistema en el que un DM deja de confiar la primera vez que le sorprende.
 | **Ocultar** una ficha: su visibilidad queda en ⟨nivel⟩ |
 | Poner / quitar la marca ⟨X⟩ |
 | **Añadir / quitar ⟨algo⟩ del conjunto ⟨X⟩** |
-| **Lanzar la señal ⟨nombre⟩** (§2.4) |
+| **Lanzar la señal ⟨nombre⟩** (§2.4), opcionalmente **con origen y radio** *(el radio solo actúa con mapa — §8)* |
 | **Avisar** (a los jugadores, o solo al DM) — sale por la bandeja de notificaciones |
 | Añadir una nota a la sesión en curso |
 | **Armar / desarmar** otra regla |
 
-Nueve efectos, diez sucesos, ocho condiciones. **Con eso y el encadenamiento se escribe una
+Nueve efectos, catorce sucesos, ocho condiciones. **Con eso y el encadenamiento se escribe una
 aventura entera**, y cabe en una pantalla de ayuda.
 
 ---
 
-## 4 · El ejemplo del autor, escrito con esto
+## 4 · El primer ejemplo, escrito con esto
 
 > «cuando → jugador → revisa con → detalle → se desvela → camino secreto»
 
@@ -259,20 +304,89 @@ herramienta exige escribir código.
 
 ---
 
-### 2.7 · El vocabulario es del dominio, nunca primitivas disfrazadas
-
-El fracaso mejor documentado de este tipo de sistemas —**Godot VisualScript**, retirado del
-motor— fue ofrecer las primitivas de un lenguaje de programación (variable, bucle, condición)
-con aspecto de cajas bonitas. Quien no programa no entiende una variable por mucho color que
-tenga, y quien programa prefiere escribir código.
-
-Así que aquí **cada pieza habla del juego**: «un jugador abre una ficha», «revelar», «marca de
-campaña», «están todos presentes». Ninguna dice «variable», «bucle» ni «expresión». Si algún día
-una pieza necesita esas palabras para explicarse, **esa pieza está mal diseñada**.
+---
 
 ---
 
-## 5 · Las cuatro cosas que hay que hacer bien, o no hacerlo
+## 5 · Los cuatro ejemplos del autor, y qué exige cada uno
+
+El autor puso cuatro casos que estiran el vocabulario. Ninguno rompe el diseño; **tres se pueden
+escribir con lo que ya hay**, y el cuarto es el que marca la frontera con el mapa.
+
+### a) El barril de explosivos
+
+> «tengo un barril de explosivos que tiene de evento explota cuando se ataca y genera una
+> explosión de tantos pies; si hay más barriles cerca sería interesante que se encadenen»
+
+**Es el caso de encadenamiento perfecto**, y es la mejor defensa de la decisión §2.1: el barril
+no sabe nada de los otros barriles. Solo lanza una señal.
+
+```
+CUANDO   se ataca «Barril de aceite»
+ENTONCES lanzar la señal «explosión» con origen «Barril de aceite» y radio 20 pies
+         aplicar 3d6 de daño de fuego en esa área
+
+CUANDO   la señal «explosión» alcanza a esta ficha
+ENTONCES lanzar la señal «explosión» con origen aquí y radio 20 pies
+```
+
+Dos reglas y una cadena que se propaga sola por diez barriles. **El tope de profundidad (§2.1)
+deja de ser una precaución teórica y pasa a ser una regla del juego**: diez saltos, y la traza
+dice dónde se cortó.
+
+**Lo que le falta:** «alcanza» es una pregunta espacial. Necesita **posiciones**, y las
+posiciones son la fase 3. Ver §8.
+
+### b) Secretos que se revelan al detallar un objeto o al meterlo en una ranura
+
+> «que los secretos salgan detallando objetos o colocando objetos dentro de ranuras»
+
+**Detallar** ya es un suceso previsto (*un jugador abre una ficha*). **Meter un objeto en una
+ranura** es lo interesante, y **no hace falta inventar nada**: la plataforma ya tiene enlaces
+entre fichas con etiqueta (`EntityLink`, «vive en», «pertenece a»). Una ranura es una ficha; meter
+la llave en ella es **crear un enlace** con la etiqueta «encajado en».
+
+```
+CUANDO   se enlaza  «Llave de obsidiana»  →  «Hueco en el altar»   (etiqueta «encajado en»)
+ENTONCES revelar «La escalera bajo el altar»
+```
+
+Un suceso nuevo —*se crea un enlace*— y el sistema de puzles sale entero de una funcionalidad
+que lleva meses construida. Esto es exactamente lo que el autor intuía al meter «el sistema de
+enlaces» en la misma frase que los secretos.
+
+### c) «Con este diálogo el NPC hizo tal cosa»
+
+Un suceso *«el DM ejecuta esta ficha»* con un botón en la propia ficha del NPC. El DM lee el
+diálogo en voz alta, pulsa, y lo que tenía que pasar pasa: se pone una marca, se revela algo, se
+apunta en la bitácora. **Es la batuta en su forma más literal.**
+
+### d) La tirada que falla y desencadena algo
+
+> «que intente persuadir con una tirada a alguien y no funcionó y desencadenó algo»
+
+**Este es el que más me interesa**, porque señala un error que habría cometido: un disparador de
+tirada que solo reaccione al éxito **es la mitad del juego**. En una mesa, *fallar* la persuasión
+es lo que mueve la historia.
+
+Así que el suceso de tirada no es «supera la CD», es **la tirada con su resultado**:
+
+```
+CUANDO   una tirada de Persuasión contra el «Capitán de la guardia»  FALLA
+ENTONCES poner la marca «la guardia desconfía»
+         avisar al DM: «El capitán se cierra en banda.»
+
+CUANDO   una tirada de Persuasión contra el «Capitán de la guardia»  saca un 1 natural
+ENTONCES lanzar la señal «insulto imperdonable»
+```
+
+Cuatro resultados posibles y todos disparables: **falla, supera, 1 natural, 20 natural**. Y esto
+llega solo cuando 2A tenga dados (`ABILITY_ROLL` ya está en su enum), que es otra razón para que
+el motor viva en 2A y no antes.
+
+---
+
+## 6 · Las cuatro cosas que hay que hacer bien, o no hacerlo
 
 1. **Una regla escribe un dato; nunca decide un permiso.** Un efecto pone
    `entity.visibility = PLAYERS`, y a partir de ahí **decide `canView`, como siempre**. Si el
@@ -299,7 +413,7 @@ una pieza necesita esas palabras para explicarse, **esa pieza está mal diseñad
 
 ---
 
-## 6 · Encaje en la fase 2A
+## 7 · Encaje en la fase 2A
 
 No es una fase nueva. Son **tres tareas** que se apoyan en 2A.5:
 
@@ -314,15 +428,41 @@ una aventura real.
 
 ---
 
-## 7 · Lo que este sistema **no** va a hacer
+## 8 · El mapa que aún no existe, y por qué hay que tenerlo en cuenta ahora
+
+El autor lo dijo claro: *«el sistema de eventos con cajas debe ser considerado para el mapa que
+aún no llega, pero es importante tenerlo en cuenta»*. Tiene razón, y la forma de tenerlo en
+cuenta **no es construirlo**: es **reservarle el sitio** para que la fase 3 encienda una luz en
+vez de repintar la casa.
+
+Concretamente, tres decisiones que se toman **hoy** aunque no sirvan hasta la fase 3:
+
+1. **Una señal puede llevar origen y radio.** *«explosión, origen «Barril de aceite», radio 20
+   pies»*. Hoy el radio **se guarda y se enseña**, y no alcanza a nadie porque nadie tiene
+   posición. El día que haya tablero, la misma regla empieza a alcanzar sin tocarla.
+   La forma del área —cono, esfera, línea, cubo, cilindro— y sus medidas ya están definidas en
+   [la especificación de distancias](./2026-09-02-distancias-y-movimiento-design.md).
+2. **Las distancias se guardan en pies desde el primer día** (misma especificación). Una regla
+   escrita hoy con «20 pies» seguirá queriendo decir lo mismo en la fase 3.
+3. **Las condiciones espaciales existen en el vocabulario, marcadas como dormidas.** El DM puede
+   escribir *«si está a menos de 30 pies»*, y la interfaz se lo dice sin rodeos: **«esta
+   condición necesita el tablero; hasta entonces no se cumple nunca»**. Es mejor que ocultarla:
+   así el DM entiende el modelo completo desde el principio, y su aventura preparada en enero
+   funciona en marzo sin reescribirla.
+
+> **Lo que NO se hace hoy:** calcular quién está cerca de quién. Eso es la fase 3, y prometerlo
+> antes sería exactamente la clase de mentira que el resto de esta documentación persigue.
+
+---
+
+## 9 · Lo que este sistema **no** va a hacer
 
 Dicho para no prometerlo:
 
-- **Nada que dependa de dónde está alguien.** «Cuando un jugador se acerque a la puerta» exige
-  posiciones, y las posiciones son la fase 3. Ver
-  [la especificación de distancias](./2026-09-02-distancias-y-movimiento-design.md).
+- **Calcular quién está cerca de quién.** Se puede *escribir* la regla; no se cumple hasta que
+  haya tablero (§8).
 - **Bucles, variables y aritmética.** Contar un conjunto y compararlo, y nada más (§2.3).
 - **Efectos de combate.** «Aplicar veneno durante 3 turnos» comparte *el formato* de un efecto,
   pero no el motor: concentración, duraciones e iniciativa no se parecen a revelar un lugar. Se
   unirán el día que se demuestre que son lo mismo, y no antes.
-- **Reglas que decidan permisos.** Ver §5.1.
+- **Reglas que decidan permisos.** Ver §6.1 — es la única de esta lista que no se levantará nunca.

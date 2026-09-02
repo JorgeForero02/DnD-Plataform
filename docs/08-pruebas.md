@@ -37,6 +37,14 @@
 > tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
 > sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
 
+> **Una clase de prueba más, desde el 2026-09-02: la alarma de maquetación.** `jsdom` no
+> maqueta —no hay ancho, ni alto, ni `display` calculado—, así que ninguna prueba unitaria
+> puede ver un borde mal dibujado. Cuando las filas de las listas pasaron de `<button>` a `<a>`
+> heredaron `display: inline` y pintaron el borde **partido**, con las 248 unitarias en verde y
+> un despliegue de por medio. `apps/web/e2e/campana.spec.ts` lee ahora el `display` calculado
+> de una fila y falla si vuelve a ser `inline`. **Lo que solo se ve maquetado, se mide en el
+> navegador** — la misma razón por la que el contraste se mide ahí desde 1.19.
+
 La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
 otra hace: **mide**. Recorre `/design-tokens` **y dos pantallas reales** (entrar y el detalle de campaña) en los dos temas, lee los colores **calculados**
 del DOM —componiendo el alfa contra el fondo real, no leyendo el color declarado— y falla por

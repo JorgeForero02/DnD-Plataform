@@ -41,7 +41,16 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
   declarada en `docs/04-convenciones.md`.
 - **Evidencia antes que afirmación.** Si algo falla, se dice que falla y se pega la salida.
 - **Un commit por tarea**, mensaje en inglés (Conventional Commits), ledger y memoria al día.
-- **Código en inglés, interfaz y documentación en español.**
+- **Código en inglés, interfaz y documentación en español.** Y **ningún valor de enumeración
+  llega a la pantalla**: la forma legible se escribe una vez por dominio y todo lo demás la
+  importa. Ese fallo apareció tres veces en una sola mañana (`(LOCATION)`, `PUBLIC`,
+  `Nuevo LOCATION`).
+- **La interfaz tiene sus propias reglas vinculantes** desde el reseño del 2026-09-02, en
+  `docs/04-convenciones.md`: iconos dibujados y no glifos de fuente; opciones con significado
+  como radios con explicación y no en un desplegable; **si el texto explica una regla del
+  servidor y discrepan, miente el texto**; un valor guardado que un selector no ofrece se
+  muestra marcado y no seleccionable; y **lo que solo se ve maquetado se mide en el navegador**,
+  porque `jsdom` no maqueta y por eso un borde partido sobrevivió a la suite entera en verde.
 - **Está en producción desde el 2026-09-02**: `dnd.supportive.pro`, en `vps1new` tras
   Coolify + Traefik, desde `docker-compose.prod.yml`. Ver `docs/03-despliegue.md`, y en
   particular por qué `TRUST_PROXY` vale **2** (Traefik y nginx son **dos** proxies).

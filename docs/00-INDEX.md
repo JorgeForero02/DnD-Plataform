@@ -35,6 +35,13 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/specs/2026-09-02-respuestas-jugadores-design.md` | **Lo que contestaron los jugadores a las ocho preguntas, y qué cambia.** Tres cambian el diseño y una contradice una exclusión declarada de la fase 2 (los conjuros). **Se lee con el informe de huecos** |
 | `superpowers/specs/2026-09-01-huecos-fase-2-design.md` | **Lo que una mesa real necesita y el alcance de la fase 2 no modela.** Doce huecos con su coste de construir ahora y de añadir después, más 16 preguntas para el autor. **Se lee antes de ejecutar 2A**, porque cuatro de ellos cambian la forma de una tabla |
 | `superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md` | **Alcance de la fase 3**: nada de editores de arte; subir, curar e importar |
+| `superpowers/specs/2026-09-02-auditoria-interfaz.md` | **Por qué la interfaz se rehízo**, medido sobre capturas de producción con datos reales. Registro fechado |
+| `superpowers/specs/2026-09-02-identidad-visual-design.md` | **La identidad «Sala de guerra»** y su porqué. Manda sobre color, tipografía y ornamento |
+| `superpowers/specs/2026-09-02-hoja-5e-design.md` | **La hoja de 5.ª edición**: anatomía, todas las fórmulas del SRD 5.1 y los cuatro huecos. **La lee la fase 2A antes de tocar el esquema** |
+| `superpowers/specs/2026-09-02-ux-herramientas-estudio.md` | Cómo lo resuelven World Anvil, Kanka, Foundry, Linear y compañía. Material del reseño |
+| `superpowers/specs/2026-09-02-identidad-direcciones-estudio.md` | Las tres direcciones visuales estudiadas, **incluidas las dos descartadas** |
+| `superpowers/specs/2026-09-02-formularios-estudio.md` | Diseño de formularios y diálogos (NN/g, GOV.UK, Adam Silver). De aquí salieron los radios de visibilidad |
+| `superpowers/plans/2026-09-02-reseno-interfaz.md` | **Plan del reseño de interfaz**: las seis tandas y sus dos fronteras |
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
 | `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
 | `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |

@@ -6,6 +6,63 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — Segunda pasada del reseño: lo que el autor señaló al verlo
+
+**Qué.** El autor miró la interfaz desplegada y mandó dos capturas con tres cosas: el logotipo
+parecía un emoji, la cabecera «casi no se nota», y las insignias de visibilidad eran cajas que
+pesaban más que el nombre al que acompañaban. Pidió además mejorar los formularios.
+
+| Señalado | Qué era en realidad |
+|---|---|
+| «que el logo no sea un emoji» | **Había dos.** La pestaña **no tenía icono ninguno**, así que el navegador ponía el suyo genérico; y el conmutador de tema era el carácter `☾`/`☀`, que se pinta como emoji a color en unos sistemas y como cuadrado vacío en otros |
+| «el header casi no se nota» | 48 px de alto, **del mismo color que las tarjetas** que debía enmarcar y separado por el mismo filete gris. Era una tarjeta más |
+| Las insignias | Borde de **3 px**: pesaban más que el nombre de la ficha |
+| El horizonte del acceso | Un zigzag de rectas. Se leía como un **gráfico de líneas**, no como terreno |
+
+**Lo entregado.** Marca dibujada (rosa de los vientos + regla, en trazo, heredando el color)
+con su `favicon.svg`, iconos de sol y luna dibujados, cabecera de 64 px sobre fondo **más
+oscuro** que las superficies y con filete de cobre, insignias de 1 px —donde la señal que
+distingue los cinco niveles es el **glifo**, no el grosor—, y un horizonte de curvas
+irregulares con cumbres, abetos de escala y una torre en ruinas **apoyada** en la loma.
+
+**Lo que apareció tirando del hilo, que es lo interesante:**
+
+1. **El mismo defecto tres veces en una mañana: un valor de enumeración llegando a la
+   pantalla.** `Ciudad Ceniza (LOCATION)` en los enlaces; `PUBLIC`, `DM_ONLY` como opciones del
+   selector de visibilidad; y `Nuevo LOCATION` como título de diálogo. Se arreglaron los tres y
+   **se escribió la regla** en [04-convenciones](./04-convenciones.md), porque un fallo que
+   reaparece tres veces en una mañana volverá una cuarta.
+
+2. **La visibilidad pasó de desplegable a radios con explicación.** Es el rasgo que distingue
+   este producto de una wiki cualquiera y estaba pidiendo elegir entre cinco palabras en inglés
+   sin decir qué hacía ninguna. Ahora cada nivel lleva su insignia y una frase.
+
+3. **Y esa frase mintió.** La primera versión prometía que «público» dejaba ver a quien no
+   estuviera en la campaña. Es falso: `canView` rechaza al no miembro **antes** de mirar el
+   nivel, así que `PUBLIC` y `PLAYERS` producen hoy el mismo conjunto de espectadores —y
+   [05-datos.md](./05-datos.md) **ya lo decía bien**. Se corrigió el texto, no el documento.
+   De ahí sale la regla: si la interfaz explica una regla del servidor y discrepan, **miente la
+   interfaz**.
+
+4. **Las filas dibujaban el borde partido**, y eso era un defecto de verdad, no un gusto. Al
+   pasar de `<button>` a `<a>` heredaron `display: inline`, y un borde sobre un elemento en
+   línea que ocupa varias líneas se dibuja a trozos. **Nada podía cazarlo**: `jsdom` no
+   maqueta, ninguna aserción de texto lo nota, y sobrevivió a la suite entera en verde y a un
+   despliegue. Ahora la suite de navegador lee el `display` **calculado** de la fila.
+
+**Alineación de la documentación**, revisada a propósito en esta pasada: dos afirmaciones vivas
+habían quedado desfasadas y se corrigieron —[01-arquitectura](./01-arquitectura.md) decía que
+el editor era «la única vista de detalle que existe», y el hallazgo **E2** de
+[06-pendientes](./06-pendientes.md) daba por hecho que los enlaces solo se pintaban dentro de
+él—. Los registros fechados **no se reescribieron**: donde su premisa cambió, se anotó al
+margen.
+
+**Revertir.** Cada arreglo es su propio commit. El logotipo, el favicon y los iconos viven en
+`apps/web/src/ui/Logo.tsx` y `apps/web/public/favicon.svg`; las reglas de interfaz, en
+`04-convenciones`.
+
+---
+
 ## 2026-09-02 — Reseño completo de la interfaz
 
 **Qué.** La identidad, la navegación y todas las pantallas. El autor entró en producción por

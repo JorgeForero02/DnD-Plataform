@@ -19,6 +19,9 @@ Lo entregado está en [07-historial](./07-historial.md) y su porqué en
 | **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
 | **U5** | **La hoja de personaje es solo la forma**: todas sus casillas dicen «—» | A propósito, y anunciado en la propia pantalla. El motor es la [fase 2A](./superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md), que ya no tiene que decidir la disposición |
 | **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
+| **U8** | **Cerrar un diálogo con cambios sin guardar no avisa** | `Escape`, el clic fuera y «Cancelar» descartan lo escrito sin preguntar. Con un cuerpo de ficha en markdown de varios párrafos, eso es perder trabajo de verdad. Lo recomienda la investigación de formularios ([informe](./superpowers/specs/2026-09-02-formularios-estudio.md)) y no entró por tiempo |
+| **U9** | **`Guardar` deshabilitado en vez de `aria-disabled`** | Un botón `disabled` sale del recorrido de teclado, así que quien navegue con teclado o lector de pantalla no puede llegar a él **ni leer por qué** no puede guardar. La aplicación ya pone el motivo en pantalla; falta que el control sea alcanzable |
+| **U10** | **El texto que explica la visibilidad no está atado a `canView`** | Las frases de `features/entities/visibilidad.ts` describen la matriz del servidor y **ya mintieron una vez** (prometían que «público» dejaba entrar a quien no fuera miembro). Hoy nada rompe si vuelven a divergir: haría falta una prueba que compare las dos, o aceptar explícitamente que es texto y se revisa a mano |
 | **U7** | **El ornamento no se puede apagar.** La cuadrícula y el horizonte se pintan siempre | No se mueven, así que `prefers-reduced-motion` no aplica, pero no hay forma de dejar la pantalla desnuda para quien la prefiera así |
 
 ## Lo que dijeron los jugadores (2026-09-02)
@@ -283,7 +286,7 @@ navegar, buscar, ordenar y administrar la mesa.
 | D8 | **Ninguna pantalla muestra ninguna fecha**, comentarios incluidos | P3 | `grep -rn "createdAt" apps/web/src --include=*.tsx` fuera de comprobaciones: **cero**. `features/comments/CommentThread.tsx` pinta autor y cuerpo, sin marca de tiempo |
 | D9 | **Seis emisiones de evento sin un solo oyente** — andamiaje futuro, no afecta al usuario | P3 | `campaigns/campaigns.service.ts`, `entities/entities.service.ts` e `invites/invites.service.ts` emiten por `EventEmitter2`; `grep -rn "OnEvent" apps/api/src`: **cero** |
 | E1 | **Sesiones y Personajes siguen sin buscador ni filtro**, y **no hay búsqueda que cruce pestañas** — ya declarado bajo la tabla de 1.17, confirmado abierto | P2 — ya declarado | `features/entities/EntityFilterBar.tsx` se monta solo en `EntityTab` de `pages/CampaignDetailPage.tsx` y filtra la lista ya cargada de **un solo tipo**; `fetchAllEntities` (`features/entities/api.ts`) ya trae todos los tipos y solo lo consume el selector de destino de enlaces |
-| E2 | **Los enlaces del mundo no se pueden recorrer, y son de un solo sentido** | P1 | `features/links/LinksPanel.tsx:75` pinta el destino como **texto plano**, no como control; `links/links.service.ts:49` consulta `where: { fromId: entityId }`, así que **no hay enlaces entrantes**; y el panel solo existe dentro del editor (`features/entities/EntityEditor.tsx`, bloque `isEdit && entity`), porque el editor es la única vista de detalle que tiene la aplicación |
+| E2 | **Los enlaces del mundo no se pueden recorrer, y son de un solo sentido** | P1 | `features/links/LinksPanel.tsx` pinta el destino como **texto plano**, no como enlace, así que ver una relación no lleva a ella; y `links/links.service.ts:49` consulta `where: { fromId: entityId }`, así que **no hay enlaces entrantes** — ninguna ficha sabe quién la menciona. **La tercera parte de este hallazgo se cerró el 2026-09-02**: el panel ya no vive dentro del editor, sino en la página de lectura de la ficha |
 | E3 | **Diez campos con límite en el servidor que la pantalla no anuncia**, y el error vuelve crudo y en inglés | P2 | `grep -rn "maxLength" apps/web/src`: **cero**; el único límite en cliente es `min`/`max` del nivel (`features/characters/CharacterEditor.tsx:151-152`). Los límites reales viven en `packages/shared/src` (`campaign.schema.ts`, `entity.schema.ts`, `session.schema.ts`, `character.schema.ts`) |
 | E4 | **Las etiquetas duplicadas se siguen persistiendo** — ya declarado como deuda aceptada de 1.17c, confirmado abierto y sin novedad | P3 — ya declarado | `packages/shared/src/entity.schema.ts:14` no impone unicidad y `parseTags` (`features/entities/EntityEditor.tsx`) tampoco; la fila dedupa solo al pintar |
 
@@ -556,7 +559,11 @@ brief de 1.15; su ficha sigue abierta en P3.
 > personaje.** La versión de 1.15 deshabilitaba la fila entera cuando el usuario no podía
 > editar. Eso confundía "editar" con "ver": la fila **es la única vista de detalle que
 > existe** — el editor es el único consumidor de `useEntity`/`useSession`/`useCharacter`, y
-> `LinksPanel`/`CommentThread` solo se pintan dentro de él (`EntityEditor.tsx`). Un jugador
+> `LinksPanel`/`CommentThread` solo se pintan dentro de él (`EntityEditor.tsx`). *(Al día de
+> hoy esa premisa ya no se cumple: el reseño del 2026-09-02 dio a las fichas y a los personajes
+> su propia página de lectura, y allí viven los enlaces y los comentarios. La conclusión de
+> 1.15-fix —que leer no es editar— sigue siendo la correcta, y ahora se apoya en una pantalla
+> en vez de en un modal.)* Un jugador
 > que **sí** puede ver una entidad por `canView` (por ejemplo `PLAYERS`, o `DM_ONLY` recién
 > revelada) pero no puede editarla —no es el DM ni el creador— dejaba de poder leer su
 > descripción, sus etiquetas, sus enlaces y sus comentarios: la fila deshabilitada rompía el

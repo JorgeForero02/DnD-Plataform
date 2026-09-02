@@ -123,6 +123,64 @@ nombres de las cosas del código, no.
   las cifras. Cada pila conserva su reserva local completa y el enlace lleva `display=swap`,
   así que una red de tipografías lenta o bloqueada cambia **cómo se ve** la página y nunca
   **si funciona** — Playwright sigue midiendo una página que pintó.
+### Reglas de interfaz que salieron del reseño (2026-09-02) — vinculantes
+
+Cada una nació de un defecto real, encontrado en producción o señalado por el autor. Se
+escriben aquí porque **volvieron a aparecer más de una vez**: una regla que solo vive en la
+cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
+
+- **Ningún valor de enumeración llega nunca a la pantalla.** Ocurrió **tres veces en la misma
+  mañana**: el panel de enlaces pintaba `Ciudad Ceniza (LOCATION)`, el selector de visibilidad
+  ofrecía `PUBLIC`/`DM_ONLY`, y el título de un diálogo componía `Nuevo LOCATION`. La forma
+  legible se escribe **una sola vez por dominio** —`features/entities/resumen.ts` para los
+  tipos de ficha, `features/entities/visibilidad.ts` para los niveles— y todo lo demás la
+  importa. Si hace falta concordar en género («Nueva misión», no «Nuevo misión»), se escribe
+  la frase entera en la tabla en vez de concatenarla en la pantalla.
+
+- **Los iconos se dibujan.** Nada de `☾`, `☀`, `✓` ni emoji como icono: un glifo de fuente se
+  pinta a todo color en unos sistemas, como un cuadrado vacío en otros, y nunca se parece al
+  resto de la interfaz. SVG en trazo, heredando `currentColor`, en `ui/Logo.tsx` o
+  `ui/Ornament.tsx`. **Excepción declarada:** los cinco glifos de `ui/Badge.tsx` (`○ ◐ ◈ ◆ ●`),
+  que son geometría pura, se alinean con el texto y son la señal que distingue los niveles de
+  visibilidad **sin depender del color** — sustituirlos por SVG costaría esa alineación sin
+  ganar nada.
+
+- **Una opción con significado no se esconde en un desplegable.** Cuando las opciones son
+  pocas y **cada una quiere decir algo distinto** —los cinco niveles de visibilidad—, van como
+  radios, visibles a la vez, y **cada una lleva la frase que explica qué hace**. Práctica
+  establecida (GOV.UK, Adam Silver, NN/g) y aquí además necesaria: equivocarse en ese control
+  enseña a los jugadores algo que no debían ver.
+
+- **Si la interfaz explica una regla del servidor, el servidor manda.** Las frases de
+  `visibilidad.ts` describen lo que hace `canView`; **no lo definen**. Ya pasó: la primera
+  versión prometía que «público» dejaba ver a quien no estuviera en la campaña, y era falso
+  —`canView` rechaza al no miembro **antes** de mirar el nivel, y
+  [05-datos.md](./05-datos.md) ya lo decía—. Cuando el texto y el código discrepen, **el que
+  miente es el texto**.
+
+- **Un valor guardado que un selector no ofrece se muestra, marcado y no seleccionable.**
+  Nunca desaparece. Una opción invisible es un dato que se pierde en el siguiente guardado sin
+  que nadie se entere.
+
+- **Un defecto de maquetación exige una prueba de navegador.** `jsdom` no maqueta: no hay
+  ancho, ni alto, ni `display` calculado. Cuando las filas pasaron de `<button>` a `<a>`
+  heredaron `display: inline` y dibujaron **el borde partido**, con la suite entera en verde y
+  un despliegue de por medio. Lo que se mide se escribe en `apps/web/e2e`, leyendo el estilo
+  **calculado** — igual que el contraste, que lleva haciéndolo desde 1.19.
+
+- **El ornamento informa o enmarca; nunca compite.** Se permite lo que haría un grabado y
+  puede imprimirse: filete, versalita, capitular, cuadrícula, dibujo a medio trazo. Se prohíbe
+  la textura que estorba a la lectura y el adorno que no dice nada. Y **nada de esto puede
+  romper el contraste**: la cuadrícula pinta al 5 % por eso mismo.
+
+- **La cabecera es el marco, no una tarjeta más.** Va sobre un fondo **más oscuro** que las
+  superficies que enmarca. La primera versión era del mismo color y del mismo grosor de filete
+  que las tarjetas, y el autor lo describió exactamente así: «casi no se nota».
+
+- **Leer y editar son pantallas distintas.** Una fila lleva a una página de lectura; el editor
+  se abre desde ella. Meter el cuerpo de una ficha en un `<textarea>` para poder leerlo es lo
+  que hacía esta aplicación, y es lo que la hacía incómoda en la mesa.
+
 - **Un filtro o una búsqueda en pantalla es de cliente, nunca control de acceso** (tarea
   1.17c · A2/C1, `features/entities/filter.ts`). Opera sobre una lista que el servidor **ya**
   filtró por `canView`; solo puede **quitar de la vista** filas que la persona ya tenía

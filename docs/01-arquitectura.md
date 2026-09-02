@@ -84,6 +84,17 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 | `/campaigns/:id/personajes/:characterId` | Hoja de personaje con la forma de 5.ª edición |
 | `/account`, `/join/:token`, `/design-tokens`, `*` | Cuenta, invitación, control de tokens y 404 |
 
+`src/ui/` es el sistema de diseño, y **es la única puerta al color y a la tipografía**:
+
+| Fichero | Qué da |
+|---|---|
+| `tokens.css` | La paleta y las escalas, en propiedades personalizadas. **Nadie escribe un color literal fuera de aquí** |
+| `Button`, `Field`, `Panel`, `Badge`, `Dialog`, `Tabs` | Las primitivas de 1.19. `Panel tone="vellum"` es la superficie del mundo; `Tabs layout="sidebar"` es la columna de secciones |
+| `AppShell`, `AppHeader`, `PageHeader`, `Breadcrumbs` | El marco de toda pantalla con sesión |
+| `Collection` (`Toolbar`, `FilterChip`, `ListRow`, `EmptyState`) | De lo que se hace una lista |
+| `Logo`, `Ornament` | La marca, los iconos y el ornamento — todo **dibujado**, ver [04-convenciones](./04-convenciones.md) |
+| `theme.ts`, `ThemeToggle` | Los dos temas y su conmutador |
+
 Las tres primeras pantallas comparten `ui/AppShell.tsx`: cabecera global, migas y una medida
 máxima. **Editar es un diálogo que se abre desde la lectura**, nunca la puerta de entrada.
 src/components/         ProtectedRoute y compartidos
@@ -116,11 +127,13 @@ propósito: el servidor deja crear a cualquier miembro (`entities.service.ts`,
 el rol para **deshabilitar** (no ocultar) con una explicación visible es **crear y editar una
 sesión** (ambas DM-only en el servidor), **editar un personaje o una entidad**, y **generar
 invitación**. La **fila** de una entidad, sesión o personaje **nunca se deshabilita** (arreglo 1,
-1.15-fix): es la única vista de detalle que existe — el editor es el único consumidor de
-`useEntity`/`useSession`/`useCharacter`, y enlaces y comentarios solo se pintan dentro de él
-— así que lo que el rol decide es si el editor que la fila abre lo hace en modo lectura
-(campos deshabilitados, Guardar deshabilitado con motivo) o en modo edición, nunca si la fila
-abre o no.
+1.15-fix). El motivo original era que el editor era la única vista de detalle que existía;
+**desde el reseño del 2026-09-02 ya no lo es** —la fila es un enlace a su página de lectura
+(`EntityDetailPage`, `CharacterDetailPage`), y los enlaces y los comentarios viven allí, no
+dentro del editor—, pero la conclusión no cambia y ahora se sostiene mejor: **leer no es
+editar**. Lo que el rol decide es si el editor que se abre *desde* esa página lo hace en modo
+lectura (campos deshabilitados, Guardar deshabilitado con motivo) o en modo edición, nunca si
+se puede abrir la ficha.
 **Esto es honestidad de la interfaz, no seguridad: `canView`/`requireDM`/`requireMember`/
 `requireEditable` (`apps/api/src/common` y cada servicio) siguen siendo la única autoridad,
 y rechazan exactamente igual si el código de arriba desaparece.**

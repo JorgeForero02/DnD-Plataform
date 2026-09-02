@@ -9,8 +9,16 @@ import type { Visibility } from "@dnd/shared";
 // (apps/api/src/common/visibility.ts). Si alguna vez dejan de coincidir, el que miente es este
 // fichero.
 export const EXPLICACION_DE_NIVEL: Record<Visibility, string> = {
-  PUBLIC: "Cualquiera de la campaña, y también quien no esté en ella si algún día se comparte.",
+  // Ojo con esta frase: la primera versión prometía que "público" dejaba ver a quien no
+  // estuviera en la campaña, y es MENTIRA. canView (apps/api/src/common/visibility.ts) devuelve
+  // false para quien no es miembro ANTES de mirar el nivel, así que hoy PUBLIC y PLAYERS
+  // producen exactamente el mismo conjunto de espectadores. Está documentado en
+  // docs/05-datos.md, que ya lo decía bien cuando este texto lo contradijo.
+  PUBLIC:
+    "Todo el que esté en la campaña. Hoy es lo mismo que «Jugadores»: nadie de fuera entra todavía.",
   PLAYERS: "Todos los que se sientan a esta mesa. Lo normal para el mundo que ya han visto.",
+  // (Sí: PUBLIC y PLAYERS coinciden hoy. La diferencia existe en el modelo, guardada para el
+  // día en que algo se pueda compartir fuera de la mesa, y por eso el nivel sigue ofreciéndose.)
   SPECIFIC_PLAYERS: "Solo quienes elijas abajo. Para el secreto que uno sabe y los demás no.",
   OWNER_DM: "Tú y quien lo creó. Nadie más de la mesa.",
   DM_ONLY: "Solo el DM. Lo que todavía no ha pasado.",

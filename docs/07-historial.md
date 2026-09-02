@@ -6,6 +6,48 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (19:25) — Despliegue de la fase 2A completa a producción, con su migración
+
+**Qué.** `adb110c` en `dnd.supportive.pro`, lanzado a mano por la API de Coolify
+(`deployment_uuid f5yrnzktq9xzdehtw3tyqiop`, `finished` en ~2,5 min). Trae la única migración
+del día, `20260902163450_character_manual_overrides`, que solo **añade** una columna anulable.
+
+**Volcado previo**, aunque el autor había dicho que en este proyecto no hace falta copia: la
+tanda traía migración, cuesta segundos, y la regla de 03 lo pide. 30 826 bytes en
+`vps1new:/root/dnd-predespliegue/dnd-2026-09-02-1922.sql`.
+
+**Verificado con evidencia, no con el «finished» del panel.**
+
+- Los tres contenedores `healthy`; `_prisma_migrations` pasó de **5 a 7** filas y la columna
+  `Character.overrides` existe. El único usuario de producción seguía ahí antes y después.
+- `GET /` → 200, `GET /api/auth/me` sin credenciales → 401, `GET /api/catalog` sin
+  credenciales → 401.
+- Una partida entera contra producción, con datos de prueba y borrada después: hoja derivada
+  (CA 11, PG 13, velocidad 25, visión en la oscuridad 60), **dados de golpe sembrados**
+  (`hit-dice-d10 1/1`, el agujero que estuvo abierto desde 2A.8), apresado deja la velocidad
+  efectiva en **0 con `restrained` en la traza**, la anulación del DM pone la CA en 18 dejando
+  `('override', 7, 'manual')` —la traza sigue sumando—, una tirada con ventaja sale como
+  `2d20kh1+3` con `[10, 12]` tirados, `12` conservado y `10` descartado, y el previo de subida
+  de nivel da `13 + 9 = 22` con la Constitución **16** del enano: la suma que esta mañana no
+  cuadraba.
+- **El motor de reglas disparó de verdad**: una regla armada sobre «empieza la sesión» revelando
+  una ficha la pasó de `DM_ONLY` a `PLAYERS` al arrancar la sesión, y dejó su `RuleTrace` en
+  `APPLIED`. Es el camino completo —escritura del log → emisión → puente → motor → efecto—
+  funcionando fuera de las pruebas por primera vez.
+- Un usuario ajeno recibe **403** tanto en las trazas como en la ficha revelada de esa campaña.
+
+**Un susto que no lo era:** el listado de trazas volvió vacío en la prueba de humo. Era el
+guion, que buscaba `items`; la respuesta es `{traces, nextCursor}`. La fila estaba en la base.
+
+**Limpieza.** La campaña y los tres usuarios de humo, borrados. Producción vuelve a **1 usuario
+y 2 campañas**, comprobado por conteo de filas.
+
+**Cómo revertirlo.** Redesplegar `3221bea` desde Coolify. La migración solo añade una columna
+anulable, así que el código viejo convive con ella; si aun así se quiere quitar:
+`ALTER TABLE "Character" DROP COLUMN "overrides";`.
+
+---
+
 ## 2026-09-02 (cierre) — La fase 2A completa: las diecisiete tareas, y lo que tres auditorías encontraron encima
 
 **Qué.** Se cerraron las cuatro tareas que faltaban —2A.9 (subida de nivel), 2A.16 (motor de

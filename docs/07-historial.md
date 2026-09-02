@@ -6,6 +6,49 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — `JWT_SECRET` deja de tener valor por defecto (tarea 1.18, hallazgo 1)
+
+**Qué.** `apps/api/src/common/jwt-secret.ts` (nuevo) expone `requireJwtSecret()`, que lee la
+variable y **lanza** si falta, si está vacía o si mide menos de `JWT_SECRET_MIN_LENGTH` (32);
+nunca incluye el valor en el mensaje. `auth.module.ts` y `jwt.strategy.ts` pierden su
+`?? "change-me-in-production"`. El primero pasa a `JwtModule.registerAsync`: el array
+`imports` del decorador `@Module` se evalúa **al importar el fichero**, antes de que
+`ConfigModule.forRoot()` cargue `apps/api/.env`, así que la lectura tenía que aplazarse a la
+instanciación para que el secreto de firma y el de verificación —que `jwt.strategy.ts` lee en
+su constructor— salgan de la misma fuente. Se alargan a 32 caracteres los **dos**
+`JWT_SECRET` de `.github/workflows/ci.yml`, que con `ci-secret` (9) ya no arrancarían. En `.env.example` el valor se deja **vacío**, no con un marcador largo: un
+marcador de 32 caracteres o más pasaría la validación, y como el arranque documentado es
+`cp .env.example apps/api/.env`, la API acabaría firmando con una cadena publicada en el
+repositorio — el mismo agujero por otra puerta. Vacío falla al cerrar. `main.ts` gana un
+`.catch` en `bootstrap()` para que el operador lea el mensaje accionable y no una traza cruda.
+
+**Por qué.** Era el hallazgo **crítico** de la auditoría del 2026-09-01: un despliegue sin la
+variable firmaba tokens válidos con una cadena publicada en el repositorio, y cualquiera podía
+fabricarse un token para el usuario que quisiera. Fallar al arrancar es preferible a funcionar
+inseguro.
+
+**Prueba.** `jwt-secret.spec.ts` cubre el ayudante (ausente, vacío, solo espacios, 31, 32, y
+que el mensaje no filtra el valor). `auth.module.spec.ts` prueba lo que importa de verdad: que
+`Test.createTestingModule({ imports: [PrismaModule, AuthModule] })` con `PrismaService`
+sustituido por un doble **no compila** sin la variable, ni con una cadena de 31. El doble de
+Prisma es lo que mantiene la prueba unitaria: `compile()` instancia proveedores pero no llama a
+`onModuleInit`, así que nunca se abre una conexión; y `AuthModule` a solas tampoco compilaría,
+porque `UsersService` necesita el `PrismaService` global.
+
+Los dos consumidores se prueban **por separado a propósito**: hay dos tests que sustituyen uno
+al otro (`JwtStrategy` por un doble en uno; `JWT_MODULE_OPTIONS`, el testigo de `@nestjs/jwt`,
+en el otro), de modo que el rechazo solo puede venir del consumidor bajo prueba. Sin eso, un
+`??` repuesto en **un solo** fichero dejaba la suite en verde con el secreto de firma público
+—lo señaló la revisión, y era cierto—. Comprobado por mutación **fichero a fichero, ejecutada
+por el orquestador**: mutar solo `auth.module.ts` tumba únicamente el test de la fábrica de
+`JwtModule`; mutar solo `jwt.strategy.ts` tumba únicamente el de `JwtStrategy`; restaurados,
+66/66 en verde.
+
+**Cómo revertir.** Un commit propio. Revertirlo devuelve el valor por defecto y vuelve a hacer
+opcional la variable; no toca autorización, ni el esquema, ni `apps/web`.
+
+---
+
 ## 2026-09-01 — Antideriva: la regla de documentación pasa a comprobarla una máquina (tarea 1.17e)
 
 **Qué.** `scripts/check-docs.mjs` (ya existía, sin enganchar) entra en `pnpm verify`, y se

@@ -18,7 +18,7 @@ jobs:
           --health-timeout 5s --health-retries 5
     env:
       DATABASE_URL: postgresql://dnd:dnd@localhost:5432/dnd
-      JWT_SECRET: ci-secret
+      JWT_SECRET: ci-secret-value-at-least-32-characters-long
     steps:
       - uses: actions/checkout@v4
       # pnpm version comes from package.json "packageManager" — do NOT also pass
@@ -53,7 +53,7 @@ jobs:
           --health-timeout 5s --health-retries 5
     env:
       DATABASE_URL: postgresql://dnd:dnd@localhost:5432/dnd
-      JWT_SECRET: ci-secret
+      JWT_SECRET: ci-secret-value-at-least-32-characters-long
       JWT_EXPIRES_IN: 7d
       PORT: 3000
     steps:

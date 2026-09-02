@@ -36,6 +36,9 @@ Aplicación desde repositorio Git, rama `main`. Build pack: Dockerfile, ubicaci�
 Dominio con SSL automático (Traefik + Let's Encrypt).
 Variables: `DATABASE_URL` (interna), `JWT_SECRET` (`openssl rand -hex 32`),
 `JWT_EXPIRES_IN=7d`, `PORT=3000`, `SENTRY_DSN`.
+**`JWT_SECRET` es obligatoria y de 32 caracteres como mínimo: sin ella, o más corta, la API
+se niega a arrancar** en vez de firmar con un valor por defecto
+(`apps/api/src/common/jwt-secret.ts`). `openssl rand -hex 32` da 64, de sobra.
 El `CMD` de la imagen ejecuta `prisma migrate deploy` al arrancar: **el esquema se aplica
 solo**.
 

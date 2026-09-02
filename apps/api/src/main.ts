@@ -12,4 +12,9 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port, "0.0.0.0");
 }
-bootstrap();
+bootstrap().catch((error: Error) => {
+  // No logger is available before the app boots — print the actionable message
+  // (e.g. requireJwtSecret's) instead of a raw unhandled-rejection stack trace.
+  console.error(error.message);
+  process.exit(1);
+});

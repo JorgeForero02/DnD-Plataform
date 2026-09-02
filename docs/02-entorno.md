@@ -13,7 +13,7 @@ relativo al directorio de trabajo del proceso — que con `pnpm --filter @dnd/ap
 ```bash
 pnpm install                                  # el script `prepare` compila @dnd/shared a dist/
 docker compose up -d                          # Postgres 16 en localhost:5432 (volumen dnd_pgdata)
-cp .env.example apps/api/.env                 # y edita JWT_SECRET
+cp .env.example apps/api/.env                 # y edita JWT_SECRET (>= 32 caracteres)
 pnpm --filter @dnd/api prisma:generate
 pnpm --filter @dnd/api exec prisma migrate deploy
 
@@ -26,7 +26,7 @@ pnpm dev:web                                  # web en :5173, proxy /api -> :300
 | Variable | Para qué | Ejemplo local |
 |---|---|---|
 | `DATABASE_URL` | Postgres de la API | `postgresql://dnd:dnd@localhost:5432/dnd` |
-| `JWT_SECRET` | Firma de los tokens | `openssl rand -hex 32` |
+| `JWT_SECRET` | Firma de los tokens. **Obligatoria y de 32 caracteres como mínimo: sin ella la API se niega a arrancar** (`apps/api/src/common/jwt-secret.ts`) | `openssl rand -hex 32` |
 | `JWT_EXPIRES_IN` | Caducidad del token | `7d` |
 | `PORT` | Puerto de la API | `3000` |
 | `SENTRY_DSN` | Errores en Sentry; **vacío lo desactiva** | *(vacío)* |

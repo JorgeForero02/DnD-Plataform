@@ -21,7 +21,7 @@ Lo que falta, y va como **tarea 1.18**:
 
 | | Hallazgo | Gravedad |
 |---|---|---|
-| 1 | **`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios. Si falta la variable en producción, la API firma tokens con una cadena que está en el repositorio público | **Crítico** |
+| 1 | ~~**`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios~~ — **HECHO** (2026-09-01, ver [07-historial.md](./07-historial.md)): no hay valor por defecto, la variable es obligatoria y de 32 caracteres mínimo, y la API se niega a arrancar sin ella | ~~**Crítico**~~ |
 | 2 | **29 vulnerabilidades en dependencias de producción** (1 crítica, 16 altas) y CI no audita | Alto |
 | 3 | **Sin límite de peticiones**: fuerza bruta en login y en tokens de invitación | Alto |
 | 4 | **Sin cabeceras de seguridad** (`helmet`) | Medio |

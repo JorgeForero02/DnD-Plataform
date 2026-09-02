@@ -52,7 +52,7 @@ Lo que falta, y va como **tarea 1.18**:
 | 3 | ~~**Sin límite de peticiones**~~ — **HECHO** (1.18a): límite por IP en login, registro, aceptar invitación y cambiar contraseña. **Exige `TRUST_PROXY=1` en producción**, ver [02-entorno.md](./02-entorno.md) | ~~Alto~~ |
 | 4 | ~~**Sin cabeceras de seguridad**~~ — **HECHO** (1.18a): `@fastify/helmet` con política revisada, fijada por `apps/api/test/security-headers.e2e-spec.ts` | ~~Medio~~ |
 | 5 | ~~**CORS abierto**~~ — **HECHO** (1.18a): apagado por defecto; `CORS_ORIGIN` es la única forma de encenderlo | ~~Medio~~ |
-| 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
+| 6 | ~~**Sin pantalla de 404 ni `ErrorBoundary`**~~ — **HECHO** (1.18b): ruta comodín, red de errores con salida que funciona, y un comentario que declara lo que una red de React **no** atrapa | ~~Medio~~ |
 | 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
 | 8 | **HECHO a medias** (1.18a, mitad de servidor): ya se puede cambiar el nombre visible y la contraseña por API —exigiendo la actual, verificada con argon2—, y cambiarla **invalida los tokens anteriores**. Falta la **pantalla** (va en 1.18b). **Recuperarla si se olvida sigue BLOQUEADO**: necesita servicio de correo, que no existe; se decide junto al despliegue | web |
 
@@ -83,6 +83,20 @@ Lo que queda abierto:
   *Log in* en inglés, contra la regla del proyecto (interfaz en español). No se tocó dentro de
   una tarea de color; es tarea propia, y arrastra los localizadores de los recorridos de
   navegador.
+
+### Deuda nueva aceptada en 1.18b (2026-09-01)
+
+- **El mensaje de «se cerró tu sesión» solo se limpia al iniciar sesión con éxito.** Si el
+  usuario se va a otra pantalla sin entrar, el mensaje sigue pendiente en memoria y reaparece la
+  próxima vez que monte el inicio de sesión en la misma pestaña. Solo en memoria, desaparece al
+  recargar.
+- **La rama de error del detalle de campaña dice «no existe o no tienes acceso» ante cualquier
+  fallo de la consulta**, incluido un 500 pasajero o una conexión caída (no hay reintentos). Un
+  mensaje que distinga por código sería más honesto, pero es un cambio más ancho que el hallazgo
+  que lo motivó.
+- **El aviso «no puedes editar esto» de una fila sigue midiéndose solo en la página de tokens**,
+  no en la pantalla de un jugador que no sea el creador — haría falta un segundo contexto de
+  navegador en el recorrido. El resto de las mediciones sí son sobre pantallas reales.
 
 ### Deuda nueva aceptada en 1.18a (2026-09-01)
 

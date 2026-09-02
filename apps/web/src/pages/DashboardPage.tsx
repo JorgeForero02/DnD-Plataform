@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/auth.store";
 import { CampaignList } from "../features/campaigns/CampaignList";
 import { CreateCampaignModal } from "../features/campaigns/CreateCampaignModal";
@@ -25,6 +26,11 @@ export function DashboardPage() {
           <Button variant="primary" onClick={() => setCreating(true)}>
             Nueva campaña
           </Button>
+          {/* Task 1.18b — the account screen's only entry point from the app chrome: change
+              display name and change password (App.tsx: /account). */}
+          <Link to="/account" className="text-chrome-sm text-accent-text">
+            Cuenta
+          </Link>
           <Button variant="secondary" onClick={logout}>
             Salir
           </Button>

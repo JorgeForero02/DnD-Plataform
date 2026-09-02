@@ -18,11 +18,25 @@ export function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  // Fix round 1 (post-1.18b review), Critical 1, fix-of-the-fix: AccountPage.tsx's password
+  // form logs the session out THE INSTANT the server accepts the new password (no dead token
+  // lingers in localStorage), which means it can no longer keep its own success message on
+  // screen — the route guard unmounts it the same render. This is where that message actually
+  // gets read instead. First version carried it as react-router navigation state, which broke
+  // in the real browser: ProtectedRoute's own bare <Navigate to="/login" replace/> fires a
+  // SECOND, state-less history.replaceState a moment later and silently wiped it — caught only
+  // by the real Playwright journey (cuenta.spec.ts), never by a unit test with jsdom's
+  // MemoryRouter. auth.store.ts's `flash` field instead: not router history, so nothing
+  // router-driven can overwrite it. One-shot by convention, not by a timer: cleared below the
+  // moment a login actually succeeds, so it never survives into a session it wasn't about.
+  const flash = useAuthStore((s) => s.flash);
+  const clearFlash = useAuthStore((s) => s.clearFlash);
 
   const onSubmit = async (data: LoginInput) => {
     try {
       const res = await login(data);
       setAuth(res);
+      clearFlash();
       // A pending invite (JoinPage.tsx, saved because there was no session yet) resumes on its
       // own instead of landing on the dashboard: the user shouldn't have to paste the link again.
       const pendingInvite = peekPendingInvite();
@@ -39,6 +53,15 @@ export function LoginPage() {
         className="w-80 space-y-4 rounded-radius-sm border border-muted bg-surface p-6"
       >
         <h1 className="text-chrome-xl font-bold">Iniciar sesión</h1>
+        {flash && (
+          // role="status" (not "alert"): this is good news, announced politely instead of
+          // interrupting — screen-reader users get nothing at all here without it, the same
+          // gap error text closes with role="alert" elsewhere in this app.
+          <p role="status" className="text-chrome-sm text-accent-text">
+            <span aria-hidden="true">✓ </span>
+            {flash}
+          </p>
+        )}
         <Field label="Email" error={errors.email?.message}>
           <input id="email" type="email" className={fieldControlClass} {...register("email")} />
         </Field>

@@ -311,6 +311,24 @@ for (const theme of ["dark", "light"] as const) {
       record(theme, "field error icono", contrastRatio(color, bg), 3);
     }
 
+    // --- Task 1.18b: the warning token, rendered exactly as InvitePanel.tsx and
+    // CampaignDetailPage.tsx's per-row reason use it (DesignTokensPage.tsx's "advertencia"
+    // section) — text needs 4.5:1, the border needs 3:1. ---
+    {
+      const warningBox = page.locator('section[aria-label="advertencia"] p').first();
+      const { color, bg } = await effectiveTextColours(warningBox);
+      record(theme, "advertencia texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(warningBox);
+      record(theme, "advertencia borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const reasonNextToChip = page.getByText("Solo el DM o quien lo creó puede editarlo.", {
+        exact: true,
+      });
+      const { color, bg } = await effectiveTextColours(reasonNextToChip);
+      record(theme, "advertencia junto a etiqueta texto", contrastRatio(color, bg), 4.5);
+    }
+
     // --- Panels: chrome and vellum body text, plus both panels' hairline borders ---
     {
       const { color, bg } = await effectiveTextColours(
@@ -386,13 +404,20 @@ for (const theme of ["dark", "light"] as const) {
 // These two blocks repeat the same measured-not-assumed discipline against the actual login
 // screen (a form, unauthenticated) and the actual campaign detail screen (chrome + tabs + a
 // row + a badge, authenticated, seeded through the real UI, not fixtures), in both themes.
-function nuevaCuentaContraste() {
+// Fix round 1 (post-1.18b review), minor: nuevaCuentaCuenta() below used to be a near-verbatim
+// copy of this — same three fields, same marca scheme, different literal prefix. Parameterized
+// instead of duplicated.
+function nuevaCuenta(prefijo: string) {
   const marca = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   return {
-    email: `contraste-${marca}@example.com`,
+    email: `${prefijo}-${marca}@example.com`,
     password: "password123",
-    displayName: `Contraste ${marca}`,
+    displayName: `${prefijo} ${marca}`,
   };
+}
+
+function nuevaCuentaContraste() {
+  return nuevaCuenta("contraste");
 }
 
 for (const theme of ["dark", "light"] as const) {
@@ -495,6 +520,121 @@ for (const theme of ["dark", "light"] as const) {
     {
       const { color, bg } = await effectiveTextColours(page.getByRole("button", { name: "Nuevo" }));
       record(theme, "detalle de campaña: botón Nuevo texto", contrastRatio(color, bg), 4.5);
+    }
+
+    // Fix round 1 (post-1.18b review), Important 6: the warning token was measured only on
+    // /design-tokens' synthetic page before this — this journey creates a fresh account that is
+    // DM and creator of everything in it, so the per-row "you can't edit this" reason never has
+    // a reason to paint (canEdit is always true) and the InvitePanel warning box was never
+    // reached either, because Resumen was never opened. Revert text-warning-text back to
+    // text-danger-text on InvitePanel.tsx's "no anula" box and this block goes red — the real
+    // screen, not a stand-in.
+    await page.getByRole("tab", { name: "Resumen" }).click();
+    await page.getByRole("button", { name: "Generar invitación" }).click();
+    const warningBox = page.getByText("Generar otro enlace no anula este ni los anteriores");
+    {
+      const { color, bg } = await effectiveTextColours(warningBox);
+      record(theme, "detalle de campaña: aviso de invitación texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(warningBox);
+      record(
+        theme,
+        "detalle de campaña: aviso de invitación borde",
+        contrastRatio(border, borderBg),
+        3,
+      );
+    }
+  });
+}
+
+// Task 1.18b — the two new screens (hallazgo 6 + the account screen), measured the same
+// disciplined way: real navigation, real computed colours, both themes.
+function nuevaCuentaCuenta() {
+  return nuevaCuenta("cuenta");
+}
+
+for (const theme of ["dark", "light"] as const) {
+  test(`contraste medido en la pantalla 404 (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    await page.goto("/una-ruta-que-no-existe");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("heading", { name: "Esta página no existe" }),
+      );
+      record(theme, "404: título", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByText("No hay nada en", { exact: false }),
+      );
+      record(theme, "404: texto de ruta", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("button", { name: "Ir a iniciar sesión" }),
+      );
+      record(theme, "404: botón texto", contrastRatio(color, bg), 4.5);
+    }
+  });
+
+  test(`contraste medido en la pantalla de cuenta (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuentaCuenta();
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Email").fill(cuenta.email);
+    await page.getByLabel("Password").fill(cuenta.password);
+    await page.getByRole("button", { name: "Register" }).click();
+    await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+
+    await page.getByRole("link", { name: "Cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Cuenta" })).toBeVisible();
+
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("heading", { name: "Nombre visible" }),
+      );
+      record(theme, "cuenta: título de sección texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByRole("button", { name: "Guardar nombre" }),
+      );
+      record(theme, "cuenta: botón guardar nombre texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const hint = page.getByText("Al menos 8 caracteres.");
+      const { color, bg } = await effectiveTextColours(hint);
+      record(theme, "cuenta: pista de contraseña texto", contrastRatio(color, bg), 4.5);
+    }
+
+    // Real success register: --accent-text plus the check glyph, exercised for real by an
+    // actual PATCH /auth/me, not a synthetic sample.
+    await page.getByLabel("Nombre").fill(`${cuenta.displayName} renombrado`);
+    await page.getByRole("button", { name: "Guardar nombre" }).click();
+    await expect(page.getByText("Nombre actualizado.")).toBeVisible();
+    {
+      const { color, bg } = await effectiveTextColours(page.getByText("Nombre actualizado."));
+      record(theme, "cuenta: confirmación de nombre texto", contrastRatio(color, bg), 4.5);
+    }
+
+    // Fix round 1 (post-1.18b review), Critical 1: the flash banner LoginPage.tsx renders after
+    // AccountPage.tsx's password change (the message that used to live, unmeasured, on
+    // AccountPage's own now-removed success panel) — same success register, real screen, real
+    // PATCH /auth/password.
+    await page.getByLabel("Contraseña actual").fill(cuenta.password);
+    await page.getByLabel("Contraseña nueva").fill("password456");
+    await page.getByRole("button", { name: "Cambiar contraseña" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    const flash = page.getByText(
+      "Contraseña actualizada. Inicia sesión otra vez con tu contraseña nueva.",
+    );
+    await expect(flash).toBeVisible();
+    {
+      const { color, bg } = await effectiveTextColours(flash);
+      record(theme, "login: aviso de contraseña cambiada texto", contrastRatio(color, bg), 4.5);
     }
   });
 }

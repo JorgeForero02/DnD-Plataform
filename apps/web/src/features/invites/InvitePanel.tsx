@@ -86,14 +86,13 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
         <div className="mt-3">
           {/* Server has no revocation for a link that's already out (docs/06-pendientes.md):
               generating a new one leaves the old token valid and unlisted, so the DM needs to
-              know pressing this button again is not a "refresh". Fix round 1 (post-1.19b
-              review): this is the only irreversible-consequence warning left in the product —
-              it had gone text-muted, identical in size and colour to the purely explanatory
-              paragraph below it, and read as help text instead of a warning. --danger-text
-              plus the bordered-box treatment the read-only banners kept (not a new "warning"
-              token — that's a separate decision the author is making right now, see the
-              report) puts it back on a different visual register from ordinary prose. */}
-          <p className="rounded-radius-sm border border-danger bg-bg p-2 text-chrome-xs text-danger-text">
+              know pressing this button again is not a "refresh". Task 1.18b: this used
+              --danger, which overstates it — nothing is broken and nothing is lost, it's a
+              caveat to know about, not a danger to avoid. --warning-text (tokens.css, the
+              decision the author is making right now — see the report) is the register this
+              sentence actually belongs to; the bordered-box treatment stays, same as the
+              read-only banners. */}
+          <p className="rounded-radius-sm border border-warning bg-bg p-2 text-chrome-xs text-warning-text">
             Generar otro enlace no anula este ni los anteriores: todos siguen siendo válidos hasta
             que alguien los use.
           </p>
@@ -109,7 +108,16 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
           <Button type="button" variant="secondary" onClick={onCopy} className="mt-2">
             Copiar enlace
           </Button>
-          {copied && <p className="mt-1 text-chrome-xs text-accent-text">Copiado.</p>}
+          {/* Task 1.18b: this was plain --accent-text text, the exact colour of the links
+              around it — "Copiado." read as one more link, not as confirmation the click did
+              anything. No new success token (see tokens.css): a check glyph plus the explicit
+              word on the same --accent-text is what makes it read as success instead. */}
+          {copied && (
+            <p className="mt-1 text-chrome-xs text-accent-text">
+              <span aria-hidden="true">✓ </span>
+              Copiado.
+            </p>
+          )}
           {copyError && <p className="mt-1 text-chrome-xs text-danger-text">{copyError}</p>}
         </div>
       )}

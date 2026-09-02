@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useAuthStore } from "../store/auth.store";
 import { savePendingInvite, peekPendingInvite } from "../features/invites/api";
+import { queryClient } from "../lib/queryClient";
 
 describe("auth store", () => {
   beforeEach(() => {
@@ -57,5 +58,40 @@ describe("auth store", () => {
     });
     expect(useAuthStore.getState().token).toBe("already-there");
     expect(localStorage.getItem("dnd_token")).toBe("already-there");
+  });
+
+  // Fix round 1 (post-1.18b review), Critical 1 fix-of-the-fix: `flash` is what carries
+  // AccountPage.tsx's "your session ended" message to LoginPage.tsx across the logout()/
+  // navigate() that follows a password change — see the field's own comment for why this
+  // replaced react-router navigation state (it broke in the real browser). The one thing that
+  // MUST hold for it to do that job: logout() must NOT clear it, since PasswordForm calls
+  // setFlash() and logout() back to back, in that order, and the message has to survive.
+  it("setFlash sets the message, and logout() does not clear it", () => {
+    useAuthStore.getState().setFlash("Contraseña actualizada.");
+    expect(useAuthStore.getState().flash).toBe("Contraseña actualizada.");
+
+    useAuthStore.getState().logout();
+
+    expect(useAuthStore.getState().flash).toBe("Contraseña actualizada.");
+  });
+
+  // Fix round 2 (post-1.18b review), Critical 2 tripwire: reverting the queryClient.clear()
+  // line inside logout() has no tripwire without this — every other test in this file only
+  // exercises token/user/flash, never react-query's cache. The scenario this guards is a
+  // shared machine: a second account logging in seconds after the first (staleTime 30s,
+  // lib/queryClient.ts) must not paint from a cache the first account populated.
+  it("logout clears the react-query cache, not just the auth state", () => {
+    queryClient.setQueryData(["x"], 1);
+    expect(queryClient.getQueryData(["x"])).toBe(1);
+
+    useAuthStore.getState().logout();
+
+    expect(queryClient.getQueryData(["x"])).toBeUndefined();
+  });
+
+  it("clearFlash clears the message — what LoginPage.tsx calls once a login actually succeeds", () => {
+    useAuthStore.getState().setFlash("Contraseña actualizada.");
+    useAuthStore.getState().clearFlash();
+    expect(useAuthStore.getState().flash).toBeNull();
   });
 });

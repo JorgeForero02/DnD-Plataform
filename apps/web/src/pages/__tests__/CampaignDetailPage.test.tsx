@@ -113,6 +113,22 @@ describe("CampaignDetailPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Sesiones" }));
     expect(await screen.findByText("Session Zero")).toBeInTheDocument();
   });
+
+  // Fix round 1 (post-1.18b review), Important 12: /campaigns/:id matches any segment, so a
+  // stale link or a mistyped id never reaches App.tsx's wildcard 404 route (specificity ranks
+  // it last) — it lands here instead. Before this fix, a failed useCampaign() rendered an
+  // empty <h1> and a tab strip of panels each failing on their own; revert the isError branch
+  // in CampaignDetailPage.tsx and this fails, with an empty heading in its place.
+  it("says the campaign doesn't exist instead of an empty title when useCampaign fails", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockRejectedValue(new Error("Not found"));
+    renderPage();
+
+    expect(
+      await screen.findByText("Esta campaña no existe o no tienes acceso."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
 });
 
 // Arreglo 1 (1.15-fix), Crítico: a row is the ONLY detail view this app has — the editor is
@@ -255,6 +271,12 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     expect(
       screen.getAllByText("Solo el DM o quien lo creó puede editarlo.").length,
     ).toBeGreaterThan(0);
+    // Task 1.18b: the per-row reason (inside the row button, next to the tag chips) used to be
+    // --muted — the same colour as those chips, so it read as one more piece of metadata
+    // instead of the permission notice it is. Revert the class in CampaignDetailPage.tsx back
+    // to text-muted and this fails even though the sentence itself is unchanged.
+    const rowReason = within(row).getByText("Solo el DM o quien lo creó puede editarlo.");
+    expect(rowReason).toHaveClass("text-warning-text");
   });
 
   it("lets a player edit an entity they created themselves", async () => {
@@ -308,6 +330,12 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     expect(
       screen.getAllByText("Solo el dueño o el DM puede editar este personaje.").length,
     ).toBeGreaterThan(0);
+    // Fix round 1 (post-1.18b review), Important 9: this row-shape (a muted "Nivel N" chip
+    // followed by the reason) was left on --muted while EntityTab's identical shape was fixed
+    // — the same sentence read as two different things in two tabs of one screen. Revert the
+    // class here back to text-muted and this fails even though the sentence is unchanged.
+    const rowReason = within(row).getByText("Solo el dueño o el DM puede editar este personaje.");
+    expect(rowReason).toHaveClass("text-warning-text");
   });
 
   it("lets the owner edit their own character", async () => {
@@ -376,6 +404,24 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
 
     await waitFor(() => expect(generateButton).not.toBeDisabled());
     expect(fetchMembers).toHaveBeenCalledTimes(2);
+  });
+
+  // Fix round 1 (post-1.18b review), Important 8: CHECKING_PERMISSIONS ("Comprobando
+  // permisos…") is a transient loading placeholder, not a real "you can't edit this" — it must
+  // not paint in the same loud register as the real reason. Revert the guard in
+  // CampaignDetailPage.tsx (drop the `reason === CHECKING_PERMISSIONS` check) and this fails
+  // even though the placeholder text itself is unchanged.
+  it("the 'still checking' placeholder on a row stays muted, not warning", async () => {
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "NPCs" }));
+
+    const row = await screen.findByRole("button", { name: /Strahd von Zarovich/ });
+    const placeholder = within(row).getByText("Comprobando permisos…");
+    expect(placeholder).toHaveClass("text-muted");
+    expect(placeholder).not.toHaveClass("text-warning-text");
   });
 });
 

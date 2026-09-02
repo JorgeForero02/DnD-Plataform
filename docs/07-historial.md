@@ -6,6 +6,58 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — 404, red de errores y las pantallas de cuenta (tarea 1.18b)
+
+**Qué.** Cierra el hallazgo 6 de la auditoría de seguridad y la mitad de web del 8 (B3), sobre
+las primitivas de 1.19 y las pantallas ya convertidas de 1.19b:
+
+- **Ruta comodín y pantalla de 404**: una URL inventada daba pantalla en blanco porque `App.tsx`
+  no tenía comodín. Ahora dice dónde estás y cómo volver.
+- **`ErrorBoundary`** alrededor de la aplicación, con un camino de vuelta que **funciona** — no
+  un botón que reintenta el mismo árbol roto — y un comentario que dice lo que una red de errores
+  de React **no** atrapa: los errores en manejadores de eventos, en callbacks asíncronos y en SSR.
+  Callar eso en un proyecto cuya cicatriz es una pantalla en blanco sería peor que no tener nada.
+- **Pantalla de cuenta**: cambiar el nombre visible y cambiar la contraseña, contra la API que
+  entró en 1.18a. **La recuperación de contraseña sigue bloqueada** por no haber servicio de
+  correo, y no se añade un enlace que no lleve a ninguna parte.
+- **Un octavo token, `--warning` en oropimente** (oscuro `#E0A83C`: 8,70 / 7,99 / 7,77 sobre
+  `--bg` / `--surface` / `--vellum`; claro `#7A5310`: 5,28 / 5,90 / 6,06), y los tres sitios que
+  1.19b había dejado diciendo menos de lo que debían.
+
+**Lo interesante de la tarea, y de dónde salieron sus dos críticos.** `PATCH /auth/password`
+**invalida todos los tokens anteriores**, así que la pantalla es deslogueada por su propio éxito
+— un comportamiento sin precedente en el resto de la aplicación, sin patrón que copiar.
+
+1. La primera versión mostraba el mensaje y **esperaba a que el usuario pulsara** para cerrar
+   sesión. Cualquier otra cosa que hiciera —pinchar «← Mis campañas», volver atrás, dejar la
+   pestaña abierta— lo dejaba con **aspecto de sesión viva y un token muerto**, que es el estado
+   exacto del crítico de la tarea 1.15, por otro camino. Ahora el token desaparece de
+   `localStorage` **en el instante en que la petición responde**, y la explicación viaja al
+   inicio de sesión en vez de retener la sesión para poder enseñarse.
+2. `logout()` **no vaciaba la caché de consultas** (30 s de vida). En este flujo se vuelve a
+   entrar segundos después, y si es otra cuenta —máquina compartida, que es justo el escenario de
+   un cambio de contraseña— se pintaban las campañas del usuario anterior.
+
+**Y un tercero que no era del código, sino de la prueba.** El recorrido se titulaba *«el token
+viejo muere»* y **no probaba eso**: probaba que la contraseña vieja ya no entra, cierto de
+cualquier cambio de contraseña. Ahora captura el token antes del cambio y comprueba que
+`GET /auth/me` con él responde **401**. Verificado por mutación: aflojando un año la ventana de
+`passwordChangedAt` en el servidor, ese recorrido falla con *Expected: 401, Received: 200*.
+
+**Una lección que no estaba en el plan.** El primer arreglo del crítico 1 —llevar el mensaje en
+el estado del enrutador— **pasaba en jsdom y fallaba en un navegador real**: la propia redirección
+de `ProtectedRoute` lo borraba entre tres navegaciones. Lo cazó Playwright, no las unitarias. Es
+la regla de *«si tocas una pantalla, abres el navegador»* ganándose el sueldo.
+
+**Prueba.** 225 unitarias de web y 24 recorridos de navegador, con las mediciones de contraste
+sobre pantallas reales. La prueba de la caché también se comprobó por mutación: quitando
+`queryClient.clear()` cae *«logout clears the react-query cache, not just the auth state»*.
+
+**Cómo revertir.** Un commit propio. Revertirlo devuelve la pantalla en blanco en una URL
+inventada, quita las pantallas de cuenta y el token de aviso. No toca `apps/api`.
+
+---
+
 ## 2026-09-01 — De dónde salen los números de tarea 1.18c, 1.19b, 1.20, 1.21 y 1.22
 
 El plan maestro llega hasta **1.19**. Los números de arriba **no estaban en él**: los creó el

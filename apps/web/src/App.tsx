@@ -3,8 +3,10 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
+import { AccountPage } from "./pages/AccountPage";
 import { JoinPage } from "./pages/JoinPage";
 import { DesignTokensPage } from "./pages/DesignTokensPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./features/auth/AuthGate";
 import { ThemeToggle } from "./ui/ThemeToggle";
@@ -53,6 +55,18 @@ export function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Task 1.18b, hallazgo 6 — the wildcard this route list never had. Every path above
+              is matched first (react-router tries them in order and this is last), so this only
+              ever catches what none of them do: an invented URL, a stale bookmark, a typo. */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthGate>
     </BrowserRouter>

@@ -147,7 +147,24 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
                     ))}
                   </span>
                 )}
-                {reason && <span className="ml-2 text-chrome-xs text-muted">{reason}</span>}
+                {/* Task 1.18b: this used to be --muted, the exact colour and size of the tag
+                    chips right above it — the reason a row can't be edited read as one more
+                    piece of metadata instead of the permission notice it is. --warning-text
+                    (tokens.css) gives it its own register. Fix round 1 (post-1.18b review),
+                    Important 8: guarded so the placeholder shares the register the OTHER
+                    "still checking" copy on this screen uses (roleError's own paragraph,
+                    CHECKING_PERMISSIONS everywhere else) — a transient loading string has no
+                    business in the loudest register on the row; only a REAL "you can't edit
+                    this" gets it. */}
+                {reason && (
+                  <span
+                    className={`ml-2 text-chrome-xs ${
+                      reason === CHECKING_PERMISSIONS ? "text-muted" : "text-warning-text"
+                    }`}
+                  >
+                    {reason}
+                  </span>
+                )}
               </button>
             </li>
           );
@@ -206,6 +223,12 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
       >
         Nuevo
       </Button>
+      {/* Fix round 1 (post-1.18b review), Important 9: stays --muted on purpose, unlike the
+          per-row reasons in EntityTab/CharactersTab below — this is a PANEL-level notice above
+          the "Nuevo" button, not text sitting inline next to a tag chip it could be confused
+          with. The brief's "indistinguishable from the tag chips" problem doesn't apply to a
+          standalone paragraph with nothing beside it, so this one was left as-is rather than
+          recoloured to match speculatively — a decision recorded here, not only in the report. */}
       {reason && <p className="mb-3 text-chrome-xs text-muted">{reason}</p>}
       {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="text-muted">Cargando…</p>}
@@ -283,7 +306,21 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
               <button onClick={() => setEditing(c)} title={reason} className={ROW_BUTTON_CLASS}>
                 <span className="font-semibold">{c.name}</span>
                 <span className="ml-2 text-chrome-xs text-muted">Nivel {c.level}</span>
-                {reason && <span className="ml-2 text-chrome-xs text-muted">{reason}</span>}
+                {/* Fix round 1 (post-1.18b review), Important 9: the identical construct one tab
+                    over (EntityTab above) was fixed and this one — same shape, a muted reason
+                    right after a muted "Nivel N" chip — was left behind, which is verbatim the
+                    failure the brief describes: one sentence reading as two different things in
+                    two tabs of the same screen. Same treatment, same guard (Important 8): muted
+                    while still checking, warning once it's a real "you can't edit this". */}
+                {reason && (
+                  <span
+                    className={`ml-2 text-chrome-xs ${
+                      reason === CHECKING_PERMISSIONS ? "text-muted" : "text-warning-text"
+                    }`}
+                  >
+                    {reason}
+                  </span>
+                )}
               </button>
             </li>
           );
@@ -309,7 +346,7 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
 
 export function CampaignDetailPage() {
   const { id = "" } = useParams();
-  const { data: campaign, isLoading } = useCampaign(id);
+  const { data: campaign, isLoading, isError } = useCampaign(id);
 
   // Task 1.19b: the hand-rolled button strip becomes the Tabs primitive (WAI-ARIA tabs
   // pattern — role="tab", roving tabindex, arrow-key navigation for free). Uncontrolled: no
@@ -353,6 +390,28 @@ export function CampaignDetailPage() {
     }
     return { id: "characters", label: t.label, content: <CharactersTab campaignId={id} /> };
   });
+
+  // Fix round 1 (post-1.18b review), Important 12: /campaigns/:id matches ANY segment, so a
+  // stale link or a mistyped id (never a UUID this app generated) doesn't fall through to
+  // App.tsx's wildcard — that route is ranked last and this one wins on specificity, React
+  // Router's own rule. Before this, a failed useCampaign() left an empty <h1> and a tab strip
+  // of panels that each failed on their own, one confusing paragraph at a time, with no single
+  // statement of what actually happened. This is NOT the 404 route and doesn't claim to be —
+  // the URL shape is valid, the specific campaign isn't (deleted, or never existed, or this
+  // account isn't a member of it — canView, apps/api/src/common/visibility.ts, forbids telling
+  // the three apart, same as every other 404-vs-403 decision in this app).
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-bg p-8 text-text">
+        <Link to="/" className="text-chrome-sm text-accent-text">
+          &larr; Mis campañas
+        </Link>
+        <p className="mt-4 text-chrome-sm text-danger-text">
+          Esta campaña no existe o no tienes acceso.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bg p-8 text-text">

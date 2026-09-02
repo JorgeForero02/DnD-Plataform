@@ -27,6 +27,21 @@
   --accent-text: #469b86;
   --danger: #b4463c;
   --danger-text: #cb6b62;
+  /* Task 1.18b — the tenth token, and a reversible decision the author can still overturn (see
+   * the report). "Orpiment" (dark #E0A83C, light #7A5310), added for exactly three sites that
+   * were saying less than they should on --danger (overstating: a second link generation isn't
+   * a danger) or --muted (a reason indistinguishable from a tag chip) — see InvitePanel.tsx and
+   * CampaignDetailPage.tsx's EntityTab. Unlike --accent/--danger, this single value already
+   * clears 4.5:1 against ALL THREE surfaces in BOTH themes (dark: 8.70/7.99/7.77 on
+   * bg/surface/vellum; light: 5.28/5.90/6.06 — measured in
+   * e2e/tokens-contrast.spec.ts and .superpowers/sdd/briefs/1.18b-errores-y-cuenta-report.md),
+   * so there is no separate *-text variant to keep in sync the way accent/danger needed —
+   * --warning and --warning-text are the same colour in both themes, on purpose.
+   * No --success token: success reuses --accent-text plus a check glyph and an explicit word
+   * (a second green would be two greens to learn — see the report).
+   */
+  --warning: #e0a83c;
+  --warning-text: #e0a83c;
 
   /* Type stacks — no network fonts, Playwright measures a stable page. */
   --font-chrome: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
@@ -83,6 +98,8 @@
     --accent-text: #2f6b5c;
     --danger: #9b3a31;
     --danger-text: #9b3a31;
+    --warning: #7a5310;
+    --warning-text: #7a5310;
     color-scheme: light;
   }
 }
@@ -97,6 +114,8 @@
   --accent-text: #2f6b5c;
   --danger: #9b3a31;
   --danger-text: #9b3a31;
+  --warning: #7a5310;
+  --warning-text: #7a5310;
   color-scheme: light;
 }
 
@@ -110,6 +129,8 @@
   --accent-text: #469b86;
   --danger: #b4463c;
   --danger-text: #cb6b62;
+  --warning: #e0a83c;
+  --warning-text: #e0a83c;
   color-scheme: dark;
 }
 

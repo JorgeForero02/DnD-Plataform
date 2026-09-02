@@ -91,7 +91,41 @@ describe("InvitePanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
 
-    expect(await screen.findByText(/no anula/)).toBeInTheDocument();
+    const warning = await screen.findByText(/no anula/);
+    expect(warning).toBeInTheDocument();
+    // Task 1.18b: this is a warning, not a danger — generating another link breaks nothing, it
+    // just leaves the old one usable too. Revert the token swap in InvitePanel.tsx back to
+    // text-danger-text/border-danger and this fails even though the sentence itself is
+    // unchanged.
+    expect(warning).toHaveClass("text-warning-text");
+    expect(warning).toHaveClass("border-warning");
+  });
+
+  // Task 1.18b: no new "success" token — --accent-text plus a check glyph and the word is what
+  // tells "Copiado." apart from the plain links around it (both used --accent-text before).
+  // Revert the glyph and this still shows "Copiado." (text unchanged) but the assertion on the
+  // icon fails, which is the whole point: text alone didn't read as success before either.
+  it("marks a successful copy with a check glyph, not just the word", async () => {
+    asDM();
+    vi.spyOn(invitesApi, "createInvite").mockResolvedValue(invite);
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toBeDisabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
+    await screen.findByLabelText("Enlace de invitación");
+
+    fireEvent.click(screen.getByRole("button", { name: "Copiar enlace" }));
+
+    // Fix round 1 (post-1.18b review), minor: `copied` IS the <p> itself (getByText's default
+    // node-text algorithm only counts an element's own direct text-node children, and
+    // "Copiado." is the <p>'s own text node — the <span> is a sibling child, not an ancestor).
+    // Scoped to `copied` directly, not `copied.parentElement` (the previous version): the
+    // parent is a shared container that could carry an unrelated aria-hidden element and let
+    // this pass without the glyph actually being THIS message's icon.
+    const copied = await screen.findByText("Copiado.");
+    expect(copied.querySelector('[aria-hidden="true"]')?.textContent).toBe("✓ ");
   });
 
   it("shows the DM-only server error translated to Spanish", async () => {

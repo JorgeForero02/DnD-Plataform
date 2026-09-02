@@ -16,6 +16,12 @@ export default {
         "accent-text": "var(--accent-text)",
         danger: "var(--danger)",
         "danger-text": "var(--danger-text)",
+        // Task 1.18b — the warning token (tokens.css). --warning and --warning-text resolve to
+        // the same custom property value in both themes; two Tailwind names, not two colours,
+        // kept only so callers can pick the one that reads as "this is text" vs "this is a
+        // fill/border" the same way accent/accent-text and danger/danger-text do.
+        warning: "var(--warning)",
+        "warning-text": "var(--warning-text)",
       },
       fontFamily: {
         chrome: "var(--font-chrome)",

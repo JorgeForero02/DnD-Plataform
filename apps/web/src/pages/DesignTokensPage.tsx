@@ -99,6 +99,32 @@ export function DesignTokensPage() {
         </Field>
       </section>
 
+      {/* Task 1.18b — the warning token (tokens.css). First block: rendered exactly as
+          InvitePanel.tsx uses it (a bordered box that declares its OWN opaque bg-bg — it stays
+          on --bg regardless of what surrounds it, since an opaque background wins compositing
+          outright) — real pixels, not a convenient stand-in. Second block mirrors
+          CampaignDetailPage.tsx's per-row reason: plain text-warning-text right next to a tag
+          chip. Fix round 1 (post-1.18b review), Important 7: this used to sit directly on the
+          page's own --bg and claimed to be "exactly as the screen paints it" — false for this
+          half specifically. The real row (ROW_BUTTON_CLASS, CampaignDetailPage.tsx) is an
+          OPAQUE bg-surface container, and neither span here declares its own background, so
+          the effective colour it painted against was whatever ancestor supplied one — --bg, not
+          --surface. Wrapped in the same bg-surface container the real row uses so the recorded
+          number (7.99/5.90) is the one the screen actually paints, not 8.70/5.28. */}
+      <section aria-label="advertencia" className="mb-6 max-w-sm space-y-2">
+        <p className="rounded-radius-sm border border-warning bg-bg p-2 text-chrome-xs text-warning-text">
+          Generar otro enlace no anula este ni los anteriores.
+        </p>
+        <div className="rounded-radius-sm border border-muted bg-surface p-3 text-chrome-sm">
+          <span className="rounded-radius-sm border border-muted bg-surface px-1.5 py-0.5 text-chrome-xs text-muted">
+            villano
+          </span>
+          <span className="ml-2 text-chrome-xs text-warning-text">
+            Solo el DM o quien lo creó puede editarlo.
+          </span>
+        </div>
+      </section>
+
       <section aria-label="panel chrome" className="mb-6">
         <Panel tone="chrome">Panel de instrumento — listas, formularios, controles.</Panel>
       </section>

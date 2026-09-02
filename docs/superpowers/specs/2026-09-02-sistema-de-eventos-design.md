@@ -419,12 +419,24 @@ No es una fase nueva. Son **tres tareas** que se apoyan en 2A.5:
 
 | Tarea | Entrega | Depende de |
 |---|---|---|
-| **2A.12 · Marcas y sucesos de mundo** | `CampaignFlag`; persistir como `GameEvent` los sucesos que hoy solo viven en memoria (`entity.created`, `member_joined`) y los nuevos (`ENTITY_OPENED`, `ENTITY_REVEALED`, `FLAG_SET`) | 2A.5 |
-| **2A.13 · El motor** | Modelo `Rule` (suceso + condiciones + efectos, en JSON validado por Zod discriminado), evaluación al escribir un `GameEvent`, encadenamiento con tope de profundidad, tabla de traza, y el ensayo en seco | 2A.12 |
-| **2A.14 · La pantalla** | La frase de tres partes, la lista de reglas de la campaña, la traza («por qué pasó esto») y el botón de deshacer | 2A.13 |
+| **2A.15 · Marcas y sucesos de mundo** ✅ | `CampaignFlag`; persistir como `GameEvent` los sucesos que hoy solo viven en memoria (`entity.created`, `member_joined`) y los nuevos (`ENTITY_OPENED`, `ENTITY_REVEALED`, `FLAG_SET`) | 2A.5 |
+| **2A.16 · El motor** ✅ | Modelo `Rule` (suceso + condiciones + efectos, en JSON validado por Zod discriminado), evaluación al escribir un `GameEvent`, encadenamiento con tope de profundidad, tabla de traza, y el ensayo en seco | 2A.15 |
+| **2A.17 · La pantalla** ✅ | La frase de tres partes, la lista de reglas de la campaña, la traza («por qué pasó esto») y las propuestas | 2A.16 |
+
+> **Esta tabla decía 2A.12/2A.13/2A.14, y era una trampa activa.** En la numeración vigente esos
+> tres números son velocidades, tiradas y notificaciones: quien leyera esto y fuera a implementar
+> «2A.14 · la pantalla» habría construido la bandeja de avisos creyendo que hacía la pantalla del
+> motor. Es el mismo error que arrastraba el `§0-ter` del plan principal, corregido el mismo día
+> (2026-09-02) y en el mismo sitio que este. **Las tres están entregadas y desplegadas.**
+>
+> Una diferencia con lo escrito arriba: **no hay «botón de deshacer»**. Lo que se entregó es el
+> **modo propuesta** —la regla no toca nada hasta que el DM la aplica o la rechaza—, que resuelve
+> el mismo miedo por delante en vez de por detrás: no hace falta deshacer lo que no llegó a pasar.
 
 **El lienzo de cajas es 2B o 2C**, sobre el mismo modelo, cuando el vocabulario esté probado con
-una aventura real.
+una aventura real. **No es otro sistema**: el formulario de 2A.17 y el lienzo editan exactamente
+la misma representación de datos, así que las reglas escritas hoy se abren en el lienzo el día
+que llegue, sin migración.
 
 ---
 

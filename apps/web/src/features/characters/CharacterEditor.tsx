@@ -18,12 +18,16 @@ export function CharacterEditor({
   campaignId,
   character,
   onClose,
+  onDeleted,
   readOnly = false,
   readOnlyReason,
 }: {
   campaignId: string;
   character?: Character;
   onClose: () => void;
+  // Reseño 2026-09-02 — same reasoning as EntityEditor: this dialog now opens from a page
+  // dedicated to one character, and deleting it leaves the reader on a page about nobody.
+  onDeleted?: () => void;
   // Arreglo 1 (1.15-fix): see the same prop on EntityEditor.tsx — the row that opens this now
   // opens unconditionally, and this is what a player who can view but not edit the character
   // gets instead of an editable form.
@@ -51,6 +55,10 @@ export function CharacterEditor({
     setDeleteError(null);
     try {
       await deleteCharacter.mutateAsync(character.id);
+      if (onDeleted) {
+        onDeleted();
+        return;
+      }
       onClose();
     } catch (err) {
       setDeleteError((err as Error).message);

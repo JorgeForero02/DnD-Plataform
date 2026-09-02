@@ -18,6 +18,30 @@ sustituye al plan maestro en todo lo que toque el alcance de la fase 2).
 
 ---
 
+## 0 bis · La forma de la hoja ya está decidida y desplegada (2026-09-02)
+
+El reseño de interfaz del 2026-09-02 entregó **la disposición** de la hoja, no su motor:
+`apps/web/src/features/characters/HojaCincoE.tsx` dibuja las casillas de 5.ª edición a su
+tamaño real, en el orden de lectura que usa un jugador en la mesa, y **todas dicen «—»**
+porque no hay nada que enseñar todavía. La página que la contiene es
+`apps/web/src/pages/CharacterDetailPage.tsx`.
+
+Eso significa que **2A no tiene que decidir la disposición ni volver a investigarla**:
+
+- [Especificación de la hoja de 5.ª edición](../specs/2026-09-02-hoja-5e-design.md) — anatomía
+  bloque a bloque, **todas las fórmulas del SRD 5.1 en pseudocódigo**, qué se calcula frente a
+  qué se anula a mano, rejilla para escritorio/tableta/móvil, y los cuatro huecos que el autor
+  detectó (casillas de mano, descansos y dados de golpe, PG temporales, pericia) con su
+  impacto en el modelo de datos.
+- El patrón recomendado para todo campo calculado es `{ base, override }`, porque 5.ª edición
+  rompe sus propias fórmulas a cada rato (Defensa sin Armadura, objetos mágicos, dotes).
+
+**Lo que queda para 2A es exactamente lo que decía este plan**: el esquema, el motor y sus
+pruebas. Cuando existan los números, se retira el aviso de «esto es solo la forma» de
+`HojaCincoE.tsx` y las casillas empiezan a decir algo.
+
+---
+
 ## 0 · Qué entrega 2A, en una frase
 
 Un **motor de reglas puro y determinista** más la **hoja de personaje** que lo enseña: el

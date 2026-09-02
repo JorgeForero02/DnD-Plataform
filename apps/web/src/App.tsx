@@ -4,6 +4,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
 import { EntityDetailPage } from "./pages/EntityDetailPage";
+import { CharacterDetailPage } from "./pages/CharacterDetailPage";
 import { AccountPage } from "./pages/AccountPage";
 import { JoinPage } from "./pages/JoinPage";
 import { DesignTokensPage } from "./pages/DesignTokensPage";
@@ -65,6 +66,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <EntityDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/campaigns/:id/personajes/:characterId"
+            element={
+              <ProtectedRoute>
+                <CharacterDetailPage />
               </ProtectedRoute>
             }
           />

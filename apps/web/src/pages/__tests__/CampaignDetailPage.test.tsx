@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { CampaignDetailPage } from "../CampaignDetailPage";
 import { EntityDetailPage } from "../EntityDetailPage";
+import { CharacterDetailPage } from "../CharacterDetailPage";
 import { CampaignList } from "../../features/campaigns/CampaignList";
 import * as campaignsApi from "../../features/campaigns/api";
 import * as entitiesApi from "../../features/entities/api";
@@ -24,6 +25,7 @@ function renderPage() {
           {/* Reseño 2026-09-02 — las filas de fichas son enlaces a la página de lectura, así
               que sin esta ruta el clic navegaría a ninguna parte y la prueba mediría un vacío. */}
           <Route path="/campaigns/:id/entidades/:entityId" element={<EntityDetailPage />} />
+          <Route path="/campaigns/:id/personajes/:characterId" element={<CharacterDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -347,10 +349,12 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     const newButton = await screen.findByRole("button", { name: "Nuevo personaje" });
     await waitFor(() => expect(newButton).not.toBeDisabled());
 
-    const row = await screen.findByRole("button", { name: /Strahd/ });
+    const row = await screen.findByRole("link", { name: /Strahd/ });
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
 
+    // La fila lleva a la hoja del personaje; el editor se abre desde ella.
+    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
@@ -388,9 +392,10 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
 
-    const row = await screen.findByRole("button", { name: /Mi propio personaje/ });
+    const row = await screen.findByRole("link", { name: /Mi propio personaje/ });
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
+    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
@@ -580,9 +585,10 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
 
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
-    await screen.findByRole("button", { name: /Elara/ });
+    await screen.findByRole("link", { name: /Elara/ });
 
-    fireEvent.click(screen.getByRole("button", { name: /Elara/ }));
+    fireEvent.click(screen.getByRole("link", { name: /Elara/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
@@ -592,9 +598,9 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     expect(spy).toHaveBeenCalledWith("c1", "ch2");
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: /Elara/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("link", { name: /Elara/ })).not.toBeInTheDocument(),
     );
-    expect(screen.getByRole("button", { name: /Kaelith/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Kaelith/ })).toBeInTheDocument();
   });
 });
 

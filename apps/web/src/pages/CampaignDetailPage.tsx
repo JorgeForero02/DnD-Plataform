@@ -13,7 +13,6 @@ import { SessionEditor } from "../features/sessions/SessionEditor";
 import type { Session } from "../features/sessions/api";
 import { useCharacters } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
-import type { Character } from "../features/characters/api";
 import { InvitePanel } from "../features/invites/InvitePanel";
 import { CampaignSettings } from "../features/campaigns/CampaignSettings";
 import { MembersPanel } from "../features/campaigns/MembersPanel";
@@ -357,7 +356,6 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
   const isDM = role === "DM";
   const roleUnresolved = roleLoading || roleError;
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Character | null>(null);
 
   return (
     <div>
@@ -390,7 +388,13 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
           return (
             <li key={c.id}>
               {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — see EntityTab above. */}
-              <button onClick={() => setEditing(c)} title={reason} className={ROW_BUTTON_CLASS}>
+              {/* Reseño 2026-09-02 — igual que las fichas del mundo: la fila lleva a la hoja
+                  del personaje, no a un formulario. */}
+              <Link
+                to={`/campaigns/${campaignId}/personajes/${c.id}`}
+                title={reason}
+                className={ROW_BUTTON_CLASS}
+              >
                 <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
                   <span className="font-title text-chrome-md text-text">{c.name}</span>
                   {/* Reseño 2026-09-02 — a character row that says only a name and a level is
@@ -419,25 +423,12 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
                     {reason}
                   </span>
                 )}
-              </button>
+              </Link>
             </li>
           );
         })}
       </ul>
       {creating && <CharacterEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
-      {editing && (
-        <CharacterEditor
-          campaignId={campaignId}
-          character={editing}
-          onClose={() => setEditing(null)}
-          readOnly={roleUnresolved || !(isDM || editing.ownerId === userId)}
-          readOnlyReason={
-            roleUnresolved
-              ? CHECKING_PERMISSIONS
-              : "Solo el dueño o el DM puede editar este personaje."
-          }
-        />
-      )}
     </div>
   );
 }

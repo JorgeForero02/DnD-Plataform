@@ -262,13 +262,17 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await page.getByRole("button", { name: "Guardar" }).click();
 
   await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeHidden();
-  const characterRow = page.getByRole("button", { name: /Kaelith/ });
+  const characterRow = page.getByRole("link", { name: /Kaelith/ });
   await expect(characterRow).toBeVisible();
   await expect(characterRow).toContainText("Nivel 3");
 
   // Abrir el personaje en modo edición y comprobar que raza, clase y biografía —
   // los campos que la interfaz de solo lectura ni siquiera mostraba — precargan de verdad.
   await characterRow.click();
+  // Reseño 2026-09-02: la fila lleva a la hoja del personaje —con la forma de la hoja de 5.ª
+  // edición— y el editor se abre desde ella.
+  await expect(page.getByRole("heading", { name: "Kaelith" })).toBeVisible();
+  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
   await expect(page.getByLabel("Raza")).toHaveValue("Tiefling");
   await expect(page.getByLabel("Clase")).toHaveValue("Brujo");
@@ -284,19 +288,24 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeHidden();
 
-  const updatedCharacterRow = page.getByRole("button", { name: /Kaelith/ });
+  // Guardar deja al lector en la hoja, no lo devuelve a la lista: la cabecera de la propia
+  // hoja ya muestra el nivel nuevo. Se vuelve por las migas para comprobar también la fila.
+  await expect(page.getByText("Nivel 4")).toBeVisible();
+  await page.getByRole("link", { name: "Fuera del Abismo" }).click();
+  const updatedCharacterRow = page.getByRole("link", { name: /Kaelith/ });
   await expect(updatedCharacterRow).toBeVisible();
   await expect(updatedCharacterRow).toContainText("Nivel 4");
 
   // Task 1.16: borrar el personaje de verdad contra la API real — el botón "Borrar" y su
   // confirmación en pantalla nunca se habían pintado en un navegador antes de esta tarea.
   await updatedCharacterRow.click();
+  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
   await page.getByRole("button", { name: "Borrar" }).click();
   await expect(page.getByText('Vas a borrar a "Kaelith". No se puede deshacer.')).toBeVisible();
   await page.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeHidden();
-  await expect(page.getByRole("button", { name: /Kaelith/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Kaelith/ })).toHaveCount(0);
 
   // Y la sesión, contra la API real, incluyendo la cancelación: pulsar "No, cancelar" no borra
   // y deja el editor abierto.

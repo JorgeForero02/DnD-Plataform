@@ -39,6 +39,35 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-02 (cierre de la fase 2A).
 
+## La pantalla de juego con mapa — alcance nuevo, sin decidir (2026-09-02)
+
+**Lo que el autor quiere, en sus palabras:** *«yo no quiero un juego plano; quiero que los
+jugadores tengan una interfaz donde vean el mapa, su hoja, sus tiradas y demás dentro de una
+misma pantalla, con objetos interactivos renderizados y tiles, como las plataformas clásicas de
+D&D»*.
+
+**Por qué esto es una decisión y no una tarea.** El plan maestro dice hoy «Mapas 2D: imagen
+subida, pines que enlazan a fichas, interruptor de niebla, capa del DM y capa del jugador». Eso
+es un **documento con chinchetas**. Lo que se pide es otra cosa: un **tablero** con rejilla,
+fichas que se mueven, objetos con los que se interactúa, y la hoja y las tiradas **en la misma
+pantalla**. Es una mesa virtual, y arrastra tres cosas que hoy están en fases distintas o en
+ninguna:
+
+- **Tiempo real (fase 4).** Una ficha que se mueve y solo la ve quien la movió no sirve de nada.
+- **Almacenamiento de objetos (fase 3).** Tiles, sprites y mapas son ficheros.
+- **Posiciones**, que hoy **no existen en el modelo**. Un personaje no tiene coordenadas, y la
+  fase 2A dejó las distancias resueltas «sin posiciones» a propósito.
+
+**Lo que hay que decidir antes de dibujar nada:** si esto sustituye a la fase 3 o va después de
+ella; si el tablero es rejilla cuadrada o libre; y **qué pasa con la visibilidad**, que es la
+pregunta grande — la niebla de guerra es `canView` aplicado a coordenadas, y hoy `canView` no
+sabe nada de coordenadas. **La posición de una ficha enemiga es información igual que su CA:
+si no se debe saber, no se envía.**
+
+Mientras tanto: **no se dibuja la pantalla de juego a ciegas**. La maqueta de Figma Make no la
+trae, y el hueco está declarado en
+[la revisión de lo que volvió](./superpowers/specs/2026-09-02-figma-make-revision.md).
+
 ## Dejado por la segunda tanda de la ronda de interfaz (2026-09-02, madrugada)
 
 - **El arrastre del editor de reglas no está probado en un navegador, y puede que no funcione.**

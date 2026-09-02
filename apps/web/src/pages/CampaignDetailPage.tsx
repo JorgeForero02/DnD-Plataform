@@ -20,6 +20,7 @@ import { CHECKING_PERMISSIONS, RetryPermissions } from "../features/campaigns/Pe
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Tabs, type TabItem } from "../ui/Tabs";
+import { PanelDeReglas } from "../features/rules/PanelDeReglas";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { EmptyState } from "../ui/Collection";
 import { CampaignOverview } from "../features/campaigns/CampaignOverview";
@@ -31,6 +32,7 @@ type TabConfig =
   | { kind: "entity"; label: string; type: EntityType; group?: string }
   | { kind: "sessions"; label: string; group?: string }
   | { kind: "characters"; label: string; group?: string }
+  | { kind: "rules"; label: string; group?: string }
   | { kind: "settings"; label: string; group?: string };
 
 // Reseño 2026-09-02 — audit B4. These ten used to sit in one flat strip, which said that
@@ -48,6 +50,9 @@ const TABS: TabConfig[] = [
   { kind: "entity", label: "Documentos", type: "DOCUMENT", group: "El mundo" },
   { kind: "sessions", label: "Sesiones", group: "La mesa" },
   { kind: "characters", label: "Personajes", group: "La mesa" },
+  // 2A.17. Va en «La mesa» y no en «La campaña» porque una regla es algo que pasa durante la
+  // partida, no un ajuste. El panel se calla entero si quien mira no es el DM.
+  { kind: "rules", label: "Reglas", group: "La mesa" },
   { kind: "settings", label: "Ajustes", group: "La campaña" },
 ];
 
@@ -476,6 +481,14 @@ export function CampaignDetailPage() {
         label: t.label,
         group: t.group,
         content: <CampaignOverview campaignId={id} />,
+      };
+    }
+    if (t.kind === "rules") {
+      return {
+        id: "rules",
+        label: t.label,
+        group: t.group,
+        content: <PanelDeReglas campaignId={id} />,
       };
     }
     if (t.kind === "settings") {

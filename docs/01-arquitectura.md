@@ -54,6 +54,32 @@ por su cuenta**.
 | `characters` | Personajes | dueño o DM |
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |
+| `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |
+| `rules` | Motor de derivación de 5.ª edición (2A.2) y catálogo SRD (2A.3). **Puro** | — |
+
+### Las tres capas de la fase 2A, y por qué no se tocan entre sí
+
+`dice/`, `rules/engine.ts` y `rules/catalog/` **no son módulos de Nest**: no tienen
+controlador, ni servicio, ni Prisma. Son código puro que se importa. La dirección de
+dependencias entre ellos es de una sola vía y está puesta a propósito:
+
+```
+catalog/  ──→  engine.ts        (el catálogo conoce al motor; el motor NO conoce el catálogo)
+engine.ts ──→  @dnd/shared      (la traza vive en shared, porque la web la pinta)
+dice/     ──→  (nada)
+```
+
+**El motor no importa nada de `catalog/`**, y esa es la regla que hace útil la separación: si
+el motor conociera las razas, un `+1` transcrito mal parecería un fallo del motor y se buscaría
+en el sitio equivocado. El único punto donde se tocan es
+`apps/api/src/rules/catalog/resolve.ts`, que traduce una ficha declarada (raza, subraza,
+clase, nivel, armadura) a la entrada que el motor come.
+
+`ContentRef` (`apps/api/src/rules/catalog/types.ts`) existe desde 2A aunque **hoy solo
+tenga una rama útil** (`SRD`): la otra (`CAMPAIGN`) es por donde entrará el contenido propio
+del DM en 2B, **sin que el motor cambie**. Mientras no exista, una referencia de campaña falla
+ruidosamente con
+`UnknownContentError` en vez de resolverse a nada.
 
 **La seguridad de lectura es un único concepto derivado:** `common/visibility.ts` exporta
 `canView`, con la matriz completa de 5 visibilidades × 6 situaciones de espectador probada

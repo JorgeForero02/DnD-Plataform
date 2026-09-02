@@ -20,6 +20,19 @@ Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo
 | **H10** | Las formas de área (cono, esfera, línea, cubo, cilindro) las necesitan el motor (2A) y los conjuros (2B) | Propuesta: viven en `@dnd/shared` desde 2A, aunque en 2A todavía no alcancen a nadie |
 | **H11** | **Nada ata el texto de la interfaz a `canView`** | Es el mismo U10 de más abajo, visto desde 2A: las frases de visibilidad **ya mintieron una vez** |
 
+## Deuda nacida en la tarea 2A.3 (catálogo SRD 5.1) — 2026-09-02
+
+Las tres primeras son **decisiones tomadas en ausencia del autor**, con su motivo y su coste de
+revertir. La cuarta es una obligación legal con fecha.
+
+| | Qué | Por qué importa, y qué cuesta cambiarlo |
+|---|---|---|
+| **S1** | **La atribución CC BY no se ve todavía en la aplicación.** Está en `NOTICE.md` y en la cabecera de cada fichero de datos, pero **no en ninguna pantalla** | CC BY exige la atribución **en la obra distribuida**, no solo en el repositorio. Hoy no hay incumplimiento porque el catálogo aún no se publica en ninguna pantalla; **en cuanto 2A.10 pinte una hoja con datos del SRD, hay que tener el pie o la pantalla «Acerca de»**. Es de cinco minutos y está en la tarea 2A.10; se anota aquí porque si esa tarea se recorta, esto no puede caer con ella |
+| **S2** | **De cada aptitud de clase se transcribió el nombre y el nivel, no su texto de reglas** | El plan (§4.3) pedía «aptitudes por nivel como texto». La hoja necesita decir «al nivel 5 ganas Ataque adicional», y eso ya lo hace; lo que no puede es explicar qué hace. Traducir a mano el texto completo de unas doscientas aptitudes es donde una transcripción se llena de errores que **ningún invariante puede cazar**, y ninguna pantalla de 2A los mostraría. Añadirlo después es rellenar un campo, no cambiar una forma |
+| **S3** | **El catálogo vive en `apps/api/src/rules/catalog/`, no en un paquete `packages/srd`** | El plan (§4.1) dejaba las dos abiertas. Hoy tiene un solo consumidor —el motor, dos carpetas más arriba— y crear un paquete costaría cableado de compilación por cero beneficio. **Cuando la web necesite los nombres en español** (2A.10) los pedirá por endpoint, que hace falta igualmente porque las elecciones se validan en el servidor. Si aun así conviene el paquete, es un `git mv` |
+| **S4** | **Los rasgos raciales sin efecto numérico se listan, pero no hacen nada** (Suertudo, Astucia gnoma, Aguante implacable…) | Salen por `ResolvedBuild.features` para que la hoja los enseñe. Automatizarlos es 2C, igual que las condiciones. Está dicho aquí para que nadie los lea en la hoja y suponga que el motor los aplica |
+| **S5** | **Nada ata las claves de texto del catálogo (`labelKey`) a una tabla de traducción** | El motor y el catálogo devuelven `race.dwarf.con`, nunca prosa. La tabla que lo convierte en «+2 Constitución (enano)» **todavía no existe**: la escribe 2A.10. Hasta entonces, una `labelKey` que nadie traduzca se descubre mirando la pantalla, no con una prueba — y esa prueba es lo que hay que escribir con la tabla |
+
 ## Pedido por el autor el 2026-09-02, colocado — antes de 2A
 
 Razonado en [el análisis de las seis peticiones](./superpowers/specs/2026-09-02-seis-peticiones-analisis.md).

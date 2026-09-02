@@ -24,6 +24,7 @@ limitado a SRD 5.1 / OGL.
 | [09-primera-partida.md](./09-primera-partida.md) | **Cómo jugar la primera sesión, qué no se puede hacer todavía y qué anotar.** Es la puerta de salida de la fase 1 |
 | [08-pruebas.md](./08-pruebas.md) | **Estrategia de pruebas completa.** Qué prueba cada capa, qué NO cubre, y la regla de Playwright. Léelo antes de dar una tarea por terminada |
 | [plataforma-dnd-documentacion.md](./plataforma-dnd-documentacion.md) | Documento fuente original del producto (visión, alcance por fases) |
+| [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
 
 ### Specs y planes
 
@@ -77,12 +78,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `33ae7df` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `51a0daa` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Pruebas unitarias:** 380 (shared 20, api 125, web 235). Recuento por declaración, no por
+> - **Pruebas unitarias:** 411 (shared 20, api 156, web 235). Recuento por declaración, no por
 >   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
 >   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

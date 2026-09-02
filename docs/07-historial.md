@@ -6,6 +6,46 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — 2A.3: el catálogo SRD 5.1, y las tres capas que lo verifican
+
+**Qué.** Nueve razas con sus cuatro subrazas, doce clases con su progresión y su única subclase
+del SRD, trece armaduras y el escudo, la tabla de bonificador de competencia, `ContentRef`, el
+resolutor que traduce una ficha declarada a la entrada del motor de 2A.2, y `NOTICE.md` con la
+atribución CC BY 4.0 y su nota de modificación. En `apps/api/src/rules/catalog/`.
+
+**Lo que lo hace fiable no son los datos, son las tres capas de verificación.** Los invariantes
+(una prueba, todo el catálogo) cazan el error de copiar y pegar: una clave duplicada, una clase
+con tres competencias de salvación, una velocidad a cero, un tope de Destreza que no cuadra con
+la categoría de la armadura. Los cinco casos de mesa conocidos —enano de las colinas bárbaro a
+nivel 1 y a nivel 5, elfo alto mago, guerrero con cota de malla y escudo, semielfo sin
+elecciones— cazan el otro error, que es peor: una cifra transcrita mal o **un rasgo modelado
+como suma única cuando el SRD lo da por nivel**. Y el control legal es una prueba, no una
+intención: falla si `NOTICE.md` pierde la atribución o la nota de modificación, o si un fichero
+de datos pierde su cabecera.
+
+**Mutación comprobada, tres veces.** Cambiando `grant.amount * build.level` por `grant.amount`
+en el resolutor, el caso 2 falla (`60` pasa a `55`) — y el caso 1 **no**, porque a nivel 1 el
+producto es el mismo, que es exactamente por qué el plan pedía los dos niveles. Poniendo el tope
+de Destreza de la cota de malla a `2`, la CA sube a 20 y caen tres pruebas, una de ellas el
+invariante de categoría. Cambiando «Modificaciones:» por «Cambios:» en `NOTICE.md`, cae el
+control legal. Restaurados los tres, 184 pruebas verdes en `src/rules`.
+
+**Decisiones tomadas en ausencia del autor**, las tres en 06 con su coste de revertir: el
+catálogo vive en `apps/api` y no en un paquete (S3), de cada aptitud se transcribió el nombre y
+el nivel y no su texto de reglas (S2), y **la atribución todavía no se ve en ninguna pantalla**
+(S1) — no hay incumplimiento porque el catálogo aún no se publica, pero deja de ser cierto en
+cuanto 2A.10 pinte una hoja.
+
+**Una contradicción del plan, resuelta y dicha:** su §4.4 pone el caso del semielfo («dos avisos
+`unresolved_choice`») en 2A.3 y su §5.4 lo pone en 2A.4. Se hace lo que 2A.3 permite sin tocar
+el motor: el resolutor devuelve las elecciones pendientes y **no altera ninguna característica**;
+convertirlas en avisos del motor y validar una elección propuesta sigue siendo 2A.4.
+
+**Cómo revertirlo.** Borrar `apps/api/src/rules/catalog/` y `NOTICE.md`. Nada más depende de
+ellos: el motor no los importa, no hay tabla nueva, no hay migración y no hay endpoint.
+
+---
+
 ## 2026-09-02 (mediodía) — El plan de 2A, completo; y su primera tarea
 
 **Qué.** El plan de la fase 2A estaba a medias: once tareas y **ocho preguntas sin responder**,

@@ -141,22 +141,26 @@ de algo que aún no existe.
 | # | Tarea | Depende de |
 |---|---|---|
 | 1 | **2A.1 · Evaluador de dados** ✅ *hecho el 2026-09-02* | — |
-| 2 | 2A.2 · Motor de 5.ª edición: núcleo determinista y traza | — |
-| 3 | 2A.3 · Catálogo SRD 5.1 y su verificación | 2A.2 |
-| 4 | 2A.4 · Elecciones pendientes y avisos | 2A.2 |
-| 5 | 2A.5 · Estado de partida: sesión con estado y log `GameEvent` | — |
-| 6 | **2A.13 · Tirar de verdad: endpoint y registro** | 2A.1, 2A.5 |
-| 7 | 2A.6 · La hoja persistida: características, raza, clase, creación con tiradas | 2A.3, 2A.13 |
-| 8 | 2A.7 · PG mutables: deltas, concurrencia y su rastro | 2A.5, 2A.6 |
-| 9 | 2A.8 · Recursos consumibles, **descansos y dados de golpe** | 2A.7 |
-| 10 | **2A.12 · Velocidades, condiciones y velocidad efectiva** | 2A.6 |
-| 11 | 2A.9 · Subida de nivel: diff propuesto, jugador que confirma | 2A.6 |
-| 12 | 2A.10 · La pantalla de la hoja: valores, traza y avisos | 2A.6, 2A.12 |
-| 13 | **2A.14 · Bandeja de notificaciones** | 2A.5 |
-| 14 | **2A.15 · Marcas, conjuntos y sucesos del mundo** | 2A.5 |
-| 15 | **2A.16 · El motor de reglas** | 2A.15, 2A.14, 2A.13 |
-| 16 | **2A.17 · La pantalla del motor** | 2A.16 |
-| 17 | 2A.11 · La pantalla de subida de nivel y el cierre de 2A | 2A.9, 2A.10 |
+| 2 | 2A.2 · Motor de 5.ª edición: núcleo determinista y traza ✅ *hecho el 2026-09-02* | — |
+| 3 | 2A.3 · Catálogo SRD 5.1 y su verificación ✅ *hecho el 2026-09-02* | 2A.2 |
+| 4 | 2A.4 · Elecciones pendientes y avisos ✅ *hecho el 2026-09-02* | 2A.2 |
+| 5 | 2A.5 · Estado de partida: sesión con estado y log `GameEvent` ✅ *hecho el 2026-09-02* | — |
+| 6 | **2A.13 · Tirar de verdad: endpoint y registro** ✅ *hecho el 2026-09-02* | 2A.1, 2A.5 |
+| 7 | 2A.6 · La hoja persistida: características, raza, clase, creación con tiradas ✅ *hecho el 2026-09-02* | 2A.3, 2A.13 |
+| 8 | 2A.7 · PG mutables: deltas, concurrencia y su rastro ✅ *hecho el 2026-09-02* | 2A.5, 2A.6 |
+| 9 | 2A.8 · Recursos consumibles, **descansos y dados de golpe** ✅ *hecho el 2026-09-02* | 2A.7 |
+| 10 | **2A.12 · Velocidades, condiciones y velocidad efectiva** ✅ *hecho el 2026-09-02* | 2A.6 |
+| 11 | 2A.9 · Subida de nivel: diff propuesto, jugador que confirma ✅ *hecho el 2026-09-02* | 2A.6 |
+| 12 | 2A.10 · La pantalla de la hoja: valores, traza y avisos ✅ *hecho el 2026-09-02* | 2A.6, 2A.12 |
+| 13 | **2A.14 · Bandeja de notificaciones** ✅ *hecho el 2026-09-02* | 2A.5 |
+| 14 | **2A.15 · Marcas, conjuntos y sucesos del mundo** ✅ *hecho el 2026-09-02* | 2A.5 |
+| 15 | **2A.16 · El motor de reglas** ✅ *hecho el 2026-09-02* | 2A.15, 2A.14, 2A.13 |
+| 16 | **2A.17 · La pantalla del motor** ✅ *hecho el 2026-09-02* | 2A.16 |
+| 17 | 2A.11 · La pantalla de subida de nivel y el cierre de 2A ✅ *hecho el 2026-09-02* | 2A.9, 2A.10 |
+
+> **Las diecisiete están hechas (2026-09-02).** Esta tabla llegó a marcar solo la 2A.1 cuando
+> había trece entregadas: una auditoría del mismo día lo cazó, y por eso ahora la marca va fila
+> a fila. Documentación que dice «pendiente» sobre algo entregado manda a reimplementarlo.
 
 **Si no da tiempo a todo**, el corte natural es después de la 12: la hoja de personaje queda
 entera y utilizable, y el motor de eventos entra en una segunda tanda. Lo que **no** se parte

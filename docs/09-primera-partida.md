@@ -1,9 +1,14 @@
 # La primera partida
 
-> **Aplazado por decisión del autor (2026-09-01):** no se juega hasta tener al menos el
-> tablero 2D (fase 3), quizá tampoco antes de las reglas (fase 2). Este documento queda listo
-> para cuando toque; el riesgo de construir sin realimentación real está declarado en
-> [06-pendientes.md](./06-pendientes.md).
+> **Reactivado el 2026-09-02:** hay pruebas de juego con el DM **la semana que viene**. El
+> aplazamiento del 2026-09-01 —«no se juega hasta el tablero 2D»— queda anulado por esa
+> decisión. Lo que sigue vigente es que el tablero no existe: eso es la fase 3.
+>
+> **Y conviene que conste que la regla se incumplió.** El plan decía «no se empieza la fase N+1
+> hasta usar la N de verdad», y la fase 2A se ejecutó entera entre el 1 y el 2 de septiembre sin
+> que esta sesión ocurriera. El riesgo que la regla protegía —construir el motor sin
+> realimentación de mesa— se ha materializado; la sesión de la semana que viene es ahora la
+> primera prueba real de las dos fases a la vez.
 
 **Este documento es la puerta de salida de la fase 1.** El plan tiene una regla dura: no se
 empieza la fase N+1 hasta usar la N de verdad. La fase 1 está construida y verificada, pero
@@ -33,13 +38,15 @@ Detalle de variables y gotchas en [02-entorno.md](./02-entorno.md).
 
 ## Cómo juegan tus jugadores
 
-**Corre en tu máquina, así que hoy solo se juega presencialmente**, con los jugadores en la
-misma red apuntando a la IP de tu PC (`http://<tu-ip>:5173`), o mirando todos tu pantalla.
-No hay despliegue: no hay VPS asignado, y esa parte de la tarea 1.14 quedó diferida a
-propósito. Ver [03-despliegue.md](./03-despliegue.md).
+**Está desplegado en `https://dnd.supportive.pro`**, así que tus jugadores entran desde sus
+casas con su cuenta. Ver [03-despliegue.md](./03-despliegue.md).
 
-Si quieres que entren desde sus casas, el despliegue **sí** es bloqueante y es una decisión
-aparte, no un detalle de configuración.
+Levantarlo en local sigue sirviendo, y para probar es lo que conviene: `http://localhost:5173`,
+o la IP de tu PC si queréis jugar presencialmente en la misma red.
+
+> Este párrafo decía **«no hay despliegue: no hay VPS asignado»**, y llevaba siendo falso desde
+> el 2026-09-02 — enlazando además al documento que lo desmentía. Es el tipo de mentira que más
+> daño hace en una guía: la que le dice a alguien que no puede hacer algo que sí puede.
 
 ## El guion, paso a paso
 
@@ -93,14 +100,25 @@ porque es lo que se nota jugando.
 - **No puedes ver qué invitaciones has mandado** (D3), ni cuáles se han usado, ni revocar
   ninguna: el token no caduca en el servidor, y la pantalla solo te enseña el último enlace
   generado hasta que recargues. Cópialos a un sitio seguro según los generas.
-- **La fecha de una sesión no se ve en la lista** (D4): la lista pinta título y visibilidad, y
-  viene ordenada por cuándo se creó la sesión, no por cuándo se juega. Para responder *"¿cuándo
-  jugamos?"* hay que abrirlas una a una.
+- **Las sesiones vienen ordenadas por cuándo se crearon, no por cuándo se juegan** (D4). La
+  fecha **sí** se ve en la fila desde el reseño del 2026-09-02 (o «sin fecha» si no la tiene),
+  así que ya no hay que abrirlas una a una — pero el orden sigue siendo el de creación, y para
+  responder *"¿cuándo jugamos?"* hay que mirarlas todas.
 - **No se puede quitar la fecha de una sesión** una vez puesta.
-- **En la lista de personajes solo se ven nombre y nivel** (D5): raza, clase y biografía están
-  guardadas, pero hay que abrir cada ficha para verlas.
+- **De un personaje, la biografía exige abrir su ficha** (D5). Nombre, raza, clase y nivel **sí**
+  se ven en la fila desde el reseño del 2026-09-02.
 - **Nada de adjuntos ni imágenes**: llegan en la fase 3, con el almacenamiento.
-- **Nada de mapas, tiradas, tiempo real ni ficha con reglas**: fases 2 a 5.
+- **Mapas y tiempo real**: fases 3 a 5, y siguen sin existir.
+- **Tiradas, hoja de 5.ª edición, PG, descansos, condiciones y subida de nivel ya se usan desde
+  la pantalla** (2A.10 y 2A.11): la ficha de un personaje monta la hoja calculada con su traza,
+  el marcador de PG con deltas, los recursos con sus dos descansos, las condiciones, el botón de
+  tirar —con ventaja y desventaja— y las anulaciones del DM.
+- **Lo que sigue a mano en la mesa**: inventario, objetos y dinero; el orden de iniciativa y los
+  turnos; los puntos de golpe de los PNJ y monstruos; y todo lo de conjuros que no sea el
+  contador de espacios. Están todos como huecos con ficha en
+  [06-pendientes.md](./06-pendientes.md), no como sorpresas.
+- **Empezar y cerrar una sesión no tiene botón todavía**, así que lo que se registre durante la
+  partida quedará marcado como fuera de sesión.
 
 ## Qué anotar mientras juegas
 

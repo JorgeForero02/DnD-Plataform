@@ -43,9 +43,14 @@ DM inventa** y **reglas suceso–condición–efecto** con el efecto «revelar»
 formulario de tres partes, no en un lienzo: el lienzo de cajas es 2B/2C, cuando el vocabulario
 esté probado con una aventura real.
 
-Sus tareas son **2A.12** (marcas, conjuntos y sucesos de mundo), **2A.13** (el motor, con
-encadenamiento acotado, orden por especificidad, traza y ensayo en seco) y **2A.14** (la
+Sus tareas son **2A.15** (marcas, conjuntos y sucesos de mundo), **2A.16** (el motor, con
+encadenamiento acotado, orden por especificidad, traza y ensayo en seco) y **2A.17** (la
 pantalla). Van después de 2A.5, que es de quien dependen.
+
+> **Esta numeración estuvo mal y era una trampa activa.** Decía 2A.12/2A.13/2A.14, que en el
+> orden vigente son velocidades, tiradas y notificaciones: quien leyera esto y fuera a
+> implementar «2A.14 · la pantalla» habría construido la bandeja de avisos creyendo que hacía la
+> pantalla del motor. La numeración que manda es la de la parte 2, §2.4–2.6.
 
 **La regla que no se negocia:** un efecto **escribe** `visibility`; **nunca decide** quién ve
 qué. `canView` sigue siendo el dueño único, o habría dos matrices y la fuga que este producto

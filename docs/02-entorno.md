@@ -57,7 +57,9 @@ no al copiar la plantilla local.
 ## Comandos
 
 ```bash
-pnpm verify                            # build + lint + formato + unitarias. Lo exige el pre-commit
+pnpm verify                            # build + lint + formato + check:docs + check:estado + unitarias. Lo exige el pre-commit
+pnpm check:docs                        # los enlaces internos de docs/ apuntan a algo que existe
+pnpm update:estado                     # regenera el bloque de estado de docs/00-INDEX.md (conteos de unitarias)
 pnpm test                              # solo las unitarias de los tres paquetes
 pnpm --filter @dnd/api test:e2e        # e2e de API contra el Postgres real (docker arriba)
 pnpm build                             # compila los tres paquetes (hace de type-check)

@@ -3,7 +3,7 @@
 ## Monorepo
 
 ```
-apps/api        NestJS 10 + Fastify + Prisma + PostgreSQL 16
+apps/api        NestJS 11 + Fastify + Prisma 5 + PostgreSQL 16
 apps/web        React 18 + Vite + TanStack Query + Zustand + Tailwind + React Hook Form
 packages/shared @dnd/shared — esquemas Zod compartidos por API y web
 ```
@@ -60,7 +60,9 @@ por su cuenta**.
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |
 | `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |
-| `rules` | Motor de derivación de 5.ª edición (2A.2), catálogo SRD (2A.3) y elecciones (2A.4). **Puro** | — |
+| `rules` | Motor de derivación de 5.ª edición (2A.2), catálogo SRD (2A.3) y elecciones (2A.4). El núcleo es **puro**; `catalog.controller.ts` es la única puerta HTTP: `GET /catalog` sirve razas, subrazas, clases y armaduras para que la pantalla no las transcriba | autenticado (el SRD es el mismo para todas las campañas) |
+| `level-up` | Subida de nivel (2A.9): el servidor **propone un diff** y el jugador confirma. Siembra los recursos del nivel nuevo en la misma transacción | dueño o DM |
+| `rules-engine` | Reglas suceso–condición–efecto de la campaña (2A.16): alta, ensayo en seco, trazas y propuestas. **Escucha `game_event.recorded`** por un puente, en vez de que el log le llame | solo DM |
 
 ### Las tres capas de la fase 2A, y por qué no se tocan entre sí
 
@@ -102,11 +104,19 @@ ruidosamente con
 en `visibility.spec.ts`. Los listados filtran por `canView`; las mutaciones exigen DM o
 propiedad. Ver [05-datos.md](./05-datos.md) para la semántica de cada nivel.
 
-> **Deuda conocida:** cada servicio construye a mano su propio `viewerFor(userId, campaignId)`
-> (rol en la campaña + `user.isAdmin`). Es duplicación real, anotada en
-> [06-pendientes.md](./06-pendientes.md); el candidato es extraerla a `common/`.
+> **Deuda conocida, y ya a medio pagar:** **ocho** servicios construyen a mano su propio
+> `viewerFor(userId, campaignId)` (rol en la campaña + `user.isAdmin`) — `entities`,
+> `characters`, `character-sheet`, `comments`, `links`, `sessions`, `game-events` y
+> `rules-engine`, que además lo reconoce en su propio comentario. **`character-state`
+> ya lo tiene extraído** en `apps/api/src/character-state/common/viewer.ts`, que es exactamente
+> el candidato a subir a `common/`. Anotada en [06-pendientes.md](./06-pendientes.md).
 
 ## Estructura de la web
+
+**Las pantallas grandes de la fase 2A** viven en `apps/web/src/features/`:
+`character-sheet/` (la hoja calculada con su traza desplegable, PG, recursos, descansos,
+condiciones, tirar y las anulaciones del DM), `level-up/` (el diff propuesto y su confirmación) y
+`rules/` (el panel del motor: reglas, propuestas y trazas). `characters/` conserva el CRUD.
 
 ```
 src/lib/api.ts          apiFetch<T> — base /api, adjunta el JWT
@@ -114,6 +124,14 @@ src/store/auth.store.ts Zustand: token (persistido en localStorage) y usuario (e
 src/features/auth/      AuthGate + useAuthRehydration: rellena el usuario tras recargar
 src/features/<x>/       api.ts (fetchers) + hooks.ts (TanStack Query) + componentes + __tests__
 src/pages/              pantallas enrutadas
+src/components/         ProtectedRoute y compartidos
+```
+
+> **Esta valla estaba sin cerrar hasta el 2026-09-02**, y se tragaba las dos tablas de abajo y
+> toda la prosa que las sigue. No era solo cosmético: `scripts/check-docs.mjs` **salta lo que hay
+> dentro de una valla**, así que ninguna de las rutas citadas ahí estaba siendo comprobada — y
+> por eso `/acerca-de` pudo faltar en la tabla sin que nada avisara. Lo encontró una auditoría, no
+> el script, que es exactamente lo que la auditoría existe para pillar.
 
 Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 
@@ -125,6 +143,7 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 | `/campaigns/:id/entidades/:entityId` | **Lectura** de una ficha del mundo: cuerpo en vitela, relaciones y comentarios |
 | `/campaigns/:id/personajes/:characterId` | Hoja de personaje con la forma de 5.ª edición |
 | `/account`, `/join/:token`, `/design-tokens`, `*` | Cuenta, invitación, control de tokens y 404 |
+| `/acerca-de` | Atribución del SRD 5.1. **Pública a propósito**: la CC BY la pide en la obra distribuida, y una atribución que exige iniciar sesión está detrás de ella, no en ella |
 
 `src/ui/` es el sistema de diseño, y **es la única puerta al color y a la tipografía**:
 
@@ -136,11 +155,12 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 | `Collection` (`Toolbar`, `FilterChip`, `ListRow`, `EmptyState`) | De lo que se hace una lista |
 | `Logo`, `Ornament` | La marca, los iconos y el ornamento — todo **dibujado**, ver [04-convenciones](./04-convenciones.md) |
 | `theme.ts`, `ThemeToggle` | Los dos temas y su conmutador |
+| `LegalNotice` | El pie con la atribución del SRD, montado dentro de `AppShell` para que lo lleve toda pantalla con sesión |
 
-Las tres primeras pantallas comparten `ui/AppShell.tsx`: cabecera global, migas y una medida
-máxima. **Editar es un diálogo que se abre desde la lectura**, nunca la puerta de entrada.
-src/components/         ProtectedRoute y compartidos
-```
+Todas las pantallas con armazón comparten `ui/AppShell.tsx` —panel, campaña, entidad, personaje
+y `/acerca-de`, que además es **pública**—: cabecera global, migas y una medida máxima. Eran
+«las tres primeras» y son cinco; y como `LegalNotice` viaja dentro de `AppShell`, la atribución
+del SRD la llevan también las públicas que lo montan, no solo las que exigen sesión. **Editar es un diálogo que se abre desde la lectura**, nunca la puerta de entrada.
 
 **Cómo la web resuelve quién es y qué rol tiene (tarea 1.15, corregido en 1.15-fix):** el
 token sobrevive a una recarga en `localStorage`, pero el usuario solo vivía en memoria —
@@ -160,10 +180,13 @@ cruza `GET /campaigns/:id/members` para responder "¿soy DM o jugador en esta ca
 tercer estado explícito de "aún no lo sé" mientras carga **o si la petición falla**
 (`isError`, tratado siempre como "aún no lo sé", nunca como "no soy miembro") — con
 `retry: false` (`lib/queryClient.ts`) un solo fallo no se reintenta solo, así que `useMyRole`
-expone `retry()`; de sus seis consumidores hoy (tres en `CampaignDetailPage.tsx`, más
-`InvitePanel.tsx`, `LinksPanel.tsx` y `CommentThread.tsx`), solo los cuatro primeros lo
-enlazan a un botón "Reintentar" — `LinksPanel.tsx` y `CommentThread.tsx` leen `isError` pero
-no ofrecen reintento. **Crear** una entidad o un personaje queda sin gatear en el botón a
+expone `retry()`; de sus **diez llamadas en nueve componentes**, **seis** lo enlazan a un botón
+"Reintentar" (las tres de `CampaignDetailPage.tsx`, más `InvitePanel.tsx`,
+`CampaignSettings.tsx` y `MembersPanel.tsx`) y **cuatro** leen `isError` sin ofrecerlo
+(`LinksPanel.tsx`, `CommentThread.tsx`, `CharacterDetailPage.tsx` y `EntityDetailPage.tsx`,
+que ni siquiera desestructuran `retry`). El recuento anterior decía «seis consumidores, cuatro
+con reintento» y **era falso en las dos direcciones**: se dejaba cuatro componentes fuera y
+atribuía mal quién ofrece el botón. **Crear** una entidad o un personaje queda sin gatear en el botón a
 propósito: el servidor deja crear a cualquier miembro (`entities.service.ts`,
 `characters.service.ts`), así que no hay nada que el servidor vaya a rechazar. Lo que sí usa
 el rol para **deshabilitar** (no ocultar) con una explicación visible es **crear y editar una
@@ -193,10 +216,26 @@ origen.
   llegar al SaaS y al 3D.
 - **Minimalismo de infraestructura.** Sin Redis, sin colas, sin S3, sin WebSockets, sin
   servicio de IA hasta que una fase los necesite. Hoy: Postgres + Nest + React y nada más.
-- **Eventos de dominio** vía `@nestjs/event-emitter` — en proceso, sin infraestructura. **Hoy
-  solo se emiten** (`campaign.created`, `entity.created`, `campaign.member_joined`): no existe
-  ningún `@OnEvent` en `apps/api/src` que reaccione a ellos. "En proceso" describe el
-  mecanismo de transporte, no que algo los consuma todavía.
+- **Eventos de dominio** vía `@nestjs/event-emitter`, en proceso y sin infraestructura. Se
+  emiten **siete** —`campaign.created`, `campaign.updated`, `campaign.deleted`,
+  `campaign.member.removed` (`campaigns.service.ts`), `campaign.member_joined`, `entity.created`
+  y **`game_event.recorded`** (`game-events.service.ts`)—, y hay **tres** `@OnEvent`:
+  `notifications` consume `campaign.member_joined` y `entity.created`, y
+  `rules-engine/game-event-bridge.ts` consume `game_event.recorded`, que es **cómo el log de la
+  partida despierta al motor de reglas**. Un puente y no una llamada directa porque el motor
+  escribe eventos: llamarle desde el log cerraría un ciclo entre los dos módulos que Nest solo
+  tapa con `forwardRef`. Los cuatro de `campaigns.service.ts` siguen sin consumidor
+  ([06-pendientes](./06-pendientes.md), **N1**).
+
+  > Y esta línea ha caducado **dos veces**: primero decía que ningún `@OnEvent` los escuchaba, y
+  > luego se quedó en seis eventos y dos consumidores el mismo día que llegó el séptimo. El
+  > párrafo de abajo ya presumía de haber cazado la primera. Es la clase de mentira que
+  > `check:docs` no ve, porque la sintaxis está en regla.
+
+  > Esta línea decía «no existe ningún `@OnEvent` que reaccione a ellos» y **se contradecía con
+  > la tabla de módulos de 138 líneas más arriba**, que ya anunciaba que `notifications` los
+  > escucha. Lo cazó una auditoría de documentación contra código: es exactamente la clase de
+  > mentira semántica que `check:docs` no puede ver, porque la sintaxis está en regla.
 - **Sentry** desde la fase 0 (`SENTRY_DSN` opcional; vacío lo desactiva).
 - **Visibilidad de primera clase desde la fase 1**, no añadida después: es el rasgo que
   distingue al producto y meterla tarde habría tocado todas las consultas.

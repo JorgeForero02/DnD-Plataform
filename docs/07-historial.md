@@ -6,6 +6,112 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (cierre) — La fase 2A completa: las diecisiete tareas, y lo que tres auditorías encontraron encima
+
+**Qué.** Se cerraron las cuatro tareas que faltaban —2A.9 (subida de nivel), 2A.16 (motor de
+reglas), 2A.10 (pantalla de la hoja) y 2A.11 y 2A.17 (sus pantallas)— y, con la fase entera en
+pie, tres auditorías cruzaron **toda** la documentación contra el código. Lo que encontraron no
+fue documentación desactualizada: fueron **cinco fallos de código que solo se veían por HTTP o
+en un navegador**.
+
+**Por qué importa cada uno.**
+
+- **El motor de reglas no estaba enchufado al log.** Ahora `GameEventsService` emite
+  `game_event.recorded` y un puente en `rules-engine/` lo escucha. Es un puente y no una llamada
+  directa porque el motor **escribe** eventos: llamarle desde el log cerraría un ciclo entre los
+  dos módulos que Nest solo tapa con `forwardRef`, que es esconder el ciclo en vez de quitarlo.
+  Y el suceso lleva una bandera `fromRulesEngine`: sin ella, cada efecto del motor arrancaría
+  una cascada **nueva a profundidad 0**, y el tope de diez saltos no lo vería, porque cuenta
+  dentro de una cascada y no entre cascadas.
+- **Una tirada puede disparar dos reglas.** Un 20 natural que no llega a la CD es
+  `NATURAL_TWENTY` **y** `FAILURE`; el traductor devuelve una lista, no un disparador.
+- **`ENTITY_OPENED` era un disparador muerto.** `recordEntityOpened` existía desde 2A.15 con su
+  prueba y **no lo llamaba nadie**, así que el ejemplo con el que se definió el sistema entero
+  —«cuando un jugador revise esta ficha, se desvela el camino secreto»— era inalcanzable en
+  producción. Ahora lo escribe la lectura de una ficha, siempre `DM_ONLY`.
+- **Tres funciones con prueba y sin llamador.** La de arriba, `seedResourcesFor` (así que
+  **ningún personaje tenía dados de golpe ni espacios de conjuro**) y `assertNoUnknownChoices`
+  (así que una clave de concesión inventada se guardaba en silencio). Una prueba unitaria verde
+  no dice que la función se use.
+- **Un 500 donde tenía que haber un 400.** `InvalidChoiceError` no lo capturaba nadie: mandar dos
+  veces la misma habilidad reventaba. Se valida ahora contra la ficha que quedaría, **antes** de
+  guardar — y solo lo que llega en esa petición, porque un dato viejo ya guardado no puede dejar
+  a un personaje imposible de editar, incluida la edición que lo arreglaría.
+- **Una suma que no cuadraba en pantalla.** El previo de subida de nivel decía «13 → 22 (+8)»:
+  el destino salía de la hoja derivada y el delta de la columna en bruto, ignorando el +2 de
+  Constitución del enano. El comentario del código llegaba a afirmar que los dos caminos daban
+  el mismo número «para no calcularlo dos veces»; discrepaban, y nada lo comprobaba. Lo cazó un
+  recorrido de navegador, no la suite: las unitarias montaban humanos.
+
+**Lo que se añadió porque faltaba para jugar.**
+
+- **Ventaja y desventaja** como concepto, no como sintaxis. El servidor compone `2d20kh1` o
+  `2d20kl1`; el cliente pide el modo por nombre. Estaba declarado fuera del alcance de 2A cuando
+  no había pantalla, y con pantalla era insostenible: sale en casi todos los turnos.
+- **Anulaciones manuales del DM** (`Character.overrides`, migración
+  `20260902163450_character_manual_overrides`). El tipo de suceso `MANUAL_OVERRIDE_SET` existía
+  desde 2A.5 **sin columna que lo produjera**. Es la válvula de escape de «se guarda lo decidido,
+  se calcula lo derivado»: sin ella, la única salida ante un objeto mágico o una regla de la casa
+  era mentirle a la ficha. Se aplica como un `override` del motor, así que **sale en la traza con
+  su delta**.
+- **`GET /catalog`** y **`effectiveSpeeds` en la hoja**, porque la pantalla estaba duplicando dos
+  reglas del servidor: la velocidad efectiva copiada letra por letra, y las nueve razas y doce
+  clases transcritas a mano. Una regla del juego vive una vez, igual que la matriz de visibilidad.
+
+**Verificación.** 682 unitarias de API, 393 de web, **116 e2e de API en 22 suites** y **30
+recorridos de navegador en 7 especificaciones**, todos en verde. Diecinueve mutaciones aplicadas
+a mano y comprobadas rojas; **tres de ellas no se pusieron rojas y destaparon pruebas que pasaban
+por el motivo equivocado** —una usaba la etiqueta de una concesión en vez de su identificador,
+otra fallaba igual con la comprobación de DM quitada, y la tercera vigilaba código muerto—; las
+tres se reescribieron o se borró el código que fingían proteger.
+
+**Cómo revertirlo.** Los commits del día son independientes por tarea. La única migración es
+`20260902163450_character_manual_overrides`, que solo **añade** una columna anulable: revertirla
+es un `ALTER TABLE "Character" DROP COLUMN "overrides"` y no toca ningún dato existente.
+
+---
+
+## 2026-09-02 (tarde) — Las salvaciones de muerte estaban a medias, y la mitad que faltaba era un fallo vivo
+
+**Que.** Una investigacion de huecos de mecanica —pedida por el autor con el ejemplo de la
+iluminacion— encontro que las tiradas de salvacion contra muerte estaban construidas por la
+mitad. La parte hecha era la buena; **la que faltaba era la que ocurre en la mesa**.
+
+**Y una de las tres no era un hueco, era un fallo activo sobre codigo ya desplegado:** curar a un
+personaje a 0 PG **no borraba sus fracasos**. El clerigo lo levantaba con dos encima y ahi seguian
+la sesion siguiente. El descanso largo tampoco los borraba, asi que eran dos caminos con el mismo
+defecto.
+
+**Las tres reglas del SRD que ahora si aplica `changeHp`:**
+
+- **Golpear a quien ya esta a 0 PG suma un fracaso**, y **dos si el golpe fue critico**. Es el
+  momento mas frecuente del juego —el remate al que esta en el suelo— y no dejaba ningun rastro.
+- **Muerte masiva**: si lo que sobra tras llegar a 0 iguala o supera los PG maximos, el personaje
+  muere en el acto, sin tiradas. **El sobrante se calcula ANTES de recortar a 0**, porque el
+  `clamp` que protegia el minimo era justo el que borraba la evidencia.
+- **Recuperar un solo PG desde 0 borra los dos contadores.** No es cortesia: arrastrar fracasos
+  de una caida anterior mataria a alguien por algo que ya sobrevivio.
+
+**`ChangeHpInput` gana `critical`, y ahora y no despues.** Sin ese campo la regla del doble
+fracaso no se puede aplicar, y anadirlo mañana es migrar el payload del evento **que mas veces se
+escribe en una sesion**. `HP_CHANGED` gana ademas `massive`, porque una muerte sin tiradas hay que
+poder explicarla en la linea de tiempo o parece un error de la herramienta.
+
+**Mutacion comprobada, cuatro veces.** Quitando el borrado al curar desde 0, cae una prueba;
+haciendo que el critico cuente uno, otra; calculando el sobrante despues de recortar, se pierde la
+muerte masiva; y quitando el fracaso por golpear a quien esta caido, caen dos. Restauradas, 27
+verdes.
+
+**Dos pruebas existentes se aflojaron a proposito**, y merece decirse por que: afirmaban el objeto
+`data` **entero** del `update`, asi que anadir dos columnas las rompia sin que el comportamiento
+cambiara. Pasan a `objectContaining`: una prueba tiene que fijar **lo que le importa**, no la
+forma completa de una llamada.
+
+**Como revertirlo.** Quitar el bloque de salvaciones de `changeHp` y los dos campos de los
+esquemas. **Pero eso devuelve el fallo**, no solo la funcionalidad.
+
+---
+
 ## 2026-09-02 (tarde) — La copia de seguridad estaba rota, y habria dicho que no
 
 **Que.** El pendiente que llevaba todo el dia abierto —«¿el trabajo de copias de las 04:00 cubre

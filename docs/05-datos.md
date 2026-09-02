@@ -1,7 +1,9 @@
 # Datos
 
 PostgreSQL 16 vía Prisma. Esquema: `apps/api/prisma/schema.prisma`.
-Migraciones aplicadas: `20260702170844_init`, `20260702215016_campaign_core`.
+**Las migraciones no se listan aquí:** la lista es `apps/api/prisma/migrations/`, que es la
+única que no puede quedarse vieja. Esta línea enumeraba dos cuando ya había seis, y el propio
+documento citaba más abajo dos de las que faltaban.
 Todos los identificadores son `cuid()`.
 
 ## Modelo
@@ -15,6 +17,15 @@ User ──dueño──> Campaign ──> CampaignMember (DM | PLAYER, único po
                     ├──> Character   (ownerId)
                     └──> GameEvent   (log append-only; sessionId nulo = fuera de sesión)
 
+Character ──> CharacterResource   (consumibles: inspiración, furia, ki, dados de golpe, espacios)
+          ──> CharacterCondition  (clave LIBRE; las quince del SRD son las que el motor entiende)
+
+Campaign ──> CampaignFlag         (marcas con nombre)
+         ──> CampaignSet ──> CampaignSetMember
+         ──> Rule ──> RuleTrace   (el motor de eventos; `Campaign.rulesEnabled` lo apaga entero)
+
+Notification (por usuario; `campaignId` suelto, sin clave foránea)
+
 Entity ──> EntityLink (from → to, label; único por from+to+label)
        ──> EntityVisibilityGrant (entidad + usuario; único)
        ──> Comment (authorId, body)
@@ -26,12 +37,17 @@ por campo en vez de siete tablas porque la relación wiki (`EntityLink`) tiene q
 cualquier tipo con cualquier tipo; con siete tablas ese enlace sería una tabla de uniones
 por par.
 
-Todo lo colgado de una campaña se borra en cascada con ella (`onDelete: Cascade`). Dentro de
+Todo lo colgado de una campaña se borra en cascada con ella (`onDelete: Cascade`), **con una
+excepción declarada**: `Notification.campaignId` es una columna suelta **sin clave foránea**,
+igual que `GameEvent.sessionId`, así que las notificaciones sobreviven al borrado de la
+campaña. Es deliberado —un aviso ya leído no debería desaparecer porque alguien borre la
+campaña— pero conviene que esté escrito y no descubrirlo con filas huérfanas. Dentro de
 una campaña, borrar una `Entity` se lleva también sus `EntityLink` (**en las dos
 direcciones**: tanto los que salen de ella como los que otras entidades tienen hacia ella,
 porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGrant` y sus
-`Comment`. `Session` y `Character` no tienen ninguna tabla colgando de ellos, así que borrar
-uno de los dos no se lleva nada más por delante. **`GameEvent` cuelga de la campaña, no de la
+`Comment`. **`Session` no tiene ninguna tabla colgando; `Character` sí desde 2A.8 y 2A.12**:
+borrar un personaje se lleva sus `CharacterResource` y sus `CharacterCondition`, las dos en
+cascada. **`GameEvent` cuelga de la campaña, no de la
 sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
 borra su historia, que es lo que se quiere de un log.
 
@@ -92,8 +108,22 @@ fila traída** y no de la última visible: si saliera de la visible, una página
 la matriz de visibilidad en un `where`, que es justo lo que `canView` existe para que nadie
 haga.
 
-**3 · Lo que 2A.5 NO trae:** ni `currentHp`, ni `tempHp`, ni recursos consumibles, ni pantalla.
-Esas son 2A.6, 2A.7 y 2A.8, y el log ya tiene sus tipos de evento esperándolas.
+**3 · Lo que 2A.5 no traía**, y llegó el mismo día con 2A.6, 2A.7 y 2A.8: `currentHp`, `tempHp`,
+los recursos consumibles y las condiciones. Están todos en el esquema **y todos tienen pantalla
+desde 2A.10** (`apps/web/src/features/character-sheet/`). Lo que **no** tiene pantalla es el
+estado de sesión, el log, los avisos, las marcas y conjuntos: existen por HTTP y se prueban por
+e2e, pero hoy solo se usan con un cliente HTTP (ficha **D9** de
+[06-pendientes.md](./06-pendientes.md)). En la práctica, eso significa que **todos los sucesos
+se escriben hoy fuera de sesión**, porque no hay botón que la empiece.
+
+**4 · `Character.overrides`** (2026-09-02, migración `character_manual_overrides`). Anulaciones
+manuales del DM sobre valores **derivados**: `{ "ac": 18 }`. Es la válvula de escape de «se
+guarda lo decidido, se calcula lo derivado» — el catálogo del SRD no cubre un objeto mágico, un
+don ni una regla de la casa, y sin esto la única salida era mentirle a la ficha subiendo una
+característica hasta que cuadrara el número. **Se aplica como un `override` del motor**, así que
+sale en la traza con su delta y el jugador ve de dónde viene. Solo el DM la escribe: una
+anulación que el dueño puede ponerse no es una anulación, es un campo libre. El tipo de suceso
+`MANUAL_OVERRIDE_SET` existía desde 2A.5 **sin columna que lo produjera**; ahora la tiene.
 
 ## Editar y borrar campañas; expulsar y salir (tarea 1.17a)
 
@@ -109,8 +139,10 @@ sesión y comprueban el rol **en el servidor** (`MembershipService`, nunca en el
   `prisma.campaign.delete({ where: { id } })`: el esquema ya cascadea (arriba) miembros,
   invitaciones, entidades —con sus enlaces en ambas direcciones, concesiones y
   comentarios—, sesiones y personajes. No hace falta borrar nada a mano. Emite
-  `campaign.deleted`. Probado con recuentos reales de las siete tablas, no solo por el código
-  de estado — ver [08-pruebas.md](./08-pruebas.md).
+  `campaign.deleted`. Probado con recuentos reales de **ocho** tablas, no solo por el código
+  de estado — y **cuatro de las que hoy cascadean desde `Campaign` no están en ese recuento**
+  (`gameEvent`, `campaignFlag`, `campaignSet`, `rule`), que es deuda anotada en
+  [06-pendientes](./06-pendientes.md) — ver [08-pruebas.md](./08-pruebas.md).
 - **`DELETE /campaigns/:id/members/:userId`** — expulsar y salirse son **el mismo endpoint**
   (`MembershipService.removeMember`, `apps/api/src/campaigns/membership.service.ts`):
   `userId === quien llama` es salirse; cualquier otro valor es expulsar y exige que quien
@@ -140,7 +172,7 @@ sesión y comprueban el rol **en el servidor** (`MembershipService`, nunca en el
 
 ## El cuerpo de texto de una ficha (`Entity.body`, tarea 1.17b · A1)
 
-`Entity.body` (`schema.prisma:80`, `Json?`) ya existía, pero hasta esta tarea la pantalla
+`Entity.body` (`apps/api/prisma/schema.prisma`, `Json?`) ya existía, pero hasta esta tarea la pantalla
 nunca lo pintaba ni lo mandaba: una ficha era nombre + etiquetas + visibilidad + enlaces +
 comentarios, y nada más. Ahora tiene una forma explícita en `packages/shared/src/entity.schema.ts`:
 
@@ -166,7 +198,7 @@ contenido.
   la misma trampa que 1.13 pagó con `Session.notes`. Por eso el editor manda `body` siempre
   que está editando, incluso vacío: omitir la clave para "vaciar" guardaría con éxito sin
   cambiar nada.
-- **Por qué difiere de `Session.notes`** (`schema.prisma:126`, también `Json?`): `notes` no
+- **Por qué difiere de `Session.notes`** (`apps/api/prisma/schema.prisma`, también `Json?`): `notes` no
   tiene forma propia en el esquema (`session.schema.ts`: `notes: z.unknown().optional()`) y
   la web lo guarda como una cadena pelada dentro de la columna JSON — sin `format`, porque
   nunca se decidió que las notas de sesión llevaran texto enriquecido. `Entity.body` sí lo

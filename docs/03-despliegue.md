@@ -299,7 +299,9 @@ proceso: **el esquema se aplica solo en cada despliegue**. Por eso `api` espera 
 esté `service_healthy` y no solo a que su contenedor exista.
 
 **6 · Auto-despliegue y comprobación**
-Activar auto-deploy en push a `main`, con CI verde como condición previa. Entrar a
+**El despliegue es manual y así se queda** (decisión del autor, 2026-09-02). Se lanza por la API
+de Coolify, con CI verde y **con un volcado previo si la tanda trae migración**. Ver más abajo
+por qué manual es lo correcto cuando las migraciones corren solas al arrancar. Entrar a
 `https://dnd.supportive.pro`, registrarse e iniciar sesión sobre HTTPS. Si `SENTRY_DSN` está
 puesta, provocar un error de prueba y confirmar que llega. Y hacer las tres comprobaciones de
 `TRUST_PROXY` de arriba.
@@ -309,9 +311,12 @@ puesta, provocar un error de prueba y confirmar que llega. Y hacer las tres comp
 - **`db`**: `pg_isready`. Sirve, y es la que impide que la API arranque antes de tiempo.
 - **`web`**: `wget --spider` sobre `/`, que devuelve el `index.html`. Sirve.
 - **`api`**: **la API no expone hoy ningún endpoint de salud.** No existe ningún
-  `@Controller("health")` ni controlador raíz —los ocho que registra `apps/api/src/app.module.ts`
-  cuelgan de `auth`, `campaigns`, `invites`, `entities`, `links`, `comments`, `sessions` y
-  `characters`—, así que `GET /` responde **404**. La comprobación del compose hace un
+  `@Controller("health")` ni ningún controlador que mapee la raíz, así que `GET /` responde
+  **404**. (Aquí hubo un número —«los ocho», luego «los dieciséis»— y **caducó las dos veces**:
+  cada módulo nuevo lo dejaba mintiendo. Se sustituye por la propiedad, que no caduca: *ningún*
+  controlador mapea la raíz. Y la acusación de que `docker-compose.prod.yml` arrastraba el mismo
+  censo era falsa: ese comentario ya estaba escrito como propiedad. Las dos cosas las cazó una
+  auditoría del 2026-09-02.) La comprobación del compose hace un
   `fetch` a `/` y da por sana cualquier respuesta HTTP, 404 incluido: **demuestra que el
   servidor HTTP está escuchando y responde, y nada más**. En particular **no** demuestra que
   la base de datos siga accesible, así que una API viva con Postgres caído se vería "sana".
@@ -430,6 +435,25 @@ es el error facil; el `POST` sin token da 401, que es lo que se queria ver.
 **No se repitieron las dos tandas del limite de intentos.** Este despliegue **no toco la
 topologia de proxies ni las variables de entorno**, que es de lo unico que depende esa
 aritmetica. Si alguna de las dos cambia, se recuenta y se vuelven a correr.
+
+### El despliegue es MANUAL, por decisión del autor (2026-09-02)
+
+**Decisión del autor, literal:** *«no hay auto despliegue, se debe hacer manual»*. No es un
+pendiente ni una configuración a medias: **es como tiene que ser**.
+
+Se descubrió comprobándolo, no leyéndolo: se empujaron seis commits a `main` —incluida la
+migración del motor de reglas— y **producción no se movió**. El §6 del procedimiento decía
+«activar auto-deploy en push a `main`», y esa frase era la que mentía.
+
+**Por qué manual es lo correcto aquí, y merece decirse:** las migraciones de esta pila **corren
+solas al arrancar el contenedor** (`prisma migrate deploy` en el `CMD` de la imagen). Con
+auto-despliegue, un `push` a `main` cambiaría el esquema de producción sin que nadie lo hubiera
+decidido y **sin volcado previo**. Manual convierte cada despliegue en una decisión con su copia
+de seguridad delante, que es exactamente como se hicieron los dos de hoy.
+
+**Consecuencia práctica que hay que tener presente:** todo lo comiteado después del segundo
+despliegue —el motor de reglas y lo que venga— **está en `main` y no en producción** hasta que
+alguien lance el despliegue a mano.
 
 ## Lo que sigue sin comprobarse
 

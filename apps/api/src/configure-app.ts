@@ -49,9 +49,17 @@ export function loadBootEnv(options?: dotenv.DotenvConfigOptions): void {
  *   actually engaged in production.
  * - `trustProxy: N` (a number) trusts exactly N hops counting IN from the socket connection —
  *   i.e. it reads the value the Nth trusted proxy itself appended, ignoring anything further
- *   left that a client (trusted or not) supplied. Production sits behind exactly one trusted
- *   proxy (nginx), so `TRUST_PROXY=1` there reads the single hop nginx appended and ignores
- *   whatever a client forged in front of it.
+ *   left that a client (trusted or not) supplied.
+ *
+ *   **Production sits behind TWO proxies, not one: Traefik and then nginx**, so the value there
+ *   is `TRUST_PROXY=2` (`docker-compose.prod.yml`). This comment said "exactly one trusted proxy
+ *   (nginx), so TRUST_PROXY=1" and was wrong — and `docs/03-despliegue.md` cited this very file
+ *   as the authority for the arithmetic, so anyone following the citation to check the number
+ *   found a comment contradicting it. A documentation audit caught it on 2026-09-02.
+ *
+ *   And the number is not what makes it safe: **Traefik discards the client's X-Forwarded-For**
+ *   and rewrites it from the real connection, so the entry the API ends up reading cannot be
+ *   forged from outside. Change the topology and the number has to be recounted, not inherited.
  *
  * Default is 0 (`false`, no proxy trusted at all): a direct `pnpm dev:api` on 0.0.0.0, with no
  * proxy in front, must not trust a client-supplied X-Forwarded-For either.

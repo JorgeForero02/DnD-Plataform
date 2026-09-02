@@ -37,7 +37,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: 2026-09-01.
+Última revisión: 2026-09-02 (cierre de la fase 2A).
 
 ## Huecos abiertos de la fase 2A (2026-09-02)
 
@@ -63,16 +63,28 @@ quedan aquí para que no se deshagan sin darse cuenta.
 |---|---|---|
 | ~~**S1**~~ | ~~**La atribución CC BY no se ve todavía en la aplicación**~~ **CERRADA el 2026-09-02**: hay pie en toda pantalla con sesión (`apps/web/src/ui/LegalNotice.tsx`, montado en `AppShell`) y pantalla `/acerca-de` con el texto completo, **sin exigir sesión** — una atribución detrás del acceso no está en la obra distribuida. | Se cerró **antes** de que 2A.10 pintara una hoja, que era la condición de disparo. Ocho pruebas RTL la sostienen, y la que importa es la de la **nota de modificación**: traducir al español ES una modificación y omitirla incumple igual que omitir el autor — comprobado quitándola, la prueba se pone roja |
 | **S2** | **De cada aptitud de clase se transcribió el nombre y el nivel, no su texto de reglas** | El plan (§4.3) pedía «aptitudes por nivel como texto». La hoja puede decir «al nivel 5 ganas Ataque adicional» —desde el arreglo de la revisión, que metió las aptitudes de clase y subclase en `features`; antes esta ficha **afirmaba que ya lo hacía y era falso**—, pero no puede explicar qué hace cada una. Traducir a mano el texto completo de unas doscientas aptitudes es donde una transcripción se llena de errores que **ningún invariante puede cazar**. Añadirlo después es rellenar un campo, no cambiar una forma |
-| **S3** | **El catálogo vive en `apps/api/src/rules/catalog/`, no en un paquete `packages/srd`** | El plan (§4.1) dejaba las dos abiertas. Hoy **solo lo consume el propio borde de la API, dentro de `apps/api`**, y crear un paquete costaría cableado de compilación por cero beneficio. (La justificación anterior decía «un solo consumidor, el motor» y era **al revés**: la dirección real es `catalog → engine`. Corregido tras la revisión.) Cuando la web necesite los nombres en español (2A.10) los pedirá por endpoint, que hace falta igualmente porque las elecciones se validan en el servidor. Si aun así conviene el paquete, es un `git mv` |
+| **S3** | **El catálogo vive en `apps/api/src/rules/catalog/`, no en un paquete `packages/srd`** | El plan (§4.1) dejaba las dos abiertas. Hoy **solo lo consume el propio borde de la API, dentro de `apps/api`**, y crear un paquete costaría cableado de compilación por cero beneficio. (La justificación anterior decía «un solo consumidor, el motor» y era **al revés**: la dirección real es `catalog → engine`. Corregido tras la revisión.) La web ya los pide por endpoint (`GET /catalog`, `apps/api/src/rules/catalog.controller.ts`, creado el 2026-09-02 al ver que la pantalla los tenía transcritos a mano). La deuda de fondo sigue: el catálogo continúa dentro de `apps/api`. Si aun así conviene el paquete, es un `git mv` |
 | **S4** | **Los rasgos raciales sin efecto numérico se listan, pero no hacen nada** (Suertudo, Astucia gnoma, Aguante implacable…) | Salen por `features` para que la hoja los enseñe. Automatizarlos es 2C, igual que las condiciones. Está dicho aquí para que nadie los lea en la hoja y suponga que el motor los aplica |
-| **S5** | **Nada ata las claves de texto del catálogo (`labelKey`) a una tabla de traducción** | El motor y el catálogo devuelven `race.dwarf.con`, nunca prosa. La tabla que lo convierte en «+2 Constitución (enano)» **todavía no existe**: la escribe 2A.10. Hasta entonces, una `labelKey` que nadie traduzca se descubre mirando la pantalla, no con una prueba — y esa prueba es lo que hay que escribir con la tabla |
+| ~~**S5**~~ | **CERRADO en 2A.10**, a medias declaradas. La tabla existe: `apps/web/src/features/character-sheet/vocabulario.ts`, y una `labelKey` sin traducir se pinta como «Sin traducir: <clave>», visible y no silenciosa. **Lo que sigue sin existir es la prueba que falle cuando el catálogo estrene una `labelKey` nueva**: hoy la lista de la prueba se escribe a mano, así que comprueba lo que alguien recordó, no lo que el catálogo emite | Abierto (la prueba) |
 | **S6** | **La mejora de característica de los niveles de `asiLevels` no se modela todavía como elección** (2A.4) | Es el mismo mecanismo que el «+1 a dos» del semielfo, y el plan (§3) las nombra juntas. No entra aún porque «+2 a una **o** +1 a dos» es una concesión con **dos modos**, y quien decide la forma de la subida de nivel es 2A.9. **Ojo: no son solo 4/8/12/16/19** — el guerrero tiene 4/6/8/12/14/16/19 y el pícaro 4/8/10/12/16/19, y están en `asiLevels`; quien implemente 2A.9 leyendo solo esta línea se dejaría tres niveles. Añadirlo es un `kind` nuevo en `Grant` |
 | **S7** | **[revisión] Ningún filtro traduce `UnknownContentError`, `InvalidChoiceError` ni `InvalidEquipmentError` a un 400** | Los comentarios afirmaban «es un 400, no un 500» y **era mentira**: la API no registra `useGlobalFilters` y Nest devolvería 500. Los comentarios ya dicen «deberá traducirse»; el filtro con su e2e lo monta **2A.6**, que es quien crea el primer endpoint que puede producirlas. Hoy no hay camino que las provoque por HTTP |
 | **S8** | **[revisión] `ContentRef` no lleva el ámbito de campaña** | `findRace`/`findClass`/`findArmor` reciben solo la referencia. Cuando 2B rellene la rama `CAMPAIGN`, la firma **no tiene por dónde comprobar que ese identificador pertenece a la campaña del personaje**: es un IDOR entre campañas esperando a que alguien implemente el `else`. Hoy esa rama lanza `UnknownContentError`, así que no hay agujero; el arreglo es meter el `campaignId` en la firma **antes** de escribir ese `else`, no después |
-| **S9** | **[revisión] Las velocidades no pasan por el motor y por tanto no tienen traza** | `speeds` se asigna directamente en el resolutor, sin `Modifier` ni paso de traza. **Postura del revisor:** 2A.12 tendrá que rehacer esta pieza, así que conviene emitirlas ya como modificadores y derivar `speed.*` en el motor. **Postura de quien implementó, y lo que se aplicó:** 2A.12 es literalmente «velocidades, condiciones y velocidad efectiva **con su traza**», así que ese trabajo es *planificado*, no *repetido*, y adelantarlo mete en 2A.3 un cambio al motor que la propia tarea declaraba no tocar. Se deja para 2A.12 **con la obligación explícita de convertir `speeds` en modificadores allí**, y no de apilar una segunda representación al lado |
+| ~~**S9**~~ | **CERRADO en 2A.12.** `GET .../sheet` devuelve `effectiveSpeeds`: la velocidad ya afectada por las condiciones, con la traza que nombra **todas** las causas. Y con una lección: la primera versión de la pantalla la recalculaba en el navegador copiando la función del servidor letra por letra, porque no había endpoint. Dos copias de una regla del juego se separan en cuanto se toca una | Cerrado |
 | **S10** | **[revisión] El nivel y el nombre de las ~203 aptitudes de clase no están fijados por ninguna prueba** | `reference.spec.ts` fija dado de golpe, salvaciones, `asiLevels`, número de habilidades, lanzamiento, subclase y su nivel, y todas las cifras de razas y armaduras — **mover una aptitud de nivel, en cambio, no pone nada en rojo** (comprobado: la mutación «evasión del pícaro del 7 al 4» sigue pasando). Fijarlas sería transcribir los mismos datos **dos veces**, y dos copias derivan. Lo que protege esas filas es que el diff se entregó legible y se revisó con el SRD delante |
 
-## Pedido por el autor el 2026-09-02## Iluminación y visión (pregunta del autor, 2026-09-02)
+## Pedido por el autor el 2026-09-02## Lo que dejó la auditoría de documentación (2026-09-02)
+
+Dos agentes auditaron los ocho documentos numerados **contra el código**, afirmación por
+afirmación. **Treinta hallazgos, todos corregidos el mismo día** salvo estos tres, que son
+trabajo y no una frase:
+
+| | Qué | Por qué importa |
+|---|---|---|
+| **A1** | **El borrado en cascada de una campaña no está probado sobre las cuatro tablas nuevas**: `gameEvent`, `campaignFlag`, `campaignSet` y `rule`. La prueba cuenta ocho tablas y esas quedaron fuera | Borrar una campaña es la operación más destructiva del producto, y su prueba **cuenta filas de verdad** en vez de fiarse del código de estado. Cuatro tablas sin contar es justo por donde volvería a colarse un huérfano |
+| **A2** | **`recordEntityOpened` escribe un `GameEvent` sin comprobar membresía**, y `world-state.module.ts` lo exporta a propósito | Hoy **no lo llama nadie**, así que no es explotable. Sigue el mismo patrón que `GameEventsService.record` («quien llama ya decidió»), y por eso no se cambió. **Pero la fila de 01 dice «solo DM» de ese módulo, y dejará de ser verdad en cuanto `entities` lo enganche** — que es lo que su propio comentario anuncia |
+| **A3** | **El censo de controladores caducado también está en `docker-compose.prod.yml`**, en el comentario que justifica la comprobación de salud de la API | Es la misma mentira en dos sitios; se corrigió la del documento y queda la del compose. Cambiar el compose recompila la imagen en Coolify, así que **se hace con el siguiente despliegue, no suelto** |
+
+## Iluminación y visión (pregunta del autor, 2026-09-02)
 
 Razonado en [distancias y movimiento, §12 bis](./superpowers/specs/2026-09-02-distancias-y-movimiento-design.md).
 **Cerrado hoy:** los sentidos llegan a la hoja (`senses.darkvision` en pies, derivado y con
@@ -91,7 +103,7 @@ traza). Lo demás queda colocado, no olvidado.
 |---|---|---|
 | **H1b** | **«Estable» no sobrevive a la petición que lo produce.** Estabilizarse con tres éxitos —o revivir con un 20 natural— pone los contadores de tiradas de muerte a cero, así que un `GET` posterior **no distingue «acaba de estabilizarse» de «acaba de caer a 0 PG»** | La hoja tiene que poder decir si el personaje está estable: es lo primero que pregunta la mesa. El estado correcto sale hoy **solo en la respuesta de la propia tirada**. **Y la solución ya existe sin migración**: `CharacterCondition` acepta **clave libre** desde 2A.12, así que «estable» cabe ahí como condición, que además es lo que es. Cuesta conectar dos módulos y decidirlo; se deja escrito para que 2A.10 no lo improvise |
 | **H2b** | **El `PATCH` absoluto de PG del DM no se recorta contra el máximo** (el `POST` de delta sí) | Es deliberado y coherente con «recortar al leer, nunca al recalcular»: **un DM que escribe un número quiere ese número**. Se anota porque parece un olvido y no lo es, y porque si algún día se decide lo contrario hay que decidirlo, no arreglarlo |
-| **H3b** | **`seedResourcesFor` existe y nadie lo llama.** Crea los dados de golpe y los espacios de conjuro que la clase implica | Sin la llamada, un personaje nuevo **no tiene recursos** hasta que alguien los cree a mano. Conectarlo cruza `characters` con `character-state`, y las dos carpetas las escribieron tareas distintas a la vez. Es lo primero que necesita **2A.6 rematada** o la pantalla de la hoja (2A.10) |
+| ~~**H3b**~~ | **CERRADO el 2026-09-02.** `seedResourcesFor` ya lo llaman `CharacterSheetService` al completar la ficha y `LevelUpService` dentro de la transacción de subida de nivel, con prueba del caso negativo (ficha a medias no siembra). Estuvo abierto desde 2A.8 —función con prueba y sin llamador—, así que **ningún personaje tenía dados de golpe ni espacios de conjuro** y el panel de recursos salía vacío para todos. Lo encontró la revisión de la pantalla, no la suite | Cerrado |
 
 ## Cabos sueltos de 2A.14 y 2A.15 (2026-09-02)
 
@@ -99,7 +111,7 @@ Los deja la implementacion **a proposito y dichos**, en vez de inventar el engan
 
 | | Que | Por que importa |
 |---|---|---|
-| **N1** | **Cinco tipos de aviso existen en el contrato y nada los emite**: `ENTITY_REVEALED`, `SESSION_STARTED`, `SESSION_SCHEDULED`, `COMMENT_ADDED`, `RULE_PROPOSAL` | No es un fallo: es la lista de enganches que faltan. `SESSION_STARTED` lo puede emitir 2A.5 hoy mismo; `RULE_PROPOSAL` **lo necesita 2A.16**, que sin el no puede avisar de una propuesta |
+| **N1** | **Dos tipos de aviso existen en el contrato y nada los emite**: `SESSION_SCHEDULED` y `COMMENT_ADDED` | Eran cinco. Los otros tres se cerraron el 2026-09-02: `SESSION_STARTED` (`sessions.service.ts`), y `RULE_PROPOSAL` y `ENTITY_REVEALED` (`rules-engine.service.ts`) |
 | **N2** | **`recordEntityOpened` esta implementado y NO esta conectado** al modulo de entidades | Es el suceso `ENTITY_OPENED` que el motor de reglas escucha (hueco **H3**), y ya se escribe con visibilidad `DM_ONLY` como se decidio. Conectarlo toca `entities`, que estaba fuera de la frontera de esa tarea. **Y con el va una obligacion que no se puede olvidar**: la interfaz tiene que avisar al jugador de que abrir una ficha puede disparar reglas — registrar quien abre que es vigilancia si nadie lo dice |
 | **N3** | **Los dos e2e nuevos declaran su propio `TestAppModule`** que reproduce la composicion de `app.module.ts` | Es una segunda copia del mismo hecho, y dos copias derivan — el problema exacto que este proyecto lleva todo el dia evitando. Nacio de una frontera de ficheros necesaria (el agente no podia tocar `app.module.ts`), y **se corrige en cuanto los modulos estan cableados**: pasan a importar `AppModule` como el resto |
 
@@ -145,7 +157,7 @@ Lo entregado está en [07-historial](./07-historial.md) y su porqué en
 | **U2** | **La columna de secciones desaparece por debajo de 768 px** y nada la sustituye | En móvil se llega a una sección por URL pero no se puede navegar a ella. Hace falta un desplegable o una tira horizontal |
 | **U3** | **Buscar solo mira el nombre**, no el cuerpo de las fichas | Buscar dentro del texto exige hacerlo **en el servidor**: el filtro de pantalla opera sobre lo que `canView` ya dejó pasar, y ampliarlo sería confundir *esconder* con *no mandar*. Ver [04-convenciones](./04-convenciones.md) |
 | **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
-| **U5** | **La hoja de personaje es solo la forma**: todas sus casillas dicen «—» | A propósito, y anunciado en la propia pantalla. El motor es la [fase 2A](./superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md), que ya no tiene que decidir la disposición |
+| ~~**U5**~~ | **CERRADO en 2A.10.** `HojaCalculada.tsx` pinta los valores del motor con su traza desplegable, los PG con deltas, recursos, descansos, condiciones, tirar y las anulaciones del DM. El «—» que queda en `HojaCincoE.tsx` es solo lo que 2B alimentará (equipo, conjuros) | Cerrado |
 | **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
 | **U8** | **Cerrar un diálogo con cambios sin guardar no avisa** | `Escape`, el clic fuera y «Cancelar» descartan lo escrito sin preguntar. Con un cuerpo de ficha en markdown de varios párrafos, eso es perder trabajo de verdad. Lo recomienda la investigación de formularios ([informe](./superpowers/specs/2026-09-02-formularios-estudio.md)) y no entró por tiempo |
 | **U9** | **`Guardar` deshabilitado en vez de `aria-disabled`** | Un botón `disabled` sale del recorrido de teclado, así que quien navegue con teclado o lector de pantalla no puede llegar a él **ni leer por qué** no puede guardar. La aplicación ya pone el motivo en pantalla; falta que el control sea alcanzable |
@@ -1003,3 +1015,61 @@ comportamiento:
   `pnpm --filter @dnd/api test:e2e`, `pnpm --filter @dnd/web e2e`, y build de las imágenes
   Docker) que nada se rompe con el cambio de runtime — no basta con que el CI actualizado en
   esta tarea siga en verde, porque eso no ejercita esa migración en absoluto.
+
+## Cierre de la fase 2A — lo que las auditorías del 2026-09-02 encontraron
+
+Tres auditorías cruzaron **toda** la documentación contra el código el día del cierre. Lo que
+sigue es lo que **no** se arregló en el mismo commit; lo arreglado está tachado arriba.
+
+Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
+
+1. **Función con prueba y sin llamador.** `seedResourcesFor`, `assertNoUnknownChoices` y
+   `recordEntityOpened`: las tres existían, las tres tenían prueba unitaria en verde, y a las
+   tres **no las llamaba nadie**. Una prueba unitaria verde no dice que la función se use.
+2. **Un comentario que afirma una igualdad y nada la comprueba.** El previo de subida de nivel
+   decía «se toma de `sheetTo` para no calcular dos veces el mismo número por dos caminos que
+   podrían discrepar» — y discrepaban: el destino salía de la hoja derivada y el delta de la
+   columna en bruto, así que el enano leía «13 → 22 (+8)». Lo cazó un recorrido de navegador.
+3. **La regla del juego copiada en el navegador** porque el servidor no la exponía: la velocidad
+   efectiva, y el catálogo de razas y clases.
+
+| # | Qué falta | Por qué importa |
+|---|---|---|
+| **S10** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
+| **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts` | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, pero con más superficie. Candidato claro a `@dnd/shared` |
+| **S12** | **`listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`** | `docs/01-arquitectura.md` dice que la forma de los datos vive en un solo sitio y **eso ya tiene dos excepciones**. O se declara la excepción (los esquemas de consulta locales a un endpoint pueden vivir junto al controlador) o se mueven |
+| **U6** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
+| **U7** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
+| **U8** | **Seis glifos de fuente incumplen la regla de iconos dibujados**, incluido el `✓` que la propia regla pone como ejemplo prohibido | En `InvitePanel`, `AccountPage`, `LoginPage`, `Field`, `Traza` y `Ornament`. O se dibujan como el resto, o `docs/04-convenciones.md` amplía la excepción por escrito — que es lo que la regla exige. Lo que no puede quedarse es la regla conviviendo con su propio contraejemplo |
+| **N3** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
+| **N4** | **El listado de propuestas no trae el nombre de la regla**, solo su identificador | La pantalla lo cruza con la lista y, si no está, pinta «regla borrada». Es un dato que la API debería dar |
+| **D9** | **Cinco módulos de la API no tienen pantalla**: log de partida, listado de tiradas, avisos, marcas y conjuntos del mundo, y el estado de sesión (empezar y cerrar) | `docs/01-arquitectura.md` los describe como si el producto los ofreciera; hoy se usan **solo con un cliente HTTP**. Para la partida de la semana que viene lo que más se echa en falta es **empezar y cerrar sesión desde la pantalla**: sin eso, todos los sucesos se escriben fuera de sesión |
+| **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
+
+### Huecos de mecánica — lo que falta para jugar de verdad
+
+Ordenados por lo que duele en la mesa. **Ninguno es de la fase 3**: todos caben en lo que ya
+existe, y por eso están aquí y no en un plan futuro.
+
+| # | Mecánica | Qué se rompe hoy | Dónde encaja |
+|---|---|---|---|
+| **M13** | **Los PNJ y los monstruos no tienen puntos de golpe, ni CA, ni condiciones** | El hueco más caro: el DM hace daño a un monstruo en el minuto diez. Hoy, para llevar los PG de tres goblins hay que crear tres «personajes» a su nombre, que salen en el listado junto a los de los jugadores | Una tabla de estado de combate colgando de la ficha del mundo, y que el endpoint de PG acepte un objetivo en vez de estar clavado en la ruta de personaje |
+| **M14** | **No hay orden de iniciativa, ni turnos, ni rondas** | El motor deriva el **modificador** de iniciativa y ahí acaba: el primer combate se lleva en papel. Y arrastra a las condiciones — sin turnos **no caducan**, así que media hora de combate deja la ficha llena de condiciones que ya no aplican, y el motor de reglas las sigue leyendo como verdaderas | La sesión ya es el estado mutable de la partida y ya tiene índice único de «una activa por campaña»: el orden cabe ahí, más dos tipos de suceso que el puente del motor ya sabría recoger |
+| **M15** | **Una tirada no puede hacer daño a nadie** | La tirada y el cambio de PG son dos operaciones manuales y dos hechos **sin relación** en el log, así que «¿de qué murió Elara?» no se puede responder desde el registro | Un objetivo opcional en la tirada, y que el suceso de daño lleve el identificador de la tirada como causa |
+| **M16** | **Las condiciones no afectan a ninguna tirada** | Las condiciones tienen **un solo consumidor**: el cálculo de velocidad. Un personaje apresado, envenenado o con agotamiento 3 tira **normal** | Un hermano de `effective-speed.ts` que, dadas las condiciones activas, **sugiera** ventaja o desventaja con su traza. Mismo patrón, mismo sitio, coste bajo — y ahora que el modo de tirada existe, ya hay dónde enchufarlo |
+| **M17** | **La concentración se guarda y nadie la comprueba** | La clave libre existe justo para «concentrándose en Bendición», y recibir daño no pide la salvación de Constitución. Es el mismo fallo que tenían las salvaciones de muerte esta mañana: la mitad hecha es la que no ocurre en la mesa | El mismo bloque de daño donde ya viven las salvaciones de muerte. Basta con **avisar**: no hace falta calcular nada para dejar de olvidarlo |
+| **M18** | **Sin tipos de daño, resistencias ni inmunidades** | El cambio de PG es un entero pelado, y el log guarda un número que no dice de qué era | Un tipo de daño en el detalle del suceso, decidido **antes** de escribir mil eventos: la convención obliga a promocionar a columna cualquier campo por el que haya que filtrar |
+| **M19** | **Ni objetos, ni inventario, ni dinero** | La hoja enseña «+5 al ataque» y no tiene dónde leer «1d8+3 cortante». **Media mecánica de ataque en pantalla es peor que ninguna, porque parece completa.** Y el botín de la sesión se apunta fuera | La fase 2B lo modela entero. Para la semana que viene bastaría un texto libre por personaje y una columna de dinero: no es 2B, es un cuaderno, pero evita tener dos sitios donde mirar |
+| **L5** | **El DM no puede declarar «este personaje no ve»** | Es la mitad barata del hueco de iluminación, y **no necesita mapa**: declarar la restricción cabe en las condiciones de clave libre que ya existen; lo que necesita posiciones es *resolver* el arco. Hoy la única herramienta del DM es cambiar la visibilidad de las fichas a mano, una a una, sin dejar dicho por qué | Vocabulario, chip en la hoja, y —crítico— que quede claro en pantalla que es **ficción, no permiso** |
+
+> **Y el límite que conviene escribir en voz alta, porque no es un hueco sino una frontera:**
+> la aplicación **no modela qué ve un personaje; modela qué le está permitido leer.** Son cosas
+> distintas, y la matriz de visibilidad solo sabe de la segunda. Confundirlas es cómo se acaba
+> metiendo ficción dentro del control de acceso.
+
+### Un riesgo con fecha: la sesión de la semana que viene
+
+La recuperación de contraseña **sigue bloqueada** (no hay servicio de correo) y el DM no puede
+reiniciar la de nadie. Con cinco personas y cuentas creadas hace un día, que alguien no pueda
+entrar el día de la partida no es improbable. **Mitigación de coste cero:** que cada jugador
+compruebe que entra *antes* del día, y que guarde su contraseña donde pueda recuperarla.

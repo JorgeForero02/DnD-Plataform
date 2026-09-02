@@ -6,8 +6,12 @@ personajes, con **cinco niveles de visibilidad** por objeto para que el DM decid
 ve cada jugador. Herramienta propia para la mesa del autor primero; SaaS después si
 funciona.
 
-**No es** (todavía) un motor de reglas, ni mapas, ni tiempo real, ni 3D, ni IA: eso son
-las fases 2–5 y cada una recibe su propio plan cuando se llega. Contenido legal
+**No es** mapas, ni tiempo real, ni 3D, ni IA: eso son las fases 3–5 y cada una recibe su
+propio plan cuando se llega. **Sí tiene motor de reglas desde la fase 2A**, y conviene decirlo
+porque esta frase decía lo contrario cuando ya existía: derivación de hoja de 5.ª edición con
+traza (`apps/api/src/rules/`) y reglas suceso–condición–efecto de vocabulario cerrado
+(`apps/api/src/rules-engine/`, tarea 2A.16), con su pantalla en la pestaña «Reglas» de una
+campaña. Contenido legal
 limitado a SRD 5.1 / OGL.
 
 ## Mapa de documentos
@@ -44,6 +48,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/specs/2026-09-02-formularios-estudio.md` | Diseño de formularios y diálogos (NN/g, GOV.UK, Adam Silver). De aquí salieron los radios de visibilidad |
 | `superpowers/specs/2026-09-02-seis-peticiones-analisis.md` | **Qué se hace con las seis peticiones del autor y dónde va cada una.** Incluye el diseño del **sistema de eventos suceso–condición–efecto** y por qué el lienzo de cajas va después |
 | `superpowers/specs/2026-09-02-sistema-de-eventos-design.md` | **El sistema de eventos «por cajas»**: la frase de tres partes y las **cuatro decisiones** que dan potencia sin complejidad. Entra en 2A |
+| `superpowers/specs/2026-09-02-autoridad-de-las-reglas-design.md` | **Con qué autoridad escribe una regla.** El fallo del hueco H6 en siete puntos, y **las siete reglas vinculantes** que 2A.16 tiene que cumplir. Lo cita [04-convenciones](./04-convenciones.md) |
 | `superpowers/specs/2026-09-02-cajas-estudio.md` | Scratch, Blockly, Twine, Ink, Inform 7, Blueprints, Godot, IFTTT/Zapier, Foundry y los motores ECA. **Tres de sus conclusiones cambiaron el diseño** |
 | `superpowers/specs/2026-09-02-huecos-de-mecanica-2A.md` | **Once huecos de mecánica encontrados a mitad de la fase 2A**, con 2A.1-2A.5 ya en producción. Cuatro se cerraron el mismo día porque eran forma de datos; tres están colocados en 2A.6, 2A.7 y 2A.12; cuatro declarados. **Se lee antes de 2A.6** |
 | `superpowers/specs/2026-09-02-distancias-y-movimiento-design.md` | **Velocidad, condiciones que la limitan, alcances y áreas** (SRD 5.1). Pies en la base, metros en pantalla, y qué **no** se puede hacer sin mapa |
@@ -79,12 +84,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `b70bee4` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `cd6a86a` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Pruebas unitarias:** 609 (shared 20, api 346, web 243). Recuento por declaración, no por
+> - **Pruebas unitarias:** 743 (shared 20, api 428, web 295). Recuento por declaración, no por
 >   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
 >   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

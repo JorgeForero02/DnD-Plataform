@@ -27,10 +27,13 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-02 tras cerrar 2A.6, 2A.7, 2A.8, 2A.12, 2A.14 y 2A.15: **90 e2e
-de API** en 18 suites y
-**26 e2e de navegador** en 4 suites, todas verdes. Los catorce nuevos del dia son `test/game-state.e2e-spec.ts` (seis) y
-`test/rolls.e2e-spec.ts` (ocho), y uno de los primeros —«arrancar una segunda sesión en la misma
+**E2e**, medidos el 2026-09-02 al cerrar la fase 2A entera: **116 e2e de API** en 22 suites y
+**30 recorridos de navegador** en 7 especificaciones, todos verdes. Las suites de API nuevas del
+día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
+`game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (6),
+`catalog-y-velocidad` (4) y **`partida` (12), que
+es la prueba de integración que juega una sesión entera** y no se parece a las demás. Uno de
+los de `game-state` —«arrancar una segunda sesión en la misma
 campaña falla»— **solo puede vivir aquí**: lo que lo impide es un índice único parcial de
 Postgres, y el Prisma simulado de las unitarias no valida SQL.
 
@@ -44,19 +47,22 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > **Una clase de prueba más, desde el 2026-09-02: la alarma de maquetación.** `jsdom` no
 > maqueta —no hay ancho, ni alto, ni `display` calculado—, así que ninguna prueba unitaria
 > puede ver un borde mal dibujado. Cuando las filas de las listas pasaron de `<button>` a `<a>`
-> heredaron `display: inline` y pintaron el borde **partido**, con las 248 unitarias en verde y
+> heredaron `display: inline` y pintaron el borde **partido**, con **toda la suite unitaria** en
+> verde y
 > un despliegue de por medio. `apps/web/e2e/campana.spec.ts` lee ahora el `display` calculado
 > de una fila y falla si vuelve a ser `inline`. **Lo que solo se ve maquetado, se mide en el
 > navegador** — la misma razón por la que el contraste se mide ahí desde 1.19.
 
 La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
-otra hace: **mide**. Recorre `/design-tokens` **y dos pantallas reales** (entrar y el detalle de campaña) en los dos temas, lee los colores **calculados**
+otra hace: **mide**. Recorre `/design-tokens` **y cinco pantallas reales** (entrar, el detalle de campaña, la 404,
+`/acerca-de` y la de cuenta) en los dos temas, lee los colores **calculados**
 del DOM —componiendo el alfa contra el fondo real, no leyendo el color declarado— y falla por
-debajo de 4,5:1 en texto y 3:1 en bordes y anillos de foco. Setenta mediciones bloquean la
-prueba; diez más se registran sin bloquear, y **solo esas diez**: hay una lista de etiquetas
-permitidas y un recuento fijo, de modo que degradar una medición que debería bloquear pone la
-suite en rojo. Esa distinción existe porque la primera versión medía únicamente los pares que su
-autor había elegido medir, y así se le escaparon dos que incumplían su propio umbral.
+debajo de 4,5:1 en texto y 3:1 en bordes y anillos de foco. **Todas las mediciones bloquean.**
+La vía de escape de 1.19 —un `observe()` con lista de etiquetas permitidas que registraba sin
+bloquear— **se retiró**, y hoy `record()` es el único camino: cada par medido hace su
+`expect(...).toBeGreaterThanOrEqual(umbral)`. Esa vía existió porque la primera versión medía
+solo los pares que su autor había elegido, y se le escaparon dos que incumplían su propio
+umbral; quitarla fue el paso siguiente.
 
 Las unitarias, el lint, el formato y `check:docs`/`check:estado` los exige `pnpm verify` en el
 gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
@@ -103,8 +109,17 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
   redirige mal: invisible para RTL.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
-- **No hay prueba de accesibilidad, ni de responsive, ni de rendimiento.** Playwright cubre
-  hoy seis recorridos en dos especificaciones, no el catálogo.
+- **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
+  existe.** Playwright cubre hoy **30 recorridos en siete especificaciones**, y dentro de
+  ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
+  de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
+  puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,
+  anchos intermedios, y cualquier medida de rendimiento.
+  (Esta línea ha estado mal dos veces: primero decía «seis recorridos en dos especificaciones»
+  y luego «26 en cuatro», las dos contradiciendo la sección de más arriba. **Los recorridos
+  contados a mano no coinciden con los que el runner ejecuta**, porque `tokens-contrast.spec.ts`
+  declara sus pruebas dentro de bucles sobre los dos temas: la cifra buena es la que imprime
+  `pnpm --filter @dnd/web e2e`, no la de contar `test(` en los ficheros.)
 - **No hay mutación ni umbral de cobertura** (N2/N3 no declarados).
 
 ## Playwright

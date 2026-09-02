@@ -52,6 +52,23 @@ mazmorra el jueves y la mesa le ve el botín el viernes.
 **Esto no se decide de pasada.** La spec de alcance es un registro fechado y no se reescribe:
 las decisiones que salgan de aquí entran en el plan de 2A, con su firma.
 
+## Despliegue — abierto tras escribir la pila (2026-09-02)
+
+Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y existe
+`docker-compose.prod.yml` con su procedimiento en [03-despliegue.md](./03-despliegue.md).
+**Nada de eso se ha ejecutado todavía contra el servidor.** Lo que queda abierto:
+
+| | Qué | Por qué importa |
+|---|---|---|
+| **D1** | **[02-entorno.md](./02-entorno.md) sigue diciendo `TRUST_PROXY=1` detrás de nginx** | Se escribió cuando el único proxy previsto era nginx. Detrás de Traefik **son dos**, y `1` hace que el limitador agrupe a todo internet por la IP de Traefik: cualquiera deja a todos los usuarios fuera del login. `.env.example` y el 03 ya están corregidos; ese documento no, porque quedaba fuera de la superficie de esta tarea. **Es una contradicción viva entre dos documentos y se arregla antes de desplegar** |
+| **D2** | **[00-INDEX.md](./00-INDEX.md) sigue anunciando "No desplegado: no hay VPS asignado"** | Mismo motivo y misma urgencia: es la línea que `CLAUDE.md` manda leer primero |
+| **D3** | **La API no tiene endpoint de salud** | No hay `@Controller("health")` ni controlador raíz: `GET /` responde 404. La comprobación del compose acepta ese 404 como señal de vida, así que **detecta un proceso caído pero no una base de datos caída**. Un `/health` que haga un `SELECT 1` es un cambio de código con su propia ficha, no un efecto colateral |
+| **D4** | **El Postgres de la pila no es un recurso gestionado de Coolify**, y por tanto no hereda su pantalla de copias | El trabajo diario de las 04:00 del servidor existe y su restauración está probada, pero **no se ha comprobado si descubre contenedores nuevos solo o lleva una lista escrita a mano**. Se mira el día del despliegue. La base es lo único irreemplazable de la pila |
+| **D5** | **Nadie ha restaurado nunca una copia de *esta* base** | Una copia sin restauración probada es una hipótesis. Requisitos reales de la restauración en [03-despliegue.md](./03-despliegue.md) |
+| **D6** | **`TRUST_PROXY` no está verificado contra el sistema real** | La aritmética está comprobada contra el resolvedor de Fastify, pero la topología no se puede probar desde un portátil. La prueba de las dos redes del 03 es obligatoria el primer día: **si está mal, todo funciona igual y el límite no protege a nadie** |
+| **D7** | **Corregir `TRUST_PROXY` en Coolify sale caro** | Ahí las variables de entorno son argumentos de construcción: cambiar una **recompila la imagen**. Por eso el valor vive en el compose y no en la UI |
+| **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |
+
 ## Antes de desplegar — seguridad
 
 **Auditoría hecha el 2026-09-01 sobre el commit `4a3fe43`, con todos los hallazgos verificados
@@ -69,7 +86,7 @@ Lo que falta, y va como **tarea 1.18**:
 |---|---|---|
 | 1 | ~~**`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios~~ — **HECHO** (2026-09-01, ver [07-historial.md](./07-historial.md)): no hay valor por defecto, la variable es obligatoria y de 32 caracteres mínimo, y la API se niega a arrancar sin ella | ~~**Crítico**~~ |
 | 2 | ~~**29 vulnerabilidades en dependencias de producción**~~ — **HECHO** (1.18a): Nest y Fastify subidos a 11.x, `fast-uri` a 3.1.6; quedan **4 moderadas** (`@opentelemetry/core` vía Sentry v8, 3 de `react-router` en web). CI audita con `--audit-level=high` | ~~Alto~~ |
-| 3 | ~~**Sin límite de peticiones**~~ — **HECHO** (1.18a): límite por IP en login, registro, aceptar invitación y cambiar contraseña. **Exige `TRUST_PROXY=1` en producción**, ver [02-entorno.md](./02-entorno.md) | ~~Alto~~ |
+| 3 | ~~**Sin límite de peticiones**~~ — **HECHO** (1.18a): límite por IP en login, registro, aceptar invitación y cambiar contraseña. **Exige el `TRUST_PROXY` correcto en producción, que en `vps1new` es `2`, no `1`** (Traefik **y** nginx son dos proxies), ver [03-despliegue.md](./03-despliegue.md) | ~~Alto~~ |
 | 4 | ~~**Sin cabeceras de seguridad**~~ — **HECHO** (1.18a): `@fastify/helmet` con política revisada, fijada por `apps/api/test/security-headers.e2e-spec.ts` | ~~Medio~~ |
 | 5 | ~~**CORS abierto**~~ — **HECHO** (1.18a): apagado por defecto; `CORS_ORIGIN` es la única forma de encenderlo | ~~Medio~~ |
 | 6 | ~~**Sin pantalla de 404 ni `ErrorBoundary`**~~ — **HECHO** (1.18b): ruta comodín, red de errores con salida que funciona, y un comentario que declara lo que una red de React **no** atrapa | ~~Medio~~ |

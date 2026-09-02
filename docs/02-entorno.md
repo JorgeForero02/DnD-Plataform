@@ -40,7 +40,11 @@ pnpm dev:web                                  # web en :5173, proxy /api -> :300
 > **añade** en vez de sustituir, así que el valor falso sobrevive. Como el limitador de
 > peticiones usa `req.ip`, un atacante rotando esa cabecera tendría intentos ilimitados. Con un
 > **número** se confía en exactamente ese número de saltos contando desde el socket, que es lo
-> correcto detrás de nginx (`TRUST_PROXY=1`). Medido, no supuesto: ver
+> correcto. **Se cuentan los proxies que hay delante de la API, no se pone «1 porque hay un
+> proxy»**: en producción son **dos** —Traefik y el nginx de la web—, así que allí vale
+> **`TRUST_PROXY=2`**; con `1` la API se quedaría con la IP de Traefik, idéntica para todo
+> el mundo, y el límite por IP pasaría a ser un único cubo compartido. Ver
+> [03-despliegue.md](./03-despliegue.md). Medido, no supuesto: ver
 > `apps/api/src/configure-app.ts` y `apps/api/test/trust-proxy.e2e-spec.ts`.
 
 `.env.example` es la fuente de verdad de esta lista: si añades una variable, se añade ahí

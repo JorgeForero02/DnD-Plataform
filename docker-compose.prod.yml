@@ -1,0 +1,124 @@
+# Producción — pila completa para Coolify (Traefik + Let's Encrypt) en vps1new.
+#
+# NO es el `docker-compose.yml` de la raíz: ese levanta SOLO Postgres para el desarrollo
+# local y publica el 5432 en la máquina. Este describe las tres piezas de producción y no
+# publica ningún puerto: quien entra desde fuera lo hace por Traefik, y Traefik solo conoce
+# `web`.
+#
+# Cadena de la petición, y por qué importa (ver docs/03-despliegue.md):
+#
+#   navegador --https--> Traefik (coolify-proxy) --http--> web (nginx) --http--> api
+#
+#   Son DOS proxies delante de la API, no uno. `TRUST_PROXY` es un CONTADOR DE SALTOS
+#   contando desde el socket hacia fuera, así que aquí vale 2. Con 1 la API se queda con la
+#   IP de Traefik —idéntica para todo el mundo— y el límite por IP del login pasa a ser un
+#   único cubo compartido que cualquiera puede agotar para dejar fuera a todos los usuarios.
+#
+# Una sola pila, no dos aplicaciones de Coolify: el nginx de `web` es lo que hace que `/api`
+# sea el MISMO origen que la página, y eso es lo que permite que el proyecto no tenga CORS
+# (docs/01-arquitectura.md). Separar la API en su propia aplicación con su propio dominio
+# obligaría a encender CORS y cambiaría además el número de saltos.
+#
+# Variables: se ponen en la UI de Coolify, no en un fichero de este repositorio. La lista y
+# los valores están en docs/03-despliegue.md. AVISO: en Coolify las variables de entorno son
+# ARGUMENTOS DE CONSTRUCCIÓN — cambiar una RECOMPILA la imagen, no reinicia el contenedor.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    # Sin `ports:` a propósito: la base de datos no se expone ni al host ni a internet.
+    # `DATABASE_URL` la alcanza por el nombre de servicio `db` dentro de la red de la pila.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - dnd_pgdata_prod:/var/lib/postgresql/data
+    # El único dato irreemplazable de la pila vive en este volumen. Ver la sección de copias
+    # de seguridad de docs/03-despliegue.md: NO lo respalda nadie por defecto.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 512m
+    shm_size: 256m
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    # Sin `ports:` y sin dominio: la API solo es alcanzable desde `web`. Eso no es solo
+    # higiene, es lo que mantiene válido el TRUST_PROXY=2 de abajo — si algún día se le da
+    # dominio propio, esas peticiones llegarían con UN salto y las de nginx con DOS, y
+    # ningún valor único sería correcto para las dos.
+    expose:
+      - "3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      PORT: "3000"
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      # 2 = Traefik + nginx. NO es "estamos detrás de un proxy": es cuántos hay.
+      TRUST_PROXY: "2"
+      # CORS_ORIGIN y AUTH_RATE_LIMIT NO se declaran aquí, y es deliberado:
+      #  - CORS_ORIGIN: nginx sirve /api en el mismo origen, no hace falta CORS ninguno.
+      #  - AUTH_RATE_LIMIT: existe SOLO para la suite de Playwright. Ponerla en producción
+      #    afloja la protección contra fuerza bruta en login, registro, aceptar invitación y
+      #    cambio de contraseña.
+    depends_on:
+      db:
+        condition: service_healthy
+    # El CMD de la imagen ejecuta `prisma migrate deploy` antes de arrancar, así que la base
+    # tiene que estar aceptando conexiones ANTES —de ahí el service_healthy de arriba, no un
+    # depends_on a secas, que solo espera a que el contenedor exista.
+    healthcheck:
+      # La API NO tiene endpoint de salud hoy: `GET /` responde 404 (no hay controlador raíz,
+      # apps/api/src/app.module.ts). Esto comprueba que el servidor HTTP responde algo, que
+      # es lo que hay; un 404 resuelve el fetch igual que un 200. NO comprueba que la base de
+      # datos siga viva. Está anotado como pendiente en docs/06-pendientes.md.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(()=>process.exit(0)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    mem_limit: 768m
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    # ESTE es el único servicio al que se le asigna el dominio en Coolify
+    # (dnd.supportive.pro). Traefik genera sus etiquetas a partir de esa asignación; no se
+    # escriben etiquetas de Traefik a mano aquí.
+    expose:
+      - "80"
+    environment:
+      # Destino INTERNO del proxy /api de nginx (apps/web/nginx.conf lo sustituye al
+      # arrancar). Nunca una URL pública: eso metería un tercer salto y sacaría el tráfico
+      # interno a internet.
+      API_URL: http://api:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 128m
+
+volumes:
+  dnd_pgdata_prod:

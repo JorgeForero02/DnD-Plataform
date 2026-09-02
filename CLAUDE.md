@@ -42,7 +42,11 @@ en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es pe
 - **Evidencia antes que afirmación.** Si algo falla, se dice que falla y se pega la salida.
 - **Un commit por tarea**, mensaje en inglés (Conventional Commits), ledger y memoria al día.
 - **Código en inglés, interfaz y documentación en español.**
-- **Nada se despliega**: no hay VPS asignado. Ver `docs/03-despliegue.md`.
+- **Hay servidor y dominio asignados** (`vps1new`, `dnd.supportive.pro`, Coolify + Traefik)
+  y el despliegue está autorizado, pero **todavía no se ha desplegado nada**: lo que existe
+  es `docker-compose.prod.yml` y su procedimiento, para revisar antes de ejecutarlo. Ver
+  `docs/03-despliegue.md`, y en particular por qué `TRUST_PROXY` vale **2** ahí (Traefik y
+  nginx son **dos** proxies) y no el `1` que decía la documentación anterior.
 
 ## Comandos
 

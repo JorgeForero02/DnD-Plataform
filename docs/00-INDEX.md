@@ -16,7 +16,7 @@ limitado a SRD 5.1 / OGL.
 |---|---|
 | [01-arquitectura.md](./01-arquitectura.md) | Monorepo, capas, módulos, dirección de dependencias |
 | [02-entorno.md](./02-entorno.md) | Levantar el proyecto en local, variables de entorno, gotchas de Windows |
-| [03-despliegue.md](./03-despliegue.md) | Coolify + Docker. **No desplegado: no hay VPS asignado** |
+| [03-despliegue.md](./03-despliegue.md) | Coolify + Docker en **vps1new**, dominio `dnd.supportive.pro`. **Servidor asignado el 2026-09-02; todavía sin desplegar** |
 | [04-convenciones.md](./04-convenciones.md) | Nivel de verificación declarado, convenciones de API y de web |
 | [05-datos.md](./05-datos.md) | Esquema Prisma, migraciones, el modelo de visibilidad |
 | [06-pendientes.md](./06-pendientes.md) | Deuda técnica y decisiones abiertas, con prioridad |
@@ -65,7 +65,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `f8c52b7` **(rama `1.25-pruebas-limitador`)** — instantánea de la
+> - **Generado sobre el commit** `812a157` **(rama `1.26-despliegue-vps`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

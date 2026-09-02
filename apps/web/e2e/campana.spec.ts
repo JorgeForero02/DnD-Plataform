@@ -169,7 +169,9 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   // still unique to the entity's own form: LinksPanel's and CommentThread's forms (also open
   // here, both real <form> elements) have no field with that label.
   // Borrar sigue viviendo en el editor, que ahora se abre a propósito desde la ficha.
-  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
+  await page
+    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
+    .click();
   await expect(page.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   const entityForm = page.locator("form").filter({ has: page.getByLabel("Nombre") });
   await entityForm.getByRole("button", { name: "Borrar" }).click();
@@ -279,7 +281,9 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Reseño 2026-09-02: la fila lleva a la hoja del personaje —con la forma de la hoja de 5.ª
   // edición— y el editor se abre desde ella.
   await expect(page.getByRole("heading", { name: "Kaelith" })).toBeVisible();
-  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
+  await page
+    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
+    .click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
   await expect(page.getByLabel("Raza")).toHaveValue("Tiefling");
   await expect(page.getByLabel("Clase")).toHaveValue("Brujo");
@@ -306,7 +310,9 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Task 1.16: borrar el personaje de verdad contra la API real — el botón "Borrar" y su
   // confirmación en pantalla nunca se habían pintado en un navegador antes de esta tarea.
   await updatedCharacterRow.click();
-  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
+  await page
+    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
+    .click();
   await expect(page.getByRole("heading", { name: "Editar personaje" })).toBeVisible();
   await page.getByRole("button", { name: "Borrar" }).click();
   await expect(page.getByText('Vas a borrar a "Kaelith". No se puede deshacer.')).toBeVisible();
@@ -368,7 +374,9 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   // Reabrir la ficha: el textarea precarga el markdown crudo desde la respuesta del GET.
   await page.getByRole("link", { name: /Durgeddin el Negro/ }).click();
   // Reseño 2026-09-02: la fila abre la página de lectura; el editor se abre desde ella.
-  await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
+  await page
+    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
+    .click();
   await expect(page.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   await expect(page.getByLabel("Texto")).toHaveValue("## Título\n\nUn herrero enano legendario.");
 
@@ -554,7 +562,7 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   await dmPage.getByRole("button", { name: "Borrar" }).click();
   await expect(
     dmPage.getByText(
-      /Se borrarán también sus fichas, sesiones, personajes, invitaciones y miembros/,
+      /Se borrarán también sus entradas del mundo, sesiones, personajes, invitaciones y miembros/,
     ),
   ).toBeVisible();
   await dmPage.getByRole("button", { name: "Sí, borrar definitivamente" }).click();

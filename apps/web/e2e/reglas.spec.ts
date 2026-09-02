@@ -68,9 +68,9 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
   await page.getByRole("button", { name: "Añadir condición" }).click();
   await page.getByLabel("Condición").selectOption({ label: "Esta regla no se ha disparado nunca" });
 
-  // ENTONCES. El primer efecto ya viene como "Revelar una ficha".
-  await page.getByLabel("Efecto").selectOption({ label: "Revelar una ficha" });
-  await page.getByLabel("Qué ficha").selectOption({ label: "El heraldo de la puerta" });
+  // ENTONCES. El primer efecto ya viene como "Revelar una entrada del mundo".
+  await page.getByLabel("Efecto").selectOption({ label: "Revelar una entrada del mundo" });
+  await page.getByLabel("Qué entrada del mundo").selectOption({ label: "El heraldo de la puerta" });
   await page
     .getByRole("radio", { name: /Jugadores/ })
     .first()

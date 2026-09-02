@@ -287,10 +287,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
 
-    const newButton = await screen.findByRole("button", { name: "Nuevo PNJ" });
-    // Any campaign member can create an entity (entities.service.ts requireMember) — only
-    // editing someone else's is gated.
-    await waitFor(() => expect(newButton).not.toBeDisabled());
+    // **A un jugador ya no se le ofrece crear mundo.** Lo señaló el DM probando con un jugador
+    // dentro: podía crear PNJ, lugares y misiones, y con ello veía el andamiaje entero de
+    // construir mundo. Ahora el servidor exige DM (`entities.service.ts`, `requireDM`) y la
+    // pantalla deja de ofrecer lo que iba a dar 403.
+    expect(screen.queryByRole("button", { name: "Nuevo PNJ" })).not.toBeInTheDocument();
 
     const row = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     await waitFor(() => expect(row).not.toBeDisabled());
@@ -298,7 +299,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
 
     // La fila lleva a la página de lectura; el editor se abre desde ahí, que es la diferencia
     // entre consultar una ficha en mitad de una partida y modificarla.
-    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
@@ -343,7 +348,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(row);
     // Reseño 2026-09-02: la fila lleva a la página de lectura; el editor se abre desde ella,
     // que es justo la diferencia entre leer una ficha y editarla.
-    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
@@ -362,7 +371,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(row);
 
     // La fila lleva a la hoja del personaje; el editor se abre desde ella.
-    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
@@ -403,7 +416,11 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     const row = await screen.findByRole("link", { name: /Mi propio personaje/ });
     await waitFor(() => expect(row).not.toBeDisabled());
     fireEvent.click(row);
-    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
@@ -517,7 +534,11 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     await screen.findByRole("link", { name: /Strahd/ });
 
     fireEvent.click(screen.getByRole("link", { name: /Strahd/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
@@ -600,7 +621,11 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     await screen.findByRole("link", { name: /Elara/ });
 
     fireEvent.click(screen.getByRole("link", { name: /Elara/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Editar|Ver el texto completo|Ver la hoja completa/,
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Editar personaje" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));

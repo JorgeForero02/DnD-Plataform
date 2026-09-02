@@ -41,7 +41,7 @@ export function TrazaDeReglas({
   const traza = useTraces(campaignId, { enabled: activo });
 
   const nombrePorId = new Map(entities.map((e) => [e.id, e.name]));
-  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `ficha ${id.slice(-6)}`;
+  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `entrada ${id.slice(-6)}`;
   const reglaPorId = new Map(reglas.map((r) => [r.id, r]));
 
   if (traza.isLoading) {

@@ -52,14 +52,14 @@ function SelectorDeFicha({
   return (
     <Field
       label={etiqueta}
-      hint="La ficha queda fijada al armar la regla, por identificador. No cambia sola."
+      hint="La entrada queda fijada al armar la regla, por identificador. No cambia sola."
     >
       <select
         className={fieldControlClass}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">Elige una ficha…</option>
+        <option value="">Elige una entrada…</option>
         {entities.map((entidad) => (
           <option key={entidad.id} value={entidad.id}>
             {entidad.name}
@@ -162,7 +162,7 @@ export function EditorDeDisparador({
         value.kind === "DM_EXECUTED" ||
         value.kind === "ENTITY_ATTACKED") && (
         <SelectorDeFicha
-          etiqueta="Qué ficha"
+          etiqueta="Qué entrada del mundo"
           value={value.entityId}
           entities={entities}
           onChange={(entityId) => onChange({ ...value, entityId })}
@@ -427,7 +427,7 @@ export function EditorDeEfecto({
       {(value.kind === "REVEAL_ENTITY" || value.kind === "HIDE_ENTITY") && (
         <div className="space-y-s2">
           <SelectorDeFicha
-            etiqueta="Qué ficha"
+            etiqueta="Qué entrada del mundo"
             value={value.entityId}
             entities={entities}
             onChange={(entityId) => onChange({ ...value, entityId })}

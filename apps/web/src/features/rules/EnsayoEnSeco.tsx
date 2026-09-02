@@ -39,7 +39,7 @@ export function EnsayoEnSeco({
   const [trigger, setTrigger] = useState<RuleTrigger>(regla.trigger);
 
   const nombrePorId = new Map(entities.map((e) => [e.id, e.name]));
-  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `ficha ${id.slice(-6)}`;
+  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `entrada ${id.slice(-6)}`;
   const nombreRegla = (id?: string) => (id === regla.id ? regla.name : (id ?? "otra regla"));
 
   return (

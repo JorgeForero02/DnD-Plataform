@@ -27,7 +27,10 @@ export class LinksService {
   async create(userId: string, fromEntityId: string, input: CreateEntityLinkInput) {
     const from = await this.prisma.entity.findUnique({ where: { id: fromEntityId } });
     if (!from) throw new NotFoundException("Source entity not found");
-    await this.membership.requireMember(from.campaignId, userId);
+    // Enlazar es escribir el mundo, igual que crear una ficha: solo el DM. Y aquí importaba
+    // doblemente, porque un enlace **revela que dos cosas tienen que ver** aunque el jugador no
+    // pueda abrir ninguna de las dos.
+    await this.membership.requireDM(from.campaignId, userId);
     if (input.toId === fromEntityId) {
       throw new BadRequestException("An entity cannot link to itself");
     }

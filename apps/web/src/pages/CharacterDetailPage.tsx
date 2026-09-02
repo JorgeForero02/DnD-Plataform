@@ -92,7 +92,7 @@ export function CharacterDetailPage() {
         }
         actions={
           <Button variant="secondary" onClick={() => setEditing(true)} title={motivo}>
-            {puedeEditar ? "Editar" : "Ver ficha completa"}
+            {puedeEditar ? "Editar" : "Ver la hoja completa"}
           </Button>
         }
       />

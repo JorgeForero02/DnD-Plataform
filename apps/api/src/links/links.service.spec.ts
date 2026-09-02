@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { LinksService } from "./links.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -11,7 +11,7 @@ describe("LinksService", () => {
     entityLink: { create: jest.fn(), findMany: jest.fn() },
     user: { findUnique: jest.fn() },
   };
-  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -23,6 +23,10 @@ describe("LinksService", () => {
     }).compile();
     service = ref.get(LinksService);
     jest.clearAllMocks();
+    // `clearAllMocks` borra las llamadas pero **no las implementaciones**: sin esto, el rechazo
+    // de la prueba de permisos se cuela en la siguiente. Ya pasó en `game-events` y está
+    // documentado allí; aquí se evita de entrada.
+    membership.requireDM.mockResolvedValue(undefined);
   });
 
   it("create() rejects a self-link", async () => {
@@ -73,5 +77,16 @@ describe("LinksService", () => {
     ]);
     const res = await service.listFor("player1", "e1");
     expect(res.map((l) => l.to.id)).toEqual(["pub"]);
+  });
+
+  it("enlazar exige ser DM: un enlace revela que dos cosas tienen que ver", async () => {
+    // Aunque el jugador no pueda abrir ninguna de las dos fichas, el enlace ya le cuenta algo.
+    prisma.entity.findUnique.mockResolvedValue({ id: "e1", campaignId: "c1" });
+    membership.requireDM.mockRejectedValue(new ForbiddenException());
+
+    await expect(service.create("jugador", "e1", { toId: "e2" } as never)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(prisma.entityLink.create).not.toHaveBeenCalled();
   });
 });

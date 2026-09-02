@@ -11,6 +11,7 @@ import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { VisibilityChooser } from "./VisibilityChooser";
 import { TITULO_NUEVO, TITULO_EDITAR } from "./resumen";
+import { PLANTILLA_POR_TIPO } from "./plantillas";
 import { Dialog } from "../../ui/Dialog";
 
 function parseTags(raw: string): string[] {
@@ -62,7 +63,14 @@ export function EntityEditor({
   // which need the detail fetch), so it seeds straight from `entity` and is deliberately
   // NOT part of the `seededFor` re-seeding below: re-seeding from `detail.data` once it
   // resolves would overwrite whatever the person is mid-typing in the textarea.
-  const [bodyText, setBodyText] = useState(bodyToText(entity?.body));
+  // **Al crear, el cuadro no está vacío: trae el andamiaje de SU tipo.** El formulario era el
+  // mismo para los siete —nombre, etiquetas, visibilidad y un hueco— así que un PNJ y un lugar
+  // solo se distinguían por la pestaña de la que venías. La plantilla propone y no obliga: son
+  // encabezados de Markdown que se borran si estorban. Al **editar** no se toca nada, faltaría
+  // más: ahí manda lo que ya estaba escrito.
+  const [bodyText, setBodyText] = useState(
+    entity ? bodyToText(entity.body) : PLANTILLA_POR_TIPO[type].plantilla,
+  );
   const [bodyView, setBodyView] = useState<"edit" | "preview">("edit");
   const [specificPlayerIds, setSpecificPlayerIds] = useState<string[]>([]);
   // Tracks which entity's grants are already loaded into specificPlayerIds, so the seeding
@@ -138,6 +146,12 @@ export function EntityEditor({
     e.preventDefault();
     if (readOnly) return;
     setError(null);
+    // **La plantilla intacta cuenta como vacío.** Es una sugerencia, no contenido: guardar cuatro
+    // encabezados sin nada debajo llenaría el mundo de entradas que parecen escritas y están
+    // huecas, y el resumen de la fila pintaría los títulos de las secciones como si fueran la
+    // descripción. Lo destapó la prueba que exigía que crear sin escribir no mandara cuerpo.
+    const sinTocar = bodyText.trim() === PLANTILLA_POR_TIPO[type].plantilla.trim();
+    const cuerpo = sinTocar ? "" : bodyText;
     const payload = {
       type,
       name,
@@ -148,8 +162,8 @@ export function EntityEditor({
       // for in 1.13). Creating only sends it when there's something to save.
       ...(isEdit
         ? { body: { format: "markdown" as const, text: bodyText } }
-        : bodyText.trim()
-          ? { body: { format: "markdown" as const, text: bodyText } }
+        : cuerpo.trim()
+          ? { body: { format: "markdown" as const, text: cuerpo } }
           : {}),
       ...(visibility === "SPECIFIC_PLAYERS" && detailReady ? { specificPlayerIds } : {}),
     };
@@ -183,12 +197,18 @@ export function EntityEditor({
               {readOnlyReason ?? "Solo puedes ver esta entidad."}
             </p>
           )}
+          {!isEdit && (
+            <p className="font-chrome text-chrome-xs text-muted">
+              {PLANTILLA_POR_TIPO[type].paraQue}
+            </p>
+          )}
           <Field label="Nombre">
             <input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={readOnly}
+              placeholder={PLANTILLA_POR_TIPO[type].ejemploDeNombre}
               className={fieldControlClass}
             />
           </Field>
@@ -201,6 +221,45 @@ export function EntityEditor({
               className={fieldControlClass}
             />
           </Field>
+          {/* Las etiquetas que casi siempre se quieren para ESTE tipo, de un clic. Un campo de
+              texto libre delante de alguien que acaba de abrir el formulario no propone nada, y
+              sin etiquetas consistentes el filtro por etiqueta que ya existe no sirve de nada. */}
+          {!readOnly && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-chrome text-chrome-xs text-muted">Sugeridas:</span>
+              {PLANTILLA_POR_TIPO[type].etiquetasSugeridas.map((etiqueta) => {
+                const yaEsta = tagsRaw
+                  .split(",")
+                  .map((t) => t.trim().toLowerCase())
+                  .includes(etiqueta);
+                return (
+                  <button
+                    key={etiqueta}
+                    type="button"
+                    aria-pressed={yaEsta}
+                    onClick={() =>
+                      setTagsRaw((actual) => {
+                        const partes = actual
+                          .split(",")
+                          .map((t) => t.trim())
+                          .filter(Boolean);
+                        return yaEsta
+                          ? partes.filter((t) => t.toLowerCase() !== etiqueta).join(", ")
+                          : [...partes, etiqueta].join(", ");
+                      })
+                    }
+                    className={`rounded-radius-sm border px-2 py-0.5 font-chrome text-chrome-xs ${
+                      yaEsta
+                        ? "border-copper text-copper-text"
+                        : "border-muted text-muted hover:border-accent hover:text-accent-text"
+                    }`}
+                  >
+                    {etiqueta}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div>
             <div className="mb-1 flex items-center justify-between">
               {readOnly ? (

@@ -63,7 +63,7 @@ export function EntityDetailPage() {
     return (
       <AppShell header={header}>
         <PageHeader title="Ficha no disponible" crumbs={migas} />
-        <EmptyState title="Esta ficha no existe o no puedes verla">
+        <EmptyState title="Esta entrada no existe o no puedes verla">
           Igual que con las campañas, no se distingue entre "no existe" y "no tienes acceso":
           decirlo sería contar justo lo que la visibilidad esconde.
         </EmptyState>
@@ -104,7 +104,7 @@ export function EntityDetailPage() {
         }
         actions={
           <Button variant="secondary" onClick={() => setEditing(true)} title={motivo}>
-            {puedeEditar ? "Editar" : "Ver ficha completa"}
+            {puedeEditar ? "Editar" : "Ver el texto completo"}
           </Button>
         }
       />

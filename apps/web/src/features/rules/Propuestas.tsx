@@ -34,7 +34,7 @@ export function Propuestas({
   const resolver = useResolveProposal(campaignId);
 
   const nombrePorId = new Map(entities.map((e) => [e.id, e.name]));
-  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `ficha ${id.slice(-6)}`;
+  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `entrada ${id.slice(-6)}`;
   const nombreDeRegla = (id: string) => reglas.find((r) => r.id === id)?.name ?? "regla borrada";
 
   if (propuestas.isLoading) {

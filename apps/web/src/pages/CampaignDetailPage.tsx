@@ -139,10 +139,12 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
         <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
       )}
       {roleError && <RetryPermissions onRetry={retryRole} />}
-      {/* Creating is open to any campaign member on the server (entities.service.ts,
-          requireMember), so it isn't gated here. The label says WHAT gets created: "Nuevo" on
-          its own was the audit's C3, a button that only made sense if you already knew which
-          tab you were on. */}
+      {/* **El mundo lo escribe el DM.** Crear exigía solo ser miembro y por eso este botón no
+          estaba cerrado; el propio DM lo señaló probando con un jugador dentro — podía crear
+          PNJ, lugares y misiones, y con ello veía el andamiaje entero de construir mundo, que
+          es justo lo que estropea una partida. El servidor lo impone (`entities.service.ts`,
+          `requireDM`); aquí solo se deja de ofrecer lo que va a dar 403. La etiqueta dice QUÉ
+          se crea: «Nuevo» a secas era el C3 de la auditoría. */}
       <EntityFilterBar
         availableTags={availableTags}
         value={filter}
@@ -150,9 +152,11 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
         totalCount={data?.length ?? 0}
         visibleCount={filtered?.length ?? 0}
         action={
-          <Button variant="primary" onClick={() => setCreating(true)}>
-            {NUEVO_POR_TIPO[type]}
-          </Button>
+          isDM ? (
+            <Button variant="primary" onClick={() => setCreating(true)}>
+              {NUEVO_POR_TIPO[type]}
+            </Button>
+          ) : undefined
         }
       />
       {isLoading && <p className="text-muted">Cargando…</p>}

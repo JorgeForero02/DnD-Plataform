@@ -12,7 +12,7 @@ describe("EntitiesService", () => {
     entity: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
     user: { findUnique: jest.fn() },
   };
-  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
   const events = { emit: jest.fn() };
   const worldState = { recordEntityOpened: jest.fn().mockResolvedValue(undefined) };
 
@@ -28,6 +28,26 @@ describe("EntitiesService", () => {
     }).compile();
     service = ref.get(EntitiesService);
     jest.clearAllMocks();
+    // `clearAllMocks` borra las llamadas pero **no las implementaciones**: sin esto, el rechazo
+    // de la prueba de permisos se cuela en la siguiente. Ya pasó en `game-events` y está
+    // documentado allí; aquí se evita de entrada.
+    membership.requireDM.mockResolvedValue(undefined);
+  });
+
+  it("crear una ficha del mundo exige ser DM, no solo miembro", async () => {
+    // Lo señaló el DM probando con un jugador dentro: podía crear PNJ, lugares y misiones, y con
+    // ello veía el andamiaje entero de construir mundo. Escribir el mundo no es su papel.
+    membership.requireDM.mockRejectedValue(new ForbiddenException());
+
+    await expect(
+      service.create("jugador", "c1", {
+        type: "NPC",
+        name: "X",
+        tags: [],
+        visibility: "PLAYERS",
+      } as never),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.entity.create).not.toHaveBeenCalled();
   });
 
   it("create() writes grants for SPECIFIC_PLAYERS and emits entity.created", async () => {

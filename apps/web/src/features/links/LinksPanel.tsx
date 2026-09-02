@@ -37,6 +37,10 @@ export function LinksPanel({
   // a failed or in-flight role check disables rather than guesses.
   const roleUnresolved = roleLoading || roleError;
   const canRemoveLinks = !roleUnresolved && (role === "DM" || entityCreatedById === userId);
+  // **Enlazar es escribir el mundo: solo el DM.** Y aquí importa doblemente, porque un enlace
+  // revela que dos cosas tienen que ver aunque el jugador no pueda abrir ninguna de las dos.
+  // El servidor lo impone (`links.service.ts`, `requireDM`); esto solo deja de ofrecerlo.
+  const puedeEnlazar = !roleUnresolved && role === "DM";
   const removeReason = roleUnresolved
     ? CHECKING_PERMISSIONS
     : "Solo el DM o quien creó esta entidad puede quitar enlaces.";
@@ -100,37 +104,42 @@ export function LinksPanel({
       {!canRemoveLinks && links.data && links.data.length > 0 && (
         <p className="text-chrome-xs text-muted">{removeReason}</p>
       )}
-      <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
-        <label htmlFor="link-target" className="sr-only">
-          Entidad destino
-        </label>
-        <select
-          id="link-target"
-          value={toId}
-          onChange={(e) => setToId(e.target.value)}
-          className={fieldControlClass}
-        >
-          <option value="">Elige un destino…</option>
-          {candidates.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({ETIQUETA_DE_TIPO[c.type]})
-            </option>
-          ))}
-        </select>
-        <label htmlFor="link-label" className="sr-only">
-          Etiqueta del enlace
-        </label>
-        <input
-          id="link-label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Etiqueta (opcional)"
-          className={fieldControlClass}
-        />
-        <Button type="submit" disabled={!toId || createLink.isPending}>
-          Añadir enlace
-        </Button>
-      </form>
+      {!puedeEnlazar && (
+        <p className="text-chrome-xs text-muted">Los enlaces entre fichas los pone el DM.</p>
+      )}
+      {puedeEnlazar && (
+        <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
+          <label htmlFor="link-target" className="sr-only">
+            Entidad destino
+          </label>
+          <select
+            id="link-target"
+            value={toId}
+            onChange={(e) => setToId(e.target.value)}
+            className={fieldControlClass}
+          >
+            <option value="">Elige un destino…</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({ETIQUETA_DE_TIPO[c.type]})
+              </option>
+            ))}
+          </select>
+          <label htmlFor="link-label" className="sr-only">
+            Etiqueta del enlace
+          </label>
+          <input
+            id="link-label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Etiqueta (opcional)"
+            className={fieldControlClass}
+          />
+          <Button type="submit" disabled={!toId || createLink.isPending}>
+            Añadir enlace
+          </Button>
+        </form>
+      )}
       {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
     </section>
   );

@@ -135,7 +135,7 @@ export function CampaignSettings({ campaignId }: { campaignId: string }) {
                 Cascade. No counts here — nothing on this screen has them loaded, and the
                 brief is explicit that a number not actually on hand must not be invented. */}
             <DeleteButton
-              message={`Vas a borrar "${campaign.name}". Se borrarán también sus fichas, sesiones, personajes, invitaciones y miembros. No se puede deshacer.`}
+              message={`Vas a borrar "${campaign.name}". Se borrarán también sus entradas del mundo, sesiones, personajes, invitaciones y miembros. No se puede deshacer.`}
               onConfirm={onConfirmDelete}
               pending={del.isPending}
               disabled={roleUnresolved || !isDM}

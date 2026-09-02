@@ -27,8 +27,20 @@ export class EntitiesService {
     return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
   }
 
+  /**
+   * **El mundo lo escribe el DM. Solo el DM.**
+   *
+   * Esto exigía únicamente ser miembro, y estaba declarado como excepción en
+   * `docs/04-convenciones.md`. Era un error, y lo señaló el propio DM al probar la aplicación
+   * con un jugador dentro: **un jugador podía crear PNJ, lugares, misiones y documentos**, y con
+   * ellos aparecía en su pantalla todo el andamiaje de construir mundo — que es exactamente lo
+   * que estropea una partida, porque enseña la forma de lo que aún no debería saber.
+   *
+   * Lo que el jugador **sigue teniendo** es su voz: comentarios en las fichas que puede ver, su
+   * personaje, y el registro de la partida. Escribir el mundo no es su papel.
+   */
   async create(userId: string, campaignId: string, input: CreateEntityInput) {
-    await this.membership.requireMember(campaignId, userId);
+    await this.membership.requireDM(campaignId, userId);
     const { specificPlayerIds, ...rest } = input;
     const entity = await this.prisma.entity.create({
       data: {

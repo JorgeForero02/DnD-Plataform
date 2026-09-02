@@ -157,7 +157,9 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(playersNpcRowPlayer).toBeEnabled();
   await playersNpcRowPlayer.click();
   await expect(playerPage.getByRole("heading", { name: "Gundren Rockseeker" })).toBeVisible();
-  await playerPage.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
+  await playerPage
+    .getByRole("button", { name: /Editar|Ver el texto completo|Ver la hoja completa/ })
+    .click();
   await expect(playerPage.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   // Lee su contenido: el nombre real, no un formulario vacío.
   await expect(playerPage.getByLabel("Nombre")).toHaveValue("Gundren Rockseeker");

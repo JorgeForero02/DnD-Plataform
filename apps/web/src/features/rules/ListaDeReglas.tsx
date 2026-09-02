@@ -45,7 +45,7 @@ export function ListaDeReglas({
   const [confirmandoBorrado, setConfirmandoBorrado] = useState<string | null>(null);
 
   const nombrePorId = new Map(entities.map((e) => [e.id, e.name]));
-  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `ficha ${id.slice(-6)}`;
+  const nombreFicha = (id: string) => nombrePorId.get(id) ?? `entrada ${id.slice(-6)}`;
 
   if (reglas.length === 0) {
     return (

@@ -44,15 +44,15 @@ export const EFECTOS = clavesDeUnion(ruleEffectSchema) as RuleEffect["kind"][];
 export const NOMBRE_DISPARADOR: Record<RuleTrigger["kind"], string> = {
   SESSION_STARTED: "Empieza una sesión",
   SESSION_CLOSED: "Se cierra una sesión",
-  ENTITY_OPENED: "Un jugador abre una ficha",
-  ENTITY_COMMENTED: "Alguien comenta una ficha",
-  ENTITY_REVEALED: "Se revela una ficha",
+  ENTITY_OPENED: "Un jugador abre una entrada del mundo",
+  ENTITY_COMMENTED: "Alguien comenta una entrada del mundo",
+  ENTITY_REVEALED: "Se revela una entrada del mundo",
   FLAG_SET: "Se pone o se quita una marca",
   SIGNAL_RAISED: "Se lanza una señal",
   DM_EXECUTED: "El DM la ejecuta a mano",
-  ENTITY_LINKED: "Se enlazan dos fichas",
+  ENTITY_LINKED: "Se enlazan dos entradas del mundo",
   ABILITY_ROLL: "Una tirada de característica",
-  ENTITY_ATTACKED: "Atacan a una ficha",
+  ENTITY_ATTACKED: "Atacan a una entrada del mundo",
   MEMBER_JOINED: "Alguien se une a la campaña",
 };
 
@@ -61,15 +61,15 @@ export const NOMBRE_CONDICION: Record<RuleCondition["kind"], string> = {
   SET_SIZE_AT_LEAST: "Un conjunto tiene al menos N miembros",
   IS_IN_SET: "Alguien o algo está en un conjunto",
   ALL_PLAYERS_PRESENT: "Están todos los jugadores presentes",
-  SUBJECT_HAS_TAG: "La ficha del suceso lleva una etiqueta",
-  REVEALED_WITH_TAG_AT_LEAST: "Ya se han revelado N fichas con una etiqueta",
+  SUBJECT_HAS_TAG: "La entrada del suceso lleva una etiqueta",
+  REVEALED_WITH_TAG_AT_LEAST: "Ya se han revelado N entradas con una etiqueta",
   SESSION_NUMBER_AT_LEAST: "Vamos por la sesión N o una posterior",
   NEVER_FIRED: "Esta regla no se ha disparado nunca",
 };
 
 export const NOMBRE_EFECTO: Record<RuleEffect["kind"], string> = {
-  REVEAL_ENTITY: "Revelar una ficha",
-  HIDE_ENTITY: "Ocultar una ficha",
+  REVEAL_ENTITY: "Revelar una entrada del mundo",
+  HIDE_ENTITY: "Ocultar una entrada del mundo",
   SET_FLAG: "Poner o quitar una marca",
   CHANGE_SET_MEMBER: "Añadir o quitar a alguien de un conjunto",
   RAISE_SIGNAL: "Lanzar una señal",
@@ -176,7 +176,7 @@ export const explicacionEstadoTraza = (k: string) => traducir(EXPLICACION_ESTADO
 /** Resuelve el nombre legible de una ficha por su identificador. Lo aporta quien pinta. */
 export type NombreDeFicha = (entityId: string) => string;
 
-const fichaAnonima: NombreDeFicha = (id) => `ficha ${id.slice(-6)}`;
+const fichaAnonima: NombreDeFicha = (id) => `entrada ${id.slice(-6)}`;
 
 export function describirDisparador(
   trigger: RuleTrigger,
@@ -220,9 +220,9 @@ export function describirCondicion(condicion: RuleCondition): string {
     case "ALL_PLAYERS_PRESENT":
       return "Están todos los jugadores presentes en la sesión en curso";
     case "SUBJECT_HAS_TAG":
-      return `La ficha del suceso lleva la etiqueta «${condicion.tag}»`;
+      return `La entrada del suceso lleva la etiqueta «${condicion.tag}»`;
     case "REVEALED_WITH_TAG_AT_LEAST":
-      return `Ya se han revelado al menos ${condicion.count} fichas con la etiqueta «${condicion.tag}»`;
+      return `Ya se han revelado al menos ${condicion.count} entradas con la etiqueta «${condicion.tag}»`;
     case "SESSION_NUMBER_AT_LEAST":
       return `Vamos por la sesión ${condicion.count} o una posterior`;
     case "NEVER_FIRED":

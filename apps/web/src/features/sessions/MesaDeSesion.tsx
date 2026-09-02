@@ -257,7 +257,7 @@ function Consulta({ campaignId, esDm }: { campaignId: string; esDm: boolean }) {
       <h2 className="font-chrome text-chrome-sm font-semibold text-text">Consulta</h2>
       <input
         aria-label="Buscar en el mundo"
-        placeholder="Buscar una ficha…"
+        placeholder="Buscar en el mundo…"
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
         className={fieldControlClass}
@@ -280,7 +280,7 @@ function Consulta({ campaignId, esDm }: { campaignId: string; esDm: boolean }) {
       </ul>
       {esDm && (
         <p className="font-chrome text-chrome-xs text-muted">
-          Abre una ficha para revelarla a la mesa desde su propia pantalla.
+          Abre una entrada para revelarla a la mesa desde su propia pantalla.
         </p>
       )}
     </section>

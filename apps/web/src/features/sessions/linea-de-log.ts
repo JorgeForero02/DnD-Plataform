@@ -67,11 +67,11 @@ export function lineaDeLog(p: GameEventPayload): string {
     case "CONDITION_REMOVED":
       return `Se le quita la condición «${p.key}»`;
     case "ENTITY_OPENED":
-      return p.entityName ? `Abre la ficha «${p.entityName}»` : "Abre una ficha del mundo";
+      return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
-      return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una ficha del mundo";
+      return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una entrada del mundo";
     case "ENTITY_LINKED":
-      return p.label ? `Se enlazan dos fichas: ${p.label}` : "Se enlazan dos fichas";
+      return p.label ? `Se enlazan dos entradas: ${p.label}` : "Se enlazan dos entradas del mundo";
     case "FLAG_SET":
       return `Marca «${p.key}» ${p.value ? "puesta" : "quitada"}`;
     case "SET_CHANGED":

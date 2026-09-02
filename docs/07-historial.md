@@ -6,6 +6,47 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — 2A.4: elecciones pendientes y avisos
+
+**Qué.** *«+1 a dos características a tu elección»* y *«elige cuatro habilidades»* dejan de ser
+casos especiales por raza y pasan a ser **el mismo mecanismo**: una concesión con `choose`, una
+validación en el servidor y un aviso cuando falta. `choices.ts` valida; `resolve.ts` aplica o
+apunta; `deriveCharacter` junta los avisos del catálogo con los del motor.
+
+**Las tres reglas, cada una con su prueba.** Sin elección **no se aplica nada** y sale un aviso
+`unresolved_choice` que dice cuántas faltan. Una elección **incompleta tampoco aplica nada** —
+aplicar la mitad daría una ficha con pinta de terminada y números mal, y un aviso dice más—.
+Y una elección **inválida es un error, no un aviso**: elegir de más, repetir, salirse de la
+lista o elegir lo que `excluding` prohíbe son `InvalidChoiceError`, que el borde traducirá a
+400. Se distingue `EXCLUDED` de `NOT_IN_LIST` a propósito: Carisma **sí** está en la lista del
+semielfo, lo prohíbe su +2 fijo, y un mensaje que dijera «no está en la lista» mandaría a
+buscar el error donde no está.
+
+**Dos comprobaciones que no pedía el plan y salieron escribiéndolo.** Una elección cuya
+concesión esta ficha no tiene es un error (`UNKNOWN_GRANT`) y no un silencio: sin eso, una clave
+mal escrita haría desaparecer un bono sin explicación. Y elegir una habilidad que ya se tiene
+por otra vía —el elfo ya trae Percepción— **no es un error sino un aviso**
+(`duplicate_skill_choice`), porque este resolutor no ve todas las fuentes de una mesa real.
+
+**Y lo que hace útil el mecanismo:** una elección resuelta es **indistinguible de un bono fijo**
+en la traza — mismo `op`, mismo `sourceType`, misma pinta—, y hay una prueba que lo compara paso
+a paso contra el +2 de Carisma. Eso es lo que evita una rama `if (race === "half-elf")` en el
+motor y hace que una raza propia en 2B sea añadir datos, no código.
+
+**Mutación comprobada, tres veces.** Forzando `complete: true` en `validatePicks`, caen 10
+pruebas, entre ellas «no aplica la mitad». Quitando la comprobación de `excluding`, caen 3.
+Quitando `assertNoUnknownChoices`, cae la de la clave desconocida. Restauradas, 210 pruebas
+verdes en `src/rules`.
+
+**Lo que no entra, y por qué:** la mejora de característica de los niveles 4, 8, 12, 16 y 19.
+Es el mismo mecanismo, pero «+2 a una **o** +1 a dos» es una concesión con dos modos, y quien
+decide la forma de la subida de nivel es 2A.9. Anotado como **S6** en 06.
+
+**Cómo revertirlo.** Borrar `choices.ts` y `choices.spec.ts`, y devolver `resolve.ts` a su
+versión de `ce4140b`. Nada persiste todavía: las elecciones se pasan en memoria.
+
+---
+
 ## 2026-09-02 (tarde) — 2A.3: el catálogo SRD 5.1, y las tres capas que lo verifican
 
 **Qué.** Nueve razas con sus cuatro subrazas, doce clases con su progresión y su única subclase

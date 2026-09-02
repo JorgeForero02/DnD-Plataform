@@ -18,11 +18,15 @@ export * from "./types";
 export * from "./races";
 export * from "./classes";
 export * from "./armor";
+export * from "./choices";
 export * from "./resolve";
 
+import type { DerivationResult } from "@dnd/shared";
+import { derive } from "../engine";
 import { SRD_ARMOR } from "./armor";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
+import { resolveBuild, type CharacterBuild, type PendingChoice } from "./resolve";
 
 /** El catálogo entero, para los invariantes y para la futura exposición por HTTP. */
 export const SRD_CATALOG = {
@@ -40,6 +44,30 @@ export const SRD_CATALOG = {
  * los veinte niveles: dos representaciones del mismo dato discrepan sin remedio salvo que algo
  * las ate.
  */
+export interface CharacterSheet extends DerivationResult {
+  /** Lo que falta por decidir. La pantalla lo pinta como lista de tareas, no como error. */
+  pendingChoices: PendingChoice[];
+}
+
+/**
+ * De ficha declarada a hoja calculada, en un solo paso: resuelve el catálogo, deriva con el
+ * motor, y **junta los avisos de los dos**.
+ *
+ * Existe porque son dos listas de avisos con el mismo significado para quien mira la hoja —
+ * «hay algo que querrías saber»— y dejar que cada pantalla las junte por su cuenta es cómo una
+ * de ellas acaba sin pintarse. Los del catálogo van primero: un `unresolved_choice` explica por
+ * qué los números de abajo son los que son.
+ */
+export function deriveCharacter(build: CharacterBuild): CharacterSheet {
+  const resuelto = resolveBuild(build);
+  const derivado = derive(resuelto.input);
+  return {
+    derived: derivado.derived,
+    warnings: [...resuelto.warnings, ...derivado.warnings],
+    pendingChoices: resuelto.pendingChoices,
+  };
+}
+
 export const PROFICIENCY_BONUS_TABLE = [
   { fromLevel: 1, toLevel: 4, bonus: 2 },
   { fromLevel: 5, toLevel: 8, bonus: 3 },

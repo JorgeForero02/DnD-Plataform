@@ -6,13 +6,20 @@
 // fallo del motor. Quien resuelve `ContentRef` → datos es esto; en 2A solo sabe mirar el SRD,
 // y en 2B aprenderá a mirar además la tabla de la campaña **sin que el motor cambie**.
 //
-// **Lo que este resolutor NO hace: resolver elecciones.** Un `abilityChoice` o un
-// `skillChoice` sale por `pendingChoices` y **no altera ni una característica**. Aplicarlas,
-// validarlas y convertirlas en avisos `unresolved_choice` es la tarea 2A.4.
+// **Las elecciones (2A.4).** Un `abilityChoice` o un `skillChoice` sin resolver sale por
+// `pendingChoices`, deja un aviso `unresolved_choice` y **no altera ni una característica**.
+// Resuelto, se aplica y en la traza queda **indistinguible de un bono fijo**, que es el
+// objetivo: la traza pinta «+1 Carisma (semielfo)» igual que pintaría un +2 de tabla.
 
-import type { AbilityKey, ProficiencyLevel, SkillKey } from "@dnd/shared";
+import type { AbilityKey, DerivationWarning, ProficiencyLevel, SkillKey } from "@dnd/shared";
 import type { AcFormula, EngineInput, Modifier } from "../engine";
 import { SRD_ARMOR } from "./armor";
+import {
+  assertNoUnknownChoices,
+  validatePicks,
+  type CharacterChoices,
+  type ChoiceGrant,
+} from "./choices";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
 import type { ContentRef, Grant, SrdArmor, SrdClass, SrdRace, SrdSubrace } from "./types";
@@ -28,6 +35,8 @@ export interface CharacterBuild {
   armor?: ContentRef[];
   /** Competencias en habilidades ya decididas. Se funden con las que da la raza. */
   skillProficiencies?: Partial<Record<SkillKey, ProficiencyLevel>>;
+  /** Lo que el jugador ha elegido, por clave de concesión (2A.4). */
+  choices?: CharacterChoices;
 }
 
 /** Una concesión que espera una decisión del jugador. La resolución es 2A.4. */
@@ -49,6 +58,11 @@ export interface ResolvedFeature {
 export interface ResolvedBuild {
   input: EngineInput;
   pendingChoices: PendingChoice[];
+  /**
+   * Avisos que nacen del catálogo, no del cálculo: hoy solo `unresolved_choice` y
+   * `duplicate_skill_choice`. Se juntan con los del motor en `deriveCharacter`.
+   */
+  warnings: DerivationWarning[];
   features: ResolvedFeature[];
   /** Velocidades **en pies**. 2A.12 les aplicará las condiciones. */
   speeds: Partial<Record<"walk" | "climb" | "swim" | "fly" | "burrow", number>>;
@@ -116,10 +130,57 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
 
   const modifiers: Modifier[] = [];
   const pendingChoices: PendingChoice[] = [];
+  const warnings: DerivationWarning[] = [];
   const features: ResolvedFeature[] = [];
   const speeds: ResolvedBuild["speeds"] = {};
   const skillProficiencies: Partial<Record<SkillKey, ProficiencyLevel>> = {
     ...build.skillProficiencies,
+  };
+  const choices = build.choices ?? {};
+  const concesionesConocidas = new Set<string>();
+
+  const anotarCompetencia = (skill: SkillKey, level: ProficiencyLevel, grantId: string) => {
+    const actual = skillProficiencies[skill] ?? "none";
+    if (ORDEN_COMPETENCIA[level] > ORDEN_COMPETENCIA[actual]) {
+      skillProficiencies[skill] = level;
+      return;
+    }
+    // Elegir una habilidad que ya se tiene por otra vía **no es un error**: el SRD lo desaconseja
+    // pero este resolutor no ve todas las fuentes de una mesa real. Se avisa, que es lo que la
+    // hoja necesita para decir «esta elección no te está dando nada».
+    warnings.push({
+      code: "duplicate_skill_choice",
+      key: `skill.${skill}`,
+      data: { grantId, skill, alreadyAt: actual },
+    });
+  };
+
+  /**
+   * Devuelve las elecciones si están completas y válidas; si no, apunta el pendiente y el
+   * aviso. **Validar lanza**: una elección imposible no se degrada a pendiente.
+   */
+  const resolverEleccion = (grant: ChoiceGrant): string[] | undefined => {
+    concesionesConocidas.add(grant.id);
+    const { picks, complete } = validatePicks(grant, choices[grant.id]);
+    if (complete) return picks;
+
+    pendingChoices.push({
+      grantId: grant.id,
+      labelKey: grant.labelKey,
+      kind: grant.kind,
+      choose: grant.choose,
+      from: grant.from,
+      excluding: grant.kind === "abilityChoice" ? grant.excluding : undefined,
+    });
+    // La lista `from` **no cabe en `data`**: el esquema de `@dnd/shared` solo admite escalares,
+    // a propósito, para que un aviso no se convierta en un objeto arbitrario. Quien quiera la
+    // lista la tiene en `pendingChoices`, que es su sitio.
+    warnings.push({
+      code: "unresolved_choice",
+      key: grant.id,
+      data: { grantId: grant.id, kind: grant.kind, needed: grant.choose, picked: picks.length },
+    });
+    return undefined;
   };
 
   const aplicarConcesion = (grant: Grant, sourceType: "race" | "subrace", sourceKey: string) => {
@@ -153,30 +214,32 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
         )
           skillProficiencies[grant.skill] = grant.level;
         break;
+      case "abilityChoice": {
+        const picks = resolverEleccion(grant);
+        // Resuelta, **es un modificador como cualquier otro**: mismo `op`, mismo `sourceType`,
+        // misma pinta en la traza. Ese es todo el objetivo del mecanismo.
+        for (const ability of picks ?? [])
+          modifiers.push({
+            target: `ability.${ability}`,
+            op: "add",
+            amount: grant.amount,
+            sourceType,
+            sourceKey,
+            labelKey: grant.labelKey,
+          });
+        break;
+      }
+      case "skillChoice": {
+        const picks = resolverEleccion(grant);
+        for (const skill of picks ?? [])
+          anotarCompetencia(skill as SkillKey, grant.level, grant.id);
+        break;
+      }
       case "speed":
         speeds[grant.movement] = grant.feet;
         break;
       case "feature":
         features.push({ sourceKey, labelKey: grant.labelKey, name: grant.name });
-        break;
-      case "abilityChoice":
-        pendingChoices.push({
-          grantId: grant.id,
-          labelKey: grant.labelKey,
-          kind: "abilityChoice",
-          choose: grant.choose,
-          from: grant.from,
-          excluding: grant.excluding,
-        });
-        break;
-      case "skillChoice":
-        pendingChoices.push({
-          grantId: grant.id,
-          labelKey: grant.labelKey,
-          kind: "skillChoice",
-          choose: grant.choose,
-          from: grant.from,
-        });
         break;
     }
   };
@@ -184,14 +247,22 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
   for (const grant of race.grants) aplicarConcesion(grant, "race", race.key);
   for (const grant of subrace?.grants ?? []) aplicarConcesion(grant, "subrace", subrace!.key);
 
-  // La elección de habilidades de la clase también está pendiente hasta 2A.4.
-  pendingChoices.push({
-    grantId: `${characterClass.key}-skills`,
+  // La elección de habilidades de la clase es **el mismo mecanismo**: se fabrica la concesión
+  // desde la tabla de la clase y pasa por el mismo camino que la de la raza.
+  const habilidadesDeClase: ChoiceGrant = {
+    id: `${characterClass.key}-skills`,
     labelKey: `class.${characterClass.key}.skills`,
     kind: "skillChoice",
     choose: characterClass.skillChoice.choose,
     from: characterClass.skillChoice.from,
-  });
+    level: "proficient",
+  };
+  for (const skill of resolverEleccion(habilidadesDeClase) ?? [])
+    anotarCompetencia(skill as SkillKey, "proficient", habilidadesDeClase.id);
+
+  // Lo último: una elección que no corresponde a ninguna concesión de esta ficha es un error,
+  // no algo que se ignora. Va al final porque hasta aquí no se sabe cuáles había.
+  assertNoUnknownChoices(choices, concesionesConocidas);
 
   const { acFormulas, acBonuses } = formulasDeArmadura(build.armor ?? []);
 
@@ -208,6 +279,7 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
       spellcastingAbility: characterClass.spellcastingAbility,
     },
     pendingChoices,
+    warnings,
     features,
     speeds,
     race,

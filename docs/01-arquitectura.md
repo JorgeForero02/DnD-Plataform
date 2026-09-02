@@ -55,7 +55,7 @@ por su cuenta**.
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |
 | `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |
-| `rules` | Motor de derivación de 5.ª edición (2A.2) y catálogo SRD (2A.3). **Puro** | — |
+| `rules` | Motor de derivación de 5.ª edición (2A.2), catálogo SRD (2A.3) y elecciones (2A.4). **Puro** | — |
 
 ### Las tres capas de la fase 2A, y por qué no se tocan entre sí
 
@@ -74,6 +74,11 @@ el motor conociera las razas, un `+1` transcrito mal parecería un fallo del mot
 en el sitio equivocado. El único punto donde se tocan es
 `apps/api/src/rules/catalog/resolve.ts`, que traduce una ficha declarada (raza, subraza,
 clase, nivel, armadura) a la entrada que el motor come.
+
+La puerta de entrada es `deriveCharacter` (`apps/api/src/rules/catalog/index.ts`): resuelve el
+catálogo, deriva con el motor y **junta las dos listas de avisos**. Existe porque significan lo
+mismo para quien mira la hoja —«hay algo que querrías saber»— y dejar que cada pantalla las
+junte por su cuenta es cómo una de ellas acaba sin pintarse.
 
 `ContentRef` (`apps/api/src/rules/catalog/types.ts`) existe desde 2A aunque **hoy solo
 tenga una rama útil** (`SRD`): la otra (`CAMPAIGN`) es por donde entrará el contenido propio

@@ -32,8 +32,11 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md` | **Lo que el sistema puede y la pantalla no ofrece.** Es la tarea 1.17 y **cierra la fase 1** |
 | `superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md` | **Auditoría de seguridad con evidencia y el orden de arreglo.** Es la tarea 1.18 |
 | `superpowers/specs/2026-09-01-fase-2-alcance-design.md` | **Alcance de la fase 2**: objetos, dados, razas, clases, niveles y la línea de derechos. Manda sobre el plan maestro |
+| `superpowers/specs/2026-09-01-huecos-fase-2-design.md` | **Lo que una mesa real necesita y el alcance de la fase 2 no modela.** Doce huecos con su coste de construir ahora y de añadir después, más 16 preguntas para el autor. **Se lee antes de ejecutar 2A**, porque cuatro de ellos cambian la forma de una tabla |
 | `superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md` | **Alcance de la fase 3**: nada de editores de arte; subir, curar e importar |
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
+| `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
+| `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
 
 > El ledger y este `07-historial.md` cuentan lo mismo a distinta resolución: el ledger es
@@ -61,7 +64,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `fb4fc9a` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `5d92651` **(rama `1.23-integrar-auditoria-y-plan`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

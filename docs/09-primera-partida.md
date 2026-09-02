@@ -17,10 +17,17 @@ Aquí va cómo montar esa sesión, qué esperar, y qué anotar mientras juegas.
 ```bash
 docker compose up -d                            # Postgres 16 en :5432
 pnpm install                                    # compila @dnd/shared y conecta el gancho
+cp .env.example apps/api/.env                   # y edita JWT_SECRET (>= 32 caracteres)
 pnpm --filter @dnd/api exec prisma migrate deploy
 pnpm dev:api                                    # API en :3000
 pnpm dev:web                                    # web en :5173
 ```
+
+> **`JWT_SECRET` es obligatoria desde la tarea 1.18a**, y de **32 caracteres como mínimo**: sin
+> ella **la API se niega a arrancar** (`common/jwt-secret.ts`), y ya no hay valor por defecto
+> en el código que te salve. Si vienes con un `.env` viejo, esto es lo primero que te va a
+> fallar, y falla **al levantar**, no al usar la aplicación. Genera uno con
+> `openssl rand -hex 32`.
 
 Detalle de variables y gotchas en [02-entorno.md](./02-entorno.md).
 
@@ -73,8 +80,25 @@ el formulario arranca en `OWNER_DM` para que no la pierda de vista al instante.
 Esto no son sorpresas: está todo en [06-pendientes.md](./06-pendientes.md), y lo repito aquí
 porque es lo que se nota jugando.
 
+- **No puedes seguir los enlaces que has creado** (E2). Es lo más importante de esta lista,
+  porque es exactamente la capacidad que el paso 2 de arriba llama *"el valor real de la
+  herramienta"*: puedes **declarar** que el lugar enlaza con el NPC, pero el enlace se pinta
+  como texto plano y no lleva a ninguna parte, y **no hay enlaces entrantes** — la ficha del
+  NPC no sabe en qué misiones sale. Para ir de una entidad a otra: cerrar el modal, cambiar de
+  pestaña, buscarla en la lista y abrirla.
+- **No puedes tener un segundo DM** (D2). Toda invitación entra como jugador y el rol de un
+  miembro no se puede cambiar después. Si la mesa tiene dos narradores, uno de los dos ve la
+  campaña como jugador toda la partida. Y como tampoco se recupera una contraseña olvidada, si
+  se pierde la cuenta del DM **la campaña se queda sin nadie que mande**.
+- **No puedes ver qué invitaciones has mandado** (D3), ni cuáles se han usado, ni revocar
+  ninguna: el token no caduca en el servidor, y la pantalla solo te enseña el último enlace
+  generado hasta que recargues. Cópialos a un sitio seguro según los generas.
+- **La fecha de una sesión no se ve en la lista** (D4): la lista pinta título y visibilidad, y
+  viene ordenada por cuándo se creó la sesión, no por cuándo se juega. Para responder *"¿cuándo
+  jugamos?"* hay que abrirlas una a una.
 - **No se puede quitar la fecha de una sesión** una vez puesta.
-- **El token de invitación no caduca en el servidor** ni se puede revocar.
+- **En la lista de personajes solo se ven nombre y nivel** (D5): raza, clase y biografía están
+  guardadas, pero hay que abrir cada ficha para verlas.
 - **Nada de adjuntos ni imágenes**: llegan en la fase 3, con el almacenamiento.
 - **Nada de mapas, tiradas, tiempo real ni ficha con reglas**: fases 2 a 5.
 

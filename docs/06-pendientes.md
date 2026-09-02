@@ -6,6 +6,32 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-01.
 
+## Antes de ejecutar 2A — huecos del alcance, sin decidir (2026-09-01)
+
+Salieron de una pregunta del autor: *"¿hay un sistema de manos? me pongo un escudo que me da más
+CA pero llevo un arma en la otra"*. La spec dice que los objetos se **equipan y desequipan** y
+**nunca dice dónde**: no hay ranuras. Buscando huecos de esa misma forma —la regla lo exige, la
+mesa lo toca pronto, y el alcance no tiene dónde ponerlo— aparecieron **doce**, en
+[`superpowers/specs/2026-09-01-huecos-fase-2-design.md`](./superpowers/specs/2026-09-01-huecos-fase-2-design.md),
+con 16 preguntas para el autor.
+
+**Los cuatro que hay que decidir antes de la primera migración**, porque cambian la **forma** de
+una tabla y después salen caros:
+
+| | Hueco | Por qué corre prisa |
+|---|---|---|
+| **H1** | **Ranuras de equipo**, y el estado de un objeto como **tres** (llevado / equipado / **sintonizado**, con tope de 3), no como un booleano | Toca la fórmula de CA, que **no es una suma**: la armadura sustituye la fórmula y limita la Destreza |
+| **H2** | El **descanso** está a medias: hay gatillo, pero nada restaura los PG y los **dados de golpe no existen** en ningún documento | Es el bucle más frecuente de una sesión; sin él la mesa corrige PG a mano y deja de fiarse de la pantalla |
+| **H3** | **PG temporales**: el daño los atraviesa tal como está escrito | Error silencioso dentro de un registro que se declara inmutable |
+| **H4** | **Pericia** (competencia doble): el modificador solo conoce competencia como booleano | La hoja del pícaro dirá +5 donde la regla dice +7 |
+
+**Y dos ausencias completas**, no decisiones: **el dinero** no aparece ni una vez en las 805
+líneas de la spec, y **un objeto del inventario no tiene visibilidad** — el DM prepara la
+mazmorra el jueves y la mesa le ve el botín el viernes.
+
+**Esto no se decide de pasada.** La spec de alcance es un registro fechado y no se reescribe:
+las decisiones que salgan de aquí entran en el plan de 2A, con su firma.
+
 ## Antes de desplegar — seguridad
 
 **Auditoría hecha el 2026-09-01 sobre el commit `4a3fe43`, con todos los hallazgos verificados
@@ -149,6 +175,97 @@ cerrar la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido 
 existe** funciona;
 ninguna puede gritar por lo que falta. Es el punto ciego estructural de una suite, y por eso
 este contraste **se repite al cerrar cada fase**.
+
+## Segunda pasada del contraste modelo/API ↔ pantalla (2026-09-01)
+
+**Contraste hecho a mano sobre el commit `70b353c` de `main`**: los 10 modelos de
+`apps/api/prisma/schema.prisma` campo a campo, las 35 rutas de la API una a una, y por cada
+una la pregunta *"¿quién la usa desde la pantalla?"*. Es la repetición del contraste de 1.17
+—que **se repite al cerrar cada fase**— y encontró doce cosas nuevas, con identificadores que
+empiezan en **D** para no chocar con los de la pasada anterior (A1–C1, arriba).
+
+**El informe completo no vive en el repositorio**: se escribió fuera, en el directorio de
+trabajo de la sesión que lo produjo, así que **lo que hay que conservar está aquí**. Cada línea
+lleva su evidencia comprobada contra el código de este árbol, no contra el del día del
+contraste — ver la nota sobre líneas desplazadas al final de la sección.
+
+Lo que **sí** quedó comprobado como congruente, para que la próxima pasada no lo recorra otra
+vez: comentarios, campañas (desde 1.17d), miembros, los siete campos de `Entity`, y la matriz
+de visibilidad entera —los recortes de `features/sessions/SessionEditor.tsx` y
+`features/characters/CharacterEditor.tsx` corresponden con los límites reales del modelo
+descritos en [05-datos.md](./05-datos.md), y ninguno de los dos editores miente al usuario.
+**El núcleo de la promesa —quién ve qué— está entero.** Lo que falta es casi todo *movimiento*:
+navegar, buscar, ordenar y administrar la mesa.
+
+| | Hallazgo | Prioridad | Evidencia |
+|---|---|---|---|
+| D1 | **Cuenta sin pantalla** — nombre visible y contraseña solo cambiables por API. **Ya asignado a la tarea 1.18b**, no es hueco nuevo | P1 — **asignado** | `auth/auth.controller.ts:63` y `:83` exponen los dos `PATCH`; `grep -rn "auth/me\|auth/password" apps/web/src` solo encuentra el `GET` de `features/auth/api.ts` |
+| D2 | **No se puede invitar a un segundo DM, ni ascender a nadie**: el rol de un miembro es inmutable de por vida | P1 | `prisma/schema.prisma:73` declara `role Role @default(PLAYER)` y `invites/invites.service.ts:29` lo respeta al aceptar, pero `invites/invites.service.ts:17-19` crea la invitación **sin `role`**, el controlador no acepta cuerpo, y no existe ningún `PATCH .../members/:userId` |
+| D3 | **Una invitación no se puede listar ni revocar**: se generan a ciegas y valen para siempre | P1 | `schema.prisma:74-75` escribe `createdAt`/`usedAt` y ninguna pantalla los lee; `invites/invites.controller.ts` tiene exactamente dos rutas (ni `GET` de lista ni `DELETE`); `features/invites/InvitePanel.tsx` solo muestra el último enlace, y solo hasta que se recargue |
+| D4 | **La fecha de una sesión no se ve en la lista ni la ordena** | P1 | `schema.prisma:129` la guarda y `features/sessions/SessionEditor.tsx` la edita, pero la fila (`pages/CampaignDetailPage.tsx:220-224`) pinta título y distintivo y nada más; el servidor ordena por `createdAt: "desc"` (`sessions/sessions.service.ts:48`) |
+| D5 | **Raza, clase y biografía se editan y no salen en la lista de personajes** | P2 | `schema.prisma:141-144` los guarda, `features/characters/CharacterEditor.tsx` los edita, y la fila (`pages/CampaignDetailPage.tsx:284-285`) pinta nombre y nivel. Relacionado: `GET .../characters/:id` y `GET .../sessions/:id` no los llama nadie, porque el modal de edición se siembra desde el objeto de la lista — no es un fallo, es no tener vista de detalle |
+| D6 | **`User.isAdmin` no tiene ninguna puerta de concesión**: es el permiso más potente del sistema y no lo gobierna nada | P2 | `schema.prisma:38` lo declara y `common/visibility.ts:16` lo respeta de verdad (salta toda la matriz de visibilidad); `grep -rn "isAdmin" apps packages` fuera de esos lectores **no encuentra un solo escritor**: solo un `UPDATE` a mano en Postgres |
+| D7 | **`Campaign.ownerId` es una segunda fuente de verdad que nadie consulta** | P3 | Se escribe en `campaigns/campaigns.service.ts:20` y ninguna comprobación de autorización lo lee: todas pasan por `membership.requireDM`, que mira `CampaignMember.role`. La web lo declara en su tipo y tampoco lo usa |
+| D8 | **Ninguna pantalla muestra ninguna fecha**, comentarios incluidos | P3 | `grep -rn "createdAt" apps/web/src --include=*.tsx` fuera de comprobaciones: **cero**. `features/comments/CommentThread.tsx` pinta autor y cuerpo, sin marca de tiempo |
+| D9 | **Seis emisiones de evento sin un solo oyente** — andamiaje futuro, no afecta al usuario | P3 | `campaigns/campaigns.service.ts`, `entities/entities.service.ts` e `invites/invites.service.ts` emiten por `EventEmitter2`; `grep -rn "OnEvent" apps/api/src`: **cero** |
+| E1 | **Sesiones y Personajes siguen sin buscador ni filtro**, y **no hay búsqueda que cruce pestañas** — ya declarado bajo la tabla de 1.17, confirmado abierto | P2 — ya declarado | `features/entities/EntityFilterBar.tsx` se monta solo en `EntityTab` de `pages/CampaignDetailPage.tsx` y filtra la lista ya cargada de **un solo tipo**; `fetchAllEntities` (`features/entities/api.ts`) ya trae todos los tipos y solo lo consume el selector de destino de enlaces |
+| E2 | **Los enlaces del mundo no se pueden recorrer, y son de un solo sentido** | P1 | `features/links/LinksPanel.tsx:75` pinta el destino como **texto plano**, no como control; `links/links.service.ts:49` consulta `where: { fromId: entityId }`, así que **no hay enlaces entrantes**; y el panel solo existe dentro del editor (`features/entities/EntityEditor.tsx`, bloque `isEdit && entity`), porque el editor es la única vista de detalle que tiene la aplicación |
+| E3 | **Diez campos con límite en el servidor que la pantalla no anuncia**, y el error vuelve crudo y en inglés | P2 | `grep -rn "maxLength" apps/web/src`: **cero**; el único límite en cliente es `min`/`max` del nivel (`features/characters/CharacterEditor.tsx:151-152`). Los límites reales viven en `packages/shared/src` (`campaign.schema.ts`, `entity.schema.ts`, `session.schema.ts`, `character.schema.ts`) |
+| E4 | **Las etiquetas duplicadas se siguen persistiendo** — ya declarado como deuda aceptada de 1.17c, confirmado abierto y sin novedad | P3 — ya declarado | `packages/shared/src/entity.schema.ts:14` no impone unicidad y `parseTags` (`features/entities/EntityEditor.tsx`) tampoco; la fila dedupa solo al pintar |
+
+**Lo que estas líneas significan en una mesa real**, ordenado por cuándo duele y no por
+dificultad, porque es la pregunta que hizo el autor:
+
+- **Antes de sentarse, el DM no puede tener un co-DM** (D2). Si la mesa tiene dos narradores,
+  uno entra como jugador y ve la campaña como jugador, sin camino de vuelta: nadie puede
+  ascender a nadie y `campaigns/membership.service.ts` prohíbe al DM salir. Peor: como la
+  **recuperación de contraseña está bloqueada** (ver abajo), si esa cuenta se pierde **la
+  campaña queda huérfana para siempre**. D2 y D1 juntos son un modo de fallo, no dos molestias.
+- **No sabe qué invitaciones ha mandado ni cuáles siguen vivas** (D3). Con cuatro jugadores son
+  cuatro enlaces irrevocables y sin registro; si uno se filtra en un chat de grupo, no hay nada
+  que pulsar. `InvitePanel.tsx` es honesto y lo dice en pantalla, pero eso documenta el
+  problema, no lo resuelve.
+- **Preparando el mundo, no puede recorrer los enlaces que acaba de crear** (E2). Es el
+  hallazgo más importante de la pasada y es de dirección inversa: la pantalla **ofrece** una
+  wiki de entidades enlazadas y **no deja andar por ella**. Es literalmente lo que el paso 2 de
+  [09-primera-partida.md](./09-primera-partida.md) llama *"el valor real de la herramienta"*.
+  Y como no hay enlaces entrantes, la ficha del NPC no sabe en qué misiones sale, que es la
+  forma en que se pregunta de verdad.
+- **Durante la partida, nadie sabe cuándo es la próxima sesión sin abrirlas una a una** (D4), y
+  un jugador no ve quién es quién en el grupo más allá del nombre y el nivel (D5).
+
+**La recuperación de contraseña no es un hueco simple y no se cuenta como tal.** Está
+**bloqueada por un servicio de correo que no existe**, y así está declarado en el propio código
+(`packages/shared/src/auth.schema.ts:18-20`: *"Password RECOVERY (forgotten password) is out of
+scope — it needs an email service that doesn't exist"*). Es una **decisión de despliegue**, se
+toma junto con el VPS (ver [03-despliegue.md](./03-despliegue.md)), y hasta entonces agrava a
+D2 en vez de resolverse por su cuenta. Ya está dicho así en la fila 8 de la tabla de seguridad,
+arriba; se repite aquí porque D2 la convierte en algo peor que una molestia.
+
+**Coste declarado, para poder decidir sin volver a mirar el código:** D4 y D5 son triviales
+(una línea en la fila, un `orderBy`); D2 es bajo en el servidor —una entrada de cuerpo en
+`POST /campaigns/:id/invites` reutilizando el `roleSchema` que ya existe en
+`packages/shared/src/visibility.schema.ts`— y medio si además se quiere cambiar el rol de un
+miembro ya dentro (hay que decidir qué pasa si el último DM se degrada); D3 es medio-bajo; E3
+es bajo si la respuesta es traducir el error de Zod una sola vez en `lib/api.ts`; E2 es el
+caro, porque su arreglo de verdad es **una página de detalle de entidad con URL propia**, y los
+otros dos puntos —enlace navegable y enlaces entrantes— dependen de ella para no quedarse en
+parche. D6 y D7 son **decisión, no código**: o se le da una puerta a `isAdmin` y se declara
+cuál de las dos fuentes manda sobre "quién manda aquí", o se escribe que son de mantenimiento
+manual — pero D7 se rompe solo en cuanto exista D2.
+
+**Dos cosas que conviene no leer mal:**
+
+- **Ninguna prueba iba a encontrar nada de esto.** La suite (unitarias: bloque generado de
+  [00-INDEX.md](./00-INDEX.md); navegador: [08-pruebas.md](./08-pruebas.md)) verifica que **lo
+  que existe** funciona. Nada puede ponerse rojo porque un enlace no sea navegable, porque la
+  fila de una sesión no pinte su fecha o porque un campo del esquema no tenga escritor. Es el
+  mismo punto ciego estructural que motivó el contraste de 1.17.
+- **Las citas del informe original apuntaban al commit `70b353c`.** Las de esta tabla están
+  reescritas contra el árbol actual, porque la tarea 1.19b (`1bf0351`, capa de tokens)
+  reordenó los ficheros de `apps/web/src` y desplazó sus líneas — las de `apps/api` y
+  `packages/shared` no se movieron. Si alguien recupera el informe original, sus números de
+  línea de web hay que leerlos sobre `70b353c`, no sobre `main`.
 
 ## P0 — Las fichas del mundo no tienen texto — CERRADO en 1.17b (2026-09-01)
 

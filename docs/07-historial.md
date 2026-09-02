@@ -6,6 +6,68 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (madrugada) — La primera tanda de la ronda de interfaz: cinco frentes en paralelo
+
+**Contexto.** El autor abrió una ronda de interfaz larga y pidió antes que nada *organizarnos*.
+Salió [el plan de la ronda](./superpowers/plans/2026-09-02-plan-interfaz-y-contenido.md) —seis
+bloques, cada tarea con su frontera de ficheros— y con él la autorización para trabajarlo con
+varios agentes a la vez, hasta el techo de cinco que fija [04-convenciones.md](./04-convenciones.md).
+Esto es lo que dejó la primera tanda. Un commit por frente.
+
+**El mundo es del DM, y cada tipo de entrada pregunta lo suyo** (`32c595c`). Dos cosas
+distintas en el mismo commit porque salen del mismo sitio. La primera es un agujero de
+escritura real: crear entidades y enlaces exigía solo `requireMember`, así que **un jugador
+podía crear PNJs, lugares, misiones, documentos y enlaces** en la campaña del DM. Ahora
+`requireDM`, y la interfaz deja de ofrecer lo que el servidor rechazaría. Detalle en
+[05-datos.md](./05-datos.md). La segunda es lo que pidió el autor con mayúsculas —*que dejen de
+llamarse fichas y se diferencien por lo que es*—: el formulario de creación era **idéntico para
+los siete tipos**, un cuadro de texto vacío que no ayudaba a empezar ninguno. Ahora cada tipo
+trae su rótulo, su frase de para-qué, un ejemplo de nombre real, etiquetas sugeridas y un
+andamiaje de Markdown que se borra si estorba (`features/entities/plantillas.ts`). **Plantilla y
+no campos estructurados** a propósito: partir `Entity.body` en casillas por tipo es una
+migración y un cambio de contrato, y sobre todo encierra al DM el día que quiera escribir algo
+que no cabe en las casillas que le dimos.
+
+**La hoja pierde sus dos botones de «Editar»** (`397f7f6`). Se toca donde se lee: puntuaciones,
+raza, subraza, clase, nivel, nombre e historia. Detrás de un botón queda solo borrar, que es
+irreversible. Las reglas de guardado salieron de la investigación y no del gusto, y están
+escritas como vinculantes en [04-convenciones.md](./04-convenciones.md) —junto con **la
+declaración de que esto contradice la regla anterior**, que decía que leer y editar eran
+pantallas distintas—. Lo que más cambia la lectura no es la edición sino **la fórmula de una
+línea bajo cada valor derivado** («10 +2 destreza»): sale de la misma traza que el desglose
+largo, así que no puede discrepar con él, y hace que casi nadie necesite desplegar nada.
+
+**Los enlaces van en los dos sentidos, llevan a algún sitio y dicen qué relación son**
+(`7a6eb70`). El DM enlazó «Maestre Corvin → vive en → Torre Gris» y al abrir la Torre Gris
+Corvin no estaba: `listFor` solo consultaba `fromId`. Ahora consulta los dos extremos, cada
+fila sabe su dirección, **el filtro de visibilidad se aplica a la entidad del otro extremo**
+—un enlace entrante no puede revelar lo que el espectador no puede ver, y `canView` sigue
+siendo el dueño único de eso— y `canRemove` lo calcula el servidor por fila, porque ofrecer un
+botón que el DELETE va a rechazar es mentir.
+
+**Seis glifos de fuente que rompían la regla de iconos dibujados** (`5ad0fe7`), uno de ellos el
+`✓` que la propia regla nombra como prohibido. La lección quedó escrita: la regla no se aplica
+sola, hace falta la prueba, y la prueba echa dos redes —el código fuente y el DOM pintado—.
+
+**Un 400 de validación que una persona puede leer** (`7402d5c`). Lo que el DM recibía era
+`Invalid enum value. Expected 'ac' | 'maxHp' | ...`: inglés en un producto en español, nombres
+internos, y un mensaje que ni siquiera decía qué valores admite. El contrato nuevo, con sus
+tres reglas —el campo se cita literal, nunca se devuelve el valor recibido, nunca se puede
+deducir si algo existe—, está en [04-convenciones.md](./04-convenciones.md).
+
+**La atribución del SRD es la línea española de Wizards** (`52830e0`), y nuestra modificación
+deja de reclamar la traducción, que ya no es nuestra. **Y la prueba de ida y vuelta de TipTap**
+(`2fd869c`) dio su veredicto: sí, con condiciones —28 casos, 0 pérdidas con las extensiones
+puestas, 4 sin ellas, y TipTap se come tablas, imágenes y listas de tareas **en silencio**—.
+Lo que deja pendiente está en [06-pendientes.md](./06-pendientes.md).
+
+**Cómo revertir.** Cada frente es un commit independiente y se revierte solo, con dos avisos:
+`397f7f6` **borra** `EditorFicha.tsx`, así que revertirlo lo resucita y devuelve los dos
+botones; y revertir `32c595c` **devuelve a los jugadores el permiso de escribir en el mundo**,
+que es el fallo que arreglaba. No hay migración en ninguno de los siete.
+
+---
+
 ## 2026-09-02 (noche) — La sesión de juego tiene por fin pantalla, y con ella el registro deja de mentir
 
 **Qué.** La API distinguía `PLANNED`, `IN_PROGRESS` y `CLOSED` desde 2A.5, con un índice único

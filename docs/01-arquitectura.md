@@ -116,7 +116,20 @@ propiedad. Ver [05-datos.md](./05-datos.md) para la semántica de cada nivel.
 **Las pantallas grandes de la fase 2A** viven en `apps/web/src/features/`:
 `character-sheet/` (la hoja calculada con su traza desplegable, PG, recursos, descansos,
 condiciones, tirar y las anulaciones del DM), `level-up/` (el diff propuesto y su confirmación) y
-`rules/` (el panel del motor: reglas, propuestas y trazas). `characters/` conserva el CRUD.
+`rules/` (el panel del motor: reglas, propuestas y trazas) y `sessions/` (la barra global de
+«en juego» y la mesa: elenco, registro en vivo y consulta del mundo). `characters/` conserva el
+CRUD.
+
+Dentro de `character-sheet/`, **`EdicionEnSitio.tsx` es la casa de las tres primitivas de
+edición** —`NumeroEditable`, `SelectorEditable`, `TextoEditable`— y nadie fabrica la suya:
+lo que gobiernan (cuándo se guarda solo, qué pasa al rechazar, qué significa el subrayado) son
+las reglas vinculantes de [04-convenciones.md](./04-convenciones.md), y repetirlas a mano es
+como empiezan a discrepar. `IdentidadEditable.tsx` las usa para raza, subraza, clase, nivel y
+las seis características, y sustituyó al antiguo `EditorFicha.tsx`, que ya no existe.
+
+**Los iconos de línea viven en `ui/Iconos.tsx`**, dibujados en SVG. `features/links/relaciones.ts`
+guarda las relaciones sugeridas por par de tipos y su lectura invertida, que es lo que permite
+que un enlace entrante se lea «vive aquí» sin inventarse el inverso de una frase libre.
 
 ```
 src/lib/api.ts          apiFetch<T> — base /api, adjunta el JWT

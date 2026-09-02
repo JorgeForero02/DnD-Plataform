@@ -258,6 +258,17 @@ antes ser miembro de la campaña (`requireMember`) — así que, mientras no exi
 `PLAYERS`. La distinción está en el modelo y en el selector de visibilidad, lista para el día
 en que algo no exija membresía.
 
+**Escribir en el mundo es del DM; los personajes no** (desde el 2026-09-02). Crear una
+entidad (`entities.service.ts:43`) y crear un enlace (`links.service.ts:41`) exigen
+`requireDM`. Antes exigían solo `requireMember`, y la consecuencia la encontró el autor
+probando con un jugador de verdad: **un jugador podía crear PNJs, lugares, misiones,
+documentos y enlaces en la campaña del DM**. No era una fuga de lectura —`canView` nunca dejó
+ver de más— pero sí de escritura, y en una mesa donde el mundo es del DM eso basta para
+estropear una partida. Editar y borrar una entidad siguen siendo `requireMember` +
+`requireEditable` (DM o quien la creó), que es lo correcto ahora que solo el DM puede crearlas.
+**Los personajes van por su camino y no cambian:** un jugador crea y edita el suyo, porque es
+suyo.
+
 Por defecto una `Entity` nace `DM_ONLY` (el mundo es secreto hasta que el DM lo revela);
 `Session` y `Character` nacen `PLAYERS`.
 

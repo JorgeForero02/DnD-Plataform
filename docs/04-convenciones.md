@@ -84,6 +84,21 @@ nombres de las cosas del código, no.
 - Códigos de estado correctos: 401 sin token, 403 sin permiso, 404 si no existe, 400 si el
   cuerpo no valida.
 
+- **Un 400 de validación se escribe para que una persona lo lea y sepa qué arreglar**
+  (`apps/api/src/common/validation-errors.ts`, desde el 2026-09-02). Sale una frase en español
+  que la interfaz imprime tal cual, más una lista `errores` con el campo culpable, su ruta y el
+  código de Zod para quien depure. Tres reglas que lo gobiernan:
+  - **El nombre del campo se cita literal y en su idioma original** —«Falta el campo
+    obligatorio «kind»»—, nunca traducido a una etiqueta bonita. Quien lee ese mensaje está
+    arreglando una petición HTTP, y una etiqueta que no aparece en ninguna parte de la API lo
+    manda a buscar un campo que no existe. **No hay diccionario campo → etiqueta en esta
+    capa**: sería una segunda fuente de verdad sobre la forma de los datos, que vive una sola
+    vez en `@dnd/shared`.
+  - **Nunca devuelve el valor recibido.** Una contraseña o un token no pueden acabar
+    reflejados en la pantalla ni en los registros.
+  - **Nunca puede decir si algo existe.** Solo ve forma, jamás la base: dos identificadores
+    inexistentes distintos dan exactamente la misma respuesta.
+
 - **Un `Json` en la base no se consulta nunca por dentro.** El `payload` de `GameEvent` lleva
   solo el detalle que se pinta en una línea de la línea de tiempo; **todo lo que haga falta
   consultar o filtrar es una columna real** (campaña, sesión, actor, tipo, sujeto, fecha,
@@ -162,8 +177,16 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 
 - **Los iconos se dibujan.** Nada de `☾`, `☀`, `✓` ni emoji como icono: un glifo de fuente se
   pinta a todo color en unos sistemas, como un cuadrado vacío en otros, y nunca se parece al
-  resto de la interfaz. SVG en trazo, heredando `currentColor`, en `ui/Logo.tsx` o
-  `ui/Ornament.tsx`. **Excepción declarada:** los cinco glifos de `ui/Badge.tsx` (`○ ◐ ◈ ◆ ●`),
+  resto de la interfaz. SVG en trazo, heredando `currentColor`, en `ui/Iconos.tsx`
+  —la casa de los iconos de línea— o en `ui/Logo.tsx` / `ui/Ornament.tsx`. Un icono que vive
+  **dentro de una línea de texto** se dimensiona en `1em`, no en píxeles, para que escale con
+  ella. Una auditoría del 2026-09-02 encontró **seis infracciones**, y una de ellas era el
+  `✓` que esta misma regla nombra como prohibido: escribir la regla no la aplica, hace falta
+  la prueba. La hay, y echa dos redes — un barrido del **código fuente** de esos ficheros
+  contra la lista de glifos prohibidos, que caza uno reintroducido donde ninguna prueba monta
+  el componente, y el **DOM pintado**, que comprueba que el dibujo se pinta de verdad y
+  conserva su `role`. Por eso los comentarios de esos ficheros nombran los glifos **con
+  palabras** en vez de escribirlos. **Excepción declarada:** los cinco glifos de `ui/Badge.tsx` (`○ ◐ ◈ ◆ ●`),
   que son geometría pura, se alinean con el texto y son la señal que distingue los niveles de
   visibilidad **sin depender del color** — sustituirlos por SVG costaría esa alineación sin
   ganar nada.
@@ -200,9 +223,32 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   superficies que enmarca. La primera versión era del mismo color y del mismo grosor de filete
   que las tarjetas, y el autor lo describió exactamente así: «casi no se nota».
 
-- **Leer y editar son pantallas distintas.** Una fila lleva a una página de lectura; el editor
-  se abre desde ella. Meter el cuerpo de una ficha en un `<textarea>` para poder leerlo es lo
-  que hacía esta aplicación, y es lo que la hacía incómoda en la mesa.
+- **Se toca donde se lee. (Corrige la regla anterior, 2026-09-02 noche.)** Hasta esta fecha
+  aquí ponía *«leer y editar son pantallas distintas: una fila lleva a una página de lectura y
+  el editor se abre desde ella»*. **Esa regla ya no rige, y se declara aquí en vez de dejar la
+  contradicción implícita.** Lo que la tumbó fue la hoja de personaje: tenía **dos** botones de
+  «Editar», y el autor pidió que fuera dinámica. La parte de la regla vieja que sí era cierta
+  se conserva: el fallo original era **meter el cuerpo de una ficha en un `<textarea>` para
+  poder leerlo**, y eso sigue prohibido. Lo que no era cierto es la conclusión que se sacó de
+  él. La regla buena es más fina:
+
+  - **Un valor se edita en su sitio**, con la forma que tiene al leerse. Sacar la causa a un
+    diálogo rompe justo lo que explica el número: en la hoja de papel, característica →
+    modificador → salvación bajan por la misma columna **porque una alimenta a la siguiente**,
+    y esa contigüidad *es* la explicación.
+  - **Lo irreversible sigue detrás de un botón.** Borrar no se pone a un clic de lo que se
+    lee.
+  - **La afordancia es información de dominio, no decoración.** Un valor editable lleva un
+    subrayado tenue; **un valor derivado no lleva ninguno**, y esa ausencia significa «esto lo
+    calculo yo, edita su causa».
+  - **Cómo se guarda depende del gesto, y no se mezclan dos patrones en un mismo formulario.**
+    Automático donde el gesto **es** la acción entera (un desplegable, una casilla); explícito
+    donde escribir es un proceso (un texto, con Guardar y Cancelar).
+  - **El botón de guardar nunca se deshabilita**: deshabilitado no recibe foco de teclado y
+    tiene mal contraste, así que quien no ve el formulario no se entera de que existe.
+  - **Un rechazo conserva lo tecleado y explica el motivo en línea, nunca en un aviso
+    flotante.** Nuestros rechazos son de autorización, y un aviso flotante se ha ido antes de
+    que un lector de pantalla llegue a él.
 
 - **Un filtro o una búsqueda en pantalla es de cliente, nunca control de acceso** (tarea
   1.17c · A2/C1, `features/entities/filter.ts`). Opera sobre una lista que el servidor **ya**

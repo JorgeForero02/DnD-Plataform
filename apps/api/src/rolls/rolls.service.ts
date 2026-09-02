@@ -6,7 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from "@nestjs/common";
-import type { CreateRollInput, RollResult } from "@dnd/shared";
+import type { CreateRollInput, RollMode, RollResult } from "@dnd/shared";
 import {
   DiceExpressionError,
   rollExpression,
@@ -52,7 +52,7 @@ export class RollsService {
 
     let resultado: DiceRollResult;
     try {
-      resultado = rollExpression(input.expression, this.roller);
+      resultado = rollExpression(conVentaja(input.expression, input.mode), this.roller);
     } catch (error) {
       // Una expresión inválida es **400 con su motivo**, no un 500 ni un total que miente.
       if (error instanceof DiceExpressionError)
@@ -161,4 +161,21 @@ function clasificarNatural(resultado: DiceRollResult): "NONE" | "ONE" | "TWENTY"
   if (dado === 20) return "TWENTY";
   if (dado === 1) return "ONE";
   return "NONE";
+}
+
+/**
+ * Aplica ventaja o desventaja a la expresión: **el único d20 pasa a ser `2d20kh1` o `2d20kl1`**.
+ *
+ * Se hace aquí y no en el cliente porque es una regla del juego. Y solo toca un `1d20` (o `d20`)
+ * suelto: pedir ventaja sobre `4d6kh3` —una tirada de características— o sobre `2d8` no
+ * significa nada, y **inventarle un significado sería peor que ignorarlo**; la expresión se
+ * devuelve tal cual y el resultado guarda la expresión que de verdad se tiró, así que la traza
+ * no miente sobre lo que pasó.
+ */
+export function conVentaja(expression: string, mode: RollMode): string {
+  if (mode === "NORMAL") return expression;
+  const sufijo = mode === "ADVANTAGE" ? "kh1" : "kl1";
+  // `1d20` o `d20` al principio de la expresión, sin dígito de "keep" ya puesto.
+  const reemplazado = expression.replace(/^(\s*)(1?d20)(?![0-9a-zA-Z])/i, `$1 2d20${sufijo}`);
+  return reemplazado === expression ? expression : reemplazado.trim();
 }

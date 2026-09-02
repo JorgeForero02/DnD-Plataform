@@ -95,7 +95,9 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
 
   // Tirar una salvación desde la hoja: 1d20+mod con su etiqueta, de verdad contra el servidor.
   const filaFuerza = page.getByText("Salvación de Fuerza").locator("..");
-  await filaFuerza.getByRole("button", { name: "Tirar" }).click();
+  // `exact` importa: desde que existen ventaja y desventaja (`TirarBoton.tsx`) hay tres botones
+  // por fila y los tres empiezan por «Tirar Salvación de Fuerza».
+  await filaFuerza.getByRole("button", { name: "Tirar Salvación de Fuerza", exact: true }).click();
   await expect(filaFuerza.getByRole("status")).toBeVisible({ timeout: 10_000 });
   await expect(filaFuerza.getByRole("status")).toContainText(/\d+ \(\d+\)/);
 

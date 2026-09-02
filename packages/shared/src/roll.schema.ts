@@ -32,8 +32,23 @@ export const createRollSchema = z.object({
    */
   sessionId: z.string().cuid().optional(),
   visibility: visibilitySchema.default("PLAYERS"),
+  /**
+   * **Ventaja y desventaja como concepto de juego, no como sintaxis.**
+   *
+   * El plan de 2A las dejó fuera explícitamente —«aquí `kh1` es solo sintaxis»— y esa decisión
+   * se tomó cuando no había pantalla. Con pantalla es insostenible: salen en casi todos los
+   * turnos de 5.ª edición (ataque furtivo, ayuda, estar derribado, asustado, invisible), y sin
+   * esto el jugador tiene que salir de la hoja y escribir `2d20kh1+3` a mano — que es la imagen
+   * del papel al lado del portátil que esta herramienta existe para quitar.
+   *
+   * **Lo compone el servidor**, no el cliente: la regla es «dos d20, te quedas el mejor (o el
+   * peor)», y esa es una regla del juego. Un cliente que mandara la expresión ya montada podría
+   * decir que tira con ventaja y mandar `3d20kh1`.
+   */
+  mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
 });
 export type CreateRollInput = z.infer<typeof createRollSchema>;
+export type RollMode = CreateRollInput["mode"];
 
 /**
  * **`natural` y `outcome` son dos hechos distintos, y por eso son dos campos.**

@@ -3,7 +3,7 @@ import type { Roller } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { RollsService } from "./rolls.service";
+import { conVentaja, RollsService } from "./rolls.service";
 
 // Tarea 2A.13.
 //
@@ -42,7 +42,7 @@ describe("los cuatro resultados se clasifican bien", () => {
   it("sin CD, el resultado es NO_DC — y eso no es un fallo", () => {
     // En la mesa se tira muchas veces sin CD: daño, iniciativa, un dado a secas.
     return montar(dadosFijos(11))
-      .service.roll("u1", "c1", { expression: "d20", visibility: "PLAYERS" })
+      .service.roll("u1", "c1", { expression: "d20", visibility: "PLAYERS", mode: "NORMAL" })
       .then((r) => {
         expect(r.outcome).toBe("NO_DC");
         expect(r.natural).toBe("NONE");
@@ -55,11 +55,13 @@ describe("los cuatro resultados se clasifican bien", () => {
       expression: "d20",
       dc: 15,
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     const falla = await montar(dadosFijos(14)).service.roll("u1", "c1", {
       expression: "d20",
       dc: 15,
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(alcanza.outcome).toBe("SUCCESS");
     expect(falla.outcome).toBe("FAILURE");
@@ -71,6 +73,7 @@ describe("los cuatro resultados se clasifican bien", () => {
       expression: "d20-15",
       dc: 20,
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(r.natural).toBe("TWENTY");
     expect(r.outcome).toBe("FAILURE");
@@ -82,6 +85,7 @@ describe("los cuatro resultados se clasifican bien", () => {
       expression: "d20+20",
       dc: 10,
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(r.natural).toBe("ONE");
     expect(r.outcome).toBe("SUCCESS");
@@ -93,6 +97,7 @@ describe("qué cuenta como natural, y qué no", () => {
     const r = await montar(dadosFijos(20, 3)).service.roll("u1", "c1", {
       expression: "2d20kh1",
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(r.natural).toBe("TWENTY");
     expect(r.kept).toEqual([20]);
@@ -104,6 +109,7 @@ describe("qué cuenta como natural, y qué no", () => {
     const r = await montar(dadosFijos(20, 2)).service.roll("u1", "c1", {
       expression: "2d20kl1",
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(r.natural).toBe("NONE");
     expect(r.kept).toEqual([2]);
@@ -114,6 +120,7 @@ describe("qué cuenta como natural, y qué no", () => {
     const r = await montar(dadosFijos(1)).service.roll("u1", "c1", {
       expression: "1d6",
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(r.natural).toBe("NONE");
   });
@@ -122,6 +129,7 @@ describe("qué cuenta como natural, y qué no", () => {
     const r = await montar(dadosFijos(20, 1, 7)).service.roll("u1", "c1", {
       expression: "3d20",
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(r.natural).toBe("NONE");
   });
@@ -130,7 +138,11 @@ describe("qué cuenta como natural, y qué no", () => {
 describe("lo que se devuelve y lo que se escribe", () => {
   it("separa los dados del modificador, con su signo", async () => {
     const { service } = montar(dadosFijos(4, 5));
-    const r = await service.roll("u1", "c1", { expression: "2d6+3", visibility: "PLAYERS" });
+    const r = await service.roll("u1", "c1", {
+      expression: "2d6+3",
+      visibility: "PLAYERS",
+      mode: "NORMAL",
+    });
     expect(r.rolls).toEqual([4, 5]);
     expect(r.modifier).toBe(3);
     expect(r.total).toBe(12);
@@ -138,7 +150,11 @@ describe("lo que se devuelve y lo que se escribe", () => {
 
   it("un modificador negativo cuenta con su signo", async () => {
     const { service } = montar(dadosFijos(10));
-    const r = await service.roll("u1", "c1", { expression: "d20-2", visibility: "PLAYERS" });
+    const r = await service.roll("u1", "c1", {
+      expression: "d20-2",
+      visibility: "PLAYERS",
+      mode: "NORMAL",
+    });
     expect(r.modifier).toBe(-2);
     expect(r.total).toBe(8);
   });
@@ -149,6 +165,7 @@ describe("lo que se devuelve y lo que se escribe", () => {
       expression: "d20",
       label: "Percepción",
       visibility: "DM_ONLY",
+      mode: "NORMAL" as const,
     });
     expect(events.record).toHaveBeenCalledWith(
       "u1",
@@ -163,7 +180,7 @@ describe("lo que se devuelve y lo que se escribe", () => {
   it("una expresión inválida es 400 con su motivo, y NO se escribe nada en el log", async () => {
     const { service, events } = montar(dadosFijos(1));
     await expect(
-      service.roll("u1", "c1", { expression: "4d", visibility: "PLAYERS" }),
+      service.roll("u1", "c1", { expression: "4d", visibility: "PLAYERS", mode: "NORMAL" }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(events.record).not.toHaveBeenCalled();
   });
@@ -173,13 +190,13 @@ describe("la sesión de la tirada", () => {
   it("sin decirla, se usa la que esté en curso", async () => {
     const { service, prisma, events } = montar(dadosFijos(9));
     prisma.session.findFirst.mockResolvedValue({ id: "s-en-curso" });
-    await service.roll("u1", "c1", { expression: "d20", visibility: "PLAYERS" });
+    await service.roll("u1", "c1", { expression: "d20", visibility: "PLAYERS", mode: "NORMAL" });
     expect(events.record.mock.calls[0][2]).toMatchObject({ sessionId: "s-en-curso" });
   });
 
   it("sin sesión abierta, la tirada queda fuera de sesión en vez de fallar", async () => {
     const { service, events } = montar(dadosFijos(9));
-    await service.roll("u1", "c1", { expression: "d20", visibility: "PLAYERS" });
+    await service.roll("u1", "c1", { expression: "d20", visibility: "PLAYERS", mode: "NORMAL" });
     expect(events.record.mock.calls[0][2]).toMatchObject({ sessionId: null });
   });
 
@@ -187,7 +204,12 @@ describe("la sesión de la tirada", () => {
     const { service, prisma } = montar(dadosFijos(9));
     prisma.session.findFirst.mockResolvedValue(null);
     await expect(
-      service.roll("u1", "c1", { expression: "d20", sessionId: "s-ajena", visibility: "PLAYERS" }),
+      service.roll("u1", "c1", {
+        expression: "d20",
+        sessionId: "s-ajena",
+        visibility: "PLAYERS",
+        mode: "NORMAL",
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
@@ -200,6 +222,7 @@ describe("tirar por un personaje se comprueba en el servidor", () => {
       expression: "d20",
       characterId: "ch1",
       visibility: "PLAYERS",
+      mode: "NORMAL" as const,
     });
     expect(events.record.mock.calls[0][2]).toMatchObject({
       subjectType: "character",
@@ -212,7 +235,12 @@ describe("tirar por un personaje se comprueba en el servidor", () => {
     prisma.character.findFirst.mockResolvedValue({ id: "ch1", ownerId: "otro" });
     membership.getMembership.mockResolvedValue({ role: "DM" });
     await expect(
-      service.roll("dm", "c1", { expression: "d20", characterId: "ch1", visibility: "PLAYERS" }),
+      service.roll("dm", "c1", {
+        expression: "d20",
+        characterId: "ch1",
+        visibility: "PLAYERS",
+        mode: "NORMAL",
+      }),
     ).resolves.toBeDefined();
   });
 
@@ -220,7 +248,12 @@ describe("tirar por un personaje se comprueba en el servidor", () => {
     const { service, prisma, events } = montar(dadosFijos(9));
     prisma.character.findFirst.mockResolvedValue({ id: "ch1", ownerId: "otro" });
     await expect(
-      service.roll("u1", "c1", { expression: "d20", characterId: "ch1", visibility: "PLAYERS" }),
+      service.roll("u1", "c1", {
+        expression: "d20",
+        characterId: "ch1",
+        visibility: "PLAYERS",
+        mode: "NORMAL",
+      }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(events.record).not.toHaveBeenCalled();
   });
@@ -229,7 +262,12 @@ describe("tirar por un personaje se comprueba en el servidor", () => {
     const { service, prisma } = montar(dadosFijos(9));
     prisma.character.findFirst.mockResolvedValue(null);
     await expect(
-      service.roll("u1", "c1", { expression: "d20", characterId: "ch9", visibility: "PLAYERS" }),
+      service.roll("u1", "c1", {
+        expression: "d20",
+        characterId: "ch9",
+        visibility: "PLAYERS",
+        mode: "NORMAL",
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -237,8 +275,49 @@ describe("tirar por un personaje se comprueba en el servidor", () => {
     const { service, membership, events } = montar(dadosFijos(9));
     membership.requireMember.mockRejectedValue(new ForbiddenException());
     await expect(
-      service.roll("x", "c1", { expression: "d20", visibility: "PLAYERS" }),
+      service.roll("x", "c1", { expression: "d20", visibility: "PLAYERS", mode: "NORMAL" }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(events.record).not.toHaveBeenCalled();
+  });
+});
+
+describe("ventaja y desventaja — la regla la compone el servidor", () => {
+  // El plan de 2A las dejó fuera («aquí `kh1` es solo sintaxis») cuando no había pantalla. Con
+  // pantalla es insostenible: salen en casi todos los turnos, y sin esto el jugador sale de la
+  // hoja a escribir `2d20kh1+3` a mano. Se compone en el servidor porque es una regla del juego:
+  // un cliente que mandara la expresión ya montada podría decir «con ventaja» y tirar `3d20kh1`.
+
+  it("ventaja convierte el d20 en 2d20kh1, y el modificador se conserva", () => {
+    expect(conVentaja("d20+3", "ADVANTAGE")).toBe("2d20kh1+3");
+    expect(conVentaja("1d20", "ADVANTAGE")).toBe("2d20kh1");
+  });
+
+  it("desventaja se queda el peor", () => {
+    expect(conVentaja("d20+5", "DISADVANTAGE")).toBe("2d20kl1+5");
+  });
+
+  it("en modo normal la expresión no se toca", () => {
+    expect(conVentaja("d20+3", "NORMAL")).toBe("d20+3");
+  });
+
+  it("pedir ventaja sobre algo que no es un d20 suelto no inventa nada", () => {
+    // `4d6kh3` es una tirada de características y `2d8` es daño: «con ventaja» no significa nada
+    // ahí, e inventarle un significado sería peor que ignorarlo.
+    expect(conVentaja("4d6kh3", "ADVANTAGE")).toBe("4d6kh3");
+    expect(conVentaja("2d8+2", "ADVANTAGE")).toBe("2d8+2");
+  });
+
+  it("la tirada guarda la expresión que DE VERDAD se tiró, no la que se pidió", async () => {
+    const { service } = montar(dadosFijos(11, 17));
+
+    const r = await service.roll("u1", "c1", {
+      expression: "d20+2",
+      visibility: "PLAYERS",
+      mode: "ADVANTAGE",
+    });
+
+    expect(r.expression).toContain("2d20kh1");
+    expect(r.total).toBe(19); // se queda el 17, no el 11
+    expect(r.dropped).toContain(11);
   });
 });

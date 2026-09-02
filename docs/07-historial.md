@@ -6,6 +6,22 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (13:00) — Despliegue de los cuatro arreglos de la mesa, sin migración
+
+**Qué.** `5329da6` a producción por la API de Coolify (`deployment 6mwyrpiifuviluwzsro8km5v`,
+`finished` en ~2,5 min). Sin migración, así que sin volcado previo.
+
+**Verificado en producción con una partida dirigida a los cuatro arreglos, borrada después:**
+matar por daño masivo deja `dead` y **curar a un muerto devuelve 400**; el daño dado dentro de
+una sesión abierta aparece en `GET /events?sessionId`; el ensayo en seco devuelve
+`simulated: true` con estado **`WOULD_APPLY`, nunca `APPLIED`**, y la ficha sigue oculta después;
+y **dos lecturas del DM sobre su propia ficha dejan 0 sucesos `ENTITY_OPENED`**. Producción
+vuelve a 1 usuario y 2 campañas.
+
+**Cómo revertirlo.** Redesplegar `adb110c`. No hay esquema que deshacer.
+
+---
+
 ## 2026-09-02 (mesa de agentes) — Un DM y un tramposo jugaron contra la API, y encontraron cuatro fallos de corrección
 
 **Qué.** Dos agentes usaron la aplicación como personas: uno dirigió una partida entera contra

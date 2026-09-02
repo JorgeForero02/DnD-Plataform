@@ -22,13 +22,35 @@ Lo que falta, y va como **tarea 1.18**:
 | | Hallazgo | Gravedad |
 |---|---|---|
 | 1 | ~~**`JWT_SECRET` tiene un valor por defecto en el código**, en dos sitios~~ — **HECHO** (2026-09-01, ver [07-historial.md](./07-historial.md)): no hay valor por defecto, la variable es obligatoria y de 32 caracteres mínimo, y la API se niega a arrancar sin ella | ~~**Crítico**~~ |
-| 2 | **29 vulnerabilidades en dependencias de producción** (1 crítica, 16 altas) y CI no audita | Alto |
-| 3 | **Sin límite de peticiones**: fuerza bruta en login y en tokens de invitación | Alto |
-| 4 | **Sin cabeceras de seguridad** (`helmet`) | Medio |
-| 5 | **CORS abierto**, y además innecesario: nginx hace de proxy | Medio |
+| 2 | ~~**29 vulnerabilidades en dependencias de producción**~~ — **HECHO** (1.18a): Nest y Fastify subidos a 11.x, `fast-uri` a 3.1.6; quedan **4 moderadas** (`@opentelemetry/core` vía Sentry v8, 3 de `react-router` en web). CI audita con `--audit-level=high` | ~~Alto~~ |
+| 3 | ~~**Sin límite de peticiones**~~ — **HECHO** (1.18a): límite por IP en login, registro, aceptar invitación y cambiar contraseña. **Exige `TRUST_PROXY=1` en producción**, ver [02-entorno.md](./02-entorno.md) | ~~Alto~~ |
+| 4 | ~~**Sin cabeceras de seguridad**~~ — **HECHO** (1.18a): `@fastify/helmet` con política revisada, fijada por `apps/api/test/security-headers.e2e-spec.ts` | ~~Medio~~ |
+| 5 | ~~**CORS abierto**~~ — **HECHO** (1.18a): apagado por defecto; `CORS_ORIGIN` es la única forma de encenderlo | ~~Medio~~ |
 | 6 | **Sin pantalla de 404 ni `ErrorBoundary`**: una URL inventada da pantalla en blanco | Medio |
 | 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
-| 8 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida — es **B3** del inventario de la tarea 1.17 (tabla de abajo); se resuelve aquí, no en 1.17, porque es superficie de cuenta/autenticación | API + web |
+| 8 | **HECHO a medias** (1.18a, mitad de servidor): ya se puede cambiar el nombre visible y la contraseña por API —exigiendo la actual, verificada con argon2—, y cambiarla **invalida los tokens anteriores**. Falta la **pantalla** (va en 1.18b). **Recuperarla si se olvida sigue BLOQUEADO**: necesita servicio de correo, que no existe; se decide junto al despliegue | web |
+
+### Deuda nueva aceptada en 1.18a (2026-09-01)
+
+Cada línea es un compromiso conocido, no un descuido:
+
+- **`JwtStrategy.validate` consulta la base en CADA petición autenticada**, y carga la fila
+  entera del usuario (el hash incluido) para devolver dos campos. Es el precio de invalidar los
+  tokens al cambiar la contraseña: el token no lleva ninguna señal de un cambio posterior, así
+  que la única forma es preguntar a la fuente de la verdad. Si algún día pesa, la salida es un
+  `select` estrecho y, si aún pesa, caché corta.
+- **`AUTH_RATE_LIMIT` (5/min) condiciona la suite e2e**: `auth.e2e-spec.ts` gasta 3 de esas 5
+  llamadas en la misma ventana. Quien añada un login de más verá un 429 que parece un fallo de
+  credenciales. **La respuesta es reestructurar el fichero, nunca subir la constante.**
+- **El `NotFoundException` de `GET /auth/me` quedó inalcanzable**: `JwtStrategy` ya rechaza con
+  401 al usuario borrado antes de llegar al controlador. Mejor comportamiento, rama muerta.
+- **`PATCH /auth/password` no devuelve un token nuevo**, así que cambiar la contraseña y volver
+  a entrar dentro del mismo segundo de reloj puede rechazar el token recién emitido (el `iat` de
+  JWT tiene precisión de segundos y el empate se trata como caduco, a propósito). Es también la
+  razón de la espera de 1,1 s en la e2e. Devolver un token fresco en la respuesta lo cerraría.
+- **Sin prueba automática de que `main.ts` llame a `loadBootEnv()`**: la garantía se movió
+  dentro de `buildAdapter()`, donde sí la fija una prueba. La llamada de `main.ts` es cinturón
+  y tirantes.
 
 ## Tarea 1.17 — cierre real de la fase 1
 

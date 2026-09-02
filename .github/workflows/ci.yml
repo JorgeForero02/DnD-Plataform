@@ -27,6 +27,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
+      # Threshold is "high", not "moderate": `pnpm audit --prod` still finds 4 moderate
+      # findings, both genuinely out of scope here — 3 react-router advisories in apps/web (a
+      # different branch/task entirely) and 1 @opentelemetry/core via @sentry/node@^8, fixed
+      # only by a Sentry v10 major bump (well beyond this task's declared Nest/Fastify upgrade,
+      # and a risk of its own). Earlier this gate stopped at "critical" because of 2 high
+      # fast-uri findings, believed to need a workspace-root pnpm.overrides outside this task's
+      # boundary — that was wrong: fast-uri's patched versions (>=3.1.4, >=3.1.5) are already
+      # inside the ^3.0.1 range ajv@8.20.0 itself declares. `pnpm update --filter @dnd/api
+      # fast-uri --latest` (the command first tried) is a no-op on a non-direct dependency;
+      # `pnpm update -r --depth Infinity fast-uri` is what actually re-resolves it (moved the
+      # lockfile from 3.1.3 to 3.1.6). No override, no boundary violation, no more high findings.
+      - run: pnpm audit --prod --audit-level=high
       - run: pnpm --filter @dnd/api prisma:generate
       - run: pnpm --filter @dnd/api exec prisma migrate deploy
       - run: pnpm lint

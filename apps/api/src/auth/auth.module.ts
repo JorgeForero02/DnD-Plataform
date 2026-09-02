@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { JwtModule } from "@nestjs/jwt";
+import { JwtModule, JwtSignOptions } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { UsersModule } from "../users/users.module";
 import { requireJwtSecret } from "../common/jwt-secret";
@@ -18,7 +18,12 @@ import { JwtStrategy } from "./jwt.strategy";
     JwtModule.registerAsync({
       useFactory: () => ({
         secret: requireJwtSecret(),
-        signOptions: { expiresIn: process.env.JWT_EXPIRES_IN ?? "7d" },
+        // @nestjs/jwt@11's SignOptions (from jsonwebtoken) types expiresIn as a template-literal
+        // union ("7d", "10h", ...) or a number of seconds, not a plain string — an env var reads
+        // as `string` no matter its actual value, so the cast is required, not a type-safety hole.
+        signOptions: {
+          expiresIn: (process.env.JWT_EXPIRES_IN ?? "7d") as JwtSignOptions["expiresIn"],
+        },
       }),
     }),
   ],

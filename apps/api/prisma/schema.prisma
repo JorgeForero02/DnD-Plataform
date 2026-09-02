@@ -31,12 +31,16 @@ enum EntityType {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  displayName  String
-  isAdmin      Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  displayName       String
+  isAdmin           Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  // Set on every successful password change (never on creation). JwtStrategy.validate
+  // rejects any token whose `iat` predates this, so changing your password invalidates
+  // every token issued before the change — "changing your password logs you out everywhere".
+  passwordChangedAt DateTime?
 }
 
 model Campaign {

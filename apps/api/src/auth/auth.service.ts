@@ -1,7 +1,12 @@
-import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
-import { RegisterInput, LoginInput, AuthResponse } from "@dnd/shared";
+import { RegisterInput, LoginInput, ChangePasswordInput, AuthResponse } from "@dnd/shared";
 import { UsersService } from "../users/users.service";
 
 @Injectable()
@@ -25,6 +30,18 @@ export class AuthService {
     const ok = await argon2.verify(user.passwordHash, input.password);
     if (!ok) throw new UnauthorizedException("Invalid credentials");
     return this.buildResponse(user);
+  }
+
+  // Password change (not recovery — the caller must already hold the current password).
+  // The user id comes from the JWT (controller), never from the request body: a user can
+  // only ever change their own password.
+  async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundException("User not found");
+    const ok = await argon2.verify(user.passwordHash, input.currentPassword);
+    if (!ok) throw new UnauthorizedException("Current password is incorrect");
+    const passwordHash = await argon2.hash(input.newPassword);
+    await this.users.updatePasswordHash(user.id, passwordHash);
   }
 
   private async buildResponse(user: {

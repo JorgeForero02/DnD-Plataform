@@ -8,6 +8,7 @@ describe("UsersService", () => {
     user: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
   };
 
@@ -43,5 +44,24 @@ describe("UsersService", () => {
       where: { id: "1" },
     });
     expect(r).toEqual({ id: "1", displayName: "Gandalf" });
+  });
+
+  it("updateDisplayName() selects only id, email and displayName — never the hash", async () => {
+    prismaMock.user.update.mockResolvedValue({ id: "1", email: "a@b.com", displayName: "New" });
+    await service.updateDisplayName("1", "New");
+    expect(prismaMock.user.update).toHaveBeenCalledWith({
+      where: { id: "1" },
+      data: { displayName: "New" },
+      select: { id: true, email: true, displayName: true },
+    });
+  });
+
+  it("updatePasswordHash() also stamps passwordChangedAt", async () => {
+    prismaMock.user.update.mockResolvedValue({ id: "1" });
+    await service.updatePasswordHash("1", "new-hash");
+    const call = prismaMock.user.update.mock.calls[0][0];
+    expect(call.where).toEqual({ id: "1" });
+    expect(call.data.passwordHash).toBe("new-hash");
+    expect(call.data.passwordChangedAt).toBeInstanceOf(Date);
   });
 });

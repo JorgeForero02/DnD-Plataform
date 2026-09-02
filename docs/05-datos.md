@@ -116,6 +116,29 @@ renderiza Markdown (`react-markdown` v9, sin `remark-gfm` ni `rehype-raw` — Co
 cada plugin es superficie nueva). No usa `innerHTML` ni `dangerouslySetInnerHTML`: esa es la
 razón de elegir esa biblioteca, no una casualidad.
 
+## `User.passwordChangedAt` — por qué existe una columna solo para caducar tokens
+
+Añadida en la tarea 1.18a (migración `20260902004144_add_password_changed_at`): una columna
+**anulable, sin valor por defecto y sin relleno retroactivo**, así que la migración es un
+`ALTER TABLE` que no reescribe ninguna fila y las sesiones abiertas siguen valiendo (con `null`
+la comprobación no se aplica).
+
+Sirve para una sola cosa: **cambiar la contraseña invalida los tokens emitidos antes**. El JWT
+es autocontenido y no lleva ninguna señal de un cambio posterior, así que la única forma de
+caducarlo es preguntar a la fuente de la verdad — por eso `JwtStrategy.validate` consulta la
+base **en cada petición autenticada**, coste declarado en [06-pendientes.md](./06-pendientes.md).
+
+Dos detalles que no son obvios:
+
+- **El `iat` de un JWT tiene precisión de segundos** y la columna, de milisegundos. La
+  comparación redondea hacia abajo y rechaza el empate (`<=`, no `<`): un token emitido en el
+  mismo segundo del cambio no se puede demostrar posterior, y ante la duda se caduca. La
+  función existe justo para el caso *"me robaron la contraseña"*, así que el fallo seguro es
+  rechazar.
+- **La consecuencia real** es que cambiar la contraseña y volver a entrar dentro del mismo
+  segundo puede rechazar el token recién emitido. Se cierra el día que `PATCH /auth/password`
+  devuelva un token nuevo en su respuesta; está anotado.
+
 ## El modelo de visibilidad
 
 Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**

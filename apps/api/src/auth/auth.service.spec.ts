@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { ConflictException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
 import { AuthService } from "./auth.service";
@@ -7,7 +7,12 @@ import { UsersService } from "../users/users.service";
 
 describe("AuthService", () => {
   let service: AuthService;
-  const users = { findByEmail: jest.fn(), create: jest.fn() };
+  const users = {
+    findByEmail: jest.fn(),
+    create: jest.fn(),
+    findById: jest.fn(),
+    updatePasswordHash: jest.fn(),
+  };
   const jwt = { signAsync: jest.fn().mockResolvedValue("token123") };
 
   beforeEach(async () => {
@@ -65,5 +70,34 @@ describe("AuthService", () => {
     });
     const r = await service.login({ email: "a@b.com", password: "password123" });
     expect(r.token).toBe("token123");
+  });
+
+  it("changePassword() rejects a wrong current password without touching the stored hash", async () => {
+    const hash = await argon2.hash("old-password");
+    users.findById.mockResolvedValue({ id: "1", email: "a@b.com", passwordHash: hash });
+    await expect(
+      service.changePassword("1", { currentPassword: "wrong", newPassword: "new-password" }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(users.updatePasswordHash).not.toHaveBeenCalled();
+  });
+
+  it("changePassword() throws NotFoundException if the token's user no longer exists", async () => {
+    users.findById.mockResolvedValue(null);
+    await expect(
+      service.changePassword("1", { currentPassword: "old-password", newPassword: "new-password" }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("changePassword() verifies the current password and stores a new hash", async () => {
+    const hash = await argon2.hash("old-password");
+    users.findById.mockResolvedValue({ id: "1", email: "a@b.com", passwordHash: hash });
+    await service.changePassword("1", {
+      currentPassword: "old-password",
+      newPassword: "new-password",
+    });
+    expect(users.updatePasswordHash).toHaveBeenCalledWith("1", expect.any(String));
+    const [, newHash] = users.updatePasswordHash.mock.calls[0];
+    expect(newHash).not.toBe(hash);
+    expect(await argon2.verify(newHash, "new-password")).toBe(true);
   });
 });

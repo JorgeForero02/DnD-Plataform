@@ -39,6 +39,11 @@ Variables: `DATABASE_URL` (interna), `JWT_SECRET` (`openssl rand -hex 32`),
 **`JWT_SECRET` es obligatoria y de 32 caracteres como mínimo: sin ella, o más corta, la API
 se niega a arrancar** en vez de firmar con un valor por defecto
 (`apps/api/src/common/jwt-secret.ts`). `openssl rand -hex 32` da 64, de sobra.
+Y **`TRUST_PROXY=1`**, porque la API queda detrás de exactamente un proxy (nginx). Sin ella el
+limitador de intentos agrupa a todo internet en un solo cubo por la IP del proxy, y cualquiera
+puede dejar a todos los usuarios fuera del login; con `true` en vez de un número, el atacante
+elige su propia clave y el límite no existe. Ver el aviso de
+[02-entorno.md](./02-entorno.md).
 El `CMD` de la imagen ejecuta `prisma migrate deploy` al arrancar: **el esquema se aplica
 solo**.
 

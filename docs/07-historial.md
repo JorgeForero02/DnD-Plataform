@@ -6,6 +6,62 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-01 — Endurecimiento de la API: cabeceras, CORS, límite de intentos, dependencias y cuenta (tarea 1.18a)
+
+**Qué.** Los hallazgos 2, 3, 4, 5 y la mitad de servidor del 8 de la auditoría del 2026-09-01,
+en una sola rama que solo tocó `apps/api` y `packages/shared`:
+
+- **Cabeceras (`@fastify/helmet`)** con política revisada, no la de por defecto: `X-Frame-Options:
+  DENY`, `nosniff`, `Referrer-Policy`, y `Content-Security-Policy` **apagada a propósito** —
+  gobierna cómo un navegador pinta una página, y esta API solo devuelve JSON.
+- **CORS apagado por defecto.** La configuración contradecía a `01-arquitectura.md` (*"No hay
+  CORS por diseño"*): en producción nginx y en local Vite sirven `/api` en el mismo origen.
+  `CORS_ORIGIN` queda como única forma de encenderlo.
+- **Límite de peticiones por IP** (`@nestjs/throttler`) en login, registro, aceptar invitación y
+  cambiar contraseña, con constantes con nombre en `common/rate-limit.constants.ts`.
+- **Dependencias**: Nest y Fastify a 11.x y `fast-uri` a 3.1.6. `pnpm audit --prod` pasa de
+  **29 hallazgos (1 crítico, 16 altos) a 4 moderados**, y CI audita con `--audit-level=high`.
+- **Cuenta**: cambiar el nombre visible y la contraseña —exigiendo la actual y verificándola con
+  argon2—, con esquemas Zod en `@dnd/shared`. **Cambiar la contraseña invalida los tokens
+  anteriores** (`User.passwordChangedAt`, ver [05-datos.md](./05-datos.md)).
+- `main.ts` se parte: `configure-app.ts` expone `buildAdapter()`, `configureApp()` y
+  `loadBootEnv()`, que ahora usan tanto el arranque real como las pruebas.
+
+**Por qué se parte `main.ts`.** Porque lo que solo vive en `bootstrap()` **no lo prueba nadie**:
+los e2e construyen `AppModule` directamente. Antes eso era una línea (`enableCors()`); al añadir
+toda la política de cabeceras y la configuración del adaptador habría sido borrable en silencio
+por el siguiente refactor.
+
+**La trampa que encontró la revisión, y que es la lección de la tarea.** `trustProxy: true`
+**anulaba el límite de intentos que esta misma tarea añadía**: el limitador usa `req.ip`, y con
+`true` Fastify toma la entrada **más a la izquierda** de `X-Forwarded-For` —la que manda el
+cliente—, mientras el `proxy_add_x_forwarded_for` de nginx **añade** sin sustituir. Un atacante
+rotando la cabecera tenía intentos ilimitados. Medido contra fastify 5.11.3: con `true` la clave
+era `9.9.9.9` (falsa); con `1`, `203.0.113.7` (la real). Se sustituye por `TRUST_PROXY`, un
+**número de saltos** que por defecto no confía en ninguno.
+
+Y una segunda vuelta de tuerca: `TRUST_PROXY` se leía **antes** de cargarse `apps/api/.env`
+—`buildAdapter()` es un argumento de `NestFactory.create`, la misma trampa que ya documentaba
+`auth.module.ts` para `JWT_SECRET`—, así que ponerlo en el `.env` no hacía nada. Falla al
+cerrar, que suena bien y no lo es: detrás de nginx significa que todo internet comparte un cubo
+de cinco intentos por minuto y cualquiera deja a todos fuera del login. Se arregla con
+`loadBootEnv()` **dentro de `buildAdapter()`**, donde vive la lectura.
+
+**Prueba.** 81 unitarias y 43 e2e de API. Cada protección tiene una prueba que **falla si se
+quita**, comprobado por mutación **ejecutada por el orquestador**, no por el informe:
+`trustProxy` de vuelta a `true` → `trust-proxy.e2e-spec.ts` da *Expected: 429, Received: 401*;
+la ventana de `passwordChangedAt` aflojada → caen dos de `jwt.strategy.spec.ts` y la e2e de
+cambio de contraseña; `loadBootEnv()` fuera de `buildAdapter()` → *Expected: "203.0.113.7",
+Received: "127.0.0.1"*. Esa última mutación **descubrió que el arreglo anterior no estaba
+fijado**: borrar la llamada de `main.ts` dejaba la suite entera en verde, porque la prueba
+llamaba a `dotenv` por su cuenta. Probaba el mecanismo, no el cableado.
+
+**Cómo revertir.** Un commit propio. Revertirlo devuelve CORS abierto, quita cabeceras y límite
+de intentos, y deja la columna `passwordChangedAt` huérfana (anulable: no estorba). La
+autorización del servidor no se tocó: `canView` sigue intacto.
+
+---
+
 ## 2026-09-01 — `JWT_SECRET` deja de tener valor por defecto (tarea 1.18, hallazgo 1)
 
 **Qué.** `apps/api/src/common/jwt-secret.ts` (nuevo) expone `requireJwtSecret()`, que lee la

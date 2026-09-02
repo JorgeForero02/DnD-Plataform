@@ -31,6 +31,17 @@ pnpm dev:web                                  # web en :5173, proxy /api -> :300
 | `PORT` | Puerto de la API | `3000` |
 | `SENTRY_DSN` | Errores en Sentry; **vacío lo desactiva** | *(vacío)* |
 | `API_URL` | **Solo web en producción**: destino interno del proxy nginx | `http://api:3000` |
+| `CORS_ORIGIN` | Orígenes permitidos, separados por coma. **Vacío = sin CORS**, que es lo normal: Vite y nginx sirven `/api` en el mismo origen | *(vacío)* |
+| `TRUST_PROXY` | **Número de saltos de proxy de confianza**, no un booleano. `0` o vacío = ninguno | `0` |
+
+> **`TRUST_PROXY` no es `true`/`false`, y la diferencia es una vulnerabilidad, no un estilo.**
+> Con `trustProxy: true` Fastify se queda con la entrada **más a la izquierda** de
+> `X-Forwarded-For` —la que pone el cliente—, y el `proxy_add_x_forwarded_for` de nginx
+> **añade** en vez de sustituir, así que el valor falso sobrevive. Como el limitador de
+> peticiones usa `req.ip`, un atacante rotando esa cabecera tendría intentos ilimitados. Con un
+> **número** se confía en exactamente ese número de saltos contando desde el socket, que es lo
+> correcto detrás de nginx (`TRUST_PROXY=1`). Medido, no supuesto: ver
+> `apps/api/src/configure-app.ts` y `apps/api/test/trust-proxy.e2e-spec.ts`.
 
 `.env.example` es la fuente de verdad de esta lista: si añades una variable, se añade ahí
 en el mismo commit. **Ningún secreto en el código.**

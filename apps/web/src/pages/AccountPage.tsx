@@ -14,6 +14,7 @@ import { ApiError } from "../lib/api";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
 import { Panel } from "../ui/Panel";
+import { IconoConfirmacion } from "../ui/Iconos";
 
 // Task 1.18b — reachable from the app chrome (DashboardPage.tsx's header, "Cuenta"). Two
 // independent forms, two independent panels: a failure in one has nothing to say about the
@@ -104,13 +105,14 @@ function DisplayNameForm() {
             {error}
           </p>
         )}
-        {/* No success token (see tokens.css): --accent-text plus a check glyph and the word
-            carries "this worked", the same register the invite link's "Copiado." now uses.
+        {/* No success token (see tokens.css): --accent-text más la marca de visto y la palabra
+            cargan con el "esto ha funcionado", el mismo registro que el "Copiado." del enlace de
+            invitación. Q1: el visto se dibuja (ui/Iconos.tsx), ya no es un glifo de fuente.
             role="status": announced politely instead of silently — the same gap error text
             closes with role="alert" above. */}
         {saved && (
           <p role="status" className="text-chrome-sm text-accent-text">
-            <span aria-hidden="true">✓ </span>
+            <IconoConfirmacion className="mr-1" />
             Nombre actualizado.
           </p>
         )}

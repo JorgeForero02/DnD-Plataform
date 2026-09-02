@@ -1,5 +1,6 @@
 import { cloneElement, useId } from "react";
 import type { ReactElement } from "react";
+import { IconoAviso } from "./Iconos";
 
 export interface FieldControlProps {
   id?: string;
@@ -70,9 +71,13 @@ export function Field({ label, error, hint, children }: FieldProps) {
         // weight) throws that away. --danger-text is the fix instead: same hue/saturation as
         // --danger, lightness raised until --bg/--surface/--vellum all clear 4.5:1 in the dark
         // theme (5.15 / 4.73 / 4.60 — see tokens.css and the report). The whole message reads
-        // as an error now, not just a muted note with a coloured bullet.
+        // as an error now, not just a muted note with a coloured mark.
+        //
+        // Q1: el aviso era un triángulo de fuente y ahora se dibuja (ui/Iconos.tsx). Sigue delante
+        // del
+        // texto porque la forma es la parte de la señal que no depende de distinguir el color.
         <p id={errorId} role="alert" className="font-chrome text-chrome-xs text-danger-text">
-          <span aria-hidden="true">▲ </span>
+          <IconoAviso className="mr-1" />
           {error}
         </p>
       )}

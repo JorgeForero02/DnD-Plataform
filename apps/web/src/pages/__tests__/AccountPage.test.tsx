@@ -58,7 +58,11 @@ describe("AccountPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Guardar nombre" }));
 
     await waitFor(() => expect(spy).toHaveBeenCalledWith({ displayName: "Alicia Renombrada" }));
-    expect(await screen.findByText("Nombre actualizado.")).toBeInTheDocument();
+    const exito = await screen.findByText("Nombre actualizado.");
+    // Q1: el visto es un dibujo, no un carácter de fuente, y sigue acompañando al mensaje —
+    // es la señal de éxito que no depende del color.
+    expect(exito.querySelector('svg[data-icono="confirmacion"]')).not.toBeNull();
+    expect(exito.textContent).toBe("Nombre actualizado.");
     // Revert the setUser(updated) call in AccountPage.tsx and this still shows the success
     // message (the request DID succeed) but the store — what the rest of the app reads —
     // keeps the stale name.

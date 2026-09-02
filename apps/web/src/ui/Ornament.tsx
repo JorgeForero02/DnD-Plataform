@@ -15,6 +15,7 @@
 // it frames the page, it is not a surface for reading on.
 
 import type { ReactNode } from "react";
+import { IconoRombo } from "./Iconos";
 
 /** The campaign-table grid: a surveyor's lattice, the faintest hint of a map under glass. */
 export function CartographicGrid({ className = "" }: { className?: string }) {
@@ -184,9 +185,9 @@ export function OrnamentRule({
           {children}
         </span>
       ) : (
-        <span aria-hidden="true" className="text-chrome-xs leading-none">
-          ◆
-        </span>
+        // Reseño Q1: era un rombo de fuente. La excepción declarada de la regla de iconos son los
+        // cinco de `ui/Badge.tsx` y ninguno más; este se dibuja como los demás.
+        <IconoRombo className="text-chrome-xs" />
       )}
       <span className="h-px flex-1 bg-current opacity-40" />
     </div>

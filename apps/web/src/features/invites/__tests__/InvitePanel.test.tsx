@@ -125,7 +125,13 @@ describe("InvitePanel", () => {
     // parent is a shared container that could carry an unrelated aria-hidden element and let
     // this pass without the glyph actually being THIS message's icon.
     const copied = await screen.findByText("Copiado.");
-    expect(copied.querySelector('[aria-hidden="true"]')?.textContent).toBe("✓ ");
+    // Q1: el visto se dibuja (ui/Iconos.tsx) en vez de ser un carácter de fuente. Se sigue
+    // exigiendo que esté *dentro* de este mensaje, porque su papel no es adornar: junto a la
+    // palabra es la parte de la confirmación que no depende de distinguir el color.
+    const icono = copied.querySelector('svg[data-icono="confirmacion"]');
+    expect(icono).not.toBeNull();
+    expect(icono!.getAttribute("aria-hidden")).toBe("true");
+    expect(copied.textContent).toBe("Copiado.");
   });
 
   it("shows the DM-only server error translated to Spanish", async () => {

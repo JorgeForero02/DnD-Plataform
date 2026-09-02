@@ -9,6 +9,7 @@ import { traducirErrorDeAcceso } from "../features/auth/errores";
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
+import { IconoConfirmacion } from "../ui/Iconos";
 import { AuthLayout } from "../features/auth/AuthLayout";
 
 export function LoginPage() {
@@ -68,7 +69,7 @@ export function LoginPage() {
           // interrupting — screen-reader users get nothing at all here without it, the same
           // gap error text closes with role="alert" elsewhere in this app.
           <p role="status" className="text-chrome-sm text-accent-text">
-            <span aria-hidden="true">✓ </span>
+            <IconoConfirmacion className="mr-1" />
             {flash}
           </p>
         )}

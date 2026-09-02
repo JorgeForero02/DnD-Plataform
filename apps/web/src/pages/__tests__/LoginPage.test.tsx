@@ -22,7 +22,7 @@ describe("LoginPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
-    useAuthStore.setState({ token: null, user: null });
+    useAuthStore.setState({ token: null, user: null, flash: null });
   });
 
   it("resumes a pending invitation instead of landing on the dashboard", async () => {
@@ -75,5 +75,20 @@ describe("LoginPage", () => {
     // Spanish. Asserting the translated text is what makes the translation load-bearing —
     // delete traducirErrorDeAcceso and this fails instead of passing on the raw message.
     expect(await screen.findByRole("alert")).toHaveTextContent("Correo o contraseña incorrectos.");
+  });
+
+  // Tarea Q1 — el aviso de buenas noticias («Contraseña cambiada», por ejemplo) llevaba un
+  // carácter de fuente como icono, que es justo el ejemplo que prohíbe la regla de
+  // docs/04-convenciones.md. Ahora se dibuja, y sigue dentro del propio mensaje: es la mitad de
+  // la señal que no depende de distinguir el color del texto.
+  it("el mensaje de buenas noticias lleva un visto dibujado, no un glifo de fuente", () => {
+    useAuthStore.setState({ flash: "Contraseña cambiada. Vuelve a entrar." });
+    renderLogin();
+
+    const aviso = screen.getByRole("status");
+    expect(aviso.textContent).toBe("Contraseña cambiada. Vuelve a entrar.");
+    const icono = aviso.querySelector('svg[data-icono="confirmacion"]');
+    expect(icono).not.toBeNull();
+    expect(icono!.getAttribute("aria-hidden")).toBe("true");
   });
 });

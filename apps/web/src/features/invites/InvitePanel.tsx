@@ -6,6 +6,7 @@ import { translateInviteError } from "./api";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { Panel } from "../../ui/Panel";
+import { IconoConfirmacion } from "../../ui/Iconos";
 
 export function InvitePanel({ campaignId }: { campaignId: string }) {
   const create = useCreateInvite(campaignId);
@@ -110,11 +111,13 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
           </Button>
           {/* Task 1.18b: this was plain --accent-text text, the exact colour of the links
               around it — "Copiado." read as one more link, not as confirmation the click did
-              anything. No new success token (see tokens.css): a check glyph plus the explicit
-              word on the same --accent-text is what makes it read as success instead. */}
+              anything. No new success token (see tokens.css): la marca de visto más la palabra
+              explícita, sobre el mismo --accent-text, es lo que lo hace leer como confirmación.
+              Q1: el icono se dibuja (ui/Iconos.tsx), ya no es un carácter de fuente — y sigue siendo
+              la señal que no depende del color. */}
           {copied && (
             <p className="mt-1 text-chrome-xs text-accent-text">
-              <span aria-hidden="true">✓ </span>
+              <IconoConfirmacion className="mr-1" />
               Copiado.
             </p>
           )}

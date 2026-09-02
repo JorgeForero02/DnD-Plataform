@@ -158,7 +158,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await playersNpcRowPlayer.click();
   await expect(playerPage.getByRole("heading", { name: "Gundren Rockseeker" })).toBeVisible();
   await playerPage.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
-  await expect(playerPage.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await expect(playerPage.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   // Lee su contenido: el nombre real, no un formulario vacío.
   await expect(playerPage.getByLabel("Nombre")).toHaveValue("Gundren Rockseeker");
   await expect(playerPage.getByLabel("Nombre")).toBeDisabled();
@@ -171,7 +171,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // Cerrar el editor y volver a la ficha: desde el reseño del 2026-09-02 los comentarios
   // viven en la página, no dentro del diálogo, así que hay que salir de él para llegar.
   await playerPage.getByRole("button", { name: "Cancelar" }).click();
-  await expect(playerPage.getByRole("heading", { name: "Editar NPC" })).toBeHidden();
+  await expect(playerPage.getByRole("heading", { name: "Editar PNJ" })).toBeHidden();
 
   // Y el hilo de comentarios: lee el que puso el DM y publica el suyo — comentar es de
   // cualquiera que pueda ver la entidad (comments.service.ts exige solo canView), así que

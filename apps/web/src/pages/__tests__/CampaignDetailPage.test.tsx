@@ -291,7 +291,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // La fila lleva a la página de lectura; el editor se abre desde ahí, que es la diferencia
     // entre consultar una ficha en mitad de una partida y modificarla.
     fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
-    expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
     expect(
@@ -336,7 +336,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // Reseño 2026-09-02: la fila lleva a la página de lectura; el editor se abre desde ella,
     // que es justo la diferencia entre leer una ficha y editarla.
     fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
-    expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
   });
@@ -510,7 +510,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
 
     fireEvent.click(screen.getByRole("link", { name: /Strahd/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Editar|Ver ficha completa/ }));
-    expect(await screen.findByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
@@ -519,7 +519,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     expect(spy).toHaveBeenCalledWith("c1", "e2");
     await waitFor(() =>
-      expect(screen.queryByRole("heading", { name: "Editar NPC" })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("heading", { name: "Editar PNJ" })).not.toBeInTheDocument(),
     );
     await waitFor(() =>
       expect(screen.queryByRole("link", { name: /Strahd/ })).not.toBeInTheDocument(),

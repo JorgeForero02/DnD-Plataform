@@ -287,7 +287,7 @@ describe("EntityEditor (delete)", () => {
     expect(onClose).not.toHaveBeenCalled();
     // Back to the normal footer, editor still open.
     expect(screen.getByRole("button", { name: "Borrar" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
   });
 
   it("quien no puede editar tampoco puede borrar: deshabilitado con su motivo, el clic no llama a nada (comportamiento 4)", async () => {
@@ -330,7 +330,7 @@ describe("EntityEditor (delete)", () => {
       await screen.findByText("Only the DM or the creator can modify this"),
     ).toBeInTheDocument();
     // The editor stays open on failure — nothing was actually deleted.
-    expect(screen.getByRole("heading", { name: "Editar NPC" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
   });
 });
 

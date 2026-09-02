@@ -163,7 +163,7 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   // here, both real <form> elements) have no field with that label.
   // Borrar sigue viviendo en el editor, que ahora se abre a propósito desde la ficha.
   await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   const entityForm = page.locator("form").filter({ has: page.getByLabel("Nombre") });
   await entityForm.getByRole("button", { name: "Borrar" }).click();
   await expect(
@@ -172,7 +172,7 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
     ),
   ).toBeVisible();
   await entityForm.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Editar PNJ" })).toBeHidden();
 
   // 4a. Desaparece de la lista.
   await expect(page.getByRole("link", { name: /Mahadi/ })).toHaveCount(0);
@@ -362,7 +362,7 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await page.getByRole("link", { name: /Durgeddin el Negro/ }).click();
   // Reseño 2026-09-02: la fila abre la página de lectura; el editor se abre desde ella.
   await page.getByRole("button", { name: /Editar|Ver ficha completa/ }).click();
-  await expect(page.getByRole("heading", { name: "Editar NPC" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   await expect(page.getByLabel("Texto")).toHaveValue("## Título\n\nUn herrero enano legendario.");
 
   // Cambiar a vista previa: el ## se pinta como encabezado accesible, no como texto literal.

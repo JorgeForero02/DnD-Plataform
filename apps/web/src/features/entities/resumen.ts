@@ -37,3 +37,27 @@ export const ETIQUETA_DE_TIPO: Record<EntityType, string> = {
   EVENT: "Evento",
   DOCUMENT: "Documento",
 };
+
+// Reseño 2026-09-02, segunda pasada: el título del diálogo era `${isEdit ? "Editar" : "Nuevo"}
+// ${type}`, es decir "Nuevo NPC" en el mejor caso y "Nuevo LOCATION" en el resto. El género
+// tampoco cuadra en español —"Nuevo misión"—, así que la forma completa se escribe una vez
+// aquí en lugar de componerse a mano en cada pantalla.
+export const TITULO_NUEVO: Record<EntityType, string> = {
+  NPC: "Nuevo PNJ",
+  LOCATION: "Nuevo lugar",
+  QUEST: "Nueva misión",
+  FACTION: "Nueva facción",
+  OBJECT: "Nuevo objeto",
+  EVENT: "Nuevo evento",
+  DOCUMENT: "Nuevo documento",
+};
+
+export const TITULO_EDITAR: Record<EntityType, string> = {
+  NPC: "Editar PNJ",
+  LOCATION: "Editar lugar",
+  QUEST: "Editar misión",
+  FACTION: "Editar facción",
+  OBJECT: "Editar objeto",
+  EVENT: "Editar evento",
+  DOCUMENT: "Editar documento",
+};

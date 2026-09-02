@@ -10,6 +10,7 @@ import type { Entity } from "./api";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { VisibilityChooser } from "./VisibilityChooser";
+import { TITULO_NUEVO, TITULO_EDITAR } from "./resumen";
 import { Dialog } from "../../ui/Dialog";
 
 function parseTags(raw: string): string[] {
@@ -169,7 +170,12 @@ export function EntityEditor({
     // (max-h-[80vh] overflow-y-auto) moved into Dialog itself (ui/Dialog.tsx), so every
     // consumer gets it once instead of re-adding it — CharacterEditor and SessionEditor never
     // had it here to begin with.
-    <Dialog open onClose={onClose} size="lg" title={`${isEdit ? "Editar" : "Nuevo"} ${type}`}>
+    <Dialog
+      open
+      onClose={onClose}
+      size="lg"
+      title={isEdit ? TITULO_EDITAR[type] : TITULO_NUEVO[type]}
+    >
       <div className="space-y-4">
         <form onSubmit={onSubmit} className="space-y-3">
           {readOnly && (

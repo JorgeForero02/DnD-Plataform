@@ -24,7 +24,7 @@ import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { EmptyState } from "../ui/Collection";
 import { CampaignOverview } from "../features/campaigns/CampaignOverview";
 import { useAllEntities } from "../features/entities/hooks";
-import { resumenDeCuerpo } from "../features/entities/resumen";
+import { resumenDeCuerpo, TITULO_NUEVO as NUEVO_POR_TIPO } from "../features/entities/resumen";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
@@ -53,15 +53,6 @@ const TABS: TabConfig[] = [
 
 // Reseño 2026-09-02 — "Nuevo" told you nothing unless you already knew which section you were
 // in, and "Sin elementos." told you nothing at all. Both say what they are about now.
-const NUEVO_POR_TIPO: Record<EntityType, string> = {
-  NPC: "Nuevo PNJ",
-  LOCATION: "Nuevo lugar",
-  QUEST: "Nueva misión",
-  FACTION: "Nueva facción",
-  OBJECT: "Nuevo objeto",
-  EVENT: "Nuevo evento",
-  DOCUMENT: "Nuevo documento",
-};
 
 const VACIO_POR_TIPO: Record<EntityType, { titulo: string; texto: string }> = {
   NPC: {

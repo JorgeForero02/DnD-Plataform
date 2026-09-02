@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   gameEventPayloadSchema,
   type ListGameEventsInput,
@@ -23,6 +24,7 @@ export class GameEventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /**
@@ -35,13 +37,18 @@ export class GameEventsService {
     campaignId: string,
     input: RecordGameEventInput,
     tx?: Prisma.TransactionClient,
+    /**
+     * De dónde viene la escritura. **No se guarda**: solo viaja en el suceso que se emite, para
+     * que el motor de reglas sepa distinguir un hecho del mundo de su propio eco.
+     */
+    options?: { fromRulesEngine?: boolean },
   ) {
     // Se valida **al escribir** aunque el que llama sea código nuestro: el `payload` es un
     // `Json` en la base y esta es la única barrera que tiene. Un evento mal formado escrito hoy
     // es una línea de tiempo que no se puede pintar dentro de seis meses.
     const payload = gameEventPayloadSchema.parse(input.payload);
     const client = tx ?? this.prisma;
-    return client.gameEvent.create({
+    const evento = await client.gameEvent.create({
       data: {
         campaignId,
         sessionId: input.sessionId ?? null,
@@ -53,6 +60,32 @@ export class GameEventsService {
         visibility: input.visibility,
       },
     });
+
+    // **El motor de reglas escucha por aquí, y no al revés.** Llamarlo directamente crearía un
+    // ciclo entre los dos módulos —el motor escribe eventos, los eventos disparan el motor— y
+    // Nest solo lo resolvería con un `forwardRef`, que es esconder el ciclo en vez de quitarlo.
+    // El emisor ya está en la aplicación y ya se usa para lo mismo en `notifications`.
+    //
+    // **Y es síncrono a propósito**: `@nestjs/event-emitter` despacha en el mismo proceso y en
+    // la misma petición, que es lo que el diseño pide —el motor evalúa dentro de la petición que
+    // escribió el suceso— y lo que hace que quien dispara vea el efecto al momento. Si algún día
+    // eso se mide y molesta (hueco **H8**), la salida es una cola, no cambiar de sitio la llamada.
+    this.emitter.emit("game_event.recorded", {
+      campaignId,
+      actorUserId,
+      type: payload.type,
+      subjectType: input.subjectType,
+      subjectId: input.subjectId,
+      payload,
+      // **Y esta bandera es lo que impide un bucle infinito.** Los efectos del motor escriben
+      // eventos; si esos eventos volvieran a entrar por aquí, cada uno arrancaría una cascada
+      // NUEVA a profundidad 0 y **el tope de diez saltos no lo vería**, porque el tope cuenta
+      // dentro de una cascada, no entre cascadas. El motor ya encadena por dentro, así que
+      // re-entrar no aporta nada y sí puede tumbar el proceso.
+      fromRulesEngine: options?.fromRulesEngine === true,
+    });
+
+    return evento;
   }
 
   /**
@@ -101,5 +134,21 @@ export class GameEventsService {
       this.prisma.user.findUnique({ where: { id: userId } }),
     ]);
     return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
+  }
+
+  /**
+   * Lo mismo que `record`, pero marcando que la escritura **la produjo el motor de reglas**.
+   *
+   * Existe como método con nombre y no como un quinto argumento suelto porque el argumento se
+   * olvida: un efecto nuevo del motor que llamara a `record` a secas reabriría el bucle sin que
+   * nada avisara. Así, el motor tiene su propia puerta y la puerta dice para qué es.
+   */
+  async recordFromEngine(
+    actorUserId: string,
+    campaignId: string,
+    input: RecordGameEventInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.record(actorUserId, campaignId, input, tx, { fromRulesEngine: true });
   }
 }

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { GAME_EVENT_TYPES, gameEventPayloadSchema } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -38,6 +39,9 @@ describe("GameEventsService", () => {
     user: { findUnique: jest.fn() },
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  // El emisor es por donde el motor de reglas escucha. Se simula para que la unitaria siga sin
+  // saber que el motor existe: `record` emite, y quién escuche es problema de otro módulo.
+  const emitter = { emit: jest.fn() };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -45,6 +49,7 @@ describe("GameEventsService", () => {
         GameEventsService,
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
+        { provide: EventEmitter2, useValue: emitter },
       ],
     }).compile();
     service = ref.get(GameEventsService);
@@ -137,5 +142,35 @@ describe("GameEventsService", () => {
     expect(prisma.gameEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { campaignId: "c1", sessionId: "s9" } }),
     );
+  });
+
+  it("record() emite el suceso para que el motor de reglas lo escuche", async () => {
+    // **El motor escucha; no se le llama.** Al revés habría un ciclo entre los dos módulos —el
+    // motor escribe eventos, los eventos disparan el motor— que Nest solo resolvería con un
+    // `forwardRef`, que es esconder el ciclo en vez de quitarlo.
+    prisma.gameEvent.create.mockResolvedValue({ id: "e1" });
+    await service.record("u1", "c1", {
+      subjectType: "session",
+      subjectId: "s1",
+      visibility: "PLAYERS",
+      payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
+    });
+    expect(emitter.emit).toHaveBeenCalledWith(
+      "game_event.recorded",
+      expect.objectContaining({ campaignId: "c1", type: "SESSION_STARTED" }),
+    );
+  });
+
+  it("si el evento no llega a escribirse, tampoco se emite nada", async () => {
+    prisma.gameEvent.create.mockRejectedValue(new Error("base caida"));
+    await expect(
+      service.record("u1", "c1", {
+        subjectType: "session",
+        subjectId: "s1",
+        visibility: "PLAYERS",
+        payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
+      }),
+    ).rejects.toThrow();
+    expect(emitter.emit).not.toHaveBeenCalled();
   });
 });

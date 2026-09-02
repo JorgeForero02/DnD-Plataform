@@ -147,7 +147,20 @@ export type RuleEffect = z.infer<typeof ruleEffectSchema>;
 // ---------------------------------------------------------------------------------------------
 
 export const ruleModeSchema = z.enum(["AUTOMATIC", "PROPOSAL"]);
+export type RuleMode = z.infer<typeof ruleModeSchema>;
+
 export const ruleStatusSchema = z.enum(["ARMED", "DISARMED", "BROKEN"]);
+export type RuleStatus = z.infer<typeof ruleStatusSchema>;
+
+/** El estado de un disparo. Espeja el enum de Prisma; una prueba comprueba que no se separan. */
+export const ruleTraceStatusSchema = z.enum([
+  "APPLIED",
+  "PROPOSED",
+  "REJECTED",
+  "STOPPED",
+  "CONFLICT",
+]);
+export type RuleTraceStatus = z.infer<typeof ruleTraceStatusSchema>;
 
 export const createRuleSchema = z.object({
   name: z.string().min(1).max(160),

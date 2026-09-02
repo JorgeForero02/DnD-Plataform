@@ -127,6 +127,12 @@ Cada línea es un compromiso conocido, no un descuido:
   tokens al cambiar la contraseña: el token no lleva ninguna señal de un cambio posterior, así
   que la única forma es preguntar a la fuente de la verdad. Si algún día pesa, la salida es un
   `select` estrecho y, si aún pesa, caché corta.
+- **Cerrado el 2026-09-02:** `POST /auth/register` y `POST /invites/:token/accept` llevaban
+  límite de intentos **sin ninguna prueba que se pusiera roja si se quitaba el decorador**. Ya la
+  tienen, comprobada por mutación. De paso se descubrió que el guardia de Nest indexa por
+  `Controlador-manejador-IP`, así que **cada ruta tiene su propio cubo** y no compiten por el
+  presupuesto — lo que sí competía era la preparación de la prueba de contraseña, que se
+  registraba por HTTP; ahora crea el usuario por dentro.
 - **`AUTH_RATE_LIMIT` (5/min) condiciona la suite e2e**: `auth.e2e-spec.ts` gasta 3 de esas 5
   llamadas en la misma ventana. Quien añada un login de más verá un 429 que parece un fallo de
   credenciales. **La respuesta es reestructurar el fichero, nunca subir la constante.**

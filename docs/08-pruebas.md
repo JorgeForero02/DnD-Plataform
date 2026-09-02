@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-01 tras las tareas 1.18a (endurecimiento de la API) y 1.19 (capa de
-tokens): **43 e2e de API** en 12 suites y **11 e2e de navegador** en 3 suites, todas verdes.
+tokens): **45 e2e de API** en 12 suites y **11 e2e de navegador** en 3 suites, todas verdes.
 
 La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
 otra hace: **mide**. Recorre `/design-tokens` **y dos pantallas reales** (entrar y el detalle de campaña) en los dos temas, lee los colores **calculados**

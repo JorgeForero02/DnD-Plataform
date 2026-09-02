@@ -11,8 +11,9 @@ User ──dueño──> Campaign ──> CampaignMember (DM | PLAYER, único po
                     │
                     ├──> Invite      (token único, role, usedAt)
                     ├──> Entity      (polimórfica por `type`)
-                    ├──> Session
-                    └──> Character   (ownerId)
+                    ├──> Session     (status: PLANNED | IN_PROGRESS | CLOSED)
+                    ├──> Character   (ownerId)
+                    └──> GameEvent   (log append-only; sessionId nulo = fuera de sesión)
 
 Entity ──> EntityLink (from → to, label; único por from+to+label)
        ──> EntityVisibilityGrant (entidad + usuario; único)
@@ -30,7 +31,69 @@ una campaña, borrar una `Entity` se lleva también sus `EntityLink` (**en las d
 direcciones**: tanto los que salen de ella como los que otras entidades tienen hacia ella,
 porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGrant` y sus
 `Comment`. `Session` y `Character` no tienen ninguna tabla colgando de ellos, así que borrar
-uno de los dos no se lleva nada más por delante.
+uno de los dos no se lleva nada más por delante. **`GameEvent` cuelga de la campaña, no de la
+sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
+borra su historia, que es lo que se quiere de un log.
+
+## Estado de partida: la sesión con estado y el log (tarea 2A.5)
+
+**El proyecto guardaba documentos y no guardaba partida.** `Session` no tenía estado —no
+existía «sesión en curso»— y por tanto una tirada, unos PG o un descanso no tenían de dónde
+colgar. Eso se arregla con tres piezas, y la forma de las tres está razonada en
+[el plan de 2A, §1](./superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md).
+
+**1 · La sesión gana estado, y solo el DM lo cambia.** `status` (`PLANNED`, `IN_PROGRESS`,
+`CLOSED`), `startedAt` y `endedAt`, más `POST .../sessions/:id/start` y `.../close`, los dos
+con `requireDM`. Arrancar una sesión ya en curso **no es un error**: devuelve la sesión, porque
+el DM que pulsa dos veces quería exactamente lo que ya tiene. Reabrir una cerrada **sí** lo es
+(409), y cerrar lo que no está en curso también.
+
+**No hay botón de «guardar partida», y su ausencia es la funcionalidad:** cada cambio se
+escribe cuando ocurre, así que suspender no cuesta nada.
+
+**Como máximo una sesión en curso por campaña, garantizado por la base:**
+
+```sql
+CREATE UNIQUE INDEX "session_one_in_progress_per_campaign"
+  ON "Session" ("campaignId") WHERE "status" = 'IN_PROGRESS';
+```
+
+Prisma no sabe expresar un índice único **parcial** en el esquema, así que va como SQL crudo
+dentro de la migración `20260902131046_session_state_and_game_event`. **No se comprueba en el
+servicio a propósito:** una comprobación en el servicio es una carrera esperando a ocurrir en
+cuanto el DM tenga dos pestañas abiertas. El servicio solo traduce el choque (`P2002`) a un 409
+legible. Y como el Prisma simulado de las unitarias no valida SQL, **su prueba es e2e y no
+unitaria** — comprobado borrando el índice y viendo la prueba ponerse roja.
+
+**2 · Un log append-only al lado, `GameEvent`.** Campaña, sesión (nulable), actor, tipo,
+sujeto, `payload Json`, visibilidad y fecha, con tres índices por los tres caminos de consulta.
+
+**La línea que impide que ese `Json` sea la trampa de `Entity.body`: el log nunca es la fuente
+del estado.** El estado se lee de sus columnas; el log cuenta *qué lo cambió*. De ahí la regla,
+escrita en [04-convenciones](./04-convenciones.md) y no dejada implícita: **todo lo que haga
+falta consultar o filtrar es una columna real**, y si algún día hace falta consultar por un
+campo del `payload`, ese campo **se promociona a columna**. No se consulta dentro del JSON.
+
+El `payload` está validado al escribir por una unión discriminada de Zod
+(`packages/shared/src/game-event.schema.ts`), discriminada por `type`. Añadir un tipo de evento
+es añadir un valor al enum de Prisma y un miembro a la unión: **no toca ninguna tabla**. El
+riesgo de que los dos lados se separen está cubierto por una prueba que lee `schema.prisma` y
+compara el enum con `GAME_EVENT_TYPES`, que es la fuente única.
+
+**Cada evento lleva su `visibility` y se lee con `canView`**, igual que cualquier otro recurso:
+un evento `DM_ONLY` no viaja al jugador. El actor hace de creador, que es lo que da sentido a
+`OWNER_DM` sobre una tirada propia.
+
+**Una consecuencia de paginar y filtrar en ese orden, dicha en voz alta:** el filtro por
+`canView` va **después** de traer la página, así que una página puede devolver menos elementos
+de los pedidos, o ninguno, y aun así quedar log por leer. Por eso el cursor sale de la **última
+fila traída** y no de la última visible: si saliera de la visible, una página entera de eventos
+`DM_ONLY` dejaría al jugador atascado. La alternativa —filtrar en SQL— exigiría reimplementar
+la matriz de visibilidad en un `where`, que es justo lo que `canView` existe para que nadie
+haga.
+
+**3 · Lo que 2A.5 NO trae:** ni `currentHp`, ni `tempHp`, ni recursos consumibles, ni pantalla.
+Esas son 2A.6, 2A.7 y 2A.8, y el log ya tiene sus tipos de evento esperándolas.
 
 ## Editar y borrar campañas; expulsar y salir (tarea 1.17a)
 

@@ -1,14 +1,17 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { CreateSessionInput, UpdateSessionInput, Visibility } from "@dnd/shared";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
+import { GameEventsService } from "../game-events/game-events.service";
 
 @Injectable()
 export class SessionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
+    private readonly events: GameEventsService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -80,5 +83,97 @@ export class SessionsService {
     if (!existing) throw new NotFoundException("Session not found");
     await this.prisma.session.delete({ where: { id: sessionId } });
     return { deleted: true };
+  }
+
+  /**
+   * Arranca la sesión. Solo DM (tarea 2A.5).
+   *
+   * **No hay botón de «guardar partida», y su ausencia es la funcionalidad**: a partir de aquí
+   * cada cambio se escribe cuando ocurre, así que suspender no cuesta nada.
+   *
+   * Como máximo una sesión en curso por campaña, y **eso lo garantiza un índice único parcial
+   * de Postgres, no este método**. Una comprobación aquí sería una carrera esperando a ocurrir
+   * en cuanto el DM tenga dos pestañas abiertas; lo que hace el código es traducir el choque de
+   * la base a un 409 legible.
+   */
+  async start(userId: string, campaignId: string, sessionId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    const session = await this.prisma.session.findFirst({ where: { id: sessionId, campaignId } });
+    if (!session) throw new NotFoundException("Session not found");
+    if (session.status === "IN_PROGRESS") return session;
+    if (session.status === "CLOSED")
+      throw new ConflictException("Una sesión cerrada no se vuelve a abrir");
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const started = await tx.session.update({
+          where: { id: sessionId },
+          data: { status: "IN_PROGRESS", startedAt: new Date() },
+        });
+        // El evento y el cambio de estado, o los dos o ninguno: una sesión en curso sin su
+        // línea en el log es una partida cuya historia empieza a mentir desde el minuto cero.
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            sessionId,
+            subjectType: "session",
+            subjectId: sessionId,
+            visibility: started.visibility,
+            payload: { type: "SESSION_STARTED", sessionTitle: started.title },
+          },
+          tx,
+        );
+        return started;
+      });
+    } catch (error) {
+      // P2002 = violación de restricción única. Aquí solo puede venir del índice parcial.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
+        throw new ConflictException("Ya hay una sesión en curso en esta campaña");
+      throw error;
+    }
+  }
+
+  /** Cierra la sesión. Solo DM. Cerrar lo que no está en curso es un 409, no un silencio. */
+  async close(userId: string, campaignId: string, sessionId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    const session = await this.prisma.session.findFirst({ where: { id: sessionId, campaignId } });
+    if (!session) throw new NotFoundException("Session not found");
+    if (session.status !== "IN_PROGRESS")
+      throw new ConflictException("Esta sesión no está en curso");
+
+    const endedAt = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      const closed = await tx.session.update({
+        where: { id: sessionId },
+        data: { status: "CLOSED", endedAt },
+      });
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          sessionId,
+          subjectType: "session",
+          subjectId: sessionId,
+          visibility: closed.visibility,
+          payload: {
+            type: "SESSION_CLOSED",
+            sessionTitle: closed.title,
+            // Ausente si se cerró sin haber arrancado nunca — que hoy no puede pasar, pero el
+            // esquema no depende de que este método sea el único que escriba el evento.
+            ...(closed.startedAt
+              ? {
+                  durationMinutes: Math.max(
+                    0,
+                    Math.floor((endedAt.getTime() - closed.startedAt.getTime()) / 60000),
+                  ),
+                }
+              : {}),
+          },
+        },
+        tx,
+      );
+      return closed;
+    });
   }
 }

@@ -1,8 +1,9 @@
 import { Test } from "@nestjs/testing";
-import { ForbiddenException } from "@nestjs/common";
+import { ConflictException, ForbiddenException } from "@nestjs/common";
 import { SessionsService } from "./sessions.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { GameEventsService } from "../game-events/game-events.service";
 
 describe("SessionsService", () => {
   let service: SessionsService;
@@ -17,6 +18,7 @@ describe("SessionsService", () => {
     user: { findUnique: jest.fn() },
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn() };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -24,6 +26,7 @@ describe("SessionsService", () => {
         SessionsService,
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
       ],
     }).compile();
     service = ref.get(SessionsService);
@@ -46,5 +49,36 @@ describe("SessionsService", () => {
     ]);
     const res = await service.list("p1", "c1");
     expect(res.map((s: any) => s.id)).toEqual(["s1"]);
+  });
+
+  it("start() requires DM: a player gets 403", async () => {
+    membership.requireDM.mockRejectedValue(new ForbiddenException());
+    await expect(service.start("p1", "c1", "s1")).rejects.toBeInstanceOf(ForbiddenException);
+    // Y no llega a mirar la sesión: el permiso se comprueba antes de tocar nada.
+    expect(prisma.session.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("close() requires DM too", async () => {
+    membership.requireDM.mockRejectedValue(new ForbiddenException());
+    await expect(service.close("p1", "c1", "s1")).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("close() on a session that is not running is a 409, not a silent no-op", async () => {
+    membership.requireDM.mockResolvedValue(undefined);
+    prisma.session.findFirst.mockResolvedValue({ id: "s1", status: "PLANNED" });
+    await expect(service.close("dm", "c1", "s1")).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("start() on a closed session is a 409: una sesión cerrada no se vuelve a abrir", async () => {
+    membership.requireDM.mockResolvedValue(undefined);
+    prisma.session.findFirst.mockResolvedValue({ id: "s1", status: "CLOSED" });
+    await expect(service.start("dm", "c1", "s1")).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("start() on a session already running is idempotent, not an error", async () => {
+    // El DM que pulsa dos veces no merece un error: ya está en curso, que es lo que quería.
+    membership.requireDM.mockResolvedValue(undefined);
+    prisma.session.findFirst.mockResolvedValue({ id: "s1", status: "IN_PROGRESS" });
+    await expect(service.start("dm", "c1", "s1")).resolves.toMatchObject({ status: "IN_PROGRESS" });
   });
 });

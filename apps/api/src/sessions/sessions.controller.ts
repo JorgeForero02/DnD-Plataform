@@ -55,4 +55,22 @@ export class SessionsController {
   ) {
     return this.sessions.remove(req.user.id, campaignId, sessionId);
   }
+
+  @Post(":sessionId/start")
+  start(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+  ) {
+    return this.sessions.start(req.user.id, campaignId, sessionId);
+  }
+
+  @Post(":sessionId/close")
+  close(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+  ) {
+    return this.sessions.close(req.user.id, campaignId, sessionId);
+  }
 }

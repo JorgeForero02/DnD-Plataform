@@ -27,8 +27,11 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-02 tras el reseño de interfaz: **45 e2e de API** en 12 suites y
-**24 e2e de navegador** en 4 suites, todas verdes.
+**E2e**, medidos el 2026-09-02 tras la tarea 2A.5: **51 e2e de API** en 13 suites y
+**24 e2e de navegador** en 4 suites, todas verdes. Los seis nuevos son
+`test/game-state.e2e-spec.ts`, y uno de ellos —«arrancar una segunda sesión en la misma
+campaña falla»— **solo puede vivir aquí**: lo que lo impide es un índice único parcial de
+Postgres, y el Prisma simulado de las unitarias no valida SQL.
 
 > **El reseño reescribió nueve recorridos del navegador, y merece decirse por qué.** No se
 > tocaron sus comprobaciones: se tocó el **camino**. Antes, leer una ficha era abrir su

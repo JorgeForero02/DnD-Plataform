@@ -20,6 +20,29 @@ enum Visibility {
   DM_ONLY
 }
 
+enum SessionStatus {
+  PLANNED
+  IN_PROGRESS
+  CLOSED
+}
+
+// Tarea 2A.5. Arranca corto a propósito: 2C añade DICE_ROLLED, CONDITION_APPLIED,
+// CONDITION_REMOVED y CLOCK_ADVANCED; la fase 3 añade TOKEN_MOVED. Anadir un tipo es anadir un
+// valor aqui y un miembro a la union de Zod de packages/shared/src/game-event.schema.ts, que es
+// la fuente unica; una prueba comprueba que los dos lados no se separan.
+enum GameEventType {
+  SESSION_STARTED
+  SESSION_CLOSED
+  REST_DECLARED
+  HP_CHANGED
+  TEMP_HP_SET
+  RESOURCE_SPENT
+  RESOURCE_RESTORED
+  LEVEL_CHANGED
+  ABILITY_ROLL
+  MANUAL_OVERRIDE_SET
+}
+
 enum EntityType {
   NPC
   LOCATION
@@ -54,6 +77,7 @@ model Campaign {
   sessions    Session[]
   invites     Invite[]
   characters  Character[]
+  gameEvents  GameEvent[]
 }
 
 model CampaignMember {
@@ -123,14 +147,45 @@ model Comment {
 }
 
 model Session {
-  id          String     @id @default(cuid())
+  id          String        @id @default(cuid())
   campaignId  String
   title       String
   scheduledAt DateTime?
   notes       Json?
-  visibility  Visibility @default(PLAYERS)
-  createdAt   DateTime   @default(now())
-  campaign    Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  visibility  Visibility    @default(PLAYERS)
+  createdAt   DateTime      @default(now())
+  status      SessionStatus @default(PLANNED)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  // Como maximo una sesion IN_PROGRESS por campana. Lo garantiza un indice unico PARCIAL, que
+  // Prisma no sabe expresar y va como SQL crudo dentro de la migracion:
+  //   CREATE UNIQUE INDEX "session_one_in_progress_per_campaign"
+  //     ON "Session" ("campaignId") WHERE "status" = 'IN_PROGRESS';
+  // Una comprobacion en el servicio seria una carrera esperando a ocurrir en cuanto el DM tenga
+  // dos pestanas abiertas, y por eso su prueba es e2e contra Postgres real y no unitaria.
+}
+
+// Log append-only de la partida. NUNCA es la fuente del estado: el estado se lee de sus
+// columnas y esto cuenta que lo cambio. Todo lo que se consulta o se filtra es columna real;
+// el payload solo lleva el detalle que se pinta en una linea de la linea de tiempo.
+model GameEvent {
+  id          String        @id @default(cuid())
+  campaignId  String
+  sessionId   String?
+  actorUserId String
+  type        GameEventType
+  subjectType String
+  subjectId   String
+  payload     Json
+  visibility  Visibility    @default(PLAYERS)
+  createdAt   DateTime      @default(now())
+  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([subjectType, subjectId, createdAt])
 }
 
 model Character {

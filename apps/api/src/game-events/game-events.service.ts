@@ -1,0 +1,105 @@
+import { Injectable } from "@nestjs/common";
+import {
+  gameEventPayloadSchema,
+  type ListGameEventsInput,
+  type RecordGameEventInput,
+  type Visibility,
+} from "@dnd/shared";
+import type { Prisma } from "@prisma/client";
+import { MembershipService } from "../campaigns/membership.service";
+import { canView, type Viewer } from "../common/visibility";
+import { PrismaService } from "../prisma/prisma.service";
+
+// Tarea 2A.5 — el log de partida.
+//
+// **Escribe cualquier servicio; lee solo quien puede.** `record` es interno: lo llaman los
+// servicios que cambian algo (sesiones hoy; PG, recursos y tiradas después), y acepta una
+// transacción para que el evento y el cambio que describe aterricen juntos o no aterrice
+// ninguno. `list` es la única puerta de lectura y filtra por `canView`, como cualquier otro
+// recurso del proyecto.
+
+@Injectable()
+export class GameEventsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly membership: MembershipService,
+  ) {}
+
+  /**
+   * Escribe un evento. **No comprueba permisos**: quien llama ya decidió que la acción se
+   * permite, y es esa acción la que se está registrando. `canView` sigue siendo el dueño único
+   * de quién lo **lee** después, que es la pregunta que sí es de visibilidad.
+   */
+  async record(
+    actorUserId: string,
+    campaignId: string,
+    input: RecordGameEventInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    // Se valida **al escribir** aunque el que llama sea código nuestro: el `payload` es un
+    // `Json` en la base y esta es la única barrera que tiene. Un evento mal formado escrito hoy
+    // es una línea de tiempo que no se puede pintar dentro de seis meses.
+    const payload = gameEventPayloadSchema.parse(input.payload);
+    const client = tx ?? this.prisma;
+    return client.gameEvent.create({
+      data: {
+        campaignId,
+        sessionId: input.sessionId ?? null,
+        actorUserId,
+        type: payload.type,
+        subjectType: input.subjectType,
+        subjectId: input.subjectId,
+        payload,
+        visibility: input.visibility,
+      },
+    });
+  }
+
+  /**
+   * Una página del log, más reciente primero.
+   *
+   * **El filtro por `canView` va después de la página, y eso tiene una consecuencia que hay que
+   * decir en voz alta:** una página puede devolver menos elementos de los que se pidieron, o
+   * ninguno, y aun así quedar log por leer. Por eso `nextCursor` sale de la **última fila
+   * traída**, no de la última visible — si saliera de la visible, una página entera de eventos
+   * `DM_ONLY` dejaría al jugador atascado sin poder avanzar. La alternativa (filtrar en SQL)
+   * exigiría reimplementar la matriz de visibilidad en una cláusula `where`, y eso es
+   * exactamente lo que `canView` existe para que nadie haga.
+   */
+  async list(userId: string, campaignId: string, query: ListGameEventsInput) {
+    await this.membership.requireMember(campaignId, userId);
+    const viewer = await this.viewerFor(userId, campaignId);
+
+    const rows = await this.prisma.gameEvent.findMany({
+      where: {
+        campaignId,
+        ...(query.sessionId ? { sessionId: query.sessionId } : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: query.limit,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+    });
+
+    const events = rows.filter((row) => this.canSee(viewer, row.visibility, row.actorUserId));
+    const hayMas = rows.length === query.limit;
+
+    return { events, nextCursor: hayMas ? rows[rows.length - 1].id : null };
+  }
+
+  private canSee(viewer: Viewer, visibility: Visibility, actorUserId: string): boolean {
+    // Un evento no tiene concesiones nominales propias en 2A: o lo ve tu nivel, o no. El actor
+    // hace de creador, que es lo que da sentido a `OWNER_DM` sobre una tirada propia.
+    return canView(viewer, { visibility, createdById: actorUserId, grantedUserIds: [] });
+  }
+
+  // Duplicado a sabiendas con el de los otros servicios: la deuda de extraer `viewerFor` a
+  // `common/` está declarada en `docs/06-pendientes.md`, y resolverla aquí de tapadillo sería
+  // meter una refactorización dentro de una tarea que no la pidió.
+  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
+    const [member, user] = await Promise.all([
+      this.membership.getMembership(campaignId, userId),
+      this.prisma.user.findUnique({ where: { id: userId } }),
+    ]);
+    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
+  }
+}

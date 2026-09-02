@@ -52,6 +52,7 @@ por su cuenta**.
 | `comments` | Hilo de comentarios de una entidad | quien pueda ver la entidad |
 | `sessions` | Sesiones de juego | solo DM |
 | `characters` | Personajes | dueño o DM |
+| `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |
 | `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |

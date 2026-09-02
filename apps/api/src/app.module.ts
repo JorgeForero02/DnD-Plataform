@@ -12,6 +12,7 @@ import { LinksModule } from "./links/links.module";
 import { CommentsModule } from "./comments/comments.module";
 import { SessionsModule } from "./sessions/sessions.module";
 import { CharactersModule } from "./characters/characters.module";
+import { GameEventsModule } from "./game-events/game-events.module";
 import { UsersModule } from "./users/users.module";
 import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.constants";
 
@@ -35,6 +36,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     CommentsModule,
     SessionsModule,
     CharactersModule,
+    GameEventsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

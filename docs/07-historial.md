@@ -6,6 +6,51 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — 2A.5: la partida empieza a tener estado
+
+**Qué.** El proyecto guardaba **documentos** y no guardaba **partida**: `Session` no tenía
+estado, así que no existía «sesión en curso» y una tirada, unos PG o un descanso no tenían de
+dónde colgar. Ahora la sesión tiene `status`, `startedAt` y `endedAt` con sus dos endpoints de
+DM, y al lado hay un log append-only, `GameEvent`, con su unión discriminada de Zod y su
+lectura paginada y filtrada por `canView`.
+
+**La decisión que da valor a todo esto: el log nunca es la fuente del estado.** El estado se
+lee de sus columnas; el log cuenta *qué lo cambió*. Es lo que impide que su `payload Json` sea
+la trampa que el proyecto ya pisó con `Entity.body` en 1.17b. La regla queda escrita en
+[04-convenciones](./04-convenciones.md), no implícita: **todo lo que haga falta consultar es
+una columna real, y un campo del `payload` que haya que consultar se promociona a columna**.
+
+**Una restricción que la base puede garantizar, la garantiza la base.** «Como máximo una sesión
+en curso por campaña» es un índice único **parcial** de Postgres dentro de la migración, no un
+`if` en el servicio — un `if` ahí es una carrera esperando a ocurrir en cuanto el DM tenga dos
+pestañas abiertas. El servicio solo traduce el choque a un 409 legible.
+
+**Mutación comprobada, y esta era la que importaba:** con el índice **borrado de la base**, la
+prueba «arrancar una segunda sesión en la misma campaña falla» se pone roja y las otras cinco
+siguen verdes. Y quitando el filtro de `canView` de la lectura del log, cae la del evento
+`DM_ONLY`. Restaurados los dos: 51 e2e de API en 13 suites, verdes.
+
+**Un detalle de paginación dicho en voz alta en vez de escondido:** el filtro por `canView` va
+después de traer la página, así que una página puede volver vacía con log por leer. El cursor
+sale de la **última fila traída**, no de la última visible — si saliera de la visible, una
+página entera de eventos `DM_ONLY` dejaría al jugador atascado. Filtrar en SQL exigiría
+reimplementar la matriz de visibilidad en un `where`, que es justo lo que `canView` existe para
+que nadie haga.
+
+**No hay `POST` del log.** Un evento nace del cambio que lo provoca y se escribe en su misma
+transacción; dejar escribirlo suelto permitiría inventar una historia que no ocurrió.
+
+**Un fallo propio, anotado:** una prueba nueva pasaba y otra fallaba por `jest.clearAllMocks()`,
+que borra las llamadas pero **no las implementaciones** — el rechazo de una prueba se colaba en
+la siguiente. Es `resetAllMocks`, y queda dicho en el propio fichero.
+
+**Cómo revertirlo.** `prisma migrate resolve` hacia atrás sobre
+`20260902131046_session_state_and_game_event`, borrar `apps/api/src/game-events/`,
+`packages/shared/src/game-event.schema.ts`, `apps/api/test/game-state.e2e-spec.ts` y los dos
+métodos `start`/`close` de `sessions`. Ninguna pantalla depende de ello todavía.
+
+---
+
 ## 2026-09-02 (tarde) — 2A.4: elecciones pendientes y avisos
 
 **Qué.** *«+1 a dos características a tu elección»* y *«elige cuatro habilidades»* dejan de ser

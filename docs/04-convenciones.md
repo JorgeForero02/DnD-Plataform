@@ -84,6 +84,22 @@ nombres de las cosas del código, no.
 - Códigos de estado correctos: 401 sin token, 403 sin permiso, 404 si no existe, 400 si el
   cuerpo no valida.
 
+- **Un `Json` en la base no se consulta nunca por dentro.** El `payload` de `GameEvent` lleva
+  solo el detalle que se pinta en una línea de la línea de tiempo; **todo lo que haga falta
+  consultar o filtrar es una columna real** (campaña, sesión, actor, tipo, sujeto, fecha,
+  visibilidad). **Si algún día hace falta consultar por un campo del `payload`, ese campo se
+  promociona a columna** — no se escribe una consulta dentro del JSON. El proyecto ya pisó esa
+  trampa con `Entity.body`, que era `z.unknown()` y hubo que darle forma explícita en 1.17b
+  (ver [05-datos.md](./05-datos.md)); la regla existe para no pisarla dos veces. Y el `Json`
+  que sí se guarda va **validado al escribir** por una unión discriminada de Zod en
+  `packages/shared`, no por confianza en quien llama.
+
+- **Una restricción que la base puede garantizar, la garantiza la base.** «Como máximo una
+  sesión en curso por campaña» es un índice único parcial de Postgres, no un `if` en el
+  servicio: la comprobación en el servicio es una carrera esperando a ocurrir en cuanto alguien
+  tenga dos pestañas abiertas. El servicio traduce el choque a un 409 legible, y **la prueba de
+  esa restricción es e2e**, porque el Prisma simulado de las unitarias no valida SQL.
+
 ## Web
 
 - `apiFetch<T>` de `src/lib/api.ts` es **el único** que habla HTTP. Ningún componente hace

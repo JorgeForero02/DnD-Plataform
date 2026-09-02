@@ -19,8 +19,8 @@ import { visibilitySchema } from "./visibility.schema";
 // se separan.
 
 /**
- * Los diez tipos que nacen en 2A. **Arranca corto a propósito.** 2C añadirá `DICE_ROLLED`,
- * `CONDITION_APPLIED`, `CONDITION_REMOVED` y `CLOCK_ADVANCED`; la fase 3, `TOKEN_MOVED`.
+ * Los tipos que nacen en 2A. Empezaron siendo diez y crecieron con la hoja persistida y el
+ * mundo; 2C anadira `DICE_ROLLED` y `CLOCK_ADVANCED`, y la fase 3, `TOKEN_MOVED`.
  *
  * Esta lista es **la fuente única**: el enum de `schema.prisma` se comprueba contra ella.
  */
@@ -35,6 +35,16 @@ export const GAME_EVENT_TYPES = [
   "LEVEL_CHANGED",
   "ABILITY_ROLL",
   "MANUAL_OVERRIDE_SET",
+  // Anadidos con la hoja persistida y el mundo (2A.7, 2A.12, 2A.15).
+  "DEATH_SAVE",
+  "CONDITION_APPLIED",
+  "CONDITION_REMOVED",
+  "ENTITY_OPENED",
+  "ENTITY_REVEALED",
+  "ENTITY_LINKED",
+  "FLAG_SET",
+  "SET_CHANGED",
+  "SIGNAL_RAISED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -110,6 +120,69 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     outcome: z.enum(["NO_DC", "SUCCESS", "FAILURE"]).default("NO_DC"),
     reason,
   }),
+  // --- Muerte (2A.7) ---
+  z.object({
+    type: z.literal("DEATH_SAVE"),
+    roll: z.number().int().min(1).max(20),
+    /**
+     * **Cuatro resultados y no dos.** Un 20 natural no es un exito: devuelve al personaje a 1
+     * PG. Un 1 natural cuenta como **dos** fracasos. Meterlos en `SUCCESS`/`FAILURE` seria
+     * perder justo lo que hace tensa esa tirada.
+     */
+    result: z.enum(["SUCCESS", "FAILURE", "CRIT_SUCCESS", "CRIT_FAILURE"]),
+    successes: z.number().int().min(0).max(3),
+    failures: z.number().int().min(0).max(3),
+  }),
+
+  // --- Condiciones (2A.12) ---
+  z.object({
+    type: z.literal("CONDITION_APPLIED"),
+    key: z.string().min(1).max(60),
+    /** Nivel de agotamiento, 1 a 6. Ausente en las condiciones que no lo tienen. */
+    level: z.number().int().min(1).max(6).optional(),
+    reason,
+  }),
+  z.object({
+    type: z.literal("CONDITION_REMOVED"),
+    key: z.string().min(1).max(60),
+    reason,
+  }),
+
+  // --- Sucesos del mundo, los que el motor de reglas escucha (2A.15) ---
+  z.object({
+    type: z.literal("ENTITY_OPENED"),
+    entityType: z.string().min(1).max(40),
+    entityName: z.string().max(200).optional(),
+  }),
+  z.object({
+    type: z.literal("ENTITY_REVEALED"),
+    entityName: z.string().max(200).optional(),
+    toUserId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("ENTITY_LINKED"),
+    fromId: z.string().min(1),
+    toId: z.string().min(1),
+    label: z.string().max(120).optional(),
+  }),
+  z.object({
+    type: z.literal("FLAG_SET"),
+    key: z.string().min(1).max(60),
+    value: z.boolean(),
+  }),
+  z.object({
+    type: z.literal("SET_CHANGED"),
+    setKey: z.string().min(1).max(60),
+    action: z.enum(["ADDED", "REMOVED"]),
+    memberType: z.string().min(1).max(40),
+    memberId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("SIGNAL_RAISED"),
+    key: z.string().min(1).max(60),
+    reason,
+  }),
+
   z.object({
     type: z.literal("MANUAL_OVERRIDE_SET"),
     /** Clave del valor derivado que el DM anula: `"ac"`, `"maxHp"`, `"speed.walk"`. */

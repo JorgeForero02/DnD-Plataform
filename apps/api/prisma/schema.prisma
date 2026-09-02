@@ -41,6 +41,33 @@ enum GameEventType {
   LEVEL_CHANGED
   ABILITY_ROLL
   MANUAL_OVERRIDE_SET
+  DEATH_SAVE
+  CONDITION_APPLIED
+  CONDITION_REMOVED
+  ENTITY_OPENED
+  ENTITY_REVEALED
+  ENTITY_LINKED
+  FLAG_SET
+  SET_CHANGED
+  SIGNAL_RAISED
+}
+
+enum ResourceReset {
+  NONE
+  SHORT_REST
+  LONG_REST
+}
+
+// Quien puede subir un recurso. El caso estrecho de permisos por campo que 2A si necesita:
+// la inspiracion la da el DM, la furia la gasta y la recupera su dueno.
+enum ResourceGrantor {
+  DM_ONLY
+  OWNER
+}
+
+enum RestKind {
+  SHORT
+  LONG
 }
 
 enum EntityType {
@@ -78,6 +105,8 @@ model Campaign {
   invites     Invite[]
   characters  Character[]
   gameEvents  GameEvent[]
+  flags       CampaignFlag[]
+  sets        CampaignSet[]
 }
 
 model CampaignMember {
@@ -193,11 +222,141 @@ model Character {
   campaignId String
   ownerId    String
   name       String
+  // `race` y `class` son texto libre HEREDADO y se conservan a proposito: puede haber
+  // personajes escritos a mano en la mesa del autor, y borrarles el texto seria destruir datos
+  // por una migracion de conveniencia. La hoja los muestra solo si no hay clave. Se retiran
+  // cuando el autor confirme que no queda ninguno.
   race       String?
   class      String?
   level      Int        @default(1)
   bio        String?
   visibility Visibility @default(PLAYERS)
   createdAt  DateTime   @default(now())
+
+  // --- La hoja de 5.a edicion (2A.6). Se guarda lo DECIDIDO, nunca lo calculado ---
+  // Seis columnas y no un JSON: son seis, son fijas, y hay que poder consultarlas.
+  str        Int?
+  dex        Int?
+  con        Int?
+  int        Int?
+  wis        Int?
+  cha        Int?
+  raceKey    String?
+  subraceKey String?
+  classKey   String?
+  // Las elecciones resueltas, por clave de concesion: { "half-elf-asi": ["dex","int"] }.
+  choices    Json?
+  // Casillas de equipo. **Vacia en 2A**: se modela en 2B, pero la columna existe desde ahora
+  // porque anadirla despues de que existan mil personajes cuesta una migracion con datos.
+  equippedSlots Json?
+
+  // --- Estado mutable (2A.7). PG maximos NO se guardan: se calculan ---
+  // `null` = a PG maximos; se materializa al primer cambio.
+  currentHp  Int?
+  // No se suman a los actuales: se gastan primero, y dos fuentes no se acumulan.
+  tempHp     Int        @default(0)
+  // Concurrencia optimista para las correcciones absolutas del DM.
+  version    Int        @default(0)
+  // Tiradas de salvacion contra muerte: tres y tres, casillas y no un numero.
+  deathSaveSuccesses Int @default(0)
+  deathSaveFailures  Int @default(0)
+
   campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  resources  CharacterResource[]
+  conditions CharacterCondition[]
+
+  @@index([campaignId])
+}
+
+// Recursos consumibles (2A.8): inspiracion, furia, ki, dados de golpe, espacios de conjuro.
+// Todos son el mismo mecanismo — un contador con maximo que un descanso repone — y por eso
+// son una tabla y no seis columnas.
+model CharacterResource {
+  id          String          @id @default(cuid())
+  characterId String
+  key         String
+  // Texto que ve el jugador, en espanol.
+  label       String
+  current     Int
+  // `null` = sin tope conocido.
+  max         Int?
+  resetOn     ResourceReset   @default(NONE)
+  grantedBy   ResourceGrantor @default(OWNER)
+  character   Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, key])
+}
+
+// Condiciones (2A.12). **Clave libre**, no un enum cerrado: las quince del SRD tienen efecto
+// mecanico y el motor las entiende; cualquier otra se guarda, se ensena y no calcula nada.
+// El informe de huecos aviso de que un enum cerrado deja fuera «concentrandose en Bendicion»,
+// y anadirla despues seria una migracion de enum.
+model CharacterCondition {
+  id          String    @id @default(cuid())
+  characterId String
+  key         String
+  // Nivel, para el agotamiento (1..6). `null` en las que no lo tienen.
+  level       Int?
+  note        String?
+  appliedById String
+  createdAt   DateTime  @default(now())
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, key])
+  @@index([characterId])
+}
+
+// Bandeja de notificaciones (2A.14). Sin tiempo real: se pide al cargar.
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  campaignId  String?
+  type        String
+  // Datos para componer la frase en la web. **Nunca la frase**: el idioma es de la pantalla.
+  payload     Json
+  subjectType String?
+  subjectId   String?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// Marcas de campana (2A.15): «el puente esta caido». Un booleano con nombre.
+model CampaignFlag {
+  id         String   @id @default(cuid())
+  campaignId String
+  key        String
+  value      Boolean  @default(true)
+  setById    String
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, key])
+}
+
+// Conjuntos con nombre (2A.15): «los que saben lo del posadero».
+model CampaignSet {
+  id         String              @id @default(cuid())
+  campaignId String
+  key        String
+  label      String
+  campaign   Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  members    CampaignSetMember[]
+
+  @@unique([campaignId, key])
+}
+
+model CampaignSetMember {
+  id          String      @id @default(cuid())
+  setId       String
+  memberType  String
+  memberId    String
+  addedById   String
+  createdAt   DateTime    @default(now())
+  set         CampaignSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+
+  // Anadir dos veces el mismo elemento NO lo duplica: los efectos son idempotentes.
+  @@unique([setId, memberType, memberId])
 }

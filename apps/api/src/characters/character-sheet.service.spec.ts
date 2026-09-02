@@ -66,6 +66,7 @@ function dadoFijo(valor: number): Roller {
 function montar(roller?: Roller) {
   const prisma = {
     character: { findFirst: jest.fn(), update: jest.fn() },
+    characterCondition: { findMany: jest.fn().mockResolvedValue([]) },
     user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -469,5 +470,33 @@ describe("la siembra de recursos al terminar la ficha", () => {
     await service.updateSheet("owner1", "cmp1", "ch1", { level: 2 });
 
     expect(resources.seedResourcesFor).not.toHaveBeenCalled();
+  });
+});
+
+describe("la velocidad efectiva la calcula el servidor, no la pantalla", () => {
+  // La primera versión de la hoja copiaba `effectiveSpeed` letra por letra en el navegador
+  // porque ningún endpoint la exponía. Dos copias de una regla del juego se separan en cuanto
+  // se toca una: la regla vive una vez, igual que `canView`.
+
+  it("aplica las condiciones activas y deja la traza que las nombra", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.characterCondition.findMany.mockResolvedValue([{ key: "grappled", level: null }]);
+
+    const r = await service.getSheet("owner1", "cmp1", "ch1");
+
+    expect(r.effectiveSpeeds.walk.total).toBe(0);
+    expect(r.effectiveSpeeds.walk.steps.some((p) => p.sourceKey === "grappled")).toBe(true);
+  });
+
+  it("sin condiciones, la efectiva es la base", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+
+    const r = await service.getSheet("owner1", "cmp1", "ch1");
+
+    expect(r.effectiveSpeeds.walk.total).toBeGreaterThan(0);
   });
 });

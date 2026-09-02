@@ -19,6 +19,7 @@ import { WorldStateModule } from "./world-state/world-state.module";
 import { CharacterStateModule } from "./character-state/character-state.module";
 import { LevelUpModule } from "./level-up/level-up.module";
 import { RulesEngineModule } from "./rules-engine/rules-engine.module";
+import { CatalogModule } from "./rules/catalog.module";
 import { UsersModule } from "./users/users.module";
 import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.constants";
 
@@ -49,6 +50,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     CharacterStateModule,
     LevelUpModule,
     RulesEngineModule,
+    CatalogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

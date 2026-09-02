@@ -4,7 +4,7 @@ import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
 import { useCharacters } from "../features/characters/hooks";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
-import { HojaCincoE } from "../features/characters/HojaCincoE";
+import { HojaCalculada } from "../features/character-sheet/HojaCalculada";
 import { CHECKING_PERMISSIONS } from "../features/campaigns/PermissionStatus";
 import { useAuthStore } from "../store/auth.store";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
@@ -17,9 +17,12 @@ import { OrnamentRule } from "../ui/Ornament";
 // Reseño 2026-09-02 — the character sheet, in the shape of a real 5th-edition sheet.
 //
 // What existed was a flat form: name, race, class, level, bio. The author's words were exact
-// and fair — "no usa el formato de la 5ta edicion". This page puts what we DO have into the
-// sheet's own reading order and draws the rest of the sheet at its real size, empty and
-// labelled as empty (HojaCincoE.tsx), so the layout can be judged now and built in phase 2A.
+// and fair — "no usa el formato de la 5ta edicion". Task 1.19 (HojaCincoE.tsx) drew the shape
+// of the sheet empty, labelled as empty, so the layout could be judged before the engine
+// existed. Task 2A.10 (HojaCalculada.tsx, features/character-sheet/) is what replaces it here:
+// the engine of phase 2A is done, so this page now reads the real, calculated sheet — every
+// derived number with the trace of where it comes from, the warnings, the pending choices as a
+// task list, HP as a delta, resources, rests, conditions, effective speed and senses.
 //
 // The character list is read from the campaign rather than a per-character endpoint: the API
 // has no GET /characters/:id, and inventing one would be phase-2 work this task must not do.
@@ -95,7 +98,7 @@ export function CharacterDetailPage() {
       />
 
       <div className="space-y-s6">
-        <HojaCincoE />
+        <HojaCalculada campaignId={id} characterId={characterId} puedeEditar={puedeEditar} />
 
         <section>
           <OrnamentRule className="mb-s3">Historia</OrnamentRule>

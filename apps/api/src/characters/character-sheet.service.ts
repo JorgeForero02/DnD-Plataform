@@ -33,6 +33,10 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
+import {
+  effectiveSpeed,
+  type EffectiveSpeedResult,
+} from "../character-state/speed/effective-speed";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -209,7 +213,39 @@ export class CharacterSheetService {
     if (!character || !this.canSee(viewer, character)) {
       throw new NotFoundException("Character not found");
     }
-    return this.buildResponse(character);
+    const respuesta = this.buildResponse(character);
+    return {
+      ...respuesta,
+      effectiveSpeeds: await this.velocidadesEfectivas(characterId, respuesta.sheet),
+    };
+  }
+
+  /**
+   * Las velocidades **con las condiciones aplicadas**, cada una con su traza.
+   *
+   * **Vive aquí y no en la pantalla.** La primera versión de la hoja calculaba esto en el
+   * navegador, copiando letra por letra `effectiveSpeed` porque ningún endpoint la exponía: dos
+   * copias de una regla del juego que se separan en cuanto una de las dos se toca. La regla vive
+   * una sola vez, igual que la matriz de visibilidad vive una sola vez en `canView`.
+   *
+   * Solo en la lectura: las mutaciones de PG devuelven el estado que cambian, y el navegador
+   * relee la hoja. Añadir esta consulta dentro de sus transacciones sería pagarla en el camino
+   * caliente para un dato que ninguna de ellas mueve.
+   */
+  private async velocidadesEfectivas(
+    characterId: string,
+    sheet: CharacterSheet | null,
+  ): Promise<Record<string, EffectiveSpeedResult>> {
+    if (!sheet) return {};
+    const conditions = await this.prisma.characterCondition.findMany({
+      where: { characterId },
+      select: { key: true, level: true },
+    });
+    const salida: Record<string, EffectiveSpeedResult> = {};
+    for (const [movimiento, pies] of Object.entries(sheet.speeds)) {
+      if (typeof pies === "number") salida[movimiento] = effectiveSpeed(pies, conditions);
+    }
+    return salida;
   }
 
   /**

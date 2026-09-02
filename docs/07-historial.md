@@ -6,6 +6,50 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (madrugada, 2.ª tanda) — Tres frentes más, y dos pruebas de navegador que salvaron la cara
+
+Tres agentes en paralelo con fronteras que no se pisan, y el orquestador corriendo Playwright al
+recogerlos, que es la regla. **Las dos cosas que más valen de esta tanda las encontró ese paso**,
+y ninguna la habría encontrado la suite unitaria.
+
+**La hoja: cabecera fija y dos columnas** (`54775bb`). CA, Iniciativa, Velocidad, PG y
+Competencia arriba, quietos mientras se desplaza. A la izquierda características → salvaciones →
+habilidades, seguidas. A la derecha lo accionable. Y el hueco del inventario de 2B **rotulado y
+vacío**, no escondido. La traza pasa a ser navegación: un paso lleva el foco a su causa.
+
+> **La cabecera fija falló su primera prueba en `y = -106`, y la prueba tenía razón.** `sticky`
+> se pega **dentro de su padre**, y el padre de esa cabecera es la hoja; debajo siguen «Historia»
+> y «Ajustes», que son de la página. La prueba decía «hasta el final de la hoja» y desplazaba
+> hasta el final de la **página**. Ahora ese límite **se comprueba a propósito**, para que nadie
+> envuelva mañana la página entera en el contenedor pegajoso y deje la cabecera de combate
+> plantada sobre una biografía.
+
+**Un solo camino de edición, y una fila que dejaba de decir nada** (`cc35e2c`). El modo edición
+de `CharacterEditor` se absorbe en la página; queda como diálogo de creación. Y el fallo que
+salió de camino: la hoja escribe `raceKey`/`classKey`, pero el subtítulo y la fila de la lista
+leían solo el **texto libre heredado**, así que un personaje montado desde la hoja aparecía **sin
+raza y sin clase** mientras su propia hoja decía «Enano · Guerrero». El esquema ya declaraba la
+regla; dos pantallas no la seguían. Ahora es una función y no dos copias.
+
+**El editor de reglas, en carriles** (`ff40b6c`). Los tres desplegables fuera; las 28 piezas del
+vocabulario cerrado visibles a la vez; tres carriles y **la ranura como conexión**, de modo que
+la caja que parece puesta y no lo está no puede existir. Cada caja dice si es un **suceso** o un
+**estado** —el malentendido nº 1 medido— y nombra la pieza gemela con la que se confunde.
+
+> **Y lo que esta tanda NO puede afirmar, dicho aquí y no escondido: el arrastre no está
+> probado.** En esa página no se dispara ni un `dragstart`. Se descartó la herramienta (`dragTo`
+> y ratón paso a paso), el elemento (`<button>` y `<div draggable>`), el `clip-path` y el
+> `user-select`. Un `div` arrastrable trivial **dentro del diálogo** tampoco arrastra y **fuera**
+> sí, así que apunta al contexto. El recorrido se retiró en vez de dejarlo rojo — **y también su
+> primera mitad**, que comprobaba que el carril ajeno rechaza la pieza y pasaba en verde igual si
+> el arrastre no funcionaba en absoluto. Ficha abierta en [06-pendientes.md](./06-pendientes.md).
+
+**Cómo revertir.** Tres commits independientes, sin migración. Avisos: revertir `cc35e2c`
+devuelve el segundo camino de edición **y** el fallo de la fila en blanco; revertir `ff40b6c`
+devuelve los tres desplegables que el DM no entendió.
+
+---
+
 ## 2026-09-02 (madrugada) — La primera tanda de la ronda de interfaz: cinco frentes en paralelo
 
 **Contexto.** El autor abrió una ronda de interfaz larga y pidió antes que nada *organizarnos*.

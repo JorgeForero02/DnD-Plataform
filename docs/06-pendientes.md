@@ -39,6 +39,34 @@ un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: 2026-09-02 (cierre de la fase 2A).
 
+## Dejado por la segunda tanda de la ronda de interfaz (2026-09-02, madrugada)
+
+- **El arrastre del editor de reglas no está probado en un navegador, y puede que no funcione.**
+  Es lo más serio de esta lista. En la página del editor **no se dispara ni un `dragstart`**.
+  Descartado ya: `dragTo` frente a ratón paso a paso, `<button>` frente a `<div draggable>`,
+  con y sin `clip-path`, con y sin `user-select: none`. El dato que apunta a dónde mirar: un
+  `<div draggable>` **trivial** inyectado *dentro del diálogo* tampoco arrastra, y uno inyectado
+  *fuera* sí — así que **es del contexto, no de la pieza**. Sospechas sin comprobar: el atrapa-
+  foco del diálogo, o algo del apilado. Mientras esto siga abierto, **la ruta de teclado y
+  pulsación es la única que se puede afirmar**, y esa sí está probada. Si al final resulta que el
+  arrastre no funciona para una persona, R1 no está terminada.
+- **`BarraDeSesion` y la cabecera de la aplicación se pelean por la misma banda.** Las dos son
+  `sticky top-0`; la barra va a `z-30` y la cabecera también es fija. Con una sesión en curso se
+  solapan. Es previo a esta tanda y no lo tocó nadie. La cabecera de combate de la hoja va a
+  `top-16` y quedará por debajo de la barra, no encima, así que el defecto se ve más ahora.
+- **El diálogo de creación de personaje todavía pide raza y clase como texto libre.** Desde que
+  `descriptor.ts` prefiere las claves del catálogo, un personaje creado ahí nace con las columnas
+  heredadas y **sin clave**, que es el caso menos bueno de los dos. Debería ofrecer los
+  desplegables del catálogo. Y su botón de guardar sigue con `disabled` mientras envía, que roza
+  la regla de que un botón de guardar no se deshabilita.
+- **Las columnas `race`/`class` se pueden retirar en cuanto el autor confirme** que no queda
+  ningún personaje escrito a mano antes del catálogo. Hoy siguen ahí a propósito.
+- **`@testing-library/user-event` no está instalado**, así que las pruebas de componente que
+  querrían simular teclado real usan `fireEvent`. No es falso —se comprueba que el control es
+  activable y que su activación coloca— pero es menos fiel.
+- **`ui/Iconos.tsx` no tiene icono de inventario.** La hoja dibuja un `IconoArcon` local; cuando
+  2B monte el inventario debería subir a la casa común.
+
 ## Dejado por E0, la prueba de ida y vuelta de TipTap (2026-09-02)
 
 - **Las dependencias de TipTap están en `devDependencies`.** Hoy su único consumidor es

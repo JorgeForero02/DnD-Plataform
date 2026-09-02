@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-02 al cerrar la fase 2A entera: **116 e2e de API** en 22 suites y
-**30 recorridos de navegador** en 7 especificaciones, todos verdes. Las suites de API nuevas del
+**34 recorridos de navegador** en 9 especificaciones, todos verdes. Las suites de API nuevas del
 día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
 `game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (6),
 `catalog-y-velocidad` (4) y **`partida` (12), que
@@ -43,6 +43,19 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > fila lleva a una página de lectura y el editor se abre desde ella, de modo que el recorrido
 > tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
 > sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
+
+> **Y una cosa que la alarma de maquetación NO puede hacer todavía: arrastrar.** El editor de
+> reglas se maneja arrastrando cajas a carriles, y **no hay ni un recorrido que lo demuestre**.
+> El que se escribió nunca llegó a pasar, y una sonda encontró que en esa página **no se dispara
+> ni un `dragstart`**: ni con `dragTo`, ni con el ratón paso a paso, ni cambiando el `<button>`
+> por un `<div>`, ni quitando el `clip-path`, ni quitando `user-select: none`. Un `<div
+> draggable>` trivial inyectado **dentro del mismo diálogo** tampoco arrastra; uno inyectado
+> fuera, sí. El recorrido se retiró en vez de dejarlo rojo, y **también se retiró su primera
+> mitad**, que comprobaba que un carril ajeno rechaza la pieza: eso pasaba en verde igual si el
+> arrastre no funcionaba en absoluto, que es la definición de una prueba que pasa por el motivo
+> equivocado. Lo que sí está probado del editor: **la silueta de cada parte**, medida en el
+> navegador, y **colocar por teclado y por pulsación**, en las unitarias. La ficha está en
+> [06-pendientes.md](./06-pendientes.md).
 
 > **Una clase de prueba más, desde el 2026-09-02: la alarma de maquetación.** `jsdom` no
 > maqueta —no hay ancho, ni alto, ni `display` calculado—, así que ninguna prueba unitaria
@@ -110,7 +123,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
-  existe.** Playwright cubre hoy **30 recorridos en siete especificaciones**, y dentro de
+  existe.** Playwright cubre hoy **34 recorridos en nueve especificaciones**, y dentro de
   ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
   de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
   puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,

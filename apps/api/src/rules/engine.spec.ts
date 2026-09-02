@@ -154,7 +154,7 @@ describe("la CA: el caso que un modelo aditivo calcula mal", () => {
       }),
     );
     expect(r.derived.ac.total).toBe(16);
-    const aviso = r.warnings.find((w) => w.code === "AC_FORMULA_DESCARTADA");
+    const aviso = r.warnings.find((w) => w.code === "ac_formula_discarded");
     expect(aviso).toBeDefined();
     expect(aviso?.data).toMatchObject({ formula: "unarmored", total: 14 });
   });

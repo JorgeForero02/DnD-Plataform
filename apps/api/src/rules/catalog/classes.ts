@@ -346,8 +346,9 @@ export const SRD_CLASSES: SrdClass[] = [
       choose: 2,
       from: ["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"],
     },
-    // Lanza **desde el nivel 2**, no desde el 1. La hoja lo enseña por la aptitud, no por aquí.
     spellcastingAbility: "cha",
+    // Desde el 2, no desde el 1. Antes esto era un comentario que el código no aplicaba.
+    spellcastingFromLevel: 2,
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "divine-sense", "Sentido divino"),
@@ -400,6 +401,7 @@ export const SRD_CLASSES: SrdClass[] = [
       ],
     },
     spellcastingAbility: "wis",
+    spellcastingFromLevel: 2,
     asiLevels: ASI_ESTANDAR,
     features: [
       f(1, "favored-enemy", "Enemigo predilecto"),
@@ -411,7 +413,9 @@ export const SRD_CLASSES: SrdClass[] = [
       f(5, "extra-attack", "Ataque adicional"),
       f(6, "favored-enemy-improvement", "Enemigo predilecto y explorador natural mejorados"),
       f(8, "lands-stride", "Zancada de la tierra"),
+      f(10, "natural-explorer-improvement", "Explorador natural mejorado"),
       f(10, "hide-in-plain-sight", "Ocultarse a plena vista"),
+      f(14, "favored-enemy-improvement-2", "Enemigo predilecto mejorado"),
       f(14, "vanish", "Desvanecerse"),
       f(18, "feral-senses", "Sentidos salvajes"),
       f(20, "foe-slayer", "Matador de enemigos"),

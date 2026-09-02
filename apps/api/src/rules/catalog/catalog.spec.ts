@@ -6,7 +6,7 @@ import { SRD_ARMOR } from "./armor";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
 import { PROFICIENCY_BONUS_TABLE, SRD_CATALOG } from "./index";
-import { UnknownContentError, findArmor, findClass, findRace, resolveBuild } from "./resolve";
+import { UnknownContentError, findArmor, findClass, findRace } from "./resolve";
 import type { Grant } from "./types";
 
 // Tarea 2A.3 — capa 1 de la verificación (§4.4 del plan): **invariantes sobre todo el
@@ -35,7 +35,13 @@ describe("invariantes del catálogo entero", () => {
       ["subrazas", SRD_RACES.flatMap((r) => r.subraces.map((s) => s.key))],
       ["clases", SRD_CLASSES.map((c) => c.key)],
       ["armaduras", SRD_ARMOR.map((a) => a.key)],
-      ["concesiones", todasLasConcesiones().map((g) => g.id)],
+      // Las claves de eleccion de habilidades de clase se fabrican al resolver
+      // (`${clase}-skills`) pero **son las que 2A.6 persistira**, asi que entran aqui: una
+      // concesion de raza llamada "rogue-skills" colisionaria en silencio.
+      [
+        "concesiones",
+        [...todasLasConcesiones().map((g) => g.id), ...SRD_CLASSES.map((c) => `${c.key}-skills`)],
+      ],
     ];
     for (const [nombre, claves] of conjuntos) {
       const repetidas = claves.filter((clave, i) => claves.indexOf(clave) !== i);
@@ -44,7 +50,7 @@ describe("invariantes del catálogo entero", () => {
   });
 
   it.each(SRD_CLASSES.map((c) => [c.key, c] as const))(
-    "%s: dado de golpe entre d6 y d12, y par",
+    "%s: el dado de golpe es uno de los cuatro del SRD",
     (_clave, clase) => {
       expect([6, 8, 10, 12]).toContain(clase.hitDie);
     },
@@ -60,7 +66,7 @@ describe("invariantes del catálogo entero", () => {
   );
 
   it.each(SRD_CLASSES.map((c) => [c.key, c] as const))(
-    "%s: la elección de habilidades es coherente — se eligen menos de las que se ofrecen, sin repetir, y todas existen",
+    "%s: la elección de habilidades es coherente — no se eligen mas de las que se ofrecen, sin repetir, y todas existen",
     (_clave, clase) => {
       const { choose, from } = clase.skillChoice;
       expect(choose).toBeGreaterThan(0);
@@ -85,9 +91,15 @@ describe("invariantes del catálogo entero", () => {
   it.each(SRD_CLASSES.map((c) => [c.key, c] as const))(
     "%s: ninguna aptitud repite un nivel de mejora de característica — el dato vive en un solo sitio",
     (_clave, clase) => {
-      const solapadas = clase.features.filter(
-        (feature) =>
-          clase.asiLevels.includes(feature.level) && /asi|ability-score/.test(feature.key),
+      // El filtro era `/asi|ability-score/` sobre la clave, y no casaba con **ninguna** de las
+      // 203 aptitudes salvo por accidente de subcadena: "ev-asi-on". O sea, no comprobaba nada
+      // y ademas disparaba en falso. Lo cazo la revision del 2026-09-02.
+      //
+      // Lo que de verdad hay que comprobar es que **ninguna clave de aptitud describa una
+      // mejora de caracteristica**, viva en el nivel que viva: ese dato solo esta en
+      // `asiLevels`, y repetirlo en dos sitios es como empiezan a discrepar.
+      const solapadas = clase.features.filter((feature) =>
+        /^(asi|ability-score)/.test(feature.key),
       );
       expect(solapadas).toEqual([]);
     },
@@ -147,6 +159,14 @@ describe("invariantes del catálogo entero", () => {
           grant.choose,
         );
         for (const ability of grant.from) expect(ABILITY_KEYS).toContain(ability);
+        // **`excluding` tambien se valida, y no solo `from`.** Con un `excluding: ["chr"]` mal
+        // escrito, Carisma pasaria a ser elegible sin que nada avisara; y si `excluding`
+        // contuviera algo ausente de `from`, la validacion devolveria NOT_IN_LIST antes que
+        // EXCLUDED, rompiendo el orden que el comentario de `choices.ts` defiende.
+        for (const ability of grant.excluding ?? []) {
+          expect(ABILITY_KEYS).toContain(ability);
+          expect(grant.from).toContain(ability);
+        }
       }
       if (grant.kind === "skillChoice") {
         expect(grant.from.length).toBeGreaterThanOrEqual(grant.choose);
@@ -224,17 +244,44 @@ describe("la línea legal está protegida por una prueba, no por buena voluntad"
     },
   );
 
-  it("ninguna concesión ni ninguna clave del catálogo se marca como de campaña", () => {
-    // En 2A **no hay homebrew**: si alguien mete una fila de campaña en estos ficheros, es que
-    // el homebrew se ha colado en el contenido de serie, que es justo lo que la licencia no
-    // permite distribuir. La comprobación es tonta a propósito.
-    const resuelto = resolveBuild({
-      abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-      race: { source: "SRD", key: "human" },
-      class: { source: "SRD", key: "fighter" },
-      level: 1,
-    });
-    for (const modificador of resuelto.input.modifiers)
-      expect(modificador.sourceType).not.toBe("manual");
+  it("toda clave del catalogo esta en la lista blanca del SRD: nada de contenido propio", () => {
+    // La prueba anterior afirmaba `sourceType !== "manual"` sobre los modificadores resueltos, y
+    // `resolveBuild` **nunca** emite ese valor: no podia ponerse roja, y ademas no comprobaba lo
+    // que su nombre decia. Lo cazo la revision del 2026-09-02.
+    //
+    // Esto si lo comprueba: la lista blanca son las claves que el SRD 5.1 trae. Si alguien mete
+    // una raza, una clase o una armadura que no esta en el SRD, el contenido de serie deja de
+    // ser distribuible bajo CC BY y esta prueba lo dice.
+    expect(SRD_RACES.map((r) => r.key).sort()).toEqual(
+      [
+        "dragonborn",
+        "dwarf",
+        "elf",
+        "gnome",
+        "half-elf",
+        "half-orc",
+        "halfling",
+        "human",
+        "tiefling",
+      ].sort(),
+    );
+    expect(SRD_CLASSES.map((c) => c.key).sort()).toEqual(
+      [
+        "barbarian",
+        "bard",
+        "cleric",
+        "druid",
+        "fighter",
+        "monk",
+        "paladin",
+        "ranger",
+        "rogue",
+        "sorcerer",
+        "warlock",
+        "wizard",
+      ].sort(),
+    );
+    // Y ninguna subclase fuera de la unica que el SRD trae por clase.
+    expect(SRD_CLASSES.flatMap((c) => c.subclasses).length).toBe(12);
   });
 });

@@ -136,6 +136,13 @@ export interface SrdClass {
   skillChoice: { choose: number; from: SkillKey[] };
   /** Sin conjuros: `undefined`. Los cuatro marciales del SRD no lanzan. */
   spellcastingAbility?: AbilityKey;
+  /**
+   * Nivel al que empieza a lanzar. **Paladín y explorador lanzan desde el 2, no desde el 1**, y
+   * antes de la revisión del 2026-09-02 esta columna no existía: la característica se pasaba al
+   * motor sin mirar el nivel, así que un paladín de nivel 1 recibía CD de salvación de conjuro
+   * y bono de ataque de conjuro que el SRD no le da. `1` cuando lanza desde el principio.
+   */
+  spellcastingFromLevel?: number;
   /** Niveles de mejora de característica. Guerrero y pícaro tienen más. */
   asiLevels: number[];
   features: ClassFeature[];

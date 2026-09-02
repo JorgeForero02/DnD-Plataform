@@ -11,33 +11,29 @@
 // Resuelto, se aplica y en la traza queda **indistinguible de un bono fijo**, que es el
 // objetivo: la traza pinta «+1 Carisma (semielfo)» igual que pintaría un +2 de tabla.
 
-import type { AbilityKey, DerivationWarning, ProficiencyLevel, SkillKey } from "@dnd/shared";
+import {
+  characterBuildSchema,
+  type CharacterBuildInput,
+  type DerivationWarning,
+  type ProficiencyLevel,
+  type SkillKey,
+} from "@dnd/shared";
 import type { AcFormula, EngineInput, Modifier } from "../engine";
 import { SRD_ARMOR } from "./armor";
-import {
-  assertNoUnknownChoices,
-  validatePicks,
-  type CharacterChoices,
-  type ChoiceGrant,
-} from "./choices";
+import { validatePicks, type ChoiceGrant } from "./choices";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
 import type { ContentRef, Grant, SrdArmor, SrdClass, SrdRace, SrdSubrace } from "./types";
 
-/** Lo que la ficha declara. Las puntuaciones son **base**: la raza entra como modificador. */
-export interface CharacterBuild {
-  abilities: Record<AbilityKey, number>;
-  race: ContentRef;
-  subrace?: ContentRef;
-  class: ContentRef;
-  level: number;
-  /** Armadura y escudo equipados. En 2A se pasan a mano; las casillas de equipo son 2B. */
-  armor?: ContentRef[];
-  /** Competencias en habilidades ya decididas. Se funden con las que da la raza. */
-  skillProficiencies?: Partial<Record<SkillKey, ProficiencyLevel>>;
-  /** Lo que el jugador ha elegido, por clave de concesión (2A.4). */
-  choices?: CharacterChoices;
-}
+/**
+ * Lo que la ficha declara. Las puntuaciones son **base**: la raza entra como modificador.
+ *
+ * **La forma vive en `@dnd/shared`** (`character-build.schema.ts`) y aqui solo se le da
+ * nombre. `resolveBuild` la valida con ese esquema antes de tocar nada: sin eso, una
+ * `abilities` a la que le faltara una caracteristica propagaba `NaN` a toda la hoja en
+ * silencio, y nadie validaba a la salida.
+ */
+export type CharacterBuild = CharacterBuildInput;
 
 /** Una concesión que espera una decisión del jugador. La resolución es 2A.4. */
 export interface PendingChoice {
@@ -71,7 +67,19 @@ export interface ResolvedBuild {
   characterClass: SrdClass;
 }
 
-/** Una referencia que el catálogo no sabe resolver. Es un 400, no un 500. */
+/** Equipo que no puede llevarse a la vez. **Deberá traducirse a 400 en el borde** (2A.6). */
+export class InvalidEquipmentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidEquipmentError";
+  }
+}
+
+/**
+ * Una referencia que el catálogo no sabe resolver. **Deberá traducirse a 400 en el borde**
+ * (2A.6): hoy la API no registra ningún filtro de excepciones, así que decir «es un 400» sería
+ * mentira — y lo era hasta la revisión del 2026-09-02. Ficha S7 en `docs/06-pendientes.md`.
+ */
 export class UnknownContentError extends Error {
   constructor(
     readonly kind: string,
@@ -123,7 +131,11 @@ const ORDEN_COMPETENCIA: Record<ProficiencyLevel, number> = {
   expertise: 2,
 };
 
-export function resolveBuild(build: CharacterBuild): ResolvedBuild {
+export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
+  // Se valida **aqui**, no solo en el borde: esta funcion es la puerta del catalogo y la
+  // llaman tambien las pruebas y, en 2A.9, la subida de nivel, que calcula `level + 1` por
+  // dentro y podria colarse en 21 sin pasar por ningun esquema HTTP.
+  const build = characterBuildSchema.parse(entrada);
   const race = findRace(build.race);
   const subrace = build.subrace ? findSubrace(race, build.subrace) : undefined;
   const characterClass = findClass(build.class);
@@ -169,8 +181,11 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
       labelKey: grant.labelKey,
       kind: grant.kind,
       choose: grant.choose,
-      from: grant.from,
-      excluding: grant.kind === "abilityChoice" ? grant.excluding : undefined,
+      // **Copia.** Devolver el array del catalogo por referencia dejaba que un consumidor
+      // que lo ordenase corrompiera el catalogo compartido del proceso.
+      from: [...grant.from],
+      excluding:
+        grant.kind === "abilityChoice" && grant.excluding ? [...grant.excluding] : undefined,
     });
     // La lista `from` **no cabe en `data`**: el esquema de `@dnd/shared` solo admite escalares,
     // a propósito, para que un aviso no se convierta en un objeto arbitrario. Quien quiera la
@@ -208,11 +223,9 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
         });
         break;
       case "skill":
-        if (
-          ORDEN_COMPETENCIA[grant.level] >
-          ORDEN_COMPETENCIA[skillProficiencies[grant.skill] ?? "none"]
-        )
-          skillProficiencies[grant.skill] = grant.level;
+        // Pasa por el mismo sitio que una eleccion: dos fuentes fijas que den la misma
+        // habilidad tampoco deben subirla dos veces **ni callarse**.
+        anotarCompetencia(grant.skill, grant.level, grant.id);
         break;
       case "abilityChoice": {
         const picks = resolverEleccion(grant);
@@ -260,9 +273,36 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
   for (const skill of resolverEleccion(habilidadesDeClase) ?? [])
     anotarCompetencia(skill as SkillKey, "proficient", habilidadesDeClase.id);
 
-  // Lo último: una elección que no corresponde a ninguna concesión de esta ficha es un error,
-  // no algo que se ignora. Va al final porque hasta aquí no se sabe cuáles había.
-  assertNoUnknownChoices(choices, concesionesConocidas);
+  // Una elección que no corresponde a ninguna concesión de esta ficha **es un aviso al
+  // derivar, no una excepción**. Al escribir sí es un error, y para eso está
+  // `assertNoUnknownChoices`, que llamará el `PATCH` de 2A.6.
+  //
+  // El motivo del cambio, que salió en la revisión: cuando las elecciones se persistan, cambiar
+  // de raza o de clase deja filas viejas ahí. Si derivar lanzara, **el personaje se volvería
+  // ilegible por un dato caduco** en vez de pintarse con un aviso. Un dato viejo no es un dato
+  // inválido, y va al final porque hasta aquí no se sabe qué concesiones había.
+  for (const grantId of Object.keys(choices))
+    if (!concesionesConocidas.has(grantId))
+      warnings.push({ code: "stale_choice", key: grantId, data: { grantId } });
+
+  // Aptitudes de clase y de subclase hasta el nivel actual. Antes solo salian las de raza, y
+  // la ficha S2 de 06 afirmaba que la hoja ya podia decir "al nivel 5 ganas Ataque
+  // adicional": era falso, y la revision lo cazo.
+  for (const feature of characterClass.features)
+    if (feature.level <= build.level)
+      features.push({
+        sourceKey: characterClass.key,
+        labelKey: `class.${characterClass.key}.${feature.key}`,
+        name: feature.name,
+      });
+  for (const subclase of characterClass.subclasses)
+    for (const feature of subclase.features)
+      if (feature.level <= build.level)
+        features.push({
+          sourceKey: subclase.key,
+          labelKey: `subclass.${subclase.key}.${feature.key}`,
+          name: feature.name,
+        });
 
   const { acFormulas, acBonuses } = formulasDeArmadura(build.armor ?? []);
 
@@ -276,7 +316,14 @@ export function resolveBuild(build: CharacterBuild): ResolvedBuild {
       skillProficiencies,
       acFormulas,
       acBonuses,
-      spellcastingAbility: characterClass.spellcastingAbility,
+      // **Solo si el nivel llega.** Paladin y explorador no lanzan hasta el 2; pasarla
+      // siempre hacia que el motor emitiera CD de conjuro y bono de ataque de conjuro a un
+      // nivel 1 que no los tiene.
+      spellcastingAbility:
+        characterClass.spellcastingAbility &&
+        build.level >= (characterClass.spellcastingFromLevel ?? 1)
+          ? characterClass.spellcastingAbility
+          : undefined,
     },
     pendingChoices,
     warnings,
@@ -299,6 +346,15 @@ function formulasDeArmadura(refs: ContentRef[]): {
 } {
   const acFormulas: AcFormula[] = [];
   const acBonuses: NonNullable<EngineInput["acBonuses"]> = [];
+
+  // Dos armaduras de cuerpo, o dos escudos, no es una ficha rara: es una ficha imposible.
+  // Sin esto, dos escudos sumaban **+4**, y dos armaduras dejaban la descartada como un
+  // aviso que en pantalla parece una sugerencia en vez de un equipo invalido.
+  const equipo = refs.map(findArmor);
+  if (equipo.filter((a) => a.category !== "SHIELD").length > 1)
+    throw new InvalidEquipmentError("Solo se puede llevar una armadura a la vez");
+  if (equipo.filter((a) => a.category === "SHIELD").length > 1)
+    throw new InvalidEquipmentError("Solo se puede llevar un escudo a la vez");
 
   for (const ref of refs) {
     const armor = findArmor(ref);

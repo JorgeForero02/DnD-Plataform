@@ -7,12 +7,17 @@
 // la aplicación** (tarea 2A.10).
 //
 // **Por qué vive en `apps/api` y no en `packages/srd`.** El plan de 2A (§4.1) dejaba las dos
-// abiertas. Se elige `apps/api/src/rules/catalog/` porque hoy el catálogo tiene **un solo
-// consumidor**, el motor, que vive dos carpetas más arriba; crear un paquete ahora costaría
-// cableado de compilación por cero beneficio. Cuando la web necesite los nombres en español
-// (2A.10), los pedirá por un endpoint —que hace falta igualmente, porque las elecciones se
-// validan en el servidor— y si aun así conviene el paquete, mover una carpeta es un `git mv`,
-// no un rediseño.
+// abiertas. Se elige `apps/api/src/rules/catalog/` porque hoy el catálogo **solo lo consume el
+// propio borde de la API, dentro de `apps/api`**; crear un paquete ahora costaría cableado de
+// compilación por cero beneficio.
+//
+// (La frase anterior decía «un solo consumidor, el motor», y era al revés: la dirección real es
+// `catalog → engine`. El motor no consume el catálogo, y de hecho no lo importa — eso es lo que
+// hace útil la separación. Lo cazó la revisión del 2026-09-02.)
+//
+// Cuando la web necesite los nombres en español (2A.10), los pedirá por un endpoint —que hace
+// falta igualmente, porque las elecciones se validan en el servidor— y si aun así conviene el
+// paquete, mover una carpeta es un `git mv`, no un rediseño.
 
 export * from "./types";
 export * from "./races";
@@ -26,7 +31,13 @@ import { derive } from "../engine";
 import { SRD_ARMOR } from "./armor";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
-import { resolveBuild, type CharacterBuild, type PendingChoice } from "./resolve";
+import {
+  resolveBuild,
+  type CharacterBuild,
+  type PendingChoice,
+  type ResolvedBuild,
+  type ResolvedFeature,
+} from "./resolve";
 
 /** El catálogo entero, para los invariantes y para la futura exposición por HTTP. */
 export const SRD_CATALOG = {
@@ -35,18 +46,20 @@ export const SRD_CATALOG = {
   armor: SRD_ARMOR,
 } as const;
 
-/**
- * La tabla de bonificador de competencia del SRD, **como tabla**: es lo que pinta la pantalla
- * de subida de nivel, que quiere las bandas y no un número suelto.
- *
- * **El dueño del cálculo sigue siendo el motor** (`proficiencyBonus`, `../engine.ts`). Esto es
- * la misma verdad escrita en otra forma, y por eso lleva un invariante que compara las dos en
- * los veinte niveles: dos representaciones del mismo dato discrepan sin remedio salvo que algo
- * las ate.
- */
 export interface CharacterSheet extends DerivationResult {
   /** Lo que falta por decidir. La pantalla lo pinta como lista de tareas, no como error. */
   pendingChoices: PendingChoice[];
+  /**
+   * Rasgos y aptitudes que la hoja enseña pero el motor no suma: los raciales sin efecto
+   * numérico y las de clase y subclase hasta el nivel actual.
+   */
+  features: ResolvedFeature[];
+  /** Velocidades base **en pies**. 2A.12 les aplicará las condiciones. */
+  speeds: ResolvedBuild["speeds"];
+  /** Las claves de lo elegido, para que la pantalla no tenga que deducirlas de la traza. */
+  raceKey: string;
+  subraceKey?: string;
+  classKey: string;
 }
 
 /**
@@ -65,9 +78,27 @@ export function deriveCharacter(build: CharacterBuild): CharacterSheet {
     derived: derivado.derived,
     warnings: [...resuelto.warnings, ...derivado.warnings],
     pendingChoices: resuelto.pendingChoices,
+    // Antes esto tiraba los rasgos, las velocidades y las claves de raza y clase, así que ni
+    // 2A.10 ni 2A.12 podrían haber usado «la puerta de entrada»: habrían tenido que llamar a
+    // `resolveBuild` aparte y derivar dos veces. Lo cazó la revisión, y sale gratis ahora que
+    // no hay ningún consumidor que migrar.
+    features: resuelto.features,
+    speeds: resuelto.speeds,
+    raceKey: resuelto.race.key,
+    subraceKey: resuelto.subrace?.key,
+    classKey: resuelto.characterClass.key,
   };
 }
 
+/**
+ * La tabla de bonificador de competencia del SRD, **como tabla**: es lo que pinta la pantalla
+ * de subida de nivel, que quiere las bandas y no un número suelto.
+ *
+ * **El dueño del cálculo sigue siendo el motor** (`proficiencyBonus`, `../engine.ts`). Esto es
+ * la misma verdad escrita en otra forma, y por eso lleva un invariante que compara las dos en
+ * los veinte niveles: dos representaciones del mismo dato discrepan sin remedio salvo que algo
+ * las ate.
+ */
 export const PROFICIENCY_BONUS_TABLE = [
   { fromLevel: 1, toLevel: 4, bonus: 2 },
   { fromLevel: 5, toLevel: 8, bonus: 3 },

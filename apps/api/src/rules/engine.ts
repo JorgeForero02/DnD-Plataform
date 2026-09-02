@@ -283,7 +283,11 @@ function calcularCa(
   for (const otra of evaluadas) {
     if (otra.formula.key === ganadora.formula.key) continue;
     warnings.push({
-      code: "AC_FORMULA_DESCARTADA",
+      // Convencion unica de codigos: minusculas y en ingles, como el resto del codigo.
+      // Era `AC_FORMULA_DESCARTADA`, mayusculas y en espanol, y `deriveCharacter` acababa
+      // fundiendo dos convenciones incompatibles en una sola lista que la pantalla de
+      // 2A.10 tendria que aceptar. Lo cazo la revision del 2026-09-02.
+      code: "ac_formula_discarded",
       key: "ac",
       data: { formula: otra.formula.key, labelKey: otra.formula.labelKey, total: otra.total },
     });

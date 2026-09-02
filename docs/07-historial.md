@@ -6,6 +6,71 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2026-09-02 (tarde) — La revisión de 2A.3 y 2A.4, y lo que destapó
+
+**Qué.** Dos agentes revisaron el rango `51a0daa..f268a7c` en paralelo, de solo lectura y con
+contexto limpio, como manda [04-convenciones](./04-convenciones.md): uno sobre corrección del
+SRD y calidad de las pruebas, otro sobre arquitectura, contrato con las tareas siguientes y
+seguridad. Entre los dos: ocho hallazgos altos, siete medios y nueve bajos. **Esta entrada
+existe porque el proceso se había saltado**: 2A.3 y 2A.4 se cerraron sin revisión, y lo señaló
+el autor.
+
+**El hallazgo que más duele, y era mío.** Los invariantes del catálogo **no fijaban ni una cifra
+concreta**. El revisor lo demostró de la única forma que vale: mutó las salvaciones del clérigo
+a Inteligencia, las mejoras del guerrero a las estándar y la CA de la media placa de 15 a 11, y
+**las 210 pruebas siguieron verdes**. Comprobaban la *forma* («dos salvaciones, distintas y
+válidas») y no el *valor*. La forma caza el copiar y pegar; el valor caza el dígito mal
+transcrito, que es el otro error de una transcripción. El arreglo es `reference.spec.ts`: la
+tabla del SRD entera, a mano, comparada con `toEqual`. Las mismas mutaciones ahora ponen en rojo
+cuatro pruebas.
+
+**Y lo que sigue sin estar cubierto, dicho en vez de tapado:** el nivel de las ~203 aptitudes de
+clase. Fijarlas sería transcribir los mismos datos dos veces, y dos copias derivan. Está como
+**S10** en [06](./06-pendientes.md), y la mutación «evasión del pícaro del 7 al 4» sigue pasando.
+
+**Dos errores reales en el código, no en las pruebas.** `spellcastingAbility` se pasaba al motor
+sin mirar el nivel, así que un paladín o un explorador de **nivel 1** recibía CD de salvación de
+conjuro y bono de ataque de conjuro que el SRD no le da — y `classes.ts` llevaba un comentario
+que decía la regla correcta y que el código no aplicaba. Y al explorador le faltaban dos filas de
+progresión, las mejoras de los niveles 10 y 14.
+
+**Cuatro trampas puestas para las tareas siguientes, desactivadas ahora que salen gratis:**
+
+- `CharacterBuild` era una interfaz de TypeScript **sin esquema Zod**, contra la norma del
+  proyecto. Si a `abilities` le faltaba una característica, el `NaN` se propagaba a **toda** la
+  hoja en silencio. Ahora vive en `packages/shared/src/character-build.schema.ts`, con el nivel
+  acotado a 1–20 — sin ese tope, el nivel 21 daba competencia +7 y el 0 daba PG negativos.
+- Una elección huérfana lanzaba una excepción **al derivar**. En cuanto 2A.6 persista las
+  elecciones, cambiar de raza dejaría filas viejas y **el personaje se volvería ilegible por un
+  dato caduco**. Ahora derivar avisa (`stale_choice`) y solo escribir es un error.
+- `deriveCharacter` —«la puerta de entrada» según 01— **tiraba** los rasgos, las velocidades y
+  las claves de raza y clase, así que ni 2A.10 ni 2A.12 podrían haberla usado.
+- Dos escudos sumaban **+4** y dos armaduras de cuerpo dejaban la descartada como un aviso que en
+  pantalla parece una sugerencia. Ahora es `InvalidEquipmentError`.
+
+**Tres mentiras de documentación, corregidas donde miente el texto y no el código:** «es un 400,
+no un 500» (no hay filtro de excepciones; la API devolvería 500, y montarlo es 2A.6 → ficha S7);
+«el catálogo tiene un solo consumidor, el motor» (es al revés: la dirección es `catalog →
+engine`); y «trece armaduras y el escudo», que son doce.
+
+**Y una prueba que no podía ponerse roja**, anunciada además como control legal: afirmaba
+`sourceType !== "manual"` sobre modificadores que **nunca** llevan ese valor. Sustituida por una
+lista blanca real de claves del SRD.
+
+**Una postura discrepante, anotada con las dos versiones** como pide 04: el revisor pedía que las
+velocidades pasaran ya por el motor; se deja para 2A.12, que es literalmente esa tarea, con la
+obligación explícita de convertirlas allí en modificadores. Ficha **S9**.
+
+**Una incidencia de proceso, que también se anota.** Uno de los revisores dejó **cinco
+mutaciones sin restaurar** en el árbol de trabajo; se detectaron antes de que entraran en ningún
+commit y se restauraron desde git. El encargo ya decía que un revisor que toca el árbol limpia
+después; a partir de ahora tiene que exigir además un `git status` limpio como última acción.
+
+**Cómo revertirlo.** Es un commit de arreglos: revertirlo devuelve los defectos de arriba, no
+quita funcionalidad.
+
+---
+
 ## 2026-09-02 (tarde) — 2A.5: la partida empieza a tener estado
 
 **Qué.** El proyecto guardaba **documentos** y no guardaba **partida**: `Session` no tenía
@@ -95,7 +160,7 @@ versión de `ce4140b`. Nada persiste todavía: las elecciones se pasan en memori
 ## 2026-09-02 (tarde) — 2A.3: el catálogo SRD 5.1, y las tres capas que lo verifican
 
 **Qué.** Nueve razas con sus cuatro subrazas, doce clases con su progresión y su única subclase
-del SRD, trece armaduras y el escudo, la tabla de bonificador de competencia, `ContentRef`, el
+del SRD, doce armaduras y el escudo, la tabla de bonificador de competencia, `ContentRef`, el
 resolutor que traduce una ficha declarada a la entrada del motor de 2A.2, y `NOTICE.md` con la
 atribución CC BY 4.0 y su nota de modificación. En `apps/api/src/rules/catalog/`.
 

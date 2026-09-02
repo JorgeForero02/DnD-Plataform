@@ -13,7 +13,14 @@
 //    pinta de terminada y números mal; el aviso dice cuántas faltan.
 // 3. **Una elección inválida es un error, no un aviso**, y el que la valida es el servidor.
 //    Elegir cinco habilidades donde tocan cuatro, repetir una, salirse de la lista o elegir lo
-//    que `excluding` prohíbe: las cuatro son `InvalidChoiceError`, que el borde traduce a 400.
+//    que `excluding` prohíbe: las cuatro son `InvalidChoiceError`.
+//
+// **Aviso honesto sobre el código de estado.** Estas excepciones **todavía no son un 400**: hoy
+// no hay endpoint que las provoque y la API no registra ningún filtro de excepciones, así que
+// si alguna escapara Nest devolvería 500. Traducirlas es trabajo de 2A.6, cuando exista el
+// borde que las pueda producir, y está declarado en `docs/06-pendientes.md`. Lo dice aquí
+// porque el comentario anterior afirmaba que ya lo eran, y la revisión lo cazó: cuando el texto
+// y el código discrepan, el que miente es el texto.
 
 import type { AbilityChoiceGrant, SkillChoiceGrant } from "./types";
 
@@ -26,13 +33,14 @@ export type InvalidChoiceCode =
   "TOO_MANY" | "DUPLICATE" | "NOT_IN_LIST" | "EXCLUDED" | "UNKNOWN_GRANT";
 
 /**
- * Una elección que el catálogo rechaza. **Es un 400, no un 500**: el cuerpo venía mal, el
- * servidor está bien.
+ * Una elección que el catálogo rechaza. **Deberá traducirse a 400 en el borde** (2A.6): el
+ * cuerpo venía mal, el servidor está bien.
  */
 export class InvalidChoiceError extends Error {
   constructor(
     readonly code: InvalidChoiceCode,
     readonly grantId: string,
+    /** La elección que sobra o no vale. **Vacío en `TOO_MANY`**, que no señala a ninguna. */
     readonly pick?: string,
   ) {
     super(`Elección inválida (${code}) en «${grantId}»${pick ? `: «${pick}»` : ""}`);
@@ -56,8 +64,9 @@ export interface ValidatedChoice {
 export function validatePicks(grant: ChoiceGrant, picks: string[] | undefined): ValidatedChoice {
   const elegidas = picks ?? [];
 
-  if (elegidas.length > grant.choose)
-    throw new InvalidChoiceError("TOO_MANY", grant.id, String(elegidas.length));
+  // `pick` se deja vacío a propósito: en los otros códigos señala **la elección ofensiva**, y
+  // meter aquí un recuento haría que quien lea el error viera un número donde espera una clave.
+  if (elegidas.length > grant.choose) throw new InvalidChoiceError("TOO_MANY", grant.id);
 
   const vistas = new Set<string>();
   const excluidas = new Set<string>(grant.kind === "abilityChoice" ? (grant.excluding ?? []) : []);

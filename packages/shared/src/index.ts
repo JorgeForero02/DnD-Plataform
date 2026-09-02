@@ -5,4 +5,5 @@ export * from "./entity.schema";
 export * from "./session.schema";
 export * from "./character.schema";
 export * from "./rules/trace.schema";
+export * from "./character-build.schema";
 export * from "./game-event.schema";

@@ -1,4 +1,9 @@
-import { InvalidChoiceError, validatePicks, type ChoiceGrant } from "./choices";
+import {
+  InvalidChoiceError,
+  assertNoUnknownChoices,
+  validatePicks,
+  type ChoiceGrant,
+} from "./choices";
 import { deriveCharacter } from "./index";
 import { resolveBuild, type CharacterBuild } from "./resolve";
 
@@ -121,14 +126,26 @@ describe("semielfo eligiendo mal", () => {
     ).toThrow(InvalidChoiceError);
   });
 
-  it("una elección cuya concesión esta ficha no tiene es un error, no un silencio", () => {
-    // Sin esto, una clave mal escrita haría desaparecer el bono sin explicación.
+  it("al ESCRIBIR, una elección cuya concesión no existe es un error", () => {
+    // Sin esto, una clave mal escrita haría desaparecer el bono sin explicación. Es el guardián
+    // que llamará el `PATCH` de 2A.6, y por eso se prueba directamente.
     try {
-      resolveBuild(ficha({ choices: { "dwarf-hill-asi": ["con"] } }));
+      assertNoUnknownChoices({ "dwarf-hill-asi": ["con"] }, new Set(["half-elf-asi"]));
       throw new Error("debería haber lanzado");
     } catch (error) {
       expect((error as InvalidChoiceError).code).toBe("UNKNOWN_GRANT");
     }
+  });
+
+  it("al DERIVAR, en cambio, es un aviso: un dato viejo no es un dato inválido", () => {
+    // Cambiado tras la revisión del 2026-09-02. Cuando las elecciones se persistan, cambiar de
+    // raza o de clase deja filas huérfanas; si derivar lanzara, **el personaje se volvería
+    // ilegible** por un dato caduco en vez de pintarse con un aviso al lado.
+    const hoja = deriveCharacter(ficha({ choices: { "dwarf-hill-asi": ["con"] } }));
+    const aviso = hoja.warnings.find((w) => w.code === "stale_choice");
+    expect(aviso?.key).toBe("dwarf-hill-asi");
+    // Y la hoja sale entera: Carisma sigue con su +2 fijo.
+    expect(hoja.derived["ability.cha"].total).toBe(17);
   });
 });
 

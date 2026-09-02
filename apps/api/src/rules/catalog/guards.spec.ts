@@ -1,0 +1,185 @@
+import { SRD_CLASSES } from "./classes";
+import { deriveCharacter } from "./index";
+import { InvalidEquipmentError, resolveBuild, type CharacterBuild } from "./resolve";
+
+// Añadido el 2026-09-02 tras la revisión de 2A.3 y 2A.4.
+//
+// Cada `describe` de aquí abajo corresponde a un hallazgo de la revisión, y existe para que
+// **la corrección no se pueda deshacer sin que algo se ponga rojo**. Un arreglo sin prueba es
+// una promesa, y la promesa se rompe sola dentro de tres meses.
+
+function ficha(parcial: Partial<CharacterBuild> = {}): CharacterBuild {
+  return {
+    abilities: { str: 10, dex: 12, con: 12, int: 13, wis: 10, cha: 15 },
+    race: { source: "SRD", key: "human" },
+    class: { source: "SRD", key: "fighter" },
+    level: 1,
+    ...parcial,
+  };
+}
+
+describe("la entrada se valida antes de calcular nada", () => {
+  // El hallazgo: `CharacterBuild` era una interfaz de TypeScript sin esquema, así que una
+  // `abilities` incompleta daba `undefined` y el `NaN` se propagaba a **todos** los derivados
+  // —modificadores, PG máximos, CA— sin que nadie lo parase, porque nadie validaba a la salida.
+
+  it("una característica que falta es un error, no un NaN silencioso en toda la hoja", () => {
+    const rota = { ...ficha(), abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10 } };
+    expect(() => resolveBuild(rota as unknown as CharacterBuild)).toThrow();
+  });
+
+  it("una característica que no es un entero se rechaza", () => {
+    expect(() => resolveBuild(ficha({ abilities: { ...ficha().abilities, str: 12.5 } }))).toThrow();
+  });
+
+  it.each([0, -3, 21, 100])("el nivel %i se rechaza: la tabla del SRD llega a 20", (level) => {
+    // Sin esto, el nivel 21 daba bonificador de competencia +7 —fuera de la tabla— y el nivel 0
+    // daba PG máximos negativos, porque el suelo del motor es `level` y no 1.
+    expect(() => resolveBuild(ficha({ level }))).toThrow();
+  });
+
+  it("los niveles 1 y 20 sí valen, que son los extremos legítimos", () => {
+    expect(() => resolveBuild(ficha({ level: 1 }))).not.toThrow();
+    expect(() => resolveBuild(ficha({ level: 20 }))).not.toThrow();
+  });
+});
+
+describe("equipo imposible", () => {
+  // El hallazgo: dos escudos sumaban **+4**, y dos armaduras de cuerpo dejaban la descartada
+  // como un aviso que en pantalla parece una sugerencia («con cuero tendrías 13»).
+
+  it("dos armaduras de cuerpo a la vez se rechazan", () => {
+    expect(() =>
+      resolveBuild(
+        ficha({
+          armor: [
+            { source: "SRD", key: "chain-mail" },
+            { source: "SRD", key: "leather" },
+          ],
+        }),
+      ),
+    ).toThrow(InvalidEquipmentError);
+  });
+
+  it("dos escudos a la vez se rechazan: si no, sumaban +4", () => {
+    expect(() =>
+      resolveBuild(
+        ficha({
+          armor: [
+            { source: "SRD", key: "shield" },
+            { source: "SRD", key: "shield" },
+          ],
+        }),
+      ),
+    ).toThrow(InvalidEquipmentError);
+  });
+
+  it("una armadura y un escudo, que es lo normal, sigue valiendo", () => {
+    const hoja = deriveCharacter(
+      ficha({
+        abilities: { str: 15, dex: 14, con: 13, int: 10, wis: 12, cha: 8 },
+        armor: [
+          { source: "SRD", key: "chain-mail" },
+          { source: "SRD", key: "shield" },
+        ],
+      }),
+    );
+    // Humano: +1 a todo, así que Destreza 15 → mod +2, capado a 0 por la cota de malla.
+    expect(hoja.derived.ac.total).toBe(18);
+  });
+});
+
+describe("paladín y explorador no lanzan conjuros hasta el nivel 2", () => {
+  // El hallazgo: `spellcastingAbility` se pasaba al motor sin mirar el nivel, y el propio
+  // `classes.ts` llevaba un comentario que decía la regla correcta y que el código no aplicaba.
+
+  it.each(["paladin", "ranger"])("%s de nivel 1 no tiene CD de conjuro", (clave) => {
+    const hoja = deriveCharacter(ficha({ class: { source: "SRD", key: clave }, level: 1 }));
+    expect(hoja.derived.spellSaveDc).toBeUndefined();
+    expect(hoja.derived["attack.spell"]).toBeUndefined();
+  });
+
+  it.each(["paladin", "ranger"])("%s de nivel 2 sí la tiene", (clave) => {
+    const hoja = deriveCharacter(ficha({ class: { source: "SRD", key: clave }, level: 2 }));
+    expect(hoja.derived.spellSaveDc).toBeDefined();
+  });
+
+  it("un mago de nivel 1 sí lanza, que es la diferencia", () => {
+    const hoja = deriveCharacter(ficha({ class: { source: "SRD", key: "wizard" }, level: 1 }));
+    expect(hoja.derived.spellSaveDc).toBeDefined();
+  });
+});
+
+describe("las aptitudes de clase llegan a la hoja", () => {
+  // El hallazgo: `features` solo traía rasgos de raza, y la ficha S2 de 06 afirmaba que la hoja
+  // ya podía decir «al nivel 5 ganas Ataque adicional». Era falso.
+
+  it("un guerrero de nivel 5 tiene su Ataque adicional en la lista", () => {
+    const hoja = deriveCharacter(ficha({ level: 5 }));
+    expect(hoja.features.map((f) => f.name)).toContain("Ataque adicional");
+  });
+
+  it("y uno de nivel 4 todavía no", () => {
+    const hoja = deriveCharacter(ficha({ level: 4 }));
+    expect(hoja.features.map((f) => f.name)).not.toContain("Ataque adicional");
+  });
+
+  it("las de subclase entran también, y no antes de su nivel", () => {
+    const nivel3 = deriveCharacter(ficha({ level: 3 }));
+    const nivel2 = deriveCharacter(ficha({ level: 2 }));
+    expect(nivel3.features.map((f) => f.name)).toContain("Crítico mejorado");
+    expect(nivel2.features.map((f) => f.name)).not.toContain("Crítico mejorado");
+  });
+
+  it("los rasgos raciales siguen ahí, junto a los de clase", () => {
+    const hoja = deriveCharacter(ficha({ race: { source: "SRD", key: "dwarf" }, level: 1 }));
+    expect(hoja.features.map((f) => f.name)).toContain("Resistencia enana");
+    expect(hoja.features.map((f) => f.name)).toContain("Nuevo aliento");
+  });
+});
+
+describe("la hoja no filtra hacia el catálogo compartido", () => {
+  it("ordenar la lista de una elección pendiente no toca el catálogo del proceso", () => {
+    // El hallazgo: `pendingChoices.from` exponía **por referencia** el mismo array que vive en
+    // `SRD_CLASSES`, así que un consumidor que lo ordenara corrompía el catálogo de todo el
+    // proceso — un fallo que aparecería en otra petición, no en la suya.
+    const antes = [...SRD_CLASSES.find((c) => c.key === "fighter")!.skillChoice.from];
+    const resuelto = resolveBuild(ficha());
+    const pendiente = resuelto.pendingChoices.find((c) => c.grantId === "fighter-skills")!;
+    pendiente.from.sort();
+    pendiente.from.push("inventada");
+    expect(SRD_CLASSES.find((c) => c.key === "fighter")!.skillChoice.from).toEqual(antes);
+  });
+});
+
+describe("una competencia fija repetida tampoco se calla", () => {
+  it("el elfo da Percepción, y el guerrero que la elige recibe su aviso", () => {
+    const hoja = deriveCharacter(
+      ficha({
+        race: { source: "SRD", key: "elf" },
+        choices: { "fighter-skills": ["perception", "athletics"] },
+      }),
+    );
+    expect(hoja.warnings.find((w) => w.code === "duplicate_skill_choice")?.data).toMatchObject({
+      skill: "perception",
+    });
+  });
+});
+
+describe("deriveCharacter devuelve todo lo que las pantallas de 2A necesitan", () => {
+  it("rasgos, velocidades y las claves de raza y clase, no solo los números", () => {
+    // El hallazgo: la «puerta de entrada» tiraba esto, así que 2A.10 y 2A.12 habrían tenido que
+    // llamar a `resolveBuild` aparte y derivar dos veces.
+    const hoja = deriveCharacter(
+      ficha({
+        race: { source: "SRD", key: "dwarf" },
+        subrace: { source: "SRD", key: "dwarf-hill" },
+      }),
+    );
+    expect(hoja.raceKey).toBe("dwarf");
+    expect(hoja.subraceKey).toBe("dwarf-hill");
+    expect(hoja.classKey).toBe("fighter");
+    expect(hoja.speeds.walk).toBe(25);
+    expect(hoja.features.length).toBeGreaterThan(0);
+  });
+});

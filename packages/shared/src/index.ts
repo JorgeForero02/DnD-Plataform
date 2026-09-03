@@ -13,3 +13,5 @@ export * from "./character-state.schema";
 export * from "./notification.schema";
 export * from "./world-state.schema";
 export * from "./rules-engine.schema";
+export * from "./item.schema";
+export * from "./inventory.schema";

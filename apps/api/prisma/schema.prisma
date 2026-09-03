@@ -132,6 +132,7 @@ model Campaign {
   flags       CampaignFlag[]
   sets        CampaignSet[]
   rules       Rule[]
+  items       CampaignItem[]
 
   // Interruptor general del motor, por campana (contencion operativa, punto 6 de la spec de
   // autoridad). Un DM que ve algo raro lo apaga entero sin tener que desarmar regla por regla.
@@ -311,9 +312,19 @@ model Character {
   deathSaveSuccesses Int @default(0)
   deathSaveFailures  Int @default(0)
 
+  // --- La bolsa (2B, hueco H6). Cinco columnas y no un total normalizado: la mesa dice «tres
+  // monedas de plata», no «0,3 po», y un total en oro obliga a decidir que hacer con 12,37 ya
+  // escritos el dia que alguien quiera las cinco. ---
+  cp         Int        @default(0)
+  sp         Int        @default(0)
+  ep         Int        @default(0)
+  gp         Int        @default(0)
+  pp         Int        @default(0)
+
   campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   resources  CharacterResource[]
   conditions CharacterCondition[]
+  inventory  InventoryItem[]
 
   @@index([campaignId])
 }
@@ -486,4 +497,180 @@ model RuleTrace {
   @@index([campaignId, createdAt])
   @@index([chainId])
   @@index([status])
+}
+
+
+// ============================================================================================
+// Fase 2B — objetos, inventario y equipar.
+//
+// **La forma la manda `packages/shared/src/item.schema.ts`**, que es donde vive una sola vez; lo
+// de aqui es su persistencia. Los datos de arma y de armadura son **columnas y no un Json**
+// porque hay que poder consultarlos y porque la convencion lo pide (docs/04-convenciones.md: un
+// Json no se consulta nunca por dentro). El unico Json es `effects`, que es una lista validada
+// al escribir por una union discriminada de Zod.
+// ============================================================================================
+
+enum ItemKind {
+  WEAPON
+  ARMOR
+  SHIELD
+  CONSUMABLE
+  GEAR
+  OTHER
+}
+
+/// Donde esta el objeto. **Tres sitios, y la sintonizacion va aparte** (booleano): un anillo
+/// sintonizado esta equipado, asi que `ATTUNED` como cuarto valor obligaria a elegir entre las
+/// dos verdades.
+enum ItemLocation {
+  EQUIPPED
+  CARRIED
+  STORED
+}
+
+/// Las ranuras (hueco H1). Existen desde la primera migracion: anadirlas despues obliga a
+/// adivinar a que ranura pertenece cada fila ya escrita.
+enum EquipSlot {
+  MAIN_HAND
+  OFF_HAND
+  ARMOR
+  HEAD
+  NECK
+  CLOAK
+  RING_1
+  RING_2
+  HANDS
+  FEET
+  OTHER
+}
+
+enum ArmorCategory {
+  LIGHT
+  MEDIUM
+  HEAVY
+  SHIELD
+}
+
+enum WeaponCategory {
+  SIMPLE
+  MARTIAL
+}
+
+enum WeaponRange {
+  MELEE
+  RANGED
+}
+
+enum DamageType {
+  BLUDGEONING
+  PIERCING
+  SLASHING
+  ACID
+  COLD
+  FIRE
+  FORCE
+  LIGHTNING
+  NECROTIC
+  POISON
+  PSYCHIC
+  RADIANT
+  THUNDER
+}
+
+enum WeaponProperty {
+  AMMUNITION
+  FINESSE
+  HEAVY
+  LIGHT
+  LOADING
+  REACH
+  SPECIAL
+  THROWN
+  TWO_HANDED
+  VERSATILE
+}
+
+/// Un objeto propio de la campana: el *homebrew* que el documento fuente ya pedia. El catalogo
+/// SRD **no** vive aqui: vive en codigo (`apps/api/src/rules/catalog/`), como razas y clases.
+model CampaignItem {
+  id          String   @id @default(cuid())
+  campaignId  String
+  name        String
+  kind        ItemKind
+  /// La prosa: que parece, de donde salio. La pidio por su nombre el DM asesor.
+  description String?
+  /// En **onzas**, entero. En libras el SRD tiene fracciones; en onzas no.
+  weightOz    Int      @default(0)
+  /// En **piezas de cobre**, la unidad mas pequena, para que no haya decimales.
+  costCp      Int?
+  /// Lista cerrada de efectos numericos, validada al escribir por `itemEffectSchema`.
+  effects     Json?
+  requiresAttunement Boolean @default(false)
+  slot        EquipSlot?
+
+  // --- Arma ---
+  weaponCategory   WeaponCategory?
+  weaponRange      WeaponRange?
+  damageDice       String?
+  damageType       DamageType?
+  weaponProperties WeaponProperty[] @default([])
+  versatileDice    String?
+  rangeNormalFt    Int?
+  rangeLongFt      Int?
+
+  // --- Armadura o escudo ---
+  armorCategory       ArmorCategory?
+  baseAc              Int?
+  /// `null` = sin tope (ligera); `2` en media; **`0` en pesada, que no suma nada**.
+  dexCap              Int?
+  strengthRequirement Int     @default(0)
+  stealthDisadvantage Boolean @default(false)
+
+  /// Un objeto propio nace **visible para la mesa** (hueco H9). El DM que prepara la mazmorra lo
+  /// pone `DM_ONLY` a mano, y entonces no se le puede dar a un jugador sin subirle la
+  /// visibilidad: eso es lo que evita que preparar sea filtrar.
+  visibility  Visibility @default(PLAYERS)
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  campaign  Campaign                     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  grants    CampaignItemVisibilityGrant[]
+  inventory InventoryItem[]
+
+  @@index([campaignId])
+}
+
+model CampaignItemVisibilityGrant {
+  id     String       @id @default(cuid())
+  itemId String
+  userId String
+  item   CampaignItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+}
+
+/// Una fila del inventario de un personaje. El objeto **puede venir de dos sitios** y solo de
+/// uno: la clave del SRD o el identificador de un objeto de la campana.
+model InventoryItem {
+  id             String       @id @default(cuid())
+  characterId    String
+  srdKey         String?
+  campaignItemId String?
+  quantity       Int          @default(1)
+  location       ItemLocation @default(CARRIED)
+  slot           EquipSlot?
+  attuned        Boolean      @default(false)
+  /// Donde esta guardado, si lo esta: «en la posada», «en el carro».
+  storedAt       String?
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  character    Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// **`Restrict` y no `Cascade` a proposito**: borrar la definicion de un objeto no puede
+  /// vaciar en silencio la mochila de tres personajes. El servicio lo traduce a un 409 que dice
+  /// quien lo tiene.
+  campaignItem CampaignItem? @relation(fields: [campaignItemId], references: [id], onDelete: Restrict)
+
+  @@index([characterId])
+  @@index([campaignItemId])
 }

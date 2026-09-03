@@ -64,24 +64,74 @@ const objetoConEfecto: CampaignItem = {
   visibility: "DM_ONLY",
 };
 
+/** Una espada del catálogo del SRD, en la forma en que la sirve `GET /catalog/items`. */
+const objetoDelSrd = {
+  ref: "SRD:long-sword",
+  source: "SRD" as const,
+  name: "Espada larga",
+  kind: "WEAPON" as const,
+  weightOz: 48,
+  costCp: 1500,
+  effects: [],
+  requiresAttunement: false,
+  slot: "MAIN_HAND" as const,
+  weapon: {
+    category: "MARTIAL" as const,
+    range: "MELEE" as const,
+    damageDice: "1d8",
+    damageType: "SLASHING" as const,
+    properties: ["VERSATILE" as const],
+    versatileDice: "1d10",
+  },
+};
+
 describe("CampaignItemsCatalogPage — lista", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([]);
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "p1", displayName: "Alice", role: "PLAYER" },
     ]);
   });
 
-  it("distingue la procedencia de cada fila", async () => {
+  it("mezcla las dos procedencias en una lista y marca cada una", async () => {
     useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([objetoDelSrd]);
+    renderPage();
+
+    // Las dos en la misma lista: lo que las distingue es su marca, no en qué pantalla están.
+    await screen.findByText("Estoque");
+    expect(screen.getByText("Espada larga")).toBeInTheDocument();
+    expect(screen.getByText("de la campaña")).toBeInTheDocument();
+    expect(screen.getByText("catálogo")).toBeInTheDocument();
+  });
+
+  it("la búsqueda filtra la lista, y es de cliente sobre lo que el servidor ya mandó", async () => {
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([objetoDelSrd]);
     renderPage();
 
     await screen.findByText("Estoque");
-    // El SRD todavía no viaja por este endpoint (informe del carril): toda fila que llega hoy
-    // se marca «de la campaña».
-    expect(screen.getByText("de la campaña")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Buscar objeto por nombre"), {
+      target: { value: "espada" },
+    });
+
+    expect(screen.getByText("Espada larga")).toBeInTheDocument();
+    expect(screen.queryByText("Estoque")).not.toBeInTheDocument();
+  });
+
+  it("un objeto del SRD no se puede editar: es contenido de la obra, no de la campaña", async () => {
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([]);
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([objetoDelSrd]);
+    renderPage();
+
+    fireEvent.click(await screen.findByText("Espada larga"));
+    await screen.findByRole("heading", { name: "Espada larga" });
+    expect(screen.queryByRole("button", { name: /Editar/ })).not.toBeInTheDocument();
   });
 
   it("un jugador ve la lista pero no el botón de crear", async () => {

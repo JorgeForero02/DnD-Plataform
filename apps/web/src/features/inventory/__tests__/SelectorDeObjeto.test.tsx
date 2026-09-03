@@ -64,9 +64,11 @@ async function abrirSelector() {
 describe("SelectorDeObjeto", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.spyOn(inventoryApi, "fetchCatalogItems").mockResolvedValue({
-      items: [estoque, cuerdaSrd],
-    });
+    // El catálogo del SRD tiene **un solo dueño** desde la integración: la consulta vive en
+    // `campaign-items` y las dos pantallas la comparten. Cuando eran dos consultas con la misma
+    // clave y formas distintas, la segunda pantalla en montarse leía la caché de la primera y la
+    // aplicación se caía.
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([estoque, cuerdaSrd]);
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([selloVhael]);
   });
 

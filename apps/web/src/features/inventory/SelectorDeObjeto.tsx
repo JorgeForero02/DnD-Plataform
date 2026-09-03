@@ -49,7 +49,7 @@ export function SelectorDeObjeto({
   const añadir = useAddInventoryItem(campaignId, characterId);
 
   const filas = useMemo<FilaDelSelector[]>(() => {
-    const delCatalogo: FilaDelSelector[] = (catalogo.data?.items ?? []).map((item) => ({
+    const delCatalogo: FilaDelSelector[] = (catalogo.data ?? []).map((item) => ({
       id: item.ref,
       name: item.name,
       procedencia: "SRD",

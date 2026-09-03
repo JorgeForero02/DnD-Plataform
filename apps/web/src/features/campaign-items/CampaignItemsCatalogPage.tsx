@@ -3,11 +3,12 @@ import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "../campaigns/PermissionStatus";
 import { useMyRole } from "../campaigns/members";
 import { Button } from "../../ui/Button";
+import { fieldControlClass } from "../../ui/Field";
 import { EmptyState } from "../../ui/Collection";
 import { CampaignItemEditor } from "./CampaignItemEditor";
 import { FilaDeObjeto } from "./FilaDeObjeto";
 import { ItemDetail } from "./ItemDetail";
-import { useCampaignItems } from "./hooks";
+import { useSrdItems, useCampaignItems } from "./hooks";
 import type { CampaignItem } from "./api";
 
 // Carril B2 — el punto de montaje único del catálogo de objetos, calcado del molde de
@@ -23,18 +24,41 @@ import type { CampaignItem } from "./api";
 // (`seleccionado`), en vez de una ruta propia: el orquestador solo tiene que montar esta pantalla
 // una vez, con `campaignId`, y todo lo demás —incluida la navegación entre el catálogo y la
 // ficha de un objeto— queda resuelto dentro del carril.
+/** El rótulo del buscador: mismo tratamiento que los rótulos de casilla del resto de pantallas. */
+const ROTULO_DE_BUSQUEDA =
+  "mb-1 block font-chrome text-chrome-xs uppercase tracking-wide text-muted";
+
 export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string }) {
   const { role, isLoading: cargandoRol, isError: errorDeRol, retry } = useMyRole(campaignId);
   const esDM = role === "DM";
 
   const items = useCampaignItems(campaignId);
+  // **Las dos procedencias en la misma lista** (pantalla 22 del prototipo). El SRD es el mismo
+  // para todas las mesas y se pide aparte; lo que distingue una fila de otra es su marca, no en
+  // qué lista está — cuando un objeto se comporta raro, lo primero que se pregunta es de dónde
+  // salió.
+  const srd = useSrdItems();
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<"nuevo" | CampaignItem | null>(null);
 
-  const filas = items.data ?? [];
+  const propios = items.data ?? [];
+  const delSrd = srd.data ?? [];
+  const todas = [...propios, ...delSrd].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  // **Filtro de cliente, y nunca control de acceso** (regla de `docs/04-convenciones.md`): opera
+  // sobre una lista que el servidor ya filtró por `canView`, así que solo puede quitar de la
+  // vista filas que quien mira ya tenía derecho a ver. Con sesenta y cinco objetos del SRD, una
+  // lista sin buscador es una lista que nadie recorre.
+  const filas = busqueda.trim()
+    ? todas.filter((i) => i.name.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    : todas;
   const objetoSeleccionado = filas.find((i) => i.id === seleccionado);
+  // Un objeto del SRD **no se edita ni se borra**: es contenido de la obra, no de la campaña.
+  // Quien quiera una espada larga distinta se crea la suya, que es justo para lo que existe el
+  // homebrew (`NOTICE.md`: lo que trae el producto de serie es solo SRD).
+  const esDelSrd = (id: string) => id.startsWith("SRD:");
 
-  if (items.isLoading || cargandoRol) {
+  if (items.isLoading || srd.isLoading || cargandoRol) {
     return <p className="font-chrome text-chrome-sm text-muted">Cargando el catálogo…</p>;
   }
 
@@ -55,7 +79,7 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
           item={objetoSeleccionado}
           onBack={() => setSeleccionado(null)}
           onEdit={() => setEditando(objetoSeleccionado)}
-          puedeEditar={esDM}
+          puedeEditar={esDM && !esDelSrd(objetoSeleccionado.id)}
         />
         {editando && editando !== "nuevo" && (
           <CampaignItemEditor
@@ -77,7 +101,7 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
       <CabeceraDeSeccion
         grupo="Herramientas"
         titulo="Catálogo de objetos"
-        paraQue="Busca objetos propios de la campaña y consulta su dato: peso, valor, y lo que suman al motor de reglas."
+        paraQue="El catálogo del SRD y los objetos propios de esta campaña, con su dato: peso, valor, daño o Clase de Armadura, y lo que suman al motor de reglas."
         accion={
           esDM ? (
             <Button type="button" onClick={() => setEditando("nuevo")}>
@@ -94,11 +118,26 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
         }
       />
 
-      {filas.length === 0 ? (
-        <EmptyState title="Todavía no hay objetos propios en esta campaña.">
+      <label className="mb-s3 block">
+        <span className={ROTULO_DE_BUSQUEDA}>Buscar objeto por nombre</span>
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Espada, cota, cuerda…"
+          className={fieldControlClass}
+        />
+      </label>
+
+      {filas.length === 0 && busqueda.trim() ? (
+        <EmptyState title={`Ningún objeto se llama así.`}>
+          Prueba con otra palabra, o crea uno propio si lo que buscas no está en el catálogo.
+        </EmptyState>
+      ) : filas.length === 0 ? (
+        <EmptyState title="No hay ningún objeto que mirar.">
           {esDM
-            ? "Crea el primero con «Crear objeto»."
-            : "El DM aún no ha añadido ningún objeto propio de la campaña."}
+            ? "El catálogo del SRD no ha cargado; crea uno propio con «Crear objeto» o vuelve a intentarlo."
+            : "El catálogo del SRD no ha cargado y el DM aún no ha añadido ningún objeto propio."}
         </EmptyState>
       ) : (
         <div className="rounded-radius-sm border border-muted">
@@ -106,9 +145,7 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
             <FilaDeObjeto
               key={item.id}
               item={item}
-              // El SRD todavía no viaja por este endpoint (ver el informe del carril): hasta
-              // que el orquestador conecte esa fuente, cada fila que llega aquí es CAMPAIGN.
-              procedencia="CAMPAIGN"
+              procedencia={esDelSrd(item.id) ? "SRD" : "CAMPAIGN"}
               onSelect={() => setSeleccionado(item.id)}
             />
           ))}

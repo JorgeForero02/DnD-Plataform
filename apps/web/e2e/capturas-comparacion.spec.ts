@@ -113,8 +113,37 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
   await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.screenshot({ path: `${SALIDA}/n05-hoja-oscuro.png`, fullPage: true });
 
-  // El editor de reglas.
+  // --- Fase 2B: el inventario con cosas dentro, que es como hay que mirarlo. Vacío se compara
+  //     con el prototipo sin decir nada: lo que se juzga es la fila, la marca de procedencia y
+  //     cómo conviven las tres zonas.
+  const inventario = page.getByRole("region", { name: "inventario" });
+  for (const objeto of ["Cota de malla", "Espada larga", "Raciones"]) {
+    // El panel se queda abierto entre altas: solo se abre si está cerrado, o el segundo clic
+    // caería sobre «Cerrar».
+    const abrir = inventario.getByRole("button", { name: /Añadir objeto/ });
+    if (await abrir.isVisible().catch(() => false)) await abrir.click();
+    await inventario.getByLabel(/Buscar/).fill(objeto);
+    await inventario
+      .getByRole("button", { name: new RegExp(objeto) })
+      .first()
+      .click();
+    if (objeto !== "Raciones") await inventario.getByRole("radio", { name: /Equipado/ }).check();
+    await inventario.getByRole("button", { name: "Añadir", exact: true }).click();
+    await expect(inventario.getByText(objeto).first()).toBeVisible({ timeout: 15_000 });
+  }
+  await inventario.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SALIDA}/n08-inventario.png`, fullPage: true });
+
+  // El catálogo de objetos de la campaña, con su marca de procedencia.
   await page.goBack();
+  await page.getByRole("tab", { name: "Catálogo" }).click();
+  // El catálogo pide dos fuentes —el SRD y los objetos de la campaña— y no pinta nada hasta
+  // tener las dos; se espera a que aparezca una fila del SRD, no al título.
+  await expect(page.getByText("Espada larga").first()).toBeVisible({ timeout: 15_000 });
+  await page.screenshot({ path: `${SALIDA}/n09-catalogo-de-objetos.png`, fullPage: true });
+
+  // El editor de reglas. **Sin `goBack()`**: el bloque del catálogo ya dejó la vista en la
+  // campaña, y volver otra vez atrás caía en la hoja de personaje.
   await page.getByRole("tab", { name: "Reglas" }).click();
   await page.getByRole("button", { name: "Nueva regla" }).click();
   await expect(page.getByRole("heading", { name: "Nueva regla" })).toBeVisible();

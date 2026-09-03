@@ -6,18 +6,19 @@ import type {
 } from "@dnd/shared";
 import * as inventoryApi from "./api";
 import type { InventoryRow } from "./api";
+import { useSrdResolvedItems } from "../campaign-items/hooks";
 
 // Carril B4 — la clave del catálogo SRD, sin `campaignId`: el mismo catálogo sirve a cualquier
 // mesa (`CatalogController`), así que cachearlo por campaña solo lo pediría dos veces sin motivo.
-export const catalogItemsKey = ["catalog", "items"] as const;
+export { catalogItemsKey } from "../campaign-items/hooks";
 
+/**
+ * El catálogo del SRD tal cual, para el selector. **La consulta es la misma que la del catálogo
+ * de la campaña** (`useSrdResolvedItems`): dos consultas con la misma clave y formas distintas
+ * hacían que la segunda pantalla leyera la caché de la primera y la aplicación se cayera.
+ */
 export function useCatalogItems(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: catalogItemsKey,
-    queryFn: () => inventoryApi.fetchCatalogItems(),
-    staleTime: Infinity,
-    enabled: options?.enabled,
-  });
+  return useSrdResolvedItems(options);
 }
 
 // Carril B1 — los hooks del inventario. Misma convención que `character-sheet/hooks.ts`: las

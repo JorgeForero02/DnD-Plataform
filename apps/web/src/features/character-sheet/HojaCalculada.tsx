@@ -11,7 +11,6 @@ import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
 import { Anulaciones } from "./Anulaciones";
 import { AtaquesYLanzamiento } from "./AtaquesYLanzamiento";
-import { Bolsa } from "./Bolsa";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { DadosDeGolpe, PercepcionPasiva, SalvacionesDeMuerte } from "./TarjetasDeEstado";
 import { Personalidad, RasgosYAptitudes } from "./BloquesDelPie";
@@ -360,7 +359,11 @@ export function HojaCalculada({
               overrides={data.character.overrides}
             />
 
-            <Bolsa money={data.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }} />
+            {/* **La bolsa se pinta una sola vez, y la pinta el inventario.** Aquí hubo una
+                tarjeta de solo lectura con las cinco monedas; al montar el inventario debajo,
+                la misma hoja enseñaba el dinero dos veces —una para leer y otra para mover—, que
+                es la clase de duplicado que acaba discrepando en cuanto uno de los dos se
+                actualiza y el otro no. Se queda el que además deja hacer algo. */}
 
             {/* La subida de nivel vive en su propia feature (2A.11): esta hoja solo la monta.
                 En la maqueta es un botón del bloque accionable, no un adorno suelto flotando

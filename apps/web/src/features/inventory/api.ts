@@ -38,14 +38,6 @@ export function fetchInventory(
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/inventory`);
 }
 
-/**
- * Carril B4 — el catálogo entero del SRD, para el selector de "añadir objeto". Autenticado pero
- * no por campaña (`CatalogController`): mismo objeto para todas las mesas.
- */
-export function fetchCatalogItems(): Promise<{ items: ResolvedItem[] }> {
-  return apiFetch("/catalog/items");
-}
-
 export function addInventoryItem(
   campaignId: string,
   characterId: string,

@@ -41,10 +41,24 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-03** (cierre de la fase 2B, su auditoría de mecánica y las decisiones
-de 2C). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
+Última revisión: **2026-09-03** (cierre de la fase **2C**: dados, reloj, condiciones con duración,
+petición de tirada y tablas del DM). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
+
+## Lo que deja abierto la fase 2C (2026-09-03)
+
+Nada de esto rompe nada hoy. Cada línea dice qué falta, por qué no entró y qué evidencia hay.
+
+| | Qué | Por qué importa, y qué cuesta |
+|---|---|---|
+| **C2C-3** | **El reloj no tiene mando en la pantalla.** `POST /campaigns/:id/clock/advance` existe y está probado de punta a punta, pero **ninguna pantalla lo llama**: hoy el DM solo puede avanzar el tiempo por API. Las condiciones con duración dependen de él, así que la mitad visible de 2C.4 **se queda sin el gesto que la enciende** | Es la pieza que más cerca está de dejar 2C a medias de cara a la mesa. Un control con los presets que el plan ya nombra —«una hora», «ocho horas», «un día»— y el ritmo de viaje con sus salvaciones de marcha forzada. Va en la pantalla de sesión o en la de dados, y es media tarde |
+| **C2C-4** | **La marcha forzada devuelve las tiradas que hay que pedir y nadie las pide.** El servidor calcula `forcedMarchSaves` con su CD por hora; encadenarlas con la petición de tirada de 2C.5 es lo que las convierte en juego | Con 2C.5 dentro, es cablear una cosa a la otra: por cada salvación, una petición a cada personaje que viajó |
+| **C2C-5** | **El disparo automático de una tabla no se ve en la pantalla de la tirada.** `RollResult` trae `houseTable` cuando un natural la dispara, y la pantalla de dados **no lo pinta**: el resultado queda solo en la línea de tiempo | Es una rama de pintado en `ResultadoDeTirada`. Sin ella, la regla de la casa ocurre y quien tiró no la ve |
+| **C2C-6** | **Una tabla no se puede editar, solo crear y borrar** | Deliberado: el alcance pedía la primitiva. Editar una tabla de cien filas sin poder editarla es rehacerla |
+| **C2C-7** | **`GET /campaigns/:id/rolls` no filtra por «solo las mías»** | El registro trae las de la mesa. Con una sesión larga, un jugador que quiera repasar las suyas tiene que buscarlas. El hook de la web ya acepta el filtro por personaje; falta ofrecerlo |
+| **C2C-8** | **El vencimiento de una condición no entiende «hasta el próximo descanso largo»** | Y es a propósito: **eso no es una duración, es un suceso**, y modelarlo como un número sería mentir. Está declarado en `character-state.schema.ts` y en la tabla de duraciones de la pantalla. Cuando entre, entra como disparador, no como segundos |
+| **C2C-9** | **El agotamiento solo llega al motor por dos de sus seis efectos.** Velocidad (niveles 2 y 5) y PG máximos (nivel 4). Los otros cuatro —desventaja en pruebas, en ataques y salvaciones, y la muerte del nivel 6— **no calculan nada** | La desventaja necesita que el motor sepa componer ventaja/desventaja automáticamente, que hoy elige quien tira. Es Encuentros o una decisión aparte; **anotarlo es lo que impide creer que el agotamiento ya está entero** |
 
 ## C2C-1 · El cuarto modo de tirada («Propia») **no cabe en el modelo**, y es decisión del autor (2026-09-03)
 

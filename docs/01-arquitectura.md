@@ -65,6 +65,9 @@ por su cuenta**.
 | `campaign-items` | Los objetos propios de una campaña — el *homebrew* del DM (2B). Traduce sus filas a la misma forma que el catálogo del SRD, para que el motor no pueda saber de dónde salió un objeto | **DM para escribir; cualquier miembro lee**, filtrado por `canView` |
 | `inventory` | El inventario de un personaje, equipar, sintonizar y la bolsa (2B). Aquí viven las reglas de **ranura, manos y tope de tres sintonizaciones**; la base garantiza «una ranura, un objeto» con un índice único parcial | dueño o DM |
 | `rules-engine` | Reglas suceso–condición–efecto de la campaña (2A.16): alta, ensayo en seco, trazas y propuestas. **Escucha `game_event.recorded`** por un puente, en vez de que el log le llame | solo DM |
+| `game-clock` | El reloj de la campaña (2C.3): un contador de **segundos de juego** que solo se avanza, nunca se fija, y el viaje con su ritmo y su marcha forzada. Lo lee cualquier miembro; lo mueve el DM | leer, miembro; avanzar, solo DM |
+| `roll-requests` | La petición de tirada (2C.5): el DM pide **un valor de la hoja** —no una expresión— y quien tira la responde con su hoja de ese momento. Con sondeo | pedir, solo DM; responder, el dueño del personaje o el DM |
+| `dm-tables` | Las tablas del DM (2C.6): tirar sobre una tabla con sus resultados y su visibilidad. **Regla de la casa, con interruptor por campaña y apagada por defecto** — el SRD no trae ninguna tabla de críticos ni de pifias | escribir, solo DM; leer, filtrado por `canView` |
 
 ### Las tres capas de la fase 2A, y por qué no se tocan entre sí
 

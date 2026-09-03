@@ -111,6 +111,25 @@ igual es un agujero de `canView`, y pintarle una fila fantasma es una pantalla q
 que **no** se modela es «lo tengo pero no sé qué hace»: eso es visibilidad **por campo**, que el
 modelo no hace en ningún sitio, y la traza de la CA delataría el número igual.
 
+## Lo que 2C añadió a la base, en una línea cada cosa
+
+- **`Campaign.clockSeconds`** y **`Character.lastLongRestClock`** (2C.3): el reloj, y cuándo
+  terminó el último descanso largo **en ese mismo reloj**. Detalle abajo.
+- **`CharacterCondition.expiresAtClock`** (2C.4): cuándo vence una condición. **No hay columna
+  `expired`**: si está vencida es una resta contra el reloj, y guardarlo sería una segunda verdad
+  que puede discrepar de la primera —además de obligar a un barrido periódico que, si no corre,
+  deja una condición frenando a alguien después de su hora—.
+- **`RollRequest`** (2C.5): una petición de tirada. **Es una tabla y no un `GameEvent`** porque
+  tiene estado —nace pendiente y se responde— y el log es un registro de hechos que no se
+  modifican; y porque «¿qué me han pedido?» es una consulta por columnas, no un recorrido del log.
+  Guarda **una clave de valor de la hoja**, no una expresión: el modificador se lee al tirar.
+- **`DmTable`** y **`DmTableEntry`** con **`Campaign.houseTablesEnabled`** (2C.6): las tablas de la
+  casa, apagadas por defecto. Un **índice único parcial** —`("campaignId", trigger) WHERE trigger
+  <> 'NONE'`, escrito a mano en la migración porque Prisma no sabe expresarlo— garantiza como mucho
+  una tabla de críticos y una de pifias por campaña. En la base y no en un `if` del servicio: la
+  comprobación en el servicio es una carrera esperando a ocurrir en cuanto alguien tenga dos
+  pestañas abiertas.
+
 ## El reloj de la campaña (2C.3)
 
 `Campaign.clockSeconds` es un **entero de segundos de juego**, no una fecha. Decisión del autor, y

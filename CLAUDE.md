@@ -2,8 +2,14 @@
 
 Plataforma para gestionar campañas de D&D: mundo tipo wiki (entidades enlazadas entre sí),
 sesiones y personajes, con **cinco niveles de visibilidad** por objeto. Herramienta propia
-para la mesa del autor primero; SaaS después. **No es** motor de reglas, mapas, tiempo real
-ni 3D: eso son fases posteriores.
+para la mesa del autor primero; SaaS después. **Sí tiene motor de reglas desde la fase 2A**:
+derivación de hoja de 5.ª edición con traza (`apps/api/src/rules/`) y reglas
+suceso–condición–efecto de vocabulario cerrado (`apps/api/src/rules-engine/`), con su pantalla
+en la pestaña «Reglas». **No es** mapas, tiempo real ni 3D: eso son fases posteriores.
+
+> Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
+> falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que
+> **los dos que se mandan leer primero se contradecían**.
 
 ## Lee esto antes de tocar código
 

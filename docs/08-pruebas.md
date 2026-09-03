@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-02 al cerrar la fase 2A entera: **116 e2e de API** en 22 suites y
-**34 recorridos de navegador** en 9 especificaciones, todos verdes. Las suites de API nuevas del
+**43 recorridos de navegador** en 10 especificaciones, todos verdes. Las suites de API nuevas del
 día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
 `game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (6),
 `catalog-y-velocidad` (4) y **`partida` (12), que
@@ -44,18 +44,25 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
 > sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
 
-> **Y una cosa que la alarma de maquetación NO puede hacer todavía: arrastrar.** El editor de
-> reglas se maneja arrastrando cajas a carriles, y **no hay ni un recorrido que lo demuestre**.
-> El que se escribió nunca llegó a pasar, y una sonda encontró que en esa página **no se dispara
-> ni un `dragstart`**: ni con `dragTo`, ni con el ratón paso a paso, ni cambiando el `<button>`
-> por un `<div>`, ni quitando el `clip-path`, ni quitando `user-select: none`. Un `<div
-> draggable>` trivial inyectado **dentro del mismo diálogo** tampoco arrastra; uno inyectado
-> fuera, sí. El recorrido se retiró en vez de dejarlo rojo, y **también se retiró su primera
-> mitad**, que comprobaba que un carril ajeno rechaza la pieza: eso pasaba en verde igual si el
-> arrastre no funcionaba en absoluto, que es la definición de una prueba que pasa por el motivo
-> equivocado. Lo que sí está probado del editor: **la silueta de cada parte**, medida en el
-> navegador, y **colocar por teclado y por pulsación**, en las unitarias. La ficha está en
-> [06-pendientes.md](./06-pendientes.md).
+> **Y la alarma de maquetación acabó cazando el arrastre, que era lo que faltaba.** Durante unas
+> horas del 2026-09-02 aquí ponía que no había forma de probarlo: que en el editor de reglas «no
+> se dispara ni un `dragstart`». **Era falso, y las dos conclusiones que llevaron a esa frase lo
+> eran también.** Se culpó primero al `backdrop-filter` del velo y después al `overflow-y-auto`
+> del panel; la causa real la encontró un banco de pruebas que compiló el componente con su CSS
+> y bisectó: era el **`max-h-[85vh]`**. Con el editor dentro de un diálogo de altura acotada, la
+> pieza quedaba en `y = 451` y su carril en `y = 891` sobre una ventana de 720 — **no estaban
+> nunca en pantalla a la vez**, así que no había dónde soltar. No era un defecto de código: era
+> un defecto de sitio, y lo padecía igual una persona con un portátil.
+>
+> El arreglo fue sacar el editor del diálogo y pintar la paleta en dos columnas para que la
+> pieza y su ranura quepan juntas. Hoy hay **dos recorridos que arrastran de verdad**, y el del
+> rechazo arrastra **primero** algo que sí se coloca, para que no pueda volver a pasar en verde
+> por el motivo equivocado. Mutación comprobada: con el carril rechazando todo, las dos se ponen
+> rojas.
+>
+> Queda una lección que no es sobre arrastrar: **tres diagnósticos seguidos sonaron plausibles y
+> dos eran falsos**, y los tres se apoyaban en mediciones reales. Medir no basta si se mide la
+> cosa equivocada.
 
 > **Una clase de prueba más, desde el 2026-09-02: la alarma de maquetación.** `jsdom` no
 > maqueta —no hay ancho, ni alto, ni `display` calculado—, así que ninguna prueba unitaria
@@ -123,7 +130,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
-  existe.** Playwright cubre hoy **34 recorridos en nueve especificaciones**, y dentro de
+  existe.** Playwright cubre hoy **43 recorridos en diez especificaciones**, y dentro de
   ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
   de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
   puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,

@@ -23,9 +23,12 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
   documentación: rutas citadas entre comillas invertidas que no existen, `fichero:NN` con la
   línea fuera de rango, y conteos de pruebas escritos fuera de su fuente única. Antes de
   `test` a propósito: falla rápido y barato.
-- `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba que el bloque de estado
-  de [00-INDEX.md](./00-INDEX.md) (commit, rama y conteo de unitarias) coincide con lo que el
-  script generaría; falla si alguien lo editó a mano. `pnpm update:estado` lo regenera.
+- `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba **solo los conteos de
+  unitarias** del bloque de estado de [00-INDEX.md](./00-INDEX.md), y falla si alguien los editó
+  a mano. **El commit y la rama del bloque NO se comprueban nunca**, así que pueden quedarse
+  varios commits atrás sin que nada avise; el script lo explica en un comentario, y el propio
+  bloque lo declara. Escribir aquí que el hash está verificado era una promesa que nadie cumple.
+  `pnpm update:estado` lo regenera todo.
 - `pnpm test` corre la suite unitaria. **El conteo de unitarias lo genera
   `scripts/update-estado.mjs`** en el bloque de estado de [00-INDEX.md](./00-INDEX.md) — esa
   es ahora su fuente única, no escrita a mano. **Los conteos de e2e siguen viviendo en
@@ -177,8 +180,12 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 
 - **Los iconos se dibujan.** Nada de `☾`, `☀`, `✓` ni emoji como icono: un glifo de fuente se
   pinta a todo color en unos sistemas, como un cuadrado vacío en otros, y nunca se parece al
-  resto de la interfaz. SVG en trazo, heredando `currentColor`, en `ui/Iconos.tsx`
-  —la casa de los iconos de línea— o en `ui/Logo.tsx` / `ui/Ornament.tsx`. Un icono que vive
+  resto de la interfaz. SVG en trazo, heredando `currentColor`. `ui/Iconos.tsx` es
+  la casa **común**, y `ui/Logo.tsx` / `ui/Ornament.tsx` la marca y el ornamento; además **cada
+  módulo grande dibuja los suyos** cuando solo los usa él (`features/rules/iconos.tsx`,
+  `features/sessions/iconos.tsx`, `features/level-up/IconoAscenso.tsx`,
+  `features/rolls/DadoDibujado.tsx`). Lo que la regla exige es que sean **dibujados**, no que
+  vivan en un único fichero; enumerar tres sitios cuando había siete fue una lista que caducó. Un icono que vive
   **dentro de una línea de texto** se dimensiona en `1em`, no en píxeles, para que escale con
   ella. Una auditoría del 2026-09-02 encontró **seis infracciones**, y una de ellas era el
   `✓` que esta misma regla nombra como prohibido: escribir la regla no la aplica, hace falta

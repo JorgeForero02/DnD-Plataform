@@ -116,7 +116,7 @@ propiedad. Ver [05-datos.md](./05-datos.md) para la semántica de cada nivel.
 **Las pantallas grandes de la fase 2A** viven en `apps/web/src/features/`:
 `character-sheet/` (la hoja calculada con su traza desplegable, PG, recursos, descansos,
 condiciones, tirar y las anulaciones del DM), `level-up/` (el diff propuesto y su confirmación) y
-`rules/` (el panel del motor: reglas, propuestas y trazas) y `sessions/` (la barra global de
+`rules/` (el panel del motor: reglas, propuestas y trazas), `rolls/` (la tirada: los dos dados con el descartado a la vista, el desglose y la decisión de ventaja) y `sessions/` (la barra global de
 «en juego» y la mesa: elenco, registro en vivo y consulta del mundo). `characters/` conserva el
 CRUD.
 
@@ -153,6 +153,8 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 | `/login`, `/register` | Entrada, con su propio armazón y su ornamento |
 | `/` | Panel de campañas |
 | `/campaigns/:id` | Campaña. La **sección abierta viaja en `?seccion=`**, así que es enlazable y sobrevive a una recarga |
+| `/campaigns/:id/sesion` | **La mesa**: elenco con asistencia, registro en vivo con sus sellos rápidos y consulta del mundo, para la partida en marcha |
+| `/campaigns/:id/sesion` | **La mesa**: elenco con asistencia, registro en vivo con sus sellos rápidos y consulta del mundo, para la partida en marcha |
 | `/campaigns/:id/entidades/:entityId` | **Lectura** de una ficha del mundo: cuerpo en vitela, relaciones y comentarios |
 | `/campaigns/:id/personajes/:characterId` | Hoja de personaje con la forma de 5.ª edición |
 | `/account`, `/join/:token`, `/design-tokens`, `*` | Cuenta, invitación, control de tokens y 404 |
@@ -193,15 +195,22 @@ cruza `GET /campaigns/:id/members` para responder "¿soy DM o jugador en esta ca
 tercer estado explícito de "aún no lo sé" mientras carga **o si la petición falla**
 (`isError`, tratado siempre como "aún no lo sé", nunca como "no soy miembro") — con
 `retry: false` (`lib/queryClient.ts`) un solo fallo no se reintenta solo, así que `useMyRole`
-expone `retry()`; de sus **diez llamadas en nueve componentes**, **seis** lo enlazan a un botón
-"Reintentar" (las tres de `CampaignDetailPage.tsx`, más `InvitePanel.tsx`,
-`CampaignSettings.tsx` y `MembersPanel.tsx`) y **cuatro** leen `isError` sin ofrecerlo
-(`LinksPanel.tsx`, `CommentThread.tsx`, `CharacterDetailPage.tsx` y `EntityDetailPage.tsx`,
-que ni siquiera desestructuran `retry`). El recuento anterior decía «seis consumidores, cuatro
-con reintento» y **era falso en las dos direcciones**: se dejaba cuatro componentes fuera y
-atribuía mal quién ofrece el botón. **Crear** una entidad o un personaje queda sin gatear en el botón a
-propósito: el servidor deja crear a cualquier miembro (`entities.service.ts`,
-`characters.service.ts`), así que no hay nada que el servidor vaya a rechazar. Lo que sí usa
+expone `retry()`, y **aquí ya no se escribe cuántos consumidores tiene**. Se intentó dos veces
+—«seis consumidores, cuatro con reintento» primero, «diez llamadas en nueve componentes» después—
+y **las dos caducaron**, la segunda en un día. Un censo a mano de algo que crece con cada pantalla
+es una mentira con fecha de caducidad, así que se escribe **la regla** y se cuenta con `grep`
+cuando haga falta: **todo consumidor que lee `isError` ofrece el botón «Reintentar»**; el que no
+lo lee es porque su fallo ya lo cuenta la pantalla que lo contiene.
+
+**Crear** una entidad, un enlace o un personaje **no** son el mismo caso, y confundirlos fue el
+error que este párrafo tuvo hasta el 2026-09-02:
+
+- **Entidades y enlaces son del DM.** `EntitiesService.create` y `LinksService.create` exigen
+  `requireDM`. Antes exigían solo `requireMember`, y eso dejaba a un jugador crear PNJs, lugares,
+  misiones y documentos en la campaña del DM — ver [05-datos.md](./05-datos.md). Así que el botón
+  «Nuevo» **sí** se gatea por rol: ofrecerlo a un jugador es prometerle un 403.
+- **Un personaje es suyo.** `CharactersService.create` sigue en `requireMember`, y ahí el botón no
+  se gatea porque no hay nada que rechazar. Lo que sí usa
 el rol para **deshabilitar** (no ocultar) con una explicación visible es **crear y editar una
 sesión** (ambas DM-only en el servidor), **editar un personaje o una entidad**, y **generar
 invitación**. La **fila** de una entidad, sesión o personaje **nunca se deshabilita** (arreglo 1,

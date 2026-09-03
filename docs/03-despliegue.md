@@ -187,8 +187,8 @@ cubo**: cinco intentos fallidos de cualquiera dejan a **todos los usuarios** fue
 login. Es exactamente el defecto que arregló la tarea 1.18a (hallazgo 3, ver
 [07-historial.md](./07-historial.md)), reapareciendo por la topología del servidor en vez de
 por el código. `.env.example` y [02-entorno.md](./02-entorno.md) decían `1` porque se
-escribieron cuando el único proxy previsto era nginx; `.env.example` ya está corregido y el
-02 sigue pendiente (ver [06-pendientes.md](./06-pendientes.md)).
+escribieron cuando el único proxy previsto era nginx; **los dos están corregidos desde el
+2026-09-02**: el 02 da `0` como ejemplo local y explica por qué en producción son dos saltos.
 
 **Lo que hace segura la cifra `2` aquí es una propiedad de ESTE despliegue, no una verdad
 general:** como Traefik descarta la cabecera que manda el cliente, la entrada que la API

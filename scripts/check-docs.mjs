@@ -55,7 +55,13 @@ import { join, relative, resolve } from "node:path";
 const ROOT = resolve(process.argv[2] ?? ".");
 const COUNTS_SOURCE = "docs/08-pruebas.md";
 const COUNTS_EXEMPT = [COUNTS_SOURCE, "docs/07-historial.md"];
-const DATED_RECORD_DIRS = ["docs/superpowers/specs", "docs/superpowers/plans"];
+// docs/_archivo/ joins them for the same reason and one stronger (added 2026-09-02): the
+// documentation protocol forbids editing anything in there at all, so a finding inside it
+// could never be acted on. A frozen record legitimately carries the test counts of its day
+// and cites paths that have since been deleted ON PURPOSE — EditorFicha.tsx, removed
+// 2026-09-02, is named there because that is what was true then. Linting it would demand
+// falsifying the archive to make a check pass.
+const DATED_RECORD_DIRS = ["docs/superpowers/specs", "docs/superpowers/plans", "docs/_archivo"];
 const IGNORE = "docs-lint-ignore";
 
 // Roots a doc might be citing from. Order does not matter; any hit means the path is real.

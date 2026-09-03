@@ -275,8 +275,9 @@ Por defecto una `Entity` nace `DM_ONLY` (el mundo es secreto hasta que el DM lo 
 **El formulario de creación de entidades arranca en `OWNER_DM`, no en `DM_ONLY`**, aunque el
 modelo y el esquema de `@dnd/shared` sigan por defecto en `DM_ONLY` (ese valor por defecto no
 se toca). Es solo el punto de partida del editor (`EntityEditor.tsx`): con `DM_ONLY` como
-inicial, cualquier miembro podía crear una entidad — `entities.service.ts:25` deja crear a
-cualquier miembro, no solo al DM — que quedaba invisible incluso para su propio creador
+inicial, cualquier miembro podía crear una entidad —`EntitiesService.create` exigía entonces
+solo `requireMember`; **desde el 2026-09-02 exige `requireDM`**, ver más arriba— que quedaba
+invisible incluso para su propio creador
 (`canView` devuelve `false` en `DM_ONLY` también para quien la creó). Un jugador escribía la
 ficha de su contacto, recibía 201 y la entidad desaparecía sin error. `OWNER_DM` no cambia nada
 para el DM (`canView` ya devuelve `true` para cualquier DM antes de mirar la visibilidad, así

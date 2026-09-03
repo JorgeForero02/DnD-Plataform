@@ -15,6 +15,37 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — El motor de reglas ya no escribe fuera de la transacción que lo dispara (M2B-3)
+
+**Qué.** Primer trabajo de la fase 2C, y va **antes** de 2C porque 2C mete más sucesos por ese
+mismo camino: tiradas, reloj y condiciones. `GameEventsService.record` acepta una transacción para
+que el suceso y el cambio que describe aterricen juntos, y **emitía el suceso con la transacción
+todavía abierta**. El motor de reglas escucha esa emisión y trabaja con `PrismaService`, es decir
+**por otra conexión**: leía el mundo de antes del suceso y sus efectos quedaban fuera de la
+transacción — sobrevivían a un cambio deshecho. Y `emit` **no se esperaba**, así que el comentario
+que prometía «el motor evalúa dentro de la petición» era falso.
+
+**Cómo.** Un buzón por transacción (`apps/api/src/common/after-commit.ts`, `AsyncLocalStorage`):
+mientras hay una transacción abierta, `record` **encola** la emisión; cuando la transacción
+confirma, el buzón se vacía y entonces se emite, esperando cada emisión con `emitAsync`. Si la
+transacción se deshace, el buzón se descarta con ella. Un buzón anidado se reutiliza, para que
+emita el de fuera y no el de dentro.
+
+**Y la garantía no depende de que nadie se olvide.** El buzón lo abre `PrismaService.transaction`,
+que pasa a ser **la única puerta a una transacción en este proyecto**; los dieciocho sitios que
+llamaban a `$transaction` ahora la usan, y un barrido del código
+(`apps/api/src/prisma/no-transaction-suelta.spec.ts`) prohíbe la llamada cruda fuera del módulo de
+Prisma. Sin ese barrido, la próxima transacción que alguien escriba reintroduce el fallo sin que
+nada avise: ninguna prueba de comportamiento puede fallar por código que todavía no existe.
+
+**Probado.** 1068 unitarias y 143 e2e de API en verde. Cuatro mutaciones comprobadas, cada una en
+rojo sobre la prueba que le toca: emitir siempre en el momento, dejar la emisión sin esperar,
+quitar la reutilización del buzón anidado, y quitarle el buzón a `PrismaService.transaction`.
+Restauradas copiando el fichero, nunca con `git checkout`.
+
+**Cómo revertir.** `git revert` del commit. Es un cambio interno: no toca el esquema, ni un
+contrato de `packages/shared`, ni una pantalla.
+
 ## 2026-09-03 (mañana) — El contraste con la fuente, y las decisiones de 2C y 2D
 
 **Qué.** El autor señaló que las reglas de 2B se habían **interpretado** en vez de comprobado, y

@@ -190,7 +190,7 @@ export class CampaignItemsService {
       });
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       if (cambiaLaForma) {
         // **Vuelve a la mochila de quien lo lleve.** Es la regla conservadora y explicable:
         // cambiar la forma de un objeto lo devuelve a la mochila, y quien lo llevaba vuelve a

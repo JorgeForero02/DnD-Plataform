@@ -288,7 +288,7 @@ export class InventoryService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.transaction(async (tx) => {
         // **El mismo candado que `update`, y en el mismo orden.** Sin esto, meter un objeto
         // equipado y equipar otro a la vez tomaban los recursos en orden inverso —uno el índice
         // de la ranura y otro la fila del personaje— y Postgres cortaba con un **deadlock
@@ -379,7 +379,7 @@ export class InventoryService {
     // único parcial de la migración no puede cubrirlo: es «una ranura, un objeto», y aquí las
     // dos ranuras son distintas. Lo encontró la auditoría de mecánica de 2B, y el candado es el
     // mismo que ya usaban los puntos de golpe y la bolsa.
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
 
       const row = await tx.inventoryItem.findFirst({ where: { id: rowId, characterId } });
@@ -470,7 +470,7 @@ export class InventoryService {
     );
     await requireOwnerOrDM(this.membership, campaignId, userId, character);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
       const row = await tx.inventoryItem.findFirst({ where: { id: rowId, characterId } });
       if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
@@ -514,7 +514,7 @@ export class InventoryService {
     if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
     const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       // **`deleteMany` y no `delete`**: soltar dos veces con mala red daba un 500 de Prisma
       // (P2025) sobre una operación que sí había funcionado. Así el reintento es inofensivo.
       const { count } = await tx.inventoryItem.deleteMany({ where: { id: rowId, characterId } });
@@ -556,7 +556,7 @@ export class InventoryService {
       if (delta !== undefined && delta !== 0) deltas[key] = delta;
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       // **La fila se bloquea antes de mirar el saldo.** La primera versión comprobaba el saldo
       // sobre una lectura de fuera de la transacción y escribía con `increment`: con 30 de oro,
       // dos peticiones de −20 a la vez pasaban las dos la comprobación y la bolsa acababa en

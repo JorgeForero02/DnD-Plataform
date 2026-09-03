@@ -118,6 +118,17 @@ nombres de las cosas del código, no.
   tenga dos pestañas abiertas. El servicio traduce el choque a un 409 legible, y **la prueba de
   esa restricción es e2e**, porque el Prisma simulado de las unitarias no valida SQL.
 
+- **Una transacción se abre con `PrismaService.transaction`, nunca con `$transaction`.** Lo
+  segundo está prohibido fuera del módulo de Prisma y lo comprueba un barrido del código
+  (`apps/api/src/prisma/no-transaction-suelta.spec.ts`). El motivo es la ficha **M2B-3**: los
+  sucesos que se registran dentro de una transacción tienen que emitirse **después** del
+  *commit*, porque el motor de reglas los escucha y trabaja **por otra conexión** — emitir con la
+  transacción abierta le hace leer el mundo anterior al suceso y dejar sus efectos fuera de la
+  transacción, donde sobreviven a un cambio deshecho. `transaction` abre ese buzón
+  (`apps/api/src/common/after-commit.ts`); `$transaction` no. **La regla es estructural a
+  propósito**: una que dependa de acordarse se paga otra vez con la siguiente transacción que
+  alguien escriba, y ninguna prueba de comportamiento puede fallar por código que aún no existe.
+
 ## Web
 
 - `apiFetch<T>` de `src/lib/api.ts` es **el único** que habla HTTP. Ningún componente hace

@@ -150,7 +150,7 @@ export class ResourcesService {
     const tope = resource.max ?? Number.POSITIVE_INFINITY;
     const remaining = Math.min(Math.max(tentativo, 0), tope);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const updated = await tx.characterResource.update({
         where: { id: resource.id },
         data: { current: remaining },

@@ -340,7 +340,7 @@ export class LevelUpService {
     await this.membership.requireMember(campaignId, userId);
     await this.requireEditable(userId, campaignId, characterId);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const filas = await tx.$queryRaw<
         FilaPersonaje[]
       >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;

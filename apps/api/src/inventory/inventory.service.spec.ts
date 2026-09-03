@@ -43,7 +43,7 @@ describe("InventoryService", () => {
     // La bolsa bloquea la fila del personaje antes de mirar el saldo (`FOR UPDATE`), como hacen
     // los puntos de golpe: el Prisma simulado devuelve el personaje que la prueba haya puesto.
     $queryRaw: jest.fn(),
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn() };
@@ -63,7 +63,7 @@ describe("InventoryService", () => {
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.character.findFirst.mockResolvedValue(character);
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
-    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.$queryRaw.mockImplementation(async () => {
       const actual = await prisma.character.findFirst.mock.results.at(-1)?.value;
       return actual ? [actual] : [];

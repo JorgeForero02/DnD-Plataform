@@ -87,7 +87,7 @@ describe("la sesión en juego: asistencia, sellos y resumen", () => {
   let service: SessionsService;
   const prisma = {
     session: { findFirst: jest.fn(), update: jest.fn() },
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn().mockResolvedValue({ id: "ev1" }) };
@@ -104,7 +104,7 @@ describe("la sesión en juego: asistencia, sellos y resumen", () => {
     service = ref.get(SessionsService);
     jest.clearAllMocks();
     events.record.mockResolvedValue({ id: "ev1" });
-    prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
+    prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({ session: { update: prisma.session.update }, gameEvent: {} }),
     );
   });
@@ -132,7 +132,7 @@ describe("la sesión en juego: asistencia, sellos y resumen", () => {
       visibility: "PLAYERS",
     });
     prisma.session.update.mockResolvedValue({ id: "s1", title: "S", visibility: "PLAYERS" });
-    prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
+    prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({ session: { update: prisma.session.update } }),
     );
     await service.start("dm1", "c1", "s1", {});

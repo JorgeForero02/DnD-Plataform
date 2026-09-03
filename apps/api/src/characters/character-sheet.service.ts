@@ -657,7 +657,7 @@ export class CharacterSheetService {
     // mantener el candado abierto mientras se resuelve un 403.
     await this.characters.requireEditable(userId, campaignId, characterId);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const filas = await tx.$queryRaw<
         FilaPersonaje[]
       >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
@@ -772,7 +772,7 @@ export class CharacterSheetService {
     });
     if (!existe) throw new NotFoundException("Character not found");
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const filas = await tx.$queryRaw<
         FilaPersonaje[]
       >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
@@ -846,7 +846,7 @@ export class CharacterSheetService {
     await this.membership.requireMember(campaignId, userId);
     await this.characters.requireEditable(userId, campaignId, characterId);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const filas = await tx.$queryRaw<
         FilaPersonaje[]
       >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;

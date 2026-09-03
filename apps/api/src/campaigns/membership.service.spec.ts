@@ -13,7 +13,7 @@ describe("MembershipService", () => {
   };
   const prisma = {
     campaignMember: { findUnique: jest.fn() },
-    $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(tx)),
+    transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(tx)),
   };
 
   // Keys `findUnique` by the userId in the compound-unique lookup instead of queuing
@@ -38,7 +38,7 @@ describe("MembershipService", () => {
     // mockResolvedValueOnce queues. resetAllMocks also drops implementations, so every test
     // starts from a mock with no configured behavior at all.
     jest.resetAllMocks();
-    prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
+    prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   });
 
   it("requireMember throws when not a member", async () => {
@@ -72,7 +72,7 @@ describe("MembershipService", () => {
       await expect(promise).rejects.toThrow(
         "The DM cannot leave their own campaign; delete it instead",
       );
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.transaction).not.toHaveBeenCalled();
     });
   });
 
@@ -85,7 +85,7 @@ describe("MembershipService", () => {
       await expect(service.removeMember("c1", "actor1", "target1")).rejects.toBeInstanceOf(
         ForbiddenException,
       );
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.transaction).not.toHaveBeenCalled();
     });
 
     it("a DM removing a PLAYER deletes the membership and the player's visibility grants", async () => {
@@ -112,7 +112,7 @@ describe("MembershipService", () => {
       const promise = service.removeMember("c1", "dm1", "dm2");
       await expect(promise).rejects.toBeInstanceOf(ForbiddenException);
       await expect(promise).rejects.toThrow("A DM cannot be removed");
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.transaction).not.toHaveBeenCalled();
     });
 
     it("removing a target who is not a member throws NotFoundException", async () => {
@@ -120,7 +120,7 @@ describe("MembershipService", () => {
       await expect(service.removeMember("c1", "dm1", "ghost")).rejects.toBeInstanceOf(
         NotFoundException,
       );
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.transaction).not.toHaveBeenCalled();
     });
   });
 });

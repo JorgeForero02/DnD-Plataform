@@ -56,7 +56,7 @@ function montar(roller?: Roller) {
     // mismo personaje. Por defecto, sin equipo — que es el estado de todas estas pruebas.
     inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
     campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = {
     requireMember: jest.fn().mockResolvedValue({ role: "PLAYER" }),
@@ -107,7 +107,7 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
       await service.preview("p1", "c1", "ch1", false);
 
       expect(prisma.character.update).not.toHaveBeenCalled();
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.transaction).not.toHaveBeenCalled();
       expect(events.record).not.toHaveBeenCalled();
     });
 
@@ -191,14 +191,14 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
   });
 
   describe("apply() — lo aplica", () => {
-    function montarTransaccion(prisma: { $transaction: jest.Mock }, fila: Character) {
+    function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) {
       const tx = {
         $queryRaw: jest.fn().mockResolvedValue([fila]),
         character: {
           update: jest.fn(({ data }: { data: Partial<Character> }) => ({ ...fila, ...data })),
         },
       };
-      prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
+      prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
       return tx;
     }
 
@@ -276,7 +276,7 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
       await expect(service.apply("intruso", "c1", "ch1")).rejects.toBeInstanceOf(
         ForbiddenException,
       );
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.transaction).not.toHaveBeenCalled();
     });
   });
 });

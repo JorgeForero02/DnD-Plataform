@@ -6,6 +6,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { GAME_EVENT_TYPES, gameEventPayloadSchema } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { conBuzonDeSucesos } from "../common/after-commit";
 import { GameEventsService } from "./game-events.service";
 
 // Tarea 2A.5.
@@ -42,7 +43,7 @@ describe("GameEventsService", () => {
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   // El emisor es por donde el motor de reglas escucha. Se simula para que la unitaria siga sin
   // saber que el motor existe: `record` emite, y quién escuche es problema de otro módulo.
-  const emitter = { emit: jest.fn() };
+  const emitter = { emitAsync: jest.fn() };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -156,10 +157,85 @@ describe("GameEventsService", () => {
       visibility: "PLAYERS",
       payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
     });
-    expect(emitter.emit).toHaveBeenCalledWith(
+    expect(emitter.emitAsync).toHaveBeenCalledWith(
       "game_event.recorded",
       expect.objectContaining({ campaignId: "c1", type: "SESSION_STARTED" }),
     );
+  });
+
+  it("con una transacción abierta, la emisión espera al commit y no se dispara dentro", async () => {
+    // **Es la ficha M2B-3.** El motor de reglas trabaja por OTRA conexión: si se emite con la
+    // transacción abierta, lee el mundo de antes del suceso y sus efectos quedan fuera de la
+    // transacción — sobreviven a un cambio deshecho.
+    prisma.gameEvent.create.mockResolvedValue({ id: "e1" });
+    emitter.emitAsync.mockResolvedValue([]);
+    const orden: string[] = [];
+
+    await conBuzonDeSucesos(async () => {
+      await service.record(
+        "u1",
+        "c1",
+        {
+          subjectType: "session",
+          subjectId: "s1",
+          visibility: "PLAYERS",
+          payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
+        },
+        prisma as never,
+      );
+      // Dentro de la transacción: escrito, pero todavía sin emitir.
+      expect(emitter.emitAsync).not.toHaveBeenCalled();
+      orden.push("commit");
+    });
+
+    orden.push("emitido");
+    expect(emitter.emitAsync).toHaveBeenCalledTimes(1);
+    expect(orden).toEqual(["commit", "emitido"]);
+  });
+
+  it("si la transacción se deshace, el suceso no se emite nunca", async () => {
+    prisma.gameEvent.create.mockResolvedValue({ id: "e1" });
+    emitter.emitAsync.mockResolvedValue([]);
+
+    await expect(
+      conBuzonDeSucesos(async () => {
+        await service.record(
+          "u1",
+          "c1",
+          {
+            subjectType: "session",
+            subjectId: "s1",
+            visibility: "PLAYERS",
+            payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
+          },
+          prisma as never,
+        );
+        throw new Error("la transacción se deshace");
+      }),
+    ).rejects.toThrow("la transacción se deshace");
+
+    expect(emitter.emitAsync).not.toHaveBeenCalled();
+  });
+
+  it("sin transacción, record() espera al motor en vez de dejarlo suelto", async () => {
+    // `emit` no se esperaba, así que el comentario que prometía «el motor evalúa dentro de la
+    // petición» era falso. Con `emitAsync` esperado, la promesa de `record` incluye al motor.
+    prisma.gameEvent.create.mockResolvedValue({ id: "e1" });
+    let terminado = false;
+    emitter.emitAsync.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      terminado = true;
+      return [];
+    });
+
+    await service.record("u1", "c1", {
+      subjectType: "session",
+      subjectId: "s1",
+      visibility: "PLAYERS",
+      payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
+    });
+
+    expect(terminado).toBe(true);
   });
 
   it("si el evento no llega a escribirse, tampoco se emite nada", async () => {
@@ -172,7 +248,7 @@ describe("GameEventsService", () => {
         payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
       }),
     ).rejects.toThrow();
-    expect(emitter.emit).not.toHaveBeenCalled();
+    expect(emitter.emitAsync).not.toHaveBeenCalled();
   });
 });
 
@@ -183,7 +259,7 @@ describe("ver el log por los ojos de otro jugador", () => {
     user: { findUnique: jest.fn() },
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
-  const emitter = { emit: jest.fn() };
+  const emitter = { emitAsync: jest.fn() };
 
   const eventos = [
     { id: "e1", visibility: "PLAYERS", actorUserId: "dm1" },

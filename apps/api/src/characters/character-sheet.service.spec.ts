@@ -78,7 +78,7 @@ function montar(roller?: Roller) {
     inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
     campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
     user: { findUnique: jest.fn() },
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = {
     requireMember: jest.fn().mockResolvedValue({ role: "PLAYER" }),
@@ -104,8 +104,8 @@ function montar(roller?: Roller) {
   return { service, prisma, membership, events, characters, resources, rolls };
 }
 
-/** Simula `prisma.$transaction`, con un `tx` que solo sabe bloquear la fila dada y actualizarla. */
-function montarTransaccion(prisma: { $transaction: jest.Mock }, fila: Character) {
+/** Simula `prisma.transaction`, con un `tx` que solo sabe bloquear la fila dada y actualizarla. */
+function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) {
   const tx = {
     $queryRaw: jest.fn().mockResolvedValue([fila]),
     character: {
@@ -115,7 +115,7 @@ function montarTransaccion(prisma: { $transaction: jest.Mock }, fila: Character)
     // diga lo contrario. Sobrescríbelo con `tx.session.findFirst.mockResolvedValue(...)`.
     session: { findFirst: jest.fn().mockResolvedValue(null) },
   };
-  prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
+  prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   return tx;
 }
 

@@ -8,6 +8,7 @@ import {
 } from "@dnd/shared";
 import type { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
+import { encolarTrasCommit } from "../common/after-commit";
 import { canView, type Viewer } from "../common/visibility";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -65,25 +66,30 @@ export class GameEventsService {
     // ciclo entre los dos módulos —el motor escribe eventos, los eventos disparan el motor— y
     // Nest solo lo resolvería con un `forwardRef`, que es esconder el ciclo en vez de quitarlo.
     // El emisor ya está en la aplicación y ya se usa para lo mismo en `notifications`.
-    //
-    // **Y es síncrono a propósito**: `@nestjs/event-emitter` despacha en el mismo proceso y en
-    // la misma petición, que es lo que el diseño pide —el motor evalúa dentro de la petición que
-    // escribió el suceso— y lo que hace que quien dispara vea el efecto al momento. Si algún día
-    // eso se mide y molesta (hueco **H8**), la salida es una cola, no cambiar de sitio la llamada.
-    this.emitter.emit("game_event.recorded", {
-      campaignId,
-      actorUserId,
-      type: payload.type,
-      subjectType: input.subjectType,
-      subjectId: input.subjectId,
-      payload,
-      // **Y esta bandera es lo que impide un bucle infinito.** Los efectos del motor escriben
-      // eventos; si esos eventos volvieran a entrar por aquí, cada uno arrancaría una cascada
-      // NUEVA a profundidad 0 y **el tope de diez saltos no lo vería**, porque el tope cuenta
-      // dentro de una cascada, no entre cascadas. El motor ya encadena por dentro, así que
-      // re-entrar no aporta nada y sí puede tumbar el proceso.
-      fromRulesEngine: options?.fromRulesEngine === true,
-    });
+    const emitir = () =>
+      // `emitAsync` y no `emit`: **hay que esperar al motor.** Con `emit` la evaluación quedaba
+      // suelta en la cola de microtareas y el comentario que prometía «evalúa dentro de la
+      // petición» era falso (ficha M2B-3).
+      this.emitter.emitAsync("game_event.recorded", {
+        campaignId,
+        actorUserId,
+        type: payload.type,
+        subjectType: input.subjectType,
+        subjectId: input.subjectId,
+        payload,
+        // **Y esta bandera es lo que impide un bucle infinito.** Los efectos del motor escriben
+        // eventos; si esos eventos volvieran a entrar por aquí, cada uno arrancaría una cascada
+        // NUEVA a profundidad 0 y **el tope de diez saltos no lo vería**, porque el tope cuenta
+        // dentro de una cascada, no entre cascadas. El motor ya encadena por dentro, así que
+        // re-entrar no aporta nada y sí puede tumbar el proceso.
+        fromRulesEngine: options?.fromRulesEngine === true,
+      });
+
+    // **Con una transacción abierta, la emisión se aplaza hasta el commit.** El motor trabaja por
+    // otra conexión: emitir aquí le haría leer el mundo de antes del suceso y escribir sus efectos
+    // fuera de la transacción, que sobrevivirían a un cambio deshecho. Sin transacción no hay nada
+    // que esperar y se emite en el momento. Ver `../common/after-commit.ts` (ficha M2B-3).
+    if (!encolarTrasCommit(emitir)) await emitir();
 
     return evento;
   }

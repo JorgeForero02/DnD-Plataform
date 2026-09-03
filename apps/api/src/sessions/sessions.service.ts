@@ -117,7 +117,7 @@ export class SessionsService {
       throw new ConflictException("Una sesión cerrada no se vuelve a abrir");
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.transaction(async (tx) => {
         const started = await tx.session.update({
           where: { id: sessionId },
           data: {
@@ -166,7 +166,7 @@ export class SessionsService {
       throw new ConflictException("Esta sesión no está en curso");
 
     const endedAt = new Date();
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const closed = await tx.session.update({
         where: { id: sessionId },
         data: {

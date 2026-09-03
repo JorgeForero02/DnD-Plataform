@@ -156,7 +156,7 @@ export class EntitiesService {
     if (rest.tags !== undefined) data.tags = rest.tags;
     if (rest.visibility !== undefined) data.visibility = rest.visibility;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       if (specificPlayerIds !== undefined) {
         await tx.entityVisibilityGrant.deleteMany({ where: { entityId } });
         if (specificPlayerIds.length) {

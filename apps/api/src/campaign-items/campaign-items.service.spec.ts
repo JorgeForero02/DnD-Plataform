@@ -17,7 +17,7 @@ describe("CampaignItemsService", () => {
     campaignItemVisibilityGrant: { deleteMany: jest.fn(), createMany: jest.fn() },
     inventoryItem: { count: jest.fn(), findMany: jest.fn(), updateMany: jest.fn() },
     user: { findUnique: jest.fn() },
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = {
     requireMember: jest.fn(),
@@ -39,7 +39,7 @@ describe("CampaignItemsService", () => {
     // ya dejó este comentario y el mismo escollo aplica aquí.
     membership.requireDM.mockResolvedValue(undefined);
     membership.requireMember.mockResolvedValue(undefined);
-    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+    prisma.transaction.mockImplementation(async (fn: any) => fn(prisma));
   });
 
   const baseInput = {

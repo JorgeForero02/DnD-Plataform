@@ -66,7 +66,7 @@ export class MembershipService {
 
     // The membership goes; deliberately NOT deleted: characters this person owns and
     // entities they created stay in the campaign (see docs/05-datos.md).
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.transaction(async (tx) => {
       await tx.entityVisibilityGrant.deleteMany({
         where: { userId: targetUserId, entity: { campaignId } },
       });

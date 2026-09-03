@@ -43,7 +43,7 @@ export class RestService {
       "Solo el DM o el dueño puede declarar un descanso.",
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const recursos = await tx.characterResource.findMany({ where: { characterId } });
 
       if (input.kind === "SHORT") {

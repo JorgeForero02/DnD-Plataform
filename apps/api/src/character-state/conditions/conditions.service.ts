@@ -44,7 +44,7 @@ export class ConditionsService {
       "Solo el DM o el dueño puede aplicar una condición.",
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       const condition = await tx.characterCondition.upsert({
         where: { characterId_key: { characterId, key: input.key } },
         create: {
@@ -101,7 +101,7 @@ export class ConditionsService {
     });
     if (!existing) throw new NotFoundException("Condition not found");
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.transaction(async (tx) => {
       await tx.characterCondition.delete({ where: { id: existing.id } });
       await this.events.record(
         userId,

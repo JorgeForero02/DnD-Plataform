@@ -18,7 +18,7 @@ describe("ResourcesService", () => {
       upsert: jest.fn(),
       update: jest.fn(),
     },
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn() };
@@ -37,7 +37,7 @@ describe("ResourcesService", () => {
     membership.requireMember.mockResolvedValue(undefined);
     prisma.character.findFirst.mockResolvedValue(character);
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
-    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
   });
 
   describe("upsert()", () => {

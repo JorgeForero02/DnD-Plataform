@@ -21,7 +21,7 @@ describe("RestService", () => {
     user: { findUnique: jest.fn() },
     characterResource: { findMany: jest.fn(), update: jest.fn() },
     characterCondition: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
-    $transaction: jest.fn(),
+    transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn() };
@@ -43,7 +43,7 @@ describe("RestService", () => {
     prisma.character.findFirstOrThrow.mockResolvedValue(character);
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.characterCondition.findUnique.mockResolvedValue(null);
-    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
   });
 
   it("quien no es DM ni dueño no puede declarar un descanso", async () => {

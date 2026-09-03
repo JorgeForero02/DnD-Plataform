@@ -142,10 +142,16 @@ deja de ser «quién puede verla» y pasa a ser «quién puede verla, incluido s
 - **Tiempo real.** Sondeo hasta que la fase 4 traiga el empujón; el modelo no cambia cuando llegue.
 - **Dados en 3D.**
 
-## 4 · Las decisiones del autor — **con recomendación y con fuente**
+## 4 · Las decisiones del autor — **contestadas el 2026-09-03**
 
-Siguen siendo tuyas, pero ya no van sin respuesta: cada una lleva lo que dice la práctica
-establecida y qué recomiendo. Lo que necesito de ti es confirmar o cambiar, no decidir a ciegas.
+Se le presentaron con su recomendación y su fuente, y **las contestó todas**. Lo que sigue es lo
+decidido; el razonamiento y las fuentes se conservan porque explican por qué.
+
+> **Firmado por el autor:** reloj en **segundos**; la condición **caduca sola y no se borra**; la
+> tabla de CD **se siembra del SRD**; la **petición de tirada entra en 2C**; los **cuatro modos de
+> tirada** se adoptan y se cierra el agujero de la tirada ciega; y las **tablas de críticos y
+> pifias entran como opcional** —*«el DM nuestro lo usaba»*—, con interruptor por campaña y
+> apagadas por defecto.
 
 ### D-2C-1 · La escala del reloj → **segundos**
 
@@ -203,15 +209,21 @@ jugador lo ve en su propia respuesta.
 **omita el resultado** cuando la tirada es ciega — el jugador ve «tirado, el DM lo sabe». Es
 media tarde de trabajo y cierra un agujero que hoy existe y no está declarado.
 
-### D-2C-6 · Pifias y tablas del DM → **no hay tabla oficial; si entra, es una primitiva**
+### D-2C-6 · Pifias y tablas del DM → **DECIDIDO: entran, opcionales y apagadas por defecto**
 
 **Comprobado:** el SRD no trae ninguna tabla de críticos ni de pifias. Lo único oficial es que un
 crítico **duplica los dados y no los modificadores**, que es lo que 2B ya hace. Todas las tablas
 que circulan son caseras.
 
-**Recomendación:** si entra, que entre como **«tablas del DM»** —una primitiva de tirar sobre una
-tabla con resultados y visibilidad—, no como una funcionalidad de pifias. La misma pieza sirve
-para botín, rumores y encuentros aleatorios, que es lo que el alcance de la fase 2 ya sospechaba.
+**Decidido (2026-09-03):** entran, porque **el DM de esta mesa las usa** — pero como **regla de la
+casa, no como regla del juego**: interruptor por campaña, **apagado por defecto**, y la pantalla
+dice que es una tabla propia y no del manual. La pieza se construye como **«tablas del DM»** —tirar
+sobre una tabla con sus resultados y su visibilidad—, no como una funcionalidad de pifias: la misma
+pieza sirve para botín, rumores y encuentros aleatorios, que es lo que el alcance de la fase 2 ya
+sospechaba.
+
+**Y una línea que no se cruza:** el crítico **sigue duplicando dados y no modificadores** salvo que
+el DM encienda su tabla. Una casa que cambia una regla lo hace a la vista.
 
 ## 5 · Lo que queda por contrastar (lo demás ya está hecho, §2 bis)
 

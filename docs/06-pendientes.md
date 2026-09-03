@@ -307,6 +307,21 @@ escribir en él?) estaba escrito dos veces y 2B iba a escribir la tercera. Vive 
 `campaign-items`.
 
 
+## Decisiones del autor sobre 2C y 2D (2026-09-03) — cerradas
+
+Se le presentaron con recomendación y fuente, y las contestó todas. Están en el
+[alcance de 2C](./superpowers/specs/2026-09-03-fase-2C-alcance-design.md) §4 y en el
+[plan de 2C](./superpowers/plans/2026-09-03-fase-2C-plan.md). Resumen: reloj en segundos ·
+condición que caduca sola sin borrarse · tabla de CD sembrada del SRD · petición de tirada dentro
+de 2C · los cuatro modos de tirada, cerrando el agujero de la tirada ciega · **tablas de críticos y
+pifias opcionales y apagadas por defecto**, porque el DM de esta mesa las usa · statblocks
+importados del JSON del SRD publicando lo revisado · y **el despliegue, al cerrar la fase 2, con
+una partida de prueba real de dos jugadores**.
+
+**Lo único que quedó anotado para más adelante:** *«opciones de personalización»* de las criaturas
+del SRD —poder clonar o editar una dentro de una campaña, como ya se puede con un objeto—. No entra
+en 2D; lo que 2D tiene que hacer es **no impedirlo** con la forma de su tabla.
+
 ## Lo que dejó abierto la auditoría de mecánica de 2B (2026-09-03, noche)
 
 > **Un intermitente que no era una prueba frágil, y merece constar.** Después de serializar el
@@ -767,6 +782,22 @@ manual — pero D7 se rompe solo en cuanto exista D2.
   reordenó los ficheros de `apps/web/src` y desplazó sus líneas — las de `apps/api` y
   `packages/shared` no se movieron. Si alguien recupera el informe original, sus números de
   línea de web hay que leerlos sobre `70b353c`, no sobre `main`.
+
+## El despliegue de la fase 2, y cómo se verifica (decidido 2026-09-03)
+
+**No se despliega por bloques.** Se despliega **al cerrar la fase 2 entera**, y la verificación
+final no es una suite: es **una partida de prueba real**, decidida por el autor.
+
+- Dos cuentas de jugador — **dos, no más** — y la cuenta del autor **como DM**.
+- Una campaña de verdad, jugada por agentes: crear personajes, repartir equipo, equipar, atacar,
+  tirar, aplicar una condición, descansar, avanzar el reloj.
+- **Es integración, no demostración**: lo que se rompa se anota como ficha con su evidencia, y lo
+  que no se pueda hacer se anota igual.
+- Hay **permiso expreso del autor** para desplegar en esa prueba; hasta entonces, nada sube.
+
+Antes de esa prueba hay que revisar dos cosas que ya están escritas: las **cuatro migraciones**
+pendientes de mirar y la **copia de seguridad rota** que abre este documento — jugar de verdad
+significa que a partir de ahí sí hay datos que perder.
 
 ## Antes de la primera partida
 

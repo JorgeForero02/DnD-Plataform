@@ -59,6 +59,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
 | `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
 | `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
+| `superpowers/plans/2026-09-03-fase-2C-plan.md` | **El plan de 2C**, con las decisiones del autor ya contestadas, el orden de los seis bloques, qué cierra cada uno, y **la partida de prueba con la que se cierra la fase 2**. Escrito para que otra sesión pueda continuar sin preguntar |
 | `superpowers/specs/2026-09-03-fase-2C-alcance-design.md` | **El alcance de 2C y el anexo de 2D**, escritos sobre lo que hay medido en el código y contrastados con el SRD **antes** de programar: 2B se llevó la mitad de 2C, y el contraste encontró **seis huecos más** (el descanso de 24 horas, las interrupciones, el ritmo de viaje, la marcha forzada, el agotamiento que no llega al motor y las relanzadas del evaluador). Trae las seis decisiones que son del autor |
 | `superpowers/specs/2026-09-03-contraste-de-reglas-2B.md` | **Las reglas de 2B contrastadas con la fuente**, una por una, con sus enlaces. Ninguna salió mal; salieron **tres cosas que no sabíamos**, incluida una que se estaba pintando rota en la hoja |
 | `superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md` | **Lo que una mesa real encontró en 2B**: dos frentes con refutador sobre el turno de un guerrero enano y sobre lo que sobrevive entre sesiones. Nueve fallos de regla arreglados el mismo día y doce fichas abiertas |
@@ -96,7 +97,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `5abf663` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `835d77b` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

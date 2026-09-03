@@ -15,6 +15,37 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (mañana) — El contraste con la fuente, y las decisiones de 2C y 2D
+
+**Qué.** El autor señaló que las reglas de 2B se habían **interpretado** en vez de comprobado, y
+que eso no se hace: *«si tienes una duda de reglas o de sistemas… investiga con documentos
+oficiales; no es opcional»*. Se contrastó todo lo de 2B contra el SRD 5.1 y la práctica de las
+mesas virtuales, y después el alcance entero de 2C y 2D **antes** de escribir una línea. La regla
+queda escrita en [04-convenciones.md](./04-convenciones.md).
+
+**Lo que el contraste encontró:**
+
+- **De 2B**: ninguna regla estaba mal —armadura pesada, media, versátil, enano, sintonización,
+  munición, arma mágica: todas coinciden— pero salieron **tres cosas que no sabíamos**, y una era
+  un defecto vivo: dos avisos nuevos salían en pantalla como «Sin traducir». Arreglado, con una
+  prueba que recorre los diez códigos y exige que ninguno caiga.
+- **De 2C**: **seis huecos** que el alcance no tenía —el descanso largo una vez cada 24 horas, las
+  interrupciones del descanso, el ritmo de viaje, la marcha forzada, el agotamiento que no llega al
+  motor (el nivel 4 parte los PG máximos) y el evaluador que no sabe relanzar—.
+- **De 2D**: la premisa estaba mal planteada («reusar el motor»: un monstruo se declara, no se
+  deriva) y **el coste se desploma**, porque el SRD 5.1 existe en JSON bajo CC BY con la misma
+  frase de atribución que ya usamos. Con una trampa evitada: la tabla de competencia de los
+  monstruos llega a +9 donde un personaje se queda en +6.
+
+**Las decisiones, todas contestadas por el autor**: reloj en segundos · la condición caduca sola y
+no se borra · la tabla de CD se siembra del SRD · la petición de tirada entra · los cuatro modos de
+tirada, cerrando el agujero de la tirada ciega · **tablas de críticos y pifias opcionales y
+apagadas por defecto**, porque el DM de esta mesa las usa · statblocks importados publicando lo
+revisado · y **el despliegue al cerrar la fase 2, verificado con una partida de prueba real de dos
+jugadores**.
+
+**Cómo revertir.** Son documentos y un arreglo de traducción; `git revert` de los commits del día.
+
 ## 2026-09-03 (madrugada) — La auditoría de mecánica de 2B, y nueve reglas que estaban mal
 
 **Qué.** Cerrada 2B, se auditó **la mecánica**, no el código: dos frentes con su refutador

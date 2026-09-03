@@ -1,3 +1,4 @@
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -21,6 +22,9 @@ describe("RestService", () => {
     user: { findUnique: jest.fn() },
     characterResource: { findMany: jest.fn(), update: jest.fn() },
     characterCondition: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    // 2C.3: el descanso largo lee el reloj de la campaña —«una vez cada 24 horas» son horas de
+    // JUEGO, no del servidor— y marca cuándo terminó.
+    campaign: { findUniqueOrThrow: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
@@ -44,6 +48,8 @@ describe("RestService", () => {
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.characterCondition.findUnique.mockResolvedValue(null);
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    // Reloj a cero y sin descanso largo previo: el caso de una campaña recién empezada.
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
   });
 
   it("quien no es DM ni dueño no puede declarar un descanso", async () => {
@@ -204,5 +210,140 @@ describe("RestService", () => {
       expect.objectContaining({ payload: { type: "REST_DECLARED", rest: "SHORT" } }),
       prisma,
     );
+  });
+});
+
+describe("las tres reglas del descanso largo que el reloj hace comprobables (2C.3)", () => {
+  // Las tres son del SRD (https://5thsrd.org/adventuring/resting/) y las tres necesitan tiempo de
+  // juego: sin reloj, «una vez cada 24 horas» no se puede comprobar contra nada.
+
+  let service: RestService;
+  const character = {
+    id: "c1",
+    ownerId: "owner1",
+    visibility: "PLAYERS",
+    campaignId: "cmp1",
+    con: 14,
+    currentHp: 5,
+    lastLongRestClock: null as number | null,
+  };
+  const prisma = {
+    character: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), update: jest.fn() },
+    user: { findUnique: jest.fn() },
+    characterResource: { findMany: jest.fn(), update: jest.fn() },
+    characterCondition: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    campaign: { findUniqueOrThrow: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn() };
+
+  async function montar(sobre: Partial<typeof character> = {}, clockSeconds = 0) {
+    const ref = await Test.createTestingModule({
+      providers: [
+        RestService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+      ],
+    }).compile();
+    service = ref.get(RestService);
+    jest.resetAllMocks();
+    const fila = { ...character, ...sobre };
+    membership.requireMember.mockResolvedValue(undefined);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.findFirstOrThrow.mockResolvedValue(fila);
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.characterResource.findMany.mockResolvedValue([]);
+    prisma.characterCondition.findUnique.mockResolvedValue(null);
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds });
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    return { service, prisma, events };
+  }
+
+  it("**el segundo descanso largo en 24 horas de juego se rechaza, con su motivo**", async () => {
+    // Hasta 2C se podía descansar largo tres veces seguidas y curarse entero cada vez.
+    const { service, prisma } = await montar({ lastLongRestClock: 0 }, 3600 * 10);
+    await expect(service.declare("owner1", "cmp1", "c1", { kind: "LONG" })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("y a las 24 horas exactas ya vale: el límite es «una vez cada 24 h», no «una vez al día»", async () => {
+    const { service } = await montar({ lastLongRestClock: 0 }, 86_400);
+    await expect(service.declare("owner1", "cmp1", "c1", { kind: "LONG" })).resolves.toBeDefined();
+  });
+
+  it("el descanso largo deja su marca **en el reloj de la campaña**, no en la hora del servidor", async () => {
+    // Con `Date.now()`, una sesión de cuatro horas reales que cubre tres días de viaje habría
+    // bloqueado dos descansos que el juego permite.
+    const { service, prisma } = await montar({}, 50_000);
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+    expect(prisma.character.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { lastLongRestClock: 50_000 } }),
+    );
+  });
+
+  it("**a 0 PG no se descansa largo**: hay que empezarlo con al menos 1", async () => {
+    const { service, prisma } = await montar({ currentHp: 0 });
+    await expect(service.declare("owner1", "cmp1", "c1", { kind: "LONG" })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("`currentHp` a null es «a PG máximos», no «a cero»: ese sí descansa", async () => {
+    const { service } = await montar({ currentHp: null as unknown as number });
+    await expect(service.declare("owner1", "cmp1", "c1", { kind: "LONG" })).resolves.toBeDefined();
+  });
+
+  it("**un descanso interrumpido no repone NADA** — el SRD dice empezar otra vez, no medio descanso", async () => {
+    // Nuestro propio plan prometía «con una hora hecha, se cobran los beneficios de un corto».
+    // Eso no está en el SRD 5.1: es un arbitraje de mesa. Manda la fuente.
+    const { service, prisma } = await montar();
+    prisma.characterResource.findMany.mockResolvedValue([
+      { id: "r1", key: "rage", current: 0, max: 3, resetOn: "LONG_REST" },
+      { id: "r2", key: "spell-slot-1", current: 0, max: 2, resetOn: "SHORT_REST" },
+    ]);
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG", interrupted: true });
+
+    expect(prisma.characterResource.update).not.toHaveBeenCalled();
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("y queda escrito como interrumpido, para que nadie tenga que acordarse de que no contó", async () => {
+    const { service, events } = await montar();
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG", interrupted: true });
+    expect(events.record).toHaveBeenCalledWith(
+      "owner1",
+      "cmp1",
+      expect.objectContaining({
+        payload: { type: "REST_DECLARED", rest: "LONG", interrupted: true },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("un descanso interrumpido **no gasta el descanso del día**: lo que se limita es beneficiarse", async () => {
+    const { service, prisma } = await montar({ lastLongRestClock: 0 }, 3600);
+    await expect(
+      service.declare("owner1", "cmp1", "c1", { kind: "LONG", interrupted: true }),
+    ).resolves.toBeDefined();
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("y tampoco exige estar en pie: tumbarse a 0 PG no da nada, pero no es un error", async () => {
+    const { service } = await montar({ currentHp: 0 });
+    await expect(
+      service.declare("owner1", "cmp1", "c1", { kind: "LONG", interrupted: true }),
+    ).resolves.toBeDefined();
+  });
+
+  it("el descanso CORTO no mira el reloj: no tiene límite de 24 horas", async () => {
+    const { service } = await montar({ lastLongRestClock: 0 }, 60);
+    await expect(service.declare("owner1", "cmp1", "c1", { kind: "SHORT" })).resolves.toBeDefined();
   });
 });

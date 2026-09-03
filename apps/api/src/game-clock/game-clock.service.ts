@@ -1,0 +1,104 @@
+import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  RITMO_DE_VIAJE,
+  salvacionesDeMarchaForzada,
+  SEGUNDOS_POR_HORA,
+  type AdvanceClockInput,
+  type AdvanceClockResult,
+  type ClockState,
+} from "@dnd/shared";
+import { MembershipService } from "../campaigns/membership.service";
+import { GameEventsService } from "../game-events/game-events.service";
+import { PrismaService } from "../prisma/prisma.service";
+
+// Tarea 2C.3 — **el reloj de la campaña**.
+//
+// **Quién lo mueve: el DM y nadie más.** El tiempo de juego es una decisión de arbitraje —«pasan
+// dos horas», «descansáis ocho»— y un jugador que pudiera adelantarlo apagaría solo las
+// condiciones que le estorban. Leerlo lo puede cualquier miembro: saber qué hora es en el mundo
+// no es información privilegiada.
+//
+// **El reloj no aplica efectos: los hace posibles.** Avanzarlo escribe su suceso y devuelve lo que
+// haya que arbitrar (las salvaciones de una marcha forzada). Quien caduca condiciones al pasar el
+// tiempo es 2C.4, leyendo este contador.
+
+@Injectable()
+export class GameClockService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly membership: MembershipService,
+    private readonly events: GameEventsService,
+  ) {}
+
+  /** Qué hora es en el mundo. Cualquier miembro puede mirar el reloj. */
+  async read(userId: string, campaignId: string): Promise<ClockState> {
+    await this.membership.requireMember(campaignId, userId);
+    const campaign = await this.prisma.campaign.findUnique({ where: { id: campaignId } });
+    if (!campaign) throw new NotFoundException("Campaign not found");
+    return { seconds: campaign.clockSeconds };
+  }
+
+  async advance(
+    userId: string,
+    campaignId: string,
+    input: AdvanceClockInput,
+  ): Promise<AdvanceClockResult> {
+    await this.membership.requireDM(campaignId, userId);
+
+    const segundos = input.kind === "TIME" ? input.seconds : input.hours * SEGUNDOS_POR_HORA;
+    const ritmo = input.kind === "TRAVEL" ? RITMO_DE_VIAJE[input.pace] : null;
+    const millas = ritmo && input.kind === "TRAVEL" ? ritmo.milesPerHour * input.hours : undefined;
+
+    return this.prisma.transaction(async (tx) => {
+      // **La lectura y la escritura van dentro de la transacción**, y el `increment` es del motor
+      // de base de datos y no un `to = from + n` calculado aquí: dos avances a la vez —el DM en
+      // dos pestañas, o una regla que dispare otro— perderían uno de los dos si el número se
+      // compusiera en memoria.
+      const antes = await tx.campaign.findUnique({ where: { id: campaignId } });
+      if (!antes) throw new NotFoundException("Campaign not found");
+      const despues = await tx.campaign.update({
+        where: { id: campaignId },
+        data: { clockSeconds: { increment: segundos } },
+      });
+
+      const evento = await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "campaign",
+          subjectId: campaignId,
+          // **El reloj es público dentro de la campaña.** Que el tiempo pase no es un secreto del
+          // DM: si lo fuera, un jugador vería caducar sus condiciones sin saber por qué, que es
+          // exactamente lo que 2C.4 existe para evitar.
+          visibility: "PLAYERS",
+          payload: {
+            type: "CLOCK_ADVANCED",
+            seconds: segundos,
+            from: antes.clockSeconds,
+            to: despues.clockSeconds,
+            ...(input.kind === "TRAVEL" ? { pace: input.pace } : {}),
+            ...(millas !== undefined ? { miles: millas } : {}),
+            ...(input.reason ? { reason: input.reason } : {}),
+          },
+        },
+        tx,
+      );
+
+      return {
+        from: antes.clockSeconds,
+        to: despues.clockSeconds,
+        seconds: segundos,
+        eventId: evento.id,
+        ...(input.kind === "TRAVEL" ? { pace: input.pace } : {}),
+        ...(millas !== undefined ? { miles: millas } : {}),
+        ...(ritmo && ritmo.passivePerception !== 0
+          ? { passivePerception: ritmo.passivePerception }
+          : {}),
+        // **Las tiradas que hay que pedir, no las tiradas.** El SRD manda una salvación de
+        // Constitución por cada hora pasada de ocho, con CD 10 + 1 por hora extra; quién tira y
+        // qué pasa después es de la mesa.
+        forcedMarchSaves: input.kind === "TRAVEL" ? salvacionesDeMarchaForzada(input.hours) : [],
+      };
+    });
+  }
+}

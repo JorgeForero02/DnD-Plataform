@@ -58,6 +58,10 @@ export const GAME_EVENT_TYPES = [
   "ITEM_ADDED",
   "ITEM_MOVED",
   "ITEM_REMOVED",
+  // El reloj de la campana (2C.3). **Un solo tipo para el tiempo y el viaje**: viajar ES avanzar
+  // el reloj, y separarlo en dos tipos obligaria a leer dos veces la misma linea de tiempo para
+  // reconstruir cuanto tiempo ha pasado.
+  "CLOCK_ADVANCED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -78,7 +82,29 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     /** Minutos entre `startedAt` y `endedAt`. Ausente si la sesión se cerró sin arrancar. */
     durationMinutes: z.number().int().nonnegative().optional(),
   }),
-  z.object({ type: z.literal("REST_DECLARED"), rest: z.enum(["SHORT", "LONG"]) }),
+  z.object({
+    type: z.literal("REST_DECLARED"),
+    rest: z.enum(["SHORT", "LONG"]),
+    /**
+     * **El descanso largo se interrumpió** (2C.3). El SRD: una hora de actividad agotadora
+     * —andar, luchar, lanzar conjuros— obliga a **empezar el descanso otra vez**, así que este
+     * suceso registra un descanso que NO dio beneficios. Sin este campo, la línea de tiempo diría
+     * «descansaron ocho horas» de una noche en la que no se recuperó nada.
+     */
+    interrupted: z.boolean().optional(),
+  }),
+  // El reloj (2C.3). `from` y `to` como en `HP_CHANGED`, y por el mismo motivo: sin el antes y el
+  // después, la línea de tiempo no se puede leer sin recalcular toda la historia.
+  z.object({
+    type: z.literal("CLOCK_ADVANCED"),
+    seconds: z.number().int().positive(),
+    from: z.number().int().nonnegative(),
+    to: z.number().int().nonnegative(),
+    /** Solo si fue un viaje: el ritmo y las millas recorridas. */
+    pace: z.enum(["FAST", "NORMAL", "SLOW"]).optional(),
+    miles: z.number().optional(),
+    reason,
+  }),
   // **`from` y `to`, no solo `delta`.** Sin el antes y el después, la línea de tiempo no se
   // puede leer sin recalcular toda la historia, y deshacer es imposible.
   z.object({

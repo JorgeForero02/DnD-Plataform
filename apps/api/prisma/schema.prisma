@@ -31,6 +31,7 @@ enum SessionStatus {
 // valor aqui y un miembro a la union de Zod de packages/shared/src/game-event.schema.ts, que es
 // la fuente unica; una prueba comprueba que los dos lados no se separan.
 enum GameEventType {
+  CLOCK_ADVANCED
   SESSION_STARTED
   SESSION_CLOSED
   REST_DECLARED
@@ -143,6 +144,11 @@ model Campaign {
   // Interruptor general del motor, por campana (contencion operativa, punto 6 de la spec de
   // autoridad). Un DM que ve algo raro lo apaga entero sin tener que desarmar regla por regla.
   rulesEnabled Boolean @default(true)
+
+  // El reloj de la campana (2C.3): **segundos de juego**, no una fecha. Un asalto son seis, asi
+  // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
+  // es una capa de presentacion encima; al reves no se puede.
+  clockSeconds Int @default(0)
 }
 
 model CampaignMember {
@@ -317,6 +323,12 @@ model Character {
   // Tiradas de salvacion contra muerte: tres y tres, casillas y no un numero.
   deathSaveSuccesses Int @default(0)
   deathSaveFailures  Int @default(0)
+
+  // Cuando termino el ultimo descanso largo, **en segundos del reloj de la campana** (2C.3).
+  // El SRD: «a character can't benefit from more than one long rest in a 24-hour period», y sin
+  // este dato esa regla no se puede comprobar — hoy se puede descansar largo tres veces seguidas
+  // y curarse entero cada vez. `null` = todavia no ha descansado largo en esta campana.
+  lastLongRestClock Int?
 
   // --- La bolsa (2B, hueco H6). Cinco columnas y no un total normalizado: la mesa dice «tres
   // monedas de plata», no «0,3 po», y un total en oro obliga a decidir que hacer con 12,37 ya

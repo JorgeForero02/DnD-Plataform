@@ -45,6 +45,20 @@ export const declareRestSchema = z.object({
   kind: z.enum(["SHORT", "LONG"]),
   /** Dados de golpe que se gastan en un descanso corto, con su curación. Solo en el corto. */
   spendHitDice: z.number().int().min(0).max(20).optional(),
+  /**
+   * **El descanso se interrumpió, y lo declara el DM** (2C.3, hueco H-2C-2).
+   *
+   * El SRD dice que una hora de actividad agotadora —andar, luchar, lanzar conjuros— obliga a
+   * **empezar el descanso otra vez**: <https://5thsrd.org/adventuring/resting/>. La máquina **no
+   * puede detectarlo** —no sabe que os atacaron a la tercera hora—, así que lo honesto es que lo
+   * diga quien arbitra: «este descanso se interrumpió». La máquina ejecuta, el DM arbitra.
+   *
+   * **Y entonces no da nada**, que es lo que dice la fuente y no lo que decía nuestro plan. El
+   * plan de 2C prometía «con una hora hecha, se cobran los beneficios de un corto»: eso **no está
+   * en el SRD 5.1** —es un arbitraje de mesa, razonable pero de la casa—, y aquí manda la fuente.
+   * Un DM que quiera darles el corto lo tiene a un botón: declarar un descanso corto.
+   */
+  interrupted: z.boolean().optional(),
   reason: z.string().max(280).optional(),
 });
 export type DeclareRestInput = z.infer<typeof declareRestSchema>;

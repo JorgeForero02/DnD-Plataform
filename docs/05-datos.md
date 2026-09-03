@@ -111,6 +111,28 @@ igual es un agujero de `canView`, y pintarle una fila fantasma es una pantalla q
 que **no** se modela es «lo tengo pero no sé qué hace»: eso es visibilidad **por campo**, que el
 modelo no hace en ningún sitio, y la traza de la CA delataría el número igual.
 
+## El reloj de la campaña (2C.3)
+
+`Campaign.clockSeconds` es un **entero de segundos de juego**, no una fecha. Decisión del autor, y
+coincide con la práctica: Foundry guarda el tiempo del mundo en segundos y los calendarios son una
+capa encima que lo avanza por deltas. Lo que lo hace la elección correcta aquí es que **un asalto
+son seis segundos**: la iniciativa, cuando llegue, avanzará este mismo contador de seis en seis, y
+guardar minutos habría obligado a migrar ese día.
+
+Un calendario —día, mes, estación— es una capa de presentación sobre este número y se puede añadir
+sin tocar el dato. Al revés no se puede, que es el motivo de guardar el contador y no la fecha.
+
+**Solo se avanza, nunca se fija** (`POST /clock/advance`, y la suma la hace el motor de la base con
+`increment`): dos avances a la vez —el DM en dos pestañas, o una regla que dispare otro— perderían
+uno de los dos si el número se compusiera en memoria. Y retroceder no es una operación que ninguna
+mesa quiera de verdad, pero sí una forma de que algo caduque dos veces.
+
+`Character.lastLongRestClock` guarda **en este mismo reloj** cuándo terminó el último descanso
+largo. Va con el reloj de la campaña y no con la hora del servidor a propósito: lo que la regla
+cuenta son 24 horas *de juego*. Con `Date.now()`, una sesión de cuatro horas reales que cubre tres
+días de viaje habría bloqueado dos descansos que el juego permite, y una mesa que juega una vez al
+mes no habría bloqueado ninguno.
+
 ## Estado de partida: la sesión con estado y el log (tarea 2A.5)
 
 **El proyecto guardaba documentos y no guardaba partida.** `Session` no tenía estado —no

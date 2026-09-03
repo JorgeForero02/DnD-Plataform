@@ -15,6 +15,59 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — 2C.3: el reloj de la campaña, el viaje y las tres reglas del descanso
+
+**Qué.** El sistema no modelaba el tiempo de juego **en absoluto**, y esa fue la corrección que
+trajo el DM asesor: hay efectos que duran una hora y no había reloj contra el que comprobarlo.
+Ahora `Campaign.clockSeconds` es un contador de segundos de juego que solo el DM avanza, con su
+suceso en la línea de tiempo, y **viajar es avanzar ese mismo reloj**.
+
+**Segundos y no minutos ni una fecha**, y el porqué es concreto: un asalto son seis segundos, así
+que la iniciativa de Encuentros avanzará este mismo contador de seis en seis. Es el mismo mecanismo
+a dos escalas, que era la promesa del alcance. Un calendario es una capa encima; al revés no se
+puede. Detalle en [05-datos.md](./05-datos.md).
+
+**El ritmo de viaje y la marcha forzada, transcritos del SRD** (huecos H-2C-3 y H-2C-4,
+<https://5thsrd.org/adventuring/movement/>): rápido 4 millas/hora y **−5 a la Percepción pasiva**,
+normal 3, lento 2. Y pasadas ocho horas de marcha, **una salvación de Constitución por cada hora
+extra, con CD 10 + 1 por hora**, cuyo fallo da un nivel de agotamiento. El servidor **devuelve las
+tiradas que hay que pedir, con su CD ya calculada**; no las tira. La máquina ejecuta, el DM arbitra.
+
+**Las tres reglas del descanso que el reloj hace comprobables**, y las tres son del SRD
+(<https://5thsrd.org/adventuring/resting/>):
+
+1. **Un solo descanso largo por cada 24 horas de juego.** Hasta hoy se podía descansar largo tres
+   veces seguidas y curarse entero cada vez — la mesa lo sabía y por eso no usaba el botón.
+2. **Hay que empezarlo con al menos 1 punto de golpe.** A cero no se descansa: te estás muriendo.
+3. **Si se interrumpe, hay que empezar otra vez.**
+
+> **Y aquí la fuente corrigió a nuestro propio plan, que es exactamente para lo que se buscó.** El
+> plan de 2C prometía dos cosas que **no están en el SRD 5.1**: una lista de disparadores de
+> interrupción —«iniciativa, un conjuro que no sea truco, daño»— y que *«con una hora hecha, se
+> cobran los beneficios de un corto»*. Lo que dice el manual es que interrumpe **una hora de
+> actividad agotadora** y que entonces hay que **empezar el descanso otra vez para obtener
+> cualquier beneficio**. No hay medio descanso largo. Se implementó lo que dice la fuente: un
+> descanso interrumpido **no repone nada**, queda escrito como interrumpido en la línea de tiempo
+> —para que nadie tenga que acordarse de que aquella noche no contó— y **no gasta el descanso del
+> día**, porque lo que la regla limita es *beneficiarse*, no tumbarse. Un DM que quiera darles el
+> corto lo tiene a un botón. La corrección está anotada dentro del propio plan.
+
+**La interrupción la declara el DM**, no la detecta el sistema: no sabe si os atacaron a la tercera
+hora. Es la misma línea que gobierna el resto de la fase.
+
+**Probado.** 1118 unitarias de API y **158 e2e en 26 suites**, todos en verde. Cinco mutaciones
+comprobadas, cada una en rojo sobre su prueba: la marcha forzada empezando a la octava hora en vez
+de la novena, el límite de 24 horas desactivado, la regla del punto de golpe desactivada, el
+descanso interrumpido reponiendo como uno normal, y el reloj sumándose en memoria en vez de con
+`increment`. **Dos de esas cinco no midieron nada en el primer intento** —una no compilaba y la
+otra no llegó a aplicarse por una indentación— y se repitieron: una mutación que no rompe el
+código no es una mutación superada, es una medición que no se hizo.
+
+**Cómo revertir.** `git revert` del commit **y** deshacer la migración
+`20260903152449_clock_de_campana`, que añade dos columnas (`Campaign.clockSeconds` y
+`Character.lastLongRestClock`) y dos valores al enum de sucesos. Las columnas tienen valor por
+defecto, así que revertir solo el código deja la base con dos columnas de más y nada roto.
+
 ## 2026-09-03 (tarde) — 2C.2: la pantalla de dados, relanzar, y los dos topes que faltaban
 
 **Qué.** El bloque 2 de la fase 2C, en tres piezas.

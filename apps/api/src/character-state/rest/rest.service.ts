@@ -1,5 +1,5 @@
-import { Injectable } from "@nestjs/common";
-import type { DeclareRestInput } from "@dnd/shared";
+import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
+import { SEGUNDOS_POR_DIA, type DeclareRestInput } from "@dnd/shared";
 import type { Character, CharacterResource, Prisma } from "@prisma/client";
 import { MembershipService } from "../../campaigns/membership.service";
 import { rollExpression } from "../../dice/dice";
@@ -9,13 +9,26 @@ import { abilityModifier } from "../../rules/engine";
 import { maxHpDe } from "../common/max-hp";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
-// Tarea 2A.8 — descansos.
+// Tarea 2A.8 — descansos. Ampliada en 2C.3 con las tres reglas que el reloj hace comprobables.
 //
 // **Corto y largo no son el mismo botón con distinto nombre.** El corto repone lo marcado
 // `SHORT_REST` y permite gastar dados de golpe; el largo repone TODO lo consumible (lo del
 // corto incluido —el descanso largo nunca deja peor a alguien que el corto—), devuelve los PG
 // al máximo, recupera la MITAD de los dados de golpe (no todos, que es el error clásico) y
 // baja un nivel de agotamiento.
+//
+// ## Las tres reglas que faltaban, y por qué no podían existir antes (2C.3)
+//
+// Las tres salen del SRD (<https://5thsrd.org/adventuring/resting/>) y **las tres necesitan un
+// reloj**: sin tiempo de juego, «una vez cada 24 horas» no se puede comprobar contra nada.
+//
+//  1. **Un solo descanso largo por cada 24 horas.** «A character can't benefit from more than one
+//     long rest in a 24-hour period.» Hasta 2C se podía descansar largo tres veces seguidas y
+//     curarse entero cada vez — la mesa lo sabía y por eso no usaba el botón.
+//  2. **Hay que empezarlo con al menos 1 PG.** «A character must have at least 1 hit point at the
+//     start of the rest to gain its benefits.» Un personaje a 0 no descansa: se está muriendo.
+//  3. **Si se interrumpe, hay que empezar otra vez** y **no da nada**. La interrupción no la
+//     detecta el sistema —no sabe si os atacaron—, así que la declara el DM.
 
 const CLAVE_DADOS_DE_GOLPE = /^hit-dice-d(\d+)$/;
 
@@ -46,11 +59,19 @@ export class RestService {
     return this.prisma.transaction(async (tx) => {
       const recursos = await tx.characterResource.findMany({ where: { characterId } });
 
+      if (input.kind === "LONG") {
+        await this.comprobarDescansoLargo(tx, character, campaignId, input);
+      }
+
       if (input.kind === "SHORT") {
         await this.reponerPorTipo(tx, recursos, "SHORT_REST");
         if (input.spendHitDice) {
           await this.gastarDadosDeGolpe(tx, character, recursos, input.spendHitDice);
         }
+      } else if (input.interrupted) {
+        // **Interrumpido: no repone nada.** «The characters must begin the rest again to gain any
+        // benefit from it» — no hay medio descanso largo. Queda escrito en la línea de tiempo para
+        // que nadie tenga que acordarse de que aquella noche no contó.
       } else {
         // Todo lo del corto, y además lo que solo repone el largo.
         await this.reponerPorTipo(tx, recursos, "SHORT_REST");
@@ -69,6 +90,15 @@ export class RestService {
         });
         await this.recuperarMitadDadosDeGolpe(tx, recursos);
         await this.bajarAgotamiento(tx, characterId);
+        // **La marca del descanso largo va con el reloj de la campaña**, no con la hora del
+        // servidor: lo que la regla cuenta son 24 horas *de juego*. Con `Date.now()`, una sesión
+        // de cuatro horas reales que cubre tres días de viaje habría bloqueado dos descansos que
+        // el juego permite, y una mesa que juega una vez al mes no habría bloqueado ninguno.
+        const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+        await tx.character.update({
+          where: { id: characterId },
+          data: { lastLongRestClock: campana.clockSeconds },
+        });
       }
 
       await this.events.record(
@@ -82,13 +112,49 @@ export class RestService {
           // demás en `game-event.schema.ts`—, así que no se manda: mandarlo se quedaría
           // callado (Zod recorta lo que no reconoce) y sería un campo que parece guardarse y
           // no se guarda.
-          payload: { type: "REST_DECLARED", rest: input.kind },
+          payload: {
+            type: "REST_DECLARED",
+            rest: input.kind,
+            ...(input.interrupted ? { interrupted: true } : {}),
+          },
         },
         tx,
       );
 
       return tx.character.findFirstOrThrow({ where: { id: characterId } });
     });
+  }
+
+  /**
+   * Las dos condiciones de un descanso largo, comprobadas **antes** de reponer nada.
+   *
+   * Un descanso interrumpido no las necesita: no da beneficios, así que ni consume el descanso del
+   * día ni exige estar en pie. Es exactamente lo que dice la regla — lo que la regla limita es
+   * *beneficiarse* de un descanso largo, no tumbarse.
+   */
+  private async comprobarDescansoLargo(
+    tx: Prisma.TransactionClient,
+    character: Character,
+    campaignId: string,
+    input: DeclareRestInput,
+  ) {
+    if (input.interrupted) return;
+
+    // `currentHp === null` es «a PG máximos» por convención de la columna, así que está vivo.
+    if (character.currentHp !== null && character.currentHp < 1) {
+      throw new BadRequestException(
+        "Hay que empezar un descanso largo con al menos 1 punto de golpe: a 0 no se descansa, se está muriendo.",
+      );
+    }
+
+    const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+    const ultimo = character.lastLongRestClock;
+    if (ultimo !== null && campana.clockSeconds - ultimo < SEGUNDOS_POR_DIA) {
+      const horas = Math.floor((SEGUNDOS_POR_DIA - (campana.clockSeconds - ultimo)) / 3600);
+      throw new ConflictException(
+        `Solo se puede aprovechar un descanso largo cada 24 horas de juego. Faltan ${horas} h; avanza el reloj de la campaña o declara un descanso corto.`,
+      );
+    }
   }
 
   private async reponerPorTipo(

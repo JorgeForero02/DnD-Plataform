@@ -227,7 +227,7 @@ export function CarrilDeCajas({
       }}
       className={[
         "rounded-radius-sm border-2 p-s3 transition-colors",
-        encima ? `${clases.borde} ${clases.fondo}` : "border-dashed border-muted/60",
+        encima ? `${clases.borde} ${clases.fondo}` : "border-dashed border-muted",
       ].join(" ")}
     >
       <h3 className="flex items-baseline gap-s2 font-title text-chrome-md text-text">

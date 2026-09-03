@@ -53,21 +53,21 @@ export interface ClasesDeParte {
 export const CLASES_DE_PARTE: Record<ParteDeRegla, ClasesDeParte> = {
   SUCESO: {
     borde: "border-copper",
-    fondo: "bg-copper/10",
+    fondo: "bg-[color:var(--copper-tint)]",
     texto: "text-copper-text",
-    silueta: "bg-copper/25",
+    silueta: "bg-[color:var(--copper-tint)]",
   },
   ESTADO: {
     borde: "border-muted",
     fondo: "bg-surface",
     texto: "text-text",
-    silueta: "bg-muted/25",
+    silueta: "bg-[color:var(--muted-tint)]",
   },
   ACCION: {
     borde: "border-accent",
-    fondo: "bg-accent/10",
+    fondo: "bg-[color:var(--accent-tint)]",
     texto: "text-accent-text",
-    silueta: "bg-accent/25",
+    silueta: "bg-[color:var(--accent-tint)]",
   },
 };
 

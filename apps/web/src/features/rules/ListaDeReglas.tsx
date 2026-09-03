@@ -61,7 +61,7 @@ export function ListaDeReglas({
         <li
           key={regla.id}
           data-estado={regla.status}
-          className="rounded-radius-sm border border-muted/60 p-s3"
+          className="rounded-radius-sm border border-muted p-s3"
         >
           <div className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
             <h3 className="font-title text-chrome-md text-text">{regla.name}</h3>

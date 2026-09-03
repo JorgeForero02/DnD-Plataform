@@ -74,7 +74,7 @@ export function TrazaDeReglas({
             key={fila.id}
             data-estado={fila.status}
             className={[
-              "rounded-radius-sm border-l-4 border border-muted/50 p-s3",
+              "rounded-radius-sm border-l-4 border border-muted p-s3",
               TONO_POR_ESTADO[fila.status] ?? "border-muted",
             ].join(" ")}
           >

@@ -241,6 +241,11 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   "speed.base": "Velocidad base",
   "speed.condition.zero": "Una condición deja la velocidad en 0",
   "speed.condition.half": "Una condición reduce la velocidad a la mitad",
+  // **Faltaba, y se veía.** `character-sheet.service.ts` mete cada anulación del DM en la traza
+  // con `labelKey: "override.manual"`, y aquí no estaba: el paso salía en pantalla como
+  // «Sin traducir: override.manual». Nadie lo había visto porque la lista de claves que la
+  // prueba recorre tampoco la tenía — la prueba copiaba el mismo olvido.
+  "override.manual": "Anulación del DM",
 };
 
 /**

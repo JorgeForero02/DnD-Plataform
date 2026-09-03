@@ -1194,3 +1194,111 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     expect(screen.getByRole("button", { name: "Salir de la campaña" })).toBeDisabled();
   });
 });
+
+// **La pantalla de campaña adopta la maqueta (2026-09-02).** Tres cosas, y las tres se
+// comprueban aquí porque las tres son afirmaciones sobre la pantalla, no sobre el estilo:
+// la barra lateral agrupa lo que existe (y solo lo que existe), cada sección del mundo se
+// presenta con la frase que ya vivía en `plantillas.ts`, y la fila lleva el icono de su tipo
+// sin que eso cambie una coma de lo que la fila dice.
+describe("CampaignDetailPage — la maqueta adoptada", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+    ]);
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: null,
+      ownerId: "dm1",
+      createdAt: "2026-01-01",
+    });
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
+      type === "NPC"
+        ? [
+            {
+              id: "e1",
+              campaignId: "c1",
+              type: "NPC",
+              name: "Strahd von Zarovich",
+              tags: [],
+              visibility: "PLAYERS",
+              createdById: "dm1",
+              createdAt: "x",
+            },
+          ]
+        : [],
+    );
+    vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+  });
+
+  it("la barra lateral agrupa El mundo y La mesa, y Ajustes NO lleva rótulo de grupo", async () => {
+    renderPage();
+    await screen.findByRole("tab", { name: "Resumen" });
+
+    expect(screen.getByText("El mundo")).toBeInTheDocument();
+    expect(screen.getByText("La mesa")).toBeInTheDocument();
+    // La maqueta metía «Ajustes» bajo un rótulo «LA CAMPAÑA» que allí acompañaba a media
+    // docena de entradas. Aquí sería un grupo de uno: una línea de versalita para repetir en
+    // mayúsculas lo que la palabra «Ajustes» ya dice. Se queda sin rótulo, en su propio bloque
+    // al final de la columna.
+    expect(screen.queryByText("La campaña")).not.toBeInTheDocument();
+    // Y ninguno de los grupos vacíos de la maqueta se anuncia: lo que no está hecho no se
+    // enseña apagado ni con un candado.
+    expect(screen.queryByText("Herramientas")).not.toBeInTheDocument();
+    expect(screen.queryByText("En compañía")).not.toBeInTheDocument();
+  });
+
+  it("cada sección del mundo se presenta con SU frase, la que ya vivía en plantillas.ts", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    expect(await screen.findByRole("heading", { name: "PNJ" })).toBeInTheDocument();
+    expect(screen.getByText("El mundo · PNJ")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Alguien a quien la mesa puede mirar a la cara. Lo que dice, lo que quiere y lo que esconde.",
+      ),
+    ).toBeInTheDocument();
+
+    // Cambiar de sección cambia la explicación: antes las siete daban exactamente la misma
+    // pantalla y la única señal de en cuál estabas era el botón resaltado de la barra.
+    fireEvent.click(screen.getByRole("tab", { name: "Lugares" }));
+    expect(await screen.findByRole("heading", { name: "Lugares" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Un sitio al que se llega. Qué se ve, qué se oye y qué puede salir mal."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Alguien a quien la mesa puede mirar a la cara. Lo que dice, lo que quiere y lo que esconde.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("la acción que crea vive en la cabecera y dice QUÉ crea, no «Nuevo» a secas", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Misiones" }));
+
+    const boton = await screen.findByRole("button", { name: "Nueva misión" });
+    // En la cabecera, no dentro de la barra de filtros: crear no es filtrar.
+    const cabecera = screen.getByRole("heading", { name: "Misiones" }).closest("header");
+    expect(cabecera).not.toBeNull();
+    expect(cabecera).toContainElement(boton);
+  });
+
+  it("la fila lleva el icono dibujado de su tipo, y aun así no dice nada más que su nombre y su marca", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+
+    const fila = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
+    // Dibujado, no un glifo de fuente ni un emoji: un <svg> de verdad dentro de la fila.
+    expect(fila.querySelector("svg")).not.toBeNull();
+    // Y aria-hidden, porque el nombre accesible de la fila tiene que seguir siendo el nombre
+    // de la ficha: un icono anunciado metería la palabra del tipo dentro de él.
+    expect(fila.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(fila).toHaveTextContent(/^Strahd von Zarovich◐Jugadores$/);
+  });
+});

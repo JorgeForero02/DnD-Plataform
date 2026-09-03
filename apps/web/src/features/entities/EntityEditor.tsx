@@ -314,7 +314,7 @@ export function EntityEditor({
             )}
           </div>
           <VisibilityChooser value={visibility} onChange={setVisibility} disabled={readOnly}>
-            <fieldset className="rounded-radius-sm border border-muted/60 p-s2">
+            <fieldset className="rounded-radius-sm border border-muted p-s2">
               <legend className="px-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
                 Jugadores con acceso
               </legend>
@@ -355,7 +355,7 @@ export function EntityEditor({
           {/* Pegada al fondo: con un cuerpo en markdown largo, "Guardar" se iba fuera de la
               vista y había que desplazarse para encontrarlo. El fondo es opaco a propósito, para
               que el texto que pasa por debajo no se lea a través de los botones. */}
-          <div className="sticky bottom-0 -mx-s4 -mb-s4 flex items-center justify-between gap-s3 border-t border-muted/40 bg-surface px-s4 py-s3">
+          <div className="sticky bottom-0 -mx-s4 -mb-s4 flex items-center justify-between gap-s3 border-t border-muted bg-surface px-s4 py-s3">
             {isEdit && (
               <DeleteButton
                 message={deleteMessage}

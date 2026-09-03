@@ -42,7 +42,7 @@ export function VisibilityChooser({
 }) {
   const opciones = niveles.includes(value) ? niveles : [...niveles, value];
   return (
-    <fieldset className="rounded-radius-sm border border-muted/60 p-s3">
+    <fieldset className="rounded-radius-sm border border-muted p-s3">
       <legend className="px-1 font-chrome text-chrome-sm text-text">Quién puede verlo</legend>
       <div className="space-y-1">
         {opciones.map((valor) => {
@@ -56,7 +56,9 @@ export function VisibilityChooser({
               key={valor}
               className={[
                 "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
-                elegido ? "border-accent bg-accent/10" : "border-transparent hover:bg-surface",
+                elegido
+                  ? "border-accent bg-[color:var(--accent-tint)]"
+                  : "border-transparent hover:bg-surface",
                 disabled ? "cursor-not-allowed opacity-70" : "",
               ].join(" ")}
             >

@@ -1,4 +1,4 @@
-import type { GameEventPayload } from "@dnd/shared";
+import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
 import { NOMBRE_SELLO } from "./vocabulario";
 
 // De un suceso del log a **una línea que se lee en voz alta**.
@@ -93,4 +93,17 @@ export function lineaDeLog(p: GameEventPayload): string {
 /** La hora, sin fecha: dentro de una sesión la fecha es la misma para todo. */
 export function horaDe(iso: string): string {
   return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * El sello con el que se marcó una anotación, o `null` si el suceso no es una anotación.
+ *
+ * Existe para el chip de clase que la maqueta pone **a la izquierda** de cada línea del registro:
+ * de un vistazo se distingue un combate de un hallazgo sin leer la frase. Solo lo tienen los
+ * sucesos que alguien selló a mano; los diecinueve tipos que escribe el motor (perder PG, una
+ * tirada, una condición) no llevan chip a propósito — inventarles una categoría sería una
+ * segunda tabla de vocabulario que se separaría de `NOMBRE_SELLO` a la primera.
+ */
+export function selloDeSuceso(p: GameEventPayload): SessionNoteKind | null {
+  return p.type === "SESSION_NOTE" ? p.kind : null;
 }

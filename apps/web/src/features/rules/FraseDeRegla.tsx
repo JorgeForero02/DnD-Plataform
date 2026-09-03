@@ -32,7 +32,7 @@ export function FraseDeRegla({
     <section
       aria-label="La regla, leída"
       data-frase-de-regla
-      className="rounded-radius-sm border border-copper/40 bg-surface p-s3"
+      className="rounded-radius-sm border border-copper bg-surface p-s3"
     >
       <h3 className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
         Léela en voz alta

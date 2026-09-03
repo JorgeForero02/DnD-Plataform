@@ -34,7 +34,7 @@ export function Casilla({
   return (
     <div
       className={[
-        "rounded-radius-sm border border-muted/50 bg-surface px-s3 py-s3 text-center",
+        "rounded-radius-sm border border-muted bg-surface px-s3 py-s3 text-center",
         ancho === "ancho" ? "col-span-2" : "",
       ].join(" ")}
     >
@@ -44,7 +44,7 @@ export function Casilla({
       <p
         className={[
           "mt-1 font-data text-chrome-xl leading-none",
-          pendiente ? "text-muted/50" : "text-text",
+          pendiente ? "text-muted" : "text-text",
         ].join(" ")}
       >
         {pendiente ? "—" : valor}
@@ -89,7 +89,7 @@ const HABILIDADES: { nombre: string; caracteristica: string }[] = [
 export function HojaCincoE() {
   return (
     <div className="space-y-s5">
-      <div className="rounded-radius-sm border border-dashed border-warning/60 bg-warning/5 px-s4 py-s3">
+      <div className="rounded-radius-sm border border-dashed border-warning bg-[color:var(--warning-tint)] px-s4 py-s3">
         <p className="font-chrome text-chrome-sm text-warning-text">
           Esta es la <strong>forma</strong> de la hoja, todavía sin sus números.
         </p>
@@ -130,14 +130,14 @@ export function HojaCincoE() {
 
           <section>
             <OrnamentRule className="mb-s3">Salvaciones</OrnamentRule>
-            <ul className="divide-y divide-muted/25 rounded-radius-sm border border-muted/40">
+            <ul className="divide-y divide-muted/25 rounded-radius-sm border border-muted">
               {CARACTERISTICAS.map((c) => (
                 <li
                   key={c.corto}
                   className="flex items-center justify-between px-s3 py-1.5 font-chrome text-chrome-sm"
                 >
                   <span className="text-muted">{c.nombre}</span>
-                  <span className="font-data text-muted/50">—</span>
+                  <span className="font-data text-muted">—</span>
                 </li>
               ))}
             </ul>
@@ -147,11 +147,11 @@ export function HojaCincoE() {
         <div className="space-y-s5">
           <section>
             <OrnamentRule className="mb-s3">Habilidades</OrnamentRule>
-            <ul className="grid gap-x-s5 rounded-radius-sm border border-muted/40 p-s2 sm:grid-cols-2">
+            <ul className="grid gap-x-s5 rounded-radius-sm border border-muted p-s2 sm:grid-cols-2">
               {HABILIDADES.map((h) => (
                 <li
                   key={h.nombre}
-                  className="flex items-center justify-between border-b border-muted/20 px-s2 py-1 font-chrome text-chrome-sm last:border-b-0"
+                  className="flex items-center justify-between border-b border-muted px-s2 py-1 font-chrome text-chrome-sm last:border-b-0"
                 >
                   <span className="text-muted">
                     {h.nombre}{" "}
@@ -159,7 +159,7 @@ export function HojaCincoE() {
                       {h.caracteristica}
                     </span>
                   </span>
-                  <span className="font-data text-muted/50">—</span>
+                  <span className="font-data text-muted">—</span>
                 </li>
               ))}
             </ul>
@@ -167,7 +167,7 @@ export function HojaCincoE() {
 
           <section>
             <OrnamentRule className="mb-s3">Ataques y equipo</OrnamentRule>
-            <div className="rounded-radius-sm border border-muted/40 p-s4">
+            <div className="rounded-radius-sm border border-muted p-s4">
               <p className="max-w-[68ch] font-chrome text-chrome-sm text-muted">
                 Aquí van las armas con su bonificador y su daño, y el equipo con{" "}
                 <strong className="text-text">casillas de mano</strong>: una espada en una mano y un

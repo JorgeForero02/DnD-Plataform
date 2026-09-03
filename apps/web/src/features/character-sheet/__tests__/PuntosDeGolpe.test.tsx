@@ -33,16 +33,9 @@ describe("PuntosDeGolpe", () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     vi.spyOn(characterSheetApi, "changeHp").mockResolvedValue(respuestaOk);
 
-    render(
-      <PuntosDeGolpe
-        campaignId="c1"
-        characterId="ch1"
-        hp={hpNormal}
-        deathSaves={{ successes: 0, failures: 0, status: "alive" }}
-        puedeEditar
-      />,
-      { wrapper: wrapper(qc) },
-    );
+    render(<PuntosDeGolpe campaignId="c1" characterId="ch1" hp={hpNormal} puedeEditar />, {
+      wrapper: wrapper(qc),
+    });
 
     fireEvent.change(screen.getByLabelText("Cambio de puntos de golpe"), {
       target: { value: "5" },
@@ -60,16 +53,9 @@ describe("PuntosDeGolpe", () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     vi.spyOn(characterSheetApi, "changeHp").mockResolvedValue(respuestaOk);
 
-    render(
-      <PuntosDeGolpe
-        campaignId="c1"
-        characterId="ch1"
-        hp={hpNormal}
-        deathSaves={{ successes: 0, failures: 0, status: "alive" }}
-        puedeEditar
-      />,
-      { wrapper: wrapper(qc) },
-    );
+    render(<PuntosDeGolpe campaignId="c1" characterId="ch1" hp={hpNormal} puedeEditar />, {
+      wrapper: wrapper(qc),
+    });
 
     fireEvent.change(screen.getByLabelText("Cambio de puntos de golpe"), {
       target: { value: "3" },
@@ -88,7 +74,6 @@ describe("PuntosDeGolpe", () => {
         campaignId="c1"
         characterId="ch1"
         hp={{ current: 12, max: 20, temp: 4, version: 1, exceedsMax: false }}
-        deathSaves={{ successes: 0, failures: 0, status: "alive" }}
         puedeEditar={false}
       />,
       { wrapper: wrapper(qc) },
@@ -104,7 +89,6 @@ describe("PuntosDeGolpe", () => {
         campaignId="c1"
         characterId="ch1"
         hp={{ current: 20, max: 20, temp: 0, version: 1, exceedsMax: true }}
-        deathSaves={{ successes: 0, failures: 0, status: "alive" }}
         puedeEditar={false}
       />,
       { wrapper: wrapper(qc) },

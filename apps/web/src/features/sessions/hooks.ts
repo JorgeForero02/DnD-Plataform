@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { StampSessionNoteInput, StartSessionInput, Visibility } from "@dnd/shared";
 import { fetchSessions, createSession, updateSession, deleteSession } from "./api";
@@ -107,4 +108,25 @@ export function useGameLog(campaignId: string, opciones: { sessionId?: string; a
     enabled: Boolean(campaignId),
     refetchInterval: 15_000,
   });
+}
+
+/**
+ * El reloj de la mesa, **con un solo tic por minuto**.
+ *
+ * Lo usan la barra y la cabecera de la mesa, y por eso vive aquí en vez de en una de las dos:
+ * eran dos `setInterval` idénticos y el segundo se escribió copiando el primero. Ni segundos ni
+ * `setInterval` de un segundo — en la mesa nadie mira los segundos, y una cifra parpadeando en la
+ * cabecera molesta durante cuatro horas seguidas.
+ *
+ * `activo` apaga el intervalo cuando no hay partida: un temporizador corriendo sin nada que
+ * contar es una re-renderización por minuto en todas las pantallas de la aplicación.
+ */
+export function useMinutoActual(activo: boolean): number {
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    if (!activo) return;
+    const t = setInterval(() => setAhora(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, [activo]);
+  return ahora;
 }

@@ -63,7 +63,7 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
 
   if (!esDM) {
     return (
-      <p className="rounded-radius-sm border border-muted/60 p-s3 font-chrome text-chrome-sm text-muted">
+      <p className="rounded-radius-sm border border-muted p-s3 font-chrome text-chrome-sm text-muted">
         El motor de reglas es de quien dirige. El servidor solo se lo abre al DM de esta campaña.
       </p>
     );

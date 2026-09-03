@@ -56,7 +56,7 @@ export function CampaignList({ onCreate }: { onCreate?: () => void }) {
                 of everything inside it — name, description, role, member count and date read
                 out as one string. The ::after overlay restores the big click target without
                 paying for it in the accessibility tree. */}
-            <div className="flex h-full w-full flex-col rounded-radius-sm border border-muted/60 bg-surface p-s4 transition-colors group-hover:border-copper">
+            <div className="flex h-full w-full flex-col rounded-radius-sm border border-muted bg-surface p-s4 transition-colors group-hover:border-copper">
               <h2 className="font-title text-chrome-lg leading-tight text-text group-hover:text-copper-text">
                 <Link
                   to={`/campaigns/${c.id}`}
@@ -87,7 +87,7 @@ export function CampaignList({ onCreate }: { onCreate?: () => void }) {
           <button
             type="button"
             onClick={onCreate}
-            className="flex h-full min-h-[10rem] w-full flex-col items-center justify-center gap-s2 rounded-radius-sm border border-dashed border-muted/60 p-s4 font-chrome text-chrome-sm text-muted transition-colors hover:border-accent hover:text-accent-text"
+            className="flex h-full min-h-[10rem] w-full flex-col items-center justify-center gap-s2 rounded-radius-sm border border-dashed border-muted p-s4 font-chrome text-chrome-sm text-muted transition-colors hover:border-accent hover:text-accent-text"
           >
             <span aria-hidden="true" className="text-chrome-xl leading-none">
               ＋

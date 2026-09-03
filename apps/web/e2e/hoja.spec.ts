@@ -7,6 +7,13 @@ import { test, expect, type Page } from "@playwright/test";
 // contraste de lo que este task añade se sostiene en el navegador, no en la teoría de los
 // tokens (docs/04-convenciones.md: "un defecto de maquetación exige una prueba de navegador").
 
+/**
+ * La cifra derivada de la casilla de Destreza. Se señala por `data-derivado` y no por su texto:
+ * el texto es «+1» y hay más de un «+1» en la hoja, y no por su papel accesible, porque desde la
+ * adopción de la maqueta el modificador **no es un botón** — es la cifra grande de la casilla.
+ */
+const SELECTOR_MODIFICADOR_DES = '[data-derivado="abilityMod.dex"]';
+
 function nuevaCuenta() {
   const marca = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   return {
@@ -87,10 +94,13 @@ async function completarFichaDeGuerreroEnano(page: Page) {
     await campo.blur();
   }
 
-  // La hoja está completa cuando el catálogo ya resolvió: la CA derivada aparece.
   // La hoja está derivada cuando aparece la sección de salvaciones, que solo existe si el
   // catálogo resolvió raza y clase.
-  await expect(page.getByText("Salvaciones")).toBeVisible({ timeout: 15_000 });
+  //
+  // **`exact` importa desde que la maqueta trajo la tarjeta «Salvaciones de muerte»**: sin él,
+  // `getByText("Salvaciones")` casa con las dos y `toBeVisible` falla por modo estricto — un
+  // fallo que no dice nada del código y cuesta media hora de leer trazas.
+  await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y cambiar PG con un delta", async ({
@@ -218,10 +228,25 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   const cabeceraApp = (await page.locator("header").first().boundingBox())!;
   expect(cabeceraDespues.y).toBeGreaterThanOrEqual(cabeceraApp.y + cabeceraApp.height - 1);
 
-  // 5. Los cinco números siguen legibles con la hoja desplazada hasta el final.
-  for (const rotulo of ["CA", "Iniciativa", "Velocidad (pies)", "PG", "Competencia"]) {
+  // 5. Los cinco números siguen legibles con la hoja desplazada hasta el final. Los rótulos van
+  //    abreviados desde que la cabecera es la **tira compacta** de la maqueta; el nombre entero
+  //    viaja en un `sr-only` hermano, y de eso se ocupa la prueba de componente.
+  for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
     await expect(cabecera.getByText(rotulo, { exact: true })).toBeInViewport();
   }
+
+  // 5b. **Y la tira es una tira: las cinco casillas en la MISMA fila.** Es la afirmación central
+  //     de lo que se adoptó de la maqueta, y jsdom no puede verla porque no maqueta. Antes eran
+  //     cinco tarjetas en una rejilla de dos o tres columnas según el ancho, y en un portátil
+  //     ocupaban tres filas de la cabecera fija — que es la parte de la pantalla que no se
+  //     recupera nunca. Se comparan las `y` REALES, no las clases declaradas.
+  const casillas = await cabecera
+    .locator("> div > div")
+    .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+  expect(casillas.length).toBe(5);
+  expect(Math.max(...casillas) - Math.min(...casillas)).toBeLessThanOrEqual(2);
+  // Y la cabecera entera cabe en lo que ocupaba antes una sola de sus tarjetas con fórmula.
+  expect(cabeceraDespues.height).toBeLessThanOrEqual(96);
 
   // 7. **El límite, dicho a propósito.** Pasado el final de la hoja, la cabecera se suelta,
   //    porque «Historia» y «Ajustes» ya no son la hoja. Sin esta comprobación, el día que
@@ -450,8 +475,11 @@ for (const tema of ["dark", "light"] as const) {
       record(`[${tema}] vitela: filete de una casilla`, contrastRatio(border, bg), 3);
     }
     {
+      // El rótulo de la casilla pasó de la abreviatura al nombre entero, que es lo que hace la
+      // maqueta: en una casilla que ya no mete dos cifras grandes, la abreviatura solo ahorraba
+      // caracteres a cambio de que hubiera que sabérselas.
       const { color, bg } = await effectiveTextColours(
-        casillaDestreza.getByText("DES", { exact: true }),
+        casillaDestreza.getByText("Destreza", { exact: true }),
       );
       record(`[${tema}] vitela: rótulo en versalitas`, contrastRatio(color, bg), 4.5);
     }
@@ -473,6 +501,40 @@ for (const tema of ["dark", "light"] as const) {
         .getByText("Sin armadura");
       const { color, bg } = await effectiveTextColours(paso);
       record(`[${tema}] vitela: paso de traza`, contrastRatio(color, bg), 4.5);
+    }
+
+    // --- Lo que trajo la maqueta, medido en su sitio. Son tokens ya conocidos, pero en
+    //     contextos nuevos: el rótulo de columna de una tabla no tiene detrás el mismo fondo que
+    //     el rótulo de una casilla, y medir el token en abstracto es exactamente lo que la
+    //     prueba de contraste dejó de hacer en 1.19.
+    {
+      const cabeceraTabla = page
+        .getByRole("region", { name: "ataques y lanzamiento" })
+        .getByRole("columnheader", { name: "Bonif." });
+      const { color, bg } = await effectiveTextColours(cabeceraTabla);
+      record(
+        `[${tema}] vitela: rótulo de columna de la tabla de ataques`,
+        contrastRatio(color, bg),
+        4.5,
+      );
+    }
+    {
+      // El aviso de la vista de DM va en `--copper-text` sobre vitela, que en el tema claro es
+      // cobre sobre papel cálido: el par más ajustado de toda la hoja.
+      const aviso = page.getByRole("region", { name: "vista de DM" }).locator("p").first();
+      const { color, bg } = await effectiveTextColours(aviso);
+      record(`[${tema}] vitela: aviso de la vista de DM`, contrastRatio(color, bg), 4.5);
+      const { border, bg: fondo } = await borderColourAgainstBg(
+        page.getByRole("region", { name: "vista de DM" }),
+      );
+      record(`[${tema}] vitela: filete del aviso de DM`, contrastRatio(border, fondo), 3);
+    }
+    {
+      // La cifra de una tarjeta pequeña: la percepción pasiva, que es el número que el DM
+      // pregunta sin avisar y ahora se lee a tamaño grande sobre el papel.
+      const pasiva = page.locator('[data-tarjeta="percepcion-pasiva"]').locator("p").nth(1);
+      const { color, bg } = await effectiveTextColours(pasiva);
+      record(`[${tema}] vitela: cifra de una tarjeta pequeña`, contrastRatio(color, bg), 4.5);
     }
 
     // --- El hueco del inventario: su prosa va en `--muted` sobre vitela, y es el bloque de texto
@@ -546,18 +608,69 @@ test("H4 — la piel nueva no borra la afordancia: lo editable lleva subrayado y
   );
   expect(editable.estilo).toBe("dashed");
 
-  // El modificador es el valor DERIVADO que vive pegado a esa misma puntuación.
-  const modificador = puntuacion.locator("../..").getByRole("button").first();
+  // El modificador es el valor DERIVADO que vive pegado a esa misma puntuación. Desde la
+  // adopción de la maqueta es la cifra **grande** de la casilla y ya no es un botón, así que se
+  // señala por lo que es —`data-derivado`— y no por su papel accesible.
+  const modificador = page.locator(SELECTOR_MODIFICADOR_DES);
   await expect(modificador).toBeVisible();
   const derivado = await modificador.evaluate((el) => {
     const s = getComputedStyle(el);
     return {
       ancho: parseFloat(s.borderBottomWidth),
       decoracion: s.textDecorationLine,
+      tamano: parseFloat(s.fontSize),
     };
   });
   expect(derivado.ancho, "un valor derivado NO lleva afordancia de edición").toBe(0);
   expect(derivado.decoracion).toBe("none");
+
+  // **Y la vuelta que da la maqueta, medida.** El modificador es lo que se usa en cada tirada,
+  // así que va grande; la puntuación es su causa, así que va pequeña — y es la pequeña la que
+  // lleva el subrayado. Ese cruce —lo grande no se toca, lo pequeño sí— es justo lo que puede
+  // salir mal sin que nadie lo note: las dos aserciones de arriba seguirían pasando si el
+  // modificador volviera al tamaño de la puntuación.
+  const tamanoPuntuacion = await puntuacion.evaluate((el) =>
+    parseFloat(getComputedStyle(el).fontSize),
+  );
+  expect(
+    derivado.tamano,
+    "el modificador tiene que leerse más grande que la puntuación",
+  ).toBeGreaterThan(tamanoPuntuacion * 1.4);
+
+  // Y el orden en pantalla: el modificador ARRIBA, la puntuación debajo.
+  const cajaMod = (await modificador.boundingBox())!;
+  const cajaPuntuacion = (await puntuacion.boundingBox())!;
+  expect(cajaMod.y).toBeLessThan(cajaPuntuacion.y);
+});
+
+test("la maqueta adoptada: la tabla de ataques cabe, y la página no se desplaza a lo ancho", async ({
+  page,
+}) => {
+  // **Un defecto de maquetación exige una prueba de navegador** (docs/04-convenciones.md). La
+  // tabla de ataques es lo único de esta hoja con un ancho mínimo declarado, y una tabla que se
+  // sale arrastra la página entera en horizontal — el fallo clásico de meter una rejilla ancha
+  // en una columna estrecha. Se comprueba que quien desborda es **el contenedor de la tabla**,
+  // que para eso lleva `overflow-x: auto`, y nunca el documento.
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Kera Puñoquieto");
+  await completarFichaDeGuerreroEnano(page);
+
+  const tabla = page.getByRole("region", { name: "ataques y lanzamiento" }).getByRole("table");
+  await expect(tabla).toBeVisible();
+  // Una fila por bonificador de ataque derivado: un guerrero no lanza, así que son dos.
+  await expect(tabla.getByRole("rowheader", { name: "Cuerpo a cuerpo" })).toBeVisible();
+  await expect(tabla.getByRole("rowheader", { name: "A distancia" })).toBeVisible();
+
+  // El contenedor de la tabla desplaza lo suyo…
+  const contenedor = tabla.locator("..");
+  expect(await contenedor.evaluate((el) => getComputedStyle(el).overflowX)).toBe("auto");
+
+  // …y el documento NO se desplaza en horizontal, con la ventana estrecha de un portátil.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const desbordaLaPagina = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  );
+  expect(desbordaLaPagina, "la página no puede desplazarse en horizontal").toBe(false);
 });
 
 test.afterAll(() => {

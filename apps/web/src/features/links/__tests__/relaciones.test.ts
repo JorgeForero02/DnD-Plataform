@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RELACIONES, etiquetaEntrante, relacionesSugeridas } from "../relaciones";
+import { RELACIONES, lecturaEntrante, lecturaSaliente, relacionesSugeridas } from "../relaciones";
 
 describe("relaciones", () => {
   it("sugiere según el par de tipos, no según uno solo", () => {
@@ -20,19 +20,51 @@ describe("relaciones", () => {
     }
   });
 
-  it("invierte una etiqueta conocida", () => {
-    expect(etiquetaEntrante("vive en")).toBe("vive aquí");
+  // El defecto que motivó esto: el sujeto de `hacia` no estaba declarado, y tres filas lo tenían
+  // puesto en la ficha DE ENFRENTE («vive aquí», «se encuentra aquí», «la encarga») mientras las
+  // otras quince lo tenían en la ficha abierta («está liderada por», «fue escenario de»). El
+  // panel las compone todas igual —«[esta ficha] [hacia] [la otra]»—, así que las tres salían al
+  // revés: «la Torre Gris vive aquí Corvin». La marca del error es la palabra «aquí» dentro del
+  // predicado: solo aparece si el sujeto es la otra ficha.
+  it("el sujeto de la lectura inversa es siempre la ficha abierta", () => {
+    for (const r of RELACIONES) {
+      // `\b` no sirve de cierre aquí: para una expresión regular de JavaScript la «í» no es un
+      // carácter de palabra, así que /\baquí\b/ **no** casa con «vive aquí». El primer intento
+      // de esta prueba usaba justo eso y pasaba con el defecto delante; se compara la palabra.
+      expect(r.hacia.toLowerCase().split(/[\s.,;]+/), `«${r.desde}» → «${r.hacia}»`).not.toContain(
+        "aquí",
+      );
+    }
+    expect(RELACIONES.find((r) => r.desde === "vive en")?.hacia).toBe("es el hogar de");
+    expect(RELACIONES.find((r) => r.desde === "se encuentra en")?.hacia).toBe("alberga");
+    expect(RELACIONES.find((r) => r.desde === "encarga")?.hacia).toBe("está encargada por");
+  });
+
+  it("un enlace saliente se lee con su propia etiqueta", () => {
+    expect(lecturaSaliente("vive en")).toEqual({ relacion: "vive en" });
+    expect(lecturaSaliente("  vive en  ")).toEqual({ relacion: "vive en" });
+  });
+
+  it("invierte una etiqueta conocida que llega de fuera", () => {
+    expect(lecturaEntrante("vive en")).toEqual({ relacion: "es el hogar de" });
     // Se guardó con otra caja o con espacios: sigue siendo la misma relación.
-    expect(etiquetaEntrante("  Vive En ")).toBe("vive aquí");
+    expect(lecturaEntrante("  Vive En ")).toEqual({ relacion: "es el hogar de" });
   });
 
   it("no se inventa la inversa de una etiqueta libre: la cita tal cual", () => {
     // Adivinar la inversa de una frase que nadie declaró sería mentir sobre el mundo del DM.
-    expect(etiquetaEntrante("le debe dinero a")).toBe("enlazado como «le debe dinero a»");
+    expect(lecturaEntrante("le debe dinero a")).toEqual({
+      relacion: "recibe un enlace de",
+      literal: "le debe dinero a",
+    });
   });
 
-  it("sin etiqueta no inventa texto", () => {
-    expect(etiquetaEntrante(null)).toBeNull();
-    expect(etiquetaEntrante("   ")).toBeNull();
+  it("sin etiqueta la frase sigue teniendo verbo, y no cita nada", () => {
+    // Antes esto devolvía null y la fila se quedaba sin relación: «Torre Gris (Lugar)» y nada
+    // más. Un enlace sin etiqueta sigue siendo un enlace, y hay que poder leerlo.
+    expect(lecturaSaliente(null)).toEqual({ relacion: "enlaza con" });
+    expect(lecturaSaliente("   ")).toEqual({ relacion: "enlaza con" });
+    expect(lecturaEntrante(null)).toEqual({ relacion: "recibe un enlace de" });
+    expect(lecturaEntrante("   ")).toEqual({ relacion: "recibe un enlace de" });
   });
 });

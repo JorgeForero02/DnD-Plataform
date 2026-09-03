@@ -2,7 +2,15 @@ import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import type { AbilityKey, DerivedValue, TraceStep } from "@dnd/shared";
 import { NOMBRE_CARACTERISTICA, NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
-import { CAJA_DE_VITELA } from "./Vitela";
+import { formulaDeUnaLinea } from "./formula";
+import { CAJA_DE_VITELA, ROTULO_DE_CASILLA } from "./Vitela";
+
+// **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
+// los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
+// utilidad ENTERA y el elemento se queda con el `border-color` del preflight — `#e5e7eb` en
+// los dos temas. Lo que había aquí, por tanto, no era un borde tenue: era un borde gris claro
+// equivocado. Se pone el token entero, que es theme-aware, o se quita la clase cuando lo que
+// pedía era un relleno translúcido que ningún token puede dar todavía.
 
 /**
  * **Tarea H4 — la costura entre las dos pieles, hecha propiedad.**
@@ -40,33 +48,6 @@ function Chevron({ abierta }: { abierta: boolean }) {
       <path d="M9 6l6 6-6 6" />
     </svg>
   );
-}
-
-/**
- * **La fórmula de una línea, siempre visible.** Bajo el número y en pequeño: «10 +2 destreza».
- *
- * Es el nivel que la hoja de papel nunca pudo dar y el que hace que la mayoría **no tenga que
- * desplegar nada**. Sale de la misma traza que el desglose largo, así que no puede discrepar de
- * él — que es justo el fallo que la investigación documentó en las hojas digitales: un número
- * calculado sin contexto se cree ciegamente aunque esté mal.
- *
- * **Se resume a partir de tres pasos.** Con doce sumandos esto ya no es una línea: es la traza
- * otra vez, peor maquetada y compitiendo con ella. Se enseñan la base y los dos que más pesan.
- */
-function formulaDeUnaLinea(valor: DerivedValue): string {
-  // Un paso que no mueve el total no explica nada. La excepción es `base`, que es de dónde parte.
-  const pasos = valor.steps.filter((p) => p.op === "base" || p.amount !== 0);
-  if (pasos.length === 0) return "";
-  const nombrar = (p: TraceStep) => {
-    const { texto } = traducirLabelKey(p.labelKey);
-    const n = Math.abs(p.amount);
-    if (p.op === "base") return `${n} ${texto.toLowerCase()}`;
-    return `${p.amount >= 0 ? "+" : "−"}${n} ${texto.toLowerCase()}`;
-  };
-  if (pasos.length <= 3) return pasos.map(nombrar).join(" ");
-  const [base, ...resto] = pasos;
-  const mayores = [...resto].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0, 2);
-  return `${[base, ...mayores].map(nombrar).join(" ")} y ${pasos.length - 3} más`;
 }
 
 function signoDe(paso: TraceStep): string {
@@ -175,8 +156,30 @@ export interface ValorDerivadoProps {
   valor: DerivedValue;
   /** Botón de acción extra (por ejemplo, "Tirar") pegado a la cabecera. */
   accion?: ReactNode;
-  /** Compacto = una fila de lista (salvación/habilidad); si no, la casilla grande de combate. */
-  variante?: "casilla" | "fila";
+  /**
+   * Qué forma toma el valor. **Las dos nuevas salen de la maqueta de Figma que el autor
+   * eligió como referencia principal:**
+   *
+   *  · `"compacta"` es una casilla de la **tira de la cabecera**: rótulo diminuto, cifra, y
+   *    **sin la fórmula de una línea**. Cinco casillas altas ocupaban media pantalla de un
+   *    portátil; la tira cabe en una fila junto al nombre. La fórmula no se pierde: la CA la
+   *    enseña entera en su propia tarjeta, y el resto la enseña al desplegar la traza.
+   *  · `"tarjeta"` es la **Clase de Armadura de la maqueta**: rótulo en versalitas a la
+   *    izquierda, la cifra grande a la derecha, y debajo la fórmula con su chevron —
+   *    «11 cuero tachonado +2 destreza +1 anillo». Es el único valor de la hoja cuya
+   *    explicación se consulta de verdad en la mesa, y por eso es el único que la lleva
+   *    desplegada a tamaño de lectura.
+   */
+  variante?: "casilla" | "fila" | "compacta" | "tarjeta";
+  /**
+   * El nombre completo cuando el visible va abreviado («Inic.» → «Iniciativa»).
+   *
+   * Solo lo usa la variante compacta, y **no se pinta**: va en un `sr-only` y en el `title`. Un
+   * lector de pantalla no puede adivinar que «Comp.» es el bonificador de competencia, y
+   * abreviar en pantalla sin decir el nombre entero en alguna parte es cambiar densidad por
+   * accesibilidad — que no es un cambio que este proyecto acepte.
+   */
+  etiquetaLarga?: string;
   /**
    * Qué piel viste este valor. **Cromado por defecto**, que es la cabecera fija; el cuerpo de
    * la hoja pasa `"vitela"` explícitamente. Ver `PielDeHoja`.
@@ -191,6 +194,7 @@ export interface ValorDerivadoProps {
  */
 export function ValorDerivado({
   etiqueta,
+  etiquetaLarga,
   valor,
   accion,
   variante = "casilla",
@@ -206,12 +210,77 @@ export function ValorDerivado({
   const claseProsa = enVitela
     ? "font-world text-[length:var(--text-world-sm)] leading-relaxed text-muted"
     : "font-chrome text-chrome-xs text-muted";
-  const claseFilete = enVitela ? "border-[color:var(--copper-rule)]" : "border-muted/40";
+  const claseFilete = enVitela ? "border-[color:var(--copper-rule)]" : "border-muted";
+
+  const listaDeTraza = (
+    <ul id={listId} className={`mt-s2 border-t pt-s2 text-left ${claseFilete}`}>
+      {valor.steps.map((paso, i) => (
+        <PasoDeTraza key={i} paso={paso} piel={piel} />
+      ))}
+    </ul>
+  );
+
+  // --- La tira compacta de la cabecera (maqueta de Figma) ---
+  if (variante === "compacta") {
+    return (
+      <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
+        {/* Cuando el rótulo visible va abreviado, **el que se anuncia es el largo**: el `<p>`
+            se esconde de la accesibilidad y el nombre entero viaja en un `sr-only` hermano. Es
+            hermano y no hijo a propósito — dentro, el texto del `<p>` dejaría de ser exactamente
+            «Inic.» y ni una prueba ni una persona podrían señalar ese rótulo por su nombre. */}
+        <p
+          aria-hidden={etiquetaLarga ? "true" : undefined}
+          title={etiquetaLarga ?? etiqueta}
+          className={`${ROTULO_DE_CASILLA} leading-tight`}
+        >
+          {etiqueta}
+        </p>
+        {etiquetaLarga && <span className="sr-only">{etiquetaLarga}</span>}
+        <button
+          type="button"
+          onClick={() => setAbierta((v) => !v)}
+          aria-expanded={abierta}
+          aria-controls={listId}
+          className="w-full font-data text-chrome-lg leading-none text-text hover:text-accent-text"
+        >
+          {valor.total}
+        </button>
+        {abierta && listaDeTraza}
+      </div>
+    );
+  }
+
+  // --- La tarjeta con la fórmula en línea: la Clase de Armadura de la maqueta ---
+  if (variante === "tarjeta") {
+    return (
+      <div
+        className={
+          enVitela ? CAJA_DE_VITELA : "rounded-radius-sm border border-muted bg-surface px-s3 py-s3"
+        }
+      >
+        <div className="flex items-baseline justify-between gap-s3">
+          <p className={ROTULO_DE_CASILLA}>{etiqueta}</p>
+          <span className="font-data text-chrome-2xl leading-none text-text">{valor.total}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAbierta((v) => !v)}
+          aria-expanded={abierta}
+          aria-controls={listId}
+          className={`mt-1 flex w-full items-center gap-s2 text-left ${claseProsa} hover:text-accent-text`}
+        >
+          <Chevron abierta={abierta} />
+          <span className="min-w-0 flex-1">{formulaDeUnaLinea(valor)}</span>
+        </button>
+        {abierta && listaDeTraza}
+      </div>
+    );
+  }
 
   if (variante === "fila") {
     return (
       <div
-        className={`border-b py-s2 ${enVitela ? "border-[color:var(--copper-rule)]" : "border-muted/25"}`}
+        className={`border-b py-s2 ${enVitela ? "border-[color:var(--copper-rule)]" : "border-muted"}`}
       >
         <div className="flex items-center justify-between gap-s2">
           <button
@@ -252,9 +321,7 @@ export function ValorDerivado({
         enVitela ? CAJA_DE_VITELA : "rounded-radius-sm border border-muted bg-surface px-s3 py-s3"
       }`}
     >
-      <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-        {etiqueta}
-      </p>
+      <p className={ROTULO_DE_CASILLA}>{etiqueta}</p>
       <button
         type="button"
         onClick={() => setAbierta((v) => !v)}

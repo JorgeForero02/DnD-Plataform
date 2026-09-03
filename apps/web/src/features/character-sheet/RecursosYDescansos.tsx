@@ -4,6 +4,7 @@ import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { NOMBRE_RESET_RECURSO } from "./vocabulario";
 import { PROSA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
+import { PREFIJO_DADOS_DE_GOLPE } from "./TarjetasDeEstado";
 
 // Tarea 2A.10 — "recursos y descansos". `CharacterResource` (2A.8) es un contador con máximo:
 // inspiración, furia, ki, dados de golpe, espacios de conjuro son la misma fila. Los descansos
@@ -25,6 +26,12 @@ export function RecursosYDescansos({
   const [dadosAGastar, setDadosAGastar] = useState("0");
 
   if (isLoading) return null;
+
+  // **Los dados de golpe salen de esta lista y viven en su tarjeta** (`TarjetasDeEstado.tsx`),
+  // que es donde los pone la maqueta. Se filtran aquí en vez de duplicarse: el mismo contador en
+  // dos sitios acaba con uno de los dos mintiendo, y aquí además serían dos controles de gasto
+  // sobre la misma fila de la base.
+  const otros = (recursos ?? []).filter((r) => !r.key.startsWith(PREFIJO_DADOS_DE_GOLPE));
 
   return (
     <section aria-label="recursos y descansos" className="flex flex-col gap-s3">
@@ -65,11 +72,11 @@ export function RecursosYDescansos({
         )}
       </div>
 
-      {!recursos || recursos.length === 0 ? (
-        <p className={PROSA_DE_VITELA}>Sin recursos guardados todavía.</p>
+      {otros.length === 0 ? (
+        <p className={PROSA_DE_VITELA}>Sin más recursos que los dados de golpe.</p>
       ) : (
         <ul className="flex flex-col gap-s2">
-          {recursos.map((r) => (
+          {otros.map((r) => (
             <li
               key={r.key}
               className="flex items-center justify-between gap-s2 rounded-radius-sm border border-copper px-s3 py-s2"

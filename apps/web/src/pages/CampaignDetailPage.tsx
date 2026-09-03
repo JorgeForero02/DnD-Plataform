@@ -27,7 +27,16 @@ import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { EmptyState } from "../ui/Collection";
 import { CampaignOverview } from "../features/campaigns/CampaignOverview";
 import { useAllEntities } from "../features/entities/hooks";
-import { resumenDeCuerpo, TITULO_NUEVO as NUEVO_POR_TIPO } from "../features/entities/resumen";
+import {
+  resumenDeCuerpo,
+  ROTULO_PLURAL,
+  TITULO_NUEVO as NUEVO_POR_TIPO,
+} from "../features/entities/resumen";
+import { PLANTILLA_POR_TIPO } from "../features/entities/plantillas";
+import { CabeceraDeSeccion } from "../features/entities/CabeceraDeSeccion";
+import { FilaDeEntidad } from "../features/entities/FilaDeEntidad";
+import { IconoDeTipo } from "../features/entities/iconos";
+import { IconoSesiones, IconoPersonajes } from "../features/campaigns/iconosDeSeccion";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
@@ -41,21 +50,30 @@ type TabConfig =
 // "Documentos" and "Sesiones" were the same kind of thing. They are not: one is a filing
 // cabinet, the other is what happens on Friday. Two groups, and the table comes second only
 // because the world is what you build between sessions.
+const GRUPO_MUNDO = "El mundo";
+const GRUPO_MESA = "La mesa";
+
 const TABS: TabConfig[] = [
   { kind: "overview", label: "Resumen" },
-  { kind: "entity", label: "PNJ", type: "NPC", group: "El mundo" },
-  { kind: "entity", label: "Lugares", type: "LOCATION", group: "El mundo" },
-  { kind: "entity", label: "Misiones", type: "QUEST", group: "El mundo" },
-  { kind: "entity", label: "Facciones", type: "FACTION", group: "El mundo" },
-  { kind: "entity", label: "Objetos", type: "OBJECT", group: "El mundo" },
-  { kind: "entity", label: "Eventos", type: "EVENT", group: "El mundo" },
-  { kind: "entity", label: "Documentos", type: "DOCUMENT", group: "El mundo" },
-  { kind: "sessions", label: "Sesiones", group: "La mesa" },
-  { kind: "characters", label: "Personajes", group: "La mesa" },
+  { kind: "entity", label: ROTULO_PLURAL.NPC, type: "NPC", group: GRUPO_MUNDO },
+  { kind: "entity", label: ROTULO_PLURAL.LOCATION, type: "LOCATION", group: GRUPO_MUNDO },
+  { kind: "entity", label: ROTULO_PLURAL.QUEST, type: "QUEST", group: GRUPO_MUNDO },
+  { kind: "entity", label: ROTULO_PLURAL.FACTION, type: "FACTION", group: GRUPO_MUNDO },
+  { kind: "entity", label: ROTULO_PLURAL.OBJECT, type: "OBJECT", group: GRUPO_MUNDO },
+  { kind: "entity", label: ROTULO_PLURAL.EVENT, type: "EVENT", group: GRUPO_MUNDO },
+  { kind: "entity", label: ROTULO_PLURAL.DOCUMENT, type: "DOCUMENT", group: GRUPO_MUNDO },
+  { kind: "sessions", label: "Sesiones", group: GRUPO_MESA },
+  { kind: "characters", label: "Personajes", group: GRUPO_MESA },
   // 2A.17. Va en «La mesa» y no en «La campaña» porque una regla es algo que pasa durante la
   // partida, no un ajuste. El panel se calla entero si quien mira no es el DM.
-  { kind: "rules", label: "Reglas", group: "La mesa" },
-  { kind: "settings", label: "Ajustes", group: "La campaña" },
+  { kind: "rules", label: "Reglas", group: GRUPO_MESA },
+  // **Sin grupo, a propósito.** La maqueta lo mete en «LA CAMPAÑA», pero ahí acompañaba a
+  // media docena de entradas que aquí no existen. Un rótulo de grupo sobre un único elemento
+  // no agrupa nada: solo añade una línea de tipografía para decir en versalita lo que la
+  // palabra «Ajustes» ya decía. `Tabs` agrupa por tramos consecutivos, así que sin `group`
+  // esto se pinta como un bloque aparte al final de la columna, separado y sin rótulo — que
+  // es exactamente la separación que se quería.
+  { kind: "settings", label: "Ajustes" },
 ];
 
 // Reseño 2026-09-02 — "Nuevo" told you nothing unless you already knew which section you were
@@ -134,31 +152,40 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
   // Never a substitute for that check, only ever a further narrowing of it.
   const filtered = data ? filterEntities(data, filter) : undefined;
 
+  const plantilla = PLANTILLA_POR_TIPO[type];
+
   return (
     <div>
-      {roleError && (
-        <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
-      )}
-      {roleError && <RetryPermissions onRetry={retryRole} />}
-      {/* **El mundo lo escribe el DM.** Crear exigía solo ser miembro y por eso este botón no
-          estaba cerrado; el propio DM lo señaló probando con un jugador dentro — podía crear
-          PNJ, lugares y misiones, y con ello veía el andamiaje entero de construir mundo, que
-          es justo lo que estropea una partida. El servidor lo impone (`entities.service.ts`,
-          `requireDM`); aquí solo se deja de ofrecer lo que va a dar 403. La etiqueta dice QUÉ
-          se crea: «Nuevo» a secas era el C3 de la auditoría. */}
-      <EntityFilterBar
-        availableTags={availableTags}
-        value={filter}
-        onChange={setFilter}
-        totalCount={data?.length ?? 0}
-        visibleCount={filtered?.length ?? 0}
-        action={
+      {/* La cabecera explicada de la maqueta. El texto de «para qué sirve» NO se escribe aquí:
+          sale de `plantillas.ts`, donde ya vivía. Y la acción que crea sube a esta banda,
+          junto al título: crear no es filtrar, y estaba metida dentro de la barra de filtros. */}
+      <CabeceraDeSeccion
+        grupo={GRUPO_MUNDO}
+        titulo={ROTULO_PLURAL[type]}
+        paraQue={plantilla.paraQue}
+        icono={<IconoDeTipo type={type} />}
+        accion={
+          /* **El mundo lo escribe el DM.** Crear exigía solo ser miembro y por eso este botón
+             no estaba cerrado; el propio DM lo señaló probando con un jugador dentro. El
+             servidor lo impone (`entities.service.ts`, `requireDM`); aquí solo se deja de
+             ofrecer lo que va a dar 403. La etiqueta dice QUÉ se crea. */
           isDM ? (
             <Button variant="primary" onClick={() => setCreating(true)}>
               {NUEVO_POR_TIPO[type]}
             </Button>
           ) : undefined
         }
+      />
+      {roleError && (
+        <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
+      )}
+      {roleError && <RetryPermissions onRetry={retryRole} />}
+      <EntityFilterBar
+        availableTags={availableTags}
+        value={filter}
+        onChange={setFilter}
+        totalCount={data?.length ?? 0}
+        visibleCount={filtered?.length ?? 0}
       />
       {isLoading && <p className="text-muted">Cargando…</p>}
       {isError && <p className="text-danger-text">{(error as Error).message}</p>}
@@ -170,86 +197,43 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
           Prueba con menos etiquetas, o borra lo que hayas escrito en la búsqueda.
         </EmptyState>
       )}
-      <ul className="space-y-2">
-        {filtered?.map((e) => {
-          // Editing is DM-or-creator (entities.service.ts:requireEditable). While the role is
-          // unresolved (still loading, or the members request failed — arreglo 4), `isDM`
-          // reads false and `userId` may be stale/undefined, so canEdit would otherwise be
-          // wrong for a DM or the creator during that window — roleUnresolved is checked first
-          // specifically to avoid that.
-          const canEdit = !roleUnresolved && (isDM || e.createdById === userId);
-          const reason = roleUnresolved
-            ? CHECKING_PERMISSIONS
-            : canEdit
-              ? undefined
-              : "Solo el DM o quien lo creó puede editarlo.";
-          return (
-            <li key={e.id}>
-              {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — it's the only detail
-                  view this app has (the editor is the only consumer of useEntity, and
-                  LinksPanel/CommentThread only ever render inside it). What the permission
-                  check controls now is whether the editor opens read-only, not whether the
-                  row can be clicked at all — see EntityEditor.tsx's `readOnly` prop. */}
-              {/* Reseño 2026-09-02 — audit A3. The row used to be a <button> that opened the
-                  EDITOR: the only way to read an NPC was to open a form with its description
-                  inside a textarea. It is a link to the reading page now, and editing is a
-                  deliberate act from there. */}
-              <Link
-                to={`/campaigns/${campaignId}/entidades/${e.id}`}
-                title={reason}
-                className={ROW_BUTTON_CLASS}
-              >
-                <span className="block font-title text-chrome-md text-text">{e.name}</span>
-                {/* Reseño 2026-09-02 — audit B1. The body text was ALREADY in this response
-                    and the row threw it away, so a list of nine NPCs told you nine names and
-                    nothing else. One line of who they are costs no extra request. */}
-                {resumenDeCuerpo(e.body, 180) && (
-                  <span className="mt-1 line-clamp-2 block font-world text-chrome-base leading-snug text-muted">
-                    {resumenDeCuerpo(e.body, 180)}
-                  </span>
-                )}
-                <span className="mt-s2 flex flex-wrap items-center gap-s2">
-                  <Badge visibility={e.visibility} />
-                  {/* A2 (1.17c): tags were written and never read anywhere but the editor's own
-                    field. An entity with none paints nothing — no gap, no dash, no "sin
-                    etiquetas" — see the brief this task followed. Deduped here (not in
-                    parseTags/entity.schema.ts, which allow "lich, lich" through as
-                    ["lich","lich"] — tightening what gets persisted is a different decision,
-                    see docs/06-pendientes.md) so a duplicate tag doesn't paint the same badge
-                    twice or emit a duplicate React key warning. */}
-                  {e.tags.length > 0 &&
-                    Array.from(new Set(e.tags)).map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-radius-sm border border-muted/60 px-1.5 py-0.5 font-chrome text-chrome-xs text-muted"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                </span>
-                {/* Task 1.18b: this used to be --muted, the exact colour and size of the tag
-                    chips right above it — the reason a row can't be edited read as one more
-                    piece of metadata instead of the permission notice it is. --warning-text
-                    (tokens.css) gives it its own register. Fix round 1 (post-1.18b review),
-                    Important 8: guarded so the placeholder shares the register the OTHER
-                    "still checking" copy on this screen uses (roleError's own paragraph,
-                    CHECKING_PERMISSIONS everywhere else) — a transient loading string has no
-                    business in the loudest register on the row; only a REAL "you can't edit
-                    this" gets it. */}
-                {reason && (
-                  <span
-                    className={`ml-2 text-chrome-xs ${
-                      reason === CHECKING_PERMISSIONS ? "text-muted" : "text-warning-text"
-                    }`}
-                  >
-                    {reason}
-                  </span>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Un solo marco con filetes entre las filas, como la maqueta, en vez de una tarjeta con
+          borde por fila: nueve PNJ se leen como una lista y no como nueve cajas. */}
+      {filtered && filtered.length > 0 && (
+        <ul className="divide-y divide-muted overflow-hidden rounded-radius-sm border border-muted bg-surface">
+          {filtered.map((e) => {
+            // Editing is DM-or-creator (entities.service.ts:requireEditable). While the role is
+            // unresolved (still loading, or the members request failed — arreglo 4), `isDM`
+            // reads false and `userId` may be stale/undefined, so canEdit would otherwise be
+            // wrong for a DM or the creator during that window — roleUnresolved is checked
+            // first specifically to avoid that.
+            const canEdit = !roleUnresolved && (isDM || e.createdById === userId);
+            const reason = roleUnresolved
+              ? CHECKING_PERMISSIONS
+              : canEdit
+                ? undefined
+                : "Solo el DM o quien lo creó puede editarlo.";
+            return (
+              <li key={e.id}>
+                {/* La fila lleva a la página de lectura, no al editor: leer una ficha no puede
+                    exigir abrir un formulario. Editar es un acto deliberado desde ahí. */}
+                <FilaDeEntidad
+                  to={`/campaigns/${campaignId}/entidades/${e.id}`}
+                  type={e.type}
+                  name={e.name}
+                  summary={resumenDeCuerpo(e.body, 180)}
+                  visibility={e.visibility}
+                  // Deduplicadas aquí (no en parseTags/entity.schema.ts, que dejan pasar
+                  // "lich, lich") para no pintar dos veces el mismo distintivo ni emitir una
+                  // clave repetida de React.
+                  tags={Array.from(new Set(e.tags))}
+                  reason={reason}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {creating && (
         <EntityEditor campaignId={campaignId} type={type} onClose={() => setCreating(false)} />
       )}
@@ -282,15 +266,26 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
 
   return (
     <div>
-      <Button
-        variant="primary"
-        onClick={() => setCreating(true)}
-        disabled={!canManage}
-        title={reason}
-        className="mb-3"
-      >
-        Nueva sesión
-      </Button>
+      {/* Misma cabecera explicada que las secciones del mundo: dónde estás, qué es esto y la
+          acción que lo llena. El botón sigue deshabilitado con su motivo en vez de esconderse
+          — un botón escondido dice «esto no existe»; uno deshabilitado con su razón dice
+          «existe, pero no para ti ahora mismo». */}
+      <CabeceraDeSeccion
+        grupo={GRUPO_MESA}
+        titulo="Sesiones"
+        paraQue="Cuándo os sentáis a jugar y qué pasó la última vez. La fecha sirve para que nadie pregunte; las notas, para que nadie lo olvide."
+        icono={<IconoSesiones />}
+        accion={
+          <Button
+            variant="primary"
+            onClick={() => setCreating(true)}
+            disabled={!canManage}
+            title={reason}
+          >
+            Nueva sesión
+          </Button>
+        }
+      />
       {/* Fix round 1 (post-1.18b review), Important 9: stays --muted on purpose, unlike the
           per-row reasons in EntityTab/CharactersTab below — this is a PANEL-level notice above
           the "Nuevo" button, not text sitting inline next to a tag chip it could be confused
@@ -372,11 +367,20 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
 
   return (
     <div>
-      {/* Creating is open to any campaign member on the server (characters.service.ts,
-          requireMember), so it isn't gated here. */}
-      <Button variant="primary" onClick={() => setCreating(true)} className="mb-3">
-        Nuevo personaje
-      </Button>
+      {/* Crear un personaje lo puede hacer cualquier miembro en el servidor
+          (characters.service.ts, requireMember), así que este botón NO se cierra por rol —
+          al revés que los del mundo. */}
+      <CabeceraDeSeccion
+        grupo={GRUPO_MESA}
+        titulo="Personajes"
+        paraQue="Quién se sienta a esta mesa. Cada jugador lleva el suyo, y el DM puede crearlos también."
+        icono={<IconoPersonajes />}
+        accion={
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            Nuevo personaje
+          </Button>
+        }
+      />
       {roleError && (
         <p className="mb-3 text-chrome-xs text-danger-text">No se pudo comprobar tu permiso.</p>
       )}
@@ -532,6 +536,7 @@ export function CampaignDetailPage() {
         // filtered by canView — so it is "how many of these you can see", never a hint that
         // there are more you cannot. See CampaignOverview.tsx for the same reasoning.
         badge: conteoPorTipo?.get(t.type) ?? undefined,
+        icon: <IconoDeTipo type={t.type} />,
         content: <EntityTab key={t.type} campaignId={id} type={t.type} />,
       };
     }
@@ -540,6 +545,7 @@ export function CampaignDetailPage() {
         id: "sessions",
         label: t.label,
         group: t.group,
+        icon: <IconoSesiones />,
         content: <SessionsTab campaignId={id} />,
       };
     }
@@ -547,6 +553,7 @@ export function CampaignDetailPage() {
       id: "characters",
       label: t.label,
       group: t.group,
+      icon: <IconoPersonajes />,
       content: <CharactersTab campaignId={id} />,
     };
   });

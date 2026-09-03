@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { HojaCalculada } from "../HojaCalculada";
 import * as characterSheetApi from "../api";
+import * as members from "../../campaigns/members";
 import type {
   Catalog,
   CalculatedSheet,
@@ -163,6 +164,25 @@ const resources: ResourceRow[] = [
   },
 ];
 
+/**
+ * Los mismos recursos mas los **dados de golpe**, que es lo que siembra `resources.service.ts`
+ * en cuanto la ficha tiene clase. Hacen falta para probar que salen en su tarjeta y **no** otra
+ * vez en la lista de recursos.
+ */
+const recursosConDados: ResourceRow[] = [
+  ...resources,
+  {
+    id: "r2",
+    characterId: "ch1",
+    key: "hit-dice-d6",
+    label: "Dados de golpe (d6)",
+    current: 3,
+    max: 3,
+    resetOn: "LONG_REST",
+    grantedBy: "OWNER",
+  },
+];
+
 const conditions: ConditionRow[] = [
   {
     id: "cond1",
@@ -262,8 +282,15 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
     const texto = cabecera.textContent ?? "";
 
-    for (const rotulo of ["CA", "Iniciativa", "Velocidad (pies)", "PG", "Competencia"]) {
+    // **La tira compacta de la maqueta**: los rótulos van abreviados para que cinco casillas
+    // quepan en una fila, y el nombre entero viaja en un `sr-only` hermano — abreviar en
+    // pantalla sin decir el nombre completo en alguna parte sería cambiar densidad por
+    // accesibilidad. Se comprueban los dos, o la abreviatura podría quedarse sola.
+    for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
       expect(texto.includes(rotulo), `«${rotulo}» tiene que estar en la cabecera`).toBe(true);
+    }
+    for (const largo of ["Iniciativa", "Velocidad efectiva en pies", "Competencia"]) {
+      expect(texto.includes(largo), `«${largo}» tiene que anunciarse entero`).toBe(true);
     }
     // Y sus valores, no solo los rótulos: la CA (12) y la velocidad (30) se despliegan desde
     // aquí, y los PG se leen enteros.
@@ -349,5 +376,142 @@ describe("H5 — cada paso de la traza lleva a su causa editable", () => {
     for (const nodo of sinArmadura) {
       expect(nodo.closest("button")).toBeNull();
     }
+  });
+});
+
+// --- Adopción de la maqueta de Figma (2026-09-02) -------------------------------------------
+//
+// El autor eligió la hoja de la maqueta como referencia principal. Lo que jsdom puede demostrar
+// de esa adopción es la **estructura**: qué bloques existen, qué contienen, y que ningún dato
+// aparece dos veces donde antes aparecía una. Lo que NO puede —que la tira quepa en una fila,
+// que la tabla no desborde, que el modificador se lea más que la puntuación— se mide en
+// `apps/web/e2e/hoja.spec.ts`.
+
+describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y pie", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(recursosConDados);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions);
+    vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
+  });
+
+  it("la Clase de Armadura tiene su tarjeta con la fórmula en línea, y la tira solo la cifra", async () => {
+    pintarHoja();
+    const tarjeta = await screen.findByRole("region", { name: "clase de armadura" });
+
+    // La fórmula de una línea —lo que la maqueta pone bajo el número— vive aquí, no en la tira.
+    // La fórmula de una línea pone los nombres en minúscula («10 sin armadura +2 modificador
+    // de destreza»): es una frase, no una lista de rótulos.
+    expect(tarjeta.textContent).toMatch(/sin armadura/i);
+    expect(tarjeta.textContent).toMatch(/modificador de destreza/i);
+    expect(tarjeta.textContent).toContain("12");
+
+    // Y la casilla de la tira NO la repite: es lo que la hace compacta.
+    const cabecera = screen.getByRole("region", { name: "resumen de combate" });
+    const casillaCa = within(cabecera).getByText("CA", { exact: true }).parentElement!;
+    expect(casillaCa.textContent).not.toMatch(/sin armadura/i);
+  });
+
+  it("la fila de tarjetas pequeñas trae percepción pasiva, dados de golpe y salvaciones de muerte", async () => {
+    pintarHoja();
+    const fila = await screen.findByRole("region", { name: "valores pasivos" });
+
+    expect(within(fila).getByText("Percepción pasiva")).toBeInTheDocument();
+    await waitFor(() => expect(within(fila).getByText("Dados de golpe (d6)")).toBeInTheDocument());
+    expect(within(fila).getByText("Salvaciones de muerte")).toBeInTheDocument();
+  });
+
+  it("las salvaciones de muerte se ven con el personaje vivo, no solo cuando ya es tarde", async () => {
+    pintarHoja();
+    const tarjeta = await screen.findByRole("region", { name: "valores pasivos" });
+    // Un contador que solo existe a 0 PG no se puede consultar antes de llegar ahí.
+    expect(within(tarjeta).getByText("Éxitos")).toBeInTheDocument();
+    expect(within(tarjeta).getByText("Fallos")).toBeInTheDocument();
+    // Y el estado no depende solo del relleno de los círculos: se dice con palabras.
+    expect(within(tarjeta).getAllByText("0 de 3")).toHaveLength(2);
+  });
+
+  it("los dados de golpe salen UNA vez: en su tarjeta, no también en la lista de recursos", async () => {
+    pintarHoja();
+    const recursos = await screen.findByRole("region", { name: "recursos y descansos" });
+
+    await waitFor(() =>
+      expect(within(recursos).getByText("Espacios de conjuro de nivel 1")).toBeInTheDocument(),
+    );
+    expect(within(recursos).queryByText("Dados de golpe (d6)")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Dados de golpe (d6)")).toHaveLength(1);
+  });
+
+  it("«Ataques y lanzamiento» es una tabla con sus columnas y una fila por ataque derivado", async () => {
+    pintarHoja();
+    const seccion = await screen.findByRole("region", { name: "ataques y lanzamiento" });
+    const tabla = within(seccion).getByRole("table");
+
+    for (const columna of ["Nombre", "Bonif.", "Daño / tipo", "Notas"]) {
+      expect(within(tabla).getByRole("columnheader", { name: columna })).toBeInTheDocument();
+    }
+    // Tres filas: cuerpo a cuerpo, a distancia y de conjuro (esta clase lanza).
+    for (const fila of ["Cuerpo a cuerpo", "A distancia", "De conjuro"]) {
+      expect(within(tabla).getByRole("rowheader", { name: fila })).toBeInTheDocument();
+    }
+    // Y cada una se puede tirar desde su fila: es la tabla de la maqueta, con nuestro dado.
+    expect(
+      within(tabla).getByRole("button", { name: "Tirar Ataque cuerpo a cuerpo" }),
+    ).toBeInTheDocument();
+    // La CD de conjuro acompaña a la tabla en vez de ser una casilla suelta más.
+    expect(within(seccion).getByText(/CD de salvación de conjuro 13/)).toBeInTheDocument();
+  });
+
+  it("el pie trae rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {
+    pintarHoja();
+    const rasgos = await screen.findByRole("region", { name: "rasgos y aptitudes" });
+    expect(within(rasgos).getByText("Lanzamiento de conjuros")).toBeInTheDocument();
+
+    const personalidad = screen.getByRole("region", { name: "personalidad" });
+    expect(personalidad.textContent).toMatch(/Rasgo · Ideal · Vínculo · Defecto/);
+    // Sin biografía guardada NO se finge un rasgo: se dice dónde se escribe.
+    expect(personalidad.textContent).toMatch(/Sin nota de personalidad/);
+  });
+});
+
+describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la maqueta prometía", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(recursosConDados);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions);
+    vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
+  });
+
+  it("al DM le dice cuáles son los cinco valores anulables y que el motivo es opcional", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "DM",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    pintarHoja(true);
+
+    const aviso = await screen.findByRole("region", { name: "vista de DM" });
+    // La maqueta decía «cualquier número»; son cinco, y salen de `OVERRIDABLE_KEYS`.
+    expect(aviso.textContent).toMatch(/5 valores derivados/);
+    expect(aviso.textContent).toMatch(/clase de armadura/);
+    // La maqueta decía «tienes que escribir el motivo» y «aparece en la traza». Ni una ni otra.
+    expect(aviso.textContent).toMatch(/El motivo es opcional y no va a la traza/);
+    expect(aviso.textContent).toMatch(/registro de la partida/);
+  });
+
+  it("un jugador no ve ese aviso: es lo único que distingue las dos vistas", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "PLAYER",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    pintarHoja(true);
+
+    await screen.findByRole("region", { name: "resumen de combate" });
+    expect(screen.queryByRole("region", { name: "vista de DM" })).not.toBeInTheDocument();
   });
 });

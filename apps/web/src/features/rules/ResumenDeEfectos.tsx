@@ -44,7 +44,7 @@ export function ResumenDeEfectos({
         const despues = comoTexto(aplicacion.after);
         const visibilidad = visibilidadDeEfecto(aplicacion.effect);
         return (
-          <li key={i} className="border-l-2 border-copper/50 pl-s2">
+          <li key={i} className="border-l-2 border-copper pl-s2">
             <p className="flex flex-wrap items-baseline gap-s2 font-chrome text-chrome-sm text-text">
               <span>{describirEfecto(aplicacion.effect, nombreFicha)}</span>
               {visibilidad && <Badge visibility={visibilidad as Visibility} />}

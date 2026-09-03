@@ -2,6 +2,13 @@ import { useId } from "react";
 import type { RollMode } from "@dnd/shared";
 import { MODOS_DE_TIRADA, modoDeTirada } from "./vocabulario";
 
+// **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
+// los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
+// utilidad ENTERA y el elemento se queda con el `border-color` del preflight — `#e5e7eb` en
+// los dos temas. Lo que había aquí, por tanto, no era un borde tenue: era un borde gris claro
+// equivocado. Se pone el token entero, que es theme-aware, o se quita la clase cuando lo que
+// pedía era un relleno translúcido que ningún token puede dar todavía.
+
 // Tarea F3 — **ventaja y desventaja como decisión de tres estados**, no como sintaxis.
 //
 // El jugador no escribe `2d20kh1` jamás. Antes de F3 esto eran tres botones sueltos —«Tirar»,
@@ -48,7 +55,7 @@ export function SelectorDeVentaja({
               key={m.modo}
               className={[
                 "inline-flex cursor-pointer items-center gap-1 rounded-radius-sm border px-1.5 py-0.5 font-chrome text-chrome-xs transition-colors",
-                elegido ? "border-accent bg-accent/10 text-text" : "border-transparent text-muted",
+                elegido ? "border-accent text-text" : "border-transparent text-muted",
                 disabled ? "cursor-not-allowed" : "hover:bg-surface",
               ].join(" ")}
             >

@@ -61,3 +61,17 @@ export const TITULO_EDITAR: Record<EntityType, string> = {
   EVENT: "Editar evento",
   DOCUMENT: "Editar documento",
 };
+
+// El rótulo en plural: el nombre de la sección. Vivía suelto en el array `TABS` de
+// `pages/CampaignDetailPage.tsx`, y la cabecera explicada de la maqueta lo necesita otra vez
+// (en el título de la sección y en la migaja «El mundo · …»). Repetirlo habría sido la cuarta
+// copia de la misma palabra; se escribe aquí, junto a las otras tres formas del mismo tipo.
+export const ROTULO_PLURAL: Record<EntityType, string> = {
+  NPC: "PNJ",
+  LOCATION: "Lugares",
+  QUEST: "Misiones",
+  FACTION: "Facciones",
+  OBJECT: "Objetos",
+  EVENT: "Eventos",
+  DOCUMENT: "Documentos",
+};

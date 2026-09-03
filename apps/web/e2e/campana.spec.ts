@@ -581,3 +581,83 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   await dmContext.close();
   await playerContext.close();
 });
+
+// **La pantalla de campaña adopta la maqueta** (2026-09-02). Tres cosas que ninguna prueba de
+// jsdom puede afirmar, porque las tres son maquetación o navegación real:
+//
+// 1. La cabecera explicada de cada sección se pinta **en una banda**: el botón que crea va a la
+//    derecha del título, no debajo ni dentro de la barra de filtros.
+// 2. Las filas ya no son nueve tarjetas sueltas sino **un marco con filetes**: se comprueba que
+//    apilan (misma anchura, distinta altura de pantalla) y que ninguna hereda `display: inline`
+//    — el defecto del borde partido, que sobrevivió a la suite entera en verde.
+// 3. Un **acceso rápido** del tablero abre su sección de verdad, y la sección abierta sobrevive
+//    a una recarga porque viaja en `?seccion=`.
+test("la cabecera explicada, el marco de la lista y los accesos rápidos del tablero", async ({
+  page,
+}) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("El Puerto de Sarnath");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "El Puerto de Sarnath" }).click();
+  await expect(page.getByRole("heading", { name: "El Puerto de Sarnath" })).toBeVisible();
+
+  // --- 3. El acceso rápido del tablero lleva a su sección ---
+  const accesoLugares = page.getByRole("link", { name: /Lugares/ });
+  await expect(accesoLugares).toBeVisible();
+  const cajaAcceso = await accesoLugares.boundingBox();
+  // Una baldosa que no ocupa espacio es una baldosa que nadie puede pulsar. jsdom no lo ve.
+  expect(cajaAcceso?.width ?? 0).toBeGreaterThan(40);
+  expect(cajaAcceso?.height ?? 0).toBeGreaterThan(40);
+  await accesoLugares.click();
+
+  // --- 1. La cabecera explicada: migaja, título y la frase de plantillas.ts ---
+  await expect(page.getByRole("heading", { name: "Lugares" })).toBeVisible();
+  await expect(page.getByText("El mundo · Lugares")).toBeVisible();
+  await expect(
+    page.getByText("Un sitio al que se llega. Qué se ve, qué se oye y qué puede salir mal."),
+  ).toBeVisible();
+
+  // La sección abierta viaja en la URL, así que una recarga vuelve aquí y no al Resumen.
+  expect(page.url()).toContain("seccion=LOCATION");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Lugares" })).toBeVisible();
+
+  // El botón que crea está EN la banda del título, a su derecha y a su misma altura — no
+  // debajo, y no dentro de la barra de filtros donde estuvo hasta ahora.
+  const titulo = page.getByRole("heading", { name: "Lugares" });
+  const nuevo = page.getByRole("button", { name: "Nuevo lugar" });
+  const cajaTitulo = await titulo.boundingBox();
+  const cajaNuevo = await nuevo.boundingBox();
+  expect(cajaTitulo).not.toBeNull();
+  expect(cajaNuevo).not.toBeNull();
+  expect(cajaNuevo!.x).toBeGreaterThan(cajaTitulo!.x + cajaTitulo!.width);
+  // Los dos ejes, no solo uno: una revisión que solo mira la x deja pasar un botón estirado o
+  // caído media pantalla más abajo.
+  expect(Math.abs(cajaNuevo!.y - cajaTitulo!.y)).toBeLessThan(60);
+
+  // --- 2. El marco de la lista: dos filas que apilan, ninguna en línea ---
+  await nuevo.click();
+  await page.getByLabel("Nombre").fill("La Sirena Ahogada");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await nuevo.click();
+  await page.getByLabel("Nombre").fill("La Torre Gris");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  const sirena = page.getByRole("link", { name: /La Sirena Ahogada/ });
+  const torre = page.getByRole("link", { name: /La Torre Gris/ });
+  await expect(sirena).toBeVisible();
+  await expect(torre).toBeVisible();
+  expect(await sirena.evaluate((el) => getComputedStyle(el).display)).not.toBe("inline");
+  const cajaSirena = await sirena.boundingBox();
+  const cajaTorre = await torre.boundingBox();
+  // Mismo ancho y apiladas: es una lista dentro de un marco, no dos cajas flotando.
+  expect(Math.abs(cajaSirena!.width - cajaTorre!.width)).toBeLessThan(2);
+  expect(Math.abs(cajaSirena!.y - cajaTorre!.y)).toBeGreaterThan(20);
+  // Y el icono del tipo se pinta de verdad dentro de la fila, dibujado y no un glifo.
+  expect(await sirena.locator("svg").count()).toBeGreaterThan(0);
+});

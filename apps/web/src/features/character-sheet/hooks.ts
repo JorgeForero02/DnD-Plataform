@@ -82,12 +82,27 @@ export function useUpdateSheet(campaignId: string, characterId: string) {
   });
 }
 
+/**
+ * **Todo lo que escribe un suceso invalida el registro.** Cambiar puntos de golpe no solo
+ * cambia la hoja: el servidor anota un `HP_CHANGED` en la partida, y la mesa lo está leyendo en
+ * la columna del registro. Sin esta invalidación, el golpe aparecía en la hoja al instante y en
+ * el registro solo cuando a la consulta le tocaba refrescar — en una sesión en curso, eso es un
+ * registro que va por detrás de lo que pasa. Lo destapó un recorrido de navegador que pedía ver
+ * el golpe escrito y no lo encontraba a tiempo.
+ */
+function invalidarRegistro(qc: ReturnType<typeof useQueryClient>, campaignId: string) {
+  void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
+}
+
 export function useChangeHp(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ChangeHpInput) =>
       characterSheetApi.changeHp(campaignId, characterId, input),
-    onSuccess: (data) => qc.setQueryData(sheetKey(campaignId, characterId), data),
+    onSuccess: (data) => {
+      qc.setQueryData(sheetKey(campaignId, characterId), data);
+      invalidarRegistro(qc, campaignId);
+    },
   });
 }
 
@@ -95,7 +110,10 @@ export function useSetHp(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SetHpInput) => characterSheetApi.setHp(campaignId, characterId, input),
-    onSuccess: (data) => qc.setQueryData(sheetKey(campaignId, characterId), data),
+    onSuccess: (data) => {
+      qc.setQueryData(sheetKey(campaignId, characterId), data);
+      invalidarRegistro(qc, campaignId);
+    },
   });
 }
 

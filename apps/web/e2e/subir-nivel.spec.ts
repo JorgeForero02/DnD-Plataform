@@ -80,7 +80,10 @@ async function completarFichaDeGuerreroEnano(page: Page) {
 
   // La hoja está derivada cuando aparece la sección de salvaciones, que solo existe si el
   // catálogo resolvió raza y clase.
-  await expect(page.getByText("Salvaciones")).toBeVisible({ timeout: 15_000 });
+  // `exact` importa: desde que la hoja tiene su tarjeta de «Salvaciones de muerte», un
+  // `getByText("Salvaciones")` casa con las dos y falla por modo estricto. El agente que la
+  // añadió lo arregló en `hoja.spec.ts`, pero esta receta está copiada en tres ficheros más.
+  await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confirmar deja la hoja al nivel nuevo", async ({

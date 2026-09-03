@@ -24,6 +24,11 @@ const ETIQUETAS_QUE_EL_MOTOR_PUEDE_EMITIR = [
   "expertise",
   "spellSaveDc.base",
   "skill.perception",
+  // character-sheet.service.ts — cada anulación manual del DM entra en la traza con esta clave.
+  // **Faltaba en la lista y faltaba en el diccionario**, así que un valor anulado enseñaba
+  // «Sin traducir: override.manual» en pantalla y ninguna prueba se enteraba: la lista copiaba
+  // el mismo olvido que pretendía vigilar.
+  "override.manual",
   // engine.ts — por característica
   "ability.str.base",
   "ability.dex.base",

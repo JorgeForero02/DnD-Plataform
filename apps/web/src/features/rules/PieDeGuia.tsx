@@ -22,7 +22,7 @@ export function PieDeGuia({ paso }: { paso: PasoDeGuia }) {
       data-guia={paso.id}
       className={[
         "flex items-start gap-s2 rounded-radius-sm border p-s2 font-chrome text-chrome-sm leading-snug",
-        paso.completo ? "border-muted/60 text-muted" : "border-copper/60 text-text",
+        paso.completo ? "border-muted text-muted" : "border-copper text-text",
       ].join(" ")}
     >
       <IconoGuia className={["mt-0.5", clases?.texto ?? "text-copper-text"].join(" ")} />

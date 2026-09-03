@@ -5,6 +5,13 @@ import { Button } from "../../ui/Button";
 import { describirEleccionPendiente, nombreOpcionDeEleccion } from "./vocabulario";
 import { CAJA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
 
+// **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
+// los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
+// utilidad ENTERA y el elemento se queda con el `border-color` del preflight — `#e5e7eb` en
+// los dos temas. Lo que había aquí, por tanto, no era un borde tenue: era un borde gris claro
+// equivocado. Se pone el token entero, que es theme-aware, o se quita la clase cuando lo que
+// pedía era un relleno translúcido que ningún token puede dar todavía.
+
 // Tarea 2A.10 — "las elecciones pendientes como lista de tareas, no como error". Cada elección
 // sin resolver (2A.4) se resuelve aquí mismo, en la pantalla de lectura: marcar las opciones y
 // guardar hace un PATCH de la hoja con `choices[grantId]` completado. No es la ficha estructural
@@ -56,9 +63,7 @@ function FilaEleccion({
                 key={opcion}
                 className={[
                   "cursor-pointer rounded-radius-sm border px-s2 py-0.5 font-chrome text-chrome-xs",
-                  marcada
-                    ? "border-accent bg-accent/15 text-accent-text"
-                    : "border-muted/60 text-muted",
+                  marcada ? "border-accent text-accent-text" : "border-muted text-muted",
                 ].join(" ")}
               >
                 <input

@@ -103,3 +103,49 @@ export function IconoPresencia({ presente, className }: { presente: boolean; cla
     </svg>
   );
 }
+
+/**
+ * Puntos de golpe: un corazón a trazo.
+ *
+ * Va **dentro de la línea** que dice «42/58», así que se dimensiona en `1em` y no en píxeles —
+ * la regla de los iconos en línea de `docs/04-convenciones.md`.
+ */
+export function IconoPuntosDeGolpe({ className }: Props) {
+  return (
+    <svg {...base(className ?? "h-[1em] w-[1em]")}>
+      <path d="M12 20s-7-4.6-7-9.4A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.6C19 15.4 12 20 12 20z" />
+    </svg>
+  );
+}
+
+/** El elenco: dos siluetas, porque la mesa nunca es una sola persona. */
+export function IconoElenco({ className }: Props) {
+  return (
+    <svg {...base(className ?? "h-4 w-4")}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 19a6 6 0 0 1 12 0" />
+      <path d="M16 6.2a3 3 0 0 1 0 5.6M17 14.5a6 6 0 0 1 4 4.5" />
+    </svg>
+  );
+}
+
+/** El registro: un pliego con renglones. Es lo que se relee seis semanas después. */
+export function IconoRegistro({ className }: Props) {
+  return (
+    <svg {...base(className ?? "h-4 w-4")}>
+      <path d="M5 3.5h11l3 3V20.5H5z" />
+      <path d="M16 3.5v3h3" />
+      <path d="M8.5 11h7M8.5 14.5h7M8.5 18h4" />
+    </svg>
+  );
+}
+
+/** Consultar el mundo: una lente. */
+export function IconoBuscar({ className }: Props) {
+  return (
+    <svg {...base(className ?? "h-4 w-4")}>
+      <circle cx="10.5" cy="10.5" r="6" />
+      <path d="M15 15l5 5" />
+    </svg>
+  );
+}

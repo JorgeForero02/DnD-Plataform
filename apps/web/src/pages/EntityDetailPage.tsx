@@ -11,7 +11,6 @@ import { CommentThread } from "../features/comments/CommentThread";
 import { CHECKING_PERMISSIONS } from "../features/campaigns/PermissionStatus";
 import { useAuthStore } from "../store/auth.store";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
-import { Panel } from "../ui/Panel";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/Collection";
@@ -95,7 +94,7 @@ export function EntityDetailPage() {
             {Array.from(new Set(entity.tags)).map((tag) => (
               <span
                 key={tag}
-                className="rounded-radius-sm border border-muted/60 px-1.5 py-0.5 font-chrome text-chrome-xs text-muted"
+                className="rounded-radius-sm border border-muted px-1.5 py-0.5 font-chrome text-chrome-xs text-muted"
               >
                 {tag}
               </span>
@@ -112,9 +111,28 @@ export function EntityDetailPage() {
       <div className="grid gap-s6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-s5">
           {cuerpo ? (
-            <Panel tone="vellum">
+            // La capitular. Es la marca de que aquí empieza la voz del mundo y no la de la
+            // aplicación, y es lo único de esta página que se permite ser grande sin ser un
+            // control: un grabado la imprimiría igual. Va en cobre —lo que pertenece al mundo—
+            // y no en azul, que en esta interfaz significa «esto se pulsa».
+            //
+            // Se escribe como variante de descendiente, y no dentro de `Markdown`, por dos
+            // razones: `features/entities/Markdown.tsx` está fuera de la frontera de esta tarea
+            // y, sobre todo, la capitular es una decisión de ESTA página —la pantalla de
+            // lectura—, no de todo texto Markdown de la aplicación. El primer párrafo se elige
+            // con `p:first-of-type` para que un cuerpo que empiece por un encabezado no reciba
+            // capitular en mitad del documento.
+            //
+            // Y dos arreglos de lectura que el cuerpo no tenía. **Los párrafos no se separaban
+            // entre sí**: `Markdown.tsx` pone su `space-y-2` en el `Panel`, cuyo único hijo es
+            // el relleno que despeja el borde rasgado, así que la regla nunca llegaba a los
+            // párrafos — se ve en cuanto un cuerpo tiene dos. Y el interlineado era el de por
+            // defecto, que para una serif de 17 px leída en voz alta se queda corto. Los dos se
+            // arreglan aquí, desde fuera, porque `Markdown.tsx` y `ui/Panel.tsx` quedan fuera de
+            // la frontera de esta tarea; la causa raíz está en el informe.
+            <div className="[&_p]:leading-relaxed [&_p+p]:mt-s3 [&_p:first-of-type]:first-letter:mr-1 [&_p:first-of-type]:first-letter:mt-1 [&_p:first-of-type]:first-letter:float-left [&_p:first-of-type]:first-letter:font-title [&_p:first-of-type]:first-letter:text-[3.2em] [&_p:first-of-type]:first-letter:leading-[0.82] [&_p:first-of-type]:first-letter:text-copper-text">
               <Markdown text={cuerpo} />
-            </Panel>
+            </div>
           ) : (
             <EmptyState
               title="Sin nada escrito todavía"
@@ -137,14 +155,17 @@ export function EntityDetailPage() {
           </section>
         </div>
 
-        <aside className="space-y-s5">
-          <section>
-            <LinksPanel
-              campaignId={id}
-              entityId={entity.id}
-              entityCreatedById={entity.createdById}
-            />
-          </section>
+        {/* El vecindario se consulta MIENTRAS se lee, no después: en una ficha larga el panel
+            se quedaba mil píxeles más arriba que el párrafo que hacía preguntarse quién era
+            quién. Pegajoso a partir de la anchura en la que hay dos columnas; por debajo cae
+            detrás del cuerpo, que es el orden correcto para leerlo en un móvil. */}
+        <aside className="space-y-s5 lg:sticky lg:top-24 lg:self-start">
+          <LinksPanel
+            campaignId={id}
+            entityId={entity.id}
+            entityName={entity.name}
+            entityCreatedById={entity.createdById}
+          />
         </aside>
       </div>
 

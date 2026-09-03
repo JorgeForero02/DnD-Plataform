@@ -11,6 +11,8 @@ import type { Entity } from "../../entities/api";
 import type { EntityLink } from "../api";
 
 function renderPanel(entityCreatedById = "u1") {
+  // El nombre de la ficha abierta es el SUJETO de cada frase del panel, así que hace falta
+  // para poder comprobar que la frase se compone entera y no solo el predicado.
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -21,7 +23,12 @@ function renderPanel(entityCreatedById = "u1") {
           <Route
             path="/campaigns/:id/entidades/:entityId"
             element={
-              <LinksPanel campaignId="c1" entityId="e1" entityCreatedById={entityCreatedById} />
+              <LinksPanel
+                campaignId="c1"
+                entityId="e1"
+                entityName="Torre Gris"
+                entityCreatedById={entityCreatedById}
+              />
             }
           />
         </Routes>
@@ -175,14 +182,14 @@ describe("LinksPanel", () => {
       expect(within(llegan).getByText("Maestre Corvin")).toBeInTheDocument();
     });
 
-    it("lee la etiqueta al revés: «vive en» se muestra como «vive aquí»", async () => {
+    it("lee la etiqueta al revés, con la ficha abierta de sujeto", async () => {
       vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([entrante]);
       vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
       renderPanel();
 
       // La lectura recta —"Maestre Corvin — vive en"— diría que la Torre vive en Corvin.
-      expect(await screen.findByText(/vive aquí/)).toBeInTheDocument();
-      expect(screen.queryByText(/— vive en/)).not.toBeInTheDocument();
+      expect(await screen.findByText(/es el hogar de/)).toBeInTheDocument();
+      expect(screen.queryByText(/vive en/)).not.toBeInTheDocument();
     });
 
     it("traduce el tipo de ficha en vez de pintar la clave del enumerado", async () => {
@@ -190,7 +197,7 @@ describe("LinksPanel", () => {
       vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
       renderPanel();
 
-      expect(await screen.findByText("(PNJ)")).toBeInTheDocument();
+      expect(await screen.findByText("PNJ")).toBeInTheDocument();
       expect(screen.queryByText(/NPC/)).not.toBeInTheDocument();
     });
 
@@ -210,6 +217,75 @@ describe("LinksPanel", () => {
       ).toBeInTheDocument();
       fireEvent.click(boton);
       expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  // Reseño 2026-09-03 · «los enlaces más entendibles». Un enlace es una FRASE: sujeto (la ficha
+  // abierta), predicado (la relación) y complemento (la ficha vecina, que es lo que se pulsa).
+  describe("cada enlace se lee como una frase", () => {
+    it("compone sujeto, relación y destino, en ese orden", async () => {
+      vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([
+        saliente({ label: "custodia", to: { id: "e2", name: "El Cáliz", type: "OBJECT" } }),
+      ]);
+      vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+      renderPanel();
+
+      const tarjeta = (await screen.findByRole("link", { name: "El Cáliz" })).closest("article");
+      expect(tarjeta).not.toBeNull();
+      // El sujeto no se deduce ni se omite: sin él la tarjeta vuelve a ser una lista de nombres.
+      expect(tarjeta).toHaveTextContent(/Torre Gris\s+custodia/);
+      expect(within(tarjeta as HTMLElement).getByText("Objeto")).toBeInTheDocument();
+    });
+
+    it("un enlace sin etiqueta sigue teniendo verbo", async () => {
+      vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([saliente({ label: null })]);
+      vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+      renderPanel();
+
+      const tarjeta = (await screen.findByRole("link", { name: "Waterdeep" })).closest("article");
+      expect(tarjeta).toHaveTextContent(/Torre Gris\s+enlaza con/);
+    });
+
+    it("una etiqueta libre que llega de fuera se cita en vez de inventarle una inversa", async () => {
+      vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([
+        {
+          id: "link-libre",
+          label: "le debe dinero a",
+          direction: "INCOMING",
+          canRemove: true,
+          to: { id: "corvin", name: "Maestre Corvin", type: "NPC" },
+        },
+      ]);
+      vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+      renderPanel();
+
+      const tarjeta = (await screen.findByRole("link", { name: "Maestre Corvin" })).closest(
+        "article",
+      );
+      expect(tarjeta).toHaveTextContent(/Torre Gris\s+recibe un enlace de/);
+      expect(tarjeta).toHaveTextContent(/dice «le debe dinero a»/);
+    });
+
+    it("la dirección se anuncia también para quien no ve las flechas", async () => {
+      vi.spyOn(linksApi, "fetchLinks").mockResolvedValue([
+        saliente(),
+        {
+          id: "link-back",
+          label: "vive en",
+          direction: "INCOMING",
+          canRemove: true,
+          to: { id: "corvin", name: "Maestre Corvin", type: "NPC" },
+        },
+      ]);
+      vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+      renderPanel();
+
+      const sale = (await screen.findByRole("link", { name: "Waterdeep" })).closest("article");
+      const entra = (await screen.findByRole("link", { name: "Maestre Corvin" })).closest(
+        "article",
+      );
+      expect(sale).toHaveTextContent("Enlace saliente.");
+      expect(entra).toHaveTextContent("Enlace entrante.");
     });
   });
 

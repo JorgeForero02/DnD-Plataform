@@ -19,7 +19,7 @@ import {
 
 function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-s2 border-t border-muted/30 py-s2 first:border-t-0">
+    <div className="flex flex-wrap items-baseline justify-between gap-s2 border-t border-muted py-s2 first:border-t-0">
       <dt className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
         {etiqueta}
       </dt>
@@ -38,7 +38,7 @@ export function DiffNivel({ previo }: { previo: LevelUpPreview }) {
         Nivel {previo.from} → {previo.to}
       </p>
 
-      <dl className="rounded-radius-sm border border-muted/50 bg-surface px-s3 py-s2">
+      <dl className="rounded-radius-sm border border-muted bg-surface px-s3 py-s2">
         <Fila etiqueta="Puntos de golpe máximos">
           <span>
             {previo.hp.current} → {previo.hp.next}{" "}
@@ -108,7 +108,7 @@ export function DiffNivel({ previo }: { previo: LevelUpPreview }) {
           <ul className="mt-1 space-y-1">
             {previo.newFeatures.map((aptitud) => (
               <li key={`${aptitud.source}:${aptitud.key}`} className="flex items-baseline gap-s2">
-                <span className="rounded-radius-sm border border-copper/60 px-s2 py-0.5 font-chrome text-chrome-xs text-copper-text">
+                <span className="rounded-radius-sm border border-copper px-s2 py-0.5 font-chrome text-chrome-xs text-copper-text">
                   {nombreOrigenAptitud(aptitud.source)}
                 </span>
                 <span className="font-chrome text-chrome-sm text-text">{aptitud.name}</span>

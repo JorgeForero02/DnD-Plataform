@@ -17,7 +17,7 @@ export function PlantillasDeRegla({ onUsar }: { onUsar: (plantilla: PlantillaDeR
   return (
     <section
       aria-label="Plantillas de regla"
-      className="space-y-s3 rounded-radius-sm border border-copper/40 p-s3"
+      className="space-y-s3 rounded-radius-sm border border-copper p-s3"
     >
       <div>
         <h3 className="flex items-center gap-s2 font-title text-chrome-md text-text">
@@ -35,7 +35,7 @@ export function PlantillasDeRegla({ onUsar }: { onUsar: (plantilla: PlantillaDeR
           <li
             key={plantilla.id}
             data-plantilla={plantilla.id}
-            className="flex flex-col gap-s2 rounded-radius-sm border border-muted/60 p-s3"
+            className="flex flex-col gap-s2 rounded-radius-sm border border-muted p-s3"
           >
             <h4 className="font-chrome text-chrome-sm font-semibold text-text">
               {plantilla.titulo}

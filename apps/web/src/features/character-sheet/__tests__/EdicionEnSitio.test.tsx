@@ -314,6 +314,18 @@ describe("las dos reglas de la identidad que solo se ven al usarla", () => {
     await montar({}, { derived });
 
     expect(screen.queryByText("sin calcular")).not.toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    // Con la maqueta adoptada el modificador es la cifra GRANDE de la casilla y lleva su signo
+    // («+3»), que es como se usa en la mesa: no se dice «tres de Inteligencia», se suma +3.
+    expect(screen.getByText("+3")).toBeInTheDocument();
+    // Y **sigue sin afordancia de edición**: es un párrafo, no un campo ni un botón. La
+    // puntuación pequeña de debajo es la que se toca.
+    const modificador = screen.getByText("+3");
+    expect(modificador.tagName).toBe("P");
+    expect(modificador.closest("button")).toBeNull();
+    // Y lleva la marca por la que lo señala la prueba de navegador, que es la única capaz de
+    // medir que se lee MÁS GRANDE que la puntuación (jsdom no tiene tamaños). Sin esta línea,
+    // renombrar el atributo dejaba la unitaria en verde y la de navegador buscando un elemento
+    // que ya no existe — un fallo que solo aparecería en la siguiente corrida de Playwright.
+    expect(modificador.getAttribute("data-derivado")).toBe("abilityMod.int");
   });
 });

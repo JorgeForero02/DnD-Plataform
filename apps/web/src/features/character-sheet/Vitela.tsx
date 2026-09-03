@@ -179,6 +179,17 @@ export function RotuloDeSeccion({
  */
 export const CAJA_DE_VITELA = "rounded-radius-sm border border-copper px-s3 py-s3";
 
+/**
+ * El rótulo de una casilla: versalitas pequeñas, en la voz de instrumento, deliberadamente más
+ * callado que la cifra que nombra.
+ *
+ * **Existía ya, copiado a mano en nueve sitios.** La maqueta de Figma lo usa en cada una de sus
+ * casillas —cabecera, características, tarjetas pequeñas, tabla de ataques— y adoptarla
+ * multiplicaba las copias; se saca aquí para que el día que cambie, cambie una vez.
+ */
+export const ROTULO_DE_CASILLA =
+  "font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted";
+
 /** La voz del texto corrido de la hoja: la serif del mundo, 15 px, interlineado de lectura. */
 export const PROSA_DE_VITELA =
   "font-world text-[length:var(--text-world-sm)] leading-relaxed text-muted";

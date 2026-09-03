@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { SessionNoteKind } from "@dnd/shared";
-import { useCurrentSession, useStampNote } from "./hooks";
+import { useCurrentSession, useMinutoActual, useStampNote } from "./hooks";
 import { ICONO_SELLO, NOMBRE_SELLO, SELLOS_EN_ORDEN, duracionDesde } from "./vocabulario";
 import { IconoEnJuego } from "./iconos";
 import { Button } from "../../ui/Button";
@@ -21,43 +21,66 @@ import { fieldControlClass } from "../../ui/Field";
 // la sesión es una llamada de datos, y `/acerca-de` es una pantalla PÚBLICA que se monta sin
 // cliente de consultas. Montarla siempre convertía el armazón en algo que exige ese cliente, y
 // la suite lo cazó al instante. Vive bajo campaña, así que fuera de campaña ni se monta.
+//
+// **Adoptada de la maqueta (2026-09-02).** Una franja estrecha, de altura fija, con cuatro cosas
+// en una sola línea: el punto, la frase «En juego · <sesión>», el tiempo transcurrido en cifras
+// monoespaciadas, y a la derecha «Ir a la mesa». Antes eran seis piezas de anchura variable que
+// se envolvían en dos filas en cuanto el título era largo. Lo que la maqueta **no** tiene y aquí
+// se conserva es «Anotar»: sellar sin salir de donde estés es la razón por la que esta barra
+// existe además de la mesa, y la maqueta lo resuelve mandándote a la mesa.
+
+/**
+ * Alto de la cabecera de la aplicación (`ui/AppShell.tsx`, `h-16`), que es a lo que esta barra
+ * se tiene que pegar.
+ *
+ * **El defecto que esto arregla** (ficha en `docs/06-pendientes.md`): las dos eran
+ * `sticky top-0`, así que al desplazar se **solapaban** — la barra quedaba tapada por la
+ * cabecera, que además va en `z-30`. Aquí baja a `z-20` a propósito: si algún día vuelven a
+ * cruzarse, gana la cabecera, que es el marco.
+ *
+ * Y **el `sticky` lo lleva el envoltorio, no la franja**: `sticky` se pega dentro de su padre, así
+ * que el panel de sellos tiene que estar **dentro** del mismo elemento pegado. La versión anterior
+ * le daba al panel su propio `sticky top-9`, un número escrito a mano que ya no cuadraba con nada.
+ */
+const PEGADA_BAJO_LA_CABECERA = "sticky top-16 z-20";
 
 export function BarraDeSesion({ campaignId }: { campaignId: string }) {
   const { data: sesion } = useCurrentSession(campaignId);
   const [abierto, setAbierto] = useState(false);
-  // El cronómetro se recalcula solo cada minuto. Ni segundos ni `setInterval` de un segundo:
-  // en la mesa nadie mira los segundos, y un número parpadeando en la cabecera molesta.
-  const [ahora, setAhora] = useState(() => Date.now());
-  useEffect(() => {
-    if (!sesion) return;
-    const t = setInterval(() => setAhora(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, [sesion]);
+  const ahora = useMinutoActual(Boolean(sesion));
 
   if (!sesion) return null;
 
   return (
-    <>
-      <div
-        role="status"
-        aria-label="Sesión en curso"
-        className="sticky top-0 z-30 border-b border-copper bg-surface"
-      >
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-s3 px-s4 py-1.5">
-          <span className="flex items-center gap-s2 font-chrome text-chrome-xs font-semibold uppercase tracking-[0.14em] text-copper-text">
-            <IconoEnJuego className="h-2.5 w-2.5" />
+    <div className={PEGADA_BAJO_LA_CABECERA}>
+      <div role="status" aria-label="Sesión en curso" className="border-b border-copper bg-surface">
+        <div className="mx-auto flex h-8 max-w-[1400px] items-center gap-s3 px-s5">
+          <IconoEnJuego className="h-2 w-2 shrink-0 text-copper-text" />
+          {/* `data-medida` existe para que la prueba de contraste del navegador NOMBRE lo que
+              mide en vez de contar `span`s por su posición. Contarlos ya se rompió una vez: basta
+              añadir un separador para que el «span número 1» pase a ser otra cosa. */}
+          <span
+            data-medida="en-juego"
+            className="shrink-0 font-chrome text-chrome-xs font-semibold uppercase tracking-[0.14em] text-copper-text"
+          >
             En juego
           </span>
-          <span className="min-w-0 flex-1 truncate font-chrome text-chrome-sm text-text">
+          <span aria-hidden="true" className="shrink-0 font-chrome text-chrome-xs text-copper">
+            ·
+          </span>
+          <span
+            data-medida="titulo"
+            className="min-w-0 flex-1 truncate font-chrome text-chrome-xs text-text"
+          >
             {sesion.title}
           </span>
-          <span className="font-data text-chrome-xs text-muted">
+          <span data-medida="duracion" className="shrink-0 font-data text-chrome-xs text-muted">
             {duracionDesde(sesion.startedAt, ahora)}
           </span>
           <Button
             type="button"
             variant="ghost"
-            className="px-2 py-0.5 text-chrome-xs"
+            className="shrink-0 px-2 py-0.5 text-chrome-xs"
             onClick={() => setAbierto((v) => !v)}
             aria-expanded={abierto}
           >
@@ -65,14 +88,15 @@ export function BarraDeSesion({ campaignId }: { campaignId: string }) {
           </Button>
           <Link
             to={`/campaigns/${campaignId}/sesion`}
-            className="font-chrome text-chrome-xs text-accent-text underline"
+            data-medida="ir-a-la-mesa"
+            className="shrink-0 font-chrome text-chrome-xs text-accent-text underline"
           >
             Ir a la mesa
           </Link>
         </div>
       </div>
       {abierto && <PanelDeSellos campaignId={campaignId} onCerrar={() => setAbierto(false)} />}
-    </>
+    </div>
   );
 }
 
@@ -82,6 +106,9 @@ export function BarraDeSesion({ campaignId }: { campaignId: string }) {
  * **La idea entera es que escribir cuesta y pulsar no.** Un DM dirigiendo no va a redactar; sí
  * va a dar un golpe a un botón. Y como el sello lleva su clase, el resumen que se escribe al
  * cerrar sale **ya agrupado** en vez de ser un muro de texto que nadie relee.
+ *
+ * **Los pone cualquier miembro, no solo el DM.** La crítica más repetida a estas herramientas es
+ * que un registro que solo escribe el DM se queda vacío: quien vio el detalle es quien lo anota.
  *
  * El texto es opcional a propósito: el sello solo ya cuenta algo.
  */
@@ -108,12 +135,16 @@ function PanelDeSellos({ campaignId, onCerrar }: { campaignId: string; onCerrar:
   };
 
   return (
+    // Sin `sticky` propio: va dentro del envoltorio pegado de arriba. Y `border-muted` entero, no
+    // `border-muted` — **ninguna clase de opacidad de Tailwind compila en este proyecto**, los
+    // colores se declaran como `var(--x)` sin `<alpha-value>` y la utilidad se descarta sin avisar
+    // (P1 de `docs/06-pendientes.md`). La versión anterior de esta línea no pintaba ningún filete.
     <div
       role="region"
       aria-label="Anotar en la sesión"
-      className="sticky top-9 z-20 border-b border-muted/40 bg-surface"
+      className="border-b border-muted bg-surface"
     >
-      <div className="mx-auto max-w-[1400px] px-s4 py-s2">
+      <div className="mx-auto max-w-[1400px] px-s5 py-s2">
         <div className="flex flex-wrap items-center gap-s2">
           {SELLOS_EN_ORDEN.map((kind) => {
             const Icono = ICONO_SELLO[kind];
@@ -158,7 +189,7 @@ function PanelDeSellos({ campaignId, onCerrar }: { campaignId: string; onCerrar:
         />
         {/* El número que cambia ES la confirmación: aquí no cambia nada visible, así que hace
             falta decirlo. Una línea, no un aviso flotante — los flotantes se van antes de que
-            un lector de pantalla los lea. */}
+            un lector de pantalla llegue a él. */}
         {ultimo && !error && (
           <p role="status" className="mt-1 font-chrome text-chrome-xs text-muted">
             Anotado: {ultimo}.

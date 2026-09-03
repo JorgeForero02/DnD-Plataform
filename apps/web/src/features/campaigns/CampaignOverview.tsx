@@ -1,25 +1,40 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "./hooks";
 import { useAllEntities } from "../entities/hooks";
 import { useSessions } from "../sessions/hooks";
+import type { Session } from "../sessions/api";
 import { useCharacters } from "../characters/hooks";
+import { descriptorDePersonaje } from "../characters/descriptor";
 import { Panel } from "../../ui/Panel";
 import { Badge } from "../../ui/Badge";
 import { OrnamentRule } from "../../ui/Ornament";
 import { EmptyState } from "../../ui/Collection";
-import { resumenDeCuerpo, ETIQUETA_DE_TIPO } from "../entities/resumen";
+import { resumenDeCuerpo, ETIQUETA_DE_TIPO, ROTULO_PLURAL } from "../entities/resumen";
+import { IconoDeTipo } from "../entities/iconos";
 
-// Reseño 2026-09-02 — audit B2. The first thing you saw when you opened your own campaign was
-// a settings FORM: an editable "Nombre" field, and a "Borrar" button sitting the same size and
-// distance from your cursor as "Guardar". Nothing on it told you anything about your table.
-// This is what a summary actually is — what is coming, what is new, and how much of the world
-// you can reach — and the settings moved to a section of their own.
+// **El resumen es un tablero, adoptado de la maqueta (2026-09-02).**
 //
-// On counting: every list read here comes back from the API already filtered by canView
-// (apps/api/src/common/visibility.ts), so counting the rows you were handed is not the same as
-// counting what exists. A player's "8 lugares" means eight they can see, which is the honest
-// number to show them, and nothing here re-derives the visibility matrix to get it.
+// Lo que había era una columna de bandas: tres cifras sueltas («Próxima sesión», «Personajes»,
+// «Sesiones») y una lista de lo último. Contaba cosas, pero no contaba nada: abrías tu propia
+// campaña y no sabías por dónde ibas. La maqueta lo resuelve poniendo arriba, de un vistazo,
+// **qué pasó, quién está y a dónde vas**:
+//
+//   - una tarjeta grande con la **última sesión** y sus notas —lo que de verdad hay que
+//     recordar el viernes siguiente—,
+//   - una columna con **la próxima fecha** y **quién se sienta a la mesa**,
+//   - y una rejilla de **accesos rápidos** a las siete secciones del mundo, con su cuenta.
+//
+// Lo que NO se copió: el recuadro «PENDIENTE · 2 · 1 subida de nivel · 1 secreto por revelar».
+// Es una cifra bonita que no corresponde a ningún dato que esta aplicación tenga hoy, y una
+// pantalla que inventa un número pendiente enseña a no fiarse del resto.
+//
+// Sobre contar: toda lista que se lee aquí llega ya filtrada por `canView`
+// (apps/api/src/common/visibility.ts), así que contar las filas que te han dado no es contar
+// lo que existe. El «8 lugares» de un jugador son ocho que él puede ver, que es la cifra
+// honesta que enseñarle, y nada de esto rederiva la matriz de visibilidad para averiguarlo.
 
 function fechaLarga(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
@@ -29,22 +44,62 @@ function fechaLarga(iso: string): string {
   });
 }
 
+// `Session.notes` es `Json?` en el esquema y `unknown` en el cliente (api.ts lo dice ahí
+// mismo): esta pantalla solo escribe texto plano, pero nada garantiza que lo que vuelva lo
+// sea. Una nota que no es una cadena simplemente no se pinta, en vez de acabar en la pantalla
+// como el resultado de convertir un objeto a texto.
+function notaLegible(notes: unknown, maxLength = 260): string {
+  if (typeof notes !== "string") return "";
+  const plano = notes.replace(/\s+/g, " ").trim();
+  if (plano.length <= maxLength) return plano;
+  const corte = plano.slice(0, maxLength);
+  const ultimoEspacio = corte.lastIndexOf(" ");
+  const cortado = ultimoEspacio > maxLength * 0.6 ? corte.slice(0, ultimoEspacio) : corte;
+  return `${cortado.trimEnd()}…`;
+}
+
+const TIPOS_DEL_MUNDO: EntityType[] = [
+  "NPC",
+  "LOCATION",
+  "QUEST",
+  "FACTION",
+  "OBJECT",
+  "EVENT",
+  "DOCUMENT",
+];
+
+function TarjetaDelTablero({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <section className="rounded-radius-sm border border-muted bg-surface p-s4">
+      <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">{rotulo}</p>
+      {children}
+    </section>
+  );
+}
+
 export function CampaignOverview({ campaignId }: { campaignId: string }) {
   const { data: campaign } = useCampaign(campaignId);
   const { data: entidades } = useAllEntities(campaignId);
   const { data: sesiones } = useSessions(campaignId);
   const { data: personajes } = useCharacters(campaignId);
 
-  // Read once, when the screen mounts, rather than on every render: "next session" must not
-  // shift under the reader because something unrelated re-rendered, and the lint rule that
-  // caught this is right that a bare Date.now() in a render body is a moving target.
+  // Leído una vez, al montar, y no en cada render: «la próxima sesión» no puede moverse bajo
+  // el lector porque algo ajeno haya vuelto a renderizar.
   const [ahora] = useState(() => Date.now());
-  const proxima = (sesiones ?? [])
-    .filter((s) => s.scheduledAt && new Date(s.scheduledAt).getTime() >= ahora)
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledAt as string).getTime() - new Date(b.scheduledAt as string).getTime(),
-    )[0];
+
+  const conFecha = (sesiones ?? []).filter(
+    (s): s is Session & { scheduledAt: string } => typeof s.scheduledAt === "string",
+  );
+  const proxima = conFecha
+    .filter((s) => new Date(s.scheduledAt).getTime() >= ahora)
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+  // La última jugada: la más reciente de las que ya pasaron. Una sesión cerrada cuenta aunque
+  // nunca tuviera fecha puesta, porque cerrarla ES haberla jugado.
+  const ultimaConFecha = conFecha
+    .filter((s) => new Date(s.scheduledAt).getTime() < ahora)
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())[0];
+  const ultima =
+    ultimaConFecha ?? [...(sesiones ?? [])].reverse().find((s) => s.status === "CLOSED");
 
   const recientes = [...(entidades ?? [])]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -54,13 +109,15 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
   for (const e of entidades ?? []) porTipo.set(e.type, (porTipo.get(e.type) ?? 0) + 1);
 
   const descripcion = campaign?.description?.trim();
+  const notaDeLaUltima = notaLegible(ultima?.notes);
 
   return (
     <div className="space-y-s5">
       {descripcion && (
         <Panel tone="vellum">
-          {/* The world's own voice on the world's own surface. The drop capital marks where the
-              manual starts and the instrument stops — the one place this page changes register. */}
+          {/* La voz del mundo, sobre la superficie del mundo. La capitular marca dónde empieza
+              el manual y dónde acaba el instrumento — el único sitio donde esta página cambia
+              de registro. */}
           <p>
             <span
               aria-hidden="true"
@@ -73,18 +130,46 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
         </Panel>
       )}
 
-      <section>
-        <OrnamentRule className="mb-s3">La mesa</OrnamentRule>
-        <div className="grid gap-s3 sm:grid-cols-3">
-          <div className="rounded-radius-sm border border-muted/50 bg-surface p-s4">
-            <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-              Próxima sesión
+      {/* El tablero: a la izquierda lo que pasó, a la derecha quién está y cuándo se vuelve. */}
+      <div className="grid gap-s3 lg:grid-cols-3">
+        <section className="rounded-radius-sm border border-copper bg-surface p-s5 lg:col-span-2">
+          <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
+            La última sesión
+          </p>
+          {ultima ? (
+            <>
+              <h3 className="mt-s2 font-title text-chrome-xl text-text">{ultima.title}</h3>
+              {ultima.scheduledAt && (
+                <p className="mt-1 font-data text-chrome-xs text-muted">
+                  {fechaLarga(ultima.scheduledAt)}
+                </p>
+              )}
+              {notaDeLaUltima ? (
+                <p className="mt-s3 max-w-[62ch] font-world text-world-base leading-relaxed text-text">
+                  {notaDeLaUltima}
+                </p>
+              ) : (
+                <p className="mt-s3 max-w-[62ch] font-chrome text-chrome-sm text-muted">
+                  Nadie escribió notas de esa sesión. Se escriben en su propia ficha, y son lo único
+                  que el viernes siguiente recuerda por ti.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="mt-s2 max-w-[62ch] font-chrome text-chrome-sm text-muted">
+              Todavía no habéis jugado ninguna. Cuando la primera quede atrás, sus notas aparecerán
+              aquí.
             </p>
+          )}
+        </section>
+
+        <div className="space-y-s3">
+          <TarjetaDelTablero rotulo="Próxima sesión">
             {proxima ? (
               <>
                 <p className="mt-1 font-title text-chrome-md text-text">{proxima.title}</p>
                 <p className="font-data text-chrome-xs text-copper-text">
-                  {fechaLarga(proxima.scheduledAt as string)}
+                  {fechaLarga(proxima.scheduledAt)}
                 </p>
               </>
             ) : (
@@ -92,20 +177,60 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
                 Ninguna en el calendario.
               </p>
             )}
-          </div>
-          <div className="rounded-radius-sm border border-muted/50 bg-surface p-s4">
-            <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-              Personajes
-            </p>
-            <p className="mt-1 font-data text-chrome-xl text-text">{personajes?.length ?? "—"}</p>
-          </div>
-          <div className="rounded-radius-sm border border-muted/50 bg-surface p-s4">
-            <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-              Sesiones
-            </p>
-            <p className="mt-1 font-data text-chrome-xl text-text">{sesiones?.length ?? "—"}</p>
-          </div>
+          </TarjetaDelTablero>
+
+          <TarjetaDelTablero rotulo="Quién está en la mesa">
+            {/* La maqueta pone aquí nombre y «Pícaro 5». Nosotros ya teníamos las dos cosas y
+                no las enseñábamos: el resumen decía «Personajes: 3», que es el dato menos útil
+                de los que había. `descriptorDePersonaje` traduce las claves del catálogo, así
+                que aquí tampoco llega un valor de enumeración. */}
+            {personajes && personajes.length > 0 ? (
+              <ul className="mt-s2 space-y-1">
+                {personajes.map((c) => (
+                  <li key={c.id} className="flex items-baseline gap-s2">
+                    <span className="min-w-0 flex-1 truncate font-chrome text-chrome-sm text-text">
+                      {c.name}
+                    </span>
+                    <span className="shrink-0 font-data text-chrome-xs text-copper-text">
+                      {[descriptorDePersonaje(c), `Nivel ${c.level}`].filter(Boolean).join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 font-chrome text-chrome-sm text-muted">
+                Nadie ha creado su personaje todavía.
+              </p>
+            )}
+          </TarjetaDelTablero>
         </div>
+      </div>
+
+      <section>
+        <OrnamentRule className="mb-s3">Accesos rápidos</OrnamentRule>
+        {/* Cada baldosa lleva a su sección por el mismo `?seccion=` que usa la barra lateral,
+            así que un acceso rápido es enlazable y sobrevive a una recarga igual que ella. La
+            cifra es la misma que la de la barra: lo que TÚ puedes ver. */}
+        <ul className="grid grid-cols-2 gap-s2 sm:grid-cols-4 lg:grid-cols-7">
+          {TIPOS_DEL_MUNDO.map((tipo) => (
+            <li key={tipo}>
+              <Link
+                // Solo la parte de consulta: `Tabs` y esta baldosa leen el MISMO `?seccion=`,
+                // así que la ruta se queda donde está y solo cambia la sección abierta.
+                to={{ search: `?seccion=${tipo}` }}
+                className="flex h-full flex-col items-center gap-1 rounded-radius-sm border border-muted bg-surface px-s2 py-s3 text-center font-chrome text-chrome-xs text-text hover:border-accent hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <span className="text-chrome-xl text-copper-text">
+                  <IconoDeTipo type={tipo} />
+                </span>
+                <span>{ROTULO_PLURAL[tipo]}</span>
+                <span className="font-data text-chrome-xs text-muted">
+                  {porTipo.get(tipo) ?? 0}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section>
@@ -116,7 +241,7 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
             alguien a quien preguntar.
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-muted/25 rounded-radius-sm border border-muted/40 bg-surface/40">
+          <ul className="divide-y divide-muted overflow-hidden rounded-radius-sm border border-muted bg-surface">
             {recientes.map((e) => {
               const resumen = resumenDeCuerpo(e.body, 140);
               return (
@@ -143,8 +268,8 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
 
       {porTipo.size > 0 && (
         <p className="max-w-[62ch] font-chrome text-chrome-xs text-muted">
-          Los números de la izquierda cuentan lo que <em>tú</em> puedes ver. Lo que esté oculto para
-          ti no aparece ahí, y tampoco se insinúa contándolo.
+          Los números de la izquierda y los de las baldosas cuentan lo que <em>tú</em> puedes ver.
+          Lo que esté oculto para ti no aparece ahí, y tampoco se insinúa contándolo.
         </p>
       )}
     </div>

@@ -60,7 +60,7 @@ export function Propuestas({
 
   return (
     <div className="space-y-s3">
-      <p className="flex items-start gap-s2 rounded-radius-sm border border-copper bg-copper/10 p-s3 font-chrome text-chrome-sm text-text">
+      <p className="flex items-start gap-s2 rounded-radius-sm border border-copper bg-[color:var(--copper-tint)] p-s3 font-chrome text-chrome-sm text-text">
         <IconoPropuesta className="mt-0.5 text-copper-text" />
         <span>
           <strong>Nada de esto ha ocurrido todavía.</strong> El motor calculó qué haría y se detuvo.
@@ -70,7 +70,7 @@ export function Propuestas({
       {filas.map((propuesta: RuleTraceRow) => {
         const paquete = leerPaquete(propuesta.effects);
         return (
-          <article key={propuesta.id} className="rounded-radius-sm border border-muted/60 p-s3">
+          <article key={propuesta.id} className="rounded-radius-sm border border-muted p-s3">
             <header className="flex flex-wrap items-baseline gap-s2">
               <h3 className="font-title text-chrome-md text-text">
                 {nombreDeRegla(propuesta.ruleId)}

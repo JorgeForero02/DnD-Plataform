@@ -89,7 +89,7 @@ function SelectorDeVisibilidad({
 }) {
   const grupo = useId();
   return (
-    <fieldset className="rounded-radius-sm border border-muted/60 p-s2">
+    <fieldset className="rounded-radius-sm border border-muted p-s2">
       <legend className="px-1 font-chrome text-chrome-xs text-text">Con qué visibilidad</legend>
       <div className="space-y-0.5">
         {NIVELES_DE_VISIBILIDAD.map((nivel) => (
@@ -98,7 +98,7 @@ function SelectorDeVisibilidad({
             className={[
               "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1 transition-colors",
               value === nivel
-                ? "border-accent bg-accent/10"
+                ? "border-accent bg-[color:var(--accent-tint)]"
                 : "border-transparent hover:bg-surface",
             ].join(" ")}
           >

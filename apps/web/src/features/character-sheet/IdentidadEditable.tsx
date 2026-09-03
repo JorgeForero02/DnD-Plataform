@@ -2,16 +2,10 @@ import type { AbilityKey } from "@dnd/shared";
 import { NumeroEditable, SelectorEditable } from "./EdicionEnSitio";
 import { useCatalog, useUpdateSheet } from "./hooks";
 import type { CharacterRow } from "./api";
-import { ValorDerivado } from "./Traza";
-import {
-  ABREVIATURA_CARACTERISTICA,
-  NOMBRE_CARACTERISTICA,
-  nombreClase,
-  nombreRaza,
-  nombreSubraza,
-} from "./vocabulario";
+import { resumenDeAjustes } from "./formula";
+import { NOMBRE_CARACTERISTICA, nombreClase, nombreRaza, nombreSubraza } from "./vocabulario";
 import type { CalculatedSheet } from "./api";
-import { CAJA_DE_VITELA, PROSA_DE_VITELA } from "./Vitela";
+import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA, RotuloDeSeccion } from "./Vitela";
 
 // **La identidad del personaje se edita donde se lee.** Ya no hay un diálogo aparte.
 //
@@ -134,41 +128,57 @@ export function IdentidadEditable({
         </label>
       </div>
 
-      <section
-        aria-label="características"
-        className="grid grid-cols-2 gap-s3 sm:grid-cols-3 lg:grid-cols-6"
-      >
-        {CARACTERISTICAS.map((ability) => (
-          <div key={ability} className={`${CAJA_DE_VITELA} px-s2 py-s2 text-center`}>
-            <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-              {ABREVIATURA_CARACTERISTICA[ability]}
-            </p>
-            <NumeroEditable
-              etiqueta={NOMBRE_CARACTERISTICA[ability]}
-              valor={character[ability]}
-              placeholder="—"
-              min={1}
-              max={30}
-              ancho="w-14"
-              disabled={!puedeEditar}
-              motivoDeshabilitado={motivo}
-              onGuardar={async (n) => actualizar.mutateAsync({ abilities: { [ability]: n } })}
-            />
-            {/* El modificador va pegado a su puntuación y **sin afordancia de edición**: esa
-                ausencia es la que dice «esto lo calculo yo, edita el número de arriba».
-                Mientras la hoja no se pueda derivar —falta raza o clase— no se inventa un
-                modificador: se dice que todavía no hay. */}
-            {sheet ? (
-              <ValorDerivado
-                piel="vitela"
-                etiqueta="modificador"
-                valor={sheet.derived[`abilityMod.${ability}`]}
-              />
-            ) : (
-              <p className={PROSA_DE_VITELA}>sin calcular</p>
-            )}
-          </div>
-        ))}
+      <section aria-label="características">
+        <RotuloDeSeccion>Características</RotuloDeSeccion>
+        <div className="grid grid-cols-2 gap-s3 sm:grid-cols-3 lg:grid-cols-6">
+          {CARACTERISTICAS.map((ability) => {
+            const modificador = sheet?.derived[`abilityMod.${ability}`] ?? null;
+            const puntuacionDerivada = sheet?.derived[`ability.${ability}`] ?? null;
+            const ajustes = puntuacionDerivada ? resumenDeAjustes(puntuacionDerivada) : "";
+            return (
+              <div
+                key={ability}
+                className={`${CAJA_DE_VITELA} flex flex-col items-center gap-0.5 px-s2 py-s2 text-center`}
+              >
+                <p className={ROTULO_DE_CASILLA}>{NOMBRE_CARACTERISTICA[ability]}</p>
+                {/* **El modificador va grande y arriba; la puntuación, pequeña y debajo.** Es la
+                    vuelta que da la maqueta a la casilla de la hoja impresa, y tiene razón: en la
+                    mesa se usa el modificador en cada tirada, y la puntuación es su causa.
+                    **Sin afordancia de edición**, que es lo que dice «esto lo calculo yo». */}
+                {modificador ? (
+                  <p
+                    data-derivado={`abilityMod.${ability}`}
+                    className="font-data text-chrome-2xl leading-none text-text"
+                  >
+                    {modificador.total >= 0 ? "+" : "−"}
+                    {Math.abs(modificador.total)}
+                  </p>
+                ) : (
+                  <p className={PROSA_DE_VITELA}>sin calcular</p>
+                )}
+                <NumeroEditable
+                  etiqueta={NOMBRE_CARACTERISTICA[ability]}
+                  valor={character[ability]}
+                  placeholder="—"
+                  min={1}
+                  max={30}
+                  ancho="w-12"
+                  disabled={!puedeEditar}
+                  motivoDeshabilitado={motivo}
+                  onGuardar={async (n) => actualizar.mutateAsync({ abilities: { [ability]: n } })}
+                />
+                {/* Cuando la raza sube la puntuación, la casilla enseñaría un 14 con un +3 al
+                    lado y parecería rota. La línea de abajo es la traza en una línea, y solo
+                    aparece cuando hay algo que explicar. */}
+                {ajustes && (
+                  <p className={`${PROSA_DE_VITELA} leading-tight`}>
+                    {ajustes} = {puntuacionDerivada!.total}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

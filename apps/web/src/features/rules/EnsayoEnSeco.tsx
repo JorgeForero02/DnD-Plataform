@@ -45,7 +45,7 @@ export function EnsayoEnSeco({
   return (
     <Dialog open={abierto} onClose={onCerrar} size="lg" title={`Ensayo en seco de «${regla.name}»`}>
       <div className="space-y-s4">
-        <p className="flex items-start gap-s2 rounded-radius-sm border border-copper bg-copper/10 p-s3 font-chrome text-chrome-sm text-text">
+        <p className="flex items-start gap-s2 rounded-radius-sm border border-copper bg-[color:var(--copper-tint)] p-s3 font-chrome text-chrome-sm text-text">
           <IconoEnsayo className="mt-0.5 text-copper-text" />
           <span>
             <strong>Es una simulación.</strong> Dice qué pasaría si el suceso de abajo ocurriera
@@ -53,7 +53,7 @@ export function EnsayoEnSeco({
           </span>
         </p>
 
-        <section className="rounded-radius-sm border border-muted/50 p-s3">
+        <section className="rounded-radius-sm border border-muted p-s3">
           <h3 className="mb-s2 font-title text-chrome-md text-text">Suceso que se simula</h3>
           <EditorDeDisparador value={trigger} entities={entities} onChange={setTrigger} />
         </section>
@@ -86,7 +86,7 @@ export function EnsayoEnSeco({
             )}
 
             {resultado.traces.map((entrada, i) => (
-              <article key={i} className="rounded-radius-sm border border-muted/50 p-s3">
+              <article key={i} className="rounded-radius-sm border border-muted p-s3">
                 <header className="flex flex-wrap items-baseline gap-s2">
                   <span className="font-chrome text-chrome-sm text-text">
                     {nombreEstadoTraza(entrada.status)}

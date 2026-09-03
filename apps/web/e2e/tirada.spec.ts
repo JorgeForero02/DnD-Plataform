@@ -64,7 +64,10 @@ async function personajeCompleto(page: Page) {
     await campo.fill(valor);
     await campo.blur();
   }
-  await expect(page.getByText("Salvaciones")).toBeVisible({ timeout: 15_000 });
+  // `exact` importa: desde que la hoja tiene su tarjeta de «Salvaciones de muerte», un
+  // `getByText("Salvaciones")` casa con las dos y falla por modo estricto. El agente que la
+  // añadió lo arregló en `hoja.spec.ts`, pero esta receta está copiada en tres ficheros más.
+  await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y desglosa la suma", async ({

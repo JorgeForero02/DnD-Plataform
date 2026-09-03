@@ -3,6 +3,13 @@ import { DadoDibujado } from "./DadoDibujado";
 import { dadosDeLaTirada, lineaDeDesglose, sumandosDeLaTirada } from "./desglose";
 import { fraseDeResultado, palabraDeNatural, rotuloDeConservacion } from "./vocabulario";
 
+// **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
+// los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
+// utilidad ENTERA y el elemento se queda con el `border-color` del preflight — `#e5e7eb` en
+// los dos temas. Lo que había aquí, por tanto, no era un borde tenue: era un borde gris claro
+// equivocado. Se pone el token entero, que es theme-aware, o se quita la clase cuando lo que
+// pedía era un relleno translúcido que ningún token puede dar todavía.
+
 // Tarea F3 — **se pintan los dos dados, con el descartado tachado y a la vista.**
 //
 // Ver el dado que se cayó es media gracia de tener ventaja: esconderlo convierte una decisión
@@ -37,7 +44,7 @@ export function ResultadoDeTirada({
   return (
     <div
       role="status"
-      className="mt-1 rounded-radius-sm border border-muted/50 bg-surface px-s2 py-1.5 text-left"
+      className="mt-1 rounded-radius-sm border border-muted bg-surface px-s2 py-1.5 text-left"
     >
       <p className="flex flex-wrap items-baseline gap-s2">
         {dados.map((dado, i) => (

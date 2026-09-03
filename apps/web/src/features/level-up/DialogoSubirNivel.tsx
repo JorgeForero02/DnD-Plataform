@@ -81,7 +81,7 @@ export function DialogoSubirNivel({
 
         <section
           aria-label="tirar los puntos de golpe"
-          className="rounded-radius-sm border border-muted/50 p-s3"
+          className="rounded-radius-sm border border-muted p-s3"
         >
           <p className="font-chrome text-chrome-xs text-muted">{VERDAD_SOBRE_LA_TIRADA}</p>
           <Button

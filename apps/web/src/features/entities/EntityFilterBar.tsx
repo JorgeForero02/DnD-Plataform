@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import type { EntityFilterValue } from "./filter";
 import { fieldControlClass } from "../../ui/Field";
 import { Toolbar, FilterChip } from "../../ui/Collection";
@@ -10,15 +9,20 @@ import { Toolbar, FilterChip } from "../../ui/Collection";
 // Reseño 2026-09-02 — audit C3. The controls used to float separately down the page: a
 // "Nuevo" button that never said new WHAT, then a search box with its label stacked above it,
 // then the tags as plain buttons with no visible pressed state at all — so you could not tell
-// what was filtering. They are one instrument now, and the action that creates lives in it
-// rather than above it.
+// what was filtering. They are one instrument now.
+//
+// **Maqueta adoptada, 2026-09-02 (tarde): la acción que crea salió de aquí.** Vivió un rato
+// dentro de esta barra, y era el sitio equivocado: crear no es filtrar. Ahora va en la
+// cabecera explicada de la sección (`CabeceraDeSeccion.tsx`), junto al título que dice QUÉ se
+// está creando. El `action` que esta barra aceptaba se ha quitado en vez de dejarlo sin
+// usar — una prop opcional que nadie pasa es código muerto que la siguiente persona tiene que
+// leer para descubrir que no hace nada.
 export function EntityFilterBar({
   availableTags,
   value,
   onChange,
   totalCount,
   visibleCount,
-  action,
 }: {
   // Tags present in the currently loaded list (already deduped and sorted by the caller) —
   // per entity type, not the whole campaign, since that's what's loaded per tab.
@@ -27,7 +31,6 @@ export function EntityFilterBar({
   onChange: (next: EntityFilterValue) => void;
   totalCount: number;
   visibleCount: number;
-  action?: ReactNode;
 }) {
   const hasActiveFilter = value.query.trim() !== "" || value.tags.length > 0;
 
@@ -42,7 +45,6 @@ export function EntityFilterBar({
 
   return (
     <Toolbar
-      action={action}
       search={
         <>
           {/* The label is visually hidden rather than removed: a placeholder is not a label,

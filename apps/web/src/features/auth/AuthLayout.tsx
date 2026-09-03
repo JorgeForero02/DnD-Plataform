@@ -43,7 +43,7 @@ export function AuthLayout({
           {lead && <p className="mt-s2 font-world text-chrome-base text-muted">{lead}</p>}
         </div>
 
-        <div className="rounded-radius-sm border border-muted/60 bg-surface/95 p-s5 shadow-sm backdrop-blur">
+        <div className="rounded-radius-sm border border-muted bg-surface p-s5 shadow-sm backdrop-blur">
           {children}
         </div>
 

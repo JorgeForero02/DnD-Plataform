@@ -1,4 +1,4 @@
-import { test, expect, type Browser, type Page } from "@playwright/test";
+import { test, expect, type Browser, type Locator, type Page } from "@playwright/test";
 
 // Cada corrida crea su propio usuario: las pruebas no dependen de datos sembrados
 // ni se pisan entre si al repetirse contra la misma base de desarrollo.
@@ -660,4 +660,32 @@ test("la cabecera explicada, el marco de la lista y los accesos rápidos del tab
   expect(Math.abs(cajaSirena!.y - cajaTorre!.y)).toBeGreaterThan(20);
   // Y el icono del tipo se pinta de verdad dentro de la fila, dibujado y no un glifo.
   expect(await sirena.locator("svg").count()).toBeGreaterThan(0);
+
+  // --- 4. El carril de la maqueta (2026-09-03) ---
+  //
+  // Dos cosas que jsdom no puede ver ninguna de las dos. La barra de secciones y su panel van
+  // **lado a lado**, y el carril lleva **su propio filete a la derecha**: es esa línea la que
+  // convierte dos bloques sueltos en una pantalla con navegación propia, y es exactamente el
+  // tipo de defecto —una utilidad de borde que no compila, un `flex-row` que se cae a columna—
+  // que sobrevive a la suite unitaria entera en verde.
+  const carril = page.getByRole("tablist");
+  const panel = page.getByRole("tabpanel");
+  const cajaCarril = await carril.boundingBox();
+  const cajaPanel = await panel.boundingBox();
+  expect(cajaCarril).not.toBeNull();
+  expect(cajaPanel).not.toBeNull();
+  expect(cajaPanel!.x).toBeGreaterThanOrEqual(cajaCarril!.x + cajaCarril!.width - 1);
+  expect(await carril.evaluate((el) => getComputedStyle(el).borderRightWidth)).not.toBe("0px");
+
+  // --- 5. El titular de la pantalla es la SECCIÓN, no el nombre de la campaña ---
+  //
+  // Antes había dos titulares apilados: el nombre de la campaña a tamaño de titular con su
+  // filete de cobre, y debajo el de la sección. El nombre de la campaña sigue siendo el <h1>
+  // —es el nombre del documento— pero pesa lo que pesa un marco. Se mide el tamaño calculado,
+  // que es lo único que dice quién manda en la página.
+  const tamanoDe = (locator: Locator) =>
+    locator.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const tamTitulo = await tamanoDe(page.getByRole("heading", { name: "Lugares" }));
+  const tamCampana = await tamanoDe(page.getByRole("heading", { name: "El Puerto de Sarnath" }));
+  expect(tamTitulo).toBeGreaterThan(tamCampana);
 });

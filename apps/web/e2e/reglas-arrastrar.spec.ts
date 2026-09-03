@@ -89,7 +89,11 @@ test("cada parte tiene su propia silueta, medida en el navegador", async ({ page
 // `y ≈ 995`, fuera de la ventana. La pieza y su ranura no estaban nunca en pantalla a la vez, así
 // que el gesto era imposible — arrastrando a mano el `dragstart` sí salía, pero no había adónde
 // soltar. El editor dejó de ser un diálogo (`EditorDeRegla.tsx` lo cuenta entero, con la tabla de
-// la bisección) y cada grupo de la paleta pasó a estar justo encima de su carril.
+// la bisección). **Reseño 2026-09-03:** la disposición volvió a cambiar —paleta en su columna,
+// tablero de carriles en la suya, como en la maqueta— y la exigencia de entonces sigue en pie sin
+// depender ya de la vecindad física de cada grupo: el tablero es **pegajoso**, así que los
+// carriles están en pantalla se coja la pieza que se coja. Eso es lo que comprueba `arrastrarPieza`
+// antes de mover el ratón, y lo que prueba de punta a punta el recorrido de la última pieza.
 //
 // **Y por qué este recorrido sí puede fallar.** El que se retiró comprobaba, en su primera mitad,
 // que un carril ajeno *rechaza* una pieza — y eso pasaba en verde exactamente igual si el
@@ -98,44 +102,33 @@ test("cada parte tiene su propia silueta, medida en el navegador", async ({ page
 // prueba: si el arrastre dejara de funcionar, la primera mitad ya estaría roja y nadie podría
 // confundir «rechaza bien» con «no arrastra nada».
 
-/**
- * El gesto, tal cual lo hace una persona: se arrastra la pieza hasta su carril.
- *
- * **Se lleva a la vista la PIEZA, no el carril**, y la diferencia costó una prueba roja. La
- * primera versión hacía `scrollIntoViewIfNeeded()` sobre el carril «porque nadie arrastra hacia
- * algo que no ve», y eso empujaba la pieza a `y = -81`: fuera de la ventana por arriba. Entonces
- * `dragTo` desplazaba **otra vez** para traerse la pieza, y el puntero acababa agarrando la de al
- * lado — medido: en el carril aterrizaba `ENTITY_REVEALED` en vez de `SESSION_STARTED`, así que
- * el arrastre funcionaba y la prueba decía que no.
- *
- * Llevando la pieza a la vista, `dragTo` ya no tiene que desplazar nada para agarrarla, y el
- * carril queda en pantalla porque **está a menos de un palmo**: la paleta se pinta en dos
- * columnas justamente para que la pieza y su ranura quepan juntas.
- */
+/** El gesto, tal cual lo hace una persona: se arrastra la pieza hasta su carril. */
 async function arrastrarPieza(page: Page, nombre: string, parte: string) {
   const pieza = page.getByRole("button", { name: nombre });
   const carril = page.locator(`[data-carril="${parte}"]`);
 
-  // **Se coloca la página para que la pieza y su carril se vean a la vez, y solo entonces se
-  // arrastra.** Ni un desplazamiento más durante el gesto: cualquiera mueve la pieza de debajo
-  // del puntero. `dragTo` desplaza por su cuenta y no se le puede pedir que no lo haga, así que
-  // el arrastre va con el ratón paso a paso, que es además lo que hace una persona.
-  const alto = page.viewportSize()!.height;
-  await page.evaluate(
-    ({ etiqueta, carrilParte, hAlto }) => {
-      const p = document.querySelector(`[aria-label="${etiqueta}"]`) as HTMLElement;
-      const c = document.querySelector(`[data-carril="${carrilParte}"]`) as HTMLElement;
-      const rp = p.getBoundingClientRect();
-      const rc = c.getBoundingClientRect();
-      const arriba = Math.min(rp.top, rc.top) + window.scrollY;
-      const abajo = Math.max(rp.bottom, rc.bottom) + window.scrollY;
-      window.scrollTo(0, Math.max(0, (arriba + abajo) / 2 - hAlto / 2));
-    },
-    { etiqueta: nombre, carrilParte: parte, hAlto: alto },
-  );
+  // **Se lleva a la vista la PIEZA, y solo la pieza.** La primera versión desplazaba hasta el
+  // carril «porque nadie arrastra hacia algo que no ve», y eso empujaba la pieza a `y = -81`:
+  // entonces `dragTo` desplazaba otra vez para traérsela y el puntero acababa agarrando la de al
+  // lado —medido: en el carril aterrizaba `ENTITY_REVEALED` en vez de `SESSION_STARTED`—. Desde
+  // el reseño del 2026-09-03 el tablero de carriles es **pegajoso**, así que traer la pieza a la
+  // vista deja el carril en pantalla por construcción, sin desplazar nada más.
+  await pieza.scrollIntoViewIfNeeded();
 
   const a = (await pieza.boundingBox())!;
   const b = (await carril.boundingBox())!;
+  const alto = page.viewportSize()!.height;
+
+  // **La comprobación que obligó a sacar el editor del diálogo, ahora escrita.** Mientras la
+  // pieza y su ranura no estuvieran en pantalla a la vez, el gesto era imposible por mucho que el
+  // código estuviera bien. Si una disposición futura vuelve a separarlas, esto falla aquí —con el
+  // motivo dicho— en vez de fallar más abajo como «la caja no se colocó».
+  expect(
+    b.y + Math.min(28, b.height),
+    `el carril ${parte} no cabe en pantalla con su pieza`,
+  ).toBeGreaterThan(0);
+  expect(b.y, `el carril ${parte} queda por debajo de la ventana`).toBeLessThan(alto - 8);
+
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
   // Dos movimientos: el primero arranca el arrastre, el segundo lo lleva al destino. Con uno
@@ -290,4 +283,35 @@ test("los conectores de la frase van coloreados Y en negrita: el color no decide
     .locator('[data-carril="SUCESO"] h3 span')
     .evaluate((el) => getComputedStyle(el as HTMLElement).color);
   expect(suceso.color).toBe(colorDelCarril);
+});
+
+test("la última pieza de la paleta también alcanza su carril: el tablero es pegajoso", async ({
+  page,
+}) => {
+  await abrirEditorDeRegla(page);
+
+  // La peor esquina posible: la pieza que está más abajo del cajón, contra el carril que está
+  // más arriba a la derecha. Es exactamente el par que no cabía junto en la ventana cuando el
+  // editor vivía dentro de un diálogo, y por el que aquí no se podía soltar nada.
+  await arrastrarPieza(page, "Armar o desarmar otra regla — poner en el carril Entonces", "ACCION");
+
+  await expect(page.locator('[data-carril="ACCION"] [data-clave="SET_RULE_ARMED"]')).toHaveCount(1);
+  await expect(
+    page.getByText("«Armar o desarmar otra regla» colocado en el carril «Entonces»."),
+  ).toBeVisible();
+});
+
+test("la paleta va a la izquierda y el tablero a la derecha, como en la maqueta", async ({
+  page,
+}) => {
+  await abrirEditorDeRegla(page);
+
+  const paleta = (await page.getByRole("region", { name: "Paleta de piezas" }).boundingBox())!;
+  const carril = (await page.locator('[data-carril="SUCESO"]').boundingBox())!;
+
+  // Dos columnas, no una escalera de seis bloques: el cajón de las piezas a un lado y el tablero
+  // donde se arma la regla al otro.
+  expect(paleta.x + paleta.width).toBeLessThanOrEqual(carril.x + 1);
+  // Y empiezan a la misma altura: el tablero no cuelga por debajo de la paleta.
+  expect(Math.abs(paleta.y - carril.y)).toBeLessThan(80);
 });

@@ -12,8 +12,26 @@
  */
 export const RATE_LIMIT_WINDOW_MS = 60_000;
 
-/** Per IP, per window: generous enough that no legitimate user session should ever hit it. */
-export const DEFAULT_RATE_LIMIT = 100;
+/**
+ * Per IP, per window, on **every** route: generous enough that no legitimate user session
+ * should ever hit it.
+ *
+ * `100` is the production value. It is overridable by the `RATE_LIMIT` env var for the same
+ * single reason `AUTH_RATE_LIMIT` is, and the reason is worth writing down because it looked
+ * like a flaky test suite for a while:
+ *
+ * **The Playwright suite drives one browser from one IP through hundreds of real requests in
+ * a minute.** Sixty-odd browser journeys, each registering an account, creating a campaign,
+ * writing entities, filling a sheet — every one a genuine HTTP call from `127.0.0.1`. Past a
+ * hundred the API starts answering **429**, and the failures land wherever the counter happens
+ * to run out: one run it is a character that never appears in its list, the next it is a field
+ * that will not save. Nothing is broken; the limiter is doing its job against a client that
+ * looks, from its point of view, exactly like a runaway loop.
+ *
+ * The control is **not** relaxed in production. It is configured by the only client that has a
+ * legitimate reason to exceed it, the same way `AUTH_RATE_LIMIT` already was.
+ */
+export const DEFAULT_RATE_LIMIT_FALLBACK = 100;
 
 /**
  * Per IP, per window, on POST /auth/login, POST /auth/register, POST /invites/:token/accept
@@ -71,3 +89,12 @@ export function parseAuthRateLimit(
  * imported, or the override never takes effect for that process.
  */
 export const AUTH_RATE_LIMIT = parseAuthRateLimit(process.env.AUTH_RATE_LIMIT);
+
+/**
+ * El límite global, resuelto igual que el de autenticación y con el mismo validador: un valor
+ * vacío, con una letra o negativo **no desactiva nada**, cae al de producción.
+ */
+export const DEFAULT_RATE_LIMIT = parseAuthRateLimit(
+  process.env.RATE_LIMIT,
+  DEFAULT_RATE_LIMIT_FALLBACK,
+);

@@ -1,7 +1,6 @@
 import { OVERRIDABLE_KEYS } from "@dnd/shared";
 import { useMyRole } from "../campaigns/members";
 import { NOMBRE_ANULABLE } from "./vocabulario";
-import { PROSA_DE_VITELA } from "./Vitela";
 
 // **El aviso de la vista de DM**, tomado de la maqueta de Figma — que lo pone arriba del todo,
 // antes de cualquier número, y hace bien: es la única diferencia visible entre lo que ve el DM y
@@ -33,16 +32,16 @@ export function AvisoDeDm({ campaignId }: { campaignId: string }) {
   return (
     <section
       aria-label="vista de DM"
-      className="rounded-radius-sm border border-copper px-s3 py-s2"
+      className="rounded-radius-md border border-copper px-s3 py-s2"
       data-aviso="dm"
     >
-      <p className="font-world text-[length:var(--text-world-sm)] leading-relaxed text-copper-text">
+      {/* **Una línea, como en la maqueta.** Eran dos párrafos de letra pequeña encima de todos
+          los números, y ninguna de las dos frases se leía. Lo que se ha ido es la explicación
+          larga de cómo funciona una anulación: ya la dice su propia tarjeta, que es donde alguien
+          está a punto de hacer una — aquí solo hacía falta decir que esta vista es la del DM. */}
+      <p className="font-chrome text-chrome-sm leading-snug text-copper-text">
         Vista de DM: puedes anular a mano {anulables.length} valores derivados —
         {anulables.join(", ").toLowerCase()}— desde «Anulaciones del DM».
-      </p>
-      <p className={`mt-0.5 ${PROSA_DE_VITELA}`}>
-        La anulación aparece en la traza del valor con su diferencia. El motivo es opcional y no va
-        a la traza: queda en el registro de la partida, junto al valor anterior.
       </p>
     </section>
   );

@@ -11,6 +11,13 @@ import * as api from "../api";
 //
 // Desde F3, además: que ventaja y desventaja sean **una decisión de tres estados visible**, y que
 // el resultado enseñe los dos dados con el descartado a la vista.
+//
+// **Desde la adopción de la maqueta (2026-09-03) hay un paso más, y es el punto de todo esto**:
+// la fila de la hoja lleva solo un dado, y la decisión aparece al pulsarlo. Cada prueba abre el
+// panel primero, igual que hace una persona. La regla vinculante —«una opción con significado va
+// visible, con la frase que explica qué hace»— se cumple **dentro** de ese panel, y con las tres
+// frases a la vez, que es más de lo que se pintaba antes: repetir el control en las veinticuatro
+// filas obligaba a enseñar solo la del estado elegido.
 
 function tirada(parcial: Partial<RollResult> = {}): RollResult {
   return {
@@ -29,15 +36,37 @@ function tirada(parcial: Partial<RollResult> = {}): RollResult {
 
 function montar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const r = render(
     <QueryClientProvider client={qc}>
       <TirarBoton campaignId="c1" characterId="ch1" etiqueta="Percepción" modificador={3} />
     </QueryClientProvider>,
   );
+  abrir("Percepción");
+  return r;
+}
+
+/** Pulsa el dado de una fila, que es lo que abre el panel donde se decide y se tira. */
+function abrir(etiqueta: string) {
+  fireEvent.click(screen.getByRole("button", { name: `Tirada de ${etiqueta}` }));
 }
 
 describe("TirarBoton", () => {
   beforeEach(() => vi.restoreAllMocks());
+
+  it("la fila solo lleva el dado: la decisión no se pinta veinticuatro veces", () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <TirarBoton campaignId="c1" characterId="ch1" etiqueta="Percepción" modificador={3} />
+      </QueryClientProvider>,
+    );
+
+    // Cerrado no hay ni un radio en el DOM. Es la mitad del arreglo: la otra mitad —que sí están
+    // al abrir— es la prueba de debajo, y sin las dos juntas «esconder la opción» pasaría en
+    // verde, que es justo lo que la regla prohíbe.
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tirada de Percepción" })).toBeInTheDocument();
+  });
 
   it("las tres opciones están visibles a la vez, no escondidas en un desplegable", () => {
     montar();
@@ -47,12 +76,19 @@ describe("TirarBoton", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("cada estado lleva su frase, y la del elegido se lee sin desplegar nada", () => {
+  it("cada opción lleva su frase AL LADO, las tres a la vez y no solo la elegida", () => {
     montar();
-    // La frase visible es la del estado elegido; las otras dos existen ocultas, referidas por el
-    // `aria-describedby` de su radio, así que se acota la aserción a la que se lee.
-    const fraseVisible = () => document.querySelector('[data-frase="elegida"]');
-    expect(fraseVisible()).toHaveTextContent("Un solo d20.");
+    // Las tres se leen sin tocar nada — es lo que pide la regla vinculante — y además cada una
+    // es la **descripción** de su radio, no parte de su nombre: dentro del `<label>` un lector
+    // de pantalla anunciaría «Ventaja Dos d20: se queda el alto» como si fuera cómo se llama el
+    // control.
+    expect(screen.getByText("Un solo d20.")).toBeVisible();
+    expect(screen.getByText("Dos d20: se queda el alto.")).toBeVisible();
+    expect(screen.getByText("Dos d20: se queda el bajo.")).toBeVisible();
+
+    expect(screen.getByRole("radio", { name: "Normal" })).toHaveAccessibleDescription(
+      "Un solo d20.",
+    );
     expect(screen.getByRole("radio", { name: "Ventaja" })).toHaveAccessibleDescription(
       "Dos d20: se queda el alto.",
     );
@@ -62,16 +98,13 @@ describe("TirarBoton", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
     expect(screen.getByRole("radio", { name: "Ventaja" })).toBeChecked();
-    expect(fraseVisible()).toHaveTextContent("Dos d20: se queda el alto.");
-
-    fireEvent.click(screen.getByRole("radio", { name: "Desventaja" }));
-    expect(fraseVisible()).toHaveTextContent("Dos d20: se queda el bajo.");
   });
 
   it("dos filas son dos decisiones: elegir ventaja en una no toca la otra", () => {
-    // La hoja monta este control veinticuatro veces. Dos grupos de radios con el mismo `name`
-    // son **un solo** grupo: pedir ventaja en Sigilo apagaría la de Percepción sin que nadie lo
-    // note, porque cada fila se mira por separado.
+    // Dos paneles abiertos a la vez son dos decisiones. Dos grupos de radios con el mismo `name`
+    // serían **un solo** grupo: pedir ventaja en Sigilo apagaría la de Percepción sin que nadie
+    // lo note, porque cada fila se mira por separado. El `useId` de `SelectorDeVentaja` es lo que
+    // lo impide, y esto es lo que lo vigila.
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={qc}>
@@ -79,6 +112,9 @@ describe("TirarBoton", () => {
         <TirarBoton campaignId="c1" characterId="ch1" etiqueta="Sigilo" modificador={1} />
       </QueryClientProvider>,
     );
+
+    abrir("Percepción");
+    abrir("Sigilo");
 
     const [ventajaPercepcion] = screen.getAllByRole("radio", { name: "Ventaja" });
     const [, normalSigilo] = screen.getAllByRole("radio", { name: "Normal" });

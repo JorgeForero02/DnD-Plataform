@@ -97,7 +97,10 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
 
   // Los PG máximos de partida, leídos de la hoja antes de tocar nada: el diff tiene que
   // coincidir con ellos, no con un número inventado por la prueba.
-  const bloquePg = page.getByText("Puntos de golpe", { exact: true }).locator("..");
+  // La tarjeta de PG, por su región: desde que la hoja son tarjetas con cabecera, el rótulo y
+  // la cifra ya no son hermanos —el rótulo vive en la cabecera y la cifra en el cuerpo—, así que
+  // subir un nivel desde el texto dejaba de encontrar el número.
+  const bloquePg = page.getByRole("region", { name: "puntos de golpe" });
   const maximoAntes = Number((await bloquePg.innerText()).match(/(\d+)\s*\/\s*(\d+)/)![2]);
 
   // --- El previo ---

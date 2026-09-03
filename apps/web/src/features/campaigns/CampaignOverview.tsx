@@ -10,7 +10,6 @@ import { useCharacters } from "../characters/hooks";
 import { descriptorDePersonaje } from "../characters/descriptor";
 import { Panel } from "../../ui/Panel";
 import { Badge } from "../../ui/Badge";
-import { OrnamentRule } from "../../ui/Ornament";
 import { EmptyState } from "../../ui/Collection";
 import { resumenDeCuerpo, ETIQUETA_DE_TIPO, ROTULO_PLURAL } from "../entities/resumen";
 import { IconoDeTipo } from "../entities/iconos";
@@ -68,12 +67,32 @@ const TIPOS_DEL_MUNDO: EntityType[] = [
   "DOCUMENT",
 ];
 
+// **Maqueta 2026-09-03: la tarjeta tiene cabecera.** El rótulo iba suelto dentro del mismo
+// relleno que el contenido, así que «Quién está en la mesa» y el primer nombre de la lista
+// parecían dos líneas de lo mismo. Una banda con su filete abajo separa el nombre de la
+// tarjeta de lo que la tarjeta dice.
 function TarjetaDelTablero({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <section className="rounded-radius-sm border border-muted bg-surface p-s4">
-      <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">{rotulo}</p>
-      {children}
+    <section className="overflow-hidden rounded-radius-sm border border-muted bg-surface">
+      <header className="border-b border-muted px-s4 py-s2">
+        <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+          {rotulo}
+        </p>
+      </header>
+      <div className="px-s4 py-s3">{children}</div>
     </section>
+  );
+}
+
+// El rótulo de una banda de la pantalla. Alineado a la izquierda, como en la maqueta: el
+// filete ornamental centrado partía la página en dos mitades cada vez que aparecía, y con tres
+// bandas seguidas la pantalla acababa siendo más filetes que contenido. El ornamento enmarca;
+// aquí estaba compitiendo.
+function RotuloDeBanda({ children }: { children: ReactNode }) {
+  return (
+    <h3 className="mb-s3 font-chrome text-chrome-xs uppercase tracking-[0.16em] text-muted">
+      {children}
+    </h3>
   );
 }
 
@@ -113,6 +132,13 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="space-y-s5">
+      {/* La frase que dice qué es esta pantalla, como en la maqueta. Las siete secciones del
+          mundo la tienen desde `plantillas.ts`; el resumen no la tenía y era la única que
+          empezaba directamente en tarjetas. */}
+      <p className="max-w-[70ch] font-chrome text-chrome-sm text-muted">
+        El tablero de la campaña: qué pasó, quién está y qué queda pendiente.
+      </p>
+
       {descripcion && (
         <Panel tone="vellum">
           {/* La voz del mundo, sobre la superficie del mundo. La capitular marca dónde empieza
@@ -132,50 +158,65 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
 
       {/* El tablero: a la izquierda lo que pasó, a la derecha quién está y cuándo se vuelve. */}
       <div className="grid gap-s3 lg:grid-cols-3">
-        <section className="rounded-radius-sm border border-copper bg-surface p-s5 lg:col-span-2">
-          <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
-            La última sesión
-          </p>
-          {ultima ? (
-            <>
-              <h3 className="mt-s2 font-title text-chrome-xl text-text">{ultima.title}</h3>
-              {ultima.scheduledAt && (
-                <p className="mt-1 font-data text-chrome-xs text-muted">
-                  {fechaLarga(ultima.scheduledAt)}
-                </p>
-              )}
-              {notaDeLaUltima ? (
-                <p className="mt-s3 max-w-[62ch] font-world text-world-base leading-relaxed text-text">
-                  {notaDeLaUltima}
-                </p>
-              ) : (
-                <p className="mt-s3 max-w-[62ch] font-chrome text-chrome-sm text-muted">
-                  Nadie escribió notas de esa sesión. Se escriben en su propia ficha, y son lo único
-                  que el viernes siguiente recuerda por ti.
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="mt-s2 max-w-[62ch] font-chrome text-chrome-sm text-muted">
-              Todavía no habéis jugado ninguna. Cuando la primera quede atrás, sus notas aparecerán
-              aquí.
+        {/* El cobre de la maqueta va en el CANTO IZQUIERDO, no rodeando la tarjeta entera. Un
+            marco de cobre completo pesaba tanto como el contenido y convertía la tarjeta en un
+            aviso; una pestaña de cobre en el borde dice «esto es lo importante» y deja el resto
+            de la caja igual que las demás. */}
+        <section className="overflow-hidden rounded-radius-sm border border-muted border-l-4 border-l-copper bg-surface lg:col-span-2">
+          <header className="border-b border-muted px-s5 py-s2">
+            <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
+              La última sesión
             </p>
-          )}
+          </header>
+          <div className="px-s5 py-s4">
+            {ultima ? (
+              <>
+                {ultima.scheduledAt && (
+                  <p className="font-data text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                    {fechaLarga(ultima.scheduledAt)}
+                  </p>
+                )}
+                <h3 className="mt-s2 font-title text-chrome-xl text-text">{ultima.title}</h3>
+                {notaDeLaUltima ? (
+                  <p className="mt-s3 max-w-[62ch] font-world text-world-base leading-relaxed text-text">
+                    {notaDeLaUltima}
+                  </p>
+                ) : (
+                  <p className="mt-s3 max-w-[62ch] font-chrome text-chrome-sm text-muted">
+                    Nadie escribió notas de esa sesión. Se escriben en su propia ficha, y son lo
+                    único que el viernes siguiente recuerda por ti.
+                  </p>
+                )}
+                {/* La salida de la tarjeta, como en la maqueta. Va por el mismo `?seccion=`
+                    que el carril y los accesos rápidos, así que es enlazable y sobrevive a una
+                    recarga. */}
+                <Link
+                  to={{ search: "?seccion=sessions" }}
+                  className="mt-s4 inline-block font-chrome text-chrome-sm text-accent-text hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  Ver todas las sesiones
+                </Link>
+              </>
+            ) : (
+              <p className="max-w-[62ch] font-chrome text-chrome-sm text-muted">
+                Todavía no habéis jugado ninguna. Cuando la primera quede atrás, sus notas
+                aparecerán aquí.
+              </p>
+            )}
+          </div>
         </section>
 
         <div className="space-y-s3">
           <TarjetaDelTablero rotulo="Próxima sesión">
             {proxima ? (
               <>
-                <p className="mt-1 font-title text-chrome-md text-text">{proxima.title}</p>
-                <p className="font-data text-chrome-xs text-copper-text">
+                <p className="font-title text-chrome-md text-text">{proxima.title}</p>
+                <p className="mt-1 font-data text-chrome-xs text-copper-text">
                   {fechaLarga(proxima.scheduledAt)}
                 </p>
               </>
             ) : (
-              <p className="mt-1 font-chrome text-chrome-sm text-muted">
-                Ninguna en el calendario.
-              </p>
+              <p className="font-chrome text-chrome-sm text-muted">Ninguna en el calendario.</p>
             )}
           </TarjetaDelTablero>
 
@@ -185,7 +226,7 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
                 de los que había. `descriptorDePersonaje` traduce las claves del catálogo, así
                 que aquí tampoco llega un valor de enumeración. */}
             {personajes && personajes.length > 0 ? (
-              <ul className="mt-s2 space-y-1">
+              <ul className="space-y-1">
                 {personajes.map((c) => (
                   <li key={c.id} className="flex items-baseline gap-s2">
                     <span className="min-w-0 flex-1 truncate font-chrome text-chrome-sm text-text">
@@ -198,7 +239,7 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
                 ))}
               </ul>
             ) : (
-              <p className="mt-1 font-chrome text-chrome-sm text-muted">
+              <p className="font-chrome text-chrome-sm text-muted">
                 Nadie ha creado su personaje todavía.
               </p>
             )}
@@ -207,7 +248,7 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
       </div>
 
       <section>
-        <OrnamentRule className="mb-s3">Accesos rápidos</OrnamentRule>
+        <RotuloDeBanda>Accesos rápidos</RotuloDeBanda>
         {/* Cada baldosa lleva a su sección por el mismo `?seccion=` que usa la barra lateral,
             así que un acceso rápido es enlazable y sobrevive a una recarga igual que ella. La
             cifra es la misma que la de la barra: lo que TÚ puedes ver. */}
@@ -234,7 +275,7 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
       </section>
 
       <section>
-        <OrnamentRule className="mb-s3">Lo último del mundo</OrnamentRule>
+        <RotuloDeBanda>Lo último del mundo</RotuloDeBanda>
         {recientes.length === 0 ? (
           <EmptyState title="El mundo está en blanco">
             Todavía no hay nada escrito. Empieza por donde quieras: un lugar donde ocurra algo, o

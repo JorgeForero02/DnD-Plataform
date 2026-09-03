@@ -1,32 +1,35 @@
 import { useId } from "react";
 import type { RollMode } from "@dnd/shared";
-import { MODOS_DE_TIRADA, modoDeTirada } from "./vocabulario";
+import { MODOS_DE_TIRADA } from "./vocabulario";
 
 // **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
 // los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
 // utilidad ENTERA y el elemento se queda con el `border-color` del preflight — `#e5e7eb` en
-// los dos temas. Lo que había aquí, por tanto, no era un borde tenue: era un borde gris claro
-// equivocado. Se pone el token entero, que es theme-aware, o se quita la clase cuando lo que
-// pedía era un relleno translúcido que ningún token puede dar todavía.
+// los dos temas. Se pone el token entero, que es theme-aware.
 
 // Tarea F3 — **ventaja y desventaja como decisión de tres estados**, no como sintaxis.
 //
-// El jugador no escribe `2d20kh1` jamás. Antes de F3 esto eran tres botones sueltos —«Tirar»,
-// «Ventaja», «Desventaja»— que además *tiraban* al pulsarlos: no había estado, no se veía cuál
-// estaba elegido, y las dos frases que explican la diferencia solo existían en un `title` que
-// nadie ve con el teclado. Ahora es lo que es en el juego: **una decisión, tres estados**,
-// visibles a la vez y con su explicación.
+// El jugador no escribe `2d20kh1` jamás. Es lo que es en el juego: **una decisión, tres estados**,
+// visibles a la vez y con su explicación (docs/04-convenciones.md: «una opción con significado no
+// se esconde en un desplegable; van visibles a la vez, cada una con la frase que explica qué
+// hace»). Mismo patrón que `features/entities/VisibilityChooser.tsx`.
 //
-// **Visibles a la vez, nunca en un desplegable** (docs/04-convenciones.md): cuando las opciones
-// son pocas y cada una quiere decir algo distinto, un desplegable esconde justo lo que hay que
-// comparar. Mismo patrón que `features/entities/VisibilityChooser.tsx`.
+// --- 2026-09-03: **las tres frases vuelven a estar visibles a la vez** ---
 //
-// **Por qué solo se pinta la frase del estado elegido.** La hoja monta este control veinticuatro
-// veces —seis salvaciones y dieciocho habilidades—, y tres frases por fila serían setenta y dos
-// líneas de texto repetido: el ornamento informa o compite, y ahí competiría. La frase cambia al
-// moverse por los radios (flechas del teclado incluidas), así que se lee la de la opción que se
-// está considerando; las otras dos siguen alcanzables para un lector de pantalla, porque cada
-// radio lleva la suya en su `aria-describedby`.
+// Hasta hoy solo se pintaba la frase del estado elegido, y el motivo estaba escrito aquí: la hoja
+// montaba este control **veinticuatro veces** —seis salvaciones y dieciocho habilidades—, y tres
+// frases por fila eran setenta y dos líneas de texto repetido. Era una respuesta razonable a la
+// pregunta equivocada. **El problema no era la frase: era montar la decisión veinticuatro veces.**
+//
+// Desde la adopción de la maqueta, este control ya no vive en la fila: vive en el panel de tirada
+// (`PanelDeTirada.tsx`), que se abre al pulsar el dado y **existe una vez, cuando se va a decidir**.
+// Ahí no hay nada que repetir, así que la regla se cumple entera y sin peaje: las tres opciones
+// visibles a la vez, **cada una con su frase al lado**, en el momento en que se elige.
+//
+// Cada frase sigue siendo la **descripción** del radio (`aria-describedby`) y no parte de su
+// nombre: dentro del `<label>` el lector de pantalla anunciaría «Ventaja Dos d20: se queda el
+// alto» como si fuera el nombre del control, y el nombre de un control es lo que se dice de él,
+// no lo que hace.
 
 export function SelectorDeVentaja({
   value,
@@ -40,53 +43,58 @@ export function SelectorDeVentaja({
   etiqueta: string;
   disabled?: boolean;
 }) {
-  // `useId` y no un nombre fijo: hay un grupo de radios por fila, y dos grupos con el mismo
-  // `name` serían **un solo** grupo — elegir «Ventaja» en Sigilo apagaría el de Percepción.
+  // `useId` y no un nombre fijo: puede haber más de un panel abierto a la vez (una salvación y un
+  // ataque), y dos grupos con el mismo `name` serían **un solo** grupo — elegir «Ventaja» en
+  // Sigilo apagaría el de Percepción sin que nada fallara.
   const grupo = useId();
 
   return (
     <fieldset className="min-w-0" disabled={disabled}>
       <legend className="sr-only">Cómo tirar {etiqueta}</legend>
-      <div className="flex flex-wrap items-center gap-x-s2 gap-y-0.5">
+      <div className="flex flex-col gap-1">
         {MODOS_DE_TIRADA.map((m) => {
           const elegido = m.modo === value;
+          const idRadio = `${grupo}-${m.modo}-radio`;
+          const idFrase = `${grupo}-${m.modo}-frase`;
           return (
-            <label
+            // **La frase va FUERA del `<label>`, y no es un detalle de maquetación.** Dentro, el
+            // texto del label pasa a formar parte del **nombre** del control: el radio se llamaría
+            // «Ventaja Dos d20: se queda el alto», y el nombre de un control es lo que se dice de
+            // él, no lo que hace. Aquí es su **descripción** (`aria-describedby`), que es la
+            // relación que existe justamente para esto.
+            <div
               key={m.modo}
               className={[
-                "inline-flex cursor-pointer items-center gap-1 rounded-radius-sm border px-1.5 py-0.5 font-chrome text-chrome-xs transition-colors",
-                elegido ? "border-accent text-text" : "border-transparent text-muted",
-                disabled ? "cursor-not-allowed" : "hover:bg-surface",
+                "flex items-baseline gap-s2 rounded-radius-sm border px-s2 py-1 transition-colors",
+                elegido ? "border-accent bg-[color:var(--accent-tint)]" : "border-muted",
               ].join(" ")}
             >
               <input
+                id={idRadio}
                 type="radio"
                 name={grupo}
                 value={m.modo}
                 checked={elegido}
                 disabled={disabled}
                 onChange={() => onChange(m.modo)}
-                aria-describedby={`${grupo}-${m.modo}`}
+                aria-describedby={idFrase}
                 className="accent-[var(--accent)]"
               />
-              {m.etiqueta}
-            </label>
+              <label
+                htmlFor={idRadio}
+                className={`shrink-0 font-chrome text-chrome-sm text-text ${
+                  disabled ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
+              >
+                {m.etiqueta}
+              </label>
+              <span id={idFrase} className="font-chrome text-chrome-xs leading-snug text-muted">
+                {m.frase}
+              </span>
+            </div>
           );
         })}
       </div>
-      {/* Las tres frases, fuera de las etiquetas: dentro de un `<label>` pasarían a formar
-          parte del **nombre** del radio («Ventaja Dos d20: se queda el alto»), y el nombre de un
-          control es lo que se dice de él, no lo que hace. Aquí son su descripción. */}
-      <div hidden>
-        {MODOS_DE_TIRADA.map((m) => (
-          <span key={m.modo} id={`${grupo}-${m.modo}`}>
-            {m.frase}
-          </span>
-        ))}
-      </div>
-      <p data-frase="elegida" className="font-chrome text-chrome-xs text-muted">
-        {modoDeTirada(value).frase}
-      </p>
     </fieldset>
   );
 }

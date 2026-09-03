@@ -5,7 +5,7 @@ import type { Entity } from "../entities/api";
 import type { RuleRow } from "./api";
 import { avisosDelBorrador, type AccionDeArreglo } from "./avisos";
 import { AvisosDeRegla } from "./AvisosDeRegla";
-import { CajaColocada, CarrilDeCajas, GrupoDePaleta } from "./CajasDeRegla";
+import { CajaColocada, CarrilDeCajas, PaletaDeCajas } from "./CajasDeRegla";
 import { FraseDeRegla } from "./FraseDeRegla";
 import {
   borradorDesde,
@@ -21,9 +21,6 @@ import { PieDeGuia } from "./PieDeGuia";
 import { CamposDeCondicion, CamposDeDisparador, CamposDeEfecto } from "./PiezasDeRegla";
 import {
   CARRIL_DE_PARTE,
-  CONDICIONES,
-  DISPARADORES,
-  EFECTOS,
   nombreDePieza,
   type NombreDeFicha,
   type ParteDeRegla,
@@ -229,168 +226,193 @@ export function EditorDeRegla({
       </p>
 
       {/*
-        Tarea F2 + R1-fix — tres columnas y dos filas: arriba el grupo de piezas, abajo el carril
-        que las admite. Las columnas van en el orden en que se lee la frase, y las dos filas son
-        del mismo alto para las tres, así que los tres carriles empiezan a la misma altura. En
-        pantalla estrecha la rejilla se deshace en una sola columna y el orden del documento
-        —grupo, su carril, grupo, su carril…— sigue siendo el de la frase.
+        Reseño 2026-09-03 — **la disposición de la maqueta: paleta a la izquierda, tablero a la
+        derecha.** Antes cada grupo de piezas iba justo encima de su carril, en tres columnas y
+        dos filas; funcionaba, pero partía la pantalla en seis bloques sueltos y ninguno se leía
+        como una cosa. Ahora hay dos objetos: el cajón de las piezas y el tablero donde se arma
+        la regla, con los tres carriles y la frase dentro del mismo marco — porque la frase **es**
+        lo que dicen los carriles, no un panel aparte.
+
+        **Y esto no puede romper el arrastre, que es lo que costó sacar el editor del diálogo.**
+        La exigencia medida es que la pieza y su ranura estén en pantalla a la vez. Se cumple por
+        dos vías, no por una: la paleta se ha compactado (fuera el párrafo por grupo, que sumaba
+        tres veces la misma explicación) y **el tablero es pegajoso** a partir de la anchura en la
+        que hay dos columnas, así que los carriles siguen visibles por muy abajo que se baje a
+        buscar una pieza. En pantalla estrecha la rejilla se deshace y el orden del documento
+        —paleta, luego carriles en el orden de la frase— sigue siendo el de la lectura.
       */}
-      <div className="grid gap-s3 md:grid-flow-col md:grid-cols-3 md:grid-rows-[auto_auto]">
-        <GrupoDePaleta
-          parte="SUCESO"
-          claves={DISPARADORES}
-          tope={topes.SUCESO}
-          onColocar={colocar}
-        />
-        <CarrilDeCajas
-          parte="SUCESO"
-          vacio={borrador.trigger === null}
-          onSoltar={(clave) => colocar("SUCESO", clave)}
-        >
-          {borrador.trigger && (
-            <CajaColocada
-              parte="SUCESO"
-              clave={borrador.trigger.kind}
-              onQuitar={() => {
-                setAviso(
-                  `Carril «${CARRIL_DE_PARTE.SUCESO}» vacío otra vez. Sin suceso, la regla no se despierta.`,
-                );
-                setBorrador({ ...borrador, trigger: null });
-              }}
-            >
-              <CamposDeDisparador
-                value={borrador.trigger}
-                entities={entities}
-                onChange={(trigger) => setBorrador({ ...borrador, trigger })}
-              />
-            </CajaColocada>
+      <div className="grid gap-s4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+        <PaletaDeCajas topes={topes} onColocar={colocar} />
+
+        <div className="min-w-0 space-y-s4">
+          {/* `lg:top-20` y no `lg:top-s4`: la cabecera de la aplicación es **fija y ocupa 64 px**,
+              así que pegarse a 16 del borde mete el tablero DEBAJO de ella. Se veía al arrastrar:
+              el carril quedaba en `y = 29` y el punto de soltado caía sobre la cabecera, no sobre
+              la ranura — medido con `elementFromPoint`. Es el mismo fallo que tuvo la barra de
+              sesión, y por eso ahora hay un recorrido que lo comprueba. */}
+          <div className="space-y-s3 rounded-radius-sm border border-muted bg-surface p-s3 lg:sticky lg:top-20">
+            <div className="grid gap-s3 md:grid-cols-3">
+              <CarrilDeCajas
+                parte="SUCESO"
+                vacio={borrador.trigger === null}
+                onSoltar={(clave) => colocar("SUCESO", clave)}
+              >
+                {borrador.trigger && (
+                  <CajaColocada
+                    parte="SUCESO"
+                    clave={borrador.trigger.kind}
+                    onQuitar={() => {
+                      setAviso(
+                        `Carril «${CARRIL_DE_PARTE.SUCESO}» vacío otra vez. Sin suceso, la regla no se despierta.`,
+                      );
+                      setBorrador({ ...borrador, trigger: null });
+                    }}
+                  >
+                    <CamposDeDisparador
+                      value={borrador.trigger}
+                      entities={entities}
+                      onChange={(trigger) => setBorrador({ ...borrador, trigger })}
+                    />
+                  </CajaColocada>
+                )}
+              </CarrilDeCajas>
+
+              <CarrilDeCajas
+                parte="ESTADO"
+                vacio={borrador.conditions.length === 0}
+                onSoltar={(clave) => colocar("ESTADO", clave)}
+              >
+                {borrador.conditions.map((condicion, i) => (
+                  <CajaColocada
+                    key={`${condicion.kind}-${i}`}
+                    parte="ESTADO"
+                    clave={condicion.kind}
+                    onQuitar={() =>
+                      setBorrador({
+                        ...borrador,
+                        conditions: borrador.conditions.filter((_, j) => j !== i),
+                      })
+                    }
+                  >
+                    <CamposDeCondicion
+                      value={condicion}
+                      onChange={(nueva) =>
+                        setBorrador({
+                          ...borrador,
+                          conditions: borrador.conditions.map((c, j) => (j === i ? nueva : c)),
+                        })
+                      }
+                    />
+                  </CajaColocada>
+                ))}
+              </CarrilDeCajas>
+
+              <CarrilDeCajas
+                parte="ACCION"
+                vacio={borrador.effects.length === 0}
+                onSoltar={(clave) => colocar("ACCION", clave)}
+              >
+                {borrador.effects.map((efecto, i) => (
+                  <CajaColocada
+                    key={`${efecto.kind}-${i}`}
+                    parte="ACCION"
+                    clave={efecto.kind}
+                    onQuitar={() =>
+                      setBorrador({
+                        ...borrador,
+                        effects: borrador.effects.filter((_, j) => j !== i),
+                      })
+                    }
+                  >
+                    <CamposDeEfecto
+                      value={efecto}
+                      entities={entities}
+                      reglas={otrasReglas}
+                      onChange={(nuevo) =>
+                        setBorrador({
+                          ...borrador,
+                          effects: borrador.effects.map((e, j) => (j === i ? nuevo : e)),
+                        })
+                      }
+                    />
+                  </CajaColocada>
+                ))}
+              </CarrilDeCajas>
+            </div>
+
+            {/*
+              Tarea F1 — la frase, siempre visible y debajo de los carriles. Debajo y no encima
+              porque es el resultado de lo que hay arriba: se coloca una caja y la frase cambia.
+              Dentro del mismo marco desde el reseño: los carriles y la frase son la misma regla
+              contada dos veces, y en la maqueta comparten tarjeta por eso.
+            */}
+            <FraseDeRegla regla={borrador} nombreFicha={nombreFicha} />
+
+            {/*
+              Tarea F5 — lo que se puede guardar pero conviene mirar, con su arreglo al lado.
+
+              **Va DENTRO del bloque pegajoso, y eso lo decidió un fallo medido.** Estaba justo
+              debajo, como hermano, y un elemento pegajoso no se aparta: sus hermanos posteriores
+              se deslizan por debajo. Resultado, dicho por el propio navegador: «el carril
+              intercepta los eventos de puntero» y **el botón «Añadir reversión» no se podía
+              pulsar**. Además de arreglarlo, encaja mejor: el aviso es de la regla que se está
+              componiendo, no de la pantalla.
+            */}
+            <AvisosDeRegla
+              avisos={avisos}
+              aplicando={aplicandoArreglo}
+              onAplicarArreglo={aplicarArreglo}
+            />
+          </div>
+
+          <ModoDeRegla
+            value={borrador.mode}
+            onChange={(mode) => setBorrador({ ...borrador, mode })}
+          />
+
+          <Field
+            label="Tope de disparos (opcional)"
+            hint="En blanco, sin tope. Existe como contención, no como regla del juego."
+          >
+            <input
+              type="number"
+              min={1}
+              max={9999}
+              className={fieldControlClass}
+              value={borrador.maxFires ?? ""}
+              onChange={(e) =>
+                setBorrador({
+                  ...borrador,
+                  maxFires: e.target.value === "" ? null : Number(e.target.value),
+                })
+              }
+            />
+          </Field>
+
+          {intentado && revision.problemas.length > 0 && (
+            <div role="alert" className="rounded-radius-sm border border-danger p-s2">
+              <p className="font-chrome text-chrome-sm text-danger-text">
+                La regla todavía no está completa:
+              </p>
+              <ul className="mt-1 list-disc pl-s5 font-chrome text-chrome-xs text-danger-text">
+                {revision.problemas.map((problema) => (
+                  <li key={problema}>{problema}</li>
+                ))}
+              </ul>
+            </div>
           )}
-        </CarrilDeCajas>
 
-        <GrupoDePaleta
-          parte="ESTADO"
-          claves={CONDICIONES}
-          tope={topes.ESTADO}
-          onColocar={colocar}
-        />
-        <CarrilDeCajas
-          parte="ESTADO"
-          vacio={borrador.conditions.length === 0}
-          onSoltar={(clave) => colocar("ESTADO", clave)}
-        >
-          {borrador.conditions.map((condicion, i) => (
-            <CajaColocada
-              key={`${condicion.kind}-${i}`}
-              parte="ESTADO"
-              clave={condicion.kind}
-              onQuitar={() =>
-                setBorrador({
-                  ...borrador,
-                  conditions: borrador.conditions.filter((_, j) => j !== i),
-                })
-              }
-            >
-              <CamposDeCondicion
-                value={condicion}
-                onChange={(nueva) =>
-                  setBorrador({
-                    ...borrador,
-                    conditions: borrador.conditions.map((c, j) => (j === i ? nueva : c)),
-                  })
-                }
-              />
-            </CajaColocada>
-          ))}
-        </CarrilDeCajas>
-
-        <GrupoDePaleta parte="ACCION" claves={EFECTOS} tope={topes.ACCION} onColocar={colocar} />
-        <CarrilDeCajas
-          parte="ACCION"
-          vacio={borrador.effects.length === 0}
-          onSoltar={(clave) => colocar("ACCION", clave)}
-        >
-          {borrador.effects.map((efecto, i) => (
-            <CajaColocada
-              key={`${efecto.kind}-${i}`}
-              parte="ACCION"
-              clave={efecto.kind}
-              onQuitar={() =>
-                setBorrador({
-                  ...borrador,
-                  effects: borrador.effects.filter((_, j) => j !== i),
-                })
-              }
-            >
-              <CamposDeEfecto
-                value={efecto}
-                entities={entities}
-                reglas={otrasReglas}
-                onChange={(nuevo) =>
-                  setBorrador({
-                    ...borrador,
-                    effects: borrador.effects.map((e, j) => (j === i ? nuevo : e)),
-                  })
-                }
-              />
-            </CajaColocada>
-          ))}
-        </CarrilDeCajas>
+          {error && (
+            <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
+              {error}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/*
-        Tarea F1 — la frase, siempre visible y debajo de los carriles. Debajo y no encima
-        porque es el resultado de lo que hay arriba: se coloca una caja y la frase cambia.
-      */}
-      <FraseDeRegla regla={borrador} nombreFicha={nombreFicha} />
-
-      {/* Tarea F5 — lo que se puede guardar pero conviene mirar, con su arreglo al lado. */}
-      <AvisosDeRegla
-        avisos={avisos}
-        aplicando={aplicandoArreglo}
-        onAplicarArreglo={aplicarArreglo}
-      />
-
-      <ModoDeRegla value={borrador.mode} onChange={(mode) => setBorrador({ ...borrador, mode })} />
-
-      <Field
-        label="Tope de disparos (opcional)"
-        hint="En blanco, sin tope. Existe como contención, no como regla del juego."
-      >
-        <input
-          type="number"
-          min={1}
-          max={9999}
-          className={fieldControlClass}
-          value={borrador.maxFires ?? ""}
-          onChange={(e) =>
-            setBorrador({
-              ...borrador,
-              maxFires: e.target.value === "" ? null : Number(e.target.value),
-            })
-          }
-        />
-      </Field>
-
-      {intentado && revision.problemas.length > 0 && (
-        <div role="alert" className="rounded-radius-sm border border-danger p-s2">
-          <p className="font-chrome text-chrome-sm text-danger-text">
-            La regla todavía no está completa:
-          </p>
-          <ul className="mt-1 list-disc pl-s5 font-chrome text-chrome-xs text-danger-text">
-            {revision.problemas.map((problema) => (
-              <li key={problema}>{problema}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {error && (
-        <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
-          {error}
-        </p>
-      )}
-
-      {/* Tarea F6 — la guía. Va al pie, no tapa nada, y no se puede cerrar: se cierra sola. */}
+      {/* Tarea F6 — la guía. Va al pie, no tapa nada, y no se puede cerrar: se cierra sola.
+          Al pie de las DOS columnas desde el reseño, como en la maqueta: la instrucción de lo
+          siguiente que hacer habla de la pantalla entera, no de la mitad derecha. */}
       <PieDeGuia paso={paso} />
 
       <div className="flex justify-end gap-s2">

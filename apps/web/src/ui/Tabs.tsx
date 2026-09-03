@@ -111,7 +111,10 @@ export function Tabs({ items, active: controlledActive, onChange, layout = "stri
           "font-chrome text-chrome-sm font-semibold",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
           sidebar
-            ? "flex w-full items-center gap-s2 rounded-radius-sm border-l-2 px-s3 py-1.5 text-left"
+            ? // Maqueta 2026-09-03: la fila del carril respira. 1,5 px de relleno vertical
+              // apretaba catorce entradas en una columna donde ninguna se distinguía de la
+              // siguiente, y el icono quedaba pegado al rótulo.
+              "flex w-full items-center gap-s3 rounded-radius-sm border-l-2 px-s3 py-s2 text-left"
             : "border-b-2 px-3 py-1.5",
           // border-accent (3:1, graphical) stays as-is; the label text uses --accent-text —
           // fix round 1, Critical 2: plain --accent text is only 4.5:1+ against --bg, and drops
@@ -157,16 +160,21 @@ export function Tabs({ items, active: controlledActive, onChange, layout = "stri
 
   if (layout === "sidebar") {
     return (
-      <div className="flex flex-col gap-s5 md:flex-row md:gap-s6">
+      // Maqueta 2026-09-03: el carril es una columna con su propio filete, no una lista
+      // flotando a la izquierda del contenido. La línea vertical es lo que convierte dos
+      // bloques sueltos en una pantalla con navegación propia — en la maqueta llega de arriba
+      // abajo, y aquí llega hasta donde llegue el más alto de los dos, que es lo que un
+      // `flex` da sin fingir alturas.
+      <div className="flex flex-col gap-s5 md:flex-row md:items-stretch md:gap-s5">
         <div
           role="tablist"
           aria-orientation="vertical"
-          className="flex shrink-0 flex-col gap-s4 md:w-52"
+          className="flex shrink-0 flex-col gap-s5 md:w-56 md:border-r md:border-muted md:pr-s4"
         >
           {groups.map((group, gi) => (
             <div key={group.name ?? `sin-grupo-${gi}`} className="flex flex-col gap-0.5">
               {group.name && (
-                <p className="mb-1 px-s3 font-chrome text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
+                <p className="mb-s2 px-s3 font-chrome text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
                   {group.name}
                 </p>
               )}

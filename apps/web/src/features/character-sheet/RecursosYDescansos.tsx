@@ -3,7 +3,7 @@ import { useDeclareRest, useResources, useRestoreResource, useSpendResource } fr
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { NOMBRE_RESET_RECURSO } from "./vocabulario";
-import { PROSA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
+import { PROSA_DE_HOJA } from "./Tarjeta";
 import { PREFIJO_DADOS_DE_GOLPE } from "./TarjetasDeEstado";
 
 // Tarea 2A.10 — "recursos y descansos". `CharacterResource` (2A.8) es un contador con máximo:
@@ -34,11 +34,10 @@ export function RecursosYDescansos({
   const otros = (recursos ?? []).filter((r) => !r.key.startsWith(PREFIJO_DADOS_DE_GOLPE));
 
   return (
-    <section aria-label="recursos y descansos" className="flex flex-col gap-s3">
+    <div className="flex flex-col gap-s3">
       <div className="flex items-center justify-between">
-        <RotuloDeSeccion className="mb-0 flex-1">Recursos</RotuloDeSeccion>
         {puedeEditar && (
-          <div className="flex items-center gap-s2">
+          <div className="flex flex-wrap items-center gap-s2">
             <label className="font-chrome text-chrome-xs text-muted" htmlFor="dados-descanso-corto">
               Dados de golpe a gastar
             </label>
@@ -73,17 +72,17 @@ export function RecursosYDescansos({
       </div>
 
       {otros.length === 0 ? (
-        <p className={PROSA_DE_VITELA}>Sin más recursos que los dados de golpe.</p>
+        <p className={PROSA_DE_HOJA}>Sin más recursos que los dados de golpe.</p>
       ) : (
         <ul className="flex flex-col gap-s2">
           {otros.map((r) => (
             <li
               key={r.key}
-              className="flex items-center justify-between gap-s2 rounded-radius-sm border border-copper px-s3 py-s2"
+              className="flex items-center justify-between gap-s2 rounded-radius-sm border border-muted px-s3 py-s2"
             >
               <div>
-                <p className="font-world text-world-base leading-tight text-text">{r.label}</p>
-                <p className={PROSA_DE_VITELA}>{NOMBRE_RESET_RECURSO[r.resetOn]}</p>
+                <p className="font-chrome text-chrome-sm leading-tight text-text">{r.label}</p>
+                <p className={PROSA_DE_HOJA}>{NOMBRE_RESET_RECURSO[r.resetOn]}</p>
               </div>
               <span className="font-data text-chrome-md text-text">
                 {r.current}
@@ -117,6 +116,6 @@ export function RecursosYDescansos({
           ))}
         </ul>
       )}
-    </section>
+    </div>
   );
 }

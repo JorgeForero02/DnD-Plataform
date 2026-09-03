@@ -64,6 +64,12 @@ export default defineConfig({
         // (.github/workflows/ci.yml), es la única forma permitida de darle margen a esta suite.
         // Nunca se sube en producción — ver .env.example.
         AUTH_RATE_LIMIT: "1000",
+        // Y el límite **global**, por lo mismo: la suite entera dispara cientos de peticiones
+        // legítimas desde 127.0.0.1 en un minuto, y con el tope de producción (100) la API
+        // empezaba a devolver 429 a mitad de recorrido. El fallo cambiaba de sitio en cada
+        // vuelta —un personaje que no aparecía, un campo que no guardaba—, que es la firma de
+        // un límite compartido y no la de un defecto.
+        RATE_LIMIT: "5000",
         // En slot 0 no se inyecta PORT ni DATABASE_URL: el proceso hereda exactamente lo que
         // ya tenía — su propio apps/api/.env, tal cual. Inyectar aquí el valor por defecto
         // (3000 / "dnd") "porque coincide hoy" fue el bug de la ronda anterior: si el .env de

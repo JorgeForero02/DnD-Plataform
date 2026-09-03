@@ -5,7 +5,7 @@ import type { CharacterRow } from "./api";
 import { resumenDeAjustes } from "./formula";
 import { NOMBRE_CARACTERISTICA, nombreClase, nombreRaza, nombreSubraza } from "./vocabulario";
 import type { CalculatedSheet } from "./api";
-import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA, RotuloDeSeccion } from "./Vitela";
+import { CAJA_DE_HOJA, PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 
 // **La identidad del personaje se edita donde se lee.** Ya no hay un diálogo aparte.
 //
@@ -21,18 +21,20 @@ import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA, RotuloDeSeccion } f
 
 const CARACTERISTICAS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 
-export function IdentidadEditable({
+/**
+ * **La ficha: raza, subraza, clase y nivel.** Vive en su propia tarjeta desde la adopción de la
+ * maqueta, separada de las características, porque son dos cosas distintas: esto es lo que el
+ * personaje ES, y las características son sus números.
+ */
+export function FichaEditable({
   campaignId,
   characterId,
   character,
-  sheet,
   puedeEditar,
 }: {
   campaignId: string;
   characterId: string;
   character: CharacterRow;
-  /** `null` mientras la hoja no se puede derivar: falta raza, clase o alguna característica. */
-  sheet: CalculatedSheet | null;
   puedeEditar: boolean;
 }) {
   const actualizar = useUpdateSheet(campaignId, characterId);
@@ -127,59 +129,83 @@ export function IdentidadEditable({
           />
         </label>
       </div>
+    </div>
+  );
+}
 
-      <section aria-label="características">
-        <RotuloDeSeccion>Características</RotuloDeSeccion>
-        <div className="grid grid-cols-2 gap-s3 sm:grid-cols-3 lg:grid-cols-6">
-          {CARACTERISTICAS.map((ability) => {
-            const modificador = sheet?.derived[`abilityMod.${ability}`] ?? null;
-            const puntuacionDerivada = sheet?.derived[`ability.${ability}`] ?? null;
-            const ajustes = puntuacionDerivada ? resumenDeAjustes(puntuacionDerivada) : "";
-            return (
-              <div
-                key={ability}
-                className={`${CAJA_DE_VITELA} flex flex-col items-center gap-0.5 px-s2 py-s2 text-center`}
-              >
-                <p className={ROTULO_DE_CASILLA}>{NOMBRE_CARACTERISTICA[ability]}</p>
-                {/* **El modificador va grande y arriba; la puntuación, pequeña y debajo.** Es la
+/**
+ * **Las seis casillas de característica.** El modificador grande y arriba, la puntuación pequeña
+ * y debajo — la vuelta que da la maqueta a la casilla de la hoja impresa, y tiene razón: en la
+ * mesa se usa el modificador y la puntuación es su causa. **La afordancia va al revés que el
+ * tamaño**: la puntuación, que es lo editable, es la que lleva el subrayado; el modificador, que
+ * es derivado, no lleva ninguno (`docs/04-convenciones.md`).
+ */
+export function Caracteristicas({
+  campaignId,
+  characterId,
+  character,
+  sheet,
+  puedeEditar,
+}: {
+  campaignId: string;
+  characterId: string;
+  character: CharacterRow;
+  /** `null` mientras la hoja no se puede derivar: falta raza, clase o alguna característica. */
+  sheet: CalculatedSheet | null;
+  puedeEditar: boolean;
+}) {
+  const actualizar = useUpdateSheet(campaignId, characterId);
+  const motivo = "Solo el dueño del personaje o el DM pueden editarlo.";
+
+  return (
+    <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
+      {CARACTERISTICAS.map((ability) => {
+        const modificador = sheet?.derived[`abilityMod.${ability}`] ?? null;
+        const puntuacionDerivada = sheet?.derived[`ability.${ability}`] ?? null;
+        const ajustes = puntuacionDerivada ? resumenDeAjustes(puntuacionDerivada) : "";
+        return (
+          <div
+            key={ability}
+            className={`${CAJA_DE_HOJA} flex flex-col items-center gap-0.5 px-s2 py-s2 text-center`}
+          >
+            <p className={ROTULO_DE_CASILLA}>{NOMBRE_CARACTERISTICA[ability]}</p>
+            {/* **El modificador va grande y arriba; la puntuación, pequeña y debajo.** Es la
                     vuelta que da la maqueta a la casilla de la hoja impresa, y tiene razón: en la
                     mesa se usa el modificador en cada tirada, y la puntuación es su causa.
                     **Sin afordancia de edición**, que es lo que dice «esto lo calculo yo». */}
-                {modificador ? (
-                  <p
-                    data-derivado={`abilityMod.${ability}`}
-                    className="font-data text-chrome-2xl leading-none text-text"
-                  >
-                    {modificador.total >= 0 ? "+" : "−"}
-                    {Math.abs(modificador.total)}
-                  </p>
-                ) : (
-                  <p className={PROSA_DE_VITELA}>sin calcular</p>
-                )}
-                <NumeroEditable
-                  etiqueta={NOMBRE_CARACTERISTICA[ability]}
-                  valor={character[ability]}
-                  placeholder="—"
-                  min={1}
-                  max={30}
-                  ancho="w-12"
-                  disabled={!puedeEditar}
-                  motivoDeshabilitado={motivo}
-                  onGuardar={async (n) => actualizar.mutateAsync({ abilities: { [ability]: n } })}
-                />
-                {/* Cuando la raza sube la puntuación, la casilla enseñaría un 14 con un +3 al
+            {modificador ? (
+              <p
+                data-derivado={`abilityMod.${ability}`}
+                className="font-data text-chrome-2xl leading-none text-text"
+              >
+                {modificador.total >= 0 ? "+" : "−"}
+                {Math.abs(modificador.total)}
+              </p>
+            ) : (
+              <p className={PROSA_DE_HOJA}>sin calcular</p>
+            )}
+            <NumeroEditable
+              etiqueta={NOMBRE_CARACTERISTICA[ability]}
+              valor={character[ability]}
+              placeholder="—"
+              min={1}
+              max={30}
+              ancho="w-12"
+              disabled={!puedeEditar}
+              motivoDeshabilitado={motivo}
+              onGuardar={async (n) => actualizar.mutateAsync({ abilities: { [ability]: n } })}
+            />
+            {/* Cuando la raza sube la puntuación, la casilla enseñaría un 14 con un +3 al
                     lado y parecería rota. La línea de abajo es la traza en una línea, y solo
                     aparece cuando hay algo que explicar. */}
-                {ajustes && (
-                  <p className={`${PROSA_DE_VITELA} leading-tight`}>
-                    {ajustes} = {puntuacionDerivada!.total}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+            {ajustes && (
+              <p className={`${PROSA_DE_HOJA} leading-tight`}>
+                {ajustes} = {puntuacionDerivada!.total}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

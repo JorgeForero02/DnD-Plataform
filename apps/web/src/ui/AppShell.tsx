@@ -187,21 +187,25 @@ export function AppShell({
   const bajoCampana = useMatch("/campaigns/:id/*");
   const campaignId = (enCampana ?? bajoCampana)?.params.id;
   return (
-    <div className="relative min-h-screen bg-bg text-text">
+    // `flex flex-col` + `min-h-screen`: **el pie se queda abajo aunque la pantalla tenga poco
+    // contenido**. Antes la atribución iba pegada al final del contenido y dejaba medio lienzo
+    // vacío por debajo, que es lo que el autor describió como «los espacios no se usan como se
+    // debe». Ahora el cuerpo crece y el pie se apoya en el borde inferior.
+    <div className="relative flex min-h-screen flex-col bg-bg text-text">
       <CartographicGrid />
-      <div className="relative">
+      <div className="relative flex flex-1 flex-col">
         {header}
         {/* Una sola vez para toda la aplicación: pasarla por parámetro desde cada página sería
             una regla que se olvida en la siguiente pantalla que alguien añada. */}
         {campaignId && <BarraDeSesion campaignId={campaignId} />}
-        <div className="mx-auto flex max-w-[1400px] gap-s6 px-s4 py-s5">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-1 gap-s6 px-s4 py-s5">
           {aside && (
             <aside className="hidden w-56 shrink-0 lg:block">
               <div className="sticky top-20">{aside}</div>
             </aside>
           )}
-          <main className="min-w-0 flex-1">
-            {children}
+          <main className="flex min-w-0 flex-1 flex-col">
+            <div className="flex-1">{children}</div>
             {/* La atribucion del SRD va AQUI y no en cada pantalla: la CC BY la pide en la obra
                 distribuida, y el armazon es lo unico que toda pantalla con sesion comparte.
                 Ponerla pantalla por pantalla seria una regla que se olvida en la siguiente. */}

@@ -2,7 +2,7 @@ import type { DerivedValue } from "@dnd/shared";
 import type { CalculatedSheet } from "./api";
 import { TirarBoton } from "./TirarBoton";
 import { formulaDeUnaLinea } from "./formula";
-import { PROSA_DE_VITELA, ROTULO_DE_CASILLA, RotuloDeSeccion } from "./Vitela";
+import { PROSA_DE_HOJA, ROTULO_DE_CASILLA, TarjetaDeHoja } from "./Tarjeta";
 
 // **«Ataques y lanzamiento» es una tabla** — la decisión de la maqueta de Figma, adoptada.
 //
@@ -42,14 +42,13 @@ export function AtaquesYLanzamiento({
   }
 
   return (
-    <section aria-label="ataques y lanzamiento">
-      <RotuloDeSeccion>Ataques y lanzamiento</RotuloDeSeccion>
+    <TarjetaDeHoja titulo="Ataques y lanzamiento" etiqueta="ataques y lanzamiento">
       {/* Una tabla ancha se desplaza **dentro de su contenedor**; la página nunca se desplaza en
           horizontal. */}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[34rem] border-collapse text-left">
           <thead>
-            <tr className="border-b border-copper">
+            <tr className="border-b border-muted">
               <th scope="col" className={`${ROTULO_DE_CASILLA} py-1 pr-s3 font-normal`}>
                 Nombre
               </th>
@@ -69,10 +68,10 @@ export function AtaquesYLanzamiento({
           </thead>
           <tbody>
             {filas.map((fila) => (
-              <tr key={fila.clave} className="border-b border-[color:var(--copper-rule)]">
+              <tr key={fila.clave} className="border-b border-muted">
                 <th
                   scope="row"
-                  className="py-s2 pr-s3 text-left font-world text-[length:var(--text-world-sm)] font-normal text-text"
+                  className="py-s2 pr-s3 text-left font-chrome text-chrome-sm font-normal text-text"
                 >
                   {fila.nombre}
                 </th>
@@ -80,13 +79,11 @@ export function AtaquesYLanzamiento({
                   {fila.valor.total >= 0 ? "+" : "−"}
                   {Math.abs(fila.valor.total)}
                 </td>
-                <td className={`py-s2 pr-s3 ${PROSA_DE_VITELA}`}>
+                <td className={`py-s2 pr-s3 ${PROSA_DE_HOJA}`}>
                   <span aria-hidden="true">&mdash;</span>
                   <span className="sr-only">sin arma equipada</span>
                 </td>
-                <td className={`py-s2 pr-s3 ${PROSA_DE_VITELA}`}>
-                  {formulaDeUnaLinea(fila.valor)}
-                </td>
+                <td className={`py-s2 pr-s3 ${PROSA_DE_HOJA}`}>{formulaDeUnaLinea(fila.valor)}</td>
                 <td className="py-s2 align-middle">
                   <TirarBoton
                     campaignId={campaignId}
@@ -102,23 +99,23 @@ export function AtaquesYLanzamiento({
         </table>
       </div>
 
-      <p className={`mt-s2 ${PROSA_DE_VITELA}`}>
+      <p className={`mt-s2 ${PROSA_DE_HOJA}`}>
         La columna de daño se rellena con el arma equipada, en la fase 2B. Hasta entonces la hoja
         sabe con cuánto aciertas y no con cuánto pegas.
       </p>
 
       <ul className="mt-s2 flex flex-wrap gap-s2">
         {sheet.attacksPerAction > 1 && (
-          <li className="rounded-radius-sm border border-copper px-s2 py-1 font-world text-[length:var(--text-world-sm)] text-text">
+          <li className="rounded-radius-sm border border-muted px-s2 py-1 font-chrome text-chrome-sm text-text">
             {sheet.attacksPerAction} ataques por acción
           </li>
         )}
         {sheet.derived.spellSaveDc && (
-          <li className="rounded-radius-sm border border-copper px-s2 py-1 font-world text-[length:var(--text-world-sm)] text-text">
+          <li className="rounded-radius-sm border border-muted px-s2 py-1 font-chrome text-chrome-sm text-text">
             CD de salvación de conjuro {sheet.derived.spellSaveDc.total}
           </li>
         )}
       </ul>
-    </section>
+    </TarjetaDeHoja>
   );
 }

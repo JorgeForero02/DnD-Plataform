@@ -133,13 +133,18 @@ describe("la fórmula de una línea, siempre visible", () => {
     expect(screen.getByText(/y 2 más/)).toBeInTheDocument();
   });
 
-  it("las DOS variantes la enseñan: la casilla grande y la fila de una habilidad", () => {
-    // Una mutación lo destapó: quitar la fórmula de la variante «fila» no ponía nada rojo,
+  it("la fila de una habilidad guarda su fórmula tras la cifra, y la suelta al desplegarla", () => {
+    // Una mutación lo destapó: quitar la fórmula de la variante de fila no ponía nada rojo,
     // porque todas las pruebas usaban la casilla. Media función sin cubrir.
+    //
+    // **Y desde la adopción de la maqueta la fila es UNA línea**: la fórmula ya no se pinta
+    // debajo de cada una de las veinticuatro filas de la hoja, sino al desplegar la traza —que es
+    // lo que abre la cifra. Así que la prueba comprueba las dos mitades: que no está antes, y que
+    // sale al pedirla. Sin la primera, un descuido que la dejara siempre visible pasaría en verde.
     render(
       <ValorDerivado
         etiqueta="Sigilo"
-        variante="fila"
+        variante="linea"
         valor={{
           key: "skill.stealth",
           total: 4,
@@ -148,6 +153,8 @@ describe("la fórmula de una línea, siempre visible", () => {
       />,
     );
 
+    expect(screen.queryByText(/2 .*\+2/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Sigilo: \+4/ }));
     expect(screen.getByText(/2 .*\+2/)).toBeInTheDocument();
   });
 
@@ -155,7 +162,7 @@ describe("la fórmula de una línea, siempre visible", () => {
     const { container } = render(
       <ValorDerivado
         etiqueta="Iniciativa"
-        variante="fila"
+        variante="tarjeta"
         valor={{ key: "initiative", total: 2, steps: [paso("base", 2, "abilityMod.dex")] }}
       />,
     );

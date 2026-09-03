@@ -344,6 +344,21 @@ export const ARTICULO_PARTE: Record<ParteDeRegla, string> = {
 // efecto» mientras el resto de la pantalla la llama «una acción». Dos nombres para lo mismo es
 // exactamente el fallo que la regla prohíbe.
 
+/**
+ * La glosa del **grupo de la paleta**, en dos o tres palabras.
+ *
+ * Sale de la maqueta, que rotula sus tres grupos «SUCESOS (UN INSTANTE)», «ESTADOS (SE
+ * COMPRUEBA)» y «EFECTOS». Se adopta la forma —el paréntesis que distingue el grupo de un
+ * vistazo, sin gastar un párrafo por grupo— y **no la palabra**: la tercera parte se llama
+ * «Acción» en toda esta pantalla, y llamarla «efecto» aquí sería el fallo de los dos nombres
+ * para la misma cosa que `GLOSA_CARRIL` ya evita unas líneas más abajo.
+ */
+export const GLOSA_DE_GRUPO: Record<ParteDeRegla, string> = {
+  SUCESO: "un instante",
+  ESTADO: "se comprueba",
+  ACCION: "cambia el mundo",
+};
+
 /** El verbo del carril: qué se le pide, sin nombrar todavía la parte. */
 export const GLOSA_CARRIL: Record<ParteDeRegla, string> = {
   SUCESO: "pasa algo",

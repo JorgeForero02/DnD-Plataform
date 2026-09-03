@@ -1,5 +1,5 @@
 import type { ResolvedFeatureDto } from "./api";
-import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA, RotuloDeSeccion } from "./Vitela";
+import { PROSA_DE_HOJA, ROTULO_DE_CASILLA, TarjetaDeHoja } from "./Tarjeta";
 
 // **El pie de la hoja de la maqueta**: tres bloques en fila —competencias e idiomas, rasgos y
 // aptitudes, y personalidad—, lo que se lee una vez por sesión y no se consulta en mitad de un
@@ -26,16 +26,15 @@ import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA, RotuloDeSeccion } f
 export function RasgosYAptitudes({ features }: { features: ResolvedFeatureDto[] }) {
   if (features.length === 0) return null;
   return (
-    <section aria-label="rasgos y aptitudes" className={CAJA_DE_VITELA}>
-      <RotuloDeSeccion>Rasgos y aptitudes</RotuloDeSeccion>
+    <TarjetaDeHoja titulo="Rasgos y aptitudes" etiqueta="rasgos y aptitudes">
       <ul className="flex flex-col gap-1">
         {features.map((f) => (
-          <li key={f.labelKey} className="font-world text-world-base leading-snug text-text">
+          <li key={f.labelKey} className="font-chrome text-chrome-sm leading-snug text-text">
             {f.name}
           </li>
         ))}
       </ul>
-    </section>
+    </TarjetaDeHoja>
   );
 }
 
@@ -46,23 +45,22 @@ export function RasgosYAptitudes({ features }: { features: ResolvedFeatureDto[] 
  */
 export function Personalidad({ bio }: { bio: string | null }) {
   return (
-    <section aria-label="personalidad" className={CAJA_DE_VITELA}>
-      <RotuloDeSeccion>Personalidad</RotuloDeSeccion>
+    <TarjetaDeHoja titulo="Personalidad" etiqueta="personalidad">
       {bio ? (
-        <p className="whitespace-pre-wrap font-world text-world-base leading-relaxed text-text">
+        <p className="whitespace-pre-wrap font-chrome text-chrome-sm leading-relaxed text-text">
           {bio}
         </p>
       ) : (
-        <p className={PROSA_DE_VITELA}>
+        <p className={PROSA_DE_HOJA}>
           Sin nota de personalidad todavía. Se escribe en la biografía, desde el editor del
           personaje.
         </p>
       )}
       <p className={`mt-s3 ${ROTULO_DE_CASILLA}`}>Rasgo · Ideal · Vínculo · Defecto</p>
-      <p className={`mt-1 ${PROSA_DE_VITELA}`}>
+      <p className={`mt-1 ${PROSA_DE_HOJA}`}>
         Los cuatro por separado llegan cuando el personaje tenga trasfondo: hoy la hoja guarda una
         biografía y no cuatro campos, y trocearla aquí sería inventarse un dato que nadie escribió.
       </p>
-    </section>
+    </TarjetaDeHoja>
   );
 }

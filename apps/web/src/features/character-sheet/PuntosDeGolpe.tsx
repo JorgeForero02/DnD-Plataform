@@ -3,7 +3,7 @@ import type { HpState } from "./api";
 import { useChangeHp } from "./hooks";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
-import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA } from "./Vitela";
+import { PROSA_DE_HOJA } from "./Tarjeta";
 
 // Tarea 2A.10 — "PG: el caso normal es un delta (recibo 5, me curo 3), no escribir un número".
 // `POST .../hp` (2A.7) aplica el delta en el servidor; los PG temporales van aparte y nunca se
@@ -37,9 +37,8 @@ export function PuntosDeGolpe({
   };
 
   return (
-    <div className={CAJA_DE_VITELA}>
-      <p className={ROTULO_DE_CASILLA}>Puntos de golpe</p>
-      <p className="mt-1 font-data text-chrome-xl leading-none text-text">
+    <div>
+      <p className="font-data text-chrome-xl leading-none text-text">
         {hp.current ?? "—"} / {hp.max ?? "—"}
         {hp.temp > 0 && (
           <span className="ml-s2 font-chrome text-chrome-sm text-accent-text">
@@ -48,15 +47,12 @@ export function PuntosDeGolpe({
         )}
       </p>
       {hp.exceedsMax && (
-        <p
-          role="alert"
-          className="mt-1 font-world text-[length:var(--text-world-sm)] text-warning-text"
-        >
+        <p role="alert" className="mt-1 font-chrome text-chrome-xs text-warning-text">
           Los PG guardados superan el máximo: se muestran recortados a {hp.current}.
         </p>
       )}
       {puedeEditar && (
-        <div className="mt-s3 flex items-center gap-s2">
+        <div className="mt-s3 flex flex-wrap items-center gap-s2">
           <label className="sr-only" htmlFor="delta-pg">
             Cambio de puntos de golpe
           </label>
@@ -78,7 +74,7 @@ export function PuntosDeGolpe({
         </div>
       )}
       {cambiarPg.isError && (
-        <p role="alert" className={`mt-1 ${PROSA_DE_VITELA} text-danger-text`}>
+        <p role="alert" className={`mt-1 ${PROSA_DE_HOJA} text-danger-text`}>
           {(cambiarPg.error as Error).message}
         </p>
       )}

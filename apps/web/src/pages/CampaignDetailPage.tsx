@@ -23,7 +23,7 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Tabs, type TabItem } from "../ui/Tabs";
 import { PanelDeReglas } from "../features/rules/PanelDeReglas";
-import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
+import { AppShell, AppHeader, PageHeader, Breadcrumbs } from "../ui/AppShell";
 import { EmptyState } from "../ui/Collection";
 import { CampaignOverview } from "../features/campaigns/CampaignOverview";
 import { useAllEntities } from "../features/entities/hooks";
@@ -36,7 +36,13 @@ import { PLANTILLA_POR_TIPO } from "../features/entities/plantillas";
 import { CabeceraDeSeccion } from "../features/entities/CabeceraDeSeccion";
 import { FilaDeEntidad } from "../features/entities/FilaDeEntidad";
 import { IconoDeTipo } from "../features/entities/iconos";
-import { IconoSesiones, IconoPersonajes } from "../features/campaigns/iconosDeSeccion";
+import {
+  IconoSesiones,
+  IconoPersonajes,
+  IconoResumen,
+  IconoReglas,
+  IconoAjustes,
+} from "../features/campaigns/iconosDeSeccion";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
@@ -122,8 +128,16 @@ const VACIO_POR_TIPO: Record<EntityType, { titulo: string; texto: string }> = {
 // vertical suelto a la izquierda de cada fila, que es exactamente lo que el autor fotografió.
 // Un <button> es `inline-block` por defecto y nunca tuvo el problema, así que el cambio de
 // etiqueta lo introdujo en silencio.
+// Maqueta 2026-09-03: sesiones y personajes se leen como el mundo. Eran tarjetas sueltas con
+// borde propio y un hueco entre medias, en la misma pantalla donde las siete listas del mundo
+// ya iban dentro de un solo marco con filetes: la misma pantalla enseñaba dos listas distintas
+// según la pestaña. Ahora las cuatro son la misma lista.
 const ROW_BUTTON_CLASS =
-  "block w-full rounded-radius-sm border border-muted bg-surface p-3 text-left font-chrome text-chrome-sm text-text hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "block w-full px-s4 py-s3 text-left font-chrome text-chrome-sm text-text hover:bg-bg focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent";
+
+/** El marco común de las listas: un rectángulo con filetes entre las filas. */
+const LIST_FRAME_CLASS =
+  "divide-y divide-muted overflow-hidden rounded-radius-sm border border-muted bg-surface";
 
 function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType }) {
   const { data, isLoading, isError, error } = useEntities(campaignId, type);
@@ -163,7 +177,6 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
         grupo={GRUPO_MUNDO}
         titulo={ROTULO_PLURAL[type]}
         paraQue={plantilla.paraQue}
-        icono={<IconoDeTipo type={type} />}
         accion={
           /* **El mundo lo escribe el DM.** Crear exigía solo ser miembro y por eso este botón
              no estaba cerrado; el propio DM lo señaló probando con un jugador dentro. El
@@ -274,7 +287,6 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
         grupo={GRUPO_MESA}
         titulo="Sesiones"
         paraQue="Cuándo os sentáis a jugar y qué pasó la última vez. La fecha sirve para que nadie pregunte; las notas, para que nadie lo olvide."
-        icono={<IconoSesiones />}
         accion={
           <Button
             variant="primary"
@@ -302,42 +314,46 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
           pasó se escriben después, en la misma ficha.
         </EmptyState>
       )}
-      <ul className="space-y-2">
-        {data?.map((s) => (
-          <li key={s.id}>
-            {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — the fecha and notas a
+      {data && data.length > 0 && (
+        <ul className={LIST_FRAME_CLASS}>
+          {data.map((s) => (
+            <li key={s.id}>
+              {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — the fecha and notas a
                 player can already see via canView were unreachable while the row itself was
                 disabled. */}
-            <button onClick={() => setEditing(s)} title={reason} className={ROW_BUTTON_CLASS}>
-              <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
-                <span className="font-title text-chrome-md text-text">{s.title}</span>
-                <span className="flex-1" />
-                {/* A session with no date is a session nobody can plan around, so the row says
-                    so instead of leaving the space blank and letting you wonder. */}
-                <span className="font-data text-chrome-xs text-copper-text">
-                  {s.scheduledAt
-                    ? new Date(s.scheduledAt).toLocaleDateString("es-ES", {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "sin fecha"}
+              <button onClick={() => setEditing(s)} title={reason} className={ROW_BUTTON_CLASS}>
+                <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
+                  <span className="font-chrome text-chrome-md font-semibold text-text">
+                    {s.title}
+                  </span>
+                  <span className="flex-1" />
+                  {/* A session with no date is a session nobody can plan around, so the row
+                      says so instead of leaving the space blank and letting you wonder. */}
+                  <span className="font-data text-chrome-xs text-copper-text">
+                    {s.scheduledAt
+                      ? new Date(s.scheduledAt).toLocaleDateString("es-ES", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "sin fecha"}
+                  </span>
                 </span>
-              </span>
-              <span className="mt-s2 block">
-                <Badge visibility={s.visibility} />
-              </span>
-            </button>
-            {/* Los controles van FUERA del botón de la fila: un botón dentro de otro botón no es
-                HTML válido y el clic se lo comería el de fuera. */}
-            <div className="mt-1 flex flex-wrap items-center gap-s2 px-s3">
-              <ControlesDeSesion campaignId={campaignId} session={s} puedeGestionar={canManage} />
-            </div>
-          </li>
-        ))}
-      </ul>
+                <span className="mt-s2 block">
+                  <Badge visibility={s.visibility} />
+                </span>
+              </button>
+              {/* Los controles van FUERA del botón de la fila: un botón dentro de otro botón no
+                  es HTML válido y el clic se lo comería el de fuera. */}
+              <div className="flex flex-wrap items-center gap-s2 px-s4 pb-s3">
+                <ControlesDeSesion campaignId={campaignId} session={s} puedeGestionar={canManage} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
       {creating && <SessionEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
       {editing && (
         <SessionEditor
@@ -374,7 +390,6 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
         grupo={GRUPO_MESA}
         titulo="Personajes"
         paraQue="Quién se sienta a esta mesa. Cada jugador lleva el suyo, y el DM puede crearlos también."
-        icono={<IconoPersonajes />}
         accion={
           <Button variant="primary" onClick={() => setCreating(true)}>
             Nuevo personaje
@@ -393,58 +408,64 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
           bastan para empezar.
         </EmptyState>
       )}
-      <ul className="space-y-2">
-        {data?.map((c) => {
-          // Editing is DM-or-owner (characters.service.ts:requireEditable).
-          const canEdit = !roleUnresolved && (isDM || c.ownerId === userId);
-          const reason = roleUnresolved
-            ? CHECKING_PERMISSIONS
-            : canEdit
-              ? undefined
-              : "Solo el dueño o el DM puede editar este personaje.";
-          return (
-            <li key={c.id}>
-              {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — see EntityTab above. */}
-              {/* Reseño 2026-09-02 — igual que las fichas del mundo: la fila lleva a la hoja
-                  del personaje, no a un formulario. */}
-              <Link
-                to={`/campaigns/${campaignId}/personajes/${c.id}`}
-                title={reason}
-                className={ROW_BUTTON_CLASS}
-              >
-                <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
-                  <span className="font-title text-chrome-md text-text">{c.name}</span>
-                  {/* Reseño 2026-09-02 — a character row that says only a name and a level is
-                      a row you have to open to recognise. Race and class are what people
-                      actually call each other by at the table. */}
-                  {descriptorDePersonaje(c) && (
-                    <span className="font-world text-chrome-base text-muted">
-                      {descriptorDePersonaje(c)}
+      {data && data.length > 0 && (
+        <ul className={LIST_FRAME_CLASS}>
+          {data.map((c) => {
+            // Editing is DM-or-owner (characters.service.ts:requireEditable).
+            const canEdit = !roleUnresolved && (isDM || c.ownerId === userId);
+            const reason = roleUnresolved
+              ? CHECKING_PERMISSIONS
+              : canEdit
+                ? undefined
+                : "Solo el dueño o el DM puede editar este personaje.";
+            return (
+              <li key={c.id}>
+                {/* Arreglo 1 (1.15-fix), Crítico: the row always opens — see EntityTab above. */}
+                {/* Reseño 2026-09-02 — igual que las fichas del mundo: la fila lleva a la hoja
+                    del personaje, no a un formulario. */}
+                <Link
+                  to={`/campaigns/${campaignId}/personajes/${c.id}`}
+                  title={reason}
+                  className={ROW_BUTTON_CLASS}
+                >
+                  <span className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
+                    <span className="font-chrome text-chrome-md font-semibold text-text">
+                      {c.name}
                     </span>
-                  )}
-                  <span className="flex-1" />
-                  <span className="font-data text-chrome-xs text-copper-text">Nivel {c.level}</span>
-                </span>
-                {/* Fix round 1 (post-1.18b review), Important 9: the identical construct one tab
+                    {/* Reseño 2026-09-02 — a character row that says only a name and a level
+                        is a row you have to open to recognise. Race and class are what people
+                        actually call each other by at the table. */}
+                    {descriptorDePersonaje(c) && (
+                      <span className="font-world text-chrome-base text-muted">
+                        {descriptorDePersonaje(c)}
+                      </span>
+                    )}
+                    <span className="flex-1" />
+                    <span className="font-data text-chrome-xs text-copper-text">
+                      Nivel {c.level}
+                    </span>
+                  </span>
+                  {/* Fix round 1 (post-1.18b review), Important 9: the identical construct one tab
                     over (EntityTab above) was fixed and this one — same shape, a muted reason
                     right after a muted "Nivel N" chip — was left behind, which is verbatim the
                     failure the brief describes: one sentence reading as two different things in
                     two tabs of the same screen. Same treatment, same guard (Important 8): muted
                     while still checking, warning once it's a real "you can't edit this". */}
-                {reason && (
-                  <span
-                    className={`ml-2 text-chrome-xs ${
-                      reason === CHECKING_PERMISSIONS ? "text-muted" : "text-warning-text"
-                    }`}
-                  >
-                    {reason}
-                  </span>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                  {reason && (
+                    <span
+                      className={`ml-2 text-chrome-xs ${
+                        reason === CHECKING_PERMISSIONS ? "text-muted" : "text-warning-text"
+                      }`}
+                    >
+                      {reason}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {creating && <CharacterEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
     </div>
   );
@@ -495,6 +516,7 @@ export function CampaignDetailPage() {
         id: "overview",
         label: t.label,
         group: t.group,
+        icon: <IconoResumen />,
         content: <CampaignOverview campaignId={id} />,
       };
     }
@@ -503,6 +525,7 @@ export function CampaignDetailPage() {
         id: "rules",
         label: t.label,
         group: t.group,
+        icon: <IconoReglas />,
         content: <PanelDeReglas campaignId={id} />,
       };
     }
@@ -511,6 +534,7 @@ export function CampaignDetailPage() {
         id: "settings",
         label: t.label,
         group: t.group,
+        icon: <IconoAjustes />,
         content: (
           <div className="space-y-s4">
             {/* CampaignSettings fetches its own campaign (1.17d) and mounts unconditionally,
@@ -581,12 +605,20 @@ export function CampaignDetailPage() {
 
   return (
     <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
-      <PageHeader
-        title={isLoading ? "Cargando…" : (campaign?.name ?? "")}
-        // Only one crumb: the campaign's own name is the <h1> directly below, and a
-        // breadcrumb whose last item repeats the heading under it is noise, not orientation.
-        crumbs={[{ label: "Mis campañas", to: "/" }]}
-      />
+      {/* **Maqueta 2026-09-03: el nombre de la campaña es el marco, no el titular.** Ocupaba
+          una banda de titular a 30 px con su filete de cobre, y debajo cada sección volvía a
+          poner su propio título: dos titulares apilados en cada pantalla, y la mitad de la
+          altura útil gastada antes de que empezara el contenido. En la maqueta el nombre vive
+          arriba, junto a la migaja, y lo grande de la pantalla es la SECCIÓN que estás
+          mirando. Sigue siendo un <h1> —es el nombre del documento, y media docena de
+          recorridos de navegador lo buscan como encabezado— pero pesa lo que pesa un marco. */}
+      <header className="mb-s4">
+        <Breadcrumbs items={[{ label: "Mis campañas", to: "/" }]} />
+        <h1 className="mt-1 font-title text-chrome-xl leading-tight text-text">
+          {isLoading ? "Cargando…" : (campaign?.name ?? "")}
+        </h1>
+        <div className="mt-s3 h-px w-full bg-copper opacity-30" />
+      </header>
       {/* layout="sidebar": the same WAI-ARIA tablist, standing up. Ten sections in a flat
           strip said everything here was the same kind of thing (audit B4); a grouped column
           says which of them is the world and which is the table. */}

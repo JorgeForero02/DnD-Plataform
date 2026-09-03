@@ -457,7 +457,7 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
     }
     // Y cada una se puede tirar desde su fila: es la tabla de la maqueta, con nuestro dado.
     expect(
-      within(tabla).getByRole("button", { name: "Tirar Ataque cuerpo a cuerpo" }),
+      within(tabla).getByRole("button", { name: "Tirada de Ataque cuerpo a cuerpo" }),
     ).toBeInTheDocument();
     // La CD de conjuro acompaña a la tabla en vez de ser una casilla suelta más.
     expect(within(seccion).getByText(/CD de salvación de conjuro 13/)).toBeInTheDocument();
@@ -497,9 +497,14 @@ describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la 
     // La maqueta decía «cualquier número»; son cinco, y salen de `OVERRIDABLE_KEYS`.
     expect(aviso.textContent).toMatch(/5 valores derivados/);
     expect(aviso.textContent).toMatch(/clase de armadura/);
-    // La maqueta decía «tienes que escribir el motivo» y «aparece en la traza». Ni una ni otra.
-    expect(aviso.textContent).toMatch(/El motivo es opcional y no va a la traza/);
-    expect(aviso.textContent).toMatch(/registro de la partida/);
+    // **El aviso es UNA línea desde la adopción de la maqueta**, así que las otras dos
+    // correcciones —«tienes que escribir el motivo» y «aparece en la traza», falsas las dos— se
+    // comprueban donde ahora viven: en la tarjeta de anulaciones, que es donde alguien está a
+    // punto de hacer una. Se siguen exigiendo; lo que no se puede es dejar de decirlas.
+    expect(aviso.textContent).not.toMatch(/registro de la partida/);
+    const anulaciones = screen.getByRole("region", { name: "anulaciones del DM" });
+    expect(anulaciones.textContent).toMatch(/El motivo es opcional y no va a la traza/);
+    expect(anulaciones.textContent).toMatch(/registro de la partida/);
   });
 
   it("un jugador no ve ese aviso: es lo único que distingue las dos vistas", async () => {

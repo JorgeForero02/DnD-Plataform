@@ -186,6 +186,41 @@ describe("CampaignOverview — el tablero de la campaña", () => {
     expect(screen.getByRole("link", { name: /Misiones/ })).toHaveTextContent("0");
   });
 
+  // **Maqueta 2026-09-03: la tarjeta de la última sesión tiene salida.** Enseñaba una nota y
+  // dejaba al lector dentro, sin decir dónde estaban las demás. El enlace va por el mismo
+  // `?seccion=` que el carril y los accesos rápidos, así que es enlazable y sobrevive a una
+  // recarga; y no aparece cuando no hay ninguna sesión jugada, porque un enlace a una lista
+  // vacía es una promesa que la pantalla de al lado incumple.
+  it("la tarjeta de la última sesión lleva a la lista de sesiones, por ?seccion=", async () => {
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([
+      {
+        ...SESION_BASE,
+        id: "s1",
+        title: "El humo del puerto",
+        scheduledAt: "2020-03-01T20:00:00.000Z",
+        notes: "Kellan mintió sobre el registro.",
+      },
+    ]);
+    renderOverview();
+
+    const salida = await screen.findByRole("link", { name: "Ver todas las sesiones" });
+    expect(salida).toHaveAttribute("href", "/campaigns/c1?seccion=sessions");
+  });
+
+  it("sin sesiones jugadas no hay enlace a la lista: no se promete lo que no hay", async () => {
+    renderOverview();
+
+    expect(await screen.findByText(/Todavía no habéis jugado ninguna/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ver todas las sesiones" })).not.toBeInTheDocument();
+  });
+
+  it("las bandas se rotulan a la izquierda, y el rótulo es un encabezado de verdad", async () => {
+    renderOverview();
+
+    expect(await screen.findByRole("heading", { name: "Accesos rápidos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lo último del mundo" })).toBeInTheDocument();
+  });
+
   it("las siete secciones del mundo tienen su baldosa, y ninguna enseña un valor de enumeración", async () => {
     renderOverview();
 

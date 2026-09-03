@@ -24,19 +24,20 @@ export function Toolbar({
   action?: ReactNode;
   count?: ReactNode;
 }) {
+  // Maqueta 2026-09-03: la barra deja de ser una caja. Era un panel con su borde y su fondo
+  // encima de otra caja con borde y fondo —la lista—, así que dos rectángulos idénticos
+  // competían por ser el marco. En la maqueta el buscador es un campo ancho y los filtros son
+  // fichas a su derecha, en la misma línea: se lee como un instrumento, no como una sección.
   return (
-    <div className="mb-s4 rounded-radius-sm border border-muted bg-surface p-s3">
-      <div className="flex flex-wrap items-center gap-s3">
-        {search && <div className="min-w-[14rem] max-w-sm flex-1">{search}</div>}
-        {count && (
-          <span className="font-data text-chrome-xs text-muted" data-testid="toolbar-count">
-            {count}
-          </span>
-        )}
-        <div className="flex-1" />
-        {action}
-      </div>
-      {filters && <div className="mt-s3 flex flex-wrap items-center gap-s2">{filters}</div>}
+    <div className="mb-s4 flex flex-wrap items-center gap-s3">
+      {search && <div className="min-w-[16rem] flex-1">{search}</div>}
+      {filters && <div className="flex flex-wrap items-center gap-s2">{filters}</div>}
+      {count && (
+        <span className="font-data text-chrome-xs text-muted" data-testid="toolbar-count">
+          {count}
+        </span>
+      )}
+      {action}
     </div>
   );
 }

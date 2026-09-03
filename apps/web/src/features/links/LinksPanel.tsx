@@ -183,7 +183,7 @@ export function LinksPanel({
     const lectura = entra ? lecturaEntrante(l.label) : lecturaSaliente(l.label);
     return (
       <li key={l.id}>
-        <article className="rounded-radius-sm border border-muted bg-surface px-s3 py-s2">
+        <article className="rounded-radius-sm border border-muted bg-surface p-s3 transition-colors hover:border-accent focus-within:border-accent">
           <p className="flex items-start gap-1.5 font-chrome text-chrome-xs leading-snug">
             <span className="mt-[0.15em] text-copper-text">
               {entra ? <FlechaEntra /> : <FlechaSale />}
@@ -199,7 +199,7 @@ export function LinksPanel({
           <p className="mt-0.5">
             <Link
               to={`/campaigns/${campaignId}/entidades/${l.to.id}`}
-              className="inline-flex items-baseline gap-1 font-world text-world-base leading-snug text-accent-text underline-offset-2 hover:underline"
+              className="inline-flex items-baseline gap-1 font-world text-world-lg leading-snug text-accent-text underline-offset-2 hover:underline"
             >
               {l.to.name}
               <Punta />
@@ -277,8 +277,20 @@ export function LinksPanel({
           <p className="text-chrome-xs text-muted">Los enlaces entre fichas los pone el DM.</p>
         )}
         {puedeEnlazar && (
-          <form onSubmit={onAdd} className="space-y-2 border-t border-muted pt-s3">
-            <div className="flex flex-wrap items-center gap-2">
+          <form
+            onSubmit={onAdd}
+            className="space-y-2 border-t border-[color:var(--copper-rule)] pt-s3"
+          >
+            {/* Reseño 2026-09-03 — **el formulario deja de mandar en el panel.** En la maqueta
+                el vecindario es la lista, y añadir es una acción callada al pie; aquí ocupaba la
+                mitad del panel con tres controles del mismo tamaño que las tarjetas. Sigue
+                abierto y no detrás de un desplegable —esconder el único camino para enlazar sería
+                cambiar la pantalla por una peor—, pero ahora va bajo un filete de cobre, con su
+                rótulo, y los controles apilados en vez de peleándose por el ancho. */}
+            <h4 className="font-chrome text-chrome-xs uppercase tracking-[0.16em] text-muted">
+              Añadir un enlace
+            </h4>
+            <div className="space-y-2">
               <label htmlFor="link-target" className="sr-only">
                 Entidad destino
               </label>

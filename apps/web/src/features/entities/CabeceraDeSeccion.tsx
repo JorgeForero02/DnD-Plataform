@@ -19,37 +19,41 @@ import type { ReactNode } from "react";
 // filtros: crear no es filtrar. Quien la pasa decide si se ofrece — en las secciones del mundo
 // solo al DM, porque el servidor exige DM (`entities.service.ts`, `requireDM`) y ofrecer un
 // botón que va a dar 403 es mentir.
+// **Maqueta 2026-09-03, segunda pasada.** Se quitó el icono del título. Lo tenía a su
+// izquierda, y en la maqueta el título va solo: el dibujo del tipo ya está dos veces en
+// pantalla —en la entrada del carril y en la canaleta de cada fila—, y ponerlo una tercera vez
+// a tamaño de titular hacía competir un adorno con el nombre de la sección. La prop se ha
+// quitado entera en vez de dejarla sin usar.
 export function CabeceraDeSeccion({
   grupo,
   titulo,
   paraQue,
-  icono,
   accion,
 }: {
   /** El grupo de la barra lateral al que pertenece la sección: «El mundo», «La mesa». */
   grupo: string;
   titulo: string;
   paraQue: string;
-  icono?: ReactNode;
   accion?: ReactNode;
 }) {
   return (
-    <header className="mb-s4">
+    <header className="mb-s5">
       <p className="font-data text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
         {grupo} · {titulo}
       </p>
-      <div className="mt-1 flex flex-wrap items-start gap-s3">
-        <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-s2 font-title text-chrome-xl text-text">
-            {icono && <span className="text-copper-text">{icono}</span>}
-            {titulo}
-          </h2>
-          <p className="mt-1 max-w-[70ch] font-world text-world-base leading-snug text-muted">
-            {paraQue}
-          </p>
+      <div className="mt-s2 flex flex-wrap items-start justify-between gap-s3">
+        <div className="min-w-0">
+          {/* El título de la sección es lo grande de la pantalla, como en la maqueta: el nombre
+              de la campaña vive arriba, en la migaja, y no vuelve a repetirse aquí. */}
+          <h2 className="font-title text-chrome-2xl leading-tight text-text">{titulo}</h2>
         </div>
         {accion && <div className="shrink-0">{accion}</div>}
       </div>
+      {/* La frase de `plantillas.ts`, en la voz de la interfaz y no en la del mundo: explica
+          para qué sirve la sección, que es instrumento, no ambientación. */}
+      <p className="mt-s2 max-w-[70ch] font-chrome text-chrome-sm leading-snug text-muted">
+        {paraQue}
+      </p>
     </header>
   );
 }

@@ -82,10 +82,12 @@ datos que la pantalla querría y el servidor todavía no da.
   para que la pestaña lo consuma sin duplicar nada.
 - **P3 · La vista de jugador en el móvil no se hizo.** Cruza `character-sheet`, `rolls` y
   `sessions`, y con tres agentes trabajando ahí a la vez no se tocó a medias.
-- **P2 · `BordeRasgado` debería subir a `ui/` y `Panel tone="vellum"` usarlo.** Hoy hay **dos
-  hojas rasgadas distintas**: la buena en `apps/web/src/features/character-sheet/Vitela.tsx` y la vieja de sierra en
-  `ui/Panel.tsx`, que además recorta en **porcentajes de caja**, así que el desgarro se deforma
-  con la altura — invisible en una ficha larga, gigante en un cuerpo de tres líneas.
+- **P2 · El desgarro de `ui/Panel.tsx` se deforma con la altura.** Recorta en **porcentajes de
+  caja**, así que el mordisco es invisible en una ficha larga y gigante en un cuerpo de tres
+  líneas. La silueta buena —cúbicas irregulares, dibujada como máscara y no como recorte del
+  contenedor— existió en un `Vitela.tsx` de la hoja de personaje y **se borró el 2026-09-03** al pasar la
+  hoja a cromado; si se rehace, está en el historial de ese fichero. La vitela sigue viva donde
+  toca: la historia del personaje y las fichas del mundo.
 - **P3 · El tema no tiene tercer estado «Sistema».** Hoy el interruptor alterna dos. Añadirlo
   exige tocar `ui/theme.ts`, y hay una copia sincronizada a mano de su clave en `index.html`.
 - **P3 · `Markdown.tsx` no separa sus párrafos.** Su `space-y-2` cae sobre el `Panel`, cuyo único

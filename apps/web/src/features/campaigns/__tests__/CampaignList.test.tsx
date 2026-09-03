@@ -46,4 +46,66 @@ describe("CampaignList", () => {
     renderList();
     expect(await screen.findByText("Todavía no hay ninguna campaña")).toBeInTheDocument();
   });
+
+  // **La tarjeta de la maqueta (2026-09-03).** Lo que se comprueba aquí es exactamente lo que
+  // la tarjeta anterior NO decía: tu papel en esa mesa, cuánta gente hay, y cuánto hace que
+  // existe — en huecos, no en una fecha absoluta que obliga a restar.
+  it("cada tarjeta dice tu papel, cuánta gente hay y cuánto hace, en huecos", async () => {
+    const anteayer = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    vi.spyOn(api, "fetchCampaigns").mockResolvedValue([
+      {
+        id: "c1",
+        name: "Las Mareas de Sarnath",
+        description: null,
+        ownerId: "u1",
+        createdAt: anteayer,
+        members: [{ role: "DM" }],
+        _count: { members: 4 },
+      },
+      {
+        id: "c2",
+        name: "Los Reinos de Ceniza",
+        description: null,
+        ownerId: "u9",
+        createdAt: anteayer,
+        members: [{ role: "PLAYER" }],
+        _count: { members: 1 },
+      },
+    ]);
+    renderList();
+
+    // Ningún valor de enumeración llega a la pantalla: "DM" y "PLAYER" se dicen en español.
+    expect(await screen.findByText("Diriges")).toBeInTheDocument();
+    expect(screen.getByText("Juegas")).toBeInTheDocument();
+    expect(screen.queryByText("DM")).not.toBeInTheDocument();
+    expect(screen.queryByText("PLAYER")).not.toBeInTheDocument();
+
+    // Plural y singular, escritos y no generados.
+    expect(screen.getByText("4 miembros")).toBeInTheDocument();
+    expect(screen.getByText("1 miembro")).toBeInTheDocument();
+
+    // El hueco, no la fecha. Dos días atrás se dice "anteayer" en español.
+    expect(screen.getAllByText("anteayer")).toHaveLength(2);
+  });
+
+  // El "+" era el carácter de ancho completo, que es un glifo de fuente usado como icono —
+  // justo lo que la regla de interfaz prohíbe. Ahora es un dibujo.
+  it("el botón que crea lleva un dibujo, no un glifo de fuente", async () => {
+    vi.spyOn(api, "fetchCampaigns").mockResolvedValue([
+      { id: "c1", name: "Una campaña", description: null, ownerId: "u1", createdAt: "2026-01-01" },
+    ]);
+    const { container } = render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MemoryRouter>
+          <CampaignList onCreate={() => {}} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const boton = await screen.findByRole("button", { name: "Nueva campaña" });
+    expect(boton.querySelector("svg")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("\uFF0B");
+    expect(container.textContent).not.toContain("+");
+  });
 });

@@ -62,11 +62,14 @@ export function Logo({ size = "sm", className = "" }: { size?: "sm" | "lg"; clas
           grande ? "text-chrome-xl tracking-[0.06em]" : "text-chrome-md tracking-[0.04em]",
         ].join(" ")}
       >
-        Plataforma&nbsp;
-        {/* The ampersand in an italic serif is the one flourish the wordmark gets — it is the
-            single most characterful glyph in any typeface, and here it is doing the work a
-            logotype normally needs an illustration for. */}
-        <span className="italic text-copper-text">D&amp;D</span>
+        {/* **«Sala de Guerra», elegido por el autor el 2026-09-03.** Decía «Plataforma D&D», que
+            es una categoría y no un nombre: describe qué es la cosa, no cuál es. La identidad se
+            llama «sala de guerra» desde el reseño —pizarra naval y cobre, mapas sobre una mesa
+            larga— y era el único sitio donde ese nombre no había llegado. */}
+        Sala de&nbsp;
+        {/* La cursiva en serif es el único adorno del logotipo: hace el trabajo que normalmente
+            pide una ilustración. */}
+        <span className="italic text-copper-text">Guerra</span>
       </span>
     </span>
   );

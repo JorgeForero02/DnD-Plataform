@@ -2,7 +2,7 @@ import type { DeathState, DerivedValue } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { useResources, useRollDeathSave, useSpendResource, useRestoreResource } from "./hooks";
 import { formulaDeUnaLinea } from "./formula";
-import { CAJA_DE_VITELA, PROSA_DE_VITELA, ROTULO_DE_CASILLA } from "./Vitela";
+import { CAJA_DE_HOJA, PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 
 // **La fila de tarjetas pequeñas de la maqueta de Figma**, adoptada casi tal cual: percepción
 // pasiva, dados de golpe y salvaciones de muerte, del mismo tamaño y en la misma fila.
@@ -70,25 +70,25 @@ export function SalvacionesDeMuerte({
   const tirar = useRollDeathSave(campaignId, characterId);
 
   return (
-    <div className={CAJA_DE_VITELA} data-tarjeta="salvaciones-de-muerte">
+    <div className={CAJA_DE_HOJA} data-tarjeta="salvaciones-de-muerte">
       <p className={ROTULO_DE_CASILLA}>Salvaciones de muerte</p>
       <dl className="mt-s2 flex flex-col gap-1">
         <div className="flex items-center gap-s2">
-          <dt className="w-16 font-world text-[length:var(--text-world-sm)] text-text">Éxitos</dt>
+          <dt className="w-16 font-chrome text-chrome-sm text-text">Éxitos</dt>
           <dd className="flex items-center gap-s2">
             <Casillas hechas={deathSaves.successes} tono="exito" />
             <span className="font-data text-chrome-xs text-muted">{deathSaves.successes} de 3</span>
           </dd>
         </div>
         <div className="flex items-center gap-s2">
-          <dt className="w-16 font-world text-[length:var(--text-world-sm)] text-text">Fallos</dt>
+          <dt className="w-16 font-chrome text-chrome-sm text-text">Fallos</dt>
           <dd className="flex items-center gap-s2">
             <Casillas hechas={deathSaves.failures} tono="fallo" />
             <span className="font-data text-chrome-xs text-muted">{deathSaves.failures} de 3</span>
           </dd>
         </div>
       </dl>
-      <p className={`mt-1 ${PROSA_DE_VITELA}`}>{ESTADO_MUERTE[deathSaves.status]}</p>
+      <p className={`mt-1 ${PROSA_DE_HOJA}`}>{ESTADO_MUERTE[deathSaves.status]}</p>
       {puedeEditar && deathSaves.status === "dying" && (
         <Button
           type="button"
@@ -130,7 +130,7 @@ export function DadosDeGolpe({
   const dados = (recursos ?? []).find((r) => r.key.startsWith(PREFIJO_DADOS_DE_GOLPE));
 
   return (
-    <div className={CAJA_DE_VITELA} data-tarjeta="dados-de-golpe">
+    <div className={CAJA_DE_HOJA} data-tarjeta="dados-de-golpe">
       <p className={ROTULO_DE_CASILLA}>{dados ? dados.label : "Dados de golpe"}</p>
       {dados ? (
         <>
@@ -138,7 +138,7 @@ export function DadosDeGolpe({
             {dados.current}
             <span className="ml-1 font-data text-chrome-sm text-muted">/ {dados.max ?? "—"}</span>
           </p>
-          <p className={`mt-1 ${PROSA_DE_VITELA}`}>
+          <p className={`mt-1 ${PROSA_DE_HOJA}`}>
             Se gastan en un descanso corto para curarse; el largo devuelve la mitad.
           </p>
           {puedeEditar && (
@@ -167,7 +167,7 @@ export function DadosDeGolpe({
           )}
         </>
       ) : (
-        <p className={`mt-1 ${PROSA_DE_VITELA}`}>
+        <p className={`mt-1 ${PROSA_DE_HOJA}`}>
           Se siembran al completar raza y clase: la hoja necesita saber qué dado usa la clase.
         </p>
       )}
@@ -181,10 +181,10 @@ export function DadosDeGolpe({
  */
 export function PercepcionPasiva({ valor }: { valor: DerivedValue }) {
   return (
-    <div className={CAJA_DE_VITELA} data-tarjeta="percepcion-pasiva">
+    <div className={CAJA_DE_HOJA} data-tarjeta="percepcion-pasiva">
       <p className={ROTULO_DE_CASILLA}>Percepción pasiva</p>
       <p className="mt-1 font-data text-chrome-2xl leading-none text-text">{valor.total}</p>
-      <p className={`mt-1 ${PROSA_DE_VITELA}`}>{formulaDeUnaLinea(valor)}</p>
+      <p className={`mt-1 ${PROSA_DE_HOJA}`}>{formulaDeUnaLinea(valor)}</p>
     </div>
   );
 }

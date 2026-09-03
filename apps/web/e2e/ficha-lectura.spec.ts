@@ -146,6 +146,27 @@ test("la hoja de lectura: capitular, párrafos separados y medida corta", async 
   });
   expect(anchoTexto / anchoEme).toBeLessThanOrEqual(66);
 
+  // Reseño 2026-09-03 — **la medida es del párrafo, no del papel.** Antes la hoja heredaba el
+  // `max-w-[66ch]` del `Panel` y se quedaba en 537 px dentro de una columna de 1014: un recorte
+  // pardo flotando en el vacío. Ahora la hoja llena su columna y el tope de 66 caracteres lo
+  // lleva el renglón — que es de lo que habla la regla tipográfica. Las dos cosas se miden aquí
+  // porque `jsdom` no tiene anchos: la comprobación de arriba ya exige la medida corta; ésta
+  // exige que el papel sea claramente más ancho que ella, o volveríamos al recorte.
+  const hoja = page.locator('[data-tone="vellum"]');
+  const cajaHoja = (await hoja.boundingBox())!;
+  const cajaColumna = (await page.locator("[data-cuerpo-del-mundo]").boundingBox())!;
+  expect(cajaHoja.width).toBeGreaterThan(anchoTexto + 40);
+  expect(cajaHoja.width).toBeGreaterThan(cajaColumna.width - 4);
+
+  const filete = await hoja.evaluate((el) => {
+    const cs = getComputedStyle(el as HTMLElement);
+    return { ancho: parseFloat(cs.borderTopWidth), color: cs.borderTopColor };
+  });
+  expect(filete.ancho).toBeGreaterThan(0);
+  // Cobre, no gris: lo que se lee pertenece al mundo. Si la clase no compilara, Tailwind dejaría
+  // el `#e5e7eb` del preflight — el fallo de las 49 utilidades de opacidad, dicho en un color.
+  expect(filete.color).not.toBe("rgb(229, 231, 235)");
+
   // Alarma de maquetación, la misma que cazó el borde partido: una tarjeta de enlace en línea
   // dibuja su borde a trozos. Tiene que ser de bloque.
   const tarjeta = page.locator("aside article").first();
@@ -218,6 +239,7 @@ for (const tema of ["dark", "light"] as const) {
       ["ficha vecina (el enlace)", tarjeta.getByRole("link"), 4.5, "color"],
       ["Quitar", tarjeta.getByRole("button", { name: "Quitar" }), 4.5, "color"],
       ["borde de la tarjeta", tarjeta, 3, "borderTopColor"],
+      ["filete de cobre de la hoja", page.locator('[data-tone="vellum"]'), 3, "borderTopColor"],
     ];
     for (const [etiqueta, objetivo, umbral, prop] of pares) {
       const ratio = await contraste(objetivo, prop);

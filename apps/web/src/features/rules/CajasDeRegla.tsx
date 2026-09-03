@@ -8,6 +8,7 @@ import {
   CONDICIONES,
   DISPARADORES,
   EFECTOS,
+  GLOSA_DE_GRUPO,
   NOMBRE_PARTE,
   QUE_ES_PARTE,
   QUE_PIDE_CARRIL,
@@ -108,23 +109,26 @@ export function GrupoDePaleta({
   const clases = CLASES_DE_PARTE[parte];
   return (
     <section aria-label={`Piezas de tipo ${NOMBRE_PARTE[parte]}`} className="min-w-0">
+      {/* Reseño 2026-09-03 — el rótulo del grupo, como en la maqueta: la parte, su glosa entre
+          paréntesis y el carril al que va, todo en una línea. Antes cargaba además el párrafo
+          entero de `QUE_ES_PARTE`, que se repetía **tres veces por pantalla** —aquí, en el
+          carril y dentro de cada caja colocada— y levantaba la paleta lo suficiente como para
+          alejar una pieza de su ranura, que es justo lo que este editor no se puede permitir.
+          La explicación larga se queda donde hace falta: en el carril vacío y en la caja. */}
       <h4
         className={[
-          "flex items-center gap-s2 font-chrome text-chrome-xs uppercase tracking-[0.14em]",
+          "flex flex-wrap items-center gap-x-s2 font-chrome text-chrome-xs uppercase tracking-[0.14em]",
           clases.texto,
         ].join(" ")}
       >
         <IconoDeParte parte={parte} />
         {NOMBRE_PARTE[parte]}
         <span className="font-chrome text-chrome-xs normal-case tracking-normal text-muted">
-          → carril «{CARRIL_DE_PARTE[parte]}»
+          ({GLOSA_DE_GRUPO[parte]}) → carril «{CARRIL_DE_PARTE[parte]}»
         </span>
       </h4>
-      <p className="mb-s2 mt-1 font-chrome text-chrome-xs leading-snug text-muted">
-        {QUE_ES_PARTE[parte]}
-      </p>
       {tope ? (
-        <p className="mb-s2 font-chrome text-chrome-xs text-warning-text">{tope}</p>
+        <p className="mt-s2 font-chrome text-chrome-xs text-warning-text">{tope}</p>
       ) : (
         // **Dos columnas cuando hay muchas piezas, y el motivo se midió en el navegador.**
         // En una sola columna, los doce disparadores levantan la paleta 390 px y empujan su
@@ -133,7 +137,7 @@ export function GrupoDePaleta({
         // para una persona con un portátil. Capar la altura con un desplazamiento propio
         // habría escondido piezas, y que las 28 se vean a la vez es la premisa del diseño.
         // Compactar no esconde nada.
-        <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+        <ul className="mt-s2 grid grid-cols-1 gap-1 sm:grid-cols-2">
           {claves.map((clave) => (
             <li key={clave}>
               <PiezaDePaleta parte={parte} clave={clave} onColocar={(k) => onColocar(parte, k)} />
@@ -149,6 +153,11 @@ export function GrupoDePaleta({
  * La paleta entera. **Las 28 piezas del vocabulario cerrado, visibles a la vez** y agrupadas
  * por parte, en vez de escondidas en tres desplegables que se parecían entre sí. Que el
  * vocabulario sea cerrado es justo lo que hace esto viable.
+ *
+ * Reseño 2026-09-03 — **es una tarjeta con rótulo, y los tres grupos van apilados dentro.** Así
+ * está en la maqueta, y así deja de competir con los carriles: la paleta es el cajón de las
+ * piezas y ocupa su columna; el tablero, la suya. Antes cada grupo flotaba suelto encima de su
+ * carril, sin nada que dijera dónde acababa uno y empezaba el otro.
  */
 export function PaletaDeCajas({
   topes,
@@ -158,21 +167,29 @@ export function PaletaDeCajas({
   onColocar: (parte: ParteDeRegla, clave: string) => void;
 }) {
   return (
-    <div className="grid gap-s3 sm:grid-cols-3">
-      <GrupoDePaleta
-        parte="SUCESO"
-        claves={DISPARADORES}
-        tope={topes?.SUCESO}
-        onColocar={onColocar}
-      />
-      <GrupoDePaleta
-        parte="ESTADO"
-        claves={CONDICIONES}
-        tope={topes?.ESTADO}
-        onColocar={onColocar}
-      />
-      <GrupoDePaleta parte="ACCION" claves={EFECTOS} tope={topes?.ACCION} onColocar={onColocar} />
-    </div>
+    <section
+      aria-label="Paleta de piezas"
+      className="min-w-0 rounded-radius-sm border border-muted"
+    >
+      <h3 className="border-b border-copper px-s3 py-s2 font-chrome text-chrome-sm font-semibold text-text">
+        Paleta
+      </h3>
+      <div className="space-y-s4 p-s3">
+        <GrupoDePaleta
+          parte="SUCESO"
+          claves={DISPARADORES}
+          tope={topes?.SUCESO}
+          onColocar={onColocar}
+        />
+        <GrupoDePaleta
+          parte="ESTADO"
+          claves={CONDICIONES}
+          tope={topes?.ESTADO}
+          onColocar={onColocar}
+        />
+        <GrupoDePaleta parte="ACCION" claves={EFECTOS} tope={topes?.ACCION} onColocar={onColocar} />
+      </div>
+    </section>
   );
 }
 
@@ -225,32 +242,43 @@ export function CarrilDeCajas({
         const clave = e.dataTransfer.getData(tipo);
         if (clave) onSoltar(clave);
       }}
-      className={[
-        "rounded-radius-sm border-2 p-s3 transition-colors",
-        encima ? `${clases.borde} ${clases.fondo}` : "border-dashed border-muted",
-      ].join(" ")}
+      className="flex h-full min-w-0 flex-col"
     >
-      <h3 className="flex items-baseline gap-s2 font-title text-chrome-md text-text">
+      {/* Reseño 2026-09-03 — rótulo y glosa **apilados**, como en la maqueta: «CUANDO» arriba y
+          «pasa algo (un suceso)» debajo, en tres columnas estrechas donde una sola línea con las
+          dos cosas se partía por donde le daba la gana. El párrafo de `QUE_ES_PARTE` se ha ido de
+          aquí: lo dice ya el carril vacío con más detalle («arrastra aquí el suceso que despierta
+          la regla»), y en cuanto hay una caja dentro, la caja lo repite otra vez. */}
+      <h3 className="font-chrome text-chrome-xs uppercase tracking-[0.16em] text-text">
         {CARRIL_DE_PARTE[parte]}
         <span
-          className={["font-chrome text-chrome-xs lowercase tracking-normal", clases.texto].join(
-            " ",
-          )}
+          className={[
+            "mt-0.5 block font-chrome text-chrome-xs normal-case tracking-normal",
+            clases.texto,
+          ].join(" ")}
         >
           {glosaDeCarril(parte)}
         </span>
       </h3>
-      <p className="mb-s2 mt-1 font-chrome text-chrome-xs leading-snug text-muted">
-        {QUE_ES_PARTE[parte]}
-      </p>
-      {vacio ? (
-        <p className="flex items-start gap-s2 font-chrome text-chrome-xs leading-snug text-muted">
-          <IconoRanura className="mt-0.5" />
-          <span>{QUE_PIDE_CARRIL[parte]}</span>
-        </p>
-      ) : (
-        <ul className="space-y-s3">{children}</ul>
-      )}
+      <div
+        data-ranura
+        className={[
+          // `flex-1` iguala la altura de las tres ranuras: en la maqueta los tres huecos son del
+          // mismo tamaño porque las tres partes valen lo mismo, y una ranura más corta que las
+          // otras se lee como «aquí cabe menos».
+          "mt-s2 flex-1 rounded-radius-sm border-2 p-s3 transition-colors",
+          encima ? `${clases.borde} ${clases.fondo}` : "border-dashed border-muted",
+        ].join(" ")}
+      >
+        {vacio ? (
+          <p className="flex items-start gap-s2 font-chrome text-chrome-xs leading-snug text-muted">
+            <IconoRanura className="mt-0.5" />
+            <span>{QUE_PIDE_CARRIL[parte]}</span>
+          </p>
+        ) : (
+          <ul className="space-y-s3">{children}</ul>
+        )}
+      </div>
     </section>
   );
 }

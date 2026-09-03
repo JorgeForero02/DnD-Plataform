@@ -77,8 +77,7 @@ export function Condiciones({
   const efectoDeLaNueva = efectoCondicion(nueva);
 
   return (
-    <section aria-label="condiciones" className="flex flex-col gap-s2">
-      <p className="font-chrome text-chrome-sm font-semibold text-text">Condiciones activas</p>
+    <div className="flex flex-col gap-s2">
       {!condiciones || condiciones.length === 0 ? (
         <p className="font-chrome text-chrome-sm text-muted">Sin condiciones activas.</p>
       ) : (
@@ -91,10 +90,10 @@ export function Condiciones({
             return (
               <li
                 key={c.key}
-                className="flex items-start justify-between gap-s2 rounded-radius-sm border border-copper px-s2 py-1"
+                className="flex items-start justify-between gap-s2 rounded-radius-sm border border-muted px-s2 py-1"
               >
                 <div className="flex flex-col">
-                  <span className="font-chrome text-chrome-xs text-copper-text">
+                  <span className="font-chrome text-chrome-sm text-text">
                     {nombreCondicion(c.key)}
                     {c.level != null && ` (nivel ${c.level})`}
                   </span>
@@ -167,6 +166,6 @@ export function Condiciones({
           )}
         </div>
       )}
-    </section>
+    </div>
   );
 }

@@ -76,7 +76,15 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
   await registrarse(page);
   await personajeCompleto(page);
 
-  const fila = page.getByText("Salvación de Fuerza", { exact: true }).locator("..");
+  // **La fila es una línea con un dado, y la decisión vive en el panel que abre ese dado**
+  // (2026-09-03: la hoja adopta la maqueta). Dentro de la tarjeta de salvaciones la fila se
+  // llama «Fuerza»; «Salvación de Fuerza» sigue siendo el nombre de lo que se tira, y por eso es
+  // como se llaman el dado, el panel y el botón de tirar.
+  const fila = page
+    .getByRole("region", { name: "salvaciones" })
+    .locator('[data-fila="valor"]')
+    .first();
+  await fila.getByRole("button", { name: "Tirada de Salvación de Fuerza" }).click();
 
   // --- La decisión, antes de tirar: tres estados visibles a la vez, nunca un desplegable. ---
   await expect(fila.getByRole("radio", { name: "Normal" })).toBeChecked();
@@ -84,19 +92,20 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
   await expect(fila.getByRole("radio", { name: "Desventaja" })).toBeVisible();
   await expect(fila.locator("select")).toHaveCount(0);
 
-  // Y cada una lleva su frase: la del estado elegido se lee, y la de las otras dos es la
-  // descripción accesible de su radio.
-  // La frase existe **dos veces a propósito**: como descripción accesible del radio (invisible,
-  // vía `aria-describedby`) y como texto visible del estado elegido. Aquí se mira la visible, que
-  // es la que lee quien está en la mesa.
-  await expect(fila.locator('[data-frase="elegida"]')).toHaveText("Un solo d20.");
+  // Y **cada una lleva su frase al lado, las tres a la vez**. Antes solo se leía la del estado
+  // elegido, porque este control se repetía en las veinticuatro filas de la hoja y tres frases
+  // por fila eran setenta y dos líneas; desde que la decisión aparece una sola vez —aquí, al
+  // pulsar el dado— la regla vinculante se cumple entera y sin peaje.
+  await expect(fila.getByText("Un solo d20.")).toBeVisible();
+  await expect(fila.getByText("Dos d20: se queda el alto.")).toBeVisible();
+  await expect(fila.getByText("Dos d20: se queda el bajo.")).toBeVisible();
 
   // --- Una tirada normal: un dado, y nadie promete que se descarte nada. ---
   await fila.getByRole("button", { name: "Tirar Salvación de Fuerza", exact: true }).click();
   await expect(fila.getByRole("status")).toBeVisible({ timeout: 10_000 });
   await expect(fila.locator("[data-dado]")).toHaveCount(1);
-  // Se mira **el resultado**, no la fila entera: las descripciones accesibles de los radios de
-  // ventaja y desventaja llevan «se queda el alto/bajo» siempre, y buscarlas en toda la fila
+  // Se mira **el resultado**, no la fila entera: las frases de ventaja y desventaja llevan «se
+  // queda el alto/bajo» siempre —ahora además a la vista—, y buscarlas en toda la fila
   // encontraría esas dos aunque la tirada normal no prometa nada.
   await expect(fila.getByRole("status").getByText(/se queda el/)).toHaveCount(0);
   // El desglose está siempre: nunca un número solo.
@@ -104,7 +113,6 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
 
   // --- Con ventaja: dos dados, uno tachado, y el rótulo que dice cuál se queda. ---
   await fila.getByRole("radio", { name: "Ventaja", exact: true }).check();
-  await expect(fila.locator('[data-frase="elegida"]')).toHaveText("Dos d20: se queda el alto.");
   await fila.getByRole("button", { name: "Tirar Salvación de Fuerza", exact: true }).click();
 
   await expect(fila.locator("[data-dado]")).toHaveCount(2, { timeout: 10_000 });
@@ -126,8 +134,10 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
   expect(caja!.width).toBeGreaterThan(0);
   expect(caja!.height).toBeGreaterThan(0);
 
-  // El dado se **dibuja**: SVG, nunca un emoji ni un glifo de fuente.
-  await expect(fila.locator('svg[data-icono="dado"]')).toHaveCount(2);
+  // El dado se **dibuja**: SVG, nunca un emoji ni un glifo de fuente. Se cuenta dentro del
+  // resultado y no en la fila entera, porque desde el rediseño el disparador de la tirada es
+  // **otro** dado dibujado — contar tres aquí y llamarlo «los dos dados» sería medir mal.
+  await expect(fila.getByRole("status").locator('svg[data-icono="dado"]')).toHaveCount(2);
 
   // --- Ninguna enumeración del servidor llega a la pantalla. ---
   const cuerpo = await page.locator("body").innerText();

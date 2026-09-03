@@ -5,7 +5,7 @@ import { useMyRole } from "../campaigns/members";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { NOMBRE_ANULABLE } from "./vocabulario";
-import { PROSA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
+import { PROSA_DE_HOJA, TarjetaDeHoja } from "./Tarjeta";
 
 // Anulaciones manuales del DM sobre valores derivados.
 //
@@ -18,6 +18,14 @@ import { PROSA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
 // **Solo el DM**, y el servidor lo impone (`character-sheet.service.ts`). Aquí no se pinta
 // siquiera mientras el papel no esté resuelto: enseñar un control que va a dar 403 es peor que
 // no enseñarlo, y esconderlo no es control de acceso — el control está en el servidor.
+
+// **Las tres correcciones al texto que prometía la maqueta viven aquí** desde 2026-09-03, que es
+// donde alguien está a punto de anular algo; antes iban en el aviso de la vista de DM, en un
+// párrafo de letra pequeña por encima de todos los números, y ahí no las leía nadie. Siguen
+// diciendo lo que hace el servidor y no lo que la maqueta prometía: no es «cualquier número»
+// (son cinco, `OVERRIDABLE_KEYS`), el motivo **no** es obligatorio (`setOverride` lo guarda solo
+// `if (input.reason)`), y el motivo **no** sale en la traza — la traza se calcula de
+// `character.overrides`, que es un mapa de clave a número sin sitio donde meter una frase.
 
 export function Anulaciones({
   campaignId,
@@ -57,83 +65,85 @@ export function Anulaciones({
   };
 
   return (
-    <section aria-label="anulaciones del DM" className="flex flex-col gap-s2">
-      <RotuloDeSeccion>Anulaciones del DM</RotuloDeSeccion>
-      <p className={`${PROSA_DE_VITELA} max-w-[66ch]`}>
-        Fija un valor derivado a mano cuando el catálogo no lo cubra. Queda en el registro de la
-        partida con el valor anterior al lado, y se ve en la traza del valor anulado.
-      </p>
-
-      {puestas.length === 0 ? (
-        <p className={PROSA_DE_VITELA}>Ninguna anulación puesta.</p>
-      ) : (
-        <ul className="flex flex-wrap gap-s2">
-          {puestas.map(([k, v]) => (
-            <li
-              key={k}
-              className="flex items-center gap-s2 rounded-radius-sm border border-copper px-s2 py-1 font-chrome text-chrome-xs text-copper-text"
-            >
-              <span>
-                {NOMBRE_ANULABLE[k] ?? `Sin traducir: ${k}`}: {v}
-              </span>
-              <button
-                type="button"
-                aria-label={`Quitar la anulación de ${NOMBRE_ANULABLE[k] ?? k}`}
-                onClick={() => void quitar.mutateAsync(k).catch((e) => setError(e.message))}
-                className="underline"
-              >
-                Quitar
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <form onSubmit={onFijar} className="flex flex-wrap items-end gap-s2">
-        <label className="font-chrome text-chrome-xs text-muted">
-          Valor a anular
-          <select
-            aria-label="Valor a anular"
-            value={clave}
-            onChange={(e) => setClave(e.target.value)}
-            className={fieldControlClass}
-          >
-            {OVERRIDABLE_KEYS.map((k) => (
-              <option key={k} value={k}>
-                {NOMBRE_ANULABLE[k] ?? k}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="font-chrome text-chrome-xs text-muted">
-          Nuevo valor
-          <input
-            aria-label="Nuevo valor"
-            type="number"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            className={fieldControlClass}
-          />
-        </label>
-        <label className="font-chrome text-chrome-xs text-muted">
-          Motivo (opcional)
-          <input
-            aria-label="Motivo de la anulación"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            className={fieldControlClass}
-          />
-        </label>
-        <Button type="submit" disabled={valor === "" || fijar.isPending}>
-          Anular
-        </Button>
-      </form>
-
-      {error && (
-        <p role="alert" className={`${PROSA_DE_VITELA} text-danger-text`}>
-          {error}
+    <TarjetaDeHoja titulo="Anulaciones del DM" etiqueta="anulaciones del DM">
+      <div className="flex flex-col gap-s2">
+        <p className={`${PROSA_DE_HOJA} max-w-[66ch]`}>
+          Fija un valor derivado a mano cuando el catálogo no lo cubra. La anulación aparece en la
+          traza del valor con su diferencia. El motivo es opcional y no va a la traza: queda en el
+          registro de la partida, junto al valor anterior.
         </p>
-      )}
-    </section>
+
+        {puestas.length === 0 ? (
+          <p className={PROSA_DE_HOJA}>Ninguna anulación puesta.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-s2">
+            {puestas.map(([k, v]) => (
+              <li
+                key={k}
+                className="flex items-center gap-s2 rounded-radius-sm border border-muted px-s2 py-1 font-chrome text-chrome-xs text-text"
+              >
+                <span>
+                  {NOMBRE_ANULABLE[k] ?? `Sin traducir: ${k}`}: {v}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Quitar la anulación de ${NOMBRE_ANULABLE[k] ?? k}`}
+                  onClick={() => void quitar.mutateAsync(k).catch((e) => setError(e.message))}
+                  className="underline"
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form onSubmit={onFijar} className="flex flex-wrap items-end gap-s2">
+          <label className="font-chrome text-chrome-xs text-muted">
+            Valor a anular
+            <select
+              aria-label="Valor a anular"
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+              className={fieldControlClass}
+            >
+              {OVERRIDABLE_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {NOMBRE_ANULABLE[k] ?? k}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="font-chrome text-chrome-xs text-muted">
+            Nuevo valor
+            <input
+              aria-label="Nuevo valor"
+              type="number"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              className={fieldControlClass}
+            />
+          </label>
+          <label className="font-chrome text-chrome-xs text-muted">
+            Motivo (opcional)
+            <input
+              aria-label="Motivo de la anulación"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              className={fieldControlClass}
+            />
+          </label>
+          <Button type="submit" disabled={valor === "" || fijar.isPending}>
+            Anular
+          </Button>
+        </form>
+
+        {error && (
+          <p role="alert" className={`${PROSA_DE_HOJA} text-danger-text`}>
+            {error}
+          </p>
+        )}
+      </div>
+    </TarjetaDeHoja>
   );
 }

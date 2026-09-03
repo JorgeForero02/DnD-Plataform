@@ -37,6 +37,27 @@ describe("la paleta", () => {
     expect(screen.queryAllByRole("combobox")).toHaveLength(0);
   });
 
+  it("es una sola tarjeta rotulada, con los tres grupos dentro y su glosa en el rótulo", () => {
+    // Reseño 2026-09-03 — la maqueta manda en la forma: un cajón de piezas con nombre, no tres
+    // bloques sueltos flotando encima de sus carriles. Lo que esto vigila es la **estructura**
+    // (jsdom no maqueta): que exista la tarjeta, que los tres grupos estén dentro de ella, y que
+    // el rótulo de cada grupo lleve su glosa entre paréntesis y el carril al que va.
+    render(<PaletaDeCajas onColocar={vi.fn()} />);
+
+    const paleta = screen.getByRole("region", { name: "Paleta de piezas" });
+    expect(within(paleta).getByRole("heading", { name: "Paleta" })).toBeVisible();
+    for (const parte of ["Suceso", "Estado", "Acción"]) {
+      expect(within(paleta).getByRole("region", { name: `Piezas de tipo ${parte}` })).toBeVisible();
+    }
+
+    const grupo = screen.getByRole("region", { name: "Piezas de tipo Suceso" });
+    expect(grupo).toHaveTextContent("(un instante) → carril «Cuando»");
+    // Y el párrafo largo se ha ido de aquí: lo dice el carril vacío y lo repite la caja colocada.
+    // Tres copias de la misma frase alejaban cada pieza de su ranura, que es lo único que este
+    // editor no se puede permitir.
+    expect(grupo).not.toHaveTextContent("Pasa en un instante y despierta la regla");
+  });
+
   it("ninguna pieza enseña el valor del enum, y todas dicen a qué carril van", () => {
     render(<PaletaDeCajas onColocar={vi.fn()} />);
 

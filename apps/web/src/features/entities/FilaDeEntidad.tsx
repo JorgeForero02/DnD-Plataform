@@ -42,14 +42,19 @@ export function FilaDeEntidad({
     <Link
       to={to}
       title={reason}
-      className="group flex gap-s3 px-s3 py-s3 text-left font-chrome text-chrome-sm text-text hover:bg-bg focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
+      className="group flex gap-s3 px-s4 py-s3 text-left font-chrome text-chrome-sm text-text hover:bg-bg focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
     >
-      <span className="mt-1 text-chrome-md text-copper-text">
+      <span className="mt-0.5 text-chrome-lg text-copper-text">
         <IconoDeTipo type={type} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-x-s2 gap-y-1">
-          <span className="font-title text-chrome-md text-text group-hover:text-accent-text group-hover:underline">
+          {/* Maqueta 2026-09-03: el nombre de una fila va en la voz de la interfaz, no en la
+              de los títulos. Marcellus es para los titulares de pantalla; treinta filas
+              seguidas en versal romana se leen despacio y hacen que la lista pese tanto como
+              el título que la encabeza. Semibold basta para que el nombre mande dentro de su
+              fila. */}
+          <span className="font-chrome text-chrome-md font-semibold text-text group-hover:text-accent-text group-hover:underline">
             {name}
           </span>
           <Badge visibility={visibility} />

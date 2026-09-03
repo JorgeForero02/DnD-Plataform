@@ -11,16 +11,13 @@ import { describirAviso } from "./vocabulario";
 export function Avisos({ warnings }: { warnings: DerivationWarning[] }) {
   if (warnings.length === 0) return null;
   return (
-    <section aria-label="advertencia" className="rounded-radius-sm border border-warning p-s3">
+    <section aria-label="advertencia" className="rounded-radius-md border border-warning p-s3">
       <p className="mb-s2 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-warning-text">
         Avisos de la hoja
       </p>
       <ul className="flex flex-col gap-1">
         {warnings.map((w, i) => (
-          <li
-            key={i}
-            className="font-world text-[length:var(--text-world-sm)] leading-relaxed text-warning-text"
-          >
+          <li key={i} className="font-chrome text-chrome-xs leading-relaxed text-warning-text">
             {describirAviso(w)}
           </li>
         ))}

@@ -3,7 +3,7 @@ import type { PendingChoiceDto } from "./api";
 import { useUpdateSheet } from "./hooks";
 import { Button } from "../../ui/Button";
 import { describirEleccionPendiente, nombreOpcionDeEleccion } from "./vocabulario";
-import { CAJA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
+import { CAJA_DE_HOJA, TarjetaDeHoja } from "./Tarjeta";
 
 // **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
 // los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
@@ -48,8 +48,8 @@ function FilaEleccion({
   const completa = elegidas.length === choice.choose;
 
   return (
-    <li className={CAJA_DE_VITELA}>
-      <p className="font-world text-world-base leading-relaxed text-text">
+    <li className={CAJA_DE_HOJA}>
+      <p className="font-chrome text-chrome-sm leading-relaxed text-text">
         {describirEleccionPendiente(choice)}
       </p>
       <fieldset className="mt-s2 flex flex-wrap gap-s2">
@@ -112,8 +112,10 @@ export function EleccionesPendientes({
 }) {
   if (pendingChoices.length === 0) return null;
   return (
-    <section aria-label="elecciones pendientes">
-      <RotuloDeSeccion>Elecciones por hacer ({pendingChoices.length})</RotuloDeSeccion>
+    <TarjetaDeHoja
+      titulo={`Elecciones por hacer (${pendingChoices.length})`}
+      etiqueta="elecciones pendientes"
+    >
       <ul className="flex flex-col gap-s2">
         {pendingChoices.map((choice) => (
           <FilaEleccion
@@ -125,6 +127,6 @@ export function EleccionesPendientes({
           />
         ))}
       </ul>
-    </section>
+    </TarjetaDeHoja>
   );
 }

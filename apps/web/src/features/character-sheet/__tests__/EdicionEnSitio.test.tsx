@@ -167,7 +167,16 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
   // (raza, clase, características) y el del nombre y la historia.
 
   it("IdentidadEditable pinta selectores y números, no un botón que abre un diálogo", async () => {
-    const { IdentidadEditable } = await import("../IdentidadEditable");
+    // La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
+    // características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
+    // juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
+    const mod = await import("../IdentidadEditable");
+    const IdentidadEditable = (p: Parameters<typeof mod.Caracteristicas>[0]) => (
+      <>
+        <mod.FichaEditable {...p} />
+        <mod.Caracteristicas {...p} />
+      </>
+    );
     const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -205,7 +214,16 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
   });
 
   it("sin la hoja derivada no se inventa un modificador: se dice que no hay", async () => {
-    const { IdentidadEditable } = await import("../IdentidadEditable");
+    // La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
+    // características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
+    // juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
+    const mod = await import("../IdentidadEditable");
+    const IdentidadEditable = (p: Parameters<typeof mod.Caracteristicas>[0]) => (
+      <>
+        <mod.FichaEditable {...p} />
+        <mod.Caracteristicas {...p} />
+      </>
+    );
     const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -227,7 +245,16 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
 
 describe("las dos reglas de la identidad que solo se ven al usarla", () => {
   const montar = async (over: Record<string, unknown>, sheet: unknown) => {
-    const { IdentidadEditable } = await import("../IdentidadEditable");
+    // La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
+    // características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
+    // juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
+    const mod = await import("../IdentidadEditable");
+    const IdentidadEditable = (p: Parameters<typeof mod.Caracteristicas>[0]) => (
+      <>
+        <mod.FichaEditable {...p} />
+        <mod.Caracteristicas {...p} />
+      </>
+    );
     const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(

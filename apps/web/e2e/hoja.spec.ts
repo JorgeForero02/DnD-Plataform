@@ -135,20 +135,31 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   await expect(listaTraza.getByText("Modificador de Destreza")).toBeVisible();
 
   // Tirar una salvación desde la hoja: 1d20+mod con su etiqueta, de verdad contra el servidor.
-  // «Salvación de Fuerza» aparece **dos veces** desde F3: la etiqueta de la fila y el nombre del
-  // grupo de radios («Cómo tirar Salvación de Fuerza»). `exact` desambigua sin inventarse un
-  // selector frágil.
-  const filaFuerza = page.getByText("Salvación de Fuerza", { exact: true }).locator("..");
-  // `exact` importa: desde que existen ventaja y desventaja (`TirarBoton.tsx`) hay tres botones
-  // por fila y los tres empiezan por «Tirar Salvación de Fuerza».
-  await filaFuerza.getByRole("button", { name: "Tirar Salvación de Fuerza", exact: true }).click();
+  //
+  // **Dos pasos desde la adopción de la maqueta**, y son los mismos que da una persona: la fila
+  // lleva un dado, el dado abre el panel, y en el panel se decide y se tira. La fila ya no
+  // repite «Salvación de Fuerza»: dentro de la tarjeta de salvaciones se llama «Fuerza», que es
+  // lo que la maqueta pone y lo que cabe en una línea.
+  const salvaciones = page.getByRole("region", { name: "salvaciones" });
+  const filaFuerza = salvaciones.locator('[data-fila="valor"]').first();
+  await expect(filaFuerza).toContainText("Fuerza");
+  await filaFuerza.getByRole("button", { name: "Tirada de Salvación de Fuerza" }).click();
+
+  // **Las tres opciones, visibles a la vez y con su frase**, que es la regla vinculante: aquí es
+  // donde se cumple ahora —en el momento de decidir— en vez de veinticuatro veces en la hoja.
+  for (const opcion of ["Normal", "Ventaja", "Desventaja"]) {
+    await expect(filaFuerza.getByRole("radio", { name: opcion, exact: true })).toBeVisible();
+  }
+  await expect(filaFuerza.getByText("Dos d20: se queda el alto.")).toBeVisible();
+
+  await filaFuerza.getByRole("button", { name: "Tirar Salvación de Fuerza" }).click();
   await expect(filaFuerza.getByRole("status")).toBeVisible({ timeout: 10_000 });
   // El formato cambió con F3: era «20 (8, 17)» —un número y una lista que no decía cuál se
   // quedó— y ahora es la suma desglosada, igual que hace la hoja con sus valores derivados.
   await expect(filaFuerza.getByRole("status")).toContainText(/\d+ = \d+ dado/);
 
   // PG: un delta, no un número absoluto. Se lee el actual/máximo antes y después del clic.
-  const bloquePg = page.getByText("Puntos de golpe", { exact: true }).locator("..");
+  const bloquePg = page.getByRole("region", { name: "puntos de golpe" });
   const textoPgAntes = await bloquePg.innerText();
   const [actualAntes, maximo] = textoPgAntes
     .match(/(\d+)\s*\/\s*(\d+)/)!
@@ -390,12 +401,15 @@ function record(label: string, ratio: number, umbral: number) {
   expect(ratio, label).toBeGreaterThanOrEqual(umbral);
 }
 
-// --- Tarea H4 — la vitela, medida ---
+// --- La hoja, medida en los dos temas ---
 //
-// El bloque H pide expresamente **una prueba de navegador que mida el contraste de la vitela en
-// los dos temas**, y esta es. Sustituye a la de 2A.10, que medía los mismos tres pares pero solo
-// en el tema que le tocara: la piel nueva cambia el fondo de casi todo el cuerpo de la hoja, así
-// que medir un tema deja el otro sin comprobar.
+// **Esta prueba nació como «la vitela, medida» (tarea H4) y sigue midiendo lo mismo con otra
+// piel.** El cuerpo de la hoja dejó de ser papel el 2026-09-03 —la maqueta es toda cromado, y el
+// autor la prefiere—, así que lo que hay debajo de estos textos ya no es `--vellum` sino la
+// superficie de las tarjetas. **No se ha borrado ni un par**: se han vuelto a medir todos sobre
+// el fondo nuevo, que es exactamente el momento en el que un contraste se cae sin que nadie
+// mire. La afirmación de la costura entre dos pieles ya no existe, y en su sitio se mide la que
+// sí existe ahora: que una tarjeta se levanta del fondo de la página.
 //
 // **El fondo se compone contra el primer ancestro OPACO, nunca contra `document.body`.** Aquí eso
 // no es un detalle: el `body` de esta aplicación es transparente y quien pinta el fondo es un
@@ -408,71 +422,77 @@ function record(label: string, ratio: number, umbral: number) {
 // mano allí — 4,94:1 en oscuro y 4,71:1 en claro. Es un hueco conocido, no un descuido.
 
 for (const tema of ["dark", "light"] as const) {
-  test(`contraste medido en la hoja de vitela (${tema})`, async ({ page }) => {
+  test(`contraste medido en la hoja (${tema})`, async ({ page }) => {
     await fijarTema(page, tema);
     await registrarse(page);
     await crearPersonajeYAbrirFicha(page, "Vex Sombraveloz");
     await expect(page.locator("html")).toHaveAttribute("data-theme", tema);
     await completarFichaDeGuerreroEnano(page);
 
-    const hoja = page.locator('[data-piel="vitela"]');
+    const hoja = page.locator('[data-piel="cromado"]');
     await expect(hoja).toBeVisible();
 
-    // --- La costura. Es la afirmación central de H4: la cabecera se opera sobre cromado y el
-    //     cuerpo se lee sobre vitela, y **no son el mismo fondo**. Si alguien devuelve el cuerpo
-    //     a `bg-surface`, o arrastra la cabecera a la vitela, esto se pone rojo aunque todos los
-    //     contrastes de abajo sigan pasando.
+    // --- **La tarjeta se levanta del fondo.** Es lo que sustituye a la costura entre las dos
+    //     pieles: la hoja es ahora una rejilla de tarjetas, y una tarjeta que pinte exactamente
+    //     el fondo de la página deja de ser una tarjeta — se convierte en la banda con un filete
+    //     de la que se venía. Si alguien la devuelve a `bg-bg`, esto se pone rojo aunque todos
+    //     los contrastes de abajo sigan pasando.
     const cabecera = page.getByRole("region", { name: "resumen de combate" });
-    const fondoCabecera = (await effectiveTextColours(cabecera.getByText("CA", { exact: true })))
-      .bg;
-    const fondoCuerpo = (await effectiveTextColours(page.getByText("Salvaciones", { exact: true })))
-      .bg;
-    const mismos =
-      Math.abs(fondoCabecera.r - fondoCuerpo.r) +
-      Math.abs(fondoCabecera.g - fondoCuerpo.g) +
-      Math.abs(fondoCabecera.b - fondoCuerpo.b);
+    const tarjeta = page.getByRole("region", { name: "salvaciones" });
+    const fondoTarjeta = (await effectiveTextColours(tarjeta.getByText("Salvaciones"))).bg;
+    const fondoPagina = (await effectiveTextColours(hoja)).bg;
+    const distancia =
+      Math.abs(fondoTarjeta.r - fondoPagina.r) +
+      Math.abs(fondoTarjeta.g - fondoPagina.g) +
+      Math.abs(fondoTarjeta.b - fondoPagina.b);
     resultados.push(
-      `[${tema}] costura cromado/vitela: distancia de fondo ${mismos.toFixed(1)} ` +
-        `(cabecera rgb(${fondoCabecera.r},${fondoCabecera.g},${fondoCabecera.b}), ` +
-        `cuerpo rgb(${fondoCuerpo.r},${fondoCuerpo.g},${fondoCuerpo.b}))`,
+      `[${tema}] tarjeta sobre la página: distancia de fondo ${distancia.toFixed(1)} ` +
+        `(tarjeta rgb(${fondoTarjeta.r},${fondoTarjeta.g},${fondoTarjeta.b}), ` +
+        `página rgb(${fondoPagina.r},${fondoPagina.g},${fondoPagina.b}))`,
     );
     expect(
-      mismos,
-      "la cabecera y el cuerpo tienen que pintar sobre fondos distintos",
+      distancia,
+      "una tarjeta y el fondo de la página no pueden ser el mismo color",
     ).toBeGreaterThan(12);
 
-    // --- El rótulo de sección y su filete de metal: es lo que separa una sección de la
-    //     siguiente en la página del manual, así que tiene que leerse Y verse.
-    const rotulo = page.getByText("Salvaciones", { exact: true });
+    // --- El rótulo de una tarjeta y el filete de su cabecera: es lo que separa una sección de
+    //     la siguiente, así que tiene que leerse Y verse.
     {
-      const { color, bg } = await effectiveTextColours(rotulo);
-      record(`[${tema}] vitela: rótulo de sección`, contrastRatio(color, bg), 4.5);
+      const { color, bg } = await effectiveTextColours(tarjeta.getByText("Salvaciones"));
+      record(`[${tema}] hoja: rótulo de tarjeta`, contrastRatio(color, bg), 4.5);
     }
     {
-      const { border, bg } = await borderColourAgainstBg(rotulo);
-      record(`[${tema}] vitela: filete del rótulo`, contrastRatio(border, bg), 3);
+      // **El filete se mide en el elemento que lo pinta**, que es la cabecera de la tarjeta y no
+      // su rótulo: un `<h3>` sin borde declarado devuelve igualmente un `borderTopColor` —el
+      // color del texto— y la medición saldría alta midiendo algo que no se ve. Ya pasó una vez
+      // con el filete entre filas (docs/08-pruebas.md).
+      const { border, bg } = await borderColourAgainstBg(tarjeta.locator("header"));
+      record(`[${tema}] hoja: filete de la cabecera de una tarjeta`, contrastRatio(border, bg), 3);
     }
 
-    // --- La fila de una salvación: la etiqueta que se lee y la fórmula de una línea. La fórmula
-    //     va en `--muted`, que es el peor par de toda la vitela en el tema oscuro.
-    const etiquetaFuerza = page.getByText("Salvación de Fuerza", { exact: true });
-    const filaFuerza = etiquetaFuerza.locator("..");
+    // --- La fila de una salvación: la etiqueta que se lee y la fórmula, que desde la adopción
+    //     de la maqueta **sale al desplegar la traza** en vez de ocupar un renglón en cada una de
+    //     las veinticuatro filas. Va en `--muted`, el par más ajustado de la hoja en oscuro.
+    const filaFuerza = tarjeta.locator('[data-fila="valor"]').first();
     {
-      const { color, bg } = await effectiveTextColours(etiquetaFuerza);
-      record(`[${tema}] vitela: etiqueta de una fila`, contrastRatio(color, bg), 4.5);
+      const { color, bg } = await effectiveTextColours(filaFuerza.getByText("Fuerza"));
+      record(`[${tema}] hoja: etiqueta de una fila`, contrastRatio(color, bg), 4.5);
     }
     {
-      const formula = filaFuerza.locator("..").locator("p").first();
+      await filaFuerza.getByRole("button", { name: /^Fuerza: / }).click();
+      const formula = filaFuerza.locator("p").first();
+      await expect(formula).toBeVisible();
       const { color, bg } = await effectiveTextColours(formula);
-      record(`[${tema}] vitela: fórmula de una línea`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: fórmula de una línea`, contrastRatio(color, bg), 4.5);
+      await filaFuerza.getByRole("button", { name: /^Fuerza: / }).click();
     }
 
     // --- Una casilla de característica: su filete de cobre, su rótulo en versalitas y la cifra
-    //     que se teclea dentro. Los tres viven sobre el papel desde H4.
+    //     que se teclea dentro.
     const casillaDestreza = page.getByLabel("Destreza", { exact: true }).locator("../..");
     {
       const { border, bg } = await borderColourAgainstBg(casillaDestreza);
-      record(`[${tema}] vitela: filete de una casilla`, contrastRatio(border, bg), 3);
+      record(`[${tema}] hoja: filete de una casilla`, contrastRatio(border, bg), 3);
     }
     {
       // El rótulo de la casilla pasó de la abreviatura al nombre entero, que es lo que hace la
@@ -481,13 +501,13 @@ for (const tema of ["dark", "light"] as const) {
       const { color, bg } = await effectiveTextColours(
         casillaDestreza.getByText("Destreza", { exact: true }),
       );
-      record(`[${tema}] vitela: rótulo en versalitas`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: rótulo en versalitas`, contrastRatio(color, bg), 4.5);
     }
     {
       const { color, bg } = await effectiveTextColours(
         page.getByLabel("Destreza", { exact: true }),
       );
-      record(`[${tema}] vitela: cifra editable`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: cifra editable`, contrastRatio(color, bg), 4.5);
     }
 
     // --- Un paso de la traza desplegada (2A.10 ya lo medía; ahora sobre papel, no sobre cromado).
@@ -500,7 +520,7 @@ for (const tema of ["dark", "light"] as const) {
         .first()
         .getByText("Sin armadura");
       const { color, bg } = await effectiveTextColours(paso);
-      record(`[${tema}] vitela: paso de traza`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: paso de traza`, contrastRatio(color, bg), 4.5);
     }
 
     // --- Lo que trajo la maqueta, medido en su sitio. Son tokens ya conocidos, pero en
@@ -513,68 +533,66 @@ for (const tema of ["dark", "light"] as const) {
         .getByRole("columnheader", { name: "Bonif." });
       const { color, bg } = await effectiveTextColours(cabeceraTabla);
       record(
-        `[${tema}] vitela: rótulo de columna de la tabla de ataques`,
+        `[${tema}] hoja: rótulo de columna de la tabla de ataques`,
         contrastRatio(color, bg),
         4.5,
       );
     }
     {
-      // El aviso de la vista de DM va en `--copper-text` sobre vitela, que en el tema claro es
-      // cobre sobre papel cálido: el par más ajustado de toda la hoja.
+      // El aviso de la vista de DM va en `--copper-text`, que es el par más ajustado de toda
+      // la hoja en el tema claro.
       const aviso = page.getByRole("region", { name: "vista de DM" }).locator("p").first();
       const { color, bg } = await effectiveTextColours(aviso);
-      record(`[${tema}] vitela: aviso de la vista de DM`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: aviso de la vista de DM`, contrastRatio(color, bg), 4.5);
       const { border, bg: fondo } = await borderColourAgainstBg(
         page.getByRole("region", { name: "vista de DM" }),
       );
-      record(`[${tema}] vitela: filete del aviso de DM`, contrastRatio(border, fondo), 3);
+      record(`[${tema}] hoja: filete del aviso de DM`, contrastRatio(border, fondo), 3);
     }
     {
       // La cifra de una tarjeta pequeña: la percepción pasiva, que es el número que el DM
       // pregunta sin avisar y ahora se lee a tamaño grande sobre el papel.
       const pasiva = page.locator('[data-tarjeta="percepcion-pasiva"]').locator("p").nth(1);
       const { color, bg } = await effectiveTextColours(pasiva);
-      record(`[${tema}] vitela: cifra de una tarjeta pequeña`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: cifra de una tarjeta pequeña`, contrastRatio(color, bg), 4.5);
     }
 
-    // --- El hueco del inventario: su prosa va en `--muted` sobre vitela, y es el bloque de texto
-    //     más largo de toda la hoja.
+    // --- El hueco del inventario: su prosa va en `--muted` y es el bloque de texto más largo
+    //     de toda la hoja.
     {
       const { color, bg } = await effectiveTextColours(
         page.getByText("Llega en la fase 2B", { exact: false }),
       );
-      record(`[${tema}] vitela: prosa del hueco de inventario`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: prosa del hueco de inventario`, contrastRatio(color, bg), 4.5);
     }
 
     // --- El aviso (--warning-text) en su contexto real, si la hoja lo trae.
     const avisoBox = page.locator('section[aria-label="advertencia"] li').first();
     if (await avisoBox.isVisible().catch(() => false)) {
       const { color, bg } = await effectiveTextColours(avisoBox);
-      record(`[${tema}] vitela: aviso texto`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: aviso texto`, contrastRatio(color, bg), 4.5);
       const { border, bg: borderBg } = await borderColourAgainstBg(
         page.locator('section[aria-label="advertencia"]'),
       );
-      record(`[${tema}] vitela: aviso borde`, contrastRatio(border, borderBg), 3);
+      record(`[${tema}] hoja: aviso borde`, contrastRatio(border, borderBg), 3);
     }
 
-    // --- El chip de condición activa (--copper-text sobre --copper), que en el tema claro es el
-    //     par más ajustado de la vitela: cobre sobre papel cálido.
+    // --- El chip de una condición activa, con su filete.
     await page.getByLabel("Nueva condición").selectOption("prone");
     await page.getByRole("button", { name: "Aplicar" }).click();
     const chip = page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" });
     await expect(chip).toBeVisible({ timeout: 10_000 });
     {
       const { color, bg } = await effectiveTextColours(chip);
-      record(`[${tema}] vitela: chip de condición texto`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: chip de condición texto`, contrastRatio(color, bg), 4.5);
     }
     {
       const { border, bg } = await borderColourAgainstBg(chip);
-      record(`[${tema}] vitela: chip de condición borde`, contrastRatio(border, bg), 3);
+      record(`[${tema}] hoja: chip de condición borde`, contrastRatio(border, bg), 3);
     }
 
-    // --- Y la otra piel, en la misma corrida: los cinco números de la cabecera fija siguen
-    //     midiéndose sobre cromado. Si alguien arrastrara la cabecera a la vitela, este par
-    //     seguiría pasando pero la comprobación de la costura de arriba ya habría fallado.
+    // --- Y la tira fija, en la misma corrida: sus rótulos van sobre `--surface` dentro de una
+    //     banda con `--chrome-veil` translúcido detrás, que es un fondo compuesto y no un token.
     {
       const { color, bg } = await effectiveTextColours(cabecera.getByText("PG", { exact: true }));
       record(`[${tema}] cromado: rótulo de la cabecera fija`, contrastRatio(color, bg), 4.5);
@@ -582,12 +600,13 @@ for (const tema of ["dark", "light"] as const) {
   });
 }
 
-test("H4 — la piel nueva no borra la afordancia: lo editable lleva subrayado y lo derivado no", async ({
+test("la afordancia sobrevive al rediseño: lo editable lleva subrayado y lo derivado no", async ({
   page,
 }) => {
   // **La afordancia es información de dominio** (docs/04-convenciones.md): un valor editable
   // lleva un subrayado tenue, y **la ausencia de subrayado en un valor derivado significa "esto
-  // lo calculo yo, edita su causa"**. Cambiar de piel es exactamente el momento en que esa
+  // lo calculo yo, edita su causa"**. Un cambio de piel —el de H4 hacia la vitela, y el de
+  // 2026-09-03 de vuelta al cromado de la maqueta— es exactamente el momento en que esa
   // diferencia se pierde sin que nadie se entere, porque nada de lo que la sostiene tiene texto:
   // es un borde de un píxel, y `jsdom` no tiene bordes.
   //
@@ -673,10 +692,123 @@ test("la maqueta adoptada: la tabla de ataques cabe, y la página no se desplaza
   expect(desbordaLaPagina, "la página no puede desplazarse en horizontal").toBe(false);
 });
 
+test("la maqueta adoptada: una habilidad es UNA línea, y las veinticuatro caben", async ({
+  page,
+}) => {
+  // **El defecto que el autor señaló, medido.** Cada salvación y cada habilidad ocupaba un bloque
+  // de tres renglones —tres radios de ventaja, la frase «Un solo d20.» y un botón «Tirar»—, y con
+  // seis salvaciones y dieciocho habilidades eso eran veinticuatro bloques y una pantalla
+  // interminable. `jsdom` no puede ver esto: no hay alto, no hay maquetación, y toda la suite
+  // unitaria seguía en verde con la hoja así.
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Nima Pasoleve");
+  await completarFichaDeGuerreroEnano(page);
+
+  const habilidades = page.getByRole("region", { name: "habilidades" });
+  const filas = habilidades.locator('[data-fila="valor"]');
+  await expect(filas).toHaveCount(18);
+
+  // 1. Una fila es una línea de texto, no un bloque. El umbral es generoso a propósito —una
+  //    línea de 13 px con su `gap` mide unos 22— pero cierra la puerta a que vuelva a crecer:
+  //    los bloques de antes pasaban de 70 px.
+  const altos = await filas.evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect().height),
+  );
+  expect(Math.max(...altos), "una fila de habilidad tiene que caber en una línea").toBeLessThan(34);
+
+  // 2. Y la tarjeta entera de las dieciocho cabe en menos de lo que ocupaban tres de las de
+  //    antes. Se mide la tarjeta, no la suma de las filas, para que un relleno enorme tampoco
+  //    cuele.
+  const alto = (await habilidades.boundingBox())!.height;
+  expect(alto, "las dieciocho habilidades tienen que caber en una pantalla").toBeLessThan(560);
+
+  // 3. **Nada de radios en la hoja.** Es la mitad que hace que lo de arriba no sea un truco: si
+  //    alguien devolviera el selector de ventaja a la fila, los altos crecerían… o no, si lo
+  //    metiera en un desplegable — que es lo que la regla vinculante prohíbe. Aquí se afirma que
+  //    no hay ni una cosa ni la otra con la hoja en reposo.
+  await expect(page.locator('[data-fila="valor"] input[type="radio"]')).toHaveCount(0);
+  await expect(page.locator('[data-fila="valor"] select')).toHaveCount(0);
+});
+
+test("el panel de tirada: la decisión aparece donde se toma, con sus tres frases y sin atrapar el teclado", async ({
+  page,
+}) => {
+  // La regla vinculante dice que una opción con significado va **visible, con la frase que
+  // explica qué hace**. Lo que cambió el 2026-09-03 no es la regla: es dónde se cumple. Aquí se
+  // comprueba entera —las tres opciones y las tres frases a la vez— y además que el panel se
+  // comporta como un panel: entra el foco, sale con Escape, y vuelve al dado que lo abrió.
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Tao Ojoquieto");
+  await completarFichaDeGuerreroEnano(page);
+
+  const habilidades = page.getByRole("region", { name: "habilidades" });
+  const filaSigilo = habilidades.locator('[data-fila="valor"]').filter({ hasText: "Sigilo" });
+  const dado = filaSigilo.getByRole("button", { name: "Tirada de Sigilo" });
+  await dado.click();
+
+  const panel = page.getByRole("group", { name: "Tirada de Sigilo" });
+  await expect(panel).toBeVisible();
+  for (const [opcion, frase] of [
+    ["Normal", "Un solo d20."],
+    ["Ventaja", "Dos d20: se queda el alto."],
+    ["Desventaja", "Dos d20: se queda el bajo."],
+  ] as const) {
+    await expect(panel.getByRole("radio", { name: opcion, exact: true })).toBeVisible();
+    // **`toBeVisible` no basta, y esto lo destapó una mutación**: un `sr-only` mide 1×1 px con
+    // `clip`, sigue contando como visible para Playwright, y esconder ahí las tres frases —que es
+    // exactamente lo que la regla vinculante prohíbe— pasaba en verde. Se mide la caja: una
+    // frase que se lee ocupa un renglón entero, no un píxel.
+    const caja = (await panel.getByText(frase).boundingBox())!;
+    expect(caja.width, `la frase de «${opcion}» tiene que leerse, no esconderse`).toBeGreaterThan(
+      40,
+    );
+    expect(caja.height).toBeGreaterThan(8);
+  }
+
+  // Y el panel se ve entero: un panel recortado por su tarjeta sería peor que no tenerlo, y es
+  // justo lo que pasa si alguien le pone `overflow-hidden` a la tarjeta que lo contiene.
+  const cajaPanel = (await panel.boundingBox())!;
+  const cajaTarjeta = (await habilidades.boundingBox())!;
+  expect(cajaPanel.x + cajaPanel.width).toBeLessThanOrEqual(
+    (await page.evaluate(() => window.innerWidth)) + 1,
+  );
+  expect(cajaPanel.y + cajaPanel.height).toBeGreaterThan(cajaTarjeta.y);
+
+  // Escape lo cierra y el foco vuelve al dado. Sin esto, quien llega con el teclado abre el
+  // panel y se queda dentro de una fila sin salida.
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(dado).toBeFocused();
+});
+
+// **La fotografía de la hoja, para poder mirarla al lado del prototipo.** No es una prueba: no
+// afirma nada, solo retrata. Se salta salvo que se le diga dónde dejar el fichero, para que no
+// alargue la suite ni deje capturas sueltas en cada corrida de CI:
+//
+//     SALIDA_CAPTURAS=<carpeta> pnpm --filter @dnd/web exec playwright test e2e/hoja.spec.ts \
+//       --grep captura
+//
+// Existe aquí, y no en `capturas-comparacion.spec.ts`, porque aquel guion recorre la aplicación
+// entera y se cae por cosas ajenas a esta pantalla — el día que se escribió esto, por un enlace
+// «Mis campañas» duplicado en la cabecera. Retratar la hoja no puede depender de eso.
+test("captura: la hoja de personaje, para comparar con el prototipo", async ({ page }) => {
+  test.skip(!process.env.SALIDA_CAPTURAS, "se corre a mano, con SALIDA_CAPTURAS puesto");
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 1200 });
+  // El prototipo va en oscuro; sin forzarlo aquí se compararía nuestra piel de lectura con su
+  // piel oscura y la conclusión sería sobre el fotógrafo, no sobre la pantalla.
+  await fijarTema(page, "dark");
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Corvin Vhael");
+  await completarFichaDeGuerreroEnano(page);
+  await page.screenshot({
+    path: `${process.env.SALIDA_CAPTURAS}/hoja-oscuro.png`,
+    fullPage: true,
+  });
+});
+
 test.afterAll(() => {
   console.log(
-    "\n=== Contraste WCAG medido (hoja de personaje, 2A.10 + H4) ===\n" +
-      resultados.join("\n") +
-      "\n",
+    "\n=== Contraste WCAG medido (hoja de personaje) ===\n" + resultados.join("\n") + "\n",
   );
 });

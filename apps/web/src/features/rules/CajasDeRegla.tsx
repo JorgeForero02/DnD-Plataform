@@ -12,6 +12,7 @@ import {
   QUE_ES_PARTE,
   QUE_PIDE_CARRIL,
   avisosDeConfusion,
+  glosaDeCarril,
   nombreDePieza,
   type ParteDeRegla,
 } from "./vocabulario";
@@ -84,8 +85,15 @@ export function PiezaDePaleta({
   );
 }
 
-/** Un grupo de la paleta: todas las piezas de una parte, visibles a la vez. */
-function GrupoDePaleta({
+/**
+ * Un grupo de la paleta: todas las piezas de una parte, visibles a la vez.
+ *
+ * Tarea R1-fix — se exporta porque el editor ya no pinta la paleta entera en un bloque aparte:
+ * pone **cada grupo justo encima del carril al que pertenece**. Esa es la mitad visual del
+ * arreglo del arrastre (ver la cabecera de `EditorDeRegla.tsx`): una pieza y su ranura tienen
+ * que estar en pantalla a la vez, o el gesto es imposible por mucho que el código esté bien.
+ */
+export function GrupoDePaleta({
   parte,
   claves,
   tope,
@@ -118,7 +126,14 @@ function GrupoDePaleta({
       {tope ? (
         <p className="mb-s2 font-chrome text-chrome-xs text-warning-text">{tope}</p>
       ) : (
-        <ul className="space-y-1">
+        // **Dos columnas cuando hay muchas piezas, y el motivo se midió en el navegador.**
+        // En una sola columna, los doce disparadores levantan la paleta 390 px y empujan su
+        // carril hasta `y = 891` con una ventana de 720: la pieza y su ranura **no estaban
+        // nunca en pantalla a la vez**, así que no había dónde soltar — ni en una prueba ni
+        // para una persona con un portátil. Capar la altura con un desplazamiento propio
+        // habría escondido piezas, y que las 28 se vean a la vez es la premisa del diseño.
+        // Compactar no esconde nada.
+        <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
           {claves.map((clave) => (
             <li key={clave}>
               <PiezaDePaleta parte={parte} clave={clave} onColocar={(k) => onColocar(parte, k)} />
@@ -164,6 +179,12 @@ export function PaletaDeCajas({
 /**
  * Un carril: la ranura fija de una parte. Acepta lo suyo y **rechaza lo demás mientras se
  * arrastra**, que es la diferencia entre enseñar la regla y castigarla.
+ *
+ * Tarea F2 — lleva **su rótulo y su glosa**: «Cuando · pasa algo (un suceso)». Quien los coloca
+ * los pone uno junto a otro (`EditorDeRegla.tsx`), y en pantalla estrecha se apilan en ese mismo
+ * orden. La disposición no es decoración: la frase se lee de izquierda a derecha, y los carriles
+ * están puestos como se lee. Lo que solo se ve maquetado se mide en el navegador, no en `jsdom`
+ * (docs/04-convenciones.md), así que el ancho de esta rejilla se comprueba en `apps/web/e2e`.
  */
 export function CarrilDeCajas({
   parte,
@@ -212,11 +233,11 @@ export function CarrilDeCajas({
       <h3 className="flex items-baseline gap-s2 font-title text-chrome-md text-text">
         {CARRIL_DE_PARTE[parte]}
         <span
-          className={["font-chrome text-chrome-xs uppercase tracking-[0.14em]", clases.texto].join(
+          className={["font-chrome text-chrome-xs lowercase tracking-normal", clases.texto].join(
             " ",
           )}
         >
-          {NOMBRE_PARTE[parte]}
+          {glosaDeCarril(parte)}
         </span>
       </h3>
       <p className="mb-s2 mt-1 font-chrome text-chrome-xs leading-snug text-muted">

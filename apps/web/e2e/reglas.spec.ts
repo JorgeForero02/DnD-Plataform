@@ -70,6 +70,11 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
   const carrilCuando = page.getByRole("region", { name: "Carril Cuando" });
   await expect(carrilCuando).toContainText("Arrastra aquí el suceso que despierta la regla");
 
+  // Tarea F1 — la frase está desde el primer momento, y **dice lo que falta en palabras** en vez
+  // de esperar a estar completa. Es justo cuando el DM la necesita.
+  const frase = page.getByRole("region", { name: "La regla, leída" });
+  await expect(frase).toContainText("Cuando — falta un suceso, entonces — falta una acción.");
+
   // Se colocan las tres cajas pulsando su pieza de la paleta — la ruta que no necesita ratón.
   await page
     .getByRole("button", { name: "Empieza una sesión — poner en el carril Cuando" })
@@ -86,7 +91,20 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
   await expect(carrilCuando).toContainText("Ocurrió algo.");
   await expect(page.getByRole("region", { name: "Carril Si" })).toContainText("Es un estado.");
 
+  // Y la frase ya se puede leer en voz alta, con las tres piezas dentro y en su orden.
+  await expect(frase).toContainText(
+    "Cuando Empieza una sesión, si Esta regla no se ha disparado nunca, entonces Revelar",
+  );
+  await expect(frase).not.toContainText("falta");
+  // Ningún valor del enum llega a la frase, igual que no llega a la lista.
+  await expect(frase).not.toContainText("SESSION_STARTED");
+  await expect(frase).not.toContainText("REVEAL_ENTITY");
+
   await page.getByLabel("Qué entrada del mundo").selectOption({ label: "El heraldo de la puerta" });
+
+  // Elegida la ficha, la frase la nombra: una regla fija su objetivo **al armarse**, así que la
+  // frase dice a quién apunta y no «la entrada del suceso».
+  await expect(frase).toContainText("Revelar «El heraldo de la puerta»");
   await page
     .getByRole("radio", { name: /Jugadores/ })
     .first()
@@ -146,4 +164,101 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
   // --- Y la bandeja de propuestas está vacía, con su explicación ---
   await page.getByRole("tab", { name: "Propuestas" }).click();
   await expect(page.getByText("Nada esperando tu decisión")).toBeVisible();
+});
+
+// --- Tareas F5 y F6 — el aviso que hace el arreglo, y la plantilla que se clona ----------------
+//
+// Las dos mitades de este recorrido necesitan la API real y por eso no pueden vivir en `jsdom`:
+// «Añadir reversión» **crea una regla de verdad** con un `POST`, y la prueba de que funcionó es
+// que el aviso desaparece solo —porque el detector deja de encontrar una marca sin quien la
+// quite— y que la regla nueva aparece en la lista con su frase. Una prueba con la API simulada
+// solo podría comprobar que se llamó a algo.
+
+test("una plantilla se clona, y el aviso de reversión crea la regla que faltaba", async ({
+  page,
+}) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByLabel("Nombre").fill("La mesa de las plantillas");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "La mesa de las plantillas" }).click();
+  await page.getByRole("tab", { name: "Reglas" }).click();
+
+  // --- F6: el estado vacío ofrece reglas ya escritas, no un formulario en blanco ---
+  const plantillas = page.getByRole("region", { name: "Plantillas de regla" });
+  await expect(plantillas).toBeVisible();
+  // Cada plantilla se enseña **dicha**, con las mismas palabras que usará el editor.
+  await expect(plantillas).toContainText("Cuando Se pone o se quita una marca");
+
+  await plantillas
+    .locator('[data-plantilla="marca-y-aviso"]')
+    .getByRole("button", { name: "Usar esta plantilla" })
+    .click();
+
+  // Se abre el editor con las cajas ya en sus carriles y **nada guardado**: la lista de reglas
+  // sigue vacía por debajo, y lo comprobamos al cancelar más abajo.
+  await expect(page.getByRole("region", { name: "Carril Cuando" })).toContainText(
+    "Se pone o se quita una marca",
+  );
+  await expect(page.getByRole("region", { name: "Carril Entonces" })).toContainText("Avisar");
+
+  // --- F6: la guía va pidiendo una cosa cada vez y se cierra sola al hacerla ---
+  const guia = page.locator("[data-guia]");
+  await expect(guia).toContainText("Falta un dato dentro de una caja");
+  await page.getByLabel("Nombre de la marca").fill("combate");
+  await page.getByLabel("Mensaje").fill("Empieza el combate.");
+  // **Una plantilla clonada llega con su nombre puesto**, así que en cuanto se rellenan los
+  // huecos de las cajas la regla ya está completa: la guía se salta el paso del nombre porque no
+  // falta. Esta prueba esperaba «Ponle un nombre a la regla» y la guía tenía razón, no ella.
+  await expect(page.getByLabel("Nombre de la regla")).not.toHaveValue("");
+  await expect(guia).toContainText("La regla ya está completa");
+  // Y renombrarla no la descompleta.
+  await page.getByLabel("Nombre de la regla").fill("Avisar del combate");
+  await expect(guia).toContainText("La regla ya está completa");
+
+  await page.getByRole("button", { name: "Guardar regla" }).click();
+  await expect(page.locator("li", { hasText: "Avisar del combate" }).first()).toBeVisible();
+
+  // --- F5: una marca que nadie quita, avisada, con el arreglo al lado ---
+  await page.getByRole("button", { name: "Nueva regla" }).click();
+  await page.getByLabel("Nombre de la regla").fill("Empieza el combate");
+  await page
+    .getByRole("button", { name: "Empieza una sesión — poner en el carril Cuando" })
+    .click();
+  await page
+    .getByRole("button", { name: "Poner o quitar una marca — poner en el carril Entonces" })
+    .click();
+
+  const avisos = page.getByRole("region", { name: "Avisos sobre esta regla" });
+  // Con la marca sin nombrar no hay nada de lo que avisar: el hueco está vacío, no equivocado.
+  await expect(avisos).toBeHidden();
+
+  // `getByLabel("Marca")` casa también con las piezas de la paleta, cuyos nombres accesibles
+  // llevan la palabra: «Se pone o se quita una marca», «Poner o quitar una marca»… Se pide el
+  // campo de texto por su rol.
+  await page.getByRole("textbox", { name: "Marca" }).fill("combate");
+  await expect(avisos).toContainText("Nadie deshace la marca «combate».");
+  // El aviso no impide guardar y no se pinta como un error del servidor.
+  await expect(avisos).toContainText("Esto se puede guardar, pero mira antes");
+
+  // El enlace **hace** la regla: un POST real contra la API.
+  await page.getByRole("button", { name: "Añadir reversión" }).click();
+  // Y la prueba de que la hizo es que el aviso se va solo, porque ya hay quien quita la marca.
+  await expect(avisos).toBeHidden();
+
+  await page.getByRole("button", { name: "Guardar regla" }).click();
+
+  // Las tres reglas están en la lista, y la que creó el aviso dice lo que hace.
+  await expect(page.locator("li", { hasText: "Empieza el combate" }).first()).toBeVisible();
+  const reversion = page
+    .locator("li", { hasText: "Quitar la marca «combate» al cerrarse la sesión" })
+    .first();
+  await expect(reversion).toBeVisible();
+  await expect(reversion).toContainText("Se cierra una sesión");
+  await expect(reversion).toContainText("Quitar la marca «combate»");
+  await expect(reversion).toContainText("Armada");
+  // Ningún valor de enumeración llega a la pantalla, tampoco en la regla que creó un aviso.
+  await expect(reversion).not.toContainText("SET_FLAG");
+  await expect(reversion).not.toContainText("SESSION_CLOSED");
 });

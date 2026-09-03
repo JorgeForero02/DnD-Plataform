@@ -1,9 +1,12 @@
 import { useState } from "react";
 import type { CreateRuleInput, RuleCondition, RuleEffect, RuleTrigger } from "@dnd/shared";
-import { Button, Dialog, Field, fieldControlClass } from "../../ui";
+import { Button, Field, fieldControlClass } from "../../ui";
 import type { Entity } from "../entities/api";
 import type { RuleRow } from "./api";
-import { CajaColocada, CarrilDeCajas, PaletaDeCajas } from "./CajasDeRegla";
+import { avisosDelBorrador, type AccionDeArreglo } from "./avisos";
+import { AvisosDeRegla } from "./AvisosDeRegla";
+import { CajaColocada, CarrilDeCajas, GrupoDePaleta } from "./CajasDeRegla";
+import { FraseDeRegla } from "./FraseDeRegla";
 import {
   borradorDesde,
   condicionPorDefecto,
@@ -12,9 +15,19 @@ import {
   revisarBorrador,
   type BorradorDeRegla,
 } from "./formularios";
+import { pasoDeGuia } from "./guia";
 import { ModoDeRegla } from "./ModoDeRegla";
+import { PieDeGuia } from "./PieDeGuia";
 import { CamposDeCondicion, CamposDeDisparador, CamposDeEfecto } from "./PiezasDeRegla";
-import { CARRIL_DE_PARTE, nombreDePieza, type ParteDeRegla } from "./vocabulario";
+import {
+  CARRIL_DE_PARTE,
+  CONDICIONES,
+  DISPARADORES,
+  EFECTOS,
+  nombreDePieza,
+  type NombreDeFicha,
+  type ParteDeRegla,
+} from "./vocabulario";
 
 // Tareas R1 y R4 — crear y editar una regla arrastrando cajas a carriles fijos.
 //
@@ -32,6 +45,41 @@ import { CARRIL_DE_PARTE, nombreDePieza, type ParteDeRegla } from "./vocabulario
 //
 // **La validación sigue siendo Zod desde `@dnd/shared`** (docs/04-convenciones.md), y sigue sin
 // ser control de acceso: quien decide de verdad es la API.
+//
+// ---------------------------------------------------------------------------------------------
+// Tarea R1-fix — **por qué esto ya no es un diálogo, y por qué eso es lo que arregla el
+// arrastre.**
+//
+// Hasta hoy el editor vivía dentro de `ui/Dialog.tsx`, y **no se podía arrastrar ni una pieza**:
+// en esa pantalla no se disparaba un solo `dragstart`. La causa se midió, no se supuso, montando
+// este mismo componente con su CSS real en una página estática y arrastrando con Chromium:
+//
+//   panel del diálogo tal cual .............. sin `dragstart`, sin `drop`
+//   quitándole el `overflow-y-auto` ......... **sigue sin arrancar**
+//   quitándole el `max-h-[85vh]` ............ arrastra y coloca
+//   quitándole el `backdrop-blur` del velo .. sigue sin arrancar
+//   sacando el panel fuera del velo ......... sigue sin arrancar
+//
+// Es decir: **no era el desplazamiento, era la altura**. Con `max-h-[85vh]` el panel medía 763 px
+// de alto para 1553 px de contenido, y los carriles caían en `y ≈ 995`, **fuera de la ventana**.
+// Una pieza y su ranura no estaban nunca en pantalla a la vez, así que el gesto era imposible:
+// arrastrando a mano el `dragstart` sí sale, pero no hay adónde soltar, y cualquier intento de
+// desplazar el panel para ver el carril mueve la pieza de debajo del puntero. No era un defecto
+// de código; era un defecto de sitio. Un editor con 28 piezas, tres carriles, la frase, los
+// avisos y la guía **no cabe en una ventana modal**, y esa estrechez era además parte de por qué
+// se veía confuso. Un modal atrapa el foco, encima, que es lo último que quieres mientras
+// compones algo largo.
+//
+// Así que el editor pasa a ser **una pantalla dentro de la pestaña «Reglas»** (lo monta
+// `PanelDeReglas.tsx`, que enseña esto en lugar de la lista mientras dura la edición).
+// `ui/Dialog.tsx` **no se ha tocado**: lo usa media aplicación y no tenía la culpa de nada.
+//
+// Y la disposición hace la otra mitad del trabajo: **cada grupo de la paleta va justo encima del
+// carril al que pertenece**, en una rejilla de tres columnas y dos filas. Una pieza y su ranura
+// quedan a un palmo, siempre visibles juntas, y de paso la correspondencia grupo → carril deja
+// de ser algo que hay que leer y pasa a ser algo que se ve. Las tres columnas comparten fila, así
+// que los tres carriles siguen empezando exactamente a la misma altura — que es lo que mide
+// `apps/web/e2e/reglas-arrastrar.spec.ts`.
 
 /** Los topes que el propio esquema declara — se citan en pantalla, no se reimplementan. */
 const MAX_CONDICIONES = 10;
@@ -40,24 +88,35 @@ const MAX_EFECTOS = 10;
 export function EditorDeRegla({
   abierto,
   regla,
+  borradorInicial,
   entities,
   reglas,
   guardando,
+  aplicandoArreglo,
   error,
   onGuardar,
+  onCrearReversion,
   onCerrar,
 }: {
   abierto: boolean;
   /** Sin regla: se crea una nueva. Con regla: se edita ésa. */
   regla?: RuleRow;
+  /** Tarea F6 — el borrador con el que arranca una plantilla clonada. No se guarda nada aún. */
+  borradorInicial?: BorradorDeRegla;
   entities: Entity[];
   reglas: RuleRow[];
   guardando: boolean;
+  /** Mientras el arreglo de un aviso viaja al servidor. */
+  aplicandoArreglo?: boolean;
   error?: string;
   onGuardar: (input: CreateRuleInput) => void;
+  /** Tarea F5 — el enlace del aviso **hace** la regla; crearla es de quien tiene la API. */
+  onCrearReversion?: (nombre: string, key: string) => void;
   onCerrar: () => void;
 }) {
-  const [borrador, setBorrador] = useState<BorradorDeRegla>(() => borradorDesde(regla));
+  const [borrador, setBorrador] = useState<BorradorDeRegla>(
+    () => borradorInicial ?? borradorDesde(regla),
+  );
   const [intentado, setIntentado] = useState(false);
   // Colocar con el teclado no mueve nada por la pantalla, así que hay que decir lo que pasó.
   const [aviso, setAviso] = useState("");
@@ -106,59 +165,83 @@ export function EditorDeRegla({
 
   const otrasReglas = reglas.filter((r) => r.id !== regla?.id);
 
+  /**
+   * Tarea F5 — el arreglo que ofrece un aviso, ejecutado. Uno se resuelve aquí dentro (meter una
+   * condición en el carril) y el otro necesita la API, así que sube a quien la tiene: este
+   * componente no habla HTTP.
+   */
+  function aplicarArreglo(accion: AccionDeArreglo) {
+    if (accion.tipo === "AGREGAR_CONDICION") {
+      colocar("ESTADO", accion.kind);
+      return;
+    }
+    onCrearReversion?.(accion.nombre, accion.key);
+  }
+
+  const avisos = avisosDelBorrador(borrador, otrasReglas);
+  const paso = pasoDeGuia(borrador, revision.problemas);
+
+  /**
+   * El nombre de una ficha para la frase. Cuando el hueco todavía está vacío **se dice que lo
+   * está** en vez de dejar un «entrada » a medias: la frase tiene que ser legible mientras se
+   * escribe, que es justo cuando hace falta.
+   */
+  const nombreFicha: NombreDeFicha = (id) =>
+    entities.find((e) => e.id === id)?.name ?? (id ? `entrada ${id.slice(-6)}` : "sin elegir");
+
+  if (!abierto) return null;
+
+  const topes: Partial<Record<ParteDeRegla, string>> = {
+    ESTADO:
+      borrador.conditions.length >= MAX_CONDICIONES
+        ? "Diez condiciones es el tope que admite el servidor. Quita una para poder poner otra."
+        : undefined,
+    ACCION:
+      borrador.effects.length >= MAX_EFECTOS
+        ? "Diez acciones es el tope que admite el servidor. Quita una para poder poner otra."
+        : undefined,
+  };
+
   return (
-    <Dialog
-      open={abierto}
-      onClose={onCerrar}
-      size="lg"
-      title={regla ? `Editar «${regla.name}»` : "Nueva regla"}
-    >
-      <div className="space-y-s4">
-        <p className="font-chrome text-chrome-sm leading-snug text-muted">
-          Una regla es una frase de tres partes. Arrastra una caja de la paleta al carril que le
-          toca, o púlsala y cae sola.{" "}
-          <strong className="text-text">La ranura es la conexión</strong>: lo que está dentro de un
-          carril forma parte de la regla, y lo que está fuera, no.
-        </p>
+    <section aria-label="Editor de regla" className="space-y-s4">
+      <h2 className="font-title text-chrome-lg text-text">
+        {regla ? `Editar «${regla.name}»` : "Nueva regla"}
+      </h2>
 
-        <Field label="Nombre de la regla">
-          <input
-            className={fieldControlClass}
-            value={borrador.name}
-            maxLength={160}
-            onChange={(e) => setBorrador({ ...borrador, name: e.target.value })}
-          />
-        </Field>
+      <p className="font-chrome text-chrome-sm leading-snug text-muted">
+        Una regla es una frase de tres partes. Arrastra una caja al carril que tiene debajo, o
+        púlsala y cae sola. <strong className="text-text">La ranura es la conexión</strong>: lo que
+        está dentro de un carril forma parte de la regla, y lo que está fuera, no.
+      </p>
 
-        <section
-          aria-label="Paleta de piezas"
-          className="rounded-radius-sm border border-copper/40 p-s3"
-        >
-          <h3 className="font-title text-chrome-md text-text">Paleta</h3>
-          <p className="mb-s3 mt-1 font-chrome text-chrome-xs leading-snug text-muted">
-            Todo lo que el motor entiende, sin nada escondido. Cada pieza tiene la forma y el color
-            de su carril: la forma dice dónde encaja antes de que lo intentes.
-          </p>
-          <PaletaDeCajas
-            topes={{
-              ESTADO:
-                borrador.conditions.length >= MAX_CONDICIONES
-                  ? "Diez condiciones es el tope que admite el servidor. Quita una para poder poner otra."
-                  : undefined,
-              ACCION:
-                borrador.effects.length >= MAX_EFECTOS
-                  ? "Diez acciones es el tope que admite el servidor. Quita una para poder poner otra."
-                  : undefined,
-            }}
-            onColocar={colocar}
-          />
-        </section>
+      <Field label="Nombre de la regla">
+        <input
+          className={fieldControlClass}
+          value={borrador.name}
+          maxLength={160}
+          onChange={(e) => setBorrador({ ...borrador, name: e.target.value })}
+        />
+      </Field>
 
-        {/* Lo que se coloca con el teclado no se ve moverse: se dice. */}
-        <p aria-live="polite" className="font-chrome text-chrome-xs text-muted">
-          {aviso}
-        </p>
+      {/* Lo que se coloca con el teclado no se ve moverse: se dice. */}
+      <p aria-live="polite" className="font-chrome text-chrome-xs text-muted">
+        {aviso}
+      </p>
 
+      {/*
+        Tarea F2 + R1-fix — tres columnas y dos filas: arriba el grupo de piezas, abajo el carril
+        que las admite. Las columnas van en el orden en que se lee la frase, y las dos filas son
+        del mismo alto para las tres, así que los tres carriles empiezan a la misma altura. En
+        pantalla estrecha la rejilla se deshace en una sola columna y el orden del documento
+        —grupo, su carril, grupo, su carril…— sigue siendo el de la frase.
+      */}
+      <div className="grid gap-s3 md:grid-flow-col md:grid-cols-3 md:grid-rows-[auto_auto]">
+        <GrupoDePaleta
+          parte="SUCESO"
+          claves={DISPARADORES}
+          tope={topes.SUCESO}
+          onColocar={colocar}
+        />
         <CarrilDeCajas
           parte="SUCESO"
           vacio={borrador.trigger === null}
@@ -184,6 +267,12 @@ export function EditorDeRegla({
           )}
         </CarrilDeCajas>
 
+        <GrupoDePaleta
+          parte="ESTADO"
+          claves={CONDICIONES}
+          tope={topes.ESTADO}
+          onColocar={colocar}
+        />
         <CarrilDeCajas
           parte="ESTADO"
           vacio={borrador.conditions.length === 0}
@@ -214,6 +303,7 @@ export function EditorDeRegla({
           ))}
         </CarrilDeCajas>
 
+        <GrupoDePaleta parte="ACCION" claves={EFECTOS} tope={topes.ACCION} onColocar={colocar} />
         <CarrilDeCajas
           parte="ACCION"
           vacio={borrador.effects.length === 0}
@@ -245,60 +335,73 @@ export function EditorDeRegla({
             </CajaColocada>
           ))}
         </CarrilDeCajas>
-
-        <ModoDeRegla
-          value={borrador.mode}
-          onChange={(mode) => setBorrador({ ...borrador, mode })}
-        />
-
-        <Field
-          label="Tope de disparos (opcional)"
-          hint="En blanco, sin tope. Existe como contención, no como regla del juego."
-        >
-          <input
-            type="number"
-            min={1}
-            max={9999}
-            className={fieldControlClass}
-            value={borrador.maxFires ?? ""}
-            onChange={(e) =>
-              setBorrador({
-                ...borrador,
-                maxFires: e.target.value === "" ? null : Number(e.target.value),
-              })
-            }
-          />
-        </Field>
-
-        {intentado && revision.problemas.length > 0 && (
-          <div role="alert" className="rounded-radius-sm border border-danger p-s2">
-            <p className="font-chrome text-chrome-sm text-danger-text">
-              La regla todavía no está completa:
-            </p>
-            <ul className="mt-1 list-disc pl-s5 font-chrome text-chrome-xs text-danger-text">
-              {revision.problemas.map((problema) => (
-                <li key={problema}>{problema}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {error && (
-          <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
-            {error}
-          </p>
-        )}
-
-        <div className="flex justify-end gap-s2">
-          <Button variant="secondary" type="button" onClick={onCerrar}>
-            Cancelar
-          </Button>
-          {/* El botón de guardar nunca se deshabilita: deshabilitado no recibe foco de teclado. */}
-          <Button type="button" disabled={guardando} onClick={enviar}>
-            {guardando ? "Guardando…" : "Guardar regla"}
-          </Button>
-        </div>
       </div>
-    </Dialog>
+
+      {/*
+        Tarea F1 — la frase, siempre visible y debajo de los carriles. Debajo y no encima
+        porque es el resultado de lo que hay arriba: se coloca una caja y la frase cambia.
+      */}
+      <FraseDeRegla regla={borrador} nombreFicha={nombreFicha} />
+
+      {/* Tarea F5 — lo que se puede guardar pero conviene mirar, con su arreglo al lado. */}
+      <AvisosDeRegla
+        avisos={avisos}
+        aplicando={aplicandoArreglo}
+        onAplicarArreglo={aplicarArreglo}
+      />
+
+      <ModoDeRegla value={borrador.mode} onChange={(mode) => setBorrador({ ...borrador, mode })} />
+
+      <Field
+        label="Tope de disparos (opcional)"
+        hint="En blanco, sin tope. Existe como contención, no como regla del juego."
+      >
+        <input
+          type="number"
+          min={1}
+          max={9999}
+          className={fieldControlClass}
+          value={borrador.maxFires ?? ""}
+          onChange={(e) =>
+            setBorrador({
+              ...borrador,
+              maxFires: e.target.value === "" ? null : Number(e.target.value),
+            })
+          }
+        />
+      </Field>
+
+      {intentado && revision.problemas.length > 0 && (
+        <div role="alert" className="rounded-radius-sm border border-danger p-s2">
+          <p className="font-chrome text-chrome-sm text-danger-text">
+            La regla todavía no está completa:
+          </p>
+          <ul className="mt-1 list-disc pl-s5 font-chrome text-chrome-xs text-danger-text">
+            {revision.problemas.map((problema) => (
+              <li key={problema}>{problema}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
+          {error}
+        </p>
+      )}
+
+      {/* Tarea F6 — la guía. Va al pie, no tapa nada, y no se puede cerrar: se cierra sola. */}
+      <PieDeGuia paso={paso} />
+
+      <div className="flex justify-end gap-s2">
+        <Button variant="secondary" type="button" onClick={onCerrar}>
+          Cancelar
+        </Button>
+        {/* El botón de guardar nunca se deshabilita: deshabilitado no recibe foco de teclado. */}
+        <Button type="button" disabled={guardando} onClick={enviar}>
+          {guardando ? "Guardando…" : "Guardar regla"}
+        </Button>
+      </div>
+    </section>
   );
 }

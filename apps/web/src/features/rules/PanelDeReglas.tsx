@@ -7,6 +7,8 @@ import type { RuleRow } from "./api";
 import { EditorDeRegla } from "./EditorDeRegla";
 import { EnsayoEnSeco } from "./EnsayoEnSeco";
 import { ListaDeReglas } from "./ListaDeReglas";
+import { PlantillasDeRegla } from "./PlantillasDeRegla";
+import type { PlantillaDeRegla } from "./plantillas";
 import { Propuestas } from "./Propuestas";
 import { TrazaDeReglas } from "./TrazaDeReglas";
 import { useCreateRule, useDeleteRule, useDryRun, useRules, useUpdateRule } from "./hooks";
@@ -26,7 +28,11 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
   const esDM = role === "DM";
 
   const [pestana, setPestana] = useState("reglas");
-  const [editando, setEditando] = useState<{ regla?: RuleRow } | null>(null);
+  const [editando, setEditando] = useState<{
+    regla?: RuleRow;
+    /** Tarea F6 — la plantilla clonada con la que arranca el borrador, si se vino de una. */
+    plantilla?: PlantillaDeRegla;
+  } | null>(null);
   const [ensayando, setEnsayando] = useState<RuleRow | null>(null);
 
   const reglas = useRules(campaignId, { enabled: esDM });
@@ -77,6 +83,23 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
     }
   }
 
+  /**
+   * Tarea F5 — el arreglo que ofrece el aviso de «reversión ausente», hecho de verdad: crea una
+   * regla **aparte** que quita la marca al cerrarse la sesión. No cierra el editor y no toca el
+   * borrador que se está escribiendo; en cuanto la lista se invalida, el aviso desaparece solo
+   * porque el detector deja de encontrar la marca sin quien la quite.
+   */
+  function crearReversion(name: string, key: string) {
+    crear.mutate({
+      name,
+      trigger: { kind: "SESSION_CLOSED" },
+      conditions: [],
+      effects: [{ kind: "SET_FLAG", key, value: false }],
+      mode: "AUTOMATIC",
+      maxFires: null,
+    });
+  }
+
   function cambiarEstado(regla: RuleRow, status: RuleStatus) {
     actualizar.mutate({ ruleId: regla.id, input: { status } });
   }
@@ -86,7 +109,36 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
     ensayo.mutate({ ruleId: ensayando.id, trigger });
   }
 
-  const panelDeReglas = (
+  const editor = editando && (
+    <EditorDeRegla
+      // Remontar al cambiar de regla o de plantilla: el borrador se inicializa una sola vez.
+      key={editando.regla?.id ?? editando.plantilla?.id ?? "nueva"}
+      abierto
+      regla={editando.regla}
+      borradorInicial={editando.plantilla?.borrador}
+      entities={entities}
+      reglas={filas}
+      guardando={crear.isPending || actualizar.isPending}
+      aplicandoArreglo={crear.isPending}
+      error={
+        crear.isError
+          ? (crear.error as Error).message
+          : actualizar.isError
+            ? (actualizar.error as Error).message
+            : undefined
+      }
+      onGuardar={guardar}
+      onCrearReversion={crearReversion}
+      onCerrar={() => setEditando(null)}
+    />
+  );
+
+  // Tarea R1-fix — **el editor ya no es un diálogo**: ocupa la pestaña entera en lugar de la
+  // lista. El motivo está medido y contado en la cabecera de `EditorDeRegla.tsx`; en dos líneas,
+  // dentro de una ventana de 85vh la paleta y los carriles no cabían a la vez en pantalla, y
+  // arrastrar una pieza a una ranura que no se ve es imposible por bien escrito que esté el
+  // código. `ui/Dialog.tsx` no se toca: lo usa media aplicación y no tenía la culpa.
+  const panelDeReglas = editor ?? (
     <div className="space-y-s3">
       <div className="flex items-center justify-between gap-s3">
         <p className="font-chrome text-chrome-sm text-muted">
@@ -119,6 +171,14 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
           }}
           onBorrar={(regla) => borrar.mutate(regla.id)}
         />
+      )}
+      {/*
+        Tarea F6 — las plantillas, solo con la campaña vacía. El análisis de 224 590 reglas de
+        IFTTT dice que la gente clona antes que escribir; una pantalla vacía con un botón pide
+        crear de cero, y una con cuatro reglas ya escritas pide editar, que es mucho más barato.
+      */}
+      {reglas.isSuccess && filas.length === 0 && (
+        <PlantillasDeRegla onUsar={(plantilla) => setEditando({ plantilla })} />
       )}
       {borrar.isError && (
         <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
@@ -163,27 +223,6 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
           },
         ]}
       />
-
-      {editando && (
-        <EditorDeRegla
-          // Remontar al cambiar de regla: el borrador se inicializa una sola vez por montaje.
-          key={editando.regla?.id ?? "nueva"}
-          abierto
-          regla={editando.regla}
-          entities={entities}
-          reglas={filas}
-          guardando={crear.isPending || actualizar.isPending}
-          error={
-            crear.isError
-              ? (crear.error as Error).message
-              : actualizar.isError
-                ? (actualizar.error as Error).message
-                : undefined
-          }
-          onGuardar={guardar}
-          onCerrar={() => setEditando(null)}
-        />
-      )}
 
       {ensayando && (
         <EnsayoEnSeco

@@ -176,7 +176,13 @@ export const explicacionEstadoTraza = (k: string) => traducir(EXPLICACION_ESTADO
 /** Resuelve el nombre legible de una ficha por su identificador. Lo aporta quien pinta. */
 export type NombreDeFicha = (entityId: string) => string;
 
-const fichaAnonima: NombreDeFicha = (id) => `entrada ${id.slice(-6)}`;
+/**
+ * Sin nadie que resuelva el nombre, la ficha se nombra por su identificador — y **el hueco
+ * todavía vacío se dice que lo está** en vez de dejar un «entrada » a medias. Es la misma frase
+ * que ya escribía el editor por su cuenta (tarea F1); vive aquí una sola vez desde F6, cuando
+ * las plantillas necesitaron leerse antes de tener ninguna ficha elegida.
+ */
+const fichaAnonima: NombreDeFicha = (id) => (id ? `entrada ${id.slice(-6)}` : "sin elegir");
 
 export function describirDisparador(
   trigger: RuleTrigger,
@@ -324,6 +330,31 @@ export const ARTICULO_PARTE: Record<ParteDeRegla, string> = {
   ESTADO: "un estado",
   ACCION: "una acción",
 };
+
+// --- Tarea F2 — los carriles dispuestos como se leen ------------------------------------------
+//
+// La glosa es lo que se le pide al carril dicho en tres palabras, para que el rótulo —«Cuando»,
+// «Si», «Entonces»— no tenga que cargar solo con la explicación. Va **debajo del rótulo**, y los
+// tres carriles van uno junto a otro: la frase se lee de izquierda a derecha porque está
+// dispuesta como se lee.
+//
+// El paréntesis lo cierra `ARTICULO_PARTE` en vez de repetir aquí el nombre de la parte. Es la
+// regla de la casa —la forma legible se escribe una vez por dominio (docs/04-convenciones.md)—
+// y aquí además evita una discrepancia concreta: la maqueta glosaba la tercera parte como «un
+// efecto» mientras el resto de la pantalla la llama «una acción». Dos nombres para lo mismo es
+// exactamente el fallo que la regla prohíbe.
+
+/** El verbo del carril: qué se le pide, sin nombrar todavía la parte. */
+export const GLOSA_CARRIL: Record<ParteDeRegla, string> = {
+  SUCESO: "pasa algo",
+  ESTADO: "se cumple",
+  ACCION: "haz esto",
+};
+
+/** La glosa entera: «pasa algo (un suceso)». */
+export function glosaDeCarril(parte: ParteDeRegla): string {
+  return `${GLOSA_CARRIL[parte]} (${ARTICULO_PARTE[parte]})`;
+}
 
 /**
  * La parte a la que pertenece cada clave del vocabulario cerrado. Se deriva de las tres listas,

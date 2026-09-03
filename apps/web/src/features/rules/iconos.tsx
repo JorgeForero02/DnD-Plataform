@@ -160,3 +160,60 @@ export function IconoRanura({ className }: IconoProps) {
     </Marco>
   );
 }
+
+// --- Tareas F5 y F6 — los avisos, la guía y las plantillas ------------------------------------
+//
+// Mismas reglas: SVG en trazo, `currentColor`, `aria-hidden`. Ningún aviso depende del dibujo
+// para entenderse — el dibujo acompaña al título, que ya dice de qué clase es.
+
+/** Reversión ausente: la flecha que vuelve sobre sus pasos. */
+export function IconoReversion({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M3 7.5A5 5 0 118 13" />
+      <path d="M1 5l2 2.5L5.5 5.5" />
+    </Marco>
+  );
+}
+
+/** Conflicto de prioridad: dos barras que compiten, una más larga que la otra. */
+export function IconoPrioridad({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M2.5 5h11" />
+      <path d="M2.5 11h6" />
+      <path d="M12 9.5l2 1.5-2 1.5" />
+    </Marco>
+  );
+}
+
+/** Bucle: el lazo que vuelve a entrar por donde salió. */
+export function IconoBucle({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M8 3.5a4.5 4.5 0 104.5 4.5" />
+      <path d="M12.5 8V4.5" />
+      <path d="M6 1.8L8 3.5 6 5.2" />
+    </Marco>
+  );
+}
+
+/** Guía: la marca que señala lo siguiente que hay que hacer. */
+export function IconoGuia({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M4 14V2.5" />
+      <path d="M4 3h8l-2 2.5L12 8H4z" />
+    </Marco>
+  );
+}
+
+/** Plantilla: dos hojas, una sobre otra — copiar antes que escribir. */
+export function IconoPlantilla({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <rect x="2" y="2" width="8" height="10" rx="1" />
+      <path d="M6 14h6a1 1 0 001-1V5" />
+    </Marco>
+  );
+}

@@ -162,7 +162,7 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
     renderPanel();
     await screen.findByText("Goblin");
     // El prototipo lo llama «Meter al combate» y no hay combate: la iniciativa es Encuentros,
-    // una fase sin escribir. Si el texto y el servidor discrepan, miente el texto.
+    // un bloque planificado y sin escribir. Si el texto y el servidor discrepan, miente el texto.
     expect(screen.getAllByRole("button", { name: /Bajar a la mesa/i }).length).toBe(2);
     expect(screen.queryByRole("button", { name: /combate/i })).not.toBeInTheDocument();
   });

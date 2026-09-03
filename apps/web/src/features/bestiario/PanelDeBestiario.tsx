@@ -34,10 +34,12 @@ import { descriptorDeCriatura, NOMBRE_ORIGEN } from "./vocabulario";
 //    distinto en la misma partida.
 //
 //  · El botón del prototipo dice **«Meter al combate»**, y **no hay combate**: la iniciativa, el
-//    orden de turnos y aplicar daño en tanda son Encuentros, una fase que ni siquiera está
-//    escrita, y la especificación de 2D los declara fuera de alcance. La regla del proyecto es
-//    que **si el texto explica una regla del servidor y discrepan, miente el texto**, así que el
-//    botón dice lo que de verdad hace: bajar la criatura a la mesa con sus puntos de golpe.
+//    orden de turnos y aplicar daño en tanda son **Encuentros**, un bloque que el plan maestro
+//    sitúa entre la fase 2 y la 3 pero que **todavía no tiene plan escrito**, y la especificación
+//    de 2D los declara fuera de alcance. La regla del proyecto es que **si el texto explica una
+//    regla del servidor y discrepan, miente el texto**, así que el botón dice lo que de verdad
+//    hace: bajar la criatura a la mesa con sus puntos de golpe. El día que Encuentros exista,
+//    este botón podrá decir otra cosa **porque será verdad**.
 //
 // La autorización la comprueba el servidor **siempre**. Que aquí no se le pinte el botón a un
 // jugador no es control de acceso: `requireDM` lo es. Y las dos listas llegan ya filtradas por

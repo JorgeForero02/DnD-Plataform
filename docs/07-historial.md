@@ -178,7 +178,8 @@ propio Playwright del proyecto. El prototipo sí tiene «Bestiario» (pantalla 2
 
 **Dos discrepancias deliberadas, las dos declaradas en el código:** la velocidad va en **pies** y
 no en metros, porque es la unidad del resto de la aplicación; y el botón **no dice «Meter al
-combate»**, porque no hay combate — la iniciativa es Encuentros, una fase sin escribir. La regla
+combate»**, porque no hay combate — la iniciativa es Encuentros, un bloque planificado en el plan
+maestro pero todavía sin escribir. La regla
 del proyecto es que si el texto y el servidor discrepan, **miente el texto**.
 
 > **Dos clases de Tailwind inventadas al escribir la pantalla** —`text-ink` y `border-line`— que

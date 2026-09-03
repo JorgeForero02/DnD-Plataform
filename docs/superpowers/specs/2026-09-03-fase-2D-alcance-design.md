@@ -102,9 +102,20 @@ salir igual que sale en la hoja de un jugador.
 
 ## 7 · Lo que 2D NO hace
 
-- **Ni iniciativa, ni orden de turnos, ni aplicar daño en tanda.** Eso es Encuentros, y Encuentros
-  no está en el plan maestro: es una fase por escribir. 2D deja al PNJ **en la mesa con sus
+- **Ni iniciativa, ni orden de turnos, ni aplicar daño en tanda.** Eso es **Encuentros**, un bloque
+  que **sí está en el plan maestro** —decidido el 2026-09-01 y colocado **entre la fase 2 y la
+  3**— pero que **no tiene plan escrito a nivel de tarea**. 2D deja al PNJ **en la mesa con sus
   números**; no arbitra el combate.
+
+  > **Corrección del 2026-09-03 (noche).** Esta línea decía que «Encuentros no está en el plan
+  > maestro», y era falsa: está, con alcance y con posición. Lo preguntó el autor.
+
+  **Y conviene ver qué de Encuentros ha entregado ya esta fase**, porque cambia lo que cuesta el
+  bloque: su primer punto —*«statblocks de PNJ con PG vivos»*— **es exactamente 2D**. Lo que le
+  queda son la iniciativa y el orden de turnos, el ataque contra un objetivo **comparado en el
+  servidor** (la CA nunca viaja al navegador del jugador) y **propuesto al DM para que confirme o
+  corrija**, el daño aplicado por el DM, y **las condiciones con duración en turnos** — que nacen
+  ahí porque un turno no existe en el sistema hasta que hay iniciativa.
 - **Ni acciones legendarias, ni guaridas, ni reacciones con temporizador.** Se **guardan** como
   prosa del statblock y se pintan; no se ejecutan.
 - **Ni conjuros de PNJ resueltos por el motor.** La lista de conjuros del statblock es texto. El

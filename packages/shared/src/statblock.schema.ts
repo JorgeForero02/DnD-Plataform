@@ -31,10 +31,12 @@ export type CreatureSize = z.infer<typeof creatureSizeSchema>;
  * de la tanda —goblin pequeño con d6, **lobo terrible** grande con d10, gigante de las colinas
  * enorme con d12— sin una sola excepción.
  *
+ * Por eso el tamaño del dado **se deriva y no se guarda**: guardarlo sería guardar un valor
+ * calculado, que es justo lo que este proyecto no hace.
+ *
  * (Este comentario decía «huargo», y **el huargo no está en la tanda**. Lo cazó la revisión de
  * cierre de 2D: citar una comprobación que no se hizo es la clase de mentira pequeña que hace
- * dudar de las grandes.) Por eso el tamaño del dado **se deriva y no se guarda**: guardarlo
- * sería guardar un valor calculado, que es justo lo que este proyecto no hace.
+ * dudar de las grandes.)
  */
 export const DADO_DE_GOLPE_POR_TAMANO: Record<CreatureSize, number> = {
   TINY: 4,
@@ -73,7 +75,8 @@ const skillKeySchema = z.enum(Object.keys(SKILLS) as [string, ...string[]]);
  * Se guardan y se pintan; **no se ejecutan**. «Regeneración» del troll y el «Aguante de los
  * muertos» del zombi son reglas condicionales con excepciones en prosa, y un vocabulario cerrado
  * que las cubriese sería el motor de reglas entero otra vez. La fase 2D las enseña; arbitrarlas es
- * Encuentros, que no está escrita. Ver la especificación de alcance, §7.
+ * **Encuentros**, un bloque que el plan maestro sitúa entre la fase 2 y la 3 y que aún no tiene
+ * plan escrito. Ver la especificación de alcance de 2D, §7.
  */
 export const statblockFeatureSchema = z.object({
   name: z.string().min(1).max(120),

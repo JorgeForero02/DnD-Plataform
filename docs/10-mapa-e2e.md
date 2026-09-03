@@ -119,6 +119,10 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 
 Se dice aquí para que nadie lo dé por cubierto al leer la lista de arriba.
 
+- **Nada de un sistema de encuentros**, porque no existe: no hay iniciativa, ni turnos, ni un
+  ataque comparado contra la CA en el servidor, ni daño aplicado desde una tirada. **Es un bloque
+  planificado** —el plan maestro lo sitúa entre la fase 2 y la 3— y lo único suyo que ya está
+  construido son los statblocks de PNJ con PG vivos, que entregó 2D.
 - **La partida de prueba con dos cuentas de jugador reales**, jugada por personas. `partida`
   recorre los doce pasos por HTTP, pero **nadie ha jugado una sesión de verdad en producción**: es
   lo único que le queda a la fase 2.

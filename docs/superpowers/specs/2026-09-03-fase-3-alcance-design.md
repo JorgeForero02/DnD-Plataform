@@ -182,9 +182,16 @@ no ha visto.
 - **Ni rejilla hexagonal.** El campo se guarda desde el primer día para que el hexágono sea un dato
   nuevo y no una reescritura, pero elegir sistema de coordenadas hexagonales se filtra a la API, a
   las pruebas y a la base. Se paga cuando alguien lo pida.
-- **Ni iniciativa, ni orden de turnos, ni plantillas de área, ni aplicar daño desde el tablero.** Eso
-  es **Encuentros**, y Encuentros no está en el plan maestro: es una fase por escribir. El tablero de
-  la fase 3 **coloca y enseña**; no arbitra.
+- **Ni iniciativa, ni orden de turnos, ni plantillas de área, ni aplicar daño desde el tablero.**
+  Eso es **Encuentros**, y el plan maestro lo pone **justo antes de esta fase** (decidido el
+  2026-09-01), aunque todavía no tenga plan escrito. El tablero de la fase 3 **coloca y enseña**;
+  no arbitra.
+
+  > **Corrección del 2026-09-03 (noche), y cambia el orden de esta fase.** Esta línea decía que
+  > «Encuentros no está en el plan maestro». Sí está, y además el plan lo describe como **«el
+  > compañero natural del tablero»** y lo coloca **delante**. Así que la pregunta *«¿3 o
+  > Encuentros primero?»* es real y **es del autor**, no una que este documento pueda dar por
+  > contestada: se añade a las cuatro decisiones del §7.
 - **Ni validar el movimiento contra la velocidad.** El servidor comprueba propiedad, límites y que el
   origen fuera visible; **no** comprueba si al personaje le quedaban pies. Ese cálculo ya existe en
   2A con su traza, y conectarlo es una tarea con nombre propio.
@@ -219,7 +226,13 @@ construye con sondeo **a propósito**, y eso no es deuda escondida sino una fron
    rediseñar la pantalla de sesión.
 3. **La pantalla la diseña el autor**, según dijo. Antes de dibujarla hay que saber si eso sigue en
    pie o si se acepta una primera versión funcional para corregir después.
-4. **¿Entra el almacenamiento en producción con coste?** MinIO en el propio servidor no cuesta dinero
+4. **¿Va antes Encuentros que la fase 3?** El plan maestro lo pone delante y lo llama «el
+   compañero natural del tablero», y la fase 2D ya entregó su primer punto (statblocks con PG
+   vivos). A favor de Encuentros primero: es lo que una mesa nota en la primera sesión de combate,
+   y **arrastra las condiciones con duración en turnos**, que hoy no existen. A favor del tablero
+   primero: es lo que el autor pidió por su nombre. **Los dos se quieren; el orden es una decisión,
+   no un descuido.**
+5. **¿Entra el almacenamiento en producción con coste?** MinIO en el propio servidor no cuesta dinero
    pero sí disco y respaldo; S3 cuesta dinero y quita el problema. Hoy **la copia de seguridad de la
    base está rota y declarada**: meter ficheros sin respaldo es multiplicar lo que se puede perder.
 

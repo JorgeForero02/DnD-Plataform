@@ -385,6 +385,28 @@ Documentadas en `vps1new:/root/docs/`, y todas nos afectan:
   publica ninguno**, que es la forma barata de no tener ese problema.
 - **`acme.json` de Traefik**: hay que **parar** Traefik antes de restaurarlo, no reiniciarlo.
 
+## Trampa del despliegue que muerde cada vez (2026-09-03)
+
+**El nombre del contenedor de la base cambia en cada despliegue.** Lleva un sufijo de marca de
+tiempo (`db-5awvsn1dnkexhcjzg7kjwom6-024706832132`), así que un volcado escrito con el nombre de
+la vez anterior falla con `Error response from daemon: No such container` — y si no se mira la
+salida, se cree que hay copia y no la hay. Se resuelve siempre así:
+
+```bash
+ssh vps1new "DB=\$(docker ps --format '{{.Names}}' | grep '^db-5awvsn1' | head -1);   docker exec \$DB pg_dump -U dnd --format=custom dnd > /root/backups/dnd/pre-<motivo>-\$(date +%F-%H%M).dump"
+```
+
+**Y todo se mide por HTTPS con `--resolve`, desde dentro.** Por HTTP, Traefik devuelve **302** a
+todo —incluido `/api/auth/me`—, así que una comprobación por HTTP no dice nada:
+
+```bash
+curl -s --resolve dnd.supportive.pro:443:127.0.0.1 https://dnd.supportive.pro/api/auth/me
+```
+
+**Comprobar qué commit se desplegó, no suponerlo.** La API de Coolify lo dice:
+`GET /api/v1/deployments/<uuid-del-despliegue>` trae `"commit"`, y tiene que coincidir con el
+`HEAD` local.
+
 ## Lo comprobado EN PRODUCCIÓN, con su evidencia (2026-09-02)
 
 Esto ya no es una lista de intenciones: son comandos que se ejecutaron contra el servidor y su

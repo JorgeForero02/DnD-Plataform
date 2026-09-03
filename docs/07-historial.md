@@ -15,6 +15,61 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (04:47) — Despliegue de la adopción, y las pruebas de integración contra producción
+
+**Qué.** Los tres commits de la adopción (`436300f`, `529a526`, `9fb7f0e`) a `dnd.supportive.pro`,
+lanzados por la API de Coolify desde dentro de la VPS. **Sin migración**: esta tanda es toda de
+pantalla. Volcado previo igualmente en `vps1new:/root/backups/dnd/pre-maqueta-2026-09-03-0447.dump`
+(45 KB).
+
+**El commit desplegado se comprobó, no se supuso**: la API de Coolify devuelve
+`9fb7f0e515cc210dbd57480d07f0e6fecc22a14f`, que es el `HEAD` local. Los tres contenedores
+volvieron sanos.
+
+**Una trampa que conviene recordar:** el nombre del contenedor de la base **cambia en cada
+despliegue** (lleva un sufijo de marca de tiempo), así que un volcado con el nombre viejo falla
+con `No such container`. Se resuelve siempre con
+`docker ps --format '{{.Names}}' | grep '^db-5awvsn1'`, nunca con el nombre escrito a mano.
+
+### Lo comprobado, con su salida
+
+Todo medido **desde dentro del servidor** y por HTTPS con `--resolve`, porque Norton intercepta
+el TLS en el PC del autor y porque por HTTP todo devuelve 302.
+
+| Comprobación | Salida |
+|---|---|
+| La SPA se sirve | `GET /` → **200** |
+| La API exige sesión | `GET /api/auth/me` → **401**; `GET /api/catalog` → **401** |
+| Certificado real | `CN=dnd.supportive.pro`, Let's Encrypt, hasta el 1 de diciembre de 2026 |
+| Migraciones | **8**, la última `20260902185824_session_attendance_and_notes` |
+| **Un jugador no ve lo secreto** | La entidad `DM_ONLY` **no aparece** en su listado y el `GET` directo da **404**; el DM la ve con **200** |
+| **Un jugador no escribe en el mundo** | `POST` de entidad como jugador → **403** |
+| Su personaje sí es suyo | Lo crea, completa su hoja (**200**) y el motor deriva `maxHp=13`, `ac=11`, `modCon=3` |
+| **La tirada devuelve el dado descartado** | `2d20kh1+3` → `rolls=[8,6]`, `dropped=[6]`, `total=11` |
+| El límite de intentos actúa | `401 401 401 401 401 429` |
+| **No se esquiva falsificando `X-Forwarded-For`** | Con la cabecera rotando, **429 desde el primero**: la IP real ya estaba limitada, o sea que Traefik descarta la del cliente |
+| **El motor de reglas dispara de verdad** | Entidad nace `DM_ONLY` → regla `SESSION_STARTED → REVEAL_ENTITY` armada → se empieza la sesión → la entidad queda en **`PLAYERS`**, con `ENTITY_REVEALED` en el registro |
+
+### Dos cosas que salieron mal y no eran de la aplicación
+
+**El registro de sucesos «vino vacío»** en la primera pasada. Era el guion de prueba: la respuesta
+es `{"events":[…]}` y el campo se llama `type`, no `kind`. La aplicación estaba bien y el que
+medía mal era yo — el mismo modo de fallo que ya costó dos diagnósticos falsos del arrastre.
+
+**La regla no se creaba**: `mode: "APPLY"` no existe (son `AUTOMATIC` y `PROPOSAL`) y armar no es
+un `POST /arm` sino un `PATCH` con `status`. Otra vez el guion, no el servidor.
+
+### Limpieza
+
+Las pruebas dejaron **seis cuentas en producción con una contraseña conocida**, y eso no se queda:
+borradas por dominio (`@t.local`), comprobando antes y después qué se iba y qué no. Producción
+queda en **2 usuarios reales, 1 campaña, 9 entidades, 3 personajes**, que es exactamente lo que
+había antes de empezar.
+
+**Cómo revertir.** Redesplegar el commit anterior desde Coolify. No hay migración que deshacer.
+
+---
+
 ## 2026-09-03 — Se adopta la maqueta, y 49 clases de CSS que nunca pintaron
 
 **Qué y por qué.** El autor encargó una maqueta a Figma Make a partir de nuestro propio prompt,

@@ -179,3 +179,31 @@ describe("ZodValidationPipe", () => {
     expect(body.message.startsWith("Falta el campo obligatorio «a».")).toBe(true);
   });
 });
+
+describe("un mensaje escrito por el esquema llega entero (2C.6)", () => {
+  // La regla de este dominio, llevada hasta el final: un 400 se escribe **para que una persona lo
+  // lea y sepa qué arreglar**. La regla que comprueba un `superRefine` no la puede adivinar la
+  // capa de traducción; la sabe quien escribió el esquema.
+  //
+  // Lo encontró un e2e de 2C.6: la tabla del DM rechazaba un hueco con un mensaje escrito a
+  // propósito y la respuesta llegaba diciendo «El campo «entries» no tiene un valor válido».
+
+  it("**el mensaje del esquema gana** sobre la frase genérica", () => {
+    const conMensaje = z.object({ entries: z.array(z.number()) }).superRefine((_v, ctx) => {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["entries"],
+        message: "Falta el resultado 6: la tabla no puede tener huecos.",
+      });
+    });
+    const cuerpo = rechazo(conMensaje, { entries: [] });
+    expect(cuerpo.message).toContain("no puede tener huecos");
+  });
+
+  it("pero el «Invalid input» por defecto de Zod NO llega: está en inglés y no dice nada", () => {
+    const sinMensaje = z.object({ n: z.number() }).refine(() => false);
+    const cuerpo = rechazo(sinMensaje, { n: 1 });
+    expect(cuerpo.message).not.toContain("Invalid input");
+    expect(cuerpo.message).toMatch(/no tiene un valor válido/);
+  });
+});

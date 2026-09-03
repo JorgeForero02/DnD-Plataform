@@ -65,6 +65,10 @@ export const GAME_EVENT_TYPES = [
   // La condicion que vence sola (2C.4). **Existe para que el jugador vea POR QUE** dejo de estar
   // envenenado: sin este suceso, el numero cambia y nadie sabe que paso.
   "CONDITION_EXPIRED",
+  // Tirar sobre una tabla del DM (2C.6). **Regla de la casa, y por eso deja rastro**: una tabla
+  // que se dispara sin dejar constancia convierte una partida de 5.a edicion en otra cosa sin que
+  // los jugadores se enteren.
+  "TABLE_ROLLED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -98,6 +102,16 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   }),
   // El reloj (2C.3). `from` y `to` como en `HP_CHANGED`, y por el mismo motivo: sin el antes y el
   // después, la línea de tiempo no se puede leer sin recalcular toda la historia.
+  z.object({
+    type: z.literal("TABLE_ROLLED"),
+    tableName: z.string().min(1).max(120),
+    /** Caras del dado que se tiró: el resultado más alto de la tabla. */
+    die: z.number().int().positive(),
+    roll: z.number().int().positive(),
+    text: z.string().min(1).max(500),
+    /** Si la disparó un crítico o una pifia, en vez de tirarla el DM a mano. */
+    trigger: z.enum(["CRITICAL", "FUMBLE"]).optional(),
+  }),
   z.object({
     type: z.literal("CONDITION_EXPIRED"),
     key: z.string().min(1).max(60),

@@ -247,9 +247,25 @@ function describeIssue(issue: ZodIssue, metadata?: ArgumentMetadata): Validation
     }
     case "invalid_date":
       return { ...base, mensaje: `${sujeto(campo, metadata)} no es una fecha válida.` };
+    case "custom": {
+      // **Un `refine` o un `superRefine` escriben su propio mensaje, y ese mensaje gana** — es la
+      // regla de este fichero llevada hasta el final: un 400 se escribe para que una persona lo
+      // lea y sepa qué arreglar. La regla que un `custom` comprueba no la puede adivinar esta
+      // capa: «la tabla no puede tener huecos» o «dos filas se solapan en el 7» las sabe quien
+      // escribió el esquema, y aquí solo se sabría decir «no tiene un valor válido».
+      //
+      // **Solo si el esquema escribió una**: Zod pone «Invalid input» por defecto, que está en
+      // inglés y no dice nada, y eso sí se traduce a la frase genérica.
+      //
+      // Lo encontró un e2e de 2C.6: la tabla del DM rechazaba un hueco con un mensaje escrito a
+      // propósito y la respuesta llegaba diciendo «El campo «entries» no tiene un valor válido».
+      const propio = issue.message?.trim();
+      if (propio && propio !== "Invalid input") return { ...base, mensaje: propio };
+      return { ...base, mensaje: `${sujeto(campo, metadata)} no tiene un valor válido.` };
+    }
     default:
-      // Uniones no discriminadas, `refine`, `custom` y lo que Zod añada mañana. El código exacto
-      // viaja en `codigo`, así que quien depura no se queda sin la pista.
+      // Uniones no discriminadas y lo que Zod añada mañana. El código exacto viaja en `codigo`,
+      // así que quien depura no se queda sin la pista.
       return { ...base, mensaje: `${sujeto(campo, metadata)} no tiene un valor válido.` };
   }
 }

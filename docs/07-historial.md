@@ -45,6 +45,58 @@ traducción del paso `maxHp.exhaustion.half` y tumba tres pruebas a la vez.
 
 **Cómo revertir.** `git revert` del commit. Solo toca la web; el servidor ya sabía hacer todo esto.
 
+## 2026-09-03 (tarde) — 2C.6 (servidor): las tablas del DM, apagadas por defecto
+
+**Qué.** El último bloque de 2C, y el que más cuidado pedía porque **no es una regla del juego**.
+
+**Lo que dice la fuente:** el SRD **no trae ninguna tabla de críticos ni de pifias**. Lo único
+oficial es que un crítico duplica los dados y no los modificadores, que es lo que 2B ya hace. Todas
+las tablas que circulan son caseras. El autor las quiere porque **el DM de esta mesa las usa**, y
+esa es una razón perfectamente válida — pero entonces entran como lo que son:
+
+1. **Interruptor por campaña, apagado por defecto** (`Campaign.houseTablesEnabled`). Con él
+   apagado, un crítico sigue duplicando dados y nada más.
+2. **A la vista.** Cada consulta deja su `TABLE_ROLLED` en la línea de tiempo, con la visibilidad
+   de la tabla. Una tabla que se dispara sin dejar constancia convierte una partida de 5.ª edición
+   en otra cosa sin que los jugadores se enteren.
+3. **Como primitiva, no como «funcionalidad de pifias».** Tirar sobre una tabla con sus resultados
+   y su visibilidad sirve igual para **botín, rumores y encuentros aleatorios**: una pieza, cuatro
+   usos, que es lo que el alcance de la fase 2 ya sospechaba.
+
+**El esquema hace de corrector de tablas.** Los rangos no se pueden solapar —dos filas que cubran
+el 7 darían dos resultados distintos para la misma tirada, un fallo que solo aparece cuando alguien
+saca justo ese 7— ni dejar huecos, ni empezar en otro sitio que el 1: «no sale nada» no es una
+entrada de ninguna tabla, es un olvido. Y **el dado sale de la tabla**: tantas caras como su
+resultado más alto, así que una de veinte filas se tira con un d20 y una de cien con un d100 sin
+que nadie tenga que decirlo.
+
+**Una sola tabla de críticos y una de pifias por campaña, y lo garantiza la base**: un índice único
+**parcial** de Postgres sobre `trigger <> 'NONE'` —las tablas sin disparador son muchas—, escrito a
+mano en la migración porque Prisma no sabe expresarlo. En la base y no en un `if` del servicio por
+el motivo de siempre: la comprobación en el servicio es una carrera esperando a ocurrir en cuanto
+alguien tenga dos pestañas abiertas.
+
+> **Y el recorrido encontró un defecto que no era de esta tarea.** La tabla rechazaba un hueco con
+> un mensaje escrito a propósito —«Falta el resultado 6: la tabla no puede tener huecos»— y la
+> respuesta llegaba diciendo «El campo «entries» no tiene un valor válido»: el traductor de errores
+> de validación mandaba **todos** los `custom` de Zod a una frase genérica. Eso choca con la regla
+> del propio proyecto —*un 400 se escribe para que una persona lo lea y sepa qué arreglar*—, porque
+> la regla que comprueba un `superRefine` no la puede adivinar esa capa: la sabe quien escribió el
+> esquema. Ahora **el mensaje del esquema gana**, salvo el «Invalid input» por defecto de Zod, que
+> está en inglés y no dice nada.
+
+**Lo que no se prueba en e2e, dicho:** el disparo automático de un crítico o una pifia necesita que
+el d20 saque un 20 o un 1 a voluntad, y el tirador solo se fija inyectándolo. Lo cubren las
+unitarias con sus cuatro ramas; un recorrido que tirara cuarenta veces esperando un natural sería
+una prueba que a veces no prueba nada.
+
+**Probado.** 1182 unitarias y **181 e2e en 29 suites**, en verde. Tres mutaciones: el interruptor
+ignorado, la consulta de tabla hecha en toda tirada en vez de solo con un natural, y el mensaje
+propio del esquema descartado.
+
+**Cómo revertir.** `git revert` del commit y deshacer la migración `tablas_del_dm`, que añade dos
+tablas, una columna con valor por defecto y un valor al enum de sucesos.
+
 ## 2026-09-03 (tarde) — 2C.5 (servidor): la guía de CD y la petición de tirada
 
 **Qué.** Las dos las pidió el DM asesor.

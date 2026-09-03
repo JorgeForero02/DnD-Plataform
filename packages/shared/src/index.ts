@@ -10,6 +10,7 @@ export * from "./game-event.schema";
 export * from "./roll.schema";
 export * from "./clock.schema";
 export * from "./roll-request.schema";
+export * from "./dm-table.schema";
 export * from "./character-sheet.schema";
 export * from "./character-state.schema";
 export * from "./notification.schema";

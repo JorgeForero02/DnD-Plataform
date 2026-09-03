@@ -23,6 +23,7 @@ import {
   type Roller,
 } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
+import { DmTablesService } from "../dm-tables/dm-tables.service";
 import { canView } from "../common/visibility";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -53,6 +54,7 @@ export class RollsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
+    private readonly tables: DmTablesService,
     /**
      * Inyectable para que las pruebas puedan fijar los dados sin tocar el azar real.
      *
@@ -115,6 +117,23 @@ export class RollsService {
       },
     });
 
+    // **La tabla de la casa, si la casa la tiene encendida** (2C.6). Solo se pregunta cuando hay
+    // un natural que cantar, así que una tirada corriente no paga ninguna consulta de más — y con
+    // el interruptor apagado, que es el valor por defecto, esto devuelve `null` y **un crítico
+    // sigue duplicando dados y nada más**, que es lo que dice el manual.
+    const tabla =
+      natural === "NONE"
+        ? null
+        : await this.tables.tablaDisparadaPor(
+            campaignId,
+            natural === "TWENTY" ? "CRITICAL" : "FUMBLE",
+          );
+    const deLaCasa = tabla
+      ? await this.tables.tirarSobre(userId, campaignId, tabla, {
+          trigger: natural === "TWENTY" ? "CRITICAL" : "FUMBLE",
+        })
+      : undefined;
+
     // **El agujero de la tirada a ciegas se cierra aquí.** Hasta 2C la respuesta devolvía el
     // resultado a quien la pedía siempre, así que una tirada que el registro escondía se leía
     // igualmente en el cuerpo de su propia petición: la tirada a ciegas no existía aunque el
@@ -142,6 +161,7 @@ export class RollsService {
       ...(input.dc === undefined ? {} : { dc: input.dc }),
       natural,
       outcome,
+      ...(deLaCasa ? { houseTable: deLaCasa } : {}),
     };
   }
 

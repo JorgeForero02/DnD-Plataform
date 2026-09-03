@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dmTableRollSchema } from "./dm-table.schema";
 import type { Visibility } from "./visibility.schema";
 
 // Tarea 2A.13 — tirar de verdad.
@@ -152,6 +153,13 @@ export const rollResultSchema = z.discriminatedUnion("revealed", [
     expression: z.string(),
     audience: rollAudienceSchema,
     ...desglose,
+    /**
+     * **La tabla de la casa que disparó este natural** (2C.6), si la campaña las tiene
+     * encendidas. Ausente en todo lo demás, que es el caso por defecto: el SRD no trae ninguna
+     * tabla de críticos ni de pifias, y con el interruptor apagado un crítico duplica dados y nada
+     * más.
+     */
+    houseTable: dmTableRollSchema.optional(),
   }),
   z.object({
     /**

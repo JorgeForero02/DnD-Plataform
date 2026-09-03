@@ -33,6 +33,7 @@ enum SessionStatus {
 enum GameEventType {
   CLOCK_ADVANCED
   CONDITION_EXPIRED
+  TABLE_ROLLED
   SESSION_STARTED
   SESSION_CLOSED
   REST_DECLARED
@@ -142,10 +143,17 @@ model Campaign {
   rules       Rule[]
   items       CampaignItem[]
   rollRequests RollRequest[]
+  tables      DmTable[]
 
   // Interruptor general del motor, por campana (contencion operativa, punto 6 de la spec de
   // autoridad). Un DM que ve algo raro lo apaga entero sin tener que desarmar regla por regla.
   rulesEnabled Boolean @default(true)
+
+  // Las tablas de la casa (2C.6): **apagadas por defecto**. Con el interruptor apagado, un
+  // critico sigue duplicando dados y nada mas, que es lo que dice el manual. El SRD no trae
+  // ninguna tabla de criticos ni de pifias: todas las que circulan son caseras, y una casa que
+  // cambia una regla lo hace a la vista.
+  houseTablesEnabled Boolean @default(false)
 
   // El reloj de la campana (2C.3): **segundos de juego**, no una fecha. Un asalto son seis, asi
   // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
@@ -392,6 +400,37 @@ model CharacterCondition {
 
   @@unique([characterId, key])
   @@index([characterId])
+}
+
+// Una tabla del DM (2C.6). **Primitiva, no «funcionalidad de pifias»**: tirar sobre una tabla con
+// sus resultados y su visibilidad sirve igual para botin, rumores y encuentros aleatorios.
+model DmTable {
+  id          String     @id @default(cuid())
+  campaignId  String
+  name        String
+  description String?
+  visibility  Visibility @default(DM_ONLY)
+  // Para que se consulta sola: NONE (solo a mano), CRITICAL o FUMBLE.
+  trigger     String     @default("NONE")
+  createdAt   DateTime   @default(now())
+  entries     DmTableEntry[]
+  campaign    Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+// Una fila: **un rango y un texto**. Rango y no un numero suelto porque asi se escribe una tabla de
+// verdad —«01-20: se te encasquilla el arma»— y porque una de d100 con cien filas de un numero cada
+// una es la misma tabla escrita cien veces.
+model DmTableEntry {
+  id      String  @id @default(cuid())
+  tableId String
+  min     Int
+  max     Int
+  text    String
+  table   DmTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([tableId])
 }
 
 // Peticion de tirada (2C.5). **El DM pide, el jugador tira, el DM ve el resultado.**

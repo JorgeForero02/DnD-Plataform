@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from "@nes
 import type { CreateRollInput, RollResult, RollResultRevealed } from "@dnd/shared";
 import type { Roller } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
+import { DmTablesService } from "../dm-tables/dm-tables.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { conVentaja, RollsService } from "./rolls.service";
@@ -26,10 +27,14 @@ function montar(roller: Roller) {
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn(), list: jest.fn() };
+  // 2C.6: las tablas de la casa. **Apagadas por defecto**, que es lo que devuelve `null` aquí y lo
+  // que hace que un crítico siga duplicando dados y nada más.
+  const tables = { tablaDisparadaPor: jest.fn(), tirarSobre: jest.fn() };
   const service = new RollsService(
     prisma as unknown as PrismaService,
     membership as unknown as MembershipService,
     events as unknown as GameEventsService,
+    tables as unknown as DmTablesService,
     roller,
   );
   const tirar = (userId: string, campaignId: string, input: CreateRollInput) =>
@@ -38,8 +43,9 @@ function montar(roller: Roller) {
   membership.getMembership.mockResolvedValue({ role: "PLAYER" });
   prisma.session.findFirst.mockResolvedValue(null);
   events.record.mockResolvedValue({ id: "e1" });
+  tables.tablaDisparadaPor.mockResolvedValue(null);
   prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
-  return { service, prisma, membership, events, tirar };
+  return { service, prisma, membership, events, tables, tirar };
 }
 
 /**
@@ -436,5 +442,56 @@ describe("el registro de tiradas (2C.1)", () => {
     events.list.mockResolvedValue({ events: [], nextCursor: null });
     await service.list("u1", "c1", { limit: 50 });
     expect(events.list.mock.calls[0][3].types).toContain("DEATH_SAVE");
+  });
+});
+
+describe("las tablas de la casa se disparan solas, si están encendidas (2C.6)", () => {
+  // El criterio con el que cierra 2C.6, y la línea que no se cruza: **con el interruptor apagado,
+  // un crítico sigue duplicando dados y nada más**, que es lo único que dice el SRD.
+
+  it("**con la casa apagada, un 20 natural no consulta ninguna tabla**", async () => {
+    const { service, tables } = montar(dadosFijos(20));
+    tables.tablaDisparadaPor.mockResolvedValue(null);
+
+    const r = revelada(
+      await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" }),
+    );
+
+    expect(r.natural).toBe("TWENTY");
+    expect(r.houseTable).toBeUndefined();
+    expect(tables.tirarSobre).not.toHaveBeenCalled();
+  });
+
+  it("una tirada sin natural **ni siquiera pregunta**: no se paga una consulta por cada tirada", async () => {
+    const { service, tables } = montar(dadosFijos(11));
+    await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" });
+    expect(tables.tablaDisparadaPor).not.toHaveBeenCalled();
+  });
+
+  it("con la casa encendida, un 20 natural tira sobre la tabla de críticos y sale en el resultado", async () => {
+    const { service, tables } = montar(dadosFijos(20));
+    tables.tablaDisparadaPor.mockResolvedValue({ id: "t1", name: "Críticos", entries: [] });
+    tables.tirarSobre.mockResolvedValue({
+      tableId: "t1",
+      tableName: "Críticos",
+      die: 10,
+      roll: 4,
+      text: "Le cortas la mano.",
+      eventId: "e2",
+    });
+
+    const r = revelada(
+      await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" }),
+    );
+
+    expect(tables.tablaDisparadaPor).toHaveBeenCalledWith("c1", "CRITICAL");
+    expect(r.houseTable).toMatchObject({ tableName: "Críticos", text: "Le cortas la mano." });
+  });
+
+  it("y un 1 natural busca la de pifias, no la de críticos", async () => {
+    const { service, tables } = montar(dadosFijos(1));
+    tables.tablaDisparadaPor.mockResolvedValue(null);
+    await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" });
+    expect(tables.tablaDisparadaPor).toHaveBeenCalledWith("c1", "FUMBLE");
   });
 });

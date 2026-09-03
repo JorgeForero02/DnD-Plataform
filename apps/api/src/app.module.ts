@@ -16,6 +16,7 @@ import { GameEventsModule } from "./game-events/game-events.module";
 import { RollsModule } from "./rolls/rolls.module";
 import { GameClockModule } from "./game-clock/game-clock.module";
 import { RollRequestsModule } from "./roll-requests/roll-requests.module";
+import { DmTablesModule } from "./dm-tables/dm-tables.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { WorldStateModule } from "./world-state/world-state.module";
 import { CharacterStateModule } from "./character-state/character-state.module";
@@ -51,6 +52,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     RollsModule,
     GameClockModule,
     RollRequestsModule,
+    DmTablesModule,
     NotificationsModule,
     WorldStateModule,
     CharacterStateModule,

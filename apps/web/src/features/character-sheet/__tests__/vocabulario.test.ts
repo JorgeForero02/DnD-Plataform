@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { traducirLabelKey } from "../vocabulario";
+import { describirAviso, traducirLabelKey } from "../vocabulario";
 
 // Tarea 2A.10 — "toda labelKey que el motor puede devolver tiene traducción (recórrelas y
 // compruébalo)". Esta lista es la enumeración manual de cada `labelKey` que
@@ -130,5 +130,31 @@ describe("traducirLabelKey — cobertura de todas las claves que el motor puede 
     const { conocida, texto } = traducirLabelKey("race.beholder.deathRay");
     expect(conocida).toBe(false);
     expect(texto).toBe("Sin traducir: race.beholder.deathRay");
+  });
+});
+
+describe("ningún aviso del servidor puede salir «Sin traducir»", () => {
+  // **La lista se mantiene a mano, y por eso está aquí y no en un comentario.** Es la misma
+  // clase de red que la de las cabeceras de atribución del catálogo: un `grep` de
+  // `code: "…"` sobre `apps/api/src/rules/` y `apps/api/src/characters/` da estos siete.
+  // Dos de ellos —los del equipo a dos manos— salieron a producción de esta misma sesión
+  // pintando «Sin traducir: versatile_needs_both_hands» porque nadie los tradujo al añadirlos.
+  const CODIGOS_QUE_EMITE_LA_API = [
+    "ac_formula_discarded",
+    "armor_stealth_disadvantage",
+    "armor_strength_requirement_unmet",
+    "attack_not_proficient",
+    "item_unresolved",
+    "two_weapon_offhand_damage",
+    "versatile_needs_both_hands",
+    "unresolved_choice",
+    "duplicate_skill_choice",
+    "stale_choice",
+  ];
+
+  it.each(CODIGOS_QUE_EMITE_LA_API)("«%s» tiene frase en español", (code) => {
+    const frase = describirAviso({ code, key: "x", data: { name: "Espada larga", item: "SRD:x" } });
+    expect(frase).not.toMatch(/Sin traducir/);
+    expect(frase.length).toBeGreaterThan(10);
   });
 });

@@ -59,6 +59,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
 | `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
 | `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
+| `superpowers/specs/2026-09-03-contraste-de-reglas-2B.md` | **Las reglas de 2B contrastadas con la fuente**, una por una, con sus enlaces. Ninguna salió mal; salieron **tres cosas que no sabíamos**, incluida una que se estaba pintando rota en la hoja |
 | `superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md` | **Lo que una mesa real encontró en 2B**: dos frentes con refutador sobre el turno de un guerrero enano y sobre lo que sobrevive entre sesiones. Nueve fallos de regla arreglados el mismo día y doce fichas abiertas |
 | `superpowers/plans/2026-09-03-fase-2B-objetos-inventario-y-equipo.md` | **El plan de la fase 2B**: qué entrega, **las once decisiones de mecánica que se tomaron sin el autor** con su porqué, la frontera de ficheros de cada carril y el orden. Se lee antes de tocar objetos, inventario o el cuadro de ataques |
 | `superpowers/notes/2026-09-03-prompt-arranque-fase-2B.md` | **El prompt con el que arranca la sesión de la fase 2B**: qué construir, cómo trabajar, las trampas que ya costaron horas y lo que NO hay que hacer. Se copia y se pega |
@@ -94,12 +95,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `ccbed8b` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `5abf663` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Declaraciones de prueba unitaria:** 1230 (shared 43, api 623, web 564). **Es una cota inferior, no lo
+> - **Declaraciones de prueba unitaria:** 1231 (shared 43, api 623, web 565). **Es una cota inferior, no lo
 >   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no
 >   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número
 >   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice

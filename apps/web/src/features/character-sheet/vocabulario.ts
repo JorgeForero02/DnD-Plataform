@@ -486,6 +486,21 @@ export function describirAviso(warning: {
         d.actual ?? "?"
       }): la velocidad al caminar baja 10 pies.`;
     }
+    case "versatile_needs_both_hands": {
+      const nombre = typeof d.name === "string" ? d.name : "esta arma";
+      // SRD 5.1: un arma versátil hace su dado mayor **empuñada con las dos manos**, y con un
+      // escudo o un arma en la otra mano eso no se puede. Contrastado con el SRD y con la
+      // práctica de la comunidad (arcaneeye, D&D Beyond) el 2026-09-03.
+      return `${nombre} solo hace su dado a dos manos con la otra mano libre: ahora la tienes ocupada.`;
+    }
+    case "two_weapon_offhand_damage": {
+      const nombre = typeof d.name === "string" ? d.name : "el arma de la otra mano";
+      // SRD 5.1, combate con dos armas: al **ataque adicional de acción adicional** no se le
+      // suma el modificador al daño, **salvo que sea negativo**; y el estilo de combate
+      // «Combate con dos armas» levanta esa restricción. La ficha no lo resta sola porque no
+      // modela el ataque de acción adicional: la máquina ejecuta, el DM arbitra.
+      return `Si ${nombre} es tu ataque adicional de combate con dos armas, su daño no suma el modificador —salvo que sea negativo, o que tengas el estilo de combate—. Aquí sí está sumado.`;
+    }
     case "item_unresolved":
       return "Hay un objeto equipado que ya no existe en el catálogo. Revísalo desde el inventario.";
     default:

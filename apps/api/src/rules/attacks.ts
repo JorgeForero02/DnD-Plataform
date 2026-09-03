@@ -152,10 +152,14 @@ export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
     }
 
     // **El ataque con la otra mano no suma el modificador al daño** (SRD 5.1, combate con dos
-    // armas), pero **solo cuando es el ataque adicional de acción adicional**, y eso lo decide
-    // quien juega, no la ficha: llevar un arma en la izquierda no obliga a usar esa regla. Así
-    // que el número no se toca y se avisa, que es lo que la máquina puede decir con verdad —
-    // la máquina ejecuta, el DM arbitra.
+    // armas) — **salvo que el modificador sea negativo**, y el estilo de combate «Combate con dos
+    // armas» levanta la restricción entera. Comprobado contra la fuente el 2026-09-03: una
+    // versión anterior de este comentario decía «salvo dote», y eso es otra cosa (la dote del
+    // SRD da +1 a la CA y permite armas no ligeras, no el modificador).
+    //
+    // Además **solo aplica al ataque adicional de acción adicional**, y esta ficha no modela los
+    // ataques de un turno: es una fila por arma equipada. Así que el número no se toca y se
+    // avisa — la máquina ejecuta, el DM arbitra.
     if (item.slot === "OFF_HAND" && weapon.properties.includes("LIGHT")) {
       warnings.push({
         code: "two_weapon_offhand_damage",

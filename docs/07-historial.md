@@ -45,6 +45,19 @@ traducción del paso `maxHp.exhaustion.half` y tumba tres pruebas a la vez.
 
 **Cómo revertir.** `git revert` del commit. Solo toca la web; el servidor ya sabía hacer todo esto.
 
+## 2026-09-03 (noche) — **La fase 2C está en producción**
+
+**Qué.** Desplegada la tanda entera de 2C en `dnd.supportive.pro`, lanzada por la API de Coolify
+desde dentro de la VPS, con **volcado previo de la base** porque la tanda trae cuatro migraciones.
+
+**Comprobado con evidencia, no con el «queued»**: el commit desplegado es el que se empujó
+(`b0d6a6d`), los tres contenedores vuelven sanos, **las cuatro migraciones se aplican solas**, el
+índice único parcial de las tablas del DM existe en producción, la SPA da 200, la API exige sesión
+y el certificado es el del dominio. La tabla está en [03-despliegue.md](./03-despliegue.md).
+
+**Lo que no se hizo, por decisión del autor:** la partida de prueba con dos cuentas de jugador, que
+pasa **a después de la fase 2D**. El despliegue queda en pie para cuando toque.
+
 ## 2026-09-03 (noche) — El cierre de la fase 2C: cuatro fichas, una revisión de dos frentes y once arreglos
 
 **Qué.** El autor pidió cerrar todo lo que se pudiera antes de 2D. Esto es lo que se cerró.

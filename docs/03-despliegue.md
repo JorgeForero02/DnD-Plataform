@@ -407,6 +407,26 @@ curl -s --resolve dnd.supportive.pro:443:127.0.0.1 https://dnd.supportive.pro/ap
 `GET /api/v1/deployments/<uuid-del-despliegue>` trae `"commit"`, y tiene que coincidir con el
 `HEAD` local.
 
+## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2C (2026-09-03)
+
+Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
+(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`), con la tanda entera de 2C y **cuatro
+migraciones**. Volcado previo de la base en `vps1new:/root/dnd-antes-de-2c.sql.gz` antes de tocar
+nada, porque el documento lo pide cuando la tanda trae migración.
+
+| Comprobación | Salida real |
+|---|---|
+| **El commit desplegado es el que se empujó** | `GET /api/v1/deployments/<uuid>` → `finished`, commit `b0d6a6d8` = `HEAD` local |
+| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up About a minute (healthy)` |
+| **Las cuatro migraciones de 2C se aplican solas** | `clock_de_campana`, `condiciones_con_vencimiento`, `peticion_de_tirada` y `tablas_del_dm`, las cuatro con `finished_at` no nulo |
+| **El índice único parcial de las tablas del DM existe en producción** | `DmTable_campaignId_trigger_key` presente en `pg_indexes` |
+| La SPA se sirve | `GET /` → **200** |
+| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/catalog` → **401** |
+| El certificado es el del dominio y de Let's Encrypt | `issuer=... Let's Encrypt`, `subject=CN=dnd.supportive.pro`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro** con `openssl s_client` contra `127.0.0.1:443`, porque Norton intercepta el TLS en el PC del autor |
+
+**Lo que NO se hizo, y es decisión del autor:** la partida de prueba con dos cuentas de jugador.
+Se pospone **a después de la fase 2D**, con el despliegue ya en pie.
+
 ## Lo comprobado EN PRODUCCIÓN, con su evidencia (2026-09-02)
 
 Esto ya no es una lista de intenciones: son comandos que se ejecutaron contra el servidor y su

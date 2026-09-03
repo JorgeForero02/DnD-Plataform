@@ -226,12 +226,13 @@ construye con sondeo **a propósito**, y eso no es deuda escondida sino una fron
    rediseñar la pantalla de sesión.
 3. **La pantalla la diseña el autor**, según dijo. Antes de dibujarla hay que saber si eso sigue en
    pie o si se acepta una primera versión funcional para corregir después.
-4. **¿Va antes Encuentros que la fase 3?** El plan maestro lo pone delante y lo llama «el
-   compañero natural del tablero», y la fase 2D ya entregó su primer punto (statblocks con PG
-   vivos). A favor de Encuentros primero: es lo que una mesa nota en la primera sesión de combate,
-   y **arrastra las condiciones con duración en turnos**, que hoy no existen. A favor del tablero
-   primero: es lo que el autor pidió por su nombre. **Los dos se quieren; el orden es una decisión,
-   no un descuido.**
+4. ~~**¿Va antes Encuentros que la fase 3?**~~ **CONTESTADA por el autor el 2026-09-03: sí.** Va
+   antes, ampliada, y se llama **fase 2.5** —
+   [su alcance](./2026-09-03-fase-2.5-alcance-design.md)—. El motivo, en sus palabras: *«completa
+   el motor con lo que falta»* antes de dibujar nada. **Y cambia lo que esta fase hereda**: cuando
+   llegue el tablero, el combate ya estará resuelto en el servidor, así que 3.C **coloca y enseña**
+   sin tener que arbitrar nada — que es justo lo que su propia lista del §5 prometía y no podía
+   garantizar mientras Encuentros no existiera.
 5. **¿Entra el almacenamiento en producción con coste?** MinIO en el propio servidor no cuesta dinero
    pero sí disco y respaldo; S3 cuesta dinero y quita el problema. Hoy **la copia de seguridad de la
    base está rota y declarada**: meter ficheros sin respaldo es multiplicar lo que se puede perder.

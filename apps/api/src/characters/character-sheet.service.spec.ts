@@ -6,6 +6,7 @@ import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
+import { RollsService } from "../rolls/rolls.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
 import { CharacterSheetService } from "./character-sheet.service";
 
@@ -55,6 +56,11 @@ function personaje(overrides: Partial<Character> = {}): Character {
     version: 0,
     deathSaveSuccesses: 0,
     deathSaveFailures: 0,
+    cp: 0,
+    sp: 0,
+    ep: 0,
+    gp: 0,
+    pp: 0,
     ...overrides,
   } as Character;
 }
@@ -67,6 +73,10 @@ function montar(roller?: Roller) {
   const prisma = {
     character: { findFirst: jest.fn(), update: jest.fn() },
     characterCondition: { findMany: jest.fn().mockResolvedValue([]) },
+    // Fase 2B: la hoja lee el equipo **equipado** para derivar. Por defecto, sin equipo — que es
+    // el estado de todas las pruebas escritas antes de que el inventario existiera.
+    inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
+    campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
     user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -77,6 +87,7 @@ function montar(roller?: Roller) {
   };
   const events = { record: jest.fn().mockResolvedValue({ id: "ev1" }) };
   const characters = { requireEditable: jest.fn() };
+  const rolls = { roll: jest.fn().mockResolvedValue({ id: "roll1", total: 15 }) };
   prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
 
   const resources = { seedResourcesFor: jest.fn().mockResolvedValue(undefined) };
@@ -86,10 +97,11 @@ function montar(roller?: Roller) {
     membership as unknown as MembershipService,
     events as unknown as GameEventsService,
     characters as unknown as CharactersService,
+    rolls as unknown as RollsService,
     roller,
     resources as unknown as ResourcesService,
   );
-  return { service, prisma, membership, events, characters, resources };
+  return { service, prisma, membership, events, characters, resources, rolls };
 }
 
 /** Simula `prisma.$transaction`, con un `tx` que solo sabe bloquear la fila dada y actualizarla. */
@@ -700,5 +712,198 @@ describe("un muerto no se cura con puntos de golpe, y el combate se graba en su 
       expect.objectContaining({ sessionId: "sess-en-curso" }),
       expect.anything(),
     );
+  });
+});
+
+// ============================================================================================
+// Fase 2B — el equipo equipado alimenta la hoja, y el arma equipada produce su tirada.
+//
+// **Lo que se prueba aquí es la costura**, no las reglas: que la armadura sustituya la fórmula y
+// que el escudo sume plano ya está probado en `rules/items.spec.ts`, y qué característica ataca
+// con un arma sutil, en `rules/attacks.spec.ts`. Lo que ningún otro sitio puede demostrar es que
+// la hoja **lea el inventario**, que solo cuente lo equipado, y que la expresión de la tirada la
+// componga el servidor.
+// ============================================================================================
+
+/** Una fila de inventario con un objeto del SRD, tal como la devuelve Prisma. */
+function filaDeInventario(srdKey: string, extra: Record<string, unknown> = {}) {
+  return {
+    id: `inv-${srdKey}`,
+    characterId: "ch1",
+    srdKey,
+    campaignItemId: null,
+    quantity: 1,
+    location: "EQUIPPED",
+    slot: null,
+    attuned: false,
+    storedAt: null,
+    note: null,
+    createdAt: new Date(),
+    ...extra,
+  };
+}
+
+describe("2B — el equipo equipado cambia los números de la hoja, con su traza", () => {
+  it("una cota de malla equipada sustituye la fórmula de CA y el paso sale en la traza", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([filaDeInventario("chain-mail")]);
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    // Sin equipo la CA de esta ficha es 10 + Destreza; con cota de malla, 16 y la Destreza
+    // recortada a cero. El número se compara contra el total de la traza, no contra una cifra
+    // escrita a mano: si la fórmula cambia, la prueba sigue diciendo la verdad.
+    const ca = res.sheet!.derived.ac;
+    expect(ca.total).toBe(16);
+    // **La traza suma exactamente el total.** Con Destreza 12 y tope 0 los pasos son
+    // «16 cota + 1 destreza − 1 recorte»: el recorte se enseña y además cuadra.
+    expect(ca.steps.reduce((suma, paso) => suma + paso.amount, 0)).toBe(ca.total);
+    expect(ca.steps.some((paso) => paso.sourceType === "item")).toBe(true);
+  });
+
+  it("lo que está en la mochila NO cambia ningún número: solo cuenta lo equipado", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([]);
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    // La consulta pide explícitamente las filas equipadas; llevar la armadura encima no viste.
+    expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { characterId: "ch1", location: "EQUIPPED" } }),
+    );
+    expect(res.sheet!.derived.ac.total).toBe(11);
+  });
+
+  it("un arma equipada aparece en el cuadro de ataques con su bono y su daño", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("long-sword", { slot: "MAIN_HAND" }),
+    ]);
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    const ataque = res.attacks.find((a) => a.name === "Espada larga");
+    expect(ataque).toBeDefined();
+    // Fuerza 15 (+2) y competencia +2 en un guerrero de nivel 1: +4 al ataque, 1d8+2 de daño.
+    expect(ataque!.attackBonus.total).toBe(4);
+    expect(ataque!.damage.expression).toBe("1d8+2");
+    expect(ataque!.versatileDamage?.expression).toBe("1d10+2");
+  });
+
+  it("una fila cuyo objeto ya no existe en el catálogo avisa, pero no rompe la hoja", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([filaDeInventario("espada-que-ya-no-existe")]);
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.sheet).not.toBeNull();
+    expect(res.sheet!.warnings.some((a) => a.code === "item_unresolved")).toBe(true);
+  });
+
+  it("la bolsa viaja con la hoja, para no pedirla aparte", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ gp: 12, sp: 3 }));
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.money).toEqual({ cp: 0, sp: 3, ep: 0, gp: 12, pp: 0 });
+  });
+});
+
+describe("2B/2C — tirar con un arma: la expresión la compone el servidor", () => {
+  function conEspada() {
+    const montado = montar();
+    montado.prisma.character.findFirst.mockResolvedValue(personaje());
+    montado.characters.requireEditable.mockResolvedValue(personaje());
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("long-sword", { slot: "MAIN_HAND" }),
+    ]);
+    return montado;
+  }
+
+  it("el ataque es 1d20 + el bono del cuadro, y la ventaja va como modo, no como sintaxis", async () => {
+    const { service, rolls } = conEspada();
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "ATTACK",
+      mode: "ADVANTAGE",
+      versatile: false,
+      critical: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d20+4", mode: "ADVANTAGE", characterId: "ch1" }),
+    );
+  });
+
+  it("el daño a dos manos usa el dado versátil", async () => {
+    const { service, rolls } = conEspada();
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "NORMAL",
+      versatile: true,
+      critical: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d10+2" }),
+    );
+  });
+
+  it("un crítico duplica los DADOS y nunca el modificador", async () => {
+    const { service, rolls } = conEspada();
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "NORMAL",
+      versatile: false,
+      critical: true,
+    });
+
+    // 1d8+2 crítico es 2d8+2. Si saliera 2d8+4, el modificador se estaría duplicando también.
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d8+2" }),
+    );
+  });
+
+  it("el daño nunca hereda la ventaja: la ventaja es del d20", async () => {
+    const { service, rolls } = conEspada();
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "ADVANTAGE",
+      versatile: false,
+      critical: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ mode: "NORMAL" }),
+    );
+  });
+
+  it("pedir un ataque con un arma que no está equipada es 400, no 500", async () => {
+    const { service } = conEspada();
+
+    await expect(
+      service.rollAttack("p1", "c1", "ch1", "SRD:greataxe", {
+        part: "ATTACK",
+        mode: "NORMAL",
+        versatile: false,
+        critical: false,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

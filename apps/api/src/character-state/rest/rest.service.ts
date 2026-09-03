@@ -7,7 +7,7 @@ import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { abilityModifier } from "../../rules/engine";
 import { maxHpDe } from "../common/max-hp";
-import { requireOwnerOrDM, requireVisibleCharacter } from "../common/viewer";
+import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
 // Tarea 2A.8 — descansos.
 //

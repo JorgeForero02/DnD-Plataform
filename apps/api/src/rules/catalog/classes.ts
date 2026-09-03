@@ -51,8 +51,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Bárbaro",
     hitDie: 12,
     saveProficiencies: ["str", "con"],
-    armorProficiencies: ["Armadura ligera", "Armadura media", "Escudos"],
-    weaponProficiencies: ["Armas sencillas", "Armas marciales"],
+    armorProficiencies: ["light", "medium", "shield"],
+    weaponProficiencies: ["simple", "martial"],
     skillChoice: { choose: 2, from: HABILIDADES_BARBARO },
     attacksPerAction: [{ fromLevel: 5, attacks: 2 }],
     asiLevels: ASI_ESTANDAR,
@@ -92,14 +92,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Bardo",
     hitDie: 8,
     saveProficiencies: ["dex", "cha"],
-    armorProficiencies: ["Armadura ligera"],
-    weaponProficiencies: [
-      "Armas sencillas",
-      "Ballestas de mano",
-      "Espadas largas",
-      "Estoques",
-      "Espadas cortas",
-    ],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple", "hand-crossbow", "long-sword", "rapier", "short-sword"],
     skillChoice: { choose: 3, from: TODAS_LAS_HABILIDADES },
     spellcastingAbility: "cha",
     spellProgression: "FULL",
@@ -144,8 +138,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Clérigo",
     hitDie: 8,
     saveProficiencies: ["wis", "cha"],
-    armorProficiencies: ["Armadura ligera", "Armadura media", "Escudos"],
-    weaponProficiencies: ["Armas sencillas"],
+    armorProficiencies: ["light", "medium", "shield"],
+    weaponProficiencies: ["simple"],
     skillChoice: {
       choose: 2,
       from: ["history", "insight", "medicine", "persuasion", "religion"],
@@ -188,22 +182,23 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Druida",
     hitDie: 8,
     saveProficiencies: ["int", "wis"],
-    armorProficiencies: [
-      "Armadura ligera (no metálica)",
-      "Armadura media (no metálica)",
-      "Escudos (no metálicos)",
-    ],
+    // El SRD dice «ligera, media y escudos, **no metálicos**». Ese matiz **no es una
+    // competencia**: es un tabu de la clase —un druida sabe usar una cota de escamas, pero no
+    // quiere—, y modelarlo como una competencia menos haria que el motor le negara una armadura
+    // que la regla si le permite llevar. Se queda como texto de la aptitud hasta que haya donde
+    // ponerlo; la lista de aqui es lo que el motor entiende.
+    armorProficiencies: ["light", "medium", "shield"],
     weaponProficiencies: [
-      "Clavas",
-      "Dagas",
-      "Dardos",
-      "Jabalinas",
-      "Mazas",
-      "Bastones",
-      "Cimitarras",
-      "Hoces",
-      "Hondas",
-      "Lanzas",
+      "greatclub",
+      "dagger",
+      "dart",
+      "javelin",
+      "mace",
+      "quarterstaff",
+      "scimitar",
+      "sickle",
+      "sling",
+      "spear",
     ],
     skillChoice: {
       choose: 2,
@@ -253,8 +248,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Guerrero",
     hitDie: 10,
     saveProficiencies: ["str", "con"],
-    armorProficiencies: ["Toda armadura", "Escudos"],
-    weaponProficiencies: ["Armas sencillas", "Armas marciales"],
+    armorProficiencies: ["light", "medium", "heavy", "shield"],
+    weaponProficiencies: ["simple", "martial"],
     skillChoice: {
       choose: 2,
       from: [
@@ -309,7 +304,7 @@ export const SRD_CLASSES: SrdClass[] = [
     hitDie: 8,
     saveProficiencies: ["str", "dex"],
     armorProficiencies: [],
-    weaponProficiencies: ["Armas sencillas", "Espadas cortas"],
+    weaponProficiencies: ["simple", "short-sword"],
     skillChoice: {
       choose: 2,
       from: ["acrobatics", "athletics", "history", "insight", "religion", "stealth"],
@@ -356,8 +351,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Paladín",
     hitDie: 10,
     saveProficiencies: ["wis", "cha"],
-    armorProficiencies: ["Toda armadura", "Escudos"],
-    weaponProficiencies: ["Armas sencillas", "Armas marciales"],
+    armorProficiencies: ["light", "medium", "heavy", "shield"],
+    weaponProficiencies: ["simple", "martial"],
     skillChoice: {
       choose: 2,
       from: ["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"],
@@ -403,8 +398,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Explorador",
     hitDie: 10,
     saveProficiencies: ["str", "dex"],
-    armorProficiencies: ["Armadura ligera", "Armadura media", "Escudos"],
-    weaponProficiencies: ["Armas sencillas", "Armas marciales"],
+    armorProficiencies: ["light", "medium", "shield"],
+    weaponProficiencies: ["simple", "martial"],
     skillChoice: {
       choose: 3,
       from: [
@@ -459,14 +454,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Pícaro",
     hitDie: 8,
     saveProficiencies: ["dex", "int"],
-    armorProficiencies: ["Armadura ligera"],
-    weaponProficiencies: [
-      "Armas sencillas",
-      "Ballestas de mano",
-      "Espadas largas",
-      "Estoques",
-      "Espadas cortas",
-    ],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple", "hand-crossbow", "long-sword", "rapier", "short-sword"],
     skillChoice: {
       choose: 4,
       from: [
@@ -521,7 +510,7 @@ export const SRD_CLASSES: SrdClass[] = [
     hitDie: 6,
     saveProficiencies: ["con", "cha"],
     armorProficiencies: [],
-    weaponProficiencies: ["Dagas", "Dardos", "Hondas", "Bastones", "Ballestas ligeras"],
+    weaponProficiencies: ["dagger", "dart", "sling", "quarterstaff", "light-crossbow"],
     skillChoice: {
       choose: 2,
       from: ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"],
@@ -558,8 +547,8 @@ export const SRD_CLASSES: SrdClass[] = [
     name: "Brujo",
     hitDie: 8,
     saveProficiencies: ["wis", "cha"],
-    armorProficiencies: ["Armadura ligera"],
-    weaponProficiencies: ["Armas sencillas"],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple"],
     skillChoice: {
       choose: 2,
       from: [
@@ -607,7 +596,7 @@ export const SRD_CLASSES: SrdClass[] = [
     hitDie: 6,
     saveProficiencies: ["int", "wis"],
     armorProficiencies: [],
-    weaponProficiencies: ["Dagas", "Dardos", "Hondas", "Bastones", "Ballestas ligeras"],
+    weaponProficiencies: ["dagger", "dart", "sling", "quarterstaff", "light-crossbow"],
     skillChoice: {
       choose: 2,
       from: ["arcana", "history", "insight", "investigation", "medicine", "religion"],

@@ -166,6 +166,76 @@ describe("una competencia fija repetida tampoco se calla", () => {
   });
 });
 
+describe("build.items — carril A2: el equipo equipado entra por la misma puerta", () => {
+  it("un objeto que suma velocidad sube `speeds.walk` Y el derivado con su traza", () => {
+    const hoja = deriveCharacter(
+      ficha({
+        items: [
+          {
+            ref: "boots-of-striding",
+            source: "SRD",
+            name: "Botas de zancada",
+            kind: "GEAR",
+            weightOz: 16,
+            effects: [{ kind: "speed", movement: "walk", amount: 10 }],
+            requiresAttunement: false,
+          },
+        ],
+      }),
+    );
+    // Humano: 30 pies base. `ResolvedBuild.speeds` conserva su forma de siempre (números
+    // planos), pero el número ya sale del equipo, no solo de la raza.
+    expect(hoja.speeds.walk).toBe(40);
+    expect(hoja.derived["speed.walk"].total).toBe(40);
+    expect(hoja.derived["speed.walk"].steps.some((p) => p.sourceKey === "boots-of-striding")).toBe(
+      true,
+    );
+  });
+
+  it("dos escudos en `build.items` también son equipo imposible", () => {
+    const escudo = {
+      ref: "shield",
+      source: "SRD" as const,
+      name: "Escudo",
+      kind: "SHIELD" as const,
+      weightOz: 0,
+      effects: [],
+      requiresAttunement: false,
+      armor: {
+        category: "SHIELD" as const,
+        baseAc: 2,
+        strengthRequirement: 0,
+        stealthDisadvantage: false,
+      },
+    };
+    expect(() => resolveBuild(ficha({ items: [escudo, { ...escudo, ref: "shield-2" }] }))).toThrow(
+      InvalidEquipmentError,
+    );
+  });
+
+  it("la competencia de un objeto compite con la de la clase: gana la mejor", () => {
+    // El guerrero elige Atletismo competente; unas botas dan Atletismo con pericia. Gana la
+    // pericia, y no se duplica en la lista.
+    const hoja = deriveCharacter(
+      ficha({
+        choices: { "fighter-skills": ["athletics", "perception"] },
+        items: [
+          {
+            ref: "boots-of-athletics",
+            source: "SRD",
+            name: "Botas de atletismo",
+            kind: "GEAR",
+            weightOz: 16,
+            effects: [{ kind: "skillProficiency", skill: "athletics", level: "expertise" }],
+            requiresAttunement: false,
+          },
+        ],
+      }),
+    );
+    expect(hoja.derived["skill.athletics"].steps.filter((p) => p.op === "add")).toHaveLength(2);
+  });
+});
+
 describe("deriveCharacter devuelve todo lo que las pantallas de 2A necesitan", () => {
   it("rasgos, velocidades y las claves de raza y clase, no solo los números", () => {
     // El hallazgo: la «puerta de entrada» tiraba esto, así que 2A.10 y 2A.12 habrían tenido que

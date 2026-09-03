@@ -13,18 +13,35 @@
 
 import {
   characterBuildSchema,
+  type AbilityKey,
   type CharacterBuildInput,
   type DerivationWarning,
+  type Movement,
   type ProficiencyLevel,
   type SkillKey,
 } from "@dnd/shared";
-import type { AcFormula, EngineInput, Modifier } from "../engine";
+// **Dirección única: `resolve.ts` importa de `../items`, `../items` nunca importa de aquí.**
+// Es lo que evita el ciclo: `resolveBuild` necesita traducir `build.items`, y la regla de
+// "cómo se traduce una armadura a CA" y "qué es equipo imposible" vive en `../items.ts` —
+// única, para que `build.armor` (abajo, `formulasDeArmadura`) y `build.items` no puedan
+// discrepar sobre la misma pregunta.
+import {
+  armorToAcContribution,
+  assertValidArmorSet,
+  equipmentToEngineInput,
+  InvalidEquipmentError,
+  ORDEN_COMPETENCIA,
+} from "../items";
+import { totalConModificadores, type AcFormula, type EngineInput, type Modifier } from "../engine";
 import { SRD_ARMOR } from "./armor";
 import { validatePicks, type ChoiceGrant } from "./choices";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
 import { spellSlotResetOn, spellSlotsFor, type SpellSlot } from "./spell-slots";
 import type { ContentRef, Grant, SrdArmor, SrdClass, SrdRace, SrdSubrace } from "./types";
+
+/** Re-exportado tal cual: los consumidores existentes lo importan de `./resolve`. */
+export { InvalidEquipmentError };
 
 /**
  * Lo que la ficha declara. Las puntuaciones son **base**: la raza entra como modificador.
@@ -80,13 +97,10 @@ export interface ResolvedBuild {
   characterClass: SrdClass;
 }
 
-/** Equipo que no puede llevarse a la vez. **Deberá traducirse a 400 en el borde** (2A.6). */
-export class InvalidEquipmentError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidEquipmentError";
-  }
-}
+// `InvalidEquipmentError` (equipo que no puede llevarse a la vez, y que **debe traducirse a
+// 400 en el borde**, 2A.6) se mudó a `../items.ts` en el carril A2: es donde vive la regla que
+// la lanza (`assertValidArmorSet`), y de ahí se re-exporta arriba para que nada que ya la
+// importe de `./resolve` se entere del movimiento.
 
 /**
  * Una referencia que el catálogo no sabe resolver. **Deberá traducirse a 400 en el borde**
@@ -141,13 +155,9 @@ export function findArmor(ref: ContentRef): SrdArmor {
 // `none < half < proficient < expertise`. Cuando dos fuentes conceden la misma habilidad **gana
 // la mejor y no se suman**, que es la regla de 5.ª edicion y ademas lo unico que no rompe la
 // media competencia: un bardo competente en Sigilo no gana ademas la mitad por «Aprendiz de
-// todo».
-const ORDEN_COMPETENCIA: Record<ProficiencyLevel, number> = {
-  none: 0,
-  half: 1,
-  proficient: 2,
-  expertise: 3,
-};
+// todo». **Se importa de `../items`** y no se repite aquí: los objetos equipados conceden
+// competencias por el mismo mecanismo, y una segunda copia de esta tabla es exactamente cómo
+// dos fuentes acaban discrepando sobre quién gana.
 
 export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
   // Se valida **aqui**, no solo en el borde: esta funcion es la puerta del catalogo y la
@@ -324,16 +334,52 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
 
   const { acFormulas, acBonuses } = formulasDeArmadura(build.armor ?? []);
 
+  // **Carril A2 — el equipo equipado entra por la misma puerta que la raza y la clase.**
+  // `equipmentToEngineInput` ya decide, dentro de sí mismo, qué gana cuando dos objetos compiten
+  // por la misma competencia; lo que falta aquí es dejarlo competir también con lo que ya trae
+  // la raza o la clase, y por eso vuelve a pasar por `anotarCompetencia` — el mismo mecanismo,
+  // no uno paralelo. En la traza, un bono de objeto queda **indistinguible de uno de raza**: es
+  // el mismo objetivo que ya perseguían las elecciones (nota de cabecera).
+  const equipo = equipmentToEngineInput(build.items ?? [], build.abilities.str);
+  modifiers.push(...equipo.modifiers);
+  acFormulas.push(...equipo.acFormulas);
+  acBonuses.push(...equipo.acBonuses);
+  warnings.push(...equipo.warnings);
+  for (const [skill, level] of Object.entries(equipo.skillProficiencies) as [
+    SkillKey,
+    ProficiencyLevel,
+  ][])
+    anotarCompetencia(skill, level, "items");
+  const saveProficiencies = new Set<AbilityKey>(characterClass.saveProficiencies);
+  for (const ability of equipo.saveProficiencies) saveProficiencies.add(ability);
+
+  // Velocidades finales (base de la raza + lo que sumen los objetos), con la MISMA regla que
+  // usará el motor cuando derive de verdad (`totalConModificadores`, `../engine.ts`) — no una
+  // segunda cuenta a mano. `speeds` (arriba) sigue siendo solo la base: es lo que entra en
+  // `baseSpeeds`, para que la traza que arma el motor (2A.2) no reciba el equipo premezclado.
+  const clavesDeVelocidad = new Set<Movement>(Object.keys(speeds) as Movement[]);
+  for (const m of modifiers)
+    if (m.target.startsWith("speed."))
+      clavesDeVelocidad.add(m.target.slice("speed.".length) as Movement);
+  const speedsConEquipo: ResolvedBuild["speeds"] = {};
+  for (const movimiento of clavesDeVelocidad)
+    speedsConEquipo[movimiento] = totalConModificadores(
+      speeds[movimiento] ?? 0,
+      `speed.${movimiento}`,
+      modifiers,
+    );
+
   return {
     input: {
       abilities: build.abilities,
       level: build.level,
       hitDieSize: characterClass.hitDie,
       modifiers,
-      saveProficiencies: characterClass.saveProficiencies,
+      saveProficiencies: [...saveProficiencies],
       skillProficiencies,
       acFormulas,
       acBonuses,
+      baseSpeeds: speeds,
       // **Solo si el nivel llega.** Paladin y explorador no lanzan hasta el 2; pasarla
       // siempre hacia que el motor emitiera CD de conjuro y bono de ataque de conjuro a un
       // nivel 1 que no los tiene.
@@ -348,7 +394,7 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     pendingChoices,
     warnings,
     features,
-    speeds,
+    speeds: speedsConEquipo,
     attacksPerAction: ataquesPorAccion(characterClass, build.level),
     spellSlots: spellSlotsFor(characterClass.spellProgression, build.level),
     spellSlotResetOn: spellSlotResetOn(characterClass.spellProgression),
@@ -359,9 +405,11 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
 }
 
 /**
- * Un escudo **no es una fórmula candidata**: es una suma plana que se aplica gane la que gane.
- * Meterlo como fórmula haría que «escudo solo» compitiera con «cota de malla» y ganara la
- * peor de las dos.
+ * `build.armor` — el camino **legado** de referencias SRD sueltas, previo a `build.items`
+ * (carril A2). **No decide por su cuenta cómo una armadura se convierte en CA**: eso vive en
+ * `armorToAcContribution` (`../items.ts`), y esta función solo mira el catálogo (`findArmor`)
+ * y llama. Dos sitios traduciendo la misma regla de armadura-a-CA es justo lo que se quiere
+ * evitar — ver la nota de cabecera del fichero.
  */
 function formulasDeArmadura(refs: ContentRef[]): {
   acFormulas: AcFormula[];
@@ -369,36 +417,17 @@ function formulasDeArmadura(refs: ContentRef[]): {
 } {
   const acFormulas: AcFormula[] = [];
   const acBonuses: NonNullable<EngineInput["acBonuses"]> = [];
-
-  // Dos armaduras de cuerpo, o dos escudos, no es una ficha rara: es una ficha imposible.
-  // Sin esto, dos escudos sumaban **+4**, y dos armaduras dejaban la descartada como un
-  // aviso que en pantalla parece una sugerencia en vez de un equipo invalido.
   const equipo = refs.map(findArmor);
-  if (equipo.filter((a) => a.category !== "SHIELD").length > 1)
-    throw new InvalidEquipmentError("Solo se puede llevar una armadura a la vez");
-  if (equipo.filter((a) => a.category === "SHIELD").length > 1)
-    throw new InvalidEquipmentError("Solo se puede llevar un escudo a la vez");
 
-  for (const ref of refs) {
-    const armor = findArmor(ref);
-    if (armor.category === "SHIELD") {
-      acBonuses.push({
-        amount: armor.baseAc,
-        labelKey: `armor.${armor.key}`,
-        sourceType: "item",
-        sourceKey: armor.key,
-      });
-      continue;
-    }
-    acFormulas.push({
-      key: armor.key,
-      labelKey: `armor.${armor.key}`,
-      base: armor.baseAc,
-      addAbility: "dex",
-      abilityCap: armor.dexCap,
-      sourceType: "item",
-      sourceKey: armor.key,
-    });
+  // Dos armaduras de cuerpo, o dos escudos, no es una ficha rara: es una ficha imposible. Misma
+  // comprobación que usa `build.items` (`../items.ts`), para que las dos puertas del equipo
+  // apliquen exactamente la misma regla.
+  assertValidArmorSet(equipo);
+
+  for (const armor of equipo) {
+    const contribucion = armorToAcContribution(armor, armor.key, `armor.${armor.key}`);
+    if (contribucion.acFormula) acFormulas.push(contribucion.acFormula);
+    if (contribucion.acBonus) acBonuses.push(contribucion.acBonus);
   }
 
   return { acFormulas, acBonuses };

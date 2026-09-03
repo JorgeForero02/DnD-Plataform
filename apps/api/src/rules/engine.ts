@@ -5,6 +5,7 @@ import {
   type DerivationResult,
   type DerivationWarning,
   type DerivedValue,
+  type Movement,
   type ProficiencyLevel,
   type SkillKey,
   type TraceStep,
@@ -84,6 +85,13 @@ export interface EngineInput {
    * y es la fase 3 (ver la especificación de distancias, §12 bis).
    */
   darkvisionFeet?: number;
+  /**
+   * Velocidades **base**, en pies, antes de objetos: caminar, trepar, nadar, volar, excavar.
+   * Igual que las características, entra premezclada con la raza pero **no** con el equipo — un
+   * objeto que cambie la velocidad entra como modificador (carril A2, `rules/items.ts`), no
+   * sumado aquí, para que la traza pueda enseñar de dónde sale cada pie.
+   */
+  baseSpeeds?: Partial<Record<Movement, number>>;
 }
 
 /**
@@ -238,6 +246,30 @@ export function derive(input: EngineInput): DerivationResult {
     input.modifiers,
   );
 
+  // --- Velocidades: la base de la raza más lo que sumen (o resten) los objetos, con traza ---
+  //
+  // Antes salían planas de `resolve.ts` (`ResolvedBuild.speeds`), sin traza: un objeto que
+  // cambiara la velocidad habría sido un número sin origen, justo lo que esta traza existe
+  // para evitar. Se recorren las claves de `baseSpeeds` **y** las que solo aparecen como
+  // modificador (un anillo de vuelo en una raza sin velocidad de vuelo no tiene base, pero sí
+  // tiene que poder derivarse desde 0).
+  const clavesDeVelocidad = new Set<Movement>(Object.keys(input.baseSpeeds ?? {}) as Movement[]);
+  for (const m of input.modifiers) {
+    if (m.target.startsWith("speed."))
+      clavesDeVelocidad.add(m.target.slice("speed.".length) as Movement);
+  }
+  for (const movimiento of clavesDeVelocidad) {
+    const base = input.baseSpeeds?.[movimiento] ?? 0;
+    derived[`speed.${movimiento}`] = aplicar(
+      `speed.${movimiento}`,
+      {
+        total: base,
+        steps: [paso("base", base, "race", movimiento, `speed.${movimiento}.base`)],
+      },
+      input.modifiers,
+    );
+  }
+
   // --- Ataques ---
   derived["attack.melee"] = {
     key: "attack.melee",
@@ -306,8 +338,15 @@ function calcularCa(
       const bruto = mods[formula.addAbility];
       const tope = formula.abilityCap;
       const aplicado = tope === undefined ? bruto : Math.min(bruto, tope);
+      // **El paso de la característica lleva el modificador BRUTO, y el recorte va aparte.**
+      // Antes llevaba el ya recortado y además se añadía el paso del recorte, así que la traza
+      // contaba el tope dos veces: con cota de malla y Destreza 12 la hoja decía «CA 16» y su
+      // propia explicación sumaba 15. Nadie lo vio en 2A porque **nada alimentaba la armadura
+      // todavía**; apareció al enchufar el inventario de 2B, que es exactamente para lo que
+      // sirve enchufar cosas. Ahora los pasos suman el total, que es lo mínimo que se le puede
+      // pedir a una explicación.
       steps.push(
-        paso("add", aplicado, "ability", formula.addAbility, `abilityMod.${formula.addAbility}`),
+        paso("add", bruto, "ability", formula.addAbility, `abilityMod.${formula.addAbility}`),
       );
       total += aplicado;
       // El recorte se **enseña**: sin este paso, «CA 16» con Destreza 20 parece un error.
@@ -384,6 +423,24 @@ function calcularPgMaximos(input: EngineInput, mods: Record<AbilityKey, number>)
   }
 
   return aplicar("maxHp", { total: bruto, steps }, input.modifiers);
+}
+
+/**
+ * El total de una clave tras sus modificadores, **sin traza** — la misma regla que `aplicar()`
+ * (primero los `add`, luego el `override` que gana), para cuando hace falta el número y no el
+ * paso a paso.
+ *
+ * Existe para `resolve.ts`: `ResolvedBuild.speeds` es un mapa de números, no de `DerivedValue`
+ * con traza (esa forma no cambia, la fija 2A.3), así que necesita el total ya aplicado el
+ * equipo antes de que exista una hoja derivada. Reutiliza esta función en vez de sumar los
+ * modificadores a mano — es la misma regla que `derive()`, y solo puede vivir en un sitio.
+ */
+export function totalConModificadores(base: number, key: string, modifiers: Modifier[]): number {
+  let total = base;
+  for (const m of modifiers.filter((m) => m.target === key && m.op === "add")) total += m.amount;
+  const overrides = modifiers.filter((m) => m.target === key && m.op === "override");
+  if (overrides.length > 0) total = overrides[overrides.length - 1].amount;
+  return total;
 }
 
 /** Aplica los modificadores que apuntan a esta clave, en orden: primero los `add`, luego los `override`. */

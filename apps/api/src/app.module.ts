@@ -20,6 +20,8 @@ import { CharacterStateModule } from "./character-state/character-state.module";
 import { LevelUpModule } from "./level-up/level-up.module";
 import { RulesEngineModule } from "./rules-engine/rules-engine.module";
 import { CatalogModule } from "./rules/catalog.module";
+import { CampaignItemsModule } from "./campaign-items/campaign-items.module";
+import { InventoryModule } from "./inventory/inventory.module";
 import { UsersModule } from "./users/users.module";
 import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.constants";
 
@@ -51,6 +53,8 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     LevelUpModule,
     RulesEngineModule,
     CatalogModule,
+    CampaignItemsModule,
+    InventoryModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

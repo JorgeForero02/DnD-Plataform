@@ -104,12 +104,15 @@ ruidosamente con
 en `visibility.spec.ts`. Los listados filtran por `canView`; las mutaciones exigen DM o
 propiedad. Ver [05-datos.md](./05-datos.md) para la semántica de cada nivel.
 
-> **Deuda conocida, y ya a medio pagar:** **ocho** servicios construyen a mano su propio
-> `viewerFor(userId, campaignId)` (rol en la campaña + `user.isAdmin`) — `entities`,
-> `characters`, `character-sheet`, `comments`, `links`, `sessions`, `game-events` y
-> `rules-engine`, que además lo reconoce en su propio comentario. **`character-state`
-> ya lo tiene extraído** en `apps/api/src/character-state/common/viewer.ts`, que es exactamente
-> el candidato a subir a `common/`. Anotada en [06-pendientes.md](./06-pendientes.md).
+> **Deuda conocida, y con la mitad pagada el 2026-09-03:** **el visor de un personaje ya vive
+> en un solo sitio**, `apps/api/src/common/character-viewer.ts`, y lo usan `character-state` y el
+> inventario de 2B. Lo que cerró la refactorización no fue la deuda escrita: fue que 2B estuvo a
+> punto de escribir la **tercera** copia de la misma regla de autorización.
+>
+> Siguen construyendo a mano su propio `viewerFor(userId, campaignId)` (rol en la campaña +
+> `user.isAdmin`) `entities`, `characters`, `character-sheet`, `comments`, `links`, `sessions`,
+> `game-events`, `rules-engine` y `campaign-items`. Anotada en
+> [06-pendientes.md](./06-pendientes.md).
 
 ## Estructura de la web
 

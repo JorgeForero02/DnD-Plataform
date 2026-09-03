@@ -3,6 +3,7 @@ import {
   averageHitDie,
   derive,
   proficiencyBonus,
+  totalConModificadores,
   type AcFormula,
   type EngineInput,
   type Modifier,
@@ -107,10 +108,14 @@ describe("la CA: el caso que un modelo aditivo calcula mal", () => {
     const pasos = r.derived.ac.steps;
     expect(pasos).toHaveLength(4);
     expect(pasos[0]).toMatchObject({ op: "base", amount: 16, sourceKey: "chain-mail" });
-    expect(pasos[1]).toMatchObject({ op: "add", amount: 0, sourceKey: "dex" });
+    // El paso de la característica lleva el modificador **bruto** (+2) y el recorte va aparte
+    // (−2): así los pasos suman el total. Con el recortado en el paso y el recorte además
+    // restando, la explicación de un 18 sumaba 16.
+    expect(pasos[1]).toMatchObject({ op: "add", amount: 2, sourceKey: "dex" });
     // El recorte se **enseña**: sin este paso, «CA 18 con Destreza 14» parece una resta perdida.
     expect(pasos[2]).toMatchObject({ op: "cap", amount: -2, sourceKey: "chain-mail" });
     expect(pasos[3]).toMatchObject({ op: "add", amount: 2, sourceKey: "shield" });
+    expect(pasos.reduce((suma, paso) => suma + paso.amount, 0)).toBe(r.derived.ac.total);
   });
 
   it("la armadura media capa la Destreza a 2, ni más ni menos", () => {
@@ -319,6 +324,191 @@ describe("modificadores externos", () => {
     expect(r.derived.ac.total).toBe(25);
     const anulacion = r.derived.ac.steps.find((p) => p.op === "override");
     expect(anulacion).toMatchObject({ amount: 14, sourceKey: "dm" });
+  });
+});
+
+describe("velocidades: base de la raza más lo que sumen (o resten) los objetos", () => {
+  it("sin objetos, la velocidad es exactamente la base", () => {
+    const r = derive(personaje({ baseSpeeds: { walk: 30 } }));
+    expect(r.derived["speed.walk"].total).toBe(30);
+    expect(r.derived["speed.walk"].steps).toEqual([
+      {
+        op: "base",
+        amount: 30,
+        sourceType: "race",
+        sourceKey: "walk",
+        labelKey: "speed.walk.base",
+      },
+    ]);
+  });
+
+  it("un objeto que suma velocidad la sube, y la traza enseña los dos pasos", () => {
+    const r = derive(
+      personaje({
+        baseSpeeds: { walk: 30 },
+        modifiers: [
+          {
+            target: "speed.walk",
+            op: "add",
+            amount: 10,
+            sourceType: "item",
+            sourceKey: "boots-of-striding",
+            labelKey: "item.boots-of-striding",
+          },
+        ],
+      }),
+    );
+    expect(r.derived["speed.walk"].total).toBe(40);
+    expect(r.derived["speed.walk"].steps).toHaveLength(2);
+  });
+
+  it("un objeto que resta velocidad la baja (armadura sin la Fuerza necesaria)", () => {
+    const r = derive(
+      personaje({
+        baseSpeeds: { walk: 30 },
+        modifiers: [
+          {
+            target: "speed.walk",
+            op: "add",
+            amount: -10,
+            sourceType: "item",
+            sourceKey: "chain-mail",
+            labelKey: "item.chain-mail.strengthPenalty",
+          },
+        ],
+      }),
+    );
+    expect(r.derived["speed.walk"].total).toBe(20);
+  });
+
+  it("una anulación manual (OVERRIDABLE_KEYS incluye speed.walk) SUSTITUYE el total", () => {
+    const r = derive(
+      personaje({
+        baseSpeeds: { walk: 30 },
+        modifiers: [
+          {
+            target: "speed.walk",
+            op: "add",
+            amount: 10,
+            sourceType: "item",
+            sourceKey: "boots-of-striding",
+            labelKey: "item.boots-of-striding",
+          },
+          {
+            target: "speed.walk",
+            op: "override",
+            amount: 0,
+            sourceType: "manual",
+            sourceKey: "dm",
+            labelKey: "override.manual",
+          },
+        ],
+      }),
+    );
+    // Si se sumara en vez de sustituir, darían 40, no 0 (paralizado, por ejemplo).
+    expect(r.derived["speed.walk"].total).toBe(0);
+  });
+
+  it("la traza suma exactamente el total: base + add + add", () => {
+    const r = derive(
+      personaje({
+        baseSpeeds: { walk: 30 },
+        modifiers: [
+          {
+            target: "speed.walk",
+            op: "add",
+            amount: 10,
+            sourceType: "item",
+            sourceKey: "boots-of-striding",
+            labelKey: "item.boots-of-striding",
+          },
+          {
+            target: "speed.walk",
+            op: "add",
+            amount: -5,
+            sourceType: "manual",
+            sourceKey: "difficult-terrain",
+            labelKey: "manual.terrain",
+          },
+        ],
+      }),
+    );
+    const suma = r.derived["speed.walk"].steps.reduce((acc, p) => acc + p.amount, 0);
+    expect(suma).toBe(r.derived["speed.walk"].total);
+    expect(suma).toBe(35);
+  });
+
+  it("un objeto puede conceder un tipo de movimiento que la base no tiene (vuelo)", () => {
+    // Una raza sin velocidad de vuelo (no está en `baseSpeeds`) más un anillo de vuelo: el
+    // motor tiene que poder derivar `speed.fly` partiendo de 0, no fallar por falta de base.
+    const r = derive(
+      personaje({
+        baseSpeeds: { walk: 30 },
+        modifiers: [
+          {
+            target: "speed.fly",
+            op: "add",
+            amount: 60,
+            sourceType: "item",
+            sourceKey: "ring-of-flying",
+            labelKey: "item.ring-of-flying",
+          },
+        ],
+      }),
+    );
+    expect(r.derived["speed.fly"].total).toBe(60);
+    expect(r.derived["speed.fly"].steps[0]).toMatchObject({ op: "base", amount: 0 });
+  });
+});
+
+describe("totalConModificadores: el mismo total que aplicar(), sin traza", () => {
+  it("suma los `add` y deja ganar el último `override`", () => {
+    const modifiers: Modifier[] = [
+      {
+        target: "speed.walk",
+        op: "add",
+        amount: 10,
+        sourceType: "item",
+        sourceKey: "a",
+        labelKey: "a",
+      },
+      {
+        target: "speed.walk",
+        op: "add",
+        amount: -5,
+        sourceType: "item",
+        sourceKey: "b",
+        labelKey: "b",
+      },
+    ];
+    expect(totalConModificadores(30, "speed.walk", modifiers)).toBe(35);
+
+    const conOverride: Modifier[] = [
+      ...modifiers,
+      {
+        target: "speed.walk",
+        op: "override",
+        amount: 0,
+        sourceType: "manual",
+        sourceKey: "dm",
+        labelKey: "m",
+      },
+    ];
+    expect(totalConModificadores(30, "speed.walk", conOverride)).toBe(0);
+  });
+
+  it("un modificador de otra clave no afecta al total", () => {
+    const modifiers: Modifier[] = [
+      {
+        target: "speed.fly",
+        op: "add",
+        amount: 60,
+        sourceType: "item",
+        sourceKey: "a",
+        labelKey: "a",
+      },
+    ];
+    expect(totalConModificadores(30, "speed.walk", modifiers)).toBe(30);
   });
 });
 

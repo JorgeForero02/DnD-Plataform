@@ -5,9 +5,10 @@
 // (tabla «Armaduras» del «Documento de referencia del sistema 5.1»), no una traducción nuestra.
 // Ver `NOTICE.md` de la raíz.
 //
-// **Solo lo que hace falta para calcular la CA.** Precio y peso son inventario, y el
-// inventario es 2B; meterlos aquí ahora sería transcribir el doble de cifras que nada
-// comprueba todavía.
+// **Peso y precio se añadieron en la tarea 2B (carril A1)**: son inventario, y con el catálogo
+// de objetos (`items-srd.ts`) ya hay algo que los consume y los comprueba
+// (`resolvedItemSchema` en `@dnd/shared`). Peso en **onzas** (16 oz = 1 lb, el SRD lo da en
+// libras) y precio en **piezas de cobre** (1 po = 100 pc).
 //
 // El tope de Destreza es lo que 2A.2 llama `abilityCap`, y la diferencia entre `0` y
 // `undefined` no es cosmética: en armadura pesada la Destreza **se recorta a cero y el recorte
@@ -25,6 +26,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     baseAc: 11,
     strengthRequirement: 0,
     stealthDisadvantage: true,
+    weightOz: 128,
+    costCp: 500,
   },
   {
     key: "leather",
@@ -33,6 +36,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     baseAc: 11,
     strengthRequirement: 0,
     stealthDisadvantage: false,
+    weightOz: 160,
+    costCp: 1000,
   },
   {
     key: "studded-leather",
@@ -41,6 +46,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     baseAc: 12,
     strengthRequirement: 0,
     stealthDisadvantage: false,
+    weightOz: 208,
+    costCp: 4500,
   },
 
   // --- Media: la Destreza suma como mucho +2 ---
@@ -52,6 +59,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 2,
     strengthRequirement: 0,
     stealthDisadvantage: false,
+    weightOz: 192,
+    costCp: 1000,
   },
   {
     key: "chain-shirt",
@@ -61,6 +70,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 2,
     strengthRequirement: 0,
     stealthDisadvantage: false,
+    weightOz: 320,
+    costCp: 5000,
   },
   {
     key: "scale-mail",
@@ -70,6 +81,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 2,
     strengthRequirement: 0,
     stealthDisadvantage: true,
+    weightOz: 720,
+    costCp: 5000,
   },
   {
     key: "breastplate",
@@ -79,6 +92,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 2,
     strengthRequirement: 0,
     stealthDisadvantage: false,
+    weightOz: 320,
+    costCp: 40000,
   },
   {
     key: "half-plate",
@@ -88,6 +103,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 2,
     strengthRequirement: 0,
     stealthDisadvantage: true,
+    weightOz: 640,
+    costCp: 75000,
   },
 
   // --- Pesada: la Destreza no suma nada ---
@@ -99,6 +116,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 0,
     strengthRequirement: 0,
     stealthDisadvantage: true,
+    weightOz: 640,
+    costCp: 3000,
   },
   {
     key: "chain-mail",
@@ -108,6 +127,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 0,
     strengthRequirement: 13,
     stealthDisadvantage: true,
+    weightOz: 880,
+    costCp: 7500,
   },
   {
     key: "splint",
@@ -117,6 +138,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 0,
     strengthRequirement: 15,
     stealthDisadvantage: true,
+    weightOz: 960,
+    costCp: 20000,
   },
   {
     key: "plate",
@@ -126,6 +149,8 @@ export const SRD_ARMOR: SrdArmor[] = [
     dexCap: 0,
     strengthRequirement: 15,
     stealthDisadvantage: true,
+    weightOz: 1040,
+    costCp: 150000,
   },
 
   // --- Escudo: no es una fórmula, es una suma plana que va con cualquiera ---
@@ -136,5 +161,7 @@ export const SRD_ARMOR: SrdArmor[] = [
     baseAc: 2,
     strengthRequirement: 0,
     stealthDisadvantage: false,
+    weightOz: 96,
+    costCp: 1000,
   },
 ];

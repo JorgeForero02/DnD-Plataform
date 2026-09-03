@@ -16,10 +16,12 @@ import {
   overridableKeySchema,
   setHpSchema,
   setOverrideSchema,
+  rollAttackSchema,
   updateCharacterSheetSchema,
   type ChangeHpInput,
   type DeathSaveInput,
   type OverridableKey,
+  type RollAttackInput,
   type SetHpInput,
   type SetOverrideInput,
   type UpdateCharacterSheetInput,
@@ -108,5 +110,20 @@ export class CharacterSheetController {
     @Param("target", new ZodValidationPipe(overridableKeySchema)) target: OverridableKey,
   ) {
     return this.sheets.clearOverride(req.user.id, campaignId, characterId, target);
+  }
+
+  /**
+   * Tira con un arma equipada. **La expresión la compone el servidor** (2B/2C): aquí solo llega
+   * qué ataque y qué mitad —el `1d20` o el daño—.
+   */
+  @Post("sheet/attacks/:attackKey/roll")
+  rollAttack(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+    @Param("attackKey") attackKey: string,
+    @Body(new ZodValidationPipe(rollAttackSchema)) body: RollAttackInput,
+  ) {
+    return this.sheets.rollAttack(req.user.id, campaignId, characterId, attackKey, body);
   }
 }

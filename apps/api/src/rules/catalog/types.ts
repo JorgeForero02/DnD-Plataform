@@ -132,6 +132,18 @@ export interface SrdClass {
   hitDie: number;
   /** **Exactamente dos**, y hay un invariante que lo comprueba. */
   saveProficiencies: AbilityKey[];
+  /**
+   * **Claves de máquina, no prosa**: `"light"`, `"medium"`, `"heavy"`, `"shield"` en armadura;
+   * `"simple"`, `"martial"` o la clave de un arma suelta (`"long-sword"`) en armas.
+   *
+   * Hasta el 2026-09-03 eran frases en español («Armas sencillas»), y **no las leía nadie**. En
+   * cuanto el cuadro de ataques de 2B empezó a preguntar «¿tiene competencia con esta arma?», la
+   * respuesta era siempre que no —comparaba `"martial"` contra «Armas marciales»—, así que la
+   * hoja de todo guerrero habría restado su bonificador de competencia **en silencio**. Lo cazó
+   * la integración, no una prueba: las dos mitades estaban bien por separado.
+   *
+   * El español sale en la pantalla, como con toda clave del catálogo.
+   */
   armorProficiencies: string[];
   weaponProficiencies: string[];
   /** Cuántas habilidades elige al nivel 1, y de qué lista. */
@@ -186,4 +198,11 @@ export interface SrdArmor {
   strengthRequirement: number;
   /** Desventaja en Sigilo. Se enseña; automatizarlo es 2C. */
   stealthDisadvantage: boolean;
+  /**
+   * Peso en **onzas** (16 oz = 1 lb) y precio en **piezas de cobre** (1 po = 100 pc). Tarea 2B
+   * (carril A1): son inventario, y el inventario usa las mismas unidades enteras que
+   * `packages/shared/src/item.schema.ts` — la unidad íntegra abajo, la legible arriba.
+   */
+  weightOz: number;
+  costCp: number;
 }

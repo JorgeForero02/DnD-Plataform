@@ -51,6 +51,8 @@ enum GameEventType {
   SET_CHANGED
   SIGNAL_RAISED
   SESSION_NOTE
+  // La bolsa (2B): un movimiento de dinero es un tipo propio, no una senal generica.
+  MONEY_CHANGED
 }
 
 enum ResourceReset {

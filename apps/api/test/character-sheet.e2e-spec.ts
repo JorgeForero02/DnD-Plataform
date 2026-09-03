@@ -227,6 +227,75 @@ describe("Hoja de personaje y PG (e2e)", () => {
     expect(log.body.events[0].type).toBe("DEATH_SAVE");
   });
 
+  // --- Fase 2B/2C: equipar cambia el número, y el arma equipada se puede tirar ---------------
+
+  it("equipar una cota de malla sube la CA de la hoja, y la traza gana un paso del objeto", async () => {
+    const s = app.getHttpServer();
+    const inventarioUrl = `/campaigns/${campaignId}/characters/${characterId}/inventory`;
+
+    const antes = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+    const caSinEquipo = antes.body.sheet.derived.ac.total;
+
+    const fila = await request(s)
+      .post(inventarioUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ ref: { source: "SRD", key: "chain-mail" }, location: "EQUIPPED", slot: "ARMOR" });
+    expect(fila.status).toBe(201);
+
+    const despues = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+    const ca = despues.body.sheet.derived.ac;
+    expect(ca.total).toBeGreaterThan(caSinEquipo);
+    expect(ca.steps.some((paso: { sourceType: string }) => paso.sourceType === "item")).toBe(true);
+    // La explicación tiene que sumar el número que explica.
+    expect(ca.steps.reduce((t: number, p: { amount: number }) => t + p.amount, 0)).toBe(ca.total);
+  });
+
+  it("un arma equipada sale en el cuadro de ataques y el servidor tira por ella", async () => {
+    const s = app.getHttpServer();
+    const inventarioUrl = `/campaigns/${campaignId}/characters/${characterId}/inventory`;
+
+    await request(s)
+      .post(inventarioUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({
+        ref: { source: "SRD", key: "long-sword" },
+        location: "EQUIPPED",
+        slot: "MAIN_HAND",
+      });
+
+    const hoja = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+    const ataque = hoja.body.attacks.find((a: { name: string }) => a.name === "Espada larga");
+    expect(ataque).toBeDefined();
+    expect(ataque.damage.expression).toMatch(/^1d8/);
+
+    const tirada = await request(s)
+      .post(`${sheetUrl()}/attacks/${encodeURIComponent(ataque.key)}/roll`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ part: "ATTACK", mode: "ADVANTAGE" });
+
+    expect(tirada.status).toBe(201);
+    // La ventaja la compone el servidor: dos d20 tirados, uno conservado y el otro a la vista.
+    expect(tirada.body.rolls).toHaveLength(2);
+    expect(tirada.body.dropped).toHaveLength(1);
+    // `RollResult` no lleva la etiqueta —vive en el suceso del log, que es donde se lee la
+    // partida—, así que el motivo se comprueba ahí: una tirada sin motivo es una lista de
+    // números al repasar la sesión.
+    expect(tirada.body.expression).toBe("2d20kh1+4");
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(log.body.events[0]).toMatchObject({ type: "ABILITY_ROLL" });
+    expect(log.body.events[0].payload.reason).toBe("Ataque con Espada larga");
+  });
+
+  it("pedir la tirada de un arma que no se lleva equipada es 400, no 500", async () => {
+    const res = await request(app.getHttpServer())
+      .post(`${sheetUrl()}/attacks/SRD:greataxe/roll`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ part: "ATTACK" });
+    expect(res.status).toBe(400);
+  });
+
   it("un jugador que no es miembro no puede leer la hoja (403), aunque adivine el identificador", async () => {
     const email = `x-sh${Date.now()}@b.com`;
     const token = (

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { proficiencyLevelSchema } from "./rules/trace.schema";
+import { resolvedItemSchema } from "./item.schema";
 
 // Tareas 2A.3 / 2A.4, corregido tras la revisión del 2026-09-02.
 //
@@ -53,6 +54,17 @@ export const characterBuildSchema = z.object({
   level: z.number().int().min(1).max(20),
   /** Armadura y escudo equipados. El tope evita una lista arbitraria por HTTP. */
   armor: z.array(contentRefSchema).max(8).optional(),
+  /**
+   * El **equipo equipado ya resuelto** (fase 2B): armadura, escudo, armas y objetos con
+   * efectos, vengan del SRD o de la campaña.
+   *
+   * Va resuelto y no por referencia **a propósito**: quien resuelve una referencia de campaña
+   * tiene que comprobar además que ese objeto pertenece a la campaña del personaje, y esa
+   * comprobación necesita la base de datos, que el resolutor no toca (ficha S8 de
+   * `docs/06-pendientes.md`). Aquí llegan objetos, no identificadores, así que no hay ningún
+   * `else` en el que se pueda colar un IDOR entre campañas.
+   */
+  items: z.array(resolvedItemSchema).max(60).optional(),
   skillProficiencies: z.record(z.string().min(1).max(60), proficiencyLevelSchema).optional(),
   choices: characterChoicesSchema.optional(),
 });

@@ -253,14 +253,21 @@ describe("la línea legal está protegida por una prueba, no por buena voluntad"
   // desde que se escribió, pero **perderla no ponía nada rojo**, así que la garantía cubría
   // cinco ficheros mientras NOTICE.md prometía «cada fichero de datos». Los que faltan de este
   // directorio (`choices.ts`, `resolve.ts`) son lógica, no datos del SRD.
-  it.each(["races.ts", "classes.ts", "armor.ts", "types.ts", "index.ts", "spell-slots.ts"])(
-    "%s lleva su cabecera de atribución apuntando a NOTICE.md",
-    (fichero) => {
-      const contenido = readFileSync(join(__dirname, fichero), "utf8");
-      expect(contenido).toContain("System Reference Document 5.1");
-      expect(contenido).toContain("NOTICE.md");
-    },
-  );
+  it.each([
+    "races.ts",
+    "classes.ts",
+    "armor.ts",
+    "types.ts",
+    "index.ts",
+    "spell-slots.ts",
+    "weapons.ts",
+    "gear.ts",
+    "items-srd.ts",
+  ])("%s lleva su cabecera de atribución apuntando a NOTICE.md", (fichero) => {
+    const contenido = readFileSync(join(__dirname, fichero), "utf8");
+    expect(contenido).toContain("System Reference Document 5.1");
+    expect(contenido).toContain("NOTICE.md");
+  });
 
   it("toda clave del catalogo esta en la lista blanca del SRD: nada de contenido propio", () => {
     // La prueba anterior afirmaba `sourceType !== "manual"` sobre los modificadores resueltos, y

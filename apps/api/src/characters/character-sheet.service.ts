@@ -8,7 +8,11 @@ import {
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
 import type {
+  AbilityKey,
+  ResolvedItem,
+  DerivationWarning,
   ChangeHpInput,
+  RollAttackInput,
   CharacterChoices,
   DeathSaveInput,
   DeathState,
@@ -20,6 +24,8 @@ import type {
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
 import type { Modifier } from "../rules/engine";
+import { buildAttacks, type Attack } from "../rules/attacks";
+import { resolveInventoryRowItem } from "../inventory/common/resolve-item";
 import {
   deriveCharacter,
   findClass,
@@ -32,7 +38,7 @@ import {
   type CharacterSheet,
 } from "../rules/catalog";
 import { rollExpression, type Roller } from "../dice/dice";
-import { DICE_ROLLER } from "../rolls/rolls.service";
+import { DICE_ROLLER, RollsService } from "../rolls/rolls.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import type { Prisma } from "@prisma/client";
@@ -65,7 +71,10 @@ type ResultadoConstruccion = { build: CharacterBuild } | { reason: string };
  * de una excepción, y quien llama decide si esa falta es tolerable (la lectura de la hoja lo es;
  * gestionar los PG no, porque no hay `maxHp` que recortar).
  */
-function construirBuild(character: FilaPersonaje): ResultadoConstruccion {
+function construirBuild(
+  character: FilaPersonaje,
+  items: ResolvedItem[] = [],
+): ResultadoConstruccion {
   const faltantes: string[] = [];
   const claves = ["str", "dex", "con", "int", "wis", "cha"] as const;
   for (const clave of claves) if (character[clave] == null) faltantes.push(clave);
@@ -89,6 +98,11 @@ function construirBuild(character: FilaPersonaje): ResultadoConstruccion {
       class: { source: "SRD", key: character.classKey! },
       level: character.level,
       choices: (character.choices as CharacterChoices | null) ?? undefined,
+      // **El equipo equipado entra por la misma puerta que la raza y la clase** (fase 2B). Va
+      // resuelto y no por referencia: comprobar que un objeto de campaña es de ESTA campaña
+      // necesita la base, y el resolutor no la toca — así no hay ningún `else` donde se cuele un
+      // identificador de otra mesa.
+      items,
     },
   };
 }
@@ -164,6 +178,7 @@ export class CharacterSheetService {
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
     private readonly characters: CharactersService,
+    private readonly rolls: RollsService,
     // Mismo patrón que `RollsService`: inyectable solo en pruebas, `undefined` en producción.
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
     /**
@@ -209,8 +224,70 @@ export class CharacterSheetService {
    * **Clamp al leer, nunca al recalcular**: `hp.current` es `min(currentHp, maxHp)` con
    * `hp.exceedsMax` si el dato guardado se pasa; la fila no se reescribe aquí.
    */
-  private buildResponse(character: FilaPersonaje) {
-    const resuelto = construirBuild(character);
+  /**
+   * El equipo **equipado**, ya resuelto. Lo que está en la mochila o guardado en la posada no
+   * entra: solo lo puesto cambia un número, y esa es justo la línea que hace que equipar sea un
+   * gesto con consecuencia visible.
+   *
+   * Una fila que no se puede resolver —una clave del SRD que el catálogo dejó de tener— **no
+   * rompe la hoja**: sale como aviso, igual que una elección caduca. Un dato viejo no puede
+   * volver ilegible un personaje.
+   */
+  private async equipoEquipado(
+    character: FilaPersonaje,
+  ): Promise<{ items: ResolvedItem[]; warnings: DerivationWarning[] }> {
+    const filas = await this.prisma.inventoryItem.findMany({
+      where: { characterId: character.id, location: "EQUIPPED" },
+      orderBy: { createdAt: "asc" },
+    });
+    const items: ResolvedItem[] = [];
+    const warnings: DerivationWarning[] = [];
+    for (const fila of filas) {
+      try {
+        items.push(await resolveInventoryRowItem(this.prisma, character.campaignId, fila));
+      } catch {
+        warnings.push({
+          code: "item_unresolved",
+          key: fila.srdKey ?? fila.campaignItemId ?? fila.id,
+          data: { rowId: fila.id },
+        });
+      }
+    }
+    return { items, warnings };
+  }
+
+  /**
+   * El cuadro de ataques: qué se tira con cada arma equipada, con su bono **y su traza**.
+   *
+   * Vive aquí y no en la pantalla porque es una regla del juego —qué característica ataca con
+   * qué arma, y si hay competencia— y las reglas del juego se calculan en el servidor. La web
+   * pinta lo que le llega; la tirada la pide, no la hace.
+   */
+  private ataques(
+    sheet: CharacterSheet,
+    items: ResolvedItem[],
+  ): { attacks: Attack[]; warnings: DerivationWarning[] } {
+    const abilityMods = {} as Record<AbilityKey, number>;
+    for (const clave of ["str", "dex", "con", "int", "wis", "cha"] as AbilityKey[]) {
+      abilityMods[clave] = sheet.derived[`abilityMod.${clave}`]?.total ?? 0;
+    }
+    let weaponProficiencies: string[] = [];
+    try {
+      weaponProficiencies = findClass({ source: "SRD", key: sheet.classKey }).weaponProficiencies;
+    } catch {
+      // Una clase caduca ya sale como aviso por otro camino; aquí solo significa «sin competencias».
+    }
+    return buildAttacks({
+      items: items.filter((item) => item.weapon),
+      abilityMods,
+      proficiencyBonus: sheet.derived.proficiencyBonus.total,
+      weaponProficiencies,
+    });
+  }
+
+  private async buildResponse(character: FilaPersonaje) {
+    const equipo = await this.equipoEquipado(character);
+    const resuelto = construirBuild(character, equipo.items);
     let sheet: CharacterSheet | null = null;
     let reason: string | undefined;
     if ("build" in resuelto) {
@@ -219,6 +296,16 @@ export class CharacterSheetService {
       else reason = derivado.reason;
     } else {
       reason = resuelto.reason;
+    }
+
+    // Los ataques y los avisos del equipo se juntan con los del motor: para quien mira la hoja
+    // son la misma cosa —«hay algo que querrías saber»— y dejar que cada pantalla los junte por
+    // su cuenta es cómo una de las dos listas acaba sin pintarse.
+    let attacks: Attack[] = [];
+    if (sheet) {
+      const cuadro = this.ataques(sheet, equipo.items);
+      attacks = cuadro.attacks;
+      sheet = { ...sheet, warnings: [...sheet.warnings, ...equipo.warnings, ...cuadro.warnings] };
     }
 
     const maxHp = sheet ? sheet.derived.maxHp.total : null;
@@ -230,6 +317,15 @@ export class CharacterSheetService {
     return {
       character,
       sheet,
+      attacks,
+      /** La bolsa, para que la hoja no tenga que pedirla aparte. */
+      money: {
+        cp: character.cp,
+        sp: character.sp,
+        ep: character.ep,
+        gp: character.gp,
+        pp: character.pp,
+      },
       ...(sheet ? {} : { reason }),
       hp: {
         current: currentHpMostrado,
@@ -273,7 +369,7 @@ export class CharacterSheetService {
     if (!character || !this.canSee(viewer, character)) {
       throw new NotFoundException("Character not found");
     }
-    const respuesta = this.buildResponse(character);
+    const respuesta = await this.buildResponse(character);
     return {
       ...respuesta,
       effectiveSpeeds: await this.velocidadesEfectivas(characterId, respuesta.sheet),
@@ -375,7 +471,8 @@ export class CharacterSheetService {
     //    llamara. La diferencia entre las dos mitades es justo esta: se rechaza lo que llega en
     //    ESTA petición, y lo que ya estaba guardado sigue siendo un aviso.
     const prospectivo = { ...character, ...data } as FilaPersonaje;
-    const construido = construirBuild(prospectivo);
+    const { items: equipoActual } = await this.equipoEquipado(prospectivo);
+    const construido = construirBuild(prospectivo, equipoActual);
     if ("build" in construido) {
       let hoja: CharacterSheet | null = null;
       try {
@@ -410,7 +507,7 @@ export class CharacterSheetService {
       where: { id: characterId },
       data,
     });
-    const respuesta = this.buildResponse(actualizado);
+    const respuesta = await this.buildResponse(actualizado);
     await this.sembrarRecursos(characterId, respuesta.sheet, actualizado.level);
     return respuesta;
   }
@@ -479,7 +576,7 @@ export class CharacterSheetService {
         ...(input.reason ? { reason: input.reason } : {}),
       },
     });
-    return this.buildResponse(actualizado);
+    return await this.buildResponse(actualizado);
   }
 
   /** Quita una anulación y devuelve el valor al que el catálogo calcule. También solo el DM. */
@@ -496,14 +593,14 @@ export class CharacterSheetService {
     if (!character) throw new NotFoundException("Character not found");
 
     const actuales = { ...((character.overrides ?? {}) as Overrides) };
-    if (actuales[target] === undefined) return this.buildResponse(character);
+    if (actuales[target] === undefined) return await this.buildResponse(character);
     delete actuales[target];
 
     const actualizado = await this.prisma.character.update({
       where: { id: characterId },
       data: { overrides: actuales },
     });
-    return this.buildResponse(actualizado);
+    return await this.buildResponse(actualizado);
   }
 
   /**
@@ -511,7 +608,8 @@ export class CharacterSheetService {
    * mutación de PG puede recortar contra un `maxHp` que no existe.
    */
   private async construirODenegar(character: FilaPersonaje): Promise<CharacterSheet> {
-    const resuelto = construirBuild(character);
+    const { items } = await this.equipoEquipado(character);
+    const resuelto = construirBuild(character, items);
     if (!("build" in resuelto))
       throw new BadRequestException(`No se pueden gestionar los PG: ${resuelto.reason}`);
     const derivado = derivarOMotivo(resuelto.build);
@@ -628,7 +726,7 @@ export class CharacterSheetService {
         tx,
       );
 
-      return this.buildResponse(actualizado);
+      return await this.buildResponse(actualizado);
     });
   }
 
@@ -651,7 +749,7 @@ export class CharacterSheetService {
       if (character.version !== input.expectedVersion) {
         throw new ConflictException({
           message: "La versión enviada ya no es la actual.",
-          ...this.buildResponse(character),
+          ...(await this.buildResponse(character)),
         });
       }
 
@@ -701,7 +799,7 @@ export class CharacterSheetService {
           tx,
         );
       }
-      return this.buildResponse(actualizado);
+      return await this.buildResponse(actualizado);
     });
   }
 
@@ -804,9 +902,76 @@ export class CharacterSheetService {
             : "dying";
 
       return {
-        ...this.buildResponse(actualizado),
+        ...(await this.buildResponse(actualizado)),
         deathSaves: { successes, failures, status },
       };
     });
   }
+
+  /**
+   * Tira con un arma equipada: **el servidor compone la expresión**.
+   *
+   * Es la misma regla que la ventaja de 2A.13 y por el mismo motivo: si el cliente montara la
+   * expresión, podría decir que ataca con una daga y mandar `1d12`. Aquí solo llega qué arma y
+   * qué mitad —ataque o daño—, y lo que se tira sale del cuadro de ataques que este servicio ya
+   * calcula.
+   *
+   * **El crítico duplica los dados y nunca el modificador** (SRD 5.1): `1d8+3` crítico es
+   * `2d8+3`, no `2d8+6`.
+   */
+  async rollAttack(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    attackKey: string,
+    input: RollAttackInput,
+  ) {
+    await this.membership.requireMember(campaignId, userId);
+    // Tirar con un personaje es escribir en su nombre: dueño o DM, igual que gastar sus PG.
+    const character = await this.characters.requireEditable(userId, campaignId, characterId);
+    const { attacks } = await this.buildResponse(character);
+    const ataque = attacks.find((a) => a.key === attackKey);
+    if (!ataque) {
+      throw new BadRequestException(
+        "Ese ataque no está disponible: el arma no está equipada o ya no existe.",
+      );
+    }
+
+    if (input.part === "ATTACK") {
+      return this.rolls.roll(userId, campaignId, {
+        expression: conSigno("1d20", ataque.attackBonus.total),
+        label: `Ataque con ${ataque.name}`,
+        characterId,
+        mode: input.mode,
+        visibility: input.visibility ?? "PLAYERS",
+      });
+    }
+
+    const dano = input.versatile && ataque.versatileDamage ? ataque.versatileDamage : ataque.damage;
+    const dados = input.critical ? duplicarDados(dano.dice) : dano.dice;
+    return this.rolls.roll(userId, campaignId, {
+      expression: conSigno(dados, dano.modifier),
+      label: `Daño de ${ataque.name}${input.critical ? " (crítico)" : ""}`,
+      characterId,
+      // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el dado
+      // de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
+      mode: "NORMAL",
+      visibility: input.visibility ?? "PLAYERS",
+    });
+  }
+}
+
+/** `1d8` + 3 → `1d8+3`; + 0 → `1d8`; − 1 → `1d8-1`. El evaluador no entiende un `+0`. */
+function conSigno(dados: string, modificador: number): string {
+  if (modificador === 0) return dados;
+  return `${dados}${modificador > 0 ? "+" : "-"}${Math.abs(modificador)}`;
+}
+
+/**
+ * Un crítico **duplica los dados, no el modificador**: `1d8` → `2d8`, `2d6` → `4d6`.
+ * Se duplica la cantidad y jamás las caras — `1d16` no es un crítico de nada.
+ */
+function duplicarDados(dados: string): string {
+  const [cantidad, caras] = dados.split("d");
+  return `${Number(cantidad) * 2}d${caras}`;
 }

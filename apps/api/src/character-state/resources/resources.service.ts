@@ -6,7 +6,7 @@ import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SRD_CLASSES } from "../../rules/catalog/classes";
 import type { CharacterSheet } from "../../rules/catalog";
-import { requireOwnerOrDM, requireVisibleCharacter } from "../common/viewer";
+import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
 // Tarea 2A.8 — recursos consumibles, y la siembra de los que da la clase.
 //

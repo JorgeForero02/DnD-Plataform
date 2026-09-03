@@ -3,7 +3,7 @@ import type { ApplyConditionInput } from "@dnd/shared";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
-import { requireOwnerOrDM, requireVisibleCharacter } from "../common/viewer";
+import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
 // Tarea 2A.12 — condiciones. **La clave es libre**: las quince del SRD (`SRD_CONDITIONS`,
 // `@dnd/shared`) las entiende el motor de velocidad efectiva (`../speed/effective-speed.ts`);

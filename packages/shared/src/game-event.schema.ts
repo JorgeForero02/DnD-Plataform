@@ -48,6 +48,10 @@ export const GAME_EVENT_TYPES = [
   // Sello rapido de mesa (pantalla de sesion). Es lo que el DM pulsa mientras dirige, y por eso
   // es un tipo propio y no una nota suelta: el resumen de la sesion se construye con ellos.
   "SESSION_NOTE",
+  // La bolsa (2B). **Tipo propio y no una senal generica**: el reparto del botin es media
+  // recompensa del juego, y un log donde «pago 20 po» aparece como un texto libre no se puede
+  // sumar ni filtrar despues.
+  "MONEY_CHANGED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -218,6 +222,20 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     target: z.string().min(1).max(60),
     value: z.number().int(),
     previous: z.number().int().optional(),
+    reason,
+  }),
+
+  /**
+   * Un movimiento de la bolsa. **Los deltas por denominación, no un total**: la mesa dice «tres
+   * de plata», y guardar el total normalizado obliga a inventarse un cambio que nadie pidió.
+   */
+  z.object({
+    type: z.literal("MONEY_CHANGED"),
+    cp: z.number().int().optional(),
+    sp: z.number().int().optional(),
+    ep: z.number().int().optional(),
+    gp: z.number().int().optional(),
+    pp: z.number().int().optional(),
     reason,
   }),
 ]);

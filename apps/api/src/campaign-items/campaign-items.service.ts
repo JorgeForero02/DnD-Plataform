@@ -1,13 +1,16 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { Visibility } from "@dnd/shared";
 import { CreateCampaignItemInput, UpdateCampaignItemInput, ResolvedItem } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 import { campaignItemToResolvedItem, itemEffectsSchema } from "./campaign-item-to-resolved";
 
 /**
@@ -145,7 +148,7 @@ export class CampaignItemsService {
 
   async update(userId: string, campaignId: string, itemId: string, input: UpdateCampaignItemInput) {
     await this.membership.requireMember(campaignId, userId);
-    await this.requireEditable(userId, campaignId, itemId);
+    const item = await this.requireEditable(userId, campaignId, itemId);
     const { specificPlayerIds, effects, weapon, armor, ...rest } = input;
     const data: Record<string, unknown> = {};
     if (rest.name !== undefined) data.name = rest.name;
@@ -160,7 +163,44 @@ export class CampaignItemsService {
     if (armor !== undefined) Object.assign(data, this.armorColumns({ armor }));
     if (rest.visibility !== undefined) data.visibility = rest.visibility;
 
+    // --- Lo que un cambio de definición le hace a quien ya lo lleva encima -------------------
+    //
+    // Editar el catálogo y editar las mochilas son la misma acción vista desde dos sitios, y
+    // hasta la auditoría de mecánica de 2B esta clase solo lo reconocía al **borrar** (el 409
+    // de `remove`). Editar dejaba estado corrupto sin decir nada: filas `attuned` de objetos
+    // que ya no se sintonizan ocupando plaza del tope de tres, filas equipadas en una ranura
+    // que el objeto ya no tiene, y un escudo conviviendo con un arma que acaba de volverse a
+    // dos manos.
+    const cambiaLaForma =
+      (rest.kind !== undefined && rest.kind !== item.kind) ||
+      (rest.slot !== undefined && rest.slot !== item.slot) ||
+      (rest.requiresAttunement !== undefined &&
+        rest.requiresAttunement !== item.requiresAttunement) ||
+      weapon !== undefined ||
+      armor !== undefined;
+
+    // Y la visibilidad tiene la misma regla que entregar (D-2B-7): **no se le puede quitar de
+    // la vista a quien ya lo lleva**. Antes desaparecía de su inventario en silencio —y de su
+    // peso total— mientras la hoja lo seguía sumando redactado: dos capas con dos políticas.
+    if (rest.visibility !== undefined && rest.visibility !== item.visibility) {
+      await this.rechazarSiSeLoQuitaDeLaVista(campaignId, itemId, rest.visibility, {
+        ...item,
+        visibility: rest.visibility,
+        grants: (specificPlayerIds ?? []).map((userId) => ({ userId })),
+      });
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      if (cambiaLaForma) {
+        // **Vuelve a la mochila de quien lo lleve.** Es la regla conservadora y explicable:
+        // cambiar la forma de un objeto lo devuelve a la mochila, y quien lo llevaba vuelve a
+        // ponérselo si sigue teniendo sentido. Colar la fila en la ranura nueva sería adivinar,
+        // y dejarla como estaba es lo que producía la CA inflada.
+        await tx.inventoryItem.updateMany({
+          where: { campaignItemId: itemId, OR: [{ location: "EQUIPPED" }, { attuned: true }] },
+          data: { location: "CARRIED", slot: null, attuned: false },
+        });
+      }
       if (specificPlayerIds !== undefined) {
         await tx.campaignItemVisibilityGrant.deleteMany({ where: { itemId } });
         if (specificPlayerIds.length) {
@@ -193,6 +233,47 @@ export class CampaignItemsService {
 
     await this.prisma.campaignItem.delete({ where: { id: itemId } });
     return { deleted: true };
+  }
+
+  /**
+   * Rechaza un cambio de visibilidad que dejaría el objeto fuera de la vista de alguien que ya
+   * lo lleva encima. Es la misma regla que impide entregárselo (`InventoryService.add`), y por
+   * el mismo motivo: lo que alguien no debe ver **no se le manda**, pero hacerlo desaparecer de
+   * su mochila sin avisar tampoco es una respuesta — es una pantalla que miente.
+   */
+  private async rechazarSiSeLoQuitaDeLaVista(
+    campaignId: string,
+    itemId: string,
+    visibility: Visibility,
+    prospectivo: { visibility: Visibility; createdById: string; grants: { userId: string }[] },
+  ): Promise<void> {
+    const filas = await this.prisma.inventoryItem.findMany({
+      where: { campaignItemId: itemId },
+      select: { character: { select: { id: true, name: true, ownerId: true } } },
+    });
+    if (filas.length === 0) return;
+
+    const grantedUserIds = prospectivo.grants.map((g) => g.userId);
+    const sinVista: string[] = [];
+    for (const fila of filas) {
+      const viewer = await viewerFor(
+        this.prisma,
+        this.membership,
+        fila.character.ownerId,
+        campaignId,
+      );
+      const puede = canView(viewer, {
+        visibility,
+        createdById: prospectivo.createdById,
+        grantedUserIds,
+      });
+      if (!puede && !sinVista.includes(fila.character.name)) sinVista.push(fila.character.name);
+    }
+    if (sinVista.length > 0) {
+      throw new BadRequestException(
+        `${sinVista.join(", ")} lleva este objeto encima: bajarle la visibilidad se lo haría desaparecer del inventario. Quítaselo primero, o deja la visibilidad como está.`,
+      );
+    }
   }
 
   /**

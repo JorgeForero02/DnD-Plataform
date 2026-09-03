@@ -273,41 +273,45 @@ export class InventoryService {
     );
     await requireOwnerOrDM(this.membership, campaignId, userId, character);
 
-    const row = await this.prisma.inventoryItem.findFirst({ where: { id: rowId, characterId } });
-    if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
+    // **Todo el cambio se decide y se escribe con la fila del personaje bloqueada.**
+    //
+    // Antes solo se serializaba el carril de sintonizar, y lo demás leía por fuera: la regla de
+    // manos —«un arma a dos manos deja la otra inutilizable»— se comprobaba contra un estado que
+    // otra petición podía cambiar antes de escribir, y dos peticiones simultáneas dejaban
+    // espadón **y** escudo puestos, con la CA inflada +2 durante todo el combate. El índice
+    // único parcial de la migración no puede cubrirlo: es «una ranura, un objeto», y aquí las
+    // dos ranuras son distintas. Lo encontró la auditoría de mecánica de 2B, y el candado es el
+    // mismo que ya usaban los puntos de golpe y la bolsa.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
 
-    const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row);
+      const row = await tx.inventoryItem.findFirst({ where: { id: rowId, characterId } });
+      if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
 
-    const placement = resolvePlacement(
-      { location: row.location, slot: row.slot, attuned: row.attuned },
-      { location: input.location, slot: input.slot, attuned: input.attuned },
-      itemDef,
-    );
+      const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row, tx);
 
-    if (placement.location === "EQUIPPED") {
-      await this.ensureSlotAllowed(
-        characterId,
-        campaignId,
+      const placement = resolvePlacement(
+        { location: row.location, slot: row.slot, attuned: row.attuned },
+        { location: input.location, slot: input.slot, attuned: input.attuned },
         itemDef,
-        placement.slot as EquipSlot,
-        rowId,
       );
-    }
-    if (placement.attuned && !row.attuned) {
-      // **Sintonizar se serializa por personaje.** Contar las sintonizadas y escribir después es
-      // una carrera: dos peticiones simultáneas pasan las dos el tope y dejan cuatro objetos
-      // sintonizados, que es justo lo que el SRD prohíbe. A diferencia de la ranura, esto no lo
-      // puede garantizar un índice —el tope es sobre un conteo, no sobre una fila—, así que se
-      // bloquea la fila del personaje, que es lo que ordena todas las sintonizaciones suyas.
-      // Lo encontró la revisión de 2B.
-      return this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
-        await this.ensureAttunementAllowed(characterId, campaignId, rowId, tx);
-        return this.escribirColocacion(tx, rowId, placement, input);
-      });
-    }
 
-    return this.escribirColocacion(this.prisma, rowId, placement, input);
+      if (placement.location === "EQUIPPED") {
+        await this.ensureSlotAllowed(
+          characterId,
+          campaignId,
+          itemDef,
+          placement.slot as EquipSlot,
+          rowId,
+          tx,
+        );
+      }
+      if (placement.attuned && !row.attuned) {
+        await this.ensureAttunementAllowed(characterId, campaignId, rowId, tx);
+      }
+
+      return this.escribirColocacion(tx, rowId, placement, input);
+    });
   }
 
   /** La escritura, compartida por el camino normal y por el que se serializa para sintonizar. */
@@ -443,11 +447,12 @@ export class InventoryService {
     itemDef: ResolvedItem,
     slot: EquipSlot,
     excludeRowId?: string,
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
     const isTwoHanded = itemDef.weapon?.properties.includes("TWO_HANDED") ?? false;
 
     if (slot === "MAIN_HAND" && isTwoHanded) {
-      const offHand = await this.findEquippedInSlot(characterId, "OFF_HAND", excludeRowId);
+      const offHand = await this.findEquippedInSlot(characterId, "OFF_HAND", excludeRowId, client);
       if (offHand) {
         const offHandItem = await resolveInventoryRowItem(this.prisma, campaignId, offHand);
         throw new ConflictException(
@@ -457,7 +462,22 @@ export class InventoryService {
     }
 
     if (slot === "OFF_HAND") {
-      const mainHand = await this.findEquippedInSlot(characterId, "MAIN_HAND", excludeRowId);
+      // **Un arma a dos manos tampoco entra por la puerta de atrás.** La comprobación de arriba
+      // solo miraba la mano principal, así que equipar el espadón en la izquierda se saltaba la
+      // regla entera: quedaban dos armas en el cuadro de ataques y el propio mensaje del código
+      // —«necesita las dos manos libres»— dejaba de ser cierto según por dónde entrases. Lo
+      // encontró la auditoría de mecánica de 2B.
+      if (isTwoHanded) {
+        throw new ConflictException(
+          `"${itemDef.name}" es un arma a dos manos: se empuña en la mano principal, y ocupa las dos.`,
+        );
+      }
+      const mainHand = await this.findEquippedInSlot(
+        characterId,
+        "MAIN_HAND",
+        excludeRowId,
+        client,
+      );
       if (mainHand) {
         const mainHandItem = await resolveInventoryRowItem(this.prisma, campaignId, mainHand);
         if (mainHandItem.weapon?.properties.includes("TWO_HANDED")) {
@@ -468,15 +488,20 @@ export class InventoryService {
       }
     }
 
-    const occupant = await this.findEquippedInSlot(characterId, slot, excludeRowId);
+    const occupant = await this.findEquippedInSlot(characterId, slot, excludeRowId, client);
     if (occupant) {
       const occupantItem = await resolveInventoryRowItem(this.prisma, campaignId, occupant);
       throw new ConflictException(`La ranura ya la ocupa "${occupantItem.name}".`);
     }
   }
 
-  private findEquippedInSlot(characterId: string, slot: EquipSlot, excludeRowId?: string) {
-    return this.prisma.inventoryItem.findFirst({
+  private findEquippedInSlot(
+    characterId: string,
+    slot: EquipSlot,
+    excludeRowId?: string,
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
+  ) {
+    return client.inventoryItem.findFirst({
       where: {
         characterId,
         slot,

@@ -253,3 +253,84 @@ describe("deriveCharacter devuelve todo lo que las pantallas de 2A necesitan", (
     expect(hoja.features.length).toBeGreaterThan(0);
   });
 });
+
+describe("lo que encontró la auditoría de mecánica de 2B", () => {
+  const enanoClerigo = {
+    abilities: { str: 14, dex: 10, con: 14, int: 10, wis: 16, cha: 10 },
+    race: { source: "SRD" as const, key: "dwarf" },
+    subrace: { source: "SRD" as const, key: "dwarf-hill" },
+    class: { source: "SRD" as const, key: "cleric" },
+    level: 1,
+    choices: { "cleric-skills": ["insight", "religion"] },
+  };
+
+  it("el enano trae sus cuatro armas: el clérigo enano SÍ es competente con el hacha de batalla", () => {
+    const resuelto = resolveBuild(enanoClerigo);
+
+    // «Entrenamiento de combate enano» era un rasgo de texto, así que la hoja del clérigo enano
+    // decía «Sin competencia» en rojo sobre su propia hacha y le quitaba su bonificador.
+    expect(resuelto.weaponProficiencies).toEqual(
+      expect.arrayContaining(["battleaxe", "handaxe", "light-hammer", "warhammer"]),
+    );
+    // Y las de la clase siguen ahí.
+    expect(resuelto.weaponProficiencies).toContain("simple");
+  });
+
+  it("la velocidad del enano NO baja por una armadura que le pide más Fuerza de la que tiene", () => {
+    const conBandas = {
+      ...enanoClerigo,
+      items: [
+        {
+          ref: "SRD:splint",
+          source: "SRD" as const,
+          name: "Armadura de bandas",
+          kind: "ARMOR" as const,
+          weightOz: 1_000,
+          effects: [],
+          requiresAttunement: false,
+          armor: {
+            category: "HEAVY" as const,
+            baseAc: 17,
+            dexCap: 0,
+            strengthRequirement: 15,
+            stealthDisadvantage: true,
+          },
+        },
+      ],
+    };
+    const resuelto = resolveBuild(conBandas);
+
+    // SRD 5.1, enano: «Tu velocidad no se reduce por llevar armadura pesada». Con Fuerza 14 no
+    // llega al requisito de 15, así que el aviso sale — pero los diez pies no se pierden.
+    expect(resuelto.speeds.walk).toBe(25);
+    expect(resuelto.warnings.some((a) => a.code === "armor_strength_requirement_unmet")).toBe(true);
+  });
+
+  it("pero a un humano sí le baja: la exención es del enano, no de la armadura", () => {
+    const humano = {
+      ...enanoClerigo,
+      race: { source: "SRD" as const, key: "human" },
+      subrace: undefined,
+      items: [
+        {
+          ref: "SRD:splint",
+          source: "SRD" as const,
+          name: "Armadura de bandas",
+          kind: "ARMOR" as const,
+          weightOz: 1_000,
+          effects: [],
+          requiresAttunement: false,
+          armor: {
+            category: "HEAVY" as const,
+            baseAc: 17,
+            dexCap: 0,
+            strengthRequirement: 15,
+            stealthDisadvantage: true,
+          },
+        },
+      ],
+    };
+    const resuelto = resolveBuild(humano);
+    expect(resuelto.speeds.walk).toBe(20);
+  });
+});

@@ -37,6 +37,7 @@ export type Grant =
   | SkillChoiceGrant
   | SpeedGrant
   | HpPerLevelGrant
+  | WeaponProficiencyGrant
   | FeatureGrant;
 
 export interface GrantBase {
@@ -87,6 +88,24 @@ export interface HpPerLevelGrant extends GrantBase {
   amount: number;
 }
 
+/**
+ * Competencia con armas concedida por una raza o subraza — el «Entrenamiento de combate enano».
+ *
+ * **Nació de una auditoría de mecánica**: hasta el 2026-09-03 esto era un `feature`, o sea texto
+ * sin efecto, y el cuadro de ataques solo miraba las competencias de la **clase**. Un clérigo
+ * enano con hacha de batalla veía «Sin competencia» en rojo y perdía su bonificador: un número
+ * equivocado en la hoja de un personaje corriente, sin que nadie hiciera nada raro.
+ *
+ * Las claves son las mismas que usa la clase: `"simple"`, `"martial"` o la clave de un arma
+ * suelta (`"battleaxe"`).
+ */
+export interface WeaponProficiencyGrant extends GrantBase {
+  kind: "weaponProficiency";
+  keys: string[];
+  /** Nombre en español del rasgo que la concede, para que la hoja lo siga enseñando. */
+  name: string;
+}
+
 /** Un rasgo sin efecto numérico que el motor pueda calcular hoy: se enseña, no se suma. */
 export interface FeatureGrant extends GrantBase {
   kind: "feature";
@@ -106,6 +125,12 @@ export interface SrdRace {
   size: CreatureSize;
   /** Alcance de la visión en la oscuridad, en pies. `0` si no tiene. */
   darkvisionFeet: number;
+  /**
+   * SRD 5.1, enano: *«Tu velocidad no se reduce por llevar armadura pesada»*. Sin esto, el
+   * arquetipo más común de la mesa —enano guerrero con armadura de bandas— corría 15 pies en la
+   * pantalla y 25 en el manual, y la velocidad decide quién alcanza al mago.
+   */
+  heavyArmorSpeedExempt?: boolean;
   grants: Grant[];
   subraces: SrdSubrace[];
 }

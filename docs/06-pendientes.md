@@ -306,6 +306,28 @@ escribir en él?) estaba escrito dos veces y 2B iba a escribir la tercera. Vive 
 `character-sheet`, `comments`, `links`, `sessions`, `game-events`, `rules-engine` y
 `campaign-items`.
 
+
+## Lo que dejó abierto la auditoría de mecánica de 2B (2026-09-03, noche)
+
+Dos frentes con su refutador, sobre el camino de una mesa real. El informe entero, con lo que se
+arregló el mismo día y lo que el refutador corrigió, está en
+[la auditoría de mecánica](./superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md).
+
+| | Qué falta | Qué cuesta, y qué pasa mientras tanto |
+|---|---|---|
+| **M2B-1** | **Un arma mágica no se puede representar.** Ni `+1` al ataque ni al daño: la lista cerrada de efectos no los tiene, `buildAttacks` no lee `effects`, y `OVERRIDABLE_KEYS` tampoco incluye `attack.*` | **Es el que más rápido devuelve la mesa al papel**: el DM entrega la primera espada +1 y el cuadro de ataques miente en cada tirada. Son dos `kind` nuevos en `itemEffectSchema` (`weaponAttack`, `weaponDamage`) y consumirlos en `attacks.ts`. Ojo con la línea de derechos: los objetos mágicos del SRD **no** se copian; lo que se abre es la forma para que el DM escriba los suyos |
+| **M2B-2** | **Ninguna mutación de inventario deja rastro en la línea de tiempo** | El dinero sí (`MONEY_CHANGED`). Una semana después nadie puede responder «¿quién cogió la gema?». Tres tipos de suceso y un `events.record` dentro de cada transacción |
+| **M2B-3** | **El motor de reglas se dispara dentro de la transacción del llamante y escribe fuera de ella** | Sus efectos sobreviven a un cambio que se deshace, y lee el mundo anterior al suceso. Hoy la única puerta real es arrancar o cerrar sesión —las tiradas y el mundo registran sin `tx`—, pero **el comentario de `game-events.service.ts` afirma que la evaluación ocurre «dentro de la petición» y no es cierto**: `emit` no se espera. Se arregla encolando los sucesos y emitiéndolos tras el *commit* |
+| **M2B-4** | **No hay munición, ni cargas, ni forma de gastar un consumible** | La propiedad `AMMUNITION` se pinta y no la consume nadie; `quantity` no puede bajar a 0 (la última poción se «bebe» borrando la fila); un descanso no repone cargas porque no existen. El explorador dispara indefinidamente |
+| **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
+| **M2B-6** | **La ranura no comprueba qué clase de objeto acepta** | Una cota de malla equipada en «CABEZA» sigue dando su CA, y un segundo escudo colocado a propósito en otra ranura **apaga la hoja entera** (`InvalidEquipmentError` → `sheet: null`). Hace falta atar `kind` ↔ `slot` |
+| **M2B-7** | **`armor.category` es un rótulo decorativo** | Nadie la consume salvo para distinguir el escudo: el tope de Destreza lo fija `dexCap` a mano, así que un DM puede marcar «Pesada» y que sume toda la Destreza. Lo suyo es derivar el tope de la categoría, o atarlos en el esquema |
+| **M2B-8** | **`quantity` es absoluto donde el dinero es delta** | Dos personas descontando una flecha a la vez dejan 19 en vez de 18. No rompe ningún invariante —por eso no es urgente— pero es la misma carrera que la bolsa ya tiene resuelta |
+| **M2B-9** | **La subida de nivel deriva la hoja sin el equipo puesto** | El previo enseña unos PG que no coinciden con la hoja si hay un objeto con efecto `maxHp`. Hoy no corrompe nada porque los PG no se persisten, pero `apply` siembra recursos con esa hoja incompleta: es una segunda boca del mismo error |
+| **M2B-10** | **Nada refresca el inventario cuando lo cambia otra persona** | El DM entrega el botín y los jugadores no lo ven hasta volver a la pestaña (el refutador matizó que `refetchOnWindowFocus` sí lo recarga al volver, así que no es «hasta recargar»). Las sesiones ya sondean; falta el mismo `refetchInterval` |
+| **M2B-11** | **Equipar son tres peticiones desde la pantalla** | `fetchAc` → `PATCH` → `fetchAc`. Si la segunda lectura falla, la mutación se marca como error, no se invalida la caché y la pantalla enseña un estado que el servidor ya cambió. Lo correcto es que el `PATCH` devuelva la CA nueva |
+| **M2B-12** | **La hoja lee el inventario por otra conexión dentro de una transacción bloqueada** | El refutador rebajó esto de «incorrección» a **higiene**: lo que se lee está confirmado, pero son N+1 consultas sosteniendo un candado de fila. Se arregla pasando el `tx` hasta `equipoEquipado` |
+
 ## Lo que dejó la auditoría de documentación (2026-09-02)
 
 Dos agentes auditaron los ocho documentos numerados **contra el código**, afirmación por

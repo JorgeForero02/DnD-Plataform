@@ -21,6 +21,8 @@ export const SRD_RACES: SrdRace[] = [
     name: "Enano",
     size: "MEDIUM",
     darkvisionFeet: 60,
+    // SRD 5.1: «Tu velocidad no se reduce por llevar armadura pesada».
+    heavyArmorSpeedExempt: true,
     grants: [
       { id: "dwarf-con", kind: "ability", ability: "con", amount: 2, labelKey: "race.dwarf.con" },
       {
@@ -38,7 +40,12 @@ export const SRD_RACES: SrdRace[] = [
       },
       {
         id: "dwarf-combat-training",
-        kind: "feature",
+        // **Concesión de verdad desde el 2026-09-03, no texto.** Las cuatro armas del SRD, con
+        // sus claves del catálogo: el hacha de batalla, el hacha de mano, el martillo ligero y
+        // el martillo de guerra. Antes esto era un `feature` y la hoja del clérigo enano decía
+        // «Sin competencia» sobre su propia hacha.
+        kind: "weaponProficiency",
+        keys: ["battleaxe", "handaxe", "light-hammer", "warhammer"],
         name: "Entrenamiento de combate enano",
         labelKey: "race.dwarf.combatTraining",
       },

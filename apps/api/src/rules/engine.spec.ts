@@ -539,3 +539,43 @@ describe("el motor es determinista", () => {
     }
   });
 });
+
+describe("un tope de Destreza de 0 no deja sumar, y tampoco deja restar", () => {
+  const PLACAS: AcFormula = {
+    key: "plate",
+    labelKey: "armor.plate",
+    base: 18,
+    addAbility: "dex",
+    abilityCap: 0,
+    sourceType: "item",
+    sourceKey: "plate",
+  };
+
+  it("con Destreza 8 (−1) la armadura pesada da 18, no 17", () => {
+    const r = derive(
+      personaje({
+        abilities: { str: 16, dex: 8, con: 14, int: 10, wis: 10, cha: 10 },
+        acFormulas: [PLACAS],
+      }),
+    );
+
+    // SRD 5.1: la armadura pesada **no te deja sumar** el modificador de Destreza. No dice
+    // «resta si es malo», y `Math.min(−1, 0)` lo hacía restar: era un punto de CA de menos justo
+    // en el arquetipo que baja Destreza para subir Fuerza.
+    expect(r.derived.ac.total).toBe(18);
+    const pasos = r.derived.ac.steps;
+    expect(pasos.reduce((suma, p) => suma + p.amount, 0)).toBe(18);
+  });
+
+  it("pero en armadura MEDIA una Destreza negativa sí resta: ahí el tope es un máximo", () => {
+    const media: AcFormula = { ...PLACAS, key: "hide", base: 12, abilityCap: 2 };
+    const r = derive(
+      personaje({
+        abilities: { str: 16, dex: 8, con: 14, int: 10, wis: 10, cha: 10 },
+        acFormulas: [media],
+      }),
+    );
+
+    expect(r.derived.ac.total).toBe(11);
+  });
+});

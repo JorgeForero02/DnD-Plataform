@@ -66,6 +66,8 @@ export interface CharacterSheet extends DerivationResult {
   classKey: string;
   /** Cuantos ataques da una accion de Ataque (hueco M2). */
   attacksPerAction: number;
+  /** Competencias con armas de la clase **y de la raza** (auditoría de mecánica de 2B). */
+  weaponProficiencies: string[];
   /** Espacios de conjuro y donde se reponen (hueco M3). */
   spellSlots: ResolvedBuild["spellSlots"];
   spellSlotResetOn: ResolvedBuild["spellSlotResetOn"];
@@ -111,6 +113,7 @@ export function deriveCharacter(
     subraceKey: resuelto.subrace?.key,
     classKey: resuelto.characterClass.key,
     attacksPerAction: resuelto.attacksPerAction,
+    weaponProficiencies: resuelto.weaponProficiencies,
     spellSlots: resuelto.spellSlots,
     spellSlotResetOn: resuelto.spellSlotResetOn,
   };

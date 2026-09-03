@@ -15,6 +15,41 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (madrugada) — La auditoría de mecánica de 2B, y nueve reglas que estaban mal
+
+**Qué.** Cerrada 2B, se auditó **la mecánica**, no el código: dos frentes con su refutador
+adversario sobre dos caminos concretos —el turno de un guerrero enano de nivel 5, y lo que
+sobrevive entre sesiones o hacen dos peticiones a la vez—. Salieron nueve fallos de regla que se
+arreglaron el mismo día, cada uno con su prueba y su mutación comprobada, y doce fichas abiertas
+(**M2B-1** a **M2B-12** en [06-pendientes.md](./06-pendientes.md)). El informe entero está en
+[la auditoría de mecánica](./superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md).
+
+**Los tres que más se notaban en una mesa:**
+
+- **La armadura pesada restaba la Destreza negativa.** El SRD dice que no te deja *sumarla*; el
+  código hacía `Math.min(−1, 0)` y restaba. El enano que baja Destreza para subir Fuerza salía
+  con CA 17 donde el manual da 18 — y la traza se lo enseñaba como si fuera correcto, que es
+  peor que no explicar nada.
+- **El «Entrenamiento de combate enano» era texto sin efecto.** El cuadro de ataques leía solo
+  las competencias de la clase, así que el clérigo enano veía «Sin competencia» en rojo sobre su
+  propia hacha. Arreglarlo obligó a estrenar un tipo de concesión (`weaponProficiency`), que es
+  el mismo cableado que necesitarán las competencias de armadura.
+- **Editar un objeto no revalidaba las mochilas**, y bajarle la visibilidad se lo hacía
+  desaparecer al jugador en silencio mientras la hoja seguía sumándolo. Ahora cambiar la forma de
+  un objeto lo devuelve a la mochila de quien lo lleve, y quitárselo de la vista a quien ya lo
+  tiene se rechaza con un 400 que dice a quién.
+
+**Y una decisión que se tomó al revés de lo que pedía el informe:** el auditor proponía que la
+fila del arma de la mano izquierda dejara de sumar el modificador al daño (combate con dos
+armas). El refutador demostró que **la regla estaba mal citada** —el SRD dice «salvo que el
+modificador sea negativo», y quien la levanta es un estilo de combate, no una dote— y, sobre
+todo, que **la aplicación no modela el ataque de acción adicional**: la tabla es una fila por
+arma, no una secuencia de turno. Se deja el número y se avisa. La máquina ejecuta, el DM arbitra.
+
+**Cómo revertir.** `git revert` del commit. Sin migración: todo son reglas de cálculo y de
+servicio. Revertir devuelve los nueve fallos, así que si algo de esto molesta, lo que se cambia
+es la regla concreta, no el commit entero.
+
 ## 2026-09-03 (noche) — Fase 2B: objetos, inventario, equipar, y el cuadro de ataques que faltaba
 
 **Qué.** Un objeto deja de ser texto. Hay catálogo del SRD 5.1 (35 armas, 18 de equipo, las

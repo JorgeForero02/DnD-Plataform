@@ -120,6 +120,12 @@ export interface EquipmentEngineInput {
 export function equipmentToEngineInput(
   items: ResolvedItem[],
   strengthScore: number,
+  /**
+   * Razas cuya velocidad **no** baja por armadura pesada (SRD 5.1: el enano). El aviso se emite
+   * igual —la mesa quiere saber que no llega a la Fuerza que pide la armadura—, pero la
+   * penalización de diez pies no se aplica.
+   */
+  heavyArmorSpeedExempt = false,
 ): EquipmentEngineInput {
   const modifiers: Modifier[] = [];
   const acFormulas: AcFormula[] = [];
@@ -233,14 +239,21 @@ export function equipmentToEngineInput(
       // un número** — se aplica como modificador — y además se avisa, porque es justo lo que la
       // mesa pregunta al ponerse la armadura.
       if (item.armor.strengthRequirement > strengthScore) {
-        modifiers.push({
-          target: "speed.walk",
-          op: "add",
-          amount: -10,
-          sourceType: "item",
-          sourceKey: item.ref,
-          labelKey: `${labelKey}.strengthPenalty`,
-        });
+        // **Salvo que la raza esté exenta.** El enano no pierde velocidad por armadura pesada
+        // (SRD 5.1), y hasta la auditoría de mecánica de 2B sí la perdía aquí: el arquetipo más
+        // común de la mesa —enano guerrero con armadura de bandas— corría 15 pies en la pantalla
+        // y 25 en el manual. El aviso se emite igual: la mesa quiere saber que no llega a la
+        // Fuerza que pide la armadura.
+        if (!heavyArmorSpeedExempt) {
+          modifiers.push({
+            target: "speed.walk",
+            op: "add",
+            amount: -10,
+            sourceType: "item",
+            sourceKey: item.ref,
+            labelKey: `${labelKey}.strengthPenalty`,
+          });
+        }
         warnings.push({
           code: "armor_strength_requirement_unmet",
           key: "speed.walk",

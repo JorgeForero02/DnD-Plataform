@@ -78,6 +78,11 @@ export interface ResolvedBuild {
    */
   warnings: DerivationWarning[];
   features: ResolvedFeature[];
+  /**
+   * Competencias con armas de la **clase más la raza**. La hoja las pasa al cuadro de ataques;
+   * antes solo miraba la clase y el enano perdía las suyas.
+   */
+  weaponProficiencies: string[];
   /** Velocidades **en pies**. 2A.12 les aplicará las condiciones. */
   speeds: Partial<Record<"walk" | "climb" | "swim" | "fly" | "burrow", number>>;
   /**
@@ -173,6 +178,7 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
   const warnings: DerivationWarning[] = [];
   const features: ResolvedFeature[] = [];
   const speeds: ResolvedBuild["speeds"] = {};
+  const weaponProficiencies: string[] = [...characterClass.weaponProficiencies];
   const skillProficiencies: Partial<Record<SkillKey, ProficiencyLevel>> = {
     ...build.skillProficiencies,
   };
@@ -279,6 +285,13 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
       case "speed":
         speeds[grant.movement] = grant.feet;
         break;
+      case "weaponProficiency":
+        // Se guarda la competencia **y** se enseña el rasgo: para la mesa es una aptitud con
+        // nombre, y para el cuadro de ataques es un bonificador que aparece.
+        for (const clave of grant.keys)
+          if (!weaponProficiencies.includes(clave)) weaponProficiencies.push(clave);
+        features.push({ sourceKey, labelKey: grant.labelKey, name: grant.name });
+        break;
       case "feature":
         features.push({ sourceKey, labelKey: grant.labelKey, name: grant.name });
         break;
@@ -340,7 +353,12 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
   // la raza o la clase, y por eso vuelve a pasar por `anotarCompetencia` — el mismo mecanismo,
   // no uno paralelo. En la traza, un bono de objeto queda **indistinguible de uno de raza**: es
   // el mismo objetivo que ya perseguían las elecciones (nota de cabecera).
-  const equipo = equipmentToEngineInput(build.items ?? [], build.abilities.str);
+  const equipo = equipmentToEngineInput(
+    build.items ?? [],
+    build.abilities.str,
+    // La exención del enano: su velocidad no baja por armadura pesada (SRD 5.1).
+    race.heavyArmorSpeedExempt ?? false,
+  );
   modifiers.push(...equipo.modifiers);
   acFormulas.push(...equipo.acFormulas);
   acBonuses.push(...equipo.acBonuses);
@@ -394,6 +412,7 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     pendingChoices,
     warnings,
     features,
+    weaponProficiencies,
     speeds: speedsConEquipo,
     attacksPerAction: ataquesPorAccion(characterClass, build.level),
     spellSlots: spellSlotsFor(characterClass.spellProgression, build.level),

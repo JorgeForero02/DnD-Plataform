@@ -501,7 +501,12 @@ describe("los nombres en español son los de la traducción oficial del SRD 5.1"
       ...r.subraces.flatMap((s) => s.grants),
     ]).find((g) => g.id === id);
     expect(grant).toBeDefined();
-    expect(grant!.kind === "feature" ? grant!.name : undefined).toBe(nombre);
+    // **Un rasgo con nombre no es siempre `kind: "feature"`.** El «Entrenamiento de combate
+    // enano» pasó a ser una concesión de competencia con armas de verdad (auditoría de mecánica
+    // de 2B) y siguió teniendo nombre; con la comprobación anterior, ceñida a `feature`, este
+    // caso decía «undefined» y parecía que el rasgo había desaparecido del catálogo.
+    const conNombre = grant as { name?: string };
+    expect(conNombre.name).toBe(nombre);
   });
 
   it.each(Object.entries(NOMBRES_CLASE))("la clase %s se llama «%s»", (clave, nombre) => {

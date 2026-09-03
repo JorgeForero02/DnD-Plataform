@@ -67,6 +67,9 @@ const HAND_SLOT_SET = new Set<string>(HAND_SLOTS);
 export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
   const attacks: Attack[] = [];
   const warnings: DerivationWarning[] = [];
+  // Qué hay en la mano izquierda decide si un arma versátil puede empuñarse a dos manos. La
+  // ranura llega de la fila del inventario, no del catálogo (ver `equipoEquipado`).
+  const manoIzquierdaOcupada = input.items.some((i) => i.slot === "OFF_HAND");
 
   const proficienciasNormalizadas = new Set(
     input.weaponProficiencies.map((p) => p.trim().toLowerCase()),
@@ -114,8 +117,35 @@ export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
     };
 
     // `TWO_HANDED` no es versátil: no lleva variante (regla explícita del encargo).
+    //
+    // **Y versátil significa «empuñada con las dos manos», que con la izquierda ocupada es
+    // imposible.** Ofrecerlo igual regalaba +1 de daño medio por asalto a un guerrero que
+    // conserva su escudo y su CA: la auditoría de mecánica de 2B lo midió así. Cuando la otra
+    // mano está ocupada no se emite la variante y sale un aviso, que es más honesto que
+    // esconderla sin decir por qué.
     if (weapon.properties.includes("VERSATILE") && weapon.versatileDice) {
-      attack.versatileDamage = montarDano(weapon.versatileDice, modifier, weapon.damageType);
+      if (manoIzquierdaOcupada) {
+        warnings.push({
+          code: "versatile_needs_both_hands",
+          key: `attack.${key}`,
+          data: { ref: item.ref, name: item.name },
+        });
+      } else {
+        attack.versatileDamage = montarDano(weapon.versatileDice, modifier, weapon.damageType);
+      }
+    }
+
+    // **El ataque con la otra mano no suma el modificador al daño** (SRD 5.1, combate con dos
+    // armas), pero **solo cuando es el ataque adicional de acción adicional**, y eso lo decide
+    // quien juega, no la ficha: llevar un arma en la izquierda no obliga a usar esa regla. Así
+    // que el número no se toca y se avisa, que es lo que la máquina puede decir con verdad —
+    // la máquina ejecuta, el DM arbitra.
+    if (item.slot === "OFF_HAND" && weapon.properties.includes("LIGHT")) {
+      warnings.push({
+        code: "two_weapon_offhand_damage",
+        key: `attack.${key}`,
+        data: { ref: item.ref, name: item.name },
+      });
     }
 
     attacks.push(attack);

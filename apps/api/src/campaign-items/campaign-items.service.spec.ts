@@ -11,10 +11,11 @@ describe("CampaignItemsService", () => {
       create: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
+      update: jest.fn(),
       delete: jest.fn(),
     },
     campaignItemVisibilityGrant: { deleteMany: jest.fn(), createMany: jest.fn() },
-    inventoryItem: { count: jest.fn() },
+    inventoryItem: { count: jest.fn(), findMany: jest.fn(), updateMany: jest.fn() },
     user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -143,6 +144,75 @@ describe("CampaignItemsService", () => {
     const res = await service.remove("dm1", "c1", "i1");
     expect(res).toEqual({ deleted: true });
     expect(prisma.campaignItem.delete).toHaveBeenCalledWith({ where: { id: "i1" } });
+  });
+
+  describe("editar la definición y las mochilas que ya lo llevan (auditoría de mecánica 2B)", () => {
+    const guardado = {
+      id: "i1",
+      campaignId: "c1",
+      name: "Guja del Rey Bajo",
+      kind: "WEAPON",
+      slot: "MAIN_HAND",
+      requiresAttunement: false,
+      visibility: "PLAYERS",
+      createdById: "dm1",
+      weaponProperties: [],
+      strengthRequirement: 0,
+      stealthDisadvantage: false,
+      grants: [],
+    };
+
+    beforeEach(() => {
+      prisma.campaignItem.findFirst.mockResolvedValue(guardado);
+      prisma.campaignItem.update.mockResolvedValue({ ...guardado, grants: [] });
+      prisma.inventoryItem.findMany.mockResolvedValue([]);
+      prisma.inventoryItem.updateMany.mockResolvedValue({ count: 0 });
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+    });
+
+    it("cambiar la FORMA del objeto lo devuelve a la mochila de quien lo lleve puesto", async () => {
+      await service.update("dm1", "c1", "i1", {
+        weapon: {
+          category: "MARTIAL",
+          range: "MELEE",
+          damageDice: "1d10",
+          damageType: "SLASHING",
+          properties: ["TWO_HANDED"],
+        },
+      } as never);
+
+      // Sin esto quedaba un escudo conviviendo con un arma que acababa de volverse a dos manos,
+      // y la CA inflada +2 durante todo el combate.
+      expect(prisma.inventoryItem.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { location: "CARRIED", slot: null, attuned: false },
+        }),
+      );
+    });
+
+    it("cambiar solo el nombre NO desequipa a nadie", async () => {
+      await service.update("dm1", "c1", "i1", { name: "Otro nombre" } as never);
+      expect(prisma.inventoryItem.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("bajar la visibilidad de un objeto que alguien lleva encima es 400, y nombra a quien lo lleva", async () => {
+      prisma.inventoryItem.findMany.mockResolvedValue([
+        { character: { id: "ch1", name: "Brann", ownerId: "jugador1" } },
+      ]);
+      membership.getMembership.mockImplementation(async (_c: string, userId: string) =>
+        userId === "dm1" ? { role: "DM" } : { role: "PLAYER" },
+      );
+
+      // La misma regla que impide entregárselo: lo que alguien no debe ver no se le manda, pero
+      // hacerlo desaparecer de su mochila sin avisar tampoco es una respuesta.
+      await expect(
+        service.update("dm1", "c1", "i1", { visibility: "DM_ONLY" } as never),
+      ).rejects.toMatchObject({
+        status: 400,
+        response: { message: expect.stringContaining("Brann") },
+      });
+      expect(prisma.campaignItem.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("resolveForCharacter()", () => {

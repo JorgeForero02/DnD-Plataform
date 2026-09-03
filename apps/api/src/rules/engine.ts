@@ -337,7 +337,14 @@ function calcularCa(
     if (formula.addAbility) {
       const bruto = mods[formula.addAbility];
       const tope = formula.abilityCap;
-      const aplicado = tope === undefined ? bruto : Math.min(bruto, tope);
+      // **Un tope de 0 significa «no suma», no «suma como mucho cero».** La diferencia solo se
+      // ve con una Destreza mala: el SRD dice que la armadura pesada *no te deja sumar* el
+      // modificador, y `Math.min(−1, 0)` lo dejaba **restar**. Un enano con Destreza 8 y
+      // armadura de placas salía con CA 17 donde el manual da 18, con la traza enseñándolo como
+      // si fuera correcto. En ligera y media sí se suma un modificador negativo: ahí la regla es
+      // «suma, hasta un máximo», y un máximo no es un suelo. Lo encontró la auditoría de
+      // mecánica de 2B.
+      const aplicado = tope === undefined ? bruto : tope === 0 ? 0 : Math.min(bruto, tope);
       // **El paso de la característica lleva el modificador BRUTO, y el recorte va aparte.**
       // Antes llevaba el ya recortado y además se añadía el paso del recorte, así que la traza
       // contaba el tope dos veces: con cota de malla y Destreza 12 la hoja decía «CA 16» y su
@@ -349,8 +356,11 @@ function calcularCa(
         paso("add", bruto, "ability", formula.addAbility, `abilityMod.${formula.addAbility}`),
       );
       total += aplicado;
-      // El recorte se **enseña**: sin este paso, «CA 16» con Destreza 20 parece un error.
-      if (tope !== undefined && bruto > tope) {
+      // El recorte se **enseña**: sin este paso, «CA 16» con Destreza 20 parece un error. La
+      // condición es «el aplicado no es el bruto», no «el bruto se pasa del tope»: con armadura
+      // pesada y Destreza 8 el aplicado (0) tampoco es el bruto (−1), y sin este paso la traza
+      // sumaba 17 debajo de un 18.
+      if (aplicado !== bruto) {
         steps.push(
           paso(
             "cap",

@@ -314,3 +314,90 @@ describe("buildAttacks", () => {
     expect(attacks[1].key).toBe("SRD:dagger:OFF_HAND");
   });
 });
+
+describe("lo que encontró la auditoría de mecánica de 2B", () => {
+  const espadaLarga: ResolvedItem = {
+    ref: "SRD:long-sword",
+    source: "SRD",
+    name: "Espada larga",
+    kind: "WEAPON",
+    weightOz: 48,
+    effects: [],
+    requiresAttunement: false,
+    slot: "MAIN_HAND",
+    weapon: {
+      category: "MARTIAL",
+      range: "MELEE",
+      damageDice: "1d8",
+      damageType: "SLASHING",
+      properties: ["VERSATILE"],
+      versatileDice: "1d10",
+    },
+  };
+  const escudo: ResolvedItem = {
+    ref: "SRD:shield",
+    source: "SRD",
+    name: "Escudo",
+    kind: "SHIELD",
+    weightOz: 96,
+    effects: [],
+    requiresAttunement: false,
+    slot: "OFF_HAND",
+    armor: { category: "SHIELD", baseAc: 2, strengthRequirement: 0, stealthDisadvantage: false },
+  };
+  const mods = { str: 3, dex: 1, con: 2, int: 0, wis: 0, cha: -1 };
+
+  it("con la mano izquierda libre, el arma versátil ofrece su dado a dos manos", () => {
+    const r = buildAttacks({
+      items: [espadaLarga],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+    expect(r.attacks[0].versatileDamage?.expression).toBe("1d10+3");
+  });
+
+  it("con un escudo en la izquierda NO la ofrece, y lo dice", () => {
+    // Versátil es «empuñada con las dos manos». Ofrecerla igual regala +1 de daño medio por
+    // asalto a quien conserva su escudo —y su CA— toda la campaña.
+    const r = buildAttacks({
+      items: [espadaLarga, escudo],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+    expect(r.attacks[0].versatileDamage).toBeUndefined();
+    expect(r.warnings.some((a) => a.code === "versatile_needs_both_hands")).toBe(true);
+  });
+
+  it("dos armas iguales, una en cada mano, no comparten clave de ataque", () => {
+    const daga: ResolvedItem = {
+      ...espadaLarga,
+      ref: "SRD:dagger",
+      name: "Daga",
+      weapon: {
+        category: "SIMPLE",
+        range: "MELEE",
+        damageDice: "1d4",
+        damageType: "PIERCING",
+        properties: ["FINESSE", "LIGHT"],
+      },
+    };
+    const r = buildAttacks({
+      items: [
+        { ...daga, slot: "MAIN_HAND" },
+        { ...daga, slot: "OFF_HAND" },
+      ],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["simple"],
+    });
+
+    // Sin esto, `rollAttack` tira siempre la primera y React repite `key`.
+    expect(r.attacks).toHaveLength(2);
+    expect(r.attacks[0].key).not.toBe(r.attacks[1].key);
+    // Y la de la otra mano avisa de la regla de combate con dos armas, sin cambiar el número:
+    // usarla o no es decisión de quien juega, no de la ficha.
+    expect(r.warnings.some((a) => a.code === "two_weapon_offhand_damage")).toBe(true);
+  });
+});

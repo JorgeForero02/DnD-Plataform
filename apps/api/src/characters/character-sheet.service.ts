@@ -266,7 +266,14 @@ export class CharacterSheetService {
             createdById: campaignItem.createdById,
             grantedUserIds: campaignItem.grantedUserIds,
           });
-        items.push(puedeVerlo ? resolved : redactado(resolved, ++ocultos));
+        // **La ranura que vale es la de la fila, no la del catálogo.** `findSrdItem` devuelve el
+        // objeto con su ranura por defecto —toda arma dice `MAIN_HAND`—, así que dos dagas
+        // equipadas, una en cada mano, llegaban al cuadro de ataques con la misma clave: dos
+        // filas indistinguibles, `rollAttack` tirando siempre la primera y React repitiendo
+        // `key`. Y sin la ranura real no se puede saber si la otra mano está ocupada, que es lo
+        // que decide si un arma versátil puede empuñarse a dos manos.
+        const conRanura: ResolvedItem = { ...resolved, slot: fila.slot ?? resolved.slot };
+        items.push(puedeVerlo ? conRanura : redactado(conRanura, ++ocultos));
       } catch {
         warnings.push({
           code: "item_unresolved",
@@ -295,12 +302,10 @@ export class CharacterSheetService {
     for (const clave of ["str", "dex", "con", "int", "wis", "cha"] as AbilityKey[]) {
       abilityMods[clave] = sheet.derived[`abilityMod.${clave}`]?.total ?? 0;
     }
-    let weaponProficiencies: string[] = [];
-    try {
-      weaponProficiencies = findClass({ source: "SRD", key: sheet.classKey }).weaponProficiencies;
-    } catch {
-      // Una clase caduca ya sale como aviso por otro camino; aquí solo significa «sin competencias».
-    }
+    // **Las de la clase Y las de la raza.** Esto leía solo la clase, y un clérigo enano con
+    // hacha de batalla veía «Sin competencia» en rojo sobre su propia arma: el «Entrenamiento de
+    // combate enano» era texto sin efecto. Lo encontró la auditoría de mecánica de 2B.
+    const weaponProficiencies = sheet.weaponProficiencies;
     return buildAttacks({
       items: items.filter((item) => item.weapon),
       abilityMods,

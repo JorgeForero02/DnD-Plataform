@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-02 al cerrar la fase 2A entera: **116 e2e de API** en 22 suites y
-**53 recorridos de navegador** en 12 especificaciones, todos verdes. Las suites de API nuevas del
+**61 recorridos de navegador** en 14 especificaciones, todos verdes. Las suites de API nuevas del
 día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
 `game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (6),
 `catalog-y-velocidad` (4) y **`partida` (12), que
@@ -43,6 +43,26 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > fila lleva a una página de lectura y el editor se abre desde ella, de modo que el recorrido
 > tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
 > sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
+
+> **Un intermitente que parecía un defecto y era el limitador de peticiones (2026-09-03).**
+> La suite empezó a fallar en sitios distintos en cada vuelta: un personaje que no aparecía en
+> su lista, un campo que no guardaba, un `<input>` que «se desprendía del DOM». Cada fallo por
+> separado tenía una explicación creíble y **ninguna era la verdadera**. La causa: hay un tope
+> global de **100 peticiones por IP y minuto** sobre todas las rutas, y la suite dispara
+> cientos de peticiones legítimas desde `127.0.0.1` en un minuto — sesenta recorridos que
+> registran una cuenta, crean una campaña, escriben fichas y rellenan una hoja. Pasado el
+> centenar, la API responde **429** y el recorrido se rompe donde le pille.
+>
+> Se resolvió como ya se había resuelto para el límite de autenticación: **haciéndolo
+> configurable y dándole margen solo a esta suite** (`RATE_LIMIT` en `playwright.config.ts`).
+> El control de producción no se toca, y un valor mal escrito cae al de producción, nunca a
+> «sin límite» — hay pruebas que lo fijan.
+>
+> **Y una trampa dentro de la trampa:** el primer intento no funcionó y parecía descartar la
+> hipótesis. `reuseExistingServer` estaba reutilizando un servidor **arrancado antes del
+> cambio**, así que la variable nueva no llegaba. Al matar el proceso viejo, 61 verdes en dos
+> vueltas seguidas. Si se toca una variable de entorno del servidor de pruebas, **hay que matar
+> el que esté levantado** o la medición miente.
 
 > **Una clase de prueba más, del 2026-09-03: la que comprueba que una clase de CSS pinta.**
 > `jsdom` no resuelve una clase de Tailwind hasta un color, así que toda una familia de fallos
@@ -146,7 +166,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
-  existe.** Playwright cubre hoy **53 recorridos en doce especificaciones**, y dentro de
+  existe.** Playwright cubre hoy **61 recorridos en catorce especificaciones**, y dentro de
   ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
   de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
   puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,

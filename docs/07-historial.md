@@ -15,6 +15,66 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 — El prototipo, tomado en serio, y un intermitente que era el limitador
+
+**Por qué.** El autor miró lo desplegado y dijo que **el prototipo le gusta más**: *«la verdad no
+me gusta como está ahora y en el prototipo está mejor. Plasma todo el diseño del prototipo.»* La
+tanda anterior lo había **adaptado** —conservó nuestra disposición y tomó ideas sueltas— y eso no
+era lo que pedía. Esta vez manda la forma del prototipo.
+
+**Cómo se hizo distinto, y merece constar:** a cada agente se le dieron **las dos capturas** —la
+suya y la nuestra— y el guion para volver a fotografiar. Nada de descripciones mías: describir lo
+que uno ha medido mal es como se propagan los errores, y ya había pasado dos veces.
+
+**La hoja** era el problema de verdad: **4400 px** porque cada salvación y cada habilidad
+arrastraba tres radios, una frase y un botón — veinticuatro bloques donde el prototipo pone una
+línea. Ahora **3272 px con más cosas a la vista**. La ventaja no desapareció: **se mudó a donde
+se toma la decisión**. La fila lleva su dado; al pulsarlo, el panel de tirada enseña los tres
+estados con sus tres frases, que es *más* de lo que había, porque la versión anterior solo
+pintaba la del estado elegido precisamente por repetirse veinticuatro veces.
+
+**La vitela salió de la hoja**, por instrucción del autor y con el motivo compartido: la vitela es
+para lo que se lee de corrido, y esa pantalla son cien cifras. Sigue donde le toca —la historia
+del personaje y las fichas del mundo.
+
+**Cuatro cosas que el autor pidió por su nombre**, señalando su propia captura: la marca dice
+**«Sala de Guerra»** (decía «Plataforma D&D», que es una categoría y no un nombre), el pie se
+apoya en el borde inferior en vez de flotar a media pantalla, las tres entradas del carril que
+iban sin icono lo tienen, y el espacio se usa.
+
+### Tres defectos que ninguna prueba unitaria podía ver
+
+- **El tablero de reglas se pegaba a 16 px del borde**, o sea **debajo de la cabecera fija de
+  64**: el punto de soltado caía sobre la cabecera y no sobre la ranura. Medido con
+  `elementFromPoint`.
+- **Los avisos quedaban bajo un bloque pegajoso**, así que el navegador informaba de que el
+  tablero «intercepta los eventos de puntero» y **el botón «Añadir reversión» no se podía pulsar**.
+- **La hoja de vitela era un recorte pardo de 537 px en una columna de 1014**, porque
+  `ui/Panel.tsx` aplicaba la medida de 66 caracteres **al papel en vez de al renglón**.
+
+### Y la lección de la jornada: el intermitente no era un defecto
+
+La suite empezó a fallar en sitios distintos cada vuelta —un personaje que no aparecía, un campo
+que no guardaba, un `<input>` que «se desprendía del DOM»—. **Cada fallo tenía una explicación
+creíble y ninguna era la verdadera.** Se persiguieron dos hipótesis razonables (que la hoja se
+remontaba al volverse derivable; que faltaban claves de React) y **las dos eran falsas**.
+
+La causa: un tope global de **100 peticiones por IP y minuto** sobre todas las rutas, contra una
+suite que dispara cientos desde `127.0.0.1`. Se resolvió como ya se había resuelto el de
+autenticación: configurable, con margen **solo** para esa suite, y con pruebas que fijan que un
+valor mal escrito cae al de producción y nunca a «sin límite».
+
+**Y una trampa dentro de la trampa:** el arreglo pareció no funcionar. `reuseExistingServer`
+estaba reutilizando un servidor arrancado **antes** del cambio, así que la variable nueva no
+llegaba. Matando el proceso viejo: **61 recorridos verdes, dos vueltas seguidas**. Cuando se
+toca el entorno del servidor de pruebas hay que matar el que esté levantado, o la medición
+miente — y esta vez estuvo a punto de hacer descartar la hipótesis correcta.
+
+**Cómo revertir.** Un commit, sin migración. Revertirlo devuelve la hoja de 4400 px, la marca
+vieja y el pie flotando.
+
+---
+
 ## 2026-09-03 (04:47) — Despliegue de la adopción, y las pruebas de integración contra producción
 
 **Qué.** Los tres commits de la adopción (`436300f`, `529a526`, `9fb7f0e`) a `dnd.supportive.pro`,

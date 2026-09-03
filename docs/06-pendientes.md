@@ -63,6 +63,23 @@ salir de «qué cifra ya no puede ser un error de tecleo».
 el evaluador, y el valor del tope es una decisión de producto, no una constante obvia. Entrarían
 con la fase 2C, que es la que se ocupa de las tiradas.
 
+## Dejado al plasmar el prototipo (2026-09-03)
+
+- **P3 · La tira de cifras sigue en su propia banda, no junto al nombre.** En el prototipo CA,
+  Iniciativa, Velocidad, PG y Competencia van a la derecha del nombre, en la misma línea. Aquí
+  quedan justo debajo: subirla del todo exige pasarla por el `actions` de `PageHeader` en
+  `apps/web/src/pages/CharacterDetailPage.tsx`, y con un margen negativo mayor se solaparía con
+  un nombre largo.
+- **P3 · Falta un token de filete tenue.** El prototipo usa una línea más suave que `--muted`
+  para separar dentro de una tarjeta; aquí se usa `--muted` entero, que cumple el 3:1 y pinta
+  más marcado que la maqueta.
+- **P3 · Las salvaciones no llevan punto de competencia.** El prototipo marca con un glifo `●`
+  cuáles son competentes. Aquí los glifos como icono están prohibidos, y además **el motor no
+  expone hoy ese dato por salvación**: primero habría que derivarlo.
+- **P2 · El nombre del tema no tiene tercer estado.** El prototipo ofrece Oscuro / Lectura /
+  Sistema; el interruptor alterna dos. Añadir «Sistema» exige tocar `ui/theme.ts`, que guarda la
+  elección, y hay una copia de su clave escrita a mano en `apps/web/index.html`.
+
 ## Dejado por la adopción de la maqueta (2026-09-03)
 
 Lo que las cuatro tandas propusieron y no se hizo, con su motivo. Nada de esto es un fallo: son

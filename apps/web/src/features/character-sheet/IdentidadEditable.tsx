@@ -11,6 +11,7 @@ import {
   nombreSubraza,
 } from "./vocabulario";
 import type { CalculatedSheet } from "./api";
+import { CAJA_DE_VITELA, PROSA_DE_VITELA } from "./Vitela";
 
 // **La identidad del personaje se edita donde se lee.** Ya no hay un diálogo aparte.
 //
@@ -138,10 +139,7 @@ export function IdentidadEditable({
         className="grid grid-cols-2 gap-s3 sm:grid-cols-3 lg:grid-cols-6"
       >
         {CARACTERISTICAS.map((ability) => (
-          <div
-            key={ability}
-            className="rounded-radius-sm border border-muted/50 px-s2 py-s2 text-center"
-          >
+          <div key={ability} className={`${CAJA_DE_VITELA} px-s2 py-s2 text-center`}>
             <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
               {ABREVIATURA_CARACTERISTICA[ability]}
             </p>
@@ -162,11 +160,12 @@ export function IdentidadEditable({
                 modificador: se dice que todavía no hay. */}
             {sheet ? (
               <ValorDerivado
+                piel="vitela"
                 etiqueta="modificador"
                 valor={sheet.derived[`abilityMod.${ability}`]}
               />
             ) : (
-              <p className="font-chrome text-chrome-xs text-muted">sin calcular</p>
+              <p className={PROSA_DE_VITELA}>sin calcular</p>
             )}
           </div>
         ))}

@@ -16,6 +16,17 @@ function nuevaCuenta() {
   };
 }
 
+/**
+ * Fija el tema como lo haría una persona que ya eligió: escribiendo la MISMA clave de
+ * `localStorage` que leen `ui/theme.ts` e `index.html`, y por un guion de inicio, porque este
+ * recorrido cruza varias navegaciones —registro, campaña, personaje— y el tema tiene que
+ * sobrevivir a todas igual que le sobreviviría a un visitante real. Mismo patrón que
+ * `setStoredTheme` en `e2e/tokens-contrast.spec.ts`.
+ */
+async function fijarTema(page: Page, tema: "dark" | "light") {
+  await page.addInitScript((t) => localStorage.setItem("dnd-theme", t), tema);
+}
+
 async function registrarse(page: Page) {
   const cuenta = nuevaCuenta();
   await page.goto("/register");
@@ -114,12 +125,17 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   await expect(listaTraza.getByText("Modificador de Destreza")).toBeVisible();
 
   // Tirar una salvación desde la hoja: 1d20+mod con su etiqueta, de verdad contra el servidor.
-  const filaFuerza = page.getByText("Salvación de Fuerza").locator("..");
+  // «Salvación de Fuerza» aparece **dos veces** desde F3: la etiqueta de la fila y el nombre del
+  // grupo de radios («Cómo tirar Salvación de Fuerza»). `exact` desambigua sin inventarse un
+  // selector frágil.
+  const filaFuerza = page.getByText("Salvación de Fuerza", { exact: true }).locator("..");
   // `exact` importa: desde que existen ventaja y desventaja (`TirarBoton.tsx`) hay tres botones
   // por fila y los tres empiezan por «Tirar Salvación de Fuerza».
   await filaFuerza.getByRole("button", { name: "Tirar Salvación de Fuerza", exact: true }).click();
   await expect(filaFuerza.getByRole("status")).toBeVisible({ timeout: 10_000 });
-  await expect(filaFuerza.getByRole("status")).toContainText(/\d+ \(\d+\)/);
+  // El formato cambió con F3: era «20 (8, 17)» —un número y una lista que no decía cuál se
+  // quedó— y ahora es la suma desglosada, igual que hace la hoja con sus valores derivados.
+  await expect(filaFuerza.getByRole("status")).toContainText(/\d+ = \d+ dado/);
 
   // PG: un delta, no un número absoluto. Se lee el actual/máximo antes y después del clic.
   const bloquePg = page.getByText("Puntos de golpe", { exact: true }).locator("..");
@@ -349,56 +365,205 @@ function record(label: string, ratio: number, umbral: number) {
   expect(ratio, label).toBeGreaterThanOrEqual(umbral);
 }
 
-test("contraste medido en la hoja: traza desplegada, aviso, y chip de condición", async ({
+// --- Tarea H4 — la vitela, medida ---
+//
+// El bloque H pide expresamente **una prueba de navegador que mida el contraste de la vitela en
+// los dos temas**, y esta es. Sustituye a la de 2A.10, que medía los mismos tres pares pero solo
+// en el tema que le tocara: la piel nueva cambia el fondo de casi todo el cuerpo de la hoja, así
+// que medir un tema deja el otro sin comprobar.
+//
+// **El fondo se compone contra el primer ancestro OPACO, nunca contra `document.body`.** Aquí eso
+// no es un detalle: el `body` de esta aplicación es transparente y quien pinta el fondo es un
+// `div` de `AppShell`, así que medir contra el `body` daría un blanco inventado y cualquier color
+// pasaría. Lo hace `effectiveTextColours`, subiendo por el árbol.
+//
+// Lo que NO puede ver esta prueba, dicho a propósito: los dos degradados del papel
+// (`--vellum-laid`, `--vellum-vignette`) son imágenes de fondo, no colores, y `resolveBackground`
+// compone COLORES. Por eso están capados al 5 % en `ui/tokens.css`, con el peor caso calculado a
+// mano allí — 4,94:1 en oscuro y 4,71:1 en claro. Es un hueco conocido, no un descuido.
+
+for (const tema of ["dark", "light"] as const) {
+  test(`contraste medido en la hoja de vitela (${tema})`, async ({ page }) => {
+    await fijarTema(page, tema);
+    await registrarse(page);
+    await crearPersonajeYAbrirFicha(page, "Vex Sombraveloz");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", tema);
+    await completarFichaDeGuerreroEnano(page);
+
+    const hoja = page.locator('[data-piel="vitela"]');
+    await expect(hoja).toBeVisible();
+
+    // --- La costura. Es la afirmación central de H4: la cabecera se opera sobre cromado y el
+    //     cuerpo se lee sobre vitela, y **no son el mismo fondo**. Si alguien devuelve el cuerpo
+    //     a `bg-surface`, o arrastra la cabecera a la vitela, esto se pone rojo aunque todos los
+    //     contrastes de abajo sigan pasando.
+    const cabecera = page.getByRole("region", { name: "resumen de combate" });
+    const fondoCabecera = (await effectiveTextColours(cabecera.getByText("CA", { exact: true })))
+      .bg;
+    const fondoCuerpo = (await effectiveTextColours(page.getByText("Salvaciones", { exact: true })))
+      .bg;
+    const mismos =
+      Math.abs(fondoCabecera.r - fondoCuerpo.r) +
+      Math.abs(fondoCabecera.g - fondoCuerpo.g) +
+      Math.abs(fondoCabecera.b - fondoCuerpo.b);
+    resultados.push(
+      `[${tema}] costura cromado/vitela: distancia de fondo ${mismos.toFixed(1)} ` +
+        `(cabecera rgb(${fondoCabecera.r},${fondoCabecera.g},${fondoCabecera.b}), ` +
+        `cuerpo rgb(${fondoCuerpo.r},${fondoCuerpo.g},${fondoCuerpo.b}))`,
+    );
+    expect(
+      mismos,
+      "la cabecera y el cuerpo tienen que pintar sobre fondos distintos",
+    ).toBeGreaterThan(12);
+
+    // --- El rótulo de sección y su filete de metal: es lo que separa una sección de la
+    //     siguiente en la página del manual, así que tiene que leerse Y verse.
+    const rotulo = page.getByText("Salvaciones", { exact: true });
+    {
+      const { color, bg } = await effectiveTextColours(rotulo);
+      record(`[${tema}] vitela: rótulo de sección`, contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { border, bg } = await borderColourAgainstBg(rotulo);
+      record(`[${tema}] vitela: filete del rótulo`, contrastRatio(border, bg), 3);
+    }
+
+    // --- La fila de una salvación: la etiqueta que se lee y la fórmula de una línea. La fórmula
+    //     va en `--muted`, que es el peor par de toda la vitela en el tema oscuro.
+    const etiquetaFuerza = page.getByText("Salvación de Fuerza", { exact: true });
+    const filaFuerza = etiquetaFuerza.locator("..");
+    {
+      const { color, bg } = await effectiveTextColours(etiquetaFuerza);
+      record(`[${tema}] vitela: etiqueta de una fila`, contrastRatio(color, bg), 4.5);
+    }
+    {
+      const formula = filaFuerza.locator("..").locator("p").first();
+      const { color, bg } = await effectiveTextColours(formula);
+      record(`[${tema}] vitela: fórmula de una línea`, contrastRatio(color, bg), 4.5);
+    }
+
+    // --- Una casilla de característica: su filete de cobre, su rótulo en versalitas y la cifra
+    //     que se teclea dentro. Los tres viven sobre el papel desde H4.
+    const casillaDestreza = page.getByLabel("Destreza", { exact: true }).locator("../..");
+    {
+      const { border, bg } = await borderColourAgainstBg(casillaDestreza);
+      record(`[${tema}] vitela: filete de una casilla`, contrastRatio(border, bg), 3);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        casillaDestreza.getByText("DES", { exact: true }),
+      );
+      record(`[${tema}] vitela: rótulo en versalitas`, contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByLabel("Destreza", { exact: true }),
+      );
+      record(`[${tema}] vitela: cifra editable`, contrastRatio(color, bg), 4.5);
+    }
+
+    // --- Un paso de la traza desplegada (2A.10 ya lo medía; ahora sobre papel, no sobre cromado).
+    const casillaCA = page.getByText("CA", { exact: true }).locator("..").getByRole("button");
+    await casillaCA.click();
+    {
+      const paso = page
+        .getByRole("list")
+        .filter({ hasText: "Sin armadura" })
+        .first()
+        .getByText("Sin armadura");
+      const { color, bg } = await effectiveTextColours(paso);
+      record(`[${tema}] vitela: paso de traza`, contrastRatio(color, bg), 4.5);
+    }
+
+    // --- El hueco del inventario: su prosa va en `--muted` sobre vitela, y es el bloque de texto
+    //     más largo de toda la hoja.
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByText("Llega en la fase 2B", { exact: false }),
+      );
+      record(`[${tema}] vitela: prosa del hueco de inventario`, contrastRatio(color, bg), 4.5);
+    }
+
+    // --- El aviso (--warning-text) en su contexto real, si la hoja lo trae.
+    const avisoBox = page.locator('section[aria-label="advertencia"] li').first();
+    if (await avisoBox.isVisible().catch(() => false)) {
+      const { color, bg } = await effectiveTextColours(avisoBox);
+      record(`[${tema}] vitela: aviso texto`, contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(
+        page.locator('section[aria-label="advertencia"]'),
+      );
+      record(`[${tema}] vitela: aviso borde`, contrastRatio(border, borderBg), 3);
+    }
+
+    // --- El chip de condición activa (--copper-text sobre --copper), que en el tema claro es el
+    //     par más ajustado de la vitela: cobre sobre papel cálido.
+    await page.getByLabel("Nueva condición").selectOption("prone");
+    await page.getByRole("button", { name: "Aplicar" }).click();
+    const chip = page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" });
+    await expect(chip).toBeVisible({ timeout: 10_000 });
+    {
+      const { color, bg } = await effectiveTextColours(chip);
+      record(`[${tema}] vitela: chip de condición texto`, contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { border, bg } = await borderColourAgainstBg(chip);
+      record(`[${tema}] vitela: chip de condición borde`, contrastRatio(border, bg), 3);
+    }
+
+    // --- Y la otra piel, en la misma corrida: los cinco números de la cabecera fija siguen
+    //     midiéndose sobre cromado. Si alguien arrastrara la cabecera a la vitela, este par
+    //     seguiría pasando pero la comprobación de la costura de arriba ya habría fallado.
+    {
+      const { color, bg } = await effectiveTextColours(cabecera.getByText("PG", { exact: true }));
+      record(`[${tema}] cromado: rótulo de la cabecera fija`, contrastRatio(color, bg), 4.5);
+    }
+  });
+}
+
+test("H4 — la piel nueva no borra la afordancia: lo editable lleva subrayado y lo derivado no", async ({
   page,
 }) => {
+  // **La afordancia es información de dominio** (docs/04-convenciones.md): un valor editable
+  // lleva un subrayado tenue, y **la ausencia de subrayado en un valor derivado significa "esto
+  // lo calculo yo, edita su causa"**. Cambiar de piel es exactamente el momento en que esa
+  // diferencia se pierde sin que nadie se entere, porque nada de lo que la sostiene tiene texto:
+  // es un borde de un píxel, y `jsdom` no tiene bordes.
+  //
+  // Se miden los DOS lados del par en la misma casilla —puntuación y modificador de Destreza,
+  // que están pegados a propósito— porque comprobar solo uno pasaría en verde si el otro también
+  // cambiara.
   await registrarse(page);
-  await crearPersonajeYAbrirFicha(page, "Vex Sombraveloz");
+  await crearPersonajeYAbrirFicha(page, "Sela Manoquieta");
   await completarFichaDeGuerreroEnano(page);
 
-  // Un texto de traza (--muted sobre --surface, dentro de la casilla de CA desplegada).
-  const casillaCA = page.getByText("CA", { exact: true }).locator("..").getByRole("button");
-  await casillaCA.click();
-  const pasoTraza = page
-    .getByRole("list")
-    .filter({ hasText: "Sin armadura" })
-    .first()
-    .getByText("Sin armadura");
-  {
-    const { color, bg } = await effectiveTextColours(pasoTraza);
-    record("hoja: paso de traza texto", contrastRatio(color, bg), 4.5);
-  }
+  const puntuacion = page.getByLabel("Destreza", { exact: true });
+  const editable = await puntuacion.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { ancho: parseFloat(s.borderBottomWidth), estilo: s.borderBottomStyle };
+  });
+  expect(editable.ancho, "la puntuación es editable: tiene que llevar subrayado").toBeGreaterThan(
+    0,
+  );
+  expect(editable.estilo).toBe("dashed");
 
-  // El aviso de "fórmula de CA descartada" (--warning-text / --warning), en el contexto real
-  // de esta pantalla (dentro de un Panel anidado, no en /design-tokens).
-  await page.getByLabel("Cambio de puntos de golpe"); // espera a que la hoja termine de pintar
-  const avisoBox = page.locator('section[aria-label="advertencia"] li').first();
-  if (await avisoBox.isVisible().catch(() => false)) {
-    const { color, bg } = await effectiveTextColours(avisoBox);
-    record("hoja: aviso texto", contrastRatio(color, bg), 4.5);
-    const { border, bg: borderBg } = await borderColourAgainstBg(
-      page.locator('section[aria-label="advertencia"]'),
-    );
-    record("hoja: aviso borde", contrastRatio(border, borderBg), 3);
-  }
-
-  // El chip de condición activa (--copper-text / --copper), en su contexto real.
-  await page.getByLabel("Nueva condición").selectOption("prone");
-  await page.getByRole("button", { name: "Aplicar" }).click();
-  const chip = page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" });
-  await expect(chip).toBeVisible({ timeout: 10_000 });
-  {
-    const { color, bg } = await effectiveTextColours(chip);
-    record("hoja: chip de condición texto", contrastRatio(color, bg), 4.5);
-  }
-  {
-    const { border, bg } = await borderColourAgainstBg(chip);
-    record("hoja: chip de condición borde", contrastRatio(border, bg), 3);
-  }
+  // El modificador es el valor DERIVADO que vive pegado a esa misma puntuación.
+  const modificador = puntuacion.locator("../..").getByRole("button").first();
+  await expect(modificador).toBeVisible();
+  const derivado = await modificador.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return {
+      ancho: parseFloat(s.borderBottomWidth),
+      decoracion: s.textDecorationLine,
+    };
+  });
+  expect(derivado.ancho, "un valor derivado NO lleva afordancia de edición").toBe(0);
+  expect(derivado.decoracion).toBe("none");
 });
 
 test.afterAll(() => {
   console.log(
-    "\n=== Contraste WCAG medido (hoja de personaje, 2A.10) ===\n" + resultados.join("\n") + "\n",
+    "\n=== Contraste WCAG medido (hoja de personaje, 2A.10 + H4) ===\n" +
+      resultados.join("\n") +
+      "\n",
   );
 });

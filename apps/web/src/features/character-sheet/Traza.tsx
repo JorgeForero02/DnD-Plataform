@@ -2,6 +2,18 @@ import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import type { AbilityKey, DerivedValue, TraceStep } from "@dnd/shared";
 import { NOMBRE_CARACTERISTICA, NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
+import { CAJA_DE_VITELA } from "./Vitela";
+
+/**
+ * **Tarea H4 — la costura entre las dos pieles, hecha propiedad.**
+ *
+ * El mismo componente pinta los cinco números de la cabecera fija —que es **cromado**, lo que
+ * se opera— y las decenas de valores del cuerpo —que es **vitela**, lo que se lee—. Sin esta
+ * propiedad, cambiar la piel del cuerpo cambiaba también la de la cabecera, que es justo la
+ * línea que H4 existe para trazar. Por defecto es cromado: quien no diga nada se queda en el
+ * instrumento, que es el registro sobrio.
+ */
+export type PielDeHoja = "cromado" | "vitela";
 
 // Tarea 2A.10 — la traza es la funcionalidad, no un adorno (docs/superpowers/specs/
 // 2026-09-02-hoja-5e-design.md, §3). Cada valor calculado se pinta ya resuelto, con un
@@ -108,12 +120,15 @@ function enfocarCausa(etiqueta: string) {
   destino.focus();
 }
 
-function PasoDeTraza({ paso }: { paso: TraceStep }) {
+function PasoDeTraza({ paso, piel }: { paso: TraceStep; piel: PielDeHoja }) {
   const { texto, conocida } = traducirLabelKey(paso.labelKey);
   const causa = causaEditableDe(paso);
-  const clase = ["font-chrome text-chrome-xs", conocida ? "text-muted" : "text-danger-text"].join(
-    " ",
-  );
+  const clase = [
+    piel === "vitela"
+      ? "font-world text-[length:var(--text-world-sm)] leading-relaxed"
+      : "font-chrome text-chrome-xs",
+    conocida ? "text-muted" : "text-danger-text",
+  ].join(" ");
   const contenido = (
     <>
       <span aria-hidden="true" className="mr-1 text-[0.85em] uppercase tracking-wide">
@@ -144,7 +159,9 @@ function PasoDeTraza({ paso }: { paso: TraceStep }) {
           {contenido}
         </span>
       )}
-      <span className="font-data text-chrome-xs text-text">
+      <span
+        className={`font-data text-text ${piel === "vitela" ? "text-chrome-sm" : "text-chrome-xs"}`}
+      >
         {signoDe(paso)}
         {Math.abs(paso.amount)}
       </span>
@@ -160,6 +177,11 @@ export interface ValorDerivadoProps {
   accion?: ReactNode;
   /** Compacto = una fila de lista (salvación/habilidad); si no, la casilla grande de combate. */
   variante?: "casilla" | "fila";
+  /**
+   * Qué piel viste este valor. **Cromado por defecto**, que es la cabecera fija; el cuerpo de
+   * la hoja pasa `"vitela"` explícitamente. Ver `PielDeHoja`.
+   */
+  piel?: PielDeHoja;
 }
 
 /**
@@ -172,20 +194,36 @@ export function ValorDerivado({
   valor,
   accion,
   variante = "casilla",
+  piel = "cromado",
 }: ValorDerivadoProps) {
   const [abierta, setAbierta] = useState(false);
   const listId = useId();
+  const enVitela = piel === "vitela";
+  // El texto corrido cambia de voz con la piel; **los números no**. La monoespaciada es la
+  // voz de las cifras en todo el producto y es lo que hace que una columna de modificadores
+  // cuadre — un serif proporcional la desalinea, que es exactamente lo que la hoja impresa
+  // evita usando una caja por valor.
+  const claseProsa = enVitela
+    ? "font-world text-[length:var(--text-world-sm)] leading-relaxed text-muted"
+    : "font-chrome text-chrome-xs text-muted";
+  const claseFilete = enVitela ? "border-[color:var(--copper-rule)]" : "border-muted/40";
 
   if (variante === "fila") {
     return (
-      <div className="border-b border-muted/25 py-s2">
+      <div
+        className={`border-b py-s2 ${enVitela ? "border-[color:var(--copper-rule)]" : "border-muted/25"}`}
+      >
         <div className="flex items-center justify-between gap-s2">
           <button
             type="button"
             onClick={() => setAbierta((v) => !v)}
             aria-expanded={abierta}
             aria-controls={listId}
-            className="flex flex-1 items-center gap-s2 text-left font-chrome text-chrome-sm text-text hover:text-accent-text"
+            className={`flex flex-1 items-center gap-s2 text-left text-text hover:text-accent-text ${
+              enVitela
+                ? "font-world text-[length:var(--text-world-sm)]"
+                : "font-chrome text-chrome-sm"
+            }`}
           >
             <Chevron abierta={abierta} />
             {etiqueta}
@@ -196,11 +234,11 @@ export function ValorDerivado({
           </span>
           {accion}
         </div>
-        <p className="ml-s5 font-chrome text-chrome-xs text-muted">{formulaDeUnaLinea(valor)}</p>
+        <p className={`ml-s5 ${claseProsa}`}>{formulaDeUnaLinea(valor)}</p>
         {abierta && (
-          <ul id={listId} className="ml-s5 mt-1 border-l border-muted/40 pl-s3">
+          <ul id={listId} className={`ml-s5 mt-1 border-l pl-s3 ${claseFilete}`}>
             {valor.steps.map((paso, i) => (
-              <PasoDeTraza key={i} paso={paso} />
+              <PasoDeTraza key={i} paso={paso} piel={piel} />
             ))}
           </ul>
         )}
@@ -209,7 +247,11 @@ export function ValorDerivado({
   }
 
   return (
-    <div className="rounded-radius-sm border border-muted/50 bg-surface px-s3 py-s3 text-center">
+    <div
+      className={`text-center ${
+        enVitela ? CAJA_DE_VITELA : "rounded-radius-sm border border-muted bg-surface px-s3 py-s3"
+      }`}
+    >
       <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
         {etiqueta}
       </p>
@@ -222,12 +264,12 @@ export function ValorDerivado({
       >
         {valor.total}
       </button>
-      <p className="mt-0.5 font-chrome text-chrome-xs text-muted">{formulaDeUnaLinea(valor)}</p>
+      <p className={`mt-0.5 ${claseProsa}`}>{formulaDeUnaLinea(valor)}</p>
       {accion}
       {abierta && (
-        <ul id={listId} className="mt-s2 border-t border-muted/40 pt-s2 text-left">
+        <ul id={listId} className={`mt-s2 border-t pt-s2 text-left ${claseFilete}`}>
           {valor.steps.map((paso, i) => (
-            <PasoDeTraza key={i} paso={paso} />
+            <PasoDeTraza key={i} paso={paso} piel={piel} />
           ))}
         </ul>
       )}

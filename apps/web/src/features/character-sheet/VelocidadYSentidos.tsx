@@ -1,6 +1,7 @@
 import type { DerivedValue } from "@dnd/shared";
 import type { SheetResponse } from "./api";
 import { ValorDerivado } from "./Traza";
+import { RotuloDeSeccion } from "./Vitela";
 
 // Tarea 2A.10 — "velocidad efectiva con su traza, y los sentidos".
 //
@@ -29,19 +30,20 @@ export function VelocidadYSentidos({
 }) {
   return (
     <section aria-label="velocidad y sentidos" className="flex flex-col gap-s2">
-      <p className="font-chrome text-chrome-sm font-semibold text-text">Velocidad y sentidos</p>
+      <RotuloDeSeccion>Velocidad y sentidos</RotuloDeSeccion>
       <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
         {Object.entries(speeds).map(([movimiento, feet]) => {
           const efectiva = effectiveSpeeds?.[movimiento] ?? { total: feet ?? 0, steps: [] };
           return (
             <ValorDerivado
+              piel="vitela"
               key={movimiento}
               etiqueta={`${NOMBRE_MOVIMIENTO[movimiento] ?? movimiento} (pies)`}
               valor={{ key: `speed.${movimiento}`, total: efectiva.total, steps: efectiva.steps }}
             />
           );
         })}
-        <ValorDerivado etiqueta="Visión en la oscuridad (pies)" valor={darkvision} />
+        <ValorDerivado piel="vitela" etiqueta="Visión en la oscuridad (pies)" valor={darkvision} />
       </div>
     </section>
   );

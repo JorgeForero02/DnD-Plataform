@@ -73,6 +73,19 @@
   --text-world-lg: 1.375rem;
   --text-world-xl: 1.75rem;
   --world-measure: 66ch;
+  /* Task H4 — the one size the world scale was missing, and it is the size the character
+   * sheet is mostly made of. `--text-world-base` (17px) is the size of a PARAGRAPH; the sheet's
+   * running text is not paragraphs, it is the one-line formula under every derived number and
+   * the steps of its trace — short, dense, and printed under a figure. At 17px they crowd the
+   * number they explain; at the chrome 12px they stop being the reading voice and go back to
+   * being instrument labels. 15px is the printed manual's footnote size and it is what these
+   * lines want. Added, never replacing: nothing that used --text-world-base changes.
+   *
+   * There is no `world-sm` key in tailwind.config.js and this task's file boundary does not
+   * include it, so callers reach this through an arbitrary value —
+   * `text-[length:var(--text-world-sm)]`. That is ugly and it is written down as debt rather
+   * than hidden: when the boundary allows it, this becomes a `world-sm` font-size key. */
+  --text-world-sm: 0.9375rem;
 
   /* Spacing scale, 4px base unit. Exposed under "s1".."s8" — bare numeric keys would replace
    * Tailwind's default spacing scale the same way the font sizes did (Critical 1). */
@@ -87,6 +100,50 @@
   /* Small radii — an instrument, not a poster. */
   --radius-sm: 4px;
   --radius-md: 6px;
+
+  /* Task H4 — the vellum sheet's paper, and the three values that make it read as paper
+   * instead of as a brown rectangle. All three are ADDITIVE: nothing outside the character
+   * sheet reads them today.
+   *
+   *  · `--sheet-shadow` puts the sheet ON the table instead of in it. A colour, not a shadow:
+   *    the offsets live in the utility so a caller can change the depth without redefining the
+   *    tone.
+   *  · `--vellum-laid` draws the laid lines of handmade paper — the wire marks a sheet keeps
+   *    from the mould. It is CAPPED at 5% on purpose and lands at 4.5%: the contrast spec
+   *    composites background COLOURS, and a gradient is not one, so a heavy pattern here would
+   *    silently degrade a ratio that the test still reports as passing (the same reasoning, and
+   *    the same cap, as the cartographic grid in ui/Ornament.tsx). Computed for the WORST case,
+   *    a text pixel sitting on a laid line in the darkest corner of the vignette: dark theme's
+   *    worst pair is --muted at 4.94:1 (5.25:1 on clean vellum), light theme's is --copper-text
+   *    at 4.71:1 (5.37:1 clean). Both still clear 4.5:1. The dark vignette only ever HELPS —
+   *    it darkens the paper and every dark-theme foreground is lighter than it — which is why
+   *    it can afford 22% while the light one, which eats into copper-on-copper, is held to 5%.
+   *  · `--vellum-vignette` darkens the outer edge the way a sheet lifts away from a table.
+   *    Same cap, same reason.
+   */
+  --sheet-shadow: rgba(0, 0, 0, 0.62);
+  --vellum-laid: rgba(201, 125, 70, 0.045);
+  --vellum-vignette: rgba(0, 0, 0, 0.22);
+
+  /* Task H4 — two colours that exist because a Tailwind opacity modifier CANNOT be used here.
+   *
+   * In Tailwind 3 a theme colour declared as a bare `var(--x)` does not support `/NN`: the
+   * utility compiles to NOTHING and the element silently keeps preflight's `#e5e7eb`. Verified
+   * against the compiled CSS — of the 78 `/NN` classes this repo writes, not one is emitted.
+   * (The repo-wide fix is to declare the tokens as channels and teach tailwind.config.js
+   * `rgb(var(--copper) / <alpha-value>)`; that file is outside this task's boundary, so the
+   * finding is reported and only the character sheet is fixed here, with explicit values.)
+   *
+   *  · `--copper-rule` is the faint engraved hairline: a row separator, the rule down the side
+   *    of an open trace, the dashed outline of a reserved slot. It is DECORATIVE separation, not
+   *    a component boundary, so it is not held to 3:1 — the same status the `border-muted/25` it
+   *    replaces had, except that one was painting `#e5e7eb` in both themes.
+   *  · `--chrome-veil` is the sticky combat header's own background: `--bg` at 95%, so the sheet
+   *    scrolls UNDER it instead of through it. It was written as `bg-bg/95`, which compiled to
+   *    nothing at all and left the header transparent with a blur over it.
+   */
+  --copper-rule: rgba(201, 125, 70, 0.45);
+  --chrome-veil: rgba(16, 23, 28, 0.95);
 
   color-scheme: dark;
 }
@@ -110,6 +167,19 @@
     --danger-text: #9b3a31;
     --warning: #7a5310;
     --warning-text: #7a5310;
+
+    /* Task H4 — see the :root block for why these three exist and why the two gradient tokens
+     * are capped at 5%. Light theme inverts the logic of the vignette: on a bright sheet the edge
+     * darkens towards copper, not towards black, because a warm paper does not have a grey edge. */
+    --sheet-shadow: rgba(22, 35, 43, 0.22);
+    --vellum-laid: rgba(143, 82, 40, 0.05);
+    --vellum-vignette: rgba(143, 82, 40, 0.05);
+
+    /* Task H4 — see the :root block: a `/NN` opacity modifier does not compile on these tokens,
+     * so the faint hairline and the sticky header's veil carry explicit values per theme. */
+    --copper-rule: rgba(143, 82, 40, 0.45);
+    --chrome-veil: rgba(223, 229, 233, 0.95);
+
     color-scheme: light;
   }
 }
@@ -128,6 +198,19 @@
   --danger-text: #9b3a31;
   --warning: #7a5310;
   --warning-text: #7a5310;
+
+  /* Task H4 — see the :root block for why these three exist and why the two gradient tokens
+   * are capped at 5%. Light theme inverts the logic of the vignette: on a bright sheet the edge
+   * darkens towards copper, not towards black, because a warm paper does not have a grey edge. */
+  --sheet-shadow: rgba(22, 35, 43, 0.22);
+  --vellum-laid: rgba(143, 82, 40, 0.05);
+  --vellum-vignette: rgba(143, 82, 40, 0.05);
+
+  /* Task H4 — see the :root block: a `/NN` opacity modifier does not compile on these tokens,
+   * so the faint hairline and the sticky header's veil carry explicit values per theme. */
+  --copper-rule: rgba(143, 82, 40, 0.45);
+  --chrome-veil: rgba(223, 229, 233, 0.95);
+
   color-scheme: light;
 }
 
@@ -145,6 +228,17 @@
   --danger-text: #e08076;
   --warning: #e0a83c;
   --warning-text: #e0a83c;
+
+  /* Task H4 — the paper of the vellum sheet. Same three values as the bare :root block
+   * above, where the reasoning and the measured worst-case ratios are written down. */
+  --sheet-shadow: rgba(0, 0, 0, 0.62);
+  --vellum-laid: rgba(201, 125, 70, 0.045);
+  --vellum-vignette: rgba(0, 0, 0, 0.22);
+
+  /* Task H4 — same two values as the bare :root block above, where the reasoning is. */
+  --copper-rule: rgba(201, 125, 70, 0.45);
+  --chrome-veil: rgba(16, 23, 28, 0.95);
+
   color-scheme: dark;
 }
 

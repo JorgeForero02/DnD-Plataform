@@ -3,6 +3,7 @@ import type { PendingChoiceDto } from "./api";
 import { useUpdateSheet } from "./hooks";
 import { Button } from "../../ui/Button";
 import { describirEleccionPendiente, nombreOpcionDeEleccion } from "./vocabulario";
+import { CAJA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
 
 // Tarea 2A.10 — "las elecciones pendientes como lista de tareas, no como error". Cada elección
 // sin resolver (2A.4) se resuelve aquí mismo, en la pantalla de lectura: marcar las opciones y
@@ -40,8 +41,10 @@ function FilaEleccion({
   const completa = elegidas.length === choice.choose;
 
   return (
-    <li className="rounded-radius-sm border border-muted/50 bg-surface p-s3">
-      <p className="font-chrome text-chrome-sm text-text">{describirEleccionPendiente(choice)}</p>
+    <li className={CAJA_DE_VITELA}>
+      <p className="font-world text-world-base leading-relaxed text-text">
+        {describirEleccionPendiente(choice)}
+      </p>
       <fieldset className="mt-s2 flex flex-wrap gap-s2">
         <legend className="sr-only">Opciones para {describirEleccionPendiente(choice)}</legend>
         {choice.from
@@ -105,9 +108,7 @@ export function EleccionesPendientes({
   if (pendingChoices.length === 0) return null;
   return (
     <section aria-label="elecciones pendientes">
-      <p className="mb-s2 font-chrome text-chrome-sm font-semibold text-text">
-        Elecciones por hacer ({pendingChoices.length})
-      </p>
+      <RotuloDeSeccion>Elecciones por hacer ({pendingChoices.length})</RotuloDeSeccion>
       <ul className="flex flex-col gap-s2">
         {pendingChoices.map((choice) => (
           <FilaEleccion

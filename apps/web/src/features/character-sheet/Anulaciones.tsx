@@ -5,6 +5,7 @@ import { useMyRole } from "../campaigns/members";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { NOMBRE_ANULABLE } from "./vocabulario";
+import { PROSA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
 
 // Anulaciones manuales del DM sobre valores derivados.
 //
@@ -57,14 +58,14 @@ export function Anulaciones({
 
   return (
     <section aria-label="anulaciones del DM" className="flex flex-col gap-s2">
-      <p className="font-chrome text-chrome-sm font-semibold text-text">Anulaciones del DM</p>
-      <p className="font-chrome text-chrome-xs text-muted">
+      <RotuloDeSeccion>Anulaciones del DM</RotuloDeSeccion>
+      <p className={`${PROSA_DE_VITELA} max-w-[66ch]`}>
         Fija un valor derivado a mano cuando el catálogo no lo cubra. Queda en el registro de la
         partida con el valor anterior al lado, y se ve en la traza del valor anulado.
       </p>
 
       {puestas.length === 0 ? (
-        <p className="font-chrome text-chrome-sm text-muted">Ninguna anulación puesta.</p>
+        <p className={PROSA_DE_VITELA}>Ninguna anulación puesta.</p>
       ) : (
         <ul className="flex flex-wrap gap-s2">
           {puestas.map(([k, v]) => (
@@ -129,7 +130,7 @@ export function Anulaciones({
       </form>
 
       {error && (
-        <p role="alert" className="font-chrome text-chrome-xs text-danger-text">
+        <p role="alert" className={`${PROSA_DE_VITELA} text-danger-text`}>
           {error}
         </p>
       )}

@@ -3,6 +3,7 @@ import { useDeclareRest, useResources, useRestoreResource, useSpendResource } fr
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { NOMBRE_RESET_RECURSO } from "./vocabulario";
+import { PROSA_DE_VITELA, RotuloDeSeccion } from "./Vitela";
 
 // Tarea 2A.10 — "recursos y descansos". `CharacterResource` (2A.8) es un contador con máximo:
 // inspiración, furia, ki, dados de golpe, espacios de conjuro son la misma fila. Los descansos
@@ -28,7 +29,7 @@ export function RecursosYDescansos({
   return (
     <section aria-label="recursos y descansos" className="flex flex-col gap-s3">
       <div className="flex items-center justify-between">
-        <p className="font-chrome text-chrome-sm font-semibold text-text">Recursos</p>
+        <RotuloDeSeccion className="mb-0 flex-1">Recursos</RotuloDeSeccion>
         {puedeEditar && (
           <div className="flex items-center gap-s2">
             <label className="font-chrome text-chrome-xs text-muted" htmlFor="dados-descanso-corto">
@@ -65,19 +66,17 @@ export function RecursosYDescansos({
       </div>
 
       {!recursos || recursos.length === 0 ? (
-        <p className="font-chrome text-chrome-sm text-muted">Sin recursos guardados todavía.</p>
+        <p className={PROSA_DE_VITELA}>Sin recursos guardados todavía.</p>
       ) : (
         <ul className="flex flex-col gap-s2">
           {recursos.map((r) => (
             <li
               key={r.key}
-              className="flex items-center justify-between gap-s2 rounded-radius-sm border border-muted/50 bg-surface px-s3 py-s2"
+              className="flex items-center justify-between gap-s2 rounded-radius-sm border border-copper px-s3 py-s2"
             >
               <div>
-                <p className="font-chrome text-chrome-sm text-text">{r.label}</p>
-                <p className="font-chrome text-chrome-xs text-muted">
-                  {NOMBRE_RESET_RECURSO[r.resetOn]}
-                </p>
+                <p className="font-world text-world-base leading-tight text-text">{r.label}</p>
+                <p className={PROSA_DE_VITELA}>{NOMBRE_RESET_RECURSO[r.resetOn]}</p>
               </div>
               <span className="font-data text-chrome-md text-text">
                 {r.current}

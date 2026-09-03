@@ -4,6 +4,7 @@ import type { HpState } from "./api";
 import { useChangeHp, useRollDeathSave } from "./hooks";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
+import { CAJA_DE_VITELA, PROSA_DE_VITELA } from "./Vitela";
 
 // Tarea 2A.10 — "PG: el caso normal es un delta (recibo 5, me curo 3), no escribir un número".
 // `POST .../hp` (2A.7) aplica el delta en el servidor; los PG temporales van aparte y nunca se
@@ -42,7 +43,7 @@ export function PuntosDeGolpe({
   };
 
   return (
-    <div className="rounded-radius-sm border border-muted/50 bg-surface p-s3">
+    <div className={CAJA_DE_VITELA}>
       <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
         Puntos de golpe
       </p>
@@ -55,7 +56,10 @@ export function PuntosDeGolpe({
         )}
       </p>
       {hp.exceedsMax && (
-        <p role="alert" className="mt-1 font-chrome text-chrome-xs text-warning-text">
+        <p
+          role="alert"
+          className="mt-1 font-world text-[length:var(--text-world-sm)] text-warning-text"
+        >
           Los PG guardados superan el máximo: se muestran recortados a {hp.current}.
         </p>
       )}
@@ -82,14 +86,14 @@ export function PuntosDeGolpe({
         </div>
       )}
       {cambiarPg.isError && (
-        <p role="alert" className="mt-1 font-chrome text-chrome-xs text-danger-text">
+        <p role="alert" className={`mt-1 ${PROSA_DE_VITELA} text-danger-text`}>
           {(cambiarPg.error as Error).message}
         </p>
       )}
 
       {hp.current === 0 && (
-        <div className="mt-s3 border-t border-muted/40 pt-s2">
-          <p className="font-chrome text-chrome-sm text-text">
+        <div className="mt-s3 border-t border-[color:var(--copper-rule)] pt-s2">
+          <p className="font-world text-world-base text-text">
             Tiradas de muerte — {ESTADO_MUERTE[deathSaves.status]}
           </p>
           <p className="mt-1 font-data text-chrome-sm text-text">

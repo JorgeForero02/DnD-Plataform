@@ -33,8 +33,15 @@ import type { ReactNode } from "react";
 /** El estado de un guardado, para pintarlo sin inventar tres banderas en cada sitio. */
 type Estado = "quieto" | "guardando" | "guardado" | "error";
 
+// **El subrayado de lo editable era invisible, y no por su diseno.** Se escribia
+// `border-muted/70`, y en Tailwind 3 un modificador de opacidad sobre un color declarado
+// como `var(--muted)` a secas **no compila a nada**: la utilidad no se emite y el elemento
+// se queda con el `border-color` del preflight, `#e5e7eb`, en los dos temas. Sobre la vitela
+// clara (`#f4efe2`) eso es un gris casi del color del papel. Comprobado sobre el CSS
+// compilado, no deducido. Se pone el token entero: la linea sigue siendo tenue porque es de
+// trazos y de un pixel, no porque su color estuviera descolorido por accidente.
 const CLASE_EDITABLE =
-  "border-b border-dashed border-muted/70 bg-transparent px-0.5 " +
+  "border-b border-dashed border-muted bg-transparent px-0.5 " +
   "hover:border-solid hover:border-accent focus:border-solid focus:border-accent " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
   "focus-visible:outline-accent";

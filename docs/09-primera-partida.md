@@ -1,6 +1,15 @@
 # La primera partida
 
-> **Reactivado el 2026-09-02:** hay pruebas de juego con el DM **la semana que viene**. El
+> **Aplazado otra vez, y esta vez con criterio, el 2026-09-03.** El autor sitúa la partida de la
+> mesa **cuando exista tiempo real** (fase 4): *«el DM y los demás jugadores no jugarán hasta que
+> haya una versión verdaderamente jugable con cosas en tiempo real; es incómodo tener que recargar
+> la página para cada acción»*. Lo que sí ocurre antes es otra cosa y no la sustituye: **una prueba
+> de campo con agentes** al cerrar la fase 2 —dos jugadores, la cuenta del autor como DM— cuya
+> ficha está en [06-pendientes.md](./06-pendientes.md). Este documento sigue sirviendo para montar
+> la sesión el día que llegue; lo que ya no es cierto es la fecha.
+>
+> **Lo que decía el 2026-09-02, conservado porque explica el estado de entonces:** hay pruebas de
+> juego con el DM **la semana que viene**. El
 > aplazamiento del 2026-09-01 —«no se juega hasta el tablero 2D»— queda anulado por esa
 > decisión. Lo que sigue vigente es que el tablero no existe: eso es la fase 3.
 >

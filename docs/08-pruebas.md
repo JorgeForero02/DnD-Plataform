@@ -41,7 +41,9 @@ navegador nueva es `inventario.spec.ts`.
 la hoja delante de quien lo hace** —se lee la CA del DOM antes y después, no una cifra escrita en
 la prueba—, que el paso del objeto aparece en la traza, que el arma equipada sale en el cuadro de
 ataques y **el servidor la tira**, y que la tabla desplaza dentro de su contenedor sin arrastrar
-la página. Tres recorridos.
+la página. Y el tercero de sus tres recorridos sale del inventario: **el catálogo de la campaña
+crea un objeto propio y se distingue del que trae el SRD**, que es la marca de procedencia que el
+prototipo exige y que ninguna unitaria puede ver pintada.
 
 > **Dos pruebas de la hoja cambiaron de forma, y merece decirse por qué.** La que exigía las
 > filas «Cuerpo a cuerpo» y «A distancia» en el cuadro de ataques ya no puede: desde 2B la tabla
@@ -202,7 +204,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
-  existe.** Playwright cubre hoy **61 recorridos en catorce especificaciones**, y dentro de
+  existe.** Playwright cubre hoy **64 recorridos en quince especificaciones**, y dentro de
   ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
   de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
   puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,

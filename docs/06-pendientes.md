@@ -30,14 +30,21 @@
 > comparando conteos de filas — ojo con la trampa documentada: `pg_dumpall` no crea la base por
 > defecto ni actualiza la contraseña de un rol que ya existe.
 >
-> **Antes de la primera partida real, esto tiene que estar hecho y probado.**
+> **Antes de la primera partida real, esto tiene que estar hecho y probado** — y «real» se aclaró
+> el 2026-09-03: **no es la partida de prueba con agentes** que cierra la fase 2, que corre sobre un
+> despliegue de desarrollo con datos desechables. Es el día que la mesa del autor juegue de verdad,
+> que el propio autor sitúa **cuando haya tiempo real** (fase 4). Hasta entonces esto no bloquea
+> nada; a partir de ahí, sí.
 
 
 Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la evidencia de
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: 2026-09-02 (cierre de la fase 2A).
+Última revisión: **2026-09-03** (cierre de la fase 2B, su auditoría de mecánica y las decisiones
+de 2C). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
+esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
+día siguiente ya escritas debajo, y lo cazó una auditoría.
 
 ## P2 · Los topes de la tirada y de la anulación, medidos (2026-09-02)
 
@@ -795,9 +802,23 @@ final no es una suite: es **una partida de prueba real**, decidida por el autor.
   que no se pueda hacer se anota igual.
 - Hay **permiso expreso del autor** para desplegar en esa prueba; hasta entonces, nada sube.
 
-Antes de esa prueba hay que revisar dos cosas que ya están escritas: las **cuatro migraciones**
-pendientes de mirar y la **copia de seguridad rota** que abre este documento — jugar de verdad
-significa que a partir de ahí sí hay datos que perder.
+**Y no bloquea nada de datos, por decisión del autor (2026-09-03).** Se le planteó que la partida
+de prueba convertiría el despliegue en «datos que perder» —las cuatro migraciones sin revisar y la
+copia de seguridad rota— y contestó que no:
+
+> *«Estamos en un despliegue de desarrollo; lo máximo de datos que hay que perder está en GitHub.
+> No debes preocuparte por datos que al final del día vamos a eliminar para la versión final, que
+> posiblemente reciban cambios de estructura, o que se puedan corromper durante el desarrollo. De
+> momento el único usuario soy yo.»*
+
+Así que **la prueba con agentes es una prueba de campo, no la primera partida de la mesa**: los
+jugadores de verdad no entran hasta que haya una versión jugable **con tiempo real**, porque
+recargar la página para cada acción es incómodo y eso es la fase 4. Lo que esta prueba busca es
+que la base aguante.
+
+**Lo que sigue siendo cierto:** la copia de seguridad rota (el bloque que abre este documento)
+tiene su fecha de caducidad en el día que existan datos que a alguien le dolería perder, y ese día
+llegará con el tiempo real, no con esta prueba.
 
 ## Antes de la primera partida
 

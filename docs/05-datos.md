@@ -1,9 +1,10 @@
 # Datos
 
 PostgreSQL 16 vía Prisma. Esquema: `apps/api/prisma/schema.prisma`.
-**Las migraciones no se listan aquí:** la lista es `apps/api/prisma/migrations/`, que es la
-única que no puede quedarse vieja. Esta línea enumeraba dos cuando ya había seis, y el propio
-documento citaba más abajo dos de las que faltaban.
+**Las migraciones no se listan aquí ni se cuentan:** la lista es `apps/api/prisma/migrations/`, que
+es la única que no puede quedarse vieja. Esta línea enumeró dos cuando ya había seis; luego dijo
+«seis» y también envejeció. **Un número de migraciones en prosa caduca en el siguiente commit**, así
+que aquí no va ninguno.
 Todos los identificadores son `cuid()`.
 
 ## Modelo
@@ -93,6 +94,10 @@ datos:
   que dejaría la bolsa en negativo se rechaza: **no hay cambio automático**, porque cambiar plata
   por oro es una decisión de la mesa.
 
+**Todo movimiento del inventario deja rastro en el log** (`ITEM_ADDED`, `ITEM_MOVED`,
+`ITEM_REMOVED`, y `MONEY_CHANGED` para la bolsa), escrito en la misma transacción que el cambio.
+Ver la sección del log más arriba.
+
 **Borrar tiene dos comportamientos distintos, y es a propósito.** Borrar un personaje se lleva su
 inventario en cascada; borrar un `CampaignItem` que alguien lleva encima **no se puede**
 (`onDelete: Restrict`, y el servicio lo traduce a un 409 que dice cuántos lo tienen). Vaciar en
@@ -144,6 +149,13 @@ del estado.** El estado se lee de sus columnas; el log cuenta *qué lo cambió*.
 escrita en [04-convenciones](./04-convenciones.md) y no dejada implícita: **todo lo que haga
 falta consultar o filtrar es una columna real**, y si algún día hace falta consultar por un
 campo del `payload`, ese campo **se promociona a columna**. No se consulta dentro del JSON.
+
+**Los tipos que añadió la fase 2B**, y se nombran porque son los que conectan el inventario con
+este log: `MONEY_CHANGED` (los deltas por denominación, nunca un total normalizado) y
+`ITEM_ADDED` / `ITEM_MOVED` / `ITEM_REMOVED`. Los cuatro se escriben **dentro de la misma
+transacción que el cambio que describen**, así que un cambio que se deshace se lleva su rastro con
+él. Antes de 2B el dinero dejaba huella y los objetos no, y con una semana entre sesiones eso
+significaba que nadie podía responder «¿quién cogió la gema?».
 
 El `payload` está validado al escribir por una unión discriminada de Zod
 (`packages/shared/src/game-event.schema.ts`), discriminada por `type`. Añadir un tipo de evento

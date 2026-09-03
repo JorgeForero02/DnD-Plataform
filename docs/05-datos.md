@@ -123,6 +123,24 @@ modelo no hace en ningún sitio, y la traza de la CA delataría el número igual
   tiene estado —nace pendiente y se responde— y el log es un registro de hechos que no se
   modifican; y porque «¿qué me han pedido?» es una consulta por columnas, no un recorrido del log.
   Guarda **una clave de valor de la hoja**, no una expresión: el modificador se lee al tirar.
+- **`CampaignStatblock`** (2D.3): un statblock de PNJ escrito por el DM. Espeja `Statblock` de
+  `packages/shared`, que es donde vive la forma. Es **columna** lo que hace falta consultar o
+  filtrar —la CA, el VD, el tamaño, la visibilidad— y **Json** lo que solo se lee entero: los
+  rasgos, las acciones, las reacciones y el mapa de competencias por habilidad, validados al
+  escribir por Zod. El mismo criterio que `CampaignItem.effects` de 2B.
+
+  **Tres cosas que NO se guardan porque se derivan**, y esta es la mitad del diseño: el **tamaño
+  del dado de golpe** (sale del tamaño de la criatura), el **bonificador de competencia** (sale
+  del valor de desafío) y los **PG máximos** (media de los dados más Constitución por dado). Lo
+  que se guarda es `hitDiceCount` y `cr`; el resto lo calcula el motor y sale en la traza.
+
+  **Y se guarda el NIVEL de competencia por habilidad, no el bono ya sumado.** El sigilo +6 del
+  goblin es `{"stealth": "expertise"}`: guardando el 6 la ficha enseñaría un número sin origen,
+  que es justo lo que la traza existe para evitar.
+
+  Nace **`DM_ONLY`** —preparar la mazmorra no puede ser filtrarla— y cuelga de la campaña en
+  cascada, contado de verdad en la prueba de borrado.
+
 - **`DmTable`** y **`DmTableEntry`** con **`Campaign.houseTablesEnabled`** (2C.6): las tablas de la
   casa, apagadas por defecto. Un **índice único parcial** —`("campaignId", trigger) WHERE trigger
   <> 'NONE'`, escrito a mano en la migración porque Prisma no sabe expresarlo— garantiza como mucho

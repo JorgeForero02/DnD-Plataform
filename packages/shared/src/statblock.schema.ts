@@ -244,3 +244,48 @@ export const campaignStatblockSchema = statblockSchema.extend({
   createdById: z.string().min(1),
 });
 export type CampaignStatblock = z.infer<typeof campaignStatblockSchema>;
+
+/**
+ * Lo que el DM manda para crear uno suyo.
+ *
+ * **Es la misma forma sin `ref` ni `source`**, y no una lista de campos repetida: los dos los pone
+ * el servidor —`CAMPAIGN:<id>` no lo puede elegir el cliente— y volver a enumerar veinte campos
+ * aquí sería la segunda copia de la forma de los datos, que es justo lo que este proyecto tiene
+ * prohibido.
+ *
+ * **Nace `DM_ONLY`.** Preparar la mazmorra no puede ser filtrarla: el DM lo sube a `PLAYERS`
+ * cuando los jugadores conocen al bicho. Es la misma decisión que 2B tomó con los objetos propios.
+ */
+export const createCampaignStatblockSchema = statblockSchema
+  .omit({ ref: true, source: true })
+  .extend({ visibility: visibilitySchema.default("DM_ONLY") });
+export type CreateCampaignStatblockInput = z.infer<typeof createCampaignStatblockSchema>;
+
+/** Editar uno: los mismos campos, todos opcionales, y al menos uno. */
+export const updateCampaignStatblockSchema = createCampaignStatblockSchema
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "No hay nada que cambiar: manda al menos un campo.",
+  });
+export type UpdateCampaignStatblockInput = z.infer<typeof updateCampaignStatblockSchema>;
+
+/**
+ * De dónde viene un `ref`, sin tener que preguntárselo a la base.
+ *
+ * `SRD:goblin` → el catálogo en código. `CAMPAIGN:clx…` → una fila de esta campaña. Cualquier otra
+ * cosa es un `ref` que nadie escribió, y decirlo aquí evita que cada consumidor invente su propio
+ * `startsWith`.
+ */
+export function origenDeRef(
+  ref: string,
+): { source: "SRD"; key: string } | { source: "CAMPAIGN"; id: string } | null {
+  if (ref.startsWith("SRD:")) {
+    const key = ref.slice("SRD:".length);
+    return key ? { source: "SRD", key } : null;
+  }
+  if (ref.startsWith("CAMPAIGN:")) {
+    const id = ref.slice("CAMPAIGN:".length);
+    return id ? { source: "CAMPAIGN", id } : null;
+  }
+  return null;
+}

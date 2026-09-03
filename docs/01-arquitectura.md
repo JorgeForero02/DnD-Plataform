@@ -67,6 +67,7 @@ por su cuenta**.
 | `rules-engine` | Reglas suceso–condición–efecto de la campaña (2A.16): alta, ensayo en seco, trazas y propuestas. **Escucha `game_event.recorded`** por un puente, en vez de que el log le llame | solo DM |
 | `game-clock` | El reloj de la campaña (2C.3): un contador de **segundos de juego** que solo se avanza, nunca se fija, y el viaje con su ritmo y su marcha forzada. Lo lee cualquier miembro; lo mueve el DM | leer, miembro; avanzar, solo DM |
 | `roll-requests` | La petición de tirada (2C.5): el DM pide **un valor de la hoja** —no una expresión— y quien tira la responde con su hoja de ese momento. Con sondeo | pedir, solo DM; responder, el dueño del personaje o el DM |
+| `statblocks` | Los statblocks de PNJ (2D.3): el catálogo del SRD 5.1 **en código** y los propios del DM **en la base**, con una sola forma resuelta y **una sola puerta que traduce un `ref`** (`SRD:goblin` o `CAMPAIGN:<id>`). Es el mismo reparto que 2B eligió para los objetos | escribir, solo DM; leer, filtrado por `canView` |
 | `dm-tables` | Las tablas del DM (2C.6): tirar sobre una tabla con sus resultados y su visibilidad. **Regla de la casa, con interruptor por campaña y apagada por defecto** — el SRD no trae ninguna tabla de críticos ni de pifias | escribir, solo DM; leer, filtrado por `canView` |
 
 ### Las tres capas de la fase 2A, y por qué no se tocan entre sí

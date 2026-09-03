@@ -294,6 +294,23 @@ describe("Campaigns (e2e)", () => {
         .send({ name: "Rumores", entries: [{ min: 1, max: 4, text: "Algo" }] });
       expect(tabla.status).toBe(201);
 
+      // Un statblock propio del DM (2D). La tabla es nueva, y **una tabla nueva que no se cuente
+      // aqui es exactamente el hueco que 2C dejo documentado**: un huerfano no avisa, la
+      // operacion devuelve 200 igual.
+      const statblock = await request(server)
+        .post(`/campaigns/${campaignId2}/statblocks`)
+        .set("Authorization", auth(tokenA))
+        .send({
+          name: "Dragoncillo de la cripta",
+          size: "MEDIUM",
+          type: "DRAGON",
+          ac: 16,
+          hitDiceCount: 6,
+          abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 11, cha: 13 },
+          cr: 3,
+        });
+      expect(statblock.status).toBe(201);
+
       // Sanity check: everything is actually there before deleting.
       expect(await prisma.entity.count({ where: { campaignId: campaignId2 } })).toBe(2);
       expect(await prisma.entityLink.count({ where: { from: { campaignId: campaignId2 } } })).toBe(
@@ -324,6 +341,7 @@ describe("Campaigns (e2e)", () => {
       expect(
         await prisma.dmTableEntry.count({ where: { table: { campaignId: campaignId2 } } }),
       ).toBe(1);
+      expect(await prisma.campaignStatblock.count({ where: { campaignId: campaignId2 } })).toBe(1);
 
       const del = await request(server)
         .delete(`/campaigns/${campaignId2}`)
@@ -358,6 +376,7 @@ describe("Campaigns (e2e)", () => {
       expect(
         await prisma.dmTableEntry.count({ where: { table: { campaignId: campaignId2 } } }),
       ).toBe(0);
+      expect(await prisma.campaignStatblock.count({ where: { campaignId: campaignId2 } })).toBe(0);
       campaignId2 = ""; // already deleted, nothing left for afterAll to clean up
     });
   });

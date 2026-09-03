@@ -103,6 +103,34 @@ enum RestKind {
   LONG
 }
 
+/// Fase 2D. Los seis tamanos del SRD 5.1. De aqui sale el dado de golpe de una criatura.
+enum CreatureSize {
+  TINY
+  SMALL
+  MEDIUM
+  LARGE
+  HUGE
+  GARGANTUAN
+}
+
+/// Fase 2D. Los catorce tipos de criatura del SRD 5.1.
+enum CreatureType {
+  ABERRATION
+  BEAST
+  CELESTIAL
+  CONSTRUCT
+  DRAGON
+  ELEMENTAL
+  FEY
+  FIEND
+  GIANT
+  HUMANOID
+  MONSTROSITY
+  OOZE
+  PLANT
+  UNDEAD
+}
+
 enum EntityType {
   NPC
   LOCATION
@@ -159,6 +187,7 @@ model Campaign {
   // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
   // es una capa de presentacion encima; al reves no se puede.
   clockSeconds Int @default(0)
+  statblocks CampaignStatblock[]
 }
 
 model CampaignMember {
@@ -769,4 +798,79 @@ model InventoryItem {
 
   @@index([characterId])
   @@index([campaignItemId])
+}
+
+
+/// Fase 2D — un statblock propio del DM. El camino GENERAL: la mesa del autor usa sus propios
+/// monstruos mas que los del libro, y el catalogo del SRD solo cubre quince.
+///
+/// Espeja `Statblock` de `packages/shared/src/statblock.schema.ts`, que es donde vive la forma.
+/// Lo que aqui es columna es lo que hace falta consultar o filtrar; lo que es Json es lo que solo
+/// se lee entero (los rasgos, las acciones), validado al escribir por Zod — el mismo criterio que
+/// `CampaignItem.effects` de 2B.
+model CampaignStatblock {
+  id         String       @id @default(cuid())
+  campaignId String
+  name       String
+  size       CreatureSize
+  type       CreatureType
+  subtype    String?
+  alignment  String?
+
+  /// La CA la DICE el statblock; no se deriva de ninguna formula de armadura.
+  ac     Int
+  /// El parentesis del libro: «armadura de cuero, escudo», «armadura natural».
+  acNote String?
+
+  /// Cuantos dados de golpe. El TAMANO del dado no se guarda: sale de `size`.
+  hitDiceCount       Int
+  /// Valvula de escape para un statblock que rompa la regla del tamano. Sale en la traza.
+  hitDieSizeOverride Int?
+
+  str Int
+  dex Int
+  con Int
+  int Int
+  wis Int
+  cha Int
+
+  /// Claves de caracteristica: ["str", "con"].
+  saveProficiencies  String[] @default([])
+  /// { "stealth": "expertise" } — el NIVEL de competencia, no el bono ya sumado, para que la
+  /// traza pueda descomponerlo en vez de ensenar un numero sin origen.
+  skillProficiencies Json?
+
+  /// Prosa y no vocabulario cerrado: el tumulario resiste «contundente, cortante y perforante de
+  /// ataques no magicos con armas que no sean de plata», que no es un tipo de dano.
+  damageResistances     String[] @default([])
+  damageImmunities      String[] @default([])
+  damageVulnerabilities String[] @default([])
+  conditionImmunities   String[] @default([])
+
+  /// En pies, como el resto de la aplicacion.
+  darkvisionFeet Int?
+  otherSenses    String[] @default([])
+  /// { "walk": 30, "fly": 60 } en pies.
+  speeds         Json?
+  languages      String?
+
+  /// Valor de desafio. De aqui sale el bonificador de competencia, no de un nivel.
+  cr Float
+
+  /// Nombre y prosa. Se guardan y se pintan; NO se ejecutan — arbitrarlas es Encuentros.
+  traits           Json?
+  actions          Json?
+  reactions        Json?
+  legendaryActions Json?
+
+  /// Nace DM_ONLY: preparar la mazmorra no puede ser filtrarla. El DM lo sube a PLAYERS cuando
+  /// los jugadores conocen al bicho.
+  visibility  Visibility @default(DM_ONLY)
+  createdById String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
 }

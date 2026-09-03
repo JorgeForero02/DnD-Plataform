@@ -401,3 +401,64 @@ describe("lo que encontró la auditoría de mecánica de 2B", () => {
     expect(r.warnings.some((a) => a.code === "two_weapon_offhand_damage")).toBe(true);
   });
 });
+
+describe("el arma mágica (M2B-1, la ficha que abrió la auditoría de mecánica)", () => {
+  const espadaMagica: ResolvedItem = {
+    ref: "CAMPAIGN:ck1",
+    source: "CAMPAIGN",
+    name: "Espada larga +1",
+    kind: "WEAPON",
+    weightOz: 48,
+    // Los objetos mágicos del SRD no se copian: esta la escribe el DM en su campaña.
+    effects: [
+      { kind: "weaponAttack", amount: 1 },
+      { kind: "weaponDamage", amount: 1 },
+    ],
+    requiresAttunement: false,
+    slot: "MAIN_HAND",
+    weapon: {
+      category: "MARTIAL",
+      range: "MELEE",
+      damageDice: "1d8",
+      damageType: "SLASHING",
+      properties: ["VERSATILE"],
+      versatileDice: "1d10",
+    },
+  };
+  const mods = { str: 3, dex: 1, con: 2, int: 0, wis: 0, cha: -1 };
+
+  it("suma su bono al ataque y al daño, y el paso sale en la traza", () => {
+    const r = buildAttacks({
+      items: [espadaMagica],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+
+    const ataque = r.attacks[0];
+    // Fuerza +3, competencia +3, y el +1 del objeto: 7. Sin esto el cuadro decía 6 y la mesa
+    // sumaba a mano en cada tirada, que es volver al papel.
+    expect(ataque.attackBonus.total).toBe(7);
+    expect(ataque.attackBonus.steps.reduce((t, p) => t + p.amount, 0)).toBe(7);
+    expect(ataque.attackBonus.steps.some((p) => p.sourceType === "item")).toBe(true);
+    expect(ataque.damage.expression).toBe("1d8+4");
+    expect(ataque.versatileDamage?.expression).toBe("1d10+4");
+  });
+
+  it("los dos bonos son independientes: un objeto puede dar solo daño", () => {
+    const soloDano: ResolvedItem = {
+      ...espadaMagica,
+      name: "Flecha matadragones",
+      effects: [{ kind: "weaponDamage", amount: 2 }],
+    };
+    const r = buildAttacks({
+      items: [soloDano],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+
+    expect(r.attacks[0].attackBonus.total).toBe(6);
+    expect(r.attacks[0].damage.expression).toBe("1d8+5");
+  });
+});

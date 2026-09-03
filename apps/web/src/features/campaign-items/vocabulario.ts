@@ -258,6 +258,8 @@ export const EFFECT_KINDS = [
   "speed",
   "skillProficiency",
   "saveProficiency",
+  "weaponAttack",
+  "weaponDamage",
 ] as const;
 export type EffectKind = (typeof EFFECT_KINDS)[number];
 
@@ -269,6 +271,8 @@ export const NOMBRE_EFECTO: Record<EffectKind, string> = {
   speed: "Cambia una velocidad",
   skillProficiency: "Competencia en una habilidad",
   saveProficiency: "Competencia en una salvación",
+  weaponAttack: "Bono al ataque con este objeto",
+  weaponDamage: "Bono al daño de este objeto",
 };
 
 export const EXPLICACION_EFECTO: Record<EffectKind, string> = {
@@ -280,6 +284,9 @@ export const EXPLICACION_EFECTO: Record<EffectKind, string> = {
   speed: "Cambia una de las velocidades, en pies. Puede ser negativo: una armadura que pesa.",
   skillProficiency: "Da uno de los cuatro niveles de competencia en una habilidad concreta.",
   saveProficiency: "Da competencia en la salvación de una característica.",
+  weaponAttack:
+    "Suma al bono de ataque **de esta arma**, no a los demás ataques. Es la mitad de una «espada larga +1».",
+  weaponDamage: "Suma al daño **de esta arma**. La otra mitad de un arma mágica.",
 };
 
 export const nombreEfecto = (k: string) => traducir(NOMBRE_EFECTO, k);
@@ -312,6 +319,10 @@ export function describirEfecto(efecto: ItemEffect): string {
       return `${nombreNivelCompetencia(efecto.level)} en ${nombreHabilidad(efecto.skill)}`;
     case "saveProficiency":
       return `Competencia en la salvación de ${nombreCaracteristica(efecto.ability)}`;
+    case "weaponAttack":
+      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} al ataque con esta arma`;
+    case "weaponDamage":
+      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} al daño de esta arma`;
     default:
       return `Sin traducir: ${(efecto as { kind: string }).kind}`;
   }

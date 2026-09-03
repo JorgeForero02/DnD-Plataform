@@ -37,6 +37,7 @@ describe("InventoryService", () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     campaignItem: { findFirst: jest.fn() },
     // La bolsa bloquea la fila del personaje antes de mirar el saldo (`FOR UPDATE`), como hacen
@@ -466,12 +467,33 @@ describe("InventoryService", () => {
   });
 
   describe("remove()", () => {
-    it("quita la fila", async () => {
+    it("quita la fila y lo escribe en la línea de tiempo", async () => {
       prisma.inventoryItem.findFirst.mockResolvedValue(row());
-      prisma.inventoryItem.delete.mockResolvedValue({});
+      prisma.inventoryItem.deleteMany.mockResolvedValue({ count: 1 });
+
       const res = await service.remove("owner1", "cmp1", "c1", "row1");
-      expect(prisma.inventoryItem.delete).toHaveBeenCalledWith({ where: { id: "row1" } });
+
+      // **`deleteMany` con el `characterId` dentro**: soltar dos veces con mala red daba un 500
+      // sobre una operación que sí había funcionado.
+      expect(prisma.inventoryItem.deleteMany).toHaveBeenCalledWith({
+        where: { id: "row1", characterId: "c1" },
+      });
       expect(res).toEqual({ deleted: true });
+      // Y deja rastro, como el dinero: una semana después alguien preguntará quién lo soltó.
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({ payload: expect.objectContaining({ type: "ITEM_REMOVED" }) }),
+        expect.anything(),
+      );
+    });
+
+    it("soltar dos veces no revienta: la segunda dice que no había nada que quitar", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(row());
+      prisma.inventoryItem.deleteMany.mockResolvedValue({ count: 0 });
+
+      expect(await service.remove("owner1", "cmp1", "c1", "row1")).toEqual({ deleted: false });
+      expect(events.record).not.toHaveBeenCalled();
     });
 
     it("una fila que no existe es 404", async () => {

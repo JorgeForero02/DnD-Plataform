@@ -152,6 +152,26 @@ export const itemEffectSchema = z.discriminatedUnion("kind", [
   }),
   /** Competencia en una salvación. */
   z.object({ kind: z.literal("saveProficiency"), ability: abilityKeySchema }),
+  /**
+   * **El arma mágica**: `+1` al ataque y `+1` al daño, que es el objeto más común del juego
+   * después de la armadura.
+   *
+   * Entra tras la auditoría de mecánica de 2B, que encontró que **no había forma de
+   * representarlo**: ni por efecto, ni por anulación manual del DM (la lista de anulaciones no
+   * incluye `attack.*`). El DM entregaba la primera espada +1 y el cuadro de ataques seguía
+   * diciendo lo mismo, así que la mesa volvía a sumar a mano — que es exactamente lo que esta
+   * herramienta existe para quitar.
+   *
+   * **Son dos efectos y no uno** porque el juego los separa: hay objetos que dan solo daño
+   * (la flecha mata-dragones) y otros solo puntería. Se aplican **al arma que los lleva**, no a
+   * todos los ataques: un anillo que suba todos los ataques sería otra cosa, y no está en el
+   * SRD ni hace falta todavía.
+   *
+   * **Legal:** esto abre la *forma*, no el contenido. Los objetos mágicos del SRD siguen sin
+   * copiarse (ver `NOTICE.md`); lo que se puede escribir es el homebrew del DM.
+   */
+  z.object({ kind: z.literal("weaponAttack"), amount: z.number().int().min(-5).max(5) }),
+  z.object({ kind: z.literal("weaponDamage"), amount: z.number().int().min(-5).max(5) }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 

@@ -52,6 +52,12 @@ export const GAME_EVENT_TYPES = [
   // recompensa del juego, y un log donde «pago 20 po» aparece como un texto libre no se puede
   // sumar ni filtrar despues.
   "MONEY_CHANGED",
+  // El inventario (auditoría de mecánica de 2B). **El dinero dejaba rastro y los objetos no**, y
+  // con una semana entre sesiones eso significa que nadie puede responder «¿quién cogió la
+  // gema?» ni «¿cuándo desapareció mi armadura?».
+  "ITEM_ADDED",
+  "ITEM_MOVED",
+  "ITEM_REMOVED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -223,6 +229,37 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     value: z.number().int(),
     previous: z.number().int().optional(),
     reason,
+  }),
+
+  /**
+   * Un objeto entra en el inventario de alguien. **El nombre viaja en el suceso**, no solo su
+   * referencia: la línea de tiempo se lee meses después, y para entonces el objeto puede haberse
+   * borrado del catálogo de la campaña.
+   */
+  z.object({
+    type: z.literal("ITEM_ADDED"),
+    item: z.string().min(1).max(120),
+    ref: z.string().min(1).max(80),
+    quantity: z.number().int().min(1).max(9999),
+    location: z.enum(["EQUIPPED", "CARRIED", "STORED"]),
+  }),
+
+  /** Se equipa, se guarda, se saca del cofre o se sintoniza. */
+  z.object({
+    type: z.literal("ITEM_MOVED"),
+    item: z.string().min(1).max(120),
+    ref: z.string().min(1).max(80),
+    from: z.enum(["EQUIPPED", "CARRIED", "STORED"]),
+    to: z.enum(["EQUIPPED", "CARRIED", "STORED"]),
+    slot: z.string().max(20).optional(),
+    attuned: z.boolean().optional(),
+  }),
+
+  z.object({
+    type: z.literal("ITEM_REMOVED"),
+    item: z.string().min(1).max(120),
+    ref: z.string().min(1).max(80),
+    quantity: z.number().int().min(1).max(9999),
   }),
 
   /**

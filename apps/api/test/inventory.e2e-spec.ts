@@ -268,4 +268,30 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     // Sigue en 10: el intento rechazado no dejó ningún cambio a medias.
     expect(list.body.purse.gp).toBe(10);
   });
+
+  it("el inventario deja rastro en la línea de tiempo: quién metió qué y quién lo movió", async () => {
+    const fila = (
+      await request(s())
+        .post(base())
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ ref: { source: "SRD", key: "torch" }, quantity: 2 })
+    ).body;
+
+    await request(s())
+      .patch(`${base()}/${fila.id}`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ location: "STORED", storedAt: "en la posada" })
+      .expect(200);
+
+    const log = await request(s())
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+
+    const tipos = log.body.events.map((e: { type: string }) => e.type);
+    // Hasta la auditoría de mecánica de 2B solo el dinero dejaba rastro, y con una semana entre
+    // sesiones eso significa que nadie puede responder «¿quién cogió la gema?».
+    expect(tipos).toEqual(expect.arrayContaining(["ITEM_ADDED", "ITEM_MOVED"]));
+    const anadido = log.body.events.find((e: { type: string }) => e.type === "ITEM_ADDED");
+    expect(anadido.payload).toMatchObject({ item: "Antorcha", quantity: 2 });
+  });
 });

@@ -46,8 +46,16 @@ modificador sea negativo», y quien la levanta es un estilo de combate, no una d
 todo, que **la aplicación no modela el ataque de acción adicional**: la tabla es una fila por
 arma, no una secuencia de turno. Se deja el número y se avisa. La máquina ejecuta, el DM arbitra.
 
-**Cómo revertir.** `git revert` del commit. Sin migración: todo son reglas de cálculo y de
-servicio. Revertir devuelve los nueve fallos, así que si algo de esto molesta, lo que se cambia
+**Y dos fichas de la propia auditoría se cerraron a continuación** (M2B-1 y M2B-2): **el arma
+mágica ya se puede representar** —`weaponAttack` y `weaponDamage` en la lista cerrada, sumados al
+bono y al daño del arma que los lleva, con su paso en la traza; la línea de derechos no se mueve,
+porque lo que se abre es la forma y no el contenido— y **el inventario deja rastro en la línea de
+tiempo** (`ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, escritos en la misma transacción que el
+cambio). De paso, soltar un objeto pasó a ser idempotente: soltar dos veces con mala red daba un
+500 sobre una operación que sí había funcionado.
+
+**Cómo revertir.** `git revert` del commit. La única migración es `inventory_events`, que añade
+tres valores a un enum y nada más. Revertir devuelve los nueve fallos, así que si algo de esto molesta, lo que se cambia
 es la regla concreta, no el commit entero.
 
 ## 2026-09-03 (noche) — Fase 2B: objetos, inventario, equipar, y el cuadro de ataques que faltaba

@@ -38,6 +38,12 @@ function borradorPorDefecto(kind: EffectKind): ItemEffect {
       return { kind: "skillProficiency", skill: HABILIDADES[0], level: "proficient" };
     case "saveProficiency":
       return { kind: "saveProficiency", ability: "str" };
+    // El arma mágica (M2B-1): dos efectos independientes, porque el juego los separa —hay
+    // objetos que dan solo daño— y porque se aplican **al arma que los lleva**.
+    case "weaponAttack":
+      return { kind: "weaponAttack", amount: 1 };
+    case "weaponDamage":
+      return { kind: "weaponDamage", amount: 1 };
   }
 }
 
@@ -53,8 +59,12 @@ function CamposDeEfecto({
   onChange: (next: ItemEffect) => void;
 }) {
   switch (borrador.kind) {
+    // Los cuatro son una cantidad a secas. Los dos del arma mágica entraron con la auditoría de
+    // mecánica de 2B y no necesitan más campos: se aplican al objeto que los lleva.
     case "ac":
     case "maxHp":
+    case "weaponAttack":
+    case "weaponDamage":
       return (
         <label className="flex items-center gap-2 text-chrome-sm text-text">
           Cantidad

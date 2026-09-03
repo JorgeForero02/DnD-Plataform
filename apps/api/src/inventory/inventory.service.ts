@@ -18,6 +18,7 @@ import {
   type UpdateInventoryItemInput,
 } from "@dnd/shared";
 import { Prisma, type Character, type InventoryItem } from "@prisma/client";
+import type { GameEventPayload } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -239,22 +240,63 @@ export class InventoryService {
     }
 
     try {
-      return await this.prisma.inventoryItem.create({
-        data: {
-          characterId,
-          srdKey: input.ref.source === "SRD" ? input.ref.key : null,
-          campaignItemId: input.ref.source === "CAMPAIGN" ? input.ref.id : null,
+      return await this.prisma.$transaction(async (tx) => {
+        const fila = await tx.inventoryItem.create({
+          data: {
+            characterId,
+            srdKey: input.ref.source === "SRD" ? input.ref.key : null,
+            campaignItemId: input.ref.source === "CAMPAIGN" ? input.ref.id : null,
+            quantity: input.quantity,
+            location: placement.location,
+            slot: placement.slot,
+            attuned: false,
+            storedAt: input.storedAt ?? null,
+            note: input.note ?? null,
+          },
+        });
+        // **El objeto deja rastro, igual que el dinero.** Hasta la auditoría de mecánica de 2B
+        // solo la bolsa escribía en la línea de tiempo, y con una semana entre sesiones eso
+        // significa que nadie puede responder «¿quién cogió la gema?».
+        await this.registrarSuceso(userId, campaignId, character, tx, {
+          type: "ITEM_ADDED",
+          item: resolved.name,
+          ref: resolved.ref,
           quantity: input.quantity,
           location: placement.location,
-          slot: placement.slot,
-          attuned: false,
-          storedAt: input.storedAt ?? null,
-          note: input.note ?? null,
-        },
+        });
+        return fila;
       });
     } catch (error) {
       throw this.translateSlotConflict(error);
     }
+  }
+
+  /**
+   * Escribe el suceso del inventario **dentro de la misma transacción que el cambio**, que es lo
+   * que ya hacen los puntos de golpe: si el cambio se deshace, su rastro se va con él.
+   *
+   * La visibilidad es la del **personaje**: quien puede ver la ficha puede ver que su dueño se
+   * puso una armadura. Lo que no se ve por otro camino tampoco se ve aquí, porque el nombre que
+   * viaja es el que este servicio ya decidió mandar.
+   */
+  private async registrarSuceso(
+    userId: string,
+    campaignId: string,
+    character: Character,
+    tx: Prisma.TransactionClient,
+    payload: GameEventPayload,
+  ): Promise<void> {
+    await this.events.record(
+      userId,
+      campaignId,
+      {
+        subjectType: "character",
+        subjectId: character.id,
+        visibility: character.visibility,
+        payload,
+      },
+      tx,
+    );
   }
 
   async update(
@@ -310,7 +352,19 @@ export class InventoryService {
         await this.ensureAttunementAllowed(characterId, campaignId, rowId, tx);
       }
 
-      return this.escribirColocacion(tx, rowId, placement, input);
+      const actualizado = await this.escribirColocacion(tx, rowId, placement, input);
+      if (placement.location !== row.location || placement.attuned !== row.attuned) {
+        await this.registrarSuceso(userId, campaignId, character, tx, {
+          type: "ITEM_MOVED",
+          item: itemDef.name,
+          ref: itemDef.ref,
+          from: row.location,
+          to: placement.location,
+          ...(placement.slot ? { slot: placement.slot } : {}),
+          ...(placement.attuned !== row.attuned ? { attuned: placement.attuned } : {}),
+        });
+      }
+      return actualizado;
     });
   }
 
@@ -349,9 +403,22 @@ export class InventoryService {
 
     const row = await this.prisma.inventoryItem.findFirst({ where: { id: rowId, characterId } });
     if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
+    const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row);
 
-    await this.prisma.inventoryItem.delete({ where: { id: rowId } });
-    return { deleted: true };
+    return this.prisma.$transaction(async (tx) => {
+      // **`deleteMany` y no `delete`**: soltar dos veces con mala red daba un 500 de Prisma
+      // (P2025) sobre una operación que sí había funcionado. Así el reintento es inofensivo.
+      const { count } = await tx.inventoryItem.deleteMany({ where: { id: rowId, characterId } });
+      if (count > 0) {
+        await this.registrarSuceso(userId, campaignId, character, tx, {
+          type: "ITEM_REMOVED",
+          item: itemDef.name,
+          ref: itemDef.ref,
+          quantity: row.quantity,
+        });
+      }
+      return { deleted: count > 0 };
+    });
   }
 
   /**

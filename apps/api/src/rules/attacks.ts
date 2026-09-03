@@ -87,8 +87,20 @@ export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
 
     const proficient = tieneCompetencia(item.ref, weapon.category, proficienciasNormalizadas);
 
+    // **El arma mágica.** Un `+1` al ataque y al daño son dos efectos del propio objeto
+    // (`weaponAttack`/`weaponDamage`), y se aplican **solo al arma que los lleva**: es el objeto
+    // más común del juego después de la armadura, y hasta la auditoría de mecánica de 2B no
+    // había forma de representarlo — el DM entregaba la espada +1 y el cuadro seguía diciendo
+    // lo mismo.
+    const bonoAtaque = sumaDeEfecto(item, "weaponAttack");
+    const bonoDano = sumaDeEfecto(item, "weaponDamage");
+
     const steps: TraceStep[] = [stepCaracteristica];
     let total = modifier;
+    if (bonoAtaque !== 0) {
+      steps.push(paso("add", bonoAtaque, "item", item.ref, `item.${item.ref}`));
+      total += bonoAtaque;
+    }
     if (proficient) {
       steps.push(paso("add", input.proficiencyBonus, "proficiency", "weapon", "proficiencyBonus"));
       total += input.proficiencyBonus;
@@ -109,7 +121,7 @@ export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
       ref: item.ref,
       ability,
       attackBonus,
-      damage: montarDano(weapon.damageDice, modifier, weapon.damageType),
+      damage: montarDano(weapon.damageDice, modifier + bonoDano, weapon.damageType),
       properties: weapon.properties,
       rangeNormalFt: weapon.rangeNormalFt,
       rangeLongFt: weapon.rangeLongFt,
@@ -131,7 +143,11 @@ export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
           data: { ref: item.ref, name: item.name },
         });
       } else {
-        attack.versatileDamage = montarDano(weapon.versatileDice, modifier, weapon.damageType);
+        attack.versatileDamage = montarDano(
+          weapon.versatileDice,
+          modifier + bonoDano,
+          weapon.damageType,
+        );
       }
     }
 
@@ -214,4 +230,15 @@ function paso(
   labelKey: string,
 ): TraceStep {
   return { op, amount, sourceType, sourceKey, labelKey };
+}
+
+/**
+ * Lo que suman los efectos de un tipo concreto **de este objeto**. Los objetos mágicos del SRD
+ * no se copian (`NOTICE.md`); lo que esta función hace posible es que el DM escriba los suyos.
+ */
+function sumaDeEfecto(item: ResolvedItem, kind: "weaponAttack" | "weaponDamage"): number {
+  return item.effects.reduce(
+    (suma, efecto) => (efecto.kind === kind ? suma + efecto.amount : suma),
+    0,
+  );
 }

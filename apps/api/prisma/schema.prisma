@@ -53,6 +53,10 @@ enum GameEventType {
   SESSION_NOTE
   // La bolsa (2B): un movimiento de dinero es un tipo propio, no una senal generica.
   MONEY_CHANGED
+  // El inventario (auditoria de mecanica de 2B): el dinero dejaba rastro y los objetos no.
+  ITEM_ADDED
+  ITEM_MOVED
+  ITEM_REMOVED
 }
 
 enum ResourceReset {

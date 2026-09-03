@@ -1,5 +1,7 @@
 import type { Character } from "@prisma/client";
 import { deriveCharacter } from "../../rules/catalog";
+import { maxHpConAgotamiento, nivelDeAgotamiento } from "./agotamiento";
+import { condicionesActivas, type CondicionConVencimiento } from "../conditions/vencimiento";
 
 // Los PG máximos de una ficha, **calculados y nunca leídos de una columna**.
 //
@@ -17,7 +19,19 @@ import { deriveCharacter } from "../../rules/catalog";
  * un estado legítimo de una hoja a medio hacer y **no un error**. Quien llama decide qué hacer
  * con esa ausencia; aquí no se inventa un máximo.
  */
-export function maxHpDe(character: Character): number | null {
+export function maxHpDe(
+  character: Character,
+  /**
+   * Las condiciones activas y el reloj, si quien llama los tiene (2C.4).
+   *
+   * **Sin ellos el máximo se devuelve sin agotamiento**, que es lo que hacía hasta 2C.4 y sigue
+   * siendo correcto para quien no puede saberlo. Se pasan **opcionales y no obligatorios** a
+   * propósito: hacerlos obligatorios habría obligado a cada llamante a consultar la base para un
+   * caso que casi nunca aplica, y el precio de olvidarlos es un tope de curación generoso, no un
+   * número que la hoja enseñe mal — la hoja lo calcula por su cuenta y con las condiciones puestas.
+   */
+  agotamiento?: { conditions: CondicionConVencimiento[]; clockSeconds: number },
+): number | null {
   const { str, dex, con, int, wis, cha, raceKey, classKey } = character;
   if (
     str === null ||
@@ -41,7 +55,13 @@ export function maxHpDe(character: Character): number | null {
       level: character.level,
       choices: (character.choices as Record<string, string[]> | null) ?? undefined,
     });
-    return hoja.derived.maxHp?.total ?? null;
+    const maxHp = hoja.derived.maxHp;
+    if (!maxHp) return null;
+    if (!agotamiento) return maxHp.total;
+    const nivel = nivelDeAgotamiento(
+      condicionesActivas(agotamiento.conditions, agotamiento.clockSeconds),
+    );
+    return maxHpConAgotamiento(maxHp, nivel).total;
   } catch {
     // Una clave que el catálogo no reconoce, o unas elecciones que ya no encajan con la raza
     // actual: la hoja no se puede derivar hoy. **Devolver `null` y no curar de más es más

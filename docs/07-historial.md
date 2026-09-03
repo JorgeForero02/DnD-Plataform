@@ -15,6 +15,49 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — 2C.4 (servidor): la condición que caduca sola, y el agotamiento que llega al motor
+
+**Qué.** Con reloj, una condición puede llevar **su vencimiento en tiempo de juego**. Se aplica con
+`durationSeconds` y el servidor guarda **el instante en que vence**, no la duración: guardar «dura
+una hora» obligaría a guardar también «desde cuándo», y ese segundo dato puede discrepar del
+primero; con el instante, «¿sigue viva?» es una resta contra el reloj.
+
+**Vence sola, pero no se borra**, que es la decisión D-2C-2 del autor y coincide con la práctica
+—Foundry desactiva el efecto al vencer en vez de borrarlo desde la v11.3—: la condición **sigue en
+la hoja, marcada como vencida**, y el DM la retira o la renueva. Si desapareciera sola, el jugador
+vería cambiar sus números sin saber por qué y el DM tendría que llevar la cuenta a mano, que es
+volver al papel.
+
+**Y el vencimiento se deriva, no se guarda.** No hay ninguna columna `expired` ni ningún barrido
+periódico. Dos propiedades que un barrido no puede dar: **no puede quedarse a medias** —si el
+barrido falla o nadie lo ejecuta, la condición seguiría frenando a alguien después de su hora— y
+**no hay dos verdades** que puedan discrepar. Lo único que sí se escribe es el suceso
+`CONDITION_EXPIRED` cuando el reloj deja atrás su hora, y existe para que **el jugador vea por
+qué**: un número que cambia sin explicación es la mitad del fallo que esto arregla.
+
+**El agotamiento llega al motor (hueco H-2C-5).** Hasta hoy las condiciones solo alimentaban la
+velocidad, y **el nivel 4 parte los Puntos de Golpe máximos por la mitad** (SRD 5.1). Así que una
+hoja con agotamiento 4 enseñaba unos PG máximos que la regla dice que ese personaje no tiene **y
+curaba hasta ese número equivocado**, porque el tope de la curación sale del mismo cálculo. Es el
+mismo fallo que 2B tuvo con el equipo, en la otra mitad del sistema. Se aplica **con su paso en la
+traza** —el proyecto entero se apoya en poder responder «¿de dónde sale este número?»— y no se
+acumula por nivel: en el 5 y el 6 sigue siendo la mitad, no un cuarto.
+
+**Lo que cuesta, dicho:** derivar la hoja pasa a leer las condiciones y el reloj. Se paga a
+sabiendas — calcularlo solo al leer la hoja y no al mutarla dejaría a las mutaciones recortando
+contra un máximo que no existe, que es la clase de discrepancia que este servicio evita en todo lo
+demás.
+
+**Probado.** 1143 unitarias y **164 e2e en 27 suites**, en verde. Cinco mutaciones comprobadas: la
+frontera del vencimiento (`>=` por `>`), el nivel de agotamiento (4 por 5), el `null` que no se
+escribe al renovar una condición —que la haría heredar en silencio la caducidad anterior—, el
+anuncio del vencimiento suprimido, y el filtro de condiciones vivas quitado de la hoja. **Una de
+ellas no midió nada en el primer intento** porque el mutante no compilaba, y se repitió.
+
+**Cómo revertir.** `git revert` del commit y deshacer la migración
+`condiciones_con_vencimiento`, que añade una columna (`CharacterCondition.expiresAtClock`) y un
+valor al enum de sucesos. La columna admite nulos, así que revertir solo el código no rompe nada.
+
 ## 2026-09-03 (tarde) — 2C.3: el reloj de la campaña, el viaje y las tres reglas del descanso
 
 **Qué.** El sistema no modelaba el tiempo de juego **en absoluto**, y esa fue la corrección que

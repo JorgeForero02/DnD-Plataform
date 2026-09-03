@@ -77,6 +77,9 @@ function montar(roller?: Roller) {
     // el estado de todas las pruebas escritas antes de que el inventario existiera.
     inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
     campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
+    // 2C.4: la hoja lee el reloj para saber qué condiciones siguen vivas y si el agotamiento
+    // parte los PG máximos. Reloj a cero por defecto: nada ha vencido todavía.
+    campaign: { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }) },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
@@ -1049,5 +1052,56 @@ describe("2B — la hoja no enseña la identidad de un objeto que quien mira no 
 
     expect(JSON.stringify(res.sheet!.derived.ac)).toContain("ci-1");
     expect(res.sheet!.derived.ac.total).toBe(12);
+  });
+});
+
+describe("el agotamiento llega al motor (2C.4, hueco H-2C-5)", () => {
+  // Hasta 2C.4 las condiciones solo alimentaban la velocidad, así que una hoja con agotamiento 4
+  // enseñaba unos PG máximos que la regla dice que ese personaje no tiene.
+
+  it("**con agotamiento 4, la hoja enseña la mitad de PG máximos, y lo dice en la traza**", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "exhaustion", level: 4, expiresAtClock: null },
+    ]);
+
+    const conAgotamiento = await service.getSheet("dm1", "cmp1", "ch1");
+
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+    const sano = await service.getSheet("dm1", "cmp1", "ch1");
+
+    const maximoSano = sano.sheet!.derived.maxHp.total;
+    expect(conAgotamiento.sheet!.derived.maxHp.total).toBe(Math.floor(maximoSano / 2));
+    expect(conAgotamiento.hp.max).toBe(Math.floor(maximoSano / 2));
+    expect(
+      conAgotamiento.sheet!.derived.maxHp.steps.some((p) => p.sourceKey === "exhaustion:4"),
+    ).toBe(true);
+  });
+
+  it("con agotamiento 3 no se toca nada: es una entrada de la tabla, no una escala", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "exhaustion", level: 3, expiresAtClock: null },
+    ]);
+    const hoja = await service.getSheet("dm1", "cmp1", "ch1");
+    expect(hoja.sheet!.derived.maxHp.steps.some((p) => p.sourceKey?.startsWith("exhaustion"))).toBe(
+      false,
+    );
+  });
+
+  it("**una condición vencida ya no calcula**: el agotamiento caducado no parte nada", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 10_000 });
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "exhaustion", level: 4, expiresAtClock: 3600 },
+    ]);
+
+    const hoja = await service.getSheet("dm1", "cmp1", "ch1");
+
+    expect(hoja.sheet!.derived.maxHp.steps.some((p) => p.sourceKey === "exhaustion:4")).toBe(false);
   });
 });

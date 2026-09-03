@@ -12,6 +12,9 @@ describe("GameClockService", () => {
   let service: GameClockService;
   const prisma = {
     campaign: { findUnique: jest.fn(), update: jest.fn() },
+    // 2C.4: al avanzar, el reloj anuncia las condiciones que acaban de vencer. Sin ninguna por
+    // defecto — el caso de casi todos los avances.
+    characterCondition: { findMany: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn() };
@@ -34,6 +37,7 @@ describe("GameClockService", () => {
     prisma.campaign.update.mockResolvedValue({ id: "c1", clockSeconds: 4600 });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     events.record.mockResolvedValue({ id: "e1" });
+    prisma.characterCondition.findMany.mockResolvedValue([]);
   });
 
   it("leer el reloj es de cualquier miembro: qué hora es en el mundo no es información privilegiada", async () => {
@@ -125,6 +129,64 @@ describe("GameClockService", () => {
       const r = await service.advance("dm", "c1", { kind: "TIME", seconds: 12 * 3600 });
       expect(r.forcedMarchSaves).toEqual([]);
     });
+  });
+});
+
+describe("el reloj anuncia lo que acaba de vencer (2C.4)", () => {
+  // La caducidad no se guarda —es una resta contra el reloj—, pero **el jugador tiene que ver por
+  // qué** dejó de estar envenenado. Eso es lo que escribe este suceso.
+
+  let service: GameClockService;
+  const prisma = {
+    campaign: { findUnique: jest.fn(), update: jest.fn() },
+    characterCondition: { findMany: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireMember: jest.fn(), requireDM: jest.fn() };
+  const events = { record: jest.fn() };
+
+  beforeEach(async () => {
+    const ref = await Test.createTestingModule({
+      providers: [
+        GameClockService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+      ],
+    }).compile();
+    service = ref.get(GameClockService);
+    jest.resetAllMocks();
+    membership.requireDM.mockResolvedValue(undefined);
+    prisma.campaign.findUnique.mockResolvedValue({ id: "c1", clockSeconds: 1000 });
+    prisma.campaign.update.mockResolvedValue({ id: "c1", clockSeconds: 4600 });
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    events.record.mockResolvedValue({ id: "e1" });
+  });
+
+  it("escribe un CONDITION_EXPIRED por cada una que vence en el tramo", async () => {
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "poisoned", level: null, expiresAtClock: 2000, characterId: "ch1" },
+    ]);
+
+    await service.advance("dm", "c1", { kind: "TIME", seconds: 3600 });
+
+    expect(events.record).toHaveBeenCalledWith(
+      "dm",
+      "c1",
+      expect.objectContaining({
+        subjectType: "character",
+        subjectId: "ch1",
+        visibility: "PLAYERS",
+        payload: { type: "CONDITION_EXPIRED", key: "poisoned", expiredAtClock: 2000 },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("y si no vence ninguna, el único suceso es el del reloj", async () => {
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+    await service.advance("dm", "c1", { kind: "TIME", seconds: 3600 });
+    expect(events.record).toHaveBeenCalledTimes(1);
   });
 });
 

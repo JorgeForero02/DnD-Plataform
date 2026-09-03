@@ -18,6 +18,9 @@ describe("ConditionsService", () => {
       upsert: jest.fn(),
       delete: jest.fn(),
     },
+    // 2C.4: el reloj de la campaña — la caducidad de una condición y el agotamiento que parte
+    // los PG máximos se calculan contra él.
+    campaign: { findUniqueOrThrow: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
@@ -38,6 +41,7 @@ describe("ConditionsService", () => {
     prisma.character.findFirst.mockResolvedValue(character);
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
   });
 
   it("el dueño puede aplicar una condición sobre su propio personaje", async () => {
@@ -110,5 +114,96 @@ describe("ConditionsService", () => {
       expect.objectContaining({ payload: { type: "CONDITION_REMOVED", key: "prone" } }),
       prisma,
     );
+  });
+});
+
+describe("condiciones con duración (2C.4)", () => {
+  // La decisión D-2C-2 del autor: **vence sola, pero no se borra** — queda marcada como vencida y
+  // el DM la retira o la renueva. Si desapareciera, el jugador vería cambiar sus números sin saber
+  // por qué, y el DM tendría que llevar la cuenta a mano, que es volver al papel.
+
+  let service: ConditionsService;
+  const character = {
+    id: "ch1",
+    ownerId: "owner1",
+    campaignId: "cmp1",
+    visibility: "PLAYERS",
+  };
+  const prisma = {
+    character: { findFirst: jest.fn() },
+    characterCondition: {
+      findMany: jest.fn(),
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
+    },
+    campaign: { findUniqueOrThrow: jest.fn() },
+    user: { findUnique: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn() };
+
+  async function montar(clockSeconds: number) {
+    const ref = await Test.createTestingModule({
+      providers: [
+        ConditionsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+      ],
+    }).compile();
+    service = ref.get(ConditionsService);
+    jest.resetAllMocks();
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue(character);
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds });
+    prisma.characterCondition.upsert.mockResolvedValue({ id: "cc1" });
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    return { service, prisma, events };
+  }
+
+  it("**la duración se guarda como el instante en que vence**, no como «dura una hora»", async () => {
+    // Guardar la duración obligaría a guardar también «desde cuándo», y ese segundo dato puede
+    // discrepar del primero. Con el instante, «¿sigue viva?» es una resta.
+    const { service, prisma } = await montar(1000);
+    await service.apply("dm", "cmp1", "ch1", { key: "poisoned", durationSeconds: 3600 });
+    expect(prisma.characterCondition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ expiresAtClock: 4600 }),
+      }),
+    );
+  });
+
+  it("sin duración queda indefinida, que es como funcionaba y sigue siendo lo correcto", async () => {
+    const { service, prisma } = await montar(1000);
+    await service.apply("dm", "cmp1", "ch1", { key: "poisoned" });
+    expect(prisma.characterCondition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ expiresAtClock: null }) }),
+    );
+  });
+
+  it("**volver a aplicarla sin duración la deja indefinida**, no hereda la caducidad de antes", async () => {
+    // Si el `null` no se escribiera en el `update`, una condición renovada se apagaría sola sin
+    // que nadie lo hubiera pedido.
+    const { service, prisma } = await montar(1000);
+    await service.apply("dm", "cmp1", "ch1", { key: "poisoned" });
+    expect(prisma.characterCondition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: expect.objectContaining({ expiresAtClock: null }) }),
+    );
+  });
+
+  it("listar dice cuál venció **sin borrarla**: sigue ahí, marcada", async () => {
+    const { service, prisma } = await montar(7200);
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { id: "a", key: "poisoned", expiresAtClock: 3600 },
+      { id: "b", key: "prone", expiresAtClock: null },
+    ]);
+    const lista = await service.list("dm", "cmp1", "ch1");
+    expect(lista).toHaveLength(2);
+    expect(lista[0]).toMatchObject({ key: "poisoned", expired: true });
+    expect(lista[1]).toMatchObject({ key: "prone", expired: false });
   });
 });

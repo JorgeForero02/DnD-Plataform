@@ -213,7 +213,19 @@ export class RestService {
       // la regla de «recortar al leer, nunca al recalcular»: esa regla existe para que subir de
       // nivel o bajar la Constitución no reescriba filas por debajo, no para dejar que una
       // curación invente puntos que el personaje no tiene.
-      const maximo = maxHpDe(character);
+      // **Con el agotamiento puesto** (2C.4): curar hasta un máximo que la regla parte por la
+      // mitad es la misma clase de mentira que enseñarlo en la hoja.
+      const [condiciones, campana] = await Promise.all([
+        tx.characterCondition.findMany({
+          where: { characterId: character.id },
+          select: { key: true, level: true, expiresAtClock: true },
+        }),
+        tx.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
+      ]);
+      const maximo = maxHpDe(character, {
+        conditions: condiciones,
+        clockSeconds: campana.clockSeconds,
+      });
       const nuevo =
         maximo === null
           ? character.currentHp + curado

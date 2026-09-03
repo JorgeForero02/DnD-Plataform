@@ -62,6 +62,9 @@ export const GAME_EVENT_TYPES = [
   // el reloj, y separarlo en dos tipos obligaria a leer dos veces la misma linea de tiempo para
   // reconstruir cuanto tiempo ha pasado.
   "CLOCK_ADVANCED",
+  // La condicion que vence sola (2C.4). **Existe para que el jugador vea POR QUE** dejo de estar
+  // envenenado: sin este suceso, el numero cambia y nadie sabe que paso.
+  "CONDITION_EXPIRED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -95,6 +98,13 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   }),
   // El reloj (2C.3). `from` y `to` como en `HP_CHANGED`, y por el mismo motivo: sin el antes y el
   // después, la línea de tiempo no se puede leer sin recalcular toda la historia.
+  z.object({
+    type: z.literal("CONDITION_EXPIRED"),
+    key: z.string().min(1).max(60),
+    level: z.number().int().min(1).max(6).optional(),
+    /** El segundo del reloj en que vencía. La línea de tiempo dice cuándo, no solo qué. */
+    expiredAtClock: z.number().int().nonnegative(),
+  }),
   z.object({
     type: z.literal("CLOCK_ADVANCED"),
     seconds: z.number().int().positive(),

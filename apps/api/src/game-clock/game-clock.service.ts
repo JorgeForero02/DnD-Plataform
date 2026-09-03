@@ -8,6 +8,7 @@ import {
   type ClockState,
 } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
+import { vencidasEnElTramo } from "../character-state/conditions/vencimiento";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -83,6 +84,45 @@ export class GameClockService {
         },
         tx,
       );
+
+      // **Las condiciones que acaban de vencer se anuncian** (2C.4). No se borran ni se marcan en
+      // la base —si están vencidas es una resta contra el reloj, y guardarlo sería una segunda
+      // verdad—; lo que se escribe es el suceso, que es lo que hace que el jugador vea **por qué**
+      // dejó de estar envenenado en vez de encontrarse un número distinto.
+      //
+      // El tramo es abierto por la izquierda y cerrado por la derecha, así que un avance no
+      // vuelve a anunciar lo que el anterior ya anunció.
+      const candidatas = await tx.characterCondition.findMany({
+        where: {
+          expiresAtClock: { gt: antes.clockSeconds, lte: despues.clockSeconds },
+          character: { campaignId },
+        },
+        select: { key: true, level: true, expiresAtClock: true, characterId: true },
+      });
+      for (const vencida of vencidasEnElTramo(
+        candidatas,
+        antes.clockSeconds,
+        despues.clockSeconds,
+      )) {
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            subjectId: vencida.characterId,
+            // La ve la mesa: es la misma visibilidad que el avance del reloj que la produjo, y
+            // esconderla dejaría al jugador con el «qué» y sin el «por qué».
+            visibility: "PLAYERS",
+            payload: {
+              type: "CONDITION_EXPIRED",
+              key: vencida.key,
+              ...(vencida.level !== null ? { level: vencida.level } : {}),
+              expiredAtClock: vencida.expiresAtClock!,
+            },
+          },
+          tx,
+        );
+      }
 
       return {
         from: antes.clockSeconds,

@@ -51,6 +51,8 @@ import {
   effectiveSpeed,
   type EffectiveSpeedResult,
 } from "../character-state/speed/effective-speed";
+import { condicionesActivas } from "../character-state/conditions/vencimiento";
+import { maxHpConAgotamiento, nivelDeAgotamiento } from "../character-state/common/agotamiento";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -328,6 +330,37 @@ export class CharacterSheetService {
       reason = resuelto.reason;
     }
 
+    // **El agotamiento nivel 4 parte los PG máximos por la mitad** (SRD 5.1, hueco H-2C-5).
+    //
+    // Va aquí, en la derivación, y no en la pantalla: hasta 2C.4 las condiciones solo alimentaban
+    // la velocidad, así que una hoja con agotamiento 4 enseñaba unos PG máximos que la regla dice
+    // que ese personaje no tiene **y curaba hasta ese número equivocado** —el tope de la curación
+    // sale de aquí—. Es el mismo fallo que 2B tuvo con el equipo, en la otra mitad del sistema.
+    //
+    // **Cuesta una consulta por hoja**, y se paga a sabiendas: la alternativa —calcularlo solo al
+    // leer la hoja y no al mutarla— dejaría a las mutaciones recortando contra un máximo que no
+    // existe, que es exactamente la clase de discrepancia que este servicio evita en todo lo demás.
+    if (sheet) {
+      const activas = condicionesActivas(
+        await this.prisma.characterCondition.findMany({
+          where: { characterId: character.id },
+          select: { key: true, level: true, expiresAtClock: true },
+        }),
+        (await this.prisma.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }))
+          .clockSeconds,
+      );
+      const nivel = nivelDeAgotamiento(activas);
+      if (nivel > 0) {
+        sheet = {
+          ...sheet,
+          derived: {
+            ...sheet.derived,
+            maxHp: maxHpConAgotamiento(sheet.derived.maxHp, nivel),
+          },
+        };
+      }
+    }
+
     // Los ataques y los avisos del equipo se juntan con los del motor: para quien mira la hoja
     // son la misma cosa —«hay algo que querrías saber»— y dejar que cada pantalla los junte por
     // su cuenta es cómo una de las dos listas acaba sin pintarse.
@@ -402,7 +435,7 @@ export class CharacterSheetService {
     const respuesta = await this.buildResponse(userId, character);
     return {
       ...respuesta,
-      effectiveSpeeds: await this.velocidadesEfectivas(characterId, respuesta.sheet),
+      effectiveSpeeds: await this.velocidadesEfectivas(characterId, campaignId, respuesta.sheet),
     };
   }
 
@@ -420,13 +453,21 @@ export class CharacterSheetService {
    */
   private async velocidadesEfectivas(
     characterId: string,
+    campaignId: string,
     sheet: CharacterSheet | null,
   ): Promise<Record<string, EffectiveSpeedResult>> {
     if (!sheet) return {};
-    const conditions = await this.prisma.characterCondition.findMany({
-      where: { characterId },
-      select: { key: true, level: true },
-    });
+    // **Solo las que siguen vivas** (2C.4): una condición vencida sigue en la hoja, marcada, pero
+    // ya no calcula nada. Filtrar aquí es lo que impide que la caducidad dependa de que alguien
+    // haya abierto la pantalla de condiciones.
+    const [todas, campana] = await Promise.all([
+      this.prisma.characterCondition.findMany({
+        where: { characterId },
+        select: { key: true, level: true, expiresAtClock: true },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    const conditions = condicionesActivas(todas, campana.clockSeconds);
     const salida: Record<string, EffectiveSpeedResult> = {};
     for (const [movimiento, pies] of Object.entries(sheet.speeds)) {
       if (typeof pies === "number") salida[movimiento] = effectiveSpeed(pies, conditions);

@@ -96,5 +96,24 @@ export const applyConditionSchema = z.object({
   /** Solo el agotamiento tiene nivel, de 1 a 6. */
   level: z.number().int().min(1).max(6).optional(),
   note: z.string().max(280).optional(),
+  /**
+   * **Cuánto dura, en segundos de juego** (2C.4). Sin esto la condición es indefinida y la quita
+   * el DM a mano, que es como funcionaba hasta 2C y sigue siendo lo correcto para «envenenado
+   * hasta que alguien te cure».
+   *
+   * **Segundos y no un vocabulario cerrado de duraciones**, y eso se decidió mirando la fuente:
+   * las duraciones del SRD son 1 asalto, 1 minuto, 10 minutos, 1 hora, 8 horas, 24 horas, 7 días,
+   * 10 días y 30 días — nueve valores que son todos **múltiplos de segundos** del mismo reloj. Un
+   * enum con esos nueve obligaría a migrarlo el día que un objeto dure 3 días, y la pantalla
+   * puede ofrecer los nueve botones igual.
+   *
+   * Lo que **no** entra aquí es «hasta el próximo descanso largo» ni «mientras te concentres»:
+   * esas no son duraciones, son sucesos, y modelarlas como un número sería mentir. Están
+   * declaradas como pendientes.
+   *
+   * El tope es un año, el mismo del reloj: más que eso no es una condición, es un cambio de
+   * personaje.
+   */
+  durationSeconds: z.number().int().positive().max(31_536_000).optional(),
 });
 export type ApplyConditionInput = z.infer<typeof applyConditionSchema>;

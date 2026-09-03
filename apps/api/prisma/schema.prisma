@@ -32,6 +32,7 @@ enum SessionStatus {
 // la fuente unica; una prueba comprueba que los dos lados no se separan.
 enum GameEventType {
   CLOCK_ADVANCED
+  CONDITION_EXPIRED
   SESSION_STARTED
   SESSION_CLOSED
   REST_DECLARED
@@ -376,6 +377,12 @@ model CharacterCondition {
   key         String
   // Nivel, para el agotamiento (1..6). `null` en las que no lo tienen.
   level       Int?
+  // Cuando vence, **en segundos del reloj de la campana** (2C.4). `null` = indefinida.
+  //
+  // **No hay columna `expired`**: si esta vencida es una resta contra el reloj, y guardarlo seria
+  // una segunda verdad que puede discrepar de la primera. Ademas obligaria a un barrido periodico
+  // que, si no corre, dejaria una condicion frenando a alguien despues de su hora.
+  expiresAtClock Int?
   note        String?
   appliedById String
   createdAt   DateTime  @default(now())

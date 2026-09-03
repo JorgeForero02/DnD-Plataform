@@ -21,7 +21,12 @@ describe("RestService", () => {
     character: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn() },
     characterResource: { findMany: jest.fn(), update: jest.fn() },
-    characterCondition: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    characterCondition: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     // 2C.3: el descanso largo lee el reloj de la campaña —«una vez cada 24 horas» son horas de
     // JUEGO, no del servidor— y marca cuándo terminó.
     campaign: { findUniqueOrThrow: jest.fn() },
@@ -48,8 +53,9 @@ describe("RestService", () => {
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.characterCondition.findUnique.mockResolvedValue(null);
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
-    // Reloj a cero y sin descanso largo previo: el caso de una campaña recién empezada.
     prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+    // Reloj a cero y sin descanso largo previo: el caso de una campaña recién empezada.
   });
 
   it("quien no es DM ni dueño no puede declarar un descanso", async () => {
@@ -231,7 +237,12 @@ describe("las tres reglas del descanso largo que el reloj hace comprobables (2C.
     character: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn() },
     characterResource: { findMany: jest.fn(), update: jest.fn() },
-    characterCondition: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    characterCondition: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     campaign: { findUniqueOrThrow: jest.fn() },
     transaction: jest.fn(),
   };
@@ -258,6 +269,7 @@ describe("las tres reglas del descanso largo que el reloj hace comprobables (2C.
     prisma.characterResource.findMany.mockResolvedValue([]);
     prisma.characterCondition.findUnique.mockResolvedValue(null);
     prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds });
+    prisma.characterCondition.findMany.mockResolvedValue([]);
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     return { service, prisma, events };
   }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { ApplyConditionInput } from "@dnd/shared";
+import { condicionVencida } from "./vencimiento";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -19,12 +20,30 @@ export class ConditionsService {
     private readonly events: GameEventsService,
   ) {}
 
+  /**
+   * Las condiciones del personaje, **cada una diciendo si ya venció** (2C.4).
+   *
+   * `expired` se calcula contra el reloj de la campaña y **no se guarda**: guardarlo sería una
+   * segunda verdad que puede discrepar de la primera, y obligaría a un barrido periódico que, si
+   * no corre, dejaría una condición frenando a alguien después de su hora.
+   *
+   * **Y la vencida sigue en la lista.** Es la decisión D-2C-2 del autor: vence sola, pero no
+   * desaparece — queda marcada, y el DM la retira o la renueva. Si se borrara, el jugador vería
+   * cambiar sus números sin saber por qué.
+   */
   async list(userId: string, campaignId: string, characterId: string) {
     await requireVisibleCharacter(this.prisma, this.membership, userId, campaignId, characterId);
-    return this.prisma.characterCondition.findMany({
-      where: { characterId },
-      orderBy: { createdAt: "asc" },
-    });
+    const [filas, campana] = await Promise.all([
+      this.prisma.characterCondition.findMany({
+        where: { characterId },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    return filas.map((fila) => ({
+      ...fila,
+      expired: condicionVencida(fila, campana.clockSeconds),
+    }));
   }
 
   /** Aplicar y quitar: DM o dueño. Aplicar dos veces la misma clave la reemplaza, no la duplica. */
@@ -45,6 +64,16 @@ export class ConditionsService {
     );
 
     return this.prisma.transaction(async (tx) => {
+      // **El vencimiento se guarda absoluto, no como una duración.** Guardar «dura una hora»
+      // obligaría a saber desde cuándo, y ese «desde cuándo» es otra columna que puede
+      // discrepar; con el instante en que vence, la pregunta «¿sigue viva?» es una resta contra
+      // el reloj y no hay dos datos que mantener de acuerdo. Se calcula **al aplicarla**, con el
+      // reloj de ese momento: renovar una condición es volver a aplicarla, que es lo que hace un
+      // DM en la mesa.
+      const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+      const expiresAtClock =
+        input.durationSeconds === undefined ? null : campana.clockSeconds + input.durationSeconds;
+
       const condition = await tx.characterCondition.upsert({
         where: { characterId_key: { characterId, key: input.key } },
         create: {
@@ -53,11 +82,16 @@ export class ConditionsService {
           level: input.level ?? null,
           note: input.note ?? null,
           appliedById: userId,
+          expiresAtClock,
         },
         update: {
           level: input.level ?? null,
           note: input.note ?? null,
           appliedById: userId,
+          // **Se escribe siempre, también cuando es `null`.** Volver a aplicar una condición sin
+          // duración tiene que dejarla indefinida: si el `null` no se escribiera, heredaría en
+          // silencio la caducidad de la vez anterior y se apagaría sola sin que nadie lo pidiera.
+          expiresAtClock,
         },
       });
       await this.events.record(

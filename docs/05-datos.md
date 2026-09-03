@@ -317,6 +317,27 @@ Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**
 | `OWNER_DM` | el creador y el DM |
 | `DM_ONLY` | solo el DM |
 
+### Una tirada no elige nivel: elige **audiencia** (2C.1)
+
+`POST /campaigns/:id/rolls` no recibe un `Visibility`. Recibe una **audiencia** —`PUBLIC`,
+`DM_PRIVATE`, `BLIND`— y el nivel se deriva de ella en un solo sitio
+(`VISIBILIDAD_POR_AUDIENCIA`, `packages/shared/src/roll.schema.ts`): `PLAYERS`, `OWNER_DM` y
+`DM_ONLY` respectivamente. Dos motivos, y ninguno es cosmético:
+
+1. **Ningún valor de enumeración del modelo llega a la pantalla** — es una regla del proyecto que
+   ya se incumplió tres veces en una mañana.
+2. `PUBLIC` (el nivel) significa *«fuera de la campaña también»*, y **una tirada no se publica al
+   mundo**. Que la audiencia se llame igual y signifique otra cosa es justo por lo que la
+   traducción vive escrita una vez.
+
+**Y el nivel no basta para esconder una tirada.** `DM_ONLY` la esconde del registro, pero hasta
+2C.1 el `POST` **devolvía el resultado a quien lo pedía**, así que su autor lo leía en su propia
+respuesta. La tirada a ciegas se completa preguntando a `canView` si quien acaba de tirar puede
+ver lo que tiró; si no, la respuesta omite el desglose.
+
+**El cuarto modo de la industria no cabe en esta tabla**, y está declarado: ver la ficha **C2C-1**
+de [06-pendientes.md](./06-pendientes.md).
+
 Más el `isAdmin` del sistema, que ve todo — existe en el modelo (`User.isAdmin`, por defecto
 `false`) y `canView` lo respeta, pero **ningún endpoint lo pone a `true`** hoy: no hay forma de
 convertirse en admin desde la API. Es un límite conocido, no un mecanismo activo.

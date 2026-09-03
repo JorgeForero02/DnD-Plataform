@@ -977,7 +977,7 @@ export class CharacterSheetService {
         label: `Ataque con ${ataque.name}`,
         characterId,
         mode: input.mode,
-        visibility: input.visibility ?? "PLAYERS",
+        audience: input.audience ?? "PUBLIC",
       });
     }
 
@@ -990,7 +990,7 @@ export class CharacterSheetService {
       // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el dado
       // de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
       mode: "NORMAL",
-      visibility: input.visibility ?? "PLAYERS",
+      audience: input.audience ?? "PUBLIC",
     });
   }
 }

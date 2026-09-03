@@ -1,4 +1,4 @@
-import type { DerivedValue, RollResult } from "@dnd/shared";
+import type { DerivedValue, RollResultRevealed } from "@dnd/shared";
 import { DadoDibujado } from "./DadoDibujado";
 import { dadosDeLaTirada, lineaDeDesglose, sumandosDeLaTirada } from "./desglose";
 import { fraseDeResultado, palabraDeNatural, rotuloDeConservacion } from "./vocabulario";
@@ -25,7 +25,12 @@ export function ResultadoDeTirada({
   etiqueta,
   derivado,
 }: {
-  resultado: RollResult;
+  /**
+   * **La variante revelada, y por eso el tipo es más estrecho que `RollResult`.** Una tirada a
+   * ciegas no trae desglose: quien la pinte tiene que decidir antes qué enseña, y con este tipo
+   * el compilador no le deja olvidarse (`TiradaACiegas` es la otra mitad).
+   */
+  resultado: RollResultRevealed;
   /** Qué se estaba tirando: «Percepción», «Salvación de Destreza». */
   etiqueta: string;
   /**

@@ -46,6 +46,41 @@ de 2C). Las secciones van de lo más reciente a lo más viejo dentro de cada blo
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 
+## C2C-1 · El cuarto modo de tirada («Propia») **no cabe en el modelo**, y es decisión del autor (2026-09-03)
+
+**Es un hallazgo de 2C.1, y contradice una premisa del alcance.** El alcance de 2C decía que
+«nuestro modelo ya expresa tres de los cuatro [modos de Foundry] con la visibilidad que existe» y
+que *«lo que falta para la ciega no es el modelo, es el endpoint»*. Lo segundo era cierto y ya
+está arreglado. Lo primero se quedó corto, y se vio al ir a escribirlo.
+
+**Lo que dice la fuente**, comprobado en la documentación de Foundry
+([Basic Dice](https://foundryvtt.com/article/dice/)): un *self roll* es *«a private dice roll
+which is only visible to the user who rolled it»*, y *«whether a GM or Player uses a self roll,
+only the user who made the roll can choose to reveal it»*. O sea: **esconde el resultado también
+del DM**.
+
+**Por qué eso no cabe aquí.** `canView` (`apps/api/src/common/visibility.ts`) devuelve `true` al
+DM **antes** de mirar el nivel de visibilidad, y eso no es un detalle de esta pantalla: es la
+regla del proyecto. Así que «Propia» no es un nivel que falte en el enum, es una **excepción a
+esa regla**. Y hay dos maneras de hacerla, las dos malas sin que el autor lo decida:
+
+- **Tocar `canView`** afecta a todos los recursos del producto —fichas, sesiones, objetos,
+  sucesos—, y convierte «el DM lo ve todo» en «el DM lo ve todo menos…». Es una decisión de
+  producto con consecuencias en cada pantalla.
+- **Filtrar solo las tiradas** sería reimplementar la matriz de visibilidad a mano en un
+  servicio, que es exactamente lo que `CLAUDE.md` prohíbe: *«`canView` es el dueño único de quién
+  ve qué»*.
+
+**Lo que se hizo mientras tanto:** entran **tres** modos con el vocabulario de la industria
+—Pública, Privada del DM, Ciega del DM— y el cuarto no se finge. Fingirlo era la peor opción:
+una tirada que la pantalla llama «Propia» y que el DM lee en su registro es una promesa de
+privacidad incumplida, que es peor que no ofrecerla.
+
+**La pregunta para el autor, en una línea:** ¿quieres que un jugador pueda esconderte una tirada?
+En una herramienta donde el DM arbitra, la respuesta por defecto razonable es «no», y entonces
+esta ficha se cierra declarando tres modos. Si la respuesta es «sí», es un nivel de visibilidad
+nuevo con su migración y su repaso de todas las pantallas.
+
 ## P2 · Los topes de la tirada y de la anulación, medidos (2026-09-02)
 
 Es la ficha **Q7** del plan de la ronda de interfaz, con la evidencia que le faltaba.

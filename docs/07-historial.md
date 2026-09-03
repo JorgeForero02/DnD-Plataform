@@ -15,6 +15,54 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — 2C.1: el registro de tiradas, y la tirada a ciegas que no existía
+
+**Qué.** Primer bloque de la fase 2C. Dos cosas, y la segunda es un agujero que estaba abierto y
+sin declarar:
+
+- **`GET /campaigns/:id/rolls`**, con filtro por sesión y por personaje. Aquí ponía «solo POST: una
+  tirada es un `GameEvent` y el log ya se lee por `GET /events`». El razonamiento era bueno y la
+  conclusión corta: la mesa pregunta *«¿qué se tiró en esta sesión?»* y responder eso leyendo el
+  log entero a mano no es responderlo. Lo que sigue en pie es el motivo de fondo —**no puede haber
+  dos matrices de visibilidad**—, así que el endpoint **no lee la base**: llama a
+  `GameEventsService.list` acotado a los tipos de tirada (`ABILITY_ROLL` y `DEATH_SAVE`, que es la
+  tirada que la mesa más repasa). Un camino más, la misma puerta. Los filtros son **columnas
+  reales**, nunca campos del `payload`.
+- **El vocabulario de los modos de tirada, y el agujero cerrado.** Quien tiraba elegía un nivel de
+  visibilidad crudo (`PLAYERS`, `OWNER_DM`, `DM_ONLY`) —un valor de enumeración del modelo de datos
+  llegando a la pantalla, que es un fallo declarado de este proyecto— y, peor, **la respuesta del
+  `POST` devolvía el resultado a quien lo pedía siempre**. Así que una tirada a ciegas quedaba
+  escondida en el registro y **visible en el cuerpo de su propia petición**: no existía aunque el
+  modelo pareciera expresarla. Ahora se pide una **audiencia** (`PUBLIC` / `DM_PRIVATE` / `BLIND`),
+  el nivel se deriva de ella en un solo sitio (`VISIBILIDAD_POR_AUDIENCIA`), y la respuesta es una
+  **unión discriminada**: si quien tiró no puede ver su tirada, el desglose no viaja. Es unión y no
+  campos opcionales a propósito — con campos opcionales una pantalla que se olvide de comprobar
+  pinta `undefined` donde había un total y nadie se entera.
+
+**La fuente, y lo que cambió por ella.** El vocabulario se copia de Foundry, que lleva años con
+él ([Basic Dice](https://foundryvtt.com/article/dice/)). Y ahí salió el hallazgo: **el cuarto modo
+—`selfroll`— esconde el resultado también del DM**, y `canView` le devuelve `true` al DM antes de
+mirar el nivel. O sea que «Propia» no es un nivel que falte, es una **excepción a la regla de que
+el DM lo ve todo**. No se finge: entran tres modos, y el cuarto queda como ficha **C2C-1** con su
+cita, porque es decisión del autor y no de quien programa. Fingirlo habría sido peor que no
+ofrecerlo: una tirada que la pantalla llama «Propia» y que el DM lee en su registro es una promesa
+de privacidad incumplida.
+
+**En pantalla.** `TiradaACiegas` dice lo que pasó —«Tirado a ciegas. El DM ve el resultado; tú
+no.»— en vez de dejar un hueco. Un silencio ahí es el peor resultado: quien pulsa «Tirar» y no ve
+nada supone que la petición falló, vuelve a pulsar, y la mesa acaba con tres tiradas donde había
+una.
+
+**Probado.** 1075 unitarias de API, 688 de web, 43 de esquemas, **146 e2e de API** (tres nuevos) y
+los 64 recorridos de navegador, todos en verde. Dos mutaciones comprobadas: devolver siempre el
+resultado pone en rojo la unitaria y el e2e de la tirada a ciegas; quitar el filtro de tipos del
+registro pone en rojo tres pruebas, incluida la que exige que el arranque de una sesión **no**
+salga en el registro de tiradas. Restauradas copiando el fichero.
+
+**Cómo revertir.** `git revert` del commit. **Es un cambio de contrato**: `POST /rolls` y
+`POST .../attacks/:key/roll` reciben `audience` donde recibían `visibility`, y `RollResult` pasa a
+ser una unión. No hay migración: no toca el esquema.
+
 ## 2026-09-03 (tarde) — El motor de reglas ya no escribe fuera de la transacción que lo dispara (M2B-3)
 
 **Qué.** Primer trabajo de la fase 2C, y va **antes** de 2C porque 2C mete más sucesos por ese

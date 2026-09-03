@@ -68,7 +68,7 @@ describe("Tiradas (e2e)", () => {
     const tirada = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${tokenPL}`)
-      .send({ expression: "1d20+3", label: "Percepción", dc: 12, visibility: "PLAYERS" });
+      .send({ expression: "1d20+3", label: "Percepción", dc: 12, audience: "PUBLIC" });
 
     expect(tirada.status).toBe(201);
     expect(tirada.body.eventId).toBeTruthy();
@@ -86,12 +86,12 @@ describe("Tiradas (e2e)", () => {
     expect(evento.payload).toMatchObject({ expression: "1d20+3", reason: "Percepción", dc: 12 });
   });
 
-  it("una tirada DM_ONLY no aparece en el GET del jugador, y sí en el del DM", async () => {
+  it("una tirada a ciegas no aparece en el GET del jugador, y sí en el del DM", async () => {
     const s = app.getHttpServer();
     const oculta = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${tokenDM}`)
-      .send({ expression: "1d20", label: "Tirada oculta", visibility: "DM_ONLY" });
+      .send({ expression: "1d20", label: "Tirada oculta", audience: "BLIND" });
     expect(oculta.status).toBe(201);
 
     const delJugador = await request(s)
@@ -122,7 +122,7 @@ describe("Tiradas (e2e)", () => {
     const tirada = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${tokenPL}`)
-      .send({ expression: "1d20", visibility: "PLAYERS" });
+      .send({ expression: "1d20", audience: "PUBLIC" });
 
     const log = await request(s)
       .get(`/campaigns/${campaignId}/events`)
@@ -139,7 +139,7 @@ describe("Tiradas (e2e)", () => {
     const tirada = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${tokenPL}`)
-      .send({ expression: "1d20", characterId: idPersonajeDelJugador, visibility: "PLAYERS" });
+      .send({ expression: "1d20", characterId: idPersonajeDelJugador, audience: "PUBLIC" });
     expect(tirada.status).toBe(201);
     const evento = await prisma.gameEvent.findUnique({ where: { id: tirada.body.eventId } });
     expect(evento).toMatchObject({
@@ -166,7 +166,7 @@ describe("Tiradas (e2e)", () => {
     const res = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ expression: "1d20", characterId: idPersonajeDelJugador, visibility: "PLAYERS" });
+      .send({ expression: "1d20", characterId: idPersonajeDelJugador, audience: "PUBLIC" });
     expect(res.status).toBe(403);
     await prisma.user.deleteMany({ where: { email } });
   });
@@ -182,7 +182,7 @@ describe("Tiradas (e2e)", () => {
     const res = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ expression: "1d20", visibility: "PLAYERS" });
+      .send({ expression: "1d20", audience: "PUBLIC" });
     expect(res.status).toBe(403);
     await prisma.user.deleteMany({ where: { email } });
   });
@@ -198,7 +198,7 @@ describe("Tiradas (e2e)", () => {
     const res = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set("Authorization", `Bearer ${tokenPL}`)
-      .send({ expression: "4d", visibility: "PLAYERS" });
+      .send({ expression: "4d", audience: "PUBLIC" });
     expect(res.status).toBe(400);
 
     const despues = (
@@ -224,11 +224,105 @@ describe("Tiradas (e2e)", () => {
       const r = await request(s)
         .post(`/campaigns/${campaignId}/rolls`)
         .set("Authorization", `Bearer ${tokenDM}`)
-        .send({ expression: "1d20", visibility: "DM_ONLY" });
+        .send({ expression: "1d20", audience: "BLIND" });
       totales.push(r.body.total);
     }
     expect(totales.every((t) => Number.isInteger(t) && t >= 1 && t <= 20)).toBe(true);
     // Y salen valores distintos: cien tiradas iguales serían un dado roto.
     expect(new Set(totales).size).toBeGreaterThan(5);
+  });
+  it("**a ciegas, la respuesta del jugador no trae el resultado, y el DM sí lo ve**", async () => {
+    // El agujero de 2C.1, contra Postgres real: hasta hoy la tirada quedaba escondida en el
+    // registro y **visible en el cuerpo de la petición de su propio autor**, así que la tirada a
+    // ciegas no existía aunque el vocabulario dijera que sí.
+    const s = app.getHttpServer();
+    const ciega = await request(s)
+      .post(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ expression: "1d20+3", label: "Percepción a ciegas", audience: "BLIND" });
+
+    expect(ciega.status).toBe(201);
+    expect(ciega.body.revealed).toBe(false);
+    expect(ciega.body.total).toBeUndefined();
+    expect(ciega.body.rolls).toBeUndefined();
+    expect(ciega.body.natural).toBeUndefined();
+    // Y **se tiró de verdad**: el DM la tiene entera en el registro. Ocultar no es no tirar.
+    const delDM = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const suya = delDM.body.events.find((e: { id: string }) => e.id === ciega.body.eventId);
+    expect(suya.payload.total).toBe(suya.payload.rolls[0] + 3);
+
+    // Y no viaja al jugador: **no se esconde en el cliente, no se manda**.
+    const delJugador = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(delJugador.body.events.some((e: { id: string }) => e.id === ciega.body.eventId)).toBe(
+      false,
+    );
+  });
+
+  it("el registro de tiradas trae tiradas y nada más, y filtra por sesión y por personaje", async () => {
+    const s = app.getHttpServer();
+    const sesion = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "Sesión del registro", visibility: "PLAYERS" })
+    ).body.id;
+    await request(s)
+      .post(`/campaigns/${campaignId}/sessions/${sesion}/start`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+
+    const dePersonaje = await request(s)
+      .post(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ expression: "1d20", characterId: idPersonajeDelJugador, audience: "PUBLIC" });
+    const deCampana = await request(s)
+      .post(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ expression: "1d6", audience: "PUBLIC" });
+
+    const registro = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .query({ sessionId: sesion })
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(registro.status).toBe(200);
+    // **Solo tiradas**: el arranque de la sesión es un suceso de esta misma sesión y NO sale.
+    expect(
+      registro.body.events.every((e: { type: string }) =>
+        ["ABILITY_ROLL", "DEATH_SAVE"].includes(e.type),
+      ),
+    ).toBe(true);
+    const ids = registro.body.events.map((e: { id: string }) => e.id);
+    expect(ids).toContain(dePersonaje.body.eventId);
+    expect(ids).toContain(deCampana.body.eventId);
+
+    const soloDelPersonaje = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .query({ characterId: idPersonajeDelJugador })
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const idsPersonaje = soloDelPersonaje.body.events.map((e: { id: string }) => e.id);
+    expect(idsPersonaje).toContain(dePersonaje.body.eventId);
+    expect(idsPersonaje).not.toContain(deCampana.body.eventId);
+
+    await request(s)
+      .post(`/campaigns/${campaignId}/sessions/${sesion}/close`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+  });
+
+  it("quien no es miembro no puede leer el registro de tiradas (403)", async () => {
+    const s = app.getHttpServer();
+    const email = `fuera-reg${Date.now()}@b.com`;
+    const token = (
+      await request(s)
+        .post("/auth/register")
+        .send({ email, password: "password123", displayName: "Fuera" })
+    ).body.token;
+    const res = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(403);
+    await prisma.user.deleteMany({ where: { email } });
   });
 });

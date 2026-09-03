@@ -6,7 +6,16 @@ import {
   NotFoundException,
   Optional,
 } from "@nestjs/common";
-import type { CreateRollInput, RollMode, RollResult } from "@dnd/shared";
+import {
+  VISIBILIDAD_POR_AUDIENCIA,
+  type CreateRollInput,
+  type GameEventType,
+  type ListRollsInput,
+  type Role,
+  type RollMode,
+  type RollResult,
+  type Visibility,
+} from "@dnd/shared";
 import {
   DiceExpressionError,
   rollExpression,
@@ -14,6 +23,7 @@ import {
   type Roller,
 } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
+import { canView } from "../common/visibility";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -26,6 +36,16 @@ export const DICE_ROLLER = "DICE_ROLLER";
 // produce el servidor y lo escribe en el log antes de devolverlo. Si el cliente tirara, una
 // tirada sería una afirmación del navegador — y la mesa no tendría forma de distinguir un 20
 // de un 20 escrito a mano.
+
+/**
+ * Qué cuenta como «una tirada» en el registro.
+ *
+ * `DEATH_SAVE` entra: es un d20 con su resultado, y es **la tirada que la mesa más quiere
+ * repasar**. Va con su propia forma de `payload` —`roll` y cuatro resultados en vez de un
+ * desglose— porque un 20 natural en una salvación de muerte no es un éxito, devuelve al
+ * personaje a 1 PG.
+ */
+const TIPOS_DE_TIRADA: GameEventType[] = ["ABILITY_ROLL", "DEATH_SAVE"];
 
 @Injectable()
 export class RollsService {
@@ -45,10 +65,13 @@ export class RollsService {
   ) {}
 
   async roll(userId: string, campaignId: string, input: CreateRollInput): Promise<RollResult> {
-    await this.membership.requireMember(campaignId, userId);
+    const propio = await this.membership.requireMember(campaignId, userId);
 
     const characterId = await this.comprobarPersonaje(userId, campaignId, input.characterId);
     const sessionId = await this.sesionDeLaTirada(campaignId, input.sessionId);
+
+    // El nivel de visibilidad **se deriva** del vocabulario de mesa; nadie manda un `DM_ONLY`.
+    const visibility = VISIBILIDAD_POR_AUDIENCIA[input.audience];
 
     let resultado: DiceRollResult;
     try {
@@ -76,7 +99,7 @@ export class RollsService {
       sessionId,
       subjectType: characterId ? "character" : "campaign",
       subjectId: characterId ?? campaignId,
-      visibility: input.visibility,
+      visibility,
       payload: {
         type: "ABILITY_ROLL",
         expression: resultado.expression,
@@ -92,9 +115,25 @@ export class RollsService {
       },
     });
 
+    // **El agujero de la tirada a ciegas se cierra aquí.** Hasta 2C la respuesta devolvía el
+    // resultado a quien la pedía siempre, así que una tirada que el registro escondía se leía
+    // igualmente en el cuerpo de su propia petición: la tirada a ciegas no existía aunque el
+    // vocabulario dijera que sí. Ahora se pregunta a `canView` —el dueño único de quién ve qué—
+    // si quien acaba de tirar puede ver lo que ha tirado, y si no, la respuesta lo omite.
+    if (!(await this.puedeVerse(userId, campaignId, propio.role, visibility))) {
+      return {
+        revealed: false,
+        eventId: evento.id,
+        expression: resultado.expression,
+        audience: input.audience,
+      };
+    }
+
     return {
+      revealed: true,
       eventId: evento.id,
       expression: resultado.expression,
+      audience: input.audience,
       rolls,
       kept,
       dropped,
@@ -104,6 +143,48 @@ export class RollsService {
       natural,
       outcome,
     };
+  }
+
+  /**
+   * El registro de tiradas de la campaña, filtrado por `canView` **en el servidor**.
+   *
+   * **No hay una segunda matriz de visibilidad.** Por dentro es el log de partida acotado a los
+   * sucesos de tirada: lo sirve `GameEventsService.list`, que es el único sitio donde vive
+   * `canView` para los sucesos. Una tirada `DM_ONLY` **no viaja**; no se esconde en el cliente.
+   */
+  async list(userId: string, campaignId: string, query: ListRollsInput) {
+    return this.events.list(
+      userId,
+      campaignId,
+      { limit: query.limit, cursor: query.cursor, sessionId: query.sessionId },
+      { types: TIPOS_DE_TIRADA, subjectId: query.characterId },
+    );
+  }
+
+  /**
+   * ¿Puede quien acaba de tirar ver su propia tirada?
+   *
+   * **Solo se consulta el usuario cuando la respuesta puede ser «no»**, es decir cuando la
+   * visibilidad excluye al autor: en el resto de los casos `canView` ya devuelve `true` con lo
+   * que hay a mano, y una consulta más por cada tirada de la mesa sí se nota.
+   */
+  private async puedeVerse(
+    userId: string,
+    campaignId: string,
+    role: Role | null,
+    visibility: Visibility,
+  ): Promise<boolean> {
+    const conLoQueHayAMano = canView(
+      { userId, role, isAdmin: false },
+      { visibility, createdById: userId, grantedUserIds: [] },
+    );
+    if (conLoQueHayAMano) return true;
+    // Un administrador de la plataforma sí lo ve, y eso lo decide `canView`, no este servicio.
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    return canView(
+      { userId, role, isAdmin: user?.isAdmin ?? false },
+      { visibility, createdById: userId, grantedUserIds: [] },
+    );
   }
 
   /**

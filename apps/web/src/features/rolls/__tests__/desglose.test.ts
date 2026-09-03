@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { DerivedValue, RollResult } from "@dnd/shared";
+import type { DerivedValue, RollResultRevealed } from "@dnd/shared";
 import { dadosDeLaTirada, lineaDeDesglose, sumandosDeLaTirada } from "../desglose";
 
 // Lo que importa aquí: que **el dado descartado siga siendo identificable** y que **la suma se
 // explique**. Las dos cosas son la tarea F3 entera; un total suelto ya lo sabía enseñar la
 // versión anterior.
 
-function tirada(parcial: Partial<RollResult> = {}): RollResult {
+function tirada(parcial: Partial<RollResultRevealed> = {}): RollResultRevealed {
   return {
+    // 2C.1: el resultado es una unión discriminada, y estas pruebas miran el desglose.
+    revealed: true,
+    audience: "PUBLIC",
     eventId: "e1",
     expression: "1d20+3",
     rolls: [12],

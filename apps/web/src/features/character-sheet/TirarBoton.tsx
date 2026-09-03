@@ -64,11 +64,13 @@ export function TirarBoton({
 
   const tirar = () =>
     crearTirada.mutate(
-      // `visibility` es obligatorio en el tipo inferido aunque el esquema le da un valor por
+      // `audience` es obligatorio en el tipo inferido aunque el esquema le da un valor por
       // defecto (`createRollSchema`, @dnd/shared): el `.default()` de Zod solo hace opcional el
-      // campo de ENTRADA sin validar, no el tipo ya inferido. "PLAYERS" es explícito aquí por la
-      // misma razón que en el resto del producto: la mesa ve lo que se tira, no solo el DM.
-      { expression: expresion, label: etiqueta, characterId, visibility: "PLAYERS", mode: modo },
+      // campo de ENTRADA sin validar, no el tipo ya inferido. `"PUBLIC"` es explícito aquí por la
+      // misma razón que en el resto del producto: la mesa ve lo que se tira, no solo el DM. Y es
+      // **la audiencia**, no el nivel de visibilidad: la traducción a `PLAYERS` la hace el
+      // servidor, que es donde vive la regla.
+      { expression: expresion, label: etiqueta, characterId, audience: "PUBLIC", mode: modo },
       {
         onSuccess: (r) => {
           setError(null);

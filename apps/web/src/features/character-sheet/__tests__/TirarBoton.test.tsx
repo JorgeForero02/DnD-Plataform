@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RollResult } from "@dnd/shared";
+import type { RollResultRevealed } from "@dnd/shared";
 import { TirarBoton } from "../TirarBoton";
 import * as api from "../api";
 
@@ -19,8 +19,11 @@ import * as api from "../api";
 // frases a la vez, que es más de lo que se pintaba antes: repetir el control en las veinticuatro
 // filas obligaba a enseñar solo la del estado elegido.
 
-function tirada(parcial: Partial<RollResult> = {}): RollResult {
+function tirada(parcial: Partial<RollResultRevealed> = {}): RollResultRevealed {
   return {
+    // 2C.1: el resultado es una unión discriminada, y estas pruebas miran el desglose.
+    revealed: true,
+    audience: "PUBLIC",
     eventId: "e1",
     expression: "1d20+3",
     rolls: [12],

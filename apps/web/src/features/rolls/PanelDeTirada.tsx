@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { DerivedValue, RollMode, RollResult } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { ResultadoDeTirada } from "./ResultadoDeTirada";
+import { TiradaACiegas } from "./TiradaACiegas";
 import { SelectorDeVentaja } from "./SelectorDeVentaja";
 
 // **El panel de tirada: la decisión aparece donde se toma, una sola vez.**
@@ -111,7 +112,13 @@ export function PanelDeTirada({
 
       {resultado && (
         <div className="mt-s2">
-          <ResultadoDeTirada resultado={resultado} etiqueta={etiqueta} derivado={derivado} />
+          {resultado.revealed ? (
+            <ResultadoDeTirada resultado={resultado} etiqueta={etiqueta} derivado={derivado} />
+          ) : (
+            // Una tirada a ciegas no trae desglose: el servidor no lo manda. Se dice, no se
+            // deja en blanco — un panel vacío se lee como «falló» y se vuelve a pulsar.
+            <TiradaACiegas etiqueta={etiqueta} expresion={resultado.expression} />
+          )}
         </div>
       )}
     </div>

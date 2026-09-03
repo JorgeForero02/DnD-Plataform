@@ -27,9 +27,18 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-03 (noche, al cerrar la fase 2B) corriendo las dos suites:
-**143 e2e de API** en 25 suites y **64 recorridos de navegador** en 15 especificaciones, todos
-verdes. Los dos últimos los añadieron la revisión y la auditoría de mecánica: uno comprueba que **un objeto de otra campaña no se puede meter en
+**E2e**, medidos el 2026-09-03 (tarde, con 2C.1 dentro) corriendo las dos suites:
+**146 e2e de API** en 25 suites y **64 recorridos de navegador** en 15 especificaciones, todos
+verdes. Los tres nuevos son de `rolls` y los trae el registro de tiradas: que **a ciegas la
+respuesta del jugador no trae el resultado y el DM sí lo ve entero**, que el registro trae
+tiradas y nada más —el arranque de la sesión es un suceso de la misma sesión y no sale— y que
+quien no es miembro recibe un 403. El primero **solo puede vivir aquí**: lo que se comprueba es
+el cuerpo de una respuesta HTTP real, no una llamada a un servicio.
+
+> Antes de 2C.1 eran 143 en 25.
+
+**De los tres que trajo 2B**, los dos últimos los añadieron la revisión y la auditoría de
+mecánica: uno comprueba que **un objeto de otra campaña no se puede meter en
 este inventario** (ficha S8) —de los que solo pueden vivir aquí, porque el Prisma simulado de
 las unitarias ignora el `where`— y el otro que **el inventario deja rastro en la línea de
 tiempo**: quién metió qué y quién lo movió. Las suites de API nuevas son `campaign-items` y `inventory`; la especificación de

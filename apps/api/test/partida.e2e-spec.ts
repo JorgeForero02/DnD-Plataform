@@ -228,7 +228,7 @@ describe("La partida (integración, e2e)", () => {
     const oculta = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set(como(tokenDM))
-      .send({ expression: "1d20", label: "Percepción pasiva del posadero", visibility: "DM_ONLY" });
+      .send({ expression: "1d20", label: "Percepción pasiva del posadero", audience: "BLIND" });
 
     const deAna = await request(s).get(`/campaigns/${campaignId}/events`).set(como(tokenAna));
     expect(deAna.body.events.some((e: { id: string }) => e.id === oculta.body.eventId)).toBe(false);
@@ -346,7 +346,7 @@ describe("La partida (integración, e2e)", () => {
     const tirandoPorOtro = await request(s)
       .post(`/campaigns/${campaignId}/rolls`)
       .set(como(tokenBeto))
-      .send({ expression: "1d20", characterId: idAna, visibility: "PLAYERS" });
+      .send({ expression: "1d20", characterId: idAna, audience: "PUBLIC" });
     expect(tirandoPorOtro.status).toBe(403);
 
     const marcaDeJugador = await request(s)

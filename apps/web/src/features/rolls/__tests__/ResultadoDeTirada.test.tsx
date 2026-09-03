@@ -1,14 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { RollResult } from "@dnd/shared";
+import type { RollResultRevealed } from "@dnd/shared";
 import { ResultadoDeTirada } from "../ResultadoDeTirada";
 
 // **Ver el dado que se cayó es media gracia de tener ventaja.** Estas pruebas comprueban que el
 // descartado sigue en pantalla, identificable y anunciado — no que esté tachado: el tachado es
 // maquetación, jsdom no maqueta, y eso se mide en el navegador.
 
-function tirada(parcial: Partial<RollResult> = {}): RollResult {
+function tirada(parcial: Partial<RollResultRevealed> = {}): RollResultRevealed {
   return {
+    // 2C.1: el resultado es una unión discriminada, y estas pruebas miran el desglose.
+    revealed: true,
+    audience: "PUBLIC",
     eventId: "e1",
     expression: "2d20kh1+3",
     rolls: [8, 17],

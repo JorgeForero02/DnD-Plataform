@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rollAudienceSchema } from "./roll.schema";
 import { contentRefSchema } from "./character-build.schema";
 import { equipSlotSchema, itemLocationSchema } from "./item.schema";
 
@@ -126,6 +127,11 @@ export const rollAttackSchema = z.object({
   versatile: z.boolean().default(false),
   /** Daño crítico: **se duplican los dados, nunca el modificador** (SRD 5.1). */
   critical: z.boolean().default(false),
-  visibility: z.enum(["PUBLIC", "PLAYERS", "SPECIFIC_PLAYERS", "OWNER_DM", "DM_ONLY"]).optional(),
+  /**
+   * A quién va dirigida la tirada. **El mismo vocabulario que la pantalla de dados**
+   * (`rollAudienceSchema`), no el nivel de visibilidad crudo: aquí había una copia literal del
+   * enum de visibilidad, que es la forma de los datos escrita dos veces.
+   */
+  audience: rollAudienceSchema.optional(),
 });
 export type RollAttackInput = z.infer<typeof rollAttackSchema>;

@@ -5,6 +5,7 @@ import { useRollAttack } from "./hooks";
 import { DadoDibujado } from "../rolls/DadoDibujado";
 import { SelectorDeVentaja } from "../rolls/SelectorDeVentaja";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
+import { TiradaACiegas } from "../rolls/TiradaACiegas";
 import { Button } from "../../ui/Button";
 import { PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 
@@ -66,7 +67,7 @@ export function TirarAtaqueBoton({
           mode: modoAtaque,
           versatile: false,
           critical: false,
-          visibility: "PLAYERS",
+          audience: "PUBLIC",
         },
       },
       {
@@ -90,7 +91,7 @@ export function TirarAtaqueBoton({
           mode: "NORMAL",
           versatile: dosManos,
           critical: critico,
-          visibility: "PLAYERS",
+          audience: "PUBLIC",
         },
       },
       {
@@ -166,11 +167,18 @@ export function TirarAtaqueBoton({
             )}
             {resultadoAtaque && (
               <div className="mt-s2">
-                <ResultadoDeTirada
-                  resultado={resultadoAtaque}
-                  etiqueta={`Ataque con ${ataque.name}`}
-                  derivado={ataque.attackBonus}
-                />
+                {resultadoAtaque.revealed ? (
+                  <ResultadoDeTirada
+                    resultado={resultadoAtaque}
+                    etiqueta={`Ataque con ${ataque.name}`}
+                    derivado={ataque.attackBonus}
+                  />
+                ) : (
+                  <TiradaACiegas
+                    etiqueta={`Ataque con ${ataque.name}`}
+                    expresion={resultadoAtaque.expression}
+                  />
+                )}
               </div>
             )}
           </section>
@@ -255,7 +263,17 @@ export function TirarAtaqueBoton({
             )}
             {resultadoDano && (
               <div className="mt-s2">
-                <ResultadoDeTirada resultado={resultadoDano} etiqueta={`Daño de ${ataque.name}`} />
+                {resultadoDano.revealed ? (
+                  <ResultadoDeTirada
+                    resultado={resultadoDano}
+                    etiqueta={`Daño de ${ataque.name}`}
+                  />
+                ) : (
+                  <TiradaACiegas
+                    etiqueta={`Daño de ${ataque.name}`}
+                    expresion={resultadoDano.expression}
+                  />
+                )}
               </div>
             )}
           </section>

@@ -1,4 +1,4 @@
-import type { DerivedValue, RollResult, TraceStep } from "@dnd/shared";
+import type { DerivedValue, RollResultRevealed, TraceStep } from "@dnd/shared";
 import { traducirLabelKey } from "../character-sheet/vocabulario";
 
 // Tarea F3 — **el desglose de la suma, siempre**. Nunca un número solo.
@@ -30,7 +30,7 @@ export interface DadoDeLaTirada {
  * consumir es el fallo obvio y silencioso de esta función.
  */
 export function dadosDeLaTirada(
-  resultado: Pick<RollResult, "rolls" | "dropped">,
+  resultado: Pick<RollResultRevealed, "rolls" | "dropped">,
 ): DadoDeLaTirada[] {
   const pendientes = [...resultado.dropped];
   return resultado.rolls.map((valor) => {
@@ -60,7 +60,7 @@ export interface SumandoDeLaTirada {
  * explicación. En ese caso se cae al nombre de lo que se tiraba, que es cierto siempre.
  */
 export function sumandosDeLaTirada(
-  resultado: Pick<RollResult, "kept" | "modifier">,
+  resultado: Pick<RollResultRevealed, "kept" | "modifier">,
   etiqueta: string,
   derivado?: DerivedValue,
 ): SumandoDeLaTirada[] {

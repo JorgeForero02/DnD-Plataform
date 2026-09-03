@@ -1,4 +1,4 @@
-import type { RollMode, RollResult } from "@dnd/shared";
+import type { RollMode, RollResultRevealed } from "@dnd/shared";
 
 // Tarea F3 — el vocabulario de una tirada.
 //
@@ -58,13 +58,13 @@ export function rotuloDeConservacion(expression: string): string | null {
  * pero se marcan con un filete de cobre y una palabra, no con una celebración. El ornamento
  * informa o enmarca, nunca compite (docs/04-convenciones.md).
  */
-const PALABRA_DE_NATURAL: Record<RollResult["natural"], string | null> = {
+const PALABRA_DE_NATURAL: Record<RollResultRevealed["natural"], string | null> = {
   NONE: null,
   TWENTY: "Crítico",
   ONE: "Pifia",
 };
 
-export function palabraDeNatural(natural: RollResult["natural"]): string | null {
+export function palabraDeNatural(natural: RollResultRevealed["natural"]): string | null {
   return PALABRA_DE_NATURAL[natural] ?? null;
 }
 
@@ -73,13 +73,15 @@ export function palabraDeNatural(natural: RollResult["natural"]): string | null 
  * —se tira sin CD, que es lo que pasa en la mesa—, pero el campo llega en la respuesta y una
  * enumeración que se pinte sin traducir es el fallo que esta casa existe para evitar.
  */
-const FRASE_DE_RESULTADO: Record<RollResult["outcome"], (dc: number) => string | null> = {
+const FRASE_DE_RESULTADO: Record<RollResultRevealed["outcome"], (dc: number) => string | null> = {
   NO_DC: () => null,
   SUCCESS: (dc) => `Supera la CD ${dc}.`,
   FAILURE: (dc) => `No llega a la CD ${dc}.`,
 };
 
-export function fraseDeResultado(resultado: Pick<RollResult, "outcome" | "dc">): string | null {
+export function fraseDeResultado(
+  resultado: Pick<RollResultRevealed, "outcome" | "dc">,
+): string | null {
   if (resultado.dc === undefined) return null;
   return FRASE_DE_RESULTADO[resultado.outcome](resultado.dc);
 }

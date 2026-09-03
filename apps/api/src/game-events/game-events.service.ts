@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/commo
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   gameEventPayloadSchema,
+  type GameEventType,
   type ListGameEventsInput,
   type RecordGameEventInput,
   type Visibility,
@@ -105,7 +106,19 @@ export class GameEventsService {
    * exigiría reimplementar la matriz de visibilidad en una cláusula `where`, y eso es
    * exactamente lo que `canView` existe para que nadie haga.
    */
-  async list(userId: string, campaignId: string, query: ListGameEventsInput) {
+  async list(
+    userId: string,
+    campaignId: string,
+    query: ListGameEventsInput,
+    /**
+     * Filtros que **no** viajan por HTTP: los pone otro servicio del servidor, como el registro
+     * de tiradas (2C.1), que es este mismo log acotado a los sucesos de tirada.
+     *
+     * Son **columnas reales**, nunca campos del `payload` — la regla de `docs/04-convenciones.md`:
+     * un `Json` en la base no se consulta por dentro.
+     */
+    filtros?: { types?: GameEventType[]; subjectId?: string },
+  ) {
     const propio = await this.membership.requireMember(campaignId, userId);
     // **Mirar por los ojos de otro exige ser DM**, y que ese otro sea miembro de esta campaña.
     // Sin la segunda comprobación, `as` sería un oráculo: pedir por un identificador cualquiera y
@@ -122,6 +135,8 @@ export class GameEventsService {
       where: {
         campaignId,
         ...(query.sessionId ? { sessionId: query.sessionId } : {}),
+        ...(filtros?.types ? { type: { in: filtros.types } } : {}),
+        ...(filtros?.subjectId ? { subjectId: filtros.subjectId } : {}),
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: query.limit,

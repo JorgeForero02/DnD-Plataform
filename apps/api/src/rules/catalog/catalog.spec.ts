@@ -248,7 +248,12 @@ describe("la línea legal está protegida por una prueba, no por buena voluntad"
     expect(modificaciones).not.toContain("traducido al español");
   });
 
-  it.each(["races.ts", "classes.ts", "armor.ts", "types.ts", "index.ts"])(
+  // **La lista se derivaría sola si pudiera, y no puede: es la garantía legal.** Por eso se
+  // escribe a mano y por eso `spell-slots.ts` entró aquí el 2026-09-02 — llevaba su cabecera
+  // desde que se escribió, pero **perderla no ponía nada rojo**, así que la garantía cubría
+  // cinco ficheros mientras NOTICE.md prometía «cada fichero de datos». Los que faltan de este
+  // directorio (`choices.ts`, `resolve.ts`) son lógica, no datos del SRD.
+  it.each(["races.ts", "classes.ts", "armor.ts", "types.ts", "index.ts", "spell-slots.ts"])(
     "%s lleva su cabecera de atribución apuntando a NOTICE.md",
     (fichero) => {
       const contenido = readFileSync(join(__dirname, fichero), "utf8");

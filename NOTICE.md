@@ -13,8 +13,10 @@ disponible en https://creativecommons.org/licenses/by/4.0/legalcode.es.
 > «No incluyas ningún otro reconocimiento en relación con Wizards, excepto el facilitado
 > anteriormente».
 
-**Modificaciones:** el material se ha **reorganizado como datos estructurados** y se ha
-seleccionado un subconjunto.
+**Modificaciones:** el material se ha **reorganizado como datos estructurados**, se ha
+seleccionado un subconjunto y, en el caso de las **condiciones**, se ha **resumido su efecto en
+una línea funcional propia** — un resumen nuestro, no el texto del SRD ni la traducción oficial
+de Wizards.
 
 > **Aquí decía que los nombres «se han traducido al español», y desde el 2026-09-02 ya no es
 > cierto.** Los nombres son los de la **traducción oficial al español que publica Wizards**,
@@ -33,12 +35,25 @@ privado suyo; lo que **este producto trae de serie** es solo SRD.
 
 - `apps/api/src/rules/catalog/` — razas, clases, armaduras y la tabla de competencia. Cada
   fichero de datos lleva su cabecera de atribución apuntando aquí, y hay una prueba
-  (`catalog.spec.ts`) que **falla si alguna la pierde**.
+  (`catalog.spec.ts`) que **falla si alguna la pierde**. La lista de ficheros que recorre esa
+  prueba **se mantiene a mano**, y por eso hay que ampliarla al añadir datos nuevos: hasta el
+  2026-09-02 cubría cinco y `spell-slots.ts` se había quedado fuera —llevaba su cabecera, pero
+  perderla no ponía nada rojo—, o sea que esta frase prometía una garantía mecánica que cubría
+  menos de lo que decía. Lo encontró una auditoría, no la prueba.
+- `apps/web/src/features/character-sheet/Condiciones.tsx` — el **efecto de cada condición en una
+  línea** (tarea F4). Son resúmenes propios derivados de las entradas de condiciones del SRD 5.1,
+  y por eso siguen bajo CC BY: llevan la misma cabecera de atribución y **la misma clase de
+  prueba mecánica** que la protege (`apps/web/src/features/character-sheet/__tests__/Condiciones.test.tsx`). Viven en la web y no en el
+  catálogo de la API porque hoy **nada los transportaría**: `GET /catalog` no los devuelve, y
+  llevarlos allí exige tocar el controlador y declarar la forma de la respuesta en
+  `packages/shared`. Esa mudanza está **propuesta, no hecha**, y hasta que se haga el texto vive
+  en un solo sitio en vez de en dos.
 
 ### Dónde se ve en la aplicación
 
 CC BY 4.0 exige la atribución **en la obra distribuida**, no solo en el repositorio. La
-pantalla que la cumple es la de «Acerca de» / el pie de la aplicación web, y **todavía no
-existe**: entra con la pantalla de la hoja (tarea 2A.10) y está anotada como deuda en
-[`docs/06-pendientes.md`](./docs/06-pendientes.md). Hasta entonces el catálogo no se ha
-publicado en ninguna pantalla, así que no hay obra distribuida que lo contenga.
+pantalla que la cumple es la de «Acerca de» (`pages/AcercaDePage.tsx`) y el **pie de toda
+pantalla con sesión** (`ui/LegalNotice.tsx`, montado por `ui/AppShell.tsx`). **Ya existen**, y
+por eso este párrafo cambió el 2026-09-02: decía que no, y desde la tarea F4 la aplicación
+publica en pantalla no solo nombres del catálogo sino también el efecto resumido de cada
+condición, así que afirmar que no hay obra distribuida sería falso.

@@ -66,6 +66,26 @@ export function IconoConfirmacion({ className }: IconoProps) {
 }
 
 /**
+ * Quitar: el aspa, dibujada.
+ *
+ * Existía como el glifo de fuente **por** (U+00D7) dentro de un botón en la lista de condiciones,
+ * y eso incumplía la regla de iconos dibujados delante de sus narices: la excepción declarada son
+ * los cinco de `ui/Badge.tsx` y ninguno más. Lo encontró una auditoría el 2026-09-02, no una
+ * prueba — la prueba de glifos ni siquiera llevaba ese carácter en su lista, así que **la regla
+ * existía y nada la hacía cumplir**. Ahora sí: el carácter entró en `GLIFOS_PROHIBIDOS`.
+ *
+ * Se dimensiona en `1em` allá donde vive dentro de una línea de texto, como el resto de los que
+ * acompañan a una palabra.
+ */
+export function IconoQuitar({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="quitar">
+      <path d="M6 6 18 18M18 6 6 18" />
+    </Marco>
+  );
+}
+
+/**
  * Aviso: el triángulo con su admiración.
  *
  * Mismo trato que la confirmación, y por el mismo motivo: el mensaje de error de `ui/Field.tsx`

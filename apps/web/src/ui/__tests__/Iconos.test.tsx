@@ -17,7 +17,9 @@ import { OrnamentRule } from "../Ornament";
 // La primera sola no basta, y la segunda sola no comprueba que el dibujo llegue a pintarse.
 
 /** Los prohibidos por nombre. Los cinco de `ui/Badge.tsx` son la excepción declarada y no están. */
-const GLIFOS_PROHIBIDOS = ["✓", "✔", "▲", "◆", "☾", "☀", "⚡", "⬆"];
+// «×» (U+00D7) entró el 2026-09-02: estaba haciendo de icono en la lista de condiciones y esta
+// lista no lo llevaba, así que la prueba pasaba en verde sobre una infracción.
+const GLIFOS_PROHIBIDOS = ["✓", "✔", "▲", "◆", "☾", "☀", "⚡", "⬆", "×"];
 
 function rutaDe(relativa: string) {
   return fileURLToPath(new URL(relativa, import.meta.url));
@@ -31,6 +33,7 @@ const FICHEROS_LIMPIADOS = [
   "../../features/invites/InvitePanel.tsx",
   "../../pages/AccountPage.tsx",
   "../../pages/LoginPage.tsx",
+  "../../features/character-sheet/Condiciones.tsx",
 ];
 
 describe("Iconos — la regla de que los iconos se dibujan", () => {

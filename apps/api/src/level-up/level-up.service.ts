@@ -7,7 +7,7 @@ import {
   Optional,
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
-import type { CharacterChoices } from "@dnd/shared";
+import type { CharacterChoices, ResolvedItem } from "@dnd/shared";
 import {
   deriveCharacter,
   findClass,
@@ -21,6 +21,7 @@ import { DICE_ROLLER } from "../rolls/rolls.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { resolveInventoryRowItem } from "../inventory/common/resolve-item";
 import { ResourcesService } from "../character-state/resources/resources.service";
 
 // Tarea 2A.9 — la subida de nivel: el diff propuesto, y el jugador que confirma.
@@ -112,7 +113,17 @@ export class LevelUpService {
    * A diferencia de `CharacterSheetService` (que tolera una ficha a medias en la lectura), aquí
    * no hay "motivo tolerable": sin una hoja completa no hay PG que subir ni aptitud que anunciar.
    */
-  private buildFor(character: FilaPersonaje, level: number): CharacterBuild {
+  private buildFor(
+    character: FilaPersonaje,
+    level: number,
+    /**
+     * El equipo **equipado**. Sin él, el previo de subida de nivel enseñaba unos PG que no
+     * coincidían con los de la propia hoja en cuanto había un objeto con efecto `maxHp` o que
+     * fijara una característica — dos pantallas del mismo personaje diciendo números distintos.
+     * Lo encontró la auditoría de mecánica de 2B.
+     */
+    items: ResolvedItem[] = [],
+  ): CharacterBuild {
     const faltantes: string[] = [];
     const claves = ["str", "dex", "con", "int", "wis", "cha"] as const;
     for (const clave of claves) if (character[clave] == null) faltantes.push(clave);
@@ -135,7 +146,30 @@ export class LevelUpService {
       class: { source: "SRD", key: character.classKey! },
       level,
       choices: (character.choices as CharacterChoices | null) ?? undefined,
+      items,
     };
+  }
+
+  /**
+   * El equipo equipado de un personaje, resuelto. Es la misma lectura que hace la hoja; vive
+   * aquí duplicada en dos líneas porque `CharacterSheetService` importa este módulo y llamarlo al
+   * revés cerraría el ciclo.
+   */
+  private async equipoEquipado(character: FilaPersonaje): Promise<ResolvedItem[]> {
+    const filas = await this.prisma.inventoryItem.findMany({
+      where: { characterId: character.id, location: "EQUIPPED" },
+      orderBy: { createdAt: "asc" },
+    });
+    const items: ResolvedItem[] = [];
+    for (const fila of filas) {
+      try {
+        const resuelto = await resolveInventoryRowItem(this.prisma, character.campaignId, fila);
+        items.push({ ...resuelto, slot: fila.slot ?? resuelto.slot });
+      } catch {
+        // Un objeto que ya no se puede resolver no impide subir de nivel: la hoja lo avisa.
+      }
+    }
+    return items;
   }
 
   /**
@@ -147,6 +181,8 @@ export class LevelUpService {
   private calcularDiff(
     character: FilaPersonaje,
     roll: boolean,
+    /** El equipo equipado: la hoja del previo tiene que ser la misma que la hoja de verdad. */
+    items: ResolvedItem[] = [],
   ): { preview: LevelUpPreview; tiradaParaRegistrar?: { expression: string; total: number } } {
     const from = character.level;
     if (from >= NIVEL_MAXIMO) {
@@ -157,8 +193,8 @@ export class LevelUpService {
     const to = from + 1;
 
     const claseSrd = findClass({ source: "SRD", key: character.classKey! });
-    const sheetFrom = deriveCharacter(this.buildFor(character, from));
-    const sheetTo = deriveCharacter(this.buildFor(character, to));
+    const sheetFrom = deriveCharacter(this.buildFor(character, from, items));
+    const sheetTo = deriveCharacter(this.buildFor(character, to, items));
 
     // **El modificador se lee de la hoja derivada, no de la columna.**
     //
@@ -259,7 +295,11 @@ export class LevelUpService {
   ): Promise<LevelUpPreview> {
     await this.membership.requireMember(campaignId, userId);
     const character = await this.requireEditable(userId, campaignId, characterId);
-    const { preview, tiradaParaRegistrar } = this.calcularDiff(character, roll);
+    const { preview, tiradaParaRegistrar } = this.calcularDiff(
+      character,
+      roll,
+      await this.equipoEquipado(character),
+    );
 
     if (tiradaParaRegistrar) {
       // Sin transacción: no hay ningún cambio de personaje con el que atarla. El registro es
@@ -316,7 +356,9 @@ export class LevelUpService {
       const to = from + 1;
       // Falla antes de escribir si la hoja no se puede construir a ese nivel: un
       // `LEVEL_CHANGED` sin una hoja derivable detrás sería un número que nadie puede explicar.
-      const hojaNueva = deriveCharacter(this.buildFor(character, to));
+      const hojaNueva = deriveCharacter(
+        this.buildFor(character, to, await this.equipoEquipado(character)),
+      );
 
       const actualizado = await tx.character.update({
         where: { id: characterId },

@@ -515,9 +515,30 @@ describe("InventoryService", () => {
         }),
       );
 
+      // La ranura tiene que pegarle al objeto —una daga va en una mano, no en la cabeza—, así
+      // que la carrera se provoca donde de verdad puede ocurrir.
+      await expect(
+        service.update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED", slot: "MAIN_HAND" }),
+      ).rejects.toMatchObject({ status: 409 });
+    });
+  });
+
+  describe("la ranura tiene que pegarle al objeto (auditoría de mecánica 2B)", () => {
+    it("una armadura en la cabeza es 400: si no, seguía dando su Clase de Armadura", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ srdKey: "chain-mail" }));
+
       await expect(
         service.update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED", slot: "HEAD" }),
-      ).rejects.toMatchObject({ status: 409 });
+      ).rejects.toMatchObject({ status: 400 });
+      expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+    });
+
+    it("y un escudo fuera de la mano izquierda también, que es como se apagaba la hoja entera", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ srdKey: "shield" }));
+
+      await expect(
+        service.update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED", slot: "FEET" }),
+      ).rejects.toMatchObject({ status: 400 });
     });
   });
 });

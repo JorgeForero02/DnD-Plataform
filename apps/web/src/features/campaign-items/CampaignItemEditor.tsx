@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TOPE_DE_DESTREZA_POR_CATEGORIA } from "@dnd/shared";
 import type {
   ArmorCategory,
   CreateCampaignItemInput,
@@ -56,14 +57,6 @@ import {
 const TIPOS_CON_ARMA: ItemKind[] = ["WEAPON"];
 const TIPOS_CON_ARMADURA: ItemKind[] = ["ARMOR", "SHIELD"];
 
-type ModoTopeDestreza = "SIN_TOPE" | "CON_TOPE" | "SIN_DESTREZA";
-
-function modoDeDexCap(dexCap: number | null | undefined): ModoTopeDestreza {
-  if (dexCap === null || dexCap === undefined) return "SIN_TOPE";
-  if (dexCap === 0) return "SIN_DESTREZA";
-  return "CON_TOPE";
-}
-
 export function CampaignItemEditor({
   campaignId,
   item,
@@ -115,8 +108,6 @@ export function CampaignItemEditor({
     item?.armorCategory ?? (kind === "SHIELD" ? "SHIELD" : "LIGHT"),
   );
   const [baseAc, setBaseAc] = useState(item?.baseAc?.toString() ?? "10");
-  const [modoTope, setModoTope] = useState<ModoTopeDestreza>(modoDeDexCap(item?.dexCap));
-  const [dexCapValue, setDexCapValue] = useState(item?.dexCap ? item.dexCap.toString() : "2");
   const [strengthRequirement, setStrengthRequirement] = useState(
     item?.strengthRequirement?.toString() ?? "0",
   );
@@ -191,12 +182,12 @@ export function CampaignItemEditor({
             armor: {
               category: kind === "SHIELD" ? "SHIELD" : armorCategory,
               baseAc: Number(baseAc) || 0,
-              dexCap:
-                modoTope === "CON_TOPE"
-                  ? Number(dexCapValue) || 0
-                  : modoTope === "SIN_DESTREZA"
-                    ? 0
-                    : undefined,
+              // **El tope lo determina la categoría** (SRD 5.1), no una casilla aparte: ligera
+              // sin tope, media +2, pesada nada. Eran dos controles independientes y el DM podía
+              // marcar «Pesada» y que su armadura sumara toda la Destreza —una CA silenciosamente
+              // alta, que es peor que una equivocada a la vista—. Lo encontró la auditoría de
+              // mecánica de 2B; el servidor ahora también lo rechaza.
+              dexCap: TOPE_DE_DESTREZA_POR_CATEGORIA[kind === "SHIELD" ? "SHIELD" : armorCategory],
               strengthRequirement: Number(strengthRequirement) || 0,
               stealthDisadvantage,
             },
@@ -442,40 +433,6 @@ export function CampaignItemEditor({
             </div>
             {kind === "ARMOR" && (
               <>
-                <RadioGroup
-                  name="dex-cap-mode"
-                  legend="Tope de Destreza a la CA"
-                  value={modoTope}
-                  onChange={setModoTope}
-                  options={[
-                    {
-                      value: "SIN_TOPE",
-                      label: "Sin tope",
-                      hint: "Suma toda la Destreza — ligera.",
-                    },
-                    {
-                      value: "CON_TOPE",
-                      label: "Con tope",
-                      hint: "Suma Destreza hasta un máximo — media.",
-                    },
-                    {
-                      value: "SIN_DESTREZA",
-                      label: "No suma Destreza",
-                      hint: "La Destreza no cuenta para esta CA — pesada.",
-                    },
-                  ]}
-                />
-                {modoTope === "CON_TOPE" && (
-                  <Field label="Tope">
-                    <input
-                      id="item-dex-cap"
-                      inputMode="numeric"
-                      value={dexCapValue}
-                      onChange={(e) => setDexCapValue(e.target.value)}
-                      className={fieldControlClass}
-                    />
-                  </Field>
-                )}
                 <label className="flex items-center gap-2 font-chrome text-chrome-sm text-text">
                   <input
                     type="checkbox"

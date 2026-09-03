@@ -92,6 +92,18 @@ export const armorCategorySchema = z.enum(["LIGHT", "MEDIUM", "HEAVY", "SHIELD"]
 export type ArmorCategory = z.infer<typeof armorCategorySchema>;
 
 /**
+ * El tope de Destreza **lo determina la categoría** (SRD 5.1), no es una casilla aparte: ligera
+ * sin tope, media +2, pesada nada. Un escudo no suma Destreza en absoluto — es una suma plana —
+ * y por eso tampoco tiene tope.
+ */
+export const TOPE_DE_DESTREZA_POR_CATEGORIA: Record<ArmorCategory, number | undefined> = {
+  LIGHT: undefined,
+  MEDIUM: 2,
+  HEAVY: 0,
+  SHIELD: undefined,
+};
+
+/**
  * Lo que hace falta para calcular la CA. **`dexCap` distingue tres cosas y no dos**: sin tope
  * (ligera), tope de 2 (media) y **cero** (pesada, que no suma nada). Un `0` mal puesto da una CA
  * silenciosamente baja y un `undefined` mal puesto la da silenciosamente alta.
@@ -266,6 +278,29 @@ function comprobarCoherencia(
       message: "Una armadura de cuerpo no puede tener la categoría SHIELD.",
     });
   }
+  // **La categoría manda sobre el tope de Destreza** (M2B-7). Eran dos controles independientes:
+  // el DM marcaba «Pesada» y, si no tocaba el otro, su armadura sumaba **toda** la Destreza —
+  // «un `undefined` mal puesto da una CA silenciosamente alta», como avisa el comentario de
+  // `armorDataSchema`, y la pantalla lo ponía por defecto. El SRD no las separa: la categoría
+  // **determina** el tope (ligera sin tope, media +2, pesada nada).
+  if (valor.armor) {
+    const esperado = TOPE_DE_DESTREZA_POR_CATEGORIA[valor.armor.category];
+    if (valor.armor.dexCap !== esperado) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["armor", "dexCap"],
+        message:
+          valor.armor.category === "LIGHT"
+            ? "Una armadura ligera no tiene tope de Destreza."
+            : valor.armor.category === "MEDIUM"
+              ? "Una armadura media tiene el tope de Destreza en 2."
+              : valor.armor.category === "HEAVY"
+                ? "Una armadura pesada no deja sumar la Destreza: su tope es 0."
+                : "Un escudo no tiene tope de Destreza: es una suma plana.",
+      });
+    }
+  }
+
   if (
     valor.weapon &&
     valor.weapon.versatileDice &&

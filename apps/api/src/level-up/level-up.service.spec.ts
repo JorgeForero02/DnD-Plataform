@@ -51,6 +51,11 @@ function dadoFijo(valor: number): Roller {
 function montar(roller?: Roller) {
   const prisma = {
     character: { findFirst: jest.fn(), update: jest.fn() },
+    // El previo deriva la hoja **con el equipo puesto** desde la auditoría de mecánica de 2B:
+    // sin esto, un objeto con efecto `maxHp` daba dos números distintos en dos pantallas del
+    // mismo personaje. Por defecto, sin equipo — que es el estado de todas estas pruebas.
+    inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
+    campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
     $transaction: jest.fn(),
   };
   const membership = {

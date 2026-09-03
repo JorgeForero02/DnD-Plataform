@@ -37,6 +37,11 @@ const sheetKeyLiteral = (campaignId: string, characterId: string) =>
 
 export function useInventory(campaignId: string, characterId: string) {
   return useQuery({
+    // **Se sondea, como la sesión en curso y el registro de la partida.** El DM entrega el botín
+    // desde su portátil y, sin esto, a los jugadores no les aparecía hasta volver a la pestaña:
+    // la invalidación solo alcanza al navegador que hizo el cambio. Treinta segundos es lo que
+    // ya usan las sesiones, y de momento se juega presencialmente — el tiempo real es la fase 4.
+    refetchInterval: 30_000,
     queryKey: inventoryKey(campaignId, characterId),
     queryFn: () => inventoryApi.fetchInventory(campaignId, characterId),
     enabled: Boolean(campaignId && characterId),

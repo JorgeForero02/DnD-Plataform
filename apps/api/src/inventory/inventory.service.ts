@@ -13,6 +13,7 @@ import {
   type ChangeMoneyInput,
   type CoinKey,
   type EquipSlot,
+  type ItemKind,
   type ItemLocation,
   type ResolvedItem,
   type UpdateInventoryItemInput,
@@ -39,6 +40,30 @@ import { resolveContentRef, resolveInventoryRowItem } from "./common/resolve-ite
 // mano a dos manos bloquee la otra— la decide este servicio, porque no hay forma de expresarla
 // como una restricción SQL sin modelar "ocupación derivada", que sería guardar lo calculado).
 
+/** Nombres para el mensaje de error; el resto de la interfaz traduce en la pantalla. */
+const NOMBRE_DE_TIPO: Record<ItemKind, string> = {
+  WEAPON: "un arma",
+  ARMOR: "una armadura",
+  SHIELD: "un escudo",
+  CONSUMABLE: "un consumible",
+  GEAR: "equipo",
+  OTHER: "un objeto",
+};
+
+const NOMBRE_DE_RANURA: Record<EquipSlot, string> = {
+  MAIN_HAND: "la mano principal",
+  OFF_HAND: "la mano izquierda",
+  ARMOR: "el cuerpo",
+  HEAD: "la cabeza",
+  NECK: "el cuello",
+  CLOAK: "la espalda",
+  RING_1: "un dedo",
+  RING_2: "el otro dedo",
+  HANDS: "las manos",
+  FEET: "los pies",
+  OTHER: "otra ranura",
+};
+
 interface PlacementInput {
   location?: ItemLocation;
   slot?: EquipSlot | null;
@@ -63,6 +88,20 @@ interface Placement {
  * decide la forma final y las contradicciones que se ven sin consultar nada más (sintonizar sin
  * estar equipado, sintonizar un objeto que no lo pide, equipar algo sin ranura).
  */
+/**
+ * Qué ranuras admite cada clase de objeto. **Una armadura en la cabeza seguía dando su Clase de
+ * Armadura**, y un segundo escudo colocado a propósito en una ranura libre apagaba la hoja
+ * entera (`InvalidEquipmentError` → `sheet: null`) en mitad de una sesión. Lo encontró la
+ * auditoría de mecánica de 2B.
+ *
+ * `OTHER` y `CONSUMABLE` no se acotan: son el cajón donde el DM mete lo que el SRD no nombra.
+ */
+const RANURAS_POR_TIPO: Partial<Record<ItemKind, EquipSlot[]>> = {
+  WEAPON: ["MAIN_HAND", "OFF_HAND"],
+  ARMOR: ["ARMOR"],
+  SHIELD: ["OFF_HAND"],
+};
+
 function resolvePlacement(
   current: PlacementCurrent,
   input: PlacementInput,
@@ -78,6 +117,14 @@ function resolvePlacement(
     if (!slot) {
       throw new BadRequestException(
         `"${itemDef.name}" no tiene una ranura de equipo: no se puede llevar puesto.`,
+      );
+    }
+    const admitidas = RANURAS_POR_TIPO[itemDef.kind];
+    if (admitidas && !admitidas.includes(slot)) {
+      throw new BadRequestException(
+        `"${itemDef.name}" no se puede llevar en esa ranura: ${NOMBRE_DE_TIPO[itemDef.kind]} va en ${admitidas
+          .map((r) => NOMBRE_DE_RANURA[r])
+          .join(" o ")}.`,
       );
     }
   } else {

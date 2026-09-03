@@ -65,6 +65,38 @@ describe("createCampaignItemSchema", () => {
     expect(r.success).toBe(false);
   });
 
+  it("una armadura pesada que dice sumar toda la Destreza se rechaza: la categoría manda", () => {
+    // Era el fallo M2B-7: dos controles independientes, y el DM marcaba «Pesada» sin tocar el
+    // otro. Una CA silenciosamente alta es peor que una equivocada a la vista.
+    const r = createCampaignItemSchema.safeParse({
+      name: "Coraza de placas del Rey Bajo",
+      kind: "ARMOR",
+      armor: { category: "HEAVY", baseAc: 18 },
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues[0].path).toEqual(["armor", "dexCap"]);
+  });
+
+  it("y la pesada con su 0 se acepta, igual que la media con su 2 y la ligera sin tope", () => {
+    const base = { name: "X", kind: "ARMOR" as const };
+    expect(
+      createCampaignItemSchema.safeParse({
+        ...base,
+        armor: { category: "HEAVY", baseAc: 18, dexCap: 0 },
+      }).success,
+    ).toBe(true);
+    expect(
+      createCampaignItemSchema.safeParse({
+        ...base,
+        armor: { category: "MEDIUM", baseAc: 14, dexCap: 2 },
+      }).success,
+    ).toBe(true);
+    expect(
+      createCampaignItemSchema.safeParse({ ...base, armor: { category: "LIGHT", baseAc: 11 } })
+        .success,
+    ).toBe(true);
+  });
+
   it("rechaza un dado a dos manos en un arma que no es versátil", () => {
     const r = createCampaignItemSchema.safeParse({
       ...armaMinima,

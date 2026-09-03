@@ -25,7 +25,7 @@ export function Toolbar({
   count?: ReactNode;
 }) {
   return (
-    <div className="mb-s4 rounded-radius-sm border border-muted/50 bg-surface/60 p-s3">
+    <div className="mb-s4 rounded-radius-sm border border-muted bg-surface p-s3">
       <div className="flex flex-wrap items-center gap-s3">
         {search && <div className="min-w-[14rem] max-w-sm flex-1">{search}</div>}
         {count && (
@@ -62,8 +62,8 @@ export function FilterChip({
       className={[
         "rounded-radius-sm border px-2 py-0.5 font-chrome text-chrome-xs transition-colors",
         active
-          ? "border-accent bg-accent/15 text-accent-text"
-          : "border-muted/60 text-muted hover:border-muted hover:text-text",
+          ? "border-accent bg-[color:var(--accent-tint)] text-accent-text"
+          : "border-muted text-muted hover:border-text hover:text-text",
       ].join(" ")}
     >
       {children}
@@ -94,7 +94,15 @@ export function ListRow({
   return (
     <Link
       to={to}
-      className="group block border-b border-muted/25 px-s3 py-s3 transition-colors hover:bg-surface/70 focus-visible:bg-surface/70"
+      // Clases enteras: las de opacidad no compilan en este proyecto, así que el filete entre
+      // filas y el resalte al pasar por encima **no se pintaban**.
+      //
+      // El filete es `--muted` entero y no `--copper-rule`, y eso lo decidió una medición: con
+      // `--copper-rule` el borde daba **1,09:1** en tema claro, muy por debajo del 3:1 que este
+      // proyecto exige a un objeto gráfico. Ese token vale donde nació —sobre la vitela de la
+      // hoja, que es cálida— y no sobre `--surface`. Un filete que separa filas tiene que verse;
+      // si la elección es entre discreto e invisible, se ve.
+      className="group block border-b border-muted px-s3 py-s3 transition-colors hover:bg-surface focus-visible:bg-surface"
     >
       <div className="flex flex-wrap items-baseline gap-x-s3 gap-y-1">
         {kind && (
@@ -132,7 +140,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-radius-sm border border-dashed border-muted/60 px-s5 py-s8 text-center">
+    <div className="rounded-radius-sm border border-dashed border-muted px-s5 py-s8 text-center">
       <p className="font-title text-chrome-lg text-text">{title}</p>
       {children && (
         <p className="mx-auto mt-s2 max-w-[52ch] font-chrome text-chrome-sm text-muted">

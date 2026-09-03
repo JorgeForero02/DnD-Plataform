@@ -50,13 +50,19 @@ const TONE_BORDER: Record<"muted" | "text" | "accent" | "danger", string> = {
 };
 // Sólo lo secreto lleva relleno. Es el único nivel que un DM tiene que localizar de un vistazo
 // en una lista de treinta filas, y el relleno es lo que hace que salte sin recurrir a más
-// tamaño ni a más borde. El alfa se compone contra el fondo real en la prueba de contraste, así
-// que este tinte está medido, no supuesto.
+// tamaño ni a más borde.
+//
+// **Aquí ponía que el tinte «está medido, no supuesto», y era falso: nunca se pintó.** La clase
+// era `bg-danger/10`, y en este proyecto ninguna utilidad de opacidad compila —los colores se
+// declaran como `var(--danger)` sin `<alpha-value>`, así que Tailwind la descarta sin avisar—.
+// La prueba de contraste componía un alfa contra el fondo y medía, en efecto, un fondo que no
+// existía. Ahora es un color completo declarado en `tokens.css`, que sí compila, y el contraste
+// se mide sobre lo que de verdad se pinta.
 const TONE_FILL: Record<"muted" | "text" | "accent" | "danger", string> = {
   muted: "",
   text: "",
   accent: "",
-  danger: "bg-danger/10",
+  danger: "bg-[color:var(--danger-tint)]",
 };
 
 export function Badge({ visibility }: { visibility: Visibility }) {

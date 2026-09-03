@@ -46,7 +46,7 @@ export const SRD_MODIFICATION_ES =
  */
 export function LegalNotice() {
   return (
-    <footer className="mt-s6 border-t border-copper/40 pt-s3 font-chrome text-chrome-xs text-muted">
+    <footer className="mt-s6 border-t border-copper pt-s3 font-chrome text-chrome-xs text-muted">
       <p>
         Contenido de reglas del{" "}
         <a

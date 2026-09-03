@@ -12,7 +12,7 @@ describe("ThemeToggle", () => {
     document.documentElement.setAttribute("data-theme", "dark");
     render(<ThemeToggle />);
     expect(
-      screen.getByRole("button", { name: "Cambiar a tema claro (pergamino)" }),
+      screen.getByRole("button", { name: "Cambiar al tema Lectura (vitela)" }),
     ).toBeInTheDocument();
   });
 
@@ -26,13 +26,13 @@ describe("ThemeToggle", () => {
     document.documentElement.setAttribute("data-theme", "dark");
     render(<ThemeToggle />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Cambiar a tema claro (pergamino)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar al tema Lectura (vitela)" }));
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     expect(localStorage.getItem("dnd-theme")).toBe("light");
-    expect(screen.getByRole("button", { name: "Cambiar a tema oscuro" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cambiar al tema Oscuro" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Cambiar a tema oscuro" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar al tema Oscuro" }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     expect(localStorage.getItem("dnd-theme")).toBe("dark");
   });

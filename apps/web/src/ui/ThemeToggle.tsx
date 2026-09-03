@@ -26,7 +26,12 @@ export function ThemeToggle() {
     setThemeState(next);
   }
 
-  const label = theme === "dark" ? "Cambiar a tema claro (pergamino)" : "Cambiar a tema oscuro";
+  // Los dos temas se llaman **Oscuro** y **Lectura**, no «oscuro» y «claro». No es un
+  // sinónimo bonito: en este producto el tema claro no es el mismo con el fondo blanco, es el
+  // MODO DE LEER —la vitela, el papel—, y así estaba escrito en `ui/tokens.css` desde que
+  // existe la capa de tokens («dark is the default, light is the parchment reading mode — not
+  // an afterthought»). El rótulo era lo único que no lo decía.
+  const label = theme === "dark" ? "Cambiar al tema Lectura (vitela)" : "Cambiar al tema Oscuro";
 
   return (
     <Button

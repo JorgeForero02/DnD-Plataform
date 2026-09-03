@@ -145,6 +145,26 @@
   --copper-rule: rgba(201, 125, 70, 0.45);
   --chrome-veil: rgba(16, 23, 28, 0.95);
 
+  /* Tareas F7/G — **los tintes que las clases de opacidad prometían y nunca pintaron.**
+   *
+   * `bg-accent/10`, `bg-danger/10` y compañía **no compilan en este proyecto**: los colores se
+   * declaran como `var(--accent)` sin `<alpha-value>`, así que Tailwind descarta la utilidad
+   * entera en vez de avisar (69 ocurrencias en el código, cero en el CSS del build; ver la P1
+   * de `docs/06-pendientes.md`). El relleno del distintivo «Solo DM», el fondo de la sección
+   * abierta en la barra lateral y el de un filtro activo llevaban meses sin existir — y el
+   * comentario de `ui/Badge.tsx` llegó a afirmar que ese tinte «está medido, no supuesto»,
+   * cuando la prueba de contraste medía un fondo que no se pintaba.
+   *
+   * Se declaran como color completo, igual que `--copper-rule` y `--chrome-veil`, porque un
+   * `bg-[color:var(--x)]` es un valor arbitrario y sí compila. Es el parche local; el arreglo
+   * global —tokens por canales— sigue pendiente porque obliga a remedir todas las pantallas. */
+  --accent-tint: rgba(74, 155, 184, 0.14);
+  --danger-tint: rgba(196, 86, 75, 0.14);
+  --veil: rgba(16, 23, 28, 0.75);
+  --copper-tint: rgba(201, 125, 70, 0.14);
+  --warning-tint: rgba(224, 168, 60, 0.12);
+  --muted-tint: rgba(139, 153, 161, 0.16);
+
   color-scheme: dark;
 }
 
@@ -180,6 +200,12 @@
     --copper-rule: rgba(143, 82, 40, 0.45);
     --chrome-veil: rgba(223, 229, 233, 0.95);
 
+    --accent-tint: rgba(31, 92, 115, 0.1);
+    --danger-tint: rgba(155, 58, 49, 0.1);
+    --veil: rgba(223, 229, 233, 0.75);
+    --copper-tint: rgba(143, 82, 40, 0.1);
+    --warning-tint: rgba(122, 83, 16, 0.1);
+    --muted-tint: rgba(76, 93, 102, 0.12);
     color-scheme: light;
   }
 }
@@ -211,6 +237,12 @@
   --copper-rule: rgba(143, 82, 40, 0.45);
   --chrome-veil: rgba(223, 229, 233, 0.95);
 
+  --accent-tint: rgba(31, 92, 115, 0.1);
+  --danger-tint: rgba(155, 58, 49, 0.1);
+  --veil: rgba(223, 229, 233, 0.75);
+  --copper-tint: rgba(143, 82, 40, 0.1);
+  --warning-tint: rgba(122, 83, 16, 0.1);
+  --muted-tint: rgba(76, 93, 102, 0.12);
   color-scheme: light;
 }
 
@@ -239,6 +271,12 @@
   --copper-rule: rgba(201, 125, 70, 0.45);
   --chrome-veil: rgba(16, 23, 28, 0.95);
 
+  --accent-tint: rgba(74, 155, 184, 0.14);
+  --danger-tint: rgba(196, 86, 75, 0.14);
+  --veil: rgba(16, 23, 28, 0.75);
+  --copper-tint: rgba(201, 125, 70, 0.14);
+  --warning-tint: rgba(224, 168, 60, 0.12);
+  --muted-tint: rgba(139, 153, 161, 0.16);
   color-scheme: dark;
 }
 

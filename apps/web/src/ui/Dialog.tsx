@@ -93,7 +93,12 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
       // pestaña". Un velo translúcido con desenfoque deja ver de dónde vienes, que es lo único
       // que un modal tiene que hacer bien. El panel es opaco por dentro, así que ni el
       // contraste del texto ni su medición cambian.
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/75 p-s4 backdrop-blur-sm"
+      // **El velo no se pintaba.** `bg-bg/75` es una clase de opacidad, y en este proyecto
+      // ninguna compila: los colores se declaran como `var(--bg)` sin `<alpha-value>` y Tailwind
+      // descarta la utilidad entera. O sea que los diálogos llevaban desde siempre **sin
+      // oscurecido detrás** — solo el desenfoque —, que es justo lo que se arregló en el reseño
+      // con el título «un modal que parece una capa». Nunca llegó a la pantalla.
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--veil)] p-s4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -119,7 +124,7 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
           // La elevación es lo que dice "esto está encima": borde de cobre —el acento del
           // marco— y una sombra de verdad. Sin ellas, un panel del color de las tarjetas sobre
           // un velo tenue sigue pareciendo parte de la página.
-          "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-copper/50 bg-surface p-s4 font-chrome text-chrome-sm text-text shadow-2xl",
+          "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-copper bg-surface p-s4 font-chrome text-chrome-sm text-text shadow-2xl",
           size === "lg" ? "max-w-2xl" : "max-w-md",
         ].join(" ")}
       >

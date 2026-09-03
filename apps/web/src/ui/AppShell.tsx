@@ -119,7 +119,13 @@ export function AppHeader({
     //  · un filete de cobre abajo, que es la única línea de acento de toda la pantalla;
     //  · y las acciones agrupadas a la derecha, separadas del nombre por una barra vertical, en
     //    vez de tres enlaces sueltos flotando a la misma distancia.
-    <header className="sticky top-0 z-30 border-b border-copper/40 bg-bg/95 shadow-[0_1px_0_0_var(--surface)] backdrop-blur">
+    // **La cabecera era transparente y nadie lo sabía.** Llevaba `bg-bg/95` y `border-copper/40`,
+    // y en este proyecto **ninguna clase de opacidad compila**: los colores se declaran como
+    // `var(--bg)` sin `<alpha-value>`, así que Tailwind descarta la utilidad entera sin avisar.
+    // O sea que el marco que enmarca toda la aplicación no tenía ni fondo ni filete: el contenido
+    // se veía pasar por debajo, solo desenfocado. `--chrome-veil` es ese mismo 95 % declarado
+    // como color completo en `tokens.css`, que sí compila.
+    <header className="sticky top-0 z-30 border-b border-copper bg-[color:var(--chrome-veil)] shadow-[0_1px_0_0_var(--surface)] backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-s4 px-s5 pr-16">
         <Link
           to="/"
@@ -132,7 +138,7 @@ export function AppHeader({
         {right}
         {userName && (
           <span className="hidden items-center gap-s3 font-chrome text-chrome-xs text-muted sm:flex">
-            <span className="h-4 w-px bg-muted/40" aria-hidden="true" />
+            <span className="h-4 w-px bg-muted" aria-hidden="true" />
             {userName}
           </span>
         )}

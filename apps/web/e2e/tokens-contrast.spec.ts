@@ -495,6 +495,16 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
+    // **Una segunda ficha, y no es adorno: sin ella no hay filete que medir.** El separador
+    // entre filas dejó de vivir en la fila y pasó al contenedor (`divide-y`), que lo pinta como
+    // borde superior de todas menos la primera. Con una sola ficha se medía el borde de un
+    // elemento que ya no tiene ninguno: daba 1,09:1 —o sea, nada— y la prueba lo cantaba como
+    // fallo de contraste cuando en realidad estaba midiendo el vacío.
+    await page.getByRole("button", { name: "Nuevo PNJ" }).click();
+    await page.getByLabel("Nombre").fill("Rahadin");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
     {
       const { color, bg } = await effectiveTextColours(
         page.getByRole("heading", { name: "Campaña de contraste" }),
@@ -512,13 +522,22 @@ for (const theme of ["dark", "light"] as const) {
     // Reseño 2026-09-02: la fila de una ficha es un enlace a su página de lectura, no un
     // botón que abre un formulario.
     const row = page.getByRole("link", { name: /Strahd von Zarovich/ });
+    // **El filete lo lleva el `<li>`, no el `<a>`**, porque `divide-y` pinta el borde superior de
+    // los hijos directos de la lista. Medir el enlace leía el gris del preflight (`#e5e7eb`), que
+    // contra un fondo oscuro contrasta de sobra: **la prueba pasaba en tema oscuro por el motivo
+    // equivocado** y solo se cayó en el claro. Se mide el elemento que de verdad lo pinta.
+    // Se mide el `<li>` de **Strahd**, que se creó primero y por tanto sale el segundo: las
+    // fichas se listan de la más nueva a la más vieja, y `divide-y` pinta el borde superior de
+    // todas menos la primera. Se llega por el ancestro del enlace y no por un `li:has(a)`
+    // suelto, que casaría con las migas de pan y con la barra lateral.
+    const filaConFilete = row.locator("xpath=ancestor::li[1]");
     {
       const { color, bg } = await effectiveTextColours(row);
       record(theme, "detalle de campaña: fila de entidad texto", contrastRatio(color, bg), 4.5);
     }
     {
-      const { border, bg } = await borderColourAgainstBg(row);
-      record(theme, "detalle de campaña: fila de entidad borde", contrastRatio(border, bg), 3);
+      const { border, bg } = await borderColourAgainstBg(filaConFilete);
+      record(theme, "detalle de campaña: filete entre filas", contrastRatio(border, bg), 3);
     }
     {
       const badge = row.locator('[data-visibility="DM_ONLY"]');

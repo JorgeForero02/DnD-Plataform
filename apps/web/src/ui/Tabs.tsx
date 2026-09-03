@@ -6,6 +6,13 @@ export interface TabItem {
   label: string;
   content: ReactNode;
   /**
+   * El dibujo que acompaña al rótulo en la barra lateral. **Opcional y decorativo**: va
+   * `aria-hidden`, porque el nombre accesible de la pestaña es su rótulo y meterle el icono
+   * dentro obligaría a cualquier búsqueda por nombre a conocerlo. Se dimensiona en `1em` para
+   * que escale con el texto, que es la regla de los iconos que viven en una línea.
+   */
+  icon?: ReactNode;
+  /**
    * Reseño 2026-09-02 — audit B4: ten tabs sat in one flat strip, so "Sesiones" — the thing
    * that happens every week — carried exactly the weight of "Documentos". A group name puts
    * the world on one side and the table on the other. Items with no group come first,
@@ -111,11 +118,16 @@ export function Tabs({ items, active: controlledActive, onChange, layout = "stri
           // under it against --surface (4.26:1 dark). --accent-text clears every dark surface.
           isActive
             ? sidebar
-              ? "border-accent bg-accent/10 text-accent-text"
+              ? "border-accent bg-[color:var(--accent-tint)] text-accent-text"
               : "border-accent text-accent-text"
             : "border-transparent text-muted hover:text-text",
         ].join(" ")}
       >
+        {sidebar && item.icon && (
+          <span aria-hidden="true" className="flex h-[1em] w-[1em] shrink-0 items-center">
+            {item.icon}
+          </span>
+        )}
         <span className="flex-1 truncate">{item.label}</span>
         {item.badge !== undefined && (
           // aria-hidden on purpose: without it the tab's accessible name becomes "PNJ 12", so

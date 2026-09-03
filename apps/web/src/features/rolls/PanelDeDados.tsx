@@ -10,6 +10,9 @@ import { SelectorDeVentaja } from "./SelectorDeVentaja";
 import { SelectorDeAudiencia } from "./SelectorDeAudiencia";
 import { RegistroDeTiradas } from "./RegistroDeTiradas";
 import { useCreateRoll } from "./hooks";
+import { useMyRole } from "../campaigns/members";
+import { PedirTirada } from "../roll-requests/PedirTirada";
+import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { conDadoAnadido } from "./expresion";
 import { DADOS_DE_ATAJO } from "./vocabulario";
 
@@ -75,6 +78,12 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const tirar = useCreateRoll(campaignId);
+  // Tarea 2C.5 — **el formulario de pedir solo se le ofrece al DM.** No es control de acceso:
+  // quien lo impone es `requireDM` en `roll-requests.service.ts`, y un jugador que llegara al
+  // endpoint recibiría un 403 igual. Lo que esto evita es ofrecer un botón que el servidor va a
+  // rechazar, que es mentir (docs/04-convenciones.md). Mientras el rol no se sabe —`undefined`
+  // por cualquiera de sus tres motivos— no se pinta: «no lo sé» nunca se trata como «sí».
+  const { role } = useMyRole(campaignId);
 
   // La etiqueta con la que el desglose nombra el modificador. Sin motivo escrito, «modificador»
   // —que es cierto siempre— en vez del nombre de algo que nadie ha dicho que se esté tirando.
@@ -114,138 +123,163 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
         paraQue="Se tira desde donde estás. Ventaja y desventaja como decisión, no como sintaxis."
       />
 
-      {/* Una región con nombre, como ya lo era el registro de abajo: sin nombre, las dos zonas
-          que enseñan un resultado son indistinguibles para quien navega por regiones — y también
-          para una prueba de navegador, que fue como se notó. */}
-      <section aria-label="Tirada nueva">
-        {/* **Pegada a la izquierda, no centrada.** Se comprobó mirando las dos capturas al
+      {/* **Arriba del todo**: lo que te han pedido va antes que lo que quieras tirar por tu
+          cuenta. Si no hay ninguna petición pendiente no pinta nada — ni siquiera una caja
+          vacía—, así que la pantalla de quien no tiene recados es la de antes de 2C.5. */}
+      <TiradasPendientes campaignId={campaignId} />
+
+      {/* **Dos columnas cuando hay sitio, y el motivo salió de mirar la pantalla montada.**
+          Pedir una tirada y tirar una llevan cada uno su control de ventaja y su selector de
+          audiencia, así que apilados en vertical la pantalla del DM enseñaba **dos veces
+          seguidas el mismo par de bloques de radios** y se leía como una repetición, no como dos
+          herramientas. En dos columnas se lee lo que son: a la izquierda lo que le pides a la
+          mesa, a la derecha lo que tiras tú.
+          No se escondió ninguna opción para arreglarlo —los radios con su frase son regla
+          vinculante—: se cambió dónde caen. Y en una pantalla estrecha vuelven a apilarse, que
+          es lo único que cabe. */}
+      <div className={role === "DM" ? "grid items-start gap-s5 xl:grid-cols-2" : undefined}>
+        {role === "DM" && <PedirTirada campaignId={campaignId} />}
+
+        {/* Una región con nombre, como ya lo era el registro de abajo: sin nombre, las dos zonas
+            que enseñan un resultado son indistinguibles para quien navega por regiones — y
+            también para una prueba de navegador, que fue como se notó. */}
+        <section aria-label="Tirada nueva">
+          {/* **Pegada a la izquierda, no centrada.** Se comprobó mirando las dos capturas al
             lado: en el prototipo la tarjeta arranca en el mismo filo que el título y la frase de
             para-qué, y centrarla abría un pasillo vacío a la izquierda que hacía que la cabecera
             y la tarjeta parecieran dos pantallas distintas. El ancho también sale de ahí. */}
-        <Panel className="max-w-[40rem]">
-          <div className="flex flex-col items-center gap-s2">
-            {/* El dado, dibujado y en cobre: el cobre significa «esto pertenece al mundo», y este
+          <Panel className="max-w-[40rem]">
+            <div className="flex flex-col items-center gap-s2">
+              {/* El dado, dibujado y en cobre: el cobre significa «esto pertenece al mundo», y este
               dibujo enmarca la tarjeta sin pedir que se pulse. Nada de glifos de fuente. */}
-            <span className="text-chrome-2xl text-copper-text">
-              <DadoDibujado />
-            </span>
-          </div>
-
-          <div className="mt-s3 flex flex-col gap-s3">
-            <Field
-              label="Qué se tira"
-              hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
-              error={error ?? undefined}
-            >
-              <input
-                type="text"
-                value={expresion}
-                onChange={(e) => setExpresion(e.target.value)}
-                spellCheck={false}
-                autoComplete="off"
-                className={`${fieldControlClass} font-data`}
-              />
-            </Field>
-
-            <div>
-              <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                Atajos
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {DADOS_DE_ATAJO.map((caras) => (
-                  <Button
-                    key={caras}
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
-                    aria-label={`Añadir un d${caras}`}
-                  >
-                    <DadoDibujado />
-                    <span className="font-data">d{caras}</span>
-                  </Button>
-                ))}
-              </div>
+              <span className="text-chrome-2xl text-copper-text">
+                <DadoDibujado />
+              </span>
             </div>
 
-            <SelectorDeVentaja
-              value={modo}
-              onChange={setModo}
-              etiqueta="esta tirada"
-              disabled={tirar.isPending}
-            />
-
-            <SelectorDeAudiencia
-              value={audiencia}
-              onChange={setAudiencia}
-              disabled={tirar.isPending}
-            />
-
-            <div className="grid gap-s3 sm:grid-cols-[2fr_1fr]">
-              <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">
+            <div className="mt-s3 flex flex-col gap-s3">
+              <Field
+                label="Qué se tira"
+                hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
+                error={error ?? undefined}
+              >
                 <input
                   type="text"
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  maxLength={120}
-                  className={fieldControlClass}
-                />
-              </Field>
-              <Field label="CD (opcional)" hint="En la mesa se tira muchas veces sin ninguna.">
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={cd}
-                  onChange={(e) => setCd(e.target.value)}
+                  value={expresion}
+                  onChange={(e) => setExpresion(e.target.value)}
+                  spellCheck={false}
+                  autoComplete="off"
                   className={`${fieldControlClass} font-data`}
                 />
               </Field>
+
+              <div>
+                <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                  Atajos
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {DADOS_DE_ATAJO.map((caras) => (
+                    <Button
+                      key={caras}
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
+                      aria-label={`Añadir un d${caras}`}
+                    >
+                      <DadoDibujado />
+                      <span className="font-data">d{caras}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <SelectorDeVentaja
+                value={modo}
+                onChange={setModo}
+                etiqueta="esta tirada"
+                disabled={tirar.isPending}
+              />
+
+              <SelectorDeAudiencia
+                value={audiencia}
+                onChange={setAudiencia}
+                disabled={tirar.isPending}
+              />
+
+              <div className="grid gap-s3 sm:grid-cols-[2fr_1fr]">
+                <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">
+                  <input
+                    type="text"
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                    maxLength={120}
+                    className={fieldControlClass}
+                  />
+                </Field>
+                <Field label="CD (opcional)" hint="En la mesa se tira muchas veces sin ninguna.">
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={cd}
+                    onChange={(e) => setCd(e.target.value)}
+                    className={`${fieldControlClass} font-data`}
+                  />
+                </Field>
+              </div>
+
+              <div className="flex items-center gap-s2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={alTirar}
+                  disabled={tirar.isPending}
+                >
+                  Tirar
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setResultado(null);
+                    setError(null);
+                  }}
+                >
+                  Limpiar
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-s2">
-              <Button type="button" variant="primary" onClick={alTirar} disabled={tirar.isPending}>
-                Tirar
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setResultado(null);
-                  setError(null);
-                }}
-              >
-                Limpiar
-              </Button>
-            </div>
-          </div>
-
-          {resultado &&
-            (resultado.revealed ? (
-              <div className="mt-s3">
-                {/* El total en grande, como en la maqueta. La línea de desglose de abajo lo repite
+            {resultado &&
+              (resultado.revealed ? (
+                <div className="mt-s3">
+                  {/* El total en grande, como en la maqueta. La línea de desglose de abajo lo repite
                   a propósito: el número grande es lo que se canta en la mesa, y el desglose es
                   de dónde salió — nunca un número solo. */}
-                <p className="text-center font-data text-chrome-2xl text-text">{resultado.total}</p>
-                <ResultadoDeTirada resultado={resultado} etiqueta={etiqueta} />
-              </div>
-            ) : (
-              <div className="mt-s3">
-                <TiradaACiegas etiqueta={etiqueta} expresion={resultado.expression} />
-              </div>
-            ))}
+                  <p className="text-center font-data text-chrome-2xl text-text">
+                    {resultado.total}
+                  </p>
+                  <ResultadoDeTirada resultado={resultado} etiqueta={etiqueta} />
+                </div>
+              ) : (
+                <div className="mt-s3">
+                  <TiradaACiegas etiqueta={etiqueta} expresion={resultado.expression} />
+                </div>
+              ))}
 
-          {/* La nota plegable de la maqueta. Dice dónde acaba el resultado, que es la pregunta que
+            {/* La nota plegable de la maqueta. Dice dónde acaba el resultado, que es la pregunta que
             se hace quien acaba de tirar y no ve nada guardado en la tarjeta. */}
-          <details className="mt-s3">
-            <summary className="cursor-pointer font-chrome text-chrome-xs text-muted">
-              ¿Dónde queda el resultado?
-            </summary>
-            <p className="mt-1 font-chrome text-chrome-xs leading-snug text-muted">
-              El resultado va al registro de la sesión, no se lo queda la pantalla.
-            </p>
-          </details>
-        </Panel>
-      </section>
+            <details className="mt-s3">
+              <summary className="cursor-pointer font-chrome text-chrome-xs text-muted">
+                ¿Dónde queda el resultado?
+              </summary>
+              <p className="mt-1 font-chrome text-chrome-xs leading-snug text-muted">
+                El resultado va al registro de la sesión, no se lo queda la pantalla.
+              </p>
+            </details>
+          </Panel>
+        </section>
+      </div>
 
       <RegistroDeTiradas campaignId={campaignId} />
     </div>

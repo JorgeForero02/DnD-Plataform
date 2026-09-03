@@ -28,8 +28,8 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-03 (tarde, con 2C.1 a 2C.5 dentro) corriendo las dos suites:
-**181 e2e de API** en 29 suites y **73 recorridos de navegador** en 17 especificaciones, todos
-verdes. La suite de API nueva es `game-clock`, y sus doce comprueban lo que el Prisma simulado no
+**181 e2e de API** en 29 suites y **78 recorridos de navegador** en 19 especificaciones, todos
+verdes (uno se salta a propósito, y lo declara su propia especificación). La suite de API nueva es `game-clock`, y sus doce comprueban lo que el Prisma simulado no
 puede: que **el reloj es una columna que de verdad sube**, que un jugador no puede adelantarlo, y
 que las dos reglas del descanso que necesitan tiempo de juego —una vez cada 24 horas, y con al
 menos 1 PG— se cumplen de punta a punta. La de 2C.4 es `condiciones-con-duracion`, y prueba lo que

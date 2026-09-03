@@ -45,6 +45,33 @@ traducción del paso `maxHp.exhaustion.half` y tumba tres pruebas a la vez.
 
 **Cómo revertir.** `git revert` del commit. Solo toca la web; el servidor ya sabía hacer todo esto.
 
+## 2026-09-03 (tarde) — 2C.5 (pantalla): el DM pide, a la jugadora le aparece sin recargar
+
+**Qué.** La otra mitad de 2C.5, y el recorrido que la cierra: **dos navegadores**, el DM pide desde
+su pantalla de dados, a la jugadora le aparece **sin recargar** —sondeo cada quince segundos, más
+corto que los treinta del inventario porque esto es una pregunta que espera respuesta—, tira desde
+ahí, y el DM ve el resultado en el registro.
+
+**La guía de CD rellena, no sustituye.** Seis botones con su número que escriben en el campo, y el
+campo acepta cualquier otro: el SRD la da como guía —«the DM sets the DC»— y obligar a elegir una
+de las seis convertiría una ayuda en una jaula.
+
+> **Dos cosas salieron de mirar la pantalla montada, y ninguna la habría visto una unitaria.**
+>
+> - **Dos campos distintos compartían el rótulo «Qué se tira»** —el de la petición y el de la
+>   expresión libre— en la misma pantalla. Quien navega con lector de pantalla oía dos veces lo
+>   mismo para dos controles que no son lo mismo. El de la petición pasa a ser **«Qué le pides»**.
+> - **La pantalla del DM enseñaba dos veces seguidas el mismo par de bloques de radios** —ventaja
+>   y audiencia, uno por tarjeta— y se leía como una repetición, no como dos herramientas. Ahora
+>   van en **dos columnas** cuando hay sitio: a la izquierda lo que le pides a la mesa, a la
+>   derecha lo que tiras tú. **No se escondió ninguna opción para arreglarlo** —los radios con su
+>   frase son regla vinculante—: se cambió dónde caen.
+
+**Probado.** 740 unitarias de web y el recorrido de dos navegadores, en verde. Ocho mutaciones del
+carril de pantalla, cada una en rojo sobre su prueba.
+
+**Cómo revertir.** `git revert` del commit. Solo toca la web.
+
 ## 2026-09-03 (tarde) — 2C.6 (servidor): las tablas del DM, apagadas por defecto
 
 **Qué.** El último bloque de 2C, y el que más cuidado pedía porque **no es una regla del juego**.

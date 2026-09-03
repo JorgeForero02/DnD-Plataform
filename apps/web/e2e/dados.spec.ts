@@ -76,7 +76,10 @@ test("**el dado descartado se pinta tachado** — y eso solo se puede medir en u
 
   // Con ventaja, el servidor convierte el d20 en `2d20kh1`: caen dos dados y uno se descarta.
   await page.getByLabel("Qué se tira").fill("1d20");
-  await page.getByRole("radio", { name: "Ventaja", exact: true }).check();
+  // **Acotado a la tarjeta.** Desde 2C.5 el DM también tiene «Pedir una tirada» en esta pantalla,
+  // con su propio control de ventaja: sin acotar, «Ventaja» resuelve a dos radios y la prueba se
+  // cae por modo estricto sin que nada del código esté mal.
+  await tarjeta(page).getByRole("radio", { name: "Ventaja", exact: true }).check();
   await page.getByRole("button", { name: "Tirar" }).click();
 
   await expect(tarjeta(page).getByRole("status")).toBeVisible();
@@ -147,7 +150,9 @@ test("**a ciegas, el total no viaja al jugador**: se mide sobre la respuesta HTT
   await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
 
   await page.getByLabel("Qué se tira").fill("1d20+5");
-  await page.getByRole("radio", { name: /a ciegas/i }).check();
+  await tarjeta(page)
+    .getByRole("radio", { name: /a ciegas/i })
+    .check();
 
   const [respuesta] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/rolls") && r.request().method() === "POST"),

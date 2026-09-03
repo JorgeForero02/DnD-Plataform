@@ -23,6 +23,8 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Tabs, type TabItem } from "../ui/Tabs";
 import { PanelDeReglas } from "../features/rules/PanelDeReglas";
+import { PanelDeBestiario } from "../features/bestiario/PanelDeBestiario";
+import { IconoBestiario } from "../features/bestiario/iconos";
 import { AppShell, AppHeader, PageHeader, Breadcrumbs } from "../ui/AppShell";
 import { EmptyState } from "../ui/Collection";
 import { CampaignOverview } from "../features/campaigns/CampaignOverview";
@@ -56,6 +58,7 @@ type TabConfig =
   | { kind: "sessions"; label: string; group?: string }
   | { kind: "characters"; label: string; group?: string }
   | { kind: "rules"; label: string; group?: string }
+  | { kind: "bestiary"; label: string; group?: string }
   | { kind: "items"; label: string; group?: string }
   | { kind: "dice"; label: string; group?: string }
   | { kind: "tables"; label: string; group?: string }
@@ -87,6 +90,13 @@ const TABS: TabConfig[] = [
   // es su cara mecánica, el dado de daño y la CA, que es lo que se toca durante la partida. El
   // prototipo los separa igual, y por el mismo motivo: son dos caras de la misma cosa y solo
   // una de ellas se consulta con los dados en la mano.
+  // 2D. **Justo antes de «Catálogo», que es donde lo pone el prototipo** (pantalla 28), y por el
+  // mismo motivo que el catálogo va donde va: es la cara mecánica de algo que ya tiene ficha de
+  // mundo. «PNJ» arriba es quién es Kellan y qué quiere; esto es su CA y sus puntos de golpe, que
+  // es lo que se consulta con los dados en la mano. El prototipo los mete en un grupo
+  // «HERRAMIENTAS» que aquí no existe —tendría dos entradas de nueve— así que van en «La mesa»,
+  // conservando el orden relativo, que es lo que de verdad se estaba copiando.
+  { kind: "bestiary", label: "Bestiario", group: GRUPO_MESA },
   { kind: "items", label: "Catálogo", group: GRUPO_MESA },
   // 2C.2. Va en «La mesa» y detrás del catálogo, como en el prototipo: es lo que se toca
   // **durante** la partida, no algo que se prepara antes. Y va aquí y no en la hoja de personaje
@@ -541,6 +551,15 @@ export function CampaignDetailPage() {
         group: t.group,
         icon: <IconoResumen />,
         content: <CampaignOverview campaignId={id} />,
+      };
+    }
+    if (t.kind === "bestiary") {
+      return {
+        id: "bestiary",
+        label: t.label,
+        group: t.group,
+        icon: <IconoBestiario />,
+        content: <PanelDeBestiario campaignId={id} />,
       };
     }
     if (t.kind === "rules") {

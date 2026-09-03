@@ -118,6 +118,13 @@ describe("catálogo de statblocks del SRD 5.1", () => {
     expect(bonoDeCompetenciaPorVd(13)).toBe(5);
     expect(bonoDeCompetenciaPorVd(17)).toBe(6);
     expect(bonoDeCompetenciaPorVd(21)).toBe(7);
+    expect(bonoDeCompetenciaPorVd(25)).toBe(8);
+    // **+9, la trampa que el contraste de reglas del 2026-09-02 dejó anotada**: la tabla de los
+    // monstruos sigue subiendo donde la de un personaje se para. Un personaje de nivel 20 tiene
+    // +6 y no puede pasar de ahí; un monstruo de VD 29 tiene +9. Reutilizar `proficiencyBonus`
+    // del nivel habría dado +9 solo para un «nivel» 33, que no existe.
+    expect(bonoDeCompetenciaPorVd(29)).toBe(9);
+    expect(bonoDeCompetenciaPorVd(30)).toBe(9);
   });
 
   /**

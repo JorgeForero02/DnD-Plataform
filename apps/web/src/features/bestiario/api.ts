@@ -1,0 +1,58 @@
+import type { CreateCampaignStatblockInput, InstantiateNpcInput, Statblock } from "@dnd/shared";
+import { apiFetch } from "../../lib/api";
+
+// Fase 2D — la puerta de datos del bestiario.
+//
+// El servidor ya filtra por `canView` (`apps/api/src/statblocks/statblocks.service.ts`): un
+// statblock `DM_ONLY` y un PNJ que el DM aún no ha enseñado **no viajan**. Aquí no se esconde
+// nada — lo que llega, se pinta. Es la misma división de trabajo de todo el proyecto: la
+// autorización se comprueba en el servidor, siempre.
+
+export interface StatblocksResponse {
+  /** Los quince del SRD 5.1. No son de nadie: los ve cualquiera que juegue. */
+  srd: Statblock[];
+  /** Los propios del DM que quien mira puede ver. */
+  campaign: Statblock[];
+}
+
+/** Un PNJ ya instanciado, tal y como lo devuelve el servidor. */
+export interface NpcEnLaMesa {
+  id: string;
+  name: string;
+  statblockRef: string | null;
+  currentHp: number | null;
+  tempHp?: number;
+  visibility: string;
+}
+
+export function fetchStatblocks(campaignId: string): Promise<StatblocksResponse> {
+  return apiFetch<StatblocksResponse>(`/campaigns/${campaignId}/statblocks`);
+}
+
+export function createStatblock(
+  campaignId: string,
+  input: CreateCampaignStatblockInput,
+): Promise<Statblock> {
+  return apiFetch<Statblock>(`/campaigns/${campaignId}/statblocks`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteStatblock(campaignId: string, statblockId: string): Promise<unknown> {
+  return apiFetch(`/campaigns/${campaignId}/statblocks/${statblockId}`, { method: "DELETE" });
+}
+
+export function fetchNpcs(campaignId: string): Promise<NpcEnLaMesa[]> {
+  return apiFetch<NpcEnLaMesa[]>(`/campaigns/${campaignId}/npcs`);
+}
+
+export function instantiateNpc(
+  campaignId: string,
+  input: InstantiateNpcInput,
+): Promise<NpcEnLaMesa[]> {
+  return apiFetch<NpcEnLaMesa[]>(`/campaigns/${campaignId}/npcs`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

@@ -28,8 +28,17 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-03 (tarde, con 2C.1 a 2C.5 dentro) corriendo las dos suites:
-**211 e2e de API** en 31 suites y **79 recorridos de navegador** en 20 especificaciones, todos
+**211 e2e de API** en 31 suites y **88 recorridos de navegador** en 21 especificaciones, todos
 verdes.
+
+> **Una prueba de navegador que prometía más de lo que comprobaba, cazada por su propia
+> mutación.** La del borde de la ficha del bestiario decía «no una clase que no existe» y solo
+> exigía ancho mayor que cero y color distinto de transparente. Al cambiar `border-muted` por
+> `border-line` —que **no está en la paleta**— la prueba siguió en verde, porque la clase `border`
+> de Tailwind pone igualmente 1 px con su color por defecto. Ahora compara contra **el token
+> resuelto**, midiéndolo con una sonda en la propia página, y la mutación se pone roja. Es el
+> mismo fallo de fondo que el borde partido que sobrevivió a la suite entera: `jsdom` no maqueta,
+> y una prueba de navegador que mide lo que no importa tampoco.
 
 > **Un recorrido de navegador llevaba meses pasando por suerte, y el cierre de la fase 2 lo cazó.**
 > «Nueva campaña» resuelve a **dos** botones —el de la cabecera y la tarjeta de borde discontinuo de

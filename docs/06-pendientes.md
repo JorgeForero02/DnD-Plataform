@@ -63,34 +63,59 @@ salir de «qué cifra ya no puede ser un error de tecleo».
 el evaluador, y el valor del tope es una decisión de producto, no una constante obvia. Entrarían
 con la fase 2C, que es la que se ocupa de las tiradas.
 
-## P1 · Ninguna clase de opacidad de Tailwind compila, y llevan meses pintando gris (2026-09-02)
+## Dejado por la adopción de la maqueta (2026-09-03)
 
-**Evidencia, medida y no supuesta.** `tailwind.config.js` declara los colores como
-`muted: "var(--muted)"`, sin `<alpha-value>`. Tailwind **no puede** emitir una variante con
-opacidad a partir de eso, así que **descarta la utilidad entera** en vez de avisar. Contado sobre
-el código: **69 ocurrencias** de clases tipo `border-muted/60`, `bg-accent/10`, `border-copper/40`.
-Buscadas en el CSS compilado de `dist`: **cero**. El elemento se queda con el color del preflight,
-`#e5e7eb`, en los dos temas.
+Lo que las cuatro tandas propusieron y no se hizo, con su motivo. Nada de esto es un fallo: son
+datos que la pantalla querría y el servidor todavía no da.
 
-**Lo que esto rompía de verdad**, encontrado al reformar la piel de la hoja:
+- **P2 · La hoja pide cuatro datos que el motor no deriva.** «Perspicacia 11 · Investigación 12»
+  necesita `passiveInsight` y `passiveInvestigation` —una línea cada una junto a
+  `passivePerception` en `engine.ts`—; «Competencias e idiomas» necesita que el DTO de la hoja
+  exponga las `weaponProficiencies` que **ya están en el catálogo**; e «Inspiración» necesita
+  sembrarse como recurso 0/1. Se pintaron los huecos y **no se calculó nada en el navegador**,
+  que es la regla: una regla del juego en el cliente es el error que `VelocidadYSentidos.tsx`
+  documenta haber tenido que deshacer.
+- **P3 · Rasgo · Ideal · Vínculo · Defecto.** La maqueta los pinta como cuatro campos; el modelo
+  tiene una `bio`. Se pinta la bio en vez de trocearla a ojo.
+- **P2 · La pestaña «Personajes» debería ser «La mesa entera».** El componente ya existe hecho
+  —`FichaDeElenco`, dentro de `MesaDeSesion.tsx`— y bastaría extraerlo a `features/characters/`
+  para que la pestaña lo consuma sin duplicar nada.
+- **P3 · La vista de jugador en el móvil no se hizo.** Cruza `character-sheet`, `rolls` y
+  `sessions`, y con tres agentes trabajando ahí a la vez no se tocó a medias.
+- **P2 · `BordeRasgado` debería subir a `ui/` y `Panel tone="vellum"` usarlo.** Hoy hay **dos
+  hojas rasgadas distintas**: la buena en `apps/web/src/features/character-sheet/Vitela.tsx` y la vieja de sierra en
+  `ui/Panel.tsx`, que además recorta en **porcentajes de caja**, así que el desgarro se deforma
+  con la altura — invisible en una ficha larga, gigante en un cuerpo de tres líneas.
+- **P3 · El tema no tiene tercer estado «Sistema».** Hoy el interruptor alterna dos. Añadirlo
+  exige tocar `ui/theme.ts`, y hay una copia sincronizada a mano de su clave en `index.html`.
+- **P3 · `Markdown.tsx` no separa sus párrafos.** Su `space-y-2` cae sobre el `Panel`, cuyo único
+  hijo es el relleno del borde, así que nunca llega a los `<p>`. Está tapado desde la página de
+  lectura; la causa sigue ahí.
+- **P3 · «Eventos» o «Sucesos».** La maqueta dice «Sucesos» y `plantillas.ts` dice «suceso» en
+  singular, pero `ROTULO_PLURAL`, `ETIQUETA_DE_TIPO` y `TITULO_NUEVO` dicen «Eventos». Si se
+  cambia, se cambian los tres a la vez.
 
-- El **subrayado de la afordancia de edición** (`border-muted/70`) se pintaba `#e5e7eb`. Sobre
-  vitela clara (`#f4efe2`) es casi el color del papel: la señal que distingue «esto se edita» de
-  «esto lo calculo yo» **era invisible**, y es una regla vinculante de
-  [04-convenciones.md](./04-convenciones.md).
-- La **cabecera fija de la hoja era transparente** (`bg-bg/95` no compilaba): el cuerpo se veía
-  por debajo, solo desenfocado.
-- Su **filete de cobre no era de cobre**.
+## P2 · Los tokens de Tailwind siguen sin admitir opacidad (2026-09-03)
 
-**Por qué sigue abierto.** El arreglo dentro de la hoja ya está hecho (clases enteras, sin
-opacidad). El arreglo **global** es declarar los tokens por canales —`--copper: 201 125 70`— y
-enseñar a `tailwind.config.js` `rgb(var(--copper) / <alpha-value>)`. Eso **rompe los
-`var(--copper)` directos** de los SVG de `ui/Ornament.tsx`, que esperan un color y recibirían tres
-números. Es un cambio transversal que obliga a **volver a medir el contraste de todas las
-pantallas**, y por eso no se hizo en la ronda de interfaz: no se mete un cambio global el día que
-se cierra y se despliega.
+**El daño está reparado; la causa sigue ahí.** Los colores se declaran en `tailwind.config.js`
+como `var(--muted)`, sin `<alpha-value>`, así que Tailwind **no puede** emitir una variante con
+opacidad: descarta la utilidad entera y no avisa. Llegó a haber **49 sitios** apoyados en eso, y
+ninguno pintaba — entre ellos el fondo de la cabecera, el velo de los diálogos, el relleno del
+distintivo «Solo DM» y el subrayado que distingue lo editable de lo derivado.
 
-**Lo que lo desbloquea:** una tarea propia, con su pasada de contraste completa en los dos temas.
+Los 49 están arreglados con clases enteras y con **tokens de color completo por tema**
+(`--accent-tint`, `--danger-tint`, `--copper-tint`, `--warning-tint`, `--muted-tint`, `--veil`),
+que sí compilan porque un `bg-[color:var(--x)]` es un valor arbitrario. Y hay **dos redes** para
+que no vuelva en silencio: `src/ui/__tests__/clases-de-opacidad.test.ts` barre el código fuente,
+y `e2e/clases-que-si-pintan.spec.ts` comprueba en el navegador que la utilidad llega al CSS y
+pinta.
+
+**Lo que queda abierto** es poder volver a usar `/NN`, que es más cómodo que inventar un token
+por cada tinte. Exige declarar los tokens por canales —`--copper: 201 125 70`— y enseñar a
+`tailwind.config.js` `rgb(var(--copper) / <alpha-value>)`. **Rompe** los `var(--copper)` directos
+de los SVG de `ui/Ornament.tsx`, que esperan un color y recibirían tres números, y obliga a
+**volver a medir el contraste de todas las pantallas**. Baja a P2 porque ya no hay nada roto:
+es comodidad, no corrección.
 
 ## La pantalla de juego con mapa — alcance nuevo, sin decidir (2026-09-02)
 

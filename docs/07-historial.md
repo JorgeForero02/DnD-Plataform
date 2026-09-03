@@ -15,6 +15,74 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 — Se adopta la maqueta, y 49 clases de CSS que nunca pintaron
+
+**Qué y por qué.** El autor encargó una maqueta a Figma Make a partir de nuestro propio prompt,
+la miró y dijo que **le gusta más que lo que teníamos**, sobre todo la hoja de personaje. Eligió
+adoptarla **como referencia principal**: manda en disposición, densidad y estructura salvo donde
+choque con una regla vinculante o con lo que hace el servidor. Cuatro frentes en paralelo, y a
+cada uno se le dio **el enlace y el guion para abrir la maqueta él mismo** con Playwright en vez
+de una descripción — porque describir lo que uno ha medido mal es como se propagan los errores.
+
+**La hoja** (`529a526`). Lo que más cambia y lo que el autor señaló: la casilla de característica
+pone **el modificador grande y la puntuación pequeña debajo**, al revés que la nuestra. La
+maqueta tiene razón: en la mesa se usa el modificador, la puntuación es su causa. Con ella entran
+la tira compacta de cinco cifras, la CA con su fórmula en línea, la fila de tarjetas y la tabla
+de ataques. Las salvaciones de muerte pasan a verse **siempre**: un contador que solo existe
+cuando ya estás a 0 PG no se puede consultar antes.
+
+**La campaña, la página de lectura y la mesa**, en el mismo commit. Con una decisión del autor
+que gobierna la barra lateral: **solo se enseña lo que existe**. Nada de entradas apagadas ni
+candados para las fases futuras — lo que no está hecho no se anuncia.
+
+### Lo que la maqueta se equivocaba, y no se copió
+
+Merece constar, porque adoptar algo «como referencia principal» no es copiarlo:
+
+- **Su conmutador DM/Jugador cambia lo que se pinta.** Aquí lo decide `canView` en el servidor.
+  Se copia el gesto; el mecanismo, jamás.
+- **Su aviso de DM es falso tres veces**: dice «cualquier número» (son cinco), «tienes que
+  escribir el motivo» (es opcional) y «aparece en la traza» (viaja en el suceso). Se escribió el
+  honesto, y la lista se **genera** de `OVERRIDABLE_KEYS` para que no se desincronice.
+- En su propia vista de jugador **le sigue ofreciendo «Nuevo personaje»** a un jugador.
+- Inventa una tarjeta «PENDIENTE 2» sin dato detrás.
+
+### Y el hallazgo que no venía en el encargo: 49 clases que no existían
+
+`tailwind.config.js` declara los colores como `var(--muted)`, sin `<alpha-value>`. Tailwind **no
+puede** emitir una variante con opacidad a partir de eso, así que **descarta la utilidad entera y
+no avisa**. Contadas en el código: 49. Encontradas en el CSS compilado: cero.
+
+Lo que llevaba meses sin pintarse:
+
+- **la cabecera de la aplicación no tenía fondo** — el contenido pasaba por debajo, solo
+  desenfocado;
+- **los diálogos no tenían velo**, que es exactamente lo que el reseño creyó arreglar bajo el
+  título «un modal que parece una capa»;
+- **el relleno del distintivo «Solo DM»**, el único nivel que un DM tiene que localizar de un
+  vistazo — y su comentario afirmaba que el tinte «está medido, no supuesto»: la prueba de
+  contraste componía un alfa contra un fondo inexistente;
+- **el subrayado que distingue lo editable de lo derivado**, que es una regla vinculante.
+
+Arreglado con clases enteras y tokens de color completo por tema, y protegido con **dos redes**
+que no se sustituyen: un barrido del código fuente y una medición en el navegador. Detalle en
+[08-pruebas.md](./08-pruebas.md).
+
+### Tres defectos más, encontrados de camino
+
+`override.manual` no estaba traducido y se pintaba **«Sin traducir: override.manual»** en la
+traza. Tres etiquetas de relación tenían el sujeto equivocado, así que esos enlaces **se leían
+del revés**. Y **cambiar los puntos de golpe no invalidaba el registro de la sesión**: el golpe
+salía en la hoja al instante y en la mesa solo cuando a la consulta le tocaba refrescar — en una
+partida en curso, un registro que va por detrás de lo que pasa. El recorrido tardaba 20 segundos
+en pasar; ahora tarda 3,6.
+
+**Cómo revertir.** Dos commits, sin migración. Revertir `436300f` devuelve la cabecera
+transparente y los diálogos sin velo; revertir `529a526` devuelve la hoja anterior y con ella
+las 47 clases que no pintaban en las pantallas.
+
+---
+
 ## 2026-09-02 (cierre de la ronda de interfaz) — Lo que volvió de la maqueta, y tres diagnósticos de los que dos eran falsos
 
 Cinco frentes en paralelo, más el que remató las reglas. **Cierra los tres encargos que el autor

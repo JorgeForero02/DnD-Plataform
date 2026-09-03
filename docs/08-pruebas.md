@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-02 al cerrar la fase 2A entera: **116 e2e de API** en 22 suites y
-**43 recorridos de navegador** en 10 especificaciones, todos verdes. Las suites de API nuevas del
+**53 recorridos de navegador** en 12 especificaciones, todos verdes. Las suites de API nuevas del
 día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
 `game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (6),
 `catalog-y-velocidad` (4) y **`partida` (12), que
@@ -43,6 +43,22 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > fila lleva a una página de lectura y el editor se abre desde ella, de modo que el recorrido
 > tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
 > sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
+
+> **Una clase de prueba más, del 2026-09-03: la que comprueba que una clase de CSS pinta.**
+> `jsdom` no resuelve una clase de Tailwind hasta un color, así que toda una familia de fallos
+> le era invisible **por construcción**: 49 utilidades de opacidad que el compilador descartaba
+> en silencio, entre ellas el fondo de la cabecera, el velo de los diálogos y el subrayado que
+> distingue lo editable de lo derivado. Se cubren con **dos redes que no se sustituyen**:
+> `src/ui/__tests__/clases-de-opacidad.test.ts` barre el código fuente —caza una clase
+> reintroducida en una pantalla que ningún recorrido monta— y `e2e/clases-que-si-pintan.spec.ts`
+> mide en el navegador que la utilidad llega al CSS y pinta un color, que es lo que el barrido
+> no puede saber.
+>
+> Y una advertencia que salió de ahí: **una prueba de contraste puede pasar midiendo un fondo
+> que no existe.** La del filete entre filas daba 12,89:1 en tema oscuro leyendo el gris del
+> preflight —alto contra un fondo oscuro por casualidad— y solo se cayó en el claro. Medía el
+> borde del enlace, y el filete lo pinta el `<li>`. Cuando una medición de contraste sale
+> sospechosamente alta, conviene comprobar **qué** se está midiendo.
 
 > **Y la alarma de maquetación acabó cazando el arrastre, que era lo que faltaba.** Durante unas
 > horas del 2026-09-02 aquí ponía que no había forma de probarlo: que en el editor de reglas «no
@@ -130,7 +146,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
-  existe.** Playwright cubre hoy **43 recorridos en diez especificaciones**, y dentro de
+  existe.** Playwright cubre hoy **53 recorridos en doce especificaciones**, y dentro de
   ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
   de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
   puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,

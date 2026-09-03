@@ -248,6 +248,12 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   - **La afordancia es información de dominio, no decoración.** Un valor editable lleva un
     subrayado tenue; **un valor derivado no lleva ninguno**, y esa ausencia significa «esto lo
     calculo yo, edita su causa».
+  - **Y puede ir cruzada con el tamaño, que es lo que trajo la maqueta el 2026-09-03.** En la
+    casilla de característica **lo grande es el modificador —derivado, sin subrayado— y lo
+    pequeño la puntuación —editable, subrayada—**, porque en la mesa se usa el modificador y la
+    puntuación es solo su causa. La regla nunca dijo que lo editable fuera lo prominente: dice
+    que se distinga. Cuando el tamaño y la afordancia apunten a sitios distintos, manda la
+    afordancia.
   - **Cómo se guarda depende del gesto, y no se mezclan dos patrones en un mismo formulario.**
     Automático donde el gesto **es** la acción entera (un desplegable, una casilla); explícito
     donde escribir es un proceso (un texto, con Guardar y Cancelar).
@@ -265,6 +271,24 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   para no cometer. Si una tarea futura necesitase filtrar algo que el servidor no manda hoy
   (p. ej. buscar por texto dentro del cuerpo), la búsqueda tiene que hacerse **en el
   servidor**, no ampliando este filtro de cliente para que reciba más de lo que debería.
+
+## Trampa de Tailwind que costó 49 defectos invisibles
+
+**Ninguna clase de opacidad sobre un token del proyecto compila.** `tailwind.config.js` declara
+los colores como `var(--muted)`, sin `<alpha-value>`, así que Tailwind **no puede** construir la
+variante y **descarta la utilidad entera, sin avisar**: el elemento se queda con el color del
+preflight, `#e5e7eb`. Nada falla, nada se pinta.
+
+Así que **no se escribe `bg-accent/10`, `border-muted/60` ni ninguna de esa familia.** Se usa la
+clase entera, o —si de verdad hace falta un tinte— un **token de color completo declarado por
+tema** en `ui/tokens.css` y consumido como `bg-[color:var(--accent-tint)]`, que es un valor
+arbitrario y sí compila. Hay tintes ya hechos para acento, peligro, cobre, aviso, apagado y el
+velo de los diálogos.
+
+Lo hace cumplir `apps/web/src/ui/__tests__/clases-de-opacidad.test.ts`, que barre el código
+fuente, más `apps/web/e2e/clases-que-si-pintan.spec.ts`, que comprueba en el navegador que la
+utilidad llega al CSS. **Las dos hacen falta**: la primera caza una clase reintroducida donde
+ninguna prueba monta el componente; la segunda, una que se usa y no pinta.
 
 ## Trampa de vitest que ya nos mordió
 

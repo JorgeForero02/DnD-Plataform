@@ -1,0 +1,253 @@
+import { useState } from "react";
+import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
+import { Button, Field, fieldControlClass, Panel } from "../../ui";
+import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
+import { ApiError } from "../../lib/api";
+import { DadoDibujado } from "./DadoDibujado";
+import { ResultadoDeTirada } from "./ResultadoDeTirada";
+import { TiradaACiegas } from "./TiradaACiegas";
+import { SelectorDeVentaja } from "./SelectorDeVentaja";
+import { SelectorDeAudiencia } from "./SelectorDeAudiencia";
+import { RegistroDeTiradas } from "./RegistroDeTiradas";
+import { useCreateRoll } from "./hooks";
+import { conDadoAnadido } from "./expresion";
+import { DADOS_DE_ATAJO } from "./vocabulario";
+
+// Tarea 2C.2 — **la pantalla de dados de la campaña: se tira desde donde estás.**
+//
+// ## De dónde sale la forma
+//
+// De la pantalla «Dados» del prototipo (revisión obligatoria por `docs/04-convenciones.md`):
+// cabecera de sección con su frase de para-qué, una tarjeta centrada con el dado dibujado en
+// cobre, el control de tres estados, los dados que salieron, el total en grande, la línea de
+// desglose en fuente monoespaciada y los botones; y debajo, la nota plegable que dice dónde
+// acaba el resultado.
+//
+// ## Las cuatro diferencias deliberadas, y por qué
+//
+//  1. **Campo de expresión libre.** El prototipo no lo tiene: enseña un d20 y tres estados. El
+//     alcance de 2C sí lo exige, y con razón — «tira 2d6+3 porque lo digo yo» es la mitad de lo
+//     que pasa en una mesa, y sin campo esa mitad se resuelve con dados de plástico al lado del
+//     portátil, que es la imagen que esta herramienta existe para quitar.
+//  2. **Los siete dados como atajos** (d4 … d100). Son la otra mitad: escribir `1d6` a mano para
+//     el daño de una daga, veinte veces por combate, es exactamente el trabajo que un programa
+//     debería ahorrar. La composición vive en `expresion.ts` y se prueba sola.
+//  3. **Audiencia de la tirada.** El prototipo no la tiene y el contrato de 2C.1 sí
+//     (`rollAudienceSchema`). Va como **tres radios visibles con su frase**, nunca en un
+//     desplegable: regla vinculante de `docs/04-convenciones.md`, y aquí pesa el doble porque
+//     equivocarse en ese control enseña a los jugadores algo que no debían ver.
+//  4. **Motivo y CD.** Dos campos opcionales del contrato que el prototipo se salta. El motivo
+//     es lo que convierte una línea del registro en algo legible seis semanas después; la CD es
+//     opcional a propósito, porque en la mesa se tira muchas veces sin ninguna.
+//
+// ## Lo que el prototipo enseña y aquí NO se construye
+//
+// «Tiradas propias guardadas» —las macros del jugador— **queda pendiente**: está fuera del
+// alcance de 2C y necesita persistencia propia (una tabla, sus permisos y su pantalla de
+// edición), no un rincón de esta. Se declara aquí para que la ausencia sea una decisión y no un
+// olvido.
+//
+// ## Y lo que no se hace en ningún caso
+//
+// **Aquí no se genera azar.** El navegador pide la tirada; no la hace. Y pide ventaja **por
+// nombre** (`mode`), nunca mandando `2d20kh1`: convertir el d20 es una regla del juego y vive en
+// el servidor (`apps/api/src/rolls/rolls.service.ts`). Tampoco se valida la expresión: quien
+// decide si una expresión es válida es el evaluador del servidor, y **su rechazo se pinta
+// legible y en línea, junto al campo** —nunca en un aviso flotante, que se ha ido antes de que
+// un lector de pantalla llegue a él (docs/04-convenciones.md)—, retirando el resultado anterior
+// para que nadie lea un total viejo como si fuera el de la tirada que acaba de rechazarse.
+
+function mensajeDeError(error: unknown): string {
+  // `apiFetch` ya convierte el cuerpo del 400 del servidor —`{ code, message }`— en una frase
+  // legible en español (`ApiError.message`). Aquí no se reescribe: se enseña.
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "No se pudo tirar.";
+}
+
+export function PanelDeDados({ campaignId }: { campaignId: string }) {
+  const [expresion, setExpresion] = useState("1d20");
+  const [motivo, setMotivo] = useState("");
+  const [cd, setCd] = useState("");
+  const [modo, setModo] = useState<RollMode>("NORMAL");
+  const [audiencia, setAudiencia] = useState<RollAudience>("PUBLIC");
+  const [resultado, setResultado] = useState<RollResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const tirar = useCreateRoll(campaignId);
+
+  // La etiqueta con la que el desglose nombra el modificador. Sin motivo escrito, «modificador»
+  // —que es cierto siempre— en vez del nombre de algo que nadie ha dicho que se esté tirando.
+  const etiqueta = motivo.trim() || "modificador";
+
+  function alTirar() {
+    const cdNumero = cd.trim() === "" ? undefined : Number(cd);
+    setError(null);
+    tirar.mutate(
+      {
+        expression: expresion.trim(),
+        ...(motivo.trim() ? { label: motivo.trim() } : {}),
+        ...(cdNumero !== undefined && Number.isFinite(cdNumero) ? { dc: cdNumero } : {}),
+        audience: audiencia,
+        mode: modo,
+      },
+      {
+        onSuccess: (r) => {
+          setError(null);
+          setResultado(r);
+        },
+        onError: (e) => {
+          // **El resultado anterior se retira.** Dejarlo puesto junto a un mensaje de error es
+          // la forma más barata de que alguien cante un total que no salió de esta tirada.
+          setResultado(null);
+          setError(mensajeDeError(e));
+        },
+      },
+    );
+  }
+
+  return (
+    <div>
+      <CabeceraDeSeccion
+        grupo="La mesa"
+        titulo="Dados"
+        paraQue="Se tira desde donde estás. Ventaja y desventaja como decisión, no como sintaxis."
+      />
+
+      {/* Una región con nombre, como ya lo era el registro de abajo: sin nombre, las dos zonas
+          que enseñan un resultado son indistinguibles para quien navega por regiones — y también
+          para una prueba de navegador, que fue como se notó. */}
+      <section aria-label="Tirada nueva">
+        {/* **Pegada a la izquierda, no centrada.** Se comprobó mirando las dos capturas al
+            lado: en el prototipo la tarjeta arranca en el mismo filo que el título y la frase de
+            para-qué, y centrarla abría un pasillo vacío a la izquierda que hacía que la cabecera
+            y la tarjeta parecieran dos pantallas distintas. El ancho también sale de ahí. */}
+        <Panel className="max-w-[40rem]">
+          <div className="flex flex-col items-center gap-s2">
+            {/* El dado, dibujado y en cobre: el cobre significa «esto pertenece al mundo», y este
+              dibujo enmarca la tarjeta sin pedir que se pulse. Nada de glifos de fuente. */}
+            <span className="text-chrome-2xl text-copper-text">
+              <DadoDibujado />
+            </span>
+          </div>
+
+          <div className="mt-s3 flex flex-col gap-s3">
+            <Field
+              label="Qué se tira"
+              hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
+              error={error ?? undefined}
+            >
+              <input
+                type="text"
+                value={expresion}
+                onChange={(e) => setExpresion(e.target.value)}
+                spellCheck={false}
+                autoComplete="off"
+                className={`${fieldControlClass} font-data`}
+              />
+            </Field>
+
+            <div>
+              <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                Atajos
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {DADOS_DE_ATAJO.map((caras) => (
+                  <Button
+                    key={caras}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
+                    aria-label={`Añadir un d${caras}`}
+                  >
+                    <DadoDibujado />
+                    <span className="font-data">d{caras}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <SelectorDeVentaja
+              value={modo}
+              onChange={setModo}
+              etiqueta="esta tirada"
+              disabled={tirar.isPending}
+            />
+
+            <SelectorDeAudiencia
+              value={audiencia}
+              onChange={setAudiencia}
+              disabled={tirar.isPending}
+            />
+
+            <div className="grid gap-s3 sm:grid-cols-[2fr_1fr]">
+              <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">
+                <input
+                  type="text"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  maxLength={120}
+                  className={fieldControlClass}
+                />
+              </Field>
+              <Field label="CD (opcional)" hint="En la mesa se tira muchas veces sin ninguna.">
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={cd}
+                  onChange={(e) => setCd(e.target.value)}
+                  className={`${fieldControlClass} font-data`}
+                />
+              </Field>
+            </div>
+
+            <div className="flex items-center gap-s2">
+              <Button type="button" variant="primary" onClick={alTirar} disabled={tirar.isPending}>
+                Tirar
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setResultado(null);
+                  setError(null);
+                }}
+              >
+                Limpiar
+              </Button>
+            </div>
+          </div>
+
+          {resultado &&
+            (resultado.revealed ? (
+              <div className="mt-s3">
+                {/* El total en grande, como en la maqueta. La línea de desglose de abajo lo repite
+                  a propósito: el número grande es lo que se canta en la mesa, y el desglose es
+                  de dónde salió — nunca un número solo. */}
+                <p className="text-center font-data text-chrome-2xl text-text">{resultado.total}</p>
+                <ResultadoDeTirada resultado={resultado} etiqueta={etiqueta} />
+              </div>
+            ) : (
+              <div className="mt-s3">
+                <TiradaACiegas etiqueta={etiqueta} expresion={resultado.expression} />
+              </div>
+            ))}
+
+          {/* La nota plegable de la maqueta. Dice dónde acaba el resultado, que es la pregunta que
+            se hace quien acaba de tirar y no ve nada guardado en la tarjeta. */}
+          <details className="mt-s3">
+            <summary className="cursor-pointer font-chrome text-chrome-xs text-muted">
+              ¿Dónde queda el resultado?
+            </summary>
+            <p className="mt-1 font-chrome text-chrome-xs leading-snug text-muted">
+              El resultado va al registro de la sesión, no se lo queda la pantalla.
+            </p>
+          </details>
+        </Panel>
+      </section>
+
+      <RegistroDeTiradas campaignId={campaignId} />
+    </div>
+  );
+}

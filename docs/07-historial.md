@@ -15,6 +15,63 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — 2C.2: la pantalla de dados, relanzar, y los dos topes que faltaban
+
+**Qué.** El bloque 2 de la fase 2C, en tres piezas.
+
+**1 · La pantalla de dados.** Expresión libre, los siete dados como atajos, ventaja/desventaja,
+audiencia, motivo y CD, con el registro de tiradas debajo. La forma sale del prototipo —revisión
+obligatoria antes de dibujar una pantalla nueva— y **cuatro cosas se apartan de él a propósito**,
+cada una escrita en la cabecera del componente: el campo de expresión libre y los atajos (el
+prototipo solo enseña un d20, y «tira 2d6+3 porque lo digo yo» es la mitad de lo que pasa en una
+mesa), la audiencia (que el prototipo no tiene y el contrato de 2C.1 sí), y el motivo con la CD. Lo
+que el prototipo enseña y **no** se construye son las macros del jugador: ficha **C2C-2**, para que
+la ausencia sea una decisión y no un olvido.
+
+**Y el rechazo de una expresión inválida por fin se pinta.** El evaluador lleva desde 2A.1
+devolviendo un motivo en español y no lo enseñaba nadie: ahora sale **en línea, junto al campo**, y
+retira el resultado anterior — dejarlo puesto al lado de un error es la forma más barata de que
+alguien cante un total que no salió de esa tirada.
+
+**2 · Relanzar (hueco H-2C-6).** El evaluador entendía `kh`/`kl` y nada más, así que el estilo de
+combate con arma a dos manos —relanzar unos y doses— se hacía a mano. **La sintaxis se copió en vez
+de inventarla, y ahí salió una trampa que conviene no heredar:** Foundry usa `r` para «relanza una
+vez y quédate el resultado nuevo» (<https://foundryvtt.com/article/dice-modifiers/>); Roll20 escribe
+el mismo caso como `2d6ro<2` **porque su motor trata `<` como `<=`**
+(<https://help.roll20.net/hc/en-us/articles/360037773133-Dice-Reference>). Se toma la forma de
+Foundry y **no** su trampa: aquí `<` es «menor que», y el mismo caso se escribe `2d6r<3`. La
+recursión (`rr`) **no entra**: ninguna regla del SRD relanza en cascada, y sería una sintaxis que
+nada de este juego usa y un bucle que habría que acotar.
+
+El dado relanzado **se enseña tachado**, en el mismo sitio que el descartado por `kh`/`kl` — para
+la mesa son lo mismo, un dado que cayó y no suma, así que relanzar no necesitó tocar la pantalla.
+
+**3 · Los dos topes de la ficha P2**, que estaban prometidos «para 2C»: el término constante de una
+expresión (hasta hoy `1d20+999999999` se aceptaba y se escribía en el registro) y la anulación del
+DM, que pasa de un ±999 único a **un rango por clave**. El detalle y el porqué de cada número, en
+[06-pendientes.md](./06-pendientes.md).
+
+**Cómo se trabajó.** La pantalla la construyó un agente con su frontera de ficheros escrita
+(`apps/web/src/features/rolls/**`, sin cablear y sin e2e); el evaluador, los topes, el cableado del
+carril, la prueba de navegador y esta documentación, el orquestador. **Al integrar salieron dos
+cosas que ningún carril podía ver solo**: la tarjeta iba centrada y en el prototipo va pegada al
+filo izquierdo bajo el título —se vio poniendo las dos capturas al lado, no leyendo el código—, y
+el recorrido de la tirada a ciegas **medía el caso equivocado**: tiraba con la cuenta del DM, que sí
+ve su propia tirada a ciegas, así que pasaba en verde sin comprobar nada. Ahora invita a un jugador
+y tira desde su navegador.
+
+**Probado.** 1118 unitarias de API, 703 de web, 43 de esquemas, 146 e2e de API y **71 recorridos de
+navegador en 16 especificaciones**, todos en verde. Cuatro mutaciones en el evaluador (quedarse el
+mejor de los dos dados en vez del nuevo; `<` como `<=`; ordenar el `kh` sobre los dados relanzados;
+quitar el tope de la constante), una en la anulación y siete del agente en la pantalla — cada una
+en rojo sobre la prueba que le toca, y **una de ellas cambió una prueba**: el mutante «quédate el
+mejor» lo cazaba una prueba distinta de la que llevaba ese nombre, así que la prueba que lo promete
+se reescribió para que un dado relanzado salga **peor** y se quede igual.
+
+**Cómo revertir.** `git revert` del commit. No toca el esquema de la base. Sí cambia el contrato de
+`PUT overrides/:target`, que ahora rechaza valores que antes aceptaba — si alguna anulación
+guardada quedara fuera de rango, se puede volver a fijar tras revertir.
+
 ## 2026-09-03 (tarde) — La suite de navegador ya deja el árbol limpio (M2B-13)
 
 **Qué.** `capturas-comparacion.spec.ts` escribía por defecto en `apps/web/capturas/`, que está en

@@ -20,17 +20,27 @@ import { fraseDeResultado, palabraDeNatural, rotuloDeConservacion } from "./voca
 // **Aquí no se tira nada.** El azar vive en el servidor (`apps/api/src/rolls/rolls.service.ts`):
 // este componente solo enseña el resultado estructurado que le llega.
 
+/**
+ * Los nueve campos que este componente pinta, y ni uno más.
+ *
+ * **Sigue siendo la variante revelada**: una tirada a ciegas no trae ninguno de ellos, así que el
+ * compilador tampoco deja pintarla aquí por descuido — que era el motivo entero de que el tipo
+ * fuera estrecho. Lo que cambia (2C.2) es que ya no exige `eventId` ni `audience`, que este
+ * componente nunca lee: el registro de tiradas trae exactamente estos nueve campos dentro del
+ * `payload` de un `ABILITY_ROLL` y **no** trae los otros dos, y rellenarlos con un valor
+ * inventado para satisfacer al tipo habría sido escribir una mentira para poder compilar.
+ */
+export type DesgloseDeTirada = Pick<
+  RollResultRevealed,
+  "expression" | "rolls" | "kept" | "dropped" | "modifier" | "total" | "dc" | "natural" | "outcome"
+>;
+
 export function ResultadoDeTirada({
   resultado,
   etiqueta,
   derivado,
 }: {
-  /**
-   * **La variante revelada, y por eso el tipo es más estrecho que `RollResult`.** Una tirada a
-   * ciegas no trae desglose: quien la pinte tiene que decidir antes qué enseña, y con este tipo
-   * el compilador no le deja olvidarse (`TiradaACiegas` es la otra mitad).
-   */
-  resultado: RollResultRevealed;
+  resultado: DesgloseDeTirada;
   /** Qué se estaba tirando: «Percepción», «Salvación de Destreza». */
   etiqueta: string;
   /**

@@ -81,6 +81,41 @@ En una herramienta donde el DM arbitra, la respuesta por defecto razonable es «
 esta ficha se cierra declarando tres modos. Si la respuesta es «sí», es un nivel de visibilidad
 nuevo con su migración y su repaso de todas las pantallas.
 
+## ~~P2~~ · Los topes de la tirada y de la anulación — **CERRADA el 2026-09-03 (2C.2)**
+
+Los dos entraron con la pantalla de dados, que es donde estaban prometidos.
+
+- **El término constante ya tiene tope**: `DICE_LIMITS.maxConstant` = 1000
+  (`apps/api/src/dice/dice.ts`). `1d20+999999999` es ahora un 400 con su motivo, en vez de una
+  cifra sin sentido escrita en el registro de la partida. **Mil sale de «qué cifra ya no puede ser
+  un error de tecleo»**, no del rango de la 5.ª edición: el modificador más alto de una hoja
+  legítima no llega a 30.
+- **La anulación del DM tiene un rango por clave**, no uno solo para las cinco
+  (`RANGO_DE_ANULACION`, `packages/shared/src/character-sheet.schema.ts`): CA 0–50, PG máximos
+  1–2000, iniciativa −20–50, velocidad 0–1000 pies, Percepción pasiva 0–50. Una CA de −999 se
+  rechaza; una CA de 30 por una regla de la casa **sigue entrando**, que era el riesgo que la
+  ficha avisaba — apretar el tope al rango del manual habría inutilizado la válvula de escape.
+  Los negativos se admiten **solo donde significan algo**: un modificador de iniciativa puede ser
+  negativo; unos PG máximos o una velocidad, no.
+
+**Dónde vive la comprobación del rango, y por qué no está en el esquema:** el tope depende de QUÉ
+se anula, y eso viaja en la URL (`PUT overrides/:target`), así que ningún esquema del cuerpo puede
+expresarlo. La tabla vive en `@dnd/shared` —una sola vez— y el servicio la aplica, igual que aplica
+«solo el DM». El esquema conserva un bordillo de ±2000 para cortar lo que no es un entero antes de
+tocar la base.
+
+## C2C-2 · Las «tiradas propias guardadas» del prototipo, fuera de 2C (2026-09-03)
+
+El prototipo enseña, bajo la tarjeta de dados, una tira de macros del jugador: «Ataque con
+estoque», «Salvación de Constitución con ventaja», «Sigilo». **No se construyó, y es una decisión,
+no un olvido**: son persistencia propia —una tabla, sus permisos, su pantalla de edición— y el
+alcance de 2C no las tiene. Hoy la ausencia solo está escrita en el comentario de cabecera de
+`apps/web/src/features/rolls/PanelDeDados.tsx`; esta ficha existe para que se pueda encontrar sin
+leer el código.
+
+**Lo que sí las hace baratas cuando toquen:** el contrato de una tirada ya es un objeto pequeño y
+cerrado (`createRollSchema`), así que una macro es ese objeto con un nombre.
+
 ## P2 · Los topes de la tirada y de la anulación, medidos (2026-09-02)
 
 Es la ficha **Q7** del plan de la ronda de interfaz, con la evidencia que le faltaba.

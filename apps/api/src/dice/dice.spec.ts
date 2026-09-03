@@ -165,3 +165,139 @@ describe("rollExpression", () => {
     });
   });
 });
+
+describe("relanzar un dado (2C.2)", () => {
+  // **La sintaxis se copia, no se inventa.** Foundry usa `r` para «relanza una vez y quédate el
+  // resultado nuevo» y `rr` para la recursiva (https://foundryvtt.com/article/dice-modifiers/);
+  // Roll20 escribe el mismo caso como `2d6ro<2` **porque su motor trata `<` como `<=`**
+  // (https://help.roll20.net/hc/en-us/articles/360037773133-Dice-Reference). Aquí se toma la
+  // forma de Foundry y NO su trampa: `<` es «menor que».
+  //
+  // Y `rr` no entra: **ninguna regla del SRD relanza en cascada**. El estilo de combate con arma
+  // a dos manos dice «you can reroll the die and must use the new roll» — una vez, y te quedas lo
+  // que salga aunque sea peor.
+
+  it("**relanza una vez y se queda el nuevo, aunque sea peor** — la regla del arma a dos manos", () => {
+    // `2d6r<3`: el primer dado saca 2, se relanza y saca **1**, que es PEOR — y se queda.
+    // El caso tiene que ser este y no un 1 que se relanza a otro 1: con dos unos, quedarse el
+    // mejor y quedarse el nuevo dan lo mismo, así que la prueba llevaría el nombre de una
+    // propiedad que no comprueba.
+    const r = rollExpression("2d6r<3", tirador([2, 1, 5]));
+    expect(r.terms[0].rolled).toEqual([2, 1, 5]);
+    expect(r.terms[0].kept).toEqual([1, 5]);
+    expect(r.terms[0].dropped).toEqual([2]);
+    expect(r.total).toBe(6);
+  });
+
+  it("y relanzar solo ocurre UNA vez: un resultado que vuelve a cumplir la condición se queda", () => {
+    // Ninguna regla del SRD relanza en cascada, así que un 1 relanzado a 1 se queda en 1.
+    const r = rollExpression("1d6r<3", tirador([1, 1]));
+    expect(r.terms[0].rolled).toEqual([1, 1]);
+    expect(r.terms[0].kept).toEqual([1]);
+    expect(r.total).toBe(1);
+  });
+
+  it("el dado relanzado **se enseña**, como el descartado: no se pierde nada de lo que cayó", () => {
+    const r = rollExpression("2d6r<3", tirador([2, 6, 4]));
+    // Todo lo que cayó sobre la mesa, en orden.
+    expect(r.terms[0].rolled).toEqual([2, 6, 4]);
+    // Lo que cuenta.
+    expect(r.terms[0].kept).toEqual([6, 4]);
+    // Y el 2 original queda a la vista, tachado, en el mismo sitio que un dado descartado.
+    expect(r.terms[0].dropped).toEqual([2]);
+    expect(r.total).toBe(10);
+  });
+
+  it("`r1` sin comparador relanza solo el uno exacto — la suerte del mediano", () => {
+    const r = rollExpression("1d20r1", tirador([1, 14]));
+    expect(r.terms[0].rolled).toEqual([1, 14]);
+    expect(r.total).toBe(14);
+
+    const sinSuerte = rollExpression("1d20r1", tirador([2]));
+    expect(sinSuerte.terms[0].rolled).toEqual([2]);
+    expect(sinSuerte.terms[0].dropped).toEqual([]);
+  });
+
+  it("**`<` es «menor que», no «menor o igual»** — y esa es la diferencia con Roll20", () => {
+    // Con `r<2` solo el 1 se relanza. Si `<` significara `<=`, el 2 también, y una mesa que
+    // copiara la expresión de Roll20 relanzaría de más sin enterarse.
+    const r = rollExpression("2d6r<2", tirador([1, 6, 2]));
+    expect(r.terms[0].rolled).toEqual([1, 6, 2]);
+    expect(r.terms[0].kept).toEqual([6, 2]);
+  });
+
+  it("`<=` existe para quien lo quiera decir así, y da lo mismo que `<3`", () => {
+    const conMenorIgual = rollExpression("2d6r<=2", tirador([2, 5, 4]));
+    expect(conMenorIgual.terms[0].kept).toEqual([5, 4]);
+  });
+
+  it("`>` y `>=` también valen: la condición no está atada a los valores bajos", () => {
+    const r = rollExpression("1d6r>4", tirador([6, 3]));
+    expect(r.terms[0].kept).toEqual([3]);
+  });
+
+  it("relanzar y conservar se combinan, y **el relanzado ya no compite por quedarse**", () => {
+    // `4d6r1kh3`: el 1 se relanza a 2, y de {2,3,4,5} se conservan los tres mejores.
+    const r = rollExpression("4d6r1kh3", tirador([1, 2, 3, 4, 5]));
+    expect(r.terms[0].rolled).toEqual([1, 2, 3, 4, 5]);
+    expect(r.terms[0].kept.slice().sort()).toEqual([3, 4, 5]);
+    // El 1 (relanzado) y el 2 (el peor de los que quedaron) están los dos a la vista.
+    expect(r.terms[0].dropped.slice().sort()).toEqual([1, 2]);
+    expect(r.total).toBe(12);
+  });
+
+  it("una condición que el dado no puede sacar es un error, no una expresión que no hace nada", () => {
+    // `1d6r8` no relanzaría nunca: quien la escribió quería otra cosa.
+    expect(() => rollExpression("1d6r8")).toThrow(DiceExpressionError);
+    try {
+      rollExpression("1d6r8");
+    } catch (e) {
+      expect((e as DiceExpressionError).code).toBe("RELANZAR_FUERA_DE_RANGO");
+    }
+  });
+
+  it("y `r>0`, que relanzaría siempre, también se rechaza", () => {
+    try {
+      rollExpression("1d6r>0");
+      throw new Error("debería haber fallado");
+    } catch (e) {
+      expect((e as DiceExpressionError).code).toBe("RELANZAR_FUERA_DE_RANGO");
+    }
+  });
+
+  it("el orden es fijo: `4d6kh3r1` no se entiende, y decirlo es mejor que adivinarlo", () => {
+    try {
+      rollExpression("4d6kh3r1");
+      throw new Error("debería haber fallado");
+    } catch (e) {
+      expect((e as DiceExpressionError).code).toBe("SINTAXIS");
+    }
+  });
+});
+
+describe("el término constante tiene tope (ficha P2)", () => {
+  it("**`1d20+999999999` se rechaza**, y hasta 2C.2 se aceptaba y se guardaba", () => {
+    try {
+      rollExpression("1d20+999999999");
+      throw new Error("debería haber fallado");
+    } catch (e) {
+      expect((e as DiceExpressionError).code).toBe("CONSTANTE_DEMASIADO_GRANDE");
+    }
+  });
+
+  it("el tope deja sitio de sobra para cualquier modificador real", () => {
+    expect(() => rollExpression(`1d20+${DICE_LIMITS.maxConstant}`)).not.toThrow();
+    expect(() => rollExpression(`1d20+${DICE_LIMITS.maxConstant + 1}`)).toThrow(
+      DiceExpressionError,
+    );
+  });
+
+  it("también acota el término negativo, que es la misma cifra con otro signo", () => {
+    try {
+      rollExpression("1d20-999999999");
+      throw new Error("debería haber fallado");
+    } catch (e) {
+      expect((e as DiceExpressionError).code).toBe("CONSTANTE_DEMASIADO_GRANDE");
+    }
+  });
+});

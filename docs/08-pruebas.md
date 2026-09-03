@@ -27,15 +27,27 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-03 (tarde, con 2C.1 dentro) corriendo las dos suites:
-**146 e2e de API** en 25 suites y **64 recorridos de navegador** en 15 especificaciones, todos
+**E2e**, medidos el 2026-09-03 (tarde, con 2C.1 y 2C.2 dentro) corriendo las dos suites:
+**146 e2e de API** en 25 suites y **71 recorridos de navegador** en 16 especificaciones, todos
 verdes. Los tres nuevos son de `rolls` y los trae el registro de tiradas: que **a ciegas la
 respuesta del jugador no trae el resultado y el DM sí lo ve entero**, que el registro trae
 tiradas y nada más —el arranque de la sesión es un suceso de la misma sesión y no sale— y que
 quien no es miembro recibe un 403. El primero **solo puede vivir aquí**: lo que se comprueba es
 el cuerpo de una respuesta HTTP real, no una llamada a un servicio.
 
-> Antes de 2C.1 eran 143 en 25.
+> Antes de 2C.1 eran 143 en 25, y 64 recorridos en 15.
+
+**`dados.spec.ts` (2C.2) mide cuatro cosas y ninguna la puede medir una unitaria**: que el dado
+descartado **se pinta tachado de verdad** (`line-through` es maquetación, y `jsdom` no maqueta);
+que el rechazo de una expresión inválida llega desde el evaluador **real** y se lee junto al
+campo; que la tarjeta no arrastra la página a lo ancho; y que **una tirada a ciegas no trae el
+total ni en la red**, comprobado sobre la respuesta HTTP y no sobre el DOM.
+
+> **Y ese último recorrido enseñó algo al escribirlo.** La primera versión tiraba con la cuenta
+> que había creado la campaña —el DM— y pasaba en verde **sin comprobar nada**: un DM sí ve su
+> propia tirada a ciegas, porque la esconde de la mesa y no de sí mismo. El recorrido bueno invita
+> a un jugador y tira desde su navegador. Una prueba en verde que mide el caso equivocado es peor
+> que no tenerla.
 
 **De los tres que trajo 2B**, los dos últimos los añadieron la revisión y la auditoría de
 mecánica: uno comprueba que **un objeto de otra campaña no se puede meter en

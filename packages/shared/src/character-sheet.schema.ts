@@ -105,11 +105,52 @@ export const overridableKeySchema = z.enum(OVERRIDABLE_KEYS);
 export type OverridableKey = z.infer<typeof overridableKeySchema>;
 
 /**
+ * **El rango de cada anulación, y de dónde sale cada número** (ficha P2 de
+ * `docs/06-pendientes.md`, cerrada en 2C.2).
+ *
+ * Hasta 2C.2 había **un solo tope para las cinco**, de −999 a 999. Para unos Puntos de Golpe
+ * máximos eso es razonable; para una Clase de Armadura, cuyo rango real de juego va de 5 a 30
+ * largos, tres cifras y un signo son un margen absurdo — y una anulación de `-999` en la CA no es
+ * una regla de la casa, es un dedo que resbaló.
+ *
+ * **El tope no sale del rango de la 5.ª edición, sale de «qué cifra ya no puede ser un error de
+ * tecleo»**, y esa distinción es la ficha entera: la anulación es **la válvula de escape del
+ * catálogo** —un objeto mágico raro, una regla de la casa, un PNJ que el DM decide y punto—, así
+ * que apretarla al rango del manual la inutilizaría justo para lo que existe. Cada rango de abajo
+ * deja el juego real muy holgado por dentro y corta lo que no puede ser intencionado.
+ *
+ * Los negativos se admiten **solo donde significan algo**: un modificador de iniciativa puede ser
+ * negativo; unos PG máximos, una CA, una velocidad o una Percepción pasiva negativos no existen en
+ * ninguna regla, y aceptarlos era dejar que el catálogo produjera un número imposible.
+ */
+export const RANGO_DE_ANULACION = {
+  // La CA más alta del SRD ronda 25 (armadura natural de un dragón antiguo); un personaje con
+  // placas y escudo llega a 21, y a 24 largos con objetos. Cincuenta deja el doble.
+  ac: { min: 0, max: 50 },
+  // El monstruo con más PG del SRD tiene 676. Dos mil deja sitio a un jefe casero y corta el
+  // dedo resbalado de cuatro cifras.
+  maxHp: { min: 1, max: 2000 },
+  // Es un modificador, no una tirada: puede ser negativo (Destreza baja, armadura pesada).
+  initiative: { min: -20, max: 50 },
+  // En pies. Ninguna criatura del SRD camina a más de 60; **cero es válido** —agarrado,
+  // paralizado, sujeto a una regla del DM—, así que el mínimo no puede ser 1.
+  "speed.walk": { min: 0, max: 1000 },
+  // 10 + modificador + competencia + rasgos: por encima de 30 ya no existe.
+  passivePerception: { min: 0, max: 50 },
+} as const satisfies Record<OverridableKey, { min: number; max: number }>;
+
+/**
  * Fijar una anulación. **El motivo es opcional**, como en todo este dominio: obligar a
  * explicarse en mitad de una sesión molesta más de lo que documenta.
+ *
+ * **El rango de aquí es el bordillo, no el tope real.** El tope de verdad depende de QUÉ se
+ * anula, y eso viaja en la URL (`PUT overrides/:target`), así que ningún esquema del cuerpo puede
+ * expresarlo: lo comprueba el servicio con `RANGO_DE_ANULACION`, igual que comprueba «solo el
+ * DM». Esto de aquí sigue existiendo porque es la puerta barata: corta lo que no es un entero
+ * antes de tocar la base.
  */
 export const setOverrideSchema = z.object({
-  value: z.number().int().min(-999).max(999),
+  value: z.number().int().min(-2000).max(2000),
   reason: z.string().max(280).optional(),
 });
 export type SetOverrideInput = z.infer<typeof setOverrideSchema>;

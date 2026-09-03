@@ -1,0 +1,284 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { PanelDeDados } from "../PanelDeDados";
+import * as rollsApi from "../api";
+import type { FilaDeTirada, PaginaDeTiradas } from "../api";
+import { ApiError } from "../../../lib/api";
+
+// Tarea 2C.2 — la pantalla de dados. Se prueba **lo que puede romperse en silencio**:
+//
+//  · que se manda la expresión y el modo que se eligieron (y no otros, ni una expresión ya
+//    montada con `kh1`, que sería el navegador aplicando una regla del juego);
+//  · que una respuesta `revealed: false` dice que se tiró a ciegas y **no** deja escapar un
+//    total — el agujero que 2C.1 cerró en el servidor y que aquí se podía reabrir;
+//  · que un 400 se pinta legible **junto al campo** y retira el resultado anterior, para que
+//    nadie cante un total que no salió de la tirada que acaba de rechazarse;
+//  · que un atajo compone la expresión esperada;
+//  · que el registro pinta las dos formas que llegan, la normal y la salvación de muerte;
+//  · que la audiencia son tres radios con su frase y **no** un desplegable (regla vinculante).
+
+function wrapper(qc: QueryClient) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+  };
+}
+
+function nuevoQc() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+}
+
+const CAMPANA = "camp-1";
+
+const REGISTRO_VACIO: PaginaDeTiradas = { events: [], nextCursor: null };
+
+function pintar(qc = nuevoQc()) {
+  return render(<PanelDeDados campaignId={CAMPANA} />, { wrapper: wrapper(qc) });
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(rollsApi, "fetchRolls").mockResolvedValue(REGISTRO_VACIO);
+});
+
+describe("PanelDeDados — tirar", () => {
+  it("manda la expresión y el modo que se eligieron, sin montar la ventaja en el cliente", async () => {
+    const crear = vi.spyOn(rollsApi, "createRoll").mockResolvedValue({
+      revealed: true,
+      eventId: "ev-1",
+      expression: "2d20kh1+3",
+      audience: "PUBLIC",
+      rolls: [12, 8],
+      kept: [12],
+      dropped: [8],
+      modifier: 3,
+      total: 15,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    pintar();
+
+    fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20+3" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
+
+    await waitFor(() => expect(crear).toHaveBeenCalledTimes(1));
+    expect(crear).toHaveBeenCalledWith(CAMPANA, {
+      expression: "1d20+3",
+      audience: "PUBLIC",
+      mode: "ADVANTAGE",
+    });
+  });
+
+  it("manda el motivo, la CD y la audiencia cuando se rellenan", async () => {
+    const crear = vi.spyOn(rollsApi, "createRoll").mockResolvedValue({
+      revealed: false,
+      eventId: "ev-2",
+      expression: "1d20",
+      audience: "BLIND",
+    });
+
+    pintar();
+
+    fireEvent.change(screen.getByLabelText("Motivo (opcional)"), {
+      target: { value: "Percepción" },
+    });
+    fireEvent.change(screen.getByLabelText("CD (opcional)"), { target: { value: "15" } });
+    fireEvent.click(screen.getByRole("radio", { name: "A ciegas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
+
+    await waitFor(() => expect(crear).toHaveBeenCalledTimes(1));
+    expect(crear).toHaveBeenCalledWith(CAMPANA, {
+      expression: "1d20",
+      label: "Percepción",
+      dc: 15,
+      audience: "BLIND",
+      mode: "NORMAL",
+    });
+  });
+
+  it("una respuesta a ciegas pinta el aviso y NO deja escapar ningún total", async () => {
+    vi.spyOn(rollsApi, "createRoll").mockResolvedValue({
+      revealed: false,
+      eventId: "ev-3",
+      expression: "1d20",
+      audience: "BLIND",
+    });
+
+    pintar();
+    fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
+
+    const aviso = await screen.findByText(/tirado a ciegas/i);
+    expect(aviso).toBeInTheDocument();
+    expect(document.querySelector('[data-tirada="a-ciegas"]')).not.toBeNull();
+    // Ni el total en grande ni el desglose: no hay nada que pintar, y ese es el punto.
+    expect(document.querySelectorAll("[data-dado]")).toHaveLength(0);
+    expect(screen.queryByText(/^\d+ = /)).toBeNull();
+  });
+
+  it("un 400 se pinta legible junto al campo y retira el resultado anterior", async () => {
+    const crear = vi
+      .spyOn(rollsApi, "createRoll")
+      .mockResolvedValueOnce({
+        revealed: true,
+        eventId: "ev-4",
+        expression: "1d20",
+        audience: "PUBLIC",
+        rolls: [17],
+        kept: [17],
+        dropped: [],
+        modifier: 0,
+        total: 17,
+        natural: "NONE",
+        outcome: "NO_DC",
+      })
+      .mockRejectedValueOnce(
+        new ApiError("La expresión de dados no se entiende: sobra un «+».", 400),
+      );
+
+    pintar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
+    await screen.findByText("17 = 17 dado");
+
+    fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20++" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
+
+    await waitFor(() => expect(crear).toHaveBeenCalledTimes(2));
+
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent("La expresión de dados no se entiende: sobra un «+».");
+    // **Junto al campo**, no flotando: el aviso es la descripción del propio control.
+    const campo = screen.getByLabelText("Qué se tira");
+    expect(campo).toHaveAttribute("aria-invalid", "true");
+    expect(campo.getAttribute("aria-describedby")).toContain(aviso.id);
+    // Y el resultado anterior ya no está.
+    expect(screen.queryByText("17 = 17 dado")).toBeNull();
+    expect(document.querySelectorAll("[data-dado]")).toHaveLength(0);
+  });
+
+  it("un atajo de dado compone la expresión: vacía da 1d6, y otro atajo lo suma", () => {
+    pintar();
+
+    const campo = screen.getByLabelText("Qué se tira");
+    fireEvent.change(campo, { target: { value: "" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Añadir un d6" }));
+    expect(campo).toHaveValue("1d6");
+
+    fireEvent.click(screen.getByRole("button", { name: "Añadir un d20" }));
+    expect(campo).toHaveValue("1d6+1d20");
+  });
+});
+
+describe("PanelDeDados — la audiencia es una decisión visible", () => {
+  it("son tres radios con su frase, no un desplegable", () => {
+    pintar();
+
+    // Ningún `<select>` en la pantalla: la regla vinculante de docs/04-convenciones.md.
+    expect(screen.queryByRole("combobox")).toBeNull();
+
+    for (const [etiqueta, frase] of [
+      ["Pública", "La mesa entera ve el resultado."],
+      ["Privada del DM", "La ves tú y el DM; el resto de la mesa, no."],
+      ["A ciegas", "Solo el DM ve el resultado; tú no."],
+    ] as const) {
+      const radio = screen.getByRole("radio", { name: etiqueta });
+      expect(radio).toBeInTheDocument();
+      const idFrase = radio.getAttribute("aria-describedby");
+      expect(idFrase).toBeTruthy();
+      expect(document.getElementById(idFrase as string)).toHaveTextContent(frase);
+    }
+  });
+
+  it("ningún valor de enumeración llega a la pantalla", () => {
+    pintar();
+    for (const crudo of ["PUBLIC", "DM_PRIVATE", "BLIND", "NORMAL", "ADVANTAGE", "DISADVANTAGE"]) {
+      expect(screen.queryByText(crudo)).toBeNull();
+    }
+  });
+});
+
+function fila(payload: FilaDeTirada["payload"], id: string): FilaDeTirada {
+  return {
+    id,
+    campaignId: CAMPANA,
+    sessionId: null,
+    actorUserId: "u-1",
+    type: payload.type,
+    subjectType: "character",
+    subjectId: "pj-1",
+    payload,
+    visibility: "PLAYERS",
+    createdAt: "2026-09-03T18:30:00.000Z",
+  };
+}
+
+describe("RegistroDeTiradas", () => {
+  it("pinta una tirada normal con su desglose y una salvación de muerte sin él", async () => {
+    vi.spyOn(rollsApi, "fetchRolls").mockResolvedValue({
+      nextCursor: null,
+      events: [
+        fila(
+          {
+            type: "ABILITY_ROLL",
+            expression: "1d20+3",
+            rolls: [14],
+            kept: [14],
+            dropped: [],
+            modifier: 3,
+            total: 17,
+            dc: 15,
+            natural: "NONE",
+            outcome: "SUCCESS",
+            reason: "Percepción",
+          },
+          "ev-a",
+        ),
+        fila(
+          {
+            type: "DEATH_SAVE",
+            roll: 20,
+            result: "CRIT_SUCCESS",
+            successes: 1,
+            failures: 1,
+          },
+          "ev-b",
+        ),
+      ],
+    });
+
+    pintar();
+
+    const normal = await waitFor(() => {
+      const nodo = document.querySelector('[data-tirada-tipo="ABILITY_ROLL"]');
+      expect(nodo).not.toBeNull();
+      return nodo as HTMLElement;
+    });
+    expect(normal).toHaveTextContent("17 = 14 dado +3 percepción");
+    expect(normal).toHaveTextContent("Supera la CD 15.");
+    expect(normal.querySelectorAll("[data-dado]")).toHaveLength(1);
+
+    const muerte = document.querySelector('[data-tirada-tipo="DEATH_SAVE"]') as HTMLElement;
+    expect(muerte).not.toBeNull();
+    expect(muerte).toHaveTextContent("Salvación de muerte: sacó 20");
+    expect(muerte).toHaveTextContent("vuelve en sí con 1 PG");
+    // **Sin desglose, y no se le inventa uno**: una salvación de muerte no lo tiene.
+    expect(muerte.querySelectorAll("[data-dado]")).toHaveLength(0);
+  });
+
+  it("dice que no hay nada cuando el registro viene vacío, en vez de dejar un hueco", async () => {
+    pintar();
+    expect(
+      await screen.findByText("Todavía no se ha tirado nada en esta campaña."),
+    ).toBeInTheDocument();
+  });
+
+  it("pide el registro de la campaña que se le pasó", async () => {
+    const leer = vi.spyOn(rollsApi, "fetchRolls").mockResolvedValue(REGISTRO_VACIO);
+    pintar();
+    await waitFor(() => expect(leer).toHaveBeenCalledWith(CAMPANA, {}));
+  });
+});

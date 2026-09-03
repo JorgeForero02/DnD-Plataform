@@ -1,4 +1,4 @@
-import type { RollMode, RollResultRevealed } from "@dnd/shared";
+import type { RollAudience, RollMode, RollResultRevealed } from "@dnd/shared";
 
 // Tarea F3 — el vocabulario de una tirada.
 //
@@ -85,3 +85,49 @@ export function fraseDeResultado(
   if (resultado.dc === undefined) return null;
   return FRASE_DE_RESULTADO[resultado.outcome](resultado.dc);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Tarea 2C.2 — **a quién va dirigida una tirada**, en palabras de mesa.
+//
+// `RollAudience` es una enumeración del contrato (`packages/shared/src/roll.schema.ts`) y este es
+// el único sitio de la web donde se convierte en español, igual que `MODOS_DE_TIRADA` de arriba.
+// Las tres frases describen lo que hace `VISIBILIDAD_POR_AUDIENCIA` + `canView`; **no lo
+// definen**: si alguna vez discrepan, el que miente es este fichero (docs/04-convenciones.md).
+// ---------------------------------------------------------------------------------------------
+
+export interface AudienciaDeTirada {
+  audiencia: RollAudience;
+  /** Lo que se lee en el radio. */
+  etiqueta: string;
+  /** La frase que explica **quién ve el resultado**, que es la única diferencia entre las tres. */
+  frase: string;
+}
+
+export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
+  {
+    audiencia: "PUBLIC",
+    etiqueta: "Pública",
+    frase: "La mesa entera ve el resultado.",
+  },
+  {
+    audiencia: "DM_PRIVATE",
+    etiqueta: "Privada del DM",
+    frase: "La ves tú y el DM; el resto de la mesa, no.",
+  },
+  {
+    audiencia: "BLIND",
+    // **No dice «solo el DM»** a secas: lo que la hace distinta de la privada es que quien tira
+    // tampoco ve su propio resultado, y esa es la mitad que el proyecto tardó una fase en tener.
+    etiqueta: "A ciegas",
+    frase: "Solo el DM ve el resultado; tú no.",
+  },
+];
+
+/**
+ * Los siete dados que se tiran en la mesa, para los atajos.
+ *
+ * **Es la lista del juego, no una lista de números bonitos**: el d100 entra porque existe en las
+ * tablas de la 5.ª edición, y el d3 y el d2 no, porque en el SRD se tiran como mitades de otro
+ * dado y ofrecerlos invitaría a escribir expresiones que el evaluador rechaza.
+ */
+export const DADOS_DE_ATAJO: readonly number[] = [4, 6, 8, 10, 12, 20, 100];

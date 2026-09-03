@@ -45,6 +45,8 @@ import {
 } from "../features/campaigns/iconosDeSeccion";
 import { CampaignItemsCatalogPage } from "../features/campaign-items/CampaignItemsCatalogPage";
 import { IconoImpedimenta } from "../features/campaign-items/iconos";
+import { PanelDeDados } from "../features/rolls/PanelDeDados";
+import { DadoDibujado } from "../features/rolls/DadoDibujado";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
@@ -53,6 +55,7 @@ type TabConfig =
   | { kind: "characters"; label: string; group?: string }
   | { kind: "rules"; label: string; group?: string }
   | { kind: "items"; label: string; group?: string }
+  | { kind: "dice"; label: string; group?: string }
   | { kind: "settings"; label: string; group?: string };
 
 // Reseño 2026-09-02 — audit B4. These ten used to sit in one flat strip, which said that
@@ -82,6 +85,11 @@ const TABS: TabConfig[] = [
   // prototipo los separa igual, y por el mismo motivo: son dos caras de la misma cosa y solo
   // una de ellas se consulta con los dados en la mano.
   { kind: "items", label: "Catálogo", group: GRUPO_MESA },
+  // 2C.2. Va en «La mesa» y detrás del catálogo, como en el prototipo: es lo que se toca
+  // **durante** la partida, no algo que se prepara antes. Y va aquí y no en la hoja de personaje
+  // porque la mitad de las tiradas de una mesa no son de nadie —«tirad todos percepción», «1d100
+  // a ver qué sale»— y una tirada sin personaje no tiene hoja donde vivir.
+  { kind: "dice", label: "Dados", group: GRUPO_MESA },
   // **Sin grupo, a propósito.** La maqueta lo mete en «LA CAMPAÑA», pero ahí acompañaba a
   // media docena de entradas que aquí no existen. Un rótulo de grupo sobre un único elemento
   // no agrupa nada: solo añade una línea de tipografía para decir en versalita lo que la
@@ -571,6 +579,17 @@ export function CampaignDetailPage() {
         badge: conteoPorTipo?.get(t.type) ?? undefined,
         icon: <IconoDeTipo type={t.type} />,
         content: <EntityTab key={t.type} campaignId={id} type={t.type} />,
+      };
+    }
+    if (t.kind === "dice") {
+      return {
+        id: "dice",
+        label: t.label,
+        group: t.group,
+        // El mismo dado dibujado que la hoja usa para pedir una tirada: es la misma acción, y dos
+        // dibujos distintos para lo mismo enseñan que son cosas distintas.
+        icon: <DadoDibujado />,
+        content: <PanelDeDados campaignId={id} />,
       };
     }
     if (t.kind === "items") {

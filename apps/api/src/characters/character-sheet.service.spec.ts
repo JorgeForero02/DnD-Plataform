@@ -553,6 +553,63 @@ describe("las anulaciones manuales del DM", () => {
     expect(prisma.character.update).not.toHaveBeenCalled();
   });
 
+  it("**una CA de −999 se rechaza**, y hasta 2C.2 se aceptaba: el tope era el mismo para las cinco", async () => {
+    // Ficha P2. El tope no sale del rango de la 5.ª edición —la anulación es la válvula de
+    // escape del catálogo y apretarla al manual la inutilizaría— sino de «qué cifra ya no puede
+    // ser un error de tecleo». Una CA negativa no existe en ninguna regla.
+    const { service, prisma, events } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+
+    await expect(
+      service.setOverride("dm1", "cmp1", "ch1", "ac", { value: -999 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    // Y no se escribe nada: ni la fila, ni el log.
+    expect(prisma.character.update).not.toHaveBeenCalled();
+    expect(events.record).not.toHaveBeenCalled();
+  });
+
+  it("el rango depende de QUÉ se anula: −5 de iniciativa vale, −5 de CA no", async () => {
+    // Es el punto de tener una tabla por clave en vez de un tope único: un modificador de
+    // iniciativa negativo es Destreza baja, algo que pasa en cualquier mesa.
+    const { service, prisma } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+
+    await expect(
+      service.setOverride("dm1", "cmp1", "ch1", "initiative", { value: -5 }),
+    ).resolves.toBeDefined();
+    await expect(
+      service.setOverride("dm1", "cmp1", "ch1", "ac", { value: -5 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("y la válvula de escape sigue abierta: una CA de 30 por un objeto raro se acepta", async () => {
+    // La ficha avisaba de esto: apretar el tope hasta el rango del manual rompería justo el caso
+    // para el que la anulación existe.
+    const { service, prisma } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+
+    await expect(
+      service.setOverride("dm1", "cmp1", "ch1", "ac", { value: 30, reason: "Regla de la casa" }),
+    ).resolves.toBeDefined();
+  });
+
+  it("una velocidad de 0 se acepta: agarrado o paralizado es cero, no «sin anular»", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+
+    await expect(
+      service.setOverride("dm1", "cmp1", "ch1", "speed.walk", { value: 0 }),
+    ).resolves.toBeDefined();
+  });
+
   it("al fijarla queda en el log con el valor anterior al lado", async () => {
     const { service, prisma, events } = montar();
     const fila = personaje({ overrides: { ac: 14 } });

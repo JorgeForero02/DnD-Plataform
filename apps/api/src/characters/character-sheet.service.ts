@@ -7,6 +7,7 @@ import {
   Inject,
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
+import { RANGO_DE_ANULACION } from "@dnd/shared";
 import type {
   AbilityKey,
   ContentRefInput,
@@ -580,6 +581,15 @@ export class CharacterSheetService {
     input: SetOverrideInput,
   ) {
     await this.membership.requireDM(campaignId, userId);
+    // **El rango depende de QUÉ se anula, y eso viaja en la URL**, así que ningún esquema del
+    // cuerpo puede comprobarlo: es una regla de negocio, como «solo el DM». La tabla vive una sola
+    // vez, en `@dnd/shared` (ficha P2).
+    const rango = RANGO_DE_ANULACION[target];
+    if (input.value < rango.min || input.value > rango.max) {
+      throw new BadRequestException(
+        `Una anulación de «${target}» va de ${rango.min} a ${rango.max}; llegó ${input.value}.`,
+      );
+    }
     const character = await this.prisma.character.findFirst({
       where: { id: characterId, campaignId },
     });

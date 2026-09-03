@@ -28,6 +28,20 @@ export const DICE_LIMITS = {
   maxDicePerTerm: 100,
   maxSides: 1000,
   maxTerms: 10,
+  /**
+   * **El término constante también tiene tope, desde 2C.2** (ficha P2 de `docs/06-pendientes.md`).
+   *
+   * No lo tenía: la rama que reconoce un número hacía `Number(...)` y lo devolvía sin comprobar
+   * nada, así que `1d20+999999999` se aceptaba, se guardaba y se escribía en el registro de la
+   * partida. No tumbaba nada —el evaluador ya estaba protegido contra `9999d9999`, que era el
+   * riesgo real— pero dejaba pasar una cifra sin sentido a un registro que se lee después.
+   *
+   * **Mil, y el número sale de «qué cifra ya no puede ser un error de tecleo»**, no del rango de
+   * la 5.ª edición: el modificador más alto que produce una hoja legítima está por debajo de 30,
+   * y un objeto mágico o una regla de la casa no llegan a tres cifras. Mil deja sitio de sobra
+   * para lo raro y corta lo absurdo.
+   */
+  maxConstant: 1000,
 } as const;
 
 export type DiceErrorCode =
@@ -37,7 +51,9 @@ export type DiceErrorCode =
   | "DEMASIADOS_DADOS"
   | "DEMASIADAS_CARAS"
   | "CONSERVAR_MAS_DE_LO_TIRADO"
-  | "CONSERVAR_CERO";
+  | "CONSERVAR_CERO"
+  | "CONSTANTE_DEMASIADO_GRANDE"
+  | "RELANZAR_FUERA_DE_RANGO";
 
 /**
  * Error tipado, nunca `NaN`. Una expresión inválida es una respuesta 400 con un motivo que se
@@ -69,7 +85,15 @@ export interface DiceTermResult {
   rolled: number[];
   /** Los que cuentan. En una constante, su valor. */
   kept: number[];
-  /** Los que se descartaron por `kh`/`kl`. Nunca se pierden: se enseñan. */
+  /**
+   * Los que **no cuentan**, y nunca se pierden: se enseñan.
+   *
+   * Dos motivos distintos caen aquí, y a propósito comparten campo: un dado descartado por
+   * `kh`/`kl`, y **el valor original de un dado relanzado** (2C.2). Para la pantalla son lo
+   * mismo —un dado que cayó sobre la mesa y no suma—, y `dadosDeLaTirada`
+   * (`apps/web/src/features/rolls/desglose.ts`) ya los tacha emparejándolos contra `rolled` como
+   * multiconjunto, así que relanzar **no necesitó tocar la pantalla**.
+   */
   dropped: number[];
   /** Lo que aporta al total, **sin signo**. El signo va aparte para poder pintarlo. */
   value: number;
@@ -82,15 +106,22 @@ export interface DiceRollResult {
   total: number;
 }
 
-// NdM, con `N` opcional (`d20` es `1d20`, que es como lo escribe todo el mundo), y un
-// `kh`/`kl` opcional con su número. `d` a secas o `4d` no encajan: falta el número de caras.
-const TERMINO_DADOS = /^(\d*)d(\d+)(?:(kh|kl)(\d+))?$/;
+// NdM, con `N` opcional (`d20` es `1d20`, que es como lo escribe todo el mundo), un `r` opcional
+// para relanzar y un `kh`/`kl` opcional con su número. `d` a secas o `4d` no encajan: falta el
+// número de caras.
+//
+// **El orden es fijo: primero relanzar, después conservar** (`4d6r1kh3`, no `4d6kh3r1`). Foundry
+// admite los modificadores en cualquier orden, y eso obliga a decidir aparte en qué orden se
+// aplican; aquí la sintaxis dice el orden, que es el que la regla del juego pide —se relanza el
+// dado, y de lo que quede se conserva lo mejor— y no hay una segunda forma de escribir lo mismo.
+const TERMINO_DADOS = /^(\d*)d(\d+)(?:r(<=|>=|<|>)?(\d+))?(?:(kh|kl)(\d+))?$/;
 const TERMINO_CONSTANTE = /^(\d+)$/;
 
 /**
  * Analiza y evalúa una expresión de dados.
  *
- * Acepta `4d6kh3`, `2d20kh1`, `2d20kl1`, `2d6+3`, `1d100`, `d20`, `10-1d4`.
+ * Acepta `4d6kh3`, `2d20kh1`, `2d20kl1`, `2d6+3`, `1d100`, `d20`, `10-1d4`, y desde 2C.2
+ * **relanzar**: `2d6r<3` (arma a dos manos), `1d20r1` (suerte del mediano), `4d6r1kh3`.
  * Rechaza cualquier otra cosa con un `DiceExpressionError`.
  */
 export function rollExpression(expression: string, roller: Roller = defaultRoller): DiceRollResult {
@@ -140,6 +171,12 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   const constante = TERMINO_CONSTANTE.exec(source);
   if (constante) {
     const valor = Number(constante[1]);
+    if (valor > DICE_LIMITS.maxConstant) {
+      throw new DiceExpressionError(
+        "CONSTANTE_DEMASIADO_GRANDE",
+        `Como mucho ${DICE_LIMITS.maxConstant} de modificador; llegó ${valor}.`,
+      );
+    }
     return { source, sign, sides: 0, rolled: [], kept: [valor], dropped: [], value: valor };
   }
 
@@ -151,7 +188,7 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
     );
   }
 
-  const [, cuentaCruda, carasCrudas, modo, conservarCrudo] = dados;
+  const [, cuentaCruda, carasCrudas, comparador, relanzarCrudo, modo, conservarCrudo] = dados;
   // `d20` sin número es `1d20`: es como se escribe en cualquier mesa y en cualquier manual.
   const cuenta = cuentaCruda === "" ? 1 : Number(cuentaCruda);
   const caras = Number(carasCrudas);
@@ -175,8 +212,34 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
     );
   }
 
+  // `rolled` conserva **todo** lo que cayó sobre la mesa, en orden, incluidos los dados que se
+  // relanzaron: la mesa los vio caer. `enJuego` es lo que sigue contando después de relanzar.
   const rolled: number[] = [];
-  for (let i = 0; i < cuenta; i++) rolled.push(roller(caras));
+  const enJuego: number[] = [];
+  const relanzados: number[] = [];
+
+  const relanzar =
+    relanzarCrudo === undefined
+      ? null
+      : condicionDeRelanzar(comparador, Number(relanzarCrudo), caras);
+
+  for (let i = 0; i < cuenta; i++) {
+    const primero = roller(caras);
+    rolled.push(primero);
+    if (relanzar && relanzar(primero)) {
+      // **Se relanza UNA vez y se usa el resultado nuevo, aunque sea peor.** Es lo que dicen las
+      // reglas que lo piden: el estilo de combate con arma a dos manos —«you can reroll the die
+      // and must use the new roll»— y la suerte del mediano. Ninguna regla del SRD relanza en
+      // cascada, así que la recursión de Foundry (`rr`) no entra: sería una sintaxis que ninguna
+      // regla de este juego usa, y un bucle que habría que acotar.
+      const segundo = roller(caras);
+      rolled.push(segundo);
+      relanzados.push(primero);
+      enJuego.push(segundo);
+    } else {
+      enJuego.push(primero);
+    }
+  }
 
   if (!modo) {
     return {
@@ -184,9 +247,9 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
       sign,
       sides: caras,
       rolled,
-      kept: [...rolled],
-      dropped: [],
-      value: suma(rolled),
+      kept: [...enJuego],
+      dropped: [...relanzados],
+      value: suma(enJuego),
     };
   }
 
@@ -203,18 +266,61 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
 
   // Se ordena una COPIA con su posición original, y se decide sobre ella; `rolled` conserva el
   // orden en que salieron los dados, que es lo que la mesa vio caer sobre el tablero.
-  const porValor = rolled.map((valor, indice) => ({ valor, indice }));
+  //
+  // **Y se decide sobre lo que quedó en juego, no sobre `rolled`**: en `4d6r1kh3` el uno que se
+  // relanzó ya no compite por quedarse. Ordenar `rolled` dejaría que un dado relanzado «ganara»
+  // con su valor viejo, que es el fallo silencioso de combinar los dos modificadores.
+  const porValor = enJuego.map((valor, indice) => ({ valor, indice }));
   porValor.sort((a, b) => (modo === "kh" ? b.valor - a.valor : a.valor - b.valor));
   const indicesConservados = new Set(porValor.slice(0, conservar).map((d) => d.indice));
 
   const kept: number[] = [];
-  const dropped: number[] = [];
-  rolled.forEach((valor, indice) => {
+  const dropped: number[] = [...relanzados];
+  enJuego.forEach((valor, indice) => {
     if (indicesConservados.has(indice)) kept.push(valor);
     else dropped.push(valor);
   });
 
   return { source, sign, sides: caras, rolled, kept, dropped, value: suma(kept) };
+}
+
+/**
+ * La condición de relanzar, como función.
+ *
+ * **Los comparadores significan lo que dicen.** `<3` es «menor que tres», así que relanza el 1 y
+ * el 2 — que es justo el estilo de combate con arma a dos manos. Roll20 trata `<` como `<=` en su
+ * motor de dados, y por eso su notación del mismo caso es `2d6ro<2`; **eso no se copia**: un
+ * operador que no significa lo que pone es una trampa que se paga cada vez que alguien escribe
+ * una expresión nueva. Aquí el mismo caso se escribe `2d6r<3` o `2d6r<=2`, y las dos dicen lo
+ * mismo porque los dos operadores dicen lo que ponen.
+ *
+ * Sin comparador, `r1` es «relanza si sale exactamente un 1», que es la forma corta de siempre.
+ */
+function condicionDeRelanzar(
+  comparador: string | undefined,
+  valor: number,
+  caras: number,
+): (dado: number) => boolean {
+  // **Fuera del rango del dado no es un matiz, es un error de escritura.** `1d6r8` no relanzaría
+  // nunca y `1d6r>0` relanzaría siempre: las dos son expresiones que quien las escribió no quería.
+  if (valor < 1 || valor > caras) {
+    throw new DiceExpressionError(
+      "RELANZAR_FUERA_DE_RANGO",
+      `Un d${caras} no puede sacar ${valor}, así que «r${comparador ?? ""}${valor}» no relanza lo que crees.`,
+    );
+  }
+  switch (comparador) {
+    case "<":
+      return (dado) => dado < valor;
+    case "<=":
+      return (dado) => dado <= valor;
+    case ">":
+      return (dado) => dado > valor;
+    case ">=":
+      return (dado) => dado >= valor;
+    default:
+      return (dado) => dado === valor;
+  }
 }
 
 function suma(valores: number[]): number {

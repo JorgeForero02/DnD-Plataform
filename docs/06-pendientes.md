@@ -63,6 +63,34 @@ salir de «qué cifra ya no puede ser un error de tecleo».
 el evaluador, y el valor del tope es una decisión de producto, no una constante obvia. Entrarían
 con la fase 2C, que es la que se ocupa de las tiradas.
 
+## P1 · La fidelidad visual con el prototipo, pendiente y pedida (2026-09-03)
+
+**Lo que dijo el autor tras ver la ronda desplegada**, y conviene citarlo entero porque marca el
+listón: *«me gusta más; igual me gustaría que en estilo visual sea mucho más similar al
+prototipo, porque evidentemente hay demasiadas diferencias visuales que de verdad me interesa que
+parezca demasiado al prototipo. Pero eso lo dejaremos para después.»*
+
+O sea: **la estructura ya es la del prototipo y el estilo todavía no.** La ronda del 2026-09-03
+cerró la forma —tarjetas, dos columnas, carril, densidad, una línea por habilidad— y el autor lo
+da por bueno. Lo que queda es el acabado, y **no está medido todavía**: nadie ha puesto las dos
+capturas una al lado de otra pixel a pixel para enumerar en qué se diferencian los tonos, los
+grosores de filete, los tamaños exactos, los espaciados y los pesos tipográficos.
+
+**Antes de abrir esta ronda hay que hacer ese inventario**, y hay herramienta para ello: el
+guion `apps/web/e2e/capturas-comparacion.spec.ts` fotografía nuestras pantallas en tema oscuro
+con contenido de ejemplo, y el prototipo está vivo en `https://sunny-glaze-58905833.figma.site`
+y se recorre con el Chromium de Playwright que ya está instalado. **Sin ese inventario, la ronda
+sería una sucesión de retoques a ojo**, que es exactamente lo que produjo la primera tanda —la
+que «adaptó» en vez de plasmar— y hubo que rehacer.
+
+**Cuatro diferencias ya conocidas** están justo debajo, en la ficha de la ronda anterior. Y hay
+**siete que son deliberadas y no se cierran**: están en
+[la revisión de lo que volvió](./superpowers/specs/2026-09-02-figma-make-revision.md), y seis de
+las siete existen porque copiarlas literalmente haría que la aplicación mienta o incumpla una
+regla nuestra — el conmutador DM/Jugador que cambia lo que se pinta en vez de lo que se envía, el
+aviso de DM que es falso tres veces, el botón que se le ofrece a un jugador y el servidor
+rechaza, la tarjeta inventada sin dato detrás.
+
 ## Dejado al plasmar el prototipo (2026-09-03)
 
 - **P3 · La tira de cifras sigue en su propia banda, no junto al nombre.** En el prototipo CA,

@@ -15,6 +15,36 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — 2C.4 (pantalla): la duración al aplicar, la vencida marcada, y la mitad explicada
+
+**Qué.** La otra mitad de 2C.4. La hoja ofrece **cuánto dura** una condición al aplicarla —las
+nueve duraciones del SRD más «indefinida», que es lo que había y sigue siendo el valor por
+defecto—, pinta la vencida **marcada y en su sitio** con sus dos botones (quitarla o renovarla),
+dice lo que le queda a una viva («Vence en 1 h 2 min») y **explica los PG máximos partidos** en vez
+de dejar que el número cambie sin más.
+
+**Lo que la tabla de duraciones no ofrece, y por qué:** «hasta el próximo descanso largo» y
+«mientras te concentres» **no son duraciones, son sucesos**. Modelarlas como un número sería
+mentir, así que no están y queda dicho en el propio módulo.
+
+**Renovar lleva su propio selector**, y esa fue una decisión del carril que merece constar: un
+botón «Renovar» a secas tendría que inventarse la duración original, porque **el servidor no la
+guarda** —guarda el instante en que vence—, y renovar en silencio con una duración adivinada es
+justo la clase de mentira que el resto de la fase evita.
+
+> **Y aquí apareció el defecto que la regla de integración anuncia.** El recorrido de navegador
+> encontró que aplicar una condición invalidaba **solo su propia lista**, no la hoja: desde 2A.12
+> una condición cambia la velocidad efectiva, y desde 2C.4 **los puntos de golpe máximos**, así que
+> la pantalla seguía enseñando 14 donde el servidor ya decía 7 hasta que alguien recargara.
+> **Ninguna unitaria podía verlo**: con la caché simulada, las dos consultas se rehacen siempre.
+> Arreglado en `useApplyCondition` y `useRemoveCondition`.
+
+**Probado.** 721 unitarias de web y **73 recorridos de navegador en 17 especificaciones**, en verde.
+Cinco mutaciones del carril de pantalla, cada una en rojo sobre su prueba, incluida la que borra la
+traducción del paso `maxHp.exhaustion.half` y tumba tres pruebas a la vez.
+
+**Cómo revertir.** `git revert` del commit. Solo toca la web; el servidor ya sabía hacer todo esto.
+
 ## 2026-09-03 (tarde) — 2C.5 (servidor): la guía de CD y la petición de tirada
 
 **Qué.** Las dos las pidió el DM asesor.

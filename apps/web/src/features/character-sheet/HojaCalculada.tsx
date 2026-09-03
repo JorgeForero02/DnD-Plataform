@@ -293,6 +293,9 @@ export function HojaCalculada({
                 campaignId={campaignId}
                 characterId={characterId}
                 hp={hp}
+                // La traza de los PG máximos, para poder decir por qué son la mitad cuando el
+                // agotamiento los parte (2C.4). La cifra sigue saliendo de `hp.max`.
+                maxHp={sheet.derived.maxHp}
                 puedeEditar={puedeEditar}
               />
             </TarjetaDeHoja>

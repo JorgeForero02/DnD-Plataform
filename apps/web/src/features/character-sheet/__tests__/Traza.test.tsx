@@ -172,3 +172,39 @@ describe("la fórmula de una línea, siempre visible", () => {
     expect(container.textContent).not.toContain("▾");
   });
 });
+
+// --- Tarea 2C.4 — el agotamiento en la traza de los PG máximos ---
+
+describe("ValorDerivado — el paso del agotamiento", () => {
+  it("el paso «exhaustion:4» sale en español, no como clave del motor", () => {
+    const maxHp: DerivedValue = {
+      key: "maxHp",
+      total: 12,
+      steps: [
+        {
+          op: "base",
+          amount: 25,
+          sourceType: "class",
+          sourceKey: "fighter",
+          labelKey: "maxHp.firstLevel",
+        },
+        {
+          op: "cap",
+          amount: -13,
+          sourceType: "manual",
+          sourceKey: "exhaustion:4",
+          labelKey: "maxHp.exhaustion.half",
+        },
+      ],
+    };
+    const { container } = render(<ValorDerivado etiqueta="PG máximos" valor={maxHp} />);
+    fireEvent.click(screen.getByRole("button", { name: "12" }));
+
+    expect(
+      screen.getByText("Agotamiento: los puntos de golpe máximos, a la mitad"),
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toContain("Sin traducir");
+    // Y el paso no queda marcado como desconocido, que es la red del diccionario.
+    expect(container.querySelector('[data-untranslated="true"]')).toBeNull();
+  });
+});

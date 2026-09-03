@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-03 (tarde, con 2C.1 a 2C.5 dentro) corriendo las dos suites:
-**172 e2e de API** en 28 suites y **71 recorridos de navegador** en 16 especificaciones, todos
+**172 e2e de API** en 28 suites y **73 recorridos de navegador** en 17 especificaciones, todos
 verdes. La suite de API nueva es `game-clock`, y sus doce comprueban lo que el Prisma simulado no
 puede: que **el reloj es una columna que de verdad sube**, que un jugador no puede adelantarlo, y
 que las dos reglas del descanso que necesitan tiempo de juego —una vez cada 24 horas, y con al
@@ -42,6 +42,13 @@ quien no es miembro recibe un 403. El primero **solo puede vivir aquí**: lo que
 el cuerpo de una respuesta HTTP real, no una llamada a un servicio.
 
 > Antes de 2C.1 eran 143 en 25, y 64 recorridos en 15.
+
+> **El recorrido de navegador de 2C.4 encontró un defecto que ninguna unitaria podía ver**, y es
+> el que la regla de integración anuncia: aplicar una condición invalidaba **solo** su propia
+> lista, no la hoja. Desde 2A.12 una condición cambia la velocidad efectiva y desde 2C.4 **los
+> puntos de golpe máximos**, así que la hoja seguía enseñando el número de antes hasta que alguien
+> recargara. Con la caché simulada de las unitarias las dos consultas se rehacen siempre, así que
+> el fallo era invisible por construcción. Arreglado en `useApplyCondition` y `useRemoveCondition`.
 
 **`dados.spec.ts` (2C.2) mide cuatro cosas y ninguna la puede medir una unitaria**: que el dado
 descartado **se pinta tachado de verdad** (`line-through` es maquetación, y `jsdom` no maqueta);

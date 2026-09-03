@@ -171,6 +171,28 @@ export function useDeclareRest(campaignId: string, characterId: string) {
   });
 }
 
+/**
+ * El reloj de la campaña, en segundos de juego (2C.4).
+ *
+ * **Se sondea cada treinta segundos**, como el inventario y la sesión en curso: quien mueve el
+ * reloj es el DM desde su portátil, y sin sondeo la cuenta atrás de una condición se quedaría
+ * congelada en el navegador del jugador hasta que algo más invalidara la consulta.
+ *
+ * **Y solo se pide cuando hace falta**: `enabled` lo apaga si el personaje no tiene ninguna
+ * condición con caducidad, que es el caso normal. Una hoja sin condiciones temporales no tiene
+ * nada que contar y no debe cargar al servidor con una consulta cada medio minuto.
+ */
+export const clockKey = (campaignId: string) => ["campaigns", campaignId, "clock"] as const;
+
+export function useGameClock(campaignId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: clockKey(campaignId),
+    queryFn: () => characterSheetApi.fetchClock(campaignId),
+    refetchInterval: 30_000,
+    enabled: Boolean(campaignId) && (options?.enabled ?? true),
+  });
+}
+
 export function useConditions(campaignId: string, characterId: string) {
   return useQuery({
     queryKey: conditionsKey(campaignId, characterId),
@@ -182,9 +204,30 @@ export function useConditions(campaignId: string, characterId: string) {
 export function useApplyCondition(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { key: string; level?: number; note?: string }) =>
-      characterSheetApi.applyCondition(campaignId, characterId, vars.key, vars.level, vars.note),
-    onSuccess: () => qc.invalidateQueries({ queryKey: conditionsKey(campaignId, characterId) }),
+    mutationFn: (vars: {
+      key: string;
+      level?: number;
+      note?: string;
+      /** Segundos de juego. Sin esto la condición es indefinida (2C.4). */
+      durationSeconds?: number;
+    }) =>
+      characterSheetApi.applyCondition(
+        campaignId,
+        characterId,
+        vars.key,
+        vars.level,
+        vars.note,
+        vars.durationSeconds,
+      ),
+    onSuccess: () => {
+      // **Y la hoja también.** Una condición no cambia solo su propia lista: cambia la velocidad
+      // efectiva desde 2A.12 y, desde 2C.4, **los puntos de golpe máximos** —el agotamiento nivel 4
+      // los parte por la mitad—. Invalidar solo `conditionsKey` dejaba la hoja enseñando el número
+      // de antes hasta que alguien recargara. Lo encontró el recorrido de navegador de 2C.4, no una
+      // unitaria: con la caché simulada, las dos consultas se rehacen siempre.
+      void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, characterId) });
+      void qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) });
+    },
   });
 }
 
@@ -192,7 +235,11 @@ export function useRemoveCondition(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (key: string) => characterSheetApi.removeCondition(campaignId, characterId, key),
-    onSuccess: () => qc.invalidateQueries({ queryKey: conditionsKey(campaignId, characterId) }),
+    // Quitarla mueve los mismos números que ponerla, así que invalida lo mismo.
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, characterId) });
+      void qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) });
+    },
   });
 }
 

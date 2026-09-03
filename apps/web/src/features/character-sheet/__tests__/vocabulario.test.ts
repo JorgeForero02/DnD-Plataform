@@ -105,6 +105,9 @@ const ETIQUETAS_QUE_EL_MOTOR_PUEDE_EMITIR = [
   "class.sorcerer.skills",
   "class.warlock.skills",
   "class.wizard.skills",
+  // agotamiento.ts (2C.4) — el cuarto nivel de agotamiento parte los PG máximos, y el paso lo
+  // dice. El nivel viaja en el `sourceKey` (`exhaustion:4`), no en esta clave.
+  "maxHp.exhaustion.half",
   // effective-speed.ts (velocidad-efectiva.ts la calca)
   "speed.base",
   "speed.condition.zero",

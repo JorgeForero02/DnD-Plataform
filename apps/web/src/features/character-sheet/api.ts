@@ -321,22 +321,51 @@ export interface ConditionRow {
   note: string | null;
   appliedById: string;
   createdAt: string;
+  /**
+   * Segundos del reloj de la campaña en que vence, o `null` si es indefinida (2C.4). El
+   * servidor lo calcula **al aplicarla**, sumando la duración al reloj de ese momento.
+   */
+  expiresAtClock?: number | null;
+  /**
+   * **Derivado en el servidor**, nunca aquí: `expired` es una resta contra el reloj de la
+   * campaña que `ConditionsService.list` hace al leer. La pantalla no vuelve a calcularlo —si
+   * lo hiciera habría dos verdades y una acabaría discrepando—; solo lo pinta.
+   *
+   * Opcional en el tipo porque otras pantallas fuera de esta feature
+   * (`features/sessions/MesaDeSesion.tsx`) construyen filas sin él en sus pruebas.
+   */
+  expired?: boolean;
+}
+
+/** El reloj de la campaña (`GET /campaigns/:id/clock`), en **segundos de juego**. */
+export interface ClockStateDto {
+  seconds: number;
+}
+
+export function fetchClock(campaignId: string): Promise<ClockStateDto> {
+  return apiFetch(`/campaigns/${campaignId}/clock`);
 }
 
 export function fetchConditions(campaignId: string, characterId: string): Promise<ConditionRow[]> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/conditions`);
 }
 
+/**
+ * `durationSeconds` son **segundos de juego** y solo viaja si la condición tiene duración: una
+ * condición indefinida **no manda el campo**, que es lo que el esquema compartido espera
+ * (`applyConditionSchema`, opcional) y lo que deja la caducidad en `null` en la base.
+ */
 export function applyCondition(
   campaignId: string,
   characterId: string,
   key: string,
   level?: number,
   note?: string,
+  durationSeconds?: number,
 ): Promise<ConditionRow> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/conditions/${key}`, {
     method: "PUT",
-    body: JSON.stringify({ level, note }),
+    body: JSON.stringify({ level, note, durationSeconds }),
   });
 }
 

@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Condiciones, EFECTO_CONDICION } from "../Condiciones";
 import * as characterSheetApi from "../api";
 import type { ConditionRow } from "../api";
 import { NOMBRE_CONDICION } from "../vocabulario";
+import { DURACIONES_DE_CONDICION } from "../duraciones";
 
 // Tarea F4 — «las condiciones dicen qué hacen». Lo que se prueba aquí es lo que puede romperse
 // sin que nadie lo note: que el efecto se pinte, que **no se invente** para una clave que no es
@@ -120,5 +121,121 @@ describe("Condiciones — invariantes del texto", () => {
       .filter(([, efecto]) => prohibido.test(efecto))
       .map(([clave]) => clave);
     expect(culpables).toEqual([]);
+  });
+});
+
+// --- Tarea 2C.4 — duración, vencimiento y renovación ---
+//
+// Lo que se prueba aquí es el contrato con el servidor: que la duración elegida viaje **en
+// segundos** y que «indefinida» **no mande el campo** (mandarlo con cualquier valor daría a la
+// condición una caducidad que nadie pidió), y que una condición vencida se vea vencida en vez de
+// desaparecer —que es la decisión D-2C-2— con las dos únicas acciones que tienen sentido.
+
+function filaConVencimiento(
+  key: string,
+  extra: Partial<ConditionRow> & { expiresAtClock?: number | null; expired?: boolean },
+): ConditionRow {
+  return { ...fila(key), ...extra };
+}
+
+describe("Condiciones — cuánto dura", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("elegir «1 hora» manda 3600 segundos de juego", async () => {
+    pintar([]);
+    const aplicar = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("blinded"));
+
+    await screen.findByLabelText("Duración");
+    fireEvent.change(screen.getByLabelText("Duración"), { target: { value: "hour" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    await waitFor(() => expect(aplicar).toHaveBeenCalled());
+    // (campaignId, characterId, key, level, note, durationSeconds)
+    expect(aplicar.mock.calls[0][5]).toBe(3600);
+  });
+
+  it("«indefinida» —el valor por defecto— no manda ninguna duración", async () => {
+    pintar([]);
+    const aplicar = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("blinded"));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Aplicar" }));
+
+    await waitFor(() => expect(aplicar).toHaveBeenCalled());
+    expect(aplicar.mock.calls[0][5]).toBeUndefined();
+  });
+
+  it("las diez opciones se ofrecen escritas en español, sin claves crudas", async () => {
+    pintar([]);
+    const selector = (await screen.findByLabelText("Duración")) as HTMLSelectElement;
+    const textos = Array.from(selector.options).map((o) => o.textContent);
+    expect(textos).toEqual(DURACIONES_DE_CONDICION.map((d) => d.etiqueta));
+    expect(textos[0]).toMatch(/Indefinida/);
+    // Ni una opción que sea la clave interna.
+    expect(textos.some((t) => t === "hour" || t === "ten-days")).toBe(false);
+  });
+});
+
+describe("Condiciones — la vencida se ve vencida", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("una condición vencida se marca, dice que ya no se aplica, y ofrece quitarla o renovarla", async () => {
+    pintar([filaConVencimiento("poisoned", { expiresAtClock: 100, expired: true })]);
+
+    const entrada = await screen.findByRole("listitem");
+    expect(entrada).toHaveTextContent("Vencida: ya no se aplica");
+    // **No se esconde**: sigue en la lista, con su nombre.
+    expect(entrada).toHaveTextContent("Envenenado");
+    expect(screen.getByRole("button", { name: "Quitar Envenenado" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Renovar" })).toBeInTheDocument();
+    // Y el texto no promete que desaparecerá sola, porque no lo hace.
+    expect(entrada.textContent).not.toMatch(/se quitar|desaparec/i);
+  });
+
+  it("renovar vuelve a aplicarla con el nivel que tenía y la duración elegida", async () => {
+    pintar([filaConVencimiento("exhaustion", { level: 4, expiresAtClock: 10, expired: true })]);
+    const aplicar = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("exhaustion", 4));
+
+    const selector = await screen.findByLabelText("Duración al renovar Agotamiento (nivel 4)");
+    fireEvent.change(selector, { target: { value: "eight-hours" } });
+    fireEvent.click(screen.getByRole("button", { name: "Renovar" }));
+
+    await waitFor(() => expect(aplicar).toHaveBeenCalled());
+    expect(aplicar.mock.calls[0][2]).toBe("exhaustion");
+    expect(aplicar.mock.calls[0][3]).toBe(4);
+    expect(aplicar.mock.calls[0][5]).toBe(28_800);
+  });
+
+  it("una condición viva NO se pinta como vencida ni ofrece renovarla", async () => {
+    vi.spyOn(characterSheetApi, "fetchClock").mockResolvedValue({ seconds: 0 });
+    pintar([filaConVencimiento("restrained", { expiresAtClock: 3600, expired: false })]);
+
+    const entrada = await screen.findByRole("listitem");
+    expect(entrada.textContent).not.toMatch(/Vencida/);
+    expect(screen.queryByRole("button", { name: "Renovar" })).not.toBeInTheDocument();
+  });
+
+  it("a una condición viva con caducidad se le dice lo que le queda, leyendo el reloj de la campaña", async () => {
+    vi.spyOn(characterSheetApi, "fetchClock").mockResolvedValue({ seconds: 1_000 });
+    pintar([filaConVencimiento("poisoned", { expiresAtClock: 1_000 + 3_600 + 120 })]);
+
+    expect(await screen.findByText("Vence en 1 h 2 min")).toBeInTheDocument();
+  });
+
+  it("sin condiciones con caducidad no se pide el reloj: no hay nada que contar", async () => {
+    const reloj = vi.spyOn(characterSheetApi, "fetchClock").mockResolvedValue({ seconds: 0 });
+    pintar([fila("poisoned")]);
+
+    await screen.findByRole("listitem");
+    expect(reloj).not.toHaveBeenCalled();
   });
 });

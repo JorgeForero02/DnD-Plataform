@@ -317,7 +317,24 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   // «Sin traducir: override.manual». Nadie lo había visto porque la lista de claves que la
   // prueba recorre tampoco la tenía — la prueba copiaba el mismo olvido.
   "override.manual": "Anulación del DM",
+  // Tarea 2C.4 — el agotamiento partiendo los PG máximos
+  // (`apps/api/src/character-state/common/agotamiento.ts`). **El nivel no va en el texto**: el
+  // `labelKey` es el mismo para los niveles 4, 5 y 6 —la tabla del SRD parte los PG a partir del
+  // cuarto y no vuelve a partirlos—, y quien lleva el nivel es el `sourceKey`
+  // (`exhaustion:<nivel>`), que se lee con `nivelDeAgotamientoDeSourceKey`. Escribir «nivel 4»
+  // aquí mentiría en cuanto alguien llegara al 5.
+  "maxHp.exhaustion.half": "Agotamiento: los puntos de golpe máximos, a la mitad",
 };
+
+/**
+ * El nivel que lleva dentro un `sourceKey` de agotamiento (`exhaustion:4`), o `null` si el paso
+ * no viene del agotamiento. Es el mismo formato que ya usa `nombreCausaVelocidad`; aquí hace
+ * falta el número, no la frase, para poder decir de qué nivel se habla.
+ */
+export function nivelDeAgotamientoDeSourceKey(sourceKey: string): number | null {
+  const m = /^exhaustion:(\d+)$/.exec(sourceKey);
+  return m ? Number(m[1]) : null;
+}
 
 /**
  * Traduce una `labelKey` del motor a español. **Nunca** devuelve la clave cruda como si fuera

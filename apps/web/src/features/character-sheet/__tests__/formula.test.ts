@@ -44,4 +44,40 @@ describe("formulaDeUnaLinea sigue en pie tras mudarse de fichero", () => {
     const v = valor(16, [paso("ability.con.base", 14, "base"), paso("race.dwarf.con", 2)]);
     expect(formulaDeUnaLinea(v)).toBe("14 puntuación de constitución +2 enano");
   });
+
+  // Carril B3 (fase 2B) — la CA con armadura pesada equipada. `traducirLabelKey` da al paso
+  // «recorta» el nombre completo «Tope de Destreza de Cota de malla» (para la traza larga, donde
+  // no repite nada); en la línea de una fila eso duplicaba el nombre de la armadura que ya está
+  // en la base — «16 cota de malla +2 destreza −2 tope de destreza de cota de malla» — y dejaba
+  // de leerse de un vistazo. La línea dice el motivo del recorte, no el nombre otra vez.
+  it("el recorte de Destreza se resume como «recorte», sin repetir el nombre de la armadura", () => {
+    const v: DerivedValue = {
+      key: "ac",
+      total: 16,
+      steps: [
+        {
+          op: "base",
+          amount: 16,
+          sourceType: "item",
+          sourceKey: "SRD:chain-mail",
+          labelKey: "item.SRD:chain-mail",
+        },
+        {
+          op: "add",
+          amount: 2,
+          sourceType: "ability",
+          sourceKey: "dex",
+          labelKey: "abilityMod.dex",
+        },
+        {
+          op: "cap",
+          amount: -2,
+          sourceType: "item",
+          sourceKey: "SRD:chain-mail",
+          labelKey: "ac.cap.SRD:chain-mail",
+        },
+      ],
+    };
+    expect(formulaDeUnaLinea(v)).toBe("16 cota de malla +2 modificador de destreza −2 recorte");
+  });
 });

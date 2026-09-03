@@ -1,6 +1,7 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { SRD_ARMOR, SRD_CLASSES, SRD_RACES } from "./catalog";
+import { SRD_ITEMS } from "./catalog/items-srd";
 
 // El catálogo por HTTP. **Existe para que la pantalla no lo transcriba a mano**, que es lo que
 // hacía la primera versión de la hoja: las razas, subrazas, clases y armaduras estaban copiadas
@@ -39,5 +40,22 @@ export class CatalogController {
         category: armor.category,
       })),
     };
+  }
+
+  /**
+   * Los objetos del SRD 5.1, para que la pantalla pueda **meter uno en la mochila** sin
+   * transcribir la tabla de armas.
+   *
+   * Van **enteros y no recortados**, al contrario que las razas y las clases de arriba: aquí las
+   * cifras no llegan por otro camino —el daño de un arma no está en la hoja derivada hasta que
+   * el arma se equipa—, así que recortarlas obligaría a la pantalla a pedir el objeto otra vez
+   * para enseñar «1d8 cortante» en la lista de dónde elegir.
+   *
+   * Mismo trato que el resto del catálogo: autenticado, pero no por campaña. El SRD es el mismo
+   * para todas las mesas y no revela nada de ninguna partida.
+   */
+  @Get("items")
+  getItems() {
+    return { items: SRD_ITEMS };
   }
 }

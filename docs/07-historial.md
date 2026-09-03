@@ -15,6 +15,67 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (noche) — Fase 2B: objetos, inventario, equipar, y el cuadro de ataques que faltaba
+
+**Qué.** Un objeto deja de ser texto. Hay catálogo del SRD 5.1 (34 armas, 18 de equipo, las
+armaduras con su peso y su precio), objetos propios de cada campaña que escribe el DM,
+inventario por personaje con **tres sitios** —equipado, encima, guardado en otro sitio—, ranuras,
+manos, sintonización con tope de tres, dinero en las cinco monedas, y peso transportado. Lo
+equipado **entra en el motor**: la armadura sustituye la fórmula de CA, el escudo suma plano, y
+cada objeto aparece como **un paso más de la traza**. Y con eso se cierra lo que la fase 2C
+debía a 2B: el cuadro de ataques con su bono, su daño y su tipo, y el botón que pide al servidor
+la tirada de ataque o la de daño.
+
+**Por qué.** La hoja decía «+5 al ataque» y no tenía dónde leer «1d8+3 cortante»: media mecánica
+en pantalla, que es peor que ninguna porque parece completa (ficha M19). Y el hueco del
+inventario llevaba desde 2A rotulado y vacío, con la CA calculándose sin equipo.
+
+**Cómo se trabajó.** Nueve agentes en paralelo en dos tandas de cinco y tres —catálogo, efectos y
+motor, objetos de campaña, inventario, ataques; luego inventario en pantalla, catálogo en
+pantalla y la hoja—, con la frontera de ficheros escrita en cada encargo. Los contratos de
+`packages/shared`, las migraciones, el cableado, las corridas de e2e y esta documentación las
+escribió el orquestador. **Prueba de mutación por comportamiento nuevo en los nueve carriles**, y
+ninguno la dio por buena sin ver la prueba roja.
+
+### Los dos defectos que solo la integración podía encontrar, los dos silenciosos
+
+- **Las competencias de arma de las clases eran prosa en español** («Armas marciales»), y el
+  cuadro de ataques pregunta por claves (`martial`). La comparación **nunca** podía acertar: todo
+  guerrero habría perdido su bonificador de competencia **sin que ninguna prueba se pusiera
+  roja**, porque las dos mitades estaban bien por separado. Ahora son claves de máquina y el
+  español sale en la pantalla, como con todo el catálogo.
+- **La traza de la CA no sumaba la CA que explicaba.** El paso de la característica llevaba el
+  modificador **ya recortado** y además se añadía el paso del recorte, así que con cota de malla
+  y Destreza 12 la hoja decía «CA 16» y su propia explicación sumaba 15. Nadie lo vio en 2A
+  porque **nada alimentaba la armadura todavía**; apareció el día que se enchufó el inventario,
+  que es exactamente para lo que sirve enchufar cosas.
+
+### Decisiones de mecánica tomadas sin el autor, y su porqué
+
+Están enteras en
+[el plan de 2B](./superpowers/plans/2026-09-03-fase-2B-objetos-inventario-y-equipo.md). Las tres
+que más cambian la forma de los datos:
+
+- **Sitio del objeto: `EQUIPPED | CARRIED | STORED`, y la sintonización aparte.** El informe de
+  huecos proponía meter «sintonizado» como tercer valor del enum, pero un anillo sintonizado
+  **está** equipado: un solo enum obliga a elegir cuál de las dos verdades se guarda.
+- **Peso en onzas, precio en cobres.** Enteros abajo, kg y monedas en pantalla; el mismo
+  principio que los pies de la especificación de distancias.
+- **Un objeto `DM_ONLY` no se le puede dar a quien no puede verlo**: 400 que explica cómo
+  arreglarlo. Mandárselo igual es un agujero de `canView`; pintarle una fila fantasma es una
+  pantalla que miente.
+
+**Lo que se declaró fuera, con motivo**: «lo tengo pero no sé qué hace» (es visibilidad por
+campo, y la traza delataría el número igual) y la penalización por sobrecarga (es una regla
+variante del SRD y necesita un interruptor por campaña). Fichas I1–I8 de
+[06-pendientes.md](./06-pendientes.md).
+
+**Cómo revertir.** `git revert` de los commits de la jornada. Las migraciones nuevas
+—`items_inventory_and_money`, `inventory_one_item_per_slot`, `money_changed_event`— crean tablas
+y un valor de enumeración que **nada en producción referencia todavía**: revertirlas es
+`prisma migrate resolve --rolled-back` y dejar caer las tablas. Ningún dato de la fase 1 ni de
+2A cambia de forma.
+
 ## 2026-09-03 — El prototipo, tomado en serio, y un intermitente que era el limitador
 
 **Por qué.** El autor miró lo desplegado y dijo que **el prototipo le gusta más**: *«la verdad no

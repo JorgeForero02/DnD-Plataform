@@ -27,8 +27,25 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-03 corriendo las dos suites: **121 e2e de API** en 23 suites y
-**61 recorridos de navegador** en 14 especificaciones, todos verdes.
+**E2e**, medidos el 2026-09-03 (noche, al cerrar la fase 2B) corriendo las dos suites:
+**140 e2e de API** en 25 suites y **64 recorridos de navegador** en 15 especificaciones, todos
+verdes. Las suites de API nuevas son `campaign-items` y `inventory`; la especificación de
+navegador nueva es `inventario.spec.ts`.
+
+> Antes de 2B eran 121 en 23 y 61 en 14.
+
+**Lo que `inventario.spec.ts` mide y ninguna unitaria puede**: que **equipar cambia el número de
+la hoja delante de quien lo hace** —se lee la CA del DOM antes y después, no una cifra escrita en
+la prueba—, que el paso del objeto aparece en la traza, que el arma equipada sale en el cuadro de
+ataques y **el servidor la tira**, y que la tabla desplaza dentro de su contenedor sin arrastrar
+la página. Tres recorridos.
+
+> **Dos pruebas de la hoja cambiaron de forma, y merece decirse por qué.** La que exigía las
+> filas «Cuerpo a cuerpo» y «A distancia» en el cuadro de ataques ya no puede: desde 2B la tabla
+> es de **armas equipadas**, así que ahora comprueba que sin arma la hoja **dice qué hacer** en
+> vez de enseñar una tabla vacía. Y la de contraste medía la prosa del hueco de inventario
+> —«llega en la fase 2B»—, que dejó de existir el día que el hueco se rellenó: mide ahora el
+> rótulo de una de sus tres zonas, que es el mismo par de colores en el mismo sitio.
 
 > La cifra de API decía **116 en 22 suites** y llevaba un día siendo falsa: faltaba
 > `rate-limit.e2e-spec.ts`. Lo encontró una auditoría, no un control — y **este documento es la

@@ -23,8 +23,16 @@ export function formulaDeUnaLinea(valor: DerivedValue): string {
   const pasos = valor.steps.filter((p) => p.op === "base" || p.amount !== 0);
   if (pasos.length === 0) return "";
   const nombrar = (p: TraceStep) => {
-    const { texto } = traducirLabelKey(p.labelKey);
     const n = Math.abs(p.amount);
+    // **El recorte de Destreza es el caso que rompía la línea al llegar el equipo (carril B3).**
+    // Su nombre completo repite el de la armadura que ya aparece en la base de la misma fórmula
+    // —`traducirLabelKey("ac.cap.SRD:chain-mail")` da «Tope de Destreza de Cota de malla»—, así
+    // que «16 cota de malla +2 destreza −2 tope de destreza de cota de malla» decía la misma
+    // armadura dos veces y la línea dejaba de leerse de un vistazo. La traza larga (`Traza.tsx`)
+    // sigue enseñando el nombre completo, que ahí no se repite con nada; aquí basta con el
+    // porqué del recorte, no con el qué.
+    if (p.op === "cap") return `${p.amount >= 0 ? "+" : "−"}${n} recorte`;
+    const { texto } = traducirLabelKey(p.labelKey);
     if (p.op === "base") return `${n} ${texto.toLowerCase()}`;
     return `${p.amount >= 0 ? "+" : "−"}${n} ${texto.toLowerCase()}`;
   };

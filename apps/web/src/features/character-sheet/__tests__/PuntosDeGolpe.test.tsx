@@ -18,6 +18,8 @@ function wrapper(qc: QueryClient) {
 const respuestaOk: SheetResponse = {
   character: {} as never,
   sheet: null,
+  attacks: [],
+  money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
   hp: { current: 10, max: 20, temp: 0, version: 1, exceedsMax: false },
   deathSaves: { successes: 0, failures: 0, status: "alive" },
 };

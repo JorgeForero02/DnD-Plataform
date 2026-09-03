@@ -109,6 +109,14 @@ const ETIQUETAS_QUE_EL_MOTOR_PUEDE_EMITIR = [
   "speed.base",
   "speed.condition.zero",
   "speed.condition.half",
+  // items.ts (carril B3, fase 2B) — el equipo equipado. `ref` es el `<item.ref>` completo, no la
+  // clave suelta del catálogo, así que es una forma distinta de la de `ac.cap.<key>` de arriba
+  // aunque diga lo mismo.
+  "item.SRD:chain-mail",
+  "item.SRD:chain-mail.strengthPenalty",
+  "item.CAMPAIGN:ckly2p7mv0000qzrmn831h5x9",
+  "ac.cap.SRD:chain-mail",
+  "ac.cap.CAMPAIGN:ckly2p7mv0000qzrmn831h5x9",
 ];
 
 describe("traducirLabelKey — cobertura de todas las claves que el motor puede emitir", () => {

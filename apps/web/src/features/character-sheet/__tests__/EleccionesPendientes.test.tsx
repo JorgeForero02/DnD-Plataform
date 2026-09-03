@@ -52,6 +52,8 @@ describe("EleccionesPendientes", () => {
     vi.spyOn(characterSheetApi, "updateSheet").mockResolvedValue({
       character: {} as never,
       sheet: null,
+      attacks: [],
+      money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
       hp: { current: null, max: null, temp: 0, version: 0, exceedsMax: false },
       deathSaves: { successes: 0, failures: 0, status: "alive" },
     });

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChangeHpInput,
   CreateRollInput,
+  RollAttackInput,
   SetHpInput,
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
@@ -198,5 +199,13 @@ export function useRemoveCondition(campaignId: string, characterId: string) {
 export function useCreateRoll(campaignId: string) {
   return useMutation({
     mutationFn: (input: CreateRollInput) => characterSheetApi.createRoll(campaignId, input),
+  });
+}
+
+/** Tira con un arma del cuadro de ataques (carril B3). No invalida la hoja: tirar no cambia nada. */
+export function useRollAttack(campaignId: string, characterId: string) {
+  return useMutation({
+    mutationFn: (vars: { attackKey: string; input: RollAttackInput }) =>
+      characterSheetApi.rollAttack(campaignId, characterId, vars.attackKey, vars.input),
   });
 }

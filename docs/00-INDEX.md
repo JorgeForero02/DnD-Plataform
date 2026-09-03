@@ -59,6 +59,7 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
 | `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
 | `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
+| `superpowers/plans/2026-09-03-fase-2B-objetos-inventario-y-equipo.md` | **El plan de la fase 2B**: qué entrega, **las once decisiones de mecánica que se tomaron sin el autor** con su porqué, la frontera de ficheros de cada carril y el orden. Se lee antes de tocar objetos, inventario o el cuadro de ataques |
 | `superpowers/notes/2026-09-03-prompt-arranque-fase-2B.md` | **El prompt con el que arranca la sesión de la fase 2B**: qué construir, cómo trabajar, las trampas que ya costaron horas y lo que NO hay que hacer. Se copia y se pega |
 | `superpowers/plans/2026-09-02-plan-adopcion-interfaz.md` | **Continúa la ronda de interfaz**: adopta lo que volvió de la maqueta y añade la mesa de juego, bloqueada por una decisión del autor |
 | `superpowers/specs/2026-09-02-prompt-figma-make.md` | **El encargo a Figma Make**: 40 pantallas en seis entregas, con la paleta exacta y las reglas vinculantes |
@@ -92,12 +93,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `e9a62fe` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `528c58c` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Pruebas unitarias:** 1117 (shared 41, api 562, web 514). Recuento por declaración, no por
+> - **Pruebas unitarias:** 1155 (shared 41, api 562, web 552). Recuento por declaración, no por
 >   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
 >   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

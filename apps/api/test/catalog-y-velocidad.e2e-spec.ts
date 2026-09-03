@@ -64,6 +64,28 @@ describe("Catálogo SRD y velocidad efectiva (e2e)", () => {
     await app.close();
   });
 
+  it("GET /catalog/items sirve los objetos del SRD enteros, para poder meterlos en la mochila", async () => {
+    const res = await request(app.getHttpServer())
+      .get("/catalog/items")
+      .set("Authorization", `Bearer ${tokenDM}`);
+
+    expect(res.status).toBe(200);
+    const espada = res.body.items.find((i: { ref: string }) => i.ref === "SRD:long-sword");
+    // La lista de dónde se elige tiene que poder decir «1d8 cortante» sin pedir el objeto otra
+    // vez: por eso estos van enteros y las razas y clases van recortadas.
+    expect(espada).toMatchObject({
+      name: "Espada larga",
+      kind: "WEAPON",
+      weapon: { damageDice: "1d8", damageType: "SLASHING" },
+    });
+    const cota = res.body.items.find((i: { ref: string }) => i.ref === "SRD:chain-mail");
+    expect(cota.armor).toMatchObject({ baseAc: 16, dexCap: 0 });
+  });
+
+  it("GET /catalog/items sin sesión es 401, como el resto del catálogo", async () => {
+    await request(app.getHttpServer()).get("/catalog/items").expect(401);
+  });
+
   it("GET /catalog lista razas con sus subrazas, clases y armaduras, en español", async () => {
     const r = await request(app.getHttpServer())
       .get("/catalog")

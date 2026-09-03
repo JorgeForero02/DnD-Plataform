@@ -64,6 +64,27 @@ async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
 }
 
 /**
+ * Equipa un arma desde el inventario que la hoja monta (fase 2B). Hace falta aquí porque la
+ * tabla de ataques **solo existe con un arma puesta**: antes de 2B eran tres bonos genéricos que
+ * el motor derivaba siempre, y lo que se mide abajo —el rótulo de columna de esa tabla— dejó de
+ * tener dónde vivir el día que las filas pasaron a ser armas de verdad.
+ */
+async function equiparEspadaLarga(page: Page) {
+  const inventario = page.getByRole("region", { name: "inventario" });
+  await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
+  await inventario.getByLabel(/Buscar/).fill("Espada larga");
+  await inventario
+    .getByRole("button", { name: /Espada larga/ })
+    .first()
+    .click();
+  await inventario.getByRole("radio", { name: /Equipado/ }).check();
+  await inventario.getByRole("button", { name: "Añadir", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "ataques y lanzamiento" }).getByRole("table"),
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+/**
  * Completa raza, clase, nivel y las seis características **en el sitio**, sin diálogo.
  *
  * Esto era un formulario aparte que se abría con un botón. La hoja ya no tiene botones de
@@ -180,7 +201,13 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
 
   // Condiciones: aplicar una y verla traducida, nunca la clave cruda del SRD.
   await page.getByLabel("Nueva condición").selectOption("prone");
-  await page.getByRole("button", { name: "Aplicar" }).click();
+  // **Acotado a su sección desde 2B.** El inventario trae cinco botones «Aplicar cambio de …»
+  // para las monedas, y `getByRole` casa por subcadena: sin acotar, «Aplicar» resuelve a seis
+  // elementos y la prueba se cae por modo estricto sin que nada del código esté mal.
+  await page
+    .locator('section[aria-label="condiciones"]')
+    .getByRole("button", { name: "Aplicar" })
+    .click();
   await expect(
     page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" }),
   ).toBeVisible({ timeout: 10_000 });
@@ -528,6 +555,7 @@ for (const tema of ["dark", "light"] as const) {
     //     el rótulo de una casilla, y medir el token en abstracto es exactamente lo que la
     //     prueba de contraste dejó de hacer en 1.19.
     {
+      await equiparEspadaLarga(page);
       const cabeceraTabla = page
         .getByRole("region", { name: "ataques y lanzamiento" })
         .getByRole("columnheader", { name: "Bonif." });
@@ -557,13 +585,17 @@ for (const tema of ["dark", "light"] as const) {
       record(`[${tema}] hoja: cifra de una tarjeta pequeña`, contrastRatio(color, bg), 4.5);
     }
 
-    // --- El hueco del inventario: su prosa va en `--muted` y es el bloque de texto más largo
-    //     de toda la hoja.
+    // --- El inventario, que desde 2B ya no es un hueco con una promesa dentro. Se mide el
+    //     rótulo de una de sus tres zonas: es texto en `--muted` sobre la superficie de la hoja,
+    //     exactamente el par que medía la prosa del hueco que había aquí antes.
     {
       const { color, bg } = await effectiveTextColours(
-        page.getByText("Llega en la fase 2B", { exact: false }),
+        page
+          .getByRole("region", { name: "inventario" })
+          .getByText(/Encima/)
+          .first(),
       );
-      record(`[${tema}] hoja: prosa del hueco de inventario`, contrastRatio(color, bg), 4.5);
+      record(`[${tema}] hoja: rótulo de una zona del inventario`, contrastRatio(color, bg), 4.5);
     }
 
     // --- El aviso (--warning-text) en su contexto real, si la hoja lo trae.
@@ -579,7 +611,10 @@ for (const tema of ["dark", "light"] as const) {
 
     // --- El chip de una condición activa, con su filete.
     await page.getByLabel("Nueva condición").selectOption("prone");
-    await page.getByRole("button", { name: "Aplicar" }).click();
+    await page
+      .locator('section[aria-label="condiciones"]')
+      .getByRole("button", { name: "Aplicar" })
+      .click();
     const chip = page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" });
     await expect(chip).toBeVisible({ timeout: 10_000 });
     {
@@ -674,17 +709,17 @@ test("la maqueta adoptada: la tabla de ataques cabe, y la página no se desplaza
   await crearPersonajeYAbrirFicha(page, "Kera Puñoquieto");
   await completarFichaDeGuerreroEnano(page);
 
-  const tabla = page.getByRole("region", { name: "ataques y lanzamiento" }).getByRole("table");
-  await expect(tabla).toBeVisible();
-  // Una fila por bonificador de ataque derivado: un guerrero no lanza, así que son dos.
-  await expect(tabla.getByRole("rowheader", { name: "Cuerpo a cuerpo" })).toBeVisible();
-  await expect(tabla.getByRole("rowheader", { name: "A distancia" })).toBeVisible();
+  // **Desde 2B la tabla es de armas equipadas, no de bonificadores genéricos.** Antes esta
+  // prueba exigía las filas «Cuerpo a cuerpo» y «A distancia», que eran los tres bonos que
+  // derivaba el motor cuando no había inventario. Ahora un personaje sin arma no tiene tabla:
+  // tiene la frase que dice qué hacer, y eso es lo que se comprueba aquí. La tabla con su
+  // desplazamiento propio se mide en `inventario.spec.ts`, que sí equipa un arma.
+  const ataques = page.getByRole("region", { name: "ataques y lanzamiento" });
+  await expect(ataques).toBeVisible();
+  await expect(ataques.getByText(/Equipa un arma en el inventario/)).toBeVisible();
+  await expect(ataques.getByRole("table")).toHaveCount(0);
 
-  // El contenedor de la tabla desplaza lo suyo…
-  const contenedor = tabla.locator("..");
-  expect(await contenedor.evaluate((el) => getComputedStyle(el).overflowX)).toBe("auto");
-
-  // …y el documento NO se desplaza en horizontal, con la ventana estrecha de un portátil.
+  // El documento NO se desplaza en horizontal, con la ventana estrecha de un portátil.
   await page.setViewportSize({ width: 1024, height: 768 });
   const desbordaLaPagina = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

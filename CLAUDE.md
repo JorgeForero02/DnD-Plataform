@@ -5,7 +5,9 @@ sesiones y personajes, con **cinco niveles de visibilidad** por objeto. Herramie
 para la mesa del autor primero; SaaS después. **Sí tiene motor de reglas desde la fase 2A**:
 derivación de hoja de 5.ª edición con traza (`apps/api/src/rules/`) y reglas
 suceso–condición–efecto de vocabulario cerrado (`apps/api/src/rules-engine/`), con su pantalla
-en la pestaña «Reglas». **No es** mapas, tiempo real ni 3D: eso son fases posteriores.
+en la pestaña «Reglas». **Y desde la fase 2B tiene objetos con datos**: catálogo SRD 5.1 y objetos propios del DM,
+inventario con ranuras, manos y sintonización, dinero, y el cuadro de ataques —el equipo entra en
+el motor y **sale en la traza**. **No es** mapas, tiempo real ni 3D: eso son fases posteriores.
 
 > Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
 > falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que

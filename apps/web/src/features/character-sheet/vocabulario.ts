@@ -1,4 +1,12 @@
-import type { AbilityKey, ProficiencyLevel, SkillKey, TraceOp, TraceSourceType } from "@dnd/shared";
+import type {
+  AbilityKey,
+  DamageType,
+  ProficiencyLevel,
+  SkillKey,
+  TraceOp,
+  TraceSourceType,
+  WeaponProperty,
+} from "@dnd/shared";
 
 // Tarea 2A.10 — el vocabulario de la hoja.
 //
@@ -59,6 +67,57 @@ export const NOMBRE_COMPETENCIA: Record<ProficiencyLevel, string> = {
   half: "Media competencia",
   proficient: "Competente",
   expertise: "Pericia",
+};
+
+// --- Carril B3 (fase 2B/2C) — el cuadro de ataques: los trece tipos de daño y las diez
+// propiedades de arma del SRD 5.1 (`packages/shared/src/item.schema.ts`). Ninguno de los dos
+// llega nunca crudo a la columna «Daño / tipo» ni a «Notas». ---
+
+/** En minúscula: se pinta pegado al dado, «1d8+3 perforante», igual que la maqueta. */
+export const NOMBRE_TIPO_DANO: Record<DamageType, string> = {
+  BLUDGEONING: "contundente",
+  PIERCING: "perforante",
+  SLASHING: "cortante",
+  ACID: "ácido",
+  COLD: "frío",
+  FIRE: "fuego",
+  FORCE: "fuerza",
+  LIGHTNING: "relámpago",
+  NECROTIC: "necrótico",
+  POISON: "veneno",
+  PSYCHIC: "psíquico",
+  RADIANT: "radiante",
+  THUNDER: "trueno",
+};
+
+export function nombreTipoDano(tipo: DamageType): string {
+  return NOMBRE_TIPO_DANO[tipo] ?? `Sin traducir: ${tipo}`;
+}
+
+export const NOMBRE_PROPIEDAD_ARMA: Record<WeaponProperty, string> = {
+  AMMUNITION: "Munición",
+  FINESSE: "Sutil",
+  HEAVY: "Pesada",
+  LIGHT: "Ligera",
+  LOADING: "Recarga",
+  REACH: "Alcance",
+  SPECIAL: "Especial",
+  THROWN: "Arrojadiza",
+  TWO_HANDED: "A dos manos",
+  VERSATILE: "Versátil",
+};
+
+export function nombrePropiedadArma(propiedad: WeaponProperty): string {
+  return NOMBRE_PROPIEDAD_ARMA[propiedad] ?? `Sin traducir: ${propiedad}`;
+}
+
+/** La bolsa: las cinco monedas del SRD, en el orden en que se leen de mayor a menor valor. */
+export const NOMBRE_MONEDA: Record<"pp" | "gp" | "ep" | "sp" | "cp", string> = {
+  pp: "Platino",
+  gp: "Oro",
+  ep: "Electro",
+  sp: "Plata",
+  cp: "Cobre",
 };
 
 export const NOMBRE_OPERACION_TRAZA: Record<TraceOp, string> = {
@@ -204,6 +263,18 @@ export function nombreArmadura(key: string): string {
 }
 
 /**
+ * El nombre de un objeto equipado a partir de su `ref` (`SRD:chain-mail`, `CAMPAIGN:<cuid>`),
+ * usado por la traza de la CA cuando el paso viene de `items.ts` (carril B3). Solo un `ref` del
+ * SRD tiene nombre fijo que este fichero conozca; uno de campaña es un objeto propio de la mesa
+ * y su nombre no viaja en la traza, así que la frase honesta es «objeto equipado» y no el cuid.
+ */
+function nombreDeRefDeObjeto(ref: string): string {
+  const srd = /^SRD:([a-z0-9-]+)$/.exec(ref);
+  if (srd && srd[1] in NOMBRE_ARMADURA) return NOMBRE_ARMADURA[srd[1]];
+  return "objeto equipado";
+}
+
+/**
  * Contexto legible de una concesión de raza/subraza/clase, a partir de su `labelKey`
  * (`race.halfElf.asi`, `class.bard.skills`…), para componer frases como
  * «Elige 2 habilidades — Semielfo». Solo se usa para el sufijo entre paréntesis de una elección
@@ -281,6 +352,28 @@ export function traducirLabelKey(labelKey: string): Traduccion {
   m = /^armor\.([a-z0-9-]+)$/.exec(labelKey);
   if (m && m[1] in NOMBRE_ARMADURA) {
     return { texto: NOMBRE_ARMADURA[m[1]], conocida: true };
+  }
+
+  // Carril B3 — el equipo equipado (fase 2B). `items.ts` mete cada armadura en la traza como
+  // `item.<ref>` (`item.SRD:chain-mail`, `item.CAMPAIGN:<cuid>`), con `.strengthPenalty` cuando
+  // el paso es la penalización de velocidad por no llegar a la Fuerza que pide, y el recorte de
+  // Destreza que produce como `ac.cap.<ref>` — la misma forma que `ac.cap.<key>` de arriba, pero
+  // con el `ref` completo del objeto en vez de la clave suelta del catálogo. Un objeto del SRD
+  // tiene nombre fijo (`NOMBRE_ARMADURA`); uno de campaña es prosa libre del DM que esta traza no
+  // trae consigo —solo el `ref`—, así que aquí no hay nada que traducir letra por letra: se dice
+  // lo que sí se sabe.
+  m = /^item\.(SRD:[a-z0-9-]+|CAMPAIGN:[A-Za-z0-9]+)(\.strengthPenalty)?$/.exec(labelKey);
+  if (m) {
+    const nombre = nombreDeRefDeObjeto(m[1]);
+    return {
+      texto: m[2] ? `Requisito de Fuerza sin cumplir (${nombre})` : nombre,
+      conocida: true,
+    };
+  }
+
+  m = /^ac\.cap\.(SRD:[a-z0-9-]+|CAMPAIGN:[A-Za-z0-9]+)$/.exec(labelKey);
+  if (m) {
+    return { texto: `Tope de Destreza de ${nombreDeRefDeObjeto(m[1])}`, conocida: true };
   }
 
   m = /^race\.([a-zA-Z]+)\.([a-zA-Z]+)$/.exec(labelKey);
@@ -378,6 +471,23 @@ export function describirAviso(warning: {
     }
     case "stale_choice":
       return `Hay una elección guardada («${d.grantId ?? warning.key}») que ya no corresponde a la raza o clase actual.`;
+    // --- Carril B3 (fase 2B/2C) — avisos del equipo equipado (`rules/attacks.ts`, `rules/items.ts`). ---
+    case "attack_not_proficient": {
+      const nombre = typeof d.name === "string" ? d.name : "esta arma";
+      return `Sin competencia con ${nombre}: el bonificador de ataque no la incluye.`;
+    }
+    case "armor_stealth_disadvantage": {
+      const nombre = typeof d.item === "string" ? nombreDeRefDeObjeto(d.item) : "la armadura";
+      return `Desventaja en Sigilo por llevar ${nombre.toLowerCase()}.`;
+    }
+    case "armor_strength_requirement_unmet": {
+      const nombre = typeof d.item === "string" ? nombreDeRefDeObjeto(d.item) : "la armadura";
+      return `Fuerza insuficiente para ${nombre.toLowerCase()} (hace falta ${d.required ?? "?"}, hay ${
+        d.actual ?? "?"
+      }): la velocidad al caminar baja 10 pies.`;
+    }
+    case "item_unresolved":
+      return "Hay un objeto equipado que ya no existe en el catálogo. Revísalo desde el inventario.";
     default:
       return `Sin traducir: ${warning.code}`;
   }

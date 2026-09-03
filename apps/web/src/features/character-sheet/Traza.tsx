@@ -134,6 +134,22 @@ function PasoDeTraza({ paso }: { paso: TraceStep }) {
   );
 }
 
+/**
+ * La lista de pasos de una traza, sola. **Exportada desde el carril B3** para que el cuadro de
+ * ataques (`AtaquesYLanzamiento.tsx`) despliegue el bono de un arma con la misma traza —incluido
+ * el enlace de `causaEditableDe` a la característica que lo alimenta— sin reimplementar
+ * `PasoDeTraza` en otro fichero: dos copias de esta lista es como una de las dos acaba mintiendo.
+ */
+export function ListaDeTraza({ id, steps }: { id: string; steps: TraceStep[] }) {
+  return (
+    <ul id={id} className="mt-s2 border-t border-muted pt-s2 text-left">
+      {steps.map((paso, i) => (
+        <PasoDeTraza key={i} paso={paso} />
+      ))}
+    </ul>
+  );
+}
+
 export interface ValorDerivadoProps {
   /** El rótulo en español que ve la mesa: «CA», «Salvación de Destreza». */
   etiqueta: string;
@@ -182,13 +198,7 @@ export function ValorDerivado({
   const listId = useId();
   const claseProsa = "font-chrome text-chrome-xs text-muted";
 
-  const listaDeTraza = (
-    <ul id={listId} className="mt-s2 border-t border-muted pt-s2 text-left">
-      {valor.steps.map((paso, i) => (
-        <PasoDeTraza key={i} paso={paso} />
-      ))}
-    </ul>
-  );
+  const listaDeTraza = <ListaDeTraza id={listId} steps={valor.steps} />;
 
   // --- La fila de una salvación o de una habilidad: UNA línea ---
   if (variante === "linea") {
@@ -218,11 +228,7 @@ export function ValorDerivado({
         {abierta && (
           <div className="mb-s2 mt-1 border-l border-muted pl-s3">
             <p className={claseProsa}>{formulaDeUnaLinea(valor)}</p>
-            <ul id={listId}>
-              {valor.steps.map((paso, i) => (
-                <PasoDeTraza key={i} paso={paso} />
-              ))}
-            </ul>
+            <ListaDeTraza id={listId} steps={valor.steps} />
           </div>
         )}
       </div>

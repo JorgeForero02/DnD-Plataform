@@ -43,6 +43,8 @@ import {
   IconoReglas,
   IconoAjustes,
 } from "../features/campaigns/iconosDeSeccion";
+import { CampaignItemsCatalogPage } from "../features/campaign-items/CampaignItemsCatalogPage";
+import { IconoImpedimenta } from "../features/campaign-items/iconos";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
@@ -50,6 +52,7 @@ type TabConfig =
   | { kind: "sessions"; label: string; group?: string }
   | { kind: "characters"; label: string; group?: string }
   | { kind: "rules"; label: string; group?: string }
+  | { kind: "items"; label: string; group?: string }
   | { kind: "settings"; label: string; group?: string };
 
 // Reseño 2026-09-02 — audit B4. These ten used to sit in one flat strip, which said that
@@ -73,6 +76,12 @@ const TABS: TabConfig[] = [
   // 2A.17. Va en «La mesa» y no en «La campaña» porque una regla es algo que pasa durante la
   // partida, no un ajuste. El panel se calla entero si quien mira no es el DM.
   { kind: "rules", label: "Reglas", group: GRUPO_MESA },
+  // 2B. Va en «La mesa» y no en «El mundo» aunque hable de objetos: la ficha de mundo de un
+  // objeto —su historia, sus enlaces, quién lo quiere— es la pestaña «Objetos» de arriba; esto
+  // es su cara mecánica, el dado de daño y la CA, que es lo que se toca durante la partida. El
+  // prototipo los separa igual, y por el mismo motivo: son dos caras de la misma cosa y solo
+  // una de ellas se consulta con los dados en la mano.
+  { kind: "items", label: "Catálogo", group: GRUPO_MESA },
   // **Sin grupo, a propósito.** La maqueta lo mete en «LA CAMPAÑA», pero ahí acompañaba a
   // media docena de entradas que aquí no existen. Un rótulo de grupo sobre un único elemento
   // no agrupa nada: solo añade una línea de tipografía para decir en versalita lo que la
@@ -562,6 +571,15 @@ export function CampaignDetailPage() {
         badge: conteoPorTipo?.get(t.type) ?? undefined,
         icon: <IconoDeTipo type={t.type} />,
         content: <EntityTab key={t.type} campaignId={id} type={t.type} />,
+      };
+    }
+    if (t.kind === "items") {
+      return {
+        id: "items",
+        label: t.label,
+        group: t.group,
+        icon: <IconoImpedimenta />,
+        content: <CampaignItemsCatalogPage campaignId={id} />,
       };
     }
     if (t.kind === "sessions") {

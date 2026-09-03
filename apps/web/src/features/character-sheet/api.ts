@@ -1,13 +1,17 @@
 import type {
+  AbilityKey,
   ChangeHpInput,
   CreateRollInput,
+  DamageType,
   DeathSaveInput,
   DeathState,
   DerivationWarning,
   DerivedValue,
+  RollAttackInput,
   RollResult,
   SetHpInput,
   UpdateCharacterSheetInput,
+  WeaponProperty,
 } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
@@ -85,6 +89,43 @@ export interface CalculatedSheet {
   spellSlotResetOn: "SHORT_REST" | "LONG_REST" | "NONE";
 }
 
+/** `AttackDamage` de `apps/api/src/rules/attacks.ts`, calcada a mano — mismo motivo que arriba. */
+export interface AttackDamageDto {
+  expression: string;
+  dice: string;
+  modifier: number;
+  type: DamageType;
+}
+
+/**
+ * Un ataque tal y como lo calcula `buildAttacks` (`apps/api/src/rules/attacks.ts`, carril B3):
+ * una fila por arma equipada, con su bono **y su traza**, y la expresión de daño ya montada por
+ * el servidor — la pantalla nunca compone `1d8+3` por su cuenta.
+ */
+export interface AttackDto {
+  key: string;
+  name: string;
+  ref: string;
+  ability: AbilityKey;
+  attackBonus: DerivedValue;
+  damage: AttackDamageDto;
+  /** Solo en un arma versátil: el dado a dos manos. */
+  versatileDamage?: AttackDamageDto;
+  properties: WeaponProperty[];
+  rangeNormalFt?: number;
+  rangeLongFt?: number;
+  proficient: boolean;
+}
+
+/** La bolsa: las cinco monedas del SRD, en piezas enteras. */
+export interface MoneyDto {
+  cp: number;
+  sp: number;
+  ep: number;
+  gp: number;
+  pp: number;
+}
+
 export interface HpState {
   current: number | null;
   max: number | null;
@@ -98,6 +139,15 @@ export interface SheetResponse {
   character: CharacterRow;
   sheet: CalculatedSheet | null;
   reason?: string;
+  /**
+   * El cuadro de ataques (carril B3). El servidor lo manda siempre —vacío sin armas equipadas o
+   * sin hoja—; **opcional en el tipo** para no obligar a los mocks de otras pantallas
+   * (`features/sessions`, fuera de esta frontera) a conocer un campo que no usan. La pantalla que
+   * sí lo pinta (`AtaquesYLanzamiento.tsx`) cae a la lista vacía si no llega.
+   */
+  attacks?: AttackDto[];
+  /** La bolsa (carril B3). Misma razón que `attacks` para ser opcional en el tipo. */
+  money?: MoneyDto;
   hp: HpState;
   deathSaves: DeathState;
   /**
@@ -310,4 +360,27 @@ export function createRoll(campaignId: string, input: CreateRollInput): Promise<
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+// --- Tirar con un arma equipada (carril B3, fase 2B/2C) ---
+
+/**
+ * Tira con un arma del cuadro de ataques. **La expresión la compone el servidor**
+ * (`character-sheet.service.ts`): esta pantalla solo dice qué ataque, qué mitad —`ATTACK` o
+ * `DAMAGE`— y, si aplica, con qué mano y si es crítico. Mandar la expresión ya montada es
+ * exactamente lo que `RollAttackInput` no tiene campo para hacer.
+ */
+export function rollAttack(
+  campaignId: string,
+  characterId: string,
+  attackKey: string,
+  input: RollAttackInput,
+): Promise<RollResult> {
+  return apiFetch(
+    `/campaigns/${campaignId}/characters/${characterId}/sheet/attacks/${attackKey}/roll`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }

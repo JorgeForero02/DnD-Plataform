@@ -19,6 +19,10 @@ User ──dueño──> Campaign ──> CampaignMember (DM | PLAYER, único po
 
 Character ──> CharacterResource   (consumibles: inspiración, furia, ki, dados de golpe, espacios)
           ──> CharacterCondition  (clave LIBRE; las quince del SRD son las que el motor entiende)
+          ──> InventoryItem       (2B; el objeto viene del SRD -clave- o de la campaña -id-)
+          (y cinco columnas de moneda: cp, sp, ep, gp, pp)
+
+Campaign  ──> CampaignItem ──> CampaignItemVisibilityGrant   (2B; el homebrew del DM)
 
 Campaign ──> CampaignFlag         (marcas con nombre)
          ──> CampaignSet ──> CampaignSetMember
@@ -50,6 +54,54 @@ borrar un personaje se lleva sus `CharacterResource` y sus `CharacterCondition`,
 cascada. **`GameEvent` cuelga de la campaña, no de la
 sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
 borra su historia, que es lo que se quiere de un log.
+
+## Objetos, inventario y equipo (fase 2B)
+
+**El catálogo del SRD no está en la base**: vive en código (`apps/api/src/rules/catalog/`), como
+las razas y las clases. En la base solo están los objetos **propios de una campaña**
+(`CampaignItem`) y **quién tiene qué** (`InventoryItem`). Los dos orígenes se traducen a la misma
+forma —`ResolvedItem` de `packages/shared`— antes de llegar al motor, que **no puede saber de
+dónde salió el objeto**: esa es toda la gracia.
+
+Cinco decisiones de forma, con su motivo, porque cambiarlas después cuesta una migración con
+datos:
+
+- **Los datos de arma y de armadura son columnas, no un `Json`.** La convención lo pide (un
+  `Json` no se consulta nunca por dentro) y además evita el `Entity.body` de nuevo. El único
+  `Json` es `effects`, una lista **validada al escribir y al leer** por la unión discriminada de
+  Zod.
+- **El peso en onzas (`weightOz`) y el precio en cobres (`costCp`), enteros.** Es el mismo
+  principio que los pies de la especificación de distancias: la unidad íntegra abajo, la legible
+  arriba. En libras el SRD tiene fracciones y una moneda pesa ⅓ de onza; en onzas todo es entero,
+  y un entero no acumula error al sumar sesenta filas de mochila.
+- **El sitio del objeto es un enum de tres —`EQUIPPED`, `CARRIED`, `STORED`— y la sintonización
+  es un booleano aparte.** El informe de huecos proponía `CARRIED | EQUIPPED | ATTUNED`, pero un
+  anillo sintonizado **está** equipado: con un solo enum habría que elegir cuál de las dos
+  verdades se guarda. Y el tercer sitio lo pide la mesa (el cofre de la posada).
+- **Una ranura, un objeto, garantizado por la base**: índice único parcial
+  `(characterId, slot)` limitado a las filas equipadas (migración
+  `20260903063419_inventory_one_item_per_slot`). Una comprobación en el servicio es una carrera
+  esperando a ocurrir en cuanto alguien tenga dos pestañas abiertas; el servicio traduce el
+  choque a un 409 legible. **Que una mano a dos manos bloquee la otra no cabe en un índice** —
+  sería guardar ocupación derivada—, así que esa mitad la decide el servicio.
+- **El dinero son cinco columnas** (`cp`, `sp`, `ep`, `gp`, `pp`) y no un total normalizado: la
+  mesa dice «tres monedas de plata», y un total en oro obliga a decidir qué hacer con 12,37 ya
+  escritos el día que alguien quiera las cinco. Se mueve por **deltas**, como los PG, y un delta
+  que dejaría la bolsa en negativo se rechaza: **no hay cambio automático**, porque cambiar plata
+  por oro es una decisión de la mesa.
+
+**Borrar tiene dos comportamientos distintos, y es a propósito.** Borrar un personaje se lleva su
+inventario en cascada; borrar un `CampaignItem` que alguien lleva encima **no se puede**
+(`onDelete: Restrict`, y el servicio lo traduce a un 409 que dice cuántos lo tienen). Vaciar en
+silencio la mochila de tres personajes por borrar una definición sería justo el tipo de pérdida
+que nadie reproduce y todo el mundo recuerda.
+
+**Visibilidad.** `CampaignItem` la tiene y nace `PLAYERS`; el DM que prepara la mazmorra lo crea
+`DM_ONLY`, y entonces **no se lo puede dar a un jugador** sin subirle la visibilidad: la API
+rechaza con un 400 que explica cómo arreglarlo. Las dos alternativas eran peores — mandárselo
+igual es un agujero de `canView`, y pintarle una fila fantasma es una pantalla que miente. Lo
+que **no** se modela es «lo tengo pero no sé qué hace»: eso es visibilidad **por campo**, que el
+modelo no hace en ningún sitio, y la traza de la CA delataría el número igual.
 
 ## Estado de partida: la sesión con estado y el log (tarea 2A.5)
 

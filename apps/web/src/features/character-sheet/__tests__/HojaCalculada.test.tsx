@@ -147,6 +147,8 @@ const sheet: CalculatedSheet = {
 const sheetResponse: SheetResponse = {
   character,
   sheet,
+  attacks: [],
+  money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
   hp: { current: 15, max: 22, temp: 0, version: 2, exceedsMax: false },
   deathSaves: { successes: 0, failures: 0, status: "alive" },
 };
@@ -331,12 +333,17 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     expect(columna.contains(condiciones)).toBe(false);
   });
 
-  it("el hueco del inventario está rotulado y dice cuándo llega", async () => {
+  // **El hueco del inventario dejó de ser un hueco (2B).** Esta prueba comprobaba que el
+  // recuadro punteado decía «llega en la fase 2B»; ahora comprueba que lo que hay es el
+  // inventario de verdad. Que la región conserve su nombre accesible no es casualidad: es el
+  // sitio que la hoja llevaba reservado desde 2A.
+  it("el inventario se monta dentro de la hoja, con su región nombrada", async () => {
     pintarHoja();
-    const hueco = await screen.findByRole("region", { name: "inventario" });
-    expect(hueco.textContent).toMatch(/2B/);
-    // Dibujado, no un glifo de fuente (regla vinculante de iconos).
-    expect(hueco.querySelector("svg")).not.toBeNull();
+    const inventario = await screen.findByRole("region", { name: "inventario" });
+    expect(inventario.textContent).not.toMatch(/fase 2B/);
+    // Un segundo `<h1>` en la misma página deja dos títulos a quien navega con lector de
+    // pantalla: el inventario titula con `<h2>` porque la hoja ya puso el suyo.
+    expect(inventario.querySelector("h1")).toBeNull();
   });
 });
 
@@ -443,7 +450,24 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
     expect(screen.getAllByText("Dados de golpe (d6)")).toHaveLength(1);
   });
 
-  it("«Ataques y lanzamiento» es una tabla con sus columnas y una fila por ataque derivado", async () => {
+  it("«Ataques y lanzamiento» es una tabla con sus columnas y una fila por arma equipada", async () => {
+    // Carril B3 — el cuadro real sale de `attacks`, no de los tres bonificadores genéricos del
+    // motor: esos ya no se pintan como filas.
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
+      ...sheetResponse,
+      attacks: [
+        {
+          key: "SRD:rapier",
+          name: "Estoque",
+          ref: "SRD:rapier",
+          ability: "dex",
+          attackBonus: valor(5, "abilityMod.dex"),
+          damage: { expression: "1d8+3", dice: "1d8", modifier: 3, type: "PIERCING" },
+          properties: ["FINESSE"],
+          proficient: true,
+        },
+      ],
+    });
     pintarHoja();
     const seccion = await screen.findByRole("region", { name: "ataques y lanzamiento" });
     const tabla = within(seccion).getByRole("table");
@@ -451,16 +475,21 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
     for (const columna of ["Nombre", "Bonif.", "Daño / tipo", "Notas"]) {
       expect(within(tabla).getByRole("columnheader", { name: columna })).toBeInTheDocument();
     }
-    // Tres filas: cuerpo a cuerpo, a distancia y de conjuro (esta clase lanza).
-    for (const fila of ["Cuerpo a cuerpo", "A distancia", "De conjuro"]) {
-      expect(within(tabla).getByRole("rowheader", { name: fila })).toBeInTheDocument();
-    }
+    expect(within(tabla).getByRole("rowheader", { name: "Estoque" })).toBeInTheDocument();
+    expect(within(tabla).getByText("+5")).toBeInTheDocument();
+    expect(within(tabla).getByText(/1d8\+3/)).toBeInTheDocument();
+    expect(within(tabla).getByText("perforante")).toBeInTheDocument();
     // Y cada una se puede tirar desde su fila: es la tabla de la maqueta, con nuestro dado.
-    expect(
-      within(tabla).getByRole("button", { name: "Tirada de Ataque cuerpo a cuerpo" }),
-    ).toBeInTheDocument();
-    // La CD de conjuro acompaña a la tabla en vez de ser una casilla suelta más.
+    expect(within(tabla).getByRole("button", { name: "Tirada de Estoque" })).toBeInTheDocument();
+    // La CD de conjuro sigue acompañando a la tabla en vez de ser una casilla suelta más.
     expect(within(seccion).getByText(/CD de salvación de conjuro 13/)).toBeInTheDocument();
+  });
+
+  it("«Ataques y lanzamiento» sin arma equipada dice qué hacer, no deja un hueco", async () => {
+    pintarHoja(); // sheetResponse trae attacks: []
+    const seccion = await screen.findByRole("region", { name: "ataques y lanzamiento" });
+    expect(within(seccion).queryByRole("table")).not.toBeInTheDocument();
+    expect(within(seccion).getByText(/Equipa un arma en el inventario/)).toBeInTheDocument();
   });
 
   it("el pie trae rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {

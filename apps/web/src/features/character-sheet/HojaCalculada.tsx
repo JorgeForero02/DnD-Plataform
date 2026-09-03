@@ -11,6 +11,8 @@ import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
 import { Anulaciones } from "./Anulaciones";
 import { AtaquesYLanzamiento } from "./AtaquesYLanzamiento";
+import { Bolsa } from "./Bolsa";
+import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { DadosDeGolpe, PercepcionPasiva, SalvacionesDeMuerte } from "./TarjetasDeEstado";
 import { Personalidad, RasgosYAptitudes } from "./BloquesDelPie";
 import { AvisoDeDm } from "./AvisoDeDm";
@@ -18,7 +20,7 @@ import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
 import { Caracteristicas, FichaEditable } from "./IdentidadEditable";
 import { EmptyState } from "../../ui/Collection";
 import { ABREVIATURA_CARACTERISTICA, NOMBRE_CARACTERISTICA, NOMBRE_HABILIDAD } from "./vocabulario";
-import { PROSA_DE_HOJA, ROTULO_DE_CASILLA, TarjetaDeHoja } from "./Tarjeta";
+import { ROTULO_DE_CASILLA, TarjetaDeHoja } from "./Tarjeta";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje: lee `GET .../sheet` y enseña la traza de
 // cada número derivado, los avisos, las elecciones pendientes, los PG con su delta, recursos y
@@ -73,30 +75,6 @@ const HABILIDADES_POR_CARACTERISTICA: Record<AbilityKey, SkillKey[]> = ABILITY_K
   },
   {} as Record<AbilityKey, SkillKey[]>,
 );
-
-/**
- * El arcón del hueco de inventario, **dibujado**. No hay icono de inventario en `ui/Iconos.tsx`
- * y ese fichero queda fuera de la frontera de esta tarea, así que vive aquí de momento; cuando
- * 2B monte el inventario de verdad, sube a la casa de los iconos.
- */
-function IconoArcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M3 9.5 12 5l9 4.5v8L12 22l-9-4.5z" />
-      <path d="M3 9.5 12 14l9-4.5" />
-      <path d="M12 14v8" />
-    </svg>
-  );
-}
 
 export function HojaCalculada({
   campaignId,
@@ -382,23 +360,7 @@ export function HojaCalculada({
               overrides={data.character.overrides}
             />
 
-            {/* **El hueco del inventario (fase 2B).** Rotulado y vacío, no escondido: la CA se
-                explica hoy con «sin armadura» porque no hay dónde meter una armadura todavía, y
-                decirlo aquí es más honesto que dejar al lector preguntándoselo. El filete sigue
-                siendo de trazos: un recuadro punteado es la casilla que aún no se ha rellenado. */}
-            <section
-              aria-label="inventario"
-              className="rounded-radius-md border border-dashed border-muted p-s3"
-            >
-              <p className="flex items-center gap-s2 font-chrome text-chrome-sm font-semibold text-muted">
-                <IconoArcon className="h-[1em] w-[1em] shrink-0" />
-                Inventario
-              </p>
-              <p className={`mt-1 ${PROSA_DE_HOJA}`}>
-                Llega en la fase 2B y se enchufa aquí: armadura, escudo y objetos que cambian los
-                números de arriba. Hasta entonces la CA se calcula sin equipo.
-              </p>
-            </section>
+            <Bolsa money={data.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }} />
 
             {/* La subida de nivel vive en su propia feature (2A.11): esta hoja solo la monta.
                 En la maqueta es un botón del bloque accionable, no un adorno suelto flotando
@@ -430,7 +392,22 @@ export function HojaCalculada({
           />
         </section>
 
-        <AtaquesYLanzamiento campaignId={campaignId} characterId={characterId} sheet={sheet} />
+        <AtaquesYLanzamiento
+          campaignId={campaignId}
+          characterId={characterId}
+          sheet={sheet}
+          attacks={data.attacks ?? []}
+        />
+
+        {/* **El hueco del inventario, relleno (fase 2B).** Aquí hubo hasta hoy un recuadro
+            punteado que decía «llega en la fase 2B». Lo que se enchufa es el inventario entero, y
+            **dentro de la hoja y no en otra pantalla**: equipar algo cambia la CA de arriba
+            delante de quien lo hace, y esa relación —que es lo que hace útil a esta
+            herramienta— se pierde con una navegación por medio.
+            Va **a todo lo ancho y debajo**, no en la columna derecha donde estaba el hueco: son
+            tres zonas más carga y monedas, y en una columna de 320 px eso no cabe sin apretarse.
+            El hueco marcaba el sitio, no la anchura. */}
+        <PaginaDeInventario campaignId={campaignId} characterId={characterId} />
 
         {/* El pie: lo que se lee una vez por sesión y no se consulta en mitad de un turno. */}
         <div className="grid items-start gap-s4 lg:grid-cols-2">

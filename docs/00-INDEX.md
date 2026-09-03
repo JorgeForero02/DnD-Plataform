@@ -7,12 +7,20 @@ ve cada jugador. Herramienta propia para la mesa del autor primero; SaaS despué
 funciona.
 
 **No es** mapas, ni tiempo real, ni 3D, ni IA: eso son las fases 3–5 y cada una recibe su
-propio plan cuando se llega. **Sí tiene motor de reglas desde la fase 2A**, y conviene decirlo
-porque esta frase decía lo contrario cuando ya existía: derivación de hoja de 5.ª edición con
-traza (`apps/api/src/rules/`) y reglas suceso–condición–efecto de vocabulario cerrado
-(`apps/api/src/rules-engine/`, tarea 2A.16), con su pantalla en la pestaña «Reglas» de una
-campaña. Contenido legal
-limitado a SRD 5.1 / OGL.
+propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
+
+**Sí tiene, y toda la fase 2 está en producción:**
+
+- **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
+  frase decía lo contrario cuando ya existía: la hoja de 5.ª edición se **deriva**, no se guarda, y
+  cada número enseña de dónde sale. Más las reglas suceso–condición–efecto de vocabulario cerrado
+  (`apps/api/src/rules-engine/`), con su pantalla en la pestaña «Reglas».
+- **Objetos, inventario, equipo y dinero** desde 2B: el equipo entra en el motor y **sale en la
+  traza**.
+- **Dados, reloj de campaña, descansos, condiciones que caducan solas, petición de tirada y tablas
+  de la casa** desde 2C.
+- **PNJ con números** desde 2D: statblocks del SRD 5.1 y propios del DM, PNJ jugables en la mesa
+  que reciben daño y cogen condiciones, y la pestaña «Bestiario».
 
 ## Mapa de documentos
 
@@ -26,7 +34,8 @@ limitado a SRD 5.1 / OGL.
 | [06-pendientes.md](./06-pendientes.md) | Deuda técnica y decisiones abiertas, con prioridad |
 | [07-historial.md](./07-historial.md) | Qué se entregó, por qué y cómo revertirlo |
 | [09-primera-partida.md](./09-primera-partida.md) | **Cómo jugar la primera sesión, qué no se puede hacer todavía y qué anotar.** Es la puerta de salida de la fase 1 |
-| [08-pruebas.md](./08-pruebas.md) | **Estrategia de pruebas completa.** Qué prueba cada capa, qué NO cubre, y la regla de Playwright. Léelo antes de dar una tarea por terminada |
+| [08-pruebas.md](./08-pruebas.md) | **Estrategia de pruebas completa.** Qué prueba cada capa, qué NO cubre, y la regla de Playwright. Léelo antes de dar una tarea por terminada. Es la **fuente única de los conteos** |
+| [10-mapa-e2e.md](./10-mapa-e2e.md) | **Qué cubre cada recorrido de extremo a extremo**, suite a suite, y por qué esa comprobación no puede vivir en otra capa. Más **lo que ningún recorrido cubre**. Léelo antes de escribir un e2e nuevo, para no duplicar uno que ya existe |
 | [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial anterior al 2026-09-02 y los pendientes ya cerrados. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** |
 | [plataforma-dnd-documentacion.md](./plataforma-dnd-documentacion.md) | Documento fuente original del producto (visión, alcance por fases) |
 | [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
@@ -61,6 +70,9 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
 | `superpowers/plans/2026-09-03-fase-2C-plan.md` | **El plan de 2C**, con las decisiones del autor ya contestadas, el orden de los seis bloques, qué cierra cada uno, y **la partida de prueba con la que se cierra la fase 2**. Escrito para que otra sesión pueda continuar sin preguntar |
 | `superpowers/specs/2026-09-03-fase-2C-alcance-design.md` | **El alcance de 2C y el anexo de 2D**, escritos sobre lo que hay medido en el código y contrastados con el SRD **antes** de programar: 2B se llevó la mitad de 2C, y el contraste encontró **seis huecos más** (el descanso de 24 horas, las interrupciones, el ritmo de viaje, la marcha forzada, el agotamiento que no llega al motor y las relanzadas del evaluador). Trae las seis decisiones que son del autor |
+| `superpowers/specs/2026-09-03-fase-2D-alcance-design.md` | **El alcance de la fase 2D**: por qué **un PNJ en la mesa es una fila de `Character`** y no un modelo nuevo, las tres derivaciones en las que un monstruo contradice a una hoja de personaje, cuántos statblocks del SRD se transcriben y por qué no los trescientos, y **la lista de lo que 2D no hace** — que empieza por la iniciativa |
+| `superpowers/specs/2026-09-03-fase-3-alcance-design.md` | **El alcance de la fase 3**, y manda sobre el plan maestro: **tres piezas separables** —almacén de ficheros, mapa del mundo con marcas, tablero de la mesa— con la **niebla filtrada en el servidor** como columna vertebral, la aclaración de qué son y qué no son los «tiles», lo que la fase **no** hace, y **cuatro decisiones que son del autor** |
+| `superpowers/notes/2026-09-03-prompt-arranque-fase-2C.md` | **El prompt con el que arrancó la sesión de la fase 2C**, hermano del de 2B: qué construir, cómo trabajar y las trampas conocidas |
 | `superpowers/specs/2026-09-03-contraste-de-reglas-2B.md` | **Las reglas de 2B contrastadas con la fuente**, una por una, con sus enlaces. Ninguna salió mal; salieron **tres cosas que no sabíamos**, incluida una que se estaba pintando rota en la hoja |
 | `superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md` | **Lo que una mesa real encontró en 2B**: dos frentes con refutador sobre el turno de un guerrero enano y sobre lo que sobrevive entre sesiones. Nueve fallos de regla arreglados el mismo día y doce fichas abiertas |
 | `superpowers/plans/2026-09-03-fase-2B-objetos-inventario-y-equipo.md` | **El plan de la fase 2B**: qué entrega, **las once decisiones de mecánica que se tomaron sin el autor** con su porqué, la frontera de ficheros de cada carril y el orden. Se lee antes de tocar objetos, inventario o el cuadro de ataques |
@@ -97,7 +109,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `94f26b8` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `baa58a2` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

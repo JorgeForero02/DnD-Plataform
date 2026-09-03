@@ -150,12 +150,23 @@ porque es lo que se nota jugando.
   la pantalla** (2A.10 y 2A.11): la ficha de un personaje monta la hoja calculada con su traza,
   el marcador de PG con deltas, los recursos con sus dos descansos, las condiciones, el botón de
   tirar —con ventaja y desventaja— y las anulaciones del DM.
-- **Lo que sigue a mano en la mesa**: inventario, objetos y dinero; el orden de iniciativa y los
-  turnos; los puntos de golpe de los PNJ y monstruos; y todo lo de conjuros que no sea el
-  contador de espacios. Están todos como huecos con ficha en
-  [06-pendientes.md](./06-pendientes.md), no como sorpresas.
-- **Empezar y cerrar una sesión no tiene botón todavía**, así que lo que se registre durante la
-  partida quedará marcado como fuera de sesión.
+- **Inventario, objetos, equipo y dinero ya están** (fase 2B): la mochila con su peso, las
+  ranuras y las manos, la sintonización, las cinco monedas, y el cuadro de ataques del que se
+  tira. **El equipo entra en el motor y sale en la traza**: equipar una cota de malla cambia la
+  CA y añade su paso.
+- **El reloj de campaña, los descansos con sus reglas de tiempo, las condiciones que caducan
+  solas, la petición de tirada y las tablas de la casa ya están** (fase 2C).
+- **Los PNJ y los monstruos ya tienen números** (fase 2D): CA, puntos de golpe, salvaciones y
+  habilidades derivadas de su statblock con la misma traza que una hoja de jugador. El DM los baja
+  a la mesa desde la pestaña «Bestiario», reciben daño y cogen condiciones como cualquiera. **Esto
+  cerró el hueco M13**, que era el más caro de la lista.
+- **Empezar y cerrar una sesión sí tiene botón** desde el reseño del 2026-09-02, y lo que se
+  registre durante la partida se cuelga solo de la sesión en curso. (Este párrafo decía lo
+  contrario y llevaba meses siendo falso.)
+- **Lo que sigue a mano en la mesa**: el orden de iniciativa y los turnos (M14); que una tirada
+  haga daño a alguien (M15); que las condiciones sugieran ventaja o desventaja (M16); la
+  concentración (M17); y todo lo de conjuros que no sea el contador de espacios. Están todos como
+  huecos con ficha en [06-pendientes.md](./06-pendientes.md), no como sorpresas.
 
 ## Qué anotar mientras juegas
 
@@ -176,6 +187,20 @@ tiene alcance, a propósito).
 
 ## Y después
 
-La fase 2 es la ficha de personaje con motor de reglas. **No se empieza hasta que esta
-sesión haya ocurrido**, y su plan se escribe con lo que aprendas aquí, no antes. Alcance en
+> **Este apartado decía que la fase 2 no se empezaría hasta que esta sesión ocurriera, y la fase 2
+> está entera —2A, 2B, 2C y 2D— y desplegada.** Se conserva la frase de arriba en el aviso del
+> principio porque explica una regla que se incumplió y por qué; lo que sigue aquí es lo que es
+> cierto hoy.
+
+**La fase 2 está construida y en producción**, y lo que le falta es exactamente esto: usarse. La
+prueba de campo con dos cuentas de jugador es lo único que le queda, y su ficha está en
+[06-pendientes.md](./06-pendientes.md).
+
+**La fase 3 ya tiene su alcance escrito**
+([la especificación de la fase 3](./superpowers/specs/2026-09-03-fase-3-alcance-design.md)): el
+almacén de ficheros, el mapa del mundo con marcas y el tablero de la mesa, con la niebla filtrada
+en el servidor. Trae cuatro decisiones que son del autor.
+
+**Y la regla de fondo sigue en pie**, aunque se haya incumplido dos veces: lo que esta sesión
+descubra manda sobre lo que esté planeado. Alcance general en
 [el plan maestro](./superpowers/plans/2026-07-02-plataforma-dnd.md).

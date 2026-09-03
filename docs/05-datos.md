@@ -24,6 +24,12 @@ Character ──> CharacterResource   (consumibles: inspiración, furia, ki, dad
           (y cinco columnas de moneda: cp, sp, ep, gp, pp)
 
 Campaign  ──> CampaignItem ──> CampaignItemVisibilityGrant   (2B; el homebrew del DM)
+          ──> CampaignStatblock                              (2D; el bestiario del DM)
+          ──> DmTable ──> DmTableEntry                       (2C; las tablas de la casa)
+          ──> RollRequest                                    (2C; el DM pide una tirada)
+
+Character.statblockRef  (2D; con valor -> NO es un personaje jugador sino un PNJ instanciado,
+                         y sus numeros derivan del statblock, no de clase y nivel)
 
 Campaign ──> CampaignFlag         (marcas con nombre)
          ──> CampaignSet ──> CampaignSetMember

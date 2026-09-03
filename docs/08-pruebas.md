@@ -27,9 +27,13 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-03 (tarde, con 2C.1 a 2C.5 dentro) corriendo las dos suites:
-**216 e2e de API** en 31 suites y **88 recorridos de navegador** en 21 especificaciones, todos
-verdes.
+**E2e**, medidos el 2026-09-03 (noche, con la fase 2D entera y su revisión de cierre dentro)
+corriendo las dos suites: **216 e2e de API** en 31 suites y **88 recorridos de navegador** en 21
+especificaciones, todos verdes.
+
+> **Qué cubre cada uno de esos recorridos está en [10-mapa-e2e.md](./10-mapa-e2e.md)**, suite a
+> suite, con lo que ninguno cubre al final. Este documento dice **cómo se prueba**; aquel dice
+> **qué está probado**. Léelo antes de escribir un e2e nuevo: la mitad de las veces ya existe.
 
 > **Una prueba de navegador que prometía más de lo que comprobaba, cazada por su propia
 > mutación.** La del borde de la ficha del bestiario decía «no una clase que no existe» y solo

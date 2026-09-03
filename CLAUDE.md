@@ -7,7 +7,16 @@ derivación de hoja de 5.ª edición con traza (`apps/api/src/rules/`) y reglas
 suceso–condición–efecto de vocabulario cerrado (`apps/api/src/rules-engine/`), con su pantalla
 en la pestaña «Reglas». **Y desde la fase 2B tiene objetos con datos**: catálogo SRD 5.1 y objetos propios del DM,
 inventario con ranuras, manos y sintonización, dinero, y el cuadro de ataques —el equipo entra en
-el motor y **sale en la traza**. **No es** mapas, tiempo real ni 3D: eso son fases posteriores.
+el motor y **sale en la traza**. **Desde 2C** tiene dados con ventaja y relanzado, reloj de
+campaña en segundos, descansos con sus reglas de tiempo, condiciones que caducan solas, petición
+de tirada y tablas de la casa. **Y desde 2D los PNJ tienen números**: statblocks del SRD 5.1 y
+propios del DM, PNJ jugables que reciben daño y cogen condiciones —**un PNJ en la mesa es una fila
+de `Character`**—, con su pestaña «Bestiario». **No es** mapas, tiempo real ni 3D: eso son fases
+posteriores, y la **fase 3 ya tiene su alcance escrito**
+([spec](docs/superpowers/specs/2026-09-03-fase-3-alcance-design.md)).
+
+**La fase 2 está entera y desplegada.** Lo único que le falta es usarse: la partida de prueba con
+dos cuentas de jugador.
 
 > Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
 > falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que
@@ -20,7 +29,8 @@ el motor y **sale en la traza**. **No es** mapas, tiempo real ni 3D: eso son fas
 | `docs/00-INDEX.md` | Mapa de documentos, con el commit/rama/conteo de unitarias actuales en su bloque generado. **Empieza aquí.** |
 | `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
 | `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
-| `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, y la regla de Playwright** |
+| `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, y la regla de Playwright.** Fuente única de los conteos |
+| `docs/10-mapa-e2e.md` | **Qué cubre cada recorrido de extremo a extremo**, suite a suite. Léelo antes de escribir un e2e nuevo |
 | `docs/01-arquitectura.md` | Monorepo, capas, módulos, dirección de dependencias |
 | `docs/02-entorno.md` | Cómo levantar todo, variables, gotchas de Windows |
 | `docs/05-datos.md` | Esquema, migraciones y semántica de la visibilidad |

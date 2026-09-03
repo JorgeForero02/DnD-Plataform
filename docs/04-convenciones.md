@@ -87,6 +87,26 @@ nombres de las cosas del código, no.
 - Códigos de estado correctos: 401 sin token, 403 sin permiso, 404 si no existe, 400 si el
   cuerpo no valida.
 
+- **Un 403 sobre algo que no deberías saber que existe es una filtración: va 404.** Un
+  «prohibido» ya confirma la existencia. Se aplica a la petición de tirada de otro, a un
+  statblock de otra campaña y a una tabla del DM que no ves. La excepción es cuando **quien
+  pregunta ya sabe que existe**: la hoja de un PNJ que el DM ya reveló contesta «sus números no
+  son públicos», porque colapsarlo en «no existe» sería mentir sobre algo que se está viendo.
+
+- **Un catálogo compartido se referencia con una CADENA, no con una clave foránea.** `SRD:goblin`
+  o `CAMPAIGN:<cuid>`, y quien la resuelve es una sola puerta por dominio. Lo eligió 2B para los
+  objetos y 2D lo repitió para los statblocks, por el mismo motivo: el catálogo del SRD vive en
+  **código** —donde se lee, se revisa y se prueba— y no tiene fila a la que apuntar. **El prefijo
+  lo pone el servidor, nunca el cliente**: elegirlo sería poder apuntar a otra campaña.
+
+- **Lo que el DM prepara nace escondido.** Un objeto propio, un statblock, un PNJ instanciado y
+  una tabla de la casa nacen `DM_ONLY`, y el DM los sube cuando la mesa se topa con ellos.
+  Preparar la mazmorra no puede ser filtrarla.
+
+- **La visibilidad de una cosa y la de su plantilla son dos cosas distintas** (2D, y costó una
+  fuga aprenderlo). Revelar el PNJ no revela su statblock: hay que comprobar **las dos**, y quien
+  derive algo a partir de una plantilla tiene que preguntar por la plantilla.
+
 - **Un 400 de validación se escribe para que una persona lo lea y sepa qué arreglar**
   (`apps/api/src/common/validation-errors.ts`, desde el 2026-09-02). Sale una frase en español
   que la interfaz imprime tal cual, más una lista `errores` con el campo culpable, su ruta y el

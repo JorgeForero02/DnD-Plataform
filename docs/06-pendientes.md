@@ -35,14 +35,28 @@
 > despliegue de desarrollo con datos desechables. Es el día que la mesa del autor juegue de verdad,
 > que el propio autor sitúa **cuando haya tiempo real** (fase 4). Hasta entonces esto no bloquea
 > nada; a partir de ahí, sí.
+>
+> **Aviso del 2026-09-03 (noche), y va contra la premisa de la decisión:** la premisa era *«no hay
+> datos que guardar, solo datos de prueba»*, y al desplegar la fase 2D se contaron en producción
+> **una campaña, tres personajes y dos usuarios** que llevaban allí desde el 2 de septiembre. Son
+> pocos y probablemente desechables, pero **ya no son cero**, y la decisión se tomó sobre un cero.
+> Sigue sin bloquear nada por decisión del autor; lo que cambia es que ahora se sabe que hay algo
+> que perder.
+>
+> **Y una trampa nueva, medida el 2026-09-03 al hacer el volcado previo del despliegue de 2D**, que
+> es exactamente la misma familia del fallo de arriba: `pg_dumpall -U postgres` **falla** porque el
+> usuario de esta base es `dnd` (`POSTGRES_USER`), y deja un fichero de **20 bytes** — el mismo
+> tamaño delator. Y `docker ps --filter name=dnd` **no encuentra nada**: los contenedores de
+> Coolify se llaman por el UUID de la aplicación. Las dos están en
+> [03-despliegue.md](./03-despliegue.md).
 
 
 Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la evidencia de
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-03** (cierre de la fase **2C**: dados, reloj, condiciones con duración,
-petición de tirada y tablas del DM). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
+Última revisión: **2026-09-03** (cierre de la fase **2D**: statblocks de PNJ, PNJ jugables en la
+mesa y el bestiario, con su revisión de cierre). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 

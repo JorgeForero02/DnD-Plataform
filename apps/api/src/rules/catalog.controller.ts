@@ -1,6 +1,6 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { SRD_ARMOR, SRD_CLASSES, SRD_RACES } from "./catalog";
+import { SRD_ARMOR, SRD_CLASSES, SRD_DIFFICULTY_CLASSES, SRD_RACES } from "./catalog";
 import { SRD_ITEMS } from "./catalog/items-srd";
 
 // El catálogo por HTTP. **Existe para que la pantalla no lo transcriba a mano**, que es lo que
@@ -39,6 +39,9 @@ export class CatalogController {
         name: armor.name,
         category: armor.category,
       })),
+      // La guía de CD del SRD (2C.5). Va en el mismo sitio que el resto del catálogo porque es
+      // exactamente eso: contenido del manual que la pantalla necesita y no debe transcribir.
+      difficultyClasses: SRD_DIFFICULTY_CLASSES,
     };
   }
 

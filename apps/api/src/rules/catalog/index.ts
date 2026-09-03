@@ -29,6 +29,7 @@ export * from "./items-srd";
 export * from "./choices";
 export * from "./spell-slots";
 export * from "./resolve";
+export * from "./difficulty";
 
 import type { DerivationResult } from "@dnd/shared";
 import { derive, type Modifier } from "../engine";

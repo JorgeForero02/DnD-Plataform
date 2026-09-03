@@ -15,6 +15,60 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — 2C.5 (servidor): la guía de CD y la petición de tirada
+
+**Qué.** Las dos las pidió el DM asesor.
+
+**La guía de CD resultó no ser una decisión.** Se creía que había que inventar la escala; el
+contraste encontró que **la tabla «Typical Difficulty Classes» está en el SRD 5.1**
+(<https://5thsrd.org/rules/abilities/ability_checks/>), así que es una transcripción de seis filas
+—de CD 5 «muy fácil» a CD 30 «casi imposible»— y va en el catálogo, con su prueba de valor a mano
+como las razas y las clases: un invariante de forma caza el copiar y pegar, pero **no el dígito mal
+transcrito**. Van la clave y el número; la forma legible la escribe la pantalla, como todo lo demás.
+
+**Y no elige la CD por ti.** El SRD la da como guía —«the DM sets the DC»—, así que se enseña al
+lado del campo y el DM escribe el número que quiera. Obligar a elegir una de las seis convertiría
+una ayuda en una jaula.
+
+**La petición de tirada** copia la forma que las mesas virtuales ya tienen resuelta (Foundry:
+*Requestor*, *Roll Manager*, *Request Roll*): el DM elige **a quién**, **qué** y **con qué CD**; al
+jugador le aparece; al tirar, el DM ve el resultado. Con sondeo, que es el criterio de toda la
+fase 2.
+
+**La decisión que más cambia: se pide un VALOR de la hoja, no una expresión.** El DM pide
+«Percepción», no «1d20+5». Tres motivos, y el tercero la hace obligatoria:
+
+1. **El DM no tiene por qué saberse el modificador de cada jugador.** Pedirle la expresión montada
+   es pedirle que consulte cinco hojas antes de decir «tirad percepción».
+2. **Si el modificador cambia entre que se pide y se tira** —sube de nivel, se pone una armadura,
+   le entra una condición—, la expresión guardada estaría mintiendo. El modificador se lee **al
+   tirar**.
+3. **Componer la tirada es una regla del juego, y las reglas viven en el servidor.** Es la misma
+   línea que hizo que la ventaja se pidiera por nombre y no como `2d20kh1`.
+
+**Una petición por personaje**, aunque el DM pida a cinco a la vez: así cada uno tira con su
+modificador y el registro no tiene que desenredar después quién de los cinco falló. Y si uno de los
+personajes no es de la campaña **no se escribe ninguna** — con la comprobación dentro del bucle
+quedarían cuatro escritas y un error, que es el peor de los dos mundos.
+
+**Tres detalles que son reglas, no acabado:** responderla exige ser el dueño del personaje o el DM
+—otro jugador respondiendo sería tirar en nombre ajeno—; se marca respondida **después** de tirar,
+para que una tirada fallida no deje el botón desaparecido sin que haya pasado nada; y pedir un valor
+que la hoja no deriva es **un 400, no un `1d20+0`**, porque un cero silencioso es un número que la
+mesa se cree.
+
+**Y la tirada a ciegas se hereda entera**: el DM puede pedir «percepción a ciegas» y quien tira no
+ve su resultado. Es lo que 2C.1 dejó preparado antes de que esto existiera.
+
+**Probado.** 1160 unitarias y **172 e2e en 28 suites**, en verde. El recorrido de la petición corre
+con **tres cuentas** —DM, la jugadora y otro jugador de la mesa— porque las tres cosas que hay que
+comprobar son de quién ve qué. Tres mutaciones: el filtro de «solo mis personajes» quitado del
+listado, la comprobación de campaña desactivada, y marcar la petición como respondida antes de
+tirar.
+
+**Cómo revertir.** `git revert` del commit y deshacer la migración `peticion_de_tirada`, que añade
+la tabla `RollRequest`. Nada más depende de ella.
+
 ## 2026-09-03 (tarde) — 2C.4 (servidor): la condición que caduca sola, y el agotamiento que llega al motor
 
 **Qué.** Con reloj, una condición puede llevar **su vencimiento en tiempo de juego**. Se aplica con

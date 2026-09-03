@@ -141,6 +141,7 @@ model Campaign {
   sets        CampaignSet[]
   rules       Rule[]
   items       CampaignItem[]
+  rollRequests RollRequest[]
 
   // Interruptor general del motor, por campana (contencion operativa, punto 6 de la spec de
   // autoridad). Un DM que ve algo raro lo apaga entero sin tener que desarmar regla por regla.
@@ -344,6 +345,7 @@ model Character {
   resources  CharacterResource[]
   conditions CharacterCondition[]
   inventory  InventoryItem[]
+  rollRequests RollRequest[]
 
   @@index([campaignId])
 }
@@ -390,6 +392,36 @@ model CharacterCondition {
 
   @@unique([characterId, key])
   @@index([characterId])
+}
+
+// Peticion de tirada (2C.5). **El DM pide, el jugador tira, el DM ve el resultado.**
+//
+// Es una tabla y no un `GameEvent` porque tiene **estado**: nace pendiente y se responde, y el log
+// de partida es un registro de hechos que no se modifican. Ademas hay que poder preguntar «que me
+// han pedido», que es una consulta por columnas, no un recorrido del log.
+model RollRequest {
+  id            String   @id @default(cuid())
+  campaignId    String
+  // A quien se le pide. Una peticion por personaje, aunque el DM pida a cinco a la vez: asi cada
+  // uno tira con SU modificador y el registro no tiene que desenredar despues quien fallo.
+  characterId   String
+  requestedById String
+  // Que valor de la hoja se tira: `skill.perception`, `save.con`. **No una expresion**: el
+  // modificador lo pone el servidor con la hoja de quien tira, en el momento de tirar.
+  key           String
+  label         String
+  dc            Int?
+  mode          String   @default("NORMAL")
+  audience      String   @default("PUBLIC")
+  createdAt     DateTime @default(now())
+  // Cuando se respondio y con que tirada. `null` = pendiente, que es lo que la pantalla sondea.
+  resolvedAt    DateTime?
+  resolvedEventId String?
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, resolvedAt])
+  @@index([characterId, resolvedAt])
 }
 
 // Bandeja de notificaciones (2A.14). Sin tiempo real: se pide al cargar.

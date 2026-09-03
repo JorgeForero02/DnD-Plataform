@@ -9,6 +9,7 @@ export * from "./character-build.schema";
 export * from "./game-event.schema";
 export * from "./roll.schema";
 export * from "./clock.schema";
+export * from "./roll-request.schema";
 export * from "./character-sheet.schema";
 export * from "./character-state.schema";
 export * from "./notification.schema";

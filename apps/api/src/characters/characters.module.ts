@@ -18,5 +18,8 @@ import { CharacterSheetController } from "./character-sheet.controller";
   imports: [CampaignsModule, GameEventsModule, CharacterStateModule, RollsModule],
   controllers: [CharactersController, CharacterSheetController],
   providers: [CharactersService, CharacterSheetService],
+  // 2C.5: la peticion de tirada deriva la hoja de quien tira **en el momento de tirar**, para que
+  // el modificador sea el de ahora y no el de cuando el DM la pidio.
+  exports: [CharacterSheetService],
 })
 export class CharactersModule {}

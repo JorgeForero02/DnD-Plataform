@@ -1,0 +1,179 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import type {
+  CreateRollRequestInput,
+  ListRollRequestsInput,
+  RollAudience,
+  RollMode,
+  RollResult,
+} from "@dnd/shared";
+import { MembershipService } from "../campaigns/membership.service";
+import { CharacterSheetService } from "../characters/character-sheet.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { RollsService } from "../rolls/rolls.service";
+
+// Tarea 2C.5 — **el DM pide una tirada; al jugador le aparece; el DM ve el resultado.**
+//
+// ## Quién ve qué, y por qué aquí no manda `canView`
+//
+// Una petición de tirada **no es un objeto del mundo con visibilidad**: es un recado dirigido a
+// alguien. El DM ve todas las de su campaña —las hizo él— y un jugador ve las de **sus**
+// personajes. Eso no es una excepción a la matriz de visibilidad: es que este recurso no tiene
+// nivel de visibilidad que interpretar, igual que una notificación no lo tiene. Lo que sí sigue
+// mandando `canView` es **la tirada que sale de aquí**, que se escribe por `RollsService` como
+// cualquier otra.
+//
+// ## La respuesta la da quien tira, no quien pide
+//
+// El DM puede pedir, y punto. Responderla exige ser **el dueño del personaje o el DM**, que es la
+// misma regla que ya gobierna tirar por un personaje. Un jugador no puede responder la petición de
+// otro: sería tirar en su nombre.
+
+@Injectable()
+export class RollRequestsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly membership: MembershipService,
+    private readonly rolls: RollsService,
+    private readonly sheets: CharacterSheetService,
+  ) {}
+
+  /** Pedir. **Solo el DM**: es un acto de arbitraje. */
+  async create(userId: string, campaignId: string, input: CreateRollRequestInput) {
+    await this.membership.requireDM(campaignId, userId);
+
+    // Todos los personajes tienen que ser de esta campaña. **Se comprueba en una consulta y no en
+    // un bucle**: con el bucle, pedir a doce personajes de los que uno es de otra campaña dejaría
+    // once peticiones escritas y un error, que es el peor de los dos mundos.
+    const personajes = await this.prisma.character.findMany({
+      where: { id: { in: input.characterIds }, campaignId },
+      select: { id: true },
+    });
+    if (personajes.length !== input.characterIds.length) {
+      throw new NotFoundException("Alguno de esos personajes no está en esta campaña.");
+    }
+
+    return this.prisma.transaction(async (tx) => {
+      const creadas = [];
+      for (const characterId of input.characterIds) {
+        creadas.push(
+          await tx.rollRequest.create({
+            data: {
+              campaignId,
+              characterId,
+              requestedById: userId,
+              key: input.key,
+              label: input.label,
+              dc: input.dc ?? null,
+              mode: input.mode,
+              audience: input.audience,
+            },
+          }),
+        );
+      }
+      return creadas;
+    });
+  }
+
+  /**
+   * Lo que te han pedido. El DM ve las de la campaña; un jugador, las de sus personajes.
+   *
+   * **Pendientes por defecto**, que es lo que sondea una pantalla: pedirlo todo cada treinta
+   * segundos para descartar en el cliente lo respondido es tráfico que crece con la partida.
+   */
+  async list(userId: string, campaignId: string, query: ListRollRequestsInput) {
+    const miembro = await this.membership.requireMember(campaignId, userId);
+    return this.prisma.rollRequest.findMany({
+      where: {
+        campaignId,
+        ...(miembro.role === "DM" ? {} : { character: { ownerId: userId } }),
+        ...(query.includeResolved ? {} : { resolvedAt: null }),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+  }
+
+  /**
+   * Responderla: se tira **ahora**, con la hoja de ahora.
+   *
+   * Aquí es donde se ve por qué la petición guarda una clave y no una expresión: el modificador se
+   * lee de la hoja **en el momento de tirar**, así que subir de nivel o ponerse una armadura entre
+   * que el DM pide y el jugador tira da el número correcto, no el que era verdad hace diez minutos.
+   */
+  async answer(userId: string, campaignId: string, requestId: string): Promise<RollResult> {
+    const miembro = await this.membership.requireMember(campaignId, userId);
+    const peticion = await this.prisma.rollRequest.findFirst({
+      where: { id: requestId, campaignId },
+      include: { character: { select: { id: true, ownerId: true } } },
+    });
+    if (!peticion) throw new NotFoundException("Esa petición no existe en esta campaña.");
+    if (peticion.character.ownerId !== userId && miembro.role !== "DM") {
+      throw new ForbiddenException("Solo el dueño del personaje o el DM pueden responderla.");
+    }
+    if (peticion.resolvedAt) {
+      throw new BadRequestException("Esa petición ya se respondió.");
+    }
+
+    const modificador = await this.modificadorDeLaHoja(
+      userId,
+      campaignId,
+      peticion.characterId,
+      peticion.key,
+    );
+
+    const resultado = await this.rolls.roll(userId, campaignId, {
+      expression: conSigno("1d20", modificador),
+      label: peticion.label,
+      characterId: peticion.characterId,
+      mode: peticion.mode as RollMode,
+      audience: peticion.audience as RollAudience,
+      ...(peticion.dc === null ? {} : { dc: peticion.dc }),
+    });
+
+    // **Se marca respondida después de tirar, no antes.** Si se marcara antes y la tirada fallara
+    // —una expresión imposible, la base caída—, la petición quedaría cerrada sin tirada: el
+    // jugador vería desaparecer el botón sin que hubiera pasado nada.
+    await this.prisma.rollRequest.update({
+      where: { id: peticion.id },
+      data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
+    });
+
+    return resultado;
+  }
+
+  /**
+   * El modificador que la hoja da hoy para esa clave.
+   *
+   * **Pedir un valor que la hoja no deriva es un 400**, no una tirada de `1d20+0`: un cero
+   * silencioso es un número que la mesa se cree.
+   */
+  private async modificadorDeLaHoja(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    key: string,
+  ): Promise<number> {
+    const hoja = await this.sheets.getSheet(userId, campaignId, characterId);
+    if (!hoja.sheet) {
+      throw new BadRequestException(
+        "Esa hoja todavía no se puede derivar: le faltan características, raza o clase.",
+      );
+    }
+    const valor = hoja.sheet.derived[key];
+    if (!valor) {
+      throw new BadRequestException(`La hoja de ese personaje no tiene «${key}».`);
+    }
+    return valor.total;
+  }
+}
+
+/** `1d20` + 3 → `1d20+3`; + 0 → `1d20`. El evaluador no entiende un `+0`. */
+function conSigno(dados: string, modificador: number): string {
+  if (modificador === 0) return dados;
+  return `${dados}${modificador > 0 ? "+" : "-"}${Math.abs(modificador)}`;
+}

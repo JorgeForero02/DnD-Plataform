@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-03 (noche, al cerrar la fase 2B) corriendo las dos suites:
-**142 e2e de API** en 25 suites y **64 recorridos de navegador** en 15 especificaciones, todos
+**143 e2e de API** en 25 suites y **64 recorridos de navegador** en 15 especificaciones, todos
 verdes. Los dos últimos los añadieron la revisión y la auditoría de mecánica: uno comprueba que **un objeto de otra campaña no se puede meter en
 este inventario** (ficha S8) —de los que solo pueden vivir aquí, porque el Prisma simulado de
 las unitarias ignora el `where`— y el otro que **el inventario deja rastro en la línea de

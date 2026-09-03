@@ -109,6 +109,15 @@ export function useRemoveInventoryItem(campaignId: string, characterId: string) 
   });
 }
 
+export function useConsumeInventoryItem(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, amount }: { rowId: string; amount?: number }) =>
+      inventoryApi.consumeInventoryItem(campaignId, characterId, rowId, amount),
+    onSuccess: () => invalidarTrasCambio(qc, campaignId, characterId),
+  });
+}
+
 export function useChangeMoney(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({

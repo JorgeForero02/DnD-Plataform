@@ -11,6 +11,7 @@ import {
   WEIGHT_OZ_PER_LB,
   type AddInventoryItemInput,
   type ChangeMoneyInput,
+  type ConsumeInventoryItemInput,
   type CoinKey,
   type EquipSlot,
   type ItemKind,
@@ -288,6 +289,13 @@ export class InventoryService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // **El mismo candado que `update`, y en el mismo orden.** Sin esto, meter un objeto
+        // equipado y equipar otro a la vez tomaban los recursos en orden inverso —uno el índice
+        // de la ranura y otro la fila del personaje— y Postgres cortaba con un **deadlock
+        // (40P01)** que salía como 500. Lo cazó el e2e de la carrera, que llevaba fallando una
+        // vez de cada cuatro: no era una prueba frágil, era este ciclo. Todos los escritores del
+        // inventario ordenan ahora por la misma fila.
+        await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
         const fila = await tx.inventoryItem.create({
           data: {
             characterId,
@@ -436,6 +444,60 @@ export class InventoryService {
     } catch (error) {
       throw this.translateSlotConflict(error);
     }
+  }
+
+  /**
+   * Gasta unidades de un consumible. **Al llegar a cero, la fila se va**: una fila con cero
+   * unidades no es información, es ruido en la mochila.
+   *
+   * Va en transacción y con la fila del personaje bloqueada por el mismo motivo que la bolsa:
+   * dos personas gastando de la misma pila leen lo mismo y escriben lo mismo, y se pierde un
+   * gasto. Aquí sí se puede hacer bien porque el gasto es un **delta**, no un valor final.
+   */
+  async consume(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    rowId: string,
+    input: ConsumeInventoryItemInput,
+  ) {
+    const character = await requireVisibleCharacter(
+      this.prisma,
+      this.membership,
+      userId,
+      campaignId,
+      characterId,
+    );
+    await requireOwnerOrDM(this.membership, campaignId, userId, character);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
+      const row = await tx.inventoryItem.findFirst({ where: { id: rowId, characterId } });
+      if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
+      if (row.quantity < input.amount) {
+        throw new BadRequestException(
+          `Solo quedan ${row.quantity}: no se pueden gastar ${input.amount}.`,
+        );
+      }
+
+      const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row, tx);
+      const restantes = row.quantity - input.amount;
+
+      if (restantes === 0) {
+        await tx.inventoryItem.delete({ where: { id: rowId } });
+      } else {
+        await tx.inventoryItem.update({ where: { id: rowId }, data: { quantity: restantes } });
+      }
+
+      await this.registrarSuceso(userId, campaignId, character, tx, {
+        type: "ITEM_REMOVED",
+        item: itemDef.name,
+        ref: itemDef.ref,
+        quantity: input.amount,
+      });
+
+      return { remaining: restantes, deleted: restantes === 0 };
+    });
   }
 
   async remove(userId: string, campaignId: string, characterId: string, rowId: string) {
@@ -655,6 +717,15 @@ export class InventoryService {
   private translateSlotConflict(error: unknown): unknown {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return new ConflictException("Esa ranura ya está ocupada por otro objeto.");
+    }
+    // **Un abrazo mortal es un choque, no un fallo del servidor.** Con el candado de arriba no
+    // debería ocurrir, pero si dos escrituras vuelven a cruzarse por un camino nuevo, la mesa
+    // merece «alguien se te adelantó» y no un 500 que no explica nada. Postgres lo llama 40P01
+    // y Prisma no lo mapea: llega como `PrismaClientUnknownRequestError`.
+    if (error instanceof Error && error.message.includes("40P01")) {
+      return new ConflictException(
+        "Otra persona estaba cambiando el equipo de este personaje a la vez. Inténtalo otra vez.",
+      );
     }
     return error;
   }

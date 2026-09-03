@@ -54,6 +54,13 @@ tiempo** (`ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, escritos en la misma trans
 cambio). De paso, soltar un objeto pasó a ser idempotente: soltar dos veces con mala red daba un
 500 sobre una operación que sí había funcionado.
 
+**Y un intermitente que no era una prueba frágil.** Tras serializar el camino de equipar, el
+e2e de la carrera empezó a fallar una vez de cada cuatro con un 500 en vez del 409 esperado.
+Medido con el error real delante —no adivinado—, era un **abrazo mortal de Postgres (40P01)**:
+dos escrituras del inventario tomaban los recursos en orden inverso. Todos los escritores toman
+ahora el mismo candado primero, y un abrazo mortal se traduce a un 409 legible por si vuelve por
+otro camino. Seis corridas seguidas en verde después.
+
 **Cómo revertir.** `git revert` del commit. La única migración es `inventory_events`, que añade
 tres valores a un enum y nada más. Revertir devuelve los nueve fallos, así que si algo de esto molesta, lo que se cambia
 es la regla concreta, no el commit entero.

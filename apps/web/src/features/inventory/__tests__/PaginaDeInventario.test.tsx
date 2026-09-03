@@ -352,4 +352,31 @@ describe("PaginaDeInventario", () => {
     );
     expect(removerSpy).not.toHaveBeenCalled();
   });
+
+  it("gastar una unidad llama al servidor con la fila correcta, y solo se ofrece donde tiene sentido", async () => {
+    vi.spyOn(inventoryApi, "consumeInventoryItem").mockResolvedValue({
+      remaining: 1,
+      deleted: false,
+    });
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(
+      respuesta([
+        fila({ id: "ca-1", location: "CARRIED", item: cuerda }),
+        fila({ id: "eq-2", location: "EQUIPPED", slot: "MAIN_HAND", item: espada }),
+      ]),
+    );
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    await screen.findByText("Cuerda de seda");
+
+    // La cuerda es equipo: se gasta. Una espada equipada no —gastar una espada no significa nada.
+    fireEvent.click(screen.getByRole("button", { name: /Gastar una unidad de Cuerda de seda/ }));
+
+    await waitFor(() =>
+      expect(inventoryApi.consumeInventoryItem).toHaveBeenCalledWith("c1", "ch1", "ca-1", 1),
+    );
+    expect(
+      screen.queryByRole("button", { name: /Gastar una unidad de Espada larga/ }),
+    ).not.toBeInTheDocument();
+  });
 });

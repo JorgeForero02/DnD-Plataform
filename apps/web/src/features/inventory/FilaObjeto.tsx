@@ -28,6 +28,7 @@ export function FilaObjeto({
   row,
   onAccionPrincipal,
   onSoltar,
+  onGastar,
   ocupado,
   error,
 }: {
@@ -36,6 +37,12 @@ export function FilaObjeto({
   onAccionPrincipal: () => void;
   /** Soltar el objeto — siempre detrás de una confirmación en pantalla, nunca aquí mismo. */
   onSoltar: () => void;
+  /**
+   * Gastar una unidad. **Solo donde tiene sentido**: un consumible, o una pila de varios. Sin
+   * esto, beber la segunda poción de tres y beber la última eran dos gestos distintos —cambiar
+   * la cantidad y borrar la fila— y ninguno dejaba constancia.
+   */
+  onGastar?: () => void;
   ocupado: boolean;
   /** El rechazo del servidor para esta fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
@@ -76,6 +83,17 @@ export function FilaObjeto({
         <Button type="button" variant="secondary" aria-busy={ocupado} onClick={onAccionPrincipal}>
           {NOMBRE_ACCION_ZONA[row.location]}
         </Button>
+        {onGastar && (
+          <Button
+            type="button"
+            variant="ghost"
+            aria-busy={ocupado}
+            onClick={onGastar}
+            aria-label={`Gastar una unidad de ${item.name}`}
+          >
+            Gastar
+          </Button>
+        )}
         <Button
           type="button"
           variant="ghost"

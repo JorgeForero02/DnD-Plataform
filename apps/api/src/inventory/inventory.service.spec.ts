@@ -502,6 +502,57 @@ describe("InventoryService", () => {
     });
   });
 
+  describe("consume() — gastar un consumible (auditoría de mecánica 2B)", () => {
+    it("descuenta las unidades gastadas y deja la fila si quedan", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(row({ srdKey: "arrows-20", quantity: 3 }));
+      prisma.inventoryItem.update.mockResolvedValue({});
+
+      const res = await service.consume("owner1", "cmp1", "c1", "row1", { amount: 1 });
+
+      expect(prisma.inventoryItem.update).toHaveBeenCalledWith({
+        where: { id: "row1" },
+        data: { quantity: 2 },
+      });
+      expect(res).toEqual({ remaining: 2, deleted: false });
+    });
+
+    it("la última unidad se lleva la fila: una pila de cero no es información", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(row({ srdKey: "torch", quantity: 1 }));
+      prisma.inventoryItem.delete.mockResolvedValue({});
+
+      const res = await service.consume("owner1", "cmp1", "c1", "row1", { amount: 1 });
+
+      expect(prisma.inventoryItem.delete).toHaveBeenCalledWith({ where: { id: "row1" } });
+      expect(res).toEqual({ remaining: 0, deleted: true });
+    });
+
+    it("gastar más de lo que hay es 400, y no toca nada", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(row({ srdKey: "torch", quantity: 2 }));
+
+      await expect(
+        service.consume("owner1", "cmp1", "c1", "row1", { amount: 5 }),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+      expect(prisma.inventoryItem.delete).not.toHaveBeenCalled();
+    });
+
+    it("y deja rastro: gastar una poción es algo que la mesa recuerda mal una semana después", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(row({ srdKey: "torch", quantity: 2 }));
+      prisma.inventoryItem.update.mockResolvedValue({});
+
+      await service.consume("owner1", "cmp1", "c1", "row1", { amount: 1 });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({ type: "ITEM_REMOVED", quantity: 1 }),
+        }),
+        expect.anything(),
+      );
+    });
+  });
+
   describe("carrera del índice único parcial (P2002)", () => {
     it("una violación de la restricción única se traduce a 409, no revienta como 500", async () => {
       prisma.inventoryItem.findFirst

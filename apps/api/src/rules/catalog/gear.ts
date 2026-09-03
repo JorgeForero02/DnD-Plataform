@@ -38,5 +38,18 @@ export const SRD_GEAR: SrdGear[] = [
   { key: "ink-1oz-bottle", name: "Tinta (frasco de una onza)", weightOz: 0, costCp: 1000 },
   { key: "paper-1-sheet", name: "Papel (una hoja)", weightOz: 0, costCp: 20 },
   { key: "sack", name: "Saco", weightOz: 8, costCp: 1 },
+
+  // --- Munición ---------------------------------------------------------------------------
+  //
+  // **La munición no es equipo de acampada**: es el consumible del que depende una clase
+  // entera, y sin ella el explorador dispara indefinidamente y la aventura de supervivencia
+  // —«os quedan seis flechas»— no se puede llevar en la herramienta. Lo señaló la auditoría de
+  // mecánica de 2B. Los pesos y precios del SRD son **por paquete** (20 flechas, 20 virotes,
+  // 20 balas, 50 agujas), y así se transcriben: el paquete es la fila, y la cantidad del
+  // inventario cuenta paquetes.
+  { key: "arrows-20", name: "Flechas (20)", weightOz: 16, costCp: 100 },
+  { key: "crossbow-bolts-20", name: "Virotes de ballesta (20)", weightOz: 24, costCp: 100 },
+  { key: "sling-bullets-20", name: "Balas de honda (20)", weightOz: 24, costCp: 4 },
+  { key: "blowgun-needles-50", name: "Agujas de cerbatana (50)", weightOz: 16, costCp: 100 },
   { key: "blanket", name: "Manta", weightOz: 48, costCp: 50 },
 ];

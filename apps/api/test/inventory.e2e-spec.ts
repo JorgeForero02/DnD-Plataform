@@ -294,4 +294,30 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     const anadido = log.body.events.find((e: { type: string }) => e.type === "ITEM_ADDED");
     expect(anadido.payload).toMatchObject({ item: "Antorcha", quantity: 2 });
   });
+
+  it("gastar un consumible descuenta unidades, y la última se lleva la fila", async () => {
+    const fila = (
+      await request(s())
+        .post(base())
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ ref: { source: "SRD", key: "arrows-20" }, quantity: 2 })
+    ).body;
+
+    const primera = await request(s())
+      .post(`${base()}/${fila.id}/consume`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ amount: 1 });
+    expect(primera.status).toBe(201);
+    expect(primera.body).toMatchObject({ remaining: 1, deleted: false });
+
+    const segunda = await request(s())
+      .post(`${base()}/${fila.id}/consume`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ amount: 1 });
+    expect(segunda.body).toMatchObject({ remaining: 0, deleted: true });
+
+    // Y la fila se ha ido de verdad: una pila de cero no es información.
+    const lista = await request(s()).get(base()).set("Authorization", `Bearer ${tokenPL}`);
+    expect(lista.body.items.find((i: { id: string }) => i.id === fila.id)).toBeUndefined();
+  });
 });

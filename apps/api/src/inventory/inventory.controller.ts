@@ -2,9 +2,11 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } fro
 import {
   addInventoryItemSchema,
   changeMoneySchema,
+  consumeInventoryItemSchema,
   updateInventoryItemSchema,
   type AddInventoryItemInput,
   type ChangeMoneyInput,
+  type ConsumeInventoryItemInput,
   type UpdateInventoryItemInput,
 } from "@dnd/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -46,6 +48,22 @@ export class InventoryController {
     @Body(new ZodValidationPipe(updateInventoryItemSchema)) body: UpdateInventoryItemInput,
   ) {
     return this.inventory.update(req.user.id, campaignId, characterId, rowId, body);
+  }
+
+  /**
+   * Gastar un consumible. **Es su propio verbo y no un `PATCH` de cantidad**: gastar es un
+   * delta —dos personas pueden gastar de la misma pila a la vez— y además tiene un final, que
+   * es cuando la fila desaparece.
+   */
+  @Post(":rowId/consume")
+  consume(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+    @Param("rowId") rowId: string,
+    @Body(new ZodValidationPipe(consumeInventoryItemSchema)) body: ConsumeInventoryItemInput,
+  ) {
+    return this.inventory.consume(req.user.id, campaignId, characterId, rowId, body);
   }
 
   @Delete(":rowId")

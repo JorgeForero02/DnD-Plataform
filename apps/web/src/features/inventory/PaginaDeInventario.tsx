@@ -2,7 +2,13 @@ import { useState } from "react";
 import type { CoinKey } from "@dnd/shared";
 import { ApiError } from "../../lib/api";
 import type { InventoryRow } from "./api";
-import { useCambiarUbicacion, useChangeMoney, useInventory, useRemoveInventoryItem } from "./hooks";
+import {
+  useCambiarUbicacion,
+  useChangeMoney,
+  useConsumeInventoryItem,
+  useInventory,
+  useRemoveInventoryItem,
+} from "./hooks";
 import { AvisoDeEquipar } from "./AvisoDeEquipar";
 import type { AvisoEquiparInfo } from "./AvisoDeEquipar";
 import { ConfirmarSoltar } from "./ConfirmarSoltar";
@@ -37,6 +43,7 @@ export function PaginaDeInventario({
   const cambiarUbicacion = useCambiarUbicacion(campaignId, characterId);
   const removerObjeto = useRemoveInventoryItem(campaignId, characterId);
   const cambiarDinero = useChangeMoney(campaignId, characterId);
+  const gastarObjeto = useConsumeInventoryItem(campaignId, characterId);
 
   const [aviso, setAviso] = useState<AvisoEquiparInfo | null>(null);
   const [filaEnVuelo, setFilaEnVuelo] = useState<string | null>(null);
@@ -99,6 +106,28 @@ export function PaginaDeInventario({
     );
   };
 
+  /**
+   * Gastar tiene sentido en un consumible, o en una pila de varios: una antorcha que se quema,
+   * un paquete de flechas que se acaba. En una espada no.
+   */
+  const sePuedeGastar = (row: InventoryRow) =>
+    row.item.kind === "CONSUMABLE" || row.item.kind === "GEAR" || row.quantity > 1;
+
+  const gastar = (row: InventoryRow) => {
+    setErroresPorFila((e) => ({ ...e, [row.id]: "" }));
+    setFilaEnVuelo(row.id);
+    gastarObjeto.mutate(
+      { rowId: row.id, amount: 1 },
+      {
+        onSuccess: () => setFilaEnVuelo(null),
+        onError: (error: unknown) => {
+          setFilaEnVuelo(null);
+          setErroresPorFila((e) => ({ ...e, [row.id]: mensajeDeError(error) }));
+        },
+      },
+    );
+  };
+
   const confirmarSoltar = () => {
     if (!filaASoltar) return;
     removerObjeto.mutate(filaASoltar.id, {
@@ -153,6 +182,7 @@ export function PaginaDeInventario({
               error={erroresPorFila[row.id] || undefined}
               onAccionPrincipal={() => cambiarZona(row, "EQUIPPED")}
               onSoltar={() => setFilaASoltar(row)}
+              onGastar={sePuedeGastar(row) ? () => gastar(row) : undefined}
             />
           ))}
         </ZonaDeObjetos>

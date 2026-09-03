@@ -45,6 +45,22 @@ export const updateInventoryItemSchema = z
   });
 export type UpdateInventoryItemInput = z.infer<typeof updateInventoryItemSchema>;
 
+/**
+ * Gastar un consumible: una poción que se bebe, una antorcha que se quema, un paquete de
+ * flechas que se acaba.
+ *
+ * **Existe porque `quantity` no puede bajar a cero** —el mínimo del esquema es 1— así que la
+ * última poción solo se podía «beber» borrando la fila, y beber la segunda de tres y beber la
+ * última eran dos gestos distintos en la pantalla sin que ninguno dejara constancia. Lo señaló
+ * la auditoría de mecánica de 2B. Al llegar a cero, la fila se va: una fila con cero unidades no
+ * es información, es ruido en la mochila.
+ */
+export const consumeInventoryItemSchema = z.object({
+  amount: z.number().int().min(1).max(9999).default(1),
+  reason: z.string().max(280).optional(),
+});
+export type ConsumeInventoryItemInput = z.infer<typeof consumeInventoryItemSchema>;
+
 /** Las cinco monedas del SRD 5.1. El orden es de menor a mayor valor. */
 export const COIN_KEYS = ["cp", "sp", "ep", "gp", "pp"] as const;
 export const coinKeySchema = z.enum(COIN_KEYS);

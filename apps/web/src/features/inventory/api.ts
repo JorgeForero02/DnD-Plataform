@@ -74,6 +74,22 @@ export function removeInventoryItem(
   });
 }
 
+/**
+ * Gastar unidades de un consumible: la poción que se bebe, el paquete de flechas que se acaba.
+ * Al llegar a cero el servidor se lleva la fila, y lo dice en `deleted`.
+ */
+export function consumeInventoryItem(
+  campaignId: string,
+  characterId: string,
+  rowId: string,
+  amount = 1,
+): Promise<{ remaining: number; deleted: boolean }> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/inventory/${rowId}/consume`, {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
 export function changeMoney(
   campaignId: string,
   characterId: string,

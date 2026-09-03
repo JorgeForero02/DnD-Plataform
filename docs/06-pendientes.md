@@ -309,6 +309,16 @@ escribir en él?) estaba escrito dos veces y 2B iba a escribir la tercera. Vive 
 
 ## Lo que dejó abierto la auditoría de mecánica de 2B (2026-09-03, noche)
 
+> **Un intermitente que no era una prueba frágil, y merece constar.** Después de serializar el
+> camino de equipar, el e2e de la carrera empezó a fallar **una vez de cada cuatro** con un 500
+> en vez del 409 esperado. La tentación era llamarlo flaky y repetir. Medido con el error real
+> impreso, era un **abrazo mortal de Postgres (40P01)**: meter un objeto ya equipado y equipar
+> otro tomaban los recursos **en orden inverso** —uno el índice único de la ranura, otro la fila
+> del personaje—. Se arregló haciendo que todos los escritores del inventario tomen el mismo
+> candado primero, y el propio abrazo mortal se traduce ahora a un 409 legible por si alguna vez
+> vuelve por un camino nuevo. Seis corridas seguidas en verde después del arreglo.
+
+
 Dos frentes con su refutador, sobre el camino de una mesa real. El informe entero, con lo que se
 arregló el mismo día y lo que el refutador corrigió, está en
 [la auditoría de mecánica](./superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md).
@@ -320,7 +330,8 @@ arregló el mismo día y lo que el refutador corrigió, está en
 | ~~**M2B-2**~~ | **CERRADA el 2026-09-03**: `ITEM_ADDED`, `ITEM_MOVED` e `ITEM_REMOVED`, escritos **en la misma transacción** que el cambio. Y soltar pasó a ser idempotente (`deleteMany`), que era el otro fallo de la misma línea: soltar dos veces con mala red daba un 500 sobre una operación que sí había funcionado | Cerrada |
 | ~~**M2B-2 (texto original)**~~ | **Ninguna mutación de inventario deja rastro en la línea de tiempo** | El dinero sí (`MONEY_CHANGED`). Una semana después nadie puede responder «¿quién cogió la gema?». Tres tipos de suceso y un `events.record` dentro de cada transacción |
 | **M2B-3** | **El motor de reglas se dispara dentro de la transacción del llamante y escribe fuera de ella** | Sus efectos sobreviven a un cambio que se deshace, y lee el mundo anterior al suceso. Hoy la única puerta real es arrancar o cerrar sesión —las tiradas y el mundo registran sin `tx`—, pero **el comentario de `game-events.service.ts` afirma que la evaluación ocurre «dentro de la petición» y no es cierto**: `emit` no se espera. Se arregla encolando los sucesos y emitiéndolos tras el *commit* |
-| **M2B-4** | **No hay munición, ni cargas, ni forma de gastar un consumible** | La propiedad `AMMUNITION` se pinta y no la consume nadie; `quantity` no puede bajar a 0 (la última poción se «bebe» borrando la fila); un descanso no repone cargas porque no existen. El explorador dispara indefinidamente |
+| **M2B-4** | **Quedan las cargas** (una varita de siete usos que se repone en el descanso) | La munición del SRD ya está sembrada (flechas, virotes, balas, agujas) y **gastar un consumible existe** (`POST .../inventory/:rowId/consume`, con su rastro en la línea de tiempo y la fila que desaparece al llegar a cero). Lo que falta son las **cargas**: columnas `chargesCurrent`/`chargesMax`/`rechargeOn` en `InventoryItem` y reponerlas dentro de la transacción del descanso. Es una migración, y por eso no entró de madrugada |
+| ~~**M2B-4 (texto original)**~~ | **No hay munición, ni cargas, ni forma de gastar un consumible** | La propiedad `AMMUNITION` se pinta y no la consume nadie; `quantity` no puede bajar a 0 (la última poción se «bebe» borrando la fila); un descanso no repone cargas porque no existen. El explorador dispara indefinidamente |
 | **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
 | ~~**M2B-6**~~ | **CERRADA el 2026-09-03**: un arma va en una mano, una armadura en el cuerpo, un escudo en la izquierda; lo demás se rechaza con un 400 que dice dónde va. `OTHER` y `CONSUMABLE` siguen sin acotar a propósito: son el cajón de lo que el SRD no nombra | Cerrada |
 | ~~**M2B-6 (texto original)**~~ | **La ranura no comprueba qué clase de objeto acepta** | Una cota de malla equipada en «CABEZA» sigue dando su CA, y un segundo escudo colocado a propósito en otra ranura **apaga la hoja entera** (`InvalidEquipmentError` → `sheet: null`). Hace falta atar `kind` ↔ `slot` |

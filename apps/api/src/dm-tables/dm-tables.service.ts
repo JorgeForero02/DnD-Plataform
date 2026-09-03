@@ -72,12 +72,27 @@ export class DmTablesService {
    */
   async list(userId: string, campaignId: string) {
     const viewer = await this.viewerFor(userId, campaignId);
-    const filas = await this.prisma.dmTable.findMany({
-      where: { campaignId },
-      include: { entries: { orderBy: { min: "asc" } } },
-      orderBy: { createdAt: "asc" },
-    });
-    return filas.filter((t) => this.puedeVer(viewer, t.visibility));
+    const [filas, campana] = await Promise.all([
+      this.prisma.dmTable.findMany({
+        where: { campaignId },
+        include: { entries: { orderBy: { min: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    return {
+      tables: filas.filter((t) => this.puedeVer(viewer, t.visibility)),
+      // **El interruptor viaja con la lista**, y esto lo pidió la pantalla: se podía escribir y no
+      // leer, así que al entrar no había forma de saber en qué posición estaba. Una interfaz que
+      // pinta «Apagada» sin que le conste es una interfaz que afirma un estado del servidor que no
+      // conoce — y la regla del proyecto dice que si el texto y el servidor discrepan, miente el
+      // texto. Va aquí y no en un endpoint aparte porque nadie necesita lo uno sin lo otro.
+      //
+      // **Y lo ve la mesa entera, no solo el DM**: si una campaña juega con tabla de pifias, sus
+      // jugadores tienen derecho a saberlo antes de sacar un 1. Una casa que cambia una regla lo
+      // hace a la vista.
+      houseTablesEnabled: campana.houseTablesEnabled,
+    };
   }
 
   async remove(userId: string, campaignId: string, tableId: string) {

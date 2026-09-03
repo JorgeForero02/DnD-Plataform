@@ -45,6 +45,34 @@ traducción del paso `maxHp.exhaustion.half` y tumba tres pruebas a la vez.
 
 **Cómo revertir.** `git revert` del commit. Solo toca la web; el servidor ya sabía hacer todo esto.
 
+## 2026-09-03 (tarde) — 2C.6 (pantalla): las tablas del DM, y el interruptor que se podía escribir y no leer
+
+**Qué.** La pantalla de las tablas, en su propia pestaña de «La mesa». **Lo primero que se lee es
+qué son**: el SRD no trae ninguna tabla de críticos ni de pifias, lo único oficial es que un
+crítico duplica los dados y no los modificadores, y estas las pone la mesa. Esa frase va arriba y
+sin adornos porque es la regla del proyecto de que la pantalla no mienta sobre lo que hace el
+servidor.
+
+**El interruptor va como dos radios con su frase**, no como una casilla: la posición «Apagada»
+lleva la frase que importa —«un crítico sigue duplicando dados y nada más»— y una casilla no tiene
+dónde ponerla.
+
+> **Y el carril de pantalla encontró un hueco del servidor, que se cerró en el servidor.** El
+> interruptor **se podía escribir y no leer**: ningún `GET` devolvía `houseTablesEnabled`, así que
+> al entrar la pantalla no sabía en qué posición estaba. El carril lo resolvió como debía —diciendo
+> en pantalla que no le constaba, en vez de marcar «Apagada» por defecto, que habría sido la
+> interfaz afirmando un estado del servidor que no conoce—, y al integrar se arregló donde tocaba:
+> el estado viaja ahora **con la lista de tablas**, porque nadie necesita lo uno sin lo otro. **Y lo
+> ve la mesa entera, no solo el DM**: si una campaña juega con tabla de pifias, sus jugadores tienen
+> derecho a saberlo antes de sacar un 1.
+
+**Probado.** 740 unitarias de web, 1183 de API, 181 e2e de API y **78 recorridos de navegador en 19
+especificaciones**, en verde. Seis mutaciones del carril de pantalla —incluida la que cambia la
+frase de «el SRD no trae estas tablas» por una neutra— y una más en el servidor.
+
+**Cómo revertir.** `git revert` del commit. La lectura del interruptor es aditiva: revertirla
+devuelve la pantalla al estado en que lo decía en vez de saberlo.
+
 ## 2026-09-03 (tarde) — 2C.5 (pantalla): el DM pide, a la jugadora le aparece sin recargar
 
 **Qué.** La otra mitad de 2C.5, y el recorrido que la cierra: **dos navegadores**, el DM pide desde

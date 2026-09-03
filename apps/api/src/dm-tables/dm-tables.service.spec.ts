@@ -22,7 +22,7 @@ const tablaDePifias = {
 describe("DmTablesService", () => {
   let service: DmTablesService;
   const prisma = {
-    campaign: { findUnique: jest.fn(), update: jest.fn() },
+    campaign: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn() },
     dmTable: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
@@ -123,14 +123,26 @@ describe("DmTablesService", () => {
   });
 
   describe("quién ve qué", () => {
+    it("**el estado del interruptor viaja con la lista, y lo ve la mesa entera**", async () => {
+      // Se podía escribir y no leer: al entrar, la pantalla no sabía en qué posición estaba. Y lo
+      // ve también un jugador — si la casa juega con tabla de pifias, tiene derecho a saberlo
+      // antes de sacar un 1.
+      membership.requireMember.mockResolvedValue({ role: "PLAYER" });
+      prisma.dmTable.findMany.mockResolvedValue([]);
+      prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "c1", houseTablesEnabled: true });
+      const lista = await service.list("jugador", "c1");
+      expect(lista.houseTablesEnabled).toBe(true);
+    });
+
     it("una tabla DM_ONLY no viaja al jugador: **no se esconde en el cliente, no se manda**", async () => {
       membership.requireMember.mockResolvedValue({ role: "PLAYER" });
       prisma.dmTable.findMany.mockResolvedValue([
         tablaDePifias,
         { ...tablaDePifias, id: "t2", visibility: "PLAYERS", trigger: "NONE" },
       ]);
+      prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "c1", houseTablesEnabled: false });
       const lista = await service.list("jugador", "c1");
-      expect(lista.map((t) => t.id)).toEqual(["t2"]);
+      expect(lista.tables.map((t) => t.id)).toEqual(["t2"]);
     });
 
     it("**tirarla sin poder verla es 404, no 403**: un 403 confirmaría que existe", async () => {

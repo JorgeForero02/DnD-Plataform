@@ -46,6 +46,8 @@ import {
 import { CampaignItemsCatalogPage } from "../features/campaign-items/CampaignItemsCatalogPage";
 import { IconoImpedimenta } from "../features/campaign-items/iconos";
 import { PanelDeDados } from "../features/rolls/PanelDeDados";
+import { PanelDeTablas } from "../features/dm-tables/PanelDeTablas";
+import { IconoTabla } from "../features/dm-tables/iconos";
 import { DadoDibujado } from "../features/rolls/DadoDibujado";
 
 type TabConfig =
@@ -56,6 +58,7 @@ type TabConfig =
   | { kind: "rules"; label: string; group?: string }
   | { kind: "items"; label: string; group?: string }
   | { kind: "dice"; label: string; group?: string }
+  | { kind: "tables"; label: string; group?: string }
   | { kind: "settings"; label: string; group?: string };
 
 // Reseño 2026-09-02 — audit B4. These ten used to sit in one flat strip, which said that
@@ -90,6 +93,9 @@ const TABS: TabConfig[] = [
   // porque la mitad de las tiradas de una mesa no son de nadie —«tirad todos percepción», «1d100
   // a ver qué sale»— y una tirada sin personaje no tiene hoja donde vivir.
   { kind: "dice", label: "Dados", group: GRUPO_MESA },
+  // 2C.6. Detrás de «Dados» porque es lo mismo con otra forma —tirar y leer un resultado—, y en
+  // «La mesa» porque es una regla de esta mesa: el SRD no trae ninguna de estas tablas.
+  { kind: "tables", label: "Tablas", group: GRUPO_MESA },
   // **Sin grupo, a propósito.** La maqueta lo mete en «LA CAMPAÑA», pero ahí acompañaba a
   // media docena de entradas que aquí no existen. Un rótulo de grupo sobre un único elemento
   // no agrupa nada: solo añade una línea de tipografía para decir en versalita lo que la
@@ -590,6 +596,15 @@ export function CampaignDetailPage() {
         // dibujos distintos para lo mismo enseñan que son cosas distintas.
         icon: <DadoDibujado />,
         content: <PanelDeDados campaignId={id} />,
+      };
+    }
+    if (t.kind === "tables") {
+      return {
+        id: "tables",
+        label: t.label,
+        group: t.group,
+        icon: <IconoTabla />,
+        content: <PanelDeTablas campaignId={id} />,
       };
     }
     if (t.kind === "items") {

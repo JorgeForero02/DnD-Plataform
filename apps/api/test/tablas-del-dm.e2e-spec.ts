@@ -63,9 +63,16 @@ describe("Tablas del DM (e2e)", () => {
     await app.close();
   });
 
-  it("**las tablas de la casa nacen apagadas**", async () => {
+  it("**las tablas de la casa nacen apagadas**, y el listado lo dice", async () => {
     const campana = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
     expect(campana.houseTablesEnabled).toBe(false);
+
+    // Y viaja con la lista: la pantalla podía escribir el interruptor y no leerlo, así que al
+    // entrar no había forma de saber en qué posición estaba.
+    const lista = await request(app.getHttpServer())
+      .get(url())
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(lista.body.houseTablesEnabled).toBe(false);
   });
 
   it("un jugador no puede crear tablas (403)", async () => {
@@ -108,11 +115,11 @@ describe("Tablas del DM (e2e)", () => {
     expect(crear.body.visibility).toBe("DM_ONLY");
 
     const delDM = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
-    expect(delDM.body).toHaveLength(1);
+    expect(delDM.body.tables).toHaveLength(1);
 
     // **No viaja**: no se esconde en el cliente.
     const delJugador = await request(s).get(url()).set("Authorization", `Bearer ${tokenPL}`);
-    expect(delJugador.body).toHaveLength(0);
+    expect(delJugador.body.tables).toHaveLength(0);
   });
 
   it("**una segunda tabla de pifias se rechaza, y lo impide la base** (409)", async () => {
@@ -141,7 +148,7 @@ describe("Tablas del DM (e2e)", () => {
       expect(r.status).toBe(201);
     }
     const delJugador = await request(s).get(url()).set("Authorization", `Bearer ${tokenPL}`);
-    expect(delJugador.body.map((t: { name: string }) => t.name).sort()).toEqual([
+    expect(delJugador.body.tables.map((t: { name: string }) => t.name).sort()).toEqual([
       "Botín",
       "Rumores",
     ]);
@@ -150,7 +157,7 @@ describe("Tablas del DM (e2e)", () => {
   it("tirarla a mano da un resultado de la tabla y **deja rastro con su visibilidad**", async () => {
     const s = app.getHttpServer();
     const tablas = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
-    const pifias = tablas.body.find((t: { name: string }) => t.name === "Pifias de la casa");
+    const pifias = tablas.body.tables.find((t: { name: string }) => t.name === "Pifias de la casa");
 
     const tirada = await request(s)
       .post(`${url()}/${pifias.id}/roll`)
@@ -172,7 +179,7 @@ describe("Tablas del DM (e2e)", () => {
   it("**un jugador no puede tirar una tabla que no ve, y recibe 404, no 403**", async () => {
     const s = app.getHttpServer();
     const tablas = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
-    const pifias = tablas.body.find((t: { name: string }) => t.name === "Pifias de la casa");
+    const pifias = tablas.body.tables.find((t: { name: string }) => t.name === "Pifias de la casa");
 
     const r = await request(s)
       .post(`${url()}/${pifias.id}/roll`)

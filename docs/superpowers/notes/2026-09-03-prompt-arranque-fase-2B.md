@@ -104,8 +104,9 @@ que no la empieces a que la dejes a medias.
 
 ## Estado al empezar
 
-- `main` está limpio y por delante de producción a propósito. **Producción es `946e427`**; no
-  despliegues salvo que te lo pida.
+- `main` está limpio y **acaba de desplegarse**: producción sirve el mismo código, salvo el
+  último commit de documentación. **No despliegues salvo que te lo pida** — y una fase con
+  migración como esta no se sube sin que el autor la mire.
 - **Todo en verde al cerrar**: unitarias, e2e de API contra Postgres real y la suite de
   navegador entera. **Las cifras no se copian aquí**: los recorridos de e2e viven **solo** en
   `docs/08-pruebas.md` y las unitarias las genera `scripts/update-estado.mjs` en el bloque de

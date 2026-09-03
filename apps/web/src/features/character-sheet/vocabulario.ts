@@ -137,6 +137,10 @@ export const NOMBRE_TIPO_ORIGEN: Record<TraceSourceType, string> = {
   item: "objeto",
   proficiency: "competencia",
   manual: "manual",
+  // Fase 2D. «Lo dice el statblock» es un origen de verdad y no un cajón de sastre: la CA de un
+  // monstruo es un número escrito en el libro, y la traza tiene que poder decir eso mismo.
+  statblock: "statblock",
+  challenge: "desafío",
 };
 
 // Las quince condiciones que el motor entiende (`SRD_CONDITIONS`, character-state.schema.ts) —

@@ -30,6 +30,13 @@ export const traceSourceTypeSchema = z.enum([
   "item",
   "proficiency",
   "manual",
+  /**
+   * El statblock de un PNJ **dice** el valor y no lo deriva de nada: la CA de un monstruo es un
+   * numero escrito en el libro, no una formula de armadura. Fase 2D.
+   */
+  "statblock",
+  /** El valor de desafio, de donde sale el bonificador de competencia de un PNJ. Fase 2D. */
+  "challenge",
 ]);
 export type TraceSourceType = z.infer<typeof traceSourceTypeSchema>;
 

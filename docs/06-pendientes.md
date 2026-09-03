@@ -46,6 +46,39 @@ petición de tirada y tablas del DM). Las secciones van de lo más reciente a lo
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 
+## P3 · El catálogo de PNJ mezcla pies y metros, y está declarado (2026-09-03, 2D.1)
+
+Los datos **estructurados** de un statblock del SRD —velocidades, visión en la oscuridad— están
+en **pies**, como el resto de la aplicación. La **prosa citada** de rasgos y acciones está en
+**metros**, porque viene literal del «Documento de referencia del sistema 5.1» en español y ahí
+un ataque tiene *«alcance 1,5 m»*.
+
+**Por qué se dejó así y no se convirtió.** Alterar los números de dentro de una cita es donde se
+rompe una traducción: hay alcances dobles (*«9/36 m»*), radios, y frases donde el número forma
+parte de la regla. Convertirlos a máquina con una expresión regular es exactamente la clase de
+arreglo que introduce una errata que nadie ve hasta la mesa.
+
+**Qué se vería.** En la ficha de un goblin, «Velocidad 30 pies» arriba y «alcance 1,5 m» en la
+prosa del ataque, a dos centímetros el uno del otro.
+
+**Salidas posibles, cuando alguien lo pida:** pintar las dos unidades en los datos estructurados
+(«30 pies (9 m)»), o convertir la prosa **a mano**, quince fichas, revisando cada número. Lo que
+no se hará es convertir la cita automáticamente.
+
+## Nota de la tanda de mutaciones de 2D.1 — una que sobrevivió y no era un hueco
+
+Al romper `bonoDeCompetenciaPorVd` cambiando `Math.ceil` por `Math.floor`, **la suite siguió en
+verde**, y la respuesta correcta no era añadir una prueba: es una **mutación equivalente**. Los
+valores de desafío fraccionarios del SRD solo existen por debajo de 1 (0, 1/8, 1/4 y 1/2) y los
+cuatro caen en la misma banda de competencia se redondee como se redondee. El `Math.ceil` es
+defensivo y documenta la intención; no cambia ningún resultado.
+
+Se anota porque la próxima vez que alguien mida cobertura de mutación sobre este fichero se va a
+encontrar la misma superviviente, y merece leer por qué está ahí en vez de escribir una prueba
+que no puede fallar. Las otras tres mutaciones —la Constitución sumada una vez en vez de por
+dado, la banda de competencia cada cinco VD, y las criaturas Grandes con d8— **sí se pusieron
+rojas**, cada una arrastrando varias pruebas con ella.
+
 ## P3 · La suite de e2e llega a 58 conexiones de las 100 de Postgres (2026-09-03)
 
 **Medido, no supuesto.** Corriendo `pnpm --filter @dnd/api test:e2e` y contando

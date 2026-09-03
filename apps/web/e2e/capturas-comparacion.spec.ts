@@ -11,8 +11,20 @@ import { test, expect, type Page } from "@playwright/test";
 //
 // Aquí ponía «se salta en la suite normal» y era falso: no hay ningún `test.skip` en este
 // fichero. Lo encontró una auditoría.
+//
+// **Ficha M2B-13: escribe a una carpeta ignorada, no a la seguida por git.** Hasta el 2026-09-03
+// el destino por defecto era `capturas/`, que está en el repositorio, así que **cada corrida de
+// la suite dejaba nueve binarios modificados** —otra cuenta, otras horas, otros
+// identificadores— que no significan nada y que hay que limpiar antes de cada commit. Peor que
+// el ruido era la salida fácil: limpiarlos con `git checkout` sobre un árbol con trabajo sin
+// commitear, que es el comando que este proyecto prohíbe.
+//
+// Así que el destino por defecto es **`capturas-salida/`, ignorada**, y el juego de referencia
+// de `capturas/` —el que se comparó con el prototipo— solo se reescribe **a propósito**:
+// `SALIDA_CAPTURAS=capturas`. Una foto de referencia se actualiza cuando alguien lo decide, no
+// como efecto colateral de correr las pruebas.
 
-const SALIDA = process.env.SALIDA_CAPTURAS ?? "capturas";
+const SALIDA = process.env.SALIDA_CAPTURAS ?? "capturas-salida";
 
 function nuevaCuenta() {
   const marca = `${Date.now()}${Math.floor(Math.random() * 1000)}`;

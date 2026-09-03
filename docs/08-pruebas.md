@@ -90,6 +90,13 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > porque montar una campaña con contenido a mano cada vez que hay que comparar cuesta más que
 > tenerlo escrito, y porque las dos rondas de interfaz que salieron bien empezaron mirando las
 > dos capturas juntas.
+>
+> **Y desde el 2026-09-03 escribe a una carpeta ignorada** (`apps/web/capturas-salida/`, ficha
+> M2B-13). Antes reescribía los nueve PNG del repositorio en cada corrida, así que **la suite
+> dejaba nueve binarios modificados que no significan nada** y había que limpiarlos antes de cada
+> commit — con la tentación de hacerlo con `git checkout` sobre un árbol con trabajo sin
+> commitear, que es justo el comando que este proyecto prohíbe. El juego de referencia de
+> `apps/web/capturas/` se reescribe **a propósito**: `SALIDA_CAPTURAS=capturas`.
 
 > **Un intermitente que parecía un defecto y era el limitador de peticiones (2026-09-03).**
 > La suite empezó a fallar en sitios distintos en cada vuelta: un personaje que no aparecía en

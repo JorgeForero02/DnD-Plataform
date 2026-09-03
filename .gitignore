@@ -7,3 +7,6 @@ coverage/
 apps/web/test-results/
 apps/web/playwright-report/
 apps/web/blob-report/
+# Ficha M2B-13: destino por defecto de `capturas-comparacion.spec.ts`. El juego de referencia
+# vive en `apps/web/capturas/` y ese SÍ va en el repositorio; esto es la foto de cada corrida.
+apps/web/capturas-salida/

@@ -15,6 +15,31 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > fase 2A entera y la ronda de interfaz, así que por sí solo ya está por encima del umbral; se
 > deja junto a propósito mientras sea el trabajo en curso, que es lo que se consulta.
 
+## 2026-09-03 (tarde) — La suite de navegador ya deja el árbol limpio (M2B-13)
+
+**Qué.** `capturas-comparacion.spec.ts` escribía por defecto en `apps/web/capturas/`, que está en
+el repositorio, así que **cada `pnpm --filter @dnd/web e2e` dejaba nueve binarios modificados** —
+otra cuenta, otras horas, otros identificadores— que no significan nada. Y peor que el ruido era
+la salida fácil: limpiarlos con `git checkout` sobre un árbol con trabajo sin commitear, que es el
+comando que este proyecto prohíbe.
+
+**Cómo.** El destino por defecto pasa a `apps/web/capturas-salida/`, ignorada. El juego de
+referencia de `apps/web/capturas/` —el que se comparó con el prototipo— **solo se reescribe a
+propósito**: `SALIDA_CAPTURAS=capturas`. Una foto de referencia se actualiza cuando alguien lo
+decide, no como efecto colateral de correr las pruebas.
+
+**Y lo guarda una prueba**, porque esto no lo puede cazar ninguna prueba de comportamiento: el
+daño no está en lo que la aplicación hace, está en lo que la suite deja detrás.
+`apps/web/src/ui/__tests__/capturas-no-ensucian.test.ts` lee el guion **y el `.gitignore`** — las
+dos mitades, porque un destino distinto que nadie ignora no arregla nada.
+
+**Probado.** 690 unitarias de web en verde. Mutación comprobada: devolver el defecto a `capturas`
+pone la prueba en rojo. Y medido de verdad, que es lo que cierra la ficha: corrido el guion, las
+nueve capturas aparecen en `capturas-salida/` y `git status` solo enseña las ediciones de código.
+
+**Cómo revertir.** `git revert` del commit. Quien tenga capturas viejas en `capturas-salida/` puede
+borrar la carpeta: es desechable por definición.
+
 ## 2026-09-03 (tarde) — 2C.1: el registro de tiradas, y la tirada a ciegas que no existía
 
 **Qué.** Primer bloque de la fase 2C. Dos cosas, y la segunda es un agujero que estaba abierto y

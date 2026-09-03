@@ -194,7 +194,9 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 > **Cómo se mira**, porque es una aplicación de cliente y un descargador de páginas solo ve el
 > cascarón: con el Chromium de Playwright que ya está instalado, y leyendo la captura. Hay un
 > guion escrito para fotografiar **las nuestras** en las mismas condiciones,
-> `apps/web/e2e/capturas-comparacion.spec.ts`, para poder ponerlas al lado.
+> `apps/web/e2e/capturas-comparacion.spec.ts`, para poder ponerlas al lado. Escribe en
+> `apps/web/capturas-salida/`, que git ignora; para refrescar el juego de referencia del
+> repositorio hay que pedirlo: `SALIDA_CAPTURAS=capturas`.
 >
 > **Y lo que el prototipo NO decide**, porque ya se comprobó copiándolo y salió mal: su
 > conmutador DM/Jugador cambia lo que se pinta donde aquí `canView` decide lo que se **envía**;

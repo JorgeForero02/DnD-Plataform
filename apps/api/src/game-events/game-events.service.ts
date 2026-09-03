@@ -117,7 +117,7 @@ export class GameEventsService {
      * Son **columnas reales**, nunca campos del `payload` — la regla de `docs/04-convenciones.md`:
      * un `Json` en la base no se consulta por dentro.
      */
-    filtros?: { types?: GameEventType[]; subjectId?: string },
+    filtros?: { types?: GameEventType[]; subjectId?: string; subjectIds?: string[] },
   ) {
     const propio = await this.membership.requireMember(campaignId, userId);
     // **Mirar por los ojos de otro exige ser DM**, y que ese otro sea miembro de esta campaña.
@@ -137,6 +137,9 @@ export class GameEventsService {
         ...(query.sessionId ? { sessionId: query.sessionId } : {}),
         ...(filtros?.types ? { type: { in: filtros.types } } : {}),
         ...(filtros?.subjectId ? { subjectId: filtros.subjectId } : {}),
+        // Varios sujetos a la vez: «las tiradas de mis personajes». Una lista vacía es **ninguna**,
+        // no todas — `{ in: [] }` no casa con nada, que es exactamente lo que se quiere decir.
+        ...(filtros?.subjectIds ? { subjectId: { in: filtros.subjectIds } } : {}),
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: query.limit,

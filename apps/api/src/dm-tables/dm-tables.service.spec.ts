@@ -23,7 +23,14 @@ describe("DmTablesService", () => {
   let service: DmTablesService;
   const prisma = {
     campaign: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn() },
-    dmTable: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
+    dmTable: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    dmTableEntry: { deleteMany: jest.fn() },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
@@ -119,6 +126,55 @@ describe("DmTablesService", () => {
       events.record.mockResolvedValue({ id: "e2" });
       await service.tirarSobre("dm", "c1", tablaDePifias, { roller: () => 1 });
       expect(events.record.mock.calls[0][2].payload.trigger).toBeUndefined();
+    });
+  });
+
+  describe("editar una tabla (ficha C2C-6)", () => {
+    it("**las filas se reemplazan enteras**, y dentro de la misma transacción", async () => {
+      // Una tabla a medio reemplazar es una tabla con huecos, y con huecos hay tiradas sin
+      // resultado. Por eso no hay un `PATCH` por fila: las filas se validan como conjunto.
+      prisma.dmTable.findFirst.mockResolvedValue(tablaDePifias);
+      prisma.dmTable.update.mockResolvedValue({ ...tablaDePifias, name: "Otro nombre" });
+
+      await service.update("dm", "c1", "t1", {
+        name: "Otro nombre",
+        visibility: "DM_ONLY",
+        trigger: "FUMBLE",
+        entries: [{ min: 1, max: 6, text: "Nuevo" }],
+      });
+
+      expect(prisma.dmTableEntry.deleteMany).toHaveBeenCalledWith({ where: { tableId: "t1" } });
+      expect(prisma.dmTable.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            entries: { create: [{ min: 1, max: 6, text: "Nuevo" }] },
+          }),
+        }),
+      );
+    });
+
+    it("editar es del DM, y una tabla de otra campaña es 404", async () => {
+      membership.requireDM.mockRejectedValue(new ForbiddenException());
+      await expect(
+        service.update("jugador", "c1", "t1", {
+          name: "X",
+          visibility: "DM_ONLY",
+          trigger: "NONE",
+          entries: [{ min: 1, max: 2, text: "A" }],
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      jest.clearAllMocks();
+      membership.requireDM.mockResolvedValue({ role: "DM" });
+      prisma.dmTable.findFirst.mockResolvedValue(null);
+      await expect(
+        service.update("dm", "c1", "ajena", {
+          name: "X",
+          visibility: "DM_ONLY",
+          trigger: "NONE",
+          entries: [{ min: 1, max: 2, text: "A" }],
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

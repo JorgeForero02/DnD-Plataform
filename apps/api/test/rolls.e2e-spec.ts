@@ -311,6 +311,50 @@ describe("Tiradas (e2e)", () => {
       .set("Authorization", `Bearer ${tokenDM}`);
   });
 
+  it("**«solo las mías» son las de MIS personajes**, no las de la mesa (ficha C2C-7)", async () => {
+    const s = app.getHttpServer();
+    // Una del personaje de la jugadora y otra del DM, sin personaje.
+    const suya = await request(s)
+      .post(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ expression: "1d20", characterId: idPersonajeDelJugador, audience: "PUBLIC" });
+    const delDM = await request(s)
+      .post(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ expression: "1d20", audience: "PUBLIC" });
+
+    const mias = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .query({ mine: "true" })
+      .set("Authorization", `Bearer ${tokenPL}`);
+
+    const ids = mias.body.events.map((e: { id: string }) => e.id);
+    expect(ids).toContain(suya.body.eventId);
+    expect(ids).not.toContain(delDM.body.eventId);
+  });
+
+  it("y para quien no tiene personajes, «las mías» son **ninguna**, no todas", async () => {
+    // Es el fallo silencioso de este filtro: enseñar la lista entera a quien pidió la suya.
+    //
+    // Se comprueba con **el DM, que no tiene personajes en esta campaña**, y no registrando una
+    // cuenta nueva a propósito: el límite de intentos de `/auth/register` es de cinco por minuto y
+    // por IP, y esta suite ya gasta cuatro. Una prueba que añade un registro más hace fallar a
+    // **otra** prueba, que es justo el intermitente que este proyecto ya documentó.
+    const s = app.getHttpServer();
+
+    const mias = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .query({ mine: "true" })
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(mias.body.events).toHaveLength(0);
+
+    // Y sin el filtro sí ve las de la mesa: `mine` acota, no relaja.
+    const todas = await request(s)
+      .get(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(todas.body.events.length).toBeGreaterThan(0);
+  });
+
   it("quien no es miembro no puede leer el registro de tiradas (403)", async () => {
     const s = app.getHttpServer();
     const email = `fuera-reg${Date.now()}@b.com`;

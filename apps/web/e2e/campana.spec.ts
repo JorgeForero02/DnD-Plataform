@@ -22,10 +22,19 @@ async function registrarse(page: Page) {
   return cuenta;
 }
 
+// **«Nueva campaña» resuelve a DOS botones**, y por eso todos los usos llevan `.first()`.
+//
+// Hay uno en la cabecera de la página y otro dentro de la lista, la tarjeta de borde discontinuo.
+// El recorrido de abajo llevaba **una carrera dentro**: pasaba cuando la consulta de campañas aún
+// no había pintado la lista —un solo botón— y se caía por modo estricto cuando sí. Que aguantara
+// meses no lo hacía correcto: lo hacía afortunado.
+//
+// `.first()` es la cabecera, que es la que una persona pulsa desde arriba.
+
 test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La Tumba de la Aniquilación");
   await page.getByRole("button", { name: "Crear" }).click();
 
@@ -63,7 +72,7 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
 }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("Descenso a Avernus");
   await page.getByRole("button", { name: "Crear" }).click();
 
@@ -120,7 +129,7 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
 test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ page }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La Maldición de Strahd");
   await page.getByRole("button", { name: "Crear" }).click();
 
@@ -200,7 +209,7 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
 test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", async ({ page }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("Fuera del Abismo");
   await page.getByRole("button", { name: "Crear" }).click();
 
@@ -360,7 +369,7 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
 }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La Forja de la Ira");
   await page.getByRole("button", { name: "Crear" }).click();
 
@@ -403,7 +412,7 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
 }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("El Refugio del Contrabandista");
   await page.getByRole("button", { name: "Crear" }).click();
 
@@ -461,7 +470,7 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   const dmPage = await dmContext.newPage();
   await registrarse(dmPage);
 
-  await dmPage.getByRole("button", { name: "Nueva campaña" }).click();
+  await dmPage.getByRole("button", { name: "Nueva campaña" }).first().click();
   await dmPage.getByLabel("Nombre").fill("La Ciudadela de los Vientos");
   await dmPage.getByRole("button", { name: "Crear" }).click();
   await dmPage.getByRole("link", { name: "La Ciudadela de los Vientos" }).click();
@@ -553,7 +562,7 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   // 5. El DM crea una segunda campaña, la borra, y solo esa desaparece de su lista — la
   // primera (ya renombrada) sigue en pie.
   await dmPage.getByRole("link", { name: /Mis campañas/ }).click();
-  await dmPage.getByRole("button", { name: "Nueva campaña" }).click();
+  await dmPage.getByRole("button", { name: "Nueva campaña" }).first().click();
   await dmPage.getByLabel("Nombre").fill("El Templo Sumergido");
   await dmPage.getByRole("button", { name: "Crear" }).click();
   await expect(dmPage.getByRole("link", { name: "El Templo Sumergido" })).toBeVisible();
@@ -597,7 +606,7 @@ test("la cabecera explicada, el marco de la lista y los accesos rápidos del tab
 }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("El Puerto de Sarnath");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "El Puerto de Sarnath" }).click();

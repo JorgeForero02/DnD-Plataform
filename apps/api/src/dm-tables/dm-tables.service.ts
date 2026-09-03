@@ -95,6 +95,42 @@ export class DmTablesService {
     };
   }
 
+  /**
+   * Editar una tabla. **Las filas se reemplazan enteras** dentro de la misma transacción: una
+   * tabla a medio reemplazar es una tabla con huecos, y con huecos hay tiradas sin resultado.
+   */
+  async update(userId: string, campaignId: string, tableId: string, input: CreateDmTableInput) {
+    await this.membership.requireDM(campaignId, userId);
+    const tabla = await this.prisma.dmTable.findFirst({ where: { id: tableId, campaignId } });
+    if (!tabla) throw new NotFoundException("Esa tabla no existe en esta campaña.");
+
+    try {
+      return await this.prisma.transaction(async (tx) => {
+        await tx.dmTableEntry.deleteMany({ where: { tableId } });
+        return tx.dmTable.update({
+          where: { id: tableId },
+          data: {
+            name: input.name,
+            description: input.description ?? null,
+            visibility: input.visibility,
+            trigger: input.trigger,
+            entries: { create: input.entries },
+          },
+          include: { entries: { orderBy: { min: "asc" } } },
+        });
+      });
+    } catch (error) {
+      // El mismo choque que al crear: como mucho una tabla de críticos y una de pifias por
+      // campaña, y lo garantiza el índice único parcial.
+      if ((error as { code?: string }).code === "P2002") {
+        throw new ConflictException(
+          "Esta campaña ya tiene una tabla para eso. Cámbiale el disparador a la otra primero.",
+        );
+      }
+      throw error;
+    }
+  }
+
   async remove(userId: string, campaignId: string, tableId: string) {
     await this.membership.requireDM(campaignId, userId);
     const tabla = await this.prisma.dmTable.findFirst({ where: { id: tableId, campaignId } });

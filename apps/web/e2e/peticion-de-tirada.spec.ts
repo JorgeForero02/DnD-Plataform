@@ -46,7 +46,7 @@ test("**el DM pide una tirada, a la jugadora le aparece sin recargar, tira, y el
   const paginaDM = await contextoDM.newPage();
   await registrarse(paginaDM, "dm");
 
-  await paginaDM.getByRole("button", { name: "Nueva campaña" }).click();
+  await paginaDM.getByRole("button", { name: "Nueva campaña" }).first().click();
   await paginaDM.getByLabel("Nombre").fill("La mesa de las peticiones");
   await paginaDM.getByRole("button", { name: "Crear" }).click();
   await paginaDM.getByRole("link", { name: "La mesa de las peticiones" }).click();

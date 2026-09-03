@@ -40,7 +40,7 @@ async function registrarse(page: Page) {
 async function abrirEditorDeRegla(page: Page) {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La mesa de los carriles");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de los carriles" }).click();

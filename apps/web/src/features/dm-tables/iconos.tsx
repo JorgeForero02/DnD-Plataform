@@ -35,3 +35,13 @@ export function IconoTirar({ className }: Props) {
     </svg>
   );
 }
+
+/** Editar: una plumilla sobre el filo que va corrigiendo. */
+export function IconoEditar({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 20h4l10-10a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5z" />
+      <path d="M13.5 7 17 10.5" />
+    </svg>
+  );
+}

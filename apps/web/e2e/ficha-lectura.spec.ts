@@ -48,7 +48,7 @@ const CUERPO = [
 /** Una campaña con un lugar, un PNJ con cuerpo, y el enlace «vive en» entre los dos. */
 async function mundoConUnEnlace(page: Page, nombreCampana: string) {
   await registrarse(page);
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill(nombreCampana);
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: nombreCampana }).click();

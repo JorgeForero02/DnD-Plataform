@@ -117,6 +117,12 @@ function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) 
     // Por defecto, ninguna sesión abierta: el suceso queda fuera de sesión salvo que el test
     // diga lo contrario. Sobrescríbelo con `tx.session.findFirst.mockResolvedValue(...)`.
     session: { findFirst: jest.fn().mockResolvedValue(null) },
+    // Desde la revisión de reglas del 2026-09-03, gestionar PG deriva con **las condiciones y el
+    // reloj**: curar tiene que toparse contra el máximo de verdad, no contra el entero.
+    characterCondition: { findMany: jest.fn().mockResolvedValue([]) },
+    campaign: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }),
+    },
   };
   prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   return tx;
@@ -1103,5 +1109,46 @@ describe("el agotamiento llega al motor (2C.4, hueco H-2C-5)", () => {
     const hoja = await service.getSheet("dm1", "cmp1", "ch1");
 
     expect(hoja.sheet!.derived.maxHp.steps.some((p) => p.sourceKey === "exhaustion:4")).toBe(false);
+  });
+});
+
+describe("curar respeta el máximo de VERDAD (revisión de reglas, 2026-09-03)", () => {
+  // `changeHp` es el camino principal de curación de la mesa, y derivaba «pelado»: sin las
+  // anulaciones del DM y **sin el agotamiento**. Un personaje con agotamiento 4 se curaba hasta el
+  // máximo entero y la hoja se lo enseñaba recortado con el aviso de «superan el máximo» — que es
+  // exactamente el fallo que 2C.4 decía haber arreglado, con la mitad del sistema sin arreglar.
+
+  it("**con agotamiento 4, curar se topa contra la mitad**, no contra el máximo entero", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje({ currentHp: 1 });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "exhaustion", level: 4, expiresAtClock: null },
+    ]);
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "exhaustion", level: 4, expiresAtClock: null },
+    ]);
+
+    const sano = await service.getSheet("dm1", "cmp1", "ch1");
+    const maximoPartido = sano.hp.max!;
+
+    await service.changeHp("dm1", "cmp1", "ch1", { delta: 999 });
+
+    const escrito = tx.character.update.mock.calls.at(-1)![0].data.currentHp;
+    expect(escrito).toBe(maximoPartido);
+  });
+
+  it("y una anulación del DM sobre `maxHp` también gobierna la curación, no solo la hoja", async () => {
+    // El mismo camino ignoraba `modificadoresDeAnulacion`: el número que se veía y el número
+    // contra el que se curaba eran distintos.
+    const { service, prisma } = montar();
+    const fila = personaje({ currentHp: 1, overrides: { maxHp: 7 } });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "cmp1", "ch1", { delta: 999 });
+
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(7);
   });
 });

@@ -28,8 +28,21 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-03 (tarde, con 2C.1 a 2C.5 dentro) corriendo las dos suites:
-**181 e2e de API** en 29 suites y **78 recorridos de navegador** en 19 especificaciones, todos
-verdes (uno se salta a propósito, y lo declara su propia especificación). La suite de API nueva es `game-clock`, y sus doce comprueban lo que el Prisma simulado no
+**186 e2e de API** en 29 suites y **79 recorridos de navegador** en 20 especificaciones, todos
+verdes.
+
+> **Un recorrido de navegador llevaba meses pasando por suerte, y el cierre de la fase 2 lo cazó.**
+> «Nueva campaña» resuelve a **dos** botones —el de la cabecera y la tarjeta de borde discontinuo de
+> la lista—, así que `campana.spec.ts` pasaba **cuando la consulta de campañas aún no había
+> pintado** y se caía por modo estricto cuando sí. No era un cambio de código lo que lo rompió: era
+> la carrera, que un día se perdió. Los diecisiete usos llevan ahora `.first()`.
+
+> **La prueba de cascada cuenta ahora diecisiete tablas** (ficha A1, cerrada antes de desplegar).
+> Contaba ocho, y cada tabla que cuelga de una campaña y no se cuenta ahí es por donde se cuela un
+> huérfano **sin que nada avise**: borrar una campaña devuelve 200 igual. Entraron las cuatro que la
+> ficha nombraba (`gameEvent`, `campaignFlag`, `campaignSet`, `rule`), el catálogo propio de la
+> campaña, las condiciones de un personaje y las tres de 2C (`rollRequest`, `dmTable`,
+> `dmTableEntry`). Cuenta filas de verdad antes y después. La suite de API nueva es `game-clock`, y sus doce comprueban lo que el Prisma simulado no
 puede: que **el reloj es una columna que de verdad sube**, que un jugador no puede adelantarlo, y
 que las dos reglas del descanso que necesitan tiempo de juego —una vez cada 24 horas, y con al
 menos 1 PG— se cumplen de punta a punta. La de 2C.4 es `condiciones-con-duracion`, y prueba lo que

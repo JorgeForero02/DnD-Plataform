@@ -47,7 +47,7 @@ async function registrarse(page: Page) {
 
 /** Crea una campaña, un personaje vacío dentro de ella, y abre su página de ficha. */
 async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La hoja de 5.ª edición");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La hoja de 5.ª edición" }).click();

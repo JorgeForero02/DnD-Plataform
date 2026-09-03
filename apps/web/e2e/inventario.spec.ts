@@ -28,7 +28,7 @@ async function registrarse(page: Page) {
 }
 
 async function crearPersonajeConFicha(page: Page, nombre: string) {
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La mesa del inventario");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa del inventario" }).click();

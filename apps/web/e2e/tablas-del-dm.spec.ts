@@ -25,7 +25,7 @@ async function abrirTablas(page: Page) {
   await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La casa que tira");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La casa que tira" }).click();
@@ -74,4 +74,35 @@ test("la pantalla no arrastra la página a lo ancho", async ({ page }) => {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
   expect(desborda).toBe(false);
+});
+
+test("**editar una tabla reemplaza sus filas**, y la tabla guardada sigue siendo válida", async ({
+  page,
+}) => {
+  // Ficha C2C-6: hasta hoy una errata en una tabla de veinte filas obligaba a rehacerla entera.
+  await abrirTablas(page);
+
+  await page.getByRole("button", { name: "Crear tabla" }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Rumores de la posada");
+  await page.getByLabel("Desde", { exact: true }).first().fill("1");
+  await page.getByLabel("Hasta", { exact: true }).first().fill("6");
+  await page.getByLabel("Resultado", { exact: true }).first().fill("Nadie sabe nada.");
+  await page.locator("form").getByRole("button", { name: "Guardar tabla" }).click();
+  await expect(page.getByText("Rumores de la posada")).toBeVisible();
+
+  // Se edita: el formulario **llega relleno** con lo que la tabla tiene ahora.
+  await page.getByRole("button", { name: "Editar" }).click();
+  await expect(page.getByLabel("Nombre", { exact: true })).toHaveValue("Rumores de la posada");
+  await expect(page.getByLabel("Resultado", { exact: true }).first()).toHaveValue(
+    "Nadie sabe nada.",
+  );
+
+  await page.getByLabel("Resultado", { exact: true }).first().fill("El posadero miente.");
+  await page
+    .locator("form")
+    .getByRole("button", { name: /guardar/i })
+    .click();
+
+  await expect(page.getByText("El posadero miente.")).toBeVisible();
+  await expect(page.getByText("Nadie sabe nada.")).toHaveCount(0);
 });

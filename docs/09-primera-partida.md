@@ -91,17 +91,40 @@ prometería algo que el modelo no da.
 **El secreto por defecto es real:** una entidad nace `DM_ONLY`. Si un jugador crea una,
 el formulario arranca en `OWNER_DM` para que no la pierda de vista al instante.
 
+## Lo que la herramienta SÍ hace ya, y este documento no contaba (2026-09-03)
+
+**Este fichero se escribió como puerta de salida de la fase 1 y describía una wiki con sesiones.**
+Desde entonces han entrado las fases 2A, 2B y 2C enteras, así que la lista de abajo —que sigue
+siendo cierta en casi todo— se leía como si la herramienta fuera mucho menos de lo que es. Lo que
+hay hoy, en una línea cada cosa:
+
+- **Hoja de 5.ª edición derivada, con traza**: cada número dice de dónde sale. Raza, subraza, clase,
+  características, competencias, PG, CA, salvaciones y habilidades.
+- **Puntos de golpe, recursos, descansos y condiciones**, con su rastro en la línea de tiempo.
+- **Objetos**: catálogo del SRD y objetos propios del DM, inventario con ranuras, manos y
+  sintonización, dinero, y el cuadro de ataques — el equipo entra en el motor y sale en la traza.
+- **Dados**: pantalla propia con expresión libre, los siete dados, ventaja y desventaja como
+  decisión, relanzado, y **el registro de tiradas de la campaña**.
+- **Reloj de campaña** en segundos de juego, con ritmo de viaje y marcha forzada.
+- **Condiciones con duración** que caducan solas sin desaparecer de la hoja.
+- **El DM pide tiradas** y al jugador le aparecen sin recargar.
+- **Tablas del DM** (pifias, botín, rumores), apagadas por defecto y dichas como regla de la casa.
+- **Motor de reglas** suceso–condición–efecto por campaña, con ensayo en seco y traza.
+- **Subida de nivel** con diff propuesto por el servidor.
+
+Lo que **sigue sin existir** es lo de siempre, y es de fases posteriores: mapas, tiempo real,
+adjuntos y 3D.
+
 ## Lo que NO vas a poder hacer, y conviene saber antes de sentarte
 
 Esto no son sorpresas: está todo en [06-pendientes.md](./06-pendientes.md), y lo repito aquí
 porque es lo que se nota jugando.
 
-- **No puedes seguir los enlaces que has creado** (E2). Es lo más importante de esta lista,
-  porque es exactamente la capacidad que el paso 2 de arriba llama *"el valor real de la
-  herramienta"*: puedes **declarar** que el lugar enlaza con el NPC, pero el enlace se pinta
-  como texto plano y no lleva a ninguna parte, y **no hay enlaces entrantes** — la ficha del
-  NPC no sabe en qué misiones sale. Para ir de una entidad a otra: cerrar el modal, cambiar de
-  pestaña, buscarla en la lista y abrirla.
+- ~~**No puedes seguir los enlaces que has creado** (E2)~~ — **YA NO ES CIERTO, y era lo más
+  importante de esta lista.** Desde el reseño del 2026-09-02 una ficha tiene su **página de
+  lectura**, el enlace se lee como una frase por sus dos lados y **lleva al vecino**; hay prueba de
+  navegador que lo recorre (`apps/web/e2e/ficha-lectura.spec.ts`). Se tacha en vez de borrarse
+  porque este documento explica también de dónde viene la herramienta.
 - **No puedes tener un segundo DM** (D2). Toda invitación entra como jugador y el rol de un
   miembro no se puede cambiar después. Si la mesa tiene dos narradores, uno de los dos ve la
   campaña como jugador toda la partida. Y como tampoco se recupera una contraseña olvidada, si
@@ -118,6 +141,11 @@ porque es lo que se nota jugando.
   se ven en la fila desde el reseño del 2026-09-02.
 - **Nada de adjuntos ni imágenes**: llegan en la fase 3, con el almacenamiento.
 - **Mapas y tiempo real**: fases 3 a 5, y siguen sin existir.
+- **El agotamiento llega al motor por dos de sus seis efectos** (C2C-9): velocidad y PG máximos. La
+  desventaja de los niveles 1, 3 y 5 **no la calcula nadie**, así que se arbitra en la mesa.
+- **«Hasta el próximo descanso largo» no es una duración que la herramienta entienda** (C2C-8): es
+  un suceso, y modelarlo como un número sería mentir. Esas condiciones se ponen indefinidas y las
+  quita el DM.
 - **Tiradas, hoja de 5.ª edición, PG, descansos, condiciones y subida de nivel ya se usan desde
   la pantalla** (2A.10 y 2A.11): la ficha de un personaje monta la hoja calculada con su traza,
   el marcador de PG con deltas, los recursos con sus dos descansos, las condiciones, el botón de

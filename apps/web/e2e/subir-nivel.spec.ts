@@ -31,7 +31,7 @@ async function registrarse(page: Page) {
 }
 
 async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La subida de nivel");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La subida de nivel" }).click();

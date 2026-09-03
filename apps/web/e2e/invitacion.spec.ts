@@ -37,7 +37,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   const dmPage = await dmContext.newPage();
   await registrarse(dmPage, "dm");
 
-  await dmPage.getByRole("button", { name: "Nueva campaña" }).click();
+  await dmPage.getByRole("button", { name: "Nueva campaña" }).first().click();
   await dmPage.getByLabel("Nombre").fill("La Mina Perdida de Phandelver");
   await dmPage.getByRole("button", { name: "Crear" }).click();
   await dmPage.getByRole("link", { name: "La Mina Perdida de Phandelver" }).click();

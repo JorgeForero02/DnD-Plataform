@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { SEGUNDOS_POR_DIA, type DeclareRestInput } from "@dnd/shared";
+import { condicionVencida } from "../conditions/vencimiento";
 import type { Character, CharacterResource, Prisma } from "@prisma/client";
 import { MembershipService } from "../../campaigns/membership.service";
 import { rollExpression } from "../../dice/dice";
@@ -89,7 +90,7 @@ export class RestService {
           data: { currentHp: null, deathSaveSuccesses: 0, deathSaveFailures: 0 },
         });
         await this.recuperarMitadDadosDeGolpe(tx, recursos);
-        await this.bajarAgotamiento(tx, characterId);
+        await this.bajarAgotamiento(tx, characterId, campaignId);
         // **La marca del descanso largo va con el reloj de la campaña**, no con la hora del
         // servidor: lo que la regla cuenta son 24 horas *de juego*. Con `Date.now()`, una sesión
         // de cuatro horas reales que cubre tres días de viaje habría bloqueado dos descansos que
@@ -190,13 +191,17 @@ export class RestService {
     const caras = Number(CLAVE_DADOS_DE_GOLPE.exec(dado.key)![1]);
     const modCon = abilityModifier(character.con ?? 10);
 
+    // **El mínimo de cero es POR DADO, no por descanso.** El SRD: «for each Hit Die spent in this
+    // way, the player rolls the die and adds the character's Constitution modifier to it. The
+    // character regains hit points equal to the total **(minimum of 0)**»
+    // (<https://5thsrd.org/adventuring/resting/>). Con Constitución 5 —modificador −3— y dos dados
+    // de 1 y 8, la regla da 0 + 5 = 5; sumarlo todo y recortar al final daba 3. Lo cazó una
+    // revisión contra la fuente; solo aparece con modificador negativo, y por eso nadie lo había
+    // visto.
     let curado = 0;
     for (let i = 0; i < cantidad; i++) {
-      curado += rollExpression(`1d${caras}`).total + modCon;
+      curado += Math.max(0, rollExpression(`1d${caras}`).total + modCon);
     }
-    // Un modificador de Constitución negativo por varios dados podría bajar la suma de cero:
-    // un dado de golpe nunca hace daño, como mucho no cura nada.
-    curado = Math.max(0, curado);
 
     await tx.characterResource.update({
       where: { id: dado.id },
@@ -238,8 +243,21 @@ export class RestService {
   }
 
   /**
-   * Descanso largo: **la mitad de los dados de golpe, redondeando hacia ARRIBA, mínimo uno.**
+   * Descanso largo: **la mitad de los dados de golpe, redondeando hacia ABAJO, mínimo uno.**
    * "Todos" es el error clásico que esta cuenta existe para no cometer.
+   *
+   * **Redondeaba hacia arriba, y era una regla mal implementada** que una revisión contra la
+   * fuente cazó. El SRD dice «up to a number of dice equal to **half of** the character's total
+   * number of them (minimum of one die)» (<https://5thsrd.org/adventuring/resting/>), y la regla
+   * general de la 5.ª edición es que **al dividir se redondea hacia abajo**, incluso con un medio
+   * exacto. Nivel 5 devuelve **2** dados, no 3.
+   *
+   * Y la propia cláusula del «mínimo de uno» lo demuestra: con redondeo hacia arriba, un personaje
+   * de nivel 1 ya daría 1 sin necesidad de mínimo, y la cláusula sobraría.
+   *
+   * **La prueba anterior consagraba el error** —se llamaba «MUTACIÓN CLAVE» y afirmaba «2,5 → 3
+   * hacia arriba»—, así que se corrigió con ella. Tres carpetas más allá, `agotamiento.ts` ya
+   * redondeaba hacia abajo por esta misma regla: las dos mitades del sistema redondeaban distinto.
    */
   private async recuperarMitadDadosDeGolpe(
     tx: Prisma.TransactionClient,
@@ -247,7 +265,7 @@ export class RestService {
   ) {
     for (const recurso of recursos) {
       if (!CLAVE_DADOS_DE_GOLPE.test(recurso.key) || recurso.max === null) continue;
-      const recuperados = Math.max(1, Math.ceil(recurso.max / 2));
+      const recuperados = Math.max(1, Math.floor(recurso.max / 2));
       const nuevo = Math.min(recurso.max, recurso.current + recuperados);
       if (nuevo !== recurso.current) {
         await tx.characterResource.update({ where: { id: recurso.id }, data: { current: nuevo } });
@@ -255,12 +273,25 @@ export class RestService {
     }
   }
 
-  /** Un nivel de agotamiento menos. En el nivel 1, el descanso lo quita del todo. */
-  private async bajarAgotamiento(tx: Prisma.TransactionClient, characterId: string) {
+  /**
+   * Un nivel de agotamiento menos. En el nivel 1, el descanso lo quita del todo.
+   *
+   * **Y no baja un agotamiento que ya venció**: desde 2C.4 una condición con hora puede estar
+   * caducada, y todo lo que deriva de una condición pasa por `condicionesActivas`. Este camino se
+   * quedó fuera, así que un descanso largo «gastaba» un nivel de algo que ya no se aplicaba. Lo
+   * cazó una revisión.
+   */
+  private async bajarAgotamiento(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    campaignId: string,
+  ) {
     const condicion = await tx.characterCondition.findUnique({
       where: { characterId_key: { characterId, key: "exhaustion" } },
     });
     if (!condicion || condicion.level === null) return;
+    const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+    if (condicionVencida(condicion, campana.clockSeconds)) return;
     if (condicion.level <= 1) {
       await tx.characterCondition.delete({ where: { id: condicion.id } });
     } else {

@@ -143,19 +143,36 @@ describe("Condiciones con duración (e2e)", () => {
     ).toBe(true);
   });
 
-  it("y la curación de un descanso corto se topa contra **ese** máximo, no contra el entero", async () => {
+  it("y **curar se topa contra ESE máximo**, no contra el entero", async () => {
+    // **Esta prueba pasaba por casualidad.** Dejaba al personaje a 1 PG y curaba con dados de
+    // golpe reales, así que el resultado casi nunca llegaba al tope: la aserción
+    // `toBeLessThanOrEqual` se cumplía con el recorte roto. Lo cazó una revisión.
+    //
+    // Ahora el estado se fija —un punto por debajo del máximo partido— y se cura una barbaridad
+    // por el camino que **no depende de dados**: `PATCH /hp` con un delta enorme. El recorte tiene
+    // que dejarlo exactamente en el máximo partido, ni uno más.
     const s = app.getHttpServer();
     const hoja = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenDM}`);
     const maximoAgotado = hoja.body.hp.max;
+    expect(maximoAgotado).toBeGreaterThan(1);
 
-    // Se deja al personaje a 1 PG y se gastan todos los dados de golpe que tenga.
-    await prisma.character.update({ where: { id: characterId }, data: { currentHp: 1 } });
-    await request(s)
-      .post(`/campaigns/${campaignId}/characters/${characterId}/rest`)
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { currentHp: maximoAgotado - 1 },
+    });
+
+    const curar = await request(s)
+      // `POST /hp` es el delta —«recibo 5», «me curan 999»—; el `PATCH` fija un valor absoluto y
+      // exige la versión, que es otra cosa.
+      .post(`/campaigns/${campaignId}/characters/${characterId}/hp`)
       .set("Authorization", `Bearer ${tokenDM}`)
-      .send({ kind: "SHORT", spendHitDice: 3 });
+      .send({ delta: 999 });
+    expect(curar.status).toBe(201);
 
     const tras = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenDM}`);
-    expect(tras.body.hp.current).toBeLessThanOrEqual(maximoAgotado);
+    expect(tras.body.hp.current).toBe(maximoAgotado);
+    // Y **sin el aviso de «superan el máximo»**: si el recorte hubiera usado el máximo entero, los
+    // PG guardados estarían por encima del que la hoja enseña y saldría `exceedsMax`.
+    expect(tras.body.hp.exceedsMax).toBe(false);
   });
 });

@@ -21,9 +21,11 @@ function dadosFijos(...valores: number[]): Roller {
 
 function montar(roller: Roller) {
   const prisma = {
-    character: { findFirst: jest.fn() },
+    character: { findFirst: jest.fn(), findMany: jest.fn() },
     session: { findFirst: jest.fn() },
     user: { findUnique: jest.fn() },
+    // 2C.6: la tirada y la tabla que dispara se escriben en la misma transacción.
+    transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn(), list: jest.fn() };
@@ -42,6 +44,7 @@ function montar(roller: Roller) {
   membership.requireMember.mockResolvedValue({ role: "PLAYER" });
   membership.getMembership.mockResolvedValue({ role: "PLAYER" });
   prisma.session.findFirst.mockResolvedValue(null);
+  prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
   events.record.mockResolvedValue({ id: "e1" });
   tables.tablaDisparadaPor.mockResolvedValue(null);
   prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
@@ -199,6 +202,8 @@ describe("lo que se devuelve y lo que se escribe", () => {
         visibility: "DM_ONLY",
         payload: expect.objectContaining({ type: "ABILITY_ROLL", reason: "Percepción" }),
       }),
+      // La transacción que comparte con la tabla de la casa (2C.6).
+      expect.anything(),
     );
   });
 
@@ -325,6 +330,15 @@ describe("ventaja y desventaja — la regla la compone el servidor", () => {
     expect(conVentaja("d20+3", "NORMAL")).toBe("d20+3");
   });
 
+  it("**ventaja sobre un d20 que ya relanza no se pierde**: `1d20r1` con ventaja es `2d20r1kh1`", () => {
+    // Es la suerte del mediano pidiendo ventaja, y era la combinación que se caía: el patrón
+    // exigía que el d20 no llevara nada detrás, así que la ventaja **se descartaba en silencio**
+    // —ni error, ni rastro en el suceso—. Lo cazó una revisión contra la fuente.
+    expect(conVentaja("1d20r1", "ADVANTAGE")).toBe("2d20r1kh1");
+    expect(conVentaja("d20r1+3", "ADVANTAGE")).toBe("2d20r1kh1+3");
+    expect(conVentaja("1d20r<3", "DISADVANTAGE")).toBe("2d20r<3kl1");
+  });
+
   it("pedir ventaja sobre algo que no es un d20 suelto no inventa nada", () => {
     // `4d6kh3` es una tirada de características y `2d8` es daño: «con ventaja» no significa nada
     // ahí, e inventarle un significado sería peor que ignorarlo.
@@ -427,7 +441,7 @@ describe("el registro de tiradas (2C.1)", () => {
     const { service, events } = montar(dadosFijos(9));
     events.list.mockResolvedValue({ events: [], nextCursor: null });
 
-    await service.list("u1", "c1", { limit: 50, sessionId: "s1", characterId: "ch1" });
+    await service.list("u1", "c1", { limit: 50, mine: false, sessionId: "s1", characterId: "ch1" });
 
     expect(events.list).toHaveBeenCalledWith(
       "u1",
@@ -440,7 +454,7 @@ describe("el registro de tiradas (2C.1)", () => {
   it("las salvaciones de muerte cuentan como tirada: es la que la mesa más repasa", async () => {
     const { service, events } = montar(dadosFijos(9));
     events.list.mockResolvedValue({ events: [], nextCursor: null });
-    await service.list("u1", "c1", { limit: 50 });
+    await service.list("u1", "c1", { limit: 50, mine: false });
     expect(events.list.mock.calls[0][3].types).toContain("DEATH_SAVE");
   });
 });
@@ -470,7 +484,12 @@ describe("las tablas de la casa se disparan solas, si están encendidas (2C.6)",
 
   it("con la casa encendida, un 20 natural tira sobre la tabla de críticos y sale en el resultado", async () => {
     const { service, tables } = montar(dadosFijos(20));
-    tables.tablaDisparadaPor.mockResolvedValue({ id: "t1", name: "Críticos", entries: [] });
+    tables.tablaDisparadaPor.mockResolvedValue({
+      id: "t1",
+      name: "Críticos",
+      visibility: "PLAYERS",
+      entries: [],
+    });
     tables.tirarSobre.mockResolvedValue({
       tableId: "t1",
       tableName: "Críticos",
@@ -484,14 +503,106 @@ describe("las tablas de la casa se disparan solas, si están encendidas (2C.6)",
       await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" }),
     );
 
-    expect(tables.tablaDisparadaPor).toHaveBeenCalledWith("c1", "CRITICAL");
+    expect(tables.tablaDisparadaPor).toHaveBeenCalledWith("c1", "CRITICAL", expect.anything());
     expect(r.houseTable).toMatchObject({ tableName: "Críticos", text: "Le cortas la mano." });
+  });
+
+  it("**el texto de una tabla DM_ONLY no vuelve al jugador**, aunque la haya disparado él", async () => {
+    // Lo encontró una revisión de seguridad: es el agujero de la tirada a ciegas otra vez, un
+    // método más abajo. Una tabla nace `DM_ONLY` **por defecto**, su suceso sí se escribía bien, y
+    // la respuesta del `POST` la cantaba entera.
+    const { service, tables } = montar(dadosFijos(1));
+    tables.tablaDisparadaPor.mockResolvedValue({
+      id: "t1",
+      name: "Pifias",
+      visibility: "DM_ONLY",
+      entries: [],
+    });
+    tables.tirarSobre.mockResolvedValue({
+      tableId: "t1",
+      tableName: "Pifias",
+      die: 10,
+      roll: 7,
+      text: "Se te rompe el arma.",
+      eventId: "e2",
+    });
+
+    const r = revelada(
+      await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" }),
+    );
+
+    // **Se tiró igual** —el DM la necesita y el suceso queda escrito para él— pero no viaja.
+    expect(tables.tirarSobre).toHaveBeenCalled();
+    expect(r.houseTable).toBeUndefined();
+    expect(JSON.stringify(r)).not.toContain("Se te rompe el arma");
+  });
+
+  it("y al DM sí le vuelve, que es de quien es la tabla", async () => {
+    const { service, membership, tables } = montar(dadosFijos(20));
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    tables.tablaDisparadaPor.mockResolvedValue({
+      id: "t1",
+      name: "Críticos",
+      visibility: "DM_ONLY",
+      entries: [],
+    });
+    tables.tirarSobre.mockResolvedValue({
+      tableId: "t1",
+      tableName: "Críticos",
+      die: 10,
+      roll: 4,
+      text: "Le cortas la mano.",
+      eventId: "e2",
+    });
+
+    const r = revelada(
+      await service.roll("dm", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" }),
+    );
+    expect(r.houseTable).toMatchObject({ text: "Le cortas la mano." });
   });
 
   it("y un 1 natural busca la de pifias, no la de críticos", async () => {
     const { service, tables } = montar(dadosFijos(1));
     tables.tablaDisparadaPor.mockResolvedValue(null);
     await service.roll("u1", "c1", { expression: "d20", audience: "PUBLIC", mode: "NORMAL" });
-    expect(tables.tablaDisparadaPor).toHaveBeenCalledWith("c1", "FUMBLE");
+    expect(tables.tablaDisparadaPor).toHaveBeenCalledWith("c1", "FUMBLE", expect.anything());
+  });
+});
+
+describe("«solo las mías» lo resuelve el servidor (ficha C2C-7)", () => {
+  // Existe además de `characterId` y no en su lugar porque **un jugador puede llevar varios
+  // personajes**: «las mías» no es un identificador, es un conjunto que solo el servidor conoce.
+
+  it("pide los personajes de quien pregunta y filtra por todos ellos", async () => {
+    const { service, prisma, events } = montar(dadosFijos(9));
+    events.list.mockResolvedValue({ events: [], nextCursor: null });
+    prisma.character.findMany.mockResolvedValue([{ id: "a" }, { id: "b" }]);
+
+    await service.list("u1", "c1", { limit: 50, mine: true });
+
+    expect(prisma.character.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { campaignId: "c1", ownerId: "u1" } }),
+    );
+    expect(events.list.mock.calls[0][3]).toMatchObject({ subjectIds: ["a", "b"] });
+  });
+
+  it("**sin personajes propios, «las mías» son NINGUNA**, no todas", async () => {
+    // Es el fallo silencioso de este filtro: un `undefined` aquí enseñaría las de toda la mesa.
+    const { service, prisma, events } = montar(dadosFijos(9));
+    events.list.mockResolvedValue({ events: [], nextCursor: null });
+    prisma.character.findMany.mockResolvedValue([]);
+
+    await service.list("u1", "c1", { limit: 50, mine: true });
+
+    expect(events.list.mock.calls[0][3]).toMatchObject({ subjectIds: [] });
+  });
+
+  it("sin pedirlo, no se consulta ningún personaje", async () => {
+    const { service, prisma, events } = montar(dadosFijos(9));
+    events.list.mockResolvedValue({ events: [], nextCursor: null });
+
+    await service.list("u1", "c1", { limit: 50, mine: false });
+
+    expect(prisma.character.findMany).not.toHaveBeenCalled();
   });
 });

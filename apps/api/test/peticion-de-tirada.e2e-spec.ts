@@ -117,7 +117,7 @@ describe("Petición de tirada (e2e)", () => {
     expect(delDM.body).toHaveLength(1);
   });
 
-  it("**otro jugador no puede responderla**: sería tirar en nombre ajeno (403)", async () => {
+  it("**otro jugador no puede responderla**, y recibe 404: un 403 confirmaría que existe", async () => {
     const s = app.getHttpServer();
     const pendiente = (await request(s).get(reqUrl()).set("Authorization", `Bearer ${tokenDM}`))
       .body[0];
@@ -125,7 +125,9 @@ describe("Petición de tirada (e2e)", () => {
     const r = await request(s)
       .post(`${reqUrl()}/${pendiente.id}/roll`)
       .set("Authorization", `Bearer ${tokenOtro}`);
-    expect(r.status).toBe(403);
+    // 404 y no 403, igual que decidió la pantalla de tablas para el mismo dilema: un 403 confirma
+    // que esa petición existe en esta campaña, y el listado ya esconde las ajenas.
+    expect(r.status).toBe(404);
   });
 
   it("la jugadora responde, y **se tira con el modificador de SU hoja**", async () => {

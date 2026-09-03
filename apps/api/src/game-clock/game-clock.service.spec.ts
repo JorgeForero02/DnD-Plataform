@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { ForbiddenException } from "@nestjs/common";
-import { salvacionesDeMarchaForzada } from "@dnd/shared";
+import { RITMO_DE_VIAJE, salvacionesDeMarchaForzada } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -165,7 +165,13 @@ describe("el reloj anuncia lo que acaba de vencer (2C.4)", () => {
 
   it("escribe un CONDITION_EXPIRED por cada una que vence en el tramo", async () => {
     prisma.characterCondition.findMany.mockResolvedValue([
-      { key: "poisoned", level: null, expiresAtClock: 2000, characterId: "ch1" },
+      {
+        key: "poisoned",
+        level: null,
+        expiresAtClock: 2000,
+        characterId: "ch1",
+        character: { visibility: "PLAYERS" },
+      },
     ]);
 
     await service.advance("dm", "c1", { kind: "TIME", seconds: 3600 });
@@ -181,6 +187,27 @@ describe("el reloj anuncia lo que acaba de vencer (2C.4)", () => {
       }),
       expect.anything(),
     );
+  });
+
+  it("**la condición de un personaje DM_ONLY no se anuncia a la mesa**", async () => {
+    // Lo encontró una revisión de seguridad: el suceso se escribía siempre `PLAYERS`, así que la
+    // condición vencida de un PNJ del DM le decía a toda la mesa que ese PNJ existe y qué le pasa.
+    prisma.characterCondition.findMany.mockResolvedValue([
+      {
+        key: "poisoned",
+        level: null,
+        expiresAtClock: 2000,
+        characterId: "pnj1",
+        character: { visibility: "DM_ONLY" },
+      },
+    ]);
+
+    await service.advance("dm", "c1", { kind: "TIME", seconds: 3600 });
+
+    const suceso = events.record.mock.calls.find(
+      (llamada) => llamada[2].payload.type === "CONDITION_EXPIRED",
+    );
+    expect(suceso[2].visibility).toBe("DM_ONLY");
   });
 
   it("y si no vence ninguna, el único suceso es el del reloj", async () => {
@@ -209,5 +236,29 @@ describe("salvacionesDeMarchaForzada (SRD 5.1)", () => {
     const todas = salvacionesDeMarchaForzada(24);
     expect(todas).toHaveLength(16);
     expect(todas[todas.length - 1]).toEqual({ hora: 24, dc: 26 });
+  });
+});
+
+describe("la tabla de ritmo de viaje del SRD 5.1, fijada a mano", () => {
+  // Mismo motivo que `difficulty.spec.ts` y que la tabla de razas y clases: **un invariante de
+  // forma caza el copiar y pegar, pero no el dígito mal transcrito**, que es el otro error de una
+  // transcripción y el único que aquí puede pasar desapercibido. Hasta que una revisión lo señaló,
+  // de esta tabla solo se leían dos de sus cuatro columnas y ninguna prueba fijaba los seis números
+  // restantes.
+  //
+  // Fuente: <https://5thsrd.org/adventuring/movement/>.
+
+  it("son estas tres filas, con estas cuatro columnas", () => {
+    expect(RITMO_DE_VIAJE).toEqual({
+      FAST: { feetPerMinute: 400, milesPerHour: 4, milesPerDay: 30, passivePerception: -5 },
+      NORMAL: { feetPerMinute: 300, milesPerHour: 3, milesPerDay: 24, passivePerception: 0 },
+      SLOW: { feetPerMinute: 200, milesPerHour: 2, milesPerDay: 18, passivePerception: 0 },
+    });
+  });
+
+  it("**solo el rápido cuesta algo**, y es lo único que la tabla penaliza", () => {
+    expect(RITMO_DE_VIAJE.FAST.passivePerception).toBe(-5);
+    expect(RITMO_DE_VIAJE.NORMAL.passivePerception).toBe(0);
+    expect(RITMO_DE_VIAJE.SLOW.passivePerception).toBe(0);
   });
 });

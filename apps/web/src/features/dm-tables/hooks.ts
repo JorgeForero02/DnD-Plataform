@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateDmTableInput } from "@dnd/shared";
+import type { CreateDmTableInput, UpdateDmTableInput } from "@dnd/shared";
 // El módulo se importa a sí mismo por su espacio de nombres para que las llamadas pasen por él y
 // sigan siendo espiables desde las pruebas — misma trampa de vitest documentada en
 // docs/04-convenciones.md y ya resuelta así en features/campaigns/members.ts.
@@ -19,6 +19,21 @@ export function useCreateDmTable(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateDmTableInput) => dmTablesApi.createDmTable(campaignId, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dmTablesKey(campaignId) });
+    },
+  });
+}
+
+/**
+ * Editar una tabla. Invalida la lista igual que crear, porque el `PUT` **reemplaza las filas
+ * enteras** y la copia en caché deja de valer entera, no por partes.
+ */
+export function useUpdateDmTable(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tableId, input }: { tableId: string; input: UpdateDmTableInput }) =>
+      dmTablesApi.updateDmTable(campaignId, tableId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dmTablesKey(campaignId) });
     },

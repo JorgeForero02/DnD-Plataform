@@ -255,3 +255,129 @@ describe("PanelDeTablas — la lista", () => {
     expect(screen.getByText("Se te encasquilla el arma.")).toBeInTheDocument();
   });
 });
+
+describe("PanelDeTablas — editar una tabla (ficha C2C-6)", () => {
+  beforeEach(() => {
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [tablaDePifias],
+      houseTablesEnabled: false,
+    });
+  });
+
+  async function abrirEdicion() {
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+    await screen.findByRole("heading", { name: /Editar «Pifias de combate»/ });
+  }
+
+  it("«Editar» abre el formulario relleno con lo que la tabla tiene ahora, filas incluidas", async () => {
+    comoDm();
+    await abrirEdicion();
+
+    expect(screen.getByLabelText<HTMLInputElement>("Nombre").value).toBe("Pifias de combate");
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Descripción").value).toBe(
+      "Lo que pasa cuando la espada se te va.",
+    );
+    // El disparador y la visibilidad guardados vienen marcados: un valor que el formulario no
+    // rellenara se perdería en el `PUT`, que manda el cuerpo entero.
+    expect(
+      screen.getByRole<HTMLInputElement>("radio", { name: /Al sacar una pifia/ }).checked,
+    ).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>("radio", { name: /Solo DM/ }).checked).toBe(true);
+
+    const desde = screen.getAllByLabelText<HTMLInputElement>("Desde");
+    const hasta = screen.getAllByLabelText<HTMLInputElement>("Hasta");
+    const textos = screen.getAllByLabelText<HTMLInputElement>("Resultado");
+    expect(desde.map((i) => i.value)).toEqual(["1", "6"]);
+    expect(hasta.map((i) => i.value)).toEqual(["5", "10"]);
+    expect(textos.map((i) => i.value)).toEqual(["Se te encasquilla el arma.", "Pierdes el turno."]);
+  });
+
+  it("guardar manda un PUT al identificador de esa tabla con las filas tal como quedaron", async () => {
+    comoDm();
+    const editar = vi.spyOn(dmTablesApi, "updateDmTable").mockResolvedValue(tablaDePifias);
+    await abrirEdicion();
+
+    // La errata que motivó la ficha: se corrige una fila sin rehacer las veinte.
+    fireEvent.change(screen.getAllByLabelText("Resultado")[1], {
+      target: { value: "Pierdes el turno y el arma." },
+    });
+    // Y se añade una tercera, porque editar tiene que poder añadir y quitar filas.
+    fireEvent.click(screen.getByRole("button", { name: "Añadir fila" }));
+    fireEvent.change(screen.getAllByLabelText("Desde")[2], { target: { value: "11" } });
+    fireEvent.change(screen.getAllByLabelText("Hasta")[2], { target: { value: "15" } });
+    fireEvent.change(screen.getAllByLabelText("Resultado")[2], { target: { value: "Te caes." } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(editar).toHaveBeenCalled());
+    expect(editar).toHaveBeenCalledWith("c1", "t1", {
+      name: "Pifias de combate",
+      description: "Lo que pasa cuando la espada se te va.",
+      visibility: "DM_ONLY",
+      trigger: "FUMBLE",
+      // **Las filas viajan enteras**, no la que cambió: se validan como conjunto
+      // (`updateDmTableSchema`).
+      entries: [
+        { min: 1, max: 5, text: "Se te encasquilla el arma." },
+        { min: 6, max: 10, text: "Pierdes el turno y el arma." },
+        { min: 11, max: 15, text: "Te caes." },
+      ],
+    });
+  });
+
+  it("se puede quitar una fila mientras se edita, y la que se quita no viaja", async () => {
+    comoDm();
+    const editar = vi.spyOn(dmTablesApi, "updateDmTable").mockResolvedValue(tablaDePifias);
+    await abrirEdicion();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar la fila 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(editar).toHaveBeenCalled());
+    const [, , cuerpo] = editar.mock.calls[0];
+    expect(cuerpo.entries).toEqual([{ min: 1, max: 5, text: "Se te encasquilla el arma." }]);
+  });
+
+  it("un jugador no ve «Editar»", async () => {
+    comoJugador();
+    renderPanel();
+
+    await screen.findByText("Pifias de combate");
+    expect(screen.queryByRole("button", { name: /Editar/ })).not.toBeInTheDocument();
+  });
+
+  it("un 400 del servidor se pinta con SU frase y no se pierde lo tecleado", async () => {
+    comoDm();
+    vi.spyOn(dmTablesApi, "updateDmTable").mockRejectedValue(
+      new ApiError("Falta el resultado 6: la tabla no puede tener huecos.", 400),
+    );
+    await abrirEdicion();
+
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Pifias corregidas" } });
+    fireEvent.change(screen.getAllByLabelText("Hasta")[0], { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent("Falta el resultado 6: la tabla no puede tener huecos.");
+    // Lo tecleado sigue ahí: rehacerlo tras un rechazo es exactamente el trabajo que la ficha
+    // venía a quitar.
+    expect(screen.getByLabelText<HTMLInputElement>("Nombre").value).toBe("Pifias corregidas");
+    expect(screen.getAllByLabelText<HTMLInputElement>("Hasta")[0].value).toBe("4");
+    expect(screen.getAllByLabelText<HTMLInputElement>("Resultado")[1].value).toBe(
+      "Pierdes el turno.",
+    );
+  });
+
+  it("cancelar no manda nada y devuelve la ficha a su sitio", async () => {
+    comoDm();
+    const editar = vi.spyOn(dmTablesApi, "updateDmTable").mockResolvedValue(tablaDePifias);
+    await abrirEdicion();
+
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Otro nombre" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    await screen.findByRole("heading", { name: "Pifias de combate" });
+    expect(editar).not.toHaveBeenCalled();
+  });
+});

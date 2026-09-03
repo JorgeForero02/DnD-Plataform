@@ -32,7 +32,32 @@ import { fraseDeResultado, palabraDeNatural, rotuloDeConservacion } from "./voca
  */
 export type DesgloseDeTirada = Pick<
   RollResultRevealed,
-  "expression" | "rolls" | "kept" | "dropped" | "modifier" | "total" | "dc" | "natural" | "outcome"
+  | "expression"
+  | "rolls"
+  | "kept"
+  | "dropped"
+  | "modifier"
+  | "total"
+  | "dc"
+  | "natural"
+  | "outcome"
+  // Ficha C2C-5. **Va DENTRO de este componente y no al lado, y la elección tiene motivo.**
+  //
+  //  · La tabla que dispara un natural es *parte del resultado de esa tirada*, no un suceso
+  //    aparte: lo que la desencadenó es el mismo d20 que se está pintando dos líneas más arriba,
+  //    y separarla en otra caja obligaría a repetir el contexto («esto salió de aquella tirada»)
+  //    o a dejar al lector emparejándolas de memoria.
+  //  · Y sobre todo, **así llega a los cuatro sitios que ya pintan un resultado sin tocar
+  //    ninguno**: el panel de dados, el panel de la hoja, las tiradas pedidas y los ataques le
+  //    pasan el `RollResultRevealed` entero. Un componente hermano habría que acordarse de
+  //    colocarlo cuatro veces, y el sitio donde se olvidara callaría la regla en silencio — que
+  //    es exactamente el defecto que esta ficha viene a cerrar.
+  //
+  // Es **opcional**, y el registro de tiradas nunca la trae: el `payload` de un `ABILITY_ROLL`
+  // (`game-event.schema.ts`) no tiene este campo, así que en el log no se pinta nada. Eso es
+  // correcto y no un hueco: la tabla dejó su propio suceso (`eventId`) y la línea de tiempo lo
+  // cuenta por su cuenta.
+  | "houseTable"
 >;
 
 export function ResultadoDeTirada({
@@ -95,6 +120,32 @@ export function ResultadoDeTirada({
         <p className="mt-1 border-t border-copper pt-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
           {palabra}
         </p>
+      )}
+
+      {/* **La tabla de la casa que disparó este natural** (ficha C2C-5).
+          Se dice **que es de la casa** antes que nada, y no es cortesía: el SRD 5.1 **no trae
+          ninguna tabla de críticos ni de pifias** —un crítico duplica los dados del daño y se
+          acabó—, así que enseñar «Te desarmas» sin decir de dónde sale enseñaría como regla del
+          manual algo que se inventó esta mesa. Es el mismo defecto que el proyecto prohíbe
+          cuando el texto explica una regla y no coincide con quien la aplica. El interruptor que
+          la enciende es de la campaña (`Campaign.houseTablesEnabled`), y con él apagado este
+          bloque no existe porque el servidor no manda nada. */}
+      {resultado.houseTable && (
+        <div data-tabla-de-la-casa className="mt-1 border-t border-copper pt-1">
+          <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
+            Regla de la casa
+          </p>
+          <p className="font-chrome text-chrome-sm text-text">
+            {resultado.houseTable.tableName}{" "}
+            <span className="font-data text-chrome-xs text-muted">
+              d{resultado.houseTable.die} → {resultado.houseTable.roll}
+            </span>
+          </p>
+          <p className="font-chrome text-chrome-sm text-text">{resultado.houseTable.text}</p>
+          <p className="mt-0.5 font-chrome text-chrome-xs leading-snug text-muted">
+            No es del manual: el SRD no trae tablas de críticos ni de pifias. La pone esta mesa.
+          </p>
+        </div>
       )}
     </div>
   );

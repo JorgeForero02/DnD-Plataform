@@ -17,6 +17,7 @@ describe("RollRequestsService", () => {
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     transaction: jest.fn(),
   };
@@ -43,6 +44,9 @@ describe("RollRequestsService", () => {
     membership.requireDM.mockResolvedValue({ role: "DM" });
     membership.requireMember.mockResolvedValue({ role: "PLAYER" });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    // Cerrar la petición es ahora un `updateMany` con la condición dentro del `where`: si no tocó
+    // ninguna fila, otra respuesta ganó la carrera.
+    prisma.rollRequest.updateMany.mockResolvedValue({ count: 1 });
     prisma.rollRequest.create.mockImplementation(({ data }: { data: unknown }) => ({
       id: "rr1",
       ...(data as object),
@@ -126,11 +130,19 @@ describe("RollRequestsService", () => {
       );
     });
 
-    it("por defecto solo las pendientes: es lo que sondea la pantalla", async () => {
+    it("**por defecto solo las pendientes**: es lo que sondea la pantalla", async () => {
+      // El cuerpo de esta prueba comprobaba `includeResolved: true`, o sea **el caso contrario al
+      // que su nombre prometía**. Lo cazó una revisión: quien leyera la lista de pruebas creería
+      // que el defecto está cubierto, y no lo estaba.
+      prisma.rollRequest.findMany.mockResolvedValue([]);
+      await service.list("jugador", "c1", { includeResolved: false });
+      expect(prisma.rollRequest.findMany.mock.calls[0][0].where.resolvedAt).toBeNull();
+    });
+
+    it("y con `includeResolved` salen también las respondidas", async () => {
       prisma.rollRequest.findMany.mockResolvedValue([]);
       await service.list("jugador", "c1", { includeResolved: true });
-      const where = prisma.rollRequest.findMany.mock.calls[0][0].where;
-      expect(where.resolvedAt).toBeUndefined();
+      expect(prisma.rollRequest.findMany.mock.calls[0][0].where.resolvedAt).toBeUndefined();
     });
   });
 
@@ -166,6 +178,13 @@ describe("RollRequestsService", () => {
           label: "Percepción",
           characterId: "ch1",
           dc: 14,
+          // **El modo y la audiencia que pidió el DM llegan a la tirada**, y no se comprobaban en
+          // ninguna de las trece pruebas del fichero: un cambio que mandara siempre `NORMAL`
+          // dejaría a la mesa sin la ventaja que el DM pidió y la suite seguiría verde. Lo cazó una
+          // revisión, y es el mismo patrón del susto anterior: la propiedad que el fichero más
+          // defiende es la que nadie medía.
+          mode: "NORMAL",
+          audience: "PUBLIC",
         }),
       );
     });
@@ -188,9 +207,23 @@ describe("RollRequestsService", () => {
       expect(rolls.roll.mock.calls[0][2].expression).toBe("1d20-1");
     });
 
-    it("**otro jugador no puede responder por ti**: sería tirar en tu nombre", async () => {
+    it("la ventaja y la audiencia que pidió el DM se respetan al tirar", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({
+        ...pendiente,
+        mode: "ADVANTAGE",
+        audience: "BLIND",
+      });
+      await service.answer("jugador", "c1", "rr1");
+      expect(rolls.roll.mock.calls[0][2]).toMatchObject({
+        mode: "ADVANTAGE",
+        audience: "BLIND",
+      });
+    });
+
+    it("**otro jugador no puede responder por ti**, y recibe 404, no 403", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
-      await expect(service.answer("otro", "c1", "rr1")).rejects.toBeInstanceOf(ForbiddenException);
+      // **404 y no 403**: un 403 confirmaría que esa petición existe en esta campaña.
+      await expect(service.answer("otro", "c1", "rr1")).rejects.toBeInstanceOf(NotFoundException);
       expect(rolls.roll).not.toHaveBeenCalled();
     });
 
@@ -221,14 +254,31 @@ describe("RollRequestsService", () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
       rolls.roll.mockRejectedValue(new Error("la base se cayó"));
       await expect(service.answer("jugador", "c1", "rr1")).rejects.toThrow();
-      expect(prisma.rollRequest.update).not.toHaveBeenCalled();
+      expect(prisma.rollRequest.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("**dos respuestas a la vez no dan dos tiradas**: gana la que cierre la fila", async () => {
+      // Doble clic, o dos pestañas: las dos leen `resolvedAt: null` y las dos pasan el `if`. Lo
+      // que lo cierra es la condición dentro del `where`, que es la base garantizando lo que un
+      // `if` no puede.
+      prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
+      prisma.rollRequest.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.answer("jugador", "c1", "rr1")).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it("y al responderla queda atada a la tirada que la respondió", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
       await service.answer("jugador", "c1", "rr1");
-      expect(prisma.rollRequest.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ resolvedEventId: "e1" }) }),
+      expect(prisma.rollRequest.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          // **La condición va en el `where`**, no en un `if` de antes: entre la lectura y esta
+          // escritura cabe otra respuesta entera.
+          where: { id: "rr1", resolvedAt: null },
+          data: expect.objectContaining({ resolvedEventId: "e1" }),
+        }),
       );
     });
   });

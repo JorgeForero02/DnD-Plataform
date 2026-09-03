@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from 
 import {
   createDmTableSchema,
   setHouseTablesSchema,
+  updateDmTableSchema,
   type CreateDmTableInput,
   type SetHouseTablesInput,
 } from "@dnd/shared";
@@ -26,6 +27,16 @@ export class DmTablesController {
     @Body(new ZodValidationPipe(createDmTableSchema)) body: CreateDmTableInput,
   ) {
     return this.tables.create(req.user.id, campaignId, body);
+  }
+
+  @Put(":tableId")
+  update(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("tableId") tableId: string,
+    @Body(new ZodValidationPipe(updateDmTableSchema)) body: CreateDmTableInput,
+  ) {
+    return this.tables.update(req.user.id, campaignId, tableId, body);
   }
 
   @Delete(":tableId")

@@ -34,7 +34,7 @@ async function registrarse(page: Page) {
 
 /** Mismo guion que `hoja.spec.ts`: un guerrero enano de nivel 1, completo y derivado. */
 async function personajeCompleto(page: Page) {
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La mesa de los dados");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de los dados" }).click();

@@ -479,7 +479,7 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByRole("button", { name: "Crear cuenta" }).click();
     await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Nueva campaña" }).click();
+    await page.getByRole("button", { name: "Nueva campaña" }).first().click();
     await page.getByLabel("Nombre").fill("Campaña de contraste");
     await page.getByRole("button", { name: "Crear" }).click();
     await page.getByRole("link", { name: "Campaña de contraste" }).click();

@@ -49,11 +49,18 @@ export interface PaginaDeTiradas {
  */
 export function fetchRolls(
   campaignId: string,
-  query: Partial<Pick<ListRollsInput, "sessionId" | "characterId" | "limit" | "cursor">> = {},
+  query: Partial<
+    Pick<ListRollsInput, "sessionId" | "characterId" | "mine" | "limit" | "cursor">
+  > = {},
 ): Promise<PaginaDeTiradas> {
   const p = new URLSearchParams();
   if (query.sessionId) p.set("sessionId", query.sessionId);
   if (query.characterId) p.set("characterId", query.characterId);
+  // **Solo cuando es cierto** (ficha C2C-7). El servidor ya lo tiene en `false` por defecto
+  // (`listRollsSchema`), así que mandar `mine=false` sería repetir el valor por defecto en la
+  // URL; y además `z.coerce.boolean()` convierte **cualquier** cadena no vacía en `true`, así
+  // que un `mine=false` escrito a mano diría exactamente lo contrario de lo que parece.
+  if (query.mine) p.set("mine", "true");
   if (query.cursor) p.set("cursor", query.cursor);
   p.set("limit", String(query.limit ?? 50));
   return apiFetch<PaginaDeTiradas>(`/campaigns/${campaignId}/rolls?${p.toString()}`);

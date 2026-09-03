@@ -3,6 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import * as clockApi from "../api";
 import * as membersApi from "../../campaigns/members";
+import * as charactersApi from "../../characters/api";
+import type { Character } from "../../characters/api";
+import * as rollRequestsApi from "../../roll-requests/api";
+import type { RollRequestRow } from "../../roll-requests/api";
 import { useAuthStore } from "../../../store/auth.store";
 import { RelojDeCampana } from "../RelojDeCampana";
 import { duracionEnPalabras, relojEnPalabras } from "../vocabulario";
@@ -32,7 +36,64 @@ beforeEach(() => {
     { userId: "p1", displayName: "Alice", role: "PLAYER" },
   ]);
   vi.spyOn(clockApi, "fetchClock").mockResolvedValue({ seconds: 3600 * 30 });
+  vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([
+    personaje("ch-1", "Brann"),
+    personaje("ch-2", "Lía"),
+  ]);
 });
+
+// --- Ficha C2C-4: las salvaciones de marcha forzada se piden de verdad -------------------------
+
+function personaje(id: string, name: string): Character {
+  return {
+    id,
+    campaignId: "c1",
+    ownerId: "u1",
+    name,
+    race: null,
+    class: null,
+    raceKey: null,
+    subraceKey: null,
+    classKey: null,
+    level: 1,
+    bio: null,
+    visibility: "PLAYERS",
+    createdAt: "2026-01-01",
+  };
+}
+
+function peticion(id: string, characterId: string): RollRequestRow {
+  return {
+    id,
+    campaignId: "c1",
+    characterId,
+    requestedById: "dm1",
+    key: "save.con",
+    label: "Marcha forzada",
+    dc: 11,
+    mode: "NORMAL",
+    audience: "PUBLIC",
+    createdAt: "2026-01-01",
+    resolvedAt: null,
+    resolvedEventId: null,
+  };
+}
+
+/** Un viaje de diez horas: dos salvaciones, CD 11 y CD 12. */
+function viajeDeDiezHoras() {
+  return vi.spyOn(clockApi, "advanceClock").mockResolvedValue({
+    from: 0,
+    to: 3600 * 10,
+    seconds: 3600 * 10,
+    eventId: "e1",
+    pace: "NORMAL",
+    miles: 30,
+    forcedMarchSaves: [
+      { hora: 9, dc: 11 },
+      { hora: 10, dc: 12 },
+    ],
+  });
+}
 
 describe("el reloj en palabras", () => {
   it("cuenta días y horas, **no una fecha**: el contador no es un calendario", () => {
@@ -138,5 +199,104 @@ describe("RelojDeCampana", () => {
     fireEvent.click(await screen.findByRole("button", { name: "1 hora" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("El reloj no se movió.");
+  });
+});
+
+describe("las salvaciones de marcha forzada se piden", () => {
+  it("**una petición por salvación y por personaje**, cada una con SU CD", async () => {
+    comoDm();
+    viajeDeDiezHoras();
+    const pedir = vi
+      .spyOn(rollRequestsApi, "createRollRequest")
+      .mockImplementation((_campana, entrada) =>
+        Promise.resolve(entrada.characterIds.map((id, i) => peticion(`req-${id}-${i}`, id))),
+      );
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Viajar" }));
+    await screen.findByText("Hora 9: CD 11");
+
+    fireEvent.click(screen.getByLabelText("Brann"));
+    fireEvent.click(screen.getByLabelText("Lía"));
+    fireEvent.click(screen.getByRole("button", { name: "Pedir las salvaciones" }));
+
+    // **Dos llamadas, no una**: el SRD manda una salvación al final de cada hora pasada de ocho,
+    // con CD creciente. Juntarlas cambiaría la regla.
+    await waitFor(() => expect(pedir).toHaveBeenCalledTimes(2));
+    expect(pedir).toHaveBeenNthCalledWith(1, "c1", {
+      characterIds: ["ch-1", "ch-2"],
+      key: "save.con",
+      label: "Marcha forzada, hora 9",
+      dc: 11,
+      mode: "NORMAL",
+      audience: "PUBLIC",
+    });
+    expect(pedir).toHaveBeenNthCalledWith(2, "c1", {
+      characterIds: ["ch-1", "ch-2"],
+      key: "save.con",
+      label: "Marcha forzada, hora 10",
+      dc: 12,
+      mode: "NORMAL",
+      audience: "PUBLIC",
+    });
+
+    // Dos salvaciones por dos personajes son cuatro tiradas, y se dice.
+    expect(await screen.findByText("Pedidas 4 salvaciones.")).toBeInTheDocument();
+  });
+
+  it("sin salvaciones no se pinta el botón: no hay nada que pedir", async () => {
+    comoDm();
+    vi.spyOn(clockApi, "advanceClock").mockResolvedValue({
+      from: 0,
+      to: 3600 * 8,
+      seconds: 3600 * 8,
+      eventId: "e1",
+      pace: "NORMAL",
+      miles: 24,
+      forcedMarchSaves: [],
+    });
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Viajar" }));
+
+    await screen.findByRole("status");
+    expect(screen.queryByRole("button", { name: "Pedir las salvaciones" })).not.toBeInTheDocument();
+  });
+
+  it("y tampoco lo ve un jugador: pedir es del DM, y el servidor daría 403", async () => {
+    comoJugador();
+    montar();
+    await screen.findByText("Día 2, 06:00");
+    expect(screen.queryByRole("button", { name: "Pedir las salvaciones" })).not.toBeInTheDocument();
+  });
+
+  it("sin nadie marcado no se manda nada, y se dice en línea", async () => {
+    comoDm();
+    viajeDeDiezHoras();
+    const pedir = vi.spyOn(rollRequestsApi, "createRollRequest");
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Viajar" }));
+    await screen.findByText("Hora 9: CD 11");
+    fireEvent.click(screen.getByRole("button", { name: "Pedir las salvaciones" }));
+
+    expect(await screen.findByText("Elige quién hizo la marcha.")).toBeInTheDocument();
+    expect(pedir).not.toHaveBeenCalled();
+  });
+
+  it("un rechazo del servidor se pinta con su frase, en línea", async () => {
+    comoDm();
+    viajeDeDiezHoras();
+    vi.spyOn(rollRequestsApi, "createRollRequest").mockRejectedValue(
+      new Error("Solo el DM puede pedir tiradas."),
+    );
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Viajar" }));
+    await screen.findByText("Hora 9: CD 11");
+    fireEvent.click(screen.getByLabelText("Brann"));
+    fireEvent.click(screen.getByRole("button", { name: "Pedir las salvaciones" }));
+
+    expect(await screen.findByText("Solo el DM puede pedir tiradas.")).toBeInTheDocument();
   });
 });

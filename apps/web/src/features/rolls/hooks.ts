@@ -10,6 +10,14 @@ import * as rollsApi from "./api";
 export interface FiltroDeTiradas {
   sessionId?: string;
   characterId?: string;
+  /**
+   * **Solo las mías** (ficha C2C-7): las de los personajes de quien pregunta.
+   *
+   * Existe **además** de `characterId` y no en su lugar, porque un jugador puede llevar varios
+   * personajes: entonces «las mías» no es un identificador, es un conjunto que solo el servidor
+   * conoce. Y no relaja nada — se cruza con `canView`, no lo sustituye.
+   */
+  mine?: boolean;
   limit?: number;
 }
 

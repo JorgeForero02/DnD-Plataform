@@ -97,7 +97,16 @@ export class GameClockService {
           expiresAtClock: { gt: antes.clockSeconds, lte: despues.clockSeconds },
           character: { campaignId },
         },
-        select: { key: true, level: true, expiresAtClock: true, characterId: true },
+        select: {
+          key: true,
+          level: true,
+          expiresAtClock: true,
+          characterId: true,
+          // **La visibilidad del personaje viaja con la condición**, y la revisión de seguridad
+          // explicó por qué: el suceso se escribía siempre `PLAYERS`, así que la condición vencida
+          // de un PNJ `DM_ONLY` anunciaba a toda la mesa que ese PNJ existe y qué le pasaba.
+          character: { select: { visibility: true } },
+        },
       });
       for (const vencida of vencidasEnElTramo(
         candidatas,
@@ -110,9 +119,11 @@ export class GameClockService {
           {
             subjectType: "character",
             subjectId: vencida.characterId,
-            // La ve la mesa: es la misma visibilidad que el avance del reloj que la produjo, y
-            // esconderla dejaría al jugador con el «qué» y sin el «por qué».
-            visibility: "PLAYERS",
+            // **La misma visibilidad que el personaje**, igual que hacen aplicar y quitar una
+            // condición (`conditions.service.ts`). El argumento de que la caducidad se ve —para no
+            // dejar al jugador con el «qué» y sin el «por qué»— vale para el personaje de un
+            // jugador, que es `PLAYERS`; escrito fijo, se aplicaba también a los PNJ del DM.
+            visibility: vencida.character.visibility,
             payload: {
               type: "CONDITION_EXPIRED",
               key: vencida.key,

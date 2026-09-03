@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
   CreateRollRequestInput,
   ListRollRequestsInput,
@@ -111,9 +106,12 @@ export class RollRequestsService {
       where: { id: requestId, campaignId },
       include: { character: { select: { id: true, ownerId: true } } },
     });
-    if (!peticion) throw new NotFoundException("Esa petición no existe en esta campaña.");
-    if (peticion.character.ownerId !== userId && miembro.role !== "DM") {
-      throw new ForbiddenException("Solo el dueño del personaje o el DM pueden responderla.");
+    // **404 y no 403 si no es tuya**, que es lo mismo que decidió `DmTablesService.roll` para el
+    // mismo dilema: un 403 confirma que esa petición existe en esta campaña, y el listado ya se
+    // encarga de que un jugador no vea las ajenas. Dos módulos de la misma fase resolviéndolo al
+    // revés era la incoherencia que señaló la revisión.
+    if (!peticion || (peticion.character.ownerId !== userId && miembro.role !== "DM")) {
+      throw new NotFoundException("Esa petición no existe en esta campaña.");
     }
     if (peticion.resolvedAt) {
       throw new BadRequestException("Esa petición ya se respondió.");
@@ -138,10 +136,19 @@ export class RollRequestsService {
     // **Se marca respondida después de tirar, no antes.** Si se marcara antes y la tirada fallara
     // —una expresión imposible, la base caída—, la petición quedaría cerrada sin tirada: el
     // jugador vería desaparecer el botón sin que hubiera pasado nada.
-    await this.prisma.rollRequest.update({
-      where: { id: peticion.id },
+    //
+    // **Y se cierra con la condición dentro del `where`**, no con el `if` de arriba: entre aquella
+    // lectura y esta escritura cabe otra petición entera —un doble clic, o dos pestañas—, y las dos
+    // pasaban la comprobación y tiraban. La regla del proyecto dice que lo que la base puede
+    // garantizar lo garantiza la base: aquí la garantía es que el `updateMany` solo toca la fila
+    // que **sigue** sin responder, y si no tocó ninguna es que ganó la otra.
+    const cerrada = await this.prisma.rollRequest.updateMany({
+      where: { id: peticion.id, resolvedAt: null },
       data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
     });
+    if (cerrada.count === 0) {
+      throw new BadRequestException("Esa petición ya se respondió.");
+    }
 
     return resultado;
   }

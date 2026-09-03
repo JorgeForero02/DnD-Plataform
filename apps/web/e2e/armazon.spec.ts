@@ -33,7 +33,7 @@ test("el pie se apoya en el borde inferior aunque la pantalla tenga poco conteni
   page,
 }) => {
   await registrarse(page);
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("Las Mareas de Sarnath");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "Las Mareas de Sarnath" }).click();
@@ -69,7 +69,7 @@ test("el pie se apoya en el borde inferior aunque la pantalla tenga poco conteni
 
 test("ninguna entrada del carril va sin su icono dibujado", async ({ page }) => {
   await registrarse(page);
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("Con iconos");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "Con iconos" }).click();

@@ -97,42 +97,76 @@ export class RollsService {
     const outcome =
       input.dc === undefined ? "NO_DC" : resultado.total >= input.dc ? "SUCCESS" : "FAILURE";
 
-    const evento = await this.events.record(userId, campaignId, {
-      sessionId,
-      subjectType: characterId ? "character" : "campaign",
-      subjectId: characterId ?? campaignId,
-      visibility,
-      payload: {
-        type: "ABILITY_ROLL",
-        expression: resultado.expression,
-        rolls,
-        kept,
-        dropped,
-        modifier,
-        total: resultado.total,
-        ...(input.dc === undefined ? {} : { dc: input.dc }),
-        natural,
-        outcome,
-        ...(input.label ? { reason: input.label } : {}),
-      },
+    // **La tirada y la tabla que dispara se escriben JUNTAS o no se escribe ninguna.**
+    //
+    // El comentario de `DmTablesService.tirarSobre` prometía esto —«una pifia registrada sin su
+    // tirada, o al revés, es una línea de tiempo que no se puede leer»— y el único llamante
+    // automático **no pasaba la transacción**, así que la promesa era falsa. Lo cazó una revisión;
+    // ningún script podía verlo.
+    //
+    // `prisma.transaction` es además lo que hace que los sucesos se emitan **tras el commit**
+    // (ficha M2B-3): el motor de reglas ve la tirada y su tabla ya escritas, nunca a medias.
+    const { evento, deLaCasa, tabla } = await this.prisma.transaction(async (tx) => {
+      const evento = await this.events.record(
+        userId,
+        campaignId,
+        {
+          sessionId,
+          subjectType: characterId ? "character" : "campaign",
+          subjectId: characterId ?? campaignId,
+          visibility,
+          payload: {
+            type: "ABILITY_ROLL",
+            expression: resultado.expression,
+            rolls,
+            kept,
+            dropped,
+            modifier,
+            total: resultado.total,
+            ...(input.dc === undefined ? {} : { dc: input.dc }),
+            natural,
+            outcome,
+            ...(input.label ? { reason: input.label } : {}),
+          },
+        },
+        tx,
+      );
+
+      // **La tabla de la casa, si la casa la tiene encendida** (2C.6). Solo se pregunta cuando hay
+      // un natural que cantar, así que una tirada corriente no paga ninguna consulta de más — y con
+      // el interruptor apagado, que es el valor por defecto, esto devuelve `null` y **un crítico
+      // sigue duplicando dados y nada más**, que es lo que dice el manual.
+      const tabla =
+        natural === "NONE"
+          ? null
+          : await this.tables.tablaDisparadaPor(
+              campaignId,
+              natural === "TWENTY" ? "CRITICAL" : "FUMBLE",
+              tx,
+            );
+      const deLaCasa = tabla
+        ? await this.tables.tirarSobre(userId, campaignId, tabla, {
+            trigger: natural === "TWENTY" ? "CRITICAL" : "FUMBLE",
+            tx,
+          })
+        : undefined;
+
+      return { evento, deLaCasa, tabla };
     });
 
-    // **La tabla de la casa, si la casa la tiene encendida** (2C.6). Solo se pregunta cuando hay
-    // un natural que cantar, así que una tirada corriente no paga ninguna consulta de más — y con
-    // el interruptor apagado, que es el valor por defecto, esto devuelve `null` y **un crítico
-    // sigue duplicando dados y nada más**, que es lo que dice el manual.
-    const tabla =
-      natural === "NONE"
-        ? null
-        : await this.tables.tablaDisparadaPor(
-            campaignId,
-            natural === "TWENTY" ? "CRITICAL" : "FUMBLE",
-          );
-    const deLaCasa = tabla
-      ? await this.tables.tirarSobre(userId, campaignId, tabla, {
-          trigger: natural === "TWENTY" ? "CRITICAL" : "FUMBLE",
-        })
-      : undefined;
+    // **Y el texto de esa tabla no vuelve a quien no puede ver la tabla.**
+    //
+    // Lo encontró una revisión de seguridad, y es el agujero de la tirada a ciegas otra vez, un
+    // método más abajo: una tabla nace `DM_ONLY` **por defecto**, su `TABLE_ROLLED` sí se escribe
+    // con esa visibilidad —así que el registro la esconde bien—, y la respuesta del `POST` la
+    // cantaba entera. Un jugador que sacara un 1 natural leía la tabla de pifias del DM.
+    //
+    // **Se tira igual**: el DM la necesita, y el suceso queda escrito para él. Lo que se decide
+    // aquí es solo si el texto viaja de vuelta, y lo decide `canView`, como todo lo demás.
+    const puedeVerLaTabla =
+      tabla === null ||
+      (await this.puedeVerse(userId, campaignId, propio.role, tabla.visibility as Visibility));
+    const deLaCasaVisible = puedeVerLaTabla ? deLaCasa : undefined;
 
     // **El agujero de la tirada a ciegas se cierra aquí.** Hasta 2C la respuesta devolvía el
     // resultado a quien la pedía siempre, así que una tirada que el registro escondía se leía
@@ -161,7 +195,7 @@ export class RollsService {
       ...(input.dc === undefined ? {} : { dc: input.dc }),
       natural,
       outcome,
-      ...(deLaCasa ? { houseTable: deLaCasa } : {}),
+      ...(deLaCasaVisible ? { houseTable: deLaCasaVisible } : {}),
     };
   }
 
@@ -173,11 +207,40 @@ export class RollsService {
    * `canView` para los sucesos. Una tirada `DM_ONLY` **no viaja**; no se esconde en el cliente.
    */
   async list(userId: string, campaignId: string, query: ListRollsInput) {
+    // **«Solo las mías» lo resuelve el servidor** (ficha C2C-7), y por eso no es un `characterId`:
+    // un jugador puede llevar varios personajes, así que «las mías» es un conjunto que el cliente
+    // tendría que componer pidiendo antes su lista y mandando una consulta por cada uno.
+    let subjectIds: string[] | undefined;
+    if (query.mine) {
+      const mios = await this.prisma.character.findMany({
+        where: { campaignId, ownerId: userId },
+        select: { id: true },
+      });
+      // Sin personajes propios, «las mías» son ninguna — y eso es una lista vacía, no la lista
+      // entera. Un `undefined` aquí habría enseñado las de toda la mesa.
+      subjectIds = mios.map((c) => c.id);
+    }
+
     return this.events.list(
       userId,
       campaignId,
       { limit: query.limit, cursor: query.cursor, sessionId: query.sessionId },
-      { types: TIPOS_DE_TIRADA, subjectId: query.characterId },
+      {
+        types: TIPOS_DE_TIRADA,
+        // **Los dos filtros se cruzan, no se pisan.** Antes escribían la misma clave del `where` y
+        // el segundo ganaba en silencio: pedir «las de mi personaje A **y** solo las mías» devolvía
+        // las de todos mis personajes. Un filtro que se acepta y se ignora es peor que uno que no
+        // existe. Ahora `mine` acota la lista y `characterId` la acota más.
+        ...(subjectIds
+          ? {
+              subjectIds: query.characterId
+                ? subjectIds.filter((id) => id === query.characterId)
+                : subjectIds,
+            }
+          : query.characterId
+            ? { subjectId: query.characterId }
+            : {}),
+      },
     );
   }
 
@@ -277,6 +340,14 @@ export function conVentaja(expression: string, mode: RollMode): string {
   if (mode === "NORMAL") return expression;
   const sufijo = mode === "ADVANTAGE" ? "kh1" : "kl1";
   // `1d20` o `d20` al principio de la expresión, sin dígito de "keep" ya puesto.
-  const reemplazado = expression.replace(/^(\s*)(1?d20)(?![0-9a-zA-Z])/i, `$1 2d20${sufijo}`);
+  // **Y admite que el d20 traiga su relanzado.** `1d20r1` es la suerte del mediano, y era
+  // justo la combinación que se caía: el patrón exigía que el d20 no llevara nada detrás, así que
+  // pedir ventaja sobre `1d20r1` **la descartaba en silencio** —ni error, ni rastro en el suceso—.
+  // Lo cazó una revisión contra la fuente. El orden queda `2d20r1kh1`, que es el que la sintaxis
+  // exige y el que la regla pide: se relanza el dado y de lo que quede se conserva el mejor.
+  const reemplazado = expression.replace(
+    /^(\s*)(1?d20)((?:r(?:<=|>=|<|>)?\d+)?)(?![0-9a-zA-Z])/i,
+    `$1 2d20$3${sufijo}`,
+  );
   return reemplazado === expression ? expression : reemplazado.trim();
 }

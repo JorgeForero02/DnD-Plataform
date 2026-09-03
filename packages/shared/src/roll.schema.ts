@@ -190,6 +190,18 @@ export const listRollsSchema = z.object({
   sessionId: z.string().cuid().optional(),
   /** Solo las de un personaje. Es la columna `subjectId` del suceso, no un campo del `payload`. */
   characterId: z.string().cuid().optional(),
+  /**
+   * **Solo las mías** (ficha C2C-7): las de los personajes de quien pregunta.
+   *
+   * Existe además de `characterId` y no en su lugar porque **un jugador puede llevar varios
+   * personajes**, y entonces «las mías» no es un identificador: es un conjunto que solo el
+   * servidor conoce. Resolverlo en el cliente obligaría a pedir antes la lista de personajes y a
+   * mandar un `characterId` por cada uno, que son N peticiones para una pregunta.
+   *
+   * **No relaja nada**: se cruza con el filtro de `canView`, no lo sustituye. Pedir «las mías» no
+   * enseña ninguna tirada que no se viera ya.
+   */
+  mine: z.coerce.boolean().default(false),
   cursor: z.string().cuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });

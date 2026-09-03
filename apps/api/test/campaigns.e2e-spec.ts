@@ -163,7 +163,7 @@ describe("Campaigns (e2e)", () => {
   });
 
   describe("DELETE /campaigns/:id cascades to every table hanging off it", () => {
-    it("deletes entities, links, comments, grants, sessions, characters and invites", async () => {
+    it("deletes entities, links, comments, grants, sessions, characters, invites, the game log, the world state, the rules, the items, the conditions, the roll requests and the DM tables", async () => {
       const server = app.getHttpServer();
       const auth = (token: string) => `Bearer ${token}`;
 
@@ -231,6 +231,69 @@ describe("Campaigns (e2e)", () => {
         .set("Authorization", auth(tokenA));
       expect(secondInviteRes.status).toBe(201);
 
+      // --- Ficha A1: las tablas que la prueba NO contaba, y las que 2C anadio despues.
+      //
+      // Borrar una campana es la operacion mas destructiva del producto, y esta prueba **cuenta
+      // filas de verdad** en vez de fiarse del codigo de estado. Cada tabla que cuelga de una
+      // campana y no se cuenta aqui es por donde se cuela un huerfano sin que nada avise.
+      const characterId = characterRes.body.id;
+
+      // Un suceso en el log: cualquier tirada lo escribe.
+      const tirada = await request(server)
+        .post(`/campaigns/${campaignId2}/rolls`)
+        .set("Authorization", auth(tokenA))
+        .send({ expression: "1d20", audience: "PUBLIC" });
+      expect(tirada.status).toBe(201);
+
+      // Una marca y un conjunto del mundo.
+      const marca = await request(server)
+        .put(`/campaigns/${campaignId2}/flags/el-puente-cayo`)
+        .set("Authorization", auth(tokenA))
+        .send({ key: "el-puente-cayo", value: true });
+      expect(marca.status).toBe(200);
+      const conjunto = await request(server)
+        .post(`/campaigns/${campaignId2}/sets`)
+        .set("Authorization", auth(tokenA))
+        .send({ key: "los-que-saben", label: "Los que saben" });
+      expect(conjunto.status).toBe(201);
+
+      // Una regla del motor.
+      const regla = await request(server)
+        .post(`/campaigns/${campaignId2}/rules`)
+        .set("Authorization", auth(tokenA))
+        .send({
+          name: "Al caer el puente",
+          trigger: { kind: "FLAG_SET", key: "el-puente-cayo", value: true },
+          effects: [{ kind: "SET_FLAG", key: "todos-lo-saben", value: true }],
+        });
+      expect(regla.status).toBe(201);
+
+      // Un objeto propio de la campana.
+      const objeto = await request(server)
+        .post(`/campaigns/${campaignId2}/items`)
+        .set("Authorization", auth(tokenA))
+        .send({ name: "Daga del posadero", kind: "OTHER" });
+      expect(objeto.status).toBe(201);
+
+      // Una condicion sobre el personaje.
+      const condicion = await request(server)
+        .put(`/campaigns/${campaignId2}/characters/${characterId}/conditions/prone`)
+        .set("Authorization", auth(tokenA))
+        .send({});
+      expect(condicion.status).toBe(200);
+
+      // Una peticion de tirada y una tabla del DM (2C).
+      const peticion = await request(server)
+        .post(`/campaigns/${campaignId2}/roll-requests`)
+        .set("Authorization", auth(tokenA))
+        .send({ characterIds: [characterId], key: "skill.perception", label: "Percepcion" });
+      expect(peticion.status).toBe(201);
+      const tabla = await request(server)
+        .post(`/campaigns/${campaignId2}/tables`)
+        .set("Authorization", auth(tokenA))
+        .send({ name: "Rumores", entries: [{ min: 1, max: 4, text: "Algo" }] });
+      expect(tabla.status).toBe(201);
+
       // Sanity check: everything is actually there before deleting.
       expect(await prisma.entity.count({ where: { campaignId: campaignId2 } })).toBe(2);
       expect(await prisma.entityLink.count({ where: { from: { campaignId: campaignId2 } } })).toBe(
@@ -248,6 +311,19 @@ describe("Campaigns (e2e)", () => {
       expect(await prisma.character.count({ where: { campaignId: campaignId2 } })).toBe(1);
       expect(await prisma.invite.count({ where: { campaignId: campaignId2 } })).toBe(2);
       expect(await prisma.campaignMember.count({ where: { campaignId: campaignId2 } })).toBe(2);
+      expect(await prisma.gameEvent.count({ where: { campaignId: campaignId2 } })).toBeGreaterThan(
+        0,
+      );
+      expect(await prisma.campaignFlag.count({ where: { campaignId: campaignId2 } })).toBe(1);
+      expect(await prisma.campaignSet.count({ where: { campaignId: campaignId2 } })).toBe(1);
+      expect(await prisma.rule.count({ where: { campaignId: campaignId2 } })).toBe(1);
+      expect(await prisma.campaignItem.count({ where: { campaignId: campaignId2 } })).toBe(1);
+      expect(await prisma.characterCondition.count({ where: { characterId } })).toBe(1);
+      expect(await prisma.rollRequest.count({ where: { campaignId: campaignId2 } })).toBe(1);
+      expect(await prisma.dmTable.count({ where: { campaignId: campaignId2 } })).toBe(1);
+      expect(
+        await prisma.dmTableEntry.count({ where: { table: { campaignId: campaignId2 } } }),
+      ).toBe(1);
 
       const del = await request(server)
         .delete(`/campaigns/${campaignId2}`)
@@ -270,6 +346,18 @@ describe("Campaigns (e2e)", () => {
       expect(await prisma.character.count({ where: { campaignId: campaignId2 } })).toBe(0);
       expect(await prisma.invite.count({ where: { campaignId: campaignId2 } })).toBe(0);
       expect(await prisma.campaignMember.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      // Las de la ficha A1 y las de 2C: **cero filas, contadas de verdad**.
+      expect(await prisma.gameEvent.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(await prisma.campaignFlag.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(await prisma.campaignSet.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(await prisma.rule.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(await prisma.campaignItem.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(await prisma.characterCondition.count({ where: { characterId } })).toBe(0);
+      expect(await prisma.rollRequest.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(await prisma.dmTable.count({ where: { campaignId: campaignId2 } })).toBe(0);
+      expect(
+        await prisma.dmTableEntry.count({ where: { table: { campaignId: campaignId2 } } }),
+      ).toBe(0);
       campaignId2 = ""; // already deleted, nothing left for afterAll to clean up
     });
   });

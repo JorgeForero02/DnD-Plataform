@@ -41,7 +41,7 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
 }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("El motor de la mesa");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "El motor de la mesa" }).click();
@@ -179,7 +179,7 @@ test("una plantilla se clona, y el aviso de reversión crea la regla que faltaba
 }) => {
   await registrarse(page);
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La mesa de las plantillas");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de las plantillas" }).click();

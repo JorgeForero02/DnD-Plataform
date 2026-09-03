@@ -1,4 +1,10 @@
-import type { CreateDmTableInput, DmTableRoll, TableTrigger, Visibility } from "@dnd/shared";
+import type {
+  CreateDmTableInput,
+  DmTableRoll,
+  TableTrigger,
+  UpdateDmTableInput,
+  Visibility,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Tarea 2C.6 — la puerta de datos de **las tablas del DM**.
@@ -41,6 +47,24 @@ export function fetchDmTables(campaignId: string): Promise<DmTablesResponse> {
 export function createDmTable(campaignId: string, input: CreateDmTableInput): Promise<DmTable> {
   return apiFetch<DmTable>(`/campaigns/${campaignId}/tables`, {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Editar una tabla (ficha C2C-6). **Mismo cuerpo que crearla, y las filas se reemplazan enteras**
+ * — el porqué está escrito una sola vez, en `updateDmTableSchema`
+ * (`packages/shared/src/dm-table.schema.ts`): las filas se validan **como conjunto**, así que
+ * tocar una sola dejaría a las demás en un estado que nadie ha comprobado. Por eso aquí no hay
+ * ninguna función de «editar una fila»: no existe tal cosa.
+ */
+export function updateDmTable(
+  campaignId: string,
+  tableId: string,
+  input: UpdateDmTableInput,
+): Promise<DmTable> {
+  return apiFetch<DmTable>(`/campaigns/${campaignId}/tables/${tableId}`, {
+    method: "PUT",
     body: JSON.stringify(input),
   });
 }

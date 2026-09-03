@@ -46,6 +46,28 @@ petición de tirada y tablas del DM). Las secciones van de lo más reciente a lo
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 
+## P3 · La suite de e2e llega a 58 conexiones de las 100 de Postgres (2026-09-03)
+
+**Medido, no supuesto.** Corriendo `pnpm --filter @dnd/api test:e2e` y contando
+`pg_stat_activity` cada tres segundos, el pico observado fue **58 conexiones** sobre un
+`max_connections` de **100**, en una máquina de 12 núcleos. Nada acota los trabajadores de Jest:
+el número sube con los núcleos de quien la corra.
+
+**De dónde sale esta ficha.** Una corrida —la primera de la sesión del 2026-09-03— falló en
+`entities` y `campaign-items`, con **todas** las suites tardando ~20 s en vez de los ~13 habituales.
+Las siete corridas siguientes salieron verdes sin tocar nada. **No se reprodujo**, así que no hay
+causa demostrada; lo que sí hay es un margen medido de **42 conexiones**, que un `pnpm dev:api`
+levantado a la vez se come en parte con su propio pool.
+
+**Qué hacer cuando vuelva a pasar**, en este orden: mirar si había un servidor de desarrollo
+levantado, y volver a medir el pico con él arriba. Si el pico roza las 100, la salida es acotar los
+trabajadores (`--maxWorkers`) o subir `max_connections` en el `docker-compose.yml` de desarrollo —
+**y no antes**: cambiar el paralelismo sobre una hipótesis solo esconde la señal.
+
+**Por qué esto no es «una prueba frágil».** Este proyecto ya se equivocó dos veces llamando flaky a
+un fallo real —el abrazo mortal de 2B y el limitador de peticiones de la suite de navegador—, y las
+dos veces la salida fue medir. Esta ficha existe para que la tercera también se mida.
+
 ## Lo que deja abierto la fase 2C (2026-09-03)
 
 Nada de esto rompe nada hoy. Cada línea dice qué falta, por qué no entró y qué evidencia hay.
@@ -53,14 +75,50 @@ Nada de esto rompe nada hoy. Cada línea dice qué falta, por qué no entró y q
 | | Qué | Por qué importa, y qué cuesta |
 |---|---|---|
 | ~~**C2C-3**~~ | **CERRADA el 2026-09-03**, antes de desplegar: el reloj tiene su mando en la pestaña «Dados» (`features/game-clock/RelojDeCampana.tsx`). La hora la lee cualquiera —qué hora es en el mundo no es información privilegiada—, la mueve el DM con cinco saltos y el viaje con sus tres ritmos, y **las salvaciones de marcha forzada se enseñan con su CD** en vez de esconderse en un aviso. Se cerró porque el guion de la partida de prueba pide avanzar el reloj: sin esto, la fase 2 se habría dado por cerrada con la mitad visible de 2C.4 sin el gesto que la enciende | Cerrada |
-| **C2C-4** | **La marcha forzada devuelve las tiradas que hay que pedir y nadie las pide.** El servidor calcula `forcedMarchSaves` con su CD por hora; encadenarlas con la petición de tirada de 2C.5 es lo que las convierte en juego | Con 2C.5 dentro, es cablear una cosa a la otra: por cada salvación, una petición a cada personaje que viajó |
-| **C2C-5** | **El disparo automático de una tabla no se ve en la pantalla de la tirada.** `RollResult` trae `houseTable` cuando un natural la dispara, y la pantalla de dados **no lo pinta**: el resultado queda solo en la línea de tiempo | Es una rama de pintado en `ResultadoDeTirada`. Sin ella, la regla de la casa ocurre y quien tiró no la ve |
-| **C2C-6** | **Una tabla no se puede editar, solo crear y borrar** | Deliberado: el alcance pedía la primitiva. Editar una tabla de cien filas sin poder editarla es rehacerla |
-| **C2C-7** | **`GET /campaigns/:id/rolls` no filtra por «solo las mías»** | El registro trae las de la mesa. Con una sesión larga, un jugador que quiera repasar las suyas tiene que buscarlas. El hook de la web ya acepta el filtro por personaje; falta ofrecerlo |
+| ~~**C2C-4**~~ | **CERRADA el 2026-09-03**: el reloj ofrece pedir las salvaciones de marcha forzada como peticiones de tirada reales — **una por salvación y por personaje**, con su CD creciente, porque el SRD manda una al final de cada hora pasada de ocho y juntarlas limitaría el agotamiento a un nivel | Cerrada |
+| ~~**C2C-4 (texto original)**~~ | **La marcha forzada devuelve las tiradas que hay que pedir y nadie las pide.** El servidor calcula `forcedMarchSaves` con su CD por hora; encadenarlas con la petición de tirada de 2C.5 es lo que las convierte en juego | Con 2C.5 dentro, es cablear una cosa a la otra: por cada salvación, una petición a cada personaje que viajó |
+| ~~**C2C-5**~~ | **CERRADA el 2026-09-03**: la tabla de la casa se pinta dentro de `ResultadoDeTirada`, diciendo que es una regla de la casa y no del manual, y con el dado y el resultado que salieron. Va dentro y no al lado porque **es parte del resultado de esa tirada**, y así llega a los cuatro sitios que ya pintan un resultado sin tocar ninguno. **Y no se pinta si quien tiró no puede ver la tabla** — ver la revisión de seguridad de abajo | Cerrada |
+| ~~**C2C-5 (texto original)**~~ | **El disparo automático de una tabla no se ve en la pantalla de la tirada.** `RollResult` trae `houseTable` cuando un natural la dispara, y la pantalla de dados **no lo pinta**: el resultado queda solo en la línea de tiempo | Es una rama de pintado en `ResultadoDeTirada`. Sin ella, la regla de la casa ocurre y quien tiró no la ve |
+| ~~**C2C-6**~~ | **CERRADA el 2026-09-03**: `PUT /campaigns/:c/tables/:id` con el mismo cuerpo que crear, y **las filas se reemplazan enteras** porque se validan como conjunto: editar una sola dejaría a las demás en un estado que nadie ha comprobado. En la pantalla, el mismo formulario que crea, relleno | Cerrada |
+| ~~**C2C-6 (texto original)**~~ | **Una tabla no se puede editar, solo crear y borrar** | Deliberado: el alcance pedía la primitiva. Editar una tabla de cien filas sin poder editarla es rehacerla |
+| ~~**C2C-7**~~ | **CERRADA el 2026-09-03**: `GET /campaigns/:c/rolls?mine=true`. Lo resuelve el servidor y no el cliente porque **un jugador puede llevar varios personajes**: «las mías» no es un identificador, es un conjunto. Sin personajes propios son **ninguna**, no todas | Cerrada |
+| ~~**C2C-7 (texto original)**~~ | **`GET /campaigns/:id/rolls` no filtra por «solo las mías»** | El registro trae las de la mesa. Con una sesión larga, un jugador que quiera repasar las suyas tiene que buscarlas. El hook de la web ya acepta el filtro por personaje; falta ofrecerlo |
 | **C2C-8** | **El vencimiento de una condición no entiende «hasta el próximo descanso largo»** | Y es a propósito: **eso no es una duración, es un suceso**, y modelarlo como un número sería mentir. Está declarado en `character-state.schema.ts` y en la tabla de duraciones de la pantalla. Cuando entre, entra como disparador, no como segundos |
 | **C2C-9** | **El agotamiento solo llega al motor por dos de sus seis efectos.** Velocidad (niveles 2 y 5) y PG máximos (nivel 4). Los otros cuatro —desventaja en pruebas, en ataques y salvaciones, y la muerte del nivel 6— **no calculan nada** | La desventaja necesita que el motor sepa componer ventaja/desventaja automáticamente, que hoy elige quien tira. Es Encuentros o una decisión aparte; **anotarlo es lo que impide creer que el agotamiento ya está entero** |
 
-## C2C-1 · El cuarto modo de tirada («Propia») **no cabe en el modelo**, y es decisión del autor (2026-09-03)
+## Lo que dejó la revisión del cierre de la fase 2 (2026-09-03)
+
+Dos revisores de solo lectura sobre el diff de 2C entero: uno de **seguridad y visibilidad**, otro
+de **reglas de 5.ª edición contra la fuente**. Trece hallazgos, **once arreglados el mismo día** con
+su prueba y su mutación. Estos cuatro quedan, y los cuatro son decisiones, no descuidos:
+
+| | Qué | Por qué no entró, y qué costaría |
+|---|---|---|
+| **R2C-1** | **La expresión de una tirada es texto libre, así que un cliente puede mandar `3d20kh1`** y el sistema lo cuenta como un 20 natural legítimo — con el que dispara la tabla de críticos | El comentario de `roll.schema.ts` afirma que el servidor compone la ventaja «para que un cliente no pueda mandar `3d20kh1`», y **eso solo es cierto del camino de la hoja**: la pantalla de dados acepta expresiones libres a propósito, que es media razón de existir de 2C.2. Cerrarlo es elegir: o se acota qué expresiones admite un `d20` con `mode`, o se acepta y **se corrige el comentario**. Es decisión de producto |
+| **R2C-2** | **Quién decide que un ataque fue crítico es el navegador** (`critical: true` en el cuerpo), sin atarlo al `eventId` de la tirada que sacó el 20 | La duplicación de dados en sí es correcta. Lo que falta es la atadura, y hacerla bien pide que el ataque recuerde su tirada — que es la forma que **Encuentros** va a necesitar de todas formas |
+| **R2C-3** | **Un descanso largo no consume ocho horas de reloj**: marca cuándo ocurrió y no avanza el tiempo | Hoy una condición de seis horas sobrevive intacta a una noche entera salvo que el DM avance el reloj a mano. Avanzarlo solo es tentador y **cambia el mundo de todos los personajes a la vez**, así que es arbitraje: o lo hace el DM, o se le ofrece hacerlo con un botón junto al descanso |
+| **R2C-4** | **La salvación de muerte sigue recibiendo un nivel de visibilidad crudo** del cliente (`deathSaveSchema.visibility`), mientras que el resto de 2C pasó a `audience` | No hay fuga —es tu propia tirada y tú eliges el nivel— pero es la mitad del vocabulario sin migrar, en el mismo endpoint que 2C.1 declaró cerrado. Migrarlo es un cambio de contrato pequeño y su pantalla |
+
+**Y una ampliación de C2C-9**, que la revisión midió mejor de lo que estaba escrito: del agotamiento
+se implementan **los niveles 2, 4 y 5**. Faltan el 1 y el 3 (desventaja, que necesita que el motor
+componga ventaja por su cuenta —hoy la elige quien tira—) y **el 6, la muerte**, que hoy no hace
+nada: la condición se guarda y el personaje sigue vivo con la mitad de PG.
+
+## ~~C2C-1~~ · El cuarto modo de tirada — **CONTESTADA por el autor el 2026-09-03: no entra**
+
+> **«No.»** Preguntado en una línea —*¿quieres que un jugador pueda esconderte una tirada a ti, el
+> DM?*—, la respuesta es que no. **Se cierra con tres modos**: pública, privada del DM y a ciegas
+> del DM.
+
+Y conviene guardar el porqué, porque la pregunta volverá el día que alguien compare esta
+herramienta con Foundry: el cuarto modo **no era un nivel de visibilidad que faltara**, era una
+excepción a «el DM lo ve todo», que es una regla del proyecto entero y no un detalle de la pantalla
+de dados. Cerrarla con tres modos no es una carencia: es la consecuencia de una regla que el autor
+quiere. El razonamiento completo, con su fuente, queda abajo tal como se escribió.
+
+### El razonamiento, conservado
+
+## ~~C2C-1 (razonamiento original)~~ · El cuarto modo de tirada («Propia») no cabe en el modelo
 
 **Es un hallazgo de 2C.1, y contradice una premisa del alcance.** El alcance de 2C decía que
 «nuestro modelo ya expresa tres de los cuatro [modos de Foundry] con la visibilidad que existe» y
@@ -94,6 +152,8 @@ privacidad incumplida, que es peor que no ofrecerla.
 En una herramienta donde el DM arbitra, la respuesta por defecto razonable es «no», y entonces
 esta ficha se cierra declarando tres modos. Si la respuesta es «sí», es un nivel de visibilidad
 nuevo con su migración y su repaso de todas las pantallas.
+
+> **Contestada: «no».** Tres modos, y el vocabulario queda cerrado.
 
 ## ~~P2~~ · Los topes de la tirada y de la anulación — **CERRADA el 2026-09-03 (2C.2)**
 
@@ -464,8 +524,9 @@ trabajo y no una frase:
 
 | | Qué | Por qué importa |
 |---|---|---|
-| **A1** | **El borrado en cascada de una campaña no está probado sobre las cuatro tablas nuevas**: `gameEvent`, `campaignFlag`, `campaignSet` y `rule`. La prueba cuenta ocho tablas y esas quedaron fuera | Borrar una campaña es la operación más destructiva del producto, y su prueba **cuenta filas de verdad** en vez de fiarse del código de estado. Cuatro tablas sin contar es justo por donde volvería a colarse un huérfano |
-| **A2** | **`recordEntityOpened` escribe un `GameEvent` sin comprobar membresía**, y `world-state.module.ts` lo exporta a propósito | Hoy **no lo llama nadie**, así que no es explotable. Sigue el mismo patrón que `GameEventsService.record` («quien llama ya decidió»), y por eso no se cambió. **Pero la fila de 01 dice «solo DM» de ese módulo, y dejará de ser verdad en cuanto `entities` lo enganche** — que es lo que su propio comentario anuncia |
+| ~~**A1**~~ | **CERRADA el 2026-09-03, antes de desplegar.** La prueba de cascada cuenta ahora **diecisiete tablas**: las ocho que ya contaba, las cuatro de la ficha (`gameEvent`, `campaignFlag`, `campaignSet`, `rule`), el catálogo propio de la campaña, las condiciones de un personaje, y las tres que trajo 2C (`rollRequest`, `dmTable`, `dmTableEntry`). Cuenta filas de verdad antes y después, y sale a cero. Se cerró justo antes del despliegue porque un huérfano en una tabla nueva no avisa: la operación devuelve 200 igual | Cerrada |
+| ~~**A2**~~ | **REVISADA el 2026-09-03: la mitad que era una mentira, corregida; la otra mitad sigue siendo correcta.** `entities` **ya lo engancha** —abrir una ficha escribe el suceso—, así que la fila de [01-arquitectura.md](./01-arquitectura.md) que decía «solo DM» de este módulo **era falsa** y se ha corregido: un jugador escribe ahí sin pasar por su controlador. Lo que **no** se cambia es la falta de comprobación de membresía dentro del método: quien llama (`getOne`) ya ha comprobado que quien mira puede ver la ficha, que es el mismo patrón declarado de `GameEventsService.record` («quien llama ya decidió»). No es explotable: no hay ninguna puerta HTTP que llegue a él sin pasar antes por esa comprobación | Cerrada |
+| ~~**A2 (texto original)**~~ | **`recordEntityOpened` escribe un `GameEvent` sin comprobar membresía**, y `world-state.module.ts` lo exporta a propósito | Hoy **no lo llama nadie**, así que no es explotable. Sigue el mismo patrón que `GameEventsService.record` («quien llama ya decidió»), y por eso no se cambió. **Pero la fila de 01 dice «solo DM» de ese módulo, y dejará de ser verdad en cuanto `entities` lo enganche** — que es lo que su propio comentario anuncia |
 | **A3** | **El censo de controladores caducado también está en `docker-compose.prod.yml`**, en el comentario que justifica la comprobación de salud de la API | Es la misma mentira en dos sitios; se corrigió la del documento y queda la del compose. Cambiar el compose recompila la imagen en Coolify, así que **se hace con el siguiente despliegue, no suelto** |
 
 ## Iluminación y visión (pregunta del autor, 2026-09-02)

@@ -41,7 +41,7 @@ async function registrarse(page: Page) {
 }
 
 async function crearCampanaConSesion(page: Page) {
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La mesa de prueba");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de prueba" }).click();

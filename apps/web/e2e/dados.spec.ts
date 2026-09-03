@@ -40,7 +40,7 @@ function tarjeta(page: Page) {
 
 async function abrirDados(page: Page) {
   await registrarse(page);
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La partida de prueba");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La partida de prueba" }).click();

@@ -98,6 +98,17 @@ export const createDmTableSchema = z
   });
 export type CreateDmTableInput = z.infer<typeof createDmTableSchema>;
 
+/**
+ * Editar una tabla (ficha C2C-6). **Mismo cuerpo que crearla, y las filas se reemplazan enteras.**
+ *
+ * No hay un `PATCH` por fila a propósito: las filas de una tabla **se validan como conjunto** —no
+ * pueden solaparse, no pueden dejar huecos y tienen que empezar en 1—, así que editar una sola
+ * dejaría a las demás en un estado que el esquema no puede comprobar sin volver a mirarlas todas.
+ * Reemplazarlas enteras es la única forma en que la tabla guardada siempre es una tabla válida.
+ */
+export const updateDmTableSchema = createDmTableSchema;
+export type UpdateDmTableInput = CreateDmTableInput;
+
 /** El interruptor de la casa, por campaña. */
 export const setHouseTablesSchema = z.object({ enabled: z.boolean() });
 export type SetHouseTablesInput = z.infer<typeof setHouseTablesSchema>;

@@ -188,6 +188,74 @@ describe("Tablas del DM (e2e)", () => {
     expect(r.status).toBe(404);
   });
 
+  it("**editar reemplaza las filas enteras**, y la tabla guardada sigue siendo válida", async () => {
+    const s = app.getHttpServer();
+    const tablas = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
+    const pifias = tablas.body.tables.find((t: { name: string }) => t.name === "Pifias de la casa");
+
+    const editar = await request(s)
+      .put(`${url()}/${pifias.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        name: "Pifias corregidas",
+        trigger: "FUMBLE",
+        entries: [
+          { min: 1, max: 3, text: "Se te cae el arma." },
+          { min: 4, max: 6, text: "Tropiezas." },
+        ],
+      });
+
+    expect(editar.status).toBe(200);
+    expect(editar.body.name).toBe("Pifias corregidas");
+    // Dos filas nuevas, y **ninguna de las viejas**: no se acumulan.
+    expect(editar.body.entries).toHaveLength(2);
+    expect(editar.body.entries.map((e: { text: string }) => e.text)).toEqual([
+      "Se te cae el arma.",
+      "Tropiezas.",
+    ]);
+
+    // Y el dado cambia con ella: la tabla ahora llega hasta 6.
+    const tirada = await request(s)
+      .post(`${url()}/${pifias.id}/roll`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(tirada.body.die).toBe(6);
+  });
+
+  it("editar con un hueco se rechaza **y no toca la tabla guardada**", async () => {
+    const s = app.getHttpServer();
+    const antes = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
+    const pifias = antes.body.tables.find((t: { name: string }) => t.name === "Pifias corregidas");
+
+    const malo = await request(s)
+      .put(`${url()}/${pifias.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        name: "Rota",
+        trigger: "FUMBLE",
+        entries: [
+          { min: 1, max: 2, text: "A" },
+          { min: 5, max: 6, text: "B" },
+        ],
+      });
+    expect(malo.status).toBe(400);
+
+    const despues = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
+    const sigue = despues.body.tables.find((t: { id: string }) => t.id === pifias.id);
+    expect(sigue.name).toBe("Pifias corregidas");
+    expect(sigue.entries).toHaveLength(2);
+  });
+
+  it("un jugador no puede editar (403)", async () => {
+    const s = app.getHttpServer();
+    const tablas = await request(s).get(url()).set("Authorization", `Bearer ${tokenDM}`);
+    const alguna = tablas.body.tables[0];
+    const r = await request(s)
+      .put(`${url()}/${alguna.id}`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ name: "Mía", entries: [{ min: 1, max: 2, text: "A" }] });
+    expect(r.status).toBe(403);
+  });
+
   it("el interruptor se enciende y se apaga, y solo el DM", async () => {
     const s = app.getHttpServer();
     const prohibido = await request(s)

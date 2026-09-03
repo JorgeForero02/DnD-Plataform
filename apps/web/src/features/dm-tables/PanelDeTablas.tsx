@@ -17,8 +17,9 @@ import {
   useDmTables,
   useRollDmTable,
   useSetHouseTables,
+  useUpdateDmTable,
 } from "./hooks";
-import { IconoTabla, IconoTirar } from "./iconos";
+import { IconoEditar, IconoTabla, IconoTirar } from "./iconos";
 import { DISPARADORES, POSICIONES_DE_LA_CASA, disparadorDeTabla } from "./vocabulario";
 
 // Tarea 2C.6 — **las tablas del DM**.
@@ -79,7 +80,7 @@ export function PanelDeTablas({ campaignId }: { campaignId: string }) {
         cargando={tablas.isLoading}
       />
 
-      {esDm && <FormularioDeTabla campaignId={campaignId} />}
+      {esDm && <CrearTabla campaignId={campaignId} />}
     </section>
   );
 }
@@ -201,7 +202,30 @@ function FichaDeTabla({
 }) {
   const tirar = useRollDmTable(campaignId);
   const borrar = useDeleteDmTable(campaignId);
+  const editar = useUpdateDmTable(campaignId);
+  const [editando, setEditando] = useState(false);
   const disparador = disparadorDeTabla(tabla.trigger);
+
+  // **El mismo formulario que el de crear**, relleno con lo que la tabla tiene ahora (ficha
+  // C2C-6). No hay un segundo formulario a propósito: dos formularios para la misma tabla se
+  // separan en cuanto alguien toque uno, y entonces crear y editar dejan de validar lo mismo.
+  // Ocupa el sitio de la ficha mientras dura: se edita donde se lee (docs/04-convenciones.md).
+  if (editando) {
+    return (
+      <FormularioDeTabla
+        titulo={`Editar «${tabla.name}»`}
+        textoDeGuardar="Guardar cambios"
+        // Todo lo que la tabla tiene hoy, filas incluidas. Un campo que no se rellenara aquí se
+        // perdería al guardar: el `PUT` manda el cuerpo entero, no un parche.
+        valores={valoresDe(tabla)}
+        error={editar.isError ? (editar.error as Error) : null}
+        onGuardar={(input) =>
+          editar.mutate({ tableId: tabla.id, input }, { onSuccess: () => setEditando(false) })
+        }
+        onCancelar={() => setEditando(false)}
+      />
+    );
+  }
 
   return (
     <article className="rounded-radius-sm border border-muted bg-surface p-s3">
@@ -229,6 +253,21 @@ function FichaDeTabla({
             <IconoTirar className="h-4 w-4" />
             Tirar
           </Button>
+          {/* Editar y borrar son del DM. Esconderlos **no es control de acceso** —`requireDM` lo
+              es—; solo evita ofrecer un botón que iba a acabar en 403. */}
+          {esDm && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                // Un rechazo de una edición anterior no se arrastra a la siguiente.
+                editar.reset();
+                setEditando(true);
+              }}
+            >
+              <IconoEditar className="h-4 w-4" />
+              Editar
+            </Button>
+          )}
           {esDm && (
             <Button
               variant="danger"
@@ -284,23 +323,117 @@ function FichaDeTabla({
 
 const FILA_VACIA: FilaEnEdicion = { min: "1", max: "1", text: "" };
 
+/** Lo que el formulario tiene delante: los cuatro campos de la tabla y sus filas, ya en texto. */
+interface ValoresDeTabla {
+  name: string;
+  description: string;
+  visibility: Visibility;
+  trigger: TableTrigger;
+  filas: FilaEnEdicion[];
+}
+
+/** Una tabla nueva. Por defecto **solo el DM**, igual que el esquema. */
+const TABLA_NUEVA: ValoresDeTabla = {
+  name: "",
+  description: "",
+  visibility: "DM_ONLY",
+  trigger: "NONE",
+  filas: [{ ...FILA_VACIA }],
+};
+
 /**
- * Crear una tabla.
+ * Una tabla existente, tal como se edita.
+ *
+ * Los números vuelven a texto porque los campos son entradas controladas: guardarlos como número
+ * obligaría a reformatear lo que el DM está escribiendo mientras lo escribe.
+ */
+function valoresDe(tabla: DmTable): ValoresDeTabla {
+  return {
+    name: tabla.name,
+    description: tabla.description ?? "",
+    visibility: tabla.visibility,
+    trigger: tabla.trigger,
+    filas: tabla.entries.map((fila) => ({
+      min: String(fila.min),
+      max: String(fila.max),
+      text: fila.text,
+    })),
+  };
+}
+
+/**
+ * Crear una tabla: el mismo formulario, con los valores de una tabla nueva.
+ *
+ * Lo tecleado vive **dentro** del formulario, así que cerrarlo lo desmonta y lo olvida — no hace
+ * falta vaciar campo por campo al guardar, que es justo donde se olvida uno.
+ */
+function CrearTabla({ campaignId }: { campaignId: string }) {
+  const [abierto, setAbierto] = useState(false);
+  const crear = useCreateDmTable(campaignId);
+
+  if (!abierto) {
+    return (
+      <Button
+        variant="primary"
+        onClick={() => {
+          crear.reset();
+          setAbierto(true);
+        }}
+      >
+        Crear tabla
+      </Button>
+    );
+  }
+
+  return (
+    <FormularioDeTabla
+      titulo="Nueva tabla"
+      textoDeGuardar="Guardar tabla"
+      valores={TABLA_NUEVA}
+      error={crear.isError ? (crear.error as Error) : null}
+      onGuardar={(input) => crear.mutate(input, { onSuccess: () => setAbierto(false) })}
+      onCancelar={() => setAbierto(false)}
+    />
+  );
+}
+
+/**
+ * El formulario de una tabla, **uno solo para crear y para editar** (ficha C2C-6).
  *
  * Las filas son una lista dinámica, así que van con `useState` controlado y no con React Hook
  * Form (docs/04-convenciones.md, sección Web). **Los números se mandan tal como se escribieron**:
  * quien decide si los rangos se solapan, dejan huecos o no empiezan en 1 es el esquema del
  * servidor, y su frase se imprime tal cual — reescribirla aquí sería una segunda fuente de verdad
  * sobre una regla que no vive en esta capa.
+ *
+ * **Y las filas viajan enteras**, tanto al crear como al editar. El motivo está escrito una sola
+ * vez, en `updateDmTableSchema`: se validan como conjunto, así que mandar una sola dejaría a las
+ * demás sin comprobar. Por eso editar no es «editar una fila»: es la tabla entera otra vez.
+ *
+ * Quién guarda —`POST` o `PUT`— lo decide quien lo monta. El formulario no sabe cuál de los dos
+ * es, y por eso los dos no pueden separarse.
  */
-function FormularioDeTabla({ campaignId }: { campaignId: string }) {
-  const [abierto, setAbierto] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("DM_ONLY");
-  const [trigger, setTrigger] = useState<TableTrigger>("NONE");
-  const [filas, setFilas] = useState<FilaEnEdicion[]>([{ ...FILA_VACIA }]);
-  const crear = useCreateDmTable(campaignId);
+function FormularioDeTabla({
+  titulo,
+  textoDeGuardar,
+  valores,
+  error,
+  onGuardar,
+  onCancelar,
+}: {
+  titulo: string;
+  textoDeGuardar: string;
+  valores: ValoresDeTabla;
+  /** El rechazo del servidor, con **su** frase. `null` si no lo hubo. */
+  error: Error | null;
+  onGuardar: (input: CreateDmTableInput) => void;
+  onCancelar: () => void;
+}) {
+  const [name, setName] = useState(valores.name);
+  const [description, setDescription] = useState(valores.description);
+  const [visibility, setVisibility] = useState<Visibility>(valores.visibility);
+  const [trigger, setTrigger] = useState<TableTrigger>(valores.trigger);
+  const [filas, setFilas] = useState<FilaEnEdicion[]>(valores.filas);
 
   function cambiarFila(indice: number, campo: keyof FilaEnEdicion, valor: string) {
     setFilas((previas) =>
@@ -323,24 +456,7 @@ function FormularioDeTabla({ campaignId }: { campaignId: string }) {
         text: fila.text,
       })),
     };
-    crear.mutate(input, {
-      onSuccess: () => {
-        setAbierto(false);
-        setName("");
-        setDescription("");
-        setVisibility("DM_ONLY");
-        setTrigger("NONE");
-        setFilas([{ ...FILA_VACIA }]);
-      },
-    });
-  }
-
-  if (!abierto) {
-    return (
-      <Button variant="primary" onClick={() => setAbierto(true)}>
-        Crear tabla
-      </Button>
-    );
+    onGuardar(input);
   }
 
   return (
@@ -348,7 +464,7 @@ function FormularioDeTabla({ campaignId }: { campaignId: string }) {
       onSubmit={enviar}
       className="space-y-s3 rounded-radius-sm border border-muted bg-surface p-s3"
     >
-      <h3 className="font-title text-chrome-lg text-text">Nueva tabla</h3>
+      <h3 className="font-title text-chrome-lg text-text">{titulo}</h3>
 
       <Field label="Nombre">
         <input
@@ -441,22 +557,23 @@ function FormularioDeTabla({ campaignId }: { campaignId: string }) {
         </Button>
       </fieldset>
 
-      {crear.isError && (
+      {error && (
         // La frase del servidor, tal cual. `ZodValidationPipe` ya escribe un español legible
         // («Falta el resultado 6: la tabla no puede tener huecos.») y reescribirlo aquí lo
-        // convertiría en un mensaje genérico que no dice qué arreglar.
+        // convertiría en un mensaje genérico que no dice qué arreglar. Y **lo tecleado se queda**:
+        // un rechazo no toca el estado del formulario.
         <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
           <IconoAviso className="mr-1" />
-          {(crear.error as Error).message}
+          {error.message}
         </p>
       )}
 
       <div className="flex gap-s2">
         {/* El botón de guardar nunca se deshabilita (docs/04-convenciones.md). */}
         <Button type="submit" variant="primary">
-          Guardar tabla
+          {textoDeGuardar}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => setAbierto(false)}>
+        <Button type="button" variant="secondary" onClick={onCancelar}>
           Cancelar
         </Button>
       </div>

@@ -81,9 +81,14 @@ describe("RestService", () => {
     });
   });
 
-  it("MUTACIÓN CLAVE: descanso LARGO recupera la mitad de los dados de golpe, redondeando hacia arriba y no todos", async () => {
-    // 5 dados máximos, 1 disponible: la mitad de 5 es 2.5 -> 3 hacia arriba; sube de 1 a 4,
-    // nunca a 5.
+  it("MUTACIÓN CLAVE: descanso LARGO recupera la mitad de los dados de golpe, **redondeando hacia ABAJO** y no todos", async () => {
+    // 5 dados máximos, 1 disponible: la mitad de 5 son **2** —el SRD redondea hacia abajo incluso
+    // con un medio exacto—, así que sube de 1 a 3, nunca a 4 ni a 5.
+    //
+    // **Esta prueba afirmaba lo contrario**, con su cuenta escrita («2,5 -> 3 hacia arriba»), y
+    // consagraba una regla mal implementada: lo cazó una revisión contra la fuente
+    // (<https://5thsrd.org/adventuring/resting/>). Se corrigió el código y la prueba con él, que es
+    // lo que hay que hacer cuando la prueba defiende el error.
     prisma.characterResource.findMany.mockResolvedValue([
       { id: "hd", key: "hit-dice-d10", current: 1, max: 5, resetOn: "NONE" },
     ]);
@@ -92,7 +97,22 @@ describe("RestService", () => {
 
     expect(prisma.characterResource.update).toHaveBeenCalledWith({
       where: { id: "hd" },
-      data: { current: 4 },
+      data: { current: 3 },
+    });
+  });
+
+  it("y con un solo dado de golpe, el mínimo de uno lo salva del redondeo hacia abajo", async () => {
+    // La mitad de 1 es 0 hacia abajo, y la regla dice «minimum of one die». Es la cláusula que
+    // demuestra que el redondeo es hacia abajo: con redondeo hacia arriba, sobraría.
+    prisma.characterResource.findMany.mockResolvedValue([
+      { id: "hd", key: "hit-dice-d8", current: 0, max: 1, resetOn: "NONE" },
+    ]);
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+
+    expect(prisma.characterResource.update).toHaveBeenCalledWith({
+      where: { id: "hd" },
+      data: { current: 1 },
     });
   });
 
@@ -357,5 +377,107 @@ describe("las tres reglas del descanso largo que el reloj hace comprobables (2C.
   it("el descanso CORTO no mira el reloj: no tiene límite de 24 horas", async () => {
     const { service } = await montar({ lastLongRestClock: 0 }, 60);
     await expect(service.declare("owner1", "cmp1", "c1", { kind: "SHORT" })).resolves.toBeDefined();
+  });
+});
+
+describe("dos bordes del descanso que una revisión contra la fuente encontró", () => {
+  let service: RestService;
+  const prisma = {
+    character: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), update: jest.fn() },
+    user: { findUnique: jest.fn() },
+    characterResource: { findMany: jest.fn(), update: jest.fn() },
+    characterCondition: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    campaign: { findUniqueOrThrow: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn() };
+
+  async function montar(sobre: Record<string, unknown> = {}, clockSeconds = 0) {
+    const ref = await Test.createTestingModule({
+      providers: [
+        RestService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+      ],
+    }).compile();
+    service = ref.get(RestService);
+    jest.resetAllMocks();
+    const fila = {
+      id: "c1",
+      ownerId: "owner1",
+      visibility: "PLAYERS",
+      campaignId: "cmp1",
+      con: 5, // modificador −3
+      currentHp: 10,
+      ...sobre,
+    };
+    membership.requireMember.mockResolvedValue(undefined);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.findFirstOrThrow.mockResolvedValue(fila);
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.characterResource.findMany.mockResolvedValue([]);
+    prisma.characterCondition.findUnique.mockResolvedValue(null);
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds });
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    return { service, prisma };
+  }
+
+  it("**el mínimo de cero de un dado de golpe es POR DADO**, no por descanso", async () => {
+    // SRD: «for each Hit Die spent in this way… the character regains hit points equal to the
+    // total **(minimum of 0)**». Con Constitución 5 (modificador −3) y dos dados, cada dado aporta
+    // al menos 0: nunca resta de lo que aportó el otro.
+    const { service, prisma } = await montar({ currentHp: 1 });
+    prisma.characterResource.findMany.mockResolvedValue([
+      { id: "hd", key: "hit-dice-d4", current: 2, max: 2, resetOn: "NONE" },
+    ]);
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "SHORT", spendHitDice: 2 });
+
+    // Con d4 y −3, cada dado da como mucho 1 y como poco 0: la curación va de 0 a 2, **nunca
+    // negativa**, y por tanto los PG nunca bajan de 1.
+    const curacion = prisma.character.update.mock.calls.find(
+      (llamada) => typeof llamada[0].data.currentHp === "number",
+    );
+    if (curacion) expect(curacion[0].data.currentHp).toBeGreaterThanOrEqual(1);
+  });
+
+  it("**un agotamiento ya vencido no se baja**: un descanso no gasta un nivel de algo que no aplica", async () => {
+    const { service, prisma } = await montar({}, 10_000);
+    prisma.characterCondition.findUnique.mockResolvedValue({
+      id: "cc1",
+      key: "exhaustion",
+      level: 3,
+      expiresAtClock: 3600,
+    });
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+
+    expect(prisma.characterCondition.update).not.toHaveBeenCalled();
+    expect(prisma.characterCondition.delete).not.toHaveBeenCalled();
+  });
+
+  it("y uno vivo sí baja un nivel", async () => {
+    const { service, prisma } = await montar({}, 1000);
+    prisma.characterCondition.findUnique.mockResolvedValue({
+      id: "cc1",
+      key: "exhaustion",
+      level: 3,
+      expiresAtClock: null,
+    });
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+
+    expect(prisma.characterCondition.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { level: 2 } }),
+    );
   });
 });

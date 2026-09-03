@@ -686,10 +686,23 @@ export class CharacterSheetService {
   /**
    * La hoja derivada, o el 400 honesto de "no se puede sin raza/clase/características": ninguna
    * mutación de PG puede recortar contra un `maxHp` que no existe.
+   *
+   * **Y deriva con lo mismo que la hoja que se lee: las anulaciones del DM y el agotamiento.**
+   *
+   * Hasta que una revisión lo cazó, este camino —el que usan `changeHp`, `setHp` y la salvación de
+   * muerte, o sea **la curación de la mesa**— derivaba «pelado»: sin `modificadoresDeAnulacion` y
+   * sin condiciones. Dos consecuencias, las dos de las que este proyecto llama mentir:
+   *
+   *  · un personaje con **agotamiento 4** se curaba hasta el máximo entero, y la hoja se lo
+   *    enseñaba recortado con el aviso de «tus PG superan el máximo» — que es exactamente el fallo
+   *    que 2C.4 decía haber arreglado, con la mitad del sistema sin arreglar;
+   *  · una **anulación de `maxHp`** puesta por el DM salía en la hoja y no gobernaba la curación,
+   *    así que el número que se ve y el número contra el que se cura eran distintos.
    */
   private async construirODenegar(
     userId: string,
     character: FilaPersonaje,
+    tx?: Prisma.TransactionClient,
   ): Promise<CharacterSheet> {
     // Para calcular los PG máximos da igual quién mira: se usa el equipo **sin redactar**, que
     // es el estado real del personaje. La redacción es de identidad, nunca de número.
@@ -697,9 +710,26 @@ export class CharacterSheetService {
     const resuelto = construirBuild(character, items);
     if (!("build" in resuelto))
       throw new BadRequestException(`No se pueden gestionar los PG: ${resuelto.reason}`);
-    const derivado = derivarOMotivo(resuelto.build);
+    const derivado = derivarOMotivo(resuelto.build, modificadoresDeAnulacion(character));
     if (!("sheet" in derivado)) throw new BadRequestException(derivado.reason);
-    return derivado.sheet;
+
+    const client = tx ?? this.prisma;
+    const [condiciones, campana] = await Promise.all([
+      client.characterCondition.findMany({
+        where: { characterId: character.id },
+        select: { key: true, level: true, expiresAtClock: true },
+      }),
+      client.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
+    ]);
+    const nivel = nivelDeAgotamiento(condicionesActivas(condiciones, campana.clockSeconds));
+    if (nivel === 0) return derivado.sheet;
+    return {
+      ...derivado.sheet,
+      derived: {
+        ...derivado.sheet.derived,
+        maxHp: maxHpConAgotamiento(derivado.sheet.derived.maxHp, nivel),
+      },
+    };
   }
 
   async changeHp(userId: string, campaignId: string, characterId: string, input: ChangeHpInput) {

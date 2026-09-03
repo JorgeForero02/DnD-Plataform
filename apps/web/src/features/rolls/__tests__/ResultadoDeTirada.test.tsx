@@ -123,3 +123,72 @@ describe("ResultadoDeTirada", () => {
     expect(container.querySelectorAll('svg[data-icono="dado"]')).toHaveLength(2);
   });
 });
+
+// --- Ficha C2C-5: la tabla de la casa se ve en la tirada que la disparó -----------------------
+
+describe("la tabla de la casa (C2C-5)", () => {
+  const CRITICO: Partial<RollResultRevealed> = {
+    rolls: [20],
+    kept: [20],
+    dropped: [],
+    expression: "1d20+3",
+    total: 23,
+    natural: "TWENTY",
+  };
+
+  it("pinta qué se tiró en la tabla y el texto que salió", () => {
+    render(
+      <ResultadoDeTirada
+        resultado={tirada({
+          ...CRITICO,
+          houseTable: {
+            tableId: "t1",
+            tableName: "Críticos de la casa",
+            die: 12,
+            roll: 7,
+            text: "Le arrancas el arma de las manos.",
+            eventId: "ev-tabla",
+          },
+        })}
+        etiqueta="Ataque"
+      />,
+    );
+
+    expect(screen.getByText("Críticos de la casa")).toBeInTheDocument();
+    expect(screen.getByText("d12 → 7")).toBeInTheDocument();
+    expect(screen.getByText("Le arrancas el arma de las manos.")).toBeInTheDocument();
+  });
+
+  it("**y dice que es de la casa**: el SRD no trae tablas de críticos ni de pifias", () => {
+    render(
+      <ResultadoDeTirada
+        resultado={tirada({
+          ...CRITICO,
+          houseTable: {
+            tableId: "t1",
+            tableName: "Críticos de la casa",
+            die: 12,
+            roll: 7,
+            text: "Le arrancas el arma de las manos.",
+            eventId: "ev-tabla",
+          },
+        })}
+        etiqueta="Ataque"
+      />,
+    );
+
+    expect(screen.getByText("Regla de la casa")).toBeInTheDocument();
+    expect(
+      screen.getByText(/No es del manual: el SRD no trae tablas de críticos ni de pifias/),
+    ).toBeInTheDocument();
+  });
+
+  it("sin tabla no se pinta nada: con el interruptor apagado un crítico solo es un crítico", () => {
+    render(<ResultadoDeTirada resultado={tirada(CRITICO)} etiqueta="Ataque" />);
+
+    expect(document.querySelector("[data-tabla-de-la-casa]")).toBeNull();
+    expect(screen.queryByText("Regla de la casa")).not.toBeInTheDocument();
+    // Y el 20 natural se sigue marcando, que es lo que sí dice el manual.
+    expect(screen.getByText("Crítico")).toBeInTheDocument();
+  });
+});

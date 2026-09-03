@@ -60,7 +60,7 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
   // guion solo sacaba el vacío, así que la tarjeta rediseñada no salía en ninguna captura.
   await page.screenshot({ path: `${SALIDA}/n00-mis-campanas-vacio.png`, fullPage: true });
 
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("Las Mareas de Sarnath");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "Las Mareas de Sarnath" }).click();

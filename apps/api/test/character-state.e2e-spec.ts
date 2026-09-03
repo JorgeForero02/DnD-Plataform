@@ -158,8 +158,11 @@ describe("Estado de personaje: recursos, descansos y condiciones (e2e)", () => {
       .get(`${base()}/resources`)
       .set("Authorization", `Bearer ${tokenPL}`);
     const dados = list.body.find((r: { key: string }) => r.key === "hit-dice-d8");
-    // Máximo 5, disponía 1: la mitad de 5 es 2.5 -> 3 hacia arriba. 1 + 3 = 4, nunca 5.
-    expect(dados.current).toBe(4);
+    // Máximo 5, disponía 1: la mitad de 5 son **2** —el SRD redondea hacia abajo, incluso con un
+    // medio exacto—, así que 1 + 2 = 3, nunca 4 ni 5. Esta prueba decía «2,5 -> 3 hacia arriba» y
+    // consagraba una regla mal implementada, igual que su gemela unitaria; lo cazó una revisión
+    // contra la fuente (<https://5thsrd.org/adventuring/resting/>).
+    expect(dados.current).toBe(3);
   });
 
   it("MUTACIÓN CLAVE: el brujo repone sus espacios de conjuro en un descanso CORTO", async () => {

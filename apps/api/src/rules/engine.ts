@@ -10,6 +10,13 @@ import {
   type SkillKey,
   type TraceStep,
 } from "@dnd/shared";
+import {
+  caDeMonstruo,
+  competenciaDeMonstruo,
+  comprobarEntradaDeMonstruo,
+  pgDeMonstruo,
+  type MonsterInput,
+} from "./monster";
 
 // Tarea 2A.2 — el motor de derivación. **Puro**: sin Nest, sin Prisma, sin HTTP, sin reloj y
 // sin azar. Entra el estado base más una lista de modificadores ya resueltos; sale el valor
@@ -86,6 +93,17 @@ export interface EngineInput {
    */
   darkvisionFeet?: number;
   /**
+   * Fase 2D. **Cuando viene, el motor deriva por el camino de monstruo**: la competencia sale
+   * del valor de desafío, la CA la dice el statblock y los PG salen de la fórmula de dados.
+   *
+   * Es opcional y no un tipo aparte a propósito: todo lo demás —salvaciones, las dieciocho
+   * habilidades, percepción pasiva, sentidos, velocidades, bonos de ataque— se deriva igual para
+   * un PNJ que para un personaje, y partir `EngineInput` en dos habría duplicado esa mitad. Lo
+   * que evita la mezcla silenciosa no es el tipo: es `comprobarEntradaDeMonstruo`, que **lanza**
+   * si llegan las dos formas a la vez.
+   */
+  monster?: MonsterInput;
+  /**
    * Velocidades **base**, en pies, antes de objetos: caminar, trepar, nadar, volar, excavar.
    * Igual que las características, entra premezclada con la raza pero **no** con el equipo — un
    * objeto que cambie la velocidad entra como modificador (carril A2, `rules/items.ts`), no
@@ -131,6 +149,10 @@ export function averageHitDie(hitDieSize: number): number {
 }
 
 export function derive(input: EngineInput): DerivationResult {
+  // Antes de nada: una entrada que mezcle statblock y hoja de personaje se rechaza, no se
+  // resuelve eligiendo una rama. Ver `monster.ts`.
+  comprobarEntradaDeMonstruo(input);
+
   const derived: Record<string, DerivedValue> = {};
   const warnings: DerivationWarning[] = [];
 
@@ -159,16 +181,31 @@ export function derive(input: EngineInput): DerivationResult {
     };
   }
 
-  // --- Competencia ---
-  const prof = proficiencyBonus(input.level);
-  derived.proficiencyBonus = {
-    key: "proficiencyBonus",
-    total: prof,
-    steps: [paso("base", prof, "level", String(input.level), "proficiencyBonus")],
-  };
+  // --- Competencia: del nivel si es un personaje, del valor de desafío si es un PNJ ---
+  derived.proficiencyBonus = input.monster
+    ? competenciaDeMonstruo(input.monster)
+    : {
+        key: "proficiencyBonus",
+        total: proficiencyBonus(input.level),
+        steps: [
+          paso(
+            "base",
+            proficiencyBonus(input.level),
+            "level",
+            String(input.level),
+            "proficiencyBonus",
+          ),
+        ],
+      };
+  const prof = derived.proficiencyBonus.total;
 
-  // --- CA: se evalúan todas las fórmulas y gana la mayor ---
-  derived.ac = calcularCa(input, mods, warnings);
+  // --- CA: la dice el statblock si es un PNJ; si no, se evalúan las fórmulas y gana la mayor ---
+  //
+  // El PNJ pasa igualmente por `aplicar`, y eso importa: una anulación manual del DM sobre la CA
+  // de un monstruo tiene que seguir funcionando y saliendo en la traza con su delta.
+  derived.ac = input.monster
+    ? aplicar("ac", caDeMonstruo(input.monster), input.modifiers)
+    : calcularCa(input, mods, warnings);
 
   // --- Iniciativa: el modificador de Destreza, y lo que le sumen ---
   // Estaba en la anatomía de la hoja (§1.6) desde el principio y el motor no la derivaba. Es
@@ -182,8 +219,10 @@ export function derive(input: EngineInput): DerivationResult {
     input.modifiers,
   );
 
-  // --- PG máximos ---
-  derived.maxHp = calcularPgMaximos(input, mods);
+  // --- PG máximos: por fórmula de dados si es un PNJ, por clase y nivel si es un personaje ---
+  derived.maxHp = input.monster
+    ? aplicar("maxHp", pgDeMonstruo(input.monster, mods.con), input.modifiers)
+    : calcularPgMaximos(input, mods);
 
   // --- Salvaciones ---
   for (const ability of ABILITY_KEYS) {

@@ -407,6 +407,33 @@ curl -s --resolve dnd.supportive.pro:443:127.0.0.1 https://dnd.supportive.pro/ap
 `GET /api/v1/deployments/<uuid-del-despliegue>` trae `"commit"`, y tiene que coincidir con el
 `HEAD` local.
 
+## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
+
+Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
+(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`), con la tanda entera de 2D y **dos
+migraciones**. Volcado previo en `vps1new:/root/dnd-antes-de-2d.sql.gz`.
+
+> **Dos trampas del volcado previo, y las dos mordieron.** El filtro `--filter name=dnd` **no
+> encuentra nada**: los contenedores de Coolify se llaman por el UUID de la aplicación
+> (`db-5awvsn1dnkexhcjzg7kjwom6-…`). Y el usuario de Postgres **no es `postgres`**, es `dnd`
+> (`POSTGRES_USER`), así que `pg_dumpall -U postgres` falla con «role does not exist» — y el
+> primer intento dejó un fichero de **20 bytes** que parecía un volcado. Comprobar el tamaño del
+> volcado antes de tocar nada no es opcional.
+
+| Comprobación | Salida real |
+|---|---|
+| **El commit desplegado es el que se empujó** | imágenes `web` y `api` en `…:82fab54ea3a2…` = `HEAD` local |
+| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up … (healthy)` |
+| **Las dos migraciones de 2D se aplican solas** | `statblocks_del_dm` y `pnj_instanciado`, las dos con `finished_at` no nulo |
+| La tabla y la columna nuevas existen | `CampaignStatblock` presente; `Character.statblockRef` presente |
+| **Los datos sobrevivieron** | 1 campaña · 3 personajes · 2 usuarios, **los mismos conteos que antes del despliegue** |
+| La SPA se sirve | `GET /` → **200** |
+| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/campaigns/x/statblocks` → **401** |
+| El certificado es el del dominio y de Let's Encrypt | `subject=CN=dnd.supportive.pro`, `issuer=… Let's Encrypt`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro**, porque Norton intercepta el TLS en el PC del autor |
+
+**Lo que sigue sin hacerse, y es decisión del autor:** la partida de prueba con dos cuentas de
+jugador. Es lo único que le queda a la fase 2.
+
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2C (2026-09-03)
 
 Despliegue lanzado por la API de Coolify **desde dentro de la VPS**

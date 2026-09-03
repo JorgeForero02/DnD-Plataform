@@ -270,6 +270,32 @@ export const updateCampaignStatblockSchema = createCampaignStatblockSchema
 export type UpdateCampaignStatblockInput = z.infer<typeof updateCampaignStatblockSchema>;
 
 /**
+ * Bajar un statblock a la mesa: de una plantilla nacen N combatientes.
+ *
+ * **`count` y no un botón por bicho** porque la mesa dice «salen seis goblins», no «sale un goblin»
+ * seis veces. Y el tope es diez por tirada: no por miedo al servidor, sino porque un encuentro con
+ * más de diez fichas es un encuentro que esta fase no sabe arbitrar y sería fingir que sí.
+ */
+export const instantiateNpcSchema = z.object({
+  ref: z.string().min(1).max(120),
+  count: z.number().int().min(1).max(10).default(1),
+  /**
+   * El nombre de la tanda. Si vienen varios, se numeran: «Goblin 1», «Goblin 2». Sin nombre se
+   * usa el del statblock, que es lo que la mesa dice en voz alta.
+   */
+  name: z.string().min(1).max(120).optional(),
+  /**
+   * Cómo salen los PG. `AVERAGE` es el número que imprime el libro; `ROLL` los tira de verdad,
+   * y entonces **seis goblins tienen seis vidas distintas**, que es lo que pasa en una mesa.
+   *
+   * **El azar no entra en el motor**: el motor dice `2d6`, y quien lo tira es el tirador de 2C con
+   * su generador inyectable. Es la regla que la fase 2 puso por escrito y aquí se respeta.
+   */
+  hp: z.enum(["AVERAGE", "ROLL"]).default("AVERAGE"),
+});
+export type InstantiateNpcInput = z.infer<typeof instantiateNpcSchema>;
+
+/**
  * De dónde viene un `ref`, sin tener que preguntárselo a la base.
  *
  * `SRD:goblin` → el catálogo en código. `CAMPAIGN:clx…` → una fila de esta campaña. Cualquier otra

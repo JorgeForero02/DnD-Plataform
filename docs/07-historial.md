@@ -58,6 +58,56 @@ y el certificado es el del dominio. La tabla está en [03-despliegue.md](./03-de
 **Lo que no se hizo, por decisión del autor:** la partida de prueba con dos cuentas de jugador, que
 pasa **a después de la fase 2D**. El despliegue queda en pie para cuando toque.
 
+## 2026-09-03 (noche) — La fase 2D: los PNJ tienen números y bajan a la mesa
+
+**Qué.** El autor eligió el alcance grande de 2D: no solo la ficha del PNJ, sino el PNJ jugable —
+que recibe daño, coge condiciones y aparece en el registro. Cuatro bloques hasta ahora.
+
+**La decisión que hace que el alcance grande no cueste el doble:** un PNJ en la mesa **es una fila
+de `Character`**. `Character` ya trae, probado y desplegado, todo lo que un combatiente necesita
+—PG, condiciones con vencimiento, versión optimista, salvaciones de muerte, inventario, su sitio en
+el registro—, y reescribir eso para PNJ habría sido duplicar el sistema más revisado del proyecto
+para desincronizarlo el primer día que alguien arregle un fallo en una sola de las dos copias.
+
+**Tres invariantes verificadas contra los quince statblocks del SRD ANTES de escribirlas**, no
+después: los PG son la media de los dados **más la Constitución por cada dado** (el ogro es
+«59 (7d10 + 21)», y 21 es su +3 siete veces), el dado de golpe sale del **tamaño** de la criatura, y
+el bonificador de competencia sale del **valor de desafío**. Quince de quince cada una.
+
+**Dos nombres que habrían salido mal por criterio.** La traducción oficial dice **«Goblin»** y no
+«trasgo» —trasgo es el colectivo de los goblinoides— y **«Tumulario»** y no «Espectro», que es el
+*specter*; se confirmó por CA 14 y PG 45 (6d8+18) exactos. Se bajó el PDF oficial en español y se
+comprobaron los quince uno a uno.
+
+> **Un fallo de diseño propio, encontrado al enganchar la hoja.** Había **dos** caminos que
+> construían una hoja de personaje —el de leer (`buildResponse`) y el de mutar
+> (`construirODenegar`)— y cada uno derivaba por su cuenta. Al añadir la rama de PNJ se parcheó
+> uno, y el otro siguió intentando construir un personaje sin raza ni clase: la pantalla devolvía
+> un 200 con la hoja vacía. **Es exactamente lo que la revisión de 2C llamó «la mitad del sistema
+> sin arreglar»**, y la respuesta no fue añadir la rama dos veces sino que exista un solo sitio
+> donde añadirla: `hojaOMotivo`. El agotamiento se aplica ahí, para que leer y mutar recorten
+> contra el mismo máximo.
+
+**Una mutación que sobrevivió y no era un hueco de prueba**: `Math.ceil` → `Math.floor` sobre el
+valor de desafío es una **mutación equivalente**, porque los VD fraccionarios del SRD solo existen
+por debajo de 1 y caen todos en la misma banda. Queda anotada en `06-pendientes.md` para que el
+próximo que mida cobertura no escriba una prueba que no puede fallar. Y una que **no se contó**:
+un `return` temprano que dejaba el resto inalcanzable, con lo que la suite no compiló y no midió
+nada. Una mutación que no compila no es una medición.
+
+**Probado.** Unitarias de motor, de catálogo, de servicio y de instanciación; y un e2e contra
+Postgres real que recorre el bucle entero —instanciar, derivar del statblock, recibir daño, una
+anulación del DM en la traza, y **el agotamiento partiéndole los PG máximos a un ogro sin que se
+escribiera una línea de agotamiento para PNJ**. Esa última es la que justifica la decisión de
+diseño de la fase entera. Siete mutaciones comprobadas en rojo.
+
+**La cascada de borrar una campaña cuenta la tabla nueva**, que es la lección que 2C dejó escrita:
+un huérfano no avisa, la operación devuelve 200 igual.
+
+**Cómo revertir.** `git revert` de los commits de 2D y quitar las dos tablas
+(`CampaignStatblock` y la columna `Character.statblockRef`). El camino del personaje jugador no se
+tocó, y hay una prueba que lo dice.
+
 ## 2026-09-03 (noche) — El cierre de la fase 2C: cuatro fichas, una revisión de dos frentes y once arreglos
 
 **Qué.** El autor pidió cerrar todo lo que se pudiera antes de 2D. Esto es lo que se cerró.

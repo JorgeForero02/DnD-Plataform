@@ -38,6 +38,7 @@ import {
   UnknownContentError,
   type CharacterBuild,
   type CharacterSheet,
+  deriveNpc,
 } from "../rules/catalog";
 import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER, RollsService } from "../rolls/rolls.service";
@@ -45,6 +46,7 @@ import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { StatblocksService } from "../statblocks/statblocks.service";
 import { CharactersService } from "./characters.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
 import {
@@ -191,6 +193,14 @@ export class CharacterSheetService {
      * `CharacterStateModule`, que la exporta.
      */
     @Optional() private readonly resources?: ResourcesService,
+    /**
+     * Fase 2D. Resuelve el statblock de un PNJ instanciado.
+     *
+     * **Opcional por el mismo motivo que `resources`**: casi todas las unitarias de este servicio
+     * montan el módulo a mano y no instancian PNJ. Si falta y la hoja es la de un PNJ, se dice —
+     * `hojaDeStatblock` lo comprueba — en vez de derivar una hoja vacía que parecería correcta.
+     */
+    @Optional() private readonly statblocks?: StatblocksService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -319,47 +329,9 @@ export class CharacterSheetService {
 
   private async buildResponse(userId: string, character: FilaPersonaje) {
     const equipo = await this.equipoEquipado(userId, character);
-    const resuelto = construirBuild(character, equipo.items);
-    let sheet: CharacterSheet | null = null;
-    let reason: string | undefined;
-    if ("build" in resuelto) {
-      const derivado = derivarOMotivo(resuelto.build, modificadoresDeAnulacion(character));
-      if ("sheet" in derivado) sheet = derivado.sheet;
-      else reason = derivado.reason;
-    } else {
-      reason = resuelto.reason;
-    }
-
-    // **El agotamiento nivel 4 parte los PG máximos por la mitad** (SRD 5.1, hueco H-2C-5).
-    //
-    // Va aquí, en la derivación, y no en la pantalla: hasta 2C.4 las condiciones solo alimentaban
-    // la velocidad, así que una hoja con agotamiento 4 enseñaba unos PG máximos que la regla dice
-    // que ese personaje no tiene **y curaba hasta ese número equivocado** —el tope de la curación
-    // sale de aquí—. Es el mismo fallo que 2B tuvo con el equipo, en la otra mitad del sistema.
-    //
-    // **Cuesta una consulta por hoja**, y se paga a sabiendas: la alternativa —calcularlo solo al
-    // leer la hoja y no al mutarla— dejaría a las mutaciones recortando contra un máximo que no
-    // existe, que es exactamente la clase de discrepancia que este servicio evita en todo lo demás.
-    if (sheet) {
-      const activas = condicionesActivas(
-        await this.prisma.characterCondition.findMany({
-          where: { characterId: character.id },
-          select: { key: true, level: true, expiresAtClock: true },
-        }),
-        (await this.prisma.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }))
-          .clockSeconds,
-      );
-      const nivel = nivelDeAgotamiento(activas);
-      if (nivel > 0) {
-        sheet = {
-          ...sheet,
-          derived: {
-            ...sheet.derived,
-            maxHp: maxHpConAgotamiento(sheet.derived.maxHp, nivel),
-          },
-        };
-      }
-    }
+    const resultado = await this.hojaOMotivo(character, equipo.items);
+    let sheet: CharacterSheet | null = "sheet" in resultado ? resultado.sheet : null;
+    const reason: string | undefined = "reason" in resultado ? resultado.reason : undefined;
 
     // Los ataques y los avisos del equipo se juntan con los del motor: para quien mira la hoja
     // son la misma cosa —«hay algo que querrías saber»— y dejar que cada pantalla los junte por
@@ -699,19 +671,28 @@ export class CharacterSheetService {
    *  · una **anulación de `maxHp`** puesta por el DM salía en la hoja y no gobernaba la curación,
    *    así que el número que se ve y el número contra el que se cura eran distintos.
    */
-  private async construirODenegar(
-    userId: string,
+  /**
+   * **La única puerta que construye una hoja.** Devuelve la hoja o el motivo por el que no hay.
+   *
+   * Existir una sola vez no es estética: había **dos** caminos —el de leer (`buildResponse`) y el
+   * de mutar (`construirODenegar`)— y cada uno derivaba por su cuenta. 2D lo destapó al añadir la
+   * rama de PNJ: parcheado uno, el otro seguía intentando construir un personaje sin raza ni
+   * clase y devolvía una hoja vacía con un 200. Es exactamente el fallo que la revisión de 2C
+   * describió como «la mitad del sistema sin arreglar», y la respuesta correcta no era añadir la
+   * rama dos veces, sino que haya un solo sitio donde añadirla.
+   *
+   * **El agotamiento se aplica aquí**, por el mismo motivo: leer y mutar tienen que recortar
+   * contra el mismo máximo o el tope de la curación miente.
+   */
+  private async hojaOMotivo(
     character: FilaPersonaje,
+    items: ResolvedItem[],
     tx?: Prisma.TransactionClient,
-  ): Promise<CharacterSheet> {
-    // Para calcular los PG máximos da igual quién mira: se usa el equipo **sin redactar**, que
-    // es el estado real del personaje. La redacción es de identidad, nunca de número.
-    const { items } = await this.equipoEquipado(character.ownerId, character);
-    const resuelto = construirBuild(character, items);
-    if (!("build" in resuelto))
-      throw new BadRequestException(`No se pueden gestionar los PG: ${resuelto.reason}`);
-    const derivado = derivarOMotivo(resuelto.build, modificadoresDeAnulacion(character));
-    if (!("sheet" in derivado)) throw new BadRequestException(derivado.reason);
+  ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
+    const base = character.statblockRef
+      ? await this.hojaDeStatblock(character)
+      : this.hojaDePersonaje(character, items);
+    if (!("sheet" in base)) return base;
 
     const client = tx ?? this.prisma;
     const [condiciones, campana] = await Promise.all([
@@ -722,14 +703,68 @@ export class CharacterSheetService {
       client.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
     ]);
     const nivel = nivelDeAgotamiento(condicionesActivas(condiciones, campana.clockSeconds));
-    if (nivel === 0) return derivado.sheet;
+    if (nivel === 0) return base;
     return {
-      ...derivado.sheet,
-      derived: {
-        ...derivado.sheet.derived,
-        maxHp: maxHpConAgotamiento(derivado.sheet.derived.maxHp, nivel),
+      sheet: {
+        ...base.sheet,
+        derived: {
+          ...base.sheet.derived,
+          maxHp: maxHpConAgotamiento(base.sheet.derived.maxHp, nivel),
+        },
       },
     };
+  }
+
+  /** Lo mismo, pero lanzando: lo que necesitan las mutaciones, que no saben pintar un motivo. */
+  private async construirODenegar(
+    userId: string,
+    character: FilaPersonaje,
+    tx?: Prisma.TransactionClient,
+  ): Promise<CharacterSheet> {
+    // Para calcular los PG máximos da igual quién mira: se usa el equipo **sin redactar**, que
+    // es el estado real del personaje. La redacción es de identidad, nunca de número.
+    const { items } = await this.equipoEquipado(character.ownerId, character);
+    const resultado = await this.hojaOMotivo(character, items, tx);
+    if (!("sheet" in resultado))
+      throw new BadRequestException(`No se pueden gestionar los PG: ${resultado.reason}`);
+    return resultado.sheet;
+  }
+
+  /**
+   * La hoja de un PNJ instanciado. Fase 2D.
+   *
+   * **El agotamiento, las condiciones y las anulaciones del DM le aplican igual**, y eso no es un
+   * detalle: es lo que hace que instanciar un PNJ como `Character` valga la pena. Un troll con
+   * agotamiento 4 tiene los PG máximos partidos por la misma función que parte los de un jugador.
+   */
+  private async hojaDeStatblock(
+    character: FilaPersonaje,
+  ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
+    if (!this.statblocks) {
+      return {
+        reason:
+          "Este PNJ no se puede derivar: falta el resolutor de statblocks. Es un fallo de cableado, no del dato.",
+      };
+    }
+    const statblock = await this.statblocks.resolver(character.campaignId, character.statblockRef!);
+    if (!statblock) {
+      // Un `ref` que ya no resuelve es un dato caduco —el DM borró su statblock—, no un fallo del
+      // servidor: se dice con un motivo legible, igual que hace el catálogo con una clase que ya
+      // no existe.
+      return {
+        reason: `Este PNJ apunta a un statblock que ya no existe (${character.statblockRef}). Vuelve a crearlo o bórralo.`,
+      };
+    }
+    return { sheet: deriveNpc(statblock, modificadoresDeAnulacion(character)) };
+  }
+
+  private hojaDePersonaje(
+    character: FilaPersonaje,
+    items: ResolvedItem[],
+  ): { sheet: CharacterSheet } | { reason: string } {
+    const resuelto = construirBuild(character, items);
+    if (!("build" in resuelto)) return { reason: resuelto.reason };
+    return derivarOMotivo(resuelto.build, modificadoresDeAnulacion(character));
   }
 
   async changeHp(userId: string, campaignId: string, characterId: string, input: ChangeHpInput) {

@@ -31,8 +31,11 @@ export * from "./spell-slots";
 export * from "./resolve";
 export * from "./difficulty";
 
-import type { DerivationResult } from "@dnd/shared";
+export * from "./monsters-srd";
+
+import type { DerivationResult, Statblock } from "@dnd/shared";
 import { derive, type Modifier } from "../engine";
+import { entradaDeMotorDe } from "../monster";
 import { SRD_ARMOR } from "./armor";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
@@ -61,10 +64,19 @@ export interface CharacterSheet extends DerivationResult {
   features: ResolvedFeature[];
   /** Velocidades base **en pies**. 2A.12 les aplicará las condiciones. */
   speeds: ResolvedBuild["speeds"];
-  /** Las claves de lo elegido, para que la pantalla no tenga que deducirlas de la traza. */
-  raceKey: string;
+  /**
+   * Las claves de lo elegido, para que la pantalla no tenga que deducirlas de la traza.
+   *
+   * **Opcionales desde 2D**, y el motivo importa: un PNJ instanciado desde un statblock no tiene
+   * raza ni clase, y darle una inventada para que el tipo cuadrara sería meter en la hoja un dato
+   * que nadie decidió. Quien las lea tiene que contemplar que no estén — y eso lo obliga el
+   * compilador, que es como se quería.
+   */
+  raceKey?: string;
   subraceKey?: string;
-  classKey: string;
+  classKey?: string;
+  /** Fase 2D. Con valor, esta hoja es la de un PNJ y sus números salen de su statblock. */
+  statblockRef?: string;
   /** Cuantos ataques da una accion de Ataque (hueco M2). */
   attacksPerAction: number;
   /** Competencias con armas de la clase **y de la raza** (auditoría de mecánica de 2B). */
@@ -72,6 +84,40 @@ export interface CharacterSheet extends DerivationResult {
   /** Espacios de conjuro y donde se reponen (hueco M3). */
   spellSlots: ResolvedBuild["spellSlots"];
   spellSlotResetOn: ResolvedBuild["spellSlotResetOn"];
+}
+
+/**
+ * De statblock a hoja, para un PNJ instanciado.
+ *
+ * Devuelve **la misma forma** que la hoja de un personaje, y eso es la mitad del valor de 2D:
+ * todo lo que ya sabe leer una hoja —los PG, las condiciones, el daño, la pantalla— sirve igual
+ * para un PNJ sin tocar nada. Lo que cambia es de dónde salen tres números, y de eso se encarga
+ * el camino de monstruo del motor.
+ *
+ * Los campos que un monstruo no tiene salen vacíos y **no inventados**: sin raza, sin clase, sin
+ * elecciones pendientes, sin espacios de conjuro. Un statblock que lance conjuros los trae como
+ * prosa en sus acciones; el motor de conjuros no existe en ninguna fase escrita.
+ */
+export function deriveNpc(statblock: Statblock, extraModifiers: Modifier[] = []): CharacterSheet {
+  const entrada = entradaDeMotorDe(statblock);
+  const derivado = derive({ ...entrada, modifiers: extraModifiers });
+  return {
+    derived: derivado.derived,
+    warnings: derivado.warnings,
+    pendingChoices: [],
+    features: [],
+    speeds: entrada.baseSpeeds,
+    statblockRef: statblock.ref,
+    // **Uno**, y dicho aquí en vez de heredado: el «ataque múltiple» de un statblock es prosa que
+    // la mesa lee, no un número que el motor reparta. Prometer dos ataques porque el troll dice
+    // «tres ataques» sería que la hoja arbitrara un combate que 2D declara fuera de alcance.
+    attacksPerAction: 1,
+    weaponProficiencies: [],
+    spellSlots: [],
+    // «NONE» y no `undefined`: un PNJ no tiene espacios de conjuro, así que no hay nada que
+    // reponer, y eso es un valor del vocabulario y no un hueco.
+    spellSlotResetOn: "NONE",
+  };
 }
 
 /**

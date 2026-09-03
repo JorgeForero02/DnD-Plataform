@@ -123,6 +123,17 @@ modelo no hace en ningún sitio, y la traza de la CA delataría el número igual
   tiene estado —nace pendiente y se responde— y el log es un registro de hechos que no se
   modifican; y porque «¿qué me han pedido?» es una consulta por columnas, no un recorrido del log.
   Guarda **una clave de valor de la hoja**, no una expresión: el modificador se lee al tirar.
+- **`Character.statblockRef`** (2D.4): con valor, esa fila **no es un personaje jugador sino un
+  PNJ instanciado**, y sus números derivados salen del statblock por el camino de monstruo del
+  motor. `classKey`, `raceKey` y `level` no se usan; las seis características se copian porque el
+  estado mutable las lee sin pasar por el motor.
+
+  **`Character` pasa a tener dos formas, y eso es el riesgo de datos de la fase.** Toda derivación
+  que asuma la primera es un fallo esperando, y por eso el motor **rechaza** una entrada que
+  mezcle las dos (`comprobarEntradaDeMonstruo`) en vez de elegir una rama en silencio: un PNJ con
+  `level: 3` colado por descuido derivaría su competencia del nivel y el número seguiría pareciendo
+  plausible.
+
 - **`CampaignStatblock`** (2D.3): un statblock de PNJ escrito por el DM. Espeja `Statblock` de
   `packages/shared`, que es donde vive la forma. Es **columna** lo que hace falta consultar o
   filtrar —la CA, el VD, el tamaño, la visibilidad— y **Json** lo que solo se lee entero: los

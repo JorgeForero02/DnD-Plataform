@@ -28,7 +28,7 @@
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
 **E2e**, medidos el 2026-09-03 (tarde, con 2C.1 a 2C.5 dentro) corriendo las dos suites:
-**197 e2e de API** en 30 suites y **79 recorridos de navegador** en 20 especificaciones, todos
+**211 e2e de API** en 31 suites y **79 recorridos de navegador** en 20 especificaciones, todos
 verdes.
 
 > **Un recorrido de navegador llevaba meses pasando por suerte, y el cierre de la fase 2 lo cazó.**

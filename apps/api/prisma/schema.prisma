@@ -363,6 +363,14 @@ model Character {
   deathSaveSuccesses Int @default(0)
   deathSaveFailures  Int @default(0)
 
+  /// Fase 2D — si esto tiene valor, este «personaje» es un PNJ instanciado desde un statblock:
+  /// `SRD:goblin` o `CAMPAIGN:<id>`. Entonces `classKey`, `raceKey` y `level` NO se usan, y sus
+  /// numeros derivados salen del statblock por el camino de monstruo del motor.
+  ///
+  /// **Cadena y no clave foranea a proposito**, igual que `ResolvedItem.ref` de 2B: el catalogo
+  /// del SRD vive en codigo y no tiene fila a la que apuntar.
+  statblockRef String?
+
   // Cuando termino el ultimo descanso largo, **en segundos del reloj de la campana** (2C.3).
   // El SRD: «a character can't benefit from more than one long rest in a 24-hour period», y sin
   // este dato esa regla no se puede comprobar — hoy se puede descansar largo tres veces seguidas

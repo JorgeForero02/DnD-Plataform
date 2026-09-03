@@ -453,6 +453,29 @@ justo la protección que su propia tarea añadía.
 (seguridad, calidad de pruebas, cascada y accesibilidad) sobre el mismo diff, y el orquestador
 junta los hallazgos.
 
+## Una duda de reglas se resuelve con la fuente, no con criterio (2026-09-03)
+
+**Regla del autor, y no es opcional:** *«si tienes una duda de reglas o de sistemas o de cómo
+funciona algo, investiga con documentos oficiales… tú tienes un montón de herramientas para
+resolver, pero eso sí, debes hacerlo»*.
+
+Aplica a las reglas de 5.ª edición, a cómo resuelven un problema las mesas virtuales conocidas, y
+a cualquier «yo creo que funciona así». **La cita va en el mismo commit que el código**, y si la
+fuente contradice lo que estaba escrito, manda la fuente.
+
+Nació de un caso concreto: en la fase 2B once decisiones de mecánica se **interpretaron** y se
+comprobaron después. El contraste salió bien —ninguna regla estaba mal— pero **encontró tres cosas
+que no sabíamos**, una de ellas un defecto que ya estaba en pantalla, y la comprobación costó
+media hora. Interpretar salía más caro que buscar.
+
+Y en el contraste siguiente, sobre 2C y 2D, la búsqueda **cambió el plan**: el reloj pasa a
+guardarse en segundos y no en minutos, la caducidad de una condición pasa a ser automática, la
+tabla de dificultades resultó estar en el SRD, y el statblock de un PNJ dejó de ser «transcribir
+334 criaturas» porque el SRD ya existe en JSON bajo la misma licencia. Cuatro decisiones que
+habrían salido peor a ojo. Ver
+[el contraste de 2B](./superpowers/specs/2026-09-03-contraste-de-reglas-2B.md) y
+[el alcance de 2C](./superpowers/specs/2026-09-03-fase-2C-alcance-design.md).
+
 ## Precedencia
 
 Instrucción del usuario en la sesión > este documento y el `CLAUDE.md` del repositorio >

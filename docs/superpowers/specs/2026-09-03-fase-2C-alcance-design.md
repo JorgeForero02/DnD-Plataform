@@ -142,26 +142,76 @@ deja de ser «quién puede verla» y pasa a ser «quién puede verla, incluido s
 - **Tiempo real.** Sondeo hasta que la fase 4 traiga el empujón; el modelo no cambia cuando llegue.
 - **Dados en 3D.**
 
-## 4 · Las decisiones que son del autor
+## 4 · Las decisiones del autor — **con recomendación y con fuente**
 
-No las tomo yo. En 2B decidí once por ausencia y con permiso; estas cambian la forma de una tabla
-o el trato con la mesa, y tienen dueño:
+Siguen siendo tuyas, pero ya no van sin respuesta: cada una lleva lo que dice la práctica
+establecida y qué recomiendo. Lo que necesito de ti es confirmar o cambiar, no decidir a ciegas.
 
-1. **El reloj: ¿qué escala se guarda?** Propuesta: un entero de **minutos de juego** desde el
-   inicio de la campaña, y la pantalla lo enseña como fecha del mundo si algún día hay calendario.
-   La alternativa —fecha y hora del mundo desde el principio— obliga a decidir el calendario ahora.
-2. **¿La condición caduca sola, o solo avisa de que ha vencido?** Apagarla sola es cómodo; avisar
-   respeta que **la máquina ejecuta y el DM arbitra**. Recomiendo avisar y ofrecer el botón.
-3. ~~**La guía de CD: ¿del SRD o nuestra?**~~ **Resuelta por el contraste**: está en el SRD 5.1,
-   se siembra con atribución. Lo que sigue siendo tuyo es si además quieres ejemplos propios de
-   tu mesa junto a los del manual.
-4. **La petición de tirada: ¿entra en 2C o espera?** Es lo único de la lista que roza el tiempo
-   real, y es también lo que más cambia la mesa.
-5. **La tirada a ciegas.** ¿Puede el DM pedir una tirada cuyo resultado **el propio jugador no
-   ve**? Es práctica común y cambia la forma de `visibility` en una tirada. Sin ella, el DM que
-   quiere ocultar un resultado tiene que tirar él, que es lo que hoy ya puede hacer.
-6. **Pifias y tablas del DM.** El alcance de la fase 2 las dejó apuntadas como «tablas del DM»
-   —una primitiva que serviría también para botín—. Si entran, 2C crece; si no, se dice.
+### D-2C-1 · La escala del reloj → **segundos**
+
+**Comprobado:** Foundry guarda el tiempo del mundo **en segundos** (`GameTime`), y los módulos de
+calendario (Simple Calendar, Seasons & Stars) son una capa encima que lo avanza por deltas. No
+guardan fechas: guardan un contador.
+
+**Recomendación: un entero de segundos de juego** en `Campaign`, y la pantalla enseña lo que
+convenga. Es lo que hace que 2C y Encuentros sean **literalmente el mismo contador**, porque un
+asalto son seis segundos. Guardar minutos —lo que proponía la primera versión de este documento—
+obligaría a migrar el día que llegue la iniciativa.
+
+### D-2C-2 · ¿La condición caduca sola o solo avisa? → **caduca sola, pero no se borra**
+
+**Comprobado:** el estándar es la caducidad automática (Foundry lo trae en el núcleo desde la v11;
+el módulo *Times Up* que lo hacía antes se retira por innecesario). Y hay un matiz que importa:
+desde la v11.3, **al vencer se desactiva el efecto en vez de borrarlo**.
+
+**Recomendación:** vence sola —si no, el DM lleva la cuenta a mano y volvemos al papel— pero **la
+condición no desaparece de la hoja**: queda marcada como vencida, con su hora, y el DM la retira o
+la renueva. Respeta «la máquina ejecuta, el DM arbitra» sin obligarle a vigilar un reloj.
+
+### D-2C-3 · ~~La guía de CD~~ → **resuelta: está en el SRD**
+
+La tabla «Typical Difficulty Classes» es SRD 5.1. Se siembra con atribución, seis filas. Lo único
+tuyo que queda: si además quieres ejemplos de tu propia mesa junto a los del manual.
+
+### D-2C-4 · ¿Entra la petición de tirada en 2C? → **sí, y con una forma ya probada**
+
+**Comprobado:** es un patrón resuelto en las mesas virtuales (Foundry: *Requestor*, *Roll
+Manager*, *Request Roll*). La forma es siempre la misma: el DM elige **a quién**, **qué** y **con
+qué CD**; al jugador le aparece un botón; al tirar, **el DM recibe el resultado**.
+
+**Recomendación:** entra, copiando esa forma y con sondeo. Es lo que convierte el reloj y el
+registro en una mesa y no en dos pantallas sueltas.
+
+### D-2C-5 · La tirada a ciegas → **el vocabulario ya existe, y son cuatro modos**
+
+**Comprobado:** Foundry lleva años con **cuatro modos** de tirada, y son el vocabulario que la
+gente ya entiende:
+
+| Modo | Quién ve el resultado |
+|---|---|
+| Pública | toda la mesa |
+| Privada del DM | quien tira **y** el DM |
+| **Ciega del DM** | **solo el DM — quien tira no ve su propio resultado** |
+| Propia | solo quien tira |
+
+**Nuestro modelo ya expresa tres de los cuatro** con la visibilidad que existe (`PLAYERS`,
+`OWNER_DM`, `DM_ONLY`). Lo que falta para la ciega **no es el modelo, es el endpoint**: `POST
+/rolls` **devuelve el resultado a quien lo pide**, así que aunque el registro lo esconda, el
+jugador lo ve en su propia respuesta.
+
+**Recomendación:** adoptar los cuatro modos por su nombre y hacer que la respuesta del `POST`
+**omita el resultado** cuando la tirada es ciega — el jugador ve «tirado, el DM lo sabe». Es
+media tarde de trabajo y cierra un agujero que hoy existe y no está declarado.
+
+### D-2C-6 · Pifias y tablas del DM → **no hay tabla oficial; si entra, es una primitiva**
+
+**Comprobado:** el SRD no trae ninguna tabla de críticos ni de pifias. Lo único oficial es que un
+crítico **duplica los dados y no los modificadores**, que es lo que 2B ya hace. Todas las tablas
+que circulan son caseras.
+
+**Recomendación:** si entra, que entre como **«tablas del DM»** —una primitiva de tirar sobre una
+tabla con resultados y visibilidad—, no como una funcionalidad de pifias. La misma pieza sirve
+para botín, rumores y encuentros aleatorios, que es lo que el alcance de la fase 2 ya sospechaba.
 
 ## 5 · Lo que queda por contrastar (lo demás ya está hecho, §2 bis)
 
@@ -222,25 +272,36 @@ visibilidad, mismo registro) y **las condiciones**.
    (`Entity` de tipo `NPC`), que es donde vive su historia. Dos caras de la misma cosa, como el
    objeto de inventario y el objeto del mundo en 2B.
 
-### Lo que el contraste aporta, y cambia el coste
+### Lo que el segundo contraste cambia, y es mucho
 
-- **El SRD 5.1 trae 334 criaturas bajo CC BY 4.0**: se pueden sembrar legalmente, con la misma
-  atribución que razas, clases y armas. **Pero transcribir 334 statblocks a mano es el trabajo
-  más grande de todo lo hecho hasta ahora**, y es transcripción, no diseño: es exactamente donde
-  una tabla se llena de errores que ningún invariante caza (la lección de la ficha S10).
-- **La forma del statblock es estándar** y está bien documentada, así que el esquema no es una
-  invención nuestra: seguirlo campo por campo es lo que permitirá importar de fuera algún día.
-- **El desafío y sus PX son una tabla**, no un cálculo: no hay que derivar nada.
+**1 · La transcripción no hace falta: el SRD 5.1 existe en JSON, bajo CC BY 4.0.**
+Hay repositorios que publican el SRD convertido a JSON —incluido **un fichero solo de
+monstruos**— con la **misma licencia** y **la misma frase de atribución** que ya usa nuestro
+`NOTICE.md` palabra por palabra. Eso convierte «transcribir 334 criaturas a mano», que era el
+trabajo más grande del proyecto, en **importar y validar**, que es un guion y un esquema de Zod.
 
-### Las decisiones que serían del autor
+Lo que sigue costando, y hay que decirlo: **validar lo importado** (una tabla ajena puede traer
+errores propios), **traducir los nombres al español** —el SRD en JSON está en inglés y nuestra
+convención es la traducción oficial de Wizards— y **decidir qué subconjunto se enseña**.
 
-1. **¿Sembramos criaturas del SRD, y cuántas?** Recomiendo **no sembrar las 334**: una selección
-   corta y declarada (las diez o veinte que salen en una campaña de nivel 1–5) y el resto,
-   homebrew del DM. Misma política que el equipo: muestra representativa, declarada en su cabecera.
-2. **¿PG vivos ya?** El alcance de la fase 2 los dejó explícitamente para **Encuentros** («no
-   basta el dato: los PG tienen que bajar»). Si 2D solo trae el dato, es barato; si trae los PG
-   vivos, ha empezado el rastreador de combate por la puerta de atrás.
-3. **¿Acciones legendarias y de guarida?** Como **texto** son gratis; automatizarlas es Encuentros.
+**2 · «Un monstruo se declara» era casi cierto, y el matiz importa.**
+Mirando cómo lo modela el sistema dnd5e de Foundry (`npc.mjs`), un PNJ **no** es una hoja de
+personaje sin clase, pero tampoco es una tabla plana:
+
+- **Los PG llevan su fórmula y su valor**: `formula` (`"3d8+6"`), `max` y `value`. La fórmula no
+  es decorativa — es lo que permite volver a tirar los PG de un monstruo cuando el DM quiere.
+- **El desafío gobierna dos cosas derivadas**: el **bonificador de competencia** y los **PX**, y
+  las dos son **tablas del SRD** (*Proficiency Bonus by Challenge Rating* y *Experience Points by
+  Challenge Rating*, las dos en la sección de monstruos).
+- **Ojo con reutilizar nuestro `proficiencyBonus(level)`**: la tabla de los monstruos **no es la
+  misma** que la de los personajes — llega a **+9** en desafío 29–30, donde un personaje se queda
+  en +6. Usar la de personajes daría un número silenciosamente bajo en los monstruos grandes.
+- **Las acciones legendarias se modelan como un recurso** con su máximo y su gasto, igual que
+  nuestros `CharacterResource`. La automatización sigue siendo Encuentros; el **contador**, no.
+- La CA sí es un valor declarado en la práctica (con su nota: «armadura natural»).
+
+Así que la frase correcta no es «reusamos el motor», sino: **el statblock declara casi todo, el
+desafío deriva dos números por tabla, y el tirador y las condiciones se reutilizan tal cual**.
 
 ### Lo que 2D no hace, en ningún caso
 
@@ -261,3 +322,13 @@ reabre.
   [tiradas a ciegas](https://foundryvtt.com/packages/blind-skill-rolls)
 - [Monstruos del SRD por desafío](https://dnd5e.info/monsters/monsters-by-challenge/) y
   [la forma del statblock](https://www.gmbinder.com/share/-LOjOMS9INYKFkhsNuAy)
+- [El SRD 5.1 en JSON, CC BY 4.0, con su fichero de monstruos](https://github.com/Tabyltop/CC-SRD)
+  y [otra conversión mantenida](https://github.com/soryy708/dnd5-srd)
+- [Cómo modela un PNJ el sistema dnd5e de Foundry](https://github.com/foundryvtt/dnd5e/blob/master/module/data/actor/npc.mjs)
+  y [las reglas de monstruos del SRD](https://5thsrd.org/gamemaster_rules/monster_rules/)
+- [El tiempo del mundo en segundos (API de Foundry)](https://foundryvtt.com/api/classes/foundry.helpers.GameTime.html)
+  y [Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)
+- [Caducidad automática de efectos: *Times Up*, hoy en el núcleo](https://foundryvtt.com/packages/times-up)
+- [Los cuatro modos de tirada](https://foundryvtt.com/article/dice/) y su
+  [enumeración en la API](https://foundryvtt.com/api/v11/enums/foundry.CONST.DICE_ROLL_MODES.html)
+- [El crítico duplica dados, no modificadores; no hay tabla oficial de pifias](https://blackcitadelrpg.com/5e-critical-hit/)

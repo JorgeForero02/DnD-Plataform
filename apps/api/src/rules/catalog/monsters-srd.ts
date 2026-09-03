@@ -73,8 +73,7 @@ export const SRD_STATBLOCKS: Statblock[] = [
     size: "MEDIUM",
     type: "HUMANOID",
     subtype: "cualquier raza",
-    alignment:
-      "cualquier alineamiento no legal Clase de Armadura: 12 (armadura de cuero) Puntos de golpe: 11 (2d8 + 2) Velocidad: 9 m",
+    alignment: "cualquier alineamiento no legal",
     ac: 12,
     acNote: "armadura de cuero",
     hitDiceCount: 2,

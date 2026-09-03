@@ -329,7 +329,11 @@ export class CharacterSheetService {
 
   private async buildResponse(userId: string, character: FilaPersonaje) {
     const equipo = await this.equipoEquipado(userId, character);
-    const resultado = await this.hojaOMotivo(character, equipo.items);
+    const resultado = await this.hojaOMotivo(
+      await this.viewerFor(userId, character.campaignId),
+      character,
+      equipo.items,
+    );
     let sheet: CharacterSheet | null = "sheet" in resultado ? resultado.sheet : null;
     const reason: string | undefined = "reason" in resultado ? resultado.reason : undefined;
 
@@ -685,12 +689,13 @@ export class CharacterSheetService {
    * contra el mismo máximo o el tope de la curación miente.
    */
   private async hojaOMotivo(
+    viewer: Viewer,
     character: FilaPersonaje,
     items: ResolvedItem[],
     tx?: Prisma.TransactionClient,
   ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
     const base = character.statblockRef
-      ? await this.hojaDeStatblock(character)
+      ? await this.hojaDeStatblock(viewer, character)
       : this.hojaDePersonaje(character, items);
     if (!("sheet" in base)) return base;
 
@@ -724,7 +729,15 @@ export class CharacterSheetService {
     // Para calcular los PG máximos da igual quién mira: se usa el equipo **sin redactar**, que
     // es el estado real del personaje. La redacción es de identidad, nunca de número.
     const { items } = await this.equipoEquipado(character.ownerId, character);
-    const resultado = await this.hojaOMotivo(character, items, tx);
+    // **Quien muta es el dueño o el DM** (`requireEditable`), y el dueño de un PNJ es el DM, así
+    // que este espectador siempre ve la plantilla. Se pasa igualmente en vez de saltarse la
+    // comprobación: un atajo aquí sería el hueco por el que entre la próxima fuga.
+    const resultado = await this.hojaOMotivo(
+      await this.viewerFor(userId, character.campaignId),
+      character,
+      items,
+      tx,
+    );
     if (!("sheet" in resultado))
       throw new BadRequestException(`No se pueden gestionar los PG: ${resultado.reason}`);
     return resultado.sheet;
@@ -738,6 +751,7 @@ export class CharacterSheetService {
    * agotamiento 4 tiene los PG máximos partidos por la misma función que parte los de un jugador.
    */
   private async hojaDeStatblock(
+    viewer: Viewer,
     character: FilaPersonaje,
   ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
     if (!this.statblocks) {
@@ -746,8 +760,28 @@ export class CharacterSheetService {
           "Este PNJ no se puede derivar: falta el resolutor de statblocks. Es un fallo de cableado, no del dato.",
       };
     }
-    const statblock = await this.statblocks.resolver(character.campaignId, character.statblockRef!);
-    if (!statblock) {
+
+    // **La visibilidad del PNJ y la de su plantilla son DOS cosas distintas**, y confundirlas era
+    // una fuga: el DM enseña el bicho —sube el PNJ a `PLAYERS` para que se vea en la mesa— y su
+    // statblock sigue siendo suyo. Antes de la revisión de cierre de 2D, la hoja derivaba sin
+    // preguntar por la plantilla, así que ese jugador leía CA, PG máximos, las seis salvaciones,
+    // las dieciocho habilidades y **la traza**, que además lleva la nota del libro dentro. Es la
+    // tercera de la misma familia: la revisión de 2C encontró las otras dos.
+    const resuelto = await this.statblocks.resolverParaHoja(
+      character.campaignId,
+      character.statblockRef!,
+      viewer,
+    );
+
+    if ("oculto" in resuelto) {
+      // Y el motivo **no miente**: quien mira ya sabe que la criatura existe —está viéndola en la
+      // mesa—, así que decirle que sus números no son públicos no le descubre nada. Colapsarlo en
+      // «no existe» habría sido más cómodo y habría sido falso.
+      return {
+        reason: "Los números de este PNJ no son públicos: su ficha es del DM.",
+      };
+    }
+    if ("ausente" in resuelto) {
       // Un `ref` que ya no resuelve es un dato caduco —el DM borró su statblock—, no un fallo del
       // servidor: se dice con un motivo legible, igual que hace el catálogo con una clase que ya
       // no existe.
@@ -755,7 +789,7 @@ export class CharacterSheetService {
         reason: `Este PNJ apunta a un statblock que ya no existe (${character.statblockRef}). Vuelve a crearlo o bórralo.`,
       };
     }
-    return { sheet: deriveNpc(statblock, modificadoresDeAnulacion(character)) };
+    return { sheet: deriveNpc(resuelto.statblock, modificadoresDeAnulacion(character)) };
   }
 
   private hojaDePersonaje(
@@ -1087,13 +1121,20 @@ export class CharacterSheetService {
       );
     }
 
+    // **La audiencia por defecto sale de la visibilidad del personaje, no es `PUBLIC` fija.**
+    // Un PNJ `DM_ONLY` que ataca escribía un suceso a la mesa entera con su nombre dentro —«Ataque
+    // con cimitarra»— y con él, el hecho de que ese PNJ existe. Es la misma forma exacta del
+    // segundo hallazgo de la revisión de 2C, que era una condición vencida anunciada con `PLAYERS`
+    // fijo. Si quien tira lo pide explícitamente, manda lo que pida: el DM sabe lo que hace.
+    const audienciaPorDefecto = character.visibility === "PLAYERS" ? "PUBLIC" : "DM_PRIVATE";
+
     if (input.part === "ATTACK") {
       return this.rolls.roll(userId, campaignId, {
         expression: conSigno("1d20", ataque.attackBonus.total),
         label: `Ataque con ${ataque.name}`,
         characterId,
         mode: input.mode,
-        audience: input.audience ?? "PUBLIC",
+        audience: input.audience ?? audienciaPorDefecto,
       });
     }
 

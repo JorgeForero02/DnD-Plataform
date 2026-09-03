@@ -112,6 +112,13 @@ export class NpcsService {
         select: { clockSeconds: true },
       }),
     ]);
+    // Qué plantillas puede ver quien mira, resueltas una sola vez para toda la lista en vez de
+    // una consulta por PNJ.
+    const refsVisibles = new Set<string>();
+    for (const ref of new Set(filas.map((f) => f.statblockRef).filter((r): r is string => !!r))) {
+      if (await this.statblocks.puedeVerStatblock(campaignId, ref, viewer)) refsVisibles.add(ref);
+    }
+
     return filas
       .filter((f) =>
         canView(viewer, {
@@ -123,7 +130,11 @@ export class NpcsService {
       .map((f) => ({
         id: f.id,
         name: f.name,
-        statblockRef: f.statblockRef,
+        // **El `ref` de una plantilla que no puedes ver no viaja**: es el identificador de la
+        // fila que la lista de statblocks está escondiéndote a propósito, y mandarlo aquí sería
+        // deshacer ese trabajo por la puerta de al lado. Mismo criterio que `redactado()` usa
+        // con los objetos ocultos de una hoja. Los del SRD sí viajan: son el libro.
+        statblockRef: refsVisibles.has(f.statblockRef ?? "") ? f.statblockRef : null,
         currentHp: f.currentHp,
         tempHp: f.tempHp,
         visibility: f.visibility,

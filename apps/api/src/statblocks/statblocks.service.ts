@@ -107,6 +107,49 @@ export class StatblocksService {
     return aStatblock(fila);
   }
 
+  /**
+   * Resolver **para derivar la hoja de un PNJ**, distinguiendo «no lo puedes ver» de «no existe».
+   *
+   * `resolver()` los confunde a propósito, y hace bien: decir «prohibido» sobre un statblock que
+   * no has visto nunca ya confirma que existe. **Aquí no aplica**, y esa es toda la diferencia:
+   * quien pregunta está mirando un PNJ que el DM ya le ha enseñado, así que la existencia de la
+   * criatura **ya la sabe**. Lo único que hay que esconderle son los números.
+   *
+   * Colapsarlos aquí tampoco era una opción: la hoja habría contestado «apunta a un statblock que
+   * ya no existe» sobre uno que existe perfectamente, y eso es mentirle al DM cuando de verdad
+   * borre una plantilla. Un texto que discrepa del servidor es exactamente lo que este proyecto
+   * tiene prohibido.
+   */
+  async resolverParaHoja(
+    campaignId: string,
+    ref: string,
+    viewer: Viewer,
+  ): Promise<{ statblock: Statblock } | { oculto: true } | { ausente: true }> {
+    const origen = origenDeRef(ref);
+    if (!origen) return { ausente: true };
+
+    if (origen.source === "SRD") {
+      // Los del libro no son de nadie: quien juega puede leerlos, y el bestiario ya se los
+      // publica a la mesa entera. Esconderlos aquí no protegería nada y haría inútil revelar un
+      // goblin.
+      const srd = SRD_STATBLOCK_POR_REF.get(ref);
+      return srd ? { statblock: srd } : { ausente: true };
+    }
+
+    const fila = await this.prisma.campaignStatblock.findFirst({
+      where: { id: origen.id, campaignId },
+    });
+    if (!fila) return { ausente: true };
+    if (!this.puedeVer(viewer, fila.visibility)) return { oculto: true };
+    return { statblock: aStatblock(fila) };
+  }
+
+  /** Si quien mira puede ver los números de esta plantilla. Lo usa la hoja para redactar. */
+  async puedeVerStatblock(campaignId: string, ref: string, viewer: Viewer): Promise<boolean> {
+    const r = await this.resolverParaHoja(campaignId, ref, viewer);
+    return "statblock" in r;
+  }
+
   private async exigirDeLaCampana(campaignId: string, statblockId: string) {
     const fila = await this.prisma.campaignStatblock.findFirst({
       where: { id: statblockId, campaignId },

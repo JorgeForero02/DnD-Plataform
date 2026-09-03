@@ -108,6 +108,63 @@ un huérfano no avisa, la operación devuelve 200 igual.
 (`CampaignStatblock` y la columna `Character.statblockRef`). El camino del personaje jugador no se
 tocó, y hay una prueba que lo dice.
 
+## 2026-09-03 (noche) — La revisión de cierre de la fase 2D: la tercera fuga de la misma familia
+
+**Qué.** Dos revisiones de solo lectura sobre el diff entero de 2D —una de seguridad, otra de
+reglas contra la fuente en local—. **Cinco hallazgos reales, los cinco arreglados.**
+
+> **1 · Seguro. Los números de un statblock `DM_ONLY` llegaban al jugador por la hoja del PNJ.**
+> El escenario es el que un DM hace de verdad: escribe su statblock (nace `DM_ONLY`), lo baja a la
+> mesa, y cuando los jugadores se topan con el bicho **le sube la visibilidad al PNJ** para que lo
+> vean. La plantilla sigue siendo suya. La hoja derivaba sin preguntar por ella, así que ese
+> jugador leía CA, PG máximos, las seis salvaciones, las dieciocho habilidades y **la traza**, que
+> además lleva dentro la nota del libro. **Es la tercera de la misma familia**: la revisión de 2C
+> encontró las otras dos.
+>
+> El arreglo no era pasar el espectador y ya: `resolver()` colapsa «no existe» con «no lo ves» a
+> propósito, y con eso la hoja habría contestado «apunta a un statblock que ya no existe» sobre uno
+> que existe — mentirle al DM. Se añadió `resolverParaHoja`, que **sí distingue**, porque aquí la
+> existencia de la criatura ya la sabe quien pregunta: la está viendo en la mesa.
+
+> **2 · Seguro. El `statblockRef` de una plantilla escondida viajaba al jugador.** Es el
+> identificador de la fila que la lista de statblocks le está ocultando a ese mismo jugador, así
+> que se deshacía por la puerta de al lado. Mismo criterio que `redactado()` con los objetos
+> ocultos de una hoja. Los del SRD sí viajan: el libro no esconde nada.
+
+> **3 · Seguro. Una tirada de ataque de un PNJ `DM_ONLY` se anunciaba a la mesa entera**, con su
+> nombre en la etiqueta y, con él, el hecho de que ese PNJ existe. La audiencia por defecto era
+> `PUBLIC` fija; ahora sale de la visibilidad del personaje. **Es la misma forma exacta del segundo
+> hallazgo de 2C**, que era una condición vencida escrita con `PLAYERS` fijo.
+
+> **4 · Regla. El alineamiento del Bandido se había tragado la línea entera del PDF** —«cualquier
+> alineamiento no legal Clase de Armadura: 12 (armadura de cuero) Puntos de golpe: 11 (2d8 + 2)
+> Velocidad: 9 m»— porque el volcado pegó cabecera y estadísticas en un renglón, y **se pintaba tal
+> cual en la ficha**. Único de los quince afectado. Hay ahora una prueba que mira los quince, no
+> solo ese.
+
+> **5 · Regla. `pgMediosDe` no tenía el suelo de 1 PG que sí tiene su gemela `pgDeMonstruo`.** Un
+> statblock propio con una criatura Diminuta de un dado y Constitución 1 salía a −3, y el PNJ se
+> guardaba con los puntos de golpe en negativo **mientras el motor derivaba 1 para esa misma
+> criatura**: dos números distintos para lo mismo.
+
+**Y dos comentarios que mentían**, los dos en `statblock.schema.ts` y los dos sobre nombres: uno
+citaba un «huargo» que **no está en la tanda** (el Grande con d10 es el lobo terrible), y otro
+llamaba «espectro» al tumulario **en el mismo trabajo que se molestó en corregir ese nombre**.
+Documentación que miente es peor que ausente, y aquí mentía sobre una comprobación.
+
+**Lo que la revisión declaró limpio**, y conviene que conste: instanciar exige DM y el `ref` está
+acotado a la campaña, así que no se puede instanciar de otra mesa; `statblockRef` no es escribible
+por el cliente; un jugador no puede abrir la hoja de un PNJ `DM_ONLY` ni mutar ninguno; los
+statblocks de otra campaña dan 404 y no 403; y **los quince statblocks cuadran número a número con
+la fuente** —CA, dados, características, competencias, sentidos, velocidades, VD, inmunidades— con
+los quince nombres en la traducción oficial y la prosa completa a través de los saltos de página.
+
+**Probado.** Suites completas de nuevo —unitarias de API y de web, e2e de API y Playwright— todo en
+verde y mirado. Una mutación más en rojo sobre el arreglo de la fuga.
+
+**Cómo revertir.** `git revert` del commit. Ojo a un cambio de comportamiento: la hoja de un PNJ
+cuya plantilla no ves devuelve ahora `sheet: null` con un motivo, en vez de los números.
+
 ## 2026-09-03 (noche) — 2D.5 y 2D.6: el bestiario en pantalla, y los PNJ fuera del listado de personajes
 
 **Qué.** Los dos últimos bloques de la fase 2D. La pestaña «Bestiario» con las fichas del SRD y

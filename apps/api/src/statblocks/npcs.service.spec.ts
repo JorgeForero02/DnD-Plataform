@@ -22,7 +22,7 @@ describe("NpcsService", () => {
     transaction: jest.fn(),
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn() };
-  const statblocks = { resolver: jest.fn() };
+  const statblocks = { resolver: jest.fn(), puedeVerStatblock: jest.fn() };
   /** Un d(n) que siempre saca el máximo: con él la tirada es un número comprobable. */
   const rollerMaximo = jest.fn((caras: number) => caras);
 
@@ -39,6 +39,8 @@ describe("NpcsService", () => {
     service = ref.get(NpcsService);
     jest.clearAllMocks();
     membership.requireDM.mockResolvedValue({ role: "DM" });
+    // Por defecto, quien mira ve la plantilla; las pruebas que comprueban la redacción lo cambian.
+    statblocks.puedeVerStatblock.mockResolvedValue(true);
     // La transacción, en las unitarias, es «ejecuta el callback con el propio cliente».
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.character.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
@@ -181,6 +183,30 @@ describe("NpcsService", () => {
     ]);
     const r = await service.list("dm", "c1");
     expect(r[0].conditions.map((c) => c.key)).toEqual(["prone", "exhaustion"]);
+  });
+
+  it("**el `ref` de una plantilla que no puedes ver no viaja**", async () => {
+    membership.requireMember.mockResolvedValue({ role: "PLAYER" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ clockSeconds: 0 });
+    // La plantilla es del DM: este jugador no la ve en el bestiario.
+    statblocks.puedeVerStatblock.mockResolvedValue(false);
+    prisma.character.findMany.mockResolvedValue([
+      {
+        id: "n1",
+        name: "Cosa",
+        statblockRef: "CAMPAIGN:sb1",
+        visibility: "PLAYERS",
+        ownerId: "dm",
+        currentHp: 20,
+        tempHp: 0,
+        conditions: [],
+      },
+    ]);
+    const r = await service.list("pl", "c1");
+    // Ve el PNJ —el DM se lo ha enseñado— pero no el identificador de la fila escondida.
+    expect(r[0].name).toBe("Cosa");
+    expect(r[0].statblockRef).toBeNull();
   });
 
   it("la lista NO devuelve el PG máximo: su fuente única es la hoja", async () => {

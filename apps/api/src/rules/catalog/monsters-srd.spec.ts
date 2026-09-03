@@ -227,6 +227,39 @@ describe("catálogo de statblocks del SRD 5.1", () => {
     expect(SRD_STATBLOCK_POR_REF.get("SRD:owlbear")!.name).toBe("Oso lechuza");
   });
 
+  it("**ningún campo arrastra la línea de estadísticas del PDF**", () => {
+    // El alineamiento del Bandido valía «cualquier alineamiento no legal Clase de Armadura: 12
+    // (armadura de cuero) Puntos de golpe: 11 (2d8 + 2) Velocidad: 9 m» — la línea entera del
+    // documento, pegada por el volcado, y se pintaba tal cual en la ficha del bestiario. Lo cazó
+    // la revisión de cierre de 2D. Esta prueba mira los quince, no solo ese.
+    for (const s of SRD_STATBLOCKS) {
+      for (const campo of [s.alignment, s.subtype, s.acNote, s.languages]) {
+        if (!campo) continue;
+        expect(`${s.name}: ${campo}`).not.toMatch(/Clase de Armadura|Puntos de golpe|Velocidad:/);
+      }
+      // Y ninguno es un párrafo: son etiquetas cortas.
+      expect(`${s.name}: ${s.alignment ?? ""}`.length).toBeLessThan(80);
+    }
+    expect(SRD_STATBLOCK_POR_REF.get("SRD:bandit")!.alignment).toBe(
+      "cualquier alineamiento no legal",
+    );
+  });
+
+  it("ninguna criatura sale con menos de 1 punto de golpe", () => {
+    // El esquema admite una criatura Diminuta de un dado con Constitución 1: la media de 1d4 es 2
+    // y el modificador es −5. Sin suelo salía −3, y el PNJ se guardaba en negativo mientras el
+    // motor derivaba 1 para lo mismo.
+    const minusculo = {
+      ...SRD_STATBLOCK_POR_REF.get("SRD:commoner")!,
+      size: "TINY" as const,
+      hitDiceCount: 1,
+      abilities: { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 },
+    };
+    expect(pgMediosDe(minusculo)).toBe(1);
+    // Y el suelo no toca a nadie de la tanda.
+    for (const s of SRD_STATBLOCKS) expect(pgMediosDe(s)).toBeGreaterThan(1);
+  });
+
   it("el valor de desafío se escribe como fracción cuando lo es", () => {
     expect(vdLegible(0)).toBe("0");
     expect(vdLegible(0.125)).toBe("1/8");

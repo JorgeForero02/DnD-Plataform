@@ -302,6 +302,97 @@ describe("Un PNJ en la mesa (e2e)", () => {
     expect(goblin.maxHp).toBeUndefined();
   });
 
+  it("**los números de un statblock DM_ONLY no llegan al jugador por la hoja del PNJ**", async () => {
+    // Revisión de cierre de 2D. El escenario es el que el DM hace de verdad: escribe un
+    // statblock suyo (nace DM_ONLY), lo baja a la mesa, y cuando los jugadores se topan con el
+    // bicho **le sube la visibilidad al PNJ** para que lo vean en la mesa. La plantilla sigue
+    // siendo suya. Si la hoja del PNJ derivara igual, el jugador leería CA, PG máximos, las seis
+    // salvaciones y las dieciocho habilidades de algo que el DM marcó como suyo.
+    const plantilla = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/statblocks`)
+      .set("Authorization", auth(tokenDM))
+      .send({
+        name: "Cosa de la cripta",
+        size: "LARGE",
+        type: "ABERRATION",
+        ac: 17,
+        acNote: "caparazón quitinoso",
+        hitDiceCount: 9,
+        abilities: { str: 18, dex: 8, con: 18, int: 6, wis: 12, cha: 5 },
+        cr: 5,
+      });
+    expect(plantilla.status).toBe(201);
+
+    const instancia = await request(app.getHttpServer())
+      .post(npcs())
+      .set("Authorization", auth(tokenDM))
+      .send({ ref: plantilla.body.ref });
+    expect(instancia.status).toBe(201);
+    const cosaId = instancia.body[0].id;
+
+    // El DM la enseña: el PNJ pasa a PLAYERS, la PLANTILLA no.
+    const revelar = await request(app.getHttpServer())
+      .patch(ficha(cosaId))
+      .set("Authorization", auth(tokenDM))
+      .send({ visibility: "PLAYERS" });
+    expect([200, 204]).toContain(revelar.status);
+
+    const hoja = await request(app.getHttpServer())
+      .get(`${ficha(cosaId)}/sheet`)
+      .set("Authorization", auth(tokenPL));
+    expect(hoja.status).toBe(200);
+    // El jugador ve que existe y cómo se llama —para eso el DM lo enseñó— pero **no sus números**.
+    expect(hoja.body.character.name).toBe("Cosa de la cripta");
+    expect(hoja.body.sheet).toBeNull();
+    const cuerpo = JSON.stringify(hoja.body);
+    expect(cuerpo).not.toContain("17"); // la CA
+    expect(cuerpo).not.toContain("caparazón quitinoso"); // la nota del libro, en la traza
+    // Y el motivo **no miente**: no dice que la plantilla no exista, dice que no es suya.
+    expect(hoja.body.reason).not.toContain("ya no existe");
+
+    // El DM sí las ve.
+    const delDm = await request(app.getHttpServer())
+      .get(`${ficha(cosaId)}/sheet`)
+      .set("Authorization", auth(tokenDM));
+    expect(delDm.body.sheet.derived.ac.total).toBe(17);
+  });
+
+  it("un PNJ del SRD sí enseña sus números: el libro lo puede leer cualquiera", async () => {
+    // El contrapunto necesario. Si se escondieran también los del SRD, revelar un goblin no
+    // enseñaría nada, y el bestiario ya publica esos mismos quince a todo el que juegue.
+    const revelar = await request(app.getHttpServer())
+      .patch(ficha(goblinId))
+      .set("Authorization", auth(tokenDM))
+      .send({ visibility: "PLAYERS" });
+    expect([200, 204]).toContain(revelar.status);
+
+    const hoja = await request(app.getHttpServer())
+      .get(`${ficha(goblinId)}/sheet`)
+      .set("Authorization", auth(tokenPL));
+    expect(hoja.status).toBe(200);
+    expect(hoja.body.sheet.derived.ac.total).toBe(18); // con la anulación del DM de más arriba
+  });
+
+  it("**el `ref` de una plantilla escondida no viaja en la lista de PNJ**", async () => {
+    // Es el identificador de la fila que la lista de statblocks está escondiéndole a ese mismo
+    // jugador: mandarlo aquí deshacía ese trabajo por la puerta de al lado. El del SRD sí viaja,
+    // porque el libro no esconde nada.
+    const r = await request(app.getHttpServer()).get(npcs()).set("Authorization", auth(tokenPL));
+    expect(r.status).toBe(200);
+    const cosa = r.body.find((n: { name: string }) => n.name === "Cosa de la cripta");
+    expect(cosa).toBeDefined();
+    expect(cosa.statblockRef).toBeNull();
+    const goblin = r.body.find((n: { id: string }) => n.id === goblinId);
+    expect(goblin.statblockRef).toBe("SRD:goblin");
+
+    // Y el DM los ve los dos con su referencia.
+    const delDm = await request(app.getHttpServer())
+      .get(npcs())
+      .set("Authorization", auth(tokenDM));
+    const cosaDelDm = delDm.body.find((n: { name: string }) => n.name === "Cosa de la cripta");
+    expect(cosaDelDm.statblockRef).toMatch(/^CAMPAIGN:/);
+  });
+
   it("el DM sube un PNJ a PLAYERS y entonces el jugador lo ve", async () => {
     const up = await request(app.getHttpServer())
       .patch(ficha(goblinId))
@@ -310,7 +401,12 @@ describe("Un PNJ en la mesa (e2e)", () => {
     expect([200, 204]).toContain(up.status);
 
     const r = await request(app.getHttpServer()).get(npcs()).set("Authorization", auth(tokenPL));
-    expect(r.body).toHaveLength(1);
-    expect(r.body[0].id).toBe(goblinId);
+    // Los dos que el DM ha enseñado: el goblin y la cosa de la cripta. Los demás siguen sin
+    // viajar.
+    expect(r.body.map((n: { id: string }) => n.id)).toContain(goblinId);
+    expect(r.body.length).toBeLessThan(
+      (await request(app.getHttpServer()).get(npcs()).set("Authorization", auth(tokenDM))).body
+        .length,
+    );
   });
 });

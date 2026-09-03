@@ -28,8 +28,12 @@ export type CreatureSize = z.infer<typeof creatureSizeSchema>;
  * El dado de golpe que le toca a cada tamaño.
  *
  * **No es una convención: es una regla del SRD**, y está verificada contra los quince statblocks
- * de la tanda —goblin pequeño con d6, huargo grande con d10, gigante de las colinas enorme con
- * d12— sin una sola excepción. Por eso el tamaño del dado **se deriva y no se guarda**: guardarlo
+ * de la tanda —goblin pequeño con d6, **lobo terrible** grande con d10, gigante de las colinas
+ * enorme con d12— sin una sola excepción.
+ *
+ * (Este comentario decía «huargo», y **el huargo no está en la tanda**. Lo cazó la revisión de
+ * cierre de 2D: citar una comprobación que no se hizo es la clase de mentira pequeña que hace
+ * dudar de las grandes.) Por eso el tamaño del dado **se deriva y no se guarda**: guardarlo
  * sería guardar un valor calculado, que es justo lo que este proyecto no hace.
  */
 export const DADO_DE_GOLPE_POR_TAMANO: Record<CreatureSize, number> = {
@@ -80,10 +84,14 @@ export type StatblockFeature = z.infer<typeof statblockFeatureSchema>;
 /**
  * Las resistencias son **prosa, no un vocabulario cerrado**, y esto es una decisión con motivo.
  *
- * El tercer monstruo de la tanda ya la rompe: el espectro resiste *«contundente, perforante y
- * cortante de armas no mágicas que no sean de plata»*. Eso no es un tipo de daño, es una
+ * El **tumulario** ya la rompe: resiste *«necrótico; contundente, cortante y perforante de
+ * ataques no mágicos con armas que no sean de plata»*. Eso no es un tipo de daño, es una
  * condición sobre el arma que lo causa, y una lista cerrada de tipos de daño no puede
  * expresarla. Cerrar el vocabulario aquí obligaría a mentir en la primera transcripción.
+ *
+ * (Este comentario decía «el espectro», y el espectro es **otro monstruo** —el *specter*—, en el
+ * mismo trabajo que se molestó en corregir precisamente ese nombre. Lo cazó la revisión de cierre
+ * de 2D.)
  */
 const damageTagSchema = z.string().min(1).max(200);
 
@@ -214,7 +222,17 @@ export function pgMediosDe(
 ): number {
   const dado = dadoDeGolpeDe(statblock);
   const modCon = Math.floor((statblock.abilities.con - 10) / 2);
-  return Math.floor((statblock.hitDiceCount * (dado + 1)) / 2) + modCon * statblock.hitDiceCount;
+  const bruto =
+    Math.floor((statblock.hitDiceCount * (dado + 1)) / 2) + modCon * statblock.hitDiceCount;
+  // **Ninguna criatura tiene menos de 1 PG**, igual que ningún personaje.
+  //
+  // Sin este suelo, un statblock propio del DM con una criatura Diminuta de un solo dado y
+  // Constitución 1 —todo dentro de lo que el esquema admite— salía a −3, y el PNJ se guardaba con
+  // los puntos de golpe en negativo **mientras el motor derivaba 1 para esa misma criatura**: dos
+  // números distintos para lo mismo, que es la clase de discrepancia que este proyecto persigue.
+  // Lo cazó la revisión de cierre de 2D, que vio que el camino de la tirada (`pgDeMonstruo`) sí
+  // clampaba y este no.
+  return Math.max(1, bruto);
 }
 
 /** La expresión de dados que un statblock usa para tirar sus PG: `2d6`, `10d8+20`. */

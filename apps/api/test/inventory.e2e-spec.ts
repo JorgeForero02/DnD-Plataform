@@ -211,6 +211,43 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     expect(add.status).toBe(400);
   });
 
+  it("un objeto de OTRA campaña del mismo DM no se puede meter en este inventario (400), y no aparece en la lista (aislamiento por campaña, ficha S8 de docs/06-pendientes.md)", async () => {
+    // `resolveContentRef` (`apps/api/src/inventory/common/resolve-item.ts`) filtra por
+    // `campaignId` al resolver un `CAMPAIGN:<id>`, y nada lo comprobaba: la unitaria no puede
+    // (el Prisma simulado ignora el `where`) y no había e2e que lo intentase. Sin ese filtro,
+    // el DM de la segunda campaña podría inyectar un objeto propio en el inventario de un
+    // personaje de una campaña ajena (IDOR entre campañas).
+    const otraCampania = await request(s())
+      .post("/campaigns")
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ name: "Otra campaña del mismo DM" });
+    expect(otraCampania.status).toBe(201);
+    const otraCampaniaId = otraCampania.body.id as string;
+
+    // Visibilidad normal (PLAYERS, el valor por defecto): así el 400 solo puede venir del
+    // aislamiento por campaña, no de la comprobación de visibilidad que ya cubre otro caso.
+    const itemAjeno = await request(s())
+      .post(`/campaigns/${otraCampaniaId}/items`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ name: "Objeto de la otra campaña", kind: "OTHER" });
+    expect(itemAjeno.status).toBe(201);
+
+    const add = await request(s())
+      .post(base())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ ref: { source: "CAMPAIGN", id: itemAjeno.body.id }, quantity: 1 });
+    expect(add.status).toBe(400);
+
+    const list = await request(s()).get(base()).set("Authorization", `Bearer ${tokenPL}`);
+    expect(
+      list.body.items.some((i: { item: { ref: string } }) =>
+        i.item.ref.endsWith(itemAjeno.body.id),
+      ),
+    ).toBe(false);
+
+    await prisma.campaign.deleteMany({ where: { id: otraCampaniaId } });
+  });
+
   it("la bolsa: un delta positivo la sube, y un delta que la dejaría en negativo se rechaza sin tocar nada", async () => {
     const money = () => `/campaigns/${campaignId}/characters/${characterId}/money`;
 

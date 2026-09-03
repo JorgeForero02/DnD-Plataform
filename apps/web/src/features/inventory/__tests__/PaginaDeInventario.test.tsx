@@ -48,6 +48,33 @@ const cuerda = objeto({ name: "Cuerda de seda", kind: "GEAR", weightOz: 40 });
 
 const cofre = objeto({ name: "Cofre con monedas", kind: "OTHER", weightOz: 0 });
 
+const espada = objeto({
+  name: "Espada larga",
+  kind: "WEAPON",
+  weightOz: 48,
+  weapon: {
+    category: "MARTIAL",
+    range: "MELEE",
+    damageDice: "1d8",
+    damageType: "SLASHING",
+    properties: ["VERSATILE"],
+    versatileDice: "1d10",
+  },
+});
+
+const coraza = objeto({
+  name: "Cota de mallas",
+  kind: "ARMOR",
+  weightOz: 880,
+  armor: {
+    category: "HEAVY",
+    baseAc: 16,
+    dexCap: 0,
+    strengthRequirement: 13,
+    stealthDisadvantage: true,
+  },
+});
+
 function fila(overrides: Partial<InventoryRow>): InventoryRow {
   return {
     id: "row-1",
@@ -217,10 +244,15 @@ describe("PaginaDeInventario", () => {
   });
 
   it("ningún valor de enumeración crudo llega al DOM", async () => {
+    // El barrido solo demuestra algo si el fixture trae un arma y una armadura equipadas: sin
+    // ellas, "WEAPON", "SLASHING" o "MAIN_HAND" no podrían aparecer aunque el código las pintara
+    // crudas, y la prueba pasaría sin comprobar nada.
     const filas = [
       fila({ id: "eq-1", location: "EQUIPPED", slot: "RING_1", attuned: true, item: anillo }),
       fila({ id: "ca-1", location: "CARRIED", item: cuerda }),
       fila({ id: "st-1", location: "STORED", storedAt: "En la posada", item: cofre }),
+      fila({ id: "eq-2", location: "EQUIPPED", slot: "MAIN_HAND", item: espada }),
+      fila({ id: "eq-3", location: "EQUIPPED", slot: "ARMOR", item: coraza }),
     ];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
 
@@ -228,7 +260,11 @@ describe("PaginaDeInventario", () => {
       wrapper: wrapper(nuevoQc()),
     });
     await screen.findByText("Anillo de protección");
+    await screen.findByText("Espada larga");
+    await screen.findByText("Cota de mallas");
 
+    // `container.textContent` y no `queryByText`: `queryByText` casa por elemento entero, así
+    // que una cadena cruda mezclada dentro de un nodo con más texto ("1d8 cort.") no la vería.
     const texto = container.textContent ?? "";
     for (const crudo of [
       "EQUIPPED",
@@ -244,10 +280,76 @@ describe("PaginaDeInventario", () => {
       "OTHER",
       "SLASHING",
       "PIERCING",
+      "MARTIAL",
+      "MELEE",
+      "VERSATILE",
+      "HEAVY",
       "cp",
       "gp",
     ]) {
       expect(texto).not.toContain(crudo);
     }
+  });
+
+  it("pulsar «Soltar» no borra nada todavía: enseña la confirmación en pantalla", async () => {
+    // Regla vinculante (docs/04-convenciones.md): lo irreversible va detrás de un botón, nunca
+    // con `window.confirm`. Un `spy` en `window.confirm` que nunca se llama sería la prueba de
+    // que este comportamiento sigue así.
+    const confirmSpy = vi.spyOn(window, "confirm");
+    const filas = [fila({ id: "ca-1", location: "CARRIED", item: cuerda })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    const removerSpy = vi.spyOn(inventoryApi, "removeInventoryItem");
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Soltar Cuerda de seda" }));
+
+    const dialogo = await screen.findByRole("dialog", { name: "Soltar objeto" });
+    expect(within(dialogo).getByText("Cuerda de seda")).toBeInTheDocument();
+    // Nada desapareció de la fila de detrás: el diálogo se suma, no sustituye.
+    expect(screen.getByRole("button", { name: "Soltar Cuerda de seda" })).toBeInTheDocument();
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(removerSpy).not.toHaveBeenCalled();
+  });
+
+  it("confirmar «Soltar» llama a removeInventoryItem con el id de esa fila, no el de otra", async () => {
+    const filas = [
+      fila({ id: "ca-1", location: "CARRIED", item: cuerda }),
+      fila({ id: "ca-2", location: "CARRIED", item: cofre }),
+    ];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    vi.spyOn(inventoryApi, "removeInventoryItem").mockResolvedValue({ deleted: true });
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    await screen.findByText("Cuerda de seda");
+    // La fila del cofre, no la de la cuerda: si `onSoltar` cablease el id equivocado, este caso
+    // lo pillaría y "pulsar Soltar en la primera fila" no.
+    fireEvent.click(screen.getByRole("button", { name: "Soltar Cofre con monedas" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Soltarlo" }));
+
+    await waitFor(() =>
+      expect(inventoryApi.removeInventoryItem).toHaveBeenCalledWith("c1", "ch1", "ca-2"),
+    );
+    expect(inventoryApi.removeInventoryItem).not.toHaveBeenCalledWith("c1", "ch1", "ca-1");
+  });
+
+  it("cancelar «Soltar» no llama a nada", async () => {
+    const filas = [fila({ id: "ca-1", location: "CARRIED", item: cuerda })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    const removerSpy = vi.spyOn(inventoryApi, "removeInventoryItem");
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Soltar Cuerda de seda" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Soltar objeto" })).not.toBeInTheDocument(),
+    );
+    expect(removerSpy).not.toHaveBeenCalled();
   });
 });

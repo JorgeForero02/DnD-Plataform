@@ -894,6 +894,26 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     );
   });
 
+  it("tirar por un personaje ajeno es 403: tirar en su nombre es escribir en su nombre", async () => {
+    const { service, characters } = conEspada();
+    // `requireEditable` es el guardián de dueño-o-DM que usan los PG y la ficha. Sin esta
+    // prueba, borrar su llamada dejaba que cualquier miembro de la campaña tirara con el
+    // personaje de otro **y publicara la tirada en el registro** — la suite entera seguía verde.
+    // Lo encontró la revisión de 2B.
+    characters.requireEditable.mockRejectedValue(
+      new ForbiddenException("Solo el DM o quien lo creó puede editarlo."),
+    );
+
+    await expect(
+      service.rollAttack("otro", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        part: "ATTACK",
+        mode: "NORMAL",
+        versatile: false,
+        critical: false,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it("pedir un ataque con un arma que no está equipada es 400, no 500", async () => {
     const { service } = conEspada();
 
@@ -905,5 +925,72 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
         critical: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe("2B — la hoja no enseña la identidad de un objeto que quien mira no puede ver", () => {
+  /** Un anillo propio de la campaña, `DM_ONLY`, tal y como sale de Prisma. */
+  const anilloSecreto = {
+    id: "ci-1",
+    campaignId: "c1",
+    name: "Anillo del Traidor",
+    kind: "OTHER",
+    description: "Lo forjó quien no debía.",
+    weightOz: 1,
+    costCp: null,
+    effects: [{ kind: "ac", amount: 1 }],
+    requiresAttunement: false,
+    slot: "RING_1",
+    weaponCategory: null,
+    weaponRange: null,
+    damageDice: null,
+    damageType: null,
+    weaponProperties: [],
+    versatileDice: null,
+    rangeNormalFt: null,
+    rangeLongFt: null,
+    armorCategory: null,
+    baseAc: null,
+    dexCap: null,
+    strengthRequirement: 0,
+    stealthDisadvantage: false,
+    visibility: "DM_ONLY",
+    createdById: "dm1",
+    createdAt: new Date(),
+    grants: [],
+  };
+
+  function conAnilloSecreto(rolDeQuienMira: "DM" | "PLAYER") {
+    const montado = montar();
+    montado.prisma.character.findFirst.mockResolvedValue(personaje());
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("", { srdKey: null, campaignItemId: "ci-1", slot: "RING_1" }),
+    ]);
+    montado.prisma.campaignItem.findFirst.mockResolvedValue(anilloSecreto);
+    montado.membership.getMembership.mockResolvedValue({ role: rolDeQuienMira });
+    return montado;
+  }
+
+  it("un jugador ve el efecto en la CA, pero no el nombre ni el identificador del objeto", async () => {
+    const { service } = conAnilloSecreto("PLAYER");
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    const traza = JSON.stringify(res.sheet!.derived.ac);
+    // El número sí: quitarlo daría una CA distinta a cada persona que mira la MISMA hoja, y
+    // entonces la hoja mentiría a alguien. Lo que se quita es la identidad.
+    expect(res.sheet!.derived.ac.total).toBe(12);
+    expect(traza).not.toContain("Anillo del Traidor");
+    expect(traza).not.toContain("ci-1");
+    expect(JSON.stringify(res)).not.toContain("Anillo del Traidor");
+  });
+
+  it("el DM sí lo ve por su nombre: es suyo", async () => {
+    const { service } = conAnilloSecreto("DM");
+
+    const res = await service.getSheet("dm1", "c1", "ch1");
+
+    expect(JSON.stringify(res.sheet!.derived.ac)).toContain("ci-1");
+    expect(res.sheet!.derived.ac.total).toBe(12);
   });
 });

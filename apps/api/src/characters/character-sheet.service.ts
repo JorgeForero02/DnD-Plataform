@@ -9,6 +9,7 @@ import {
 import type { Character } from "@prisma/client";
 import type {
   AbilityKey,
+  ContentRefInput,
   ResolvedItem,
   DerivationWarning,
   ChangeHpInput,
@@ -25,7 +26,7 @@ import type {
 } from "@dnd/shared";
 import type { Modifier } from "../rules/engine";
 import { buildAttacks, type Attack } from "../rules/attacks";
-import { resolveInventoryRowItem } from "../inventory/common/resolve-item";
+import { resolveContentRef } from "../inventory/common/resolve-item";
 import {
   deriveCharacter,
   findClass,
@@ -234,21 +235,44 @@ export class CharacterSheetService {
    * volver ilegible un personaje.
    */
   private async equipoEquipado(
+    userId: string,
     character: FilaPersonaje,
   ): Promise<{ items: ResolvedItem[]; warnings: DerivationWarning[] }> {
     const filas = await this.prisma.inventoryItem.findMany({
       where: { characterId: character.id, location: "EQUIPPED" },
       orderBy: { createdAt: "asc" },
     });
+    if (filas.length === 0) return { items: [], warnings: [] };
+
+    const viewer = await this.viewerFor(userId, character.campaignId);
     const items: ResolvedItem[] = [];
     const warnings: DerivationWarning[] = [];
+    let ocultos = 0;
+
     for (const fila of filas) {
       try {
-        items.push(await resolveInventoryRowItem(this.prisma, character.campaignId, fila));
+        const ref: ContentRefInput = fila.srdKey
+          ? { source: "SRD", key: fila.srdKey }
+          : { source: "CAMPAIGN", id: fila.campaignItemId as string };
+        const { resolved, campaignItem } = await resolveContentRef(
+          this.prisma,
+          character.campaignId,
+          ref,
+        );
+        const puedeVerlo =
+          !campaignItem ||
+          canView(viewer, {
+            visibility: campaignItem.visibility,
+            createdById: campaignItem.createdById,
+            grantedUserIds: campaignItem.grantedUserIds,
+          });
+        items.push(puedeVerlo ? resolved : redactado(resolved, ++ocultos));
       } catch {
         warnings.push({
           code: "item_unresolved",
-          key: fila.srdKey ?? fila.campaignItemId ?? fila.id,
+          // **La clave no se manda si quien mira no puede ver el objeto**: sería el
+          // identificador de algo que el listado del inventario le acaba de esconder.
+          key: fila.srdKey ?? "objeto",
           data: { rowId: fila.id },
         });
       }
@@ -285,8 +309,8 @@ export class CharacterSheetService {
     });
   }
 
-  private async buildResponse(character: FilaPersonaje) {
-    const equipo = await this.equipoEquipado(character);
+  private async buildResponse(userId: string, character: FilaPersonaje) {
+    const equipo = await this.equipoEquipado(userId, character);
     const resuelto = construirBuild(character, equipo.items);
     let sheet: CharacterSheet | null = null;
     let reason: string | undefined;
@@ -369,7 +393,7 @@ export class CharacterSheetService {
     if (!character || !this.canSee(viewer, character)) {
       throw new NotFoundException("Character not found");
     }
-    const respuesta = await this.buildResponse(character);
+    const respuesta = await this.buildResponse(userId, character);
     return {
       ...respuesta,
       effectiveSpeeds: await this.velocidadesEfectivas(characterId, respuesta.sheet),
@@ -471,7 +495,7 @@ export class CharacterSheetService {
     //    llamara. La diferencia entre las dos mitades es justo esta: se rechaza lo que llega en
     //    ESTA petición, y lo que ya estaba guardado sigue siendo un aviso.
     const prospectivo = { ...character, ...data } as FilaPersonaje;
-    const { items: equipoActual } = await this.equipoEquipado(prospectivo);
+    const { items: equipoActual } = await this.equipoEquipado(userId, prospectivo);
     const construido = construirBuild(prospectivo, equipoActual);
     if ("build" in construido) {
       let hoja: CharacterSheet | null = null;
@@ -507,7 +531,7 @@ export class CharacterSheetService {
       where: { id: characterId },
       data,
     });
-    const respuesta = await this.buildResponse(actualizado);
+    const respuesta = await this.buildResponse(userId, actualizado);
     await this.sembrarRecursos(characterId, respuesta.sheet, actualizado.level);
     return respuesta;
   }
@@ -576,7 +600,7 @@ export class CharacterSheetService {
         ...(input.reason ? { reason: input.reason } : {}),
       },
     });
-    return await this.buildResponse(actualizado);
+    return await this.buildResponse(userId, actualizado);
   }
 
   /** Quita una anulación y devuelve el valor al que el catálogo calcule. También solo el DM. */
@@ -593,22 +617,27 @@ export class CharacterSheetService {
     if (!character) throw new NotFoundException("Character not found");
 
     const actuales = { ...((character.overrides ?? {}) as Overrides) };
-    if (actuales[target] === undefined) return await this.buildResponse(character);
+    if (actuales[target] === undefined) return await this.buildResponse(userId, character);
     delete actuales[target];
 
     const actualizado = await this.prisma.character.update({
       where: { id: characterId },
       data: { overrides: actuales },
     });
-    return await this.buildResponse(actualizado);
+    return await this.buildResponse(userId, actualizado);
   }
 
   /**
    * La hoja derivada, o el 400 honesto de "no se puede sin raza/clase/características": ninguna
    * mutación de PG puede recortar contra un `maxHp` que no existe.
    */
-  private async construirODenegar(character: FilaPersonaje): Promise<CharacterSheet> {
-    const { items } = await this.equipoEquipado(character);
+  private async construirODenegar(
+    userId: string,
+    character: FilaPersonaje,
+  ): Promise<CharacterSheet> {
+    // Para calcular los PG máximos da igual quién mira: se usa el equipo **sin redactar**, que
+    // es el estado real del personaje. La redacción es de identidad, nunca de número.
+    const { items } = await this.equipoEquipado(character.ownerId, character);
     const resuelto = construirBuild(character, items);
     if (!("build" in resuelto))
       throw new BadRequestException(`No se pueden gestionar los PG: ${resuelto.reason}`);
@@ -630,7 +659,7 @@ export class CharacterSheetService {
       const character = filas[0];
       if (!character) throw new NotFoundException("Character not found");
 
-      const sheet = await this.construirODenegar(character);
+      const sheet = await this.construirODenegar(userId, character);
       const maxHp = sheet.derived.maxHp.total;
       const before = character.currentHp ?? maxHp;
 
@@ -726,7 +755,7 @@ export class CharacterSheetService {
         tx,
       );
 
-      return await this.buildResponse(actualizado);
+      return await this.buildResponse(userId, actualizado);
     });
   }
 
@@ -749,11 +778,11 @@ export class CharacterSheetService {
       if (character.version !== input.expectedVersion) {
         throw new ConflictException({
           message: "La versión enviada ya no es la actual.",
-          ...(await this.buildResponse(character)),
+          ...(await this.buildResponse(userId, character)),
         });
       }
 
-      const sheet = await this.construirODenegar(character);
+      const sheet = await this.construirODenegar(userId, character);
       const maxHp = sheet.derived.maxHp.total;
       const data: Record<string, unknown> = { version: character.version + 1 };
       const eventosAEscribir: GameEventPayload[] = [];
@@ -799,7 +828,7 @@ export class CharacterSheetService {
           tx,
         );
       }
-      return await this.buildResponse(actualizado);
+      return await this.buildResponse(userId, actualizado);
     });
   }
 
@@ -819,7 +848,7 @@ export class CharacterSheetService {
       const character = filas[0];
       if (!character) throw new NotFoundException("Character not found");
 
-      const sheet = await this.construirODenegar(character);
+      const sheet = await this.construirODenegar(userId, character);
       const maxHp = sheet.derived.maxHp.total;
       const currentHp = character.currentHp ?? maxHp;
       if (currentHp !== 0)
@@ -902,7 +931,7 @@ export class CharacterSheetService {
             : "dying";
 
       return {
-        ...(await this.buildResponse(actualizado)),
+        ...(await this.buildResponse(userId, actualizado)),
         deathSaves: { successes, failures, status },
       };
     });
@@ -929,7 +958,7 @@ export class CharacterSheetService {
     await this.membership.requireMember(campaignId, userId);
     // Tirar con un personaje es escribir en su nombre: dueño o DM, igual que gastar sus PG.
     const character = await this.characters.requireEditable(userId, campaignId, characterId);
-    const { attacks } = await this.buildResponse(character);
+    const { attacks } = await this.buildResponse(userId, character);
     const ataque = attacks.find((a) => a.key === attackKey);
     if (!ataque) {
       throw new BadRequestException(
@@ -974,4 +1003,30 @@ function conSigno(dados: string, modificador: number): string {
 function duplicarDados(dados: string): string {
   const [cantidad, caras] = dados.split("d");
   return `${Number(cantidad) * 2}d${caras}`;
+}
+
+/**
+ * El mismo objeto **sin decir cuál es**: se conservan sus números y se borra su identidad.
+ *
+ * Es la respuesta al hallazgo crítico de la revisión de 2B: la hoja leía el equipo sin pasar por
+ * `canView`, así que el nombre y el identificador de un objeto que el listado del inventario
+ * escondía —uno `DM_ONLY`, o uno `SPECIFIC_PLAYERS` de otro jugador— salían igualmente en el
+ * cuadro de ataques, en los pasos de la traza y en los avisos.
+ *
+ * **No se quita del cálculo, se le quita el nombre**, y la diferencia importa: excluirlo daría
+ * una Clase de Armadura distinta a cada persona que mira la misma hoja, y entonces la hoja
+ * mentiría a alguien. Que el número siga viéndose ya estaba decidido y declarado (ficha I3 de
+ * `docs/06-pendientes.md`): la traza delataría la cifra de todas formas, y media ocultación es
+ * peor que ninguna porque parece completa.
+ */
+function redactado(item: ResolvedItem, indice: number): ResolvedItem {
+  return {
+    ...item,
+    // La referencia tampoco viaja: es el identificador de la fila que se está escondiendo. El
+    // índice la mantiene única dentro de esta hoja, que es lo único que necesita el cuadro de
+    // ataques para poder pedir su tirada.
+    ref: `CAMPAIGN:oculto-${indice}`,
+    name: "Objeto oculto",
+    description: undefined,
+  };
 }

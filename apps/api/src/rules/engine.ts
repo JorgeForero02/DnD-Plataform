@@ -432,8 +432,13 @@ function calcularPgMaximos(input: EngineInput, mods: Record<AbilityKey, number>)
  *
  * Existe para `resolve.ts`: `ResolvedBuild.speeds` es un mapa de números, no de `DerivedValue`
  * con traza (esa forma no cambia, la fija 2A.3), así que necesita el total ya aplicado el
- * equipo antes de que exista una hoja derivada. Reutiliza esta función en vez de sumar los
- * modificadores a mano — es la misma regla que `derive()`, y solo puede vivir en un sitio.
+ * equipo antes de que exista una hoja derivada.
+ *
+ * **Y es de verdad el único sitio donde vive esa regla**: `aplicar()` —el camino con traza—
+ * llama a esta función para el número y solo se ocupa de los pasos. La primera versión de este
+ * comentario decía «solo puede vivir en un sitio» mientras las dos funciones la implementaban
+ * por separado; lo cazó la auditoría de documentación de 2B, y se arregló el código en vez del
+ * comentario, que era lo que la frase prometía.
  */
 export function totalConModificadores(base: number, key: string, modifiers: Modifier[]): number {
   let total = base;
@@ -449,22 +454,25 @@ function aplicar(
   partida: { total: number; steps: TraceStep[] },
   modifiers: Modifier[],
 ): DerivedValue {
-  let total = partida.total;
   const steps = [...partida.steps];
+  let corriendo = partida.total;
 
   for (const m of modifiers.filter((m) => m.target === key && m.op === "add")) {
-    total += m.amount;
+    corriendo += m.amount;
     steps.push(paso("add", m.amount, m.sourceType, m.sourceKey, m.labelKey));
   }
   // El `override` va **al final y gana**, porque es lo que significa: la anulación manual del DM
   // no se suma a nada, sustituye el resultado. Si hay varios, gana el último — y eso es una
-  // decisión, no un accidente: el orden de la lista lo fija quien la construye.
+  // decisión, no un accidente: el orden de la lista lo fija quien la construye. El paso guarda
+  // el **delta** para que la traza siga sumando el total.
   for (const m of modifiers.filter((m) => m.target === key && m.op === "override")) {
-    steps.push(paso("override", m.amount - total, m.sourceType, m.sourceKey, m.labelKey));
-    total = m.amount;
+    steps.push(paso("override", m.amount - corriendo, m.sourceType, m.sourceKey, m.labelKey));
+    corriendo = m.amount;
   }
 
-  return { key, total, steps };
+  // **El número lo decide `totalConModificadores`, no este bucle.** Aquí se arman los pasos; la
+  // regla de qué gana vive una sola vez, y así las dos formas de preguntarla no pueden discrepar.
+  return { key, total: totalConModificadores(partida.total, key, modifiers), steps };
 }
 
 function paso(

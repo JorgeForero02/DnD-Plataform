@@ -62,7 +62,7 @@ por su cuenta**.
 | `dice` | Evaluador de expresiones de dados (2A.1). **Puro** | — |
 | `rules` | Motor de derivación de 5.ª edición (2A.2), catálogo SRD (2A.3), elecciones (2A.4) y, desde 2B, **los objetos**: `items.ts` traduce la lista cerrada de efectos a modificadores y fórmulas de CA —es su dueño único— y `attacks.ts` monta el cuadro de ataques. El núcleo es **puro**; `catalog.controller.ts` es la única puerta HTTP: `GET /catalog` sirve razas, subrazas, clases y armaduras para que la pantalla no las transcriba | autenticado (el SRD es el mismo para todas las campañas) |
 | `level-up` | Subida de nivel (2A.9): el servidor **propone un diff** y el jugador confirma. Siembra los recursos del nivel nuevo en la misma transacción | dueño o DM |
-| `campaign-items` | Los objetos propios de una campaña — el *homebrew* del DM (2B). Traduce sus filas a la misma forma que el catálogo del SRD, para que el motor no pueda saber de dónde salió un objeto | solo DM |
+| `campaign-items` | Los objetos propios de una campaña — el *homebrew* del DM (2B). Traduce sus filas a la misma forma que el catálogo del SRD, para que el motor no pueda saber de dónde salió un objeto | **DM para escribir; cualquier miembro lee**, filtrado por `canView` |
 | `inventory` | El inventario de un personaje, equipar, sintonizar y la bolsa (2B). Aquí viven las reglas de **ranura, manos y tope de tres sintonizaciones**; la base garantiza «una ranura, un objeto» con un índice único parcial | dueño o DM |
 | `rules-engine` | Reglas suceso–condición–efecto de la campaña (2A.16): alta, ensayo en seco, trazas y propuestas. **Escucha `game_event.recorded`** por un puente, en vez de que el log le llame | solo DM |
 

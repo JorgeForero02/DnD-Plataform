@@ -11,18 +11,21 @@
 //   node scripts/update-estado.mjs [root] --check    exit 1 if the file's block is stale,
 //                                                     without writing anything
 //
-// Counts are test *declarations*, not a live run of the suites. Every `it(`/`test(` at the
-// start of a line in this repo is exactly one reported test — nothing here uses `.each` (a
-// pattern that would make one declaration expand into several tests at run time) — so a
-// static count matches vitest/jest's own numbers exactly, for the cost of reading files
-// instead of running three suites. That matters for where this script's --check mode sits in
-// `pnpm verify`: right after `check:docs`, before the real `pnpm test` — both are meant to
-// fail fast and cheap, and re-running the suites here just to print a number `test` is about
-// to compute anyway would defeat that. The trade-off is honest, not free: if a suite ever
-// starts using `.each`, this count silently stops matching the runner's, and the *only* place
-// that shows is `--check` failing after someone runs `pnpm update:estado` and commits a
-// number that then disagrees with a fresh `pnpm test` — not a crash, just a future mismatch.
-// Grep for `.each(` under the three `src` roots below before trusting this comment.
+// Counts are test *declarations*, not a live run of the suites, and since 2026-09-03 that
+// sentence carries a caveat the earlier version of this comment got wrong.
+//
+// It used to say "nothing here uses `.each`", and invited the reader to grep before trusting
+// it. The grep now finds **more than forty** `it.each(`/`test.each(` blocks, and each of them
+// expands into several tests at run time. So the number below is a **lower bound**: a `.each`
+// block counts as the one declaration it is, never as the cases it runs. It is not the number
+// vitest/jest prints, and this block no longer claims to be.
+//
+// Why keep a static count at all: --check sits in `pnpm verify` right after `check:docs` and
+// before the real `pnpm test` — both are meant to fail fast and cheap, and re-running three
+// suites here to print a number `test` is about to compute anyway would defeat that. What it
+// protects is real: nobody can hand-edit the number in 00-INDEX.md without --check catching
+// it. What it does NOT protect is the number matching the runner's, and pretending otherwise
+// was worse than the gap itself. Ficha I9 of docs/06-pendientes.md carries the fix.
 //
 // docs/08-pruebas.md is where this project declares test counts belong (see
 // docs/04-convenciones.md and the root CLAUDE.md). For the unit counts specifically, this
@@ -64,11 +67,12 @@ const PACKAGES = [
   { name: "web", dir: "apps/web/src", suffixes: [".test.ts", ".test.tsx"] },
 ];
 
-// A test declaration: `it(` or `test(` at the start of a line (ignoring indentation). Written
-// this way, not just "contains it(", so a variable named `unitCount` or a prose sentence in a
-// fixture file cannot be mistaken for a test. `it.skip(`/`test.todo(` do NOT match — the "("
-// has to come right after the name — so a skipped test does not count as one that runs.
-const TEST_LINE_RE = /^\s*(it|test)\(/;
+// A test declaration: `it(`/`test(` — or `it.each(...)`/`test.each(...)`, which declare one
+// block that expands into several cases at run time and are counted once. Written anchored to
+// the start of the line, not just "contains it(", so a variable named `unitCount` or a prose
+// sentence in a fixture file cannot be mistaken for a test. `it.skip(`/`test.todo(` still do
+// NOT match, so a skipped test does not count as one that runs.
+const TEST_LINE_RE = /^\s*(it|test)(\.each|\()/;
 
 function walk(dir) {
   const out = [];
@@ -153,9 +157,13 @@ const block = [
   ">   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este",
   ">   commit ni esta rama, así que pueden quedar desactualizados varios commits — no",
   ">   necesariamente solo uno — sin que `check:estado` lo detecte.",
-  `> - **Pruebas unitarias:** ${total} (${detail}). Recuento por declaración, no por`,
-  ">   ejecución — ver el comentario al principio del script que lo genera. Los conteos de",
-  ">   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).",
+  `> - **Declaraciones de prueba unitaria:** ${total} (${detail}). **Es una cota inferior, no lo`,
+  ">   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no",
+  ">   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número",
+  ">   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice",
+  ">   `pnpm test`. Ver el comentario al principio del script, y la ficha I9 de",
+  ">   [06-pendientes.md](./06-pendientes.md). Los conteos de e2e están en",
+  ">   [08-pruebas.md](./08-pruebas.md).",
   END,
 ].join("\n");
 

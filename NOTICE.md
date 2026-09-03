@@ -33,7 +33,12 @@ privado suyo; lo que **este producto trae de serie** es solo SRD.
 
 ### Dónde está ese material en el repositorio
 
-- `apps/api/src/rules/catalog/` — razas, clases, armaduras y la tabla de competencia. Cada
+- `apps/api/src/rules/catalog/` — razas, clases, armaduras, la tabla de competencia, los
+  espacios de conjuro y, desde la fase 2B, **las armas (`weapons.ts`), el equipo de aventura
+  (`gear.ts`) y la puerta que los une (`items-srd.ts`)**. Los nombres de todo ello son los de la
+  **traducción oficial al español que publica Wizards**, no una traducción nuestra, y los pinta
+  la aplicación: el catálogo de objetos y el selector del inventario los enseñan por su nombre.
+  Cada
   fichero de datos lleva su cabecera de atribución apuntando aquí, y hay una prueba
   (`catalog.spec.ts`) que **falla si alguna la pierde**. La lista de ficheros que recorre esa
   prueba **se mantiene a mano**, y por eso hay que ampliarla al añadir datos nuevos: hasta el

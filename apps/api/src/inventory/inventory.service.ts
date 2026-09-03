@@ -294,9 +294,29 @@ export class InventoryService {
       );
     }
     if (placement.attuned && !row.attuned) {
-      await this.ensureAttunementAllowed(characterId, campaignId, rowId);
+      // **Sintonizar se serializa por personaje.** Contar las sintonizadas y escribir después es
+      // una carrera: dos peticiones simultáneas pasan las dos el tope y dejan cuatro objetos
+      // sintonizados, que es justo lo que el SRD prohíbe. A diferencia de la ranura, esto no lo
+      // puede garantizar un índice —el tope es sobre un conteo, no sobre una fila—, así que se
+      // bloquea la fila del personaje, que es lo que ordena todas las sintonizaciones suyas.
+      // Lo encontró la revisión de 2B.
+      return this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
+        await this.ensureAttunementAllowed(characterId, campaignId, rowId, tx);
+        return this.escribirColocacion(tx, rowId, placement, input);
+      });
     }
 
+    return this.escribirColocacion(this.prisma, rowId, placement, input);
+  }
+
+  /** La escritura, compartida por el camino normal y por el que se serializa para sintonizar. */
+  private async escribirColocacion(
+    client: PrismaService | Prisma.TransactionClient,
+    rowId: string,
+    placement: Placement,
+    input: UpdateInventoryItemInput,
+  ) {
     const data: Prisma.InventoryItemUpdateInput = {
       location: placement.location,
       slot: placement.slot,
@@ -307,7 +327,7 @@ export class InventoryService {
     };
 
     try {
-      return await this.prisma.inventoryItem.update({ where: { id: rowId }, data });
+      return await client.inventoryItem.update({ where: { id: rowId }, data });
     } catch (error) {
       throw this.translateSlotConflict(error);
     }
@@ -356,18 +376,29 @@ export class InventoryService {
       if (delta !== undefined && delta !== 0) deltas[key] = delta;
     }
 
-    for (const key of COIN_KEYS) {
-      const delta = deltas[key];
-      if (delta === undefined) continue;
-      const remaining = character[key] + delta;
-      if (remaining < 0) {
-        throw new BadRequestException(
-          `No hay suficiente ${key.toUpperCase()} en la bolsa: quedarían ${remaining}.`,
-        );
-      }
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      // **La fila se bloquea antes de mirar el saldo.** La primera versión comprobaba el saldo
+      // sobre una lectura de fuera de la transacción y escribía con `increment`: con 30 de oro,
+      // dos peticiones de −20 a la vez pasaban las dos la comprobación y la bolsa acababa en
+      // −10, rompiendo el mínimo que el propio esquema declara. Es el mismo `FOR UPDATE` que
+      // usan los puntos de golpe, y por el mismo motivo. Lo encontró la revisión de 2B.
+      const filas = await tx.$queryRaw<
+        Character[]
+      >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+      const bloqueado = filas[0];
+      if (!bloqueado) throw new NotFoundException("Character not found");
+
+      for (const key of COIN_KEYS) {
+        const delta = deltas[key];
+        if (delta === undefined) continue;
+        const remaining = bloqueado[key] + delta;
+        if (remaining < 0) {
+          throw new BadRequestException(
+            `No hay suficiente ${key.toUpperCase()} en la bolsa: quedarían ${remaining}.`,
+          );
+        }
+      }
+
       const data: Prisma.CharacterUpdateInput = {};
       for (const key of Object.keys(deltas) as CoinKey[]) {
         data[key] = { increment: deltas[key] };
@@ -460,8 +491,9 @@ export class InventoryService {
     characterId: string,
     campaignId: string,
     excludeRowId?: string,
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    const attunedRows = await this.prisma.inventoryItem.findMany({
+    const attunedRows = await client.inventoryItem.findMany({
       where: {
         characterId,
         attuned: true,

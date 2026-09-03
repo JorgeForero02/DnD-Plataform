@@ -39,6 +39,9 @@ describe("InventoryService", () => {
       delete: jest.fn(),
     },
     campaignItem: { findFirst: jest.fn() },
+    // La bolsa bloquea la fila del personaje antes de mirar el saldo (`FOR UPDATE`), como hacen
+    // los puntos de golpe: el Prisma simulado devuelve el personaje que la prueba haya puesto.
+    $queryRaw: jest.fn(),
     $transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
@@ -60,6 +63,10 @@ describe("InventoryService", () => {
     prisma.character.findFirst.mockResolvedValue(character);
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    prisma.$queryRaw.mockImplementation(async () => {
+      const actual = await prisma.character.findFirst.mock.results.at(-1)?.value;
+      return actual ? [actual] : [];
+    });
   });
 
   // Una fila de inventario cualquiera, con un objeto del SRD.
@@ -205,7 +212,10 @@ describe("InventoryService", () => {
 
       await expect(
         service.update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED", slot: "MAIN_HAND" }),
-      ).rejects.toMatchObject({ status: 409 });
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { message: expect.stringContaining("La ranura ya la ocupa") },
+      });
       expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
     });
 
@@ -234,9 +244,16 @@ describe("InventoryService", () => {
           row({ id: "row1", srdKey: "greatsword", location: "EQUIPPED", slot: "MAIN_HAND" }),
         ); // MAIN_HAND ocupada por el mandoble
 
+      // **Se comprueba el MENSAJE, no solo el 409.** Con el Prisma simulado, que ignora el
+      // `where`, un 409 a secas también lo produce la comprobación genérica de «esa ranura está
+      // ocupada»: borrar entera la regla de manos dejaba la prueba en verde. El mensaje es lo
+      // único que distingue qué comprobación saltó. Lo encontró la revisión de 2B.
       await expect(
         service.update("owner1", "cmp1", "c1", "row2", { location: "EQUIPPED", slot: "OFF_HAND" }),
-      ).rejects.toMatchObject({ status: 409 });
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { message: expect.stringContaining("no queda hueco para la mano izquierda") },
+      });
       expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
     });
 
@@ -248,9 +265,15 @@ describe("InventoryService", () => {
           row({ id: "row2", srdKey: "shield", location: "EQUIPPED", slot: "OFF_HAND" }),
         ); // OFF_HAND ocupada por el escudo
 
+      // **El mensaje, no solo el 409**: el Prisma simulado ignora el `where`, así que la
+      // comprobación genérica de ranura ocupada produce el mismo código. Sin esta cadena, borrar
+      // entera la regla de manos dejaba la prueba en verde (revisión de 2B).
       await expect(
         service.update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED", slot: "MAIN_HAND" }),
-      ).rejects.toMatchObject({ status: 409 });
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { message: expect.stringContaining("necesita las dos manos libres") },
+      });
       expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
     });
 
@@ -413,7 +436,17 @@ describe("InventoryService", () => {
         where: { id: "c1" },
         data: { gp: { increment: 5 } },
       });
-      expect(events.record).toHaveBeenCalled();
+      // **La carga, no el espía.** La regla declarada es «los deltas por denominación, no un
+      // total»: cambiar `...deltas` por los totales de la fila dejaba esto en verde y el log
+      // inservible para sumar.
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({ type: "MONEY_CHANGED", gp: 5 }),
+        }),
+        expect.anything(),
+      );
       expect(res.gp).toBe(25);
     });
 

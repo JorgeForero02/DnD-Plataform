@@ -72,8 +72,11 @@ datos:
   Zod.
 - **El peso en onzas (`weightOz`) y el precio en cobres (`costCp`), enteros.** Es el mismo
   principio que los pies de la especificación de distancias: la unidad íntegra abajo, la legible
-  arriba. En libras el SRD tiene fracciones y una moneda pesa ⅓ de onza; en onzas todo es entero,
-  y un entero no acumula error al sumar sesenta filas de mochila.
+  arriba. **En libras, los pesos del SRD tienen fracciones (¼ de libra); en onzas son enteros**, y
+  un entero no acumula error al sumar sesenta filas de mochila. **La excepción es la moneda**, que
+  pesa ⅓ de onza y por tanto no es entera ni en onzas: el peso del dinero se redondea al sumarlo
+  (`COIN_WEIGHT_OZ`), y decir «en onzas todo es entero» —como decía la primera versión de esta
+  frase, usando la moneda como ejemplo— era justo el contraejemplo.
 - **El sitio del objeto es un enum de tres —`EQUIPPED`, `CARRIED`, `STORED`— y la sintonización
   es un booleano aparte.** El informe de huecos proponía `CARRIED | EQUIPPED | ATTUNED`, pero un
   anillo sintonizado **está** equipado: con un solo enum habría que elegir cuál de las dos

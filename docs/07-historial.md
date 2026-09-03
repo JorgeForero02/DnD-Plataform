@@ -17,7 +17,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ## 2026-09-03 (noche) — Fase 2B: objetos, inventario, equipar, y el cuadro de ataques que faltaba
 
-**Qué.** Un objeto deja de ser texto. Hay catálogo del SRD 5.1 (34 armas, 18 de equipo, las
+**Qué.** Un objeto deja de ser texto. Hay catálogo del SRD 5.1 (35 armas, 18 de equipo, las
 armaduras con su peso y su precio), objetos propios de cada campaña que escribe el DM,
 inventario por personaje con **tres sitios** —equipado, encima, guardado en otro sitio—, ranuras,
 manos, sintonización con tope de tres, dinero en las cinco monedas, y peso transportado. Lo
@@ -30,11 +30,11 @@ la tirada de ataque o la de daño.
 en pantalla, que es peor que ninguna porque parece completa (ficha M19). Y el hueco del
 inventario llevaba desde 2A rotulado y vacío, con la CA calculándose sin equipo.
 
-**Cómo se trabajó.** Nueve agentes en paralelo en dos tandas de cinco y tres —catálogo, efectos y
+**Cómo se trabajó.** Ocho carriles en dos tandas —cinco y tres— —catálogo, efectos y
 motor, objetos de campaña, inventario, ataques; luego inventario en pantalla, catálogo en
 pantalla y la hoja—, con la frontera de ficheros escrita en cada encargo. Los contratos de
 `packages/shared`, las migraciones, el cableado, las corridas de e2e y esta documentación las
-escribió el orquestador. **Prueba de mutación por comportamiento nuevo en los nueve carriles**, y
+escribió el orquestador. **Prueba de mutación por comportamiento nuevo en los ocho carriles**, y
 ninguno la dio por buena sin ver la prueba roja.
 
 ### Los dos defectos que solo la integración podía encontrar, los dos silenciosos
@@ -70,11 +70,15 @@ campo, y la traza delataría el número igual) y la penalización por sobrecarga
 variante del SRD y necesita un interruptor por campaña). Fichas I1–I8 de
 [06-pendientes.md](./06-pendientes.md).
 
-**Cómo revertir.** `git revert` de los commits de la jornada. Las migraciones nuevas
-—`items_inventory_and_money`, `inventory_one_item_per_slot`, `money_changed_event`— crean tablas
-y un valor de enumeración que **nada en producción referencia todavía**: revertirlas es
-`prisma migrate resolve --rolled-back` y dejar caer las tablas. Ningún dato de la fase 1 ni de
-2A cambia de forma.
+**Cómo revertir.** `git revert` de los commits de la jornada. Las tres migraciones nuevas
+—`items_inventory_and_money`, `inventory_one_item_per_slot`, `money_changed_event`— crean dos
+tablas, una de concesiones, un índice y un valor de enumeración que **nada en producción
+referencia todavía** (deja de ser cierto en cuanto se despliegue y alguien mueva una moneda).
+Revertirlas es `prisma migrate resolve --rolled-back`, dejar caer esas tablas **y quitar de
+`Character` las cinco columnas de moneda** (`cp`, `sp`, `ep`, `gp`, `pp`): esa tabla es de la
+fase 1 y **sí** cambia de forma — la primera versión de este párrafo decía que no cambiaba
+ninguna, y es la frase que alguien lee bajo presión en mitad de un rollback. Ningún dato
+existente se reescribe.
 
 ## 2026-09-03 — El prototipo, tomado en serio, y un intermitente que era el limitador
 

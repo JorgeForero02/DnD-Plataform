@@ -27,10 +27,16 @@
 **Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
 `pnpm update:estado` y `pnpm verify` falla si no coincide.
 
-**E2e**, medidos el 2026-09-02 al cerrar la fase 2A entera: **116 e2e de API** en 22 suites y
-**61 recorridos de navegador** en 14 especificaciones, todos verdes. Las suites de API nuevas del
+**E2e**, medidos el 2026-09-03 corriendo las dos suites: **121 e2e de API** en 23 suites y
+**61 recorridos de navegador** en 14 especificaciones, todos verdes.
+
+> La cifra de API decía **116 en 22 suites** y llevaba un día siendo falsa: faltaba
+> `rate-limit.e2e-spec.ts`. Lo encontró una auditoría, no un control — y **este documento es la
+> fuente única declarada de ese número**, así que `check:docs` prohíbe repetirlo en otro sitio y
+> no había ningún otro lugar donde el lector pudiera cazar el error. La única defensa de una
+> fuente única es mirarla de vez en cuando; ninguna expresión regular sabe cuántas suites hay. Las suites de API nuevas del
 día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
-`game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (6),
+`game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (7),
 `catalog-y-velocidad` (4) y **`partida` (12), que
 es la prueba de integración que juega una sesión entera** y no se parece a las demás. Uno de
 los de `game-state` —«arrancar una segunda sesión en la misma
@@ -43,6 +49,16 @@ Postgres, y el Prisma simulado de las unitarias no valida SQL.
 > fila lleva a una página de lectura y el editor se abre desde ella, de modo que el recorrido
 > tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
 > sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
+
+> **Dos especificaciones de navegador que no estaban documentadas (2026-09-03).**
+> `armazon.spec.ts` mide las tres cosas que el autor señaló mirando el prototipo y que `jsdom`
+> no puede ver: que **el pie se apoya en el borde inferior** aunque la pantalla tenga poco
+> contenido, que **ninguna entrada del carril va sin su icono**, y que la marca dice lo que debe.
+> `capturas-comparacion.spec.ts` no afirma nada: **fotografía nuestras pantallas** en tema
+> oscuro con contenido de ejemplo, para poder ponerlas al lado de las del prototipo. Se conserva
+> porque montar una campaña con contenido a mano cada vez que hay que comparar cuesta más que
+> tenerlo escrito, y porque las dos rondas de interfaz que salieron bien empezaron mirando las
+> dos capturas juntas.
 
 > **Un intermitente que parecía un defecto y era el limitador de peticiones (2026-09-03).**
 > La suite empezó a fallar en sitios distintos en cada vuelta: un personaje que no aparecía en
@@ -234,8 +250,10 @@ suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" r
   visibilidad, comprobando que el editor se cierra y la entidad aparece con su `DM_ONLY`.
 - **Salir cierra la sesión** y volver a la ruta protegida a mano devuelve a `/login`.
 - **Modo edición del editor de entidades, con enlaces y comentarios reales** (1.12b-fix):
-  crea dos NPCs, abre uno pulsando su fila (el único paso que activa `isEdit && entity` en
-  `EntityEditor.tsx` y monta `LinksPanel`/`CommentThread`), comprueba que los dos paneles se
+  crea dos NPCs y abre uno pulsando su fila. **Desde el reseño del 2026-09-02 la fila lleva a
+  la página de lectura** (`pages/EntityDetailPage.tsx`), y es ahí donde se montan `LinksPanel` y
+  `CommentThread`; este párrafo decía que el único camino era el modo edición de
+  `EntityEditor.tsx`, que hoy solo los nombra en comentarios. Comprueba que los dos paneles se
   pintan, enlaza el NPC con el otro y ve el enlace aparecer en la lista, y publica un
   comentario y lo ve aparecer con su texto. Es la prueba que faltaba: la tanda anterior de
   1.12b tenía cobertura de componente para los dos paneles pero **ningún** recorrido de

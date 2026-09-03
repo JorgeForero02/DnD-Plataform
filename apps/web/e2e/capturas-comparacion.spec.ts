@@ -5,7 +5,12 @@ import { test, expect, type Page } from "@playwright/test";
 // volver a montar una campaña con contenido a mano cada vez que hay que comparar cuesta más que
 // tenerlo escrito.
 //
-// Se salta en la suite normal: `pnpm --filter @dnd/web e2e --grep capturas` para ejecutarla.
+// **Corre con la suite entera**, y es a propósito: cuesta veinte segundos y garantiza que el
+// guion de capturas sigue funcionando el día que haga falta comparar. Para lanzarla sola:
+// `SALIDA_CAPTURAS=<carpeta> pnpm --filter @dnd/web exec playwright test e2e/capturas-comparacion.spec.ts`.
+//
+// Aquí ponía «se salta en la suite normal» y era falso: no hay ningún `test.skip` en este
+// fichero. Lo encontró una auditoría.
 
 const SALIDA = process.env.SALIDA_CAPTURAS ?? "capturas";
 

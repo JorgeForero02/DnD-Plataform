@@ -110,11 +110,14 @@ haga.
 
 **3 · Lo que 2A.5 no traía**, y llegó el mismo día con 2A.6, 2A.7 y 2A.8: `currentHp`, `tempHp`,
 los recursos consumibles y las condiciones. Están todos en el esquema **y todos tienen pantalla
-desde 2A.10** (`apps/web/src/features/character-sheet/`). Lo que **no** tiene pantalla es el
-estado de sesión, el log, los avisos, las marcas y conjuntos: existen por HTTP y se prueban por
-e2e, pero hoy solo se usan con un cliente HTTP (ficha **D9** de
-[06-pendientes.md](./06-pendientes.md)). En la práctica, eso significa que **todos los sucesos
-se escriben hoy fuera de sesión**, porque no hay botón que la empiece.
+desde 2A.10** (`apps/web/src/features/character-sheet/`). **El estado de sesión y el registro también la tienen desde el 2026-09-02**
+(`apps/web/src/features/sessions/` y la ruta `/campaigns/:id/sesion`): hay barra de «en juego»,
+mesa con elenco y registro en vivo, y botones para empezar y cerrar. Hasta ese día no los había,
+y por eso **los sucesos se escribían fuera de sesión** — la ficha **D9**, ya cerrada.
+
+Lo que sigue **sin** pantalla, y esto sí es cierto hoy, son **los avisos y las marcas y
+conjuntos**: existen por HTTP, se prueban por e2e y solo se usan con un cliente HTTP. No hay
+`features/notifications` ni pantalla de estado del mundo.
 
 **4 · `Character.overrides`** (2026-09-02, migración `character_manual_overrides`). Anulaciones
 manuales del DM sobre valores **derivados**: `{ "ac": 18 }`. Es la válvula de escape de «se

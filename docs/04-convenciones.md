@@ -374,6 +374,15 @@ dependiente del entorno, con el valor real intacto en todo entorno que importa:
 - **Documentado en `.env.example`**, dejando explícito que existe solo para el problema de IP
   compartida de la suite de navegador y que nunca debe subirse en producción.
 
+
+**El mismo trato para el límite global (2026-09-03).** `RATE_LIMIT` sube el tope de **todas** las
+rutas —100 por IP y minuto— y existe por la misma razón y con la misma regla: la suite de
+navegador dispara cientos de peticiones legítimas desde `127.0.0.1`, y con el valor de producción
+la API empezaba a devolver **429** a mitad de recorrido. El síntoma engaña: **el fallo cambia de
+sitio en cada vuelta**, así que parece código frágil y no lo es. Se fija **solo** en
+`apps/web/playwright.config.ts`; un valor vacío o mal escrito cae al de producción, nunca a «sin
+límite», y hay pruebas que lo fijan.
+
 ## Trabajo con varios agentes a la vez
 
 Escrito el 2026-09-01, después de una sesión con hasta cinco agentes en paralelo sobre este
@@ -397,9 +406,17 @@ mala suerte habría sido una edición perdida.
 CSS y dejó un `dist/` sin rastrear. El encargo de revisión dice explícitamente: no commitear, no
 editar, y si se compila para diagnosticar, limpiar después.
 
-**Playwright y los e2e de API se serializan mientras los puertos y la base sean globales.** Dos
-corridas a la vez dan fallos falsos — ya costó una tanda de cuatro. Cuando exista la ranura por
-worktree (puertos y base de datos propios), esta regla se sustituye por "cada carril, su ranura".
+**Playwright y los e2e de API los corre el orquestador, nunca los agentes.** Dos corridas a la
+vez dan fallos falsos — ya costó una tanda de cuatro.
+
+**La ranura por worktree ya existe** desde el 2026-09-01 (`scripts/worktree-slot.mjs`,
+`pnpm db:slot`, sección «Trabajar en paralelo» de [02-entorno.md](./02-entorno.md)): cada carril
+puede tener sus puertos y su base. Aquí ponía «cuando exista la ranura, esta regla se sustituye
+por *cada carril, su ranura*», y la condición se cumplió hace días sin que nadie actualizara la
+frase. **Aun así la serialización se mantiene**, y por un motivo distinto del original: con
+varios agentes trabajando el mismo árbol, quien corre la suite tiene que ver el árbol **entero**
+para que un fallo signifique algo. Cuando cada carril viva en su propio worktree, entonces sí:
+cada uno su ranura.
 
 **Techo de cinco agentes.** Por encima, las compilaciones se comen la máquina y el cuello deja de
 ser el modelo. La recomendación general es 3-5; cinco es sostenible en un equipo con 32 GB.

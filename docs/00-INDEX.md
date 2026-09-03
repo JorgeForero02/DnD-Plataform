@@ -27,6 +27,7 @@ limitado a SRD 5.1 / OGL.
 | [07-historial.md](./07-historial.md) | Qué se entregó, por qué y cómo revertirlo |
 | [09-primera-partida.md](./09-primera-partida.md) | **Cómo jugar la primera sesión, qué no se puede hacer todavía y qué anotar.** Es la puerta de salida de la fase 1 |
 | [08-pruebas.md](./08-pruebas.md) | **Estrategia de pruebas completa.** Qué prueba cada capa, qué NO cubre, y la regla de Playwright. Léelo antes de dar una tarea por terminada |
+| [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial anterior al 2026-09-02 y los pendientes ya cerrados. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** |
 | [plataforma-dnd-documentacion.md](./plataforma-dnd-documentacion.md) | Documento fuente original del producto (visión, alcance por fases) |
 | [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
 
@@ -59,6 +60,11 @@ limitado a SRD 5.1 / OGL.
 | `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
 | `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
 | `superpowers/notes/2026-09-03-prompt-arranque-fase-2B.md` | **El prompt con el que arranca la sesión de la fase 2B**: qué construir, cómo trabajar, las trampas que ya costaron horas y lo que NO hay que hacer. Se copia y se pega |
+| `superpowers/plans/2026-09-02-plan-adopcion-interfaz.md` | **Continúa la ronda de interfaz**: adopta lo que volvió de la maqueta y añade la mesa de juego, bloqueada por una decisión del autor |
+| `superpowers/specs/2026-09-02-prompt-figma-make.md` | **El encargo a Figma Make**: 40 pantallas en seis entregas, con la paleta exacta y las reglas vinculantes |
+| `superpowers/specs/2026-09-02-figma-make-revision.md` | **Lo que volvió, medido en un navegador**: qué copiar, qué no y por qué, y la pantalla de juego que no trae |
+| `superpowers/specs/2026-09-02-mesas-virtuales-estudio.md` | **Cómo resuelven las mesas virtuales la niebla, el movimiento, los formatos y el móvil.** Su hallazgo: ninguna filtra posiciones en el servidor |
+| `superpowers/specs/2026-09-02-pruebas-de-integracion-propuesta.md` | Propuesta de pruebas de integración |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
 
 > El ledger y este `07-historial.md` cuentan lo mismo a distinta resolución: el ledger es
@@ -86,12 +92,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `dd3b789` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `072b87e` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Pruebas unitarias:** 995 (shared 20, api 462, web 513). Recuento por declaración, no por
+> - **Pruebas unitarias:** 996 (shared 20, api 462, web 514). Recuento por declaración, no por
 >   ejecución — ver el comentario al principio del script que lo genera. Los conteos de
 >   e2e, que esto no genera, están en [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

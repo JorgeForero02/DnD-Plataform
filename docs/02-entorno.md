@@ -33,6 +33,8 @@ pnpm dev:web                                  # web en :5173, proxy /api -> :300
 | `API_URL` | **Solo web en producción**: destino interno del proxy nginx | `http://api:3000` |
 | `CORS_ORIGIN` | Orígenes permitidos, separados por coma. **Vacío = sin CORS**, que es lo normal: Vite y nginx sirven `/api` en el mismo origen | *(vacío)* |
 | `TRUST_PROXY` | **Número de saltos de proxy de confianza**, no un booleano. `0` o vacío = ninguno | `0` |
+| `AUTH_RATE_LIMIT` | Sube el tope de las rutas de autenticación (5/min). **Existe solo para la suite de navegador** y nunca se pone en producción: es la protección contra fuerza bruta | *(vacío)* |
+| `RATE_LIMIT` | Sube el tope **global** (100/min, todas las rutas). Mismo motivo y misma regla: solo la suite de navegador, que dispara cientos de peticiones legítimas desde una IP. Un valor vacío o mal escrito cae al de producción, nunca a «sin límite» | *(vacío)* |
 
 > **`TRUST_PROXY` no es `true`/`false`, y la diferencia es una vulnerabilidad, no un estilo.**
 > Con `trustProxy: true` Fastify se queda con la entrada **más a la izquierda** de

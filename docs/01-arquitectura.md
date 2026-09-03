@@ -127,7 +127,7 @@ las reglas vinculantes de [04-convenciones.md](./04-convenciones.md), y repetirl
 como empiezan a discrepar. `IdentidadEditable.tsx` las usa para raza, subraza, clase, nivel y
 las seis características, y sustituyó al antiguo `EditorFicha.tsx`, que ya no existe.
 
-**Los iconos de línea viven en `ui/Iconos.tsx`**, dibujados en SVG. `features/links/relaciones.ts`
+**`ui/Iconos.tsx` es la casa común de los iconos de línea**, y cada módulo grande dibuja los suyos —`features/rules/`, `features/sessions/`, `features/entities/`, `features/campaigns/`, `features/rolls/`, `features/level-up/`—: lo que la regla exige es que sean **dibujados**, no que vivan en un único fichero (ver [04-convenciones.md](./04-convenciones.md)), dibujados en SVG. `features/links/relaciones.ts`
 guarda las relaciones sugeridas por par de tipos y su lectura invertida, que es lo que permite
 que un enlace entrante se lea «vive aquí» sin inventarse el inverso de una frase libre.
 
@@ -154,7 +154,6 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 | `/` | Panel de campañas |
 | `/campaigns/:id` | Campaña. La **sección abierta viaja en `?seccion=`**, así que es enlazable y sobrevive a una recarga |
 | `/campaigns/:id/sesion` | **La mesa**: elenco con asistencia, registro en vivo con sus sellos rápidos y consulta del mundo, para la partida en marcha |
-| `/campaigns/:id/sesion` | **La mesa**: elenco con asistencia, registro en vivo con sus sellos rápidos y consulta del mundo, para la partida en marcha |
 | `/campaigns/:id/entidades/:entityId` | **Lectura** de una ficha del mundo: cuerpo en vitela, relaciones y comentarios |
 | `/campaigns/:id/personajes/:characterId` | Hoja de personaje con la forma de 5.ª edición |
 | `/account`, `/join/:token`, `/design-tokens`, `*` | Cuenta, invitación, control de tokens y 404 |
@@ -175,7 +174,11 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 Todas las pantallas con armazón comparten `ui/AppShell.tsx` —panel, campaña, entidad, personaje
 y `/acerca-de`, que además es **pública**—: cabecera global, migas y una medida máxima. Eran
 «las tres primeras» y son cinco; y como `LegalNotice` viaja dentro de `AppShell`, la atribución
-del SRD la llevan también las públicas que lo montan, no solo las que exigen sesión. **Editar es un diálogo que se abre desde la lectura**, nunca la puerta de entrada.
+del SRD la llevan también las públicas que lo montan, no solo las que exigen sesión. **Y se toca donde se lee**: no hay
+diálogo de edición, ni botón que lo abra. Aquí ponía «editar es un diálogo que se abre desde la
+lectura, nunca la puerta de entrada», y **`04-convenciones.md` derogó esa regla la noche del
+2026-09-02** al perder la hoja sus dos botones de «Editar»; este documento se quedó contándolo,
+así que los dos que gobiernan la interfaz decían lo contrario el uno del otro.
 
 **Cómo la web resuelve quién es y qué rol tiene (tarea 1.15, corregido en 1.15-fix):** el
 token sobrevive a una recarga en `localStorage`, pero el usuario solo vivía en memoria —

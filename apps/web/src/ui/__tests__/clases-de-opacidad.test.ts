@@ -17,11 +17,15 @@ import { join } from "node:path";
 //   · el relleno del distintivo «Solo DM» no existía, y su comentario afirmaba que el tinte
 //     «está medido, no supuesto» — la prueba de contraste medía un fondo que no se pintaba.
 //
-// Esta prueba existe para que no vuelva a pasar en silencio, y hace dos cosas que ninguna
-// unitaria puede: **lee el CSS que el navegador de verdad recibió** y comprueba que las
-// utilidades existen, y **barre el código fuente** buscando la clase prohibida. Las dos redes
-// hacen falta: la primera caza una clase que se usa y no pinta; la segunda, una reintroducida
-// en una pantalla que ningún recorrido monta.
+// **Esta prueba hace UNA cosa: barrer el código fuente** buscando la clase prohibida, y así
+// caza una reintroducida en una pantalla que ningún recorrido monta. La otra mitad de la red
+// —comprobar que la utilidad **llega al CSS y pinta**— vive en
+// `apps/web/e2e/clases-que-si-pintan.spec.ts`, porque necesita un navegador: `jsdom` no
+// resuelve una clase de Tailwind hasta un color.
+//
+// Esta cabecera llegó a decir que hacía las dos, y era falso: el fichero tiene un solo `it`.
+// Lo encontró una auditoría, no un fallo — un comentario que promete de más es una mentira que
+// ninguna suite puede poner en rojo.
 
 const SRC = join(process.cwd(), "src");
 

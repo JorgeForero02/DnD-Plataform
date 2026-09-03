@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { render, screen } from "@testing-library/react";
 import { IconoConfirmacion, IconoAviso, IconoRombo } from "../Iconos";
@@ -25,26 +26,58 @@ function rutaDe(relativa: string) {
   return fileURLToPath(new URL(relativa, import.meta.url));
 }
 
-/** Los ficheros que Q1 limpió. Si alguno vuelve a llevar un glifo, esto se pone rojo. */
-const FICHEROS_LIMPIADOS = [
-  "../Iconos.tsx",
-  "../Field.tsx",
-  "../Ornament.tsx",
-  "../../features/invites/InvitePanel.tsx",
-  "../../pages/AccountPage.tsx",
-  "../../pages/LoginPage.tsx",
-  "../../features/character-sheet/Condiciones.tsx",
-];
+/** Todo `.ts`/`.tsx` bajo `src/`, menos las pruebas. */
+function ficherosDeFuente(dir: string): string[] {
+  const salida: string[] = [];
+  for (const nombre of readdirSync(dir)) {
+    const completo = join(dir, nombre);
+    if (statSync(completo).isDirectory()) {
+      if (nombre !== "__tests__") salida.push(...ficherosDeFuente(completo));
+    } else if (/\.tsx?$/.test(nombre)) {
+      salida.push(completo);
+    }
+  }
+  return salida;
+}
+
+/**
+ * **La excepción declarada, y la única.** Los cinco glifos de `ui/Badge.tsx` (`○ ◐ ◈ ◆ ●`) son
+ * geometría pura, se alinean con el texto y distinguen los niveles de visibilidad sin depender
+ * del color. `04-convenciones.md` los nombra uno a uno.
+ */
+const EXCEPCION_DECLARADA = "Badge.tsx";
 
 describe("Iconos — la regla de que los iconos se dibujan", () => {
-  it.each(FICHEROS_LIMPIADOS)("%s no contiene ningún glifo de fuente prohibido", (relativa) => {
-    const fuente = readFileSync(rutaDe(relativa), "utf8");
-    // Se comprueban uno a uno para que el fallo diga *cuál* volvió, no solo que algo volvió.
-    for (const glifo of GLIFOS_PROHIBIDOS) {
-      expect(`${relativa} contiene ${glifo}: ${fuente.includes(glifo)}`).toBe(
-        `${relativa} contiene ${glifo}: false`,
-      );
+  // **Se barre `src/` entero, y no una lista escrita a mano.** Hasta el 2026-09-03 esto
+  // recorría siete ficheros «los que Q1 limpió», mientras `04-convenciones.md` prometía cazar
+  // «uno reintroducido donde ninguna prueba monta el componente». De las siete casas de iconos
+  // que el documento enumera, **cinco no se barrían nunca**, ni tampoco las dos nuevas de
+  // `features/entities/` y `features/campaigns/`. La red existía y no era la que se anunciaba;
+  // lo encontró una auditoría, no un fallo. Una lista a mano de algo que crece con cada pantalla
+  // caduca sola — como ya caducó dos veces el censo de `useMyRole`.
+  //
+  // Los comentarios sí pueden nombrar los glifos: media docena de ficheros explican esta regla
+  // citándolos, y prohibirlo obligaría a escribir la regla sin poder mostrar qué prohíbe.
+  it("ningún glifo de fuente vuelve al código como icono", () => {
+    const culpables: string[] = [];
+    for (const fichero of ficherosDeFuente(rutaDe("../.."))) {
+      if (fichero.endsWith(EXCEPCION_DECLARADA)) continue;
+      readFileSync(fichero, "utf8")
+        .split(/\r?\n/)
+        .forEach((linea, i) => {
+          // Se quita el comentario, empiece como empiece: `//`, `/*`, la continuación `*` de un
+          // bloque, y **`{/*`, que es como se comenta dentro de JSX** — ese último faltaba, y el
+          // único culpable que encontró el primer barrido fue precisamente un comentario de
+          // `ThemeToggle.tsx` que cita los dos glifos que sustituyó.
+          const codigo = linea.replace(/^\s*(\{?\/[/*]|\*).*/, "");
+          for (const glifo of GLIFOS_PROHIBIDOS) {
+            if (codigo.includes(glifo)) {
+              culpables.push(`${fichero.split("src")[1]}:${i + 1}  ${glifo}`);
+            }
+          }
+        });
     }
+    expect(culpables).toEqual([]);
   });
 
   it.each([

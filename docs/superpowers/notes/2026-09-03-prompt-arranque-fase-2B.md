@@ -115,8 +115,16 @@ que no la empieces a que la dejes a medias.
 ## Lo que NO tienes que hacer
 
 - **Nada de despliegue** salvo petición explícita.
-- **Nada de fidelidad visual con el prototipo.** Queda pendiente a propósito: el autor quiere que
-  se parezca más, y eso es una ronda propia. Está anotado en `docs/06-pendientes.md`.
+- **No retoques el acabado visual de las pantallas que ya existen.** Que se parezcan más al
+  prototipo es una ronda propia, anotada como P1 en `docs/06-pendientes.md`, y su primer paso es
+  un inventario de diferencias, no arreglos a ojo.
+
+  **Ojo, que no es lo mismo:** el prototipo **sí es revisión obligatoria de toda pantalla nueva y
+  de la navegación** —`https://sunny-glaze-58905833.figma.site/`, regla vinculante en
+  `docs/04-convenciones.md`—, y 2B trae pantallas nuevas: el inventario, la ficha de un objeto,
+  el catálogo. **Míralo antes de dibujarlas**, no para copiarlo tal cual sino para no inventarte
+  una forma distinta habiendo una decidida. Se abre con el Chromium de Playwright ya instalado, y
+  `apps/web/e2e/capturas-comparacion.spec.ts` fotografía las nuestras para poder compararlas.
 - **No abras las decisiones D1–D4** (contenido fuera del SRD, editor de documentos, alcance de la
   línea de tiempo, la mesa de juego con mapa): son del autor y siguen sin respuesta.
 

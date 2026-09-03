@@ -170,6 +170,29 @@ Cada una nació de un defecto real, encontrado en producción o señalado por el
 escriben aquí porque **volvieron a aparecer más de una vez**: una regla que solo vive en la
 cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 
+> ## El prototipo es revisión obligatoria de toda pantalla nueva y de la navegación
+>
+> **`https://sunny-glaze-58905833.figma.site/`** — decisión del autor, 2026-09-03.
+>
+> **Antes de dibujar una pantalla que no existe, o de tocar cómo se navega entre ellas, hay que
+> mirar el prototipo.** No para copiarlo tal cual: para no inventarse una forma distinta cuando
+> ya hay una decidida. La aplicación tiene hoy carril agrupado, tarjetas con banda de cabecera,
+> cabecera de sección con su frase de para-qué, filas de una línea y densidad de instrumento —
+> y una pantalla nueva que no siga eso desentona aunque por sí sola esté bien.
+>
+> **Cómo se mira**, porque es una aplicación de cliente y un descargador de páginas solo ve el
+> cascarón: con el Chromium de Playwright que ya está instalado, y leyendo la captura. Hay un
+> guion escrito para fotografiar **las nuestras** en las mismas condiciones,
+> `apps/web/e2e/capturas-comparacion.spec.ts`, para poder ponerlas al lado.
+>
+> **Y lo que el prototipo NO decide**, porque ya se comprobó copiándolo y salió mal: su
+> conmutador DM/Jugador cambia lo que se pinta donde aquí `canView` decide lo que se **envía**;
+> su aviso de DM es falso tres veces; ofrece a un jugador un botón que el servidor rechaza; y se
+> inventa una tarjeta sin dato detrás. **Si el prototipo y una regla de este documento discrepan,
+> manda este documento**, y la discrepancia se declara aquí en vez de dejarla implícita. Las
+> siete diferencias deliberadas están enumeradas en
+> [la revisión de lo que volvió](./superpowers/specs/2026-09-02-figma-make-revision.md).
+
 - **Ningún valor de enumeración llega nunca a la pantalla.** Ocurrió **tres veces en la misma
   mañana**: el panel de enlaces pintaba `Ciudad Ceniza (LOCATION)`, el selector de visibilidad
   ofrecía `PUBLIC`/`DM_ONLY`, y el título de un diálogo componía `Nuevo LOCATION`. La forma

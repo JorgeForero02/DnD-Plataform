@@ -45,6 +45,34 @@ traducción del paso `maxHp.exhaustion.half` y tumba tres pruebas a la vez.
 
 **Cómo revertir.** `git revert` del commit. Solo toca la web; el servidor ya sabía hacer todo esto.
 
+## 2026-09-03 (tarde) — El reloj tiene mando (ficha C2C-3), y con él la fase 2C queda usable
+
+**Qué.** El endpoint del reloj llevaba media tarde existiendo y **ninguna pantalla lo llamaba**: el
+DM solo podía avanzar el tiempo por API. Eso dejaba a 2C.4 **sin el gesto que la enciende** —una
+condición que dura una hora no vence nunca si nadie puede hacer que pase esa hora— y habría dejado
+la fase 2 cerrada con un agujero justo en el guion de la partida de prueba, que pide avanzar el
+reloj.
+
+Se cierra con un panel en la pestaña «Dados»: la hora en palabras («Día 2, 06:00», **no una fecha**
+—el contador no es un calendario—), cinco saltos, y el viaje con sus tres ritmos y sus cifras del
+SRD. **La hora la lee cualquiera y la mueve el DM**, por el mismo motivo que el suceso del reloj es
+visible para la mesa: un jugador que viera caducar su condición sin saber que ha pasado la noche se
+quedaría con el «qué» y sin el «por qué».
+
+**Y las salvaciones de marcha forzada se enseñan con su CD**, una por hora pasada de ocho, en vez de
+esconderse en un aviso. El servidor ya las devolvía calculadas; encadenarlas con la petición de
+tirada de 2C.5 queda como ficha C2C-4.
+
+**Dos detalles que la pantalla arregló y no eran de esta tarea:** el mismo número aparecía con dos
+signos menos distintos —`-5` en el resultado y `−5` en la etiqueta del ritmo—, y el recorrido de las
+condiciones avanzaba el reloj **por API**; ahora lo avanza pulsando el botón, que es lo que de
+verdad se quería probar.
+
+**Probado.** 748 unitarias de web y los 78 recorridos de navegador, en verde. Dos mutaciones: los
+controles del DM enseñados a todo el mundo, y el salto mandando un número fijo en vez del elegido.
+
+**Cómo revertir.** `git revert` del commit. Solo toca la web; el endpoint queda intacto.
+
 ## 2026-09-03 (tarde) — 2C.6 (pantalla): las tablas del DM, y el interruptor que se podía escribir y no leer
 
 **Qué.** La pantalla de las tablas, en su propia pestaña de «La mesa». **Lo primero que se lee es

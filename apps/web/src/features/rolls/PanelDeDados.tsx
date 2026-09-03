@@ -9,6 +9,7 @@ import { TiradaACiegas } from "./TiradaACiegas";
 import { SelectorDeVentaja } from "./SelectorDeVentaja";
 import { SelectorDeAudiencia } from "./SelectorDeAudiencia";
 import { RegistroDeTiradas } from "./RegistroDeTiradas";
+import { RelojDeCampana } from "../game-clock/RelojDeCampana";
 import { useCreateRoll } from "./hooks";
 import { useMyRole } from "../campaigns/members";
 import { PedirTirada } from "../roll-requests/PedirTirada";
@@ -137,6 +138,15 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
           No se escondió ninguna opción para arreglarlo —los radios con su frase son regla
           vinculante—: se cambió dónde caen. Y en una pantalla estrecha vuelven a apilarse, que
           es lo único que cabe. */}
+      {/* **El reloj, arriba y para todos.** Va en esta pestaña y no en otra porque es donde el DM
+          ya está cuando arbitra —pedir una tirada y hacer que pasen ocho horas son el mismo gesto
+          de mesa—, y lo lee cualquiera porque qué hora es en el mundo no es información
+          privilegiada: un jugador que viera caducar su condición sin saber que ha pasado la noche
+          se quedaría con el «qué» y sin el «por qué». */}
+      <div className="mb-s5">
+        <RelojDeCampana campaignId={campaignId} />
+      </div>
+
       <div className={role === "DM" ? "grid items-start gap-s5 xl:grid-cols-2" : undefined}>
         {role === "DM" && <PedirTirada campaignId={campaignId} />}
 

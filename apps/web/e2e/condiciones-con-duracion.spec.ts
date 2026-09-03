@@ -78,7 +78,7 @@ async function abrirHoja(page: Page) {
 test("una condición con duración se marca como vencida al pasar su hora, **y no desaparece**", async ({
   page,
 }) => {
-  const { campaignId } = await abrirHoja(page);
+  const { campaignId, characterId } = await abrirHoja(page);
 
   // 1 · Se aplica «derribado» durante una hora de juego.
   await page.getByLabel("Nueva condición").selectOption({ label: "Derribado" });
@@ -93,17 +93,17 @@ test("una condición con duración se marca como vencida al pasar su hora, **y n
   await expect(page.getByText(/vence en/i)).toBeVisible();
   await expect(page.getByText(/vencida/i)).toHaveCount(0);
 
-  // 2 · El DM avanza el reloj una hora desde la pantalla de dados de la campaña… que todavía no
-  // tiene control de reloj, así que se avanza por la API con la sesión del navegador. Es una
-  // llamada de arbitraje, no una de las que esta pantalla ofrece.
-  const respuesta = await page.request.post(`/api/campaigns/${campaignId}/clock/advance`, {
-    headers: await comoLaSesion(page),
-    data: { kind: "TIME", seconds: 3600 },
-  });
-  expect(respuesta.ok()).toBe(true);
+  // 2 · **El DM hace que pase una hora desde la pantalla**, que es la ficha C2C-3: el endpoint
+  // existía y ninguna pantalla lo llamaba, así que una condición de una hora no vencía nunca
+  // porque nadie podía hacer que pasara esa hora.
+  await page.goto(`/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "Dados" }).click();
+  await expect(page.getByRole("heading", { name: "El reloj" })).toBeVisible();
+  await page.getByRole("button", { name: "1 hora" }).click();
+  await expect(page.getByText(/pasan 1 hora/i)).toBeVisible();
 
-  // 3 · Al recargar, la condición **sigue en la lista** y se ve vencida.
-  await page.reload();
+  // 3 · Y en la hoja, la condición **sigue en la lista** y se ve vencida.
+  await page.goto(`/campaigns/${campaignId}/personajes/${characterId}`);
   await expect(page.getByText(/vencida: ya no se aplica/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Renovar" })).toBeVisible();
   await expect(page.getByRole("button", { name: /quitar derribado/i })).toBeVisible();

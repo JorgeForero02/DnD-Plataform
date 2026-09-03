@@ -6,6 +6,7 @@ import { canView, type Viewer } from "../common/visibility";
 import { rollExpression, type Roller } from "../dice/dice";
 import { PrismaService } from "../prisma/prisma.service";
 import { DICE_ROLLER } from "../rolls/rolls.service";
+import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import { StatblocksService } from "./statblocks.service";
 
 // Tarea 2D.4 — **bajar un statblock a la mesa**.
@@ -100,10 +101,17 @@ export class NpcsService {
    */
   async list(userId: string, campaignId: string) {
     const viewer = await this.viewerFor(userId, campaignId);
-    const filas = await this.prisma.character.findMany({
-      where: { campaignId, statblockRef: { not: null } },
-      orderBy: { createdAt: "asc" },
-    });
+    const [filas, campana] = await Promise.all([
+      this.prisma.character.findMany({
+        where: { campaignId, statblockRef: { not: null } },
+        orderBy: { createdAt: "asc" },
+        include: { conditions: { select: { key: true, level: true, expiresAtClock: true } } },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({
+        where: { id: campaignId },
+        select: { clockSeconds: true },
+      }),
+    ]);
     return filas
       .filter((f) =>
         canView(viewer, {
@@ -119,6 +127,20 @@ export class NpcsService {
         currentHp: f.currentHp,
         tempHp: f.tempHp,
         visibility: f.visibility,
+        /**
+         * Las condiciones **vivas**: una vencida sigue en la ficha, marcada, pero ya no aplica
+         * (2C.4). Filtrarlas aquí es lo que impide que la caducidad dependa de que alguien haya
+         * abierto la pantalla de condiciones.
+         *
+         * **Y no van los PG máximos, a propósito.** Derivarlos aquí sería un segundo camino que
+         * discreparía del de la hoja en cuanto hubiera agotamiento —que parte el máximo por la
+         * mitad—, y tener dos sitios donde se deriva lo mismo es exactamente el fallo que 2D.4
+         * encontró y unificó. Quien quiera el máximo abre la ficha, que es su fuente única.
+         */
+        conditions: condicionesActivas(f.conditions, campana.clockSeconds).map((c) => ({
+          key: c.key,
+          level: c.level,
+        })),
       }));
   }
 

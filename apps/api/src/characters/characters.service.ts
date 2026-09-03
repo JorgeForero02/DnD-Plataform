@@ -43,7 +43,13 @@ export class CharactersService {
     await this.membership.requireMember(campaignId, userId);
     const viewer = await this.viewerFor(userId, campaignId);
     const characters = await this.prisma.character.findMany({
-      where: { campaignId },
+      // **Los PNJ instanciados no salen aquí** (2D.6). Un PNJ es una fila de `Character` —esa es
+      // la decisión que hace barata toda la fase 2D— pero *esta* lista es «quién se sienta a la
+      // mesa»: los personajes de los jugadores. Seis goblins mezclados con tres aventureros
+      // convierten la pantalla de personajes en un listado de combate, que es exactamente el
+      // problema que el hueco M13 describía de la solución de andar por casa («crear tres
+      // personajes a nombre del DM»). Los PNJ tienen su sitio: la pestaña «Bestiario».
+      where: { campaignId, statblockRef: null },
       orderBy: { createdAt: "desc" },
     });
     return characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility));

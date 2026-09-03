@@ -108,6 +108,49 @@ un huérfano no avisa, la operación devuelve 200 igual.
 (`CampaignStatblock` y la columna `Character.statblockRef`). El camino del personaje jugador no se
 tocó, y hay una prueba que lo dice.
 
+## 2026-09-03 (noche) — 2D.5 y 2D.6: el bestiario en pantalla, y los PNJ fuera del listado de personajes
+
+**Qué.** Los dos últimos bloques de la fase 2D. La pestaña «Bestiario» con las fichas del SRD y
+las del DM, el botón que baja una criatura a la mesa, y la lista de los que ya están —con sus
+puntos de golpe y sus condiciones vivas— enlazando a su ficha.
+
+**Contra el prototipo primero, como manda la regla.** La descarga directa de un sitio de Figma
+solo devuelve el armazón de la aplicación, así que se abrió **en un Chromium de verdad** con el
+propio Playwright del proyecto. El prototipo sí tiene «Bestiario» (pantalla 28), justo antes de
+«Catálogo», con la ficha en tres cifras grandes y un botón con escudo. Esta pantalla lo sigue.
+
+**Dos discrepancias deliberadas, las dos declaradas en el código:** la velocidad va en **pies** y
+no en metros, porque es la unidad del resto de la aplicación; y el botón **no dice «Meter al
+combate»**, porque no hay combate — la iniciativa es Encuentros, una fase sin escribir. La regla
+del proyecto es que si el texto y el servidor discrepan, **miente el texto**.
+
+> **Dos clases de Tailwind inventadas al escribir la pantalla** —`text-ink` y `border-line`— que
+> **no existen en la paleta** y compilan a nada sin avisar. Se cazaron mirando la configuración
+> antes de commitear, y ahora la prueba de navegador mide el borde contra el token resuelto.
+>
+> **Y esa prueba prometía más de lo que comprobaba.** La mutación que debía cazar —cambiar
+> `border-muted` por `border-line`— **la sobrevivió**, porque la clase `border` de Tailwind pone
+> igualmente 1 px con su color por defecto, así que «ancho > 0 y no transparente» seguía siendo
+> cierto. Se reforzó para comparar contra el token resuelto con una sonda en la propia página, y
+> entonces sí se pone roja. Una prueba de navegador que mide lo que no importa no es mejor que
+> `jsdom`, que era justamente el motivo de la regla.
+
+**2D.6 cierra el hueco M13 por completo.** Un PNJ es una fila de `Character` —la decisión que
+abarata la fase entera— pero el listado de personajes es «quién se sienta a la mesa», y seis
+goblins mezclados con tres aventureros lo convierten en un listado de combate: exactamente el
+problema que M13 describía de la solución de andar por casa. Ahora los PNJ se filtran de ese
+listado y tienen el suyo.
+
+**Una decisión pequeña que evita repetir el fallo de 2D.4:** la lista de PNJ **no devuelve los PG
+máximos**. Derivarlos ahí sería un segundo camino que discreparía del de la hoja en cuanto hubiera
+agotamiento, y tener dos sitios donde se deriva lo mismo es justo lo que 2D.4 tuvo que unificar.
+El máximo vive en la ficha, que es su fuente única.
+
+**Probado.** Unitarias de servicio y de pantalla, e2e de API contra Postgres real, y recorridos de
+navegador que miden lo que `jsdom` no puede: que la rejilla no arrastra la página a lo ancho, que
+las cuatro cifras comparten línea base, y que el borde está pintado con su token. Tres mutaciones
+más en rojo, incluida la del listado de personajes volviendo a mezclar PNJ.
+
 ## 2026-09-03 (noche) — El cierre de la fase 2C: cuatro fichas, una revisión de dos frentes y once arreglos
 
 **Qué.** El autor pidió cerrar todo lo que se pudiera antes de 2D. Esto es lo que se cerró.

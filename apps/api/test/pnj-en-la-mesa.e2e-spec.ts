@@ -265,6 +265,43 @@ describe("Un PNJ en la mesa (e2e)", () => {
     expect(JSON.stringify(danio.body)).toContain("ya no existe");
   });
 
+  it("**los PNJ no salen en el listado de personajes**", async () => {
+    // 2D.6, y cierra el hueco M13. Un PNJ es una fila de `Character` —esa es la decisión que
+    // abarata la fase entera— pero la lista de personajes es «quién se sienta a la mesa». Seis
+    // goblins mezclados con los aventureros la convierten en un listado de combate, que es
+    // exactamente el problema que M13 describía de la solución de andar por casa.
+    const personajes = await request(app.getHttpServer())
+      .get(`/campaigns/${campaignId}/characters`)
+      .set("Authorization", auth(tokenDM));
+    expect(personajes.status).toBe(200);
+    expect(personajes.body).toEqual([]);
+
+    // Y sí están, con sus PG, en su propia lista.
+    const enLaMesa = await request(app.getHttpServer())
+      .get(npcs())
+      .set("Authorization", auth(tokenDM));
+    expect(enLaMesa.body.length).toBeGreaterThan(5);
+  });
+
+  it("un PNJ con condiciones las trae en su lista, y solo las VIVAS", async () => {
+    const c = await request(app.getHttpServer())
+      .put(`${ficha(goblinId)}/conditions/prone`)
+      .set("Authorization", auth(tokenDM))
+      .send({});
+    expect(c.status).toBe(200);
+
+    const enLaMesa = await request(app.getHttpServer())
+      .get(npcs())
+      .set("Authorization", auth(tokenDM));
+    const goblin = enLaMesa.body.find((n: { id: string }) => n.id === goblinId);
+    // `level` es **null** en las condiciones que no tienen niveles: solo el agotamiento los
+    // tiene, y guardar un 1 de mentira en las otras catorce sería inventarse un dato.
+    expect(goblin.conditions).toEqual([{ key: "prone", level: null }]);
+    // **Sin `maxHp`**: derivarlo aquí sería un segundo camino que discreparía de la hoja en
+    // cuanto hubiera agotamiento, que es el fallo que 2D.4 encontró y unificó.
+    expect(goblin.maxHp).toBeUndefined();
+  });
+
   it("el DM sube un PNJ a PLAYERS y entonces el jugador lo ve", async () => {
     const up = await request(app.getHttpServer())
       .patch(ficha(goblinId))

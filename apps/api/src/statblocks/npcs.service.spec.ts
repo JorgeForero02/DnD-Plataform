@@ -17,6 +17,7 @@ describe("NpcsService", () => {
   let service: NpcsService;
   const prisma = {
     character: { create: jest.fn(), findMany: jest.fn() },
+    campaign: { findUniqueOrThrow: jest.fn() },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
@@ -128,6 +129,7 @@ describe("NpcsService", () => {
   it("la lista esconde del jugador los PNJ que el DM no ha enseñado", async () => {
     membership.requireMember.mockResolvedValue({ role: "PLAYER" });
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ clockSeconds: 0 });
     prisma.character.findMany.mockResolvedValue([
       {
         id: "n1",
@@ -137,6 +139,7 @@ describe("NpcsService", () => {
         ownerId: "dm",
         currentHp: 7,
         tempHp: 0,
+        conditions: [],
       },
       {
         id: "n2",
@@ -146,10 +149,59 @@ describe("NpcsService", () => {
         ownerId: "dm",
         currentHp: 4,
         tempHp: 0,
+        conditions: [],
       },
     ]);
     const r = await service.list("pl", "c1");
     expect(r.map((n) => n.id)).toEqual(["n2"]);
     expect(JSON.stringify(r)).not.toContain("Goblin");
+  });
+
+  it("la lista solo trae las condiciones VIVAS, contra el reloj de campaña", async () => {
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    // El reloj va por el segundo 600.
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ clockSeconds: 600 });
+    prisma.character.findMany.mockResolvedValue([
+      {
+        id: "n1",
+        name: "Ogro",
+        statblockRef: "SRD:ogre",
+        visibility: "DM_ONLY",
+        ownerId: "dm",
+        currentHp: 40,
+        tempHp: 0,
+        conditions: [
+          { key: "prone", level: null, expiresAtClock: null },
+          // Vencida en el segundo 300: el reloj ya pasó de largo.
+          { key: "poisoned", level: null, expiresAtClock: 300 },
+          { key: "exhaustion", level: 2, expiresAtClock: 900 },
+        ],
+      },
+    ]);
+    const r = await service.list("dm", "c1");
+    expect(r[0].conditions.map((c) => c.key)).toEqual(["prone", "exhaustion"]);
+  });
+
+  it("la lista NO devuelve el PG máximo: su fuente única es la hoja", async () => {
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ clockSeconds: 0 });
+    prisma.character.findMany.mockResolvedValue([
+      {
+        id: "n1",
+        name: "Ogro",
+        statblockRef: "SRD:ogre",
+        visibility: "DM_ONLY",
+        ownerId: "dm",
+        currentHp: 40,
+        tempHp: 0,
+        conditions: [],
+      },
+    ]);
+    const r = await service.list("dm", "c1");
+    // Derivarlo aquí sería un segundo camino que discreparía de la hoja en cuanto hubiera
+    // agotamiento, que es exactamente el fallo que 2D.4 encontró y unificó.
+    expect(r[0]).not.toHaveProperty("maxHp");
   });
 });

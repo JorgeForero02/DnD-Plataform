@@ -23,6 +23,14 @@ export interface NpcEnLaMesa {
   currentHp: number | null;
   tempHp?: number;
   visibility: string;
+  /**
+   * Las condiciones **vivas**, ya filtradas por el servidor contra el reloj de campaña: una
+   * vencida sigue en la ficha, marcada, pero no viaja aquí.
+   *
+   * **No viene `maxHp`, y es deliberado**: derivarlo en dos sitios discreparía en cuanto hubiera
+   * agotamiento. El máximo vive en la hoja, que es su fuente única.
+   */
+  conditions?: { key: string; level: number | null }[];
 }
 
 export function fetchStatblocks(campaignId: string): Promise<StatblocksResponse> {

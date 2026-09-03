@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   dadoDeGolpeDe,
   expresionDePgDe,
@@ -12,6 +13,7 @@ import { fieldControlClass } from "../../ui/Field";
 import { EmptyState, FilterChip, Toolbar } from "../../ui/Collection";
 import { Panel } from "../../ui/Panel";
 import { useMyRole } from "../campaigns/members";
+import { nombreCondicion } from "../character-sheet/vocabulario";
 import type { NpcEnLaMesa } from "./api";
 import { useInstantiateNpc, useNpcs, useStatblocks } from "./hooks";
 import { IconoEscudo } from "./iconos";
@@ -154,8 +156,19 @@ function FichaDeCriatura({
   );
 }
 
-/** Los que ya están en la mesa, con sus puntos de golpe. */
-function EnLaMesa({ npcs }: { npcs: NpcEnLaMesa[] }) {
+/**
+ * Los que ya están en la mesa: sus puntos de golpe, sus **condiciones vivas** y un enlace a su
+ * ficha.
+ *
+ * **Estos PNJ no salen en la pestaña «Personajes»** (2D.6): esa lista es quién se sienta a la
+ * mesa. Seis goblins mezclados con tres aventureros la convierten en un listado de combate, que
+ * es justo lo que el hueco M13 describía como el problema de la solución de andar por casa
+ * —«crear tres personajes a nombre del DM»—.
+ *
+ * **Y no se pinta el PG máximo**, a propósito: derivarlo aquí sería un segundo camino que
+ * discreparía del de la hoja en cuanto hubiera agotamiento. El máximo vive en la ficha.
+ */
+function EnLaMesa({ campaignId, npcs }: { campaignId: string; npcs: NpcEnLaMesa[] }) {
   if (npcs.length === 0) return null;
   return (
     <section className="space-y-s2" data-testid="pnj-en-la-mesa">
@@ -164,11 +177,34 @@ function EnLaMesa({ npcs }: { npcs: NpcEnLaMesa[] }) {
         {npcs.map((n) => (
           <li
             key={n.id}
-            className="flex items-baseline justify-between gap-s2 rounded border border-muted px-s3 py-s2"
+            className="flex flex-wrap items-baseline justify-between gap-s2 rounded-radius-sm border border-muted px-s3 py-s2"
           >
-            <span className="font-chrome text-chrome-sm text-text">{n.name}</span>
-            <span className="font-chrome text-chrome-sm text-muted">
-              {n.currentHp === null ? "a PG máximos" : `${n.currentHp} PG`}
+            {/* El enlace no es un adorno: hacerle daño a un PNJ ocurre en su ficha, que es la
+                misma pantalla que la de un personaje jugador porque un PNJ **es** una fila de
+                `Character`. Repetir aquí los controles de PG habría sido escribir por segunda vez
+                la parte más revisada del proyecto. */}
+            <Link
+              to={`/campaigns/${campaignId}/personajes/${n.id}`}
+              className="font-chrome text-chrome-sm text-accent-text underline-offset-2 hover:underline"
+            >
+              {n.name}
+            </Link>
+            <span className="flex items-baseline gap-s2">
+              {(n.conditions ?? []).map((c) => (
+                <span
+                  key={c.key}
+                  className="font-chrome text-chrome-xs text-copper-text"
+                  data-testid="condicion-de-pnj"
+                >
+                  {nombreCondicion(c.key)}
+                  {/* Solo el agotamiento tiene niveles; en las otras catorce `level` es null,
+                      y «Derribado 1» sería un número inventado. */}
+                  {c.level !== null && c.level > 1 ? ` ${c.level}` : ""}
+                </span>
+              ))}
+              <span className="font-data text-chrome-sm text-muted">
+                {n.currentHp === null ? "a PG máximos" : `${n.currentHp} PG`}
+              </span>
             </span>
           </li>
         ))}
@@ -245,7 +281,7 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
           </p>
         ) : null}
 
-        {esDM && npcs ? <EnLaMesa npcs={npcs} /> : null}
+        {esDM && npcs ? <EnLaMesa campaignId={campaignId} npcs={npcs} /> : null}
 
         {criaturas.length === 0 ? (
           <EmptyState title="No hay ninguna criatura que se llame así">

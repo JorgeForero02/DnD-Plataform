@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import type { Statblock } from "@dnd/shared";
 import { PanelDeBestiario } from "../PanelDeBestiario";
 import * as bestiarioApi from "../api";
@@ -12,10 +13,14 @@ import { useAuthStore } from "../../../store/auth.store";
 
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // `MemoryRouter` porque la lista «En la mesa» enlaza a la ficha del PNJ: hacerle daño ocurre
+  // allí, no aquí.
   return render(
-    <QueryClientProvider client={qc}>
-      <PanelDeBestiario campaignId="c1" />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <PanelDeBestiario campaignId="c1" />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -215,6 +220,60 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
     renderPanel();
     expect(await screen.findByTestId("pnj-en-la-mesa")).toHaveTextContent("Goblin 1");
     expect(screen.getByTestId("pnj-en-la-mesa")).toHaveTextContent("4 PG");
+  });
+
+  it("el nombre enlaza a su ficha, que es donde se le hace daño", async () => {
+    comoDm();
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([
+      {
+        id: "n1",
+        name: "Goblin 1",
+        statblockRef: "SRD:goblin",
+        currentHp: 4,
+        visibility: "DM_ONLY",
+      },
+    ]);
+    renderPanel();
+    const enlace = await screen.findByRole("link", { name: "Goblin 1" });
+    expect(enlace).toHaveAttribute("href", "/campaigns/c1/personajes/n1");
+  });
+
+  it("**las condiciones vivas se pintan traducidas**, y el nivel solo si es mayor que uno", async () => {
+    comoDm();
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([
+      {
+        id: "n1",
+        name: "Ogro",
+        statblockRef: "SRD:ogre",
+        currentHp: 30,
+        visibility: "DM_ONLY",
+        conditions: [
+          { key: "prone", level: 1 },
+          { key: "exhaustion", level: 3 },
+        ],
+      },
+    ]);
+    renderPanel();
+    await screen.findByTestId("pnj-en-la-mesa");
+    const marcas = screen.getAllByTestId("condicion-de-pnj").map((e) => e.textContent);
+    // Traducidas: ni «prone» ni «exhaustion» llegan a la pantalla.
+    expect(marcas.join(" ")).not.toContain("prone");
+    expect(marcas.join(" ")).not.toContain("exhaustion");
+    // Y el nivel solo cuando dice algo: «Derribado 1» sería ruido.
+    expect(marcas.some((m) => /\s1$/.test(m ?? ""))).toBe(false);
+    expect(marcas.some((m) => /\s3$/.test(m ?? ""))).toBe(true);
+  });
+
+  it("no pinta el PG máximo: su fuente única es la ficha", async () => {
+    comoDm();
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([
+      { id: "n1", name: "Ogro", statblockRef: "SRD:ogre", currentHp: 30, visibility: "DM_ONLY" },
+    ]);
+    renderPanel();
+    const lista = await screen.findByTestId("pnj-en-la-mesa");
+    // Ni «30/59» ni «de 59»: derivarlo aquí discreparía de la hoja en cuanto hubiera agotamiento.
+    expect(lista.textContent).toContain("30 PG");
+    expect(lista.textContent).not.toContain("59");
   });
 });
 

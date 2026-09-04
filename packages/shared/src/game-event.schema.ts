@@ -78,6 +78,10 @@ export const GAME_EVENT_TYPES = [
   // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9). **Dos tipos y no uno con una
   // bandera**: la línea de tiempo cuenta "qué pasó", y "se archivó" y "se recuperó" son dos
   // hechos distintos con su propio momento, igual que CONDITION_APPLIED/CONDITION_REMOVED.
+  // 2.5.3 — **la propuesta del ataque**. Existe porque el §2.5.3 paso 5 dice «el DM confirma o
+  // corrige» y §4 lo resume en «el sistema propone; el DM dispone»: sin un suceso, el veredicto
+  // solo vivía en la respuesta HTTP del atacante y **no había nada que confirmar**.
+  "ATTACK_RESOLVED",
   "CHARACTER_ARCHIVED",
   "CHARACTER_RESTORED",
 ] as const;
@@ -373,6 +377,21 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     fromPosition: z.number().int().nonnegative(),
     toPosition: z.number().int().nonnegative(),
     round: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal("ATTACK_RESOLVED"),
+    attackerId: z.string().min(1),
+    attackName: z.string().max(120),
+    verdict: z.enum(["HIT", "MISS", "CRITICAL"]),
+    /**
+     * De qué tirada salió el veredicto. **Atarlo a la tirada es la mitad del punto**: `critical`
+     * viajaba suelto en el cuerpo de la petición, sin relación con el 20 que lo justificaba
+     * (ficha R2C-2); aquí el veredicto cuelga del `eventId` de la tirada que lo produjo.
+     *
+     * **Y lo que NO lleva es la CA.** Ni con ese nombre ni con ningún otro: lo que sale es la
+     * palabra —impacta, falla, crítico—, nunca el número contra el que se tiró.
+     */
+    rollEventId: z.string().min(1),
   }),
   z.object({
     type: z.literal("ROUND_ADVANCED"),

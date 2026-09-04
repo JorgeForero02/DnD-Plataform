@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 33 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 34 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 20 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -49,7 +49,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
-**Recorridos**, los dos medidos el 2026-09-04: **247 e2e de API** (eran 216 al cerrar la fase 2D;
+**Recorridos**, los dos medidos el 2026-09-04: **250 e2e de API** (eran 216 al cerrar la fase 2D;
 los veinticinco nuevos son la suite de tipos de daño de 2.5.1 y la de encuentros de 2.5.2, con
 los recorridos que sus dos revisiones de cierre añadieron) y **103 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
 en las tres pruebas de contraste, la medición del `/NN` en el navegador y la del solape del
@@ -226,6 +226,7 @@ en verde.
 | `tipos-de-dano-y-resistencias` | **Que una resistencia reduce de verdad**, sobre el tumulario del catálogo real: 25 de necrótico se quedan en 12, y la traza trae la nota que limita la regla sin que el servidor la interprete. Que `damageType` es **una columna consultable** y no un campo dentro del Json — se filtra contra la base, que es la única forma de demostrarlo. Y las tres de su revisión de cierre: **el registro anuncia el daño aplicado y no el bruto**, así que un statblock `DM_ONLY` no filtra su resistencia por la línea de tiempo; una **curación no se puede etiquetar** con tipo de daño, o «¿de qué murió?» devolvería curaciones; y un delta **sin** `damageType` no cambia de comportamiento, que es lo que hace la pieza reversible. |
 | `validacion` | Que un cuerpo inválido diga **qué campo falta y en español**, con la ruta completa de un campo anidado y la lista de los objetivos que sí existen. Y que **no sea un oráculo**: dos identificadores inexistentes son indistinguibles. |
 | `encounters` | Iniciativa y orden de turnos (2.5.2). Dos personajes y seis goblins dan **ocho combatientes y TRES posiciones**: los goblins comparten tirada **y entrada del orden**, porque el SRD dice que actúan a la vez. **La base impide que un personaje entre dos veces** y en cambio **sí deja compartir posición**, que es lo que hace el grupo (las dos saltándose el servicio a propósito); **como mucho un encuentro activo por sesión, garantizado por el índice único parcial** y no por la comprobación previa. **Pasar de turno tres veces sube el asalto y avanza el reloj exactamente seis segundos**, dejando caducada sola una condición de un asalto sin que nadie la toque. Y las tres de su revisión de cierre: **la tirada de iniciativa de un PNJ que el jugador no ve no aparece en su línea de tiempo** —comprobado sobre el cuerpo serializado—, el suceso de inicio **no cuenta cuántos son** (de «ocho» menos «los dos míos» salen seis enemigos escondidos), y una iniciativa fuera del rango del esquema es 400 sin dejar rastro. |
+| `ataque-comparado-en-el-servidor` | El ataque contra la CA, comparado en el servidor (2.5.3). Un jugador ataca a un plebeyo del SRD `DM_ONLY` hasta ver «impacta», y **en ningún cuerpo HTTP serializado —ni el de la respuesta, ni el del registro de la partida— aparece la CA del objetivo**, salga lo que salga en cada intento. Objetivo inexistente es 404; sin ser miembro, 403; sin token, 401. |
 
 ### La partida entera
 

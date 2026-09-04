@@ -74,6 +74,7 @@ enum GameEventType {
   TURN_ADVANCED
   ROUND_ADVANCED
   // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9).
+  ATTACK_RESOLVED
   CHARACTER_ARCHIVED
   CHARACTER_RESTORED
 }

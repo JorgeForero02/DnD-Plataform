@@ -27,6 +27,64 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El ataque, comparado en el servidor (2.5.3) (2026-09-04)
+
+**El motor calculaba el bono de ataque y quien tiraba comparaba a ojo contra la CA.** Nuevo
+`CharacterSheetService.resolveAttack` (`POST .../sheet/attacks/:attackKey/resolve`): deriva el
+bono ya conocido, tira con `RollsService`, compara con la CA del objetivo —**que nunca sale del
+método**— y propone `HIT` / `MISS` / `CRITICAL`. Un 20 o un 1 natural mandan sobre la CA (SRD
+5.1, *"Resolving Attacks"*, dnd5eapi.co/api/2014/rule-sections/making-an-attack: *"If the d20
+roll for an attack is a 20, the attack hits regardless of any modifiers or the target's AC"* /
+*"a 1, the attack misses regardless..."*). Ni el impacto ni el daño se aplican solos.
+
+**La CA se calcula con un espectador del servidor** (`role: "DM"`), no con el de quien ataca:
+`hojaDeStatblock` se niega entera —sin hoja, sin CA— a cualquiera que no sea el DM, y el atacante
+casi nunca lo es. **Atacar no exige `canView` sobre el objetivo** a propósito (D-2.5-5): la
+garantía de esta tarea es «nunca sabrás su CA», no «no puedes apuntar a lo que no ves».
+
+> **Aquí ponía que sin el espectador omnisciente «atacar a un PNJ `DM_ONLY` habría sido un 400», y
+> es falso para los PNJ del SRD** —que son justo los del criterio de cierre y los del e2e—:
+> `statblocks.service.ts` devuelve un statblock `SRD:` a cualquiera sin mirar el espectador. El
+> espectador omnisciente solo hace falta para un statblock **propio del DM** oculto, y ese caso
+> **no lo ejercitaba ninguna prueba**. Lo encontró la revisión de cierre.
+
+**La revisión de cierre encontró cinco cosas más, y dos eran bloqueantes.**
+
+1. **El DM nunca recibía la propuesta.** El veredicto solo existía en la respuesta HTTP del
+   atacante: ni suceso, ni objetivo, ni veredicto en ninguna parte, así que **no había nada que
+   confirmar ni que corregir** — el paso 5 del §2.5.3 y el «el sistema propone, el DM dispone» de
+   §4 no estaban hechos. Ahora se escribe `ATTACK_RESOLVED` con el objetivo, el veredicto y el
+   `eventId` de la tirada de la que sale, **a la visibilidad del objetivo**: anunciar «alguien
+   atacó a X» cuando X está escondido revelaría que X existe.
+2. **El 400 de un objetivo irresoluble filtraba el motivo interno**: *«Este PNJ apunta a un
+   statblock que ya no existe (CAMPAIGN:<cuid>)»* le confirmaba al atacante que el objetivo es un
+   PNJ y le daba el id del statblock del DM. Fuera va una frase que no dice nada del objetivo.
+3. `caDelObjetivo` se llamaba «la CA» y devolvía **la hoja entera** derivada con ojos de DM —PG,
+   salvaciones, habilidades y la traza—. Devuelve el número; el tipo es lo que impide el mal uso
+   dentro de tres semanas, no un comentario.
+4. **La audiencia se olvidaba de `PUBLIC`**, el nivel más abierto de los cinco: caía en el `else`
+   y la tirada se escondía, y entonces el propio jugador no veía su total y **no recibía
+   veredicto**. Estaba copiado de `rollAttack`, así que se arregló en los dos sitios.
+5. **La CA se puede deducir** con veinte o treinta ataques, y el comentario que lo justificaba era
+   falso justo en el caso que la decisión habilita. Se acepta escrito, con su ficha (**P2**) y con
+   el rastro que ahora deja `ATTACK_RESOLVED`.
+
+**Lo que queda fuera, a propósito.** La ficha R2C-2 (el `critical` suelto en la DAMAGE de
+`rollAttack`) no se toca aquí — es de 2.5.4, que es donde el daño se aplica de verdad. Ver
+ficha **C2.5-2** en [06-pendientes.md](./06-pendientes.md).
+
+**Probado.** Nueve unitarias del servicio (Prisma simulado): HIT por encima de la CA, HIT en el
+empate exacto —el SRD dice «iguala o supera»—, MISS por debajo, `CRITICAL` con un 20 natural
+aunque el total no llegue a la CA, `MISS` con un 1 natural aunque el total la supere, sin
+veredicto en una tirada a ciegas, sin ningún campo de CA en la respuesta, 404 contra un
+objetivo que no existe y un PNJ con la plantilla oculta al atacante que aun así compara bien.
+Y un e2e contra Postgres real (`ataque-comparado-en-el-servidor.e2e-spec.ts`) que ataca a un
+plebeyo del SRD `DM_ONLY` hasta ver «impacta» y comprueba, **sobre el cuerpo HTTP
+serializado**, que su CA no aparece en ninguna respuesta ni en el registro de la partida.
+
+**Cómo revertir.** `git revert` del commit; no toca el esquema de Prisma. El único cambio en
+`@dnd/shared` es aditivo (`attack.schema.ts`, nuevo).
+
 ## ENTITY_REVEALED también al subir la visibilidad a mano (ficha P1) (2026-09-04)
 
 El único sitio que emitía este suceso era el motor de reglas (`REVEAL_ENTITY`); un DM que sube a
@@ -323,63 +381,3 @@ nuevas; bajarlas es `prisma migrate resolve --rolled-back` y un `DROP TABLE "Com
 "Encounter"` si ya se aplicaron.
 
 ---
-
-## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
-
-Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
-(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`), con la tanda entera de 2D y **dos
-migraciones**. Volcado previo en `vps1new:/root/dnd-antes-de-2d.sql.gz`.
-
-> **Dos trampas del volcado previo, y las dos mordieron.** El filtro `--filter name=dnd` **no
-> encuentra nada**: los contenedores de Coolify se llaman por el UUID de la aplicación
-> (`db-5awvsn1dnkexhcjzg7kjwom6-…`). Y el usuario de Postgres **no es `postgres`**, es `dnd`
-> (`POSTGRES_USER`), así que `pg_dumpall -U postgres` falla con «role does not exist» — y el
-> primer intento dejó un fichero de **20 bytes** que parecía un volcado. Comprobar el tamaño del
-> volcado antes de tocar nada no es opcional.
-
-| Comprobación | Salida real |
-|---|---|
-| **El commit desplegado es el que se empujó** | imágenes `web` y `api` en `…:82fab54ea3a2…` = `HEAD` local |
-| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up … (healthy)` |
-| **Las dos migraciones de 2D se aplican solas** | `statblocks_del_dm` y `pnj_instanciado`, las dos con `finished_at` no nulo |
-| La tabla y la columna nuevas existen | `CampaignStatblock` presente; `Character.statblockRef` presente |
-| **Los datos sobrevivieron** | 1 campaña · 3 personajes · 2 usuarios, **los mismos conteos que antes del despliegue** |
-| La SPA se sirve | `GET /` → **200** |
-| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/campaigns/x/statblocks` → **401** |
-| El certificado es el del dominio y de Let's Encrypt | `subject=CN=dnd.supportive.pro`, `issuer=… Let's Encrypt`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro**, porque Norton intercepta el TLS en el PC del autor |
-
-**Lo que sigue sin hacerse, y es decisión del autor:** la partida de prueba con dos cuentas de
-jugador. Es lo único que le queda a la fase 2.
-
-## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2C (2026-09-03)
-
-Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
-(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`), con la tanda entera de 2C y **cuatro
-migraciones**. Volcado previo de la base en `vps1new:/root/dnd-antes-de-2c.sql.gz` antes de tocar
-nada, porque el documento lo pide cuando la tanda trae migración.
-
-| Comprobación | Salida real |
-|---|---|
-| **El commit desplegado es el que se empujó** | `GET /api/v1/deployments/<uuid>` → `finished`, commit `b0d6a6d8` = `HEAD` local |
-| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up About a minute (healthy)` |
-| **Las cuatro migraciones de 2C se aplican solas** | `clock_de_campana`, `condiciones_con_vencimiento`, `peticion_de_tirada` y `tablas_del_dm`, las cuatro con `finished_at` no nulo |
-| **El índice único parcial de las tablas del DM existe en producción** | `DmTable_campaignId_trigger_key` presente en `pg_indexes` |
-| La SPA se sirve | `GET /` → **200** |
-| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/catalog` → **401** |
-| El certificado es el del dominio y de Let's Encrypt | `issuer=... Let's Encrypt`, `subject=CN=dnd.supportive.pro`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro** con `openssl s_client` contra `127.0.0.1:443`, porque Norton intercepta el TLS en el PC del autor |
-
-**Lo que NO se hizo, y es decisión del autor:** la partida de prueba con dos cuentas de jugador.
-Se pospone **a después de la fase 2D**, con el despliegue ya en pie.
-
-## 2026-09-03 (noche) — **La fase 2C está en producción**
-
-**Qué.** Desplegada la tanda entera de 2C en `dnd.supportive.pro`, lanzada por la API de Coolify
-desde dentro de la VPS, con **volcado previo de la base** porque la tanda trae cuatro migraciones.
-
-**Comprobado con evidencia, no con el «queued»**: el commit desplegado es el que se empujó
-(`b0d6a6d`), los tres contenedores vuelven sanos, **las cuatro migraciones se aplican solas**, el
-índice único parcial de las tablas del DM existe en producción, la SPA da 200, la API exige sesión
-y el certificado es el del dominio. La tabla está en [03-despliegue.md](./03-despliegue.md).
-
-**Lo que no se hizo, por decisión del autor:** la partida de prueba con dos cuentas de jugador, que
-pasa **a después de la fase 2D**. El despliegue queda en pie para cuando toque.

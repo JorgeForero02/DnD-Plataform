@@ -79,11 +79,32 @@ que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su 
 un efecto colateral de la siguiente funcionalidad.**
 
 Última revisión: **2026-09-04** (las tandas del día: **B0** —tokens por canales y el tercer
-tema—, **2.5.1** —tipos de daño y resistencias—, **B1.1** —la mesa en la navegación— y
-**2.5.2** —iniciativa y orden de turnos—; y antes, el cierre de la fase **2D**). Las secciones
+tema—, **2.5.1** —tipos de daño y resistencias—, **B1.1** —la mesa en la navegación—,
+**2.5.2** —iniciativa y orden de turnos— y **2.5.3** —el ataque comparado en el servidor—; y
+antes, el cierre de la fase **2D**). Las secciones
 van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
+
+## C2.5-2 · El crítico de la DAMAGE de `rollAttack` sigue sin atarse a la tirada (2026-09-04, 2.5.3)
+
+**La ficha R2C-2 del spec de 2.5.3 no se cierra en esta tarea, a propósito: es de 2.5.4.**
+`POST .../attacks/:attackKey/roll` con `{ part: "DAMAGE", critical: true }` sigue confiando en
+lo que el cliente declara — el `critical` de `rollAttackSchema` no está atado a ningún
+`eventId` de una tirada de ataque real. El nuevo `resolveAttack` (2.5.3) no toca ese camino:
+resuelve el veredicto del ATAQUE contra la CA, sin más, y el spec deja la duplicación de dados
+del DAÑO —«la duplicación de dados cuelga de él [el `eventId`]»— para 2.5.4, que es donde el
+daño se aplica de verdad con su traza.
+
+**Por qué no se adelantó aquí.** `rollAttackSchema` es de `@dnd/shared`, y la frontera de esta
+tarea es solo-añadir: quitarle el `critical` a mano rompería el otro carril, que está
+rehaciendo `apps/web` ahora mismo y puede seguir llamando a ese endpoint. La solución de verdad
+—que la DAMAGE pida el `eventId` de su ATTACK y el servidor lea el `natural` guardado, no un
+booleano suelto— es un cambio de forma, no una añadidura, y encaja mejor cuando 2.5.4 ya sepa
+qué necesita el resto del daño (tipo, resistencia, PG temporales).
+
+**Cierra cuando:** la DAMAGE de un ataque duplica dados si y solo si su `eventId` de ATTACK
+tiene `natural: "TWENTY"` en el registro — nunca por lo que declare el cuerpo de la petición.
 
 ## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
 
@@ -120,6 +141,32 @@ donde no se pueden pagar.
 sesión `CLOSED` de cada campaña, **filtrado por su visibilidad** —una crónica puede ser `DM_ONLY` y
 entonces el jugador no la ve—. Mientras tanto la pantalla enseña la descripción de la campaña y
 dice qué se leerá ahí cuando exista, en vez de inventarse un resumen.
+
+## P2 · El ataque es un oráculo sobre la CA, y se acepta con esas palabras (2026-09-04, 2.5.3)
+
+**El §4 del alcance de la fase 2.5 dice «la CA de un PNJ no sale del servidor», y no sale: no
+está en la respuesta, ni en el `payload` de ningún suceso, ni en la traza, ni en un 400.** La
+revisión de cierre lo siguió campo a campo y el frente está limpio.
+
+**Lo que sí se puede es deducirla.** Viajan el total de la tirada y el veredicto, así que cada
+ataque es una comparación exacta `total >= CA` con el total conocido: con veinte o treinta
+peticiones se tiene el número. El atacante conoce su propio bono, así que ni siquiera necesita
+suerte.
+
+**Y esto se acepta, con dos matices que lo hacen soportable y que antes no existían:**
+
+1. **Queda rastro.** Desde la revisión, cada ataque escribe un `ATTACK_RESOLVED` con el objetivo y
+   el veredicto, a la visibilidad del objetivo. El DM ve quién tiró contra qué; sondear ya no es
+   invisible.
+2. **El comentario que lo justificaba era falso y se corrigió.** Decía que acotar la CA «pasa
+   igual en una mesa de verdad, cuando el DM dice "no, no le das" en voz alta». Eso es cierto para
+   un objetivo que está en la mesa y **falso justo para el caso que D-2.5-5 habilita**: sobre un
+   PNJ que el jugador no sabe que existe, en una mesa de verdad no hay tirada que hacer.
+
+**El arreglo bueno, para cuando exista la pantalla del encuentro:** exigir que el objetivo sea
+combatiente del encuentro activo de la sesión —que es lo que «está en la mesa» significa en este
+dominio, y 2.5.2 ya lo modela— o pase `canView`. No se hace ahora porque obligaría a abrir un
+encuentro para atacar, y la mesa no siempre lo hace.
 
 ## P2 · Un `GameEvent` no tiene concesiones nominales, así que `SPECIFIC_PLAYERS` no llega a nadie (2026-09-04)
 

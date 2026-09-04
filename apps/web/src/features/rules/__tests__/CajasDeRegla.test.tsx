@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ruleConditionSchema, ruleEffectSchema, ruleTriggerSchema } from "@dnd/shared";
 import { CajaColocada, CarrilDeCajas, PaletaDeCajas } from "../CajasDeRegla";
 import { tipoDeArrastre } from "../partes";
-import { nombreDePieza } from "../vocabulario";
+import { DISPARADORES_SIN_MOTOR, nombreDePieza } from "../vocabulario";
 
 // Tarea R1 — la paleta, los carriles y la caja colocada.
 //
@@ -13,8 +13,19 @@ import { nombreDePieza } from "../vocabulario";
 // mover el puntero. El gesto de arrastrar de verdad se mide en `apps/web/e2e/reglas.spec.ts` y
 // en `apps/web/e2e/reglas-arrastrar.spec.ts`.
 
+// **Actualizado el 2026-09-04 (auditoría de la mesa, §8.3).** La paleta ofrecía los doce
+// sucesos del esquema, y cuatro de ellos —`ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`,
+// `MEMBER_JOINED`— **no los dispara el motor**: `game-event-triggers.ts` no tiene `case` para
+// ninguno, así que una regla armada sobre ellos se guardaba y no se ejecutaba jamás. Se retiran
+// de la oferta y el esquema los conserva, para no romper las reglas ya guardadas.
+//
+// Lo que estas pruebas siguen comprobando es exactamente lo mismo de antes: que la paleta ofrece
+// **el vocabulario cerrado y nada más**, derivado del esquema compartido y no de una lista a
+// mano — solo que ahora el conjunto es «los del esquema que el motor sí dispara».
 const CLAVES = {
-  SUCESO: ruleTriggerSchema.options.map((o) => o.shape.kind.value),
+  SUCESO: ruleTriggerSchema.options
+    .map((o) => o.shape.kind.value)
+    .filter((k) => !(DISPARADORES_SIN_MOTOR as string[]).includes(k)),
   ESTADO: ruleConditionSchema.options.map((o) => o.shape.kind.value),
   ACCION: ruleEffectSchema.options.map((o) => o.shape.kind.value),
 };

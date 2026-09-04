@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChangeHpInput,
   CreateRollInput,
+  DeclareRestInput,
   RollAttackInput,
   SetHpInput,
   UpdateCharacterSheetInput,
@@ -135,6 +136,18 @@ export function useSetHp(campaignId: string, characterId: string) {
   });
 }
 
+/**
+ * Las tiradas que se pueden citar al aplicar daño (2.5.4). **Solo se pide cuando el panel de
+ * daño está abierto** (`enabled`): una hoja quieta no tiene por qué cargar el registro.
+ */
+export function useTiradasCitables(campaignId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["campaigns", campaignId, "rolls", "citables"] as const,
+    queryFn: () => characterSheetApi.fetchTiradasCitables(campaignId),
+    enabled: Boolean(campaignId) && enabled,
+  });
+}
+
 export function useRollDeathSave(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -178,8 +191,11 @@ export function useRestoreResource(campaignId: string, characterId: string) {
 export function useDeclareRest(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { kind: "SHORT" | "LONG"; spendHitDice?: number }) =>
-      characterSheetApi.declareRest(campaignId, characterId, vars.kind, vars.spendHitDice),
+    // La entrada entera de `declareRestSchema`, no tres campos escogidos a mano: así
+    // `interrupted` (2C.3) llega hasta el servidor, y cualquier campo que el esquema gane
+    // después no exige volver a tocar esta firma.
+    mutationFn: (input: DeclareRestInput) =>
+      characterSheetApi.declareRest(campaignId, characterId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) });
       qc.invalidateQueries({ queryKey: resourcesKey(campaignId, characterId) });

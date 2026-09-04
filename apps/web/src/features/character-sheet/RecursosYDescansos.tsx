@@ -24,6 +24,10 @@ export function RecursosYDescansos({
   const reponer = useRestoreResource(campaignId, characterId);
   const descansar = useDeclareRest(campaignId, characterId);
   const [dadosAGastar, setDadosAGastar] = useState("0");
+  // Tarea 2C.3 — **solo el largo se puede interrumpir**, porque solo el largo cambia de
+  // comportamiento: `rest.service.ts:72` mira `interrupted` en la rama del descanso largo y
+  // nunca en la del corto. Ofrecerlo junto al corto sería un control que no hace nada.
+  const [interrumpido, setInterrumpido] = useState(false);
 
   if (isLoading) return null;
 
@@ -62,14 +66,39 @@ export function RecursosYDescansos({
             <Button
               type="button"
               variant="primary"
-              onClick={() => descansar.mutate({ kind: "LONG" })}
+              onClick={() => descansar.mutate({ kind: "LONG", interrupted: interrumpido })}
               disabled={descansar.isPending}
             >
               Descanso largo
             </Button>
+            <label className="flex items-center gap-2 font-chrome text-chrome-xs text-muted">
+              <input
+                type="checkbox"
+                checked={interrumpido}
+                onChange={(e) => setInterrumpido(e.target.checked)}
+              />
+              El descanso largo se interrumpió
+            </label>
           </div>
         )}
       </div>
+      {puedeEditar && interrumpido && (
+        <p className={PROSA_DE_HOJA}>
+          {/* El texto explica la regla del servidor, y si discrepan **miente el texto**
+              (docs/04-convenciones.md): `rest.service.ts:72-75` no repone nada cuando el
+              descanso largo se declara interrumpido, y esta frase dice exactamente eso. La
+              fuente es el SRD 5.1: «The characters must begin the rest again to gain any
+              benefit from it» (<https://5thsrd.org/adventuring/resting/>). */}
+          Interrumpido no da nada: ni puntos de golpe, ni recursos, ni dados de golpe, ni baja el
+          agotamiento. Queda anotado en la partida para que nadie tenga que acordarse de que esa
+          noche no contó.
+        </p>
+      )}
+      {descansar.isError && (
+        <p role="alert" className={`${PROSA_DE_HOJA} text-danger-text`}>
+          {(descansar.error as Error).message}
+        </p>
+      )}
 
       {otros.length === 0 ? (
         <p className={PROSA_DE_HOJA}>Sin más recursos que los dados de golpe.</p>

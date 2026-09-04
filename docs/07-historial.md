@@ -28,6 +28,46 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Las mecánicas sin pantalla, conectadas (C6) (2026-09-04)
+
+**Qué.** El §8 de la auditoría de la mesa: reglas construidas, probadas y desplegadas en el
+servidor que **ninguna pantalla podía disparar**. Diez, conectadas y jugadas en el navegador.
+
+- **Tipo de daño y su traza** (2.5.1). `changeHp` aceptaba `damageType` y las dos pantallas que
+  cambian PG mandaban `{ delta }`: las resistencias no reducían nada **jamás**. Selector nuevo
+  (`apps/web/src/features/character-sheet/AplicarDano.tsx`, exportado suelto para que el elenco lo monte) y la
+  `damageTrace` que el servidor ya devolvía, pintada con `ListaDeTraza`.
+- **El daño atado a su tirada** (2.5.4): `rollEventId` —de un desplegable con las tiradas reales
+  de la campaña—, `critical` y `reason`.
+- **«Revelar»** deja de ser «editar la visibilidad» y es un botón (`apps/web/src/features/entities/BotonRevelar.tsx`).
+- **Marcas, conjuntos y señales** (2A.15): cinco rutas huérfanas desde la fase 2A. Feature nueva
+  `features/world-state/` con su puerta de API, sus hooks y su pantalla, montada en «Reglas».
+- **Sintonización**: la fila de objeto no tenía control, y «Sintonización: N de 3».
+- **Descanso interrumpido** (2C.3): el parámetro ni se exponía.
+- **Statblocks propios**: `useCreateStatblock`/`useDeleteStatblock` sin consumidor y `PUT
+  .../statblocks/:id` sin función en la web. Editor nuevo.
+- **`useSetHp`** enganchado a la corrección exacta de la hoja — no al ±5 del elenco, que no
+  necesita conflicto.
+- **`tempHp` de un PNJ y `lastFiredAt` de una regla**, que llegaban y no se pintaban.
+
+**La decisión que retira algo.** `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED` y
+`MEMBER_JOINED` se ofrecían en el editor de reglas y `game-event-triggers.ts` **no tiene `case`
+para ninguno**. Como implementarlos es servidor, se **retiran de lo que la paleta ofrece** y el
+esquema compartido los conserva —quitarlos rompería las reglas ya guardadas—; una regla vieja que
+los use se pinta marcada y no seleccionable, que es la regla vinculante de interfaz.
+
+**Y un defecto que apareció al probarlo.** La ficha de un PNJ era **inalcanzable**: el enlace del
+bestiario aterrizaba en `CharacterDetailPage`, que busca el personaje en `useCharacters`, y esa
+lista excluye a los PNJ desde 2D.6. O sea, el único sitio donde las resistencias se aplican —un
+personaje con `statblockRef`— no tenía pantalla. Se cae a la fila que `GET .../sheet` ya devuelve,
+igual de filtrada por `canView`.
+
+**Probado en el navegador**, jugando cada gesto: 10 de fuego contra un dragón resistente bajan 5
+con su traza, la marca puesta desde la pantalla nueva dispara una regla y su fila dice «1 disparo ·
+última vez el 4/9/2026». Nada del servidor se tocó.
+
+**Cómo revertir.** `git revert` del commit. No toca `apps/api` ni `packages/shared`.
+
 ## 2.5.5 · Las condiciones llegan a las tiradas (2026-09-04)
 
 **Qué.** Las condiciones tenían un solo consumidor de verdad —la velocidad—. Ahora tienen el

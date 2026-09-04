@@ -6,6 +6,7 @@ import {
   origenDeRef,
   pgMediosDe,
   vdLegible,
+  type CreateCampaignStatblockInput,
   type Statblock,
 } from "@dnd/shared";
 import { Button } from "../../ui/Button";
@@ -15,7 +16,15 @@ import { Panel } from "../../ui/Panel";
 import { useMyRole } from "../campaigns/members";
 import { nombreCondicion } from "../character-sheet/vocabulario";
 import type { NpcEnLaMesa } from "./api";
-import { useInstantiateNpc, useNpcs, useStatblocks } from "./hooks";
+import {
+  useCreateStatblock,
+  useDeleteStatblock,
+  useInstantiateNpc,
+  useNpcs,
+  useStatblocks,
+  useUpdateStatblock,
+} from "./hooks";
+import { EditorDeStatblock } from "./EditorDeStatblock";
 import { IconoEscudo } from "./iconos";
 import { descriptorDeCriatura, NOMBRE_ORIGEN } from "./vocabulario";
 
@@ -65,13 +74,23 @@ function FichaDeCriatura({
   puedeBajar,
   onBajar,
   bajando,
+  /**
+   * Solo las **propias del DM** se editan y se borran: un statblock del libro vive en código,
+   * no en la base, y el servidor devuelve 404 si se intenta. Se pasa como `undefined` para las
+   * del SRD en vez de comprobar el origen aquí dos veces.
+   */
+  onEditar,
+  onBorrar,
 }: {
   statblock: Statblock;
   puedeBajar: boolean;
   onBajar: (ref: string, cuantos: number) => void;
   bajando: boolean;
+  onEditar?: () => void;
+  onBorrar?: () => void;
 }) {
   const [cuantos, setCuantos] = useState(1);
+  const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
   const velocidad = statblock.speeds.walk ?? 0;
 
   return (
@@ -151,6 +170,34 @@ function FichaDeCriatura({
               <IconoEscudo className="mr-1 inline h-4 w-4" />
               Bajar a la mesa
             </Button>
+            {onEditar ? (
+              <Button variant="ghost" onClick={onEditar}>
+                Editar
+              </Button>
+            ) : null}
+            {onBorrar ? (
+              // Confirmación en pantalla, nunca `window.confirm`: el patrón de todo el proyecto.
+              confirmandoBorrado ? (
+                <>
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setConfirmandoBorrado(false);
+                      onBorrar();
+                    }}
+                  >
+                    Sí, borrarla
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmandoBorrado(false)}>
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <Button variant="danger" onClick={() => setConfirmandoBorrado(true)}>
+                  Borrar
+                </Button>
+              )
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -206,6 +253,15 @@ function EnLaMesa({ campaignId, npcs }: { campaignId: string; npcs: NpcEnLaMesa[
               ))}
               <span className="font-data text-chrome-sm text-muted">
                 {n.currentHp === null ? "a PG máximos" : `${n.currentHp} PG`}
+                {/* **Los PG temporales, que llegaban del servidor y no se pintaban**
+                    (auditoría §8.5). Van APARTE y nunca sumados a los actuales, igual que en la
+                    hoja del jugador: el daño se los come primero, y sumarlos aquí diría que el
+                    PNJ aguanta más de lo que aguanta. */}
+                {n.tempHp && n.tempHp > 0 ? (
+                  <span className="ml-s2 font-chrome text-chrome-xs text-accent-text">
+                    +{n.tempHp} temporales
+                  </span>
+                ) : null}
               </span>
             </span>
           </li>
@@ -221,8 +277,28 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
   const { data, isLoading } = useStatblocks(campaignId);
   const { data: npcs } = useNpcs(campaignId);
   const bajar = useInstantiateNpc(campaignId);
+  const crear = useCreateStatblock(campaignId);
+  const actualizar = useUpdateStatblock(campaignId);
+  const borrar = useDeleteStatblock(campaignId);
   const [origen, setOrigen] = useState<"todos" | "SRD" | "CAMPAIGN">("todos");
   const [busqueda, setBusqueda] = useState("");
+  // `null` = cerrado · `{}` = escribiendo una nueva · `{ statblock }` = editando esa.
+  const [editando, setEditando] = useState<{ statblock?: Statblock } | null>(null);
+
+  /** El id de base de una criatura propia, o `null` si es del libro (que no se toca). */
+  const idDeCampana = (s: Statblock): string | null => {
+    const origen = origenDeRef(s.ref);
+    return origen && origen.source === "CAMPAIGN" ? origen.id : null;
+  };
+
+  const guardar = (input: CreateCampaignStatblockInput) => {
+    const id = editando?.statblock ? idDeCampana(editando.statblock) : null;
+    if (id) {
+      actualizar.mutate({ statblockId: id, input }, { onSuccess: () => setEditando(null) });
+    } else {
+      crear.mutate(input, { onSuccess: () => setEditando(null) });
+    }
+  };
 
   const criaturas = useMemo(() => {
     const todas = [...(data?.campaign ?? []), ...(data?.srd ?? [])];
@@ -283,6 +359,19 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
           </p>
         ) : null}
 
+        {esDM ? (
+          <div className="flex flex-wrap items-center gap-s2">
+            <Button onClick={() => setEditando({})}>Escribir una criatura</Button>
+            {borrar.isError ? (
+              <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
+                {/* El rechazo del servidor se pinta tal cual: un 409 al borrar una criatura que
+                    ya está en la mesa dice cuántos PNJ la usan, y ese dato es operativo. */}
+                {(borrar.error as Error).message}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {esDM && npcs ? <EnLaMesa campaignId={campaignId} npcs={npcs} /> : null}
 
         {criaturas.length === 0 ? (
@@ -291,18 +380,42 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
           </EmptyState>
         ) : (
           <div className="grid gap-s3 md:grid-cols-2">
-            {criaturas.map((s) => (
-              <FichaDeCriatura
-                key={s.ref}
-                statblock={s}
-                puedeBajar={esDM && origenDeRef(s.ref) !== null}
-                bajando={bajar.isPending}
-                onBajar={(ref, cuantos) => bajar.mutate({ ref, count: cuantos, hp: "AVERAGE" })}
-              />
-            ))}
+            {criaturas.map((s) => {
+              const id = idDeCampana(s);
+              return (
+                <FichaDeCriatura
+                  key={s.ref}
+                  statblock={s}
+                  puedeBajar={esDM && origenDeRef(s.ref) !== null}
+                  bajando={bajar.isPending}
+                  onBajar={(ref, cuantos) => bajar.mutate({ ref, count: cuantos, hp: "AVERAGE" })}
+                  onEditar={esDM && id ? () => setEditando({ statblock: s }) : undefined}
+                  onBorrar={esDM && id ? () => borrar.mutate(id) : undefined}
+                />
+              );
+            })}
           </div>
         )}
       </div>
+
+      {editando ? (
+        <EditorDeStatblock
+          // Remontar al cambiar de criatura: el borrador se inicializa una sola vez.
+          key={editando.statblock?.ref ?? "nueva"}
+          abierto
+          statblock={editando.statblock}
+          guardando={crear.isPending || actualizar.isPending}
+          error={
+            crear.isError
+              ? (crear.error as Error).message
+              : actualizar.isError
+                ? (actualizar.error as Error).message
+                : undefined
+          }
+          onGuardar={guardar}
+          onCerrar={() => setEditando(null)}
+        />
+      ) : null}
     </Panel>
   );
 }

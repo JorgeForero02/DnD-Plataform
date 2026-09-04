@@ -29,6 +29,7 @@ export function FilaObjeto({
   onAccionPrincipal,
   onSoltar,
   onGastar,
+  onSintonizar,
   ocupado,
   error,
 }: {
@@ -43,6 +44,16 @@ export function FilaObjeto({
    * la cantidad y borrar la fila— y ninguno dejaba constancia.
    */
   onGastar?: () => void;
+  /**
+   * Sintonizar o desintonizar. **Faltaba entero** (auditoría de la mesa, §8.2): el servidor
+   * comprueba el tope de tres desde la fase 2B y esta fila no tenía ningún control, así que un
+   * objeto que exige sintonización **no se podía sintonizar desde ninguna pantalla**.
+   *
+   * Quien la monta decide si la ofrece: el servidor solo la acepta sobre un objeto **equipado**
+   * que de verdad la pida (`inventory.service.ts:136-145`), y ofrecerla donde no se puede sería
+   * ofrecer un 400.
+   */
+  onSintonizar?: () => void;
   ocupado: boolean;
   /** El rechazo del servidor para esta fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
@@ -83,6 +94,20 @@ export function FilaObjeto({
         <Button type="button" variant="secondary" aria-busy={ocupado} onClick={onAccionPrincipal}>
           {NOMBRE_ACCION_ZONA[row.location]}
         </Button>
+        {/* **Antes de la acción principal**: sintonizar es lo que hace que el objeto haga algo,
+            y en la fila del prototipo el estado va pegado al nombre, no al final. */}
+        {onSintonizar && (
+          <Button
+            type="button"
+            variant={row.attuned ? "secondary" : "ghost"}
+            aria-busy={ocupado}
+            aria-pressed={row.attuned}
+            onClick={onSintonizar}
+            aria-label={row.attuned ? `Desintonizar ${item.name}` : `Sintonizar con ${item.name}`}
+          >
+            {row.attuned ? "Sintonizado" : "Sintonizar"}
+          </Button>
+        )}
         {onGastar && (
           <Button
             type="button"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CoinKey } from "@dnd/shared";
+import { MAX_ATTUNED_ITEMS, type CoinKey } from "@dnd/shared";
 import { ApiError } from "../../lib/api";
 import type { InventoryRow } from "./api";
 import {
@@ -77,6 +77,7 @@ export function PaginaDeInventario({
   const equipados = items.filter((r) => r.location === "EQUIPPED");
   const encima = items.filter((r) => r.location === "CARRIED");
   const guardados = items.filter((r) => r.location === "STORED");
+  const sintonizados = items.filter((r) => r.attuned).length;
 
   const cambiarZona = (row: InventoryRow, destino: "EQUIPPED" | "CARRIED") => {
     setErroresPorFila((e) => ({ ...e, [row.id]: "" }));
@@ -128,6 +129,27 @@ export function PaginaDeInventario({
     );
   };
 
+  /**
+   * Sintonizar o desintonizar. **Es la misma mutación que mover de zona** —`PATCH` con una sola
+   * frase, como el servidor— y por eso reutiliza el mismo carril de «fila en vuelo» y de error
+   * por fila: el rechazo del servidor se pinta **tal cual** debajo de la fila, y no en un aviso
+   * genérico, porque su texto dice cuáles son los tres objetos que ya ocupan las ranuras.
+   */
+  const alternarSintonia = (row: InventoryRow) => {
+    setErroresPorFila((e) => ({ ...e, [row.id]: "" }));
+    setFilaEnVuelo(row.id);
+    cambiarUbicacion.mutate(
+      { rowId: row.id, input: { attuned: !row.attuned } },
+      {
+        onSuccess: () => setFilaEnVuelo(null),
+        onError: (error) => {
+          setFilaEnVuelo(null);
+          setErroresPorFila((e) => ({ ...e, [row.id]: mensajeDeError(error) }));
+        },
+      },
+    );
+  };
+
   const confirmarSoltar = () => {
     if (!filaASoltar) return;
     removerObjeto.mutate(filaASoltar.id, {
@@ -160,6 +182,15 @@ export function PaginaDeInventario({
         {aviso && <AvisoDeEquipar aviso={aviso} />}
         <SelectorDeObjeto campaignId={campaignId} characterId={characterId} />
 
+        {/* «Sintonización: {usadas} de {tope}», como en `hoja/SeccionEquipo.tsx` del prototipo.
+            **El tope sale de `@dnd/shared`** (`MAX_ATTUNED_ITEMS`), que es el mismo número que
+            comprueba el servidor: escribir «3» aquí sería la segunda fuente de una regla. Y el
+            conteo se hace sobre lo que llega, no se guarda: desequipar quita la sintonización en
+            el servidor, así que una cuenta local se desincronizaría. */}
+        <p className="mb-s2 font-chrome text-chrome-xs text-muted" data-testid="contador-sintonia">
+          Sintonización: {sintonizados} de {MAX_ATTUNED_ITEMS}
+        </p>
+
         <ZonaDeObjetos ubicacion="EQUIPPED" vacia={equipados.length === 0}>
           {equipados.map((row) => (
             <FilaObjeto
@@ -169,6 +200,10 @@ export function PaginaDeInventario({
               error={erroresPorFila[row.id] || undefined}
               onAccionPrincipal={() => cambiarZona(row, "CARRIED")}
               onSoltar={() => setFilaASoltar(row)}
+              // **Solo donde el servidor la acepta**: equipado y que el objeto la pida. En
+              // «Encima» o «Guardado» el botón devolvería «Para sintonizar un objeto, primero
+              // hay que llevarlo puesto», que es un rechazo evitable.
+              onSintonizar={row.item.requiresAttunement ? () => alternarSintonia(row) : undefined}
             />
           ))}
         </ZonaDeObjetos>

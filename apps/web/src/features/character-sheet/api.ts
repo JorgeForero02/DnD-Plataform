@@ -5,12 +5,14 @@ import type {
   DamageType,
   DeathSaveInput,
   DeathState,
+  DeclareRestInput,
   DerivationWarning,
   RollSuggestions,
   DerivedValue,
   RollAttackInput,
   RollResult,
   SetHpInput,
+  TraceStep,
   UpdateCharacterSheetInput,
   WeaponProperty,
 } from "@dnd/shared";
@@ -166,6 +168,19 @@ export interface SheetResponse {
    * mismo que dice el servidor cuando no hay ninguna condición encima.
    */
   rollSuggestions?: RollSuggestions;
+  /**
+   * Tarea 2.5.1 — **por qué el daño no fue el que se tecleó**.
+   *
+   * Solo viene en la respuesta de `POST .../hp`, y **solo cuando de verdad se redujo o se
+   * agravó algo**: el servidor la omite si el golpe no llevaba tipo, si el personaje no tiene
+   * statblock detrás o si su statblock no declara modificadores para ese tipo. Los `steps` son
+   * la misma forma que cualquier otra traza de la hoja, así que se pintan con `ListaDeTraza`
+   * (`Traza.tsx`) en vez de con una lista propia.
+   *
+   * `notes` es la **prosa que limita la regla** («de ataques no mágicos»), copiada del
+   * statblock: el servidor no la interpreta, la enseña.
+   */
+  damageTrace?: { total: number; steps: TraceStep[]; notes: string[] };
 }
 
 // --- Anulaciones manuales (solo DM; el servidor lo impone) ---
@@ -262,6 +277,51 @@ export function rollDeathSave(
   });
 }
 
+// --- Las tiradas recientes, para atar un daño a la suya (2.5.4) ---
+
+/** Una tirada del registro, reducida a lo que hace falta para elegirla en un desplegable. */
+export interface TiradaCitable {
+  /** El `id` del `GameEvent`, que es lo que `changeHp` espera en `rollEventId`. */
+  id: string;
+  expression: string;
+  total: number;
+  createdAt: string;
+  natural?: "TWENTY" | "ONE";
+}
+
+/**
+ * Las últimas tiradas de la campaña, para responder «¿de qué tirada sale este daño?».
+ *
+ * **Duplica cinco líneas de `features/rolls/api.ts` a sabiendas**, por el mismo motivo que ya
+ * está escrito arriba para `createRoll`: la hoja no depende de la pantalla de dados ni al revés,
+ * y la forma de los datos sigue viviendo una sola vez en `@dnd/shared`.
+ *
+ * **El servidor ya filtró por `canView`**: una tirada a ciegas del DM no viaja, y por eso no se
+ * puede citar. Es correcto — citar lo que no puedes ver sería filtrarlo por el registro.
+ */
+export async function fetchTiradasCitables(campaignId: string): Promise<TiradaCitable[]> {
+  const pagina = await apiFetch<{
+    events: {
+      id: string;
+      createdAt: string;
+      payload: { type: string; expression?: string; total?: number; natural?: "TWENTY" | "ONE" };
+    }[];
+  }>(`/campaigns/${campaignId}/rolls?limit=20`);
+  return (
+    pagina.events
+      // `changeHp` solo acepta `ABILITY_ROLL` y `DEATH_SAVE` (`character-sheet.service.ts`), y una
+      // salvación de muerte no es de lo que sale un daño: ofrecer lo demás sería ofrecer un 400.
+      .filter((e) => e.payload.type === "ABILITY_ROLL")
+      .map((e) => ({
+        id: e.id,
+        expression: e.payload.expression ?? "",
+        total: e.payload.total ?? 0,
+        createdAt: e.createdAt,
+        ...(e.payload.natural ? { natural: e.payload.natural } : {}),
+      }))
+  );
+}
+
 // --- Recursos (2A.8) ---
 
 export interface ResourceRow {
@@ -307,15 +367,23 @@ export function restoreResource(
 
 // --- Descansos (2A.8) ---
 
+/**
+ * Declarar un descanso.
+ *
+ * **`interrupted` lo arbitra el DM, y hasta 2026-09-04 esta función ni siquiera lo dejaba
+ * mandar**: el campo existía en `declareRestSchema` y en el servicio, y ninguna pantalla podía
+ * llegar a él. El SRD 5.1 dice que una hora de actividad agotadora obliga a empezar el descanso
+ * otra vez (<https://5thsrd.org/adventuring/resting/>), y la máquina no puede saber que os
+ * atacaron a la tercera hora: lo dice quien arbitra.
+ */
 export function declareRest(
   campaignId: string,
   characterId: string,
-  kind: "SHORT" | "LONG",
-  spendHitDice?: number,
+  input: DeclareRestInput,
 ): Promise<CharacterRow> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/rest`, {
     method: "POST",
-    body: JSON.stringify({ kind, spendHitDice }),
+    body: JSON.stringify(input),
   });
 }
 

@@ -1,4 +1,9 @@
-import type { CreateCampaignStatblockInput, InstantiateNpcInput, Statblock } from "@dnd/shared";
+import type {
+  CreateCampaignStatblockInput,
+  InstantiateNpcInput,
+  Statblock,
+  UpdateCampaignStatblockInput,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Fase 2D — la puerta de datos del bestiario.
@@ -47,8 +52,31 @@ export function createStatblock(
   });
 }
 
+/**
+ * Editar un statblock propio del DM.
+ *
+ * **No existía función en la web** (auditoría de la mesa, §8.5): `PUT .../statblocks/:id` estaba
+ * en el controlador y en el servicio, y no había ni un `apiFetch` que lo llamara. Un DM que se
+ * equivocaba en la CA de su criatura tenía que borrarla y volver a escribirla entera.
+ */
+export function updateStatblock(
+  campaignId: string,
+  statblockId: string,
+  input: UpdateCampaignStatblockInput,
+): Promise<Statblock> {
+  return apiFetch<Statblock>(`/campaigns/${campaignId}/statblocks/${statblockId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export function deleteStatblock(campaignId: string, statblockId: string): Promise<unknown> {
-  return apiFetch(`/campaigns/${campaignId}/statblocks/${statblockId}`, { method: "DELETE" });
+  return apiFetch(`/campaigns/${campaignId}/statblocks/${statblockId}`, {
+    method: "DELETE",
+    // `apiFetch` manda siempre `Content-Type: application/json`, y Fastify rechaza esa cabecera
+    // con un cuerpo de verdad vacío. Misma trampa que documenta `features/entities/api.ts`.
+    body: JSON.stringify({}),
+  });
 }
 
 export function fetchNpcs(campaignId: string): Promise<NpcEnLaMesa[]> {

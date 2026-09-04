@@ -8,6 +8,7 @@ import {
   CARRIL_DE_PARTE,
   CONDICIONES,
   DISPARADORES,
+  DISPARADORES_SIN_MOTOR,
   EFECTOS,
   nombreDePieza,
   type ParteDeRegla,
@@ -85,15 +86,24 @@ const colocar = (parte: ParteDeRegla, clave: string) =>
     }),
   );
 
+// **Actualizado el 2026-09-04 (auditoría de la mesa, §8.3).** La paleta ya no ofrece los cuatro
+// sucesos que el motor no dispara (`DISPARADORES_SIN_MOTOR`), así que no hay caja que colocar
+// para ellos. Lo que esta prueba sigue comprobando es exactamente lo mismo: **cada pieza que la
+// paleta ofrece, al colocarla, aparece en la frase y en su parte** — y el conjunto se sigue
+// derivando del esquema compartido, no de una lista escrita a mano.
+const DISPARADORES_QUE_SE_COLOCAN = DISPARADORES.filter(
+  (c) => !(DISPARADORES_SIN_MOTOR as string[]).includes(c),
+);
+
 const TODAS: [ParteDeRegla, string][] = [
-  ...DISPARADORES.map((c) => ["SUCESO", c] as [ParteDeRegla, string]),
+  ...DISPARADORES_QUE_SE_COLOCAN.map((c) => ["SUCESO", c] as [ParteDeRegla, string]),
   ...CONDICIONES.map((c) => ["ESTADO", c] as [ParteDeRegla, string]),
   ...EFECTOS.map((c) => ["ACCION", c] as [ParteDeRegla, string]),
 ];
 
 describe("la frase concuerda con las cajas", () => {
-  it("las 28 piezas del vocabulario: cada una, colocada, aparece en la frase y en su parte", () => {
-    expect(TODAS).toHaveLength(28);
+  it("las 24 piezas que la paleta ofrece: cada una, colocada, aparece en la frase y en su parte", () => {
+    expect(TODAS).toHaveLength(28 - DISPARADORES_SIN_MOTOR.length);
 
     for (const [parte, clave] of TODAS) {
       montar();

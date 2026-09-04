@@ -6,7 +6,7 @@ import {
   ARTICULO_PARTE,
   CARRIL_DE_PARTE,
   CONDICIONES,
-  DISPARADORES,
+  DISPARADORES_OFRECIDOS,
   EFECTOS,
   GLOSA_DE_GRUPO,
   NOMBRE_PARTE,
@@ -177,7 +177,12 @@ export function PaletaDeCajas({
       <div className="space-y-s4 p-s3">
         <GrupoDePaleta
           parte="SUCESO"
-          claves={DISPARADORES}
+          // **Los ofrecidos, no los doce del esquema** (auditoría §8.3). Cuatro de los doce
+          // están en el vocabulario y `game-event-triggers.ts` no tiene `case` para ninguno: se
+          // podían colocar, ensayar y guardar, y no se disparaban nunca. La paleta deja de
+          // prometerlos; el esquema los conserva para no romper las reglas ya guardadas, y esas
+          // se pintan marcadas donde se leen. Ver `DISPARADORES_SIN_MOTOR`.
+          claves={DISPARADORES_OFRECIDOS}
           tope={topes?.SUCESO}
           onColocar={onColocar}
         />

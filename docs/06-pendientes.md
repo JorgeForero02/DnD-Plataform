@@ -113,6 +113,15 @@ puede comprobar sin marcar el suceso, y eso es una columna nueva.
 se pueda borrar de `rollAttackSchema` sin romper nada; y (2) una tirada de ataque ya cobrada no se
 pueda volver a cobrar. Hasta las dos, no es «si y solo si».
 
+## Deuda del carril C6 — las mecánicas sin pantalla (2026-09-04)
+
+| Ficha | Qué | Por qué queda abierta |
+|---|---|---|
+| **C6-1** | **Los cuatro disparadores del motor siguen sin `case`**: `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`, `MEMBER_JOINED` (`apps/api/src/rules-engine/game-event-triggers.ts:29-75`) | Se han **retirado de lo que el editor ofrece** (`DISPARADORES_SIN_MOTOR`, en `features/rules/vocabulario.ts`) porque una regla armada sobre ellos se guarda y no se dispara jamás, y la interfaz no puede prometer lo que el motor no cumple. Implementarlos es servidor. **Cierra cuando** el `switch` los traduzca: entonces esa lista se vacía y la paleta los recupera sola. Ojo: es una **segunda copia** de `UNREACHABLE_TRIGGER_KINDS` (`trace-payload.ts:109`), declarada ahí mismo, porque no hay forma de preguntar por ellos antes de que exista la regla |
+| **C6-2** | **`GET .../statblocks` no devuelve `visibility`** (`aStatblock()`, `statblocks.service.ts:184`) | El editor de criaturas propias (`apps/web/src/features/bestiario/EditorDeStatblock.tsx`) **no puede enseñar quién la ve al editarla**, porque no lo sabe, así que **omite el campo** en el `PUT` para no pisar una criatura que el DM ya había enseñado a la mesa. Se dice en pantalla en vez de esconderlo. **Cierra cuando** el servidor incluya el campo en la lectura: son dos líneas y el formulario ya tiene el selector escrito |
+| **C6-3** | **El vocabulario de tipos de daño sigue triplicado** y las tres copias **no dicen lo mismo**: `character-sheet` y `campaign-items` traducen `LIGHTNING` como «relámpago»; `inventory` abrevia y dice «rayo» | La decisión D-OP-14 (un módulo con `nombreTipoDano` y `nombreTipoDanoCorto`) **no se aplicó a ciegas**: el corto existe para que la fila de inventario quepa, y unificar sin más rompería ese ancho. El selector de daño nuevo usa el largo de `character-sheet` y lo dice en su comentario. **Cierra cuando** el módulo único exponga las dos formas y las tres features importen de él |
+| **C6-4** | **`NpcEnLaMesa.tempHp` se pinta pero no se ha podido ver con datos** | Ninguna pantalla da PG temporales a un PNJ todavía, así que el campo siempre llega a 0. El código está (`apps/web/src/features/bestiario/PanelDeBestiario.tsx`, «+N temporales», aparte y nunca sumado). **Cierra cuando** exista el gesto que los concede |
+
 ## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
 
 **Encontrado al construir la cabecera de escena, y tumba media premisa del reseño.** El §5 del

@@ -78,10 +78,32 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-03** (cierre de la fase **2D**: statblocks de PNJ, PNJ jugables en la
-mesa y el bestiario, con su revisión de cierre). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
+Última revisión: **2026-09-04** (tarea 2.5.2 — iniciativa y orden de turnos). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
+
+## C2.5-1 · El spec de 2.5.2 dice «siete posiciones» para ocho combatientes, y la cuenta no cuadra (2026-09-04)
+
+El cierre de §2.5.2 del spec de fase 2.5 dice: *«un encuentro con dos personajes y seis goblins
+tiene ocho combatientes y **siete posiciones** en el orden, los goblins actúan juntos»*.
+
+**Se implementó con OCHO posiciones, no siete**, y aquí está por qué: `Combatant.position` es de
+cada fila, no de un grupo, porque la restricción que la base garantiza es «una posición no se
+repite en un encuentro» (§2.5.2 del propio spec, y la convención general de
+`docs/04-convenciones.md`) — con `@@unique([encounterId, position])`, un valor de posición
+compartido por los seis goblins violaría ese mismo índice que el spec pide. Bajo cualquier forma
+de agrupar que se ha probado —una posición por grupo, una posición por combatiente con los
+empates adyacentes— dos personajes con iniciativa distinta más un grupo de seis goblins con una
+sola tirada da **tres** grupos o **ocho** filas individuales, nunca siete. Parece la misma clase
+de error aritmético que ya corrigió `docs/08-pruebas.md` («21 especificaciones de navegador»
+que eran 20).
+
+**No se investigó más porque no hay más que investigar en el SRD**: la cifra es del propio spec
+de este proyecto, no de una regla del juego, así que no hay una fuente externa que consultar. Se
+implementó el comportamiento descrito en prosa (los goblins comparten tirada y quedan
+consecutivos) y se documentó la cifra concreta que sale de él (ocho). **Pendiente: que el autor
+confirme si «siete» era un error o si hay una lectura del diseño que no se ha visto**, y si hace
+falta, se corrige el spec.
 
 ## P3 · El catálogo de PNJ mezcla pies y metros, y está declarado (2026-09-03, 2D.1)
 

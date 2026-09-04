@@ -1152,3 +1152,25 @@ describe("curar respeta el máximo de VERDAD (revisión de reglas, 2026-09-03)",
     expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(7);
   });
 });
+
+describe("2.5.2 — el modificador de iniciativa reutiliza la derivación, no una segunda fórmula", () => {
+  it("es exactamente `derived.initiative`, con la misma ficha que deriva la hoja", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+
+    const modificador = await service.getInitiativeModifier("p1", "c1", "ch1");
+
+    expect(modificador).toBe(HOJA_EJEMPLO.derived.initiative.total);
+  });
+
+  it("con un objeto que modifique la iniciativa (una anulación del DM), el modificador cambia con él", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(
+      personaje({ overrides: { initiative: HOJA_EJEMPLO.derived.initiative.total + 5 } }),
+    );
+
+    const modificador = await service.getInitiativeModifier("dm1", "c1", "ch1");
+
+    expect(modificador).toBe(HOJA_EJEMPLO.derived.initiative.total + 5);
+  });
+});

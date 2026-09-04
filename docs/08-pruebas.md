@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 31 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 32 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 20 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -203,6 +203,7 @@ en verde.
 | `statblocks` | El catálogo del SRD lo ve cualquiera que juegue. **El statblock propio del DM no viaja al jugador**, y se comprueba sobre el cuerpo serializado. Las columnas de lista y los campos Json sobreviven al viaje por Postgres; **editar un campo no borra los otros veinte**, comprobado contra la fila; uno de otra campaña da 404. |
 | `pnj-en-la-mesa` | El bucle entero de un PNJ: instanciar (solo DM, con tope), que **nazca escondido**, que su hoja se derive del statblock con su traza, que reciba daño, que una anulación del DM salga con su delta, y que **el agotamiento le parta los PG máximos sin que se escribiera una línea de agotamiento para PNJ** — que es lo que justifica la decisión de diseño de la fase 2D. Y las tres comprobaciones de la revisión de cierre: **los números de un statblock `DM_ONLY` no llegan al jugador por la hoja**, el `ref` de una plantilla escondida no viaja, y los PNJ no salen en el listado de personajes. |
 | `validacion` | Que un cuerpo inválido diga **qué campo falta y en español**, con la ruta completa de un campo anidado y la lista de los objetivos que sí existen. Y que **no sea un oráculo**: dos identificadores inexistentes son indistinguibles. |
+| `encounters` | Iniciativa y orden de turnos (2.5.2). Dos personajes y seis goblins dan **ocho combatientes**, cuya posición **la base impide repetir de verdad** (`@@unique`, saltándose el servicio a propósito); **como mucho un encuentro activo por sesión, y lo garantiza el índice único parcial**, no la comprobación previa; los goblins comparten una sola tirada de iniciativa y quedan consecutivos en el orden; un jugador ve la lista de combate pero no un goblin que el DM no ha revelado; y **pasar de turno ocho veces sube el asalto y avanza el reloj exactamente seis segundos**, dejando caducada sola una condición de un asalto sin que nadie la toque. |
 
 ### La partida entera
 

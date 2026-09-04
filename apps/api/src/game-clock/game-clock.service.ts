@@ -7,6 +7,7 @@ import {
   type AdvanceClockResult,
   type ClockState,
 } from "@dnd/shared";
+import type { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import { vencidasEnElTramo } from "../character-state/conditions/vencimiento";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -43,6 +44,14 @@ export class GameClockService {
     userId: string,
     campaignId: string,
     input: AdvanceClockInput,
+    /**
+     * **Tarea 2.5.2.** Cuando quien llama ya tiene una transacción abierta —pasar de turno sube
+     * de asalto, que es avanzar este mismo reloj— la comparte en vez de abrir una segunda: los
+     * seis segundos del asalto y el turno que los dispara se escriben juntos o no se escribe
+     * ninguno, igual que ya exige la convención para una tirada y la tabla que dispara
+     * (`RollsService.roll`). Sin `tx`, abre la suya — el comportamiento de siempre.
+     */
+    tx?: Prisma.TransactionClient,
   ): Promise<AdvanceClockResult> {
     await this.membership.requireDM(campaignId, userId);
 
@@ -50,7 +59,7 @@ export class GameClockService {
     const ritmo = input.kind === "TRAVEL" ? RITMO_DE_VIAJE[input.pace] : null;
     const millas = ritmo && input.kind === "TRAVEL" ? ritmo.milesPerHour * input.hours : undefined;
 
-    return this.prisma.transaction(async (tx) => {
+    const ejecutar = async (tx: Prisma.TransactionClient): Promise<AdvanceClockResult> => {
       // **La lectura y la escritura van dentro de la transacción**, y el `increment` es del motor
       // de base de datos y no un `to = from + n` calculado aquí: dos avances a la vez —el DM en
       // dos pestañas, o una regla que dispare otro— perderían uno de los dos si el número se
@@ -150,6 +159,8 @@ export class GameClockService {
         // qué pasa después es de la mesa.
         forcedMarchSaves: input.kind === "TRAVEL" ? salvacionesDeMarchaForzada(input.hours) : [],
       };
-    });
+    };
+
+    return tx ? ejecutar(tx) : this.prisma.transaction(ejecutar);
   }
 }

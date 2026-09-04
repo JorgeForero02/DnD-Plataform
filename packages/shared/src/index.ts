@@ -19,3 +19,4 @@ export * from "./rules-engine.schema";
 export * from "./item.schema";
 export * from "./inventory.schema";
 export * from "./statblock.schema";
+export * from "./encounter.schema";

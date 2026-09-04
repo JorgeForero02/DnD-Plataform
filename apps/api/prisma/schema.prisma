@@ -26,6 +26,14 @@ enum SessionStatus {
   CLOSED
 }
 
+// Tarea 2.5.2 — un encuentro es un estado del combate, no un tipo de sesión más: **ACTIVE** es
+// la única que participa en el índice único parcial de abajo («como mucho un encuentro activo
+// por sesión»); ENDED es el estado final y no vuelve a activarse.
+enum EncounterStatus {
+  ACTIVE
+  ENDED
+}
+
 // Tarea 2A.5. Arranca corto a propósito: 2C añade DICE_ROLLED, CONDITION_APPLIED,
 // CONDITION_REMOVED y CLOCK_ADVANCED; la fase 3 añade TOKEN_MOVED. Anadir un tipo es anadir un
 // valor aqui y un miembro a la union de Zod de packages/shared/src/game-event.schema.ts, que es
@@ -60,6 +68,11 @@ enum GameEventType {
   ITEM_ADDED
   ITEM_MOVED
   ITEM_REMOVED
+  // La iniciativa y el orden de turnos (2.5.2): empezar el encuentro, pasar turno y subir de
+  // asalto son los tres momentos que la mesa quiere ver en la línea de tiempo.
+  ENCOUNTER_STARTED
+  TURN_ADVANCED
+  ROUND_ADVANCED
 }
 
 enum ResourceReset {
@@ -278,6 +291,7 @@ model Session {
   // porque hay un socket abierto. Aqui no lo hay, asi que quien vino es un dato que alguien dice.
   attendance  Json?
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  encounters  Encounter[]
 
   // Como maximo una sesion IN_PROGRESS por campana. Lo garantiza un indice unico PARCIAL, que
   // Prisma no sabe expresar y va como SQL crudo dentro de la migracion:
@@ -285,6 +299,58 @@ model Session {
   //     ON "Session" ("campaignId") WHERE "status" = 'IN_PROGRESS';
   // Una comprobacion en el servicio seria una carrera esperando a ocurrir en cuanto el DM tenga
   // dos pestanas abiertas, y por eso su prueba es e2e contra Postgres real y no unitaria.
+}
+
+// Tarea 2.5.2 — el encuentro cuelga de la sesión, que ya es el estado mutable de la partida.
+//
+// **`round` y `activePosition` son lo único mutable aquí.** El orden en sí —quién combate y en
+// qué posición— se calcula UNA VEZ al empezar (el SRD: «el orden no cambia de asalto a
+// asalto») y se guarda en `Combatant`, no se recalcula al pasar turno.
+model Encounter {
+  id             String          @id @default(cuid())
+  sessionId      String
+  status         EncounterStatus @default(ACTIVE)
+  // Empieza en el asalto 1, como en la mesa: no hay "asalto 0".
+  round           Int            @default(1)
+  // La posición (`Combatant.position`) de quien tiene el turno ahora mismo.
+  activePosition  Int            @default(0)
+  createdAt      DateTime        @default(now())
+  session        Session         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  combatants     Combatant[]
+
+  // Como máximo un encuentro ACTIVE por sesión. Mismo patrón que
+  // "session_one_in_progress_per_campaign": un índice único PARCIAL que Prisma no sabe expresar
+  // en el esquema y va como SQL crudo dentro de la migración:
+  //   CREATE UNIQUE INDEX "encounter_one_active_per_session"
+  //     ON "Encounter" ("sessionId") WHERE "status" = 'ACTIVE';
+  // Una comprobación en el servicio sería una carrera esperando a ocurrir en cuanto el DM tenga
+  // dos pestañas abiertas, y por eso su prueba es e2e contra Postgres real y no unitaria.
+}
+
+// Un combatiente **apunta a un `Character`** — desde 2D un PNJ en la mesa ES una fila de
+// `Character`, así que no hace falta un segundo tipo. Los seis goblins de un mismo grupo (2.5.2,
+// "se tira en grupo") son SEIS filas de `Combatant` — una por cada `Character` — que comparten
+// el mismo `initiative` porque compartieron la misma tirada, no una fila compartida.
+//
+// **`position` es la que ordena los turnos, y es de la base, no del servicio.** "Una posición no
+// se repite en un encuentro" es un índice único normal (Prisma sí lo expresa): dos combatientes
+// con la misma posición son un estado inconsistente, no una carrera a medias.
+model Combatant {
+  id          String    @id @default(cuid())
+  encounterId String
+  characterId String
+  // El número de iniciativa, **editable por el DM** tras la tirada (el SRD deja los empates a
+  // su criterio). Es el resultado de una prueba de Destreza, no una columna que se recalcula.
+  initiative  Int
+  // 0-based. Fija el orden de turnos y NO cambia de asalto a asalto.
+  position    Int
+  createdAt   DateTime  @default(now())
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([encounterId, position])
+  @@index([encounterId])
+  @@index([characterId])
 }
 
 // Log append-only de la partida. NUNCA es la fuente del estado: el estado se lee de sus
@@ -391,6 +457,7 @@ model Character {
   conditions CharacterCondition[]
   inventory  InventoryItem[]
   rollRequests RollRequest[]
+  combatants Combatant[]
 
   @@index([campaignId])
 }

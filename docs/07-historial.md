@@ -27,6 +27,34 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Tarea 2.5.2 — iniciativa y orden de turnos (2026-09-04)
+
+`Encounter` y `Combatant` cuelgan de la sesión. La iniciativa **es una prueba de Destreza**
+derivada por el motor (`CharacterSheetService.getInitiativeModifier`, reutilizando
+`derived.initiative`) y tirada por el servidor (`RollsService`, el mismo tirador inyectable de
+2C); los combatientes con el mismo `statblockRef` (los goblins de 2D) comparten una única
+tirada, como manda el SRD. El orden se calcula una vez y se guarda; pasar de turno recorre
+`Combatant` por `position` y, al completar la vuelta, sube `Encounter.round` **y avanza
+`Campaign.clockSeconds` en los seis segundos de un asalto** por el mismo camino que cualquier
+otro avance del reloj (`GameClockService.advance`, con un `tx` opcional nuevo para compartir la
+transacción) — demostrado en e2e: una condición de un asalto, puesta antes de completar la
+vuelta, queda vencida al terminarla sin que el código del turno sepa nada de condiciones.
+
+Dos restricciones de base: como mucho un encuentro `ACTIVE` por sesión (índice único parcial,
+igual que `session_one_in_progress_per_campaign`) y una posición no se repite dentro de un
+encuentro (`@@unique`), las dos probadas contra Postgres real porque el Prisma simulado no
+valida SQL. Sin pantalla a propósito (§2.5.2 del spec de fase 2.5): la espera la mesa de
+combate de §2.5.6. Deuda declarada: **C2.5-1** en `docs/06-pendientes.md` — el spec dice «siete
+posiciones» para el ejemplo de dos personajes y seis goblins, y se implementaron **ocho** (una
+por combatiente, porque «una posición no se repite» lo exige); no se ha encontrado una lectura
+que dé siete sin romper esa misma restricción.
+
+**Revertir:** `git revert` del commit; baja la migración
+`20260904040055_encounters_and_initiative` con `prisma migrate resolve --rolled-back` seguido
+de un `DROP TABLE "Combatant", "Encounter"` manual si ya se aplicó en algún entorno.
+
+---
+
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
 
 Despliegue lanzado por la API de Coolify **desde dentro de la VPS**

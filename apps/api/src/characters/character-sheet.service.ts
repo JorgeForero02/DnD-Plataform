@@ -416,6 +416,28 @@ export class CharacterSheetService {
   }
 
   /**
+   * El modificador de iniciativa: la prueba de Destreza que el motor **ya deriva**
+   * (`derived.initiative`, `rules/engine.ts`), no una segunda fórmula escrita a mano.
+   *
+   * Tarea 2.5.2 — el orden de turnos tira con esto. Sirve igual para un jugador que para un PNJ
+   * instanciado: los dos pasan por `construirODenegar`, que ya sabe leer el statblock cuando
+   * hace falta.
+   */
+  async getInitiativeModifier(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+  ): Promise<number> {
+    await this.membership.requireMember(campaignId, userId);
+    const character = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character) throw new NotFoundException("Character not found");
+    const sheet = await this.construirODenegar(userId, character);
+    return sheet.derived.initiative.total;
+  }
+
+  /**
    * Las velocidades **con las condiciones aplicadas**, cada una con su traza.
    *
    * **Vive aquí y no en la pantalla.** La primera versión de la hoja calculaba esto en el

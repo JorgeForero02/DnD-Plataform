@@ -66,7 +66,15 @@ export function RecursosYDescansos({
             <Button
               type="button"
               variant="primary"
-              onClick={() => descansar.mutate({ kind: "LONG", interrupted: interrumpido })}
+              onClick={() =>
+                descansar.mutate(
+                  { kind: "LONG", interrupted: interrumpido },
+                  // **La marca no sobrevive al descanso que describe.** Sin esto, el siguiente
+                  // descanso largo heredaba «interrumpido» en silencio y no reponía nada, que
+                  // es el mismo vicio de estado pegajoso del panel de daño.
+                  { onSuccess: () => setInterrumpido(false) },
+                )
+              }
               disabled={descansar.isPending}
             >
               Descanso largo

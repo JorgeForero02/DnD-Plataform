@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   CREATURE_SIZES,
   CREATURE_TYPES,
-  damageTypeSchema,
   dadoDeGolpeDe,
   pgMediosDe,
   vdLegible,
@@ -18,8 +17,12 @@ import {
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 import { Field, fieldControlClass } from "../../ui/Field";
-import { NOMBRE_CARACTERISTICA, nombreTipoDano } from "../character-sheet/vocabulario";
-import { EXPLICACION_DE_NIVEL } from "../entities/visibilidad";
+import {
+  NOMBRE_CARACTERISTICA,
+  nombreTipoDano,
+  TIPOS_DE_DANO,
+} from "../character-sheet/vocabulario";
+import { VisibilityChooser } from "../entities/VisibilityChooser";
 import { NOMBRE_TAMANO, NOMBRE_TIPO_CRIATURA } from "./vocabulario";
 
 // Fase 2D, conectada el 2026-09-04 — **escribir una criatura propia**.
@@ -41,7 +44,11 @@ import { NOMBRE_TAMANO, NOMBRE_TIPO_CRIATURA } from "./vocabulario";
 // esquema compartido (`pgMediosDe`, `dadoDeGolpeDe`): el dado sale del tamaño, no de un campo, y
 // verlo cambiar al cambiar el tamaño es lo que evita la pregunta «¿de dónde sale ese d10?».
 
-const TIPOS_DE_DANO = damageTypeSchema.options;
+/**
+ * Los cinco niveles menos `SPECIFIC_PLAYERS`: un statblock no tiene tabla de concesiones por
+ * jugador, así que nombrar a alguien no tendría dónde guardarse.
+ */
+const NIVELES_DE_CRIATURA: Visibility[] = ["PUBLIC", "PLAYERS", "OWNER_DM", "DM_ONLY"];
 
 const NOMBRE_EFECTO_DE_DANO: Record<DamageModifier["effect"], string> = {
   RESIST: "Resiste (la mitad)",
@@ -80,13 +87,20 @@ function borradorVacio(): CreateCampaignStatblockInput {
   };
 }
 
-/** El mismo borrador, pero partiendo de una criatura que ya existe: editar es rellenar. */
+/**
+ * El mismo borrador, pero partiendo de una criatura que ya existe: editar es rellenar.
+ *
+ * **`ref` y `source` se dejan fuera a propósito.** Un `...s` a secas los arrastraba hasta el
+ * cuerpo del `PUT`, y no están en `createCampaignStatblockSchema` —los pone el servidor,
+ * `CAMPAIGN:<id>` no lo elige el cliente—. Zod los descartaría en silencio, así que no rompía
+ * nada; pero mandar campos que el esquema no reconoce es ruido en el cable y la clase de cosa
+ * que dentro de tres semanas parece que sí significa algo.
+ */
 function borradorDe(s: Statblock & { visibility?: Visibility }): CreateCampaignStatblockInput {
-  return {
-    ...borradorVacio(),
-    ...s,
-    visibility: s.visibility ?? "DM_ONLY",
-  };
+  const partida = { ...borradorVacio(), ...s, visibility: s.visibility ?? "DM_ONLY" };
+  delete (partida as Partial<Statblock>).ref;
+  delete (partida as Partial<Statblock>).source;
+  return partida;
 }
 
 /** Una lista de rasgos o de acciones: nombre y prosa, se añaden y se quitan. */
@@ -491,27 +505,23 @@ export function EditorDeStatblock({
             exactamente como estaba.
           </p>
         ) : (
-          <Field label="Quién la ve" hint={EXPLICACION_DE_NIVEL[b.visibility ?? "DM_ONLY"]}>
-            <select
-              className={fieldControlClass}
-              value={b.visibility ?? "DM_ONLY"}
-              onChange={(e) => setB({ ...b, visibility: e.target.value as Visibility })}
-            >
-              {(Object.keys(EXPLICACION_DE_NIVEL) as Visibility[]).map((v) => (
-                <option key={v} value={v}>
-                  {v === "DM_ONLY"
-                    ? "Solo yo"
-                    : v === "OWNER_DM"
-                      ? "Yo y quien la creó"
-                      : v === "SPECIFIC_PLAYERS"
-                        ? "Solo algunos jugadores"
-                        : v === "PLAYERS"
-                          ? "Toda la mesa"
-                          : "Toda la mesa (público)"}
-                </option>
-              ))}
-            </select>
-          </Field>
+          // **El componente que la regla exige ya existe** (`entities/VisibilityChooser.tsx`):
+          // radios verticales, cada uno con su frase, y con el manejo de «valor guardado fuera
+          // de lista». Lo que había aquí era un `<select>` —que `docs/04-convenciones.md`
+          // prohíbe justo para las opciones con significado— y, peor, **una cuarta copia** del
+          // nombre legible de los cinco niveles, escrita como ternario anidado, en un fichero
+          // que ya importaba el módulo correcto dos líneas más arriba. Elegir mal aquí es
+          // enseñarle a la mesa un monstruo que todavía no ha visto.
+          //
+          // **Sin `children`**: un statblock no tiene concesiones por jugador, así que
+          // `SPECIFIC_PLAYERS` no se ofrece (`niveles`) — el servidor guarda el nivel, pero no
+          // hay tabla de concesiones donde nombrar a nadie, y ofrecerlo sería prometer una
+          // frontera que nada aplica.
+          <VisibilityChooser
+            value={b.visibility ?? "DM_ONLY"}
+            niveles={NIVELES_DE_CRIATURA}
+            onChange={(v) => setB({ ...b, visibility: v })}
+          />
         )}
       </div>
     </Dialog>

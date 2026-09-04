@@ -61,16 +61,19 @@ export const EFECTOS = clavesDeUnion(ruleEffectSchema) as RuleEffect["kind"][];
  * `game-event-triggers.ts` tenga sus cuatro `case`, esta lista se vacía y la paleta los recupera
  * sola — no hay nada más que deshacer.
  *
- * **Y sí, es una segunda copia de una lista del servidor**, que normalmente estaría prohibido.
- * La de allí es `UNREACHABLE_TRIGGER_KINDS` (`apps/api/src/rules-engine/trace-payload.ts:109`) y
- * es la fuente: el servidor la aplica a cada regla guardada y manda el veredicto en
- * `RuleRow.triggerReachableToday`, que es lo que pinta el aviso de `ListaDeReglas`. Lo que no
- * hay es forma de preguntarla **antes** de que exista la regla, y la paleta tiene que decidir
- * qué ofrece sin ninguna regla delante. La copia se declara aquí en vez de esconderse, y las dos
- * no pueden divergir en silencio sobre una regla ya guardada: si alguien implementa un
- * disparador allí y olvida quitarlo de aquí, la lista de reglas dejará de avisar mientras la
- * paleta lo sigue escondiendo, y eso se ve. Quitarlo del esquema compartido —la otra salida— sí
- * rompería las reglas guardadas.
+ * **Y sí, es una segunda copia de una lista del servidor, y el motivo es una frontera de trabajo,
+ * no una imposibilidad.** La de allí es `UNREACHABLE_TRIGGER_KINDS`
+ * (`apps/api/src/rules-engine/trace-payload.ts:109`). Esto son **cuatro literales de
+ * `RuleTrigger["kind"]`**, y `packages/shared/src` es justo donde este proyecto guarda la forma
+ * de los datos una sola vez: cabrían ahí perfectamente, y las dos copias desaparecerían. No se
+ * hizo porque **el carril que escribió esto no tocaba `packages/shared`** — su encargo era la
+ * web—, y una constante compartida se añade sin prisa el día que alguien trabaje en esa frontera.
+ * Escrito aquí para que nadie deduzca de la duplicación que había una razón técnica.
+ *
+ * Mientras tanto **no pueden divergir en silencio sobre una regla ya guardada**: el servidor
+ * aplica la suya a cada fila y manda el veredicto en `RuleRow.triggerReachableToday`, que es lo
+ * que pinta el aviso de `ListaDeReglas`. Si alguien implementa un disparador allí y olvida
+ * quitarlo de aquí, la lista deja de avisar mientras la paleta lo sigue escondiendo, y eso se ve.
  */
 export const DISPARADORES_SIN_MOTOR: RuleTrigger["kind"][] = [
   "ENTITY_COMMENTED",

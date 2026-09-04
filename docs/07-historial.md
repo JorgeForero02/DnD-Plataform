@@ -31,12 +31,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 ## Las mecánicas sin pantalla, conectadas (C6) (2026-09-04)
 
 **Qué.** El §8 de la auditoría de la mesa: reglas construidas, probadas y desplegadas en el
-servidor que **ninguna pantalla podía disparar**. Diez, conectadas y jugadas en el navegador.
+servidor que **ninguna pantalla podía disparar**. Diez conectadas; **nueve jugadas enteras en el
+navegador**, y la décima —los PG temporales de un PNJ— pintada pero sin poder verse con datos,
+porque nada los concede todavía (ficha **C6-4**).
 
 - **Tipo de daño y su traza** (2.5.1). `changeHp` aceptaba `damageType` y las dos pantallas que
   cambian PG mandaban `{ delta }`: las resistencias no reducían nada **jamás**. Selector nuevo
-  (`apps/web/src/features/character-sheet/AplicarDano.tsx`, exportado suelto para que el elenco lo monte) y la
-  `damageTrace` que el servidor ya devolvía, pintada con `ListaDeTraza`.
+  (`apps/web/src/features/character-sheet/AplicarDano.tsx`) y la `damageTrace` que el servidor ya
+  devolvía, pintada con `ListaDeTraza`. **Arreglada UNA de las dos pantallas: la hoja.** El ±5 del
+  elenco (`apps/web/src/features/sessions/elenco/FichaDeElenco.tsx`) es de otro carril y sigue
+  mandando `{ delta }`, así que **el dragón resistente al fuego todavía no se puede cobrar desde la
+  mesa** — solo desde la ficha. El selector se exporta suelto justo para eso: el elenco ya tiene la
+  ranura, y enchufarlo es el trabajo del ensamblaje. Ficha **C6-5**.
 - **El daño atado a su tirada** (2.5.4): `rollEventId` —de un desplegable con las tiradas reales
   de la campaña—, `critical` y `reason`.
 - **«Revelar»** deja de ser «editar la visibilidad» y es un botón (`apps/web/src/features/entities/BotonRevelar.tsx`).
@@ -48,7 +54,8 @@ servidor que **ninguna pantalla podía disparar**. Diez, conectadas y jugadas en
   .../statblocks/:id` sin función en la web. Editor nuevo.
 - **`useSetHp`** enganchado a la corrección exacta de la hoja — no al ±5 del elenco, que no
   necesita conflicto.
-- **`tempHp` de un PNJ y `lastFiredAt` de una regla**, que llegaban y no se pintaban.
+- **`tempHp` de un PNJ y `lastFiredAt` de una regla**, que llegaban y no se pintaban. El segundo
+  se vio disparándose; el primero, no: ninguna pantalla da PG temporales a un PNJ.
 
 **La decisión que retira algo.** `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED` y
 `MEMBER_JOINED` se ofrecían en el editor de reglas y `game-event-triggers.ts` **no tiene `case`

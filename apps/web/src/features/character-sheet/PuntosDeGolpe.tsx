@@ -83,6 +83,32 @@ export function PuntosDeGolpe({
 
   const cambiarPg = useChangeHp(campaignId, characterId);
   const fijarPg = useSetHp(campaignId, characterId);
+
+  /**
+   * **Lo que describe UN golpe no sobrevive a ese golpe.**
+   *
+   * Antes solo se limpiaba `delta`, y los otros cuatro campos se quedaban pegados. Dos de ellos
+   * hacen daño de verdad si se heredan sin querer:
+   *
+   *  · **«Crítico» olvidado marcado** hace que el siguiente golpe contra alguien a 0 PG escriba
+   *    **dos** fracasos de salvación de muerte en vez de uno
+   *    (`character-sheet.service.ts:1000-1006`). Es una muerte equivocada y en silencio.
+   *  · **La tirada citada** heredada ata el golpe siguiente a una tirada que no lo produjo.
+   *
+   * `motivo` se limpia por lo mismo: es la frase de este golpe, no una etiqueta permanente.
+   *
+   * **`tipoDeDano` NO se limpia, y es la única excepción**, porque el caso normal de la mesa es
+   * repetirlo —un dragón muerde dos veces en su turno, una bocanada alcanza a varios— y porque
+   * su valor **está a la vista en el desplegable** mientras dura: no se puede heredar sin verlo.
+   * Los otros tres se limpian igual aunque también se vean, porque su consecuencia no es
+   * proporcional al descuido. Queda como pregunta en el informe del carril.
+   */
+  const limpiarElGolpe = () => {
+    setDelta("");
+    setCritico(false);
+    setTiradaCitada("");
+    setMotivo("");
+  };
   // Solo se pide el registro cuando hay algo que citar, es decir cuando quien mira puede
   // aplicar daño. Una hoja de solo lectura no carga las tiradas de la campaña.
   const tiradas = useTiradasCitables(campaignId, puedeEditar);
@@ -90,17 +116,24 @@ export function PuntosDeGolpe({
   const aplicarDelta = (signo: 1 | -1) => {
     const n = Number(delta);
     if (!Number.isInteger(n) || n === 0) return;
-    cambiarPg.mutate({
-      delta: signo * Math.abs(n),
-      // **El tipo solo viaja con daño.** Un delta positivo con `damageType` etiquetaría una
-      // curación como «de fuego», y el servidor ya lo descarta al escribir el suceso
-      // (`character-sheet.service.ts:1106`); mandarlo sería pedir algo que se ignora.
-      ...(signo === -1 && tipoDeDano ? { damageType: tipoDeDano } : {}),
-      ...(signo === -1 && critico ? { critical: true } : {}),
-      ...(tiradaCitada ? { rollEventId: tiradaCitada } : {}),
-      ...(motivo.trim() ? { reason: motivo.trim() } : {}),
-    });
-    setDelta("");
+    cambiarPg.mutate(
+      {
+        delta: signo * Math.abs(n),
+        // **Los tres campos del golpe solo viajan con daño**, y la guarda de signo es la misma
+        // para los tres. Un delta positivo con `damageType` etiquetaría una curación como «de
+        // fuego» —el servidor ya lo descarta al escribir el suceso
+        // (`character-sheet.service.ts:1106`)—, y con `rollEventId` escribiría en el registro
+        // «esta curación sale de la tirada 1d20+5 = 18», que es **exactamente la causa falsa
+        // que 2.5.4 existe para impedir**. El servidor no puede cazarla: solo comprueba que la
+        // tirada exista, sea de esta campaña y sea de las dos clases que acepta, y las tres se
+        // cumplen. La única guarda posible es esta.
+        ...(signo === -1 && tipoDeDano ? { damageType: tipoDeDano } : {}),
+        ...(signo === -1 && critico ? { critical: true } : {}),
+        ...(signo === -1 && tiradaCitada ? { rollEventId: tiradaCitada } : {}),
+        ...(motivo.trim() ? { reason: motivo.trim() } : {}),
+      },
+      { onSuccess: limpiarElGolpe },
+    );
   };
 
   const corregir = () => {
@@ -115,7 +148,17 @@ export function PuntosDeGolpe({
         expectedVersion: hp.version,
         ...(motivo.trim() ? { reason: motivo.trim() } : {}),
       },
-      { onSuccess: () => setCorrigiendo(false) },
+      {
+        onSuccess: () => {
+          setCorrigiendo(false);
+          setMotivo("");
+          // **Y se borra la traza del golpe anterior.** Una corrección exacta no reduce nada por
+          // resistencia, así que dejar en pantalla el «de dónde sale el daño» del golpe de antes
+          // haría creer que explica el número que se acaba de escribir. Una curación ya la
+          // borraba sola —porque `cambiarPg.data` se sustituye—; esta no pasa por ahí.
+          cambiarPg.reset();
+        },
+      },
     );
   };
 

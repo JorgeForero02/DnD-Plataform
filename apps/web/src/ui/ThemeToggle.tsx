@@ -42,7 +42,13 @@ const PARA_QUE: Record<Theme, string> = {
 // tipografía, y `e2e/armazon.spec.ts` mide que no se solapa con la navegación. La versión con
 // rótulos vuelve en B1, dentro de la banda de estado, que es donde el prototipo la pone y
 // donde sí hay sitio.
-export function ThemeToggle() {
+// B1 / Ola 0 — **la variante «en banda»**, que es la deuda que este propio fichero se dejó
+// escrita: *«La versión con rótulos vuelve en B1, dentro de la banda de estado, que es donde el
+// prototipo la pone y donde sí hay sitio.»* La mesa a pantalla completa no puede llevar un
+// control `fixed` en la esquina —se le pondría encima a la banda—, así que el conmutador entra
+// **dentro** de la banda y `App.tsx` deja de montar el fijo en esa ruta. Es el mismo componente:
+// dos alternadores serían dos estados del mismo tema, y uno de los dos acabaría mintiendo.
+export function ThemeToggle({ variante = "fija" }: { variante?: "fija" | "en-banda" } = {}) {
   // Inicializador perezoso, no `useEffect` + `setState`: `index.html` y `main.tsx` ya han
   // sellado `[data-theme]` cuando esto monta, así que no hay nada asíncrono que sincronizar.
   const [theme, setThemeState] = useState<Theme>(currentTheme);
@@ -56,7 +62,10 @@ export function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label="Tema"
-      className="fixed right-2 top-2 z-40 flex w-[6.5rem] items-center justify-between rounded-radius-md border border-muted/30 bg-surface p-s1"
+      className={[
+        "flex items-center justify-between rounded-radius-md border border-muted/30 bg-surface p-s1",
+        variante === "fija" ? "fixed right-2 top-2 z-40 w-[6.5rem]" : "shrink-0 gap-s1",
+      ].join(" ")}
     >
       {TEMAS.map((t) => {
         const Icono = ICONO[t];

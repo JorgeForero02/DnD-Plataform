@@ -192,12 +192,17 @@ describe("el elenco: la maqueta trae los datos que se miran treinta veces por se
   });
 });
 
+// Ola 0 (2026-09-04) — la banda dejó de ser una `<section>` DENTRO del armazón común y pasó a ser
+// la cabecera de una mesa a pantalla completa: un `<header>` con nombre «Estado de la mesa», que
+// además absorbió lo que traía la cabecera de la aplicación (volver a las crónicas, la campaña) y
+// el conmutador de tema. **Lo que se comprueba no cambió**: la asistencia es la DECLARADA y, si
+// nadie la declaró, se dice en vez de inventar un número contando miembros.
 describe("la banda de estado", () => {
   it("cuenta la asistencia DECLARADA, no las conexiones", async () => {
     montar();
-    const banda = await screen.findByRole("region", { name: "Estado de la sesión" });
+    const banda = await screen.findByRole("banner", { name: "Estado de la mesa" });
     expect(within(banda).getByText(/2 en la mesa/)).toBeInTheDocument();
-    expect(within(banda).getByRole("heading", { name: "El puerto en llamas" })).toBeInTheDocument();
+    expect(within(banda).getByText("El puerto en llamas")).toBeInTheDocument();
   });
 
   it("sin asistencia declarada lo DICE, en vez de inventarse un número", async () => {
@@ -207,7 +212,7 @@ describe("la banda de estado", () => {
     });
 
     montar();
-    const banda = await screen.findByRole("region", { name: "Estado de la sesión" });
+    const banda = await screen.findByRole("banner", { name: "Estado de la mesa" });
     expect(within(banda).getByText(/asistencia sin declarar/)).toBeInTheDocument();
   });
 });

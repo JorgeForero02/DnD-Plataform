@@ -1,24 +1,55 @@
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
+import { IconoCerrar } from "./Iconos";
 
 export interface DialogProps {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
-  /** "lg" para formularios con texto largo (markdown + vista previa). */
+  /**
+   * Las tres anchuras de la maqueta, con sus nombres de siempre para no tocar 24 llamadas:
+   * `sm` = estrecha (26rem) · `lg` = media (40rem) · `xl` = ancha (58rem).
+   */
   size?: "sm" | "lg" | "xl";
+  /** Debajo del título, en la voz de la interfaz. La maqueta lo trae como ranura propia. */
+  subtitulo?: ReactNode;
+  /** Pie fijo del cajón: los botones que confirman. No scrollea con el contenido. */
+  acciones?: ReactNode;
+  /** Vitela: para leer prosa del mundo, no para operar formularios. */
+  pergamino?: boolean;
 }
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-// Task 1.19 — Dialog.test.tsx exercises the three behaviours load-bearing enough to name in
-// the brief: focus moves into the dialog on open, Tab/Shift+Tab wrap inside it (the trap),
-// Escape calls onClose, and focus returns to whatever triggered the dialog once it closes.
-// Remove the useEffect below (or the keydown handler) and every one of those assertions fails
-// while the dialog still renders its content — the trap is the whole point, not the markup.
-export function Dialog({ open, onClose, title, children, size = "sm" }: DialogProps) {
+// **El cajón lateral, y por qué esto cambió de forma entera (Ola 0, 2026-09-04).**
+//
+// Hasta hoy esta primitiva era un CUADRO CENTRADO —`items-center justify-center`, `max-h-[85vh]`,
+// un panel flotando en mitad de la pantalla— y la maqueta nunca lo fue: es un **cajón que entra
+// por la derecha**, a altura completa, con `border-l` de cobre. La auditoría del 2026-09-04 lo
+// puso en números: **24 pantallas heredaban el patrón equivocado**, y el efecto en la mesa es el
+// que el autor describió — todo «interrumpe», porque un cuadro centrado tapa el sitio donde
+// estabas en vez de ponerse a su lado.
+//
+// La diferencia no es estética. El reseño de la mesa (§4) define el estrato superpuesto como
+// *«se abre encima, Escape cierra, y vuelves exactamente donde estabas»*: con un cajón, «donde
+// estabas» **sigue visible** mientras el panel está abierto. Con un cuadro centrado, no.
+//
+// **Lo que NO cambia**, y es lo que estas líneas defienden desde 1.19: `role="dialog"`,
+// `aria-modal`, el foco atrapado dentro, Escape que cierra, y el foco devuelto al control que lo
+// abrió. Dialog.test.tsx ejercita las cuatro; quitar cualquiera de ellas rompe una aserción
+// mientras el marcado sigue pintándose igual.
+export function Dialog({
+  open,
+  onClose,
+  title,
+  children,
+  size = "sm",
+  subtitulo,
+  acciones,
+  pergamino = false,
+}: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
   const titleId = useId();
@@ -42,8 +73,16 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
     triggerRef.current = document.activeElement;
 
     const dialogEl = dialogRef.current;
-    const focusables = dialogEl?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    const first = focusables?.[0] ?? dialogEl;
+    // **El foco entra en el CONTENIDO, no en la aspa.** El cajón añade un botón de cerrar en su
+    // cabecera, que en orden del DOM va antes que todo lo demás; si el foco cayera ahí, abrir un
+    // formulario dejaría el cursor sobre «Cerrar» y la primera pulsación de Enter cerraría el
+    // panel que acabas de abrir. Se busca el primer foco del cuerpo y solo si no hay ninguno se
+    // usa el aspa, y si tampoco, el propio cajón.
+    const cuerpo = dialogEl?.querySelector<HTMLElement>("[data-dialog-cuerpo]");
+    const first =
+      cuerpo?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ??
+      dialogEl?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ??
+      dialogEl;
     first?.focus();
 
     function handleKeyDown(e: KeyboardEvent) {
@@ -81,24 +120,22 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
 
   if (!open) return null;
 
+  // Los nombres de la maqueta y sus tres medidas literales
+  // (`prototipo/src/ui/Dialog.tsx:88-92`). `sm`/`lg`/`xl` se conservan como llaves porque son
+  // lo que escriben las 24 llamadas; lo que cambia es a cuánto miden.
+  const ancho = { sm: "max-w-[26rem]", lg: "max-w-[40rem]", xl: "max-w-[58rem]" }[size];
+
   return (
     <div
       role="presentation"
-      // No opacity modifier on the overlay: Tailwind's alpha channel syntax needs an
-      // rgb()-shaped token, and the token rule here is "never a literal, never rgb()" — a
-      // solid backdrop still separates the dialog from the page behind it.
-      // Reseño 2026-09-02, tercera pasada — el velo era `bg-bg`, **opaco**: pintaba la pantalla
-      // entera del color de la página, así que un diálogo no se leía como una capa sobre la
-      // aplicación sino como otra pantalla. El autor lo describió exacto: "parecen abrir otra
-      // pestaña". Un velo translúcido con desenfoque deja ver de dónde vienes, que es lo único
-      // que un modal tiene que hacer bien. El panel es opaco por dentro, así que ni el
-      // contraste del texto ni su medición cambian.
-      // **El velo no se pintaba.** `bg-bg/75` es una clase de opacidad, y en este proyecto
-      // ninguna compila: los colores se declaran como `var(--bg)` sin `<alpha-value>` y Tailwind
-      // descarta la utilidad entera. O sea que los diálogos llevaban desde siempre **sin
-      // oscurecido detrás** — solo el desenfoque —, que es justo lo que se arregló en el reseño
-      // con el título «un modal que parece una capa». Nunca llegó a la pantalla.
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--veil)] p-s4 backdrop-blur-sm"
+      // El velo: `bg-[color:var(--veil)]` y no una clase de opacidad. `bg-bg/70` no compila en
+      // este proyecto —los colores se declaran como `var(--bg)` sin `<alpha-value>` y Tailwind
+      // descarta la utilidad entera—, así que durante meses los diálogos salieron SIN oscurecido
+      // detrás. `--veil` es un token de verdad y sí se pinta.
+      //
+      // `justify-end` + `items-stretch`: el cajón se pega a la derecha y ocupa toda la altura.
+      // Sin `p-s4`: un cajón no flota, se apoya en el borde.
+      className="anim-surge fixed inset-0 z-40 flex items-stretch justify-end bg-[color:var(--veil)] backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
@@ -108,37 +145,48 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        // Fix round 1 (post-1.19b review): max-h + overflow-y-auto here, once, instead of
-        // every consumer re-adding it at screen level. The overlays this primitive replaced
-        // were `fixed inset-0 … overflow-y-auto py-8`, so tall content scrolled; this
-        // centred-flex container had no overflow handling at all, and only one of the four
-        // converted editors (EntityEditor.tsx, the one with LinksPanel/CommentThread nested
-        // in it) had added its own fix — CharacterEditor and SessionEditor's Guardar/Cancelar
-        // row could overflow a short viewport with nothing to scroll. 85vh leaves at least
-        // ~7.5vh clear above and below even on the shortest realistic viewport.
-        // Reseño 2026-09-02, segunda pasada: `size="lg"` para los formularios que llevan un
-        // cuerpo en markdown con su vista previa. En 28rem no cabe una frase de manual sin
-        // romperla tres veces, y escribir en una columna estrecha es exactamente lo que hace
-        // que un DM prefiera otra herramienta.
-        //
-        // **Y `size="xl"` para los cajones de B4, que no son formularios sino COLECCIONES.** Un
-        // cajón lleva dentro la pantalla entera que antes era una pestaña a ancho completo:
-        // rejilla de fichas, filtros y buscador. En `max-w-2xl` los cuatro números de una
-        // criatura —CA, PG, Vel, VD— dejaban de caber en una línea y se partían en dos, que es
-        // justo lo que la ficha existe para evitar. Lo cazó `bestiario.spec.ts`, midiendo las
-        // cajas en el navegador; `jsdom` no maqueta y no lo habría visto.
         className={[
-          // La elevación es lo que dice "esto está encima": borde de cobre —el acento del
-          // marco— y una sombra de verdad. Sin ellas, un panel del color de las tarjetas sobre
-          // un velo tenue sigue pareciendo parte de la página.
-          "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-copper bg-surface p-s4 font-chrome text-chrome-sm text-text shadow-2xl",
-          size === "xl" ? "max-w-6xl" : size === "lg" ? "max-w-2xl" : "max-w-md",
+          "flex h-full w-full flex-col border-l border-copper font-chrome text-chrome-sm shadow-2xl outline-none",
+          // `bg-vellum` / `text-vellum-ink` son los tokens que ya viste la vitela en `Panel`;
+          // la TEXTURA (las dos manchas radiales de la maqueta) es de la capa visual y entra
+          // con su carril.
+          pergamino ? "bg-vellum font-world text-vellum-ink" : "bg-surface text-text",
+          ancho,
         ].join(" ")}
       >
-        <h2 id={titleId} className="mb-3 text-chrome-md font-semibold">
-          {title}
-        </h2>
-        {children}
+        <header className="flex items-start justify-between gap-s4 border-b border-muted px-s5 py-s4">
+          <div className="min-w-0">
+            <h2
+              id={titleId}
+              className={`font-title text-chrome-lg ${pergamino ? "text-copper-text" : "text-text"}`}
+            >
+              {title}
+            </h2>
+            {subtitulo && <div className="mt-s1 text-chrome-xs text-muted">{subtitulo}</div>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar (Escape)"
+            className="shrink-0 rounded-radius-sm p-s1 text-muted transition-colors hover:text-text"
+          >
+            {/* Dibujado, nunca un glifo de fuente: regla vinculante de docs/04-convenciones.md. */}
+            <IconoCerrar className="h-5 w-5" />
+          </button>
+        </header>
+
+        {/* El cuerpo es lo único que scrollea. La cabecera y el pie se quedan quietos, que es
+            justamente lo que un cuadro con `max-h-[85vh] overflow-y-auto` no podía dar: allí el
+            título se iba hacia arriba al bajar por un formulario largo. */}
+        <div data-dialog-cuerpo className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-s5 py-s4">
+          {children}
+        </div>
+
+        {acciones && (
+          <footer className="flex items-center justify-end gap-s2 border-t border-muted px-s5 py-s3">
+            {acciones}
+          </footer>
+        )}
       </div>
     </div>
   );

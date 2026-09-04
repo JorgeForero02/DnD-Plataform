@@ -82,6 +82,12 @@ describe("Dialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  // Ola 0 (2026-09-04) — **el ciclo del foco empieza en el aspa, no en el contenido.** Al pasar
+  // de cuadro centrado a cajón lateral, el chasis ganó un botón «Cerrar (Escape)» en su cabecera,
+  // y en orden del DOM va antes que todo lo que le pasen dentro. El foco atrapado es el mismo —lo
+  // que se comprueba aquí es que Tab no se escapa del cajón—, pero el PRIMER foco del ciclo pasó
+  // a ser el aspa. No es un detalle de marcado: un cajón que no se puede cerrar con el teclado
+  // sin pasar por Escape sería peor accesible, no mejor.
   it("traps Tab focus: Tab from the last focusable wraps to the first", () => {
     render(
       <Dialog open onClose={vi.fn()} title="X">
@@ -89,12 +95,12 @@ describe("Dialog", () => {
         <button>Segundo</button>
       </Dialog>,
     );
-    const first = screen.getByRole("button", { name: "Primero" });
+    const aspa = screen.getByRole("button", { name: "Cerrar (Escape)" });
     const second = screen.getByRole("button", { name: "Segundo" });
     second.focus();
     expect(second).toHaveFocus();
     fireEvent.keyDown(document, { key: "Tab" });
-    expect(first).toHaveFocus();
+    expect(aspa).toHaveFocus();
   });
 
   it("traps Shift+Tab focus: Shift+Tab from the first focusable wraps to the last", () => {
@@ -104,11 +110,42 @@ describe("Dialog", () => {
         <button>Segundo</button>
       </Dialog>,
     );
-    const first = screen.getByRole("button", { name: "Primero" });
+    const aspa = screen.getByRole("button", { name: "Cerrar (Escape)" });
     const second = screen.getByRole("button", { name: "Segundo" });
-    first.focus();
+    aspa.focus();
     fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
     expect(second).toHaveFocus();
+  });
+
+  // Y la contrapartida, que es lo que de verdad se decidió: **el foco ENTRA en el contenido, no
+  // en el aspa.** Si cayera sobre «Cerrar», abrir un formulario dejaría el cursor sobre el botón
+  // que lo cierra y el primer Enter desharía el gesto que acabas de hacer.
+  it("el foco inicial va al primer control del CUERPO, no al aspa de cerrar", () => {
+    render(
+      <Dialog open onClose={vi.fn()} title="X">
+        <button>Primero</button>
+        <button>Segundo</button>
+      </Dialog>,
+    );
+    expect(screen.getByRole("button", { name: "Primero" })).toHaveFocus();
+  });
+
+  // El cajón trae dos ranuras que el cuadro centrado no tenía. Sin esta prueba, quitarlas del
+  // chasis no rompe nada visible hasta que alguien abre la pantalla que las usaba.
+  it("pinta el subtítulo y el pie de acciones cuando se los pasan", () => {
+    render(
+      <Dialog
+        open
+        onClose={vi.fn()}
+        title="X"
+        subtitulo="Nivel 6 · competencia +3"
+        acciones={<button>Guardar en el mundo</button>}
+      >
+        contenido
+      </Dialog>,
+    );
+    expect(screen.getByText("Nivel 6 · competencia +3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar en el mundo" })).toBeInTheDocument();
   });
 
   // Fix round 1, Important 3 — the bug: the old useEffect deps were [open, onClose], and every

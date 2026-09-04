@@ -1,68 +1,69 @@
-import { Fragment, useEffect, useState } from "react";
-import type { ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { SessionNoteKind, Visibility } from "@dnd/shared";
-import type { Session } from "./api";
-import type { GameEventRow } from "./log-api";
-import { useCurrentSession, useGameLog, useMinutoActual, useSessions, useStampNote } from "./hooks";
-import { ICONO_SELLO, NOMBRE_SELLO, SELLOS_EN_ORDEN, duracionDesde } from "./vocabulario";
-import {
-  IconoBuscar,
-  IconoElenco,
-  IconoEnJuego,
-  IconoRegistro,
-  IconoPuntosDeGolpe,
-} from "./iconos";
-import { horaDe, lineaDeLog, selloDeSuceso } from "./linea-de-log";
+import { useCurrentSession, useGameLog, useSessions } from "./hooks";
 import { CabeceraDeEscena } from "./CabeceraDeEscena";
 import { DialogoDeInicio } from "./ControlesDeSesion";
+import { BandaDeMesa } from "./BandaDeMesa";
+import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
+import { ColumnaElenco } from "./elenco/ColumnaElenco";
+import { HiloDeSesion } from "./hilo/HiloDeSesion";
+import { HerramientasDeNarracion } from "./dm/HerramientasDeNarracion";
+import { ConsultaDelMundo } from "./dm/ConsultaDelMundo";
+import { TallerDelDM } from "./taller/TallerDelDM";
 import { TiraDeIniciativa } from "../encounters/TiraDeIniciativa";
 import { EmpezarCombate } from "../encounters/EmpezarCombate";
 import { useCurrentEncounter } from "../encounters/hooks";
-import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { HojaCalculada } from "../character-sheet/HojaCalculada";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { Dialog } from "../../ui/Dialog";
-import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "./reincorporarse";
-import { useMembers, useMyRole } from "../campaigns/members";
-import type { Member } from "../campaigns/members";
+import { useMyRole } from "../campaigns/members";
+import { useCampaign } from "../campaigns/hooks";
 import { useCharacters } from "../characters/hooks";
 import type { Character } from "../characters/api";
-import { descriptorDePersonaje } from "../characters/descriptor";
-import { useCharacterSheet, useChangeHp, useConditions } from "../character-sheet/hooks";
-import { nombreCondicion } from "../character-sheet/vocabulario";
-import { useAllEntities } from "../entities/hooks";
 import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
-import { fieldControlClass } from "../../ui/Field";
-import { Badge } from "../../ui/Badge";
 
-// La mesa: la pantalla que se mira mientras se juega.
+// **La mesa. Un compositor, y nada más.**
 //
-// Tres paneles, y el reparto sale de la investigación de once VTT: **quién está** a la izquierda,
-// **qué pasa** en el centro, **qué consulto** a la derecha. Shard Tabletop es el único producto
-// que hace algo así y el único que cierra la sesión de verdad.
+// Hasta la Ola 0 (2026-09-04) este fichero medía **992 líneas** y traía dentro el elenco, la ficha
+// de cada personaje, la barra de puntos de golpe, el registro, el compositor de notas y la
+// consulta del mundo. Eso lo convertía en el cuello de botella de cualquier trabajo sobre la
+// mesa: seis carriles distintos tenían que tocar el mismo archivo.
 //
-// La crítica que esto ataca aparece en todos los foros y no es «le falta algo»: es **el DM con
-// quince pestañas abiertas**. Por eso el panel de consulta trae el mundo aquí en vez de mandarte
-// a otra pantalla, y por eso «revelar» es un botón de mesa y no un formulario de configuración:
-// si para enseñar un lugar hay que ir a cambiar un desplegable, en mitad de la partida no se hace.
+// Ahora solo **coloca ranuras**. Cada pieza vive en su carpeta —`elenco/`, `hilo/`, `dm/`,
+// `taller/`— y este fichero decide dónde va cada una y con qué medidas.
 //
-// **Adoptado de la maqueta (2026-09-02):** el mismo reparto de tres columnas, pero cada una
-// dentro de una tarjeta con su cabecera en vez de tres listas sueltas flotando sobre el fondo; una
-// **banda de estado** arriba que dice de un golpe qué sesión es, cuánto lleva y cuánta gente hay; y
-// sobre todo un **elenco con datos**: retrato, quién lleva el personaje, puntos de golpe con su
-// barra y las condiciones activas. Antes el elenco decía un nombre y la palabra «sin personaje».
+// ## Las cuatro reglas de armazón que sostienen todo lo demás
 //
-// **Lo que NO se copia de la maqueta, y por qué.** La maqueta trae un conmutador «Ver como DM /
-// Jugador» que cambia lo que se pinta. Aquí eso sería mentira: **`canView` en el servidor decide
-// qué llega**, y esta pantalla solo enseña lo que recibió. Lo que sí hay —y es lo contrario— es
-// «ver el registro como» otro jugador: el servidor vuelve a filtrar con **otro espectador**, así
-// que el DM pasa a ver **menos**, nunca más.
+//  1. **La mesa ocupa la ventana.** `flex h-screen flex-col overflow-hidden` en la raíz, y el
+//     `AppShell` fuera: la mesa no lleva migas de pan, ni subtítulo, ni pie legal. Se está en ella
+//     durante horas; una cabecera de artículo encima de un juego es lo que el autor describió como
+//     *«una fábrica de recursos más que un juego»*.
+//  2. **Scroll por panel, nunca de página.** Cada columna trae su `overflow-y-auto` con
+//     `.scroll-quiet`.
+//  3. **`min-h-0` en TODOS los ancestros de un panel que scrollee.** Sin él un hijo de flex/grid
+//     se niega a encoger por debajo de su contenido, el `overflow-y-auto` **no se activa jamás** y
+//     la página vuelve a crecer. Es literalmente el defecto que la auditoría del 2026-09-04
+//     encontró: cinco paneles con scroll interno escrito y ninguno funcionando.
+//  4. **Los superpuestos son cajones laterales, uno a la vez.** `ui/Dialog` los da; Escape cierra
+//     y el foco vuelve al control que lo abrió.
+//
+// ## Las tres disposiciones, con sus anchos literales (maqueta, §5 de la auditoría)
+//
+// ```
+// jugador   grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_1fr]
+// DM        grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_1fr_15rem]
+// taller    grid min-h-0 flex-1 gap-s3 grid-cols-[1.15fr_1fr]      (DM en reposo)
+// ```
+//
+// **El rol lo dice el servidor.** No hay conmutador «ver como DM/jugador» que cambie lo pintado:
+// `useMyRole` pregunta, y `canView` filtra lo que llega. Y ojo con `isError` de `useMyRole`, que
+// significa «todavía no lo sé», nunca «no tienes permiso».
 
 export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   const { data: sesion, isLoading } = useCurrentSession(campaignId);
+  const { data: campana } = useCampaign(campaignId);
   const { role } = useMyRole(campaignId);
   const esDm = role === "DM";
   // «Ver como»: el DM elige por los ojos de quién mira. El servidor sigue filtrando por canView.
@@ -77,104 +78,120 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   // **Uno a la vez**: el estrato superpuesto del reseño. Abrir la bolsa cierra la hoja.
   const [panel, setPanel] = useState<PanelAbierto | null>(null);
 
-  if (isLoading) {
-    return <p className="font-chrome text-chrome-sm text-muted">Buscando la sesión…</p>;
-  }
-
-  // **La mesa en reposo, y por qué esta rama existe.**
-  //
-  // Hasta hoy, sin sesión en curso, esta pantalla devolvía un cartel de vacío: llegabas al sitio
-  // donde se juega y te decía que no había nada. El reseño lo señaló como uno de los defectos de
-  // arquitectura, no de acabado — *«fuera de sesión, el sitio donde se juega no es alcanzable»*.
-  //
-  // El reposo **no es la ausencia de la mesa: es uno de sus tres estados** (§4 del reseño). Lo que
-  // se enseña es lo que de verdad se sabe sin partida abierta —dónde quedó la escena, qué hora es
-  // en el mundo y qué pasó la última vez—, y el cartel pasa a ser una línea que dice cómo empezar
-  // en vez de la pantalla entera.
   const eventos = log?.events ?? [];
   const presentes = nombresPresentes(sesion?.attendance ?? null, personajes ?? []);
   // El personaje sobre el que abren «Hoja» y «Bolsa». **El tuyo**, no el que esté seleccionado:
-  // el rail es del jugador, y el DM abre las fichas ajenas desde el elenco, que es donde tiene
-  // sentido —una por una y sabiendo cuál—.
+  // el rail es del jugador.
   const miPersonaje = (personajes ?? []).find((c) => c.ownerId === miId);
 
-  if (!sesion) {
+  // **El taller es el sitio del DM cuando la mesa está en reposo**, y ocupa la mesa entera. Un DM
+  // sin sesión abierta no está mirando un elenco: está preparando.
+  const enTaller = esDm && !sesion;
+
+  if (isLoading) {
     return (
-      <div className="flex flex-col gap-s4">
-        <CabeceraDeEscena
-          campaignId={campaignId}
-          tituloDeSesion={null}
-          presentes={[]}
-          enCurso={false}
-        />
-        {esDm ? (
-          <EmpezarDesdeLaMesa campaignId={campaignId} />
-        ) : (
-          <p className="rounded-radius-sm border border-muted bg-surface px-s4 py-s3 font-chrome text-chrome-sm text-muted">
-            La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena sola.
-          </p>
-        )}
-        <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
-        <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <Elenco campaignId={campaignId} asistencia={null} esDm={esDm} />
-          <Registro
-            campaignId={campaignId}
-            eventos={eventos}
-            esDm={esDm}
-            comoUsuario={comoUsuario}
-          />
-        </div>
-        <PanelesSuperpuestos
-          campaignId={campaignId}
-          abierto={panel}
-          onCerrar={() => setPanel(null)}
-          personajeId={miPersonaje?.id}
-          esDm={esDm}
-        />
+      <div className="flex h-screen items-center justify-center bg-bg text-text">
+        <p className="font-chrome text-chrome-sm text-muted">Buscando la sesión…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-s4">
-      <BandaDeEstado
+    <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
+      <BandaDeMesa
         campaignId={campaignId}
-        sesion={sesion}
+        nombreDeCampana={campana?.name}
+        sesion={sesion ?? null}
         esDm={esDm}
         comoUsuario={comoUsuario}
         onComoUsuario={setComoUsuario}
       />
-      <CabeceraDeEscena
-        campaignId={campaignId}
-        tituloDeSesion={sesion.title}
-        presentes={presentes}
-        enCurso
-      />
-      {/* **PROVISIONAL, y a propósito.** «Te han pedido tirar» solo se montaba dentro de la
-          pestaña «Dados»: sondeaba cada quince segundos impecablemente y no lo miraba nadie,
-          porque durante la partida nadie está parado en esa pestaña. El DM pedía una tirada y el
-          jugador no se enteraba. Montarlo también aquí, arriba del registro, es el arreglo
-          mínimo para que la función deje de ser invisible; **el rediseño de esta pantalla lo va
-          a colocar como capa contextual** y entonces esta línea sobra.
-          Montarlo dos veces no duplica peticiones: la consulta se comparte por su clave de
-          TanStack Query, y además las pestañas solo pintan la activa. El componente no pinta nada
-          cuando no hay peticiones pendientes, así que aquí no ocupa sitio en balde. */}
-      <TiradasPendientes campaignId={campaignId} />
-      {/* **La capa de combate** (2.5.6). No es una pantalla a la que se navega: es una tira que
-          aparece encima del elenco mientras dura el encuentro y se va cuando termina. Solo existe
-          con sesión en curso —un encuentro cuelga de la sesión, no de la campaña—, así que vive
-          en esta rama y no en la del reposo. */}
-      <CapaDeCombate
-        campaignId={campaignId}
-        sessionId={sesion.id}
-        personajes={personajes ?? []}
-        esDm={esDm}
-      />
-      <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
-      <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <Elenco campaignId={campaignId} asistencia={sesion.attendance} esDm={esDm} />
-        <Registro campaignId={campaignId} eventos={eventos} esDm={esDm} comoUsuario={comoUsuario} />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-s3 p-s3">
+        {/* Permanente y **nunca scrollea**: dónde está la escena, qué hora es en la campaña y
+            quién está. Es lo que convierte una columna de texto en un lugar. */}
+        <div className="shrink-0">
+          <CabeceraDeEscena
+            campaignId={campaignId}
+            tituloDeSesion={sesion?.title ?? null}
+            presentes={presentes}
+            enCurso={Boolean(sesion)}
+          />
+        </div>
+
+        {/* **PROVISIONAL, y a propósito.** «Te han pedido tirar» solo se montaba dentro de la
+            pestaña «Dados»: sondeaba cada quince segundos impecablemente y no lo miraba nadie.
+            El carril de dados lo va a colocar como capa contextual y entonces esta línea sobra.
+            No pinta nada cuando no hay peticiones pendientes, así que no ocupa sitio en balde. */}
+        <div className="shrink-0 empty:hidden">
+          <TiradasPendientes campaignId={campaignId} />
+        </div>
+
+        {/* **La capa de combate** (2.5.6). No es una pantalla a la que se navega: es una tira que
+            aparece encima del elenco mientras dura el encuentro y se va cuando termina. Solo
+            existe con sesión en curso — un encuentro cuelga de la sesión, no de la campaña. */}
+        {sesion && (
+          <div className="shrink-0">
+            <CapaDeCombate
+              campaignId={campaignId}
+              sessionId={sesion.id}
+              personajes={personajes ?? []}
+              esDm={esDm}
+            />
+          </div>
+        )}
+
+        {enTaller ? (
+          <TallerDelDM campaignId={campaignId} />
+        ) : (
+          <main
+            className={[
+              "grid min-h-0 flex-1 gap-s3",
+              esDm ? "grid-cols-[17rem_1fr_15rem]" : "grid-cols-[17rem_1fr]",
+            ].join(" ")}
+          >
+            <ColumnaElenco
+              campaignId={campaignId}
+              asistencia={sesion?.attendance ?? null}
+              esDm={esDm}
+            />
+
+            <HiloDeSesion
+              campaignId={campaignId}
+              eventos={eventos}
+              esDm={esDm}
+              comoUsuario={comoUsuario}
+            />
+
+            {esDm && (
+              <aside className="scroll-quiet flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3">
+                <HerramientasDeNarracion onConsultarElMundo={() => setPanel("mundo")} />
+              </aside>
+            )}
+          </main>
+        )}
+
+        {/* La fila de abajo: el rail permanente, y a su derecha lo que toque según el estado.
+            No scrollea y no crece. */}
+        <div className="flex shrink-0 items-stretch gap-s3">
+          <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
+          {sesion ? (
+            <div className="flex-1" />
+          ) : (
+            <div className="min-w-0 flex-1">
+              {esDm ? (
+                <EmpezarDesdeLaMesa campaignId={campaignId} />
+              ) : (
+                <p className="flex h-full items-center rounded-radius-sm border border-muted bg-surface px-s4 font-chrome text-chrome-sm text-muted">
+                  La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena
+                  sola.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
       <PanelesSuperpuestos
         campaignId={campaignId}
         abierto={panel}
@@ -232,20 +249,14 @@ function CapaDeCombate({
 /**
  * **Se empieza la sesión desde la mesa, y no desde otra pantalla.**
  *
- * Es la segunda mitad de lo que pidió el autor: *«si es una sesión empezada y no inicia aún ponle
- * como ventana de vista que el dm vea todo similar a como sale en el prot»*. La mesa en reposo ya
- * enseñaba lo que hay —la escena donde quedó, el elenco, el registro—; lo que le faltaba era el
- * gesto. Hasta ahora el cartel te mandaba a «Sesiones», que es **el taller**: para empezar a jugar
- * había que salir del sitio donde se juega, y ese es exactamente el defecto de arquitectura que el
- * reseño llama *«fuera de sesión, el sitio donde se juega no es alcanzable»*.
+ * La mesa en reposo ya enseña lo que hay —la escena donde quedó, el taller, el registro—; lo que
+ * le faltaba era el gesto. El cartel mandaba a «Sesiones», que es **el taller**: para empezar a
+ * jugar había que salir del sitio donde se juega, y ese es exactamente el defecto de arquitectura
+ * que el reseño llama *«fuera de sesión, el sitio donde se juega no es alcanzable»*.
  *
- * **El diálogo es el mismo**, no una copia: `DialogoDeInicio` es el que ya usa la lista del taller,
- * con su declaración de asistencia. Un segundo formulario de inicio querría decir dos reglas de
- * asistencia y una de las dos acabaría desactualizada.
- *
- * Lo que se ofrece es **la siguiente sesión planificada**, la más antigua sin empezar, que es la
- * que se juega esta noche. Si no hay ninguna, no se inventa una desde aquí —crearla lleva título,
- * fecha y resumen, y eso es trabajo de taller—: se enlaza al taller y se dice por qué.
+ * **El diálogo es el mismo**, no una copia: `DialogoDeInicio` es el que ya usa la lista del
+ * taller, con su declaración de asistencia. Un segundo formulario de inicio querría decir dos
+ * reglas de asistencia y una de las dos acabaría desactualizada.
  */
 function EmpezarDesdeLaMesa({ campaignId }: { campaignId: string }) {
   const { data: sesiones } = useSessions(campaignId);
@@ -257,7 +268,7 @@ function EmpezarDesdeLaMesa({ campaignId }: { campaignId: string }) {
   const siguiente = planificadas[planificadas.length - 1];
 
   return (
-    <div className="flex flex-wrap items-center gap-s3 rounded-radius-sm border border-copper bg-surface px-s4 py-s3">
+    <div className="flex h-full flex-wrap items-center gap-s3 rounded-radius-sm border border-copper bg-surface px-s4 py-s2">
       <p className="min-w-0 flex-1 font-chrome text-chrome-sm text-muted">
         {siguiente ? (
           <>
@@ -294,8 +305,8 @@ function EmpezarDesdeLaMesa({ campaignId }: { campaignId: string }) {
 /**
  * **El estrato superpuesto**: se abre encima, Escape cierra, y vuelves exactamente donde estabas.
  *
- * `ui/Dialog` ya trae el chasis —`role="dialog"`, foco atrapado, y el foco devuelto al control que
- * lo abrió—, así que aquí no se reinventa nada: solo se decide **qué** va dentro de cada uno.
+ * `ui/Dialog` ya trae el chasis —cajón lateral, `role="dialog"`, foco atrapado, y el foco devuelto
+ * al control que lo abrió—, así que aquí no se reinventa nada: solo se decide **qué** va dentro.
  *
  * Y lo que va dentro es **lo que ya existía**, montado tal cual: la hoja calculada y la página de
  * inventario son los mismos componentes que sirven sus pantallas propias. Ese es el trabajo de la
@@ -321,7 +332,7 @@ function PanelesSuperpuestos({
         open={abierto === "hoja" && Boolean(personajeId)}
         onClose={onCerrar}
         title="Tu hoja"
-        size="lg"
+        size="xl"
       >
         {personajeId && (
           <HojaCalculada campaignId={campaignId} characterId={personajeId} puedeEditar />
@@ -332,13 +343,13 @@ function PanelesSuperpuestos({
         open={abierto === "bolsa" && Boolean(personajeId)}
         onClose={onCerrar}
         title="Tu bolsa"
-        size="lg"
+        size="xl"
       >
         {personajeId && <PaginaDeInventario campaignId={campaignId} characterId={personajeId} />}
       </Dialog>
 
       <Dialog open={abierto === "mundo"} onClose={onCerrar} title="Consulta del mundo" size="lg">
-        <Consulta campaignId={campaignId} esDm={esDm} />
+        <ConsultaDelMundo campaignId={campaignId} esDm={esDm} />
       </Dialog>
     </>
   );
@@ -360,633 +371,4 @@ function nombresPresentes(
   return asistencia
     .map((a) => (a.characterId ? porId.get(a.characterId)?.name : undefined))
     .filter((n): n is string => Boolean(n));
-}
-
-/**
- * La tarjeta de la mesa: una cabecera con su icono y su filete, y el cuerpo debajo.
- *
- * Es lo que la maqueta hace y la versión anterior no: los tres paneles eran tres listas sueltas
- * sobre el mismo fondo, sin nada que dijera dónde termina uno y empieza el siguiente. Con un
- * elenco de cinco y un registro largo, las tres columnas se leían como una sola.
- */
-function PanelDeMesa({
-  titulo,
-  icono,
-  accion,
-  etiqueta,
-  children,
-  className = "",
-}: {
-  titulo: string;
-  icono: ReactNode;
-  accion?: ReactNode;
-  etiqueta: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      aria-label={etiqueta}
-      className={`flex min-w-0 flex-col rounded-radius-sm border border-muted bg-surface ${className}`}
-    >
-      <div className="flex items-center gap-s2 border-b border-muted px-s3 py-s2">
-        <span className="text-copper-text">{icono}</span>
-        <h2 className="min-w-0 flex-1 truncate font-chrome text-chrome-sm font-semibold text-text">
-          {titulo}
-        </h2>
-        {accion}
-      </div>
-      <div className="min-w-0 p-s3">{children}</div>
-    </section>
-  );
-}
-
-/**
- * La banda de estado: qué sesión, cuánto lleva y cuánta gente hay, en una línea.
- *
- * La maqueta lo pone ahí arriba porque es lo primero que se mira al volver a la pestaña después
- * de veinte minutos. **La asistencia se declara, no se detecta**: aquí no hay conexiones en vivo
- * y esta cifra sale de `Session.attendance`, que alguien rellenó al empezar. Si nadie la declaró
- * se dice, en vez de inventar un número contando miembros.
- */
-function BandaDeEstado({
-  campaignId,
-  sesion,
-  esDm,
-  comoUsuario,
-  onComoUsuario,
-}: {
-  campaignId: string;
-  sesion: Session;
-  esDm: boolean;
-  comoUsuario: string;
-  onComoUsuario: (v: string) => void;
-}) {
-  const ahora = useMinutoActual(true);
-  const { data: miembros } = useMembers(campaignId);
-  const cuantos = sesion.attendance?.length ?? null;
-
-  return (
-    <section
-      aria-label="Estado de la sesión"
-      className="flex flex-wrap items-center gap-x-s3 gap-y-s2 rounded-radius-sm border border-copper bg-surface px-s4 py-s3"
-    >
-      <IconoEnJuego className="h-2.5 w-2.5 shrink-0 text-copper-text" />
-      <h2 className="min-w-0 font-title text-chrome-lg leading-none text-text">{sesion.title}</h2>
-      <p className="font-data text-chrome-xs text-muted">
-        en juego · {duracionDesde(sesion.startedAt, ahora)} ·{" "}
-        {cuantos === null
-          ? "asistencia sin declarar"
-          : cuantos === 1
-            ? "1 en la mesa"
-            : `${cuantos} en la mesa`}
-      </p>
-      <div className="flex-1" />
-      {esDm && (
-        <label className="flex items-center gap-s2 font-chrome text-chrome-xs text-muted">
-          Ver el registro como
-          <select
-            aria-label="Ver el registro como"
-            value={comoUsuario}
-            onChange={(e) => onComoUsuario(e.target.value)}
-            className={fieldControlClass}
-          >
-            <option value="">yo (DM)</option>
-            {(miembros ?? [])
-              .filter((m) => m.role !== "DM")
-              .map((m) => (
-                <option key={m.userId} value={m.userId}>
-                  {m.displayName}
-                </option>
-              ))}
-          </select>
-        </label>
-      )}
-    </section>
-  );
-}
-
-/**
- * Quién está en la mesa, con lo que hace falta saber de cada uno mientras se juega.
- *
- * La asistencia **se declara**, no se deduce: los VTT saben quién está porque hay un socket
- * abierto y aquí no lo hay. Quien no vino se nombra igualmente, apagado y al pie — que alguien
- * falte es información de la partida, no un hueco.
- *
- * **La lista sale de los personajes, no de los miembros**, que es el cambio que trae la maqueta:
- * lo que se mira treinta veces por sesión son los puntos de golpe y las condiciones, y esos son
- * del personaje. El nombre de quien lo lleva va debajo, como en «La mesa entera».
- */
-function Elenco({
-  campaignId,
-  asistencia,
-  esDm,
-}: {
-  campaignId: string;
-  asistencia: { userId: string; characterId?: string }[] | null;
-  esDm: boolean;
-}) {
-  const { data: miembros } = useMembers(campaignId);
-  const { data: personajes } = useCharacters(campaignId);
-  const miId = useAuthStore((s) => s.user?.id);
-
-  const declarados = asistencia ? new Set(asistencia.map((a) => a.characterId)) : null;
-  // Sin asistencia declarada se enseñan todos los personajes que el servidor dejó ver: es lo
-  // único honesto, porque no hay dato que diga quién vino.
-  const enMesa = declarados
-    ? (personajes ?? []).filter((p) => declarados.has(p.id))
-    : (personajes ?? []);
-  const nombreDe = new Map((miembros ?? []).map((m: Member) => [m.userId, m.displayName]));
-  const mios = enMesa.filter((p) => p.ownerId === miId);
-  const otros = enMesa.filter((p) => p.ownerId !== miId);
-  const vinieron = new Set((asistencia ?? []).map((a) => a.userId));
-  const ausentes = asistencia
-    ? (miembros ?? []).filter((m) => !vinieron.has(m.userId))
-    : ([] as Member[]);
-
-  return (
-    <PanelDeMesa etiqueta="En la mesa" titulo="Elenco" icono={<IconoElenco className="h-4 w-4" />}>
-      {!asistencia && (
-        <p className="mb-s2 font-chrome text-chrome-xs text-muted">
-          Nadie declaró quién vino al empezar la sesión.
-        </p>
-      )}
-      {enMesa.length === 0 ? (
-        <p className="font-chrome text-chrome-xs text-muted">
-          Ningún personaje en la mesa todavía.
-        </p>
-      ) : mios.length > 0 && !esDm ? (
-        // **La disposición del jugador**, y sale de una frase del autor que invierte el modelo
-        // de Baldur's Gate 3: *«en BG3 es un jugador manejando varios; acá somos varios
-        // manejando uno propio»*. En BG3 los retratos del grupo son MANDOS —pulsas uno y pasas
-        // a controlarlo—; aquí no pueden serlo, porque el personaje de otro no es tuyo.
-        //
-        // Así que el tuyo va delante y con detalle, y los demás en segundo plano: se ven, se
-        // leen sus PG y sus condiciones, y **sobre ellos no hay botones**. Eso último no es
-        // decoración: `puedeCambiarPg` ya lo garantizaba y el servidor lo garantiza de verdad
-        // (`requireEditable`), pero enseñar un mando que va a dar 403 es prometer algo falso.
-        <>
-          <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
-            {mios.length === 1 ? "Tu personaje" : "Tus personajes"}
-          </h4>
-          <ul className="flex flex-col gap-s2">
-            {mios.map((p) => (
-              <FichaDeElenco
-                key={p.id}
-                campaignId={campaignId}
-                personaje={p}
-                dueno={nombreDe.get(p.ownerId)}
-                puedeCambiarPg
-                destacado
-              />
-            ))}
-          </ul>
-          {otros.length > 0 && (
-            <>
-              <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-muted">
-                El resto del grupo
-              </h4>
-              <ul className="flex flex-col gap-s2">
-                {otros.map((p) => (
-                  <FichaDeElenco
-                    key={p.id}
-                    campaignId={campaignId}
-                    personaje={p}
-                    dueno={nombreDe.get(p.ownerId)}
-                    puedeCambiarPg={false}
-                  />
-                ))}
-              </ul>
-            </>
-          )}
-        </>
-      ) : (
-        // **La del DM**, que sí está en la situación de BG3 porque maneja a muchos: la parrilla
-        // de todos con sus mandos, sin destacar a ninguno. Es también lo que ve un jugador que
-        // no tiene ningún personaje en esta mesa.
-        <ul className="flex flex-col gap-s2">
-          {enMesa.map((p) => (
-            <FichaDeElenco
-              key={p.id}
-              campaignId={campaignId}
-              personaje={p}
-              dueno={nombreDe.get(p.ownerId)}
-              puedeCambiarPg={esDm || p.ownerId === miId}
-            />
-          ))}
-        </ul>
-      )}
-      {ausentes.length > 0 && (
-        <p className="mt-s3 border-t border-muted pt-s2 font-chrome text-chrome-xs text-muted">
-          No vinieron: {ausentes.map((m) => m.displayName).join(", ")}.
-        </p>
-      )}
-    </PanelDeMesa>
-  );
-}
-
-/**
- * Un personaje en la mesa: retrato, quién lo lleva, puntos de golpe y condiciones.
- *
- * **Cada ficha pide su hoja y sus condiciones por separado**, y eso es a propósito: son los dos
- * endpoints que ya existen, los dos filtran por `canView` en el servidor, y un personaje que un
- * jugador no puede ver ni siquiera llega a esta lista. Una consulta por personaje en una mesa de
- * cinco es barata; inventar un endpoint agregado sería tocar la API para ahorrar cuatro peticiones.
- */
-function FichaDeElenco({
-  campaignId,
-  personaje,
-  dueno,
-  puedeCambiarPg,
-  destacado = false,
-}: {
-  campaignId: string;
-  personaje: Character;
-  dueno?: string;
-  puedeCambiarPg: boolean;
-  /** El tuyo, en la disposición del jugador: filete de acento y algo más de aire. */
-  destacado?: boolean;
-}) {
-  const { data: hoja } = useCharacterSheet(campaignId, personaje.id);
-  const { data: condiciones } = useConditions(campaignId, personaje.id);
-  const cambiarPg = useChangeHp(campaignId, personaje.id);
-
-  const actual = hoja?.hp.current ?? null;
-  const maximo = hoja?.hp.max ?? null;
-  const descriptor = descriptorDePersonaje(personaje);
-
-  return (
-    <li
-      className={[
-        "rounded-radius-sm bg-bg",
-        destacado ? "border border-accent p-s3" : "border border-muted p-s2",
-      ].join(" ")}
-    >
-      <div className="flex items-center gap-s2">
-        <Retrato nombre={personaje.name} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-title text-chrome-md leading-tight text-text">
-            {personaje.name}
-          </p>
-          <p className="truncate font-data text-chrome-xs text-muted">
-            {[descriptor, `Nivel ${personaje.level}`].filter(Boolean).join(" · ")}
-          </p>
-          {dueno && (
-            <p className="truncate font-chrome text-chrome-xs text-muted">Lo lleva {dueno}</p>
-          )}
-        </div>
-      </div>
-
-      <BarraDePuntosDeGolpe nombre={personaje.name} actual={actual} maximo={maximo} />
-
-      {puedeCambiarPg && maximo !== null && (
-        // Dos golpes, no un formulario. La corrección exacta se hace en la hoja, con su control
-        // de concurrencia; aquí solo está el gesto que se repite treinta veces por sesión.
-        <div className="mt-s2 flex items-center gap-s2">
-          {[-5, 5].map((delta) => (
-            <Button
-              key={delta}
-              type="button"
-              variant="ghost"
-              className="px-2 py-0.5 font-data text-chrome-xs"
-              disabled={cambiarPg.isPending}
-              onClick={() => cambiarPg.mutate({ delta })}
-              aria-label={`${delta < 0 ? "Quitar" : "Dar"} ${Math.abs(delta)} puntos de golpe a ${personaje.name}`}
-            >
-              {delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`}
-            </Button>
-          ))}
-          {cambiarPg.isError && (
-            <span role="alert" className="font-chrome text-chrome-xs text-danger-text">
-              No se pudo.
-            </span>
-          )}
-        </div>
-      )}
-
-      <ul className="mt-s2 flex flex-wrap gap-1.5">
-        {(condiciones ?? []).length === 0 ? (
-          <li className="font-chrome text-chrome-xs text-muted">Sin condiciones</li>
-        ) : (
-          (condiciones ?? []).map((c) => (
-            <li
-              key={c.id}
-              className="rounded-radius-sm border border-warning px-1.5 py-0.5 font-chrome text-chrome-xs text-warning-text"
-            >
-              {nombreCondicion(c.key)}
-              {c.level !== null && ` ${c.level}`}
-            </li>
-          ))
-        )}
-      </ul>
-    </li>
-  );
-}
-
-/**
- * El retrato.
- *
- * Todavía no hay imágenes en el modelo, así que la inicial hace de retrato — igual que en la
- * maqueta. **La inicial es texto, no un icono**: la regla que prohíbe los glifos prohíbe usarlos
- * *como dibujo*, y aquí la letra ES el dato. `aria-hidden` porque el nombre entero está al lado.
- */
-function Retrato({ nombre }: { nombre: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-copper bg-surface font-title text-chrome-md text-copper-text"
-    >
-      {nombre.trim().charAt(0).toUpperCase()}
-    </span>
-  );
-}
-
-/**
- * Los puntos de golpe, con su barra.
- *
- * **El color no es el único portador**: la cifra «42/58» dice lo mismo que la barra, y el ancho
- * lo dice una tercera vez. La barra cambia de tono por debajo de un tercio porque en la mesa eso
- * es lo que se mira de reojo, pero quien no distinga los tonos lee la fracción igual.
- *
- * El ancho va en estilo en línea porque es un valor **calculado**, no una decisión de diseño: no
- * hay clase de Tailwind para «el 72,4 % de la vida que le queda a este personaje».
- */
-function BarraDePuntosDeGolpe({
-  nombre,
-  actual,
-  maximo,
-}: {
-  nombre: string;
-  actual: number | null;
-  maximo: number | null;
-}) {
-  if (actual === null || maximo === null || maximo <= 0) {
-    return (
-      <p className="mt-s2 font-chrome text-chrome-xs text-muted">Sin puntos de golpe en la hoja.</p>
-    );
-  }
-  const proporcion = Math.max(0, Math.min(1, actual / maximo));
-  const tono = actual === 0 ? "bg-danger" : proporcion <= 1 / 3 ? "bg-warning" : "bg-accent";
-
-  return (
-    <div className="mt-s2">
-      <p className="flex items-center justify-between gap-s2 font-data text-chrome-xs text-text">
-        <span className="flex items-center gap-1 text-muted">
-          <IconoPuntosDeGolpe />
-          PG
-        </span>
-        <span>
-          {actual}/{maximo}
-        </span>
-      </p>
-      <div
-        role="img"
-        aria-label={`${nombre}: ${actual} de ${maximo} puntos de golpe`}
-        className="mt-1 h-1.5 w-full overflow-hidden rounded-radius-sm border border-muted bg-surface"
-      >
-        <div className={`h-full ${tono}`} style={{ width: `${(proporcion * 100).toFixed(1)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * El registro en vivo, y debajo lo que se usa para escribirlo.
- *
- * Es el centro de la pantalla porque es la partida. De la maqueta se toma la forma de la línea:
- * **el chip de la clase a la izquierda**, la frase en la voz del mundo, y quién y a qué hora
- * debajo en cifras. Antes era hora · frase · marca de visibilidad en una sola línea, y con
- * cuarenta sucesos no se distinguía un combate de una tirada sin leerlos todos.
- *
- * **Los sellos los pone cualquier miembro**, no solo el DM: un registro que solo escribe el DM se
- * queda vacío, y es la crítica más repetida a estas herramientas.
- */
-function Registro({
-  campaignId,
-  eventos,
-  esDm,
-  comoUsuario,
-}: {
-  campaignId: string;
-  eventos: GameEventRow[];
-  esDm: boolean;
-  comoUsuario: string;
-}) {
-  const { data: miembros } = useMembers(campaignId);
-  const sellar = useStampNote(campaignId);
-  const [texto, setTexto] = useState("");
-  const [soloDm, setSoloDm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const nombreDe = new Map((miembros ?? []).map((m: Member) => [m.userId, m.displayName]));
-
-  // **La marca se congela al montar, a propósito.** Si se releyera en cada sondeo, la franja
-  // desaparecería a los quince segundos —justo cuando alguien vuelve a la mesa y todavía no ha
-  // leído nada—. Se lee una vez al llegar y se queda mientras estés en la pantalla; lo que se
-  // actualiza en el almacenamiento es el suceso más reciente, para la PRÓXIMA vez que vuelvas.
-  const [marca] = useState(() => ultimoVisto(campaignId));
-  const perdido = loQueTePerdiste(eventos, marca);
-
-  useEffect(() => {
-    if (eventos.length > 0) marcarVisto(campaignId, eventos[0].id);
-  }, [campaignId, eventos]);
-
-  const poner = async (kind: SessionNoteKind) => {
-    setError(null);
-    try {
-      await sellar.mutateAsync({
-        kind,
-        text: texto.trim() || undefined,
-        visibility: soloDm ? "DM_ONLY" : "PLAYERS",
-      });
-      setTexto("");
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
-
-  return (
-    <PanelDeMesa
-      etiqueta="Registro de la sesión"
-      titulo="Registro en vivo"
-      icono={<IconoRegistro className="h-4 w-4" />}
-    >
-      {esDm && comoUsuario && (
-        <p className="mb-s2 rounded-radius-sm border border-copper px-s2 py-1 font-chrome text-chrome-xs text-copper-text">
-          Estás viendo lo que ve ese jugador. No es una simulación: el servidor filtra igual que
-          para él, así que ves <strong>menos</strong>, nunca más.
-        </p>
-      )}
-
-      {/* Con nombre accesible a propósito: los seis botones de sellar repiten los mismos
-          nombres que los chips de las líneas, así que sin una lista que se pueda nombrar una
-          prueba no distingue «el chip dice Hallazgo» de «hay un botón de Hallazgo». Esa
-          confusión dejó pasar una mutación real. */}
-      <ol aria-label="Sucesos de la sesión" className="flex flex-col">
-        {eventos.length === 0 && (
-          <li className="font-chrome text-chrome-sm text-muted">
-            Todavía no ha pasado nada en esta sesión.
-          </li>
-        )}
-        {eventos.map((e) => {
-          // La franja va **encima** del primer suceso que no viste, así que se pinta antes de
-          // su línea. `role="separator"` y no un `<li>` de texto: es una marca de lectura, no
-          // un suceso más de la partida, y confundirlos en la lista sería mentir sobre lo que
-          // pasó en la mesa.
-          const franja =
-            perdido.desde === e.id ? (
-              <li
-                key={`${e.id}-franja`}
-                role="separator"
-                aria-label={fraseDeLoPerdido(perdido.cuantos)}
-              >
-                <p className="my-s2 flex items-center gap-s2 font-chrome text-chrome-xs uppercase tracking-widest text-copper-text">
-                  <span aria-hidden="true" className="h-px flex-1 bg-copper" />
-                  {fraseDeLoPerdido(perdido.cuantos)}
-                  <span aria-hidden="true" className="h-px flex-1 bg-copper" />
-                </p>
-              </li>
-            ) : null;
-          const sello = selloDeSuceso(e.payload);
-          return (
-            <Fragment key={e.id}>
-              {franja}
-              {/* El identificador va al DOM porque la marca de lectura vive en el navegador y
-                  la única forma de comprobar la franja en un recorrido es poder decir «da por
-                  visto ESTE». Es dato, no adorno. */}
-              <li
-                data-suceso={e.id}
-                className="flex items-start gap-s2 border-b border-muted py-s2 last:border-b-0"
-              >
-                {sello ? (
-                  <span className="mt-0.5 shrink-0 rounded-radius-sm border border-copper px-1.5 py-0.5 font-data text-chrome-xs text-copper-text">
-                    {NOMBRE_SELLO[sello]}
-                  </span>
-                ) : (
-                  // Un hueco del mismo ancho que no dice nada: las líneas sin chip se alinean con
-                  // las que sí lo tienen en vez de quedar dentadas.
-                  <span aria-hidden="true" className="mt-0.5 w-s6 shrink-0" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-world text-[length:var(--text-world-sm)] leading-snug text-text">
-                    {lineaDeLog(e.payload)}
-                  </p>
-                  <p className="mt-0.5 font-data text-chrome-xs text-muted">
-                    {nombreDe.get(e.actorUserId) ?? "Alguien"} · {horaDe(e.createdAt)}
-                  </p>
-                </div>
-                <Badge visibility={e.visibility} />
-              </li>
-            </Fragment>
-          );
-        })}
-      </ol>
-
-      <div className="mt-s3 border-t border-muted pt-s3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {SELLOS_EN_ORDEN.map((kind) => {
-            const Icono = ICONO_SELLO[kind];
-            return (
-              <Button
-                key={kind}
-                type="button"
-                variant="ghost"
-                className="flex items-center gap-1.5 px-2 py-1 text-chrome-xs"
-                disabled={sellar.isPending}
-                onClick={() => void poner(kind)}
-              >
-                <Icono className="h-4 w-4" />
-                {NOMBRE_SELLO[kind]}
-              </Button>
-            );
-          })}
-        </div>
-        <div className="mt-s2 flex flex-wrap items-center gap-s2">
-          <input
-            aria-label="Qué anotar"
-            placeholder="…y en dos palabras, qué pasó"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            className={`${fieldControlClass} min-w-0 flex-1`}
-          />
-          <label className="flex items-center gap-1.5 font-chrome text-chrome-xs text-muted">
-            <input
-              type="checkbox"
-              checked={soloDm}
-              onChange={(e) => setSoloDm(e.target.checked)}
-              className="accent-[var(--accent)]"
-            />
-            Solo el DM
-          </label>
-        </div>
-        {error && (
-          <p role="alert" className="mt-1 font-chrome text-chrome-xs text-danger-text">
-            {error}
-          </p>
-        )}
-      </div>
-    </PanelDeMesa>
-  );
-}
-
-/**
- * El mundo, aquí, sin cambiar de pantalla. Y el botón de revelar.
- *
- * **Revelar es un verbo de sesión, no configuración.** Es el patrón que ejecutan todos los VTT
- * («Show Players» de Foundry, arrastrar al retrato en Fantasy Grounds) y no un ajuste que se
- * cambia en un formulario. Aquí se apoya en la misma matriz de visibilidad de siempre: subir el
- * nivel de la ficha deja además su rastro en el log.
- *
- * **Este buscador es de cliente y no es control de acceso**: opera sobre una lista que el
- * servidor ya filtró por `canView`, y solo puede quitar de la vista filas que quien mira ya tenía
- * derecho a ver.
- */
-function Consulta({ campaignId, esDm }: { campaignId: string; esDm: boolean }) {
-  const { data: entidades } = useAllEntities(campaignId);
-  const [busqueda, setBusqueda] = useState("");
-  const encontradas = (entidades ?? []).filter((e) =>
-    e.name.toLowerCase().includes(busqueda.trim().toLowerCase()),
-  );
-
-  return (
-    <PanelDeMesa
-      etiqueta="Consulta del mundo"
-      titulo="Consulta del mundo"
-      icono={<IconoBuscar className="h-4 w-4" />}
-    >
-      <input
-        aria-label="Buscar en el mundo"
-        placeholder="Buscar sin salir…"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        className={fieldControlClass}
-      />
-      <ul className="mt-s2 flex flex-col">
-        {encontradas.slice(0, 12).map((e) => (
-          <li
-            key={e.id}
-            className="flex items-center justify-between gap-s2 border-b border-muted py-1.5 last:border-b-0"
-          >
-            {/* `Link`, no `<a href>`: un enlace crudo recarga la aplicación entera y se pierde
-                el estado de la mesa —lo escrito a medias en el registro, el «ver como», la
-                caché— justo en mitad de la partida. */}
-            <Link
-              to={`/campaigns/${campaignId}/entidades/${e.id}`}
-              className="block min-w-0 flex-1 truncate font-chrome text-chrome-sm text-accent-text hover:underline"
-            >
-              {e.name}
-            </Link>
-            <Badge visibility={e.visibility as Visibility} />
-          </li>
-        ))}
-        {busqueda && encontradas.length === 0 && (
-          <li className="font-chrome text-chrome-xs text-muted">Nada con ese nombre.</li>
-        )}
-      </ul>
-      {esDm && (
-        <p className="mt-s2 font-chrome text-chrome-xs text-muted">
-          Abre una entrada para revelarla a la mesa desde su propia pantalla.
-        </p>
-      )}
-    </PanelDeMesa>
-  );
 }

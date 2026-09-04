@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useMatch } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -15,6 +15,19 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./features/auth/AuthGate";
 import { ThemeToggle } from "./ui/ThemeToggle";
 
+// Ola 0 (2026-09-04) — **el conmutador fijo se retira de la mesa, y solo de ahí.**
+//
+// `ThemeToggle` se monta `fixed right-2 top-2` para toda la aplicación. La mesa pasó a ocupar la
+// ventana entera y a llevar su propia banda superior, así que ahí el control fijo se le montaba
+// encima. El mismo componente entra **dentro** de la banda (`variante="en-banda"`), y aquí se
+// deja de pintar el fijo en esa única ruta. Dos alternadores del mismo tema serían dos estados de
+// una sola cosa, y uno de los dos acabaría mintiendo.
+function TemaFueraDeLaMesa() {
+  const enLaMesa = useMatch("/campaigns/:id/sesion");
+  if (enLaMesa) return null;
+  return <ThemeToggle />;
+}
+
 export function App() {
   return (
     <BrowserRouter>
@@ -26,7 +39,7 @@ export function App() {
           tokens, not literals), so the toggle does what it claims: the whole product follows,
           not just /design-tokens. Fixed position, outside <Routes> so it survives every
           navigation without remounting or losing its own local state. */}
-      <ThemeToggle />
+      <TemaFueraDeLaMesa />
       {/* AuthGate wraps every route, not just the protected ones: it's what turns a token
           that survives a reload in localStorage back into a user in memory
           (auth.store.ts, docs/01-arquitectura.md), and a token that no longer resolves can

@@ -117,3 +117,34 @@ export function IconoRombo({ className }: IconoProps) {
     </Marco>
   );
 }
+
+/**
+ * Cerrar: el aspa del cajón.
+ *
+ * La trae la Ola 0 porque `ui/Dialog` la necesita el día que deja de ser un cuadro centrado y
+ * pasa a ser cajón lateral — un cajón sin aspa solo se cierra con Escape, y eso no es un objeto
+ * en pantalla. **Los 23 iconos de la maqueta entran con el carril de la capa visual**; este va
+ * por delante porque una primitiva no puede esperar a su carril.
+ */
+export function IconoCerrar({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="cerrar">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </Marco>
+  );
+}
+
+/**
+ * Flecha a la izquierda: volver.
+ *
+ * Igual que el aspa, la trae la Ola 0 porque la banda de la mesa la necesita para «Tus crónicas»
+ * y una banda sin flecha de vuelta es una pantalla sin salida. Los 23 de la maqueta entran con la
+ * capa visual.
+ */
+export function IconoFlechaIzquierda({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="flecha-izquierda">
+      <path d="M19 12H5M11 18l-6-6 6-6" />
+    </Marco>
+  );
+}

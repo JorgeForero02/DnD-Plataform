@@ -93,11 +93,16 @@ export function MensajeDelHilo({
 
   if (tipo === "sello") {
     const titulo = tituloDeSello(p);
-    // El cuerpo solo aparece cuando el título no lo dice ya todo. En una anotación sellada el
-    // título es la clase y el cuerpo la frase entera —«Hallazgo» arriba, «Hallazgo: media carta
-    // con el sello» debajo—: la clase se repite, y se repite a propósito, porque el chip de
-    // clase se lee sin leer y la frase se lee para enterarse.
-    const cuerpo = selloDeSuceso(p) ? linea : null;
+    // **La banda dice la clase y el cuerpo dice lo que se anotó, sin repetir la palabra.**
+    // La primera versión pintaba abajo la frase entera de `lineaDeLog` —«Hallazgo» en la banda y
+    // «Hallazgo: media carta con el sello» debajo—, que es leer dos veces lo mismo. `lineaDeLog`
+    // no se toca: la compone así para la crónica y para quien lea el registro fuera de la mesa,
+    // donde no hay banda que ponga la clase delante. Aquí sí la hay, así que el hilo pinta solo
+    // la mitad que la banda no dice ya.
+    //
+    // Un sello sin texto —los que dejó el defecto de los sellos vacíos— se queda solo con su
+    // banda, que es exactamente lo que ese suceso sabe.
+    const cuerpo = p.type === "SESSION_NOTE" ? (p.text ?? null) : null;
     return (
       <li data-suceso={evento.id} className={contenedor}>
         <p className="my-s3 flex items-center gap-s3">

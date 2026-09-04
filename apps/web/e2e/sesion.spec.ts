@@ -129,9 +129,12 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
   await expect(page.getByRole("heading", { name: "La mesa", exact: true })).toBeVisible();
   const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
-  await expect(sucesos.getByText("Combate: los guardias del muelle")).toBeVisible({
-    timeout: 10_000,
-  });
+  // Lo que se comprueba es lo de siempre: el sello puesto desde la barra **llega a la mesa, en
+  // prosa y no como clave**. Desde que el hilo pinta los cinco tipos de mensaje, la clase va en
+  // la banda de cobre y el texto debajo, así que se busca el texto de la anotación en vez de la
+  // frase entera de `lineaDeLog` («Combate: los guardias del muelle»), que repetía la palabra.
+  await expect(sucesos.getByText("Combate", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(sucesos.getByText("los guardias del muelle")).toBeVisible();
   // Y el suceso de apertura de la sesión, también traducido.
   await expect(sucesos.getByText(/Empieza la sesión/)).toBeVisible();
 
@@ -297,7 +300,10 @@ test("una anotación hecha desde la mesa aparece con su chip de clase y con qui�
   // tanda y la cazó la comprobación por mutación.
   const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
   await expect(sucesos.getByText("Hallazgo", { exact: true })).toBeVisible({ timeout: 15_000 });
-  await expect(sucesos.getByText("Hallazgo: media carta con el sello de la Casa")).toBeVisible();
+  // Y el texto de la anotación, que es la otra mitad. Va debajo de la banda desde que el hilo
+  // pinta los cinco tipos de mensaje de la maqueta; antes se pedía la frase entera de
+  // `lineaDeLog` («Hallazgo: media carta…»), que repetía la clase que la banda ya dice.
+  await expect(sucesos.getByText("media carta con el sello de la Casa")).toBeVisible();
   // Quién lo puso, que es la mitad de para qué sirve un registro que se relee.
   // `.first()`: el sello y la anotación son **dos** sucesos, así que la firma aparece dos veces.
   // Que aparezca es lo que se comprueba; cuántas veces depende de cuántas cosas se anoten.

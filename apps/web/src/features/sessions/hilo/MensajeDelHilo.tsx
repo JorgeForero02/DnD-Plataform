@@ -23,6 +23,21 @@ import { colorDeVoz, tipoDeMensaje } from "./tipo-de-mensaje";
 //
 // **La frase la sigue escribiendo `linea-de-log.ts`.** Este fichero decide la forma, no el texto:
 // ningún valor de enumeración se traduce aquí.
+//
+// **`data-suceso` en cada línea.** El identificador va al DOM porque la marca de lectura vive en
+// el navegador y la única forma de comprobar la franja de «te perdiste» en un recorrido es poder
+// decir «da por visto ESTE». Es dato, no adorno, y por eso lo llevan las cinco formas.
+//
+// ---
+//
+// **Dónde esto NO copia la maqueta**, declarado porque desviarse en silencio y llamarlo acuerdo
+// es el fallo que trajo esta tanda entera: **la banda del sello no lleva `role="separator"`**, y
+// la de la maqueta sí. A propósito. Un sello **es un suceso de la partida** —alguien lo puso, con
+// su hora y su visibilidad—, no una marca de lectura. Ese papel ya lo tiene la franja de «desde
+// aquí te perdiste», que es lo único de esta lista que de verdad separa en vez de contar, y
+// dárselo también al sello haría que un lector de pantalla no pudiera distinguirlos.
+// (Las otras tres desviaciones, las tres cosméticas, se declaran en `HiloDeSesion.tsx`, que es
+// donde viven el compositor y la franja.)
 
 /**
  * La firma: quién y cuándo, y solo cuando hace falta, quién puede verlo. Pequeña, apagada, debajo.
@@ -40,7 +55,7 @@ function Firma({
   visibility,
   className = "",
 }: {
-  autor: string | null;
+  autor: string;
   hora: string;
   visibility: GameEventRow["visibility"];
   className?: string;
@@ -49,7 +64,7 @@ function Firma({
     <p
       className={`mt-0.5 flex items-center gap-s2 font-data text-chrome-xs text-muted ${className}`}
     >
-      <span>{autor ? `${autor} · ${hora}` : hora}</span>
+      <span>{`${autor} · ${hora}`}</span>
       {visibility !== "PLAYERS" && <Badge visibility={visibility} />}
     </p>
   );
@@ -75,8 +90,8 @@ export function MensajeDelHilo({
   nuevo,
 }: {
   evento: GameEventRow;
-  /** El nombre de quien lo hizo, o `null` si este navegador no conoce a ese miembro. */
-  autor: string | null;
+  /** El nombre de quien lo hizo. El hilo manda «Alguien» si no conoce a ese miembro. */
+  autor: string;
   /** La tirada de la que cuelga un ataque, si está en la ventana del registro. */
   ligada?: GameEventPayload | null;
   /** Llegó después de que se abriera la pantalla: entra con `surge`. */
@@ -87,8 +102,8 @@ export function MensajeDelHilo({
   const linea = lineaDeLog(p);
   const hora = horaDe(evento.createdAt);
 
-  // El identificador va al DOM porque la marca de lectura vive en el navegador y la única forma
-  // de comprobar la franja en un recorrido es poder decir «da por visto ESTE». Es dato, no adorno.
+  // Lo que envuelve a cualquiera de las cinco formas: `shrink-0` para que la línea no se encoja
+  // dentro de la columna con scroll, y `anim-surge` si el suceso acaba de llegar a la mesa.
   const contenedor = `shrink-0 ${nuevo ? "anim-surge" : ""}`;
 
   if (tipo === "sello") {
@@ -163,11 +178,7 @@ export function MensajeDelHilo({
   return (
     <li data-suceso={evento.id} className={contenedor}>
       <p className="my-s1 max-w-[62ch] font-world text-world-base">
-        {autor && (
-          <>
-            <span className={`font-chrome text-chrome-sm font-semibold ${voz}`}>{autor}</span>{" "}
-          </>
-        )}
+        <span className={`font-chrome text-chrome-sm font-semibold ${voz}`}>{autor}</span>{" "}
         <span className={voz}>{linea}</span>{" "}
         <span className="font-data text-chrome-xs text-muted">{hora}</span>
       </p>

@@ -22,14 +22,32 @@ import { IconoPluma } from "./iconos-del-hilo";
 // `prototipo/src/features/HiloDeSesion.tsx` y `TiradaIncrustada.tsx`. La forma de cada uno vive
 // en `MensajeDelHilo.tsx`; qué forma le toca a cada suceso, en `tipo-de-mensaje.ts`.
 //
-// **Y el sello sin texto ya no se manda.** Era el defecto de `MesaDeSesion.tsx:793-805`: pulsar
-// «Nota» escribía en el registro una entrada que decía «Nota», porque el texto viajaba como
-// `undefined` y nadie lo impedía. Los seis botones son el envío —cada uno manda con su clase—,
-// así que se deshabilitan sin texto, que es lo que hace la maqueta con su botón de enviar.
+// **Y el sello sin texto ya no se manda DESDE EL HILO.** Era el defecto de
+// `MesaDeSesion.tsx:793-805`: pulsar «Nota» escribía en el registro una entrada que decía «Nota»,
+// porque el texto viajaba como `undefined` y nadie lo impedía. Los seis botones son el envío
+// —cada uno manda con su clase—, así que se deshabilitan sin texto, que es lo que hace la maqueta
+// con su botón de enviar.
+//
+// **Este no era el único compositor, y decir que cerraba la puerta entera era falso.** La
+// auditoría daba dos direcciones —`:793-805` **y** `:886-901`— y aquí se leyó una: `BarraDeSesion`
+// tiene su propio «Anotar», se pinta en toda pantalla de campaña y hacía exactamente lo mismo.
+// Ese lo cerró el ensamblado, con su prueba. Lo que arregla este fichero es su mitad.
 //
 // **Lo que NO se toca**, porque son datos de comportamiento probados y no maquetación: la franja
 // de «esto te perdiste» con su `role="separator"` y su marca congelada al montar, el `data-suceso`
 // de cada línea, el aviso de «ver como», y las puertas de datos (`hooks.ts`, `log-api.ts`).
+//
+// **Tres sitios donde esto no copia la maqueta**, y se declaran en vez de darse por acordados:
+//
+//  1. El filete del compositor es `border-t border-muted`; la maqueta pone `border-muted/20`.
+//  2. El texto de ayuda del campo es `placeholder:text-muted`; la maqueta pone `text-muted/60`.
+//  3. La franja de no leído sigue pintada en **cobre**; la maqueta la pinta con el acento.
+//
+// Las tres son cosméticas y las tres van en la dirección de conservar lo que ya había — la franja,
+// además, es marcado probado que este carril tenía orden de no tocar. **Ninguna es por
+// imposibilidad técnica**: las opacidades sueltas compilan desde B0 (la escala se abrió a los cien
+// pasos justo para esto), así que copiar la maqueta al pie de la letra es una línea en cada sitio
+// el día que se decida que se quiere.
 
 /**
  * El registro en vivo, y debajo lo que se usa para escribirlo.
@@ -68,23 +86,34 @@ export function HiloDeSesion({
     if (eventos.length > 0) marcarVisto(campaignId, eventos[0].id);
   }, [campaignId, eventos]);
 
-  // **Qué es «nuevo» para la animación de entrada**: lo que pasó DESPUÉS de que abrieras la mesa.
-  // El registro que ya estaba cuando llegaste no surge —treinta mensajes surgiendo a la vez al
-  // abrir dejarían de significar «esto acaba de pasar»—; lo que trae el sondeo de los quince
-  // segundos, sí.
+  // **Qué es «nuevo» para la animación de entrada**: lo que pasó DESPUÉS del registro que ya
+  // estaba cuando llegaste. Ese no surge —treinta mensajes surgiendo a la vez al abrir dejarían de
+  // significar «esto acaba de pasar»—; lo que trae el sondeo de los quince segundos, sí.
   //
-  // Se decide con la fecha del propio suceso contra el instante en que se montó la pantalla, y no
-  // llevando la cuenta de los identificadores ya vistos: una cuenta así vive en una referencia que
-  // habría que leer al pintar (`react-hooks/refs` lo prohíbe) o en un estado que habría que
-  // escribir desde un efecto (`react-hooks/set-state-in-effect` lo prohíbe). Comparar dos fechas
-  // es puro, no necesita ninguna de las dos cosas, y falla bien: si el reloj del navegador va
-  // atrasado respecto al del servidor, lo peor que pasa es que un mensaje viejo entre con
-  // animación una vez.
-  const [abiertaEn] = useState(() => Date.now());
-  const esNuevo = (creadoEn: string) => {
-    const fecha = Date.parse(creadoEn);
-    return !Number.isNaN(fecha) && fecha > abiertaEn;
-  };
+  // **Los dos lados de la comparación salen del reloj del SERVIDOR**, y esa es la corrección que
+  // trajo la revisión de cierre. La primera versión comparaba `createdAt` —servidor— contra
+  // `Date.now()` congelado al montar —navegador—: con el reloj del servidor adelantado unos
+  // segundos, o el del portátil atrasado, **animaban todos los sucesos a la vez al abrir**, que
+  // es exactamente lo que este comentario dice querer evitar. Comparando `createdAt` contra el
+  // `createdAt` del suceso más reciente que había al llegar, no hay dos relojes que cuadrar.
+  //
+  // La referencia se congela en **el primer lote que trae algo**, no en el primer pintado: la
+  // mesa monta el hilo con la lista vacía mientras el registro carga (`MesaDeSesion.tsx:81`,
+  // `log?.events ?? []`), así que sembrarla en el montaje la dejaría vacía para siempre y no
+  // animaría nunca nada. Se siembra ajustando el estado durante el pintado —el patrón que React
+  // documenta para «un estado que se deriva de una prop que cambia»—, y no desde un efecto ni
+  // desde una referencia, que es lo que prohíben `react-hooks/set-state-in-effect` y
+  // `react-hooks/refs`. En el pintado que la siembra `desde` todavía es `null`, así que ese
+  // primer lote no anima: correcto, ya estaba ahí cuando llegaste.
+  //
+  // El peor caso de verdad: si el registro llega paginado y la primera página que se ve no es la
+  // más reciente, un suceso podría animar una vez de más. No hay ninguno en que anime de menos.
+  const [desde, setDesde] = useState<string | null>(null);
+  // `eventos` llega del servidor **más reciente primero** (`reincorporarse.ts:51`), así que el
+  // corte es el primero de la lista.
+  const masReciente = eventos[0]?.createdAt ?? null;
+  if (desde === null && masReciente !== null) setDesde(masReciente);
+  const esNuevo = (creadoEn: string) => desde !== null && creadoEn > desde;
 
   // Un ataque no trae números propios: los toma de la tirada que lo produjo, si esa tirada está
   // en la ventana del registro que se ha pedido y este espectador puede verla.

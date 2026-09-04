@@ -58,10 +58,27 @@ export function useCatalog() {
   });
 }
 
+/**
+ * **Quince segundos, los mismos que el registro** (`features/sessions/hooks.ts`), y no los treinta
+ * del reloj y el inventario.
+ *
+ * El motivo no es «la vida cambia rápido» a secas: es que **la hoja y el registro se pintan en la
+ * misma pantalla**, uno al lado del otro, en el Elenco de la mesa. Con la hoja sin sondear, el DM
+ * pulsaba −5 en su portátil, la columna del registro decía a los quince segundos «Pierde 5 PG
+ * (23 → 18)» y la barra de al lado seguía pintando 23 hasta que alguien recargara. Una pantalla
+ * que se contradice a sí misma es peor que una que va lenta, y en la mesa lo que se mira de reojo
+ * es la barra. Dos consultas que se leen juntas se refrescan juntas.
+ *
+ * Treinta segundos sirven para el reloj y el inventario porque nadie los tiene al lado de su
+ * propia contradicción.
+ */
+export const SONDEO_DE_MESA_MS = 15_000;
+
 export function useCharacterSheet(campaignId: string, characterId: string) {
   return useQuery({
     queryKey: sheetKey(campaignId, characterId),
     queryFn: () => characterSheetApi.fetchSheet(campaignId, characterId),
+    refetchInterval: SONDEO_DE_MESA_MS,
     enabled: Boolean(campaignId && characterId),
   });
 }
@@ -197,6 +214,10 @@ export function useConditions(campaignId: string, characterId: string) {
   return useQuery({
     queryKey: conditionsKey(campaignId, characterId),
     queryFn: () => characterSheetApi.fetchConditions(campaignId, characterId),
+    // Mismo intervalo y mismo motivo que la hoja: la ficha del Elenco pinta las dos cosas juntas,
+    // y una condición que ya venció seguía luciendo al lado de un registro que decía que se le
+    // había quitado.
+    refetchInterval: SONDEO_DE_MESA_MS,
     enabled: Boolean(campaignId && characterId),
   });
 }

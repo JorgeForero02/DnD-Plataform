@@ -47,7 +47,10 @@ export function DesignTokensPage() {
 
   return (
     <div className="min-h-screen bg-bg p-6 text-text">
-      <h1 className="mb-4 text-chrome-xl font-bold">Tokens — vista de control</h1>
+      {/* C5 (2026-09-04): `font-title`. Esta pantalla es el banco de pruebas de los tokens, y
+          su propio título iba en el `font-bold` del sistema — la única de las cuatro voces que
+          no existe. */}
+      <h1 className="mb-4 font-title text-chrome-xl text-text">Tokens — vista de control</h1>
 
       {/* B0 (2026-09-04) — **el banco de pruebas del modificador de opacidad.**
           Durante meses `border-copper/30` y familia se descartaban en silencio, y la defensa

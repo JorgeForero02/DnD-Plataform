@@ -46,7 +46,8 @@ async function abrirEditorDeRegla(page: Page) {
   await page.getByRole("link", { name: "La mesa de los carriles" }).click();
 
   // Una regla fija el identificador de la ficha al armarse: hace falta una ficha real antes.
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("La puerta de sal");
   await page.getByRole("button", { name: "Guardar" }).click();

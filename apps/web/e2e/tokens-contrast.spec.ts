@@ -489,7 +489,9 @@ for (const theme of ["dark", "light", "reading"] as const) {
     await page.getByRole("link", { name: "Campaña de contraste" }).click();
     await expect(page.getByRole("heading", { name: "Campaña de contraste" })).toBeVisible();
 
-    await page.getByRole("tab", { name: "PNJ" }).click();
+    await page.getByRole("tab", { name: "El mundo" }).click();
+
+    await page.getByRole("button", { name: /^PNJ/ }).click();
     await page.getByRole("button", { name: "Nuevo PNJ" }).click();
     await page.getByLabel("Nombre").fill("Strahd von Zarovich");
     await page.getByLabel("Etiquetas (separadas por coma)").fill("villano");
@@ -516,7 +518,7 @@ for (const theme of ["dark", "light", "reading"] as const) {
       record(theme, "detalle de campaña: título", contrastRatio(color, bg), 4.5);
     }
     {
-      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "PNJ" }));
+      const { color, bg } = await effectiveTextColours(page.getByRole("button", { name: /^PNJ/ }));
       record(theme, "detalle de campaña: tab activo texto", contrastRatio(color, bg), 4.5);
     }
     {

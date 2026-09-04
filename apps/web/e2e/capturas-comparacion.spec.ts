@@ -77,7 +77,8 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
   await expect(page.getByRole("heading", { name: "Las Mareas de Sarnath" })).toBeVisible();
 
   // Un par de fichas del mundo, para que la lista tenga algo que enseñar.
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   for (const [nombre, cuerpo] of [
     ["Maestre Kellan", "Miente sobre el registro del almacén cuatro."],
     ["Marta la del muelle", "Vio salir el humo antes que nadie."],

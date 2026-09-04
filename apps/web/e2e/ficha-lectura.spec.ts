@@ -54,13 +54,17 @@ async function mundoConUnEnlace(page: Page, nombreCampana: string) {
   await page.getByRole("link", { name: nombreCampana }).click();
   await expect(page.getByRole("heading", { name: nombreCampana })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Lugares" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^Lugares/ }).click();
   await page.getByRole("button", { name: "Nuevo lugar" }).click();
   await page.getByLabel("Nombre").fill("La Torre Gris");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
 
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Corvin Vhael");
   await page.getByLabel("Etiquetas (separadas por coma)").fill("puerto");

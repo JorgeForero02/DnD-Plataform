@@ -21,6 +21,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > |---|---|
 > | [`_archivo/historial-hasta-2026-09-01.md`](./_archivo/historial-hasta-2026-09-01.md) | Desde el arranque del proyecto (2026-07-02) hasta el cierre de la fase 1 y el reseño visual |
 > | [`_archivo/historial-hasta-2026-09-02.md`](./_archivo/historial-hasta-2026-09-02.md) | Todo el 2026-09-02 —la fase 2A entera, la ronda de interfaz, la primera puesta en producción— y **las entradas por tarea del 2026-09-03** (2B, 2C y 2D, tarea a tarea) |
+> | [`_archivo/historial-2026-09-04-por-tarea.md`](./_archivo/historial-2026-09-04-por-tarea.md) | **El 2026-09-04 se cerraron ocho tandas con sus ocho revisiones**, y sus entradas por tarea no caben aquí. Tres de ellas viven ahí: 2.5.2, B1.2 y la de `ENTITY_REVEALED` + archivar |
 >
 > **El siguiente corte toca cuando el 2026-09-03 deje de ser el presente**, o antes si
 > `check:historial` se pone rojo.
@@ -211,6 +212,36 @@ fallo de english-log que `08-pruebas.md` cuenta.
 **Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
 a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
 
+## B4 — el mundo es un solo destino: de diecinueve a doce (2026-09-04)
+
+**Por qué.** Es el defecto que el reseño llama de arquitectura y no de acabado: *«la navegación es
+el esquema de la base de datos»*. Había **siete pestañas** —PNJ, Lugares, Misiones, Facciones,
+Objetos, Sucesos, Documentos— y las siete son **literalmente valores del enum de la tabla
+`Entity`**. Con las tres rutas propias, diecinueve destinos en una campaña.
+
+**Qué entra.** Un destino, «El mundo», y el tipo pasa a ser lo que siempre fue: **un filtro**.
+Dentro sigue el mismo listado, el mismo creador y el mismo filtro de etiquetas — no se pierde
+nada; lo que se gana es que elegir «Lugares» ya no es viajar a otro sitio.
+
+**Los filtros llevan `aria-pressed`, no `role="tab"`**, y es deliberado: un `tab` promete paneles
+hermanos entre los que se navega, y aquí solo se acota una lista. Prometer con el rol lo que no se
+hace es el mismo vicio que enseñar un botón que va a dar 403.
+
+**Y la dirección no cambia.** `?seccion=LOCATION` era un destino propio y ahora es el mundo con
+«Lugares» elegido: los enlaces guardados y media docena de recorridos siguen valiendo. El
+recorrido lo comprueba en los dos sentidos — el filtro escribe la URL, y la URL abre el filtro.
+
+**«El mundo» se quedó sin rótulo de grupo**, por lo mismo que «Ajustes» nunca lo tuvo: era un
+grupo de una entrada con el nombre del grupo, o sea una versalita repitiendo la palabra de debajo.
+Cuando eran siete, el rótulo agrupaba.
+
+**Evidencia.** 819 unitarias de web; 104 recorridos. **Diecinueve llamadas de prueba se
+actualizaron, no se borraron**: describen comportamiento —«abre los PNJ y crea uno»— que sigue
+siendo verdad y solo cambió cómo se llega.
+
+**Revertir:** un commit. Devolver las siete entradas a `TABS` y quitar `SeccionDelMundo`;
+`EntityTab` no se ha tocado.
+
 ## B3 — la puerta de entrada deja de ser una lista de proyectos (2026-09-04)
 
 **Por qué.** *«Esto es un juego, una plataforma web, no una página web que hay que navegar para
@@ -265,119 +296,3 @@ se abran a la vez deja el recorrido rojo con **dos diálogos** contados.
 
 **Revertir:** un commit. Quitar `<RailDePaneles>` y `<PanelesSuperpuestos>` y devolver `<Consulta>`
 a la rejilla de tres columnas.
-
-## `ENTITY_REVEALED` a mano y 2.5.8 (archivar), con su revisión aplicada (2026-09-04)
-
-**Dos piezas de servidor.** Revelar una ficha subiéndole la visibilidad **ya deja rastro**, que es
-lo que enciende la cabecera de escena de la mesa — escrita y probada en B1.1 y que hasta hoy no se
-encendía nunca. Y un personaje **se archiva en vez de borrarse**: sale del listado, no se borra
-nada, se recupera entero, y borrar de verdad sigue existiendo.
-
-**La revisión de cierre encontró nueve cosas. Una era de correctitud.**
-
-**El orden de visibilidades no existe.** Se comparaban los cinco niveles por su índice en una
-fila, y `OWNER_DM` (la ve el creador) y `SPECIFIC_PLAYERS` (la ven los concedidos) **no son
-comparables**: ninguno contiene al otro. Pasar de `OWNER_DM` a `SPECIFIC_PLAYERS` con la lista
-vacía subía de índice y emitía «se reveló» cuando la ficha había pasado de verla una persona a no
-verla nadie. Y no era ruido: `rules-engine/world-builder.ts` construye «qué se ha revelado» con
-esas filas **sin caducidad y sin deshacer**, así que la ficha quedaba marcada como revelada para
-siempre y una regla `REVEALED_WITH_TAG_AT_LEAST` empezaba a cumplirse sola.
-
-Ahora se comparan **conjuntos de audiencia**, en `common/visibility.ts` junto a `canView`, que es
-donde este proyecto guarda una sola vez quién ve qué. El par incomparable sale bien sin tratarlo
-como caso especial, **y en las dos direcciones**.
-
-Las otras ocho, en corto: archivar un PNJ escribía la fecha y no hacía nada —seguía en el
-Bestiario y fuera de la lista de archivados— y ahora va 404; un archivado seguía siendo objetivo
-válido de una petición de tirada y de un encuentro; el suceso de una revelación dirigida se
-etiquetaba `SPECIFIC_PLAYERS` **y no lo veía nadie**, porque un `GameEvent` no tiene concesiones
-propias (ficha P2, y el comentario que afirmaba lo contrario se corrigió); la ficha L1 decía siete
-tipos sin traducir y son **doce**, porque cada tanda del motor añade tipos y ninguna puede tocar
-`apps/web`; y **M9 estaba tachada sin estarlo** — el servidor existe, la pantalla no, y
-`grep -rn "archiv" apps/web/src` da cero, así que el único gesto sigue siendo el borrado
-definitivo.
-
-**Dos pruebas no distinguían**, y las dos se reescribieron: la del orden de visibilidad pasaba con
-cualquier orden que pusiera `DM_ONLY` primero, y la del listado afirmaba `toHaveBeenCalledWith`
-sobre un mock que devolvía `[]` hiciera lo que hiciera el filtro — el ejemplo que
-`docs/08-pruebas.md` prohíbe con esas palabras.
-
-**Evidencia.** `pnpm verify` limpio; e2e de API en verde. Mutación: devolver la comparación por
-índices deja **cuatro** aserciones rojas, justo los pares que el índice contestaba mal.
-
-**Revertir:** `git revert -m 1` de la fusión. La migración solo añade una columna nullable y dos
-valores de enum.
-
-## B1.2 — el elenco en dos disposiciones, y volver a la mesa sale gratis (2026-09-04)
-
-**Por qué.** El reseño invierte el modelo de Baldur's Gate 3 con una frase del autor: *«en BG3 es
-un jugador manejando varios; acá somos varios manejando uno propio»*. En BG3 los retratos del grupo
-son **mandos**; aquí no pueden serlo, porque el personaje de otro no es tuyo. De ahí la regla
-vinculante: **sobre el retrato de otro no van botones.**
-
-**Qué entra.** El elenco pasa a tener **dos disposiciones**: el jugador ve el suyo delante y con
-detalle, y el resto del grupo en segundo plano, legible pero sin mandos; el DM ve la parrilla de
-todos con mandos sobre cada uno, que es su situación real de BG3. Y **«desde aquí te perdiste»**:
-una franja en el registro que marca por dónde seguir, del §6 del reseño — *«alguien puede irse a la
-mitad y volver, y reincorporarse tiene que ser gratis»*.
-
-**Dos decisiones declaradas.** La marca de lectura vive en `localStorage` y no en el servidor: por
-dónde ibas leyendo es un dato del lector, no de la partida, y guardarlo en el servidor sería una
-tabla y una escritura por cada vez que alguien mira la pantalla. Y la marca **se congela al
-montar**: releerla en cada sondeo haría desaparecer la franja a los quince segundos, justo cuando
-alguien vuelve y todavía no ha leído nada.
-
-**Evidencia.** 819 unitarias de web; 100 recorridos de navegador. Mutación: dar mandos sobre el
-personaje de otro deja el recorrido rojo con dos botones de más contados.
-
-**Cómo revertir.** Un commit. El elenco vuelve a una sola lista quitando la rama del jugador;
-`reincorporarse.ts` y su prueba se pueden dejar, no los usa nadie más.
-
-## Tarea 2.5.2 — iniciativa y orden de turnos (2026-09-04)
-
-`Encounter` y `Combatant` cuelgan de la sesión. La iniciativa **es una prueba de Destreza**
-derivada por el motor (`CharacterSheetService.getInitiativeModifier`, reutilizando
-`derived.initiative`) y tirada por el servidor (`RollsService`, el tirador inyectable de 2C); los
-combatientes con el mismo `statblockRef` comparten una única tirada. El orden se calcula una vez y
-se guarda; al completar la vuelta sube `Encounter.round` **y avanza el reloj de campaña seis
-segundos** por el mismo camino que cualquier otro avance — demostrado en e2e: una condición de un
-asalto queda vencida al terminar la vuelta **sin que el código del turno sepa nada de
-condiciones**. Esa parte salió redonda a la primera.
-
-**La revisión de cierre encontró cinco cosas, y una era una fuga crítica reincidente.**
-
-1. **La iniciativa de un PNJ escondido se publicaba a la mesa entera.** La tirada iba con
-   `audience: "PUBLIC"` fija, así que el jugador leía en su línea de tiempo una tirada de
-   «Iniciativa» de un sujeto que no conoce, con su total y su modificador de Destreza dentro: sabía
-   que había emboscada y con qué números. **Es la misma forma exacta de un fallo ya arreglado en
-   este repositorio** —`character-sheet.service.ts` lleva escrito por qué la audiencia sale de la
-   visibilidad del personaje— y hermano del segundo hallazgo de la revisión de 2C. Había vuelto.
-2. **Dos fugas más por deducción**: el suceso de inicio contaba ocho combatientes a quien solo veía
-   dos, y las posiciones viajaban con huecos —`[0, 7]` son seis criaturas escondidas—. Ahora el
-   suceso no cuenta cabezas, las posiciones visibles se renumeran densas y `activePosition` viaja
-   como `null` cuando el turno es de alguien que no se ve.
-3. **La posición es del GRUPO, no del combatiente.** Se implementó con una posición por fila
-   apoyándose en un índice `@@unique([encounterId, position])` que **se atribuyó al spec y a las
-   convenciones, y que ninguno de los dos enuncia** — lo pidió mi encargo sin pensarlo. Manda la
-   fuente: *«The DM makes one roll for an entire group of identical creatures, so each member of
-   the group acts at the same time»* (SRD 5.1, «Initiative»). Con ocho posiciones la mesa jugaba
-   seis turnos de goblin seguidos. La restricción correcta es que **un personaje no entre dos
-   veces**, y `groupKey` guarda a qué grupo pertenece cada fila.
-4. **Corregir la iniciativa no cambiaba nada.** Actualizaba la columna y dejaba `position` intacta,
-   con un comentario que además prometía poder «separar a un grupo que actuaba junto». Como
-   `advanceTurn` ordena solo por `position`, la columna era decorativa y la única razón por la que
-   el SRD deja editarla —deshacer un empate— no se cumplía. Ahora recoloca, y el corregido sale de
-   su grupo.
-5. **Dos grupos empatados se partían el uno al otro**: el desempate era por `cuid`, así que seis
-   goblins y cuatro orcos con la misma tirada quedaban intercalados. Ni la unitaria ni el e2e lo
-   veían — los dos usaban un solo grupo.
-
-**Y una cifra del spec que sigue abierta:** dice «siete posiciones» para dos personajes y seis
-goblins, y del modelo correcto salen **tres** (dos grupos de uno más el de goblins). El modelo del
-spec es el bueno; la cuenta no sale de ninguna lectura. Ficha **C2.5-1**, pendiente del autor.
-
-**Revertir:** `git revert -m 1` de la fusión. Las tres migraciones solo crean tablas y columnas
-nuevas; bajarlas es `prisma migrate resolve --rolled-back` y un `DROP TABLE "Combatant",
-"Encounter"` si ya se aplicaron.
-
----

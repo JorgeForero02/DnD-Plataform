@@ -51,7 +51,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 
 **Recorridos**, los dos medidos el 2026-09-04: **250 e2e de API** (eran 216 al cerrar la fase 2D;
 los veinticinco nuevos son la suite de tipos de daño de 2.5.1 y la de encuentros de 2.5.2, con
-los recorridos que sus dos revisiones de cierre añadieron) y **103 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
+los recorridos que sus dos revisiones de cierre añadieron) y **104 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
 en las tres pruebas de contraste, la medición del `/NN` en el navegador y la del solape del
 conmutador de tema; y los dos de B1.1, que la mesa se alcanza en reposo y que la cabecera de
 escena no se solapa con la banda). Los dos verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
@@ -242,7 +242,7 @@ en verde.
 
 | Suite | Qué demuestra |
 |---|---|
-| `campana` | **Desde B3: la puerta de entrada** — elegir una crónica no navega, entrar sí, y va a la mesa y no a los ajustes. Del registro a ver una ficha creada; enlaces y comentarios ejercitados de verdad; borrar una entidad se lleva sus enlaces; crear sesión y personaje con su visibilidad; el Markdown que vuelve como encabezado; filtrar por etiqueta; y editar, expulsar y borrar desde Ajustes. |
+| `campana` | **Desde B4: el mundo es un solo destino** — los siete tipos ya no están en el carril, son filtros con `aria-pressed` dentro de él, y `?seccion=LOCATION` sigue abriendo los lugares en los dos sentidos. **Desde B3: la puerta de entrada** — elegir una crónica no navega, entrar sí, y va a la mesa y no a los ajustes. Del registro a ver una ficha creada; enlaces y comentarios ejercitados de verdad; borrar una entidad se lleva sus enlaces; crear sesión y personaje con su visibilidad; el Markdown que vuelve como encabezado; filtrar por etiqueta; y editar, expulsar y borrar desde Ajustes. |
 | `invitacion` | **Dos contextos de navegador**, con cookies y almacenamiento propios, como dos navegadores distintos: el DM invita, el jugador entra por el enlace, se registra desde ahí y **no ve la entidad `DM_ONLY`**. |
 | `cuenta` | Cambiar la contraseña **invalida el token viejo contra la API real**; la contraseña equivocada no cierra la sesión; una ruta inventada y una campaña inexistente dicen qué pasa **en vez de dejar la pantalla en blanco**. |
 | `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. **Y desde B1.2: las dos disposiciones del elenco medidas con dos navegadores** —el jugador ve el suyo delante y **sobre el de otro no hay mandos**, el DM ve la parrilla entera con mandos sobre cada uno—, y la franja de «desde aquí te perdiste», que solo se puede medir aquí porque la marca vive en `localStorage`. **Y desde B1.3: el estrato superpuesto** —los paneles se abren encima, uno a la vez, y Escape devuelve el foco al control que los abrió, medido sobre `document.activeElement`—. **Y el recorrido donde los dos carriles se juntan**: el DM sube un lugar de `DM_ONLY` a `PLAYERS` y la cabecera de escena pasa a decirlo **sin que nadie tocara la pantalla** — la promesa de la ficha P1, comprobada de punta a punta. Desde B1.1: que a la mesa se llega desde la campaña SIN sesión abierta** —el defecto de arquitectura que el reseño señaló— y que la cabecera de escena nombra la sesión y no se solapa con la banda de estado, medido en los dos ejes. |

@@ -56,7 +56,7 @@ import { DadoDibujado } from "../features/rolls/DadoDibujado";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
-  | { kind: "entity"; label: string; type: EntityType; group?: string }
+  | { kind: "world"; label: string; group?: string }
   | { kind: "sessions"; label: string; group?: string }
   | { kind: "characters"; label: string; group?: string }
   | { kind: "rules"; label: string; group?: string }
@@ -71,17 +71,34 @@ type TabConfig =
 // cabinet, the other is what happens on Friday. Two groups, and the table comes second only
 // because the world is what you build between sessions.
 const GRUPO_MUNDO = "El mundo";
+
+/** Los siete tipos de ficha, en el orden en que se ofrecen. Era el orden de las pestañas. */
+const TIPOS_DEL_MUNDO: EntityType[] = [
+  "NPC",
+  "LOCATION",
+  "QUEST",
+  "FACTION",
+  "OBJECT",
+  "EVENT",
+  "DOCUMENT",
+];
 const GRUPO_MESA = "La mesa";
 
 const TABS: TabConfig[] = [
   { kind: "overview", label: "Resumen" },
-  { kind: "entity", label: ROTULO_PLURAL.NPC, type: "NPC", group: GRUPO_MUNDO },
-  { kind: "entity", label: ROTULO_PLURAL.LOCATION, type: "LOCATION", group: GRUPO_MUNDO },
-  { kind: "entity", label: ROTULO_PLURAL.QUEST, type: "QUEST", group: GRUPO_MUNDO },
-  { kind: "entity", label: ROTULO_PLURAL.FACTION, type: "FACTION", group: GRUPO_MUNDO },
-  { kind: "entity", label: ROTULO_PLURAL.OBJECT, type: "OBJECT", group: GRUPO_MUNDO },
-  { kind: "entity", label: ROTULO_PLURAL.EVENT, type: "EVENT", group: GRUPO_MUNDO },
-  { kind: "entity", label: ROTULO_PLURAL.DOCUMENT, type: "DOCUMENT", group: GRUPO_MUNDO },
+  // **Un solo destino para el mundo entero, y esto es el arreglo del defecto que el reseño
+  // llama de arquitectura.** Aquí había SIETE pestañas —PNJ, Lugares, Misiones, Facciones,
+  // Objetos, Sucesos, Documentos— y las siete son, literalmente, **valores del enum de la tabla
+  // `Entity`**: la navegación era el esquema de la base de datos. Con las tres rutas propias,
+  // diecinueve destinos en una campaña.
+  //
+  // El tipo pasa a ser un **filtro dentro de un destino**, que es lo que de verdad es. No se
+  // pierde nada —el mismo listado, el mismo creador, el mismo filtro de etiquetas— y se gana lo
+  // que faltaba: un sitio donde estar que se llama «el mundo» y no «la tabla de entidades».
+  // **Sin rótulo de grupo**, por la misma razón que «Ajustes» no lo lleva: era un grupo de una
+  // sola entrada llamada igual que el grupo, o sea una línea de versalita repitiendo en
+  // mayúsculas la palabra de debajo. Cuando eran siete el rótulo agrupaba; ahora estorba.
+  { kind: "world", label: "El mundo" },
   { kind: "sessions", label: "Sesiones", group: GRUPO_MESA },
   { kind: "characters", label: "Personajes", group: GRUPO_MESA },
   // 2A.17. Va en «La mesa» y no en «La campaña» porque una regla es algo que pasa durante la
@@ -518,10 +535,17 @@ export function CampaignDetailPage() {
   // landed back on the first section without saying so, which is exactly what happens to a
   // person who refreshes while editing settings.
   const [searchParams, setSearchParams] = useSearchParams();
-  const seccionActiva = searchParams.get("seccion") ?? "overview";
+  const enLaUrl = searchParams.get("seccion") ?? "overview";
+  // **Un tipo de ficha en la URL sigue abriendo el mundo.** `?seccion=LOCATION` era un destino
+  // propio y ahora es el mundo con «Lugares» elegido: la dirección no cambia —los enlaces
+  // guardados y media docena de recorridos la usan—, cambia dónde se pinta.
+  const seccionActiva = TIPOS_DEL_MUNDO.includes(enLaUrl as EntityType) ? "world" : enLaUrl;
   const abrirSeccion = (id: string) => {
     const siguiente = new URLSearchParams(searchParams);
     if (id === "overview") siguiente.delete("seccion");
+    // «El mundo» no es un valor de sección: lo que va a la URL es el tipo que se está mirando,
+    // y el primero es el que la sección abre por defecto.
+    else if (id === "world") siguiente.set("seccion", TIPOS_DEL_MUNDO[0]);
     else siguiente.set("seccion", id);
     // replace: switching section is not a place you should have to press Back through ten
     // times to leave a campaign.
@@ -595,17 +619,16 @@ export function CampaignDetailPage() {
         ),
       };
     }
-    if (t.kind === "entity") {
+    if (t.kind === "world") {
       return {
-        id: t.type,
+        id: "world",
         label: t.label,
         group: t.group,
-        // The count comes from the campaign-wide entity list, which the server already
-        // filtered by canView — so it is "how many of these you can see", never a hint that
-        // there are more you cannot. See CampaignOverview.tsx for the same reasoning.
-        badge: conteoPorTipo?.get(t.type) ?? undefined,
-        icon: <IconoDeTipo type={t.type} />,
-        content: <EntityTab key={t.type} campaignId={id} type={t.type} />,
+        // El conteo sale del listado de toda la campaña, que el servidor ya filtró por
+        // `canView` — es «cuántas de estas puedes ver», nunca una pista de que hay más que no.
+        badge: todasLasEntidades?.length ?? undefined,
+        icon: <IconoDeTipo type="LOCATION" />,
+        content: <SeccionDelMundo campaignId={id} conteoPorTipo={conteoPorTipo} />,
       };
     }
     if (t.kind === "dice") {
@@ -742,5 +765,83 @@ function EnlaceALaMesa({ campaignId }: { campaignId: string }) {
         {enJuego ? `en juego · ${sesion?.title}` : "en reposo"}
       </span>
     </Link>
+  );
+}
+
+/**
+ * **El mundo, en un solo destino.** B4, 2026-09-04.
+ *
+ * El tipo de ficha era una pestaña por valor del enum —siete de los diecinueve destinos de una
+ * campaña—, y el reseño lo señala como el defecto de arquitectura de la navegación: *«la
+ * navegación es el esquema de la base de datos»*. Aquí el tipo es lo que siempre fue, **un
+ * filtro**, y el destino es «el mundo».
+ *
+ * **No se pierde nada**: dentro sigue estando el mismo `EntityTab` de siempre, con su listado,
+ * su creador y su filtro de etiquetas. Lo único que cambia es que elegir «Lugares» ya no es
+ * viajar a otro sitio.
+ *
+ * **Y el tipo elegido sigue en la URL** (`?seccion=LOCATION`), que es como estaba y como media
+ * docena de recorridos lo comprueban: un enlace a «los lugares de esta campaña» tiene que seguir
+ * llevando a los lugares. Cambió el sitio donde se pinta, no la dirección.
+ */
+function SeccionDelMundo({
+  campaignId,
+  conteoPorTipo,
+}: {
+  campaignId: string;
+  conteoPorTipo?: Map<EntityType, number>;
+}) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const enLaUrl = searchParams.get("seccion");
+  const tipo: EntityType = TIPOS_DEL_MUNDO.includes(enLaUrl as EntityType)
+    ? (enLaUrl as EntityType)
+    : "NPC";
+
+  const elegir = (siguiente: EntityType) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("seccion", siguiente);
+    setSearchParams(params, { replace: true });
+  };
+
+  return (
+    <div>
+      {/* **Filtros, no pestañas.** Van con `aria-pressed` y no con `role="tab"` a propósito: un
+          `tab` promete que hay paneles hermanos entre los que se navega, y aquí solo se acota
+          una lista. Prometer con el rol lo que no se hace es el mismo vicio que un botón que da
+          403. */}
+      <div
+        role="group"
+        aria-label="Tipo de ficha"
+        className="mb-s4 flex flex-wrap items-center gap-s2"
+      >
+        {TIPOS_DEL_MUNDO.map((t) => {
+          const puesto = t === tipo;
+          const cuantas = conteoPorTipo?.get(t);
+          return (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={puesto}
+              onClick={() => elegir(t)}
+              className={[
+                "inline-flex items-center gap-s2 rounded-radius-sm border px-s3 py-s1 font-chrome text-chrome-sm transition-colors",
+                puesto
+                  ? "border-copper bg-surface text-copper-text"
+                  : "border-muted text-muted hover:border-copper-text hover:text-text",
+              ].join(" ")}
+            >
+              <IconoDeTipo type={t} />
+              {ROTULO_PLURAL[t]}
+              {cuantas !== undefined && <span className="font-data text-chrome-xs">{cuantas}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* `key` importa: sin él, cambiar de tipo actualizaría la misma instancia en su sitio y su
+          filtro y su formulario a medio escribir se colarían de un tipo al siguiente. Es el mismo
+          motivo por el que lo llevaba cuando eran siete pestañas. */}
+      <EntityTab key={tipo} campaignId={campaignId} type={tipo} />
+    </div>
   );
 }

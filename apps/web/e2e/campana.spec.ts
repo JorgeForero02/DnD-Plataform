@@ -41,7 +41,9 @@ test("del registro a ver un NPC recien creado en su pestaña", async ({ page }) 
   await page.getByRole("link", { name: "La Tumba de la Aniquilación" }).click();
   await expect(page.getByRole("heading", { name: "La Tumba de la Aniquilación" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   await expect(page.getByText("Ningún personaje del mundo todavía")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
@@ -79,7 +81,9 @@ test("modo edicion abre enlaces y comentarios, y los dos se ejercitan de verdad"
   await page.getByRole("link", { name: "Descenso a Avernus" }).click();
   await expect(page.getByRole("heading", { name: "Descenso a Avernus" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^PNJ/ }).click();
 
   // Hacen falta dos NPCs: uno para abrir en modo edición y otro para enlazarlo.
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
@@ -136,7 +140,9 @@ test("borrar una entidad se lleva sus enlaces consigo (cascada real)", async ({ 
   await page.getByRole("link", { name: "La Maldición de Strahd" }).click();
   await expect(page.getByRole("heading", { name: "La Maldición de Strahd" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^PNJ/ }).click();
 
   // Dos NPCs: Zariel enlaza con Mahadi, y Mahadi recibe un comentario. Borrar Mahadi debe
   // llevarse los dos consigo.
@@ -376,7 +382,9 @@ test("el cuerpo Markdown de una ficha se guarda y se ve como encabezado al reabr
   await page.getByRole("link", { name: "La Forja de la Ira" }).click();
   await expect(page.getByRole("heading", { name: "La Forja de la Ira" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("Durgeddin el Negro");
   await page.getByLabel("Texto").fill("## Título\n\nUn herrero enano legendario.");
@@ -419,7 +427,9 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
   await page.getByRole("link", { name: "El Refugio del Contrabandista" }).click();
   await expect(page.getByRole("heading", { name: "El Refugio del Contrabandista" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   await expect(page.getByText("Ningún personaje del mundo todavía")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
@@ -739,4 +749,50 @@ test("desde las crónicas se elige una y se entra a la mesa de un clic", async (
     .click();
   await expect(page.getByRole("region", { name: "La escena" })).toBeVisible();
   expect(page.url()).toContain("/sesion");
+});
+
+// B4 (2026-09-04) — **el tipo de ficha deja de ser un destino.**
+//
+// Es el defecto que el reseño llama de arquitectura: *«la navegación es el esquema de la base de
+// datos»*. Había siete pestañas —PNJ, Lugares, Misiones, Facciones, Objetos, Sucesos,
+// Documentos— y las siete son literalmente valores del enum de la tabla `Entity`. Con las tres
+// rutas propias, diecinueve destinos en una campaña.
+test("el mundo es un solo destino, y el tipo de ficha un filtro dentro de él", async ({ page }) => {
+  await registrarse(page);
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("El Valle de las Sombras");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "El Valle de las Sombras" }).click();
+
+  // **Un destino, no siete.** Los tipos ya no están en el carril de secciones.
+  const carril = page.getByRole("tablist");
+  await expect(carril.getByRole("tab", { name: /El mundo/ })).toBeVisible();
+  for (const tipo of ["PNJ", "Lugares", "Misiones", "Facciones", "Objetos", "Documentos"]) {
+    await expect(carril.getByRole("tab", { name: tipo })).toHaveCount(0);
+  }
+
+  await carril.getByRole("tab", { name: /El mundo/ }).click();
+
+  // Dentro, los siete como filtros. Van con `aria-pressed` y no con `role="tab"` a propósito:
+  // un `tab` promete paneles hermanos, y aquí solo se acota una lista.
+  const filtros = page.getByRole("group", { name: "Tipo de ficha" });
+  await expect(filtros.getByRole("button")).toHaveCount(7);
+  await expect(filtros.getByRole("button", { name: /^PNJ/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await filtros.getByRole("button", { name: /^Lugares/ }).click();
+  await expect(page.getByRole("heading", { name: "Lugares" })).toBeVisible();
+  await expect(filtros.getByRole("button", { name: /^Lugares/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // **Y la dirección no cambió.** `?seccion=LOCATION` era un destino propio y ahora es el mundo
+  // con «Lugares» elegido: los enlaces guardados siguen llevando a los lugares. Se comprueba en
+  // los dos sentidos — la URL la escribe el filtro, y la URL abre el filtro.
+  expect(page.url()).toContain("seccion=LOCATION");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Lugares" })).toBeVisible();
 });

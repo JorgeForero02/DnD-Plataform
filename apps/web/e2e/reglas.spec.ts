@@ -49,7 +49,8 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
 
   // Una regla fija el identificador de la ficha al armarse, así que hace falta una ficha real
   // en la campaña antes de poder escribir el efecto.
-  await page.getByRole("tab", { name: "PNJ" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+  await page.getByRole("button", { name: /^PNJ/ }).click();
   await page.getByRole("button", { name: "Nuevo PNJ" }).click();
   await page.getByLabel("Nombre").fill("El heraldo de la puerta");
   await page.getByRole("radio", { name: /Solo DM/ }).check();

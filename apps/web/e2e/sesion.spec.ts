@@ -680,7 +680,8 @@ test("el DM revela un lugar y la cabecera de escena pasa a decirlo, sin tocar la
   await crearCampanaConSesion(page);
 
   // Un lugar que **nace escondido**: preparar la mazmorra no puede ser filtrarla.
-  await page.getByRole("tab", { name: "Lugares" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+  await page.getByRole("button", { name: /^Lugares/ }).click();
   await page.getByRole("button", { name: "Nuevo Lugar" }).click();
   await page.getByLabel("Nombre").fill("El Puerto Viejo");
   await page.getByRole("radio", { name: /Solo DM/ }).check();
@@ -703,7 +704,8 @@ test("el DM revela un lugar y la cabecera de escena pasa a decirlo, sin tocar la
   // El DM la sube a la mesa. **Eso, y solo eso, es revelar.**
   const urlDeLaMesa = page.url();
   await page.goBack();
-  await page.getByRole("tab", { name: "Lugares" }).click();
+  await page.getByRole("tab", { name: "El mundo" }).click();
+  await page.getByRole("button", { name: /^Lugares/ }).click();
   await page.getByRole("link", { name: /El Puerto Viejo/ }).click();
   await page
     .getByRole("button", { name: /Editar|Ver el texto completo/ })

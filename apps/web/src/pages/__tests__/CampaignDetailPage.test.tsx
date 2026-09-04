@@ -117,7 +117,8 @@ describe("CampaignDetailPage", () => {
     renderPage();
     expect(await screen.findByText("Curse of Strahd")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: "PNJ" }));
+    fireEvent.click(screen.getByRole("tab", { name: "El mundo" }));
+    fireEvent.click(screen.getByRole("button", { name: /^PNJ/ }));
     expect(await screen.findByText("Strahd von Zarovich")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Sesiones" }));
@@ -291,7 +292,8 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets a player open an entity created by someone else and read it, but not save changes", async () => {
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
 
     // **A un jugador ya no se le ofrece crear mundo.** Lo señaló el DM probando con un jugador
     // dentro: podía crear PNJ, lugares y misiones, y con ello veía el andamiaje entero de
@@ -347,7 +349,8 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         : [],
     );
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
 
     const row = await screen.findByRole("link", { name: /Mi propio NPC/ });
     await waitFor(() => expect(row).not.toBeDisabled());
@@ -500,7 +503,8 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
 
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
 
     const row = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     const placeholder = within(row).getByText("Comprobando permisos…");
@@ -556,7 +560,8 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     const spy = vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd/ });
 
     fireEvent.click(screen.getByRole("link", { name: /Strahd/ }));
@@ -704,7 +709,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("pinta las etiquetas en la fila, y una ficha sin etiquetas no pinta nada", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
 
     const strahdRow = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     expect(strahdRow).toHaveTextContent("Barovia");
@@ -722,7 +728,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("escribir en el buscador reduce las filas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -734,7 +741,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("pulsar una etiqueta reduce las filas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     const avernusTag = screen.getByRole("button", { name: "Avernus", pressed: false });
@@ -747,7 +755,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("dos etiquetas seleccionadas exigen las dos: una ficha con solo una de ellas desaparece", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.click(screen.getByRole("button", { name: "Barovia", pressed: false }));
@@ -764,7 +773,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it('"Quitar filtros" restaura la lista completa', async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
@@ -781,7 +791,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   it("con filtro activo y cero resultados sale el mensaje de filtro, no el de sección vacía", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
@@ -807,13 +818,14 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
           : [],
     );
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     await screen.findByRole("link", { name: /Strahd von Zarovich/ });
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
     expect(screen.queryByRole("link", { name: /^Ismark/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Lugares" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Lugares/ }));
     const barovia = await screen.findByRole("link", { name: /Barovia/ });
     expect(barovia).toBeInTheDocument();
     expect(screen.getByLabelText("Buscar")).toHaveValue("");
@@ -1239,7 +1251,12 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
     renderPage();
     await screen.findByRole("tab", { name: "Resumen" });
 
-    expect(screen.getByText("El mundo")).toBeInTheDocument();
+    // **«El mundo» ya no es un rótulo de grupo, es una entrada.** Desde B4 los siete tipos de
+    // ficha son un filtro dentro de ella y no siete destinos, así que el grupo se quedó con una
+    // sola entrada del mismo nombre — la misma redundancia que este proyecto ya rechazó para
+    // «Ajustes», y por el mismo motivo.
+    expect(screen.getByRole("tab", { name: /El mundo/ })).toBeInTheDocument();
+    expect(screen.queryByText("La campaña")).not.toBeInTheDocument();
     expect(screen.getByText("La mesa")).toBeInTheDocument();
     // La maqueta metía «Ajustes» bajo un rótulo «LA CAMPAÑA» que allí acompañaba a media
     // docena de entradas. Aquí sería un grupo de uno: una línea de versalita para repetir en
@@ -1255,7 +1272,9 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
   it("cada sección del mundo se presenta con SU frase, la que ya vivía en plantillas.ts", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
     expect(await screen.findByRole("heading", { name: "PNJ" })).toBeInTheDocument();
     expect(screen.getByText("El mundo · PNJ")).toBeInTheDocument();
     expect(
@@ -1266,7 +1285,7 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
 
     // Cambiar de sección cambia la explicación: antes las siete daban exactamente la misma
     // pantalla y la única señal de en cuál estabas era el botón resaltado de la barra.
-    fireEvent.click(screen.getByRole("tab", { name: "Lugares" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Lugares/ }));
     expect(await screen.findByRole("heading", { name: "Lugares" })).toBeInTheDocument();
     expect(
       screen.getByText("Un sitio al que se llega. Qué se ve, qué se oye y qué puede salir mal."),
@@ -1280,7 +1299,8 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
 
   it("la acción que crea vive en la cabecera y dice QUÉ crea, no «Nuevo» a secas", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Misiones" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Misiones/ }));
 
     const boton = await screen.findByRole("button", { name: "Nueva misión" });
     // En la cabecera, no dentro de la barra de filtros: crear no es filtrar.
@@ -1291,7 +1311,8 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
 
   it("la fila lleva el icono dibujado de su tipo, y aun así no dice nada más que su nombre y su marca", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "PNJ" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
 
     const fila = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
     // Dibujado, no un glifo de fuente ni un emoji: un <svg> de verdad dentro de la fila.

@@ -47,7 +47,8 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
 
   // Crear una entidad DM_ONLY antes de invitar: es la comprobación que le falta a la fase,
   // hecha por fin sobre el DOM real, no solo por HTTP (apps/api/test/*.e2e-spec.ts).
-  await dmPage.getByRole("tab", { name: "PNJ" }).click();
+  await dmPage.getByRole("tab", { name: "El mundo" }).click();
+  await dmPage.getByRole("button", { name: /^PNJ/ }).click();
   await dmPage.getByRole("button", { name: "Nuevo PNJ" }).click();
   await dmPage.getByLabel("Nombre").fill("El secreto de Cragmaw");
   await dmPage.getByRole("radio", { name: /Solo DM/ }).check();
@@ -145,7 +146,8 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   ).toBeVisible();
 
   // La comprobación que llevaba toda la fase debiendo: el jugador no ve la entidad DM_ONLY.
-  await playerPage.getByRole("tab", { name: "PNJ" }).click();
+  await playerPage.getByRole("tab", { name: "El mundo" }).click();
+  await playerPage.getByRole("button", { name: /^PNJ/ }).click();
   await expect(playerPage.getByRole("link", { name: /El secreto de Cragmaw/ })).toHaveCount(0);
 
   // Arreglo 1 (1.15-fix), Crítico: el jugador SÍ ve la entidad PLAYERS y la fila abre.

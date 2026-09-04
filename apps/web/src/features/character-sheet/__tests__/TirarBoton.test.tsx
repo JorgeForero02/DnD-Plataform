@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RollResultRevealed } from "@dnd/shared";
+import type { RollResultRevealed, SuggestedRollMode } from "@dnd/shared";
 import { TirarBoton } from "../TirarBoton";
 import * as api from "../api";
 
@@ -205,5 +205,110 @@ describe("TirarBoton", () => {
     const aviso = await screen.findByRole("alert");
     expect(aviso).toHaveTextContent("Solo el dueño del personaje o el DM pueden tirar por él");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});
+
+// Ficha M16 — **la sugerencia llega hasta el panel, o el servidor calculaba para nadie.**
+describe("TirarBoton — el aviso de las condiciones", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  function montarCon(sugerencia?: SuggestedRollMode) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <TirarBoton
+          campaignId="c1"
+          characterId="ch1"
+          etiqueta="Percepción"
+          modificador={3}
+          sugerencia={sugerencia}
+        />
+      </QueryClientProvider>,
+    );
+    abrir("Percepción");
+  }
+
+  const ENVENENADO: SuggestedRollMode = {
+    kind: "CHECK",
+    mode: "DISADVANTAGE",
+    cancelled: false,
+    autoFail: false,
+    reasons: [{ effect: "DISADVANTAGE", sourceKey: "poisoned", labelKey: "condition.poisoned" }],
+  };
+
+  it("el aviso se lee, con la condición traducida, y como `status`", () => {
+    montarCon(ENVENENADO);
+    const aviso = screen.getByRole("status");
+    expect(aviso).toHaveTextContent("Desventaja sugerida: Envenenado");
+    expect(aviso).not.toHaveTextContent("poisoned");
+  });
+
+  it("preselecciona el modo pero NO lo impone: el selector entero sigue ahí y se puede cambiar", () => {
+    montarCon(ENVENENADO);
+    // Preseleccionado…
+    expect(screen.getByRole("radio", { name: "Desventaja" })).toBeChecked();
+    // …y editable, que es la decisión D-2.5-6 dicha en la interfaz. El SRD condiciona media
+    // tabla a circunstancias que el servidor no ve, así que la última palabra es de quien tira.
+    fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
+    expect(screen.getByRole("radio", { name: "Ventaja" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Desventaja" })).not.toBeChecked();
+  });
+
+  it("el modo elegido a mano es el que se manda, no el sugerido", async () => {
+    const espia = vi.spyOn(api, "createRoll").mockResolvedValue(tirada());
+    montarCon(ENVENENADO);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tirar Percepción" }));
+
+    await waitFor(() => expect(espia).toHaveBeenCalled());
+    expect(espia.mock.calls[0][1].mode).toBe("ADVANTAGE");
+  });
+
+  it("la sugerencia que llega DESPUÉS de pintar la fila también preselecciona", () => {
+    // **El dado vive en la fila desde que se pinta la hoja**, y las condiciones se ponen después.
+    // Fijar el modo en el `useState` inicial lo congelaba en «Normal» y ponerle una condición
+    // luego no lo movía: el aviso cambiaba —viene de props— y el control no, o sea una pantalla
+    // diciendo «desventaja sugerida» con «Normal» marcado. Lo destapó un recorrido de navegador.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { rerender } = render(
+      <QueryClientProvider client={qc}>
+        <TirarBoton campaignId="c1" characterId="ch1" etiqueta="Percepción" modificador={3} />
+      </QueryClientProvider>,
+    );
+    // Se monta sin sugerencia, como pasa de verdad: la hoja llega antes que las condiciones.
+    rerender(
+      <QueryClientProvider client={qc}>
+        <TirarBoton
+          campaignId="c1"
+          characterId="ch1"
+          etiqueta="Percepción"
+          modificador={3}
+          sugerencia={ENVENENADO}
+        />
+      </QueryClientProvider>,
+    );
+    abrir("Percepción");
+
+    expect(screen.getByRole("radio", { name: "Desventaja" })).toBeChecked();
+  });
+
+  it("cerrar y volver a abrir parte otra vez de lo que el servidor cree", () => {
+    // Cada tirada es una decisión nueva: lo elegido a mano manda **mientras el panel está
+    // abierto**, no para siempre. Si no, una condición puesta a mitad de combate no se vería
+    // nunca más en ese dado.
+    montarCon(ENVENENADO);
+    fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
+    expect(screen.getByRole("radio", { name: "Ventaja" })).toBeChecked();
+
+    abrir("Percepción"); // cierra
+    abrir("Percepción"); // y vuelve a abrir
+    expect(screen.getByRole("radio", { name: "Desventaja" })).toBeChecked();
+  });
+
+  it("sin sugerencia no hay aviso y el modo arranca en normal", () => {
+    montarCon(undefined);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeChecked();
   });
 });

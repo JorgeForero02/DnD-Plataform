@@ -246,6 +246,11 @@ export function HojaCalculada({
                         etiqueta={`Salvación de ${NOMBRE_CARACTERISTICA[ability]}`}
                         modificador={sheet.derived[`save.${ability}`].total}
                         derivado={sheet.derived[`save.${ability}`]}
+                        // **Una salvación por característica, y no una sola para las seis.**
+                        // `restrained` solo penaliza las de Destreza y el fallo automático de
+                        // paralizado alcanza solo Fuerza y Destreza: una entrada única tendría
+                        // que mentir en cuatro o callarse en dos.
+                        sugerencia={data?.rollSuggestions?.saves?.[ability]}
                       />
                     }
                   />
@@ -269,6 +274,10 @@ export function HojaCalculada({
                           etiqueta={NOMBRE_HABILIDAD[skill]}
                           modificador={sheet.derived[`skill.${skill}`].total}
                           derivado={sheet.derived[`skill.${skill}`]}
+                          // Una habilidad es una **prueba de característica**: las dieciocho
+                          // comparten sugerencia, porque ninguna regla del SRD distingue entre
+                          // ellas para esto.
+                          sugerencia={data?.rollSuggestions?.check}
                         />
                       }
                     />

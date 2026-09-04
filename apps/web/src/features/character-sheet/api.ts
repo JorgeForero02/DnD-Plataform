@@ -6,6 +6,7 @@ import type {
   DeathSaveInput,
   DeathState,
   DerivationWarning,
+  RollSuggestions,
   DerivedValue,
   RollAttackInput,
   RollResult,
@@ -158,6 +159,13 @@ export interface SheetResponse {
    * vive una sola vez, donde vive el resto de las reglas.
    */
   effectiveSpeeds?: Record<string, { total: number; steps: DerivedValue["steps"] }>;
+  /**
+   * La sugerencia de modo de tirada (2.5.5), con sus causas por clave. **Opcional en el tipo por
+   * la misma razón que `attacks` y `money`**: los mocks de otras pantallas no tienen por qué
+   * conocer un campo que no usan. Quien la pinta cae a «sin sugerencia» si no llega, que es lo
+   * mismo que dice el servidor cuando no hay ninguna condición encima.
+   */
+  rollSuggestions?: RollSuggestions;
 }
 
 // --- Anulaciones manuales (solo DM; el servidor lo impone) ---

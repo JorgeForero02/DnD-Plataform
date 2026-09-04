@@ -206,7 +206,7 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   // elementos y la prueba se cae por modo estricto sin que nada del código esté mal.
   await page
     .locator('section[aria-label="condiciones"]')
-    .getByRole("button", { name: "Aplicar" })
+    .getByRole("button", { name: "Aplicar condición" })
     .click();
   await expect(
     page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" }),
@@ -613,7 +613,7 @@ for (const tema of ["dark", "light"] as const) {
     await page.getByLabel("Nueva condición").selectOption("prone");
     await page
       .locator('section[aria-label="condiciones"]')
-      .getByRole("button", { name: "Aplicar" })
+      .getByRole("button", { name: "Aplicar condición" })
       .click();
     const chip = page.locator('section[aria-label="condiciones"] li', { hasText: "Derribado" });
     await expect(chip).toBeVisible({ timeout: 10_000 });

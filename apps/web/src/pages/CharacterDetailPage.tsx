@@ -51,7 +51,11 @@ export function CharacterDetailPage() {
   const header = <AppHeader userName={user?.displayName} onLogout={logout} />;
   const migas = [
     { label: "Tus crónicas", to: "/" },
-    { label: campaign?.name ?? "Campaña", to: `/campaigns/${id}?seccion=characters` },
+    // **A la campaña, no a `?seccion=characters`.** Personajes dejó de ser una pestaña en B4 —es
+    // un cajón—, así que esa dirección no tenía panel que pintar: cabecera, carril, y el área de
+    // contenido vacía. Lo encontró la revisión de cierre de 2.5.6, y no era una dirección
+    // hipotética guardada en un marcador: la emitía **toda** hoja de personaje, aquí.
+    { label: campaign?.name ?? "Campaña", to: `/campaigns/${id}` },
   ];
 
   if (isLoading) {
@@ -151,7 +155,8 @@ export function CharacterDetailPage() {
               character={personaje}
               puedeEditar={puedeEditar}
               motivo={motivo}
-              onDeleted={() => navigate(`/campaigns/${id}?seccion=characters`, { replace: true })}
+              // Mismo motivo que la miga: `?seccion=characters` ya no es una sección.
+              onDeleted={() => navigate(`/campaigns/${id}`, { replace: true })}
             />
           </Panel>
         </section>

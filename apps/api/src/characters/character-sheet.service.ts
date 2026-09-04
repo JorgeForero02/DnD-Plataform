@@ -68,7 +68,7 @@ import {
   concentrationSaveDc,
 } from "../character-state/concentration/concentration";
 import { rollSuggestionsFor } from "../character-state/roll-mode/suggested-roll-mode";
-import { canView, Viewer } from "../common/visibility";
+import { canView, loVeLaMesa, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
 //
@@ -200,13 +200,6 @@ function claveSrd(
     throw new BadRequestException("En esta fase solo hay contenido del SRD.");
   return ref.key;
 }
-
-/**
- * Los niveles de visibilidad que **la mesa entera ve**. Se escribe una vez porque el predicado
- * `=== "PLAYERS"` se copió a dos sitios y en los dos se dejaba fuera a `PUBLIC`, que es el más
- * abierto de los cinco.
- */
-const ES_VISIBLE_A_LA_MESA = new Set<string>(["PUBLIC", "PLAYERS"]);
 
 @Injectable()
 export class CharacterSheetService {
@@ -1061,7 +1054,7 @@ export class CharacterSheetService {
                 mode: "NORMAL",
                 // Misma regla que el resto del servicio: la audiencia sale de la visibilidad del
                 // personaje, no `PUBLIC` fija.
-                audience: ES_VISIBLE_A_LA_MESA.has(character.visibility) ? "PUBLIC" : "DM_PRIVATE",
+                audience: loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE",
               },
             });
             concentrationSave = { requestId: peticion.id, dc };
@@ -1349,9 +1342,7 @@ export class CharacterSheetService {
     // Mismo arreglo que en `resolveAttack`: son DOS niveles. Con `=== "PLAYERS"`, un personaje
     // `PUBLIC` —el más abierto— caía en el `else` y su tirada se escondía. Lo cazó la revisión
     // de cierre de 2.5.3, y el defecto vivía aquí desde 2B.
-    const audienciaPorDefecto = ES_VISIBLE_A_LA_MESA.has(character.visibility)
-      ? "PUBLIC"
-      : "DM_PRIVATE";
+    const audienciaPorDefecto = loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
     if (input.part === "ATTACK") {
       return this.rolls.roll(userId, campaignId, {
@@ -1489,9 +1480,7 @@ export class CharacterSheetService {
     // `revealed` es falso y **no recibe veredicto**, lo que parece un fallo del ataque y es de
     // la audiencia. Lo cazó la revisión de cierre; el defecto venía copiado de `rollAttack` y
     // se arregla en los dos sitios.
-    const audienciaPorDefecto = ES_VISIBLE_A_LA_MESA.has(character.visibility)
-      ? "PUBLIC"
-      : "DM_PRIVATE";
+    const audienciaPorDefecto = loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
     const roll = await this.rolls.roll(userId, campaignId, {
       expression: conSigno("1d20", ataque.attackBonus.total),

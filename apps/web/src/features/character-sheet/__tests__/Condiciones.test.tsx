@@ -151,7 +151,7 @@ describe("Condiciones — cuánto dura", () => {
 
     await screen.findByLabelText("Duración");
     fireEvent.change(screen.getByLabelText("Duración"), { target: { value: "hour" } });
-    fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar condición" }));
 
     await waitFor(() => expect(aplicar).toHaveBeenCalled());
     // (campaignId, characterId, key, level, note, durationSeconds)
@@ -164,7 +164,7 @@ describe("Condiciones — cuánto dura", () => {
       .spyOn(characterSheetApi, "applyCondition")
       .mockResolvedValue(fila("blinded"));
 
-    fireEvent.click(await screen.findByRole("button", { name: "Aplicar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Aplicar condición" }));
 
     await waitFor(() => expect(aplicar).toHaveBeenCalled());
     expect(aplicar.mock.calls[0][5]).toBeUndefined();
@@ -237,5 +237,87 @@ describe("Condiciones — la vencida se ve vencida", () => {
 
     await screen.findByRole("listitem");
     expect(reloj).not.toHaveBeenCalled();
+  });
+});
+
+// Ficha M17 — **la concentración se puede marcar desde una pantalla, o el servidor no se entera.**
+//
+// 2.5.4 dejó el servidor hecho: recibir daño estando concentrado pide una salvación de
+// Constitución con su CD. Y `grep -rn "concentrat" apps/web` no devolvía nada: el selector solo
+// ofrecía las quince claves del SRD, así que la regla **no se disparaba jamás en una mesa real**.
+// La ficha se reabrió por eso. Esto es lo que la cierra.
+describe("Condiciones — la concentración (ficha M17)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("se aplica con la clave del prefijo y el conjuro tal cual en la nota", async () => {
+    const espia = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("concentrating-bendicion"));
+    pintar([]);
+
+    fireEvent.change(await screen.findByLabelText("Nueva condición"), {
+      target: { value: "concentrating" },
+    });
+    fireEvent.change(screen.getByLabelText("Conjuro en el que se concentra"), {
+      target: { value: "Bendición" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar condición" }));
+
+    await waitFor(() => expect(espia).toHaveBeenCalled());
+    // `applyCondition(campaignId, characterId, key, level, note, durationSeconds)`.
+    const [, , clave, nivel, nota] = espia.mock.calls[0];
+    // **La clave es un identificador y la nota es texto.** Con acentos y mayúsculas dentro, dos
+    // DM que escriban «Bendición» y «bendicion» chocarían en claves distintas y el personaje
+    // acabaría concentrado dos veces en lo mismo.
+    expect(clave).toBe("concentrating-bendicion");
+    expect(nota).toBe("Bendición");
+    expect(nivel).toBeUndefined();
+  });
+
+  it("sin conjuro escrito no se puede aplicar, y el botón dice por qué", async () => {
+    const espia = vi.spyOn(characterSheetApi, "applyCondition");
+    pintar([]);
+
+    fireEvent.change(await screen.findByLabelText("Nueva condición"), {
+      target: { value: "concentrating" },
+    });
+
+    const boton = screen.getByRole("button", { name: "Aplicar condición" });
+    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute("title", "Escribe en qué conjuro se concentra.");
+    fireEvent.click(boton);
+    expect(espia).not.toHaveBeenCalled();
+  });
+
+  it("en la lista dice EN QUÉ se concentra, no «Concentración» a secas", async () => {
+    pintar([{ ...fila("concentrating-bendicion"), note: "Bendición" }]);
+
+    const entrada = await screen.findByRole("listitem");
+    expect(entrada).toHaveTextContent("Concentración en Bendición");
+    // Y nunca la clave: es la regla de que ningún valor de enumeración llega a la pantalla.
+    expect(entrada).not.toHaveTextContent("concentrating");
+    expect(entrada).not.toHaveTextContent("Sin traducir");
+  });
+
+  it("dice lo que el servidor de verdad hace: pide la salvación sola", async () => {
+    pintar([{ ...fila("concentrating-bendicion"), note: "Bendición" }]);
+
+    const entrada = await screen.findByRole("listitem");
+    // **Si el texto y el servidor discrepan, miente el texto.** Desde 2.5.4 `changeHp` pide esta
+    // salvación por su cuenta, así que la frase lo dice en presente y no como una promesa futura.
+    expect(entrada).toHaveTextContent(/salvación de Constitución/i);
+    expect(entrada).toHaveTextContent(/CD 10 o la mitad del daño/i);
+    // Y NO promete que se pierda el conjuro: eso es tirar el dado, y el sistema no lo decide.
+    expect(entrada).not.toHaveTextContent(/pierdes el conjuro/i);
+  });
+
+  it("una concentración sin nota no se rompe: se queda con el nombre a secas", async () => {
+    pintar([fila("concentrating-bendicion")]);
+
+    const entrada = await screen.findByRole("listitem");
+    expect(entrada).toHaveTextContent("Concentración");
+    expect(entrada).not.toHaveTextContent("Sin traducir");
   });
 });

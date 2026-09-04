@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { DerivedValue, RollMode, RollResult } from "@dnd/shared";
+import type { DerivedValue, RollMode, RollResult, SuggestedRollMode } from "@dnd/shared";
+import { fraseDeSugerencia } from "./sugerencia";
 import { Button } from "../../ui/Button";
 import { ResultadoDeTirada } from "./ResultadoDeTirada";
 import { TiradaACiegas } from "./TiradaACiegas";
@@ -48,6 +49,7 @@ export function PanelDeTirada({
   error,
   resultado,
   derivado,
+  sugerencia,
 }: {
   /** Qué se tira: «Percepción», «Salvación de Fuerza». */
   etiqueta: string;
@@ -61,8 +63,15 @@ export function PanelDeTirada({
   error: string | null;
   resultado: RollResult | null;
   derivado?: DerivedValue;
+  /**
+   * Lo que las condiciones vivas dicen de ESTA tirada (2.5.5). **Opcional**: quien monta el panel
+   * puede no tenerla, y entonces no se pinta nada — el aviso que falta es mejor que un aviso que
+   * miente sobre un personaje del que no sabemos las condiciones.
+   */
+  sugerencia?: SuggestedRollMode;
 }) {
   const caja = useRef<HTMLDivElement>(null);
+  const aviso = fraseDeSugerencia(sugerencia);
 
   useEffect(() => {
     caja.current?.focus();
@@ -86,6 +95,24 @@ export function PanelDeTirada({
         <p className="font-chrome text-chrome-sm font-semibold text-text">{etiqueta}</p>
         <span className="font-data text-chrome-xs text-muted">{expresion}</span>
       </div>
+
+      {/* **El aviso va ANTES del selector, y encima queda el selector entero.** Sugiere, no
+          impone (D-2.5-6): el servidor no puede saber si la fuente del miedo está a la vista ni si
+          el atacante te ve, así que la última palabra es de quien tira. Lo que arregla esto es el
+          olvido, que es el fallo de verdad: envenenado, apresado, derribado, asustado y el
+          agotamiento cambian casi todas las tiradas de un turno.
+
+          `role="status"`: aparece sin que nadie lo pida —el panel se abre y ya está ahí— y cambia
+          cuando cambian las condiciones del personaje. Un lector de pantalla tiene que enterarse
+          sin tener que ir a buscarlo. */}
+      {aviso && (
+        <p
+          role="status"
+          className="rounded-radius-sm border border-warning/40 bg-[color:var(--warning-tint)] px-s2 py-1 font-chrome text-chrome-xs text-warning-text"
+        >
+          {aviso}
+        </p>
+      )}
 
       <SelectorDeVentaja value={modo} onChange={onModo} etiqueta={etiqueta} disabled={pendiente} />
 

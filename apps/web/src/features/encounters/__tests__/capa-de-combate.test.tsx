@@ -98,7 +98,7 @@ describe("la tira de iniciativa: el orden, y quién está actuando", () => {
 
   it("cuando el turno es de alguien que no ves, se dice en vez de dejar la tira sin marcar", () => {
     // El servidor manda `activePosition: null` cuando el turno toca a un PNJ escondido.
-    montarTira({ ...ENCUENTRO, activePosition: null as unknown as number }, false);
+    montarTira({ ...ENCUENTRO, activePosition: null }, false);
 
     expect(screen.getByText("Le toca a alguien que no ves.")).toBeInTheDocument();
     const turnos = within(screen.getByRole("region", { name: "Orden de turnos" })).getAllByRole(
@@ -205,13 +205,14 @@ describe("entrar en combate", () => {
     expect(within(dialogo).getByText("Nadie elegido todavía")).toBeInTheDocument();
   });
 
-  it("sin ningún personaje en la campaña, el botón dice por qué no se puede", () => {
+  it("sin ningún personaje en la campaña se dice por qué, en texto que se puede leer", () => {
+    // **No un botón deshabilitado con el motivo en un `title`**: un botón deshabilitado no recibe
+    // foco, así que ese tooltip no lo alcanza nadie con teclado ni con lector de pantalla. La
+    // versión anterior lo hacía así y esta prueba afirmaba sobre algo que el usuario no percibe.
     montarEmpezar([]);
-    const boton = screen.getByRole("button", { name: "Entrar en combate" });
-    expect(boton).toBeDisabled();
-    expect(boton).toHaveAttribute(
-      "title",
-      "No hay ningún personaje en esta campaña con el que combatir.",
-    );
+    expect(screen.queryByRole("button", { name: "Entrar en combate" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("No hay ningún personaje en esta campaña con el que combatir."),
+    ).toBeInTheDocument();
   });
 });

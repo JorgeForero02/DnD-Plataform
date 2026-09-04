@@ -22,12 +22,23 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
-      // **`Content-Type` solo cuando hay cuerpo que declarar**, y esto lo destapó un recorrido de
-      // navegador de 2.5.6. Fastify rechaza con 400 —«Body cannot be empty when content-type is
-      // set to 'application/json'»— cualquier POST que anuncie JSON y no mande nada, así que
-      // cada endpoint sin cuerpo (pasar turno, terminar el combate) fallaba **desde el navegador
-      // y solo desde el navegador**: supertest no pone la cabecera si no hay `.send()`, de modo
-      // que los e2e de API pasaban en verde sobre el mismo camino roto.
+      // **`Content-Type` solo cuando hay cuerpo que declarar.**
+      //
+      // Fastify rechaza con 400 —«Body cannot be empty when content-type is set to
+      // 'application/json'»— cualquier POST que anuncie JSON y no mande nada, y esto lleva
+      // mordiendo desde la tarea 1.14: **dieciocho llamadas de este repositorio arrastran el
+      // rodeo `body: JSON.stringify({})`** con su comentario explicándolo, una por una, desde
+      // que un recorrido de Playwright lo destapó por primera vez (`features/invites/api.ts`:
+      // «Only the Playwright run against the real API caught this»).
+      //
+      // Lo que hace 2.5.6 es **arreglar la causa en vez de pagar el peaje diecinueve veces**: los
+      // dos endpoints nuevos sin cuerpo —pasar turno, terminar el combate— fueron los primeros
+      // que no copiaron el rodeo, y volvieron a caer en el mismo 400. Los dieciocho rodeos siguen
+      // funcionando y ahora son innecesarios; su limpieza está en `docs/06-pendientes.md`.
+      //
+      // Y el motivo por el que solo lo ve el navegador sigue en pie: **supertest no pone la
+      // cabecera si no hay `.send()`**, así que los e2e de API pasan en verde sobre el camino
+      // roto. Es la clase de defecto que solo caza `pnpm --filter @dnd/web e2e`.
       ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,

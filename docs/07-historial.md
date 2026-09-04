@@ -95,16 +95,57 @@ imprimía `Sin traducir: <TIPO>` y un comentario que lo llamaba «inalcanzable»
 que es lo que la propia ficha pedía: ahora, si el carril del motor añade un tipo, el build del
 gráfico se pone rojo en ese fichero. La deuda dejó de crecer sola.
 
-**Y un fallo latente que solo podía aparecer en un navegador.** `apiFetch` ponía siempre
-`Content-Type: application/json`, y Fastify rechaza con 400 —*«Body cannot be empty when
-content-type is set to 'application/json'»*— cualquier POST que anuncie JSON sin cuerpo. **Todos
-los endpoints sin cuerpo estaban rotos desde la web**, y los e2e de API pasaban en verde sobre el
-mismo camino porque supertest no pone esa cabecera si no hay `.send()`. Lo destapó pasar turno.
+**Y se arregla en `apiFetch` una causa que llevaba desde la tarea 1.14 pagándose a mano.** Fastify
+rechaza con 400 —*«Body cannot be empty when content-type is set to 'application/json'»*— cualquier
+POST que anuncie JSON sin cuerpo, y **dieciocho llamadas de `apps/web` arrastraban el rodeo
+`body: JSON.stringify({})`** con su comentario explicándolo una por una. Los dos endpoints nuevos de
+2.5.6 fueron los primeros que no lo copiaron y volvieron a caer en el mismo 400, así que la
+cabecera pasa a ponerse **solo cuando hay cuerpo**. Los dieciocho rodeos quedan innecesarios y su
+limpieza está anotada. Solo lo caza el navegador: supertest no pone esa cabecera sin `.send()`.
 
-**Evidencia.** 6 e2e de API nuevos (`la-capa-de-combate.e2e-spec.ts`), 11 unitarias de la capa,
-12 del registro, y `combate.spec.ts` de punta a punta: entrar, pasar turno, recargar, salir. Suite
-de navegador entera **106/106**. Mutaciones: agrupar por fila en vez de por posición, corregir
-siempre el primer combatiente, y quitar la puerta del DM — las tres dejan pruebas rojas.
+> **Aquí ponía «todos los endpoints sin cuerpo estaban rotos desde la web», y era falso**: los
+> dieciocho que llevaban el rodeo funcionaban. Lo corrigió la revisión de cierre, que lo refutó
+> sin salir del repositorio.
+
+**La revisión de cierre devolvió dos bloqueantes, dos graves y cinco menores. Todos arreglados
+aquí, y dos de ellos no eran de esta tanda sino que llevaban puestos desde 2.5.2.**
+
+1. **El registro le cantaba al jugador las posiciones CRUDAS.** `get` renumera denso justo para que
+   nadie pueda contar los huecos de lo que no ve, y `TURN_ADVANCED` —visibilidad `PLAYERS`— viajaba
+   con `fromPosition` y `toPosition` sin renumerar dentro del `payload`, que `GameEventsService`
+   devuelve entero. Medido contra Postgres real: con **un** combatiente visible y cuatro grupos
+   ocultos, el registro entregaba **cinco** posiciones distintas. Es la misma fuga que la revisión
+   de 2.5.2 cerró quitando los conteos de `ENCOUNTER_STARTED`, reabierta por la otra puerta. Un
+   `payload` no se puede filtrar por espectador, así que las posiciones salen del suceso — nadie
+   las leía: `linea-de-log.ts` ya las descartaba a propósito.
+2. **`?seccion=characters` dejaba la pantalla en blanco**, y no era una dirección hipotética: **la
+   migaja de toda hoja de personaje apuntaba ahí**, y también el destino tras borrar un personaje.
+   Dos clics desde una pantalla central. Ahora **una sección que no existe abre el resumen**, y los
+   dos emisores apuntan a la campaña a secas. Se probó además reabrir el cajón que la dirección
+   nombraba y se descartó: contradice que el superpuesto no sobreviva a navegar —que es a
+   propósito— y deja el taller tapado por un modal cada vez que vuelves de una hoja.
+3. **La renumeración densa no tenía ninguna prueba que la distinguiera.** Con el PJ arriba por su
+   Destreza, su posición cruda era 0 y `toBe(0)` se cumplía con y sin renumerar: cinco vueltas con
+   la renumeración rota, seis pruebas verdes cada vez. Ahora se le baja la iniciativa a −20 y su
+   cruda es 1 — tres mutaciones seguidas, tres rojas.
+4. **`encounters.service.ts` llevaba tres bytes NUL literales** y git lo trataba como binario:
+   `Bin 19708 -> 22896 bytes`, sin diff. **Todo lo escrito ahí desde 2.5.2 llegó a `main` sin que
+   nadie pudiera leer el cambio**, en el fichero con más superficie de fuga del módulo. Pasan a
+   ser un escape, y una prueba nueva barre el fuente buscando bytes de control.
+5. **El predicado de audiencia se olvidaba de `PUBLIC` por TERCERA vez.** `=== "PLAYERS"` dejaba
+   fuera el nivel más abierto de los cinco, así que un personaje `PUBLIC` escribía su tirada de
+   iniciativa como `DM_PRIVATE` y **ni su dueño la veía**. Falla del lado seguro, pero rompe la
+   regla que no se negocia. El predicado se muda a `common/visibility.ts`, con `canView`.
+
+Y tres menores: `activePosition` no era `.nullable()` aunque el servidor devuelve `null` —la
+prueba tenía que mentirle al compilador—; el diálogo de terminar decía «queda con sus asalto» sin
+la cifra; y el botón de entrar en combate se deshabilitaba con el motivo en un `title`, que un
+teclado no alcanza.
+
+**Evidencia.** 7 e2e de API (`la-capa-de-combate.e2e-spec.ts`), 11 unitarias de la capa, 12 del
+registro, y `combate.spec.ts` de punta a punta: entrar, pasar turno, recargar, salir. Mutaciones:
+agrupar por fila en vez de por posición, corregir siempre el primer combatiente, quitar la puerta
+del DM y romper la renumeración densa — las cuatro dejan pruebas rojas.
 
 **Revertir:** un commit. La migración solo **añade** un valor al enum `GameEventType`; bajarla es
 `prisma migrate resolve --rolled-back` (un valor de enum no se puede quitar en Postgres sin

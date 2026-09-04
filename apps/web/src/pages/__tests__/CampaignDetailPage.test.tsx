@@ -1332,3 +1332,57 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
     expect(fila).toHaveTextContent(/^Strahd von Zarovich◐Jugadores$/);
   });
 });
+
+// **Ninguna dirección deja la pantalla sin panel**, y esta prueba existe porque tres la dejaban.
+//
+// Al mover Personajes, Bestiario y Catálogo a cajones (B4), `?seccion=characters` dejó de tener
+// pestaña: `Tabs` no encontraba el item, no pintaba ningún `tabpanel` y el carril no marcaba nada
+// — cabecera y carril sobre un hueco. Y no era una dirección hipotética de un marcador: **la
+// migaja de toda hoja de personaje apuntaba ahí**, y también el destino tras borrar un personaje.
+// Dos clics desde una pantalla central. Lo encontró la revisión de cierre de 2.5.6, y el mensaje
+// del commit de B4 afirmaba lo contrario.
+describe("una sección que ya no existe no deja la pantalla en blanco", () => {
+  function conSeccion(seccion: string) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={[`/campaigns/c1?seccion=${seccion}`]}>
+          <Routes>
+            <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it.each([
+    // Las tres que B4 convirtió en cajones, y que la aplicación seguía emitiendo.
+    "characters",
+    "bestiary",
+    "items",
+    // Y una inventada, que es lo que llega de un marcador viejo o de un enlace mal copiado.
+    "inventada",
+  ])("?seccion=%s pinta el resumen, no un hueco", async (seccion) => {
+    conSeccion(seccion);
+
+    // Exactamente **un** panel, y una pestaña marcada: es lo que no pasaba.
+    expect(await screen.findAllByRole("tabpanel")).toHaveLength(1);
+    const marcadas = screen
+      .getAllByRole("tab")
+      .filter((t) => t.getAttribute("aria-selected") === "true");
+    expect(marcadas).toHaveLength(1);
+    expect(marcadas[0]).toHaveTextContent("Resumen");
+  });
+
+  it("y una que SÍ existe sigue abriendo la suya: el control que hace que la de arriba distinga", async () => {
+    // Sin este caso, la prueba de arriba pasaría igual con `seccionActiva` fijada a «overview»
+    // para todo — que rompería las nueve secciones y no se notaría.
+    conSeccion("NPC");
+
+    const marcadas = screen
+      .getAllByRole("tab")
+      .filter((t) => t.getAttribute("aria-selected") === "true");
+    expect(marcadas).toHaveLength(1);
+    expect(marcadas[0]).toHaveTextContent("El mundo");
+  });
+});

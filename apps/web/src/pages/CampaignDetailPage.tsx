@@ -85,6 +85,21 @@ const TIPOS_DEL_MUNDO: EntityType[] = [
 ];
 const GRUPO_MESA = "La mesa";
 
+/**
+ * Los tres cajones del taller (B4, decisión D-R-8): colecciones que se abren **encima** del
+ * taller en vez de ocupar una entrada del carril.
+ *
+ * Vive a nivel de módulo y no dentro del componente porque **la página también lo necesita**,
+ * para saber si una dirección antigua (`?seccion=characters`) pide abrir uno.
+ */
+const CAJONES_DEL_TALLER = [
+  { id: "characters", etiqueta: "Personajes", icono: <IconoPersonajes /> },
+  { id: "bestiary", etiqueta: "Bestiario", icono: <IconoBestiario /> },
+  { id: "items", etiqueta: "Catálogo", icono: <IconoImpedimenta /> },
+] as const;
+
+type CajonAbierto = (typeof CAJONES_DEL_TALLER)[number]["id"];
+
 const TABS: TabConfig[] = [
   { kind: "overview", label: "Resumen" },
   // **Un solo destino para el mundo entero, y esto es el arreglo del defecto que el reseño
@@ -545,7 +560,25 @@ export function CampaignDetailPage() {
   // **Un tipo de ficha en la URL sigue abriendo el mundo.** `?seccion=LOCATION` era un destino
   // propio y ahora es el mundo con «Lugares» elegido: la dirección no cambia —los enlaces
   // guardados y media docena de recorridos la usan—, cambia dónde se pinta.
-  const seccionActiva = TIPOS_DEL_MUNDO.includes(enLaUrl as EntityType) ? "world" : enLaUrl;
+  //
+  // **Y una dirección que ya no existe abre el resumen, no una pantalla en blanco.** Al mover
+  // Personajes, Bestiario y Catálogo a cajones, `?seccion=characters` dejó de encontrar su
+  // pestaña: `Tabs` no pintaba ningún panel y el carril no marcaba nada, así que quedaba la
+  // cabecera sobre un hueco. Y no era una dirección hipotética guardada en un marcador — **la
+  // migaja de toda hoja de personaje apuntaba ahí**, y también el destino tras borrar un
+  // personaje. Dos clics desde una pantalla central. Lo encontró la revisión de cierre, y el
+  // mensaje del commit de B4 afirmaba lo contrario.
+  //
+  // **Se cae al resumen, y NO se abre el cajón que nombraba la dirección.** Se probó lo segundo y
+  // sale caro por los dos lados: contradice lo que ya estaba declarado —el superpuesto no
+  // sobrevive a navegar, y eso es a propósito— y hace que volver de una hoja de personaje te deje
+  // el taller tapado por un modal cada vez. Lo que se arregla es la pantalla en blanco; los dos
+  // emisores vivos de esa dirección (la miga de la hoja y el destino tras borrar) pasan a apuntar
+  // a la campaña a secas, que es donde de verdad quieren llevar.
+  const seccionCruda = TIPOS_DEL_MUNDO.includes(enLaUrl as EntityType) ? "world" : enLaUrl;
+  // El identificador de una sección es su `kind` —así se construyen abajo, uno a uno—, salvo
+  // que ya no existan: los tres cajones salieron del carril en B4.
+  const seccionActiva = TABS.some((t) => t.kind === seccionCruda) ? seccionCruda : "overview";
   const abrirSeccion = (id: string) => {
     const siguiente = new URLSearchParams(searchParams);
     if (id === "overview") siguiente.delete("seccion");
@@ -871,13 +904,9 @@ function SeccionDelMundo({
  * no tener un sitio donde estar es el defecto que todo este reseño existe para corregir.
  */
 function CajonesDelTaller({ campaignId }: { campaignId: string }) {
-  const [abierto, setAbierto] = useState<null | "characters" | "bestiary" | "items">(null);
+  const [abierto, setAbierto] = useState<CajonAbierto | null>(null);
 
-  const cajones = [
-    { id: "characters", etiqueta: "Personajes", icono: <IconoPersonajes /> },
-    { id: "bestiary", etiqueta: "Bestiario", icono: <IconoBestiario /> },
-    { id: "items", etiqueta: "Catálogo", icono: <IconoImpedimenta /> },
-  ] as const;
+  const cajones = CAJONES_DEL_TALLER;
 
   return (
     <>

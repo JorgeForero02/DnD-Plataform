@@ -380,11 +380,18 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("TURN_ADVANCED"),
     encounterId: z.string().cuid(),
-    /** La posición de la que se sale y a la que se llega, no solo el `characterId`: dos
-     * combatientes distintos pueden compartir personaje… salvo que aquí nunca pasa, pero la
-     * posición es el dato que de verdad ordena el turno. */
-    fromPosition: z.number().int().nonnegative(),
-    toPosition: z.number().int().nonnegative(),
+    /**
+     * **Sin posiciones, y por la misma razón por la que `ENCOUNTER_STARTED` se quedó sin
+     * conteos.** Llevaba `fromPosition` y `toPosition`, y las dos eran una fuga por deducción
+     * medida contra Postgres real por la revisión de cierre de 2.5.6: este suceso es `PLAYERS`,
+     * `GameEventsService.list` devuelve el `payload` **entero**, y `EncountersService.get`
+     * renumera denso las posiciones precisamente para que un jugador no pueda contar los huecos
+     * de lo que no ve. Con un combatiente visible y cuatro grupos ocultos, el registro entregaba
+     * cinco posiciones distintas.
+     *
+     * Un `payload` no se puede filtrar por espectador, así que aquí no hay renumeración posible.
+     * Lo que este suceso tiene que decir es **que pasó el turno**, y en qué asalto.
+     */
     round: z.number().int().positive(),
   }),
   z.object({

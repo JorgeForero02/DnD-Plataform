@@ -7,15 +7,15 @@ import { z } from "zod";
 // `Character` — desde 2D un PNJ en la mesa ES una fila de `Character`, así que no hace falta un
 // segundo tipo de combatiente.
 //
-// **Todo esto es de servidor.** El spec de la fase 2.5 (§2.5.2) acepta que quede sin pantalla
-// hasta que exista la mesa de combate (§2.5.6); lo que se construye aquí es la dependencia real:
-// las condiciones caducan por asaltos (2C.4) contra el mismo reloj de campaña que un asalto
-// avanza.
+// Nació sin pantalla a propósito (§2.5.2 del spec); **2.5.6 es la pantalla**: la tira de orden de
+// turnos de la mesa (`apps/web/src/features/encounters/`). La dependencia real que se construyó
+// aquí sigue siendo la misma: las condiciones caducan por asaltos (2C.4) contra el mismo reloj de
+// campaña que un asalto avanza.
 
 export const encounterStatusSchema = z.enum(["ACTIVE", "ENDED"]);
 export type EncounterStatus = z.infer<typeof encounterStatusSchema>;
 
-/** Un combatiente tal y como lo pinta el registro — no hay pantalla que lo consuma todavía. */
+/** Un combatiente, ya filtrado por `canView` y con la posición renumerada densa. */
 export const combatantSchema = z.object({
   id: z.string().cuid(),
   characterId: z.string().cuid(),
@@ -29,7 +29,16 @@ export const encounterSchema = z.object({
   sessionId: z.string().cuid(),
   status: encounterStatusSchema,
   round: z.number().int().positive(),
-  activePosition: z.number().int().nonnegative(),
+  /**
+   * De quién es el turno, **o `null` si es de alguien que este espectador no puede ver.**
+   *
+   * `.nullable()` lo puso la revisión de cierre de 2.5.6: el servidor devuelve `null` desde su
+   * propia revisión de 2.5.2 —«ahora no te toca a ti» es verdad y no delata a nadie— y este tipo
+   * decía que era siempre un número. La pantalla ya lo comprobaba y su prueba tenía que escribir
+   * `null as unknown as number` para poder probar lo que el servidor hace de verdad. Un tipo que
+   * miente deja pasar `combatants[encuentro.activePosition]` sin que el compilador diga nada.
+   */
+  activePosition: z.number().int().nonnegative().nullable(),
   combatants: z.array(combatantSchema),
 });
 export type Encounter = z.infer<typeof encounterSchema>;

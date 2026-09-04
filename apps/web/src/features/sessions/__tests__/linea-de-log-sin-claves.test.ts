@@ -158,15 +158,12 @@ describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
 
   it("el combate se cuenta sin nombres ni números que delaten", () => {
     expect(lineaDeLog({ type: "ENCOUNTER_STARTED", encounterId: "e1" })).toBe("Empieza el combate");
-    expect(
-      lineaDeLog({
-        type: "TURN_ADVANCED",
-        encounterId: "e1",
-        fromPosition: 0,
-        toPosition: 1,
-        round: 2,
-      }),
-    ).toBe("Pasa el turno (asalto 2)");
+    // **Sin posiciones en el payload, y eso lo decidió una revisión de cierre**: llevaba
+    // `fromPosition` y `toPosition`, y con ellas un jugador podía contar del registro cuántos
+    // grupos de enemigos escondidos había. El tipo ya no las admite.
+    expect(lineaDeLog({ type: "TURN_ADVANCED", encounterId: "e1", round: 2 })).toBe(
+      "Pasa el turno (asalto 2)",
+    );
     expect(
       lineaDeLog({ type: "ROUND_ADVANCED", encounterId: "e1", from: 1, to: 2, clockSeconds: 6 }),
     ).toBe("Asalto 2");

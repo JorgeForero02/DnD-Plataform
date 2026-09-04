@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import type { DerivedValue, RollMode, RollResult } from "@dnd/shared";
+import type { DerivedValue, RollMode, RollResult, SuggestedRollMode } from "@dnd/shared";
+import { modoSugerido } from "../rolls/sugerencia";
 import { DadoDibujado } from "../rolls/DadoDibujado";
 import { PanelDeTirada } from "../rolls/PanelDeTirada";
 import { useCreateRoll } from "./hooks";
@@ -32,6 +33,7 @@ export function TirarBoton({
   etiqueta,
   modificador,
   derivado,
+  sugerencia,
 }: {
   campaignId: string;
   characterId: string;
@@ -45,10 +47,22 @@ export function TirarBoton({
    * él, dice `17 = 12 dado +5 percepción`, que es verdad pero explica la mitad.
    */
   derivado?: DerivedValue;
+  /** Lo que las condiciones vivas dicen de esta tirada (2.5.5). Opcional: sin ella no hay aviso. */
+  sugerencia?: SuggestedRollMode;
 }) {
   const crearTirada = useCreateRoll(campaignId);
   const [abierto, setAbierto] = useState(false);
-  const [modo, setModo] = useState<RollMode>("NORMAL");
+  // **El modo se pone al ABRIR el panel, no al montar el dado**, y esto lo corrigió un recorrido
+  // de navegador: el dado vive en la fila desde que se pinta la hoja, así que fijar el modo en el
+  // `useState` inicial lo congelaba en «Normal» —no había condiciones todavía— y ponerle una
+  // después no lo movía. El aviso sí cambiaba, porque viene de props: quedaba una pantalla
+  // diciendo «desventaja sugerida» con «Normal» marcado, que es exactamente el caso que la regla
+  // de interfaz prohíbe —el texto explicando una regla y el control contradiciéndola—.
+  //
+  // Abrir el panel **es** el momento de decidir, así que es donde se preselecciona. Cambiarlo a
+  // mano sigue mandando mientras el panel está abierto; cerrar y volver a abrir parte otra vez de
+  // lo que el servidor cree, que es lo que se quiere: cada tirada es una decisión nueva.
+  const [modo, setModo] = useState<RollMode>(() => modoSugerido(sugerencia));
   const [resultado, setResultado] = useState<RollResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dado = useRef<HTMLButtonElement>(null);
@@ -94,7 +108,12 @@ export function TirarBoton({
       <button
         ref={dado}
         type="button"
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => {
+          // `setModo` fuera del actualizador de `setAbierto`: un actualizador tiene que ser puro,
+          // y en modo estricto React lo invoca dos veces a propósito para cazar justo esto.
+          if (!abierto) setModo(modoSugerido(sugerencia));
+          setAbierto((v) => !v);
+        }}
         aria-expanded={abierto}
         aria-label={`Tirada de ${etiqueta}`}
         title={`Tirar ${etiqueta} (${expresion})`}
@@ -114,6 +133,7 @@ export function TirarBoton({
           error={error}
           resultado={resultado}
           derivado={derivado}
+          sugerencia={sugerencia}
         />
       )}
     </span>

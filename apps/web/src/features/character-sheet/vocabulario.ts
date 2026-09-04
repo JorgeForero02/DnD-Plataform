@@ -164,8 +164,47 @@ export const NOMBRE_CONDICION: Record<string, string> = {
   exhaustion: "Agotamiento",
 };
 
+/**
+ * El prefijo con el que la mesa marca que alguien está **concentrado en un conjuro** (2.5.4).
+ *
+ * La concentración **no es una de las quince condiciones cerradas del SRD** —el informe de huecos
+ * que las cerró lo dijo explícitamente—, así que se guarda con la clave libre que el servidor ya
+ * admite para todo lo que el motor no calcula. El servidor solo mira el prefijo: lo que va detrás
+ * distingue un conjuro de otro y **el nombre legible vive en `note`**, no en la clave.
+ */
+export const PREFIJO_CONCENTRACION = "concentrating";
+
 export function nombreCondicion(key: string): string {
+  // La concentración es de clave libre, así que no está —ni puede estar— en el mapa cerrado.
+  // Sin esto salía como «Sin traducir: concentrating-bless» delante de los jugadores, que es
+  // exactamente lo que la regla de enumeraciones prohíbe.
+  if (key === PREFIJO_CONCENTRACION || key.startsWith(`${PREFIJO_CONCENTRACION}-`)) {
+    return "Concentración";
+  }
   return NOMBRE_CONDICION[key] ?? `Sin traducir: ${key}`;
+}
+
+/** ¿Esta condición es una concentración? Una sola definición, que la usan pantalla y pruebas. */
+export function esConcentracion(key: string): boolean {
+  return key === PREFIJO_CONCENTRACION || key.startsWith(`${PREFIJO_CONCENTRACION}-`);
+}
+
+/**
+ * La clave que se guarda para «concentrado en X».
+ *
+ * Se normaliza a minúsculas sin acentos y con guiones porque **es un identificador, no un texto**:
+ * dos DM que escriban «Bendición» y «bendicion» tienen que colisionar en la misma clave, y el
+ * índice único de condición por personaje es lo que impide concentrarse dos veces en lo mismo.
+ * Tope de 60 en el servidor (`character-state.schema.ts`), así que se recorta.
+ */
+export function claveDeConcentracion(conjuro: string): string {
+  const slug = conjuro
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${PREFIJO_CONCENTRACION}-${slug}`.slice(0, 60);
 }
 
 /** La causa que anota `effective-speed.ts` en un paso `speed.condition.*`: una condición o `exhaustion:<nivel>`. */

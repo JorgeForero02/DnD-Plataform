@@ -3,7 +3,13 @@ import { IconoQuitar } from "../../ui/Iconos";
 import { useApplyCondition, useConditions, useGameClock, useRemoveCondition } from "./hooks";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
-import { NOMBRE_CONDICION, nombreCondicion } from "./vocabulario";
+import {
+  NOMBRE_CONDICION,
+  PREFIJO_CONCENTRACION,
+  claveDeConcentracion,
+  esConcentracion,
+  nombreCondicion,
+} from "./vocabulario";
 import {
   DURACIONES_DE_CONDICION,
   DURACION_INDEFINIDA,
@@ -61,15 +67,48 @@ export const EFECTO_CONDICION: Record<string, string> = {
   exhaustion: "Penaliza por niveles: pruebas, velocidad y puntos de golpe. Al sexto nivel, muere.",
 };
 
+/**
+ * **Lo que hace la concentración, y es una regla que el servidor YA impone.**
+ *
+ * SRD 5.1, "Casting a Spell": *«Whenever you take damage while you are concentrating on a spell,
+ * you must make a Constitution saving throw to maintain your concentration. The DC equals 10 or
+ * half the damage you take, whichever number is higher.»* Desde 2.5.4, `changeHp` pide esa
+ * salvación sola. La frase está aquí porque **si el texto y el servidor discrepan, miente el
+ * texto** (regla vinculante de interfaz): esta describe lo que de verdad va a pasar.
+ *
+ * No dice «al perder la concentración pierdes el conjuro» aunque sea cierto: el sistema **no
+ * decide** si se pierde —eso es tirar el dado y compararlo— y prometerlo aquí sería prometer algo
+ * que la aplicación no hace.
+ */
+const EFECTO_CONCENTRACION =
+  "Al recibir daño, salvación de Constitución (CD 10 o la mitad del daño, lo que sea mayor). El sistema la pide sola.";
+
 /** El efecto de una condición, o `undefined` si la clave no es una de las del SRD. */
 export function efectoCondicion(key: string): string | undefined {
+  if (esConcentracion(key)) return EFECTO_CONCENTRACION;
   return EFECTO_CONDICION[key];
 }
 
 const CLAVES_CONOCIDAS = Object.keys(NOMBRE_CONDICION);
 
+// **La concentración entra en el selector, y eso es lo que cerraba la ficha M17.**
+//
+// 2.5.4 dejó el servidor hecho: recibir daño estando concentrado pide una salvación de
+// Constitución con su CD. Pero `grep -rn "concentrat" apps/web` no devolvía **nada** — el
+// selector solo ofrecía las quince claves del SRD, así que **ninguna pantalla podía marcar a
+// nadie como concentrado y la regla no se disparaba jamás en una mesa real**. La ficha se
+// reabrió por eso, con las palabras «se cerró sin mirar la pantalla».
+//
+// Va aparte de las quince a propósito: **no es una condición del SRD**, es una marca de la mesa.
+// Mezclarla en la misma lista diría que el manual la trae, y no la trae.
+const OPCION_CONCENTRACION = PREFIJO_CONCENTRACION;
+
 /** El nombre con su nivel, que es como se nombra una condición en toda esta pantalla. */
 function tituloDe(c: ConditionRow): string {
+  // Una concentración dice **en qué**: «Concentración» a secas no sirve de nada en una mesa donde
+  // se pueden estar manteniendo dos conjuros distintos en la misma escena. El texto sale de
+  // `note`, tal y como lo escribió quien la aplicó; si no lo hay, se queda el nombre a secas.
+  if (esConcentracion(c.key) && c.note) return `Concentración en ${c.note}`;
   return `${nombreCondicion(c.key)}${c.level != null ? ` (nivel ${c.level})` : ""}`;
 }
 
@@ -121,6 +160,9 @@ export function Condiciones({
   const quitar = useRemoveCondition(campaignId, characterId);
   const [nueva, setNueva] = useState(CLAVES_CONOCIDAS[0]);
   const [nivel, setNivel] = useState("1");
+  // El conjuro en el que se concentra. Va a `note`, que es el campo del servidor pensado para el
+  // texto de una condición; la clave se queda con el identificador normalizado.
+  const [conjuro, setConjuro] = useState("");
   const [duracion, setDuracion] = useState(DURACION_INDEFINIDA.key);
   // La duración con la que se renovará cada condición vencida, por clave. Se lleva aparte de la
   // del formulario de arriba porque son dos decisiones distintas: renovar «envenenado» una hora
@@ -250,6 +292,11 @@ export function Condiciones({
                   {nombreCondicion(k)}
                 </option>
               ))}
+              {/* `optgroup` y no una opción suelta: el grupo dice con una palabra por qué está
+                  separada de las quince de arriba, sin tener que escribir una nota al pie. */}
+              <optgroup label="De la mesa, no del manual">
+                <option value={OPCION_CONCENTRACION}>Concentración</option>
+              </optgroup>
             </select>
             {nueva === "exhaustion" && (
               <input
@@ -260,6 +307,17 @@ export function Condiciones({
                 value={nivel}
                 onChange={(e) => setNivel(e.target.value)}
                 aria-label="Nivel de agotamiento"
+              />
+            )}
+            {nueva === OPCION_CONCENTRACION && (
+              <input
+                type="text"
+                maxLength={60}
+                className={fieldControlClass + " w-40"}
+                value={conjuro}
+                onChange={(e) => setConjuro(e.target.value)}
+                aria-label="Conjuro en el que se concentra"
+                placeholder="Bendición"
               />
             )}
             {/* **Cuánto dura, al aplicarla.** Por defecto indefinida, que es lo que esta
@@ -275,14 +333,31 @@ export function Condiciones({
               variant="secondary"
               onClick={() =>
                 aplicar.mutate({
-                  key: nueva,
+                  // La clave de una concentración lleva el conjuro normalizado dentro; el nombre
+                  // tal y como se escribió va en `note`, que es donde el servidor guarda el texto.
+                  key: nueva === OPCION_CONCENTRACION ? claveDeConcentracion(conjuro) : nueva,
+                  note: nueva === OPCION_CONCENTRACION ? conjuro : undefined,
                   level: nueva === "exhaustion" ? Number(nivel) : undefined,
                   // `undefined` y no `null`: una condición indefinida **no manda el campo**, que
                   // es lo que el esquema del servidor espera para dejar la caducidad vacía.
                   durationSeconds: segundosDeDuracion(duracion) ?? undefined,
                 })
               }
-              disabled={aplicar.isPending}
+              // **Sin conjuro no se aplica**, y el botón lo dice en vez de dejar aplicar una
+              // clave `concentrating-` pelada que no distinguiría un conjuro de otro.
+              // **Nombre propio, porque no es el único «Aplicar» de la pantalla.** La hoja tiene
+              // cinco más —uno por moneda— que ya llevaban el suyo; este se había quedado con el
+              // texto pelado, así que en una hoja completa hay seis controles que un lector de
+              // pantalla anuncia igual. Lo destapó un recorrido de navegador al no poder pulsarlo.
+              aria-label="Aplicar condición"
+              disabled={
+                aplicar.isPending || (nueva === OPCION_CONCENTRACION && conjuro.trim().length === 0)
+              }
+              title={
+                nueva === OPCION_CONCENTRACION && conjuro.trim().length === 0
+                  ? "Escribe en qué conjuro se concentra."
+                  : undefined
+              }
             >
               Aplicar
             </Button>

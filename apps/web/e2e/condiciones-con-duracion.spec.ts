@@ -85,7 +85,7 @@ test("una condición con duración se marca como vencida al pasar su hora, **y n
   await page.getByLabel("Duración").selectOption({ label: "1 hora" });
   await page
     .locator('section[aria-label="condiciones"]')
-    .getByRole("button", { name: "Aplicar" })
+    .getByRole("button", { name: "Aplicar condición" })
     .click();
 
   // Mientras está viva, la pantalla dice lo que le queda — no un «vence a las 3600», que no
@@ -120,7 +120,7 @@ test("**los PG máximos partidos por agotamiento se explican en la hoja**", asyn
   await page.getByLabel("Nivel de agotamiento").fill("4");
   await page
     .locator('section[aria-label="condiciones"]')
-    .getByRole("button", { name: "Aplicar" })
+    .getByRole("button", { name: "Aplicar condición" })
     .click();
 
   // El número baja a la mitad **y la pantalla dice por qué**. Sin la frase, unos PG máximos que

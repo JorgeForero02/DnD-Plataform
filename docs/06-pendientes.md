@@ -971,14 +971,33 @@ tres sitios y los tres son del mismo tipo:
 - **Numeró su primera decisión `D-2.5-5`**, que ya estaba ocupada por 2.5.3. Se renumeró al fusionar.
 - **Midió los recorridos de navegador en 88** —la cifra de la noche anterior— cuando ya eran 104.
 
-**Cuesta poco arreglarlo y se paga en cada tanda:** o se empuja `main` a `origin` antes de lanzar
-agentes, o el worktree se crea desde el `HEAD` local (`worktree.baseRef: head`). Mientras no se
-haga, **cada informe de agente hay que leerlo contra `main`, no contra sí mismo**, y cada fusión
-sale con conflictos que no deberían existir.
+**Puesto `worktree.baseRef: head` el mismo día**, en `.claude/settings.local.json`, así que los
+worktrees nuevos salen del `HEAD` local. **Pero ese fichero está en `.gitignore`**: es de esta
+máquina y no viaja con el clon, igual que `.superpowers/sdd/progress.md`. La otra mitad —empujar
+`main` a `origin`, que lleva sin actualizarse desde julio— **no se ha hecho y es del autor**:
+empujar es una acción hacia fuera.
+
+Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
+sí mismo**.
 
 **Y una segunda, del mismo día:** `pnpm db:slot` **falla en un worktree** (`Command "prisma" not
 found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 `D&D-Plataform`). El agente creó y migró su base a mano. Es reproducible.
+
+## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
+
+**`apiFetch` ya no manda `Content-Type` cuando no hay cuerpo**, que era la causa por la que
+Fastify rechazaba con 400 todo POST sin cuerpo. Desde la tarea 1.14, dieciocho llamadas de
+`apps/web` llevan el rodeo `body: JSON.stringify({})` con su comentario explicando el 400 —y una
+unitaria, `features/level-up/__tests__/api.test.ts`, que fija `expect(init.body).toBe("{}")`—.
+
+**Siguen funcionando**, así que no corre prisa; lo que ya no es cierto son sus comentarios, que
+describen un `apiFetch` que no existe. Documentación que miente en dieciocho sitios, aunque sea
+en comentarios.
+
+**Cierra cuando** se quiten los dieciocho `JSON.stringify({})` y la unitaria que fija la forma
+vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
+el navegador**: supertest no pone la cabecera si no hay `.send()`.
 
 ## P4 — Limpieza
 
@@ -1106,8 +1125,8 @@ existe, y por eso están aquí y no en un plan futuro.
 |---|---|---|---|
 | ~~**M14**~~ | **CERRADA el 2026-09-04**, y en dos mitades: **2.5.2** puso el orden de iniciativa, los turnos y los asaltos en el servidor —con el agrupamiento del SRD para criaturas idénticas— y **2.5.6** los puso en la mesa, como una tira encima del elenco. La parte que arrastraba a las condiciones ya venía pagada por una decisión vieja: el reloj de campaña está en segundos porque un asalto son seis (D-2C-1), así que `advanceTurn` avanza el mismo contador y una condición de dos asaltos se apaga sola al segundo. **Lo escrito aquí durante unas horas decía que «no existe ningún `advanceTurn`»**: era verdad en la base de la que salió esa tanda y falso en `main`, y es el precio de que un worktree se ramifique de `origin/main` sin actualizar (ver la ficha de infraestructura, abajo) | Cerrada |
 | ~~**M15**~~ | **CERRADA el 2026-09-04 (2.5.4)**: `changeHp` acepta `rollEventId` opcional, comprobado contra la base (uno inventado o de otra campaña es 400) y guardado en `HP_CHANGED`. «¿De qué murió Elara?» ya responde tipo **y** tirada | Cerrada |
-| **M16** | **El servidor ya sugiere ventaja y desventaja; la pantalla todavía no la enseña** (2026-09-04, tarea 2.5.5) | El hermano de `effective-speed.ts` existe —`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`, puro, con las quince condiciones del SRD y sus citas— y `GET …/sheet` devuelve `rollSuggestions` con el ataque, la prueba y las seis salvaciones, cada una con sus causas. **Lo que falta es el consumidor**: ningún componente de `apps/web` lee ese campo, así que en la mesa el aviso no aparece. Mismo patrón que M17 y que `ENTITY_REVEALED`. Cierra cuando la hoja y el panel de dados lo pinten, con el modo preseleccionado y **todavía editable** — sugiere, no impone |
-| **M17** | **REABIERTA el 2026-09-04**, y se cerró sin mirar la pantalla. El servidor está hecho: `changeHp` pide la salvación de siempre (2C.5, `RollRequest`) cuando un personaje con una condición `concentrating-*` **toma** daño —antes de los PG temporales, y no si cae a 0: *«you lose concentration … if you are incapacitated»*—, CD `max(10, floor(daño/2))`, una por golpe sin deduplicar (SRD 5.1, "Casting a Spell"). **Pero `grep -rn "concentrat" apps/web` no devuelve nada**: el selector de condiciones solo ofrece las quince claves del SRD, así que ninguna pantalla puede marcar a nadie como concentrado y la regla no se dispara jamás en una mesa real. Mismo patrón que `ENTITY_REVEALED` (ficha P1). **Cierra cuando** una pantalla escriba `concentrating-*` | Abierta |
+| ~~**M16**~~ | **CERRADA el 2026-09-04 (2.5.5 en servidor, su pantalla el mismo día).** El panel de tirada pinta el aviso —«Desventaja sugerida: Envenenado», con todas las causas y el agotamiento con su nivel— como `role="status"`, **preselecciona el modo y no lo impone**: los tres radios siguen enteros al lado, que es D-2.5-6 dicha en la interfaz. Con fallo automático no preselecciona nada, porque el modo no describe lo que va a pasar. La hoja pasa una sugerencia **por característica** en las salvaciones y una sola para las dieciocho habilidades. Historia previa: | El hermano de `effective-speed.ts` existe —`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`, puro, con las quince condiciones del SRD y sus citas— y `GET …/sheet` devuelve `rollSuggestions` con el ataque, la prueba y las seis salvaciones, cada una con sus causas. **Lo que falta es el consumidor**: ningún componente de `apps/web` lee ese campo, así que en la mesa el aviso no aparece. Mismo patrón que M17 y que `ENTITY_REVEALED`. Cierra cuando la hoja y el panel de dados lo pinten, con el modo preseleccionado y **todavía editable** — sugiere, no impone |
+| ~~**M17**~~ | **CERRADA el 2026-09-04, esta vez con pantalla.** El selector de condiciones ofrece «Concentración» —en un `optgroup` aparte, «De la mesa, no del manual», porque **no es una de las quince del SRD**— con el conjuro en un campo de texto: la clave se guarda normalizada (`concentrating-bendicion`) y el nombre tal cual en `note`, que es el campo del servidor para el texto. La fila dice «Concentración en Bendición» y **lo que el servidor de verdad hace**: al recibir daño, salvación de Constitución con CD 10 o la mitad. Recorrido de navegador de punta a punta: marcar, encajar 25, y ver la petición con CD 12 donde el jugador la sondea. Historia previa: **REABIERTA el 2026-09-04**, y se cerró sin mirar la pantalla. El servidor está hecho: `changeHp` pide la salvación de siempre (2C.5, `RollRequest`) cuando un personaje con una condición `concentrating-*` **toma** daño —antes de los PG temporales, y no si cae a 0: *«you lose concentration … if you are incapacitated»*—, CD `max(10, floor(daño/2))`, una por golpe sin deduplicar (SRD 5.1, "Casting a Spell"). **Pero `grep -rn "concentrat" apps/web` no devuelve nada**: el selector de condiciones solo ofrece las quince claves del SRD, así que ninguna pantalla puede marcar a nadie como concentrado y la regla no se dispara jamás en una mesa real. Mismo patrón que `ENTITY_REVEALED` (ficha P1). **Cierra cuando** una pantalla escriba `concentrating-*` | Abierta |
 | **M18** | **Sin tipos de daño, resistencias ni inmunidades** | El cambio de PG es un entero pelado, y el log guarda un número que no dice de qué era | Un tipo de daño en el detalle del suceso, decidido **antes** de escribir mil eventos: la convención obliga a promocionar a columna cualquier campo por el que haya que filtrar |
 | **L5** | **El DM no puede declarar «este personaje no ve»** | Es la mitad barata del hueco de iluminación, y **no necesita mapa**: declarar la restricción cabe en las condiciones de clave libre que ya existen; lo que necesita posiciones es *resolver* el arco. Hoy la única herramienta del DM es cambiar la visibilidad de las fichas a mano, una a una, sin dejar dicho por qué | Vocabulario, chip en la hoja, y —crítico— que quede claro en pantalla que es **ficción, no permiso** |
 

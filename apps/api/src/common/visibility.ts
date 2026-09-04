@@ -48,6 +48,25 @@ export function canView(viewer: Viewer, resource: ViewableResource): boolean {
  * `SPECIFIC_PLAYERS` **con la lista vacía** era «revelar», y no lo es: la ficha pasa de verla una
  * persona a no verla nadie. Lo cazó la revisión de cierre del 2026-09-04.
  */
+/**
+ * ¿Este nivel de visibilidad lo ve **la mesa entera**?
+ *
+ * Vive aquí, con `canView`, porque es un trozo de la misma matriz y **ya se ha escrito mal tres
+ * veces**: el predicado `=== "PLAYERS"` se copió a `rollAttack`, a `resolveAttack` y a la tirada
+ * de iniciativa de `EncountersService.start`, y en los tres se dejaba fuera a `PUBLIC`, que es el
+ * más abierto de los cinco niveles. La consecuencia no es una fuga sino lo contrario, y por eso
+ * ninguna prueba se ponía roja: un personaje `PUBLIC` escribía su tirada como `DM_PRIVATE` y
+ * **ni su propio dueño la veía en el registro**. La regla que no se negocia dice que la matriz de
+ * visibilidad no se reimplementa por ahí suelta; esto es cumplirla.
+ *
+ * `OWNER_DM` y `SPECIFIC_PLAYERS` no están, y no es un olvido: los ve **alguien**, no la mesa. Una
+ * audiencia de registro solo distingue «todos» de «solo el DM», así que para esos dos lo correcto
+ * es lo cerrado — quien tiene derecho a más lo verá por la ficha, no por la línea de tiempo.
+ */
+export function loVeLaMesa(visibility: string): boolean {
+  return visibility === "PUBLIC" || visibility === "PLAYERS";
+}
+
 export type AudienciaDeJugadores = { tipo: "todos" } | { tipo: "algunos"; ids: Set<string> };
 
 export function audienciaDeJugadores(recurso: ViewableResource): AudienciaDeJugadores {

@@ -161,8 +161,11 @@ export function TiraDeIniciativa({
       {terminando && (
         <Dialog open onClose={() => setTerminando(false)} title="Terminar el combate">
           <p className="font-chrome text-chrome-sm text-text">
+            {/* **Con la cifra**, que es lo que faltaba: sin ella salía «queda con sus asalto»,
+                que en castellano no es una frase, y la rama singular/plural no servía de nada. */}
             El orden de turnos desaparece de la mesa. El encuentro no se borra: queda con sus{" "}
-            {encuentro.round === 1 ? "asalto" : "asaltos"} y su rastro en el registro.
+            {encuentro.round} {encuentro.round === 1 ? "asalto" : "asaltos"} y su rastro en el
+            registro.
           </p>
           <div className="mt-s4 flex justify-end gap-s3">
             <Button type="button" variant="ghost" onClick={() => setTerminando(false)}>

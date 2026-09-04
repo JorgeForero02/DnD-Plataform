@@ -314,8 +314,10 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(page.getByText("Nivel 4")).toBeVisible();
   await page.getByRole("link", { name: "Fuera del Abismo" }).click();
   // **El cajón no sobrevive a navegar, y eso es correcto** (B4): pulsar el personaje abrió su
-  // hoja, que es otra pantalla, así que el superpuesto se cerró al irse — igual que cualquier
-  // otro. Al volver hay que abrirlo otra vez, exactamente como en la mesa.
+  // hoja, que es otra pantalla, así que el superpuesto se cerró al irse. Al volver hay que
+  // abrirlo otra vez, exactamente como en la mesa. La miga lleva **a la campaña**, no a
+  // `?seccion=characters`, que desde B4 no es ninguna sección — llevaba a una pantalla en blanco
+  // y lo encontró la revisión de cierre de 2.5.6.
   await page.getByRole("button", { name: "Personajes" }).click();
   const updatedCharacterRow = page.getByRole("link", { name: /Kaelith/ });
   await expect(updatedCharacterRow).toBeVisible();

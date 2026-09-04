@@ -27,18 +27,25 @@ export function EmpezarCombate({
 }) {
   const [abierto, setAbierto] = useState(false);
 
+  // **Sin personajes no se esconde el botón ni se deshabilita con la explicación en un `title`.**
+  // Un botón deshabilitado no recibe foco, así que ese tooltip no lo alcanza nadie con teclado ni
+  // con lector de pantalla — es la misma razón por la que `04-convenciones.md` prohíbe deshabilitar
+  // el botón de guardar. Se dice la frase, y ya está: no hay nada que pulsar porque no hay nadie
+  // con quien combatir, y eso se lee.
+  if (personajes.length === 0) {
+    return (
+      <span className="font-chrome text-chrome-xs text-muted">
+        No hay ningún personaje en esta campaña con el que combatir.
+      </span>
+    );
+  }
+
   return (
     <>
       <Button
         type="button"
         variant="ghost"
         className="px-2 py-0.5 text-chrome-xs"
-        disabled={personajes.length === 0}
-        title={
-          personajes.length === 0
-            ? "No hay ningún personaje en esta campaña con el que combatir."
-            : undefined
-        }
         onClick={() => setAbierto(true)}
       >
         Entrar en combate

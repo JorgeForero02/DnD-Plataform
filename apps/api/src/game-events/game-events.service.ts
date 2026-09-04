@@ -50,6 +50,11 @@ export class GameEventsService {
     // es una línea de tiempo que no se puede pintar dentro de seis meses.
     const payload = gameEventPayloadSchema.parse(input.payload);
     const client = tx ?? this.prisma;
+    // Tarea 2.5.1 — promovido a columna: `payload.damageType` solo vive en `HP_CHANGED`, pero
+    // "¿de qué murió Elara?" es una pregunta que un campo dentro del `Json` no puede contestar
+    // sin leer la línea de tiempo entera. La regla del proyecto es justo esta: lo que hay que
+    // filtrar es una columna real.
+    const damageType = payload.type === "HP_CHANGED" ? (payload.damageType ?? null) : null;
     const evento = await client.gameEvent.create({
       data: {
         campaignId,
@@ -59,6 +64,7 @@ export class GameEventsService {
         subjectType: input.subjectType,
         subjectId: input.subjectId,
         payload,
+        damageType,
         visibility: input.visibility,
       },
     });

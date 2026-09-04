@@ -299,6 +299,11 @@ model GameEvent {
   subjectType String
   subjectId   String
   payload     Json
+  /// Tarea 2.5.1 — promovido de `payload` a columna porque hay que poder filtrar por él: "¿de
+  /// qué murió Elara?" es una pregunta que un campo dentro de un Json no puede contestar barato.
+  /// **Opcional a propósito**: todo el historial ya escrito no lo tiene, y un `HP_CHANGED` sin
+  /// tipo de daño sigue siendo válido (una curación, un chasquido de dedos del DM).
+  damageType  DamageType?
   visibility  Visibility    @default(PLAYERS)
   createdAt   DateTime      @default(now())
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -306,6 +311,7 @@ model GameEvent {
   @@index([campaignId, createdAt])
   @@index([sessionId, createdAt])
   @@index([subjectType, subjectId, createdAt])
+  @@index([subjectType, subjectId, damageType])
 }
 
 model Character {

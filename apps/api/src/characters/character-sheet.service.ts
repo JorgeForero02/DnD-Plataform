@@ -900,6 +900,7 @@ export class CharacterSheetService {
             delta: input.delta,
             from: before,
             to: after,
+            ...(input.damageType ? { damageType: input.damageType } : {}),
             ...(input.critical ? { critical: true } : {}),
             // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
             // error de la herramienta.

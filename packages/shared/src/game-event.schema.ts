@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { visibilitySchema } from "./visibility.schema";
+import { damageTypeSchema } from "./item.schema";
 
 // Tarea 2A.5 — el log de partida.
 //
@@ -136,6 +137,13 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     delta: z.number().int(),
     from: z.number().int(),
     to: z.number().int(),
+    /**
+     * Tarea 2.5.1. **Opcional**: los sucesos ya escritos no lo tienen, y una curación o un
+     * ajuste manual del DM no tienen tipo de daño que contar. Cuando está, es lo que responde
+     * *"¿de qué murió Elara?"* sin recalcular la línea de tiempo entera — por eso es columna y
+     * no solo un campo de aquí (`schema.prisma`, `docs/04-convenciones.md`).
+     */
+    damageType: damageTypeSchema.optional(),
     /** Si el golpe fue crítico: cuenta **dos** fracasos de muerte en vez de uno. */
     critical: z.boolean().optional(),
     /**

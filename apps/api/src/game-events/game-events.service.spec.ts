@@ -93,6 +93,47 @@ describe("GameEventsService", () => {
     );
   });
 
+  it("tarea 2.5.1 — record() promociona damageType de un HP_CHANGED a columna", async () => {
+    prisma.gameEvent.create.mockResolvedValue({ id: "e2" });
+    await service.record("u1", "c1", {
+      subjectType: "character",
+      subjectId: "ch1",
+      visibility: "PLAYERS",
+      payload: { type: "HP_CHANGED", delta: -7, from: 20, to: 13, damageType: "BLUDGEONING" },
+    });
+    expect(prisma.gameEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ damageType: "BLUDGEONING" }),
+      }),
+    );
+  });
+
+  it("tarea 2.5.1 — un HP_CHANGED sin damageType escribe la columna como null, no la deja fuera", async () => {
+    prisma.gameEvent.create.mockResolvedValue({ id: "e3" });
+    await service.record("u1", "c1", {
+      subjectType: "character",
+      subjectId: "ch1",
+      visibility: "PLAYERS",
+      payload: { type: "HP_CHANGED", delta: 5, from: 10, to: 15 },
+    });
+    expect(prisma.gameEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ damageType: null }) }),
+    );
+  });
+
+  it("tarea 2.5.1 — un tipo de evento que no es HP_CHANGED nunca escribe damageType", async () => {
+    prisma.gameEvent.create.mockResolvedValue({ id: "e4" });
+    await service.record("u1", "c1", {
+      subjectType: "session",
+      subjectId: "s1",
+      visibility: "PLAYERS",
+      payload: { type: "SESSION_STARTED", sessionTitle: "La cripta" },
+    });
+    expect(prisma.gameEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ damageType: null }) }),
+    );
+  });
+
   it("list() esconde al jugador los eventos DM_ONLY", async () => {
     prisma.gameEvent.findMany.mockResolvedValue([
       { id: "e1", visibility: "PLAYERS", actorUserId: "dm" },

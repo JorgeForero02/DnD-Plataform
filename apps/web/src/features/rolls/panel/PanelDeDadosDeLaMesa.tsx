@@ -1,0 +1,403 @@
+import { useEffect, useId, useRef, useState } from "react";
+import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
+import { ApiError } from "../../../lib/api";
+import { Button, Field, fieldControlClass } from "../../../ui";
+import { IconoCerrar } from "../../../ui/Iconos";
+import { DadoDibujado } from "../DadoDibujado";
+import { ResultadoDeTirada } from "../ResultadoDeTirada";
+import { TiradaACiegas } from "../TiradaACiegas";
+import { SelectorDeVentaja } from "../SelectorDeVentaja";
+import { SelectorDeAudiencia } from "../SelectorDeAudiencia";
+import { conDadoAnadido } from "../expresion";
+import { DADOS_DE_ATAJO } from "../vocabulario";
+import { useCreateRoll } from "../hooks";
+import { useGuiaDeCd } from "../../roll-requests/hooks";
+import { nombreDeCd } from "../../roll-requests/vocabulario";
+import { DadoTridimensional } from "./DadoTridimensional";
+
+// **El panel de dados, anclado abajo. No se abre: aparece porque hay que tirar.**
+//
+// La auditoría del 2026-09-04 lo puso con gravedad ALTA: *«no hay dados en la mesa —
+// `MesaDeSesion.tsx` no importa nada de `features/rolls`. Tirar exige irse a otra pestaña»*. En
+// una partida eso quiere decir perder de vista el registro, el elenco y la iniciativa para hacer
+// lo que más veces se hace en toda la sesión.
+//
+// La forma es la de `prototipo/src/features/PanelDeDados.tsx`: `fixed inset-x-0 bottom-0 z-30`,
+// centrado, con `anim-surge`. **`z-30` y no más**, y esto no es un número decorativo: los cajones
+// del estrato superpuesto van a `z-40` (`ui/Dialog.tsx`), así que el panel de dados **convive**
+// con ellos en vez de taparlos — se puede tener la hoja abierta y tirar.
+//
+// ## Los tres instantes, y por qué el momento no acaba cuando el dado se para
+//
+//  · **Antes** — qué vas a tirar, con ventaja o desventaja y a quién va dirigida. Se puede
+//    intervenir.
+//  · **Durante** — el cubo rueda y la traza se compone alrededor.
+//  · **Después** — el resultado con su desglose y su «De dónde sale», y la decisión de aceptarlo.
+//
+// ## La regla que no es estética
+//
+// **El servidor decide el número; el dado solo LO REPRESENTA.** Por eso el orden es: se pide la
+// tirada, llega el resultado, y *entonces* empieza la animación — el cubo rueda hacia un número
+// que ya existe. Si la animación fuera primero y el número después, el navegador estaría eligiendo
+// cuándo se sabe el resultado; si el cubo escogiera cara, estaría eligiendo el resultado.
+//
+// **Y aquí no se compone la expresión de una tirada de la hoja.** La ventaja se manda por nombre
+// (`mode`), nunca como `2d20kh1`: convertir el d20 es una regla del juego y vive en el servidor
+// (`apps/api/src/rolls/rolls.service.ts`). Un cliente que montara la expresión podría decir que
+// ataca con una daga y tirar 1d12.
+//
+// ## Dos diferencias con la maqueta, declaradas
+//
+//  1. **La maqueta enseña una casilla «A ciegas» solo para el DM; aquí va el
+//     `SelectorDeAudiencia` que ya existe.** La audiencia tiene **tres** valores en el contrato
+//     (`rollAudienceSchema`: la mesa entera, quien tira y el DM, o solo el DM), y una casilla los
+//     aplasta a dos: elegir «privada» dejaría de ser posible. Además `docs/04-convenciones.md`
+//     exige que una opción con significado se vea entera, con su frase — que es justo lo que ese
+//     control hace, y equivocarse en él enseña a la mesa algo que no debía ver.
+//  2. **La maqueta trae botones de intervención inventados** («Ventaja por flanqueo +3», «Ayuda de
+//     Mira +1d4», «Usar inspiración»). No se pintan: **no hay nada en el servidor detrás de
+//     ninguno de los tres**, y un botón que promete algo que el servidor no hace es exactamente lo
+//     que las convenciones prohíben. Lo que sí existe —ventaja, desventaja y audiencia— está.
+
+/** Los tres instantes. */
+type Momento = "antes" | "durante" | "despues";
+
+/** Lo que dura `@keyframes tumbar` en `ui/tokens.css`. Se cita, no se reinventa. */
+const DURACION_DEL_TUMBO = 1100;
+
+function mensajeDeError(error: unknown): string {
+  // `apiFetch` ya convierte el `{ code, message }` del servidor en una frase legible en español.
+  // Se enseña tal cual: un rechazo suyo dice más que un aviso genérico.
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "No se pudo tirar.";
+}
+
+/** Quien pide menos movimiento no recibe ninguno: tampoco la espera de 1,1 s. */
+function prefiereMenosMovimiento(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+export function PanelDeDadosDeLaMesa({
+  campaignId,
+  sessionId,
+  characterId,
+  expresionInicial = "1d20",
+  motivoInicial = "",
+  onCerrar,
+}: {
+  campaignId: string;
+  /** La sesión en curso, si la hay. Sin ella el servidor usa la que esté abierta. */
+  sessionId?: string;
+  /** De quién es la tirada. Sin él, es de la campaña. */
+  characterId?: string;
+  expresionInicial?: string;
+  motivoInicial?: string;
+  onCerrar: () => void;
+}) {
+  const idGuia = useId();
+  const [expresion, setExpresion] = useState(expresionInicial);
+  const [motivo, setMotivo] = useState(motivoInicial);
+  const [cd, setCd] = useState("");
+  const [modo, setModo] = useState<RollMode>("NORMAL");
+  const [audiencia, setAudiencia] = useState<RollAudience>("PUBLIC");
+  const [sinAnimacion, setSinAnimacion] = useState(false);
+  const [momento, setMomento] = useState<Momento>("antes");
+  const [rodando, setRodando] = useState(false);
+  const [resultado, setResultado] = useState<RollResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const tirar = useCreateRoll(campaignId);
+  const guia = useGuiaDeCd();
+  const temporizador = useRef<number | null>(null);
+
+  // El temporizador del tumbo se cancela al desmontar. Sin esto, cerrar el panel a mitad de la
+  // animación deja un `setState` programado sobre un componente que ya no existe.
+  useEffect(
+    () => () => {
+      if (temporizador.current !== null) window.clearTimeout(temporizador.current);
+    },
+    [],
+  );
+
+  /** Qué se estaba tirando, para el desglose. Sin motivo, «modificador», que es cierto siempre. */
+  const etiqueta = motivo.trim() || "modificador";
+
+  function alTirar() {
+    const expr = expresion.trim();
+    // **La CD viaja, y sin ella no hay veredicto.** El servidor deja `outcome` en `NO_DC` cuando
+    // no se le dice contra qué se tira (`roll.schema.ts`), así que omitirla no es «una tirada sin
+    // dificultad»: es una tirada de la que nadie puede decir si salió bien. Se manda solo cuando
+    // es un número de verdad — `Number("")` es `0`, y un `dc: 0` lo rechazaría el esquema.
+    const cdNumero = cd.trim() === "" ? undefined : Number(cd);
+    setError(null);
+    tirar.mutate(
+      {
+        expression: expr,
+        ...(motivo.trim() ? { label: motivo.trim() } : {}),
+        ...(cdNumero !== undefined && Number.isFinite(cdNumero) ? { dc: cdNumero } : {}),
+        ...(sessionId ? { sessionId } : {}),
+        ...(characterId ? { characterId } : {}),
+        audience: audiencia,
+        mode: modo,
+      },
+      {
+        // **Primero el número, después el dado.** El cubo empieza a rodar cuando el resultado ya
+        // está aquí: rueda hacia algo decidido.
+        onSuccess: (r) => {
+          setResultado(r);
+          setMomento("durante");
+          const corto = sinAnimacion || prefiereMenosMovimiento();
+          setRodando(!corto);
+          temporizador.current = window.setTimeout(
+            () => {
+              setRodando(false);
+              setMomento("despues");
+            },
+            corto ? 0 : DURACION_DEL_TUMBO,
+          );
+        },
+        onError: (e) => {
+          // El resultado anterior se retira: dejarlo puesto junto a un error es la forma más
+          // barata de que alguien cante un total que no salió de esta tirada.
+          setResultado(null);
+          setMomento("antes");
+          setError(mensajeDeError(e));
+        },
+      },
+    );
+  }
+
+  const revelado = resultado?.revealed === true ? resultado : null;
+  const tono = !revelado
+    ? "copper"
+    : revelado.outcome === "SUCCESS"
+      ? "accent"
+      : revelado.outcome === "FAILURE"
+        ? "danger"
+        : "copper";
+
+  return (
+    <div
+      // `z-30`: por debajo de los cajones (`z-40`), para convivir con ellos y no taparlos.
+      className="anim-surge fixed inset-x-0 bottom-0 z-30 flex justify-center px-s4 pb-s4"
+    >
+      <section
+        aria-label="Tirada"
+        className="w-full max-w-[46rem] rounded-radius-md border border-copper bg-surface px-s5 py-s4 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-s3">
+          <div className="min-w-0">
+            <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
+              La mesa tira
+            </p>
+            <h2 className="font-title text-chrome-lg text-text">
+              {motivo.trim() || "Una tirada"}{" "}
+              <span className="font-data text-chrome-sm text-muted">{expresion.trim()}</span>
+            </h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-s3">
+            <label className="flex items-center gap-s1 font-chrome text-chrome-xs text-muted">
+              <input
+                type="checkbox"
+                checked={sinAnimacion}
+                onChange={(e) => setSinAnimacion(e.target.checked)}
+                className="accent-[var(--accent)]"
+              />
+              Sin animación
+            </label>
+            <button
+              type="button"
+              onClick={onCerrar}
+              aria-label="Descartar la tirada"
+              className="rounded-radius-sm p-s1 text-muted transition-colors hover:text-text"
+            >
+              <IconoCerrar className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {momento === "antes" && (
+          <div className="mt-s3 flex flex-col gap-s3">
+            <Field
+              label="Qué se tira"
+              hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
+              error={error ?? undefined}
+            >
+              <input
+                type="text"
+                value={expresion}
+                onChange={(e) => setExpresion(e.target.value)}
+                spellCheck={false}
+                autoComplete="off"
+                className={`${fieldControlClass} font-data`}
+              />
+            </Field>
+
+            <div>
+              <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                Atajos
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {DADOS_DE_ATAJO.map((caras) => (
+                  <Button
+                    key={caras}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
+                    aria-label={`Añadir un d${caras}`}
+                  >
+                    <DadoDibujado />
+                    <span className="font-data">d{caras}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-s3 sm:grid-cols-2">
+              <SelectorDeVentaja
+                value={modo}
+                onChange={setModo}
+                etiqueta="esta tirada"
+                disabled={tirar.isPending}
+              />
+              <SelectorDeAudiencia
+                value={audiencia}
+                onChange={setAudiencia}
+                disabled={tirar.isPending}
+              />
+            </div>
+
+            <div className="grid gap-s3 sm:grid-cols-[2fr_1fr]">
+              <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">
+                <input
+                  type="text"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  maxLength={120}
+                  className={fieldControlClass}
+                />
+              </Field>
+              <Field
+                label="CD (opcional)"
+                hint="Sin ella el servidor no dicta éxito ni fallo: solo da el total."
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={cd}
+                  onChange={(e) => setCd(e.target.value)}
+                  aria-describedby={idGuia}
+                  className={`${fieldControlClass} font-data`}
+                />
+              </Field>
+            </div>
+
+            {/* **La guía del SRD es una ayuda, no una jaula**, y es la misma que ya usa
+                `PedirTirada`: la tabla «Typical Difficulty Classes» del SRD 5.1 da seis
+                escalones, pero el propio manual dice que *the DM sets the DC*. Por eso las seis
+                filas **rellenan** el campo en vez de sustituirlo — se puede escribir encima
+                cualquier número, incluido uno que no esté en la tabla. */}
+            <div id={idGuia}>
+              <p className="mb-1 font-chrome text-chrome-xs text-muted">
+                Guía del SRD; puedes escribir cualquier número.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(guia.data ?? []).map((fila) => (
+                  <Button
+                    key={fila.key}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setCd(String(fila.dc))}
+                    aria-label={`${nombreDeCd(fila.key)}: CD ${fila.dc}`}
+                  >
+                    <span>{nombreDeCd(fila.key)}</span>
+                    <span className="font-data text-muted">{fila.dc}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-s2">
+              <Button type="button" variant="primary" onClick={alTirar} disabled={tirar.isPending}>
+                <DadoDibujado />
+                {tirar.isPending ? "Tirando…" : "Tirar el dado"}
+              </Button>
+              <p className="font-chrome text-chrome-xs leading-snug text-muted">
+                El número lo decide el servidor. El dado solo lo representa.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {momento !== "antes" && resultado && (
+          <div className="mt-s3 flex items-start gap-s5">
+            {/* **El cubo enseña el TOTAL, no la cara del dado. Es una decisión, no un descuido.**
+                Con `2d6+3` un cubo de seis caras acaba enseñando «14», que ninguna cara física
+                podría dar. Se elige así porque **el total es lo que se canta en la mesa** y es el
+                número que el DM compara con la CD; los dados que cayeron no se pierden — están
+                dos dedos a la derecha, en el desglose de `ResultadoDeTirada`, con el descartado
+                tachado y a la vista. La alternativa —enseñar `kept[0]`— pondría en grande un
+                número que no decide nada y obligaría a buscar el total en letra pequeña.
+                La maqueta hace lo mismo (`PanelDeDados.tsx`: `valor={total}`). */}
+            <DadoTridimensional
+              valor={revelado ? revelado.total : 0}
+              rodando={rodando}
+              sinAnimacion={sinAnimacion}
+              oculto={!revelado}
+              tono={rodando ? "copper" : tono}
+            />
+            {/* La traza se compone alrededor del dado mientras cae. */}
+            <div className="min-w-0 flex-1">
+              {revelado ? (
+                <>
+                  <p className="font-data text-chrome-2xl text-text">{revelado.total}</p>
+                  {/* «De dónde sale»: el rótulo de la maqueta sobre el desglose que ya existía.
+                      El total grande es lo que se canta en la mesa; esto es de dónde salió, y
+                      nunca se enseña un número solo. */}
+                  <p className="mt-s1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
+                    De dónde sale
+                  </p>
+                  <ResultadoDeTirada resultado={revelado} etiqueta={etiqueta} />
+                </>
+              ) : (
+                <TiradaACiegas etiqueta={etiqueta} expresion={resultado.expression} />
+              )}
+            </div>
+          </div>
+        )}
+
+        {momento === "despues" && (
+          <div className="mt-s3 flex flex-wrap items-center justify-between gap-s3 border-t border-muted pt-s3">
+            <p className="min-w-0 flex-1 font-chrome text-chrome-xs leading-snug text-muted">
+              {revelado
+                ? "El sistema propone; el DM confirma el desenlace."
+                : "Espera a que el DM narre lo que pasa."}
+            </p>
+            <div className="flex gap-s2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setMomento("antes");
+                  setResultado(null);
+                  setError(null);
+                }}
+              >
+                Tirar otra
+              </Button>
+              <Button type="button" variant="primary" onClick={onCerrar}>
+                Aceptar el resultado
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

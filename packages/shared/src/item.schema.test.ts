@@ -201,4 +201,18 @@ describe("tirada de ataque", () => {
   it("rechaza una mitad que no existe", () => {
     expect(rollAttackSchema.safeParse({ part: "BOTH" }).success).toBe(false);
   });
+
+  // Tarea 2.5.4 (ficha C2.5-2) — `attackRollEventId`: la duplicación de dados atada a una
+  // tirada real, no al `critical` que declara el cuerpo.
+  it("acepta el cuerpo de siempre, sin attackRollEventId", () => {
+    const r = rollAttackSchema.safeParse({ part: "DAMAGE", critical: true });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.attackRollEventId).toBeUndefined();
+  });
+
+  it("acepta un attackRollEventId junto al resto del cuerpo", () => {
+    const r = rollAttackSchema.safeParse({ part: "DAMAGE", attackRollEventId: "ev-atk-1" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.attackRollEventId).toBe("ev-atk-1");
+  });
 });

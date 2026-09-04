@@ -58,6 +58,10 @@ import {
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import { maxHpConAgotamiento, nivelDeAgotamiento } from "../character-state/common/agotamiento";
 import { applyDamageModifiers } from "../character-state/damage/apply-damage-modifiers";
+import {
+  estaConcentrado,
+  concentrationSaveDc,
+} from "../character-state/concentration/concentration";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -893,6 +897,29 @@ export class CharacterSheetService {
       // queda — aquello es explicable con lo que el jugador ya ve; esto publicaba un número
       // secreto.
       let deltaRegistrado = input.delta;
+      // Tarea 2.5.4. **De qué tirada sale este daño**, y comprobada, no solo declarada: un
+      // `rollEventId` inventado (o de otra campaña) escribiría una causa falsa en el registro,
+      // que es justo lo que esta tarea existe para evitar. `undefined` cuando no se manda.
+      let concentrationSave: { requestId: string; dc: number } | undefined;
+      if (input.rollEventId) {
+        const tiradaCitada = await tx.gameEvent.findFirst({
+          // **Y tiene que ser una tirada, no cualquier suceso de la campaña.** La primera versión
+          // solo comprobaba `id` + `campaignId`, así que el id de un comentario, de una condición
+          // aplicada o de un `ENTITY_REVEALED` pasaba el filtro y quedaba escrito en el registro
+          // como «de qué tirada salió este daño». Eso es exactamente la causa falsa que la tarea
+          // existe para impedir, solo que más difícil de detectar que un id inventado, porque el
+          // id sí existe. Lo encontró la revisión de cierre.
+          where: {
+            id: input.rollEventId,
+            campaignId,
+            type: { in: ["ABILITY_ROLL", "DEATH_SAVE"] },
+          },
+          select: { id: true },
+        });
+        if (!tiradaCitada) {
+          throw new BadRequestException("Esa tirada no existe en esta campaña.");
+        }
+      }
 
       if (input.delta < 0) {
         // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
@@ -932,7 +959,65 @@ export class CharacterSheetService {
           failures = Math.min(3, failures + (input.critical ? 2 : 1));
         }
 
-        after = clamp(before - efectivo, 0, maxHp);
+        // **La salvación de concentración** (hueco M17). *«Whenever you take damage while you
+        // are concentrating on a spell, you must make a Constitution saving throw to maintain
+        // your concentration. The DC equals 10 or half the damage you take, whichever number is
+        // higher.»* / *«If you take damage from multiple sources ... you make a separate saving
+        // throw for each source of damage»* (SRD 5.1, "Casting a Spell" — inglés, verificado
+        // contra dos fuentes que citan el texto CC-BY original). **Basta con pedirla**: se crea
+        // la petición de tirada de siempre (2C.5) y el sistema no decide si se pierde — eso lo
+        // resuelve quien la responde. Una por golpe, nunca deduplicada: es literalmente lo que
+        // pide "por cada fuente de daño".
+        //
+        // **Con el daño TOMADO, no con el que atravesó los PG temporales**, y las dos cosas que
+        // eso cambia las encontró la revisión de cierre.
+        //
+        //  1. **Los PG temporales no eximen de la salvación.** La regla dice *«whenever you take
+        //     damage»*, y el propio SRD describe los temporales como algo que se gasta *cuando
+        //     tomas daño* («when you have temporary hit points and take damage»): absorben el
+        //     golpe, no lo impiden. Se pedía con `efectivo`, así que un mago con 5 temporales que
+        //     encajaba 5 no tiraba nada — y con 12 tiraba contra CD 10 en vez de CD 10 (aquí
+        //     coinciden) pero con 30 tiraba contra CD 9→10 en vez de CD 15. La CD sale del mismo
+        //     número: *«half the damage you take»*.
+        //  2. **A 0 PG no se pide, porque ya no hay nada que mantener.** *«You lose concentration
+        //     on a spell if you are incapacitated or if you die»*, y quedar inconsciente es estar
+        //     incapacitado: el que cae a 0 pierde la concentración sin tirar, y el que ya estaba a
+        //     0 no la tenía. Pedir la salvación ahí es pedirle al jugador que tire para conservar
+        //     algo que la regla ya le quitó.
+        //
+        // `massive` queda fuera por lo mismo, y ahora es redundante —una muerte masiva deja en 0—
+        // pero se conserva explícito: dice lo que quiere decir sin depender de la aritmética.
+        const resultante = clamp(before - efectivo, 0, maxHp);
+        if (danio > 0 && !massive && before > 0 && resultante > 0) {
+          const condiciones = await tx.characterCondition.findMany({
+            where: { characterId },
+            select: { key: true, expiresAtClock: true },
+          });
+          const campanaActual = await tx.campaign.findUniqueOrThrow({
+            where: { id: campaignId },
+            select: { clockSeconds: true },
+          });
+          if (estaConcentrado(condiciones, campanaActual.clockSeconds)) {
+            const dc = concentrationSaveDc(danio);
+            const peticion = await tx.rollRequest.create({
+              data: {
+                campaignId,
+                characterId,
+                requestedById: userId,
+                key: "save.con",
+                label: `Salvación de concentración (CD ${dc})`,
+                dc,
+                mode: "NORMAL",
+                // Misma regla que el resto del servicio: la audiencia sale de la visibilidad del
+                // personaje, no `PUBLIC` fija.
+                audience: ES_VISIBLE_A_LA_MESA.has(character.visibility) ? "PUBLIC" : "DM_PRIVATE",
+              },
+            });
+            concentrationSave = { requestId: peticion.id, dc };
+          }
+        }
+
+        after = resultante;
       } else {
         after = clamp(before + input.delta, 0, maxHp);
         // **Recuperar un solo PG estando a 0 borra los dos contadores.** No es una cortesía: el
@@ -979,6 +1064,8 @@ export class CharacterSheetService {
             // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
             // error de la herramienta.
             ...(massive ? { massive: true } : {}),
+            // Tarea 2.5.4 — de qué tirada salió, ya comprobada arriba contra la base.
+            ...(input.rollEventId ? { rollEventId: input.rollEventId } : {}),
             reason: input.reason,
           },
         },
@@ -988,7 +1075,11 @@ export class CharacterSheetService {
       const respuesta = await this.buildResponse(userId, actualizado);
       // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
       // sería un número sin origen, y esta tarea existe justo para lo contrario.
-      return damageTrace ? { ...respuesta, damageTrace } : respuesta;
+      return {
+        ...respuesta,
+        ...(damageTrace ? { damageTrace } : {}),
+        ...(concentrationSave ? { concentrationSave } : {}),
+      };
     });
   }
 
@@ -1222,16 +1313,69 @@ export class CharacterSheetService {
     }
 
     const dano = input.versatile && ataque.versatileDamage ? ataque.versatileDamage : ataque.damage;
-    const dados = input.critical ? duplicarDados(dano.dice) : dano.dice;
+    const esCritico = await this.esCriticoDesdeLaTirada(
+      campaignId,
+      characterId,
+      ataque.name,
+      input,
+    );
+    const dados = esCritico ? duplicarDados(dano.dice) : dano.dice;
     return this.rolls.roll(userId, campaignId, {
       expression: conSigno(dados, dano.modifier),
-      label: `Daño de ${ataque.name}${input.critical ? " (crítico)" : ""}`,
+      label: `Daño de ${ataque.name}${esCritico ? " (crítico)" : ""}`,
       characterId,
       // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el dado
       // de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
       mode: "NORMAL",
       audience: input.audience ?? "PUBLIC",
     });
+  }
+
+  /**
+   * Tarea 2.5.4, ficha C2.5-2. **Si el golpe fue crítico, verificado contra la tirada real.**
+   *
+   * Hasta hoy `input.critical` viajaba en el cuerpo de la petición sin atarse a ningún 20 de
+   * verdad: cualquiera podía pedir el daño duplicado sin haber sacado un crítico. Con
+   * `attackRollEventId` —el `eventId` que `resolveAttack` (2.5.3) ya devuelve en `roll.eventId`—
+   * se lee el `natural` que quedó escrito en el suceso de esa tirada, del MISMO personaje y esta
+   * MISMA campaña, y se ignora lo que declare `critical`.
+   *
+   * **Sin `attackRollEventId`, se mantiene `input.critical` como hasta ahora** (ficha C2.5-2,
+   * `docs/06-pendientes.md`): quitarlo de raíz rompería al carril que está rehaciendo `apps/web`
+   * y todavía puede llamar a este endpoint sin el campo nuevo — la frontera de esta tarea es
+   * solo-añadir, y un cambio de comportamiento silencioso ahí sería peor que el hueco que cierra
+   * a medias.
+   */
+  private async esCriticoDesdeLaTirada(
+    campaignId: string,
+    characterId: string,
+    nombreDelAtaque: string,
+    input: RollAttackInput,
+  ): Promise<boolean> {
+    if (!input.attackRollEventId) return input.critical;
+    const evento = await this.prisma.gameEvent.findFirst({
+      where: {
+        id: input.attackRollEventId,
+        campaignId,
+        subjectType: "character",
+        subjectId: characterId,
+        // **Por la columna, no por dentro del `payload`.** `type` es una columna real e indexada
+        // desde el principio; leerla del Json obligaba a traerse el `payload` entero y a filtrar
+        // en memoria lo que la base filtra sola. Lo señaló la revisión de cierre.
+        type: "ABILITY_ROLL",
+      },
+      select: { payload: true },
+    });
+    if (!evento) {
+      throw new BadRequestException("Esa tirada de ataque no existe en esta campaña.");
+    }
+    // **Y que sea la tirada de ESTE ataque, no un 20 cualquiera.** La primera versión aceptaba
+    // cualquier `ABILITY_ROLL` del personaje con un 20 natural: un 20 en una prueba de Sigilo
+    // valía como crítico de la cimitarra. `RollsService` escribe el rótulo en `reason`, y el que
+    // pone `rollAttack` es «Ataque con <nombre>», así que se compara con el del ataque que se
+    // está cobrando. Es la revisión de cierre otra vez.
+    const payload = evento.payload as { natural?: string; reason?: string };
+    return payload.reason === `Ataque con ${nombreDelAtaque}` && payload.natural === "TWENTY";
   }
 
   /**

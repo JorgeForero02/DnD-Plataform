@@ -22,3 +22,23 @@ describe("changeHpSchema — damageType", () => {
     expect(r.success).toBe(false);
   });
 });
+
+// Tarea 2.5.4 — `rollEventId`: de qué tirada sale el daño.
+describe("changeHpSchema — rollEventId", () => {
+  it("acepta el cuerpo de siempre, sin rollEventId", () => {
+    const r = changeHpSchema.safeParse({ delta: -5 });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.rollEventId).toBeUndefined();
+  });
+
+  it("acepta un rollEventId junto al delta y al damageType", () => {
+    const r = changeHpSchema.safeParse({ delta: -12, damageType: "FIRE", rollEventId: "ev1" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.rollEventId).toBe("ev1");
+  });
+
+  it("rechaza un rollEventId vacío: una cadena vacía no es un identificador", () => {
+    const r = changeHpSchema.safeParse({ delta: -5, rollEventId: "" });
+    expect(r.success).toBe(false);
+  });
+});

@@ -28,6 +28,47 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El daño, con su traza, y la revisión que lo corrigió (2.5.4) (2026-09-04)
+
+`changeHp` acepta `rollEventId` opcional (`@dnd/shared`, solo-añadido), comprobado contra la base
+—inventado, de otra campaña, **o que no sea una tirada**: 400— y guardado en `HP_CHANGED`: «¿de
+qué murió Elara?» (M15) responde tipo **y** tirada. Y pide **la salvación de concentración**: la
+petición de siempre (2C.5, `RollRequest`) cuando un concentrado (clave libre `concentrating-*`)
+toma daño, CD `max(10, floor(daño/2))`, **una por golpe sin deduplicar** — *«a separate saving
+throw for each source of damage»*.
+
+**La revisión de cierre devolvió tres bloqueantes, y la regla se verificó en la fuente antes de
+tocar nada** (SRD 5.1, "Casting a Spell" / "Concentration", edición inglesa).
+
+1. **El e2e de la tarea estaba ROJO y no se había ejecutado nunca**, mientras el historial y
+   `08-pruebas.md` lo presentaban como evidencia. Elara era nivel 1 con 12 PG máximos, así que los
+   25 de daño del ejemplo de cierre **del propio spec** la mataban de golpe —muerte masiva— y no
+   se pedía ninguna salvación: el ejemplo era irrealizable a nivel 1. Elara pasa a nivel 8 y la
+   prueba se ejecutó, 5/5.
+2. **Los PG temporales eximían de la salvación, y no deben.** Se pedía —y se calculaba la CD— con
+   el daño *posterior* a los temporales, así que un mago con 5 temporales que encajaba 5 no tiraba
+   nada. *«Whenever you take damage»* y *«half the damage you take»*, y el SRD describe los
+   temporales como algo que se gasta **al tomar** daño: absorben el golpe, no lo impiden. Había una
+   prueba que afirmaba lo contrario, y pasaba.
+3. **A 0 PG, en cambio, NO se pide**: *«You lose concentration on a spell if you are incapacitated
+   or if you die»*, e inconsciente es incapacitado. Se pedía tirar por algo que la regla ya quita.
+
+**Y tres más.** El crítico aceptaba cualquier `ABILITY_ROLL` del personaje con un 20 natural, así
+que **un 20 en una prueba de Sigilo cobraba el daño duplicado de la espada** (ahora se compara el
+rótulo del ataque); `payload.type` se leía de dentro del `Json` teniendo `type` como columna real e
+indexada; y el `rollEventId` del daño no se comprobaba que **fuera** una tirada.
+
+**M17 queda REABIERTA.** El servidor está hecho, pero `grep -rn "concentrat" apps/web` no devuelve
+nada: el selector de condiciones solo ofrece las quince claves del SRD, así que ninguna pantalla
+puede marcar a nadie como concentrado y la regla no se dispara en una mesa real. Mismo patrón que
+`ENTITY_REVEALED` (ficha P1). **C2.5-2** anota además que el `eventId` de un ataque **se puede
+reutilizar**: nada marca una tirada como ya cobrada.
+
+**Evidencia.** 104 unitarias del servicio en verde; e2e `dano-con-su-traza.e2e-spec.ts`
+**ejecutado**, 5/5. **Revertir:** `git revert -m 1` de la fusión; solo-añadido en `@dnd/shared`.
+
+---
+
 ## El mundo es un destino, y la sesión se empieza en la mesa (B4) (2026-09-04)
 
 **La navegación de una campaña baja de diecinueve destinos a seis.** Las siete pestañas de tipo

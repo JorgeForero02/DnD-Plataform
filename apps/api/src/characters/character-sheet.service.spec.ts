@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
 import type { Roller } from "../dice/dice";
-import { deriveCharacter } from "../rules/catalog";
+import { deriveCharacter, findSrdItem } from "../rules/catalog";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -88,6 +88,11 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     // parte los PG máximos. Reloj a cero por defecto: nada ha vencido todavía.
     campaign: { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }) },
     user: { findUnique: jest.fn() },
+    // Tarea 2.5.4: `rollAttack` lee el `natural` de una tirada de ataque real fuera de
+    // transacción (`esCriticoDesdeLaTirada`); por defecto no existe, así que el camino sin
+    // `attackRollEventId` (el de siempre) es el que se ejercita salvo que la prueba diga otra
+    // cosa.
+    gameEvent: { findFirst: jest.fn().mockResolvedValue(null) },
     transaction: jest.fn(),
   };
   const membership = {
@@ -131,6 +136,11 @@ function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) 
     campaign: {
       findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }),
     },
+    // Tarea 2.5.4: el `rollEventId` que llega en `changeHp` se comprueba contra la base antes de
+    // escribirlo; por defecto "existe", que es el camino de siempre sin el campo nuevo.
+    gameEvent: { findFirst: jest.fn().mockResolvedValue({ id: "ev1" }) },
+    // Tarea 2.5.4: la salvación de concentración se pide creando la fila de siempre (2C.5).
+    rollRequest: { create: jest.fn().mockResolvedValue({ id: "req1" }) },
   };
   prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   return tx;
@@ -889,6 +899,11 @@ describe("2B — el equipo equipado cambia los números de la hoja, con su traza
 });
 
 describe("2B/2C — tirar con un arma: la expresión la compone el servidor", () => {
+  // **El rótulo que `rollAttack` escribe en la tirada de ataque**, y del que ahora depende el
+  // crítico. Se saca del catálogo, no se teclea: si el nombre del arma cambia en el SRD, la
+  // prueba se mueve con él en vez de quedarse verde comparando dos cadenas obsoletas.
+  const RAZON_DEL_ATAQUE = `Ataque con ${findSrdItem("long-sword")!.name}`;
+
   function conEspada() {
     const montado = montar();
     montado.prisma.character.findFirst.mockResolvedValue(personaje());
@@ -949,6 +964,118 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       "c1",
       expect.objectContaining({ expression: "2d8+2" }),
     );
+  });
+
+  // Tarea 2.5.4, ficha C2.5-2 — el crítico atado al `eventId` de una tirada real.
+  it("con attackRollEventId de una tirada con natural TWENTY, duplica los dados aunque el cuerpo diga critical: false", async () => {
+    const { service, rolls, prisma } = conEspada();
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      payload: { natural: "TWENTY", reason: RAZON_DEL_ATAQUE },
+    });
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "NORMAL",
+      versatile: false,
+      critical: false,
+      attackRollEventId: "ev-atk-20",
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d8+2" }),
+    );
+    expect(prisma.gameEvent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: "ev-atk-20",
+          campaignId: "c1",
+          subjectType: "character",
+          subjectId: "ch1",
+          // Por la columna, no por dentro del `payload`: es una columna real e indexada.
+          type: "ABILITY_ROLL",
+        },
+      }),
+    );
+  });
+
+  it("con attackRollEventId de una tirada SIN natural TWENTY, no duplica aunque el cuerpo diga critical: true", async () => {
+    // Es exactamente el caso que la ficha C2.5-2 cierra: el cuerpo ya no manda.
+    const { service, rolls, prisma } = conEspada();
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      payload: { natural: "NONE", reason: RAZON_DEL_ATAQUE },
+    });
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "NORMAL",
+      versatile: false,
+      critical: true,
+      attackRollEventId: "ev-atk-11",
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d8+2" }),
+    );
+  });
+
+  it("un 20 natural de OTRA tirada no vale como crítico de este ataque", async () => {
+    // La revisión de cierre: el filtro aceptaba cualquier `ABILITY_ROLL` del personaje con un 20
+    // natural, así que un 20 en una prueba de Sigilo cobraba el daño duplicado de la espada.
+    const { service, rolls, prisma } = conEspada();
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      payload: { natural: "TWENTY", reason: "Sigilo" },
+    });
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "NORMAL",
+      versatile: false,
+      critical: true,
+      attackRollEventId: "ev-sigilo-20",
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d8+2" }),
+    );
+  });
+
+  it("sin attackRollEventId, sigue mandando el critical del cuerpo — el camino de siempre no cambia", async () => {
+    const { service, rolls, prisma } = conEspada();
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      mode: "NORMAL",
+      versatile: false,
+      critical: true,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d8+2" }),
+    );
+    expect(prisma.gameEvent.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("un attackRollEventId que no existe en esta campaña es 400, no una duplicación silenciosa", async () => {
+    const { service, prisma } = conEspada();
+    prisma.gameEvent.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        part: "DAMAGE",
+        mode: "NORMAL",
+        versatile: false,
+        critical: false,
+        attackRollEventId: "ev-ajeno",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("el daño nunca hereda la ventaja: la ventaja es del d20", async () => {
@@ -1315,6 +1442,233 @@ describe("tarea 2.5.1 — un damageType en changeHp reduce el daño por resisten
     expect(registrado.damageType).toBeUndefined();
     // El delta positivo se registra tal cual: aquí no hay nada que reducir.
     expect(registrado.delta).toBe(6);
+  });
+});
+
+describe("tarea 2.5.4 — el daño cuelga de la tirada que lo causó, con rollEventId", () => {
+  it("sin rollEventId, el comportamiento de siempre no cambia: ni se consulta la base", async () => {
+    const { service, prisma, characters, events } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -5 });
+
+    expect(tx.gameEvent.findFirst).not.toHaveBeenCalled();
+    const registrado = events.record.mock.calls.at(-1)![2].payload;
+    expect(registrado.rollEventId).toBeUndefined();
+  });
+
+  it("con un rollEventId de una tirada real, queda escrito en el suceso", async () => {
+    const { service, prisma, characters, events } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.gameEvent.findFirst.mockResolvedValue({ id: "roll-dmg-1" });
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -5, rollEventId: "roll-dmg-1" });
+
+    expect(tx.gameEvent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // **Y que sea una tirada.** Sin el filtro por tipo, el id de un comentario o de una
+        // condición aplicada pasaba y quedaba escrito como «de qué tirada salió este daño».
+        where: {
+          id: "roll-dmg-1",
+          campaignId: "c1",
+          type: { in: ["ABILITY_ROLL", "DEATH_SAVE"] },
+        },
+      }),
+    );
+    const registrado = events.record.mock.calls.at(-1)![2].payload;
+    expect(registrado.rollEventId).toBe("roll-dmg-1");
+  });
+
+  it("un rollEventId que no existe en esta campaña es 400, no una causa inventada en el registro", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.gameEvent.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.changeHp("dm1", "c1", "ch1", { delta: -5, rollEventId: "ev-de-otra-campana" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe("tarea 2.5.4 — la salvación de concentración se pide, no se decide (hueco M17)", () => {
+  it("sin ninguna condición de concentración, no se pide nada", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([]);
+
+    const res = await service.changeHp("dm1", "c1", "ch1", { delta: -25 });
+
+    expect(tx.rollRequest.create).not.toHaveBeenCalled();
+    expect(res).not.toHaveProperty("concentrationSave");
+  });
+
+  it("concentrado y con daño real, se pide la salvación con CD 10 o la mitad del daño, lo que sea mayor", async () => {
+    const { service, prisma, characters } = montar();
+    // **40 PG, y el número importa.** La ficha de ejemplo es un enano nivel 1 con 13 PG máximos,
+    // así que 25 de daño la dejaba en 0 — y desde el arreglo de la revisión, caer a 0 ya no pide
+    // salvación (inconsciente es incapacitado, y la concentración se pierde sin tirar). Con 40 en
+    // curso el golpe la deja viva y el caso que la prueba quiere medir —la CD que sale del daño—
+    // es alcanzable. Es el mismo defecto que dejaba en rojo el e2e de esta tarea.
+    const fila = personaje({ currentHp: 40, visibility: "PLAYERS" });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    const res = await service.changeHp("dm1", "c1", "ch1", { delta: -25 });
+
+    // 25 de daño sin resistencia: la mitad (12) ya supera el suelo de 10.
+    expect(tx.rollRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          characterId: "ch1",
+          key: "save.con",
+          dc: 12,
+          mode: "NORMAL",
+        }),
+      }),
+    );
+    expect((res as { concentrationSave: { dc: number } }).concentrationSave.dc).toBe(12);
+  });
+
+  it("con poco daño, la CD nunca baja de 10, aunque la mitad sea menor", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -4 });
+
+    expect(tx.rollRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ dc: 10 }) }),
+    );
+  });
+
+  it("una condición de concentración ya VENCIDA no pide nada", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: 100 },
+    ]);
+    tx.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 500 });
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -25 });
+
+    expect(tx.rollRequest.create).not.toHaveBeenCalled();
+  });
+
+  // **Esta prueba afirmaba justo lo contrario de la regla, y pasaba.** Decía «si los PG
+  // temporales absorben TODO el golpe, no se pide nada: no hubo daño que tomar». Lo hay: el SRD
+  // describe los temporales como algo que se gasta *cuando tomas daño* —«when you have temporary
+  // hit points and take damage»—, y la salvación se debe *«whenever you take damage»*. Absorben
+  // el golpe; no lo impiden. Lo encontró la revisión de cierre y se comprobó en la fuente.
+  it("los PG temporales NO eximen de la salvación: el daño se tomó igual", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 20, tempHp: 30 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -30 });
+
+    expect(tx.rollRequest.create).toHaveBeenCalledTimes(1);
+    // **Y la CD sale del daño TOMADO, no del que atravesó los temporales.** 30 de daño → CD 15.
+    // Con el número de antes (`efectivo`, aquí 0) no habría ni petición; con 22 absorbidos de 30
+    // la CD seguiría siendo 15 y no 10. El número es impar por la mitad para que el redondeo
+    // hacia abajo tenga algo que decir en otras pruebas; aquí lo que distingue es el 15.
+    expect(tx.rollRequest.create.mock.calls[0][0].data.dc).toBe(15);
+  });
+
+  it("caer a 0 PG no pide salvación: quedar inconsciente ya te quita la concentración", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 8 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    // Ocho de daño con ocho PG: cae a 0 sin muerte masiva. *«You lose concentration on a spell if
+    // you are incapacitated or if you die»*, e inconsciente es incapacitado — pedir la salvación
+    // sería pedirle que tire por algo que la regla ya le quitó.
+    await service.changeHp("dm1", "c1", "ch1", { delta: -8 });
+
+    expect(tx.rollRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("golpear a quien YA está a 0 tampoco pide nada", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 0 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -6 });
+
+    expect(tx.rollRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("una curación no pide ninguna salvación de concentración", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 20 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: +5 });
+
+    expect(tx.rollRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("una muerte masiva no pide salvación: un cadáver no mantiene nada", async () => {
+    const { service, prisma, characters } = montar();
+    // maxHp de la ficha de ejemplo es MAX_HP; un sobrante que lo iguale o supere mata en el
+    // acto. Ya en pie, con el daño entero cayendo de golpe.
+    const fila = personaje({ currentHp: MAX_HP });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -(MAX_HP * 2) });
+
+    expect(tx.rollRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("dos fuentes de daño en el mismo golpe piden DOS salvaciones, no una: nunca se deduplican", async () => {
+    const { service, prisma, characters } = montar();
+    const fila = personaje({ currentHp: 40 });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findMany.mockResolvedValue([
+      { key: "concentrating-on-bless", expiresAtClock: null },
+    ]);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -6 });
+    await service.changeHp("dm1", "c1", "ch1", { delta: -6 });
+
+    expect(tx.rollRequest.create).toHaveBeenCalledTimes(2);
   });
 });
 

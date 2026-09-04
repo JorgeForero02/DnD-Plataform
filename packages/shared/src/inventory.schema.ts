@@ -125,8 +125,20 @@ export const rollAttackSchema = z.object({
   mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
   /** A dos manos, en un arma versátil: cambia el dado de daño, no el de ataque. */
   versatile: z.boolean().default(false),
-  /** Daño crítico: **se duplican los dados, nunca el modificador** (SRD 5.1). */
+  /**
+   * Daño crítico: **se duplican los dados, nunca el modificador** (SRD 5.1). **Sigue siendo lo
+   * que decide la duplicación cuando NO se manda `attackRollEventId`** — es la ficha C2.5-2,
+   * abierta a propósito hasta que el carril que rehace `apps/web` mande el `eventId` de verdad
+   * (`docs/06-pendientes.md`). Con `attackRollEventId`, este campo se ignora.
+   */
   critical: z.boolean().default(false),
+  /**
+   * Tarea 2.5.4 (ficha C2.5-2 del spec de 2.5.3, cerrada aquí). El `eventId` de la tirada de
+   * ATAQUE que sacó el crítico —`resolveAttack` ya lo devuelve en `roll.eventId`—, para que la
+   * duplicación de dados cuelgue de una tirada real y no de lo que declare el cuerpo de esta
+   * petición. **Opcional**: sin él, manda `critical` como hasta ahora.
+   */
+  attackRollEventId: z.string().min(1).optional(),
   /**
    * A quién va dirigida la tirada. **El mismo vocabulario que la pantalla de dados**
    * (`rollAudienceSchema`), no el nivel de visibilidad crudo: aquí había una copia literal del

@@ -58,6 +58,10 @@ import {
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import { maxHpConAgotamiento, nivelDeAgotamiento } from "../character-state/common/agotamiento";
 import { applyDamageModifiers } from "../character-state/damage/apply-damage-modifiers";
+import {
+  estaConcentrado,
+  concentrationSaveDc,
+} from "../character-state/concentration/concentration";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -893,6 +897,19 @@ export class CharacterSheetService {
       // queda — aquello es explicable con lo que el jugador ya ve; esto publicaba un número
       // secreto.
       let deltaRegistrado = input.delta;
+      // Tarea 2.5.4. **De qué tirada sale este daño**, y comprobada, no solo declarada: un
+      // `rollEventId` inventado (o de otra campaña) escribiría una causa falsa en el registro,
+      // que es justo lo que esta tarea existe para evitar. `undefined` cuando no se manda.
+      let concentrationSave: { requestId: string; dc: number } | undefined;
+      if (input.rollEventId) {
+        const tiradaCitada = await tx.gameEvent.findFirst({
+          where: { id: input.rollEventId, campaignId },
+          select: { id: true },
+        });
+        if (!tiradaCitada) {
+          throw new BadRequestException("Esa tirada no existe en esta campaña.");
+        }
+      }
 
       if (input.delta < 0) {
         // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
@@ -930,6 +947,48 @@ export class CharacterSheetService {
           // el momento más frecuente del juego —el remate al que está en el suelo— y hasta hoy
           // no dejaba ningún rastro.
           failures = Math.min(3, failures + (input.critical ? 2 : 1));
+        }
+
+        // **La salvación de concentración** (hueco M17). *«Whenever you take damage while you
+        // are concentrating on a spell, you must make a Constitution saving throw to maintain
+        // your concentration. The DC equals 10 or half the damage you take, whichever number is
+        // higher.»* / *«If you take damage from multiple sources ... you make a separate saving
+        // throw for each source of damage»* (SRD 5.1, "Casting a Spell" — inglés, verificado
+        // contra dos fuentes que citan el texto CC-BY original). **Basta con pedirla**: se crea
+        // la petición de tirada de siempre (2C.5) y el sistema no decide si se pierde — eso lo
+        // resuelve quien la responde. Una por golpe, nunca deduplicada: es literalmente lo que
+        // pide "por cada fuente de daño".
+        //
+        // No se pide si el golpe no llegó a los PG de verdad (`efectivo === 0`, absorbido entero
+        // por PG temporales: no hubo daño que "tomar") ni sobre una muerte masiva (`massive`): un
+        // cadáver no mantiene nada.
+        if (efectivo > 0 && !massive) {
+          const condiciones = await tx.characterCondition.findMany({
+            where: { characterId },
+            select: { key: true, expiresAtClock: true },
+          });
+          const campanaActual = await tx.campaign.findUniqueOrThrow({
+            where: { id: campaignId },
+            select: { clockSeconds: true },
+          });
+          if (estaConcentrado(condiciones, campanaActual.clockSeconds)) {
+            const dc = concentrationSaveDc(efectivo);
+            const peticion = await tx.rollRequest.create({
+              data: {
+                campaignId,
+                characterId,
+                requestedById: userId,
+                key: "save.con",
+                label: `Salvación de concentración (CD ${dc})`,
+                dc,
+                mode: "NORMAL",
+                // Misma regla que el resto del servicio: la audiencia sale de la visibilidad del
+                // personaje, no `PUBLIC` fija.
+                audience: ES_VISIBLE_A_LA_MESA.has(character.visibility) ? "PUBLIC" : "DM_PRIVATE",
+              },
+            });
+            concentrationSave = { requestId: peticion.id, dc };
+          }
         }
 
         after = clamp(before - efectivo, 0, maxHp);
@@ -979,6 +1038,8 @@ export class CharacterSheetService {
             // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
             // error de la herramienta.
             ...(massive ? { massive: true } : {}),
+            // Tarea 2.5.4 — de qué tirada salió, ya comprobada arriba contra la base.
+            ...(input.rollEventId ? { rollEventId: input.rollEventId } : {}),
             reason: input.reason,
           },
         },
@@ -988,7 +1049,11 @@ export class CharacterSheetService {
       const respuesta = await this.buildResponse(userId, actualizado);
       // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
       // sería un número sin origen, y esta tarea existe justo para lo contrario.
-      return damageTrace ? { ...respuesta, damageTrace } : respuesta;
+      return {
+        ...respuesta,
+        ...(damageTrace ? { damageTrace } : {}),
+        ...(concentrationSave ? { concentrationSave } : {}),
+      };
     });
   }
 
@@ -1222,16 +1287,54 @@ export class CharacterSheetService {
     }
 
     const dano = input.versatile && ataque.versatileDamage ? ataque.versatileDamage : ataque.damage;
-    const dados = input.critical ? duplicarDados(dano.dice) : dano.dice;
+    const esCritico = await this.esCriticoDesdeLaTirada(campaignId, characterId, input);
+    const dados = esCritico ? duplicarDados(dano.dice) : dano.dice;
     return this.rolls.roll(userId, campaignId, {
       expression: conSigno(dados, dano.modifier),
-      label: `Daño de ${ataque.name}${input.critical ? " (crítico)" : ""}`,
+      label: `Daño de ${ataque.name}${esCritico ? " (crítico)" : ""}`,
       characterId,
       // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el dado
       // de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
       mode: "NORMAL",
       audience: input.audience ?? "PUBLIC",
     });
+  }
+
+  /**
+   * Tarea 2.5.4, ficha C2.5-2. **Si el golpe fue crítico, verificado contra la tirada real.**
+   *
+   * Hasta hoy `input.critical` viajaba en el cuerpo de la petición sin atarse a ningún 20 de
+   * verdad: cualquiera podía pedir el daño duplicado sin haber sacado un crítico. Con
+   * `attackRollEventId` —el `eventId` que `resolveAttack` (2.5.3) ya devuelve en `roll.eventId`—
+   * se lee el `natural` que quedó escrito en el suceso de esa tirada, del MISMO personaje y esta
+   * MISMA campaña, y se ignora lo que declare `critical`.
+   *
+   * **Sin `attackRollEventId`, se mantiene `input.critical` como hasta ahora** (ficha C2.5-2,
+   * `docs/06-pendientes.md`): quitarlo de raíz rompería al carril que está rehaciendo `apps/web`
+   * y todavía puede llamar a este endpoint sin el campo nuevo — la frontera de esta tarea es
+   * solo-añadir, y un cambio de comportamiento silencioso ahí sería peor que el hueco que cierra
+   * a medias.
+   */
+  private async esCriticoDesdeLaTirada(
+    campaignId: string,
+    characterId: string,
+    input: RollAttackInput,
+  ): Promise<boolean> {
+    if (!input.attackRollEventId) return input.critical;
+    const evento = await this.prisma.gameEvent.findFirst({
+      where: {
+        id: input.attackRollEventId,
+        campaignId,
+        subjectType: "character",
+        subjectId: characterId,
+      },
+      select: { payload: true },
+    });
+    if (!evento) {
+      throw new BadRequestException("Esa tirada de ataque no existe en esta campaña.");
+    }
+    const payload = evento.payload as { type?: string; natural?: string };
+    return payload.type === "ABILITY_ROLL" && payload.natural === "TWENTY";
   }
 
   /**

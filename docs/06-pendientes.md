@@ -86,25 +86,24 @@ van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 
-## C2.5-2 · El crítico de la DAMAGE de `rollAttack` sigue sin atarse a la tirada (2026-09-04, 2.5.3)
+## C2.5-2 · El crítico de la DAMAGE de `rollAttack`, atado a la tirada A MEDIAS (2026-09-04, 2.5.4)
 
-**La ficha R2C-2 del spec de 2.5.3 no se cierra en esta tarea, a propósito: es de 2.5.4.**
-`POST .../attacks/:attackKey/roll` con `{ part: "DAMAGE", critical: true }` sigue confiando en
-lo que el cliente declara — el `critical` de `rollAttackSchema` no está atado a ningún
-`eventId` de una tirada de ataque real. El nuevo `resolveAttack` (2.5.3) no toca ese camino:
-resuelve el veredicto del ATAQUE contra la CA, sin más, y el spec deja la duplicación de dados
-del DAÑO —«la duplicación de dados cuelga de él [el `eventId`]»— para 2.5.4, que es donde el
-daño se aplica de verdad con su traza.
+**2.5.4 añadió el camino correcto, sin cerrar del todo el hueco.** `rollAttackSchema` gana
+`attackRollEventId` opcional (solo-añadido, `@dnd/shared`): con él, la DAMAGE de un ataque
+duplica dados **si y solo si** ese `eventId` tiene `natural: "TWENTY"` en el registro, leído y
+comprobado contra la base (`CharacterSheetService.esCriticoDesdeLaTirada`) — exactamente el
+criterio de cierre de abajo.
 
-**Por qué no se adelantó aquí.** `rollAttackSchema` es de `@dnd/shared`, y la frontera de esta
-tarea es solo-añadir: quitarle el `critical` a mano rompería el otro carril, que está
-rehaciendo `apps/web` ahora mismo y puede seguir llamando a ese endpoint. La solución de verdad
-—que la DAMAGE pida el `eventId` de su ATTACK y el servidor lea el `natural` guardado, no un
-booleano suelto— es un cambio de forma, no una añadidura, y encaja mejor cuando 2.5.4 ya sepa
-qué necesita el resto del daño (tipo, resistencia, PG temporales).
+**Por qué sigue abierta.** Sin `attackRollEventId`, `critical` del cuerpo de la petición **sigue
+mandando**, igual que antes de esta tarea. Quitarlo de raíz habría sido un cambio de
+comportamiento silencioso para el carril que está rehaciendo `apps/web`
+(`TirarAtaqueBoton.tsx`, que hoy llama sin el campo nuevo): la frontera de 2.5.4 no incluía
+`apps/web`, y decidir por ese carril sin poder tocarlo ni probarlo habría sido peor que dejar el
+hueco escrito.
 
-**Cierra cuando:** la DAMAGE de un ataque duplica dados si y solo si su `eventId` de ATTACK
-tiene `natural: "TWENTY"` en el registro — nunca por lo que declare el cuerpo de la petición.
+**Cierra cuando:** `TirarAtaqueBoton.tsx` (o quien lo reemplace en el reseño de la mesa) mande
+`attackRollEventId` con el `roll.eventId` de su propia tirada de ATAQUE, y el `critical` suelto
+se pueda borrar de `rollAttackSchema` sin romper nada — en ese momento sí es «si y solo si».
 
 ## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
 
@@ -1065,9 +1064,9 @@ existe, y por eso están aquí y no en un plan futuro.
 | # | Mecánica | Qué se rompe hoy | Dónde encaja |
 |---|---|---|---|
 | **M14** | **No hay orden de iniciativa, ni turnos, ni rondas** | El motor deriva el **modificador** de iniciativa y ahí acaba: el primer combate se lleva en papel. Y arrastra a las condiciones — sin turnos **no caducan**, así que media hora de combate deja la ficha llena de condiciones que ya no aplican, y el motor de reglas las sigue leyendo como verdaderas | La sesión ya es el estado mutable de la partida y ya tiene índice único de «una activa por campaña»: el orden cabe ahí, más dos tipos de suceso que el puente del motor ya sabría recoger |
-| **M15** | **Una tirada no puede hacer daño a nadie** | La tirada y el cambio de PG son dos operaciones manuales y dos hechos **sin relación** en el log, así que «¿de qué murió Elara?» no se puede responder desde el registro | Un objetivo opcional en la tirada, y que el suceso de daño lleve el identificador de la tirada como causa |
+| ~~**M15**~~ | **CERRADA el 2026-09-04 (2.5.4)**: `changeHp` acepta `rollEventId` opcional, comprobado contra la base (uno inventado o de otra campaña es 400) y guardado en `HP_CHANGED`. «¿De qué murió Elara?» ya responde tipo **y** tirada | Cerrada |
 | **M16** | **Las condiciones no afectan a ninguna tirada** | Las condiciones tienen **un solo consumidor**: el cálculo de velocidad. Un personaje apresado, envenenado o con agotamiento 3 tira **normal** | Un hermano de `effective-speed.ts` que, dadas las condiciones activas, **sugiera** ventaja o desventaja con su traza. Mismo patrón, mismo sitio, coste bajo — y ahora que el modo de tirada existe, ya hay dónde enchufarlo |
-| **M17** | **La concentración se guarda y nadie la comprueba** | La clave libre existe justo para «concentrándose en Bendición», y recibir daño no pide la salvación de Constitución. Es el mismo fallo que tenían las salvaciones de muerte esta mañana: la mitad hecha es la que no ocurre en la mesa | El mismo bloque de daño donde ya viven las salvaciones de muerte. Basta con **avisar**: no hace falta calcular nada para dejar de olvidarlo |
+| ~~**M17**~~ | **CERRADA el 2026-09-04 (2.5.4)**: `changeHp` pide la salvación de siempre (2C.5, `RollRequest`) cuando un personaje con una condición `concentrating-*` recibe daño real, CD `max(10, floor(daño/2))`, una por golpe sin deduplicar (SRD 5.1, "Casting a Spell"). El sistema no decide si se pierde, solo la pide | Cerrada |
 | **M18** | **Sin tipos de daño, resistencias ni inmunidades** | El cambio de PG es un entero pelado, y el log guarda un número que no dice de qué era | Un tipo de daño en el detalle del suceso, decidido **antes** de escribir mil eventos: la convención obliga a promocionar a columna cualquier campo por el que haya que filtrar |
 | **L5** | **El DM no puede declarar «este personaje no ve»** | Es la mitad barata del hueco de iluminación, y **no necesita mapa**: declarar la restricción cabe en las condiciones de clave libre que ya existen; lo que necesita posiciones es *resolver* el arco. Hoy la única herramienta del DM es cambiar la visibilidad de las fichas a mano, una a una, sin dejar dicho por qué | Vocabulario, chip en la hoja, y —crítico— que quede claro en pantalla que es **ficción, no permiso** |
 

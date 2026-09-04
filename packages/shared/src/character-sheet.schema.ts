@@ -50,6 +50,13 @@ export const changeHpSchema = z.object({
    * resistencia o vulnerabilidad **antes** de aplicarlo, y queda escrito en el `HP_CHANGED`.
    */
   damageType: damageTypeSchema.optional(),
+  /**
+   * Tarea 2.5.4. **De qué tirada sale este daño.** *«¿De qué murió Elara?»* (hueco M15) no se
+   * puede responder con solo el tipo: hace falta la tirada de verdad, no una afirmación del
+   * cuerpo de la petición. **Opcional**: un ajuste manual del DM, o una curación, no cuelgan de
+   * ninguna tirada.
+   */
+  rollEventId: z.string().min(1).optional(),
   reason: z.string().max(280).optional(),
 });
 export type ChangeHpInput = z.infer<typeof changeHpSchema>;

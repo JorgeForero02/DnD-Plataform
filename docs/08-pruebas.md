@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 34 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 35 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 20 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -227,6 +227,7 @@ en verde.
 | `validacion` | Que un cuerpo inválido diga **qué campo falta y en español**, con la ruta completa de un campo anidado y la lista de los objetivos que sí existen. Y que **no sea un oráculo**: dos identificadores inexistentes son indistinguibles. |
 | `encounters` | Iniciativa y orden de turnos (2.5.2). Dos personajes y seis goblins dan **ocho combatientes y TRES posiciones**: los goblins comparten tirada **y entrada del orden**, porque el SRD dice que actúan a la vez. **La base impide que un personaje entre dos veces** y en cambio **sí deja compartir posición**, que es lo que hace el grupo (las dos saltándose el servicio a propósito); **como mucho un encuentro activo por sesión, garantizado por el índice único parcial** y no por la comprobación previa. **Pasar de turno tres veces sube el asalto y avanza el reloj exactamente seis segundos**, dejando caducada sola una condición de un asalto sin que nadie la toque. Y las tres de su revisión de cierre: **la tirada de iniciativa de un PNJ que el jugador no ve no aparece en su línea de tiempo** —comprobado sobre el cuerpo serializado—, el suceso de inicio **no cuenta cuántos son** (de «ocho» menos «los dos míos» salen seis enemigos escondidos), y una iniciativa fuera del rango del esquema es 400 sin dejar rastro. |
 | `ataque-comparado-en-el-servidor` | El ataque contra la CA, comparado en el servidor (2.5.3). Un jugador ataca a un plebeyo del SRD `DM_ONLY` hasta ver «impacta», y **en ningún cuerpo HTTP serializado —ni el de la respuesta, ni el del registro de la partida— aparece la CA del objetivo**, salga lo que salga en cada intento. Objetivo inexistente es 404; sin ser miembro, 403; sin token, 401. |
+| `dano-con-su-traza` | El daño aplicado desde la tirada (2.5.4). **`rollEventId` sobrevive el viaje de ida y vuelta por la columna `Json`** y aparece en el `HP_CHANGED` del registro; uno inventado o de otra campaña es 400 contra la base real, no contra un mock que siempre dice que sí. Un personaje con una condición `concentrating-*` que recibe 25 de daño hace que el sistema **pida** una salvación de Constitución con CD 12, visible donde `GET /roll-requests` la sondea de verdad — y responderla sigue el camino de 2C.5 sin tocar. Dos golpes concentrados piden **dos** peticiones, nunca una. |
 
 ### La partida entera
 

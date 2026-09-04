@@ -381,3 +381,20 @@ nuevas; bajarlas es `prisma migrate resolve --rolled-back` y un `DROP TABLE "Com
 "Encounter"` si ya se aplicaron.
 
 ---
+
+## Tarea 2.5.4 — el daño, con su traza (2026-09-04)
+
+`changeHp` acepta `rollEventId` opcional (`@dnd/shared`, solo-añadido), comprobado contra la base
+(inventado o de otra campaña: 400) y guardado en `HP_CHANGED`: «¿de qué murió Elara?» (M15)
+responde tipo **y** tirada. Cierra **la salvación de concentración** (M17, SRD 5.1 "Casting a
+Spell": *«The DC equals 10 or half the damage you take, whichever number is higher»* / *«a
+separate saving throw for each source of damage»*): pide la de siempre (2C.5, `RollRequest`)
+cuando un concentrado (clave libre `concentrating-*`) recibe daño real, una por golpe sin
+deduplicar. Cierra a medias C2.5-2: la DAMAGE de `rollAttack` acepta `attackRollEventId` y duplica
+verificando el `natural` real, ignorando `critical`; sin él, `critical` sigue mandando, por no
+romper en silencio al carril que rehace `apps/web`.
+
+**Evidencia.** `concentration.spec.ts`; ~30 unitarias nuevas; e2e `dano-con-su-traza.e2e-spec.ts`.
+Mutación: quitar `!massive` deja roja «muerte masiva no pide salvación». **Revertir:** un commit.
+
+---

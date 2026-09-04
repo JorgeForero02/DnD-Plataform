@@ -31,3 +31,23 @@ describe("gameEventPayloadSchema — HP_CHANGED con damageType", () => {
     expect(r.success).toBe(false);
   });
 });
+
+// Tarea 2.5.4 — `rollEventId` en `HP_CHANGED`: de qué tirada salió el daño (hueco M15).
+describe("gameEventPayloadSchema — HP_CHANGED con rollEventId", () => {
+  it("acepta el payload de siempre, sin rollEventId", () => {
+    const r = gameEventPayloadSchema.safeParse(hpChangedBase);
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta rollEventId junto al damageType", () => {
+    const r = gameEventPayloadSchema.safeParse({
+      ...hpChangedBase,
+      damageType: "NECROTIC",
+      rollEventId: "ev-xyz",
+    });
+    expect(r.success).toBe(true);
+    if (r.success && r.data.type === "HP_CHANGED") {
+      expect(r.data.rollEventId).toBe("ev-xyz");
+    }
+  });
+});

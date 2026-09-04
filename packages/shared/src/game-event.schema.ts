@@ -166,6 +166,14 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
      * la línea de tiempo no puede explicar por qué alguien murió sin fallar ninguna.
      */
     massive: z.boolean().optional(),
+    /**
+     * Tarea 2.5.4. **De qué tirada salió el daño.** Es el mismo patrón que `ATTACK_RESOLVED`
+     * ya usa para el veredicto (ficha M15): sin esto, la tirada y el cambio de PG eran dos
+     * hechos sin relación en el registro, y «¿de qué murió Elara?» no podía responder «de esta
+     * tirada» — solo «de este tipo». **Opcional**: todo el historial ya escrito no lo tiene, y
+     * un ajuste manual del DM (sin tirada de por medio) sigue sin tener uno.
+     */
+    rollEventId: z.string().min(1).optional(),
     reason,
   }),
   z.object({

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MesaDeSesion } from "../MesaDeSesion";
+import { TiradasPendientes } from "../../roll-requests/TiradasPendientes";
 import { selloDeSuceso } from "../linea-de-log";
 import * as sessionsApi from "../api";
 import * as logApi from "../log-api";
@@ -10,6 +11,7 @@ import * as members from "../../campaigns/members";
 import * as charactersApi from "../../characters/api";
 import * as sheetApi from "../../character-sheet/api";
 import * as entitiesHooks from "../../entities/hooks";
+import * as rollRequestsApi from "../../roll-requests/api";
 import { useAuthStore } from "../../../store/auth.store";
 
 // La mesa adoptada de la maqueta. Lo que se prueba aquí es lo que la pantalla **hace**, no cómo
@@ -113,6 +115,7 @@ beforeEach(() => {
   vi.spyOn(sheetApi, "fetchSheet").mockResolvedValue(hoja(42, 58));
   vi.spyOn(sheetApi, "fetchConditions").mockResolvedValue([]);
   vi.spyOn(entitiesHooks, "useAllEntities").mockReturnValue({ data: [] } as never);
+  vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([]);
   conMiembros("DM");
 });
 
@@ -334,5 +337,77 @@ describe("la consulta del mundo", () => {
 
     expect(await screen.findByText("La ficha del faro")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Consulta del mundo" })).not.toBeInTheDocument();
+  });
+});
+
+describe("las peticiones de tirada se ven desde la mesa", () => {
+  // **Nadie las veía.** `TiradasPendientes` solo se montaba dentro de la pestaña «Dados»:
+  // sondeaba cada quince segundos y nadie estaba mirando esa pestaña durante la partida, así que
+  // el DM pedía una tirada y el jugador no se enteraba. Es provisional hasta el rediseño, pero
+  // mientras exista tiene que estar probado: sin este caso, quitarlo de la mesa vuelve a dejar la
+  // función invisible sin que nada se ponga rojo.
+  const PETICION = {
+    id: "req-1",
+    campaignId: "c1",
+    characterId: "p-corvin",
+    requestedById: "u-dm",
+    key: "skill.perception",
+    label: "Percepción: ¿oís al posadero?",
+    dc: 15,
+    mode: "NORMAL",
+    audience: "PUBLIC",
+    createdAt: "2026-09-02T21:00:00.000Z",
+    resolvedAt: null,
+    resolvedEventId: null,
+  };
+
+  it("la petición pendiente aparece en la mesa, con su botón de tirar", async () => {
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PETICION] as never);
+
+    montar("u-ana");
+
+    const caja = await screen.findByRole("region", { name: "Tiradas que te han pedido" });
+    expect(within(caja).getByText("Percepción: ¿oís al posadero?")).toBeInTheDocument();
+    expect(
+      within(caja).getByRole("button", { name: "Tirar: Percepción: ¿oís al posadero?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sin peticiones no ocupa sitio: no se pinta ninguna caja vacía", async () => {
+    montar();
+    await screen.findByRole("region", { name: "Registro de la sesión" });
+    expect(
+      screen.queryByRole("region", { name: "Tiradas que te han pedido" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("montarlo dos veces no crea dos sondeos: hay UNA consulta y las dos cajas la comparten", async () => {
+    // Lo que importa no es el número de llamadas —una instancia que monta más tarde revalida, y
+    // eso es lo que hace TanStack Query con `staleTime: 0`—, sino que **no haya dos consultas
+    // sondeando en paralelo**: dos consultas serían dos intervalos de quince segundos y el doble
+    // de carga sobre el servidor para siempre. Con una sola clave hay un solo intervalo.
+    // En la aplicación real ni siquiera coinciden: las pestañas solo pintan la activa.
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PETICION] as never);
+
+    useAuthStore.setState({ user: { id: "u-ana", email: "x@y.z", displayName: "Yo" } as never });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/campaigns/c1/sesion"]}>
+          <MesaDeSesion campaignId="c1" />
+          <TiradasPendientes campaignId="c1" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByText("Percepción: ¿oís al posadero?")).toHaveLength(2),
+    );
+    const consultas = qc
+      .getQueryCache()
+      .getAll()
+      .filter((q) => q.queryKey.includes("roll-requests"));
+    expect(consultas).toHaveLength(1);
+    expect(consultas[0].observers).toHaveLength(2);
   });
 });

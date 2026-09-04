@@ -324,3 +324,32 @@ Revertirlas es `prisma migrate resolve --rolled-back`, dejar caer esas tablas **
 fase 1 y **sí** cambia de forma — la primera versión de este párrafo decía que no cambiaba
 ninguna, y es la frase que alguien lee bajo presión en mitad de un rollback. Ningún dato
 existente se reescribe.
+
+---
+
+## Cuatro defectos de la pantalla de mesa (2026-09-03)
+
+Arreglos mínimos y localizados: **la pantalla se va a rediseñar**, así que no se reorganizó nada.
+
+- **Las barras de vida mentían.** `useCharacterSheet` y `useConditions` eran las únicas consultas
+  que lee la mesa sin `refetchInterval`. El DM pulsaba −5 y el registro de al lado lo contaba a
+  los quince segundos mientras la barra seguía pintando el número de antes: la misma pantalla se
+  contradecía. Ahora sondean a **15 s**, los mismos que el registro (`SONDEO_DE_MESA_MS`), porque
+  las dos cosas se leen juntas.
+- **Claves de enumeración en el registro**: `Recibe la condición «poisoned»`, `El DM fija maxHp
+  en 40`. Traducidas con `nombreCondicion` y el nuevo `nombreAnulable`, los dos ya en
+  `apps/web/src/features/character-sheet/vocabulario.ts`. Las claves de `FLAG_SET`, `SIGNAL_RAISED` y `SET_CHANGED`
+  **no** se traducen: las escribe el DM en sus reglas y no son enumeraciones.
+- **Un `<a href>` en la consulta del mundo** recargaba la aplicación entera en mitad de la
+  partida y se perdía el estado de la mesa. Ahora es `Link`.
+- **Nadie veía las peticiones de tirada**: `TiradasPendientes` solo se montaba en la pestaña
+  «Dados», donde nadie está mientras se juega. Se monta también en la mesa, **provisionalmente**
+  —el rediseño lo colocará como capa contextual— y el recorrido de navegador
+  `peticion-de-tirada.spec.ts` comprueba ahora que la petición llega **desde la mesa**.
+
+Cada arreglo lleva su prueba, y cada prueba se vio en rojo antes. De paso apareció un quinto
+defecto, sin arreglar y fichado en [06-pendientes.md](./06-pendientes.md): **siete de los
+veintisiete tipos de suceso no tienen línea en el registro**.
+
+**Cómo revertir:** `git revert` de los cuatro commits `fix(web)` del día. Ninguno toca la API, el
+esquema ni los datos.

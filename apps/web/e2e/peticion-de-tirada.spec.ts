@@ -130,6 +130,48 @@ test("**el DM pide una tirada, a la jugadora le aparece sin recargar, tira, y el
   const registro = paginaDM.getByRole("region", { name: /registro de tiradas/i });
   await expect(registro.locator('[data-tirada-tipo="ABILITY_ROLL"]')).toHaveCount(1);
 
+  // --- Y ahora lo que de verdad pasa en la mesa: **la jugadora no está en la pestaña «Dados»**.
+  //
+  // `TiradasPendientes` solo se montaba dentro de «Dados». Sondeaba cada quince segundos de forma
+  // impecable y no lo miraba nadie, porque durante la partida nadie está parado en esa pestaña:
+  // se está en la mesa. El DM pedía una tirada y la jugadora no se enteraba. Este tramo mide que
+  // la petición **se ve desde la mesa**, que es donde está la gente.
+  //
+  // (El montaje en la mesa es provisional: el rediseño de la pantalla lo va a colocar como capa
+  // contextual. Mientras exista, se prueba.)
+
+  await paginaDM.getByRole("tab", { name: "Sesiones" }).click();
+  await paginaDM.getByRole("button", { name: "Nueva sesión" }).click();
+  await paginaDM.getByLabel("Título").fill("La noche del posadero");
+  await paginaDM.getByRole("button", { name: "Guardar" }).click();
+  await expect(paginaDM.getByRole("button", { name: "Guardar" })).toBeHidden();
+  await paginaDM.getByRole("button", { name: "Empezar" }).click();
+  await paginaDM.getByRole("button", { name: "Empezar la sesión" }).click();
+  await expect(paginaDM.getByRole("status", { name: "Sesión en curso" })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // La jugadora se planta en la mesa y **no vuelve a tocar el navegador**.
+  await paginaJugadora.goto(`/campaigns/${campaignId}/sesion`);
+  await expect(paginaJugadora.getByRole("region", { name: "Registro de la sesión" })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // El DM pide desde su pantalla de dados, como haría en la mesa.
+  await paginaDM.getByRole("tab", { name: "Dados" }).click();
+  await paginaDM.getByRole("checkbox", { name: "Ana" }).check();
+  await paginaDM.getByLabel("Qué le pides").selectOption({ label: "Sigilo" });
+  await paginaDM.getByLabel("Qué se le dice").fill("Sigilo: ¿te oyen al pasar?");
+  await paginaDM.getByRole("button", { name: "Pedir la tirada" }).click();
+
+  // **Le aparece sola, sin salir de la mesa.** Antes de este arreglo, aquí no salía nada nunca.
+  const enLaMesa = paginaJugadora.getByRole("region", { name: "Tiradas que te han pedido" });
+  await expect(enLaMesa.getByText("Sigilo: ¿te oyen al pasar?")).toBeVisible({ timeout: 30_000 });
+
+  // Y se puede responder desde ahí mismo: verla y no poder tirarla no serviría de nada.
+  await enLaMesa.getByRole("button", { name: "Tirar: Sigilo: ¿te oyen al pasar?" }).click();
+  await expect(enLaMesa.getByRole("status").first()).toBeVisible({ timeout: 15_000 });
+
   await contextoJugadora.close();
   await contextoDM.close();
 });

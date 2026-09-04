@@ -22,6 +22,7 @@ import { descriptorDePersonaje } from "../characters/descriptor";
 import { useCharacterSheet, useChangeHp, useConditions } from "../character-sheet/hooks";
 import { nombreCondicion } from "../character-sheet/vocabulario";
 import { useAllEntities } from "../entities/hooks";
+import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
@@ -84,6 +85,16 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         comoUsuario={comoUsuario}
         onComoUsuario={setComoUsuario}
       />
+      {/* **PROVISIONAL, y a propósito.** «Te han pedido tirar» solo se montaba dentro de la
+          pestaña «Dados»: sondeaba cada quince segundos impecablemente y no lo miraba nadie,
+          porque durante la partida nadie está parado en esa pestaña. El DM pedía una tirada y el
+          jugador no se enteraba. Montarlo también aquí, arriba del registro, es el arreglo
+          mínimo para que la función deje de ser invisible; **el rediseño de esta pantalla lo va
+          a colocar como capa contextual** y entonces esta línea sobra.
+          Montarlo dos veces no duplica peticiones: la consulta se comparte por su clave de
+          TanStack Query, y además las pestañas solo pintan la activa. El componente no pinta nada
+          cuando no hay peticiones pendientes, así que aquí no ocupa sitio en balde. */}
+      <TiradasPendientes campaignId={campaignId} />
       <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)_18rem]">
         <Elenco campaignId={campaignId} asistencia={sesion.attendance} esDm={esDm} />
         <Registro

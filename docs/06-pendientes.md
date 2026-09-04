@@ -1190,3 +1190,23 @@ martes para preparar la partida del sábado. Lo que **no** aguanta el sábado es
 tres cosas que ya están fichadas arriba como huecos de mecánica: **no puede llevar los PG de un
 monstruo (M13), no hay iniciativa (M14), y el registro no reconstruye la sesión (J4/J5, en
 parte cerrado)**. Son la misma lista que las auditorías, vista desde la silla del director.
+
+### L1 — siete tipos de suceso no tienen línea en el registro (2026-09-03)
+
+**Abierto.** `apps/web/src/features/sessions/linea-de-log.ts` cubre 20 de los 27 valores de
+`GAME_EVENT_TYPES` (`packages/shared/src/game-event.schema.ts`). Los siete que faltan salen en la
+mesa como `Sin traducir: <TIPO>`:
+
+`MONEY_CHANGED`, `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, `CLOCK_ADVANCED`,
+`CONDITION_EXPIRED`, `TABLE_ROLLED`.
+
+Son justo los de 2B y 2C —el botín, el inventario, el reloj, la condición que vence sola y la
+tabla del DM—, o sea lo que más se ha escrito en la línea de tiempo este mes. El comentario del
+`default` dice «inalcanzable mientras la unión esté completa» y **la unión no está completa**: al
+`switch` no le falta un `case` por descuido, le faltan siete porque nadie los añadió al crecer el
+enum. Un `switch` exhaustivo (sin `default`, con un `never` al final) lo habría hecho fallar al
+compilar; hoy lo tapa el `default`.
+
+Encontrado al arreglar el defecto de las claves de enumeración; **no se arregló ahí** para no
+mezclarlo con un cambio de una línea. Escribir las siete frases es media hora, y conviene hacerlo
+junto con el rediseño de la mesa.

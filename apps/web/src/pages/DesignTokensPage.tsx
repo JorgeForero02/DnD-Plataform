@@ -40,7 +40,7 @@ export function DesignTokensPage() {
 
   useLayoutEffect(() => {
     const requestedTheme = new URLSearchParams(window.location.search).get("theme");
-    if (requestedTheme === "dark" || requestedTheme === "light") {
+    if (requestedTheme === "dark" || requestedTheme === "light" || requestedTheme === "reading") {
       setTheme(requestedTheme as Theme);
     }
   }, []);
@@ -48,6 +48,42 @@ export function DesignTokensPage() {
   return (
     <div className="min-h-screen bg-bg p-6 text-text">
       <h1 className="mb-4 text-chrome-xl font-bold">Tokens — vista de control</h1>
+
+      {/* B0 (2026-09-04) — **el banco de pruebas del modificador de opacidad.**
+          Durante meses `border-copper/30` y familia se descartaban en silencio, y la defensa
+          era prohibirlas. Desde que los tokens se declaran por canales
+          (`rgb(var(--copper-ch) / <alpha-value>)`) sí compilan, y esta sección existe para que
+          eso deje de ser una afirmación: son clases REALES en una pantalla REAL, así que
+          Tailwind las emite al CSS y `e2e/clases-que-si-pintan.spec.ts` puede medir el color
+          compuesto en el navegador. Si alguien revierte los canales, estas cuatro cajas se
+          quedan sin borde y sin fondo y la medición se pone roja — que es justo lo que la
+          prohibición anterior no podía hacer. */}
+      <section aria-label="modificadores de opacidad" className="mb-6 flex flex-wrap gap-2">
+        <div
+          data-opacidad="borde-cobre"
+          className="rounded-radius-sm border border-copper/30 px-3 py-2 text-chrome-sm"
+        >
+          border-copper/30
+        </div>
+        <div
+          data-opacidad="borde-apagado"
+          className="rounded-radius-sm border border-muted/25 px-3 py-2 text-chrome-sm"
+        >
+          border-muted/25
+        </div>
+        <div
+          data-opacidad="fondo-acento"
+          className="rounded-radius-sm bg-accent/10 px-3 py-2 text-chrome-sm"
+        >
+          bg-accent/10
+        </div>
+        <div
+          data-opacidad="texto-apagado"
+          className="rounded-radius-sm px-3 py-2 text-chrome-sm text-muted/60"
+        >
+          text-muted/60
+        </div>
+      </section>
 
       {/* Reseño 2026-09-02 — the four voices and the copper accent, rendered here so the
           contrast spec measures them the same way it measures everything else. Copper is the

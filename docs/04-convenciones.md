@@ -345,23 +345,53 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   (p. ej. buscar por texto dentro del cuerpo), la búsqueda tiene que hacerse **en el
   servidor**, no ampliando este filtro de cliente para que reciba más de lo que debería.
 
-## Trampa de Tailwind que costó 49 defectos invisibles
+## Los tokens de color se declaran por CANALES (B0, 2026-09-04)
 
-**Ninguna clase de opacidad sobre un token del proyecto compila.** `tailwind.config.js` declara
-los colores como `var(--muted)`, sin `<alpha-value>`, así que Tailwind **no puede** construir la
-variante y **descarta la utilidad entera, sin avisar**: el elemento se queda con el color del
-preflight, `#e5e7eb`. Nada falla, nada se pinta.
+**La causa de los 49 defectos invisibles está arreglada, y la prohibición que la tapaba se
+levanta con su medición de sustituta.** `tailwind.config.js` declaraba los colores como
+`var(--muted)`, sin `<alpha-value>`, así que Tailwind no podía construir la variante con
+opacidad y **descartaba la utilidad entera, sin avisar**: el elemento se quedaba con el color
+del preflight, `#e5e7eb`. La defensa era prohibir `/NN`; dejó de valer el día que la interfaz
+de destino llegó escrita con **174** de esas clases.
 
-Así que **no se escribe `bg-accent/10`, `border-muted/60` ni ninguna de esa familia.** Se usa la
-clase entera, o —si de verdad hace falta un tinte— un **token de color completo declarado por
-tema** en `ui/tokens.css` y consumido como `bg-[color:var(--accent-tint)]`, que es un valor
-arbitrario y sí compila. Hay tintes ya hechos para acento, peligro, cobre, aviso, apagado y el
-velo de los diálogos.
+- **El canal es la fuente**: `--copper-ch: 201 125 70` en `ui/tokens.css`, y
+  `tailwind.config.js` compone `rgb(var(--copper-ch) / <alpha-value>)`.
+- **El nombre sin sufijo sigue siendo el color pintable** (`--copper: rgb(var(--copper-ch))`),
+  derivado una sola vez. Es lo que usan los ~35 `var(--accent)` que viven dentro de un `style`
+  o de un SVG. **Un canal NO es un color**: `color: var(--copper-ch)` produce `color: 201 125
+  70` y el navegador lo descarta sin decir nada — la trampa nueva, de la misma familia.
+- **Un tema redefine solo los canales.** Los derivados se recalculan solos.
+- **La escala de opacidad va de 0 a 100 entera**, porque la de Tailwind por defecto tiene
+  huecos (`/15`, `/45` y `/62` no existen en ella) y un `/NN` fuera de la escala se descarta
+  igual de callado.
+- **`/NN` y los tintes NO son lo mismo, y la frontera es el tema.** Un `/NN` vale igual en los
+  tres temas; `--accent-tint` y familia valen 14% sobre pizarra y 10% sobre papel, y esa
+  diferencia es una decisión. Lo que dependa del tema, tinte; lo demás, `/NN`.
 
-Lo hace cumplir `apps/web/src/ui/__tests__/clases-de-opacidad.test.ts`, que barre el código
-fuente, más `apps/web/e2e/clases-que-si-pintan.spec.ts`, que comprueba en el navegador que la
-utilidad llega al CSS. **Las dos hacen falta**: la primera caza una clase reintroducida donde
-ninguna prueba monta el componente; la segunda, una que se usa y no pinta.
+Lo hacen cumplir **dos redes que no se sustituyen**:
+`apps/web/src/ui/__tests__/canales-de-color.test.ts` barre el código fuente buscando un canal
+usado fuera de un `rgb()` —caza el fallo donde ninguna prueba monta el componente—, y
+`apps/web/e2e/clases-que-si-pintan.spec.ts` **mide en el navegador** que un `/NN` compone un
+color de verdad, con las clases escritas en `/design-tokens` para que Tailwind las emita.
+Comprobado por mutación: al devolver `copper` a `var(--copper)`, la medición devuelve
+`rgb(229, 231, 235)` —el gris del preflight— y se pone roja.
+
+## Tres temas, y sus nombres dicen lo que son (B0, 2026-09-04)
+
+**Oscuro** (el instrumento), **Claro** (papel de día) y **Lectura** (vitela cálida). Hasta hoy
+eran dos y la interfaz llamaba «Lectura (vitela)» al claro, que es gris frío: el rótulo mentía,
+y lo arrastraba desde que existe la capa de tokens. Los rótulos viven **una sola vez** en
+`ETIQUETA_DE_TEMA` (`ui/theme.ts`), y el conmutador pasó de alternador a **grupo de tres
+opciones visibles con su frase**, que es lo que esta misma página exige cuando cada opción
+quiere decir algo distinto.
+
+**Divergencia declarada con el prototipo:** su tema de lectura pone un pliego de vitela **claro**
+sobre mesa oscura. Se probó y midió **1.02:1** en el texto del panel y **1.51:1** en un enlace,
+porque sobre ese pliego todo lo que la aplicación imprime sigue siendo del color del chrome. Un
+pliego claro no necesita una tinta: necesita una paleta de hoja entera. Aquí la vitela de
+Lectura es oscura y queda ficha en [06-pendientes.md](./06-pendientes.md). Los tokens
+`--vellum-ink` / `--vellum-muted` existen ya —hoy alias de `--text`/`--muted` en los tres
+temas— porque son la costura por la que entraría ese pliego el día que se decida.
 
 ## Trampa de vitest que ya nos mordió
 

@@ -111,3 +111,29 @@ export function IconLuna({ className = "" }: { className?: string }) {
     </svg>
   );
 }
+
+/**
+ * B0 (2026-09-04) — la tercera voz del conmutador de tema: **Lectura**, la vitela.
+ * Un libro abierto, dibujado con el mismo trazo que el sol y la luna de arriba, porque el
+ * grupo se lee como un grupo o no significa nada. Dibujado y no un glifo de fuente: la regla
+ * vinculante de `docs/04-convenciones.md` («los iconos se dibujan») nació justo de sustituir
+ * el sol y la luna que este icono acompaña.
+ */
+export function IconLibro({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={["h-4 w-4", className].join(" ")}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M12 6.4C10.4 5 8.3 4.4 5.2 4.4v13c3.1 0 5.2.6 6.8 2 1.6-1.4 3.7-2 6.8-2v-13c-3.1 0-5.2.6-6.8 2Z" />
+      <path d="M12 6.4v13" />
+    </svg>
+  );
+}

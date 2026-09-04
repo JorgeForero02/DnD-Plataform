@@ -96,3 +96,37 @@ test("la marca dice «Sala de Guerra»", async ({ page }) => {
   await expect(page.getByRole("banner").or(page.locator("body"))).toContainText("Sala de");
   await expect(page.locator("body")).not.toContainText("Plataforma D&D");
 });
+
+// B0 (2026-09-04) — **esto lo escribió un fallo, no una precaución.** Al pasar el conmutador
+// de tema de un botón a un grupo de tres, el control creció y quedó por encima de la
+// navegación de la cabecera: Playwright informaba de que el `radiogroup` «intercepts pointer
+// events» y **no se podía pulsar «Salir»**. Un control que impide cerrar sesión es peor que
+// el problema que venía a resolver, y la reserva de sitio en la cabecera es una cuenta a mano
+// (`pr-[7.5rem]` contra un grupo de `w-[6.5rem]`) que nadie comprobaba.
+//
+// `jsdom` no puede ver esto: no hay posición ni tamaño. Así que se mide en el navegador, y se
+// mide **el solape real de los dos rectángulos**, no la anchura de uno de ellos.
+test("el conmutador de tema no se pone encima de la navegación de la cabecera", async ({
+  page,
+}) => {
+  await registrarse(page);
+  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+
+  const tema = await page.getByRole("radiogroup", { name: "Tema" }).boundingBox();
+  const nav = await page.getByRole("navigation", { name: "Tu cuenta" }).boundingBox();
+  expect(tema, "el conmutador de tema tiene que estar en pantalla").not.toBeNull();
+  expect(nav, "la navegación de cuenta tiene que estar en pantalla").not.toBeNull();
+
+  const seSolapan =
+    tema!.x < nav!.x + nav!.width &&
+    tema!.x + tema!.width > nav!.x &&
+    tema!.y < nav!.y + nav!.height &&
+    tema!.y + tema!.height > nav!.y;
+  expect(seSolapan, `tema=${JSON.stringify(tema)} nav=${JSON.stringify(nav)}`).toBe(false);
+
+  // Y la prueba de que la medición sirve de algo: los dos controles se pueden pulsar.
+  await page.getByRole("radio", { name: "Lectura" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "reading");
+  await page.getByRole("button", { name: "Salir" }).click();
+  await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+});

@@ -298,3 +298,36 @@ revisando. **Arreglado** añadiendo un sufijo aleatorio a `Date.now()` en los do
 `links.e2e-spec.ts` y `sessions.e2e-spec.ts`** — comparten el mismo riesgo teórico, pero no
 fueron los que la revisión de 1.15 vio fallar y el brief de 1.15-fix pedía arreglar
 específicamente los dos de arriba; se deja anotado aquí en vez de corregido en silencio.
+
+---
+
+## P2 · Los tokens de Tailwind siguen sin admitir opacidad (2026-09-03)
+### CERRADA el 2026-09-04 por la tanda B0 — se movió aquí entera y sin reescribir
+
+**El daño está reparado; la causa sigue ahí.** Los colores se declaran en `tailwind.config.js`
+como `var(--muted)`, sin `<alpha-value>`, así que Tailwind **no puede** emitir una variante con
+opacidad: descarta la utilidad entera y no avisa. Llegó a haber **49 sitios** apoyados en eso, y
+ninguno pintaba — entre ellos el fondo de la cabecera, el velo de los diálogos, el relleno del
+distintivo «Solo DM» y el subrayado que distingue lo editable de lo derivado.
+
+Los 49 están arreglados con clases enteras y con **tokens de color completo por tema**
+(`--accent-tint`, `--danger-tint`, `--copper-tint`, `--warning-tint`, `--muted-tint`, `--veil`),
+que sí compilan porque un `bg-[color:var(--x)]` es un valor arbitrario. Y hay **dos redes** para
+que no vuelva en silencio: `src/ui/__tests__/canales-de-color.test.ts` barre el código fuente,
+y `e2e/clases-que-si-pintan.spec.ts` comprueba en el navegador que la utilidad llega al CSS y
+pinta.
+
+**Lo que queda abierto** es poder volver a usar `/NN`, que es más cómodo que inventar un token
+por cada tinte. Exige declarar los tokens por canales y enseñar a `tailwind.config.js`
+`rgb(var(--copper-ch) / <alpha-value>)`. **Rompe** los `var(--copper)` directos de los SVG de
+`ui/Ornament.tsx`, que esperan un color y recibirían tres números, y obliga a **volver a medir
+el contraste de todas las pantallas**. Baja a P2 porque ya no hay nada roto: es comodidad, no
+corrección.
+
+> **Nota del cierre (2026-09-04).** Se hizo exactamente lo que la ficha proponía, y **la
+> premisa de su prioridad resultó falsa a los pocos días**: dejó de ser comodidad cuando la
+> interfaz de destino llegó escrita con 174 clases de opacidad. Los dos riesgos que la ficha
+> nombraba se resolvieron sin coste: el nombre sin sufijo se conservó como color pintable
+> —así que `ui/Ornament.tsx` no se tocó— y las 19 mediciones de contraste dieron las **mismas
+> cifras**, porque `rgb(201 125 70)` y `#c97d46` son el mismo color. Ver
+> [../04-convenciones.md](../04-convenciones.md).

@@ -30,7 +30,7 @@ export function Panel({ tone = "chrome", className = "", children }: PanelProps)
         data-tone="vellum"
         style={{ clipPath: VELLUM_EDGE_CLIP_PATH }}
         className={[
-          "bg-vellum px-s6 pb-s6 font-world text-world-base text-text",
+          "bg-vellum px-s6 pb-s6 font-world text-world-base text-vellum-ink",
           "max-w-[66ch] border border-muted",
           className,
         ].join(" ")}

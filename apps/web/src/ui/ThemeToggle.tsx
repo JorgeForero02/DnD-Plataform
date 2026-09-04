@@ -1,50 +1,87 @@
 import { useState } from "react";
-import { Button } from "./Button";
-import { IconSol, IconLuna } from "./Logo";
-import { getPreferredTheme, setTheme, type Theme } from "./theme";
+import { IconSol, IconLuna, IconLibro } from "./Logo";
+import { ETIQUETA_DE_TEMA, TEMAS, esTema, getPreferredTheme, setTheme, type Theme } from "./theme";
 
 function currentTheme(): Theme {
   const stamped = document.documentElement.getAttribute("data-theme");
-  return stamped === "dark" || stamped === "light" ? stamped : getPreferredTheme();
+  return esTema(stamped) ? stamped : getPreferredTheme();
 }
 
-// Task 1.19, fix round 1, Important 8: light is meant to be the parchment reading mode
-// ("light IS the parchment reading mode, so it has a real reason to exist" — the brief), but
-// until this component existed nothing in the app could ever reach it: setTheme's only caller
-// was the ?theme= URL parameter on /design-tokens, a route no player or DM ever visits. This
-// is the smallest possible reachable control — one fixed-position button, mounted once in
-// App.tsx, not a redesign of anything it sits on top of.
+const ICONO: Record<Theme, (p: { className?: string }) => JSX.Element> = {
+  dark: IconLuna,
+  light: IconSol,
+  reading: IconLibro,
+};
+
+// **Qué hace cada tema**, escrito al lado de la opción y no en un texto de ayuda flotante.
+// Es la mitad que la regla vinculante exige y que un alternador no puede dar: «cada una lleva
+// la frase que explica qué hace» (docs/04-convenciones.md).
+const PARA_QUE: Record<Theme, string> = {
+  dark: "El instrumento: pizarra naval, para operar la mesa.",
+  light: "Papel de día, para leer con luz alrededor.",
+  reading: "Vitela cálida, para la prosa larga del mundo.",
+};
+
+// Task 1.19, fix round 1, Important 8: el tema claro existía y nada en la aplicación podía
+// llegar a él — el único que llamaba a `setTheme` era el parámetro `?theme=` de
+// `/design-tokens`, una ruta que no visita ningún jugador ni ningún DM. Este control es el
+// acceso, montado una vez en `App.tsx`.
+//
+// B0 (2026-09-04): pasa de **alternador de dos** a **grupo de tres**, y no por gusto. Al
+// entrar el tema «Lectura» las opciones dejaron de ser un interruptor para ser una elección
+// con significado, y ahí manda la regla vinculante de `docs/04-convenciones.md`: pocas
+// opciones que quieren decir cosas distintas van **visibles a la vez**, con su frase, nunca
+// escondidas detrás de un control que solo enseña la siguiente. Con dos era discutible; con
+// tres, un alternador obliga a pulsar a ciegas para descubrir qué hay.
+//
+// **Y un compromiso declarado, porque se midió.** Las tres opciones están visibles; sus
+// RÓTULOS, no: van en el nombre accesible y en el título. Con los rótulos puestos el grupo
+// medía más que el hueco que la cabecera le reserva y **tapaba «Salir»** — lo cazó
+// `e2e/campana.spec.ts`, que hace clic ahí. Un control que impide cerrar sesión es peor que
+// uno sin rótulos. El ancho es fijo (`w-[6.5rem]`) para que no dependa de cuándo cargue la
+// tipografía, y `e2e/armazon.spec.ts` mide que no se solapa con la navegación. La versión con
+// rótulos vuelve en B1, dentro de la banda de estado, que es donde el prototipo la pone y
+// donde sí hay sitio.
 export function ThemeToggle() {
-  // Lazy initializer, not useEffect + setState: index.html/main.tsx have already stamped
-  // [data-theme] by the time this ever mounts, so there is no async source to synchronize
-  // with here — just a value to read once, which is what useState's initializer is for.
+  // Inicializador perezoso, no `useEffect` + `setState`: `index.html` y `main.tsx` ya han
+  // sellado `[data-theme]` cuando esto monta, así que no hay nada asíncrono que sincronizar.
   const [theme, setThemeState] = useState<Theme>(currentTheme);
 
-  function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    setThemeState(next);
+  function elegir(siguiente: Theme) {
+    setTheme(siguiente);
+    setThemeState(siguiente);
   }
 
-  // Los dos temas se llaman **Oscuro** y **Lectura**, no «oscuro» y «claro». No es un
-  // sinónimo bonito: en este producto el tema claro no es el mismo con el fondo blanco, es el
-  // MODO DE LEER —la vitela, el papel—, y así estaba escrito en `ui/tokens.css` desde que
-  // existe la capa de tokens («dark is the default, light is the parchment reading mode — not
-  // an afterthought»). El rótulo era lo único que no lo decía.
-  const label = theme === "dark" ? "Cambiar al tema Lectura (vitela)" : "Cambiar al tema Oscuro";
-
   return (
-    <Button
-      variant="ghost"
-      onClick={toggle}
-      aria-label={label}
-      title={label}
-      className="fixed right-2 top-2 z-40"
+    <div
+      role="radiogroup"
+      aria-label="Tema"
+      className="fixed right-2 top-2 z-40 flex w-[6.5rem] items-center justify-between rounded-radius-md border border-muted/30 bg-surface p-s1"
     >
-      {/* Reseño 2026-09-02: era "☾"/"☀", un glifo de fuente que en algunos sistemas se pinta
-          como emoji a todo color y en otros como un cuadrado vacío, y que además no se parecía
-          a nada más de la interfaz. Dibujados, con el mismo trazo que el logotipo. */}
-      {theme === "dark" ? <IconLuna /> : <IconSol />}
-    </Button>
+      {TEMAS.map((t) => {
+        const Icono = ICONO[t];
+        const puesto = t === theme;
+        return (
+          <button
+            key={t}
+            type="button"
+            role="radio"
+            aria-checked={puesto}
+            title={`${ETIQUETA_DE_TEMA[t]} — ${PARA_QUE[t]}`}
+            aria-label={ETIQUETA_DE_TEMA[t]}
+            onClick={() => elegir(t)}
+            className={[
+              "flex items-center justify-center rounded-radius-sm px-s2 py-s1 transition-colors",
+              puesto
+                ? "bg-accent/10 text-accent-text"
+                : "text-muted hover:bg-muted/20 hover:text-text",
+            ].join(" ")}
+          >
+            {/* Dibujados, nunca un glifo de fuente: regla vinculante. */}
+            <Icono className="h-4 w-4" />
+          </button>
+        );
+      })}
+    </div>
   );
 }

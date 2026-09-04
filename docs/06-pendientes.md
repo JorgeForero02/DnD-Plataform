@@ -78,7 +78,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-03** (cierre de la fase **2D**: statblocks de PNJ, PNJ jugables en la
+Última revisión: **2026-09-04** (tanda **B0**: tokens por canales y el tercer tema; y antes, el cierre de la fase **2D**: statblocks de PNJ, PNJ jugables en la
 mesa y el bestiario, con su revisión de cierre). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
@@ -280,27 +280,31 @@ datos que la pantalla querría y el servidor todavía no da.
   singular, pero `ROTULO_PLURAL`, `ETIQUETA_DE_TIPO` y `TITULO_NUEVO` dicen «Eventos». Si se
   cambia, se cambian los tres a la vez.
 
-## P2 · Los tokens de Tailwind siguen sin admitir opacidad (2026-09-03)
+## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 
-**El daño está reparado; la causa sigue ahí.** Los colores se declaran en `tailwind.config.js`
-como `var(--muted)`, sin `<alpha-value>`, así que Tailwind **no puede** emitir una variante con
-opacidad: descarta la utilidad entera y no avisa. Llegó a haber **49 sitios** apoyados en eso, y
-ninguno pintaba — entre ellos el fondo de la cabecera, el velo de los diálogos, el relleno del
-distintivo «Solo DM» y el subrayado que distingue lo editable de lo derivado.
+**Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela
+**claro** (`#efe3c8`) sobre una mesa oscura. Se adoptó tal cual y se midió en el navegador:
+**1.02:1** el texto del panel de vitela y de la atribución del SRD, **1.51:1** un enlace dentro
+de él. El motivo no es el color del pliego, es que **sobre él la aplicación sigue imprimiendo
+con los tokens del chrome**, que en ese tema son claros.
 
-Los 49 están arreglados con clases enteras y con **tokens de color completo por tema**
-(`--accent-tint`, `--danger-tint`, `--copper-tint`, `--warning-tint`, `--muted-tint`, `--veil`),
-que sí compilan porque un `bg-[color:var(--x)]` es un valor arbitrario. Y hay **dos redes** para
-que no vuelva en silencio: `src/ui/__tests__/clases-de-opacidad.test.ts` barre el código fuente,
-y `e2e/clases-que-si-pintan.spec.ts` comprueba en el navegador que la utilidad llega al CSS y
-pinta.
+**Lo que haría falta**: una paleta de hoja completa —tinta, apagado, acento, código y filete—
+que se active dentro de `Panel tone="vellum"`. No es una línea; es una tanda con su medición.
 
-**Lo que queda abierto** es poder volver a usar `/NN`, que es más cómodo que inventar un token
-por cada tinte. Exige declarar los tokens por canales —`--copper: 201 125 70`— y enseñar a
-`tailwind.config.js` `rgb(var(--copper) / <alpha-value>)`. **Rompe** los `var(--copper)` directos
-de los SVG de `ui/Ornament.tsx`, que esperan un color y recibirían tres números, y obliga a
-**volver a medir el contraste de todas las pantallas**. Baja a P2 porque ya no hay nada roto:
-es comodidad, no corrección.
+**Lo que ya está hecho para que sea barato**: `--vellum-ink` y `--vellum-muted` existen en
+`ui/tokens.css` y `ui/Panel.tsx` ya imprime a través de ellos. Hoy son alias de `--text` y
+`--muted` en los tres temas, así que no cambian nada; el día que se decida, el pliego claro
+entra redefiniéndolos en `[data-theme="reading"]` y añadiendo los que falten.
+
+Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 mediciones de
+`e2e/tokens-contrast.spec.ts`. Declarado también en [04-convenciones.md](./04-convenciones.md).
+
+## P3 · El tema Claro del prototipo es papel cálido; el nuestro es gris frío (2026-09-04, B0)
+
+`prototipo/src/index.css` da al tema claro `#e6e1d4` (papel), y aquí vale `#dfe5e9` (gris
+azulado). No se tocó en B0 **porque el nuestro está medido** y cambiar la paleta obliga a
+volver a medir las 19 comprobaciones de contraste en esa mitad. Es una decisión de identidad,
+no un defecto: si la mesa nueva se ve fría al lado de la maqueta, esta es la ficha.
 
 ## La pantalla de juego con mapa — alcance nuevo, sin decidir (2026-09-02)
 

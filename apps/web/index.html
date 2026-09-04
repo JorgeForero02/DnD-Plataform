@@ -36,7 +36,10 @@
       (function () {
         try {
           var stored = localStorage.getItem("dnd-theme");
-          if (stored === "dark" || stored === "light") {
+          // B0 (2026-09-04): tres temas. Esta lista es la copia a mano de `esTema` en
+          // ui/theme.ts — un <script> en línea no puede importar el módulo, así que si allí
+          // se añade un tema, aquí también, o el elegido no sobrevive al primer pintado.
+          if (stored === "dark" || stored === "light" || stored === "reading") {
             document.documentElement.setAttribute("data-theme", stored);
           }
         } catch (e) {

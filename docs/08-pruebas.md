@@ -49,10 +49,14 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
-**Recorridos**, medidos el 2026-09-03 (noche, con la fase 2D entera y su revisión de cierre
-dentro) corriendo las dos suites: **216 e2e de API** y **88 recorridos de navegador**, todos
-verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
-dentro de un bucle sobre los dos temas ejecuta más pruebas de las que se pueden contar leyendo
+**Recorridos**, y **cada mitad lleva la fecha en que se corrió, porque no se corrieron el
+mismo día**: **216 e2e de API** el 2026-09-03 (noche, con la fase 2D entera y su revisión de
+cierre dentro) y **96 recorridos de navegador** el 2026-09-04, al cerrar la tanda B0 —los ocho
+nuevos son el tercer tema en las tres pruebas de contraste, la medición del `/NN` en el
+navegador y la del solape del conmutador de tema—. Los dos verdes, cada uno en su fecha. Poner
+una sola fecha a dos cifras medidas en días distintos es la clase de mentira cómoda que este
+documento ya cometió tres veces. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
+dentro de un bucle sobre los tres temas ejecuta más pruebas de las que se pueden contar leyendo
 el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
 
 > **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
@@ -92,7 +96,7 @@ Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
 - **La accesibilidad está a medias y el rendimiento no existe.** Playwright **sí** mide
-  contraste en los dos temas y **sí** cubre un caso de responsive real (que un control de
+  contraste en los tres temas y **sí** cubre un caso de responsive real (que un control de
   formulario no dispare el zoom de iOS Safari). Falta el resto: foco, lectores de pantalla,
   teclado, anchos intermedios, y cualquier medida de rendimiento.
 - **No hay mutación ni umbral de cobertura** (N2/N3 no declarados).
@@ -131,7 +135,10 @@ en verde.
   en verde y un despliegue de por medio.
 - **Una clase de Tailwind que no existe compila a nada, y `jsdom` no lo ve.** 49 utilidades de
   opacidad se descartaban en silencio, incluido el velo de los diálogos. Se cubre con dos redes
-  que no se sustituyen: un barrido del código fuente y una medición en el navegador.
+  que no se sustituyen: un barrido del código fuente y una medición en el navegador. **Desde B0
+  (2026-09-04) la causa está arreglada** —los tokens van por canales— y las dos redes siguen,
+  cambiadas de trabajo: el barrido caza un canal usado como si fuera un color, y la medición
+  comprueba que un `/NN` compone un color de verdad.
 - **Una prueba en verde puede estar midiendo el caso equivocado.** El recorrido de la tirada a
   ciegas tiraba con el DM, que sí ve su propia tirada; el bueno invita a un jugador y tira desde
   su navegador.
@@ -240,7 +247,7 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 | Suite | Qué mide |
 |---|---|
 | `armazon` | El pie apoyado en el borde inferior con poco contenido; **ninguna entrada del carril sin su icono dibujado**; la marca. |
-| `tokens-contrast` | **El contraste real, medido, en los dos temas** y en las pantallas de sesión, campaña, 404, atribución y cuenta. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
+| `tokens-contrast` | **El contraste real, medido, en los tres temas** (Oscuro, Claro y Lectura) y en las pantallas de sesión, campaña, 404, atribución y cuenta. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
 | `clases-que-si-pintan` | Que las superficies que la aplicación promete **se pintan de verdad** — la comprobación que caza una clase de Tailwind que no existe y compila a nada. |
 | `ficha-lectura` | El enlace que se lee como frase por sus dos lados; la capitular, los párrafos y la medida corta; el contraste de la página de lectura en los dos temas. |
 | `capturas-comparacion` | Capturas de nuestras pantallas **para compararlas con el prototipo**. No afirma nada por sí sola: es material para el ojo humano. |

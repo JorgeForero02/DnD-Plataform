@@ -202,7 +202,11 @@ function record(theme: string, label: string, ratio: number, threshold: number) 
 // so there is no more out-of-scope background to protect a measurement from — every pair below,
 // on /design-tokens and on the real screens, goes through record() and actually gates the run.
 
-async function gotoTheme(page: Page, theme: "dark" | "light") {
+// B0 (2026-09-04): el tercer tema, «Lectura», entra a las mismas mediciones que los otros
+// dos y no a una excepcion suya. Adoptar una paleta de una maqueta sin medirla es exactamente
+// lo que `docs/04-convenciones.md` prohibe sobre este prototipo: responde de su forma, no de
+// sus contrastes.
+async function gotoTheme(page: Page, theme: "dark" | "light" | "reading") {
   await page.goto(`/design-tokens?theme=${theme}`);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
 }
@@ -213,11 +217,11 @@ async function gotoTheme(page: Page, theme: "dark" | "light") {
 // only ever visits /design-tokens with its own ?theme= query param), the real-screen
 // measurements below cross several navigations (register → create campaign → open it), and the
 // theme has to survive every one of them the way a real visitor's stored choice would.
-async function setStoredTheme(page: Page, theme: "dark" | "light") {
+async function setStoredTheme(page: Page, theme: "dark" | "light" | "reading") {
   await page.addInitScript((t) => localStorage.setItem("dnd-theme", t), theme);
 }
 
-for (const theme of ["dark", "light"] as const) {
+for (const theme of ["dark", "light", "reading"] as const) {
   test(`contraste medido en tema ${theme}`, async ({ page }) => {
     await gotoTheme(page, theme);
 
@@ -433,7 +437,7 @@ function nuevaCuentaContraste() {
   return nuevaCuenta("contraste");
 }
 
-for (const theme of ["dark", "light"] as const) {
+for (const theme of ["dark", "light", "reading"] as const) {
   test(`contraste medido en la pantalla de login (${theme})`, async ({ page }) => {
     await setStoredTheme(page, theme);
     await page.goto("/login");
@@ -588,7 +592,7 @@ function nuevaCuentaCuenta() {
   return nuevaCuenta("cuenta");
 }
 
-for (const theme of ["dark", "light"] as const) {
+for (const theme of ["dark", "light", "reading"] as const) {
   test(`contraste medido en la pantalla 404 (${theme})`, async ({ page }) => {
     await setStoredTheme(page, theme);
     await page.goto("/una-ruta-que-no-existe");

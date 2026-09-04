@@ -2,38 +2,78 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ThemeToggle } from "../ThemeToggle";
 
+// B0 (2026-09-04) — **este fichero cambia de forma porque el control cambió de forma, y el
+// motivo está escrito para que no parezca un capricho.**
+//
+// Hasta hoy había dos temas y un botón que alternaba entre ellos, con el rótulo «Cambiar al
+// tema Lectura (vitela)». Dos cosas estaban mal a la vez:
+//
+//   1. **El rótulo mentía.** El tema claro es gris frío (`#dfe5e9`), no vitela. Lo decía la
+//      propia `tokens.css` desde 1.19 («light is the parchment reading mode») y nunca fue
+//      cierto en los valores. Ahora son tres temas y cada nombre dice lo que es.
+//   2. **Tres opciones con significado no caben en un alternador.** Es la regla vinculante de
+//      `docs/04-convenciones.md`: cuando cada opción quiere decir algo distinto, van visibles
+//      a la vez, no escondidas detrás de un botón que solo enseña la siguiente. Con dos era
+//      discutible; con tres, un alternador obliga a pulsar dos veces para ver qué hay.
 describe("ThemeToggle", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
   });
 
-  it("reflects the current theme and offers to switch to the other one", () => {
+  it("ofrece los tres temas a la vez y marca el que está puesto", () => {
     document.documentElement.setAttribute("data-theme", "dark");
     render(<ThemeToggle />);
-    expect(
-      screen.getByRole("button", { name: "Cambiar al tema Lectura (vitela)" }),
-    ).toBeInTheDocument();
+
+    const grupo = screen.getByRole("radiogroup", { name: "Tema" });
+    expect(grupo).toBeInTheDocument();
+
+    // Los tres, visibles y con su nombre legible. Ningún valor de enumeración en pantalla:
+    // no aparece «dark», ni «light», ni «reading».
+    expect(screen.getByRole("radio", { name: "Oscuro" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Claro" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Lectura" })).toBeInTheDocument();
+
+    expect(screen.getByRole("radio", { name: "Oscuro" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Lectura" })).toHaveAttribute("aria-checked", "false");
   });
 
-  // Task 1.19, fix round 1, Important 8 — this test renders ThemeToggle directly, so it
-  // proves the component's own click → setTheme → re-render wiring, not that anything mounts
-  // it anywhere. Task 1.19b: ThemeToggle now mounts app-wide (App.tsx), once every real screen
-  // follows the theme — no RTL test exercises that mount point, the same way none exercises
-  // App.tsx's routing; Playwright is what actually renders the app shell and would be what
-  // breaks if the mount were removed there.
-  it("clicking switches the theme, persists it, and updates its own label", () => {
+  it("elegir un tema lo aplica, lo persiste y mueve la marca", () => {
     document.documentElement.setAttribute("data-theme", "dark");
     render(<ThemeToggle />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Cambiar al tema Lectura (vitela)" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Lectura" }));
 
+    expect(document.documentElement.getAttribute("data-theme")).toBe("reading");
+    expect(localStorage.getItem("dnd-theme")).toBe("reading");
+    expect(screen.getByRole("radio", { name: "Lectura" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Oscuro" })).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Claro" }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     expect(localStorage.getItem("dnd-theme")).toBe("light");
-    expect(screen.getByRole("button", { name: "Cambiar al tema Oscuro" })).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Cambiar al tema Oscuro" }));
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
-    expect(localStorage.getItem("dnd-theme")).toBe("dark");
+  // El tercer tema es el que esta tanda añade, así que se comprueba que se llega a él **desde
+  // cada uno de los otros dos** y no solo desde el que estaba puesto en la prueba de arriba:
+  // un control de tres estados falla justo en la transición que nadie prueba.
+  // **Esta prueba la escribió una mutación, no una sospecha.** Se quitó `"reading"` de `esTema`
+  // a propósito y las tres pruebas de arriba siguieron verdes: todas sellaban `[data-theme]` a
+  // mano antes de montar, así que ninguna pasaba nunca por el camino de leer lo guardado. El
+  // fallo que dejaban vivo es el que nota una persona: eliges «Lectura», recargas, y vuelves a
+  // Oscuro sin explicación.
+  it("un tema guardado se recupera al volver, sin `data-theme` en el html", () => {
+    localStorage.setItem("dnd-theme", "reading");
+    render(<ThemeToggle />);
+
+    expect(screen.getByRole("radio", { name: "Lectura" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("se llega a Lectura también desde el tema claro", () => {
+    document.documentElement.setAttribute("data-theme", "light");
+    render(<ThemeToggle />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Lectura" }));
+    expect(document.documentElement.getAttribute("data-theme")).toBe("reading");
   });
 });

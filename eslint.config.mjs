@@ -11,6 +11,13 @@ export default tseslint.config(
       "**/dist/**",
       "**/node_modules/**",
       "**/coverage/**",
+      // Los worktrees de los agentes viven dentro del repositorio y traen una copia
+      // ENTERA de el, `prototipo/` incluido. La entrada `prototipo/**` de mas abajo es
+      // relativa a la raiz y no casa con la copia anidada, asi que un agente trabajando
+      // en paralelo hacia fallar `pnpm verify` — y con el, el gancho de pre-commit de
+      // TODO el repositorio — con errores de lint de una maqueta de terceros. Medido el
+      // 2026-09-04: cinco errores en `prototipo/` de un worktree ajeno.
+      ".claude/worktrees/**",
       "apps/web/dist/**",
       "apps/api/prisma/migrations/**",
       // Salidas de Playwright: informe generado, no codigo del repositorio.

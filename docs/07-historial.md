@@ -27,6 +27,30 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## B0 — los tokens por canales y el tercer tema (2026-09-04)
+
+**Por qué.** El reseño de la mesa decidió sustituir la interfaz por la maqueta de `prototipo/`,
+y al leerla por dentro resultó estar escrita con **174 clases de opacidad sobre tokens** — las
+que en este proyecto se descartaban en silencio. Copiada tal cual se habría pintado sin un solo
+borde. Se arregló la causa (ficha P2, ahora cerrada) en vez de traducir 174 clases a mano.
+
+**Qué entra.** Los trece tokens de color se declaran por canales (`--copper-ch: 201 125 70`) y
+Tailwind compone `rgb(var(--copper-ch) / <alpha-value>)`; el nombre sin sufijo sobrevive como
+color pintable, así que los ~35 `var(--accent)` de `style` y SVG no se tocaron. Escala de
+opacidad de 0 a 100 (la de Tailwind tiene huecos). Tercer tema **Lectura**, con el conmutador
+convertido en grupo de tres opciones visibles y el rótulo «Lectura (vitela)» del tema claro
+corregido, que llevaba mintiendo desde 1.19.
+
+**Evidencia.** 797 unitarias verdes; las **19** mediciones de contraste de
+`tokens-contrast.spec.ts` pasan en los **tres** temas. Mutación medida dos veces: devolver
+`copper` a `var(--copper)` pone la medición en `rgb(229, 231, 235)` —el gris del preflight— y la
+prueba en rojo; quitar `"reading"` de `esTema` sobrevivía a las tres pruebas del conmutador, así
+que se escribió la cuarta (un tema guardado se recupera al volver) y entonces sí muere.
+
+**Cómo revertir.** Un solo commit. `tailwind.config.js` vuelve a `var(--x)` y `ui/tokens.css` a
+los colores literales por tema; el tercer tema se cae solo al quitar `"reading"` de
+`ui/theme.ts`, `index.html` y `tokens.css`.
+
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
 
 Despliegue lanzado por la API de Coolify **desde dentro de la VPS**

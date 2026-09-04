@@ -10,3 +10,11 @@ apps/web/blob-report/
 # Ficha M2B-13: destino por defecto de `capturas-comparacion.spec.ts`. El juego de referencia
 # vive en `apps/web/capturas/` y ese SÍ va en el repositorio; esto es la foto de cada corrida.
 apps/web/capturas-salida/
+
+# Worktrees de los agentes: una copia entera del repositorio dentro del repositorio. Tambien
+# estan fuera de lint y de formato (eslint.config.mjs, .prettierignore) porque su copia de
+# `prototipo/` no casa con la entrada de la raiz y hacia fallar `pnpm verify` para todos.
+.claude/
+
+# Cache incremental de tsc.
+*.tsbuildinfo

@@ -126,7 +126,14 @@ export function AppHeader({
     // se veía pasar por debajo, solo desenfocado. `--chrome-veil` es ese mismo 95 % declarado
     // como color completo en `tokens.css`, que sí compila.
     <header className="sticky top-0 z-30 border-b border-copper bg-[color:var(--chrome-veil)] shadow-[0_1px_0_0_var(--surface)] backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-s4 px-s5 pr-16">
+      {/* El hueco de la derecha esta reservado para el conmutador de tema, que flota fijo en
+          esa esquina (ui/ThemeToggle.tsx). B0 (2026-09-04): paso de un boton a un grupo de
+          TRES opciones visibles, asi que `pr-16` dejo de bastar y el grupo tapaba «Cuenta» —
+          lo cazaron `e2e/tokens-contrast.spec.ts` y `e2e/campana.spec.ts`, que hacen clic en
+          «Cuenta» y en «Salir». La reserva es 7,5rem contra un grupo de ancho FIJO de 6,5rem,
+          que empieza a 0,5rem del borde: sobra medio rem y no depende de la tipografia.
+          `e2e/armazon.spec.ts` lo mide en vez de confiar en esta cuenta. */}
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-s4 px-s5 pr-[7.5rem]">
         <Link
           to="/"
           className="rounded-radius-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"

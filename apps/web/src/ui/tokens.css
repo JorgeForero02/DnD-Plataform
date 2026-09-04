@@ -18,17 +18,71 @@
 
 :root {
   /* Dark is the default palette on bare :root. */
-  --bg: #10171c;
-  --surface: #1a2329;
-  --vellum: #2a2419;
-  --text: #dce3e6;
-  --muted: #8b99a1;
-  --accent: #4a9bb8;
-  --accent-text: #6fb6ce;
-  --copper: #c97d46;
-  --copper-text: #dd9663;
-  --danger: #c4564b;
-  --danger-text: #e08076;
+  /* B0 (2026-09-04) - **los tokens se declaran por CANALES, no por color.**
+   *
+   * `--copper: #c97d46` no admitia `/NN`: Tailwind 3 no puede componer una opacidad sobre un
+   * color que no expone `<alpha-value>`, asi que descartaba la utilidad ENTERA y en silencio -
+   * 49 defectos invisibles, y el elemento quedandose con el `#e5e7eb` del preflight. La defensa
+   * era prohibir `/NN` (ficha P2 de `docs/06-pendientes.md`, degradada a "comodidad" porque ya
+   * no habia nada roto). **Dejo de ser comodidad el dia que la interfaz de destino se escribio
+   * con 174 de esas clases**: la maqueta de `prototipo/` apoya en ellas el filete de todas sus
+   * tarjetas, y copiada tal cual se habria pintado sin un solo borde.
+   *
+   * El arreglo es el que la propia ficha describia: el canal es la fuente
+   * (`--copper-ch: 201 125 70`) y `tailwind.config.js` compone
+   * `rgb(var(--copper-ch) / <alpha-value>)`.
+   *
+   * **Y el nombre sin sufijo se conserva como color pintable**
+   * (`--copper: rgb(var(--copper-ch))`), derivado aqui una sola vez. Es deliberado y no es
+   * cosmetica: hay unos treinta y cinco sitios que escriben `var(--accent)` dentro de un
+   * `style` o de un SVG de `ui/Ornament.tsx`, y renombrar el token les habria entregado tres
+   * numeros donde esperan un color - otro fallo silencioso, de la misma familia que el que
+   * esto viene a cerrar. Un tema solo redefine los CANALES; los derivados de abajo se
+   * recalculan solos, porque `var()` se resuelve en el elemento y no donde se escribio. */
+  --bg-ch: 16 23 28;
+  --surface-ch: 26 35 41;
+  --vellum-ch: 42 36 25;
+  --text-ch: 220 227 230;
+  --muted-ch: 139 153 161;
+  --accent-ch: 74 155 184;
+  --accent-text-ch: 111 182 206;
+  --copper-ch: 201 125 70;
+  --copper-text-ch: 221 150 99;
+  --danger-ch: 196 86 75;
+  --danger-text-ch: 224 128 118;
+  --warning-ch: 224 168 60;
+  --warning-text-ch: 224 168 60;
+
+  /* Derivados del canal, UNA sola vez para los cuatro temas. */
+  --bg: rgb(var(--bg-ch));
+  --surface: rgb(var(--surface-ch));
+  --vellum: rgb(var(--vellum-ch));
+  --text: rgb(var(--text-ch));
+  --muted: rgb(var(--muted-ch));
+  --accent: rgb(var(--accent-ch));
+  --accent-text: rgb(var(--accent-text-ch));
+  --copper: rgb(var(--copper-ch));
+  --copper-text: rgb(var(--copper-text-ch));
+  --danger: rgb(var(--danger-ch));
+  --danger-text: rgb(var(--danger-text-ch));
+
+  /* B0 (2026-09-04) - **la tinta de la vitela, que hasta ahora no hacia falta y ahora si.**
+   *
+   * En Oscuro y en Claro la vitela es del mismo bando que el fondo (parda oscura sobre pizarra,
+   * crema clara sobre papel), asi que `--text` se leia encima sin mas y nunca hubo un token
+   * para esto. **En Lectura no**: su vitela es un pliego CLARO sobre una mesa oscura, y el
+   * `--text` de ese tema tambien es claro. Medido en el navegador antes de escribir esta linea:
+   * **1.02:1** en el panel de vitela y en la atribucion del SRD. Ilegible, y ninguna prueba de
+   * `jsdom` podia verlo.
+   *
+   * Se declara por tema y en los dos viejos **es exactamente `--text`/`--muted`**, asi que
+   * Oscuro y Claro no cambian ni un pixel - lo confirma que sus mediciones siguen dando las
+   * mismas cifras. Solo Lectura le da un valor propio, la tinta parda del prototipo. */
+  --vellum-ink-ch: var(--text-ch);
+  --vellum-muted-ch: var(--muted-ch);
+  --vellum-ink: rgb(var(--vellum-ink-ch));
+  --vellum-muted: rgb(var(--vellum-muted-ch));
+
   /* Task 1.18b — the tenth token, and a reversible decision the author can still overturn (see
    * the report). "Orpiment" (dark #E0A83C, light #7A5310), added for exactly three sites that
    * were saying less than they should on --danger (overstating: a second link generation isn't
@@ -42,8 +96,13 @@
    * No --success token: success reuses --accent-text plus a check glyph and an explicit word
    * (a second green would be two greens to learn — see the report).
    */
-  --warning: #e0a83c;
-  --warning-text: #e0a83c;
+  --warning: rgb(var(--warning-ch));
+  --warning-text: rgb(var(--warning-text-ch));
+
+  /* Los tres que solo cambian de alfa y nunca de color: derivados tambien una sola vez. */
+  --copper-rule: rgb(var(--copper-ch) / 0.45);
+  --chrome-veil: rgb(var(--bg-ch) / 0.95);
+  --veil: rgb(var(--bg-ch) / 0.75);
 
   /* Type stacks — four voices, one per job (see specs/2026-09-02-identidad-visual-design.md).
    * Reverses 1.19's "no network fonts": the faces now load from Google Fonts, the one font host
@@ -141,9 +200,11 @@
    *  · `--chrome-veil` is the sticky combat header's own background: `--bg` at 95%, so the sheet
    *    scrolls UNDER it instead of through it. It was written as `bg-bg/95`, which compiled to
    *    nothing at all and left the header transparent with a blur over it.
+   *
+   * B0 (2026-09-04): los dos siguen existiendo con el mismo valor, pero ya no se escriben a
+   * mano por tema - se derivan del canal, arriba. El parrafo se conserva porque explica QUE
+   * es cada uno, y eso sigue siendo cierto.
    */
-  --copper-rule: rgba(201, 125, 70, 0.45);
-  --chrome-veil: rgba(16, 23, 28, 0.95);
 
   /* Tareas F7/G — **los tintes que las clases de opacidad prometían y nunca pintaron.**
    *
@@ -158,12 +219,16 @@
    * Se declaran como color completo, igual que `--copper-rule` y `--chrome-veil`, porque un
    * `bg-[color:var(--x)]` es un valor arbitrario y sí compila. Es el parche local; el arreglo
    * global —tokens por canales— sigue pendiente porque obliga a remedir todas las pantallas. */
-  --accent-tint: rgba(74, 155, 184, 0.14);
-  --danger-tint: rgba(196, 86, 75, 0.14);
-  --veil: rgba(16, 23, 28, 0.75);
-  --copper-tint: rgba(201, 125, 70, 0.14);
-  --warning-tint: rgba(224, 168, 60, 0.12);
-  --muted-tint: rgba(139, 153, 161, 0.16);
+  /* Los tintes SI se quedan por tema, y a proposito: lo que cambia entre temas no es el
+   * color - ese ya lo da el canal - sino el ALFA. Un tinte al 14% sobre pizarra y al 10%
+   * sobre papel son la misma intencion con distinto peso, y esa diferencia es una decision,
+   * no una repeticion. Es tambien la frontera con `/NN`: un `/NN` vale lo mismo en los cuatro
+   * temas; un tinte, no. */
+  --accent-tint: rgb(var(--accent-ch) / 0.14);
+  --danger-tint: rgb(var(--danger-ch) / 0.14);
+  --copper-tint: rgb(var(--copper-ch) / 0.14);
+  --warning-tint: rgb(var(--warning-ch) / 0.12);
+  --muted-tint: rgb(var(--muted-ch) / 0.16);
 
   color-scheme: dark;
 }
@@ -174,19 +239,19 @@
  * before this stylesheet loads, so there is no flash of the wrong theme on first paint. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #dfe5e9;
-    --surface: #edf1f3;
-    --vellum: #f4efe2;
-    --text: #16232b;
-    --muted: #4c5d66;
-    --accent: #1f5c73;
-    --accent-text: #1f5c73;
-    --copper: #8f5228;
-    --copper-text: #8f5228;
-    --danger: #9b3a31;
-    --danger-text: #9b3a31;
-    --warning: #7a5310;
-    --warning-text: #7a5310;
+    --bg-ch: 223 229 233;
+    --surface-ch: 237 241 243;
+    --vellum-ch: 244 239 226;
+    --text-ch: 22 35 43;
+    --muted-ch: 76 93 102;
+    --accent-ch: 31 92 115;
+    --accent-text-ch: 31 92 115;
+    --copper-ch: 143 82 40;
+    --copper-text-ch: 143 82 40;
+    --danger-ch: 155 58 49;
+    --danger-text-ch: 155 58 49;
+    --warning-ch: 122 83 16;
+    --warning-text-ch: 122 83 16;
 
     /* Task H4 — see the :root block for why these three exist and why the two gradient tokens
      * are capped at 5%. Light theme inverts the logic of the vignette: on a bright sheet the edge
@@ -195,35 +260,29 @@
     --vellum-laid: rgba(143, 82, 40, 0.05);
     --vellum-vignette: rgba(143, 82, 40, 0.05);
 
-    /* Task H4 — see the :root block: a `/NN` opacity modifier does not compile on these tokens,
-     * so the faint hairline and the sticky header's veil carry explicit values per theme. */
-    --copper-rule: rgba(143, 82, 40, 0.45);
-    --chrome-veil: rgba(223, 229, 233, 0.95);
-
-    --accent-tint: rgba(31, 92, 115, 0.1);
-    --danger-tint: rgba(155, 58, 49, 0.1);
-    --veil: rgba(223, 229, 233, 0.75);
-    --copper-tint: rgba(143, 82, 40, 0.1);
-    --warning-tint: rgba(122, 83, 16, 0.1);
-    --muted-tint: rgba(76, 93, 102, 0.12);
+    --accent-tint: rgb(var(--accent-ch) / 0.1);
+    --danger-tint: rgb(var(--danger-ch) / 0.1);
+    --copper-tint: rgb(var(--copper-ch) / 0.1);
+    --warning-tint: rgb(var(--warning-ch) / 0.1);
+    --muted-tint: rgb(var(--muted-ch) / 0.12);
     color-scheme: light;
   }
 }
 
 :root[data-theme="light"] {
-  --bg: #dfe5e9;
-  --surface: #edf1f3;
-  --vellum: #f4efe2;
-  --text: #16232b;
-  --muted: #4c5d66;
-  --accent: #1f5c73;
-  --accent-text: #1f5c73;
-  --copper: #8f5228;
-  --copper-text: #8f5228;
-  --danger: #9b3a31;
-  --danger-text: #9b3a31;
-  --warning: #7a5310;
-  --warning-text: #7a5310;
+  --bg-ch: 223 229 233;
+  --surface-ch: 237 241 243;
+  --vellum-ch: 244 239 226;
+  --text-ch: 22 35 43;
+  --muted-ch: 76 93 102;
+  --accent-ch: 31 92 115;
+  --accent-text-ch: 31 92 115;
+  --copper-ch: 143 82 40;
+  --copper-text-ch: 143 82 40;
+  --danger-ch: 155 58 49;
+  --danger-text-ch: 155 58 49;
+  --warning-ch: 122 83 16;
+  --warning-text-ch: 122 83 16;
 
   /* Task H4 — see the :root block for why these three exist and why the two gradient tokens
    * are capped at 5%. Light theme inverts the logic of the vignette: on a bright sheet the edge
@@ -232,34 +291,28 @@
   --vellum-laid: rgba(143, 82, 40, 0.05);
   --vellum-vignette: rgba(143, 82, 40, 0.05);
 
-  /* Task H4 — see the :root block: a `/NN` opacity modifier does not compile on these tokens,
-   * so the faint hairline and the sticky header's veil carry explicit values per theme. */
-  --copper-rule: rgba(143, 82, 40, 0.45);
-  --chrome-veil: rgba(223, 229, 233, 0.95);
-
-  --accent-tint: rgba(31, 92, 115, 0.1);
-  --danger-tint: rgba(155, 58, 49, 0.1);
-  --veil: rgba(223, 229, 233, 0.75);
-  --copper-tint: rgba(143, 82, 40, 0.1);
-  --warning-tint: rgba(122, 83, 16, 0.1);
-  --muted-tint: rgba(76, 93, 102, 0.12);
+  --accent-tint: rgb(var(--accent-ch) / 0.1);
+  --danger-tint: rgb(var(--danger-ch) / 0.1);
+  --copper-tint: rgb(var(--copper-ch) / 0.1);
+  --warning-tint: rgb(var(--warning-ch) / 0.1);
+  --muted-tint: rgb(var(--muted-ch) / 0.12);
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --bg: #10171c;
-  --surface: #1a2329;
-  --vellum: #2a2419;
-  --text: #dce3e6;
-  --muted: #8b99a1;
-  --accent: #4a9bb8;
-  --accent-text: #6fb6ce;
-  --copper: #c97d46;
-  --copper-text: #dd9663;
-  --danger: #c4564b;
-  --danger-text: #e08076;
-  --warning: #e0a83c;
-  --warning-text: #e0a83c;
+  --bg-ch: 16 23 28;
+  --surface-ch: 26 35 41;
+  --vellum-ch: 42 36 25;
+  --text-ch: 220 227 230;
+  --muted-ch: 139 153 161;
+  --accent-ch: 74 155 184;
+  --accent-text-ch: 111 182 206;
+  --copper-ch: 201 125 70;
+  --copper-text-ch: 221 150 99;
+  --danger-ch: 196 86 75;
+  --danger-text-ch: 224 128 118;
+  --warning-ch: 224 168 60;
+  --warning-text-ch: 224 168 60;
 
   /* Task H4 — the paper of the vellum sheet. Same three values as the bare :root block
    * above, where the reasoning and the measured worst-case ratios are written down. */
@@ -267,16 +320,71 @@
   --vellum-laid: rgba(201, 125, 70, 0.045);
   --vellum-vignette: rgba(0, 0, 0, 0.22);
 
-  /* Task H4 — same two values as the bare :root block above, where the reasoning is. */
-  --copper-rule: rgba(201, 125, 70, 0.45);
-  --chrome-veil: rgba(16, 23, 28, 0.95);
+  --accent-tint: rgb(var(--accent-ch) / 0.14);
+  --danger-tint: rgb(var(--danger-ch) / 0.14);
+  --copper-tint: rgb(var(--copper-ch) / 0.14);
+  --warning-tint: rgb(var(--warning-ch) / 0.12);
+  --muted-tint: rgb(var(--muted-ch) / 0.16);
+  color-scheme: dark;
+}
 
-  --accent-tint: rgba(74, 155, 184, 0.14);
-  --danger-tint: rgba(196, 86, 75, 0.14);
-  --veil: rgba(16, 23, 28, 0.75);
-  --copper-tint: rgba(201, 125, 70, 0.14);
-  --warning-tint: rgba(224, 168, 60, 0.12);
-  --muted-tint: rgba(139, 153, 161, 0.16);
+/* Lectura - el tercer tema, y **el que arregla un rotulo que mentia**. Hasta hoy este producto
+ * tenia dos temas y llamaba "Lectura (vitela)" al claro, que es gris frio (#dfe5e9): ni vitela
+ * ni pergamino. La maqueta de `prototipo/` trae los tres separados y con los oficios bien
+ * repartidos, asi que se adoptan sus nombres y su tercera paleta:
+ *
+ *   - **Oscuro**  - el instrumento. Pizarra naval. El que se usa para operar.
+ *   - **Claro**   - papel de dia. El mismo que ya habia, medido y sin tocar.
+ *   - **Lectura** - vitela calida sobre tinta clara, para la prosa larga del mundo.
+ *
+ * Los valores salen de `prototipo/src/index.css` (`[data-theme="reading"]`) y **se miden como
+ * los otros dos** en `e2e/tokens-contrast.spec.ts`: adoptarlos sin medirlos seria creerle a
+ * una maqueta que no responde de sus contrastes, que es el error que este proyecto ya se
+ * declaro a si mismo al recibirla. */
+:root[data-theme="reading"] {
+  --bg-ch: 36 29 18;
+  --surface-ch: 44 36 23;
+  --vellum-ch: 42 36 25;
+  --text-ch: 236 225 201;
+  --muted-ch: 179 166 133;
+  --accent-ch: 111 182 206;
+  --accent-text-ch: 134 196 216;
+  --copper-ch: 208 137 79;
+  --copper-text-ch: 224 160 105;
+  --danger-ch: 215 106 95;
+  --danger-text-ch: 229 133 121;
+  --warning-ch: 230 178 74;
+  --warning-text-ch: 230 178 74;
+
+  /* **Y aqui hay una divergencia deliberada con el prototipo, medida y no opinada.**
+   *
+   * Su tema de lectura pone un pliego CLARO (#efe3c8) sobre una mesa oscura. Se probo tal cual
+   * y no se sostiene: sobre ese pliego, todo lo que la aplicacion imprime sigue siendo del
+   * color del chrome, asi que el texto midio **1.02:1** y un enlace **1.51:1**. Un pliego claro
+   * no necesita una tinta, necesita **una paleta entera de sheet** - tinta, apagado, acento,
+   * codigo y filete -, y eso es una tanda con su ficha, no una linea en esta.
+   *
+   * Asi que la vitela de Lectura es oscura, como en el tema Oscuro, y el tema es lo que de
+   * verdad se pidio: **la misma mesa, mas calida**. La regla del proyecto ya lo dice - si el
+   * prototipo y una regla de `docs/04-convenciones.md` discrepan, manda el documento, y la
+   * discrepancia se declara en vez de dejarla implicita. Queda ficha en `06-pendientes.md`.
+   *
+   * `--vellum-ink` / `--vellum-muted` SE QUEDAN aunque hoy sean alias de `--text` / `--muted`
+   * en los tres temas: son exactamente la costura por donde entraria ese pliego claro el dia
+   * que se decida, y `ui/Panel.tsx` ya imprime a traves de ellos.
+   *
+   * Los tres valores de papel siguen la logica del tema oscuro - la sombra y la vineta
+   * oscurecen -, no la del claro. */
+  --sheet-shadow: rgb(0 0 0 / 0.62);
+  --vellum-laid: rgb(var(--copper-ch) / 0.045);
+  --vellum-vignette: rgb(0 0 0 / 0.22);
+
+  --accent-tint: rgb(var(--accent-ch) / 0.14);
+  --danger-tint: rgb(var(--danger-ch) / 0.14);
+  --copper-tint: rgb(var(--copper-ch) / 0.14);
+  --warning-tint: rgb(var(--warning-ch) / 0.12);
+  --muted-tint: rgb(var(--muted-ch) / 0.16);
+
   color-scheme: dark;
 }
 

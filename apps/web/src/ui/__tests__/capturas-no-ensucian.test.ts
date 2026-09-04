@@ -9,7 +9,7 @@ import { join } from "node:path";
 //
 // **Esto no lo puede cazar ninguna prueba de comportamiento**: el daño no está en lo que la
 // aplicación hace, está en lo que la suite deja detrás. Se caza leyendo el guion, igual que
-// `clases-de-opacidad.test.ts` caza una clase que ningún recorrido monta.
+// `canales-de-color.test.ts` caza una clase que ningún recorrido monta.
 
 const GUION = join(process.cwd(), "e2e", "capturas-comparacion.spec.ts");
 const IGNORADAS = readFileSync(join(process.cwd(), "..", "..", ".gitignore"), "utf8");

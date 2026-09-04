@@ -55,7 +55,7 @@ por su cuenta**.
 | `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
 | `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
 | `rolls` | Tirar de verdad (2A.13). **El azar vive aquí y solo aquí**: el servidor tira y escribe la tirada antes de devolverla | miembro de la campaña |
-| `notifications` | Bandeja de avisos (2A.14). **Sin tiempo real**: se pide al cargar. Escucha los eventos de dominio que ya se emitían y nadie escuchaba | nadie, por HTTP; solo marcar leídas las propias |
+| `notifications` | Avisos (2A.14). **Sin tiempo real**: se piden al cargar. Escucha los eventos de dominio que ya se emitían y nadie escuchaba. **Ojo: es API sin pantalla** — esta fila prometía «bandeja de avisos» y no hay ninguna, porque nada de `apps/web/src` llama a estos endpoints. Ficha **A1-avisos** de [06-pendientes.md](./06-pendientes.md) | nadie, por HTTP; solo marcar leídas las propias |
 | `world-state` | Marcas, conjuntos y señales de la campaña (2A.15). Lo que el motor de reglas escucha | **Por HTTP, solo DM. Pero no todo lo que escribe entra por HTTP**: `recordEntityOpened` lo llama `entities` cuando **un jugador** abre una ficha, así que un jugador escribe aquí sin pasar por este controlador. El suceso es `DM_ONLY` y no se registra si quien mira es el DM o el creador |
 | `common` | `canView` (matriz de visibilidad) y `ZodValidationPipe` | — |
 | `prisma` | `PrismaService` | — |

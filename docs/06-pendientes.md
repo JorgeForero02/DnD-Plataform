@@ -1,5 +1,21 @@
 # Pendientes
 
+> **Cómo se nombra una ficha, y por qué algunas llevan sufijo.** Este documento fue creciendo
+> por tandas, y cada tanda repartió identificadores de una letra y un número (`S7`, `U6`, `A1`)
+> **sin mirar los que ya existían**. El 2026-09-03 había **siete colisiones** —`A1`, `A3`, `N3`,
+> `S10`, `U6`, `U7` y `U8`, cada uno usado dos veces en mitades distintas del fichero—, así que
+> «la ficha U6» no señalaba a nada: nombraba dos problemas sin relación. El criterio que las
+> deshace, y que se aplica a cualquier colisión futura:
+>
+> - **Manda la aparición más temprana**, que se queda con el identificador desnudo. No por
+>   mérito, sino porque es a la que ya apuntan los enlaces escritos: `07-historial.md` cita
+>   `S10` y hay que respetarlo.
+> - **La segunda toma un sufijo que dice de qué va**, no un número: `U6-visibilidad`,
+>   `A1-avisos`, `N3-notify`. Un `U6b` habría resuelto la ambigüedad para el script y no para
+>   quien lee.
+> - **Un identificador no se recicla** cuando su ficha se cierra o se archiva. Reutilizarlo
+>   rompe las citas de los documentos que ya lo nombraban.
+
 > ## La copia de la base está rota — **y el autor decide que puede esperar**
 >
 > **Decisión del autor, 2026-09-02:** *«no hace falta la copia de seguridad en este proyecto…
@@ -465,7 +481,7 @@ quedan aquí para que no se deshagan sin darse cuenta.
 | **S4** | **Los rasgos raciales sin efecto numérico se listan, pero no hacen nada** (Suertudo, Astucia gnoma, Aguante implacable…) | Salen por `features` para que la hoja los enseñe. Automatizarlos es 2C, igual que las condiciones. Está dicho aquí para que nadie los lea en la hoja y suponga que el motor los aplica |
 | ~~**S5**~~ | **CERRADO en 2A.10**, a medias declaradas. La tabla existe: `apps/web/src/features/character-sheet/vocabulario.ts`, y una `labelKey` sin traducir se pinta como «Sin traducir: <clave>», visible y no silenciosa. **Lo que sigue sin existir es la prueba que falle cuando el catálogo estrene una `labelKey` nueva**: hoy la lista de la prueba se escribe a mano, así que comprueba lo que alguien recordó, no lo que el catálogo emite | Abierto (la prueba) |
 | **S6** | **La mejora de característica de los niveles de `asiLevels` no se modela todavía como elección** (2A.4) | Es el mismo mecanismo que el «+1 a dos» del semielfo, y el plan (§3) las nombra juntas. No entra aún porque «+2 a una **o** +1 a dos» es una concesión con **dos modos**, y quien decide la forma de la subida de nivel es 2A.9. **Ojo: no son solo 4/8/12/16/19** — el guerrero tiene 4/6/8/12/14/16/19 y el pícaro 4/8/10/12/16/19, y están en `asiLevels`; quien implemente 2A.9 leyendo solo esta línea se dejaría tres niveles. Añadirlo es un `kind` nuevo en `Grant` |
-| **S7** | **[revisión] Ningún filtro traduce `UnknownContentError`, `InvalidChoiceError` ni `InvalidEquipmentError` a un 400** | Los comentarios afirmaban «es un 400, no un 500» y **era mentira**: la API no registra `useGlobalFilters` y Nest devolvería 500. Los comentarios ya dicen «deberá traducirse»; el filtro con su e2e lo monta **2A.6**, que es quien crea el primer endpoint que puede producirlas. Hoy no hay camino que las provoque por HTTP |
+| ~~**S7**~~ | **CERRADA de hecho, sin filtro global.** `character-sheet.service.ts` captura las tres en el borde y lanza `BadRequestException` (líneas 128, 500, 528 y 536), así que el camino que las produce **sí** devuelve 400. Lo que sigue sin existir es el `useGlobalFilters`: si mañana otro servicio deja escapar una de estas excepciones sin capturarla, Nest devolverá 500. Es traducción caso a caso, no una red de seguridad | Cerrada como fallo; abierta como patrón. La versión anterior de esta ficha decía «hoy no hay camino que las provoque por HTTP», y llevaba desde 2A.6 siendo falsa |
 | ~~**S8**~~ | **CERRADO en 2B, y por el camino que la ficha pedía: no se escribió el `else`.** El equipo llega al resolutor **ya resuelto** (`CharacterBuild.items: ResolvedItem[]`), no por referencia, así que no hay ninguna rama donde un identificador de otra campaña pueda colarse. Quien traduce un `ContentRef` de campaña a un objeto es la API, siempre con el `campaignId` en el `where` (`campaign-items.service.ts`, `inventory/common/resolve-item.ts`) | `findRace`/`findClass`/`findArmor` reciben solo la referencia. Cuando 2B rellene la rama `CAMPAIGN`, la firma **no tiene por dónde comprobar que ese identificador pertenece a la campaña del personaje**: es un IDOR entre campañas esperando a que alguien implemente el `else`. Hoy esa rama lanza `UnknownContentError`, así que no hay agujero; el arreglo es meter el `campaignId` en la firma **antes** de escribir ese `else`, no después |
 | ~~**S9**~~ | **CERRADO en 2A.12.** `GET .../sheet` devuelve `effectiveSpeeds`: la velocidad ya afectada por las condiciones, con la traza que nombra **todas** las causas. Y con una lección: la primera versión de la pantalla la recalculaba en el navegador copiando la función del servidor letra por letra, porque no había endpoint. Dos copias de una regla del juego se separan en cuanto se toca una | Cerrado |
 | **S10** | **[revisión] El nivel y el nombre de las ~203 aptitudes de clase no están fijados por ninguna prueba** | `reference.spec.ts` fija dado de golpe, salvaciones, `asiLevels`, número de habilidades, lanzamiento, subclase y su nivel, y todas las cifras de razas y armaduras — **mover una aptitud de nivel, en cambio, no pone nada en rojo** (comprobado: la mutación «evasión del pícaro del 7 al 4» sigue pasando). Fijarlas sería transcribir los mismos datos **dos veces**, y dos copias derivan. Lo que protege esas filas es que el diff se entregó legible y se revisó con el SRD delante |
@@ -634,9 +650,9 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 
 | | Qué | Por qué aquí y no después |
 |---|---|---|
-| **A1** | **Bandeja de notificaciones.** Tabla `Notification` alimentada por los eventos de dominio que ya se emiten, y una bandeja en la cabecera. **Sin tiempo real**: se pide al cargar | Hoy la aplicación no le cuenta nada a nadie: ni invitaciones, ni sesión el viernes, ni comentarios. Y **el motor de reglas de 2A no tiene dónde avisar** sin esto |
+| **A1-avisos** | **La bandeja de notificaciones está construida por dentro y no existe por fuera.** La mitad hecha: `apps/api/src/notifications/` tiene tabla `Notification`, servicio, y controlador con `GET /notifications` y `POST /notifications/read`, alimentado por los eventos de dominio. La mitad que falta: **ningún fichero de `apps/web/src` llama a esos endpoints** —comprobado por búsqueda, cero coincidencias—, así que no hay bandeja en la cabecera ni en ninguna parte | La aplicación **sí** registra lo que pasa, y **no se lo enseña a nadie**: quien recibe una invitación o un comentario no se entera si no va a mirar. Cerrarlo es trabajo solo de pantalla, no de API. **Esta ficha decía «hoy la aplicación no le cuenta nada a nadie»**, y esa media verdad hizo creer más de una vez que faltaba el módulo entero |
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
-| **A3** | **Invitaciones con usos máximos, caducidad y revocación** | Hoy es un enlace por persona —decisión declarada— y montar una mesa de cuatro exige generar cuatro. **Un enlace eterno no**: acaba circulando por un grupo y la visibilidad se apoya en quién es miembro |
+| **A3-invitaciones** | **Invitaciones con usos máximos, caducidad y revocación** | Hoy es un enlace por persona —decisión declarada— y montar una mesa de cuatro exige generar cuatro. **Un enlace eterno no**: acaba circulando por un grupo y la visibilidad se apoya en quién es miembro |
 
 ## Reseño de interfaz (2026-09-02) — lo que dejó abierto
 
@@ -1040,8 +1056,16 @@ Decisión aparte, no configuración. Ver [03-despliegue.md](./03-despliegue.md).
 
 ## P1 — Huecos de verificación
 
-**No hay prueba de accesibilidad, responsive ni rendimiento.** Ninguna herramienta lo mira
-hoy.
+**La accesibilidad se mide a medias, no a cero.** `apps/web/e2e/tokens-contrast.spec.ts` mide
+**contraste real en los dos temas** sobre cinco pantallas, y comprueba que un control de
+formulario no dispare el zoom de iOS Safari. Lo que **no** existe: recorrido de teclado,
+lector de pantalla, viewport de teléfono y rendimiento. Es la misma frontera que declara la
+ficha **U6** de este documento.
+
+> Esta línea decía «no hay prueba de accesibilidad… ninguna herramienta lo mira hoy», y se
+> contradecía con su propia ficha U6 doce secciones más abajo y con un fichero de pruebas que
+> lleva meses en verde. **Dos frases del mismo documento que no se leen la una a la otra es la
+> forma más barata de mentir.**
 
 **CI nunca ejecuta `pnpm build`.** `.github/workflows/ci.yml` corre `lint`, `format:check`,
 `check:docs`, `check:estado`, `test` y `test:e2e` en el job `test`, pero no llama a `pnpm
@@ -1132,8 +1156,11 @@ comportamiento:
   inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
   riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).
   Observación del revisor de 1.12a, no arreglado.
-- **El modal del editor de entidades no tiene `role="dialog"` ni se cierra con Escape**
-  (`EntityEditor.tsx`). Observación del revisor de 1.12a, no arreglado.
+- ~~**El modal del editor de entidades no tiene `role="dialog"` ni se cierra con Escape**~~
+  — **CERRADO, y la línea era falsa desde el reseño de interfaz.** `EntityEditor.tsx` monta
+  `ui/Dialog`, que pone `role="dialog"` y llama a `onClose` con `Escape`, además de devolver
+  el foco a lo que lo abrió. Se conserva tachado porque la observación del revisor de 1.12a
+  fue correcta **cuando se escribió**: lo que caducó es la ficha, no el hallazgo.
 
 ## P4 — Limpieza
 
@@ -1150,12 +1177,26 @@ comportamiento:
 
 ## Decisiones abiertas
 
-- **Sin VPS asignado**: el despliegue en Coolify está preparado y **diferido**. La parte de
-  despliegue de la tarea 1.14 no se ejecuta; solo se construye la interfaz de invitación.
-- **Sin sistema de diseño** para el MVP: decisión explícita, no olvido.
-- **Fases 2–5** (reglas, mapas, tiempo real, 3D/IA) solo tienen alcance, no plan. Cada una
-  recibe el suyo al llegar, y **no se empieza la siguiente hasta usar la anterior en una
-  sesión real**.
+> **Las tres que había aquí eran falsas y se corrigieron el 2026-09-03.** Decían «sin VPS
+> asignado / despliegue diferido», «sin sistema de diseño para el MVP» y «las fases 2–5 solo
+> tienen alcance, no plan». Se quedaron escritas mientras el mundo alrededor cambiaba, que es
+> exactamente cómo una sección de decisiones se convierte en una trampa: quien la lee cree que
+> sigue habiendo una decisión que tomar. Lo cierto hoy:
+>
+> - **Hay despliegue**, en `vps1new` con Coolify + Traefik y dominio `dnd.supportive.pro`,
+>   desde el 2026-09-02. Ver [03-despliegue.md](./03-despliegue.md).
+> - **Hay sistema de diseño**, desde el 2026-09-02: la capa de tokens y las primitivas de
+>   `apps/web/src/ui/`. [04-convenciones.md](./04-convenciones.md) ya lo decía —con esa misma
+>   corrección escrita al lado— mientras este documento afirmaba lo contrario.
+> - **La fase 2 tiene cuatro planes y está entera** (2A, 2B, 2C y 2D), y las fases 2.5 y 3
+>   tienen alcance escrito. Lo que sigue siendo cierto de la frase vieja es su última mitad,
+>   y se conserva abajo porque es una regla, no un estado.
+
+- **No se empieza la fase siguiente hasta usar la anterior en una sesión real.** Es la única
+  parte de esta sección que nunca dejó de ser verdad, y la que decide cuándo arranca 2.5:
+  falta la partida de prueba con jugadores de verdad.
+- **Las fases 4 y 5** (tiempo real, 3D/IA) siguen sin plan, solo con el alcance del plan
+  maestro. Cada una recibe el suyo al llegar.
 
 ## P5 — Dejado fuera a propósito de la tarea antideriva (2026-09-01)
 
@@ -1217,13 +1258,13 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 
 | # | Qué falta | Por qué importa |
 |---|---|---|
-| **S10** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
+| **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts` | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, pero con más superficie. Candidato claro a `@dnd/shared` |
 | **S12** | **`listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`** | `docs/01-arquitectura.md` dice que la forma de los datos vive en un solo sitio y **eso ya tiene dos excepciones**. O se declara la excepción (los esquemas de consulta locales a un endpoint pueden vivir junto al controlador) o se mueven |
-| **U6** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
-| **U7** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
-| **U8** | **Seis glifos de fuente incumplen la regla de iconos dibujados**, incluido el `✓` que la propia regla pone como ejemplo prohibido | En `InvitePanel`, `AccountPage`, `LoginPage`, `Field`, `Traza` y `Ornament`. O se dibujan como el resto, o `docs/04-convenciones.md` amplía la excepción por escrito — que es lo que la regla exige. Lo que no puede quedarse es la regla conviviendo con su propio contraejemplo |
-| **N3** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
+| **U6-visibilidad** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
+| **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
+| **U8-glifos** | **Seis glifos de fuente incumplen la regla de iconos dibujados**, incluido el `✓` que la propia regla pone como ejemplo prohibido | En `InvitePanel`, `AccountPage`, `LoginPage`, `Field`, `Traza` y `Ornament`. O se dibujan como el resto, o `docs/04-convenciones.md` amplía la excepción por escrito — que es lo que la regla exige. Lo que no puede quedarse es la regla conviviendo con su propio contraejemplo |
+| **N3-notify** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
 | **N4** | **El listado de propuestas no trae el nombre de la regla**, solo su identificador | La pantalla lo cruza con la lista y, si no está, pinta «regla borrada». Es un dato que la API debería dar |
 | **D9** | **Cinco módulos de la API no tienen pantalla**: log de partida, listado de tiradas, avisos, marcas y conjuntos del mundo, y el estado de sesión (empezar y cerrar) | `docs/01-arquitectura.md` los describe como si el producto los ofreciera; hoy se usan **solo con un cliente HTTP**. Para la partida de la semana que viene lo que más se echa en falta es **empezar y cerrar sesión desde la pantalla**: sin eso, todos los sucesos se escriben fuera de sesión |
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |

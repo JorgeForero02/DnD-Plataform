@@ -285,10 +285,14 @@ sesión y comprueban el rol **en el servidor** (`MembershipService`, nunca en el
   `prisma.campaign.delete({ where: { id } })`: el esquema ya cascadea (arriba) miembros,
   invitaciones, entidades —con sus enlaces en ambas direcciones, concesiones y
   comentarios—, sesiones y personajes. No hace falta borrar nada a mano. Emite
-  `campaign.deleted`. Probado con recuentos reales de **ocho** tablas, no solo por el código
-  de estado — y **cuatro de las que hoy cascadean desde `Campaign` no están en ese recuento**
-  (`gameEvent`, `campaignFlag`, `campaignSet`, `rule`), que es deuda anotada en
-  [06-pendientes](./06-pendientes.md) — ver [08-pruebas.md](./08-pruebas.md).
+  `campaign.deleted`. Probado con **recuentos reales de filas en diecisiete tablas**, no solo
+  por el código de estado: cuenta antes y después y exige cero. **Cada tabla nueva que cuelgue
+  de una campaña se añade a ese recuento**, porque una que falte es un huérfano que no avisa —
+  la operación devuelve 200 igual. Ver [08-pruebas.md](./08-pruebas.md).
+  > Hasta el 2026-09-03 esta línea decía «ocho tablas» y añadía que cuatro de ellas eran deuda
+  > anotada (`gameEvent`, `campaignFlag`, `campaignSet`, `rule`). Esa deuda se cerró antes de
+  > desplegar y el texto se quedó atrás: la ficha ya estaba tachada en `06-pendientes` mientras
+  > aquí seguía viva.
 - **`DELETE /campaigns/:id/members/:userId`** — expulsar y salirse son **el mismo endpoint**
   (`MembershipService.removeMember`, `apps/api/src/campaigns/membership.service.ts`):
   `userId === quien llama` es salirse; cualquier otro valor es expulsar y exige que quien

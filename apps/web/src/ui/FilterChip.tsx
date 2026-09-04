@@ -32,16 +32,22 @@ export function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={[
-        "inline-flex items-center gap-1 rounded-radius-sm border px-2 py-0.5",
+        // Espaciado por tokens (`gap-s1 px-s3 py-s1`), como la maqueta, y no `gap-1 px-2 py-0.5`
+        // literales: en este proyecto la escala de espacio vive en `ui/tokens.css` y una ficha
+        // que se salga de ella se descuadra el día que la escala cambie.
+        "inline-flex items-center gap-s1 rounded-radius-sm border px-s3 py-s1",
         "font-chrome text-chrome-xs transition-colors",
         active
           ? "border-accent bg-[color:var(--accent-tint)] text-accent-text"
           : "border-muted text-muted hover:border-text hover:text-text",
       ].join(" ")}
     >
-      {/* `aria-hidden` lo pone el propio icono (`ui/Iconos.tsx`), así que el nombre accesible
-          del botón sigue siendo exactamente el texto de la ficha. */}
-      {icon}
+      {/* El envoltorio con `[&>svg]:size-4` es de la maqueta y hace falta: los iconos de
+          `ui/Iconos.tsx` se dimensionan en `1em` para vivir dentro de una línea de texto, y aquí
+          esa línea es `text-chrome-xs` —12 px—, así que sin esto el dibujo sale a 12 px en vez
+          de a los 16 que pide la ficha. `aria-hidden` lo pone el propio icono, así que el nombre
+          accesible del botón sigue siendo exactamente el texto de la ficha. */}
+      {icon && <span className="[&>svg]:size-4">{icon}</span>}
       {children}
     </button>
   );

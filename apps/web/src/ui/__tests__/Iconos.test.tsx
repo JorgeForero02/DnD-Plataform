@@ -3,7 +3,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { render, screen } from "@testing-library/react";
-import { IconoConfirmacion, IconoAviso, IconoRombo } from "../Iconos";
+import type { ComponentType } from "react";
+import * as Iconos from "../Iconos";
 import { Field } from "../Field";
 import { OrnamentRule } from "../Ornament";
 
@@ -80,23 +81,40 @@ describe("Iconos — la regla de que los iconos se dibujan", () => {
     expect(culpables).toEqual([]);
   });
 
-  it.each([
-    ["confirmacion", <IconoConfirmacion key="c" />],
-    ["aviso", <IconoAviso key="a" />],
-    ["rombo", <IconoRombo key="r" />],
-  ])("%s es un SVG que hereda currentColor y no anuncia nada al lector de pantalla", (id, el) => {
-    const { container } = render(el);
-    const svg = container.querySelector(`svg[data-icono="${id}"]`);
-    expect(svg).not.toBeNull();
-    expect(svg!.getAttribute("viewBox")).toBe("0 0 24 24");
-    // Ni un color propio ni un tamaño en píxeles: el icono es del color y del cuerpo del texto
-    // que lo acompaña, que es lo que un glifo hacía gratis y un SVG hay que pedirle.
-    expect(svg!.getAttribute("stroke")).toBe("currentColor");
-    expect(svg!.getAttribute("width")).toBe("1em");
-    // El significado va en el texto de al lado; anunciarlo dos veces es ruido.
-    expect(svg!.getAttribute("aria-hidden")).toBe("true");
-    expect(svg!.textContent).toBe("");
+  // C5, arreglo de cierre (2026-09-04): **se recorren TODOS los iconos del fichero**, y no la
+  // lista de tres escrita a mano que había aquí. Con 4 iconos una lista a mano se mantenía sola;
+  // con 28 no, y la prueba habría seguido en verde comprobando el 11% del fichero mientras los
+  // 22 dibujos nuevos entraban sin que nadie mirase su marco. Es la misma corrección que ya se
+  // hizo arriba con el barrido de glifos: una lista a mano de algo que crece caduca sola.
+  const TODOS = Object.entries(Iconos).filter(([nombre]) => nombre.startsWith("Icono")) as [
+    string,
+    ComponentType<{ className?: string }>,
+  ][];
+
+  it("el fichero exporta los 23 conceptos de la maqueta, y ninguno se ha perdido por el camino", () => {
+    // «Flechas» son dos dibujos —derecha e izquierda—, así que 23 conceptos son 24 componentes,
+    // más los cuatro del chrome que ya vivían aquí antes de la maqueta.
+    expect(TODOS).toHaveLength(28);
   });
+
+  it.each(TODOS)(
+    "%s es un SVG que hereda currentColor y no anuncia nada al lector de pantalla",
+    (_nombre, Icono) => {
+      const { container } = render(<Icono />);
+      const svg = container.querySelector("svg[data-icono]");
+      expect(svg).not.toBeNull();
+      expect(svg!.getAttribute("viewBox")).toBe("0 0 24 24");
+      // Ni un color propio ni un tamaño en píxeles: el icono es del color y del cuerpo del texto
+      // que lo acompaña, que es lo que un glifo hacía gratis y un SVG hay que pedirle.
+      expect(svg!.getAttribute("stroke")).toBe("currentColor");
+      expect(svg!.getAttribute("width")).toBe("1em");
+      // El significado va en el texto de al lado; anunciarlo dos veces es ruido.
+      expect(svg!.getAttribute("aria-hidden")).toBe("true");
+      expect(svg!.textContent).toBe("");
+      // Y todos dibujan algo: un `Marco` vacío pasaría todo lo de arriba y no se vería nada.
+      expect(svg!.children.length).toBeGreaterThan(0);
+    },
+  );
 
   it("el aviso de error de Field se dibuja y sigue siendo señal, no adorno", () => {
     render(

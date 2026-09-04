@@ -184,7 +184,7 @@
   --vellum-laid: rgba(201, 125, 70, 0.045);
   --vellum-vignette: rgba(0, 0, 0, 0.22);
 
-  /* C5 (2026-09-04) — el pigmento de las manchas de la vitela (`.textura-vitela`, al final de
+  /* C5 (2026-09-04) — el pigmento de las manchas de la vitela (`.vellum-texture`, al final de
    * esta hoja). Va **una sola vez y sin variante por tema**, como en la maqueta: es el pardo
    * del pigmento, no un color del tema, y los cuatro temas lo componen sobre su propia vitela.
    * Canal y no color porque se usa con opacidad, y aquí la opacidad se escribe
@@ -567,6 +567,15 @@ body {
  * C5 (2026-09-04) — la textura de vitela, lo único de `prototipo/src/index.css`
  * que la Ola 0 dejó fuera (`index.css:147-156`).
  *
+ * **Se llama `vellum-texture`, como en la maqueta**, y no traducida. Es la regla
+ * que la Ola 0 dejó escrita 150 líneas más arriba —copia literal, con la única
+ * traducción de `var(--c-*)` a `var(--*)`—, y es la que conserva el nombre de
+ * `.scroll-quiet`, `.capitular` y `.anim-surge`. No es estético: la maqueta
+ * aplica esta clase en `prototipo/src/ui/Dialog.tsx:79`, en su variante
+ * `pergamino`, así que el siguiente carril que copie de ahí escribirá este
+ * nombre — y con la clase traducida no habría pasado nada de nada, el mismo
+ * no-op silencioso que la auditoría marcó como CRÍTICO para `.scroll-quiet`.
+ *
  * Dos manchas radiales muy tenues, una arriba a la izquierda y otra abajo a la
  * derecha, del pardo del pigmento. Es lo que separa un pliego de papel de un
  * rectángulo marrón: la vitela deja de ser plana sin que aparezca un dibujo.
@@ -597,9 +606,17 @@ body {
  * (`grep` en `apps/web/src`), así que las cifras de arriba son el caso real y no
  * una cota optimista.
  * ───────────────────────────────────────────────────────────────────────────── */
-.textura-vitela {
+.vellum-texture {
   background-color: var(--vellum);
+  /* La tinta va EN la clase, como en la maqueta. `ui/Panel.tsx` ya pinta `text-vellum-ink` por
+     su cuenta y no la necesita; el siguiente contenedor que aplique esta clase —el cajón
+     `pergamino` de la maqueta, por ejemplo— no hereda la tinta de ningún sitio, y una vitela
+     con el texto del cromo encima es el 1,02:1 que B0 midió en el tema Lectura. */
+  color: var(--vellum-ink);
   background-image:
     radial-gradient(circle at 20% 15%, rgb(var(--vellum-stain-ch) / 0.06) 0, transparent 42%),
     radial-gradient(circle at 82% 78%, rgb(var(--vellum-stain-ch) / 0.05) 0, transparent 46%);
+}
+.vellum-texture .vellum-muted {
+  color: var(--vellum-muted);
 }

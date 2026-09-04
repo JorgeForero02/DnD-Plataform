@@ -35,7 +35,14 @@ function Marco({
       height="1em"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      // C5, arreglo de cierre (2026-09-04): **1.6, el trazo de la maqueta**, y no el 2 con el
+      // que nacieron los cuatro primeros. La revisión lo midió: 2 era el bicho raro de toda la
+      // aplicación —`features/bestiario` ya dibuja a 1.6 «igual que en el prototipo»,
+      // `inventory` y `rules` a 1.4, y `campaign-items`, `campaigns`, `dm-tables`, `entities` y
+      // `sessions` a 1.5—, así que los 22 dibujos nuevos habrían entrado un 25% más gruesos que
+      // el original y más que cualquier otro icono ya presente. Cambia también los seis viejos,
+      // y eso es lo que se quiere: la familia se unifica en una sola.
+      strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -153,16 +160,21 @@ export function IconoFlechaIzquierda({ className }: IconoProps) {
  * C5 (2026-09-04) — los 23 dibujos de la maqueta.
  *
  * La auditoría del 2026-09-04 lo contó: **23 iconos en `prototipo/src/ui/icons.tsx`, 4 aquí**.
- * Estos son esos 23, copiados trazo a trazo de la maqueta, con dos ajustes que NO son
- * interpretación sino el marco que este fichero ya tenía:
+ * Estos son esos 23, copiados trazo a trazo de la maqueta y con **su mismo trazo de 1.6**. El
+ * `Marco` de arriba aporta lo único que el `Base` de la maqueta no tiene y aquí sí hace falta:
+ * el tamaño en `1em`, que es lo que hace que un icono crezca y mengüe con el texto que
+ * acompaña —una `h-4` se descuadra en cuanto el texto cambia de escala—, más
+ * `focusable="false"` y el `data-icono` con el que las pruebas los encuentran.
  *
- *  · el `Marco` de arriba (`1em`, `strokeWidth` 2, `focusable="false"`, `data-icono`) en vez
- *    del `Base` de la maqueta (`strokeWidth` 1.6, sin tamaño): el tamaño en `em` es lo que
- *    hace que un icono crezca con el texto que acompaña, y `ui/__tests__/Iconos.test.tsx`
- *    comprueba `width="1em"`. Un segundo marco al lado del primero habría dado dos familias
- *    de iconos en el mismo fichero.
- *  · los nombres van en la forma larga de esta casa (`IconoFlechaDerecha`, no `IconFlechaDcha`),
- *    porque los seis que ya vivían aquí la usan y los otros carriles los importan por nombre.
+ * **La primera versión de este comentario decía que la prueba obligaba a un trazo de 2.** Era
+ * falso: `ui/__tests__/Iconos.test.tsx` comprueba el `viewBox`, `stroke="currentColor"`,
+ * `width="1em"` y `aria-hidden`, y **no mira el grosor**. Una desviación de la maqueta escrita
+ * como si fuera un acuerdo — exactamente el defecto que este reseño existe para corregir. Queda
+ * aquí escrito porque la corrección importa menos que la manera en que se coló.
+ *
+ * Lo que sí se traduce son los nombres, a la forma larga de esta casa (`IconoFlechaDerecha`, no
+ * `IconFlechaDcha`), porque los seis que ya vivían aquí la usan y los otros carriles los
+ * importan por nombre.
  *
  * De la lista de la maqueta, «flechas» son dos dibujos —derecha e izquierda—, así que 23
  * conceptos son 24 componentes; `IconoCerrar` e `IconoFlechaIzquierda` ya los trajo la Ola 0 y

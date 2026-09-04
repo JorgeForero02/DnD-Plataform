@@ -128,10 +128,22 @@ export function Dialog({
   return (
     <div
       role="presentation"
-      // El velo: `bg-[color:var(--veil)]` y no una clase de opacidad. `bg-bg/70` no compila en
-      // este proyecto —los colores se declaran como `var(--bg)` sin `<alpha-value>` y Tailwind
-      // descarta la utilidad entera—, así que durante meses los diálogos salieron SIN oscurecido
-      // detrás. `--veil` es un token de verdad y sí se pinta.
+      // El velo: `bg-[color:var(--veil)]`, un token declarado, y no `bg-bg/70`.
+      //
+      // **Corrección de un comentario que mentía, y conviene que quede escrito por qué.** Aquí
+      // ponía que las clases de opacidad de Tailwind «no compilan en este proyecto». Eso fue
+      // cierto —y por eso los diálogos salieron meses sin oscurecido detrás, solo con el
+      // desenfoque—, pero **dejó de serlo en B0**: `tailwind.config.js:29-45` declara los canales
+      // como `rgb(var(--x-ch) / <alpha-value>)` y `:93-95` abre la escala de opacidad entera de 0
+      // a 100, porque la maqueta escribe `/15`, `/45` y `/62` y ninguno está en la lista corta que
+      // Tailwind trae de fábrica. Hoy `bg-bg/70` se pintaría.
+      //
+      // La frase caducada estuvo a punto de costar caro: se copió a los encargos de dos carriles
+      // como si fuera una restricción viva, y dos revisiones tuvieron que desmentirla midiendo el
+      // CSS emitido. Es el caso exacto de «documentación que miente es peor que ausente».
+      //
+      // El token se queda igualmente, y ahora por su motivo de verdad: `--veil` se redefine por
+      // tema, así que el velo sigue al tema en vez de ser siempre el fondo del tema oscuro.
       //
       // `justify-end` + `items-stretch`: el cajón se pega a la derecha y ocupa toda la altura.
       // Sin `p-s4`: un cajón no flota, se apoya en el borde.

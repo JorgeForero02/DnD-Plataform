@@ -119,12 +119,29 @@ function PanelDeSellos({ campaignId, onCerrar }: { campaignId: string; onCerrar:
   const [ultimo, setUltimo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // **El sello vacío no se manda, y este era el SEGUNDO sitio.**
+  //
+  // La auditoría del 2026-09-04 dio dos direcciones para el mismo defecto —«`MesaDeSesion.tsx`
+  // :793-805 **y** :886-901»—: el compositor del hilo y este. El carril del hilo arregló el suyo y
+  // declaró que «no queda ninguna ruta»; su revisión encontró que sí quedaba, y es esta, que
+  // además **se pinta en toda pantalla de campaña** (`ui/AppShell.tsx`). Pulsar «Nota» aquí seguía
+  // escribiendo en el registro una entrada que decía «Nota» y nada más.
+  //
+  // El texto va sin `|| undefined`: si llegamos aquí es porque hay texto, y mandar `undefined`
+  // desde un botón que solo se habilita con texto sería dejar viva la misma puerta por detrás.
+  //
+  // **Y esto sigue siendo pantalla, no validación.** `stampSessionNoteSchema`
+  // (`packages/shared/src/session.schema.ts`) declara `text` como `optional()` sin `min(1)`, así
+  // que una llamada directa a la API sigue creando el sello vacío. El arreglo de verdad es ese
+  // `.min(1)` en el esquema compartido; queda preguntado al autor porque toca el servidor.
   const poner = async (kind: SessionNoteKind) => {
+    const anotado = texto.trim();
+    if (anotado === "") return;
     setError(null);
     try {
       await sellar.mutateAsync({
         kind,
-        text: texto.trim() || undefined,
+        text: anotado,
         visibility: soloDm ? "DM_ONLY" : "PLAYERS",
       });
       setUltimo(NOMBRE_SELLO[kind]);
@@ -135,10 +152,16 @@ function PanelDeSellos({ campaignId, onCerrar }: { campaignId: string; onCerrar:
   };
 
   return (
-    // Sin `sticky` propio: va dentro del envoltorio pegado de arriba. Y `border-muted` entero, no
-    // `border-muted` — **ninguna clase de opacidad de Tailwind compila en este proyecto**, los
-    // colores se declaran como `var(--x)` sin `<alpha-value>` y la utilidad se descarta sin avisar
-    // (P1 de `docs/06-pendientes.md`). La versión anterior de esta línea no pintaba ningún filete.
+    // Sin `sticky` propio: va dentro del envoltorio pegado de arriba.
+    //
+    // **Corrección de un comentario caducado, que era la tercera copia de la misma frase falsa.**
+    // Aquí ponía que «ninguna clase de opacidad de Tailwind compila en este proyecto». Fue verdad
+    // —y por eso esta línea llegó a no pintar ningún filete—, pero **dejó de serlo en B0**:
+    // `tailwind.config.js` declara los canales como `rgb(var(--x-ch) / <alpha-value>)` y abre la
+    // escala de opacidad de 0 a 100, porque la maqueta escribe `/15`, `/45` y `/62`. Hoy
+    // `border-muted/20` se pintaría. La frase caducada llegó a copiarse a los encargos de dos
+    // carriles como si fuera una restricción viva, y dos revisiones tuvieron que desmentirla
+    // midiendo el CSS emitido: documentación que miente es peor que ausente.
     <div
       role="region"
       aria-label="Anotar en la sesión"
@@ -154,7 +177,7 @@ function PanelDeSellos({ campaignId, onCerrar }: { campaignId: string; onCerrar:
                 type="button"
                 variant="ghost"
                 className="flex items-center gap-1.5 px-2 py-1 text-chrome-xs"
-                disabled={sellar.isPending}
+                disabled={sellar.isPending || texto.trim() === ""}
                 onClick={() => void poner(kind)}
               >
                 <Icono className="h-4 w-4" />

@@ -93,6 +93,15 @@ describe("la barra de «en juego»", () => {
 
     montar(<BarraDeSesion campaignId="c1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Anotar" }));
+    // El texto ahora hace falta, y esta línea es la única que cambia: **el sello vacío ya no se
+    // manda**. Era el defecto de la auditoría del 2026-09-04 —pulsar «Nota» escribía en el
+    // registro una entrada que decía «Nota» y nada más— y tenía DOS compositores; el del hilo se
+    // arregló en su carril y este es el segundo, que además se pinta en toda pantalla de campaña.
+    // **Lo que esta prueba comprueba no cambia**: que marcar «Solo el DM» hace viajar el sello
+    // como `DM_ONLY`.
+    fireEvent.change(screen.getByLabelText("Qué anotar"), {
+      target: { value: "una puerta falsa" },
+    });
     fireEvent.click(screen.getByLabelText("Solo el DM lo ve"));
     fireEvent.click(screen.getByRole("button", { name: /Hallazgo/ }));
 

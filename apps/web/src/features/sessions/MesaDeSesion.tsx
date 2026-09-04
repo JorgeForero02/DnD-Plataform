@@ -16,6 +16,9 @@ import {
 import { horaDe, lineaDeLog, selloDeSuceso } from "./linea-de-log";
 import { CabeceraDeEscena } from "./CabeceraDeEscena";
 import { DialogoDeInicio } from "./ControlesDeSesion";
+import { TiraDeIniciativa } from "../encounters/TiraDeIniciativa";
+import { EmpezarCombate } from "../encounters/EmpezarCombate";
+import { useCurrentEncounter } from "../encounters/hooks";
 import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { HojaCalculada } from "../character-sheet/HojaCalculada";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
@@ -157,6 +160,16 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
           TanStack Query, y además las pestañas solo pintan la activa. El componente no pinta nada
           cuando no hay peticiones pendientes, así que aquí no ocupa sitio en balde. */}
       <TiradasPendientes campaignId={campaignId} />
+      {/* **La capa de combate** (2.5.6). No es una pantalla a la que se navega: es una tira que
+          aparece encima del elenco mientras dura el encuentro y se va cuando termina. Solo existe
+          con sesión en curso —un encuentro cuelga de la sesión, no de la campaña—, así que vive
+          en esta rama y no en la del reposo. */}
+      <CapaDeCombate
+        campaignId={campaignId}
+        sessionId={sesion.id}
+        personajes={personajes ?? []}
+        esDm={esDm}
+      />
       <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
       <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <Elenco campaignId={campaignId} asistencia={sesion.attendance} esDm={esDm} />
@@ -169,6 +182,49 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         personajeId={miPersonaje?.id}
         esDm={esDm}
       />
+    </div>
+  );
+}
+
+/**
+ * **El combate, como capa sobre la mesa.**
+ *
+ * Tres estados, y los tres se ven sin salir de aquí: sin encuentro el DM ve «Entrar en combate» y
+ * el jugador no ve nada —no hay combate que anunciar—; con encuentro activo, la tira de
+ * iniciativa; y cuando termina, la tira desaparece sola en el siguiente sondeo.
+ *
+ * **El jugador no ve el botón, y no es esconder un botón:** `EncountersService.start` exige DM.
+ * Lo que decide es el servidor; esto solo evita prometer lo que va a rechazar.
+ */
+function CapaDeCombate({
+  campaignId,
+  sessionId,
+  personajes,
+  esDm,
+}: {
+  campaignId: string;
+  sessionId: string;
+  personajes: Character[];
+  esDm: boolean;
+}) {
+  const { data: encuentro } = useCurrentEncounter(campaignId, sessionId);
+
+  if (encuentro) {
+    return (
+      <TiraDeIniciativa
+        campaignId={campaignId}
+        sessionId={sessionId}
+        encuentro={encuentro}
+        personajes={personajes}
+        esDm={esDm}
+      />
+    );
+  }
+  if (!esDm) return null;
+  return (
+    <div className="flex items-center gap-s3 rounded-radius-sm border border-muted bg-surface px-s3 py-s2">
+      <span className="font-chrome text-chrome-xs text-muted">La mesa no está en combate.</span>
+      <EmpezarCombate campaignId={campaignId} sessionId={sessionId} personajes={personajes} />
     </div>
   );
 }

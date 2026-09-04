@@ -79,6 +79,8 @@ defectos de arquitectura de navegación, y son los que gobiernan estas decisione
 | D-R-6 | **El elenco tiene dos disposiciones**, y la del jugador no lleva controles sobre los personajes ajenos: el DM ve la rejilla entera, el jugador ve el suyo destacado |
 | D-R-7 | **El tipo de ficha es un filtro dentro de «El mundo», no siete destinos.** Las siete pestañas eran, literalmente, los valores del enum de la tabla `Entity`: la navegación era el esquema de la base de datos. De diecinueve destinos por campaña a seis |
 | D-R-8 | Las colecciones que quedaban huérfanas —Personajes, Bestiario, Catálogo— van a **cajones sobre el taller**, en el mismo estrato superpuesto que los paneles de la mesa. Decisión del autor |
+| D-R-10 | **El combate es una CAPA de la mesa, no una pantalla** (2.5.6): una tira de orden de turnos encima del elenco, que aparece al entrar en combate y se va al salir. La URL no cambia. Los PG y las condiciones de cada combatiente los sigue pintando el elenco: repetirlos en la tira sería una segunda ficha de personaje con su segunda regla de visibilidad |
+| D-R-11 | **La unión de tipos de suceso se cierra** (ficha L1): `linea-de-log.ts` pierde su `default`, así que un tipo nuevo del motor rompe el build del gráfico en vez de aparecer como `Sin traducir` delante de los jugadores |
 | D-R-9 | **Sesiones NO es un cajón**, y es la corrección del autor a lo anterior: lo bastante externo para ser una sección normal del taller. Y **la sesión se empieza desde la mesa**, no desde el taller — el gesto vive donde se juega |
 
 ## Fase 3 — ficheros, mapa y tablero · [alcance](./superpowers/specs/2026-09-03-fase-3-alcance-design.md)

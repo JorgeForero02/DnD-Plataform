@@ -9,8 +9,9 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { EncountersService } from "./encounters.service";
 
-// Tarea 2.5.2 — sin pantalla a propósito (§2.5.2 del spec de fase 2.5): esto lo consumirá la
-// mesa de combate cuando exista (§2.5.6). Cuelga de la sesión, igual que `SessionsController`.
+// Tarea 2.5.2 — cuelga de la sesión, igual que `SessionsController`. Nació sin pantalla a
+// propósito (§2.5.2 del spec de fase 2.5); **2.5.6 es la pantalla**, y trajo consigo las dos
+// puertas que faltaban para que pudiera existir: `current` y `end`.
 @UseGuards(JwtAuthGuard)
 @Controller("campaigns/:campaignId/sessions/:sessionId/encounters")
 export class EncountersController {
@@ -24,6 +25,20 @@ export class EncountersController {
     @Body(new ZodValidationPipe(startEncounterSchema)) body: StartEncounterInput,
   ) {
     return this.encounters.start(req.user.id, campaignId, sessionId, body);
+  }
+
+  /**
+   * **Antes que `:encounterId`, y el orden importa.** Nest empareja las rutas en el orden en que
+   * se declaran: con `@Get(":encounterId")` arriba, una petición a `.../current` entraría por ahí
+   * con `encounterId = "current"` y contestaría un 404 desconcertante.
+   */
+  @Get("current")
+  current(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+  ) {
+    return this.encounters.current(req.user.id, campaignId, sessionId);
   }
 
   @Get(":encounterId")
@@ -53,6 +68,16 @@ export class EncountersController {
       combatantId,
       body,
     );
+  }
+
+  @Post(":encounterId/end")
+  end(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+    @Param("encounterId") encounterId: string,
+  ) {
+    return this.encounters.end(req.user.id, campaignId, sessionId, encounterId);
   }
 
   @Post(":encounterId/advance-turn")

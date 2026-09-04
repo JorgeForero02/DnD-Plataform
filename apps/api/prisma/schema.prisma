@@ -73,6 +73,9 @@ enum GameEventType {
   ENCOUNTER_STARTED
   TURN_ADVANCED
   ROUND_ADVANCED
+  // Y terminarlo (2.5.6): entrar en combate es un momento, y salir también. Sin este suceso la
+  // línea de tiempo tiene un principio y ningún final.
+  ENCOUNTER_ENDED
   // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9).
   ATTACK_RESOLVED
   CHARACTER_ARCHIVED

@@ -1116,33 +1116,24 @@ tres cosas que ya están fichadas arriba como huecos de mecánica: **no puede ll
 monstruo (M13), no hay iniciativa (M14), y el registro no reconstruye la sesión (J4/J5, en
 parte cerrado)**. Son la misma lista que las auditorías, vista desde la silla del director.
 
-### L1 — DOCE tipos de suceso no tienen línea en el registro (2026-09-03, recontado el 09-04)
+### ~~L1~~ — CERRADA el 2026-09-04 (2.5.6): la unión de tipos de suceso está cerrada
 
-**Abierto, y creciendo.** `apps/web/src/features/sessions/linea-de-log.ts` no cubre **12 de los 32**
-valores de `GAME_EVENT_TYPES` (`packages/shared/src/game-event.schema.ts`). Salen en la mesa como
-`Sin traducir: <TIPO>`:
+**Eran catorce, no doce**, y ese detalle es la ficha entera: cuando se recontó de siete a doce, el
+número volvió a quedarse corto en un día, porque 2.5.3 añadió `ATTACK_RESOLVED` después. **Cada
+tanda del carril del motor añade tipos y ninguna puede tocar `apps/web`**, que es donde vive la
+traducción, así que la deuda no se quedaba quieta: crecía sola con la frontera de carriles puesta.
 
-- De 2B y 2C: `MONEY_CHANGED`, `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, `CLOCK_ADVANCED`,
-  `CONDITION_EXPIRED`, `TABLE_ROLLED`.
-- De 2.5.2: `ENCOUNTER_STARTED`, `TURN_ADVANCED`, `ROUND_ADVANCED`.
-- De 2.5.8: `CHARACTER_ARCHIVED`, `CHARACTER_RESTORED`.
+Se escribieron las catorce frases —`MONEY_CHANGED`, `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`,
+`CLOCK_ADVANCED`, `CONDITION_EXPIRED`, `TABLE_ROLLED`, `ENCOUNTER_STARTED`, `TURN_ADVANCED`,
+`ROUND_ADVANCED`, `ENCOUNTER_ENDED`, `ATTACK_RESOLVED`, `CHARACTER_ARCHIVED`,
+`CHARACTER_RESTORED`— **y se quitó el `default`**, que es lo que la propia ficha decía que había
+que hacer «en vez de escribir doce frases y esperar a la trece». Sin `default`, un `switch` sobre
+una unión discriminada es exhaustivo: **el tipo quince rompe el build del gráfico**, en este
+fichero y en ninguno más.
 
-**Decía «siete» de «27» y la revisión de cierre del 2026-09-04 lo recontó.** Eso importa más que
-la cifra: la ficha llevaba un día siendo falsa porque **cada tanda del carril del motor añade tipos
-y ninguna puede tocar `apps/web`**, que es donde vive la traducción. La deuda no se queda quieta,
-crece sola con la frontera de carriles puesta.
-
-Son justo los de 2B, 2C y 2.5 —el botín, el inventario, el reloj, la condición que vence sola, la
-tabla del DM, el combate y el archivado—, o sea lo que más se está escribiendo en la línea de
-tiempo. El comentario del `default` dice «inalcanzable mientras la unión esté completa» y **la
-unión no está completa**: al `switch` no le falta un `case` por descuido, le faltan doce porque
-nadie los añadió al crecer el enum. Un `switch` exhaustivo (sin `default`, con un `never` al final)
-lo habría hecho fallar al compilar; hoy lo tapa el `default`.
-
-**Y ahí está el arreglo de verdad, que es lo que hay que hacer en vez de escribir doce frases y
-esperar a la trece:** quitar el `default` y cerrar la unión. Entonces el carril del motor no puede
-añadir un tipo sin que el build del gráfico se ponga rojo, que es exactamente el aviso que hoy no
-existe. Va con el rediseño de la mesa.
+Lo que sigue sin traducirse, y a propósito: las claves de `FLAG_SET`, `SIGNAL_RAISED` y
+`SET_CHANGED`, que **las escribe el DM** al montar sus reglas. No son enumeraciones; se citan
+literalmente entre comillas.
 
 ### L2-traza-dano — la traza de resistencia (2.5.1) no tiene pantalla ni vocabulario en español (2026-09-03)
 

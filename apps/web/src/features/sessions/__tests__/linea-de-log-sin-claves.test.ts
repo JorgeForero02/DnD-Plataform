@@ -57,3 +57,147 @@ describe("el registro no imprime claves de enumeración", () => {
     expect(lineaDeLog({ type: "SIGNAL_RAISED", key: "alarma" })).toBe("Se lanza la señal «alarma»");
   });
 });
+
+// **La unión cerrada** (ficha L1). Estos catorce tipos salían en la mesa como
+// `Sin traducir: ITEM_ADDED` — no por descuido, sino porque el carril del motor los añadía y no
+// podía tocar `apps/web`. Ahora el `switch` no tiene `default`, así que el que venga después
+// rompe el build en vez de aparecer en el registro delante de los jugadores.
+describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
+  it("el botín y el inventario se leen en castellano, con su zona y su ranura", () => {
+    expect(lineaDeLog({ type: "MONEY_CHANGED", gp: 12, sp: -3 })).toBe(
+      "Cambia el dinero: +12 oro, -3 plata",
+    );
+    expect(
+      lineaDeLog({
+        type: "ITEM_ADDED",
+        item: "Espada larga",
+        ref: "SRD:long-sword",
+        quantity: 1,
+        location: "CARRIED",
+      }),
+    ).toBe("Consigue Espada larga (encima)");
+    expect(
+      lineaDeLog({
+        type: "ITEM_ADDED",
+        item: "Antorcha",
+        ref: "SRD:torch",
+        quantity: 5,
+        location: "STORED",
+      }),
+    ).toBe("Consigue Antorcha (5 unidades, guardado)");
+    expect(
+      lineaDeLog({
+        type: "ITEM_MOVED",
+        item: "Espada larga",
+        ref: "SRD:long-sword",
+        from: "CARRIED",
+        to: "EQUIPPED",
+        slot: "MAIN_HAND",
+      }),
+    ).toBe("Mueve Espada larga: encima → equipado, mano principal");
+    expect(
+      lineaDeLog({ type: "ITEM_REMOVED", item: "Antorcha", ref: "SRD:torch", quantity: 2 }),
+    ).toBe("Suelta Antorcha (2 unidades)");
+  });
+
+  it("una ranura que no reconocemos se cita, no se inventa", () => {
+    // `slot` viaja como cadena libre en el payload, no como el enum: la puerta está abierta.
+    expect(
+      lineaDeLog({
+        type: "ITEM_MOVED",
+        item: "Cinturón",
+        ref: "CAMPAIGN:x",
+        from: "STORED",
+        to: "EQUIPPED",
+        slot: "CINTURA",
+      }),
+    ).toBe("Mueve Cinturón: guardado → equipado, cintura");
+  });
+
+  it("el reloj se lee en unidades de mesa, no en segundos", () => {
+    expect(lineaDeLog({ type: "CLOCK_ADVANCED", seconds: 6, from: 0, to: 6 })).toBe("Pasan 6 s");
+    expect(lineaDeLog({ type: "CLOCK_ADVANCED", seconds: 3600, from: 0, to: 3600 })).toBe(
+      "Pasan 1 h",
+    );
+    // 8 h de marcha: el número que de verdad escribe un día de viaje, y distingue el resto de
+    // minutos de un redondeo a horas enteras.
+    expect(
+      lineaDeLog({
+        type: "CLOCK_ADVANCED",
+        seconds: 30_600,
+        from: 0,
+        to: 30_600,
+        pace: "SLOW",
+        miles: 16,
+      }),
+    ).toBe("Pasan 8 h 30 min, a paso lento (16 millas)");
+  });
+
+  it("una condición vencida se dice por su nombre, igual que una aplicada", () => {
+    expect(lineaDeLog({ type: "CONDITION_EXPIRED", key: "poisoned", expiredAtClock: 120 })).toBe(
+      "Vence la condición «Envenenado»",
+    );
+    expect(
+      lineaDeLog({ type: "CONDITION_EXPIRED", key: "inventada", expiredAtClock: 1 }),
+    ).toContain("Sin traducir: inventada");
+  });
+
+  it("la tabla de la casa dice qué la disparó, en castellano", () => {
+    expect(
+      lineaDeLog({
+        type: "TABLE_ROLLED",
+        tableName: "Pifias de la casa",
+        // `die` son las CARAS, no el nombre del dado: el 20 se convierte en «d20» al escribirlo.
+        die: 20,
+        roll: 3,
+        text: "El arma sale volando",
+        trigger: "FUMBLE",
+      }),
+    ).toBe("Tabla «Pifias de la casa» por una pifia: saca 3 en d20 — El arma sale volando");
+  });
+
+  it("el combate se cuenta sin nombres ni números que delaten", () => {
+    expect(lineaDeLog({ type: "ENCOUNTER_STARTED", encounterId: "e1" })).toBe("Empieza el combate");
+    expect(
+      lineaDeLog({
+        type: "TURN_ADVANCED",
+        encounterId: "e1",
+        fromPosition: 0,
+        toPosition: 1,
+        round: 2,
+      }),
+    ).toBe("Pasa el turno (asalto 2)");
+    expect(
+      lineaDeLog({ type: "ROUND_ADVANCED", encounterId: "e1", from: 1, to: 2, clockSeconds: 6 }),
+    ).toBe("Asalto 2");
+    // Tres asaltos, no uno: el singular tiene su propia frase y un 1 no distinguiría.
+    expect(lineaDeLog({ type: "ENCOUNTER_ENDED", encounterId: "e1", rounds: 3 })).toBe(
+      "Termina el combate tras 3 asaltos",
+    );
+    expect(lineaDeLog({ type: "ENCOUNTER_ENDED", encounterId: "e1", rounds: 1 })).toBe(
+      "Termina el combate en un asalto",
+    );
+  });
+
+  it("el veredicto de un ataque sale como palabra, y la CA no sale de ninguna manera", () => {
+    const linea = lineaDeLog({
+      type: "ATTACK_RESOLVED",
+      attackerId: "ch1",
+      attackName: "Espada larga",
+      verdict: "CRITICAL",
+      rollEventId: "ev1",
+    });
+    expect(linea).toBe("Espada larga: impacta con un crítico");
+    // No hay número contra el que se tirara, ni nombre de objetivo: la línea es corta a propósito.
+    expect(linea).not.toMatch(/\d/);
+  });
+
+  it("archivar y restaurar nombran a la persona", () => {
+    expect(lineaDeLog({ type: "CHARACTER_ARCHIVED", characterName: "Kaelith" })).toBe(
+      "Se archiva a Kaelith",
+    );
+    expect(lineaDeLog({ type: "CHARACTER_RESTORED", characterName: "Kaelith" })).toBe(
+      "Vuelve del archivo Kaelith",
+    );
+  });
+});

@@ -1,0 +1,217 @@
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Encounter } from "@dnd/shared";
+import { TiraDeIniciativa } from "../TiraDeIniciativa";
+import { EmpezarCombate } from "../EmpezarCombate";
+import * as encountersApi from "../api";
+import type { Character } from "../../characters/api";
+
+// Tarea 2.5.6 — la capa de combate. Lo que se prueba aquí es lo que la capa **hace**: qué se puede
+// tocar, qué se manda al servidor y qué NO se enseña. Lo que solo se ve maquetado (que la tira no
+// arrastre la página a lo ancho, que el turno actual se distinga) se mide en el navegador.
+
+const THORA: Character = {
+  id: "p-thora",
+  campaignId: "c1",
+  ownerId: "u-ana",
+  name: "Thora Piedrahonda",
+  race: null,
+  class: null,
+  raceKey: "dwarf",
+  subraceKey: null,
+  classKey: "fighter",
+  level: 3,
+  bio: null,
+  visibility: "PLAYERS",
+  createdAt: "2026-09-01T10:00:00.000Z",
+} as Character;
+
+const GOBLIN_A = { ...THORA, id: "g1", name: "Goblin", ownerId: "u-dm" };
+const GOBLIN_B = { ...GOBLIN_A, id: "g2" };
+
+/** Un personaje en la posición 0 y dos goblins compartiendo la 1: dos turnos, tres filas. */
+const ENCUENTRO: Encounter = {
+  id: "e1",
+  sessionId: "s1",
+  status: "ACTIVE",
+  round: 2,
+  activePosition: 0,
+  combatants: [
+    { id: "cb1", characterId: "p-thora", initiative: 18, position: 0 },
+    { id: "cb2", characterId: "g1", initiative: 11, position: 1 },
+    { id: "cb3", characterId: "g2", initiative: 11, position: 1 },
+  ],
+};
+
+function montarTira(encuentro: Encounter = ENCUENTRO, esDm = true) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <TiraDeIniciativa
+          campaignId="c1"
+          sessionId="s1"
+          encuentro={encuentro}
+          personajes={[THORA, GOBLIN_A, GOBLIN_B]}
+          esDm={esDm}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("la tira de iniciativa: el orden, y quién está actuando", () => {
+  it("los que comparten posición son UN turno, no dos filas", async () => {
+    montarTira();
+
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    const turnos = within(tira).getAllByRole("listitem");
+    // Tres combatientes, **dos** turnos: los dos goblins actúan a la vez, que es lo que dice el
+    // SRD de un grupo de criaturas idénticas. Contar filas daría tres y sería el error.
+    expect(turnos).toHaveLength(2);
+    expect(turnos[1]).toHaveTextContent("Goblin · Goblin");
+  });
+
+  it("el turno actual se marca con un rótulo, no solo con un color", () => {
+    montarTira();
+
+    const turnos = within(screen.getByRole("region", { name: "Orden de turnos" })).getAllByRole(
+      "listitem",
+    );
+    expect(turnos[0]).toHaveAttribute("aria-current", "step");
+    // **El color no es portador único de significado**: la palabra tiene que estar ahí.
+    expect(turnos[0]).toHaveTextContent("Le toca");
+    expect(turnos[1]).not.toHaveAttribute("aria-current");
+    expect(turnos[1]).not.toHaveTextContent("Le toca");
+  });
+
+  it("el asalto se dice, porque es lo que la mesa apunta en un papel", () => {
+    montarTira();
+    expect(screen.getByRole("region", { name: "Orden de turnos" })).toHaveTextContent("Asalto 2");
+  });
+
+  it("cuando el turno es de alguien que no ves, se dice en vez de dejar la tira sin marcar", () => {
+    // El servidor manda `activePosition: null` cuando el turno toca a un PNJ escondido.
+    montarTira({ ...ENCUENTRO, activePosition: null as unknown as number }, false);
+
+    expect(screen.getByText("Le toca a alguien que no ves.")).toBeInTheDocument();
+    const turnos = within(screen.getByRole("region", { name: "Orden de turnos" })).getAllByRole(
+      "listitem",
+    );
+    expect(turnos.some((t) => t.getAttribute("aria-current") === "step")).toBe(false);
+  });
+});
+
+describe("quién puede tocar el combate", () => {
+  it("el jugador no ve pasar turno, ni terminar, ni corregir", () => {
+    montarTira(ENCUENTRO, false);
+
+    expect(screen.queryByRole("button", { name: "Pasar turno" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Terminar el combate" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Corregir la iniciativa/ }),
+    ).not.toBeInTheDocument();
+    // Pero sí ve el orden: saber cuándo te toca es justo para lo que sirve.
+    expect(screen.getByRole("region", { name: "Orden de turnos" })).toHaveTextContent(
+      "Thora Piedrahonda",
+    );
+  });
+
+  it("el DM pasa turno contra la API de verdad", async () => {
+    const espia = vi.spyOn(encountersApi, "advanceTurn").mockResolvedValue(ENCUENTRO);
+    montarTira();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pasar turno" }));
+
+    await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", "s1", "e1"));
+  });
+
+  it("terminar el combate pide confirmación antes, porque quita la tira de la mesa", async () => {
+    const espia = vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({
+      id: "e1",
+      status: "ENDED",
+    });
+    montarTira();
+
+    fireEvent.click(screen.getByRole("button", { name: "Terminar el combate" }));
+    expect(espia).not.toHaveBeenCalled();
+
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Terminar el combate" }));
+    await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", "s1", "e1"));
+  });
+
+  it("corregir una iniciativa manda el número al combatiente que se pulsó, no al primero", async () => {
+    const espia = vi.spyOn(encountersApi, "setInitiative").mockResolvedValue(ENCUENTRO);
+    montarTira();
+
+    // Se corrige el turno de los goblins: su combatiente es `cb2`, no `cb1`.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Corregir la iniciativa de Goblin · Goblin" }),
+    );
+    const dialogo = await screen.findByRole("dialog");
+    const campo = within(dialogo).getByLabelText("Iniciativa");
+    // El valor precargado es el suyo (11), no el de Thora (18): si no lo fuera, no distinguiría.
+    expect(campo).toHaveValue(11);
+
+    fireEvent.change(campo, { target: { value: "19" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(espia).toHaveBeenCalledWith("c1", "s1", "e1", "cb2", { initiative: 19 }),
+    );
+  });
+});
+
+describe("entrar en combate", () => {
+  function montarEmpezar(personajes: Character[] = [THORA, GOBLIN_A]) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <EmpezarCombate campaignId="c1" sessionId="s1" personajes={personajes} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("manda a quién representa cada uno, y ningún número: la iniciativa la tira el servidor", async () => {
+    const espia = vi.spyOn(encountersApi, "startEncounter").mockResolvedValue(ENCUENTRO);
+    montarEmpezar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Thora Piedrahonda/ }));
+    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Goblin/ }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Tirar iniciativa" }));
+
+    await waitFor(() =>
+      expect(espia).toHaveBeenCalledWith("c1", "s1", { characterIds: ["p-thora", "g1"] }),
+    );
+  });
+
+  it("sin nadie elegido no se puede tirar: un combate de cero combatientes no existe", async () => {
+    montarEmpezar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByRole("button", { name: "Tirar iniciativa" })).toBeDisabled();
+    expect(within(dialogo).getByText("Nadie elegido todavía")).toBeInTheDocument();
+  });
+
+  it("sin ningún personaje en la campaña, el botón dice por qué no se puede", () => {
+    montarEmpezar([]);
+    const boton = screen.getByRole("button", { name: "Entrar en combate" });
+    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute(
+      "title",
+      "No hay ningún personaje en esta campaña con el que combatir.",
+    );
+  });
+});

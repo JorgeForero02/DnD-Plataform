@@ -74,6 +74,7 @@ export const GAME_EVENT_TYPES = [
   // línea de tiempo: empezar el encuentro, pasar turno, subir de asalto.
   "ENCOUNTER_STARTED",
   "TURN_ADVANCED",
+  "ENCOUNTER_ENDED",
   "ROUND_ADVANCED",
   // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9). **Dos tipos y no uno con una
   // bandera**: la línea de tiempo cuenta "qué pasó", y "se archivó" y "se recuperó" son dos
@@ -385,6 +386,17 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     fromPosition: z.number().int().nonnegative(),
     toPosition: z.number().int().nonnegative(),
     round: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal("ENCOUNTER_ENDED"),
+    encounterId: z.string().cuid(),
+    /**
+     * Cuántos asaltos duró. **No cuántos combatientes había**, por la misma razón por la que
+     * `ENCOUNTER_STARTED` se quedó sin conteos tras su revisión de cierre: este suceso es
+     * `PLAYERS`, y un número de combatientes le dice a un jugador cuántos enemigos escondidos
+     * hubo. Los asaltos no delatan a nadie y son lo que la mesa recuerda.
+     */
+    rounds: z.number().int().positive(),
   }),
   z.object({
     type: z.literal("ATTACK_RESOLVED"),

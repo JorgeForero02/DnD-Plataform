@@ -1210,3 +1210,14 @@ compilar; hoy lo tapa el `default`.
 Encontrado al arreglar el defecto de las claves de enumeración; **no se arregló ahí** para no
 mezclarlo con un cambio de una línea. Escribir las siete frases es media hora, y conviene hacerlo
 junto con el rediseño de la mesa.
+
+### L2 — la traza de resistencia (2.5.1) no tiene pantalla ni vocabulario en español (2026-09-03)
+
+**Abierto, y a propósito: 2.5.1 es servidor.** `apps/api/src/character-state/damage/apply-damage-modifiers.ts`
+devuelve `labelKey`s nuevas (`damage.raw`, `damage.modifier.resist`, `.vulnerable`, `.immune`,
+`.cancelled`) que hoy no tiene traducción en `apps/web/src/features/character-sheet/vocabulario.ts`
+ni en ningún otro sitio de la web — si algo las pinta tal cual, sale la clave en inglés. Tampoco
+hay traducción de los trece `DamageType` a español en ninguna pantalla nueva (los objetos de 2B ya
+tienen la suya, `nombreDeTipoDeDaño` o como se llame en esa capa; revisar si se puede reutilizar).
+Entra con la pantalla del daño aplicado (probablemente parte de 2.5.4 o de la pantalla del
+encuentro de 2.5.6), no antes.

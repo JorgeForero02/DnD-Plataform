@@ -271,6 +271,28 @@ sale en la traza con su delta y el jugador ve de dónde viene. Solo el DM la esc
 anulación que el dueño puede ponerse no es una anulación, es un campo libre. El tipo de suceso
 `MANUAL_OVERRIDE_SET` existía desde 2A.5 **sin columna que lo produjera**; ahora la tiene.
 
+## Tipos de daño y resistencias que reducen (tarea 2.5.1)
+
+**`GameEvent.damageType`** (`DamageType?`, migración `20260903211303_game_event_damage_type`):
+promovido de `payload` a columna porque hay que poder preguntar *«¿de qué murió Elara?»* sin
+recorrer el log. **Opcional**: todo el historial ya escrito no lo tiene, y una curación o un
+ajuste del DM no tienen tipo de daño. Índice `[subjectType, subjectId, damageType]`.
+
+**`CampaignStatblock.damageModifiers`** (`Json?`, migración
+`20260903211642_statblock_damage_modifiers`): la MISMA resistencia que ya guardaban
+`damageResistances`/`Immunities`/`Vulnerabilities` (prosa, **se conservan**), partida en la parte
+que el servidor sabe aplicar: `{ damageType, effect: "RESIST"|"IMMUNE"|"VULNERABLE", note? }[]`.
+`note` es la prosa que **limita** la regla («de ataques no mágicos con armas que no sean de
+plata», el caso del tumulario) — el servidor nunca la interpreta, la enseña al DM. Validado al
+escribir por `damageModifiersSchema` de `@dnd/shared`. El catálogo SRD solo lo rellena para las
+tres criaturas con resistencia limpia o citable (esqueleto, zombi, tumulario); las otras doce
+llevan `[]`.
+
+`apps/api/src/character-state/damage/apply-damage-modifiers.ts` es la función pura —mismo sitio
+que `effective-speed.ts`— que reduce un daño bruto por esos modificadores y devuelve la traza.
+Se engancha al `POST .../hp` existente: con `damageType` en el cuerpo, reduce antes de aplicar;
+sin él, el comportamiento no cambia.
+
 ## Editar y borrar campañas; expulsar y salir (tarea 1.17a)
 
 Tres endpoints nuevos en `apps/api/src/campaigns/campaigns.controller.ts`, los tres exigen

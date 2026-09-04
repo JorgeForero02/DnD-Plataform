@@ -353,3 +353,25 @@ veintisiete tipos de suceso no tienen línea en el registro**.
 
 **Cómo revertir:** `git revert` de los cuatro commits `fix(web)` del día. Ninguno toca la API, el
 esquema ni los datos.
+
+---
+
+## Tarea 2.5.1 — tipos de daño y resistencias que de verdad reducen (2026-09-03)
+
+**El tipo de daño es una columna** (`GameEvent.damageType`, opcional): «¿de qué murió Elara?» ya
+se contesta por columna, no leyendo el `payload`. **La resistencia se parte en dos**: las tres
+listas de prosa de un statblock se conservan, y al lado nace `damageModifiers` —lo estructurado
+que el servidor sabe aplicar—, rellenado solo para las tres criaturas del catálogo con resistencia
+limpia o citable (esqueleto, zombi, tumulario). **Y una función pura nueva**
+(`apply-damage-modifiers.ts`, misma familia que `effective-speed.ts`) reduce el daño con su
+traza, enganchada a `POST .../hp`: con `damageType`, reduce antes de aplicar; sin él, nada cambia.
+
+Dos reglas del SRD 5.1 (ES, p.102) verificadas contra la fuente y citadas en el código: la
+resistencia se aplica después del resto de modificadores, y varias resistencias del mismo tipo
+cuentan como una. La cancelación resistencia+vulnerabilidad **no está en esas palabras en el
+texto bajo licencia CC**; se aplica la lectura estándar del diseño (Sage Advice) y se dice así en
+el código, en vez de fingir una cita que no existe.
+
+**Cómo revertir:** `git revert` de los commits `feat(api)`/`feat(shared)` de la tarea. Las dos
+migraciones solo añaden columnas nullable — revertir el código no revierte el esquema, y no hace
+falta: una columna de más sin escribir no rompe nada.

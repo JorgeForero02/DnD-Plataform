@@ -55,6 +55,7 @@ import {
 } from "../character-state/speed/effective-speed";
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import { maxHpConAgotamiento, nivelDeAgotamiento } from "../character-state/common/agotamiento";
+import { applyDamageModifiers } from "../character-state/damage/apply-damage-modifiers";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -841,10 +842,29 @@ export class CharacterSheetService {
       let successes = character.deathSaveSuccesses;
       let failures = character.deathSaveFailures;
       let massive = false;
+      // Tarea 2.5.1, pieza C. **Solo se rellena si de verdad se redujo algo** — un delta sin
+      // `damageType`, o uno que no toca ninguna resistencia, deja esto vacío y el camino de hoy
+      // no cambia en nada, que es lo que hace la pieza reversible.
+      let damageTrace: ReturnType<typeof applyDamageModifiers> | null = null;
 
       if (input.delta < 0) {
         // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
-        const danio = -input.delta;
+        let danio = -input.delta;
+        // **La resistencia y la vulnerabilidad se aplican antes de tocar los PG temporales**: son
+        // el daño de verdad que llega al personaje, y los PG temporales se gastan sobre ESE
+        // número, no sobre el bruto de la tirada (SRD 5.1, «la resistencia y la vulnerabilidad se
+        // aplican después del resto de modificadores al daño» — aquí no hay ningún otro
+        // modificador antes, así que esta es la primera y única reducción).
+        if (input.damageType && character.statblockRef && this.statblocks) {
+          const statblock = await this.statblocks.resolver(campaignId, character.statblockRef);
+          // `damageModifiers` es opcional en `@dnd/shared` a propósito (ver el comentario de
+          // `damageModifiersSchema`): un statblock guardado antes de esta tarea no lo tiene.
+          const modificadores = statblock?.damageModifiers ?? [];
+          if (modificadores.length > 0) {
+            damageTrace = applyDamageModifiers(danio, input.damageType, modificadores);
+            danio = damageTrace.total;
+          }
+        }
         const gastoTemporal = Math.min(tempHp, danio);
         tempHp -= gastoTemporal;
         const efectivo = danio - gastoTemporal;
@@ -911,7 +931,10 @@ export class CharacterSheetService {
         tx,
       );
 
-      return await this.buildResponse(userId, actualizado);
+      const respuesta = await this.buildResponse(userId, actualizado);
+      // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
+      // sería un número sin origen, y esta tarea existe justo para lo contrario.
+      return damageTrace ? { ...respuesta, damageTrace } : respuesta;
     });
   }
 

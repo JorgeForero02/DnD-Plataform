@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { SessionNoteKind, Visibility } from "@dnd/shared";
 import type { Session } from "./api";
 import type { GameEventRow } from "./log-api";
@@ -608,12 +609,15 @@ function Consulta({ campaignId, esDm }: { campaignId: string; esDm: boolean }) {
             key={e.id}
             className="flex items-center justify-between gap-s2 border-b border-muted py-1.5 last:border-b-0"
           >
-            <a
-              href={`/campaigns/${campaignId}/entidades/${e.id}`}
+            {/* `Link`, no `<a href>`: un enlace crudo recarga la aplicación entera y se pierde
+                el estado de la mesa —lo escrito a medias en el registro, el «ver como», la
+                caché— justo en mitad de la partida. */}
+            <Link
+              to={`/campaigns/${campaignId}/entidades/${e.id}`}
               className="block min-w-0 flex-1 truncate font-chrome text-chrome-sm text-accent-text hover:underline"
             >
               {e.name}
-            </a>
+            </Link>
             <Badge visibility={e.visibility as Visibility} />
           </li>
         ))}

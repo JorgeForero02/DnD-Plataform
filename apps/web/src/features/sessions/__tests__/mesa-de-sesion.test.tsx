@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MesaDeSesion } from "../MesaDeSesion";
 import { selloDeSuceso } from "../linea-de-log";
@@ -295,5 +295,44 @@ describe("el registro en vivo", () => {
 
     await screen.findByRole("region", { name: "Registro de la sesión" });
     expect(screen.queryByLabelText("Ver el registro como")).not.toBeInTheDocument();
+  });
+});
+
+describe("la consulta del mundo", () => {
+  // **Un enlace crudo recargaba la aplicación entera en mitad de la partida.** El panel de
+  // consulta usaba `<a href>`: pinchar un resultado tiraba la SPA abajo y se perdía todo el
+  // estado de la mesa —lo escrito a medias en el registro, el «ver como», la caché—. Lo que se
+  // mide aquí es que la navegación es de router: se monta la ruta de destino y se comprueba que
+  // se pinta sin salir de la aplicación. Con `<a href>`, `jsdom` no navega y la mesa se queda
+  // donde estaba, así que este caso se pone rojo.
+  function montarConRutas() {
+    useAuthStore.setState({ user: { id: "u-dm", email: "x@y.z", displayName: "Yo" } as never });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/campaigns/c1/sesion"]}>
+          <Routes>
+            <Route path="/campaigns/c1/sesion" element={<MesaDeSesion campaignId="c1" />} />
+            <Route path="/campaigns/:id/entidades/:entityId" element={<p>La ficha del faro</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("un resultado navega por el router, sin recargar la aplicación", async () => {
+    vi.spyOn(entitiesHooks, "useAllEntities").mockReturnValue({
+      data: [{ id: "e-faro", name: "El faro de Puerto Negro", visibility: "PLAYERS" }],
+    } as never);
+
+    montarConRutas();
+
+    const enlace = await screen.findByRole("link", { name: "El faro de Puerto Negro" });
+    expect(enlace).toHaveAttribute("href", "/campaigns/c1/entidades/e-faro");
+
+    fireEvent.click(enlace);
+
+    expect(await screen.findByText("La ficha del faro")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Consulta del mundo" })).not.toBeInTheDocument();
   });
 });

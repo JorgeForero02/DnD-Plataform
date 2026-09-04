@@ -36,8 +36,7 @@ propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 | [09-primera-partida.md](./09-primera-partida.md) | **Cómo jugar la primera sesión, qué no se puede hacer todavía y qué anotar.** Es la puerta de salida de la fase 1 |
 | [08-pruebas.md](./08-pruebas.md) | **Estrategia de pruebas completa.** Qué prueba cada capa, qué NO cubre, y la regla de Playwright. Léelo antes de dar una tarea por terminada. Es la **fuente única de los conteos** |
 | [10-mapa-e2e.md](./10-mapa-e2e.md) | **Qué cubre cada recorrido de extremo a extremo**, suite a suite, y por qué esa comprobación no puede vivir en otra capa. Más **lo que ningún recorrido cubre**. Léelo antes de escribir un e2e nuevo, para no duplicar uno que ya existe |
-| [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial anterior al 2026-09-02 y los pendientes ya cerrados. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** |
-| [plataforma-dnd-documentacion.md](./plataforma-dnd-documentacion.md) | Documento fuente original del producto (visión, alcance por fases) |
+| [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial por tarea, los pendientes ya cerrados y el documento fuente original del producto. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** — el fuente original, en particular, propone Redis, WebSockets y una hoja de personaje almacenada, que es lo contrario de lo que se construyó |
 | [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
 
 ### Specs y planes

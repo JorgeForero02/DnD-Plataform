@@ -45,6 +45,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm check:docs
       - run: pnpm check:estado
+      - run: pnpm check:historial
       - run: pnpm test
       - run: pnpm --filter @dnd/api test:e2e
 

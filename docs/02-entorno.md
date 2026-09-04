@@ -59,8 +59,9 @@ no al copiar la plantilla local.
 ## Comandos
 
 ```bash
-pnpm verify                            # build + lint + formato + check:docs + check:estado + unitarias. Lo exige el pre-commit
+pnpm verify                            # build + lint + formato + check:docs + check:estado + check:historial + unitarias. Lo exige el pre-commit
 pnpm check:docs                        # rutas citadas que no existen, fichero:NN fuera de rango y conteos
+pnpm check:historial                   # falla si docs/07-historial.md pasa de 400 lineas
                                        # fuera de docs/08-pruebas.md. NO mira enlaces Markdown: eso no lo comprueba nada
 pnpm update:estado                     # regenera el bloque de estado de docs/00-INDEX.md (conteos de unitarias)
 pnpm test                              # solo las unitarias de los tres paquetes

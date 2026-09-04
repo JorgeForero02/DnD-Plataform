@@ -1,3 +1,29 @@
+<!-- ARCHIVADO 2026-09-03 — NO ES UNA DESCRIPCIÓN DEL SISTEMA -->
+
+> # ⚠ Documento congelado. **Contradice a propósito lo que hoy se construye.**
+>
+> Este es el documento fuente original del producto: la visión con la que arrancó el proyecto
+> el 2026-07-02, redactada **antes de escribir una línea de código**. Se conserva porque
+> explica de dónde salieron el alcance por fases y la propuesta de valor, y **nada más**.
+>
+> **Se archivó porque era el documento más peligroso del repositorio.** Vivía en `docs/` junto a
+> los documentos vivos, y propone —con la misma voz de autoridad que ellos— exactamente lo
+> contrario de las decisiones que el resto de la documentación más defiende:
+>
+> | Aquí se propone | Lo que se decidió, y dónde está escrito |
+> |---|---|
+> | Redis y BullMQ para colas | No hay ninguna cola. Todo es petición-respuesta contra Postgres — [01-arquitectura.md](../01-arquitectura.md) |
+> | WebSockets / tiempo real | **Sin tiempo real**, decisión declarada. Los avisos se piden al cargar — [01-arquitectura.md](../01-arquitectura.md) |
+> | Almacenamiento en S3 | No hay almacén de ficheros todavía; es fase 3 y su alcance está escrito aparte |
+> | Una tabla por tipo de entidad | **Una sola tabla `Entity` con un campo de tipo**, que es lo que hace posible la matriz de visibilidad y los enlaces entre cualquier par — [05-datos.md](../05-datos.md) |
+> | La hoja de personaje **almacenada** | La hoja se **deriva** en cada lectura, con traza, y no se guarda. Es la decisión de fondo de toda la fase 2A — [01-arquitectura.md](../01-arquitectura.md) y [05-datos.md](../05-datos.md) |
+>
+> Un agente que lea fragmentos de este fichero y de los vivos en la misma sesión **no tiene cómo
+> saber cuál manda**. Por eso está aquí y fuera del índice: si algo de este documento contradice
+> a `docs/01`–`09`, **manda `docs/`**, siempre, sin excepción.
+
+---
+
 # Plataforma integral para campañas de D&D
 
 ## Visión del producto

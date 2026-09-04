@@ -9,7 +9,7 @@
     "dev:api": "pnpm --filter @dnd/api start:dev",
     "dev:web": "pnpm --filter @dnd/web dev",
     "db:slot": "node scripts/db-slot.mjs",
-    "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm check:docs && pnpm check:estado && pnpm test",
+    "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm check:docs && pnpm check:estado && pnpm check:historial && pnpm test",
     "test": "pnpm -r test",
     "lint": "eslint .",
     "build": "pnpm -r build",
@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "check:docs": "node scripts/check-docs.mjs .",
     "update:estado": "node scripts/update-estado.mjs .",
-    "check:estado": "node scripts/update-estado.mjs . --check"
+    "check:estado": "node scripts/update-estado.mjs . --check",
+    "check:historial": "node scripts/check-historial.mjs ."
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

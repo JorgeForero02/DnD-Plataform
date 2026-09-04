@@ -6,7 +6,7 @@ El comando que define el nivel es:
 
 ```
 pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:docs
-                  && pnpm check:estado && pnpm test
+                  && pnpm check:estado && pnpm check:historial && pnpm test
 ```
 
 - `pnpm build` compila los tres paquetes (`tsc` / `nest build` / `vite build`) y hace de
@@ -29,6 +29,16 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
   varios commits atrás sin que nada avise; el script lo explica en un comentario, y el propio
   bloque lo declara. Escribir aquí que el hash está verificado era una promesa que nadie cumple.
   `pnpm update:estado` lo regenera todo.
+- `pnpm check:historial` (`scripts/check-historial.mjs`) **falla si
+  [07-historial.md](./07-historial.md) pasa de 400 líneas.** El protocolo ya pedía archivarlo
+  al llegar a ~600 y el fichero acabó en **2192**: un umbral que no comprueba nadie es un
+  deseo. No es pulcritud — el consumidor principal de esta documentación es un agente sin
+  memoria que la relee entera cada sesión, y **lo que no le cabe en contexto lo rellena
+  inventando**, con la autoridad prestada de un registro fechado.
+  **Cuando se pone rojo hay exactamente dos salidas legítimas**: mover entradas a
+  `docs/_archivo/` —**enteras y sin reescribir**, porque un registro fechado no se resume— o
+  cambiar el tope como decisión declarada aquí. Subirlo en silencio para que pase es
+  precisamente lo que la regla de abajo prohíbe.
 - `pnpm test` corre la suite unitaria. **El conteo de unitarias lo genera
   `scripts/update-estado.mjs`** en el bloque de estado de [00-INDEX.md](./00-INDEX.md) — esa
   es ahora su fuente única, no escrita a mano. **Los conteos de e2e siguen viviendo en
@@ -38,8 +48,8 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
 **Lo aplica `.githooks/pre-commit`, que bloquea el commit si `pnpm verify` falla.** El gancho
 se conecta solo en el `prepare` de la raíz (`scripts/install-git-hooks.mjs`), que **nunca
 falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. **CI no
-corre exactamente lo mismo**: repite `lint`, `format:check`, `check:docs`, `check:estado` y
-`test` paso a paso y añade los e2e, pero **no llama a `pnpm build`** — hueco real, sin ficha
+corre exactamente lo mismo**: repite `lint`, `format:check`, `check:docs`, `check:estado`,
+`check:historial` y `test` paso a paso y añade los e2e, pero **no llama a `pnpm build`** — hueco real, sin ficha
 todavía, ver [06-pendientes.md](./06-pendientes.md).
 
 **No se desactiva el gancho para saltárselo.** Si el control molesta, se arregla el código o

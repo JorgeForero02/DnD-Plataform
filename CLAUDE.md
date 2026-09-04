@@ -85,7 +85,7 @@ más sitios — es su fuente única declarada.
 
 ```bash
 docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
-pnpm verify                              # build + lint + formato + check:docs + check:estado + unitarias (lo exige el pre-commit)
+pnpm verify                              # build + lint + formato + check:docs + check:estado + check:historial + unitarias (lo exige el pre-commit)
 pnpm --filter @dnd/api test:e2e          # e2e de API contra Postgres real
 pnpm --filter @dnd/web e2e               # Playwright, Chromium
 pnpm dev:api                             # API en :3000

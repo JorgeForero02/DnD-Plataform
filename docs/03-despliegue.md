@@ -407,105 +407,7 @@ curl -s --resolve dnd.supportive.pro:443:127.0.0.1 https://dnd.supportive.pro/ap
 `GET /api/v1/deployments/<uuid-del-despliegue>` trae `"commit"`, y tiene que coincidir con el
 `HEAD` local.
 
-## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
-
-Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
-(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`), con la tanda entera de 2D y **dos
-migraciones**. Volcado previo en `vps1new:/root/dnd-antes-de-2d.sql.gz`.
-
-> **Dos trampas del volcado previo, y las dos mordieron.** El filtro `--filter name=dnd` **no
-> encuentra nada**: los contenedores de Coolify se llaman por el UUID de la aplicación
-> (`db-5awvsn1dnkexhcjzg7kjwom6-…`). Y el usuario de Postgres **no es `postgres`**, es `dnd`
-> (`POSTGRES_USER`), así que `pg_dumpall -U postgres` falla con «role does not exist» — y el
-> primer intento dejó un fichero de **20 bytes** que parecía un volcado. Comprobar el tamaño del
-> volcado antes de tocar nada no es opcional.
-
-| Comprobación | Salida real |
-|---|---|
-| **El commit desplegado es el que se empujó** | imágenes `web` y `api` en `…:82fab54ea3a2…` = `HEAD` local |
-| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up … (healthy)` |
-| **Las dos migraciones de 2D se aplican solas** | `statblocks_del_dm` y `pnj_instanciado`, las dos con `finished_at` no nulo |
-| La tabla y la columna nuevas existen | `CampaignStatblock` presente; `Character.statblockRef` presente |
-| **Los datos sobrevivieron** | 1 campaña · 3 personajes · 2 usuarios, **los mismos conteos que antes del despliegue** |
-| La SPA se sirve | `GET /` → **200** |
-| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/campaigns/x/statblocks` → **401** |
-| El certificado es el del dominio y de Let's Encrypt | `subject=CN=dnd.supportive.pro`, `issuer=… Let's Encrypt`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro**, porque Norton intercepta el TLS en el PC del autor |
-
-**Lo que sigue sin hacerse, y es decisión del autor:** la partida de prueba con dos cuentas de
-jugador. Es lo único que le queda a la fase 2.
-
-## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2C (2026-09-03)
-
-Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
-(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`), con la tanda entera de 2C y **cuatro
-migraciones**. Volcado previo de la base en `vps1new:/root/dnd-antes-de-2c.sql.gz` antes de tocar
-nada, porque el documento lo pide cuando la tanda trae migración.
-
-| Comprobación | Salida real |
-|---|---|
-| **El commit desplegado es el que se empujó** | `GET /api/v1/deployments/<uuid>` → `finished`, commit `b0d6a6d8` = `HEAD` local |
-| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up About a minute (healthy)` |
-| **Las cuatro migraciones de 2C se aplican solas** | `clock_de_campana`, `condiciones_con_vencimiento`, `peticion_de_tirada` y `tablas_del_dm`, las cuatro con `finished_at` no nulo |
-| **El índice único parcial de las tablas del DM existe en producción** | `DmTable_campaignId_trigger_key` presente en `pg_indexes` |
-| La SPA se sirve | `GET /` → **200** |
-| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/catalog` → **401** |
-| El certificado es el del dominio y de Let's Encrypt | `issuer=... Let's Encrypt`, `subject=CN=dnd.supportive.pro`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro** con `openssl s_client` contra `127.0.0.1:443`, porque Norton intercepta el TLS en el PC del autor |
-
-**Lo que NO se hizo, y es decisión del autor:** la partida de prueba con dos cuentas de jugador.
-Se pospone **a después de la fase 2D**, con el despliegue ya en pie.
-
-## Lo comprobado EN PRODUCCIÓN, con su evidencia (2026-09-02)
-
-Esto ya no es una lista de intenciones: son comandos que se ejecutaron contra el servidor y su
-salida. Se repiten en cada despliegue que toque el esquema o la topología.
-
-**Despliegue de la tanda 2A.3–2A.5**, lanzado por la API de Coolify
-(`POST /api/v1/deploy?uuid=5awvsn1dnkexhcjzg7kjwom6`) desde dentro de la VPS, no desde este PC:
-
-| Comprobación | Salida real |
-|---|---|
-| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up ... (healthy)` |
-| **La migración nueva se aplica sola** | `20260902131046_session_state_and_game_event` con `finished_at` no nulo, junto a las tres anteriores |
-| **El índice único parcial existe en producción** | `session_one_in_progress_per_campaign` presente en `pg_indexes` |
-| La SPA se sirve | `GET /` → **200** |
-| La API responde y exige sesión | `GET /api/auth/me` → **401**; `GET /api/campaigns/x/events` → **401** |
-| El certificado es de Let's Encrypt y es el del dominio | `issuer=... Let's Encrypt`, `subject=CN=dnd.supportive.pro`, válido hasta el 1 de diciembre de 2026 — **medido desde dentro** con `openssl s_client` contra `127.0.0.1:443`, porque Norton intercepta el TLS en el PC del autor |
-| El límite de intentos actúa | `401 401 401 401 401 429` |
-| **El límite NO se puede esquivar falsificando la cabecera** | Con `X-Forwarded-For: 9.9.9.N` rotando: `401 401 401 401 401 429`. **Esta es la comprobación que de verdad importa** y la que casi nadie hace: confirma que Traefik descarta la cabecera del cliente y que `TRUST_PROXY=2` alcanza al cliente real |
-
-**Volcado previo a la migración**, porque una migración cambia el esquema y eso no se hace a
-ciegas: `pg_dump --format=custom` en `vps1new:/root/backups/dnd/pre-2A5-<fecha>.dump`. Es una
-red de seguridad puntual del despliegue, **no** el sistema de copias: eso sigue siendo el punto
-pendiente de abajo.
-
-**Lo que esta tanda NO cambió y por eso no se volvió a medir:** la topología de proxies, las
-variables de entorno y las etiquetas de Traefik. Si alguna de las tres cambia, la aritmética de
-`TRUST_PROXY` hay que **recontarla**, no heredarla.
-
-### Segundo despliegue del dia: la hoja de personaje (2026-09-02, tarde)
-
-Misma via —API de Coolify desde dentro de la VPS— y **mismo volcado previo**, porque volvia a
-haber migracion: `/root/backups/dnd/pre-hoja-<fecha>.dump`.
-
-| Comprobacion | Salida real |
-|---|---|
-| Los tres contenedores vuelven sanos | `web` / `api` / `db` en `Up ... (healthy)` |
-| **La segunda migracion se aplica sola** | `20260902141641_character_sheet_state_and_world`, quinta de la lista |
-| **Las seis tablas nuevas existen** | `CampaignFlag`, `CampaignSet`, `CampaignSetMember`, `CharacterCondition`, `CharacterResource`, `Notification` |
-| **Las dieciseis columnas de la hoja existen** | conteo `16` sobre `information_schema.columns` |
-| La SPA y la pantalla legal se sirven | `GET /` y `GET /acerca-de` → **200** |
-| Los endpoints nuevos exigen sesion | `/api/notifications`, `/api/campaigns/:id/flags`, `.../sheet`, `.../resources` y `POST .../rolls` → **401** |
-| El certificado sigue siendo el del dominio | `subject=CN=dnd.supportive.pro`, medido desde `127.0.0.1:443` |
-
-**Un detalle que confunde y conviene dejar escrito:** `GET /api/campaigns/:id/rolls` devuelve
-**404**, y es correcto — esa ruta solo existe como `POST`. Comprobarla con un `GET` y asustarse
-es el error facil; el `POST` sin token da 401, que es lo que se queria ver.
-
-**No se repitieron las dos tandas del limite de intentos.** Este despliegue **no toco la
-topologia de proxies ni las variables de entorno**, que es de lo unico que depende esa
-aritmetica. Si alguna de las dos cambia, se recuenta y se vuelven a correr.
-
-### El despliegue es MANUAL, por decisión del autor (2026-09-02)
+## El despliegue es MANUAL, por decisión del autor (2026-09-02)
 
 **Decisión del autor, literal:** *«no hay auto despliegue, se debe hacer manual»*. No es un
 pendiente ni una configuración a medias: **es como tiene que ser**.
@@ -523,6 +425,20 @@ de seguridad delante, que es exactamente como se hicieron los dos de hoy.
 **Consecuencia práctica que hay que tener presente:** todo lo comiteado después del segundo
 despliegue —el motor de reglas y lo que venga— **está en `main` y no en producción** hasta que
 alguien lance el despliegue a mano.
+
+## Las bitácoras de cada despliegue viven en el historial, no aquí
+
+Este documento es **procedimiento y trampas**: lo que hay que hacer y lo que muerde. Las
+secciones «Lo comprobado EN PRODUCCIÓN al desplegar la fase X», que eran la salida real de un
+día concreto, se movieron el 2026-09-03 a [07-historial.md](./07-historial.md) —las de la fase
+2C y 2D— y a
+[`_archivo/historial-hasta-2026-09-02.md`](./_archivo/historial-hasta-2026-09-02.md) —las del
+2026-09-02—. **Un registro fechado no es un procedimiento**, y tenerlos mezclados hacía que
+quien buscaba «cómo se despliega» leyera tres tablas de evidencia de despliegues pasados antes
+de llegar a los pasos.
+
+La tabla de comprobaciones que **sí** hay que repetir en cada despliegue está en
+«[Procedimiento](#procedimiento)» y en «Comprobaciones de salud».
 
 ## Lo que sigue sin comprobarse
 

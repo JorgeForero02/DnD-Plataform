@@ -64,6 +64,23 @@ Decidida el 2026-09-03 y **anterior a la parte gráfica**: termina de conectar e
 | D-2.5-4 | **Un personaje se archiva, no se borra**: es lo único abierto que destruye datos irreversiblemente mientras espera |
 | D-2.5-5 | **Atacar no exige `canView` sobre el objetivo** (2.5.3): la garantía es «nunca sabrás su CA», no «no puedes apuntar a lo que no ves» — eso lo gobierna la mesa fuera del endpoint. La CA se calcula con un espectador del servidor (`role: "DM"`), nunca con el de quien pregunta, porque `hojaDeStatblock` se niega entera a cualquiera que no sea el DM y el atacante casi nunca lo es |
 
+## Reseño de la mesa — se sustituyen las pantallas · [reseño](./superpowers/specs/2026-09-03-reseno-de-la-mesa-design.md)
+
+**El carril gráfico**, en paralelo al motor. No es un cambio de aspecto: el reseño encontró
+defectos de arquitectura de navegación, y son los que gobiernan estas decisiones.
+
+| # | Decisión |
+|---|---|
+| D-R-1 | **Sustituir, no adaptar.** La maqueta de `prototipo/` es presentación sin datos; el trabajo es enchufarla a la columna que se conserva, no retocar la pantalla vieja hasta que se parezca |
+| D-R-2 | Los colores son **tripletes de canal** (`--copper-ch: 201 125 70`) y no cadenas `rgb()`, para que los modificadores de opacidad de Tailwind (`/45`) compilen. Con ellos, la escala de opacidad se declara entera de 0 a 100: la de serie tiene huecos y la maqueta escribe `/15`, `/45` y `/62` |
+| D-R-3 | **Tres temas**, no dos: `Oscuro`, `Claro` y `Lectura`. Decisión del autor; entró en B0 para no repintar tokens dos veces |
+| D-R-4 | **La mesa está en la navegación**, y el reposo es uno de sus tres estados, no la ausencia de la mesa. Antes, fuera de sesión, el sitio donde se juega no era alcanzable |
+| D-R-5 | **Tres estratos**: permanente (nunca se quita, sin botón de cerrar), superpuesto (encima, Escape cierra, uno a la vez) y contextual (aparece porque ha pasado algo). Un panel nuevo elige estrato antes que sitio |
+| D-R-6 | **El elenco tiene dos disposiciones**, y la del jugador no lleva controles sobre los personajes ajenos: el DM ve la rejilla entera, el jugador ve el suyo destacado |
+| D-R-7 | **El tipo de ficha es un filtro dentro de «El mundo», no siete destinos.** Las siete pestañas eran, literalmente, los valores del enum de la tabla `Entity`: la navegación era el esquema de la base de datos. De diecinueve destinos por campaña a seis |
+| D-R-8 | Las colecciones que quedaban huérfanas —Personajes, Bestiario, Catálogo— van a **cajones sobre el taller**, en el mismo estrato superpuesto que los paneles de la mesa. Decisión del autor |
+| D-R-9 | **Sesiones NO es un cajón**, y es la corrección del autor a lo anterior: lo bastante externo para ser una sección normal del taller. Y **la sesión se empieza desde la mesa**, no desde el taller — el gesto vive donde se juega |
+
 ## Fase 3 — ficheros, mapa y tablero · [alcance](./superpowers/specs/2026-09-03-fase-3-alcance-design.md)
 
 **Sin empezar, y con cuatro decisiones del autor todavía abiertas.** Se listan porque bloquean:

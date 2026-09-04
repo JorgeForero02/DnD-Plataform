@@ -417,3 +417,69 @@ describe("las peticiones de tirada se ven desde la mesa", () => {
     expect(consultas[0].observers).toHaveLength(2);
   });
 });
+
+describe("la mesa en reposo: empezar a jugar se hace donde se juega", () => {
+  const PLANIFICADA: sessionsApi.Session = {
+    ...SESION,
+    id: "s2",
+    title: "La bajada a las cisternas",
+    status: "PLANNED",
+    startedAt: null,
+    attendance: [],
+  };
+
+  beforeEach(() => {
+    // `fetchCurrentSession` devuelve `null` cuando no hay ninguna en curso: eso es el reposo.
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(null as never);
+  });
+
+  it("el DM ve la siguiente planificada y la empieza sin salir de la mesa", async () => {
+    // Dos planificadas y una cerrada, en el orden en que las devuelve la API —descendente por
+    // fecha—: la que toca jugar es **la más antigua sin empezar**, no la primera de la lista.
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([
+      { ...PLANIFICADA, id: "s3", title: "El consejo de los gremios" },
+      PLANIFICADA,
+      { ...SESION, id: "s0", status: "CLOSED", title: "El puerto en llamas" },
+    ]);
+    const empezar = vi
+      .spyOn(sessionsApi, "startSession")
+      .mockResolvedValue({ ...PLANIFICADA, status: "IN_PROGRESS" });
+
+    montar();
+
+    expect(await screen.findByText(/La bajada a las cisternas/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Empezar la sesión" }));
+    // El diálogo es el MISMO que usa el taller, con su declaración de asistencia. Su botón de
+    // confirmar se llama igual que el que lo abrió, así que **se busca dentro del diálogo**: para
+    // quien usa la pantalla no hay ambigüedad —es modal y atrapa el foco—, pero para una consulta
+    // por nombre sí la hay, y es el mismo tropiezo de homónimos que ya costó un `spec` en B1.1.
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Empezar la sesión" }));
+
+    await waitFor(() => expect(empezar).toHaveBeenCalled());
+    expect(empezar.mock.calls[0][1]).toBe("s2");
+  });
+
+  it("sin ninguna planificada no se inventa una: enlaza al taller", async () => {
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);
+
+    montar();
+
+    expect(
+      await screen.findByRole("link", { name: "Planificar una en el taller" }),
+    ).toHaveAttribute("href", "/campaigns/c1?seccion=sessions");
+    expect(screen.queryByRole("button", { name: "Empezar la sesión" })).not.toBeInTheDocument();
+  });
+
+  it("el jugador no puede empezar la sesión desde la mesa", async () => {
+    conMiembros("PLAYER");
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([PLANIFICADA]);
+
+    montar("u-ana");
+
+    expect(await screen.findByText(/Cuando el DM empiece la sesión/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Empezar la sesión" })).not.toBeInTheDocument();
+    // Y el título de lo que el DM tiene planificado tampoco se le enseña.
+    expect(screen.queryByText(/La bajada a las cisternas/)).not.toBeInTheDocument();
+  });
+});

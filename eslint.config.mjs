@@ -18,6 +18,11 @@ export default tseslint.config(
       // TODO el repositorio — con errores de lint de una maqueta de terceros. Medido el
       // 2026-09-04: cinco errores en `prototipo/` de un worktree ajeno.
       ".claude/worktrees/**",
+      // **Salida de `capturas-comparacion.spec.ts`, no código nuestro.** Está en `.gitignore`
+      // desde la ficha M2B-13, pero eslint no lee `.gitignore`, así que cada corrida que dejara
+      // un `.mjs` ahí ponía `pnpm verify` en rojo con `'document' is not defined` sobre un
+      // fichero que nadie escribió a mano. Mismo tropiezo que con los worktrees, de arriba.
+      "apps/web/capturas-salida/**",
       "apps/web/dist/**",
       "apps/api/prisma/migrations/**",
       // Salidas de Playwright: informe generado, no codigo del repositorio.

@@ -71,7 +71,7 @@ test("**el DM pide una tirada, a la jugadora le aparece sin recargar, tira, y el
     paginaJugadora.getByRole("heading", { name: "La mesa de las peticiones" }),
   ).toBeVisible();
 
-  await paginaJugadora.getByRole("tab", { name: "Personajes" }).click();
+  await paginaJugadora.getByRole("button", { name: "Personajes" }).click();
   await paginaJugadora.getByRole("button", { name: "Nuevo personaje" }).click();
   await paginaJugadora.getByLabel("Nombre").fill("Ana");
   await paginaJugadora.getByRole("button", { name: "Guardar" }).click();

@@ -98,7 +98,7 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
   await page.goBack();
 
   // La hoja, que es la que el autor mira primero.
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill("Corvin Vhael");
   await page.getByRole("button", { name: "Guardar" }).click();
@@ -149,11 +149,17 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
 
   // El catálogo de objetos de la campaña, con su marca de procedencia.
   await page.goBack();
-  await page.getByRole("tab", { name: "Catálogo" }).click();
+  await page.getByRole("button", { name: "Catálogo" }).click();
   // El catálogo pide dos fuentes —el SRD y los objetos de la campaña— y no pinta nada hasta
   // tener las dos; se espera a que aparezca una fila del SRD, no al título.
   await expect(page.getByText("Espada larga").first()).toBeVisible({ timeout: 15_000 });
   await page.screenshot({ path: `${SALIDA}/n09-catalogo-de-objetos.png`, fullPage: true });
+
+  // **Y se cierra el cajón antes de seguir** (B4): desde el reseño, Catálogo se abre como
+  // superpuesto sobre el taller, y su velo tapa el carril de secciones entero. Sin este Escape,
+  // el clic siguiente esperaba tres minutos a un botón que sí existe y no se puede pulsar.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   // El editor de reglas. **Sin `goBack()`**: el bloque del catálogo ya dejó la vista en la
   // campaña, y volver otra vez atrás caía en la hoja de personaje.

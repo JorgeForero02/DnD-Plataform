@@ -27,6 +27,7 @@ import { Tabs, type TabItem } from "../ui/Tabs";
 import { PanelDeReglas } from "../features/rules/PanelDeReglas";
 import { PanelDeBestiario } from "../features/bestiario/PanelDeBestiario";
 import { IconoBestiario } from "../features/bestiario/iconos";
+import { Dialog } from "../ui/Dialog";
 import { AppShell, AppHeader, PageHeader, Breadcrumbs } from "../ui/AppShell";
 import { EmptyState } from "../ui/Collection";
 import { CampaignOverview } from "../features/campaigns/CampaignOverview";
@@ -99,10 +100,17 @@ const TABS: TabConfig[] = [
   // sola entrada llamada igual que el grupo, o sea una línea de versalita repitiendo en
   // mayúsculas la palabra de debajo. Cuando eran siete el rótulo agrupaba; ahora estorba.
   { kind: "world", label: "El mundo" },
-  { kind: "sessions", label: "Sesiones", group: GRUPO_MESA },
-  { kind: "characters", label: "Personajes", group: GRUPO_MESA },
   // 2A.17. Va en «La mesa» y no en «La campaña» porque una regla es algo que pasa durante la
   // partida, no un ajuste. El panel se calla entero si quien mira no es el DM.
+  // **Sesiones NO es un cajón, y lo decidió el autor cuando la suite lo destapó.** Las otras
+  // tres son colecciones que se consultan; una sesión es un **flujo**: dentro hay un
+  // «Empezar» que abre su propio diálogo con la asistencia y los personajes, y un modal
+  // dentro de un modal es justo la clase de cosa que este reseño existe para quitar.
+  //
+  // En sus palabras: *«para cosas que sean un poco más externas se puede acomodar afuera
+  // como una interfaz normal pero tomando de base el diseño»*. Consultar y planear sesiones
+  // es de eso; **empezar** una es de la mesa, y ahí es donde está el botón ahora.
+  { kind: "sessions", label: "Sesiones", group: GRUPO_MESA },
   { kind: "rules", label: "Reglas", group: GRUPO_MESA },
   // 2B. Va en «La mesa» y no en «El mundo» aunque hable de objetos: la ficha de mundo de un
   // objeto —su historia, sus enlaces, quién lo quiere— es la pestaña «Objetos» de arriba; esto
@@ -115,8 +123,6 @@ const TABS: TabConfig[] = [
   // es lo que se consulta con los dados en la mano. El prototipo los mete en un grupo
   // «HERRAMIENTAS» que aquí no existe —tendría dos entradas de nueve— así que van en «La mesa»,
   // conservando el orden relativo, que es lo que de verdad se estaba copiando.
-  { kind: "bestiary", label: "Bestiario", group: GRUPO_MESA },
-  { kind: "items", label: "Catálogo", group: GRUPO_MESA },
   // 2C.2. Va en «La mesa» y detrás del catálogo, como en el prototipo: es lo que se toca
   // **durante** la partida, no algo que se prepara antes. Y va aquí y no en la hoja de personaje
   // porque la mitad de las tiradas de una mesa no son de nadie —«tirad todos percepción», «1d100
@@ -716,6 +722,7 @@ export function CampaignDetailPage() {
         <EnlaceALaMesa campaignId={id} />
         <div className="mt-s3 h-px w-full bg-copper opacity-30" />
       </header>
+      <CajonesDelTaller campaignId={id} />
       {/* layout="sidebar": the same WAI-ARIA tablist, standing up. Ten sections in a flat
           strip said everything here was the same kind of thing (audit B4); a grouped column
           says which of them is the world and which is the table. */}
@@ -843,5 +850,78 @@ function SeccionDelMundo({
           motivo por el que lo llevaba cuando eran siete pestañas. */}
       <EntityTab key={tipo} campaignId={campaignId} type={tipo} />
     </div>
+  );
+}
+
+/**
+ * **Los cajones del taller.** B4, 2026-09-04, y la forma la eligió el autor.
+ *
+ * Personajes, Sesiones, Bestiario y Catálogo eran cuatro de las dieciséis pestañas, y las cuatro
+ * son **colecciones que se consultan**, no sitios donde se está. Al matar la navegación vieja se
+ * quedaban sin casa; meterlas como cuatro pestañas más del taller habría sido cambiarles el
+ * marco sin cambiar el problema.
+ *
+ * Un cajón se desliza **encima** del taller, Escape cierra, y vuelves exactamente donde estabas.
+ * Es **el mismo estrato superpuesto que ya usa la mesa** (`features/sessions/RailDePaneles`), y
+ * esa es la razón de fondo para elegirlo: la aplicación se aprende una vez. Lo que se abre
+ * encima se cierra con Escape, en la mesa y en el taller, y nunca sustituye lo que estabas
+ * mirando.
+ *
+ * **Uno a la vez**, por lo mismo que en la mesa: dos superpuestos son dos sitios donde estar, y
+ * no tener un sitio donde estar es el defecto que todo este reseño existe para corregir.
+ */
+function CajonesDelTaller({ campaignId }: { campaignId: string }) {
+  const [abierto, setAbierto] = useState<null | "characters" | "bestiary" | "items">(null);
+
+  const cajones = [
+    { id: "characters", etiqueta: "Personajes", icono: <IconoPersonajes /> },
+    { id: "bestiary", etiqueta: "Bestiario", icono: <IconoBestiario /> },
+    { id: "items", etiqueta: "Catálogo", icono: <IconoImpedimenta /> },
+  ] as const;
+
+  return (
+    <>
+      <nav
+        aria-label="Cajones del taller"
+        className="mb-s4 flex flex-wrap items-center gap-s2 rounded-radius-sm border border-muted bg-surface p-s2"
+      >
+        {cajones.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setAbierto(c.id)}
+            className="inline-flex items-center gap-s2 rounded-radius-sm border border-muted bg-bg px-s3 py-s2 font-chrome text-chrome-sm text-muted transition-colors hover:border-accent hover:text-accent-text"
+          >
+            {c.icono}
+            {c.etiqueta}
+          </button>
+        ))}
+      </nav>
+
+      <Dialog
+        open={abierto === "characters"}
+        onClose={() => setAbierto(null)}
+        title="Personajes"
+        size="xl"
+      >
+        <CharactersTab campaignId={campaignId} />
+      </Dialog>
+      <Dialog
+        open={abierto === "bestiary"}
+        onClose={() => setAbierto(null)}
+        title="Bestiario"
+        size="xl"
+      >
+        <PanelDeBestiario campaignId={campaignId} />
+      </Dialog>
+      <Dialog
+        open={abierto === "items"}
+        onClose={() => setAbierto(null)}
+        title="Catálogo de objetos"
+        size="xl"
+      >
+        <CampaignItemsCatalogPage campaignId={campaignId} />
+      </Dialog>
+    </>
   );
 }

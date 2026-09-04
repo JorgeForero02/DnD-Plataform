@@ -163,8 +163,8 @@ Rutas de la web (`App.tsx`), tras el reseño del 2026-09-02:
 |---|---|
 | `/login`, `/register` | Entrada, con su propio armazón y su ornamento |
 | `/` | Panel de campañas |
-| `/campaigns/:id` | Campaña. La **sección abierta viaja en `?seccion=`**, así que es enlazable y sobrevive a una recarga |
-| `/campaigns/:id/sesion` | **La mesa**: elenco con asistencia, registro en vivo con sus sellos rápidos y consulta del mundo, para la partida en marcha |
+| `/campaigns/:id` | **El taller** de la campaña. La **sección abierta viaja en `?seccion=`**, así que es enlazable y sobrevive a una recarga. Desde B4 son **seis destinos**, no diecinueve: Resumen, El mundo, Sesiones, Reglas, Miembros y Ajustes — el **tipo de ficha es un filtro dentro de «El mundo»** (`?seccion=NPC` sigue funcionando y abre «El mundo» con ese tipo puesto), y Personajes, Bestiario y Catálogo son **cajones superpuestos** sobre el taller, no secciones |
+| `/campaigns/:id/sesion` | **La mesa**, y **el reposo es uno de sus tres estados, no la ausencia de la mesa**: en reposo enseña dónde quedó la escena, el elenco y el registro, y **el DM empieza ahí la sesión** en vez de volver al taller. En juego, elenco con asistencia, registro en vivo con sus sellos rápidos y el **estrato superpuesto** (Hoja, Bolsa, Mundo: uno a la vez, Escape cierra) |
 | `/campaigns/:id/entidades/:entityId` | **Lectura** de una ficha del mundo: cuerpo en vitela, relaciones y comentarios |
 | `/campaigns/:id/personajes/:characterId` | Hoja de personaje con la forma de 5.ª edición |
 | `/account`, `/join/:token`, `/design-tokens`, `*` | Cuenta, invitación, control de tokens y 404 |

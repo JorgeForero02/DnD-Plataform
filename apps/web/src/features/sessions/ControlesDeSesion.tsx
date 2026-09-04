@@ -99,7 +99,7 @@ export function ControlesDeSesion({
  *
  * Empezar sin declarar nada es legítimo: el botón no lo exige.
  */
-function DialogoDeInicio({
+export function DialogoDeInicio({
   campaignId,
   session,
   onClose,

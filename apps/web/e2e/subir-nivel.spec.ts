@@ -37,7 +37,7 @@ async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
   await page.getByRole("link", { name: "La subida de nivel" }).click();
   await expect(page.getByRole("heading", { name: "La subida de nivel" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill(nombrePersonaje);
   await page.getByRole("button", { name: "Guardar" }).click();

@@ -7,7 +7,7 @@ export interface DialogProps {
   title: string;
   children: ReactNode;
   /** "lg" para formularios con texto largo (markdown + vista previa). */
-  size?: "sm" | "lg";
+  size?: "sm" | "lg" | "xl";
 }
 
 const FOCUSABLE_SELECTOR =
@@ -120,12 +120,19 @@ export function Dialog({ open, onClose, title, children, size = "sm" }: DialogPr
         // cuerpo en markdown con su vista previa. En 28rem no cabe una frase de manual sin
         // romperla tres veces, y escribir en una columna estrecha es exactamente lo que hace
         // que un DM prefiera otra herramienta.
+        //
+        // **Y `size="xl"` para los cajones de B4, que no son formularios sino COLECCIONES.** Un
+        // cajón lleva dentro la pantalla entera que antes era una pestaña a ancho completo:
+        // rejilla de fichas, filtros y buscador. En `max-w-2xl` los cuatro números de una
+        // criatura —CA, PG, Vel, VD— dejaban de caber en una línea y se partían en dos, que es
+        // justo lo que la ficha existe para evitar. Lo cazó `bestiario.spec.ts`, midiendo las
+        // cajas en el navegador; `jsdom` no maqueta y no lo habría visto.
         className={[
           // La elevación es lo que dice "esto está encima": borde de cobre —el acento del
           // marco— y una sombra de verdad. Sin ellas, un panel del color de las tarjetas sobre
           // un velo tenue sigue pareciendo parte de la página.
           "max-h-[85vh] w-full overflow-y-auto rounded-radius-sm border border-copper bg-surface p-s4 font-chrome text-chrome-sm text-text shadow-2xl",
-          size === "lg" ? "max-w-2xl" : "max-w-md",
+          size === "xl" ? "max-w-6xl" : size === "lg" ? "max-w-2xl" : "max-w-md",
         ].join(" ")}
       >
         <h2 id={titleId} className="mb-3 text-chrome-md font-semibold">

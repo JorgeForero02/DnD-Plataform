@@ -373,7 +373,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // sin clase mientras su propia hoja decía «Humano · Mago».
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
 
     const row = await screen.findByRole("link", { name: /Strahd/ });
     expect(row).toHaveTextContent("Humano · Mago");
@@ -385,7 +385,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   it("lets a player open another player's character and read it, but not save changes", async () => {
     asPlayer();
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo personaje" });
     await waitFor(() => expect(newButton).not.toBeDisabled());
@@ -439,7 +439,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
       },
     ]);
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
 
     const row = await screen.findByRole("link", { name: /Mi propio personaje/ });
     await waitFor(() => expect(row).not.toBeDisabled());
@@ -648,10 +648,17 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     vi.spyOn(charactersApi, "fetchCharacters").mockImplementation(async () =>
       deleted ? [first] : [first, second],
     );
-    const spy = vi.spyOn(charactersApi, "deleteCharacter").mockResolvedValue({ deleted: true });
+    // **El doble tiene que borrar de verdad, y esto lo cazó `lint`.** `deleted` se declaraba y
+    // no lo ponía nadie a `true`, así que el listado devolvía los dos personajes antes y después
+    // de confirmar: la prueba pasaba igual con el borrado roto. Es el mismo defecto de «pruebas
+    // que no distinguen» que la ronda de mutación encontró seis veces.
+    const borrar = vi.spyOn(charactersApi, "deleteCharacter").mockImplementation(async () => {
+      deleted = true;
+      return { deleted: true };
+    });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Personajes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
     await screen.findByRole("link", { name: /Elara/ });
 
     fireEvent.click(screen.getByRole("link", { name: /Elara/ }));
@@ -659,14 +666,16 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     // de su botón y su confirmación, que es lo único irreversible que queda tras un clic.
     fireEvent.click(await screen.findByRole("button", { name: "Borrar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
-    deleted = true;
 
-    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
-    expect(spy).toHaveBeenCalledWith("c1", "ch2");
-    await waitFor(() =>
-      expect(screen.queryByRole("link", { name: /Elara/ })).not.toBeInTheDocument(),
-    );
-    expect(screen.getByRole("link", { name: /Kaelith/ })).toBeInTheDocument();
+    // **El cajón no sobrevive a navegar, y eso es correcto.** Pulsar un personaje abre su ficha,
+    // que es otra pantalla: el cajón se cerró al irse, como se cierra cualquier superpuesto. Al
+    // volver a la campaña hay que abrirlo otra vez para ver la lista — igual que en la mesa.
+    await waitFor(() => expect(borrar).toHaveBeenCalledWith("c1", "ch2"));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
+    await screen.findByRole("link", { name: /Kaelith/ });
+    // Y Elara ya no está: es lo que la prueba decía comprobar y no comprobaba.
+    expect(screen.queryByRole("link", { name: /Elara/ })).not.toBeInTheDocument();
   });
 });
 

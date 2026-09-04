@@ -5,6 +5,9 @@
 # Los worktrees de los agentes traen una copia entera del repositorio; sus ficheros no son
 # nuestros y `prototipo/**` de abajo no casa con la copia anidada. Ver eslint.config.mjs.
 .claude/worktrees/**
+
+# Salida de `capturas-comparacion.spec.ts` (ficha M2B-13), ya ignorada por git.
+apps/web/capturas-salida/**
 pnpm-lock.yaml
 apps/api/prisma/migrations/**
 

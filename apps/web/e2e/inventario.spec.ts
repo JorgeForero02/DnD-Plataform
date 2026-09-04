@@ -33,7 +33,7 @@ async function crearPersonajeConFicha(page: Page, nombre: string) {
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa del inventario" }).click();
 
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill(nombre);
   await page.getByRole("button", { name: "Guardar" }).click();
@@ -159,7 +159,7 @@ test("el catálogo de objetos de la campaña crea un objeto propio y se distingu
   await crearPersonajeConFicha(page, "Sil la Errante");
 
   await page.getByRole("link", { name: "La mesa del inventario" }).first().click();
-  await page.getByRole("tab", { name: "Catálogo" }).click();
+  await page.getByRole("button", { name: "Catálogo" }).click();
 
   await page
     .getByRole("button", { name: /Crear objeto|Nuevo objeto/ })

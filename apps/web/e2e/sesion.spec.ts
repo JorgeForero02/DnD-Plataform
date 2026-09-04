@@ -63,7 +63,7 @@ async function crearCampanaConSesion(page: Page) {
  * Misma receta que `hoja.spec.ts`: enano guerrero de nivel 1 con Constitución 14, o sea 12 PG.
  */
 async function crearPersonajeConHoja(page: Page, nombre: string) {
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill(nombre);
   await page.getByRole("button", { name: "Guardar" }).click();
@@ -467,7 +467,11 @@ test("se llega a la mesa desde la campaña sin sesión abierta, y no es un carte
   // El reloj de campaña, que llevaba semanas sondeando para nadie, por fin se pinta donde se juega.
   await expect(escena).toContainText("Día 1");
   await expect(escena).toContainText("00:00");
-  await expect(page.getByText("La mesa está en reposo.")).toBeVisible();
+  // **Y el DM empieza la sesión desde aquí** (B4), que es la otra mitad del mismo defecto: hasta
+  // hoy el cartel del reposo te mandaba al taller, o sea que para empezar a jugar había que salir
+  // del sitio donde se juega. Sin ninguna sesión planificada no se inventa una — se enlaza.
+  await expect(page.getByText(/La mesa está en reposo/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Planificar una en el taller" })).toBeVisible();
   // **La consulta del mundo ya no es una columna fija** (B1.3): se llega por el rail, que sí
   // está siempre. Lo que esta prueba defiende es que en reposo la mesa **no es un cartel de
   // vacío**, y el rail es parte de eso — desde aquí se consulta el mundo sin salir.

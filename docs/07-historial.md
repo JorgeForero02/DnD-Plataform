@@ -28,6 +28,34 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El mundo es un destino, y la sesión se empieza en la mesa (B4) (2026-09-04)
+
+**La navegación de una campaña baja de diecinueve destinos a seis.** Las siete pestañas de tipo
+—PNJ, Lugares, Misiones, Facciones, Objetos, Sucesos, Documentos— eran los siete valores del enum
+de la tabla `Entity`: la navegación era el esquema de la base de datos. Ahora son **un destino,
+«El mundo»**, con el tipo como fila de fichas dentro (`role="group"`, `aria-pressed`). El tipo
+sigue viajando en `?seccion=<TYPE>` y `seccionActiva` lo mapea a `"world"`, así que **los enlaces
+antiguos siguen abriendo lo que abrían**.
+
+**Personajes, Bestiario y Catálogo pasan a cajones sobre el taller**, en el mismo estrato
+superpuesto que los paneles de la mesa (D-R-8): se abren encima, Escape cierra, uno a la vez.
+
+**Sesiones no es un cajón, por corrección del autor** (D-R-9): *«para cosas que sean un poco más
+externas se puede acomodar afuera como una interfaz normal»*. Se quedó como sección del taller. Y
+la segunda mitad de esa misma respuesta —*«si es una sesión empezada y no inicia aún ponle como
+ventana de vista que el dm vea todo similar a como sale en el prot»*— es lo que cierra el defecto
+que quedaba: **la mesa en reposo ya deja empezar la sesión**. Antes el cartel mandaba al taller, o
+sea que para empezar a jugar había que salir del sitio donde se juega. Se ofrece **la planificada
+más antigua**, y el diálogo es `DialogoDeInicio`, el mismo del taller —un segundo formulario
+querría decir dos reglas de asistencia y una de las dos acabaría mintiendo—. Sin ninguna
+planificada no se inventa una: se enlaza al taller, porque crearla lleva título y fecha.
+
+**Un cajón no es un formulario**, y el navegador lo dijo: `Dialog` gana `size="xl"` (`max-w-6xl`)
+porque en `max-w-2xl` los cuatro números de una criatura —CA, PG, Vel, VD— dejaban de caber en una
+línea y se partían en dos. Lo cazó `bestiario.spec.ts` midiendo las cajas; `jsdom` no maqueta.
+
+**Revertir:** `git revert` del commit. Nada de esto toca servidor, esquema ni `packages/shared`.
+
 ## El ataque, comparado en el servidor (2.5.3) (2026-09-04)
 
 **El motor calculaba el bono de ataque y quien tiraba comparaba a ojo contra la CA.** Nuevo

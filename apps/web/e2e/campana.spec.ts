@@ -272,7 +272,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
 
   // Pestaña de Personajes: mismo hueco — CharactersTab, su botón "Nuevo" y CharacterEditor
   // tampoco los pintaba nunca un navegador real.
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await expect(page.getByText("Ningún personaje todavía")).toBeVisible();
 
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
@@ -313,6 +313,10 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // hoja ya muestra el nivel nuevo. Se vuelve por las migas para comprobar también la fila.
   await expect(page.getByText("Nivel 4")).toBeVisible();
   await page.getByRole("link", { name: "Fuera del Abismo" }).click();
+  // **El cajón no sobrevive a navegar, y eso es correcto** (B4): pulsar el personaje abrió su
+  // hoja, que es otra pantalla, así que el superpuesto se cerró al irse — igual que cualquier
+  // otro. Al volver hay que abrirlo otra vez, exactamente como en la mesa.
+  await page.getByRole("button", { name: "Personajes" }).click();
   const updatedCharacterRow = page.getByRole("link", { name: /Kaelith/ });
   await expect(updatedCharacterRow).toBeVisible();
   await expect(updatedCharacterRow).toContainText("Nivel 4");
@@ -341,7 +345,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(page.getByRole("link", { name: /Kaelith/ })).toHaveCount(0);
 
   // Y la sesión, contra la API real, incluyendo la cancelación: pulsar "No, cancelar" no borra
-  // y deja el editor abierto.
+  // y deja el editor abierto. **Sesiones sigue siendo una pestaña**, no un cajón (D-R-9).
   await page.getByRole("tab", { name: "Sesiones" }).click();
   const finalSessionRow = page.getByRole("button", { name: /Sesión 1: notas borradas/ });
   await finalSessionRow.click();
@@ -795,4 +799,48 @@ test("el mundo es un solo destino, y el tipo de ficha un filtro dentro de él", 
   expect(page.url()).toContain("seccion=LOCATION");
   await page.reload();
   await expect(page.getByRole("heading", { name: "Lugares" })).toBeVisible();
+});
+
+// B4 · los cajones — **la forma la eligió el autor**, y el motivo de fondo es que la aplicación
+// se aprenda una vez: lo que se abre encima se cierra con Escape, en la mesa y en el taller.
+//
+// Personajes, Sesiones, Bestiario y Catálogo eran cuatro de las dieciséis pestañas, y las cuatro
+// son **colecciones que se consultan**, no sitios donde se está. Meterlas como cuatro pestañas
+// más habría sido cambiarles el marco sin cambiar el problema.
+test("los tres cajones se abren encima del taller, uno a la vez, y Escape los cierra", async ({
+  page,
+}) => {
+  await registrarse(page);
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("El Taller de Bram");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "El Taller de Bram" }).click();
+
+  // **Fuera del carril de secciones**, que es lo que arregla: de diecinueve destinos a seis.
+  const carril = page.getByRole("tablist");
+  for (const nombre of ["Personajes", "Bestiario", "Catálogo"]) {
+    await expect(carril.getByRole("tab", { name: nombre })).toHaveCount(0);
+  }
+  // **Sesiones NO, y es decisión del autor** (D-R-9): es lo bastante externo para seguir siendo
+  // una sección normal del taller. Se comprueba que sigue ahí, porque quitarla fue el intento
+  // anterior y se deshizo.
+  await expect(carril.getByRole("tab", { name: "Sesiones" })).toHaveCount(1);
+
+  const cajones = page.getByRole("navigation", { name: "Cajones del taller" });
+  await expect(cajones.getByRole("button")).toHaveCount(3);
+
+  await cajones.getByRole("button", { name: "Bestiario" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Bestiario");
+  // El taller sigue detrás: el cajón se abre ENCIMA, no sustituye la pantalla.
+  await expect(page.getByRole("heading", { name: "El Taller de Bram" })).toBeAttached();
+
+  // **Uno a la vez**, igual que los paneles de la mesa.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await cajones.getByRole("button", { name: "Personajes" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Personajes");
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
 });

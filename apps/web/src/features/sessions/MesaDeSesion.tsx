@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import type { SessionNoteKind, Visibility } from "@dnd/shared";
 import type { Session } from "./api";
 import type { GameEventRow } from "./log-api";
-import { useCurrentSession, useGameLog, useMinutoActual, useStampNote } from "./hooks";
+import { useCurrentSession, useGameLog, useMinutoActual, useSessions, useStampNote } from "./hooks";
 import { ICONO_SELLO, NOMBRE_SELLO, SELLOS_EN_ORDEN, duracionDesde } from "./vocabulario";
 import {
   IconoBuscar,
@@ -15,6 +15,7 @@ import {
 } from "./iconos";
 import { horaDe, lineaDeLog, selloDeSuceso } from "./linea-de-log";
 import { CabeceraDeEscena } from "./CabeceraDeEscena";
+import { DialogoDeInicio } from "./ControlesDeSesion";
 import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { HojaCalculada } from "../character-sheet/HojaCalculada";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
@@ -103,11 +104,13 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
           presentes={[]}
           enCurso={false}
         />
-        <p className="rounded-radius-sm border border-muted bg-surface px-s4 py-s3 font-chrome text-chrome-sm text-muted">
-          {esDm
-            ? "La mesa está en reposo. Empieza una sesión desde «Sesiones» y esta pantalla pasa a estar en juego."
-            : "La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena sola."}
-        </p>
+        {esDm ? (
+          <EmpezarDesdeLaMesa campaignId={campaignId} />
+        ) : (
+          <p className="rounded-radius-sm border border-muted bg-surface px-s4 py-s3 font-chrome text-chrome-sm text-muted">
+            La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena sola.
+          </p>
+        )}
         <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
         <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <Elenco campaignId={campaignId} asistencia={null} esDm={esDm} />
@@ -166,6 +169,68 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         personajeId={miPersonaje?.id}
         esDm={esDm}
       />
+    </div>
+  );
+}
+
+/**
+ * **Se empieza la sesión desde la mesa, y no desde otra pantalla.**
+ *
+ * Es la segunda mitad de lo que pidió el autor: *«si es una sesión empezada y no inicia aún ponle
+ * como ventana de vista que el dm vea todo similar a como sale en el prot»*. La mesa en reposo ya
+ * enseñaba lo que hay —la escena donde quedó, el elenco, el registro—; lo que le faltaba era el
+ * gesto. Hasta ahora el cartel te mandaba a «Sesiones», que es **el taller**: para empezar a jugar
+ * había que salir del sitio donde se juega, y ese es exactamente el defecto de arquitectura que el
+ * reseño llama *«fuera de sesión, el sitio donde se juega no es alcanzable»*.
+ *
+ * **El diálogo es el mismo**, no una copia: `DialogoDeInicio` es el que ya usa la lista del taller,
+ * con su declaración de asistencia. Un segundo formulario de inicio querría decir dos reglas de
+ * asistencia y una de las dos acabaría desactualizada.
+ *
+ * Lo que se ofrece es **la siguiente sesión planificada**, la más antigua sin empezar, que es la
+ * que se juega esta noche. Si no hay ninguna, no se inventa una desde aquí —crearla lleva título,
+ * fecha y resumen, y eso es trabajo de taller—: se enlaza al taller y se dice por qué.
+ */
+function EmpezarDesdeLaMesa({ campaignId }: { campaignId: string }) {
+  const { data: sesiones } = useSessions(campaignId);
+  const [empezando, setEmpezando] = useState(false);
+
+  // La más antigua sin empezar. El listado viene de la API por fecha descendente, así que la
+  // siguiente por jugar es la última de las planificadas.
+  const planificadas = (sesiones ?? []).filter((x) => x.status === "PLANNED");
+  const siguiente = planificadas[planificadas.length - 1];
+
+  return (
+    <div className="flex flex-wrap items-center gap-s3 rounded-radius-sm border border-copper bg-surface px-s4 py-s3">
+      <p className="min-w-0 flex-1 font-chrome text-chrome-sm text-muted">
+        {siguiente ? (
+          <>
+            La mesa está en reposo. La siguiente es{" "}
+            <span className="text-text">«{siguiente.title}»</span>.
+          </>
+        ) : (
+          "La mesa está en reposo y no hay ninguna sesión planificada."
+        )}
+      </p>
+      {siguiente ? (
+        <Button type="button" variant="primary" onClick={() => setEmpezando(true)}>
+          Empezar la sesión
+        </Button>
+      ) : (
+        <Link
+          to={`/campaigns/${campaignId}?seccion=sessions`}
+          className="inline-flex items-center rounded-radius-sm border border-copper px-s4 py-s2 font-chrome text-chrome-sm text-copper-text transition-colors hover:border-accent hover:text-accent-text"
+        >
+          Planificar una en el taller
+        </Link>
+      )}
+      {empezando && siguiente && (
+        <DialogoDeInicio
+          campaignId={campaignId}
+          session={siguiente}
+          onClose={() => setEmpezando(false)}
+        />
+      )}
     </div>
   );
 }

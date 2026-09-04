@@ -36,7 +36,7 @@ async function abrirBestiario(page: Page) {
   await page.getByLabel("Nombre").fill("La cripta de Sarnath");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La cripta de Sarnath" }).click();
-  await page.getByRole("tab", { name: "Bestiario" }).click();
+  await page.getByRole("button", { name: "Bestiario" }).click();
   await expect(page.getByRole("heading", { name: "Bestiario" })).toBeVisible();
 }
 

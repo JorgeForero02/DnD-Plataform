@@ -43,7 +43,7 @@ async function abrirHoja(page: Page) {
   await page.getByRole("link", { name: "La cuenta atrás" }).click();
   await expect(page.getByRole("heading", { name: "La cuenta atrás" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill("Brann");
   await page.getByRole("button", { name: "Guardar" }).click();

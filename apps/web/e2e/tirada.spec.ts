@@ -39,7 +39,7 @@ async function personajeCompleto(page: Page) {
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de los dados" }).click();
 
-  await page.getByRole("tab", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill("Borin el Afortunado");
   await page.getByRole("button", { name: "Guardar" }).click();

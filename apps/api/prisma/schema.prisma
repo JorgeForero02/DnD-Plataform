@@ -73,6 +73,9 @@ enum GameEventType {
   ENCOUNTER_STARTED
   TURN_ADVANCED
   ROUND_ADVANCED
+  // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9).
+  CHARACTER_ARCHIVED
+  CHARACTER_RESTORED
 }
 
 enum ResourceReset {
@@ -414,6 +417,14 @@ model Character {
   bio        String?
   visibility Visibility @default(PLAYERS)
   createdAt  DateTime   @default(now())
+
+  // Archivar en vez de borrar (2.5.8, ficha M9). **`null` = activo, con fecha = archivado.**
+  // No es un booleano: guardar CUANDO se archivo es gratis aqui y cuesta una consulta aparte en
+  // cualquier otro sitio, y la mesa ya pregunta "desde cuando esta guardado". La misma consulta
+  // que ya excluye a los PNJ instanciados (`statblockRef: null`, 2D.6) suma este filtro —no se
+  // inventa una tabla ni un segundo listado— y NADA se borra: hoja, inventario y dinero siguen
+  // en sus filas de siempre.
+  archivedAt DateTime?
 
   // --- La hoja de 5.a edicion (2A.6). Se guarda lo DECIDIDO, nunca lo calculado ---
   // Seis columnas y no un JSON: son seis, son fijas, y hay que poder consultarlas.

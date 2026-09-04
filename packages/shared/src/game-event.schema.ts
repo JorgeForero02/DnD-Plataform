@@ -75,6 +75,11 @@ export const GAME_EVENT_TYPES = [
   "ENCOUNTER_STARTED",
   "TURN_ADVANCED",
   "ROUND_ADVANCED",
+  // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9). **Dos tipos y no uno con una
+  // bandera**: la línea de tiempo cuenta "qué pasó", y "se archivó" y "se recuperó" son dos
+  // hechos distintos con su propio momento, igual que CONDITION_APPLIED/CONDITION_REMOVED.
+  "CHARACTER_ARCHIVED",
+  "CHARACTER_RESTORED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -376,6 +381,14 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     to: z.number().int().positive(),
     /** El reloj de campaña tras el avance — un asalto son seis segundos (D-2C-1). */
     clockSeconds: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal("CHARACTER_ARCHIVED"),
+    characterName: z.string().max(120).optional(),
+  }),
+  z.object({
+    type: z.literal("CHARACTER_RESTORED"),
+    characterName: z.string().max(120).optional(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

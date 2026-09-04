@@ -43,6 +43,26 @@ y no emite al bajar; un jugador que no puede ver la ficha tampoco ve el suceso.
 
 **Cómo revertir.** `git revert` del commit; no toca esquema.
 
+## Archivar un personaje en vez de borrarlo (2.5.8, ficha M9) (2026-09-04)
+
+**Es lo único abierto que destruía datos mientras esperaba.** Columna `Character.archivedAt`
+(`null` = activo). `list()` suma `archivedAt: null` a la misma consulta que ya excluye a los PNJ
+instanciados (`statblockRef: null`, 2D.6) — el mismo patrón, un filtro más. `archive()`/
+`unarchive()` usan `requireEditable` (dueño o DM, sin regla nueva), no tocan hoja/inventario/
+dinero, y dejan `CHARACTER_ARCHIVED`/`CHARACTER_RESTORED` en la línea de tiempo con la
+visibilidad del personaje. Ambos son idempotentes: repetir el gesto no vuelve a emitir el
+suceso. Borrar de verdad (`DELETE`) sigue existiendo tal cual — lo que cambia es cuál de los dos
+gestos es el fácil.
+
+**Probado.** Unitarias del servicio (con Prisma simulado y `transaction` mockeado) y
+`characters.e2e-spec.ts`: archivar saca del listado sin borrar filas —contadas, no fiadas del
+200—, recupera hoja/inventario/dinero enteros, deja su rastro en la línea de tiempo, y solo
+dueño o DM pueden archivar.
+
+**Cómo revertir.** `git revert` del commit. La migración `character_archived` añade una columna
+nula y dos valores de enum — revertirla no pierde datos de personajes ya archivados si se hace
+antes de que alguien dependa de la columna.
+
 ## B0 — los tokens por canales y el tercer tema (2026-09-04)
 
 **Por qué.** El reseño de la mesa decidió sustituir la interfaz por la maqueta de `prototipo/`,

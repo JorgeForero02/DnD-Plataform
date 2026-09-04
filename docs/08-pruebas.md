@@ -191,7 +191,7 @@ en verde.
 | `links` | Enlazar dos fichas, rechazar el enlace de una consigo misma, y que **el jugador solo vea los enlaces cuyo destino puede ver**. |
 | `comments` | Comentar una ficha visible; **no se puede comentar una `DM_ONLY`**. |
 | `sessions` | El DM crea sesiones; el jugador no; el listado se filtra por visibilidad. |
-| `characters` | Quien crea un personaje queda como su dueño **según el servidor, no según lo que mande el cliente**; el listado del jugador se filtra por `canView` y el DM los ve todos; **editar exige ser dueño o DM, y otro jugador recibe 403**. Es la puerta de entrada a la hoja, y llevaba sin aparecer en este mapa desde que se escribió. |
+| `characters` | Quien crea un personaje queda como su dueño **según el servidor, no según lo que mande el cliente**; el listado del jugador se filtra por `canView` y el DM los ve todos; **editar exige ser dueño o DM, y otro jugador recibe 403**. Es la puerta de entrada a la hoja, y llevaba sin aparecer en este mapa desde que se escribió. **Archivar (2.5.8, ficha M9)**: saca al personaje del listado sin borrar nada —contando filas de verdad, no fiándose del 200—, recupera hoja/inventario/dinero enteros, deja su rastro en la línea de tiempo, y solo dueño o DM pueden archivar. |
 | `world-state` | Marcas y conjuntos del mundo: solo el DM escribe, poner la misma marca la sobrescribe en vez de duplicarla, quitar un miembro dos veces no falla, y **una señal levantada por el DM queda `DM_ONLY` en el registro**. |
 | `game-state` | **Como mucho una sesión en curso por campaña, y lo garantiza un índice único parcial de Postgres, no un `if`.** Arrancar escribe su suceso; un suceso `DM_ONLY` no sale en el registro del jugador; un límite de consulta inválido es 400 y no una consulta sin tope. |
 

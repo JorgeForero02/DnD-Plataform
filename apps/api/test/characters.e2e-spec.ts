@@ -121,4 +121,101 @@ describe("Characters (e2e)", () => {
       .send({ level: 5 });
     expect(dm.status).toBe(200);
   });
+
+  // 2.5.8 (ficha M9) — archivar en vez de borrar. «Cierra con: un personaje archivado
+  // desaparece del listado, sus filas siguen en la base —contado, no fiado del 200—, se
+  // recupera entero (hoja, inventario y dinero) y su rastro en la línea de tiempo nunca se
+  // rompió.»
+  describe("archive() / unarchive()", () => {
+    let boromirId = "";
+
+    it("sale del listado, sus filas siguen en la base, y el rastro llega a la línea de tiempo", async () => {
+      const s = app.getHttpServer();
+      const created = await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ name: "Boromir", level: 5, visibility: "PLAYERS" });
+      expect(created.status).toBe(201);
+      boromirId = created.body.id;
+
+      // Se le da inventario y dinero antes de archivar, para comprobar que archivar no los toca.
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters/${boromirId}/inventory`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ ref: "SRD:long-sword" });
+      await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${boromirId}/money`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ gp: 50 });
+
+      const archived = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${boromirId}/archive`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(archived.status).toBe(201);
+      expect(archived.body.archivedAt).not.toBeNull();
+
+      // Desaparece del listado normal.
+      const list = await request(s)
+        .get(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(list.body.map((c: any) => c.id)).not.toContain(boromirId);
+
+      // Sus filas siguen en la base — se cuenta, no se confía en el 200.
+      const filas = await prisma.character.count({ where: { id: boromirId } });
+      expect(filas).toBe(1);
+      const inventario = await prisma.inventoryItem.count({ where: { characterId: boromirId } });
+      expect(inventario).toBe(1);
+
+      // El rastro llega a la línea de tiempo, con la visibilidad del personaje.
+      const events = await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      const suceso = events.body.events.find(
+        (e: any) => e.type === "CHARACTER_ARCHIVED" && e.subjectId === boromirId,
+      );
+      expect(suceso).toBeDefined();
+      expect(suceso.payload).toEqual({ type: "CHARACTER_ARCHIVED", characterName: "Boromir" });
+    });
+
+    it("se recupera entero — hoja, inventario y dinero — y vuelve a aparecer en el listado", async () => {
+      const s = app.getHttpServer();
+      const restored = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${boromirId}/unarchive`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(restored.status).toBe(201);
+      expect(restored.body.archivedAt).toBeNull();
+      expect(restored.body.level).toBe(5);
+      expect(restored.body.gp).toBe(50);
+
+      const list = await request(s)
+        .get(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(list.body.map((c: any) => c.id)).toContain(boromirId);
+
+      const inventario = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${boromirId}/inventory`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(inventario.body.some((row: any) => row.ref === "SRD:long-sword")).toBe(true);
+
+      const events = await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      const suceso = events.body.events.find(
+        (e: any) => e.type === "CHARACTER_RESTORED" && e.subjectId === boromirId,
+      );
+      expect(suceso).toBeDefined();
+    });
+
+    it("solo el dueño o el DM pueden archivar — misma regla que editar", async () => {
+      const s = app.getHttpServer();
+      const created = await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ name: "De P1", visibility: "PLAYERS" });
+      const res = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${created.body.id}/archive`)
+        .set("Authorization", `Bearer ${tokenP2}`);
+      expect(res.status).toBe(403);
+    });
+  });
 });

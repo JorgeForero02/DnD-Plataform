@@ -23,9 +23,16 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
   documentación: rutas citadas entre comillas invertidas que no existen, `fichero:NN` con la
   línea fuera de rango, y conteos de pruebas escritos fuera de su fuente única. Antes de
   `test` a propósito: falla rápido y barato.
-- `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba **solo los conteos de
-  unitarias** del bloque de estado de [00-INDEX.md](./00-INDEX.md), y falla si alguien los editó
-  a mano. **El commit y la rama del bloque NO se comprueban nunca**, así que pueden quedarse
+- `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba **los dos bloques que
+  ese script genera** y falla si alguien editó cualquiera a mano: los **conteos de unitarias**
+  del bloque de estado de [00-INDEX.md](./00-INDEX.md), y desde el 2026-09-03 los **ficheros de
+  e2e** contados del disco, en el bloque de [08-pruebas.md](./08-pruebas.md). El segundo se
+  añadió porque el 08 llegó a declarar una especificación de navegador de más, y antes una
+  suite de API de menos: `check:docs` no puede cazar ninguna de las dos —la frase está bien
+  escrita, solo es falsa—, pero contar ficheros sí sabe hacerlo una máquina. **Lo que sigue a
+  mano, y a propósito, es el número de casos**: un bloque declarado dentro de un bucle ejecuta
+  más pruebas de las que se leen en el fichero, así que esa cifra es la que imprime el corredor
+  y su sitio es [08-pruebas.md](./08-pruebas.md). **El commit y la rama del bloque NO se comprueban nunca**, así que pueden quedarse
   varios commits atrás sin que nada avise; el script lo explica en un comentario, y el propio
   bloque lo declara. Escribir aquí que el hash está verificado era una promesa que nadie cumple.
   `pnpm update:estado` lo regenera todo.

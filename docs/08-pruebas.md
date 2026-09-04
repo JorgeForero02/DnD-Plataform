@@ -39,6 +39,14 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 **Ficheros de e2e:** los cuenta del disco el mismo script, y no se editan a mano.
 
 <!-- e2e:inicio -->
+> **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
+>
+> - **Ficheros de e2e de API:** 31 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 20 (`apps/web/e2e/*.spec.ts`), contados del disco.
+>
+> Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
+> arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
+> navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
 **Recorridos**, medidos el 2026-09-03 (noche, con la fase 2D entera y su revisión de cierre

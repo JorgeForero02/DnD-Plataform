@@ -30,9 +30,23 @@
 // docs/08-pruebas.md is where this project declares test counts belong (see
 // docs/04-convenciones.md and the root CLAUDE.md). For the unit counts specifically, this
 // block is now that declared source — generated code cannot drift the way a typed sentence
-// can — and 08-pruebas.md links here instead of repeating the numbers. It keeps declaring the
-// e2e counts directly, because nothing here generates those (see docs/06-pendientes.md for
-// why that stays manual).
+// can — and 08-pruebas.md links here instead of repeating the numbers.
+//
+// Since 2026-09-03 this script ALSO writes a second generated block, in docs/08-pruebas.md
+// between <!-- e2e:inicio --> and <!-- e2e:fin -->: how many e2e spec FILES exist on disk, per
+// family. That one lives there and not here because 08-pruebas.md is the declared single
+// source for e2e counts, and a generated block cannot drift from itself.
+//
+// Why it was added: 08-pruebas.md said "21 especificaciones" of browser e2e when there were
+// 20, having earlier said "116 e2e de API en 22 suites" while forgetting rate-limit. Both were
+// found by an audit rather than by a control, and check-docs.mjs cannot catch either — the
+// sentence is well-formed, it is simply false. Counting files is something a machine can do,
+// so now it does.
+//
+// What is still hand-written, deliberately: the number of e2e CASES (216 and 88). A spec file
+// declaring its assertions inside a loop over both themes runs more tests than any regex can
+// count, so that figure is whatever the runner prints. This script counts what can be counted
+// from disk and does not pretend to know the rest.
 //
 // Why --check does not compare the commit/branch fields against live git, only the counts:
 // a file cannot know the hash of the commit that is about to contain it — this repo does one
@@ -59,6 +73,17 @@ const ROOT = resolve(args.find((a) => a !== "--check") ?? ".");
 const INDEX_FILE = join(ROOT, "docs", "00-INDEX.md");
 const START = "<!-- estado:inicio -->";
 const END = "<!-- estado:fin -->";
+const PRUEBAS_FILE = join(ROOT, "docs", "08-pruebas.md");
+const E2E_START = "<!-- e2e:inicio -->";
+const E2E_END = "<!-- e2e:fin -->";
+
+// Where each family of e2e specs lives, and what marks a file as one. Counted by
+// filename, not by parsing: a spec file is a spec file whether or not it currently
+// declares anything.
+const E2E_FAMILIES = [
+  { label: "API", dir: "apps/api/test", suffix: ".e2e-spec.ts" },
+  { label: "navegador", dir: "apps/web/e2e", suffix: ".spec.ts" },
+];
 
 // Package name -> [source dir, test-file suffixes]. Suffixes checked with String#endsWith.
 const PACKAGES = [
@@ -95,6 +120,16 @@ function countTests(dir, suffixes) {
     for (const line of lines) if (TEST_LINE_RE.test(line)) total++;
   }
   return total;
+}
+
+// e2e spec files on disk, per family. Non-recursive on purpose: both directories are flat,
+// and a nested helper directory should not be counted as a suite.
+function countE2eFiles(dir, suffix) {
+  const full = join(ROOT, dir);
+  if (!existsSync(full)) return 0;
+  return readdirSync(full).filter(
+    (name) => name.endsWith(suffix) && statSync(join(full, name)).isFile(),
+  ).length;
 }
 
 function git(cmd) {
@@ -169,22 +204,67 @@ const block = [
 
 const next = current.slice(0, startAt) + block + current.slice(endAt + END.length);
 
+// --- The second generated block: e2e spec files, in docs/08-pruebas.md ---------------------
+
+const e2eCounts = E2E_FAMILIES.map((f) => ({ ...f, count: countE2eFiles(f.dir, f.suffix) }));
+
+const e2eBlock = [
+  E2E_START,
+  "> **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**",
+  ">",
+  ...e2eCounts.map(
+    (f) =>
+      `> - **Ficheros de e2e de ${f.label}:** ${f.count} (\`${f.dir}/*${f.suffix}\`), ` +
+      `contados del disco.`,
+  ),
+  ">",
+  "> Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y",
+  "> arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de",
+  "> navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.",
+  E2E_END,
+].join("\n");
+
+if (!existsSync(PRUEBAS_FILE)) {
+  console.error(`update-estado: no existe ${PRUEBAS_FILE}`);
+  process.exit(1);
+}
+const pruebas = readFileSync(PRUEBAS_FILE, "utf8");
+const e2eAt = pruebas.indexOf(E2E_START);
+const e2eEndAt = pruebas.indexOf(E2E_END);
+if (e2eAt === -1 || e2eEndAt === -1 || e2eEndAt < e2eAt) {
+  console.error(
+    `update-estado: ${PRUEBAS_FILE} no tiene un bloque ${E2E_START} ... ${E2E_END} válido`,
+  );
+  process.exit(1);
+}
+const nextPruebas = pruebas.slice(0, e2eAt) + e2eBlock + pruebas.slice(e2eEndAt + E2E_END.length);
+
 if (CHECK) {
-  if (next === current) {
-    console.log("update-estado --check: el bloque de estado coincide.");
+  const stale = [];
+  if (next !== current) stale.push("docs/00-INDEX.md (bloque de estado)");
+  if (nextPruebas !== pruebas) stale.push("docs/08-pruebas.md (bloque de e2e)");
+  if (stale.length === 0) {
+    console.log("update-estado --check: los dos bloques generados coinciden.");
     process.exit(0);
   }
   console.error(
-    "update-estado --check: el bloque de estado de docs/00-INDEX.md no coincide con lo " +
-      "generado (fuera del commit/rama, que --check no compara — ver el script). Ejecuta " +
+    "update-estado --check: no coincide con lo generado en " +
+      stale.join(" y ") +
+      " (fuera del commit/rama, que --check no compara — ver el script). Ejecuta " +
       "`pnpm update:estado` y confirma el resultado.",
   );
   process.exit(1);
 }
 
-if (next === current) {
-  console.log("update-estado: sin cambios (ya estaba al día).");
-} else {
+let wrote = false;
+if (next !== current) {
   writeFileSync(INDEX_FILE, next);
   console.log("update-estado: docs/00-INDEX.md actualizado.");
+  wrote = true;
 }
+if (nextPruebas !== pruebas) {
+  writeFileSync(PRUEBAS_FILE, nextPruebas);
+  console.log("update-estado: docs/08-pruebas.md actualizado.");
+  wrote = true;
+}
+if (!wrote) console.log("update-estado: sin cambios (ya estaba al día).");

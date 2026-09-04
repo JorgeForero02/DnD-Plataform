@@ -33,7 +33,7 @@ propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 | [05-datos.md](./05-datos.md) | Esquema Prisma, migraciones, el modelo de visibilidad |
 | [06-pendientes.md](./06-pendientes.md) | Deuda técnica y decisiones abiertas, con prioridad |
 | [07-historial.md](./07-historial.md) | Qué se entregó, por qué y cómo revertirlo |
-| [09-primera-partida.md](./09-primera-partida.md) | **Cómo jugar la primera sesión, qué no se puede hacer todavía y qué anotar.** Es la puerta de salida de la fase 1 |
+| [09-jugar.md](./09-jugar.md) | **Cómo se usa, en dos mitades: montar la mesa (DM) y jugar tu personaje (jugador).** Incluye lo que sigue arbitrándose a mano. No lleva estado de ingeniería: es la guía de uso |
 | [08-pruebas.md](./08-pruebas.md) | **Pruebas, entero.** Qué prueba cada capa, qué NO cubre, la regla de Playwright, y **qué demuestra cada suite** —de API y de navegador— más lo que ningún recorrido cubre. Léelo antes de dar una tarea por terminada y antes de escribir un e2e nuevo. Es la **fuente única de los conteos**. Absorbió al antiguo mapa de e2e, que ya no existe como documento aparte |
 | [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial por tarea, los pendientes ya cerrados y el documento fuente original del producto. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** — el fuente original, en particular, propone Redis, WebSockets y una hoja de personaje almacenada, que es lo contrario de lo que se construyó |
 | [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
@@ -72,8 +72,9 @@ apunta no puede contradecir nada. Para saber qué es cierto **hoy**:
   [07-historial.md](./07-historial.md), entrada más reciente primero.
 - **Qué queda abierto, con prioridad y motivo**: [06-pendientes.md](./06-pendientes.md).
 - **Qué prueba cada capa y los conteos de pruebas**: [08-pruebas.md](./08-pruebas.md).
-- **El guion de la primera partida y qué falta antes de jugarla**:
-  [09-primera-partida.md](./09-primera-partida.md).
+- **Cómo se usa la herramienta**, para el DM y para el jugador: [09-jugar.md](./09-jugar.md)
+  (cuándo se juega la partida de prueba y qué la bloquea está en
+  [06-pendientes.md](./06-pendientes.md), no ahí).
 
 Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 

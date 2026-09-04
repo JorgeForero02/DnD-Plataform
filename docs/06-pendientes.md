@@ -929,9 +929,16 @@ La fase 1 está construida y verificada (ver
 La única carencia que quedaba de la lista original —no se podía borrar casi nada desde la
 interfaz— se cerró como tarea 1.16 (ver "Cerrados"). Queda esta:
 
-**No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que
-estar en la misma red. Si se quiere que entren desde sus casas, esto **sí** es bloqueante.
-Decisión aparte, no configuración. Ver [03-despliegue.md](./03-despliegue.md).
+~~**No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que estar
+en la misma red.~~ — **CERRADO el 2026-09-02, y esta frase llevaba un día siendo falsa.** Está
+en `dnd.supportive.pro` y los jugadores entran desde sus casas. Ver
+[03-despliegue.md](./03-despliegue.md).
+
+> Es **la misma mentira que había en «Decisiones abiertas»**, escrita en otro sitio: la
+> auditoría cazó aquella y esta se quedó, porque nada relaciona dos párrafos que dicen lo mismo
+> en un documento de mil líneas. Y el aviso de arriba también caducó: la partida ya no espera al
+> tablero, espera al tiempo real, por la decisión del autor del 2026-09-03 que está en
+> «Decisiones abiertas».
 
 ## P1 — Huecos de verificación
 

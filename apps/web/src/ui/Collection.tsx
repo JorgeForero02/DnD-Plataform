@@ -43,36 +43,6 @@ export function Toolbar({
 }
 
 /**
- * A filter chip that actually looks pressed when it is. The audit found these rendered as
- * plain buttons with no visible state at all, so you could not tell what was filtering.
- */
-export function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={[
-        "rounded-radius-sm border px-2 py-0.5 font-chrome text-chrome-xs transition-colors",
-        active
-          ? "border-accent bg-[color:var(--accent-tint)] text-accent-text"
-          : "border-muted text-muted hover:border-text hover:text-text",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
  * A row that earns its height. Title, one line of what this thing IS, and the marks that
  * classify it — and the whole row is one link, so the name is not a piece of text that
  * happens to sit near something clickable (audit A3: a click on an entity name went nowhere).
@@ -127,28 +97,10 @@ export function ListRow({
   );
 }
 
-/**
- * An empty screen is an invitation, not an apology. It says what this section holds and
- * offers the one action that fills it.
- */
-export function EmptyState({
-  title,
-  children,
-  action,
-}: {
-  title: string;
-  children?: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="rounded-radius-sm border border-dashed border-muted px-s5 py-s8 text-center">
-      <p className="font-title text-chrome-lg text-text">{title}</p>
-      {children && (
-        <p className="mx-auto mt-s2 max-w-[52ch] font-chrome text-chrome-sm text-muted">
-          {children}
-        </p>
-      )}
-      {action && <div className="mt-s4 flex justify-center">{action}</div>}
-    </div>
-  );
-}
+// C5 (2026-09-04) — `FilterChip` y `EmptyState` **se mudaron** a `ui/FilterChip.tsx` y
+// `ui/EmptyState.tsx`, que es donde la maqueta las tiene y donde las busca quien no sabe que
+// este fichero existe (la auditoría del 2026-09-04 las dio por ausentes precisamente por eso).
+// Se reexportan desde aquí a propósito: hay veinte pantallas importándolas de `./Collection`, y
+// una mudanza no tiene por qué costar veinte ediciones en ficheros de otros carriles.
+export { FilterChip } from "./FilterChip";
+export { EmptyState } from "./EmptyState";

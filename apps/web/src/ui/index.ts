@@ -15,7 +15,12 @@ export type { Theme } from "./theme";
 export { CartographicGrid, DrawnHorizon, CompassMark, OrnamentRule } from "./Ornament";
 export { AppShell, AppHeader, PageHeader, Breadcrumbs } from "./AppShell";
 export type { Crumb } from "./AppShell";
-export { Toolbar, FilterChip, ListRow, EmptyState } from "./Collection";
+export { Toolbar, ListRow } from "./Collection";
+// C5 (2026-09-04) — las dos primitivas que la maqueta tiene en fichero propio y aquí vivían
+// dentro de `Collection.tsx`. `Collection.tsx` las sigue reexportando para las importaciones
+// directas que ya existen; el barril las toma de su casa nueva.
+export { FilterChip } from "./FilterChip";
+export { EmptyState } from "./EmptyState";
 export {
   LegalNotice,
   SRD_URL,

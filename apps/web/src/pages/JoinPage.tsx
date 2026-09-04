@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth.store";
@@ -10,6 +11,8 @@ import {
 } from "../features/invites/api";
 import { campaignsKey } from "../features/campaigns/hooks";
 import { Button } from "../ui/Button";
+import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
+import { Panel } from "../ui/Panel";
 
 type AcceptState =
   | { status: "idle" }
@@ -17,9 +20,27 @@ type AcceptState =
   | { status: "success"; campaignId: string }
   | { status: "error"; message: string };
 
-const SCREEN_CLASS = "flex min-h-screen items-center justify-center bg-bg text-text";
-const CARD_CLASS =
-  "w-96 space-y-3 rounded-radius-sm border border-muted bg-surface p-6 text-center";
+// C5 (2026-09-04) — **la puerta de entrada de los jugadores, dentro del armazón.**
+//
+// Era la más grave de las tres pantallas huérfanas que encontró la auditoría del 2026-09-04:
+// una tarjeta suelta en mitad de un lienzo vacío, sin logotipo y sin ninguna seña de en qué
+// producto acababa de entrar quien pulsa un enlace que le han pasado por un chat. La primera
+// pantalla que ve un jugador nuevo tiene que decir dónde está.
+//
+// **El armazón aguanta el caso «todavía sin sesión»**, que es el que lo hacía dudoso: `AppShell`
+// no consulta nada por su cuenta —la barra de sesión solo se monta bajo `/campaigns/:id`, y
+// esta ruta no lo es— y `AppHeader` decide con el estado de sesión si ofrece «Cuenta» o
+// «Entrar». Por eso esta ruta puede seguir fuera de `ProtectedRoute`, que es como tiene que ser:
+// el token de la invitación se perdería en el rebote.
+function Cuadro({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex justify-center py-s8">
+      <Panel tone="chrome" className="w-full max-w-md space-y-3 text-center">
+        {children}
+      </Panel>
+    </div>
+  );
+}
 
 // /join/:token is deliberately NOT behind ProtectedRoute (App.tsx): "no session yet" is one of
 // the three paths this page has to cover on its own, not a case ProtectedRoute can redirect
@@ -47,6 +68,8 @@ export function JoinPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const authToken = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const attempted = useRef(false);
   const [state, setState] = useState<AcceptState>({ status: "idle" });
 
@@ -88,64 +111,68 @@ export function JoinPage() {
       );
   };
 
+  // Las cuatro salidas de esta pantalla comparten armazón y título: lo que cambia es lo que dice
+  // el cuadro. Antes cada rama pintaba su propio lienzo entero, y por eso ninguna llevaba
+  // cabecera.
+  const marco = (contenido: ReactNode, subtitulo: string) => (
+    <AppShell
+      header={<AppHeader userName={user?.displayName} onLogout={authToken ? logout : undefined} />}
+    >
+      <PageHeader title="Invitación a una campaña" subtitle={subtitulo} />
+      <Cuadro>{contenido}</Cuadro>
+    </AppShell>
+  );
+
   if (!authToken) {
-    return (
-      <div className={SCREEN_CLASS}>
-        <div className={CARD_CLASS}>
-          <p>Necesitas iniciar sesión para aceptar esta invitación.</p>
-          <p className="text-chrome-sm text-muted">
-            Al volver, la invitación se completará sola: no hace falta que pegues el enlace otra
-            vez.
-          </p>
-          <div className="flex justify-center gap-4 text-chrome-sm">
-            <Link to="/login" className="text-accent-text">
-              Iniciar sesión
-            </Link>
-            <Link to="/register" className="text-accent-text">
-              Crear cuenta
-            </Link>
-          </div>
+    return marco(
+      <>
+        <p>Necesitas iniciar sesión para aceptar esta invitación.</p>
+        <p className="text-chrome-sm text-muted">
+          Al volver, la invitación se completará sola: no hace falta que pegues el enlace otra vez.
+        </p>
+        <div className="flex justify-center gap-4 text-chrome-sm">
+          <Link to="/login" className="text-accent-text">
+            Iniciar sesión
+          </Link>
+          <Link to="/register" className="text-accent-text">
+            Crear cuenta
+          </Link>
         </div>
-      </div>
+      </>,
+      "Alguien te ha invitado a su mesa. Entra o crea una cuenta y la invitación se completa sola.",
     );
   }
 
   if (state.status === "error") {
-    return (
-      <div className={SCREEN_CLASS}>
-        <div className={CARD_CLASS}>
-          <p className="text-danger-text">{state.message}</p>
-          <Link to="/" className="text-accent-text">
-            Volver a mis campañas
-          </Link>
-        </div>
-      </div>
+    return marco(
+      <>
+        <p className="text-danger-text">{state.message}</p>
+        <Link to="/" className="text-accent-text">
+          Volver a mis campañas
+        </Link>
+      </>,
+      "Este enlace no se ha podido usar.",
     );
   }
 
   if (state.status === "idle") {
-    return (
-      <div className={SCREEN_CLASS}>
-        <div className={CARD_CLASS}>
-          <p>Estás a punto de unirte a una campaña con esta invitación.</p>
-          <p className="text-chrome-sm text-muted">
-            Aceptar consume el enlace: dejará de funcionar para cualquier otra persona que lo use
-            después.
-          </p>
-          <Button onClick={onAccept} className="w-full">
-            Unirse a la campaña
-          </Button>
-          <Link to="/" className="block text-chrome-sm text-accent-text">
-            Cancelar
-          </Link>
-        </div>
-      </div>
+    return marco(
+      <>
+        <p>Estás a punto de unirte a una campaña con esta invitación.</p>
+        <p className="text-chrome-sm text-muted">
+          Aceptar consume el enlace: dejará de funcionar para cualquier otra persona que lo use
+          después.
+        </p>
+        <Button onClick={onAccept} className="w-full">
+          Unirse a la campaña
+        </Button>
+        <Link to="/" className="block text-chrome-sm text-accent-text">
+          Cancelar
+        </Link>
+      </>,
+      "Nada se acepta hasta que lo confirmas.",
     );
   }
 
-  return (
-    <div className={SCREEN_CLASS}>
-      <p>Aceptando invitación…</p>
-    </div>
-  );
+  return marco(<p>Aceptando invitación…</p>, "Un momento.");
 }

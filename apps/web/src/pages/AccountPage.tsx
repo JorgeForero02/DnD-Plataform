@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   updateDisplayNameSchema,
   changePasswordSchema,
@@ -14,24 +14,34 @@ import { ApiError } from "../lib/api";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
 import { Panel } from "../ui/Panel";
+import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { IconoConfirmacion } from "../ui/Iconos";
 
 // Task 1.18b — reachable from the app chrome (DashboardPage.tsx's header, "Cuenta"). Two
 // independent forms, two independent panels: a failure in one has nothing to say about the
 // other, and PATCH /auth/me and PATCH /auth/password are two separate requests server-side too
 // (auth.controller.ts).
+// C5 (2026-09-04) — **esta pantalla estaba fuera del armazón.** La auditoría del 2026-09-04 la
+// contó entre las tres huérfanas: sin cabecera, sin logotipo y sin migas, con un `←` de texto
+// como única salida. Un `←` no es navegación; es lo que se pone cuando no hay ninguna. Ahora
+// entra en `AppShell` como cualquier otra pantalla con sesión, y la vuelta la dan las migas,
+// que dicen dónde estás además de por dónde volver. El título pasa a `font-title`: era el
+// `font-bold` del sistema mientras `PageHeader` pinta en Marcellus todo título estructural, así
+// que esta pantalla hablaba con una voz que no es ninguna de las cuatro.
 export function AccountPage() {
+  const { user, logout } = useAuthStore();
   return (
-    <div className="min-h-screen bg-bg p-8 text-text">
-      <Link to="/" className="text-chrome-sm text-accent-text">
-        &larr; Tus crónicas
-      </Link>
-      <h1 className="mt-2 text-chrome-2xl font-bold">Cuenta</h1>
-      <div className="mt-4 flex max-w-sm flex-col gap-4">
+    <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
+      <PageHeader
+        title="Cuenta"
+        subtitle="Tu nombre en la mesa y tu contraseña."
+        crumbs={[{ label: "Tus crónicas", to: "/" }, { label: "Cuenta" }]}
+      />
+      <div className="flex max-w-sm flex-col gap-4">
         <DisplayNameForm />
         <PasswordForm />
       </div>
-    </div>
+    </AppShell>
   );
 }
 

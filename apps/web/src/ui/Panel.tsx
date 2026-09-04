@@ -30,7 +30,12 @@ export function Panel({ tone = "chrome", className = "", children }: PanelProps)
         data-tone="vellum"
         style={{ clipPath: VELLUM_EDGE_CLIP_PATH }}
         className={[
-          "bg-vellum px-s6 pb-s6 font-world text-world-base text-vellum-ink",
+          // C5 (2026-09-04) — `textura-vitela` (ui/tokens.css) añade las dos manchas radiales
+          // de la maqueta. Es **aditiva**: pinta un `background-image` y deja intactos el
+          // borde rasgado (`clipPath`, arriba), la medida de 66ch y el `bg-vellum` que la
+          // medición de contraste de este fichero documenta — la clase repite ese mismo
+          // `background-color` para que quitar `bg-vellum` no deje el panel transparente.
+          "textura-vitela bg-vellum px-s6 pb-s6 font-world text-world-base text-vellum-ink",
           "max-w-[66ch] border border-muted",
           className,
         ].join(" ")}

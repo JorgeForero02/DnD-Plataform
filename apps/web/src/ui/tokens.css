@@ -184,6 +184,13 @@
   --vellum-laid: rgba(201, 125, 70, 0.045);
   --vellum-vignette: rgba(0, 0, 0, 0.22);
 
+  /* C5 (2026-09-04) — el pigmento de las manchas de la vitela (`.textura-vitela`, al final de
+   * esta hoja). Va **una sola vez y sin variante por tema**, como en la maqueta: es el pardo
+   * del pigmento, no un color del tema, y los cuatro temas lo componen sobre su propia vitela.
+   * Canal y no color porque se usa con opacidad, y aquí la opacidad se escribe
+   * `rgb(var(--x-ch) / a)`. La cuenta del contraste está junto a la clase. */
+  --vellum-stain-ch: 120 90 40;
+
   /* Task H4 — two colours that exist because a Tailwind opacity modifier CANNOT be used here.
    *
    * In Tailwind 3 a theme colour declared as a bare `var(--x)` does not support `/NN`: the
@@ -554,4 +561,45 @@ body {
   .cubo-dado {
     transition-duration: 0.01ms;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * C5 (2026-09-04) — la textura de vitela, lo único de `prototipo/src/index.css`
+ * que la Ola 0 dejó fuera (`index.css:147-156`).
+ *
+ * Dos manchas radiales muy tenues, una arriba a la izquierda y otra abajo a la
+ * derecha, del pardo del pigmento. Es lo que separa un pliego de papel de un
+ * rectángulo marrón: la vitela deja de ser plana sin que aparezca un dibujo.
+ *
+ * **La medida, en el navegador, y no la cuenta a mano.** Esta hoja documenta que
+ * un degradado NO es un color de fondo y que la prueba de contraste compone
+ * COLORES, así que una mancha densa degradaría una relación que la prueba
+ * seguiría dando por buena. Las dos manchas van al 6% y al 5%, como en la
+ * maqueta, y estas son las cifras REALES: el píxel compuesto del centro de la
+ * mancha del 6%, leído en Chromium, contra el píxel limpio del mismo pliego.
+ *
+ *   Oscuro   (42 36 25) → (46 39 25)
+ *     vellum-ink 11,85 → 11,39 · vellum-muted 5,25 → 5,05 · copper-text 6,31 → 6,07
+ *   Claro    (244 239 226) → (236 230 214)
+ *     vellum-ink 13,97 → 12,87 · vellum-muted 5,97 → 5,50 · copper-text 5,37 → 4,95
+ *   Lectura  (42 36 25) → (46 39 25)
+ *     vellum-ink 11,85 → 11,39 · vellum-muted 6,38 → 6,13 · copper-text 6,89 → 6,62
+ *
+ * **El peor par no era el que se esperaba.** La cuenta a mano decía que en los
+ * temas claros la mancha solo puede ayudar, porque oscurece el papel; el
+ * navegador dice que el par más apretado de los nueve está justo ahí —
+ * `copper-text` en Claro, que baja de 5,37:1 a **4,95:1**. Sigue por encima de
+ * 4,5:1, con 0,45 de margen, y ninguna de las otras ocho se mueve más de medio
+ * punto. Subir la mancha del 6% sería comerse ese margen.
+ *
+ * Y no compone con `--vellum-laid` ni con `--vellum-vignette`: esos dos se
+ * declararon para la hoja de personaje y hoy **no los pinta ningún componente**
+ * (`grep` en `apps/web/src`), así que las cifras de arriba son el caso real y no
+ * una cota optimista.
+ * ───────────────────────────────────────────────────────────────────────────── */
+.textura-vitela {
+  background-color: var(--vellum);
+  background-image:
+    radial-gradient(circle at 20% 15%, rgb(var(--vellum-stain-ch) / 0.06) 0, transparent 42%),
+    radial-gradient(circle at 82% 78%, rgb(var(--vellum-stain-ch) / 0.05) 0, transparent 46%);
 }

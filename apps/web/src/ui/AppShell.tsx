@@ -14,6 +14,7 @@ import { CartographicGrid } from "./Ornament";
 import { Logo } from "./Logo";
 import { LegalNotice } from "./LegalNotice";
 import { BarraDeSesion } from "../features/sessions/BarraDeSesion";
+import { useAuthStore } from "../store/auth.store";
 
 export interface Crumb {
   label: string;
@@ -109,6 +110,9 @@ export function AppHeader({
   onLogout?: () => void;
   right?: ReactNode;
 }) {
+  // El armazón ya consulta la ruta por su cuenta (la barra de sesión, más abajo); consultar el
+  // estado de sesión es del mismo orden y evita que cada pantalla pública tenga que acordarse.
+  const sesionIniciada = useAuthStore((s) => s.token !== null);
   return (
     // Reseño 2026-09-02, segunda pasada. La primera cabecera medía 48 px, iba del mismo color
     // que las tarjetas y se separaba con un filete gris: el autor dijo que "casi no se nota", y
@@ -150,12 +154,30 @@ export function AppHeader({
           </span>
         )}
         <nav className="flex items-center gap-s3" aria-label="Tu cuenta">
-          <Link
-            to="/account"
-            className="font-chrome text-chrome-xs text-muted hover:text-accent-text hover:underline"
-          >
-            Cuenta
-          </Link>
+          {/* C5 (2026-09-04) — **«Cuenta» solo se ofrece a quien tiene una.** `/acerca-de` es
+              pública, y ahora también lo son la invitación y el 404, así que un anónimo veía un
+              enlace a `/account` que `ProtectedRoute` rebotaba a `/login` sin explicar nada: la
+              interfaz ofrecía algo que el servidor no cumple, que es exactamente lo que
+              `docs/04-convenciones.md` prohíbe. Se decide con el estado de sesión y no con una
+              propiedad, porque una propiedad es una regla que se olvida en la siguiente pantalla
+              pública que alguien añada — y `userName` no vale: llega vacío durante la
+              rehidratación de una sesión que sí existe. A cambio se le ofrece la puerta que sí
+              puede cruzar. */}
+          {sesionIniciada ? (
+            <Link
+              to="/account"
+              className="font-chrome text-chrome-xs text-muted hover:text-accent-text hover:underline"
+            >
+              Cuenta
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="font-chrome text-chrome-xs text-muted hover:text-accent-text hover:underline"
+            >
+              Entrar
+            </Link>
+          )}
           {onLogout && (
             <button
               type="button"

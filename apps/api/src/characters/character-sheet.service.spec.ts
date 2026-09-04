@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import type { Character } from "@prisma/client";
 import type { Roller } from "../dice/dice";
 import { deriveCharacter } from "../rules/catalog";
@@ -1332,5 +1337,295 @@ describe("2.5.2 — el modificador de iniciativa reutiliza la derivación, no un
     const modificador = await service.getInitiativeModifier("dm1", "c1", "ch1");
 
     expect(modificador).toBe(HOJA_EJEMPLO.derived.initiative.total + 5);
+  });
+});
+
+// ============================================================================================
+// Tarea 2.5.3 — el ataque, comparado en el servidor.
+//
+// **Lo que ninguna otra suite puede demostrar**: que la CA del objetivo se compara AQUÍ, en el
+// servidor, y que ni la respuesta ni la llamada al registro dejan salir ese número — solo tres
+// palabras (`HIT`/`MISS`/`CRITICAL`). `rules/attacks.spec.ts` ya prueba el bono de ataque;
+// `rules/engine.spec.ts` ya prueba la CA. La costura es lo que falta.
+// ============================================================================================
+
+/** Ataca con `long-sword` (bono +4, ver la suite de 2B de arriba) contra `target1` (CA 11). */
+function conAtacanteYObjetivo(rollsRespuesta: Record<string, unknown>) {
+  const montado = montar();
+  const { prisma, characters, rolls } = montado;
+
+  const atacante = personaje({ id: "ch1" });
+  const objetivo = personaje({ id: "target1", ownerId: "p2" });
+  characters.requireEditable.mockResolvedValue(atacante);
+  prisma.character.findFirst.mockImplementation(
+    ({ where }: { where: { id: string; campaignId?: string } }) =>
+      Promise.resolve(where.id === "target1" ? objetivo : null),
+  );
+  // El arma solo cuenta para quien ataca; el objetivo se queda sin equipo — CA 11 llana (10 +
+  // Destreza 12 ⇒ +1). Si el mismo mock sirviera para los dos, un objeto que sí tocara la CA
+  // (una armadura) contaminaría la comparación sin que la prueba lo viera.
+  prisma.inventoryItem.findMany.mockImplementation(
+    ({ where }: { where: { characterId: string } }) =>
+      Promise.resolve(
+        where.characterId === "ch1" ? [filaDeInventario("long-sword", { slot: "MAIN_HAND" })] : [],
+      ),
+  );
+  rolls.roll.mockResolvedValue(rollsRespuesta);
+  return montado;
+}
+
+describe("2.5.3 — el ataque, comparado en el servidor", () => {
+  it("con el total por encima de la CA del objetivo, el veredicto es HIT", async () => {
+    const { service, rolls } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 4,
+      total: 14,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    expect(res.verdict).toBe("HIT");
+    // Se tira como cualquier ataque: 1d20 + el bono del cuadro, con el nombre del arma.
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d20+4", characterId: "ch1", mode: "NORMAL" }),
+    );
+  });
+
+  it("con el total EXACTAMENTE igual a la CA, impacta — el SRD dice «iguala o supera»", async () => {
+    const { service } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [7],
+      kept: [7],
+      dropped: [],
+      modifier: 4,
+      // El objetivo por defecto tiene CA 11 (`conAtacanteYObjetivo`): 7+4 = 11 en punto.
+      total: 11,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    expect(res.verdict).toBe("HIT");
+  });
+
+  it("con el total por debajo de la CA, el veredicto es MISS", async () => {
+    const { service } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [2],
+      kept: [2],
+      dropped: [],
+      modifier: 4,
+      total: 6,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    expect(res.verdict).toBe("MISS");
+  });
+
+  it("un 20 natural es CRITICAL aunque el total no alcance la CA (SRD 5.1: impacta pase lo que pase)", async () => {
+    const { service } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "2d20kh1+4",
+      audience: "PUBLIC",
+      rolls: [20],
+      kept: [20],
+      dropped: [],
+      modifier: 4,
+      // Un total absurdamente bajo a propósito: si el veredicto mirase el total en vez del
+      // natural, esta prueba lo delataría con CRITICAL esperado y MISS obtenido.
+      total: 1,
+      natural: "TWENTY",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    expect(res.verdict).toBe("CRITICAL");
+  });
+
+  it("un 1 natural es MISS aunque el total supere la CA (SRD 5.1: falla pase lo que pase)", async () => {
+    const { service } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [1],
+      kept: [1],
+      dropped: [],
+      modifier: 4,
+      // Un total absurdamente alto a propósito, por el mismo motivo que la de arriba.
+      total: 50,
+      natural: "ONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    expect(res.verdict).toBe("MISS");
+  });
+
+  it("una tirada a ciegas no revela el veredicto: `revealed: false` no trae `verdict`", async () => {
+    const { service } = conAtacanteYObjetivo({
+      revealed: false,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "BLIND",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+      audience: "BLIND",
+    });
+
+    expect(res.roll.revealed).toBe(false);
+    expect(res).not.toHaveProperty("verdict");
+  });
+
+  it("la CA del objetivo no viaja en ningún campo de la respuesta — solo el veredicto cerrado", async () => {
+    const { service } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 4,
+      total: 14,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    // Solo dos claves: la tirada (que ya sabía esconderse a sí misma desde 2C) y el veredicto
+    // cerrado. Ningún campo nuevo llamado `ac`, `targetAc`, `armorClass` o parecido.
+    expect(Object.keys(res).sort()).toEqual(["roll", "verdict"]);
+    expect(JSON.stringify(res)).not.toMatch(/ac["\s:]*11|armorClass|targetAc/i);
+  });
+
+  it("atacar a un objetivo de otra campaña (o inexistente) es 404, no una comparación silenciosa", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("long-sword", { slot: "MAIN_HAND" }),
+    ]);
+    prisma.character.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        targetCharacterId: "no-existe",
+        mode: "NORMAL",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("pedir un ataque con un arma no equipada es 400, igual que en `rollAttack`", async () => {
+    const { service, characters, prisma } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.resolveAttack("p1", "c1", "ch1", "SRD:greataxe", {
+        targetCharacterId: "target1",
+        mode: "NORMAL",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("un PNJ objetivo con la plantilla oculta al atacante sigue comparando bien: la CA se calcula con un espectador que SÍ ve la plantilla, nunca con el del atacante", async () => {
+    const objetivo = personaje({
+      id: "target1",
+      ownerId: "dm1",
+      statblockRef: "SRD:goblin",
+      visibility: "DM_ONLY",
+    });
+    const statblock = SRD_STATBLOCK_POR_REF.get("SRD:goblin")!;
+    // Simula el comportamiento REAL de `StatblocksService.resolverParaHoja`: solo el DM ve la
+    // plantilla. Si `resolveAttack` mirase con los ojos del atacante (un jugador), esto
+    // devolvería `oculto` y la CA no se podría calcular — la prueba fallaría con un 400 en vez
+    // de comparar. Ver `caDelObjetivo` / `hojaInterna`.
+    const resolverParaHoja = jest.fn(
+      async (_c: string, _r: string, viewer: { role: string | null }) =>
+        viewer.role === "DM" ? { statblock } : { oculto: true },
+    );
+    const { service, prisma, characters, rolls } = montar(undefined, {
+      resolverParaHoja: resolverParaHoja as unknown as jest.Mock,
+      resolver: jest.fn(),
+    } as unknown as { resolver: jest.Mock });
+    characters.requireEditable.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockImplementation(
+      ({ where }: { where: { characterId: string } }) =>
+        Promise.resolve(
+          where.characterId === "ch1"
+            ? [filaDeInventario("long-sword", { slot: "MAIN_HAND" })]
+            : [],
+        ),
+    );
+    prisma.character.findFirst.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(where.id === "target1" ? objetivo : null),
+    );
+    // El goblin del SRD tiene CA 15: con un total de 20, impacta de sobra.
+    rolls.roll.mockResolvedValue({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "DM_PRIVATE",
+      rolls: [16],
+      kept: [16],
+      dropped: [],
+      modifier: 4,
+      total: 20,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+
+    expect(resolverParaHoja).toHaveBeenCalled();
+    expect(res.verdict).toBe("HIT");
   });
 });

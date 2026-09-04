@@ -10,10 +10,12 @@ import type { Character } from "@prisma/client";
 import { RANGO_DE_ANULACION } from "@dnd/shared";
 import type {
   AbilityKey,
+  AttackVerdict,
   ContentRefInput,
   ResolvedItem,
   DerivationWarning,
   ChangeHpInput,
+  ResolveAttackInput,
   RollAttackInput,
   CharacterChoices,
   DeathSaveInput,
@@ -1218,6 +1220,111 @@ export class CharacterSheetService {
       mode: "NORMAL",
       audience: input.audience ?? "PUBLIC",
     });
+  }
+
+  /**
+   * Tarea 2.5.3 — el ataque, comparado en el servidor.
+   *
+   * El jugador pide «ataco al objetivo X con mi cimitarra». Aquí se deriva el bono (como ya
+   * hacía `rollAttack`), se tira con el azar del servidor, se compara con la CA del objetivo
+   * —que **nunca sale de este método**— y se propone un veredicto. Ni el impacto ni el daño se
+   * aplican solos: el DM confirma o corrige (§4 del spec de la fase 2.5).
+   *
+   * **Por qué no exige `canView` sobre el objetivo.** Atacar es un acto de la ficción, no una
+   * lectura de su ficha: el criterio de cierre del spec pide explícitamente que un jugador que
+   * ataca a un PNJ `DM_ONLY` reciba su veredicto igual — la garantía de esta tarea no es «no
+   * puedes apuntar a lo que no ves», es «nunca vas a saber su CA». Lo primero lo gobierna la
+   * mesa fuera de este endpoint (quién sabe que hay un objetivo delante); lo segundo lo
+   * garantiza este método sin excepciones, atacable o no.
+   *
+   * **El crítico deja de decidirlo quien pide la tirada** (ficha R2C-2, la duplicación de dados
+   * de la DAMAGE de `rollAttack` seguirá arreglándose en 2.5.4). Aquí el veredicto sale de la
+   * MISMA tirada que se acaba de hacer —su `natural`, su `total`—, nunca de un campo que el
+   * cuerpo de la petición pudiera declarar por su cuenta.
+   */
+  async resolveAttack(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    attackKey: string,
+    input: ResolveAttackInput,
+  ) {
+    await this.membership.requireMember(campaignId, userId);
+    const character = await this.characters.requireEditable(userId, campaignId, characterId);
+    const { attacks } = await this.buildResponse(userId, character);
+    const ataque = attacks.find((a) => a.key === attackKey);
+    if (!ataque) {
+      throw new BadRequestException(
+        "Ese ataque no está disponible: el arma no está equipada o ya no existe.",
+      );
+    }
+    if (input.targetCharacterId === characterId) {
+      throw new BadRequestException("No se puede atacar al propio personaje.");
+    }
+
+    const target = await this.prisma.character.findFirst({
+      where: { id: input.targetCharacterId, campaignId, archivedAt: null },
+    });
+    if (!target) throw new NotFoundException("Character not found");
+
+    // La CA se calcula ANTES de tirar: si el objetivo no se puede resolver (un PNJ cuyo
+    // statblock se borró, por ejemplo), es un 400 honesto y no una tirada que luego no se puede
+    // comparar con nada.
+    const ac = (await this.caDelObjetivo(target)).derived.ac.total;
+
+    // Misma regla que `rollAttack`: la audiencia por defecto sale de la visibilidad de QUIEN
+    // ATACA, nunca `PUBLIC` fija — es la fuga que ya volvió una vez en 2.5.2 (ver el comentario
+    // de `rollAttack`, arriba, y el de `EncountersService.start`).
+    const audienciaPorDefecto = character.visibility === "PLAYERS" ? "PUBLIC" : "DM_PRIVATE";
+
+    const roll = await this.rolls.roll(userId, campaignId, {
+      expression: conSigno("1d20", ataque.attackBonus.total),
+      label: `Ataque con ${ataque.name}`,
+      characterId,
+      mode: input.mode,
+      audience: input.audience ?? audienciaPorDefecto,
+    });
+
+    // Tirada a ciegas: quien la pidió no ve el total, así que tampoco ve el veredicto — decirle
+    // «impacta» sin el número sería la misma fuga por otra puerta (ver `attack.schema.ts`).
+    if (!roll.revealed) return { roll };
+
+    // **Tres estados, y el 20/1 natural mandan sobre la CA** (SRD 5.1, "Resolving Attacks",
+    // dnd5eapi.co §rule-sections/making-an-attack): «If the d20 roll for an attack is a 20, the
+    // attack hits regardless of any modifiers or the target's AC. This is called a critical
+    // hit.» / «If the d20 roll for an attack is a 1, the attack misses regardless of any
+    // modifiers or the target's AC.» La CA que decide el resto de los casos no aparece en
+    // ninguna parte de este cálculo salvo en la comparación misma: lo que sale es la palabra.
+    const verdict: AttackVerdict =
+      roll.natural === "TWENTY"
+        ? "CRITICAL"
+        : roll.natural === "ONE"
+          ? "MISS"
+          : roll.total >= ac
+            ? "HIT"
+            : "MISS";
+
+    return { roll, verdict };
+  }
+
+  /**
+   * La CA de un objetivo de ataque, **calculada sin que ninguna visibilidad la recorte**.
+   *
+   * Es la misma idea que ya declaraba `equipoEquipado` para el máximo de PG —«da igual quién
+   * mira, se usa el estado real»—, llevada al único sitio donde faltaba: `hojaDeStatblock` se
+   * NIEGA entera —sin hoja, sin CA, solo un motivo— a cualquiera que no sea el DM o quien creó
+   * el statblock. El atacante casi nunca es ninguno de los dos, y aun así tiene que poder
+   * comparar. El espectador que se le pasa a `hojaOMotivo` aquí es del servidor, no de nadie que
+   * haya iniciado sesión: nunca se devuelve, nunca se guarda, solo entra en una resta.
+   */
+  private async caDelObjetivo(target: FilaPersonaje): Promise<CharacterSheet> {
+    const { items } = await this.equipoEquipado(target.ownerId, target);
+    const viewerOmnisciente: Viewer = { userId: target.ownerId, role: "DM", isAdmin: false };
+    const resultado = await this.hojaOMotivo(viewerOmnisciente, target, items);
+    if (!("sheet" in resultado)) {
+      throw new BadRequestException(`No se puede resolver el objetivo: ${resultado.reason}`);
+    }
+    return resultado.sheet;
   }
 }
 

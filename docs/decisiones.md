@@ -62,6 +62,7 @@ Decidida el 2026-09-03 y **anterior a la parte gráfica**: termina de conectar e
 | D-2.5-2 | **El daño lo aplican el DM y el dueño** del personaje, reutilizando el permiso que ya gobierna los PG desde 2A. Lo que compensa el riesgo es la traza: quién, a quién, de qué tipo y de qué tirada |
 | D-2.5-3 | El **ataque de oportunidad entra, automático hasta donde se puede sin mapa**. El sistema ofrece y el DM descarta |
 | D-2.5-4 | **Un personaje se archiva, no se borra**: es lo único abierto que destruye datos irreversiblemente mientras espera |
+| D-2.5-5 | **Atacar no exige `canView` sobre el objetivo** (2.5.3): la garantía es «nunca sabrás su CA», no «no puedes apuntar a lo que no ves» — eso lo gobierna la mesa fuera del endpoint. La CA se calcula con un espectador del servidor (`role: "DM"`), nunca con el de quien pregunta, porque `hojaDeStatblock` se niega entera a cualquiera que no sea el DM y el atacante casi nunca lo es |
 
 ## Fase 3 — ficheros, mapa y tablero · [alcance](./superpowers/specs/2026-09-03-fase-3-alcance-design.md)
 

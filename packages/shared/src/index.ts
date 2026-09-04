@@ -20,3 +20,4 @@ export * from "./item.schema";
 export * from "./inventory.schema";
 export * from "./statblock.schema";
 export * from "./encounter.schema";
+export * from "./attack.schema";

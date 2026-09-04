@@ -27,6 +27,39 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El ataque, comparado en el servidor (2.5.3) (2026-09-04)
+
+**El motor calculaba el bono de ataque y quien tiraba comparaba a ojo contra la CA.** Nuevo
+`CharacterSheetService.resolveAttack` (`POST .../sheet/attacks/:attackKey/resolve`): deriva el
+bono ya conocido, tira con `RollsService`, compara con la CA del objetivo —**que nunca sale del
+método**— y propone `HIT` / `MISS` / `CRITICAL`. Un 20 o un 1 natural mandan sobre la CA (SRD
+5.1, *"Resolving Attacks"*, dnd5eapi.co/api/2014/rule-sections/making-an-attack: *"If the d20
+roll for an attack is a 20, the attack hits regardless of any modifiers or the target's AC"* /
+*"a 1, the attack misses regardless..."*). Ni el impacto ni el daño se aplican solos.
+
+**La CA se calcula con un espectador del servidor** (`role: "DM"`), no con el de quien ataca:
+`hojaDeStatblock` se niega entera —sin hoja, sin CA— a cualquiera que no sea el DM, y el
+atacante casi nunca lo es. Sin este espectador omnisciente, atacar a un PNJ `DM_ONLY` habría
+sido un 400 en vez de un veredicto (decisión D-2.5-5). **Atacar no exige `canView` sobre el
+objetivo** a propósito: la garantía de esta tarea es «nunca sabrás su CA», no «no puedes apuntar
+a lo que no ves».
+
+**Lo que queda fuera, a propósito.** La ficha R2C-2 (el `critical` suelto en la DAMAGE de
+`rollAttack`) no se toca aquí — es de 2.5.4, que es donde el daño se aplica de verdad. Ver
+ficha **C2.5-2** en [06-pendientes.md](./06-pendientes.md).
+
+**Probado.** Nueve unitarias del servicio (Prisma simulado): HIT por encima de la CA, HIT en el
+empate exacto —el SRD dice «iguala o supera»—, MISS por debajo, `CRITICAL` con un 20 natural
+aunque el total no llegue a la CA, `MISS` con un 1 natural aunque el total la supere, sin
+veredicto en una tirada a ciegas, sin ningún campo de CA en la respuesta, 404 contra un
+objetivo que no existe y un PNJ con la plantilla oculta al atacante que aun así compara bien.
+Y un e2e contra Postgres real (`ataque-comparado-en-el-servidor.e2e-spec.ts`) que ataca a un
+plebeyo del SRD `DM_ONLY` hasta ver «impacta» y comprueba, **sobre el cuerpo HTTP
+serializado**, que su CA no aparece en ninguna respuesta ni en el registro de la partida.
+
+**Cómo revertir.** `git revert` del commit; no toca el esquema de Prisma. El único cambio en
+`@dnd/shared` es aditivo (`attack.schema.ts`, nuevo).
+
 ## ENTITY_REVEALED también al subir la visibilidad a mano (ficha P1) (2026-09-04)
 
 El único sitio que emitía este suceso era el motor de reglas (`REVEAL_ENTITY`); un DM que sube a

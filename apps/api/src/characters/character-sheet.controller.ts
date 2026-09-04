@@ -14,6 +14,7 @@ import {
   changeHpSchema,
   deathSaveSchema,
   overridableKeySchema,
+  resolveAttackSchema,
   setHpSchema,
   setOverrideSchema,
   rollAttackSchema,
@@ -21,6 +22,7 @@ import {
   type ChangeHpInput,
   type DeathSaveInput,
   type OverridableKey,
+  type ResolveAttackInput,
   type RollAttackInput,
   type SetHpInput,
   type SetOverrideInput,
@@ -125,5 +127,21 @@ export class CharacterSheetController {
     @Body(new ZodValidationPipe(rollAttackSchema)) body: RollAttackInput,
   ) {
     return this.sheets.rollAttack(req.user.id, campaignId, characterId, attackKey, body);
+  }
+
+  /**
+   * Tarea 2.5.3. Tira el ataque contra un objetivo **y lo compara con su CA en el servidor**:
+   * la respuesta es la tirada y un veredicto (`HIT`/`MISS`/`CRITICAL`), nunca el número contra
+   * el que se comparó.
+   */
+  @Post("sheet/attacks/:attackKey/resolve")
+  resolveAttack(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+    @Param("attackKey") attackKey: string,
+    @Body(new ZodValidationPipe(resolveAttackSchema)) body: ResolveAttackInput,
+  ) {
+    return this.sheets.resolveAttack(req.user.id, campaignId, characterId, attackKey, body);
   }
 }

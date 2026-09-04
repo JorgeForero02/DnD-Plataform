@@ -10,3 +10,9 @@ apps/api/prisma/migrations/**
 # Salidas de Playwright.
 apps/web/test-results/**
 apps/web/playwright-report/**
+
+# La maqueta que devolvio Figma Make (2026-09-03): codigo de terceros pendiente de
+# adaptar, con su propio package.json y fuera del workspace. Se ignora a proposito y
+# **temporalmente** — mientras estuvo dentro, `pnpm verify` fallaba y bloqueaba todos
+# los commits del repositorio. Esta entrada se borra cuando la maqueta se adopte.
+prototipo/**

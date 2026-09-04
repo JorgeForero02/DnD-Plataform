@@ -17,6 +17,19 @@ export default tseslint.config(
       "apps/web/test-results/**",
       "apps/web/playwright-report/**",
       "apps/web/blob-report/**",
+      // `prototipo/` es la maqueta que devolvio Figma Make el 2026-09-03: codigo de
+      // TERCEROS, pendiente de adaptar, con su propio `package.json` y fuera del
+      // workspace de pnpm. Se ignora **a proposito y temporalmente**.
+      //
+      // Por que se ignora en vez de arreglarlo: sus avisos son de la herramienta que lo
+      // genero, no decisiones de este proyecto, y arreglarlos seria adoptar codigo que
+      // todavia no se ha revisado. Mientras estuvo dentro del alcance, `pnpm verify`
+      // fallaba y **el repositorio entero quedaba sin poder commitear**.
+      //
+      // Esta entrada SE BORRA cuando la maqueta se adopte: lo que se adopte vive en
+      // `apps/web` y cumple las reglas como todo lo demas, y lo que no, se borra con la
+      // carpeta. Si esta linea sigue aqui y `prototipo/` ya no existe, sobra.
+      "prototipo/**",
     ],
   },
 

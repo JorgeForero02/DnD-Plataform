@@ -537,3 +537,11 @@ export const NOMBRE_ANULABLE: Record<string, string> = {
   "speed.walk": "Velocidad al caminar",
   passivePerception: "Percepción pasiva",
 };
+
+/**
+ * La misma tabla, para quien solo tiene la clave suelta y no puede repetir el `?? clave`. La usa
+ * el registro de la mesa, que imprimía «El DM fija maxHp en 40» delante de los jugadores.
+ */
+export function nombreAnulable(target: string): string {
+  return nombreOSinTraducir(NOMBRE_ANULABLE, target);
+}

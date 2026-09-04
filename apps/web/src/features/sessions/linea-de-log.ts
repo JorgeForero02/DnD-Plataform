@@ -1,4 +1,5 @@
 import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
+import { nombreAnulable, nombreCondicion } from "../character-sheet/vocabulario";
 import { NOMBRE_SELLO } from "./vocabulario";
 
 // De un suceso del log a **una línea que se lee en voz alta**.
@@ -9,6 +10,14 @@ import { NOMBRE_SELLO } from "./vocabulario";
 //
 // **Una clave que no esté traducida se ve**, no se cae: `Sin traducir: <clave>`. Un log que se
 // deja sucesos por el camino en silencio es peor que uno que no existe.
+//
+// **Lo que se traduce y lo que no.** Las condiciones (`CONDITION_*`) y los valores derivados que
+// el DM anula (`MANUAL_OVERRIDE_SET.target`) son enumeraciones cerradas del SRD y del motor, y
+// tienen su forma legible en `features/character-sheet/vocabulario.ts` — el registro la importa,
+// no la reescribe. En cambio las claves de `FLAG_SET`, `SIGNAL_RAISED` y `SET_CHANGED` **las
+// escribe el DM** al montar sus reglas (`apps/api/src/rules-engine`, `world-state.service.ts`):
+// no hay lista cerrada que traducir, así que se citan literalmente entre comillas. Inventarles
+// una traducción sería cambiar lo que el DM escribió.
 
 const REPOSO: Record<string, string> = { SHORT: "corto", LONG: "largo" };
 
@@ -62,10 +71,10 @@ export function lineaDeLog(p: GameEventPayload): string {
     }
     case "CONDITION_APPLIED":
       return p.level !== undefined
-        ? `Recibe la condición «${p.key}», nivel ${p.level}`
-        : `Recibe la condición «${p.key}»`;
+        ? `Recibe la condición «${nombreCondicion(p.key)}», nivel ${p.level}`
+        : `Recibe la condición «${nombreCondicion(p.key)}»`;
     case "CONDITION_REMOVED":
-      return `Se le quita la condición «${p.key}»`;
+      return `Se le quita la condición «${nombreCondicion(p.key)}»`;
     case "ENTITY_OPENED":
       return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
@@ -81,7 +90,7 @@ export function lineaDeLog(p: GameEventPayload): string {
     case "MANUAL_OVERRIDE_SET": {
       const antes = p.previous !== undefined ? ` (antes ${p.previous})` : "";
       const motivo = p.reason ? ` — ${p.reason}` : "";
-      return `El DM fija ${p.target} en ${p.value}${antes}${motivo}`;
+      return `El DM fija ${nombreAnulable(p.target)} en ${p.value}${antes}${motivo}`;
     }
     default:
       // Inalcanzable mientras la unión esté completa; si algún día se añade un tipo y se olvida

@@ -163,15 +163,19 @@ describe("el elenco: la maqueta trae los datos que se miran treinta veces por se
     expect(within(elenco).getByText(/No vinieron: Ada, Marco, Lena\./)).toBeInTheDocument();
   });
 
-  it("−5 manda un delta relativo de −5 a ESE personaje", async () => {
+  // Carril C2 (2026-09-04) — **la aserción no cambia; el gesto sí.** En la disposición del DM la
+  // ficha ya no lleva los ±5: lleva los mandos de la maqueta, y «Daño» abre un cajón donde se
+  // escribe cuánto. Lo que esta prueba sigue comprobando es exactamente lo de antes: que golpear
+  // manda un delta **relativo** (`{ delta: -5 }`, no un valor absoluto) y que va contra **ESE**
+  // personaje y no contra el de al lado.
+  it("«Daño» manda un delta relativo de −5 a ESE personaje", async () => {
     const espia = vi.spyOn(sheetApi, "changeHp").mockResolvedValue(hoja(37, 58));
 
     montar();
 
-    const boton = await screen.findByRole("button", {
-      name: "Quitar 5 puntos de golpe a Corvin Vhael",
-    });
-    fireEvent.click(boton);
+    fireEvent.click(await screen.findByRole("button", { name: "Daño a Corvin Vhael" }));
+    fireEvent.change(await screen.findByLabelText("Cuánto daño"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar daño" }));
 
     await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", "p-corvin", { delta: -5 }));
   });

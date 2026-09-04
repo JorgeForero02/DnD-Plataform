@@ -4,18 +4,14 @@ import { FichaDeElenco } from "./FichaDeElenco";
 import { useMembers } from "../../campaigns/members";
 import type { Member } from "../../campaigns/members";
 import { useCharacters } from "../../characters/hooks";
+import { useCurrentSession } from "../hooks";
+import { useCurrentEncounter } from "../../encounters/hooks";
 import { useAuthStore } from "../../../store/auth.store";
 
-// **Ola 0 (2026-09-04): esto sale de `MesaDeSesion.tsx` tal cual, sin retoques de forma.**
-//
-// La mesa pasa a ser un compositor de ~150 líneas y el elenco pasa a ser un carril con sus
-// ficheros propios. Lo que hay aquí abajo es la versión que ya funcionaba —incluidas las dos
-// disposiciones y la regla de que sobre el retrato de otro no van botones—, movida de sitio para
-// que el carril del elenco pueda reescribir su presentación **sin tocar el compositor**.
-//
-// Lo que le falta, y es el encargo del carril (auditoría 2026-09-04, §1): mandos «Daño» y
-// «Condición» y el ojo para abrir, **solo en la disposición del DM**; barra de vida que cambia de
-// color por tramo; anillo ámbar en el turno actual y badge «Su turno»; y `PonerCondicion` como
+// **Carril C2 (2026-09-04) — el elenco con mandos.** Lo que la Ola 0 movió aquí era la versión
+// vieja; esto es lo que pedía la auditoría del 2026-09-04 (§1): mandos «Daño», «Condición» y el
+// ojo **solo en la disposición del DM**, barra de vida por tramos sin que el color sea el único
+// portador, anillo ámbar con rótulo «Su turno» cuando hay encuentro, y `PonerCondicion` como
 // cajón contextual desde el retrato, sin abrir la hoja entera.
 
 /**
@@ -28,6 +24,13 @@ import { useAuthStore } from "../../../store/auth.store";
  * **La lista sale de los personajes, no de los miembros**: lo que se mira treinta veces por
  * sesión son los puntos de golpe y las condiciones, y esos son del personaje. El nombre de quien
  * lo lleva va debajo.
+ *
+ * **El encuentro se pide aquí, y no llega por parámetro.** El compositor (`MesaDeSesion.tsx`) no
+ * pasa ni la sesión ni el encuentro a esta columna, y no se toca: es de otro carril. Así que el
+ * dato se pide con los mismos hooks que él usa —`useCurrentSession` y `useCurrentEncounter`— y
+ * React Query devuelve **la misma consulta**, no una segunda: comparten clave, así que no hay ni
+ * una petición más de las que ya había. Si el compositor acaba pasando el encuentro, estas dos
+ * líneas se sustituyen por una prop y nada más cambia.
  */
 export function ColumnaElenco({
   campaignId,
@@ -40,6 +43,8 @@ export function ColumnaElenco({
 }) {
   const { data: miembros } = useMembers(campaignId);
   const { data: personajes } = useCharacters(campaignId);
+  const { data: sesion } = useCurrentSession(campaignId);
+  const { data: encuentro } = useCurrentEncounter(campaignId, sesion?.id);
   const miId = useAuthStore((s) => s.user?.id);
 
   const declarados = asistencia ? new Set(asistencia.map((a) => a.characterId)) : null;
@@ -55,6 +60,19 @@ export function ColumnaElenco({
   const ausentes = asistencia
     ? (miembros ?? []).filter((m) => !vinieron.has(m.userId))
     : ([] as Member[]);
+
+  // **De quién es el turno.** `activePosition` puede ser `null` a propósito: el servidor dice
+  // «ahora no te toca a ti» sin delatar a quién, cuando el espectador no puede ver a ese
+  // combatiente. Y varios combatientes comparten posición cuando el servidor los agrupó por
+  // `statblockRef` (seis goblins son UN turno), así que esto es un conjunto, no un id.
+  const enCombate = Boolean(encuentro);
+  const deQuienEsElTurno = new Set(
+    encuentro && encuentro.activePosition !== null
+      ? encuentro.combatants
+          .filter((c) => c.position === encuentro.activePosition)
+          .map((c) => c.characterId)
+      : [],
+  );
 
   return (
     <PanelDeMesa
@@ -96,6 +114,8 @@ export function ColumnaElenco({
                 dueno={nombreDe.get(p.ownerId)}
                 puedeCambiarPg
                 destacado
+                turnoActual={deQuienEsElTurno.has(p.id)}
+                enCombate={enCombate}
               />
             ))}
           </ul>
@@ -112,6 +132,8 @@ export function ColumnaElenco({
                     personaje={p}
                     dueno={nombreDe.get(p.ownerId)}
                     puedeCambiarPg={false}
+                    turnoActual={deQuienEsElTurno.has(p.id)}
+                    enCombate={enCombate}
                   />
                 ))}
               </ul>
@@ -121,18 +143,29 @@ export function ColumnaElenco({
       ) : (
         // **La del DM**, que sí está en la situación de BG3 porque maneja a muchos: la parrilla
         // de todos con sus mandos, sin destacar a ninguno. Es también lo que ve un jugador que
-        // no tiene ningún personaje en esta mesa.
-        <ul className="flex flex-col gap-s2">
-          {enMesa.map((p) => (
-            <FichaDeElenco
-              key={p.id}
-              campaignId={campaignId}
-              personaje={p}
-              dueno={nombreDe.get(p.ownerId)}
-              puedeCambiarPg={esDm || p.ownerId === miId}
-            />
-          ))}
-        </ul>
+        // no tiene ningún personaje en esta mesa — y ese jugador **no lleva mandos**, porque el
+        // rol lo dice el servidor y él no es DM.
+        <>
+          {/* El rótulo de la maqueta sobre la parrilla (`prototipo/.../ColumnaElenco.tsx:57-59`).
+              Dice qué es esta lista cuando no hay ningún «Tu personaje» que la encabece. */}
+          <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
+            Grupo
+          </h4>
+          <ul className="flex flex-col gap-s2">
+            {enMesa.map((p) => (
+              <FichaDeElenco
+                key={p.id}
+                campaignId={campaignId}
+                personaje={p}
+                dueno={nombreDe.get(p.ownerId)}
+                conMandos={esDm}
+                puedeCambiarPg={!esDm && p.ownerId === miId}
+                turnoActual={deQuienEsElTurno.has(p.id)}
+                enCombate={enCombate}
+              />
+            ))}
+          </ul>
+        </>
       )}
       {ausentes.length > 0 && (
         <p className="mt-s3 border-t border-muted pt-s2 font-chrome text-chrome-xs text-muted">

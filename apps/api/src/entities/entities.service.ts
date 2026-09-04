@@ -3,8 +3,9 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, Viewer } from "../common/visibility";
+import { canView, laAudienciaCrecio, Viewer } from "../common/visibility";
 import { WorldStateService } from "../world-state/world-state.service";
+import { GameEventsService } from "../game-events/game-events.service";
 
 @Injectable()
 export class EntitiesService {
@@ -12,6 +13,7 @@ export class EntitiesService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: EventEmitter2,
+    private readonly gameEvents: GameEventsService,
     /**
      * Opcional para no romper las unitarias que montan este servicio a mano. En la aplicación
      * real siempre está: `EntitiesModule` importa `WorldStateModule`, que lo exporta.
@@ -147,7 +149,15 @@ export class EntitiesService {
 
   async update(userId: string, campaignId: string, entityId: string, input: UpdateEntityInput) {
     await this.membership.requireMember(campaignId, userId);
-    await this.requireEditable(userId, campaignId, entityId);
+    const before = await this.requireEditable(userId, campaignId, entityId);
+    // Las concesiones de ANTES hacen falta para saber si la audiencia creció, y
+    // `requireEditable` no las trae. Se piden aparte y antes de escribir nada.
+    const concesionesAntes = (
+      await this.prisma.entityVisibilityGrant.findMany({
+        where: { entityId },
+        select: { userId: true },
+      })
+    ).map((g) => g.userId);
     const { specificPlayerIds, ...rest } = input;
     const data: Record<string, unknown> = {};
     if (rest.type !== undefined) data.type = rest.type;
@@ -165,11 +175,78 @@ export class EntitiesService {
           });
         }
       }
-      return tx.entity.update({
+      const entity = await tx.entity.update({
         where: { id: entityId },
         data,
         include: { grants: true },
       });
+
+      // **Ficha P1 de `docs/06-pendientes.md`.** El único sitio que emitía `ENTITY_REVEALED` era
+      // el motor de reglas (`REVEAL_ENTITY`); un DM que sube a mano la visibilidad de una ficha
+      // —que es como se revela un lugar casi siempre— no dejaba ningún rastro, y la cabecera de
+      // escena de la mesa (que lee estos sucesos) nunca se encendía sola.
+      //
+      // **«Revelar» es que haya alguien nuevo que ahora la ve y antes no**, y eso se responde
+      // comparando CONJUNTOS, no índices en una lista.
+      //
+      // La primera versión ordenaba los cinco niveles en fila y comparaba posiciones. La
+      // revisión de cierre del 2026-09-04 lo tumbó: `OWNER_DM` la ve el creador y
+      // `SPECIFIC_PLAYERS` la ven los concedidos, **y ninguno de los dos contiene al otro**.
+      // Pasar de `OWNER_DM` a `SPECIFIC_PLAYERS` con la lista vacía subía de índice y emitía un
+      // «se reveló» cuando la ficha había pasado de verla una persona a no verla nadie. Y no
+      // era solo ruido: `rules-engine/world-builder.ts` construye «qué se ha revelado» con esas
+      // filas, **sin caducidad y sin deshacer**, así que la ficha quedaba marcada como revelada
+      // para siempre y una regla `REVEALED_WITH_TAG_AT_LEAST` empezaba a cumplirse sola.
+      //
+      // `laAudienciaCrecio` vive en `common/visibility.ts`, junto a `canView`, porque es una
+      // regla de audiencia y ahí es donde este proyecto guarda una sola vez quién ve qué.
+      //
+      // **Bajar la visibilidad no emite nada.** Ocultar algo que ya se había enseñado no es una
+      // revelación, y decirlo sería mentir sobre lo que acaba de pasar.
+      const crecio =
+        rest.visibility !== undefined &&
+        laAudienciaCrecio(
+          {
+            visibility: before.visibility,
+            createdById: before.createdById,
+            grantedUserIds: concesionesAntes,
+          },
+          {
+            visibility: entity.visibility,
+            createdById: entity.createdById,
+            grantedUserIds: entity.grants.map((g) => g.userId),
+          },
+        );
+      if (crecio) {
+        // **La visibilidad del suceso, y una limitación que se declara en vez de esconderse.**
+        //
+        // Hereda la de la entidad, que es lo correcto: el aviso no puede ser más público que la
+        // cosa que anuncia. Pero `GameEvent` **no tiene concesiones nominales propias** —
+        // `GameEventsService.canSee` evalúa `canView` con `grantedUserIds: []`—, así que una
+        // fila marcada `SPECIFIC_PLAYERS` no la ve **nadie** salvo el DM: ni siquiera el jugador
+        // al que se le acaba de conceder. Guardarla con esa etiqueta sería prometer una
+        // frontera que el filtro no aplica.
+        //
+        // Así que en ese caso se guarda como `DM_ONLY`, que es lo que de verdad ocurre, y queda
+        // ficha para el día que los sucesos admitan concesiones. Lo encontró la revisión de
+        // cierre; la versión anterior afirmaba en este mismo comentario que la frontera se
+        // respetaba.
+        const visibilidadDelSuceso =
+          entity.visibility === "SPECIFIC_PLAYERS" ? "DM_ONLY" : entity.visibility;
+        await this.gameEvents.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "campaign",
+            subjectId: entity.id,
+            visibility: visibilidadDelSuceso,
+            payload: { type: "ENTITY_REVEALED", entityName: entity.name },
+          },
+          tx,
+        );
+      }
+
+      return entity;
     });
   }
 

@@ -88,7 +88,6 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
       <div className="flex flex-col gap-s4">
         <CabeceraDeEscena
           campaignId={campaignId}
-          eventos={eventos}
           tituloDeSesion={null}
           presentes={[]}
           enCurso={false}
@@ -123,7 +122,6 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
       />
       <CabeceraDeEscena
         campaignId={campaignId}
-        eventos={eventos}
         tituloDeSesion={sesion.title}
         presentes={presentes}
         enCurso

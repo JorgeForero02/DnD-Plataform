@@ -44,8 +44,12 @@ export class RollRequestsService {
     // Todos los personajes tienen que ser de esta campaña. **Se comprueba en una consulta y no en
     // un bucle**: con el bucle, pedir a doce personajes de los que uno es de otra campaña dejaría
     // once peticiones escritas y un error, que es el peor de los dos mundos.
+    // `archivedAt: null` desde 2.5.8: a un personaje archivado no se le pide una tirada. Lo
+    // señaló la revisión de cierre — los desplegables de la web ya estaban limpios porque salen
+    // del listado, pero la API los aceptaba igual, y una API que acepta lo que la pantalla no
+    // ofrece es una puerta trasera esperando a que alguien la empuje.
     const personajes = await this.prisma.character.findMany({
-      where: { id: { in: input.characterIds }, campaignId },
+      where: { id: { in: input.characterIds }, campaignId, archivedAt: null },
       select: { id: true },
     });
     if (personajes.length !== input.characterIds.length) {

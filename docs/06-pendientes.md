@@ -107,6 +107,32 @@ Mientras tanto la cabecera de escena manda el título de la sesión, que sí exi
 lugar aparece solo cuando de verdad lo hay. **No se inventa un nombre**: es lo que la maqueta hacía
 y lo que [04-convenciones.md](./04-convenciones.md) prohíbe al adoptarla.
 
+## P2 · Un `GameEvent` no tiene concesiones nominales, así que `SPECIFIC_PLAYERS` no llega a nadie (2026-09-04)
+
+**Encontrado por la revisión de cierre de `ENTITY_REVEALED`.** `GameEventsService.canSee` evalúa
+`canView` con `grantedUserIds: []` fijo — un suceso no tiene concesiones propias en el modelo—, así
+que **una fila marcada `SPECIFIC_PLAYERS` no la ve nadie salvo el DM**, ni siquiera el jugador al
+que se acaba de conceder la ficha.
+
+Mientras eso sea así, `EntitiesService.update` guarda ese caso como `DM_ONLY`, que es lo que de
+verdad ocurre. **Es una etiqueta honesta, no un arreglo**: la revelación dirigida a un jugador
+sigue sin llegarle, y su cabecera de escena no se enciende en ese caso.
+
+**El arreglo de verdad** es que `GameEvent` tenga sus propias concesiones —una tabla hermana de
+`EntityVisibilityGrant`— o que `canSee` sepa resolver las de la entidad a la que apunta. Lo
+segundo es más barato y más frágil: ata el filtro de sucesos al modelo de entidades.
+
+No bloquea nada hoy: el caso normal de la mesa es revelar a `PLAYERS`, y ese funciona.
+
+## P3 · El suceso de archivar puede no llegar a su dueño (2026-09-04)
+
+`CHARACTER_ARCHIVED` hereda la visibilidad del personaje, pero `game-events.service.ts` resuelve
+`OWNER_DM` contra el **actor** del suceso, no contra el dueño del personaje. Si el DM archiva un
+personaje `OWNER_DM` de un jugador, **el jugador no ve que le archivaron el suyo**.
+
+Va de menos a menos —no es una fuga— pero contradice «cada uno deja su rastro en la línea de
+tiempo». Misma familia que la P2 de arriba: el modelo de sucesos no sabe de dueños ajenos.
+
 ## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 
 **Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela
@@ -364,7 +390,7 @@ cerraron ese mismo día** (media competencia, Ataque Extra, espacios de conjuro 
 | | Qué | Dónde va, y por qué no ahora |
 |---|---|---|
 | **M8** | **Modificadores temporales con caducidad** — *«+2 a Fuerza durante una hora»*. Lo pidieron los jugadores y **no está escrito en ningún plan**: no es un estado con nombre ni un objeto equipado, es un modificador con fecha de fin | Necesita el **reloj de campaña**, que es 2C. El modelo de modificadores de 2A ya sabría aplicarlo; falta quién decide que ha caducado. Meterlo sin reloj sería un campo que nadie limpia |
-| **M9** | **El personaje se archiva, no se borra.** Respuesta 6 de los jugadores: *«que se queden guardados como recuerdos; hay campañas donde te pueden revivir por items»*. Hoy el borrado es **definitivo** | Toca `characters`, que es de la fase 1, así que no es de 2A. **Pero el reloj corre**: la aplicación está en producción y cada personaje borrado ya no vuelve. Es lo más barato de esta tabla y **lo único que pierde datos mientras espera** |
+| **M9** | **El personaje se archiva, no se borra — SERVIDOR HECHO (2.5.8), PANTALLA PENDIENTE.** Existen `POST …/archive`, `POST …/unarchive` y `GET …/characters/archived`, con su columna, sus sucesos y sus e2e. **Lo que NO existe es el gesto**: `grep -rn "archiv" apps/web/src` da cero, así que el único botón sigue siendo el borrado definitivo | El spec §2.5.8 cierra con «lo que cambia es **cuál de los dos gestos es el fácil**», y hoy no cambia ninguno: **la premisa de esta ficha sigue vigente palabra por palabra** con la aplicación en producción. La revisión de cierre del 2026-09-04 la encontró tachada sin estarlo. **Entra con la pantalla de personajes del carril gráfico**, y hasta entonces no se vuelve a dar por cerrada |
 | **M10** | **Revocar una concesión de visibilidad y editar en silencio** — la hidra falsa (respuesta 2). Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
 | **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
 
@@ -1022,25 +1048,33 @@ tres cosas que ya están fichadas arriba como huecos de mecánica: **no puede ll
 monstruo (M13), no hay iniciativa (M14), y el registro no reconstruye la sesión (J4/J5, en
 parte cerrado)**. Son la misma lista que las auditorías, vista desde la silla del director.
 
-### L1 — siete tipos de suceso no tienen línea en el registro (2026-09-03)
+### L1 — DOCE tipos de suceso no tienen línea en el registro (2026-09-03, recontado el 09-04)
 
-**Abierto.** `apps/web/src/features/sessions/linea-de-log.ts` cubre 20 de los 27 valores de
-`GAME_EVENT_TYPES` (`packages/shared/src/game-event.schema.ts`). Los siete que faltan salen en la
-mesa como `Sin traducir: <TIPO>`:
+**Abierto, y creciendo.** `apps/web/src/features/sessions/linea-de-log.ts` no cubre **12 de los 32**
+valores de `GAME_EVENT_TYPES` (`packages/shared/src/game-event.schema.ts`). Salen en la mesa como
+`Sin traducir: <TIPO>`:
 
-`MONEY_CHANGED`, `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, `CLOCK_ADVANCED`,
-`CONDITION_EXPIRED`, `TABLE_ROLLED`.
+- De 2B y 2C: `MONEY_CHANGED`, `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`, `CLOCK_ADVANCED`,
+  `CONDITION_EXPIRED`, `TABLE_ROLLED`.
+- De 2.5.2: `ENCOUNTER_STARTED`, `TURN_ADVANCED`, `ROUND_ADVANCED`.
+- De 2.5.8: `CHARACTER_ARCHIVED`, `CHARACTER_RESTORED`.
 
-Son justo los de 2B y 2C —el botín, el inventario, el reloj, la condición que vence sola y la
-tabla del DM—, o sea lo que más se ha escrito en la línea de tiempo este mes. El comentario del
-`default` dice «inalcanzable mientras la unión esté completa» y **la unión no está completa**: al
-`switch` no le falta un `case` por descuido, le faltan siete porque nadie los añadió al crecer el
-enum. Un `switch` exhaustivo (sin `default`, con un `never` al final) lo habría hecho fallar al
-compilar; hoy lo tapa el `default`.
+**Decía «siete» de «27» y la revisión de cierre del 2026-09-04 lo recontó.** Eso importa más que
+la cifra: la ficha llevaba un día siendo falsa porque **cada tanda del carril del motor añade tipos
+y ninguna puede tocar `apps/web`**, que es donde vive la traducción. La deuda no se queda quieta,
+crece sola con la frontera de carriles puesta.
 
-Encontrado al arreglar el defecto de las claves de enumeración; **no se arregló ahí** para no
-mezclarlo con un cambio de una línea. Escribir las siete frases es media hora, y conviene hacerlo
-junto con el rediseño de la mesa.
+Son justo los de 2B, 2C y 2.5 —el botín, el inventario, el reloj, la condición que vence sola, la
+tabla del DM, el combate y el archivado—, o sea lo que más se está escribiendo en la línea de
+tiempo. El comentario del `default` dice «inalcanzable mientras la unión esté completa» y **la
+unión no está completa**: al `switch` no le falta un `case` por descuido, le faltan doce porque
+nadie los añadió al crecer el enum. Un `switch` exhaustivo (sin `default`, con un `never` al final)
+lo habría hecho fallar al compilar; hoy lo tapa el `default`.
+
+**Y ahí está el arreglo de verdad, que es lo que hay que hacer en vez de escribir doce frases y
+esperar a la trece:** quitar el `default` y cerrar la unión. Entonces el carril del motor no puede
+añadir un tipo sin que el build del gráfico se ponga rojo, que es exactamente el aviso que hoy no
+existe. Va con el rediseño de la mesa.
 
 ### L2-traza-dano — la traza de resistencia (2.5.1) no tiene pantalla ni vocabulario en español (2026-09-03)
 

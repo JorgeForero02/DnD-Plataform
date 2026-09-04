@@ -653,3 +653,66 @@ test("al volver a la mesa, una franja dice por dónde seguir; la primera vez no 
   await expect(franja).toBeVisible();
   await expect(franja).toContainText("Desde aquí te perdiste");
 });
+
+// **Donde los dos carriles se juntan, y por eso esta prueba existe.**
+//
+// B1.1 dejó escrita y probada la cabecera de escena: lee los `ENTITY_REVEALED` del registro y
+// dice dónde pasa la escena. **Nunca se encendía**, porque el único sitio del servidor que
+// escribía ese suceso era el motor de reglas — un DM que sube a mano la visibilidad de una ficha
+// no dejaba rastro. Quedó como ficha P1, se arregló en el carril del motor, y **la pantalla no se
+// tocó**: esto comprueba que se enciende sola, que era la promesa.
+//
+// Es también la clase de defecto que solo aparece al juntar dos carriles verdes por separado —
+// exactamente lo que este proyecto ya aprendió en la fase 2B.
+test("el DM revela un lugar y la cabecera de escena pasa a decirlo, sin tocar la pantalla", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await registrarse(page);
+  await crearCampanaConSesion(page);
+
+  // Un lugar que **nace escondido**: preparar la mazmorra no puede ser filtrarla.
+  await page.getByRole("tab", { name: "Lugares" }).click();
+  await page.getByRole("button", { name: "Nuevo Lugar" }).click();
+  await page.getByLabel("Nombre").fill("El Puerto Viejo");
+  await page.getByRole("radio", { name: /Solo DM/ }).check();
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  await page
+    .getByRole("status", { name: "Sesión en curso" })
+    .getByRole("link", { name: "Ir a la mesa" })
+    .click();
+
+  // Todavía no: la ficha existe, pero no se ha revelado nada.
+  const escena = page.getByRole("region", { name: "La escena" });
+  await expect(escena).toBeVisible();
+  await expect(escena.getByRole("link", { name: "El Puerto Viejo" })).toHaveCount(0);
+
+  // El DM la sube a la mesa. **Eso, y solo eso, es revelar.**
+  const urlDeLaMesa = page.url();
+  await page.goBack();
+  await page.getByRole("tab", { name: "Lugares" }).click();
+  await page.getByRole("link", { name: /El Puerto Viejo/ }).click();
+  await page
+    .getByRole("button", { name: /Editar|Ver el texto completo/ })
+    .first()
+    .click();
+  await expect(page.getByRole("heading", { name: "Editar Lugar" })).toBeVisible();
+  // El nombre accesible del radio es la etiqueta ENTERA: el rótulo del nivel más su frase
+  // explicativa —la regla vinculante pide justamente eso, que cada opción lleve su porqué al
+  // lado—. Se busca por la frase, que es lo único que distingue «Jugadores» de «Jugadores
+  // concretos» sin depender del orden de las palabras.
+  await page.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }).check();
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("heading", { name: "Editar Lugar" })).toBeHidden();
+
+  // Y la cabecera lo dice, sin que nadie tocara la pantalla.
+  await page.goto(urlDeLaMesa);
+  await expect(escena.getByRole("link", { name: "El Puerto Viejo" })).toBeVisible({
+    timeout: 20_000,
+  });
+});

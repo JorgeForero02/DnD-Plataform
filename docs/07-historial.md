@@ -27,6 +27,42 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## ENTITY_REVEALED también al subir la visibilidad a mano (ficha P1) (2026-09-04)
+
+El único sitio que emitía este suceso era el motor de reglas (`REVEAL_ENTITY`); un DM que sube a
+mano la visibilidad de una ficha —que es como se revela un lugar casi siempre— no dejaba rastro,
+y la cabecera de escena de la mesa (que ya sabe leerlo) nunca se encendía sola.
+`EntitiesService.update` compara el índice del nivel nuevo contra el viejo en `DM_ONLY <
+OWNER_DM < SPECIFIC_PLAYERS < PLAYERS < PUBLIC` —el mismo orden de `canView`— y solo emite
+cuando sube; **bajar la visibilidad no es revelar** y no emite nada. El suceso hereda la
+visibilidad NUEVA de la entidad, y se escribe con `PrismaService.transaction` + el buzón de
+`after-commit.ts`, nunca con `$transaction`.
+
+**Probado.** Unitarias del servicio (con `transaction` mockeado) y `entities.e2e-spec.ts`: sube
+y no emite al bajar; un jugador que no puede ver la ficha tampoco ve el suceso.
+
+**Cómo revertir.** `git revert` del commit; no toca esquema.
+
+## Archivar un personaje en vez de borrarlo (2.5.8, ficha M9) (2026-09-04)
+
+**Es lo único abierto que destruía datos mientras esperaba.** Columna `Character.archivedAt`
+(`null` = activo). `list()` suma `archivedAt: null` a la misma consulta que ya excluye a los PNJ
+instanciados (`statblockRef: null`, 2D.6) — el mismo patrón, un filtro más. `archive()`/
+`unarchive()` usan `requireEditable` (dueño o DM, sin regla nueva), no tocan hoja/inventario/
+dinero, y dejan `CHARACTER_ARCHIVED`/`CHARACTER_RESTORED` en la línea de tiempo con la
+visibilidad del personaje. Ambos son idempotentes: repetir el gesto no vuelve a emitir el
+suceso. Borrar de verdad (`DELETE`) sigue existiendo tal cual — lo que cambia es cuál de los dos
+gestos es el fácil.
+
+**Probado.** Unitarias del servicio (con Prisma simulado y `transaction` mockeado) y
+`characters.e2e-spec.ts`: archivar saca del listado sin borrar filas —contadas, no fiadas del
+200—, recupera hoja/inventario/dinero enteros, deja su rastro en la línea de tiempo, y solo
+dueño o DM pueden archivar.
+
+**Cómo revertir.** `git revert` del commit. La migración `character_archived` añade una columna
+nula y dos valores de enum — revertirla no pierde datos de personajes ya archivados si se hace
+antes de que alguien dependa de la columna.
+
 ## B0 — los tokens por canales y el tercer tema (2026-09-04)
 
 **Por qué.** El reseño de la mesa decidió sustituir la interfaz por la maqueta de `prototipo/`,
@@ -116,6 +152,48 @@ fallo de english-log que `08-pruebas.md` cuenta.
 
 **Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
 a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
+
+## `ENTITY_REVEALED` a mano y 2.5.8 (archivar), con su revisión aplicada (2026-09-04)
+
+**Dos piezas de servidor.** Revelar una ficha subiéndole la visibilidad **ya deja rastro**, que es
+lo que enciende la cabecera de escena de la mesa — escrita y probada en B1.1 y que hasta hoy no se
+encendía nunca. Y un personaje **se archiva en vez de borrarse**: sale del listado, no se borra
+nada, se recupera entero, y borrar de verdad sigue existiendo.
+
+**La revisión de cierre encontró nueve cosas. Una era de correctitud.**
+
+**El orden de visibilidades no existe.** Se comparaban los cinco niveles por su índice en una
+fila, y `OWNER_DM` (la ve el creador) y `SPECIFIC_PLAYERS` (la ven los concedidos) **no son
+comparables**: ninguno contiene al otro. Pasar de `OWNER_DM` a `SPECIFIC_PLAYERS` con la lista
+vacía subía de índice y emitía «se reveló» cuando la ficha había pasado de verla una persona a no
+verla nadie. Y no era ruido: `rules-engine/world-builder.ts` construye «qué se ha revelado» con
+esas filas **sin caducidad y sin deshacer**, así que la ficha quedaba marcada como revelada para
+siempre y una regla `REVEALED_WITH_TAG_AT_LEAST` empezaba a cumplirse sola.
+
+Ahora se comparan **conjuntos de audiencia**, en `common/visibility.ts` junto a `canView`, que es
+donde este proyecto guarda una sola vez quién ve qué. El par incomparable sale bien sin tratarlo
+como caso especial, **y en las dos direcciones**.
+
+Las otras ocho, en corto: archivar un PNJ escribía la fecha y no hacía nada —seguía en el
+Bestiario y fuera de la lista de archivados— y ahora va 404; un archivado seguía siendo objetivo
+válido de una petición de tirada y de un encuentro; el suceso de una revelación dirigida se
+etiquetaba `SPECIFIC_PLAYERS` **y no lo veía nadie**, porque un `GameEvent` no tiene concesiones
+propias (ficha P2, y el comentario que afirmaba lo contrario se corrigió); la ficha L1 decía siete
+tipos sin traducir y son **doce**, porque cada tanda del motor añade tipos y ninguna puede tocar
+`apps/web`; y **M9 estaba tachada sin estarlo** — el servidor existe, la pantalla no, y
+`grep -rn "archiv" apps/web/src` da cero, así que el único gesto sigue siendo el borrado
+definitivo.
+
+**Dos pruebas no distinguían**, y las dos se reescribieron: la del orden de visibilidad pasaba con
+cualquier orden que pusiera `DM_ONLY` primero, y la del listado afirmaba `toHaveBeenCalledWith`
+sobre un mock que devolvía `[]` hiciera lo que hiciera el filtro — el ejemplo que
+`docs/08-pruebas.md` prohíbe con esas palabras.
+
+**Evidencia.** `pnpm verify` limpio; e2e de API en verde. Mutación: devolver la comparación por
+índices deja **cuatro** aserciones rojas, justo los pares que el índice contestaba mal.
+
+**Revertir:** `git revert -m 1` de la fusión. La migración solo añade una columna nullable y dos
+valores de enum.
 
 ## B1.2 — el elenco en dos disposiciones, y volver a la mesa sale gratis (2026-09-04)
 
@@ -250,110 +328,3 @@ y el certificado es el del dominio. La tabla está en [03-despliegue.md](./03-de
 
 **Lo que no se hizo, por decisión del autor:** la partida de prueba con dos cuentas de jugador, que
 pasa **a después de la fase 2D**. El despliegue queda en pie para cuando toque.
-
-## 2026-09-03 (noche) — La fase 2D: los PNJ tienen números y bajan a la mesa
-
-**Qué.** El autor eligió el alcance grande de 2D: no solo la ficha del PNJ, sino el PNJ jugable —
-que recibe daño, coge condiciones y aparece en el registro. Cuatro bloques hasta ahora.
-
-**La decisión que hace que el alcance grande no cueste el doble:** un PNJ en la mesa **es una fila
-de `Character`**. `Character` ya trae, probado y desplegado, todo lo que un combatiente necesita
-—PG, condiciones con vencimiento, versión optimista, salvaciones de muerte, inventario, su sitio en
-el registro—, y reescribir eso para PNJ habría sido duplicar el sistema más revisado del proyecto
-para desincronizarlo el primer día que alguien arregle un fallo en una sola de las dos copias.
-
-**Tres invariantes verificadas contra los quince statblocks del SRD ANTES de escribirlas**, no
-después: los PG son la media de los dados **más la Constitución por cada dado** (el ogro es
-«59 (7d10 + 21)», y 21 es su +3 siete veces), el dado de golpe sale del **tamaño** de la criatura, y
-el bonificador de competencia sale del **valor de desafío**. Quince de quince cada una.
-
-**Dos nombres que habrían salido mal por criterio.** La traducción oficial dice **«Goblin»** y no
-«trasgo» —trasgo es el colectivo de los goblinoides— y **«Tumulario»** y no «Espectro», que es el
-*specter*; se confirmó por CA 14 y PG 45 (6d8+18) exactos. Se bajó el PDF oficial en español y se
-comprobaron los quince uno a uno.
-
-> **Un fallo de diseño propio, encontrado al enganchar la hoja.** Había **dos** caminos que
-> construían una hoja de personaje —el de leer (`buildResponse`) y el de mutar
-> (`construirODenegar`)— y cada uno derivaba por su cuenta. Al añadir la rama de PNJ se parcheó
-> uno, y el otro siguió intentando construir un personaje sin raza ni clase: la pantalla devolvía
-> un 200 con la hoja vacía. **Es exactamente lo que la revisión de 2C llamó «la mitad del sistema
-> sin arreglar»**, y la respuesta no fue añadir la rama dos veces sino que exista un solo sitio
-> donde añadirla: `hojaOMotivo`. El agotamiento se aplica ahí, para que leer y mutar recorten
-> contra el mismo máximo.
-
-**Una mutación que sobrevivió y no era un hueco de prueba**: `Math.ceil` → `Math.floor` sobre el
-valor de desafío es una **mutación equivalente**, porque los VD fraccionarios del SRD solo existen
-por debajo de 1 y caen todos en la misma banda. Queda anotada en `06-pendientes.md` para que el
-próximo que mida cobertura no escriba una prueba que no puede fallar. Y una que **no se contó**:
-un `return` temprano que dejaba el resto inalcanzable, con lo que la suite no compiló y no midió
-nada. Una mutación que no compila no es una medición.
-
-**Probado.** Unitarias de motor, de catálogo, de servicio y de instanciación; y un e2e contra
-Postgres real que recorre el bucle entero —instanciar, derivar del statblock, recibir daño, una
-anulación del DM en la traza, y **el agotamiento partiéndole los PG máximos a un ogro sin que se
-escribiera una línea de agotamiento para PNJ**. Esa última es la que justifica la decisión de
-diseño de la fase entera. Siete mutaciones comprobadas en rojo.
-
-**La cascada de borrar una campaña cuenta la tabla nueva**, que es la lección que 2C dejó escrita:
-un huérfano no avisa, la operación devuelve 200 igual.
-
-**Cómo revertir.** `git revert` de los commits de 2D y quitar las dos tablas
-(`CampaignStatblock` y la columna `Character.statblockRef`). El camino del personaje jugador no se
-tocó, y hay una prueba que lo dice.
-
-## 2026-09-03 (noche) — La revisión de cierre de la fase 2D: la tercera fuga de la misma familia
-
-**Qué.** Dos revisiones de solo lectura sobre el diff entero de 2D —una de seguridad, otra de
-reglas contra la fuente en local—. **Cinco hallazgos reales, los cinco arreglados.**
-
-> **1 · Seguro. Los números de un statblock `DM_ONLY` llegaban al jugador por la hoja del PNJ.**
-> El escenario es el que un DM hace de verdad: escribe su statblock (nace `DM_ONLY`), lo baja a la
-> mesa, y cuando los jugadores se topan con el bicho **le sube la visibilidad al PNJ** para que lo
-> vean. La plantilla sigue siendo suya. La hoja derivaba sin preguntar por ella, así que ese
-> jugador leía CA, PG máximos, las seis salvaciones, las dieciocho habilidades y **la traza**, que
-> además lleva dentro la nota del libro. **Es la tercera de la misma familia**: la revisión de 2C
-> encontró las otras dos.
->
-> El arreglo no era pasar el espectador y ya: `resolver()` colapsa «no existe» con «no lo ves» a
-> propósito, y con eso la hoja habría contestado «apunta a un statblock que ya no existe» sobre uno
-> que existe — mentirle al DM. Se añadió `resolverParaHoja`, que **sí distingue**, porque aquí la
-> existencia de la criatura ya la sabe quien pregunta: la está viendo en la mesa.
-
-> **2 · Seguro. El `statblockRef` de una plantilla escondida viajaba al jugador.** Es el
-> identificador de la fila que la lista de statblocks le está ocultando a ese mismo jugador, así
-> que se deshacía por la puerta de al lado. Mismo criterio que `redactado()` con los objetos
-> ocultos de una hoja. Los del SRD sí viajan: el libro no esconde nada.
-
-> **3 · Seguro. Una tirada de ataque de un PNJ `DM_ONLY` se anunciaba a la mesa entera**, con su
-> nombre en la etiqueta y, con él, el hecho de que ese PNJ existe. La audiencia por defecto era
-> `PUBLIC` fija; ahora sale de la visibilidad del personaje. **Es la misma forma exacta del segundo
-> hallazgo de 2C**, que era una condición vencida escrita con `PLAYERS` fijo.
-
-> **4 · Regla. El alineamiento del Bandido se había tragado la línea entera del PDF** —«cualquier
-> alineamiento no legal Clase de Armadura: 12 (armadura de cuero) Puntos de golpe: 11 (2d8 + 2)
-> Velocidad: 9 m»— porque el volcado pegó cabecera y estadísticas en un renglón, y **se pintaba tal
-> cual en la ficha**. Único de los quince afectado. Hay ahora una prueba que mira los quince, no
-> solo ese.
-
-> **5 · Regla. `pgMediosDe` no tenía el suelo de 1 PG que sí tiene su gemela `pgDeMonstruo`.** Un
-> statblock propio con una criatura Diminuta de un dado y Constitución 1 salía a −3, y el PNJ se
-> guardaba con los puntos de golpe en negativo **mientras el motor derivaba 1 para esa misma
-> criatura**: dos números distintos para lo mismo.
-
-**Y dos comentarios que mentían**, los dos en `statblock.schema.ts` y los dos sobre nombres: uno
-citaba un «huargo» que **no está en la tanda** (el Grande con d10 es el lobo terrible), y otro
-llamaba «espectro» al tumulario **en el mismo trabajo que se molestó en corregir ese nombre**.
-Documentación que miente es peor que ausente, y aquí mentía sobre una comprobación.
-
-**Lo que la revisión declaró limpio**, y conviene que conste: instanciar exige DM y el `ref` está
-acotado a la campaña, así que no se puede instanciar de otra mesa; `statblockRef` no es escribible
-por el cliente; un jugador no puede abrir la hoja de un PNJ `DM_ONLY` ni mutar ninguno; los
-statblocks de otra campaña dan 404 y no 403; y **los quince statblocks cuadran número a número con
-la fuente** —CA, dados, características, competencias, sentidos, velocidades, VD, inmunidades— con
-los quince nombres en la traducción oficial y la prosa completa a través de los saltos de página.
-
-**Probado.** Suites completas de nuevo —unitarias de API y de web, e2e de API y Playwright— todo en
-verde y mirado. Una mutación más en rojo sobre el arreglo de la fuga.
-
-**Cómo revertir.** `git revert` del commit. Ojo a un cambio de comportamiento: la hoja de un PNJ
-cuya plantilla no ves devuelve ahora `sheet: null` con un motivo, en vez de los números.

@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAllEntities } from "../entities/hooks";
 import { useGameClock } from "../game-clock/hooks";
+import { useGameLog } from "./hooks";
 import { lugarDeLaEscena, momentoDeLaCampana } from "./escena";
-import type { GameEventRow } from "./log-api";
 import { IconoLugar, IconoLuna, IconoSol } from "./iconos";
 
 // B1 — **el estrato permanente de la mesa: la cabecera de escena.**
@@ -45,21 +45,32 @@ import { IconoLugar, IconoLuna, IconoSol } from "./iconos";
 
 export function CabeceraDeEscena({
   campaignId,
-  eventos,
   tituloDeSesion,
   presentes,
   enCurso,
 }: {
   campaignId: string;
-  eventos: readonly GameEventRow[];
   tituloDeSesion: string | null;
   presentes: string[];
   enCurso: boolean;
 }) {
   const { data: entidades } = useAllEntities(campaignId);
   const { data: reloj } = useGameClock(campaignId);
+  // **El registro de la CAMPAÑA, no el de la sesión en curso**, y las dos razones son buenas:
+  //
+  //  1. **La escena sobrevive a la sesión.** En reposo la cabecera dice «donde lo dejasteis», y
+  //     eso es por definición algo que pasó en una sesión anterior. Filtrando por la sesión
+  //     abierta no habría nada que decir.
+  //  2. **El suceso de revelar no lleva sesión.** `EntitiesService` lo escribe sin `sessionId`
+  //     —revelar una ficha es un acto del mundo, no de una partida—, así que el registro
+  //     filtrado por sesión **nunca lo contenía**. La cabecera se quedaba muda por un filtro,
+  //     no por falta de datos, y lo cazó el recorrido que junta los dos carriles.
+  //
+  // No añade una petición: TanStack comparte la consulta por su clave, y esta es la misma que ya
+  // pide la mesa en reposo.
+  const { data: log } = useGameLog(campaignId);
 
-  const lugar = lugarDeLaEscena(eventos, entidades ?? []);
+  const lugar = lugarDeLaEscena(log?.events ?? [], entidades ?? []);
   const momento = momentoDeLaCampana(reloj?.seconds ?? 0);
   const Astro = momento.esNoche ? IconoLuna : IconoSol;
 

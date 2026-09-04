@@ -49,9 +49,9 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
-**Recorridos**, los dos medidos el 2026-09-04: **241 e2e de API** (eran 216 al cerrar la fase 2D;
+**Recorridos**, los dos medidos el 2026-09-04: **247 e2e de API** (eran 216 al cerrar la fase 2D;
 los veinticinco nuevos son la suite de tipos de daño de 2.5.1 y la de encuentros de 2.5.2, con
-los recorridos que sus dos revisiones de cierre añadieron) y **98 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
+los recorridos que sus dos revisiones de cierre añadieron) y **101 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
 en las tres pruebas de contraste, la medición del `/NN` en el navegador y la del solape del
 conmutador de tema; y los dos de B1.1, que la mesa se alcanza en reposo y que la cabecera de
 escena no se solapa con la banda). Los dos verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
@@ -187,11 +187,11 @@ en verde.
 | Suite | Qué demuestra |
 |---|---|
 | `campaigns` | Quien crea una campaña queda como DM; leerla y editarla exige el papel correcto; **borrar una campaña se lleva en cascada todo lo que cuelga de ella**, y eso se comprueba **contando filas de verdad** en cada tabla, no fiándose del 200. Cada tabla nueva del proyecto se añade aquí: una que falte es un huérfano que no avisa. |
-| `entities` | El listado se filtra por visibilidad para el jugador; el cuerpo Markdown se guarda y vuelve idéntico; se rechaza un formato que no es Markdown y un texto desmesurado. |
+| `entities` | El listado se filtra por visibilidad para el jugador; el cuerpo Markdown se guarda y vuelve idéntico; se rechaza un formato que no es Markdown y un texto desmesurado. **Subir la visibilidad a mano emite `ENTITY_REVEALED`** y el jugador lo ve en su línea de tiempo; bajarla no emite nada; y un jugador que no puede ver la ficha tampoco ve el suceso (ficha P1, 2026-09-04). |
 | `links` | Enlazar dos fichas, rechazar el enlace de una consigo misma, y que **el jugador solo vea los enlaces cuyo destino puede ver**. |
 | `comments` | Comentar una ficha visible; **no se puede comentar una `DM_ONLY`**. |
 | `sessions` | El DM crea sesiones; el jugador no; el listado se filtra por visibilidad. |
-| `characters` | Quien crea un personaje queda como su dueño **según el servidor, no según lo que mande el cliente**; el listado del jugador se filtra por `canView` y el DM los ve todos; **editar exige ser dueño o DM, y otro jugador recibe 403**. Es la puerta de entrada a la hoja, y llevaba sin aparecer en este mapa desde que se escribió. |
+| `characters` | Quien crea un personaje queda como su dueño **según el servidor, no según lo que mande el cliente**; el listado del jugador se filtra por `canView` y el DM los ve todos; **editar exige ser dueño o DM, y otro jugador recibe 403**. Es la puerta de entrada a la hoja, y llevaba sin aparecer en este mapa desde que se escribió. **Archivar (2.5.8, ficha M9)**: saca al personaje del listado sin borrar nada —contando filas de verdad, no fiándose del 200—, recupera hoja/inventario/dinero enteros, deja su rastro en la línea de tiempo, y solo dueño o DM pueden archivar. |
 | `world-state` | Marcas y conjuntos del mundo: solo el DM escribe, poner la misma marca la sobrescribe en vez de duplicarla, quitar un miembro dos veces no falla, y **una señal levantada por el DM queda `DM_ONLY` en el registro**. |
 | `game-state` | **Como mucho una sesión en curso por campaña, y lo garantiza un índice único parcial de Postgres, no un `if`.** Arrancar escribe su suceso; un suceso `DM_ONLY` no sale en el registro del jugador; un límite de consulta inválido es 400 y no una consulta sin tope. |
 
@@ -239,7 +239,7 @@ en verde.
 | `campana` | Del registro a ver una ficha creada; enlaces y comentarios ejercitados de verdad; borrar una entidad se lleva sus enlaces; crear sesión y personaje con su visibilidad; el Markdown que vuelve como encabezado; filtrar por etiqueta; y editar, expulsar y borrar desde Ajustes. |
 | `invitacion` | **Dos contextos de navegador**, con cookies y almacenamiento propios, como dos navegadores distintos: el DM invita, el jugador entra por el enlace, se registra desde ahí y **no ve la entidad `DM_ONLY`**. |
 | `cuenta` | Cambiar la contraseña **invalida el token viejo contra la API real**; la contraseña equivocada no cierra la sesión; una ruta inventada y una campaña inexistente dicen qué pasa **en vez de dejar la pantalla en blanco**. |
-| `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. **Y desde B1.2: las dos disposiciones del elenco medidas con dos navegadores** —el jugador ve el suyo delante y **sobre el de otro no hay mandos**, el DM ve la parrilla entera con mandos sobre cada uno—, y la franja de «desde aquí te perdiste», que solo se puede medir aquí porque la marca vive en `localStorage`. Desde B1.1: que a la mesa se llega desde la campaña SIN sesión abierta** —el defecto de arquitectura que el reseño señaló— y que la cabecera de escena nombra la sesión y no se solapa con la banda de estado, medido en los dos ejes. |
+| `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. **Y desde B1.2: las dos disposiciones del elenco medidas con dos navegadores** —el jugador ve el suyo delante y **sobre el de otro no hay mandos**, el DM ve la parrilla entera con mandos sobre cada uno—, y la franja de «desde aquí te perdiste», que solo se puede medir aquí porque la marca vive en `localStorage`. **Y el recorrido donde los dos carriles se juntan**: el DM sube un lugar de `DM_ONLY` a `PLAYERS` y la cabecera de escena pasa a decirlo **sin que nadie tocara la pantalla** — la promesa de la ficha P1, comprobada de punta a punta. Desde B1.1: que a la mesa se llega desde la campaña SIN sesión abierta** —el defecto de arquitectura que el reseño señaló— y que la cabecera de escena nombra la sesión y no se solapa con la banda de estado, medido en los dos ejes. |
 | `hoja` | La hoja con datos reales: completar, ver la traza, tirar, cambiar PG. Y lo que solo se ve maquetado: la cabecera fija, **un paso de la traza llevando el foco a su causa**, que lo editable se distinga de lo derivado, y que las veinticuatro líneas de habilidad quepan. |
 | `inventario` | Equipar una armadura **cambia la CA y añade su paso a la traza**; un arma equipada llega al cuadro de ataques y se tira; el catálogo propio se distingue del SRD. |
 | `subir-nivel` | El servidor propone el diff, **tirar no aplica nada**, y confirmar deja la hoja en el nivel nuevo. |

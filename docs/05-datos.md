@@ -338,6 +338,41 @@ que `effective-speed.ts`— que reduce un daño bruto por esos modificadores y d
 Se engancha al `POST .../hp` existente: con `damageType` en el cuerpo, reduce antes de aplicar;
 sin él, el comportamiento no cambia.
 
+## `ENTITY_REVEALED` también nace de subir la visibilidad a mano (2026-09-04, ficha P1)
+
+Hasta ahora el único sitio que emitía `ENTITY_REVEALED` era el motor de reglas (efecto
+`REVEAL_ENTITY`). `EntitiesService.update` lo emite también cuando **sube** la visibilidad de
+una ficha, que es como se revela un lugar casi siempre en la mesa. «Sube» se define comparando
+el índice en `DM_ONLY < OWNER_DM < SPECIFIC_PLAYERS < PLAYERS < PUBLIC` —el mismo orden que
+`canView` (`apps/api/src/common/visibility.ts`) implementa de facto: cada nivel es un
+superconjunto estricto de audiencia sobre el anterior. Bajar la visibilidad **no** es revelar y
+no emite nada. El suceso hereda la visibilidad **nueva** de la entidad (no la vieja, ni un valor
+fijo): un aviso de revelación no puede ser más secreto que la cosa revelada, ni más público que
+ella. Se escribe dentro de la misma `PrismaService.transaction` que el `UPDATE`, así que llega al
+buzón de `after-commit.ts` y se emite tras el *commit*, igual que cualquier otro evento acoplado a
+un cambio.
+
+## Archivar un personaje en vez de borrarlo (tarea 2.5.8, ficha M9)
+
+**`Character.archivedAt`** (`DateTime?`, migración `20260904055722_character_archived`): `null` =
+activo, con fecha = archivado. No es un booleano — guardar CUÁNDO se archivó es gratis aquí y
+cuesta una consulta aparte en cualquier otro sitio. **Nada más cambia**: la hoja, el inventario
+(`InventoryItem.characterId`) y el dinero (las cinco columnas de moneda del propio `Character`)
+siguen en sus filas de siempre, así que recuperar un personaje es limpiar una columna, no
+reconstruir nada.
+
+`CharactersService.list()` suma `archivedAt: null` a la misma consulta que ya excluye a los PNJ
+instanciados (`statblockRef: null`, 2D.6): un filtro más sobre la consulta existente, no una
+tabla ni un segundo listado. `listArchived()` es su espejo, con `archivedAt: { not: null }`, para
+que archivar sea recuperable de verdad y no un borrado con otro nombre.
+
+`archive()`/`unarchive()` usan `requireEditable` —dueño o DM, la misma regla que ya gobierna
+editar— y son idempotentes: repetir el gesto no vuelve a escribir la fecha ni a emitir el suceso.
+Cada uno deja su rastro en la línea de tiempo (`CHARACTER_ARCHIVED` / `CHARACTER_RESTORED`, con
+`characterName`), con la visibilidad del propio personaje, dentro de la misma
+`PrismaService.transaction` que el `UPDATE`. El borrado de verdad (`DELETE`) sigue existiendo tal
+cual, para el personaje creado por error — lo que cambia es cuál de los dos gestos es el fácil.
+
 ## Editar y borrar campañas; expulsar y salir (tarea 1.17a)
 
 Tres endpoints nuevos en `apps/api/src/campaigns/campaigns.controller.ts`, los tres exigen

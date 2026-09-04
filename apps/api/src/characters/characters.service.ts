@@ -3,12 +3,14 @@ import { CreateCharacterInput, UpdateCharacterInput, Visibility } from "@dnd/sha
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
+import { GameEventsService } from "../game-events/game-events.service";
 
 @Injectable()
 export class CharactersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
+    private readonly gameEvents: GameEventsService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -49,8 +51,26 @@ export class CharactersService {
       // convierten la pantalla de personajes en un listado de combate, que es exactamente el
       // problema que el hueco M13 describía de la solución de andar por casa («crear tres
       // personajes a nombre del DM»). Los PNJ tienen su sitio: la pestaña «Bestiario».
-      where: { campaignId, statblockRef: null },
+      // **Archivar sigue el mismo patrón** (2.5.8, ficha M9): un personaje archivado sale de
+      // "quién se sienta a la mesa" igual que un PNJ instanciado, con un filtro más sobre la
+      // misma consulta — no una tabla nueva ni un segundo listado.
+      where: { campaignId, statblockRef: null, archivedAt: null },
       orderBy: { createdAt: "desc" },
+    });
+    return characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility));
+  }
+
+  /**
+   * Los personajes archivados de la campaña, con la misma visibilidad de siempre. Es la mitad
+   * que hace útil archivar en vez de esconder: sin esta lista, "archivado" sería indistinguible
+   * de "borrado" para quien mira la pantalla.
+   */
+  async listArchived(userId: string, campaignId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const viewer = await this.viewerFor(userId, campaignId);
+    const characters = await this.prisma.character.findMany({
+      where: { campaignId, statblockRef: null, archivedAt: { not: null } },
+      orderBy: { archivedAt: "desc" },
     });
     return characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility));
   }
@@ -106,5 +126,75 @@ export class CharactersService {
     await this.requireEditable(userId, campaignId, characterId);
     await this.prisma.character.delete({ where: { id: characterId } });
     return { deleted: true };
+  }
+
+  /**
+   * Archivar (2.5.8, ficha M9). **Es el gesto fácil ahora**: nada se borra, el personaje
+   * solo sale de "Personajes" — la misma regla de `requireEditable` que ya gobierna editar,
+   * sin inventar una regla nueva. Idempotente: archivar dos veces no duplica el suceso ni
+   * pisa la fecha original de archivado.
+   */
+  async archive(userId: string, campaignId: string, characterId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const character = await this.requireEditable(userId, campaignId, characterId);
+    // **Un PNJ no se archiva, y el 404 no es pereza.** Lo cazó la revisión de cierre: `archive`
+    // no miraba `statblockRef`, pero las dos listas sí, y el Bestiario filtra por `statblockRef`
+    // **sin mirar `archivedAt`**. Resultado: archivar un goblin escribía la fecha, emitía el
+    // suceso, lo dejaba igual de visible en el Bestiario y **fuera de la lista de archivados**,
+    // así que solo se recuperaba si alguien recordaba su cuid. Una columna puesta de la que no
+    // se sale.
+    //
+    // Va 404 y no 400 porque «archivar» es una operación de la pantalla de personajes, y desde
+    // ahí un PNJ no existe — es la misma razón por la que no sale en ese listado desde 2D.
+    if (character.statblockRef) throw new NotFoundException("Character not found");
+    if (character.archivedAt) return character; // ya estaba archivado: sin ruido en el log
+
+    return this.prisma.transaction(async (tx) => {
+      const archivado = await tx.character.update({
+        where: { id: characterId },
+        data: { archivedAt: new Date() },
+      });
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: character.visibility,
+          payload: { type: "CHARACTER_ARCHIVED", characterName: character.name },
+        },
+        tx,
+      );
+      return archivado;
+    });
+  }
+
+  /**
+   * Recuperar un personaje archivado. **Entero**: la hoja, el inventario y el dinero nunca se
+   * tocaron al archivar, así que no hay nada que reconstruir — solo se limpia `archivedAt`.
+   */
+  async unarchive(userId: string, campaignId: string, characterId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const character = await this.requireEditable(userId, campaignId, characterId);
+    if (!character.archivedAt) return character; // no estaba archivado: sin ruido en el log
+
+    return this.prisma.transaction(async (tx) => {
+      const recuperado = await tx.character.update({
+        where: { id: characterId },
+        data: { archivedAt: null },
+      });
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: character.visibility,
+          payload: { type: "CHARACTER_RESTORED", characterName: character.name },
+        },
+        tx,
+      );
+      return recuperado;
+    });
   }
 }

@@ -28,6 +28,13 @@ export class CharactersController {
     return this.characters.list(req.user.id, campaignId);
   }
 
+  // 2.5.8 — el listado de recuerdos: rutas fijas antes de ":characterId" para que Nest no las
+  // confunda con un identificador.
+  @Get("archived")
+  listArchived(@Req() req: { user: { id: string } }, @Param("campaignId") campaignId: string) {
+    return this.characters.listArchived(req.user.id, campaignId);
+  }
+
   @Get(":characterId")
   get(
     @Req() req: { user: { id: string } },
@@ -54,5 +61,23 @@ export class CharactersController {
     @Param("characterId") characterId: string,
   ) {
     return this.characters.remove(req.user.id, campaignId, characterId);
+  }
+
+  @Post(":characterId/archive")
+  archive(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+  ) {
+    return this.characters.archive(req.user.id, campaignId, characterId);
+  }
+
+  @Post(":characterId/unarchive")
+  unarchive(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+  ) {
+    return this.characters.unarchive(req.user.id, campaignId, characterId);
   }
 }

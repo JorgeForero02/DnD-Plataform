@@ -1,4 +1,4 @@
-import { canView } from "./visibility";
+import { canView, laAudienciaCrecio } from "./visibility";
 import type { Visibility } from "@dnd/shared";
 
 const OWNER = "owner1";
@@ -54,5 +54,87 @@ describe("canView", () => {
     expect(canView(other, resource("SPECIFIC_PLAYERS"))).toBe(false);
     expect(canView(other, resource("OWNER_DM"))).toBe(false);
     expect(canView(other, resource("DM_ONLY"))).toBe(false);
+  });
+});
+
+// **El retículo de audiencias, y por qué no es una fila.** (Revisión de cierre, 2026-09-04.)
+//
+// Estas pruebas existen porque la primera versión de «¿subió la visibilidad?» ordenaba los cinco
+// niveles en una lista y comparaba índices. Los casos de abajo son exactamente los que un índice
+// contesta mal, y **son los que ninguna prueba cubría**: la única que había iba de `DM_ONLY` a
+// `OWNER_DM`, que pasa con cualquier orden que ponga `DM_ONLY` primero.
+describe("laAudienciaCrecio — quién ve algo ahora que no lo veía antes", () => {
+  const recurso = (
+    visibility: Visibility,
+    createdById = "creador",
+    grantedUserIds: string[] = [],
+  ) => ({ visibility, createdById, grantedUserIds });
+
+  it("de DM_ONLY a PLAYERS crece: de nadie a todos", () => {
+    expect(laAudienciaCrecio(recurso("DM_ONLY"), recurso("PLAYERS"))).toBe(true);
+  });
+
+  it("bajar no crece nunca, aunque el salto sea grande", () => {
+    expect(laAudienciaCrecio(recurso("PUBLIC"), recurso("DM_ONLY"))).toBe(false);
+    expect(laAudienciaCrecio(recurso("PLAYERS"), recurso("SPECIFIC_PLAYERS", "c", ["p1"]))).toBe(
+      false,
+    );
+  });
+
+  // **El par que rompía el índice.** `OWNER_DM` la ve el creador; `SPECIFIC_PLAYERS` la ven los
+  // concedidos. Ninguno contiene al otro, así que ordenarlos es inventarse una relación.
+  it("de OWNER_DM a SPECIFIC_PLAYERS SIN conceder a nadie NO crece: pasa a no verla nadie", () => {
+    expect(
+      laAudienciaCrecio(recurso("OWNER_DM", "creador"), recurso("SPECIFIC_PLAYERS", "creador", [])),
+    ).toBe(false);
+  });
+
+  it("y con la lista incluyendo solo al creador tampoco: son la misma persona", () => {
+    expect(
+      laAudienciaCrecio(
+        recurso("OWNER_DM", "creador"),
+        recurso("SPECIFIC_PLAYERS", "creador", ["creador"]),
+      ),
+    ).toBe(false);
+  });
+
+  it("pero si concede a alguien más, sí crece", () => {
+    expect(
+      laAudienciaCrecio(
+        recurso("OWNER_DM", "creador"),
+        recurso("SPECIFIC_PLAYERS", "creador", ["creador", "p1"]),
+      ),
+    ).toBe(true);
+  });
+
+  // **Y el camino inverso, que el índice también contestaba mal.** Para el creador es la primera
+  // vez que la ve, así que anunciarlo es correcto.
+  it("de SPECIFIC_PLAYERS a OWNER_DM crece si el creador no estaba concedido", () => {
+    expect(
+      laAudienciaCrecio(
+        recurso("SPECIFIC_PLAYERS", "creador", ["p1"]),
+        recurso("OWNER_DM", "creador"),
+      ),
+    ).toBe(true);
+  });
+
+  it("y no crece si ya lo estaba", () => {
+    expect(
+      laAudienciaCrecio(
+        recurso("SPECIFIC_PLAYERS", "creador", ["creador", "p1"]),
+        recurso("OWNER_DM", "creador"),
+      ),
+    ).toBe(false);
+  });
+
+  it("añadir un concedido crece; quitarlo no", () => {
+    const uno = recurso("SPECIFIC_PLAYERS", "c", ["p1"]);
+    const dos = recurso("SPECIFIC_PLAYERS", "c", ["p1", "p2"]);
+    expect(laAudienciaCrecio(uno, dos)).toBe(true);
+    expect(laAudienciaCrecio(dos, uno)).toBe(false);
+  });
+
+  it("de PLAYERS a PUBLIC no crece: hoy son la misma gente", () => {
+    expect(laAudienciaCrecio(recurso("PLAYERS"), recurso("PUBLIC"))).toBe(false);
   });
 });

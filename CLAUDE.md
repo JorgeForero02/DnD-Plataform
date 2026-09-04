@@ -28,13 +28,14 @@ dos cuentas de jugador.
 |---|---|
 | `docs/00-INDEX.md` | Mapa de documentos, con el commit/rama/conteo de unitarias actuales en su bloque generado. **Empieza aquí.** |
 | `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
+| `docs/decisiones.md` | **Una línea por decisión tomada, con enlace a su razonamiento.** Sustituye a releer `docs/superpowers/`, que son el 61% de la documentación y están fuera del camino de lectura |
 | `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
 | `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, y la regla de Playwright.** Fuente única de los conteos |
 | `docs/10-mapa-e2e.md` | **Qué cubre cada recorrido de extremo a extremo**, suite a suite. Léelo antes de escribir un e2e nuevo |
 | `docs/01-arquitectura.md` | Monorepo, capas, módulos, dirección de dependencias |
 | `docs/02-entorno.md` | Cómo levantar todo, variables, gotchas de Windows |
 | `docs/05-datos.md` | Esquema, migraciones y semántica de la visibilidad |
-| `docs/superpowers/plans/` | Plan maestro por fases |
+| `docs/superpowers/plans/` | Plan maestro por fases. **No se relee entero**: se entra por `docs/decisiones.md` |
 | `.superpowers/sdd/progress.md` | Ledger de ejecución, una línea por tarea. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
 
 **Al terminar un cambio relevante, actualiza la documentación en el mismo commit**: estado

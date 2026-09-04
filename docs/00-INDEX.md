@@ -39,49 +39,23 @@ propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 | [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial por tarea, los pendientes ya cerrados y el documento fuente original del producto. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** — el fuente original, en particular, propone Redis, WebSockets y una hoja de personaje almacenada, que es lo contrario de lo que se construyó |
 | [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
 
-### Specs y planes
+### `docs/superpowers/` no está en el camino de lectura
+
+Ahí viven los specs, los planes, los estudios y las auditorías fechadas: **13.662 líneas, el 61%
+de toda esta documentación**, y `scripts/check-docs.mjs` las exime de todas sus comprobaciones a
+propósito, porque un documento fechado es el encargo del día que se escribió y no se reescribe
+después. Eso las hace seguras de conservar y **caras de releer**.
+
+Hasta el 2026-09-03 este índice traía una tabla de cuarenta filas describiéndolas una a una, **en
+presente y sobre trabajo terminado** —«borrador», «espera firma del autor», «se lee antes de
+ejecutar 2A»—, cuando 2A llevaba un día cerrada y firmada. Un mapa que envejece es un mapa que
+miente. En su lugar:
 
 | Documento | Contenido |
 |---|---|
-| `superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md` | **Lo que el sistema puede y la pantalla no ofrece.** Es la tarea 1.17 y **cierra la fase 1** |
-| `superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md` | **Auditoría de seguridad con evidencia y el orden de arreglo.** Es la tarea 1.18 |
-| `superpowers/specs/2026-09-01-fase-2-alcance-design.md` | **Alcance de la fase 2**: objetos, dados, razas, clases, niveles y la línea de derechos. Manda sobre el plan maestro |
-| `superpowers/specs/2026-09-02-respuestas-jugadores-design.md` | **Lo que contestaron los jugadores a las ocho preguntas, y qué cambia.** Tres cambian el diseño y una contradice una exclusión declarada de la fase 2 (los conjuros). **Se lee con el informe de huecos** |
-| `superpowers/specs/2026-09-01-huecos-fase-2-design.md` | **Lo que una mesa real necesita y el alcance de la fase 2 no modela.** Doce huecos con su coste de construir ahora y de añadir después, más 16 preguntas para el autor. **Se lee antes de ejecutar 2A**, porque cuatro de ellos cambian la forma de una tabla |
-| `superpowers/specs/2026-09-01-fase-3-assets-y-editores-design.md` | **Alcance de la fase 3**: nada de editores de arte; subir, curar e importar |
-| `superpowers/specs/2026-09-02-auditoria-interfaz.md` | **Por qué la interfaz se rehízo**, medido sobre capturas de producción con datos reales. Registro fechado |
-| `superpowers/specs/2026-09-02-identidad-visual-design.md` | **La identidad «Sala de guerra»** y su porqué. Manda sobre color, tipografía y ornamento |
-| `superpowers/specs/2026-09-02-hoja-5e-design.md` | **La hoja de 5.ª edición**: anatomía, todas las fórmulas del SRD 5.1 y los cuatro huecos. **La lee la fase 2A antes de tocar el esquema** |
-| `superpowers/specs/2026-09-02-ux-herramientas-estudio.md` | Cómo lo resuelven World Anvil, Kanka, Foundry, Linear y compañía. Material del reseño |
-| `superpowers/specs/2026-09-02-identidad-direcciones-estudio.md` | Las tres direcciones visuales estudiadas, **incluidas las dos descartadas** |
-| `superpowers/specs/2026-09-02-formularios-estudio.md` | Diseño de formularios y diálogos (NN/g, GOV.UK, Adam Silver). De aquí salieron los radios de visibilidad |
-| `superpowers/specs/2026-09-02-seis-peticiones-analisis.md` | **Qué se hace con las seis peticiones del autor y dónde va cada una.** Incluye el diseño del **sistema de eventos suceso–condición–efecto** y por qué el lienzo de cajas va después |
-| `superpowers/specs/2026-09-02-sistema-de-eventos-design.md` | **El sistema de eventos «por cajas»**: la frase de tres partes y las **cuatro decisiones** que dan potencia sin complejidad. Entra en 2A |
-| `superpowers/specs/2026-09-02-autoridad-de-las-reglas-design.md` | **Con qué autoridad escribe una regla.** El fallo del hueco H6 en siete puntos, y **las siete reglas vinculantes** que 2A.16 tiene que cumplir. Lo cita [04-convenciones](./04-convenciones.md) |
-| `superpowers/specs/2026-09-02-cajas-estudio.md` | Scratch, Blockly, Twine, Ink, Inform 7, Blueprints, Godot, IFTTT/Zapier, Foundry y los motores ECA. **Tres de sus conclusiones cambiaron el diseño** |
-| `superpowers/specs/2026-09-02-huecos-de-mecanica-2A.md` | **Once huecos de mecánica encontrados a mitad de la fase 2A**, con 2A.1-2A.5 ya en producción. Cuatro se cerraron el mismo día porque eran forma de datos; tres están colocados en 2A.6, 2A.7 y 2A.12; cuatro declarados. **Se lee antes de 2A.6** |
-| `superpowers/specs/2026-09-02-distancias-y-movimiento-design.md` | **Velocidad, condiciones que la limitan, alcances y áreas** (SRD 5.1). Pies en la base, metros en pantalla, y qué **no** se puede hacer sin mapa |
-| `superpowers/plans/2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md` | **La segunda mitad del plan de 2A**: las ocho preguntas falladas, seis tareas nuevas, el orden final de las diecisiete y **once huecos**. Sin esto, el plan de 2A está incompleto |
-| `superpowers/plans/2026-09-02-plan-interfaz-y-contenido.md` | **La ronda de interfaz y contenido, organizada**: seis bloques de tareas con su frontera de ficheros, qué puede ir en paralelo, y **las tres decisiones que bloquean y son del autor** (contenido fuera del SRD, editor de documentos, alcance de la línea de tiempo). **Manda sobre el orden de esta ronda** |
-| `superpowers/plans/2026-09-02-reseno-interfaz.md` | **Plan del reseño de interfaz**: las seis tandas y sus dos fronteras |
-| `superpowers/plans/2026-07-02-plataforma-dnd.md` | **Plan maestro.** Fase 0 y fase 1 a nivel de tarea; fases 2–5 solo alcance |
-| `superpowers/plans/2026-09-01-tarea-1.17-cierre-fase-1.md` | Plan de la tarea 1.17: las cuatro subtareas que cerraron las incongruencias de la fase 1 |
-| `superpowers/plans/2026-09-01-fase-2A-motor-y-hoja-de-personaje.md` | **Plan de la fase 2A** (borrador): motor de reglas determinista, hoja de personaje y once tareas. **Contiene una decisión de arquitectura que espera firma del autor (§1, el estado de la partida) y ocho preguntas que hay que contestar antes de empezar (§8)** |
-| `superpowers/plans/2026-09-03-fase-2C-plan.md` | **El plan de 2C**, con las decisiones del autor ya contestadas, el orden de los seis bloques, qué cierra cada uno, y **la partida de prueba con la que se cierra la fase 2**. Escrito para que otra sesión pueda continuar sin preguntar |
-| `superpowers/specs/2026-09-03-fase-2C-alcance-design.md` | **El alcance de 2C y el anexo de 2D**, escritos sobre lo que hay medido en el código y contrastados con el SRD **antes** de programar: 2B se llevó la mitad de 2C, y el contraste encontró **seis huecos más** (el descanso de 24 horas, las interrupciones, el ritmo de viaje, la marcha forzada, el agotamiento que no llega al motor y las relanzadas del evaluador). Trae las seis decisiones que son del autor |
-| `superpowers/specs/2026-09-03-fase-2D-alcance-design.md` | **El alcance de la fase 2D**: por qué **un PNJ en la mesa es una fila de `Character`** y no un modelo nuevo, las tres derivaciones en las que un monstruo contradice a una hoja de personaje, cuántos statblocks del SRD se transcriben y por qué no los trescientos, y **la lista de lo que 2D no hace** — que empieza por la iniciativa |
-| `superpowers/specs/2026-09-03-fase-2.5-alcance-design.md` | **El alcance de la fase 2.5**, decidida por el autor el 2026-09-03 y **anterior a la parte gráfica**: termina de **conectar el motor** —tipos de daño y resistencias que reducen de verdad, iniciativa y turnos, el ataque **comparado en el servidor** sin que la CA viaje, el daño con su traza colgando de la tirada que lo causó, y las condiciones llegando por fin a las tiradas—. Trae **el contraste con Foundry VTT**, citado contra el código del sistema `dnd5e` y no de memoria, y **las cuatro decisiones del autor ya contestadas** — entra la pantalla, el daño lo aplican DM y dueño, el ataque de oportunidad entra automático hasta donde se puede sin mapa, y los personajes se archivan en vez de borrarse |
-| `superpowers/specs/2026-09-03-fase-3-alcance-design.md` | **El alcance de la fase 3**, y manda sobre el plan maestro: **tres piezas separables** —almacén de ficheros, mapa del mundo con marcas, tablero de la mesa— con la **niebla filtrada en el servidor** como columna vertebral, la aclaración de qué son y qué no son los «tiles», lo que la fase **no** hace, y **cuatro decisiones que son del autor** |
-| `superpowers/notes/2026-09-03-prompt-arranque-fase-2C.md` | **El prompt con el que arrancó la sesión de la fase 2C**, hermano del de 2B: qué construir, cómo trabajar y las trampas conocidas |
-| `superpowers/specs/2026-09-03-contraste-de-reglas-2B.md` | **Las reglas de 2B contrastadas con la fuente**, una por una, con sus enlaces. Ninguna salió mal; salieron **tres cosas que no sabíamos**, incluida una que se estaba pintando rota en la hoja |
-| `superpowers/specs/2026-09-03-auditoria-de-mecanica-2B.md` | **Lo que una mesa real encontró en 2B**: dos frentes con refutador sobre el turno de un guerrero enano y sobre lo que sobrevive entre sesiones. Nueve fallos de regla arreglados el mismo día y doce fichas abiertas |
-| `superpowers/plans/2026-09-03-fase-2B-objetos-inventario-y-equipo.md` | **El plan de la fase 2B**: qué entrega, **las once decisiones de mecánica que se tomaron sin el autor** con su porqué, la frontera de ficheros de cada carril y el orden. Se lee antes de tocar objetos, inventario o el cuadro de ataques |
-| `superpowers/notes/2026-09-03-prompt-arranque-fase-2B.md` | **El prompt con el que arranca la sesión de la fase 2B**: qué construir, cómo trabajar, las trampas que ya costaron horas y lo que NO hay que hacer. Se copia y se pega |
-| `superpowers/plans/2026-09-02-plan-adopcion-interfaz.md` | **Continúa la ronda de interfaz**: adopta lo que volvió de la maqueta y añade la mesa de juego, bloqueada por una decisión del autor |
-| `superpowers/specs/2026-09-02-prompt-figma-make.md` | **El encargo a Figma Make**: 40 pantallas en seis entregas, con la paleta exacta y las reglas vinculantes |
-| `superpowers/specs/2026-09-02-figma-make-revision.md` | **Lo que volvió, medido en un navegador**: qué copiar, qué no y por qué, y la pantalla de juego que no trae |
-| `superpowers/specs/2026-09-02-mesas-virtuales-estudio.md` | **Cómo resuelven las mesas virtuales la niebla, el movimiento, los formatos y el móvil.** Su hallazgo: ninguna filtra posiciones en el servidor |
-| `superpowers/specs/2026-09-02-pruebas-de-integracion-propuesta.md` | Propuesta de pruebas de integración |
+| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las once de mecánica de 2B, las seis de 2C, las cuatro de 2D, las cinco de la fase 2.5 y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
+| `superpowers/specs/` y `superpowers/plans/` | Los documentos completos, por si hace falta el razonamiento entero o saber qué se creía en una fecha |
+| `superpowers/notes/` | Los prompts de arranque de cada fase |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
 
 > El ledger y este `07-historial.md` cuentan lo mismo a distinta resolución: el ledger es

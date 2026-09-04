@@ -641,7 +641,15 @@ test("al volver a la mesa, una franja dice por dónde seguir; la primera vez no 
   // Dos sellos bastan: con el suceso de «empezó la sesión» ya son tres, que es lo que hace
   // falta para tener un «antes» y un «después». Se espera a que cada uno aparezca en la lista
   // antes de pulsar el siguiente — el botón se deshabilita mientras la mutación va en vuelo.
+  // **Ahora hay que escribir antes de sellar**, y no es un retoque de la prueba para que pase:
+  // es el defecto que la auditoría del 2026-09-04 marcó en `MesaDeSesion.tsx:793-805` —pulsar
+  // «Nota» sin texto escribía en el registro una entrada que decía «Nota»—. Los seis botones se
+  // deshabilitan sin texto, así que un recorrido que sella tiene que teclear primero. Lo que
+  // esta prueba comprueba sigue siendo lo mismo: que con tres sucesos y una marca de lectura
+  // aparece la franja de «desde aquí te perdiste».
+  const registro = page.getByRole("region", { name: "Registro de la sesión" });
   for (const sello of ["Combate", "Hallazgo"]) {
+    await registro.getByLabel("Qué anotar").fill(`lo de ${sello.toLowerCase()}`);
     await page.getByRole("button", { name: sello, exact: true }).click();
     await expect(sucesos.getByText(sello, { exact: true }).first()).toBeVisible({
       timeout: 15_000,

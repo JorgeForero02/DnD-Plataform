@@ -62,6 +62,10 @@ Decidida el 2026-09-03 y **anterior a la parte gráfica**: termina de conectar e
 | D-2.5-2 | **El daño lo aplican el DM y el dueño** del personaje, reutilizando el permiso que ya gobierna los PG desde 2A. Lo que compensa el riesgo es la traza: quién, a quién, de qué tipo y de qué tirada |
 | D-2.5-3 | El **ataque de oportunidad entra, automático hasta donde se puede sin mapa**. El sistema ofrece y el DM descarta |
 | D-2.5-4 | **Un personaje se archiva, no se borra**: es lo único abierto que destruye datos irreversiblemente mientras espera |
+| D-2.5-5 | **La ventaja se sugiere, nunca se impone** (2.5.5): el SRD condiciona media tabla a circunstancias que el servidor no ve —la fuente del miedo a la vista, el atacante que te ve—, así que `createRollSchema.mode` sigue siendo de quien tira. Ver `packages/shared/src/roll-suggestion.schema.ts` |
+| D-2.5-6 | **El fallo automático no es «desventaja»** (2.5.5): paralizado, petrificado, aturdido e inconsciente fallan solas las salvaciones de Fuerza y Destreza, y eso viaja en su propio campo `autoFail`. Con desventaja aún se saca la CD; con fallo automático no hay tirada |
+| D-2.5-7 | **El fallo automático de «cegado» en las pruebas se deja fuera** (2.5.5): la regla dice *"any ability check that requires sight"* y el servidor no sabe si esta prueba lo requiere. Callar es más honesto que acertar la mitad de las veces |
+| D-2.5-8 | **La muerte por agotamiento 6 se deriva, no se guarda** (2.5.5): sale en `deathSaves.status` leyendo el nivel puesto, así que quitar el agotamiento devuelve al personaje y no queda una segunda verdad. Y **no anota fracasos de salvación de muerte**: morir de agotamiento no es caer a 0 PG |
 
 ## Fase 3 — ficheros, mapa y tablero · [alcance](./superpowers/specs/2026-09-03-fase-3-alcance-design.md)
 

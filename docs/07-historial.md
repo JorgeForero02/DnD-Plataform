@@ -27,6 +27,45 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 2.5.5 · Las condiciones llegan a las tiradas (2026-09-04)
+
+**Qué.** Las condiciones tenían un solo consumidor de verdad —la velocidad—. Ahora tienen el
+segundo, que es el que se nota en la mesa:
+
+- **`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`**, módulo **puro** hermano de
+  `effective-speed.ts`: dadas las condiciones vivas y qué se tira, devuelve el modo sugerido **con
+  todas sus causas**. `GET /campaigns/:c/characters/:p/sheet` lo publica en `rollSuggestions`
+  (ataque, prueba y **una salvación por característica**, porque `restrained` solo penaliza
+  Destreza). Las quince condiciones del SRD 5.1, verificadas **en inglés** contra `dnd5eapi.co`,
+  con la cita literal de cada una en la cabecera del módulo.
+- **Los cuatro efectos de agotamiento que faltaban** (ficha C2C-9): desventaja en pruebas (nivel
+  1), en ataques y salvaciones (nivel 3) y **la muerte del nivel 6**, que se deriva en
+  `deathSaves.status` sin tocar las casillas de salvación de muerte.
+- **La caducidad por asaltos no necesitó mecanismo nuevo**, y se comprobó leyendo el código antes
+  de escribir nada: **no existe ningún `advanceTurn`** —no hay módulo de encuentros, eso es 2.5.6—,
+  así que lo que faltaba era la prueba. Un asalto son seis segundos del reloj que ya existe, y el
+  e2e nuevo lo demuestra: una condición de dos asaltos sigue puesta tras el primer avance de seis
+  segundos y se apaga en el segundo.
+
+**Por qué así.** *Sugiere, no impone*: media tabla del SRD depende de circunstancias que el
+servidor no conoce —si la fuente del miedo está a la vista, si el atacante te ve—, así que el modo
+lo sigue eligiendo quien tira. Y el fallo automático de las salvaciones de Fuerza y Destreza sale
+en su propio campo (`autoFail`), no como «desventaja»: con desventaja aún se saca la CD.
+
+**Pruebas.** 34 unitarias nuevas del módulo puro + 2 del nivel 6, y
+`apps/api/test/condiciones-en-las-tiradas.e2e-spec.ts` (7 casos) contra Postgres real. Siete
+mutaciones probadas, todas rojas: el `>=` del agotamiento a `===`, `cancelled` a `false`,
+`AUTO_FAIL` a `DISADVANTAGE`, `restrained` sin filtrar característica, el nivel que mata a 7, la
+muerte condicionada a 0 PG, y el `>=` del vencimiento a `>`.
+
+**Cómo revertir.** Es aditivo: borrar `apps/api/src/character-state/roll-mode/`,
+`packages/shared/src/roll-suggestion.schema.ts` y su línea del `index.ts`, quitar
+`muertoPorAgotamiento` de `agotamiento.ts` y deshacer los tres puntos que toca
+`character-sheet.service.ts` (el `exhaustion` de `hojaOMotivo`, el tercer parámetro de
+`estadoDeMuerte` y `loQueDerivanLasCondiciones`, que era `velocidadesEfectivas`). Ninguna
+migración, ningún cambio de contrato existente: `rollSuggestions` es un campo nuevo de la
+respuesta y nadie lo lee todavía.
+
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
 
 Despliegue lanzado por la API de Coolify **desde dentro de la VPS**

@@ -1,5 +1,5 @@
 import type { DerivedValue } from "@dnd/shared";
-import { maxHpConAgotamiento, nivelDeAgotamiento } from "./agotamiento";
+import { maxHpConAgotamiento, muertoPorAgotamiento, nivelDeAgotamiento } from "./agotamiento";
 
 // Tarea 2C.4, hueco H-2C-5. **El nivel 4 de agotamiento parte los PG máximos por la mitad**
 // (SRD 5.1: «Hit point maximum halved»). Hasta hoy las condiciones solo alimentaban la velocidad,
@@ -59,5 +59,16 @@ describe("maxHpConAgotamiento", () => {
   it("con 1 PG máximo, la mitad es 0 — y eso es lo que dice la regla, no un mínimo inventado", () => {
     const uno: DerivedValue = { key: "maxHp", total: 1, steps: [] };
     expect(maxHpConAgotamiento(uno, 4).total).toBe(0);
+  });
+});
+
+// Tarea 2.5.5, ficha C2C-9 — **el nivel 6 mata** (SRD 5.1, tabla de agotamiento: «Death»).
+describe("muertoPorAgotamiento()", () => {
+  it.each([[0], [1], [2], [3], [4], [5]])("el nivel %i no mata", (nivel) => {
+    expect(muertoPorAgotamiento(nivel)).toBe(false);
+  });
+
+  it("el sexto sí", () => {
+    expect(muertoPorAgotamiento(6)).toBe(true);
   });
 });

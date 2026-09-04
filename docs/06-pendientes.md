@@ -145,7 +145,7 @@ Nada de esto rompe nada hoy. Cada línea dice qué falta, por qué no entró y q
 | | Qué | Por qué importa, y qué cuesta |
 |---|---|---|
 | **C2C-8** | **El vencimiento de una condición no entiende «hasta el próximo descanso largo»** | Y es a propósito: **eso no es una duración, es un suceso**, y modelarlo como un número sería mentir. Está declarado en `character-state.schema.ts` y en la tabla de duraciones de la pantalla. Cuando entre, entra como disparador, no como segundos |
-| **C2C-9** | **El agotamiento solo llega al motor por dos de sus seis efectos.** Velocidad (niveles 2 y 5) y PG máximos (nivel 4). Los otros cuatro —desventaja en pruebas, en ataques y salvaciones, y la muerte del nivel 6— **no calculan nada** | La desventaja necesita que el motor sepa componer ventaja/desventaja automáticamente, que hoy elige quien tira. Es Encuentros o una decisión aparte; **anotarlo es lo que impide creer que el agotamiento ya está entero** |
+| **C2C-9** | **El agotamiento ya calcula sus seis efectos en el servidor, y ninguna pantalla enseña los cuatro nuevos** (2026-09-04, tarea 2.5.5) | Los seis niveles calculan: velocidad (2 y 5), PG máximos (4), **desventaja en pruebas (1), en ataques y salvaciones (3)** —`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`, publicada en `rollSuggestions` de `GET …/sheet`— y **la muerte del 6**, que sí llega a pantalla porque sale por `deathSaves.status`, el mismo campo que la hoja ya pinta. **La ficha se queda abierta por los otros tres**: la sugerencia de modo viaja por HTTP y **no la usa ningún componente**, así que en la mesa un personaje con agotamiento 3 sigue tirando normal si nadie mira la respuesta cruda. Cierra cuando la hoja y la tarjeta de dados la pinten |
 
 ## Lo que dejó la revisión del cierre de la fase 2 (2026-09-03)
 
@@ -161,9 +161,14 @@ su prueba y su mutación. Estos cuatro quedan, y los cuatro son decisiones, no d
 | **R2C-4** | **La salvación de muerte sigue recibiendo un nivel de visibilidad crudo** del cliente (`deathSaveSchema.visibility`), mientras que el resto de 2C pasó a `audience` | No hay fuga —es tu propia tirada y tú eliges el nivel— pero es la mitad del vocabulario sin migrar, en el mismo endpoint que 2C.1 declaró cerrado. Migrarlo es un cambio de contrato pequeño y su pantalla |
 
 **Y una ampliación de C2C-9**, que la revisión midió mejor de lo que estaba escrito: del agotamiento
-se implementan **los niveles 2, 4 y 5**. Faltan el 1 y el 3 (desventaja, que necesita que el motor
-componga ventaja por su cuenta —hoy la elige quien tira—) y **el 6, la muerte**, que hoy no hace
-nada: la condición se guarda y el personaje sigue vivo con la mitad de PG.
+se implementaban **los niveles 2, 4 y 5**. Faltaban el 1 y el 3 (desventaja, que necesita que el
+motor componga ventaja por su cuenta —hoy la elige quien tira—) y **el 6, la muerte**, que no hacía
+nada: la condición se guardaba y el personaje seguía vivo con la mitad de PG.
+
+> **Cerrado en el servidor el 2026-09-04** (tarea 2.5.5): los seis niveles calculan. El 1 y el 3
+> salen como **sugerencia** —el motor no impone el modo, lo propone con su porqué— y el 6 mata
+> derivando `deathSaves.status`. Lo que sigue abierto es la pantalla, y por eso la ficha C2C-9 de
+> arriba no está tachada.
 
 ## C2C-2 · Las «tiradas propias guardadas» del prototipo, fuera de 2C (2026-09-03)
 
@@ -1146,9 +1151,9 @@ existe, y por eso están aquí y no en un plan futuro.
 
 | # | Mecánica | Qué se rompe hoy | Dónde encaja |
 |---|---|---|---|
-| **M14** | **No hay orden de iniciativa, ni turnos, ni rondas** | El motor deriva el **modificador** de iniciativa y ahí acaba: el primer combate se lleva en papel. Y arrastra a las condiciones — sin turnos **no caducan**, así que media hora de combate deja la ficha llena de condiciones que ya no aplican, y el motor de reglas las sigue leyendo como verdaderas | La sesión ya es el estado mutable de la partida y ya tiene índice único de «una activa por campaña»: el orden cabe ahí, más dos tipos de suceso que el puente del motor ya sabría recoger |
+| **M14** | **No hay orden de iniciativa, ni turnos, ni rondas** — pero **la mitad que arrastraba a las condiciones ya está pagada** | El motor deriva el **modificador** de iniciativa y ahí acaba: el primer combate se lleva en papel. **Ya no arrastra a las condiciones**: el reloj de campaña está en segundos y un asalto son seis, así que una condición de dos asaltos se apaga al segundo avance de seis segundos, probado de punta a punta en `apps/api/test/condiciones-en-las-tiradas.e2e-spec.ts` (2026-09-04, tarea 2.5.5). Comprobado además que **no existe ningún `advanceTurn`**: no hay módulo de encuentros, así que lo que falta no es que el turno mueva el reloj, es el turno | La sesión ya es el estado mutable de la partida y ya tiene índice único de «una activa por campaña»: el orden cabe ahí, más dos tipos de suceso que el puente del motor ya sabría recoger. Cuando llegue, **avanzar turno solo tiene que sumar seis segundos** al contador que ya existe |
 | **M15** | **Una tirada no puede hacer daño a nadie** | La tirada y el cambio de PG son dos operaciones manuales y dos hechos **sin relación** en el log, así que «¿de qué murió Elara?» no se puede responder desde el registro | Un objetivo opcional en la tirada, y que el suceso de daño lleve el identificador de la tirada como causa |
-| **M16** | **Las condiciones no afectan a ninguna tirada** | Las condiciones tienen **un solo consumidor**: el cálculo de velocidad. Un personaje apresado, envenenado o con agotamiento 3 tira **normal** | Un hermano de `effective-speed.ts` que, dadas las condiciones activas, **sugiera** ventaja o desventaja con su traza. Mismo patrón, mismo sitio, coste bajo — y ahora que el modo de tirada existe, ya hay dónde enchufarlo |
+| **M16** | **El servidor ya sugiere ventaja y desventaja; la pantalla todavía no la enseña** (2026-09-04, tarea 2.5.5) | El hermano de `effective-speed.ts` existe —`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`, puro, con las quince condiciones del SRD y sus citas— y `GET …/sheet` devuelve `rollSuggestions` con el ataque, la prueba y las seis salvaciones, cada una con sus causas. **Lo que falta es el consumidor**: ningún componente de `apps/web` lee ese campo, así que en la mesa el aviso no aparece. Cierra cuando la hoja y el panel de dados lo pinten, con el modo de la tirada preseleccionado y **todavía editable** — sugiere, no impone |
 | **M17** | **La concentración se guarda y nadie la comprueba** | La clave libre existe justo para «concentrándose en Bendición», y recibir daño no pide la salvación de Constitución. Es el mismo fallo que tenían las salvaciones de muerte esta mañana: la mitad hecha es la que no ocurre en la mesa | El mismo bloque de daño donde ya viven las salvaciones de muerte. Basta con **avisar**: no hace falta calcular nada para dejar de olvidarlo |
 | **M18** | **Sin tipos de daño, resistencias ni inmunidades** | El cambio de PG es un entero pelado, y el log guarda un número que no dice de qué era | Un tipo de daño en el detalle del suceso, decidido **antes** de escribir mil eventos: la convención obliga a promocionar a columna cualquier campo por el que haya que filtrar |
 | **L5** | **El DM no puede declarar «este personaje no ve»** | Es la mitad barata del hueco de iluminación, y **no necesita mapa**: declarar la restricción cabe en las condiciones de clave libre que ya existen; lo que necesita posiciones es *resolver* el arco. Hoy la única herramienta del DM es cambiar la visibilidad de las fichas a mano, una a una, sin dejar dicho por qué | Vocabulario, chip en la hoja, y —crítico— que quede claro en pantalla que es **ficción, no permiso** |

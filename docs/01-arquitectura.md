@@ -52,7 +52,7 @@ por su cuenta**.
 | `comments` | Hilo de comentarios de una entidad | quien pueda ver la entidad |
 | `sessions` | Sesiones de juego | solo DM |
 | `characters` | Personajes y **la hoja de 5.ª edición** (2A.6) con sus PG mutables y sus tiradas de muerte (2A.7) | dueño o DM |
-| `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
+| `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12), y **la sugerencia de ventaja o desventaja que sale de esas condiciones** (2.5.5, `roll-mode/`) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
 | `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
 | `rolls` | Tirar de verdad (2A.13). **El azar vive aquí y solo aquí**: el servidor tira y escribe la tirada antes de devolverla | miembro de la campaña |
 | `notifications` | Avisos (2A.14). **Sin tiempo real**: se piden al cargar. Escucha los eventos de dominio que ya se emitían y nadie escuchaba. **Ojo: es API sin pantalla** — esta fila prometía «bandeja de avisos» y no hay ninguna, porque nada de `apps/web/src` llama a estos endpoints. Ficha **A1-avisos** de [06-pendientes.md](./06-pendientes.md) | nadie, por HTTP; solo marcar leídas las propias |

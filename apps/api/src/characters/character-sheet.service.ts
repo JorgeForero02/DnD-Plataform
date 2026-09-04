@@ -22,6 +22,7 @@ import type {
   SetHpInput,
   Overrides,
   OverridableKey,
+  RollSuggestions,
   SetOverrideInput,
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
@@ -54,7 +55,12 @@ import {
   type EffectiveSpeedResult,
 } from "../character-state/speed/effective-speed";
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
-import { maxHpConAgotamiento, nivelDeAgotamiento } from "../character-state/common/agotamiento";
+import {
+  maxHpConAgotamiento,
+  muertoPorAgotamiento,
+  nivelDeAgotamiento,
+} from "../character-state/common/agotamiento";
+import { rollSuggestionsFor } from "../character-state/roll-mode/suggested-roll-mode";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -68,6 +74,17 @@ import { canView, Viewer } from "../common/visibility";
 type FilaPersonaje = Character;
 
 type ResultadoConstruccion = { build: CharacterBuild } | { reason: string };
+
+/**
+ * Lo que devuelve `hojaOMotivo`: la hoja o el motivo por el que no hay, **y en los dos casos el
+ * nivel de agotamiento**.
+ *
+ * Es una intersección con la unión y no un tercer miembro a propósito: quien solo quiere la hoja
+ * sigue estrechando con `"sheet" in resultado` sin enterarse de que hay un campo más, y quien
+ * necesita el nivel —la muerte del nivel 6, tarea 2.5.5— lo tiene sin repetir la consulta de
+ * condiciones que esa función ya hace.
+ */
+type HojaDerivada = ({ sheet: CharacterSheet } | { reason: string }) & { exhaustion: number };
 
 /**
  * De fila persistida a `CharacterBuild`, o al motivo por el que no se puede construir uno.
@@ -219,12 +236,25 @@ export class CharacterSheetService {
     });
   }
 
-  /** `min(currentHp, maxHp)`, con el aviso de que el dato guardado va por delante. */
-  private estadoDeMuerte(character: FilaPersonaje, currentHpCrudo: number | null): DeathState {
+  /**
+   * Las tres casillas y el estado que se deriva de ellas.
+   *
+   * **El agotamiento 6 mata sin pasar por los PG** (SRD 5.1, nivel 6: *"Death"*; ficha C2C-9,
+   * tarea 2.5.5). Va **antes** que la rama de los 0 PG porque no es un caso de esa rama: un
+   * personaje con agotamiento 6 y los PG intactos está muerto igual, y hasta 2.5.5 la hoja lo
+   * enseñaba en pie con la mitad de los Puntos de Golpe —el nivel 4 sí calculaba, así que el dato
+   * estaba a la vista y su consecuencia no.
+   */
+  private estadoDeMuerte(
+    character: FilaPersonaje,
+    currentHpCrudo: number | null,
+    nivelDeAgotamiento: number,
+  ): DeathState {
     const successes = character.deathSaveSuccesses;
     const failures = character.deathSaveFailures;
     let status: DeathState["status"] = "alive";
-    if (currentHpCrudo === 0) {
+    if (muertoPorAgotamiento(nivelDeAgotamiento)) status = "dead";
+    else if (currentHpCrudo === 0) {
       if (failures >= 3) status = "dead";
       else if (successes >= 3) status = "stable";
       else status = "dying";
@@ -373,7 +403,7 @@ export class CharacterSheetService {
         version: character.version,
         exceedsMax,
       },
-      deathSaves: this.estadoDeMuerte(character, currentHpCrudo),
+      deathSaves: this.estadoDeMuerte(character, currentHpCrudo, resultado.exhaustion),
     };
   }
 
@@ -411,12 +441,22 @@ export class CharacterSheetService {
     const respuesta = await this.buildResponse(userId, character);
     return {
       ...respuesta,
-      effectiveSpeeds: await this.velocidadesEfectivas(characterId, campaignId, respuesta.sheet),
+      ...(await this.loQueDerivanLasCondiciones(characterId, campaignId, respuesta.sheet)),
     };
   }
 
   /**
-   * Las velocidades **con las condiciones aplicadas**, cada una con su traza.
+   * Lo que las condiciones vivas derivan para la hoja: **las velocidades y la sugerencia de modo
+   * de tirada** (2.5.5), las dos con su porqué.
+   *
+   * Van juntas porque salen de la misma lectura —las condiciones del personaje y el reloj de la
+   * campaña— y separarlas era pagar dos veces la misma consulta para responder a la misma
+   * pregunta: «¿qué te está pasando ahora mismo?».
+   *
+   * **La sugerencia no abre ninguna puerta nueva**: se calcula sobre las condiciones de un
+   * personaje que quien pregunta ya puede ver (`getSheet` comprueba `canSee` antes), y nombra
+   * exactamente las mismas claves que ya viajaban en la traza de `effectiveSpeeds`. Un PNJ que no
+   * se ve sigue sin verse, con esto y sin esto.
    *
    * **Vive aquí y no en la pantalla.** La primera versión de la hoja calculaba esto en el
    * navegador, copiando letra por letra `effectiveSpeed` porque ningún endpoint la exponía: dos
@@ -427,12 +467,14 @@ export class CharacterSheetService {
    * relee la hoja. Añadir esta consulta dentro de sus transacciones sería pagarla en el camino
    * caliente para un dato que ninguna de ellas mueve.
    */
-  private async velocidadesEfectivas(
+  private async loQueDerivanLasCondiciones(
     characterId: string,
     campaignId: string,
     sheet: CharacterSheet | null,
-  ): Promise<Record<string, EffectiveSpeedResult>> {
-    if (!sheet) return {};
+  ): Promise<{
+    effectiveSpeeds: Record<string, EffectiveSpeedResult>;
+    rollSuggestions: RollSuggestions;
+  }> {
     // **Solo las que siguen vivas** (2C.4): una condición vencida sigue en la hoja, marcada, pero
     // ya no calcula nada. Filtrar aquí es lo que impide que la caducidad dependa de que alguien
     // haya abierto la pantalla de condiciones.
@@ -444,11 +486,14 @@ export class CharacterSheetService {
       this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
     ]);
     const conditions = condicionesActivas(todas, campana.clockSeconds);
-    const salida: Record<string, EffectiveSpeedResult> = {};
-    for (const [movimiento, pies] of Object.entries(sheet.speeds)) {
-      if (typeof pies === "number") salida[movimiento] = effectiveSpeed(pies, conditions);
+    const effectiveSpeeds: Record<string, EffectiveSpeedResult> = {};
+    // Las velocidades necesitan una base que solo la hoja da; la sugerencia de modo **no**, y por
+    // eso sale igual cuando no hay hoja: un personaje a medio crear con la condición «apresado»
+    // puesta sigue tirando en la mesa.
+    for (const [movimiento, pies] of Object.entries(sheet?.speeds ?? {})) {
+      if (typeof pies === "number") effectiveSpeeds[movimiento] = effectiveSpeed(pies, conditions);
     }
-    return salida;
+    return { effectiveSpeeds, rollSuggestions: rollSuggestionsFor(conditions) };
   }
 
   /**
@@ -693,12 +738,12 @@ export class CharacterSheetService {
     character: FilaPersonaje,
     items: ResolvedItem[],
     tx?: Prisma.TransactionClient,
-  ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
-    const base = character.statblockRef
-      ? await this.hojaDeStatblock(viewer, character)
-      : this.hojaDePersonaje(character, items);
-    if (!("sheet" in base)) return base;
-
+  ): Promise<HojaDerivada> {
+    // **El nivel de agotamiento se lee ANTES de saber si hay hoja**, y sale con el resultado
+    // aunque no la haya. Es lo que 2.5.5 necesitaba para cerrar el nivel 6: un personaje sin
+    // raza ni clase no tiene hoja, pero sí puede tener agotamiento 6 puesto, y decir que está
+    // vivo porque no hemos podido derivar sus PG sería el mismo tipo de mentira que esta función
+    // existe para no repetir en dos caminos.
     const client = tx ?? this.prisma;
     const [condiciones, campana] = await Promise.all([
       client.characterCondition.findMany({
@@ -708,8 +753,14 @@ export class CharacterSheetService {
       client.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
     ]);
     const nivel = nivelDeAgotamiento(condicionesActivas(condiciones, campana.clockSeconds));
-    if (nivel === 0) return base;
+
+    const base = character.statblockRef
+      ? await this.hojaDeStatblock(viewer, character)
+      : this.hojaDePersonaje(character, items);
+    if (!("sheet" in base)) return { ...base, exhaustion: nivel };
+    if (nivel === 0) return { ...base, exhaustion: nivel };
     return {
+      exhaustion: nivel,
       sheet: {
         ...base.sheet,
         derived: {

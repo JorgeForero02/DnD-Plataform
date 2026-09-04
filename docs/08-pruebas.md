@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 31 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 32 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 20 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -49,9 +49,11 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
-**Recorridos**, medidos el 2026-09-03 (noche, con la fase 2D entera y su revisión de cierre
-dentro) corriendo las dos suites: **216 e2e de API** y **88 recorridos de navegador**, todos
-verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
+**Recorridos**: **223 e2e de API**, medidos el 2026-09-04 con la tarea 2.5.5 dentro (tres pasadas
+seguidas, 223/223 en las tres; una cuarta anterior dejó un fallo que no se reprodujo en ninguna de
+las tres siguientes). **88 recorridos de navegador**, medidos el 2026-09-03 (noche, con la fase 2D
+entera y su revisión de cierre dentro) — **2.5.5 no toca `apps/web`**, así que esa cifra no se
+volvió a medir. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
 dentro de un bucle sobre los dos temas ejecuta más pruebas de las que se pueden contar leyendo
 el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
 
@@ -190,6 +192,7 @@ en verde.
 | `inventory` | Meter, equipar, mover y gastar. **Dos peticiones simultáneas de equipar en la misma ranura vacía: una gana y la otra no**, y lo garantiza un índice único parcial. Un objeto `DM_ONLY` no se le puede dar a quien no lo ve, y **uno de otra campaña del mismo DM no entra**. La bolsa no baja de cero. |
 | `campaign-items` | Los objetos propios del DM: crear, filtrar por visibilidad, editar, y **no poder borrar uno que alguien lleva encima** (409) hasta vaciarlo. |
 | `condiciones-con-duracion` | Una condición se guarda con **la hora en que vence, no con su duración**; mientras vive frena de verdad; al pasar su hora deja de aplicarse **y el jugador ve por qué**; no se vuelve a anunciar. Y **el agotamiento 4 parte los PG máximos, con la curación topando contra ese máximo**. |
+| `condiciones-en-las-tiradas` | **Las condiciones llegando a las tiradas** (2.5.5). La hoja publica la sugerencia de modo con su porqué —«desventaja: envenenado»— y **solo donde la regla la pone**: envenenado no toca las salvaciones, apresado penaliza la de Destreza y no la de Fuerza, el agotamiento 3 penaliza las seis. **Una condición de dos asaltos sobrevive al primer avance de seis segundos y se apaga en el segundo**, que es lo que demuestra que el reloj en segundos ya era el mecanismo. **El agotamiento 6 mata con los Puntos de Golpe intactos**, y quitarlo devuelve al personaje —la muerte se deriva, no se guarda—. Y la fuga: la hoja de un PNJ `DM_ONLY` es un 404 entero, así que la sugerencia no puede nombrar su condición. |
 | `game-clock` | El reloj es **una columna que sube de verdad**; solo el DM lo avanza; viajar pide las salvaciones de marcha forzada; **un segundo descanso largo en menos de 24 horas de juego se rechaza con un 409 que dice cuánto falta**; a 0 PG no se descansa largo; un descanso interrumpido no cura. |
 
 ### Dados, reglas y PNJ

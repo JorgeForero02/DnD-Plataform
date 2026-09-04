@@ -432,3 +432,74 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
     expect(m.valor, m.que).toBeGreaterThanOrEqual(m.minimo);
   }
 });
+
+// B1 (2026-09-04) — **la mesa deja de ser inalcanzable fuera de sesión.**
+//
+// Es el defecto que el reseño clasifica como de arquitectura y no de acabado: `MesaDeSesion` no
+// estaba en la lista de pestañas y solo se llegaba por dos enlaces que **existían únicamente
+// mientras había una sesión en curso**. Diecinueve destinos en una campaña, y el único para el que
+// existe el producto no estaba en ninguno; por URL directa contestaba un cartel de vacío.
+//
+// Se mide en el navegador porque es navegación —`jsdom` no navega— y porque lo que hay que
+// demostrar es el camino entero: desde la campaña, sin sesión abierta, hasta una mesa que dice
+// algo.
+test("se llega a la mesa desde la campaña sin sesión abierta, y no es un cartel de vacío", async ({
+  page,
+}) => {
+  await registrarse(page);
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("Campaña en reposo");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "Campaña en reposo" }).click();
+  await expect(page.getByRole("heading", { name: "Campaña en reposo" })).toBeVisible();
+
+  // **El enlace existe sin sesión**, que es justo lo que no pasaba, y dice qué te vas a encontrar.
+  const aLaMesa = page.getByRole("link", { name: /^Entrar a la mesa/ });
+  await expect(aLaMesa).toBeVisible();
+  await expect(aLaMesa).toContainText("en reposo");
+  await aLaMesa.click();
+
+  // La mesa en reposo **es uno de sus tres estados**, no su ausencia: la cabecera de escena está,
+  // con la hora del mundo, y el registro y la consulta siguen ahí.
+  const escena = page.getByRole("region", { name: "La escena" });
+  await expect(escena).toBeVisible();
+  await expect(escena).toContainText("La mesa, en reposo");
+  // El reloj de campaña, que llevaba semanas sondeando para nadie, por fin se pinta donde se juega.
+  await expect(escena).toContainText("Día 1");
+  await expect(escena).toContainText("00:00");
+  await expect(page.getByText("La mesa está en reposo.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Consulta del mundo" })).toBeVisible();
+});
+
+// Y con sesión en curso la misma cabecera dice de qué sesión se trata y quién está. Es la mitad
+// que convierte una columna de texto en un sitio: *un hilo a secas es un tablón, no un escenario.*
+test("en sesión, la cabecera de escena nombra la sesión y a quien está en la mesa", async ({
+  page,
+}) => {
+  await registrarse(page);
+  await crearCampanaConSesion(page);
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const escena = page.getByRole("region", { name: "La escena" });
+  await expect(escena).toBeVisible();
+  await expect(escena).toContainText("Escena actual");
+  await expect(escena).toContainText("El puerto en llamas");
+
+  // Y lo que solo se ve maquetado: la cabecera de escena **no se solapa** con la banda de estado
+  // que va justo encima. Las dos son del estrato permanente y viven pegadas; un solape aquí es
+  // exactamente el defecto de borde partido que la suite unitaria entera no puede ver.
+  const banda = page.getByRole("region", { name: "Estado de la sesión" });
+  const cajaBanda = await banda.boundingBox();
+  const cajaEscena = await escena.boundingBox();
+  expect(cajaBanda).not.toBeNull();
+  expect(cajaEscena).not.toBeNull();
+  expect(
+    cajaEscena!.y,
+    `banda=${JSON.stringify(cajaBanda)} escena=${JSON.stringify(cajaEscena)}`,
+  ).toBeGreaterThanOrEqual(cajaBanda!.y + cajaBanda!.height);
+  // Los dos ejes, como manda docs/08-pruebas.md: una cabecera de altura cero pasaría lo de arriba.
+  expect(cajaEscena!.height).toBeGreaterThan(40);
+});

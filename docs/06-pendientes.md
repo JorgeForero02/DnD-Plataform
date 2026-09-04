@@ -280,6 +280,28 @@ datos que la pantalla querría y el servidor todavía no da.
   singular, pero `ROTULO_PLURAL`, `ETIQUETA_DE_TIPO` y `TITULO_NUEVO` dicen «Eventos». Si se
   cambia, se cambian los tres a la vez.
 
+## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
+
+**Encontrado al construir la cabecera de escena, y tumba media premisa del reseño.** El §5 del
+[reseño de la mesa](./superpowers/specs/2026-09-03-reseno-de-la-mesa-design.md) dice que la
+cabecera «cambia sola con los sucesos que ya emitimos», y lo ilustra con *«el DM revela "El Puerto
+Viejo" y la cabecera pasa a decirlo»*. Para el reloj y los presentes es cierto. **Para el lugar no.**
+
+El tipo `ENTITY_REVEALED` está declarado en `@dnd/shared` desde 2A y **el único sitio del servidor
+que lo escribe es el motor de reglas** (`apps/api/src/rules-engine/rules-engine.service.ts`, el
+efecto `REVEAL_ENTITY`). Subir a mano la visibilidad de una ficha —que es como se revela un lugar
+casi siempre— **no deja ningún suceso**. Comprobado con un barrido: fuera del motor de reglas no
+hay un solo `type: "ENTITY_REVEALED"` en `apps/api/src`.
+
+**El arreglo es del carril del motor y es pequeño**: cuando `EntitiesService` sube la visibilidad
+de una ficha, emitir el suceso con su `entityName`. Nada más — el navegador ya sabe qué hacer con
+él (`features/sessions/escena.ts`, con sus once pruebas), así que **la cabecera se enciende sola el
+día que el suceso exista** y no hay que tocar la pantalla.
+
+Mientras tanto la cabecera de escena manda el título de la sesión, que sí existe siempre, y el
+lugar aparece solo cuando de verdad lo hay. **No se inventa un nombre**: es lo que la maqueta hacía
+y lo que [04-convenciones.md](./04-convenciones.md) prohíbe al adoptarla.
+
 ## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 
 **Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela

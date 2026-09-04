@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useCurrentSession } from "../features/sessions/hooks";
+import { IconoEnJuego } from "../features/sessions/iconos";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
@@ -688,6 +690,7 @@ export function CampaignDetailPage() {
         <h1 className="mt-1 font-title text-chrome-xl leading-tight text-text">
           {isLoading ? "Cargando…" : (campaign?.name ?? "")}
         </h1>
+        <EnlaceALaMesa campaignId={id} />
         <div className="mt-s3 h-px w-full bg-copper opacity-30" />
       </header>
       {/* layout="sidebar": the same WAI-ARIA tablist, standing up. Ten sections in a flat
@@ -695,5 +698,49 @@ export function CampaignDetailPage() {
           says which of them is the world and which is the table. */}
       <Tabs items={items} layout="sidebar" active={seccionActiva} onChange={abrirSeccion} />
     </AppShell>
+  );
+}
+
+/**
+ * **La mesa, en la navegación.** B1, 2026-09-04.
+ *
+ * El reseño lo cuenta como un defecto de arquitectura y no de acabado: *«`MesaDeSesion` no figura
+ * en la lista de pestañas: solo se llega por dos enlaces que existen únicamente mientras hay una
+ * sesión en curso. Fuera de sesión, el sitio donde se juega no es alcanzable.»* Diecinueve
+ * destinos en una campaña, y el único para el que existe el producto no estaba en ninguno.
+ *
+ * **No es una pestaña, y eso es deliberado.** Las pestañas de esta página son secciones de un
+ * documento —siete de ellas literalmente valores del enum de una tabla—; la mesa es **otro sitio**,
+ * con su propia ruta, para tenerla en una pestaña del navegador aparte mientras se consulta el
+ * mundo en otra. Meterla en la lista la habría igualado a «Documentos».
+ *
+ * Lleva su estado escrito porque **cambia lo que vas a encontrar**: en juego o en reposo. Sale del
+ * mismo sondeo que ya usa la barra de sesión, así que no añade ninguna petición.
+ */
+function EnlaceALaMesa({ campaignId }: { campaignId: string }) {
+  const { data: sesion } = useCurrentSession(campaignId);
+  const enJuego = Boolean(sesion);
+
+  return (
+    <Link
+      to={`/campaigns/${campaignId}/sesion`}
+      className="mt-s2 inline-flex items-center gap-s2 rounded-radius-sm border border-copper px-s3 py-s2 font-chrome text-chrome-sm text-text transition-colors hover:border-accent hover:text-accent-text"
+    >
+      <IconoEnJuego className="h-2.5 w-2.5 shrink-0 text-copper-text" />
+      {/* **No se llama «Ir a la mesa», y no es un capricho de estilo.** Ese nombre ya lo lleva el
+          enlace de la barra de «en juego», y dos enlaces con el mismo nombre accesible en la
+          misma pantalla son ambiguos para un lector de pantalla y para cualquier prueba que los
+          busque por su nombre. Es el fallo que `docs/08-pruebas.md` cuenta de english-log, donde
+          un componente metido en cuatro pantallas creó un segundo enlace homónimo y dejó un
+          `spec` roto que no vio nadie. Aquí lo cazaron dos pruebas antes de commitear: el
+          recorrido de navegador con «Ir a la mesa», y una prueba de componente que ya existía
+          cuando el segundo intento se llamó «La mesa» — que es el rótulo del GRUPO de la barra
+          lateral. **Entrar a la mesa** es además el verbo que usa la maqueta en su pantalla de
+          crónicas, así que no es un tercer nombre inventado para salir del paso. */}
+      Entrar a la mesa
+      <span className="font-chrome text-chrome-xs text-muted">
+        {enJuego ? `en juego · ${sesion?.title}` : "en reposo"}
+      </span>
+    </Link>
   );
 }

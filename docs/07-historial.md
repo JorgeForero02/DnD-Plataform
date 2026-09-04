@@ -91,6 +91,33 @@ después del resto de modificadores, y varias resistencias del mismo tipo cuenta
 migraciones solo añaden columnas nullable — revertir el código no revierte el esquema, y no hace
 falta: una columna de más sin escribir no rompe nada.
 
+## B1.1 — la mesa entra en la navegación y estrena cabecera de escena (2026-09-04)
+
+**Por qué.** Los dos defectos que el reseño clasifica como de arquitectura: la mesa **no estaba en
+la navegación** —solo se llegaba por enlaces que existían mientras había sesión, y por URL directa
+contestaba un cartel de vacío—, y el hilo sin cabecera es *«un tablón, no un escenario»*.
+
+**Qué entra.** Un enlace permanente a la mesa desde la campaña, con su estado escrito (en juego /
+en reposo). El **reposo pasa a ser uno de los tres estados de la mesa** y no su ausencia: cabecera,
+registro y consulta siguen ahí. Y la **cabecera de escena**, estrato permanente sin botón de
+cerrar, que ocupa el hueco del futuro tablero con el reloj de campaña —que llevaba semanas
+sondeando para nadie desde la pestaña «Dados»—, quién está en la escena y el lugar cuando lo hay.
+
+**Lo que se encontró por el camino, y está en `06-pendientes.md`:** **nadie escribe
+`ENTITY_REVEALED`** salvo el motor de reglas, así que la mitad «el DM revela un lugar y la cabecera
+lo dice» del reseño no era cierta. La derivación se escribió igual, con sus pruebas, y se enciende
+sola el día que el servidor emita el suceso.
+
+**Evidencia.** 809 unitarias de web; 98 recorridos de navegador. Dos mutaciones: quitar el enlace
+deja el recorrido de alcance en rojo; quitar los minutos del reloj deja la derivación en rojo. Y el
+recorrido cazó dos defectos antes del commit: un `<header>` anidado tiene rol `generic` y **no
+admite nombre accesible**, y el enlace nuevo chocaba en nombre con el de la barra de sesión — el
+fallo de english-log que `08-pruebas.md` cuenta.
+
+**Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
+a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
+
+
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
 
 Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
@@ -257,72 +284,6 @@ verde y mirado. Una mutación más en rojo sobre el arreglo de la fuga.
 
 **Cómo revertir.** `git revert` del commit. Ojo a un cambio de comportamiento: la hoja de un PNJ
 cuya plantilla no ves devuelve ahora `sheet: null` con un motivo, en vez de los números.
-
-## 2026-09-03 (noche) — El cierre de la fase 2C: cuatro fichas, una revisión de dos frentes y once arreglos
-
-**Qué.** El autor pidió cerrar todo lo que se pudiera antes de 2D. Esto es lo que se cerró.
-
-**Las cuatro fichas que quedaban de 2C**: pedir las salvaciones de marcha forzada (**C2C-4**),
-pintar la tabla de la casa en la tirada que la disparó (**C2C-5**), editar una tabla (**C2C-6**) y
-«solo las mías» en el registro (**C2C-7**). Y **C2C-1 contestada por el autor**: no, un jugador no
-puede esconderle una tirada al DM — se cierra con tres modos.
-
-**Y una revisión del diff entero, en dos frentes de solo lectura**, que es lo que esta sesión se
-había saltado. Trece hallazgos; **once arreglados el mismo día**, cada uno con su prueba y su
-mutación comprobada. Los cuatro que más importan:
-
-> **1 · Seguro. El texto de una tabla `DM_ONLY` volvía al jugador en la respuesta del `POST`.**
-> Es el agujero de la tirada a ciegas otra vez, un método más abajo, **y en la configuración por
-> defecto**: una tabla nace `DM_ONLY`, su suceso se escribía bien —el registro la escondía— y la
-> respuesta la cantaba entera. Un jugador que sacara un 1 leía la tabla de pifias del DM. Ahora se
-> tira igual (el DM la necesita) y lo que se decide es si el texto viaja, y lo decide `canView`.
->
-> **2 · Seguro. La condición vencida de un PNJ `DM_ONLY` se anunciaba a toda la mesa.** El suceso
-> se escribía con `PLAYERS` fijo, así que filtraba que ese PNJ existe y qué le pasaba. El argumento
-> de que la caducidad se ve —para no dejar al jugador con el «qué» y sin el «por qué»— vale para el
-> personaje de un jugador; escrito fijo, se aplicaba también a los del DM.
->
-> **3 · Regla. Curar no respetaba los PG máximos partidos por agotamiento.** `changeHp` —el camino
-> principal de curación de la mesa— derivaba «pelado»: sin las anulaciones del DM y sin las
-> condiciones. Un personaje con agotamiento 4 se curaba hasta el máximo entero y la hoja se lo
-> enseñaba recortado con el aviso de «superan el máximo». **Es exactamente el fallo que 2C.4 decía
-> haber arreglado, con la mitad del sistema sin arreglar.**
->
-> **4 · Regla. El descanso largo devolvía dados de golpe redondeando hacia ARRIBA.** El SRD dice
-> «half of», y la 5.ª edición **redondea hacia abajo incluso con un medio exacto**; la propia
-> cláusula del «mínimo de un dado» lo demuestra, porque con redondeo hacia arriba sobraría. Nivel 5
-> devuelve 2, no 3. **Y la prueba consagraba el error**: se llamaba «MUTACIÓN CLAVE» y afirmaba
-> «2,5 → 3 hacia arriba». Se corrigieron las dos, la unitaria y la e2e.
-
-Los otros siete: una carrera que permitía responder dos veces la misma petición de tirada (ahora la
-condición va **dentro del `where`**, que es la base garantizando lo que un `if` no puede); la tirada
-y la tabla que dispara **compartiendo transacción**, que un comentario prometía y nadie cumplía;
-`mine` pisando en silencio a `characterId`; un 403 donde el resto de la fase eligió 404; la ventaja
-**descartada en silencio** al pedirla sobre un `1d20r1` (la suerte del mediano); el mínimo de cero
-de un dado de golpe, que es **por dado** y no por descanso; y un agotamiento ya vencido que un
-descanso «gastaba» igual.
-
-**Tres pruebas que no probaban**, también corregidas: una cuyo nombre prometía el caso contrario al
-que ejecutaba, una que defendía el modo y la audiencia de una petición **sin comprobarlos nunca**, y
-un e2e del tope de curación que **pasaba por casualidad** porque los dados reales casi nunca llegaban
-al borde.
-
-**Y dos cosas que no eran de esta tanda y estaban mintiendo**: la fila de `01-arquitectura.md` que
-decía «solo DM» de `world-state` cuando **un jugador ya escribe ahí** al abrir una ficha (ficha A2,
-que predijo exactamente esto), y `09-primera-partida.md`, que describía la herramienta de la fase 1
-y llamaba imposible seguir un enlace **que lleva funcionando desde el reseño**.
-
-**La cascada de borrar una campaña pasa de contar ocho tablas a diecisiete** (ficha A1), y se cerró
-justo antes de desplegar por un motivo concreto: un huérfano en una tabla nueva **no avisa**, la
-operación devuelve 200 igual.
-
-**Probado.** 1203 unitarias de API · 769 de web · 43 de esquemas · **186 e2e de API en 29 suites** ·
-**79 recorridos de navegador en 20 especificaciones**. Todo en verde y mirado. Ocho mutaciones
-comprobadas sobre los arreglos de la revisión, cada una en rojo sobre su prueba.
-
-**Cómo revertir.** `git revert` del commit. Dos cambios de comportamiento que conviene conocer antes
-de revertir: responder la petición de otro pasa a **404** (era 403), y el descanso largo devuelve
-**menos** dados de golpe que antes, que es lo que dice la fuente.
 
 ## 2026-09-03 (noche) — Fase 2B: objetos, inventario, equipar, y el cuadro de ataques que faltaba
 

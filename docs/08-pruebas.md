@@ -51,9 +51,10 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 
 **Recorridos**, los dos medidos el 2026-09-04: **227 e2e de API** (eran 216 al cerrar la fase 2D;
 los once nuevos son la suite de tipos de daño de 2.5.1, con los tres recorridos que su revisión
-de cierre añadió) y **96 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
+de cierre añadió) y **98 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
 en las tres pruebas de contraste, la medición del `/NN` en el navegador y la del solape del
-conmutador de tema). Los dos verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
+conmutador de tema; y los dos de B1.1, que la mesa se alcanza en reposo y que la cabecera de
+escena no se solapa con la banda). Los dos verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
 dentro de un bucle sobre los tres temas ejecuta más pruebas de las que se pueden contar leyendo
 el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
 
@@ -147,6 +148,16 @@ en verde.
   se disparaba un `dragstart` sonaron plausibles y dos eran falsos, apoyados los tres en
   mediciones reales. La causa era un `max-h-[85vh]`: la pieza y su carril **nunca estaban en
   pantalla a la vez**, y lo padecía igual una persona con un portátil.
+- **Y un rojo masivo puede ser que la API no llegara a arrancar.** El `webServer` de Playwright
+  levanta la API con `pnpm --filter @dnd/api build && start:prod` y **180 s de margen**.
+  Compilarla sola tarda ~14 s; compilarla **mientras un agente del otro carril usa la máquina**
+  se pasa de ese margen, la API no escucha, y todo lo que necesita sesión muere con
+  `ECONNREFUSED` — medido el 2026-09-04: **82 fallos de 98**, y las mismas pruebas en verde al
+  repetir con `pnpm --filter @dnd/api build` hecho antes. La firma que lo distingue de un
+  defecto: **Vite arriba y `http proxy error` en la primera petición**, no un fallo a mitad de
+  recorrido. `docs/04-convenciones.md` ya decía que los e2e los corre el orquestador y no los
+  agentes; lo que faltaba es el matiz de que **mientras un agente compila, la suite del
+  orquestador tampoco arranca**. Precompilar la API antes de lanzar la suite lo evita.
 - **Un intermitente puede ser el limitador de peticiones.** La suite dispara cientos de
   peticiones legítimas desde `127.0.0.1` en un minuto y chocaba con el tope global de 100: el
   429 rompía el recorrido donde le pillara, y cada fallo tenía una explicación creíble que no
@@ -227,7 +238,7 @@ en verde.
 | `campana` | Del registro a ver una ficha creada; enlaces y comentarios ejercitados de verdad; borrar una entidad se lleva sus enlaces; crear sesión y personaje con su visibilidad; el Markdown que vuelve como encabezado; filtrar por etiqueta; y editar, expulsar y borrar desde Ajustes. |
 | `invitacion` | **Dos contextos de navegador**, con cookies y almacenamiento propios, como dos navegadores distintos: el DM invita, el jugador entra por el enlace, se registra desde ahí y **no ve la entidad `DM_ONLY`**. |
 | `cuenta` | Cambiar la contraseña **invalida el token viejo contra la API real**; la contraseña equivocada no cierra la sesión; una ruta inventada y una campaña inexistente dicen qué pasa **en vez de dejar la pantalla en blanco**. |
-| `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. |
+| `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. **Y desde B1.1: que a la mesa se llega desde la campaña SIN sesión abierta** —el defecto de arquitectura que el reseño señaló— y que la cabecera de escena nombra la sesión y no se solapa con la banda de estado, medido en los dos ejes. |
 | `hoja` | La hoja con datos reales: completar, ver la traza, tirar, cambiar PG. Y lo que solo se ve maquetado: la cabecera fija, **un paso de la traza llevando el foco a su causa**, que lo editable se distinga de lo derivado, y que las veinticuatro líneas de habilidad quepan. |
 | `inventario` | Equipar una armadura **cambia la CA y añade su paso a la traza**; un arma equipada llega al cuadro de ataques y se tira; el catálogo propio se distingue del SRD. |
 | `subir-nivel` | El servidor propone el diff, **tirar no aplica nada**, y confirmar deja la hoja en el nivel nuevo. |

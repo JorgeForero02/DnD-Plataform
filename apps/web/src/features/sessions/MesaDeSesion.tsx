@@ -14,6 +14,7 @@ import {
   IconoPuntosDeGolpe,
 } from "./iconos";
 import { horaDe, lineaDeLog, selloDeSuceso } from "./linea-de-log";
+import { CabeceraDeEscena } from "./CabeceraDeEscena";
 import { useMembers, useMyRole } from "../campaigns/members";
 import type { Member } from "../campaigns/members";
 import { useCharacters } from "../characters/hooks";
@@ -27,7 +28,6 @@ import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { Badge } from "../../ui/Badge";
-import { EmptyState } from "../../ui/Collection";
 
 // La mesa: la pantalla que se mira mientras se juega.
 //
@@ -63,16 +63,51 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
     sessionId: sesion?.id,
     as: esDm && comoUsuario ? comoUsuario : undefined,
   });
+  const { data: personajes } = useCharacters(campaignId);
 
   if (isLoading) {
     return <p className="font-chrome text-chrome-sm text-muted">Buscando la sesión…</p>;
   }
+
+  // **La mesa en reposo, y por qué esta rama existe.**
+  //
+  // Hasta hoy, sin sesión en curso, esta pantalla devolvía un cartel de vacío: llegabas al sitio
+  // donde se juega y te decía que no había nada. El reseño lo señaló como uno de los defectos de
+  // arquitectura, no de acabado — *«fuera de sesión, el sitio donde se juega no es alcanzable»*.
+  //
+  // El reposo **no es la ausencia de la mesa: es uno de sus tres estados** (§4 del reseño). Lo que
+  // se enseña es lo que de verdad se sabe sin partida abierta —dónde quedó la escena, qué hora es
+  // en el mundo y qué pasó la última vez—, y el cartel pasa a ser una línea que dice cómo empezar
+  // en vez de la pantalla entera.
+  const eventos = log?.events ?? [];
+  const presentes = nombresPresentes(sesion?.attendance ?? null, personajes ?? []);
+
   if (!sesion) {
     return (
-      <EmptyState title="No hay ninguna sesión en curso">
-        Cuando el DM empiece una sesión desde la pestaña «Sesiones», esta pantalla se llena sola y
-        aparece la barra de «en juego» en toda la campaña.
-      </EmptyState>
+      <div className="flex flex-col gap-s4">
+        <CabeceraDeEscena
+          campaignId={campaignId}
+          eventos={eventos}
+          tituloDeSesion={null}
+          presentes={[]}
+          enCurso={false}
+        />
+        <p className="rounded-radius-sm border border-muted bg-surface px-s4 py-s3 font-chrome text-chrome-sm text-muted">
+          {esDm
+            ? "La mesa está en reposo. Empieza una sesión desde «Sesiones» y esta pantalla pasa a estar en juego."
+            : "La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena sola."}
+        </p>
+        <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)_18rem]">
+          <Elenco campaignId={campaignId} asistencia={null} esDm={esDm} />
+          <Registro
+            campaignId={campaignId}
+            eventos={eventos}
+            esDm={esDm}
+            comoUsuario={comoUsuario}
+          />
+          <Consulta campaignId={campaignId} esDm={esDm} />
+        </div>
+      </div>
     );
   }
 
@@ -84,6 +119,13 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         esDm={esDm}
         comoUsuario={comoUsuario}
         onComoUsuario={setComoUsuario}
+      />
+      <CabeceraDeEscena
+        campaignId={campaignId}
+        eventos={eventos}
+        tituloDeSesion={sesion.title}
+        presentes={presentes}
+        enCurso
       />
       {/* **PROVISIONAL, y a propósito.** «Te han pedido tirar» solo se montaba dentro de la
           pestaña «Dados»: sondeaba cada quince segundos impecablemente y no lo miraba nadie,
@@ -97,16 +139,29 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
       <TiradasPendientes campaignId={campaignId} />
       <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)_18rem]">
         <Elenco campaignId={campaignId} asistencia={sesion.attendance} esDm={esDm} />
-        <Registro
-          campaignId={campaignId}
-          eventos={log?.events ?? []}
-          esDm={esDm}
-          comoUsuario={comoUsuario}
-        />
+        <Registro campaignId={campaignId} eventos={eventos} esDm={esDm} comoUsuario={comoUsuario} />
         <Consulta campaignId={campaignId} esDm={esDm} />
       </div>
     </div>
   );
+}
+
+/**
+ * Los nombres que se pintan en «En la escena».
+ *
+ * **Sale de la asistencia declarada, no de quién tenga la pestaña abierta**: aquí no hay socket
+ * que lo sepa, y fingirlo sería peor que no decirlo. Un asistente sin personaje no aporta nombre a
+ * la escena —la escena la pueblan los personajes— y por eso se filtra en vez de escribir «alguien».
+ */
+function nombresPresentes(
+  asistencia: { userId: string; characterId?: string }[] | null,
+  personajes: Character[],
+): string[] {
+  if (!asistencia) return [];
+  const porId = new Map(personajes.map((p) => [p.id, p]));
+  return asistencia
+    .map((a) => (a.characterId ? porId.get(a.characterId)?.name : undefined))
+    .filter((n): n is string => Boolean(n));
 }
 
 /**

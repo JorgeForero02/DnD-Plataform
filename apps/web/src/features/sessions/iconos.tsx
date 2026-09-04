@@ -149,3 +149,36 @@ export function IconoBuscar({ className }: Props) {
     </svg>
   );
 }
+
+// B1 — los tres de la cabecera de escena. Mismo trazo y misma casa que los sellos de arriba:
+// la regla vinculante no pide un único fichero, pide que estén **dibujados**, y estos solo los
+// usa la mesa.
+
+/** El lugar de la escena: un mojón sobre el terreno. */
+export function IconoLugar({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 21s6.5-6.1 6.5-10.5a6.5 6.5 0 0 0-13 0C5.5 14.9 12 21 12 21Z" />
+      <circle cx="12" cy="10.5" r="2.3" />
+    </svg>
+  );
+}
+
+/** De día. No es el conmutador de tema: dice qué hora es EN LA CAMPAÑA. */
+export function IconoSol({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.6v2.4M12 19v2.4M2.6 12h2.4M19 12h2.4M5.3 5.3 7 7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7" />
+    </svg>
+  );
+}
+
+/** De noche, por la misma razón. */
+export function IconoLuna({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8a8.6 8.6 0 1 0 10.8 10.8Z" />
+    </svg>
+  );
+}

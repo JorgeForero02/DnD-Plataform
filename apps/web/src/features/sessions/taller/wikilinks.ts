@@ -57,6 +57,12 @@ export interface CitasResueltas {
   encontradas: { cita: CitaDeFicha; fichaDestino: Entity }[];
   /** Las que no lo son: se nombran en pantalla en vez de desaparecer en silencio. */
   sinFicha: CitaDeFicha[];
+  /**
+   * Las que resuelven a la **propia ficha**. Tienen lista propia porque antes se caían por el
+   * hueco entre las otras dos —ni enlazadas ni «sin ficha»— y el aviso de pantalla no decía
+   * nada de ellas. Está bien no enlazar una ficha consigo misma; está mal callarlo.
+   */
+  aSiMisma: CitaDeFicha[];
 }
 
 /**
@@ -76,11 +82,13 @@ export function resolverCitas(
   }
   const encontradas: { cita: CitaDeFicha; fichaDestino: Entity }[] = [];
   const sinFicha: CitaDeFicha[] = [];
+  const aSiMisma: CitaDeFicha[] = [];
   for (const cita of citas) {
     const ficha = porNombre.get(cita.clave);
-    // Una ficha que se cita a sí misma no se enlaza consigo misma.
-    if (ficha && ficha.id !== excluirId) encontradas.push({ cita, fichaDestino: ficha });
-    else if (!ficha) sinFicha.push(cita);
+    if (!ficha) sinFicha.push(cita);
+    // Una ficha que se cita a sí misma no se enlaza consigo misma — y se dice.
+    else if (ficha.id === excluirId) aSiMisma.push(cita);
+    else encontradas.push({ cita, fichaDestino: ficha });
   }
-  return { encontradas, sinFicha };
+  return { encontradas, sinFicha, aSiMisma };
 }

@@ -136,10 +136,10 @@ export function TableroTelarana({
               style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
               aria-pressed={elegida}
               className={[
-                "group absolute w-36 -translate-x-1/2 -translate-y-1/2 rounded-radius-sm border px-s2 py-s2 text-left transition-colors",
-                // Dos fichas del mismo tipo pueden solaparse (ver `posiciones.ts`): la que está
-                // enfocada o elegida sube por encima, así que siempre hay forma de llegar a las
-                // dos con el ratón y con el teclado.
+                "absolute w-28 -translate-x-1/2 -translate-y-1/2 rounded-radius-sm border px-s2 py-1 text-left transition-colors",
+                // Dos fichas del mismo tipo pueden solaparse (ver `posiciones.ts`, que trae la
+                // medición): la que está enfocada o elegida sube por encima, así que siempre hay
+                // forma de llegar a las dos con el ratón y con el teclado.
                 "focus-visible:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent hover:z-20",
                 elegida
                   ? "z-10 border-copper bg-surface shadow-lg"
@@ -150,16 +150,27 @@ export function TableroTelarana({
                 aria-hidden="true"
                 className="absolute -top-1.5 left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-copper"
               />
-              <span className="flex items-center gap-s1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text">
-                <IconoDeTipo type={ficha.type} />
-                {ETIQUETA_DE_TIPO[ficha.type]}
+              {/* **Una sola línea, y esto es una medición, no un gusto.** La tarjeta de tres
+                  líneas de la maqueta (144x76 px) tapaba entre el 73% y el 100% de las
+                  chinchetas en cuanto había seis; a una línea baja a la mitad. El tipo se dice
+                  con su dibujo y, para quien lee con lector de pantalla, con la palabra
+                  escondida de al lado. La visibilidad de TODAS las fichas se lee entera en la
+                  solapa «Lo que sabe la mesa», que es la pantalla que existe para esa pregunta;
+                  aquí solo la lleva la elegida, que es la que se está trabajando. */}
+              <span className="flex items-center gap-s1">
+                <span className="text-copper-text">
+                  <IconoDeTipo type={ficha.type} />
+                </span>
+                <span className="sr-only">{ETIQUETA_DE_TIPO[ficha.type]}</span>
+                <span className="min-w-0 flex-1 truncate font-title text-chrome-sm text-text">
+                  {ficha.name}
+                </span>
               </span>
-              <span className="block truncate font-title text-chrome-sm text-text">
-                {ficha.name}
-              </span>
-              <span className="mt-s1 block">
-                <Badge visibility={ficha.visibility} />
-              </span>
+              {elegida && (
+                <span className="mt-s1 block">
+                  <Badge visibility={ficha.visibility} />
+                </span>
+              )}
             </button>
           );
         })}

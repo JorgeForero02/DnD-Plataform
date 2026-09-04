@@ -42,7 +42,15 @@ export function TallerDelDM({ campaignId }: { campaignId: string }) {
       label: "Escribir ficha",
       icon: <IconoPluma />,
       content: (
+        // **La llave, y no dos bloques de estado derivado dentro del formulario.** La primera
+        // versión sembraba el estado en el render con dos guardas, y la segunda no se rearmaba
+        // al volver a la MISMA ficha: elegirla, pulsar «Escribir una nueva» y volver a
+        // elegirla dejaba los «jugadores concretos» vacíos, y guardar entonces **borraba sus
+        // concesiones sin decir nada**. Con `key` React desmonta y vuelve a montar, que es la
+        // forma que la propia documentación de React recomienda para «reiniciar el estado
+        // cuando cambia el sujeto», y no hay guarda que se pueda quedar sin rearmar.
         <EscribirFicha
+          key={seleccionada?.id ?? "ficha-nueva"}
           campaignId={campaignId}
           ficha={seleccionada}
           onGuardada={(guardada) => setElegida(guardada)}
@@ -96,7 +104,18 @@ export function TallerDelDM({ campaignId }: { campaignId: string }) {
         aria-label="Preparar la mesa"
         className="flex min-h-0 min-w-0 flex-col rounded-radius-sm border border-muted bg-surface p-s4"
       >
-        <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto">
+        {/* **La barra de solapas ya no se va por arriba.** Estaba dentro del contenedor con
+            `overflow-y-auto`, así que con el hilo de comentarios y el panel de enlaces abiertos
+            —que viven justo debajo— la navegación del taller desaparecía al bajar. Es el mismo
+            fallo que arregló la Ola 0 en la mesa, una capa más adentro; la maqueta la deja fuera
+            del scroll (`prototipo/src/features/TallerDelDM.tsx`).
+
+            Se clava con `sticky` sobre el `[role=tablist]` que pinta `ui/Tabs`, y **no sacando
+            la barra del componente**: `Tabs` es quien lleva el `aria-controls`, el `tabindex`
+            rotatorio y las flechas del patrón WAI-ARIA, y partirlo en dos dejaría el panel sin
+            su pestaña. `ui/**` es frontera de otro carril, así que se estira desde fuera. El
+            fondo opaco es obligatorio: sin él el texto pasa por debajo y se lee a través. */}
+        <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto [&_[role=tablist]]:sticky [&_[role=tablist]]:top-0 [&_[role=tablist]]:z-10 [&_[role=tablist]]:bg-surface">
           <Tabs items={solapas} />
         </div>
       </section>

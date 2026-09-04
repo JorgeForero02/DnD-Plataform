@@ -83,21 +83,17 @@ export function EscribirFicha({
   const [aviso, setAviso] = useState<string | null>(null);
   const [errorAlBorrar, setErrorAlBorrar] = useState<string | null>(null);
 
-  // Sembrado en el render, no en un efecto: es el patrón que React documenta para «derivar estado
-  // cuando cambia una entrada», y ahorra el render de más que daría un `useEffect`. La entrada es
-  // la ficha elegida en el tablero: pulsar otra chincheta trae otra ficha a este cuadro.
-  const [sembradaPara, setSembradaPara] = useState<string | null>(ficha?.id ?? null);
-  if ((ficha?.id ?? null) !== sembradaPara) {
-    setSembradaPara(ficha?.id ?? null);
-    setTipo(ficha?.type ?? "NPC");
-    setNombre(ficha?.name ?? "");
-    setCuerpo(ficha ? bodyToText(ficha.body) : "");
-    setVisibilidad(ficha?.visibility ?? "DM_ONLY");
-    setJugadores([]);
-    setError(null);
-    setAviso(null);
-    setErrorAlBorrar(null);
-  }
+  // **No hay estado derivado que rearmar aquí, y es a propósito.** La primera versión sembraba
+  // el estado en el render con dos guardas —una por la ficha elegida y otra por sus concesiones—
+  // y la primera vaciaba `jugadores` sin reiniciar la segunda: elegir una ficha con «jugadores
+  // concretos», pulsar «Escribir una nueva» y volver a elegir la MISMA dejaba las casillas
+  // vacías, porque la guarda de las concesiones ya se había disparado para ese id y no volvía a
+  // hacerlo. Guardar entonces mandaba `specificPlayerIds: []`, y `entities.service.ts` hace
+  // `deleteMany` sin `createMany`: **las concesiones desaparecían sin un solo aviso**.
+  //
+  // Ahora el compositor monta este formulario con `key={ficha?.id ?? "ficha-nueva"}`, así que
+  // cambiar de ficha lo desmonta y lo vuelve a montar con sus valores iniciales. Un `key` no se
+  // puede quedar «sin rearmar»; una guarda sí.
 
   const qc = useQueryClient();
   const todas = useAllEntities(campaignId);
@@ -122,11 +118,12 @@ export function EscribirFicha({
     setConcesionesDe(detalle.data.id);
     setJugadores(detalle.data.grants.map((g) => g.userId));
   }
+  // Vale mientras el formulario esté montado para UNA ficha, que es lo que garantiza el `key`.
   const concesionesListas = !editando || detalle.isSuccess;
 
   const guardando = crear.isPending || actualizar.isPending;
   const citas = citasDelTexto(cuerpo);
-  const { encontradas, sinFicha } = resolverCitas(citas, todas.data ?? [], ficha?.id);
+  const { encontradas, sinFicha, aSiMisma } = resolverCitas(citas, todas.data ?? [], ficha?.id);
 
   /**
    * Tiende los hilos que la prosa cita y todavía no existen.
@@ -136,6 +133,19 @@ export function EscribirFicha({
    * ver la cabecera de `wikilinks.ts`.
    */
   async function tenderHilos(entidadId: string) {
+    // **Sin la lista de enlaces asentada no se tiende nada.** `links.service.ts` no tiene
+    // restricción de unicidad, así que crear a ciegas duplica: tras el primer guardado la ficha
+    // pasa a «editando», su consulta de enlaces arranca de cero, y un segundo guardado seguido
+    // veía `data === undefined` —«no hay ninguno»— y volvía a crear los mismos, dejando **dos
+    // hilos idénticos** entre las dos chinchetas. Esperar a la siguiente vuelta no pierde nada:
+    // el `[[nombre]]` sigue escrito y el guardado siguiente lo tiende.
+    //
+    // La condición mira `editando` y **no solo el estado de la consulta**: una consulta apagada
+    // (`enabled: false`, que es lo que hay mientras se escribe una ficha nueva) se queda en
+    // `isPending` para siempre en react-query 5, así que preguntar solo por ella dejaba una
+    // ficha recién creada **sin ninguno** de sus enlaces. Una ficha que aún no existe no tiene
+    // enlaces que duplicar: ahí no hay nada que esperar.
+    if (editando && !(enlacesActuales.isSuccess && !enlacesActuales.isFetching)) return 0;
     const yaEnlazadas = new Set((enlacesActuales.data ?? []).map((e) => e.to.id));
     const nuevos = encontradas.filter(({ fichaDestino }) => !yaEnlazadas.has(fichaDestino.id));
     if (nuevos.length === 0) return 0;
@@ -257,7 +267,15 @@ export function EscribirFicha({
           {sinFicha.length > 0 && (
             <span className="text-copper-text">
               Sin ficha todavía: {sinFicha.map((c) => c.texto).join(", ")}. Escríbelas y el enlace
-              se tenderá al guardar de nuevo.
+              se tenderá al guardar de nuevo.{" "}
+            </span>
+          )}
+          {/* Una ficha que se nombra a sí misma no se enlaza consigo misma — pero antes esa
+              cita se caía por el hueco entre las dos listas y no se decía en ninguna parte. */}
+          {aSiMisma.length > 0 && (
+            <span>
+              {aSiMisma.map((c) => c.texto).join(", ")}: es esta misma ficha, así que no se enlaza
+              consigo misma.
             </span>
           )}
         </p>

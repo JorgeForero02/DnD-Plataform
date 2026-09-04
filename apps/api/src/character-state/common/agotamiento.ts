@@ -17,6 +17,32 @@ import type { CondicionConVencimiento } from "../conditions/vencimiento";
 /** El nivel a partir del cual el SRD parte los PG máximos. */
 export const NIVEL_DE_AGOTAMIENTO_QUE_PARTE_LOS_PG = 4;
 
+/**
+ * El último nivel de la tabla, y el único cuyo efecto es una sola palabra: **«Death»**
+ * (SRD 5.1, tabla de agotamiento, nivel 6: *"Death"*).
+ *
+ * Es la ficha **C2C-9**, tarea 2.5.5: hasta aquí un personaje con agotamiento 6 se guardaba
+ * tan tranquilo y **seguía vivo con la mitad de los PG** —el nivel 4 sí calculaba—, así que la
+ * hoja enseñaba un muerto en pie. La comprobación es esta línea; lo caro era darse cuenta.
+ */
+export const NIVEL_DE_AGOTAMIENTO_QUE_MATA = 6;
+
+/**
+ * ¿Mata este nivel de agotamiento?
+ *
+ * **Se deriva, no se guarda**, igual que el vencimiento de una condición y que el resto de la
+ * hoja: la muerte por agotamiento es una lectura del nivel que hay puesto, así que quitar el
+ * agotamiento devuelve al personaje —que es lo que un DM espera de deshacer un error— y no queda
+ * una segunda verdad («muerto») que pueda discrepar de la primera.
+ *
+ * **Y no toca las casillas de salvación de muerte.** Morir de agotamiento no es caer a 0 PG: no
+ * hay tres fracasos que anotar ni nadie a quien estabilizar. Escribir en `deathSaveFailures`
+ * mentiría sobre lo que pasó en la mesa.
+ */
+export function muertoPorAgotamiento(nivel: number): boolean {
+  return nivel >= NIVEL_DE_AGOTAMIENTO_QUE_MATA;
+}
+
 /** El nivel de agotamiento activo, o 0. Solo cuenta la condición `exhaustion`. */
 export function nivelDeAgotamiento(condiciones: CondicionConVencimiento[]): number {
   const agotamiento = condiciones.find((c) => c.key === "exhaustion");

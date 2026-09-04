@@ -21,3 +21,4 @@ export * from "./inventory.schema";
 export * from "./statblock.schema";
 export * from "./encounter.schema";
 export * from "./attack.schema";
+export * from "./roll-suggestion.schema";

@@ -27,6 +27,22 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## ENTITY_REVEALED también al subir la visibilidad a mano (ficha P1) (2026-09-04)
+
+El único sitio que emitía este suceso era el motor de reglas (`REVEAL_ENTITY`); un DM que sube a
+mano la visibilidad de una ficha —que es como se revela un lugar casi siempre— no dejaba rastro,
+y la cabecera de escena de la mesa (que ya sabe leerlo) nunca se encendía sola.
+`EntitiesService.update` compara el índice del nivel nuevo contra el viejo en `DM_ONLY <
+OWNER_DM < SPECIFIC_PLAYERS < PLAYERS < PUBLIC` —el mismo orden de `canView`— y solo emite
+cuando sube; **bajar la visibilidad no es revelar** y no emite nada. El suceso hereda la
+visibilidad NUEVA de la entidad, y se escribe con `PrismaService.transaction` + el buzón de
+`after-commit.ts`, nunca con `$transaction`.
+
+**Probado.** Unitarias del servicio (con `transaction` mockeado) y `entities.e2e-spec.ts`: sube
+y no emite al bajar; un jugador que no puede ver la ficha tampoco ve el suceso.
+
+**Cómo revertir.** `git revert` del commit; no toca esquema.
+
 ## B0 — los tokens por canales y el tercer tema (2026-09-04)
 
 **Por qué.** El reseño de la mesa decidió sustituir la interfaz por la maqueta de `prototipo/`,

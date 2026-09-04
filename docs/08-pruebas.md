@@ -187,7 +187,7 @@ en verde.
 | Suite | Qué demuestra |
 |---|---|
 | `campaigns` | Quien crea una campaña queda como DM; leerla y editarla exige el papel correcto; **borrar una campaña se lleva en cascada todo lo que cuelga de ella**, y eso se comprueba **contando filas de verdad** en cada tabla, no fiándose del 200. Cada tabla nueva del proyecto se añade aquí: una que falte es un huérfano que no avisa. |
-| `entities` | El listado se filtra por visibilidad para el jugador; el cuerpo Markdown se guarda y vuelve idéntico; se rechaza un formato que no es Markdown y un texto desmesurado. |
+| `entities` | El listado se filtra por visibilidad para el jugador; el cuerpo Markdown se guarda y vuelve idéntico; se rechaza un formato que no es Markdown y un texto desmesurado. **Subir la visibilidad a mano emite `ENTITY_REVEALED`** y el jugador lo ve en su línea de tiempo; bajarla no emite nada; y un jugador que no puede ver la ficha tampoco ve el suceso (ficha P1, 2026-09-04). |
 | `links` | Enlazar dos fichas, rechazar el enlace de una consigo misma, y que **el jugador solo vea los enlaces cuyo destino puede ver**. |
 | `comments` | Comentar una ficha visible; **no se puede comentar una `DM_ONLY`**. |
 | `sessions` | El DM crea sesiones; el jugador no; el listado se filtra por visibilidad. |

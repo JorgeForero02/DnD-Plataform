@@ -1,10 +1,26 @@
 import { ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
+import { CreateEntityInput, UpdateEntityInput, EntityType, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
 import { WorldStateService } from "../world-state/world-state.service";
+import { GameEventsService } from "../game-events/game-events.service";
+
+// **El orden de "quién puede ver algo", de menos a más gente** — es el mismo orden en el que
+// `docs/06-pendientes.md` (ficha P1) y `common/visibility.ts` describen los cinco niveles:
+// `DM_ONLY` no lo ve nadie más que el DM; `OWNER_DM` suma al creador; `SPECIFIC_PLAYERS` suma a
+// una lista con nombre, que puede tener más de un jugador pero no todos; `PLAYERS` ya los
+// alcanza a todos; `PUBLIC` es el techo. Cada nivel es un superconjunto estricto de audiencia
+// sobre el anterior, así que el índice en este array sirve para comparar "sube" / "baja" sin
+// reimplementar la matriz de `canView`.
+const ORDEN_DE_VISIBILIDAD: Visibility[] = [
+  "DM_ONLY",
+  "OWNER_DM",
+  "SPECIFIC_PLAYERS",
+  "PLAYERS",
+  "PUBLIC",
+];
 
 @Injectable()
 export class EntitiesService {
@@ -12,6 +28,7 @@ export class EntitiesService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: EventEmitter2,
+    private readonly gameEvents: GameEventsService,
     /**
      * Opcional para no romper las unitarias que montan este servicio a mano. En la aplicación
      * real siempre está: `EntitiesModule` importa `WorldStateModule`, que lo exporta.
@@ -147,7 +164,7 @@ export class EntitiesService {
 
   async update(userId: string, campaignId: string, entityId: string, input: UpdateEntityInput) {
     await this.membership.requireMember(campaignId, userId);
-    await this.requireEditable(userId, campaignId, entityId);
+    const before = await this.requireEditable(userId, campaignId, entityId);
     const { specificPlayerIds, ...rest } = input;
     const data: Record<string, unknown> = {};
     if (rest.type !== undefined) data.type = rest.type;
@@ -165,11 +182,46 @@ export class EntitiesService {
           });
         }
       }
-      return tx.entity.update({
+      const entity = await tx.entity.update({
         where: { id: entityId },
         data,
         include: { grants: true },
       });
+
+      // **Ficha P1 de `docs/06-pendientes.md`.** El único sitio que emitía `ENTITY_REVEALED` era
+      // el motor de reglas (`REVEAL_ENTITY`); un DM que sube a mano la visibilidad de una ficha
+      // —que es como se revela un lugar casi siempre— no dejaba ningún rastro, y la cabecera de
+      // escena de la mesa (que lee estos sucesos) nunca se encendía sola.
+      //
+      // **Bajar la visibilidad NO es revelar** y no emite nada: `ORDEN_DE_VISIBILIDAD` compara
+      // los dos índices y solo dispara cuando el nuevo es estrictamente mayor que el anterior.
+      // Ocultar una ficha que ya se había enseñado no es un suceso de "revelación" — sería
+      // mentir sobre lo que acaba de pasar.
+      //
+      // **El suceso hereda la visibilidad NUEVA de la entidad**, nunca la vieja ni un valor fijo.
+      // Un suceso que anuncia "esto se reveló" no puede ser más secreto que la propia cosa
+      // revelada —entonces nadie que ahora puede ver la ficha vería el aviso—, ni más público:
+      // si la ficha subió solo a `SPECIFIC_PLAYERS`, el resto de la mesa sigue sin enterarse de
+      // que existe, y el suceso tiene que respetar exactamente esa misma frontera.
+      const subioLaVisibilidad =
+        rest.visibility !== undefined &&
+        ORDEN_DE_VISIBILIDAD.indexOf(entity.visibility) >
+          ORDEN_DE_VISIBILIDAD.indexOf(before.visibility);
+      if (subioLaVisibilidad) {
+        await this.gameEvents.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "campaign",
+            subjectId: entity.id,
+            visibility: entity.visibility,
+            payload: { type: "ENTITY_REVEALED", entityName: entity.name },
+          },
+          tx,
+        );
+      }
+
+      return entity;
     });
   }
 

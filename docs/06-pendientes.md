@@ -119,7 +119,17 @@ una lectura del diseño que nadie ha visto. Si es lo primero, se corrige el spec
 cierra sin tocar código.
 
 
-## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
+## ~~P1~~ · ~~Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha~~ (2026-09-04, B1)
+
+**CERRADA el 2026-09-04.** `EntitiesService.update` emite `ENTITY_REVEALED` con el `entityName`
+cuando la visibilidad **sube** —comparando el índice de `DM_ONLY < OWNER_DM < SPECIFIC_PLAYERS <
+PLAYERS < PUBLIC`, el mismo orden de `canView`—, hereda la visibilidad NUEVA de la entidad y se
+escribe con `PrismaService.transaction` + el buzón de `after-commit.ts`. Bajar la visibilidad no
+emite nada. Probado en unitarias (`entities.service.spec.ts`) y e2e (`entities.e2e-spec.ts`, DM
+que sube un lugar y el jugador lo ve en su línea de tiempo; bajarlo no emite; un jugador que no
+puede ver la ficha tampoco ve el suceso). Ver [07-historial.md](./07-historial.md).
+
+<details><summary>Texto original de la ficha, para quien llegue por un enlace viejo</summary>
 
 **Encontrado al construir la cabecera de escena, y tumba media premisa del reseño.** El §5 del
 [reseño de la mesa](./superpowers/specs/2026-09-03-reseno-de-la-mesa-design.md) dice que la
@@ -140,6 +150,8 @@ día que el suceso exista** y no hay que tocar la pantalla.
 Mientras tanto la cabecera de escena manda el título de la sesión, que sí existe siempre, y el
 lugar aparece solo cuando de verdad lo hay. **No se inventa un nombre**: es lo que la maqueta hacía
 y lo que [04-convenciones.md](./04-convenciones.md) prohíbe al adoptarla.
+
+</details>
 
 ## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 

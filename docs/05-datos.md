@@ -338,6 +338,20 @@ que `effective-speed.ts`— que reduce un daño bruto por esos modificadores y d
 Se engancha al `POST .../hp` existente: con `damageType` en el cuerpo, reduce antes de aplicar;
 sin él, el comportamiento no cambia.
 
+## `ENTITY_REVEALED` también nace de subir la visibilidad a mano (2026-09-04, ficha P1)
+
+Hasta ahora el único sitio que emitía `ENTITY_REVEALED` era el motor de reglas (efecto
+`REVEAL_ENTITY`). `EntitiesService.update` lo emite también cuando **sube** la visibilidad de
+una ficha, que es como se revela un lugar casi siempre en la mesa. «Sube» se define comparando
+el índice en `DM_ONLY < OWNER_DM < SPECIFIC_PLAYERS < PLAYERS < PUBLIC` —el mismo orden que
+`canView` (`apps/api/src/common/visibility.ts`) implementa de facto: cada nivel es un
+superconjunto estricto de audiencia sobre el anterior. Bajar la visibilidad **no** es revelar y
+no emite nada. El suceso hereda la visibilidad **nueva** de la entidad (no la vieja, ni un valor
+fijo): un aviso de revelación no puede ser más secreto que la cosa revelada, ni más público que
+ella. Se escribe dentro de la misma `PrismaService.transaction` que el `UPDATE`, así que llega al
+buzón de `after-commit.ts` y se emite tras el *commit*, igual que cualquier otro evento acoplado a
+un cambio.
+
 ## Editar y borrar campañas; expulsar y salir (tarea 1.17a)
 
 Tres endpoints nuevos en `apps/api/src/campaigns/campaigns.controller.ts`, los tres exigen

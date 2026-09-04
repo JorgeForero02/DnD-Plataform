@@ -121,4 +121,80 @@ describe("Entities visibility (e2e)", () => {
     expect(fetched.status).toBe(200);
     expect(fetched.body.body).toEqual(body);
   });
+
+  // Ficha P1 de docs/06-pendientes.md — hasta ahora el único sitio que emitía ENTITY_REVEALED
+  // era el motor de reglas; un DM que sube a mano la visibilidad de una ficha no dejaba rastro,
+  // y la cabecera de escena de la mesa (que lee este suceso) nunca se encendía sola.
+  it("subir la visibilidad de una ficha a mano emite ENTITY_REVEALED y el jugador lo ve en su línea de tiempo", async () => {
+    const s = app.getHttpServer();
+    const created = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "LOCATION", name: "El Puerto Viejo", visibility: "DM_ONLY" });
+    expect(created.status).toBe(201);
+    const entityId = created.body.id;
+
+    const raised = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${entityId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ visibility: "PLAYERS" });
+    expect(raised.status).toBe(200);
+
+    const plEvents = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(plEvents.status).toBe(200);
+    const revealed = plEvents.body.events.find(
+      (e: any) => e.type === "ENTITY_REVEALED" && e.subjectId === entityId,
+    );
+    expect(revealed).toBeDefined();
+    expect(revealed.payload).toEqual({ type: "ENTITY_REVEALED", entityName: "El Puerto Viejo" });
+  });
+
+  it("bajar la visibilidad NO emite ENTITY_REVEALED", async () => {
+    const s = app.getHttpServer();
+    const created = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "LOCATION", name: "La Torre Caída", visibility: "PLAYERS" });
+    const entityId = created.body.id;
+
+    const lowered = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${entityId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ visibility: "DM_ONLY" });
+    expect(lowered.status).toBe(200);
+
+    const dmEvents = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const revealed = dmEvents.body.events.find(
+      (e: any) => e.type === "ENTITY_REVEALED" && e.subjectId === entityId,
+    );
+    expect(revealed).toBeUndefined();
+  });
+
+  it("un jugador que no puede ver la ficha tampoco ve el suceso de su revelación", async () => {
+    const s = app.getHttpServer();
+    const created = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "LOCATION", name: "Secreto de otro jugador", visibility: "DM_ONLY" });
+    const entityId = created.body.id;
+
+    // Sube a OWNER_DM: solo la ve el DM y su creador, no el jugador de la prueba.
+    const raised = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${entityId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ visibility: "OWNER_DM" });
+    expect(raised.status).toBe(200);
+
+    const plEvents = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const revealed = plEvents.body.events.find(
+      (e: any) => e.type === "ENTITY_REVEALED" && e.subjectId === entityId,
+    );
+    expect(revealed).toBeUndefined();
+  });
 });

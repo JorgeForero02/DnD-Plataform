@@ -462,13 +462,21 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   // (staleTime 0) before the assertions below run, hiding exactly the error state under test.
   it("treats a failed members fetch as 'still checking', not 'no permission', and offers a retry", async () => {
     useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
-    const fetchMembers = vi
-      .spyOn(membersApi, "fetchMembers")
-      .mockRejectedValueOnce(new Error("network error"))
-      .mockResolvedValueOnce([
+    // **Falla mientras se le diga que falle, no «la primera vez».** Con `mockRejectedValueOnce`
+    // esta prueba dependía de **cuántos observadores** montaran la consulta de miembros, y B5 lo
+    // rompió al pedirlos también en el resumen: la primera petición se la comía el tablero, y
+    // TanStack reintenta al montar un observador nuevo sobre una consulta en error, así que el
+    // botón salía habilitado sin que nadie pulsara «Reintentar». Lo que la prueba defiende —que
+    // un fallo se lee como «comprobando» y nunca como «no eres el DM»— no cambió; lo que era
+    // frágil era atarlo a un número de llamadas.
+    let falla = true;
+    const fetchMembers = vi.spyOn(membersApi, "fetchMembers").mockImplementation(async () => {
+      if (falla) throw new Error("network error");
+      return [
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "p1", displayName: "P", role: "PLAYER" },
-      ]);
+      ];
+    });
 
     renderPage();
 
@@ -487,10 +495,13 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     ).not.toBeInTheDocument();
 
     const retryButton = within(invitePanel).getByRole("button", { name: "Reintentar" });
+    const llamadasAntes = fetchMembers.mock.calls.length;
+    falla = false;
     fireEvent.click(retryButton);
 
     await waitFor(() => expect(generateButton).not.toBeDisabled());
-    expect(fetchMembers).toHaveBeenCalledTimes(2);
+    // Que el reintento **pide de verdad**, sin fijar cuántas veces se pidió antes.
+    expect(fetchMembers.mock.calls.length).toBeGreaterThan(llamadasAntes);
   });
 
   // Fix round 1 (post-1.18b review), Important 8: CHECKING_PERMISSIONS ("Comprobando
@@ -1014,14 +1025,24 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   it('"Expulsar" se ofrece al DM', async () => {
     asDM();
     await renderAjustes();
-    await screen.findByText("Jugadora");
+    // Se busca **dentro de la lista de miembros**: el nombre de quien ha iniciado sesión sale
+    // también en la cabecera, así que «Jugadora» a secas es ambiguo. Pasaba por una carrera —los
+    // miembros llegaban después de la primera consulta— y B5 la deshizo al pedirlos ya en el
+    // resumen.
+    const miembros = await screen.findByRole("list", { name: "Miembros de la campaña" });
+    await within(miembros).findByText("Jugadora");
     expect(await screen.findByRole("button", { name: "Expulsar" })).toBeInTheDocument();
   });
 
   it('un jugador no ve "Expulsar", y ve "Salir de la campaña" en su lugar', async () => {
     asPlayer();
     await renderAjustes();
-    await screen.findByText("Jugadora");
+    // Se busca **dentro de la lista de miembros**: el nombre de quien ha iniciado sesión sale
+    // también en la cabecera, así que «Jugadora» a secas es ambiguo. Pasaba por una carrera —los
+    // miembros llegaban después de la primera consulta— y B5 la deshizo al pedirlos ya en el
+    // resumen.
+    const miembros = await screen.findByRole("list", { name: "Miembros de la campaña" });
+    await within(miembros).findByText("Jugadora");
     expect(screen.queryByRole("button", { name: "Expulsar" })).not.toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Salir de la campaña" })).toBeInTheDocument();
   });
@@ -1029,7 +1050,12 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   it('el DM no ve "Salir de la campaña": ve el motivo que da el servidor', async () => {
     asDM();
     await renderAjustes();
-    await screen.findByText("Jugadora");
+    // Se busca **dentro de la lista de miembros**: el nombre de quien ha iniciado sesión sale
+    // también en la cabecera, así que «Jugadora» a secas es ambiguo. Pasaba por una carrera —los
+    // miembros llegaban después de la primera consulta— y B5 la deshizo al pedirlos ya en el
+    // resumen.
+    const miembros = await screen.findByRole("list", { name: "Miembros de la campaña" });
+    await within(miembros).findByText("Jugadora");
     expect(screen.queryByRole("button", { name: "Salir de la campaña" })).not.toBeInTheDocument();
     expect(
       screen.getByText("El DM no puede salir de su propia campaña; bórrala."),

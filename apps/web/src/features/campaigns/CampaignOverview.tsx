@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "./hooks";
+import { nombrePapel, useMembers } from "./members";
 import { useAllEntities } from "../entities/hooks";
 import { useSessions } from "../sessions/hooks";
 import type { Session } from "../sessions/api";
@@ -73,7 +74,15 @@ const TIPOS_DEL_MUNDO: EntityType[] = [
 // tarjeta de lo que la tarjeta dice.
 function TarjetaDelTablero({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-radius-sm border border-muted bg-surface">
+    // **`aria-label` con el rótulo**: un `<section>` sin nombre accesible no es una región, es un
+    // genérico — el rótulo se ve pero no se anuncia, así que quien navega por regiones se
+    // encuentra tres cajas indistinguibles. Con nombre, «Quién juega» y «Quién está en la mesa»
+    // se distinguen sin leerlas, que es justo lo que hace falta cuando son parecidas y dicen
+    // cosas distintas: una son personas y la otra personajes.
+    <section
+      aria-label={rotulo}
+      className="overflow-hidden rounded-radius-sm border border-muted bg-surface"
+    >
       <header className="border-b border-muted px-s4 py-s2">
         <p className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
           {rotulo}
@@ -101,6 +110,7 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
   const { data: entidades } = useAllEntities(campaignId);
   const { data: sesiones } = useSessions(campaignId);
   const { data: personajes } = useCharacters(campaignId);
+  const { data: miembros } = useMembers(campaignId);
 
   // Leído una vez, al montar, y no en cada render: «la próxima sesión» no puede moverse bajo
   // el lector porque algo ajeno haya vuelto a renderizar.
@@ -217,6 +227,43 @@ export function CampaignOverview({ campaignId }: { campaignId: string }) {
               </>
             ) : (
               <p className="font-chrome text-chrome-sm text-muted">Ninguna en el calendario.</p>
+            )}
+          </TarjetaDelTablero>
+
+          {/* **Quién JUEGA, que no es lo mismo que qué personajes hay** — y esta pantalla
+              prometía «quién está» enseñando solo lo segundo. Un DM que acaba de crear la
+              campaña ve tres personajes suyos y cero pistas de que no ha invitado a nadie.
+              Es lo último que quedaba del reseño: la invitación **ya estaba construida, con su
+              recorrido de dos navegadores; lo que le faltaba era su sitio**. Vivía en Ajustes,
+              la última de seis secciones, y es de lo primero que se hace con una campaña nueva. */}
+          <TarjetaDelTablero rotulo="Quién juega">
+            {miembros && miembros.length > 0 ? (
+              <ul className="space-y-1">
+                {miembros.map((m) => (
+                  <li key={m.userId} className="flex items-baseline gap-s2">
+                    <span className="min-w-0 flex-1 truncate font-chrome text-chrome-sm text-text">
+                      {m.displayName}
+                    </span>
+                    <span className="shrink-0 font-data text-chrome-xs text-copper-text">
+                      {nombrePapel(m.role)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="font-chrome text-chrome-sm text-muted">Cargando…</p>
+            )}
+            {miembros && !miembros.some((m) => m.role !== "DM") && (
+              <p className="mt-s2 font-chrome text-chrome-sm text-muted">
+                Todavía no hay jugadores.{" "}
+                <Link
+                  to={{ search: "?seccion=settings" }}
+                  className="text-accent-text hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  Invitar a un jugador
+                </Link>
+                .
+              </p>
             )}
           </TarjetaDelTablero>
 

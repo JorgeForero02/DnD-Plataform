@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { DeleteButton } from "../../components/DeleteButton";
 import { useAuthStore } from "../../store/auth.store";
 import { useRemoveMember } from "./hooks";
-import { useMembers, useMyRole } from "./members";
+import { nombrePapel, useMembers, useMyRole } from "./members";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "./PermissionStatus";
 import { Panel } from "../../ui/Panel";
 
@@ -83,7 +83,12 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
       {roleError && <RetryPermissions onRetry={retryRole} />}
       {isLoading && <p className="mt-2 text-muted">Cargando…</p>}
       {isError && <p className="mt-2 text-danger-text">{(error as Error).message}</p>}
-      <ul className="mt-2 space-y-2">
+      {/* **La lista tiene nombre.** Sin él es un `list` anónimo, y el nombre de quien ha iniciado
+          sesión sale también en la cabecera: dos elementos con el mismo texto en la pantalla y
+          ninguna forma de decir a cuál te refieres. Lo destapó B5 sin querer — el resumen pasó a
+          pedir los miembros, así que llegan antes y la ambigüedad, que ya existía, dejó de
+          esconderse detrás de una carrera. */}
+      <ul aria-label="Miembros de la campaña" className="mt-2 space-y-2">
         {members?.map((m) => (
           <li
             key={m.userId}
@@ -91,9 +96,7 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
           >
             <span>
               {m.displayName}{" "}
-              <span className="text-chrome-xs text-muted">
-                ({m.role === "DM" ? "DM" : "Jugador"})
-              </span>
+              <span className="text-chrome-xs text-muted">({nombrePapel(m.role)})</span>
             </span>
             {/* Fix round 3, MINOR E (corrects a wrong claim from fix round 2): the render
                 gate stays isDM-only — a confirmed non-DM never sees a permanently disabled

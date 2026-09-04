@@ -5,6 +5,19 @@ import { useAuthStore } from "../../store/auth.store";
 // keeping it spyable in tests (same reason api.ts/hooks.ts are split elsewhere).
 import * as membersApi from "./members";
 
+/**
+ * El papel, como se lee en la mesa. **Una sola vez**, que es la regla: ningún valor de
+ * enumeración llega a la pantalla, y su forma legible se escribe una vez por dominio.
+ *
+ * Estaba escrito a mano dentro de `MembersPanel` (`m.role === "DM" ? "DM" : "Jugador"`), y en
+ * cuanto una segunda pantalla lo necesitó había dos copias — que es exactamente como se separan.
+ */
+export const NOMBRE_PAPEL: Record<string, string> = { DM: "DM", PLAYER: "Jugador" };
+
+export function nombrePapel(role: string): string {
+  return NOMBRE_PAPEL[role] ?? role;
+}
+
 export interface Member {
   userId: string;
   displayName: string;

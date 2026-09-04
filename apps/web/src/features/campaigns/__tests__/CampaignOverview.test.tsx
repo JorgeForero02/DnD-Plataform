@@ -7,6 +7,7 @@ import * as campaignsApi from "../api";
 import * as entitiesApi from "../../entities/api";
 import * as sessionsApi from "../../sessions/api";
 import * as charactersApi from "../../characters/api";
+import * as members from "../members";
 
 // **El resumen como tablero (maqueta de Figma, 2026-09-02).**
 //
@@ -63,6 +64,9 @@ describe("CampaignOverview — el tablero de la campaña", () => {
     vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
     vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);
     vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: "u1", displayName: "Ada", role: "DM" },
+    ]);
   });
 
   it("pinta la última sesión jugada con sus notas, no la que aún no ha ocurrido", async () => {
@@ -230,5 +234,76 @@ describe("CampaignOverview — el tablero de la campaña", () => {
     for (const rotulo of rotulos) {
       expect(rotulo).not.toMatch(/NPC|LOCATION|QUEST|FACTION|OBJECT|EVENT|DOCUMENT/);
     }
+  });
+});
+
+// **La invitación, en su sitio.** Es lo último que quedaba del reseño: el flujo ya estaba
+// construido —con su recorrido de dos navegadores— y vivía en Ajustes, la última de seis
+// secciones, cuando invitar es de lo primero que se hace con una campaña nueva.
+describe("CampaignOverview — quién juega", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Las Mareas de Sarnath",
+      description: null,
+      ownerId: "u1",
+      createdAt: "2026-01-01",
+    });
+    vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
+    vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+  });
+
+  it("con solo el DM lo dice y ofrece invitar, en un clic", async () => {
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: "u1", displayName: "Ada", role: "DM" },
+    ]);
+    renderOverview();
+
+    const tarjeta = await screen.findByRole("region", { name: "Quién juega" });
+    // Se espera al CONTENIDO, no al contenedor: la región existe desde el primer pintado y
+    // los miembros llegan después.
+    expect(await within(tarjeta).findByText("Ada")).toBeInTheDocument();
+    expect(within(tarjeta).getByText("DM")).toBeInTheDocument();
+    expect(within(tarjeta).getByText(/Todavía no hay jugadores/)).toBeInTheDocument();
+    expect(within(tarjeta).getByRole("link", { name: "Invitar a un jugador" })).toHaveAttribute(
+      "href",
+      "/campaigns/c1?seccion=settings",
+    );
+  });
+
+  it("con un jugador dentro, ni el aviso ni el enlace: ya no hay nada que resolver", async () => {
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: "u1", displayName: "Ada", role: "DM" },
+      { userId: "u2", displayName: "Marco", role: "PLAYER" },
+    ]);
+    renderOverview();
+
+    const tarjeta = await screen.findByRole("region", { name: "Quién juega" });
+    expect(await within(tarjeta).findByText("Marco")).toBeInTheDocument();
+    // **El papel traducido, nunca la clave.** `PLAYER` no llega a la pantalla.
+    expect(within(tarjeta).getByText("Jugador")).toBeInTheDocument();
+    expect(within(tarjeta).queryByText("PLAYER")).not.toBeInTheDocument();
+    expect(within(tarjeta).queryByText(/Todavía no hay jugadores/)).not.toBeInTheDocument();
+  });
+
+  it("«quién juega» son PERSONAS y «quién está en la mesa» son PERSONAJES: dos tarjetas distintas", async () => {
+    // La pantalla prometía «quién está» y solo enseñaba personajes. Un DM que acaba de crear la
+    // campaña veía tres personajes suyos y ninguna pista de que no había invitado a nadie.
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: "u1", displayName: "Ada", role: "DM" },
+    ]);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([
+      { ...PERSONAJE_BASE, id: "ch1", name: "Corvin", level: 5 },
+    ] as never);
+    renderOverview();
+
+    const juegan = await screen.findByRole("region", { name: "Quién juega" });
+    await within(juegan).findByText("Ada");
+    const enLaMesa = await screen.findByRole("region", { name: "Quién está en la mesa" });
+    expect(within(juegan).queryByText("Corvin")).not.toBeInTheDocument();
+    expect(within(enLaMesa).getByText("Corvin")).toBeInTheDocument();
+    expect(within(enLaMesa).queryByText("Ada")).not.toBeInTheDocument();
   });
 });

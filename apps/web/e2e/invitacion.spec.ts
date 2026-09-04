@@ -93,7 +93,20 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // "Ajustes" y no en la primera sección — el resumen dejó de ser un formulario de
   // administración y pasó a decir qué ocurre en la mesa.
   await dmPage.getByRole("link", { name: "La Mina Perdida de Phandelver" }).click();
-  await dmPage.getByRole("tab", { name: "Ajustes" }).click();
+
+  // **Se llega a la invitación desde el resumen, en un clic**, que es el último trozo que le
+  // faltaba al reseño: el flujo estaba construido y su sitio era Ajustes, la última de seis
+  // secciones, cuando invitar es de lo primero que se hace con una campaña nueva. El resumen
+  // ahora dice que no hay jugadores —cosa que antes no decía: enseñaba personajes, que no es lo
+  // mismo— y lleva ahí directamente.
+  // La miga de una ficha vuelve a `?seccion=<TIPO>`, o sea a «El mundo» y no al resumen: se
+  // sale de una ficha a la lista de la que salió, que es lo correcto. Así que aquí se abre el
+  // resumen a propósito.
+  await dmPage.getByRole("tab", { name: "Resumen" }).click();
+  const quienJuega = dmPage.getByRole("region", { name: "Quién juega" });
+  await expect(quienJuega).toContainText("Todavía no hay jugadores", { timeout: 10_000 });
+  await quienJuega.getByRole("link", { name: "Invitar a un jugador" }).click();
+  await expect(dmPage.getByRole("tab", { name: "Ajustes", selected: true })).toBeVisible();
   await dmPage.getByRole("button", { name: "Generar invitación" }).click();
 
   // Leer el enlace DE LA PANTALLA, no construirlo a mano: si se construyera con el token
@@ -215,6 +228,15 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await dmPage.getByRole("button", { name: "Guardar" }).click();
   await expect(dmPage.getByRole("heading", { name: "Nueva sesión" })).toBeHidden();
   await expect(dmPage.getByRole("button", { name: /Sesión de prueba del DM/ })).toBeVisible();
+
+  // **Y con el jugador dentro, el resumen deja de pedirlo.** Es la otra mitad del aviso: si
+  // siguiera ahí después de invitar, sería un cartel que no se apaga nunca.
+  await dmPage.getByRole("tab", { name: "Resumen" }).click();
+  const quienJuegaDespues = dmPage.getByRole("region", { name: "Quién juega" });
+  await expect(quienJuegaDespues).toContainText("Jugador", { timeout: 10_000 });
+  await expect(quienJuegaDespues).not.toContainText("Todavía no hay jugadores");
+  // Y el papel traducido, nunca la clave.
+  await expect(quienJuegaDespues).not.toContainText("PLAYER");
 
   await dmContext.close();
   await playerContext.close();

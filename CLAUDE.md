@@ -15,8 +15,13 @@ de `Character`**—, con su pestaña «Bestiario». **No es** mapas, tiempo real
 posteriores, y la **fase 3 ya tiene su alcance escrito**
 ([spec](docs/superpowers/specs/2026-09-03-fase-3-alcance-design.md)).
 
-**La fase 2 está entera y desplegada.** Lo único que le falta es usarse: la partida de prueba con
-dos cuentas de jugador.
+**La fase 2 está entera y desplegada. La 2.5 está entera y NO desplegada** — encuentros, daño con
+traza, condiciones en las tiradas y el combate en la mesa se cerraron en local el 2026-09-04, y
+producción sigue en lo que se subió el 2026-09-02. **Local va por delante de `dnd.supportive.pro`,
+y se queda así hasta que el autor pida desplegar.**
+
+Lo que le falta a las dos es usarse: **la partida de prueba con dos cuentas de jugador**. Y del
+reseño de la mesa queda el último bloque: invitación, entrada, cuenta y 404.
 
 > Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
 > falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que

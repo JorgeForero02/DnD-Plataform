@@ -153,6 +153,36 @@ fallo de english-log que `08-pruebas.md` cuenta.
 **Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
 a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
 
+## B3 — la puerta de entrada deja de ser una lista de proyectos (2026-09-04)
+
+**Por qué.** *«Esto es un juego, una plataforma web, no una página web que hay que navegar para
+saber cosas»* — el diagnóstico del autor, y la pantalla de entrada era el ejemplo: una rejilla de
+tarjetas bien hecha que decía nombre, miembros y fecha, y no decía lo único que importa al abrir la
+aplicación un martes por la noche, que es **dónde retomas**.
+
+**Qué entra.** «Tus crónicas»: la lista a la izquierda, la crónica elegida abierta a la derecha, y
+**la acción principal es «Entrar a la mesa»**, no abrir los ajustes de la campaña. La mesa era el
+único destino que no estaba en la navegación, y ahora está a un clic de la puerta.
+
+**Elegir y entrar son dos gestos distintos**, y eso es lo que se mide: elegir una crónica **no
+navega** —se puede mirar sin entrar, que es lo que se hace con tres campañas y mala memoria—, y
+entrar sí, y va a la mesa.
+
+**El rótulo cambió en veinte recorridos y cinco migajas.** «Mis campañas» era la señal de «has
+entrado» de casi toda la suite. Se renombró en todos: un nombre a medias es peor que cualquiera de
+los dos enteros.
+
+**Lo que todavía no puede decir, declarado en vez de inventado:** «dónde se quedó» de verdad —la
+crónica de la última sesión cerrada— no viaja en el listado de campañas, y pedirla por campaña
+serían N peticiones en la pantalla de entrada. Se enseña la descripción, y queda ficha. **No se
+inventa un resumen**: una tarjeta sin dato detrás es lo que las convenciones prohíben al adoptar la
+maqueta.
+
+**Evidencia.** 819 unitarias de web; 103 recorridos. Mutación: apuntar «Entrar a la mesa» al taller
+deja el recorrido rojo.
+
+**Revertir:** un commit. `DashboardPage` vuelve a montar `CampaignList`, que se conserva intacto.
+
 ## B1.3 — el estrato superpuesto: la mesa deja de tener tres columnas fijas (2026-09-04)
 
 **Por qué.** El §4 del reseño reparte la pantalla en tres estratos, y el argumento sale del mapa de

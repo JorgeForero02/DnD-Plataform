@@ -50,7 +50,7 @@ export function CharacterDetailPage() {
 
   const header = <AppHeader userName={user?.displayName} onLogout={logout} />;
   const migas = [
-    { label: "Mis campañas", to: "/" },
+    { label: "Tus crónicas", to: "/" },
     { label: campaign?.name ?? "Campaña", to: `/campaigns/${id}?seccion=characters` },
   ];
 

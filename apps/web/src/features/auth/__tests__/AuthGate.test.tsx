@@ -33,7 +33,7 @@ describe("AuthGate — real app topology", () => {
     vi.spyOn(authApi, "fetchMe").mockReturnValue(new Promise(() => {})); // never resolves
     vi.spyOn(campaignsApi, "fetchCampaigns").mockResolvedValue([]);
     renderApp();
-    expect(screen.getByRole("heading", { name: "Mis campañas" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tus crónicas" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
   });
 
@@ -48,6 +48,6 @@ describe("AuthGate — real app topology", () => {
     renderApp();
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     // Not just present in the DOM somewhere: it's what the screen actually shows.
-    expect(screen.queryByRole("heading", { name: "Mis campañas" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Tus crónicas" })).not.toBeInTheDocument();
   });
 });

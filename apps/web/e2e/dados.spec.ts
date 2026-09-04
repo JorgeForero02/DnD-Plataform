@@ -29,7 +29,7 @@ async function registrarse(page: Page) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   return cuenta;
 }
 

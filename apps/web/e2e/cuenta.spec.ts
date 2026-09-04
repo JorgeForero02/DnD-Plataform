@@ -28,7 +28,7 @@ async function registrarse(page: Page, cuenta: ReturnType<typeof nuevaCuenta>) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 }
 
 test("cambiar la contraseña invalida el token viejo de verdad, contra la API real", async ({
@@ -70,12 +70,12 @@ test("cambiar la contraseña invalida el token viejo de verdad, contra la API re
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).not.toBeVisible();
 
   // And the new one really works.
   await page.getByLabel("Contraseña").fill(nuevaPassword);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 });
 
 test("la contraseña actual equivocada no cambia nada y no cierra la sesión", async ({ page }) => {
@@ -110,7 +110,7 @@ test("una ruta inventada muestra la pantalla 404 con un camino de vuelta, no una
   await expect(page.getByText("/esto-no-existe-en-ninguna-parte")).toBeVisible();
 
   await page.getByRole("button", { name: "Volver a mis campañas" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 });
 
 // Fix round 1 (post-1.18b review), Important 12: /campaigns/:id matches ANY segment —

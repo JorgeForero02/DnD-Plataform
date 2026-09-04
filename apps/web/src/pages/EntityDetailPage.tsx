@@ -78,7 +78,7 @@ export function EntityDetailPage() {
   // desde una ficha, el sitio al que quieres volver es la lista donde estaba.
   const volverALaLista = entity ? `/campaigns/${id}?seccion=${entity.type}` : `/campaigns/${id}`;
   const migas = [
-    { label: "Mis campañas", to: "/" },
+    { label: "Tus crónicas", to: "/" },
     { label: campaign?.name ?? "Campaña", to: volverALaLista },
   ];
 

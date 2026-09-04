@@ -26,7 +26,7 @@ async function registrarse(page: Page) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 }
 
 test("el pie se apoya en el borde inferior aunque la pantalla tenga poco contenido", async ({
@@ -110,7 +110,7 @@ test("el conmutador de tema no se pone encima de la navegación de la cabecera",
   page,
 }) => {
   await registrarse(page);
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 
   const tema = await page.getByRole("radiogroup", { name: "Tema" }).boundingBox();
   const nav = await page.getByRole("navigation", { name: "Tu cuenta" }).boundingBox();

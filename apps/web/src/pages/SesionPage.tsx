@@ -21,7 +21,7 @@ export function SesionPage() {
         title="La mesa"
         subtitle="Lo que se mira mientras se juega: quién está, qué pasa y qué hay que consultar."
         crumbs={[
-          { label: "Mis campañas", to: "/" },
+          { label: "Tus crónicas", to: "/" },
           { label: campaign?.name ?? "Campaña", to: `/campaigns/${id}` },
           { label: "La mesa" },
         ]}

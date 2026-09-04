@@ -15,7 +15,7 @@ function renderJoin(initialPath: string, { strict = false } = {}) {
         <Routes>
           <Route path="/join/:token" element={<JoinPage />} />
           <Route path="/campaigns/:campaignId" element={<p>Página de campaña</p>} />
-          <Route path="/" element={<p>Mis campañas</p>} />
+          <Route path="/" element={<p>Tus crónicas</p>} />
           <Route path="/login" element={<p>Página de inicio de sesión</p>} />
         </Routes>
       </MemoryRouter>

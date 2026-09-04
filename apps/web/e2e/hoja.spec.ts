@@ -41,7 +41,7 @@ async function registrarse(page: Page) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   return cuenta;
 }
 
@@ -825,7 +825,7 @@ test("el panel de tirada: la decisión aparece donde se toma, con sus tres frase
 //
 // Existe aquí, y no en `capturas-comparacion.spec.ts`, porque aquel guion recorre la aplicación
 // entera y se cae por cosas ajenas a esta pantalla — el día que se escribió esto, por un enlace
-// «Mis campañas» duplicado en la cabecera. Retratar la hoja no puede depender de eso.
+// «Tus crónicas» duplicado en la cabecera. Retratar la hoja no puede depender de eso.
 test("captura: la hoja de personaje, para comparar con el prototipo", async ({ page }) => {
   test.skip(!process.env.SALIDA_CAPTURAS, "se corre a mano, con SALIDA_CAPTURAS puesto");
   test.setTimeout(120_000);

@@ -35,7 +35,7 @@ async function abrirHoja(page: Page) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 
   await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La cuenta atrás");

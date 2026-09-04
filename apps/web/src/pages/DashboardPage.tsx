@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/auth.store";
-import { CampaignList } from "../features/campaigns/CampaignList";
+import { Cronicas } from "../features/campaigns/Cronicas";
 import { CreateCampaignModal } from "../features/campaigns/CreateCampaignModal";
 import { Button } from "../ui/Button";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
@@ -18,9 +18,15 @@ export function DashboardPage() {
 
   return (
     <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
+      {/* **«Tus crónicas», no «Mis campañas».** Sale del diagnóstico del reseño: esto es un
+          juego, y una campaña es una historia que se retoma, no un proyecto que se administra.
+          El subtítulo dice lo que se hace aquí —elegir dónde seguir—, no lo que la aplicación
+          guarda. El rótulo viejo estaba en veinte recorridos como señal de «has entrado» y en
+          las migajas de cinco pantallas; se renombró en todos, porque un nombre a medias es
+          peor que cualquiera de los dos enteros. */}
       <PageHeader
-        title="Mis campañas"
-        subtitle="Cada campaña guarda su mundo, sus sesiones y sus personajes, con sus propios secretos."
+        title="Tus crónicas"
+        subtitle="Elige dónde retomar la historia. Cada campaña recuerda dónde la dejasteis."
         actions={
           <Button variant="primary" onClick={() => setCreating(true)}>
             {/* El dibujo va dentro del botón, como en la maqueta. Es `aria-hidden`, así que el
@@ -30,7 +36,7 @@ export function DashboardPage() {
           </Button>
         }
       />
-      <CampaignList onCreate={() => setCreating(true)} />
+      <Cronicas onCrear={() => setCreating(true)} />
       {creating && <CreateCampaignModal onClose={() => setCreating(false)} />}
     </AppShell>
   );

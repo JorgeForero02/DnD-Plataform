@@ -12,7 +12,7 @@ function renderLogin() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/join/:token" element={<p>Página de invitación</p>} />
-        <Route path="/" element={<p>Mis campañas</p>} />
+        <Route path="/" element={<p>Tus crónicas</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -55,7 +55,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
     fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    await waitFor(() => expect(screen.getByText("Mis campañas")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Tus crónicas")).toBeInTheDocument());
   });
 
   // Fix round 1 (post-1.19b review): LoginPage.tsx gained role="alert" on the submit-error

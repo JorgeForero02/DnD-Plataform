@@ -42,7 +42,7 @@ async function registrarse(page: Page) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   return cuenta;
 }
 
@@ -69,9 +69,9 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
 
   // Y ahora sí, la lista **con** una campaña dentro.
   // El logotipo de la cabecera lleva `aria-label="Ir a mis campañas"`, así que un
-  // `getByRole("link", { name: "Mis campañas" })` casa con dos: se usa la miga de pan.
-  await page.getByRole("link", { name: "Mis campañas", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  // `getByRole("link", { name: "Tus crónicas" })` casa con dos: se usa la miga de pan.
+  await page.getByRole("link", { name: "Tus crónicas", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   await page.screenshot({ path: `${SALIDA}/n01-mis-campanas.png`, fullPage: true });
   await page.getByRole("link", { name: "Las Mareas de Sarnath" }).click();
   await expect(page.getByRole("heading", { name: "Las Mareas de Sarnath" })).toBeVisible();

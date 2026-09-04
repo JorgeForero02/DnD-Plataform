@@ -667,7 +667,7 @@ export function CampaignDetailPage() {
   if (isError) {
     return (
       <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
-        <PageHeader title="Campaña no disponible" crumbs={[{ label: "Mis campañas", to: "/" }]} />
+        <PageHeader title="Campaña no disponible" crumbs={[{ label: "Tus crónicas", to: "/" }]} />
         <EmptyState title="Esta campaña no existe o no tienes acceso">
           Puede que se haya borrado, que el enlace esté mal, o que no seas miembro de ella.
           Distinguir esos tres casos diría más de lo que debe, así que no se distinguen.
@@ -686,7 +686,7 @@ export function CampaignDetailPage() {
           mirando. Sigue siendo un <h1> —es el nombre del documento, y media docena de
           recorridos de navegador lo buscan como encabezado— pero pesa lo que pesa un marco. */}
       <header className="mb-s4">
-        <Breadcrumbs items={[{ label: "Mis campañas", to: "/" }]} />
+        <Breadcrumbs items={[{ label: "Tus crónicas", to: "/" }]} />
         <h1 className="mt-1 font-title text-chrome-xl leading-tight text-text">
           {isLoading ? "Cargando…" : (campaign?.name ?? "")}
         </h1>

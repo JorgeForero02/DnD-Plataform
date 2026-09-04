@@ -18,7 +18,7 @@ async function registrarse(page: Page, prefijo: string) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   return cuenta;
 }
 
@@ -112,7 +112,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   ).toBeVisible();
   await expect(dmPage.getByText(/consume el enlace/)).toBeVisible();
   await dmPage.getByRole("link", { name: "Cancelar" }).click();
-  await expect(dmPage.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(dmPage.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 
   // Contexto 2: el jugador. Navegador nuevo, sin la sesión del DM.
   const playerContext = await browser.newContext();

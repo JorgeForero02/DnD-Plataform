@@ -18,7 +18,7 @@ async function registrarse(page: Page) {
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   return cuenta;
 }
 
@@ -358,7 +358,7 @@ test("salir cierra la sesion y la ruta protegida deja de abrirse", async ({ page
   // Volver a la ruta protegida a mano no debe devolver el panel.
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "Mis campañas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toHaveCount(0);
 });
 
 // Task 1.17b · A1: el cuerpo Markdown de una ficha, de punta a punta contra la API real —
@@ -459,7 +459,7 @@ test("filtrar por etiqueta oculta las fichas que no la llevan, y quitar el filtr
 // DM edita el nombre de su campaña y lo ve cambiado en la cabecera; invita a un jugador, que
 // entra y ve la campaña en su lista; el DM lo expulsa desde "Miembros", y el jugador —tras
 // recargar— ya no la ve. El DM crea después una segunda campaña y la borra, comprobando que
-// solo esa desaparece de "Mis campañas" y la primera (ya renombrada) sigue ahí — la misma
+// solo esa desaparece de "Tus crónicas" y la primera (ya renombrada) sigue ahí — la misma
 // exigencia de "no borres lo primero que encuentres" que 1.16 aplicó a las filas de entidad.
 test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, todo desde Ajustes", async ({
   browser,
@@ -554,14 +554,14 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   // servir de comprobación de esa invalidación (ver docs/08-pruebas.md y la entrada de
   // 1.17d en 07-historial.md).
   await playerPage.reload();
-  await expect(playerPage.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(playerPage.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   await expect(
     playerPage.getByRole("link", { name: "La Ciudadela de los Vientos Eternos" }),
   ).toHaveCount(0);
 
   // 5. El DM crea una segunda campaña, la borra, y solo esa desaparece de su lista — la
   // primera (ya renombrada) sigue en pie.
-  await dmPage.getByRole("link", { name: /Mis campañas/ }).click();
+  await dmPage.getByRole("link", { name: /Tus crónicas/ }).click();
   await dmPage.getByRole("button", { name: "Nueva campaña" }).first().click();
   await dmPage.getByLabel("Nombre").fill("El Templo Sumergido");
   await dmPage.getByRole("button", { name: "Crear" }).click();
@@ -581,7 +581,7 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   ).toBeVisible();
   await dmPage.getByRole("button", { name: "Sí, borrar definitivamente" }).click();
 
-  await expect(dmPage.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+  await expect(dmPage.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
   await expect(dmPage.getByRole("link", { name: "El Templo Sumergido" })).toHaveCount(0);
   await expect(
     dmPage.getByRole("link", { name: "La Ciudadela de los Vientos Eternos" }),
@@ -697,4 +697,46 @@ test("la cabecera explicada, el marco de la lista y los accesos rápidos del tab
   const tamTitulo = await tamanoDe(page.getByRole("heading", { name: "Lugares" }));
   const tamCampana = await tamanoDe(page.getByRole("heading", { name: "El Puerto de Sarnath" }));
   expect(tamTitulo).toBeGreaterThan(tamCampana);
+});
+
+// B3 (2026-09-04) — **la puerta de entrada deja de ser una lista de proyectos.**
+//
+// El diagnóstico del reseño, en palabras del autor: *«Esto es un juego, una plataforma web, no una
+// página web que hay que navegar para saber cosas.»* Lo que se mide aquí es de comportamiento, no
+// de aspecto: **elegir y entrar son dos gestos distintos**, y desde la puerta se llega a la mesa
+// de un clic — la mesa era el único destino que no estaba en la navegación.
+test("desde las crónicas se elige una y se entra a la mesa de un clic", async ({ page }) => {
+  await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("La Cripta de los Susurros");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("El Puerto de las Mil Velas");
+  await page.getByRole("button", { name: "Crear" }).click();
+
+  const lista = page.getByRole("list", { name: "Tus crónicas" });
+  await expect(lista.getByRole("button")).toHaveCount(2);
+
+  // **Elegir no navega.** Se puede mirar una crónica sin entrar en ella, que es lo que se hace
+  // cuando tienes tres campañas y no te acuerdas de cuál era cuál.
+  await lista.getByRole("button", { name: "Elegir La Cripta de los Susurros" }).click();
+  expect(page.url()).not.toContain("/campaigns/");
+  const abierta = page.getByRole("region", { name: /La Cripta de los Susurros/ });
+  await expect(abierta).toBeVisible();
+  await expect(abierta).toContainText("La mesa está en reposo");
+  await expect(abierta.getByRole("button", { name: /Elegir/ })).toHaveCount(0);
+
+  // La otra se puede elegir sin salir, y el panel cambia con ella.
+  await lista.getByRole("button", { name: "Elegir El Puerto de las Mil Velas" }).click();
+  await expect(page.getByRole("region", { name: /El Puerto de las Mil Velas/ })).toBeVisible();
+
+  // **Y entrar SÍ navega, y va a la mesa.** No a los ajustes de la campaña: la acción principal
+  // de una crónica es jugarla.
+  await page
+    .getByRole("region", { name: /El Puerto de las Mil Velas/ })
+    .getByRole("link", { name: "Entrar a la mesa" })
+    .click();
+  await expect(page.getByRole("region", { name: "La escena" })).toBeVisible();
+  expect(page.url()).toContain("/sesion");
 });

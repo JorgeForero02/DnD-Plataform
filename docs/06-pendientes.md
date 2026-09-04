@@ -107,6 +107,20 @@ Mientras tanto la cabecera de escena manda el título de la sesión, que sí exi
 lugar aparece solo cuando de verdad lo hay. **No se inventa un nombre**: es lo que la maqueta hacía
 y lo que [04-convenciones.md](./04-convenciones.md) prohíbe al adoptarla.
 
+## P3 · «Dónde se quedó» no viaja en el listado de campañas (2026-09-04, B3)
+
+La pantalla de crónicas quiere decir, por cada campaña, **la crónica de su última sesión cerrada**
+— es lo que la convierte en «partidas guardadas» y no en una lista de proyectos.
+
+`campaigns.service.ts#listForUser` devuelve el papel del espectador y el número de miembros, y nada
+más. Pedirla por campaña serían **N peticiones en la pantalla de entrada**, que es exactamente
+donde no se pueden pagar.
+
+**El arreglo es del carril del motor y es pequeño**: incluir en el listado el `recap` de la última
+sesión `CLOSED` de cada campaña, **filtrado por su visibilidad** —una crónica puede ser `DM_ONLY` y
+entonces el jugador no la ve—. Mientras tanto la pantalla enseña la descripción de la campaña y
+dice qué se leerá ahí cuando exista, en vez de inventarse un resumen.
+
 ## P2 · Un `GameEvent` no tiene concesiones nominales, así que `SPECIFIC_PLAYERS` no llega a nadie (2026-09-04)
 
 **Encontrado por la revisión de cierre de `ENTITY_REVEALED`.** `GameEventsService.canSee` evalúa

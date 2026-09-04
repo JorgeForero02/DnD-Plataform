@@ -9,7 +9,7 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/login" element={<p>Pantalla de login</p>} />
-        <Route path="/" element={<p>Mis campañas</p>} />
+        <Route path="/" element={<p>Tus crónicas</p>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </MemoryRouter>,
@@ -41,6 +41,6 @@ describe("NotFoundPage", () => {
     useAuthStore.setState({ token: "tok", user: { id: "u1", email: "a@a.com", displayName: "A" } });
     renderAt("/una-ruta-inventada");
     fireEvent.click(screen.getByRole("button", { name: "Volver a mis campañas" }));
-    expect(screen.getByText("Mis campañas")).toBeInTheDocument();
+    expect(screen.getByText("Tus crónicas")).toBeInTheDocument();
   });
 });

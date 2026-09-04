@@ -42,7 +42,7 @@ function renderPageWithHome() {
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={["/campaigns/c1"]}>
         <Routes>
-          <Route path="/" element={<h1>Mis campañas</h1>} />
+          <Route path="/" element={<h1>Tus crónicas</h1>} />
           <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
         </Routes>
       </MemoryRouter>
@@ -977,7 +977,7 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     await screen.findByDisplayValue("Curse of Strahd");
     fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, borrar definitivamente" }));
-    expect(await screen.findByRole("heading", { name: "Mis campañas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Tus crónicas" })).toBeInTheDocument();
   });
 
   it("un error del servidor al borrar la campaña se ve en pantalla", async () => {
@@ -1046,7 +1046,7 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Salir de la campaña" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, salir" }));
-    expect(await screen.findByRole("heading", { name: "Mis campañas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Tus crónicas" })).toBeInTheDocument();
   });
 
   // Fix round 1, CRITICAL 1: renderPageWithHome's "/" is a literal <h1> marker with no
@@ -1139,7 +1139,7 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     fireEvent.change(nameInput, { target: { value: "Curse of Strahd (revisada)" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
-    fireEvent.click(await screen.findByRole("link", { name: /Mis campañas/ }));
+    fireEvent.click(await screen.findByRole("link", { name: /Tus crónicas/ }));
 
     await waitFor(() =>
       expect(screen.getByRole("link", { name: "Curse of Strahd (revisada)" })).toBeInTheDocument(),

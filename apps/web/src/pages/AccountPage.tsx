@@ -24,7 +24,7 @@ export function AccountPage() {
   return (
     <div className="min-h-screen bg-bg p-8 text-text">
       <Link to="/" className="text-chrome-sm text-accent-text">
-        &larr; Mis campañas
+        &larr; Tus crónicas
       </Link>
       <h1 className="mt-2 text-chrome-2xl font-bold">Cuenta</h1>
       <div className="mt-4 flex max-w-sm flex-col gap-4">

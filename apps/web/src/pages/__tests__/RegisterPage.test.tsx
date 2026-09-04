@@ -12,7 +12,7 @@ function renderRegister() {
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/join/:token" element={<p>Página de invitación</p>} />
-        <Route path="/" element={<p>Mis campañas</p>} />
+        <Route path="/" element={<p>Tus crónicas</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -55,7 +55,7 @@ describe("RegisterPage", () => {
     fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "password123" } });
     fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
-    await waitFor(() => expect(screen.getByText("Mis campañas")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Tus crónicas")).toBeInTheDocument());
   });
 
   // Fix round 1 (post-1.19b review): same gap as LoginPage.test.tsx — RegisterPage.tsx gained

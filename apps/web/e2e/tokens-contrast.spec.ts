@@ -481,7 +481,7 @@ for (const theme of ["dark", "light", "reading"] as const) {
     await page.getByLabel("Correo").fill(cuenta.email);
     await page.getByLabel("Contraseña").fill(cuenta.password);
     await page.getByRole("button", { name: "Crear cuenta" }).click();
-    await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 
     await page.getByRole("button", { name: "Nueva campaña" }).first().click();
     await page.getByLabel("Nombre").fill("Campaña de contraste");
@@ -664,7 +664,7 @@ for (const theme of ["dark", "light", "reading"] as const) {
     await page.getByLabel("Correo").fill(cuenta.email);
     await page.getByLabel("Contraseña").fill(cuenta.password);
     await page.getByRole("button", { name: "Crear cuenta" }).click();
-    await expect(page.getByRole("heading", { name: "Mis campañas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
 
     await page.getByRole("link", { name: "Cuenta" }).click();
     await expect(page.getByRole("heading", { name: "Cuenta" })).toBeVisible();

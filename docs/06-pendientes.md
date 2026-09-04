@@ -607,10 +607,10 @@ una tabla y después salen caros:
 
 | | Hueco | Por qué corre prisa |
 |---|---|---|
-| **H1** | **Ranuras de equipo**, y el estado de un objeto como **tres** (llevado / equipado / **sintonizado**, con tope de 3), no como un booleano | Toca la fórmula de CA, que **no es una suma**: la armadura sustituye la fórmula y limita la Destreza |
-| **H2** | El **descanso** está a medias: hay gatillo, pero nada restaura los PG y los **dados de golpe no existen** en ningún documento | Es el bucle más frecuente de una sesión; sin él la mesa corrige PG a mano y deja de fiarse de la pantalla |
-| **H3** | **PG temporales**: el daño los atraviesa tal como está escrito | Error silencioso dentro de un registro que se declara inmutable |
-| **H4** | **Pericia** (competencia doble): el modificador solo conoce competencia como booleano | La hoja del pícaro dirá +5 donde la regla dice +7 |
+| ~~**H1**~~ **CERRADA por 2B**, verificado el 2026-09-03 contra `apps/api/prisma/schema.prisma` (`EquipSlot` y `requiresAttunement` existen) | ~~Ranuras de equipo, y el estado de un objeto como tres (llevado / equipado / sintonizado, con tope de 3), no como un booleano~~ | Toca la fórmula de CA, que **no es una suma**: la armadura sustituye la fórmula y limita la Destreza |
+| ~~**H2**~~ **CERRADA por 2A/2C**, verificado contra `apps/api/src/character-state/rest/` (módulo completo, con dados de golpe y las reglas de tiempo de 2C) | ~~El descanso está a medias: hay gatillo, pero nada restaura los PG y los dados de golpe no existen~~ | Es el bucle más frecuente de una sesión; sin él la mesa corrige PG a mano y deja de fiarse de la pantalla |
+| ~~**H3**~~ **CERRADA por 2A**, verificado contra `character-sheet.service.ts` (`tempHp` en diez sitios; se gastan primero y no se suman a los actuales) | ~~PG temporales: el daño los atraviesa tal como está escrito~~ | Error silencioso dentro de un registro que se declara inmutable |
+| ~~**H4**~~ **CERRADA por 2A**, verificado contra `packages/shared/src/rules/trace.schema.ts` (los cuatro estados existen, y un comentario explica que un booleano no puede representar la pericia) | ~~Pericia (competencia doble): el modificador solo conoce competencia como booleano~~ | La hoja del pícaro dirá +5 donde la regla dice +7 |
 
 **Y dos ausencias completas**, no decisiones: **el dinero** no aparece ni una vez en las 805
 líneas de la spec, y **un objeto del inventario no tiene visibilidad** — el DM prepara la

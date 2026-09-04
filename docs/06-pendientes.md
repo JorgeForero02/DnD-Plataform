@@ -984,6 +984,50 @@ sí mismo**.
 found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 `D&D-Plataform`). El agente creó y migró su base a mano. Es reproducible.
 
+## P1 · Un PNJ revelado entrega las características de un statblock `DM_ONLY` (2026-09-04)
+
+**Encontrado auditando la documentación, y no lo buscaba nadie: salió de un fallo de prueba.** El
+recorrido `pnj-en-la-mesa` comprueba que *«los números de un statblock `DM_ONLY` no llegan al
+jugador por la hoja del PNJ»*, y comprueba **la CA y la nota del libro**. No comprueba el resto, y
+el resto sí llega.
+
+**Lo que ve el jugador**, sobre el cuerpo serializado de su propia petición —esto es de una corrida
+real, no una deducción—:
+
+```
+GET .../characters/:id/sheet   (como JUGADOR, sobre un PNJ que el DM subió a PLAYERS)
+  "str":18,"dex":8,"con":18,"int":6,"wis":12,"cha":5      ← las del statblock DM_ONLY
+  "currentHp":85                                          ← los PG exactos que salen de su dado de golpe
+  "sheet":null, "hp":{"max":null}
+  "reason":"Los números de este PNJ no son públicos: su ficha es del DM."
+```
+
+**La misma respuesta dice que sus números no son públicos y trae seis de ellos.** Con las seis
+características se reconstruyen los seis modificadores de salvación y los dieciocho de habilidad
+—todo menos el bonificador de competencia— y la iniciativa. Queda escondido lo que `hojaDeStatblock`
+sí retiene: CA, PG máximos, competencia, la traza y la nota del libro.
+
+**Cómo pasa, y por qué no es un descuido:** `npcs.service.ts:69` **copia** las características del
+statblock a las columnas de la fila de `Character` al instanciar, que es la decisión D-2D-2 —«un
+PNJ en la mesa es una fila de `Character`»— y `getSheet` devuelve esa fila entera a quien pasa
+`canSee`. Las dos piezas son correctas por separado.
+
+**Y por eso incumple una regla vinculante de interfaz**: *si el texto explica una regla del
+servidor y discrepan, miente el texto*. Aquí discrepan.
+
+**No se arregla sin el autor**, porque las dos salidas son decisiones suyas y no equivalentes:
+
+1. **Ocultar las columnas** de un personaje con `statblockRef` a quien no sea el DM o su dueño.
+   Es coherente con la frase, y **cambia lo que hoy se envía**: hay que decidir qué sigue viendo un
+   jugador de un PNJ revelado (¿los PG actuales, para saber si está malherido?).
+2. **Cambiar la frase** y aceptar que revelar un PNJ revela sus características. Es más barato y
+   deja el bulto donde está: entonces la garantía real es «no verás su CA ni su traza», no «no
+   verás sus números».
+
+**Cierra cuando** una de las dos esté tomada y escrita. La prueba que lo destaparía existe a
+medias: `pnj-en-la-mesa.e2e-spec.ts` recorre **cada valor** del cuerpo desde el 2026-09-04, así que
+añadir `expect(valores).not.toContain(18)` es una línea — hoy se pondría roja.
+
 ## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
 
 **`apiFetch` ya no manda `Content-Type` cuando no hay cuerpo**, que era la causa por la que

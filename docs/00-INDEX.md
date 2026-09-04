@@ -9,7 +9,10 @@ funciona.
 **No es** mapas, ni tiempo real, ni 3D, ni IA: eso son las fases 3–5 y cada una recibe su
 propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 
-**Sí tiene, y toda la fase 2 está en producción:**
+**Sí tiene. La fase 2 está en producción; la 2.5 y el reseño de la mesa están en `main` y NO
+desplegados** — producción sirve lo que se subió el 2026-09-02 y local va por delante desde el
+2026-09-04. Desplegar lo pide el autor; ver [03-despliegue.md](./03-despliegue.md).
+
 
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
   frase decía lo contrario cuando ya existía: la hoja de 5.ª edición se **deriva**, no se guarda, y
@@ -52,7 +55,7 @@ miente. En su lugar:
 
 | Documento | Contenido |
 |---|---|
-| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las once de mecánica de 2B, las seis de 2C, las cuatro de 2D, las cinco de la fase 2.5 y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
+| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las once de mecánica de 2B, las seis de 2C, las cuatro de 2D, **las diez de la fase 2.5**, **las once del reseño de la mesa** (`D-R-*`) y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
 | `superpowers/specs/` y `superpowers/plans/` | Los documentos completos, por si hace falta el razonamiento entero o saber qué se creía en una fecha |
 | `superpowers/notes/` | Los prompts de arranque de cada fase |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
@@ -83,7 +86,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `e8a75e5` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `d716244` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

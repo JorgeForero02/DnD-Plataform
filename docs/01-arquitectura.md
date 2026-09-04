@@ -52,7 +52,7 @@ por su cuenta**.
 | `comments` | Hilo de comentarios de una entidad | quien pueda ver la entidad |
 | `sessions` | Sesiones de juego | solo DM |
 | `characters` | Personajes y **la hoja de 5.ª edición** (2A.6) con sus PG mutables y sus tiradas de muerte (2A.7) | dueño o DM |
-| `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12), y **la sugerencia de ventaja o desventaja que sale de esas condiciones** (2.5.5, `roll-mode/`) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
+| `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12), **la sugerencia de ventaja o desventaja que sale de esas condiciones** (2.5.5, `roll-mode/`) y **si un personaje está concentrado** (2.5.4, `concentration/`, que solo reconoce el prefijo y calcula la CD; pedir la salvación lo hace `changeHp`) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
 | `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
 | `rolls` | Tirar de verdad (2A.13). **El azar vive aquí y solo aquí**: el servidor tira y escribe la tirada antes de devolverla | miembro de la campaña |
 | `notifications` | Avisos (2A.14). **Sin tiempo real**: se piden al cargar. Escucha los eventos de dominio que ya se emitían y nadie escuchaba. **Ojo: es API sin pantalla** — esta fila prometía «bandeja de avisos» y no hay ninguna, porque nada de `apps/web/src` llama a estos endpoints. Ficha **A1-avisos** de [06-pendientes.md](./06-pendientes.md) | nadie, por HTTP; solo marcar leídas las propias |
@@ -66,6 +66,7 @@ por su cuenta**.
 | `inventory` | El inventario de un personaje, equipar, sintonizar y la bolsa (2B). Aquí viven las reglas de **ranura, manos y tope de tres sintonizaciones**; la base garantiza «una ranura, un objeto» con un índice único parcial | dueño o DM |
 | `rules-engine` | Reglas suceso–condición–efecto de la campaña (2A.16): alta, ensayo en seco, trazas y propuestas. **Escucha `game_event.recorded`** por un puente, en vez de que el log le llame | solo DM |
 | `game-clock` | El reloj de la campaña (2C.3): un contador de **segundos de juego** que solo se avanza, nunca se fija, y el viaje con su ritmo y su marcha forzada. Lo lee cualquier miembro; lo mueve el DM | leer, miembro; avanzar, solo DM |
+| `encounters` | El combate: iniciativa, orden de turnos y asaltos (2.5.2), y desde 2.5.6 **el encuentro activo de una sesión** (`GET .../current`, que contesta `null` en vez de 404 porque no estar en combate es lo normal) y **terminarlo** (`POST .../:id/end`, que lo pasa a `ENDED` sin borrar nada). Cuelga de la sesión. **Como mucho uno activo por sesión, y lo garantiza un índice único parcial**, no un `if`. Filtra los combatientes por `canView` y **renumera denso** las posiciones visibles: devolverlas crudas deja contar los huecos, o sea contar enemigos escondidos | empezar, corregir, pasar turno y terminar: **solo DM**; leer: cualquier miembro |
 | `roll-requests` | La petición de tirada (2C.5): el DM pide **un valor de la hoja** —no una expresión— y quien tira la responde con su hoja de ese momento. Con sondeo | pedir, solo DM; responder, el dueño del personaje o el DM |
 | `bestiario` (web) | La pestaña del bestiario (2D.5): las fichas del SRD y las del DM, y el botón que baja una criatura a la mesa. Va **justo antes de «Catálogo»**, que es donde la pone el prototipo, y por el mismo motivo: es la cara mecánica de algo que ya tiene ficha de mundo | pinta lo que el servidor le manda; el botón solo se le enseña al DM, y eso **no** es el control de acceso |
 | `npcs` (dentro de `statblocks`) | Bajar un statblock a la mesa (2D.4): de una plantilla nacen N combatientes, y **un PNJ en la mesa es una fila de `Character`** — no un modelo nuevo. Lo que lo distingue es `statblockRef`; `classKey`, `raceKey` y `level` quedan sin usar | instanciar, solo DM; listar, filtrado por `canView` |
@@ -130,6 +131,12 @@ condiciones, tirar y las anulaciones del DM), `level-up/` (el diff propuesto y s
 `rules/` (el panel del motor: reglas, propuestas y trazas), `rolls/` (la tirada: los dos dados con el descartado a la vista, el desglose y la decisión de ventaja) y `sessions/` (la barra global de
 «en juego» y la mesa: elenco, registro en vivo y consulta del mundo). `characters/` conserva el
 CRUD.
+
+**Y desde 2.5.6, `encounters/`: la capa de combate.** No es una pantalla y no se navega a ella —
+es una tira de orden de turnos que aparece **encima** del elenco mientras dura el encuentro y se
+va cuando termina, montada desde `apps/web/src/features/sessions/MesaDeSesion.tsx`. La URL no cambia. Los PG y las
+condiciones de cada combatiente los sigue pintando el elenco: repetirlos en la tira sería una
+segunda ficha de personaje con su segunda regla de visibilidad.
 
 Dentro de `character-sheet/`, **`EdicionEnSitio.tsx` es la casa de las tres primitivas de
 edición** —`NumeroEditable`, `SelectorEditable`, `TextoEditable`— y nadie fabrica la suya:

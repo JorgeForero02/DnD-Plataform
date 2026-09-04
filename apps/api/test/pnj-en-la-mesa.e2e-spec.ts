@@ -12,6 +12,13 @@ import { PrismaService } from "../src/prisma/prisma.service";
 // PG máximos, que una anulación del DM salga en la traza. Si algo de eso no funcionara, la
 // decisión de reutilizar `Character` estaría mal y habría que saberlo aquí y no en la mesa.
 
+/** Todas las hojas del árbol de un cuerpo JSON, con su tipo. Se mira cada valor, no el texto. */
+function recorrer2(v: unknown, salida: unknown[]): void {
+  if (Array.isArray(v)) v.forEach((x) => recorrer2(x, salida));
+  else if (v && typeof v === "object") Object.values(v).forEach((x) => recorrer2(x, salida));
+  else salida.push(v);
+}
+
 describe("Un PNJ en la mesa (e2e)", () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
@@ -344,17 +351,31 @@ describe("Un PNJ en la mesa (e2e)", () => {
     // El jugador ve que existe y cómo se llama —para eso el DM lo enseñó— pero **no sus números**.
     expect(hoja.body.character.name).toBe("Cosa de la cripta");
     expect(hoja.body.sheet).toBeNull();
-    const cuerpo = JSON.stringify(hoja.body);
-    expect(cuerpo).not.toContain("17"); // la CA
-    expect(cuerpo).not.toContain("caparazón quitinoso"); // la nota del libro, en la traza
+    // **Se buscan VALORES, no subcadenas, y esto lo destapó el reloj.** La versión anterior hacía
+    // `JSON.stringify(...).not.toContain("17")`, y el cuerpo lleva `createdAt` en ISO: entre las
+    // 17:00 y las 18:00 de cualquier día, la hora contenía «17» y la prueba se ponía roja sin que
+    // nada estuviera mal. Once horas de cada doce pasaba, así que parecía sólida.
+    //
+    // Recorrer los valores es además más estricto, no menos: `not.toContain("17")` tampoco habría
+    // cazado la CA si viajara como número dentro de un campo cuyo texto no la contiene, y aquí se
+    // mira **cada hoja del árbol**, con su tipo.
+    const valores: unknown[] = [];
+    recorrer2(hoja.body, valores);
+    expect(valores).not.toContain(17); // la CA, como número
+    expect(valores.filter((v) => typeof v === "string" && v.includes("caparazón"))).toEqual([]);
     // Y el motivo **no miente**: no dice que la plantilla no exista, dice que no es suya.
     expect(hoja.body.reason).not.toContain("ya no existe");
 
-    // El DM sí las ve.
+    // El DM sí las ve. **Y es el control que prueba que el recorrido de arriba distingue**: con
+    // el mismo caminante sobre el cuerpo del DM, el 17 aparece. Sin este caso, un caminante roto
+    // —que devolviera la lista vacía— dejaría la comprobación del jugador en verde para siempre.
     const delDm = await request(app.getHttpServer())
       .get(`${ficha(cosaId)}/sheet`)
       .set("Authorization", auth(tokenDM));
     expect(delDm.body.sheet.derived.ac.total).toBe(17);
+    const valoresDelDm: unknown[] = [];
+    recorrer2(delDm.body, valoresDelDm);
+    expect(valoresDelDm).toContain(17);
   });
 
   it("un PNJ del SRD sí enseña sus números: el libro lo puede leer cualquiera", async () => {

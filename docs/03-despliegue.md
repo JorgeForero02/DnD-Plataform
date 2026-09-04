@@ -1,5 +1,11 @@
 # Despliegue
 
+> **Producción va POR DETRÁS de `main` desde el 2026-09-04.** Sirve lo que se subió el
+> 2026-09-02; la fase 2.5 entera (encuentros, daño con traza, condiciones en las tiradas, el
+> combate en la mesa) y el reseño de la mesa (B0–B5) están cerrados en local **y sin desplegar**,
+> por la regla de que desplegar lo pide el autor. Nada de lo de abajo cambia; lo que cambia es
+> **qué versión hay arriba**.
+>
 > **Estado: EN PRODUCCIÓN desde el 2026-09-02.** `https://dnd.supportive.pro` sirve la
 > aplicación desde `vps1new`, con los tres contenedores de la pila en `healthy`.
 >

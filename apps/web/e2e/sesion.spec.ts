@@ -261,9 +261,17 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
     "1 en la mesa",
   );
 
-  await elenco
-    .getByRole("button", { name: "Quitar 5 puntos de golpe a Borin Barbaférrea" })
-    .click();
+  // Carril C2 (2026-09-04) — **el gesto cambió, lo que se mide no.** En la disposición del DM la
+  // ficha ya no lleva los ±5: lleva los mandos de la maqueta, y «Daño» abre un cajón donde se
+  // escribe cuánto. Esta prueba sigue siendo la única que demuestra de punta a punta que el
+  // delta ATERRIZA EN EL SERVIDOR —los PG bajan de verdad y el suceso se escribe en prosa—, así
+  // que se reescribe el gesto y se conservan las tres aserciones de después.
+  await elenco.getByRole("button", { name: "Daño a Borin Barbaférrea" }).click();
+  const cajonDeDano = page.getByRole("dialog", { name: "Daño · Borin Barbaférrea" });
+  await cajonDeDano.getByLabel("Cuánto daño").fill("5");
+  await cajonDeDano.getByRole("button", { name: "Aplicar daño" }).click();
+  // El cajón se cierra solo cuando el servidor responde: si sigue abierto, la mutación falló.
+  await expect(cajonDeDano).toBeHidden({ timeout: 10_000 });
   await expect(elenco.getByText("8/13")).toBeVisible({ timeout: 10_000 });
   await expect(
     elenco.getByRole("img", { name: "Borin Barbaférrea: 8 de 13 puntos de golpe" }),
@@ -601,12 +609,12 @@ test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", asy
   await expect(
     elencoDm.getByRole("img", { name: /Sirella: \d+ de \d+ puntos de golpe/ }),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(
-    elencoDm.getByRole("button", { name: /puntos de golpe a Borin/ }).first(),
-  ).toBeVisible();
-  await expect(
-    elencoDm.getByRole("button", { name: /puntos de golpe a Sirella/ }).first(),
-  ).toBeVisible();
+  // Carril C2 (2026-09-04) — **la regla que se mide es la misma**: el DM lleva mandos sobre
+  // TODOS, incluido el personaje de otra persona, porque él sí maneja a muchos. Lo que cambió es
+  // cuáles son los mandos: ya no los ±5, sino los tres de la maqueta.
+  await expect(elencoDm.getByRole("button", { name: "Daño a Borin" })).toBeVisible();
+  await expect(elencoDm.getByRole("button", { name: "Daño a Sirella" })).toBeVisible();
+  await expect(elencoDm.getByRole("button", { name: "Abrir la ficha de Sirella" })).toBeVisible();
   // El DM no tiene «su» personaje destacado: maneja a muchos, que es la situación de BG3.
   await expect(elencoDm.getByText("Tu personaje")).toHaveCount(0);
 

@@ -86,19 +86,32 @@ export function PonerCondicion({
   const [elegida, setElegida] = useState<string | null>(null);
   const [nivel, setNivel] = useState("1");
   const [conjuro, setConjuro] = useState("");
-  // Las dos escalas de la maqueta. En combate se cuenta en asaltos; fuera, en el reloj.
-  const [escala, setEscala] = useState<"asaltos" | "reloj">(enCombate ? "asaltos" : "reloj");
+  const [escalaElegida, setEscala] = useState<"asaltos" | "reloj">("asaltos");
   const [asaltos, setAsaltos] = useState("2");
   const [duracion, setDuracion] = useState(DURACION_INDEFINIDA.key);
+
+  // **La escala se DERIVA, no se guarda.** Con `useState(enCombate ? …)` el valor se fijaba una
+  // sola vez y nada lo reajustaba al terminar el encuentro: un DM que hubiera elegido «Asaltos»
+  // en combate y volviera a abrir el cajón después se encontraba un formulario **sin ninguna
+  // opción marcada**, con el desplegable del reloj deshabilitado, y el botón aplicaba en
+  // silencio `asaltos × 6` segundos que ya no se podían ni ver. Sin combate no hay asaltos que
+  // contar, así que la única escala posible es el reloj y eso se calcula en cada render.
+  const escala = enCombate ? escalaElegida : "reloj";
 
   const esConcentracion = elegida === PREFIJO_CONCENTRACION;
   const esAgotamiento = elegida === "exhaustion";
   const efecto = elegida ? efectoCondicion(elegida) : undefined;
   const asaltosValidos = Number.isInteger(Number(asaltos)) && Number(asaltos) >= 1;
+  // El agotamiento va por niveles del 1 al 6 (`applyConditionSchema`). Sin esto, vaciar el campo
+  // dejaba `Number("") === 0` y el botón mandaba un `level: 0` que el servidor rechaza: el error
+  // salía después de pulsar, cuando se sabía antes.
+  const nivelValido =
+    !esAgotamiento || (Number.isInteger(Number(nivel)) && Number(nivel) >= 1 && Number(nivel) <= 6);
   const puedeAplicar =
     elegida !== null &&
     !aplicar.isPending &&
     (!esConcentracion || conjuro.trim().length > 0) &&
+    nivelValido &&
     (escala !== "asaltos" || asaltosValidos);
 
   // La duración, ya en segundos de juego. `undefined` —no `null`— para una condición indefinida:

@@ -145,20 +145,27 @@ export function ColumnaElenco({
         // de todos con sus mandos, sin destacar a ninguno. Es también lo que ve un jugador que
         // no tiene ningún personaje en esta mesa — y ese jugador **no lleva mandos**, porque el
         // rol lo dice el servidor y él no es DM.
-        <ul className="flex flex-col gap-s2">
-          {enMesa.map((p) => (
-            <FichaDeElenco
-              key={p.id}
-              campaignId={campaignId}
-              personaje={p}
-              dueno={nombreDe.get(p.ownerId)}
-              conMandos={esDm}
-              puedeCambiarPg={!esDm && p.ownerId === miId}
-              turnoActual={deQuienEsElTurno.has(p.id)}
-              enCombate={enCombate}
-            />
-          ))}
-        </ul>
+        <>
+          {/* El rótulo de la maqueta sobre la parrilla (`prototipo/.../ColumnaElenco.tsx:57-59`).
+              Dice qué es esta lista cuando no hay ningún «Tu personaje» que la encabece. */}
+          <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
+            Grupo
+          </h4>
+          <ul className="flex flex-col gap-s2">
+            {enMesa.map((p) => (
+              <FichaDeElenco
+                key={p.id}
+                campaignId={campaignId}
+                personaje={p}
+                dueno={nombreDe.get(p.ownerId)}
+                conMandos={esDm}
+                puedeCambiarPg={!esDm && p.ownerId === miId}
+                turnoActual={deQuienEsElTurno.has(p.id)}
+                enCombate={enCombate}
+              />
+            ))}
+          </ul>
+        </>
       )}
       {ausentes.length > 0 && (
         <p className="mt-s3 border-t border-muted pt-s2 font-chrome text-chrome-xs text-muted">

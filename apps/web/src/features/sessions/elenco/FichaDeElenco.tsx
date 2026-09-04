@@ -73,7 +73,14 @@ export function FichaDeElenco({
   return (
     <li
       className={[
-        "relative rounded-radius-sm bg-bg",
+        // **Dos desviaciones declaradas de la maqueta, y son la misma decisión.** La maqueta
+        // pone la tarjeta en `bg-surface` sobre el fondo de la página; aquí el elenco vive
+        // DENTRO de `PanelDeMesa`, que ya es `bg-surface`, así que una tarjeta de ese color se
+        // fundiría con su panel y dejaría de ser una tarjeta. Se invierte el par —tarjeta en
+        // `bg-bg` dentro de un panel claro— y por lo mismo el filete se queda opaco en vez de
+        // los `border-accent/60` y `border-muted/20` de la maqueta, que sobre este fondo
+        // apenas se ven. **Está preguntado al autor**; el radio sí es el de la maqueta.
+        "relative rounded-radius-md bg-bg",
         destacado ? "border border-accent p-s3" : "border border-muted p-s2",
         // El anillo del turno. **No es el único portador**: el rótulo «Su turno» de arriba dice
         // lo mismo con palabras, igual que la tira de iniciativa lleva su «Le toca».
@@ -240,10 +247,10 @@ function Condiciones({
   const { data: reloj } = useGameClock(campaignId, { enabled: hayCuentaAtras });
 
   return (
-    <ul className="mt-s2 flex flex-wrap gap-1.5">
-      {condiciones.length === 0 ? (
-        <li className="font-chrome text-chrome-xs text-muted">Sin condiciones</li>
-      ) : (
+    <ul className="mt-s2 flex flex-wrap gap-1.5 empty:mt-0">
+      {
+        // Sin condiciones **no se pinta nada**, como la maqueta: un chip que dice «Sin
+        // condiciones» en cinco retratos es ruido en la única columna que se mira de reojo.
         condiciones.map((c) => {
           const vencida = c.expired === true;
           const restante =
@@ -270,7 +277,7 @@ function Condiciones({
             </li>
           );
         })
-      )}
+      }
     </ul>
   );
 }
@@ -281,12 +288,17 @@ function Condiciones({
  * Todavía no hay imágenes en el modelo, así que la inicial hace de retrato — igual que en la
  * maqueta. **La inicial es texto, no un icono**: la regla que prohíbe los glifos prohíbe usarlos
  * *como dibujo*, y aquí la letra ES el dato. `aria-hidden` porque el nombre entero está al lado.
+ *
+ * **La forma es la de la maqueta** —cuadrado de esquina blanda, no un círculo—. Lo que no se
+ * puede copiar es el COLOR: allí cada personaje tiene el suyo (`p.retrato`) y aquí **no hay ese
+ * dato en el modelo**, así que se usa el cobre de la identidad. Inventarme un color a partir del
+ * nombre sería fabricar un dato que la mesa creería que significa algo. Preguntado al autor.
  */
 export function Retrato({ nombre }: { nombre: string }) {
   return (
     <span
       aria-hidden="true"
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-copper bg-surface font-title text-chrome-md text-copper-text"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-radius-sm border border-copper bg-surface font-title text-chrome-md text-copper-text"
     >
       {nombre.trim().charAt(0).toUpperCase()}
     </span>
@@ -331,7 +343,10 @@ export function BarraDePuntosDeGolpe({
       <div
         role="img"
         aria-label={`${nombre}: ${actual} de ${maximo} puntos de golpe`}
-        className="h-1.5 flex-1 overflow-hidden rounded-radius-sm border border-muted bg-surface"
+        // `rounded-full` y sin borde, como la maqueta. El canal va en `bg-surface` y no en el
+        // `bg-bg` de la maqueta por lo mismo que la tarjeta: aquí el fondo de la tarjeta ya es
+        // `bg-bg`, y un canal de su mismo color no se vería.
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface"
       >
         <div className={`h-full ${tono}`} style={{ width: `${(proporcion * 100).toFixed(1)}%` }} />
       </div>

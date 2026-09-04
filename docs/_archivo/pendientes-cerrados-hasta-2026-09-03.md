@@ -331,3 +331,44 @@ corrección.
 > —así que `ui/Ornament.tsx` no se tocó— y las 19 mediciones de contraste dieron las **mismas
 > cifras**, porque `rgb(201 125 70)` y `#c97d46` son el mismo color. Ver
 > [../04-convenciones.md](../04-convenciones.md).
+
+---
+
+### CERRADA el 2026-09-04: era una resta mal hecha, no una duda de disenio
+
+> El numero del spec se corrigio a **tres** en
+> `superpowers/specs/2026-09-03-fase-2.5-alcance-design.md`, con su nota al pie. El codigo ya
+> estaba implementado asi y no se toco. La ficha se mueve aqui entera y sin reescribir.
+
+## C2.5-1 · El spec de 2.5.2 dice «siete posiciones» y salen tres — **la cifra, no el modelo** (2026-09-04)
+
+El cierre de §2.5.2 dice: *«un encuentro con dos personajes y seis goblins tiene ocho combatientes
+y **siete posiciones** en el orden, los goblins actúan juntos»*.
+
+**El modelo del spec es correcto y ya está implementado así.** Manda la fuente, comprobada en las
+dos ediciones:
+
+> *«The DM makes one roll for an entire group of identical creatures, **so each member of the
+> group acts at the same time**.»* — SRD 5.1, «Initiative» (inglesa)
+>
+> *«El director de juego hace una tirada por cada grupo de criaturas idénticas, **que actuarán al
+> mismo tiempo**.»* — la misma regla en español, sin matiz perdido
+
+Actuar a la vez es ocupar **una entrada del orden**, no seis seguidas. Con ocho posiciones la mesa
+jugaría seis turnos de goblin en fila y el asalto subiría cinco pasos tarde.
+
+**Lo que sigue abierto es solo la cifra, y hace falta el autor para cerrarla.** Dos personajes son
+**dos grupos de uno** —ninguno tiene `statblockRef`— más **un** grupo de seis goblins: **tres**
+entradas de orden. Siete no sale de ninguna lectura. El código y las pruebas dicen tres.
+
+**Cómo se llegó aquí, porque el proceso importa tanto como el número.** La primera implementación
+dio ocho posiciones y lo declaró como discrepancia en vez de elegir en silencio — que es lo
+correcto—, pero su argumento era circular: se apoyaba en un índice `@@unique([encounterId,
+position])` que **atribuía al spec y a `04-convenciones.md`, y que ninguno de los dos enuncia**.
+Lo eligió el encargo que le di, sin pensarlo. La restricción que la base sí puede y debe
+garantizar es la otra: **un personaje no aparece dos veces en el mismo encuentro**, y esa es la
+que hay ahora.
+
+**Qué hay que decidir:** si «siete» era un error de escritura del spec —lo más probable— o si hay
+una lectura del diseño que nadie ha visto. Si es lo primero, se corrige el spec y esta ficha se
+cierra sin tocar código.

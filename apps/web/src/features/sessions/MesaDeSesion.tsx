@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { SessionNoteKind, Visibility } from "@dnd/shared";
@@ -15,6 +15,7 @@ import {
 } from "./iconos";
 import { horaDe, lineaDeLog, selloDeSuceso } from "./linea-de-log";
 import { CabeceraDeEscena } from "./CabeceraDeEscena";
+import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "./reincorporarse";
 import { useMembers, useMyRole } from "../campaigns/members";
 import type { Member } from "../campaigns/members";
 import { useCharacters } from "../characters/hooks";
@@ -299,6 +300,8 @@ function Elenco({
     ? (personajes ?? []).filter((p) => declarados.has(p.id))
     : (personajes ?? []);
   const nombreDe = new Map((miembros ?? []).map((m: Member) => [m.userId, m.displayName]));
+  const mios = enMesa.filter((p) => p.ownerId === miId);
+  const otros = enMesa.filter((p) => p.ownerId !== miId);
   const vinieron = new Set((asistencia ?? []).map((a) => a.userId));
   const ausentes = asistencia
     ? (miembros ?? []).filter((m) => !vinieron.has(m.userId))
@@ -315,7 +318,55 @@ function Elenco({
         <p className="font-chrome text-chrome-xs text-muted">
           Ningún personaje en la mesa todavía.
         </p>
+      ) : mios.length > 0 && !esDm ? (
+        // **La disposición del jugador**, y sale de una frase del autor que invierte el modelo
+        // de Baldur's Gate 3: *«en BG3 es un jugador manejando varios; acá somos varios
+        // manejando uno propio»*. En BG3 los retratos del grupo son MANDOS —pulsas uno y pasas
+        // a controlarlo—; aquí no pueden serlo, porque el personaje de otro no es tuyo.
+        //
+        // Así que el tuyo va delante y con detalle, y los demás en segundo plano: se ven, se
+        // leen sus PG y sus condiciones, y **sobre ellos no hay botones**. Eso último no es
+        // decoración: `puedeCambiarPg` ya lo garantizaba y el servidor lo garantiza de verdad
+        // (`requireEditable`), pero enseñar un mando que va a dar 403 es prometer algo falso.
+        <>
+          <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
+            {mios.length === 1 ? "Tu personaje" : "Tus personajes"}
+          </h4>
+          <ul className="flex flex-col gap-s2">
+            {mios.map((p) => (
+              <FichaDeElenco
+                key={p.id}
+                campaignId={campaignId}
+                personaje={p}
+                dueno={nombreDe.get(p.ownerId)}
+                puedeCambiarPg
+                destacado
+              />
+            ))}
+          </ul>
+          {otros.length > 0 && (
+            <>
+              <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-muted">
+                El resto del grupo
+              </h4>
+              <ul className="flex flex-col gap-s2">
+                {otros.map((p) => (
+                  <FichaDeElenco
+                    key={p.id}
+                    campaignId={campaignId}
+                    personaje={p}
+                    dueno={nombreDe.get(p.ownerId)}
+                    puedeCambiarPg={false}
+                  />
+                ))}
+              </ul>
+            </>
+          )}
+        </>
       ) : (
+        // **La del DM**, que sí está en la situación de BG3 porque maneja a muchos: la parrilla
+        // de todos con sus mandos, sin destacar a ninguno. Es también lo que ve un jugador que
+        // no tiene ningún personaje en esta mesa.
         <ul className="flex flex-col gap-s2">
           {enMesa.map((p) => (
             <FichaDeElenco
@@ -350,11 +401,14 @@ function FichaDeElenco({
   personaje,
   dueno,
   puedeCambiarPg,
+  destacado = false,
 }: {
   campaignId: string;
   personaje: Character;
   dueno?: string;
   puedeCambiarPg: boolean;
+  /** El tuyo, en la disposición del jugador: filete de acento y algo más de aire. */
+  destacado?: boolean;
 }) {
   const { data: hoja } = useCharacterSheet(campaignId, personaje.id);
   const { data: condiciones } = useConditions(campaignId, personaje.id);
@@ -365,7 +419,12 @@ function FichaDeElenco({
   const descriptor = descriptorDePersonaje(personaje);
 
   return (
-    <li className="rounded-radius-sm border border-muted bg-bg p-s2">
+    <li
+      className={[
+        "rounded-radius-sm bg-bg",
+        destacado ? "border border-accent p-s3" : "border border-muted p-s2",
+      ].join(" ")}
+    >
       <div className="flex items-center gap-s2">
         <Retrato nombre={personaje.name} />
         <div className="min-w-0 flex-1">
@@ -523,6 +582,17 @@ function Registro({
   const [error, setError] = useState<string | null>(null);
   const nombreDe = new Map((miembros ?? []).map((m: Member) => [m.userId, m.displayName]));
 
+  // **La marca se congela al montar, a propósito.** Si se releyera en cada sondeo, la franja
+  // desaparecería a los quince segundos —justo cuando alguien vuelve a la mesa y todavía no ha
+  // leído nada—. Se lee una vez al llegar y se queda mientras estés en la pantalla; lo que se
+  // actualiza en el almacenamiento es el suceso más reciente, para la PRÓXIMA vez que vuelvas.
+  const [marca] = useState(() => ultimoVisto(campaignId));
+  const perdido = loQueTePerdiste(eventos, marca);
+
+  useEffect(() => {
+    if (eventos.length > 0) marcarVisto(campaignId, eventos[0].id);
+  }, [campaignId, eventos]);
+
   const poner = async (kind: SessionNoteKind) => {
     setError(null);
     try {
@@ -561,31 +631,55 @@ function Registro({
           </li>
         )}
         {eventos.map((e) => {
+          // La franja va **encima** del primer suceso que no viste, así que se pinta antes de
+          // su línea. `role="separator"` y no un `<li>` de texto: es una marca de lectura, no
+          // un suceso más de la partida, y confundirlos en la lista sería mentir sobre lo que
+          // pasó en la mesa.
+          const franja =
+            perdido.desde === e.id ? (
+              <li
+                key={`${e.id}-franja`}
+                role="separator"
+                aria-label={fraseDeLoPerdido(perdido.cuantos)}
+              >
+                <p className="my-s2 flex items-center gap-s2 font-chrome text-chrome-xs uppercase tracking-widest text-copper-text">
+                  <span aria-hidden="true" className="h-px flex-1 bg-copper" />
+                  {fraseDeLoPerdido(perdido.cuantos)}
+                  <span aria-hidden="true" className="h-px flex-1 bg-copper" />
+                </p>
+              </li>
+            ) : null;
           const sello = selloDeSuceso(e.payload);
           return (
-            <li
-              key={e.id}
-              className="flex items-start gap-s2 border-b border-muted py-s2 last:border-b-0"
-            >
-              {sello ? (
-                <span className="mt-0.5 shrink-0 rounded-radius-sm border border-copper px-1.5 py-0.5 font-data text-chrome-xs text-copper-text">
-                  {NOMBRE_SELLO[sello]}
-                </span>
-              ) : (
-                // Un hueco del mismo ancho que no dice nada: las líneas sin chip se alinean con
-                // las que sí lo tienen en vez de quedar dentadas.
-                <span aria-hidden="true" className="mt-0.5 w-s6 shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="font-world text-[length:var(--text-world-sm)] leading-snug text-text">
-                  {lineaDeLog(e.payload)}
-                </p>
-                <p className="mt-0.5 font-data text-chrome-xs text-muted">
-                  {nombreDe.get(e.actorUserId) ?? "Alguien"} · {horaDe(e.createdAt)}
-                </p>
-              </div>
-              <Badge visibility={e.visibility} />
-            </li>
+            <Fragment key={e.id}>
+              {franja}
+              {/* El identificador va al DOM porque la marca de lectura vive en el navegador y
+                  la única forma de comprobar la franja en un recorrido es poder decir «da por
+                  visto ESTE». Es dato, no adorno. */}
+              <li
+                data-suceso={e.id}
+                className="flex items-start gap-s2 border-b border-muted py-s2 last:border-b-0"
+              >
+                {sello ? (
+                  <span className="mt-0.5 shrink-0 rounded-radius-sm border border-copper px-1.5 py-0.5 font-data text-chrome-xs text-copper-text">
+                    {NOMBRE_SELLO[sello]}
+                  </span>
+                ) : (
+                  // Un hueco del mismo ancho que no dice nada: las líneas sin chip se alinean con
+                  // las que sí lo tienen en vez de quedar dentadas.
+                  <span aria-hidden="true" className="mt-0.5 w-s6 shrink-0" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-world text-[length:var(--text-world-sm)] leading-snug text-text">
+                    {lineaDeLog(e.payload)}
+                  </p>
+                  <p className="mt-0.5 font-data text-chrome-xs text-muted">
+                    {nombreDe.get(e.actorUserId) ?? "Alguien"} · {horaDe(e.createdAt)}
+                  </p>
+                </div>
+                <Badge visibility={e.visibility} />
+              </li>
+            </Fragment>
           );
         })}
       </ol>

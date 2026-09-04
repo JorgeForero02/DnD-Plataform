@@ -117,6 +117,31 @@ fallo de english-log que `08-pruebas.md` cuenta.
 **Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
 a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
 
+## B1.2 — el elenco en dos disposiciones, y volver a la mesa sale gratis (2026-09-04)
+
+**Por qué.** El reseño invierte el modelo de Baldur's Gate 3 con una frase del autor: *«en BG3 es
+un jugador manejando varios; acá somos varios manejando uno propio»*. En BG3 los retratos del grupo
+son **mandos**; aquí no pueden serlo, porque el personaje de otro no es tuyo. De ahí la regla
+vinculante: **sobre el retrato de otro no van botones.**
+
+**Qué entra.** El elenco pasa a tener **dos disposiciones**: el jugador ve el suyo delante y con
+detalle, y el resto del grupo en segundo plano, legible pero sin mandos; el DM ve la parrilla de
+todos con mandos sobre cada uno, que es su situación real de BG3. Y **«desde aquí te perdiste»**:
+una franja en el registro que marca por dónde seguir, del §6 del reseño — *«alguien puede irse a la
+mitad y volver, y reincorporarse tiene que ser gratis»*.
+
+**Dos decisiones declaradas.** La marca de lectura vive en `localStorage` y no en el servidor: por
+dónde ibas leyendo es un dato del lector, no de la partida, y guardarlo en el servidor sería una
+tabla y una escritura por cada vez que alguien mira la pantalla. Y la marca **se congela al
+montar**: releerla en cada sondeo haría desaparecer la franja a los quince segundos, justo cuando
+alguien vuelve y todavía no ha leído nada.
+
+**Evidencia.** 819 unitarias de web; 100 recorridos de navegador. Mutación: dar mandos sobre el
+personaje de otro deja el recorrido rojo con dos botones de más contados.
+
+**Cómo revertir.** Un commit. El elenco vuelve a una sola lista quitando la rama del jugador;
+`reincorporarse.ts` y su prueba se pueden dejar, no los usa nadie más.
+
 ## Tarea 2.5.2 — iniciativa y orden de turnos (2026-09-04)
 
 `Encounter` y `Combatant` cuelgan de la sesión. La iniciativa **es una prueba de Destreza**

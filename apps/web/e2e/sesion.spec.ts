@@ -503,3 +503,153 @@ test("en sesión, la cabecera de escena nombra la sesión y a quien está en la 
   // Los dos ejes, como manda docs/08-pruebas.md: una cabecera de altura cero pasaría lo de arriba.
   expect(cajaEscena!.height).toBeGreaterThan(40);
 });
+
+// B1.2 (2026-09-04) — **las dos disposiciones del elenco, y la regla que las separa.**
+//
+// Sale de una frase del autor que invierte el modelo de Baldur's Gate 3: *«en BG3 es un jugador
+// manejando varios; acá somos varios manejando uno propio»*. En BG3 los retratos del grupo son
+// mandos —pulsas uno y pasas a controlarlo—; aquí no pueden serlo, porque el personaje de otro no
+// es tuyo. De ahí la regla vinculante del reseño: **sobre el retrato de otro no van botones.**
+//
+// Se mide con **dos contextos de navegador** —cookies y almacenamiento propios, como dos
+// ordenadores— porque lo que hay que demostrar es que **el mismo elenco se ve distinto según
+// quién mira**, y eso una prueba de componente con la sesión simulada no lo demuestra: se lo cree.
+test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", async ({
+  browser,
+}) => {
+  // Dos registros, dos hojas completas y un flujo de invitación entero: es el recorrido más
+  // largo de la suite y no cabe en el minuto por defecto. Se le da margen en vez de recortar lo
+  // que mide.
+  test.setTimeout(180_000);
+
+  const contextoDm = await browser.newContext();
+  const contextoJugadora = await browser.newContext();
+  const paginaDm = await contextoDm.newPage();
+  const paginaJugadora = await contextoJugadora.newPage();
+
+  // El DM monta la mesa y crea SU personaje antes de invitar: así su navegador no tiene que
+  // volver a la hoja después, y la prueba mide el elenco y no la navegación.
+  await registrarse(paginaDm);
+  await crearCampanaConSesion(paginaDm);
+  await crearPersonajeConHoja(paginaDm, "Borin");
+  await paginaDm.getByRole("link", { name: "La mesa de prueba" }).click();
+
+  await paginaDm.getByRole("tab", { name: "Ajustes" }).click();
+  await paginaDm.getByRole("button", { name: "Generar invitación" }).click();
+  const enlace = await paginaDm.getByLabel("Enlace de invitación").inputValue();
+
+  // La jugadora entra por el enlace, se registra desde ahí y crea el suyo.
+  await paginaJugadora.goto(enlace);
+  await paginaJugadora.getByRole("link", { name: "Crear cuenta" }).click();
+  const suya = nuevaCuenta();
+  await paginaJugadora.getByLabel("Nombre").fill(suya.displayName);
+  await paginaJugadora.getByLabel("Correo").fill(suya.email);
+  await paginaJugadora.getByLabel("Contraseña").fill(suya.password);
+  await paginaJugadora.getByRole("button", { name: "Crear cuenta" }).click();
+  await paginaJugadora.getByRole("button", { name: "Unirse a la campaña" }).click();
+  await expect(paginaJugadora.getByRole("heading", { name: "La mesa de prueba" })).toBeVisible();
+  await crearPersonajeConHoja(paginaJugadora, "Sirella");
+  await paginaJugadora.getByRole("link", { name: "La mesa de prueba" }).click();
+
+  await paginaDm.getByRole("tab", { name: "Sesiones" }).click();
+  await paginaDm.getByRole("button", { name: "Empezar" }).click();
+  await paginaDm.getByRole("button", { name: "Empezar la sesión" }).click();
+
+  // --- Lo que ve la jugadora ---
+  await paginaJugadora.reload();
+  await paginaJugadora.getByRole("link", { name: /^Entrar a la mesa/ }).click();
+  const elenco = paginaJugadora.getByRole("region", { name: "En la mesa" });
+  await expect(elenco).toBeVisible();
+
+  // El suyo delante con su rótulo; el de otro, en segundo plano.
+  await expect(elenco.getByText("Tu personaje")).toBeVisible();
+  await expect(elenco.getByText("El resto del grupo")).toBeVisible();
+
+  // **Y la regla que importa**: mandos sobre el suyo, ninguno sobre el de otro. No es que el
+  // botón no funcione —el servidor ya lo rechaza con `requireEditable`—: es que enseñar un mando
+  // que va a dar 403 es prometer algo falso.
+  // Primero se espera a que la hoja derivada llegue: los mandos de PG solo existen cuando hay
+  // máximo, y el máximo es un valor DERIVADO del catálogo, no una columna. Sin esta espera la
+  // prueba mediría la carrera entre dos consultas y no la regla.
+  await expect(
+    elenco.getByRole("img", { name: /Sirella: \d+ de \d+ puntos de golpe/ }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    elenco.getByRole("button", { name: /puntos de golpe a Sirella/ }).first(),
+  ).toBeVisible();
+  await expect(elenco.getByRole("button", { name: /puntos de golpe a Borin/ })).toHaveCount(0);
+
+  // --- Y lo que ve el DM: la parrilla de todos, con mandos sobre cada uno ---
+  // Y el DM recarga por lo mismo: su lista se pidió antes de que la jugadora creara el suyo.
+  await paginaDm.reload();
+  await paginaDm.getByRole("link", { name: /^Entrar a la mesa/ }).click();
+  const elencoDm = paginaDm.getByRole("region", { name: "En la mesa" });
+  // Misma espera que arriba, y por el mismo motivo: los mandos existen cuando la hoja derivada
+  // ha llegado, y son dos consultas distintas.
+  await expect(
+    elencoDm.getByRole("img", { name: /Sirella: \d+ de \d+ puntos de golpe/ }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    elencoDm.getByRole("button", { name: /puntos de golpe a Borin/ }).first(),
+  ).toBeVisible();
+  await expect(
+    elencoDm.getByRole("button", { name: /puntos de golpe a Sirella/ }).first(),
+  ).toBeVisible();
+  // El DM no tiene «su» personaje destacado: maneja a muchos, que es la situación de BG3.
+  await expect(elencoDm.getByText("Tu personaje")).toHaveCount(0);
+
+  await contextoDm.close();
+  await contextoJugadora.close();
+});
+
+// B1.2 — **«desde aquí te lo perdiste».** Sale del §6 del reseño y de un matiz del autor que una
+// partida solo en directo no tendría: *«sesiones largas y del tirón, pero alguien puede irse a la
+// mitad y volver»*. De ahí el requisito, textual: **reincorporarse tiene que ser gratis.**
+//
+// La aritmética la cubren diez unitarias (`reincorporarse.test.ts`). Lo que **solo** se puede
+// medir aquí es que la franja se pinta donde toca cuando la marca ya está guardada, y que quien
+// llega por primera vez no la ve — porque la marca vive en `localStorage`, y `jsdom` no navega ni
+// recarga.
+test("al volver a la mesa, una franja dice por dónde seguir; la primera vez no la hay", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await registrarse(page);
+  await crearCampanaConSesion(page);
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  // **La primera vez no hay franja**, y eso es correcto: a quien no estaba no se le perdió nada.
+  await expect(page.getByRole("separator", { name: /te perdiste/ })).toHaveCount(0);
+
+  // Tres sellos, que son tres sucesos con los que construir el «antes» y el «después».
+  const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
+  // Dos sellos bastan: con el suceso de «empezó la sesión» ya son tres, que es lo que hace
+  // falta para tener un «antes» y un «después». Se espera a que cada uno aparezca en la lista
+  // antes de pulsar el siguiente — el botón se deshabilita mientras la mutación va en vuelo.
+  for (const sello of ["Combate", "Hallazgo"]) {
+    await page.getByRole("button", { name: sello, exact: true }).click();
+    await expect(sucesos.getByText(sello, { exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  }
+
+  // Se da por visto el MÁS ANTIGUO de los que hay, que es lo que pasa cuando alguien se va a la
+  // mitad: al volver, lo de después es lo que se perdió.
+  const ids = await sucesos
+    .locator("li[data-suceso]")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-suceso")!));
+  expect(ids.length).toBeGreaterThanOrEqual(3);
+  const campaignId = page.url().split("/campaigns/")[1].split("/")[0];
+  await page.evaluate(
+    ([id, campana]) => localStorage.setItem(`dnd-mesa-visto:${campana}`, id),
+    [ids[ids.length - 1], campaignId],
+  );
+
+  await page.reload();
+  const franja = page.getByRole("separator", { name: /te perdiste/ });
+  await expect(franja).toBeVisible();
+  await expect(franja).toContainText("Desde aquí te perdiste");
+});

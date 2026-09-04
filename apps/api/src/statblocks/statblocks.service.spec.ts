@@ -31,6 +31,9 @@ const filaDelDragoncillo = {
   damageResistances: ["fuego de fuentes no mágicas"],
   damageImmunities: [],
   damageVulnerabilities: [],
+  // `null` a propósito: es como queda un statblock escrito antes de la tarea 2.5.1. `aStatblock`
+  // tiene que completarlo con la lista vacía, no con un modificador inventado.
+  damageModifiers: null,
   conditionImmunities: ["frightened"],
   darkvisionFeet: 60,
   otherSenses: [],
@@ -103,6 +106,13 @@ describe("StatblocksService", () => {
       expect(r.campaign[0].source).toBe("CAMPAIGN");
     });
 
+    it("tarea 2.5.1 — un statblock con damageModifiers a null (escrito antes de la tarea) se completa con la lista vacía", async () => {
+      membership.requireMember.mockResolvedValue({ role: "DM" });
+      prisma.campaignStatblock.findMany.mockResolvedValue([filaDelDragoncillo]);
+      const r = await service.list("dm", "c1");
+      expect(r.campaign[0].damageModifiers).toEqual([]);
+    });
+
     it("un statblock PLAYERS lo ve el jugador", async () => {
       membership.requireMember.mockResolvedValue({ role: "PLAYER" });
       prisma.campaignStatblock.findMany.mockResolvedValue([
@@ -150,6 +160,18 @@ describe("StatblocksService", () => {
       await service.create("dm", "c1", entrada);
       const data = prisma.campaignStatblock.create.mock.calls[0][0].data;
       expect(data.hitDieSizeOverride).toBeNull();
+    });
+
+    it("tarea 2.5.1 — un damageModifiers en la entrada llega a la columna", async () => {
+      membership.requireDM.mockResolvedValue({ role: "DM" });
+      prisma.campaignStatblock.create.mockResolvedValue(filaDelDragoncillo);
+      const conModificadores = createCampaignStatblockSchema.parse({
+        ...entrada,
+        damageModifiers: [{ damageType: "FIRE", effect: "RESIST" }],
+      });
+      await service.create("dm", "c1", conModificadores);
+      const data = prisma.campaignStatblock.create.mock.calls[0][0].data;
+      expect(data.damageModifiers).toEqual([{ damageType: "FIRE", effect: "RESIST" }]);
     });
   });
 

@@ -209,6 +209,7 @@ export function aStatblock(fila: FilaStatblock): Statblock {
     damageResistances: fila.damageResistances,
     damageImmunities: fila.damageImmunities,
     damageVulnerabilities: fila.damageVulnerabilities,
+    damageModifiers: (fila.damageModifiers ?? []) as Statblock["damageModifiers"],
     conditionImmunities: fila.conditionImmunities,
     ...(fila.darkvisionFeet ? { darkvisionFeet: fila.darkvisionFeet } : {}),
     otherSenses: fila.otherSenses,
@@ -252,6 +253,7 @@ function aColumnasDeCreacion(
     damageResistances: input.damageResistances,
     damageImmunities: input.damageImmunities,
     damageVulnerabilities: input.damageVulnerabilities,
+    damageModifiers: input.damageModifiers as Prisma.InputJsonValue,
     conditionImmunities: input.conditionImmunities,
     darkvisionFeet: input.darkvisionFeet ?? null,
     otherSenses: input.otherSenses,
@@ -299,6 +301,8 @@ function aColumnas(
   if (input.damageImmunities !== undefined) d.damageImmunities = input.damageImmunities;
   if (input.damageVulnerabilities !== undefined)
     d.damageVulnerabilities = input.damageVulnerabilities;
+  if (input.damageModifiers !== undefined)
+    d.damageModifiers = input.damageModifiers as Prisma.InputJsonValue;
   if (input.conditionImmunities !== undefined) d.conditionImmunities = input.conditionImmunities;
   if (input.darkvisionFeet !== undefined) d.darkvisionFeet = input.darkvisionFeet ?? null;
   if (input.otherSenses !== undefined) d.otherSenses = input.otherSenses;

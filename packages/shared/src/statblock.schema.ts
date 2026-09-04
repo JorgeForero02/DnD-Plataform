@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { abilityKeySchema, proficiencyLevelSchema, SKILLS } from "./rules/trace.schema";
 import { visibilitySchema } from "./visibility.schema";
+import { damageTypeSchema } from "./item.schema";
 
 /**
  * Fase 2D — la forma de un statblock de PNJ.
@@ -98,6 +99,36 @@ export type StatblockFeature = z.infer<typeof statblockFeatureSchema>;
  */
 const damageTagSchema = z.string().min(1).max(200);
 
+/**
+ * Tarea 2.5.1 — la MISMA resistencia, partida en dos. Las tres listas de prosa de arriba se
+ * conservan tal cual (es lo que lee el DM); esto es la parte que el servidor sabe aplicar solo:
+ * un tipo de daño de los trece del SRD y el efecto que le toca.
+ *
+ * `note` es la prosa que **limita** la regla — *«de ataques no mágicos con armas que no sean de
+ * plata»*, el caso del tumulario — y el servidor **nunca la interpreta**: la transporta para que
+ * el DM la vea junto al resultado y pueda ignorarla o degradarla de un clic, como hace Foundry
+ * con `Ignoring {source}` / `Downgrading {source} to Resistance`. Un vocabulario cerrado que
+ * intentara entender "no mágico y no plateado" sería un tercer motor de reglas.
+ */
+export const damageModifierSchema = z.object({
+  damageType: damageTypeSchema,
+  effect: z.enum(["RESIST", "IMMUNE", "VULNERABLE"]),
+  note: z.string().min(1).max(300).optional(),
+});
+export type DamageModifier = z.infer<typeof damageModifierSchema>;
+
+/**
+ * **`.optional()`, deliberadamente sin `.default([])` aquí.** Un `z.array(...).default([])`
+ * hace que `z.infer` marque el campo como NO opcional en el tipo de salida —Zod rellena el valor,
+ * así que TypeScript deja de admitir que falte—, y eso habría obligado a tocar `apps/web`, fuera
+ * de la frontera de esta tarea, para añadir el campo a cada `Statblock` escrito a mano en sus
+ * fixtures de prueba. Con `.optional()` el tipo es `DamageModifier[] | undefined` de verdad, y
+ * quien lo consulta usa `?? []` — exactamente igual que ya hace `aStatblock()` con un valor `null`
+ * de la base. `createCampaignStatblockSchema` y `updateCampaignStatblockSchema` heredan el mismo
+ * opcional al derivarse de este esquema.
+ */
+export const damageModifiersSchema = z.array(damageModifierSchema).max(26).optional();
+
 export const statblockSchema = z.object({
   /**
    * `SRD:goblin` o `CAMPAIGN:<cuid>`. **Cadena y no clave foránea**, igual que `ResolvedItem.ref`
@@ -161,6 +192,13 @@ export const statblockSchema = z.object({
   damageImmunities: z.array(damageTagSchema).default([]),
   damageVulnerabilities: z.array(damageTagSchema).default([]),
   conditionImmunities: z.array(z.string().min(1).max(60)).default([]),
+
+  /**
+   * Tarea 2.5.1 — la parte estructurada de la resistencia, al lado de las tres listas de prosa
+   * de arriba. **Opcional**: un statblock ya guardado antes de esta tarea no tiene esta lista, y
+   * quien la consulta trata la ausencia como ninguna resistencia (`?? []`) — no una inventada.
+   */
+  damageModifiers: damageModifiersSchema,
 
   /** En pies. `0` o ausente = no ve en la oscuridad. Igual que en la hoja del jugador. */
   darkvisionFeet: z.number().int().min(0).max(1000).optional(),

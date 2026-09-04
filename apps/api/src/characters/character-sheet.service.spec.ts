@@ -1312,3 +1312,25 @@ describe("tarea 2.5.1 — un damageType en changeHp reduce el daño por resisten
     expect(registrado.delta).toBe(6);
   });
 });
+
+describe("2.5.2 — el modificador de iniciativa reutiliza la derivación, no una segunda fórmula", () => {
+  it("es exactamente `derived.initiative`, con la misma ficha que deriva la hoja", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+
+    const modificador = await service.getInitiativeModifier("p1", "c1", "ch1");
+
+    expect(modificador).toBe(HOJA_EJEMPLO.derived.initiative.total);
+  });
+
+  it("con un objeto que modifique la iniciativa (una anulación del DM), el modificador cambia con él", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(
+      personaje({ overrides: { initiative: HOJA_EJEMPLO.derived.initiative.total + 5 } }),
+    );
+
+    const modificador = await service.getInitiativeModifier("dm1", "c1", "ch1");
+
+    expect(modificador).toBe(HOJA_EJEMPLO.derived.initiative.total + 5);
+  });
+});

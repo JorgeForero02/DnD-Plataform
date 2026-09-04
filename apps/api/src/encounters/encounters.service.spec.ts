@@ -1,0 +1,394 @@
+import { Test } from "@nestjs/testing";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { EncountersService } from "./encounters.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { MembershipService } from "../campaigns/membership.service";
+import { GameEventsService } from "../game-events/game-events.service";
+import { CharacterSheetService } from "../characters/character-sheet.service";
+import { RollsService } from "../rolls/rolls.service";
+import { GameClockService } from "../game-clock/game-clock.service";
+
+describe("EncountersService", () => {
+  let service: EncountersService;
+  const prisma = {
+    session: { findFirst: jest.fn() },
+    encounter: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
+    character: { findMany: jest.fn() },
+    combatant: { create: jest.fn(), update: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
+    user: { findUnique: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireDM: jest.fn(), requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn().mockResolvedValue({ id: "ev1" }) };
+  const sheets = { getInitiativeModifier: jest.fn() };
+  const rolls = { roll: jest.fn() };
+  const clock = { advance: jest.fn() };
+
+  beforeEach(async () => {
+    const ref = await Test.createTestingModule({
+      providers: [
+        EncountersService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+        { provide: CharacterSheetService, useValue: sheets },
+        { provide: RollsService, useValue: rolls },
+        { provide: GameClockService, useValue: clock },
+      ],
+    }).compile();
+    service = ref.get(EncountersService);
+    jest.clearAllMocks();
+    events.record.mockResolvedValue({ id: "ev1" });
+    membership.requireDM.mockResolvedValue(undefined);
+    membership.requireMember.mockResolvedValue(undefined);
+    prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
+    // **El Prisma simulado tiene que saber releer.** `recolocar` —la única función que convierte
+    // «iniciativa + grupo» en «orden»— lee las filas recién creadas, las coloca y las vuelve a
+    // leer, así que el `tx` de mentira necesita un `findMany` que devuelva lo que se creó y un
+    // `update` que guarde la posición. Simularlo con un array es más fiel que devolver una
+    // constante: así la prueba mide el reparto de posiciones de verdad y no una lista escrita a
+    // mano que siempre daría la respuesta esperada.
+    const creadas: Record<string, unknown>[] = [];
+    prisma.combatant.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      const fila = { id: `comb${creadas.length}`, ...data };
+      creadas.push(fila);
+      return Promise.resolve(fila);
+    });
+    prisma.combatant.update.mockImplementation(
+      ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const fila = creadas.find((f) => f.id === where.id);
+        if (fila) Object.assign(fila, data);
+        return Promise.resolve(fila ?? { id: where.id, ...data });
+      },
+    );
+    prisma.combatant.findMany.mockImplementation(
+      ({ orderBy }: { orderBy?: { position: "asc" } } = {}) => {
+        const filas = [...creadas];
+        if (orderBy) filas.sort((a, b) => (a.position as number) - (b.position as number));
+        return Promise.resolve(filas);
+      },
+    );
+
+    prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
+      cb({
+        encounter: { create: prisma.encounter.create, update: prisma.encounter.update },
+        combatant: {
+          create: prisma.combatant.create,
+          update: prisma.combatant.update,
+          findMany: prisma.combatant.findMany,
+        },
+      }),
+    );
+  });
+
+  it("start() requires DM: a player gets 403", async () => {
+    membership.requireDM.mockRejectedValue(new ForbiddenException());
+    await expect(service.start("p1", "c1", "s1", { characterIds: ["ch1"] })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(prisma.character.findMany).not.toHaveBeenCalled();
+  });
+
+  it("start() 404 si algún personaje no existe en la campaña", async () => {
+    prisma.encounter.findFirst.mockResolvedValue(null);
+    prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null }]);
+    await expect(
+      service.start("dm", "c1", "s1", { characterIds: ["ch1", "ch2"] }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("start() rechaza con 409 si la sesión ya tiene un encuentro activo", async () => {
+    prisma.encounter.findFirst.mockResolvedValue({ id: "enc0", status: "ACTIVE" });
+    prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null }]);
+    await expect(service.start("dm", "c1", "s1", { characterIds: ["ch1"] })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(sheets.getInitiativeModifier).not.toHaveBeenCalled();
+  });
+
+  it("agrupa a los combatientes con el mismo statblockRef: una sola tirada para el grupo entero", async () => {
+    prisma.encounter.findFirst.mockResolvedValue(null);
+    const goblins = Array.from({ length: 6 }, (_, i) => ({
+      id: `gob${i}`,
+      statblockRef: "SRD:goblin",
+    }));
+    const personajes = [
+      { id: "pc1", statblockRef: null },
+      { id: "pc2", statblockRef: null },
+    ];
+    prisma.character.findMany.mockResolvedValue([...personajes, ...goblins]);
+
+    sheets.getInitiativeModifier.mockImplementation(async (_u: string, _c: string, id: string) =>
+      id === "pc1" ? 3 : id === "pc2" ? 1 : 2,
+    );
+    let siguienteTotal = 20;
+    rolls.roll.mockImplementation(async () => ({
+      revealed: true,
+      total: siguienteTotal--,
+      eventId: "rev",
+    }));
+    prisma.encounter.create.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+    });
+    const encuentro = await service.start("dm", "c1", "s1", {
+      characterIds: [...personajes, ...goblins].map((p) => p.id),
+    });
+
+    // Ocho combatientes (2D: un PNJ en la mesa es una fila de Character).
+    expect(encuentro.combatants).toHaveLength(8);
+    // Una sola tirada por grupo: dos personajes (grupo de uno cada uno) + un grupo de seis
+    // goblins = tres tiradas, no ocho.
+    expect(rolls.roll).toHaveBeenCalledTimes(3);
+    // Los seis goblins comparten la misma iniciativa: compartieron la tirada.
+    const goblinCombatants = encuentro.combatants.filter((c: any) =>
+      goblins.some((g) => g.id === c.characterId),
+    );
+    const iniciativasGoblin = new Set(goblinCombatants.map((c: any) => c.initiative));
+    expect(iniciativasGoblin.size).toBe(1);
+    // Y comparten **la misma posición**, no seis consecutivas: *«each member of the group acts
+    // at the same time»* (SRD 5.1, «Initiative»). Ocho combatientes, siete posiciones.
+    const posicionesGoblin = new Set(goblinCombatants.map((c: any) => c.position));
+    expect(posicionesGoblin.size).toBe(1);
+    // Dos personajes (dos grupos de uno) + un grupo de seis goblins = TRES entradas de orden.
+    const todasLasPosiciones = new Set(encuentro.combatants.map((c: any) => c.position));
+    expect(todasLasPosiciones.size).toBe(3);
+  });
+
+  it("advanceTurn() recorre el orden y sube de asalto al llegar al final", async () => {
+    prisma.encounter.findFirst.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 1,
+      combatants: [
+        { id: "c0", position: 0 },
+        { id: "c1", position: 1 },
+      ],
+    });
+    prisma.encounter.update.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 2,
+      activePosition: 0,
+    });
+    clock.advance.mockResolvedValue({ from: 0, to: 6, seconds: 6, eventId: "ev-clock" });
+
+    const resultado = await service.advanceTurn("dm", "c1", "s1", "enc1");
+
+    expect(resultado.roundAdvanced).toBe(true);
+    expect(resultado.round).toBe(2);
+    // Subir de asalto avanza el reloj EXACTAMENTE seis segundos (D-2C-1), por el mismo camino
+    // que cualquier otro avance del reloj de campaña.
+    expect(clock.advance).toHaveBeenCalledWith(
+      "dm",
+      "c1",
+      { kind: "TIME", seconds: 6 },
+      expect.anything(),
+    );
+  });
+
+  it("advanceTurn() a media ronda NO toca el reloj", async () => {
+    prisma.encounter.findFirst.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+      combatants: [
+        { id: "c0", position: 0 },
+        { id: "c1", position: 1 },
+        { id: "c2", position: 2 },
+      ],
+    });
+    prisma.encounter.update.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 1,
+    });
+
+    const resultado = await service.advanceTurn("dm", "c1", "s1", "enc1");
+
+    expect(resultado.roundAdvanced).toBe(false);
+    expect(clock.advance).not.toHaveBeenCalled();
+  });
+
+  it("advanceTurn() sobre un encuentro que no está ACTIVE es un 409", async () => {
+    prisma.encounter.findFirst.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ENDED",
+      round: 3,
+      activePosition: 0,
+      combatants: [{ id: "c0", position: 0 }],
+    });
+    await expect(service.advanceTurn("dm", "c1", "s1", "enc1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  // **Esta prueba afirmaba lo contrario, y la revisión de cierre la desmontó.** Decía «solo
+  // cambia el número, no el orden», y era cierto — el servicio actualizaba `initiative` y dejaba
+  // `position` intacta. El problema es que `advanceTurn` ordena **solo** por `position`, así que
+  // corregir el número no cambiaba nada del juego: la columna era decorativa y la única razón
+  // por la que el SRD deja editarla —deshacer un empate— no se cumplía.
+  it("setInitiative() saca al combatiente de su grupo y recoloca el orden", async () => {
+    // Tres goblins con la misma tirada: una sola entrada de orden.
+    for (const id of ["g1", "g2", "g3"]) {
+      await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: id, initiative: 12, groupKey: "SRD:goblin" },
+      });
+    }
+    prisma.combatant.findFirst.mockResolvedValue({ id: "comb0", encounterId: "enc1" });
+
+    const resultado = await service.setInitiative("dm", "c1", "s1", "enc1", "comb0", {
+      initiative: 20,
+    });
+
+    // El corregido sube al frente y **deja de compartir posición** con los otros dos.
+    expect(resultado.initiative).toBe(20);
+    expect(resultado.position).toBe(0);
+    const filas = await (prisma.combatant.findMany as jest.Mock)({});
+    const posiciones = new Map(filas.map((f: any) => [f.id, f.position]));
+    expect(posiciones.get("comb1")).toBe(1);
+    expect(posiciones.get("comb2")).toBe(1);
+    // Dos entradas de orden donde antes había una.
+    expect(new Set(filas.map((f: any) => f.position)).size).toBe(2);
+  });
+
+  // **El filtrado por visibilidad, en unitaria y no solo en e2e.** Lo pidió la revisión de
+  // cierre citando `docs/08-pruebas.md`: toda tarea de API prueba en unitaria «el filtrado de
+  // visibilidad para un jugador que no debe ver algo», y «si una comprobación cabe en una
+  // unitaria, va en una unitaria». Esta cabe, y descansaba entera en un solo e2e.
+  // **Dos grupos empatados no se parten el uno al otro.** Lo pidió la revisión de cierre, y su
+  // argumento es que ni la unitaria ni el e2e ejecutaban nunca el desempate: los dos usaban un
+  // solo grupo, y los números del spec están elegidos para que no haya empate. Con el desempate
+  // anterior —solo por `id` de personaje— seis goblins y cuatro orcos con la misma tirada se
+  // ordenaban por `cuid` y quedaban **intercalados**.
+  it("dos grupos con la misma tirada quedan cada uno en SU posición, sin intercalarse", async () => {
+    prisma.encounter.findFirst.mockResolvedValue(null);
+    const bichos = [
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `orco${i}`, statblockRef: "SRD:orc" })),
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `gob${i}`, statblockRef: "SRD:goblin" })),
+    ];
+    prisma.character.findMany.mockResolvedValue(bichos);
+    sheets.getInitiativeModifier.mockResolvedValue(0);
+    // **La misma tirada para los dos grupos**: el empate es el caso que se quiere medir.
+    rolls.roll.mockResolvedValue({ revealed: true, total: 12, eventId: "rev" });
+    prisma.encounter.create.mockResolvedValue({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+    });
+
+    const encuentro = await service.start("dm", "c1", "s1", {
+      characterIds: bichos.map((b) => b.id),
+    });
+
+    const posicionPorClave = new Map<string, Set<number>>();
+    for (const c of encuentro.combatants as { characterId: string; position: number }[]) {
+      const clave = c.characterId.startsWith("orco") ? "orc" : "goblin";
+      posicionPorClave.set(clave, (posicionPorClave.get(clave) ?? new Set()).add(c.position));
+    }
+    // Cada grupo, UNA posición; y las dos distintas entre sí.
+    expect(posicionPorClave.get("orc")!.size).toBe(1);
+    expect(posicionPorClave.get("goblin")!.size).toBe(1);
+
+    // **Y el orden entre los dos grupos empatados es DETERMINISTA, por clave de grupo.**
+    // Sin esta aserción la prueba no distinguía: con el desempate quitado, V8 ordena de forma
+    // estable y los grupos salían igualmente separados, así que la prueba pasaba con el código
+    // bueno y con el malo. Se comprobó rompiéndolo a propósito. `SRD:goblin` va antes que
+    // `SRD:orc` alfabéticamente, y esa es toda la regla: cualquiera sirve mientras no dependa
+    // del `cuid` que Postgres reparta esa tarde.
+    expect([...posicionPorClave.get("goblin")!][0]).toBe(0);
+    expect([...posicionPorClave.get("orc")!][0]).toBe(1);
+  });
+
+  describe("get() y lo que NO se le manda a un jugador", () => {
+    function encuentroConGoblinesEscondidos() {
+      prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
+      prisma.user.findUnique.mockResolvedValue({ id: "p1", isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        // El turno es del grupo de goblins, que este jugador no ve.
+        activePosition: 1,
+        combatants: [
+          {
+            id: "c0",
+            characterId: "pc1",
+            initiative: 18,
+            position: 0,
+            character: { visibility: "PLAYERS", ownerId: "p1" },
+          },
+          {
+            id: "c1",
+            characterId: "gob1",
+            initiative: 12,
+            position: 1,
+            character: { visibility: "DM_ONLY", ownerId: "dm" },
+          },
+          {
+            id: "c2",
+            characterId: "pc2",
+            initiative: 9,
+            position: 2,
+            character: { visibility: "PLAYERS", ownerId: "p2" },
+          },
+        ],
+      });
+    }
+
+    it("un PNJ DM_ONLY no aparece, y no deja hueco que lo delate", async () => {
+      encuentroConGoblinesEscondidos();
+
+      const visto = await service.get("p1", "c1", "s1", "enc1");
+
+      expect(visto.combatants.map((c) => c.characterId)).toEqual(["pc1", "pc2"]);
+      // **Densas, 0 y 1.** Devolver las originales —0 y 2— dejaría un hueco en medio, y contar
+      // lo que falta es una forma de ver lo escondido.
+      expect(visto.combatants.map((c) => c.position)).toEqual([0, 1]);
+      // Y el orden relativo se conserva: para eso sirve la lista.
+      expect(visto.combatants[0].initiative).toBeGreaterThan(visto.combatants[1].initiative);
+    });
+
+    it("si el turno es de alguien que no ve, la posición activa viaja como null", async () => {
+      encuentroConGoblinesEscondidos();
+
+      const visto = await service.get("p1", "c1", "s1", "enc1");
+
+      // «Ahora no te toca a ti» es verdad y no delata a nadie. Un número apuntando a un hueco sí.
+      expect(visto.activePosition).toBeNull();
+    });
+
+    it("y el DM lo ve entero, con las posiciones de verdad", async () => {
+      encuentroConGoblinesEscondidos();
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+
+      const visto = await service.get("dm", "c1", "s1", "enc1");
+
+      expect(visto.combatants).toHaveLength(3);
+      expect(visto.combatants.map((c) => c.position)).toEqual([0, 1, 2]);
+      expect(visto.activePosition).toBe(1);
+    });
+  });
+
+  it("setInitiative() requires DM: a player gets 403", async () => {
+    membership.requireDM.mockRejectedValue(new ForbiddenException());
+    await expect(
+      service.setInitiative("p1", "c1", "s1", "enc1", "comb1", { initiative: 10 }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});

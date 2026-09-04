@@ -78,207 +78,46 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-04** (tanda **B0**: tokens por canales y el tercer tema; y antes, el cierre de la fase **2D**: statblocks de PNJ, PNJ jugables en la
-mesa y el bestiario, con su revisión de cierre). Las secciones van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
+Última revisión: **2026-09-04** (las tandas del día: **B0** —tokens por canales y el tercer
+tema—, **2.5.1** —tipos de daño y resistencias—, **B1.1** —la mesa en la navegación— y
+**2.5.2** —iniciativa y orden de turnos—; y antes, el cierre de la fase **2D**). Las secciones
+van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 
-## P3 · El catálogo de PNJ mezcla pies y metros, y está declarado (2026-09-03, 2D.1)
+## C2.5-1 · El spec de 2.5.2 dice «siete posiciones» y salen tres — **la cifra, no el modelo** (2026-09-04)
 
-Los datos **estructurados** de un statblock del SRD —velocidades, visión en la oscuridad— están
-en **pies**, como el resto de la aplicación. La **prosa citada** de rasgos y acciones está en
-**metros**, porque viene literal del «Documento de referencia del sistema 5.1» en español y ahí
-un ataque tiene *«alcance 1,5 m»*.
+El cierre de §2.5.2 dice: *«un encuentro con dos personajes y seis goblins tiene ocho combatientes
+y **siete posiciones** en el orden, los goblins actúan juntos»*.
 
-**Por qué se dejó así y no se convirtió.** Alterar los números de dentro de una cita es donde se
-rompe una traducción: hay alcances dobles (*«9/36 m»*), radios, y frases donde el número forma
-parte de la regla. Convertirlos a máquina con una expresión regular es exactamente la clase de
-arreglo que introduce una errata que nadie ve hasta la mesa.
+**El modelo del spec es correcto y ya está implementado así.** Manda la fuente, comprobada en las
+dos ediciones:
 
-**Qué se vería.** En la ficha de un goblin, «Velocidad 30 pies» arriba y «alcance 1,5 m» en la
-prosa del ataque, a dos centímetros el uno del otro.
+> *«The DM makes one roll for an entire group of identical creatures, **so each member of the
+> group acts at the same time**.»* — SRD 5.1, «Initiative» (inglesa)
+>
+> *«El director de juego hace una tirada por cada grupo de criaturas idénticas, **que actuarán al
+> mismo tiempo**.»* — la misma regla en español, sin matiz perdido
 
-**Salidas posibles, cuando alguien lo pida:** pintar las dos unidades en los datos estructurados
-(«30 pies (9 m)»), o convertir la prosa **a mano**, quince fichas, revisando cada número. Lo que
-no se hará es convertir la cita automáticamente.
+Actuar a la vez es ocupar **una entrada del orden**, no seis seguidas. Con ocho posiciones la mesa
+jugaría seis turnos de goblin en fila y el asalto subiría cinco pasos tarde.
 
-## Nota de la tanda de mutaciones de 2D.1 — una que sobrevivió y no era un hueco
+**Lo que sigue abierto es solo la cifra, y hace falta el autor para cerrarla.** Dos personajes son
+**dos grupos de uno** —ninguno tiene `statblockRef`— más **un** grupo de seis goblins: **tres**
+entradas de orden. Siete no sale de ninguna lectura. El código y las pruebas dicen tres.
 
-Al romper `bonoDeCompetenciaPorVd` cambiando `Math.ceil` por `Math.floor`, **la suite siguió en
-verde**, y la respuesta correcta no era añadir una prueba: es una **mutación equivalente**. Los
-valores de desafío fraccionarios del SRD solo existen por debajo de 1 (0, 1/8, 1/4 y 1/2) y los
-cuatro caen en la misma banda de competencia se redondee como se redondee. El `Math.ceil` es
-defensivo y documenta la intención; no cambia ningún resultado.
+**Cómo se llegó aquí, porque el proceso importa tanto como el número.** La primera implementación
+dio ocho posiciones y lo declaró como discrepancia en vez de elegir en silencio — que es lo
+correcto—, pero su argumento era circular: se apoyaba en un índice `@@unique([encounterId,
+position])` que **atribuía al spec y a `04-convenciones.md`, y que ninguno de los dos enuncia**.
+Lo eligió el encargo que le di, sin pensarlo. La restricción que la base sí puede y debe
+garantizar es la otra: **un personaje no aparece dos veces en el mismo encuentro**, y esa es la
+que hay ahora.
 
-Se anota porque la próxima vez que alguien mida cobertura de mutación sobre este fichero se va a
-encontrar la misma superviviente, y merece leer por qué está ahí en vez de escribir una prueba
-que no puede fallar. Las otras tres mutaciones —la Constitución sumada una vez en vez de por
-dado, la banda de competencia cada cinco VD, y las criaturas Grandes con d8— **sí se pusieron
-rojas**, cada una arrastrando varias pruebas con ella.
+**Qué hay que decidir:** si «siete» era un error de escritura del spec —lo más probable— o si hay
+una lectura del diseño que nadie ha visto. Si es lo primero, se corrige el spec y esta ficha se
+cierra sin tocar código.
 
-## P3 · La suite de e2e llega a 58 conexiones de las 100 de Postgres (2026-09-03)
-
-**Medido, no supuesto.** Corriendo `pnpm --filter @dnd/api test:e2e` y contando
-`pg_stat_activity` cada tres segundos, el pico observado fue **58 conexiones** sobre un
-`max_connections` de **100**, en una máquina de 12 núcleos. Nada acota los trabajadores de Jest:
-el número sube con los núcleos de quien la corra.
-
-**De dónde sale esta ficha.** Una corrida —la primera de la sesión del 2026-09-03— falló en
-`entities` y `campaign-items`, con **todas** las suites tardando ~20 s en vez de los ~13 habituales.
-Las siete corridas siguientes salieron verdes sin tocar nada. **No se reprodujo**, así que no hay
-causa demostrada; lo que sí hay es un margen medido de **42 conexiones**, que un `pnpm dev:api`
-levantado a la vez se come en parte con su propio pool.
-
-**Qué hacer cuando vuelva a pasar**, en este orden: mirar si había un servidor de desarrollo
-levantado, y volver a medir el pico con él arriba. Si el pico roza las 100, la salida es acotar los
-trabajadores (`--maxWorkers`) o subir `max_connections` en el `docker-compose.yml` de desarrollo —
-**y no antes**: cambiar el paralelismo sobre una hipótesis solo esconde la señal.
-
-**Por qué esto no es «una prueba frágil».** Este proyecto ya se equivocó dos veces llamando flaky a
-un fallo real —el abrazo mortal de 2B y el limitador de peticiones de la suite de navegador—, y las
-dos veces la salida fue medir. Esta ficha existe para que la tercera también se mida.
-
-## Lo que deja abierto la fase 2C (2026-09-03)
-
-Nada de esto rompe nada hoy. Cada línea dice qué falta, por qué no entró y qué evidencia hay.
-
-| | Qué | Por qué importa, y qué cuesta |
-|---|---|---|
-| **C2C-8** | **El vencimiento de una condición no entiende «hasta el próximo descanso largo»** | Y es a propósito: **eso no es una duración, es un suceso**, y modelarlo como un número sería mentir. Está declarado en `character-state.schema.ts` y en la tabla de duraciones de la pantalla. Cuando entre, entra como disparador, no como segundos |
-| **C2C-9** | **El agotamiento solo llega al motor por dos de sus seis efectos.** Velocidad (niveles 2 y 5) y PG máximos (nivel 4). Los otros cuatro —desventaja en pruebas, en ataques y salvaciones, y la muerte del nivel 6— **no calculan nada** | La desventaja necesita que el motor sepa componer ventaja/desventaja automáticamente, que hoy elige quien tira. Es Encuentros o una decisión aparte; **anotarlo es lo que impide creer que el agotamiento ya está entero** |
-
-## Lo que dejó la revisión del cierre de la fase 2 (2026-09-03)
-
-Dos revisores de solo lectura sobre el diff de 2C entero: uno de **seguridad y visibilidad**, otro
-de **reglas de 5.ª edición contra la fuente**. Trece hallazgos, **once arreglados el mismo día** con
-su prueba y su mutación. Estos cuatro quedan, y los cuatro son decisiones, no descuidos:
-
-| | Qué | Por qué no entró, y qué costaría |
-|---|---|---|
-| **R2C-1** | **La expresión de una tirada es texto libre, así que un cliente puede mandar `3d20kh1`** y el sistema lo cuenta como un 20 natural legítimo — con el que dispara la tabla de críticos | El comentario de `roll.schema.ts` afirma que el servidor compone la ventaja «para que un cliente no pueda mandar `3d20kh1`», y **eso solo es cierto del camino de la hoja**: la pantalla de dados acepta expresiones libres a propósito, que es media razón de existir de 2C.2. Cerrarlo es elegir: o se acota qué expresiones admite un `d20` con `mode`, o se acepta y **se corrige el comentario**. Es decisión de producto |
-| **R2C-2** | **Quién decide que un ataque fue crítico es el navegador** (`critical: true` en el cuerpo), sin atarlo al `eventId` de la tirada que sacó el 20 | La duplicación de dados en sí es correcta. Lo que falta es la atadura, y hacerla bien pide que el ataque recuerde su tirada — que es la forma que **Encuentros** va a necesitar de todas formas |
-| **R2C-3** | **Un descanso largo no consume ocho horas de reloj**: marca cuándo ocurrió y no avanza el tiempo | Hoy una condición de seis horas sobrevive intacta a una noche entera salvo que el DM avance el reloj a mano. Avanzarlo solo es tentador y **cambia el mundo de todos los personajes a la vez**, así que es arbitraje: o lo hace el DM, o se le ofrece hacerlo con un botón junto al descanso |
-| **R2C-4** | **La salvación de muerte sigue recibiendo un nivel de visibilidad crudo** del cliente (`deathSaveSchema.visibility`), mientras que el resto de 2C pasó a `audience` | No hay fuga —es tu propia tirada y tú eliges el nivel— pero es la mitad del vocabulario sin migrar, en el mismo endpoint que 2C.1 declaró cerrado. Migrarlo es un cambio de contrato pequeño y su pantalla |
-
-**Y una ampliación de C2C-9**, que la revisión midió mejor de lo que estaba escrito: del agotamiento
-se implementan **los niveles 2, 4 y 5**. Faltan el 1 y el 3 (desventaja, que necesita que el motor
-componga ventaja por su cuenta —hoy la elige quien tira—) y **el 6, la muerte**, que hoy no hace
-nada: la condición se guarda y el personaje sigue vivo con la mitad de PG.
-
-## C2C-2 · Las «tiradas propias guardadas» del prototipo, fuera de 2C (2026-09-03)
-
-El prototipo enseña, bajo la tarjeta de dados, una tira de macros del jugador: «Ataque con
-estoque», «Salvación de Constitución con ventaja», «Sigilo». **No se construyó, y es una decisión,
-no un olvido**: son persistencia propia —una tabla, sus permisos, su pantalla de edición— y el
-alcance de 2C no las tiene. Hoy la ausencia solo está escrita en el comentario de cabecera de
-`apps/web/src/features/rolls/PanelDeDados.tsx`; esta ficha existe para que se pueda encontrar sin
-leer el código.
-
-**Lo que sí las hace baratas cuando toquen:** el contrato de una tirada ya es un objeto pequeño y
-cerrado (`createRollSchema`), así que una macro es ese objeto con un nombre.
-
-## P2 · Los topes de la tirada y de la anulación, medidos (2026-09-02)
-
-Es la ficha **Q7** del plan de la ronda de interfaz, con la evidencia que le faltaba.
-
-**El término constante de una expresión de dados no tiene tope.** `DICE_LIMITS`
-(`apps/api/src/dice/dice.ts`) declara tres límites —100 dados por término, 1000 caras, 10
-términos— y **ninguno cubre las constantes**: la rama de `evaluarTermino` que reconoce un número
-hace `Number(...)` y lo devuelve sin comprobar nada. Lo único que lo acota de rebote es el
-`max(120)` de `expression` en `createRollSchema`. Así que `1d20+999999999` se acepta, se guarda y
-se escribe en el registro de la partida. No tumba nada —el evaluador ya está protegido contra
-`9999d9999`, que era el riesgo real— pero deja pasar una cifra sin sentido a un registro que se
-lee después.
-
-**La anulación del DM admite de −999 a 999** (`setOverrideSchema`, `packages/shared`). Para una
-Clase de Armadura, cuyo rango real de juego va de 5 a 30 largos, tres cifras es mucho margen. Aquí
-hay que tener cuidado con el remedio: **la anulación es la válvula de escape del catálogo**, y
-apretarla demasiado la inutiliza para lo que existe — un objeto mágico raro, una regla de la casa,
-un PNJ que el DM decide y punto. El tope no puede salir del rango de la 5.ª edición, tiene que
-salir de «qué cifra ya no puede ser un error de tecleo».
-
-**Por qué no se arregló en la ronda:** las dos son cambios de contrato en `packages/shared` y en
-el evaluador, y el valor del tope es una decisión de producto, no una constante obvia. Entrarían
-con la fase 2C, que es la que se ocupa de las tiradas.
-
-## P1 · La fidelidad visual con el prototipo, pendiente y pedida (2026-09-03)
-
-**Lo que dijo el autor tras ver la ronda desplegada**, y conviene citarlo entero porque marca el
-listón: *«me gusta más; igual me gustaría que en estilo visual sea mucho más similar al
-prototipo, porque evidentemente hay demasiadas diferencias visuales que de verdad me interesa que
-parezca demasiado al prototipo. Pero eso lo dejaremos para después.»*
-
-O sea: **la estructura ya es la del prototipo y el estilo todavía no.** La ronda del 2026-09-03
-cerró la forma —tarjetas, dos columnas, carril, densidad, una línea por habilidad— y el autor lo
-da por bueno. Lo que queda es el acabado, y **no está medido todavía**: nadie ha puesto las dos
-capturas una al lado de otra pixel a pixel para enumerar en qué se diferencian los tonos, los
-grosores de filete, los tamaños exactos, los espaciados y los pesos tipográficos.
-
-**Antes de abrir esta ronda hay que hacer ese inventario**, y hay herramienta para ello: el
-guion `apps/web/e2e/capturas-comparacion.spec.ts` fotografía nuestras pantallas en tema oscuro
-con contenido de ejemplo, y el prototipo está vivo en `https://sunny-glaze-58905833.figma.site`
-y se recorre con el Chromium de Playwright que ya está instalado. **Sin ese inventario, la ronda
-sería una sucesión de retoques a ojo**, que es exactamente lo que produjo la primera tanda —la
-que «adaptó» en vez de plasmar— y hubo que rehacer.
-
-**Cuatro diferencias ya conocidas** están justo debajo, en la ficha de la ronda anterior. Y hay
-**siete que son deliberadas y no se cierran**: están en
-[la revisión de lo que volvió](./superpowers/specs/2026-09-02-figma-make-revision.md), y seis de
-las siete existen porque copiarlas literalmente haría que la aplicación mienta o incumpla una
-regla nuestra — el conmutador DM/Jugador que cambia lo que se pinta en vez de lo que se envía, el
-aviso de DM que es falso tres veces, el botón que se le ofrece a un jugador y el servidor
-rechaza, la tarjeta inventada sin dato detrás.
-
-## Dejado al plasmar el prototipo (2026-09-03)
-
-- **P3 · La tira de cifras sigue en su propia banda, no junto al nombre.** En el prototipo CA,
-  Iniciativa, Velocidad, PG y Competencia van a la derecha del nombre, en la misma línea. Aquí
-  quedan justo debajo: subirla del todo exige pasarla por el `actions` de `PageHeader` en
-  `apps/web/src/pages/CharacterDetailPage.tsx`, y con un margen negativo mayor se solaparía con
-  un nombre largo.
-- **P3 · Falta un token de filete tenue.** El prototipo usa una línea más suave que `--muted`
-  para separar dentro de una tarjeta; aquí se usa `--muted` entero, que cumple el 3:1 y pinta
-  más marcado que la maqueta.
-- **P3 · Las salvaciones no llevan punto de competencia.** El prototipo marca con un glifo `●`
-  cuáles son competentes. Aquí los glifos como icono están prohibidos, y además **el motor no
-  expone hoy ese dato por salvación**: primero habría que derivarlo.
-- **P2 · El nombre del tema no tiene tercer estado.** El prototipo ofrece Oscuro / Lectura /
-  Sistema; el interruptor alterna dos. Añadir «Sistema» exige tocar `ui/theme.ts`, que guarda la
-  elección, y hay una copia de su clave escrita a mano en `apps/web/index.html`.
-
-## Dejado por la adopción de la maqueta (2026-09-03)
-
-Lo que las cuatro tandas propusieron y no se hizo, con su motivo. Nada de esto es un fallo: son
-datos que la pantalla querría y el servidor todavía no da.
-
-- **P2 · La hoja pide cuatro datos que el motor no deriva.** «Perspicacia 11 · Investigación 12»
-  necesita `passiveInsight` y `passiveInvestigation` —una línea cada una junto a
-  `passivePerception` en `engine.ts`—; «Competencias e idiomas» necesita que el DTO de la hoja
-  exponga las `weaponProficiencies` que **ya están en el catálogo**; e «Inspiración» necesita
-  sembrarse como recurso 0/1. Se pintaron los huecos y **no se calculó nada en el navegador**,
-  que es la regla: una regla del juego en el cliente es el error que `VelocidadYSentidos.tsx`
-  documenta haber tenido que deshacer.
-- **P3 · Rasgo · Ideal · Vínculo · Defecto.** La maqueta los pinta como cuatro campos; el modelo
-  tiene una `bio`. Se pinta la bio en vez de trocearla a ojo.
-- **P2 · La pestaña «Personajes» debería ser «La mesa entera».** El componente ya existe hecho
-  —`FichaDeElenco`, dentro de `MesaDeSesion.tsx`— y bastaría extraerlo a `features/characters/`
-  para que la pestaña lo consuma sin duplicar nada.
-- **P3 · La vista de jugador en el móvil no se hizo.** Cruza `character-sheet`, `rolls` y
-  `sessions`, y con tres agentes trabajando ahí a la vez no se tocó a medias.
-- **P2 · El desgarro de `ui/Panel.tsx` se deforma con la altura.** Recorta en **porcentajes de
-  caja**, así que el mordisco es invisible en una ficha larga y gigante en un cuerpo de tres
-  líneas. La silueta buena —cúbicas irregulares, dibujada como máscara y no como recorte del
-  contenedor— existió en un `Vitela.tsx` de la hoja de personaje y **se borró el 2026-09-03** al pasar la
-  hoja a cromado; si se rehace, está en el historial de ese fichero. La vitela sigue viva donde
-  toca: la historia del personaje y las fichas del mundo.
-- **P3 · El tema no tiene tercer estado «Sistema».** Hoy el interruptor alterna dos. Añadirlo
-  exige tocar `ui/theme.ts`, y hay una copia sincronizada a mano de su clave en `index.html`.
-- **P3 · `Markdown.tsx` no separa sus párrafos.** Su `space-y-2` cae sobre el `Panel`, cuyo único
-  hijo es el relleno del borde, así que nunca llega a los `<p>`. Está tapado desde la página de
-  lectura; la causa sigue ahí.
-- **P3 · «Eventos» o «Sucesos».** La maqueta dice «Sucesos» y `plantillas.ts` dice «suceso» en
-  singular, pero `ROTULO_PLURAL`, `ETIQUETA_DE_TIPO` y `TITULO_NUEVO` dicen «Eventos». Si se
-  cambia, se cambian los tres a la vez.
 
 ## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
 

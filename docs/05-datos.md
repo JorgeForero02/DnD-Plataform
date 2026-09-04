@@ -165,6 +165,51 @@ modelo no hace en ningún sitio, y la traza de la CA delataría el número igual
   comprobación en el servicio es una carrera esperando a ocurrir en cuanto alguien tenga dos
   pestañas abiertas.
 
+## Iniciativa y orden de turnos (2.5.2)
+
+**`Encounter` cuelga de la `Session`**, que ya es el estado mutable de la partida. Dentro,
+**`Combatant`** es una lista ordenada que apunta a un `Character` — desde 2D un PNJ en la mesa **es**
+una fila de `Character`, así que no hace falta un segundo tipo de combatiente. Los seis goblins de
+un mismo grupo (2D) son **seis filas de `Combatant`** que comparten `initiative` porque
+compartieron la misma tirada, no una fila compartida entre los seis.
+
+Dos restricciones que garantiza la base, no un `if` del servicio — la misma convención que
+`session_one_in_progress_per_campaign` (2A.5) y `DmTable` (2C.6):
+
+- **Como mucho un `Encounter` `ACTIVE` por sesión**: índice único parcial
+  (`encounter_one_active_per_session`, escrito a mano en la migración porque Prisma no sabe
+  expresarlo), sobre `sessionId` con `WHERE status = 'ACTIVE'`.
+- **Una posición no se repite dentro de un encuentro**: `@@unique([encounterId, position])` sobre
+  `Combatant`, que Prisma sí expresa directamente en el esquema.
+
+**`position` es del GRUPO, y varios combatientes la comparten.** Sale del SRD 5.1
+(«Initiative»): *«The DM makes one roll for an entire group of identical creatures, so each member
+of the group acts at the same time»* — actuar a la vez es ocupar una entrada del orden. Los
+miembros de un grupo idéntico comparten la tirada, la `initiative` **y la `position`**.
+
+Por eso la restricción única es `@@unique([encounterId, characterId])` —un personaje no entra dos
+veces— y **no** `(encounterId, position)`, que haría imposible el agrupamiento. `groupKey` guarda a
+qué grupo pertenece cada fila: se guarda en vez de derivarse de `Character.statblockRef` porque el
+DM puede **sacar a uno de su grupo** corrigiendo su iniciativa, y eso es un hecho del encuentro,
+no del personaje.
+
+Con dos personajes y seis goblins hay **ocho combatientes y tres posiciones** (dos grupos de uno
+más el de goblins). El spec de la fase 2.5 (§2.5.2) dice «siete» para ese ejemplo y la cifra no
+sale de ninguna lectura; el modelo que describe sí es el correcto. Queda declarado enQueda declarado en
+[06-pendientes.md](./06-pendientes.md) para que el autor lo confirme o corrija el spec.
+
+**`Encounter.round`** empieza en 1 (no hay «asalto 0») y **`Encounter.activePosition`** guarda la
+posición de quien tiene el turno. Pasar de turno recorre `Combatant` ordenado por `position` y, al
+volver al principio, sube `round` **y avanza `Campaign.clockSeconds` en `SEGUNDOS_POR_ASALTO` (6)**
+por el mismo camino que cualquier otro avance del reloj (`GameClockService.advance`, ahora con un
+parámetro `tx` opcional para compartir la transacción del turno) — así las condiciones de 2C.4, que
+ya caducan solas contra ese reloj, **empiezan a caducar en combate sin que este código sepa nada de
+condiciones**.
+
+**El orden se calcula UNA VEZ al empezar el encuentro y se guarda.** El SRD: el orden de iniciativa
+no cambia de asalto a asalto. `Combatant.initiative` sigue siendo editable por el DM después (como
+en Foundry, el SRD deja los empates a su criterio) sin que eso recalcule `position`.
+
 ## El reloj de la campaña (2C.3)
 
 `Campaign.clockSeconds` es un **entero de segundos de juego**, no una fecha. Decisión del autor, y

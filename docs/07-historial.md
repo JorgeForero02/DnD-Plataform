@@ -117,6 +117,54 @@ fallo de english-log que `08-pruebas.md` cuenta.
 **Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
 a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
 
+## Tarea 2.5.2 — iniciativa y orden de turnos (2026-09-04)
+
+`Encounter` y `Combatant` cuelgan de la sesión. La iniciativa **es una prueba de Destreza**
+derivada por el motor (`CharacterSheetService.getInitiativeModifier`, reutilizando
+`derived.initiative`) y tirada por el servidor (`RollsService`, el tirador inyectable de 2C); los
+combatientes con el mismo `statblockRef` comparten una única tirada. El orden se calcula una vez y
+se guarda; al completar la vuelta sube `Encounter.round` **y avanza el reloj de campaña seis
+segundos** por el mismo camino que cualquier otro avance — demostrado en e2e: una condición de un
+asalto queda vencida al terminar la vuelta **sin que el código del turno sepa nada de
+condiciones**. Esa parte salió redonda a la primera.
+
+**La revisión de cierre encontró cinco cosas, y una era una fuga crítica reincidente.**
+
+1. **La iniciativa de un PNJ escondido se publicaba a la mesa entera.** La tirada iba con
+   `audience: "PUBLIC"` fija, así que el jugador leía en su línea de tiempo una tirada de
+   «Iniciativa» de un sujeto que no conoce, con su total y su modificador de Destreza dentro: sabía
+   que había emboscada y con qué números. **Es la misma forma exacta de un fallo ya arreglado en
+   este repositorio** —`character-sheet.service.ts` lleva escrito por qué la audiencia sale de la
+   visibilidad del personaje— y hermano del segundo hallazgo de la revisión de 2C. Había vuelto.
+2. **Dos fugas más por deducción**: el suceso de inicio contaba ocho combatientes a quien solo veía
+   dos, y las posiciones viajaban con huecos —`[0, 7]` son seis criaturas escondidas—. Ahora el
+   suceso no cuenta cabezas, las posiciones visibles se renumeran densas y `activePosition` viaja
+   como `null` cuando el turno es de alguien que no se ve.
+3. **La posición es del GRUPO, no del combatiente.** Se implementó con una posición por fila
+   apoyándose en un índice `@@unique([encounterId, position])` que **se atribuyó al spec y a las
+   convenciones, y que ninguno de los dos enuncia** — lo pidió mi encargo sin pensarlo. Manda la
+   fuente: *«The DM makes one roll for an entire group of identical creatures, so each member of
+   the group acts at the same time»* (SRD 5.1, «Initiative»). Con ocho posiciones la mesa jugaba
+   seis turnos de goblin seguidos. La restricción correcta es que **un personaje no entre dos
+   veces**, y `groupKey` guarda a qué grupo pertenece cada fila.
+4. **Corregir la iniciativa no cambiaba nada.** Actualizaba la columna y dejaba `position` intacta,
+   con un comentario que además prometía poder «separar a un grupo que actuaba junto». Como
+   `advanceTurn` ordena solo por `position`, la columna era decorativa y la única razón por la que
+   el SRD deja editarla —deshacer un empate— no se cumplía. Ahora recoloca, y el corregido sale de
+   su grupo.
+5. **Dos grupos empatados se partían el uno al otro**: el desempate era por `cuid`, así que seis
+   goblins y cuatro orcos con la misma tirada quedaban intercalados. Ni la unitaria ni el e2e lo
+   veían — los dos usaban un solo grupo.
+
+**Y una cifra del spec que sigue abierta:** dice «siete posiciones» para dos personajes y seis
+goblins, y del modelo correcto salen **tres** (dos grupos de uno más el de goblins). El modelo del
+spec es el bueno; la cuenta no sale de ninguna lectura. Ficha **C2.5-1**, pendiente del autor.
+
+**Revertir:** `git revert -m 1` de la fusión. Las tres migraciones solo crean tablas y columnas
+nuevas; bajarlas es `prisma migrate resolve --rolled-back` y un `DROP TABLE "Combatant",
+"Encounter"` si ya se aplicaron.
+
+---
 
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
 
@@ -284,70 +332,3 @@ verde y mirado. Una mutación más en rojo sobre el arreglo de la fuga.
 
 **Cómo revertir.** `git revert` del commit. Ojo a un cambio de comportamiento: la hoja de un PNJ
 cuya plantilla no ves devuelve ahora `sheet: null` con un motivo, en vez de los números.
-
-## 2026-09-03 (noche) — Fase 2B: objetos, inventario, equipar, y el cuadro de ataques que faltaba
-
-**Qué.** Un objeto deja de ser texto. Hay catálogo del SRD 5.1 (35 armas, 18 de equipo, las
-armaduras con su peso y su precio), objetos propios de cada campaña que escribe el DM,
-inventario por personaje con **tres sitios** —equipado, encima, guardado en otro sitio—, ranuras,
-manos, sintonización con tope de tres, dinero en las cinco monedas, y peso transportado. Lo
-equipado **entra en el motor**: la armadura sustituye la fórmula de CA, el escudo suma plano, y
-cada objeto aparece como **un paso más de la traza**. Y con eso se cierra lo que la fase 2C
-debía a 2B: el cuadro de ataques con su bono, su daño y su tipo, y el botón que pide al servidor
-la tirada de ataque o la de daño.
-
-**Por qué.** La hoja decía «+5 al ataque» y no tenía dónde leer «1d8+3 cortante»: media mecánica
-en pantalla, que es peor que ninguna porque parece completa (ficha M19). Y el hueco del
-inventario llevaba desde 2A rotulado y vacío, con la CA calculándose sin equipo.
-
-**Cómo se trabajó.** Ocho carriles en dos tandas —cinco y tres— —catálogo, efectos y
-motor, objetos de campaña, inventario, ataques; luego inventario en pantalla, catálogo en
-pantalla y la hoja—, con la frontera de ficheros escrita en cada encargo. Los contratos de
-`packages/shared`, las migraciones, el cableado, las corridas de e2e y esta documentación las
-escribió el orquestador. **Prueba de mutación por comportamiento nuevo en los ocho carriles**, y
-ninguno la dio por buena sin ver la prueba roja.
-
-### Los dos defectos que solo la integración podía encontrar, los dos silenciosos
-
-- **Las competencias de arma de las clases eran prosa en español** («Armas marciales»), y el
-  cuadro de ataques pregunta por claves (`martial`). La comparación **nunca** podía acertar: todo
-  guerrero habría perdido su bonificador de competencia **sin que ninguna prueba se pusiera
-  roja**, porque las dos mitades estaban bien por separado. Ahora son claves de máquina y el
-  español sale en la pantalla, como con todo el catálogo.
-- **La traza de la CA no sumaba la CA que explicaba.** El paso de la característica llevaba el
-  modificador **ya recortado** y además se añadía el paso del recorte, así que con cota de malla
-  y Destreza 12 la hoja decía «CA 16» y su propia explicación sumaba 15. Nadie lo vio en 2A
-  porque **nada alimentaba la armadura todavía**; apareció el día que se enchufó el inventario,
-  que es exactamente para lo que sirve enchufar cosas.
-
-### Decisiones de mecánica tomadas sin el autor, y su porqué
-
-Están enteras en
-[el plan de 2B](./superpowers/plans/2026-09-03-fase-2B-objetos-inventario-y-equipo.md). Las tres
-que más cambian la forma de los datos:
-
-- **Sitio del objeto: `EQUIPPED | CARRIED | STORED`, y la sintonización aparte.** El informe de
-  huecos proponía meter «sintonizado» como tercer valor del enum, pero un anillo sintonizado
-  **está** equipado: un solo enum obliga a elegir cuál de las dos verdades se guarda.
-- **Peso en onzas, precio en cobres.** Enteros abajo, kg y monedas en pantalla; el mismo
-  principio que los pies de la especificación de distancias.
-- **Un objeto `DM_ONLY` no se le puede dar a quien no puede verlo**: 400 que explica cómo
-  arreglarlo. Mandárselo igual es un agujero de `canView`; pintarle una fila fantasma es una
-  pantalla que miente.
-
-**Lo que se declaró fuera, con motivo**: «lo tengo pero no sé qué hace» (es visibilidad por
-campo, y la traza delataría el número igual) y la penalización por sobrecarga (es una regla
-variante del SRD y necesita un interruptor por campaña). Fichas I1–I8 de
-[06-pendientes.md](./06-pendientes.md).
-
-**Cómo revertir.** `git revert` de los commits de la jornada. Las tres migraciones nuevas
-—`items_inventory_and_money`, `inventory_one_item_per_slot`, `money_changed_event`— crean dos
-tablas, una de concesiones, un índice y un valor de enumeración que **nada en producción
-referencia todavía** (deja de ser cierto en cuanto se despliegue y alguien mueva una moneda).
-Revertirlas es `prisma migrate resolve --rolled-back`, dejar caer esas tablas **y quitar de
-`Character` las cinco columnas de moneda** (`cp`, `sp`, `ep`, `gp`, `pp`): esa tabla es de la
-fase 1 y **sí** cambia de forma — la primera versión de este párrafo decía que no cambiaba
-ninguna, y es la frase que alguien lee bajo presión en mitad de un rollback. Ningún dato
-existente se reescribe.
-
----

@@ -70,13 +70,18 @@ export const GAME_EVENT_TYPES = [
   // que se dispara sin dejar constancia convierte una partida de 5.a edicion en otra cosa sin que
   // los jugadores se enteren.
   "TABLE_ROLLED",
+  // La iniciativa y el orden de turnos (2.5.2). Los tres momentos que la mesa quiere ver en la
+  // línea de tiempo: empezar el encuentro, pasar turno, subir de asalto.
+  "ENCOUNTER_STARTED",
+  "TURN_ADVANCED",
+  "ROUND_ADVANCED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
 export type GameEventType = z.infer<typeof gameEventTypeSchema>;
 
 /** A qué apunta un evento. Es columna, no `payload`, porque se consulta. */
-export const gameEventSubjectTypeSchema = z.enum(["character", "campaign", "session"]);
+export const gameEventSubjectTypeSchema = z.enum(["character", "campaign", "session", "encounter"]);
 export type GameEventSubjectType = z.infer<typeof gameEventSubjectTypeSchema>;
 
 /** Un motivo escrito por una persona. Opcional siempre: obligar a explicarse molesta en la mesa. */
@@ -332,6 +337,45 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     gp: z.number().int().optional(),
     pp: z.number().int().optional(),
     reason,
+  }),
+
+  // --- Iniciativa y orden de turnos (2.5.2) ---
+  z.object({
+    type: z.literal("ENCOUNTER_STARTED"),
+    encounterId: z.string().cuid(),
+    /**
+     * **Sin conteos, y eso lo decidió una revisión de cierre.** Llevaba `combatantCount` y
+     * `positionCount`, y los dos eran una fuga por deducción: este suceso es `PLAYERS`, así que
+     * un jugador que ve dos combatientes suyos en la ficha del encuentro y lee «ocho» aquí sabe
+     * que hay seis enemigos escondidos. La ficha ya los filtra por `canView`; el registro los
+     * cantaba.
+     *
+     * `positionCount` además **describía algo que nunca ocurría**: decía «menos que
+     * `combatantCount` si algún grupo actúa junto» y el servicio pasaba el mismo array a los
+     * dos, así que eran siempre idénticos. Una mentira semántica con la sintaxis en regla —
+     * justo la clase que `pnpm check:docs` no puede cazar.
+     *
+     * Lo que este suceso tiene que decir es **que empezó un encuentro**. Cuántos hay se ve
+     * mirando, y lo que se ve lo decide `canView`.
+     */
+  }),
+  z.object({
+    type: z.literal("TURN_ADVANCED"),
+    encounterId: z.string().cuid(),
+    /** La posición de la que se sale y a la que se llega, no solo el `characterId`: dos
+     * combatientes distintos pueden compartir personaje… salvo que aquí nunca pasa, pero la
+     * posición es el dato que de verdad ordena el turno. */
+    fromPosition: z.number().int().nonnegative(),
+    toPosition: z.number().int().nonnegative(),
+    round: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal("ROUND_ADVANCED"),
+    encounterId: z.string().cuid(),
+    from: z.number().int().positive(),
+    to: z.number().int().positive(),
+    /** El reloj de campaña tras el avance — un asalto son seis segundos (D-2C-1). */
+    clockSeconds: z.number().int().nonnegative(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

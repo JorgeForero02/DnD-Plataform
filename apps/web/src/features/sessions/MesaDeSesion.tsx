@@ -15,6 +15,10 @@ import {
 } from "./iconos";
 import { horaDe, lineaDeLog, selloDeSuceso } from "./linea-de-log";
 import { CabeceraDeEscena } from "./CabeceraDeEscena";
+import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
+import { HojaCalculada } from "../character-sheet/HojaCalculada";
+import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
+import { Dialog } from "../../ui/Dialog";
 import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "./reincorporarse";
 import { useMembers, useMyRole } from "../campaigns/members";
 import type { Member } from "../campaigns/members";
@@ -65,6 +69,9 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
     as: esDm && comoUsuario ? comoUsuario : undefined,
   });
   const { data: personajes } = useCharacters(campaignId);
+  const miId = useAuthStore((st) => st.user?.id);
+  // **Uno a la vez**: el estrato superpuesto del reseño. Abrir la bolsa cierra la hoja.
+  const [panel, setPanel] = useState<PanelAbierto | null>(null);
 
   if (isLoading) {
     return <p className="font-chrome text-chrome-sm text-muted">Buscando la sesión…</p>;
@@ -82,6 +89,10 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   // en vez de la pantalla entera.
   const eventos = log?.events ?? [];
   const presentes = nombresPresentes(sesion?.attendance ?? null, personajes ?? []);
+  // El personaje sobre el que abren «Hoja» y «Bolsa». **El tuyo**, no el que esté seleccionado:
+  // el rail es del jugador, y el DM abre las fichas ajenas desde el elenco, que es donde tiene
+  // sentido —una por una y sabiendo cuál—.
+  const miPersonaje = (personajes ?? []).find((c) => c.ownerId === miId);
 
   if (!sesion) {
     return (
@@ -97,7 +108,8 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
             ? "La mesa está en reposo. Empieza una sesión desde «Sesiones» y esta pantalla pasa a estar en juego."
             : "La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena sola."}
         </p>
-        <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)_18rem]">
+        <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
+        <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <Elenco campaignId={campaignId} asistencia={null} esDm={esDm} />
           <Registro
             campaignId={campaignId}
@@ -105,8 +117,14 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
             esDm={esDm}
             comoUsuario={comoUsuario}
           />
-          <Consulta campaignId={campaignId} esDm={esDm} />
         </div>
+        <PanelesSuperpuestos
+          campaignId={campaignId}
+          abierto={panel}
+          onCerrar={() => setPanel(null)}
+          personajeId={miPersonaje?.id}
+          esDm={esDm}
+        />
       </div>
     );
   }
@@ -136,12 +154,72 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
           TanStack Query, y además las pestañas solo pintan la activa. El componente no pinta nada
           cuando no hay peticiones pendientes, así que aquí no ocupa sitio en balde. */}
       <TiradasPendientes campaignId={campaignId} />
-      <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)_18rem]">
+      <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
+      <div className="grid items-start gap-s4 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <Elenco campaignId={campaignId} asistencia={sesion.attendance} esDm={esDm} />
         <Registro campaignId={campaignId} eventos={eventos} esDm={esDm} comoUsuario={comoUsuario} />
-        <Consulta campaignId={campaignId} esDm={esDm} />
       </div>
+      <PanelesSuperpuestos
+        campaignId={campaignId}
+        abierto={panel}
+        onCerrar={() => setPanel(null)}
+        personajeId={miPersonaje?.id}
+        esDm={esDm}
+      />
     </div>
+  );
+}
+
+/**
+ * **El estrato superpuesto**: se abre encima, Escape cierra, y vuelves exactamente donde estabas.
+ *
+ * `ui/Dialog` ya trae el chasis —`role="dialog"`, foco atrapado, y el foco devuelto al control que
+ * lo abrió—, así que aquí no se reinventa nada: solo se decide **qué** va dentro de cada uno.
+ *
+ * Y lo que va dentro es **lo que ya existía**, montado tal cual: la hoja calculada y la página de
+ * inventario son los mismos componentes que sirven sus pantallas propias. Ese es el trabajo de la
+ * sustitución según el reseño —«la maqueta es presentación sin datos, así que el trabajo real es
+ * enchufarla a la columna que se conserva»—, y no reescribir dos pantallas que funcionan.
+ */
+function PanelesSuperpuestos({
+  campaignId,
+  abierto,
+  onCerrar,
+  personajeId,
+  esDm,
+}: {
+  campaignId: string;
+  abierto: PanelAbierto | null;
+  onCerrar: () => void;
+  personajeId?: string;
+  esDm: boolean;
+}) {
+  return (
+    <>
+      <Dialog
+        open={abierto === "hoja" && Boolean(personajeId)}
+        onClose={onCerrar}
+        title="Tu hoja"
+        size="lg"
+      >
+        {personajeId && (
+          <HojaCalculada campaignId={campaignId} characterId={personajeId} puedeEditar />
+        )}
+      </Dialog>
+
+      <Dialog
+        open={abierto === "bolsa" && Boolean(personajeId)}
+        onClose={onCerrar}
+        title="Tu bolsa"
+        size="lg"
+      >
+        {personajeId && <PaginaDeInventario campaignId={campaignId} characterId={personajeId} />}
+      </Dialog>
+
+      <Dialog open={abierto === "mundo"} onClose={onCerrar} title="Consulta del mundo" size="lg">
+        <Consulta campaignId={campaignId} esDm={esDm} />
+      </Dialog>
+    </>
   );
 }
 

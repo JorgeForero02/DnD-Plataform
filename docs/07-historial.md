@@ -153,6 +153,31 @@ fallo de english-log que `08-pruebas.md` cuenta.
 **Cómo revertir.** Un commit. Quitar `<EnlaceALaMesa>` y `<CabeceraDeEscena>` devuelve la pantalla
 a su rama de vacío; `escena.ts` y su prueba se pueden dejar, no los usa nadie más.
 
+## B1.3 — el estrato superpuesto: la mesa deja de tener tres columnas fijas (2026-09-04)
+
+**Por qué.** El §4 del reseño reparte la pantalla en tres estratos, y el argumento sale del mapa de
+teclas de Baldur's Gate 3: diez paneles tienen tecla de alternar y los retratos y la barra de
+acciones **no tienen ninguna**. Un panel tiene tecla **porque se quita**; los otros no la tienen
+**porque nunca se quitan**. La mesa tenía los tres mezclados en el mismo nivel.
+
+**Qué entra.** Un **rail de paneles** permanente —Hoja, Bolsa, Mundo— que abre el estrato
+superpuesto: encima, **uno a la vez**, Escape cierra y el foco vuelve al control que lo abrió.
+«Consulta del mundo» **deja de ser una tercera columna fija**: se llevaba un cuarto del ancho las
+cuatro horas para una búsqueda que se usa a ráfagas, y ese ancho vuelve al hilo, que es donde pasa
+la partida.
+
+**Y lo que va dentro de los paneles es lo que ya existía**, montado tal cual: `HojaCalculada` y
+`PaginaDeInventario` son los mismos componentes que sirven sus pantallas propias. Eso es
+exactamente lo que el reseño llama el trabajo de la sustitución —«la maqueta es presentación sin
+datos, así que el trabajo real es enchufarla a la columna que se conserva»— y no reescribir dos
+pantallas que funcionan.
+
+**Evidencia.** `pnpm verify` limpio; 102 recorridos de navegador. Mutación: dejar que dos paneles
+se abran a la vez deja el recorrido rojo con **dos diálogos** contados.
+
+**Revertir:** un commit. Quitar `<RailDePaneles>` y `<PanelesSuperpuestos>` y devolver `<Consulta>`
+a la rejilla de tres columnas.
+
 ## `ENTITY_REVEALED` a mano y 2.5.8 (archivar), con su revisión aplicada (2026-09-04)
 
 **Dos piezas de servidor.** Revelar una ficha subiéndole la visibilidad **ya deja rastro**, que es

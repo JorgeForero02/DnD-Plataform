@@ -330,6 +330,12 @@ describe("la consulta del mundo", () => {
 
     montarConRutas();
 
+    // **La consulta del mundo dejó de ser una tercera columna fija y pasó a ser un panel
+    // superpuesto** (B1.3): se llega por el rail, no está siempre puesta. El ancho vuelve al
+    // hilo, que es donde pasa la partida; una búsqueda que se usa a ráfagas no se lleva un
+    // cuarto de la pantalla las cuatro horas.
+    fireEvent.click(await screen.findByRole("button", { name: /Mundo/ }));
+
     const enlace = await screen.findByRole("link", { name: "El faro de Puerto Negro" });
     expect(enlace).toHaveAttribute("href", "/campaigns/c1/entidades/e-faro");
 

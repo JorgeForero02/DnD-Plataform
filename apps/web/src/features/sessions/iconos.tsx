@@ -182,3 +182,13 @@ export function IconoLuna({ className }: Props) {
     </svg>
   );
 }
+
+/** La bolsa: una mochila. B1.3, para el rail de paneles. */
+export function IconoMochila({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M6 9.5A3.5 3.5 0 0 1 9.5 6h5A3.5 3.5 0 0 1 18 9.5V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z" />
+      <path d="M9.5 6V5a2.5 2.5 0 0 1 5 0v1M9 13h6" />
+    </svg>
+  );
+}

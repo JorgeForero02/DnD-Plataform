@@ -468,7 +468,15 @@ test("se llega a la mesa desde la campaña sin sesión abierta, y no es un carte
   await expect(escena).toContainText("Día 1");
   await expect(escena).toContainText("00:00");
   await expect(page.getByText("La mesa está en reposo.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Consulta del mundo" })).toBeVisible();
+  // **La consulta del mundo ya no es una columna fija** (B1.3): se llega por el rail, que sí
+  // está siempre. Lo que esta prueba defiende es que en reposo la mesa **no es un cartel de
+  // vacío**, y el rail es parte de eso — desde aquí se consulta el mundo sin salir.
+  await expect(page.getByRole("navigation", { name: "Paneles de la mesa" })).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Paneles de la mesa" })
+    .getByRole("button", { name: /Mundo/ })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("Consulta del mundo");
 });
 
 // Y con sesión en curso la misma cabecera dice de qué sesión se trata y quién está. Es la mitad
@@ -715,4 +723,54 @@ test("el DM revela un lugar y la cabecera de escena pasa a decirlo, sin tocar la
   await expect(escena.getByRole("link", { name: "El Puerto Viejo" })).toBeVisible({
     timeout: 20_000,
   });
+});
+
+// B1.3 — **el estrato superpuesto**, y las tres cosas que lo definen según el §4 del reseño:
+// se abre encima, **Escape cierra y vuelves exactamente donde estabas**, y **uno a la vez**.
+//
+// El argumento de por qué estos paneles se quitan y la cabecera no sale del mapa de teclas de
+// Baldur's Gate 3: diez paneles tienen tecla de alternar; los retratos y la barra de acciones no
+// tienen ninguna. Un panel tiene tecla **porque se quita**.
+//
+// `jsdom` no puede medir esto: no hay foco real ni superposición.
+test("los paneles se abren encima, uno a la vez, y Escape devuelve el foco donde estaba", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await registrarse(page);
+  await crearCampanaConSesion(page);
+  await crearPersonajeConHoja(page, "Thora");
+  await page.getByRole("link", { name: "La mesa de prueba" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  await page
+    .getByRole("status", { name: "Sesión en curso" })
+    .getByRole("link", { name: "Ir a la mesa" })
+    .click();
+
+  const rail = page.getByRole("navigation", { name: "Paneles de la mesa" });
+  await expect(rail).toBeVisible();
+
+  // El hilo y el elenco siguen ahí detrás: el panel se abre ENCIMA, no sustituye la pantalla.
+  await rail.getByRole("button", { name: /Mundo/ }).click();
+  const mundo = page.getByRole("dialog");
+  await expect(mundo).toBeVisible();
+  await expect(page.getByRole("list", { name: "Sucesos de la sesión" })).toBeAttached();
+
+  // **Uno a la vez**: abrir la bolsa cierra el mundo. Dos paneles superpuestos son dos sitios
+  // donde estar, y no tener un sitio donde estar es el defecto que todo esto corrige.
+  await page.keyboard.press("Escape");
+  await expect(mundo).toBeHidden();
+  await rail.getByRole("button", { name: /Bolsa/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("bolsa", { ignoreCase: true });
+
+  // **Escape cierra y el foco vuelve al control que lo abrió.** Es lo que hace que reincorporarse
+  // a lo que estabas sea gratis, y lo único que lo demuestra es medir el foco.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  const focoTrasCerrar = await page.evaluate(
+    () => document.activeElement?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+  );
+  expect(focoTrasCerrar).toContain("Bolsa");
 });

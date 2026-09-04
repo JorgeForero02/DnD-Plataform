@@ -1,0 +1,10 @@
+{
+  "description": "This web application offers a customizable interface for managing game sessions, featuring user-friendly components and a focus on accessibility for gamers.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

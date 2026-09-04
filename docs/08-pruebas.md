@@ -1,9 +1,12 @@
 # Estrategia de pruebas
 
-> **Léelo antes de dar una tarea por terminada.** El principio de `~/.claude/dev-rules.md`
-> es que la revisión manual línea por línea deje de hacer falta *porque el proceso garantiza
-> la calidad*. Ese proceso es este documento. **Que compile no prueba nada más que la
-> sintaxis.**
+**Qué prueba cada capa, qué NO cubre, y qué demuestra cada recorrido, suite a suite.**
+Léelo antes de dar una tarea por terminada, y antes de escribir un e2e nuevo: la mitad de las
+veces ya existe.
+
+> Hasta el 2026-09-03 esto eran dos documentos —el 08 decía *cómo* se prueba y el 10 *qué* está
+> probado— y se solapaban en media superficie: los dos listaban la cobertura, y solo uno se
+> mantenía al día. Se fundieron. **El 10 ya no existe, y su número no se recicla.**
 
 ## Las cinco capas y qué prueba cada una
 
@@ -15,551 +18,272 @@
 | **Componentes** | vitest + Testing Library (jsdom) | Que la pantalla renderiza lo suyo y que interactuar dispara la mutación correcta | `apps/web/src/**/__tests__/` |
 | **Navegador** | **Playwright** (Chromium) | Que la aplicación real funciona de punta a punta: pintado, navegación, sesión, proxy `/api` | `apps/web/e2e/*.spec.ts` |
 
-> **Este documento es la fuente única de los conteos de pruebas — con una excepción
-> declarada.** Las unitarias las genera `scripts/update-estado.mjs` en el bloque de estado de
-> [00-INDEX.md](./00-INDEX.md); un número generado no puede desincronizarse de sí mismo, así
-> que esa es ahora su fuente y aquí se enlaza en vez de repetirlo. Los conteos de e2e, que
-> nada genera, siguen viviendo solo aquí. Si necesitas cualquiera de los dos en otro sitio,
-> enlaza en vez de copiar: el 2026-09-01 el `00` decía 106, el `04` decía 66 y este decía
-> 166 para las unitarias — tres cifras distintas y las tres falsas. Un dato repetido en
-> cuatro documentos es un dato que va a mentir en tres.
+**La regla que separa las dos familias de e2e.** Una unitaria con Prisma simulado no bloquea
+filas, no valida SQL, no tiene índices y no maqueta nada. Todo lo que dependa de eso **tiene**
+que estar en un e2e, y cada suite de API lleva escrito en su cabecera por qué no puede ser
+unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas son caras y lentas.
 
-**Unitarias:** ver el bloque de estado de [00-INDEX.md](./00-INDEX.md) — se regenera con
-`pnpm update:estado` y `pnpm verify` falla si no coincide.
+## Los conteos
 
-**E2e**, medidos el 2026-09-03 (noche, con la fase 2D entera y su revisión de cierre dentro)
-corriendo las dos suites: **216 e2e de API** en 31 suites y **88 recorridos de navegador** en 20
-especificaciones, todos verdes.
+> **Este documento es la fuente única de los conteos, con una excepción declarada.** Las
+> unitarias las genera `scripts/update-estado.mjs` en el bloque de estado de
+> [00-INDEX.md](./00-INDEX.md) — un número generado no puede desincronizarse de sí mismo — y
+> aquí se enlaza en vez de repetirlo. **Si necesitas cualquiera de los dos en otro sitio, enlaza
+> en vez de copiar**: el 2026-09-01 el `00` decía 106, el `04` decía 66 y este decía 166 para
+> las unitarias — tres cifras distintas y las tres falsas. Un dato repetido en cuatro documentos
+> es un dato que va a mentir en tres.
 
-> **Decía 21 especificaciones de navegador y son 20**, contadas del disco (`apps/web/e2e/`).
-> Un número escrito a mano se desincroniza en silencio, así que desde el 2026-09-03 los dos
-> conteos de **ficheros** los genera `scripts/update-estado.mjs` en el bloque marcado más
-> abajo, y `check:estado` los defiende. Lo único que sigue escrito a mano es el número de
-> *recorridos* (216 y 88), porque eso solo lo sabe el corredor.
+**Unitarias:** el bloque de estado de [00-INDEX.md](./00-INDEX.md), regenerado con
+`pnpm update:estado` y defendido por `pnpm verify`.
 
-> **Qué cubre cada uno de esos recorridos está en [10-mapa-e2e.md](./10-mapa-e2e.md)**, suite a
-> suite, con lo que ninguno cubre al final. Este documento dice **cómo se prueba**; aquel dice
-> **qué está probado**. Léelo antes de escribir un e2e nuevo: la mitad de las veces ya existe.
+**Ficheros de e2e:** los cuenta del disco el mismo script, y no se editan a mano.
 
-> **Una prueba de navegador que prometía más de lo que comprobaba, cazada por su propia
-> mutación.** La del borde de la ficha del bestiario decía «no una clase que no existe» y solo
-> exigía ancho mayor que cero y color distinto de transparente. Al cambiar `border-muted` por
-> `border-line` —que **no está en la paleta**— la prueba siguió en verde, porque la clase `border`
-> de Tailwind pone igualmente 1 px con su color por defecto. Ahora compara contra **el token
-> resuelto**, midiéndolo con una sonda en la propia página, y la mutación se pone roja. Es el
-> mismo fallo de fondo que el borde partido que sobrevivió a la suite entera: `jsdom` no maqueta,
-> y una prueba de navegador que mide lo que no importa tampoco.
+<!-- e2e:inicio -->
+<!-- e2e:fin -->
 
-> **Un recorrido de navegador llevaba meses pasando por suerte, y el cierre de la fase 2 lo cazó.**
-> «Nueva campaña» resuelve a **dos** botones —el de la cabecera y la tarjeta de borde discontinuo de
-> la lista—, así que `campana.spec.ts` pasaba **cuando la consulta de campañas aún no había
-> pintado** y se caía por modo estricto cuando sí. No era un cambio de código lo que lo rompió: era
-> la carrera, que un día se perdió. Los diecisiete usos llevan ahora `.first()`.
+**Recorridos**, medidos el 2026-09-03 (noche, con la fase 2D entera y su revisión de cierre
+dentro) corriendo las dos suites: **216 e2e de API** y **88 recorridos de navegador**, todos
+verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
+dentro de un bucle sobre los dos temas ejecuta más pruebas de las que se pueden contar leyendo
+el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
 
-> **La prueba de cascada cuenta ahora diecisiete tablas** (ficha A1, cerrada antes de desplegar).
-> Contaba ocho, y cada tabla que cuelga de una campaña y no se cuenta ahí es por donde se cuela un
-> huérfano **sin que nada avise**: borrar una campaña devuelve 200 igual. Entraron las cuatro que la
-> ficha nombraba (`gameEvent`, `campaignFlag`, `campaignSet`, `rule`), el catálogo propio de la
-> campaña, las condiciones de un personaje y las tres de 2C (`rollRequest`, `dmTable`,
-> `dmTableEntry`). Cuenta filas de verdad antes y después. La suite de API nueva es `game-clock`, y sus doce comprueban lo que el Prisma simulado no
-puede: que **el reloj es una columna que de verdad sube**, que un jugador no puede adelantarlo, y
-que las dos reglas del descanso que necesitan tiempo de juego —una vez cada 24 horas, y con al
-menos 1 PG— se cumplen de punta a punta. La de 2C.4 es `condiciones-con-duracion`, y prueba lo que
-ninguna unitaria puede: que la caducidad **atraviesa las tres capas** —la condición se guarda con su
-hora, el reloj la deja atrás, y la hoja deja de aplicarla— y que avanzar el reloj dos veces **no
-anuncia dos veces** el mismo vencimiento. Los tres nuevos son de `rolls` y los trae el registro de tiradas: que **a ciegas la
-respuesta del jugador no trae el resultado y el DM sí lo ve entero**, que el registro trae
-tiradas y nada más —el arranque de la sesión es un suceso de la misma sesión y no sale— y que
-quien no es miembro recibe un 403. El primero **solo puede vivir aquí**: lo que se comprueba es
-el cuerpo de una respuesta HTTP real, no una llamada a un servicio.
-
-> Antes de 2C.1 eran 143 en 25, y 64 recorridos en 15.
-
-> **El recorrido de navegador de 2C.4 encontró un defecto que ninguna unitaria podía ver**, y es
-> el que la regla de integración anuncia: aplicar una condición invalidaba **solo** su propia
-> lista, no la hoja. Desde 2A.12 una condición cambia la velocidad efectiva y desde 2C.4 **los
-> puntos de golpe máximos**, así que la hoja seguía enseñando el número de antes hasta que alguien
-> recargara. Con la caché simulada de las unitarias las dos consultas se rehacen siempre, así que
-> el fallo era invisible por construcción. Arreglado en `useApplyCondition` y `useRemoveCondition`.
-
-**`dados.spec.ts` (2C.2) mide cuatro cosas y ninguna la puede medir una unitaria**: que el dado
-descartado **se pinta tachado de verdad** (`line-through` es maquetación, y `jsdom` no maqueta);
-que el rechazo de una expresión inválida llega desde el evaluador **real** y se lee junto al
-campo; que la tarjeta no arrastra la página a lo ancho; y que **una tirada a ciegas no trae el
-total ni en la red**, comprobado sobre la respuesta HTTP y no sobre el DOM.
-
-> **Y ese último recorrido enseñó algo al escribirlo.** La primera versión tiraba con la cuenta
-> que había creado la campaña —el DM— y pasaba en verde **sin comprobar nada**: un DM sí ve su
-> propia tirada a ciegas, porque la esconde de la mesa y no de sí mismo. El recorrido bueno invita
-> a un jugador y tira desde su navegador. Una prueba en verde que mide el caso equivocado es peor
-> que no tenerla.
-
-**De los tres que trajo 2B**, los dos últimos los añadieron la revisión y la auditoría de
-mecánica: uno comprueba que **un objeto de otra campaña no se puede meter en
-este inventario** (ficha S8) —de los que solo pueden vivir aquí, porque el Prisma simulado de
-las unitarias ignora el `where`— y el otro que **el inventario deja rastro en la línea de
-tiempo**: quién metió qué y quién lo movió. Las suites de API nuevas son `campaign-items` y `inventory`; la especificación de
-navegador nueva es `inventario.spec.ts`.
-
-> Antes de 2B eran 121 en 23 y 61 en 14.
-
-**Lo que `inventario.spec.ts` mide y ninguna unitaria puede**: que **equipar cambia el número de
-la hoja delante de quien lo hace** —se lee la CA del DOM antes y después, no una cifra escrita en
-la prueba—, que el paso del objeto aparece en la traza, que el arma equipada sale en el cuadro de
-ataques y **el servidor la tira**, y que la tabla desplaza dentro de su contenedor sin arrastrar
-la página. Y el tercero de sus tres recorridos sale del inventario: **el catálogo de la campaña
-crea un objeto propio y se distingue del que trae el SRD**, que es la marca de procedencia que el
-prototipo exige y que ninguna unitaria puede ver pintada.
-
-> **Dos pruebas de la hoja cambiaron de forma, y merece decirse por qué.** La que exigía las
-> filas «Cuerpo a cuerpo» y «A distancia» en el cuadro de ataques ya no puede: desde 2B la tabla
-> es de **armas equipadas**, así que ahora comprueba que sin arma la hoja **dice qué hacer** en
-> vez de enseñar una tabla vacía. Y la de contraste medía la prosa del hueco de inventario
-> —«llega en la fase 2B»—, que dejó de existir el día que el hueco se rellenó: mide ahora el
-> rótulo de una de sus tres zonas, que es el mismo par de colores en el mismo sitio.
-
-> La cifra de API decía **116 en 22 suites** y llevaba un día siendo falsa: faltaba
-> `rate-limit.e2e-spec.ts`. Lo encontró una auditoría, no un control — y **este documento es la
-> fuente única declarada de ese número**, así que `check:docs` prohíbe repetirlo en otro sitio y
-> no había ningún otro lugar donde el lector pudiera cazar el error. La única defensa de una
-> fuente única es mirarla de vez en cuando; ninguna expresión regular sabe cuántas suites hay. Las suites de API nuevas del
-día son `character-sheet` (12), `character-state` (8), `world-state` (7), `rolls` (8),
-`game-state` (6), `notifications` (4), `level-up` (4), `rules-engine` (7),
-`catalog-y-velocidad` (4) y **`partida` (12), que
-es la prueba de integración que juega una sesión entera** y no se parece a las demás. Uno de
-los de `game-state` —«arrancar una segunda sesión en la misma
-campaña falla»— **solo puede vivir aquí**: lo que lo impide es un índice único parcial de
-Postgres, y el Prisma simulado de las unitarias no valida SQL.
-
-> **El reseño reescribió nueve recorridos del navegador, y merece decirse por qué.** No se
-> tocaron sus comprobaciones: se tocó el **camino**. Antes, leer una ficha era abrir su
-> formulario, así que los recorridos hacían clic en una fila y esperaban un editor. Ahora la
-> fila lleva a una página de lectura y el editor se abre desde ella, de modo que el recorrido
-> tiene un paso más — el mismo que da una persona. Un recorrido que hubiera seguido pasando
-> sin cambios habría sido la señal de que la mejora no llegó a la pantalla.
-
-> **Dos especificaciones de navegador que no estaban documentadas (2026-09-03).**
-> `armazon.spec.ts` mide las tres cosas que el autor señaló mirando el prototipo y que `jsdom`
-> no puede ver: que **el pie se apoya en el borde inferior** aunque la pantalla tenga poco
-> contenido, que **ninguna entrada del carril va sin su icono**, y que la marca dice lo que debe.
-> `capturas-comparacion.spec.ts` no afirma nada: **fotografía nuestras pantallas** en tema
-> oscuro con contenido de ejemplo, para poder ponerlas al lado de las del prototipo. Se conserva
-> porque montar una campaña con contenido a mano cada vez que hay que comparar cuesta más que
-> tenerlo escrito, y porque las dos rondas de interfaz que salieron bien empezaron mirando las
-> dos capturas juntas.
->
-> **Y desde el 2026-09-03 escribe a una carpeta ignorada** (`apps/web/capturas-salida/`, ficha
-> M2B-13). Antes reescribía los nueve PNG del repositorio en cada corrida, así que **la suite
-> dejaba nueve binarios modificados que no significan nada** y había que limpiarlos antes de cada
-> commit — con la tentación de hacerlo con `git checkout` sobre un árbol con trabajo sin
-> commitear, que es justo el comando que este proyecto prohíbe. El juego de referencia de
-> `apps/web/capturas/` se reescribe **a propósito**: `SALIDA_CAPTURAS=capturas`.
-
-> **Un intermitente que parecía un defecto y era el limitador de peticiones (2026-09-03).**
-> La suite empezó a fallar en sitios distintos en cada vuelta: un personaje que no aparecía en
-> su lista, un campo que no guardaba, un `<input>` que «se desprendía del DOM». Cada fallo por
-> separado tenía una explicación creíble y **ninguna era la verdadera**. La causa: hay un tope
-> global de **100 peticiones por IP y minuto** sobre todas las rutas, y la suite dispara
-> cientos de peticiones legítimas desde `127.0.0.1` en un minuto — sesenta recorridos que
-> registran una cuenta, crean una campaña, escriben fichas y rellenan una hoja. Pasado el
-> centenar, la API responde **429** y el recorrido se rompe donde le pille.
->
-> Se resolvió como ya se había resuelto para el límite de autenticación: **haciéndolo
-> configurable y dándole margen solo a esta suite** (`RATE_LIMIT` en `playwright.config.ts`).
-> El control de producción no se toca, y un valor mal escrito cae al de producción, nunca a
-> «sin límite» — hay pruebas que lo fijan.
->
-> **Y una trampa dentro de la trampa:** el primer intento no funcionó y parecía descartar la
-> hipótesis. `reuseExistingServer` estaba reutilizando un servidor **arrancado antes del
-> cambio**, así que la variable nueva no llegaba. Al matar el proceso viejo, 61 verdes en dos
-> vueltas seguidas. Si se toca una variable de entorno del servidor de pruebas, **hay que matar
-> el que esté levantado** o la medición miente.
-
-> **Una clase de prueba más, del 2026-09-03: la que comprueba que una clase de CSS pinta.**
-> `jsdom` no resuelve una clase de Tailwind hasta un color, así que toda una familia de fallos
-> le era invisible **por construcción**: 49 utilidades de opacidad que el compilador descartaba
-> en silencio, entre ellas el fondo de la cabecera, el velo de los diálogos y el subrayado que
-> distingue lo editable de lo derivado. Se cubren con **dos redes que no se sustituyen**:
-> `src/ui/__tests__/clases-de-opacidad.test.ts` barre el código fuente —caza una clase
-> reintroducida en una pantalla que ningún recorrido monta— y `e2e/clases-que-si-pintan.spec.ts`
-> mide en el navegador que la utilidad llega al CSS y pinta un color, que es lo que el barrido
-> no puede saber.
->
-> Y una advertencia que salió de ahí: **una prueba de contraste puede pasar midiendo un fondo
-> que no existe.** La del filete entre filas daba 12,89:1 en tema oscuro leyendo el gris del
-> preflight —alto contra un fondo oscuro por casualidad— y solo se cayó en el claro. Medía el
-> borde del enlace, y el filete lo pinta el `<li>`. Cuando una medición de contraste sale
-> sospechosamente alta, conviene comprobar **qué** se está midiendo.
-
-> **Y la alarma de maquetación acabó cazando el arrastre, que era lo que faltaba.** Durante unas
-> horas del 2026-09-02 aquí ponía que no había forma de probarlo: que en el editor de reglas «no
-> se dispara ni un `dragstart`». **Era falso, y las dos conclusiones que llevaron a esa frase lo
-> eran también.** Se culpó primero al `backdrop-filter` del velo y después al `overflow-y-auto`
-> del panel; la causa real la encontró un banco de pruebas que compiló el componente con su CSS
-> y bisectó: era el **`max-h-[85vh]`**. Con el editor dentro de un diálogo de altura acotada, la
-> pieza quedaba en `y = 451` y su carril en `y = 891` sobre una ventana de 720 — **no estaban
-> nunca en pantalla a la vez**, así que no había dónde soltar. No era un defecto de código: era
-> un defecto de sitio, y lo padecía igual una persona con un portátil.
->
-> El arreglo fue sacar el editor del diálogo y pintar la paleta en dos columnas para que la
-> pieza y su ranura quepan juntas. Hoy hay **dos recorridos que arrastran de verdad**, y el del
-> rechazo arrastra **primero** algo que sí se coloca, para que no pueda volver a pasar en verde
-> por el motivo equivocado. Mutación comprobada: con el carril rechazando todo, las dos se ponen
-> rojas.
->
-> Queda una lección que no es sobre arrastrar: **tres diagnósticos seguidos sonaron plausibles y
-> dos eran falsos**, y los tres se apoyaban en mediciones reales. Medir no basta si se mide la
-> cosa equivocada.
-
-> **Una clase de prueba más, desde el 2026-09-02: la alarma de maquetación.** `jsdom` no
-> maqueta —no hay ancho, ni alto, ni `display` calculado—, así que ninguna prueba unitaria
-> puede ver un borde mal dibujado. Cuando las filas de las listas pasaron de `<button>` a `<a>`
-> heredaron `display: inline` y pintaron el borde **partido**, con **toda la suite unitaria** en
-> verde y
-> un despliegue de por medio. `apps/web/e2e/campana.spec.ts` lee ahora el `display` calculado
-> de una fila y falla si vuelve a ser `inline`. **Lo que solo se ve maquetado, se mide en el
-> navegador** — la misma razón por la que el contraste se mide ahí desde 1.19.
-
-La suite de navegador nueva es `apps/web/e2e/tokens-contrast.spec.ts`, y hace algo que ninguna
-otra hace: **mide**. Recorre `/design-tokens` **y cinco pantallas reales** (entrar, el detalle de campaña, la 404,
-`/acerca-de` y la de cuenta) en los dos temas, lee los colores **calculados**
-del DOM —componiendo el alfa contra el fondo real, no leyendo el color declarado— y falla por
-debajo de 4,5:1 en texto y 3:1 en bordes y anillos de foco. **Todas las mediciones bloquean.**
-La vía de escape de 1.19 —un `observe()` con lista de etiquetas permitidas que registraba sin
-bloquear— **se retiró**, y hoy `record()` es el único camino: cada par medido hace su
-`expect(...).toBeGreaterThanOrEqual(umbral)`. Esa vía existió porque la primera versión medía
-solo los pares que su autor había elegido, y se le escaparon dos que incumplían su propio
-umbral; quitarla fue el paso siguiente.
-
-Las unitarias, el lint, el formato y `check:docs`/`check:estado` los exige `pnpm verify` en el
-gancho de pre-commit; los e2e quedan fuera del gancho pero dentro de CI.
+> **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
+> navegador» y son **20**; antes había dicho «116 e2e de API en 22 suites» olvidando
+> `rate-limit`, y «64 recorridos en quince especificaciones» en un párrafo mientras otro decía
+> otra cosa. Las tres las encontró una auditoría, no un control. **La única defensa de una
+> fuente única es mirarla de vez en cuando** — o hacer que la escriba una máquina, que es lo que
+> se hizo el 2026-09-03 con lo que se puede contar.
 
 ## Qué escribe una tarea de API
 
-Toda tarea de API entrega, como mínimo:
-
-1. **Unitarias del servicio** con el Prisma simulado: el caso normal, el caso sin permiso,
-   y el filtrado de visibilidad para un jugador que no debe ver algo.
+1. **Unitarias del servicio** con el Prisma simulado: el caso normal, el caso sin permiso, y el
+   filtrado de visibilidad para un jugador que no debe ver algo.
 2. **Un e2e** que registra un DM y un jugador, crea la campaña, **invita al jugador**, y
-   comprueba desde fuera que el jugador ve lo que le toca y **no ve** lo que no.
-   Ese guion —registrar, invitar, comprobar los dos puntos de vista— es el patrón de todas
-   las suites e2e existentes; cópialo, no inventes uno nuevo.
+   comprueba desde fuera que el jugador ve lo que le toca y **no ve** lo que no. Ese guion es el
+   patrón de todas las suites existentes; cópialo, no inventes uno nuevo.
 3. **El caso de entrada inválida**, si la tarea introduce validación nueva.
 
 **Se prueba comportamiento, no implementación.** Un test que afirma que se llamó a
 `prisma.entity.findMany` no prueba nada; el que afirma que un jugador no recibe la entidad
-`DM_ONLY`, sí.
-
-Los criterios de aceptación se escriben antes, en formato Dado / Cuando / Entonces:
-
-```
-Dado un jugador miembro de la campaña
-Cuando lista las entidades y una es DM_ONLY
-Entonces esa entidad no aparece en la respuesta
-```
+`DM_ONLY`, sí. Los criterios de aceptación se escriben antes, en Dado / Cuando / Entonces.
 
 ## Qué escribe una tarea de web
 
 RTL con los módulos `api.ts` simulados y los hooks reales dentro de `QueryClientProvider` +
-`MemoryRouter`. Se prueba lo que hace el usuario: escribir, elegir, enviar — y que la
-mutación recibe la carga correcta.
-
-**Y `pnpm build` limpio**, que es lo que hace de type-check del `tsx`.
+`MemoryRouter`. Se prueba lo que hace el usuario: escribir, elegir, enviar — y que la mutación
+recibe la carga correcta. **Y `pnpm build` limpio**, que es lo que hace de type-check del `tsx`.
 
 ## Lo que las pruebas de hoy NO cubren
 
 Esto no es una salvedad teórica; es el hueco por donde se cuelan los defectos.
 
-- **jsdom no pinta nada.** No hay color, ni tamaño, ni posición, ni contraste, ni foco real,
-  ni desbordamiento. Una pantalla puede estar ilegible con toda la suite en verde.
-- **jsdom no navega.** Un enlace roto, una ruta que no existe, un `ProtectedRoute` que
-  redirige mal: invisible para RTL.
+- **jsdom no pinta nada.** No hay color, ni tamaño, ni posición, ni contraste, ni foco real, ni
+  desbordamiento. Una pantalla puede estar ilegible con toda la suite en verde.
+- **jsdom no navega.** Un enlace roto, una ruta que no existe, un `ProtectedRoute` que redirige
+  mal: invisible para RTL.
 - **El Prisma simulado no valida SQL.** Una restricción única violada aparece como 500 en la
   vida real y como nada en la unitaria.
-- **El catálogo de accesibilidad y de responsive está a medias, y el de rendimiento no
-  existe.** Playwright cubre hoy **64 recorridos en quince especificaciones**, y dentro de
-  ellos **sí** hay accesibilidad —el contraste medido en los dos temas— y **sí** hay un caso
-  de responsive real: que un control de formulario no dispare el zoom de iOS Safari en un
-  puntero basto. Lo que falta es el resto del catálogo: foco, lectores de pantalla, teclado,
-  anchos intermedios, y cualquier medida de rendimiento.
-  (Esta línea ha estado mal dos veces: primero decía «seis recorridos en dos especificaciones»
-  y luego «26 en cuatro», las dos contradiciendo la sección de más arriba. **Los recorridos
-  contados a mano no coinciden con los que el runner ejecuta**, porque `tokens-contrast.spec.ts`
-  declara sus pruebas dentro de bucles sobre los dos temas: la cifra buena es la que imprime
-  `pnpm --filter @dnd/web e2e`, no la de contar `test(` en los ficheros.)
+- **La accesibilidad está a medias y el rendimiento no existe.** Playwright **sí** mide
+  contraste en los dos temas y **sí** cubre un caso de responsive real (que un control de
+  formulario no dispare el zoom de iOS Safari). Falta el resto: foco, lectores de pantalla,
+  teclado, anchos intermedios, y cualquier medida de rendimiento.
 - **No hay mutación ni umbral de cobertura** (N2/N3 no declarados).
 
-## Playwright
+## Playwright, y las reglas que no se negocian
 
-Instalado el 2026-08-31. **Chromium**, `apps/web/playwright.config.ts`, especificaciones en
-`apps/web/e2e/`.
+Chromium, `apps/web/playwright.config.ts`. La configuración levanta los dos servidores sola: la
+**API compilada** (`start:prod`, como en producción) y Vite, que hace de proxy de `/api` igual
+que nginx. Cada prueba registra su propio usuario con correo único, así que **no dependen de
+datos sembrados ni se pisan entre sí**. `vitest` tiene su `include` acotado a `src/` para que
+los dos corredores no se disputen `e2e/`.
+
+1. **Los e2e de navegador no entran en `pnpm verify` ni en el gancho de pre-commit.** Necesitan
+   Docker y dos servidores vivos. Van en su script y en CI como trabajo aparte (`e2e-browser`),
+   que sube el informe como artefacto cuando falla.
+2. **Eso no los hace opcionales. Si una tarea toca una pantalla, corre el e2e antes de darla por
+   terminada.**
+3. **La regla también aplica al plan:** si una tarea toca una pantalla que ya recorre un
+   `*.spec.ts`, **su brief lleva el e2e dentro**. En english-log un plan metió un componente en
+   cuatro pantallas, creó un segundo enlace con el mismo nombre accesible y dejó un `spec` roto
+   en la rama; no lo vio ninguna prueba de componente, ni la captura, ni la revisión de la tarea.
+   Lo encontró, dos tareas más tarde, la primera con instrucción de abrir un navegador. **La
+   culpa fue del plan.**
+4. **Al medir en el navegador, mide los dos ejes.** Una revisión que solo comprueba posición y
+   anchura deja pasar celdas estiradas por un `align-items` que nadie miró.
+
+**Se comprobó que pueden fallar, no solo que pasan.** Con la guarda de autenticación desactivada
+a mano, las siete pruebas de componente seguían en verde y el recorrido de sesión se caía con su
+captura. Ese es el defecto que en english-log llegó a producción dos veces con la suite entera
+en verde.
+
+### Seis lecciones que costaron horas, en una línea cada una
+
+- **Lo que solo se ve maquetado, se mide en el navegador.** Filas que pasaron de `<button>` a
+  `<a>` heredaron `display: inline` y pintaron el borde **partido**, con la suite unitaria entera
+  en verde y un despliegue de por medio.
+- **Una clase de Tailwind que no existe compila a nada, y `jsdom` no lo ve.** 49 utilidades de
+  opacidad se descartaban en silencio, incluido el velo de los diálogos. Se cubre con dos redes
+  que no se sustituyen: un barrido del código fuente y una medición en el navegador.
+- **Una prueba en verde puede estar midiendo el caso equivocado.** El recorrido de la tirada a
+  ciegas tiraba con el DM, que sí ve su propia tirada; el bueno invita a un jugador y tira desde
+  su navegador.
+- **Y puede estar midiendo lo que no es.** Una medición de contraste sospechosamente alta
+  (12,89:1) leía el gris del preflight en lugar del filete que decía medir. Cuando sale
+  demasiado bien, comprueba **qué** estás midiendo.
+- **Medir no basta si se mide la cosa equivocada.** Tres diagnósticos seguidos sobre por qué no
+  se disparaba un `dragstart` sonaron plausibles y dos eran falsos, apoyados los tres en
+  mediciones reales. La causa era un `max-h-[85vh]`: la pieza y su carril **nunca estaban en
+  pantalla a la vez**, y lo padecía igual una persona con un portátil.
+- **Un intermitente puede ser el limitador de peticiones.** La suite dispara cientos de
+  peticiones legítimas desde `127.0.0.1` en un minuto y chocaba con el tope global de 100: el
+  429 rompía el recorrido donde le pillara, y cada fallo tenía una explicación creíble que no
+  era la verdadera. Se le da margen **solo a la suite** (`RATE_LIMIT` en `playwright.config.ts`);
+  el control de producción no se toca.
+
+---
+
+# Qué demuestra cada suite
+
+## e2e de API
+
+### Identidad y acceso
+
+| Suite | Qué demuestra |
+|---|---|
+| `auth` | Registro, sesión y `/auth/me`. Cambiar el nombre visible y la contraseña; **cambiar la contraseña invalida los tokens emitidos antes**, que es una regla de seguridad y no una comodidad. Sin token, 401. |
+| `rate-limit` | El límite de intentos en registro, sesión, cambio de contraseña y aceptación de invitación: el 429 llega cuando se agotan, por IP. |
+| `trust-proxy` | **Que el límite no se puede evadir cambiando la cabecera `X-Forwarded-For`** en cada intento, y que un salto real distinto sí tiene su propia cuota. Es la comprobación que justifica el número de proxies de confianza en producción. |
+| `security-headers` | Las cabeceras de Helmet salen **en toda respuesta, incluida una 401**, y no hay cabeceras CORS si no se configuró origen. |
+| `invites` | El DM invita, el jugador acepta y entra; quien no es DM no puede invitar; **una invitación no se reutiliza**. |
+| `members` | Listar miembros con su papel; expulsar a alguien le quita de verdad el acceso a lo que era visible para jugadores; un extraño recibe 403. |
+| `notifications` | Aceptar una invitación notifica al DM; **nadie ve las notificaciones de otro**, ni las marca leídas. |
+
+### El mundo y la campaña
+
+| Suite | Qué demuestra |
+|---|---|
+| `campaigns` | Quien crea una campaña queda como DM; leerla y editarla exige el papel correcto; **borrar una campaña se lleva en cascada todo lo que cuelga de ella**, y eso se comprueba **contando filas de verdad** en cada tabla, no fiándose del 200. Cada tabla nueva del proyecto se añade aquí: una que falte es un huérfano que no avisa. |
+| `entities` | El listado se filtra por visibilidad para el jugador; el cuerpo Markdown se guarda y vuelve idéntico; se rechaza un formato que no es Markdown y un texto desmesurado. |
+| `links` | Enlazar dos fichas, rechazar el enlace de una consigo misma, y que **el jugador solo vea los enlaces cuyo destino puede ver**. |
+| `comments` | Comentar una ficha visible; **no se puede comentar una `DM_ONLY`**. |
+| `sessions` | El DM crea sesiones; el jugador no; el listado se filtra por visibilidad. |
+| `characters` | Quien crea un personaje queda como su dueño **según el servidor, no según lo que mande el cliente**; el listado del jugador se filtra por `canView` y el DM los ve todos; **editar exige ser dueño o DM, y otro jugador recibe 403**. Es la puerta de entrada a la hoja, y llevaba sin aparecer en este mapa desde que se escribió. |
+| `world-state` | Marcas y conjuntos del mundo: solo el DM escribe, poner la misma marca la sobrescribe en vez de duplicarla, quitar un miembro dos veces no falla, y **una señal levantada por el DM queda `DM_ONLY` en el registro**. |
+| `game-state` | **Como mucho una sesión en curso por campaña, y lo garantiza un índice único parcial de Postgres, no un `if`.** Arrancar escribe su suceso; un suceso `DM_ONLY` no sale en el registro del jugador; un límite de consulta inválido es 400 y no una consulta sin tope. |
+
+### La hoja de personaje y su estado
+
+| Suite | Qué demuestra |
+|---|---|
+| `character-sheet` | Rellenar la hoja y que el servidor derive PG máximos y CA. Una hoja a medias devuelve **un motivo, no un 500**; una clave de catálogo desconocida es 400. **Dos deltas de PG lanzados a la vez aterrizan los dos** —el Prisma simulado no bloquea filas, así que esa carrera solo se ve aquí—; una corrección absoluta exige DM y versión, y una versión vieja da 409 **con el estado actual dentro**. Salvaciones de muerte, el cuadro de ataques y el 403 de quien no es miembro. |
+| `character-state` | Recursos propios, gastarlos, y las tres reglas de descanso que importan: **el largo devuelve la mitad de los dados de golpe, no todos**, y **el brujo repone en el corto**. Un jugador no puede subir un recurso `DM_ONLY`. |
+| `level-up` | Subir de nivel escribe su suceso y sube los PG máximos en la cantidad prevista; el previo es idempotente; **el nivel 20 es el techo**. |
+| `catalog-y-velocidad` | El catálogo en español y **la velocidad ya afectada por las condiciones, con su traza**, servidos por el servidor. Existe para que la pantalla **deje de calcular**: es el viaje lo que hay que demostrar. |
+| `inventory` | Meter, equipar, mover y gastar. **Dos peticiones simultáneas de equipar en la misma ranura vacía: una gana y la otra no**, y lo garantiza un índice único parcial. Un objeto `DM_ONLY` no se le puede dar a quien no lo ve, y **uno de otra campaña del mismo DM no entra**. La bolsa no baja de cero. |
+| `campaign-items` | Los objetos propios del DM: crear, filtrar por visibilidad, editar, y **no poder borrar uno que alguien lleva encima** (409) hasta vaciarlo. |
+| `condiciones-con-duracion` | Una condición se guarda con **la hora en que vence, no con su duración**; mientras vive frena de verdad; al pasar su hora deja de aplicarse **y el jugador ve por qué**; no se vuelve a anunciar. Y **el agotamiento 4 parte los PG máximos, con la curación topando contra ese máximo**. |
+| `game-clock` | El reloj es **una columna que sube de verdad**; solo el DM lo avanza; viajar pide las salvaciones de marcha forzada; **un segundo descanso largo en menos de 24 horas de juego se rechaza con un 409 que dice cuánto falta**; a 0 PG no se descansa largo; un descanso interrumpido no cura. |
+
+### Dados, reglas y PNJ
+
+| Suite | Qué demuestra |
+|---|---|
+| `rolls` | Quién puede tirar por qué hoja. **Una tirada a ciegas no lleva el resultado en la respuesta del jugador**, y el DM sí lo ve — se comprueba sobre el cuerpo HTTP. El azar es del servidor (treinta d20 dentro de rango). El registro filtra por sesión y por personaje, y **«solo las mías» son las de mis personajes**, no las de la mesa. |
+| `peticion-de-tirada` | El DM pide **un valor de la hoja**, le llega a quien es y a nadie más; **otro jugador recibe 404 y no 403**, porque un 403 confirmaría que existe; se tira con el modificador de la hoja de quien responde; no se responde dos veces; la variante a ciegas no le enseña el resultado a quien tira. |
+| `tablas-del-dm` | **Las tablas de la casa nacen apagadas** y el listado lo dice. Una tabla con un hueco se rechaza con una frase legible; **una segunda tabla de pifias la rechaza la base** (índice único parcial); varias sin disparador conviven; **un jugador que no ve una tabla recibe 404 al tirarla**; editar reemplaza las filas enteras. |
+| `rules-engine` | El motor de reglas es **del DM entero**: incluso listar es 403 para un jugador. Una propuesta no cambia nada hasta que el DM la aplica; el ensayo en seco **dice qué pasaría y no persiste**; con el interruptor apagado, una regla que encaja no hace nada. |
+| `statblocks` | El catálogo del SRD lo ve cualquiera que juegue. **El statblock propio del DM no viaja al jugador**, y se comprueba sobre el cuerpo serializado. Las columnas de lista y los campos Json sobreviven al viaje por Postgres; **editar un campo no borra los otros veinte**, comprobado contra la fila; uno de otra campaña da 404. |
+| `pnj-en-la-mesa` | El bucle entero de un PNJ: instanciar (solo DM, con tope), que **nazca escondido**, que su hoja se derive del statblock con su traza, que reciba daño, que una anulación del DM salga con su delta, y que **el agotamiento le parta los PG máximos sin que se escribiera una línea de agotamiento para PNJ** — que es lo que justifica la decisión de diseño de la fase 2D. Y las tres comprobaciones de la revisión de cierre: **los números de un statblock `DM_ONLY` no llegan al jugador por la hoja**, el `ref` de una plantilla escondida no viaja, y los PNJ no salen en el listado de personajes. |
+| `validacion` | Que un cuerpo inválido diga **qué campo falta y en español**, con la ruta completa de un campo anidado y la lista de los objetivos que sí existen. Y que **no sea un oráculo**: dos identificadores inexistentes son indistinguibles. |
+
+### La partida entera
+
+| Suite | Qué demuestra |
+|---|---|
+| `partida` | **Doce pasos seguidos, en orden, como una sesión de verdad**: montar la mesa con dos jugadores, crear personajes, el aviso de una hoja a medias, el mundo con una ficha que no deben ver, arrancar la sesión, tirar y que la tirada se cuelgue sola de la sesión en curso, la tirada oculta del DM, caer a 0 PG y estabilizarse, volver a la vida y descansar, una condición bajando la velocidad con su traza, el 403 de tocar la hoja de otro, y cerrar la sesión con **cada uno viendo su versión del registro**. Es la suite que caza lo que las demás no ven: **los defectos aparecen al juntar carriles que estaban verdes por separado**. |
+
+---
+
+## Recorridos de navegador
+
+### Que el sistema se puede usar
+
+| Suite | Qué demuestra |
+|---|---|
+| `campana` | Del registro a ver una ficha creada; enlaces y comentarios ejercitados de verdad; borrar una entidad se lleva sus enlaces; crear sesión y personaje con su visibilidad; el Markdown que vuelve como encabezado; filtrar por etiqueta; y editar, expulsar y borrar desde Ajustes. |
+| `invitacion` | **Dos contextos de navegador**, con cookies y almacenamiento propios, como dos navegadores distintos: el DM invita, el jugador entra por el enlace, se registra desde ahí y **no ve la entidad `DM_ONLY`**. |
+| `cuenta` | Cambiar la contraseña **invalida el token viejo contra la API real**; la contraseña equivocada no cierra la sesión; una ruta inventada y una campaña inexistente dicen qué pasa **en vez de dejar la pantalla en blanco**. |
+| `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. |
+| `hoja` | La hoja con datos reales: completar, ver la traza, tirar, cambiar PG. Y lo que solo se ve maquetado: la cabecera fija, **un paso de la traza llevando el foco a su causa**, que lo editable se distinga de lo derivado, y que las veinticuatro líneas de habilidad quepan. |
+| `inventario` | Equipar una armadura **cambia la CA y añade su paso a la traza**; un arma equipada llega al cuadro de ataques y se tira; el catálogo propio se distingue del SRD. |
+| `subir-nivel` | El servidor propone el diff, **tirar no aplica nada**, y confirmar deja la hoja en el nivel nuevo. |
+| `dados` y `tirada` | El desglose y no solo el total; **el dado descartado pintado tachado** —que solo se puede medir en un navegador—; el motivo del evaluador real junto al campo; y **a ciegas, el total no viaja: se mide sobre la respuesta HTTP, no sobre el DOM**. |
+| `peticion-de-tirada` | El DM pide, **a la jugadora le aparece sin recargar**, tira, y el DM ve el resultado. |
+| `reglas` y `reglas-arrastrar` | Escribir una regla, armarla y ensayarla en seco sin dejar traza; clonar una plantilla. Y el tablero de arrastre medido: cada pieza con su silueta, los carriles rechazando lo que no es suyo, el orden en pantalla ancha y estrecha, y **los conectores en color y negrita, porque el color no puede decidir solo**. |
+| `tablas-del-dm` | Que lo primero que se lea sea **que esto no es del manual**; que el interruptor diga su posición **leída del servidor**; y que un error enseñe **la frase del servidor** y no una genérica. |
+| `bestiario` | Las quince criaturas con sus números; **ningún valor de enumeración en pantalla**; la velocidad en pies; bajar una criatura a la mesa de punta a punta; y que **el botón no prometa un combate que no existe**. |
+| `condiciones-con-duracion` | Una condición vencida **se marca y no desaparece**, y los PG partidos por agotamiento **se explican en la hoja**. |
+
+### Que se ve como debe
+
+`jsdom` no maqueta. Todo lo de esta tabla puede estar roto con la suite de componentes entera en
+verde — ya pasó con un borde partido, y por eso estas comprobaciones son regla y no adorno.
+
+| Suite | Qué mide |
+|---|---|
+| `armazon` | El pie apoyado en el borde inferior con poco contenido; **ninguna entrada del carril sin su icono dibujado**; la marca. |
+| `tokens-contrast` | **El contraste real, medido, en los dos temas** y en las pantallas de sesión, campaña, 404, atribución y cuenta. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
+| `clases-que-si-pintan` | Que las superficies que la aplicación promete **se pintan de verdad** — la comprobación que caza una clase de Tailwind que no existe y compila a nada. |
+| `ficha-lectura` | El enlace que se lee como frase por sus dos lados; la capitular, los párrafos y la medida corta; el contraste de la página de lectura en los dos temas. |
+| `capturas-comparacion` | Capturas de nuestras pantallas **para compararlas con el prototipo**. No afirma nada por sí sola: es material para el ojo humano. |
+
+---
+
+---
+
+## Lo que ningún recorrido cubre hoy
+
+Se dice aquí para que nadie lo dé por cubierto al leer la lista de arriba.
+
+- **Nada de un sistema de encuentros**, porque no existe: no hay iniciativa, ni turnos, ni un
+  ataque comparado contra la CA en el servidor, ni daño aplicado desde una tirada. **Es un bloque
+  planificado** —el plan maestro lo sitúa entre la fase 2 y la 3— y lo único suyo que ya está
+  construido son los statblocks de PNJ con PG vivos, que entregó 2D.
+- **La partida de prueba con dos cuentas de jugador reales**, jugada por personas. `partida`
+  recorre los doce pasos por HTTP, pero **nadie ha jugado una sesión de verdad en producción**: es
+  lo único que le queda a la fase 2.
+- **El disparo automático de una tabla de críticos o pifias.** Necesita que el d20 saque un 20 o un
+  1 a voluntad, y el tirador solo se fija inyectándolo — lo cubren las unitarias. Un recorrido que
+  tirara cuarenta veces esperando un natural sería una prueba que a veces no prueba nada, y además
+  desbordaría el límite de peticiones.
+- **El móvil.** No hay recorrido en viewport de teléfono más allá de la comprobación del zoom de
+  iOS. La hoja en móvil está declarada como objetivo y no está medida.
+- **La accesibilidad más allá del contraste y el foco.** No hay auditoría de lector de pantalla.
+- **La carga.** Nada mide qué pasa con doscientas fichas o con cincuenta tiradas por minuto.
+- **La recuperación ante desastre de la aplicación.** El servidor tiene su documento
+  ([03-despliegue.md](./03-despliegue.md)), pero **restaurar la base de esta aplicación y seguir
+  jugando no está probado desde la propia aplicación**, y la copia de seguridad sigue con la ficha
+  abierta en [06-pendientes.md](./06-pendientes.md).
+
+## Cómo se corren
 
 ```bash
-docker compose up -d                     # los e2e necesitan Postgres
-pnpm --filter @dnd/web e2e               # levanta API compilada + Vite y abre el navegador
-pnpm --filter @dnd/web e2e:ui            # modo interactivo
+docker compose up -d                     # Postgres 16 en :5432 — los e2e de API lo necesitan
+pnpm --filter @dnd/api test:e2e          # todos los de API
+pnpm --filter @dnd/api test:e2e -- rolls # una suite
+pnpm --filter @dnd/web e2e               # todos los de navegador (Chromium)
+pnpm --filter @dnd/web e2e -- e2e/hoja.spec.ts   # una sola, por RUTA
 ```
 
-La configuración levanta los dos servidores sola: la **API compilada** (`start:prod`, que es
-como corre en producción) y Vite, que hace de proxy de `/api` igual que nginx. Cada prueba
-registra su propio usuario con correo único, así que **no dependen de datos sembrados ni se
-pisan entre sí** al repetirse contra la misma base.
-
-`vitest` tiene su `include` acotado a `src/`: los `.spec.ts` de `e2e/` son de Playwright, y
-sin eso los recogerían los dos corredores.
-
-### Por qué existen: la comprobación que se hizo al instalarlos
-
-No basta con que una prueba pase. **Se comprobó que puede fallar.** Con la guarda de
-autenticación desactivada a mano (`ProtectedRoute` dejando pasar sin token):
-
-| Suite | Resultado con la guarda rota |
-|---|---|
-| 7 pruebas de componente (jsdom) | **las 7 en verde** |
-| 2 e2e de navegador | **la de sesión falla**, con captura |
-
-Ese es exactamente el defecto que en english-log llegó a producción dos veces con toda la
-suite verde: una pantalla de ingreso con contraste 1.1:1 y un "cerrar sesión" roto.
-
-### Las reglas
-
-1. **Los e2e de navegador no entran en `pnpm verify` ni en el gancho de pre-commit.**
-   Necesitan Docker y dos servidores vivos; encadenarlos a cada commit haría el gancho
-   inservible. Van en su script y en CI como **trabajo aparte** (`e2e-browser`), que sube el
-   informe como artefacto cuando falla.
-2. **Eso no los hace opcionales. Si una tarea toca una pantalla, corre el e2e antes de darla
-   por terminada.**
-3. **La regla también aplica al plan, no solo al código:** si una tarea toca una pantalla que
-   ya recorre un `*.spec.ts`, **su brief lleva el e2e dentro**. Quien escribe el brief es
-   responsable de ponerlo.
-   > En english-log un plan metió un componente en cuatro pantallas, creó un segundo enlace
-   > con el mismo nombre accesible y dejó un `spec` roto en la rama. No lo vio ninguna prueba
-   > de componente, ni la captura, ni la revisión de la tarea: lo encontró, dos tareas más
-   > tarde, la primera con instrucción de abrir un navegador. **La culpa fue del plan.**
-4. **Al medir en el navegador, mide los dos ejes.** Una revisión que solo comprueba posición
-   y anchura deja pasar celdas estiradas por un `align-items` que nadie miró.
-
-### Cubierto hoy
-
-- **Registro → crear campaña → crear NPC → verlo en su pestaña**, con etiquetas y
-  visibilidad, comprobando que el editor se cierra y la entidad aparece con su `DM_ONLY`.
-- **Salir cierra la sesión** y volver a la ruta protegida a mano devuelve a `/login`.
-- **Modo edición del editor de entidades, con enlaces y comentarios reales** (1.12b-fix):
-  crea dos NPCs y abre uno pulsando su fila. **Desde el reseño del 2026-09-02 la fila lleva a
-  la página de lectura** (`pages/EntityDetailPage.tsx`), y es ahí donde se montan `LinksPanel` y
-  `CommentThread`; este párrafo decía que el único camino era el modo edición de
-  `EntityEditor.tsx`, que hoy solo los nombra en comentarios. Comprueba que los dos paneles se
-  pintan, enlaza el NPC con el otro y ve el enlace aparecer en la lista, y publica un
-  comentario y lo ve aparecer con su texto. Es la prueba que faltaba: la tanda anterior de
-  1.12b tenía cobertura de componente para los dos paneles pero **ningún** recorrido de
-  navegador entraba en modo edición, así que el e2e pasó sin ejecutar ni una línea del código
-  nuevo. Ver la entrada de 1.12b-fix en [07-historial.md](./07-historial.md).
-- **Editores de sesión y personaje** (1.13, ampliado en 1.13-fix): crea una sesión visible
-  solo para el DM y un personaje `PUBLIC` desde sus pestañas — hasta la tarea 1.13
-  `SessionsTab` y `CharactersTab` eran de solo lectura y ningún recorrido de Playwright las
-  visitaba, así que `SessionEditor.tsx` y `CharacterEditor.tsx` nunca se habían pintado en un
-  navegador real. El recorrido rellena título, fecha (`<input type="datetime-local">`), notas
-  y visibilidad de la sesión; guarda y comprueba que aparece en la lista con `DM_ONLY`; la
-  reabre en modo edición y comprueba que título y notas precargan de verdad contra la API
-  real (no un espía). **A partir de ahí guarda una edición real**: cambia el título, vacía
-  las notas y pulsa "Guardar" — ejerce el `PATCH` real de `updateSession` y, con las notas
-  vacías, el arreglo 1.13-fix de punta a punta (una clave omitida en el `PATCH` deja el valor
-  viejo; una cadena vacía sí lo borra) — comprueba la fila renombrada en la lista, y **la
-  reabre otra vez** para comprobar contra la API real que las notas siguen vacías. Repite lo
-  mismo con el personaje —nombre, raza, clase, nivel y biografía—, comprueba que aparece con
-  "Nivel 3", y al reabrirlo en modo edición comprueba que raza, clase, nivel y biografía
-  precargan: son justo los campos que `CharactersTab` nunca mostró en su lista de solo
-  lectura, así que solo el formulario de edición demuestra que el servidor los guardó. **Y
-  guarda una edición real**: sube el nivel a 4 con "Guardar" — ejerce `updateCharacter` de
-  verdad — y comprueba "Nivel 4" en la lista. Antes de 1.13-fix este recorrido pulsaba
-  "Cancelar" tras la precarga de la sesión y terminaba sin guardar en el bloque del
-  personaje: `updateSession` y `updateCharacter` no se ejecutaban nunca en un navegador real,
-  pese a que el informe de 1.13 lo daba por cubierto. Ver la entrada de 1.13-fix en
-  [07-historial.md](./07-historial.md).
-
-- **Flujo de invitación con dos sesiones de navegador, y el jugador no ve la entidad
-  `DM_ONLY`** (1.14). `apps/web/e2e/invitacion.spec.ts` es la primera suite de este proyecto
-  con dos `BrowserContext` — el DM y el jugador tienen cookies y `localStorage` propios,
-  como dos navegadores distintos de verdad. El DM se registra, crea una campaña, crea un NPC
-  `DM_ONLY` desde su pestaña, y genera una invitación desde `InvitePanel.tsx` (pestaña
-  Resumen); el recorrido **lee el enlace del campo `Enlace de invitación` con
-  `inputValue()`**, no lo construye a mano — así prueba que la pantalla lo pinta de verdad,
-  no que el token generado en el backend es correcto. Un segundo contexto (el jugador, sin
-  sesión) visita ese enlace con `page.goto(inviteUrl)`: comprueba el aviso de "Necesitas
-  iniciar sesión…" (uno de los tres caminos de `JoinPage.tsx`), se registra desde el enlace
-  "Crear cuenta" de esa misma pantalla, y **sin volver a pegar el enlace** — resume
-  automáticamente porque `RegisterPage.tsx` lee el token pendiente que `JoinPage.tsx` guardó
-  en `localStorage` y navega de vuelta a `/join/:token` — termina en la página de la campaña
-  del DM. Ahí abre la pestaña NPCs y comprueba **las dos cosas a la vez**: la lista dice "Sin
-  elementos." y el botón con el nombre del NPC `DM_ONLY` tiene `toHaveCount(0)`. Es la
-  comprobación que la fase llevaba debiendo desde el principio — el mismo caso que el e2e de
-  API prueba por HTTP (`docs/08-pruebas.md` de fases anteriores), hecho por fin sobre el DOM
-  real.
-
-  **Un defecto real, cazado solo por esto:** la primera versión de `createInvite`/
-  `acceptInvite` (`features/invites/api.ts`) llamaba a `apiFetch` con `method: "POST"` y sin
-  `body`. `apiFetch` (`lib/api.ts`) siempre manda `Content-Type: application/json`, y Fastify
-  rechaza esa combinación — cuerpo vacío con ese content-type — con 500 ("Body cannot be
-  empty…") antes de que la petición llegue al controlador. Las unitarias de `InvitePanel` y
-  `JoinPage` no lo vieron porque simulan `api.ts` entero; solo la corrida contra la API real
-  compilada lo mostró. Arreglado enviando `JSON.stringify({})` en las dos llamadas — cambio
-  solo en `apps/web`, la API no se tocó.
-
-  **Un segundo defecto, más sutil, también solo visible aquí:** la primera versión de
-  `JoinPage.tsx` disparaba la aceptación con `useMutation` (`useAcceptInvite`,
-  `features/invites/hooks.ts`) dentro de un `useEffect` de montaje. Contra la API real, con
-  React 18 `StrictMode` (`main.tsx`) montando el componente dos veces en desarrollo, el `201`
-  de `/invites/:token/accept` volvía del servidor pero el `isSuccess` de la mutación nunca se
-  reflejaba en un nuevo render: la pantalla se quedaba en "Aceptando invitación…" para
-  siempre, con la aceptación ya hecha en la base de datos. Ninguna prueba de componente lo
-  vio porque ahí `createInvite`/`acceptInvite` están simulados y se resuelven en el mismo
-  tick, sin la ventana de tiempo real donde el problema aparece. Se cambió `JoinPage.tsx` a
-  llamar `acceptInvite` (`api.ts`) directamente y guardar el resultado con `useState`, sin
-  pasar por `useMutation`; `useAcceptInvite` se quitó de `hooks.ts` por no tener ya quien lo
-  use. El detalle completo, con la secuencia de logs que lo confirmó, está en
-  [07-historial.md](./07-historial.md).
-
-  **Corrección (1.14-fix):** lo de arriba generalizaba de más. Lo que hace segura la
-  aceptación contra una doble invocación no es haber dejado `useMutation`, es la ref
-  `attempted = useRef(false)`, añadida en el mismo cambio — con esa guarda, la versión con
-  `useMutation` habría cortado la segunda llamada igual. "La suscripción de `useMutation` se
-  rompe con montaje + StrictMode" no quedó demostrado como regla general; ver la corrección
-  completa en [07-historial.md](./07-historial.md).
-
-  **Actualizado en 1.14-fix: la aceptación exige un clic explícito.** El Crítico de la
-  revisión independiente era peor que los dos defectos de arriba: una invitación pendiente
-  sin caducidad, que ni `logout()` ni nada más borraba, se auto-consumía en `/join/:token`
-  con **cualquier** login posterior en el mismo navegador, porque la aceptación se disparaba
-  sola al montar sin pedir confirmación. `JoinPage.tsx` ya no acepta en el efecto de montaje:
-  con sesión activa muestra una confirmación ("vas a unirte…, aceptar consume el enlace") y
-  espera el clic en "Unirse a la campaña". El recorrido de `invitacion.spec.ts` ejerce ese
-  clic explícito (`playerPage.getByRole("button", { name: "Unirse a la campaña" }).click()`)
-  después de que el registro resuma la invitación pendiente, y antes de eso comprueba que la
-  pantalla de confirmación es visible — la aceptación no ocurre sola. Se añadió además el caso
-  del DM que abre su propio enlace para comprobar que funciona: ve la misma confirmación,
-  pulsa "Cancelar" sin aceptar, y **el enlace sigue funcionando** cuando el jugador lo usa
-  después — antes de este arreglo, visitarlo ya autenticado bastaba para marcarlo `usedAt` y
-  dejarlo inservible para el jugador real. Detalle completo, con las tres partes del arreglo,
-  en la entrada de 1.14-fix en [07-historial.md](./07-historial.md).
-
-  **Ampliado en 1.15-fix: el jugador abre y lee una entidad ajena que no puede editar.** La
-  única entidad del DM en el recorrido era `DM_ONLY`, así que el jugador solo veía "Sin
-  elementos." y nunca existía una fila visible-pero-no-editable que abrir — el recorrido
-  entero podía pasar en verde sin ejecutar ni una línea del arreglo 1 de 1.15-fix (la fila deja
-  de deshabilitarse; el editor se abre en modo lectura). El DM crea además un NPC `PLAYERS`
-  (`Gundren Rockseeker`) y le pone un comentario antes de invitar. Tras unirse, el jugador ve
-  esa fila `toBeEnabled()`, la abre, comprueba que el campo Nombre precarga
-  `"Gundren Rockseeker"` de verdad (no un formulario vacío) y está `toBeDisabled()`, que
-  Guardar está deshabilitado con su motivo ("Solo el DM o quien lo creó puede editarlo."), que
-  el comentario del DM es visible, y que puede publicar el suyo propio y verlo aparecer —
-  comentar es de cualquiera que pueda ver la entidad (`comments.service.ts` exige solo
-  `canView`), así que el modo lectura del formulario no lo apaga. Ver la entrada de 1.15-fix
-  en [07-historial.md](./07-historial.md).
-
-- **Borrar una entidad se lleva sus enlaces consigo, cascada real** (1.16, renombrado en
-  1.16-fix — el nombre anterior prometía cubrir también la cascada de comentarios y no la
-  comprobaba): `apps/web/e2e/campana.spec.ts` crea dos NPCs, enlaza el primero con el segundo,
-  comenta en el segundo (ejerce "Publicar" contra la API real, pero no verifica la cascada del
-  comentario: la entidad que lo contenía ya no existe tras borrarla, así que no hay dónde
-  comprobarlo desde la interfaz), lo borra confirmando en pantalla (nunca `window.confirm`),
-  comprueba que desaparece de la lista, y **reabre el panel de enlaces del primero** para
-  comprobar que el enlace hacia el segundo ya no aparece — la única forma de probar la cascada
-  del esquema (`schema.prisma`, `onDelete: Cascade`) contra la base real, algo que ninguna
-  prueba con espías puede demostrar. Esto cazó dos defectos reales que solo aparecían contra la
-  API real:
-  las cinco llamadas `DELETE` de la web mandaban `Content-Type: application/json` sin cuerpo
-  (Fastify las rechazaba con 500, el mismo error que 1.14 encontró en las invitaciones), y la
-  cascada bidireccional de `EntityLink` dejaba el `linksKey` de la **otra** entidad
-  (`features/links/hooks.ts`) sin invalidar — el panel de enlaces del primer NPC seguía
-  mostrando el enlace hacia el segundo, ya borrado en Postgres, durante los 30 s de
-  `staleTime`. El mismo recorrido borra también un personaje y una sesión (incluida una
-  cancelación) contra la API real, en las pantallas donde el botón "Borrar" se pintó por
-  primera vez. Ver la entrada de 1.16 en [07-historial.md](./07-historial.md).
-
-- **El cuerpo Markdown de una ficha, de punta a punta contra la API real** (1.17b · A1):
-  `apps/web/e2e/campana.spec.ts` crea un NPC con `## Título\n\nUn herrero enano legendario.`
-  en el campo "Texto", guarda, cierra el editor, lo reabre y comprueba dos cosas — que el
-  `<textarea>` precarga el Markdown crudo exactamente como se escribió (prueba que el `GET`
-  devuelve lo que el `POST` mandó) y que, al pulsar "Vista previa", el `## Título` se pinta
-  como un encabezado accesible (`getByRole("heading", { name: "Título" })`), no como texto
-  literal con almohadillas. **Comprobación por mutación**: se quitó a mano la clave `body`
-  del payload en `EntityEditor.tsx` (`onSubmit`) y se corrió de nuevo — el recorrido falló
-  exactamente donde se esperaba, con el `textarea` volviendo vacío tras reabrir
-  (`Expected: "## Título\n\nUn herrero enano legendario." · Received: ""`), confirmando que
-  el recorrido de verdad ejercita el código nuevo y no pasa en falso. El cambio se restauró
-  después y la suite completa (7 recorridos) volvió a verde. Ver la entrada de 1.17b en
-  [07-historial.md](./07-historial.md).
-
-- **Filtrar por etiqueta oculta lo que no coincide, y quitar el filtro lo devuelve** (1.17c ·
-  A2 + C1): `apps/web/e2e/campana.spec.ts` crea dos NPCs con etiquetas distintas ("lich,
-  villano" y "aliado"), comprueba que las etiquetas guardadas ahora se leen en la fila (A2:
-  antes de esta tarea `EntityEditor.tsx` era el único lector de `entity.tags` en toda la
-  web), pulsa el botón de la etiqueta "lich" y comprueba con `toHaveCount(0)` que el NPC sin
-  esa etiqueta desaparece de verdad del DOM — no solo que queda oculto por CSS — y que pulsar
-  "Quitar filtros" devuelve la lista completa. **Comprobación por mutación**: se rompió a
-  mano `filterEntities` (`features/entities/filter.ts`) para que siempre devolviera la lista
-  entera sin filtrar, se corrió la suite de nuevo y el recorrido nuevo falló exactamente en
-  el `toHaveCount(0)`, con los otros siete recorridos intactos en verde — confirma que el
-  recorrido ejercita el filtro real y no pasa en falso. El cambio se restauró y la suite
-  completa (8 recorridos) volvió a verde. Ver la entrada de 1.17c en
-  [07-historial.md](./07-historial.md).
-
-- **Editar el nombre de una campaña, expulsar a un jugador y borrar una segunda campaña, todo
-  desde "Resumen"** (1.17d · B1 + B2): `apps/web/e2e/campana.spec.ts` añade un noveno
-  recorrido, el segundo con dos sesiones de navegador (mismo patrón que
-  `invitacion.spec.ts`). El DM crea una campaña, cambia su nombre desde `CampaignSettings.tsx`
-  y lo ve cambiado en la cabecera (`PATCH` real); invita a un jugador, que se une y comprueba
-  que la campaña está de verdad en su lista antes de que nadie la toque — si no, la
-  comprobación de después pasaría por construcción. El DM recarga (la lista de miembros que
-  ya tenía cargada queda cacheada 30 s, `staleTime`, `lib/queryClient.ts`, y no se entera sola
-  de que alguien se unió) y expulsa al jugador desde "Miembros"; de paso comprueba que él
-  mismo, como DM, nunca ve el botón "Salir de la campaña" — ve el motivo que da el servidor.
-  El jugador recarga y la campaña ya no está en su lista: el `DELETE` real borró la
-  membresía. Por último el DM crea una **segunda** campaña, la borra desde
-  `CampaignSettings.tsx`, y comprueba que **solo esa** desaparece de "Mis campañas" —la
-  primera, ya renombrada, sigue ahí— la misma exigencia de "no borres lo primero que
-  encuentres" que 1.16 aplicó a las filas de entidad.
-
-  **Comprobación por mutación**: se quitó el `JSON.stringify({})` del `DELETE` en
-  `removeMember` (`features/campaigns/members.ts`): el recorrido **falló** exactamente donde
-  se esperaba (`playerRow` seguía teniendo una fila tras pulsar "Sí, expulsar", con un 500
-  real de Fastify en el log del servidor — "Body cannot be empty when content-type is set to
-  'application/json'"), confirmando que este recorrido ejercita el código nuevo. Se restauró
-  y la suite completa (9 recorridos) volvió a verde.
-
-  **Un segundo intento de mutación, sobre `campaignsKey` en `useRemoveMember`
-  (`features/campaigns/hooks.ts`), demostró que este recorrido concreto no puede probar esa
-  invalidación — no que la invalidación en sí no se pueda probar.** Quitándola, la suite
-  **siguió en verde**: el paso del jugador usa `playerPage.reload()`, y una recarga real de
-  navegador crea un `QueryClient` nuevo, así que siempre pide todo por red sin que ninguna
-  invalidación de caché pueda importar; además esa invalidación corre en el `QueryClient` del
-  **DM**, nunca en el del jugador (son dos procesos de navegador distintos), así que ni
-  siquiera en teoría podría cambiar lo que ve el jugador tras recargar. Restaurada sin contar
-  como comprobación válida de esa línea. **La invalidación sí se prueba**, pero por dos
-  recorridos que no recargan: dos pruebas RTL nuevas en
-  `pages/__tests__/CampaignDetailPage.test.tsx` (misma tarea, misma corrección) montan
-  `CampaignList` de verdad en "/" con un `staleTime` de producción (30 s,
-  `lib/queryClient.ts`) en vez del `0` por defecto de las pruebas — con `staleTime: 0` un
-  remontaje siempre volvería a pedir datos por sí solo y la invalidación sería igual de
-  invisible para la prueba que un `reload()` de Playwright. Una entra a la campaña, sale, y
-  comprueba que la lista pierde la fila sin recargar (`useRemoveMember`); la otra entra,
-  cambia el nombre, vuelve a "/" con el enlace "&larr; Mis campañas" (navegación de cliente,
-  no recarga) y comprueba que la lista ya dice el nombre nuevo (`useUpdateCampaign`). Las dos
-  comprueban además que `fetchCampaigns` se llamó dos veces, no una — la prueba de que hubo
-  una invalidación real, no solo que el dato final coincidía por casualidad.
-
-### Lo que falta cubrir
-
-Nada del catálogo de recorridos de la fase 1 queda pendiente: registro, campaña, entidades
-con visibilidad, enlaces y comentarios en modo edición, sesiones y personajes, cerrar sesión,
-invitación con dos sesiones de navegador y el `DM_ONLY` comprobado sobre el DOM real, borrar
-con su cascada real, filtrar por etiqueta, y ahora editar/expulsar/borrar desde "Resumen". Lo
-que sigue sin cubrir es lo de siempre —
-accesibilidad, responsive, rendimiento — ver la sección de arriba.
+> **Dos trampas que ya costaron tiempo.** El filtro de Playwright es una expresión sobre la ruta:
+> `-- hoja` también engancha otras suites, así que para correr **una sola** hay que dar la ruta
+> entera. Y `reuseExistingServer` reaprovecha un servidor ya levantado: **si se cambia una variable
+> de entorno del servidor hay que matar el proceso viejo**, o la tanda corre contra la
+> configuración anterior sin decirlo.
 
 ## Definición de terminado
 
-Una tarea está terminada solo si: los criterios de aceptación pasan · las unitarias y los
-e2e que le tocan pasan **y se ha visto la salida** · `pnpm build` está limpio · la
-arquitectura y las convenciones se respetan · **la documentación está actualizada** · y, si
-tocó una pantalla, **se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde.
+Una tarea está terminada solo si: los criterios de aceptación pasan · las unitarias y los e2e
+que le tocan pasan **y se ha visto la salida** · `pnpm build` está limpio · la arquitectura y
+las convenciones se respetan · **la documentación está actualizada** · y, si tocó una pantalla,
+**se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde.

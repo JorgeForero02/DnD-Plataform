@@ -30,8 +30,7 @@ dos cuentas de jugador.
 | `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
 | `docs/decisiones.md` | **Una línea por decisión tomada, con enlace a su razonamiento.** Sustituye a releer `docs/superpowers/`, que son el 61% de la documentación y están fuera del camino de lectura |
 | `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
-| `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, y la regla de Playwright.** Fuente única de los conteos |
-| `docs/10-mapa-e2e.md` | **Qué cubre cada recorrido de extremo a extremo**, suite a suite. Léelo antes de escribir un e2e nuevo |
+| `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, la regla de Playwright y qué demuestra cada suite.** Fuente única de los conteos. Léelo también antes de escribir un e2e nuevo — absorbió al antiguo mapa de e2e, que ya no existe como documento aparte |
 | `docs/01-arquitectura.md` | Monorepo, capas, módulos, dirección de dependencias |
 | `docs/02-entorno.md` | Cómo levantar todo, variables, gotchas de Windows |
 | `docs/05-datos.md` | Esquema, migraciones y semántica de la visibilidad |

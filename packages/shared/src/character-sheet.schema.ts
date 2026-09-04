@@ -4,6 +4,7 @@ import {
   characterChoicesSchema,
   contentRefSchema,
 } from "./character-build.schema";
+import { damageTypeSchema } from "./item.schema";
 
 // Tareas 2A.6 y 2A.7 — la hoja persistida y su estado mutable.
 //
@@ -43,6 +44,12 @@ export const changeHpSchema = z.object({
    * después es migrar el payload del evento que más veces se escribe en una sesión.
    */
   critical: z.boolean().optional(),
+  /**
+   * Tarea 2.5.1. **Opcional**: un delta positivo (curación) o un ajuste del DM no tienen tipo
+   * de daño. Cuando viene con un delta negativo, la pieza C lo usa para reducir el daño por
+   * resistencia o vulnerabilidad **antes** de aplicarlo, y queda escrito en el `HP_CHANGED`.
+   */
+  damageType: damageTypeSchema.optional(),
   reason: z.string().max(280).optional(),
 });
 export type ChangeHpInput = z.infer<typeof changeHpSchema>;

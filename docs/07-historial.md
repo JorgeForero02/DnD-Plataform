@@ -51,6 +51,46 @@ que se escribió la cuarta (un tema guardado se recupera al volver) y entonces s
 los colores literales por tema; el tercer tema se cae solo al quitar `"reading"` de
 `ui/theme.ts`, `index.html` y `tokens.css`.
 
+## Tarea 2.5.1 — tipos de daño y resistencias que de verdad reducen (2026-09-04)
+
+**El tipo de daño es una columna** (`GameEvent.damageType`, opcional): «¿de qué murió Elara?» ya
+se contesta por columna, no leyendo el `payload`. **La resistencia se parte en dos**: las tres
+listas de prosa de un statblock se conservan, y al lado nace `damageModifiers` —lo estructurado
+que el servidor sabe aplicar—, rellenado solo para las tres criaturas del catálogo con resistencia
+limpia o citable (esqueleto, zombi, tumulario). **Y una función pura nueva**
+(`apply-damage-modifiers.ts`, misma familia que `effective-speed.ts`) reduce el daño con su
+traza, enganchada a `POST .../hp`: con `damageType`, reduce antes de aplicar; sin él, nada cambia.
+
+**La revisión de cierre encontró cuatro cosas, y una era una regla mal leída.** Se anotan porque
+las cuatro son del tipo que vuelve si no queda escrito por qué pasaron:
+
+1. **Resistencia y vulnerabilidad al mismo tipo NO se cancelan: se encadenan.** El código las
+   cancelaba apoyándose en un comentario que afirmaba haber buscado la cláusula «en la edición
+   inglesa y en la española» y no encontrarla. La inglesa **sí** la tiene, en dos palabras que la
+   traducción oficial pierde: *«Resistance **and then** vulnerability are applied after all other
+   modifiers to damage»*. Con 25: mitad 12, doble 24 — no 25. Con daño par las dos lecturas
+   coinciden, que es por qué la prueba vieja pasaba. **Cuando las dos ediciones discrepan, manda
+   la inglesa.**
+2. **El registro publicaba el daño BRUTO** junto a unos `from`/`to` ya reducidos. Filtraba —de
+   25 anunciados y 12 perdidos se deduce una resistencia, y la plantilla puede ser `DM_ONLY`— y
+   además la línea de la mesa se contradecía consigo misma. Se registra el daño aplicado.
+3. **Una curación se podía etiquetar con tipo de daño**, y entonces «¿de qué murió?» devolvía
+   curaciones. Ahora solo un delta negativo lleva tipo.
+4. **`schema.prisma` no declaraba `damageModifiers`**, aunque su migración creaba la columna: un
+   checkout limpio no compilaba y el siguiente `prisma migrate dev` habría propuesto borrarla.
+   Sobrevivió a un `pnpm verify` en verde porque el cliente generado de aquella máquina sí la
+   tenía. **Lo cazó `pnpm build`, no una prueba.**
+
+Y una decisión de traza: los pasos de resistencia dicen `sourceType: "statblock"` y no `"manual"`.
+`"manual"` es la anulación del DM; una regla del libro no es un ajuste a mano.
+
+Dos reglas más verificadas contra la fuente y citadas en el código: la resistencia se aplica
+después del resto de modificadores, y varias resistencias del mismo tipo cuentan como una.
+
+**Cómo revertir:** `git revert` de los commits `feat(api)`/`feat(shared)` de la tarea. Las dos
+migraciones solo añaden columnas nullable — revertir el código no revierte el esquema, y no hace
+falta: una columna de más sin escribir no rompe nada.
+
 ## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
 
 Despliegue lanzado por la API de Coolify **desde dentro de la VPS**
@@ -350,30 +390,3 @@ ninguna, y es la frase que alguien lee bajo presión en mitad de un rollback. Ni
 existente se reescribe.
 
 ---
-
-## Cuatro defectos de la pantalla de mesa (2026-09-03)
-
-Arreglos mínimos y localizados: **la pantalla se va a rediseñar**, así que no se reorganizó nada.
-
-- **Las barras de vida mentían.** `useCharacterSheet` y `useConditions` eran las únicas consultas
-  que lee la mesa sin `refetchInterval`. El DM pulsaba −5 y el registro de al lado lo contaba a
-  los quince segundos mientras la barra seguía pintando el número de antes: la misma pantalla se
-  contradecía. Ahora sondean a **15 s**, los mismos que el registro (`SONDEO_DE_MESA_MS`), porque
-  las dos cosas se leen juntas.
-- **Claves de enumeración en el registro**: `Recibe la condición «poisoned»`, `El DM fija maxHp
-  en 40`. Traducidas con `nombreCondicion` y el nuevo `nombreAnulable`, los dos ya en
-  `apps/web/src/features/character-sheet/vocabulario.ts`. Las claves de `FLAG_SET`, `SIGNAL_RAISED` y `SET_CHANGED`
-  **no** se traducen: las escribe el DM en sus reglas y no son enumeraciones.
-- **Un `<a href>` en la consulta del mundo** recargaba la aplicación entera en mitad de la
-  partida y se perdía el estado de la mesa. Ahora es `Link`.
-- **Nadie veía las peticiones de tirada**: `TiradasPendientes` solo se montaba en la pestaña
-  «Dados», donde nadie está mientras se juega. Se monta también en la mesa, **provisionalmente**
-  —el rediseño lo colocará como capa contextual— y el recorrido de navegador
-  `peticion-de-tirada.spec.ts` comprueba ahora que la petición llega **desde la mesa**.
-
-Cada arreglo lleva su prueba, y cada prueba se vio en rojo antes. De paso apareció un quinto
-defecto, sin arreglar y fichado en [06-pendientes.md](./06-pendientes.md): **siete de los
-veintisiete tipos de suceso no tienen línea en el registro**.
-
-**Cómo revertir:** `git revert` de los cuatro commits `fix(web)` del día. Ninguno toca la API, el
-esquema ni los datos.

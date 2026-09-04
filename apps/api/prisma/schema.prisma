@@ -299,6 +299,11 @@ model GameEvent {
   subjectType String
   subjectId   String
   payload     Json
+  /// Tarea 2.5.1 — promovido de `payload` a columna porque hay que poder filtrar por él: "¿de
+  /// qué murió Elara?" es una pregunta que un campo dentro de un Json no puede contestar barato.
+  /// **Opcional a propósito**: todo el historial ya escrito no lo tiene, y un `HP_CHANGED` sin
+  /// tipo de daño sigue siendo válido (una curación, un chasquido de dedos del DM).
+  damageType  DamageType?
   visibility  Visibility    @default(PLAYERS)
   createdAt   DateTime      @default(now())
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -306,6 +311,7 @@ model GameEvent {
   @@index([campaignId, createdAt])
   @@index([sessionId, createdAt])
   @@index([subjectType, subjectId, createdAt])
+  @@index([subjectType, subjectId, damageType])
 }
 
 model Character {
@@ -854,6 +860,23 @@ model CampaignStatblock {
   damageImmunities      String[] @default([])
   damageVulnerabilities String[] @default([])
   conditionImmunities   String[] @default([])
+
+  /// Tarea 2.5.1 - la MITAD ESTRUCTURADA de lo de arriba, que el servidor si sabe aplicar:
+  /// `[{ damageType, effect: RESIST|IMMUNE|VULNERABLE, note? }]`. Las listas de prosa se quedan
+  /// tal cual y siguen siendo lo que el DM lee; esto es lo que reduce el dano.
+  ///
+  /// `Json` y no columnas porque **no se consulta por dentro** - la convencion del proyecto solo
+  /// obliga a promocionar a columna aquello por lo que hay que filtrar, y por lo que se filtra es
+  /// por `GameEvent.damageType`. Se valida al escribir con `damageModifiersSchema` de
+  /// `@dnd/shared`, nunca por confianza en quien llama.
+  ///
+  /// **Esta linea faltaba, y su ausencia fue un defecto real (2026-09-04):** la migracion
+  /// `20260903211642_statblock_damage_modifiers` creaba la columna y el esquema no la declaraba,
+  /// asi que un checkout limpio no compilaba y el siguiente `prisma migrate dev` habria propuesto
+  /// BORRARLA. Sobrevivio a un `pnpm verify` en verde porque el cliente generado de aquella
+  /// maquina si la tenia. Lo caza el build, no una prueba: por eso `pnpm build` esta dentro de
+  /// `pnpm verify`.
+  damageModifiers       Json?
 
   /// En pies, como el resto de la aplicacion.
   darkvisionFeet Int?

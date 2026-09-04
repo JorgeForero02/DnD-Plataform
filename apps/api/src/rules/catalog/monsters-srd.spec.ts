@@ -267,4 +267,42 @@ describe("catálogo de statblocks del SRD 5.1", () => {
     expect(vdLegible(0.5)).toBe("1/2");
     expect(vdLegible(5)).toBe("5");
   });
+
+  // Tarea 2.5.1 — la parte estructurada de la resistencia, confirmada contra
+  // dnd5eapi.co/api/2014/monsters/{skeleton,zombie,wight} monstruo a monstruo, no a bulto.
+  describe("damageModifiers — solo las tres criaturas de la tanda que tienen resistencia limpia", () => {
+    it("los doce sin resistencia ni inmunidad no llevan ningún modificador", () => {
+      const sinResistencia = SRD_STATBLOCKS.filter(
+        (s) => !["SRD:skeleton", "SRD:zombie", "SRD:wight"].includes(s.ref),
+      );
+      expect(sinResistencia).toHaveLength(12);
+      for (const s of sinResistencia) expect(s.damageModifiers).toEqual([]);
+    });
+
+    it("el esqueleto: vulnerable a contundente, inmune a veneno", () => {
+      expect(SRD_STATBLOCK_POR_REF.get("SRD:skeleton")!.damageModifiers).toEqual([
+        { damageType: "BLUDGEONING", effect: "VULNERABLE" },
+        { damageType: "POISON", effect: "IMMUNE" },
+      ]);
+    });
+
+    it("el zombi: inmune a veneno, nada más", () => {
+      expect(SRD_STATBLOCK_POR_REF.get("SRD:zombie")!.damageModifiers).toEqual([
+        { damageType: "POISON", effect: "IMMUNE" },
+      ]);
+    });
+
+    it("el tumulario: necrótico limpio, veneno inmune, y los tres físicos con la nota que limita la regla", () => {
+      const modifiers = SRD_STATBLOCK_POR_REF.get("SRD:wight")!.damageModifiers!;
+      expect(modifiers).toContainEqual({ damageType: "NECROTIC", effect: "RESIST" });
+      expect(modifiers).toContainEqual({ damageType: "POISON", effect: "IMMUNE" });
+      for (const tipo of ["BLUDGEONING", "PIERCING", "SLASHING"] as const) {
+        const m = modifiers.find((x) => x.damageType === tipo);
+        expect(m?.effect).toBe("RESIST");
+        // La nota es la prosa que LIMITA la regla — el servidor no la interpreta, la enseña.
+        expect(m?.note).toBe("de ataques no mágicos con armas que no sean de plata");
+      }
+      expect(modifiers).toHaveLength(5);
+    });
+  });
 });

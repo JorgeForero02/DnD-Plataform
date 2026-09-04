@@ -8,6 +8,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
 import { RollsService } from "../rolls/rolls.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
+import type { StatblocksService } from "../statblocks/statblocks.service";
+import { SRD_STATBLOCK_POR_REF } from "../rules/catalog/monsters-srd";
 import { CharacterSheetService } from "./character-sheet.service";
 
 // Tareas 2A.6 y 2A.7 — Prisma simulado, como el resto de la carpeta.
@@ -69,7 +71,7 @@ function dadoFijo(valor: number): Roller {
   return () => valor;
 }
 
-function montar(roller?: Roller) {
+function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
   const prisma = {
     character: { findFirst: jest.fn(), update: jest.fn() },
     characterCondition: { findMany: jest.fn().mockResolvedValue([]) },
@@ -103,6 +105,7 @@ function montar(roller?: Roller) {
     rolls as unknown as RollsService,
     roller,
     resources as unknown as ResourcesService,
+    statblocks as unknown as StatblocksService,
   );
   return { service, prisma, membership, events, characters, resources, rolls };
 }
@@ -1150,5 +1153,162 @@ describe("curar respeta el máximo de VERDAD (revisión de reglas, 2026-09-03)",
     await service.changeHp("dm1", "cmp1", "ch1", { delta: 999 });
 
     expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(7);
+  });
+});
+
+/**
+ * Un mock de `StatblocksService` que resuelve al statblock REAL del catálogo SRD (el que ya
+ * verifica `monsters-srd.spec.ts`), para no inventar una segunda copia parcial del dato en esta
+ * prueba. `resolverParaHoja` es lo que usa `construirODenegar` para derivar los PG máximos;
+ * `resolver` es lo que usa la pieza C para leer `damageModifiers` sin decidir visibilidad.
+ */
+function statblocksDelCatalogo(ref: string) {
+  const statblock = SRD_STATBLOCK_POR_REF.get(ref)!;
+  return {
+    resolverParaHoja: jest.fn().mockResolvedValue({ statblock }),
+    resolver: jest.fn().mockResolvedValue(statblock),
+  };
+}
+
+describe("tarea 2.5.1 — un damageType en changeHp reduce el daño por resistencia, con traza", () => {
+  it("sin damageType, el comportamiento de hoy no cambia: ni se consulta la resistencia", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, characters } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 45, statblockRef: "SRD:wight" });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    const res = await service.changeHp("dm1", "c1", "ch1", { delta: -10 });
+
+    expect(statblocks.resolver).not.toHaveBeenCalled();
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(35);
+    expect(res).not.toHaveProperty("damageTrace");
+  });
+
+  it("con damageType pero sin statblockRef (un jugador), tampoco se reduce nada", async () => {
+    const statblocks = { resolver: jest.fn(), resolverParaHoja: jest.fn() };
+    const { service, prisma, characters } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: MAX_HP });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -10, damageType: "BLUDGEONING" });
+
+    expect(statblocks.resolver).not.toHaveBeenCalled();
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(MAX_HP - 10);
+  });
+
+  it("un PNJ con resistencia limpia recibe la mitad, y la traza sale en la respuesta", async () => {
+    // El esqueleto: vulnerable a contundente, no resistente — se usa el tumulario (resiste
+    // necrótico limpio) para probar RESIST de verdad.
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, characters } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 45, statblockRef: "SRD:wight" });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    const res = await service.changeHp("dm1", "c1", "ch1", {
+      delta: -25,
+      damageType: "NECROTIC",
+    });
+
+    expect(statblocks.resolver).toHaveBeenCalledWith("c1", "SRD:wight");
+    // 25 de necrótico con resistencia: 12 de verdad (redondeado hacia abajo).
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(45 - 12);
+    expect(res).toHaveProperty("damageTrace");
+    expect((res as { damageTrace: { total: number } }).damageTrace.total).toBe(12);
+  });
+
+  it("un PNJ vulnerable a ese tipo recibe el doble", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:skeleton");
+    const { service, prisma, characters } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 13, statblockRef: "SRD:skeleton" });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -5, damageType: "BLUDGEONING" });
+
+    // 5 de contundente, vulnerable: 10 de verdad, y el esqueleto solo tiene 13.
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(3);
+  });
+
+  it("un PNJ inmune a ese tipo no pierde ningún punto de golpe", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:zombie");
+    const { service, prisma, characters } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 22, statblockRef: "SRD:zombie" });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -25, damageType: "POISON" });
+
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(22);
+  });
+
+  it("un tipo de daño sin modificador que le afecte no cambia nada", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:hill-giant");
+    const { service, prisma, characters } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 105, statblockRef: "SRD:hill-giant" });
+    characters.requireEditable.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -10, damageType: "SLASHING" });
+
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(95);
+  });
+
+  it("el suceso registrado lleva el damageType, para poder responder de qué murió", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, characters, events } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 45, statblockRef: "SRD:wight" });
+    characters.requireEditable.mockResolvedValue(fila);
+    montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: -10, damageType: "NECROTIC" });
+
+    expect(events.record).toHaveBeenCalledWith(
+      "dm1",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ damageType: "NECROTIC" }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  // Las dos de abajo las escribió la revisión de cierre del 2026-09-04, y las dos tapan un
+  // defecto que estaba vivo, no un riesgo teórico.
+
+  it("el suceso registra el daño APLICADO y no el bruto: el registro no delata la resistencia", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, characters, events } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 45, statblockRef: "SRD:wight" });
+    characters.requireEditable.mockResolvedValue(fila);
+    montarTransaccion(prisma, fila);
+
+    // 25 de necrótico contra el tumulario, que resiste: se aplican 12.
+    await service.changeHp("dm1", "c1", "ch1", { delta: -25, damageType: "NECROTIC" });
+
+    const registrado = events.record.mock.calls.at(-1)![2].payload;
+    // Guardaba −25 mientras `from`/`to` decían 45 → 33: un jugador que sabe restar deduce
+    // que hay una resistencia, y la plantilla de la que sale puede ser `DM_ONLY`.
+    expect(registrado.delta).toBe(-12);
+    // Y la invariante que hace la línea coherente consigo misma, que es lo que
+    // `features/sessions/linea-de-log.ts` imprime: «Pierde |delta| PG (from → to)».
+    expect(registrado.from - registrado.to).toBe(-registrado.delta);
+  });
+
+  it("una curación no se etiqueta con tipo de daño ni pidiéndolo: la columna es para «de qué murió»", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, characters, events } = montar(undefined, statblocks);
+    const fila = personaje({ currentHp: 20, statblockRef: "SRD:wight" });
+    characters.requireEditable.mockResolvedValue(fila);
+    montarTransaccion(prisma, fila);
+
+    await service.changeHp("dm1", "c1", "ch1", { delta: +6, damageType: "FIRE" });
+
+    const registrado = events.record.mock.calls.at(-1)![2].payload;
+    expect(registrado.damageType).toBeUndefined();
+    // El delta positivo se registra tal cual: aquí no hay nada que reducir.
+    expect(registrado.delta).toBe(6);
   });
 });

@@ -2004,3 +2004,38 @@ es el error facil; el `POST` sin token da 401, que es lo que se queria ver.
 **No se repitieron las dos tandas del limite de intentos.** Este despliegue **no toco la
 topologia de proxies ni las variables de entorno**, que es de lo unico que depende esa
 aritmetica. Si alguna de las dos cambia, se recuenta y se vuelven a correr.
+
+---
+
+> Movido aqui el 2026-09-04 desde `07-historial.md`, entero y sin reescribir, para que el
+> fichero volviera por debajo de su tope de 400 lineas. Es detalle por tarea, que es justo lo
+> que este archivo guarda.
+
+## Cuatro defectos de la pantalla de mesa (2026-09-03)
+
+Arreglos mínimos y localizados: **la pantalla se va a rediseñar**, así que no se reorganizó nada.
+
+- **Las barras de vida mentían.** `useCharacterSheet` y `useConditions` eran las únicas consultas
+  que lee la mesa sin `refetchInterval`. El DM pulsaba −5 y el registro de al lado lo contaba a
+  los quince segundos mientras la barra seguía pintando el número de antes: la misma pantalla se
+  contradecía. Ahora sondean a **15 s**, los mismos que el registro (`SONDEO_DE_MESA_MS`), porque
+  las dos cosas se leen juntas.
+- **Claves de enumeración en el registro**: `Recibe la condición «poisoned»`, `El DM fija maxHp
+  en 40`. Traducidas con `nombreCondicion` y el nuevo `nombreAnulable`, los dos ya en
+  `apps/web/src/features/character-sheet/vocabulario.ts`. Las claves de `FLAG_SET`, `SIGNAL_RAISED` y `SET_CHANGED`
+  **no** se traducen: las escribe el DM en sus reglas y no son enumeraciones.
+- **Un `<a href>` en la consulta del mundo** recargaba la aplicación entera en mitad de la
+  partida y se perdía el estado de la mesa. Ahora es `Link`.
+- **Nadie veía las peticiones de tirada**: `TiradasPendientes` solo se montaba en la pestaña
+  «Dados», donde nadie está mientras se juega. Se monta también en la mesa, **provisionalmente**
+  —el rediseño lo colocará como capa contextual— y el recorrido de navegador
+  `peticion-de-tirada.spec.ts` comprueba ahora que la petición llega **desde la mesa**.
+
+Cada arreglo lleva su prueba, y cada prueba se vio en rojo antes. De paso apareció un quinto
+defecto, sin arreglar y fichado en [06-pendientes.md](./06-pendientes.md): **siete de los
+veintisiete tipos de suceso no tienen línea en el registro**.
+
+**Cómo revertir:** `git revert` de los cuatro commits `fix(web)` del día. Ninguno toca la API, el
+esquema ni los datos.
+
+---

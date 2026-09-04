@@ -1214,3 +1214,37 @@ compilar; hoy lo tapa el `default`.
 Encontrado al arreglar el defecto de las claves de enumeración; **no se arregló ahí** para no
 mezclarlo con un cambio de una línea. Escribir las siete frases es media hora, y conviene hacerlo
 junto con el rediseño de la mesa.
+
+### L2-traza-dano — la traza de resistencia (2.5.1) no tiene pantalla ni vocabulario en español (2026-09-03)
+
+> **Lleva sufijo porque `L2` ya existía** —«arco y radio de visión», más arriba en este mismo
+> fichero—, y la regla de nombres de arriba dice que manda la aparición más temprana. Corregido
+> en la revisión de cierre del 2026-09-04, junto con los dos errores de abajo.
+
+**Abierto, y a propósito: 2.5.1 es servidor.** `apps/api/src/character-state/damage/apply-damage-modifiers.ts`
+devuelve `labelKey`s nuevas (`damage.raw`, `damage.modifier.resist`, `.vulnerable`, `.immune`)
+que hoy no tienen traducción en `apps/web/src/features/character-sheet/vocabulario.ts` ni en
+ningún otro sitio de la web — si algo las pinta tal cual, sale la clave en inglés. (`.cancelled`
+**ya no existe**: la revisión de cierre encontró que resistencia y vulnerabilidad no se cancelan,
+se encadenan.)
+
+**Y hay un dato que esta ficha se dejaba, que es el que de verdad importa al arreglarla:** la
+traducción de los trece `DamageType` ya existe **tres veces**, las tres con el mismo nombre
+`NOMBRE_TIPO_DANO`:
+
+- `apps/web/src/features/campaign-items/vocabulario.ts:81`
+- `apps/web/src/features/character-sheet/vocabulario.ts:77`
+- `apps/web/src/features/inventory/vocabulario.ts:57`
+
+Eso contradice la regla vinculante de que **la forma legible se escribe una sola vez por
+dominio**, así que la tarea no es «añadir una cuarta»: es dejar una y que las otras la importen.
+(La revisión de cierre contó dos y se dejó la de `character-sheet`; se comprobó con un barrido
+antes de escribir esta línea, que es lo que la regla de «evidencia antes que afirmación» pide
+incluso de un hallazgo de revisión.)
+
+La primera versión de esta ficha citaba un símbolo inventado —«`nombreDeTipoDeDaño` o como se
+llame en esa capa»—, que es exactamente el registro que `04-convenciones.md` prohíbe: un nombre
+con cobertura manda a quien lo lea a buscar algo que no existe.
+
+Entra con la pantalla del daño aplicado (probablemente parte de 2.5.4 o de la pantalla del
+encuentro de 2.5.6), no antes.

@@ -55,6 +55,7 @@ import {
 } from "../character-state/speed/effective-speed";
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import { maxHpConAgotamiento, nivelDeAgotamiento } from "../character-state/common/agotamiento";
+import { applyDamageModifiers } from "../character-state/damage/apply-damage-modifiers";
 import { canView, Viewer } from "../common/visibility";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
@@ -841,10 +842,46 @@ export class CharacterSheetService {
       let successes = character.deathSaveSuccesses;
       let failures = character.deathSaveFailures;
       let massive = false;
+      // Tarea 2.5.1, pieza C. **Solo se rellena si de verdad se redujo algo** — un delta sin
+      // `damageType`, o uno que no toca ninguna resistencia, deja esto vacío y el camino de hoy
+      // no cambia en nada, que es lo que hace la pieza reversible.
+      let damageTrace: ReturnType<typeof applyDamageModifiers> | null = null;
+      // **El delta que se ESCRIBE en el registro, que no siempre es el que llegó.** Lo encontró
+      // la revisión de cierre del 2026-09-04: el suceso guardaba `input.delta` —el daño bruto—
+      // mientras `from`/`to` ya venían del daño reducido, y eso hacía dos cosas malas a la vez.
+      //
+      //   1. **Filtraba.** Un jugador que ve «Pierde 25 PG (45 → 33)» deduce que hay una
+      //      resistencia, y la plantilla de la que sale puede ser `DM_ONLY`. Es la doctrina del
+      //      proyecto —«si no se debe saber, no se envía»— rota por el canal que el propio spec
+      //      de 2.5.1 nombra: el suceso del registro.
+      //   2. **Mentía.** `linea-de-log.ts` imprime literalmente `Pierde |delta| PG (from → to)`,
+      //      así que la línea se contradecía consigo misma.
+      //
+      // Se registra el daño **realmente aplicado**. Ojo con el precedente que sí se conserva:
+      // `delta` ya podía no cuadrar con `to − from` cuando los PG temporales absorben, y eso se
+      // queda — aquello es explicable con lo que el jugador ya ve; esto publicaba un número
+      // secreto.
+      let deltaRegistrado = input.delta;
 
       if (input.delta < 0) {
         // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
-        const danio = -input.delta;
+        let danio = -input.delta;
+        // **La resistencia y la vulnerabilidad se aplican antes de tocar los PG temporales**: son
+        // el daño de verdad que llega al personaje, y los PG temporales se gastan sobre ESE
+        // número, no sobre el bruto de la tirada (SRD 5.1, «la resistencia y la vulnerabilidad se
+        // aplican después del resto de modificadores al daño» — aquí no hay ningún otro
+        // modificador antes, así que esta es la primera y única reducción).
+        if (input.damageType && character.statblockRef && this.statblocks) {
+          const statblock = await this.statblocks.resolver(campaignId, character.statblockRef);
+          // `damageModifiers` es opcional en `@dnd/shared` a propósito (ver el comentario de
+          // `damageModifiersSchema`): un statblock guardado antes de esta tarea no lo tiene.
+          const modificadores = statblock?.damageModifiers ?? [];
+          if (modificadores.length > 0) {
+            damageTrace = applyDamageModifiers(danio, input.damageType, modificadores);
+            danio = damageTrace.total;
+            deltaRegistrado = -danio;
+          }
+        }
         const gastoTemporal = Math.min(tempHp, danio);
         tempHp -= gastoTemporal;
         const efectivo = danio - gastoTemporal;
@@ -897,9 +934,16 @@ export class CharacterSheetService {
           visibility: character.visibility,
           payload: {
             type: "HP_CHANGED",
-            delta: input.delta,
+            delta: deltaRegistrado,
             from: before,
             to: after,
+            // **Solo un delta NEGATIVO lleva tipo de daño.** También de la revisión de cierre:
+            // sin la comprobación del signo se podía etiquetar una CURACIÓN como de fuego, y
+            // entonces la única consulta para la que existe esta columna —«¿de qué murió
+            // Elara?»— devolvía curaciones. El comentario de `game-event.schema.ts` ya
+            // afirmaba que «una curación no tiene tipo de daño que contar»; el código no lo
+            // impedía.
+            ...(input.delta < 0 && input.damageType ? { damageType: input.damageType } : {}),
             ...(input.critical ? { critical: true } : {}),
             // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
             // error de la herramienta.
@@ -910,7 +954,10 @@ export class CharacterSheetService {
         tx,
       );
 
-      return await this.buildResponse(userId, actualizado);
+      const respuesta = await this.buildResponse(userId, actualizado);
+      // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
+      // sería un número sin origen, y esta tarea existe justo para lo contrario.
+      return damageTrace ? { ...respuesta, damageTrace } : respuesta;
     });
   }
 

@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 31 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 32 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 20 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -49,13 +49,11 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
-**Recorridos**, y **cada mitad lleva la fecha en que se corrió, porque no se corrieron el
-mismo día**: **216 e2e de API** el 2026-09-03 (noche, con la fase 2D entera y su revisión de
-cierre dentro) y **96 recorridos de navegador** el 2026-09-04, al cerrar la tanda B0 —los ocho
-nuevos son el tercer tema en las tres pruebas de contraste, la medición del `/NN` en el
-navegador y la del solape del conmutador de tema—. Los dos verdes, cada uno en su fecha. Poner
-una sola fecha a dos cifras medidas en días distintos es la clase de mentira cómoda que este
-documento ya cometió tres veces. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
+**Recorridos**, los dos medidos el 2026-09-04: **227 e2e de API** (eran 216 al cerrar la fase 2D;
+los once nuevos son la suite de tipos de daño de 2.5.1, con los tres recorridos que su revisión
+de cierre añadió) y **96 recorridos de navegador** (eran 88; los ocho nuevos son el tercer tema
+en las tres pruebas de contraste, la medición del `/NN` en el navegador y la del solape del
+conmutador de tema). Los dos verdes. Este par sí se escribe a mano, porque solo lo sabe el corredor: un bloque declarado
 dentro de un bucle sobre los tres temas ejecuta más pruebas de las que se pueden contar leyendo
 el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
 
@@ -209,6 +207,7 @@ en verde.
 | `rules-engine` | El motor de reglas es **del DM entero**: incluso listar es 403 para un jugador. Una propuesta no cambia nada hasta que el DM la aplica; el ensayo en seco **dice qué pasaría y no persiste**; con el interruptor apagado, una regla que encaja no hace nada. |
 | `statblocks` | El catálogo del SRD lo ve cualquiera que juegue. **El statblock propio del DM no viaja al jugador**, y se comprueba sobre el cuerpo serializado. Las columnas de lista y los campos Json sobreviven al viaje por Postgres; **editar un campo no borra los otros veinte**, comprobado contra la fila; uno de otra campaña da 404. |
 | `pnj-en-la-mesa` | El bucle entero de un PNJ: instanciar (solo DM, con tope), que **nazca escondido**, que su hoja se derive del statblock con su traza, que reciba daño, que una anulación del DM salga con su delta, y que **el agotamiento le parta los PG máximos sin que se escribiera una línea de agotamiento para PNJ** — que es lo que justifica la decisión de diseño de la fase 2D. Y las tres comprobaciones de la revisión de cierre: **los números de un statblock `DM_ONLY` no llegan al jugador por la hoja**, el `ref` de una plantilla escondida no viaja, y los PNJ no salen en el listado de personajes. |
+| `tipos-de-dano-y-resistencias` | **Que una resistencia reduce de verdad**, sobre el tumulario del catálogo real: 25 de necrótico se quedan en 12, y la traza trae la nota que limita la regla sin que el servidor la interprete. Que `damageType` es **una columna consultable** y no un campo dentro del Json — se filtra contra la base, que es la única forma de demostrarlo. Y las tres de su revisión de cierre: **el registro anuncia el daño aplicado y no el bruto**, así que un statblock `DM_ONLY` no filtra su resistencia por la línea de tiempo; una **curación no se puede etiquetar** con tipo de daño, o «¿de qué murió?» devolvería curaciones; y un delta **sin** `damageType` no cambia de comportamiento, que es lo que hace la pieza reversible. |
 | `validacion` | Que un cuerpo inválido diga **qué campo falta y en español**, con la ruta completa de un campo anidado y la lista de los objetivos que sí existen. Y que **no sea un oráculo**: dos identificadores inexistentes son indistinguibles. |
 
 ### La partida entera
@@ -261,7 +260,9 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 Se dice aquí para que nadie lo dé por cubierto al leer la lista de arriba.
 
 - **Nada de un sistema de encuentros**, porque no existe: no hay iniciativa, ni turnos, ni un
-  ataque comparado contra la CA en el servidor, ni daño aplicado desde una tirada. **Es un bloque
+  ataque comparado contra la CA en el servidor, ni daño aplicado desde una tirada. **Desde 2.5.1
+  sí hay tipos de daño y resistencias que reducen de verdad** (`tipos-de-dano-y-resistencias`),
+  pero eso es una pieza del motor, no un encuentro. **Es un bloque
   planificado** —el plan maestro lo sitúa entre la fase 2 y la 3— y lo único suyo que ya está
   construido son los statblocks de PNJ con PG vivos, que entregó 2D.
 - **La partida de prueba con dos cuentas de jugador reales**, jugada por personas. `partida`

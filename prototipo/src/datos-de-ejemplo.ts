@@ -20,6 +20,11 @@ export const etiquetaVisibilidad: Record<Visibilidad, string> = {
 export type Estado = {
   nombre: string; // legible: «envenenado», nunca «poisoned»
   tono: "danger" | "warning" | "accent" | "muted";
+  // Temporizador: las condiciones con duración se guardan con la hora en que
+  // VENCEN (contra el reloj de campaña). Al vencer no desaparecen: se marcan.
+  restante?: string; // «2 asaltos», «hasta las 00:10»
+  vencida?: boolean;
+  efecto?: string; // qué le hace a los números, con su traza
 };
 
 export type Personaje = {
@@ -176,7 +181,7 @@ export const grupo: Personaje[] = [
     pvMax: 40,
     ca: 13,
     iniciativa: 3,
-    estados: [{ nombre: "concentrado", tono: "warning" }],
+    estados: [{ nombre: "concentrado en Bendición", tono: "warning", restante: "9 asaltos", efecto: "Si recibe daño, salvación de Constitución o pierde el conjuro" }],
     haciendo: "Sostiene una llama fría entre los dedos",
     retrato: "#c4564b",
   },
@@ -207,8 +212,8 @@ export const grupo: Personaje[] = [
     ca: 15,
     iniciativa: 6,
     estados: [
-      { nombre: "envenenado", tono: "danger" },
-      { nombre: "prisa", tono: "accent" },
+      { nombre: "envenenado", tono: "danger", restante: "3 asaltos", efecto: "Desventaja en ataques y pruebas de característica" },
+      { nombre: "prisa", tono: "accent", restante: "2 asaltos", efecto: "Velocidad ×2 y una acción extra" },
     ],
     haciendo: "Apunta con el arco desde las cajas",
     retrato: "#8b99a1",
@@ -371,3 +376,249 @@ export const mundo: EntradaMundo[] = [
     cuerpo: "Es un sello de convocación menor. Forzarlo libera un sabueso de humo ligado al arcón. El grupo aún no lo sabe con certeza; Kaeloth lo sospecha.",
   },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// RONDA 2 · lo que el motor hace por debajo
+// ─────────────────────────────────────────────────────────────
+
+// La TRAZA: cada número guarda de dónde sale, paso a paso con su origen.
+export type Paso = { origen: string; valor: string; nota?: string };
+export type Traza = { formula: string; pasos: Paso[] };
+
+export type CompetenciaHab = "ninguna" | "media" | "competente" | "pericia";
+
+export type Habilidad = {
+  nombre: string;
+  caracteristica: string;
+  competencia: CompetenciaHab;
+  valor: string;
+  traza: Traza;
+};
+
+export type HojaCompleta = {
+  personajeId: string;
+  competencia: number;
+  caracteristicas: { nombre: string; abrev: string; valor: number; mod: string }[];
+  ca: { valor: number; traza: Traza };
+  pg: { actual: number; max: number; temporal: number; traza: Traza };
+  iniciativa: { valor: string; traza: Traza };
+  velocidades: { nombre: string; valor: string; traza?: Traza }[];
+  percepcionPasiva: { valor: number; traza: Traza };
+  visionOscuridad: string;
+  salvaciones: { nombre: string; valor: string; competente: boolean; traza: Traza }[];
+  habilidades: Habilidad[];
+  ataques: {
+    nombre: string;
+    bono: string;
+    dano: string;
+    tipo: string;
+    versatil?: string;
+    alcance: string;
+    traza: Traza;
+  }[];
+  monedas: { pp: number; po: number; pe: number; pa: number; pc: number };
+  recursos: { nombre: string; actual: number; max: number; reposicion: string }[];
+  salvacionesMuerte: { exitos: number; fracasos: number };
+  sintonizacion: { usadas: number; tope: number; objetos: string[] };
+  ranuras: { ranura: string; objeto: string | null }[];
+  subidaNivel: { de: number; a: number; cambios: { que: string; detalle: string }[] } | null;
+};
+
+export const hojaSirella: HojaCompleta = {
+  personajeId: "p1",
+  competencia: 3,
+  caracteristicas: [
+    { nombre: "Fuerza", abrev: "FUE", valor: 10, mod: "+0" },
+    { nombre: "Destreza", abrev: "DES", valor: 18, mod: "+4" },
+    { nombre: "Constitución", abrev: "CON", valor: 14, mod: "+2" },
+    { nombre: "Inteligencia", abrev: "INT", valor: 13, mod: "+1" },
+    { nombre: "Sabiduría", abrev: "SAB", valor: 12, mod: "+1" },
+    { nombre: "Carisma", abrev: "CAR", valor: 15, mod: "+2" },
+  ],
+  ca: {
+    valor: 16,
+    traza: {
+      formula: "CA 16 = 12 cuero tachonado + 4 Destreza",
+      pasos: [
+        { origen: "Cuero tachonado", valor: "12", nota: "tope de Destreza: sin límite" },
+        { origen: "Destreza", valor: "+4" },
+      ],
+    },
+  },
+  pg: {
+    actual: 31,
+    max: 44,
+    temporal: 5,
+    traza: {
+      formula: "PG máx 44 = 8 (dado nivel 1) + 30 (niveles 2–6) + 6 Constitución",
+      pasos: [
+        { origen: "Dado de golpe nivel 1", valor: "8" },
+        { origen: "Niveles 2–6 (5×5 medio del d8)", valor: "+30" },
+        { origen: "Constitución (×6 niveles)", valor: "+6" },
+      ],
+    },
+  },
+  iniciativa: {
+    valor: "+4",
+    traza: { formula: "Iniciativa +4 = 4 Destreza", pasos: [{ origen: "Destreza", valor: "+4" }] },
+  },
+  velocidades: [
+    { nombre: "Caminar", valor: "35 pies", traza: { formula: "35 pies = 30 base + 5 pies ligeros de mediano", pasos: [{ origen: "Base", valor: "30" }, { origen: "Pies ligeros", valor: "+5" }] } },
+    { nombre: "Trepar", valor: "17 pies" },
+    { nombre: "Nadar", valor: "17 pies" },
+    { nombre: "Volar", valor: "—" },
+    { nombre: "Excavar", valor: "—" },
+  ],
+  percepcionPasiva: {
+    valor: 14,
+    traza: {
+      formula: "Percepción pasiva 14 = 10 + 1 Sabiduría + 3 competencia",
+      pasos: [
+        { origen: "Base", valor: "10" },
+        { origen: "Sabiduría", valor: "+1" },
+        { origen: "Competencia", valor: "+3" },
+      ],
+    },
+  },
+  visionOscuridad: "18 metros",
+  salvaciones: [
+    { nombre: "Fuerza", valor: "+0", competente: false, traza: { formula: "+0 = 0 Fuerza", pasos: [{ origen: "Fuerza", valor: "+0" }] } },
+    { nombre: "Destreza", valor: "+7", competente: true, traza: { formula: "+7 = 4 Destreza + 3 competencia", pasos: [{ origen: "Destreza", valor: "+4" }, { origen: "Competencia", valor: "+3" }] } },
+    { nombre: "Constitución", valor: "+2", competente: false, traza: { formula: "+2 = 2 Constitución", pasos: [{ origen: "Constitución", valor: "+2" }] } },
+    { nombre: "Inteligencia", valor: "+4", competente: true, traza: { formula: "+4 = 1 Inteligencia + 3 competencia", pasos: [{ origen: "Inteligencia", valor: "+1" }, { origen: "Competencia", valor: "+3" }] } },
+    { nombre: "Sabiduría", valor: "+1", competente: false, traza: { formula: "+1 = 1 Sabiduría", pasos: [{ origen: "Sabiduría", valor: "+1" }] } },
+    { nombre: "Carisma", valor: "+2", competente: false, traza: { formula: "+2 = 2 Carisma", pasos: [{ origen: "Carisma", valor: "+2" }] } },
+  ],
+  habilidades: [
+    { nombre: "Sigilo", caracteristica: "DES", competencia: "pericia", valor: "+10", traza: { formula: "+10 = 4 Destreza + 3 competencia + 3 pericia", pasos: [{ origen: "Destreza", valor: "+4" }, { origen: "Competencia", valor: "+3" }, { origen: "Pericia (duplica competencia)", valor: "+3" }] } },
+    { nombre: "Juego de manos", caracteristica: "DES", competencia: "pericia", valor: "+10", traza: { formula: "+10 = 4 Destreza + 3 competencia + 3 pericia", pasos: [{ origen: "Destreza", valor: "+4" }, { origen: "Competencia", valor: "+3" }, { origen: "Pericia", valor: "+3" }] } },
+    { nombre: "Percepción", caracteristica: "SAB", competencia: "competente", valor: "+4", traza: { formula: "+4 = 1 Sabiduría + 3 competencia", pasos: [{ origen: "Sabiduría", valor: "+1" }, { origen: "Competencia", valor: "+3" }] } },
+    { nombre: "Engaño", caracteristica: "CAR", competencia: "competente", valor: "+5", traza: { formula: "+5 = 2 Carisma + 3 competencia", pasos: [{ origen: "Carisma", valor: "+2" }, { origen: "Competencia", valor: "+3" }] } },
+    { nombre: "Investigación", caracteristica: "INT", competencia: "competente", valor: "+4", traza: { formula: "+4 = 1 Inteligencia + 3 competencia", pasos: [{ origen: "Inteligencia", valor: "+1" }, { origen: "Competencia", valor: "+3" }] } },
+    { nombre: "Acrobacias", caracteristica: "DES", competencia: "media", valor: "+5", traza: { formula: "+5 = 4 Destreza + 1 (media competencia)", pasos: [{ origen: "Destreza", valor: "+4" }, { origen: "Media competencia", valor: "+1" }] } },
+    { nombre: "Perspicacia", caracteristica: "SAB", competencia: "ninguna", valor: "+1", traza: { formula: "+1 = 1 Sabiduría", pasos: [{ origen: "Sabiduría", valor: "+1" }] } },
+    { nombre: "Atletismo", caracteristica: "FUE", competencia: "ninguna", valor: "+0", traza: { formula: "+0 = 0 Fuerza", pasos: [{ origen: "Fuerza", valor: "+0" }] } },
+  ],
+  ataques: [
+    { nombre: "Estoque élfico", bono: "+8", dano: "1d8+4", tipo: "perforante", versatil: "1d10+4", alcance: "cuerpo a cuerpo", traza: { formula: "+8 = 4 Destreza + 3 competencia + 1 arma élfica", pasos: [{ origen: "Destreza", valor: "+4" }, { origen: "Competencia", valor: "+3" }, { origen: "Arma élfica", valor: "+1" }] } },
+    { nombre: "Ballesta de mano", bono: "+7", dano: "1d6+4", tipo: "perforante", alcance: "9/36 m", traza: { formula: "+7 = 4 Destreza + 3 competencia", pasos: [{ origen: "Destreza", valor: "+4" }, { origen: "Competencia", valor: "+3" }] } },
+  ],
+  monedas: { pp: 2, po: 143, pe: 0, pa: 27, pc: 88 },
+  recursos: [
+    { nombre: "Dados de golpe (d8)", actual: 4, max: 6, reposicion: "descanso largo" },
+    { nombre: "Inspiración", actual: 1, max: 1, reposicion: "a criterio del DM" },
+    { nombre: "Espacio de conjuro nivel 1", actual: 3, max: 4, reposicion: "descanso largo" },
+    { nombre: "Retirada ingeniosa", actual: 1, max: 1, reposicion: "descanso corto" },
+  ],
+  salvacionesMuerte: { exitos: 0, fracasos: 0 },
+  sintonizacion: { usadas: 1, tope: 3, objetos: ["Capa de la sombra menguante"] },
+  ranuras: [
+    { ranura: "Armadura", objeto: "Cuero tachonado" },
+    { ranura: "Escudo", objeto: null },
+    { ranura: "Mano principal", objeto: "Estoque élfico" },
+    { ranura: "Mano secundaria", objeto: "Ballesta de mano" },
+    { ranura: "Sintonizado", objeto: "Capa de la sombra menguante" },
+  ],
+  subidaNivel: {
+    de: 6,
+    a: 7,
+    cambios: [
+      { que: "Puntos de golpe", detalle: "+6 (5 del d8 + 1 Constitución) → 50 máx" },
+      { que: "Evasión", detalle: "Nuevo rasgo: media daño en salvaciones de Destreza fallidas" },
+      { que: "Competencia", detalle: "Sin cambios (+3)" },
+    ],
+  },
+};
+
+// BLOQUES DE REGLAS · vocabulario cerrado de tres carriles
+export type PiezaCarril = "suceso" | "condicion" | "efecto";
+export const vocabularioReglas: Record<PiezaCarril, string[]> = {
+  suceso: [
+    "empieza la sesión", "se cierra la sesión", "se abre una ficha", "se comenta una ficha",
+    "se revela una ficha", "se pone una marca", "se levanta una señal", "el DM ejecuta algo",
+    "se enlazan dos fichas", "una tirada de característica", "se ataca una ficha", "entra un miembro",
+  ],
+  condicion: [
+    "una marca vale sí", "un conjunto tiene al menos N miembros", "alguien está en un conjunto",
+    "están todos los jugadores presentes", "el sujeto lleva una etiqueta",
+    "se han revelado al menos N fichas con una etiqueta", "vamos por la sesión N o más",
+    "esta regla no ha disparado nunca",
+  ],
+  efecto: [
+    "revelar una ficha", "ocultar una ficha", "poner una marca", "meter a alguien en un conjunto",
+    "sacar a alguien de un conjunto", "levantar una señal", "avisar a alguien",
+    "añadir una nota a la sesión", "armar otra regla", "desarmar otra regla",
+  ],
+};
+
+export type Regla = {
+  id: string;
+  cuando: string;
+  si: string;
+  haz: string;
+  armada: boolean;
+  disparos: number;
+  propuesta?: boolean;
+};
+export const reglas: Regla[] = [
+  { id: "r1", cuando: "se revela una ficha", si: "el sujeto lleva una etiqueta", haz: "avisar a alguien", armada: true, disparos: 3 },
+  { id: "r2", cuando: "están todos los jugadores presentes", si: "vamos por la sesión N o más", haz: "revelar una ficha", armada: true, disparos: 0 },
+  { id: "r3", cuando: "se ataca una ficha", si: "una marca vale sí", haz: "levantar una señal", armada: false, disparos: 12 },
+  { id: "r4", cuando: "se revela una ficha", si: "alguien está en un conjunto", haz: "avisar a alguien", armada: true, disparos: 0, propuesta: true },
+];
+
+// TABLAS DEL DM
+export type FilaTabla = { rango: string; resultado: string };
+export type TablaDM = {
+  id: string;
+  nombre: string;
+  disparador: "ninguno" | "critico" | "pifia";
+  visibilidad: Visibilidad;
+  activa: boolean; // regla de la casa, nace apagada
+  dado: string;
+  filas: FilaTabla[];
+};
+export const tablasDM: TablaDM[] = [
+  {
+    id: "t1", nombre: "Pifias en combate", disparador: "pifia", visibilidad: "dm", activa: false, dado: "1d6",
+    filas: [
+      { rango: "1", resultado: "Se te cae el arma a tus pies." },
+      { rango: "2", resultado: "Golpeas al aliado más cercano (mitad de daño)." },
+      { rango: "3", resultado: "Resbalas: quedas derribado." },
+      { rango: "4", resultado: "Tu arma se atasca; pierdes tu próxima acción para liberarla." },
+      { rango: "5", resultado: "Pierdes el equilibrio: desventaja hasta tu próximo turno." },
+      { rango: "6", resultado: "Cuerda de arco rota o filo mellado (−1 hasta reparar)." },
+    ],
+  },
+  {
+    id: "t2", nombre: "Botín de matón portuario", disparador: "ninguno", visibilidad: "dm", activa: true, dado: "1d8",
+    filas: [
+      { rango: "1–3", resultado: "1d10 piezas de plata y un dado cargado." },
+      { rango: "4–5", resultado: "Un gancho de estibador (arma improvisada)." },
+      { rango: "6–7", resultado: "Una llave de latón sin dueño conocido." },
+      { rango: "8", resultado: "Un pagaré firmado por el consejo portuario." },
+    ],
+  },
+];
+
+// PREPARACIÓN DE LA PRÓXIMA SESIÓN (taller del DM)
+export const prepSesion = {
+  escenaAbre: "El almacén cuatro, con Grosk medio vencido y las sirenas del puerto sonando.",
+  aRevelar: ["El manifiesto del Ancla Rota", "El sello de la sirena"],
+  criaturas: ["Capataz Grosk", "Matón del gremio ×2", "Sabueso de humo"],
+  tiradas: ["Percepción para oír la patrulla", "Salvación de Constitución contra el humo"],
+};
+
+// ESTADO DEL MUNDO (marcas, conjuntos, señales)
+export const estadoMundo = {
+  marcas: [
+    { nombre: "el-puente-cayó", valor: true },
+    { nombre: "grosk-sabe-tu-nombre", valor: true },
+    { nombre: "manifiesto-en-manos-del-grupo", valor: false },
+  ],
+  conjuntos: [
+    { nombre: "Los que saben lo de Sirella", miembros: ["Kaeloth"] },
+    { nombre: "Deudores del gremio", miembros: ["Sirella", "Doran"] },
+  ],
+  senales: ["patrulla-en-camino"],
+};

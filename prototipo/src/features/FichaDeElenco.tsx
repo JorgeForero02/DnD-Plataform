@@ -22,11 +22,15 @@ function BarraVida({ pv, pvMax }: { pv: number; pvMax: number }) {
 
 function Estados({ estados }: { estados: Estado[] }) {
   if (estados.length === 0) return null;
+  // En el retrato de la mesa se ve cuánto le queda a cada condición.
   return (
     <div className="flex flex-wrap gap-s1">
       {estados.map((e) => (
-        <Badge key={e.nombre} tono={e.tono}>
-          {e.nombre}
+        <Badge key={e.nombre} tono={e.vencida ? "muted" : e.tono}>
+          <span className={e.vencida ? "line-through" : ""}>{e.nombre}</span>
+          {e.restante && !e.vencida && (
+            <span className="ml-s1 font-data text-muted">· {e.restante}</span>
+          )}
         </Badge>
       ))}
     </div>

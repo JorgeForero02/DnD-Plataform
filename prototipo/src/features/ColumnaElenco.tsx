@@ -8,10 +8,12 @@ export function ColumnaElenco({
   rol,
   enCombate,
   onAbrir,
+  onCondicion,
 }: {
   rol: "jugador" | "dm";
   enCombate: boolean;
   onAbrir: (p: Personaje) => void;
+  onCondicion: (nombre: string) => void;
 }) {
   const yo = grupo.find((p) => p.esYo)!;
   const otros = grupo.filter((p) => !p.esYo);
@@ -63,6 +65,7 @@ export function ColumnaElenco({
               variante="dm-aliado"
               turnoActual={enCombate && p.esYo}
               onAbrir={() => onAbrir(p)}
+              onCondicion={() => onCondicion(p.nombre)}
             />
           ))}
         </div>
@@ -78,6 +81,7 @@ export function ColumnaElenco({
                 key={e.id}
                 p={{ nombre: e.nombre, pv: e.pv, pvMax: e.pvMax, ca: e.ca, estados: e.estados, retrato: e.retrato }}
                 variante="dm-enemigo"
+                onCondicion={() => onCondicion(e.nombre)}
               />
             ))}
           </div>

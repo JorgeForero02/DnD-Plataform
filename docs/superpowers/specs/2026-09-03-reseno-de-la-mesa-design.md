@@ -192,7 +192,59 @@ a `packages/shared`, nunca cambia lo que ya exporta**. Añadir da más a la web;
 **Y la regla que sostiene todo el plan:** si hay que elegir entre los dos carriles, **gana el
 gráfico**. El motor no decide si los amigos del autor vuelven a una segunda partida; la pantalla sí.
 
-## 9 · El encargo a Figma
+## 9 · La decisión de sustituir, y su frontera exacta
+
+**Decisión del autor, 2026-09-03 (madrugada), tras recibir la segunda ronda: la maqueta es la
+interfaz nueva. No se adapta lo que hay — se sustituye.**
+
+Estoy de acuerdo, y por un motivo concreto: el problema diagnosticado **es la arquitectura de la
+información** —diecinueve destinos, la navegación con forma de base de datos, la mesa fuera del
+menú—, y adaptar significa arrastrarla. Migrar por trozos una estructura que es distinta de raíz
+suele costar **más** que sustituirla, y acaba en un producto mitad y mitad.
+
+**Pero «sustituir la interfaz» no es «tirar `apps/web`», y la diferencia hay que dejarla escrita
+antes de empezar, porque es fácil destruir la parte buena por inercia:**
+
+| Se sustituye | Se conserva |
+|---|---|
+| Las **páginas** y la navegación (`pages/`, la lista de pestañas) | Los **hooks de datos** (`features/*/hooks.ts`): sondeos, invalidaciones, claves de caché |
+| Los **componentes de presentación** de cada pantalla | Las **puertas de API** (`features/*/api.ts`) |
+| La **composición** de la mesa | El **vocabulario del dominio** (`vocabulario.ts`): quince condiciones, dieciocho habilidades, trece tipos de daño, razas, clases, armaduras |
+| | La **tienda de sesión** y el interceptor de errores |
+
+**El motivo de conservar esa columna:** no es donde está el problema, y **ahí vive corrección
+acumulada que costó semanas** — la concurrencia optimista de los puntos de golpe con su conflicto de
+versión, el filtrado por `canView`, los mensajes de error del servidor pintados tal cual, y el
+sondeo de quince segundos que se arregló el mismo día que se tomó esta decisión. Reescribir eso
+sería reintroducir fallos ya cazados.
+
+**La maqueta es presentación sin datos** —así se encargó a propósito—, así que el trabajo real de la
+sustitución **es enchufarla a esa columna que se conserva**, no reconstruirla.
+
+### La red de seguridad de la migración
+
+**Los recorridos de navegador se conservan y se actualizan, no se borran.** Describen
+**comportamiento**, no maquetación: *«el DM pide una tirada, a la jugadora le aparece sin recargar,
+tira, y el DM ve el resultado»* sigue siendo verdad con cualquier interfaz. Son la única forma de
+saber que la sustitución no perdió nada por el camino, y por eso **se actualizan sus selectores en
+vez de tirarlos**.
+
+**Las pruebas de componente de las pantallas que desaparezcan mueren con ellas**, y eso se acepta:
+son de la disposición vieja.
+
+### Lo que la maqueta todavía no cubre
+
+Señalado por el autor al recibirla, y **no se cubrirá con Figma** —se quedó sin presupuesto—, así
+que lo construimos nosotros con el lenguaje que la maqueta ya fija:
+
+- **La invitación.** Y ojo, que **no es una pantalla, es un flujo**: el DM genera un enlace, alguien
+  que no tiene cuenta lo abre, se registra desde ahí y **vuelve solo** a la campaña. Ya está
+  construido y **ya tiene un recorrido de navegador con dos contextos** — lo que falta es su sitio
+  en la interfaz nueva.
+- **Que preparar sea más cómodo para el DM.** El taller existe ya en la maqueta; lo que falta es
+  rodaje, y eso solo lo dice usarlo.
+
+## 10 · El encargo a Figma
 
 El prompt está en
 [`2026-09-03-prompt-figma-mesa.md`](./2026-09-03-prompt-figma-mesa.md), con trece secciones, los

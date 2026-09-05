@@ -28,6 +28,43 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La mesa deja de ser una página y pasa a ser una cabina (2026-09-04)
+
+**Qué.** El armazón de la mesa, en `main`, y **seis carriles cerrados en sus ramas sin fusionar**
+(`carril/c1..c6`; C2, C3 y C5 ya dentro). `SesionPage` deja `AppShell` y `PageHeader`: la mesa
+ocupa la ventana (`flex h-screen flex-col overflow-hidden`), con **scroll por panel** y `min-h-0`
+en todos los ancestros —sin él un hijo de flex/grid no encoge por debajo de su contenido y el
+`overflow-y-auto` **no se activa jamás**, que era el defecto—. `ui/Dialog` pasa de cuadro centrado
+a **cajón lateral** (26/40/58 rem, variante `pergamino`, ranuras de subtítulo y acciones), que
+heredan sus 24 usos. `tokens.css` gana `.scroll-quiet` —que se usaba **sin existir**—, `.capitular`
+y los tres `@keyframes` con `prefers-reduced-motion`. `MesaDeSesion.tsx` baja de **992 líneas a un
+compositor de ~150** y las piezas se reparten en `elenco/`, `hilo/`, `dm/` y `taller/`.
+
+**Por qué así.** La auditoría del 2026-09-04 midió que se había **adaptado** la maqueta en vez de
+**sustituirla**, y que las desviaciones estaban escritas en comentarios como si fueran acuerdos.
+Partir el compositor por carpetas es lo que permitió que seis carriles trabajaran sin tocar el
+mismo fichero.
+
+**Lo que esto NO cierra, y hay que decirlo:** el panel de dados **está construido y no lo monta
+nadie**, así que «no hay dados en la mesa» sigue abierto; y el ±5 del elenco —la ruta que un DM usa
+en combate— sigue mandando `{ delta }` sin tipo de daño, así que **las resistencias de 2.5.1 aún no
+se cobran desde la mesa**. Las dos son cableado de dos líneas, descritas en el traspaso.
+
+**Pruebas.** Ninguna nueva: se suspendió escribirlas por el camino para hacerlas en una sola tanda,
+que **no se llegó a correr**. Se actualizaron —nunca desactivaron— las que afirmaban la maquetación
+vieja. **Playwright no se ha ejecutado ni una vez en todo el día.** Queda escrito
+`e2e/mesa-mide.spec.ts`, el recorrido que mide lo que `jsdom` no ve: la página no scrollea, el hilo
+sí, la rejilla llega al pie, ningún panel se corta sin poder desplazarse, y abrir un cajón no
+desmonta el hilo.
+
+**Cómo revertir.** `git revert` de los tres merges y de `7e4c178`; el armazón es `a1d4a1d`. Nada de
+esto toca el servidor ni migra datos.
+
+> **El traspaso completo está fuera del repositorio a propósito** —es material de una sesión, no
+> del proyecto—, junto a la auditoría que originó el trabajo, en el directorio de trabajo del autor
+> (`traspaso-ola2-2026-09-04.md`): estado por carril, orden de ensamblado, ranuras por conectar con
+> sus props, conflictos previsibles y diecisiete trampas medidas.
+
 ## 2.5.5 · Las condiciones llegan a las tiradas (2026-09-04)
 
 **Qué.** Las condiciones tenían un solo consumidor de verdad —la velocidad—. Ahora tienen el

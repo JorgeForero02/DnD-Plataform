@@ -199,6 +199,17 @@ nombres de las cosas del código, no.
   tonos distintos para tres trabajos distintos, para que ninguno se distinga de otro solo por
   dónde está colocado.
 
+  > **Y aquí hay una contradicción viva con la maqueta, sin resolver (2026-09-04).** La maqueta de
+  > `prototipo/` pinta el `FilterChip` activo **en cobre** —`border-copper bg-copper/15
+  > text-copper-text`— y un chip de filtro es literalmente un `<button>`. **Dos carriles chocaron
+  > con esto por separado y los dos siguieron esta regla contra la maqueta**: la capa visual dejó
+  > el chip en `--accent`, y el taller eligió radios con explicación en vez de las fichas de la
+  > maqueta para la visibilidad. Los dos lo declararon en vez de decidirlo en silencio.
+  >
+  > **O manda este documento y la maqueta se corrige, o se cambia esta regla.** Lo que no puede
+  > quedarse es la contradicción entre los dos, porque el siguiente que compare con la maqueta la
+  > «arreglará» de buena fe. Decisión del autor.
+
 - **Las tipografías se cargan de Google Fonts**, y eso revierte a propósito el «no network
   fonts» de 1.19. Son cuatro voces con un trabajo cada una: **Marcellus** en títulos,
   **Public Sans** en la interfaz, **EB Garamond** en el texto del mundo, **IBM Plex Mono** en

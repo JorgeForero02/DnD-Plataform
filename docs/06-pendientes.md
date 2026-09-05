@@ -1043,6 +1043,93 @@ en comentarios.
 vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
 el navegador**: supertest no pone la cabecera si no hay `.send()`.
 
+## P1 · El panel de dados existe y no lo monta nadie (2026-09-04)
+
+`features/rolls/panel/PanelDeDadosDeLaMesa.tsx` y su cubo tridimensional están construidos,
+revisados y en `main`. **`grep -rn "PanelDeDadosDeLaMesa" apps/web/src` devuelve solo su
+declaración.** La fila ALTA de la auditoría —*«no hay dados en la mesa: `MesaDeSesion.tsx` no
+importa nada de `features/rolls`»*— **sigue exactamente igual que antes de construirlo**.
+
+Cierra con dos líneas en el compositor: una entrada `"dados"` en `RailDePaneles` y el panel montado
+**fuera del `<main>`**, con `campaignId`, `sessionId`, `characterId` y `onCerrar`. Va a `z-30`
+frente al `z-40` de los cajones, que es como la maqueta los hace convivir.
+
+**Es el caso número cinco de «una ficha no se cierra sin pantalla».**
+
+## P1 · Las resistencias al daño no se cobran desde la mesa (2026-09-04, ficha C6-5)
+
+`changeHp` acepta `damageType` desde 2.5.1 y la **hoja** ya lo manda. Pero
+`features/sessions/elenco/FichaDeElenco.tsx` sigue mandando `{ delta }` a secas, y **ese ±5 es la
+ruta que un DM usa en combate** — abrir la hoja de otro es el gesto largo. Así que el escenario
+insignia de 2.5.1, el dragón resistente al fuego, **todavía no ocurre jugando**.
+
+Cierra enchufando `SelectorDeTipoDeDano` —que exporta `AplicarDano`, en
+`apps/web/src/features/character-sheet/`, autónomo y sin consultas dentro— en la ranura
+`ranuraTipoDeDano` de `apps/web/src/features/sessions/elenco/PonerDano.tsx`, y su valor en
+`tipoDeDano`. **Las dos props ya existen en `main`; el selector llega con `carril/c6`.**
+
+## P2 · Setenta y seis iconos dibujados en ocho ficheros, con conceptos duplicados (2026-09-04)
+
+La auditoría contaba «4 iconos» porque solo miró `ui/Iconos.tsx`. **La aplicación tiene ~76
+repartidos en 7 ficheros de `features/`.** Al traer los 23 de la maqueta a `ui/`, ahora hay **dos
+escudos, dos mochilas, dos soles, dos lunas y tres lupas**, más los provisionales de cada carril
+(`hilo/`, `elenco/`, `dm/`, `taller/`), tres de ellos **idénticos carácter a carácter**.
+
+Ningún carril podía consolidarlo: todos tenían `features/**` prohibido. Todos los ficheros
+provisionales lo declaran en su cabecera. **Al deduplicar, ojo con el tamaño**: los de `ui/` usan
+`1em` con `align-[-0.125em]`; algunos de carril usan `h-4 w-4`.
+
+## P2 · Tres pantallas revelan la misma ficha, cada una con su copia del predicado (2026-09-04)
+
+El `RevelarAlgo` de `apps/web/src/features/sessions/dm/` (en `main`), el botón por fila de
+`PrepararSesion` en `apps/web/src/features/sessions/taller/` (`carril/c4`) y el `BotonRevelar` de
+`apps/web/src/features/entities/` (`carril/c6`). Los tres acaban en el mismo
+`PATCH { visibility: "PLAYERS" }`
+y los tres reimplementan el mismo predicado de «se puede revelar», que es **matiz de visibilidad**
+— justo lo que `CLAUDE.md` obliga a escribir una sola vez. **Debe mandar el de
+`apps/web/src/features/entities/`** (dueño del dominio, ya exportado); los otros dos conservan su
+cajón y le pasan los props.
+
+## P2 · Dos fichas de este documento mienten con un barrido citado dentro (2026-09-04)
+
+**P1 de `ENTITY_REVEALED` llevaba al menos una tanda afirmando, con su `grep` citado, algo que el
+código desmentía.** Al buscar más casos aparecieron dos:
+
+| Ficha | Afirma | Realidad |
+|---|---|---|
+| **E3** | «`grep -rn "maxLength" apps/web/src`: cero» | **37 aciertos** en 10+ ficheros |
+| **D8** | «Ninguna pantalla muestra ninguna fecha» | Falsa desde `CampaignList`/`Overview`/`Cronicas`, y `ListaDeReglas` pinta «última vez el 4/9/2026» |
+
+**Una ficha con un barrido dentro envejece igual que el código, y encima parece probada.** Las ~30
+secciones sin auditar merecen una pasada con esto en mente.
+
+## P2 · `OWNER_DM` en un statblock se comporta como `DM_ONLY` (2026-09-04)
+
+`statblocks.service.ts:163-171` pasa `createdById: ""` a `canView`, y `canView:26-27` resuelve
+`OWNER_DM` comparando con el espectador → **siempre falso para un jugador**. El editor lo ofrece, o
+sea que la pantalla promete una frontera que el servidor no aplica. La fila **sí** tiene columna
+`createdById`; el arreglo es pasarla. Es la misma clase de mentira que ya se retiró con
+`SPECIFIC_PLAYERS` para las criaturas.
+
+## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
+
+- **`stampSessionNoteSchema` acepta el sello vacío.** Los dos compositores lo impiden en pantalla;
+  `text` sigue siendo `optional()` sin `min(1)`, así que una llamada directa a la API crea el sello
+  que dice «Nota». Y los ya escritos siguen en la base, entrando en la crónica de cierre.
+- **`changeHp` no comprueba que el `rollEventId` tenga que ver con ese personaje** ni que sea
+  reciente. La guarda de signo del cliente es **la única** defensa contra atar una curación a una
+  tirada de daño.
+- **`houseTablesEnabled` no tiene `GET`**: la pantalla se ve apagada aunque esté encendido.
+- **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
+- **`GET .../statblocks` no devuelve `visibility`** (ficha C6-2).
+- **`ENTITY_LINKED` no se escribe nunca**: enlazar dos fichas no deja rastro ni dispara una regla.
+- **El taller CONVIVE con las listas CRUD de `CampaignDetailPage`.** Nadie ha perdido nada, pero la
+  sustitución de la §2 de la auditoría **no está completa** hasta que se decida qué se cae de ahí.
+- **`DISPARADORES_SIN_MOTOR` está duplicado** entre web y API. Caben en `packages/shared/src`; se
+  duplicaron **por una frontera de trabajo, no por una imposibilidad**.
+- **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
+  La respuesta buena es una ruta de enlaces por campaña.
+
 ## P4 — Limpieza
 
 - **`viewerFor(userId, campaignId)` está duplicado** en los servicios de entidades, enlaces,

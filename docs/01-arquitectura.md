@@ -132,6 +132,33 @@ condiciones, tirar y las anulaciones del DM), `level-up/` (el diff propuesto y s
 «en juego» y la mesa: elenco, registro en vivo y consulta del mundo). `characters/` conserva el
 CRUD.
 
+**Desde el reseño de la mesa (2026-09-04), `sessions/` está partido por ranuras**, y esto no es
+orden por gusto: `MesaDeSesion.tsx` medía **992 líneas** con el elenco, el registro, la ficha de
+personaje, la barra de PG y la consulta del mundo dentro, así que **cualquier trabajo sobre la mesa
+pasaba por ese fichero** y dos personas no podían tocarla a la vez. Hoy es un **compositor de ~150
+líneas que solo coloca ranuras**:
+
+| Carpeta | Qué ocupa |
+|---|---|
+| `sessions/elenco/` | La columna de quién está, con los mandos del DM y el cajón de condiciones |
+| `sessions/hilo/` | El registro con sus cinco formas de mensaje y su compositor |
+| `sessions/dm/` | La columna de herramientas de narración y la consulta del mundo |
+| `sessions/taller/` | Lo que ocupa la mesa cuando el DM está en reposo |
+| `apps/web/src/features/sessions/BandaDeMesa.tsx` · `PanelDeMesa.tsx` | La banda superior y la tarjeta común |
+
+**La mesa es la única pantalla que NO va dentro de `AppShell`.** `SesionPage` no lo monta a
+propósito: una pantalla en la que se está durante horas no se lee, **se opera**, y las migas de pan
+contestan una pregunta que quien juega no tiene. Y sin `h-screen` no hay scroll por panel — con la
+página scrolleando, el elenco, el hilo y las herramientas crecen a la vez y no se puede mirar el
+registro sin perder de vista los puntos de golpe.
+
+> **La regla que sostiene todo eso, y que se olvida:** `min-h-0` en **todos** los ancestros de un
+> panel que scrollee. Un hijo de flex/grid tiene `min-height: auto` y se niega a encoger por debajo
+> de su contenido, así que el `overflow-y-auto` de dentro **no se activa jamás** y el panel empuja
+> la página. Es el defecto que tuvo esta pantalla con cinco `overflow-y-auto` escritos y ninguno
+> funcionando. **`jsdom` no maqueta**, así que solo se ve midiendo en un navegador: lo cubre
+> `apps/web/e2e/mesa-mide.spec.ts`.
+
 **Y desde 2.5.6, `encounters/`: la capa de combate.** No es una pantalla y no se navega a ella —
 es una tira de orden de turnos que aparece **encima** del elenco mientras dura el encuentro y se
 va cuando termina, montada desde `apps/web/src/features/sessions/MesaDeSesion.tsx`. La URL no cambia. Los PG y las
@@ -144,6 +171,15 @@ lo que gobiernan (cuándo se guarda solo, qué pasa al rechazar, qué significa 
 las reglas vinculantes de [04-convenciones.md](./04-convenciones.md), y repetirlas a mano es
 como empiezan a discrepar. `IdentidadEditable.tsx` las usa para raza, subraza, clase, nivel y
 las seis características, y sustituyó al antiguo `EditorFicha.tsx`, que ya no existe.
+
+**`ui/Dialog.tsx` es un cajón lateral, no un cuadro centrado**, desde el reseño de la mesa. Entra
+por la derecha a altura completa con `border-l` de cobre, en tres anchuras (`sm` 26rem, `lg` 40rem,
+`xl` 58rem), con variante `pergamino` y ranuras de subtítulo y de acciones. El motivo no es
+estético: el estrato superpuesto se define como *«se abre encima, Escape cierra, y vuelves
+exactamente donde estabas»*, y con un cajón **«donde estabas» sigue visible**; con un cuadro
+centrado, no. Lo heredan sus 24 usos. El foco entra en el **cuerpo**, no en el aspa —si cayera
+ahí, el primer Enter cerraría el panel que acabas de abrir—, sigue atrapado dentro, y vuelve al
+control que lo abrió.
 
 **`ui/Iconos.tsx` es la casa común de los iconos de línea**, y cada módulo grande dibuja los suyos —`features/rules/`, `features/sessions/`, `features/entities/`, `features/campaigns/`, `features/rolls/`, `features/level-up/`—: lo que la regla exige es que sean **dibujados**, no que vivan en un único fichero (ver [04-convenciones.md](./04-convenciones.md)), dibujados en SVG. `features/links/relaciones.ts`
 guarda las relaciones sugeridas por par de tipos y su lectura invertida, que es lo que permite

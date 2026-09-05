@@ -72,6 +72,31 @@ pnpm format                            # aplica Prettier (format:check solo comp
 pnpm --filter @dnd/web e2e             # Playwright: levanta API+web y abre Chromium
 ```
 
+La campaña de demostración:
+
+```bash
+node scripts/seed-demo.mjs                                  # contra http://localhost:3000
+node scripts/seed-demo.mjs --base https://dnd.supportive.pro/api
+node scripts/seed-demo.mjs --limpiar                        # borra las campañas «[demo]»
+```
+
+**Siembra una mesa completa y jugable** —tres cuentas, cinco niveles de visibilidad, dos
+personajes con hoja derivada, inventario con ranura y sintonización, un statblock propio y su PNJ,
+una sesión cerrada con crónica y otra en curso con su encuentro, una regla del motor y avisos— para
+poder mirar la aplicación con datos dentro sin construirlos a mano.
+
+**Habla por HTTP, como una persona**: se registra, inicia sesión y usa las mismas rutas que la web,
+así que **no puede saltarse un permiso** y **se puede correr contra producción** sin credenciales de
+Postgres. Es **idempotente**: correrlo dos veces no duplica nada. Y todo lo que crea va marcado
+—correos en `@demo.invalid`, nombres con `[demo]` delante— para poder borrarlo de un tirón.
+
+Dos cosas que conviene saber antes de correrlo contra producción:
+
+- **Pon `SEED_DEMO_PASSWORD`.** La contraseña por defecto está escrita en el script, y un fichero
+  del repositorio no es un secreto.
+- **`--limpiar` borra las campañas, no las cuentas.** La API no tiene ruta para borrar un usuario y
+  no se le añade una por comodidad de un script.
+
 Base de datos:
 
 ```bash

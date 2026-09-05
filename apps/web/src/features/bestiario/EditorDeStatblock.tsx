@@ -45,10 +45,36 @@ import { NOMBRE_TAMANO, NOMBRE_TIPO_CRIATURA } from "./vocabulario";
 // verlo cambiar al cambiar el tamaño es lo que evita la pregunta «¿de dónde sale ese d10?».
 
 /**
- * Los cinco niveles menos `SPECIFIC_PLAYERS`: un statblock no tiene tabla de concesiones por
- * jugador, así que nombrar a alguien no tendría dónde guardarse.
+ * Los cinco niveles menos `SPECIFIC_PLAYERS` **y menos `OWNER_DM`**: los dos que un statblock no
+ * puede cumplir.
+ *
+ * `SPECIFIC_PLAYERS` se retiró primero, y por lo evidente: un statblock no tiene tabla de
+ * concesiones por jugador, así que nombrar a alguien no tendría dónde guardarse.
+ *
+ * `OWNER_DM` es la misma mentira un paso más sutil, y se retira en la Ola 2 (2026-09-04)
+ * **después de leer el servidor, no de suponerlo**:
+ *
+ *   · `apps/api/src/statblocks/statblocks.service.ts:163-170` — `puedeVer()` llama a `canView`
+ *     pasándole `createdById: ""` fijo, con el comentario «un statblock no tiene creador
+ *     nominal».
+ *   · `apps/api/src/common/visibility.ts:26-27` — `canView` resuelve `OWNER_DM` como
+ *     `resource.createdById === viewer.userId`, y contra `""` eso es **siempre falso** para
+ *     cualquier jugador.
+ *
+ * O sea que `OWNER_DM` en una criatura **se comporta exactamente como `DM_ONLY`** mientras esta
+ * pantalla promete «Tú y quien lo creó». Ofrecer una frontera que el servidor no aplica es el
+ * defecto que este reseño existe para corregir, y la regla de interfaz lo dice sin rodeos: si el
+ * texto explica una regla del servidor y discrepan, **miente el texto**.
+ *
+ * **No se toca el servidor desde aquí.** La fila **sí** tiene columna `createdById` —se escribe
+ * en `create()` (`:59`)—, así que el arreglo bueno es que `puedeVer` la pase en vez de `""`, y
+ * ese día `OWNER_DM` vuelve a esta lista con una línea. Queda ficha en `docs/06-pendientes.md`.
+ *
+ * Las criaturas ya guardadas con `OWNER_DM` **no pierden su valor**: `VisibilityChooser` añade al
+ * final el nivel guardado que no esté en la lista, marcado y no seleccionable, en vez de hacerlo
+ * desaparecer al guardar.
  */
-const NIVELES_DE_CRIATURA: Visibility[] = ["PUBLIC", "PLAYERS", "OWNER_DM", "DM_ONLY"];
+const NIVELES_DE_CRIATURA: Visibility[] = ["PUBLIC", "PLAYERS", "DM_ONLY"];
 
 const NOMBRE_EFECTO_DE_DANO: Record<DamageModifier["effect"], string> = {
   RESIST: "Resiste (la mitad)",
@@ -516,7 +542,9 @@ export function EditorDeStatblock({
           // **Sin `children`**: un statblock no tiene concesiones por jugador, así que
           // `SPECIFIC_PLAYERS` no se ofrece (`niveles`) — el servidor guarda el nivel, pero no
           // hay tabla de concesiones donde nombrar a nadie, y ofrecerlo sería prometer una
-          // frontera que nada aplica.
+          // frontera que nada aplica. **`OWNER_DM` tampoco se ofrece desde la Ola 2**, por el
+          // mismo motivo medido en `NIVELES_DE_CRIATURA`: el servidor lo evalúa contra un
+          // creador vacío y se comporta como `DM_ONLY`.
           <VisibilityChooser
             value={b.visibility ?? "DM_ONLY"}
             niveles={NIVELES_DE_CRIATURA}

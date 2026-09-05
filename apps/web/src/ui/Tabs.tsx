@@ -6,10 +6,14 @@ export interface TabItem {
   label: string;
   content: ReactNode;
   /**
-   * El dibujo que acompaña al rótulo en la barra lateral. **Opcional y decorativo**: va
-   * `aria-hidden`, porque el nombre accesible de la pestaña es su rótulo y meterle el icono
-   * dentro obligaría a cualquier búsqueda por nombre a conocerlo. Se dimensiona en `1em` para
-   * que escale con el texto, que es la regla de los iconos que viven en una línea.
+   * El dibujo que acompaña al rótulo, **en las dos disposiciones**. **Opcional y decorativo**:
+   * va `aria-hidden`, porque el nombre accesible de la pestaña es su rótulo y meterle el icono
+   * dentro obligaría a cualquier búsqueda por nombre a conocerlo.
+   *
+   * Ola 2 (2026-09-04): hasta hoy **solo lo pintaba `layout="sidebar"`**. El taller del DM
+   * (`features/sessions/taller/TallerDelDM.tsx`) usa la tira y le pasa tres iconos, así que sus
+   * tres solapas salían sin dibujo contra la maqueta y uno de los tres SVG no llegaba nunca al
+   * documento. La tira ahora también lo pinta.
    */
   icon?: ReactNode;
   /**
@@ -115,7 +119,12 @@ export function Tabs({ items, active: controlledActive, onChange, layout = "stri
               // apretaba catorce entradas en una columna donde ninguna se distinguía de la
               // siguiente, y el icono quedaba pegado al rótulo.
               "flex w-full items-center gap-s3 rounded-radius-sm border-l-2 px-s3 py-s2 text-left"
-            : "border-b-2 px-3 py-1.5",
+            : // `inline-flex` y `gap-s1` para que el dibujo se siente en la misma línea que el
+              // rótulo. Sin icono el resultado es idéntico al de antes: un botón con un solo
+              // hijo en línea mide lo mismo en flujo que en `inline-flex`, y las pantallas que
+              // usan la tira sin iconos (`rules/PanelDeReglas`, `pages/DesignTokensPage`) no
+              // cambian de aspecto.
+              "inline-flex items-center gap-s1 border-b-2 px-3 py-1.5",
           // border-accent (3:1, graphical) stays as-is; the label text uses --accent-text —
           // fix round 1, Critical 2: plain --accent text is only 4.5:1+ against --bg, and drops
           // under it against --surface (4.26:1 dark). --accent-text clears every dark surface.
@@ -126,12 +135,39 @@ export function Tabs({ items, active: controlledActive, onChange, layout = "stri
             : "border-transparent text-muted hover:text-text",
         ].join(" ")}
       >
-        {sidebar && item.icon && (
-          <span aria-hidden="true" className="flex h-[1em] w-[1em] shrink-0 items-center">
+        {item.icon && (
+          // El tamaño no es el mismo en las dos disposiciones, y sale de medir la maqueta:
+          //
+          //  · Carril (`sidebar`): 1em, porque el icono acompaña a un rótulo dentro de una
+          //    lista de catorce entradas y tiene que crecer y menguar con el texto.
+          //  · Tira (`strip`): 16 px (`size-4`), que es literalmente lo que escribe
+          //    `prototipo/src/ui/Tabs.tsx:31` — `[&>svg]:size-4`. El rótulo de la tira va en
+          //    `text-chrome-sm` (`--text-sm`, 0,8125rem = 13 px), así que 1em dejaría el
+          //    dibujo tres píxeles por debajo de lo que la maqueta pinta. Se copia el número
+          //    de la maqueta, no se reinterpreta.
+          //
+          // El `[&>svg]` es necesario porque los iconos de `ui/Iconos.tsx` traen su propio
+          // `width="1em" height="1em"` en el SVG: dimensionar solo el `span` no los cambiaría.
+          //
+          // **Medido en Chromium** (2026-09-04, con el CSS emitido por `vite build`, porque
+          // `jsdom` no maqueta y esto solo se ve maquetado), sobre las tres solapas del taller:
+          //   · los tres dibujos salen a 16 x 16 px, que es el `size-4` de la maqueta;
+          //   · el rotulo mide 13 px, o sea que 1em habria dejado el icono 3 px mas pequeno;
+          //   · el boton mide 33,5 px de alto **con icono y sin icono**, y la tira entera 34,5
+          //     en los dos casos: las pantallas que usan `strip` sin iconos
+          //     (`rules/PanelDeReglas`, `pages/DesignTokensPage`) no se mueven ni un pixel.
+          <span
+            aria-hidden="true"
+            className={
+              sidebar
+                ? "flex h-[1em] w-[1em] shrink-0 items-center"
+                : "flex shrink-0 items-center [&>svg]:size-4"
+            }
+          >
             {item.icon}
           </span>
         )}
-        <span className="flex-1 truncate">{item.label}</span>
+        <span className={sidebar ? "flex-1 truncate" : "truncate"}>{item.label}</span>
         {item.badge !== undefined && (
           // aria-hidden on purpose: without it the tab's accessible name becomes "PNJ 12", so
           // assistive tech announces a number as part of the section's NAME and every

@@ -15,6 +15,33 @@ import { useUpdateEntity } from "./hooks";
 // **No es un permiso nuevo ni un camino nuevo**: manda el mismo `PATCH` con la misma
 // visibilidad que el formulario, y el servidor lo autoriza igual. Lo que cambia es que ahora se
 // llama por su nombre.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// **Ola 2 (2026-09-04) — este módulo es el DUEÑO ÚNICO de «revelar».**
+//
+// Había **tres** pantallas revelando la misma ficha, cada una con su copia del predicado y de la
+// mutación: `sessions/dm/RevelarAlgo.tsx`, `sessions/taller/PrepararSesion.tsx` y esta. Revelar
+// es **matiz de visibilidad**, y `CLAUDE.md` obliga a escribir eso una sola vez. Las otras dos
+// conservan su cajón y su lista, y montan `BotonRevelar` con los cuatro props
+// (`campaignId`, `type`, `entityId`, `visibility`); `sePuedeRevelar` queda exportado aparte para
+// quien necesite el predicado sin el botón —filtrar una lista, contar cuántas quedan—.
+//
+// **Verificado contra el servidor, no supuesto** (`apps/api/src/entities/entities.service.ts`,
+// método `update`):
+//
+//  · El cuerpo que se manda es **exactamente** `{ visibility: "PLAYERS" }`. El servicio copia a
+//    `data` solo los campos que llegan definidos (`:163-167`: `type`, `name`, `body`, `tags`,
+//    `visibility`), así que un cuerpo con un solo campo **no puede borrar `tags` ni `body`**.
+//    Mandar de más aquí sí podría: por eso el objeto se escribe literal y no se compone.
+//  · `ENTITY_REVEALED` lo emite ese mismo `update` (`:206-243`): compara el conjunto de
+//    espectadores de antes con el de después mediante `laAudienciaCrecio`
+//    (`apps/api/src/common/visibility.ts`) y **solo escribe el suceso si el conjunto creció**.
+//    No es una escala ordenada: `OWNER_DM` la ve el creador y `SPECIFIC_PLAYERS` los concedidos,
+//    y ninguno contiene al otro. Subir a `PLAYERS` sí hace crecer el conjunto siempre —`canView`
+//    devuelve `true` para cualquier miembro—, así que este botón emite el suceso en los tres
+//    niveles desde los que se ofrece.
+//  · Bajar la visibilidad **no** emite nada, y por eso este botón solo sube.
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Los niveles desde los que revelar **significa algo**.

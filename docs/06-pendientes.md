@@ -1120,6 +1120,14 @@ sea que la pantalla promete una frontera que el servidor no aplica. La fila **s�
 `createdById`; el arreglo es pasarla. Es la misma clase de mentira que ya se retiró con
 `SPECIFIC_PLAYERS` para las criaturas.
 
+**Ola 2 (2026-09-04): media ficha cerrada por el lado de la pantalla.** `EditorDeStatblock.tsx`
+**ya no ofrece `OWNER_DM`** (`NIVELES_DE_CRIATURA` es `PUBLIC`/`PLAYERS`/`DM_ONLY`), igual que se
+hizo con `SPECIFIC_PLAYERS`: una pantalla no puede prometer una frontera que el servidor no
+aplica. Las criaturas ya guardadas con ese nivel conservan su valor —`VisibilityChooser` lo pinta
+al final, marcado y no seleccionable—. **Lo que sigue abierto es el hueco de servidor**: pasar
+`fila.createdById` en vez de `""` en `puedeVer()`. El día que se haga, `OWNER_DM` vuelve a la
+lista del editor con una línea.
+
 ## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
 
 - **`stampSessionNoteSchema` acepta el sello vacío.** Los dos compositores lo impiden en pantalla;

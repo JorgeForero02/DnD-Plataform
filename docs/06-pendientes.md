@@ -98,6 +98,83 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
+## P1 · El ataque comparado contra la CA existe en el servidor y ninguna pantalla lo llama (2026-09-05)
+
+**Encontrado por el autor usando la aplicación, y es la tercera vez que aparece este patrón en un
+día.** El servidor sabe resolver un ataque contra un objetivo:
+
+- `apps/api/src/characters/character-sheet.controller.ts:137` — `@Post("sheet/attacks/:attackKey/resolve")`
+- `packages/shared/src/attack.schema.ts:52` — `targetCharacterId: z.string().cuid()`
+- y el motor de reglas escucha `CHARACTER_ATTACKED` (`apps/api/src/rules-engine/engine/matching.ts:40`).
+
+**Y nadie lo llama.** Barrido del 2026-09-05 sobre `apps/web/src`: **cero** apariciones de
+`resolveAttack` o `attacks/resolve`, y el único `targetCharacterId` que manda el navegador es el de
+**Ayudar** (`apps/web/src/features/sessions/elenco/AyudarA.tsx:71`).
+
+**Lo que eso significa en la mesa:** el botón de atacar **solo tira dados**. El jugador saca un 17 y
+se lo dice al DM de viva voz, que decide de cabeza si acierta. La comparación contra la CA, la
+traza, el crítico y el suceso que dispara las reglas **están construidos y no se usan**.
+
+**Ojo con la ficha vieja.** «El ataque es un oráculo sobre la CA» se dio por cerrada con el plan 03,
+y se cerró **la mitad del servidor**: la pantalla nunca llegó. Es el mismo cierre a medias que ya se
+declaró cuatro veces —servidor hecho, nadie que lo dispare—.
+
+**Cierra cuando** el jugador pueda elegir a quién ataca desde el cuadro de ataques y el resultado
+diga si acierta.
+
+## P1 · Nadie puede curar a nadie, ni a sí mismo (2026-09-05)
+
+**Lo único que mueve puntos de golpe en toda la web es `PonerDano`, y siempre hacia abajo**:
+`apps/web/src/features/sessions/elenco/PonerDano.tsx:123` manda `delta: -n`. Búsqueda de `heal` o
+`curar` en `apps/web/src/features/character-sheet/api.ts`: **cero**.
+
+Así que un clérigo no puede curar a un compañero, ni un jugador beber su propia poción. **El hook
+`useChangeHp` acepta un delta relativo y el signo no está prohibido en el servidor**: la puerta
+existe y la pantalla solo la usa en un sentido.
+
+**Y se vuelve grave con la decisión de qué cuenta como derrotado**: un personaje a 0 PG tira
+salvaciones contra muerte —el mecanismo existe— pero **nadie puede levantarlo**, porque no hay forma
+de subirle un punto de golpe. La regla queda a medias por falta de pantalla.
+
+**Cierra cuando** se pueda subir PG a un personaje desde la mesa y desde la hoja, con su suceso y su
+traza, y con la puerta del servidor comprobando quién puede hacerlo.
+
+## P3 · Un cuadro de ataques vacío no dice por qué está vacío (2026-09-05)
+
+**No es un fallo: es una explicación que falta**, y confundió al autor hasta hacerle pensar que
+faltaba una opción de su clase.
+
+Los ataques **no se escogen, se derivan de lo equipado** — `apps/api/src/rules/attacks.ts` lo dice en
+su cabecera: *«entra qué hay equipado más lo que ya derivó el motor; sale, por cada arma, el bono de
+ataque con su traza»*. Es el SRD y está bien.
+
+Pero un personaje sin arma en la mano ve **un cuadro vacío y ningún motivo**, y de ahí se deduce
+«esta pantalla no me deja elegir ataques», que es exactamente lo contrario de lo que pasa.
+
+**Cierra cuando** el cuadro vacío diga qué falta y por dónde se arregla —«no llevas ningún arma
+equipada; equipa una desde la Bolsa»—, sin inventarse ataques que el SRD no da.
+
+## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
+
+**Medido:** búsqueda de cualquier conjuro concreto en `apps/api/src` y `packages/shared/src` —
+**cero**. No hay lista, ni catálogo, ni fichero de conjuros.
+
+Lo que sí hay es `apps/api/src/rules/catalog/spell-slots.ts`, **y su propia cabecera declara el
+hueco**: *«Lo que entra es la tabla, no la matemática de conjuros… Lo que sigue fuera es la
+interpretación de cada conjuro: preparados contra conocidos, trucos que escalan, y la lista por
+clase.»*
+
+**O sea que está decidido y documentado, no roto.** Pero desde la mesa **parece un fallo**: la hoja
+de un mago enseña sus casillas de espacios de conjuro y no hay nada que meter dentro. Un mago sin
+conjuros no es un mago, y es lo primero que va a preguntar cualquiera que se haga uno.
+
+**Decisión del autor, 2026-09-05: se hace la versión larga** —los conjuros de verdad—, y no le
+preocupa que alargue la partida de agentes. Tiene su propio diseño:
+[`superpowers/specs/2026-09-05-conjuros-design.md`](./superpowers/specs/2026-09-05-conjuros-design.md).
+
+**Cierra con esa fase**, no con una tanda.
+
+
 ## P2 · Nadie propone terminar el combate, y «derrotado» ya está decidido (2026-09-05)
 
 **El autor decidió qué cuenta como derrotado**, que era lo único que faltaba para poder proponerlo.

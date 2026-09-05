@@ -1,4 +1,4 @@
-# La iniciativa la piden los jugadores, y el DM elige el bando
+# La iniciativa la piden los jugadores, el DM elige el bando, y el combate se puede jugar
 
 > **Para quien ejecute esto:** usa **`superpowers:subagent-driven-development`** (recomendado) o
 > **`superpowers:executing-plans`**. Los pasos llevan casilla (`- [ ]`) para ir marcándolos.
@@ -1142,6 +1142,201 @@ git commit -m "docs: initiative is asked for, and a combatant has a side"
 ```
 
 ---
+
+## Tarea 13 · El ataque elige objetivo, y el servidor dice si acierta
+
+**Añadida el 2026-09-05**, del barrido que hizo el autor usando la aplicación. **El servidor ya está
+hecho** y ninguna pantalla lo llama: es el mismo cierre a medias que ya se declaró cuatro veces.
+
+**Ficheros:**
+- Modificar: `apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`
+- Modificar: `apps/web/src/features/character-sheet/api.ts`, `hooks.ts`
+- Prueba: `apps/web/src/features/character-sheet/__tests__/TirarAtaqueBoton.test.tsx`
+
+**Interfaces · consume:** el bando de la tarea 5 —para proponer objetivos del bando contrario— y
+`POST sheet/attacks/:attackKey/resolve` (`apps/api/src/characters/character-sheet.controller.ts:137`),
+que ya existe y acepta `targetCharacterId` (`packages/shared/src/attack.schema.ts:52`).
+
+- [ ] **Paso 1 · Escribe las pruebas que fallan**
+
+```tsx
+it("elige objetivo y manda targetCharacterId", async () => {
+  render(<TirarAtaqueBoton {...props} combatientes={[goblin, bandido]} />);
+  await userEvent.click(screen.getByRole("button", { name: /atacar/i }));
+  await userEvent.click(screen.getByRole("option", { name: /goblin/i }));
+  expect(resolver).toHaveBeenCalledWith(
+    expect.objectContaining({ targetCharacterId: goblin.id }),
+  );
+});
+
+it("fuera de combate no pide objetivo: solo tira", async () => {
+  render(<TirarAtaqueBoton {...props} combatientes={[]} />);
+  await userEvent.click(screen.getByRole("button", { name: /atacar/i }));
+  expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  expect(tirar).toHaveBeenCalled();
+  expect(resolver).not.toHaveBeenCalled();
+});
+
+it("propone primero el bando contrario, pero deja atacar a cualquiera", async () => {
+  render(<TirarAtaqueBoton {...props} combatientes={[aliado, enemigo]} />);
+  await userEvent.click(screen.getByRole("button", { name: /atacar/i }));
+  const opciones = screen.getAllByRole("option");
+  expect(opciones[0]).toHaveTextContent(enemigo.nombre);
+  expect(opciones).toHaveLength(2);
+});
+```
+
+**La tercera importa**: un jugador puede atacar a un aliado —confusión, un hechizo que domina, o una
+traición— y el sistema **no se lo impide**, solo ordena la lista. Impedirlo sería el servidor
+decidiendo por la mesa, que es lo mismo que este proyecto se negó a hacer con el bando.
+
+- [ ] **Paso 2 · Córrelas**
+
+```bash
+pnpm --filter @dnd/web test -- TirarAtaqueBoton
+```
+
+Esperado: **fallan**.
+
+- [ ] **Paso 3 · La implementación.** Con combate en marcha, el botón abre la lista de combatientes
+      —del bando contrario primero— y manda a `resolve`; **sin combate se queda como está** y solo
+      tira. La respuesta dice si acierta, con su traza y su crítico, que el servidor ya calcula.
+
+- [ ] **Paso 4 · Córrelas** — pasan.
+
+- [ ] **Paso 5 · Mutación** — deja de mandar `targetCharacterId`: la primera se pone **roja**. Deshaz.
+
+- [ ] **Paso 6 · Commit**
+
+```bash
+git add apps/web
+git commit -m "feat(web): an attack picks its target, and the server says whether it lands"
+```
+
+---
+
+## Tarea 14 · Se puede curar
+
+**Hoy no se puede subir un punto de golpe a nadie**:
+`apps/web/src/features/sessions/elenco/PonerDano.tsx:123` manda `delta: -n`, siempre negativo, y no
+hay otra puerta. Con las salvaciones contra muerte existiendo, **un personaje caído no se puede
+levantar**.
+
+**Ficheros:**
+- Modificar: `apps/web/src/features/sessions/elenco/PonerDano.tsx` y su hermano de curar
+- Modificar: `apps/web/src/features/character-sheet/AplicarDano.tsx`
+- Prueba: `apps/web/src/features/sessions/elenco/__tests__/Curar.test.tsx`
+- Prueba de servidor: en el spec de `character-state`
+
+- [ ] **Paso 1 · Escribe las pruebas que fallan**
+
+```tsx
+it("curar manda un delta positivo", async () => {
+  render(<Curar {...props} />);
+  await userEvent.type(screen.getByRole("spinbutton"), "7");
+  await userEvent.click(screen.getByRole("button", { name: /curar/i }));
+  expect(cambiarPg).toHaveBeenCalledWith(expect.objectContaining({ delta: 7 }));
+});
+
+it("no se pasa del maximo", async () => {
+  render(<Curar {...props} personaje={{ currentHp: 28, maxHp: 31 }} />);
+  await userEvent.type(screen.getByRole("spinbutton"), "50");
+  await userEvent.click(screen.getByRole("button", { name: /curar/i }));
+  expect(screen.getByText("31 / 31")).toBeInTheDocument();
+});
+```
+
+Y en el servidor:
+
+```ts
+it("curar a alguien a 0 PG lo levanta y le borra las salvaciones de muerte", async () => {
+  await service.changeHp(dmId, campaignId, caidoId, { delta: 5 });
+  const ficha = await prisma.character.findUnique({ where: { id: caidoId } });
+  expect(ficha.currentHp).toBe(5);
+  expect(ficha.deathSaveSuccesses).toBe(0);
+  expect(ficha.deathSaveFailures).toBe(0);
+});
+
+it("curar el personaje de otro sin ser DM es 403", async () => {
+  await expect(
+    service.changeHp(jugadoraId, campaignId, personajeDeOtroId, { delta: 5 }),
+  ).rejects.toThrow(ForbiddenException);
+});
+```
+
+**Verifica la regla en el SRD en inglés antes de escribirla** —«Damage and Healing»— y **pon la cita
+en el commit**: aquí decide código, y en este proyecto una regla se cita de la fuente.
+
+- [ ] **Paso 2 · Córrelas** — fallan.
+
+- [ ] **Paso 3 · La implementación.** **El tope por arriba es del servidor, no de la pantalla**: una
+      pantalla que limita es una sugerencia, y la verdad vive donde este proyecto ya declaró.
+
+- [ ] **Paso 4 · Córrelas** — pasan.
+
+- [ ] **Paso 5 · Mutación** — quita el borrado de las salvaciones de muerte: su prueba se pone
+      **roja**. Deshaz.
+
+- [ ] **Paso 6 · Commit**
+
+```bash
+git add apps/web apps/api
+git commit -m "feat: a character can be healed, and healing lifts the dying"
+```
+
+---
+
+## Tarea 15 · El cuadro de ataques vacío dice por qué
+
+**No es un fallo, es una explicación que falta** — y confundió al autor hasta hacerle pensar que su
+clase no le dejaba elegir ataques. Los ataques **se derivan de lo equipado**
+(`apps/api/src/rules/attacks.ts`), que es el SRD y está bien; lo que falta es decirlo.
+
+**Ficheros:**
+- Modificar: `apps/web/src/features/character-sheet/AtaquesYLanzamiento.tsx`
+- Prueba: su fichero de pruebas en `apps/web/src/features/character-sheet/__tests__/`
+
+- [ ] **Paso 1 · La prueba**
+
+```tsx
+it("sin armas equipadas, dice que falta y por donde se arregla", () => {
+  render(<AtaquesYLanzamiento sheet={{ ...hoja, attacks: [] }} />);
+  expect(screen.getByText(/no llevas ningún arma equipada/i)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /bolsa/i })).toBeInTheDocument();
+});
+
+it("con armas, ni rastro del aviso", () => {
+  render(<AtaquesYLanzamiento sheet={{ ...hoja, attacks: [hacha] }} />);
+  expect(screen.queryByText(/no llevas ningún arma/i)).not.toBeInTheDocument();
+});
+```
+
+- [ ] **Paso 2 · Córrela** — falla.
+- [ ] **Paso 3 · La implementación.** Un estado vacío que **explica y enlaza**, sin inventarse
+      ataques que el SRD no da.
+- [ ] **Paso 4 · Córrela** — pasa.
+- [ ] **Paso 5 · Commit**
+
+```bash
+git add apps/web
+git commit -m "feat(web): an empty attack table says what is missing and where to fix it"
+```
+
+---
+
+## Lo que viene DESPUÉS de este plan, y no cabe aquí
+
+**Los conjuros.** Un mago no tiene ni un hechizo —medido el 2026-09-05: cero conjuros en
+`apps/api/src` y `packages/shared/src`—, y el autor decidió ese día hacer **la versión larga**. Tiene
+su propio diseño: [`../specs/2026-09-05-conjuros-design.md`](../specs/2026-09-05-conjuros-design.md).
+
+**No se mete en este plan a propósito**: la lista por clase, preparados contra conocidos, los trucos
+que escalan y el lanzamiento con objetivo son una fase, y meterlos aquí lo haría inentregable.
+
+Va detrás, y **se apoya en la tubería que la tarea 3 deja rodada**: una salvación contra un conjuro
+es exactamente una petición de tirada con CD. Hacer los conjuros antes habría significado construirla
+dos veces.
+
 
 ## Definición de terminado
 

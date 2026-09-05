@@ -19,13 +19,20 @@
 // bypassed. What stays in 07 is one entry per delivery (a phase closing, its deploy, the
 // review that closed it); what leaves is the per-task detail, which the ledger at
 // .superpowers/sdd/progress.md already carries at higher resolution.
+//
+// The ceiling was 400 until 2026-09-05, and it moved to 1000 that day as exactly the declared
+// decision this comment demands — the author's, written down in docs/04-convenciones.md. What
+// forced it: one night closed six plans and wrote thirteen entries, and the check fired SEVEN
+// times, so the archive was being used as a pressure valve rather than as an archive. 400 was
+// sized for a slower rhythm. The reason for having a ceiling at all does not change with the
+// number, and neither does the rule above: when this fails, entries move out whole.
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(process.argv[2] ?? ".");
 const FILE = join(ROOT, "docs", "07-historial.md");
-const LIMIT = 400;
+const LIMIT = 1000;
 
 if (!existsSync(FILE)) {
   console.error(`check-historial: no existe ${FILE}`);

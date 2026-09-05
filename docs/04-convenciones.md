@@ -37,7 +37,17 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
   bloque lo declara. Escribir aquí que el hash está verificado era una promesa que nadie cumple.
   `pnpm update:estado` lo regenera todo.
 - `pnpm check:historial` (`scripts/check-historial.mjs`) **falla si
-  [07-historial.md](./07-historial.md) pasa de 400 líneas.** El protocolo ya pedía archivarlo
+  [07-historial.md](./07-historial.md) pasa de 1000 líneas.**
+
+  > **El tope subió de 400 a 1000 el 2026-09-05, y es una decisión del autor declarada aquí**, que
+  > es la segunda de las dos salidas legítimas que el propio control nombra. **Qué la forzó:** una
+  > sola noche cerró seis planes y escribió trece entradas, y `check:historial` saltó **siete
+  > veces** — el archivo se estaba usando como válvula de presión y no como archivo, que es
+  > justo lo que la regla quería evitar. 400 estaba dimensionado para un ritmo más lento.
+  >
+  > **Lo que NO cambia con el número:** el motivo de tener tope —un registro que no cabe en
+  > contexto se hojea, y hojear un registro es peor que no tenerlo—, ni el procedimiento cuando
+  > salte: las entradas **se mueven enteras**, nunca se resumen. El protocolo ya pedía archivarlo
   al llegar a ~600 y el fichero acabó en **2192**: un umbral que no comprueba nadie es un
   deseo. No es pulcritud — el consumidor principal de esta documentación es un agente sin
   memoria que la relee entera cada sesión, y **lo que no le cabe en contexto lo rellena

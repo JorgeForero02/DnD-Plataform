@@ -164,4 +164,98 @@ describe("Sessions (e2e)", () => {
       expect(r.body).not.toHaveProperty("openingEntity");
     });
   });
+
+  describe("la crónica tiene su propia visibilidad (plan 02)", () => {
+    let sesionId = "";
+
+    it("el DM cierra una sesión PLAYERS con la crónica en DM_ONLY", async () => {
+      const s = app.getHttpServer();
+      sesionId = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/sessions`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ title: "La noche del puerto", visibility: "PLAYERS" })
+      ).body.id;
+      await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${sesionId}/start`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({});
+      const cerrado = await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${sesionId}/close`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ recap: "Lo que el DM se guarda", recapVisibility: "DM_ONLY" });
+      expect(cerrado.status).toBe(201);
+
+      // **En la columna, no dentro de `notes`.** Se lee de la base, no de la respuesta.
+      const fila = await prisma.session.findUnique({ where: { id: sesionId } });
+      expect(fila?.recap).toBe("Lo que el DM se guarda");
+      expect(fila?.recapVisibility).toBe("DM_ONLY");
+    });
+
+    it("el jugador ve la sesión y NO la crónica", async () => {
+      const r = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/sessions/${sesionId}`)
+        .set("Authorization", `Bearer ${tokenPL}`);
+      expect(r.status).toBe(200);
+      expect(r.body.title).toBe("La noche del puerto");
+      expect(r.body).not.toHaveProperty("recap");
+      // Ni el nivel: dejarlo diría «hay una crónica y no te la enseño».
+      expect(r.body).not.toHaveProperty("recapVisibility");
+    });
+
+    it("y el suceso de cierre se publica con la visibilidad de la CRÓNICA, no con la de la sesión", async () => {
+      // La sesión es `PLAYERS`; con el defecto, el suceso salía `PLAYERS` y el jugador leía la
+      // crónica en su registro aunque el DM la hubiera marcado `DM_ONLY`.
+      const log = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", `Bearer ${tokenPL}`);
+      const cierres = (
+        log.body.events as { payload: { type: string; sessionTitle?: string } }[]
+      ).filter(
+        (e) =>
+          e.payload.type === "SESSION_CLOSED" && e.payload.sessionTitle === "La noche del puerto",
+      );
+      expect(cierres).toHaveLength(0);
+
+      const delDm = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      const suyos = (
+        delDm.body.events as { payload: { type: string; sessionTitle?: string } }[]
+      ).filter(
+        (e) =>
+          e.payload.type === "SESSION_CLOSED" && e.payload.sessionTitle === "La noche del puerto",
+      );
+      expect(suyos).toHaveLength(1);
+    });
+
+    it("la migración movió las crónicas que vivían dentro de `notes`", async () => {
+      // Se comprueba **sobre una fila escrita como se escribían antes**: `notes.recap` y la
+      // columna vacía. Una base recién creada no prueba nada de una migración de datos, así que la
+      // fila se fabrica aquí y se le aplica el mismo UPDATE que la migración.
+      const vieja = await prisma.session.create({
+        data: {
+          campaignId,
+          title: "Sesión de antes",
+          visibility: "PLAYERS",
+          status: "CLOSED",
+          notes: { recap: "Crónica que vivía en el Json" },
+        },
+      });
+      expect(vieja.recap).toBeNull();
+
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Session" SET "recap" = "notes"->>'recap' WHERE "id" = $1 AND "notes" ? 'recap' AND "notes"->>'recap' IS NOT NULL`,
+        vieja.id,
+      );
+
+      const migrada = await prisma.session.findUnique({ where: { id: vieja.id } });
+      expect(migrada?.recap).toBe("Crónica que vivía en el Json");
+      // **Y la clave sigue en `notes`**: la limpieza es otra migración, cuando conste que nadie la
+      // lee. Dejarla hace la vuelta atrás trivial.
+      expect((migrada?.notes as { recap?: string } | null)?.recap).toBe(
+        "Crónica que vivía en el Json",
+      );
+    });
+  });
 });

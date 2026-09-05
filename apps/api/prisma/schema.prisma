@@ -313,6 +313,22 @@ model Session {
   /// **Lo que se devuelve pasa por `canView` con el espectador delante**: un jugador que no puede
   /// ver «El Santuario Sellado» no recibe ni su nombre **ni su id**, y el campo llega **ausente**,
   /// no `null` — ausente y presente-pero-vacío son cosas distintas para quien pinta.
+  /// **La crónica de la sesión, y su propia visibilidad.**
+  ///
+  /// Vivía dentro de `notes` (`Json?`) y era una trampa doble. Una: la pantalla ya ofrecía elegir
+  /// quién la ve y **no hacía nada** —el servicio publicaba el suceso con la visibilidad de la
+  /// SESIÓN—. Y dos: `notes` lo escribe también el motor de reglas como **array de cadenas**
+  /// (`ADD_SESSION_NOTE`), así que una nota de una regla **borraba la crónica** sin decir nada.
+  ///
+  /// Es columna y no Json porque **se filtra**: «dónde se quedó» en el listado de campañas trae la
+  /// crónica de la última sesión cerrada de cada una, filtrada por visibilidad, y este proyecto ya
+  /// decidió dos veces que lo que se consulta es columna.
+  ///
+  /// **Y es una visibilidad propia, no la de la sesión**: una crónica puede ser más pública que la
+  /// sesión que la produjo —o menos—, y eso es la mitad de para qué sirve.
+  recap           String?
+  recapVisibility Visibility @default(PLAYERS)
+
   openingEntityId String?
   openingEntity   Entity? @relation("SessionOpeningEntity", fields: [openingEntityId], references: [id], onDelete: SetNull)
 

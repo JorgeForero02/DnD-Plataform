@@ -8,6 +8,8 @@ import { useCharacters } from "../characters/hooks";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 import { Field, fieldControlClass } from "../../ui/Field";
+import { VisibilityChooser } from "../entities/VisibilityChooser";
+import type { Visibility } from "@dnd/shared";
 
 // Empezar y cerrar una sesión. **Los botones que faltaban.**
 //
@@ -221,6 +223,17 @@ function DialogoDeCierre({
     .join("\n");
 
   const [recap, setRecap] = useState(vinetas);
+  /**
+   * **Quién ve la crónica, y es una decisión aparte de quién ve la sesión.**
+   *
+   * El esquema aceptaba `recapVisibility` desde que existe el cierre y **el servidor la tiraba a la
+   * basura**: publicaba el suceso con la visibilidad de la sesión. El plan 02 arregló el servidor;
+   * sin este control, el arreglo no lo usaría nadie.
+   *
+   * Solo tres niveles, como en el editor de sesiones: una `Session` no tiene creador ni
+   * concesiones, así que `OWNER_DM` y `SPECIFIC_PLAYERS` sobre una crónica no seleccionan a nadie.
+   */
+  const [visibilidad, setVisibilidad] = useState<Visibility>("PLAYERS");
   // Si el log llega después de montar el diálogo, el borrador se rellena una sola vez y no
   // vuelve a pisarse: machacar lo que el DM ya está escribiendo sería imperdonable.
   const [tocado, setTocado] = useState(false);
@@ -229,7 +242,11 @@ function DialogoDeCierre({
   const confirmar = async () => {
     setError(null);
     try {
-      await cerrar.mutateAsync({ sessionId: session.id, recap: recap.trim() || undefined });
+      await cerrar.mutateAsync({
+        sessionId: session.id,
+        recap: recap.trim() || undefined,
+        recapVisibility: visibilidad,
+      });
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -256,6 +273,19 @@ function DialogoDeCierre({
           className={fieldControlClass}
         />
       </Field>
+      <div className="mt-s4">
+        <Field
+          label="Quién puede leerla"
+          hint="No es lo mismo que quién ve la sesión: una crónica puede publicarse a la mesa aunque la sesión fuera preparación tuya."
+        >
+          <VisibilityChooser
+            value={visibilidad}
+            onChange={setVisibilidad}
+            niveles={["PUBLIC", "PLAYERS", "DM_ONLY"]}
+            disabled={cerrar.isPending}
+          />
+        </Field>
+      </div>
       {error && (
         <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
           {error}

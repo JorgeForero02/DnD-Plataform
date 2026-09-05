@@ -306,6 +306,28 @@ su `createdById` de verdad. Con el atajo, una ficha `OWNER_DM` o `SPECIFIC_PLAYE
 escondido de quien sí tenía derecho a verla: el fallo contrario a una fuga, que ninguna prueba de
 fuga caza.
 
+**`Session.recap` y `Session.recapVisibility` — la crónica sale del Json (plan 02, 2026-09-05).**
+La crónica vivía **dentro de `notes`** (`Json?`) y elegir quién la veía **no hacía nada**: el
+servicio publicaba el suceso de cierre con `closed.visibility`, la de la **sesión**. Son columnas
+por dos motivos, y ninguno es la limpieza:
+
+- **Se filtra.** «Dónde se quedó» en el listado de campañas trae la crónica de la última sesión
+  cerrada de cada una **filtrada por visibilidad**, y filtrar por un campo dentro de un Json es lo
+  que este proyecto ya decidió no hacer.
+- **`notes` tiene otro dueño.** El motor de reglas escribe ahí un **array de cadenas**
+  (`ADD_SESSION_NOTE`, `apps/api/src/rules-engine/rules-engine.service.ts:591-603`), así que una
+  nota puesta por una regla **se llevaba la crónica por delante** sin decir nada: el `Array.isArray`
+  fallaba y empezaba un array nuevo. Sacarla del Json no es orden, es dejar de perder datos.
+
+**Y la visibilidad de la crónica no es la de la sesión, a propósito**: una crónica puede publicarse
+a la mesa aunque la sesión fuera preparación del DM, y al revés. Al leer, `SessionsService` quita
+**las dos columnas** si el espectador no puede ver el nivel — dejar `recapVisibility` sin la crónica
+diría «hay una crónica y no te la enseño».
+
+**La migración movió lo que ya había** (`UPDATE ... SET "recap" = "notes"->>'recap' WHERE "notes" ?
+'recap'`) y **no borró la clave de `notes`**: dejarla es barato y hace la vuelta atrás trivial. Se
+limpia en otra migración, cuando conste que nadie la lee.
+
 **2 · Un log append-only al lado, `GameEvent`.** Campaña, sesión (nulable), actor, tipo,
 sujeto, `payload Json`, visibilidad y fecha, con tres índices por los tres caminos de consulta.
 

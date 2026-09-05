@@ -204,6 +204,40 @@ describe("empezar y cerrar", () => {
     await waitFor(() => expect((area as HTMLTextAreaElement).value).toContain("· Combate"));
     expect((area as HTMLTextAreaElement).value).toContain("· PNJ: Maestre Kellan");
   });
+
+  it("**el DM elige quién puede leer la crónica, y esa elección viaja al servidor**", async () => {
+    // El servidor ya respeta `recapVisibility` desde el plan 02; hasta entonces publicaba el
+    // suceso con la visibilidad de la SESIÓN y elegir no hacía nada. Sin este control, el arreglo
+    // del servidor no lo usaría nadie: una ficha con servidor hecho y sin pantalla sigue abierta.
+    vi.spyOn(logApi, "fetchGameEvents").mockResolvedValue({ nextCursor: null, events: [] });
+    const cerrar = vi
+      .spyOn(sessionsApi, "closeSession")
+      .mockResolvedValue(sesion({ status: "CLOSED" }) as never);
+
+    montar(
+      <ControlesDeSesion
+        campaignId="c1"
+        session={sesion({ status: "IN_PROGRESS" })}
+        puedeGestionar
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+    await screen.findByLabelText("Qué pasó");
+
+    // Los niveles se ofrecen **traducidos**, nunca como valores del enum.
+    expect(screen.queryByText("DM_ONLY")).not.toBeInTheDocument();
+    const soloDm = screen.getByRole("radio", { name: /Solo el DM/i });
+    fireEvent.click(soloDm);
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar la sesión" }));
+
+    await waitFor(() =>
+      expect(cerrar).toHaveBeenCalledWith(
+        "c1",
+        "s1",
+        expect.objectContaining({ recapVisibility: "DM_ONLY" }),
+      ),
+    );
+  });
 });
 
 describe("el log se lee en prosa, nunca en claves", () => {

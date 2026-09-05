@@ -69,10 +69,27 @@ con sus `grants` y su `createdById` de verdad, y hay una prueba por cada lado.
 **Mutación del bando y de la apertura.** Al devolver `openingEntityId` cuando la ficha no es
 visible, el e2e se pone rojo con el id filtrado en la salida.
 
+**`Session.recap` y `Session.recapVisibility`, la crónica fuera del Json (migración
+`20260905030000_session_recap_column`).** La pantalla ya ofrecía elegir quién ve la crónica, el
+esquema ya la aceptaba, y el servicio **publicaba el suceso con la visibilidad de la sesión**: elegir
+no hacía absolutamente nada. Ahora son columnas —porque se filtran— y el suceso sale con la
+visibilidad de **la crónica**.
+
+**Y salió un segundo fallo que nadie buscaba: `notes` tenía otro dueño.** El motor de reglas escribe
+ahí un array de cadenas (`ADD_SESSION_NOTE`), así que una nota puesta por una regla **borraba la
+crónica** en silencio — el `Array.isArray` fallaba sobre `{ recap: ... }` y empezaba un array nuevo.
+Sacar la crónica del Json no es orden: es dejar de perder datos.
+
+**La pantalla también, porque si no la ficha no cierra.** El diálogo de cierre estrena el selector de
+visibilidad que ya existía (`VisibilityChooser`), con los tres niveles que una sesión admite —
+`OWNER_DM` y `SPECIFIC_PLAYERS` sobre una crónica no seleccionan a nadie, porque una `Session` no
+tiene ni creador ni concesiones—. Servidor arreglado y nadie que lo use es una ficha abierta.
+
 **Cómo revertirlo.** `git revert` de los commits del plan y una migración que haga
 `ALTER TABLE "Combatant" DROP COLUMN "side"` + `DROP TYPE "CombatantSide"` y
-`ALTER TABLE "Session" DROP COLUMN "openingEntityId"`. Nada lee esas columnas fuera de los
-encuentros y las sesiones.
+`ALTER TABLE "Session" DROP COLUMN "openingEntityId"`, `"recap"` y `"recapVisibility"`. **Las
+crónicas viejas siguen dentro de `notes`**, que esta migración no tocó, así que revertir no pierde
+ninguna.
 
 ## Las tres baratas: TipTap empaquetado, `build` en CI y la ficha de `lychee` (2026-09-05)
 

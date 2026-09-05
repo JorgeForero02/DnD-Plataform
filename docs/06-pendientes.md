@@ -174,6 +174,13 @@ sesión `CLOSED` de cada campaña, **filtrado por su visibilidad** —una cróni
 entonces el jugador no la ve—. Mientras tanto la pantalla enseña la descripción de la campaña y
 dice qué se leerá ahí cuando exista, en vez de inventarse un resumen.
 
+> **DESBLOQUEADA el 2026-09-05 (plan 02).** Ya no hace falta leer un Json ni filtrar en memoria:
+> `Session.recap` y `Session.recapVisibility` son **columnas**
+> (`apps/api/prisma/schema.prisma:288-303`, migración
+> `apps/api/prisma/migrations/20260905030000_session_recap_column/`), así que esto es una consulta.
+> **La ficha sigue abierta**: lo que falta es el `campaigns.service.ts#listForUser`, y lo cierra el
+> **plan 03**.
+
 ## P2 · El ataque es un oráculo sobre la CA, y se acepta con esas palabras (2026-09-04, 2.5.3)
 
 **El §4 del alcance de la fase 2.5 dice «la CA de un PNJ no sale del servidor», y no sale: no

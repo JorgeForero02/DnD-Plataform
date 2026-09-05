@@ -275,24 +275,86 @@ describe("SessionsService", () => {
       expect(events.record).not.toHaveBeenCalled();
     });
 
-    it("cerrar guarda el resumen en `notes`", async () => {
+    it("cerrar guarda el resumen en su COLUMNA, no dentro de `notes`", async () => {
       prisma.session.findFirst.mockResolvedValue({
         id: "s1",
         status: "IN_PROGRESS",
         visibility: "PLAYERS",
         startedAt: new Date(),
       });
-      prisma.session.update.mockResolvedValue({ id: "s1", title: "S", visibility: "PLAYERS" });
+      prisma.session.update.mockResolvedValue({
+        id: "s1",
+        title: "S",
+        visibility: "PLAYERS",
+        recapVisibility: "PLAYERS",
+      });
 
       await service.close("dm1", "c1", "s1", {
         recap: "Huyeron del puerto",
         recapVisibility: "PLAYERS",
       });
 
-      expect(prisma.session.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ notes: { recap: "Huyeron del puerto" } }),
-        }),
+      const llamada = prisma.session.update.mock.calls[0][0] as { data: Record<string, unknown> };
+      expect(llamada.data.recap).toBe("Huyeron del puerto");
+      // **Y `notes` no se toca.** Ahí lo escribe el motor de reglas como array de cadenas
+      // (`ADD_SESSION_NOTE`), así que una nota de una regla se llevaba la crónica por delante.
+      expect(llamada.data).not.toHaveProperty("notes");
+    });
+
+    it("**la crónica se publica con SU visibilidad, no con la de la sesión**", async () => {
+      // El caso que importa: una sesión `DM_ONLY` cuya crónica sí se publica a la mesa. Con el
+      // defecto —`visibility: closed.visibility`— el suceso salía `DM_ONLY` y elegir quién ve la
+      // crónica no hacía absolutamente nada.
+      prisma.session.findFirst.mockResolvedValue({
+        id: "s1",
+        status: "IN_PROGRESS",
+        visibility: "DM_ONLY",
+        startedAt: new Date(),
+      });
+      prisma.session.update.mockResolvedValue({
+        id: "s1",
+        title: "S",
+        visibility: "DM_ONLY",
+        recapVisibility: "PLAYERS",
+      });
+
+      await service.close("dm1", "c1", "s1", {
+        recap: "Lo que la mesa sí puede leer",
+        recapVisibility: "PLAYERS",
+      });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "dm1",
+        "c1",
+        expect.objectContaining({ visibility: "PLAYERS" }),
+        expect.anything(),
+      );
+    });
+
+    it("y al revés: sesión PLAYERS con crónica DM_ONLY", async () => {
+      prisma.session.findFirst.mockResolvedValue({
+        id: "s1",
+        status: "IN_PROGRESS",
+        visibility: "PLAYERS",
+        startedAt: new Date(),
+      });
+      prisma.session.update.mockResolvedValue({
+        id: "s1",
+        title: "S",
+        visibility: "PLAYERS",
+        recapVisibility: "DM_ONLY",
+      });
+
+      await service.close("dm1", "c1", "s1", {
+        recap: "Lo que el DM se guarda",
+        recapVisibility: "DM_ONLY",
+      });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "dm1",
+        "c1",
+        expect.objectContaining({ visibility: "DM_ONLY" }),
+        expect.anything(),
       );
     });
   });

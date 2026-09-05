@@ -77,12 +77,15 @@ export class SessionsService {
    * vale el atajo de `canSee`, que pasa `createdById: ""` y `grantedUserIds: []`: con eso una ficha
    * `OWNER_DM` o `SPECIFIC_PLAYERS` se escondería de quien sí tiene derecho a verla.
    */
-  private conApertura<T extends { openingEntityId: string | null }>(
-    viewer: Viewer,
-    session: T,
-    fichas: Map<string, FichaDeApertura>,
-  ) {
-    const { openingEntityId, ...resto } = session;
+  private conApertura<
+    T extends {
+      openingEntityId: string | null;
+      recap?: string | null;
+      recapVisibility?: Visibility;
+    },
+  >(viewer: Viewer, session: T, fichas: Map<string, FichaDeApertura>) {
+    const { openingEntityId, ...todo } = session;
+    const resto = this.conCronica(viewer, todo);
     // `null` es «no abre en ningún sitio» y se dice tal cual: es verdad y no esconde nada.
     if (!openingEntityId) return { ...resto, openingEntityId: null };
     const ficha = fichas.get(openingEntityId);
@@ -99,6 +102,32 @@ export class SessionsService {
       openingEntityId,
       openingEntity: { id: ficha.id, name: ficha.name, type: ficha.type },
     };
+  }
+
+  /**
+   * **La crónica tiene visibilidad propia, y se filtra aquí.**
+   *
+   * Desde que dejó de vivir dentro de `notes` es una columna que viaja sola, así que una crónica
+   * `DM_ONLY` de una sesión `PLAYERS` llegaría al jugador con la sesión si nadie la quitara. Se van
+   * **las dos columnas**: la crónica y su nivel. Dejar `recapVisibility` sin la crónica diría «hay
+   * una crónica y no te la enseño», que es una filtración pequeña y gratuita.
+   *
+   * `createdById: ""` y `grantedUserIds: []` sí valen aquí, y por el mismo motivo que en `canSee`:
+   * una `Session` no tiene creador ni concesiones —lo dice `docs/05-datos.md`—, así que
+   * `OWNER_DM` y `SPECIFIC_PLAYERS` sobre una crónica no seleccionan a nadie.
+   */
+  private conCronica<T extends { recap?: string | null; recapVisibility?: Visibility }>(
+    viewer: Viewer,
+    session: T,
+  ) {
+    if (session.recapVisibility === undefined) return session;
+    if (this.canSee(viewer, session.recapVisibility)) return session;
+    // Se quitan por nombre en vez de con un destructuring de dos variables que nadie usa: el lint
+    // de este repositorio no admite variables muertas, ni con guion bajo delante.
+    const sinCronica: Record<string, unknown> = { ...session };
+    delete sinCronica.recap;
+    delete sinCronica.recapVisibility;
+    return sinCronica as T;
   }
 
   /** Lee de una vez las fichas de apertura de un puñado de sesiones — una consulta, no N. */
@@ -260,8 +289,12 @@ export class SessionsService {
         data: {
           status: "CLOSED",
           endedAt,
-          // El resumen va a `notes`, que ya existía y no lo usaba nadie desde una pantalla.
-          ...(input.recap !== undefined ? { notes: { recap: input.recap } } : {}),
+          // **La crónica va a su columna, no a `notes`.** Estuvo dentro de ese Json y era una
+          // trampa doble: no se podía filtrar por ella —y «dónde se quedó» la filtra—, y el motor
+          // de reglas escribe `notes` como array de cadenas (`ADD_SESSION_NOTE`), así que una nota
+          // de una regla se llevaba la crónica por delante sin decir nada.
+          ...(input.recap !== undefined ? { recap: input.recap } : {}),
+          recapVisibility: input.recapVisibility,
         },
       });
       await this.events.record(
@@ -271,7 +304,12 @@ export class SessionsService {
           sessionId,
           subjectType: "session",
           subjectId: sessionId,
-          visibility: closed.visibility,
+          // **La visibilidad de la crónica, no la de la sesión.** Este era el defecto: la pantalla
+          // ya ofrecía elegirla, el esquema ya la aceptaba, y aquí se tiraba a la basura y se usaba
+          // `closed.visibility` — así que elegir quién ve la crónica no hacía absolutamente nada.
+          // Y son dos cosas distintas a propósito: una crónica puede ser más pública que la sesión
+          // que la produjo, o menos.
+          visibility: closed.recapVisibility,
           payload: {
             type: "SESSION_CLOSED",
             sessionTitle: closed.title,

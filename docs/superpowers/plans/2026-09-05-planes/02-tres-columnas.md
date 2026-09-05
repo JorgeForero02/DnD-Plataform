@@ -181,8 +181,9 @@ la mitad del motivo de este plan.
 | Estado | Cuándo | Qué |
 |---|---|---|
 | ✅ hecho | 2026-09-05 | **2.1 · `Combatant.side`.** Enum `CombatantSide` y columna en `apps/api/prisma/schema.prisma:349-393`; migración `apps/api/prisma/migrations/20260905010000_combatant_side/migration.sql`, aplicada con `prisma migrate deploy`. `combatantSideSchema` y `sides` en `packages/shared/src/encounter.schema.ts`; el servicio lo escribe y lo devuelve en `apps/api/src/encounters/encounters.service.ts`. **Commit `41013cd`** |
-| ✅ hecho | 2026-09-05 | **2.2 · `Session.openingEntityId`.** Columna y relación `SessionOpeningEntity` en `apps/api/prisma/schema.prisma:283-332`, lado inverso en `Entity`; migración `apps/api/prisma/migrations/20260905020000_session_opening_entity/migration.sql` con `ON DELETE SET NULL`. Filtrado en `SessionsService.conApertura` y `fichasDeApertura` (`apps/api/src/sessions/sessions.service.ts:40-113`). **Commit `<pendiente 2.2>`** |
-| 🟨 en marcha | 2026-09-05 | **2.3 · `Session.recap` y `recapVisibility`** — sin empezar |
+| ✅ hecho | 2026-09-05 | **2.2 · `Session.openingEntityId`.** Columna y relación `SessionOpeningEntity` en `apps/api/prisma/schema.prisma:283-332`, lado inverso en `Entity`; migración `apps/api/prisma/migrations/20260905020000_session_opening_entity/migration.sql` con `ON DELETE SET NULL`. Filtrado en `SessionsService.conApertura` y `fichasDeApertura` (`apps/api/src/sessions/sessions.service.ts:40-113`). **Commit `9b4a0a3`** |
+| ✅ hecho | 2026-09-05 | **2.3 · `Session.recap` y `recapVisibility`.** Columnas en `apps/api/prisma/schema.prisma:288-303`; migración `apps/api/prisma/migrations/20260905030000_session_recap_column/migration.sql`, que **copia** las crónicas de `notes` y **no borra la clave**. `close()` escribe la columna y publica el suceso con `closed.recapVisibility` (`apps/api/src/sessions/sessions.service.ts:262-310`); al leer, `conCronica` quita las dos columnas si el espectador no ve el nivel. **Y la pantalla**: `VisibilityChooser` en el diálogo de cierre (`apps/web/src/features/sessions/ControlesDeSesion.tsx:223-289`). **Commit `<pendiente 2.3>`** |
+| ⬜ pendiente | 2026-09-05 | **Playwright del diálogo de cierre.** No se corrió: había un agente con su propia tanda en otro worktree y **la máquina admite una sola**. La pantalla está cubierta por RTL con su mutación; falta la pasada de navegador |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -229,11 +230,28 @@ fuente si la hubo):
 - **2.2 · Apuntar a una ficha de otra campaña es 404 y no 400**, siguiendo la regla del
   403-que-va-404 de `docs/04-convenciones.md`: un «prohibido» ya confirma que la ficha existe.
 
+- **2.3 · `notes` tenía otro dueño, y eso no estaba en el plan.** El motor de reglas escribe
+  `Session.notes` como **array de cadenas** (`ADD_SESSION_NOTE`,
+  `apps/api/src/rules-engine/rules-engine.service.ts:591-603`), mientras que `close()` lo escribía
+  como `{ recap }`. Con las dos cosas vivas, **una nota puesta por una regla borraba la crónica**:
+  el `Array.isArray` fallaba sobre el objeto y empezaba un array nuevo. Sacar la crónica a su
+  columna lo arregla solo, y por eso el commit lo dice — la ficha hablaba de filtrar, y el motivo
+  de verdad era una pérdida de datos.
+- **2.3 · La crónica también se filtra al LEER, y eso el plan no lo pedía.** Mientras vivía en
+  `notes` viajaba con la sesión y nadie la miraba; como columna, una crónica `DM_ONLY` de una sesión
+  `PLAYERS` habría llegado al jugador. `conCronica` quita **las dos** columnas —la crónica y su
+  nivel—: dejar el nivel diría «hay una crónica y no te la enseño».
+- **2.3 · Se añadió la PANTALLA, aunque el plan 02 se declara solo de servidor.** El diálogo de
+  cierre no ofrecía elegir quién lee la crónica, así que el arreglo del servidor no lo habría usado
+  nadie —«una ficha con servidor hecho y sin pantalla sigue abierta»—. No abre frente nuevo: reusa
+  `VisibilityChooser`, que ya existía, con los tres niveles que una sesión admite.
+- **2.3 · Solo tres niveles y no cinco.** `OWNER_DM` y `SPECIFIC_PLAYERS` sobre una crónica **no
+  seleccionan a nadie**, porque una `Session` no tiene ni creador ni concesiones — lo dice
+  `docs/05-datos.md`. Ofrecerlos sería ofrecer dos formas de esconderla del todo con nombres que
+  prometen otra cosa.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **2.3 · `Session.recap` + `recapVisibility`.** El defecto está en
-  `apps/api/src/sessions/sessions.service.ts:265` (escribe `notes: { recap }`) y en la línea 275
-  (`visibility: closed.visibility`, cuando el esquema ya acepta `input.recapVisibility`,
-  `packages/shared/src/session.schema.ts:73-77`). La migración tiene que **copiar** lo que ya hay:
-  `UPDATE "Session" SET "recap" = "notes"->>'recap' WHERE "notes" ? 'recap' ...`, **sin borrar la
-  clave de `notes`**.
+- **El plan 02 está cerrado**, salvo la tanda de Playwright del diálogo de cierre, que espera a que
+  la máquina quede libre. Lo siguiente es el **plan 03** (`03-carril-del-motor.md`), que depende de
+  este para su ficha `D-OP-17`.

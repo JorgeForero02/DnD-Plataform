@@ -15,13 +15,44 @@
 // it frames the page, it is not a surface for reading on.
 
 import type { ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { IconoRombo } from "./Iconos";
+import { ornamentoActual, suscribirseAlOrnamento } from "./ornamento";
 
-/** The campaign-table grid: a surveyor's lattice, the faintest hint of a map under glass. */
+/**
+ * ¿Está apagado el ornamento? (ficha U7.)
+ *
+ * **Es un `useSyncExternalStore` y no una lectura suelta**, y eso lo obligó el navegador: leyendo
+ * el atributo a secas, apagar el ornamento lo cambiaba y la cuadrícula **seguía en pantalla** hasta
+ * la siguiente navegación, porque React no repinta por un atributo de `<html>`. El tema no tiene
+ * este problema porque lo resuelve el CSS; esto **deja de dibujarse**, que es una decisión de React.
+ *
+ * `OrnamentRule` **no lo consulta a propósito**: es un filete con un rótulo dentro, o sea
+ * estructura del texto, no adorno. Apagarla dejaría secciones sin separar, que es un problema de
+ * lectura y no una preferencia estética.
+ */
+function useOrnamentoApagado(): boolean {
+  return useSyncExternalStore(
+    suscribirseAlOrnamento,
+    () => ornamentoActual() === "apagado",
+    () => false,
+  );
+}
+
+/**
+ * The campaign-table grid: a surveyor's lattice, the faintest hint of a map under glass.
+ *
+ * **Ficha U7 (plan 14): se apaga con el interruptor de la cuenta.** No se esconde con CSS desde
+ * fuera —se deja de pintar— porque un adorno que sigue en el DOM sigue costando y sigue pudiendo
+ * aparecer en una captura o en un lector. `data-ornamento` lo estampa `main.tsx` en `<html>` antes
+ * del primer pintado, así que aquí no hay parpadeo que corregir.
+ */
 export function CartographicGrid({ className = "" }: { className?: string }) {
+  if (useOrnamentoApagado()) return null;
   return (
     <div
       aria-hidden="true"
+      data-ornamento-pieza="cuadricula"
       className={["pointer-events-none absolute inset-0 overflow-hidden", className].join(" ")}
     >
       <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
@@ -65,9 +96,12 @@ export function CartographicGrid({ className = "" }: { className?: string }) {
  * author asked for: "dibujos a medio hacer".
  */
 export function DrawnHorizon({ className = "" }: { className?: string }) {
+  // U7, misma razón que la cuadrícula: se deja de pintar, no se esconde.
+  if (useOrnamentoApagado()) return null;
   return (
     <svg
       aria-hidden="true"
+      data-ornamento-pieza="horizonte"
       viewBox="0 0 1200 260"
       preserveAspectRatio="none"
       className={["pointer-events-none absolute inset-x-0 bottom-0 h-64 w-full", className].join(

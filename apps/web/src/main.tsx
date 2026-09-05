@@ -5,12 +5,16 @@ import { queryClient } from "./lib/queryClient";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { initTheme } from "./ui/theme";
+import { iniciarOrnamento } from "./ui/ornamento";
 import "./index.css";
 
 // Stamp the resolved theme onto <html> before the first paint that matters (React still
 // needs to mount, but this keeps the app's own logic — not just tokens.css's media-query
 // fallback — as the source of truth once JS has run).
 initTheme();
+// U7: estampa `data-ornamento` en `<html>` antes del primer pintado, igual que el tema, para que
+// el CSS lo apague sin que ningún componente tenga que leer el estado.
+iniciarOrnamento();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

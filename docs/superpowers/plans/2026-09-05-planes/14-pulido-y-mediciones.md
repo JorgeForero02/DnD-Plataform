@@ -138,8 +138,10 @@ escrito gane o pierda**, y las siete fichas anotadas en el maestro con lo que se
 |---|---|---|
 | ✅ hecho | 2026-09-06 | **14.1 · R1 remedida, y va primero como pide el plan.** `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` repite el experimento original —el mismo `<div draggable>` trivial, dentro y fuera— y da **`dragstart` FUERA: SÍ · DENTRO: SÍ**. `apps/web/e2e/reglas-arrastrar.spec.ts` pasa sus **ocho**. Ficha tachada en `docs/06-pendientes.md:402` y comentario rehecho en `apps/web/src/features/sessions/dm/HerramientasDeNarracion.tsx:40`. **Commit `912ff52`** |
 | ✅ hecho | 2026-09-06 | **14.2a · U8 + U9.** U8: `apps/web/src/ui/Dialog.tsx` acepta `hayCambiosSinGuardar` y **las tres salidas** pasan por `pedirCierre`; lo monta `apps/web/src/features/entities/EntityEditor.tsx` comparando valores. U9: `apps/web/src/ui/Button.tsx` pone `aria-disabled` y guarda el `onClick`; igual en `features/links/LinksPanel.tsx:222` y `features/comments/CommentThread.tsx:80`. Pruebas nuevas en `ui/__tests__/Button.test.tsx` y `ui/__tests__/Dialog.test.tsx`. **Commit `6ef8c03`** |
-| ✅ hecho | 2026-09-06 | **14.2b · U3 · buscar dentro del cuerpo.** Servidor hecho: `listEntitiesQuerySchema` en `packages/shared/src/entity.schema.ts:8`, `EntitiesService.list` y `coincideElTexto` en `apps/api/src/entities/entities.service.ts`, ruta en `entities.controller.ts:38`. Web hecha: `features/entities/api.ts:26`, `hooks.ts:26`, `filter.ts` (deja de filtrar por texto) y `pages/CampaignDetailPage.tsx:215`. **Commit `<pendiente U3>`**, con `apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts` (6 verdes) y la **mutación probada**: sin `canView`, 4 de 6 rojas. |
-| ⬜ sin empezar | — | **14.2c · U1** (página de lectura de una sesión), **14.3 · U2 y U7**, **14.4 · C6-4**. |
+| ✅ hecho | 2026-09-06 | **14.2b · U3 · buscar dentro del cuerpo.** Servidor hecho: `listEntitiesQuerySchema` en `packages/shared/src/entity.schema.ts:8`, `EntitiesService.list` y `coincideElTexto` en `apps/api/src/entities/entities.service.ts`, ruta en `entities.controller.ts:38`. Web hecha: `features/entities/api.ts:26`, `hooks.ts:26`, `filter.ts` (deja de filtrar por texto) y `pages/CampaignDetailPage.tsx:215`. **Commit `9ae58df`**, con `apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts` (6 verdes) y la **mutación probada**: sin `canView`, 4 de 6 rojas. |
+| ✅ hecho | 2026-09-06 | **14.3 · U2 remedida y U7.** U2: `apps/web/e2e/navegar-en-estrecho.spec.ts:35` da **7 destinos alcanzables a 375 px** — el problema de la ficha ya no existe, lo arregló el reseño. U7: `apps/web/src/ui/ornamento.ts`, `features/auth/AjusteDeOrnamento.tsx` montado en `pages/AccountPage.tsx`, y los dos adornos de `ui/Ornament.tsx` dejan de pintarse. Medido en `apps/web/e2e/ornamento.spec.ts`. **Commit `<pendiente U7>`** |
+| ✅ hecho | 2026-09-06 | **14.4 · C6-4.** `apps/web/src/features/bestiario/DarTemporales.tsx`, montado en la fila del PNJ. **No suma y pregunta cuál se queda**; para poder cumplir la regla del SRD hizo falta `setHpSchema.tempHpEleccion` (`packages/shared/src/character-sheet.schema.ts`) y su rama en `apps/api/src/characters/character-sheet.service.ts:1333`. **Commit `<pendiente U7>`** |
+| ⬜ sin empezar | — | **14.2c · U1**: la sesión no tiene página de lectura. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -198,16 +200,38 @@ fuente si la hubo):
   encuentra nada», y son dos situaciones que no pueden decir lo mismo.
 - **U3 · Los dobles de las pruebas de pantalla honran `q`.** Un doble que lo ignorase haría pasar en
   verde una pantalla que no manda la palabra.
+- **U2 · SE CIERRA MIDIENDO, NO ARREGLANDO, y esa era la mitad del punto del plan.** A 375 px hay
+  **siete destinos alcanzables sin URL**, todos visibles y pulsables. La ficha describía una columna
+  de secciones que **ya no existe**: la sustituyó el reseño. Medir primero evitó «arreglar» algo que
+  llevaba semanas arreglado.
+- **U7 · No se usa `prefers-reduced-motion`.** Habla de **movimiento** y esto no se mueve: usarla
+  habría apagado el adorno a quien pidió otra cosa y dejado sin opción a quien lo necesita. Es una
+  decisión de la persona, y se guarda **en este navegador**, como el tema, porque quien lo necesita
+  lo necesita en el dispositivo donde le molesta.
+- **U7 · Deja de pintarse, NO se esconde con CSS**, y eso obligó a un `useSyncExternalStore`: el
+  tema lo resuelve el CSS y nadie repinta, pero esto es una decisión de React. Con una lectura
+  suelta del atributo, **apagarlo lo cambiaba y la cuadrícula seguía en pantalla**. Lo cazó el
+  navegador, no `jsdom`.
+- **U7 · `OrnamentRule` NO se apaga.** Es un filete con un rótulo dentro: estructura del texto, no
+  adorno. Apagarla dejaría secciones sin separar, que es un problema de lectura.
+- **C6-4 · El servidor decidía por quien recibía los temporales, y eso es media regla.** Se quedaba
+  con el mayor por su cuenta: acierta casi siempre y **quita la elección que el SRD da** —*«you
+  decide whether to keep the ones you have or to gain the new ones»*—. Hay efectos que interesa
+  cambiar por otros más pequeños porque duran más. Ahora la decisión viaja (`tempHpEleccion`), y sin
+  el campo se conserva el comportamiento de siempre para no cambiar de significado a nadie.
+- **C6-4 · El botón se apaga hasta que la hoja llega.** Fijar PG es concurrencia optimista y exige
+  la `version`; sin ese candado el botón se dejaba pulsar y **no hacía nada en silencio**, que es
+  peor que estar apagado. **Lo cazó su propia prueba.**
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-1. **U1** · la sesión no tiene página de lectura: se abre en su formulario. Con `Session.recap`
-   (plan 02) ya hay algo que leer.
-2. **U2** · **volver a medir** en el navegador si bajo 768 px se puede navegar; la navegación cambió
-   entera con el reseño (de diecinueve destinos a seis) y puede que el problema sea otro.
-3. **U7** · interruptor de ornamento en la cuenta, persistente, y listo para D-OP-24.
-4. **C6-4** · dar PG temporales a un PNJ desde la mesa. SRD: **no se suman** — se pregunta cuál se
-   queda— y se pintan aparte, como ya hace `PanelDeBestiario.tsx:260`.
+**Solo queda U1**, que es lo único del plan 14 sin hacer:
+
+- **U1 · la sesión no tiene página de lectura.** Las fichas y los personajes sí; una sesión se sigue
+  abriendo en **su formulario**, que es la pantalla de editarla y no la de leerla. Con
+  `Session.recap` como columna (plan 02) ya hay algo real que leer, y la crónica es lo que la mesa
+  repasa entre partidas. La página tiene que pintar **filtrada por su visibilidad**, como la de una
+  ficha del mundo.
 
 > **Aviso de fechas, para quien lea esto:** todo lo de esta tanda está fechado **2026-09-06** y el
 > reloj del entorno dice **2026-09-05**. La noche cruzó la medianoche en la sesión anterior y las

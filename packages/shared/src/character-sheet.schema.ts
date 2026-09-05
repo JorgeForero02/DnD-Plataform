@@ -71,6 +71,22 @@ export type ChangeHpInput = z.infer<typeof changeHpSchema>;
 export const setHpSchema = z.object({
   currentHp: z.number().int().min(0).max(9999).optional(),
   tempHp: z.number().int().min(0).max(9999).optional(),
+  /**
+   * **Cual de los dos monton de PG temporales se queda** (ficha C6-4, plan 14).
+   *
+   * SRD 5.1: *«Healing can't restore temporary hit points, and they can't be added together. If you
+   * have temporary hit points and receive more of them, you decide whether to keep the ones you
+   * have or to gain the new ones.»*
+   *
+   * **La regla NO es «gana el mayor»**, es «lo decides tu». El servidor se quedaba con el mayor por
+   * su cuenta, que acierta casi siempre y **quita la decision que el SRD da al jugador**: hay
+   * efectos que interesa cambiar por otros mas pequenos —porque duran mas, o porque el nuevo trae
+   * algo aparte—, y con el maximo automatico eso era imposible.
+   *
+   * Sin este campo se conserva el comportamiento de siempre —el mayor—, para que ninguna pantalla
+   * que ya llamaba cambie de significado sin pedirlo.
+   */
+  tempHpEleccion: z.enum(["mayor", "los-nuevos"]).optional(),
   expectedVersion: z.number().int().min(0),
   reason: z.string().max(280).optional(),
 });

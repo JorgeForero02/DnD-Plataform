@@ -1331,8 +1331,17 @@ export class CharacterSheetService {
         }
       }
       if (input.tempHp !== undefined) {
-        // Dos fuentes no se suman: al fijar PG temporales gana la mayor, no la suma.
-        const nuevo = Math.max(character.tempHp, input.tempHp);
+        // **Dos fuentes de PG temporales NO se suman** — SRD 5.1: *«they can't be added
+        // together»*—, y **cuál se queda lo decide quien los recibe**: *«you decide whether to keep
+        // the ones you have or to gain the new ones»*.
+        //
+        // Sin `tempHpEleccion` gana el mayor, que es lo que este servicio hacía y acierta casi
+        // siempre. Con `"los-nuevos"` se coge el nuevo aunque sea menor, que es la mitad de la
+        // regla que faltaba: hay efectos que interesa cambiar por otros más pequeños.
+        const nuevo =
+          input.tempHpEleccion === "los-nuevos"
+            ? input.tempHp
+            : Math.max(character.tempHp, input.tempHp);
         if (nuevo !== character.tempHp) {
           data.tempHp = nuevo;
           eventosAEscribir.push({

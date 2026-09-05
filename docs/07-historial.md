@@ -38,6 +38,44 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El ornamento se apaga, un PNJ recibe temporales, y U2 se cierra midiendo (2026-09-06, plan 14 · U7, C6-4, U2)
+
+**U7 — el ornamento tiene interruptor.** La cuadrícula y el horizonte se pintaban **siempre**. No se
+mueven, así que `prefers-reduced-motion` no aplica, y no había ninguna preferencia del sistema que
+signifique «menos adorno estático»: usar la del movimiento habría apagado el adorno a quien pidió
+otra cosa y habría dejado sin opción a quien lo necesita. Es una decisión de la persona, así que se
+le pregunta y se recuerda — **en este navegador, como el tema**, porque quien lo necesita lo necesita
+en el dispositivo donde le molesta.
+
+**Se deja de pintar, no se esconde**: un adorno que sigue en el DOM sigue costando y sigue pudiendo
+salir en una captura o en un lector. Y el atributo se estampa en `<html>` **antes del primer
+pintado**, para que no haya un parpadeo con el adorno puesto justo delante de quien pidió no verlo.
+
+> **Y eso obligó a algo que el tema no necesita**: el tema lo resuelve el CSS, así que nadie
+> repinta; esto deja de dibujarse, que es una decisión de React. Con una lectura suelta del
+> atributo, apagarlo lo cambiaba y **la cuadrícula seguía en pantalla** hasta la siguiente
+> navegación. Lo cazó el recorrido de navegador, no `jsdom`.
+
+**C6-4 — un PNJ puede recibir PG temporales.** El campo se pintaba desde la auditoría del §8.5 y
+**nunca se había visto con datos**: faltaba el gesto. Y las reglas decidieron la pantalla entera —
+SRD 5.1: *«they can't be added together. If you have temporary hit points and receive more of them,
+you decide whether to keep the ones you have or to gain the new ones»*. Así que **no suma**: si ya
+tiene, pregunta cuál se queda con los dos números delante.
+
+Para poder cumplir esa regla hizo falta que **la decisión viajara**. El servidor se quedaba con el
+mayor **por su cuenta**: acierta casi siempre y **quita la elección que el SRD le da a quien los
+recibe** — hay efectos que interesa cambiar por otros más pequeños porque duran más. Sin el campo
+nuevo se conserva el comportamiento de siempre, para que ninguna pantalla que ya llamaba cambie de
+significado sin pedirlo.
+
+**U2 se cierra midiendo, no arreglando.** El plan lo exigía: *«vuelve a medirlo; puede que el
+problema sea otro»*. A **375 px** hay **siete destinos alcanzables sin escribir una URL**, todos
+visibles, dentro de la ventana y con tamaño, y pulsar uno cambia de pantalla. El problema que la
+ficha describía —una columna de secciones que desaparecía y nada la sustituía— **lo arregló el
+reseño**; la ficha hablaba de una pantalla que ya no existe.
+
+**Cómo revertirlo.** `git revert` del commit. El ajuste guardado en `localStorage` queda inerte.
+
 ## Buscar mira dentro del cuerpo, y pasa por `canView` primero (2026-09-06, plan 14 · U3)
 
 **Qué.** El buscador era del navegador y solo miraba el **nombre**: una ficha que dice «la puerta de

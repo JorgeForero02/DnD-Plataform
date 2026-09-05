@@ -14,6 +14,7 @@ import { ApiError } from "../lib/api";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
 import { Panel } from "../ui/Panel";
+import { AjusteDeOrnamento } from "../features/auth/AjusteDeOrnamento";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { IconoConfirmacion } from "../ui/Iconos";
 
@@ -34,12 +35,16 @@ export function AccountPage() {
     <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
       <PageHeader
         title="Cuenta"
-        subtitle="Tu nombre en la mesa y tu contraseña."
+        subtitle="Tu nombre en la mesa, tu contraseña y cómo se ve la pantalla."
         crumbs={[{ label: "Tus crónicas", to: "/" }, { label: "Cuenta" }]}
       />
       <div className="flex max-w-sm flex-col gap-4">
         <DisplayNameForm />
         <PasswordForm />
+        {/* U7: el ornamento se puede apagar. Va aquí y no en el conmutador de tema porque no es un
+            tema —no cambia ningún color— y mezclarlos habría dado un control de cuatro estados que
+            no dice qué hace ninguno. */}
+        <AjusteDeOrnamento />
       </div>
     </AppShell>
   );

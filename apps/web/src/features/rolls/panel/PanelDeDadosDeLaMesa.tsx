@@ -184,11 +184,23 @@ export function PanelDeDadosDeLaMesa({
   return (
     <div
       // `z-30`: por debajo de los cajones (`z-40`), para convivir con ellos y no taparlos.
-      className="anim-surge fixed inset-x-0 bottom-0 z-30 flex justify-center px-s4 pb-s4"
+      //
+      // **`pointer-events-none` en el envoltorio, y `auto` en el panel** (ensamblado O1,
+      // 2026-09-04). Este `div` es `inset-x-0`, o sea **del ancho entero de la ventana**, y tan
+      // alto como el panel —574 px en el instante «antes»—, mientras que lo único que se pinta es
+      // la sección centrada de 46 rem. Sin esta pareja de clases, esa franja invisible se comía
+      // los clics de todo lo que hay debajo: **medido en Chromium, el botón «Hoja» del rail se
+      // volvía inalcanzable**, con Playwright informando de que
+      // `<div class="… fixed inset-x-0 bottom-0 z-30 …"> intercepts pointer events`.
+      //
+      // No cambia ni un píxel de lo pintado, y es lo que hace verdad la frase de arriba: convivir
+      // con los cajones no sirve de nada si el panel deja muerta la mitad inferior de la mesa.
+      // La maqueta no lo lleva porque debajo de su panel no hay nada con lo que interactuar.
+      className="anim-surge pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-s4 pb-s4"
     >
       <section
         aria-label="Tirada"
-        className="w-full max-w-[46rem] rounded-radius-md border border-copper bg-surface px-s5 py-s4 shadow-2xl"
+        className="pointer-events-auto w-full max-w-[46rem] rounded-radius-md border border-copper bg-surface px-s5 py-s4 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-s3">
           <div className="min-w-0">

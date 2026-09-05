@@ -78,6 +78,11 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   const miId = useAuthStore((st) => st.user?.id);
   // **Uno a la vez**: el estrato superpuesto del reseño. Abrir la bolsa cierra la hoja.
   const [panel, setPanel] = useState<PanelAbierto | null>(null);
+  // **Y los dados aparte, que es lo que hace verdad el `z-30` frente al `z-40`.** Si compartieran
+  // estado con los cajones, abrir la hoja cerraría los dados y las dos capas nunca coincidirían
+  // en pantalla — con lo cual la maqueta no tendría por qué haberlas separado. Se tira mirando la
+  // hoja; Escape sobre un cajón no se lleva el panel de dados.
+  const [dadosPuestos, setDadosPuestos] = useState(false);
 
   const eventos = log?.events ?? [];
   const presentes = nombresPresentes(sesion?.attendance ?? null, personajes ?? []);
@@ -178,7 +183,12 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         {/* La fila de abajo: el rail permanente, y a su derecha lo que toque según el estado.
             No scrollea y no crece. */}
         <div className="flex shrink-0 items-stretch gap-s3">
-          <RailDePaneles onAbrir={setPanel} tienePersonaje={Boolean(miPersonaje)} />
+          <RailDePaneles
+            onAbrir={setPanel}
+            onAlternarDados={() => setDadosPuestos((puestos) => !puestos)}
+            dadosPuestos={dadosPuestos}
+            tienePersonaje={Boolean(miPersonaje)}
+          />
           {sesion ? (
             <div className="flex-1" />
           ) : (
@@ -208,17 +218,19 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
           Es `fixed inset-x-0 bottom-0 z-30`: se ancla a la ventana, así que dentro de la rejilla
           no aportaría nada y sí heredaría sus medidas. Y su `z-30` está por debajo del `z-40` de
           los cajones **a propósito** (maqueta, §5 de la auditoría): el panel de dados **convive**
-          con el estrato superpuesto en vez de taparlo.
+          con el estrato superpuesto en vez de taparlo — y por eso **su estado no es el de los
+          cajones**: compartirlo lo cerraría al abrir la hoja, que es justo lo que esos dos
+          números existen para evitar.
 
           Estuvo construido y sin montar desde el carril de los dados: `grep` de su nombre
           devolvía solo su declaración, así que el defecto ALTA de la auditoría —*«no hay dados en
           la mesa»*— seguía abierto con el panel ya escrito. */}
-      {panel === "dados" && (
+      {dadosPuestos && (
         <PanelDeDadosDeLaMesa
           campaignId={campaignId}
           sessionId={sesion?.id}
           characterId={miPersonaje?.id}
-          onCerrar={() => setPanel(null)}
+          onCerrar={() => setDadosPuestos(false)}
         />
       )}
     </div>

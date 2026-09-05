@@ -98,6 +98,41 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
+## P2 · Nadie propone terminar el combate, y «derrotado» ya está decidido (2026-09-05)
+
+**El autor decidió qué cuenta como derrotado**, que era lo único que faltaba para poder proponerlo.
+Su decisión, con sus palabras:
+
+> *«Cuando los enemigos —o en su defecto los jugadores— quedan sin vida. Los enemigos saldrán en
+> gris hasta el final del combate, donde ya no les saldrá a los jugadores; al DM tal vez como
+> historial, pero puede que tampoco, para no molestar. Si un jugador muere, este no desaparece: hay
+> eventos que tal vez puedan revivirlo si el DM quiere o si las reglas lo dictan.»*
+
+**Y resulta que la asimetría que describe ES la regla, no una preferencia.** El SRD 5.1, en
+«Dropping to 0 Hit Points», trata distinto a los dos: un monstruo a 0 PG **muere en el acto** salvo
+que el DM decida dejarlo inconsciente; un **personaje jugador cae inconsciente y empieza a tirar
+salvaciones contra muerte** — no muere. **La cita exacta hay que verificarla en el SRD en inglés al
+implementarlo**, que es la regla de este proyecto; aquí se resume, no se transcribe.
+
+**Media pieza ya está construida:** `deathSaveSuccesses` y `deathSaveFailures` son columnas,
+`deathSaveSchema` existe, hay ruta en `apps/api/src/characters/character-sheet.controller.ts:87`, y
+un descanso largo las borra (`apps/api/src/character-state/rest/rest.service.ts:90`).
+
+**Depende del bando**, que lo entrega el plan de la iniciativa
+([`superpowers/plans/2026-09-05-iniciativa-y-bando.md`](./superpowers/plans/2026-09-05-iniciativa-y-bando.md)):
+hoy todos los combatientes son `NEUTRAL`, así que «no queda ningún enemigo en pie» **no se puede ni
+calcular**.
+
+**Y no se termina solo, se PROPONE.** Es la doctrina que las Herramientas del DM ya llevan impresa:
+*«El sistema propone; tú decides. Nada llega a la mesa hasta que lo confirmas.»* Un enemigo a 0 puede
+estar inconsciente, los enemigos huyen, y un combate se acaba parlamentando con el jefe en pie.
+
+**Cierra cuando** el combate proponga terminarse al quedar un solo bando en pie, los derrotados se
+pinten en gris mientras dura, y **un personaje jugador a 0 PG siga en la mesa** con sus salvaciones
+contra muerte a la vista. **No cierra** con un cierre automático: eso sería el servidor decidiendo
+por el DM.
+
+
 ## P2 · La mesa a 390 px reparte sus tres columnas a lo ancho (2026-09-05, paseo de uso)
 
 **Lo vio el paseo de uso con dos anchos** —1280 y 390— la noche del 2026-09-05, y **no se arregló a

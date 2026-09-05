@@ -9,9 +9,13 @@ funciona.
 **No es** mapas, ni tiempo real, ni 3D, ni IA: eso son las fases 3–5 y cada una recibe su
 propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 
-**Sí tiene. La fase 2 está en producción; la 2.5 y el reseño de la mesa están en `main` y NO
-desplegados** — producción sirve lo que se subió el 2026-09-02 y local va por delante desde el
-2026-09-04. Desplegar lo pide el autor; ver [03-despliegue.md](./03-despliegue.md).
+**Sí tiene. Las fases 2 y 2.5 están en producción** desde el 2026-09-04 (`924058d`). **Lo que NO
+está desplegado es el reseño de la mesa** —rehecho entero en cuatro olas el 4 y el 5 de septiembre—
+y los tres commits de la Ola 3. Local va por delante; desplegar lo pide el autor, ver
+[03-despliegue.md](./03-despliegue.md).
+
+**El trabajo pendiente está planificado**, uno por fichero, en
+[superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md).
 
 
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
@@ -86,7 +90,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `e3c0d4f` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `4c7c3a2` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

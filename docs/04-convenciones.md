@@ -199,16 +199,41 @@ nombres de las cosas del código, no.
   tonos distintos para tres trabajos distintos, para que ninguno se distinga de otro solo por
   dónde está colocado.
 
-  > **Y aquí hay una contradicción viva con la maqueta, sin resolver (2026-09-04).** La maqueta de
-  > `prototipo/` pinta el `FilterChip` activo **en cobre** —`border-copper bg-copper/15
-  > text-copper-text`— y un chip de filtro es literalmente un `<button>`. **Dos carriles chocaron
-  > con esto por separado y los dos siguieron esta regla contra la maqueta**: la capa visual dejó
-  > el chip en `--accent`, y el taller eligió radios con explicación en vez de las fichas de la
-  > maqueta para la visibilidad. Los dos lo declararon en vez de decidirlo en silencio.
+  > **Resuelto el 2026-09-05: manda este documento.** La maqueta de `prototipo/` pinta el
+  > `FilterChip` activo **en cobre** —`border-copper bg-copper/15 text-copper-text`— y un chip de
+  > filtro es literalmente un `<button>`. **Dos carriles chocaron con esto por separado y los dos
+  > siguieron esta regla contra la maqueta**: la capa visual dejó el chip en `--accent`, y el taller
+  > eligió radios con explicación. Los dos lo declararon en vez de decidirlo en silencio, y **los
+  > dos acertaron**. El chip activo se queda en `--accent` y **la maqueta se corrige**.
   >
-  > **O manda este documento y la maqueta se corrige, o se cambia esta regla.** Lo que no puede
-  > quedarse es la contradicción entre los dos, porque el siguiente que compare con la maqueta la
-  > «arreglará» de buena fe. Decisión del autor.
+  > El motivo, para que no se reabra: el cobre está usado en toda la aplicación para **el mundo**
+  > —capitulares, filetes, marcas de tipo, la cuadrícula—, y si además selecciona, **deja de
+  > significar nada**. Corregir la maqueta es cambiar un color en un componente; cambiar esta regla
+  > es repintar el criterio entero.
+
+- **`--warning` existe; `--success` NO existe y no se añade.** Decisión cerrada (D-OP-7, y su
+  medición está en `ui/tokens.css`): `--warning` y `--warning-text` están en los cuatro temas con
+  sus contrastes medidos. El verde de éxito **se resuelve reutilizando `--accent-text` con un
+  glifo de comprobación y una palabra explícita**, porque **un segundo verde serían dos verdes que
+  aprender**. Está escrito aquí y no solo en un comentario del código a propósito: **una decisión
+  de no-hacer que solo vive en el código se revierte por buena fe** dentro de seis meses.
+
+- **Un gesto que reclasifica, esconde o retira algo dice su CONSECUENCIA y deja RASTRO.** Las dos
+  cosas, y ninguna es «¿estás seguro?» — un «¿seguro?» se pulsa sin leer y encima tranquiliza. La
+  confirmación nombra **dónde deja de aparecer** lo afectado y **qué deja de encontrarlo**, con los
+  nombres reales; y el cambio **escribe su suceso**, porque el registro es la auditoría de esta
+  aplicación. Con las dos, el gesto se vuelve **reversible en la práctica**. Vale igual para
+  cambiar el tipo de una ficha, archivar, borrar y despromover.
+
+- **Las reglas de D&D son verdad absoluta, y la maqueta NO es fuente de reglas.** Regla del autor
+  del 2026-09-05. Si el SRD contesta una duda, **se aplica**: no se convierte en una pregunta más.
+  Y donde el rótulo de la maqueta discrepe del SRD, **gana el SRD y el rótulo se corrige sin
+  consultar**. El caso que la motivó: la maqueta pintaba «Ventaja por flanqueo **+3**» y «Ayuda
+  **+1d4**», y **las dos son falsas** — el flanqueo es regla **opcional del DMG** y da **ventaja**
+  (el +2 es de 3.ª edición), y Ayudar da **ventaja**, no +1d4, que es el conjuro `Bless`. Lo que sí
+  se le pregunta al autor es lo que las reglas **no** contestan: forma, alcance y prioridad.
+  Fundamento y fuentes en
+  [la investigación del 2026-09-05](./superpowers/specs/2026-09-05-investigacion-decisiones.md).
 
 - **Las tipografías se cargan de Google Fonts**, y eso revierte a propósito el «no network
   fonts» de 1.19. Son cuatro voces con un trabajo cada una: **Marcellus** en títulos,

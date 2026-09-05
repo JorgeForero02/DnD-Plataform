@@ -96,6 +96,73 @@ funcional; y si el almacén de ficheros entra en producción con coste. Esta úl
 contestar mientras la copia de seguridad siga rota
 ([06-pendientes.md](./06-pendientes.md)): meter ficheros sin respaldo multiplica lo que se pierde.
 
+## Las decisiones del 2026-09-04 · [registro](../.superpowers/sdd/progress.md)
+
+**Veinticuatro tomadas con el autor en una sesión de seguimiento.** El razonamiento largo de cada
+una está fuera del repositorio, en el documento de trabajo que las recogió; aquí va lo que decide.
+
+| | Decisión |
+|---|---|
+| D-OP-1 | La copia de la base **se arregla y se prueba antes de que entre el almacén de ficheros** (3.A), no «cuando la mesa juegue de verdad» |
+| D-OP-2 | **Despliegue aprobado** — hecho el 2026-09-04 (`924058d`) |
+| D-OP-3 | La partida que cierra la fase 2 es **con agentes** llevando dos cuentas de jugador, y el autor de DM |
+| D-OP-4 | El almacén de ficheros será **MinIO en el propio servidor**, no S3 de pago |
+| D-OP-5 | **2.5.7** (ataques de oportunidad) entra **después de la partida de agentes**, escrito con lo que cuenten al jugarla |
+| D-OP-6 | Contraseñas: **mitigación de coste cero**. Cada jugador comprueba que entra antes del día |
+| D-OP-7 | `--warning` y `--success` se resuelven antes de B5 — **resuelto**: ver la sección de convenciones |
+| D-OP-8 | Archivar (M9), revelar (P1) y concentración (M17) entran **antes de la partida de prueba**. Dos hechos; **queda archivar** |
+| D-OP-9 | `race`/`class`: **primero el diálogo de creación pasa al catálogo**, después la migración borra las columnas. Al revés, cada personaje nuevo nacería sin ninguna |
+| D-OP-10 | Los temas **Claro y Lectura se ajustan al prototipo** (papel cálido, pliego de vitela) |
+| D-OP-11 | **El oráculo de la CA se cierra**: el objetivo pasa `canView` o es combatiente del encuentro activo; si no, **404 idéntico al de un id inventado** |
+| D-OP-12 | Los sucesos tendrán **concesiones nominales propias**, como columna `grantedUserIds String[]` y no tabla de unión |
+| D-OP-13 | De `blinded` falta **la ventaja del atacante**, no la condición. El fallo automático de pruebas se queda fuera |
+| D-OP-14 | Vocabulario del daño: **un módulo con dos formas**, larga y corta. `relámpago` / `rayo` |
+| D-OP-15 | `attackRollEventId` **se promueve a columna con índice único**: la base garantiza «una sola vez» sin mutar un registro de solo añadir |
+| D-OP-16 | **TipTap a `dependencies`** · **CI ejecuta `pnpm build`** · **`lychee` se retira** |
+| D-OP-17 | **«Dónde se quedó»** entra en el listado de campañas, con la crónica de la última sesión cerrada filtrada por visibilidad |
+| D-OP-18 | **Node 22, linting con tipos, cobertura y mutación: después de la partida de prueba** |
+| D-OP-19 | **R1 se vuelve a medir** cuando el carril gráfico reemplace el diálogo del editor de reglas |
+| D-OP-20 | **B6, el creador de personaje.** Se conserva el formulario y se viste con el lenguaje nuevo; **raza y clase pasan a catálogo** |
+| D-OP-21 | **Fases 4 y 5 sin plan** hasta después de la partida de prueba |
+| D-OP-22 | **El nervio en vivo se adelanta**: canal SSE por campaña que manda **avisos, no datos**. El sondeo se alarga a 60 s y queda de red de seguridad |
+| D-OP-23 | **El momento de «tiren iniciativa»**: cartel a pantalla completa, sin cuenta atrás; el DM tira por quien falte y cierra él |
+| D-OP-24 | **Una sola capa de ambiente**, vocabulario cerrado y **estética pixelada**. `prefers-reduced-motion` la apaga; nada sobre el texto; el clima es decorado, no regla |
+
+## Las decisiones del 2026-09-05 · [investigación](./superpowers/specs/2026-09-05-investigacion-decisiones.md)
+
+**Cuatro del autor, y diecisiete cerradas contra las reglas o por recomendación.** Las que salen del
+SRD llevan su fundamento: son las que **no se vuelven a preguntar**.
+
+| | Decisión |
+|---|---|
+| D1 | **El hilo se lee como una conversación: lo último abajo.** La franja de «te perdiste» pasa a marcar el punto por debajo del cual está lo no leído, con el scroll anclado abajo y sin saltar si se está leyendo arriba |
+| D2 | **Manda `04-convenciones.md` sobre el cobre**: un cobre nunca es un botón, el chip activo se queda en `--accent` y **la maqueta se corrige** |
+| D3 | **El color de un personaje lo elige su jugador**, con un por defecto determinista salido de su `id`. Es `Character.color` y sirve para **la voz en el hilo y el retrato en el elenco** |
+| D4 | **El tablero telaraña se retira y lo sustituye la línea de tiempo de la campaña**, ya encargada en [el prompt de Figma Make §18](./superpowers/specs/2026-09-02-prompt-figma-make.md). Muere con él el solape medido de chinchetas |
+| I5 | **Curar entra en el elenco como gesto propio**, no como daño con signo: la curación topa en el máximo y **no restaura los temporales** |
+| I6 | **Los ±5 del jugador sobre su propio personaje se quedan**: cada jugador lleva sus PG |
+| I7 | **«Mirar en detalle» entra**, y se escribe la excepción: la regla prohíbe **mandos** sobre el personaje de otro, no **mirar** |
+| I8 | **Inspiración se construye** (SRD: binaria, la concede el DM, se gasta para ventaja). **Ayudar se construye como acción** que da **ventaja** y caduca. **Flanqueo no entra**: es opcional del DMG, da ventaja y necesita adyacencia |
+| I9 | **El campo de daño no admite signo**, y hay dos gestos con nombre |
+| I10 | **El bando vive en el combatiente del encuentro**, no en `Character`: «enemigo» es una relación en un momento |
+| I11 | **La sesión puede decir dónde abre la escena** (`openingEntityId`), filtrado por `canView` |
+| I12 | **Condiciones de la casa como catálogo de campaña**, mismo patrón que las tablas de la casa. **No entran en el motor** salvo como sugerencia |
+| I13 | **B6: teclear las características, tirar 4d6 descartando el menor, o un reparto que escriba el DM.** El SRD 5.1 **no trae método de generación**: array y compra por puntos son del Manual del Jugador |
+| I14 | **`recapVisibility` se aplica**, y la crónica **sube a columna** en la misma migración: D-OP-17 necesita filtrar por ella |
+| I15 | **`--success` no existe y no se añade** (ver convenciones) |
+| I16 | **Cambiar el tipo de una ficha dice la consecuencia y deja rastro** |
+| I17 | **Revelar lo manda `features/entities/BotonRevelar.tsx`** (ya consolidado); **archivar va en la ficha del personaje, junto a borrar, siendo el gesto fácil** |
+| I18 | **Las doce desviaciones menores de la maqueta se aceptan en bloque**, escritas para que nadie las «arregle» de vuelta |
+| I19 | **`DM_EXECUTED` se construye**: un botón «Ejecutar» en la ficha del mundo. Es lo que hace útil el motor para **preparar** sesiones |
+| I20 | **`ENTITY_ATTACKED` se retira**: apunta a una ficha del mundo y aquí se ataca a un personaje. Su suceso útil ya existe (`ATTACK_RESOLVED`, 2.5.3) |
+| I21 | **La barra de acciones, en tres piezas**: lo que ya existe · **la economía de turno del SRD y sus diez acciones** · los conjuros, fase propia. **Sin economía de turno la barra no impide nada** |
+
+## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
+
+**Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con
+`fichero:línea`, pruebas con **su mutación obligatoria**, guía de revisión en casillas y las trampas
+conocidas. El índice lleva **la trazabilidad ficha → plan** contra la auditoría de la cola larga.
+
 ## Lo demás que hay en `superpowers/`
 
 Specs de estudio (mesas virtuales, formularios, identidad visual, cajas), planes por fase,

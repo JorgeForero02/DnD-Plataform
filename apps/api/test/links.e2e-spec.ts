@@ -91,4 +91,33 @@ describe("Entity links (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`);
     expect(pl.body.map((l: any) => l.to.id)).toEqual([pubLocId]); // secret lair hidden
   });
+
+  // **Enlazar deja rastro en el registro, y hasta el 2026-09-04 no lo dejaba.** `LinksService`
+  // creaba la fila y no escribia el suceso, asi que el motor de reglas —que sabe evaluar
+  // `ENTITY_LINKED` desde que existe— no se disparaba nunca y enlazar era invisible en la
+  // cronica. Se comprueba **leyendo el log por su endpoint**, no mirando que la llamada este
+  // escrita en el codigo: es la diferencia entre demostrar y afirmar.
+  it("linking writes ENTITY_LINKED, and the secret link stays out of the player log", async () => {
+    const s = app.getHttpServer();
+    const delDm = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(delDm.status).toBe(200);
+    const enlacesDm = delDm.body.events.filter((e: any) => e.type === "ENTITY_LINKED");
+    // Los dos enlaces del recorrido anterior: al lugar publico y al secreto.
+    expect(enlacesDm.length).toBe(2);
+    expect(enlacesDm.map((e: any) => e.payload.toId).sort()).toEqual(
+      [pubLocId, secretLocId].sort(),
+    );
+    expect(enlacesDm.find((e: any) => e.payload.toId === pubLocId).payload.label).toBe("lives in");
+
+    // **Y el jugador ve uno solo.** El enlace al escondite es `DM_ONLY` aunque el PNJ sea
+    // `PLAYERS`: un enlace revela que dos cosas tienen que ver aunque no se pueda abrir ninguna,
+    // asi que el suceso no hereda la visibilidad de un extremo.
+    const delJugador = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const enlacesPl = delJugador.body.events.filter((e: any) => e.type === "ENTITY_LINKED");
+    expect(enlacesPl.map((e: any) => e.payload.toId)).toEqual([pubLocId]);
+  });
 });

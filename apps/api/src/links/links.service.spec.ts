@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { LinksService } from "./links.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { GameEventsService } from "../game-events/game-events.service";
 
 describe("LinksService", () => {
   let service: LinksService;
@@ -10,7 +11,12 @@ describe("LinksService", () => {
     entity: { findUnique: jest.fn() },
     entityLink: { create: jest.fn(), findMany: jest.fn() },
     user: { findUnique: jest.fn() },
+    // `create()` escribe el enlace y su suceso en la misma transaccion. La implementacion se
+    // pone en `beforeEach` y no aqui: escrita aqui, el doble se referencia a si mismo y
+    // TypeScript no puede inferir su tipo (TS7022).
+    transaction: jest.fn(),
   };
+  const gameEvents = { record: jest.fn() };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
 
   beforeEach(async () => {
@@ -19,6 +25,7 @@ describe("LinksService", () => {
         LinksService,
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: gameEvents },
       ],
     }).compile();
     service = ref.get(LinksService);
@@ -27,6 +34,66 @@ describe("LinksService", () => {
     // de la prueba de permisos se cuela en la siguiente. Ya pasó en `game-events` y está
     // documentado allí; aquí se evita de entrada.
     membership.requireDM.mockResolvedValue(undefined);
+    // Por el mismo motivo que la linea de arriba: `clearAllMocks` deja `transaction` sin
+    // implementacion, y sin ella `create()` devolveria `undefined` en vez de ejecutar su cuerpo.
+    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(prisma));
+  });
+
+  // **El suceso del enlace.** Hasta el 2026-09-04 `create()` escribia la fila y se callaba: el
+  // motor sabia evaluar `ENTITY_LINKED` y nadie lo emitia, asi que una regla armada sobre
+  // «cuando se enlacen dos fichas» no se disparaba nunca. Lo que se comprueba es que el suceso
+  // sale, con sus dos extremos y su etiqueta.
+  it("create() records ENTITY_LINKED with both ends", async () => {
+    prisma.entity.findUnique
+      .mockResolvedValueOnce({ id: "e1", campaignId: "c1", visibility: "PUBLIC" })
+      .mockResolvedValueOnce({ id: "e2", campaignId: "c1", visibility: "PUBLIC" });
+    prisma.entityLink.create.mockResolvedValueOnce({ id: "l1" });
+
+    await service.create("u1", "e1", { toId: "e2", label: "vive en" });
+
+    expect(gameEvents.record).toHaveBeenCalledTimes(1);
+    const [actor, campaignId, input] = gameEvents.record.mock.calls[0];
+    expect(actor).toBe("u1");
+    expect(campaignId).toBe("c1");
+    expect(input.payload).toEqual({
+      type: "ENTITY_LINKED",
+      fromId: "e1",
+      toId: "e2",
+      label: "vive en",
+    });
+  });
+
+  // **La visibilidad del suceso no se hereda de una de las fichas**, porque el enlace revela que
+  // dos cosas tienen que ver aunque no se pueda abrir ninguna. Con las dos a la vista de la mesa
+  // no revela nada nuevo; en cuanto una se esconde, la linea es solo del DM.
+  it.each([
+    ["PUBLIC", "PLAYERS", "PLAYERS"],
+    ["PLAYERS", "PLAYERS", "PLAYERS"],
+    ["PUBLIC", "DM_ONLY", "DM_ONLY"],
+    ["SPECIFIC_PLAYERS", "PUBLIC", "DM_ONLY"],
+    ["OWNER_DM", "PLAYERS", "DM_ONLY"],
+  ])("create() with %s + %s logs the link as %s", async (desde, hasta, esperada) => {
+    prisma.entity.findUnique
+      .mockResolvedValueOnce({ id: "e1", campaignId: "c1", visibility: desde })
+      .mockResolvedValueOnce({ id: "e2", campaignId: "c1", visibility: hasta });
+    prisma.entityLink.create.mockResolvedValueOnce({ id: "l1" });
+
+    await service.create("u1", "e1", { toId: "e2" });
+
+    expect(gameEvents.record.mock.calls[0][2].visibility).toBe(esperada);
+  });
+
+  // Un enlace sin etiqueta no manda `label: undefined`: el esquema del payload lo declara
+  // opcional, y mandarlo vacio ensucia el `Json` que se guarda para siempre.
+  it("create() omits the label when there is none", async () => {
+    prisma.entity.findUnique
+      .mockResolvedValueOnce({ id: "e1", campaignId: "c1", visibility: "PUBLIC" })
+      .mockResolvedValueOnce({ id: "e2", campaignId: "c1", visibility: "PUBLIC" });
+    prisma.entityLink.create.mockResolvedValueOnce({ id: "l1" });
+
+    await service.create("u1", "e1", { toId: "e2" });
+
+    expect(gameEvents.record.mock.calls[0][2].payload).not.toHaveProperty("label");
   });
 
   it("create() rejects a self-link", async () => {

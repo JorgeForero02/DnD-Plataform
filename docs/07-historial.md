@@ -71,8 +71,17 @@ un cajón no desmonta el hilo—, **sin ejecutar**. No se escribió ninguna prue
 a propósito para hacerlas en una sola tanda. Las que afirmaban la maquetación vieja se
 **actualizaron**, nunca se desactivaron.
 
+**Ola 3 (medida, no recordada).** Repetido el barrido del §8 sobre el árbol ensamblado: **diez de
+las quince mecánicas sin pantalla están resueltas** —`damageType` viaja desde la mesa, así que
+2.5.1 por fin se ejecuta— y **no se cayó ninguna**: los dos únicos hooks huérfanos ya lo eran antes
+de `a1d4a1d`. De las cinco restantes se cierra aquí **`ENTITY_LINKED`**: `LinksService.create`
+escribía la fila y **no emitía el suceso**, así que una regla sobre «cuando se enlacen dos fichas»
+no se disparaba jamás. Ahora enlace y suceso van **en la misma transacción**, y la visibilidad del
+suceso **no se hereda de un extremo** —un enlace revela que dos cosas tienen que ver aunque no se
+pueda abrir ninguna—: sale para jugadores solo si las dos fichas ya las ve la mesa.
+
 **Cómo revertir.** `git revert` de los merges de carril y del armazón (`a1d4a1d`). Nada de esto
-toca `apps/api` ni `packages/shared`, y no hay migración.
+toca `packages/shared` y no hay migración; el suceso del enlace es `apps/api` y se revierte solo.
 
 ## 2.5.5 · Las condiciones llegan a las tiradas (2026-09-04)
 

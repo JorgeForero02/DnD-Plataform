@@ -4,9 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { CreateEntityLinkInput } from "@dnd/shared";
+import { CreateEntityLinkInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
+import { GameEventsService } from "../game-events/game-events.service";
 import { canView, Viewer } from "../common/visibility";
 
 /**
@@ -17,11 +18,33 @@ import { canView, Viewer } from "../common/visibility";
  */
 export type LinkDirection = "OUTGOING" | "INCOMING";
 
+/**
+ * Con qué visibilidad se anota en el registro que dos fichas se han enlazado.
+ *
+ * **El enlace filtra por sí mismo**, y `create()` ya lo dice más abajo: un enlace revela que dos
+ * cosas tienen que ver aunque quien lo lee no pueda abrir ninguna de las dos. Así que el suceso
+ * **no puede heredar la visibilidad de una de ellas**.
+ *
+ * La regla es total y no necesita comparar niveles entre sí: **si las dos fichas ya las ve toda la
+ * mesa, la relación no revela nada nuevo** y la línea sale para jugadores; en cualquier otro caso
+ * es `DM_ONLY`. No se intenta nada más fino a propósito: la matriz de visibilidad **no es un
+ * orden total** —`SPECIFIC_PLAYERS` y `OWNER_DM` no se contienen— así que «la más restrictiva de
+ * las dos» no está definida, y además hoy un suceso `SPECIFIC_PLAYERS` **no llega a nadie**
+ * porque `game-events.service.ts` evalúa con `grantedUserIds: []` (ficha P2, decisión D-OP-12).
+ * Cuando esa columna exista, esto se puede afinar; hasta entonces, callar de más es la única
+ * opción que no miente.
+ */
+function visibilidadDelEnlace(desde: Visibility, hasta: Visibility): Visibility {
+  const laVeLaMesa = (v: Visibility) => v === "PUBLIC" || v === "PLAYERS";
+  return laVeLaMesa(desde) && laVeLaMesa(hasta) ? "PLAYERS" : "DM_ONLY";
+}
+
 @Injectable()
 export class LinksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
+    private readonly gameEvents: GameEventsService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -46,8 +69,38 @@ export class LinksService {
     if (!to || to.campaignId !== from.campaignId) {
       throw new BadRequestException("Target must be an entity in the same campaign");
     }
-    return this.prisma.entityLink.create({
-      data: { fromId: fromEntityId, toId: input.toId, label: input.label },
+    // **El enlace escribe su suceso, y hasta hoy no lo escribía nadie.** El motor de reglas sabe
+    // evaluar `ENTITY_LINKED` desde que existe —`game-event-triggers.ts` tiene su `case`— y el
+    // vocabulario del log lo tiene declarado, pero este método creaba la fila y se callaba: una
+    // regla armada sobre «cuando se enlacen dos fichas» no se disparaba jamás, y enlazar era
+    // invisible en el registro. Es la ficha del §8 de la auditoría del 2026-09-04.
+    //
+    // **Los dos van en la misma transacción**: un enlace sin su suceso es exactamente el estado
+    // que se está arreglando, así que no puede volver a producirse porque falle la segunda
+    // escritura.
+    return this.prisma.transaction(async (tx) => {
+      const enlace = await tx.entityLink.create({
+        data: { fromId: fromEntityId, toId: input.toId, label: input.label },
+      });
+
+      await this.gameEvents.record(
+        userId,
+        from.campaignId,
+        {
+          subjectType: "campaign",
+          subjectId: fromEntityId,
+          visibility: visibilidadDelEnlace(from.visibility, to.visibility),
+          payload: {
+            type: "ENTITY_LINKED",
+            fromId: fromEntityId,
+            toId: input.toId,
+            ...(input.label ? { label: input.label } : {}),
+          },
+        },
+        tx,
+      );
+
+      return enlace;
     });
   }
 

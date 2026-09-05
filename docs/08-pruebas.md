@@ -49,6 +49,12 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > navegador cuando había 20, y `check:docs` no puede cazar una frase falsa bien escrita.
 <!-- e2e:fin -->
 
+> **Vueltos a medir el 2026-09-05, con los planes 01–06 dentro y corriendo las dos suites
+> ENTERAS sobre el árbol ensamblado**, que es como se descubrió que los e2e de API no podían
+> correrse todos juntos en esta máquina (ver el historial de ese día): **289 e2e de API en 37
+> suites, todas en verde**, y **113 recorridos de navegador en verde con 1 saltado**, en 7,7
+> minutos. Las cifras de abajo son las del 2026-09-04 y se conservan para poder comparar.
+
 **Recorridos**, los dos medidos el 2026-09-04 con la fase 2.5 entera y el reseño de la mesa
 (B0–B5) dentro: **269 e2e de API en 37 suites** (eran 216 al cerrar la fase 2D; los nuevos son tipos de daño y resistencias
 —2.5.1—, encuentros —2.5.2—, el ataque comparado —2.5.3—, el daño con su traza —2.5.4—, las

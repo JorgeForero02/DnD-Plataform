@@ -1260,6 +1260,37 @@ predicado y cero mutaciones sueltas.
 la había cerrado y el maestro no se había enterado — el plan 06 avisaba de ello para que nadie
 duplicara el trabajo, y así fue.
 
+## ~~La suite e2e de API entera no se podía correr en esta máquina~~ — CERRADA el mismo día que se encontró (2026-09-05)
+
+**Cómo se encontró, y por eso se escribe:** al ensamblar los cinco carriles de la noche se corrieron
+los e2e de API **todos juntos**, cosa que no se hacía nunca —se corrían por fichero—. Resultado:
+**una docena de suites no arrancaban** y arrastraban decenas de pruebas en rojo, con un mensaje que
+manda a mirar donde no es:
+
+```
+PrismaClientInitializationError: Authentication failed against database server at `localhost`,
+the provided database credentials for `dnd` are not valid.
+```
+
+Las credenciales estaban bien. Lo que decía Postgres por debajo era
+`FATAL: sorry, too many clients already`.
+
+**La causa:** `PrismaService` implementaba `OnModuleInit` y **no `OnModuleDestroy`**, así que
+`$disconnect()` no se llamaba nunca. La suite monta y cierra **una aplicación por fichero**, y cada
+`app.close()` dejaba su pool abierto: 37 ficheros contra `max_connections = 100`.
+
+**El arreglo** es el patrón canónico de Nest + Prisma —`onModuleDestroy` con `$disconnect()`,
+`apps/api/src/prisma/prisma.service.ts:22-36`— y también es correcto en producción, donde hace un
+apagado ordenado.
+
+**Medido:** antes, una docena de suites muertas y las conexiones clavadas en el tope. Después, **la
+suite entera en verde** —los conteos, en [08-pruebas.md](./08-pruebas.md), que es su fuente única—,
+con las conexiones oscilando en 40 durante la tanda y bajando a 6 al terminar.
+
+**Por qué no se había visto:** por fichero nunca aparece, y **CI tampoco lo ve** porque allí cada
+worker de Jest es un proceso que muere y libera sus conexiones. Es un defecto que solo enseña la
+cara cuando se corre la suite entera en una sola máquina.
+
 ## P2 · Dos fichas de este documento mienten con un barrido citado dentro (2026-09-04)
 
 **P1 de `ENTITY_REVEALED` llevaba al menos una tanda afirmando, con su `grep` citado, algo que el

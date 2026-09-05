@@ -135,15 +135,39 @@ tres personajes de tres colores** para el autor, y D3 anotada como aplicada en e
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **Servidor (pasos 1-4).** Columna `Character.color String?` (`apps/api/prisma/schema.prisma:502`) con migración `apps/api/prisma/migrations/20260906020000_character_color/`. Lista cerrada `CHARACTER_COLORS` + `characterColorSchema` en `packages/shared/src/character.schema.ts:20`, colgada de `createCharacterSchema` como `.nullable().optional()`. Escritura en `apps/api/src/characters/characters.service.ts:121`. Documentado en `docs/05-datos.md`. **Commit `<pendiente servidor>`** |
+| 🟨 en marcha | 2026-09-06 | **Web (pasos 5-8).** Empieza por los cuatro tokens de voz nuevos en `apps/web/src/ui/tokens.css`, medidos en los tres temas. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **La lista cerrada va en `shared`; el nombre legible NO.** El plan pedía las dos cosas en
+  `packages/shared`, y eso choca con lo que el plan 07 acababa de declarar: `shared` dice **qué
+  forma tienen los datos**, y el español de pantalla vive en `apps/web/src/dominio/`
+  (`docs/01-arquitectura.md`). Se parte en dos: la enumeración en
+  `packages/shared/src/character.schema.ts`, los rótulos en `apps/web/src/dominio/`. **Manda la
+  convención escrita, no la línea del plan** — y queda dicho aquí para que no parezca un descuido.
+- **Las ocho claves son palabras españolas** (`tinta`, `cobre`, `senal`, `brasa`, `salvia`,
+  `ciruela`, `indigo`, `arena`), no los nombres de los tokens (`accent`, `danger`…). Un jugador
+  elige «brasa», no «danger»; y atar la clave guardada al nombre de un token de la interfaz haría
+  que renombrar un token corrompiera datos ya escritos. `senal` e `indigo` van sin tilde **porque
+  son claves**, no texto.
+- **`!== undefined`, no *truthy*.** Con `if (input.color)` nadie podría volver al color de por
+  defecto: `null` es un valor legítimo y distinto de ausente. **Es la mutación que se probó** — con
+  el *truthy* puesto, el e2e de «deshacer la elección» se pone rojo.
+- **Sin endpoint nuevo, y la autorización sale gratis.** `requireEditable` ya es «dueño o DM», que
+  es exactamente la regla que pedía el plan. Un endpoint aparte habría sido una segunda puerta a la
+  que mantener la misma matriz.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- Cuatro tokens de voz **nuevos** en `apps/web/src/ui/tokens.css` (salvia, ciruela, índigo, arena),
+  en los **tres** bloques de tema, y sus contrastes medidos en `apps/web/e2e/tokens-contrast.spec.ts`.
+  Las otras cuatro voces reutilizan `--text`, `--copper-text`, `--accent-text` y `--danger-text`, que
+  ya son tinta legible. **Ni `--warning-text` ni `--muted`.**
+- Después: `colorDeVoz` pasa a recibir el personaje
+  (`apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts:106`, consumidor en
+  `hilo/MensajeDelHilo.tsx:177`), el retrato del elenco llama a la misma función, y el selector de
+  muestras en la hoja que **avisa** —no prohíbe— de un color ya usado.

@@ -267,4 +267,86 @@ describe("Characters (e2e)", () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe("el color de un personaje (D3)", () => {
+    let mio = "";
+
+    beforeAll(async () => {
+      const s = app.getHttpServer();
+      mio = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/characters`)
+          .set("Authorization", `Bearer ${tokenP1}`)
+          .send({ name: "Thora", level: 1, visibility: "PLAYERS" })
+      ).body.id;
+    });
+
+    it("nace SIN color: `null` significa «dame el de por defecto», y el defecto lo calcula la pantalla", async () => {
+      const r = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenP1}`);
+      expect(r.status).toBe(200);
+      expect(r.body.color).toBeNull();
+    });
+
+    it("**su jugador lo cambia**", async () => {
+      const r = await request(app.getHttpServer())
+        .patch(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ color: "salvia" });
+      expect(r.status).toBe(200);
+      expect(r.body.color).toBe("salvia");
+    });
+
+    it("**otro jugador de la misma mesa NO** (403): esconder el selector no es control de acceso", async () => {
+      const r = await request(app.getHttpServer())
+        .patch(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenP2}`)
+        .send({ color: "ciruela" });
+      expect(r.status).toBe(403);
+    });
+
+    it("**el DM sí**, porque es quien ve el conjunto y nota el choque", async () => {
+      const r = await request(app.getHttpServer())
+        .patch(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ color: "indigo" });
+      expect(r.status).toBe(200);
+      expect(r.body.color).toBe("indigo");
+    });
+
+    it("una clave fuera de la lista es 400, **y un hexadecimal también**", async () => {
+      // El campo guarda una CLAVE, no un color: un `#c07d46` elegido sobre pizarra es ilegible
+      // sobre el pliego de vitela, y un valor libre no se puede medir de contraste.
+      const s = app.getHttpServer();
+      for (const valor of ["turquesa", "#c07d46", ""]) {
+        const r = await request(s)
+          .patch(`/campaigns/${campaignId}/characters/${mio}`)
+          .set("Authorization", `Bearer ${tokenP1}`)
+          .send({ color: valor });
+        expect(r.status).toBe(400);
+      }
+    });
+
+    it("y `null` DESHACE la elección, que es distinto de no mandar nada", async () => {
+      const s = app.getHttpServer();
+      const vuelta = await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ color: null });
+      expect(vuelta.status).toBe(200);
+      expect(vuelta.body.color).toBeNull();
+
+      // Y un PATCH que no lo menciona no lo toca.
+      await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ color: "brasa" });
+      const otro = await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${mio}`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ name: "Thora la Roja" });
+      expect(otro.body.color).toBe("brasa");
+    });
+  });
 });

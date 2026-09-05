@@ -665,3 +665,26 @@ Se guarda: correo, nombre visible y `passwordHash` (argon2). **Nunca la contrase
 claro, nunca en un log.** No hay datos de menores ni categorías especiales. No hay política
 de retención escrita todavía — pendiente antes de que el sistema deje de ser de uso
 personal.
+
+## El color de un personaje (plan 05, decisión D3)
+
+**`Character.color`** (`String?`, migración `20260906020000_character_color`): **una clave de una
+lista cerrada**, nunca un hexadecimal. La lista vive en `packages/shared/src/character.schema.ts`
+(`CHARACTER_COLORS`, ocho claves) y la valida `characterColorSchema`, así que una clave inventada
+es un **400** antes de llegar al servicio.
+
+**Nulable a propósito y sin valor por defecto en la base.** `null` significa «no lo he elegido, dame
+el de por defecto», y ese defecto **no se guarda**: lo calcula la pantalla como huella del `id` del
+personaje, de modo que el mismo personaje sale del mismo color siempre —entre recargas, navegadores
+y personas— sin que nadie tenga que elegir para empezar a jugar. Un valor escrito significa «lo
+elegí yo» y **no se pisa nunca** con un recálculo; por eso `CharactersService.update()` comprueba
+`input.color !== undefined` y no un *truthy*: con `if (input.color)` no se podría deshacer una
+elección volviendo a `null`.
+
+**Quién lo cambia:** el dueño del personaje o el DM, que es exactamente lo que ya impone
+`requireEditable`. No hay endpoint nuevo — el color viaja en el `PATCH` del personaje como cualquier
+otro campo suyo.
+
+**Por qué en `Character` y no en `CampaignMember`:** el dato es del personaje. Un jugador con dos
+personajes quiere dos voces, y hasta hoy no las tenía porque la voz del hilo era una huella del
+`actorUserId`.

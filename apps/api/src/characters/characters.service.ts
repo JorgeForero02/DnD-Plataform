@@ -118,6 +118,14 @@ export class CharactersService {
     if (input.level !== undefined) data.level = input.level;
     if (input.bio !== undefined) data.bio = input.bio;
     if (input.visibility !== undefined) data.visibility = input.visibility;
+    // **El color (D3): quien lo cambia es el dueño o el DM**, y eso ya lo impone `requireEditable`
+    // unas líneas más arriba — es la misma autoridad que editar cualquier otro campo suyo, y no
+    // hace falta un endpoint propio para un campo más.
+    //
+    // **`null` es un valor legítimo y distinto de ausente**: significa «vuelve al de por defecto»,
+    // y por eso la comprobación es `!== undefined` y no un truthy. Con `if (input.color)` no se
+    // podría deshacer una elección.
+    if (input.color !== undefined) data.color = input.color;
     return this.prisma.character.update({ where: { id: characterId }, data });
   }
 

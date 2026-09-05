@@ -499,6 +499,17 @@ model Character {
   campaignId String
   ownerId    String
   name       String
+  /// **El color de su voz en el hilo y de su retrato en el elenco** (decision D3, 2026-09-06).
+  ///
+  /// Guarda una CLAVE de una lista cerrada (`characterColorSchema` en `@dnd/shared`), nunca un
+  /// hexadecimal: el mismo color tiene que verse en los tres temas, y un valor libre no se puede
+  /// medir de contraste por adelantado.
+  ///
+  /// **Nulable a proposito, y sin valor por defecto en la base.** `null` significa «no lo he
+  /// elegido»: el defecto lo calcula la pantalla como huella del `id` del personaje, y asi el mismo
+  /// personaje tiene el mismo color siempre sin que nadie tenga que elegir para empezar a jugar.
+  /// Un valor escrito significa «lo elegi yo» y no se pisa nunca.
+  color      String?
   // `race` y `class` son texto libre HEREDADO y se conservan a proposito: puede haber
   // personajes escritos a mano en la mesa del autor, y borrarles el texto seria destruir datos
   // por una migracion de conveniencia. La hoja los muestra solo si no hay clave. Se retiran

@@ -175,6 +175,16 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
     timeout: 15_000,
   });
   await expect(page.getByText(/^Cerrada/)).toBeVisible();
+
+  // **Y la crónica aparece en la entrada, bajo «Dónde se quedó»** (D-OP-17). Es el recorrido
+  // entero de la ficha: se sella durante la partida, se cierra con la crónica que sale de esos
+  // sellos, y al volver a la pantalla de inicio la partida dice por dónde iba. Hasta hoy ese hueco
+  // pintaba la descripción de la campaña y una frase que prometía esto mismo.
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Dónde se quedó" }).first()).toBeVisible();
+  await expect(page.getByText(/· Combate: los guardias del muelle/).first()).toBeVisible({
+    timeout: 15_000,
+  });
 });
 
 test("la barra de «en juego» se pega DEBAJO de la cabecera y no encima de ella", async ({

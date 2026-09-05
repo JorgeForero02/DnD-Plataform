@@ -121,7 +121,13 @@ export function Cronicas({ onCrear }: { onCrear: () => void }) {
 function CronicaAbierta({
   campaign,
 }: {
-  campaign: { id: string; name: string; description: string | null };
+  campaign: {
+    id: string;
+    name: string;
+    description: string | null;
+    /** La crónica de la última sesión cerrada, si el servidor la manda — ver `api.ts`. */
+    lastRecap?: { text: string; sessionTitle: string; endedAt: string | null };
+  };
 }) {
   // El estado de la mesa, del mismo sondeo que ya usa la barra de sesión: no añade peticiones y
   // dice lo único que cambia lo que vas a encontrar al entrar.
@@ -151,14 +157,26 @@ function CronicaAbierta({
         <h3 className="mb-s1 font-chrome text-chrome-xs uppercase tracking-widest text-muted">
           Dónde se quedó
         </h3>
-        {campaign.description ? (
+        {campaign.lastRecap ? (
+          // **La crónica de verdad, desde D-OP-17.** La manda el servidor ya filtrada por la
+          // visibilidad **propia de la crónica**: si no se puede leer, el campo no viaja, y aquí
+          // se cae al mismo sitio que si no hubiera ninguna. Distinguir «no hay» de «hay y no la
+          // ves» contaría que existe algo escondido.
+          <>
+            <p className="max-w-[46ch] whitespace-pre-line font-world text-world-lg leading-relaxed text-text">
+              {campaign.lastRecap.text}
+            </p>
+            <p className="mt-s2 font-chrome text-chrome-xs text-muted">
+              De «{campaign.lastRecap.sessionTitle}»
+            </p>
+          </>
+        ) : campaign.description ? (
           <p className="max-w-[46ch] font-world text-world-lg leading-relaxed text-text">
             {campaign.description}
           </p>
         ) : (
-          // **No se inventa un resumen.** La maqueta pinta aquí una crónica bonita; nosotros
-          // todavía no tenemos de dónde sacarla, y una tarjeta sin dato detrás es exactamente lo
-          // que `docs/04-convenciones.md` prohíbe al adoptarla.
+          // **No se inventa un resumen.** La maqueta pinta aquí una crónica bonita; una tarjeta sin
+          // dato detrás es exactamente lo que `docs/04-convenciones.md` prohíbe al adoptarla.
           <p className="max-w-[46ch] font-world text-world-base italic text-muted">
             Esta campaña no tiene todavía una descripción. Cuando se cierre una sesión con su
             crónica, este es el sitio donde se leerá.

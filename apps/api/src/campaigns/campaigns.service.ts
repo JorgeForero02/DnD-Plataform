@@ -3,6 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateCampaignInput, UpdateCampaignInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "./membership.service";
+import { canView, Viewer } from "../common/visibility";
 
 @Injectable()
 export class CampaignsService {
@@ -38,14 +39,72 @@ export class CampaignsService {
   // re-derives it here would be exactly the duplication CLAUDE.md forbids. A per-viewer count
   // is its own task, built on canView, not a side effect of a dashboard tidy-up.
   // Recorded in docs/06-pendientes.md.
-  listForUser(userId: string) {
-    return this.prisma.campaign.findMany({
-      where: { members: { some: { userId } } },
-      orderBy: { createdAt: "desc" },
-      include: {
-        members: { where: { userId }, select: { role: true } },
-        _count: { select: { members: true } },
-      },
+  /**
+   * **«Dónde se quedó»** (D-OP-17, 2026-09-05). Cada campaña trae **la crónica de su última sesión
+   * cerrada**, que es lo que convierte esta pantalla en «partidas guardadas» y no en una lista de
+   * proyectos.
+   *
+   * **Va aquí y no en una petición por campaña**: pedirla suelta serían N peticiones en la pantalla
+   * de entrada, que es exactamente donde no se pueden pagar.
+   *
+   * **Se filtra por `recapVisibility`, que es una columna desde el plan 02** — y por eso esto es una
+   * consulta y no leer un `Json` y filtrar en memoria. La crónica tiene visibilidad **propia**: una
+   * `DM_ONLY` de una sesión `PLAYERS` no viaja, y una `PLAYERS` de una sesión `DM_ONLY` **sí**,
+   * porque publicar la crónica de una sesión de preparación es legítimo y es la mitad de para qué
+   * sirve.
+   *
+   * **La última cerrada, y si esa no se ve el campo NO viaja.** No se busca una anterior: enseñar
+   * una crónica más vieja bajo el rótulo «dónde se quedó» diría que la partida se quedó donde no se
+   * quedó.
+   */
+  async listForUser(userId: string) {
+    const [campanas, user] = await Promise.all([
+      this.prisma.campaign.findMany({
+        where: { members: { some: { userId } } },
+        orderBy: { createdAt: "desc" },
+        include: {
+          members: { where: { userId }, select: { role: true } },
+          _count: { select: { members: true } },
+          sessions: {
+            where: { status: "CLOSED" },
+            orderBy: [{ endedAt: "desc" }, { createdAt: "desc" }],
+            take: 1,
+            select: { title: true, endedAt: true, recap: true, recapVisibility: true },
+          },
+        },
+      }),
+      this.prisma.user.findUnique({ where: { id: userId } }),
+    ]);
+
+    return campanas.map((campana) => {
+      const { sessions, ...resto } = campana;
+      const ultima = sessions[0];
+      // El papel del espectador es **por campaña**: se puede ser DM en una mesa y jugador en otra,
+      // y `canView` necesita el de esta.
+      const viewer: Viewer = {
+        userId,
+        role: campana.members[0]?.role ?? null,
+        isAdmin: user?.isAdmin ?? false,
+      };
+      // `createdById: ""` y `grantedUserIds: []` valen aquí por lo mismo que en `SessionsService`:
+      // una `Session` no tiene ni creador ni concesiones, así que `OWNER_DM` y `SPECIFIC_PLAYERS`
+      // sobre una crónica no seleccionan a nadie.
+      const seVe =
+        ultima?.recap != null &&
+        canView(viewer, {
+          visibility: ultima.recapVisibility,
+          createdById: "",
+          grantedUserIds: [],
+        });
+      if (!seVe) return resto;
+      return {
+        ...resto,
+        lastRecap: {
+          text: ultima.recap as string,
+          sessionTitle: ultima.title,
+          endedAt: ultima.endedAt,
+        },
+      };
     });
   }
 

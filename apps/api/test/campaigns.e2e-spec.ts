@@ -380,4 +380,91 @@ describe("Campaigns (e2e)", () => {
       campaignId2 = ""; // already deleted, nothing left for afterAll to clean up
     });
   });
+
+  describe("«dónde se quedó» viaja en el listado (D-OP-17)", () => {
+    let mesaId = "";
+    let tokenJugador = "";
+    const emailJ = `pl-dnd${Date.now()}@b.com`;
+
+    beforeAll(async () => {
+      const s = app.getHttpServer();
+      tokenJugador = (
+        await request(s)
+          .post("/auth/register")
+          .send({ email: emailJ, password: "password123", displayName: "Jugador" })
+      ).body.token;
+      mesaId = (
+        await request(s)
+          .post("/campaigns")
+          .set("Authorization", `Bearer ${tokenA}`)
+          .send({ name: "La mesa de la crónica" })
+      ).body.id;
+      const invite = (
+        await request(s)
+          .post(`/campaigns/${mesaId}/invites`)
+          .set("Authorization", `Bearer ${tokenA}`)
+      ).body.token;
+      await request(s)
+        .post(`/invites/${invite}/accept`)
+        .set("Authorization", `Bearer ${tokenJugador}`);
+    });
+
+    afterAll(async () => {
+      if (mesaId) await prisma.campaign.deleteMany({ where: { id: mesaId } });
+      await prisma.user.deleteMany({ where: { email: emailJ } });
+    });
+
+    const laMesa = async (token: string) => {
+      const r = await request(app.getHttpServer())
+        .get("/campaigns")
+        .set("Authorization", `Bearer ${token}`);
+      expect(r.status).toBe(200);
+      return (r.body as Record<string, unknown>[]).find((c) => c.id === mesaId)!;
+    };
+
+    const cerrarSesionCon = async (titulo: string, recap: string, visibilidad: string) => {
+      const s = app.getHttpServer();
+      const sesion = (
+        await request(s)
+          .post(`/campaigns/${mesaId}/sessions`)
+          .set("Authorization", `Bearer ${tokenA}`)
+          .send({ title: titulo, visibility: "PLAYERS" })
+      ).body.id;
+      await request(s)
+        .post(`/campaigns/${mesaId}/sessions/${sesion}/start`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({});
+      const cerrado = await request(s)
+        .post(`/campaigns/${mesaId}/sessions/${sesion}/close`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ recap, recapVisibility: visibilidad });
+      expect(cerrado.status).toBe(201);
+    };
+
+    it("**sin ninguna sesión cerrada, la campaña sale bien y sin el campo** — el caso que se olvida", async () => {
+      const campana = await laMesa(tokenJugador);
+      expect(campana.name).toBe("La mesa de la crónica");
+      expect("lastRecap" in campana).toBe(false);
+    });
+
+    it("cerrada una sesión con crónica PLAYERS, el jugador la lee en el listado", async () => {
+      await cerrarSesionCon("La noche del puerto", "Huyeron del puerto", "PLAYERS");
+      const campana = (await laMesa(tokenJugador)) as { lastRecap?: Record<string, unknown> };
+      expect(campana.lastRecap).toMatchObject({
+        text: "Huyeron del puerto",
+        sessionTitle: "La noche del puerto",
+      });
+    });
+
+    it("**y si la última crónica es DM_ONLY, al jugador NO le viaja nada** — ni la anterior", async () => {
+      // No se busca una crónica más vieja a propósito: enseñarla bajo el rótulo «dónde se quedó»
+      // diría que la partida se quedó donde no se quedó.
+      await cerrarSesionCon("Preparación", "Lo que el DM se guarda", "DM_ONLY");
+      const delJugador = await laMesa(tokenJugador);
+      expect("lastRecap" in delJugador).toBe(false);
+      // El DM sí la ve, que es la prueba de que la fila existe y lo que falla es el filtro.
+      const delDm = (await laMesa(tokenA)) as { lastRecap?: Record<string, unknown> };
+      expect(delDm.lastRecap).toMatchObject({ text: "Lo que el DM se guarda" });
+    });
+  });
 });

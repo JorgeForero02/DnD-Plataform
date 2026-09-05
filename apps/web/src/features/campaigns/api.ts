@@ -15,6 +15,16 @@ export interface Campaign {
   // the existence of the ones you cannot see.
   members?: { role: string }[];
   _count?: { members: number };
+  /**
+   * **Dónde se quedó la partida** (D-OP-17): la crónica de la última sesión cerrada, **ya filtrada
+   * por el servidor** con la visibilidad propia de la crónica.
+   *
+   * **Ausente y `null` no son lo mismo, y por eso esto es opcional y nunca `null`.** Ausente
+   * significa «no hay nada que enseñarte»: o la campaña no ha cerrado ninguna sesión, o su última
+   * crónica no la puedes leer. Las dos se pintan igual —no se dice cuál de las dos es—, porque
+   * distinguirlas contaría que hay una crónica escondida.
+   */
+  lastRecap?: { text: string; sessionTitle: string; endedAt: string | null };
 }
 
 export function fetchCampaigns(): Promise<Campaign[]> {

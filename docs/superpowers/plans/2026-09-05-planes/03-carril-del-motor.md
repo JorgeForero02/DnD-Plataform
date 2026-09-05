@@ -160,8 +160,9 @@ D-OP-12**, dicho explícitamente en su commit.
 | ✅ hecho | 2026-09-05 | **3.1 · D-OP-12 + P1 + P3-archivar.** Columna `grantedUserIds String[]` en `apps/api/prisma/schema.prisma:456-470`, migración `apps/api/prisma/migrations/20260905040000_game_event_granted_users/migration.sql`. `recordGameEventSchema` la acepta (`packages/shared/src/game-event.schema.ts:467-477`), `record()` la guarda y `canSee` la pasa a `canView` (`apps/api/src/game-events/game-events.service.ts:181`). **Parche de `entities.service.ts` retirado** con su comentario reescrito (`:220-241`). `audienciaDeSuceso` nueva en `apps/api/src/common/visibility.ts`. **Commit `52a461f`** |
 | ✅ hecho | 2026-09-05 | **3.2 · D-OP-11 · el oráculo de la CA.** `sePuedeApuntar` en `apps/api/src/characters/character-sheet.service.ts:246-280` (`canView` **o** combatiente de encuentro **activo**), aplicado en `resolveAttack` con **el mismo 404** que un id inventado. Comentario del método reescrito: decía «por qué no exige `canView`». **Commit `11c607c`** |
 | ✅ hecho | 2026-09-05 | **3.3 · D-OP-15.** Columna `attackRollEventId String? @unique` en `apps/api/prisma/schema.prisma:471-486`, migración `apps/api/prisma/migrations/20260905050000_damage_charged_once/migration.sql`. La escribe `RollsService.roll` por un **parámetro interno** (`apps/api/src/rolls/rolls.service.ts:69-82`), y `rollAttack` traduce el `P2002` a 409 (`apps/api/src/characters/character-sheet.service.ts:1378-1400`). **Commit `5481225`** |
-| ✅ hecho | 2026-09-05 | **3.4 · D-OP-13 · la ventaja de atacar a un ciego.** Módulo puro nuevo `apps/api/src/character-state/roll-mode/modo-contra-objetivo.ts` con la tabla del SRD **verificada en inglés**, aplicado en `resolveAttack` (`apps/api/src/characters/character-sheet.service.ts:1487-1512`). Cierra **L3** en `docs/06-pendientes.md`. **Commit `<pendiente 3.4>`** |
-| ⬜ sin empezar | — | 3.5 · D-OP-17 · «dónde se quedó» en el listado |
+| ✅ hecho | 2026-09-05 | **3.4 · D-OP-13 · la ventaja de atacar a un ciego.** Módulo puro nuevo `apps/api/src/character-state/roll-mode/modo-contra-objetivo.ts` con la tabla del SRD **verificada en inglés**, aplicado en `resolveAttack` (`apps/api/src/characters/character-sheet.service.ts:1487-1512`). Cierra **L3** en `docs/06-pendientes.md`. **Commit `0776569`** |
+| ✅ hecho | 2026-09-05 | **3.5 · D-OP-17 · «dónde se quedó».** `listForUser` trae la última sesión `CLOSED` con `take: 1` y filtra por `recapVisibility` (`apps/api/src/campaigns/campaigns.service.ts:41-110`); la pantalla la pinta (`apps/web/src/features/campaigns/Cronicas.tsx:160-175`). **Commit `<pendiente 3.5>`** |
+| ✅ | 2026-09-05 | **EL PLAN 03 ESTÁ CERRADO**: las cinco fichas, con sus cinco mutaciones probadas |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -235,6 +236,17 @@ fuente si la hubo):
   `docs/_archivo/historial-2026-09-03-y-04-sueltas.md`, que es una de las dos salidas legítimas que
   el propio fichero declara.
 
+- **3.5 · Si la última crónica no se ve, NO se busca una anterior.** Era la tentación obvia —el
+  jugador se queda sin nada— y sería peor: enseñar una crónica más vieja bajo el rótulo «dónde se
+  quedó» **diría que la partida se quedó donde no se quedó**. El plan lo zanjaba en su lista de
+  pruebas («en los dos, el listado sale bien y **sin el campo**»), así que no hubo que decidirlo.
+- **3.5 · «No hay crónica» y «hay una y no la ves» se pintan IGUAL.** La tarjeta cae en los dos
+  casos al mismo texto. Distinguirlos —un «esta crónica no es para ti»— contaría que existe algo
+  escondido, que es la fuga barata de siempre.
+- **3.5 · Se tocó `apps/web`, aunque el plan 03 se declara solo de servidor.** Sin la pantalla, la
+  ficha seguiría abierta con el servidor hecho: es el patrón que este proyecto ha cerrado en falso
+  cuatro veces. Son quince líneas en un hueco que **ya existía y prometía justo esto**.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
 <!-- hecho:
@@ -244,11 +256,18 @@ fuente si la hubo):
   `suggested-roll-mode.ts`, que responde a otra pregunta —«¿cómo tiro yo?»— y lo dice en su propio
   comentario. Lo que sigue fuera: el fallo automático de pruebas que requieren vista, porque el
   servidor no sabe si esta prueba concreta la requiere. -->
+- **Nada: el plan 03 está cerrado, con sus cinco fichas y sus cinco mutaciones.** Lo siguiente del
+  índice es el **plan 15** (`15-el-critico-y-lo-pequeno.md`), que dependía de este: `D-OP-15` ya
+  puso el índice único, así que **falta su otra mitad** —que la web mande `attackRollEventId` y que
+  `critical` suelto se pueda borrar de `rollAttackSchema`—, y el orden importa: primero la web
+  manda, después se quita.
+
+<!-- lo que decía antes de cerrarse:
 - **3.5 · D-OP-17, «dónde se quedó».** `campaigns.service.ts#listForUser` devuelve hoy rol y número
   de miembros; hay que añadir la crónica de la última sesión `CLOSED` **filtrada por
   `recapVisibility`** —que desde el plan 02 es columna, así que es una consulta—. **El caso que se
   olvida:** una campaña **sin ninguna sesión cerrada**, y otra cuya crónica el jugador no puede ver.
-  En los dos, el listado sale bien y **sin el campo**.
+  En los dos, el listado sale bien y **sin el campo**. -->
 
 <!-- lo que decía este bloque antes de hacerse:
 - **3.3 · D-OP-15, `attackRollEventId` a columna con índice único.** Hoy el campo **solo es

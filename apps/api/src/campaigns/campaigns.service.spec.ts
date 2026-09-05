@@ -15,6 +15,7 @@ describe("CampaignsService", () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    user: { findUnique: jest.fn() },
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), removeMember: jest.fn() };
   const events = { emit: jest.fn() };
@@ -136,6 +137,104 @@ describe("CampaignsService", () => {
         actorId: "u1",
         targetUserId: "u2",
       });
+    });
+  });
+
+  describe("«dónde se quedó» en el listado (D-OP-17)", () => {
+    // La pantalla de crónicas quiere decir, por cada campaña, la crónica de su última sesión cerrada
+    // — es lo que la convierte en «partidas guardadas» y no en una lista de proyectos.
+
+    function conUltimaSesion(sessions: unknown[], role = "PLAYER") {
+      prisma.user.findUnique.mockResolvedValue({ id: "p1", isAdmin: false });
+      prisma.campaign.findMany.mockResolvedValue([
+        {
+          id: "c1",
+          name: "La costa",
+          description: null,
+          members: [{ role }],
+          _count: { members: 3 },
+          sessions,
+        },
+      ]);
+    }
+
+    it("trae la crónica cuando el jugador puede leerla", async () => {
+      conUltimaSesion([
+        {
+          title: "La noche del puerto",
+          endedAt: new Date("2026-09-04T22:00:00Z"),
+          recap: "Huyeron del puerto",
+          recapVisibility: "PLAYERS",
+        },
+      ]);
+      const [campana] = (await service.listForUser("p1")) as Record<string, unknown>[];
+      expect(campana.lastRecap).toMatchObject({
+        text: "Huyeron del puerto",
+        sessionTitle: "La noche del puerto",
+      });
+      // Y `sessions` no se filtra hacia fuera: era el vehículo de la consulta, no parte de la
+      // respuesta.
+      expect(campana).not.toHaveProperty("sessions");
+    });
+
+    it("**una crónica que el jugador no puede ver NO viaja, ni vacía**", async () => {
+      conUltimaSesion([
+        {
+          title: "Preparación",
+          endedAt: new Date(),
+          recap: "Lo que el DM se guarda",
+          recapVisibility: "DM_ONLY",
+        },
+      ]);
+      const [campana] = (await service.listForUser("p1")) as Record<string, unknown>[];
+      expect("lastRecap" in campana).toBe(false);
+    });
+
+    it("y el DM de esa misma mesa sí la ve", async () => {
+      conUltimaSesion(
+        [
+          {
+            title: "Preparación",
+            endedAt: new Date(),
+            recap: "Lo que el DM se guarda",
+            recapVisibility: "DM_ONLY",
+          },
+        ],
+        "DM",
+      );
+      const [campana] = (await service.listForUser("p1")) as Record<string, unknown>[];
+      expect(campana.lastRecap).toMatchObject({ text: "Lo que el DM se guarda" });
+    });
+
+    it("**una campaña SIN ninguna sesión cerrada sale bien y sin el campo** — el caso que se olvida", async () => {
+      conUltimaSesion([]);
+      const [campana] = (await service.listForUser("p1")) as Record<string, unknown>[];
+      expect("lastRecap" in campana).toBe(false);
+      // Y lo demás sigue entero: el listado no se rompe por no tener crónica.
+      expect(campana).toMatchObject({ id: "c1", name: "La costa", _count: { members: 3 } });
+    });
+
+    it("una sesión cerrada SIN crónica escrita tampoco inventa nada", async () => {
+      conUltimaSesion([
+        { title: "Sin notas", endedAt: new Date(), recap: null, recapVisibility: "PLAYERS" },
+      ]);
+      const [campana] = (await service.listForUser("p1")) as Record<string, unknown>[];
+      expect("lastRecap" in campana).toBe(false);
+    });
+
+    it("**la crónica de una sesión DM_ONLY sí llega si la crónica es PLAYERS**", async () => {
+      // Es la mitad de para qué sirve que la visibilidad de la crónica sea propia: publicar lo que
+      // pasó en una sesión de preparación es legítimo.
+      conUltimaSesion([
+        {
+          title: "Preparación",
+          endedAt: new Date(),
+          recap: "Lo que la mesa sí puede leer",
+          recapVisibility: "PLAYERS",
+        },
+      ]);
+      const [campana] = (await service.listForUser("p1")) as Record<string, unknown>[];
+      expect(campana.lastRecap).toMatchObject({ text: "Lo que la mesa sí puede leer" });
     });
   });
 });

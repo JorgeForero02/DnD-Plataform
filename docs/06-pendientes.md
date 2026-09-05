@@ -172,7 +172,24 @@ en el registro.
 deuda con un barrido citado dentro **envejece igual que el código**, y esta llevaba al menos una
 tanda mintiendo con pruebas aparentes.
 
-## P3 · «Dónde se quedó» no viaja en el listado de campañas (2026-09-04, B3)
+## ~~P3 · «Dónde se quedó» no viaja en el listado de campañas~~ — CERRADA (2026-09-05, plan 03 · D-OP-17)
+
+> **Cerrada con una consulta, que es lo que el plan 02 hizo posible.** `listForUser`
+> (`apps/api/src/campaigns/campaigns.service.ts:41-110`) trae la última sesión `CLOSED` de cada
+> campaña con `take: 1` —una consulta, no N— y filtra su crónica por **`recapVisibility`**, que es
+> columna desde el plan 02. La pantalla la pinta
+> (`apps/web/src/features/campaigns/Cronicas.tsx:160-175`) y cae en la descripción cuando no viaja.
+>
+> **La última cerrada, y si esa no se ve el campo NO viaja: no se busca una anterior.** Enseñar una
+> crónica más vieja bajo el rótulo «dónde se quedó» diría que la partida se quedó donde no se quedó.
+> Y **«no hay» y «hay y no la ves» se pintan igual** a propósito: distinguirlas contaría que existe
+> algo escondido.
+>
+> Probado con los tres casos, **incluido el que se olvida** —una campaña sin ninguna sesión
+> cerrada—, y por mutación: sin `canView`, la crónica `DM_ONLY` se le cuela al jugador y el e2e se
+> pone rojo. Texto original abajo.
+
+
 
 La pantalla de crónicas quiere decir, por cada campaña, **la crónica de su última sesión cerrada**
 — es lo que la convierte en «partidas guardadas» y no en una lista de proyectos.

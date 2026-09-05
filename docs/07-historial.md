@@ -23,6 +23,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-hasta-2026-09-02.md`](./_archivo/historial-hasta-2026-09-02.md) | Todo el 2026-09-02 —la fase 2A entera, la ronda de interfaz, la primera puesta en producción— y **las entradas por tarea del 2026-09-03** (2B, 2C y 2D, tarea a tarea) |
 > | [`_archivo/historial-2026-09-04-por-tarea.md`](./_archivo/historial-2026-09-04-por-tarea.md) | **El 2026-09-04 se cerraron ocho tandas con sus ocho revisiones**, y sus entradas por tarea no caben aquí. Tres de ellas viven ahí: 2.5.2, B1.2 y la de `ENTITY_REVEALED` + archivar |
 > | [`_archivo/historial-2026-09-04-tandas.md`](./_archivo/historial-2026-09-04-tandas.md) | Las tandas por tarea del 2026-09-03 y 04 —2.5.3, 2.5.4, 2.5.5, 2.5.6, B4 y B5—, movidas enteras el 2026-09-05 |
+> | [`_archivo/historial-2026-09-04-reseno-de-la-mesa.md`](./_archivo/historial-2026-09-04-reseno-de-la-mesa.md) | **El reseño de la mesa del 2026-09-04** —la cabina y las mecánicas que no tenían pantalla—, movido entero el 2026-09-05 (tercer corte de la noche) |
 > | [`_archivo/historial-2026-09-03-y-04-sueltas.md`](./_archivo/historial-2026-09-03-y-04-sueltas.md) | **La comprobación en producción de 2D** y **la auditoría de la documentación del 2026-09-04**, movidas enteras el 2026-09-05 (segundo corte de la noche: las cinco entradas del plan 03 dejaron el fichero en 413 de 400) |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -60,6 +61,37 @@ jugador nombrado; copiar la visibilidad tal cual en el archivar tumba el del due
 **Cómo revertirlo.** `git revert` del commit y una migración con
 `ALTER TABLE "GameEvent" DROP COLUMN "grantedUserIds"`. Vuelve el parche de `DM_ONLY`, que era la
 etiqueta honesta de lo que pasaba.
+
+---
+
+## «Dónde se quedó» deja de ser una promesa (2026-09-05, plan 03 · D-OP-17)
+
+**Qué.** La pantalla de entrada pinta, por cada campaña, **la crónica de su última sesión cerrada**
+— es lo que la convierte en «partidas guardadas» y no en una lista de proyectos. Hasta hoy ese hueco
+enseñaba la descripción de la campaña y una frase que **prometía esto mismo**.
+
+**Es una consulta, y eso lo hizo posible el plan 02.** `Session.recap` y `recapVisibility` son
+columnas desde esta misma noche, así que filtrar por visibilidad ya no es leer un `Json` y decidir
+en memoria. Va en el listado y no en una petición por campaña porque lo segundo serían **N
+peticiones en la pantalla de entrada**, que es donde no se pueden pagar.
+
+**Tres decisiones que se declaran, porque las tres se pueden leer al revés:**
+
+- **La última cerrada, y si esa no se ve, el campo no viaja.** No se busca una crónica anterior:
+  enseñarla bajo el rótulo «dónde se quedó» diría que la partida se quedó donde no se quedó.
+- **«No hay crónica» y «hay una y no la ves» se pintan igual.** Distinguirlas contaría que existe
+  algo escondido.
+- **Una crónica `PLAYERS` de una sesión `DM_ONLY` sí viaja.** Publicar lo que pasó en una sesión de
+  preparación es legítimo, y es la mitad de para qué sirve que la crónica tenga visibilidad propia.
+
+**Cómo se comprobó.** Los tres casos, **incluido el que se olvida** —una campaña sin ninguna sesión
+cerrada, que tiene que salir bien y sin el campo—, en unitaria y en Postgres real; la pantalla en
+RTL; y el recorrido entero en navegador: se sella durante la partida, se cierra con la crónica que
+sale de esos sellos, y al volver a la entrada la partida dice por dónde iba. Mutación: sin
+`canView`, la crónica `DM_ONLY` se le cuela al jugador.
+
+**Cómo revertirlo.** `git revert` del commit: el listado vuelve a traer solo rol y número de
+miembros, y la tarjeta a la descripción. No hay migración.
 
 ---
 
@@ -320,58 +352,3 @@ tache lleva desde ahora **la prueba de cuándo**, no solo la de qué.
 `4c7c3a2` llevan migración —una columna de enum cada uno—; los valores de un enum de PostgreSQL **se
 añaden y no se quitan**, así que revertir el código deja el valor huérfano en la base, que es
 inofensivo.
-
-## El reseño de la mesa: la cabina y las mecánicas que no tenían pantalla (2026-09-04)
-
-**Qué.** Dos entregas del mismo día contra la auditoría de la mesa: **el armazón** y **el §8**.
-
-**El armazón.** `SesionPage` deja `AppShell` y `PageHeader`: la mesa ocupa la ventana
-(`flex h-screen flex-col overflow-hidden`), con **scroll por panel** y `min-h-0` en todos los
-ancestros —sin él un hijo de flex/grid no encoge por debajo de su contenido y el `overflow-y-auto`
-**no se activa jamás**, que era el defecto—. `ui/Dialog` pasa de cuadro centrado a **cajón lateral**
-(26/40/58 rem, variante `pergamino`, ranuras de subtítulo y acciones), que heredan sus 24 usos.
-`tokens.css` gana `.scroll-quiet` —que se usaba **sin existir**—, `.capitular` y los tres
-`@keyframes`. `MesaDeSesion.tsx` baja de **992 líneas a un compositor de ~150**, con las piezas
-repartidas en `elenco/`, `hilo/`, `dm/` y `taller/` para que seis carriles no compartieran fichero.
-
-**Las mecánicas sin pantalla (§8): diez conectadas, nueve jugadas enteras en el navegador.**
-Reglas construidas, probadas y desplegadas que **ninguna pantalla podía disparar**:
-
-- **Tipo de daño y su traza** (2.5.1): `changeHp` aceptaba `damageType` y las dos pantallas que
-  cambian PG mandaban `{ delta }`, así que las resistencias **no reducían nada jamás**. **Arreglada
-  UNA de las dos: la hoja.** El ±5 del elenco sigue sin tipo, así que **el dragón resistente al
-  fuego todavía no se cobra desde la mesa** (ficha **C6-5**).
-- **El daño atado a su tirada** (2.5.4), **«Revelar» como botón**, **marcas, conjuntos y señales**
-  (cinco rutas huérfanas desde 2A), **sintonización**, **descanso interrumpido**, **statblocks
-  propios** (crear, editar y borrar), **`useSetHp`** en la corrección exacta de la hoja, y
-  **`lastFiredAt`**. `tempHp` de un PNJ queda pintado y **sin verificar**: nada los concede (**C6-4**).
-- **Se retiran cuatro disparadores de la paleta**: `ENTITY_COMMENTED`, `DM_EXECUTED`,
-  `ENTITY_ATTACKED` y `MEMBER_JOINED` se ofrecían y `game-event-triggers.ts` no tiene `case` para
-  ninguno. El esquema compartido los conserva —quitarlos rompería reglas guardadas— y una regla
-  vieja que los use se pinta marcada y no seleccionable.
-- **Un defecto que apareció al probarlo:** la ficha de un PNJ era **inalcanzable** —el enlace del
-  bestiario aterrizaba en una pantalla que busca en `useCharacters`, que excluye a los PNJ desde
-  2D.6—, o sea que el único sitio donde las resistencias se aplican no tenía pantalla.
-
-**Por qué así.** La auditoría midió que se había **adaptado** la maqueta en vez de **sustituirla**,
-y que las desviaciones estaban escritas en comentarios como si fueran acuerdos.
-
-**Lo que esto NO cierra, y hay que decirlo.** El **panel de dados está construido y no lo monta
-nadie**, así que «no hay dados en la mesa» sigue abierto. **Playwright no se ejecutó ni una vez en
-todo el día**: queda escrito `apps/web/e2e/mesa-mide.spec.ts`, el recorrido que mide lo que `jsdom`
-no ve —la página no scrollea, el hilo sí, la rejilla llega al pie, ningún panel se corta, y abrir
-un cajón no desmonta el hilo—, **sin ejecutar**. No se escribió ninguna prueba nueva: se suspendió
-a propósito para hacerlas en una sola tanda. Las que afirmaban la maquetación vieja se
-**actualizaron**, nunca se desactivaron.
-
-**Ola 3 (medida, no recordada).** Repetido el barrido del §8 sobre el árbol ensamblado: **diez de
-las quince mecánicas sin pantalla están resueltas** —`damageType` viaja desde la mesa, así que
-2.5.1 por fin se ejecuta— y **no se cayó ninguna**: los dos únicos hooks huérfanos ya lo eran antes
-de `a1d4a1d`. De las cinco restantes se cierra aquí **`ENTITY_LINKED`**: `LinksService.create`
-escribía la fila y **no emitía el suceso**, así que una regla sobre «cuando se enlacen dos fichas»
-no se disparaba jamás. Ahora enlace y suceso van **en la misma transacción**, y la visibilidad del
-suceso **no se hereda de un extremo** —un enlace revela que dos cosas tienen que ver aunque no se
-pueda abrir ninguna—: sale para jugadores solo si las dos fichas ya las ve la mesa.
-
-**Cómo revertir.** `git revert` de los merges de carril y del armazón (`a1d4a1d`). Nada de esto
-toca `packages/shared` y no hay migración; el suceso del enlace es `apps/api` y se revierte solo.

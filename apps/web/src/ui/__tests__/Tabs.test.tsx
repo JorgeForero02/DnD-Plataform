@@ -72,4 +72,33 @@ describe("Tabs", () => {
     rerender(<Tabs items={ITEMS} active={active} onChange={onChange} />);
     expect(screen.getByText("Contenido de sesiones")).toBeInTheDocument();
   });
+  // Ola 2 (2026-09-04) — el icono se pinta en LAS DOS disposiciones. Hasta hoy `Tabs` solo lo
+  // renderizaba con `layout="sidebar"`, y el taller del DM usa la tira con tres iconos: sus tres
+  // solapas salian sin dibujo y uno de los SVG no llegaba nunca al documento. Quita el
+  // `{item.icon && ...}` de `tabButton` y estas dos fallan.
+  it("draws the icon in the strip layout, not only in the sidebar", () => {
+    const conIcono = [
+      {
+        id: "escribir",
+        label: "Escribir ficha",
+        icon: <svg data-testid="dibujo-escribir" />,
+        content: <p>Formulario</p>,
+      },
+      ...ITEMS,
+    ];
+    render(<Tabs items={conIcono} />);
+    expect(screen.getByTestId("dibujo-escribir")).toBeInTheDocument();
+    // Sigue siendo decorativo: el nombre accesible de la pestana es su rotulo y nada mas, asi
+    // que una busqueda por nombre no tiene que conocer el dibujo.
+    expect(screen.getByRole("tab", { name: "Escribir ficha" })).toBeInTheDocument();
+  });
+
+  it("keeps drawing the icon in the sidebar layout", () => {
+    const conIcono = [
+      { id: "a", label: "Mundo", icon: <svg data-testid="dibujo-mundo" />, content: <p>A</p> },
+      ...ITEMS,
+    ];
+    render(<Tabs items={conIcono} layout="sidebar" />);
+    expect(screen.getByTestId("dibujo-mundo")).toBeInTheDocument();
+  });
 });

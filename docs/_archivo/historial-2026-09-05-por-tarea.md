@@ -1,6 +1,6 @@
 # Historial archivado — el detalle por tarea del 2026-09-05 (planes 03 y 15)
 
-**Movidas enteras el 2026-09-06**, cuando el fichero llegó a 997 de sus 1000 líneas y la entrada del
+**Movidas enteras el 2026-09-05**, cuando el fichero llegó a 997 de sus 1000 líneas y la entrada del
 día no cabía. **Ninguna se ha reescrito ni resumido**: están tal y como se escribieron, que es la
 regla del archivo — *«se mueve entera, y el archivo es tan cierto como era el día que se escribió»*.
 
@@ -9,7 +9,7 @@ entrega** y se archiva **el detalle por tarea**. Estas son justo eso: una entrad
 planes 03 (el carril del motor) y 15 (el crítico y lo pequeño), que se cerraron el 2026-09-05. Su
 hito se queda en `docs/07-historial.md`, con el enlace a este fichero.
 
-**No se archivaron las entradas del 2026-09-06** aunque sean más recientes: son de la tanda que
+**No se archivaron las entradas del 2026-09-05** aunque sean más recientes: son de la tanda que
 todavía se estaba entregando esa madrugada, y archivar lo que aún se está haciendo deja el historial
 contando una noche a la que le faltan capítulos.
 

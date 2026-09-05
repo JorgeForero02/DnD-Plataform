@@ -148,10 +148,10 @@ navegador abierto para mirar los iconos movidos, y las tres fichas anotadas en e
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-06 | **7.1 · Los iconos.** Prueba nueva `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`. Consolidados a `ui/Iconos.tsx`: el escudo de `bestiario` y el sol, la luna, la mochila y la lupa de `apps/web/src/features/sessions/iconos.tsx`. El escudo de `apps/web/src/features/campaign-items/iconos.tsx:59` deja de exportarse; `inventory/IconoMochila` pasa a `IconoLlevado`; el «más» de `campaigns/iconosDeSeccion.tsx` viene de `ui`. **Commit `dc4d6aa`** |
-| ✅ hecho | 2026-09-06 | **7.2 · El vocabulario del daño.** Módulo nuevo `apps/web/src/dominio/dano.ts` con las **dos formas**; las cuatro pantallas importan de ahí. Carpeta `src/dominio/` declarada en `docs/01-arquitectura.md`. **Commit `83cee63`** |
-| ✅ hecho | 2026-09-06 | **7.3 · `type: tipo` (I16).** Suceso `ENTITY_RETYPED` (`packages/shared/src/game-event.schema.ts`, migración `apps/api/prisma/migrations/20260906010000_entity_retyped_event/`), emitido en `apps/api/src/entities/entities.service.ts:184-215`. La confirmación va en **los chips del taller** (`apps/web/src/features/sessions/taller/EscribirFicha.tsx`), **no en el editor**. **Commit `83cee63`** |
-| ✅ | 2026-09-06 | **EL PLAN 07 ESTÁ CERRADO**: las tres, con sus mutaciones |
+| ✅ hecho | 2026-09-05 | **7.1 · Los iconos.** Prueba nueva `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`. Consolidados a `ui/Iconos.tsx`: el escudo de `bestiario` y el sol, la luna, la mochila y la lupa de `apps/web/src/features/sessions/iconos.tsx`. El escudo de `apps/web/src/features/campaign-items/iconos.tsx:59` deja de exportarse; `inventory/IconoMochila` pasa a `IconoLlevado`; el «más» de `campaigns/iconosDeSeccion.tsx` viene de `ui`. **Commit `dc4d6aa`** |
+| ✅ hecho | 2026-09-05 | **7.2 · El vocabulario del daño.** Módulo nuevo `apps/web/src/dominio/dano.ts` con las **dos formas**; las cuatro pantallas importan de ahí. Carpeta `src/dominio/` declarada en `docs/01-arquitectura.md`. **Commit `83cee63`** |
+| ✅ hecho | 2026-09-05 | **7.3 · `type: tipo` (I16).** Suceso `ENTITY_RETYPED` (`packages/shared/src/game-event.schema.ts`, migración `apps/api/prisma/migrations/20260906010000_entity_retyped_event/`), emitido en `apps/api/src/entities/entities.service.ts:184-215`. La confirmación va en **los chips del taller** (`apps/web/src/features/sessions/taller/EscribirFicha.tsx`), **no en el editor**. **Commit `83cee63`** |
+| ✅ | 2026-09-05 | **EL PLAN 07 ESTÁ CERRADO**: las tres, con sus mutaciones |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 

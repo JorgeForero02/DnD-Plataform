@@ -2,8 +2,10 @@
 
 **Solo fichas abiertas.** Las cerradas se archivan: las de antes del 2026-09-02 en
 [`_archivo/pendientes-cerrados-hasta-2026-09-02.md`](./_archivo/pendientes-cerrados-hasta-2026-09-02.md)
-y las que este documento seguía arrastrando tachadas en
-[`_archivo/pendientes-cerrados-hasta-2026-09-03.md`](./_archivo/pendientes-cerrados-hasta-2026-09-03.md).
+las que este documento seguía arrastrando tachadas en
+[`_archivo/pendientes-cerrados-hasta-2026-09-03.md`](./_archivo/pendientes-cerrados-hasta-2026-09-03.md),
+y las **37** que cerraron los quince planes de la noche del 2026-09-05 en
+[`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -23,56 +25,45 @@ es lo que evita volver a creérsela.
 >   quien lee.
 > - **Un identificador no se recicla** cuando su ficha se cierra o se archiva. Reutilizarlo
 >   rompe las citas de los documentos que ya lo nombraban.
+>
+> **Y una colisión que NO se deshace, porque deshacerla haría más daño: `D3`.** Nombra **cinco**
+> cosas distintas, repartidas por documentos fechados que no se reescriben. Lo que significa, según
+> dónde lo leas:
+>
+> | Dónde | Qué es |
+> |---|---|
+> | `docs/decisiones.md` y el plan 05 | **El color de cada personaje** — decisión del autor, aplicada |
+> | El plan 15 y la auditoría de la cola larga | **La API no tiene endpoint de salud** — cerrada |
+> | Este documento, más abajo | **Una invitación no se puede listar ni revocar** — la cerró el plan 11, que la llamó `D3b` |
+> | `superpowers/plans/2026-09-02-plan-interfaz-y-contenido.md` | **El alcance de la línea de tiempo** |
+> | `superpowers/specs/2026-09-02-auditoria-interfaz.md` | **«Ningún elemento memorable»** |
+>
+> **Se declara en vez de renumerarse** porque cuatro de las cinco viven en registros fechados, y
+> reescribir una cita de un documento fechado rompe justo lo que el criterio de arriba protege. Si
+> hace falta nombrar una sin ambigüedad, se dice **con su documento delante**: «la D3 del plan 15»,
+> no «D3».
 
-> ## La copia de la base está rota — **y el autor decide que puede esperar**
+> ## La copia de seguridad de esta base: DECIDIDO QUE NO, y no se vuelve a plantear
 >
-> **Decisión del autor, 2026-09-02:** *«no hace falta la copia de seguridad en este proyecto…
-> de momento no hay datos que guardar, solo datos de prueba»*. Se acata y se anota **con su
-> fecha de caducidad**: la semana que viene hay pruebas de juego con el DM, y a partir de ahí
-> deja de haber solo datos de prueba.
+> **Decisión del autor, reafirmada el 2026-09-05, y SIN fecha de caducidad.** Sus palabras: *«no
+> quiero copia de seguridad de la base de datos de este proyecto. Sé que es importante, pero
+> estamos en una etapa muy verde de pruebas; las pruebas las hacen agentes y yo moviendo una o dos
+> cosas. **No hay usuarios, no hay campañas**, esto ni siquiera es para vender a corto plazo»*.
 >
-> **Lo que se encontró, para que no haya que volver a investigarlo:** el bloque de D&D de
-> `vps1new:/root/scripts/backup-coolify.sh` perdió las **comillas simples**, así que
-> `$POSTGRES_PASSWORD` y `$POSTGRES_USER` se expanden en el *host* —a vacío— en vez de dentro
-> del contenedor. `sh -c PGPASSWORD=` ejecuta una asignación, **sale con código 0**, y el `if`
-> lo da por bueno: registraría `dnd-pg OK` con `FAILED=0` sobre un fichero vacío.
+> **No se propone, no se arregla y no se menciona** — ni antes de desplegar, ni antes de una
+> migración, ni como nota al margen de otra cosa. La premisa que hace importante una copia —que
+> haya algo que perder— **no se cumple**, y está evaluada, no ignorada.
 >
-> **Medido contra el contenedor real:** la forma rota produce **20 bytes** (gzip de la nada) y
-> la correcta **6305**.
+> **Esta ficha llevaba escrita su propia caducidad** —*«antes de la primera partida real, esto tiene
+> que estar hecho y probado»*— y era ella la que resucitaba el asunto en cada lectura: el 2026-09-05
+> lo sacaron tres veces en una sola conversación, citándola. **La caducidad se retira**: quien lea
+> esto no tiene que avisar de nada. Cambia el día que haya usuarios o campañas de verdad, **y ese
+> día lo dice el autor**.
 >
-> **El arreglo, para cuando toque** (una línea, y hay que hacerlo en el servidor porque este
-> equipo tiene bloqueada la edición de ficheros de producción por SSH):
->
-> ```bash
-> # /root/scripts/backup-coolify.sh, bloque "3c. D&D Platform postgres":
-> docker exec "$DND" sh -c 'PGPASSWORD=$POSTGRES_PASSWORD pg_dumpall -U $POSTGRES_USER' 2>>"$LOG" | gzip > "$DEST/dnd-pg.sql.gz"
-> bash -n /root/scripts/backup-coolify.sh && /root/scripts/backup-coolify.sh
-> ```
->
-> Copia previa del script en `/root/scripts/backup-coolify.sh.bak.antes-dnd`. **Y lo que de
-> verdad lo cierra no es el arreglo, es una restauración probada** en un contenedor desechable
-> comparando conteos de filas — ojo con la trampa documentada: `pg_dumpall` no crea la base por
-> defecto ni actualiza la contraseña de un rol que ya existe.
->
-> **Antes de la primera partida real, esto tiene que estar hecho y probado** — y «real» se aclaró
-> el 2026-09-03: **no es la partida de prueba con agentes** que cierra la fase 2, que corre sobre un
-> despliegue de desarrollo con datos desechables. Es el día que la mesa del autor juegue de verdad,
-> que el propio autor sitúa **cuando haya tiempo real** (fase 4). Hasta entonces esto no bloquea
-> nada; a partir de ahí, sí.
->
-> **Aviso del 2026-09-03 (noche), y va contra la premisa de la decisión:** la premisa era *«no hay
-> datos que guardar, solo datos de prueba»*, y al desplegar la fase 2D se contaron en producción
-> **una campaña, tres personajes y dos usuarios** que llevaban allí desde el 2 de septiembre. Son
-> pocos y probablemente desechables, pero **ya no son cero**, y la decisión se tomó sobre un cero.
-> Sigue sin bloquear nada por decisión del autor; lo que cambia es que ahora se sabe que hay algo
-> que perder.
->
-> **Y una trampa nueva, medida el 2026-09-03 al hacer el volcado previo del despliegue de 2D**, que
-> es exactamente la misma familia del fallo de arriba: `pg_dumpall -U postgres` **falla** porque el
-> usuario de esta base es `dnd` (`POSTGRES_USER`), y deja un fichero de **20 bytes** — el mismo
-> tamaño delator. Y `docker ps --filter name=dnd` **no encuentra nada**: los contenedores de
-> Coolify se llaman por el UUID de la aplicación. Las dos están en
-> [03-despliegue.md](./03-despliegue.md).
+> Lo medido en su momento sobre el script roto —`$POSTGRES_PASSWORD` sin comillas simples, 20 bytes
+> contra 6305— se conserva en
+> [`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md).
+> Aquí no.
 
 > ## Alineado con el código el 2026-09-05, y lo que eso enseñó
 >
@@ -94,253 +85,55 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-04** (las tandas del día: **B0** —tokens por canales y el tercer
-tema—, **2.5.1** —tipos de daño y resistencias—, **B1.1** —la mesa en la navegación—,
-**2.5.2** —iniciativa y orden de turnos— y **2.5.3** —el ataque comparado en el servidor—; y
-antes, el cierre de la fase **2D**). Las secciones
-van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
-esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
-día siguiente ya escritas debajo, y lo cazó una auditoría.
+Última revisión: **2026-09-05** (los quince planes de
+[`superpowers/plans/2026-09-05-planes/`](./superpowers/plans/2026-09-05-planes/00-INDICE.md),
+que cerraron catorce y dejaron el 12 en marcha; y el saneamiento del mismo día: 37 fichas tachadas
+archivadas, 59 fechas corregidas y la ficha de la copia de seguridad cerrada como decisión). **La
+fecha de esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres
+secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
+dentro. Las dos las cazó una auditoría, no una revisión.
 
-## ~~C2.5-2 · El crítico de la DAMAGE de `rollAttack`, atado a la tirada A MEDIAS~~ — CERRADA ENTERA (2026-09-05, planes 03 y 15)
+> **El orden de las secciones NO es fiable.** Este documento dijo durante meses que iban «de lo más
+> reciente a lo más viejo» y no es cierto: hay bloques del 2026-09-04 y del 05 incrustados en medio
+> del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
+> Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
-> **Las dos condiciones cumplidas, y en el orden que la ficha exigía.**
->
-> **(1) La web manda el `eventId` de su propia tirada de ataque** y `critical` **ya no existe en el
-> esquema** (`packages/shared/src/inventory.schema.ts`): el panel de ataque
-> (`apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`) perdió la casilla «Crítico» que el
-> jugador marcaba a mano, y en su sitio **dice lo que pasó** —«Fue un 20 natural», «No fue un 20
-> natural», o «tira primero el ataque»—. `esCriticoDesdeLaTirada` devuelve **false** sin tirada
-> citada (`apps/api/src/characters/character-sheet.service.ts:1465`), así que no queda ninguna
-> puerta por la que declarar un crítico. Es la misma regla que `resolveAttackSchema` aplicaba desde
-> R2C-2: *«eso lo decide la tirada, no quien la pide»*.
->
-> **(2) Una tirada ya cobrada no se puede volver a cobrar**, y lo impide el índice único de
-> `GameEvent.attackRollEventId` (plan 03, D-OP-15). El navegador lo comprueba de punta a punta en
-> `apps/web/e2e/inventario.spec.ts`: el segundo intento es un 409 y la pantalla lo dice en línea.
->
-> **El orden importaba y se respetó**: primero la web mandó el campo (`ede50af`), después se quitó
-> `critical`. Al revés habría una ventana en la que el crítico no funciona. Texto original abajo.
+## P2 · La mesa a 390 px reparte sus tres columnas a lo ancho (2026-09-05, paseo de uso)
 
+**Lo vio el paseo de uso con dos anchos** —1280 y 390— la noche del 2026-09-05, y **no se arregló a
+propósito**: es trabajo de maquetación, no un fallo suelto que se cierre con una línea.
 
+A 390 px la mesa reparte sus **tres columnas a lo ancho** y las **«Herramientas del DM» quedan
+cortadas**. **No hay desbordamiento de la página** —la barra horizontal no aparece—, así que no lo
+caza ninguna prueba de las que hay: es contenido que no cabe dentro de su columna, no una página que
+se sale.
 
-**2.5.4 añadió el camino correcto, sin cerrar del todo el hueco.** `rollAttackSchema` gana
-`attackRollEventId` opcional (solo-añadido, `@dnd/shared`): con él, la DAMAGE de un ataque
-duplica dados **si y solo si** ese `eventId` tiene `natural: "TWENTY"` en el registro, leído y
-comprobado contra la base (`CharacterSheetService.esCriticoDesdeLaTirada`) — exactamente el
-criterio de cierre de abajo.
+**Y no lo puede cazar `jsdom`.** Esto es posición y tamaño, o sea Playwright con medidas numéricas,
+que es la regla que este proyecto ya tiene escrita después de que un borde partido sobreviviera a la
+suite entera en verde.
 
-**Por qué sigue abierta.** Sin `attackRollEventId`, `critical` del cuerpo de la petición **sigue
-mandando**, igual que antes de esta tarea. Quitarlo de raíz habría sido un cambio de
-comportamiento silencioso para el carril que está rehaciendo `apps/web`
-(`TirarAtaqueBoton.tsx`, que hoy llama sin el campo nuevo): la frontera de 2.5.4 no incluía
-`apps/web`, y decidir por ese carril sin poder tocarlo ni probarlo habría sido peor que dejar el
-hueco escrito.
+**Cierra cuando** la mesa apile sus columnas por debajo de un umbral medido en el navegador y las
+herramientas del DM se alcancen enteras a 390 px. Va con U2, que es su vecina: la navegación
+estrecha ya se remidió en el plan 14 y **pasó**, así que lo que queda es la mesa, no el armazón.
 
-**Y hay una segunda mitad que la revisión de cierre destapó: el `eventId` se puede REUTILIZAR.**
-Nada marca una tirada de ataque como ya cobrada, así que un mismo 20 natural sirve para duplicar
-los dados de tantas tiradas de daño como se pidan. La verificación se estrechó —tiene que ser un
-`ABILITY_ROLL` del mismo personaje, en esta campaña, **y con el rótulo de ESTE ataque**, que antes
-no se miraba: un 20 en una prueba de Sigilo valía como crítico de la espada— pero «una vez» no se
-puede comprobar sin marcar el suceso, y eso es una columna nueva.
+## P2 · El bando de un combatiente no se puede elegir ni corregir desde ninguna pantalla (2026-09-05, paseo de uso)
 
-**Cierra cuando:** (1) `TirarAtaqueBoton.tsx` (o quien lo reemplace en el reseño de la mesa) mande
-`attackRollEventId` con el `roll.eventId` de su propia tirada de ATAQUE, y el `critical` suelto
-se pueda borrar de `rollAttackSchema` sin romper nada; y (2) una tirada de ataque ya cobrada no se
-pueda volver a cobrar. Hasta las dos, no es «si y solo si».
+**`sides` está en el esquema del servidor y no lo manda nadie**, así que **todos los combatientes
+entran `NEUTRAL`**. La columna existe desde el plan 02 (`41013cd`, «a combatant has a side, and it
+lives where the fight does») y **ninguna pantalla la escribe**.
 
-> **La condición (2) está CERRADA (2026-09-05, plan 03 · D-OP-15).** `GameEvent.attackRollEventId`
-> es una columna **con índice único** (`apps/api/prisma/schema.prisma:471-486`, migración
-> `apps/api/prisma/migrations/20260905050000_damage_charged_once/`), la escribe `RollsService.roll`
-> por un parámetro **interno** —no está en `createRollSchema`, porque un cliente que pudiera
-> mandarlo podría quemar el identificador de la tirada de otro— y el segundo cobro lo rechaza **la
-> base**: `CharacterSheetService.rollAttack` traduce el `P2002` a un 409 legible. Probado por
-> mutación: al borrar el índice, el e2e recibe **201** donde esperaba 409.
->
-> **Queda la condición (1)**, que es web y vive en el **plan 15**. Y el orden importa: primero la
-> web manda el campo, después se quita `critical` — al revés hay una ventana en la que el crítico
-> no funciona.
+Es el patrón que este proyecto ha cerrado en falso cinco veces: **servidor hecho, nadie que lo
+dispare = la ficha sigue abierta**.
 
-## Deuda del carril C6 — las mecánicas sin pantalla (2026-09-04)
+**Y lo que NO se hizo, que es la parte que importa:** no se inventó un valor por defecto del tipo
+«los PNJ son enemigos». Eso sería **el servidor decidiendo por el DM** — un capataz puede ser enemigo
+el jueves y aliado el viernes, y la mesa lo sabe antes que el esquema. El hueco es que falta el
+gesto, no que falte una regla.
 
-| Ficha | Qué | Por qué queda abierta |
-|---|---|---|
-| ~~**C6-1**~~ **CERRADA (2026-09-05)** — dos de los cuatro existen ahora como suceso y su gesto los escribe (`ENTITY_COMMENTED` en `comments.service.ts`, `MEMBER_JOINED` en `invites.service.ts`), con su `case` en `game-event-triggers.ts`. Los otros dos siguen retirados **con su motivo escrito**: `DM_EXECUTED` no tiene gesto en ninguna pantalla y `ENTITY_ATTACKED` apunta a una ficha del mundo cuando aquí se ataca a un `Character`. **Y la lista duplicada ya no lo está**: vive en `packages/shared/src/rules-engine.schema.ts`. Texto original: | ~~**Los cuatro disparadores del motor siguen sin `case`**: `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`, `MEMBER_JOINED` (`apps/api/src/rules-engine/game-event-triggers.ts:29-75`) | Se han **retirado de lo que el editor ofrece** (`DISPARADORES_SIN_MOTOR`, en `features/rules/vocabulario.ts`) porque una regla armada sobre ellos se guarda y no se dispara jamás, y la interfaz no puede prometer lo que el motor no cumple. Implementarlos es servidor. **Cierra cuando** el `switch` los traduzca: entonces esa lista se vacía y la paleta los recupera sola. Y **es una segunda copia** de `UNREACHABLE_TRIGGER_KINDS` (`apps/api/src/rules-engine/trace-payload.ts:109`) **por una frontera de trabajo, no por una imposibilidad**: son cuatro literales de `RuleTrigger["kind"]` y caben en `packages/shared/src`, que es donde este proyecto guarda la forma de los datos una sola vez; el carril que las escribió no tocaba ese paquete. **La mudanza a `@dnd/shared` es el cierre de esta ficha**, y hasta entonces las dos no pueden divergir en silencio sobre una regla guardada, porque el aviso de `ListaDeReglas` lo manda el servidor |
-| ~~**C6-2**~~ **CERRADA (2026-09-05, plan 15).** `aStatblock()` devuelve `visibility` (`apps/api/src/statblocks/statblocks.service.ts:185-196`) y el editor **deja de omitir el campo** al guardar: ahora manda el valor real, que llega en la lectura. **No filtra nada nuevo** —solo llegan las que `puedeVer` ya dejó pasar, y saber el nivel de algo que ya ves no revela nada—. Probado por mutación: devolviendo `DM_ONLY` fijo, dos e2e se ponen rojos. **Y la decisión hermana ya estaba tomada y medida**: `OWNER_DM` y `SPECIFIC_PLAYERS` **no se ofrecen** en el selector (`NIVELES_DE_CRIATURA`), porque un statblock no tiene concesiones y su creador es siempre el DM — los dos colapsan en `DM_ONLY`, y ofrecerlos prometería una frontera que nada aplica. Texto original: | ~~El editor de criaturas propias **no puede enseñar quién la ve al editarla**, porque no lo sabe, así que **omite el campo** en el `PUT`~~ |
-| ~~**C6-3**~~ **CERRADA (2026-09-06, plan 07).** `apps/web/src/dominio/dano.ts` expone **las dos formas** —`nombreTipoDano` y `nombreTipoDanoCorto`— y las cuatro pantallas importan de ahí. **Comparadas entrada por entrada antes de borrar nada**: `character-sheet` y `campaign-items` eran **idénticas** en las trece; `inventory` difiere en **cuatro** (`contund.`, `perf.`, `cort.`, `rayo`). **Las dos tablas son completas y ninguna deriva de la otra**: con un valor por defecto, un tipo de daño nuevo daría una corta silenciosamente larga. Probado por mutación: al «unificar» las dos formas, dos pruebas se ponen rojas. Texto original: | ~~La decisión D-OP-14 no se aplicó a ciegas: el corto existe para que la fila de inventario quepa, y unificar sin más rompería ese ancho~~ |
-| ~~**C6-5**~~ **CERRADA, comprobada el 2026-09-05**: `apps/web/src/features/sessions/elenco/PonerDano.tsx:125` manda `...(tipoDeDano ? { damageType: tipoDeDano } : {})`. Texto original: | ~~**Solo una de las dos pantallas que cambian PG manda el tipo de daño.** La hoja sí; el ±5 del elenco (`apps/web/src/features/sessions/elenco/FichaDeElenco.tsx`) sigue mandando `{ delta }` | Y **es la ruta que un DM usa en combate** —el gesto rápido sobre el retrato, no abrir la hoja entera—, así que la mecánica insignia de 2.5.1 sigue sin poder ocurrir en mitad de una partida. No es un olvido: ese fichero es de otro carril. La pieza que falta **ya está escrita y exportada**, `SelectorDeTipoDeDano` (`apps/web/src/features/character-sheet/AplicarDano.tsx`), autónoma y sin consultas dentro. **Cierra cuando** el cajón del elenco la monte en su ranura `ranuraTipoDeDano` y pase su valor a `tipoDeDano` |
-| ~~**C6-4**~~ | **CERRADA (2026-09-06)**, plan 14. El gesto existe: `apps/web/src/features/bestiario/DarTemporales.tsx`, en la fila del PNJ que está en la mesa. **No suma** —SRD 5.1: *«they can't be added together»*— y **pregunta cuál se queda** con los dos números delante, porque la regla sigue: *«you decide whether to keep the ones you have or to gain the new ones»*. Para poder cumplirla hizo falta que la decisión viajara: `setHpSchema.tempHpEleccion`, ya que el servidor se quedaba con el mayor **por su cuenta** y eso quita la elección que el SRD da. Se siguen pintando aparte y nunca sumados. |
+**Cierra cuando** el DM pueda elegir el bando **al meter a alguien en combate** y corregirlo después
+desde el orden de turnos, con su vocabulario en español escrito una sola vez, como manda la regla de
+que ningún valor de enumeración llega a la pantalla.
 
-## ~~P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha~~ — CERRADA (2026-09-04, C6)
-
-**Estaba arreglada y la ficha seguía diciendo que no.** Lo destapó el carril C6 al construir el
-botón «Revelar»: el texto de abajo afirmaba, con un barrido citado, que *«fuera del motor de reglas
-no hay un solo `type: "ENTITY_REVEALED"` en `apps/api/src`»*, y eso **ya era falso**.
-`EntitiesService.update` (`apps/api/src/entities/entities.service.ts:184-243`) compara el conjunto
-de quién veía la ficha antes con el de quién la ve después y, **si creció**, escribe el suceso con
-su `entityName` — que es exactamente el arreglo que esta ficha pedía. La visibilidad del suceso
-hereda la de la entidad, con la salvedad de `SPECIFIC_PLAYERS`, que tiene su propia ficha más
-abajo.
-
-Así que la cabecera de escena **ya se enciende sola**, y lo que faltaba no era el suceso: era el
-gesto. Hasta el 2026-09-04 la única forma de revelar era cambiar un desplegable dentro del
-formulario de edición. Ahora hay un botón que dice «Revelar a la mesa»
-(`apps/web/src/features/entities/BotonRevelar.tsx`), y con él se ve el `ENTITY_REVEALED` de verdad
-en el registro.
-
-**Se deja escrita en vez de borrada** porque el error que enseña no es el de reglas: una ficha de
-deuda con un barrido citado dentro **envejece igual que el código**, y esta llevaba al menos una
-tanda mintiendo con pruebas aparentes.
-
-## ~~P3 · «Dónde se quedó» no viaja en el listado de campañas~~ — CERRADA (2026-09-05, plan 03 · D-OP-17)
-
-> **Cerrada con una consulta, que es lo que el plan 02 hizo posible.** `listForUser`
-> (`apps/api/src/campaigns/campaigns.service.ts:41-110`) trae la última sesión `CLOSED` de cada
-> campaña con `take: 1` —una consulta, no N— y filtra su crónica por **`recapVisibility`**, que es
-> columna desde el plan 02. La pantalla la pinta
-> (`apps/web/src/features/campaigns/Cronicas.tsx:160-175`) y cae en la descripción cuando no viaja.
->
-> **La última cerrada, y si esa no se ve el campo NO viaja: no se busca una anterior.** Enseñar una
-> crónica más vieja bajo el rótulo «dónde se quedó» diría que la partida se quedó donde no se quedó.
-> Y **«no hay» y «hay y no la ves» se pintan igual** a propósito: distinguirlas contaría que existe
-> algo escondido.
->
-> Probado con los tres casos, **incluido el que se olvida** —una campaña sin ninguna sesión
-> cerrada—, y por mutación: sin `canView`, la crónica `DM_ONLY` se le cuela al jugador y el e2e se
-> pone rojo. Texto original abajo.
-
-
-
-La pantalla de crónicas quiere decir, por cada campaña, **la crónica de su última sesión cerrada**
-— es lo que la convierte en «partidas guardadas» y no en una lista de proyectos.
-
-`campaigns.service.ts#listForUser` devuelve el papel del espectador y el número de miembros, y nada
-más. Pedirla por campaña serían **N peticiones en la pantalla de entrada**, que es exactamente
-donde no se pueden pagar.
-
-**El arreglo es del carril del motor y es pequeño**: incluir en el listado el `recap` de la última
-sesión `CLOSED` de cada campaña, **filtrado por su visibilidad** —una crónica puede ser `DM_ONLY` y
-entonces el jugador no la ve—. Mientras tanto la pantalla enseña la descripción de la campaña y
-dice qué se leerá ahí cuando exista, en vez de inventarse un resumen.
-
-> **DESBLOQUEADA el 2026-09-05 (plan 02).** Ya no hace falta leer un Json ni filtrar en memoria:
-> `Session.recap` y `Session.recapVisibility` son **columnas**
-> (`apps/api/prisma/schema.prisma:288-303`, migración
-> `apps/api/prisma/migrations/20260905030000_session_recap_column/`), así que esto es una consulta.
-> **La ficha sigue abierta**: lo que falta es el `campaigns.service.ts#listForUser`, y lo cierra el
-> **plan 03**.
-
-## ~~P2 · El ataque es un oráculo sobre la CA, y se acepta con esas palabras~~ — CERRADA A MEDIAS (2026-09-05, plan 03 · D-OP-11)
-
-> **Lo que se cierra: apuntar a lo que no ves ni tienes delante.** El objetivo tiene que pasar
-> `canView` para quien ataca **o** ser combatiente de un encuentro **activo** de esta campaña
-> (`CharacterSheetService.sePuedeApuntar`, `apps/api/src/characters/character-sheet.service.ts:246-280`).
-> Si no, **404 idéntico byte a byte** al de un identificador que nadie ha creado nunca — comparado
-> con `JSON.stringify` en `apps/api/test/ataque-comparado-en-el-servidor.e2e-spec.ts`. Un 403 habría
-> confirmado que el personaje existe.
->
-> **Y el criterio de cierre del spec de 2.5.3 sigue vivo entero:** un jugador ataca a un PNJ
-> `DM_ONLY` y recibe su veredicto. Lo que hace falta ahora es que el PNJ esté **en la mesa**, que es
-> exactamente cuando alguien puede apuntarle en la ficción. El comentario del servicio que decía
-> «por qué no exige `canView`» está reescrito, no dejado mintiendo.
->
-> **Lo que NO se cierra, y se sigue aceptando con las mismas palabras:** contra un objetivo que sí
-> puedes ver, atacarlo repetidamente sigue dando su CA. Es lo que pasa en una mesa, y el SRD lo
-> respalda. Texto original abajo.
-
-
-
-**El §4 del alcance de la fase 2.5 dice «la CA de un PNJ no sale del servidor», y no sale: no
-está en la respuesta, ni en el `payload` de ningún suceso, ni en la traza, ni en un 400.** La
-revisión de cierre lo siguió campo a campo y el frente está limpio.
-
-**Lo que sí se puede es deducirla.** Viajan el total de la tirada y el veredicto, así que cada
-ataque es una comparación exacta `total >= CA` con el total conocido: con veinte o treinta
-peticiones se tiene el número. El atacante conoce su propio bono, así que ni siquiera necesita
-suerte.
-
-**Y esto se acepta, con dos matices que lo hacen soportable y que antes no existían:**
-
-1. **Queda rastro.** Desde la revisión, cada ataque escribe un `ATTACK_RESOLVED` con el objetivo y
-   el veredicto, a la visibilidad del objetivo. El DM ve quién tiró contra qué; sondear ya no es
-   invisible.
-2. **El comentario que lo justificaba era falso y se corrigió.** Decía que acotar la CA «pasa
-   igual en una mesa de verdad, cuando el DM dice "no, no le das" en voz alta». Eso es cierto para
-   un objetivo que está en la mesa y **falso justo para el caso que D-2.5-5 habilita**: sobre un
-   PNJ que el jugador no sabe que existe, en una mesa de verdad no hay tirada que hacer.
-
-**El arreglo bueno, para cuando exista la pantalla del encuentro:** exigir que el objetivo sea
-combatiente del encuentro activo de la sesión —que es lo que «está en la mesa» significa en este
-dominio, y 2.5.2 ya lo modela— o pase `canView`. No se hace ahora porque obligaría a abrir un
-encuentro para atacar, y la mesa no siempre lo hace.
-
-**Y una ampliación de C2C-9**, que la revisión midió mejor de lo que estaba escrito: del agotamiento
-se implementaban **los niveles 2, 4 y 5**. Faltaban el 1 y el 3 (desventaja, que necesita que el
-motor componga ventaja por su cuenta —hoy la elige quien tira—) y **el 6, la muerte**, que no hacía
-nada: la condición se guardaba y el personaje seguía vivo con la mitad de PG.
-
-> **Cerrado en el servidor el 2026-09-04** (tarea 2.5.5): los seis niveles calculan. El 1 y el 3
-> salen como **sugerencia** —el motor no impone el modo, lo propone con su porqué— y el 6 mata
-> derivando `deathSaves.status`. Lo que sigue abierto es la pantalla, y por eso la ficha C2C-9 de
-> arriba no está tachada.
-
-## ~~P2 · Un `GameEvent` no tiene concesiones nominales, así que `SPECIFIC_PLAYERS` no llega a nadie~~ — CERRADA (2026-09-05, plan 03 · D-OP-12)
-
-> **Cerrada con la columna, no con la tabla hermana.** `GameEvent.grantedUserIds` es un `String[]`
-> (`apps/api/prisma/schema.prisma:456-470`, migración
-> `apps/api/prisma/migrations/20260905040000_game_event_granted_users/`), y `canSee` se la pasa a
-> `canView` en vez del array vacío (`apps/api/src/game-events/game-events.service.ts:181`). Se
-> eligió columna y no tabla de unión por tres motivos medidos: el filtrado **ya ocurre en memoria**
-> tras el `findMany`, así que una tabla obligaría a un `include` para nada; el esquema ya usa
-> `String[]`; y lo que se pierde —integridad referencial— es inofensivo, porque `canView` solo
-> pregunta si el espectador está en la lista.
->
-> **Y el parche de `EntitiesService` está retirado**, con su comentario reescrito en vez de dejado
-> mintiendo (`apps/api/src/entities/entities.service.ts:220-241`). Probado por mutación: al volver a
-> `grantedUserIds: []`, el e2e del jugador nombrado se pone rojo.
->
-> Texto original abajo.
-
-
-
-**Encontrado por la revisión de cierre de `ENTITY_REVEALED`.** `GameEventsService.canSee` evalúa
-`canView` con `grantedUserIds: []` fijo — un suceso no tiene concesiones propias en el modelo—, así
-que **una fila marcada `SPECIFIC_PLAYERS` no la ve nadie salvo el DM**, ni siquiera el jugador al
-que se acaba de conceder la ficha.
-
-Mientras eso sea así, `EntitiesService.update` guarda ese caso como `DM_ONLY`, que es lo que de
-verdad ocurre. **Es una etiqueta honesta, no un arreglo**: la revelación dirigida a un jugador
-sigue sin llegarle, y su cabecera de escena no se enciende en ese caso.
-
-**El arreglo de verdad** es que `GameEvent` tenga sus propias concesiones —una tabla hermana de
-`EntityVisibilityGrant`— o que `canSee` sepa resolver las de la entidad a la que apunta. Lo
-segundo es más barato y más frágil: ata el filtro de sucesos al modelo de entidades.
-
-No bloquea nada hoy: el caso normal de la mesa es revelar a `PLAYERS`, y ese funciona.
-
-## ~~P3 · El suceso de archivar puede no llegar a su dueño~~ — CERRADA (2026-09-05, plan 03 · D-OP-12)
-
-> **Y el arreglo no fue el que la ficha suponía.** No hacía falta que «el modelo de sucesos sepa de
-> dueños ajenos»: hacía falta **traducir el nivel del personaje al par (visibilidad, nombrados) que
-> produce su misma audiencia**. `OWNER_DM` sobre una cosa significa «su dueño y el DM», y nombrar al
-> dueño en `SPECIFIC_PLAYERS` da **exactamente ese conjunto**, porque el DM lo ve todo siempre.
->
-> La traducción vive en `audienciaDeSuceso` (`apps/api/src/common/visibility.ts:104-135`), **junto a
-> `canView`**, porque es un trozo de la misma matriz y la regla que no se negocia dice que nadie la
-> reimplementa por su cuenta. La usan el archivar (`characters.service.ts:157-178`) y el revelar
-> (`entities.service.ts:232-241`). Probado por mutación: al copiar la visibilidad tal cual, el e2e
-> del dueño se pone rojo.
->
-> Texto original abajo.
-
-
-
-`CHARACTER_ARCHIVED` hereda la visibilidad del personaje, pero `game-events.service.ts` resuelve
-`OWNER_DM` contra el **actor** del suceso, no contra el dueño del personaje. Si el DM archiva un
-personaje `OWNER_DM` de un jugador, **el jugador no ve que le archivaron el suyo**.
-
-Va de menos a menos —no es una fuga— pero contradice «cada uno deja su rastro en la línea de
-tiempo». Misma familia que la P2 de arriba: el modelo de sucesos no sabe de dueños ajenos.
 
 ## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 
@@ -400,7 +193,7 @@ trae, y el hueco está declarado en
 ## Dejado por la segunda tanda de la ronda de interfaz (2026-09-02, madrugada)
 
 - ~~**El arrastre del editor de reglas no está probado en un navegador, y puede que no funcione.**~~
-  **CERRADA (2026-09-06), remedida en el navegador** — plan 14, punto 14.1. La medición está en
+  **CERRADA (2026-09-05), remedida en el navegador** — plan 14, punto 14.1. La medición está en
   `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` y **repite el experimento original**, no uno
   parecido: el mismo `<div draggable>` trivial, dentro del cajón y fuera, comparados. El resultado,
   con su fecha: **`dragstart` FUERA: SÍ · `dragstart` DENTRO del cajón: SÍ.** Y el arrastre real,
@@ -506,7 +299,6 @@ son decisiones tomadas a conciencia, no olvidos.
 | **I2** | **Dos armas del SRD no están: la red y la cerbatana** | Ninguna cabe en la forma: la red no hace daño y la cerbatana hace «1» fijo, no un dado. Modelarlas exige que `damageDice` admita un daño plano o nulo, que es un cambio de forma en `packages/shared`. Declarado en la cabecera de `weapons.ts` para que no parezca un olvido |
 | **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
 | **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
-| ~~**I5**~~ **CERRADA (2026-09-05)**: `ITEM_MOVED` lleva `from`/`to` con `EQUIPPED`/`CARRIED`/`STORED`, más `slot` y `attuned` (`game-event.schema.ts:350`), y lo escribe `inventory.service.ts:413`. Texto original: | ~~**Equipar y desequipar no dejan rastro en la línea de tiempo**~~ | El dinero sí (`MONEY_CHANGED`, tipo propio desde 2B). Ponerse un objeto que sube la CA en mitad de una sesión es exactamente el tipo de cambio que el DM querría ver en el log al repasar. Es un tipo de suceso nuevo y una llamada; barato, y no entró por alcance |
 | **I6** | **Las competencias de armadura no producen aviso todavía** | El catálogo ya las tiene en claves de máquina (`light`, `medium`, `heavy`, `shield`) desde 2B, y el SRD dice que llevar armadura sin competencia da desventaja en todo lo de Fuerza y Destreza y **prohíbe lanzar conjuros**. El motor ya sabe emitir avisos y el de armas ya existe (`attack_not_proficient`): falta el de armadura, que es el mismo mecanismo |
 | **I7** | **El tabú del druida se perdió al pasar las competencias a claves** | El SRD dice «ligera, media y escudos, **no metálicos**». Eso no es una competencia menos —un druida *sabe* usar una cota de escamas, pero no quiere— y modelarlo como competencia le negaría una armadura que la regla sí permite. Hoy vive en un comentario de `classes.ts`; su sitio es el texto de la aptitud, cuando exista dónde ponerlo |
 | **I9** | **El conteo de unitarias del bloque de estado es una cota inferior, no lo que imprime el corredor** | `scripts/update-estado.mjs` cuenta **declaraciones**, y un bloque `it.each` declara una y ejecuta varias: hay más de cuarenta, así que la cifra va varios cientos por debajo de la real. El comentario del script decía «nada aquí usa `.each`» e **invitaba a comprobarlo con un grep**; el grep lo desmiente. Corregido el texto y ampliada la expresión regular para que al menos cuente el bloque, pero **la cifra sigue sin ser la del corredor**. El arreglo de verdad es leer los informes de `vitest`/`jest` (`--reporter=json`) en vez de contar líneas, y cuesta que `check:estado` deje de ser barato — que es justo por lo que está donde está en `pnpm verify`. Lo encontró la auditoría de documentación de 2B |
@@ -588,7 +380,6 @@ traza). Lo demás queda colocado, no olvidado.
 |---|---|---|
 | **L1** | **Niveles de luz** (brillante / tenue / oscuridad) y fuentes de luz | **Fase 3**: sin posiciones no hay «qué hay iluminado desde aquí». Se puede escribir la regla, no resolverla |
 | **L2** | **Arco y radio de visión**, y que el DM restrinja la visión de alguien | **Fase 3**, por lo mismo: un arco necesita origen y dirección |
-| ~~**L3**~~ **CERRADA (2026-09-05, plan 03 · D-OP-13).** `blinded` calcula sus **dos** mitades: la desventaja de quien la tiene desde 2.5.5 (`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts:81`) y **la ventaja de quien le ataca** desde hoy (`apps/api/src/character-state/roll-mode/modo-contra-objetivo.ts`), aplicada en el camino del ataque. Texto original: | ~~**`blinded` no calcula nada.** Se guarda y se enseña, como los rasgos raciales sin efecto numérico~~ | ~~**2C**, con el resto de la automatización de condiciones~~ |
 | **L4** | **La visión NO es `canView`, y esto es una invariante** | `canView` responde «¿este **jugador** puede leer este registro?»; la visión, «¿qué percibe este **personaje** en la ficción?». Confundirlas deja a un personaje cegado sin acceso a sus propias notas, o convierte una ceguera de ficción en un permiso que filtra por el camino que protege los secretos. **Cuando llegue el tablero**, «el jugador no ve esta ficha en el mapa» sí es autorización y va por `canView` sobre la ficha o la escena — un motor de iluminación que solo oscurezca en el navegador algo que el servidor ya mandó **no es niebla de guerra, es un filtro de CSS sobre un secreto** |
 
 ## Cabos sueltos de 2A.6, 2A.7, 2A.8 y 2A.12 (2026-09-02)
@@ -604,7 +395,6 @@ Los deja la implementacion **a proposito y dichos**, en vez de inventar el engan
 
 | | Que | Por que importa |
 |---|---|---|
-| **N1** | **Dos tipos de aviso existen en el contrato y nada los emite**: `SESSION_SCHEDULED` y `COMMENT_ADDED` | Eran cinco. Los otros tres se cerraron el 2026-09-02: `SESSION_STARTED` (`sessions.service.ts`), y `RULE_PROPOSAL` y `ENTITY_REVEALED` (`rules-engine.service.ts`) |
 | **N2** | **`recordEntityOpened` esta implementado y NO esta conectado** al modulo de entidades | Es el suceso `ENTITY_OPENED` que el motor de reglas escucha (hueco **H3**), y ya se escribe con visibilidad `DM_ONLY` como se decidio. Conectarlo toca `entities`, que estaba fuera de la frontera de esa tarea. **Y con el va una obligacion que no se puede olvidar**: la interfaz tiene que avisar al jugador de que abrir una ficha puede disparar reglas — registrar quien abre que es vigilancia si nadie lo dice |
 | **N3** | **Los dos e2e nuevos declaran su propio `TestAppModule`** que reproduce la composicion de `app.module.ts` | Es una segunda copia del mismo hecho, y dos copias derivan — el problema exacto que este proyecto lleva todo el dia evitando. Nacio de una frontera de ficheros necesaria (el agente no podia tocar `app.module.ts`), y **se corrige en cuanto los modulos estan cableados**: pasan a importar `AppModule` como el resto |
 
@@ -636,7 +426,6 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 
 | | Qué | Por qué aquí y no después |
 |---|---|---|
-| **A1-avisos** | **La bandeja de notificaciones está construida por dentro y no existe por fuera.** La mitad hecha: `apps/api/src/notifications/` tiene tabla `Notification`, servicio, y controlador con `GET /notifications` y `POST /notifications/read`, alimentado por los eventos de dominio. La mitad que falta: **ningún fichero de `apps/web/src` llama a esos endpoints** —comprobado por búsqueda, cero coincidencias—, así que no hay bandeja en la cabecera ni en ninguna parte | La aplicación **sí** registra lo que pasa, y **no se lo enseña a nadie**: quien recibe una invitación o un comentario no se entera si no va a mirar. Cerrarlo es trabajo solo de pantalla, no de API. **Esta ficha decía «hoy la aplicación no le cuenta nada a nadie»**, y esa media verdad hizo creer más de una vez que faltaba el módulo entero |
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
 | **A3-invitaciones** | **Invitaciones con usos máximos, caducidad y revocación** | Hoy es un enlace por persona —decisión declarada— y montar una mesa de cuatro exige generar cuatro. **Un enlace eterno no**: acaba circulando por un grupo y la visibilidad se apoya en quién es miembro |
 
@@ -647,15 +436,9 @@ Lo entregado está en [07-historial](./07-historial.md) y su porqué en
 
 | | Qué | Por qué importa |
 |---|---|---|
-| ~~**U1**~~ | **CERRADA (2026-09-06)**, plan 14. `apps/web/src/pages/SessionDetailPage.tsx`, en `/campaigns/:id/sesiones/:sessionId`, enlazada desde la lista de sesiones sin sustituir la fila —quien la abre para corregir la fecha sigue queriendo el formulario—. **La crónica se filtra en el servidor** (`conCronica`, que borra las dos columnas y no solo el texto) y la página no reimplementa nada; su nivel se enseña **aparte** del de la sesión, porque pueden no coincidir. Medido con dos navegadores en `apps/web/e2e/leer-una-sesion.spec.ts`. |
-| ~~**U2**~~ | **CERRADA (2026-09-06) por REMEDICIÓN**, plan 14. `apps/web/e2e/navegar-en-estrecho.spec.ts:35` mide a **375 px**: hay **7 destinos alcanzables sin escribir una URL** —Resumen · El mundo · Sesiones · Reglas · Dados · Tablas · Ajustes—, **todos visibles, dentro de la ventana y con tamaño**, y pulsar uno cambia de pantalla. **El problema que describía la ficha ya no existe**: lo arregló el reseño, que sustituyó la columna de secciones por esta navegación. Texto original: ~~la columna de secciones desaparece por debajo de 768 px y nada la sustituye~~ |
-| ~~**U3**~~ | **CERRADA (2026-09-06)**, plan 14. `GET /campaigns/:id/entities?q=` busca **en el nombre y en el cuerpo**, y lo hace el servidor (`apps/api/src/entities/entities.service.ts`). **El orden de los dos filtros es la seguridad**: primero `canView`, después el texto — al revés, una palabra que solo aparece en una ficha `DM_ONLY` la delataría, que es el mismo defecto que el plan 03 cerró en el ataque. El e2e comprueba **que NO encuentra** (`apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts`), y con el `canView` quitado se pone rojo. `features/entities/filter.ts` deja de comparar el nombre: dos filtros para lo mismo, con el del navegador ignorando el cuerpo, habrían discrepado y habría ganado el que menos sabe. Texto original: Buscar dentro del texto exige hacerlo **en el servidor**: el filtro de pantalla opera sobre lo que `canView` ya dejó pasar, y ampliarlo sería confundir *esconder* con *no mandar*. Ver [04-convenciones](./04-convenciones.md) |
 | **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
 | **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
-| ~~**U8**~~ | ~~**Cerrar un diálogo con cambios sin guardar no avisa**~~ | **CERRADA (2026-09-06)**, plan 14. `apps/web/src/ui/Dialog.tsx` acepta `hayCambiosSinGuardar` y **las tres salidas pasan por la misma puerta** —`Escape`, el velo y el aspa—: si una sola se la saltara, bastaría con rozarla para perder lo escrito, y sería justo la que nadie prueba. El aviso **nombra lo que se pierde** y nunca dice «seguro». Lo monta `features/entities/EntityEditor.tsx`, comparando **valores** contra lo guardado y no una bandera de «he tecleado»: la plantilla de una ficha nueva **no cuenta como cambio**, así que cerrar una ficha intacta no pregunta nada. Texto original: ~~`Escape`, el clic fuera y «Cancelar» descartan lo escrito sin preguntar~~ |
-| ~~**U9**~~ | ~~**`Guardar` deshabilitado en vez de `aria-disabled`**~~ | **CERRADA (2026-09-06)**, plan 14. `apps/web/src/ui/Button.tsx` pone `aria-disabled` y **no** `disabled`, así que el botón **sigue en el recorrido de teclado** y su motivo se puede leer; como `aria-disabled` no impide pulsar, el `onClick` se ignora ahí mismo, en un solo sitio. Los dos botones crudos que también apagaban con motivo —«Quitar» de `features/links/LinksPanel.tsx` y «Borrar» de `features/comments/CommentThread.tsx`— van igual. **Los campos de formulario conservan `disabled` de verdad**, y es deliberado: un `<input>` apagado no tiene motivo que leer al tabular, y `aria-disabled` no impediría escribir en él. Texto original: ~~un botón `disabled` sale del recorrido de teclado…~~ |
 | **U10** | **El texto que explica la visibilidad no está atado a `canView`** | Las frases de `features/entities/visibilidad.ts` describen la matriz del servidor y **ya mintieron una vez** (prometían que «público» dejaba entrar a quien no fuera miembro). Hoy nada rompe si vuelven a divergir: haría falta una prueba que compare las dos, o aceptar explícitamente que es texto y se revisa a mano |
-| ~~**U7**~~ | **CERRADA (2026-09-06)**, plan 14. Interruptor en la cuenta (`apps/web/src/features/auth/AjusteDeOrnamento.tsx`), **dos radios con su frase** y no una casilla, guardado en este navegador como el tema y **estampado en `<html>` antes del primer pintado** (`apps/web/src/ui/ornamento.ts`) para que no parpadee justo a quien pidió no verlo. La cuadrícula y el horizonte **dejan de pintarse**, no se esconden: un adorno que sigue en el DOM sigue costando. Medido en `apps/web/e2e/ornamento.spec.ts`, **incluido que sobrevive a recargar**. Queda listo para D-OP-24, que necesitará este mismo interruptor. |
 
 ## Lo que dijeron los jugadores (2026-09-02)
 
@@ -694,15 +477,9 @@ con 16 preguntas para el autor.
 > Se conserva el planteamiento tal cual porque explica **por qué** había que decidirlos antes de
 > la primera migración:
 >
-**Los cuatro que hay que decidir antes de la primera migración**, porque cambian la **forma** de
-una tabla y después salen caros:
-
-| | Hueco | Por qué corre prisa |
-|---|---|---|
-| ~~**H1**~~ **CERRADA por 2B**, verificado el 2026-09-03 contra `apps/api/prisma/schema.prisma` (`EquipSlot` y `requiresAttunement` existen) | ~~Ranuras de equipo, y el estado de un objeto como tres (llevado / equipado / sintonizado, con tope de 3), no como un booleano~~ | Toca la fórmula de CA, que **no es una suma**: la armadura sustituye la fórmula y limita la Destreza |
-| ~~**H2**~~ **CERRADA por 2A/2C**, verificado contra `apps/api/src/character-state/rest/` (módulo completo, con dados de golpe y las reglas de tiempo de 2C) | ~~El descanso está a medias: hay gatillo, pero nada restaura los PG y los dados de golpe no existen~~ | Es el bucle más frecuente de una sesión; sin él la mesa corrige PG a mano y deja de fiarse de la pantalla |
-| ~~**H3**~~ **CERRADA por 2A**, verificado contra `character-sheet.service.ts` (`tempHp` en diez sitios; se gastan primero y no se suman a los actuales) | ~~PG temporales: el daño los atraviesa tal como está escrito~~ | Error silencioso dentro de un registro que se declara inmutable |
-| ~~**H4**~~ **CERRADA por 2A**, verificado contra `packages/shared/src/rules/trace.schema.ts` (los cuatro estados existen, y un comentario explica que un booleano no puede representar la pericia) | ~~Pericia (competencia doble): el modificador solo conoce competencia como booleano~~ | La hoja del pícaro dirá +5 donde la regla dice +7 |
+**Los cuatro que había que decidir antes de la primera migración** —los que cambian la **forma**
+de una tabla— **están decididos y aplicados**. Sus cuatro fichas se cerraron y viven en
+[`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md).
 
 **Y dos ausencias completas**, no decisiones: **el dinero** no aparece ni una vez en las 805
 líneas de la spec, y **un objeto del inventario no tiene visibilidad** — el DM prepara la
@@ -721,7 +498,6 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 | | Qué | Por qué importa |
 |---|---|---|
-| ~~**D3**~~ | ~~**La API no tiene endpoint de salud**~~ **CERRADA (2026-09-05, plan 15).** `GET /health` existe (`apps/api/src/health/health.controller.ts`), hace un `SELECT 1` y devuelve **503** si la base no contesta; sin autenticación y **sin contar nada** —ni versión, ni conteos, ni el nombre de la base—, porque quien sondea desde fuera no es el orquestador. El `healthcheck` de `docker-compose.prod.yml:79-92` apunta ahí **y mira el código de estado**, no solo que la petición no explote. Probado con la base caída, que es lo único que distingue un endpoint de salud de una constante. **Ojo al desplegar:** cambiar el compose recompila la imagen en Coolify. Texto original: | ~~No hay `@Controller("health")` ni controlador raíz: `GET /` responde 404. La comprobación del compose acepta ese 404 como señal de vida, así que **detecta un proceso caído pero no una base de datos caída**~~ |
 | **D5** | **Nadie ha restaurado nunca una copia de *esta* base** — ahora con más motivo: ya existen copias diarias reales que nadie ha probado a restaurar | Una copia sin restauración probada es una hipótesis. Requisitos reales de la restauración en [03-despliegue.md](./03-despliegue.md) |
 | **D7** | **Corregir `TRUST_PROXY` en Coolify sale caro** | Ahí las variables de entorno son argumentos de construcción: cambiar una **recompila la imagen**. Por eso el valor vive en el compose y no en la UI |
 | **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |
@@ -922,7 +698,6 @@ navegar, buscar, ordenar y administrar la mesa.
 | E1 | **Sesiones y Personajes siguen sin buscador ni filtro**, y **no hay búsqueda que cruce pestañas** — ya declarado bajo la tabla de 1.17, confirmado abierto | P2 — ya declarado | `features/entities/EntityFilterBar.tsx` se monta solo en `EntityTab` de `pages/CampaignDetailPage.tsx` y filtra la lista ya cargada de **un solo tipo**; `fetchAllEntities` (`features/entities/api.ts`) ya trae todos los tipos y solo lo consume el selector de destino de enlaces |
 | E2 | **Los enlaces del mundo no se pueden recorrer, y son de un solo sentido** | P1 | `features/links/LinksPanel.tsx` pinta el destino como **texto plano**, no como enlace, así que ver una relación no lleva a ella; y `links/links.service.ts:49` consulta `where: { fromId: entityId }`, así que **no hay enlaces entrantes** — ninguna ficha sabe quién la menciona. **La tercera parte de este hallazgo se cerró el 2026-09-02**: el panel ya no vive dentro del editor, sino en la página de lectura de la ficha |
 | E3 | **Diez campos con límite en el servidor que la pantalla no anuncia**, y el error vuelve crudo y en inglés | P2 | `grep -rn "maxLength" apps/web/src`: **cero**; el único límite en cliente es `min`/`max` del nivel (`features/characters/CharacterEditor.tsx:151-152`). Los límites reales viven en `packages/shared/src` (`campaign.schema.ts`, `entity.schema.ts`, `session.schema.ts`, `character.schema.ts`) |
-| ~~E4~~ | ~~**Las etiquetas duplicadas se siguen persistiendo**~~ **CERRADA (2026-09-05, plan 15)**: el esquema compartido las normaliza al guardar (`packages/shared/src/entity.schema.ts:14-32`), conservando el orden de la primera aparición. La fila ya no necesita dedupar al pintar, aunque sigue haciéndolo y no estorba | — | ~~no impone unicidad y `parseTags` tampoco~~ |
 
 **Lo que estas líneas significan en una mesa real**, ordenado por cuándo duele y no por
 dificultad, porque es la pregunta que hizo el autor:
@@ -1249,146 +1024,6 @@ frente al `z-40` de los cajones, que es como la maqueta los hace convivir.
 
 **Es el caso número cinco de «una ficha no se cierra sin pantalla».**
 
-## ~~P1 · Las resistencias al daño no se cobran desde la mesa~~ — CERRADA (2026-09-05, ficha C6-5)
-
-> **Comprobado contra el código, no recordado:** `apps/web/src/features/sessions/elenco/PonerDano.tsx:125`
-> manda `damageType`. **El dragón resistente al fuego ya reduce el daño desde la mesa.** Se deja el
-> texto porque explica el escenario que la cerró.
-
-`changeHp` acepta `damageType` desde 2.5.1 y la **hoja** ya lo manda. Pero
-`features/sessions/elenco/FichaDeElenco.tsx` sigue mandando `{ delta }` a secas, y **ese ±5 es la
-ruta que un DM usa en combate** — abrir la hoja de otro es el gesto largo. Así que el escenario
-insignia de 2.5.1, el dragón resistente al fuego, **todavía no ocurre jugando**.
-
-Cierra enchufando `SelectorDeTipoDeDano` —que exporta `AplicarDano`, en
-`apps/web/src/features/character-sheet/`, autónomo y sin consultas dentro— en la ranura
-`ranuraTipoDeDano` de `apps/web/src/features/sessions/elenco/PonerDano.tsx`, y su valor en
-`tipoDeDano`. **Las dos props ya existen en `main`; el selector llega con `carril/c6`.**
-
-## ~~I16 · Cambiar el tipo de una ficha la reclasifica sin preguntar y sin dejar rastro~~ — CERRADA (2026-09-06, plan 07)
-
-> **Y la ficha señalaba el sitio equivocado, lo cual importa.** Decía «en el editor»: `EntityEditor`
-> recibe `type` como **prop** y no lo cambia nunca —sus dos consumidores le pasan `entity.type` al
-> editar—, así que ahí el gesto **no existe**. El único sitio de la aplicación donde se reclasifica
-> una ficha ya escrita son **los chips de tipo del taller del DM**
-> (`apps/web/src/features/sessions/taller/EscribirFicha.tsx:243-247`). Medido antes de tocar nada;
-> la confirmación llegó a escribirse en el editor y hubo que moverla.
->
-> **Las dos piezas, que son norma general del proyecto:**
-> - **La confirmación dice la consecuencia, no el riesgo**: nombra los dos tipos con su rótulo real,
->   **de dónde sale y dónde aparece**, que quien la busque donde estaba no la encontrará, **lo que
->   NO se pierde** —cuerpo, etiquetas, enlaces y comentarios— y, solo si era un PNJ, que su
->   statblock deja de tener sentido. **Ni una vez «¿estás seguro?»**, y hay una prueba que lo
->   comprueba.
-> - **El cambio deja rastro**: `ENTITY_RETYPED` (`apps/api/src/entities/entities.service.ts:184-215`,
->   migración `apps/api/prisma/migrations/20260906010000_entity_retyped_event/`), con **los dos
->   tipos** —«ahora es un Documento» no dice qué se perdió— y heredando la audiencia de la ficha.
->
-> **Solo pregunta al editar una que ya existe.** Escribiendo una nueva, el chip elige de qué tipo va
-> a ser y no reclasifica nada: una confirmación que salta cuando no hace falta se aprende a ignorar
-> en dos días, y entonces tampoco protege el caso que importa.
->
-> Probado por mutación en las dos mitades: sin el diálogo, cuatro pruebas de pantalla se ponen
-> rojas; sin el suceso, el e2e del rastro.
-
-## ~~P2 · Setenta y seis iconos dibujados en ocho ficheros, con conceptos duplicados~~ — CERRADA (2026-09-05, plan 07)
-
-> **Cerrada con una prueba, no con una limpieza.** Limpiar hoy solo compraba tiempo: el siguiente
-> que necesitara un escudo y no encontrara el de `ui` dibujaría otro. Lo que la cierra es
-> `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`, que barre **todos** los ficheros de
-> iconos de `features/` y se pone roja si uno redefine un nombre que `ui/Iconos.tsx` ya exporta.
-> **La prueba encontró tres que la lectura a ojo se había dejado** —`campaign-items/IconoEscudo`,
-> `campaigns/IconoMas` e `inventory/IconoMochila`—, que es exactamente su trabajo.
->
-> **Lo consolidado:** el escudo de `bestiario`, y el sol, la luna, la mochila y la lupa de
-> `sessions`, que ahora vienen de `ui/Iconos.tsx`. **El tamaño se conservó a mano** donde el
-> consumidor se apoyaba en el `h-5 w-5` por defecto de `sessions`, porque `ui/Marco` mide en `1em`
-> — es la trampa que esta misma ficha avisaba.
->
-> **Y lo que NO se fusionó, con su motivo:**
-> - `inventory`, `rules` y `level-up` dibujan en **rejilla de 16**, no de 24. Moverlos sería
->   **redibujar**, no consolidar, y el plan separa esas dos cosas a propósito.
-> - `IconoObjeto` vive en tres módulos y son **tres dibujos para tres significados** —un cofre, el
->   glifo del tipo `ITEM` y una caja pequeña—; `IconoLugar`, dos. Un icono que solo usa su módulo
->   **se queda en su módulo**: `ui/` no es un cajón, y subirlo todo es tan malo como duplicarlo.
-> - El escudo del catálogo de objetos **conserva su dibujo** —lleva marca de verificación y el
->   lienzo de sus hermanos— y **deja de exportarse**: nadie lo importaba, su puerta pública es
->   `IconoDeObjeto({ kind })`, y meter el de `ui` mezclaría dos grosores en la misma fila.
-> - `inventory/IconoMochila` pasó a llamarse **`IconoLlevado`**, que es como se llaman sus dos
->   hermanas (`IconoEquipado`, `IconoGuardado`): se nombraba por su dibujo y era la rara.
->
-> Probado por mutación: una cuarta copia del escudo en `apps/web/src/features/sessions/iconos.tsx` pone la prueba roja al
-> instante. Y los iconos movidos se miraron **en el navegador** —los recorridos de `armazon`,
-> `sesion` e `inventario`—, porque `jsdom` no maqueta. Texto original abajo.
-
-
-
-La auditoría contaba «4 iconos» porque solo miró `ui/Iconos.tsx`. **La aplicación tiene ~76
-repartidos en 7 ficheros de `features/`.** Al traer los 23 de la maqueta a `ui/`, ahora hay **dos
-escudos, dos mochilas, dos soles, dos lunas y tres lupas**, más los provisionales de cada carril
-(`hilo/`, `elenco/`, `dm/`, `taller/`), tres de ellos **idénticos carácter a carácter**.
-
-Ningún carril podía consolidarlo: todos tenían `features/**` prohibido. Todos los ficheros
-provisionales lo declaran en su cabecera. **Al deduplicar, ojo con el tamaño**: los de `ui/` usan
-`1em` con `align-[-0.125em]`; algunos de carril usan `h-4 w-4`.
-
-## ~~P2 · Tres pantallas revelan la misma ficha, cada una con su copia del predicado~~ — CERRADA (la cerró la Ola 2; comprobada el 2026-09-05, plan 06)
-
-El `RevelarAlgo` de `apps/web/src/features/sessions/dm/` (en `main`), el botón por fila de
-`PrepararSesion` en `apps/web/src/features/sessions/taller/` (`carril/c4`) y el `BotonRevelar` de
-`apps/web/src/features/entities/` (`carril/c6`). Los tres acaban en el mismo
-`PATCH { visibility: "PLAYERS" }`
-y los tres reimplementan el mismo predicado de «se puede revelar», que es **matiz de visibilidad**
-— justo lo que `CLAUDE.md` obliga a escribir una sola vez. **Debe mandar el de
-`apps/web/src/features/entities/`** (dueño del dominio, ya exportado); los otros dos conservan su
-cajón y le pasan los props.
-
-**Ya manda, y hay exactamente un predicado.** Medido el 2026-09-05 con
-`grep -rn "sePuedeRevelar|BotonRevelar" apps/web/src`:
-`features/entities/BotonRevelar.tsx:54` es la única definición de `sePuedeRevelar`, y **la importan
-dos consumidores**: `features/sessions/dm/RevelarAlgo.tsx:4` y
-`features/sessions/taller/PrepararSesion.tsx:8`. El tercero, `pages/EntityDetailPage.tsx:6`, importa
-**solo `BotonRevelar`** y nombra el predicado en un comentario (`:135`), no lo llama. Cero copias del
-predicado y cero mutaciones sueltas.
-
-> **La cita se corrigió al fusionar** (2026-09-05): decía «sus **tres** consumidores la importan», y
-> el tercero no la importa. La **conclusión** —una definición, cero copias— era y sigue siendo
-> cierta; la evidencia citada no lo era. Es exactamente el género de mentira que `check:docs` no
-> caza, porque la frase está impecable. **La ficha se tacha sin tocar una línea de código**: la Ola 2
-la había cerrado y el maestro no se había enterado — el plan 06 avisaba de ello para que nadie
-duplicara el trabajo, y así fue.
-
-## ~~La suite e2e de API entera no se podía correr en esta máquina~~ — CERRADA el mismo día que se encontró (2026-09-05)
-
-**Cómo se encontró, y por eso se escribe:** al ensamblar los cinco carriles de la noche se corrieron
-los e2e de API **todos juntos**, cosa que no se hacía nunca —se corrían por fichero—. Resultado:
-**una docena de suites no arrancaban** y arrastraban decenas de pruebas en rojo, con un mensaje que
-manda a mirar donde no es:
-
-```
-PrismaClientInitializationError: Authentication failed against database server at `localhost`,
-the provided database credentials for `dnd` are not valid.
-```
-
-Las credenciales estaban bien. Lo que decía Postgres por debajo era
-`FATAL: sorry, too many clients already`.
-
-**La causa:** `PrismaService` implementaba `OnModuleInit` y **no `OnModuleDestroy`**, así que
-`$disconnect()` no se llamaba nunca. La suite monta y cierra **una aplicación por fichero**, y cada
-`app.close()` dejaba su pool abierto: 37 ficheros contra `max_connections = 100`.
-
-**El arreglo** es el patrón canónico de Nest + Prisma —`onModuleDestroy` con `$disconnect()`,
-`apps/api/src/prisma/prisma.service.ts:22-36`— y también es correcto en producción, donde hace un
-apagado ordenado.
-
-**Medido:** antes, una docena de suites muertas y las conexiones clavadas en el tope. Después, **la
-suite entera en verde** —los conteos, en [08-pruebas.md](./08-pruebas.md), que es su fuente única—,
-con las conexiones oscilando en 40 durante la tanda y bajando a 6 al terminar.
-
-**Por qué no se había visto:** por fichero nunca aparece, y **CI tampoco lo ve** porque allí cada
-worker de Jest es un proceso que muere y libera sus conexiones. Es un defecto que solo enseña la
-cara cuando se corre la suite entera en una sola máquina.
-
 ## P2 · Dos fichas de este documento mienten con un barrido citado dentro (2026-09-04)
 
 **P1 de `ENTITY_REVEALED` llevaba al menos una tanda afirmando, con su `grep` citado, algo que el
@@ -1461,26 +1096,6 @@ diacríticos**. Para un mundo escrito en español eso muerde: el DM escribe el e
 ficha se anuncia como inexistente. **Era una decisión no declarada**; ahora está fijada por una
 prueba cuyo comentario dice que cambiarla la rompe **a propósito**. Se cierra con
 `.normalize("NFD").replace(/\p{Diacritic}/gu, "")`.
-
-## ~~P2 · Los tres aceleradores de la mesa están impresos y NO están cableados~~ — CERRADA (2026-09-04)
-
-`RailDePaneles` pinta `N`, `I` y `M` debajo de sus rótulos desde B1.3, y la §5 de la auditoría los
-declara: *«Atajos: `N` hoja · `I` bolsa · `M` mundo — ignorados mientras se escribe. Siempre además
-del rail.»* **Ninguna de las letras hace nada.** `grep` de `keydown` en `apps/web/src` devuelve solo
-`ui/Dialog` (Escape), `ui/Tabs` (flechas) y tres manejadores locales.
-
-O sea que la pantalla **enseña un acelerador que no existe**, que es la regla vinculante de
-`docs/04-convenciones.md` al revés: si el texto promete algo que el código no cumple, miente el
-texto. **O se cablean —con la regla de que se ignoran mientras se escribe, que la maqueta ya
-implementa— o se retiran los rótulos.** El cuarto, `D` de dados, es un invento sobre la maqueta y
-hereda la misma decisión.
-
-**CERRADA: se cablearon**, en `MesaDeSesion.tsx`, con tres guardas y dos de ellas **no están en la
-maqueta**: se ignoran mientras se escribe —incluido `isContentEditable`, porque el editor del
-mundo es TipTap y su cuerpo no es `input` ni `textarea`—, no hacen nada con un modificador pulsado
-—`Ctrl+N` abre una ventana del navegador—, y no abren lo que su botón se niega a abrir. La ficha se
-deja escrita en vez de borrada: el patrón que enseña —una pantalla que promete un atajo que no
-existe— es el mismo que P1 y el que esta ronda entera vino a cazar.
 
 ## P4 — Limpieza
 
@@ -1612,11 +1227,6 @@ existe, y por eso están aquí y no en un plan futuro.
 
 | # | Mecánica | Qué se rompe hoy | Dónde encaja |
 |---|---|---|---|
-| ~~**M14**~~ | **CERRADA el 2026-09-04**, y en dos mitades: **2.5.2** puso el orden de iniciativa, los turnos y los asaltos en el servidor —con el agrupamiento del SRD para criaturas idénticas— y **2.5.6** los puso en la mesa, como una tira encima del elenco. La parte que arrastraba a las condiciones ya venía pagada por una decisión vieja: el reloj de campaña está en segundos porque un asalto son seis (D-2C-1), así que `advanceTurn` avanza el mismo contador y una condición de dos asaltos se apaga sola al segundo. **Lo escrito aquí durante unas horas decía que «no existe ningún `advanceTurn`»**: era verdad en la base de la que salió esa tanda y falso en `main`, y es el precio de que un worktree se ramifique de `origin/main` sin actualizar (ver la ficha de infraestructura, abajo) | Cerrada |
-| ~~**M15**~~ | **CERRADA el 2026-09-04 (2.5.4)**: `changeHp` acepta `rollEventId` opcional, comprobado contra la base (uno inventado o de otra campaña es 400) y guardado en `HP_CHANGED`. «¿De qué murió Elara?» ya responde tipo **y** tirada | Cerrada |
-| ~~**M16**~~ | **CERRADA el 2026-09-04 (2.5.5 en servidor, su pantalla el mismo día).** El panel de tirada pinta el aviso —«Desventaja sugerida: Envenenado», con todas las causas y el agotamiento con su nivel— como `role="status"`, **preselecciona el modo y no lo impone**: los tres radios siguen enteros al lado, que es D-2.5-6 dicha en la interfaz. Con fallo automático no preselecciona nada, porque el modo no describe lo que va a pasar. La hoja pasa una sugerencia **por característica** en las salvaciones y una sola para las dieciocho habilidades. Historia previa: | El hermano de `effective-speed.ts` existe —`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`, puro, con las quince condiciones del SRD y sus citas— y `GET …/sheet` devuelve `rollSuggestions` con el ataque, la prueba y las seis salvaciones, cada una con sus causas. **Lo que falta es el consumidor**: ningún componente de `apps/web` lee ese campo, así que en la mesa el aviso no aparece. Mismo patrón que M17 y que `ENTITY_REVEALED`. Cierra cuando la hoja y el panel de dados lo pinten, con el modo preseleccionado y **todavía editable** — sugiere, no impone |
-| ~~**M17**~~ | **CERRADA el 2026-09-04, esta vez con pantalla.** El selector de condiciones ofrece «Concentración» —en un `optgroup` aparte, «De la mesa, no del manual», porque **no es una de las quince del SRD**— con el conjuro en un campo de texto: la clave se guarda normalizada (`concentrating-bendicion`) y el nombre tal cual en `note`, que es el campo del servidor para el texto. La fila dice «Concentración en Bendición» y **lo que el servidor de verdad hace**: al recibir daño, salvación de Constitución con CD 10 o la mitad. Recorrido de navegador de punta a punta: marcar, encajar 25, y ver la petición con CD 12 donde el jugador la sondea. Historia previa: **REABIERTA el 2026-09-04**, y se cerró sin mirar la pantalla. El servidor está hecho: `changeHp` pide la salvación de siempre (2C.5, `RollRequest`) cuando un personaje con una condición `concentrating-*` **toma** daño —antes de los PG temporales, y no si cae a 0: *«you lose concentration … if you are incapacitated»*—, CD `max(10, floor(daño/2))`, una por golpe sin deduplicar (SRD 5.1, "Casting a Spell"). **Pero `grep -rn "concentrat" apps/web` no devuelve nada**: el selector de condiciones solo ofrece las quince claves del SRD, así que ninguna pantalla puede marcar a nadie como concentrado y la regla no se dispara jamás en una mesa real. Mismo patrón que `ENTITY_REVEALED` (ficha P1). **Cerró cuando** una pantalla pudo escribir `concentrating-*`, y eso fue el mismo día | Cerrada |
-| ~~**M18**~~ | **CERRADA el 2026-09-04 (2.5.1)**, y llevaba dos tandas diciendo lo contrario. `damageType` es **una columna real e indexada** de `GameEvent` —promocionada antes de escribir mil sucesos, como manda la convención— y las resistencias, vulnerabilidades e inmunidades reducen de verdad, encadenándose en el orden del SRD (*«Resistance and then vulnerability are applied…»*, el matiz que la traducción española pierde). El registro publica el daño **aplicado**, no el bruto, para no filtrar por la línea de tiempo una resistencia secreta | Cerrada |
 | **L5** | **El DM no puede declarar «este personaje no ve»** | Es la mitad barata del hueco de iluminación, y **no necesita mapa**: declarar la restricción cabe en las condiciones de clave libre que ya existen; lo que necesita posiciones es *resolver* el arco. Hoy la única herramienta del DM es cambiar la visibilidad de las fichas a mano, una a una, sin dejar dicho por qué | Vocabulario, chip en la hoja, y —crítico— que quede claro en pantalla que es **ficción, no permiso** |
 
 > **Y el límite que conviene escribir en voz alta, porque no es un hueco sino una frontera:**
@@ -1656,25 +1266,6 @@ martes para preparar la partida del sábado. Lo que **no** aguanta el sábado es
 tres cosas que ya están fichadas arriba como huecos de mecánica: **no puede llevar los PG de un
 monstruo (M13), no hay iniciativa (M14), y el registro no reconstruye la sesión (J4/J5, en
 parte cerrado)**. Son la misma lista que las auditorías, vista desde la silla del director.
-
-### ~~L1~~ — CERRADA el 2026-09-04 (2.5.6): la unión de tipos de suceso está cerrada
-
-**Eran catorce, no doce**, y ese detalle es la ficha entera: cuando se recontó de siete a doce, el
-número volvió a quedarse corto en un día, porque 2.5.3 añadió `ATTACK_RESOLVED` después. **Cada
-tanda del carril del motor añade tipos y ninguna puede tocar `apps/web`**, que es donde vive la
-traducción, así que la deuda no se quedaba quieta: crecía sola con la frontera de carriles puesta.
-
-Se escribieron las catorce frases —`MONEY_CHANGED`, `ITEM_ADDED`, `ITEM_MOVED`, `ITEM_REMOVED`,
-`CLOCK_ADVANCED`, `CONDITION_EXPIRED`, `TABLE_ROLLED`, `ENCOUNTER_STARTED`, `TURN_ADVANCED`,
-`ROUND_ADVANCED`, `ENCOUNTER_ENDED`, `ATTACK_RESOLVED`, `CHARACTER_ARCHIVED`,
-`CHARACTER_RESTORED`— **y se quitó el `default`**, que es lo que la propia ficha decía que había
-que hacer «en vez de escribir doce frases y esperar a la trece». Sin `default`, un `switch` sobre
-una unión discriminada es exhaustivo: **el tipo quince rompe el build del gráfico**, en este
-fichero y en ninguno más.
-
-Lo que sigue sin traducirse, y a propósito: las claves de `FLAG_SET`, `SIGNAL_RAISED` y
-`SET_CHANGED`, que **las escribe el DM** al montar sus reglas. No son enumeraciones; se citan
-literalmente entre comillas.
 
 ### L2-traza-dano — la traza de resistencia (2.5.1) no tiene pantalla ni vocabulario en español (2026-09-03)
 

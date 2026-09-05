@@ -136,13 +136,13 @@ escrito gane o pierda**, y las siete fichas anotadas en el maestro con lo que se
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-06 | **14.1 · R1 remedida, y va primero como pide el plan.** `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` repite el experimento original —el mismo `<div draggable>` trivial, dentro y fuera— y da **`dragstart` FUERA: SÍ · DENTRO: SÍ**. `apps/web/e2e/reglas-arrastrar.spec.ts` pasa sus **ocho**. Ficha tachada en `docs/06-pendientes.md:402` y comentario rehecho en `apps/web/src/features/sessions/dm/HerramientasDeNarracion.tsx:40`. **Commit `912ff52`** |
-| ✅ hecho | 2026-09-06 | **14.2a · U8 + U9.** U8: `apps/web/src/ui/Dialog.tsx` acepta `hayCambiosSinGuardar` y **las tres salidas** pasan por `pedirCierre`; lo monta `apps/web/src/features/entities/EntityEditor.tsx` comparando valores. U9: `apps/web/src/ui/Button.tsx` pone `aria-disabled` y guarda el `onClick`; igual en `features/links/LinksPanel.tsx:222` y `features/comments/CommentThread.tsx:80`. Pruebas nuevas en `ui/__tests__/Button.test.tsx` y `ui/__tests__/Dialog.test.tsx`. **Commit `6ef8c03`** |
-| ✅ hecho | 2026-09-06 | **14.2b · U3 · buscar dentro del cuerpo.** Servidor hecho: `listEntitiesQuerySchema` en `packages/shared/src/entity.schema.ts:8`, `EntitiesService.list` y `coincideElTexto` en `apps/api/src/entities/entities.service.ts`, ruta en `entities.controller.ts:38`. Web hecha: `features/entities/api.ts:26`, `hooks.ts:26`, `filter.ts` (deja de filtrar por texto) y `pages/CampaignDetailPage.tsx:215`. **Commit `9ae58df`**, con `apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts` (6 verdes) y la **mutación probada**: sin `canView`, 4 de 6 rojas. |
-| ✅ hecho | 2026-09-06 | **14.3 · U2 remedida y U7.** U2: `apps/web/e2e/navegar-en-estrecho.spec.ts:35` da **7 destinos alcanzables a 375 px** — el problema de la ficha ya no existe, lo arregló el reseño. U7: `apps/web/src/ui/ornamento.ts`, `features/auth/AjusteDeOrnamento.tsx` montado en `pages/AccountPage.tsx`, y los dos adornos de `ui/Ornament.tsx` dejan de pintarse. Medido en `apps/web/e2e/ornamento.spec.ts`. **Commit `bfddc6d`** |
-| ✅ hecho | 2026-09-06 | **14.4 · C6-4.** `apps/web/src/features/bestiario/DarTemporales.tsx`, montado en la fila del PNJ. **No suma y pregunta cuál se queda**; para poder cumplir la regla del SRD hizo falta `setHpSchema.tempHpEleccion` (`packages/shared/src/character-sheet.schema.ts`) y su rama en `apps/api/src/characters/character-sheet.service.ts:1333`. **Commit `bfddc6d`** |
-| ✅ hecho | 2026-09-06 | **14.2c · U1.** `apps/web/src/pages/SessionDetailPage.tsx` en `/campaigns/:id/sesiones/:sessionId` (`apps/web/src/App.tsx:101`), enlazada desde la lista (`pages/CampaignDetailPage.tsx:438`). `fetchSession`/`useSession` en `features/sessions/`. Medido en `apps/web/e2e/leer-una-sesion.spec.ts` con dos contextos. **Commit `a06e4b2`** |
-| ✅ | 2026-09-06 | **EL PLAN 14 ESTÁ CERRADO**: R1 remedida, U8, U9, U3, U2 (por remedición), U7, C6-4 y U1. |
+| ✅ hecho | 2026-09-05 | **14.1 · R1 remedida, y va primero como pide el plan.** `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` repite el experimento original —el mismo `<div draggable>` trivial, dentro y fuera— y da **`dragstart` FUERA: SÍ · DENTRO: SÍ**. `apps/web/e2e/reglas-arrastrar.spec.ts` pasa sus **ocho**. Ficha tachada en `docs/06-pendientes.md:402` y comentario rehecho en `apps/web/src/features/sessions/dm/HerramientasDeNarracion.tsx:40`. **Commit `912ff52`** |
+| ✅ hecho | 2026-09-05 | **14.2a · U8 + U9.** U8: `apps/web/src/ui/Dialog.tsx` acepta `hayCambiosSinGuardar` y **las tres salidas** pasan por `pedirCierre`; lo monta `apps/web/src/features/entities/EntityEditor.tsx` comparando valores. U9: `apps/web/src/ui/Button.tsx` pone `aria-disabled` y guarda el `onClick`; igual en `features/links/LinksPanel.tsx:222` y `features/comments/CommentThread.tsx:80`. Pruebas nuevas en `ui/__tests__/Button.test.tsx` y `ui/__tests__/Dialog.test.tsx`. **Commit `6ef8c03`** |
+| ✅ hecho | 2026-09-05 | **14.2b · U3 · buscar dentro del cuerpo.** Servidor hecho: `listEntitiesQuerySchema` en `packages/shared/src/entity.schema.ts:8`, `EntitiesService.list` y `coincideElTexto` en `apps/api/src/entities/entities.service.ts`, ruta en `entities.controller.ts:38`. Web hecha: `features/entities/api.ts:26`, `hooks.ts:26`, `filter.ts` (deja de filtrar por texto) y `pages/CampaignDetailPage.tsx:215`. **Commit `9ae58df`**, con `apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts` (6 verdes) y la **mutación probada**: sin `canView`, 4 de 6 rojas. |
+| ✅ hecho | 2026-09-05 | **14.3 · U2 remedida y U7.** U2: `apps/web/e2e/navegar-en-estrecho.spec.ts:35` da **7 destinos alcanzables a 375 px** — el problema de la ficha ya no existe, lo arregló el reseño. U7: `apps/web/src/ui/ornamento.ts`, `features/auth/AjusteDeOrnamento.tsx` montado en `pages/AccountPage.tsx`, y los dos adornos de `ui/Ornament.tsx` dejan de pintarse. Medido en `apps/web/e2e/ornamento.spec.ts`. **Commit `bfddc6d`** |
+| ✅ hecho | 2026-09-05 | **14.4 · C6-4.** `apps/web/src/features/bestiario/DarTemporales.tsx`, montado en la fila del PNJ. **No suma y pregunta cuál se queda**; para poder cumplir la regla del SRD hizo falta `setHpSchema.tempHpEleccion` (`packages/shared/src/character-sheet.schema.ts`) y su rama en `apps/api/src/characters/character-sheet.service.ts:1333`. **Commit `bfddc6d`** |
+| ✅ hecho | 2026-09-05 | **14.2c · U1.** `apps/web/src/pages/SessionDetailPage.tsx` en `/campaigns/:id/sesiones/:sessionId` (`apps/web/src/App.tsx:101`), enlazada desde la lista (`pages/CampaignDetailPage.tsx:438`). `fetchSession`/`useSession` en `features/sessions/`. Medido en `apps/web/e2e/leer-una-sesion.spec.ts` con dos contextos. **Commit `a06e4b2`** |
+| ✅ | 2026-09-05 | **EL PLAN 14 ESTÁ CERRADO**: R1 remedida, U8, U9, U3, U2 (por remedición), U7, C6-4 y U1. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -243,7 +243,14 @@ fuente si la hubo):
   repasa entre partidas. La página tiene que pintar **filtrada por su visibilidad**, como la de una
   ficha del mundo.
 
-> **Aviso de fechas, para quien lea esto:** todo lo de esta tanda está fechado **2026-09-06** y el
-> reloj del entorno dice **2026-09-05**. La noche cruzó la medianoche en la sesión anterior y las
-> fechas se escribieron consistentes entre sí; **no se han reescrito a mano** porque cambiar unas y
-> no otras sería peor que la incoherencia actual. Lo decide el autor.
+> **Las fechas de esta tanda estuvieron mal, y ya están corregidas.** Se escribieron como
+> `2026-09-06` —consistentes entre sí, y por eso nadie las cuestionó— en **59 sitios de 14 <!-- docs-lint-ignore -->
+> ficheros**. Ninguna era cierta: los 36 commits de la noche van del `6240f58` de las 02:16 al
+> `a06e4b2` de las 11:52, **todos del 2026-09-05**, y el reloj del entorno decía lo mismo. Se
+> corrigieron de una pasada el 2026-09-05, junto con el saneamiento de `docs/06-pendientes.md`.
+>
+> **Lo que enseña, y por eso queda escrito:** una fecha equivocada **de forma consistente** no la
+> caza ninguna revisión interna — solo se ve al contrastarla contra `git log`, que es la única
+> fuente que no se puede escribir a mano. Y **los nombres de carpeta de las migraciones
+> (`20260906_*`) NO se tocaron ni se tocan**: Prisma guarda su checksum y renombrar una migración
+> aplicada rompe el despliegue.

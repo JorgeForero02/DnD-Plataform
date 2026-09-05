@@ -195,7 +195,7 @@ src/components/         ProtectedRoute y compartidos
 src/dominio/            el vocabulario del juego que usan VARIAS pantallas
 ```
 
-> **`src/dominio/` nació el 2026-09-06 y es una decisión declarada**, no una carpeta que apareció
+> **`src/dominio/` nació el 2026-09-05 y es una decisión declarada**, no una carpeta que apareció
 > sola. Guarda **la forma legible en español** de lo que `@dnd/shared` declara como dato: hoy, los
 > tipos de daño (`dominio/dano.ts`). Existe porque esa tabla estaba **copiada en tres pantallas** y
 > las tres no decían lo mismo, y porque las otras carpetas no eran su sitio: `lib/` es

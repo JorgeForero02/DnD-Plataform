@@ -120,9 +120,9 @@ reescrito**, y D2, D3b y A3 anotadas en el maestro.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-06 | **11.1 · El papel de un miembro (D2).** `MembershipService.changeRole` (`apps/api/src/campaigns/membership.service.ts:52`) con el 409 del último DM; módulo nuevo `apps/api/src/members/` para poder escribir el suceso sin ciclo. Suceso `MEMBER_ROLE_CHANGED` + migración `20260906050001_member_role_changed_event/`. Web: selector por fila en `apps/web/src/features/campaigns/MembersPanel.tsx:115`. **Commit `bf1b1c9`** |
-| ✅ hecho | 2026-09-06 | **11.2 · Las invitaciones (D3b, A3).** Columnas `expiresAt`, `revokedAt` y `usedById` (migraciones `20260906050000_member_role_and_invite_lifecycle/` y `20260906050002_invite_used_by/`). `list`, `revoke` y `estadoDeInvitacion` en `apps/api/src/invites/invites.service.ts`. Web: `apps/web/src/features/invites/ListaDeInvitaciones.tsx` y el selector de caducidad en `InvitePanel.tsx`. **El aviso reescrito.** **Commit `bf1b1c9`** |
-| ✅ | 2026-09-06 | **EL PLAN 11 ESTÁ CERRADO**, con `apps/api/test/administrar-la-mesa.e2e-spec.ts` (9 verdes) y las **dos** mutaciones probadas. |
+| ✅ hecho | 2026-09-05 | **11.1 · El papel de un miembro (D2).** `MembershipService.changeRole` (`apps/api/src/campaigns/membership.service.ts:52`) con el 409 del último DM; módulo nuevo `apps/api/src/members/` para poder escribir el suceso sin ciclo. Suceso `MEMBER_ROLE_CHANGED` + migración `20260906050001_member_role_changed_event/`. Web: selector por fila en `apps/web/src/features/campaigns/MembersPanel.tsx:115`. **Commit `bf1b1c9`** |
+| ✅ hecho | 2026-09-05 | **11.2 · Las invitaciones (D3b, A3).** Columnas `expiresAt`, `revokedAt` y `usedById` (migraciones `20260906050000_member_role_and_invite_lifecycle/` y `20260906050002_invite_used_by/`). `list`, `revoke` y `estadoDeInvitacion` en `apps/api/src/invites/invites.service.ts`. Web: `apps/web/src/features/invites/ListaDeInvitaciones.tsx` y el selector de caducidad en `InvitePanel.tsx`. **El aviso reescrito.** **Commit `bf1b1c9`** |
+| ✅ | 2026-09-05 | **EL PLAN 11 ESTÁ CERRADO**, con `apps/api/test/administrar-la-mesa.e2e-spec.ts` (9 verdes) y las **dos** mutaciones probadas. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 

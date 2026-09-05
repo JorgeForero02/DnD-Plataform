@@ -12,7 +12,7 @@
 > **Estado del árbol al escribir esto:** `main` en `4c7c3a2`, limpio, `pnpm verify` en verde, y sin
 > ramas ni worktrees de trabajo abiertos.
 
-## DÓNDE ESTÁ ESTO AHORA (actualizado el 2026-09-06)
+## DÓNDE ESTÁ ESTO AHORA (actualizado el 2026-09-05)
 
 > **Este bloque se actualiza; el resto del fichero NO.** Lo de abajo es el encargo del 2026-09-05 y
 > se conserva tal cual se escribió, incluida su frase «`main` en `4c7c3a2`», que ya no es cierta —

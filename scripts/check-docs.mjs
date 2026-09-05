@@ -194,6 +194,80 @@ for (const file of [...walk(docsDir), ...rootMdFiles]) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Checks 4-6, added 2026-09-05. The three rules docs/06-pendientes.md imposes on
+// itself in its own header — and the three it broke, because nobody checked them.
+//
+// Why they live in a second pass instead of the loop above: check 4 must ALSO see
+// docs/superpowers/, which isDatedRecord() skips. That exemption is right for
+// paths and counts (a dated record describes the day it was written) but wrong for
+// a future date: a plan claiming it was executed tomorrow is not a snapshot of
+// anything, it is a typo — and that is exactly where all 59 of them hid.
+// ---------------------------------------------------------------------------
+
+const HOY = new Date().toISOString().slice(0, 10);
+const PENDIENTES = "docs/06-pendientes.md";
+const ISO_RE = /\b(\d{4}-\d{2}-\d{2})\b/g;
+
+// 4 — a date in the future. Migration directory names (20260906_x) carry no dashes
+// and never match: renaming an applied migration breaks Prisma's checksum, so this
+// check must not be able to suggest it. docs/_archivo/ is frozen by the protocol, so
+// a finding there could not be acted on.
+for (const file of [...walk(docsDir), ...rootMdFiles]) {
+  const rel = relative(ROOT, file).replaceAll("\\", "/");
+  if (rel.startsWith("docs/_archivo/")) continue;
+  readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .forEach((line, i) => {
+      if (line.includes(IGNORE)) return;
+      for (const [, fecha] of line.matchAll(ISO_RE)) {
+        if (fecha > HOY) {
+          findings.push({
+            at: `${rel}:${i + 1}`,
+            rule: "fecha",
+            msg: `fecha en el futuro: ${fecha} (hoy es ${HOY})`,
+          });
+        }
+      }
+    });
+}
+
+if (existsSync(join(ROOT, PENDIENTES))) {
+  const lineas = readFileSync(join(ROOT, PENDIENTES), "utf8").split(/\r?\n/);
+
+  // 5 — nothing struck-through in the body. The file's own header: "La regla es
+  // mecánica y no la decide nadie: lo tachado sale, lo abierto se queda."
+  lineas.forEach((line, i) => {
+    if (line.includes(IGNORE)) return;
+    if (/^#{2,3} ~~/.test(line) || /^\| *~~/.test(line)) {
+      findings.push({
+        at: `${PENDIENTES}:${i + 1}`,
+        rule: "tachado",
+        msg: `ficha cerrada sin archivar: "${line.trim().slice(0, 80)}"`,
+      });
+    }
+  });
+
+  // 6 — "Última revisión" older than the newest date in the file. It went stale twice
+  // (2026-09-02 and 2026-09-04), both times caught by an audit rather than a review.
+  const revLinea = lineas.findIndex((l) => /Última revisión: \*\*\d{4}-\d{2}-\d{2}\*\*/.test(l));
+  if (revLinea >= 0) {
+    const rev = lineas[revLinea].match(/Última revisión: \*\*(\d{4}-\d{2}-\d{2})\*\*/)[1];
+    const masNueva = lineas
+      .flatMap((l) => (l.includes(IGNORE) ? [] : [...l.matchAll(ISO_RE)].map((m) => m[1])))
+      .filter((f) => f <= HOY)
+      .sort()
+      .at(-1);
+    if (masNueva && masNueva > rev) {
+      findings.push({
+        at: `${PENDIENTES}:${revLinea + 1}`,
+        rule: "revisión",
+        msg: `"Última revisión" dice ${rev} y el documento ya habla del ${masNueva}`,
+      });
+    }
+  }
+}
+
 if (findings.length === 0) {
   console.log("check-docs: sin hallazgos.");
   process.exit(0);

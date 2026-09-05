@@ -158,6 +158,16 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
   const cronica = page.getByLabel("Qué pasó");
   await expect(cronica).toHaveValue(/· Combate: los guardias del muelle/, { timeout: 10_000 });
 
+  // **Quién puede leer la crónica se elige aquí, y es una decisión aparte de quién ve la sesión.**
+  // El servidor respeta `recapVisibility` desde el plan 02; hasta entonces publicaba el suceso con
+  // la visibilidad de la SESIÓN y elegir no hacía nada. Sin este control, el arreglo del servidor
+  // no lo usaría nadie.
+  const dialogo = page.getByRole("dialog");
+  await expect(dialogo.getByRole("radio", { name: /Solo el DM/i })).toBeVisible();
+  // Y los niveles se ofrecen **traducidos**: ningún valor del enum llega a la pantalla.
+  await expect(dialogo.getByText(/DM_ONLY|PLAYERS|PUBLIC/)).toHaveCount(0);
+  await dialogo.getByRole("radio", { name: /Todos los que se sientan/i }).check();
+
   await page.getByRole("button", { name: "Cerrar la sesión" }).click();
 
   // Cerrada: la barra desaparece de toda la aplicación.

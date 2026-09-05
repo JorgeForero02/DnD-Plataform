@@ -202,6 +202,49 @@ export function useHelp(campaignId: string, helperCharacterId: string) {
   });
 }
 
+export const temporaryModifiersKey = (campaignId: string, characterId: string) =>
+  ["campaigns", campaignId, "characters", characterId, "temporary-modifiers"] as const;
+
+/**
+ * Los modificadores temporales (plan 13, M8). **Conceder y quitar invalidan también la hoja**: el
+ * número derivado cambia con ellos, y una lista al día junto a una Fuerza vieja sería peor que no
+ * enseñar nada.
+ */
+export function useTemporaryModifiers(campaignId: string, characterId: string) {
+  return useQuery({
+    queryKey: temporaryModifiersKey(campaignId, characterId),
+    queryFn: () => characterSheetApi.fetchTemporaryModifiers(campaignId, characterId),
+    enabled: Boolean(campaignId && characterId),
+  });
+}
+
+function invalidarTemporales(qc: ReturnType<typeof useQueryClient>, c: string, ch: string) {
+  void qc.invalidateQueries({ queryKey: temporaryModifiersKey(c, ch) });
+  void qc.invalidateQueries({ queryKey: sheetKey(c, ch) });
+}
+
+export function useGrantTemporaryModifier(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      target: string;
+      amount: number;
+      reason: string;
+      durationSeconds?: number;
+    }) => characterSheetApi.grantTemporaryModifier(campaignId, characterId, input),
+    onSuccess: () => invalidarTemporales(qc, campaignId, characterId),
+  });
+}
+
+export function useRemoveTemporaryModifier(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      characterSheetApi.removeTemporaryModifier(campaignId, characterId, id),
+    onSuccess: () => invalidarTemporales(qc, campaignId, characterId),
+  });
+}
+
 export function useSpendResource(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({

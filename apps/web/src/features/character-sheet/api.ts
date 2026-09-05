@@ -542,3 +542,46 @@ export function rollAttack(
     },
   );
 }
+
+/**
+ * **Un modificador temporal** (plan 13, ficha M8). `expired` lo **deriva el servidor** contra el
+ * reloj de campaña y no se guarda: aquí solo se pinta.
+ */
+export interface TemporaryModifierRow {
+  id: string;
+  characterId: string;
+  target: string;
+  amount: number;
+  reason: string;
+  expiresAtClock: number | null;
+  createdAt: string;
+  expired: boolean;
+}
+
+export function fetchTemporaryModifiers(
+  campaignId: string,
+  characterId: string,
+): Promise<TemporaryModifierRow[]> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers`);
+}
+
+export function grantTemporaryModifier(
+  campaignId: string,
+  characterId: string,
+  input: { target: string; amount: number; reason: string; durationSeconds?: number },
+): Promise<TemporaryModifierRow> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function removeTemporaryModifier(
+  campaignId: string,
+  characterId: string,
+  id: string,
+): Promise<{ deleted: true }> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers/${id}`, {
+    method: "DELETE",
+  });
+}

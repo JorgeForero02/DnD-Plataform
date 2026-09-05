@@ -847,3 +847,57 @@ test.afterAll(() => {
     "\n=== Contraste WCAG medido (hoja de personaje) ===\n" + resultados.join("\n") + "\n",
   );
 });
+
+// --- Plan 13, ficha M8 — «+2 a Fuerza durante una hora» ---
+//
+// **Esto se mide en el navegador porque la definición de terminado del plan lo pide con estas
+// palabras**: *«la traza mirada en el navegador con un modificador vivo y otro vencido»*. Y con
+// razón: lo que hay que ver es que el número de la hoja **cambie de verdad** y que la traza **diga
+// por qué**, y eso cruza el servidor entero — `jsdom` no deriva ninguna hoja.
+
+test("M8 — un modificador temporal sube el número y sale en la traza, y al vencer se apaga sin desaparecer", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Thorin el Temporal");
+  await completarFichaDeGuerreroEnano(page);
+  const urlHoja = page.url();
+
+  const panel = page.getByRole("region", { name: "modificadores temporales" });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText("Ninguno ahora mismo.");
+
+  // --- Vivo: el número sube ---
+  //
+  // Se elige **un minuto de juego** para que el reloj lo pueda pasar con un solo salto, que es el
+  // gesto que un DM tiene en la pantalla.
+  await panel.getByLabel("Cuánto dura").selectOption("60");
+  await panel.getByPlaceholder("Poción de fuerza de gigante").fill("Poción de fuerza de gigante");
+  await panel.getByRole("button", { name: "Ponerlo" }).click();
+
+  // La ficha se escribió con Fuerza 16; con el +2 la hoja tiene que decir 18.
+  const salvaciones = page.getByRole("region", { name: "salvaciones" });
+  await expect(panel.getByRole("listitem")).toContainText("Poción de fuerza de gigante");
+  await expect(page.getByText("18").first()).toBeVisible({ timeout: 15_000 });
+  // Y **la traza lo dice**: el motivo aparece en la pantalla, no solo el número.
+  await expect(page.getByText("Poción de fuerza de gigante").first()).toBeVisible();
+  await expect(salvaciones).toBeVisible();
+
+  // --- Vencido: deja de sumar y SIGUE AHÍ, marcado (D-2C-2) ---
+  //
+  // El reloj de campaña avanza un minuto **desde el cajón de dados de la campaña**, que es donde
+  // vive el reloj. Es el mismo gesto que en la mesa, no una llamada a la API: lo que se comprueba
+  // aquí es el camino entero, y por eso se navega en vez de escribir en la base.
+  await page.goBack();
+  await page.getByRole("tab", { name: "Dados" }).click();
+  const reloj = page.getByRole("region", { name: "El reloj de la campaña" });
+  await expect(reloj).toBeVisible();
+  await reloj.getByRole("button", { name: "1 minuto" }).click();
+
+  await page.goto(urlHoja);
+  const panelDespues = page.getByRole("region", { name: "modificadores temporales" });
+  // **No ha desaparecido**: sigue en la lista, dicho con palabras y no solo tachado.
+  await expect(panelDespues.getByText("Vencido")).toBeVisible({ timeout: 15_000 });
+  await expect(panelDespues).toContainText("Poción de fuerza de gigante");
+});

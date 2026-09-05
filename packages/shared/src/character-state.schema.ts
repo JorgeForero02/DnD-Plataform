@@ -163,3 +163,50 @@ export const applyConditionSchema = z.object({
   durationSeconds: z.number().int().positive().max(31_536_000).optional(),
 });
 export type ApplyConditionInput = z.infer<typeof applyConditionSchema>;
+
+/**
+ * **A que puede apuntar un modificador temporal** (plan 13, ficha M8). **Vocabulario CERRADO**, no
+ * texto libre: libre llegaria a la pantalla sin traducir y al motor sin significado.
+ *
+ * Son **las seis caracteristicas, la CA y las cinco velocidades**, y ni una mas: es exactamente lo
+ * que la hoja ya sabe derivar, y **un modificador a algo que la hoja no calcula es un numero
+ * decorativo**. Las claves son las mismas que usa la traza (`ability.str`, `ac`, `speed.walk`), no
+ * unas paralelas: dos vocabularios para lo mismo acaban discrepando.
+ */
+export const TEMPORARY_MODIFIER_TARGETS = [
+  "ability.str",
+  "ability.dex",
+  "ability.con",
+  "ability.int",
+  "ability.wis",
+  "ability.cha",
+  "ac",
+  "speed.walk",
+  "speed.climb",
+  "speed.swim",
+  "speed.fly",
+  "speed.burrow",
+] as const;
+export const temporaryModifierTargetSchema = z.enum(TEMPORARY_MODIFIER_TARGETS);
+export type TemporaryModifierTarget = z.infer<typeof temporaryModifierTargetSchema>;
+
+/**
+ * Conceder un modificador temporal.
+ *
+ * **`durationSeconds` es del reloj de CAMPANA** (2C.3), no de pared: «una hora» son 3600 segundos
+ * de la partida. Sin el, el modificador dura **hasta que alguien lo quite** — hay efectos que duran
+ * «hasta que el DM lo diga», y fingir una duracion habria sido inventarse una regla.
+ */
+export const grantTemporaryModifierSchema = z.object({
+  target: temporaryModifierTargetSchema,
+  /** **Con signo**: los jugadores pidieron subidas Y bajadas. Cero no es un modificador. */
+  amount: z
+    .number()
+    .int()
+    .min(-20)
+    .max(20)
+    .refine((n) => n !== 0, "Un modificador de cero no hace nada."),
+  reason: z.string().min(1).max(160),
+  durationSeconds: z.number().int().min(1).max(31536000).optional(),
+});
+export type GrantTemporaryModifierInput = z.infer<typeof grantTemporaryModifierSchema>;

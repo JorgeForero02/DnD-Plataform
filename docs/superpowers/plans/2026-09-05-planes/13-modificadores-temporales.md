@@ -127,15 +127,53 @@ jugadores**, que es lo que la hizo subir de prioridad.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **Servidor.** Modelo `TemporaryModifier` (`apps/api/prisma/schema.prisma`) + migraciones `20260906060000_temporary_modifier/` y `20260906060001_temp_modifier_events/`. Vocabulario cerrado y esquema en `packages/shared/src/character-state.schema.ts`; `sourceType: "temporary"` en `packages/shared/src/rules/trace.schema.ts`. Servicio y ruta en `apps/api/src/character-state/temporary-modifiers/`. La suma entra por `modificadoresTemporales` (`apps/api/src/characters/character-sheet.service.ts`), y el vencimiento lo anuncia `apps/api/src/game-clock/game-clock.service.ts`. **Commit `<pendiente 13>`** |
+| ✅ hecho | 2026-09-06 | **Web.** `apps/web/src/features/character-sheet/ModificadoresTemporales.tsx`, montado en `HojaCalculada.tsx`. La traza traduce `temporary:<motivo>` en `character-sheet/vocabulario.ts`; los dos sucesos, en `features/sessions/linea-de-log.ts`. **Commit `<pendiente 13>`** |
+| ✅ | 2026-09-06 | **EL PLAN 13 ESTÁ CERRADO**: 9 e2e verdes (`apps/api/test/modificadores-temporales.e2e-spec.ts`), 6 unitarias de pantalla, la **mutación probada**, y el recorrido de navegador con un modificador vivo y otro vencido (`apps/web/e2e/hoja.spec.ts`). |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **NO HAY MOTOR NUEVO, Y ESE ES EL PLAN ENTERO.** El motor ya recibe `Modifier[]` con `target`,
+  `op`, `amount` y las tres claves de la traza (`rules/engine.ts`), y `deriveCharacter` ya tiene la
+  puerta `extraModifiers` que usan las anulaciones manuales. Un modificador temporal es **una fila
+  más convertida en un `Modifier` más**. Escribir un cálculo propio habría sido una segunda versión
+  de la misma regla, sin las pruebas del motor.
+- **Entra como `add`, y por eso llega antes de los topes sin que nadie lo ordene.** El plan pedía
+  «después de los bonos permanentes y antes de los topes»; `aplicar()` ya recorre primero todos los
+  `add` y después lo que sustituye o recorta. No hace falta una posición: hace falta la operación
+  correcta.
+- **Las claves del vocabulario son LAS MISMAS que las de la traza** (`ability.str`, `ac`,
+  `speed.walk`), no unas paralelas que haya que traducir. Dos vocabularios para lo mismo acaban
+  discrepando, y aquí además el `target` **es** lo que el motor busca.
+- **El motivo viaja dentro del `labelKey`, detrás de `temporary:`.** El motor no devuelve prosa en
+  español —norma del proyecto— y el motivo es prosa libre del jugador que **ningún catálogo
+  contiene**. Meterlo en un campo nuevo del paso habría cambiado la forma de la traza, que 2A.3
+  fijó, para un caso.
+- **`sourceKey` es el id de la FILA, no el `target`.** Dos pociones de fuerza a la vez son dos pasos
+  distintos en la traza; con el `target` como clave se leerían como uno repetido.
+- **Se lee el reloj UNA vez.** Los modificadores se cargan en `hojaOMotivo`, que es el único punto
+  que ya lee el reloj de campaña: pedirlo otra vez dentro de la derivación habría dado dos instantes
+  distintos en el mismo cálculo.
+- **`POST` y no `PUT` con clave, a diferencia de las condiciones.** Una condición se reemplaza —no
+  se está envenenado dos veces— y dos pociones son **dos** modificadores. Esa diferencia de forma es
+  la confirmación de que no debían compartir tabla, que era una trampa escrita en el plan.
+- **Quién puede: el DM o el dueño**, y el plan pedía decidirlo. La mayoría de estos efectos salen de
+  algo que el jugador hace —beberse una poción que ya tiene—, y obligar al DM a teclearlos
+  convertiría una acción de un turno en una petición. Es `requireOwnerOrDM`, la misma autoridad que
+  gastar un recurso: no abre ninguna puerta nueva.
+- **Quitarlo a mano NO emite `TEMP_MODIFIER_EXPIRED`.** Reutilizar el suceso habría hecho que el
+  registro contara un vencimiento que no ocurrió. Hay prueba de que el conteo no sube.
+- **El reloj hacia atrás revive un vencido, y se declara.** El plan pedía decidirlo en vez de
+  dejarlo al azar: la caducidad es una resta contra el reloj, no un estado guardado, y lo mismo le
+  pasa ya a una condición. Guardar «ya venció» sería la segunda verdad que 2C.4 rechazó.
+- **Y un fallo de accesibilidad que solo vio el navegador:** el panel traía su propio
+  `aria-label`, y `TarjetaDeHoja` **ya es la región con ese nombre** — dos regiones anidadas
+  idénticas, ambiguas para quien navega por regiones. `jsdom` no se quejó; Playwright falló por modo
+  estricto y por eso está arreglado.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **Nada. El plan 13 está cerrado.** Lo siguiente es el plan 14.

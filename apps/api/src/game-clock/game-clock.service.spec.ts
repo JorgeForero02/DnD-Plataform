@@ -15,6 +15,8 @@ describe("GameClockService", () => {
     // 2C.4: al avanzar, el reloj anuncia las condiciones que acaban de vencer. Sin ninguna por
     // defecto — el caso de casi todos los avances.
     characterCondition: { findMany: jest.fn() },
+    // M8: al avanzar el reloj también se anuncian los modificadores temporales que vencen.
+    temporaryModifier: { findMany: jest.fn().mockResolvedValue([]) },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn() };
@@ -38,6 +40,7 @@ describe("GameClockService", () => {
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     events.record.mockResolvedValue({ id: "e1" });
     prisma.characterCondition.findMany.mockResolvedValue([]);
+    prisma.temporaryModifier.findMany.mockResolvedValue([]);
   });
 
   it("leer el reloj es de cualquier miembro: qué hora es en el mundo no es información privilegiada", async () => {
@@ -140,6 +143,8 @@ describe("el reloj anuncia lo que acaba de vencer (2C.4)", () => {
   const prisma = {
     campaign: { findUnique: jest.fn(), update: jest.fn() },
     characterCondition: { findMany: jest.fn() },
+    // M8: al avanzar el reloj también se anuncian los modificadores temporales que vencen.
+    temporaryModifier: { findMany: jest.fn().mockResolvedValue([]) },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn() };
@@ -160,6 +165,9 @@ describe("el reloj anuncia lo que acaba de vencer (2C.4)", () => {
     prisma.campaign.findUnique.mockResolvedValue({ id: "c1", clockSeconds: 1000 });
     prisma.campaign.update.mockResolvedValue({ id: "c1", clockSeconds: 4600 });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    // M8: sin modificadores temporales que vencer. `resetAllMocks` borra el valor del mock de
+    // arriba, así que se vuelve a poner aquí — el defecto de estas pruebas es «nada que anunciar».
+    prisma.temporaryModifier.findMany.mockResolvedValue([]);
     events.record.mockResolvedValue({ id: "e1" });
   });
 
@@ -212,6 +220,7 @@ describe("el reloj anuncia lo que acaba de vencer (2C.4)", () => {
 
   it("y si no vence ninguna, el único suceso es el del reloj", async () => {
     prisma.characterCondition.findMany.mockResolvedValue([]);
+    prisma.temporaryModifier.findMany.mockResolvedValue([]);
     await service.advance("dm", "c1", { kind: "TIME", seconds: 3600 });
     expect(events.record).toHaveBeenCalledTimes(1);
   });

@@ -111,6 +111,16 @@ export function lineaDeLog(p: GameEventPayload): string {
       return `Gasta ${p.amount} de ${p.label} (quedan ${p.remaining})`;
     case "RESOURCE_RESTORED":
       return `Recupera ${p.amount} de ${p.label} (quedan ${p.remaining})`;
+    case "TEMP_MODIFIER_GRANTED":
+      // El motivo va **dentro de la frase**: un «+2 a Fuerza» sin origen es lo que la traza y este
+      // registro existen para impedir.
+      return `${SIGNO(p.amount)} a ${NOMBRE_OBJETIVO_TEMPORAL[p.target] ?? p.target} — ${p.reason}${
+        p.expiresAtClock === undefined ? " (hasta que se quite)" : ""
+      }`;
+    case "TEMP_MODIFIER_EXPIRED":
+      return `Se le pasa el efecto de ${p.reason}: deja de tener ${SIGNO(p.amount)} a ${
+        NOMBRE_OBJETIVO_TEMPORAL[p.target] ?? p.target
+      }`;
     case "MEMBER_ROLE_CHANGED":
       // **Es un cambio de permisos**, así que la frase dice los dos papeles y no solo el nuevo:
       // «ahora es DM» no cuenta qué se perdió ni de dónde venía.
@@ -270,3 +280,26 @@ export function selloDeSuceso(p: GameEventPayload): SessionNoteKind | null {
  * legible se escribe una vez por dominio: aquí, porque es la línea del registro.
  */
 const PAPEL: Record<string, string> = { DM: "DM", PLAYER: "jugador" };
+
+/** Con su signo, siempre: «+2» y «−3» dicen cosas distintas y las dos son legítimas. */
+const SIGNO = (n: number) => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
+
+/**
+ * A qué apunta un modificador temporal, en español. **Ningún valor de enumeración llega a la
+ * pantalla**; la tabla completa vive en `features/character-sheet/ModificadoresTemporales.tsx`,
+ * que es quien la ofrece, y aquí está la parte que el registro necesita nombrar.
+ */
+const NOMBRE_OBJETIVO_TEMPORAL: Record<string, string> = {
+  "ability.str": "Fuerza",
+  "ability.dex": "Destreza",
+  "ability.con": "Constitución",
+  "ability.int": "Inteligencia",
+  "ability.wis": "Sabiduría",
+  "ability.cha": "Carisma",
+  ac: "la CA",
+  "speed.walk": "la velocidad",
+  "speed.climb": "la velocidad al trepar",
+  "speed.swim": "la velocidad al nadar",
+  "speed.fly": "la velocidad al volar",
+  "speed.burrow": "la velocidad al excavar",
+};

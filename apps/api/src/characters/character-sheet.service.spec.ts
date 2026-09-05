@@ -79,6 +79,9 @@ function dadoFijo(valor: number): Roller {
 function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
   const prisma = {
     character: { findFirst: jest.fn(), update: jest.fn() },
+    // M8: la hoja lee los modificadores temporales vivos. Por defecto ninguno, que es el estado de
+    // todas las pruebas escritas antes de que existieran.
+    temporaryModifier: { findMany: jest.fn().mockResolvedValue([]) },
     characterCondition: {
       findMany: jest.fn().mockResolvedValue([]),
       // I8: el ataque mira si hay ayuda recibida. Por defecto no la hay, que es el estado de
@@ -142,6 +145,9 @@ function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) 
     session: { findFirst: jest.fn().mockResolvedValue(null) },
     // Desde la revisión de reglas del 2026-09-03, gestionar PG deriva con **las condiciones y el
     // reloj**: curar tiene que toparse contra el máximo de verdad, no contra el entero.
+    // M8: la hoja lee los modificadores temporales vivos. Por defecto ninguno, que es el estado de
+    // todas las pruebas escritas antes de que existieran.
+    temporaryModifier: { findMany: jest.fn().mockResolvedValue([]) },
     characterCondition: {
       findMany: jest.fn().mockResolvedValue([]),
       // I8: el ataque mira si hay ayuda recibida. Por defecto no la hay, que es el estado de

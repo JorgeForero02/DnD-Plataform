@@ -38,6 +38,49 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## «+2 a Fuerza durante una hora»: modificadores temporales (2026-09-06, plan 13 · M8)
+
+**Qué.** Lo pidieron **los jugadores, por su nombre** —*«subidas y bajadas de atributos
+temporales»*— y **no estaba escrito en ningún plan**: ni en 2A, ni en 2C, ni en 2.5. Era un hueco de
+alcance, no una deuda de implementación, y por eso subió de prioridad.
+
+**Cómo, y esto es todo lo que costó:** el motor ya sabía sumar con traza y el reloj ya sabía caducar
+cosas. Un modificador temporal es **una fila más y un `Modifier` más**: entra en la derivación como
+`op: "add"` con `sourceType: "temporary"`, por la misma puerta que ya usaban las anulaciones
+manuales. No hay motor nuevo ni cálculo nuevo.
+
+**Tres cosas que no se negocian y están probadas:**
+
+1. **La columna del personaje no se toca.** Se suma al derivar. Si mutara, al caducar habría que
+   restar y cualquier fallo dejaría al personaje cambiado para siempre. Hay una prueba que lee la
+   fila cruda y comprueba que sigue diciendo 15 mientras la hoja dice 17.
+2. **Al vencer se marca, no desaparece** (D-2C-2). Si se borrara solo, el jugador vería su Fuerza
+   bajar dos puntos sin nada que mirar. **Probado por mutación**: haciendo que el vencido siga
+   sumando, la prueba se pone roja — es la poción que dura para siempre, el fallo que de verdad
+   rompe una partida.
+3. **Sale en la traza con su motivo.** Un `+2` sin origen es exactamente lo que la traza existe para
+   impedir, así que el motivo es obligatorio y viaja dentro de la clave del paso — el motor no
+   devuelve prosa en español, y esa regla no se rompe por esto.
+
+**El vocabulario es cerrado**: las seis características, la CA y las cinco velocidades, con **las
+mismas claves que usa la traza**. Ni una más: un modificador a algo que la hoja no calcula sería un
+número decorativo.
+
+**Quién puede: el DM o el dueño.** El plan pedía decidirlo y escribirlo. La mayoría de estos efectos
+salen de algo que el jugador hace —beberse una poción que ya tiene—, y obligar a que el DM los teclee
+convertiría una acción de un turno en una petición. Es la misma autoridad que gastar un recurso.
+
+**Y el reloj puede ir hacia atrás.** Si el DM lo corrige, un modificador vencido revive. Se deja así
+**a propósito**: la caducidad es una resta contra el reloj, no un estado guardado, y lo mismo le pasa
+ya a una condición. Guardar «ya venció» sería la segunda verdad que 2C.4 rechazó.
+
+**Mirado en el navegador**, como pedía la definición de terminado: se pone la poción, la Fuerza sube,
+la traza lo dice, el DM avanza el reloj un minuto desde el cajón de dados, y al volver a la hoja el
+modificador sigue ahí — **marcado como vencido**, con la palabra escrita y no solo tachado.
+
+**Cómo revertirlo.** `git revert` del commit y `DROP TABLE "TemporaryModifier"`. Los dos valores del
+enum de sucesos se quedan sin usar, que no rompe nada.
+
 ## La mesa se puede administrar: papeles que cambian e invitaciones que se ven (2026-09-06, plan 11 · D2, D3b, A3)
 
 **Qué.** Dos cosas que hacían doler una mesa real:

@@ -60,6 +60,11 @@ export const GAME_EVENT_TYPES = [
   // D2 (2026-09-06) — **cambiar el papel de alguien es un cambio de PERMISOS**, y sin suceso un DM
   // podria ascender a otro y nadie lo sabria nunca. Va al registro como cualquier otro hecho.
   "MEMBER_ROLE_CHANGED",
+  // M8 (2026-09-06) — **un numero que cambia sin suceso es un numero que nadie entiende.** El
+  // modificador temporal se concede y se vence, y las dos cosas se cuentan: sin ellas, la Fuerza
+  // sube o baja sola y el jugador no sabe por que.
+  "TEMP_MODIFIER_GRANTED",
+  "TEMP_MODIFIER_EXPIRED",
   "FLAG_SET",
   "SET_CHANGED",
   "SIGNAL_RAISED",
@@ -326,6 +331,24 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
    * **`DM_ONLY` siempre.** Ejecutar es de direccion; lo que la mesa ve son los EFECTOS que las
    * reglas produzcan, cada uno con su propia visibilidad.
    */
+  z.object({
+    type: z.literal("TEMP_MODIFIER_GRANTED"),
+    /** La clave del vocabulario cerrado; su forma legible se compone al pintar. */
+    target: z.string().min(1).max(40),
+    /** Con signo, como se concedio. */
+    amount: z.number().int(),
+    /** El motivo escrito por quien lo concedio: «Pocion de fuerza de gigante». */
+    reason: z.string().max(160),
+    /** En que segundo del reloj de campana vence. Ausente = no vence. */
+    expiresAtClock: z.number().int().nonnegative().optional(),
+  }),
+  z.object({
+    type: z.literal("TEMP_MODIFIER_EXPIRED"),
+    target: z.string().min(1).max(40),
+    amount: z.number().int(),
+    reason: z.string().max(160),
+    expiredAtClock: z.number().int().nonnegative(),
+  }),
   z.object({
     type: z.literal("MEMBER_ROLE_CHANGED"),
     /** Quien cambio de papel. **El nombre, no solo el id**: el registro se lee. */

@@ -62,6 +62,8 @@ enum GameEventType {
   RESOURCE_GIVEN
   DM_EXECUTED
   MEMBER_ROLE_CHANGED
+  TEMP_MODIFIER_GRANTED
+  TEMP_MODIFIER_EXPIRED
   FLAG_SET
   SET_CHANGED
   SIGNAL_RAISED
@@ -617,6 +619,7 @@ model Character {
   combatants Combatant[]
 
   @@index([campaignId])
+  temporaryModifiers TemporaryModifier[]
 }
 
 // Recursos consumibles (2A.8): inspiracion, furia, ki, dados de golpe, espacios de conjuro.
@@ -636,6 +639,37 @@ model CharacterResource {
   character   Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, key])
+}
+
+// Modificadores temporales (M8, plan 13). **«+2 a Fuerza durante una hora»**, que lo pidieron los
+// jugadores por su nombre —«subidas y bajadas de atributos temporales»— y no estaba en ningun plan.
+//
+// **Tabla propia y NO `CharacterCondition`**, aunque compartan la caducidad: una condicion es una
+// regla del SRD con nombre cerrado y esto es un numero arbitrario con un motivo escrito a mano.
+// Meterlos juntos ensuciaria el vocabulario cerrado que costo cerrar en 2A.12.
+//
+// **La columna del personaje NO se toca.** Esto se suma al DERIVAR: si mutara la Fuerza, al caducar
+// habria que restar, y cualquier fallo dejaria al personaje cambiado para siempre.
+model TemporaryModifier {
+  id          String    @id @default(cuid())
+  characterId String
+  /// Que toca, de un **vocabulario cerrado** (`TEMPORARY_MODIFIER_TARGETS`, en `@dnd/shared`): las
+  /// seis caracteristicas, la CA y las velocidades. Libre llegaria a la pantalla sin traducir y al
+  /// motor sin significado, y un modificador a algo que la hoja no calcula es un numero decorativo.
+  target      String
+  /// **Puede ser negativo**: los jugadores pidieron subidas Y bajadas.
+  amount      Int
+  /// «Pocion de fuerza de gigante». Se pinta en la traza, que es lo que impide un +2 sin origen.
+  reason      String
+  /// Segundos del **reloj de campana** (2C.3), no tiempo de pared. `null` = hasta que alguien lo
+  /// quite. Se resuelve al leer, como el vencimiento de una condicion (2C.4): sin barrido y sin una
+  /// segunda verdad que pueda discrepar.
+  expiresAtClock Int?
+  grantedById String
+  createdAt   DateTime  @default(now())
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
 }
 
 // Condiciones (2A.12). **Clave libre**, no un enum cerrado: las quince del SRD tienen efecto

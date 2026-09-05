@@ -144,6 +144,46 @@ export class GameClockService {
         );
       }
 
+      // **Y los modificadores temporales que acaban de vencer** (plan 13, ficha M8), por el mismo
+      // motivo exacto: un número que cambia sin suceso es un número que nadie entiende. Sin esto,
+      // la Fuerza de alguien baja dos puntos a mitad de sesión y no hay dónde mirar.
+      //
+      // Mismo tramo abierto-cerrado, misma visibilidad del personaje, y **tampoco se borran**: el
+      // vencido sigue en la hoja, apagado, hasta que alguien lo quite (D-2C-2).
+      const temporales = await tx.temporaryModifier.findMany({
+        where: {
+          expiresAtClock: { gt: antes.clockSeconds, lte: despues.clockSeconds },
+          character: { campaignId },
+        },
+        select: {
+          target: true,
+          amount: true,
+          reason: true,
+          expiresAtClock: true,
+          characterId: true,
+          character: { select: { visibility: true } },
+        },
+      });
+      for (const vencido of temporales) {
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            subjectId: vencido.characterId,
+            visibility: vencido.character.visibility,
+            payload: {
+              type: "TEMP_MODIFIER_EXPIRED",
+              target: vencido.target,
+              amount: vencido.amount,
+              reason: vencido.reason,
+              expiredAtClock: vencido.expiresAtClock!,
+            },
+          },
+          tx,
+        );
+      }
+
       return {
         from: antes.clockSeconds,
         to: despues.clockSeconds,

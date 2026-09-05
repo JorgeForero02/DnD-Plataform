@@ -140,6 +140,7 @@ export const NOMBRE_TIPO_ORIGEN: Record<TraceSourceType, string> = {
   // monstruo es un número escrito en el libro, y la traza tiene que poder decir eso mismo.
   statblock: "statblock",
   challenge: "desafío",
+  temporary: "temporal",
 };
 
 // Las quince condiciones que el motor entiende (`SRD_CONDITIONS`, character-state.schema.ts) —
@@ -418,6 +419,16 @@ export function traducirLabelKey(labelKey: string): Traduccion {
   m = /^ac\.cap\.([a-z0-9-]+)$/.exec(labelKey);
   if (m && m[1] in NOMBRE_ARMADURA) {
     return { texto: `Tope de Destreza de ${NOMBRE_ARMADURA[m[1]]}`, conocida: true };
+  }
+
+  // **Modificador temporal** (plan 13, ficha M8). El motor no devuelve prosa en español, así que
+  // el motivo —«Poción de fuerza de gigante»— viaja **dentro de la clave**, detrás de `temporary:`,
+  // y sale aquí tal cual. Es prosa del DM o del jugador: ni se traduce ni se busca en un catálogo,
+  // porque no hay ninguno que la contenga.
+  if (labelKey.startsWith("temporary:")) {
+    const motivo = labelKey.slice("temporary:".length).trim();
+    // Sin motivo la fila seguiría siendo legible, pero no diría nada: se nombra lo que es.
+    return { texto: motivo === "" ? "Modificador temporal" : motivo, conocida: true };
   }
 
   m = /^armor\.([a-z0-9-]+)$/.exec(labelKey);

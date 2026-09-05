@@ -47,6 +47,9 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   RESOURCE_SPENT: "personaje",
   RESOURCE_RESTORED: "personaje",
   RESOURCE_GIVEN: "personaje",
+  // M8: le pasa al personaje y cambia sus números, como gastar un recurso.
+  TEMP_MODIFIER_GRANTED: "personaje",
+  TEMP_MODIFIER_EXPIRED: "personaje",
   LEVEL_CHANGED: "personaje",
   CONDITION_APPLIED: "personaje",
   CONDITION_REMOVED: "personaje",
@@ -81,12 +84,12 @@ function soloElTipo(type: GameEventType): GameEventPayload {
 describe("de un suceso del registro a un tipo de mensaje", () => {
   // La red contra el `default` «para que compile»: se recorre la fuente única de tipos, no una
   // lista copiada aquí. Un tipo nuevo en `GAME_EVENT_TYPES` sin decisión pone esto rojo.
-  it("clasifica los 40 tipos de suceso, sin dejarse ninguno", () => {
+  it("clasifica los 42 tipos de suceso, sin dejarse ninguno", () => {
     // 40 desde el 2026-09-06: `ENTITY_RETYPED` (I16), `RESOURCE_GIVEN` (I8), `DM_EXECUTED` (I19) y
-    // `MEMBER_ROLE_CHANGED` (D2).
+    // `MEMBER_ROLE_CHANGED` (D2), y 42 con los dos de los modificadores temporales (M8).
     // El número está escrito a propósito — si
     // alguien añade un tipo y no lo clasifica, esta cuenta lo dice antes que el `switch`.
-    expect(GAME_EVENT_TYPES).toHaveLength(40);
+    expect(GAME_EVENT_TYPES).toHaveLength(42);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

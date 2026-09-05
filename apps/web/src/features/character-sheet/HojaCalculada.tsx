@@ -6,6 +6,7 @@ import { TirarBoton } from "./TirarBoton";
 import { Avisos } from "./Avisos";
 import { EleccionesPendientes } from "./EleccionesPendientes";
 import { PuntosDeGolpe } from "./PuntosDeGolpe";
+import { ModificadoresTemporales } from "./ModificadoresTemporales";
 import { RecursosYDescansos } from "./RecursosYDescansos";
 import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
@@ -323,6 +324,17 @@ export function HojaCalculada({
 
             <TarjetaDeHoja titulo="Recursos y descansos" etiqueta="recursos y descansos">
               <RecursosYDescansos
+                campaignId={campaignId}
+                characterId={characterId}
+                puedeEditar={puedeEditar}
+              />
+            </TarjetaDeHoja>
+
+            {/* **Modificadores temporales** (plan 13, M8), junto a las condiciones y no dentro de
+                ellas: comparten la caducidad, pero una condición es una regla del SRD con nombre
+                cerrado y esto es un número arbitrario con un motivo escrito a mano. */}
+            <TarjetaDeHoja titulo="Modificadores temporales" etiqueta="modificadores temporales">
+              <ModificadoresTemporales
                 campaignId={campaignId}
                 characterId={characterId}
                 puedeEditar={puedeEditar}

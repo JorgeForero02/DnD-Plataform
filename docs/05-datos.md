@@ -834,3 +834,48 @@ oráculo de la CA.
 
 **El listado no devuelve el token entero**, solo su cola: es una pantalla que un DM abre en una mesa
 con gente al lado.
+
+## Modificadores temporales con caducidad (plan 13, ficha M8)
+
+**`TemporaryModifier`** (migración `20260906060000_temporary_modifier`): *«+2 a Fuerza durante una
+hora»*. **Lo pidieron los jugadores por su nombre** —«subidas y bajadas de atributos temporales»— y
+no estaba escrito en ningún plan: era un hueco de alcance, no una deuda de implementación.
+
+**Tabla propia y NO `CharacterCondition`**, aunque compartan la caducidad: una condición es una regla
+del SRD con **nombre cerrado** y esto es un número arbitrario con un motivo escrito a mano. Juntarlas
+habría ensuciado el vocabulario que costó cerrar en 2A.12. Y hay una diferencia de forma que lo
+confirma: una condición **se reemplaza** —no se está envenenado dos veces— y dos pociones de fuerza a
+la vez son **dos** modificadores.
+
+| Columna | Qué es |
+|---|---|
+| `target` | **Vocabulario cerrado** (`TEMPORARY_MODIFIER_TARGETS`): las seis características, la CA y las cinco velocidades. Ni una más — es exactamente lo que la hoja sabe derivar, y **un modificador a algo que la hoja no calcula es un número decorativo**. Las claves son **las mismas que usa la traza** (`ability.str`, `ac`, `speed.walk`), no unas paralelas |
+| `amount` | **Con signo.** Subidas y bajadas, que es lo que se pidió |
+| `reason` | Prosa: «Poción de fuerza de gigante». Se pinta en la traza, y es lo único que impide un `+2` sin origen |
+| `expiresAtClock` | Segundos del **reloj de campaña** (2C.3), no de pared. `null` = hasta que alguien lo quite |
+
+**La columna del personaje NO se toca.** El modificador **se suma al derivar**: entra en el motor
+como un `Modifier` con `op: "add"` y `sourceType: "temporary"`, por la misma puerta que ya usaban las
+anulaciones manuales. Si mutara la Fuerza, al caducar habría que restar, y cualquier fallo dejaría al
+personaje cambiado para siempre. Como `add`, llega **antes de los topes** por construcción: el motor
+aplica primero los `add` y después lo que sustituye o recorta.
+
+**La caducidad se resuelve al leer**, con la misma función que las condiciones (`condicionesActivas`,
+2C.4): sin barrido periódico y sin una segunda verdad que pueda discrepar. **Y al vencer se marca, no
+desaparece** (D-2C-2): sigue en la hoja, apagado, hasta que alguien lo quite — así el jugador ve
+**por qué** perdió el +2, que es la mitad del valor de la ficha.
+
+**Quién puede: el DM o el dueño** (`requireOwnerOrDM`), y es una decisión. La mayoría de estos
+efectos salen de algo que el jugador hace —beberse una poción que ya está en su inventario— y obligar
+a que el DM los teclee convertiría una acción de un turno en una petición. Es la misma autoridad que
+ya gobierna gastar un recurso o aplicarse una condición: no abre ninguna puerta nueva.
+
+**Conceder y vencer dejan suceso** (`TEMP_MODIFIER_GRANTED` / `TEMP_MODIFIER_EXPIRED`), con la
+visibilidad **del personaje** y no `PLAYERS` fijo — un PNJ `DM_ONLY` al que se le pone un +2 no puede
+anunciarle a la mesa que existe. El de vencimiento lo escribe **el avance del reloj**, junto al de
+las condiciones y por el mismo motivo; **quitarlo a mano no lo emite**, porque no venció.
+
+> **El reloj puede ir hacia atrás si el DM lo corrige, y entonces un modificador vencido revive.**
+> Es coherente con cómo se calcula todo lo demás —la caducidad es una resta contra el reloj, no un
+> estado guardado— y es lo mismo que ya le pasa a una condición. Se deja así **a propósito**: la
+> alternativa sería guardar «ya venció», que es exactamente la segunda verdad que 2C.4 rechazó.

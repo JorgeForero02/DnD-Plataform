@@ -7,6 +7,8 @@ import { ResourcesController } from "./resources/resources.controller";
 import { ResourcesService } from "./resources/resources.service";
 import { RestController } from "./rest/rest.controller";
 import { RestService } from "./rest/rest.service";
+import { TemporaryModifiersController } from "./temporary-modifiers/temporary-modifiers.controller";
+import { TemporaryModifiersService } from "./temporary-modifiers/temporary-modifiers.service";
 
 // Tareas 2A.8 y 2A.12 — recursos, descansos y condiciones de personaje.
 //
@@ -16,8 +18,14 @@ import { RestService } from "./rest/rest.service";
 // conjuro.
 @Module({
   imports: [CampaignsModule, GameEventsModule],
-  controllers: [ResourcesController, RestController, ConditionsController, HelpController],
-  providers: [ResourcesService, RestService, ConditionsService],
+  controllers: [
+    ResourcesController,
+    RestController,
+    ConditionsController,
+    HelpController,
+    TemporaryModifiersController,
+  ],
+  providers: [ResourcesService, RestService, ConditionsService, TemporaryModifiersService],
   exports: [ResourcesService],
 })
 export class CharacterStateModule {}

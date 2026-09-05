@@ -37,6 +37,14 @@ export const traceSourceTypeSchema = z.enum([
   "statblock",
   /** El valor de desafio, de donde sale el bonificador de competencia de un PNJ. Fase 2D. */
   "challenge",
+  /**
+   * **Un modificador temporal con caducidad** (plan 13, ficha M8): «+2 a Fuerza durante una hora».
+   *
+   * Tiene su propio tipo y no entra como `item` ni como `manual` porque **no es ninguno de los
+   * dos**: no viene de un objeto equipado ni de una anulacion del DM, y la traza tiene que poder
+   * decir «esto se va a ir». Su `sourceKey` es el id de la fila y su `labelKey` lleva el motivo.
+   */
+  "temporary",
 ]);
 export type TraceSourceType = z.infer<typeof traceSourceTypeSchema>;
 

@@ -195,6 +195,52 @@ function modificadoresDeAnulacion(character: FilaPersonaje): Modifier[] {
 }
 
 /**
+ * Los modificadores temporales **vivos**, convertidos en modificadores `add` del motor (plan 13,
+ * ficha M8).
+ *
+ * **Se suman al derivar y NO tocan la columna del personaje.** Si mutaran la Fuerza, al caducar
+ * habría que restar, y cualquier fallo —un proceso que no corre, una excepción a medias— dejaría al
+ * personaje cambiado para siempre. Derivando, lo peor que pasa es que un número vuelva a su sitio.
+ *
+ * **La caducidad se resuelve AQUÍ, al leer**, contra el reloj de campaña y con la misma función que
+ * las condiciones (`condicionesActivas`, 2C.4): sin barrido periódico y sin una segunda verdad que
+ * pueda discrepar de la primera. Un modificador vencido **sigue en la tabla y deja de sumar**, que
+ * es la decisión D-2C-2 aplicada a esto: el jugador ve POR QUÉ perdió el +2.
+ *
+ * Entran como `add` y no como `override`, así que llegan **antes de los topes** por construcción:
+ * el motor aplica primero los `add` y después lo que sustituye o recorta.
+ */
+export function modificadoresTemporales(
+  filas: {
+    id: string;
+    target: string;
+    amount: number;
+    reason: string;
+    expiresAtClock: number | null;
+  }[],
+  relojSegundos: number,
+): Modifier[] {
+  // `condicionesActivas` pide `key`; se le da el `target`, que es lo que hace de clave aquí. La
+  // regla de «¿sigue vivo?» vive en un solo sitio, y este es el motivo de pasar por ella.
+  const vivos = condicionesActivas(
+    filas.map((f) => ({ ...f, key: f.target })),
+    relojSegundos,
+  );
+  return vivos.map((f) => ({
+    target: f.target,
+    op: "add" as const,
+    amount: f.amount,
+    sourceType: "temporary" as const,
+    // **El id de la fila**, no el `target`: dos pociones de fuerza a la vez son dos pasos
+    // distintos en la traza, y con el `target` como clave se leerían como uno repetido.
+    sourceKey: f.id,
+    // El motor no devuelve prosa en español, así que el motivo viaja **dentro de la clave** y la
+    // pantalla lo saca. Es lo mismo que hace `override.manual`, con el motivo añadido.
+    labelKey: `temporary:${f.reason}`,
+  }));
+}
+
+/**
  * En 2A solo hay contenido SRD (2B abrirá `CAMPAIGN`). Extrae la clave o rechaza con 400 —nunca
  * con el 500 que daría dejar pasar una referencia que el catálogo no sabe resolver.
  */
@@ -874,18 +920,27 @@ export class CharacterSheetService {
     // vivo porque no hemos podido derivar sus PG sería el mismo tipo de mentira que esta función
     // existe para no repetir en dos caminos.
     const client = tx ?? this.prisma;
-    const [condiciones, campana] = await Promise.all([
+    const [condiciones, temporales, campana] = await Promise.all([
       client.characterCondition.findMany({
         where: { characterId: character.id },
         select: { key: true, level: true, expiresAtClock: true },
       }),
+      // M8: los modificadores temporales entran por el mismo sitio y con el mismo reloj. Se piden
+      // aquí y no dentro de la derivación porque este es el único punto que ya lee el reloj: dos
+      // lecturas del reloj en el mismo cálculo podrían dar dos instantes distintos.
+      client.temporaryModifier.findMany({
+        where: { characterId: character.id },
+        select: { id: true, target: true, amount: true, reason: true, expiresAtClock: true },
+        orderBy: { createdAt: "asc" },
+      }),
       client.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
     ]);
     const nivel = nivelDeAgotamiento(condicionesActivas(condiciones, campana.clockSeconds));
+    const extras = modificadoresTemporales(temporales, campana.clockSeconds);
 
     const base = character.statblockRef
-      ? await this.hojaDeStatblock(viewer, character)
-      : this.hojaDePersonaje(character, items);
+      ? await this.hojaDeStatblock(viewer, character, extras)
+      : this.hojaDePersonaje(character, items, extras);
     if (!("sheet" in base)) return { ...base, exhaustion: nivel };
     if (nivel === 0) return { ...base, exhaustion: nivel };
     return {
@@ -933,6 +988,8 @@ export class CharacterSheetService {
   private async hojaDeStatblock(
     viewer: Viewer,
     character: FilaPersonaje,
+    /** Los temporales vivos (M8): un PNJ jugable también puede llevar un +2 con caducidad. */
+    temporales: Modifier[] = [],
   ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
     if (!this.statblocks) {
       return {
@@ -969,16 +1026,21 @@ export class CharacterSheetService {
         reason: `Este PNJ apunta a un statblock que ya no existe (${character.statblockRef}). Vuelve a crearlo o bórralo.`,
       };
     }
-    return { sheet: deriveNpc(resuelto.statblock, modificadoresDeAnulacion(character)) };
+    return {
+      sheet: deriveNpc(resuelto.statblock, [...modificadoresDeAnulacion(character), ...temporales]),
+    };
   }
 
   private hojaDePersonaje(
     character: FilaPersonaje,
     items: ResolvedItem[],
+    /** Los temporales vivos (M8). Van **detrás** de las anulaciones porque el motor ordena por
+     * operación, no por posición: los `add` se aplican todos antes que cualquier `override`. */
+    temporales: Modifier[] = [],
   ): { sheet: CharacterSheet } | { reason: string } {
     const resuelto = construirBuild(character, items);
     if (!("build" in resuelto)) return { reason: resuelto.reason };
-    return derivarOMotivo(resuelto.build, modificadoresDeAnulacion(character));
+    return derivarOMotivo(resuelto.build, [...modificadoresDeAnulacion(character), ...temporales]);
   }
 
   async changeHp(userId: string, campaignId: string, characterId: string, input: ChangeHpInput) {

@@ -1172,7 +1172,7 @@ ficha se anuncia como inexistente. **Era una decisión no declarada**; ahora est
 prueba cuyo comentario dice que cambiarla la rompe **a propósito**. Se cierra con
 `.normalize("NFD").replace(/\p{Diacritic}/gu, "")`.
 
-## P2 · Los tres aceleradores de la mesa están impresos y NO están cableados (2026-09-04)
+## ~~P2 · Los tres aceleradores de la mesa están impresos y NO están cableados~~ — CERRADA (2026-09-04)
 
 `RailDePaneles` pinta `N`, `I` y `M` debajo de sus rótulos desde B1.3, y la §5 de la auditoría los
 declara: *«Atajos: `N` hoja · `I` bolsa · `M` mundo — ignorados mientras se escribe. Siempre además
@@ -1184,6 +1184,13 @@ O sea que la pantalla **enseña un acelerador que no existe**, que es la regla v
 texto. **O se cablean —con la regla de que se ignoran mientras se escribe, que la maqueta ya
 implementa— o se retiran los rótulos.** El cuarto, `D` de dados, es un invento sobre la maqueta y
 hereda la misma decisión.
+
+**CERRADA: se cablearon**, en `MesaDeSesion.tsx`, con tres guardas y dos de ellas **no están en la
+maqueta**: se ignoran mientras se escribe —incluido `isContentEditable`, porque el editor del
+mundo es TipTap y su cuerpo no es `input` ni `textarea`—, no hacen nada con un modificador pulsado
+—`Ctrl+N` abre una ventana del navegador—, y no abren lo que su botón se niega a abrir. La ficha se
+deja escrita en vez de borrada: el patrón que enseña —una pantalla que promete un atajo que no
+existe— es el mismo que P1 y el que esta ronda entera vino a cazar.
 
 ## P4 — Limpieza
 

@@ -498,3 +498,89 @@ describe("la mesa en reposo: empezar a jugar se hace donde se juega", () => {
     expect(screen.queryByText(/La bajada a las cisternas/)).not.toBeInTheDocument();
   });
 });
+
+// **Los aceleradores del rail, que llevaban desde B1.3 impresos y sin cablear.**
+//
+// El rail escribe `N`, `I` y `M` bajo cada rótulo y la §5 de la auditoría del 2026-09-04 los
+// declara, pero no existía **ningún** manejador de teclado para ellos. Estas pruebas fijan las dos
+// mitades: que abren de verdad, y las tres guardas — porque un atajo mal guardado es peor que no
+// tenerlo (roba `Ctrl+N` al navegador, o abre la hoja mientras escribes «nombre» en una ficha).
+describe("los atajos del rail", () => {
+  beforeEach(() => {
+    conMiembros("PLAYER");
+  });
+
+  const pulsar = (key: string, extra: Record<string, unknown> = {}) =>
+    fireEvent.keyDown(document, { key, ...extra });
+
+  it("«N» abre la hoja y «M» el mundo, sin tocar el rail", async () => {
+    montar("u-ana");
+    // Se espera al personaje: sin él las teclas de hoja y bolsa están apagadas a propósito.
+    await screen.findAllByText("Corvin Vhael");
+
+    pulsar("n");
+    expect(await screen.findByRole("dialog", { name: "Tu hoja" })).toBeInTheDocument();
+
+    pulsar("m");
+    expect(await screen.findByRole("dialog", { name: "Consulta del mundo" })).toBeInTheDocument();
+  });
+
+  it("mayúscula o minúscula da igual", async () => {
+    montar("u-ana");
+    await screen.findAllByText("Corvin Vhael");
+
+    pulsar("M");
+    expect(await screen.findByRole("dialog", { name: "Consulta del mundo" })).toBeInTheDocument();
+  });
+
+  // Guarda 1 — la que la maqueta sí tiene, ampliada. Sin `isContentEditable`, escribir «nombre»
+  // en el editor del mundo (TipTap, que no es `input` ni `textarea`) abriría la hoja tres veces.
+  it("se ignoran mientras se escribe, también en un editor enriquecido", async () => {
+    montar("u-ana");
+    await screen.findAllByText("Corvin Vhael");
+
+    const campo = document.createElement("input");
+    document.body.appendChild(campo);
+    fireEvent.keyDown(campo, { key: "n" });
+    expect(screen.queryByRole("dialog", { name: "Tu hoja" })).not.toBeInTheDocument();
+
+    const rico = document.createElement("div");
+    rico.setAttribute("contenteditable", "true");
+    // `isContentEditable` lo deriva el navegador de la propiedad, y `jsdom` no la implementa: se
+    // define a mano para poder probar la guarda que importa.
+    Object.defineProperty(rico, "isContentEditable", { value: true });
+    document.body.appendChild(rico);
+    fireEvent.keyDown(rico, { key: "n" });
+    expect(screen.queryByRole("dialog", { name: "Tu hoja" })).not.toBeInTheDocument();
+  });
+
+  // Guarda 2 — no está en la maqueta. `Ctrl+N` abre una ventana del navegador y `Cmd+I` es del
+  // sistema: robarlos sería peor que no tener atajo.
+  it("con un modificador pulsado no hacen nada", async () => {
+    montar("u-ana");
+    await screen.findAllByText("Corvin Vhael");
+
+    pulsar("n", { ctrlKey: true });
+    pulsar("n", { metaKey: true });
+    pulsar("n", { altKey: true });
+    expect(screen.queryByRole("dialog", { name: "Tu hoja" })).not.toBeInTheDocument();
+  });
+
+  // Guarda 3 — tampoco está en la maqueta, que no tiene estado deshabilitado. Sin personaje en la
+  // mesa el botón «Hoja» está apagado con su motivo; su tecla no puede esquivar esa condición, o
+  // serían dos reglas que acabarían discrepando.
+  //
+  // **Y esta prueba defiende el COMPORTAMIENTO, no la guarda — comprobado por mutación.** Quitar
+  // el `&& tienePersonaje` del manejador la deja igual de verde, porque `PanelesSuperpuestos` ya
+  // exige `Boolean(personajeId)` para pintar la hoja: son dos mecanismos independientes y hace
+  // falta romper los dos para que esto se ponga rojo. Se deja escrito para que nadie lea el verde
+  // como que la guarda está sujeta; lo que está sujeto es que la tecla no abre nada.
+  it("sin personaje en la mesa, «N» no abre nada — igual que el botón", async () => {
+    conMiembros("DM");
+    montar("u-dm");
+    await screen.findAllByText("Corvin Vhael");
+
+    pulsar("n");
+    expect(screen.queryByRole("dialog", { name: "Tu hoja" })).not.toBeInTheDocument();
+  });
+});

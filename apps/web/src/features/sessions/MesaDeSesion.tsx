@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCurrentSession, useGameLog, useSessions } from "./hooks";
 import { CabeceraDeEscena } from "./CabeceraDeEscena";
@@ -92,6 +92,49 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
 
   // **El taller es el sitio del DM cuando la mesa está en reposo**, y ocupa la mesa entera. Un DM
   // sin sesión abierta no está mirando un elenco: está preparando.
+  // **Los aceleradores, que llevaban desde B1.3 impresos y sin cablear.**
+  //
+  // El rail escribe `N`, `I` y `M` debajo de cada rótulo desde que existe, y la §5 de la auditoría
+  // del 2026-09-04 los declara — pero **no había un solo manejador de teclado en toda la
+  // aplicación** para ellos: `grep` de `keydown` devolvía el Escape de `ui/Dialog`, las flechas de
+  // `ui/Tabs` y tres manejadores locales. La pantalla prometía un atajo que no existía, que es la
+  // regla vinculante de `docs/04-convenciones.md` al revés: si el texto promete algo que el código
+  // no cumple, miente el texto.
+  //
+  // **Siempre ADEMÁS del rail, nunca en su lugar** (§5): quien no sepa que existen llega igual
+  // pulsando. Y `D` es de los dados, que no es un cajón: alterna, no abre.
+  //
+  // Tres guardas, y dos no están en la maqueta:
+  //
+  //  1. **Se ignoran mientras se escribe.** La maqueta mira `INPUT` y `TEXTAREA`; aquí hace falta
+  //     además `isContentEditable`, porque el editor del mundo es TipTap y su cuerpo no es ninguno
+  //     de los dos. Sin esto, escribir «nombre» en una ficha abriría la hoja tres veces.
+  //  2. **Con un modificador pulsado, no.** `Ctrl+N` abre una ventana del navegador y `Cmd+I` es
+  //     del sistema; robarlos sería peor que no tener atajo.
+  //  3. **No hacen lo que el botón se niega a hacer.** Sin personaje en la mesa, «Hoja» y «Bolsa»
+  //     están deshabilitados con su motivo, así que sus teclas tampoco abren nada. Un atajo que
+  //     esquiva la condición del botón es una segunda regla que acabaría discrepando.
+  const tienePersonaje = Boolean(miPersonaje);
+  useEffect(() => {
+    function alPulsar(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const donde = e.target as HTMLElement | null;
+      if (
+        donde &&
+        (donde.tagName === "INPUT" || donde.tagName === "TEXTAREA" || donde.isContentEditable)
+      ) {
+        return;
+      }
+      const tecla = e.key.toLowerCase();
+      if (tecla === "n" && tienePersonaje) setPanel("hoja");
+      else if (tecla === "i" && tienePersonaje) setPanel("bolsa");
+      else if (tecla === "m") setPanel("mundo");
+      else if (tecla === "d") setDadosPuestos((puestos) => !puestos);
+    }
+    document.addEventListener("keydown", alPulsar);
+    return () => document.removeEventListener("keydown", alPulsar);
+  }, [tienePersonaje]);
+
   const enTaller = esDm && !sesion;
 
   if (isLoading) {

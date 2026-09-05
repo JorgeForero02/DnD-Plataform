@@ -182,9 +182,21 @@ export function CharacterDetailPage() {
               campaignId={id}
               character={personaje}
               puedeEditar={puedeEditar}
+              /* **Archivar solo aplica a quien está en la lista de la mesa**, y esa lista es
+                 justo `deLaLista`: `characters.service.ts:57` excluye de ella a los PNJ
+                 (`statblockRef`) y a los ya archivados (`archivedAt`), que son exactamente los
+                 dos casos en los que `archive` no haría nada útil —404 el primero, sin efecto el
+                 segundo—. Cuando el personaje solo se pudo encontrar por su hoja, es uno de esos
+                 dos, y el gesto no se ofrece. No es control de acceso, que lo impone el servidor
+                 con `requireEditable`: es que aquí el gesto no tiene sentido. */
+              puedeArchivar={deLaLista !== undefined}
               motivo={motivo}
               // Mismo motivo que la miga: `?seccion=characters` ya no es una sección.
               onDeleted={() => navigate(`/campaigns/${id}`, { replace: true })}
+              // Archivado, este personaje ya no está en la lista de la mesa: quedarse en su hoja
+              // sería quedarse en una página que ya no cuenta la verdad de dónde vive. Se vuelve
+              // a la campaña, que es desde donde se abre el archivo.
+              onArchived={() => navigate(`/campaigns/${id}`, { replace: true })}
             />
           </Panel>
         </section>

@@ -248,3 +248,34 @@ posibles; **no se cambia el comportamiento sin el autor**, porque las dos son de
 **Revertir:** un commit; solo documentación y una prueba.
 
 ---
+
+## 2026-09-05 · Plan 06 — un personaje se archiva, y vuelve
+
+**Ficha M9, abierta desde 2.5.8 y tachada en falso una vez.** El servidor sabía archivar —`POST
+…/archive`, `POST …/unarchive`, `GET …/characters/archived`, con su columna, sus sucesos y sus
+e2e— y **la web no llamaba a ninguna de las tres**: el único `archiv` de `apps/web/src` era la
+traducción de la línea del registro. Es el patrón que este proyecto ha cerrado en falso cuatro
+veces: servidor hecho, nadie que lo use.
+
+**Lo que entra, en un commit:** las tres llamadas y sus hooks
+(`features/characters/api.ts`, `hooks.ts`), el gesto (`features/characters/BotonArchivar.tsx`,
+montado en `AjustesDePersonaje.tsx`) y **la puerta de salida**
+(`features/characters/ArchivoDePersonajes.tsx`, en la lista de personajes). Las dos mitades
+juntas a propósito: un archivo sin listado es un borrado con otro nombre.
+
+**Por qué archivar cuesta menos que borrar, y se ve.** Botón `secondary` frente al filete de
+peligro; la confirmación **dice la consecuencia y que se recupera** en vez de preguntar si estás
+seguro; y el borrado ahora **nombra archivar** como la salida barata. Si los dos gestos cuestan lo
+mismo, la gente borra.
+
+**Y una ficha nueva, medida al escribir el recorrido:** el suceso de archivar se guarda **sin
+sesión**, y el hilo de la mesa filtra por la sesión abierta, así que la línea no se lee mientras
+se juega. Queda en `06-pendientes.md` con las dos salidas y lo descartado; arreglarla es
+`apps/api` o una decisión de producto, ninguna de las dos de este plan.
+
+**De paso se tachó** la ficha «tres pantallas revelan la misma ficha»: la Ola 2 la había cerrado
+y el maestro no se había enterado. **Cero líneas de código**, solo el barrido que lo demuestra.
+
+**Revertir:** un commit. Sin migraciones y sin tocar la API — quitarlo devuelve el borrado como
+único gesto, que es exactamente el estado que la ficha describía.
+

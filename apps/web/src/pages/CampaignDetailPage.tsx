@@ -14,7 +14,8 @@ import { useSessions } from "../features/sessions/hooks";
 import { SessionEditor } from "../features/sessions/SessionEditor";
 import { ControlesDeSesion } from "../features/sessions/ControlesDeSesion";
 import type { Session } from "../features/sessions/api";
-import { useCharacters } from "../features/characters/hooks";
+import { useArchivedCharacters, useCharacters } from "../features/characters/hooks";
+import { ArchivoDePersonajes } from "../features/characters/ArchivoDePersonajes";
 import { descriptorDePersonaje } from "../features/characters/descriptor";
 import { CharacterEditor } from "../features/characters/CharacterEditor";
 import { InvitePanel } from "../features/invites/InvitePanel";
@@ -443,6 +444,10 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
 
 function CharactersTab({ campaignId }: { campaignId: string }) {
   const { data, isLoading, isError, error } = useCharacters(campaignId);
+  // El archivo se pide siempre, no solo cuando alguien lo abre: su **conteo** hace falta antes
+  // que su contenido, porque el hueco vacío tiene que poder decir «hay N archivados». Sin eso,
+  // una campaña con todos sus personajes archivados se lee como una campaña que los perdió.
+  const { data: archivados } = useArchivedCharacters(campaignId);
   const {
     role,
     isLoading: roleLoading,
@@ -477,8 +482,9 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
       {isError && <p className="text-danger-text">{(error as Error).message}</p>}
       {data && data.length === 0 && (
         <EmptyState title="Ningún personaje todavía">
-          Cada jugador crea el suyo; el DM puede crearlos también. Nombre, raza, clase y nivel
-          bastan para empezar.
+          {archivados && archivados.length > 0
+            ? `Cada jugador crea el suyo; el DM puede crearlos también. Y no se ha perdido nada: hay ${archivados.length} ${archivados.length === 1 ? "personaje archivado" : "personajes archivados"} más abajo, y vuelven de una pulsación.`
+            : "Cada jugador crea el suyo; el DM puede crearlos también. Nombre, raza, clase y nivel bastan para empezar."}
         </EmptyState>
       )}
       {data && data.length > 0 && (
@@ -539,6 +545,20 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
           })}
         </ul>
       )}
+      {/* La puerta de salida. Va en la misma pantalla que la lista y no detrás de otro cajón:
+          archivar solo es distinto de borrar si el archivo se ve. */}
+      <ArchivoDePersonajes
+        campaignId={campaignId}
+        archivados={archivados ?? []}
+        // Misma regla que la fila de arriba y que el servidor: DM o dueño
+        // (characters.service.ts:requireEditable).
+        puedeDevolver={(c) => !roleUnresolved && (isDM || c.ownerId === userId)}
+        motivo={
+          roleUnresolved
+            ? CHECKING_PERMISSIONS
+            : "Solo el dueño o el DM puede devolver este personaje."
+        }
+      />
       {creating && <CharacterEditor campaignId={campaignId} onClose={() => setCreating(false)} />}
     </div>
   );

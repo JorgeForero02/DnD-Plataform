@@ -42,7 +42,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
 > - **Ficheros de e2e de API:** 37 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 23 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 24 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -263,6 +263,7 @@ en verde.
 | `tablas-del-dm` | Que lo primero que se lea sea **que esto no es del manual**; que el interruptor diga su posición **leída del servidor**; y que un error enseñe **la frase del servidor** y no una genérica. |
 | `bestiario` | Las quince criaturas con sus números; **ningún valor de enumeración en pantalla**; la velocidad en pies; bajar una criatura a la mesa de punta a punta; y que **el botón no prometa un combate que no existe**. |
 | `condiciones-con-duracion` | Una condición vencida **se marca y no desaparece**, y los PG partidos por agotamiento **se explican en la hoja**. |
+| `archivar` | **El camino entero de archivar un personaje** (ficha M9, plan 06), que es lo único que demuestra que el gesto existe de verdad: archivar → **desaparece de la lista** → aparece en «Archivados» → se devuelve → **vuelve a la lista**. Lo que aquí se mide y en `jsdom` no se puede: que **archivar y borrar no se pintan igual** —se comparan los bordes calculados de los dos botones—, porque el plan pide que se **vea** cuál cuesta menos. Y con dos contextos de navegador, que el suceso llega al registro en español y con el nombre del personaje: **hace falta un jugador** porque el hilo de la mesa filtra por la sesión abierta y este suceso se guarda sin sesión (ficha P3 de [06-pendientes.md](./06-pendientes.md)). |
 
 ### Que se ve como debe
 

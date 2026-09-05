@@ -56,3 +56,35 @@ export function deleteCharacter(
     body: JSON.stringify({}),
   });
 }
+
+// --- Archivar (plan 06, ficha M9) -----------------------------------------------------------
+//
+// El servidor sabe archivar desde 2.5.8 (`characters.controller.ts`: `POST :id/archive`,
+// `POST :id/unarchive`, `GET archived`) y **nada de la web llamaba a ninguna de las tres**. Las
+// tres se añaden juntas a propósito: un archivo sin listado por el que salir es un borrado con
+// otro nombre.
+//
+// `GET archived` es **una ruta aparte**, no un filtro de cliente sobre la lista normal: esa lista
+// ya excluye a los archivados en el servidor (`characters.service.ts:57`), así que el cliente no
+// los recibe y no tendría nada que filtrar.
+
+/** Los personajes archivados de la campaña, ya filtrados por `canView` en el servidor. */
+export function fetchArchivedCharacters(campaignId: string): Promise<Character[]> {
+  return apiFetch<Character[]>(`/campaigns/${campaignId}/characters/archived`);
+}
+
+export function archiveCharacter(campaignId: string, characterId: string): Promise<Character> {
+  return apiFetch<Character>(`/campaigns/${campaignId}/characters/${characterId}/archive`, {
+    method: "POST",
+    // Mismo motivo que en `deleteCharacter`: `apiFetch` manda siempre un Content-Type de JSON y
+    // Fastify rechaza esa cabecera con el cuerpo realmente vacío.
+    body: JSON.stringify({}),
+  });
+}
+
+export function unarchiveCharacter(campaignId: string, characterId: string): Promise<Character> {
+  return apiFetch<Character>(`/campaigns/${campaignId}/characters/${characterId}/unarchive`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}

@@ -1,5 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
-import { applyConditionSchema, type ApplyConditionInput } from "@dnd/shared";
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
+import {
+  applyConditionSchema,
+  helpSchema,
+  type ApplyConditionInput,
+  type HelpInput,
+} from "@dnd/shared";
 import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 import { ConditionsService } from "./conditions.service";
@@ -42,5 +47,28 @@ export class ConditionsController {
     @Param("key") key: string,
   ) {
     return this.conditions.remove(req.user.id, campaignId, characterId, key);
+  }
+}
+
+/**
+ * **Ayudar es una acción de quien ayuda**, no una condición suya, y por eso tiene su propia ruta.
+ *
+ * `:characterId` es **el que ayuda**; a quién ayuda va en el cuerpo. Colgarlo de
+ * `.../conditions/help` habría leído como «una condición del ayudante», que es justo al revés: la
+ * marca la recibe el otro.
+ */
+@UseGuards(JwtAuthGuard)
+@Controller("campaigns/:campaignId/characters/:characterId/help")
+export class HelpController {
+  constructor(private readonly conditions: ConditionsService) {}
+
+  @Post()
+  help(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("characterId") characterId: string,
+    @Body(new ZodValidationPipe(helpSchema)) body: HelpInput,
+  ) {
+    return this.conditions.help(req.user.id, campaignId, characterId, body);
   }
 }

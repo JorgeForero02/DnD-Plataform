@@ -135,7 +135,8 @@ mención explícita de que el flanqueo se dejó fuera a propósito** — o algui
 | Estado | Cuándo | Qué |
 |---|---|---|
 | ✅ hecho | 2026-09-06 | **8.1 · Inspiración, entera.** Fila `inspiration` (`max: 1`, `DM_ONLY`) sembrada en `apps/api/src/characters/characters.service.ts:29` vía `ResourcesService.seedInspirationFor` (`resources.service.ts:349`). `give()` en `resources.service.ts:260`, ruta en `resources.controller.ts:51`. Suceso `RESOURCE_GIVEN` + migración `20260906030000_resource_given_event/`. `spendInspiration` en `createRollSchema`, `rollAttackSchema`, `resolveAttackSchema` y `answerRollRequestSchema`; lo resuelve `apps/api/src/rolls/rolls.service.ts:92`. Web: `apps/web/src/features/rolls/panel/GastarInspiracion.tsx`, montado en el panel de la mesa, la hoja, el ataque y las tiradas pendientes; regalar en `character-sheet/RegalarInspiracion.tsx`. **Commit `<pendiente 8.1>`** |
-| 🟨 en marcha | 2026-09-06 | **8.2 · Ayudar.** Sin empezar todavía: es una condición con vencimiento sobre el ayudado, y ese sistema existe desde 2C.4. |
+| ✅ hecho | 2026-09-06 | **8.2 · Ayudar, entera.** `CLAVE_AYUDA` y `helpSchema` en `packages/shared/src/character-state.schema.ts:106`; `ConditionsService.help` en `apps/api/src/character-state/conditions/conditions.service.ts:117` y `HelpController` al final de `conditions.controller.ts`. La ventaja entra por `apps/api/src/character-state/roll-mode/suggested-roll-mode.ts:84`. El consumo, en `apps/api/src/characters/character-sheet.service.ts:711` (`ayudaViva`/`consumirAyuda`), llamado desde las **dos** puertas de ataque. Web: `apps/web/src/features/sessions/elenco/AyudarA.tsx`, montado en la tarjeta propia. **Commit `<pendiente 8.2>`** |
+| ✅ | 2026-09-06 | **EL PLAN 08 ESTÁ CERRADO.** Las dos mitades, con sus mutaciones y sus dos e2e (`apps/api/test/inspiracion.e2e-spec.ts`, 8 verdes; `apps/api/test/ayudar.e2e-spec.ts`, 6 verdes). El flanqueo **no se construye**, y está dicho en el commit y en `docs/05-datos.md`. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -177,15 +178,36 @@ fuente si la hubo):
   iniciativa, el daño, la respuesta a una petición— a escribir `spendInspiration: false` habría
   metido esa palabra en una docena de sitios donde no significa nada.
 
+- **8.2 · «Al principio de tu siguiente turno» se expresa SIN inventar un reloj.** Un asalto son
+  seis segundos del reloj de campaña (`SEGUNDOS_POR_ASALTO`, D-2C-1) y subir de asalto lo avanza
+  (`encounters.service.ts:472`), así que «mi siguiente turno» es exactamente un asalto más tarde y
+  se guarda como `expiresAtClock` absoluto, igual que cualquier otra condición con duración. Un
+  contador de turnos propio habría sido un segundo reloj que puede discrepar del primero.
+- **8.2 · La marca va en `CharacterCondition` y NO en una tabla nueva.** Tiene la misma forma —clave,
+  origen, vencimiento— y una tabla propia habría duplicado el mecanismo de 2C.4 entero. Que no sea
+  una de las quince del SRD se dice donde importa: en `shared`, en la tabla de efectos y en la
+  prueba que barre los temporizadores.
+- **8.2 · El motor SÍ la entiende, a diferencia de una clave libre.** Entra en `VENTAJA_EN_ATAQUE`
+  con su cita. Sigue siendo **sugerencia**, no imposición, porque la cercanía que el SRD exige no se
+  puede comprobar — pero en el ataque el servidor sí la aplica y la consume, que es lo que el SRD
+  dice que pasa con la primera tirada.
+- **8.2 · Se consume DESPUÉS de tirar, no antes.** Si la tirada se rechaza —expresión inválida, 409
+  de inspiración—, la ayuda no se ha usado. El precio es que el borrado cae fuera de la transacción
+  de la tirada: si fallara, quedaría una ayuda de más, que **se ve en la hoja y se quita**, frente a
+  perder una ayuda que nadie usó, que no se puede recuperar.
+- **8.2 · El suceso lleva la visibilidad del AYUDADO**, no la del ayudante: con la del ayudante,
+  ayudar a un PNJ `DM_ONLY` lo habría anunciado a la mesa entera. Es la misma fuga que ya volvió dos
+  veces en 2.5.2 y en 2C.
+- **8.2 · El control va en TU tarjeta del elenco**, no en la del otro. La regla de la mesa —del
+  autor— es que sobre el personaje de otro jugador no van mandos; ayudar es una acción tuya y a
+  quién ayudas es su parámetro.
+- **8.2 · Una prueba vieja hubo que acotarla, y se declara.** «Ninguna condición insinúa un
+  temporizador» barría todos los efectos; `helped` **tiene** que decir que caduca, porque su
+  vencimiento lo pone el servidor y no el DM. Se excluye **solo** a las de vencimiento automático y
+  las quince del SRD se siguen barriendo enteras.
+- **8.2 · El flanqueo no se construye, y el commit lo dice.** Opcional del DMG, da ventaja y no un
+  `+3` —ese +2 es de 3.ª y de Pathfinder—, y necesita adyacencia, o sea el tablero de la fase 3.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **8.2 · Ayudar.** Es una **condición con vencimiento** sobre el ayudado
-  (`CharacterCondition.expiresAtClock`, 2C.4), con quien ayuda como origen. Los dos límites que sí se
-  pueden implementar: **se consume con la primera tirada de ataque** y **vence al principio del turno
-  siguiente del ayudante**. El tercero —el enemigo a 5 pies de quien ayuda— **no se comprueba** y la
-  pantalla tiene que decirlo: *«la cercanía la juzgas tú»*.
-- La sugerencia de ventaja ya sabe leer condiciones
-  (`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`): la clave nueva entra en
-  `VENTAJA_EN_ATAQUE`.
-- **Mutación obligatoria del plan**: quitar el vencimiento de la ayuda y comprobar que su prueba se
-  pone roja.
+- **Nada. El plan 08 está cerrado.** Lo siguiente es el plan 09.

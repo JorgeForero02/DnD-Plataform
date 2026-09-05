@@ -186,6 +186,22 @@ export function useGiveResource(campaignId: string, characterId: string) {
   });
 }
 
+/**
+ * **Ayudar** (plan 08, I8). Invalida las condiciones **del ayudado**, que es quien recibe la marca,
+ * y su hoja: la sugerencia de ventaja del ataque sale de ahí y tiene que cambiar en el momento.
+ */
+export function useHelp(campaignId: string, helperCharacterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { targetCharacterId: string }) =>
+      characterSheetApi.help(campaignId, helperCharacterId, vars.targetCharacterId),
+    onSuccess: (_r, vars) => {
+      void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, vars.targetCharacterId) });
+      void qc.invalidateQueries({ queryKey: sheetKey(campaignId, vars.targetCharacterId) });
+    },
+  });
+}
+
 export function useSpendResource(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({

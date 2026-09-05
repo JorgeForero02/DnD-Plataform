@@ -1,3 +1,4 @@
+import { CLAVE_AYUDA } from "@dnd/shared";
 import { useState } from "react";
 import { IconoQuitar } from "../../ui/Iconos";
 import { useApplyCondition, useConditions, useGameClock, useRemoveCondition } from "./hooks";
@@ -65,6 +66,9 @@ export const EFECTO_CONDICION: Record<string, string> = {
   stunned: "Incapacitado, sin poder moverse. Falla las salvaciones de Fuerza y Destreza.",
   unconscious: "Incapacitado, sin enterarse de nada. Suelta lo que lleva y queda derribado.",
   exhaustion: "Penaliza por niveles: pruebas, velocidad y puntos de golpe. Al sexto nivel, muere.",
+  // **No es del SRD**: es la marca de la acción Ayudar (plan 08, I8). Va aquí porque comparte
+  // pantalla con las quince, y sin su línea el jugador vería un rótulo sin decir qué hace.
+  [CLAVE_AYUDA]: "Ventaja en tu primer ataque. Caduca al empezar el turno de quien te ayudó.",
 };
 
 /**

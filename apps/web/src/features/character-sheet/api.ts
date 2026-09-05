@@ -394,6 +394,17 @@ export function giveResource(
   });
 }
 
+/**
+ * **Ayudar a otro personaje de la mesa** (plan 08, I8). `characterId` es **quien ayuda**; la marca
+ * la recibe el otro, y por eso la ruta no cuelga de sus condiciones.
+ */
+export function help(campaignId: string, characterId: string, targetCharacterId: string) {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/help`, {
+    method: "POST",
+    body: JSON.stringify({ targetCharacterId }),
+  });
+}
+
 export function restoreResource(
   campaignId: string,
   characterId: string,

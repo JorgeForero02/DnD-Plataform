@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { CampaignsModule } from "../campaigns/campaigns.module";
 import { GameEventsModule } from "../game-events/game-events.module";
-import { ConditionsController } from "./conditions/conditions.controller";
+import { ConditionsController, HelpController } from "./conditions/conditions.controller";
 import { ConditionsService } from "./conditions/conditions.service";
 import { ResourcesController } from "./resources/resources.controller";
 import { ResourcesService } from "./resources/resources.service";
@@ -16,7 +16,7 @@ import { RestService } from "./rest/rest.service";
 // conjuro.
 @Module({
   imports: [CampaignsModule, GameEventsModule],
-  controllers: [ResourcesController, RestController, ConditionsController],
+  controllers: [ResourcesController, RestController, ConditionsController, HelpController],
   providers: [ResourcesService, RestService, ConditionsService],
   exports: [ResourcesService],
 })

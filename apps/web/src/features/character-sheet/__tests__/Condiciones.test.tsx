@@ -9,6 +9,7 @@ import * as characterSheetApi from "../api";
 import type { ConditionRow } from "../api";
 import { NOMBRE_CONDICION } from "../vocabulario";
 import { DURACIONES_DE_CONDICION } from "../duraciones";
+import { CLAVE_AYUDA } from "@dnd/shared";
 
 // Tarea F4 — «las condiciones dicen qué hacen». Lo que se prueba aquí es lo que puede romperse
 // sin que nadie lo note: que el efecto se pinte, que **no se invente** para una clave que no es
@@ -89,7 +90,10 @@ describe("Condiciones — el efecto bajo el nombre", () => {
 });
 
 describe("Condiciones — invariantes del texto", () => {
-  it("las quince condiciones del SRD tienen efecto escrito, y ninguna sobra", () => {
+  it("toda condición con nombre tiene efecto escrito, y ninguna sobra", () => {
+    // Las quince del SRD **y las marcas que no lo son** —`helped`, del plan 08—: comparten tabla y
+    // comparten pantalla, así que un rótulo sin su línea dejaría al jugador con un nombre y sin
+    // saber qué le hace.
     expect(Object.keys(EFECTO_CONDICION).sort()).toEqual(Object.keys(NOMBRE_CONDICION).sort());
   });
 
@@ -112,12 +116,19 @@ describe("Condiciones — invariantes del texto", () => {
     expect(fuente).toContain("NOTICE.md");
   });
 
-  it("ninguna condición insinúa un temporizador: en esta fase no hay duración", () => {
-    // Se ponen y se quitan a mano. La duración por turnos nace con la iniciativa, que no existe
-    // todavía, así que una línea que diga «expira» o «rondas» promete algo que la aplicación no
-    // hace. Este barrido es el que impide que se cuele al copiar del manual.
+  it("ninguna de las QUINCE del SRD insinúa un temporizador que el servidor no lleve", () => {
+    // Las quince se ponen y se quitan a mano: su caducidad, cuando la tienen, la elige el DM al
+    // aplicarlas (2C.4), así que una línea de efecto que diga «expira» o «rondas» promete algo que
+    // no depende de la condición. Este barrido impide que se cuele al copiar del manual.
+    //
+    // **`helped` queda fuera a propósito, y no es una excepción de conveniencia**: su vencimiento
+    // NO lo escribe nadie a mano —lo pone el servidor al ayudar, un asalto exacto (plan 08, I8)—,
+    // así que su línea *tiene* que decirlo. Callarlo sería el defecto contrario: un jugador
+    // creyendo que la ventaja le dura toda la escena.
+    const conVencimientoDelServidor = new Set([CLAVE_AYUDA]);
     const prohibido = /ronda|turno|minuto|hora|expir|dura(?:nte|ción)|hasta el final|cuenta atrás/i;
     const culpables = Object.entries(EFECTO_CONDICION)
+      .filter(([clave]) => !conVencimientoDelServidor.has(clave))
       .filter(([, efecto]) => prohibido.test(efecto))
       .map(([clave]) => clave);
     expect(culpables).toEqual([]);

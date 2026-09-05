@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import type { ApplyConditionInput } from "@dnd/shared";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  CLAVE_AYUDA,
+  SEGUNDOS_POR_ASALTO,
+  type ApplyConditionInput,
+  type HelpInput,
+} from "@dnd/shared";
 import { condicionVencida } from "./vencimiento";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -106,6 +111,98 @@ export class ConditionsService {
             key: input.key,
             level: input.level,
             reason: input.note,
+          },
+        },
+        tx,
+      );
+      return condition;
+    });
+  }
+
+  /**
+   * **Ayudar a alguien de la mesa** (plan 08, ficha I8).
+   *
+   * SRD 5.1: *«you can aid a friendly creature in attacking a creature within 5 feet of you… the
+   * first attack roll is made with advantage»*. Tres límites, y aquí está qué se hace con cada uno:
+   *
+   * 1. **Una sola tirada.** Se cumple: la marca la consume el primer ataque
+   *    (`CharacterSheetService`), aunque el ayudado tenga varios.
+   * 2. **El enemigo a cinco pies de quien ayuda.** **No se comprueba**, y no se finge: son
+   *    distancias, y este producto no tiene tablero. La pantalla dice *«la cercanía la juzgas
+   *    tú»*, que es el mismo criterio que ya usa el proyecto para lo que el servidor no sabe.
+   * 3. **Caduca al principio de tu siguiente turno.** Se cumple, y sin inventar un reloj: un
+   *    asalto **son seis segundos del reloj de campaña** (`SEGUNDOS_POR_ASALTO`, decisión D-2C-1),
+   *    así que «mi siguiente turno» es exactamente un asalto más tarde. Se guarda como
+   *    `expiresAtClock` absoluto, igual que cualquier otra condición con duración.
+   *
+   * **Quién puede:** el dueño del personaje que ayuda, o el DM. Ayudar es una acción **suya**, así
+   * que el permiso se comprueba sobre el ayudante; recibir ayuda no necesita permiso porque no le
+   * quita nada a nadie —y exigirlo impediría ayudar al personaje de otro, que es el caso entero.
+   *
+   * **El ayudado tiene que estar en la misma campaña**, y si no, 404: un 403 confirmaría que ese
+   * personaje existe en algún sitio.
+   */
+  async help(userId: string, campaignId: string, helperCharacterId: string, input: HelpInput) {
+    if (input.targetCharacterId === helperCharacterId) {
+      throw new BadRequestException("Ayudarse a sí mismo no es la acción Ayudar.");
+    }
+    const ayudante = await requireVisibleCharacter(
+      this.prisma,
+      this.membership,
+      userId,
+      campaignId,
+      helperCharacterId,
+    );
+    await requireOwnerOrDM(
+      this.membership,
+      campaignId,
+      userId,
+      ayudante,
+      "Solo el DM o el dueño puede usar la acción Ayudar de ese personaje.",
+    );
+
+    const ayudado = await this.prisma.character.findFirst({
+      where: { id: input.targetCharacterId, campaignId },
+      select: { id: true, name: true, visibility: true },
+    });
+    if (!ayudado) throw new NotFoundException("Character not found");
+
+    return this.prisma.transaction(async (tx) => {
+      const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+      const condition = await tx.characterCondition.upsert({
+        where: { characterId_key: { characterId: ayudado.id, key: CLAVE_AYUDA } },
+        create: {
+          characterId: ayudado.id,
+          key: CLAVE_AYUDA,
+          level: null,
+          // **El nombre de quien ayuda va en la nota**, que es lo que la pantalla lee para decir
+          // «Ventaja: te ayuda Mira». `appliedById` es el USUARIO, no el personaje, y un jugador
+          // puede llevar dos: sin esto no se sabría cuál de los dos ayudó.
+          note: `Te ayuda ${ayudante.name}`,
+          appliedById: userId,
+          expiresAtClock: campana.clockSeconds + SEGUNDOS_POR_ASALTO,
+        },
+        update: {
+          note: `Te ayuda ${ayudante.name}`,
+          appliedById: userId,
+          // Ayudar otra vez **renueva**: es lo que hace un jugador en la mesa, y dejar la caducidad
+          // vieja habría hecho que la segunda ayuda naciera medio muerta.
+          expiresAtClock: campana.clockSeconds + SEGUNDOS_POR_ASALTO,
+        },
+      });
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: ayudado.id,
+          // **La visibilidad es la del AYUDADO**, que es de quien habla el suceso. Con la del
+          // ayudante, ayudar a un personaje `DM_ONLY` lo habría anunciado a la mesa entera.
+          visibility: ayudado.visibility,
+          payload: {
+            type: "CONDITION_APPLIED",
+            key: CLAVE_AYUDA,
+            reason: `Te ayuda ${ayudante.name}`,
           },
         },
         tx,

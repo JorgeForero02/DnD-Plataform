@@ -1,4 +1,4 @@
-import { damageTypeSchema } from "@dnd/shared";
+import { CLAVE_AYUDA, damageTypeSchema } from "@dnd/shared";
 import type {
   AbilityKey,
   ProficiencyLevel,
@@ -161,6 +161,10 @@ export const NOMBRE_CONDICION: Record<string, string> = {
   stunned: "Aturdido",
   unconscious: "Inconsciente",
   exhaustion: "Agotamiento",
+  // **No es una condición del SRD**: es la marca que deja la acción Ayudar (plan 08, I8). Se
+  // traduce aquí porque comparte tabla —y por tanto pantalla— con las quince, y un `helped` en
+  // crudo en la hoja sería un valor de enumeración llegando a la interfaz.
+  [CLAVE_AYUDA]: "Te ayudan",
 };
 
 /**

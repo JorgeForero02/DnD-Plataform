@@ -3,6 +3,7 @@ import type { DamageType } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
 import { vozDePersonaje } from "../../../dominio/voces";
+import { AyudarA } from "./AyudarA";
 import {
   useCharacterSheet,
   useChangeHp,
@@ -153,6 +154,11 @@ export function FichaDeElenco({
           )}
         </div>
       )}
+
+      {/* **Ayudar va en TU tarjeta, no en la del otro** (plan 08, I8): la regla de la mesa es que
+          sobre el personaje de otro jugador no van mandos, y ayudar es una acción tuya — a quién
+          ayudas es su parámetro. Misma condición que los ±5: esto es «lo controlo yo». */}
+      {puedeCambiarPg && <AyudarA campaignId={campaignId} personaje={personaje} />}
 
       <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
 

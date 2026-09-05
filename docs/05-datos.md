@@ -724,3 +724,34 @@ al personaje recién creado, que es a quien el DM más quiere dársela.
 **Regalar** es `POST .../resources/:key/give`: mueve las dos filas en **una transacción** y deja un
 solo suceso `RESOURCE_GIVEN` con los dos nombres. Dos peticiones sueltas —un gasto y una
 reposición— podrían dejar la inspiración en los dos personajes o en ninguno.
+
+## La acción Ayudar es una condición con vencimiento (plan 08, ficha I8)
+
+**No hay tabla nueva.** La marca que deja Ayudar es `CharacterCondition` con `key: "helped"`
+(`CLAVE_AYUDA`, en `@dnd/shared`), y va ahí porque **tiene exactamente la misma forma**: una clave
+sobre un personaje, con origen (`appliedById`) y con vencimiento (`expiresAtClock`, 2C.4). Montar una
+tabla aparte para una fila con las mismas cuatro columnas habría duplicado el mecanismo.
+
+**No es una condición del SRD** —las quince son estados de la criatura; esto es el rastro de una
+acción que alguien hizo por ti—, pero **el motor sí la entiende**, a diferencia de una clave libre
+cualquiera: entra en `VENTAJA_EN_ATAQUE` (`suggested-roll-mode.ts`) y por eso la hoja sugiere ventaja
+en el ataque diciendo quién ayuda.
+
+Los tres límites del SRD, y qué se hace con cada uno:
+
+1. **Una sola tirada.** Se cumple: la consume el primer ataque (`CharacterSheetService`), aunque el
+   ayudado tenga varios. **Se consume después de tirar**, para que una tirada rechazada no la gaste.
+2. **El enemigo a cinco pies de quien ayuda.** **No se comprueba y no se finge**: son distancias, y
+   este producto no tiene tablero. La pantalla lo dice — *«la cercanía la juzgas tú»*.
+3. **Caduca al principio del turno siguiente del ayudante.** Se cumple **sin inventar un reloj**: un
+   asalto son seis segundos del reloj de campaña (`SEGUNDOS_POR_ASALTO`, decisión D-2C-1), así que
+   «mi siguiente turno» es exactamente un asalto más tarde, guardado como `expiresAtClock` absoluto.
+
+**Quién puede:** el dueño del personaje que ayuda, o el DM. El permiso se comprueba sobre **el
+ayudante**, porque la acción es suya; recibir ayuda no necesita permiso —y exigirlo impediría ayudar
+al personaje de otro, que es el caso entero. El suceso se emite con la visibilidad **del ayudado**:
+con la del ayudante, ayudar a un PNJ `DM_ONLY` lo habría anunciado a la mesa.
+
+**El flanqueo no existe en el modelo**, y es una decisión: es una regla **opcional del DMG**, no del
+SRD, da **ventaja** y no un `+3` —ese +2 es de 3.ª edición y de Pathfinder—, y necesitaría saber
+quién está adyacente a quién, o sea el tablero de la fase 3.

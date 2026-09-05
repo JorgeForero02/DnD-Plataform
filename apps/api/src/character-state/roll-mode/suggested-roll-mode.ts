@@ -1,4 +1,4 @@
-import { ABILITY_KEYS } from "@dnd/shared";
+import { ABILITY_KEYS, CLAVE_AYUDA } from "@dnd/shared";
 import type {
   AbilityKey,
   RollKind,
@@ -83,8 +83,19 @@ const DESVENTAJA_EN_ATAQUE = new Set(["blinded", "frightened", "poisoned", "pron
 /** Desventaja en las pruebas de característica. */
 const DESVENTAJA_EN_PRUEBAS = new Set(["frightened", "poisoned"]);
 
-/** Ventaja en el ataque de quien la tiene. **La única que da ventaja.** */
-const VENTAJA_EN_ATAQUE = new Set(["invisible"]);
+/**
+ * Ventaja en el ataque de quien la tiene.
+ *
+ * `invisible` es del SRD. **`helped` no es una condición del SRD**: es la marca que deja la acción
+ * Ayudar (plan 08, ficha I8), y el motor la entiende a propósito —*«the first attack roll is made
+ * with advantage»*—. Se guarda en la misma tabla porque tiene la misma forma: una clave sobre un
+ * personaje, con origen y con vencimiento.
+ *
+ * **Y sigue siendo una sugerencia**, como todo lo de aquí: la cercanía que el SRD exige —el enemigo
+ * a cinco pies de quien ayuda— **no se puede comprobar sin distancias**, así que quien tira sigue
+ * decidiendo. Lo que esto evita es el olvido.
+ */
+const VENTAJA_EN_ATAQUE = new Set(["invisible", CLAVE_AYUDA]);
 
 /** El nivel a partir del cual el agotamiento penaliza las pruebas de característica. */
 export const NIVEL_DE_AGOTAMIENTO_CON_DESVENTAJA_EN_PRUEBAS = 1;

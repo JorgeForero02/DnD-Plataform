@@ -38,6 +38,38 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Ayudar da ventaja y caduca cuando el SRD dice (2026-09-06, plan 08 · I8)
+
+**Qué.** La acción **Ayudar** existe en el SRD y la maqueta la pintaba como «Ayuda de Mira **+1d4**».
+Ese +1d4 es **`Bless`**, que es un conjuro; el d6 es Inspiración Bárdica, que es un rasgo de bardo.
+Ayudar da **ventaja**. Las reglas mandan sobre la maqueta y el rótulo se corrige.
+
+**Cómo.** Es una condición con vencimiento —`CharacterCondition` con `key: "helped"`—, no una tabla
+nueva: tiene exactamente la misma forma, una clave sobre un personaje con origen y con caducidad, y
+ese sistema existe desde 2C.4. **No es una condición del SRD** y aun así el motor la entiende a
+propósito: entra en la sugerencia de ventaja del ataque, para que nadie tenga que acordarse.
+
+Los tres límites del SRD, uno por uno:
+
+1. **Una sola tirada.** Se cumple: la consume **el primer ataque**, y el segundo ya tira un dado.
+   Se consume **después** de tirar, para que una tirada rechazada no la gaste.
+2. **El enemigo a cinco pies de quien ayuda.** **No se comprueba, y no se finge.** Son distancias y
+   este producto no tiene tablero. La pantalla lo dice: *«la cercanía la juzgas tú»*, con su prueba.
+3. **Caduca al principio del turno siguiente del ayudante.** Se cumple sin inventar un reloj: un
+   asalto **son seis segundos** del reloj de campaña (D-2C-1), así que es un asalto exacto.
+   **Probado por mutación**: quitándole el vencimiento, el e2e se pone rojo en dos sitios.
+
+**Y el flanqueo NO se ha construido**, dicho aquí para que no parezca un olvido: es **opcional del
+DMG**, no del SRD, da **ventaja** y no un `+3` —ese +2 es de 3.ª edición y de Pathfinder—, y
+necesitaría saber quién está adyacente a quién, o sea el tablero de la fase 3. Si algún día entra,
+será **interruptor por campaña** y dando ventaja.
+
+**Dónde se usa.** En **tu** tarjeta del elenco, no en la del otro: la regla de la mesa es que sobre
+el personaje de otro jugador no van mandos, y ayudar es una acción tuya con un parámetro.
+
+**Cómo revertirlo.** `git revert` del commit. Las filas `helped` que queden son inertes: sin la
+entrada en `VENTAJA_EN_ATAQUE` no calculan nada, y vencen solas.
+
 ## La inspiración existe: la concede el DM, se gasta y se regala (2026-09-06, plan 08 · I8)
 
 **Qué.** De los tres botones de intervención que pinta la maqueta, **dos son falsos** y uno era una

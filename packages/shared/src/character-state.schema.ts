@@ -105,6 +105,38 @@ export const SRD_CONDITIONS = [
 export const srdConditionSchema = z.enum(SRD_CONDITIONS);
 export type SrdCondition = z.infer<typeof srdConditionSchema>;
 
+/**
+ * **La marca que deja la accion Ayudar** (plan 08, ficha I8).
+ *
+ * **No es una condicion del SRD**, y por eso no esta en la lista de arriba: las quince de esa lista
+ * son estados de la criatura, y esto es el rastro de una accion que alguien hizo por ti. Se guarda
+ * en la misma tabla porque **es exactamente la misma forma** —una clave sobre un personaje, con
+ * origen y con vencimiento (2C.4)—, y montar una tabla aparte para una fila con las mismas cuatro
+ * columnas habria sido duplicar el mecanismo.
+ *
+ * SRD 5.1, accion Ayudar: *«you can aid a friendly creature in attacking a creature within 5 feet
+ * of you... the first attack roll is made with advantage»*. **Da ventaja, no un +1d4** —el +1d4 es
+ * `Bless`, que es un conjuro—, dura **una sola tirada** y **caduca al principio de tu siguiente
+ * turno**.
+ *
+ * El motor SI la entiende, a diferencia de una clave libre cualquiera: entra en la sugerencia de
+ * ventaja del ataque (`suggested-roll-mode.ts`). Esta escrita aqui, en `shared`, porque la usan el
+ * servidor y la pantalla y una clave copiada en dos sitios acaba escrita de dos formas.
+ */
+export const CLAVE_AYUDA = "helped";
+
+/**
+ * Ayudar a alguien de la mesa.
+ *
+ * **Lo unico que se declara es a quien**, porque es lo unico que el servidor puede saber. El SRD
+ * exige ademas que el enemigo este **a 5 pies de quien ayuda**, y eso son distancias: no las
+ * tenemos, no se comprueban, y **la pantalla lo dice** en vez de fingir que si.
+ */
+export const helpSchema = z.object({
+  targetCharacterId: z.string().min(1),
+});
+export type HelpInput = z.infer<typeof helpSchema>;
+
 export const applyConditionSchema = z.object({
   key: z.string().min(1).max(60),
   /** Solo el agotamiento tiene nivel, de 1 a 6. */

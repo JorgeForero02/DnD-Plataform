@@ -7,7 +7,7 @@ import {
   Inject,
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
-import { RANGO_DE_ANULACION } from "@dnd/shared";
+import { CLAVE_AYUDA, RANGO_DE_ANULACION } from "@dnd/shared";
 import type {
   AbilityKey,
   Visibility,
@@ -694,6 +694,65 @@ export class CharacterSheetService {
   ): Promise<void> {
     if (!sheet || !this.resources) return;
     await this.resources.seedResourcesFor(characterId, sheet, level);
+  }
+
+  /**
+   * **La ayuda recibida: mira si está viva, y si lo está la consume** (plan 08, ficha I8).
+   *
+   * SRD 5.1, acción Ayudar: *«the first attack roll is made with advantage»* — **una sola tirada**,
+   * aunque el ayudado tenga varios ataques. Por eso esto no es solo una lectura: la marca se retira
+   * al usarla, y el segundo ataque del mismo turno ya no la tiene.
+   *
+   * **Se llama después de tirar, no antes**, y es deliberado: si la tirada se rechaza —una
+   * expresión inválida, un 409 de inspiración—, la ayuda no se ha usado y tiene que seguir ahí. El
+   * precio es que el borrado va fuera de la transacción de la tirada; si fallara, quedaría una
+   * ayuda de más, que es el lado seguro del error —se ve en la hoja y se quita— frente a perder una
+   * ayuda que nadie usó.
+   *
+   * Las vencidas no cuentan: se filtran contra el reloj como en todas partes (2C.4).
+   */
+  private async ayudaViva(
+    campaignId: string,
+    characterId: string,
+  ): Promise<{ id: string; note: string | null } | null> {
+    const [fila, campana] = await Promise.all([
+      this.prisma.characterCondition.findUnique({
+        where: { characterId_key: { characterId, key: CLAVE_AYUDA } },
+        select: { id: true, note: true, key: true, level: true, expiresAtClock: true },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    if (!fila) return null;
+    if (condicionesActivas([fila], campana.clockSeconds).length === 0) return null;
+    return { id: fila.id, note: fila.note };
+  }
+
+  /** Retira la marca y lo cuenta, para que el ayudado vea POR QUÉ dejó de tenerla. */
+  private async consumirAyuda(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    visibility: Visibility,
+    ayuda: { id: string },
+  ): Promise<void> {
+    await this.prisma.transaction(async (tx) => {
+      await tx.characterCondition.delete({ where: { id: ayuda.id } });
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility,
+          payload: {
+            type: "CONDITION_REMOVED",
+            key: CLAVE_AYUDA,
+            reason: "Se usó en el ataque",
+          },
+        },
+        tx,
+      );
+    });
   }
 
   /**
@@ -1386,17 +1445,26 @@ export class CharacterSheetService {
     const audienciaPorDefecto = loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
     if (input.part === "ATTACK") {
-      return this.rolls.roll(userId, campaignId, {
+      // **La ayuda recibida entra aquí, y se combina, no se suma** (I8): ventaja y desventaja se
+      // anulan y dos ventajas siguen siendo una. `combinarModo` ya es esa regla.
+      const ayuda = await this.ayudaViva(campaignId, characterId);
+      const modoConAyuda = ayuda ? combinarModo(input.mode, "ADVANTAGE") : input.mode;
+      const tirada = await this.rolls.roll(userId, campaignId, {
         expression: conSigno("1d20", ataque.attackBonus.total),
         label: `Ataque con ${ataque.name}`,
         characterId,
-        mode: input.mode,
+        mode: modoConAyuda,
         // Pasa tal cual: el gasto y la tirada tienen que ir en la misma transacción, y quien la
         // abre es `RollsService`. Componerlo aquí —gastar y luego pedir la tirada— dejaría el
         // hueco de perder la inspiración sin tirar.
         spendInspiration: input.spendInspiration,
         audience: input.audience ?? audienciaPorDefecto,
       });
+      // **Se consume DESPUÉS de tirar**: si la tirada se hubiera rechazado, la ayuda sigue ahí.
+      if (ayuda) {
+        await this.consumirAyuda(userId, campaignId, characterId, character.visibility, ayuda);
+      }
+      return tirada;
     }
 
     const dano = input.versatile && ataque.versatileDamage ? ataque.versatileDamage : ataque.damage;
@@ -1585,7 +1653,13 @@ export class CharacterSheetService {
     );
     // **Y se combinan con la regla del SRD, no sumando:** ventaja y desventaja se anulan, y dos
     // del mismo signo siguen siendo una.
-    const modo = combinarModo(input.mode, contra.effect);
+    // **Y la ayuda recibida, que es del atacante** (I8). Se combina con lo mismo: el SRD dice que
+    // dos fuentes de ventaja siguen siendo ventaja, así que esto NO suma nada.
+    const ayuda = await this.ayudaViva(campaignId, characterId);
+    const modo = combinarModo(
+      combinarModo(input.mode, contra.effect),
+      ayuda ? "ADVANTAGE" : "NONE",
+    );
 
     // Misma regla que `rollAttack`: la audiencia por defecto sale de la visibilidad de QUIEN
     // ATACA, nunca `PUBLIC` fija — es la fuga que ya volvió una vez en 2.5.2 (ver el comentario
@@ -1607,6 +1681,9 @@ export class CharacterSheetService {
       spendInspiration: input.spendInspiration,
       audience: input.audience ?? audienciaPorDefecto,
     });
+    if (ayuda) {
+      await this.consumirAyuda(userId, campaignId, characterId, character.visibility, ayuda);
+    }
 
     // Tirada a ciegas: quien la pidió no ve el total, así que tampoco ve el veredicto — decirle
     // «impacta» sin el número sería la misma fuga por otra puerta (ver `attack.schema.ts`).

@@ -3,7 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, laAudienciaCrecio, Viewer } from "../common/visibility";
+import { audienciaDeSuceso, canView, laAudienciaCrecio, Viewer } from "../common/visibility";
 import { WorldStateService } from "../world-state/world-state.service";
 import { GameEventsService } from "../game-events/game-events.service";
 
@@ -218,28 +218,29 @@ export class EntitiesService {
           },
         );
       if (crecio) {
-        // **La visibilidad del suceso, y una limitación que se declara en vez de esconderse.**
+        // **La visibilidad del suceso hereda la de la entidad, ahora sin parche.**
         //
-        // Hereda la de la entidad, que es lo correcto: el aviso no puede ser más público que la
-        // cosa que anuncia. Pero `GameEvent` **no tiene concesiones nominales propias** —
-        // `GameEventsService.canSee` evalúa `canView` con `grantedUserIds: []`—, así que una
-        // fila marcada `SPECIFIC_PLAYERS` no la ve **nadie** salvo el DM: ni siquiera el jugador
-        // al que se le acaba de conceder. Guardarla con esa etiqueta sería prometer una
-        // frontera que el filtro no aplica.
+        // Hereda porque es lo correcto: el aviso no puede ser más público que la cosa que anuncia.
+        // Hasta el 2026-09-05 aquí había una excepción — una entidad `SPECIFIC_PLAYERS` guardaba
+        // su suceso como `DM_ONLY`— porque `GameEvent` no tenía concesiones nominales y una fila
+        // con esa etiqueta **no la veía nadie** salvo el DM. Era un parche honesto: guardaba lo
+        // que de verdad ocurría en vez de prometer una frontera que el filtro no aplicaba.
         //
-        // Así que en ese caso se guarda como `DM_ONLY`, que es lo que de verdad ocurre, y queda
-        // ficha para el día que los sucesos admitan concesiones. Lo encontró la revisión de
-        // cierre; la versión anterior afirmaba en este mismo comentario que la frontera se
-        // respetaba.
-        const visibilidadDelSuceso =
-          entity.visibility === "SPECIFIC_PLAYERS" ? "DM_ONLY" : entity.visibility;
+        // **D-OP-12 quitó el motivo**, así que se quita el parche: el suceso se guarda con la
+        // visibilidad de verdad y con **las concesiones de la entidad en este momento**. Se pasan
+        // aquí y no se resuelven al leer, porque quien mire el registro dentro de un mes tiene que
+        // ver quién estaba nombrado **cuando pasó**.
         await this.gameEvents.record(
           userId,
           campaignId,
           {
             subjectType: "campaign",
             subjectId: entity.id,
-            visibility: visibilidadDelSuceso,
+            ...audienciaDeSuceso({
+              visibility: entity.visibility,
+              createdById: entity.createdById,
+              grantedUserIds: entity.grants.map((g) => g.userId),
+            }),
             payload: { type: "ENTITY_REVEALED", entityName: entity.name },
           },
           tx,

@@ -1,4 +1,4 @@
-import { canView, laAudienciaCrecio } from "./visibility";
+import { audienciaDeSuceso, canView, laAudienciaCrecio } from "./visibility";
 import type { Visibility } from "@dnd/shared";
 
 const OWNER = "owner1";
@@ -136,5 +136,69 @@ describe("laAudienciaCrecio — quién ve algo ahora que no lo veía antes", () 
 
   it("de PLAYERS a PUBLIC no crece: hoy son la misma gente", () => {
     expect(laAudienciaCrecio(recurso("PLAYERS"), recurso("PUBLIC"))).toBe(false);
+  });
+});
+
+describe("audienciaDeSuceso — cómo se marca un suceso que habla de una cosa (D-OP-12)", () => {
+  // El motivo de que exista: un suceso NO tiene dueño propio. `GameEventsService` evalúa `canView`
+  // con el ACTOR como creador, así que copiar la visibilidad del objeto tal cual falla justo en
+  // `OWNER_DM` — el «dueño» del suceso pasaba a ser quien hizo la acción.
+  const jugador = (userId: string) => ({ userId, role: "PLAYER" as const, isAdmin: false });
+
+  it("OWNER_DM se traduce a nombrar al dueño, y así el dueño SÍ lo ve", () => {
+    const marca = audienciaDeSuceso({
+      visibility: "OWNER_DM",
+      createdById: OWNER,
+      grantedUserIds: [],
+    });
+    expect(marca).toEqual({ visibility: "SPECIFIC_PLAYERS", grantedUserIds: [OWNER] });
+
+    // Y el conjunto resultante es exactamente el que `OWNER_DM` prometía: su dueño y nadie más
+    // (el DM lo ve todo siempre, así que no hace falta nombrarlo).
+    const comoLoVeElRegistro = {
+      visibility: marca.visibility,
+      // El actor es el DM que archivó: es lo que `GameEventsService` pone como creador, y es
+      // justo lo que hacía que el dueño no lo viera.
+      createdById: "dm-que-archivo",
+      grantedUserIds: marca.grantedUserIds,
+    };
+    expect(canView(jugador(OWNER), comoLoVeElRegistro)).toBe(true);
+    expect(canView(jugador(OTHER), comoLoVeElRegistro)).toBe(false);
+  });
+
+  it("y con la visibilidad copiada tal cual, el dueño NO lo veía — que es el defecto", () => {
+    // Esta prueba deja escrito el fallo, para que nadie «simplifique» la traducción de vuelta.
+    const copiadaTalCual = {
+      visibility: "OWNER_DM" as const,
+      createdById: "dm-que-archivo",
+      grantedUserIds: [],
+    };
+    expect(canView(jugador(OWNER), copiadaTalCual)).toBe(false);
+  });
+
+  it("SPECIFIC_PLAYERS viaja con las concesiones que la cosa tiene ahora", () => {
+    expect(
+      audienciaDeSuceso({
+        visibility: "SPECIFIC_PLAYERS",
+        createdById: OWNER,
+        grantedUserIds: [GRANTED, OTHER],
+      }),
+    ).toEqual({ visibility: "SPECIFIC_PLAYERS", grantedUserIds: [GRANTED, OTHER] });
+  });
+
+  it("los otros tres niveles no nombran a nadie", () => {
+    for (const v of ["PUBLIC", "PLAYERS", "DM_ONLY"] as Visibility[]) {
+      expect(audienciaDeSuceso(resource(v))).toEqual({ visibility: v, grantedUserIds: [] });
+    }
+  });
+
+  it("no devuelve el mismo array que le dieron: copiarlo evita que alguien lo mute de rebote", () => {
+    const concesiones = [GRANTED];
+    const marca = audienciaDeSuceso({
+      visibility: "SPECIFIC_PLAYERS",
+      createdById: OWNER,
+      grantedUserIds: concesiones,
+    });
+    expect(marca.grantedUserIds).not.toBe(concesiones);
   });
 });

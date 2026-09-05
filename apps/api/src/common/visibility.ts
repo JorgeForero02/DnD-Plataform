@@ -101,3 +101,38 @@ export function laAudienciaCrecio(antes: ViewableResource, despues: ViewableReso
   for (const id of d.ids) if (!a.ids.has(id)) return true;
   return false;
 }
+
+/**
+ * **Cómo se marca un suceso QUE HABLA DE una cosa, para que lo vea exactamente su audiencia**
+ * (D-OP-12, 2026-09-05).
+ *
+ * Existe porque **un suceso no tiene dueño propio**: `GameEventsService` evalúa `canView` con
+ * `createdById: actorUserId`, o sea **quien hizo la acción**. Copiar sin más la visibilidad del
+ * objeto sale mal justo en el nivel que más importa: archivar un personaje `OWNER_DM` escribía un
+ * suceso `OWNER_DM` cuyo «creador» era **el DM que archivó**, así que **el dueño del personaje no
+ * lo veía nunca**. El aviso de que se han llevado tu personaje no llegaba a ti.
+ *
+ * La traducción es exacta, no una aproximación:
+ *
+ * - `OWNER_DM` sobre una cosa significa «su dueño y el DM». Nombrar al dueño en
+ *   `SPECIFIC_PLAYERS` da **ese mismo conjunto**, porque el DM lo ve todo siempre.
+ * - `SPECIFIC_PLAYERS` se pasa tal cual, con las concesiones que la cosa tenga **en este momento**
+ *   — se guardan al escribir y no se resuelven al leer, porque el registro cuenta lo que pasó.
+ * - Los otros tres niveles no nombran a nadie y viajan sin lista.
+ *
+ * Vive aquí, junto a `canView`, porque es un trozo de la misma matriz: la regla que no se negocia
+ * dice que nadie la reimplementa por su cuenta.
+ */
+export function audienciaDeSuceso(recurso: ViewableResource): {
+  visibility: Visibility;
+  grantedUserIds: string[];
+} {
+  switch (recurso.visibility) {
+    case "OWNER_DM":
+      return { visibility: "SPECIFIC_PLAYERS", grantedUserIds: [recurso.createdById] };
+    case "SPECIFIC_PLAYERS":
+      return { visibility: "SPECIFIC_PLAYERS", grantedUserIds: [...recurso.grantedUserIds] };
+    default:
+      return { visibility: recurso.visibility, grantedUserIds: [] };
+  }
+}

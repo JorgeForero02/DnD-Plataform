@@ -465,6 +465,17 @@ export const recordGameEventSchema = z.object({
   subjectType: gameEventSubjectTypeSchema,
   subjectId: z.string().min(1),
   visibility: visibilitySchema.default("PLAYERS"),
+  /**
+   * **A quién nombra este suceso cuando su visibilidad es `SPECIFIC_PLAYERS`** (D-OP-12).
+   *
+   * Antes no existía y `GameEventsService` evaluaba `canView` con la lista **siempre vacía**, así
+   * que un suceso `SPECIFIC_PLAYERS` no lo veía nadie salvo el DM. Quien escriba un suceso sobre
+   * un objeto con concesiones tiene que **pasarle las del objeto**: el suceso no las deduce, entre
+   * otras cosas porque el objeto puede haber cambiado para cuando alguien lea el registro.
+   *
+   * Vacía —o ausente— para los otros cuatro niveles, donde no significa nada.
+   */
+  grantedUserIds: z.array(z.string().cuid()).max(100).optional(),
   payload: gameEventPayloadSchema,
 });
 export type RecordGameEventInput = z.infer<typeof recordGameEventSchema>;

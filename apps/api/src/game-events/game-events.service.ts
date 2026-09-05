@@ -66,6 +66,11 @@ export class GameEventsService {
         payload,
         damageType,
         visibility: input.visibility,
+        // D-OP-12: se guardan **al escribir**, con las del objeto en ese momento. No se resuelven
+        // al leer: quien mira el registro dentro de un mes tiene que ver quién estaba nombrado
+        // **cuando pasó**, no quién lo está hoy. Un registro de solo añadir cuya visibilidad
+        // cambia sola no es un registro.
+        grantedUserIds: input.grantedUserIds ?? [],
       },
     });
 
@@ -152,16 +157,28 @@ export class GameEventsService {
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     });
 
-    const events = rows.filter((row) => this.canSee(viewer, row.visibility, row.actorUserId));
+    const events = rows.filter((row) =>
+      this.canSee(viewer, row.visibility, row.actorUserId, row.grantedUserIds),
+    );
     const hayMas = rows.length === query.limit;
 
     return { events, nextCursor: hayMas ? rows[rows.length - 1].id : null };
   }
 
-  private canSee(viewer: Viewer, visibility: Visibility, actorUserId: string): boolean {
-    // Un evento no tiene concesiones nominales propias en 2A: o lo ve tu nivel, o no. El actor
-    // hace de creador, que es lo que da sentido a `OWNER_DM` sobre una tirada propia.
-    return canView(viewer, { visibility, createdById: actorUserId, grantedUserIds: [] });
+  private canSee(
+    viewer: Viewer,
+    visibility: Visibility,
+    actorUserId: string,
+    grantedUserIds: string[],
+  ): boolean {
+    // El actor hace de creador, que es lo que da sentido a `OWNER_DM` sobre una tirada propia.
+    //
+    // **Y las concesiones son las del suceso, no un array vacío** (D-OP-12, 2026-09-05). Aquí
+    // ponía `grantedUserIds: []` fijo desde 2A, con un comentario que decía que un evento «no
+    // tiene concesiones nominales»: era cierto cuando se escribió y dejó de serlo sin que la
+    // frase cambiara. La consecuencia era que un suceso `SPECIFIC_PLAYERS` **no lo veía nadie**
+    // salvo el DM, ni siquiera el jugador nombrado.
+    return canView(viewer, { visibility, createdById: actorUserId, grantedUserIds });
   }
 
   // Duplicado a sabiendas con el de los otros servicios: la deuda de extraer `viewerFor` a

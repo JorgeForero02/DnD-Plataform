@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/commo
 import { CreateCharacterInput, UpdateCharacterInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, Viewer } from "../common/visibility";
+import { audienciaDeSuceso, canView, Viewer } from "../common/visibility";
 import { GameEventsService } from "../game-events/game-events.service";
 
 @Injectable()
@@ -154,13 +154,25 @@ export class CharactersService {
         where: { id: characterId },
         data: { archivedAt: new Date() },
       });
+      // **P3: el aviso tiene que llegar a su dueño, y no llegaba.** Un suceso no tiene dueño
+      // propio —`GameEventsService` evalúa `canView` con el ACTOR como creador—, así que copiar
+      // `OWNER_DM` tal cual escribía un suceso cuyo «dueño» era el DM que archivó: al jugador al
+      // que se le acaban de llevar el personaje **no le llegaba nada**. `audienciaDeSuceso`
+      // traduce el nivel del personaje al par (visibilidad, nombrados) que produce exactamente su
+      // audiencia, y vive junto a `canView` porque es la misma matriz.
+      const audiencia = audienciaDeSuceso({
+        visibility: character.visibility,
+        createdById: character.ownerId,
+        grantedUserIds: [],
+      });
       await this.gameEvents.record(
         userId,
         campaignId,
         {
           subjectType: "character",
           subjectId: characterId,
-          visibility: character.visibility,
+          visibility: audiencia.visibility,
+          grantedUserIds: audiencia.grantedUserIds,
           payload: { type: "CHARACTER_ARCHIVED", characterName: character.name },
         },
         tx,

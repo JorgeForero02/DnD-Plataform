@@ -179,6 +179,9 @@ describe("EntitiesService", () => {
           subjectType: "campaign",
           subjectId: "e9",
           visibility: "PLAYERS",
+          // D-OP-12: los sucesos ya nombran. `PLAYERS` no nombra a nadie —lo ve la mesa entera—,
+          // así que la lista viaja vacía; un `SPECIFIC_PLAYERS` llevaría los concedidos.
+          grantedUserIds: [],
           payload: { type: "ENTITY_REVEALED", entityName: "El Puerto Viejo" },
         },
         tx,

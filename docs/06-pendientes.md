@@ -217,7 +217,24 @@ nada: la condición se guardaba y el personaje seguía vivo con la mitad de PG.
 > derivando `deathSaves.status`. Lo que sigue abierto es la pantalla, y por eso la ficha C2C-9 de
 > arriba no está tachada.
 
-## P2 · Un `GameEvent` no tiene concesiones nominales, así que `SPECIFIC_PLAYERS` no llega a nadie (2026-09-04)
+## ~~P2 · Un `GameEvent` no tiene concesiones nominales, así que `SPECIFIC_PLAYERS` no llega a nadie~~ — CERRADA (2026-09-05, plan 03 · D-OP-12)
+
+> **Cerrada con la columna, no con la tabla hermana.** `GameEvent.grantedUserIds` es un `String[]`
+> (`apps/api/prisma/schema.prisma:456-470`, migración
+> `apps/api/prisma/migrations/20260905040000_game_event_granted_users/`), y `canSee` se la pasa a
+> `canView` en vez del array vacío (`apps/api/src/game-events/game-events.service.ts:181`). Se
+> eligió columna y no tabla de unión por tres motivos medidos: el filtrado **ya ocurre en memoria**
+> tras el `findMany`, así que una tabla obligaría a un `include` para nada; el esquema ya usa
+> `String[]`; y lo que se pierde —integridad referencial— es inofensivo, porque `canView` solo
+> pregunta si el espectador está en la lista.
+>
+> **Y el parche de `EntitiesService` está retirado**, con su comentario reescrito en vez de dejado
+> mintiendo (`apps/api/src/entities/entities.service.ts:220-241`). Probado por mutación: al volver a
+> `grantedUserIds: []`, el e2e del jugador nombrado se pone rojo.
+>
+> Texto original abajo.
+
+
 
 **Encontrado por la revisión de cierre de `ENTITY_REVEALED`.** `GameEventsService.canSee` evalúa
 `canView` con `grantedUserIds: []` fijo — un suceso no tiene concesiones propias en el modelo—, así
@@ -234,7 +251,22 @@ segundo es más barato y más frágil: ata el filtro de sucesos al modelo de ent
 
 No bloquea nada hoy: el caso normal de la mesa es revelar a `PLAYERS`, y ese funciona.
 
-## P3 · El suceso de archivar puede no llegar a su dueño (2026-09-04)
+## ~~P3 · El suceso de archivar puede no llegar a su dueño~~ — CERRADA (2026-09-05, plan 03 · D-OP-12)
+
+> **Y el arreglo no fue el que la ficha suponía.** No hacía falta que «el modelo de sucesos sepa de
+> dueños ajenos»: hacía falta **traducir el nivel del personaje al par (visibilidad, nombrados) que
+> produce su misma audiencia**. `OWNER_DM` sobre una cosa significa «su dueño y el DM», y nombrar al
+> dueño en `SPECIFIC_PLAYERS` da **exactamente ese conjunto**, porque el DM lo ve todo siempre.
+>
+> La traducción vive en `audienciaDeSuceso` (`apps/api/src/common/visibility.ts:104-135`), **junto a
+> `canView`**, porque es un trozo de la misma matriz y la regla que no se negocia dice que nadie la
+> reimplementa por su cuenta. La usan el archivar (`characters.service.ts:157-178`) y el revelar
+> (`entities.service.ts:232-241`). Probado por mutación: al copiar la visibilidad tal cual, el e2e
+> del dueño se pone rojo.
+>
+> Texto original abajo.
+
+
 
 `CHARACTER_ARCHIVED` hereda la visibilidad del personaje, pero `game-events.service.ts` resuelve
 `OWNER_DM` contra el **actor** del suceso, no contra el dueño del personaje. Si el DM archiva un

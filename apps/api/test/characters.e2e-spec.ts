@@ -186,6 +186,38 @@ describe("Characters (e2e)", () => {
       expect(suceso.payload).toEqual({ type: "CHARACTER_ARCHIVED", characterName: "Boromir" });
     });
 
+    it("**el aviso de que archivan TU personaje te llega, aunque sea OWNER_DM** (P3)", async () => {
+      // El defecto que esto cierra: un suceso **no tiene dueño propio** — `GameEventsService`
+      // evalúa `canView` con el ACTOR como creador—, así que copiar `OWNER_DM` tal cual escribía
+      // un suceso cuyo «dueño» era **el DM que archivó**. Al jugador al que acababan de llevarse
+      // el personaje no le llegaba nada. `audienciaDeSuceso` lo traduce a nombrar al dueño.
+      const s = app.getHttpServer();
+      const mio = await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ name: "Faramir", level: 3, visibility: "OWNER_DM" });
+      expect(mio.status).toBe(201);
+
+      const archivado = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${mio.body.id}/archive`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(archivado.status).toBe(201);
+
+      const buscar = async (token: string) => {
+        const r = await request(s)
+          .get(`/campaigns/${campaignId}/events`)
+          .set("Authorization", `Bearer ${token}`);
+        return (r.body.events as { type: string; subjectId: string }[]).find(
+          (e) => e.type === "CHARACTER_ARCHIVED" && e.subjectId === mio.body.id,
+        );
+      };
+
+      // Su dueño sí. Otro jugador de la misma mesa, no. El DM siempre.
+      expect(await buscar(tokenP1)).toBeDefined();
+      expect(await buscar(tokenP2)).toBeUndefined();
+      expect(await buscar(tokenDM)).toBeDefined();
+    });
+
     it("se recupera entero — hoja, inventario y dinero — y vuelve a aparecer en el listado", async () => {
       const s = app.getHttpServer();
       const restored = await request(s)

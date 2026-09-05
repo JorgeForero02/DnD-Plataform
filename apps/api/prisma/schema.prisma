@@ -454,6 +454,21 @@ model GameEvent {
   /// tipo de daño sigue siendo válido (una curación, un chasquido de dedos del DM).
   damageType  DamageType?
   visibility  Visibility    @default(PLAYERS)
+
+  /// **A quién nombra un suceso `SPECIFIC_PLAYERS`** (D-OP-12, 2026-09-05).
+  ///
+  /// Hasta hoy `GameEventsService.canSee` evaluaba `canView` con el array **siempre vacío**, así
+  /// que un suceso `SPECIFIC_PLAYERS` **no lo veía nadie salvo el DM** — ni siquiera el jugador al
+  /// que se le acababa de conceder la ficha. `entities.service.ts` lo sabía y guardaba `DM_ONLY`
+  /// en su lugar, con un comentario que lo llamaba parche honesto a la espera de esta columna.
+  ///
+  /// **Columna `String[]` y no tabla de unión**, con tres motivos medidos: el filtrado ocurre **en
+  /// memoria tras el `findMany`**, así que una tabla obligaría a un `include` para nada; el
+  /// esquema ya usa `String[]` en otros sitios; y lo que se pierde —integridad referencial: el id
+  /// de un usuario borrado no casa con nadie— es inofensivo, porque `canView` solo pregunta si el
+  /// espectador está en la lista.
+  grantedUserIds String[]   @default([])
+
   createdAt   DateTime      @default(now())
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 

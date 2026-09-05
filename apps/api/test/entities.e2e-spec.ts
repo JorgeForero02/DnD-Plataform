@@ -197,4 +197,56 @@ describe("Entities visibility (e2e)", () => {
     );
     expect(revealed).toBeUndefined();
   });
+
+  it("**un suceso SPECIFIC_PLAYERS llega al jugador NOMBRADO, y a nadie más** (D-OP-12)", async () => {
+    // Hasta el 2026-09-05 esto era imposible: `GameEventsService` evaluaba `canView` con
+    // `grantedUserIds: []` siempre, así que un suceso `SPECIFIC_PLAYERS` no lo veía nadie salvo el
+    // DM — ni siquiera el jugador al que se le acababa de conceder la ficha. `entities.service.ts`
+    // lo sabía y guardaba `DM_ONLY` en su lugar. Ese parche está retirado.
+    const s = app.getHttpServer();
+    const tercero = await request(s)
+      .post("/auth/register")
+      .send({ email: `pl3-ent${Date.now()}@b.com`, password: "password123", displayName: "PL3" });
+    const tokenPL3 = tercero.body.token;
+    const invite = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/invites`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.token;
+    await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${tokenPL3}`);
+
+    const created = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "El confidente", visibility: "DM_ONLY" });
+    const entityId = created.body.id;
+
+    // Se concede **solo al primer jugador**. El tercero está en la campaña y no está nombrado.
+    const raised = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${entityId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ visibility: "SPECIFIC_PLAYERS", specificPlayerIds: [playerId] });
+    expect(raised.status).toBe(200);
+
+    // **La fila se guarda con su visibilidad de verdad**, no con el `DM_ONLY` del parche.
+    const fila = await prisma.gameEvent.findFirst({
+      where: { subjectId: entityId, type: "ENTITY_REVEALED" },
+    });
+    expect(fila?.visibility).toBe("SPECIFIC_PLAYERS");
+    expect(fila?.grantedUserIds).toEqual([playerId]);
+
+    const buscar = async (token: string) => {
+      const r = await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", `Bearer ${token}`);
+      return (r.body.events as { type: string; subjectId: string }[]).find(
+        (e) => e.type === "ENTITY_REVEALED" && e.subjectId === entityId,
+      );
+    };
+
+    // El nombrado sí. El de al lado, no. Y el DM siempre.
+    expect(await buscar(tokenPL)).toBeDefined();
+    expect(await buscar(tokenPL3)).toBeUndefined();
+    expect(await buscar(tokenDM)).toBeDefined();
+  });
 });

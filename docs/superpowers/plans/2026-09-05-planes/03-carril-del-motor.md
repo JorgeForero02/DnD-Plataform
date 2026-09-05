@@ -157,15 +157,44 @@ D-OP-12**, dicho explícitamente en su commit.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-05 | **3.1 · D-OP-12 + P1 + P3-archivar.** Columna `grantedUserIds String[]` en `apps/api/prisma/schema.prisma:456-470`, migración `apps/api/prisma/migrations/20260905040000_game_event_granted_users/migration.sql`. `recordGameEventSchema` la acepta (`packages/shared/src/game-event.schema.ts:467-477`), `record()` la guarda y `canSee` la pasa a `canView` (`apps/api/src/game-events/game-events.service.ts:181`). **Parche de `entities.service.ts` retirado** con su comentario reescrito (`:220-241`). `audienciaDeSuceso` nueva en `apps/api/src/common/visibility.ts`. **Commit `<pendiente 3.1>`** |
+| ⬜ sin empezar | — | 3.2 · D-OP-11 · el oráculo de la CA |
+| ⬜ sin empezar | — | 3.3 · D-OP-15 · `attackRollEventId` a columna con índice único |
+| ⬜ sin empezar | — | 3.4 · D-OP-13 · la ventaja de atacar a un ciego |
+| ⬜ sin empezar | — | 3.5 · D-OP-17 · «dónde se quedó» en el listado |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **3.1 · P3 no se arregló como la ficha suponía, y la ficha estaba equivocada.** Decía que hacía
+  falta «que el modelo de sucesos sepa de dueños ajenos». No hacía falta: **un suceso no tiene dueño
+  propio** —`GameEventsService` evalúa `canView` con el **actor** como creador—, así que copiar
+  `OWNER_DM` tal cual escribía un suceso cuyo dueño era el DM que archivó. Lo que hacía falta era
+  **traducir el nivel de la cosa al par (visibilidad, nombrados) que produce su misma audiencia**:
+  `OWNER_DM` significa «su dueño y el DM», y nombrar al dueño en `SPECIFIC_PLAYERS` da ese conjunto
+  exacto, porque el DM lo ve todo siempre. Dura porque **no toca `canView`** y porque la traducción
+  vive en un solo sitio.
+- **3.1 · Y esa traducción vive en `common/visibility.ts`, no en el servicio de personajes.** La
+  regla que no se negocia dice que nadie reimplementa la matriz por su cuenta; `audienciaDeSuceso`
+  es un trozo de la misma matriz, y ya tiene **dos** consumidores (archivar y revelar). Escribirla
+  en el servicio habría sido la tercera copia de un predicado de visibilidad — este repositorio ya
+  pagó esa cuenta tres veces con `=== "PLAYERS"`.
+- **3.1 · La migración se rehízo con `NOT NULL`.** La primera versión escribió
+  `TEXT[] DEFAULT ARRAY[]::TEXT[]` sin `NOT NULL`, y Prisma declara los campos de lista como no
+  nulos: eso es **deriva silenciosa** entre el esquema y la base. Se corrigió el fichero, se borró
+  la fila de `_prisma_migrations` y la columna, y se aplicó de nuevo — en vez de dejar una segunda
+  migración de una línea corrigiendo a la anterior.
+- **3.1 · Se pasa la lista al ESCRIBIR, no se resuelve al leer.** La ficha proponía como alternativa
+  «que `canSee` sepa resolver las de la entidad a la que apunta». Se descartó y no solo por barato:
+  quien mire el registro dentro de un mes tiene que ver quién estaba nombrado **cuando pasó**. Un
+  registro de solo añadir cuya visibilidad cambia sola no es un registro.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **3.2 · D-OP-11, el oráculo de la CA.** `character-sheet.service.ts` busca el objetivo del ataque
+  sin consultar `canView`, aunque el servicio ya lo importa y ya tiene `viewerFor()`. La regla: el
+  objetivo pasa `canView` **o** es combatiente del encuentro activo; si no, **404 idéntico byte a
+  byte** al de un id inventado. La prueba difícil es un **id válido de un personaje real que no
+  puedes ver**, no un id con formato inválido.

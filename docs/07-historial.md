@@ -29,6 +29,37 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Los sucesos aprenden a nombrar (2026-09-05, plan 03 · D-OP-12)
+
+**Qué.** `GameEvent` tiene concesiones nominales, y con eso caen **dos fichas y un parche**.
+
+**El defecto.** `GameEventsService.canSee` evaluaba `canView` con `grantedUserIds: []` **fijo**,
+así que un suceso `SPECIFIC_PLAYERS` **no lo veía nadie** salvo el DM — ni siquiera el jugador al
+que se le acababa de conceder la ficha. `EntitiesService` lo sabía y guardaba `DM_ONLY` en su lugar,
+con un comentario que lo llamaba parche honesto a la espera de esto. **El parche está retirado y su
+comentario reescrito**, no dejado mintiendo.
+
+**Columna `String[]`, no tabla de unión**, con tres motivos medidos: el filtrado ya ocurre **en
+memoria** tras el `findMany`, así que una tabla obligaría a un `include` para nada; el esquema ya usa
+`String[]`; y lo que se pierde —integridad referencial— es inofensivo, porque `canView` solo
+pregunta si el espectador está en la lista.
+
+**Y P3 no se arregló como la ficha suponía.** Decía que hacía falta que «el modelo de sucesos sepa
+de dueños ajenos». Lo que hacía falta era traducir: **un suceso no tiene dueño propio** —el servicio
+evalúa `canView` con el **actor** como creador—, así que copiar `OWNER_DM` tal cual escribía un
+suceso cuyo «dueño» era el DM que archivó, y al jugador al que se llevaban el personaje **no le
+llegaba nada**. `audienciaDeSuceso` (`apps/api/src/common/visibility.ts`) traduce el nivel de la
+cosa al par (visibilidad, nombrados) que produce **su misma audiencia**: `OWNER_DM` significa «su
+dueño y el DM», y nombrar al dueño en `SPECIFIC_PLAYERS` da ese conjunto exacto. Vive junto a
+`canView` porque es la misma matriz, y la usan el archivar y el revelar.
+
+**Cómo se comprobó.** Dos mutaciones, las dos rojas: volver `canSee` al array vacío tumba el e2e del
+jugador nombrado; copiar la visibilidad tal cual en el archivar tumba el del dueño.
+
+**Cómo revertirlo.** `git revert` del commit y una migración con
+`ALTER TABLE "GameEvent" DROP COLUMN "grantedUserIds"`. Vuelve el parche de `DM_ONLY`, que era la
+etiqueta honesta de lo que pasaba.
+
 ## Las tres columnas: el bando, dónde abre la escena y la crónica fuera del Json (2026-09-05)
 
 **Qué.** Plan 02 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/02-tres-columnas.md).

@@ -136,6 +136,10 @@ describe("CharactersService", () => {
           subjectType: "character",
           subjectId: "ch1",
           visibility: "PLAYERS",
+          // D-OP-12/P3: `PLAYERS` lo ve la mesa entera, así que no nombra a nadie. El caso que
+          // motivó el cambio es `OWNER_DM`, que sí nombra —a su dueño—, y lo cubre
+          // `common/visibility.spec.ts` por dentro y el e2e de personajes por fuera.
+          grantedUserIds: [],
           payload: { type: "CHARACTER_ARCHIVED", characterName: "Thora" },
         },
         tx,

@@ -722,6 +722,12 @@ test("al volver a la mesa, una franja dice por dónde seguir; la primera vez no 
 
   // Se da por visto el MÁS ANTIGUO de los que hay, que es lo que pasa cuando alguien se va a la
   // mitad: al volver, lo de después es lo que se perdió.
+  //
+  // **Y desde el plan 04 el más antiguo es `ids[0]`, no el último del DOM.** El hilo se pinta
+  // ahora del más antiguo al más reciente, así que esta línea decía lo contrario de lo que
+  // pretendía: marcaba como visto el ÚLTIMO suceso, no quedaba nada perdido y la franja no se
+  // pintaba. **El orden del DOM es una interfaz compartida**, y voltearlo obliga a mirar a todos
+  // los recorridos que lo consumen, no solo al que se está editando.
   const ids = await sucesos
     .locator("li[data-suceso]")
     .evaluateAll((els) => els.map((e) => e.getAttribute("data-suceso")!));
@@ -729,7 +735,7 @@ test("al volver a la mesa, una franja dice por dónde seguir; la primera vez no 
   const campaignId = page.url().split("/campaigns/")[1].split("/")[0];
   await page.evaluate(
     ([id, campana]) => localStorage.setItem(`dnd-mesa-visto:${campana}`, id),
-    [ids[ids.length - 1], campaignId],
+    [ids[0], campaignId],
   );
 
   await page.reload();

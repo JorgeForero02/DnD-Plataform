@@ -56,7 +56,10 @@ condiciones en las tiradas —2.5.5— y la capa de combate —2.5.6—, con lo 
 de cierre) y **108 recorridos de navegador** (eran 88; los nuevos son el tercer tema en las tres
 pruebas de contraste, la medición del `/NN` y la del solape del conmutador, los dos de B1.1, los de
 B1.2 y B1.3, el del mundo como destino y los cajones de B4, y el combate entero de 2.5.6). **Los dos
-verdes en la misma tarde, en una sola pasada cada uno.** Este par sí se escribe a mano, porque solo
+verdes en la misma tarde, en una sola pasada cada uno.** **Desde el 2026-09-05 son 109**: D1 añadió
+el hilo como conversación a `mesa-mide`, y ese fichero se corrió entero y en verde en su propia
+pasada (3 de 3) — el recuento de los otros 22 no se ha vuelto a medir ese día. Este par sí se
+escribe a mano, porque solo
 lo sabe el corredor: un bloque declarado dentro de un bucle sobre los tres temas ejecuta más pruebas
 de las que se pueden contar leyendo
 el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
@@ -275,6 +278,7 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 | `tokens-contrast` | **El contraste real, medido, en los tres temas** (Oscuro, Claro y Lectura) y en las pantallas de sesión, campaña, 404, atribución y cuenta. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
 | `clases-que-si-pintan` | Que las superficies que la aplicación promete **se pintan de verdad** — la comprobación que caza una clase de Tailwind que no existe y compila a nada. |
 | `ficha-lectura` | El enlace que se lee como frase por sus dos lados; la capitular, los párrafos y la medida corta; el contraste de la página de lectura en los dos temas. |
+| `mesa-mide` | **La mesa medida en un navegador**: la página no scrollea y el hilo sí, la rejilla llega al pie, ningún panel se corta sin poder desplazarse y abrir un cajón no desmonta el hilo. **Y desde D1 (2026-09-05), el hilo como conversación**: al abrir está **al fondo**, con el scroll subido un suceso nuevo **no roba la posición** y sale un aviso pulsable, y estando al fondo sí baja. Nada de eso se puede probar en `jsdom`, donde `scrollHeight` y `clientHeight` valen cero y **cualquier aserción de anclaje pasa siempre**. |
 | `capturas-comparacion` | Capturas de nuestras pantallas **para compararlas con el prototipo**. No afirma nada por sí sola: es material para el ojo humano. |
 
 ---

@@ -238,3 +238,80 @@ for (const ventana of [
     expect(await hilo.evaluate((el) => el.scrollTop)).toBe(desplazamientoAntes);
   });
 }
+
+// --- D1 (2026-09-05): el hilo se lee como una conversación ---
+//
+// **Esto vive aquí y no en RTL porque `jsdom` no maqueta.** `scrollHeight` y `clientHeight` valen
+// cero allí, así que *cualquier* aserción sobre el anclaje pasaría —incluso con el código
+// borrado—. Es exactamente el fallo que dejó 871 pruebas verdes con la mesa rota, y por eso las
+// tres medidas del anclaje están en un navegador de verdad.
+//
+// Lo que RTL sí cubre, y no se repite aquí: el orden de los nodos, que la marca de leído sigue
+// siendo el más reciente y que la franja de «te perdiste» deja lo no leído por debajo
+// (`apps/web/src/features/sessions/__tests__/mesa-de-sesion.test.tsx`).
+//
+// Una sola ventana, 1280×800: lo que se mide es desplazamiento, no rejilla, y no cambia con el
+// ancho. Repetirlo en 1920 costaría otro registro completo de doce sellos sin medir nada nuevo.
+test("el hilo se lee como un chat: lo último abajo, y no arrastra a quien está leyendo", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await registrarse(page);
+  await campanaConSesionYHiloLargo(page);
+
+  const hilo = page.getByRole("list", { name: "Sucesos de la sesión" });
+  /** Cuánto queda por debajo. Menos que la tolerancia del componente (80 px) es «al fondo». */
+  const porDebajo = () => hilo.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
+
+  // --- 1 · Al abrir la mesa, el hilo está AL FONDO ---
+  await expect.poll(porDebajo, { timeout: 10_000 }).toBeLessThan(80);
+
+  // Y lo de abajo es lo último que pasó. Se compara la POSICIÓN de dos líneas conocidas, no el
+  // texto del último nodo: el registro lleva además el suceso de «sesión empezada», así que
+  // fijar cuál es el primero sería atarse a un detalle que no es el que se mide.
+  const orden = await hilo.evaluate((el) =>
+    [...el.querySelectorAll("[data-suceso]")].map((n) => n.textContent ?? ""),
+  );
+  const primera = orden.findIndex((t) => t.includes("la línea número 1 del almacén"));
+  const ultima = orden.findIndex((t) => t.includes("la línea número 12 del almacén"));
+  expect(primera).toBeGreaterThanOrEqual(0);
+  expect(ultima).toBeGreaterThan(primera);
+
+  // --- 2 · Con el scroll subido, un suceso nuevo NO roba la posición ---
+  //
+  // **Esta es la medida que protege el corazón del plan** y la que la mutación tiene que poner
+  // roja: quitar la condición `alFondo` del componente hace que la vista salte al fondo aquí.
+  await hilo.evaluate((el) => el.scrollTo({ top: 0 }));
+  const arriba = await hilo.evaluate((el) => el.scrollTop);
+  expect(arriba).toBeLessThan(80);
+
+  const registro = page.getByRole("region", { name: "Registro de la sesión" });
+  const campo = registro.getByLabel("Qué anotar");
+  const sellar = registro.getByRole("button", { name: "Combate", exact: true });
+  await campo.fill("un suceso mientras leo más arriba");
+  await sellar.click();
+
+  // Se espera a que el suceso HAYA LLEGADO al hilo antes de medir: `toBeAttached` y no
+  // `toBeVisible`, porque si el anclaje se comporta bien ese suceso está fuera de la ventana
+  // del scroll — pedirle que se vea sería pedir justo el defecto que esta prueba caza.
+  await expect(hilo.getByText("un suceso mientras leo más arriba")).toBeAttached({
+    timeout: 10_000,
+  });
+  // **La aserción del plan**: la vista sigue exactamente donde estaba.
+  expect(await hilo.evaluate((el) => el.scrollTop)).toBe(arriba);
+  // Y el aviso lo dice — sin él, lo nuevo estaría fuera de pantalla en silencio.
+  const aviso = page.getByRole("button", { name: "Hay algo nuevo abajo" });
+  await expect(aviso).toBeVisible();
+
+  // Pulsarlo sí baja, que es la salida que se le ofrece a quien quiera verlo.
+  await aviso.click();
+  await expect(aviso).toBeHidden();
+  await expect.poll(porDebajo).toBeLessThan(80);
+
+  // --- 3 · Estando al fondo, uno nuevo SÍ baja ---
+  await expect(campo).toHaveValue("");
+  await campo.fill("y otro estando ya al fondo");
+  await sellar.click();
+  await expect(hilo.getByText("y otro estando ya al fondo")).toBeVisible({ timeout: 10_000 });
+  await expect.poll(porDebajo).toBeLessThan(80);
+});

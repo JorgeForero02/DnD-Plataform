@@ -192,3 +192,19 @@ export function IconoMochila({ className }: Props) {
     </svg>
   );
 }
+
+/**
+ * Bajar al fondo del hilo: una flecha hacia abajo que topa con una línea.
+ *
+ * D1 (2026-09-05) — el hilo se lee como un chat, y cuando llega algo nuevo mientras alguien está
+ * leyendo más arriba **la vista no se mueve**: se le ofrece esto. Vive aquí y no en `ui/Iconos`
+ * porque solo lo usa el hilo, que es lo que `docs/04-convenciones.md` permite («cada módulo
+ * grande dibuja los suyos»).
+ */
+export function IconoBajarAlFondo({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" />
+    </svg>
+  );
+}

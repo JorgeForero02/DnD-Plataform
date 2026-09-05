@@ -156,11 +156,28 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
               esDm ? "grid-cols-[17rem_1fr_15rem]" : "grid-cols-[17rem_1fr]",
             ].join(" ")}
           >
-            <ColumnaElenco
-              campaignId={campaignId}
-              asistencia={sesion?.attendance ?? null}
-              esDm={esDm}
-            />
+            {/* **El rail vive al pie de la columna del elenco, y no en una fila propia.**
+                La maqueta lo pone en una fila a lo ancho, debajo de la rejilla — pero esa fila
+                lleva además `BarraDeAcciones`, **que en esta aplicación no existe** (la auditoría
+                del 2026-09-04 la marca ALTA: «ni el fichero»). Sin ella la fila es hueco muerto a
+                lo ancho de la pantalla, y el hilo se corta por encima de ella.
+                `grid-rows-[1fr_auto]`: el elenco ocupa lo que hay y el rail se apoya abajo, así
+                que el hilo y las herramientas llegan al borde inferior. **Cuando exista
+                `BarraDeAcciones`, esto hay que volver a mirarlo**: con contenido, la fila de la
+                maqueta deja de ser hueco y vuelve a tener sentido. */}
+            <div className="grid min-h-0 grid-rows-[1fr_auto] gap-s3">
+              <ColumnaElenco
+                campaignId={campaignId}
+                asistencia={sesion?.attendance ?? null}
+                esDm={esDm}
+              />
+              <RailDePaneles
+                onAbrir={setPanel}
+                onAlternarDados={() => setDadosPuestos((puestos) => !puestos)}
+                dadosPuestos={dadosPuestos}
+                tienePersonaje={Boolean(miPersonaje)}
+              />
+            </div>
 
             <HiloDeSesion
               campaignId={campaignId}
@@ -182,28 +199,39 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
 
         {/* La fila de abajo: el rail permanente, y a su derecha lo que toque según el estado.
             No scrollea y no crece. */}
-        <div className="flex shrink-0 items-stretch gap-s3">
-          <RailDePaneles
-            onAbrir={setPanel}
-            onAlternarDados={() => setDadosPuestos((puestos) => !puestos)}
-            dadosPuestos={dadosPuestos}
-            tienePersonaje={Boolean(miPersonaje)}
-          />
-          {sesion ? (
-            <div className="flex-1" />
-          ) : (
+        {/* En reposo, el gesto de empezar. **Solo aparece cuando hay algo que decir**: con la
+            sesión en curso esta fila no se pinta, y por eso el hilo llega al borde. El DM en
+            reposo está en su taller, que ocupa la mesa entera, así que su botón sí necesita una
+            fila propia debajo — igual que en la maqueta. */}
+        {/* **El rail es permanente y no se quita nunca** (§4 del reseño: los paneles tienen tecla
+            porque se quitan; el rail no la tiene porque no se quita). En la mesa vive al pie de la
+            columna del elenco; en el taller no hay columna, así que aquí recupera su fila —que es
+            además donde la maqueta la pone para el DM en reposo, junto al botón de empezar. */}
+        {enTaller && (
+          <div className="flex shrink-0 items-stretch gap-s3">
+            <RailDePaneles
+              onAbrir={setPanel}
+              onAlternarDados={() => setDadosPuestos((puestos) => !puestos)}
+              dadosPuestos={dadosPuestos}
+              tienePersonaje={Boolean(miPersonaje)}
+            />
             <div className="min-w-0 flex-1">
-              {esDm ? (
-                <EmpezarDesdeLaMesa campaignId={campaignId} />
-              ) : (
-                <p className="flex h-full items-center rounded-radius-sm border border-muted bg-surface px-s4 font-chrome text-chrome-sm text-muted">
-                  La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena
-                  sola.
-                </p>
-              )}
+              <EmpezarDesdeLaMesa campaignId={campaignId} />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {!sesion && !enTaller && (
+          <div className="shrink-0">
+            {esDm ? (
+              <EmpezarDesdeLaMesa campaignId={campaignId} />
+            ) : (
+              <p className="flex items-center rounded-radius-sm border border-muted bg-surface px-s4 py-s3 font-chrome text-chrome-sm text-muted">
+                La mesa está en reposo. Cuando el DM empiece la sesión, esta pantalla se llena sola.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <PanelesSuperpuestos

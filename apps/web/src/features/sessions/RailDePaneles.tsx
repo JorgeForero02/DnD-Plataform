@@ -70,7 +70,11 @@ function Boton({
       // permiso, un dato o un clic en otro sitio.
       title={disabled ? motivo : etiqueta}
       className={[
-        "flex w-20 flex-col items-center gap-s1 rounded-radius-sm border px-s1 py-s2 transition-colors",
+        // `flex-1` y no `w-20`: los cuatro se reparten el ancho del rail, que es el de la
+        // columna del elenco. La maqueta escribe `w-16` fijo, y con cuatro botones y tres huecos
+        // eso da 280 px contra los 272 de la columna — ocho px de desfase que se ven porque las
+        // dos costuras están una encima de otra. Repartiendo, coinciden **a cualquier ancho**.
+        "flex flex-1 flex-col items-center gap-s1 rounded-radius-sm border px-s1 py-s2 transition-colors",
         disabled
           ? "cursor-not-allowed border-muted/30 text-muted/50"
           : activo
@@ -103,10 +107,21 @@ export function RailDePaneles({
   tienePersonaje: boolean;
 }) {
   return (
-    <nav
-      aria-label="Paneles de la mesa"
-      className="flex items-stretch gap-s2 rounded-radius-md border border-copper bg-surface p-s2"
-    >
+    // **El rail mide lo que la columna del elenco, y no lleva caja.**
+    //
+    // Dos desviaciones de la maqueta que se arrastraban sin declarar y que juntas producían lo
+    // que el autor vio: los botones eran `w-20` en vez de `w-16`, y el rail iba envuelto en una
+    // superficie con borde de cobre y relleno que la maqueta **no tiene** —allí es un
+    // `flex items-stretch gap-s2` pelado—. Entre las dos cosas el rail medía ~370 px contra los
+    // 272 de la columna, así que la costura vertical entre elenco e hilo caía en x≈285 y la de
+    // esta fila en x≈380: dos líneas que tendrían que ser la misma, separadas 90 px. Y la caja
+    // hacía además que el hueco a su derecha se leyera como una banda vacía a lo ancho de la
+    // pantalla.
+    //
+    // Se copia la maqueta —sin caja— y **se fija el ancho al de la columna** en vez de dejar los
+    // botones a medida fija: la maqueta se queda a 8 px, y forzándolo las dos costuras coinciden
+    // aunque cambie el ancho de la ventana, que es lo que se pidió.
+    <nav aria-label="Paneles de la mesa" className="flex w-[17rem] shrink-0 items-stretch gap-s2">
       <Boton
         etiqueta="Hoja"
         tecla={TECLAS.hoja}

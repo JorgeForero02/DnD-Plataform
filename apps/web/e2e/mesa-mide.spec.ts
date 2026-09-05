@@ -159,6 +159,40 @@ for (const ventana of [
     expect(caja!.y + caja!.height).toBeGreaterThan(ventana.height * 0.5);
     expect(caja!.y + caja!.height).toBeLessThanOrEqual(ventana.height);
 
+    // --- 3 bis · La rejilla llega al BORDE, y el rail no le roba una franja ---
+    //
+    // El defecto que esto fija con número, y que hasta hoy no medía nada: el rail vivía en una
+    // fila propia **a lo ancho de la pantalla**, hermana de la rejilla, así que el hilo se cortaba
+    // ~100 px por encima del borde y a la derecha del rail quedaba una banda vacía. La maqueta
+    // pone ahí `BarraDeAcciones`, que en esta aplicación **no existe** (auditoría 2026-09-04,
+    // ALTA), así que esa fila era hueco muerto. El rail bajó al pie de la columna del elenco.
+    //
+    // Se permite `p-s3` (12 px) más un par de píxeles de redondeo. Si alguien devuelve el rail a
+    // su fila, esta aserción se pone roja en el acto.
+    expect(ventana.height - (caja!.y + caja!.height)).toBeLessThanOrEqual(16);
+
+    // --- 3 ter · Las dos costuras verticales son la MISMA ---
+    //
+    // El rail y la columna del elenco comparten borde derecho. Antes no: la columna medía 17rem
+    // (272 px) y el rail ~370 —botones `w-20` en vez de los `w-16` de la maqueta, más una caja con
+    // relleno que la maqueta no tiene—, así que había dos líneas separadas 90 px donde debería
+    // haber una. Se mide el borde derecho de los dos, no su anchura, porque es la costura lo que
+    // se ve.
+    //
+    // **Y hay que decir qué defiende esto de verdad, porque se comprobó por mutación.** Devolver
+    // los botones a `w-20` y quitarle al rail su ancho **NO** pone esta aserción en rojo: el rail
+    // vive dentro de la columna del elenco, así que la rejilla le fija el ancho y la costura
+    // coincide igualmente. Lo que sí caza es que alguien **saque el rail de la columna** y lo
+    // devuelva a una fila propia a lo ancho. La alineación no la sostienen las clases: la sostiene
+    // la estructura, y esto es lo que avisa si la estructura cambia.
+    const cajaRail = await page.locator('nav[aria-label="Paneles de la mesa"]').boundingBox();
+    const cajaElenco = await page.getByRole("region", { name: "En la mesa" }).boundingBox();
+    expect(cajaRail).not.toBeNull();
+    expect(cajaElenco).not.toBeNull();
+    expect(
+      Math.abs(cajaRail!.x + cajaRail!.width - (cajaElenco!.x + cajaElenco!.width)),
+    ).toBeLessThanOrEqual(2);
+
     // --- 4 · Ningún panel se corta sin poder desplazarse ---
     //
     // Para cada región de la mesa: o cabe, o tiene con qué desplazarse. Un panel con más

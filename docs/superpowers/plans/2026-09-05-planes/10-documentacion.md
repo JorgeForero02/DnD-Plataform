@@ -140,15 +140,36 @@ pasa a ser un resumen, no la fuente.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-05 | **10.1, 10.2 y 10.3 · el encargo original.** Las decisiones en `docs/decisiones.md`, las tres reglas normativas en `docs/04-convenciones.md` y `docs/06-pendientes.md` alineado. **Commits `15d0420` · `47c0785` · `cfdc520`** |
+| ✅ hecho | 2026-09-05 | **10.1-bis · lo que la noche decidió DESPUÉS de esos commits.** Los bloques «Avance» de los planes 05, 07, 08, 09, 11, 12, 13, 14 y 15 se escribieron más tarde que `decisiones.md`, y varios deciden **contra su propio plan**. Recogidos en `docs/decisiones.md` bajo «Las decisiones de la EJECUCIÓN de esa noche», una línea cada una, más las marcas de qué `D-OP-*` e `I*` quedaron aplicadas y con qué commit. **Commit `7423caf`** |
+| ✅ hecho | 2026-09-05 | **10.2-bis · la prosa caducada de los dos ficheros que se mandan leer primero.** `CLAUDE.md` y `docs/00-INDEX.md` decían que el reseño de la mesa **no** estaba desplegado y que «local va por delante de `dnd.supportive.pro`». **Comprobado, no recordado:** `docker ps` en `vps1new` sirve `5awvsn1dnkexhcjzg7kjwom6_api:6eb259008369192543f9323ca928ed252e10ca18`, y `git diff --name-only 6eb2590..HEAD` no toca `apps/` ni `packages/`. **Commit `c6c0ccb`** |
+| ✅ hecho | 2026-09-05 | **10.2-ter · el índice de planes se contradecía a sí mismo.** Daba el 10 y el 12 por ⬜ cuando el 10 lo declara ejecutado en su propia cabecera y el 12 cerró entero. Y su **regla 6** («`06-pendientes.md` no se toca») la levantó el autor esa noche. Corregido en el bloque «DÓNDE ESTÁ ESTO AHORA», que es el único que ese fichero permite actualizar. **Commit `fc16abb`** |
+| ✅ hecho | 2026-09-05 | **Definición de terminado · `Mine/pendientes-maestro-2026-09-04.md` pasa a ser resumen** y apunta a `docs/`, con las dos frases suyas que ya son falsas tachadas y conservadas. Vive fuera del repositorio, así que no lleva commit. |
+| ✅ | 2026-09-05 | **EL PLAN 10 ESTÁ CERRADO.** Lo único que queda de él es continuo: cada plan que cierre una ficha la tacha en `docs/06-pendientes.md`, con fecha y `fichero:línea`. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **Las decisiones de ejecución van en su propia sección y NO mezcladas con las de antes.** Las
+  `D-OP-*` y las `I*` son lo que se decidió **antes** de escribir código; las `E-*` son lo que el
+  código obligó a cambiar, y **varias contradicen a su plan**. Fundirlas habría borrado justo eso.
+- **El plan no se corrige donde miente; se corrige en el documento vivo.** El plan 08 sigue pidiendo
+  `Character.inspired Boolean` y el 05 sigue pidiendo los rótulos en `shared`: son encargos fechados.
+  Lo que manda es `docs/decisiones.md`, y por eso E-08-1 y E-05-1 dicen **contra qué** deciden.
+- **La regla 6 del índice de planes NO se reescribió en su sitio**, aunque esté desactualizada: ese
+  fichero declara que solo se actualiza su primer bloque. La corrección va ahí, con la evidencia de
+  que la restricción se levantó y de los seis commits que ya editaron `06-pendientes.md`.
+- **El maestro se convierte en resumen conservando su cuerpo entero.** Tachar dos frases de su
+  cabecera y añadir una tabla de «dónde está esto ahora» cuesta nada y no destruye el inventario del
+  2026-09-04, que sigue sirviendo para saber qué se creía ese día.
+- **El estado de producción se midió en el servidor.** El informe de la noche decía `cc64ed7` y ya
+  no era cierto: hubo un tercer despliegue. Una etiqueta de imagen es barata de comprobar y cara de
+  suponer.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **Nada de este plan.** Lo que queda de la tanda no es documentación: es **la partida de prueba**
+  con dos cuentas de jugador (D-OP-3), y su encargo está en
+  `docs/superpowers/specs/2026-09-05-partida-a-ciegas-design.md`.

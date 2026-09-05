@@ -66,7 +66,19 @@ export class RollsService {
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
   ) {}
 
-  async roll(userId: string, campaignId: string, input: CreateRollInput): Promise<RollResult> {
+  /**
+   * @param interno Lo que **solo pone el servidor** y nunca viaja en el cuerpo de una petición.
+   *   Hoy es `attackRollEventId` (D-OP-15): la tirada de ataque cuyo daño se está cobrando. **No
+   *   está en `createRollSchema` a propósito** — si el cliente pudiera mandarlo, podría quemar el
+   *   identificador de la tirada de otro y dejarla incobrable, que es la puerta de al lado del
+   *   problema que este campo cierra.
+   */
+  async roll(
+    userId: string,
+    campaignId: string,
+    input: CreateRollInput,
+    interno?: { attackRollEventId?: string },
+  ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
 
     const characterId = await this.comprobarPersonaje(userId, campaignId, input.characterId);
@@ -115,6 +127,7 @@ export class RollsService {
           subjectType: characterId ? "character" : "campaign",
           subjectId: characterId ?? campaignId,
           visibility,
+          ...(interno?.attackRollEventId ? { attackRollEventId: interno.attackRollEventId } : {}),
           payload: {
             type: "ABILITY_ROLL",
             expression: resultado.expression,

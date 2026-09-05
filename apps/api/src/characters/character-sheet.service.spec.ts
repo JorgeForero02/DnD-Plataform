@@ -989,6 +989,9 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       "p1",
       "c1",
       expect.objectContaining({ expression: "2d8+2" }),
+      // D-OP-15: la tirada que se cobra queda escrita en el suceso del daño, y la base tiene
+      // un índice único sobre ella: el segundo cobro no llega a escribirse.
+      { attackRollEventId: "ev-atk-20" },
     );
     expect(prisma.gameEvent.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1023,6 +1026,9 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       "p1",
       "c1",
       expect.objectContaining({ expression: "1d8+2" }),
+      // D-OP-15: la tirada que se cobra queda escrita en el suceso del daño, y la base tiene
+      // un índice único sobre ella: el segundo cobro no llega a escribirse.
+      { attackRollEventId: "ev-atk-11" },
     );
   });
 
@@ -1046,6 +1052,9 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       "p1",
       "c1",
       expect.objectContaining({ expression: "1d8+2" }),
+      // D-OP-15: la tirada que se cobra queda escrita en el suceso del daño, y la base tiene
+      // un índice único sobre ella: el segundo cobro no llega a escribirse.
+      { attackRollEventId: "ev-sigilo-20" },
     );
   });
 

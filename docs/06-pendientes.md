@@ -129,6 +129,18 @@ puede comprobar sin marcar el suceso, y eso es una columna nueva.
 se pueda borrar de `rollAttackSchema` sin romper nada; y (2) una tirada de ataque ya cobrada no se
 pueda volver a cobrar. Hasta las dos, no es «si y solo si».
 
+> **La condición (2) está CERRADA (2026-09-05, plan 03 · D-OP-15).** `GameEvent.attackRollEventId`
+> es una columna **con índice único** (`apps/api/prisma/schema.prisma:471-486`, migración
+> `apps/api/prisma/migrations/20260905050000_damage_charged_once/`), la escribe `RollsService.roll`
+> por un parámetro **interno** —no está en `createRollSchema`, porque un cliente que pudiera
+> mandarlo podría quemar el identificador de la tirada de otro— y el segundo cobro lo rechaza **la
+> base**: `CharacterSheetService.rollAttack` traduce el `P2002` a un 409 legible. Probado por
+> mutación: al borrar el índice, el e2e recibe **201** donde esperaba 409.
+>
+> **Queda la condición (1)**, que es web y vive en el **plan 15**. Y el orden importa: primero la
+> web manda el campo, después se quita `critical` — al revés hay una ventana en la que el crítico
+> no funciona.
+
 ## Deuda del carril C6 — las mecánicas sin pantalla (2026-09-04)
 
 | Ficha | Qué | Por qué queda abierta |

@@ -288,6 +288,40 @@ describe("Hoja de personaje y PG (e2e)", () => {
     expect(log.body.events[0].payload.reason).toBe("Ataque con Espada larga");
   });
 
+  it("**el daño de una tirada de ataque se cobra UNA vez, y lo impide la base** (D-OP-15)", async () => {
+    const s = app.getHttpServer();
+    const hoja = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+    const ataque = hoja.body.attacks.find((a: { name: string }) => a.name === "Espada larga");
+    expect(ataque).toBeDefined();
+    const rollUrl = `${sheetUrl()}/attacks/${encodeURIComponent(ataque.key)}/roll`;
+
+    const ataqueTirado = await request(s)
+      .post(rollUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ part: "ATTACK", mode: "NORMAL" });
+    expect(ataqueTirado.status).toBe(201);
+    const eventId = ataqueTirado.body.eventId as string;
+    expect(typeof eventId).toBe("string");
+
+    const primero = await request(s)
+      .post(rollUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ part: "DAMAGE", attackRollEventId: eventId });
+    expect(primero.status).toBe(201);
+
+    // **El segundo cobro lo rechaza el índice único, no un `if`.** Una comprobación en el
+    // servicio sería una carrera esperando a ocurrir con dos pestañas abiertas.
+    const segundo = await request(s)
+      .post(rollUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ part: "DAMAGE", attackRollEventId: eventId });
+    expect(segundo.status).toBe(409);
+
+    // Y **no quedó a medias**: hay exactamente un suceso cobrando esa tirada.
+    const cobros = await prisma.gameEvent.count({ where: { attackRollEventId: eventId } });
+    expect(cobros).toBe(1);
+  });
+
   it("pedir la tirada de un arma que no se lleva equipada es 400, no 500", async () => {
     const res = await request(app.getHttpServer())
       .post(`${sheetUrl()}/attacks/SRD:greataxe/roll`)

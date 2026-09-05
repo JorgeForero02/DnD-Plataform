@@ -71,6 +71,9 @@ export class GameEventsService {
         // **cuando pasó**, no quién lo está hoy. Un registro de solo añadir cuya visibilidad
         // cambia sola no es un registro.
         grantedUserIds: input.grantedUserIds ?? [],
+        // D-OP-15: quién cobra qué tirada. `undefined` deja la columna nula, y en PostgreSQL dos
+        // nulos son distintos, así que los sucesos que no cobran nada no chocan entre sí.
+        attackRollEventId: input.attackRollEventId ?? null,
       },
     });
 

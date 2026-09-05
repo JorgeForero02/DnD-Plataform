@@ -469,6 +469,21 @@ model GameEvent {
   /// espectador está en la lista.
   grantedUserIds String[]   @default([])
 
+  /// **La tirada de ataque que este suceso cobra** (D-OP-15, 2026-09-05).
+  ///
+  /// El campo existía como **entrada y nada más**: `rollAttack` lo leía para saber si el golpe fue
+  /// crítico y no lo guardaba en ninguna parte, así que **nada impedía cobrar dos veces el daño de
+  /// la misma tirada** — pedir el daño, volver a pedirlo, y otra vez.
+  ///
+  /// **Índice único, y no una comprobación en el servicio**: «una sola vez» comprobado en código es
+  /// una carrera esperando a ocurrir con dos pestañas abiertas. Y el registro es de **solo añadir**:
+  /// la alternativa sería mutar una fila, que aquí no se hace.
+  ///
+  /// **PostgreSQL trata dos nulos como distintos**, así que los miles de sucesos que no cobran
+  /// ninguna tirada **no chocan entre sí** y basta un índice único normal — no hace falta uno
+  /// parcial.
+  attackRollEventId String? @unique
+
   createdAt   DateTime      @default(now())
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 

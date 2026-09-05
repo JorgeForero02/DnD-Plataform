@@ -48,7 +48,7 @@ import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER, RollsService } from "../rolls/rolls.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { StatblocksService } from "../statblocks/statblocks.service";
 import { CharactersService } from "./characters.service";
@@ -1399,15 +1399,39 @@ export class CharacterSheetService {
       input,
     );
     const dados = esCritico ? duplicarDados(dano.dice) : dano.dice;
-    return this.rolls.roll(userId, campaignId, {
+    const peticion = {
       expression: conSigno(dados, dano.modifier),
       label: `Daño de ${ataque.name}${esCritico ? " (crítico)" : ""}`,
       characterId,
-      // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el dado
-      // de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
+      // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el
+      // dado de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
       mode: "NORMAL",
       audience: input.audience ?? "PUBLIC",
-    });
+    } as const;
+
+    try {
+      // **D-OP-15: la tirada que se está cobrando queda escrita, con índice único detrás.** El
+      // cuarto argumento **solo se pasa cuando hay algo que decir**: un `undefined` explícito
+      // cambiaría la forma de todas las llamadas del camino de siempre sin añadir nada.
+      return await (input.attackRollEventId
+        ? this.rolls.roll(userId, campaignId, peticion, {
+            attackRollEventId: input.attackRollEventId,
+          })
+        : this.rolls.roll(userId, campaignId, peticion));
+    } catch (error) {
+      // **El segundo cobro lo rechaza la BASE, no un `if`.** P2002 = violación de restricción
+      // única. Comprobarlo en el servicio sería una carrera esperando a ocurrir en cuanto alguien
+      // pulse dos veces o tenga dos pestañas abiertas; el servicio solo traduce el choque a un 409
+      // que se pueda leer. Misma forma que «como mucho una sesión en curso por campaña».
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        input.attackRollEventId
+      ) {
+        throw new ConflictException("El daño de esa tirada de ataque ya se había cobrado.");
+      }
+      throw error;
+    }
   }
 
   /**

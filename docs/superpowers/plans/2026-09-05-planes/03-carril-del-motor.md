@@ -158,8 +158,8 @@ D-OP-12**, dicho explícitamente en su commit.
 | Estado | Cuándo | Qué |
 |---|---|---|
 | ✅ hecho | 2026-09-05 | **3.1 · D-OP-12 + P1 + P3-archivar.** Columna `grantedUserIds String[]` en `apps/api/prisma/schema.prisma:456-470`, migración `apps/api/prisma/migrations/20260905040000_game_event_granted_users/migration.sql`. `recordGameEventSchema` la acepta (`packages/shared/src/game-event.schema.ts:467-477`), `record()` la guarda y `canSee` la pasa a `canView` (`apps/api/src/game-events/game-events.service.ts:181`). **Parche de `entities.service.ts` retirado** con su comentario reescrito (`:220-241`). `audienciaDeSuceso` nueva en `apps/api/src/common/visibility.ts`. **Commit `52a461f`** |
-| ✅ hecho | 2026-09-05 | **3.2 · D-OP-11 · el oráculo de la CA.** `sePuedeApuntar` en `apps/api/src/characters/character-sheet.service.ts:246-280` (`canView` **o** combatiente de encuentro **activo**), aplicado en `resolveAttack` con **el mismo 404** que un id inventado. Comentario del método reescrito: decía «por qué no exige `canView`». **Commit `<pendiente 3.2>`** |
-| ⬜ sin empezar | — | 3.3 · D-OP-15 · `attackRollEventId` a columna con índice único |
+| ✅ hecho | 2026-09-05 | **3.2 · D-OP-11 · el oráculo de la CA.** `sePuedeApuntar` en `apps/api/src/characters/character-sheet.service.ts:246-280` (`canView` **o** combatiente de encuentro **activo**), aplicado en `resolveAttack` con **el mismo 404** que un id inventado. Comentario del método reescrito: decía «por qué no exige `canView`». **Commit `11c607c`** |
+| ✅ hecho | 2026-09-05 | **3.3 · D-OP-15.** Columna `attackRollEventId String? @unique` en `apps/api/prisma/schema.prisma:471-486`, migración `apps/api/prisma/migrations/20260905050000_damage_charged_once/migration.sql`. La escribe `RollsService.roll` por un **parámetro interno** (`apps/api/src/rolls/rolls.service.ts:69-82`), y `rollAttack` traduce el `P2002` a 409 (`apps/api/src/characters/character-sheet.service.ts:1378-1400`). **Commit `<pendiente 3.3>`** |
 | ⬜ sin empezar | — | 3.4 · D-OP-13 · la ventaja de atacar a un ciego |
 | ⬜ sin empezar | — | 3.5 · D-OP-17 · «dónde se quedó» en el listado |
 
@@ -207,8 +207,31 @@ fuente si la hubo):
   el DM acaba de bajar a la mesa; el encuentro dejaría fuera al objetivo visible al que se ataca
   **fuera** de combate, que es legal. Por eso son las dos, con **o**.
 
+- **3.3 · El campo NO entra en `createRollSchema`, y esa es la decisión.** Ponerlo en el esquema
+  público habría sido lo obvio y abre una puerta nueva: un cliente podría mandar el
+  `attackRollEventId` **de la tirada de otro** y, con el índice único detrás, dejarla **incobrable
+  para siempre**. Es la puerta de al lado del problema que la ficha cierra. Va por un parámetro
+  `interno` de `RollsService.roll`, igual que `record` ya tenía `options.fromRulesEngine`.
+- **3.3 · El cuarto argumento solo se pasa cuando hay algo que decir.** Pasar `undefined` explícito
+  cambiaba la forma de **todas** las llamadas del camino de siempre y ponía en rojo seis pruebas que
+  no tenían nada que ver. Tres pruebas sí se actualizaron —las que **sí** mandan el campo—, y eso es
+  honesto: la llamada ahora lleva un argumento más.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
+- **3.4 · D-OP-13, la ventaja de atacar a un ciego.** Falta **la ventaja del ATACANTE** contra un
+  objetivo ciego; la desventaja del ciego ya está (`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts:81`).
+  Va **en el camino del ataque**, que conoce al objetivo desde 2.5.3, y **no** en
+  `suggested-roll-mode.ts`, que responde a otra pregunta —«¿cómo tiro yo?»— y lo dice en su propio
+  comentario. Lo que sigue fuera: el fallo automático de pruebas que requieren vista, porque el
+  servidor no sabe si esta prueba concreta la requiere.
+- **3.5 · D-OP-17, «dónde se quedó».** `campaigns.service.ts#listForUser` devuelve hoy rol y número
+  de miembros; hay que añadir la crónica de la última sesión `CLOSED` **filtrada por
+  `recapVisibility`** —que desde el plan 02 es columna, así que es una consulta—. **El caso que se
+  olvida:** una campaña **sin ninguna sesión cerrada**, y otra cuya crónica el jugador no puede ver.
+  En los dos, el listado sale bien y **sin el campo**.
+
+<!-- lo que decía este bloque antes de hacerse:
 - **3.3 · D-OP-15, `attackRollEventId` a columna con índice único.** Hoy el campo **solo es
   entrada**: `esCriticoDesdeLaTirada` (`apps/api/src/characters/character-sheet.service.ts:1400-1430`)
   lo lee y **no lo guarda**, así que nada impide cobrar dos veces el daño de la misma tirada. El
@@ -216,4 +239,4 @@ fuente si la hubo):
   quien llama a `events.record`: hay que hacer viajar el campo hasta ahí, darle **columna con índice
   único** en `GameEvent`, y que el segundo cobro **falle en la base**. PostgreSQL trata dos nulos
   como distintos, así que los sucesos sin ese campo no chocan entre sí y **basta un índice único
-  normal**, sin parcial.
+  normal**, sin parcial. -->

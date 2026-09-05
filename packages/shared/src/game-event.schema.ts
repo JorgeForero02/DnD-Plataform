@@ -476,6 +476,11 @@ export const recordGameEventSchema = z.object({
    * Vacía —o ausente— para los otros cuatro niveles, donde no significa nada.
    */
   grantedUserIds: z.array(z.string().cuid()).max(100).optional(),
+  /**
+   * **La tirada de ataque que este suceso cobra** (D-OP-15). Solo lo pone el servidor, y la base
+   * tiene un índice único sobre él: el daño de una tirada se cobra **una vez**.
+   */
+  attackRollEventId: z.string().min(1).optional(),
   payload: gameEventPayloadSchema,
 });
 export type RecordGameEventInput = z.infer<typeof recordGameEventSchema>;

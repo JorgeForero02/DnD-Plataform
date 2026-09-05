@@ -62,6 +62,36 @@ etiqueta honesta de lo que pasaba.
 
 ---
 
+## El daño de una tirada se cobra una vez, y lo impide la base (2026-09-05, plan 03 · D-OP-15)
+
+**Qué.** `attackRollEventId` existía como **entrada y nada más**: `rollAttack` lo leía para saber si
+el golpe fue crítico y **no lo guardaba**, así que nada impedía pedir el daño de la misma tirada dos
+veces, tres, las que hicieran falta. Ahora es una columna de `GameEvent` **con índice único**.
+
+**Índice único y no una comprobación en el servicio**, por lo mismo que «como mucho una sesión en
+curso por campaña»: comprobarlo en código es una carrera esperando a ocurrir con dos pestañas
+abiertas. Y el registro es de **solo añadir**, así que la alternativa —mutar la fila de la tirada
+para marcarla cobrada— es algo que aquí no se hace. El servicio solo traduce el `P2002` a un 409
+legible.
+
+**PostgreSQL trata dos nulos como distintos**, así que los miles de sucesos que no cobran ninguna
+tirada no chocan entre sí: basta un índice único normal, sin parcial.
+
+**El campo viaja por un parámetro interno de `RollsService.roll`, no por `createRollSchema`.** Si el
+cliente pudiera mandarlo, podría **quemar el identificador de la tirada de otro** y dejarla
+incobrable — que es la puerta de al lado del problema que esto cierra.
+
+**Cierra la mitad de C2.5-2.** La otra —que la web mande el campo y que `critical` suelto se pueda
+borrar del esquema— es del plan 15, y el orden importa: primero la web manda, después se quita.
+
+**Cómo se comprobó.** Mutación: al borrar el índice único, el e2e recibe **201** donde esperaba 409.
+
+**Cómo revertirlo.** `git revert` del commit y una migración con
+`DROP INDEX "GameEvent_attackRollEventId_key"` + `ALTER TABLE "GameEvent" DROP COLUMN
+"attackRollEventId"`.
+
+---
+
 ## El oráculo de la CA se cierra por la puerta que importaba (2026-09-05, plan 03 · D-OP-11)
 
 **Qué.** `resolveAttack` buscaba el objetivo **sin consultar `canView`**, y cada ataque es una

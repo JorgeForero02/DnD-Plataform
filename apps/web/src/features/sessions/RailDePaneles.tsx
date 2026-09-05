@@ -1,4 +1,5 @@
 import { IconoBuscar, IconoElenco, IconoMochila } from "./iconos";
+import { IconoD20 } from "../../ui/Iconos";
 
 // B1.3 — **el estrato SUPERPUESTO, y su puerta.**
 //
@@ -21,30 +22,49 @@ import { IconoBuscar, IconoElenco, IconoMochila } from "./iconos";
 // llevaba un cuarto del ancho para una búsqueda que se usa a ráfagas. De columna a panel: el ancho
 // vuelve al hilo, que es donde pasa la partida.
 
+// **`PanelAbierto` es «qué cajón está abierto», y los dados NO son un cajón.**
+//
+// Estuvieron dentro de este tipo durante media hora del ensamblado, y era un error con
+// consecuencia medible: con un solo estado, abrir la hoja **cerraba los dados**, y eso vacía de
+// sentido el `z-30` del panel de dados frente al `z-40` de los cajones. Esos dos números existen
+// en la maqueta precisamente para que se pueda **tirar mirando la hoja**. Así que los dados
+// tienen su propio estado en el compositor: los cajones siguen siendo uno a la vez, y el panel
+// de dados es otra capa que se abre y se cierra por su cuenta.
 export type PanelAbierto = "hoja" | "bolsa" | "mundo";
 
+// Los tres de la maqueta. **La `D` de los dados no está aquí y no es un olvido**: se escribe en
+// su propio botón, abajo, porque es la única inventada y conviene que se vea que lo es.
 const TECLAS: Record<PanelAbierto, string> = { hoja: "N", bolsa: "I", mundo: "M" };
 
 function Boton({
-  panel,
   etiqueta,
+  tecla,
   icono,
-  onAbrir,
+  onClick,
   disabled,
   motivo,
+  activo,
 }: {
-  panel: PanelAbierto;
   etiqueta: string;
+  /** El acelerador que se imprime debajo del rótulo. */
+  tecla: string;
   icono: React.ReactNode;
-  onAbrir: (p: PanelAbierto) => void;
+  onClick: () => void;
   disabled?: boolean;
   motivo?: string;
+  /**
+   * Solo para lo que se **alterna**. Un cajón no lo lleva: se abre encima y se cierra con
+   * Escape, así que el rail no es quien dice si está abierto. El panel de dados sí, porque
+   * convive con la pantalla y el mismo botón lo quita.
+   */
+  activo?: boolean;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onAbrir(panel)}
+      onClick={onClick}
       disabled={disabled}
+      aria-pressed={activo}
       // **El motivo va en el título cuando está apagado.** Un control deshabilitado sin
       // explicación es la peor versión de decir que no: la persona no sabe si le falta un
       // permiso, un dato o un clic en otro sitio.
@@ -53,21 +73,32 @@ function Boton({
         "flex w-20 flex-col items-center gap-s1 rounded-radius-sm border px-s1 py-s2 transition-colors",
         disabled
           ? "cursor-not-allowed border-muted/30 text-muted/50"
-          : "border-muted bg-bg text-muted hover:border-accent hover:text-accent-text",
+          : activo
+            ? // Encendido: el borde y el texto de acento dicen que ese panel está puesto, y
+              // `aria-pressed` lo dice para quien no ve el color. El color no es el único
+              // portador.
+              "border-accent bg-bg text-accent-text"
+            : "border-muted bg-bg text-muted hover:border-accent hover:text-accent-text",
       ].join(" ")}
     >
       <span className="[&>svg]:h-5 [&>svg]:w-5">{icono}</span>
       <span className="font-chrome text-chrome-xs leading-none">{etiqueta}</span>
-      <span className="font-data text-chrome-xs text-muted">{TECLAS[panel]}</span>
+      <span className="font-data text-chrome-xs text-muted">{tecla}</span>
     </button>
   );
 }
 
 export function RailDePaneles({
   onAbrir,
+  onAlternarDados,
+  dadosPuestos = false,
   tienePersonaje,
 }: {
+  /** Abre un cajón. Uno a la vez: el compositor guarda un solo `PanelAbierto`. */
   onAbrir: (p: PanelAbierto) => void;
+  /** Pone y quita el panel de dados, que **no** es un cajón y no cierra ninguno. */
+  onAlternarDados: () => void;
+  dadosPuestos?: boolean;
   /** Sin personaje en la mesa no hay hoja ni bolsa que abrir — el DM, o quien mira. */
   tienePersonaje: boolean;
 }) {
@@ -77,22 +108,44 @@ export function RailDePaneles({
       className="flex items-stretch gap-s2 rounded-radius-md border border-copper bg-surface p-s2"
     >
       <Boton
-        panel="hoja"
         etiqueta="Hoja"
+        tecla={TECLAS.hoja}
         icono={<IconoElenco />}
-        onAbrir={onAbrir}
+        onClick={() => onAbrir("hoja")}
         disabled={!tienePersonaje}
         motivo="No llevas ningún personaje en esta mesa"
       />
       <Boton
-        panel="bolsa"
         etiqueta="Bolsa"
+        tecla={TECLAS.bolsa}
         icono={<IconoMochila />}
-        onAbrir={onAbrir}
+        onClick={() => onAbrir("bolsa")}
         disabled={!tienePersonaje}
         motivo="No llevas ningún personaje en esta mesa"
       />
-      <Boton panel="mundo" etiqueta="Mundo" icono={<IconoBuscar />} onAbrir={onAbrir} />
+      <Boton
+        etiqueta="Mundo"
+        tecla={TECLAS.mundo}
+        icono={<IconoBuscar />}
+        onClick={() => onAbrir("mundo")}
+      />
+      {/* **Los dados no son un cajón, y por eso este botón alterna en vez de abrir.** El panel
+          va anclado abajo a `z-30` y convive con los cajones (`z-40`): se tira mirando la hoja
+          o mirando el mundo, y cerrar un cajón con Escape no se lleva los dados por delante.
+
+          **La `D` es un invento sobre la maqueta, declarado**: allí el panel de dados no se abre
+          desde el rail —aparece solo cuando hay que tirar—, así que no tiene tecla que copiar.
+          Se le pone la única letra libre para que el cuarto botón no salga sin acelerador al
+          lado de tres que sí lo llevan. Ojo: **hoy ninguno de los cuatro está cableado** — no hay
+          un solo oyente de teclado en la aplicación—, así que las cuatro letras son una promesa
+          pendiente, no solo esta. */}
+      <Boton
+        etiqueta="Dados"
+        tecla="D"
+        icono={<IconoD20 />}
+        onClick={onAlternarDados}
+        activo={dadosPuestos}
+      />
     </nav>
   );
 }

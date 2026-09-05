@@ -1164,6 +1164,19 @@ ficha se anuncia como inexistente. **Era una decisión no declarada**; ahora est
 prueba cuyo comentario dice que cambiarla la rompe **a propósito**. Se cierra con
 `.normalize("NFD").replace(/\p{Diacritic}/gu, "")`.
 
+## P2 · Los tres aceleradores de la mesa están impresos y NO están cableados (2026-09-04)
+
+`RailDePaneles` pinta `N`, `I` y `M` debajo de sus rótulos desde B1.3, y la §5 de la auditoría los
+declara: *«Atajos: `N` hoja · `I` bolsa · `M` mundo — ignorados mientras se escribe. Siempre además
+del rail.»* **Ninguna de las letras hace nada.** `grep` de `keydown` en `apps/web/src` devuelve solo
+`ui/Dialog` (Escape), `ui/Tabs` (flechas) y tres manejadores locales.
+
+O sea que la pantalla **enseña un acelerador que no existe**, que es la regla vinculante de
+`docs/04-convenciones.md` al revés: si el texto promete algo que el código no cumple, miente el
+texto. **O se cablean —con la regla de que se ignoran mientras se escribe, que la maqueta ya
+implementa— o se retiran los rótulos.** El cuarto, `D` de dados, es un invento sobre la maqueta y
+hereda la misma decisión.
+
 ## P4 — Limpieza
 
 - **`viewerFor(userId, campaignId)` está duplicado** en los servicios de entidades, enlaces,

@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { IconoD20, IconoFlechaDerecha } from "./iconos-del-hilo";
+import { IconoD20, IconoFlechaDerecha } from "../../../ui/Iconos";
 import type { DatosDeTirada } from "./tirada";
 
 // Copiado de `prototipo/src/features/TiradaIncrustada.tsx`: la tirada **no es un cuadro aparte**,

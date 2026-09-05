@@ -10,7 +10,7 @@ import { useMembers } from "../../campaigns/members";
 import type { Member } from "../../campaigns/members";
 import { Button } from "../../../ui/Button";
 import { MensajeDelHilo } from "./MensajeDelHilo";
-import { IconoPluma } from "./iconos-del-hilo";
+import { IconoPluma } from "../../../ui/Iconos";
 
 // **El hilo de la sesión: los cinco tipos de mensaje de la maqueta, no una lista plana.**
 //

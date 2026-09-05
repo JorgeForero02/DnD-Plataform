@@ -6,7 +6,7 @@ import { TableroTelarana } from "./TableroTelarana";
 import { EscribirFicha } from "./EscribirFicha";
 import { PrepararSesion } from "./PrepararSesion";
 import { LoQueSabeLaMesa } from "./LoQueSabeLaMesa";
-import { IconoOjo, IconoPluma, IconoReloj } from "./iconos";
+import { IconoOjo, IconoPluma, IconoReloj } from "../../../ui/Iconos";
 
 // **El taller del DM: lo que ocupa la mesa cuando el DM está en reposo.**
 //

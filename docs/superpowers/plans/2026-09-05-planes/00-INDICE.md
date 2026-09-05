@@ -18,8 +18,14 @@
 > se conserva tal cual se escribió, incluida su frase «`main` en `4c7c3a2`», que ya no es cierta —
 > un documento fechado no se reescribe. Lo que es cierto **hoy** está aquí.
 
-**`main` en `a06e4b2`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
-worktree de trabajo abiertos.**
+**LOS QUINCE PLANES ESTÁN CERRADOS.** Árbol limpio, `pnpm verify` en verde, y **nada a medias: no
+hay rama ni worktree de trabajo abiertos.** Lo que se desplegó esa noche corre en
+`dnd.supportive.pro` con la etiqueta `6eb2590`, comprobado con `docker ps` en el servidor.
+
+> **Este bloque decía «`main` en `a06e4b2`» y daba el 10 y el 12 por sin empezar.** Ya no: el 12 se
+> cerró entero —incluida su comprobación detrás de los proxies de verdad— y el 10 se ejecutó el
+> mismo 2026-09-05. Lo que queda de esta tanda **no es un plan, es jugar la partida de prueba**
+> (D-OP-3).
 
 | Plan | Estado | Commits |
 |---|---|---|
@@ -36,16 +42,20 @@ worktree de trabajo abiertos.**
 | **11** · La administración de la mesa | ✅ **cerrado** (D2, D3b, A3) | `bf1b1c9` |
 | **13** · Modificadores temporales | ✅ **cerrado** (M8) | `bf33b0e` |
 | **14** · Pulido y mediciones | ✅ **cerrado**: R1 remedida, U8, U9, U3, U2, U7, C6-4 y U1 | `912ff52` · `6ef8c03` · `9ae58df` · `bfddc6d` · `a06e4b2` |
-| **12** | ⬜ sin empezar | — |
-| **10** · La documentación | ⬜ va **al final**, y buena parte ya se escribió por el camino | — |
+| **12** · El aviso | ✅ **cerrado entero**, incluido el punto que estaba ⛔ | `98fa00b` · `e2dc957` · `06a8875` |
+| **10** · La documentación | ✅ **ejecutado**; su parte 4 es **continua, no un commit** | `15d0420` · `47c0785` · `cfdc520` · `7423caf` · `c6c0ccb` |
 
-**El orden recomendado para lo que queda**, con las dependencias ya resueltas:
+**No queda orden que recomendar: los quince están cerrados.** Lo siguiente es la partida de prueba
+con dos cuentas de jugador, que es lo que cierra la fase 2.
 
-```
-12     (y el 10 al final)
-
-07, 05, 08, 09, 11, 13 y 14 están cerrados.
-```
+**Y la regla 6 de abajo ya NO rige.** Dice *«`docs/06-pendientes.md` no se toca»*, y el autor
+**levantó esa restricción el 2026-09-05**: está escrito en la regla 7 del prompt de arranque de esa
+noche (`Mine/prompt-noche-2026-09-05.md:149-151`, fuera del repositorio), que la sustituye por
+**«cada plan que cierre una ficha la tacha en `docs/06-pendientes.md`, con fecha y `fichero:línea`;
+lo tachado no se borra»**. El fichero se ha editado desde entonces —`912ff52`, `6ef8c03`, `9ae58df`,
+`bfddc6d`, `a06e4b2` y `84e7239`—, así que dejar la regla 6 como está sería pedirle a la siguiente
+sesión que deshaga lo hecho. **La regla 6 no se reescribe en su sitio** porque el resto de este
+fichero es un encargo fechado; se corrige aquí, que es el bloque que sí se actualiza.
 
 **Lo que la noche del 05 dejó dicho y no está en ningún plan:**
 

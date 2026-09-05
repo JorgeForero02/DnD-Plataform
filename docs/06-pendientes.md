@@ -326,11 +326,15 @@ trae, y el hueco está declarado en
 
 ## Dejado por E0, la prueba de ida y vuelta de TipTap (2026-09-02)
 
-- **Las dependencias de TipTap están en `devDependencies`.** Hoy su único consumidor es
+- ~~**Las dependencias de TipTap están en `devDependencies`.**~~ **CERRADA (2026-09-05, plan 01):**
+  los seis paquetes están ahora en `dependencies` de `apps/web/package.json:19-24`, con las mismas
+  versiones (`^3.31.0`) y con el movimiento reflejado en `pnpm-lock.yaml`. No se esperó a que `src/`
+  los importara a propósito: la ficha condicionaba el arreglo a un momento futuro que nadie iba a
+  vigilar. Texto original: ~~Hoy su único consumidor es
   `scripts/e0-tiptap-roundtrip.mjs`, que no se empaqueta. **E1 tiene que moverlas a
   `dependencies` en cuanto las importe desde `src/`**, o la imagen de producción se
   construirá sin ellas y el editor no existirá allí. Es un fallo que no se ve en local,
-  porque en local están instaladas igual.
+  porque en local están instaladas igual.~~
 - **TipTap descarta tablas, imágenes y listas de tareas sin decir nada** si no se registran
   `TableKit`, `Image`, `TaskList` y `TaskItem`. No lanza, no avisa: el Markdown entra con la
   tabla y sale sin ella. El script lo demuestra corriéndolo sin `--completo`. Cuando E1
@@ -920,12 +924,17 @@ ficha **U6** de este documento.
 > lleva meses en verde. **Dos frases del mismo documento que no se leen la una a la otra es la
 > forma más barata de mentir.**
 
-**CI nunca ejecuta `pnpm build`.** `.github/workflows/ci.yml` corre `lint`, `format:check`,
+~~**CI nunca ejecuta `pnpm build`.**~~ **CERRADA (2026-09-05, plan 01):** el paso está en
+`.github/workflows/ci.yml:47`, **antes de `pnpm lint`** — `packages/shared` tiene que estar
+construido para que la API compile contra él, y un error de tipos es más barato de leer que
+novecientas pruebas rojas por la misma causa. Comprobado por mutación: con un `const x: number =
+"cadena"` en `apps/web/src/main.tsx`, `pnpm build` cae con `error TS2322` y salida 2. Texto
+original: ~~`.github/workflows/ci.yml` corre `lint`, `format:check`,
 `check:docs`, `check:estado`, `test` y `test:e2e` en el job `test`, pero no llama a `pnpm
 build` en ningún paso — el type-check completo de `tsc`/`nest build`/`vite build` de `pnpm
 verify` no corre en CI. Detectado durante la revisión de la tarea antideriva (2026-09-01);
 decisión explícita del revisor no arreglarlo en esa tarea (fuera de su alcance), dejarlo
-anotado aquí en su lugar.
+anotado aquí en su lugar.~~
 
 ## P2 — Ruta de mejora del nivel
 
@@ -1267,8 +1276,14 @@ existe— es el mismo que P1 y el que esta ronda entera vino a cazar.
 
 ## P5 — Dejado fuera a propósito de la tarea antideriva (2026-09-01)
 
-- **`lychee` 0.24.2 queda instalado en la máquina del autor, sin enganchar a nada.** Se
-  engancha en un commit aparte. **No sustituye a `scripts/check-docs.mjs`** — se afirmó eso
+- ~~**`lychee` 0.24.2 queda instalado en la máquina del autor, sin enganchar a nada.**~~
+  **CERRADA (2026-09-05, plan 01), y la verdad medida no es la que la ficha esperaba: la
+  integración nunca llegó a existir.** Un barrido de `*.yml`, `*.yaml`, `*.json`, `*.toml` y
+  `*.mjs` del repositorio, excluyendo `node_modules/` y `.superpowers/`, **no devuelve ni una
+  mención**: no hay nada que retirar ni nada que enganchar. La ficha se cierra porque no había
+  integración, no porque se haya quitado. Lo que sigue siendo cierto —y por eso se conserva— es
+  que **no sustituiría a `scripts/check-docs.mjs`**. Texto original: ~~Se
+  engancha en un commit aparte.~~ **No sustituye a `scripts/check-docs.mjs`** — se afirmó eso
   antes de comprobarlo, y era falso: `lychee` mira enlaces Markdown `[texto](ruta)` y URLs; el
   lint propio mira rutas citadas en prosa entre comillas invertidas, referencias
   `fichero.ts:NN` con la línea fuera de rango, y conteos de pruebas fuera de su fuente. Una

@@ -29,6 +29,28 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Las tres baratas: TipTap empaquetado, `build` en CI y la ficha de `lychee` (2026-09-05)
+
+**Qué.** Plan 01 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/01-tres-baratas.md),
+en un commit y sin comportamiento nuevo.
+
+- **Los seis paquetes de TipTap pasan de `devDependencies` a `dependencies`**
+  (`apps/web/package.json:19-24`), con las versiones intactas. Su único consumidor sigue siendo un
+  script, así que nada se rompía hoy: se rompería **solo en producción** el día que el editor los
+  importara desde `src/` y `pnpm install --prod` los dejara fuera de la imagen.
+- **CI ejecuta `pnpm build`** (`.github/workflows/ci.yml:47`), **antes de `lint`**. Hasta hoy un
+  error de compilación que ninguna prueba tocara llegaba a `main` en verde.
+- **`lychee` se cierra por medición, no por retirada:** el barrido no encuentra **ninguna**
+  mención viva fuera de `.superpowers/`, o sea que la integración nunca existió.
+
+**Cómo se comprobó.** Mutación obligatoria: un `const x: number = "cadena"` en
+`apps/web/src/main.tsx` hace caer `pnpm build` con `error TS2322` y salida 2 — el paso de CI sirve
+de algo. Deshecha después. `pnpm verify` en verde con el gancho.
+
+**Cómo revertirlo.** `git revert` del commit: devuelve los seis paquetes a `devDependencies`,
+regenera el lockfile con `pnpm install` y quita el paso de CI. Nada depende de ello en tiempo de
+ejecución.
+
 ## La Ola 3, las 21 decisiones y la auditoría de la cola larga (2026-09-05)
 
 **Qué.** Tres commits de código y el cierre de la deuda de decisión que arrastraba el proyecto.

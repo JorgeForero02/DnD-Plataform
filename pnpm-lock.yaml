@@ -147,6 +147,24 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.51.0
         version: 5.101.2(react@18.3.1)
+      '@tiptap/core':
+        specifier: ^3.31.0
+        version: 3.31.0(@tiptap/pm@3.31.0)
+      '@tiptap/extension-image':
+        specifier: ^3.31.0
+        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))
+      '@tiptap/extension-list':
+        specifier: ^3.31.0
+        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
+      '@tiptap/extension-table':
+        specifier: ^3.31.0
+        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
+      '@tiptap/markdown':
+        specifier: ^3.31.0
+        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
+      '@tiptap/starter-kit':
+        specifier: ^3.31.0
+        version: 3.31.0
       react:
         specifier: ^18.3.0
         version: 18.3.1
@@ -178,24 +196,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.0.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tiptap/core':
-        specifier: ^3.31.0
-        version: 3.31.0(@tiptap/pm@3.31.0)
-      '@tiptap/extension-image':
-        specifier: ^3.31.0
-        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))
-      '@tiptap/extension-list':
-        specifier: ^3.31.0
-        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
-      '@tiptap/extension-table':
-        specifier: ^3.31.0
-        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
-      '@tiptap/markdown':
-        specifier: ^3.31.0
-        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
-      '@tiptap/starter-kit':
-        specifier: ^3.31.0
-        version: 3.31.0
       '@types/react':
         specifier: ^18.3.0
         version: 18.3.31

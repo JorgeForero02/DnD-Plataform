@@ -55,9 +55,12 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
 **Lo aplica `.githooks/pre-commit`, que bloquea el commit si `pnpm verify` falla.** El gancho
 se conecta solo en el `prepare` de la raíz (`scripts/install-git-hooks.mjs`), que **nunca
 falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. **CI no
-corre exactamente lo mismo**: repite `lint`, `format:check`, `check:docs`, `check:estado`,
-`check:historial` y `test` paso a paso y añade los e2e, pero **no llama a `pnpm build`** — hueco real, sin ficha
-todavía, ver [06-pendientes.md](./06-pendientes.md).
+corre exactamente lo mismo**: repite `build`, `lint`, `format:check`, `check:docs`, `check:estado`,
+`check:historial` y `test` paso a paso y añade los e2e. **`pnpm build` entró el 2026-09-05**
+(`.github/workflows/ci.yml:47`) y va **antes de `lint`**: `packages/shared` tiene que estar
+construido para que la API compile contra él, y un error de tipos es más barato de leer que
+novecientas pruebas rojas con una sola causa. Hasta ese día no corría, y un fallo de compilación que
+las pruebas no tocaran llegaba a `main` en verde.
 
 **No se desactiva el gancho para saltárselo.** Si el control molesta, se arregla el código o
 se cambia el control como decisión declarada aquí.

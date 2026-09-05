@@ -129,15 +129,38 @@ línea correspondiente anotada en `Mine/pendientes-maestro-2026-09-04.md`.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-05 | **Paso 1 · TipTap.** Los seis paquetes en `dependencies` de `apps/web/package.json:19-24`, versiones intactas (`^3.31.0`). `pnpm install` movió las seis entradas dentro de `pnpm-lock.yaml` y **nada más**: el diff son 18 líneas añadidas y 18 quitadas, sin versión nueva de nada |
+| ✅ hecho | 2026-09-05 | **Paso 2 · CI.** `- run: pnpm build` en `.github/workflows/ci.yml:47`, **antes de `pnpm lint`** (línea 48), con el comentario que dice por qué va antes. Una sola vez en el fichero |
+| ✅ hecho | 2026-09-05 | **Paso 3 · lychee.** El barrido del plan (`*.yml`, `*.yaml`, `*.json`, `*.toml`, `*.mjs`, sin `node_modules/` ni `.superpowers/`) **devuelve cero líneas**. No había integración que retirar |
+| ✅ hecho | 2026-09-05 | **Mutación.** `const __mutacion: number = "no soy un número";` al final de `apps/web/src/main.tsx` → `pnpm build` cae con `src/main.tsx(30,7): error TS2322: Type 'string' is not assignable to type 'number'.` y salida **2**. Deshecha (`git diff apps/web/src/main.tsx` vacío) |
+| ✅ hecho | 2026-09-05 | **Documentación.** Tres fichas tachadas en `docs/06-pendientes.md` (TipTap, `pnpm build` en CI, `lychee`) con fecha y `fichero:línea`; corregido `docs/04-convenciones.md`, que afirmaba que CI **no** llama a `pnpm build`; entrada nueva en `docs/07-historial.md` |
+| ✅ hecho | 2026-09-05 | **`pnpm verify` en verde, salida 0**, con el gancho de pre-commit corriendo. Commit `fbc5d99` |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **Paso 1 — la ficha condicionaba el arreglo a un futuro que nadie iba a vigilar.** Decía «E1 tiene
+  que moverlas **en cuanto las importe desde `src/`**». Eso es un recordatorio, no una protección:
+  quien escriba ese `import` no va a leer esta ficha. Se movieron **ya**, sin esperar al consumidor.
+  Dura porque el paquete queda en el sitio correcto para siempre y no hay que acordarse de nada.
+  (Paso 1 de los cuatro: cambio pequeño, alineado con el código, sin frente nuevo.)
+- **Paso 3 — la ficha pedía «retirar `lychee`» y no había nada que retirar.** El barrido no encuentra
+  ninguna mención viva. Se cierra **diciendo la verdad medida** —la integración nunca llegó a
+  existir— en vez de escribir «retirado», que sería un registro falso. Lo que sí se conserva de la
+  ficha es la parte que sigue siendo cierta y útil: `lychee` **no** sustituiría a
+  `scripts/check-docs.mjs`, porque miran cosas distintas.
+- **Fuera del plan, pero obligado por él: `docs/04-convenciones.md` mentía en cuanto se tocó CI.**
+  Sus líneas sobre el nivel N1 decían «**no llama a `pnpm build`** — hueco real, sin ficha todavía».
+  Arreglar el hueco y dejar la frase habría creado exactamente el fallo que ese documento persigue
+  (documentación que miente es peor que ausente), así que se corrigió en el mismo commit.
+- **`docs/06-pendientes.md` SÍ se tocó**, contra la regla 6 del índice de planes: el autor levantó esa
+  restricción el 2026-09-05 y el prompt de la noche la sustituye por «cada plan que cierre una ficha
+  la tacha, con fecha y `fichero:línea`, y lo tachado no se borra». Precedencia: instrucción del
+  usuario > documento.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **Nada de este plan. Está cerrado.** Lo siguiente es el **plan 02** (`02-tres-columnas.md`), que no
+  depende de este.

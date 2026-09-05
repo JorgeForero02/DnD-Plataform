@@ -167,7 +167,7 @@ pueda volver a cobrar. Hasta las dos, no es «si y solo si».
 |---|---|---|
 | ~~**C6-1**~~ **CERRADA (2026-09-05)** — dos de los cuatro existen ahora como suceso y su gesto los escribe (`ENTITY_COMMENTED` en `comments.service.ts`, `MEMBER_JOINED` en `invites.service.ts`), con su `case` en `game-event-triggers.ts`. Los otros dos siguen retirados **con su motivo escrito**: `DM_EXECUTED` no tiene gesto en ninguna pantalla y `ENTITY_ATTACKED` apunta a una ficha del mundo cuando aquí se ataca a un `Character`. **Y la lista duplicada ya no lo está**: vive en `packages/shared/src/rules-engine.schema.ts`. Texto original: | ~~**Los cuatro disparadores del motor siguen sin `case`**: `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`, `MEMBER_JOINED` (`apps/api/src/rules-engine/game-event-triggers.ts:29-75`) | Se han **retirado de lo que el editor ofrece** (`DISPARADORES_SIN_MOTOR`, en `features/rules/vocabulario.ts`) porque una regla armada sobre ellos se guarda y no se dispara jamás, y la interfaz no puede prometer lo que el motor no cumple. Implementarlos es servidor. **Cierra cuando** el `switch` los traduzca: entonces esa lista se vacía y la paleta los recupera sola. Y **es una segunda copia** de `UNREACHABLE_TRIGGER_KINDS` (`apps/api/src/rules-engine/trace-payload.ts:109`) **por una frontera de trabajo, no por una imposibilidad**: son cuatro literales de `RuleTrigger["kind"]` y caben en `packages/shared/src`, que es donde este proyecto guarda la forma de los datos una sola vez; el carril que las escribió no tocaba ese paquete. **La mudanza a `@dnd/shared` es el cierre de esta ficha**, y hasta entonces las dos no pueden divergir en silencio sobre una regla guardada, porque el aviso de `ListaDeReglas` lo manda el servidor |
 | ~~**C6-2**~~ **CERRADA (2026-09-05, plan 15).** `aStatblock()` devuelve `visibility` (`apps/api/src/statblocks/statblocks.service.ts:185-196`) y el editor **deja de omitir el campo** al guardar: ahora manda el valor real, que llega en la lectura. **No filtra nada nuevo** —solo llegan las que `puedeVer` ya dejó pasar, y saber el nivel de algo que ya ves no revela nada—. Probado por mutación: devolviendo `DM_ONLY` fijo, dos e2e se ponen rojos. **Y la decisión hermana ya estaba tomada y medida**: `OWNER_DM` y `SPECIFIC_PLAYERS` **no se ofrecen** en el selector (`NIVELES_DE_CRIATURA`), porque un statblock no tiene concesiones y su creador es siempre el DM — los dos colapsan en `DM_ONLY`, y ofrecerlos prometería una frontera que nada aplica. Texto original: | ~~El editor de criaturas propias **no puede enseñar quién la ve al editarla**, porque no lo sabe, así que **omite el campo** en el `PUT`~~ |
-| **C6-3** | **El vocabulario de tipos de daño sigue triplicado** y las tres copias **no dicen lo mismo**: `character-sheet` y `campaign-items` traducen `LIGHTNING` como «relámpago»; `inventory` abrevia y dice «rayo» | La decisión D-OP-14 (un módulo con `nombreTipoDano` y `nombreTipoDanoCorto`) **no se aplicó a ciegas**: el corto existe para que la fila de inventario quepa, y unificar sin más rompería ese ancho. El selector de daño nuevo usa el largo de `character-sheet` y lo dice en su comentario. **Cierra cuando** el módulo único exponga las dos formas y las tres features importen de él |
+| ~~**C6-3**~~ **CERRADA (2026-09-06, plan 07).** `apps/web/src/dominio/dano.ts` expone **las dos formas** —`nombreTipoDano` y `nombreTipoDanoCorto`— y las cuatro pantallas importan de ahí. **Comparadas entrada por entrada antes de borrar nada**: `character-sheet` y `campaign-items` eran **idénticas** en las trece; `inventory` difiere en **cuatro** (`contund.`, `perf.`, `cort.`, `rayo`). **Las dos tablas son completas y ninguna deriva de la otra**: con un valor por defecto, un tipo de daño nuevo daría una corta silenciosamente larga. Probado por mutación: al «unificar» las dos formas, dos pruebas se ponen rojas. Texto original: | ~~La decisión D-OP-14 no se aplicó a ciegas: el corto existe para que la fila de inventario quepa, y unificar sin más rompería ese ancho~~ |
 | ~~**C6-5**~~ **CERRADA, comprobada el 2026-09-05**: `apps/web/src/features/sessions/elenco/PonerDano.tsx:125` manda `...(tipoDeDano ? { damageType: tipoDeDano } : {})`. Texto original: | ~~**Solo una de las dos pantallas que cambian PG manda el tipo de daño.** La hoja sí; el ±5 del elenco (`apps/web/src/features/sessions/elenco/FichaDeElenco.tsx`) sigue mandando `{ delta }` | Y **es la ruta que un DM usa en combate** —el gesto rápido sobre el retrato, no abrir la hoja entera—, así que la mecánica insignia de 2.5.1 sigue sin poder ocurrir en mitad de una partida. No es un olvido: ese fichero es de otro carril. La pieza que falta **ya está escrita y exportada**, `SelectorDeTipoDeDano` (`apps/web/src/features/character-sheet/AplicarDano.tsx`), autónoma y sin consultas dentro. **Cierra cuando** el cajón del elenco la monte en su ranura `ranuraTipoDeDano` y pase su valor a `tipoDeDano` |
 | **C6-4** | **`NpcEnLaMesa.tempHp` se pinta pero no se ha podido ver con datos** | Ninguna pantalla da PG temporales a un PNJ todavía, así que el campo siempre llega a 0. El código está (`apps/web/src/features/bestiario/PanelDeBestiario.tsx`, «+N temporales», aparte y nunca sumado). **Cierra cuando** exista el gesto que los concede |
 
@@ -1248,6 +1248,32 @@ Cierra enchufando `SelectorDeTipoDeDano` —que exporta `AplicarDano`, en
 `apps/web/src/features/character-sheet/`, autónomo y sin consultas dentro— en la ranura
 `ranuraTipoDeDano` de `apps/web/src/features/sessions/elenco/PonerDano.tsx`, y su valor en
 `tipoDeDano`. **Las dos props ya existen en `main`; el selector llega con `carril/c6`.**
+
+## ~~I16 · Cambiar el tipo de una ficha la reclasifica sin preguntar y sin dejar rastro~~ — CERRADA (2026-09-06, plan 07)
+
+> **Y la ficha señalaba el sitio equivocado, lo cual importa.** Decía «en el editor»: `EntityEditor`
+> recibe `type` como **prop** y no lo cambia nunca —sus dos consumidores le pasan `entity.type` al
+> editar—, así que ahí el gesto **no existe**. El único sitio de la aplicación donde se reclasifica
+> una ficha ya escrita son **los chips de tipo del taller del DM**
+> (`apps/web/src/features/sessions/taller/EscribirFicha.tsx:243-247`). Medido antes de tocar nada;
+> la confirmación llegó a escribirse en el editor y hubo que moverla.
+>
+> **Las dos piezas, que son norma general del proyecto:**
+> - **La confirmación dice la consecuencia, no el riesgo**: nombra los dos tipos con su rótulo real,
+>   **de dónde sale y dónde aparece**, que quien la busque donde estaba no la encontrará, **lo que
+>   NO se pierde** —cuerpo, etiquetas, enlaces y comentarios— y, solo si era un PNJ, que su
+>   statblock deja de tener sentido. **Ni una vez «¿estás seguro?»**, y hay una prueba que lo
+>   comprueba.
+> - **El cambio deja rastro**: `ENTITY_RETYPED` (`apps/api/src/entities/entities.service.ts:184-215`,
+>   migración `apps/api/prisma/migrations/20260906010000_entity_retyped_event/`), con **los dos
+>   tipos** —«ahora es un Documento» no dice qué se perdió— y heredando la audiencia de la ficha.
+>
+> **Solo pregunta al editar una que ya existe.** Escribiendo una nueva, el chip elige de qué tipo va
+> a ser y no reclasifica nada: una confirmación que salta cuando no hace falta se aprende a ignorar
+> en dos días, y entonces tampoco protege el caso que importa.
+>
+> Probado por mutación en las dos mitades: sin el diálogo, cuatro pruebas de pantalla se ponen
+> rojas; sin el suceso, el e2e del rastro.
 
 ## ~~P2 · Setenta y seis iconos dibujados en ocho ficheros, con conceptos duplicados~~ — CERRADA (2026-09-05, plan 07)
 

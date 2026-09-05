@@ -1,7 +1,8 @@
-import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
+import type { EntityType, GameEventPayload, SessionNoteKind } from "@dnd/shared";
 import { nombreAnulable, nombreCondicion } from "../character-sheet/vocabulario";
 import { NOMBRE_MONEDA, NOMBRE_RANURA, NOMBRE_ZONA } from "../inventory/vocabulario";
 import { NOMBRE_SELLO } from "./vocabulario";
+import { ETIQUETA_DE_TIPO } from "../entities/resumen";
 
 // De un suceso del log a **una línea que se lee en voz alta**.
 //
@@ -134,6 +135,16 @@ export function lineaDeLog(p: GameEventPayload): string {
       return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
       return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una entrada del mundo";
+    case "ENTITY_RETYPED": {
+      // **Los dos tipos, traducidos** (I16). El payload guarda claves —`NPC`, `DOCUMENT`— porque un
+      // registro guarda datos; la forma legible se compone aquí, que es donde vive el español, y
+      // así ningún valor de enumeración llega a la pantalla.
+      const de = ETIQUETA_DE_TIPO[p.from as EntityType] ?? p.from;
+      const a = ETIQUETA_DE_TIPO[p.to as EntityType] ?? p.to;
+      return p.entityName
+        ? `«${p.entityName}» pasa de ${de} a ${a}`
+        : `Una entrada del mundo pasa de ${de} a ${a}`;
+    }
     case "ENTITY_COMMENTED":
       return p.entityName ? `Se comenta «${p.entityName}»` : "Se comenta una entrada del mundo";
     case "MEMBER_JOINED":

@@ -249,4 +249,57 @@ describe("Entities visibility (e2e)", () => {
     expect(await buscar(tokenPL3)).toBeUndefined();
     expect(await buscar(tokenDM)).toBeDefined();
   });
+
+  it("**reclasificar una ficha deja rastro en el registro** (I16)", async () => {
+    // El registro es la auditoría de esta aplicación: un cambio de naturaleza que no aparece en él
+    // no se puede deshacer, porque nadie sabe que pasó.
+    const s = app.getHttpServer();
+    const creada = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "Maestre Kellan", visibility: "PLAYERS" });
+    expect(creada.status).toBe(201);
+
+    const cambiada = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${creada.body.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "DOCUMENT" });
+    expect(cambiada.status).toBe(200);
+
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const suceso = (
+      log.body.events as { type: string; subjectId: string; payload: Record<string, unknown> }[]
+    ).find((e) => e.type === "ENTITY_RETYPED" && e.subjectId === creada.body.id);
+
+    expect(suceso).toBeDefined();
+    // **Los DOS tipos, no solo el nuevo**: «ahora es un Documento» no dice qué se perdió.
+    expect(suceso!.payload).toMatchObject({
+      type: "ENTITY_RETYPED",
+      entityName: "Maestre Kellan",
+      from: "NPC",
+      to: "DOCUMENT",
+    });
+  });
+
+  it("y guardar SIN cambiar el tipo no escribe ningún rastro", async () => {
+    // Un suceso que se escribe en cada guardado es ruido, y el ruido hace que nadie lea el
+    // registro — que es justo lo que esta ficha quería arreglar.
+    const s = app.getHttpServer();
+    const creada = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "Sin reclasificar", visibility: "PLAYERS" });
+
+    await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${creada.body.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "Otro nombre" });
+
+    const filas = await prisma.gameEvent.count({
+      where: { subjectId: creada.body.id, type: "ENTITY_RETYPED" },
+    });
+    expect(filas).toBe(0);
+  });
 });

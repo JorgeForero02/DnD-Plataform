@@ -12,6 +12,7 @@ import type {
   WeaponProperty,
   WeaponRange,
 } from "@dnd/shared";
+import { nombreTipoDano } from "../../dominio/dano";
 import {
   armorCategorySchema,
   damageTypeSchema,
@@ -78,23 +79,12 @@ export const nombreTipo = (k: string) => traducir(NOMBRE_TIPO, k);
 // Daño
 // ---------------------------------------------------------------------------------------------
 
-export const NOMBRE_TIPO_DANO: Record<DamageType, string> = {
-  BLUDGEONING: "contundente",
-  PIERCING: "perforante",
-  SLASHING: "cortante",
-  ACID: "ácido",
-  COLD: "frío",
-  FIRE: "fuego",
-  FORCE: "fuerza",
-  LIGHTNING: "relámpago",
-  NECROTIC: "necrótico",
-  POISON: "veneno",
-  PSYCHIC: "psíquico",
-  RADIANT: "radiante",
-  THUNDER: "trueno",
-};
-
-export const nombreTipoDano = (k: string) => traducir(NOMBRE_TIPO_DANO, k);
+// Reexportado de `dominio/dano.ts` (D-OP-14, 2026-09-06): la tabla era idéntica a la de la hoja,
+// carácter a carácter. El catálogo usa la **forma larga**: es una ficha, no una tabla apretada.
+//
+// Se importa **además de** reexportarse porque este mismo fichero la usa unas líneas más abajo, en
+// `subtituloDeObjeto`: un `export ... from` no trae el nombre al ámbito del módulo.
+export { nombreTipoDano } from "../../dominio/dano";
 
 // ---------------------------------------------------------------------------------------------
 // Arma

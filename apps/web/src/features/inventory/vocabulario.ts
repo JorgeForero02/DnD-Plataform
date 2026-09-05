@@ -1,4 +1,5 @@
 import type { CoinKey, DamageType, EquipSlot, ItemKind, ItemLocation } from "@dnd/shared";
+import { nombreTipoDanoCorto } from "../../dominio/dano";
 
 // Carril B1 — el vocabulario del inventario.
 //
@@ -54,22 +55,6 @@ export const NOMBRE_TIPO_OBJETO: Record<ItemKind, string> = {
   OTHER: "Objeto",
 };
 
-export const NOMBRE_TIPO_DANO: Record<DamageType, string> = {
-  BLUDGEONING: "contund.",
-  PIERCING: "perf.",
-  SLASHING: "cort.",
-  ACID: "ácido",
-  COLD: "frío",
-  FIRE: "fuego",
-  FORCE: "fuerza",
-  LIGHTNING: "rayo",
-  NECROTIC: "necrótico",
-  POISON: "veneno",
-  PSYCHIC: "psíquico",
-  RADIANT: "radiante",
-  THUNDER: "trueno",
-};
-
 export const NOMBRE_MONEDA: Record<CoinKey, string> = {
   cp: "cobre",
   sp: "plata",
@@ -95,7 +80,9 @@ export function subtituloDeObjeto(kind: ItemKind, slotEnMano?: EquipSlot): strin
 
 /** `1d8 perf.` — el dado de daño con su tipo abreviado, como en el prototipo. */
 export function danioCorto(damageDice: string, damageType: DamageType): string {
-  return `${damageDice} ${NOMBRE_TIPO_DANO[damageType]}`;
+  // **La forma CORTA, y es el motivo de que exista** (D-OP-14): `contund.`, `perf.`, `cort.` y
+  // `rayo` son lo que hace que esta fila quepa. No es un descuido que se pueda «unificar».
+  return `${damageDice} ${nombreTipoDanoCorto(damageType)}`;
 }
 
 // ---------------------------------------------------------------------------------------------

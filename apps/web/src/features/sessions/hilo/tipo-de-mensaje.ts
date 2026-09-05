@@ -53,6 +53,9 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "ENTITY_REVEALED":
     case "ENTITY_LINKED":
     case "ENTITY_COMMENTED":
+    case "ENTITY_RETYPED":
+      // Reclasificar (I16) es del MUNDO, no andamiaje: la ficha cambia de naturaleza y eso es un
+      // hecho que la mesa puede querer leer y deshacer. Va con abrir, revelar y enlazar.
       return "narracion";
 
     // Sentarse a la mesa es de la campana, no del mundo ni de un personaje: andamiaje.

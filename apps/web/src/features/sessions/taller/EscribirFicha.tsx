@@ -15,7 +15,7 @@ import {
 } from "../../entities/hooks";
 import type { Entity } from "../../entities/api";
 import { bodyToText } from "../../entities/body";
-import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
+import { ETIQUETA_DE_TIPO, ROTULO_PLURAL } from "../../entities/resumen";
 import { VisibilityChooser } from "../../entities/VisibilityChooser";
 import { LinksPanel } from "../../links/LinksPanel";
 import { CommentThread } from "../../comments/CommentThread";
@@ -75,6 +75,27 @@ export function EscribirFicha({
 }) {
   const editando = Boolean(ficha);
   const [tipo, setTipo] = useState<EntityType>(ficha?.type ?? "NPC");
+  /**
+   * **Reclasificar una ficha que ya existe dice lo que cuesta** (ficha I16, 2026-09-06).
+   *
+   * Estos chips son el **único** sitio de la aplicación donde se cambia el tipo de una ficha —el
+   * `EntityEditor` recibe `type` como prop y no lo toca—, y hasta hoy lo hacían **de un clic y sin
+   * dejar rastro**: un PNJ con statblock, enlaces y comentarios se volvía «Documento» y nadie podía
+   * saber que había pasado.
+   *
+   * **Solo se pregunta al editar una que ya existe.** Escribiendo una nueva, el chip elige de qué
+   * tipo va a ser y no reclasifica nada: preguntar ahí sería un estorbo en el gesto normal, y una
+   * confirmación que salta cuando no hace falta se aprende a ignorar en dos días.
+   */
+  const [reclasificar, setReclasificar] = useState<EntityType | null>(null);
+
+  const pedirTipo = (t: EntityType) => {
+    if (editando && ficha && t !== ficha.type) {
+      setReclasificar(t);
+      return;
+    }
+    setTipo(t);
+  };
   const [nombre, setNombre] = useState(ficha?.name ?? "");
   const [cuerpo, setCuerpo] = useState(ficha ? bodyToText(ficha.body) : "");
   const [visibilidad, setVisibilidad] = useState<Visibility>(ficha?.visibility ?? "DM_ONLY");
@@ -220,7 +241,7 @@ export function EscribirFicha({
       <div className="flex flex-wrap items-center gap-s2">
         <div className="flex flex-wrap gap-s1">
           {TIPOS.map((t) => (
-            <FilterChip key={t} active={tipo === t} onClick={() => setTipo(t)}>
+            <FilterChip key={t} active={tipo === t} onClick={() => pedirTipo(t)}>
               {ETIQUETA_DE_TIPO[t]}
             </FilterChip>
           ))}
@@ -344,6 +365,46 @@ export function EscribirFicha({
         permiso.
       </p>
 
+      {/* **La consecuencia, no el riesgo** (I16). Nombra los dos tipos, **dónde deja de aparecer** y
+          **qué deja de encontrarla**, con los rótulos reales — nunca «¿estás seguro?», que se pulsa
+          sin leer y encima tranquiliza. Y dice lo que NO se pierde: si no se dice, se supone lo
+          peor y el gesto deja de usarse. */}
+      {reclasificar && ficha && (
+        <div
+          role="alertdialog"
+          aria-label="Cambiar el tipo de la ficha"
+          className="space-y-s2 rounded-radius-sm border border-copper bg-[color:var(--copper-tint)] p-s3"
+        >
+          <p className="font-chrome text-chrome-sm text-text">
+            <strong>
+              «{ficha.name}» pasa de {ETIQUETA_DE_TIPO[ficha.type]} a{" "}
+              {ETIQUETA_DE_TIPO[reclasificar]}.
+            </strong>{" "}
+            Sale de {ROTULO_PLURAL[ficha.type]} y aparece en {ROTULO_PLURAL[reclasificar]}, así que
+            quien la busque donde estaba no la va a encontrar. Su cuerpo, sus etiquetas, sus enlaces
+            y sus comentarios <strong>no se tocan</strong>.
+            {ficha.type === "NPC" &&
+              " Y si tenía un statblock asociado, deja de tener sentido: un Documento no pelea."}
+          </p>
+          <p className="font-chrome text-chrome-xs text-muted">
+            Queda escrito en el registro de la campaña, así que se puede ver y deshacer.
+          </p>
+          <div className="flex flex-wrap gap-s2">
+            <Button
+              type="button"
+              onClick={() => {
+                setTipo(reclasificar);
+                setReclasificar(null);
+              }}
+            >
+              Sí, pasarla a {ETIQUETA_DE_TIPO[reclasificar]}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setReclasificar(null)}>
+              Dejarla como está
+            </Button>
+          </div>
+        </div>
+      )}
       {aviso && <p className="font-chrome text-chrome-sm text-accent-text">{aviso}</p>}
       {error && <p className="font-chrome text-chrome-sm text-danger-text">{error}</p>}
 

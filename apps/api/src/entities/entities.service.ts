@@ -181,6 +181,39 @@ export class EntitiesService {
         include: { grants: true },
       });
 
+      // **Ficha I16 — reclasificar deja rastro.** Cambiar el tipo convierte un PNJ con statblock,
+      // enlaces y comentarios en «Documento» de un clic, y hasta hoy **no quedaba constancia**. El
+      // registro es la auditoría de esta aplicación: un cambio de naturaleza que no aparece en él
+      // no se puede deshacer, porque nadie sabe que pasó.
+      //
+      // **Lleva los dos tipos, no solo el nuevo**: «ahora es un Documento» no dice qué se perdió;
+      // «pasa de PNJ a Documento» sí.
+      //
+      // Hereda la visibilidad de la ficha y sus concesiones, igual que el suceso de revelar: el
+      // aviso no puede ser más público que la cosa de la que habla.
+      if (rest.type !== undefined && rest.type !== before.type) {
+        await this.gameEvents.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "campaign",
+            subjectId: entity.id,
+            ...audienciaDeSuceso({
+              visibility: entity.visibility,
+              createdById: entity.createdById,
+              grantedUserIds: entity.grants.map((g) => g.userId),
+            }),
+            payload: {
+              type: "ENTITY_RETYPED",
+              entityName: entity.name,
+              from: before.type,
+              to: entity.type,
+            },
+          },
+          tx,
+        );
+      }
+
       // **Ficha P1 de `docs/06-pendientes.md`.** El único sitio que emitía `ENTITY_REVEALED` era
       // el motor de reglas (`REVEAL_ENTITY`); un DM que sube a mano la visibilidad de una ficha
       // —que es como se revela un lugar casi siempre— no dejaba ningún rastro, y la cabecera de

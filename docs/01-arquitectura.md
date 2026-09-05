@@ -192,7 +192,19 @@ src/features/auth/      AuthGate + useAuthRehydration: rellena el usuario tras r
 src/features/<x>/       api.ts (fetchers) + hooks.ts (TanStack Query) + componentes + __tests__
 src/pages/              pantallas enrutadas
 src/components/         ProtectedRoute y compartidos
+src/dominio/            el vocabulario del juego que usan VARIAS pantallas
 ```
+
+> **`src/dominio/` nació el 2026-09-06 y es una decisión declarada**, no una carpeta que apareció
+> sola. Guarda **la forma legible en español** de lo que `@dnd/shared` declara como dato: hoy, los
+> tipos de daño (`dominio/dano.ts`). Existe porque esa tabla estaba **copiada en tres pantallas** y
+> las tres no decían lo mismo, y porque las otras carpetas no eran su sitio: `lib/` es
+> infraestructura —`apiFetch`—, `ui/` es presentación sin dominio, y meterla en un `features/<x>/`
+> es exactamente cómo nacieron las tres copias. **No va en `packages/shared`**: allí vive la forma
+> de los datos, no su traducción; `shared` no traduce.
+>
+> **Lo que entra aquí tiene que cumplir las dos:** ser vocabulario del juego, y **usarlo más de una
+> pantalla**. Un vocabulario de una sola se queda en su módulo, por lo mismo que un icono.
 
 > **Esta valla estaba sin cerrar hasta el 2026-09-02**, y se tragaba las dos tablas de abajo y
 > toda la prosa que las sigue. No era solo cosmético: `scripts/check-docs.mjs` **salta lo que hay

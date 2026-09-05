@@ -148,9 +148,10 @@ navegador abierto para mirar los iconos movidos, y las tres fichas anotadas en e
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-06 | **7.1 · Los iconos.** Prueba nueva `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`. Consolidados a `ui/Iconos.tsx`: el escudo de `bestiario` y el sol, la luna, la mochila y la lupa de `apps/web/src/features/sessions/iconos.tsx`. El escudo de `apps/web/src/features/campaign-items/iconos.tsx:59` deja de exportarse; `inventory/IconoMochila` pasa a `IconoLlevado`; el «más» de `campaigns/iconosDeSeccion.tsx` viene de `ui`. **Commit `<pendiente 7.1>`** |
-| ⬜ sin empezar | — | 7.2 · El vocabulario del daño (D-OP-14) |
-| ⬜ sin empezar | — | 7.3 · `type: tipo` — consecuencia dicha y rastro (I16) |
+| ✅ hecho | 2026-09-06 | **7.1 · Los iconos.** Prueba nueva `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`. Consolidados a `ui/Iconos.tsx`: el escudo de `bestiario` y el sol, la luna, la mochila y la lupa de `apps/web/src/features/sessions/iconos.tsx`. El escudo de `apps/web/src/features/campaign-items/iconos.tsx:59` deja de exportarse; `inventory/IconoMochila` pasa a `IconoLlevado`; el «más» de `campaigns/iconosDeSeccion.tsx` viene de `ui`. **Commit `dc4d6aa`** |
+| ✅ hecho | 2026-09-06 | **7.2 · El vocabulario del daño.** Módulo nuevo `apps/web/src/dominio/dano.ts` con las **dos formas**; las cuatro pantallas importan de ahí. Carpeta `src/dominio/` declarada en `docs/01-arquitectura.md`. **Commit `<pendiente 7.2+7.3>`** |
+| ✅ hecho | 2026-09-06 | **7.3 · `type: tipo` (I16).** Suceso `ENTITY_RETYPED` (`packages/shared/src/game-event.schema.ts`, migración `apps/api/prisma/migrations/20260906010000_entity_retyped_event/`), emitido en `apps/api/src/entities/entities.service.ts:184-215`. La confirmación va en **los chips del taller** (`apps/web/src/features/sessions/taller/EscribirFicha.tsx`), **no en el editor**. **Commit `<pendiente 7.2+7.3>`** |
+| ✅ | 2026-09-06 | **EL PLAN 07 ESTÁ CERRADO**: las tres, con sus mutaciones |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -182,18 +183,43 @@ fuente si la hubo):
   así que **sustituir sin más habría encogido el icono sin que ninguna prueba lo viera** — es la
   trampa que la ficha avisaba, y por eso se miró en el navegador.
 
+- **7.2 · Comparé las tres entrada por entrada ANTES de borrar, como avisaba el plan, y el dato
+  cambia el diseño.** `character-sheet` y `campaign-items` son **idénticas** en las trece; solo
+  `inventory` difiere, y **en cuatro**. Si hubiera fusionado a ciegas habría roto una fila por
+  ahorrarme una tabla.
+- **7.2 · Las dos tablas son COMPLETAS: la corta no es «la larga salvo excepciones».** Un valor por
+  defecto habría dado, el día que se añada un tipo de daño, una forma corta silenciosamente larga —y
+  la fila del inventario se rompe sin que nada avise—. Con dos `Record<DamageType, string>`, el
+  compilador exige las dos.
+- **7.2 · Carpeta nueva `src/dominio/`, y va declarada en `docs/01-arquitectura.md`** porque el mapa
+  de carpetas está documentado y una carpeta que aparece sola es deriva. Su regla de entrada:
+  vocabulario del juego **y** usado por más de una pantalla. `lib/` es infraestructura, `ui/` es
+  presentación, y meterlo en un `features/<x>/` es cómo nacieron las tres copias.
+- **7.2 · `campaign-items` importa ADEMÁS de reexportar.** Un `export ... from` no trae el nombre al
+  ámbito del módulo, y ese fichero lo usa unas líneas más abajo en `subtituloDeObjeto`. Lo cazó el
+  compilador, no yo.
+
+- **7.3 · LA FICHA SEÑALABA EL SITIO EQUIVOCADO, y llegué a escribir el arreglo en él.** Decía
+  «cambiar el tipo **en el editor**»; `EntityEditor` recibe `type` como **prop** y sus dos
+  consumidores le pasan `entity.type` al editar, así que **ahí el gesto no existe**. El único sitio
+  donde se reclasifica son los **chips de tipo del taller**
+  (`apps/web/src/features/sessions/taller/EscribirFicha.tsx:243-247`). Tuve la confirmación puesta
+  en el editor y la moví al medir. **Es el argumento de medir antes de arreglar**, y por eso queda
+  escrito en la ficha cerrada.
+- **7.3 · Solo pregunta al EDITAR una que ya existe.** En una ficha nueva el chip elige de qué tipo
+  va a ser y no reclasifica nada. Una confirmación que salta cuando no hace falta se aprende a
+  ignorar en dos días, **y entonces tampoco protege el caso que importa**. Hay una prueba de que en
+  el camino de crear no aparece.
+- **7.3 · El suceso lleva los DOS tipos, y como clave.** «Ahora es un Documento» no dice qué se
+  perdió; «pasa de PNJ a Documento» sí. Y van como `NPC`/`DOCUMENT` porque un registro guarda datos
+  —la forma legible se compone al pintar, que es donde vive el español.
+- **7.3 · Añadir el valor al enum de `GameEventType` no chocó con nadie**: el plan 03 añadió
+  **columnas**, no valores. `ALTER TYPE ... ADD VALUE` va **solo en su migración**.
+- **7.3 · Tres exhaustivos lo cazaron por mí**, y conviene saberlo: `linea-de-log.ts` y
+  `hilo/tipo-de-mensaje.ts` no compilan si un suceso nuevo no se traduce y no se clasifica. La red
+  ya estaba puesta.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **7.2 · El vocabulario del daño (D-OP-14).** Hay **tres** copias —`character-sheet/vocabulario.ts`,
-  `campaign-items/vocabulario.ts`, `inventory/vocabulario.ts`— y **no dicen lo mismo**: `inventory`
-  abrevia (`rayo` donde las otras dicen `relámpago`). **Compáralas entrada por entrada antes de
-  borrar ninguna.** La decisión ya tomada es un módulo con **dos formas**, `nombreTipoDano` y
-  `nombreTipoDanoCorto`, en `apps/web/src` y **no** en `packages/shared` —es forma legible en
-  español, no forma de los datos—, y **cada consumidor elige la suya a propósito**: la tabla del
-  inventario corta, la hoja y la traza largas. **Escríbelo en el commit**, porque es justo lo que un
-  futuro «unificador» va a querer deshacer.
-- **7.3 · `type: tipo` (I16).** Cambiar el tipo reclasifica la ficha sin preguntar y **sin dejar
-  rastro**. Dos piezas: la confirmación **dice la consecuencia** —dónde deja de aparecer, qué filtros
-  dejan de encontrarla, si su statblock deja de tener sentido— y **nunca «¿estás seguro?»**; y el
-  cambio **escribe un suceso**. Si el suceso obliga a añadir un valor al enum de Prisma, **mira antes
-  si algún otro plan lo está tocando**.
+- **Nada: el plan 07 está cerrado, con sus tres fichas y sus mutaciones.** Lo siguiente del orden
+  recomendado es el **plan 05** (`05-color-por-personaje.md`), que no depende de nada.

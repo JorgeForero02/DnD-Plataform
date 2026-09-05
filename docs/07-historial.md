@@ -38,6 +38,73 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Reclasificar una ficha dice lo que cuesta, y deja rastro (2026-09-06, plan 07 · I16)
+
+**Qué.** Cambiar el tipo de una ficha ya escrita convertía un PNJ con statblock, enlaces y
+comentarios en «Documento» **de un clic y sin dejar constancia**. El registro es la auditoría de esta
+aplicación: un cambio de naturaleza que no aparece en él **no se puede deshacer**, porque nadie sabe
+que pasó.
+
+**Y la ficha señalaba el sitio equivocado.** Decía «en el editor»; `EntityEditor` recibe `type` como
+**prop** y no lo cambia nunca, así que ahí el gesto **no existe**. El único sitio donde se
+reclasifica son **los chips de tipo del taller del DM**. La confirmación llegó a escribirse en el
+editor antes de medirlo, y hubo que moverla — que es el argumento de medir primero.
+
+**Las dos piezas, y son norma general del proyecto.** La confirmación **dice la consecuencia, no el
+riesgo**: los dos tipos con su rótulo real, de dónde sale y dónde aparece, que quien la busque donde
+estaba no la va a encontrar, **lo que NO se pierde** —cuerpo, etiquetas, enlaces, comentarios— y,
+solo si era un PNJ, que su statblock deja de tener sentido. **Ni una vez «¿estás seguro?»**: se pulsa
+sin leer y encima tranquiliza, y hay una prueba que lo vigila. Y el cambio **escribe
+`ENTITY_RETYPED`**, con **los dos tipos** —«ahora es un Documento» no dice qué se perdió— heredando
+la audiencia de la ficha.
+
+**Solo pregunta al editar una que ya existe.** Escribiendo una nueva, el chip elige de qué tipo va a
+ser y no reclasifica nada: una confirmación que salta cuando no hace falta se aprende a ignorar en
+dos días, y entonces tampoco protege el caso que importa.
+
+**El valor del suceso va en el payload como CLAVE** —`NPC`, `DOCUMENT`— y se traduce al pintar, que
+es donde vive el español. Un registro guarda datos, no prosa.
+
+**Cómo se comprobó.** Mutación en las dos mitades: sin el diálogo, cuatro pruebas de pantalla se
+ponen rojas; sin el suceso, el e2e del rastro. Y hay una prueba de que **guardar sin cambiar el tipo
+no escribe nada**: un suceso en cada guardado es ruido, y el ruido hace que nadie lea el registro.
+
+**Cómo revertirlo.** `git revert` del commit y una migración que quite `ENTITY_RETYPED` del enum
+—los valores de un enum de PostgreSQL no se borran en caliente, así que en la práctica se queda
+huérfano y no molesta.
+
+---
+
+## Un vocabulario del daño con dos formas, y la diferencia es la decisión (2026-09-06, plan 07 · D-OP-14)
+
+**Qué.** La traducción de los tipos de daño estaba **copiada en tres pantallas**. Comparadas entrada
+por entrada antes de borrar ninguna: `character-sheet` y `campaign-items` eran **idénticas** en las
+trece; `inventory` difiere en **cuatro** —`contund.`, `perf.`, `cort.` y **`rayo`** donde las otras
+dicen `relámpago`—.
+
+**Por eso no se fusionan en una tabla sola, y es lo que hay que no deshacer:** la forma corta de
+`inventory` **no es un descuido**, es lo que hace que su fila quepa. Unificar a ciegas rompe esa
+tabla, y ya se intentó una vez. El módulo expone **las dos formas** y **cada consumidor elige la
+suya a propósito**: la hoja, el catálogo, el bestiario y la traza usan la larga —se leen—; la fila
+del inventario, la corta —cabe—.
+
+**Las dos tablas son completas y ninguna deriva de la otra.** Con un valor por defecto, añadir un
+tipo de daño daría una corta silenciosamente larga y la fila se rompería sin que nada avisara. Así
+el compilador obliga a rellenar las dos, y una prueba las cruza contra el esquema de `@dnd/shared`.
+
+**Y nace `apps/web/src/dominio/`, como decisión declarada** en
+[01-arquitectura.md](./01-arquitectura.md): la forma **legible en español** de lo que `shared`
+declara como dato. No va en `packages/shared` —allí vive la forma de los datos, no su traducción— ni
+dentro de un `features/<x>/`, que es exactamente cómo nacieron las tres copias.
+
+**Cómo se comprobó.** Mutación: al «unificar» las dos formas, dos pruebas se ponen rojas — la que
+fija las cuatro abreviaturas y la que cuenta cuántas coinciden.
+
+**Cómo revertirlo.** `git revert` del commit: vuelven las tres copias, y con ellas la que dice
+«rayo» sin que nadie lo sepa.
+
+---
+
 ## Un concepto, un icono — y una prueba que lo sostiene (2026-09-06, plan 07)
 
 **Qué.** Había **diez ficheros de iconos** y conceptos repetidos: escudo con tres definiciones,

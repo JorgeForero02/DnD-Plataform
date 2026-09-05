@@ -1,7 +1,6 @@
 import { damageTypeSchema } from "@dnd/shared";
 import type {
   AbilityKey,
-  DamageType,
   ProficiencyLevel,
   SkillKey,
   TraceOp,
@@ -74,26 +73,11 @@ export const NOMBRE_COMPETENCIA: Record<ProficiencyLevel, string> = {
 // propiedades de arma del SRD 5.1 (`packages/shared/src/item.schema.ts`). Ninguno de los dos
 // llega nunca crudo a la columna «Daño / tipo» ni a «Notas». ---
 
-/** En minúscula: se pinta pegado al dado, «1d8+3 perforante», igual que la maqueta. */
-export const NOMBRE_TIPO_DANO: Record<DamageType, string> = {
-  BLUDGEONING: "contundente",
-  PIERCING: "perforante",
-  SLASHING: "cortante",
-  ACID: "ácido",
-  COLD: "frío",
-  FIRE: "fuego",
-  FORCE: "fuerza",
-  LIGHTNING: "relámpago",
-  NECROTIC: "necrótico",
-  POISON: "veneno",
-  PSYCHIC: "psíquico",
-  RADIANT: "radiante",
-  THUNDER: "trueno",
-};
-
-export function nombreTipoDano(tipo: DamageType): string {
-  return NOMBRE_TIPO_DANO[tipo] ?? `Sin traducir: ${tipo}`;
-}
+// **La tabla de tipos de daño vive en `dominio/dano.ts` desde el 2026-09-06** (D-OP-14): había
+// tres copias en tres módulos y no decían lo mismo. Se reexporta aquí, y solo aquí, para no tocar
+// los cuatro consumidores de esta pantalla — quien importe de este fichero sigue recibiendo la
+// **forma larga**, que es la que la hoja quiere.
+export { nombreTipoDano } from "../../dominio/dano";
 
 /**
  * Los trece tipos de daño, **en el orden que los declara `@dnd/shared`** y no en una lista

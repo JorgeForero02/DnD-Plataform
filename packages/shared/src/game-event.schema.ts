@@ -43,6 +43,11 @@ export const GAME_EVENT_TYPES = [
   "ENTITY_OPENED",
   "ENTITY_REVEALED",
   "ENTITY_LINKED",
+  // I16 (2026-09-06) — **reclasificar una ficha deja rastro.** Cambiar el tipo en el editor
+  // convertia un PNJ con statblock, enlaces y comentarios en «Documento» de un clic y **sin que
+  // quedara constancia**. El registro es la auditoria de esta aplicacion: un cambio de naturaleza
+  // que no aparece en el no se puede deshacer porque nadie sabe que paso.
+  "ENTITY_RETYPED",
   "FLAG_SET",
   "SET_CHANGED",
   "SIGNAL_RAISED",
@@ -266,6 +271,20 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     type: z.literal("ENTITY_REVEALED"),
     entityName: z.string().max(200).optional(),
     toUserId: z.string().optional(),
+  }),
+  /**
+   * Reclasificar: la ficha pasa de un tipo a otro (I16).
+   *
+   * **Lleva los dos tipos, no solo el nuevo.** «Ahora es un Documento» no dice qué se perdió; «pasa
+   * de PNJ a Documento» sí, y es lo que permite deshacerlo. Van como **clave** —`NPC`, `DOCUMENT`—
+   * porque el payload guarda datos, no prosa: la forma legible se compone al pintar, que es donde
+   * vive el vocabulario en español.
+   */
+  z.object({
+    type: z.literal("ENTITY_RETYPED"),
+    entityName: z.string().max(200).optional(),
+    from: z.string().min(1).max(40),
+    to: z.string().min(1).max(40),
   }),
   z.object({
     type: z.literal("ENTITY_COMMENTED"),

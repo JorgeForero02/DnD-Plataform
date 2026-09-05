@@ -1,4 +1,4 @@
-import { ruleEffectSchema, ruleTriggerSchema, type RuleTrigger } from "@dnd/shared";
+import { elMotorDispara, ruleEffectSchema, ruleTriggerSchema, type RuleTrigger } from "@dnd/shared";
 import { z } from "zod";
 import type { ConditionEvaluation, EffectApplication } from "./engine";
 
@@ -106,13 +106,11 @@ export function toEffectApplications(payload: TraceEffectsPayload): EffectApplic
  * no tienen valor correspondiente en el enum `GameEventType` de Prisma (fuera de esta frontera
  * de tarea). La regla se deja crear y quedar utilizable — el vocabulario es cerrado, no a medio
  * armar — pero **no se finge** que va a dispararse: se avisa en cada lectura. */
-const UNREACHABLE_TRIGGER_KINDS: ReadonlySet<RuleTrigger["kind"]> = new Set([
-  "ENTITY_COMMENTED",
-  "DM_EXECUTED",
-  "ENTITY_ATTACKED",
-  "MEMBER_JOINED",
-]);
-
+/**
+ * **La lista vive en `@dnd/shared`, no aqui.** Hasta la Ola 3 estaba escrita dos veces —aqui como
+ * `UNREACHABLE_TRIGGER_KINDS` y en la web como `DISPARADORES_SIN_MOTOR`—, y dos listas que tienen
+ * que coincidir divergen en cuanto una se toca sin la otra. Es la ficha C6-1 y esto la cierra.
+ */
 export function isTriggerReachableToday(kind: RuleTrigger["kind"]): boolean {
-  return !UNREACHABLE_TRIGGER_KINDS.has(kind);
+  return elMotorDispara(kind);
 }

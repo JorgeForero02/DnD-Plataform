@@ -37,6 +37,12 @@ export function triggersDe(suceso: SucesoRegistrado): RuleTrigger[] {
       return [{ kind: "ENTITY_OPENED", entityId: suceso.subjectId }];
     case "ENTITY_REVEALED":
       return [{ kind: "ENTITY_REVEALED", entityId: suceso.subjectId }];
+    // Ola 3: los dos que el editor ofrecia y el motor no podia cumplir, porque no existian como
+    // suceso. Ahora los escribe su gesto — comentar una ficha, y entrar por una invitacion.
+    case "ENTITY_COMMENTED":
+      return [{ kind: "ENTITY_COMMENTED", entityId: p.entityId }];
+    case "MEMBER_JOINED":
+      return [{ kind: "MEMBER_JOINED" }];
     case "ENTITY_LINKED":
       return [
         {

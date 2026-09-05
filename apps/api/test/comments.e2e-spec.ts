@@ -78,6 +78,24 @@ describe("Comments (e2e)", () => {
     expect(list.body.map((c: any) => c.body)).toContain("Nice NPC");
   });
 
+  // **Ola 3: comentar deja rastro en la linea de tiempo.** `ENTITY_COMMENTED` estaba en el
+  // vocabulario de disparadores del motor y no existia como suceso, asi que una regla armada
+  // sobre «cuando alguien comente esta ficha» no se disparaba jamas. Se comprueba leyendo el log
+  // por su endpoint, no mirando que la llamada este escrita.
+  it("commenting writes ENTITY_COMMENTED, without copying the body into the log", async () => {
+    const s = app.getHttpServer();
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(log.status).toBe(200);
+    const comentados = log.body.events.filter((e: any) => e.type === "ENTITY_COMMENTED");
+    expect(comentados.length).toBeGreaterThanOrEqual(1);
+    expect(comentados[0].payload.entityId).toBe(publicEntityId);
+    // **El cuerpo NO viaja al registro.** El hilo ya tiene su propia puerta con su `canView`;
+    // copiarlo aqui seria una segunda copia del mismo texto con otras reglas de acceso.
+    expect(JSON.stringify(comentados[0].payload)).not.toContain("Nice NPC");
+  });
+
   it("player cannot comment on a DM_ONLY entity (403)", async () => {
     const s = app.getHttpServer();
     const res = await request(s)

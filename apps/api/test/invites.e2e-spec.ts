@@ -79,6 +79,21 @@ describe("Invites (e2e)", () => {
     expect(read.status).toBe(200);
   });
 
+  // **Ola 3: sentarse a la mesa deja rastro.** Habia un emisor interno para `notifications`, que
+  // el motor de reglas no oye —escucha `game_event.recorded`—, asi que `MEMBER_JOINED` se ofrecia
+  // en el editor y no se disparaba nunca.
+  it("accepting an invite writes MEMBER_JOINED, visible to the table", async () => {
+    const s = app.getHttpServer();
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenB}`);
+    expect(log.status).toBe(200);
+    const entradas = log.body.events.filter((e: any) => e.type === "MEMBER_JOINED");
+    expect(entradas.length).toBe(1);
+    // Lo ve quien acaba de entrar: es `PLAYERS`, no un secreto del DM.
+    expect(entradas[0].payload.role).toBeDefined();
+  });
+
   it("the same invite cannot be reused (400)", async () => {
     const s = app.getHttpServer();
     const res = await request(s)

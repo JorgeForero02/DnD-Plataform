@@ -1,4 +1,6 @@
 import {
+  DISPARADORES_SIN_MOTOR,
+  elMotorDispara,
   ruleConditionSchema,
   ruleEffectSchema,
   ruleTriggerSchema,
@@ -57,39 +59,29 @@ export const EFECTOS = clavesDeUnion(ruleEffectSchema) as RuleEffect["kind"][];
  * se muestra marcado y no seleccionable»* (`docs/04-convenciones.md`): se pinta, se dice que no
  * se disparará, y no se puede volver a elegir.
  *
- * **Implementarlos es tocar el servidor**, que no es de este carril. El día que
- * `game-event-triggers.ts` tenga sus cuatro `case`, esta lista se vacía y la paleta los recupera
- * sola — no hay nada más que deshacer.
+ * **Dos de los cuatro ya se implementaron** (Ola 3, 2026-09-04): `ENTITY_COMMENTED` y
+ * `MEMBER_JOINED` existen ahora como suceso y su gesto los escribe, asi que la paleta los
+ * recupera sola. Quedan `DM_EXECUTED` —cuyo gesto, «la batuta», no existe en ninguna pantalla— y
+ * `ENTITY_ATTACKED`, que apunta a una ficha del mundo cuando aqui se ataca a un personaje: eso
+ * pide una decision del autor antes que codigo.
  *
- * **Y sí, es una segunda copia de una lista del servidor, y el motivo es una frontera de trabajo,
- * no una imposibilidad.** La de allí es `UNREACHABLE_TRIGGER_KINDS`
- * (`apps/api/src/rules-engine/trace-payload.ts:109`). Esto son **cuatro literales de
- * `RuleTrigger["kind"]`**, y `packages/shared/src` es justo donde este proyecto guarda la forma
- * de los datos una sola vez: cabrían ahí perfectamente, y las dos copias desaparecerían. No se
- * hizo porque **el carril que escribió esto no tocaba `packages/shared`** — su encargo era la
- * web—, y una constante compartida se añade sin prisa el día que alguien trabaje en esa frontera.
- * Escrito aquí para que nadie deduzca de la duplicación que había una razón técnica.
- *
- * Mientras tanto **no pueden divergir en silencio sobre una regla ya guardada**: el servidor
- * aplica la suya a cada fila y manda el veredicto en `RuleRow.triggerReachableToday`, que es lo
- * que pinta el aviso de `ListaDeReglas`. Si alguien implementa un disparador allí y olvida
- * quitarlo de aquí, la lista deja de avisar mientras la paleta lo sigue escondiendo, y eso se ve.
+ * **Y la lista ya no esta duplicada.** Vivia aqui y en `UNREACHABLE_TRIGGER_KINDS` de la API;
+ * ahora las dos leen `DISPARADORES_SIN_MOTOR` de `@dnd/shared`, que es donde este proyecto guarda
+ * la forma de los datos una sola vez. Cierra la ficha C6-1.
  */
-export const DISPARADORES_SIN_MOTOR: RuleTrigger["kind"][] = [
-  "ENTITY_COMMENTED",
-  "DM_EXECUTED",
-  "ENTITY_ATTACKED",
-  "MEMBER_JOINED",
-];
+/**
+ * Se reexporta para que las pantallas y sus pruebas sigan importando de aqui: la lista **vive en
+ * `@dnd/shared`** desde la Ola 3 (ficha C6-1), y este modulo es la puerta de vocabulario de la
+ * web. Importarla de los dos sitios seria volver a tener dos caminos a lo mismo.
+ */
+export { DISPARADORES_SIN_MOTOR };
 
 /** Los sucesos que el editor ofrece: los del esquema menos los que el motor no dispara. */
-export const DISPARADORES_OFRECIDOS = DISPARADORES.filter(
-  (kind) => !DISPARADORES_SIN_MOTOR.includes(kind),
-);
+export const DISPARADORES_OFRECIDOS = DISPARADORES.filter((kind) => elMotorDispara(kind));
 
 /** Si un suceso guardado llegará alguna vez al motor. `false` = se pinta marcado. */
 export function elMotorLoDispara(kind: string): boolean {
-  return !(DISPARADORES_SIN_MOTOR as string[]).includes(kind);
+  return elMotorDispara(kind as RuleTrigger["kind"]);
 }
 
 /**

@@ -92,7 +92,7 @@ const colocar = (parte: ParteDeRegla, clave: string) =>
 // paleta ofrece, al colocarla, aparece en la frase y en su parte** — y el conjunto se sigue
 // derivando del esquema compartido, no de una lista escrita a mano.
 const DISPARADORES_QUE_SE_COLOCAN = DISPARADORES.filter(
-  (c) => !(DISPARADORES_SIN_MOTOR as string[]).includes(c),
+  (c) => !(DISPARADORES_SIN_MOTOR as readonly string[]).includes(c),
 );
 
 const TODAS: [ParteDeRegla, string][] = [

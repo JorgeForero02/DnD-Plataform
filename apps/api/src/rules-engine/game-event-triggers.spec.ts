@@ -78,6 +78,25 @@ describe("traducir un suceso del log al vocabulario del motor", () => {
     ]);
   });
 
+  // **Ola 3.** Los dos que el editor ofrecia y el motor no podia cumplir. No les faltaba un
+  // `case`: no existian como suceso, asi que una regla armada sobre ellos no llegaba nunca.
+  it("comentar una ficha y entrar en la campana llegan al motor", () => {
+    expect(
+      triggersDe(suceso({ type: "ENTITY_COMMENTED", entityId: "e4", entityName: "Torre Gris" })),
+    ).toEqual([{ kind: "ENTITY_COMMENTED", entityId: "e4" }]);
+    expect(triggersDe(suceso({ type: "MEMBER_JOINED", displayName: "Nerith" }))).toEqual([
+      { kind: "MEMBER_JOINED" },
+    ]);
+  });
+
+  // La entidad del comentario sale de su `payload`, **no del sujeto**: el sujeto de ese suceso es
+  // la campana, porque el comentario cuelga de una ficha y no al reves.
+  it("el comentario lleva la ficha comentada, no el sujeto del suceso", () => {
+    expect(
+      triggersDe(suceso({ type: "ENTITY_COMMENTED", entityId: "LA-FICHA" }, "OTRO-SUJETO")),
+    ).toEqual([{ kind: "ENTITY_COMMENTED", entityId: "LA-FICHA" }]);
+  });
+
   it("un suceso que el vocabulario cerrado no cubre no inventa disparador", () => {
     expect(triggersDe(suceso({ type: "REST_DECLARED", rest: "LONG" }))).toEqual([]);
   });

@@ -25,7 +25,7 @@ import { DISPARADORES_SIN_MOTOR, nombreDePieza } from "../vocabulario";
 const CLAVES = {
   SUCESO: ruleTriggerSchema.options
     .map((o) => o.shape.kind.value)
-    .filter((k) => !(DISPARADORES_SIN_MOTOR as string[]).includes(k)),
+    .filter((k) => !(DISPARADORES_SIN_MOTOR as readonly string[]).includes(k)),
   ESTADO: ruleConditionSchema.options.map((o) => o.shape.kind.value),
   ACCION: ruleEffectSchema.options.map((o) => o.shape.kind.value),
 };

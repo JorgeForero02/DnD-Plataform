@@ -12,13 +12,13 @@ import { DISPARADORES_SIN_MOTOR, NOMBRE_DISPARADOR } from "../vocabulario";
 // **Actualizada el 2026-09-04 (auditoría de la mesa, §8.3).** Sigue comprobando exactamente lo
 // mismo —que el desplegable no inventa nada que el esquema compartido no tenga, y que no se
 // queda corto por accidente—, pero el conjunto ofrecido ya no es «los doce del esquema»: son los
-// doce **menos los cuatro que el motor no dispara** (`DISPARADORES_SIN_MOTOR`), que se retiraron
+// doce **menos los que el motor no dispara** (`DISPARADORES_SIN_MOTOR`), que se retiraron
 // de la oferta porque una regla armada sobre ellos se guarda y no se ejecuta jamás. La aserción
 // se sigue derivando del esquema y no de una lista a mano, que es lo que la hacía valer.
 
 const CLAVES_DEL_ESQUEMA = ruleTriggerSchema.options.map((o) => o.shape.kind.value).sort();
 const CLAVES_OFRECIDAS = CLAVES_DEL_ESQUEMA.filter(
-  (k) => !(DISPARADORES_SIN_MOTOR as string[]).includes(k),
+  (k) => !(DISPARADORES_SIN_MOTOR as readonly string[]).includes(k),
 );
 
 describe("EditorDeDisparador", () => {
@@ -34,7 +34,7 @@ describe("EditorDeDisparador", () => {
     const desplegable = screen.getByLabelText("Cuando") as HTMLSelectElement;
     const valores = [...desplegable.options].map((o) => o.value).sort();
     expect(valores).toEqual(CLAVES_OFRECIDAS);
-    // Y ninguno de los cuatro retirados se cuela como opción elegible.
+    // Y ninguno de los retirados se cuela como opción elegible.
     for (const retirado of DISPARADORES_SIN_MOTOR) {
       expect(valores).not.toContain(retirado);
     }
@@ -42,21 +42,23 @@ describe("EditorDeDisparador", () => {
 
   // La otra mitad de la regla vinculante de interfaz: **un valor guardado que el selector no
   // ofrece se muestra marcado y no seleccionable** (`docs/04-convenciones.md`). Una regla vieja
-  // armada sobre uno de los cuatro tiene que poder leerse; lo que no puede es volver a elegirse.
+  // armada sobre uno de los retirados tiene que poder leerse; lo que no puede es volver a elegirse.
+  // **El ejemplo era `MEMBER_JOINED` y dejo de valer en la Ola 3**, cuando ese suceso paso a
+  // existir de verdad: la prueba se puso roja sola, que es exactamente lo que tenia que pasar.
   it("una regla ya guardada con un suceso retirado lo enseña marcado y deshabilitado", () => {
     render(
       <EditorDeDisparador
-        value={{ kind: "MEMBER_JOINED" } as RuleTrigger}
+        value={{ kind: "DM_EXECUTED" } as RuleTrigger}
         entities={[]}
         onChange={vi.fn()}
       />,
     );
 
     const desplegable = screen.getByLabelText("Cuando") as HTMLSelectElement;
-    const opcion = [...desplegable.options].find((o) => o.value === "MEMBER_JOINED");
+    const opcion = [...desplegable.options].find((o) => o.value === "DM_EXECUTED");
     expect(opcion).toBeDefined();
     expect(opcion?.disabled).toBe(true);
-    expect(desplegable.value).toBe("MEMBER_JOINED");
+    expect(desplegable.value).toBe("DM_EXECUTED");
     expect(screen.getByRole("alert").textContent).toContain("no dispara este suceso");
   });
 

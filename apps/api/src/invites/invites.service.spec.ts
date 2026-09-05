@@ -4,12 +4,15 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InvitesService } from "./invites.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { GameEventsService } from "../game-events/game-events.service";
 
 describe("InvitesService", () => {
   let service: InvitesService;
   const prisma = {
     invite: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     campaignMember: { upsert: jest.fn() },
+    // Lo lee `accept()` para poner el nombre en el suceso `MEMBER_JOINED`.
+    user: { findUnique: jest.fn() },
   };
   const membership = { requireDM: jest.fn() };
   const events = { emit: jest.fn() };
@@ -19,6 +22,7 @@ describe("InvitesService", () => {
       providers: [
         InvitesService,
         { provide: PrismaService, useValue: prisma },
+        { provide: GameEventsService, useValue: { record: jest.fn() } },
         { provide: MembershipService, useValue: membership },
         { provide: EventEmitter2, useValue: events },
       ],

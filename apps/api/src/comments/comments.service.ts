@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/commo
 import { CreateCommentInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
+import { GameEventsService } from "../game-events/game-events.service";
 import { canView, Viewer } from "../common/visibility";
 
 @Injectable()
@@ -9,6 +10,7 @@ export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
+    private readonly gameEvents: GameEventsService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -39,10 +41,37 @@ export class CommentsService {
     return entity;
   }
 
+  /**
+   * Comentar una ficha **deja rastro**, y hasta la Ola 3 no lo dejaba: `ENTITY_COMMENTED` estaba
+   * en el vocabulario de disparadores y no existia como suceso, asi que una regla armada sobre
+   * «cuando alguien comente esta ficha» no se disparaba nunca.
+   *
+   * **El suceso es `DM_ONLY` y el cuerpo del comentario NO viaja en el.** Quien puede leer la
+   * ficha ya ve el hilo de comentarios por su propia puerta, con su propio `canView`; copiar el
+   * texto al registro seria una segunda copia del mismo contenido con otras reglas de acceso, y
+   * la matriz de visibilidad vive en un solo sitio. Lo que el registro cuenta es **que se
+   * comento**, que es lo que el motor necesita para dispararse.
+   */
   async create(userId: string, entityId: string, input: CreateCommentInput) {
-    await this.requireViewableEntity(userId, entityId);
-    return this.prisma.comment.create({
-      data: { entityId, authorId: userId, body: input.body },
+    const entity = await this.requireViewableEntity(userId, entityId);
+    return this.prisma.transaction(async (tx) => {
+      const comentario = await tx.comment.create({
+        data: { entityId, authorId: userId, body: input.body },
+      });
+      await this.gameEvents.record(
+        userId,
+        entity.campaignId,
+        {
+          subjectType: "campaign",
+          subjectId: entityId,
+          // Sobre por que `DM_ONLY`, ver el comentario de arriba: el hilo ya tiene su propia
+          // puerta y este suceso no puede convertirse en una segunda.
+          visibility: "DM_ONLY",
+          payload: { type: "ENTITY_COMMENTED", entityId, entityName: entity.name },
+        },
+        tx,
+      );
+      return comentario;
     });
   }
 

@@ -25,7 +25,7 @@ export type TipoDeMensaje = "sello" | "narracion" | "personaje" | "tirada" | "si
  * («Sesión 14 · El Puerto Viejo, almacén cuatro»), así que estos cuatro caen ahí por parecido de
  * función, no por analogía.
  *
- * **Narración** — el mundo hablando. Solo los tres sucesos de entidad: revelar, abrir y enlazar
+ * **Narración** — el mundo hablando. Solo los sucesos de entidad: revelar, abrir, comentar y enlazar
  * una ficha son lo único del registro que cuenta algo del mundo y no de una persona.
  *
  * **Tirada** — los cuatro sucesos que traen números tirados. Se pintan incrustados, con «De dónde
@@ -47,10 +47,17 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "ENCOUNTER_ENDED":
       return "sello";
 
+    // Comentar una ficha (Ola 3) entra aqui y no con los de persona: es el mundo hablando,
+    // igual que abrirla, revelarla o enlazarla, aunque lo escriba alguien de la mesa.
     case "ENTITY_OPENED":
     case "ENTITY_REVEALED":
     case "ENTITY_LINKED":
+    case "ENTITY_COMMENTED":
       return "narracion";
+
+    // Sentarse a la mesa es de la campana, no del mundo ni de un personaje: andamiaje.
+    case "MEMBER_JOINED":
+      return "sistema";
 
     case "ABILITY_ROLL":
     case "DEATH_SAVE":

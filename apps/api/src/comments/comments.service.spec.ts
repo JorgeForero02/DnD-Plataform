@@ -3,6 +3,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { CommentsService } from "./comments.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { GameEventsService } from "../game-events/game-events.service";
 
 describe("CommentsService", () => {
   let service: CommentsService;
@@ -10,6 +11,9 @@ describe("CommentsService", () => {
     entity: { findUnique: jest.fn() },
     comment: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
     user: { findUnique: jest.fn() },
+    // `create()` escribe el comentario y su suceso en la misma transaccion. La implementacion se
+    // pone en `beforeEach`: escrita aqui, el doble se referencia a si mismo (TS7022).
+    transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
 
@@ -18,11 +22,13 @@ describe("CommentsService", () => {
       providers: [
         CommentsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: GameEventsService, useValue: { record: jest.fn() } },
         { provide: MembershipService, useValue: membership },
       ],
     }).compile();
     service = ref.get(CommentsService);
     jest.clearAllMocks();
+    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(prisma));
   });
 
   it("create() forbids commenting on an entity the user cannot see", async () => {

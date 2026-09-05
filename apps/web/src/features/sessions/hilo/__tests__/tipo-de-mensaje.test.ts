@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GAME_EVENT_TYPES, type GameEventPayload, type GameEventType } from "@dnd/shared";
 import { colorDeVoz, tipoDeMensaje, type TipoDeMensaje } from "../tipo-de-mensaje";
 
-// Qué defiende este fichero, en una frase: **que los 34 tipos de suceso del registro estén
+// Qué defiende este fichero, en una frase: **que los 36 tipos de suceso del registro estén
 // clasificados, cada uno en el cubo que le toca, y que el color de una voz sea siempre uno de los
 // tokens declarados.**
 //
@@ -28,6 +28,8 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   ENTITY_OPENED: "narracion",
   ENTITY_REVEALED: "narracion",
   ENTITY_LINKED: "narracion",
+  // Ola 3: comentar una ficha es el mundo hablando, con los otros sucesos de entidad.
+  ENTITY_COMMENTED: "narracion",
   // Tirada: los cuatro sucesos que traen números tirados.
   ABILITY_ROLL: "tirada",
   DEATH_SAVE: "tirada",
@@ -57,11 +59,13 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   CLOCK_ADVANCED: "sistema",
   TURN_ADVANCED: "sistema",
   ROUND_ADVANCED: "sistema",
+  // Sentarse a la mesa es de la campana: ni mundo ni personaje.
+  MEMBER_JOINED: "sistema",
 };
 
 /**
  * `tipoDeMensaje` solo mira `p.type`, así que para clasificar basta el discriminante. Se pasa así
- * a propósito: construir a mano los 34 payloads completos ataría la prueba a la forma de cada
+ * a propósito: construir a mano los 36 payloads completos ataría la prueba a la forma de cada
  * esquema, y lo que se comprueba aquí es la **tabla**, no la validación.
  */
 function soloElTipo(type: GameEventType): GameEventPayload {
@@ -71,8 +75,8 @@ function soloElTipo(type: GameEventType): GameEventPayload {
 describe("de un suceso del registro a un tipo de mensaje", () => {
   // La red contra el `default` «para que compile»: se recorre la fuente única de tipos, no una
   // lista copiada aquí. Un tipo nuevo en `GAME_EVENT_TYPES` sin decisión pone esto rojo.
-  it("clasifica los 34 tipos de suceso, sin dejarse ninguno", () => {
-    expect(GAME_EVENT_TYPES).toHaveLength(34);
+  it("clasifica los 36 tipos de suceso, sin dejarse ninguno", () => {
+    expect(GAME_EVENT_TYPES).toHaveLength(36);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

@@ -134,6 +134,10 @@ export function lineaDeLog(p: GameEventPayload): string {
       return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
       return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una entrada del mundo";
+    case "ENTITY_COMMENTED":
+      return p.entityName ? `Se comenta «${p.entityName}»` : "Se comenta una entrada del mundo";
+    case "MEMBER_JOINED":
+      return p.displayName ? `${p.displayName} se sienta a la mesa` : "Alguien se sienta a la mesa";
     case "ENTITY_LINKED":
       return p.label ? `Se enlazan dos entradas: ${p.label}` : "Se enlazan dos entradas del mundo";
     case "FLAG_SET":

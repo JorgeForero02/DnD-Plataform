@@ -59,6 +59,33 @@ export const ruleTriggerSchema = z.discriminatedUnion("kind", [
 ]);
 export type RuleTrigger = z.infer<typeof ruleTriggerSchema>;
 
+/**
+ * **Los sucesos que el editor ofrece y el motor NO puede cumplir todavia.**
+ *
+ * Vive aqui, en la forma compartida, y no en cada lado: hasta la Ola 3 la misma lista estaba
+ * escrita dos veces —`DISPARADORES_SIN_MOTOR` en la web y `UNREACHABLE_TRIGGER_KINDS` en la
+ * API—, y dos listas que tienen que coincidir divergen en cuanto una se toca sin la otra. Es la
+ * ficha C6-1, y su cierre escrito era exactamente esto.
+ *
+ * Quedan dos, y cada uno por su motivo, que **no es pereza**:
+ *
+ * - `DM_EXECUTED` es «la batuta»: el DM lee el dialogo en voz alta, pulsa, y pasa lo que tenia
+ *   que pasar. **No existe ese gesto en ninguna pantalla**, asi que el suceso no tendria quien
+ *   lo escribiera. Es una funcion que falta, no un cable suelto.
+ * - `ENTITY_ATTACKED` apunta a una **ficha del mundo**, y en esta aplicacion se ataca a un
+ *   **personaje** (`Character`), no a una entidad. Conectarlo pide antes decidir que significa
+ *   atacar un lugar o un PNJ sin hoja, y esa decision es del autor.
+ *
+ * Una regla ya guardada con uno de estos se pinta **marcada y no seleccionable**, que es la regla
+ * de interfaz vinculante: un valor guardado que el selector no ofrece se ensena, no se esconde.
+ */
+export const DISPARADORES_SIN_MOTOR = ["DM_EXECUTED", "ENTITY_ATTACKED"] as const;
+
+/** Si un suceso guardado llegara alguna vez al motor. `false` = se pinta marcado. */
+export function elMotorDispara(kind: RuleTrigger["kind"]): boolean {
+  return !(DISPARADORES_SIN_MOTOR as readonly string[]).includes(kind);
+}
+
 // ---------------------------------------------------------------------------------------------
 // SI — las condiciones
 // ---------------------------------------------------------------------------------------------

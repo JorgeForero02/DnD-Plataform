@@ -80,6 +80,10 @@ enum GameEventType {
   ATTACK_RESOLVED
   CHARACTER_ARCHIVED
   CHARACTER_RESTORED
+  // Ola 3 (2026-09-04): dos disparadores que el editor de reglas ofrecia y el motor no podia
+  // cumplir porque no existian como suceso. Ahora los escribe su gesto.
+  ENTITY_COMMENTED
+  MEMBER_JOINED
 }
 
 enum ResourceReset {

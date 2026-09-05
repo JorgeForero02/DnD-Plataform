@@ -85,6 +85,12 @@ export const GAME_EVENT_TYPES = [
   "ATTACK_RESOLVED",
   "CHARACTER_ARCHIVED",
   "CHARACTER_RESTORED",
+  // Ola 3 (2026-09-04) — **dos disparadores que el editor de reglas ofrecia y el motor no podia
+  // cumplir**. No les faltaba un `case`: no existian como suceso, asi que una regla armada sobre
+  // ellos no se disparaba jamas. Ahora los escribe su gesto: comentar una ficha y entrar en la
+  // campana por una invitacion.
+  "ENTITY_COMMENTED",
+  "MEMBER_JOINED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -260,6 +266,20 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     type: z.literal("ENTITY_REVEALED"),
     entityName: z.string().max(200).optional(),
     toUserId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("ENTITY_COMMENTED"),
+    entityId: z.string().min(1),
+    entityName: z.string().max(200).optional(),
+  }),
+  /**
+   * Quien entra a la mesa. **Sin `userId`**: el actor del suceso ya es esa persona, y repetirlo
+   * en el `payload` seria guardar dos veces el mismo dato con dos formas de quedarse viejo.
+   */
+  z.object({
+    type: z.literal("MEMBER_JOINED"),
+    displayName: z.string().max(200).optional(),
+    role: z.string().max(40).optional(),
   }),
   z.object({
     type: z.literal("ENTITY_LINKED"),

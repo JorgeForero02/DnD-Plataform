@@ -39,6 +39,37 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El nervio en vivo, medido en producción detrás de nginx y Traefik (2026-09-05)
+
+**Qué se comprobó, y por qué hacía falta el servidor.** El plan 12 dejaba un punto sin cerrar: *«la
+comprobación detrás de nginx y Traefik hecha en el servidor, no supuesta»*. **En local no hay
+proxies**, así que el canal podía funcionar perfecto aquí y llegar a ráfagas allí — nginx acumula
+por defecto, y ese es justo el fallo que `X-Accel-Buffering: no` existe para evitar.
+
+Desplegado `b9d6cce` (a mano, como manda `03-despliegue.md`), medido contra
+`https://dnd.supportive.pro` con una cuenta de la campaña de demostración:
+
+| Qué | Resultado |
+|---|---|
+| Apertura del canal | `200`, `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `Transfer-Encoding: chunked`, `Server: nginx/1.31.5` |
+| Primer byte | `: abierto` **en el acto**, no al cerrar |
+| Tres sucesos provocados con el flujo abierto | llegaron **en el mismo segundo** en que se enviaron (14:17:16, :21, :27) |
+| Latido | `:` a los **15 segundos** de abrir |
+| Sin billete | `401` |
+
+**`X-Accel-Buffering` no aparece en la respuesta, y eso es lo correcto**: es una directiva **para**
+nginx, que la consume en vez de reenviarla. Lo que demuestra que funciona no es la cabecera, es que
+los sucesos lleguen sueltos — y llegaron.
+
+**Y lo que viaja por el canal es un aviso, no un dato**: `{"type":"ABILITY_ROLL","campaignId":…,
+"subjectType":"campaign","subjectId":…}`. Ni el resultado de la tirada ni su visibilidad: quien lo
+recibe recarga por su ruta, donde `canView` sigue mandando.
+
+**Lo que hay en producción y lo que no.** Producción corre **`b9d6cce`**: tiene el nervio, la
+bandeja y los dos avisos. **No tiene** `31dd05c` (el seed) ni `cc64ed7` (el PNJ que se llamaba
+«Alguien» y «Entrar en combate» sin PNJ que ofrecer), así que **esos dos defectos siguen ahí** hasta
+el siguiente despliegue.
+
 ## Un PNJ podía pelear, pero la pantalla no sabía su nombre ni sabía meterlo (2026-09-05)
 
 **Qué.** Dos defectos de la capa de combate, encontrados **paseando la aplicación** sobre la

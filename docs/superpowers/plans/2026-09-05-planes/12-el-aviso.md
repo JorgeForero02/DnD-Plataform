@@ -144,7 +144,7 @@ comprobación detrás de nginx y Traefik hecha en el servidor**, no supuesta.
 | ✅ hecho | 2026-09-05 | **Fallo ajeno al plan, encontrado por el camino.** La suite `notifications` de la API estaba **roja en `main`**: `POST /campaigns/:id/invites` daba 400 a una petición sin cuerpo aunque su esquema tiene todo opcional. Arreglado en `apps/api/src/common/zod-validation.pipe.ts:20`, con tres pruebas en su spec. **Commit `98fa00b`** |
 | ✅ hecho | 2026-09-05 | **12.2 · la bandeja.** `apps/web/src/features/notifications/`: `api.ts` (las dos rutas que ya existían), `hooks.ts` (`SONDEO_DE_AVISOS_MS = 30_000`, sin sesión no pregunta), `vocabulario.ts` (`Record` **exhaustivo** por tipo: frase y destino) y `BandejaDeAvisos.tsx`. Montada en el chrome (`apps/web/src/ui/AppShell.tsx:121`) y en la banda de la mesa (`features/sessions/BandaDeMesa.tsx:108`), que vive fuera de `AppShell`. Icono nuevo: `ui/Iconos.tsx:341`. Pruebas: `features/notifications/__tests__/BandejaDeAvisos.test.tsx` (7) y `apps/web/e2e/bandeja-de-avisos.spec.ts` (dos navegadores). **Commit `e2dc957`** |
 | ✅ hecho | 2026-09-05 | **12.3 · el nervio en vivo (D-OP-22).** API: `apps/api/src/live/live-bus.ts` (mensaje agnóstico del transporte, limitación de un solo contenedor escrita dentro), `live.service.ts` (`assertCanJoin` en su propio método; billete de un solo uso, 30 s), `live.controller.ts` (latido de 15 s, `X-Accel-Buffering: no`). Emisión **solo** en `apps/api/src/game-events/game-events.service.ts:97`, tras el commit. Web: `apps/web/src/features/live/canal.ts`, montado en `pages/CampaignDetailPage.tsx` y `pages/SesionPage.tsx`. Sondeo unificado en `apps/web/src/lib/sondeo.ts` a **60 s** (11 puntos). Pruebas: `apps/api/src/live/live.service.spec.ts` (8) y `apps/web/e2e/nervio-en-vivo.spec.ts` (2, con control). **Commit `06a8875`** |
-| ⛔ bloqueado | 2026-09-05 | **La comprobación de `X-Accel-Buffering` detrás de nginx y Traefik**, que la «Definición de terminado» exige hacer **en el servidor**. El prompt de arranque prohíbe desplegar esta noche; las dos no se pueden cumplir a la vez. Se deja escrito y sin dar por hecho. |
+| ✅ hecho | 2026-09-05 | **CERRADO EL PUNTO QUE ESTABA BLOQUEADO: el canal, medido en producción detrás de nginx y Traefik.** El autor levantó la prohibición y desplegó `b9d6cce` a mano. Medido contra `https://dnd.supportive.pro` con una cuenta del seed: la respuesta es `200` con `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform` y **`Transfer-Encoding: chunked`** (`Server: nginx/1.31.5`), el `: abierto` llega **en el acto**, y con el flujo abierto **tres tiradas llegaron en el mismo segundo en que se enviaron** (14:17:16, :21 y :27) — no a ráfagas. **El latido apareció a los 15 s** (`:` a las 14:17:22). `X-Accel-Buffering` **no sale en la respuesta y eso es lo correcto**: es una directiva **para** nginx, que la consume. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -197,8 +197,8 @@ fuente si la hubo):
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **El plan 12 está cerrado menos un punto**, y ese punto es el ⛔ de arriba: `X-Accel-Buffering`
-  **detrás de nginx y Traefik de verdad**, que exige desplegar. El resto está verde y medido.
+- **El plan 12 está CERRADO ENTERO.** Lo último que le faltaba —el canal detrás de los proxies de
+  verdad— se midió contra producción el 2026-09-05 y está en la tabla de arriba con su evidencia.
 - Referencia del transporte, si hace falta volver: `docs/superpowers/specs/2026-09-05-nervio-en-vivo-transporte-design.md`**:
   corrige cuatro números del plan (no hay «un sondeo» sino **diez `refetchInterval` con cuatro
   valores**, son **93** invalidaciones y no 47, falta el **latido** cada 15-20 s, y `EventSource`

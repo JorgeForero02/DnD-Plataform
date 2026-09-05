@@ -98,6 +98,70 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
+## P1 · Un encuentro `PREPARING` no se puede terminar (2026-09-05, ronda de arreglo 1 de la tarea 2)
+
+**Bloqueo conocido, no un fallo.** `EncountersService.end()` exige `status === "ACTIVE"`
+(`apps/api/src/encounters/encounters.service.ts:383`) y no se ha tocado a propósito: la puerta
+declarada para un combate `PREPARING` que nunca llegó a empezar —el DM se arrepiente, o los
+jugadores tardan demasiado en tirar— es el `DELETE` de la tarea 4 del plan
+`2026-09-05-iniciativa-y-bando`, no una segunda salida por `end()`. «No es historia, es un clic
+deshecho»: un combate que nunca empezó no deja rastro que archivar, así que no le vale la misma
+puerta que a uno que sí se jugó.
+
+**El efecto mientras tanto:** un encuentro `PREPARING` **bloquea la sesión** — el índice único
+parcial recontado por la tarea 1 (`encounter_one_active_per_session`, cubre `ACTIVE` y
+`PREPARING`) impide empezar un segundo combate en la misma sesión hasta que el primero se
+resuelva, y sin la tarea 3 (responder la petición de iniciativa) ni la tarea 4 (el `DELETE`), no
+hay ninguna puerta que lo resuelva. Si una partida real se queda con un `PREPARING` colgado antes
+de que esas dos tareas existan, la sesión queda inutilizable hasta que se arreglen a mano por
+Prisma.
+
+**Cierra cuando** exista el `DELETE` de la tarea 4 (o la tarea 3 cierre el `PREPARING` de verdad).
+
+## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
+
+`EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando
+`Character.ownerId` contra `userId` —quien pulsó el botón de empezar el combate—, no contra «es un
+DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:187-196`).
+`MembershipService` sí sabe contar cuántos DM quedarían en una campaña
+(`apps/api/src/campaigns/membership.service.ts:82-90`), así que la información para distinguir
+«mi PNJ» de «el PNJ de otro DM» existe, pero `start()` no la usa.
+
+**El efecto, con dos DM en la misma campaña:** si el DM A empieza el combate, un PNJ del DM B cae
+del lado de los `ajenos` y recibe una petición de iniciativa que no tiene por qué —el DM B no es
+un jugador esperando su turno, es el otro árbitro de la mesa. **Se queda así a propósito**: el
+criterio "quien empieza el combate tira los suyos" es simple y correcto para el caso de un solo
+DM, que es el único que existe hoy en la plataforma (una campaña no tiene ninguna pantalla para
+invitar a un segundo DM). Corregirlo sin ese caso real delante sería una regla especulativa.
+
+**Cierra cuando** exista una forma de tener dos DM en la misma campaña Y alguien lo note en la
+práctica — hasta entonces, queda anotado para que la próxima persona que toque `start()` no
+lo redescubra desde cero.
+
+## P2 · Tres e2e siguen resolviendo un `PREPARING` a mano hasta que exista la tarea 3 (2026-09-05, ronda de arreglo 1 de la tarea 2)
+
+Desde que `start()` reparte por dueño (tarea 2), varios e2e ya existentes montan combates
+mixtos —un personaje del jugador junto a PNJ del DM— para probar algo que **no** es el reparto:
+pasar turno, terminar el combate, que caduque una condición, comparar un ataque. Esos combates
+nacen `PREPARING`, y como la tarea 3 (responder la petición de iniciativa y escribir el número
+real) todavía no existe, no hay ninguna puerta de la API que los suba a `ACTIVE`. Los que lo
+necesitan llaman a un puente compartido y explícito,
+`apps/api/test/helpers/resolver-preparing-a-mano.ts`, que hace a mano exactamente lo que esa
+tarea hará —fija una iniciativa real, cierra las peticiones, sube el encuentro y escribe
+`ENCOUNTER_STARTED`— y nunca en silencio: si se llama sobre un encuentro que no tenía ninguna
+petición pendiente, `expect(pendientes.length).toBeGreaterThan(0)` lo revienta.
+
+Ficheros que lo usan, a 2026-09-05:
+
+- `apps/api/test/encounters.e2e-spec.ts` — tras la prueba de conteo «OCHO combatientes y TRES
+  posiciones», que ya no muta nada dentro de sí misma (lo señaló la revisión: mutar ahí dejaba
+  cuatro posiciones en vez de las tres que el nombre de la prueba anuncia).
+- `apps/api/test/ataque-comparado-en-el-servidor.e2e-spec.ts` — en su `beforeAll`, porque el
+  atacante **tiene que ser** el personaje de un jugador (es lo que prueba el fichero).
+
+**Cierra cuando** exista la tarea 3: bórrese el helper y sus llamadas, y sustitúyanse por
+responder la petición de verdad por HTTP.
+
 ## P1 · El ataque comparado contra la CA existe en el servidor y ninguna pantalla lo llama (2026-09-05)
 
 **Encontrado por el autor usando la aplicación, y es la tercera vez que aparece este patrón en un

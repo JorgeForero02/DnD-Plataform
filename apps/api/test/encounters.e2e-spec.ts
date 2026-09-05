@@ -3,6 +3,7 @@ import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
+import { resolverPreparingAMano } from "./helpers/resolver-preparing-a-mano";
 
 // Tarea 2.5.2 contra Postgres real.
 //
@@ -18,6 +19,7 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
   const emailDM = `dm-enc${Date.now()}@b.com`;
   const emailPL = `pl-enc${Date.now()}@b.com`;
   let tokenDM = "";
+  let dmUserId = "";
   let tokenPL = "";
   let campaignId = "";
   let sessionId = "";
@@ -37,11 +39,11 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     prisma = app.get(PrismaService);
     const s = app.getHttpServer();
 
-    tokenDM = (
-      await request(s)
-        .post("/auth/register")
-        .send({ email: emailDM, password: "password123", displayName: "DM" })
-    ).body.token;
+    const dm = await request(s)
+      .post("/auth/register")
+      .send({ email: emailDM, password: "password123", displayName: "DM" });
+    tokenDM = dm.body.token;
+    dmUserId = dm.body.user.id;
     tokenPL = (
       await request(s)
         .post("/auth/register")
@@ -183,33 +185,37 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     expect(bandoDe.get(pc1Id)).toBe("ALLY");
     expect(bandoDe.get(pc2Id)).toBe("NEUTRAL");
     expect(goblinIds.map((id) => bandoDe.get(id))).toEqual(Array(6).fill("ENEMY"));
+  });
 
-    // **Puente temporal hasta la tarea 3.** Responder la petición de iniciativa y escribirla en
-    // el combatiente es la tarea siguiente, que todavía no existe — así que el resto de esta
-    // suite (turnos, condiciones) no tiene ninguna puerta de la API para pasar de `PREPARING` a
-    // `ACTIVE`. Se hace aquí a mano, contra la base, exactamente lo que esa tarea hará: fija una
-    // iniciativa real a los dos pendientes (con el endpoint que ya existe, `setInitiative`, que
-    // de paso recoloca el orden), cierra sus peticiones y sube el encuentro — para que el resto
-    // de la suite siga probando lo que probaba antes de que el reparto por dueño existiera.
-    const pendientes = await prisma.rollRequest.findMany({
-      where: { encounterId, resolvedAt: null },
+  // **Puente temporal hasta la tarea 3** (`docs/06-pendientes.md`). Responder la petición de
+  // iniciativa y escribirla en el combatiente es la tarea siguiente, que todavía no existe —
+  // así que el resto de esta suite (turnos, condiciones) no tiene ninguna puerta de la API para
+  // pasar de `PREPARING` a `ACTIVE`. Vive en su propia prueba, no dentro de «OCHO combatientes
+  // y TRES posiciones»: mutar ahí dejaba CUATRO posiciones (el número lo destapó la revisión —
+  // `setInitiative` separa a quien corrige de su grupo, `groupKey: combatantId`), y el nombre de
+  // esa prueba dejaba de ser cierto.
+  it("se resuelve a mano hasta que exista la tarea 3 (puente)", async () => {
+    const r = await request(app.getHttpServer())
+      .get(encUrl(`/${encounterId}`))
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(r.body.status).toBe("PREPARING");
+
+    await resolverPreparingAMano({
+      app,
+      prisma,
+      tokenDM,
+      dmUserId,
+      campaignId,
+      sessionId,
+      encUrl,
+      encounterId,
+      combatants: r.body.combatants,
     });
-    expect(pendientes.map((p) => p.characterId).sort()).toEqual([pc1Id, pc2Id].sort());
-    for (const peticion of pendientes) {
-      const combatiente = r.body.combatants.find(
-        (c: { characterId: string }) => c.characterId === peticion.characterId,
-      );
-      const patched = await request(app.getHttpServer())
-        .patch(encUrl(`/${encounterId}/combatants/${combatiente.id}`))
-        .set("Authorization", `Bearer ${tokenDM}`)
-        .send({ initiative: 10 });
-      expect(patched.status).toBe(200);
-    }
-    await prisma.rollRequest.updateMany({
-      where: { id: { in: pendientes.map((p) => p.id) } },
-      data: { resolvedAt: new Date() },
-    });
-    await prisma.encounter.update({ where: { id: encounterId }, data: { status: "ACTIVE" } });
+
+    const despues = await request(app.getHttpServer())
+      .get(encUrl(`/${encounterId}`))
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(despues.body.status).toBe("ACTIVE");
   });
 
   it("un bando para alguien que no entra al combate es un 400 y NO crea el encuentro", async () => {

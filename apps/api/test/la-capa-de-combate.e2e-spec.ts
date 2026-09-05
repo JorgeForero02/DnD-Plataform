@@ -16,6 +16,17 @@ import { PrismaService } from "../src/prisma/prisma.service";
 //
 // Y las dos con su regla de visibilidad puesta: `current` reutiliza `get` entero justo para que el
 // filtrado por `canView` y la renumeración densa de posiciones vivan en un solo sitio.
+//
+// **Dos sesiones desde la ronda de arreglo 1 (2026-09-05).** `pcId` es del jugador; desde la
+// tarea 2 eso hace que cualquier `start()` que lo incluya nazca `PREPARING`, esperando su
+// iniciativa. `sessionId` se queda con ese escenario —es justo lo que hace falta para probar que
+// `current` encuentra un `PREPARING` (C-1) y que la visibilidad filtra igual—, pero un
+// `PREPARING` no se puede `end()` (exige `ACTIVE`, y así se queda hasta que exista el `DELETE` de
+// la tarea 4: ver `docs/06-pendientes.md`). Pasar turno y terminar el combate necesitan un
+// encuentro de verdad `ACTIVE`, así que esas pruebas usan `sessionId2`, con un combate **todo del
+// DM** (un PNJ revelado a la mesa como aliado, más los tres goblins ocultos) — nadie del jugador
+// dentro, nada que pedir, `ACTIVE` desde que se crea, como antes de que el reparto por dueño
+// existiera.
 
 describe("La capa de combate de la mesa (e2e)", () => {
   let app: NestFastifyApplication;
@@ -26,11 +37,16 @@ describe("La capa de combate de la mesa (e2e)", () => {
   let tokenPL = "";
   let campaignId = "";
   let sessionId = "";
+  let sessionId2 = "";
   let pcId = "";
   let goblinIds: string[] = [];
+  let allyId = "";
+  let encuentro2Id = "";
 
   const encUrl = (suffix = "") =>
     `/campaigns/${campaignId}/sessions/${sessionId}/encounters${suffix}`;
+  const encUrl2 = (suffix = "") =>
+    `/campaigns/${campaignId}/sessions/${sessionId2}/encounters${suffix}`;
   const auth = (t: string) => `Bearer ${t}`;
 
   beforeAll(async () => {
@@ -67,6 +83,12 @@ describe("La capa de combate de la mesa (e2e)", () => {
         .set("Authorization", auth(tokenDM))
         .send({ title: "Sesión con combate", visibility: "PLAYERS" })
     ).body.id;
+    sessionId2 = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", auth(tokenDM))
+        .send({ title: "Sesión con combate (turnos y cierre)", visibility: "PLAYERS" })
+    ).body.id;
 
     pcId = (
       await request(s)
@@ -93,6 +115,21 @@ describe("La capa de combate de la mesa (e2e)", () => {
     expect(goblins.status).toBe(201);
     goblinIds = goblins.body.map((g: { id: string }) => g.id);
     expect(goblinIds).toHaveLength(3);
+
+    // El "aliado" de `sessionId2`: un PNJ del DM, de OTRO statblock (para no compartir grupo con
+    // los goblins) y **revelado** a la mesa — es lo que le hace falta al jugador para tener algo
+    // visible en un combate que, por lo demás, es todo del DM.
+    const aliado = await request(s)
+      .post(`/campaigns/${campaignId}/npcs`)
+      .set("Authorization", auth(tokenDM))
+      .send({ ref: "SRD:bandit", count: 1, hp: "AVERAGE" });
+    expect(aliado.status).toBe(201);
+    allyId = aliado.body[0].id;
+    const revelado = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${allyId}`)
+      .set("Authorization", auth(tokenDM))
+      .send({ visibility: "PLAYERS" });
+    expect(revelado.status).toBe(200);
   });
 
   afterAll(async () => {
@@ -117,41 +154,20 @@ describe("La capa de combate de la mesa (e2e)", () => {
       .send({ characterIds: [pcId, ...goblinIds] });
     expect(creado.status).toBe(201);
 
-    // **Puente temporal hasta la tarea 3.** `pcId` es del jugador, no del DM que empieza el
-    // combate: desde la tarea 2 (2026-09-05) `start()` ya no tira por él, le pide la iniciativa,
-    // y el encuentro nace `PREPARING`. Responder esa petición y escribir la iniciativa es la
-    // tarea siguiente, que todavía no existe, así que se hace aquí a mano lo que ella hará —
-    // fijar una iniciativa real y subir el encuentro— para que el resto de este fichero (que
-    // prueba `current` y `end`, no el reparto) siga probando lo que probaba antes.
-    if (creado.body.status === "PREPARING") {
-      const pendientes = await prisma.rollRequest.findMany({
-        where: { encounterId: creado.body.id, resolvedAt: null },
-      });
-      for (const peticion of pendientes) {
-        const combatiente = creado.body.combatants.find(
-          (c: { characterId: string }) => c.characterId === peticion.characterId,
-        );
-        await request(s)
-          .patch(encUrl(`/${creado.body.id}/combatants/${combatiente.id}`))
-          .set("Authorization", auth(tokenDM))
-          .send({ initiative: 10 });
-      }
-      await prisma.rollRequest.updateMany({
-        where: { id: { in: pendientes.map((p) => p.id) } },
-        data: { resolvedAt: new Date() },
-      });
-      await prisma.encounter.update({
-        where: { id: creado.body.id },
-        data: { status: "ACTIVE" },
-      });
-    }
-
-    // **Nadie le pasa el id.** Es exactamente la situación de recargar la mesa.
+    // **`PREPARING`, no `ACTIVE`.** `pcId` es del jugador, no del DM que empieza el combate:
+    // desde la tarea 2 (2026-09-05) `start()` ya no tira por él, le pide la iniciativa. Antes de
+    // la ronda de arreglo 1, esta prueba forzaba el encuentro a `ACTIVE` a mano (por Prisma)
+    // antes de llamar a `current` — y eso tapaba exactamente el fallo que la revisión encontró:
+    // `current` seguía mirando solo `ACTIVE`, así que un combate `PREPARING` de verdad era
+    // invisible para la mesa. Sin el puente, esto prueba el camino real.
     const actual = await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM));
     expect(actual.status).toBe(200);
     expect(actual.body.id).toBe(creado.body.id);
-    expect(actual.body.status).toBe("ACTIVE");
-    // Un personaje y **un** grupo de goblins: dos turnos, no cuatro.
+    expect(actual.body.status).toBe("PREPARING");
+    // Un personaje y **un** grupo de goblins: dos turnos, no cuatro. La agrupación y la
+    // renumeración de posiciones no dependen de si ya se tiró o de si el encuentro está
+    // `PREPARING` o `ACTIVE` — se calculan igual, con la iniciativa que haya en ese momento
+    // (0 para quien todavía no ha tirado).
     expect(new Set(actual.body.combatants.map((c: { position: number }) => c.position)).size).toBe(
       2,
     );
@@ -198,19 +214,30 @@ describe("La capa de combate de la mesa (e2e)", () => {
 
   it("el registro del jugador no lleva NINGUNA posición: contarlas era contar enemigos", async () => {
     const s = app.getHttpServer();
-    const actual = (await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM)))
-      .body;
+
+    // **Combate aparte, todo del DM.** El de `sessionId` sigue `PREPARING` (nadie ha respondido
+    // la petición de `pcId`, y no hay tarea 3 todavía que lo haga), así que pasar turno sobre él
+    // daría 409. Lo que se prueba aquí —que el registro no lleva posiciones crudas— no depende de
+    // quién tira la iniciativa, así que un combate íntegramente del DM (`allyId` + los goblins)
+    // lo prueba igual de bien y nace `ACTIVE` sin más trámite.
+    const creado = await request(s)
+      .post(encUrl2())
+      .set("Authorization", auth(tokenDM))
+      .send({ characterIds: [allyId, ...goblinIds] });
+    expect(creado.status).toBe(201);
+    expect(creado.body.status).toBe("ACTIVE");
+    encuentro2Id = creado.body.id;
 
     // Se recorre el orden entero un par de veces, que es lo que pasa en un combate de verdad.
     for (let i = 0; i < 4; i++) {
       const r = await request(s)
-        .post(encUrl(`/${actual.id}/advance-turn`))
+        .post(encUrl2(`/${encuentro2Id}/advance-turn`))
         .set("Authorization", auth(tokenDM));
       expect(r.status).toBe(201);
     }
 
     const log = await request(s)
-      .get(`/campaigns/${campaignId}/events?sessionId=${sessionId}`)
+      .get(`/campaigns/${campaignId}/events?sessionId=${sessionId2}`)
       .set("Authorization", auth(tokenPL));
     expect(log.status).toBe(200);
     const turnos = log.body.events.filter(
@@ -232,7 +259,7 @@ describe("La capa de combate de la mesa (e2e)", () => {
 
     // La comprobación que de verdad importa, dicha como se deduce: sobre el cuerpo serializado
     // entero no puede aparecer ningún número de posición mayor que el último visible.
-    const visibles = (await request(s).get(encUrl("/current")).set("Authorization", auth(tokenPL)))
+    const visibles = (await request(s).get(encUrl2("/current")).set("Authorization", auth(tokenPL)))
       .body.combatants.length;
     const posiciones = turnos.flatMap((t: { payload: Record<string, unknown> }) =>
       Object.entries(t.payload)
@@ -245,76 +272,68 @@ describe("La capa de combate de la mesa (e2e)", () => {
 
   it("un jugador no puede terminar el combate (403)", async () => {
     const s = app.getHttpServer();
-    const actual = (await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM)))
-      .body;
     const r = await request(s)
-      .post(encUrl(`/${actual.id}/end`))
+      .post(encUrl2(`/${encuentro2Id}/end`))
       .set("Authorization", auth(tokenPL));
     expect(r.status).toBe(403);
     // Y sigue activo: el 403 no es cosmético.
-    const sigue = await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM));
+    const sigue = await request(s).get(encUrl2("/current")).set("Authorization", auth(tokenDM));
     expect(sigue.body.status).toBe("ACTIVE");
   });
 
   it("terminar el combate lo deja en ENDED, `current` vuelve a null y se puede empezar otro", async () => {
     const s = app.getHttpServer();
-    const actual = (await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM)))
-      .body;
 
     const fin = await request(s)
-      .post(encUrl(`/${actual.id}/end`))
+      .post(encUrl2(`/${encuentro2Id}/end`))
       .set("Authorization", auth(tokenDM));
     expect(fin.status).toBe(201);
     expect(fin.body.status).toBe("ENDED");
 
-    const despues = await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM));
+    const despues = await request(s).get(encUrl2("/current")).set("Authorization", auth(tokenDM));
     expect(despues.body).toBeNull();
 
     // **No se borró nada**: el encuentro sigue consultable por su id, con su orden y sus asaltos.
     const viejo = await request(s)
-      .get(encUrl(`/${actual.id}`))
+      .get(encUrl2(`/${encuentro2Id}`))
       .set("Authorization", auth(tokenDM));
     expect(viejo.status).toBe(200);
     expect(viejo.body.status).toBe("ENDED");
 
-    // Y el índice único es parcial sobre ACTIVE, así que el siguiente combate no choca con él.
-    //
-    // **Un goblin del DM, no `pcId`.** Con `pcId` —del jugador— este `start()` nacería
-    // `PREPARING` desde la tarea 2 (2026-09-05), y la prueba siguiente necesita `current` en
-    // `ACTIVE` sin más trámite: lo que se comprueba aquí es que el índice deja empezar otro
-    // encuentro, no el reparto por dueño, que ya tiene su propio fichero.
+    // Y el índice único es parcial sobre un encuentro sin terminar, así que el siguiente combate
+    // no choca con él — y de nuevo, todo del DM: la prueba es del índice, no del reparto por
+    // dueño, que ya tiene su propio fichero (`iniciativa-repartida.e2e-spec.ts`).
     const otro = await request(s)
-      .post(encUrl())
+      .post(encUrl2())
       .set("Authorization", auth(tokenDM))
       .send({ characterIds: [goblinIds[0]] });
     expect(otro.status).toBe(201);
     expect(otro.body.status).toBe("ACTIVE");
-    expect(otro.body.id).not.toBe(actual.id);
+    expect(otro.body.id).not.toBe(encuentro2Id);
+    encuentro2Id = otro.body.id;
   });
 
   it("terminar dos veces el mismo encuentro es 409, no un segundo suceso en el registro", async () => {
     const s = app.getHttpServer();
-    const actual = (await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM)))
-      .body;
     expect(
       (
         await request(s)
-          .post(encUrl(`/${actual.id}/end`))
+          .post(encUrl2(`/${encuentro2Id}/end`))
           .set("Authorization", auth(tokenDM))
       ).status,
     ).toBe(201);
     const repetido = await request(s)
-      .post(encUrl(`/${actual.id}/end`))
+      .post(encUrl2(`/${encuentro2Id}/end`))
       .set("Authorization", auth(tokenDM));
     expect(repetido.status).toBe(409);
 
     // El registro tiene UN final, no dos.
     const log = await request(s)
-      .get(`/campaigns/${campaignId}/events?sessionId=${sessionId}`)
+      .get(`/campaigns/${campaignId}/events?sessionId=${sessionId2}`)
       .set("Authorization", auth(tokenDM));
     const finales = log.body.events.filter(
       (e: { payload: { type: string; encounterId?: string } }) =>
-        e.payload.type === "ENCOUNTER_ENDED" && e.payload.encounterId === actual.id,
+        e.payload.type === "ENCOUNTER_ENDED" && e.payload.encounterId === encuentro2Id,
     );
     expect(finales).toHaveLength(1);
     expect(finales[0].payload.rounds).toBe(1);

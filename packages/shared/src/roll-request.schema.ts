@@ -68,12 +68,6 @@ export const createRollRequestSchema = z.object({
    * algo— y la razón por la que 2C.1 cerró ese agujero antes de que esto existiera.
    */
   audience: rollAudienceSchema.default("PUBLIC"),
-  /**
-   * De qué encuentro sale, si sale de uno. **Lo pone el servidor al empezar un combate, nunca
-   * quien llama desde fuera**: una petición ligada a un encuentro bloquea la mesa, y eso no se
-   * concede por parámetro.
-   */
-  encounterId: z.string().cuid().optional(),
 });
 export type CreateRollRequestInput = z.infer<typeof createRollRequestSchema>;
 

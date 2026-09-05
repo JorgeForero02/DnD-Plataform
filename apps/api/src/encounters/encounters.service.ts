@@ -184,13 +184,31 @@ export class EncountersService {
       claveDe.set(personaje.id, personaje.statblockRef ?? personaje.id);
     }
 
-    // **El criterio es si el dueño es el DM, no si «tiene dueño».** `Character.ownerId` es
-    // obligatorio, así que un goblin del DM también tiene dueño: preguntar por su existencia no
-    // distingue nada. Y NO se mira `statblockRef` a propósito — un PNJ jugable es una fila de
-    // `Character` como cualquier otra desde 2D, y quien lo lleva decide si tira, no de dónde
-    // salieron sus números.
+    // **El criterio es si el dueño es quien empieza el combate, no si «tiene dueño».**
+    // `Character.ownerId` es obligatorio, así que un goblin del DM también tiene dueño: preguntar
+    // por su existencia no distingue nada. Y NO se mira `statblockRef` a propósito — un PNJ
+    // jugable es una fila de `Character` como cualquier otra desde 2D, y quien lo lleva decide
+    // si tira, no de dónde salieron sus números.
+    //
+    // **Con más de un DM en la campaña, esto compara contra quien pulsó el botón, no contra «es
+    // DM»** — un PNJ de OTRO DM caería del lado de `ajenos` y recibiría una petición de
+    // iniciativa que no tiene por qué. `membership.service.ts` sí sabe contar cuántos DM quedan
+    // en una campaña; este método no distingue entre ellos. Queda anotado como caso conocido en
+    // `docs/06-pendientes.md` — no lo arregla esta ronda.
     const suyos = combatientes.filter((c) => c.ownerId === userId);
     const ajenos = combatientes.filter((c) => c.ownerId !== userId);
+
+    // **Se valida la hoja de los `ajenos` antes de crear nada.** No se les tira, pero si su hoja
+    // no deriva —le faltan características, raza o clase— antes de esta tarea `start()` ya daba
+    // un 400 al intentar tirar por ellos; sin esta validación, el 400 solo llegaría al responder
+    // su petición (`RollRequestsService.modificadorDeLaHoja`), y para entonces el encuentro ya
+    // existe, `PREPARING`, sin ninguna forma de resolverse: la petición nunca se cierra y el
+    // combate no sale de ahí. Se reutiliza `getInitiativeModifier` —la misma fuente que usa el
+    // bucle de abajo para los `suyos`— y se descarta el número: aquí solo hace falta que la hoja
+    // exista, no cuánto vale.
+    for (const personaje of ajenos) {
+      await this.sheets.getInitiativeModifier(userId, campaignId, personaje.id);
+    }
 
     const grupos = new Map<string, (typeof combatientes)[number][]>();
     for (const personaje of suyos) {
@@ -303,27 +321,34 @@ export class EncountersService {
           ),
         );
         const filas = await recolocar(tx, encounter.id);
-        await this.events.record(
-          userId,
-          campaignId,
-          {
-            sessionId,
-            subjectType: "encounter",
-            subjectId: encounter.id,
-            visibility: "PLAYERS",
-            payload: {
-              type: "ENCOUNTER_STARTED",
-              encounterId: encounter.id,
-              // **Sin conteos.** Los llevaba —`combatantCount` y `positionCount`— y los dos
-              // eran una fuga por deducción que cazó la revisión de cierre: el jugador que ve
-              // dos combatientes suyos en la ficha del encuentro y lee «ocho» en el registro
-              // sabe que hay seis enemigos escondidos. El suceso dice que **empezó** un
-              // encuentro, que es lo que la mesa tiene que saber; cuántos hay se ve mirando, y
-              // lo que se ve lo decide `canView`.
+        // **Solo si nace `ACTIVE`.** Un encuentro `PREPARING` todavía no ha empezado —está
+        // esperando la iniciativa de los `ajenos`—, así que escribir «empezó el combate» aquí
+        // sería mentir por adelantado. Y es más que cosmético: la tarea 3 escribirá este mismo
+        // suceso cuando el `PREPARING` termine de resolverse y pase a `ACTIVE`, así que
+        // escribirlo también aquí lo duplicaría en la línea de tiempo del jugador.
+        if (status === "ACTIVE") {
+          await this.events.record(
+            userId,
+            campaignId,
+            {
+              sessionId,
+              subjectType: "encounter",
+              subjectId: encounter.id,
+              visibility: "PLAYERS",
+              payload: {
+                type: "ENCOUNTER_STARTED",
+                encounterId: encounter.id,
+                // **Sin conteos.** Los llevaba —`combatantCount` y `positionCount`— y los dos
+                // eran una fuga por deducción que cazó la revisión de cierre: el jugador que ve
+                // dos combatientes suyos en la ficha del encuentro y lee «ocho» en el registro
+                // sabe que hay seis enemigos escondidos. El suceso dice que **empezó** un
+                // encuentro, que es lo que la mesa tiene que saber; cuántos hay se ve mirando, y
+                // lo que se ve lo decide `canView`.
+              },
             },
-          },
-          tx,
-        );
+            tx,
+          );
+        }
         return { encounter, combatants: filas };
       });
       return { ...creado.encounter, combatants: creado.combatants };
@@ -338,13 +363,20 @@ export class EncountersService {
   }
 
   /**
-   * Tarea 2.5.6 — **el encuentro activo de esta sesión, o `null`.**
+   * Tarea 2.5.6 — **el encuentro sin terminar de esta sesión, o `null`.**
    *
    * Sin esto la pantalla no puede existir: `get` exige un `encounterId` que solo conoce quien
    * acaba de llamar a `start`, así que recargar la mesa —o abrirla en otro dispositivo, o entrar
    * un jugador a mitad de combate— dejaba el combate invisible aunque estuviera en curso. La base
-   * ya garantiza **como mucho uno activo por sesión** (índice único parcial, ver `start`), así que
-   * «el activo» es una pregunta con una sola respuesta y no hace falta ningún listado.
+   * ya garantiza **como mucho un encuentro sin terminar por sesión** (índice único parcial, ver
+   * `start`), así que «el que está en curso» es una pregunta con una sola respuesta y no hace
+   * falta ningún listado.
+   *
+   * **`PREPARING` cuenta, y es la ronda de arreglo 1 (2026-09-05) la que lo corrigió.** Desde la
+   * tarea 2, `start()` puede devolver un encuentro `PREPARING` —esperando la iniciativa de quien
+   * no es el DM—, y esta consulta seguía mirando solo `ACTIVE`: el DM lo empezaba y, al siguiente
+   * sondeo, el combate desaparecía de su pantalla. Toda la capa de combate de la web cuelga de
+   * aquí (`apps/web/src/features/encounters/hooks.ts`), así que el hueco no era cosmético.
    *
    * Devuelve `null`, no un 404: «no hay combate» es el estado normal de una mesa, no un error.
    * Reutiliza `get` entero para que el filtrado por visibilidad y la renumeración densa de
@@ -355,7 +387,7 @@ export class EncountersService {
     await this.membership.requireMember(campaignId, userId);
     await this.sesion(campaignId, sessionId);
     const activo = await this.prisma.encounter.findFirst({
-      where: { sessionId, status: "ACTIVE" },
+      where: { sessionId, status: { in: ["ACTIVE", "PREPARING"] } },
       select: { id: true },
     });
     if (!activo) return null;

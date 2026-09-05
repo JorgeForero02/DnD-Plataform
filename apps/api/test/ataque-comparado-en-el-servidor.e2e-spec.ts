@@ -3,6 +3,7 @@ import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
+import { resolverPreparingAMano } from "./helpers/resolver-preparing-a-mano";
 
 // Tarea 2.5.3, contra Postgres real — el ataque, comparado en el servidor.
 //
@@ -26,6 +27,7 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
   const emailDM = `dm-atk${Date.now()}@b.com`;
   const emailPL = `pl-atk${Date.now()}@b.com`;
   let tokenDM = "";
+  let dmUserId = "";
   let tokenPL = "";
   let campaignId = "";
   let characterId = "";
@@ -45,11 +47,11 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
     prisma = app.get(PrismaService);
     const s = app.getHttpServer();
 
-    tokenDM = (
-      await request(s)
-        .post("/auth/register")
-        .send({ email: emailDM, password: "password123", displayName: "DM" })
-    ).body.token;
+    const dm = await request(s)
+      .post("/auth/register")
+      .send({ email: emailDM, password: "password123", displayName: "DM" });
+    tokenDM = dm.body.token;
+    dmUserId = dm.body.user.id;
     tokenPL = (
       await request(s)
         .post("/auth/register")
@@ -124,38 +126,26 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
       });
     expect(encuentro.status).toBe(201);
 
-    // **Puente temporal hasta la tarea 3.** `characterId` es del jugador, no del DM que empieza
-    // el combate: desde la tarea 2 (2026-09-05) `start()` ya no tira por él, le pide la
-    // iniciativa, y el encuentro nace `PREPARING` — un estado que `getSheet` no cuenta como
-    // «en la mesa» (busca `status: "ACTIVE"`), así que sin este puente el ataque vería un 404
-    // por «no lo tienes delante» en vez de comparar el ataque, que es lo que prueba este fichero.
-    // Responder la petición y escribir la iniciativa es la tarea siguiente, que todavía no
-    // existe, así que aquí se hace a mano lo que ella hará: fijar una iniciativa real y subir
-    // el encuentro.
-    if (encuentro.body.status === "PREPARING") {
-      const pendientes = await prisma.rollRequest.findMany({
-        where: { encounterId: encuentro.body.id, resolvedAt: null },
-      });
-      for (const peticion of pendientes) {
-        const combatiente = encuentro.body.combatants.find(
-          (c: { characterId: string }) => c.characterId === peticion.characterId,
-        );
-        await request(s)
-          .patch(
-            `/campaigns/${campaignId}/sessions/${sesion.body.id}/encounters/${encuentro.body.id}/combatants/${combatiente.id}`,
-          )
-          .set("Authorization", auth(tokenDM))
-          .send({ initiative: 10 });
-      }
-      await prisma.rollRequest.updateMany({
-        where: { id: { in: pendientes.map((p) => p.id) } },
-        data: { resolvedAt: new Date() },
-      });
-      await prisma.encounter.update({
-        where: { id: encuentro.body.id },
-        data: { status: "ACTIVE" },
-      });
-    }
+    // **Puente temporal hasta la tarea 3** (`docs/06-pendientes.md`). `characterId` es del
+    // jugador, no del DM que empieza el combate: desde la tarea 2 (2026-09-05) `start()` ya no
+    // tira por él, le pide la iniciativa, y el encuentro nace `PREPARING` — un estado que
+    // `getSheet` no cuenta como «en la mesa» (busca `status: "ACTIVE"`), así que sin este puente
+    // el ataque vería un 404 por «no lo tienes delante» en vez de comparar el ataque, que es lo
+    // que prueba este fichero. Sin `if`: este escenario siempre mezcla un personaje del jugador
+    // con un PNJ del DM —es lo que el criterio de cierre exige—, así que siempre nace
+    // `PREPARING` y el helper lo comprueba por su cuenta (revienta si no hay nada pendiente).
+    await resolverPreparingAMano({
+      app,
+      prisma,
+      tokenDM,
+      dmUserId,
+      campaignId,
+      sessionId: sesion.body.id,
+      encUrl: (suffix = "") =>
+        `/campaigns/${campaignId}/sessions/${sesion.body.id}/encounters${suffix}`,
+      encounterId: encuentro.body.id,
+      combatants: encuentro.body.combatants,
+    });
   });
 
   afterAll(async () => {

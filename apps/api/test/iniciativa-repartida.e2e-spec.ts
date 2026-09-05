@@ -27,6 +27,7 @@ describe("start() reparte por dueño: pide a quien no es el DM, tira por los suy
   let goblinId = "";
   let banditoId = "";
   let pnjCedidoId = "";
+  let pjSinHojaId = "";
 
   const s = () => app.getHttpServer();
 
@@ -110,6 +111,15 @@ describe("start() reparte por dueño: pide a quien no es el DM, tira por los suy
       data: { ownerId: (await prisma.user.findUnique({ where: { email: emailPL } }))!.id },
     });
     pnjCedidoId = pnjCedido;
+
+    // Un personaje del jugador **sin hoja completa** — nace del `POST` de arriba con solo
+    // nombre y nivel, sin el `PATCH .../sheet` que le da características, raza y clase.
+    pjSinHojaId = (
+      await request(s())
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ name: "Sin hoja", level: 1 })
+    ).body.id;
   });
 
   afterAll(async () => {
@@ -144,6 +154,15 @@ describe("start() reparte por dueño: pide a quien no es el DM, tira por los suy
       where: { encounterId: r.body.id, characterId: pjId },
     });
     expect(pj!.initiative).toBe(0);
+
+    // M-7 de la ronda de arreglo 1: un encuentro que nace `PREPARING` **no** escribe
+    // `ENCOUNTER_STARTED` — todavía no ha empezado, está esperando esta misma petición. Quien
+    // lo suba a `ACTIVE` lo escribirá (hoy, el puente de la tarea 3 que no existe; mañana, esa
+    // tarea de verdad), y escribirlo aquí también lo duplicaría en la línea de tiempo.
+    const sucesos = await prisma.gameEvent.findMany({
+      where: { subjectId: r.body.id, type: "ENCOUNTER_STARTED" },
+    });
+    expect(sucesos).toHaveLength(0);
   });
 
   it("un PNJ cedido a un jugador también recibe petición", async () => {
@@ -174,6 +193,12 @@ describe("start() reparte por dueño: pide a quien no es el DM, tira por los suy
       where: { encounterId: r.body.id },
     });
     expect(peticiones).toHaveLength(0);
+
+    // Y aquí SÍ, porque nace `ACTIVE`: el otro lado del mismo M-7.
+    const sucesos = await prisma.gameEvent.findMany({
+      where: { subjectId: r.body.id, type: "ENCOUNTER_STARTED" },
+    });
+    expect(sucesos).toHaveLength(1);
   });
 
   it("un jugador con dos personajes recibe dos peticiones", async () => {
@@ -207,5 +232,28 @@ describe("start() reparte por dueño: pide a quien no es el DM, tira por los suy
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({ characterIds: [segundoPjId] });
     expect(segundo.status).toBe(409);
+  });
+
+  // I-2 de la ronda de arreglo 1 (2026-09-05). Antes de esta tarea, una hoja que no deriva daba
+  // un 400 al intentar tirar por ella. Con el reparto por dueño, a un `ajeno` no se le tira —se
+  // le pide—, así que sin esta validación el 400 solo llegaba al RESPONDER su petición
+  // (`RollRequestsService.modificadorDeLaHoja`), y para entonces el encuentro ya existía,
+  // `PREPARING`, sin ninguna forma de resolverse: la petición no se cierra nunca y el combate se
+  // queda atascado. `start()` tiene que rechazar ANTES de crear nada.
+  it("un ajeno con la hoja incompleta da 400 al empezar, no un PREPARING atascado", async () => {
+    const sessionId = await nuevaSesion("Reparto 6 (hoja incompleta)");
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [pjSinHojaId, goblinId] });
+    expect(r.status).toBe(400);
+
+    // Y no dejó nada a medias: ni encuentro, ni petición, ni combatiente.
+    const encuentros = await prisma.encounter.findMany({ where: { sessionId } });
+    expect(encuentros).toHaveLength(0);
+    const peticiones = await prisma.rollRequest.findMany({
+      where: { characterId: pjSinHojaId },
+    });
+    expect(peticiones).toHaveLength(0);
   });
 });

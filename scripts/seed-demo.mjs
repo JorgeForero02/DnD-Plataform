@@ -26,18 +26,52 @@
 //   node scripts/seed-demo.mjs --base https://dnd.supportive.pro/api
 //   node scripts/seed-demo.mjs --limpiar
 //
-// La contraseña de las cuentas sale de `SEED_DEMO_PASSWORD` si está puesta. **Contra producción,
-// pónla**: la de por defecto está escrita en este fichero, y un fichero del repositorio no es un
-// secreto.
+// La contraseña sale de `SEED_DEMO_PASSWORD`. **Contra producción, pónla**: la de por defecto está
+// escrita en este fichero, y un fichero del repositorio no es un secreto.
+//
+// **Y cada cuenta puede traer la suya**, que es lo que permite sembrar con una cuenta de verdad
+// como DM y las de demostración como jugadores:
+//
+//   SEED_DEMO_DM_EMAIL / SEED_DEMO_DM_PASSWORD, y lo mismo con JUGADORA y JUGADOR.
+//
+// Una cuenta que **no** sea de `@demo.invalid` no se crea nunca desde aquí: si el correo es real,
+// lo que falta es su contraseña, no la cuenta.
 
 const MARCA = "[demo]";
 const DOMINIO = "demo.invalid";
 const CLAVE = process.env.SEED_DEMO_PASSWORD ?? "demo-de-la-sala-2026";
 
+/**
+ * **Cada cuenta puede traer la suya, y eso no es un lujo.**
+ *
+ * Sembrar con **una cuenta de verdad como DM** —la del autor— y las de demostración como
+ * jugadores es justo lo que se quiere para mirar la mesa desde dentro, y con una sola clave para
+ * las tres no se puede: o entras con la real o entras con las de mentira. Cada variable es
+ * opcional; sin ella se usa `SEED_DEMO_PASSWORD`, que es lo de siempre.
+ *
+ *   SEED_DEMO_DM_EMAIL / SEED_DEMO_DM_PASSWORD              — el DM
+ *   SEED_DEMO_JUGADORA_EMAIL / SEED_DEMO_JUGADORA_PASSWORD  — la jugadora
+ *   SEED_DEMO_JUGADOR_EMAIL / SEED_DEMO_JUGADOR_PASSWORD    — el jugador
+ *
+ * **Una cuenta real no se crea nunca desde aquí**: si el correo no es de `@demo.invalid` y no
+ * existe, el script para en vez de registrar a nadie con una contraseña que él se ha inventado.
+ */
 const CUENTAS = {
-  dm: { email: `demo-dm@${DOMINIO}`, displayName: `${MARCA} Elena, la DM` },
-  jugadora: { email: `demo-jugadora@${DOMINIO}`, displayName: `${MARCA} Marta` },
-  jugador: { email: `demo-jugador@${DOMINIO}`, displayName: `${MARCA} Bruno` },
+  dm: {
+    email: process.env.SEED_DEMO_DM_EMAIL ?? `demo-dm@${DOMINIO}`,
+    password: process.env.SEED_DEMO_DM_PASSWORD ?? CLAVE,
+    displayName: `${MARCA} Elena, la DM`,
+  },
+  jugadora: {
+    email: process.env.SEED_DEMO_JUGADORA_EMAIL ?? `demo-jugadora@${DOMINIO}`,
+    password: process.env.SEED_DEMO_JUGADORA_PASSWORD ?? CLAVE,
+    displayName: `${MARCA} Marta`,
+  },
+  jugador: {
+    email: process.env.SEED_DEMO_JUGADOR_EMAIL ?? `demo-jugador@${DOMINIO}`,
+    password: process.env.SEED_DEMO_JUGADOR_PASSWORD ?? CLAVE,
+    displayName: `${MARCA} Bruno`,
+  },
 };
 
 const CAMPANA = `${MARCA} La mina perdida`;
@@ -108,18 +142,43 @@ async function peticion(metodo, ruta, { token, body } = {}) {
 }
 
 /** Entra si la cuenta existe; la crea si no. Es la primera pieza de la idempotencia. */
-async function entrarOCrear({ email, displayName }) {
+async function entrarOCrear({ email, password, displayName }) {
   try {
-    const { token, user } = await api("POST", "/auth/login", {
-      body: { email, password: CLAVE },
-    });
+    const { token, user } = await api("POST", "/auth/login", { body: { email, password } });
     return { token, user, nueva: false };
   } catch (error) {
     if (error.status !== 401 && error.status !== 400) throw error;
-    const { token, user } = await api("POST", "/auth/register", {
-      body: { email, password: CLAVE, displayName },
-    });
-    return { token, user, nueva: true };
+
+    // **Una cuenta que no es de demostración no se crea aquí.** Registrar `alguien@gmail.com` con
+    // una contraseña inventada por un script es crear la cuenta de otra persona: si el correo es
+    // real, lo que falta es la contraseña, no la cuenta.
+    if (!email.endsWith(`@${DOMINIO}`)) {
+      throw new Error(
+        `No pude entrar como ${email} y **no es una cuenta de demostración**, así que no la creo. ` +
+          `Si la cuenta existe, revisa su contraseña; si no existe, créala desde la aplicación.`,
+      );
+    }
+
+    try {
+      const { token, user } = await api("POST", "/auth/register", {
+        body: { email, password, displayName },
+      });
+      return { token, user, nueva: true };
+    } catch (fallo) {
+      // **El 409 aquí significa una cosa concreta y hay que decirla.** «Email already registered»
+      // después de un login fallido no es «ya está sembrado»: es **la cuenta existe con OTRA
+      // contraseña**. El script se llama idempotente y solo lo es con la misma clave; sin esta
+      // frase, quien lo corre con una contraseña nueva ve un error del servidor que no explica
+      // nada. Lo encontró otra sesión usándolo, no una prueba.
+      if (fallo.status === 409) {
+        throw new Error(
+          `La cuenta ${email} ya existe, pero la contraseña que le estoy dando no es la suya. ` +
+            `Vuelve a correrlo con la contraseña con la que se sembró —o con otra cuenta— en ` +
+            `SEED_DEMO_PASSWORD (o en la variable de esa cuenta).`,
+        );
+      }
+      throw fallo;
+    }
   }
 }
 
@@ -560,12 +619,11 @@ async function main() {
   }
 
   console.log(`
-Listo. Entra con cualquiera de estas tres cuentas (contraseña: la de SEED_DEMO_PASSWORD, o la
-de por defecto de este script):
+Listo. Entra con cualquiera de estas tres cuentas, cada una con su contraseña:
 
-  ${CUENTAS.dm.email}         — la DM
-  ${CUENTAS.jugadora.email}   — jugadora, dueña de Brann
-  ${CUENTAS.jugador.email}    — jugador, dueño de Sylas
+  ${CUENTAS.dm.email} — la DM
+  ${CUENTAS.jugadora.email} — jugadora, dueña de Brann
+  ${CUENTAS.jugador.email} — jugador, dueño de Sylas
 
 Y para borrarlo todo:  node scripts/seed-demo.mjs --base ${BASE} --limpiar
 `);

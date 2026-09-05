@@ -144,3 +144,28 @@ test("la bandeja: sin avisos no hay distintivo, y un comentario ajeno llega y ll
   await contextoDm.close();
   await contextoJugador.close();
 });
+
+test("a 390 px el panel de avisos cabe entero en la pantalla", async ({ browser }) => {
+  // **Lo cazó un paseo de uso contra producción, no una prueba.** Colgado del botón con
+  // `right-0`, el panel se salía **por la izquierda** cuando el botón no está pegado al borde —a
+  // 390 px lo empujan el conmutador de tema y «Cuenta»— y se leía «…undren Piedrarroja». El
+  // navegador no da error por pintar fuera del lienzo, y `jsdom` no maqueta: esto solo se ve
+  // midiendo.
+  test.setTimeout(120_000);
+  const contexto = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await contexto.newPage();
+  await registrarse(page, "estrecha");
+
+  await page.getByRole("button", { name: /^Avisos/ }).click();
+  const panel = page.getByRole("dialog", { name: "Avisos" });
+  await expect(panel).toBeVisible();
+
+  const caja = await panel.boundingBox();
+  expect(caja).not.toBeNull();
+  expect(caja!.x).toBeGreaterThanOrEqual(0);
+  expect(caja!.x + caja!.width).toBeLessThanOrEqual(390);
+  // Y su contenido no se corta por dentro: la frase se lee entera.
+  await expect(panel.getByText(/No tienes avisos/)).toBeVisible();
+
+  await contexto.close();
+});

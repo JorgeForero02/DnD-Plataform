@@ -286,3 +286,223 @@ etiqueta honesta de lo que pasaba.
 
 ---
 
+
+---
+
+## Segunda remesa, movida el 2026-09-05: el detalle por tarea de los planes 05, 07 y 08
+
+**Seis entradas más, enteras y sin reescribir**, cuando el fichero vivo llegó a 1018 de sus 1000
+líneas. Mismo criterio que la primera remesa: se queda **un hito por entrega** en
+`docs/07-historial.md` y se archiva **el detalle por tarea**.
+
+## Ayudar da ventaja y caduca cuando el SRD dice (2026-09-05, plan 08 · I8)
+
+**Qué.** La acción **Ayudar** existe en el SRD y la maqueta la pintaba como «Ayuda de Mira **+1d4**».
+Ese +1d4 es **`Bless`**, que es un conjuro; el d6 es Inspiración Bárdica, que es un rasgo de bardo.
+Ayudar da **ventaja**. Las reglas mandan sobre la maqueta y el rótulo se corrige.
+
+**Cómo.** Es una condición con vencimiento —`CharacterCondition` con `key: "helped"`—, no una tabla
+nueva: tiene exactamente la misma forma, una clave sobre un personaje con origen y con caducidad, y
+ese sistema existe desde 2C.4. **No es una condición del SRD** y aun así el motor la entiende a
+propósito: entra en la sugerencia de ventaja del ataque, para que nadie tenga que acordarse.
+
+Los tres límites del SRD, uno por uno:
+
+1. **Una sola tirada.** Se cumple: la consume **el primer ataque**, y el segundo ya tira un dado.
+   Se consume **después** de tirar, para que una tirada rechazada no la gaste.
+2. **El enemigo a cinco pies de quien ayuda.** **No se comprueba, y no se finge.** Son distancias y
+   este producto no tiene tablero. La pantalla lo dice: *«la cercanía la juzgas tú»*, con su prueba.
+3. **Caduca al principio del turno siguiente del ayudante.** Se cumple sin inventar un reloj: un
+   asalto **son seis segundos** del reloj de campaña (D-2C-1), así que es un asalto exacto.
+   **Probado por mutación**: quitándole el vencimiento, el e2e se pone rojo en dos sitios.
+
+**Y el flanqueo NO se ha construido**, dicho aquí para que no parezca un olvido: es **opcional del
+DMG**, no del SRD, da **ventaja** y no un `+3` —ese +2 es de 3.ª edición y de Pathfinder—, y
+necesitaría saber quién está adyacente a quién, o sea el tablero de la fase 3. Si algún día entra,
+será **interruptor por campaña** y dando ventaja.
+
+**Dónde se usa.** En **tu** tarjeta del elenco, no en la del otro: la regla de la mesa es que sobre
+el personaje de otro jugador no van mandos, y ayudar es una acción tuya con un parámetro.
+
+**Cómo revertirlo.** `git revert` del commit. Las filas `helped` que queden son inertes: sin la
+entrada en `VENTAJA_EN_ATAQUE` no calculan nada, y vencen solas.
+
+## La inspiración existe: la concede el DM, se gasta y se regala (2026-09-05, plan 08 · I8)
+
+**Qué.** De los tres botones de intervención que pinta la maqueta, **dos son falsos** y uno era una
+promesa vacía. Ahora ese uno funciona de punta a punta.
+
+- «Ventaja por flanqueo **+3**»: el flanqueo es **opcional del DMG**, no del SRD, y da **ventaja**,
+  no un número —el +2 es de 3.ª y de Pathfinder—. Además necesitaría saber quién está adyacente a
+  quién, o sea el tablero. **No se construye, y el commit lo dice para que no parezca un olvido.**
+- «Ayuda de Mira **+1d4**»: **Ayudar** existe y da **ventaja**; el +1d4 es `Bless`. Va en 8.2.
+- «Usar inspiración»: correcto, y es lo que se ha construido.
+
+**Cómo, y aquí está la decisión.** **No hay `Character.inspired`.** El plan pedía un booleano, pero
+`CharacterResource` ya es *«un contador con máximo»* y `schema.prisma` la nombra desde 2A.8 como
+«recursos consumibles: **inspiracion**, furia, ki…»: era literalmente el primer ejemplo con el que
+esa tabla se escribió. Una columna nueva habría sido **una segunda verdad sobre el mismo hecho**. La
+fila es `key: "inspiration"`, `max: 1` —*«you either have inspiration or you don't»*—, `NONE` y
+`DM_ONLY`, y **se siembra al crear el personaje**, no al terminar la ficha: no viene de la clase.
+
+**Dos agujeros que aparecieron al sembrarla, y valen para todos los recursos:**
+
+1. **Gastar lo que no hay devolvía 200.** El recorte de abajo se tragaba el exceso, así que pedir un
+   espacio de conjuro con cero respondía **exactamente igual** que gastarlo. Ahora es **409**.
+2. **Reponer no pasaba por el candado de `grantedBy`.** El candado vivía solo en `upsert`. Con la
+   inspiración sembrada, un jugador se la habría concedido a sí mismo pulsando «+1» en su propia
+   hoja. Ahora reponer un `DM_ONLY` exige ser DM. **Probado por mutación**: quitando el candado, el
+   e2e se pone rojo con 201 donde esperaba 403.
+
+**Gastar y tirar son un solo gesto.** `spendInspiration` viaja **en la petición de la tirada** —del
+panel de la mesa, de la hoja, del ataque y de una petición del DM—, y el servidor gasta y tira en la
+misma transacción. Por separado había dos formas de romperlo: gastarla y que la tirada falle
+—perdida sin tirar—, o tirar y que el gasto falle —ventaja gratis—. Y **con desventaja declarada se
+rechaza con 400** en vez de quemarla para nada: se anularían.
+
+**Regalar** (`POST .../resources/:key/give`) mueve las dos filas en una transacción y deja **un
+solo** suceso `RESOURCE_GIVEN` con los dos nombres. Es SRD: *«you can give it to another player»*.
+
+**Cómo revertirlo.** `git revert` del commit y `ALTER TYPE` no se puede deshacer sin recrear el
+enum; el valor `RESOURCE_GIVEN` puede quedarse sin usar sin romper nada. Las filas sembradas de
+inspiración son inertes si nadie las lee.
+
+## Cada personaje tiene su color, y es el mismo en el hilo y en el elenco (2026-09-05, plan 05 · D3)
+
+**Qué.** Hasta hoy la voz de una intervención en el hilo era una **huella del `actorUserId` sobre
+cuatro tonos**, y el retrato del elenco era **cobre para todos**. Dos defectos y un solo arreglo:
+con cinco personas en la mesa dos compartían color y **nadie podía cambiarlo**, y los dos personajes
+de un mismo jugador salían idénticos porque la huella era del usuario, no del personaje.
+
+**Cómo.** `Character.color`, nulable y sin valor por defecto en la base (migración
+`20260906020000_character_color`). Guarda una **clave** de una lista cerrada de ocho
+(`CHARACTER_COLORS`, en `packages/shared`), nunca un hexadecimal: el mismo color tiene que verse en
+los tres temas y una clave se puede medir de contraste una vez. `null` significa «no he elegido», y
+entonces manda una huella **del `id` del personaje** — el mismo personaje, el mismo color, siempre.
+Una clave escrita no se pisa nunca.
+
+**Un solo sitio decide el color de alguien:** `vozDePersonaje` (`apps/web/src/dominio/voces.ts`).
+Lo llaman la voz del hilo y el retrato del elenco, que antes eran dos cálculos distintos.
+
+**Cuatro tokens de voz NUEVOS** —salvia, ciruela, índigo y arena— en `apps/web/src/ui/tokens.css`,
+en los tres temas, **con sus 24 contrastes medidos en el navegador** y anotados en el propio
+fichero. Ninguno reutiliza `--warning-text` (el ámbar de «cuidado») ni `--muted` («esto está
+apagado»). Las otras cuatro voces sí son tokens que ya existían y que no cambian de oficio. El peor
+de los 24 es 4.85:1 sobre 4.5 exigido.
+
+**Y el selector avisa, no prohíbe:** si otro personaje de la mesa ya va de ese color, se dice y se
+nombra a quién, y se deja elegir igual. El color no distingue nada que importe — el nombre va
+escrito al lado.
+
+**Cómo revertirlo.** `git revert` de los dos commits (`1aba8b2` servidor, el de web) y
+`ALTER TABLE "Character" DROP COLUMN "color"`. La columna es nulable y nada más la lee, así que
+dejarla puesta tampoco rompe nada.
+
+**Trampa que costó tiempo:** el hilo solo conoce el **usuario** que actuó, no el personaje. Quién
+habla se resuelve en `HiloDeSesion.tsx` con tres reglas escritas —el sujeto si el suceso es sobre un
+personaje; si no, el único personaje vivo de ese jugador; y si lleva dos o más, ninguno—, porque
+elegir por él pintaría a un personaje con el color de su hermano.
+
+## Reclasificar una ficha dice lo que cuesta, y deja rastro (2026-09-05, plan 07 · I16)
+
+**Qué.** Cambiar el tipo de una ficha ya escrita convertía un PNJ con statblock, enlaces y
+comentarios en «Documento» **de un clic y sin dejar constancia**. El registro es la auditoría de esta
+aplicación: un cambio de naturaleza que no aparece en él **no se puede deshacer**, porque nadie sabe
+que pasó.
+
+**Y la ficha señalaba el sitio equivocado.** Decía «en el editor»; `EntityEditor` recibe `type` como
+**prop** y no lo cambia nunca, así que ahí el gesto **no existe**. El único sitio donde se
+reclasifica son **los chips de tipo del taller del DM**. La confirmación llegó a escribirse en el
+editor antes de medirlo, y hubo que moverla — que es el argumento de medir primero.
+
+**Las dos piezas, y son norma general del proyecto.** La confirmación **dice la consecuencia, no el
+riesgo**: los dos tipos con su rótulo real, de dónde sale y dónde aparece, que quien la busque donde
+estaba no la va a encontrar, **lo que NO se pierde** —cuerpo, etiquetas, enlaces, comentarios— y,
+solo si era un PNJ, que su statblock deja de tener sentido. **Ni una vez «¿estás seguro?»**: se pulsa
+sin leer y encima tranquiliza, y hay una prueba que lo vigila. Y el cambio **escribe
+`ENTITY_RETYPED`**, con **los dos tipos** —«ahora es un Documento» no dice qué se perdió— heredando
+la audiencia de la ficha.
+
+**Solo pregunta al editar una que ya existe.** Escribiendo una nueva, el chip elige de qué tipo va a
+ser y no reclasifica nada: una confirmación que salta cuando no hace falta se aprende a ignorar en
+dos días, y entonces tampoco protege el caso que importa.
+
+**El valor del suceso va en el payload como CLAVE** —`NPC`, `DOCUMENT`— y se traduce al pintar, que
+es donde vive el español. Un registro guarda datos, no prosa.
+
+**Cómo se comprobó.** Mutación en las dos mitades: sin el diálogo, cuatro pruebas de pantalla se
+ponen rojas; sin el suceso, el e2e del rastro. Y hay una prueba de que **guardar sin cambiar el tipo
+no escribe nada**: un suceso en cada guardado es ruido, y el ruido hace que nadie lea el registro.
+
+**Cómo revertirlo.** `git revert` del commit y una migración que quite `ENTITY_RETYPED` del enum
+—los valores de un enum de PostgreSQL no se borran en caliente, así que en la práctica se queda
+huérfano y no molesta.
+
+---
+
+## Un vocabulario del daño con dos formas, y la diferencia es la decisión (2026-09-05, plan 07 · D-OP-14)
+
+**Qué.** La traducción de los tipos de daño estaba **copiada en tres pantallas**. Comparadas entrada
+por entrada antes de borrar ninguna: `character-sheet` y `campaign-items` eran **idénticas** en las
+trece; `inventory` difiere en **cuatro** —`contund.`, `perf.`, `cort.` y **`rayo`** donde las otras
+dicen `relámpago`—.
+
+**Por eso no se fusionan en una tabla sola, y es lo que hay que no deshacer:** la forma corta de
+`inventory` **no es un descuido**, es lo que hace que su fila quepa. Unificar a ciegas rompe esa
+tabla, y ya se intentó una vez. El módulo expone **las dos formas** y **cada consumidor elige la
+suya a propósito**: la hoja, el catálogo, el bestiario y la traza usan la larga —se leen—; la fila
+del inventario, la corta —cabe—.
+
+**Las dos tablas son completas y ninguna deriva de la otra.** Con un valor por defecto, añadir un
+tipo de daño daría una corta silenciosamente larga y la fila se rompería sin que nada avisara. Así
+el compilador obliga a rellenar las dos, y una prueba las cruza contra el esquema de `@dnd/shared`.
+
+**Y nace `apps/web/src/dominio/`, como decisión declarada** en
+[01-arquitectura.md](./01-arquitectura.md): la forma **legible en español** de lo que `shared`
+declara como dato. No va en `packages/shared` —allí vive la forma de los datos, no su traducción— ni
+dentro de un `features/<x>/`, que es exactamente cómo nacieron las tres copias.
+
+**Cómo se comprobó.** Mutación: al «unificar» las dos formas, dos pruebas se ponen rojas — la que
+fija las cuatro abreviaturas y la que cuenta cuántas coinciden.
+
+**Cómo revertirlo.** `git revert` del commit: vuelven las tres copias, y con ellas la que dice
+«rayo» sin que nadie lo sepa.
+
+---
+
+## Un concepto, un icono — y una prueba que lo sostiene (2026-09-05, plan 07)
+
+**Qué.** Había **diez ficheros de iconos** y conceptos repetidos: escudo con tres definiciones,
+mochila con tres, sol y luna con dos. La auditoría original contaba «4 iconos» porque **solo miró
+`ui/Iconos.tsx`**; el número real ronda los 76. Y **ningún carril podía arreglarlo**: los seis
+tenían `features/**` prohibido, así que las copias se acumularon sin que nadie las viera juntas.
+
+**Lo que de verdad cierra la ficha es la prueba**, no la limpieza. Limpiar hoy solo compraba tiempo:
+el siguiente que necesitara un escudo y no encontrara el de `ui` dibujaría otro.
+`iconos-sin-duplicados.test.ts` barre todos los ficheros de iconos de `features/` y se pone roja si
+uno redefine un nombre que `ui/Iconos.tsx` ya exporta.
+
+**Y la prueba encontró tres que la lectura a ojo se había dejado** —el escudo del catálogo de
+objetos, el «más» de las secciones y la mochila del inventario—. Es exactamente su trabajo, y el
+argumento de por qué existe.
+
+**Lo que NO se fusionó, dicho:** `inventory`, `rules` y `level-up` dibujan en **rejilla de 16** y
+moverlos sería **redibujar**, que es otro commit y otra decisión. `IconoObjeto` vive en tres módulos
+y son **tres dibujos para tres significados** —un cofre, el glifo del tipo `ITEM`, una caja—; un
+icono que solo usa su módulo se queda en su módulo, porque `ui/` no es un cajón.
+
+**Dos renombrados que son mejoras, no rodeos:** el escudo del catálogo **deja de exportarse** —nadie
+lo importaba y su puerta pública es `IconoDeObjeto({ kind })`—, y `inventory/IconoMochila` pasa a
+`IconoLlevado`, que es como se llaman sus dos hermanas: se nombraba por su dibujo y era la rara.
+
+**El tamaño se conservó a mano** donde el consumidor se apoyaba en el `h-5 w-5` por defecto de
+`sessions`, porque `ui/Marco` mide en `1em`. Es la trampa que la propia ficha avisaba.
+
+**Cómo se comprobó.** Mutación: una cuarta copia del escudo pone la prueba roja al instante. Y los
+iconos movidos se miraron **en el navegador** —`armazon`, `sesion` e `inventario`—, porque `jsdom`
+no maqueta.
+
+**Cómo revertirlo.** `git revert` del commit: vuelven las copias y la prueba se va con ellas.
+
+---
+

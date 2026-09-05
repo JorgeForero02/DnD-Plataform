@@ -94,6 +94,12 @@ Dos cosas que conviene saber antes de correrlo contra producción:
 
 - **Pon `SEED_DEMO_PASSWORD`.** La contraseña por defecto está escrita en el script, y un fichero
   del repositorio no es un secreto.
+- **Cada cuenta puede traer la suya** (`SEED_DEMO_DM_EMAIL` / `SEED_DEMO_DM_PASSWORD`, y lo mismo
+  con `JUGADORA` y `JUGADOR`), que es lo que permite sembrar con **una cuenta real como DM** y las
+  de demostración como jugadores. Una cuenta que no sea de `@demo.invalid` **no se crea nunca**
+  desde el script: si el correo es real, lo que falta es su contraseña, no la cuenta.
+- **Es idempotente con la MISMA contraseña.** Con otra, el login falla y el registro choca con la
+  cuenta que ya existe: el script lo dice con esas palabras en vez de enseñar el 409 crudo.
 - **`--limpiar` borra las campañas, no las cuentas.** La API no tiene ruta para borrar un usuario y
   no se le añade una por comodidad de un script.
 

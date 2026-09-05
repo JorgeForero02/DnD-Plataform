@@ -112,7 +112,17 @@ export function BandejaDeAvisos() {
         <div
           role="dialog"
           aria-label="Avisos"
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-radius-md border border-copper bg-surface shadow-lg"
+          // **En estrecho el panel NO cuelga del botón: se ancla a la ventana.**
+          //
+          // Colgado a la derecha del botón (`absolute right-0`) su borde izquierdo caía **fuera
+          // de la pantalla** cuando el botón no está pegado al borde —a 390 px lo empujan el
+          // conmutador de tema y «Cuenta»—, y el panel salía cortado por la izquierda: se leía
+          // «…undren Piedrarroja». Lo cazó un paseo de uso contra producción, no una prueba;
+          // `jsdom` no maqueta y el navegador no da error por pintar fuera del lienzo.
+          //
+          // Por debajo de `sm` va fijo a la ventana con un margen a cada lado; a partir de ahí
+          // vuelve a colgar del botón, que es donde tiene sentido y donde hay sitio.
+          className="fixed inset-x-s2 top-16 z-40 overflow-hidden rounded-radius-md border border-copper bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+0.5rem)] sm:w-[22rem]"
         >
           <div className="flex items-center justify-between gap-s2 border-b border-muted/30 px-s3 py-s2">
             <h2 className="font-chrome text-chrome-sm font-semibold text-text">Avisos</h2>

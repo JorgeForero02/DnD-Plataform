@@ -553,11 +553,16 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
    * El DM fuerza el arranque del encuentro sin esperar a que todos los jugadores tiren
    * (2026-09-05): el sistema tira **por** quien faltaba, y la línea de tiempo tiene que decir que
    * fue el sistema y no ese jugador quien tiró.
+   *
+   * **Sin `roll`, a propósito** (ronda de arreglo 1): nadie pinta el dado suelto, y guardar un
+   * `.max(20)` mentiría el día que esta iniciativa se tire con ventaja — el detalle de los dados
+   * ya queda auditado en el suceso de la tirada misma. `characterId` sí viaja, porque es lo único
+   * que un consumidor puede resolver de verdad (la tarea 4 del plan lo manda).
    */
   z.object({
     type: z.literal("INITIATIVE_ROLLED_BY_SYSTEM"),
+    characterId: z.string().min(1),
     characterName: z.string().max(120).optional(),
-    roll: z.number().int().min(1).max(20),
     total: z.number().int(),
   }),
 ]);

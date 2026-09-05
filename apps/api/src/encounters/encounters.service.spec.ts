@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Test } from "@nestjs/testing";
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { encounterStatusSchema } from "@dnd/shared";
 import { EncountersService } from "./encounters.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -7,6 +10,25 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollsService } from "../rolls/rolls.service";
 import { GameClockService } from "../game-clock/game-clock.service";
+
+// Ronda de arreglo 1 (2026-09-05) — mismo guardián que ya existe para `GameEventType` en
+// `apps/api/src/game-events/game-events.service.spec.ts`, para `EncounterStatus`: el enum de
+// Prisma y el `z.enum` de `@dnd/shared` se mantienen a mano en dos ficheros, y `PREPARING` llegó
+// al primero sin llegar al segundo en la tarea 1 — la web seguía creyendo que solo existían
+// `ACTIVE` y `ENDED`.
+describe("el enum de Prisma y el z.enum de @dnd/shared no se separan (EncounterStatus)", () => {
+  const schema = readFileSync(join(__dirname, "..", "..", "prisma", "schema.prisma"), "utf8");
+  const enumBlock = /enum EncounterStatus \{([^}]*)\}/.exec(schema);
+
+  it("el bloque del enum existe en schema.prisma", () => {
+    expect(enumBlock).not.toBeNull();
+  });
+
+  it("el enum de Prisma tiene exactamente los valores de @dnd/shared, sin sobras ni faltas", () => {
+    const enPrisma = (enumBlock![1].match(/^\s*([A-Z_]+)\s*$/gm) ?? []).map((l) => l.trim());
+    expect(enPrisma.sort()).toEqual([...encounterStatusSchema.options].sort());
+  });
+});
 
 describe("EncountersService", () => {
   let service: EncountersService;

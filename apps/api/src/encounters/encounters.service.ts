@@ -146,9 +146,10 @@ export class EncountersService {
    * (`CharacterSheetService.getInitiativeModifier`), no `1d20 + modificador` a mano— y guarda el
    * orden **una vez**: el SRD dice que no cambia de asalto a asalto.
    *
-   * **Como mucho un encuentro `ACTIVE` por sesión, lo garantiza la base** (índice único parcial,
-   * `encounter_one_active_per_session`), no este método: la comprobación de abajo es solo un 409
-   * legible antes de gastar tiradas, la garantía de verdad es la de Postgres.
+   * **Como mucho un encuentro sin terminar (`ACTIVE` o `PREPARING`) por sesión, lo garantiza la
+   * base** (índice único parcial, `encounter_one_active_per_session`), no este método: la
+   * comprobación de abajo es solo un 409 legible antes de gastar tiradas, la garantía de verdad
+   * es la de Postgres.
    */
   async start(userId: string, campaignId: string, sessionId: string, input: StartEncounterInput) {
     await this.membership.requireDM(campaignId, userId);
@@ -320,8 +321,9 @@ export class EncountersService {
    * en combate es un momento (§5 del reseño), y salir también.
    *
    * No borra nada. El encuentro pasa a `ENDED` y se queda con su orden, sus asaltos y su rastro
-   * —el índice único es parcial sobre `ACTIVE`, así que el siguiente combate de la misma sesión
-   * no choca con él—. Es la misma decisión que archivar un personaje en vez de borrarlo (D-2.5-4).
+   * —el índice único es parcial sobre un encuentro sin terminar (`ACTIVE` o `PREPARING`), así
+   * que el siguiente combate de la misma sesión no choca con él—. Es la misma decisión que
+   * archivar un personaje en vez de borrarlo (D-2.5-4).
    */
   async end(userId: string, campaignId: string, sessionId: string, encounterId: string) {
     await this.membership.requireDM(campaignId, userId);

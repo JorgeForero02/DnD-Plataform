@@ -203,12 +203,12 @@ describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
     expect(
       lineaDeLog({
         type: "INITIATIVE_ROLLED_BY_SYSTEM",
+        characterId: "ch1",
         characterName: "Kaelith",
-        roll: 14,
         total: 16,
       }),
     ).toBe("El sistema tira la iniciativa por Kaelith (16)");
-    expect(lineaDeLog({ type: "INITIATIVE_ROLLED_BY_SYSTEM", roll: 5, total: 5 })).toBe(
+    expect(lineaDeLog({ type: "INITIATIVE_ROLLED_BY_SYSTEM", characterId: "ch2", total: 5 })).toBe(
       "El sistema tira la iniciativa por alguien (5)",
     );
   });

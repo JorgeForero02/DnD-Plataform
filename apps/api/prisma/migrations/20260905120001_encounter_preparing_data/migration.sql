@@ -5,7 +5,7 @@ ALTER TABLE "RollRequest" ADD COLUMN "encounterId" TEXT;
 ALTER TABLE "RollRequest" ADD COLUMN "cancelledAt" TIMESTAMP(3);
 
 ALTER TABLE "RollRequest" ADD CONSTRAINT "RollRequest_encounterId_fkey"
-  FOREIGN KEY ("encounterId") REFERENCES "Encounter"("id") ON DELETE CASCADE;
+  FOREIGN KEY ("encounterId") REFERENCES "Encounter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 CREATE INDEX "RollRequest_encounterId_idx" ON "RollRequest"("encounterId");
 
 -- **El índice parcial hay que recontarlo.** Con PREPARING el WHERE viejo se queda corto: cabría

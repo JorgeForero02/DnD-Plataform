@@ -12,7 +12,7 @@ import { z } from "zod";
 // aquí sigue siendo la misma: las condiciones caducan por asaltos (2C.4) contra el mismo reloj de
 // campaña que un asalto avanza.
 
-export const encounterStatusSchema = z.enum(["ACTIVE", "ENDED"]);
+export const encounterStatusSchema = z.enum(["PREPARING", "ACTIVE", "ENDED"]);
 export type EncounterStatus = z.infer<typeof encounterStatusSchema>;
 
 /**

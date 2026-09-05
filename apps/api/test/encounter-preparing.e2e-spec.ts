@@ -61,16 +61,19 @@ describe("Encounter en PREPARING y el índice recontado (e2e)", () => {
 
     // El brief pedía comprobar el mensaje contra `/encounter_one_active_per_session/`, pero el
     // motor de Prisma 5.x no expone el nombre de la restricción en el mensaje de un P2002 sobre un
-    // índice creado a mano por SQL: solo la columna (`meta.target: ["sessionId"]`), comprobado
-    // aquí mismo con un script contra la base real antes de escribir esta línea. Mismo patrón que
-    // ya usa `encounters.e2e-spec.ts` para este mismo índice (líneas 242 y 264): `rejects.toThrow()`
-    // a secas. Lo que de verdad prueba el índice no es el texto del mensaje, es que la segunda
-    // creación falle — y eso es justo lo que la mutación del paso 6 pone en rojo.
+    // índice creado a mano por SQL: solo el código y la columna. Eso sí lo expone de verdad —
+    // comprobado aquí mismo con un script contra la base real antes de escribir esta línea—, así
+    // que se afirma lo que Prisma SÍ da en vez de un `toThrow()` a secas que aceptaría cualquier
+    // error por el motivo que sea. Mismo patrón que `encounters.e2e-spec.ts` usa para este mismo
+    // índice (línea 242).
     await expect(
       prisma.encounter.create({
         data: { sessionId, status: "ACTIVE", round: 1, activePosition: 0 },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      code: "P2002",
+      meta: { target: ["sessionId"] },
+    });
 
     await prisma.encounter.delete({ where: { id: primero.id } });
   });

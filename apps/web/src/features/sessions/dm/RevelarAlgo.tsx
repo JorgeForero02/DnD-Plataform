@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { Entity } from "../../entities/api";
-import { useAllEntities, useUpdateEntity } from "../../entities/hooks";
+import { useAllEntities } from "../../entities/hooks";
+import { BotonRevelar, sePuedeRevelar } from "../../entities/BotonRevelar";
 import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
 import { EXPLICACION_DE_NIVEL } from "../../entities/visibilidad";
 import { Badge } from "../../../ui/Badge";
 import { Button, fieldControlClass } from "../../../ui";
-import { ApiError } from "../../../lib/api";
 
 // **«Revelar algo», la primera de las seis herramientas del DM.**
 //
@@ -31,26 +31,21 @@ import { ApiError } from "../../../lib/api";
 // miente es el texto. La frase se guarda para cuando exista el empujón (las notificaciones están
 // construidas en el servidor y no las lee ninguna pantalla — §8.1 de la auditoría).
 
+// **Ni el predicado ni la mutación son de aquí, y desde el ensamblado no se copian.**
+// `features/entities/BotonRevelar.tsx` es el dueño del dominio: exporta `sePuedeRevelar` —qué
+// niveles hacen que revelar signifique algo— y el botón que manda el `PATCH`. Había **tres**
+// sitios en la aplicación repitiendo las dos cosas; `CLAUDE.md` dice que un matiz de visibilidad
+// se escribe una sola vez, así que esta pantalla se queda con lo que sí es suyo —el cajón, la
+// lista, el buscador y la confirmación— y le pasa los cuatro props al dueño.
+
 /** A qué nivel se revela. «Jugadores» = todos los que se sientan a esta mesa. */
 const NIVEL_REVELADO = "PLAYERS" as const;
-
-/** Lo que la mesa todavía no ve. Los otros dos niveles ya la incluyen entera. */
-function estaOculta(e: Entity): boolean {
-  return e.visibility !== "PUBLIC" && e.visibility !== "PLAYERS";
-}
-
-function mensajeDeError(error: unknown): string {
-  // El mensaje del servidor se pinta tal cual: un rechazo suyo dice más que un aviso genérico.
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "No se pudo revelar.";
-}
 
 export function RevelarAlgo({ campaignId }: { campaignId: string }) {
   const { data: entidades, isLoading } = useAllEntities(campaignId);
   const [busqueda, setBusqueda] = useState("");
 
-  const ocultas = (entidades ?? []).filter(estaOculta);
+  const ocultas = (entidades ?? []).filter((e) => sePuedeRevelar(e.visibility));
   const texto = busqueda.trim().toLowerCase();
   const encontradas = texto ? ocultas.filter((e) => e.name.toLowerCase().includes(texto)) : ocultas;
 
@@ -91,17 +86,14 @@ export function RevelarAlgo({ campaignId }: { campaignId: string }) {
 }
 
 /**
- * Una fila, y **su propia mutación**.
+ * Una fila.
  *
- * `useUpdateEntity` necesita el `type` de la ficha para invalidar la lista de esa pestaña, y el
- * tipo cambia de fila en fila. Un hook no se puede llamar dentro de un bucle, así que cada fila
- * es un componente: así cada una monta el hook con **su** tipo y las invalidaciones que ese hook
- * ya sabe hacer —la lista por tipo, la lista completa y la página de lectura— siguen siendo
- * correctas. Reimplementarlas aquí con una mutación suelta habría sido escribir una cuarta copia
- * de las claves de caché.
+ * Es un componente propio **por la confirmación**, que es estado por fila. La mutación ya no vive
+ * aquí: la trae `BotonRevelar`, que monta `useUpdateEntity` con el tipo de SU ficha y por tanto
+ * invalida la lista correcta —la de esa pestaña, la completa y la página de lectura—. Antes esta
+ * fila montaba su propio hook y era la tercera copia de la misma decisión.
  */
 function FilaRevelable({ campaignId, entidad }: { campaignId: string; entidad: Entity }) {
-  const actualizar = useUpdateEntity(campaignId, entidad.type);
   // **La confirmación, y por qué no es ceremonia.**
   //
   // Encima de esta rejilla está impreso *«El sistema propone; tú decides. Nada llega a la mesa
@@ -130,22 +122,17 @@ function FilaRevelable({ campaignId, entidad }: { campaignId: string; entidad: E
           <span className="font-chrome text-chrome-xs text-copper-text">
             ¿Se lo enseñas a la mesa?
           </span>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() =>
-              actualizar.mutate(
-                { entityId: entidad.id, input: { visibility: NIVEL_REVELADO } },
-                // La fila desaparece de la lista al invalidarse la caché —deja de estar
-                // oculta—, pero si el servidor tarda o falla, el estado se devuelve a su sitio
-                // en vez de quedarse en «confirmando» para siempre.
-                { onSettled: () => setConfirmando(false) },
-              )
-            }
-            disabled={actualizar.isPending}
-          >
-            {actualizar.isPending ? "Revelando…" : "Sí, revelar"}
-          </Button>
+          {/* El botón del dueño del dominio hace el gesto; la confirmación es de esta pantalla.
+              Los dos rótulos nunca conviven: o está el que pregunta, o está el que responde.
+              `BotonRevelar` pinta el mensaje del servidor tal cual si falla, y devuelve `null`
+              sobre una ficha que ya no se puede revelar — inofensivo sobre una lista ya
+              filtrada con su mismo predicado. */}
+          <BotonRevelar
+            campaignId={campaignId}
+            type={entidad.type}
+            entityId={entidad.id}
+            visibility={entidad.visibility}
+          />
           <Button type="button" variant="secondary" onClick={() => setConfirmando(false)}>
             No
           </Button>
@@ -154,11 +141,6 @@ function FilaRevelable({ campaignId, entidad }: { campaignId: string; entidad: E
         <Button type="button" variant="primary" onClick={() => setConfirmando(true)}>
           Revelar a la mesa
         </Button>
-      )}
-      {actualizar.isError && (
-        <p role="alert" className="w-full font-chrome text-chrome-xs text-danger-text">
-          {mensajeDeError(actualizar.error)}
-        </p>
       )}
     </li>
   );

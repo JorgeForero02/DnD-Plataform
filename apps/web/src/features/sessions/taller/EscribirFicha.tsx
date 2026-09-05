@@ -21,7 +21,7 @@ import { LinksPanel } from "../../links/LinksPanel";
 import { CommentThread } from "../../comments/CommentThread";
 import { createLink, fetchLinks } from "../../links/api";
 import { linksKey } from "../../links/hooks";
-import { IconoMegafono, IconoPluma } from "./iconos";
+import { IconoMegafono, IconoPluma } from "../../../ui/Iconos";
 import { citasDelTexto, resolverCitas } from "./wikilinks";
 
 // **Escribir una ficha, con la visibilidad decidida al escribir y no en otra pantalla.**

@@ -3,7 +3,10 @@ import { Badge } from "../../../ui/Badge";
 import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
 import type { Entity } from "../../entities/api";
 import { useAllEntities } from "../../entities/hooks";
-import { IconoOjo, IconoOjoTachado } from "./iconos";
+import { IconoOjo, IconoOjoTachado } from "../../../ui/Iconos";
+import { Button } from "../../../ui/Button";
+import { useFlags, useSetFlag, useSets } from "../../world-state/hooks";
+import { NOMBRE_TIPO_DE_MIEMBRO_CORTO } from "../../world-state/vocabulario";
 
 // **«La mesa lo sabe» / «Sigue oculto».** La pregunta que un DM se hace todo el rato, contestada
 // de un vistazo. Copiada de `prototipo/src/features/taller/LoQueSabeLaMesa.tsx`: dos columnas
@@ -16,11 +19,19 @@ import { IconoOjo, IconoOjoTachado } from "./iconos";
 // mentira para el jugador que sí tiene la concesión. Esa media verdad se dice en voz alta debajo
 // de la columna en vez de dejar que se deduzca.
 //
-// **Marcas y conjuntos: dibujados y sin datos, y esto no es un olvido.** El servidor tiene las
-// cinco rutas (`apps/api/src/world-state/world-state.controller.ts:28-89`) y **ninguna pantalla
-// las llama nunca** (auditoría §8.1). La puerta de API en la web es de otro carril (C6), y este
-// no escribe una segunda: cuando exista `features/world-state/`, estos dos cuadros se enchufan y
-// el aviso se cae. Está en el informe del carril.
+// **Marcas y conjuntos: enchufados en el ensamblado (2026-09-04).** Nacieron dibujados y vacíos
+// porque `features/world-state/` no existía en la base de este carril. Ya existe, así que estos
+// dos cuadros **consumen sus hooks** —`useFlags`, `useSets`, `useSetFlag`— y no escriben una
+// segunda puerta de API: `features/world-state/api.ts` sigue siendo la única que habla HTTP con
+// `apps/api/src/world-state/`.
+//
+// **Lo que aquí NO está, y dónde está.** Crear un conjunto, meter y sacar miembros y levantar una
+// señal viven enteros en `world-state/PanelDeEstadoDelMundo`, montado como solapa de «Reglas». No
+// se traen: la maqueta pone en esta solapa dos **cuadros de estado** dentro de una rejilla de dos
+// columnas, no tres formularios, y duplicar aquí los de allá sería tener dos autorías de la misma
+// cosa. Lo que sí se queda es **poner y quitar una marca**, que es un botón por fila y el gesto
+// que un DM hace preparando —«el puente está caído»— sin salir del taller. El pie de cada cuadro
+// dice dónde está el resto en vez de dejar que se busque.
 
 function Columna({
   titulo,
@@ -77,14 +88,164 @@ function Columna({
   );
 }
 
-function CuadroSinPuerta({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Cuadro({
+  titulo,
+  cuenta,
+  children,
+  pie,
+}: {
+  titulo: string;
+  cuenta?: number;
+  children: ReactNode;
+  pie: ReactNode;
+}) {
   return (
     <section aria-label={titulo} className="rounded-radius-md border border-muted bg-bg p-s3">
-      <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+      <h4 className="mb-s2 flex items-center gap-s2 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
         {titulo}
+        {cuenta !== undefined && (
+          <span className="font-data normal-case tracking-normal text-muted">{cuenta}</span>
+        )}
       </h4>
-      <p className="font-chrome text-chrome-sm text-muted">{children}</p>
+      {children}
+      <p className="mt-s2 font-chrome text-chrome-xs text-muted">{pie}</p>
     </section>
+  );
+}
+
+/**
+ * Las marcas del mundo, con su interruptor.
+ *
+ * **Una marca puesta puede disparar una regla**, así que esto no es una lista de lectura: es la
+ * palanca que le faltaba al DM para arrancar una cadena. `useSetFlag` ya invalida las reglas
+ * además de las marcas, precisamente porque `fireCount` y `lastFiredAt` cambian al dispararse.
+ */
+function Marcas({ campaignId }: { campaignId: string }) {
+  const marcas = useFlags(campaignId);
+  const poner = useSetFlag(campaignId);
+
+  return (
+    <Cuadro
+      titulo="Marcas del mundo"
+      cuenta={marcas.data?.length}
+      pie={
+        <>
+          Un hecho que la campaña recuerda. Para crear una nueva, y para las señales, «Reglas» ·
+          «Estado del mundo».
+          {poner.isError && (
+            <span role="alert" className="block text-danger-text">
+              {(poner.error as Error).message}
+            </span>
+          )}
+        </>
+      }
+    >
+      {marcas.isLoading && (
+        <p className="font-chrome text-chrome-sm text-muted">Leyendo las marcas…</p>
+      )}
+      {marcas.isError && (
+        <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
+          No se pudieron leer las marcas. Un cuadro vacío aquí no significa que no haya ninguna.
+        </p>
+      )}
+      {marcas.isSuccess &&
+        (marcas.data.length === 0 ? (
+          <p className="font-chrome text-chrome-sm text-muted">
+            Ninguna marca todavía. Una regla armada sobre una marca no se dispara hasta que alguien
+            la pone.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {marcas.data.map((m) => (
+              <li
+                key={m.id}
+                className="flex flex-wrap items-center justify-between gap-s2"
+                data-testid="marca-en-el-taller"
+              >
+                <span className="min-w-0 truncate font-chrome text-chrome-sm text-text">
+                  {m.key}
+                </span>
+                <span className="flex shrink-0 items-center gap-s2">
+                  <span
+                    className={[
+                      "font-chrome text-chrome-xs",
+                      m.value ? "text-copper-text" : "text-muted",
+                    ].join(" ")}
+                  >
+                    {m.value ? "Puesta" : "Quitada"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="px-2 py-0.5 text-chrome-xs"
+                    disabled={poner.isPending}
+                    aria-label={(m.value ? "Quitar" : "Poner") + " la marca " + m.key}
+                    onClick={() => poner.mutate({ key: m.key, value: !m.value })}
+                  >
+                    {m.value ? "Quitarla" : "Ponerla"}
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </Cuadro>
+  );
+}
+
+/**
+ * Los conjuntos, de lectura.
+ *
+ * «¿Quién sabe esto?», que es la pregunta de esta solapa. Aquí solo se cuentan; quitarlos y
+ * rellenarlos es de `PanelDeEstadoDelMundo`, que además sabe resolver el nombre de un miembro y
+ * enseñar su identificador crudo cuando apunta a algo que ya no existe.
+ */
+function Conjuntos({ campaignId }: { campaignId: string }) {
+  const conjuntos = useSets(campaignId);
+
+  return (
+    <Cuadro
+      titulo="Conjuntos"
+      cuenta={conjuntos.data?.length}
+      pie="Quién sabe qué. Se crean y se rellenan en «Reglas» · «Estado del mundo»."
+    >
+      {conjuntos.isLoading && (
+        <p className="font-chrome text-chrome-sm text-muted">Leyendo los conjuntos…</p>
+      )}
+      {conjuntos.isError && (
+        <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
+          No se pudieron leer los conjuntos. Un cuadro vacío aquí no significa que no haya ninguno.
+        </p>
+      )}
+      {conjuntos.isSuccess &&
+        (conjuntos.data.length === 0 ? (
+          <p className="font-chrome text-chrome-sm text-muted">
+            Ningún conjunto todavía. Una regla puede preguntar por su tamaño o por si alguien está
+            dentro.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {conjuntos.data.map((c) => (
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-s2"
+                data-testid="conjunto-en-el-taller"
+              >
+                <span className="min-w-0 truncate font-chrome text-chrome-sm text-text">
+                  {c.label}
+                </span>
+                <span className="shrink-0 font-chrome text-chrome-xs text-muted">
+                  {c.members.length === 0
+                    ? "nadie dentro"
+                    : c.members.length === 1
+                      ? "1 " + NOMBRE_TIPO_DE_MIEMBRO_CORTO[c.members[0].memberType]
+                      : c.members.length + " dentro"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </Cuadro>
   );
 }
 
@@ -127,14 +288,8 @@ export function LoQueSabeLaMesa({ campaignId }: { campaignId: string }) {
       </div>
 
       <div className="grid gap-s3 md:grid-cols-2">
-        <CuadroSinPuerta titulo="Marcas del mundo">
-          El servidor las guarda y las lee, pero la web todavía no tiene por dónde pedirlas. En
-          cuanto exista, este cuadro las enseña sin cambiar de sitio.
-        </CuadroSinPuerta>
-        <CuadroSinPuerta titulo="Conjuntos">
-          Lo mismo: existen en el servidor y ninguna pantalla los ha pedido nunca. Aquí es donde van
-          a vivir.
-        </CuadroSinPuerta>
+        <Marcas campaignId={campaignId} />
+        <Conjuntos campaignId={campaignId} />
       </div>
     </div>
   );

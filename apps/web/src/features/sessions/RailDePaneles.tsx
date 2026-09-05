@@ -1,4 +1,5 @@
 import { IconoBuscar, IconoElenco, IconoMochila } from "./iconos";
+import { IconoD20 } from "../../ui/Iconos";
 
 // B1.3 — **el estrato SUPERPUESTO, y su puerta.**
 //
@@ -21,9 +22,14 @@ import { IconoBuscar, IconoElenco, IconoMochila } from "./iconos";
 // llevaba un cuarto del ancho para una búsqueda que se usa a ráfagas. De columna a panel: el ancho
 // vuelve al hilo, que es donde pasa la partida.
 
-export type PanelAbierto = "hoja" | "bolsa" | "mundo";
+export type PanelAbierto = "hoja" | "bolsa" | "mundo" | "dados";
 
-const TECLAS: Record<PanelAbierto, string> = { hoja: "N", bolsa: "I", mundo: "M" };
+// **«Dados» es la cuarta, y su acelerador es el único inventado.** La maqueta escribe tres
+// —`N` hoja, `I` bolsa, `M` mundo— y **no da ninguno para los dados**, porque en ella el panel
+// de dados no se abre desde el rail: aparece solo cuando hay que tirar. Aquí sí hace falta una
+// puerta mientras no exista quien lo levante por su cuenta, así que se le pone la `D` que nadie
+// más usa. Declarado en el informe del ensamblado; si el autor prefiere otra, es esta línea.
+const TECLAS: Record<PanelAbierto, string> = { hoja: "N", bolsa: "I", mundo: "M", dados: "D" };
 
 function Boton({
   panel,
@@ -93,6 +99,10 @@ export function RailDePaneles({
         motivo="No llevas ningún personaje en esta mesa"
       />
       <Boton panel="mundo" etiqueta="Mundo" icono={<IconoBuscar />} onAbrir={onAbrir} />
+      {/* **Los dados no son un superpuesto**: el panel va anclado abajo a `z-30` y CONVIVE con
+          los cajones (`z-40`), así que se puede tener la hoja abierta y tirar. El rail solo lo
+          levanta; quien lo coloca es el compositor, fuera del `<main>`. */}
+      <Boton panel="dados" etiqueta="Dados" icono={<IconoD20 />} onAbrir={onAbrir} />
     </nav>
   );
 }

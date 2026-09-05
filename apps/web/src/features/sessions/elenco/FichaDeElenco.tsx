@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useId, useState } from "react";
+import type { DamageType } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
 import {
@@ -8,9 +9,10 @@ import {
   useGameClock,
 } from "../../character-sheet/hooks";
 import { HojaCalculada } from "../../character-sheet/HojaCalculada";
+import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
 import { nombreCondicion } from "../../character-sheet/vocabulario";
 import { describirRestante } from "../../character-sheet/duraciones";
-import { IconoEspada, IconoEscudo, IconoOjo } from "./iconos";
+import { IconoEscudo, IconoEspada, IconoOjo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
 import { Dialog } from "../../../ui/Dialog";
 import { PonerCondicion } from "./PonerCondicion";
@@ -64,6 +66,11 @@ export function FichaDeElenco({
   const { data: condiciones } = useConditions(campaignId, personaje.id);
   const cambiarPg = useChangeHp(campaignId, personaje.id);
   const [panel, setPanel] = useState<"dano" | "condicion" | "hoja" | null>(null);
+  // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
+  // `Dialog` cerrado y lo que hace falta es poder LIMPIARLO al cerrar: el estado que sobrevive a
+  // un cierre es exactamente el que hizo que la hoja mandara una causa falsa (ver `PonerDano`).
+  const [tipoDeDano, setTipoDeDano] = useState<DamageType | "">("");
+  const idTipoDeDano = useId();
 
   const actual = hoja?.hp.current ?? null;
   const maximo = hoja?.hp.max ?? null;
@@ -120,8 +127,8 @@ export function FichaDeElenco({
         // Dos golpes, no un formulario. La corrección exacta se hace en la hoja, con su control
         // de concurrencia; aquí solo está el gesto que se repite treinta veces por sesión.
         //
-        // **El DM no lleva esto**: lleva el cajón de «Daño», que además admite el crítico y
-        // queda preparado para el tipo de daño. Los ±5 se quedan donde la maqueta no pone
+        // **El DM no lleva esto**: lleva el cajón de «Daño», que admite el crítico y **el tipo
+        // de daño**, y que enseña la traza del servidor. Los ±5 se quedan donde la maqueta no pone
         // mandos —el personaje propio de un jugador—, porque quitarlos sería dejarle sin la
         // única forma de anotar un golpe sin abrir la hoja entera.
         <div className="mt-s2 flex items-center gap-s2">
@@ -187,7 +194,31 @@ export function FichaDeElenco({
             characterId={personaje.id}
             nombre={personaje.name}
             abierto={panel === "dano"}
-            onCerrar={() => setPanel(null)}
+            onCerrar={() => {
+              setPanel(null);
+              // Se limpia con el cierre: si no, el siguiente golpe al mismo personaje saldría
+              // «de fuego» porque el anterior lo era, y nadie lo habría vuelto a decir.
+              setTipoDeDano("");
+            }}
+            tipoDeDano={tipoDeDano || undefined}
+            // **El selector es el de la hoja, no una copia.** `SelectorDeTipoDeDano` no consulta
+            // nada y su vocabulario es el largo de `character-sheet`; escribir aquí un segundo
+            // desplegable sería una quinta lista de tipos de daño en la aplicación.
+            ranuraTipoDeDano={
+              <div className="mt-s3 flex items-center gap-s2">
+                <label
+                  className="font-chrome text-chrome-sm text-text"
+                  htmlFor={`${idTipoDeDano}-tipo`}
+                >
+                  De qué tipo
+                </label>
+                <SelectorDeTipoDeDano
+                  id={`${idTipoDeDano}-tipo`}
+                  value={tipoDeDano}
+                  onChange={setTipoDeDano}
+                />
+              </div>
+            }
           />
           <PonerCondicion
             campaignId={campaignId}

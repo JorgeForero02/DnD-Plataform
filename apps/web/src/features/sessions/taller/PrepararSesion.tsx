@@ -1,19 +1,18 @@
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../../../ui/Button";
 import { Badge } from "../../../ui/Badge";
 import { EmptyState } from "../../../ui/Collection";
 import { IconoDeTipo } from "../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
-import { useAllEntities, useUpdateEntity } from "../../entities/hooks";
+import { useAllEntities } from "../../entities/hooks";
+import { BotonRevelar, sePuedeRevelar } from "../../entities/BotonRevelar";
 import type { Entity } from "../../entities/api";
 import { useSessions } from "../hooks";
 import type { Session } from "../api";
 import { useNpcs, useStatblocks } from "../../bestiario/hooks";
 import { IconoBestiario } from "../../bestiario/iconos";
 import { useRollRequests } from "../../roll-requests/hooks";
-import { IconoD20, IconoMegafono, IconoMundo } from "./iconos";
+import { IconoD20, IconoMegafono, IconoMundo } from "../../../ui/Iconos";
 
 // **Preparar la sesión que viene.** Los cuatro bloques de la maqueta
 // (`prototipo/src/features/taller/PrepararSesion.tsx`), con sus rótulos literales: «La escena
@@ -75,16 +74,16 @@ function siguientePlanificada(sesiones: Session[] | undefined): Session | null {
 }
 
 /**
- * Una fila de «A mano para revelar», con su propio botón.
+ * Una fila de «A mano para revelar».
  *
- * Es un componente por fila **a propósito**: `useUpdateEntity` se ata al tipo de la ficha para
- * saber qué caché invalidar, y el tipo cambia de una fila a la siguiente. Un solo hook arriba
- * tendría que adivinar un tipo, y refrescaría la lista equivocada.
+ * **El botón es el de `features/entities`, no uno propio.** Ese módulo es el dueño del dominio:
+ * exporta `sePuedeRevelar` —el predicado— y `BotonRevelar` —la mutación, con `useUpdateEntity`
+ * atado al tipo de SU ficha, que es lo que decide qué caché se invalida—. Esta fila reimplementaba
+ * las dos cosas, y era una de las **tres** copias que había en la aplicación; `CLAUDE.md` obliga a
+ * escribir un matiz de visibilidad una sola vez. Lo que se conserva es la fila: su tipo, su
+ * nombre y su insignia.
  */
 function FilaParaRevelar({ campaignId, ficha }: { campaignId: string; ficha: Entity }) {
-  const actualizar = useUpdateEntity(campaignId, ficha.type);
-  const [error, setError] = useState<string | null>(null);
-
   return (
     <li className="flex flex-wrap items-center justify-between gap-s2 border-b border-muted py-s2 last:border-b-0">
       <span className="min-w-0">
@@ -93,32 +92,19 @@ function FilaParaRevelar({ campaignId, ficha }: { campaignId: string; ficha: Ent
           {ETIQUETA_DE_TIPO[ficha.type]}
         </span>
         <span className="block truncate font-world text-world-base text-text">{ficha.name}</span>
-        {error && (
-          <span className="block font-chrome text-chrome-xs text-danger-text">{error}</span>
-        )}
       </span>
       <span className="flex items-center gap-s2">
         <Badge visibility={ficha.visibility} />
-        <Button
-          type="button"
-          disabled={actualizar.isPending}
-          onClick={() => {
-            setError(null);
-            actualizar.mutate(
-              { entityId: ficha.id, input: { visibility: "PLAYERS" } },
-              // El mensaje del servidor, tal cual: es el que dice por qué no se pudo.
-              { onError: (err) => setError((err as Error).message) },
-            );
-          }}
-        >
-          Revelar
-        </Button>
+        <BotonRevelar
+          campaignId={campaignId}
+          type={ficha.type}
+          entityId={ficha.id}
+          visibility={ficha.visibility}
+        />
       </span>
     </li>
   );
 }
-
-const OCULTAS: Entity["visibility"][] = ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"];
 /** Cuántas fichas ocultas se ofrecen de una vez. Es una bandeja de preparación, no un listado. */
 const A_MANO = 8;
 
@@ -132,7 +118,7 @@ export function PrepararSesion({ campaignId }: { campaignId: string }) {
   const proxima = siguientePlanificada(sesiones.data);
   const notas = proxima ? textoDeNotas(proxima.notes) : "";
   const ocultas = [...(fichas.data ?? [])]
-    .filter((f) => OCULTAS.includes(f.visibility))
+    .filter((f) => sePuedeRevelar(f.visibility))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const propias = statblocks.data?.campaign ?? [];
 

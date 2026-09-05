@@ -10,6 +10,7 @@ import { HiloDeSesion } from "./hilo/HiloDeSesion";
 import { HerramientasDeNarracion } from "./dm/HerramientasDeNarracion";
 import { ConsultaDelMundo } from "./dm/ConsultaDelMundo";
 import { TallerDelDM } from "./taller/TallerDelDM";
+import { PanelDeDadosDeLaMesa } from "../rolls/panel/PanelDeDadosDeLaMesa";
 import { TiraDeIniciativa } from "../encounters/TiraDeIniciativa";
 import { EmpezarCombate } from "../encounters/EmpezarCombate";
 import { useCurrentEncounter } from "../encounters/hooks";
@@ -165,7 +166,10 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
 
             {esDm && (
               <aside className="scroll-quiet flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3">
-                <HerramientasDeNarracion onConsultarElMundo={() => setPanel("mundo")} />
+                <HerramientasDeNarracion
+                  campaignId={campaignId}
+                  onConsultarElMundo={() => setPanel("mundo")}
+                />
               </aside>
             )}
           </main>
@@ -199,6 +203,24 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         personajeId={miPersonaje?.id}
         esDm={esDm}
       />
+
+      {/* **El panel de dados va FUERA del `<main>`, y no es un detalle de orden.**
+          Es `fixed inset-x-0 bottom-0 z-30`: se ancla a la ventana, así que dentro de la rejilla
+          no aportaría nada y sí heredaría sus medidas. Y su `z-30` está por debajo del `z-40` de
+          los cajones **a propósito** (maqueta, §5 de la auditoría): el panel de dados **convive**
+          con el estrato superpuesto en vez de taparlo.
+
+          Estuvo construido y sin montar desde el carril de los dados: `grep` de su nombre
+          devolvía solo su declaración, así que el defecto ALTA de la auditoría —*«no hay dados en
+          la mesa»*— seguía abierto con el panel ya escrito. */}
+      {panel === "dados" && (
+        <PanelDeDadosDeLaMesa
+          campaignId={campaignId}
+          sessionId={sesion?.id}
+          characterId={miPersonaje?.id}
+          onCerrar={() => setPanel(null)}
+        />
+      )}
     </div>
   );
 }

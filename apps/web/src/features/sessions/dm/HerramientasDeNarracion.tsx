@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { useParams } from "react-router-dom";
 import { Dialog } from "../../../ui/Dialog";
 import { IconoBuscar } from "../iconos";
-import { IconoMegafono, IconoRayo, IconoReloj } from "./iconos";
+import { IconoMegafono, IconoRayo, IconoReloj } from "../../../ui/Iconos";
 import { DadoDibujado } from "../../rolls/DadoDibujado";
 import { IconoBestiario } from "../../bestiario/iconos";
 import { IconoTabla } from "../../dm-tables/iconos";
@@ -116,13 +115,13 @@ export function HerramientasDeNarracion({
   /**
    * De qué campaña son estas herramientas.
    *
-   * **Es opcional solo por hoy.** Las seis piezas que se montan aquí lo necesitan, y quien lo
-   * sabe de verdad es el compositor (`MesaDeSesion`), que ya lo recibe de la ruta. Mientras no lo
-   * pase, se lee del propio camino —`/campaigns/:id/...`, que es de donde sale el suyo—, y así
-   * esta columna funciona sin obligar a tocar un fichero que no es de este carril. **En cuanto el
-   * compositor lo pase, este parámetro pasa a obligatorio y el respaldo de abajo se borra.**
+   * **Obligatorio desde el ensamblado.** Nació opcional, con un respaldo que lo leía de
+   * `useParams()` para no obligar a tocar el compositor mientras el carril trabajaba solo. El
+   * compositor ya lo pasa, así que el respaldo se ha borrado: dos formas de averiguar de qué
+   * campaña se habla son **dos fuentes de verdad para el mismo identificador**, y la que se lee
+   * del camino deja de valer en cuanto esta columna se monte desde una ruta con otra forma.
    */
-  campaignId?: string;
+  campaignId: string;
   /**
    * Abre el códice del mundo. **Lo monta el compositor, no esta columna**: `ConsultaDelMundo` va
    * en UN solo sitio —el cajón del rail—, y montarla también aquí pintaría dos buscadores del
@@ -131,15 +130,8 @@ export function HerramientasDeNarracion({
    */
   onConsultarElMundo?: () => void;
 }) {
-  const { id } = useParams<{ id: string }>();
-  const campana = campaignId ?? id;
   const [abierta, setAbierta] = useState<HerramientaAbierta | null>(null);
   const cerrar = () => setAbierta(null);
-
-  // Sin campaña no hay herramientas: ni siquiera se pinta el título. No puede pasar en la mesa
-  // —la ruta siempre trae el identificador— y el respaldo desaparece en cuanto el compositor
-  // pase `campaignId`; hasta entonces, esto es lo que impide que el compilador se lo trague.
-  if (!campana) return null;
 
   return (
     // `gap-s4`, que es lo que la §5 de la auditoría fija literalmente para las herramientas del
@@ -225,7 +217,7 @@ export function HerramientasDeNarracion({
         subtitulo="Lo que la mesa todavía no ve."
         size="lg"
       >
-        <RevelarAlgo campaignId={campana} />
+        <RevelarAlgo campaignId={campaignId} />
       </Dialog>
 
       <Dialog
@@ -235,7 +227,7 @@ export function HerramientasDeNarracion({
         subtitulo="Se pide un valor de la hoja, no una expresión: la compone el servidor."
         size="lg"
       >
-        <PedirTirada campaignId={campana} />
+        <PedirTirada campaignId={campaignId} />
       </Dialog>
 
       <Dialog
@@ -245,7 +237,7 @@ export function HerramientasDeNarracion({
         subtitulo="El tiempo de la campaña. Las condiciones vencen contra él, no contra un temporizador de esta pantalla."
         size="lg"
       >
-        <RelojDeCampana campaignId={campana} />
+        <RelojDeCampana campaignId={campaignId} />
       </Dialog>
 
       <Dialog
@@ -255,7 +247,7 @@ export function HerramientasDeNarracion({
         subtitulo="Un PNJ en la mesa es una fila de Character: recibe daño y coge condiciones."
         size="xl"
       >
-        <PanelDeBestiario campaignId={campana} />
+        <PanelDeBestiario campaignId={campaignId} />
       </Dialog>
 
       <Dialog
@@ -265,7 +257,7 @@ export function HerramientasDeNarracion({
         subtitulo="Qué está escuchando el motor ahora mismo."
         size="lg"
       >
-        <ReglasEnLaMesa campaignId={campana} />
+        <ReglasEnLaMesa campaignId={campaignId} />
       </Dialog>
 
       <Dialog
@@ -275,7 +267,7 @@ export function HerramientasDeNarracion({
         subtitulo="No son del manual: el SRD no trae tablas de críticos ni de pifias."
         size="xl"
       >
-        <PanelDeTablas campaignId={campana} />
+        <PanelDeTablas campaignId={campaignId} />
       </Dialog>
     </div>
   );

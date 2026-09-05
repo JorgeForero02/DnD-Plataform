@@ -140,9 +140,9 @@ caída**, y C2.5-2, C6-2, D3 y la ficha de `tags` anotadas en el maestro.
 | Estado | Cuándo | Qué |
 |---|---|---|
 | ✅ hecho | 2026-09-05 | **15.1-A · la web manda el `eventId`.** `apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`: fuera la casilla «Crítico», el daño manda `attackRollEventId` del ataque tirado en el mismo panel, y el panel **dice** lo que pasó. Commit `ede50af` |
-| ✅ hecho | 2026-09-05 | **15.1-B · fuera `critical` del esquema.** `packages/shared/src/inventory.schema.ts` ya no lo declara y `esCriticoDesdeLaTirada` devuelve `false` sin tirada citada (`apps/api/src/characters/character-sheet.service.ts:1465`). **C2.5-2 cierra entera.** Commit `<pendiente 15.1-B>` |
-| ✅ hecho | 2026-09-05 | **15.2 · C6-2.** `aStatblock()` devuelve `visibility` (`apps/api/src/statblocks/statblocks.service.ts:185-196`) y el editor deja de borrarlo del cuerpo (`apps/web/src/features/bestiario/EditorDeStatblock.tsx:328-336`). **Commit `<pendiente 15.2>`** |
-| ✅ hecho | 2026-09-05 | **15.3 · D3 · el endpoint de salud.** `apps/api/src/health/health.controller.ts` con su módulo, `SELECT 1` y **503** si la base no contesta; sin autenticación y sin contar nada. El `healthcheck` de `docker-compose.prod.yml:79-92` apunta ahí **y mira el código de estado**. **Commit `<pendiente 15.3>`** |
+| ✅ hecho | 2026-09-05 | **15.1-B · fuera `critical` del esquema.** `packages/shared/src/inventory.schema.ts` ya no lo declara y `esCriticoDesdeLaTirada` devuelve `false` sin tirada citada (`apps/api/src/characters/character-sheet.service.ts:1465`). **C2.5-2 cierra entera.** Commit `c884321` |
+| ✅ hecho | 2026-09-05 | **15.2 · C6-2.** `aStatblock()` devuelve `visibility` (`apps/api/src/statblocks/statblocks.service.ts:185-196`) y el editor deja de borrarlo del cuerpo (`apps/web/src/features/bestiario/EditorDeStatblock.tsx:328-336`). **Commit `e76511a`** |
+| ✅ hecho | 2026-09-05 | **15.3 · D3 · el endpoint de salud.** `apps/api/src/health/health.controller.ts` con su módulo, `SELECT 1` y **503** si la base no contesta; sin autenticación y sin contar nada. El `healthcheck` de `docker-compose.prod.yml:79-92` apunta ahí **y mira el código de estado**. **Commit `c884321`** |
 | ⬜ sin empezar | — | 15.4 · `tags` sin unicidad |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).

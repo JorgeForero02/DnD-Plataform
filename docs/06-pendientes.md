@@ -1139,6 +1139,31 @@ sea que la pantalla promete una frontera que el servidor no aplica. La fila **s�
 - **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
   La respuesta buena es una ruta de enlaces por campaña.
 
+## P3 · Dos acoplamientos no declarados, destapados al escribir sus pruebas (2026-09-04)
+
+Los dos salieron de probar por mutación módulos puros que nadie había probado. Ninguno es un
+defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe que sostienen.
+
+- **El aviso de `posiciones.ts` apunta al mando equivocado.** Su comentario avisa de «si alguien
+  sube un semieje y olvida el tope», pero **el tope se deriva del propio semieje**
+  (`50 ± SEMIEJE_X`), así que subirlo sube el tope con él y no apila nada. El mando que **sí**
+  dispara el recorte es **el anillo exterior**, que no está atado a nada: con `1.2` en vez de `1`,
+  **731 de 3000** fichas quedan pegadas al borde **en silencio**. La prueba nueva lo defiende y su
+  comentario lo dice; el del módulo sigue diciendo lo otro. **Corregir el comentario.**
+- **«Gana el más reciente» en `wikilinks.ts` es cierto por acoplamiento.** `resolverCitas` es pura
+  y se queda con **la primera de la lista**; que esa sea la más reciente depende de que
+  `entities.service.ts:77` devuelva `orderBy: { createdAt: "desc" }`. **Nada en el módulo lo dice
+  ni lo garantiza**: el día que un llamante le pase una lista ordenada por nombre, el desempate
+  cambia sin que falle nada.
+
+## P4 · `[[bahia]]` no encuentra «Bahía» (2026-09-04)
+
+`normalizar` de `wikilinks.ts` hace `trim`, colapsa espacios y baja a minúsculas, pero **no quita
+diacríticos**. Para un mundo escrito en español eso muerde: el DM escribe el enlace sin tilde y la
+ficha se anuncia como inexistente. **Era una decisión no declarada**; ahora está fijada por una
+prueba cuyo comentario dice que cambiarla la rompe **a propósito**. Se cierra con
+`.normalize("NFD").replace(/\p{Diacritic}/gu, "")`.
+
 ## P4 — Limpieza
 
 - **`viewerFor(userId, campaignId)` está duplicado** en los servicios de entidades, enlaces,

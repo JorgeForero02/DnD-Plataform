@@ -74,6 +74,22 @@ es lo que evita volver a creérsela.
 > Coolify se llaman por el UUID de la aplicación. Las dos están en
 > [03-despliegue.md](./03-despliegue.md).
 
+> ## Alineado con el código el 2026-09-05, y lo que eso enseñó
+>
+> Las 55 secciones se leyeron y se contrastaron **contra el árbol**, no de memoria
+> ([la auditoría entera](./superpowers/specs/2026-09-05-auditoria-cola-larga.md)). **Siete fichas
+> afirmaban que faltaba algo que ya estaba hecho**, y una —M10— era falsa en su primera mitad y
+> cierta en la segunda, así que se ha partido en dos.
+>
+> **Y todas tenían su evidencia escrita, que era cierta el día que se escribió.** Esa es la lección
+> que se lleva a la forma de este documento: **una ficha con un barrido citado dentro envejece igual
+> que el código**. Desde ahora, lo que se tacha lleva **la prueba de cuándo** —fecha y
+> `fichero:línea`—, no solo la prueba de qué.
+>
+> **Lo que queda vivo está planificado**, uno por fichero y con su trazabilidad ficha → plan, en
+> [`superpowers/plans/2026-09-05-planes/`](./superpowers/plans/2026-09-05-planes/00-INDICE.md).
+> Lo que **ningún plan cubre y por qué** también está dicho allí.
+
 Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la evidencia de
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
@@ -117,10 +133,10 @@ pueda volver a cobrar. Hasta las dos, no es «si y solo si».
 
 | Ficha | Qué | Por qué queda abierta |
 |---|---|---|
-| **C6-1** | **Los cuatro disparadores del motor siguen sin `case`**: `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`, `MEMBER_JOINED` (`apps/api/src/rules-engine/game-event-triggers.ts:29-75`) | Se han **retirado de lo que el editor ofrece** (`DISPARADORES_SIN_MOTOR`, en `features/rules/vocabulario.ts`) porque una regla armada sobre ellos se guarda y no se dispara jamás, y la interfaz no puede prometer lo que el motor no cumple. Implementarlos es servidor. **Cierra cuando** el `switch` los traduzca: entonces esa lista se vacía y la paleta los recupera sola. Y **es una segunda copia** de `UNREACHABLE_TRIGGER_KINDS` (`apps/api/src/rules-engine/trace-payload.ts:109`) **por una frontera de trabajo, no por una imposibilidad**: son cuatro literales de `RuleTrigger["kind"]` y caben en `packages/shared/src`, que es donde este proyecto guarda la forma de los datos una sola vez; el carril que las escribió no tocaba ese paquete. **La mudanza a `@dnd/shared` es el cierre de esta ficha**, y hasta entonces las dos no pueden divergir en silencio sobre una regla guardada, porque el aviso de `ListaDeReglas` lo manda el servidor |
+| ~~**C6-1**~~ **CERRADA (2026-09-05)** — dos de los cuatro existen ahora como suceso y su gesto los escribe (`ENTITY_COMMENTED` en `comments.service.ts`, `MEMBER_JOINED` en `invites.service.ts`), con su `case` en `game-event-triggers.ts`. Los otros dos siguen retirados **con su motivo escrito**: `DM_EXECUTED` no tiene gesto en ninguna pantalla y `ENTITY_ATTACKED` apunta a una ficha del mundo cuando aquí se ataca a un `Character`. **Y la lista duplicada ya no lo está**: vive en `packages/shared/src/rules-engine.schema.ts`. Texto original: | ~~**Los cuatro disparadores del motor siguen sin `case`**: `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`, `MEMBER_JOINED` (`apps/api/src/rules-engine/game-event-triggers.ts:29-75`) | Se han **retirado de lo que el editor ofrece** (`DISPARADORES_SIN_MOTOR`, en `features/rules/vocabulario.ts`) porque una regla armada sobre ellos se guarda y no se dispara jamás, y la interfaz no puede prometer lo que el motor no cumple. Implementarlos es servidor. **Cierra cuando** el `switch` los traduzca: entonces esa lista se vacía y la paleta los recupera sola. Y **es una segunda copia** de `UNREACHABLE_TRIGGER_KINDS` (`apps/api/src/rules-engine/trace-payload.ts:109`) **por una frontera de trabajo, no por una imposibilidad**: son cuatro literales de `RuleTrigger["kind"]` y caben en `packages/shared/src`, que es donde este proyecto guarda la forma de los datos una sola vez; el carril que las escribió no tocaba ese paquete. **La mudanza a `@dnd/shared` es el cierre de esta ficha**, y hasta entonces las dos no pueden divergir en silencio sobre una regla guardada, porque el aviso de `ListaDeReglas` lo manda el servidor |
 | **C6-2** | **`GET .../statblocks` no devuelve `visibility`** (`aStatblock()`, `statblocks.service.ts:184`) | El editor de criaturas propias (`apps/web/src/features/bestiario/EditorDeStatblock.tsx`) **no puede enseñar quién la ve al editarla**, porque no lo sabe, así que **omite el campo** en el `PUT` para no pisar una criatura que el DM ya había enseñado a la mesa. Se dice en pantalla en vez de esconderlo. **Cierra cuando** el servidor incluya el campo en la lectura: son dos líneas y el formulario ya tiene el selector escrito |
 | **C6-3** | **El vocabulario de tipos de daño sigue triplicado** y las tres copias **no dicen lo mismo**: `character-sheet` y `campaign-items` traducen `LIGHTNING` como «relámpago»; `inventory` abrevia y dice «rayo» | La decisión D-OP-14 (un módulo con `nombreTipoDano` y `nombreTipoDanoCorto`) **no se aplicó a ciegas**: el corto existe para que la fila de inventario quepa, y unificar sin más rompería ese ancho. El selector de daño nuevo usa el largo de `character-sheet` y lo dice en su comentario. **Cierra cuando** el módulo único exponga las dos formas y las tres features importen de él |
-| **C6-5** | **Solo una de las dos pantallas que cambian PG manda el tipo de daño.** La hoja sí; el ±5 del elenco (`apps/web/src/features/sessions/elenco/FichaDeElenco.tsx`) sigue mandando `{ delta }` | Y **es la ruta que un DM usa en combate** —el gesto rápido sobre el retrato, no abrir la hoja entera—, así que la mecánica insignia de 2.5.1 sigue sin poder ocurrir en mitad de una partida. No es un olvido: ese fichero es de otro carril. La pieza que falta **ya está escrita y exportada**, `SelectorDeTipoDeDano` (`apps/web/src/features/character-sheet/AplicarDano.tsx`), autónoma y sin consultas dentro. **Cierra cuando** el cajón del elenco la monte en su ranura `ranuraTipoDeDano` y pase su valor a `tipoDeDano` |
+| ~~**C6-5**~~ **CERRADA, comprobada el 2026-09-05**: `apps/web/src/features/sessions/elenco/PonerDano.tsx:125` manda `...(tipoDeDano ? { damageType: tipoDeDano } : {})`. Texto original: | ~~**Solo una de las dos pantallas que cambian PG manda el tipo de daño.** La hoja sí; el ±5 del elenco (`apps/web/src/features/sessions/elenco/FichaDeElenco.tsx`) sigue mandando `{ delta }` | Y **es la ruta que un DM usa en combate** —el gesto rápido sobre el retrato, no abrir la hoja entera—, así que la mecánica insignia de 2.5.1 sigue sin poder ocurrir en mitad de una partida. No es un olvido: ese fichero es de otro carril. La pieza que falta **ya está escrita y exportada**, `SelectorDeTipoDeDano` (`apps/web/src/features/character-sheet/AplicarDano.tsx`), autónoma y sin consultas dentro. **Cierra cuando** el cajón del elenco la monte en su ranura `ranuraTipoDeDano` y pase su valor a `tipoDeDano` |
 | **C6-4** | **`NpcEnLaMesa.tempHp` se pinta pero no se ha podido ver con datos** | Ninguna pantalla da PG temporales a un PNJ todavía, así que el campo siempre llega a 0. El código está (`apps/web/src/features/bestiario/PanelDeBestiario.tsx`, «+N temporales», aparte y nunca sumado). **Cierra cuando** exista el gesto que los concede |
 
 ## ~~P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha~~ — CERRADA (2026-09-04, C6)
@@ -286,7 +302,9 @@ trae, y el hueco está declarado en
   foco del diálogo, o algo del apilado. Mientras esto siga abierto, **la ruta de teclado y
   pulsación es la única que se puede afirmar**, y esa sí está probada. Si al final resulta que el
   arrastre no funciona para una persona, R1 no está terminada.
-- **`BarraDeSesion` y la cabecera de la aplicación se pelean por la misma banda.** Las dos son
+- ~~**`BarraDeSesion` y la cabecera se pelean por la misma banda.**~~ **CERRADA (2026-09-05):**
+  `features/sessions/BarraDeSesion.tsx:45` define `PEGADA_BAJO_LA_CABECERA` y el `sticky` lo lleva
+  el envoltorio; además la mesa ya no vive dentro de `AppShell`. Texto original: ~~Las dos son
   `sticky top-0`; la barra va a `z-30` y la cabecera también es fija. Con una sesión en curso se
   solapan. Es previo a esta tanda y no lo tocó nadie. La cabecera de combate de la hoja va a
   `top-16` y quedará por debajo de la barra, no encima, así que el defecto se ve más ahora.
@@ -300,7 +318,10 @@ trae, y el hueco está declarado en
 - **`@testing-library/user-event` no está instalado**, así que las pruebas de componente que
   querrían simular teclado real usan `fireEvent`. No es falso —se comprueba que el control es
   activable y que su activación coloca— pero es menos fiel.
-- **`ui/Iconos.tsx` no tiene icono de inventario.** La hoja dibuja un `IconoArcon` local; cuando
+- ~~**`ui/Iconos.tsx` no tiene icono de inventario.**~~ **CERRADA (2026-09-05)**, y hoy el problema
+  es el **contrario**: hay conceptos duplicados entre `ui/Iconos.tsx` y nueve ficheros de
+  `features/` (escudo ×3, mochila ×3, sol ×2, luna ×2). Lo cierra el **plan 07**. Texto original:
+  ~~La hoja dibuja un `IconoArcon` local; cuando
   2B monte el inventario debería subir a la casa común.
 
 ## Dejado por E0, la prueba de ida y vuelta de TipTap (2026-09-02)
@@ -359,7 +380,7 @@ son decisiones tomadas a conciencia, no olvidos.
 | **I2** | **Dos armas del SRD no están: la red y la cerbatana** | Ninguna cabe en la forma: la red no hace daño y la cerbatana hace «1» fijo, no un dado. Modelarlas exige que `damageDice` admita un daño plano o nulo, que es un cambio de forma en `packages/shared`. Declarado en la cabecera de `weapons.ts` para que no parezca un olvido |
 | **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
 | **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
-| **I5** | **Equipar y desequipar no dejan rastro en la línea de tiempo** | El dinero sí (`MONEY_CHANGED`, tipo propio desde 2B). Ponerse un objeto que sube la CA en mitad de una sesión es exactamente el tipo de cambio que el DM querría ver en el log al repasar. Es un tipo de suceso nuevo y una llamada; barato, y no entró por alcance |
+| ~~**I5**~~ **CERRADA (2026-09-05)**: `ITEM_MOVED` lleva `from`/`to` con `EQUIPPED`/`CARRIED`/`STORED`, más `slot` y `attuned` (`game-event.schema.ts:350`), y lo escribe `inventory.service.ts:413`. Texto original: | ~~**Equipar y desequipar no dejan rastro en la línea de tiempo**~~ | El dinero sí (`MONEY_CHANGED`, tipo propio desde 2B). Ponerse un objeto que sube la CA en mitad de una sesión es exactamente el tipo de cambio que el DM querría ver en el log al repasar. Es un tipo de suceso nuevo y una llamada; barato, y no entró por alcance |
 | **I6** | **Las competencias de armadura no producen aviso todavía** | El catálogo ya las tiene en claves de máquina (`light`, `medium`, `heavy`, `shield`) desde 2B, y el SRD dice que llevar armadura sin competencia da desventaja en todo lo de Fuerza y Destreza y **prohíbe lanzar conjuros**. El motor ya sabe emitir avisos y el de armas ya existe (`attack_not_proficient`): falta el de armadura, que es el mismo mecanismo |
 | **I7** | **El tabú del druida se perdió al pasar las competencias a claves** | El SRD dice «ligera, media y escudos, **no metálicos**». Eso no es una competencia menos —un druida *sabe* usar una cota de escamas, pero no quiere— y modelarlo como competencia le negaría una armadura que la regla sí permite. Hoy vive en un comentario de `classes.ts`; su sitio es el texto de la aptitud, cuando exista dónde ponerlo |
 | **I9** | **El conteo de unitarias del bloque de estado es una cota inferior, no lo que imprime el corredor** | `scripts/update-estado.mjs` cuenta **declaraciones**, y un bloque `it.each` declara una y ejecuta varias: hay más de cuarenta, así que la cifra va varios cientos por debajo de la real. El comentario del script decía «nada aquí usa `.each`» e **invitaba a comprobarlo con un grep**; el grep lo desmiente. Corregido el texto y ampliada la expresión regular para que al menos cuente el bloque, pero **la cifra sigue sin ser la del corredor**. El arreglo de verdad es leer los informes de `vitest`/`jest` (`--reporter=json`) en vez de contar líneas, y cuesta que `check:estado` deje de ser barato — que es justo por lo que está donde está en `pnpm verify`. Lo encontró la auditoría de documentación de 2B |
@@ -478,7 +499,8 @@ cerraron ese mismo día** (media competencia, Ataque Extra, espacios de conjuro 
 |---|---|---|
 | **M8** | **Modificadores temporales con caducidad** — *«+2 a Fuerza durante una hora»*. Lo pidieron los jugadores y **no está escrito en ningún plan**: no es un estado con nombre ni un objeto equipado, es un modificador con fecha de fin | Necesita el **reloj de campaña**, que es 2C. El modelo de modificadores de 2A ya sabría aplicarlo; falta quién decide que ha caducado. Meterlo sin reloj sería un campo que nadie limpia |
 | **M9** | **El personaje se archiva, no se borra — SERVIDOR HECHO (2.5.8), PANTALLA PENDIENTE.** Existen `POST …/archive`, `POST …/unarchive` y `GET …/characters/archived`, con su columna, sus sucesos y sus e2e. **Lo que NO existe es el gesto**: `grep -rn "archiv" apps/web/src` da cero, así que el único botón sigue siendo el borrado definitivo | El spec §2.5.8 cierra con «lo que cambia es **cuál de los dos gestos es el fácil**», y hoy no cambia ninguno: **la premisa de esta ficha sigue vigente palabra por palabra** con la aplicación en producción. La revisión de cierre del 2026-09-04 la encontró tachada sin estarlo. **Entra con la pantalla de personajes del carril gráfico**, y hasta entonces no se vuelve a dar por cerrada |
-| **M10** | **Revocar una concesión de visibilidad y editar en silencio** — la hidra falsa (respuesta 2). Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
+| **M10a** | ~~**Revocar una concesión de visibilidad**~~ **— MITAD FALSA, comprobada el 2026-09-05.** `entities.service.ts:171` hace `deleteMany` y reescribe las concesiones al editar: **revocar sí se puede**. La ficha decía lo contrario | **Lo que sigue vivo es M10b** |
+| **M10b** | **Editar en silencio** — la hidra falsa (respuesta 2). El DM cambia una ficha ya revelada y nadie se entera. Es un problema distinto del de revocar, y por eso se parten | Sin resolver. Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
 | **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
 
 ## Pedido por el autor el 2026-09-02, colocado — antes de 2A
@@ -619,7 +641,8 @@ Lo que queda abierto:
   (`@media (pointer: coarse)`), porque por debajo de eso iOS Safari hace zoom al enfocar — la
   primera versión del arreglo argumentaba que el riesgo no aplicaba "porque cada control lleva
   clase explícita", y lo que dispara el zoom es el tamaño **calculado**.
-- **La interfaz sigue mezclando idiomas**: la pantalla de entrar dice *Email*, *Password* y
+- ~~**La interfaz sigue mezclando idiomas**~~ — **CERRADA (2026-09-05)**: cero coincidencias de
+  *Email*, *Password* o *Log in* en `pages/LoginPage.tsx`. Texto original: ~~la pantalla de entrar dice *Email*, *Password* y
   *Log in* en inglés, contra la regla del proyecto (interfaz en español). No se tocó dentro de
   una tarea de color; es tarea propia, y arrastra los localizadores de los recorridos de
   navegador.
@@ -1065,7 +1088,11 @@ frente al `z-40` de los cajones, que es como la maqueta los hace convivir.
 
 **Es el caso número cinco de «una ficha no se cierra sin pantalla».**
 
-## P1 · Las resistencias al daño no se cobran desde la mesa (2026-09-04, ficha C6-5)
+## ~~P1 · Las resistencias al daño no se cobran desde la mesa~~ — CERRADA (2026-09-05, ficha C6-5)
+
+> **Comprobado contra el código, no recordado:** `apps/web/src/features/sessions/elenco/PonerDano.tsx:125`
+> manda `damageType`. **El dragón resistente al fuego ya reduce el daño desde la mesa.** Se deja el
+> texto porque explica el escenario que la cerró.
 
 `changeHp` acepta `damageType` desde 2.5.1 y la **hoja** ya lo manda. Pero
 `features/sessions/elenco/FichaDeElenco.tsx` sigue mandando `{ delta }` a secas, y **ese ±5 es la

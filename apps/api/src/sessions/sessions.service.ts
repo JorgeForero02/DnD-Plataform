@@ -13,6 +13,16 @@ import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
 import { GameEventsService } from "../game-events/game-events.service";
 
+/** Lo que hace falta de una `Entity` para decidir si su nombre viaja, y para pintarlo si viaja. */
+interface FichaDeApertura {
+  id: string;
+  name: string;
+  type: string;
+  visibility: Visibility;
+  createdById: string;
+  grants: { userId: string }[];
+}
+
 @Injectable()
 export class SessionsService {
   constructor(
@@ -37,6 +47,75 @@ export class SessionsService {
     });
   }
 
+  /**
+   * **Comprueba que la ficha de apertura es de ESTA campaña, y devuelve su id.**
+   *
+   * El prefijo no lo pone el cliente por el mismo motivo por el que no lo pone en los catálogos:
+   * aceptar un id a ciegas sería poder apuntar la sesión a una ficha de otra campaña, y de ahí
+   * salen dos cosas malas — un enlace que el DM de esta mesa no puede abrir, y **una confirmación
+   * de que esa ficha existe**. Por eso es 404 y no 400: quien pregunta no debería saber que existe.
+   */
+  private async apertura(campaignId: string, entityId: string | null): Promise<string | null> {
+    if (entityId === null) return null;
+    const entity = await this.prisma.entity.findFirst({
+      where: { id: entityId, campaignId },
+      select: { id: true },
+    });
+    if (!entity) throw new NotFoundException("Entity not found");
+    return entity.id;
+  }
+
+  /**
+   * Da forma a una sesión para un espectador concreto: **la ficha de apertura pasa por `canView`**
+   * y, si no la puede ver, **el campo desaparece entero** —ni `openingEntity` ni `openingEntityId`—.
+   *
+   * Dejar el id sería la fuga barata de siempre: un identificador que el jugador no puede resolver
+   * pero que **confirma que la sesión abre en algo escondido**. Y devolver `null` mentiría: `null`
+   * significa «no abre en ningún sitio».
+   *
+   * `canView` sobre una `Entity` necesita su `createdById` y sus concesiones de verdad. Aquí no
+   * vale el atajo de `canSee`, que pasa `createdById: ""` y `grantedUserIds: []`: con eso una ficha
+   * `OWNER_DM` o `SPECIFIC_PLAYERS` se escondería de quien sí tiene derecho a verla.
+   */
+  private conApertura<T extends { openingEntityId: string | null }>(
+    viewer: Viewer,
+    session: T,
+    fichas: Map<string, FichaDeApertura>,
+  ) {
+    const { openingEntityId, ...resto } = session;
+    // `null` es «no abre en ningún sitio» y se dice tal cual: es verdad y no esconde nada.
+    if (!openingEntityId) return { ...resto, openingEntityId: null };
+    const ficha = fichas.get(openingEntityId);
+    const visible =
+      ficha !== undefined &&
+      canView(viewer, {
+        visibility: ficha.visibility,
+        createdById: ficha.createdById,
+        grantedUserIds: ficha.grants.map((g) => g.userId),
+      });
+    if (!visible) return resto;
+    return {
+      ...resto,
+      openingEntityId,
+      openingEntity: { id: ficha.id, name: ficha.name, type: ficha.type },
+    };
+  }
+
+  /** Lee de una vez las fichas de apertura de un puñado de sesiones — una consulta, no N. */
+  private async fichasDeApertura(sessions: { openingEntityId: string | null }[]) {
+    const ids = [
+      ...new Set(
+        sessions.map((s) => s.openingEntityId).filter((id): id is string => typeof id === "string"),
+      ),
+    ];
+    if (ids.length === 0) return new Map<string, FichaDeApertura>();
+    const fichas = await this.prisma.entity.findMany({
+      where: { id: { in: ids } },
+      include: { grants: true },
+    });
+    return new Map(fichas.map((f) => [f.id, f]));
+  }
+
   async create(userId: string, campaignId: string, input: CreateSessionInput) {
     await this.membership.requireDM(campaignId, userId);
     return this.prisma.session.create({
@@ -46,6 +125,10 @@ export class SessionsService {
         scheduledAt: input.scheduledAt,
         notes: input.notes === undefined ? undefined : (input.notes as object),
         visibility: input.visibility,
+        openingEntityId:
+          input.openingEntityId === undefined
+            ? undefined
+            : await this.apertura(campaignId, input.openingEntityId),
       },
     });
   }
@@ -57,7 +140,9 @@ export class SessionsService {
       where: { campaignId },
       orderBy: { createdAt: "desc" },
     });
-    return sessions.filter((s) => this.canSee(viewer, s.visibility));
+    const visibles = sessions.filter((s) => this.canSee(viewer, s.visibility));
+    const fichas = await this.fichasDeApertura(visibles);
+    return visibles.map((s) => this.conApertura(viewer, s, fichas));
   }
 
   async get(userId: string, campaignId: string, sessionId: string) {
@@ -69,7 +154,7 @@ export class SessionsService {
     if (!session || !this.canSee(viewer, session.visibility)) {
       throw new NotFoundException("Session not found");
     }
-    return session;
+    return this.conApertura(viewer, session, await this.fichasDeApertura([session]));
   }
 
   async update(userId: string, campaignId: string, sessionId: string, input: UpdateSessionInput) {
@@ -81,6 +166,9 @@ export class SessionsService {
     if (input.scheduledAt !== undefined) data.scheduledAt = input.scheduledAt;
     if (input.notes !== undefined) data.notes = input.notes as object;
     if (input.visibility !== undefined) data.visibility = input.visibility;
+    // `null` es «quítalo» y llega hasta aquí; `undefined` es «no lo toques» y no entra en `data`.
+    if (input.openingEntityId !== undefined)
+      data.openingEntityId = await this.apertura(campaignId, input.openingEntityId);
     return this.prisma.session.update({ where: { id: sessionId }, data });
   }
 

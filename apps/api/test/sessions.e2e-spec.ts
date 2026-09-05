@@ -79,4 +79,89 @@ describe("Sessions (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`);
     expect(pl.body.map((x: any) => x.title)).toEqual(["Session 1"]);
   });
+
+  describe("dónde abre la escena (plan 02)", () => {
+    let santuarioId = "";
+    let sesionId = "";
+
+    it("el DM crea una sesión que abre en una ficha DM_ONLY", async () => {
+      const s = app.getHttpServer();
+      santuarioId = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/entities`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ type: "LOCATION", name: "El Santuario Sellado", visibility: "DM_ONLY" })
+      ).body.id;
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "La bajada", visibility: "PLAYERS", openingEntityId: santuarioId });
+      expect(r.status).toBe(201);
+      sesionId = r.body.id;
+    });
+
+    it("el jugador NO recibe ni el nombre ni el id de la ficha de apertura", async () => {
+      const r = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/sessions/${sesionId}`)
+        .set("Authorization", `Bearer ${tokenPL}`);
+      expect(r.status).toBe(200);
+      // La sesión sí la ve —es `PLAYERS`—; lo que no ve es dónde abre.
+      expect(r.body.title).toBe("La bajada");
+      expect(r.body).not.toHaveProperty("openingEntity");
+      // **Ni el id.** Un identificador que no puede resolver seguiría confirmando que la sesión
+      // abre en algo que no le enseñan.
+      expect(r.body).not.toHaveProperty("openingEntityId");
+    });
+
+    it("y el DM la recibe con su nombre, sin haber guardado texto en ninguna parte", async () => {
+      const r = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/sessions/${sesionId}`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(r.body.openingEntity).toMatchObject({
+        id: santuarioId,
+        name: "El Santuario Sellado",
+        type: "LOCATION",
+      });
+    });
+
+    it("apuntar a una ficha de OTRA campaña es 404", async () => {
+      const s = app.getHttpServer();
+      const otra = (
+        await request(s)
+          .post("/campaigns")
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ name: "Otra mesa" })
+      ).body.id;
+      const ajena = (
+        await request(s)
+          .post(`/campaigns/${otra}/entities`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ type: "LOCATION", name: "Otro sitio", visibility: "PUBLIC" })
+      ).body.id;
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "No", visibility: "PLAYERS", openingEntityId: ajena });
+      expect(r.status).toBe(404);
+      await prisma.campaign.deleteMany({ where: { id: otra } });
+    });
+
+    it("**borrar el lugar NO borra la sesión**: la clave es SET NULL, no CASCADE", async () => {
+      const s = app.getHttpServer();
+      const borrado = await request(s)
+        .delete(`/campaigns/${campaignId}/entities/${santuarioId}`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(borrado.status).toBe(200);
+
+      // Se comprueba **borrando de verdad**, no leyendo el esquema: `ON DELETE CASCADE` aquí se
+      // llevaría por delante la crónica de una partida que sí ocurrió.
+      const r = await request(s)
+        .get(`/campaigns/${campaignId}/sessions/${sesionId}`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(r.status).toBe(200);
+      expect(r.body.title).toBe("La bajada");
+      expect(r.body.openingEntityId).toBeNull();
+      expect(r.body).not.toHaveProperty("openingEntity");
+    });
+  });
 });

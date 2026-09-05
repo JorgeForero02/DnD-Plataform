@@ -249,6 +249,8 @@ model Entity {
   linksFrom   EntityLink[]            @relation("linkFrom")
   linksTo     EntityLink[]            @relation("linkTo")
   comments    Comment[]
+  /// Las sesiones que abren su escena en esta ficha. Lado inverso de `Session.openingEntity`.
+  opensSessions Session[]             @relation("SessionOpeningEntity")
 }
 
 model EntityLink {
@@ -301,6 +303,19 @@ model Session {
   // Y hace falta declararla porque **esto no tiene conexiones en vivo**: los VTT saben quien esta
   // porque hay un socket abierto. Aqui no lo hay, asi que quien vino es un dato que alguien dice.
   attendance  Json?
+
+  /// **Dónde abre la escena**: la ficha del mundo por la que empieza esta sesión.
+  ///
+  /// `onDelete: SetNull` y NO `Cascade`: borrar un lugar del mundo no puede borrar la sesión que
+  /// pasó allí. Y **nunca se guarda el nombre del lugar como texto** — se queda viejo, no enlaza y
+  /// no respeta la visibilidad.
+  ///
+  /// **Lo que se devuelve pasa por `canView` con el espectador delante**: un jugador que no puede
+  /// ver «El Santuario Sellado» no recibe ni su nombre **ni su id**, y el campo llega **ausente**,
+  /// no `null` — ausente y presente-pero-vacío son cosas distintas para quien pinta.
+  openingEntityId String?
+  openingEntity   Entity? @relation("SessionOpeningEntity", fields: [openingEntityId], references: [id], onDelete: SetNull)
+
   campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   encounters  Encounter[]
 
@@ -310,6 +325,8 @@ model Session {
   //     ON "Session" ("campaignId") WHERE "status" = 'IN_PROGRESS';
   // Una comprobacion en el servicio seria una carrera esperando a ocurrir en cuanto el DM tenga
   // dos pestanas abiertas, y por eso su prueba es e2e contra Postgres real y no unitaria.
+
+  @@index([openingEntityId])
 }
 
 // Tarea 2.5.2 — el encuentro cuelga de la sesión, que ya es el estado mutable de la partida.

@@ -284,6 +284,28 @@ cuanto el DM tenga dos pestañas abiertas. El servicio solo traduce el choque (`
 legible. Y como el Prisma simulado de las unitarias no valida SQL, **su prueba es e2e y no
 unitaria** — comprobado borrando el índice y viendo la prueba ponerse roja.
 
+**`Session.openingEntityId` — dónde abre la escena (plan 02, 2026-09-05).** Una sesión puede
+apuntar a la ficha del mundo por la que empieza. Tres reglas la gobiernan:
+
+- **`ON DELETE SET NULL`, nunca `CASCADE`.** Borrar un lugar del mundo no puede borrar la sesión
+  que pasó allí. Comprobado **borrando la entidad de verdad** en
+  `apps/api/test/sessions.e2e-spec.ts`, no leyendo el esquema.
+- **Nunca se guarda el nombre del lugar como texto.** Se quedaría viejo, no enlazaría y no
+  respetaría la visibilidad — que es exactamente lo que esta columna existe para no repetir.
+- **Lo que se devuelve pasa por `canView` con el espectador delante, y si no puede ver la ficha el
+  campo llega AUSENTE.** Ni `openingEntity` ni `openingEntityId`: dejar el id sería un
+  identificador que el jugador no puede resolver pero que **confirma que la sesión abre en algo
+  escondido**, y devolver `null` mentiría, porque `null` significa «no abre en ningún sitio».
+  Ausente y presente-pero-vacío son cosas distintas para quien pinta.
+
+Y **apuntar a una ficha de otra campaña es 404, no 400** (`SessionsService.apertura`): un
+«prohibido» ya confirma que la ficha existe. Ojo con el atajo: `SessionsService.canSee` pasa
+`createdById: ""` y `grantedUserIds: []`, que para una `Session` vale —no tiene ni creador ni
+concesiones— pero **para una `Entity` no**, así que la ficha de apertura se lee con sus `grants` y
+su `createdById` de verdad. Con el atajo, una ficha `OWNER_DM` o `SPECIFIC_PLAYERS` se habría
+escondido de quien sí tenía derecho a verla: el fallo contrario a una fuga, que ninguna prueba de
+fuga caza.
+
 **2 · Un log append-only al lado, `GameEvent`.** Campaña, sesión (nulable), actor, tipo,
 sujeto, `payload Json`, visibilidad y fecha, con tres índices por los tres caminos de consulta.
 

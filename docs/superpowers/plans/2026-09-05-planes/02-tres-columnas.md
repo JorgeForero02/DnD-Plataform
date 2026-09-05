@@ -180,8 +180,8 @@ la mitad del motivo de este plan.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-05 | **2.1 · `Combatant.side`.** Enum `CombatantSide` y columna en `apps/api/prisma/schema.prisma:349-393`; migración `apps/api/prisma/migrations/20260905010000_combatant_side/migration.sql`, aplicada con `prisma migrate deploy`. `combatantSideSchema` y `sides` en `packages/shared/src/encounter.schema.ts`; el servicio lo escribe y lo devuelve en `apps/api/src/encounters/encounters.service.ts`. **Commit `<pendiente>`** |
-| 🟨 en marcha | 2026-09-05 | **2.2 · `Session.openingEntityId`** — sin empezar |
+| ✅ hecho | 2026-09-05 | **2.1 · `Combatant.side`.** Enum `CombatantSide` y columna en `apps/api/prisma/schema.prisma:349-393`; migración `apps/api/prisma/migrations/20260905010000_combatant_side/migration.sql`, aplicada con `prisma migrate deploy`. `combatantSideSchema` y `sides` en `packages/shared/src/encounter.schema.ts`; el servicio lo escribe y lo devuelve en `apps/api/src/encounters/encounters.service.ts`. **Commit `41013cd`** |
+| ✅ hecho | 2026-09-05 | **2.2 · `Session.openingEntityId`.** Columna y relación `SessionOpeningEntity` en `apps/api/prisma/schema.prisma:283-332`, lado inverso en `Entity`; migración `apps/api/prisma/migrations/20260905020000_session_opening_entity/migration.sql` con `ON DELETE SET NULL`. Filtrado en `SessionsService.conApertura` y `fichasDeApertura` (`apps/api/src/sessions/sessions.service.ts:40-113`). **Commit `<pendiente 2.2>`** |
 | 🟨 en marcha | 2026-09-05 | **2.3 · `Session.recap` y `recapVisibility`** — sin empezar |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
@@ -213,19 +213,26 @@ fuente si la hubo):
 - **Corregida de paso una errata en `docs/05-datos.md`**: decía «Queda declarado enQueda declarado
   en».
 
+- **2.2 · Un jugador sin acceso NO recibe el id tampoco, y eso va más allá de lo que pedía el
+  plan.** El plan decía «el campo llega ausente, no `null` con nombre». Devolver el id sin el
+  nombre habría cumplido la letra y sería una fuga igual: un identificador que el jugador no puede
+  resolver **confirma que la sesión abre en algo escondido**. Se quitan los dos. Dura porque es la
+  misma regla que ya sigue el encuentro cuando renumera las posiciones densas —contar lo que falta
+  es una forma de verlo—.
+- **2.2 · El atajo de `canSee` no vale para una `Entity`, y eso es un fallo CONTRARIO a una fuga.**
+  `SessionsService.canSee` (`apps/api/src/sessions/sessions.service.ts:31-37`) pasa
+  `createdById: ""` y `grantedUserIds: []`, que para una `Session` está bien porque no tiene ni
+  creador ni concesiones —lo dice `docs/05-datos.md`—. Aplicado a la ficha de apertura habría
+  escondido una `OWNER_DM` o una `SPECIFIC_PLAYERS` **de quien sí tenía derecho a verla**. Ninguna
+  prueba de fuga caza eso, así que hay una prueba explícita del caso `SPECIFIC_PLAYERS` con
+  concesión.
+- **2.2 · Apuntar a una ficha de otra campaña es 404 y no 400**, siguiendo la regla del
+  403-que-va-404 de `docs/04-convenciones.md`: un «prohibido» ya confirma que la ficha existe.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **2.2 · `Session.openingEntityId`.** El modelo `Session` está en
-  `apps/api/prisma/schema.prisma:283-313`; hay que añadir `openingEntityId String?` y la relación
-  `openingEntity Entity? @relation("SessionOpeningEntity", ..., onDelete: SetNull)`, y el lado
-  inverso en `Entity` (`apps/api/prisma/schema.prisma:237-252`). El filtrado va en
-  `SessionsService.get`/`list` (`apps/api/src/sessions/sessions.service.ts:53-74`), que hoy
-  devuelven la fila cruda: **si el espectador no puede ver la ficha de apertura, el campo llega
-  AUSENTE, no `null` con nombre.** Ojo: `SessionsService.canSee` pasa `createdById: ""` y
-  `grantedUserIds: []`, que para una `Entity` **no vale** — hay que leer sus `grants` y su
-  `createdById` de verdad.
 - **2.3 · `Session.recap` + `recapVisibility`.** El defecto está en
-  `apps/api/src/sessions/sessions.service.ts:175` (escribe `notes: { recap }`) y en la línea 184
+  `apps/api/src/sessions/sessions.service.ts:265` (escribe `notes: { recap }`) y en la línea 275
   (`visibility: closed.visibility`, cuando el esquema ya acepta `input.recapVisibility`,
   `packages/shared/src/session.schema.ts:73-77`). La migración tiene que **copiar** lo que ya hay:
   `UPDATE "Session" SET "recap" = "notes"->>'recap' WHERE "notes" ? 'recap' ...`, **sin borrar la

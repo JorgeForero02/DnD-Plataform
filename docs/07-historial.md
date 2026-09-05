@@ -53,9 +53,26 @@ que afirma que el personaje sin clasificar llega `NEUTRAL` se pone rojo (`Expect
 Received: "ENEMY"`). Con el `superRefine` anulado, la prueba del esquema que rechaza un bando
 sobrante se pone roja. Las dos deshechas.
 
+**`Session.openingEntityId`, dónde abre la escena (migración
+`20260905020000_session_opening_entity`).** `ON DELETE SET NULL` y no `CASCADE` —borrar un lugar no
+borra la sesión que pasó allí, comprobado borrando la entidad de verdad—, y **lo que se devuelve
+pasa por `canView`**: si el espectador no puede ver la ficha, el campo llega **ausente**, ni con
+nombre ni con id. Dejar el id sería confirmar que la sesión abre en algo escondido. Apuntar a una
+ficha de otra campaña es **404**, no 400.
+
+**Y aquí salió el fallo contrario a una fuga.** `SessionsService.canSee` pasa `createdById: ""` y
+`grantedUserIds: []`, que para una `Session` vale porque no tiene ni creador ni concesiones — para
+una `Entity` **no**. Con ese atajo, una ficha de apertura `OWNER_DM` o `SPECIFIC_PLAYERS` se habría
+escondido de quien **sí** tenía derecho a verla, y ninguna prueba de fuga caza eso. La ficha se lee
+con sus `grants` y su `createdById` de verdad, y hay una prueba por cada lado.
+
+**Mutación del bando y de la apertura.** Al devolver `openingEntityId` cuando la ficha no es
+visible, el e2e se pone rojo con el id filtrado en la salida.
+
 **Cómo revertirlo.** `git revert` de los commits del plan y una migración que haga
-`ALTER TABLE "Combatant" DROP COLUMN "side"` + `DROP TYPE "CombatantSide"`. Nada lee la columna
-fuera de los encuentros.
+`ALTER TABLE "Combatant" DROP COLUMN "side"` + `DROP TYPE "CombatantSide"` y
+`ALTER TABLE "Session" DROP COLUMN "openingEntityId"`. Nada lee esas columnas fuera de los
+encuentros y las sesiones.
 
 ## Las tres baratas: TipTap empaquetado, `build` en CI y la ficha de `lychee` (2026-09-05)
 

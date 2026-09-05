@@ -6,11 +6,34 @@ export const createSessionSchema = z.object({
   scheduledAt: z.coerce.date().optional(),
   notes: z.unknown().optional(),
   visibility: visibilitySchema.default("PLAYERS"),
+  /**
+   * **Dónde abre la escena**: el id de una ficha del mundo de esta misma campaña.
+   *
+   * `null` es un valor legítimo y distinto de ausente — es «quítalo», y por eso la actualización
+   * parcial lo necesita. **Nunca se manda el nombre del lugar**: se queda viejo, no enlaza y no
+   * respeta la visibilidad, que es justo lo que esta columna existe para no repetir.
+   */
+  openingEntityId: z.string().cuid().nullable().optional(),
 });
 export const updateSessionSchema = createSessionSchema.partial();
 
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
+
+/**
+ * La ficha por la que abre la escena, **tal y como se devuelve**: solo lo que hace falta para
+ * pintar un enlace.
+ *
+ * **Y llega AUSENTE, no `null`, cuando el espectador no puede ver la ficha.** Ausente significa «no
+ * hay nada que enseñarte aquí»; `null` significaría «esta sesión no abre en ningún sitio», que es
+ * una afirmación distinta y a veces falsa. Quien pinta necesita poder distinguirlas.
+ */
+export const sessionOpeningEntitySchema = z.object({
+  id: z.string().cuid(),
+  name: z.string(),
+  type: z.string(),
+});
+export type SessionOpeningEntity = z.infer<typeof sessionOpeningEntitySchema>;
 
 // --- La sesión en juego (pantalla de mesa) ---
 

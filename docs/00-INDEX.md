@@ -11,8 +11,12 @@ propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 
 **Sí tiene. Las fases 2 y 2.5 están en producción** desde el 2026-09-04 (`924058d`). **Lo que NO
 está desplegado es el reseño de la mesa** —rehecho entero en cuatro olas el 4 y el 5 de septiembre—
-y los tres commits de la Ola 3. Local va por delante; desplegar lo pide el autor, ver
-[03-despliegue.md](./03-despliegue.md).
+ni los tres commits de la Ola 3.
+
+**Ojo con los tres estados, que desde el 2026-09-05 ya no son dos:** `main` local y `origin/main`
+**van a la par** (se empujaron 39 commits ese día), y **producción va por detrás de los dos**.
+Empujar a GitHub **no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión
+del autor: ver [03-despliegue.md](./03-despliegue.md).
 
 **El trabajo pendiente está planificado**, uno por fichero, en
 [superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md).
@@ -90,7 +94,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `47c0785` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `c8fadb7` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

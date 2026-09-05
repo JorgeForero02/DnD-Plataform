@@ -72,14 +72,27 @@ async function campanaConSesionYHiloLargo(page: Page) {
   await expect(barra).toBeVisible({ timeout: 10_000 });
 
   // Doce anotaciones desde la barra, que es el gesto que existe desde cualquier pantalla.
+  //
+  // **«Anotar» es un ALTERNADOR, no un botón de abrir**, y esta prueba lo aprendió por las malas:
+  // pulsándolo dentro del bucle, la segunda vuelta cerraba el panel que la primera había abierto y
+  // el campo desaparecía. Se abre una vez, fuera del bucle, y se deja abierto — que además es lo
+  // que hace una persona sellando doce veces seguidas.
+  await page.getByRole("button", { name: "Anotar" }).click();
+  const campo = page.getByLabel("Qué anotar");
+  const sellarCombate = page.getByRole("button", { name: /Combate/ }).first();
   for (let i = 0; i < 12; i++) {
-    await page.getByRole("button", { name: "Anotar" }).click();
-    await page.getByLabel("Qué anotar").fill(`la línea número ${i + 1} del almacén`);
-    await page
-      .getByRole("button", { name: /Combate/ })
-      .first()
-      .click();
-    await expect(page.getByText("Anotado: Combate.")).toBeVisible({ timeout: 10_000 });
+    // **Se espera a que el campo esté vacío ANTES de escribir, y ahí está la carrera que costó
+    // dos tandas.** El compositor limpia el texto en el `onSuccess` de la mutación anterior, así
+    // que si se escribe sin esperar, ese limpiado llega tarde y **borra lo recién escrito**: el
+    // botón se queda deshabilitado para siempre y el fallo sale como «esperando a que el botón
+    // esté habilitado», que no dice nada de la causa.
+    //
+    // Y no vale mirar «Anotado: Combate.» para saber que la anterior terminó: ese cartel se queda
+    // puesto de la vuelta previa, así que la aserción pasa al instante y no espera nada.
+    await expect(campo).toHaveValue("");
+    await campo.fill(`la línea número ${i + 1} del almacén`);
+    await expect(sellarCombate).toBeEnabled();
+    await sellarCombate.click();
   }
 
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();

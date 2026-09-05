@@ -153,7 +153,10 @@ test("el DM escribe una regla, la arma, la ensaya en seco, y el ensayo no deja t
   await expect(resultado).toContainText("El heraldo de la puerta");
   await expect(resultado).not.toContainText("APPLIED");
 
-  await page.getByRole("button", { name: "Cerrar" }).click();
+  // Ola 0: `ui/Dialog` es un cajón y trae su propia aspa, cuyo nombre accesible es
+  // «Cerrar (Escape)» — y el `name` de Playwright casa por subcadena, así que «Cerrar» pasó a
+  // encontrar dos. Se pide el exacto del panel de reglas.
+  await page.getByRole("button", { name: "Cerrar", exact: true }).click();
 
   // El ensayo no cuenta como disparo: el contador sigue en cero.
   await expect(fila).toContainText("0 disparos");

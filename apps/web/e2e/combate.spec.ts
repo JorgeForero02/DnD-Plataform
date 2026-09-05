@@ -84,7 +84,11 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
     .getByRole("status", { name: "Sesión en curso" })
     .getByRole("link", { name: "Ir a la mesa" })
     .click();
-  await expect(page.getByRole("heading", { name: "La mesa", exact: true })).toBeVisible();
+  // Ola 0 (2026-09-04): la mesa dejó de ir dentro de `AppShell`, así que ya no hay un
+  // `PageHeader` con el título «La mesa». Lo que dice «estás en la mesa» es su banda superior,
+  // que además es un `banner` porque la mesa es pantalla completa. **Lo que se comprueba no
+  // cambia: que el enlace de la barra te ha traído aquí.**
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible();
   await expect(page.getByText("La mesa no está en combate.")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("region", { name: "Orden de turnos" })).toBeHidden();
 

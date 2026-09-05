@@ -127,7 +127,10 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
   // Hay dos: el de la barra y el de la fila de la sesión. Se usa el de la barra a propósito,
   // porque es el que existe desde CUALQUIER pantalla de la campaña.
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
-  await expect(page.getByRole("heading", { name: "La mesa", exact: true })).toBeVisible();
+  // Ola 0 (2026-09-04): sin `AppShell` no hay `PageHeader`, así que el título «La mesa» ya no
+  // existe. Su banda superior es lo que dice que has llegado, y es un `banner` porque la mesa
+  // ocupa la ventana. **Lo que se comprueba no cambia.**
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible();
   const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
   // Lo que se comprueba es lo de siempre: el sello puesto desde la barra **llega a la mesa, en
   // prosa y no como clave**. Desde que el hilo pinta los cinco tipos de mensaje, la clase va en
@@ -140,7 +143,7 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
 
   // La banda de estado dice de qué sesión se trata sin tener que leer el registro. Y como nadie
   // declaró asistencia, **lo dice** en vez de inventarse una cifra.
-  const banda = page.getByRole("region", { name: "Estado de la sesión" });
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
   await expect(banda).toContainText("El puerto en llamas");
   await expect(banda).toContainText("asistencia sin declarar");
 
@@ -246,7 +249,10 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
 
   const elenco = page.getByRole("region", { name: "En la mesa" });
-  await expect(elenco.getByText("Borin Barbaférrea")).toBeVisible({ timeout: 15_000 });
+  // Carril C2: el nombre aparece ahora tres veces en la ficha —el rótulo y los `sr-only` de
+  // «Daño a …» y «Abrir la ficha de …»—, así que se pide el primero. **Lo que se comprueba es lo
+  // mismo: que el personaje está en el elenco.**
+  await expect(elenco.getByText("Borin Barbaférrea").first()).toBeVisible({ timeout: 15_000 });
   // El descriptor traducido, nunca la clave del catálogo.
   await expect(elenco).toContainText("Enano · Guerrero · Nivel 1");
   await expect(elenco).toContainText(`Lo lleva ${cuenta.displayName}`);
@@ -260,7 +266,7 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   ).toBeVisible();
 
   // La banda ya cuenta a quien se declaró.
-  await expect(page.getByRole("region", { name: "Estado de la sesión" })).toContainText(
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toContainText(
     "1 en la mesa",
   );
 
@@ -326,10 +332,13 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
   await expect(page.getByRole("status", { name: "Sesión en curso" })).toBeVisible({
     timeout: 10_000,
   });
-  await page.getByRole("link", { name: "Ir a la mesa" }).first().click();
-  await expect(page.getByRole("region", { name: "Estado de la sesión" })).toBeVisible({
-    timeout: 15_000,
-  });
+  // **La barra se mide ANTES de entrar a la mesa, y esto es una consecuencia directa de la Ola 0**
+  // que costó un rojo: la mesa dejó de ir dentro de `AppShell`, así que `BarraDeSesion` **ya no se
+  // pinta ahí**. Medir las dos superficies en la misma pantalla dejó de ser posible, y el
+  // `getComputedStyle` de una barra inexistente reventaba el evaluate entero. Se mide cada una
+  // donde vive: la barra en la campaña, la banda en la mesa.
+
+  // La barra vive en la campaña: se mide aquí, antes de irse.
 
   // El mismo método que `tokens-contrast.spec.ts`: se compone el alfa contra lo que hay detrás y
   // se mide el color **calculado**, no el declarado.
@@ -337,106 +346,137 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
   // **Los elementos se buscan por `data-medida`, no contando `span`s.** La versión anterior
   // leía «el segundo `span` de la barra», y bastaba meter un separador entre medias para que
   // midiera otra cosa sin que nada avisara. Un número que se mide tiene que saber qué mide.
-  const medido = await page.evaluate(() => {
-    const rgb = (c: string): [number, number, number] => {
-      const m = c.match(/[\d.]+/g)!.map(Number);
-      return [m[0], m[1], m[2]];
-    };
-    const alfa = (c: string): number => {
-      const m = c.match(/[\d.]+/g)!.map(Number);
-      return m.length > 3 ? m[3] : 1;
-    };
-    const sobre = (frente: string, fondo: [number, number, number]): [number, number, number] => {
-      const f = rgb(frente);
-      const a = alfa(frente);
-      return [0, 1, 2].map((i) => f[i] * a + fondo[i] * (1 - a)) as [number, number, number];
-    };
-    const lum = ([r, g, b]: [number, number, number]) => {
-      const c = [r, g, b].map((v) => {
-        const s = v / 255;
-        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-      });
-      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-    };
-    const ratio = (a: [number, number, number], b: [number, number, number]) => {
-      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
-      return (x + 0.05) / (y + 0.05);
-    };
+  const medirLoQueHaya = () =>
+    page.evaluate(() => {
+      const rgb = (c: string): [number, number, number] => {
+        const m = c.match(/[\d.]+/g)!.map(Number);
+        return [m[0], m[1], m[2]];
+      };
+      const alfa = (c: string): number => {
+        const m = c.match(/[\d.]+/g)!.map(Number);
+        return m.length > 3 ? m[3] : 1;
+      };
+      const sobre = (frente: string, fondo: [number, number, number]): [number, number, number] => {
+        const f = rgb(frente);
+        const a = alfa(frente);
+        return [0, 1, 2].map((i) => f[i] * a + fondo[i] * (1 - a)) as [number, number, number];
+      };
+      const lum = ([r, g, b]: [number, number, number]) => {
+        const c = [r, g, b].map((v) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+      };
+      const ratio = (a: [number, number, number], b: [number, number, number]) => {
+        const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+        return (x + 0.05) / (y + 0.05);
+      };
 
-    // **No sirve `document.body`**: su fondo es transparente porque el color lo pinta el div
-    // del armazón. Medir contra él daba 1.03:1 — el negro por defecto contra el negro por
-    // defecto — y habría dejado pasar cualquier cosa. Se busca el ancestro que sí pinta.
-    const opaco = (el: Element | null): [number, number, number] => {
-      let n: Element | null = el;
-      while (n) {
-        const c = getComputedStyle(n).backgroundColor;
-        if (alfa(c) > 0.99) return rgb(c);
-        n = n.parentElement;
+      // **No sirve `document.body`**: su fondo es transparente porque el color lo pinta el div
+      // del armazón. Medir contra él daba 1.03:1 — el negro por defecto contra el negro por
+      // defecto — y habría dejado pasar cualquier cosa. Se busca el ancestro que sí pinta.
+      const opaco = (el: Element | null): [number, number, number] => {
+        let n: Element | null = el;
+        while (n) {
+          const c = getComputedStyle(n).backgroundColor;
+          if (alfa(c) > 0.99) return rgb(c);
+          n = n.parentElement;
+        }
+        return [0, 0, 0];
+      };
+      const fondoPagina = opaco(document.querySelector(".bg-bg"));
+      const barra = document.querySelector('[aria-label="Sesión en curso"]') as HTMLElement | null;
+
+      const salida: { que: string; valor: number; minimo: number }[] = [];
+      const texto = (sel: string, que: string, fondo: [number, number, number], minimo = 4.5) => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) throw new Error(`No existe el elemento a medir: ${sel}`);
+        salida.push({ que, valor: ratio(sobre(getComputedStyle(el).color, fondo), fondo), minimo });
+      };
+
+      if (barra) {
+        const fondoBarra = sobre(getComputedStyle(barra).backgroundColor, fondoPagina);
+        texto('[data-medida="en-juego"]', "barra: «En juego» (cobre)", fondoBarra);
+        texto('[data-medida="titulo"]', "barra: título de la sesión", fondoBarra);
+        texto('[data-medida="duracion"]', "barra: tiempo transcurrido", fondoBarra);
+        texto('[data-medida="ir-a-la-mesa"]', "barra: «Ir a la mesa»", fondoBarra);
+        salida.push({
+          que: "barra: filete inferior",
+          valor: ratio(sobre(getComputedStyle(barra).borderBottomColor, fondoPagina), fondoPagina),
+          minimo: 3,
+        });
       }
-      return [0, 0, 0];
-    };
-    const fondoPagina = opaco(document.querySelector(".bg-bg"));
-    const barra = document.querySelector('[aria-label="Sesión en curso"]') as HTMLElement;
-    const fondoBarra = sobre(getComputedStyle(barra).backgroundColor, fondoPagina);
 
-    const salida: { que: string; valor: number; minimo: number }[] = [];
-    const texto = (sel: string, que: string, fondo: [number, number, number], minimo = 4.5) => {
-      const el = document.querySelector(sel) as HTMLElement | null;
-      if (!el) throw new Error(`No existe el elemento a medir: ${sel}`);
-      salida.push({ que, valor: ratio(sobre(getComputedStyle(el).color, fondo), fondo), minimo });
-    };
+      // La mesa adoptada de la maqueta: sus paneles y su banda son superficies nuevas, y las
+      // superficies nuevas se miden. El fondo del panel es `--surface` sobre la cuadrícula.
+      // Ola 0 (2026-09-04): la banda pasó de `<section aria-label="Estado de la sesión">` dentro
+      // del armazón a la CABECERA de una mesa a pantalla completa. Su título dejó de ser un `h2`
+      // —el nombre de la campaña es un enlace, porque desde la mesa se vuelve a ella— así que se
+      // mide ese enlace. **Lo que se comprueba es lo mismo: que el texto de la banda se lee sobre
+      // su propio fondo.**
+      const banda = document.querySelector(
+        '[aria-label="Estado de la mesa"]',
+      ) as HTMLElement | null;
+      if (!banda) return salida;
+      const fondoBanda = sobre(getComputedStyle(banda).backgroundColor, fondoPagina);
+      const tituloBanda = banda.querySelectorAll("a")[1] as HTMLElement;
+      salida.push({
+        que: "mesa: título de la sesión en la banda",
+        valor: ratio(sobre(getComputedStyle(tituloBanda).color, fondoBanda), fondoBanda),
+        minimo: 4.5,
+      });
+      const cifras = banda.querySelector("p") as HTMLElement;
+      salida.push({
+        que: "mesa: duración y asistencia (cifras)",
+        valor: ratio(sobre(getComputedStyle(cifras).color, fondoBanda), fondoBanda),
+        minimo: 4.5,
+      });
+      salida.push({
+        que: "mesa: filete de cobre de la banda",
+        valor: ratio(sobre(getComputedStyle(banda).borderTopColor, fondoPagina), fondoPagina),
+        minimo: 3,
+      });
 
-    texto('[data-medida="en-juego"]', "barra: «En juego» (cobre)", fondoBarra);
-    texto('[data-medida="titulo"]', "barra: título de la sesión", fondoBarra);
-    texto('[data-medida="duracion"]', "barra: tiempo transcurrido", fondoBarra);
-    texto('[data-medida="ir-a-la-mesa"]', "barra: «Ir a la mesa»", fondoBarra);
-    salida.push({
-      que: "barra: filete inferior",
-      valor: ratio(sobre(getComputedStyle(barra).borderBottomColor, fondoPagina), fondoPagina),
-      minimo: 3,
-    });
+      const panel = document.querySelector('[aria-label="Registro de la sesión"]') as HTMLElement;
+      const fondoPanel = sobre(getComputedStyle(panel).backgroundColor, fondoPagina);
+      const cabeceraPanel = panel.querySelector("h2") as HTMLElement;
+      salida.push({
+        que: "mesa: cabecera del panel",
+        valor: ratio(sobre(getComputedStyle(cabeceraPanel).color, fondoPanel), fondoPanel),
+        minimo: 4.5,
+      });
+      salida.push({
+        que: "mesa: filete que separa la cabecera del panel",
+        valor: ratio(
+          sobre(getComputedStyle(panel.querySelector("div")!).borderBottomColor, fondoPanel),
+          fondoPanel,
+        ),
+        minimo: 3,
+      });
 
-    // La mesa adoptada de la maqueta: sus paneles y su banda son superficies nuevas, y las
-    // superficies nuevas se miden. El fondo del panel es `--surface` sobre la cuadrícula.
-    const banda = document.querySelector('[aria-label="Estado de la sesión"]') as HTMLElement;
-    const fondoBanda = sobre(getComputedStyle(banda).backgroundColor, fondoPagina);
-    const tituloBanda = banda.querySelector("h2") as HTMLElement;
-    salida.push({
-      que: "mesa: título de la sesión en la banda",
-      valor: ratio(sobre(getComputedStyle(tituloBanda).color, fondoBanda), fondoBanda),
-      minimo: 4.5,
-    });
-    const cifras = banda.querySelector("p") as HTMLElement;
-    salida.push({
-      que: "mesa: duración y asistencia (cifras)",
-      valor: ratio(sobre(getComputedStyle(cifras).color, fondoBanda), fondoBanda),
-      minimo: 4.5,
-    });
-    salida.push({
-      que: "mesa: filete de cobre de la banda",
-      valor: ratio(sobre(getComputedStyle(banda).borderTopColor, fondoPagina), fondoPagina),
-      minimo: 3,
-    });
-
-    const panel = document.querySelector('[aria-label="Registro de la sesión"]') as HTMLElement;
-    const fondoPanel = sobre(getComputedStyle(panel).backgroundColor, fondoPagina);
-    const cabeceraPanel = panel.querySelector("h2") as HTMLElement;
-    salida.push({
-      que: "mesa: cabecera del panel",
-      valor: ratio(sobre(getComputedStyle(cabeceraPanel).color, fondoPanel), fondoPanel),
-      minimo: 4.5,
-    });
-    salida.push({
-      que: "mesa: filete que separa la cabecera del panel",
-      valor: ratio(
-        sobre(getComputedStyle(panel.querySelector("div")!).borderBottomColor, fondoPanel),
-        fondoPanel,
-      ),
-      minimo: 3,
+      return salida;
     });
 
-    return salida;
+  // **Cada superficie se mide donde vive, y se juntan.** Antes las dos se medían en la misma
+  // pantalla porque la mesa iba dentro de `AppShell` y arrastraba la barra consigo. Ya no: la
+  // función de arriba se salta lo que no encuentra, así que en la campaña devuelve lo de la barra
+  // y en la mesa lo de la banda y el panel.
+  const enLaCampana = await medirLoQueHaya();
+  await page
+    .getByRole("status", { name: "Sesión en curso" })
+    .getByRole("link", { name: "Ir a la mesa" })
+    .click();
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible({
+    timeout: 15_000,
   });
+  const enLaMesa = await medirLoQueHaya();
+  const medido = [...enLaCampana, ...enLaMesa];
+
+  // Si alguna de las dos pantallas dejara de tener sus superficies, esto mediría **menos cosas y
+  // seguiría en verde**. Se fija cuántas trae cada una.
+  expect(enLaCampana.length, "medidas de la barra de sesión").toBeGreaterThan(0);
+  expect(enLaMesa.length, "medidas de la mesa").toBeGreaterThan(0);
 
   console.log("\n=== Contraste WCAG medido (barra de sesión y mesa) ===");
   for (const m of medido) {
@@ -517,7 +557,7 @@ test("en sesión, la cabecera de escena nombra la sesión y a quien está en la 
   // Y lo que solo se ve maquetado: la cabecera de escena **no se solapa** con la banda de estado
   // que va justo encima. Las dos son del estrato permanente y viven pegadas; un solape aquí es
   // exactamente el defecto de borde partido que la suite unitaria entera no puede ver.
-  const banda = page.getByRole("region", { name: "Estado de la sesión" });
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
   const cajaBanda = await banda.boundingBox();
   const cajaEscena = await escena.boundingBox();
   expect(cajaBanda).not.toBeNull();

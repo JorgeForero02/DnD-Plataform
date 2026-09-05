@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Dialog } from "../../../ui/Dialog";
-import { IconoBuscar } from "../iconos";
+import { IconoLupa } from "../../../ui/Iconos";
 import { IconoMegafono, IconoRayo, IconoReloj } from "../../../ui/Iconos";
 import { DadoDibujado } from "../../rolls/DadoDibujado";
 import { IconoBestiario } from "../../bestiario/iconos";
@@ -205,7 +205,7 @@ export function HerramientasDeNarracion({
           onClick={onConsultarElMundo}
           className="flex shrink-0 items-center gap-s2 border-t border-muted pt-s2 text-left font-chrome text-chrome-xs text-muted transition-colors hover:text-accent-text"
         >
-          <IconoBuscar className="h-4 w-4 shrink-0 text-copper-text" />
+          <IconoLupa className="h-4 w-4 shrink-0 text-copper-text" />
           Consultar el mundo
         </button>
       )}

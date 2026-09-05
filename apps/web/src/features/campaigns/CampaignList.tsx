@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { useCampaigns } from "./hooks";
 import { EmptyState } from "../../ui/Collection";
 import { tiempoRelativo } from "./tiempoRelativo";
-import { IconoPersonajes, IconoSesiones, IconoMas } from "./iconosDeSeccion";
+import { IconoPersonajes, IconoSesiones } from "./iconosDeSeccion";
+import { IconoMas } from "../../ui/Iconos";
 
 // **La tarjeta de la maqueta, adoptada entera (2026-09-03).**
 //

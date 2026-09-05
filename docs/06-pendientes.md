@@ -1249,7 +1249,37 @@ Cierra enchufando `SelectorDeTipoDeDano` —que exporta `AplicarDano`, en
 `ranuraTipoDeDano` de `apps/web/src/features/sessions/elenco/PonerDano.tsx`, y su valor en
 `tipoDeDano`. **Las dos props ya existen en `main`; el selector llega con `carril/c6`.**
 
-## P2 · Setenta y seis iconos dibujados en ocho ficheros, con conceptos duplicados (2026-09-04)
+## ~~P2 · Setenta y seis iconos dibujados en ocho ficheros, con conceptos duplicados~~ — CERRADA (2026-09-05, plan 07)
+
+> **Cerrada con una prueba, no con una limpieza.** Limpiar hoy solo compraba tiempo: el siguiente
+> que necesitara un escudo y no encontrara el de `ui` dibujaría otro. Lo que la cierra es
+> `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`, que barre **todos** los ficheros de
+> iconos de `features/` y se pone roja si uno redefine un nombre que `ui/Iconos.tsx` ya exporta.
+> **La prueba encontró tres que la lectura a ojo se había dejado** —`campaign-items/IconoEscudo`,
+> `campaigns/IconoMas` e `inventory/IconoMochila`—, que es exactamente su trabajo.
+>
+> **Lo consolidado:** el escudo de `bestiario`, y el sol, la luna, la mochila y la lupa de
+> `sessions`, que ahora vienen de `ui/Iconos.tsx`. **El tamaño se conservó a mano** donde el
+> consumidor se apoyaba en el `h-5 w-5` por defecto de `sessions`, porque `ui/Marco` mide en `1em`
+> — es la trampa que esta misma ficha avisaba.
+>
+> **Y lo que NO se fusionó, con su motivo:**
+> - `inventory`, `rules` y `level-up` dibujan en **rejilla de 16**, no de 24. Moverlos sería
+>   **redibujar**, no consolidar, y el plan separa esas dos cosas a propósito.
+> - `IconoObjeto` vive en tres módulos y son **tres dibujos para tres significados** —un cofre, el
+>   glifo del tipo `ITEM` y una caja pequeña—; `IconoLugar`, dos. Un icono que solo usa su módulo
+>   **se queda en su módulo**: `ui/` no es un cajón, y subirlo todo es tan malo como duplicarlo.
+> - El escudo del catálogo de objetos **conserva su dibujo** —lleva marca de verificación y el
+>   lienzo de sus hermanos— y **deja de exportarse**: nadie lo importaba, su puerta pública es
+>   `IconoDeObjeto({ kind })`, y meter el de `ui` mezclaría dos grosores en la misma fila.
+> - `inventory/IconoMochila` pasó a llamarse **`IconoLlevado`**, que es como se llaman sus dos
+>   hermanas (`IconoEquipado`, `IconoGuardado`): se nombraba por su dibujo y era la rara.
+>
+> Probado por mutación: una cuarta copia del escudo en `apps/web/src/features/sessions/iconos.tsx` pone la prueba roja al
+> instante. Y los iconos movidos se miraron **en el navegador** —los recorridos de `armazon`,
+> `sesion` e `inventario`—, porque `jsdom` no maqueta. Texto original abajo.
+
+
 
 La auditoría contaba «4 iconos» porque solo miró `ui/Iconos.tsx`. **La aplicación tiene ~76
 repartidos en 7 ficheros de `features/`.** Al traer los 23 de la maqueta a `ui/`, ahora hay **dos

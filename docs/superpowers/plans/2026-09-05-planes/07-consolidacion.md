@@ -148,15 +148,52 @@ navegador abierto para mirar los iconos movidos, y las tres fichas anotadas en e
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **7.1 · Los iconos.** Prueba nueva `apps/web/src/ui/__tests__/iconos-sin-duplicados.test.ts`. Consolidados a `ui/Iconos.tsx`: el escudo de `bestiario` y el sol, la luna, la mochila y la lupa de `apps/web/src/features/sessions/iconos.tsx`. El escudo de `apps/web/src/features/campaign-items/iconos.tsx:59` deja de exportarse; `inventory/IconoMochila` pasa a `IconoLlevado`; el «más» de `campaigns/iconosDeSeccion.tsx` viene de `ui`. **Commit `<pendiente 7.1>`** |
+| ⬜ sin empezar | — | 7.2 · El vocabulario del daño (D-OP-14) |
+| ⬜ sin empezar | — | 7.3 · `type: tipo` — consecuencia dicha y rastro (I16) |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **7.1 · La prueba encontró TRES duplicados que la lectura a ojo se había dejado.** Yo había medido
+  escudo, mochila, sol, luna y lupa; faltaban `campaign-items/IconoEscudo`, `campaigns/IconoMas` e
+  `inventory/IconoMochila`. **Es el argumento entero de por qué el plan pedía la prueba** y no solo
+  la limpieza: sin ella la cuarta copia llega sola.
+- **7.1 · Tres módulos dibujan en rejilla de 16, no de 24** (`inventory`, `rules`, `level-up`, con
+  trazo 1.4/1.5 frente al 1.6 de `ui`). **Moverlos sería redibujar**, y el plan separa mover de
+  retocar a propósito. Se quedan, y la prueba no los toca porque sus nombres ya no chocan.
+- **7.1 · `IconoObjeto` y `IconoLugar` NO se fusionan, y no es pereza.** Son **tres dibujos para tres
+  significados** —un cofre (el sello «objeto entregado»), el glifo del tipo `ITEM`, y una caja de la
+  rejilla de 16—. La regla del plan dice que un icono que solo usa su módulo **se queda en su
+  módulo**; subirlo todo es tan malo como duplicarlo. Está escrito en la cabecera de la prueba para
+  que nadie lo «arregle».
+- **7.1 · El escudo del catálogo deja de EXPORTARSE en vez de renombrarse o moverse.** Nadie lo
+  importaba —la puerta pública de esa familia es `IconoDeObjeto({ kind })`—, así que dejarlo privado
+  es la verdad: hay **un solo `IconoEscudo` importable**. Y su dibujo se queda porque lleva marca de
+  verificación y el lienzo de sus hermanos; meter el de `ui` mezclaría dos grosores en la misma fila.
+- **7.1 · `inventory/IconoMochila` → `IconoLlevado`, y eso es una mejora aparte.** Sus dos hermanas
+  se llaman por su significado (`IconoEquipado`, `IconoGuardado`, del trío
+  `EQUIPPED`/`CARRIED`/`STORED`) y esta se llamaba por su dibujo: era la rara **antes** de chocar
+  con `ui`.
+- **7.1 · El tamaño se pasó explícito donde se heredaba.** `ui/Marco` mide en `1em`; el `base()` de
+  `sessions` traía `h-5 w-5` por defecto. `RailDePaneles.tsx` llamaba `<IconoMochila />` sin clase,
+  así que **sustituir sin más habría encogido el icono sin que ninguna prueba lo viera** — es la
+  trampa que la ficha avisaba, y por eso se miró en el navegador.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **7.2 · El vocabulario del daño (D-OP-14).** Hay **tres** copias —`character-sheet/vocabulario.ts`,
+  `campaign-items/vocabulario.ts`, `inventory/vocabulario.ts`— y **no dicen lo mismo**: `inventory`
+  abrevia (`rayo` donde las otras dicen `relámpago`). **Compáralas entrada por entrada antes de
+  borrar ninguna.** La decisión ya tomada es un módulo con **dos formas**, `nombreTipoDano` y
+  `nombreTipoDanoCorto`, en `apps/web/src` y **no** en `packages/shared` —es forma legible en
+  español, no forma de los datos—, y **cada consumidor elige la suya a propósito**: la tabla del
+  inventario corta, la hoja y la traza largas. **Escríbelo en el commit**, porque es justo lo que un
+  futuro «unificador» va a querer deshacer.
+- **7.3 · `type: tipo` (I16).** Cambiar el tipo reclasifica la ficha sin preguntar y **sin dejar
+  rastro**. Dos piezas: la confirmación **dice la consecuencia** —dónde deja de aparecer, qué filtros
+  dejan de encontrarla, si su statblock deja de tener sentido— y **nunca «¿estás seguro?»**; y el
+  cambio **escribe un suceso**. Si el suceso obliga a añadir un valor al enum de Prisma, **mira antes
+  si algún otro plan lo está tocando**.

@@ -3,7 +3,8 @@ import { useAllEntities } from "../entities/hooks";
 import { useGameClock } from "../game-clock/hooks";
 import { useGameLog } from "./hooks";
 import { lugarDeLaEscena, momentoDeLaCampana } from "./escena";
-import { IconoLugar, IconoLuna, IconoSol } from "./iconos";
+import { IconoLugar } from "./iconos";
+import { IconoLuna, IconoSol } from "../../ui/Iconos";
 
 // B1 — **el estrato permanente de la mesa: la cabecera de escena.**
 //

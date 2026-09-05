@@ -37,8 +37,17 @@ export function IconoEquipado({ className }: IconoProps) {
   );
 }
 
-/** Encima: la mochila. */
-export function IconoMochila({ className }: IconoProps) {
+/**
+ * Encima: la mochila.
+ *
+ * **Se llama `IconoLlevado` y no `IconoMochila` desde el 2026-09-05.** Sus dos hermanas de esta
+ * familia —`IconoEquipado` y `IconoGuardado`— se llaman por **lo que significan**
+ * (`EQUIPPED`/`CARRIED`/`STORED`), y esta se llamaba por su dibujo; era la rara. Y además
+ * chocaba con `ui/IconoMochila`, que es el dueño de la mochila compartida: dos nombres iguales
+ * para dos rejillas distintas —esta es de 16, la de `ui` de 24— es cómo alguien importa la que
+ * no toca.
+ */
+export function IconoLlevado({ className }: IconoProps) {
   return (
     <Marco className={className}>
       <path d="M5 6V4a3 3 0 0 1 6 0v2" />

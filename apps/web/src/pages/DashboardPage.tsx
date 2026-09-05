@@ -4,7 +4,7 @@ import { Cronicas } from "../features/campaigns/Cronicas";
 import { CreateCampaignModal } from "../features/campaigns/CreateCampaignModal";
 import { Button } from "../ui/Button";
 import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
-import { IconoMas } from "../features/campaigns/iconosDeSeccion";
+import { IconoMas } from "../ui/Iconos";
 
 // Reseño 2026-09-02 — audit B3 and C1. This screen used to own its own ad-hoc header (title
 // on the left, four unrelated controls jammed on the right, including "Salir" at the same

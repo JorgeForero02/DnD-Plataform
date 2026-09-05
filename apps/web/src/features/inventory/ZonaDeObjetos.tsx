@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import type { ItemLocation } from "@dnd/shared";
 import { NOMBRE_ZONA, SUBTITULO_ZONA } from "./vocabulario";
-import { IconoEquipado, IconoGuardado, IconoMochila } from "./iconos";
+import { IconoEquipado, IconoGuardado, IconoLlevado } from "./iconos";
 
 // Carril B1 — pantalla 20 del prototipo: "tres zonas rotuladas: Equipado, Encima, Guardado".
 
 const ICONO_ZONA: Record<ItemLocation, (props: { className?: string }) => ReactNode> = {
   EQUIPPED: IconoEquipado,
-  CARRIED: IconoMochila,
+  CARRIED: IconoLlevado,
   STORED: IconoGuardado,
 };
 

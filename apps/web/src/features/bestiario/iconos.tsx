@@ -28,21 +28,3 @@ export function IconoBestiario({ className = "" }: Props) {
     </svg>
   );
 }
-
-/** El escudo del botón que baja una criatura a la mesa, igual que en el prototipo. */
-export function IconoEscudo({ className = "" }: Props) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3 5 5.8v5.4c0 4 2.8 7.6 7 9.1 4.2-1.5 7-5.1 7-9.1V5.8L12 3Z" />
-    </svg>
-  );
-}

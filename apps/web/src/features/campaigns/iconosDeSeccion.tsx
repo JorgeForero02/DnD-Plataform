@@ -54,18 +54,6 @@ export function IconoPersonajes({ className = "" }: Props) {
 // completo, que es exactamente lo que la regla de iconos prohíbe: un glifo de fuente se pinta a
 // todo color en unos sistemas y como un cuadrado vacío en otros. La maqueta lo pone dentro del
 // botón que crea, y ahí sigue — pero en trazo.
-export function IconoMas({ className = "" }: Props) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={["h-[1em] w-[1em] shrink-0", className].join(" ")}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M12 5.5v13M5.5 12h13" {...TRAZO} />
-    </svg>
-  );
-}
 
 /**
  * Resumen: el banderín del tablero. Es la pantalla que dice dónde está la campaña.

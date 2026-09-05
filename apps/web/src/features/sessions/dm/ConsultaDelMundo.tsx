@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Visibility } from "@dnd/shared";
 import { useAllEntities } from "../../entities/hooks";
-import { IconoBuscar } from "../iconos";
+import { IconoLupa } from "../../../ui/Iconos";
 import { fieldControlClass } from "../../../ui/Field";
 import { Badge } from "../../../ui/Badge";
 
@@ -31,7 +31,7 @@ export function ConsultaDelMundo({ campaignId, esDm }: { campaignId: string; esD
   return (
     <div className="flex min-h-0 flex-col gap-s3">
       <h2 className="flex shrink-0 items-center gap-s2 font-title text-chrome-md text-text">
-        <IconoBuscar className="h-4 w-4 text-copper-text" />
+        <IconoLupa className="h-4 w-4 text-copper-text" />
         El mundo, sin salir
         <span aria-hidden="true" className="h-px flex-1 bg-copper/40" />
       </h2>

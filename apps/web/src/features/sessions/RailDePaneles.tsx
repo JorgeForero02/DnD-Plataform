@@ -1,4 +1,5 @@
-import { IconoBuscar, IconoElenco, IconoMochila } from "./iconos";
+import { IconoElenco } from "./iconos";
+import { IconoLupa, IconoMochila } from "../../ui/Iconos";
 import { IconoD20 } from "../../ui/Iconos";
 
 // B1.3 — **el estrato SUPERPUESTO, y su puerta.**
@@ -133,7 +134,7 @@ export function RailDePaneles({
       <Boton
         etiqueta="Bolsa"
         tecla={TECLAS.bolsa}
-        icono={<IconoMochila />}
+        icono={<IconoMochila className="h-5 w-5" />}
         onClick={() => onAbrir("bolsa")}
         disabled={!tienePersonaje}
         motivo="No llevas ningún personaje en esta mesa"
@@ -141,7 +142,7 @@ export function RailDePaneles({
       <Boton
         etiqueta="Mundo"
         tecla={TECLAS.mundo}
-        icono={<IconoBuscar />}
+        icono={<IconoLupa className="h-5 w-5" />}
         onClick={() => onAbrir("mundo")}
       />
       {/* **Los dados no son un cajón, y por eso este botón alterna en vez de abrir.** El panel

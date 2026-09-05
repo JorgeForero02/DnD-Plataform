@@ -56,7 +56,13 @@ export function IconoArmadura({ className }: IconoDeObjetoProps) {
 }
 
 /** Escudo: el escudo redondo. */
-export function IconoEscudo({ className }: IconoDeObjetoProps) {
+// **Sin `export`, y no es un descuido.** Nadie lo importa: la puerta pública de esta familia es
+// `IconoDeObjeto({ kind })`, y este dibujo solo existe para su tabla. Exportarlo sería ofrecer un
+// segundo `IconoEscudo` importable junto al de `ui/Iconos.tsx`, que es el dueño del escudo
+// compartido — y entonces alguien acabaría importando el que no toca. El dibujo se queda porque
+// **pertenece a un conjunto**: lleva la marca de verificación y el lienzo de sus hermanos, y
+// meter aquí el de `ui` mezclaría dos grosores en la misma fila del catálogo.
+function IconoEscudo({ className }: IconoDeObjetoProps) {
   return (
     <Lienzo className={className}>
       <path d="M12 3 5 5.5v5c0 5.4 3 8.6 7 10 4-1.4 7-4.6 7-10v-5Z" {...TRAZO} />

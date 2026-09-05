@@ -25,7 +25,7 @@ import {
   useUpdateStatblock,
 } from "./hooks";
 import { EditorDeStatblock } from "./EditorDeStatblock";
-import { IconoEscudo } from "./iconos";
+import { IconoEscudo } from "../../ui/Iconos";
 import { descriptorDeCriatura, NOMBRE_ORIGEN } from "./vocabulario";
 
 // Fase 2D — **el bestiario**.

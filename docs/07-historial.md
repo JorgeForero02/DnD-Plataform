@@ -38,6 +38,42 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Un concepto, un icono — y una prueba que lo sostiene (2026-09-06, plan 07)
+
+**Qué.** Había **diez ficheros de iconos** y conceptos repetidos: escudo con tres definiciones,
+mochila con tres, sol y luna con dos. La auditoría original contaba «4 iconos» porque **solo miró
+`ui/Iconos.tsx`**; el número real ronda los 76. Y **ningún carril podía arreglarlo**: los seis
+tenían `features/**` prohibido, así que las copias se acumularon sin que nadie las viera juntas.
+
+**Lo que de verdad cierra la ficha es la prueba**, no la limpieza. Limpiar hoy solo compraba tiempo:
+el siguiente que necesitara un escudo y no encontrara el de `ui` dibujaría otro.
+`iconos-sin-duplicados.test.ts` barre todos los ficheros de iconos de `features/` y se pone roja si
+uno redefine un nombre que `ui/Iconos.tsx` ya exporta.
+
+**Y la prueba encontró tres que la lectura a ojo se había dejado** —el escudo del catálogo de
+objetos, el «más» de las secciones y la mochila del inventario—. Es exactamente su trabajo, y el
+argumento de por qué existe.
+
+**Lo que NO se fusionó, dicho:** `inventory`, `rules` y `level-up` dibujan en **rejilla de 16** y
+moverlos sería **redibujar**, que es otro commit y otra decisión. `IconoObjeto` vive en tres módulos
+y son **tres dibujos para tres significados** —un cofre, el glifo del tipo `ITEM`, una caja—; un
+icono que solo usa su módulo se queda en su módulo, porque `ui/` no es un cajón.
+
+**Dos renombrados que son mejoras, no rodeos:** el escudo del catálogo **deja de exportarse** —nadie
+lo importaba y su puerta pública es `IconoDeObjeto({ kind })`—, y `inventory/IconoMochila` pasa a
+`IconoLlevado`, que es como se llaman sus dos hermanas: se nombraba por su dibujo y era la rara.
+
+**El tamaño se conservó a mano** donde el consumidor se apoyaba en el `h-5 w-5` por defecto de
+`sessions`, porque `ui/Marco` mide en `1em`. Es la trampa que la propia ficha avisaba.
+
+**Cómo se comprobó.** Mutación: una cuarta copia del escudo pone la prueba roja al instante. Y los
+iconos movidos se miraron **en el navegador** —`armazon`, `sesion` e `inventario`—, porque `jsdom`
+no maqueta.
+
+**Cómo revertirlo.** `git revert` del commit: vuelven las copias y la prueba se va con ellas.
+
+---
+
 ## Las etiquetas se normalizan al guardar (2026-09-05, plan 15 · E4)
 
 **Qué.** Escribir «lich, lich» persistía `["lich","lich"]`. Las filas dedupaban **al pintar**, que

@@ -136,3 +136,27 @@ feat(web): changing an entry's type says what it costs, and leaves a trace
 
 `pnpm verify` verde, la prueba anti-duplicados **existiendo y demostrada con una mutación**, el
 navegador abierto para mirar los iconos movidos, y las tres fichas anotadas en el maestro.
+
+
+---
+
+## Avance — lo escribe quien ejecuta este plan
+
+> **Obligatorio, y se escribe MIENTRAS se trabaja, no al final.** Si la sesión se queda sin contexto
+> o muere, **esto y el prompt de arranque son lo único que sabe la siguiente**. Una línea por paso,
+> con su commit. Nada de memoria: `fichero:línea` o no cuenta.
+
+| Estado | Cuándo | Qué |
+|---|---|---|
+| ⬜ sin empezar | — | — |
+
+**Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
+
+**Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
+fuente si la hubo):
+
+- _(nada todavía)_
+
+**Lo siguiente exacto, si me quedo aquí:**
+
+- _(nada todavía)_

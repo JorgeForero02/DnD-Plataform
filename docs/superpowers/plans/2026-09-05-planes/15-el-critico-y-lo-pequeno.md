@@ -127,3 +127,27 @@ fix(shared): tags are normalised on save, and omitting them still leaves them al
 
 `pnpm verify` verde, e2e corrido, la mutación de `tags` probada, **`/health` comprobado con la base
 caída**, y C2.5-2, C6-2, D3 y la ficha de `tags` anotadas en el maestro.
+
+
+---
+
+## Avance — lo escribe quien ejecuta este plan
+
+> **Obligatorio, y se escribe MIENTRAS se trabaja, no al final.** Si la sesión se queda sin contexto
+> o muere, **esto y el prompt de arranque son lo único que sabe la siguiente**. Una línea por paso,
+> con su commit. Nada de memoria: `fichero:línea` o no cuenta.
+
+| Estado | Cuándo | Qué |
+|---|---|---|
+| ⬜ sin empezar | — | — |
+
+**Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
+
+**Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
+fuente si la hubo):
+
+- _(nada todavía)_
+
+**Lo siguiente exacto, si me quedo aquí:**
+
+- _(nada todavía)_

@@ -115,3 +115,27 @@ feat(web): the sheet shows where a temporary bonus comes from, and when it ran o
 `pnpm verify` verde, la mutación probada, la traza mirada **en el navegador** con un modificador vivo
 y otro vencido, y **M8 anotada como cerrada** — con la nota de que **venía de una petición de los
 jugadores**, que es lo que la hizo subir de prioridad.
+
+
+---
+
+## Avance — lo escribe quien ejecuta este plan
+
+> **Obligatorio, y se escribe MIENTRAS se trabaja, no al final.** Si la sesión se queda sin contexto
+> o muere, **esto y el prompt de arranque son lo único que sabe la siguiente**. Una línea por paso,
+> con su commit. Nada de memoria: `fichero:línea` o no cuenta.
+
+| Estado | Cuándo | Qué |
+|---|---|---|
+| ⬜ sin empezar | — | — |
+
+**Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
+
+**Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
+fuente si la hubo):
+
+- _(nada todavía)_
+
+**Lo siguiente exacto, si me quedo aquí:**
+
+- _(nada todavía)_

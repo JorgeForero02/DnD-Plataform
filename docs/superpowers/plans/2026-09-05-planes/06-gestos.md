@@ -98,3 +98,27 @@ delete.
 
 `pnpm verify` verde, Playwright corrido, la mutación probada, **M9 anotada como cerrada** en el
 maestro — y con ella **el último de los tres gestos de D-OP-8**.
+
+
+---
+
+## Avance — lo escribe quien ejecuta este plan
+
+> **Obligatorio, y se escribe MIENTRAS se trabaja, no al final.** Si la sesión se queda sin contexto
+> o muere, **esto y el prompt de arranque son lo único que sabe la siguiente**. Una línea por paso,
+> con su commit. Nada de memoria: `fichero:línea` o no cuenta.
+
+| Estado | Cuándo | Qué |
+|---|---|---|
+| ⬜ sin empezar | — | — |
+
+**Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
+
+**Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
+fuente si la hubo):
+
+- _(nada todavía)_
+
+**Lo siguiente exacto, si me quedo aquí:**
+
+- _(nada todavía)_

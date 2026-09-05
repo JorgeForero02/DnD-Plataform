@@ -34,6 +34,24 @@
 8. **Las reglas de D&D son verdad absoluta** (decisión del autor, 2026-09-05). Si el SRD contesta,
    se aplica; la maqueta **no** es fuente de reglas.
 
+## El avance se anota EN EL PLAN, y no es opcional
+
+**Cada plan tiene al final un bloque «Avance», y quien lo ejecuta lo va rellenando mientras
+trabaja.** No al terminar: mientras.
+
+**Por qué, y es la razón de que exista esta sección:** una sesión que se queda sin contexto **no
+avisa — empieza a alucinar**. Cuando eso pasa, la siguiente sesión arranca con **el prompt y estos
+ficheros**, y nada más. Si el avance vive en la cabeza de la sesión muerta, se ha perdido; si vive
+aquí, la siguiente sabe **en qué paso estaba, qué se decidió y qué toca ahora** sin auditar el
+repositorio entero para averiguarlo.
+
+Cada bloque pide cuatro cosas: **el estado paso a paso con su commit**, **lo decidido por los cuatro
+pasos** —qué no cuadraba, qué se eligió, por qué dura y con qué fuente—, **lo siguiente exacto**, y
+lo que quedó **bloqueado** con lo que se descartó antes de bloquearlo.
+
+**Regla que gobierna todo lo que se escriba ahí: `fichero:línea` o no cuenta.** Nada de memoria — es
+justo el error que dejó siete fichas afirmando que faltaba algo ya hecho.
+
 ## El orden, y por qué
 
 | # | Plan | Depende de | Toca | Por qué va ahí |

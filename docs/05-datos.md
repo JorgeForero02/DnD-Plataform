@@ -787,3 +787,50 @@ marcado, no se esconde. Se queda en `DISPARADORES_SIN_MOTOR`, que es exactamente
 > `default: return false`, así que un disparador nuevo sin su `case` **no coincidía nunca y en
 > silencio** — el vocabulario lo admitía, el editor lo ofrecía y el motor lo recibía. Ahora ese
 > `default` lleva un `never`: el olvido es un error de compilación.
+
+## Administrar la mesa: el papel de un miembro y la vida de una invitación (plan 11)
+
+### `CampaignMember.role` deja de ser inmutable (ficha D2)
+
+`PATCH /campaigns/:id/members/:userId`, **solo DM**. Hasta hoy **no había forma de cambiarlo**: para
+ascender a alguien había que expulsarlo y reinvitarlo, y `removeMember` **borra la membresía**, así
+que se perdía su vínculo con sus personajes. No es equivalente ni de lejos.
+
+**La mesa no puede quedarse sin ningún DM, y eso es un `409`**, no un 403: no es que no tengas
+permiso, es que el resultado dejaría la campaña huérfana y nadie podría recuperarla. Se comprueba
+**contando los DM que quedarían**, no mirando si eres el creador — el creador puede haber ascendido
+a otro y querer bajarse, y eso es legítimo.
+
+El cambio **deja rastro**: `MEMBER_ROLE_CHANGED` con el nombre y los dos papeles, visibilidad
+`PLAYERS`. Es un cambio de permisos; sin suceso, un DM podría ascender a alguien y nadie lo sabría.
+`PLAYERS` y no `DM_ONLY` porque quién dirige la mesa no es un secreto y la pantalla de miembros ya lo
+enseña a todos.
+
+> **Vive en su propio módulo (`apps/api/src/members/`) y no en `campaigns`**, y no es capricho:
+> `GameEventsModule` **importa `CampaignsModule`**, así que inyectar `GameEventsService` en
+> `CampaignsService` habría creado un ciclo que Nest solo resuelve con `forwardRef` — esconder el
+> ciclo en vez de quitarlo. Con un módulo aparte el grafo se queda dirigido. La regla de
+> autorización sigue siendo de `MembershipService`, su dueño único.
+
+### Una invitación nace, caduca, se usa o se revoca (fichas D3b y A3)
+
+Tres columnas nuevas en `Invite`, **todas nulables**:
+
+| Columna | Qué dice |
+|---|---|
+| `expiresAt` | Cuándo caduca. **`null` = no caduca**, que es como se han comportado todos los enlaces hasta hoy: poner fecha a los ya repartidos los habría matado sin avisar |
+| `revokedAt` | Cuándo se mató. **No es `usedAt`**: un enlace gastado y uno revocado son dos hechos distintos, y el listado tiene que distinguirlos |
+| `usedById` | **Quién** la usó. `usedAt` decía cuándo y no quién, y un listado que no puede decir «esta se la di a Marta y entró Marta» no sirve para administrar nada. Sin clave foránea: es dato histórico del enlace, y borrar una cuenta no debe borrar la invitación |
+
+**El estado se deriva, no se guarda** (`estadoDeInvitacion`), por la misma razón que el vencimiento
+de una condición (2C.4): guardarlo sería una segunda verdad que puede discrepar, y obligaría a un
+barrido que, si no corre, deja vivo un enlace que ya debía estar muerto. El orden es **revocada →
+caducada → usada → viva**, que es el orden en que un DM quiere leerlo.
+
+**Y `accept` mira las cuatro cosas con un solo `if` y un solo mensaje**: un token inventado, uno
+gastado, uno revocado y uno caducado dan **exactamente la misma respuesta**. Si difirieran, el
+mensaje diría si un token existió alguna vez y en qué estado acabó — el mismo criterio que el 404 del
+oráculo de la CA.
+
+**El listado no devuelve el token entero**, solo su cola: es una pantalla que un DM abre en una mesa
+con gente al lado.

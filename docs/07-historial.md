@@ -38,6 +38,48 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La mesa se puede administrar: papeles que cambian e invitaciones que se ven (2026-09-06, plan 11 · D2, D3b, A3)
+
+**Qué.** Dos cosas que hacían doler una mesa real:
+
+- **El rol era inmutable de por vida.** No había ruta para cambiarlo, así que ascender a alguien
+  obligaba a **expulsarlo y reinvitarlo** — y `removeMember` borra la membresía, con lo que se
+  **pierde su vínculo con sus personajes**. No era equivalente ni de lejos.
+- **Las invitaciones se generaban a ciegas y valían para siempre.** Nadie sabía cuántos enlaces
+  vivos había ni podía matar uno filtrado. El propio panel lo decía en un aviso, **y ese aviso
+  existía porque no se podía revocar**.
+
+**Cómo.** `PATCH /campaigns/:id/members/:userId`, solo DM, con una regla que no es opcional: **la
+mesa no puede quedarse sin ningún DM**, y eso es **409 con su código**, no 403 — no es que no
+puedas, es que dejaría la campaña huérfana. Se cuenta **cuántos DM quedarían**, no si eres el
+creador: el creador puede haber ascendido a otro y querer bajarse. El cambio deja su suceso
+(`MEMBER_ROLE_CHANGED`, `PLAYERS`) porque **es un cambio de permisos**.
+
+Y las invitaciones ganan tres columnas nulables: `expiresAt` (**`null` = no caduca**, para no matar
+los ya repartidos), `revokedAt` —**que no es `usedAt`**: gastado y revocado son dos hechos
+distintos— y `usedById`, porque un listado que no puede decir **quién** entró no sirve para
+administrar. El estado se **deriva**, como el vencimiento de una condición (2C.4).
+
+**Lo que no se ve y es la mitad del valor:** un token inventado, uno gastado, uno revocado y uno
+caducado dan **exactamente la misma respuesta**, con un solo `if` y un solo mensaje. Si difirieran,
+el mensaje diría si un token existió alguna vez y en qué estado acabó. Y el listado **no devuelve el
+token entero**: es una pantalla que un DM abre en una mesa con gente al lado.
+
+**El aviso del panel se reescribió**, que era un punto explícito de la guía de revisión: decía que
+generar otro enlace no anula los anteriores «hasta que alguien los use», y eso pasaba a estar
+incompleto en cuanto revocar existió. Ahora apunta a la lista de abajo en vez de ser un callejón.
+
+**Trampa de arquitectura:** el suceso no podía escribirse desde `CampaignsService` porque
+`GameEventsModule` **importa `CampaignsModule`** — habría hecho falta un `forwardRef`, que este
+proyecto ya declaró que es esconder el ciclo. Vive en un módulo propio, `apps/api/src/members/`, y
+el grafo se queda dirigido.
+
+**Las dos mutaciones que pedía el plan, probadas**: sin la comprobación del último DM y sin la de
+caducidad en `accept`, el e2e se pone rojo en siete de sus nueve pruebas.
+
+**Cómo revertirlo.** `git revert` del commit y `ALTER TABLE "Invite" DROP COLUMN` de las tres. Las
+columnas son nulables y nada más las lee, así que dejarlas puestas tampoco rompe nada.
+
 ## La batuta: el DM prepara en frío y en la mesa solo pulsa (2026-09-06, plan 09 · I19 e I20)
 
 **Qué.** *«El DM lee el diálogo en voz alta, pulsa, y pasa lo que tenía que pasar.»* El disparador

@@ -61,6 +61,7 @@ enum GameEventType {
   ENTITY_RETYPED
   RESOURCE_GIVEN
   DM_EXECUTED
+  MEMBER_ROLE_CHANGED
   FLAG_SET
   SET_CHANGED
   SIGNAL_RAISED
@@ -234,6 +235,21 @@ model Invite {
   role       Role      @default(PLAYER)
   createdAt  DateTime  @default(now())
   usedAt     DateTime?
+  /// **Quien la uso** (plan 11, ficha D3b). `usedAt` decia CUANDO y no QUIEN, y un listado que no
+  /// puede decir «esta se la di a Marta y entro Marta» no sirve para administrar nada.
+  ///
+  /// Sin relacion a `User` a proposito: es un dato historico del enlace, no una arista del modelo,
+  /// y borrar una cuenta no tiene que borrar la invitacion que uso.
+  usedById   String?
+  /// **Cuando caduca, o `null` si no caduca** (plan 11, ficha A3).
+  ///
+  /// Nulable **a proposito**: los enlaces ya repartidos siguen valiendo. Poner una fecha a todos
+  /// de golpe habria invalidado invitaciones que alguien tiene en un chat sin avisar a nadie.
+  expiresAt  DateTime?
+  /// **Cuando se revoco, o `null`** (ficha D3b). **NO es lo mismo que `usedAt`**: un enlace gastado
+  /// y uno revocado son dos hechos distintos, y el listado tiene que distinguirlos. Marcar uno
+  /// revocado como «usado» habria mentido sobre quien entro.
+  revokedAt  DateTime?
   campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 

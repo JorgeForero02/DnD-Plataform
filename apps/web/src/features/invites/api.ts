@@ -7,6 +7,27 @@ export interface Invite {
   role: string;
   createdAt: string;
   usedAt: string | null;
+  /** `null` = no caduca (plan 11, ficha A3). Los enlaces de siempre se comportan igual que ayer. */
+  expiresAt: string | null;
+}
+
+/**
+ * **Una fila del listado de invitaciones** (plan 11, ficha D3b).
+ *
+ * **No trae el token entero**, solo su cola: un listado se enseña, y con el token completo
+ * cualquiera que mire por encima del hombro se lleva una invitación.
+ */
+export interface InviteRow {
+  id: string;
+  createdAt: string;
+  usedAt: string | null;
+  /** Quién la usó, por su nombre. `null` si nadie. */
+  usedByName: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  role: string;
+  tokenTail: string;
+  estado: "VIVA" | "USADA" | "REVOCADA" | "CADUCADA";
 }
 
 export interface AcceptedInvite {
@@ -21,11 +42,22 @@ export interface AcceptedInvite {
 // Playwright run against the real API caught this — the unit tests mock this module, so they
 // never exercise apiFetch. An explicit empty object satisfies the parser without apps/api
 // having to change (out of scope for this task).
-export function createInvite(campaignId: string): Promise<Invite> {
+export function createInvite(campaignId: string, expiresInDays?: number): Promise<Invite> {
   return apiFetch<Invite>(`/campaigns/${campaignId}/invites`, {
     method: "POST",
-    body: JSON.stringify({}),
+    // Sin `expiresInDays` el enlace **no caduca**, que es como se han comportado todos hasta hoy.
+    body: JSON.stringify(expiresInDays === undefined ? {} : { expiresInDays }),
   });
+}
+
+/** Los enlaces repartidos, con su estado. Solo el DM (el servidor responde 403 al resto). */
+export function fetchInvites(campaignId: string): Promise<InviteRow[]> {
+  return apiFetch<InviteRow[]>(`/campaigns/${campaignId}/invites`);
+}
+
+/** **Revocar**: mata el enlace sin fingir que alguien lo usó. */
+export function revokeInvite(inviteId: string): Promise<{ revoked: true }> {
+  return apiFetch(`/invites/${inviteId}`, { method: "DELETE" });
 }
 
 export function acceptInvite(token: string): Promise<AcceptedInvite> {

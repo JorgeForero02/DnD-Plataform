@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMyRole } from "../campaigns/members";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "../campaigns/PermissionStatus";
 import { useCreateInvite } from "./hooks";
+import { ListaDeInvitaciones } from "./ListaDeInvitaciones";
 import { translateInviteError } from "./api";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
@@ -19,6 +20,14 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
   const isDM = role === "DM";
   const [copyError, setCopyError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /**
+   * **Cuanto vale el enlace** (plan 11, ficha A3). Siete dias por defecto, que es lo que el plan
+   * propone y lo que una mesa hace de verdad: se invita para la sesion de este sabado.
+   *
+   * «Sin caducidad» sigue existiendo y **no esta escondida**: es como se han comportado todos los
+   * enlaces hasta hoy, y quitarla de golpe habria cambiado la costumbre de la mesa sin permiso.
+   */
+  const [dias, setDias] = useState<string>("7");
 
   // Generating an invite is DM-only on the server (invites.service.ts, requireDM) — this is
   // honesty, not the enforcement: a player who forces the click still gets the server's 403,
@@ -44,7 +53,7 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
   const onGenerate = () => {
     setCopyError(null);
     setCopied(false);
-    create.mutate();
+    create.mutate(dias === "" ? undefined : Number(dias));
   };
 
   const onCopy = async () => {
@@ -68,6 +77,24 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
         Cada enlace sirve para una sola persona: si quieres invitar a varios jugadores, genera un
         enlace nuevo para cada uno.
       </p>
+      <div className="mt-3">
+        <Field
+          label="Caduca en"
+          hint="Sin caducidad, el enlace vale hasta que alguien lo use o lo revoques."
+        >
+          <select
+            className={fieldControlClass + " w-48"}
+            value={dias}
+            onChange={(e) => setDias(e.target.value)}
+            disabled={!!disabledReason}
+          >
+            <option value="1">Un dia</option>
+            <option value="7">Siete dias</option>
+            <option value="30">Treinta dias</option>
+            <option value="">Sin caducidad</option>
+          </select>
+        </Field>
+      </div>
       <Button
         onClick={onGenerate}
         disabled={create.isPending || !!disabledReason}
@@ -85,17 +112,16 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
       )}
       {link && (
         <div className="mt-3">
-          {/* Server has no revocation for a link that's already out (docs/06-pendientes.md):
-              generating a new one leaves the old token valid and unlisted, so the DM needs to
-              know pressing this button again is not a "refresh". Task 1.18b: this used
-              --danger, which overstates it — nothing is broken and nothing is lost, it's a
-              caveat to know about, not a danger to avoid. --warning-text (tokens.css, the
-              decision the author is making right now — see the report) is the register this
-              sentence actually belongs to; the bordered-box treatment stays, same as the
-              read-only banners. */}
+          {/* **Este aviso decia otra cosa hasta el plan 11, y habia que reescribirlo o pasaria a
+              mentir.** Existia PORQUE no se podia revocar. Ahora si: la lista de abajo los ensena
+              y los mata. La frase se queda —sigue siendo verdad que generar no es refrescar— y
+              **deja de ser un callejon sin salida**: apunta a lo que se puede hacer.
+
+              Sigue en `--warning-text` y no en `--danger`: no hay nada roto ni perdido, es un
+              matiz que conviene saber. */}
           <p className="rounded-radius-sm border border-warning bg-bg p-2 text-chrome-xs text-warning-text">
             Generar otro enlace no anula este ni los anteriores: todos siguen siendo válidos hasta
-            que alguien los use.
+            que alguien los use o los revoques. Los tienes todos abajo.
           </p>
           <Field label="Enlace de invitación">
             <input
@@ -124,6 +150,10 @@ export function InvitePanel({ campaignId }: { campaignId: string }) {
           {copyError && <p className="mt-1 text-chrome-xs text-danger-text">{copyError}</p>}
         </div>
       )}
+
+      {/* **Los enlaces repartidos** (ficha D3b). Solo para el DM: para el resto el servidor
+          responde 403, asi que ni se pide. */}
+      {isDM && <ListaDeInvitaciones campaignId={campaignId} />}
     </Panel>
   );
 }

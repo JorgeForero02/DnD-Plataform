@@ -14,6 +14,8 @@ const invite: Invite = {
   role: "PLAYER",
   createdAt: "2026-08-31T00:00:00.000Z",
   usedAt: null,
+  // A3: `null` = no caduca, que es como se han comportado todos los enlaces hasta hoy.
+  expiresAt: null,
 };
 
 function renderPanel() {
@@ -48,7 +50,9 @@ describe("InvitePanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
 
-    await waitFor(() => expect(spy).toHaveBeenCalledWith("c1"));
+    // **7 es el valor por defecto del selector de caducidad** (plan 11, ficha A3): el panel manda
+    // los días elegidos, y «sin caducidad» manda `undefined`. Antes no había caducidad que mandar.
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("c1", 7));
     const linkField = (await screen.findByLabelText("Enlace de invitación")) as HTMLInputElement;
     expect(linkField.value).toContain("/join/tok123");
     expect(linkField.value).not.toBe("tok123");

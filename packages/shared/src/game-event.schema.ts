@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { visibilitySchema } from "./visibility.schema";
+import { roleSchema, visibilitySchema } from "./visibility.schema";
 import { damageTypeSchema } from "./item.schema";
 
 // Tarea 2A.5 — el log de partida.
@@ -57,6 +57,9 @@ export const GAME_EVENT_TYPES = [
   // el gesto en ninguna pantalla**, asi que nadie escribia el suceso: era una funcion que faltaba,
   // no un cable suelto. Es lo que convierte el motor en algo que se usa PREPARANDO la sesion.
   "DM_EXECUTED",
+  // D2 (2026-09-06) — **cambiar el papel de alguien es un cambio de PERMISOS**, y sin suceso un DM
+  // podria ascender a otro y nadie lo sabria nunca. Va al registro como cualquier otro hecho.
+  "MEMBER_ROLE_CHANGED",
   "FLAG_SET",
   "SET_CHANGED",
   "SIGNAL_RAISED",
@@ -323,6 +326,13 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
    * **`DM_ONLY` siempre.** Ejecutar es de direccion; lo que la mesa ve son los EFECTOS que las
    * reglas produzcan, cada uno con su propia visibilidad.
    */
+  z.object({
+    type: z.literal("MEMBER_ROLE_CHANGED"),
+    /** Quien cambio de papel. **El nombre, no solo el id**: el registro se lee. */
+    displayName: z.string().max(120).optional(),
+    from: roleSchema,
+    to: roleSchema,
+  }),
   z.object({
     type: z.literal("DM_EXECUTED"),
     entityId: z.string().min(1),

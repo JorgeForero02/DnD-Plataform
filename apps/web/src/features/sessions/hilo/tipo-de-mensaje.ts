@@ -65,6 +65,7 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     // (El comentario va aqui arriba y no entre los dos `case`: entre etiquetas rompe
     // `no-fallthrough`, y ya nos mordio una vez el 2026-09-06.)
     case "MEMBER_JOINED":
+    case "MEMBER_ROLE_CHANGED":
     case "DM_EXECUTED":
       return "sistema";
 

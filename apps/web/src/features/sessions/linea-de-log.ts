@@ -111,6 +111,10 @@ export function lineaDeLog(p: GameEventPayload): string {
       return `Gasta ${p.amount} de ${p.label} (quedan ${p.remaining})`;
     case "RESOURCE_RESTORED":
       return `Recupera ${p.amount} de ${p.label} (quedan ${p.remaining})`;
+    case "MEMBER_ROLE_CHANGED":
+      // **Es un cambio de permisos**, así que la frase dice los dos papeles y no solo el nuevo:
+      // «ahora es DM» no cuenta qué se perdió ni de dónde venía.
+      return `${p.displayName ?? "Alguien"} pasa de ${PAPEL[p.from]} a ${PAPEL[p.to]}`;
     case "DM_EXECUTED":
       // **La batuta** (I19). Solo la lee el DM —el suceso es `DM_ONLY`—, así que la frase habla en
       // sus términos: lo que la mesa verá son los efectos, cada uno por su cuenta.
@@ -260,3 +264,9 @@ export function horaDe(iso: string): string {
 export function selloDeSuceso(p: GameEventPayload): SessionNoteKind | null {
   return p.type === "SESSION_NOTE" ? p.kind : null;
 }
+
+/**
+ * Los dos papeles, en español. **Ningún valor de enumeración llega a la pantalla**, y la forma
+ * legible se escribe una vez por dominio: aquí, porque es la línea del registro.
+ */
+const PAPEL: Record<string, string> = { DM: "DM", PLAYER: "jugador" };

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DeleteButton } from "../../components/DeleteButton";
 import { useAuthStore } from "../../store/auth.store";
-import { useRemoveMember } from "./hooks";
+import { useChangeMemberRole, useRemoveMember } from "./hooks";
 import { nombrePapel, useMembers, useMyRole } from "./members";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "./PermissionStatus";
 import { Panel } from "../../ui/Panel";
@@ -48,6 +48,7 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
   const isDM = role === "DM";
   const roleUnresolved = roleLoading || roleError;
   const remove = useRemoveMember(campaignId);
+  const cambiarPapel = useChangeMemberRole(campaignId);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // useMutation exposes the arguments of whichever call is in flight as `variables` — scoping
@@ -111,6 +112,34 @@ export function MembersPanel({ campaignId }: { campaignId: string }) {
                 roleUnresolved now true. Disabling in that narrow window — instead of
                 offering a click the interface itself no longer trusts its own read of who's
                 DM — is what "Comprobando permisos…" above is already telling the DM is true. */}
+            {/* **El papel se puede cambiar** (plan 11, ficha D2). Hasta hoy era inmutable de
+                por vida: ascender a alguien obligaba a expulsarlo y reinvitarlo, y eso **pierde su
+                vínculo con sus personajes**.
+
+                Va **deshabilitado con su motivo visible** y nunca escondido, que es el criterio de
+                honestidad del resto de esta pantalla. El servidor es quien manda: responde **409**
+                si el cambio dejaría la mesa sin ningún DM, y ese motivo se lee aquí mismo. */}
+            {isDM && (
+              <label className="flex items-center gap-1 text-chrome-xs text-muted">
+                <span className="sr-only">Papel de {m.displayName}</span>
+                <select
+                  value={m.role}
+                  disabled={roleUnresolved || cambiarPapel.isPending}
+                  title={roleUnresolved ? CHECKING_PERMISSIONS : undefined}
+                  onChange={(e) => {
+                    setActionError(null);
+                    cambiarPapel.mutate(
+                      { userId: m.userId, role: e.target.value as "DM" | "PLAYER" },
+                      { onError: (err) => setActionError((err as Error).message) },
+                    );
+                  }}
+                  className="rounded-radius-sm border border-muted bg-bg px-1 py-0.5 text-chrome-xs text-text"
+                >
+                  <option value="PLAYER">{nombrePapel("PLAYER")}</option>
+                  <option value="DM">{nombrePapel("DM")}</option>
+                </select>
+              </label>
+            )}
             {m.role === "PLAYER" && isDM && (
               <DeleteButton
                 label="Expulsar"

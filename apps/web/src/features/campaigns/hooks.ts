@@ -7,7 +7,7 @@ import {
   updateCampaign,
   deleteCampaign,
 } from "./api";
-import { membersKey, removeMember } from "./members";
+import { changeMemberRole, membersKey, removeMember } from "./members";
 import { useAuthStore } from "../../store/auth.store";
 
 export const campaignsKey = ["campaigns"] as const;
@@ -61,6 +61,25 @@ export function useDeleteCampaign() {
 // single endpoint, see members.ts. onSuccess always invalidates the member list; when the
 // person removed is the caller themselves, campaignsKey also goes stale, because the
 // campaign just disappeared from "Mis campañas".
+/**
+ * **Cambiar el papel de un miembro** (plan 11, ficha D2).
+ *
+ * Invalida los miembros —la lista cambia— **y las campañas**: el rol propio decide qué se ofrece en
+ * media aplicación, y si esto asciende a quien está mirando, su pantalla tiene que enterarse sin
+ * recargar.
+ */
+export function useChangeMemberRole(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { userId: string; role: "DM" | "PLAYER" }) =>
+      changeMemberRole(campaignId, vars.userId, vars.role),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: membersKey(campaignId) });
+      void qc.invalidateQueries({ queryKey: campaignsKey });
+    },
+  });
+}
+
 export function useRemoveMember(campaignId: string) {
   const qc = useQueryClient();
   const myUserId = useAuthStore((s) => s.user?.id);

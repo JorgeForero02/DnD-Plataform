@@ -120,15 +120,53 @@ reescrito**, y D2, D3b y A3 anotadas en el maestro.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **11.1 · El papel de un miembro (D2).** `MembershipService.changeRole` (`apps/api/src/campaigns/membership.service.ts:52`) con el 409 del último DM; módulo nuevo `apps/api/src/members/` para poder escribir el suceso sin ciclo. Suceso `MEMBER_ROLE_CHANGED` + migración `20260906050001_member_role_changed_event/`. Web: selector por fila en `apps/web/src/features/campaigns/MembersPanel.tsx:115`. **Commit `<pendiente 11>`** |
+| ✅ hecho | 2026-09-06 | **11.2 · Las invitaciones (D3b, A3).** Columnas `expiresAt`, `revokedAt` y `usedById` (migraciones `20260906050000_member_role_and_invite_lifecycle/` y `20260906050002_invite_used_by/`). `list`, `revoke` y `estadoDeInvitacion` en `apps/api/src/invites/invites.service.ts`. Web: `apps/web/src/features/invites/ListaDeInvitaciones.tsx` y el selector de caducidad en `InvitePanel.tsx`. **El aviso reescrito.** **Commit `<pendiente 11>`** |
+| ✅ | 2026-09-06 | **EL PLAN 11 ESTÁ CERRADO**, con `apps/api/test/administrar-la-mesa.e2e-spec.ts` (9 verdes) y las **dos** mutaciones probadas. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **EL SUCESO NO CABÍA EN `campaigns`, Y NO ES UN DETALLE.** `GameEventsModule` **importa**
+  `CampaignsModule` —su controlador necesita la membresía para filtrar—, así que inyectar
+  `GameEventsService` en `CampaignsService` habría creado un ciclo que Nest solo resuelve con
+  `forwardRef`, y este proyecto ya declaró por escrito que eso es **esconder el ciclo en vez de
+  quitarlo** (`game-events.service.ts`, sobre el motor de reglas). Módulo propio
+  `apps/api/src/members/`: el grafo se queda dirigido y **la regla de autorización sigue viviendo en
+  `MembershipService`**, su dueño único. La URL no cambia por esto.
+- **El 409 del último DM cuenta CUÁNTOS QUEDARÍAN, no quién eres.** Mirar «¿es el creador?» habría
+  impedido que el creador se bajara después de ascender a otro, que es legítimo y además es
+  exactamente el caso que la ficha quiere permitir. Hay prueba de las dos mitades: 409 con uno solo,
+  y 200 en cuanto hay dos.
+- **La prueba que demuestra D2 no es la escritura, es el PERMISO.** El e2e comprueba que la misma
+  persona que recibía **403** al crear una ficha del mundo recibe **201** después del ascenso.
+  Comprobar solo que la fila cambió habría probado un `UPDATE`.
+- **`usedById` es columna nueva y el plan no la pedía**, pero el plan sí pedía que el listado dijera
+  **«si se usó y quién»** — y `usedAt` guarda cuándo, no quién. Sin ella la mitad de la frase era
+  imposible. Sin clave foránea a `User`: es dato histórico del enlace, y borrar una cuenta no tiene
+  que borrar la invitación que usó.
+- **`revokedAt` y no reutilizar `usedAt`**, que era la trampa escrita en el propio plan: marcar como
+  «usado» un enlace revocado habría **mentido sobre quién entró en la mesa**.
+- **El estado se DERIVA.** Misma regla que el vencimiento de una condición (2C.4): guardarlo sería
+  una segunda verdad y obligaría a un barrido que, si no corre, deja vivo un enlace muerto.
+- **Un solo `if` y un solo mensaje en `accept`.** Inventado, gastado, revocado y caducado responden
+  **byte a byte lo mismo**, y hay una prueba que compara las dos respuestas. Cuatro ramas con cuatro
+  mensajes habrían convertido el endpoint en un oráculo de tokens.
+- **El listado no devuelve el token entero, solo su cola.** Es una pantalla que un DM abre en una
+  mesa con gente al lado; con el token completo, quien mire de reojo se lleva una invitación.
+- **«Sin caducidad» sigue existiendo y no está escondida.** El selector propone siete días —que es
+  lo que hace una mesa: se invita para el sábado— y deja elegir «sin caducidad», porque es como se
+  han comportado todos los enlaces hasta hoy. Cambiar el defecto en silencio habría puesto fecha de
+  muerte a la costumbre de la mesa sin pedir permiso.
+- **El aviso del panel se reescribió**, que era un punto de la guía de revisión: existía **porque no
+  se podía revocar**, así que en cuanto revocar existió pasaba a estar incompleto. Ahora apunta a la
+  lista en vez de ser un callejón sin salida, y baja de tono sin cambiar de token.
+- **Revocar solo se ofrece sobre lo que aún puede usarse.** Sobre una usada o una caducada sería un
+  botón que no cambia nada; el servidor lo aceptaría igual, así que esto es honestidad y no control
+  de acceso. Con prueba de las tres exclusiones.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **Nada. El plan 11 está cerrado.** Lo siguiente es el plan 13.

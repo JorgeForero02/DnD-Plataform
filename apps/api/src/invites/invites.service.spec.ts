@@ -60,7 +60,9 @@ describe("InvitesService", () => {
     expect(prisma.campaignMember.upsert).toHaveBeenCalled();
     expect(prisma.invite.update).toHaveBeenCalledWith({
       where: { id: "i1" },
-      data: { usedAt: expect.any(Date) },
+      // **Y QUIÉN**, no solo cuándo (plan 11, ficha D3b): el listado del DM tiene que poder
+      // decir «esta se la di a Marta y entró Marta», y `usedAt` no guardaba eso.
+      data: { usedAt: expect.any(Date), usedById: "u2" },
     });
     expect(events.emit).toHaveBeenCalledWith("campaign.member_joined", {
       campaignId: "c1",

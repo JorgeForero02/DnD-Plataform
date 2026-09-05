@@ -31,6 +31,21 @@ export function fetchMembers(campaignId: string): Promise<Member[]> {
 // One endpoint for both kicking (userId of someone else) and leaving (userId === your own):
 // see campaigns.controller.ts. The server tells the two apart by comparing userId to the
 // caller's own id, not by a separate route.
+/**
+ * **Cambiar el papel de un miembro** (plan 11, ficha D2). Solo el DM; el servidor lo impone y
+ * responde **409** si el cambio dejaría la mesa sin ningún DM.
+ */
+export function changeMemberRole(
+  campaignId: string,
+  userId: string,
+  role: "DM" | "PLAYER",
+): Promise<{ userId: string; from: string; to: string }> {
+  return apiFetch(`/campaigns/${campaignId}/members/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
 export function removeMember(campaignId: string, userId: string): Promise<{ removed: boolean }> {
   return apiFetch<{ removed: boolean }>(`/campaigns/${campaignId}/members/${userId}`, {
     method: "DELETE",

@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateCommentInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -11,6 +12,7 @@ export class CommentsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly gameEvents: GameEventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -54,7 +56,7 @@ export class CommentsService {
    */
   async create(userId: string, entityId: string, input: CreateCommentInput) {
     const entity = await this.requireViewableEntity(userId, entityId);
-    return this.prisma.transaction(async (tx) => {
+    const comentario = await this.prisma.transaction(async (tx) => {
       const comentario = await tx.comment.create({
         data: { entityId, authorId: userId, body: input.body },
       });
@@ -73,6 +75,15 @@ export class CommentsService {
       );
       return comentario;
     });
+    // **Fuera de la transaccion, a proposito.** Un aviso escrito dentro se habria guardado aunque
+    // el comentario acabase deshecho, y el oyente lee la ficha por su cuenta: dentro de la
+    // transaccion leeria filas que todavia nadie ha confirmado.
+    this.emitter.emit("comment.added", {
+      campaignId: entity.campaignId,
+      entityId,
+      actorId: userId,
+    });
+    return comentario;
   }
 
   async listFor(userId: string, entityId: string) {

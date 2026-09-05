@@ -28,6 +28,31 @@ describe("ZodValidationPipe", () => {
     expect(pipe.transform({ kind: "LONG" })).toEqual({ kind: "LONG" });
   });
 
+  describe("un cuerpo ausente", () => {
+    const cuerpo: ArgumentMetadata = { type: "body", metatype: Object };
+
+    it("vale como cuerpo vacío si el esquema no exige nada", () => {
+      // Fastify entrega `undefined` en un POST sin cuerpo. Pedir invitación sin opciones no es
+      // una petición mal formada: es la petición por defecto.
+      const pipe = new ZodValidationPipe(z.object({ expiresInDays: z.number().optional() }));
+      expect(pipe.transform(undefined, cuerpo)).toEqual({});
+    });
+
+    it("pero si el esquema sí exige campos, sigue siendo 400 con su frase", () => {
+      const body = rechazo(z.object({ name: z.string() }), undefined, cuerpo);
+      expect(body.message).toContain("Falta el cuerpo de la petición");
+    });
+
+    it("y un parámetro ausente no se convierte en objeto vacío", () => {
+      // El atajo es **solo del cuerpo**: un `@Param` o `@Query` que falta es otra cosa.
+      rechazo(z.object({ a: z.string().optional() }), undefined, {
+        type: "param",
+        data: "id",
+        metatype: String,
+      });
+    });
+  });
+
   describe("enum: dice qué valores admite", () => {
     // El caso literal que recibió el DM: PATCH .../override/hp sobre `overridableKeySchema`.
     const targetSchema = z.enum(["ac", "maxHp", "initiative", "speed.walk", "passivePerception"]);

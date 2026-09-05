@@ -18,6 +18,15 @@ export class ZodValidationPipe implements PipeTransform {
    * `metadata.data`. Es opcional porque una llamada directa desde una prueba no lo necesita.
    */
   transform(value: unknown, metadata?: ArgumentMetadata) {
+    // **Un cuerpo ausente es un cuerpo vacío cuando el esquema no pide nada.** Fastify entrega
+    // `undefined` en un POST sin cuerpo, y un `z.object` con todos sus campos opcionales lo
+    // rechazaba con «Falta el cuerpo de la petición» — un 400 por no mandar nada cuando no hacía
+    // falta mandar nada. Se prueba `{}` **solo si pasa**: si el esquema sí exige campos, el error
+    // que sale sigue siendo el de antes, con su frase y su detalle.
+    const asImpliedEmpty =
+      value === undefined && metadata?.type === "body" ? this.schema.safeParse({}) : null;
+    if (asImpliedEmpty?.success) return asImpliedEmpty.data;
+
     const result = this.schema.safeParse(value);
     if (!result.success) {
       throw new BadRequestException(buildValidationErrorBody(result.error.issues, metadata));

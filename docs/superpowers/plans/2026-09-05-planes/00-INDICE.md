@@ -18,7 +18,7 @@
 > se conserva tal cual se escribió, incluida su frase «`main` en `4c7c3a2`», que ya no es cierta —
 > un documento fechado no se reescribe. Lo que es cierto **hoy** está aquí.
 
-**`main` en `bf33b0e`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
+**`main` en `a06e4b2`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
 worktree de trabajo abiertos.**
 
 | Plan | Estado | Commits |
@@ -35,7 +35,7 @@ worktree de trabajo abiertos.**
 | **09** · La batuta y `ENTITY_ATTACKED` | ✅ **cerrado** (I19, I20) | `d48f268` |
 | **11** · La administración de la mesa | ✅ **cerrado** (D2, D3b, A3) | `bf1b1c9` |
 | **13** · Modificadores temporales | ✅ **cerrado** (M8) | `bf33b0e` |
-| **14** · Pulido y mediciones | ✅ **cerrado**: R1 remedida, U8, U9, U3, U2, U7, C6-4 y U1 | `912ff52` · `6ef8c03` · `9ae58df` · `bfddc6d` |
+| **14** · Pulido y mediciones | ✅ **cerrado**: R1 remedida, U8, U9, U3, U2, U7, C6-4 y U1 | `912ff52` · `6ef8c03` · `9ae58df` · `bfddc6d` · `a06e4b2` |
 | **12** | ⬜ sin empezar | — |
 | **10** · La documentación | ⬜ va **al final**, y buena parte ya se escribió por el camino | — |
 

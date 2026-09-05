@@ -3,6 +3,7 @@ import { ConflictException, ForbiddenException, NotFoundException } from "@nestj
 import { SessionsService } from "./sessions.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { GameEventsService } from "../game-events/game-events.service";
 
 describe("SessionsService", () => {
@@ -28,6 +29,7 @@ describe("SessionsService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
     service = ref.get(SessionsService);
@@ -198,6 +200,7 @@ describe("SessionsService", () => {
           { provide: PrismaService, useValue: prisma },
           { provide: MembershipService, useValue: membership },
           { provide: GameEventsService, useValue: events },
+          { provide: EventEmitter2, useValue: { emit: jest.fn() } },
         ],
       }).compile();
       service = ref.get(SessionsService);

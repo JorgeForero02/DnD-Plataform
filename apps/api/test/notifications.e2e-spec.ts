@@ -106,6 +106,103 @@ describe("Notificaciones (e2e)", () => {
     expect(jugador.body.notifications).toEqual([]);
   });
 
+  // --- Plan 12 · los dos avisos que nadie emitia ---
+  //
+  // Los oyentes son **asincronos y nadie espera su promesa**: `emit()` reparte y la peticion HTTP
+  // ya ha contestado. Por eso se sondea en vez de leer una vez — un `expect` inmediato aqui seria
+  // una prueba intermitente, no una prueba.
+
+  async function esperarAviso(token: string, tipo: string, intentos = 20) {
+    const s = app.getHttpServer();
+    for (let i = 0; i < intentos; i++) {
+      const bandeja = await request(s)
+        .get("/notifications")
+        .set("Authorization", `Bearer ${token}`);
+      const aviso = bandeja.body.notifications.find((n: { type: string }) => n.type === tipo);
+      if (aviso) return aviso;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return null;
+  }
+
+  it("comentar una ficha avisa al DM, y NO a quien comento", async () => {
+    const s = app.getHttpServer();
+    const ficha = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/entities`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ type: "NPC", name: "Gundren", visibility: "PLAYERS" })
+    ).body;
+    expect(ficha.id).toBeDefined();
+
+    await request(s)
+      .post(`/entities/${ficha.id}/comments`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ body: "Este me da mala espina." });
+
+    const alDM = await esperarAviso(tokenDM, "COMMENT_ADDED");
+    expect(alDM).not.toBeNull();
+    // **El cuerpo del comentario no viaja en el aviso**: el hilo tiene su propia puerta.
+    expect(alDM.payload).toEqual({
+      entityId: ficha.id,
+      entityType: "NPC",
+      entityName: "Gundren",
+    });
+
+    // Y quien comento no se avisa a si mismo.
+    const alJugador = await esperarAviso(tokenPL, "COMMENT_ADDED", 3);
+    expect(alJugador).toBeNull();
+  });
+
+  it("el aviso de un comentario NO llega a quien no puede ver la ficha", async () => {
+    const s = app.getHttpServer();
+    // La ficha es `DM_ONLY`: el jugador no la ve, y **tampoco puede enterarse de que existe**
+    // porque alguien la haya comentado. Es la fuga que protege esta suite.
+    const secreta = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/entities`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ type: "NPC", name: "El que mueve los hilos", visibility: "DM_ONLY" })
+    ).body;
+
+    await request(s)
+      .post(`/entities/${secreta.id}/comments`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ body: "Aparece en el tercer acto." });
+
+    const bandeja = await request(s)
+      .get("/notifications")
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const sobreLaSecreta = bandeja.body.notifications.filter(
+      (n: { subjectId: string }) => n.subjectId === secreta.id,
+    );
+    expect(sobreLaSecreta).toEqual([]);
+  });
+
+  it("planificar una sesion con fecha avisa a la mesa, menos a quien la planifico", async () => {
+    const s = app.getHttpServer();
+    const creada = await request(s)
+      .post(`/campaigns/${campaignId}/sessions`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        title: "La noche del puerto",
+        scheduledAt: "2026-09-20T20:00:00.000Z",
+        visibility: "PLAYERS",
+      });
+    expect(creada.status).toBe(201);
+
+    const alJugador = await esperarAviso(tokenPL, "SESSION_SCHEDULED");
+    expect(alJugador).not.toBeNull();
+    expect(alJugador.payload).toEqual({
+      sessionId: creada.body.id,
+      sessionTitle: "La noche del puerto",
+      scheduledAt: "2026-09-20T20:00:00.000Z",
+    });
+
+    const alDM = await esperarAviso(tokenDM, "SESSION_SCHEDULED", 3);
+    expect(alDM).toBeNull();
+  });
+
   it("sin token, 401", async () => {
     const res = await request(app.getHttpServer()).get("/notifications");
     expect(res.status).toBe(401);

@@ -3,6 +3,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { CommentsService } from "./comments.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { GameEventsService } from "../game-events/game-events.service";
 
 describe("CommentsService", () => {
@@ -23,6 +24,7 @@ describe("CommentsService", () => {
         CommentsService,
         { provide: PrismaService, useValue: prisma },
         { provide: GameEventsService, useValue: { record: jest.fn() } },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
         { provide: MembershipService, useValue: membership },
       ],
     }).compile();

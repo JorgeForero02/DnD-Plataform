@@ -112,6 +112,25 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * **Los visores de la mesa, montados una sola vez.** Un aviso siempre se decide igual —quién
+   * está en la campaña, con qué papel, y si es administrador—, así que la consulta vive aquí y no
+   * repetida en cada oyente: si mañana un papel nuevo cambia quién ve qué, se cambia en un sitio.
+   */
+  private async visoresDeLaMesa(campaignId: string): Promise<Viewer[]> {
+    const members = await this.membership.listMembers(campaignId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: members.map((m) => m.userId) } },
+      select: { id: true, isAdmin: true },
+    });
+    const isAdminById = new Map(users.map((u) => [u.id, u.isAdmin]));
+    return members.map((m) => ({
+      userId: m.userId,
+      role: m.role,
+      isAdmin: isAdminById.get(m.userId) ?? false,
+    }));
+  }
+
   @OnEvent("entity.created")
   async onEntityCreated({ campaignId, entityId }: { campaignId: string; entityId: string }) {
     const entity = await this.prisma.entity.findUnique({
@@ -120,21 +139,11 @@ export class NotificationsService {
     });
     if (!entity) return;
 
-    const members = await this.membership.listMembers(campaignId);
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: members.map((m) => m.userId) } },
-      select: { id: true, isAdmin: true },
-    });
-    const isAdminById = new Map(users.map((u) => [u.id, u.isAdmin]));
+    const visores = await this.visoresDeLaMesa(campaignId);
     const grantedUserIds = entity.grants.map((g) => g.userId);
 
-    for (const member of members) {
-      if (member.userId === entity.createdById) continue; // quien la creó ya lo sabe
-      const viewer: Viewer = {
-        userId: member.userId,
-        role: member.role,
-        isAdmin: isAdminById.get(member.userId) ?? false,
-      };
+    for (const viewer of visores) {
+      if (viewer.userId === entity.createdById) continue; // quien la creó ya lo sabe
       const puedeVer = canView(viewer, {
         visibility: entity.visibility,
         createdById: entity.createdById,
@@ -143,12 +152,114 @@ export class NotificationsService {
       // Notificar sin filtrar por visibilidad delataría la existencia de una entidad DM_ONLY
       // a quien no puede verla, aunque el contenido no viaje en el payload.
       if (!puedeVer) continue;
-      await this.notify(member.userId, {
+      await this.notify(viewer.userId, {
         type: "ENTITY_CREATED",
         campaignId,
         payload: { entityId: entity.id, entityType: entity.type, entityName: entity.name },
         subjectType: "entity",
         subjectId: entity.id,
+      });
+    }
+  }
+
+  // --- Plan 12 · los dos avisos que nadie emitía ---
+  //
+  // `COMMENT_ADDED` y `SESSION_SCHEDULED` estaban en el contrato de `@dnd/shared` desde la tarea
+  // 2A.14 y **no los emitía nadie**: dos tipos declarados que ningún usuario podía recibir nunca.
+
+  /**
+   * **Comentar una ficha avisa a quien deba saberlo**: el DM siempre, y el autor de la ficha si no
+   * es quien comenta.
+   *
+   * **Nunca a quien no puede ver la ficha.** El aviso pasa por `canView` igual que todo lo demás:
+   * decirle a alguien «han comentado esta ficha» le confirma que la ficha existe, y esa
+   * confirmación es exactamente lo que esconde una visibilidad `DM_ONLY`. Un DM que no pueda ver
+   * una ficha `OWNER_DM` de otra mesa no recibe nada por ser DM.
+   *
+   * **El cuerpo del comentario no viaja en el aviso**, por el mismo motivo por el que no viaja en
+   * su suceso: el hilo tiene su propia puerta, con su propio `canView`, y una segunda copia del
+   * texto sería una segunda puerta con otras reglas.
+   */
+  @OnEvent("comment.added")
+  async onCommentAdded({
+    campaignId,
+    entityId,
+    actorId,
+  }: {
+    campaignId: string;
+    entityId: string;
+    actorId: string;
+  }) {
+    const entity = await this.prisma.entity.findUnique({
+      where: { id: entityId },
+      include: { grants: true },
+    });
+    if (!entity) return;
+
+    const visores = await this.visoresDeLaMesa(campaignId);
+    const grantedUserIds = entity.grants.map((g) => g.userId);
+    const destinatarios = visores.filter((v) => v.role === "DM" || v.userId === entity.createdById);
+
+    for (const viewer of destinatarios) {
+      // **Nadie se avisa de lo que acaba de hacer.** Un DM que comenta veinte fichas seguidas
+      // genera cero avisos para sí mismo.
+      if (viewer.userId === actorId) continue;
+      const puedeVer = canView(viewer, {
+        visibility: entity.visibility,
+        createdById: entity.createdById,
+        grantedUserIds,
+      });
+      if (!puedeVer) continue;
+      await this.notify(viewer.userId, {
+        type: "COMMENT_ADDED",
+        campaignId,
+        // Datos, nunca la frase, y **nunca el cuerpo del comentario**.
+        payload: { entityId: entity.id, entityType: entity.type, entityName: entity.name },
+        subjectType: "entity",
+        subjectId: entity.id,
+      });
+    }
+  }
+
+  /**
+   * **Planificar una sesión avisa a la mesa**, con la visibilidad de la sesión.
+   *
+   * El atajo de `canView` con `createdById: ""` es el mismo que usa `SessionsService.canSee`, y
+   * vale porque una sesión **no tiene** creador propio ni permisos por persona: sus cinco niveles
+   * se resuelven solo con el papel. Si algún día los tuviera, este `""` empezaría a esconderla de
+   * quien sí tiene derecho.
+   */
+  @OnEvent("session.scheduled")
+  async onSessionScheduled({
+    campaignId,
+    sessionId,
+    actorId,
+  }: {
+    campaignId: string;
+    sessionId: string;
+    actorId: string;
+  }) {
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session || !session.scheduledAt) return;
+
+    for (const viewer of await this.visoresDeLaMesa(campaignId)) {
+      if (viewer.userId === actorId) continue; // quien la planificó ya lo sabe
+      const puedeVer = canView(viewer, {
+        visibility: session.visibility,
+        createdById: "",
+        grantedUserIds: [],
+      });
+      if (!puedeVer) continue;
+      await this.notify(viewer.userId, {
+        type: "SESSION_SCHEDULED",
+        campaignId,
+        payload: {
+          sessionId: session.id,
+          sessionTitle: session.title,
+          scheduledAt: session.scheduledAt.toISOString(),
+        },
+        subjectType: "session",
+        subjectId: session.id,
       });
     }
   }

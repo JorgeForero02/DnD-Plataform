@@ -1,5 +1,13 @@
 # Plan 12 · El aviso (N1 · A1-avisos · D-OP-22)
 
+> **Léete antes su acompañante:**
+> [el nervio en vivo — el transporte](../../specs/2026-09-05-nervio-en-vivo-transporte-design.md)
+> (2026-09-05). Contesta por qué SSE y no WebSocket ni Redis, qué hay que dejar preparado para que
+> la fase 3.C no obligue a rehacerlo, y **corrige cuatro números de este plan que ya no son
+> ciertos** — el sondeo no es uno sino **diez**, las invalidaciones no son 47 sino **93**, falta el
+> latido del canal, y `EventSource` puede colgar la aplicación en local a la tercera pestaña. Este
+> fichero no se reescribe: es un encargo fechado.
+
 **Objetivo en una frase:** que las notificaciones existan **por fuera** —hoy están construidas por
 dentro y no las ve nadie— y que lleguen solas, sin esperar al sondeo.
 
@@ -132,15 +140,36 @@ comprobación detrás de nginx y Traefik hecha en el servidor**, no supuesta.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-05 | **12.1 · los dos avisos que nadie emitía.** Emisores: `apps/api/src/comments/comments.service.ts:78` (`comment.added`, **fuera** de la transacción) y `apps/api/src/sessions/sessions.service.ts:148` (`session.scheduled`, en `create` y en `update` **solo si la fecha cambia**). Oyentes: `apps/api/src/notifications/notifications.service.ts:176` y `:236`, con `visoresDeLaMesa()` extraído en `:99`. Pruebas: `apps/api/src/notifications/notifications.service.spec.ts` (17 verdes) y `apps/api/test/notifications.e2e-spec.ts` (7 verdes). **Mutación probada**: sin `canView`, roja **solo** «NO llega a quien no puede ver la ficha». **Commit `<pendiente 12.1>`** |
+| ✅ hecho | 2026-09-05 | **Fallo ajeno al plan, encontrado por el camino.** La suite `notifications` de la API estaba **roja en `main`**: `POST /campaigns/:id/invites` daba 400 a una petición sin cuerpo aunque su esquema tiene todo opcional. Arreglado en `apps/api/src/common/zod-validation.pipe.ts:20`, con tres pruebas en su spec. **Commit `<pendiente 12.1>`** |
+| ⬜ sin empezar | — | **12.2 · la bandeja** y **12.3 · el nervio en vivo**. |
+| ⛔ bloqueado | 2026-09-05 | **La comprobación de `X-Accel-Buffering` detrás de nginx y Traefik**, que la «Definición de terminado» exige hacer **en el servidor**. El prompt de arranque prohíbe desplegar esta noche; las dos no se pueden cumplir a la vez. Se deja escrito y sin dar por hecho. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **El aviso del comentario pasa por `canView`, y esa es la mitad del punto de 12.1.** «Han
+  comentado esta ficha» confirma que la ficha existe, que es justo lo que esconde `DM_ONLY`. Va al
+  DM y al autor **y solo si además pueden verla**: ser DM no da acceso a una ficha que no ves.
+- **El cuerpo del comentario no viaja**, igual que no viaja en su suceso: el hilo ya tiene su
+  puerta, y una segunda copia del texto sería una segunda puerta con otras reglas.
+- **Una sesión se anuncia cuando GANA fecha, no en cada `update`.** Sin fecha no hay nada que
+  apuntar, y volver a guardar la misma fecha no es una noticia. Quitarla tampoco se anuncia.
+- **El aviso sale FUERA de la transacción del comentario.** Dentro se habría escrito aunque el
+  comentario acabase deshecho, y el oyente lee la ficha por su cuenta: dentro leería filas sin
+  confirmar.
+- **Un POST sin cuerpo no es un cuerpo inválido** (fallo ajeno al plan, encontrado porque la suite
+  de avisos estaba roja en `main`). Con todos los campos opcionales, `undefined` vale como `{}` —y
+  **solo** en el cuerpo, y **solo** si el esquema no exige nada.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **12.2, la bandeja**, en el chrome junto al conmutador de tema. Hoy **ningún fichero de
+  `apps/web/src` menciona `notifications`**: la bandeja se construye desde cero contra
+  `GET /notifications` y `POST /notifications/read`, que ya existen y están probados.
+- **Antes de 12.3, leer `docs/superpowers/specs/2026-09-05-nervio-en-vivo-transporte-design.md`**:
+  corrige cuatro números del plan (no hay «un sondeo» sino **diez `refetchInterval` con cuatro
+  valores**, son **93** invalidaciones y no 47, falta el **latido** cada 15-20 s, y `EventSource`
+  gasta una de las seis conexiones por origen en HTTP/1.1, que muerde **en local con Vite**).

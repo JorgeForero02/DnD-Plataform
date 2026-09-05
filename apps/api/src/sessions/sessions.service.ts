@@ -7,6 +7,7 @@ import {
   type StampSessionNoteInput,
   type StartSessionInput,
 } from "@dnd/shared";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -29,6 +30,7 @@ export class SessionsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -145,9 +147,24 @@ export class SessionsService {
     return new Map(fichas.map((f) => [f.id, f]));
   }
 
+  /**
+   * **Una sesion se anuncia cuando GANA fecha, no cada vez que se guarda.**
+   *
+   * Sin fecha no hay nada que avisar —«hay una sesion, algun dia» no le sirve a nadie para
+   * organizarse—, y volver a guardar la misma fecha no es una noticia. Por eso el aviso sale al
+   * crearla con fecha y al ponerle una **distinta** de la que tenia, y no en cada `update`.
+   */
+  private anunciarFecha(session: { id: string; campaignId: string }, actorId: string) {
+    this.emitter.emit("session.scheduled", {
+      campaignId: session.campaignId,
+      sessionId: session.id,
+      actorId,
+    });
+  }
+
   async create(userId: string, campaignId: string, input: CreateSessionInput) {
     await this.membership.requireDM(campaignId, userId);
-    return this.prisma.session.create({
+    const session = await this.prisma.session.create({
       data: {
         campaignId,
         title: input.title,
@@ -160,6 +177,8 @@ export class SessionsService {
             : await this.apertura(campaignId, input.openingEntityId),
       },
     });
+    if (session.scheduledAt) this.anunciarFecha(session, userId);
+    return session;
   }
 
   async list(userId: string, campaignId: string) {
@@ -198,7 +217,13 @@ export class SessionsService {
     // `null` es «quítalo» y llega hasta aquí; `undefined` es «no lo toques» y no entra en `data`.
     if (input.openingEntityId !== undefined)
       data.openingEntityId = await this.apertura(campaignId, input.openingEntityId);
-    return this.prisma.session.update({ where: { id: sessionId }, data });
+    const session = await this.prisma.session.update({ where: { id: sessionId }, data });
+    // Solo si la fecha ha CAMBIADO: volver a guardar la misma no es una noticia, y quitarla
+    // tampoco se anuncia —lo que se avisa es «apunta esto en el calendario».
+    if (session.scheduledAt && session.scheduledAt.getTime() !== existing.scheduledAt?.getTime()) {
+      this.anunciarFecha(session, userId);
+    }
+    return session;
   }
 
   async remove(userId: string, campaignId: string, sessionId: string) {

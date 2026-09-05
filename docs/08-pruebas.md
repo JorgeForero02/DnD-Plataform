@@ -198,7 +198,7 @@ en verde.
 | `security-headers` | Las cabeceras de Helmet salen **en toda respuesta, incluida una 401**, y no hay cabeceras CORS si no se configuró origen. |
 | `invites` | El DM invita, el jugador acepta y entra; quien no es DM no puede invitar; **una invitación no se reutiliza**. |
 | `members` | Listar miembros con su papel; expulsar a alguien le quita de verdad el acceso a lo que era visible para jugadores; un extraño recibe 403. |
-| `notifications` | Aceptar una invitación notifica al DM; **nadie ve las notificaciones de otro**, ni las marca leídas. |
+| `notifications` | Aceptar una invitación notifica al DM; **nadie ve las notificaciones de otro**, ni las marca leídas. Y desde el plan 12, **los dos avisos que nadie emitía**: comentar avisa al DM y **no a quien comentó**; **no llega a quien no puede ver la ficha** —la fuga que protege esta suite—; y planificar una sesión con fecha avisa a la mesa menos a quien la planificó. Sondea la bandeja en vez de leerla una vez: los oyentes son asíncronos y nadie espera su promesa. |
 
 ### El mundo y la campaña
 

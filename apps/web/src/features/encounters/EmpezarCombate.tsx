@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStartEncounter } from "./hooks";
 import type { Character } from "../characters/api";
+import type { NpcEnLaMesa } from "../bestiario/api";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 import { descriptorDePersonaje } from "../characters/descriptor";
@@ -20,10 +21,18 @@ export function EmpezarCombate({
   campaignId,
   sessionId,
   personajes,
+  pnjs = [],
 }: {
   campaignId: string;
   sessionId: string;
   personajes: Character[];
+  /**
+   * **Los PNJ que ya están en la mesa.** Sin ellos, el diálogo solo ofrecía a los personajes de
+   * los jugadores: se podía «entrar en combate» pero **no había con quién combatir**, y el
+   * capataz que el DM acababa de sacar del bestiario no aparecía por ninguna parte. Meterlo en el
+   * combate solo se podía por la API.
+   */
+  pnjs?: NpcEnLaMesa[];
 }) {
   const [abierto, setAbierto] = useState(false);
 
@@ -32,7 +41,7 @@ export function EmpezarCombate({
   // con lector de pantalla — es la misma razón por la que `04-convenciones.md` prohíbe deshabilitar
   // el botón de guardar. Se dice la frase, y ya está: no hay nada que pulsar porque no hay nadie
   // con quien combatir, y eso se lee.
-  if (personajes.length === 0) {
+  if (personajes.length === 0 && pnjs.length === 0) {
     return (
       <span className="font-chrome text-chrome-xs text-muted">
         No hay ningún personaje en esta campaña con el que combatir.
@@ -55,6 +64,7 @@ export function EmpezarCombate({
           campaignId={campaignId}
           sessionId={sessionId}
           personajes={personajes}
+          pnjs={pnjs}
           onClose={() => setAbierto(false)}
         />
       )}
@@ -66,11 +76,13 @@ function DialogoDeCombate({
   campaignId,
   sessionId,
   personajes,
+  pnjs,
   onClose,
 }: {
   campaignId: string;
   sessionId: string;
   personajes: Character[];
+  pnjs: NpcEnLaMesa[];
   onClose: () => void;
 }) {
   const empezar = useStartEncounter(campaignId, sessionId);
@@ -86,7 +98,15 @@ function DialogoDeCombate({
         la vez con una sola tirada.
       </p>
 
+      {/* **Dos grupos, y separados a propósito.** Un PNJ es una fila de `Character` igual que un
+          personaje, pero en esta pregunta no son lo mismo: el DM busca «los míos» y «los suyos».
+          Mezclarlos en una lista alfabética obliga a leerla entera para sacar tres goblins. */}
       <ul className="mt-s3 flex max-h-[50vh] flex-col gap-s1 overflow-y-auto">
+        {personajes.length > 0 && (
+          <li className="px-s2 pt-s1 font-chrome text-chrome-xs uppercase tracking-wide text-muted">
+            El grupo
+          </li>
+        )}
         {personajes.map((c) => (
           <li key={c.id}>
             <label className="flex items-center gap-s2 rounded-radius-sm px-s2 py-s1 font-chrome text-chrome-sm text-text hover:bg-bg">
@@ -101,6 +121,27 @@ function DialogoDeCombate({
                   usa el elenco, no una segunda forma de decir lo mismo. */}
               <span className="shrink-0 font-chrome text-chrome-xs text-muted">
                 {descriptorDePersonaje(c)}
+              </span>
+            </label>
+          </li>
+        ))}
+        {pnjs.length > 0 && (
+          <li className="px-s2 pt-s2 font-chrome text-chrome-xs uppercase tracking-wide text-muted">
+            PNJ en la mesa
+          </li>
+        )}
+        {pnjs.map((p) => (
+          <li key={p.id}>
+            <label className="flex items-center gap-s2 rounded-radius-sm px-s2 py-s1 font-chrome text-chrome-sm text-text hover:bg-bg">
+              <input
+                type="checkbox"
+                className="accent-[var(--accent)]"
+                checked={elegidos.includes(p.id)}
+                onChange={() => alternar(p.id)}
+              />
+              <span className="min-w-0 flex-1 truncate">{p.name}</span>
+              <span className="shrink-0 font-chrome text-chrome-xs text-muted">
+                {p.currentHp === null ? "sin PG anotados" : `${p.currentHp} PG`}
               </span>
             </label>
           </li>

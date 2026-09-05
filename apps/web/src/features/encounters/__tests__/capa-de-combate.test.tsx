@@ -7,6 +7,7 @@ import { TiraDeIniciativa } from "../TiraDeIniciativa";
 import { EmpezarCombate } from "../EmpezarCombate";
 import * as encountersApi from "../api";
 import type { Character } from "../../characters/api";
+import type { NpcEnLaMesa } from "../../bestiario/api";
 
 // Tarea 2.5.6 — la capa de combate. Lo que se prueba aquí es lo que la capa **hace**: qué se puede
 // tocar, qué se manda al servidor y qué NO se enseña. Lo que solo se ve maquetado (que la tira no
@@ -48,6 +49,19 @@ const ENCUENTRO: Encounter = {
   ],
 };
 
+/**
+ * **Un PNJ en la mesa, que NO sale en `GET /characters`.** Esa lista es «quién se sienta a la
+ * mesa» y excluye los PNJ instanciados a propósito (2D.6), así que el orden de turnos solo sabe
+ * su nombre si se le pasa esta segunda lista. Sin ella los llamaba «Alguien», también al DM.
+ */
+const KLARG: NpcEnLaMesa = {
+  id: "npc-klarg",
+  name: "Klarg",
+  statblockRef: "CAMPAIGN:cap",
+  currentHp: 27,
+  visibility: "DM_ONLY",
+};
+
 function montarTira(encuentro: Encounter = ENCUENTRO, esDm = true) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -58,6 +72,7 @@ function montarTira(encuentro: Encounter = ENCUENTRO, esDm = true) {
           sessionId="s1"
           encuentro={encuentro}
           personajes={[THORA, GOBLIN_A, GOBLIN_B]}
+          pnjs={[KLARG]}
           esDm={esDm}
         />
       </MemoryRouter>
@@ -173,12 +188,12 @@ describe("quién puede tocar el combate", () => {
 });
 
 describe("entrar en combate", () => {
-  function montarEmpezar(personajes: Character[] = [THORA, GOBLIN_A]) {
+  function montarEmpezar(personajes: Character[] = [THORA, GOBLIN_A], pnjs: NpcEnLaMesa[] = []) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
       <QueryClientProvider client={qc}>
         <MemoryRouter>
-          <EmpezarCombate campaignId="c1" sessionId="s1" personajes={personajes} />
+          <EmpezarCombate campaignId="c1" sessionId="s1" personajes={personajes} pnjs={pnjs} />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -220,5 +235,84 @@ describe("entrar en combate", () => {
     expect(
       screen.getByText("No hay ningún personaje en esta campaña con el que combatir."),
     ).toBeInTheDocument();
+  });
+
+  // --- Lo que encontró un paseo de uso sobre la campaña de demostración, no una prueba ---
+
+  it("ofrece también los PNJ de la mesa, en su propio grupo", async () => {
+    const espia = vi.spyOn(encountersApi, "startEncounter").mockResolvedValue(ENCUENTRO);
+    montarEmpezar([THORA], [KLARG]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("El grupo")).toBeInTheDocument();
+    expect(within(dialogo).getByText("PNJ en la mesa")).toBeInTheDocument();
+
+    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Thora/ }));
+    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Klarg/ }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Tirar iniciativa" }));
+
+    // **Un PNJ entra al combate por su id de personaje**, igual que cualquiera: es una fila de
+    // `Character`, y esa decisión es la que hace barata toda la fase 2D.
+    await waitFor(() =>
+      expect(espia).toHaveBeenCalledWith("c1", "s1", { characterIds: ["p-thora", "npc-klarg"] }),
+    );
+  });
+
+  it("sin personajes pero CON un PNJ, el combate sigue siendo posible", async () => {
+    montarEmpezar([], [KLARG]);
+    expect(
+      screen.queryByText("No hay ningún personaje en esta campaña con el que combatir."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Entrar en combate" })).toBeInTheDocument();
+  });
+});
+
+describe("el nombre de un PNJ en el orden de turnos", () => {
+  it("se lee, en vez de «Alguien»", () => {
+    const conPnj: Encounter = {
+      ...ENCUENTRO,
+      combatants: [
+        { id: "cb1", characterId: "p-thora", initiative: 18, position: 0, side: "ALLY" as const },
+        { id: "cb9", characterId: "npc-klarg", initiative: 9, position: 1, side: "ENEMY" as const },
+      ],
+    };
+    montarTira(conPnj);
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    expect(within(tira).getByText("Klarg")).toBeInTheDocument();
+    expect(within(tira).queryByText("Alguien")).not.toBeInTheDocument();
+  });
+
+  it("y un PNJ que el jugador NO puede ver sigue siendo «Alguien» para él", () => {
+    // La lista de PNJ llega ya filtrada por el servidor: lo que no se puede ver, no viaja. Aquí
+    // se simula pasándola vacía, que es exactamente lo que recibe ese jugador.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <TiraDeIniciativa
+            campaignId="c1"
+            sessionId="s1"
+            encuentro={{
+              ...ENCUENTRO,
+              combatants: [
+                {
+                  id: "cb9",
+                  characterId: "npc-klarg",
+                  initiative: 9,
+                  position: 0,
+                  side: "ENEMY" as const,
+                },
+              ],
+            }}
+            personajes={[THORA]}
+            pnjs={[]}
+            esDm={false}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    expect(within(tira).getByText("Alguien")).toBeInTheDocument();
   });
 });

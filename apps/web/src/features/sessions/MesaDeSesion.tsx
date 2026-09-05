@@ -20,6 +20,8 @@ import { Dialog } from "../../ui/Dialog";
 import { useMyRole } from "../campaigns/members";
 import { useCampaign } from "../campaigns/hooks";
 import { useCharacters } from "../characters/hooks";
+import { useNpcs } from "../bestiario/hooks";
+import type { NpcEnLaMesa } from "../bestiario/api";
 import type { Character } from "../characters/api";
 import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { useAuthStore } from "../../store/auth.store";
@@ -75,6 +77,10 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
     as: esDm && comoUsuario ? comoUsuario : undefined,
   });
   const { data: personajes } = useCharacters(campaignId);
+  // **Los PNJ también combaten**, y `useCharacters` no los trae: esa lista es «quién se sienta a
+  // la mesa». Sin esta, el orden de turnos llamaba «Alguien» a un PNJ y el diálogo de combate no
+  // lo ofrecía siquiera.
+  const { data: pnjs } = useNpcs(campaignId);
   const miId = useAuthStore((st) => st.user?.id);
   // **Uno a la vez**: el estrato superpuesto del reseño. Abrir la bolsa cierra la hoja.
   const [panel, setPanel] = useState<PanelAbierto | null>(null);
@@ -185,6 +191,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
               campaignId={campaignId}
               sessionId={sesion.id}
               personajes={personajes ?? []}
+              pnjs={pnjs ?? []}
               esDm={esDm}
             />
           </div>
@@ -322,11 +329,13 @@ function CapaDeCombate({
   campaignId,
   sessionId,
   personajes,
+  pnjs,
   esDm,
 }: {
   campaignId: string;
   sessionId: string;
   personajes: Character[];
+  pnjs: NpcEnLaMesa[];
   esDm: boolean;
 }) {
   const { data: encuentro } = useCurrentEncounter(campaignId, sessionId);
@@ -338,6 +347,7 @@ function CapaDeCombate({
         sessionId={sessionId}
         encuentro={encuentro}
         personajes={personajes}
+        pnjs={pnjs}
         esDm={esDm}
       />
     );
@@ -346,7 +356,12 @@ function CapaDeCombate({
   return (
     <div className="flex items-center gap-s3 rounded-radius-sm border border-muted bg-surface px-s3 py-s2">
       <span className="font-chrome text-chrome-xs text-muted">La mesa no está en combate.</span>
-      <EmpezarCombate campaignId={campaignId} sessionId={sessionId} personajes={personajes} />
+      <EmpezarCombate
+        campaignId={campaignId}
+        sessionId={sessionId}
+        personajes={personajes}
+        pnjs={pnjs}
+      />
     </div>
   );
 }

@@ -88,7 +88,12 @@ export function BandaDeMesa({
       <div className="ml-auto flex items-center gap-s3">
         {esDm && (
           <label className="flex items-center gap-s2 font-chrome text-chrome-xs text-muted">
-            Ver el registro como
+            {/* **El rótulo no se parte en tres líneas.** Con «Ver el registro como» escrito
+                entero, la banda lo envolvía a tres renglones y empujaba el resto de la fila —a
+                1280 px y peor a 390—. Lo cazó un paseo de uso, no una prueba: `jsdom` no maqueta.
+                Se acorta lo VISIBLE y **el nombre accesible se queda entero**, que es lo que lee
+                quien no ve la banda. */}
+            <span className="whitespace-nowrap">Ver como</span>
             <select
               aria-label="Ver el registro como"
               value={comoUsuario}

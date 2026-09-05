@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Encounter } from "@dnd/shared";
 import { useAdvanceTurn, useEndEncounter, useSetInitiative } from "./hooks";
 import type { Character } from "../characters/api";
+import type { NpcEnLaMesa } from "../bestiario/api";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 
@@ -27,12 +28,24 @@ export function TiraDeIniciativa({
   sessionId,
   encuentro,
   personajes,
+  pnjs = [],
   esDm,
 }: {
   campaignId: string;
   sessionId: string;
   encuentro: Encounter;
   personajes: Character[];
+  /**
+   * **Los PNJ de la mesa, que también combaten.** Un PNJ es una fila de `Character` (fase 2D),
+   * pero `GET /characters` **no los lista** a propósito —esa lista es «quién se sienta a la
+   * mesa»—, así que sin esta segunda lista un goblin en el orden de turnos se llamaba
+   * **«Alguien»**, y se lo llamaba también al DM que acababa de sacarlo. Lo encontró un paseo de
+   * uso sobre la campaña de demostración, no una prueba.
+   *
+   * Viene ya filtrada por el servidor: un PNJ que el jugador no puede ver no llega aquí, y por
+   * eso sigue siendo «Alguien» para él — que es lo correcto.
+   */
+  pnjs?: NpcEnLaMesa[];
   esDm: boolean;
 }) {
   const pasarTurno = useAdvanceTurn(campaignId, sessionId);
@@ -41,7 +54,9 @@ export function TiraDeIniciativa({
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
 
   const nombreDe = (characterId: string) =>
-    personajes.find((c) => c.id === characterId)?.name ?? "Alguien";
+    personajes.find((c) => c.id === characterId)?.name ??
+    pnjs.find((p) => p.id === characterId)?.name ??
+    "Alguien";
 
   // **Los combatientes que comparten posición actúan a la vez** (el SRD manda una sola tirada
   // para un grupo de criaturas idénticas, y el servidor los agrupa por `statblockRef`). Se

@@ -39,6 +39,36 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Un PNJ podía pelear, pero la pantalla no sabía su nombre ni sabía meterlo (2026-09-05)
+
+**Qué.** Dos defectos de la capa de combate, encontrados **paseando la aplicación** sobre la
+campaña de demostración recién sembrada — no por una prueba:
+
+1. **En el orden de turnos, un PNJ se llamaba «Alguien»**, y se lo llamaba también al DM que
+   acababa de sacarlo del bestiario.
+2. **El diálogo de «Entrar en combate» no ofrecía ningún PNJ**: solo los personajes de los
+   jugadores. Se podía entrar en combate y **no había con quién combatir**; meter al capataz en la
+   iniciativa solo se podía por la API.
+
+**Por qué pasaba, y no era un descuido de dos líneas.** Un PNJ **es** una fila de `Character` —esa
+decisión es la que hizo barata toda la fase 2D—, pero `GET /characters` **no los lista a
+propósito**: esa lista es «quién se sienta a la mesa», y seis goblins mezclados con tres
+aventureros convierten la pantalla de personajes en un listado de combate. La mesa leía solo esa
+lista, así que para ella los PNJ no existían.
+
+**El arreglo es pasarle la segunda lista**, la del bestiario, que el servidor ya filtra por
+visibilidad. Con eso los dos defectos caen juntos, y **un PNJ que el jugador no puede ver sigue
+siendo «Alguien» para él**, que es lo correcto: la lista que no le llega no puede nombrárselo.
+
+**Y una molestia de maquetación, del mismo paseo**: el rótulo «Ver el registro como» de la banda de
+la mesa se partía en **tres renglones** y empujaba el resto de la fila, a 1280 px y peor a 390. Se
+acorta lo visible a «Ver como» y **el nombre accesible se queda entero**.
+
+**Mutación probada**: deshecho el nombre del PNJ, se pone roja **una sola** prueba de las 1093.
+
+**Cómo revertirlo.** `git revert` del commit; los PNJ vuelven a estar en el bestiario y fuera del
+combate.
+
 ## Una campaña de demostración que se siembra sola (2026-09-05)
 
 **Qué.** `scripts/seed-demo.mjs` deja la aplicación con una mesa dentro: tres cuentas —DM y dos

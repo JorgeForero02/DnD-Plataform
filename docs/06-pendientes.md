@@ -181,7 +181,25 @@ dice qué se leerá ahí cuando exista, en vez de inventarse un resumen.
 > **La ficha sigue abierta**: lo que falta es el `campaigns.service.ts#listForUser`, y lo cierra el
 > **plan 03**.
 
-## P2 · El ataque es un oráculo sobre la CA, y se acepta con esas palabras (2026-09-04, 2.5.3)
+## ~~P2 · El ataque es un oráculo sobre la CA, y se acepta con esas palabras~~ — CERRADA A MEDIAS (2026-09-05, plan 03 · D-OP-11)
+
+> **Lo que se cierra: apuntar a lo que no ves ni tienes delante.** El objetivo tiene que pasar
+> `canView` para quien ataca **o** ser combatiente de un encuentro **activo** de esta campaña
+> (`CharacterSheetService.sePuedeApuntar`, `apps/api/src/characters/character-sheet.service.ts:246-280`).
+> Si no, **404 idéntico byte a byte** al de un identificador que nadie ha creado nunca — comparado
+> con `JSON.stringify` en `apps/api/test/ataque-comparado-en-el-servidor.e2e-spec.ts`. Un 403 habría
+> confirmado que el personaje existe.
+>
+> **Y el criterio de cierre del spec de 2.5.3 sigue vivo entero:** un jugador ataca a un PNJ
+> `DM_ONLY` y recibe su veredicto. Lo que hace falta ahora es que el PNJ esté **en la mesa**, que es
+> exactamente cuando alguien puede apuntarle en la ficción. El comentario del servicio que decía
+> «por qué no exige `canView`» está reescrito, no dejado mintiendo.
+>
+> **Lo que NO se cierra, y se sigue aceptando con las mismas palabras:** contra un objetivo que sí
+> puedes ver, atacarlo repetidamente sigue dando su CA. Es lo que pasa en una mesa, y el SRD lo
+> respalda. Texto original abajo.
+
+
 
 **El §4 del alcance de la fase 2.5 dice «la CA de un PNJ no sale del servidor», y no sale: no
 está en la respuesta, ni en el `payload` de ningún suceso, ni en la traza, ni en un 400.** La

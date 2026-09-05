@@ -10,6 +10,7 @@ import type { Character } from "@prisma/client";
 import { RANGO_DE_ANULACION } from "@dnd/shared";
 import type {
   AbilityKey,
+  Visibility,
   AttackVerdict,
   ContentRefInput,
   ResolvedItem,
@@ -233,6 +234,42 @@ export class CharacterSheetService {
       this.prisma.user.findUnique({ where: { id: userId } }),
     ]);
     return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
+  }
+
+  /**
+   * ¿Se puede apuntar a este personaje? **`canView` o estar en el encuentro activo** (D-OP-11).
+   *
+   * Las dos mitades hacen falta y ninguna sobra. `canView` sola dejaría fuera al PNJ `DM_ONLY` que
+   * el DM acaba de bajar a la mesa, que es justo lo que el spec de 2.5.3 pide que se pueda atacar.
+   * El encuentro solo dejaría fuera al objetivo perfectamente visible al que se ataca **fuera** de
+   * combate, que es legal.
+   *
+   * Y **no vale con «está en algún encuentro»**: tiene que ser uno **activo** de esta campaña. Un
+   * combatiente de una pelea de hace tres sesiones no está delante de nadie.
+   */
+  private async sePuedeApuntar(
+    userId: string,
+    campaignId: string,
+    target: { id: string; visibility: Visibility; ownerId: string },
+  ): Promise<boolean> {
+    const viewer = await this.viewerFor(userId, campaignId);
+    if (
+      canView(viewer, {
+        visibility: target.visibility,
+        createdById: target.ownerId,
+        grantedUserIds: [],
+      })
+    ) {
+      return true;
+    }
+    const enCombate = await this.prisma.combatant.findFirst({
+      where: {
+        characterId: target.id,
+        encounter: { status: "ACTIVE", session: { campaignId } },
+      },
+      select: { id: true },
+    });
+    return enCombate !== null;
   }
 
   private canSee(viewer: Viewer, character: FilaPersonaje): boolean {
@@ -1428,12 +1465,27 @@ export class CharacterSheetService {
    * —que **nunca sale de este método**— y se propone un veredicto. Ni el impacto ni el daño se
    * aplican solos: el DM confirma o corrige (§4 del spec de la fase 2.5).
    *
-   * **Por qué no exige `canView` sobre el objetivo.** Atacar es un acto de la ficción, no una
-   * lectura de su ficha: el criterio de cierre del spec pide explícitamente que un jugador que
-   * ataca a un PNJ `DM_ONLY` reciba su veredicto igual — la garantía de esta tarea no es «no
-   * puedes apuntar a lo que no ves», es «nunca vas a saber su CA». Lo primero lo gobierna la
-   * mesa fuera de este endpoint (quién sabe que hay un objetivo delante); lo segundo lo
-   * garantiza este método sin excepciones, atacable o no.
+   * **A quién se puede apuntar, y por qué la regla cambió el 2026-09-05 (D-OP-11).** Aquí ponía
+   * que no hacía falta `canView` sobre el objetivo, porque «atacar es un acto de la ficción» y el
+   * spec pedía que un jugador que ataca a un PNJ `DM_ONLY` reciba su veredicto igual. Lo segundo
+   * sigue siendo verdad; lo primero **convertía este endpoint en un oráculo**: con un identificador
+   * y paciencia, cada ataque es una comparación exacta `total >= CA` con el total conocido, así que
+   * veinte o treinta peticiones dan la CA de **cualquier** personaje de la campaña. El atacante
+   * conoce su propio bono, así que ni siquiera necesita suerte.
+   *
+   * La regla que concilia las dos cosas: el objetivo tiene que **pasar `canView` para quien ataca**
+   * *o* **ser combatiente del encuentro activo**. El PNJ `DM_ONLY` que el DM acaba de bajar a la
+   * mesa cumple lo segundo —está delante—, así que el criterio del spec se conserva entero; un
+   * identificador pescado al azar no cumple ninguno.
+   *
+   * **404 y no 403, y esto es lo importante:** un 403 confirma que el personaje existe. La
+   * respuesta es **idéntica** a la de un identificador que nadie ha creado nunca, mismo mensaje
+   * incluido, y hay un e2e que compara los dos cuerpos.
+   *
+   * **Lo que sigue siendo deducible, y se acepta:** contra un objetivo que sí puedes ver, atacarlo
+   * repetidamente sigue dando su CA — igual que en una mesa, donde el DM dice «fallas» y con el
+   * tiempo se aprende. El SRD lo respalda (*«the GM typically just says the attack missed»*) y no
+   * prohíbe atacar a ciegas.
    *
    * **El crítico deja de decidirlo quien pide la tirada** (ficha R2C-2, la duplicación de dados
    * de la DAMAGE de `rollAttack` seguirá arreglándose en 2.5.4). Aquí el veredicto sale de la
@@ -1463,7 +1515,12 @@ export class CharacterSheetService {
     const target = await this.prisma.character.findFirst({
       where: { id: input.targetCharacterId, campaignId, archivedAt: null },
     });
-    if (!target) throw new NotFoundException("Character not found");
+    // **El mismo 404 exacto en los dos casos** (D-OP-11): el que no existe y el que existe pero no
+    // puedes ni ver ni tener delante. Si los cuerpos difirieran en una coma, el oráculo seguiría
+    // abierto por otra puerta.
+    if (!target || !(await this.sePuedeApuntar(userId, campaignId, target))) {
+      throw new NotFoundException("Character not found");
+    }
 
     // La CA se calcula ANTES de tirar: si el objetivo no se puede resolver (un PNJ cuyo
     // statblock se borró, por ejemplo), es un 400 honesto y no una tirada que luego no se puede

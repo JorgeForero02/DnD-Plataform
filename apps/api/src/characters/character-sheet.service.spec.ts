@@ -93,6 +93,10 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     // `attackRollEventId` (el de siempre) es el que se ejercita salvo que la prueba diga otra
     // cosa.
     gameEvent: { findFirst: jest.fn().mockResolvedValue(null) },
+    // D-OP-11: se puede apuntar a quien pasa `canView` **o** a quien está en el encuentro activo.
+    // Por defecto, en el encuentro: es el caso de mesa —el objetivo está delante— y es el que
+    // ejercitan todas las pruebas de ataque escritas antes de que existiera la regla.
+    combatant: { findFirst: jest.fn().mockResolvedValue({ id: "comb1" }) },
     transaction: jest.fn(),
   };
   const membership = {
@@ -1727,6 +1731,94 @@ function conAtacanteYObjetivo(rollsRespuesta: Record<string, unknown>) {
   rolls.roll.mockResolvedValue(rollsRespuesta);
   return montado;
 }
+
+describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => {
+  // El defecto: cada ataque es una comparación exacta `total >= CA` con el total conocido, así que
+  // veinte o treinta peticiones contra un identificador cualquiera daban la CA de cualquier
+  // personaje de la campaña. El atacante conoce su propio bono; ni siquiera necesitaba suerte.
+
+  function conObjetivoEscondido(enCombate: boolean) {
+    const montado = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 4,
+      total: 14,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+    montado.prisma.character.findFirst.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(
+        where.id === "target1"
+          ? personaje({ id: "target1", ownerId: "dm1", visibility: "DM_ONLY" })
+          : null,
+      ),
+    );
+    montado.prisma.combatant.findFirst.mockResolvedValue(enCombate ? { id: "comb1" } : null);
+    return montado;
+  }
+
+  it("un personaje que existe pero NO se puede ver ni tener delante es un 404", async () => {
+    // **El caso difícil, no el fácil.** Un id con formato inválido daría 404 aunque no hubiera
+    // ninguna comprobación; lo que prueba algo es un id **válido de un personaje real**.
+    const { service } = conObjetivoEscondido(false);
+    await expect(
+      service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        targetCharacterId: "target1",
+        mode: "NORMAL",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("y su mensaje es EXACTAMENTE el mismo que el de un id que nadie ha creado nunca", async () => {
+    // Si los cuerpos difirieran en una coma, el oráculo seguiría abierto por otra puerta.
+    const { service } = conObjetivoEscondido(false);
+    const mensaje = async (id: string) => {
+      try {
+        await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+          targetCharacterId: id,
+          mode: "NORMAL",
+        });
+        return "no lanzó";
+      } catch (e) {
+        return (e as Error).message;
+      }
+    };
+    expect(await mensaje("target1")).toBe(await mensaje("no-existe-jamas"));
+  });
+
+  it("pero el PNJ DM_ONLY que está EN EL ENCUENTRO ACTIVO sí se puede atacar", async () => {
+    // Es el criterio de cierre del spec de 2.5.3, y sigue vivo: el PNJ que el DM acaba de bajar a
+    // la mesa está delante, así que se le puede apuntar aunque su ficha esté escondida.
+    const { service } = conObjetivoEscondido(true);
+    const r = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+    expect(r).toHaveProperty("verdict");
+  });
+
+  it("solo cuenta un encuentro ACTIVO de ESTA campaña", async () => {
+    // Un combatiente de una pelea de hace tres sesiones no está delante de nadie.
+    const { service, prisma } = conObjetivoEscondido(true);
+    await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+    expect(prisma.combatant.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          characterId: "target1",
+          encounter: { status: "ACTIVE", session: { campaignId: "c1" } },
+        }),
+      }),
+    );
+  });
+});
 
 describe("2.5.3 — el ataque, comparado en el servidor", () => {
   it("con el total por encima de la CA del objetivo, el veredicto es HIT", async () => {

@@ -157,8 +157,8 @@ D-OP-12**, dicho explícitamente en su commit.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-05 | **3.1 · D-OP-12 + P1 + P3-archivar.** Columna `grantedUserIds String[]` en `apps/api/prisma/schema.prisma:456-470`, migración `apps/api/prisma/migrations/20260905040000_game_event_granted_users/migration.sql`. `recordGameEventSchema` la acepta (`packages/shared/src/game-event.schema.ts:467-477`), `record()` la guarda y `canSee` la pasa a `canView` (`apps/api/src/game-events/game-events.service.ts:181`). **Parche de `entities.service.ts` retirado** con su comentario reescrito (`:220-241`). `audienciaDeSuceso` nueva en `apps/api/src/common/visibility.ts`. **Commit `<pendiente 3.1>`** |
-| ⬜ sin empezar | — | 3.2 · D-OP-11 · el oráculo de la CA |
+| ✅ hecho | 2026-09-05 | **3.1 · D-OP-12 + P1 + P3-archivar.** Columna `grantedUserIds String[]` en `apps/api/prisma/schema.prisma:456-470`, migración `apps/api/prisma/migrations/20260905040000_game_event_granted_users/migration.sql`. `recordGameEventSchema` la acepta (`packages/shared/src/game-event.schema.ts:467-477`), `record()` la guarda y `canSee` la pasa a `canView` (`apps/api/src/game-events/game-events.service.ts:181`). **Parche de `entities.service.ts` retirado** con su comentario reescrito (`:220-241`). `audienciaDeSuceso` nueva en `apps/api/src/common/visibility.ts`. **Commit `52a461f`** |
+| ✅ hecho | 2026-09-05 | **3.2 · D-OP-11 · el oráculo de la CA.** `sePuedeApuntar` en `apps/api/src/characters/character-sheet.service.ts:246-280` (`canView` **o** combatiente de encuentro **activo**), aplicado en `resolveAttack` con **el mismo 404** que un id inventado. Comentario del método reescrito: decía «por qué no exige `canView`». **Commit `<pendiente 3.2>`** |
 | ⬜ sin empezar | — | 3.3 · D-OP-15 · `attackRollEventId` a columna con índice único |
 | ⬜ sin empezar | — | 3.4 · D-OP-13 · la ventaja de atacar a un ciego |
 | ⬜ sin empezar | — | 3.5 · D-OP-17 · «dónde se quedó» en el listado |
@@ -191,10 +191,29 @@ fuente si la hubo):
   quien mire el registro dentro de un mes tiene que ver quién estaba nombrado **cuando pasó**. Un
   registro de solo añadir cuya visibilidad cambia sola no es un registro.
 
+- **3.2 · El e2e que existía atacaba a un PNJ `DM_ONLY` FUERA de combate, y la regla nueva lo
+  bloquea.** No es que la regla estuviera mal: ese e2e era **el oráculo en acción**. El criterio de
+  cierre del spec de 2.5.3 —«un jugador ataca a un PNJ `DM_ONLY` y recibe su veredicto»— se conserva
+  entero **bajando el PNJ a la mesa**: el `beforeAll` de
+  `apps/api/test/ataque-comparado-en-el-servidor.e2e-spec.ts:104-127` abre sesión y encuentro con el
+  atacante y el objetivo. Que el PNJ esté delante es exactamente cuando alguien puede apuntarle en
+  la ficción.
+- **3.2 · El comentario del método decía lo contrario de la ficha, y ganó la ficha.** En
+  `character-sheet.service.ts` había un párrafo titulado «Por qué no exige `canView` sobre el
+  objetivo», con su razonamiento. Era cierto en su día y **convertía el endpoint en un oráculo**. Se
+  reescribió entero en vez de añadir el código y dejarlo: una frase con la sintaxis en regla que
+  describe algo que el código ya no hace es la clase de mentira que ningún script caza.
+- **3.2 · `canView` sola no basta, y el encuentro solo tampoco.** `canView` dejaría fuera al PNJ que
+  el DM acaba de bajar a la mesa; el encuentro dejaría fuera al objetivo visible al que se ataca
+  **fuera** de combate, que es legal. Por eso son las dos, con **o**.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **3.2 · D-OP-11, el oráculo de la CA.** `character-sheet.service.ts` busca el objetivo del ataque
-  sin consultar `canView`, aunque el servicio ya lo importa y ya tiene `viewerFor()`. La regla: el
-  objetivo pasa `canView` **o** es combatiente del encuentro activo; si no, **404 idéntico byte a
-  byte** al de un id inventado. La prueba difícil es un **id válido de un personaje real que no
-  puedes ver**, no un id con formato inválido.
+- **3.3 · D-OP-15, `attackRollEventId` a columna con índice único.** Hoy el campo **solo es
+  entrada**: `esCriticoDesdeLaTirada` (`apps/api/src/characters/character-sheet.service.ts:1400-1430`)
+  lo lee y **no lo guarda**, así que nada impide cobrar dos veces el daño de la misma tirada. El
+  daño se escribe por `RollsService.roll` (`apps/api/src/rolls/rolls.service.ts:109-133`), que es
+  quien llama a `events.record`: hay que hacer viajar el campo hasta ahí, darle **columna con índice
+  único** en `GameEvent`, y que el segundo cobro **falle en la base**. PostgreSQL trata dos nulos
+  como distintos, así que los sucesos sin ese campo no chocan entre sí y **basta un índice único
+  normal**, sin parcial.

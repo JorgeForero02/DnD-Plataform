@@ -101,6 +101,28 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
       .send({ ref: "SRD:commoner" });
     targetId = npc.body[0].id;
     expect(npc.body[0].visibility).toBe("DM_ONLY");
+
+    // **Y se le baja a la mesa**, porque desde D-OP-11 (2026-09-05) no se puede apuntar a lo que
+    // no se ve **ni se tiene delante**. El criterio de cierre del spec —«un jugador ataca a un PNJ
+    // `DM_ONLY` y recibe su veredicto»— sigue vivo entero; lo que ya no se puede es atacar a un
+    // identificador pescado al azar, que es lo que convertía este endpoint en un oráculo de la CA.
+    const sesion = await request(s)
+      .post(`/campaigns/${campaignId}/sessions`)
+      .set("Authorization", auth(tokenDM))
+      .send({ title: "La emboscada", visibility: "PLAYERS" });
+    expect(sesion.status).toBe(201);
+    await request(s)
+      .post(`/campaigns/${campaignId}/sessions/${sesion.body.id}/start`)
+      .set("Authorization", auth(tokenDM))
+      .send({});
+    const encuentro = await request(s)
+      .post(`/campaigns/${campaignId}/sessions/${sesion.body.id}/encounters`)
+      .set("Authorization", auth(tokenDM))
+      .send({
+        characterIds: [characterId, targetId],
+        sides: { [characterId]: "ALLY", [targetId]: "ENEMY" },
+      });
+    expect(encuentro.status).toBe(201);
   });
 
   afterAll(async () => {
@@ -156,6 +178,33 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
       .set("Authorization", auth(tokenPL))
       .send({ targetCharacterId: "clx000000000000000000009", mode: "NORMAL" });
     expect(r.status).toBe(404);
+  });
+
+  it("**y un personaje que SÍ existe pero no puedes ver ni tener delante da el MISMO 404, byte a byte** (D-OP-11)", async () => {
+    const s = app.getHttpServer();
+    // Un segundo PNJ `DM_ONLY`, **fuera del encuentro**: existe, y el jugador no tiene ningún
+    // derecho a saber que existe. Es el caso difícil — un id con formato inválido daría 404
+    // aunque no hubiera ninguna comprobación.
+    const escondido = await request(s)
+      .post(`/campaigns/${campaignId}/npcs`)
+      .set("Authorization", auth(tokenDM))
+      .send({ ref: "SRD:commoner" });
+    expect(escondido.status).toBe(201);
+    const idEscondido = escondido.body[0].id;
+
+    const contra = async (id: string) =>
+      request(s)
+        .post(resolveUrl())
+        .set("Authorization", auth(tokenPL))
+        .send({ targetCharacterId: id, mode: "NORMAL" });
+
+    const real = await contra(idEscondido);
+    const inventado = await contra("clx000000000000000000009");
+
+    expect(real.status).toBe(404);
+    // **Byte a byte.** Si los cuerpos difirieran en una coma, el oráculo seguiría abierto por otra
+    // puerta: bastaría con distinguir «no existe» de «existe y no te lo enseño».
+    expect(JSON.stringify(real.body)).toBe(JSON.stringify(inventado.body));
   });
 
   it("atacar sin ser miembro de la campaña es 403, y sin token 401", async () => {

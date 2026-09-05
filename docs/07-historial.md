@@ -60,6 +60,41 @@ jugador nombrado; copiar la visibilidad tal cual en el archivar tumba el del due
 `ALTER TABLE "GameEvent" DROP COLUMN "grantedUserIds"`. Vuelve el parche de `DM_ONLY`, que era la
 etiqueta honesta de lo que pasaba.
 
+---
+
+## El oráculo de la CA se cierra por la puerta que importaba (2026-09-05, plan 03 · D-OP-11)
+
+**Qué.** `resolveAttack` buscaba el objetivo **sin consultar `canView`**, y cada ataque es una
+comparación exacta `total >= CA` con el total conocido: veinte o treinta peticiones contra un
+identificador cualquiera daban la CA de **cualquier** personaje de la campaña, sin necesidad de
+suerte porque el atacante conoce su propio bono.
+
+**La regla:** el objetivo pasa `canView` para quien ataca **o** es combatiente de un encuentro
+**activo** de esta campaña. Las dos mitades hacen falta: `canView` sola dejaría fuera al PNJ
+`DM_ONLY` que el DM acaba de bajar a la mesa —que es justo lo que el spec de 2.5.3 pide poder
+atacar—, y el encuentro solo dejaría fuera al objetivo visible al que se ataca fuera de combate,
+que es legal.
+
+**404 y no 403, comparado byte a byte.** Un «prohibido» ya confirma que el personaje existe, así que
+la respuesta es indistinguible de la de un id inventado, y hay un e2e que compara los dos cuerpos
+serializados. La prueba usa el **caso difícil** —un id válido de un personaje real que no se puede
+ver—, no un id con formato inválido, que daría 404 aunque no hubiera ninguna comprobación.
+
+**Lo que se acepta y se declara:** contra un objetivo visible, la CA **sigue siendo deducible**
+atacándolo, igual que en una mesa. El SRD lo respalda —*«the GM typically just says the attack
+missed»*— y no prohíbe atacar a ciegas.
+
+**Y el comentario del servicio se reescribió.** Decía, con todas las letras, «por qué no exige
+`canView` sobre el objetivo». Dejarlo habría sido una mentira semántica con la sintaxis en regla,
+que es justo la clase que ningún script caza.
+
+**Cómo se comprobó.** Mutación: al quitar la comprobación, el e2e del 404 idéntico devuelve **201**
+y se pone rojo.
+
+**Cómo revertirlo.** `git revert` del commit. Vuelve el oráculo.
+ Vuelve el parche de `DM_ONLY`, que era la
+etiqueta honesta de lo que pasaba.
+
 ## Las tres columnas: el bando, dónde abre la escena y la crónica fuera del Json (2026-09-05)
 
 **Qué.** Plan 02 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/02-tres-columnas.md).

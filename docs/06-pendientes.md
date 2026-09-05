@@ -101,7 +101,7 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 ## P1 · Un encuentro `PREPARING` no se puede terminar (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 **Bloqueo conocido, no un fallo.** `EncountersService.end()` exige `status === "ACTIVE"`
-(`apps/api/src/encounters/encounters.service.ts:383`) y no se ha tocado a propósito: la puerta
+(`apps/api/src/encounters/encounters.service.ts:415`) y no se ha tocado a propósito: la puerta
 declarada para un combate `PREPARING` que nunca llegó a empezar —el DM se arrepiente, o los
 jugadores tardan demasiado en tirar— es el `DELETE` de la tarea 4 del plan
 `2026-09-05-iniciativa-y-bando`, no una segunda salida por `end()`. «No es historia, es un clic
@@ -122,7 +122,7 @@ Prisma.
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando
 `Character.ownerId` contra `userId` —quien pulsó el botón de empezar el combate—, no contra «es un
-DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:187-196`).
+DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:198-199`).
 `MembershipService` sí sabe contar cuántos DM quedarían en una campaña
 (`apps/api/src/campaigns/membership.service.ts:82-90`), así que la información para distinguir
 «mi PNJ» de «el PNJ de otro DM» existe, pero `start()` no la usa.

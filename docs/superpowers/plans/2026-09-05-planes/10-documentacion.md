@@ -6,6 +6,20 @@
 **Tamaño:** tres commits. **Va al final**, cuando lo demás esté hecho: documentar decisiones que aún
 pueden cambiarse obliga a escribirlo dos veces.
 
+> ## EJECUTADO EL 2026-09-05 — queda solo la parte 4
+>
+> **10.1, 10.2 y 10.3 están hechos y commiteados** (`15d0420`, `47c0785`, `cfdc520`): las 45
+> decisiones en `decisiones.md`, las tres reglas normativas en `04-convenciones.md` —el cobre
+> resuelto, `--success` que no se añade, y «las reglas de D&D son verdad absoluta»—, el historial
+> archivado y reescrito, y **`06-pendientes.md` alineado**: siete fichas tachadas con su
+> `fichero:línea` y M10 partida en dos.
+>
+> **Lo único que queda de este plan es continuo, no un commit:** cada plan que cierre una ficha
+> **la tacha en `06-pendientes.md` en su propio commit**, con fecha y `fichero:línea`. El autor
+> levantó la restricción el 2026-09-05.
+>
+> Lo de abajo se conserva como el encargo que fue.
+
 > **Antes de empezar, pide permiso para una cosa.** El autor pidió el 2026-09-04 **no tocar
 > `docs/06-pendientes.md`** mientras se consolidaban los pendientes en `Mine/`. Tres commits lo han
 > respetado y lo han dicho. **Este plan necesita levantar esa restricción**, y es suya: pregúntale

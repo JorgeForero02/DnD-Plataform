@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { CreateEntityInput, UpdateEntityInput, EntityType } from "@dnd/shared";
+import { CreateEntityInput, UpdateEntityInput, type ListEntitiesQuery } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { audienciaDeSuceso, canView, laAudienciaCrecio, Viewer } from "../common/visibility";
@@ -68,21 +68,50 @@ export class EntitiesService {
     return entity;
   }
 
-  async list(userId: string, campaignId: string, type?: EntityType) {
+  /**
+   * Las fichas que este visor puede ver, opcionalmente filtradas por tipo y por texto.
+   *
+   * ## `q` busca **dentro del cuerpo**, y por eso vive aquí (ficha U3, plan 14)
+   *
+   * La búsqueda era del navegador y solo miraba el **nombre**: una ficha que dice «la puerta de
+   * sal» en su tercer párrafo era inencontrable. Buscar en el texto es del servidor.
+   *
+   * ## Y el orden de los dos filtros ES la seguridad
+   *
+   * **Primero `canView`, después el texto.** Al revés, buscar sería un **oráculo**: un jugador
+   * escribe una palabra que solo aparece en una ficha `DM_ONLY` y, aunque no reciba la ficha,
+   * cualquier diferencia observable —un conteo, un orden, un tiempo— le confirma que existe. Es el
+   * mismo defecto que el plan 03 cerró en el ataque, y por eso el filtro de texto se aplica sobre
+   * la lista **ya recortada**.
+   *
+   * ## Por qué el texto se compara aquí y no en la consulta
+   *
+   * `body` es `Json` —lo que solo se pinta puede ser Json, dice la convención— y filtrar dentro de
+   * un `Json` en Prisma pediría SQL crudo, que a su vez perdería el `include` de las concesiones
+   * que `canView` necesita. Esta consulta **ya traía todas las filas de la campaña** para poder
+   * aplicar `canView` en memoria, así que comparar el texto aquí **no añade ni una lectura**. El
+   * día que una campaña tenga miles de fichas, lo que hay que cambiar es la consulta entera —
+   * paginarla—, y entonces el texto baja con ella; adelantarlo hoy sería complicar sin medir.
+   */
+  async list(userId: string, campaignId: string, query: ListEntitiesQuery = {}) {
     await this.membership.requireMember(campaignId, userId);
     const viewer = await this.viewerFor(userId, campaignId);
     const entities = await this.prisma.entity.findMany({
-      where: { campaignId, ...(type ? { type } : {}) },
+      where: { campaignId, ...(query.type ? { type: query.type } : {}) },
       include: { grants: true },
       orderBy: { createdAt: "desc" },
     });
-    return entities.filter((e) =>
+    const visibles = entities.filter((e) =>
       canView(viewer, {
         visibility: e.visibility,
         createdById: e.createdById,
         grantedUserIds: e.grants.map((g) => g.userId),
       }),
     );
+
+    const texto = (query.q ?? "").trim().toLocaleLowerCase("es");
+    if (texto === "") return visibles;
+    return visibles.filter((e) => coincideElTexto(e, texto));
   }
 
   async get(userId: string, campaignId: string, entityId: string) {
@@ -331,4 +360,30 @@ export class EntitiesService {
     await this.prisma.entity.delete({ where: { id: entityId } });
     return { deleted: true };
   }
+}
+
+/**
+ * ¿El nombre o el cuerpo contienen este texto? (ficha U3.)
+ *
+ * **Minúsculas con la configuración regional española**, no `toLowerCase()` a secas: buscar «lich»
+ * tiene que encontrar «Lich», y buscar «Í» tiene que comportarse igual que en la pantalla, que usa
+ * `toLocaleLowerCase("es")` desde que existe el filtro del navegador.
+ *
+ * El cuerpo es un `Json` con `{ format: "markdown", text }`; se lee `text` con cuidado porque una
+ * fila vieja puede traer otra forma, y una búsqueda que reviente con un dato antiguo sería peor
+ * que una que no encuentre nada.
+ */
+function coincideElTexto(
+  entity: { name: string; body: unknown },
+  textoEnMinusculas: string,
+): boolean {
+  if (entity.name.toLocaleLowerCase("es").includes(textoEnMinusculas)) return true;
+  const cuerpo = entity.body;
+  if (cuerpo && typeof cuerpo === "object" && "text" in cuerpo) {
+    const texto = (cuerpo as { text?: unknown }).text;
+    if (typeof texto === "string") {
+      return texto.toLocaleLowerCase("es").includes(textoEnMinusculas);
+    }
+  }
+  return false;
 }

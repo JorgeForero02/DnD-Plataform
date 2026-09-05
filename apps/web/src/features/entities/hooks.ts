@@ -23,10 +23,17 @@ export const allEntitiesKey = (campaignId: string) =>
 export const entityKey = (campaignId: string, type: EntityType, entityId: string) =>
   [...entitiesKey(campaignId, type), entityId] as const;
 
-export function useEntities(campaignId: string, type: EntityType) {
+/**
+ * **`q` entra en la clave de consulta**, y tiene que entrar: si no, TanStack Query devolvería la
+ * lista cacheada de otra búsqueda y la pantalla enseñaría resultados de una palabra distinta.
+ *
+ * `keepPreviousData` no se activa a propósito: mientras llega la búsqueda nueva es mejor no
+ * enseñar la anterior como si fuera la respuesta.
+ */
+export function useEntities(campaignId: string, type: EntityType, q?: string) {
   return useQuery({
-    queryKey: entitiesKey(campaignId, type),
-    queryFn: () => fetchEntities(campaignId, type),
+    queryKey: [...entitiesKey(campaignId, type), { q: q?.trim() || undefined }],
+    queryFn: () => fetchEntities(campaignId, type, q),
   });
 }
 

@@ -12,10 +12,11 @@ import {
 } from "@nestjs/common";
 import {
   createEntitySchema,
+  listEntitiesQuerySchema,
   updateEntitySchema,
   CreateEntityInput,
   UpdateEntityInput,
-  EntityType,
+  type ListEntitiesQuery,
 } from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -39,9 +40,9 @@ export class EntitiesController {
   list(
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
-    @Query("type") type?: EntityType,
+    @Query(new ZodValidationPipe(listEntitiesQuerySchema)) query: ListEntitiesQuery,
   ) {
-    return this.entities.list(req.user.id, campaignId, type);
+    return this.entities.list(req.user.id, campaignId, query);
   }
 
   @Get(":entityId")

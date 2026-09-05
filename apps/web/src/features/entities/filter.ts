@@ -21,14 +21,21 @@ export interface FilterableEntity {
 // Several tags selected is a logical AND: the entity must carry every selected tag. That's
 // the reading that makes sense for narrowing down a tagged list ("show me everything tagged
 // Barovia AND villain"), not an OR that would only ever widen it back out.
+/**
+ * **Desde la ficha U3 (2026-09-06) esto ya NO filtra por texto: solo por etiquetas.**
+ *
+ * El texto lo busca el servidor, porque tiene que mirar **dentro del cuerpo** —una ficha que dice
+ * «la puerta de sal» en su tercer párrafo era inencontrable— y porque el resultado tiene que pasar
+ * por `canView` **antes** que por el texto. Dejar aquí una segunda comparación del nombre habría
+ * sido peor que inútil: dos filtros para lo mismo, con el de aquí ignorando el cuerpo, y el día que
+ * discreparan ganaría el que menos sabe.
+ *
+ * Las etiquetas **sí se quedan**: se pintan como botones sobre la lista que ya está en pantalla,
+ * no hacen falta más filas para resolverlas, y no tienen el problema del cuerpo.
+ */
 export function filterEntities<T extends FilterableEntity>(
   entities: T[],
   filter: EntityFilterValue,
 ): T[] {
-  const query = filter.query.trim().toLocaleLowerCase("es");
-  return entities.filter((entity) => {
-    const matchesQuery = query === "" || entity.name.toLocaleLowerCase("es").includes(query);
-    const matchesTags = filter.tags.every((tag) => entity.tags.includes(tag));
-    return matchesQuery && matchesTags;
-  });
+  return entities.filter((entity) => filter.tags.every((tag) => entity.tags.includes(tag)));
 }

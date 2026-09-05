@@ -38,6 +38,35 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Buscar mira dentro del cuerpo, y pasa por `canView` primero (2026-09-06, plan 14 · U3)
+
+**Qué.** El buscador era del navegador y solo miraba el **nombre**: una ficha que dice «la puerta de
+sal» en su tercer párrafo era inencontrable. Y el navegador no puede arreglarlo, porque el cuerpo
+hay que buscarlo donde está.
+
+**Cómo.** `GET /campaigns/:id/entities?q=` busca en el nombre y en el cuerpo, en el servidor. **El
+orden de los dos filtros es la seguridad**: primero `canView`, después el texto. Al revés, buscar
+sería un **oráculo** — una palabra que solo aparece en una ficha `DM_ONLY` la delataría, aunque la
+ficha no viajara: bastaría un conteo. Es el mismo defecto que el plan 03 cerró en el ataque, y por
+eso **la prueba importante es la que comprueba que NO encuentra**. Con el `canView` quitado, el e2e
+se pone rojo en cuatro de sus seis.
+
+**Por qué el texto se compara en el servicio y no en la consulta:** `body` es `Json` —lo que solo se
+pinta puede ser Json—, filtrarlo en Prisma pediría SQL crudo y **perdería el `include` de las
+concesiones que `canView` necesita**. Esa consulta **ya traía todas las filas de la campaña** para
+poder aplicar `canView` en memoria, así que comparar ahí **no añade ni una lectura**.
+
+**Y el filtro del navegador deja de comparar el nombre.** Dejarlo habría dado **dos filtros para lo
+mismo**, con el de la pantalla ignorando el cuerpo; el día que discreparan ganaría el que menos
+sabe. Las etiquetas se quedan donde estaban: se resuelven sobre lo que ya está pintado.
+
+**Un efecto que había que resolver y no era obvio:** los dos estados vacíos —«aquí no hay nada» y
+«tu filtro no encuentra nada»— se decidían por `data.length`, y con el servidor buscando una lista
+vacía puede significar las dos cosas. Ahora se deciden por **si hay filtro activo**, que es lo único
+que sigue siendo cierto.
+
+**Cómo revertirlo.** `git revert` del commit. No hay datos que tocar.
+
 ## Cerrar sin guardar pregunta, y un botón apagado sigue alcanzable (2026-09-06, plan 14 · U8, U9)
 
 **U8 — cerrar con lo escrito sin guardar.** `Escape`, el clic en el velo y el aspa **descartaban

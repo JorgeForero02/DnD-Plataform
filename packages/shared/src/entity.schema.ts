@@ -7,6 +7,22 @@ export const entityBodySchema = z.object({
 });
 export type EntityBody = z.infer<typeof entityBodySchema>;
 
+/**
+ * **Lo que se puede pedir al listar fichas del mundo** (ficha U3, plan 14).
+ *
+ * `q` busca **en el nombre Y en el cuerpo**. Hasta hoy la busqueda era del navegador y solo miraba
+ * el nombre, asi que una ficha que dice «la puerta de sal» en su tercer parrafo era inencontrable.
+ *
+ * **Y va en el servidor por una razon que no es de comodidad**: el resultado tiene que pasar por
+ * `canView` ANTES que por el texto. Sin eso, buscar se convierte en un oraculo — un jugador
+ * confirma que existe una ficha `DM_ONLY` buscando una palabra que solo esta en ella.
+ */
+export const listEntitiesQuerySchema = z.object({
+  type: entityTypeSchema.optional(),
+  q: z.string().max(200).optional(),
+});
+export type ListEntitiesQuery = z.infer<typeof listEntitiesQuerySchema>;
+
 export const createEntitySchema = z.object({
   type: entityTypeSchema,
   name: z.string().min(1).max(160),

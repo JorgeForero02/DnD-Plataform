@@ -70,6 +70,16 @@ function renderPageWithRealHome() {
   );
 }
 
+/**
+ * Lo que hace el servidor con `q`, en pequeño (ficha U3): compara **en minúsculas españolas**, y
+ * sin texto no recorta nada. El cuerpo no se busca aquí — para eso está el e2e, que tiene cuerpos
+ * de verdad; lo que este doble tiene que garantizar es que **la palabra llega al servidor**.
+ */
+function buscaEnElNombre(e: { name: string }, q?: string): boolean {
+  const texto = (q ?? "").trim().toLocaleLowerCase("es");
+  return texto === "" || e.name.toLocaleLowerCase("es").includes(texto);
+}
+
 describe("CampaignDetailPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -80,21 +90,29 @@ describe("CampaignDetailPage", () => {
       ownerId: "u1",
       createdAt: "2026-01-01",
     });
-    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
-      type === "NPC"
-        ? [
-            {
-              id: "e1",
-              campaignId: "c1",
-              type: "NPC",
-              name: "Strahd von Zarovich",
-              tags: [],
-              visibility: "PLAYERS",
-              createdById: "u1",
-              createdAt: "x",
-            },
-          ]
-        : [],
+    // **El doble busca por texto como lo hace el servidor** (ficha U3, plan 14): desde que la
+    // búsqueda dejó de ser del navegador, un doble que ignorase `q` haría pasar en verde una
+    // pantalla que no manda la palabra. Se busca en el nombre; el cuerpo lo cubre el e2e, que es
+    // donde hay cuerpos de verdad.
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(
+      async (_cid, type, q) =>
+        (type === "NPC"
+          ? [
+              {
+                id: "e1",
+                campaignId: "c1",
+                type: "NPC",
+                name: "Strahd von Zarovich",
+                tags: [],
+                visibility: "PLAYERS",
+                createdById: "u1",
+                createdAt: "x",
+              },
+            ]
+          : []
+        ).filter((e: { name: string }) => buscaEnElNombre(e, q)) as Awaited<
+          ReturnType<typeof entitiesApi.fetchEntities>
+        >,
     );
     vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([
       {
@@ -174,21 +192,29 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
       ownerId: "u1",
       createdAt: "2026-01-01",
     });
-    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
-      type === "NPC"
-        ? [
-            {
-              id: "e1",
-              campaignId: "c1",
-              type: "NPC",
-              name: "Strahd von Zarovich",
-              tags: [],
-              visibility: "PLAYERS",
-              createdById: "dm1",
-              createdAt: "x",
-            },
-          ]
-        : [],
+    // **El doble busca por texto como lo hace el servidor** (ficha U3, plan 14): desde que la
+    // búsqueda dejó de ser del navegador, un doble que ignorase `q` haría pasar en verde una
+    // pantalla que no manda la palabra. Se busca en el nombre; el cuerpo lo cubre el e2e, que es
+    // donde hay cuerpos de verdad.
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(
+      async (_cid, type, q) =>
+        (type === "NPC"
+          ? [
+              {
+                id: "e1",
+                campaignId: "c1",
+                type: "NPC",
+                name: "Strahd von Zarovich",
+                tags: [],
+                visibility: "PLAYERS",
+                createdById: "dm1",
+                createdAt: "x",
+              },
+            ]
+          : []
+        ).filter((e: { name: string }) => buscaEnElNombre(e, q)) as Awaited<
+          ReturnType<typeof entitiesApi.fetchEntities>
+        >,
     );
     vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([
       {
@@ -338,21 +364,29 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "creator1", displayName: "C", role: "PLAYER" },
     ]);
-    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
-      type === "NPC"
-        ? [
-            {
-              id: "e2",
-              campaignId: "c1",
-              type: "NPC",
-              name: "Mi propio NPC",
-              tags: [],
-              visibility: "PLAYERS",
-              createdById: "creator1",
-              createdAt: "x",
-            },
-          ]
-        : [],
+    // **El doble busca por texto como lo hace el servidor** (ficha U3, plan 14): desde que la
+    // búsqueda dejó de ser del navegador, un doble que ignorase `q` haría pasar en verde una
+    // pantalla que no manda la palabra. Se busca en el nombre; el cuerpo lo cubre el e2e, que es
+    // donde hay cuerpos de verdad.
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(
+      async (_cid, type, q) =>
+        (type === "NPC"
+          ? [
+              {
+                id: "e2",
+                campaignId: "c1",
+                type: "NPC",
+                name: "Mi propio NPC",
+                tags: [],
+                visibility: "PLAYERS",
+                createdById: "creator1",
+                createdAt: "x",
+              },
+            ]
+          : []
+        ).filter((e: { name: string }) => buscaEnElNombre(e, q)) as Awaited<
+          ReturnType<typeof entitiesApi.fetchEntities>
+        >,
     );
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
@@ -575,6 +609,8 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
     // the refetch the invalidation triggers sees the post-delete list — same shape as the real
     // server, whose GET after a successful DELETE simply no longer includes the row.
     let deleted = false;
+    // Este doble no filtra por `q`: su recorrido no busca nada, y hacerle honrar el texto sería
+    // ruido en una prueba que va de borrar.
     vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
       type === "NPC" ? (deleted ? [first] : [first, second]) : [],
     );
@@ -736,8 +772,15 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
       ownerId: "dm1",
       createdAt: "2026-01-01",
     });
-    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
-      type === "NPC" ? [strahd, ismark, zariel, sinEtiquetas] : [],
+    // **El doble busca por texto como lo hace el servidor** (ficha U3, plan 14): desde que la
+    // búsqueda dejó de ser del navegador, un doble que ignorase `q` haría pasar en verde una
+    // pantalla que no manda la palabra. Se busca en el nombre; el cuerpo lo cubre el e2e, que es
+    // donde hay cuerpos de verdad.
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type, q) =>
+      (type === "NPC" ? [strahd, ismark, zariel, sinEtiquetas] : []).filter(
+        (e) =>
+          !q?.trim() || e.name.toLocaleLowerCase("es").includes(q.trim().toLocaleLowerCase("es")),
+      ),
     );
   });
 
@@ -768,7 +811,10 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "strahd" } });
 
-    expect(screen.getByRole("link", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
+    // **Se espera, porque desde la ficha U3 buscar es una ida y vuelta al servidor.** Antes era un
+    // recorte en memoria y la fila desaparecía en el mismo render; ahora hay una consulta nueva, y
+    // afirmar sin esperar mediría la carrera en vez de la búsqueda.
+    expect(await screen.findByRole("link", { name: /Strahd von Zarovich/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^Ismark/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^Zariel/ })).not.toBeInTheDocument();
   });
@@ -831,7 +877,8 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "no existe nadie así" } });
 
-    expect(screen.getByText("Nada coincide con el filtro")).toBeInTheDocument();
+    // Misma razón que arriba: la búsqueda la resuelve el servidor (U3).
+    expect(await screen.findByText("Nada coincide con el filtro")).toBeInTheDocument();
     // Reseño 2026-09-02: ambos mensajes son ahora estados vacíos con nombre propio. Lo que se
     // comprueba sigue siendo lo mismo: "no hay nada aquí" y "tu filtro no encuentra nada" son
     // dos situaciones distintas y no pueden decir lo mismo.
@@ -844,12 +891,20 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
   // have nothing to do with what was typed. Confirmed as a real bug with a throwaway RTL
   // check before adding the `key`; this test is the permanent guard against it coming back.
   it("el filtro no se cuela de una pestaña de entidad a otra", async () => {
-    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
-      type === "NPC"
-        ? [strahd, ismark, zariel, sinEtiquetas]
-        : type === "LOCATION"
-          ? [{ ...strahd, id: "e5", type: "LOCATION", name: "Barovia", tags: [] }]
-          : [],
+    // **El doble busca por texto como lo hace el servidor** (ficha U3, plan 14): desde que la
+    // búsqueda dejó de ser del navegador, un doble que ignorase `q` haría pasar en verde una
+    // pantalla que no manda la palabra. Se busca en el nombre; el cuerpo lo cubre el e2e, que es
+    // donde hay cuerpos de verdad.
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(
+      async (_cid, type, q) =>
+        (type === "NPC"
+          ? [strahd, ismark, zariel, sinEtiquetas]
+          : type === "LOCATION"
+            ? [{ ...strahd, id: "e5", type: "LOCATION", name: "Barovia", tags: [] }]
+            : []
+        ).filter((e: { name: string }) => buscaEnElNombre(e, q)) as Awaited<
+          ReturnType<typeof entitiesApi.fetchEntities>
+        >,
     );
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "El mundo" }));
@@ -1285,21 +1340,29 @@ describe("CampaignDetailPage — la maqueta adoptada", () => {
       ownerId: "dm1",
       createdAt: "2026-01-01",
     });
-    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(async (_cid, type) =>
-      type === "NPC"
-        ? [
-            {
-              id: "e1",
-              campaignId: "c1",
-              type: "NPC",
-              name: "Strahd von Zarovich",
-              tags: [],
-              visibility: "PLAYERS",
-              createdById: "dm1",
-              createdAt: "x",
-            },
-          ]
-        : [],
+    // **El doble busca por texto como lo hace el servidor** (ficha U3, plan 14): desde que la
+    // búsqueda dejó de ser del navegador, un doble que ignorase `q` haría pasar en verde una
+    // pantalla que no manda la palabra. Se busca en el nombre; el cuerpo lo cubre el e2e, que es
+    // donde hay cuerpos de verdad.
+    vi.spyOn(entitiesApi, "fetchEntities").mockImplementation(
+      async (_cid, type, q) =>
+        (type === "NPC"
+          ? [
+              {
+                id: "e1",
+                campaignId: "c1",
+                type: "NPC",
+                name: "Strahd von Zarovich",
+                tags: [],
+                visibility: "PLAYERS",
+                createdById: "dm1",
+                createdAt: "x",
+              },
+            ]
+          : []
+        ).filter((e: { name: string }) => buscaEnElNombre(e, q)) as Awaited<
+          ReturnType<typeof entitiesApi.fetchEntities>
+        >,
     );
     vi.spyOn(entitiesApi, "fetchAllEntities").mockResolvedValue([]);
     vi.spyOn(sessionsApi, "fetchSessions").mockResolvedValue([]);

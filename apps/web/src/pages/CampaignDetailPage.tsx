@@ -214,7 +214,11 @@ const LIST_FRAME_CLASS =
   "divide-y divide-muted overflow-hidden rounded-radius-sm border border-muted bg-surface";
 
 function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType }) {
-  const { data, isLoading, isError, error } = useEntities(campaignId, type);
+  // **La búsqueda por texto la hace el servidor desde la ficha U3**, porque tiene que mirar dentro
+  // del cuerpo y porque el resultado tiene que pasar por `canView` antes que por el texto. Lo que
+  // sigue siendo del navegador son las etiquetas: se resuelven sobre lo que ya está en pantalla.
+  const [filter, setFilter] = useState<EntityFilterValue>({ query: "", tags: [] });
+  const { data, isLoading, isError, error } = useEntities(campaignId, type, filter.query);
   const {
     role,
     isLoading: roleLoading,
@@ -225,7 +229,6 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
   const isDM = role === "DM";
   const roleUnresolved = roleLoading || roleError;
   const [creating, setCreating] = useState(false);
-  const [filter, setFilter] = useState<EntityFilterValue>({ query: "", tags: [] });
 
   // Tags present in THIS tab's already-loaded list only (not the whole campaign) — entities
   // are listed per type, so that's the set that makes sense to filter by here. Deduped and
@@ -239,6 +242,9 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
   // Client-side only, over a list the server already filtered by canView — see filter.ts.
   // Never a substitute for that check, only ever a further narrowing of it.
   const filtered = data ? filterEntities(data, filter) : undefined;
+
+  /** Hay algo escrito o alguna etiqueta pulsada: lo que distingue «no hay nada» de «no encuentro nada». */
+  const hayFiltroActivo = filter.query.trim() !== "" || filter.tags.length > 0;
 
   const plantilla = PLANTILLA_POR_TIPO[type];
 
@@ -271,15 +277,23 @@ function EntityTab({ campaignId, type }: { campaignId: string; type: EntityType 
         availableTags={availableTags}
         value={filter}
         onChange={setFilter}
+        // `data` ya viene buscado por el servidor (U3), así que «de cuántos» es **de los que
+        // llegaron**, no de la sección entera: pedir el total sin filtrar sería una consulta más
+        // para pintar un número.
         totalCount={data?.length ?? 0}
         visibleCount={filtered?.length ?? 0}
       />
       {isLoading && <p className="text-muted">Cargando…</p>}
       {isError && <p className="text-danger-text">{(error as Error).message}</p>}
-      {data && data.length === 0 && (
+      {/* **Los dos vacíos siguen siendo dos, y desde U3 hay que decidirlo por el FILTRO y no por
+          `data.length`.** Antes el servidor mandaba la sección entera y una lista vacía significaba
+          «aquí no hay nada»; ahora el servidor ya ha aplicado la búsqueda, así que una lista vacía
+          puede significar las dos cosas. Distinguirlas por si hay filtro activo es lo único que
+          sigue siendo cierto — y son dos situaciones distintas que no pueden decir lo mismo. */}
+      {data && data.length === 0 && !hayFiltroActivo && (
         <EmptyState title={VACIO_POR_TIPO[type].titulo}>{VACIO_POR_TIPO[type].texto}</EmptyState>
       )}
-      {data && data.length > 0 && filtered && filtered.length === 0 && (
+      {data && filtered && filtered.length === 0 && hayFiltroActivo && (
         <EmptyState title="Nada coincide con el filtro">
           Prueba con menos etiquetas, o borra lo que hayas escrito en la búsqueda.
         </EmptyState>

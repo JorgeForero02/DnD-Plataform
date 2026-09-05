@@ -23,8 +23,16 @@ export interface EntityDetail extends Entity {
   grants: EntityGrant[];
 }
 
-export function fetchEntities(campaignId: string, type: EntityType): Promise<Entity[]> {
-  return apiFetch<Entity[]>(`/campaigns/${campaignId}/entities?type=${type}`);
+/**
+ * Las fichas de un tipo. **`q` busca también dentro del cuerpo, y lo hace el servidor** (ficha U3):
+ * el filtro del navegador solo miraba el nombre, así que una ficha que dice «la puerta de sal» en
+ * su tercer párrafo era inencontrable. Y va en el servidor porque el resultado tiene que pasar por
+ * `canView` antes que por el texto — si no, buscar sería un oráculo sobre fichas que no puedes ver.
+ */
+export function fetchEntities(campaignId: string, type: EntityType, q?: string): Promise<Entity[]> {
+  const params = new URLSearchParams({ type });
+  if (q && q.trim() !== "") params.set("q", q.trim());
+  return apiFetch<Entity[]>(`/campaigns/${campaignId}/entities?${params.toString()}`);
 }
 
 // No `type` query param: GET /campaigns/:id/entities treats it as optional

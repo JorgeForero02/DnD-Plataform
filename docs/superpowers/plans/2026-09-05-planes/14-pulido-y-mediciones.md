@@ -136,15 +136,80 @@ escrito gane o pierda**, y las siete fichas anotadas en el maestro con lo que se
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **14.1 · R1 remedida, y va primero como pide el plan.** `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` repite el experimento original —el mismo `<div draggable>` trivial, dentro y fuera— y da **`dragstart` FUERA: SÍ · DENTRO: SÍ**. `apps/web/e2e/reglas-arrastrar.spec.ts` pasa sus **ocho**. Ficha tachada en `docs/06-pendientes.md:402` y comentario rehecho en `apps/web/src/features/sessions/dm/HerramientasDeNarracion.tsx:40`. **Commit `912ff52`** |
+| ✅ hecho | 2026-09-06 | **14.2a · U8 + U9.** U8: `apps/web/src/ui/Dialog.tsx` acepta `hayCambiosSinGuardar` y **las tres salidas** pasan por `pedirCierre`; lo monta `apps/web/src/features/entities/EntityEditor.tsx` comparando valores. U9: `apps/web/src/ui/Button.tsx` pone `aria-disabled` y guarda el `onClick`; igual en `features/links/LinksPanel.tsx:222` y `features/comments/CommentThread.tsx:80`. Pruebas nuevas en `ui/__tests__/Button.test.tsx` y `ui/__tests__/Dialog.test.tsx`. **Commit `6ef8c03`** |
+| ✅ hecho | 2026-09-06 | **14.2b · U3 · buscar dentro del cuerpo.** Servidor hecho: `listEntitiesQuerySchema` en `packages/shared/src/entity.schema.ts:8`, `EntitiesService.list` y `coincideElTexto` en `apps/api/src/entities/entities.service.ts`, ruta en `entities.controller.ts:38`. Web hecha: `features/entities/api.ts:26`, `hooks.ts:26`, `filter.ts` (deja de filtrar por texto) y `pages/CampaignDetailPage.tsx:215`. **Commit `<pendiente U3>`**, con `apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts` (6 verdes) y la **mutación probada**: sin `canView`, 4 de 6 rojas. |
+| ⬜ sin empezar | — | **14.2c · U1** (página de lectura de una sesión), **14.3 · U2 y U7**, **14.4 · C6-4**. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **14.1 · LA PRIMERA PASADA DE LA REMEDICIÓN DIO UN CONTROL FALSO, y por poco lo doy por bueno.**
+  La sonda se añadía al final del `body` y en la página de campaña caía fuera de la vista: el
+  control salió «fuera: NO» por **geometría**, no por contexto — y eso habría «confirmado» el
+  diagnóstico viejo por el motivo equivocado. Con `position: fixed` en los dos casos, mide. Queda
+  escrito porque una medición con el control roto es peor que ninguna.
+- **14.1 · C3-4 NO se cierra montando el editor en el cajón, y esto es una decisión.** El plan dice
+  que si R1 funciona, C3-4 «se cierra con ella **y se dice**». Lo que desaparece es **la premisa**:
+  el comentario de `HerramientasDeNarracion.tsx` decía «no se monta el editor aquí mientras el dato
+  no se rehaga», y el dato está rehecho. Lo que queda es una decisión de pantalla —qué quiere el DM
+  en mitad de la mesa—, no de datos: consultar qué reglas escuchan es de juego, escribir una regla
+  es preparación. **Montarlo es posible desde hoy y es una tanda con su ficha, no una línea aquí.**
+- **14.1 · Se midió con el cajón de «Consulta del mundo», no con el de reglas**, y da igual: es **el
+  mismo componente `Dialog`**, y lo que se mide es el contexto del cajón, no su contenido. Se eligió
+  ese porque está disponible con la mesa en reposo, sin montar una sesión entera.
+- **U9 · El arreglo va en el `Button` compartido, un solo sitio para toda la aplicación**, más los
+  **dos** botones crudos que también apagan con motivo. **Los campos de formulario conservan
+  `disabled` de verdad**, y es deliberado: un `<input>` apagado no tiene motivo que leer al tabular,
+  y `aria-disabled` no impediría escribir en él. No es media medida: es que la ficha habla de
+  controles con motivo, y un campo no lo es.
+- **U9 · `aria-disabled` no impide pulsar, así que el `onClick` sale antes**, en el propio `Button`.
+  Sin eso el botón haría exactamente lo que dice que no puede hacer — peor que el problema original.
+  Y `preventDefault` corta además el `submit` de un botón dentro de un formulario.
+- **U9 · Una de las 76 aserciones destapó algo real.** `waitFor(() => expect(boton)
+  .not.toBeDisabled())` empezó a pasar **al instante**, porque el atributo ya no existe nunca, y el
+  clic salía **antes** de que el rol se resolviera. La espera miraba la señal equivocada desde
+  siempre; ahora mira `aria-disabled`.
+- **U8 · Las tres salidas pasan por la misma puerta.** Si una sola se saltara la pregunta, bastaría
+  con rozarla para perder lo escrito, y sería justo la que nadie prueba. Hay una prueba que recorre
+  las tres.
+- **U8 · «Hay cambios» se decide comparando VALORES**, no con una bandera de «he tecleado»: la
+  plantilla de una ficha nueva no cuenta, y escribir y borrar tampoco. Un aviso que salta siempre se
+  descarta sin leer en dos días. **La prueba que se olvida —sin cambios NO pregunta— está escrita.**
+- **U8 · El aviso vive DENTRO del cajón**, no en un segundo superpuesto: dos capas apiladas se
+  pelean por el atrapa-foco, que es justo el defecto que `Dialog` existe para no tener.
+- **U3 · El orden de los dos filtros ES la seguridad.** Primero `canView`, después el texto. Al
+  revés, buscar sería un **oráculo**: una palabra que solo está en una ficha `DM_ONLY` la delataría.
+  Es el mismo defecto que el plan 03 cerró en el ataque, y por eso el e2e comprueba **que NO
+  encuentra**, no solo que encuentra.
+- **U3 · El texto se compara en el servicio y no en la consulta**, y no es pereza: `body` es `Json`
+  —lo que solo se pinta puede ser Json—, filtrarlo en Prisma pediría SQL crudo y **perdería el
+  `include` de las concesiones que `canView` necesita**. Esa consulta **ya traía todas las filas** de
+  la campaña para poder aplicar `canView`, así que comparar aquí **no añade ni una lectura**. El día
+  que haya miles de fichas lo que cambia es paginar la consulta entera.
+- **U3 · `filterEntities` deja de filtrar por texto en el navegador.** Dejar una segunda comparación
+  del nombre habría dado **dos filtros para lo mismo**, con el de aquí ignorando el cuerpo; el día
+  que discreparan ganaría el que menos sabe. Las etiquetas se quedan: se resuelven sobre lo que ya
+  está en pantalla.
+- **U3 · Los dos estados vacíos se deciden ahora por el FILTRO, no por `data.length`.** Con el
+  servidor buscando, una lista vacía puede significar «aquí no hay nada» **o** «tu búsqueda no
+  encuentra nada», y son dos situaciones que no pueden decir lo mismo.
+- **U3 · Los dobles de las pruebas de pantalla honran `q`.** Un doble que lo ignorase haría pasar en
+  verde una pantalla que no manda la palabra.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+1. **U1** · la sesión no tiene página de lectura: se abre en su formulario. Con `Session.recap`
+   (plan 02) ya hay algo que leer.
+2. **U2** · **volver a medir** en el navegador si bajo 768 px se puede navegar; la navegación cambió
+   entera con el reseño (de diecinueve destinos a seis) y puede que el problema sea otro.
+3. **U7** · interruptor de ornamento en la cuenta, persistente, y listo para D-OP-24.
+4. **C6-4** · dar PG temporales a un PNJ desde la mesa. SRD: **no se suman** — se pregunta cuál se
+   queda— y se pintan aparte, como ya hace `PanelDeBestiario.tsx:260`.
+
+> **Aviso de fechas, para quien lea esto:** todo lo de esta tanda está fechado **2026-09-06** y el
+> reloj del entorno dice **2026-09-05**. La noche cruzó la medianoche en la sesión anterior y las
+> fechas se escribieron consistentes entre sí; **no se han reescrito a mano** porque cambiar unas y
+> no otras sería peor que la incoherencia actual. Lo decide el autor.

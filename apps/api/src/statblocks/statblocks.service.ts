@@ -180,11 +180,23 @@ export class StatblocksService {
 /**
  * De fila a `Statblock`. **El `ref` lo pone el servidor**, siempre: `CAMPAIGN:<id>` no es algo que
  * el cliente pueda elegir, porque elegirlo sería poder apuntar al statblock de otra campaña.
+ *
+ * **Devuelve `visibility` además de la forma común** (C6-2): las del SRD no tienen nivel —las ve
+ * todo el mundo— y las del DM sí, y el editor lo necesita para no tener que omitir el campo al
+ * guardar. Por eso el tipo de salida es `Statblock` **más** ese campo, y no un `Statblock` a secas.
  */
-export function aStatblock(fila: FilaStatblock): Statblock {
+export function aStatblock(fila: FilaStatblock): Statblock & { visibility: Visibility } {
   return {
     ref: `CAMPAIGN:${fila.id}`,
     source: "CAMPAIGN",
+    // **Quién la ve viaja con ella** (ficha C6-2, 2026-09-05). No estaba, aunque el servicio SÍ
+    // filtra por este campo, y la consecuencia era de las que no se ven: el editor de criaturas no
+    // podía enseñar el nivel al editarlas, así que **omitía el campo en el `PUT`** para no pisar
+    // una criatura que el DM ya había enseñado a la mesa. Funcionaba, y era un rodeo.
+    //
+    // No filtra nada nuevo: aquí solo llegan las que `puedeVer` ya dejó pasar, y saber el nivel de
+    // algo que ya estás viendo no revela nada — es el mismo criterio que el bando de un combatiente.
+    visibility: fila.visibility as Visibility,
     name: fila.name,
     size: fila.size,
     type: fila.type,

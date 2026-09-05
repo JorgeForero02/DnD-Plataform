@@ -325,14 +325,12 @@ export function EditorDeStatblock({
             disabled={!b.name.trim() || guardando}
             onClick={() => {
               const limpio = { ...b, name: b.name.trim() };
-              // **Al editar, la visibilidad NO se manda.** El servidor no la devuelve:
-              // `aStatblock()` (`statblocks.service.ts:184`) no incluye el campo, así que este
-              // formulario no sabe cuál es la actual. Mandar el valor por defecto pisaría una
-              // criatura que el DM ya había enseñado a la mesa y la volvería a esconder sin
-              // decir nada. `updateCampaignStatblockSchema` es `.partial()`, así que omitirlo
-              // la deja como está — que es lo único honesto mientras no llegue en la lectura.
-              // Queda como hueco declarado en el informe del carril.
-              if (statblock) delete (limpio as { visibility?: Visibility }).visibility;
+              // **Al editar, la visibilidad SÍ se manda desde el 2026-09-05** (ficha C6-2). Aquí
+              // se borraba del cuerpo, y era un rodeo honesto: el servidor no devolvía el campo
+              // —`aStatblock()` no lo incluía—, así que el formulario no sabía cuál era la actual
+              // y mandar el valor por defecto habría vuelto a esconder una criatura que el DM ya
+              // había enseñado a la mesa. Ahora llega en la lectura, el selector la muestra y
+              // guardarla es decir lo que el DM ve.
               onGuardar(limpio);
             }}
           >

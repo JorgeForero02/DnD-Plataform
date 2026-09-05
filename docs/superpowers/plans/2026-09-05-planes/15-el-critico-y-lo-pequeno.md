@@ -141,7 +141,7 @@ caída**, y C2.5-2, C6-2, D3 y la ficha de `tags` anotadas en el maestro.
 |---|---|---|
 | ✅ hecho | 2026-09-05 | **15.1-A · la web manda el `eventId`.** `apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`: fuera la casilla «Crítico», el daño manda `attackRollEventId` del ataque tirado en el mismo panel, y el panel **dice** lo que pasó. Commit `ede50af` |
 | ✅ hecho | 2026-09-05 | **15.1-B · fuera `critical` del esquema.** `packages/shared/src/inventory.schema.ts` ya no lo declara y `esCriticoDesdeLaTirada` devuelve `false` sin tirada citada (`apps/api/src/characters/character-sheet.service.ts:1465`). **C2.5-2 cierra entera.** Commit `<pendiente 15.1-B>` |
-| ⬜ sin empezar | — | 15.2 · C6-2 · `GET statblocks` no devuelve `visibility` |
+| ✅ hecho | 2026-09-05 | **15.2 · C6-2.** `aStatblock()` devuelve `visibility` (`apps/api/src/statblocks/statblocks.service.ts:185-196`) y el editor deja de borrarlo del cuerpo (`apps/web/src/features/bestiario/EditorDeStatblock.tsx:328-336`). **Commit `<pendiente 15.2>`** |
 | ✅ hecho | 2026-09-05 | **15.3 · D3 · el endpoint de salud.** `apps/api/src/health/health.controller.ts` con su módulo, `SELECT 1` y **503** si la base no contesta; sin autenticación y sin contar nada. El `healthcheck` de `docker-compose.prod.yml:79-92` apunta ahí **y mira el código de estado**. **Commit `<pendiente 15.3>`** |
 | ⬜ sin empezar | — | 15.4 · `tags` sin unicidad |
 
@@ -167,7 +167,17 @@ fuente si la hubo):
   saltar cada dos commits. **No lo he cambiado** —subirlo es una decisión declarada y es suya—, pero
   conviene saberlo.
 
-**Lo siguiente exacto, si me quedo aquí:**
+- **15.2 · La decisión que el plan pedía «decidir y escribir» YA estaba tomada, y medida.** Avisaba
+  de que enseñar el campo podría hacer que el editor ofreciera `OWNER_DM`, un nivel que no hace lo
+  que dice. **No pasa**: `EditorDeStatblock.tsx:50-75` ya lo excluye desde la Ola 2, junto con
+  `SPECIFIC_PLAYERS`, con el motivo leído del servidor y no supuesto. Lo confirmé: `puedeVer` pasa
+  `createdById: ""`, y **aunque pasara el real no cambiaría nada**, porque `create` exige DM — el
+  creador de un statblock es siempre el DM, así que `OWNER_DM` y `DM_ONLY` producen el mismo
+  conjunto. **No se toca.**
+- **15.2 · La prueba que protege lo que protegía el rodeo.** Borrar `visibility` del cuerpo impedía
+  que el editor volviera a esconder una criatura ya enseñada. Retirado el rodeo, lo que lo impide es
+  que **manda el valor real**, y el e2e nuevo lo fija: editar la CA de una criatura `PLAYERS` la
+  deja en `PLAYERS`.
 
 - **15.3 · El sondeo del compose ahora MIRA el código de estado.** Antes era
   `fetch(...).then(()=>process.exit(0))`: cualquier respuesta valía, que es exactamente por qué un
@@ -176,22 +186,20 @@ fuente si la hubo):
 - **15.3 · El endpoint no dice por qué está enfermo, y es deliberado.** Un cuerpo con el error de
   Prisma dentro cuenta el motor, la versión y a veces el nombre de la base a cualquiera que sondee.
   El detalle va a los registros del servidor.
+- **15.4 · Se normaliza, no se rechaza — y la recomendación del plan era la buena.** Rechazar obliga
+  a la persona a arreglar algo que la máquina arregla sola, y **un duplicado no expresa ninguna
+  intención** que la lista sin él no exprese. Se conserva el orden de la **primera** aparición, que
+  es el que tiene en la cabeza quien escribe.
+- **15.4 · Vive en el esquema compartido y NO en `parseTags`.** La pantalla no es la única puerta:
+  una normalización que solo hace el cliente es una que la API no tiene, y cualquiera que llame al
+  endpoint a mano seguiría ensuciando la fila.
+- **15.4 · La prueba del `PATCH` sin `tags` que el plan pedía ya existe.** Funciona por la
+  alineación de dos detalles —`.partial()` sobre el `.default([])` y la guarda `!== undefined` del
+  servicio— y quien quite cualquiera de los dos **borra etiquetas en silencio**. Ahora hay una
+  prueba que se pondría roja.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **15.2 · C6-2.** `aStatblock()` en `apps/api/src/statblocks/statblocks.service.ts` **no incluye
-  `visibility`** aunque el servicio sí filtra por él, así que el editor de criaturas omite el campo
-  en el `PUT` para no pisar una criatura ya enseñada. Son dos líneas **y una decisión que hay que
-  escribir**: hay una ficha hermana —`OWNER_DM` en un statblock se comporta como `DM_ONLY`— que
-  **no cierra con esto**, así que o se excluye ese valor del selector con su motivo, o se arregla
-  antes. **Decídelo y escríbelo; no lo dejes al azar.**
-- **15.3 · D3.** Cero controladores de salud: `GET /` responde 404 y el `healthcheck` del
-  `docker-compose.prod.yml` depende de eso. Hace falta `GET /health` que **compruebe la base**
-  (`SELECT 1`), sin autenticación y **sin filtrar nada** —ni versiones ni conteos—, y actualizar el
-  compose, o el endpoint es decorativo. **Y probarlo con la base caída**, o se habrá escrito un
-  endpoint que siempre dice que sí.
-- **15.4 · `tags` sin unicidad.** `entity.schema.ts` no deduplica y «lich, lich» persiste dos veces;
-  las filas dedupan **al pintar**, que tapa el síntoma. La recomendación del plan —y la comparto—
-  es **normalizar al guardar, no rechazar**. Más la prueba del `PATCH` **sin `tags`** que comprueba
-  que siguen ahí: hoy funciona por la alineación de `.partial()` sobre `.default([])` y la guarda
-  `!== undefined`, y quien quite cualquiera de las dos **borra etiquetas en silencio**.
+- **Nada: el plan 15 está cerrado, con sus cuatro fichas y sus mutaciones.** Lo siguiente del orden
+  recomendado es el **plan 07** (consolidación: 76 iconos, el vocabulario del daño triplicado y
+  `type: tipo`), que dependía del **06** — ya fusionado esta misma noche.

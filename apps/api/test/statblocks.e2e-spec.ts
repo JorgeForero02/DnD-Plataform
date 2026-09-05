@@ -139,10 +139,14 @@ describe("Statblocks de PNJ (e2e)", () => {
     expect(JSON.stringify(r.body)).not.toContain("Aliento cálido");
   });
 
-  it("el DM sí lo ve en su lista", async () => {
+  it("el DM sí lo ve en su lista, **y con su visibilidad dentro** (C6-2)", async () => {
     const r = await request(app.getHttpServer()).get(url()).set("Authorization", auth(tokenDM));
     expect(r.body.campaign).toHaveLength(1);
     expect(r.body.campaign[0].name).toBe("Dragoncillo de la cripta");
+    // Faltaba, aunque el servicio SÍ filtraba por este campo: el editor no podía enseñar quién la
+    // ve al editarla, así que **omitía el campo al guardar** para no volver a esconder una criatura
+    // ya enseñada. Con el campo en la lectura, ese rodeo se retira.
+    expect(r.body.campaign[0].visibility).toBe("DM_ONLY");
   });
 
   it("el DM lo sube a PLAYERS y entonces el jugador lo ve", async () => {
@@ -156,6 +160,24 @@ describe("Statblocks de PNJ (e2e)", () => {
     expect(r.body.campaign).toHaveLength(1);
     // Y sigue teniendo todo lo suyo: subirle la visibilidad no le quita datos.
     expect(r.body.campaign[0].speeds).toEqual({ walk: 30, fly: 60 });
+    // El nivel nuevo viaja, y también al jugador: saber el nivel de algo que ya estás viendo no
+    // revela nada — es el mismo criterio que el bando de un combatiente.
+    expect(r.body.campaign[0].visibility).toBe("PLAYERS");
+  });
+
+  it("**editar otro campo NO vuelve a esconder la criatura**: el rodeo se retiró y sigue en PLAYERS", async () => {
+    // Esta es la prueba que protege lo que el rodeo protegía. El editor ya no borra `visibility`
+    // del cuerpo; lo que impide el pisotón ahora es que **manda el valor real**, que llega en la
+    // lectura. Si algún día volviera a mandar el valor por defecto, esto se pondría rojo.
+    const up = await request(app.getHttpServer())
+      .put(`${url()}/${statblockId}`)
+      .set("Authorization", auth(tokenDM))
+      .send({ ac: 15, visibility: "PLAYERS" });
+    expect(up.status).toBe(200);
+    expect(up.body.visibility).toBe("PLAYERS");
+
+    const r = await request(app.getHttpServer()).get(url()).set("Authorization", auth(tokenPL));
+    expect(r.body.campaign).toHaveLength(1);
   });
 
   it("editar un campo no borra los demás, comprobado contra la fila real", async () => {

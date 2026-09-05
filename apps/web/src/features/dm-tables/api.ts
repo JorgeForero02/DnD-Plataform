@@ -90,11 +90,12 @@ export function rollDmTable(campaignId: string, tableId: string): Promise<DmTabl
 /**
  * El interruptor de la casa.
  *
- * **Hueco conocido:** ningún `GET` devuelve hoy el estado de `Campaign.houseTablesEnabled`, así
- * que la pantalla **no puede saber** si está encendido al entrar. Lo único honesto es reflejar lo
- * que devuelve este `PUT` y decir en pantalla que antes de tocarlo no se sabe — inventarse una
- * llamada que el servidor no ofrece, o pintar «apagado» por defecto, sería afirmar algo que no
- * consta. Reportado como dependencia fuera de la frontera de esta tarea.
+ * **El hueco que este comentario describía ya no existe, y el comentario sobrevivió al arreglo.**
+ * Decía que ningún `GET` devolvía `Campaign.houseTablesEnabled` y que la pantalla no podía saber
+ * la posición del interruptor al entrar. Hoy sí puede: el estado viaja **con la lista**
+ * (`dm-tables.service.ts:94`, `DmTablesResponse.houseTablesEnabled`) y `PanelDeTablas` se lo pasa
+ * a `InterruptorDeLaCasa`. Se deja dicho en vez de borrarlo a secas porque un comentario caducado
+ * costó que una auditoría diera por abierta una ficha ya cerrada.
  */
 export function setHouseTables(
   campaignId: string,

@@ -101,6 +101,35 @@ export function TrazaDeDano({ respuesta }: { respuesta: SheetResponse | undefine
   );
 }
 
+/**
+ * **El golpe ha pedido una salvación de concentración.**
+ *
+ * El servidor la crea solo cuando toca —daño positivo, no masivo, el personaje sigue en pie y
+ * estaba concentrado— y devuelve `concentrationSave` con la CD. Hasta hoy **eso no lo leía
+ * nadie**: la petición aparecía en la bandeja del jugador y quien había aplicado el golpe no
+ * sabía que la había provocado, así que la regla ocurría a espaldas de la mesa.
+ *
+ * Dice lo que hizo el servidor y **no promete nada más**: no tira, no resuelve y no dice si se
+ * pierde la concentración. Eso lo decide la tirada, que ya vive en su bandeja.
+ */
+export function AvisoDeConcentracion({ respuesta }: { respuesta: SheetResponse | undefined }) {
+  const salvacion = respuesta?.concentrationSave;
+  if (!salvacion) return null;
+  return (
+    <div
+      data-testid="aviso-de-concentracion"
+      className="mt-s2 rounded-radius-sm border border-warning bg-bg px-s3 py-s2"
+    >
+      <p className="font-chrome text-chrome-sm text-warning-text">
+        Se ha pedido salvación de Constitución para mantener la concentración, CD {salvacion.dc}.
+      </p>
+      <p className="mt-0.5 font-chrome text-chrome-xs text-muted">
+        Está en la bandeja de tiradas pendientes. Hasta que se tire, la concentración sigue.
+      </p>
+    </div>
+  );
+}
+
 /** Cómo se lee una tirada citable en el desplegable: `1d20+5 = 18`, y si hubo natural, se dice. */
 export function etiquetaDeTirada(t: {
   expression: string;

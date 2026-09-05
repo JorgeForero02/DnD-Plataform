@@ -5,7 +5,12 @@ import { useChangeHp, useSetHp, useTiradasCitables } from "./hooks";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { PROSA_DE_HOJA } from "./Tarjeta";
-import { etiquetaDeTirada, SelectorDeTipoDeDano, TrazaDeDano } from "./AplicarDano";
+import {
+  AvisoDeConcentracion,
+  etiquetaDeTirada,
+  SelectorDeTipoDeDano,
+  TrazaDeDano,
+} from "./AplicarDano";
 import { nivelDeAgotamientoDeSourceKey, traducirLabelKey } from "./vocabulario";
 
 // Tarea 2A.10 — "PG: el caso normal es un delta (recibo 5, me curo 3), no escribir un número".
@@ -299,6 +304,7 @@ export function PuntosDeGolpe({
         </div>
       )}
       <TrazaDeDano respuesta={cambiarPg.data} />
+      <AvisoDeConcentracion respuesta={cambiarPg.data} />
       {cambiarPg.isError && (
         <p role="alert" className={`mt-1 ${PROSA_DE_HOJA} text-danger-text`}>
           {(cambiarPg.error as Error).message}

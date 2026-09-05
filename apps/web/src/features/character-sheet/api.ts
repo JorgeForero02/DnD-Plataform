@@ -181,6 +181,18 @@ export interface SheetResponse {
    * statblock: el servidor no la interpreta, la enseña.
    */
   damageTrace?: { total: number; steps: TraceStep[]; notes: string[] };
+
+  /**
+   * **El golpe ha pedido una salvación de concentración**, y el servidor ya la ha creado como
+   * petición de tirada (`character-sheet.service.ts:1046`): `requestId` es esa petición y `dc`
+   * la CD que salió del daño (mitad del daño, mínimo 10).
+   *
+   * Llega solo cuando de verdad ocurre: daño positivo, no masivo, el personaje seguía en pie y
+   * estaba concentrado. **Hasta el 2026-09-04 no lo leía ninguna pantalla**, así que quien
+   * aplicaba el golpe no se enteraba de que acababa de pedir una tirada — el jugador la veía
+   * aparecer en su bandeja y el DM no sabía por qué. Es la ficha del §8 de la auditoría.
+   */
+  concentrationSave?: { requestId: string; dc: number };
 }
 
 // --- Anulaciones manuales (solo DM; el servidor lo impone) ---

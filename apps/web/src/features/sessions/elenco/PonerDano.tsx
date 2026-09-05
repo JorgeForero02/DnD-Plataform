@@ -5,7 +5,7 @@ import { Dialog } from "../../../ui/Dialog";
 import { Button } from "../../../ui/Button";
 import { fieldControlClass } from "../../../ui/Field";
 import { useChangeHp } from "../../character-sheet/hooks";
-import { TrazaDeDano } from "../../character-sheet/AplicarDano";
+import { AvisoDeConcentracion, TrazaDeDano } from "../../character-sheet/AplicarDano";
 
 // **El mando «Daño» del elenco** (maqueta: `prototipo/src/features/FichaDeElenco.tsx:120-143`).
 //
@@ -126,8 +126,11 @@ export function PonerDano({
                   },
                   {
                     onSuccess: (respuesta) => {
-                      // Sin traza no hay nada que explicar: se cierra, que es el gesto rápido.
-                      if (!respuesta.damageTrace) cerrar();
+                      // Sin nada que explicar se cierra, que es el gesto rápido. **Y la
+                      // salvación de concentración cuenta como algo que explicar**: si el
+                      // cajón se cerrara, el aviso de que el golpe acaba de pedir una tirada
+                      // se pintaría y desaparecería en el mismo fotograma.
+                      if (!respuesta.damageTrace && !respuesta.concentrationSave) cerrar();
                     },
                   },
                 )
@@ -175,6 +178,7 @@ export function PonerDano({
       {/* **De dónde sale el daño.** Los pasos son los del servidor, no un cálculo de esta
           pantalla: aquí no se multiplica ni se divide nada. */}
       <TrazaDeDano respuesta={cambiarPg.data} />
+      <AvisoDeConcentracion respuesta={cambiarPg.data} />
 
       {/* El mensaje del servidor, tal cual: dice cosas operativas que un aviso genérico tira. */}
       {cambiarPg.isError && (

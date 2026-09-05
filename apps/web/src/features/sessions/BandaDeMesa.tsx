@@ -6,6 +6,7 @@ import { IconoEnJuego } from "./iconos";
 import { useMembers } from "../campaigns/members";
 import { fieldControlClass } from "../../ui/Field";
 import { ThemeToggle } from "../../ui/ThemeToggle";
+import { BandejaDeAvisos } from "../notifications/BandejaDeAvisos";
 import { IconoFlechaIzquierda } from "../../ui/Iconos";
 
 // **Ola 0 (2026-09-04) — la banda superior de la mesa, fina.**
@@ -105,6 +106,11 @@ export function BandaDeMesa({
             </select>
           </label>
         )}
+        {/* La mesa vive **fuera de `AppShell`**, así que no hereda la cabecera ni su bandeja. Y
+            es justo donde más falta hace enterarse de algo sin salir a buscarlo, así que la
+            bandeja entra aquí también, al lado del conmutador de tema — el mismo componente, no
+            una segunda versión: dos bandejas serían dos contadores y uno acabaría mintiendo. */}
+        <BandejaDeAvisos />
         <ThemeToggle variante="en-banda" />
       </div>
     </header>

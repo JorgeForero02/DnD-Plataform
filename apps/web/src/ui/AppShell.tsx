@@ -15,6 +15,7 @@ import { Logo } from "./Logo";
 import { LegalNotice } from "./LegalNotice";
 import { BarraDeSesion } from "../features/sessions/BarraDeSesion";
 import { useAuthStore } from "../store/auth.store";
+import { BandejaDeAvisos } from "../features/notifications/BandejaDeAvisos";
 
 export interface Crumb {
   label: string;
@@ -147,6 +148,12 @@ export function AppHeader({
         </Link>
         <div className="flex-1" />
         {right}
+        {/* Plan 12 · 12.2 — **la bandeja, junto al conmutador de tema**, que flota fijo en esa
+            misma esquina. Se monta aquí y no en cada pantalla por el mismo motivo que «Cuenta»:
+            un aviso que solo se ve en una pantalla es un aviso que no se ve. Y **solo con sesión
+            iniciada**: sin ella no hay bandeja que pedir, y la cabecera se pinta también en
+            `/acerca-de`, en la invitación y en el 404. */}
+        {sesionIniciada && <BandejaDeAvisos />}
         {userName && (
           <span className="hidden items-center gap-s3 font-chrome text-chrome-xs text-muted sm:flex">
             <span className="h-4 w-px bg-muted" aria-hidden="true" />

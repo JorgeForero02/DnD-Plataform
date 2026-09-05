@@ -193,7 +193,10 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(playerPage.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   // Lee su contenido: el nombre real, no un formulario vacío.
   await expect(playerPage.getByLabel("Nombre")).toHaveValue("Gundren Rockseeker");
-  await expect(playerPage.getByLabel("Nombre")).toHaveAttribute("aria-disabled", "true");
+  // **Un campo apagado sí lleva `disabled`; lo que cambió en U9 fueron los BOTONES.** Un `input`
+  // deshabilitado sigue siendo la forma correcta —no hay nada que explicar al pulsarlo—, y el
+  // barrido de U9 dejó aquí una aserción que ya no describía la pantalla.
+  await expect(playerPage.getByLabel("Nombre")).toBeDisabled();
   await expect(playerPage.getByRole("button", { name: "Guardar" })).toHaveAttribute(
     "aria-disabled",
     "true",

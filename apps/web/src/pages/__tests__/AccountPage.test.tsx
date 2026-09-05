@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+// Plan 12 · 12.2 — **el cliente de consultas entra en este montaje** porque la cabecera ya no es
+// solo maquetación: lleva la bandeja de avisos, que pregunta al servidor. En la aplicación real
+// `QueryClientProvider` envuelve `App` entero (`main.tsx:27`), así que esto acerca la prueba a lo
+// que de verdad se monta en vez de alejarla.
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { AccountPage } from "../AccountPage";
 import * as authApi from "../../features/auth/api";
@@ -25,13 +30,16 @@ function LoginStub() {
 }
 
 function renderAccount() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={["/account"]}>
-      <Routes>
-        <Route path="/account" element={<AccountPage />} />
-        <Route path="/login" element={<LoginStub />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={["/account"]}>
+        <Routes>
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/login" element={<LoginStub />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

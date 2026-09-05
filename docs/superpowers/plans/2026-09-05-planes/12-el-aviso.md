@@ -140,9 +140,10 @@ comprobación detrás de nginx y Traefik hecha en el servidor**, no supuesta.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ✅ hecho | 2026-09-05 | **12.1 · los dos avisos que nadie emitía.** Emisores: `apps/api/src/comments/comments.service.ts:78` (`comment.added`, **fuera** de la transacción) y `apps/api/src/sessions/sessions.service.ts:148` (`session.scheduled`, en `create` y en `update` **solo si la fecha cambia**). Oyentes: `apps/api/src/notifications/notifications.service.ts:176` y `:236`, con `visoresDeLaMesa()` extraído en `:99`. Pruebas: `apps/api/src/notifications/notifications.service.spec.ts` (17 verdes) y `apps/api/test/notifications.e2e-spec.ts` (7 verdes). **Mutación probada**: sin `canView`, roja **solo** «NO llega a quien no puede ver la ficha». **Commit `<pendiente 12.1>`** |
-| ✅ hecho | 2026-09-05 | **Fallo ajeno al plan, encontrado por el camino.** La suite `notifications` de la API estaba **roja en `main`**: `POST /campaigns/:id/invites` daba 400 a una petición sin cuerpo aunque su esquema tiene todo opcional. Arreglado en `apps/api/src/common/zod-validation.pipe.ts:20`, con tres pruebas en su spec. **Commit `<pendiente 12.1>`** |
-| ⬜ sin empezar | — | **12.2 · la bandeja** y **12.3 · el nervio en vivo**. |
+| ✅ hecho | 2026-09-05 | **12.1 · los dos avisos que nadie emitía.** Emisores: `apps/api/src/comments/comments.service.ts:78` (`comment.added`, **fuera** de la transacción) y `apps/api/src/sessions/sessions.service.ts:148` (`session.scheduled`, en `create` y en `update` **solo si la fecha cambia**). Oyentes: `apps/api/src/notifications/notifications.service.ts:176` y `:236`, con `visoresDeLaMesa()` extraído en `:99`. Pruebas: `apps/api/src/notifications/notifications.service.spec.ts` (17 verdes) y `apps/api/test/notifications.e2e-spec.ts` (7 verdes). **Mutación probada**: sin `canView`, roja **solo** «NO llega a quien no puede ver la ficha». **Commit `98fa00b`** |
+| ✅ hecho | 2026-09-05 | **Fallo ajeno al plan, encontrado por el camino.** La suite `notifications` de la API estaba **roja en `main`**: `POST /campaigns/:id/invites` daba 400 a una petición sin cuerpo aunque su esquema tiene todo opcional. Arreglado en `apps/api/src/common/zod-validation.pipe.ts:20`, con tres pruebas en su spec. **Commit `98fa00b`** |
+| ✅ hecho | 2026-09-05 | **12.2 · la bandeja.** `apps/web/src/features/notifications/`: `api.ts` (las dos rutas que ya existían), `hooks.ts` (`SONDEO_DE_AVISOS_MS = 30_000`, sin sesión no pregunta), `vocabulario.ts` (`Record` **exhaustivo** por tipo: frase y destino) y `BandejaDeAvisos.tsx`. Montada en el chrome (`apps/web/src/ui/AppShell.tsx:121`) y en la banda de la mesa (`features/sessions/BandaDeMesa.tsx:108`), que vive fuera de `AppShell`. Icono nuevo: `ui/Iconos.tsx:341`. Pruebas: `features/notifications/__tests__/BandejaDeAvisos.test.tsx` (7) y `apps/web/e2e/bandeja-de-avisos.spec.ts` (dos navegadores). **Commit `<pendiente 12.2>`** |
+| ⬜ sin empezar | — | **12.3 · el nervio en vivo.** |
 | ⛔ bloqueado | 2026-09-05 | **La comprobación de `X-Accel-Buffering` detrás de nginx y Traefik**, que la «Definición de terminado» exige hacer **en el servidor**. El prompt de arranque prohíbe desplegar esta noche; las dos no se pueden cumplir a la vez. Se deja escrito y sin dar por hecho. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
@@ -164,12 +165,24 @@ fuente si la hubo):
   de avisos estaba roja en `main`). Con todos los campos opcionales, `undefined` vale como `{}` —y
   **solo** en el cuerpo, y **solo** si el esquema no exige nada.
 
+- **La bandeja se monta en DOS sitios y es el MISMO componente.** La mesa vive fuera de
+  `AppShell` y no hereda la cabecera; dos bandejas serían dos contadores y uno acabaría mintiendo.
+- **Sin sesión la bandeja no pregunta.** La cabecera se pinta también en `/acerca-de`, en la
+  invitación y en el 404: sin el candado sería un 401 garantizado por cada carga.
+- **Abrir un aviso ES leerlo, pero solo se marca si hacía falta.** Una petición por cada clic en
+  algo ya leído es ruido contra el servidor.
+- **El `Record` del vocabulario es exhaustivo a propósito**: un tipo nuevo en `@dnd/shared` sin
+  frase aquí **no compila**, en vez de asomar su enumeración en la bandeja de alguien.
+- **Sin destino no se finge uno**: un aviso al que le falta el sujeto se pinta sin enlace, porque
+  llevar a un 404 es peor que no llevar a ninguna parte.
+- **Dos pruebas de pantalla tuvieron que ganar `QueryClientProvider`** (`AccountPage` y
+  `NotFoundPage`): la cabecera dejó de ser solo maquetación. En la aplicación real el proveedor
+  envuelve `App` entero (`apps/web/src/main.tsx:27`), así que la prueba se acerca a lo que se
+  monta de verdad en vez de alejarse.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **12.2, la bandeja**, en el chrome junto al conmutador de tema. Hoy **ningún fichero de
-  `apps/web/src` menciona `notifications`**: la bandeja se construye desde cero contra
-  `GET /notifications` y `POST /notifications/read`, que ya existen y están probados.
-- **Antes de 12.3, leer `docs/superpowers/specs/2026-09-05-nervio-en-vivo-transporte-design.md`**:
+- **12.3, el nervio en vivo.** Antes, leer `docs/superpowers/specs/2026-09-05-nervio-en-vivo-transporte-design.md`**:
   corrige cuatro números del plan (no hay «un sondeo» sino **diez `refetchInterval` con cuatro
   valores**, son **93** invalidaciones y no 47, falta el **latido** cada 15-20 s, y `EventSource`
   gasta una de las seis conexiones por origen en HTTP/1.1, que muerde **en local con Vite**).

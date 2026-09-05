@@ -93,8 +93,9 @@ describe("Iconos — la regla de que los iconos se dibujan", () => {
 
   it("el fichero exporta los 23 conceptos de la maqueta, y ninguno se ha perdido por el camino", () => {
     // «Flechas» son dos dibujos —derecha e izquierda—, así que 23 conceptos son 24 componentes,
-    // más los cuatro del chrome que ya vivían aquí antes de la maqueta.
-    expect(TODOS).toHaveLength(28);
+    // más los cuatro del chrome que ya vivían aquí antes de la maqueta, más **la campana** de la
+    // bandeja de avisos (plan 12 · 12.2).
+    expect(TODOS).toHaveLength(29);
   });
 
   it.each(TODOS)(

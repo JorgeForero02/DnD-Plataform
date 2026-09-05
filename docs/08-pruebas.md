@@ -42,7 +42,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
 > - **Ficheros de e2e de API:** 44 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 29 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 30 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -290,6 +290,7 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 |---|---|
 | `armazon` | El pie apoyado en el borde inferior con poco contenido; **ninguna entrada del carril sin su icono dibujado**; la marca. |
 | `color-de-personaje` | **El color de un personaje, de punta a punta** (plan 05, D3): sin elegir, el selector lo dice; elegir **sobrevive a una recarga entera**, que es lo único que demuestra que llegó al servidor; repetir un color de otro **se avisa nombrando a quién y no se bloquea**; y en la mesa, **tres personajes con tres tintas distintas**, una de ellas exactamente la que se eligió. Los colores se leen del DOM calculado, no del nombre de la clase: `jsdom` no resuelve una clase de Tailwind hasta un color, que es la trampa declarada de este proyecto. Deja la captura que el plan pedía en `apps/web/e2e-resultados/`. |
+| `bandeja-de-avisos` | **La bandeja** (plan 12 · 12.2), con **dos navegadores**: recién registrado **no hay distintivo** —un cero con globo es ruido—; la jugadora comenta y **no se avisa a sí misma**; al DM le llega, el aviso **no lleva el cuerpo del comentario** y **lleva a su ficha**; «marcar todo leído» apaga el distintivo **sin borrar nada**. Y lo que `jsdom` no puede decir: el distintivo **no tapa** «Cuenta» y el panel **cabe en la ventana**. |
 | `leer-una-sesion` | **La página de lectura de una sesión** (ficha U1): se llega desde la lista, pinta estado, fecha y quién vino, y **dice que no hay crónica** en vez de dejar un hueco. Con **dos contextos de navegador**: el jugador abre **la misma URL** y no ve una crónica que no sea suya. |
 | `navegar-en-estrecho` | **U2, remedida** (plan 14): a **375 px** hay **siete destinos alcanzables sin escribir una URL**, todos visibles, dentro de la ventana y con tamaño, y pulsar uno cambia de pantalla. La ficha describía una columna que ya no existe. |
 | `ornamento` | **U7**: de partida el ornamento está y **ocupa sitio medido**; apagado desde la cuenta **deja de pintarse** —el nodo no está en el documento, no se esconde— y **sobrevive a recargar**, con `data-ornamento` estampado en `<html>` para que no parpadee. |

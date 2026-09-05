@@ -25,7 +25,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-04-tandas.md`](./_archivo/historial-2026-09-04-tandas.md) | Las tandas por tarea del 2026-09-03 y 04 —2.5.3, 2.5.4, 2.5.5, 2.5.6, B4 y B5—, movidas enteras el 2026-09-05 |
 > | [`_archivo/historial-2026-09-04-reseno-de-la-mesa.md`](./_archivo/historial-2026-09-04-reseno-de-la-mesa.md) | **El reseño de la mesa del 2026-09-04** —la cabina y las mecánicas que no tenían pantalla—, movido entero el 2026-09-05 (tercer corte de la noche) |
 > | [`_archivo/historial-2026-09-03-y-04-sueltas.md`](./_archivo/historial-2026-09-03-y-04-sueltas.md) | **La comprobación en producción de 2D** y **la auditoría de la documentación del 2026-09-04**, movidas enteras el 2026-09-05 (segundo corte de la noche: las cinco entradas del plan 03 dejaron el fichero en 413 de 400) |
-> | [`_archivo/historial-2026-09-05-por-tarea.md`](./_archivo/historial-2026-09-05-por-tarea.md) | **El detalle por tarea de los planes 03 y 15**, nueve entradas movidas enteras el 2026-09-06 cuando el fichero llegó a 997 de 1000. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-05-por-tarea.md`](./_archivo/historial-2026-09-05-por-tarea.md) | **El detalle por tarea de los planes 03 y 15**, nueve entradas movidas enteras el 2026-09-05 cuando el fichero llegó a 997 de 1000. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -38,6 +38,45 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## La bandeja de avisos: el servidor llevaba desde 2A.14 hablando solo (2026-09-05, plan 12 · 12.2)
+
+**Qué.** `apps/api/src/notifications/` existía **entero** —tabla, servicio y dos rutas— y **ningún
+fichero de `apps/web/src` lo mencionaba**: nadie veía un aviso nunca. Es el patrón que este
+proyecto ha cerrado en falso cuatro veces —servidor hecho, nadie que lo use—, y ahora tiene
+pantalla: `apps/web/src/features/notifications/`, montada en el chrome junto al conmutador de tema.
+
+**Con tres cosas y ninguna más**, que es lo que el plan pedía:
+
+- **Cuántas sin leer, y si son cero no hay distintivo.** Un cero con globo es ruido y además miente
+  sobre que haya algo que atender. El número va también en el nombre accesible del botón, porque un
+  lector de pantalla no ve un círculo.
+- **La lista, cada aviso con su enlace al sitio donde pasó.** Y si a un aviso le falta el sujeto, se
+  pinta **sin enlace**: llevar a un 404 es peor que no llevar a ninguna parte.
+- **Marcar leído y marcar todo leído.** Abrir un aviso **es** leerlo, y solo se marca si hacía
+  falta: una petición por cada clic en algo ya leído es ruido contra el servidor.
+
+**Lo que NO hace: borrar.** Un aviso leído se apaga; el historial se queda.
+
+**Y dos decisiones que no se ven:**
+
+- **La frase de cada aviso se escribe una vez** (`vocabulario.ts`), con un `Record` **exhaustivo**
+  por tipo: un tipo nuevo en `@dnd/shared` sin frase aquí **no compila**, en vez de asomar su
+  enumeración en la bandeja de alguien. Es la regla que ya falló tres veces en una mañana.
+- **La bandeja se monta en dos sitios y es el mismo componente.** La mesa vive fuera de `AppShell`
+  y no hereda la cabecera; dos bandejas serían dos contadores, y uno de los dos acabaría mintiendo.
+
+**Medido en el navegador** con dos contextos (`apps/web/e2e/bandeja-de-avisos.spec.ts`), incluido lo
+que `jsdom` no puede decir: que el distintivo **no tapa** «Cuenta» y que el panel **cabe en la
+ventana**. Y con siete pruebas de pantalla en `features/notifications/__tests__/`.
+
+**Y otro rojo ajeno arreglado por el camino**: `apps/web/e2e/invitacion.spec.ts` exigía
+`aria-disabled` en un **campo de formulario**. Lo que U9 cambió fueron los **botones** —un botón
+apagado tiene algo que explicar al pulsarlo; un `input` no—, y el barrido dejó ahí una aserción que
+ya no describía la pantalla.
+
+**Cómo revertirlo.** `git revert` del commit. Los avisos siguen escribiéndose en el servidor: lo
+que desaparece es la puerta para verlos.
 
 ## Los dos avisos que nadie emitía, y un POST sin cuerpo que no debía ser un 400 (2026-09-05, plan 12 · 12.1)
 
@@ -81,7 +120,7 @@ donde deben quedarse.
 
 **Nueve entradas por tarea**, movidas enteras a
 [`_archivo/historial-2026-09-05-por-tarea.md`](./_archivo/historial-2026-09-05-por-tarea.md) el
-2026-09-06, cuando este fichero llegó a 997 de sus 1000 líneas. Lo que cerraron, en una línea cada
+2026-09-05, cuando este fichero llegó a 997 de sus 1000 líneas. Lo que cerraron, en una línea cada
 uno:
 
 - **Plan 03 · el carril del motor** — el oráculo de la CA se cerró **por la puerta que importaba**
@@ -92,7 +131,7 @@ uno:
   petición (C2.5-2); quién ve una criatura **viaja con ella** (C6-2); la API dice si está sana
   mirando la base (D3); y las etiquetas se normalizan **al guardar** (E4).
 
-## Una sesión se puede leer, no solo editar (2026-09-06, plan 14 · U1)
+## Una sesión se puede leer, no solo editar (2026-09-05, plan 14 · U1)
 
 **Qué.** Las fichas del mundo y los personajes tienen su página de lectura desde el reseño; una
 sesión se seguía abriendo en **su formulario**, que es la pantalla de editarla. Y una sesión es justo
@@ -120,7 +159,7 @@ la página desde la lista, y el jugador abre **la misma URL** y no ve ninguna cr
 
 **Cómo revertirlo.** `git revert` del commit. No hay datos que tocar.
 
-## El ornamento se apaga, un PNJ recibe temporales, y U2 se cierra midiendo (2026-09-06, plan 14 · U7, C6-4, U2)
+## El ornamento se apaga, un PNJ recibe temporales, y U2 se cierra midiendo (2026-09-05, plan 14 · U7, C6-4, U2)
 
 **U7 — el ornamento tiene interruptor.** La cuadrícula y el horizonte se pintaban **siempre**. No se
 mueven, así que `prefers-reduced-motion` no aplica, y no había ninguna preferencia del sistema que
@@ -158,7 +197,7 @@ reseño**; la ficha hablaba de una pantalla que ya no existe.
 
 **Cómo revertirlo.** `git revert` del commit. El ajuste guardado en `localStorage` queda inerte.
 
-## Buscar mira dentro del cuerpo, y pasa por `canView` primero (2026-09-06, plan 14 · U3)
+## Buscar mira dentro del cuerpo, y pasa por `canView` primero (2026-09-05, plan 14 · U3)
 
 **Qué.** El buscador era del navegador y solo miraba el **nombre**: una ficha que dice «la puerta de
 sal» en su tercer párrafo era inencontrable. Y el navegador no puede arreglarlo, porque el cuerpo
@@ -187,7 +226,7 @@ que sigue siendo cierto.
 
 **Cómo revertirlo.** `git revert` del commit. No hay datos que tocar.
 
-## Cerrar sin guardar pregunta, y un botón apagado sigue alcanzable (2026-09-06, plan 14 · U8, U9)
+## Cerrar sin guardar pregunta, y un botón apagado sigue alcanzable (2026-09-05, plan 14 · U8, U9)
 
 **U8 — cerrar con lo escrito sin guardar.** `Escape`, el clic en el velo y el aspa **descartaban
 sin decir nada**. Con el cuerpo de una ficha dentro eso es perder trabajo, y las tres salidas son
@@ -222,7 +261,7 @@ clic salía **antes** de que el rol se resolviera. La espera miraba la señal eq
 
 **Cómo revertirlo.** `git revert` del commit. Nada de esto toca datos.
 
-## «+2 a Fuerza durante una hora»: modificadores temporales (2026-09-06, plan 13 · M8)
+## «+2 a Fuerza durante una hora»: modificadores temporales (2026-09-05, plan 13 · M8)
 
 **Qué.** Lo pidieron **los jugadores, por su nombre** —*«subidas y bajadas de atributos
 temporales»*— y **no estaba escrito en ningún plan**: ni en 2A, ni en 2C, ni en 2.5. Era un hueco de
@@ -265,7 +304,7 @@ modificador sigue ahí — **marcado como vencido**, con la palabra escrita y no
 **Cómo revertirlo.** `git revert` del commit y `DROP TABLE "TemporaryModifier"`. Los dos valores del
 enum de sucesos se quedan sin usar, que no rompe nada.
 
-## La mesa se puede administrar: papeles que cambian e invitaciones que se ven (2026-09-06, plan 11 · D2, D3b, A3)
+## La mesa se puede administrar: papeles que cambian e invitaciones que se ven (2026-09-05, plan 11 · D2, D3b, A3)
 
 **Qué.** Dos cosas que hacían doler una mesa real:
 
@@ -307,7 +346,7 @@ caducidad en `accept`, el e2e se pone rojo en siete de sus nueve pruebas.
 **Cómo revertirlo.** `git revert` del commit y `ALTER TABLE "Invite" DROP COLUMN` de las tres. Las
 columnas son nulables y nada más las lee, así que dejarlas puestas tampoco rompe nada.
 
-## La batuta: el DM prepara en frío y en la mesa solo pulsa (2026-09-06, plan 09 · I19 e I20)
+## La batuta: el DM prepara en frío y en la mesa solo pulsa (2026-09-05, plan 09 · I19 e I20)
 
 **Qué.** *«El DM lee el diálogo en voz alta, pulsa, y pasa lo que tenía que pasar.»* El disparador
 `DM_EXECUTED` estaba en el vocabulario del motor de reglas **desde el principio** y **no existía el
@@ -348,7 +387,7 @@ pone rojo y los otros cinco siguen verdes — que es exactamente lo que el plan 
 **Cómo revertirlo.** `git revert` del commit. El valor del enum se queda en la base sin usar, que no
 rompe nada; una regla guardada con `DM_EXECUTED` volvería a pintarse marcada y no seleccionable.
 
-## Ayudar da ventaja y caduca cuando el SRD dice (2026-09-06, plan 08 · I8)
+## Ayudar da ventaja y caduca cuando el SRD dice (2026-09-05, plan 08 · I8)
 
 **Qué.** La acción **Ayudar** existe en el SRD y la maqueta la pintaba como «Ayuda de Mira **+1d4**».
 Ese +1d4 es **`Bless`**, que es un conjuro; el d6 es Inspiración Bárdica, que es un rasgo de bardo.
@@ -380,7 +419,7 @@ el personaje de otro jugador no van mandos, y ayudar es una acción tuya con un 
 **Cómo revertirlo.** `git revert` del commit. Las filas `helped` que queden son inertes: sin la
 entrada en `VENTAJA_EN_ATAQUE` no calculan nada, y vencen solas.
 
-## La inspiración existe: la concede el DM, se gasta y se regala (2026-09-06, plan 08 · I8)
+## La inspiración existe: la concede el DM, se gasta y se regala (2026-09-05, plan 08 · I8)
 
 **Qué.** De los tres botones de intervención que pinta la maqueta, **dos son falsos** y uno era una
 promesa vacía. Ahora ese uno funciona de punta a punta.
@@ -420,7 +459,7 @@ solo** suceso `RESOURCE_GIVEN` con los dos nombres. Es SRD: *«you can give it t
 enum; el valor `RESOURCE_GIVEN` puede quedarse sin usar sin romper nada. Las filas sembradas de
 inspiración son inertes si nadie las lee.
 
-## Cada personaje tiene su color, y es el mismo en el hilo y en el elenco (2026-09-06, plan 05 · D3)
+## Cada personaje tiene su color, y es el mismo en el hilo y en el elenco (2026-09-05, plan 05 · D3)
 
 **Qué.** Hasta hoy la voz de una intervención en el hilo era una **huella del `actorUserId` sobre
 cuatro tonos**, y el retrato del elenco era **cobre para todos**. Dos defectos y un solo arreglo:
@@ -456,7 +495,7 @@ habla se resuelve en `HiloDeSesion.tsx` con tres reglas escritas —el sujeto si
 personaje; si no, el único personaje vivo de ese jugador; y si lleva dos o más, ninguno—, porque
 elegir por él pintaría a un personaje con el color de su hermano.
 
-## Reclasificar una ficha dice lo que cuesta, y deja rastro (2026-09-06, plan 07 · I16)
+## Reclasificar una ficha dice lo que cuesta, y deja rastro (2026-09-05, plan 07 · I16)
 
 **Qué.** Cambiar el tipo de una ficha ya escrita convertía un PNJ con statblock, enlaces y
 comentarios en «Documento» **de un clic y sin dejar constancia**. El registro es la auditoría de esta
@@ -493,7 +532,7 @@ huérfano y no molesta.
 
 ---
 
-## Un vocabulario del daño con dos formas, y la diferencia es la decisión (2026-09-06, plan 07 · D-OP-14)
+## Un vocabulario del daño con dos formas, y la diferencia es la decisión (2026-09-05, plan 07 · D-OP-14)
 
 **Qué.** La traducción de los tipos de daño estaba **copiada en tres pantallas**. Comparadas entrada
 por entrada antes de borrar ninguna: `character-sheet` y `campaign-items` eran **idénticas** en las
@@ -523,7 +562,7 @@ fija las cuatro abreviaturas y la que cuenta cuántas coinciden.
 
 ---
 
-## Un concepto, un icono — y una prueba que lo sostiene (2026-09-06, plan 07)
+## Un concepto, un icono — y una prueba que lo sostiene (2026-09-05, plan 07)
 
 **Qué.** Había **diez ficheros de iconos** y conceptos repetidos: escudo con tres definiciones,
 mochila con tres, sol y luna con dos. La auditoría original contaba «4 iconos» porque **solo miró

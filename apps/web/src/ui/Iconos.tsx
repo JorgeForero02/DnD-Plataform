@@ -337,6 +337,16 @@ export function IconoMegafono({ className }: IconoProps) {
   );
 }
 
+/** Campana: la bandeja de avisos del chrome (plan 12). */
+export function IconoCampana({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="campana">
+      <path d="M18 8a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6z" />
+      <path d="M13.7 19a2 2 0 01-3.4 0" />
+    </Marco>
+  );
+}
+
 /** Rayo: el daño, el efecto que salta, lo que se dispara. */
 export function IconoRayo({ className }: IconoProps) {
   return (

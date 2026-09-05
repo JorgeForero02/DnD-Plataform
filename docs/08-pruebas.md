@@ -42,7 +42,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
 > - **Ficheros de e2e de API:** 44 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 28 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 29 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -290,6 +290,10 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 |---|---|
 | `armazon` | El pie apoyado en el borde inferior con poco contenido; **ninguna entrada del carril sin su icono dibujado**; la marca. |
 | `color-de-personaje` | **El color de un personaje, de punta a punta** (plan 05, D3): sin elegir, el selector lo dice; elegir **sobrevive a una recarga entera**, que es lo único que demuestra que llegó al servidor; repetir un color de otro **se avisa nombrando a quién y no se bloquea**; y en la mesa, **tres personajes con tres tintas distintas**, una de ellas exactamente la que se eligió. Los colores se leen del DOM calculado, no del nombre de la clase: `jsdom` no resuelve una clase de Tailwind hasta un color, que es la trampa declarada de este proyecto. Deja la captura que el plan pedía en `apps/web/e2e-resultados/`. |
+| `leer-una-sesion` | **La página de lectura de una sesión** (ficha U1): se llega desde la lista, pinta estado, fecha y quién vino, y **dice que no hay crónica** en vez de dejar un hueco. Con **dos contextos de navegador**: el jugador abre **la misma URL** y no ve una crónica que no sea suya. |
+| `navegar-en-estrecho` | **U2, remedida** (plan 14): a **375 px** hay **siete destinos alcanzables sin escribir una URL**, todos visibles, dentro de la ventana y con tamaño, y pulsar uno cambia de pantalla. La ficha describía una columna que ya no existe. |
+| `ornamento` | **U7**: de partida el ornamento está y **ocupa sitio medido**; apagado desde la cuenta **deja de pintarse** —el nodo no está en el documento, no se esconde— y **sobrevive a recargar**, con `data-ornamento` estampado en `<html>` para que no parpadee. |
+| `arrastre-dentro-del-cajon` | **La remedición de R1** (plan 14): el mismo `<div draggable>` trivial dentro del cajón y fuera, comparados. Con su control, porque una medición sin control «confirma» lo que ya creías. |
 | `tokens-contrast` | **El contraste real, medido, en los tres temas** (Oscuro, Claro y Lectura) y en las pantallas de sesión, campaña, 404, atribución y cuenta. Desde el plan 05 mide también **las ocho voces de personaje**, cada una sobre `--bg` y sobre `--surface`, que son los dos fondos donde se pintan: **ninguna voz nueva se acepta sin su medición**, y los nombres salen del propio DOM para que un color añadido a `CHARACTER_COLORS` se mida solo. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
 | `clases-que-si-pintan` | Que las superficies que la aplicación promete **se pintan de verdad** — la comprobación que caza una clase de Tailwind que no existe y compila a nada. |
 | `ficha-lectura` | El enlace que se lee como frase por sus dos lados; la capitular, los párrafos y la medida corta; el contraste de la página de lectura en los dos temas. |

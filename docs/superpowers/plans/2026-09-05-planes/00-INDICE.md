@@ -35,16 +35,16 @@ worktree de trabajo abiertos.**
 | **09** · La batuta y `ENTITY_ATTACKED` | ✅ **cerrado** (I19, I20) | `d48f268` |
 | **11** · La administración de la mesa | ✅ **cerrado** (D2, D3b, A3) | `bf1b1c9` |
 | **13** · Modificadores temporales | ✅ **cerrado** (M8) | `bf33b0e` |
-| **14** · Pulido y mediciones | 🟨 **en marcha**: R1 remedida, U8 y U9 cerradas; U3 sin commitear | `912ff52` · `6ef8c03` |
+| **14** · Pulido y mediciones | ✅ **cerrado**: R1 remedida, U8, U9, U3, U2, U7, C6-4 y U1 | `912ff52` · `6ef8c03` · `9ae58df` · `bfddc6d` |
 | **12** | ⬜ sin empezar | — |
 | **10** · La documentación | ⬜ va **al final**, y buena parte ya se escribió por el camino | — |
 
 **El orden recomendado para lo que queda**, con las dependencias ya resueltas:
 
 ```
-lo que queda del 14 → 12     (y el 10 al final)
+12     (y el 10 al final)
 
-07, 05, 08, 09, 11 y 13 están cerrados; el 14 va por la mitad.
+07, 05, 08, 09, 11, 13 y 14 están cerrados.
 ```
 
 **Lo que la noche del 05 dejó dicho y no está en ningún plan:**

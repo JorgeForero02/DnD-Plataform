@@ -436,6 +436,17 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
               {/* Los controles van FUERA del botón de la fila: un botón dentro de otro botón no
                   es HTML válido y el clic se lo comería el de fuera. */}
               <div className="flex flex-wrap items-center gap-s2 px-s4 pb-s3">
+                {/* **Ficha U1 (plan 14): una sesión también se LEE.** La fila abre el formulario,
+                    que es la pantalla de editarla; para repasar la crónica entre partidas hace
+                    falta la de leerla, como ya tienen las fichas del mundo y los personajes. Va
+                    aquí y no sustituyendo a la fila: quien la abre para corregir la fecha sigue
+                    queriendo el formulario. */}
+                <Link
+                  to={`/campaigns/${campaignId}/sesiones/${s.id}`}
+                  className="rounded-radius-sm font-chrome text-chrome-xs text-accent-text underline-offset-2 hover:underline"
+                >
+                  Leer la crónica
+                </Link>
                 <ControlesDeSesion campaignId={campaignId} session={s} puedeGestionar={canManage} />
               </div>
             </li>

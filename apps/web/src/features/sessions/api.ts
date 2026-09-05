@@ -24,10 +24,22 @@ export interface Session {
   startedAt: string | null;
   endedAt: string | null;
   attendance: { userId: string; characterId?: string }[] | null;
+  /**
+   * **La crónica de la sesión** (plan 02) y su nivel. **Puede no venir**, y eso no es un hueco: el
+   * servidor **borra las dos** cuando quien mira no puede ver la crónica (`conCronica`), y borrar
+   * solo el texto habría dicho «hay una crónica que no puedes leer», que ya es información.
+   */
+  recap?: string | null;
+  recapVisibility?: Visibility;
 }
 
 export function fetchSessions(campaignId: string): Promise<Session[]> {
   return apiFetch<Session[]>(`/campaigns/${campaignId}/sessions`);
+}
+
+/** Una sesión, para su página de lectura (ficha U1). El servidor filtra la crónica por su nivel. */
+export function fetchSession(campaignId: string, sessionId: string): Promise<Session> {
+  return apiFetch<Session>(`/campaigns/${campaignId}/sessions/${sessionId}`);
 }
 
 export function createSession(campaignId: string, input: CreateSessionInput): Promise<Session> {

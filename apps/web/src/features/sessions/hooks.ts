@@ -16,6 +16,15 @@ export function useSessions(campaignId: string) {
   });
 }
 
+/** Una sesión suelta, para su página de lectura (ficha U1, plan 14). */
+export function useSession(campaignId: string, sessionId: string) {
+  return useQuery({
+    queryKey: [...sessionsKey(campaignId), sessionId],
+    queryFn: () => sessionsApi.fetchSession(campaignId, sessionId),
+    enabled: Boolean(campaignId && sessionId),
+  });
+}
+
 export function useCreateSession(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({

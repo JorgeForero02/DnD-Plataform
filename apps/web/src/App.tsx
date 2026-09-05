@@ -4,6 +4,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignDetailPage } from "./pages/CampaignDetailPage";
 import { EntityDetailPage } from "./pages/EntityDetailPage";
+import { SessionDetailPage } from "./pages/SessionDetailPage";
 import { CharacterDetailPage } from "./pages/CharacterDetailPage";
 import { SesionPage } from "./pages/SesionPage";
 import { AccountPage } from "./pages/AccountPage";
@@ -94,6 +95,15 @@ export function App() {
             element={
               <ProtectedRoute>
                 <EntityDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Ficha U1 (plan 14): una sesión también se lee, no solo se edita. */}
+          <Route
+            path="/campaigns/:id/sesiones/:sessionId"
+            element={
+              <ProtectedRoute>
+                <SessionDetailPage />
               </ProtectedRoute>
             }
           />

@@ -141,7 +141,8 @@ escrito gane o pierda**, y las siete fichas anotadas en el maestro con lo que se
 | ✅ hecho | 2026-09-06 | **14.2b · U3 · buscar dentro del cuerpo.** Servidor hecho: `listEntitiesQuerySchema` en `packages/shared/src/entity.schema.ts:8`, `EntitiesService.list` y `coincideElTexto` en `apps/api/src/entities/entities.service.ts`, ruta en `entities.controller.ts:38`. Web hecha: `features/entities/api.ts:26`, `hooks.ts:26`, `filter.ts` (deja de filtrar por texto) y `pages/CampaignDetailPage.tsx:215`. **Commit `9ae58df`**, con `apps/api/test/buscar-en-el-cuerpo.e2e-spec.ts` (6 verdes) y la **mutación probada**: sin `canView`, 4 de 6 rojas. |
 | ✅ hecho | 2026-09-06 | **14.3 · U2 remedida y U7.** U2: `apps/web/e2e/navegar-en-estrecho.spec.ts:35` da **7 destinos alcanzables a 375 px** — el problema de la ficha ya no existe, lo arregló el reseño. U7: `apps/web/src/ui/ornamento.ts`, `features/auth/AjusteDeOrnamento.tsx` montado en `pages/AccountPage.tsx`, y los dos adornos de `ui/Ornament.tsx` dejan de pintarse. Medido en `apps/web/e2e/ornamento.spec.ts`. **Commit `<pendiente U7>`** |
 | ✅ hecho | 2026-09-06 | **14.4 · C6-4.** `apps/web/src/features/bestiario/DarTemporales.tsx`, montado en la fila del PNJ. **No suma y pregunta cuál se queda**; para poder cumplir la regla del SRD hizo falta `setHpSchema.tempHpEleccion` (`packages/shared/src/character-sheet.schema.ts`) y su rama en `apps/api/src/characters/character-sheet.service.ts:1333`. **Commit `<pendiente U7>`** |
-| ⬜ sin empezar | — | **14.2c · U1**: la sesión no tiene página de lectura. |
+| ✅ hecho | 2026-09-06 | **14.2c · U1.** `apps/web/src/pages/SessionDetailPage.tsx` en `/campaigns/:id/sesiones/:sessionId` (`apps/web/src/App.tsx:101`), enlazada desde la lista (`pages/CampaignDetailPage.tsx:438`). `fetchSession`/`useSession` en `features/sessions/`. Medido en `apps/web/e2e/leer-una-sesion.spec.ts` con dos contextos. **Commit `<pendiente U1>`** |
+| ✅ | 2026-09-06 | **EL PLAN 14 ESTÁ CERRADO**: R1 remedida, U8, U9, U3, U2 (por remedición), U7, C6-4 y U1. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -219,6 +220,15 @@ fuente si la hubo):
   decide whether to keep the ones you have or to gain the new ones»*—. Hay efectos que interesa
   cambiar por otros más pequeños porque duran más. Ahora la decisión viaja (`tempHpEleccion`), y sin
   el campo se conserva el comportamiento de siempre para no cambiar de significado a nadie.
+- **U1 · La página NO reimplementa el filtro de la crónica.** El servidor ya borra **las dos**
+  columnas —el texto y su nivel— cuando quien mira no puede verla, y borrar solo el texto habría
+  dicho «hay una crónica que no puedes leer», que ya es información. La pantalla pinta lo que llega:
+  una segunda comprobación aquí sería una segunda verdad con menos datos.
+- **U1 · El nivel de la crónica se enseña APARTE del de la sesión**, porque pueden no coincidir:
+  saber a quién se le está contando algo importa antes de contarlo.
+- **U1 · El enlace se añade junto a los controles y no sustituye la fila.** Quien la abre para
+  corregir la fecha sigue queriendo el formulario; cambiar el destino de la fila habría arreglado
+  una cosa rompiendo otra.
 - **C6-4 · El botón se apaga hasta que la hoja llega.** Fijar PG es concurrencia optimista y exige
   la `version`; sin ese candado el botón se dejaba pulsar y **no hacía nada en silencio**, que es
   peor que estar apagado. **Lo cazó su propia prueba.**

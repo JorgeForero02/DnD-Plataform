@@ -157,7 +157,7 @@ describe("el texto libre se guarda con botón, no solo", () => {
 
     fireEvent.click(screen.getByTitle("Editar Bio"));
 
-    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).not.toHaveAttribute("aria-disabled");
   });
 });
 

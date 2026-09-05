@@ -38,14 +38,50 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   danger: "bg-surface text-text border-[1.5px] border-danger hover:bg-bg",
 };
 
+// ---------------------------------------------------------------------------------------------
+// Ficha U9 (plan 14) — **`aria-disabled`, no `disabled`.**
+//
+// Este producto **deshabilita en vez de esconder** (docs/07-historial.md, 1.15): un botón que el
+// servidor rechazaría se queda a la vista, apagado y **con su motivo escrito**, porque esconderlo
+// deja al jugador creyendo que la función no existe.
+//
+// Y ahí estaba la otra mitad del problema, medida el 2026-09-05: **cero usos de `aria-disabled` en
+// toda la web.** Un `<button disabled>` **sale del recorrido de teclado**, así que quien navega con
+// teclado o con lector de pantalla **no llega hasta él** — y por tanto no llega hasta el motivo que
+// tanto cuidado se puso en escribir. El botón apagado le informaba a quien mira y le ocultaba la
+// información a quien no.
+//
+// Con `aria-disabled` el botón **sigue en el recorrido**, se puede tabular, se anuncia como
+// deshabilitado y su `title`/motivo se lee. Lo que hay que poner a mano es lo que el atributo NO
+// hace: **`aria-disabled` no impide pulsar**, así que el `onClick` se ignora aquí, en un solo sitio,
+// para que ningún consumidor tenga que acordarse.
+//
+// `type="button"` por defecto **es parte del arreglo**: sin `disabled` de verdad, un botón dentro de
+// un formulario enviaría el formulario al pulsarlo. Los que quieren enviar lo piden explícitamente,
+// y para ellos el guardia de abajo también corta el `submit`.
+// ---------------------------------------------------------------------------------------------
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", className = "", disabled, children, ...rest },
+  { variant = "primary", className = "", disabled, children, onClick, ...rest },
   ref,
 ) {
   return (
     <button
       ref={ref}
-      disabled={disabled}
+      // **No `disabled`**: eso lo sacaría del recorrido de teclado. Ver la cabecera de arriba.
+      aria-disabled={disabled || undefined}
+      // Para las pruebas de maquetación y para quien necesite el estado en CSS sin depender de una
+      // clase de utilidad concreta.
+      data-disabled={disabled ? "true" : undefined}
+      onClick={(e) => {
+        if (disabled) {
+          // `aria-disabled` no impide nada: sin esto, el botón haría exactamente lo que dice que
+          // no puede hacer. Y `preventDefault` además corta el envío si es un `type="submit"`.
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onClick?.(e);
+      }}
       className={[
         "inline-flex items-center justify-center gap-2 rounded-radius-sm px-3 py-1.5 font-chrome text-chrome-sm font-semibold",
         "transition-colors duration-100",

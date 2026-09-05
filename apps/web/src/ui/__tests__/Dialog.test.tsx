@@ -167,3 +167,72 @@ describe("Dialog", () => {
     expect(second).toHaveFocus();
   });
 });
+
+// --- Ficha U8 (plan 14) — cerrar con cambios sin guardar pregunta ---
+//
+// `Escape`, el clic en el velo y el aspa **descartaban lo escrito sin decir nada**. Con el cuerpo
+// de una ficha dentro, eso es perder trabajo, y las tres salidas son igual de fáciles de rozar.
+//
+// **Y la mitad que se olvida**: el aviso NO debe saltar cuando no hay cambios. Uno que salta
+// siempre se aprende a descartar sin leer en dos días, y entonces tampoco protege el día que sí.
+
+describe("cerrar con cambios sin guardar (U8)", () => {
+  function montar(hayCambios: boolean, onClose = vi.fn()) {
+    render(
+      <Dialog open onClose={onClose} title="Escribir ficha" hayCambiosSinGuardar={hayCambios}>
+        <p>cuerpo</p>
+      </Dialog>,
+    );
+    return onClose;
+  }
+
+  it("**sin cambios NO avisa**: Escape cierra directamente", () => {
+    const onClose = montar(false);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("con cambios, **las tres salidas preguntan**: Escape, el velo y el aspa", () => {
+    // Si una sola se saltara la pregunta, bastaría con rozarla para perder lo escrito — y sería
+    // justo la que nadie prueba.
+    for (const salir of [
+      () => fireEvent.keyDown(document, { key: "Escape" }),
+      () => fireEvent.click(screen.getByRole("presentation")),
+      () => fireEvent.click(screen.getByRole("button", { name: /Cerrar/ })),
+    ]) {
+      const onClose = vi.fn();
+      const { unmount } = render(
+        <Dialog open onClose={onClose} title="Escribir ficha" hayCambiosSinGuardar>
+          <p>cuerpo</p>
+        </Dialog>,
+      );
+      salir();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("**nombra lo que se pierde, y nunca dice «seguro»**", () => {
+    montar(true);
+    fireEvent.keyDown(document, { key: "Escape" });
+    const aviso = screen.getByRole("alertdialog");
+    expect(aviso).toHaveTextContent(/no se ha guardado/i);
+    expect(aviso).toHaveTextContent(/se pierde/i);
+    // «Seguro» se pulsa sin leer, y además tranquiliza justo cuando no toca.
+    expect(aviso.textContent ?? "").not.toMatch(/seguro/i);
+  });
+
+  it("«Seguir escribiendo» no cierra; «Salir y perderlo» sí", () => {
+    const onClose = montar(true);
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Seguir escribiendo" }));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Salir y perderlo" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

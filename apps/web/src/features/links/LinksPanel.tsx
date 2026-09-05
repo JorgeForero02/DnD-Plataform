@@ -214,14 +214,25 @@ export function LinksPanel({
             </span>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                if (!l.canRemove) return;
                 deleteLink.mutate(l.id, {
                   onError: (err) => setError((err as Error).message),
-                })
-              }
-              disabled={!l.canRemove}
+                });
+              }}
+              // Ficha U9 — **`aria-disabled`, no `disabled`.** Un botón deshabilitado de verdad
+              // sale del recorrido de teclado, así que quien navega con teclado o con lector no
+              // llega hasta él **ni hasta el motivo** que se puso al lado. Aquí el motivo es la
+              // mitad del control, así que sacarlo del recorrido era esconderlo.
+              //
+              // Y como `aria-disabled` no impide pulsar, el `onClick` sale antes.
+              aria-disabled={!l.canRemove || undefined}
               title={!l.canRemove ? removeReason : undefined}
-              className="shrink-0 text-danger-text underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:text-muted"
+              className={`shrink-0 underline-offset-2 ${
+                l.canRemove
+                  ? "text-danger-text hover:underline"
+                  : "cursor-not-allowed text-muted no-underline"
+              }`}
             >
               Quitar
             </button>

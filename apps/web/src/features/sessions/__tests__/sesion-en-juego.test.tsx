@@ -124,7 +124,7 @@ describe("empezar y cerrar", () => {
     montar(<ControlesDeSesion campaignId="c1" session={sesion()} puedeGestionar={false} />);
 
     const boton = screen.getByRole("button", { name: "Empezar" });
-    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute("aria-disabled", "true");
     expect(boton).toHaveAttribute("title", "Solo el DM empieza una sesión.");
   });
 

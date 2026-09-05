@@ -115,7 +115,7 @@ describe("LinksPanel", () => {
     await screen.findByText("Baldur", { exact: false });
     const removeButtons = await screen.findAllByRole("button", { name: "Quitar" });
     expect(removeButtons).toHaveLength(2);
-    await waitFor(() => expect(removeButtons[1]).not.toBeDisabled());
+    await waitFor(() => expect(removeButtons[1]).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(removeButtons[1]);
 
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
@@ -132,7 +132,7 @@ describe("LinksPanel", () => {
 
     await screen.findByText("Waterdeep", { exact: false });
     const removeButton = screen.getByRole("button", { name: "Quitar" });
-    await waitFor(() => expect(removeButton).not.toBeDisabled());
+    await waitFor(() => expect(removeButton).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(removeButton);
 
     expect(
@@ -208,7 +208,7 @@ describe("LinksPanel", () => {
       renderPanel();
 
       const boton = await screen.findByRole("button", { name: "Quitar" });
-      expect(boton).toBeDisabled();
+      expect(boton).toHaveAttribute("aria-disabled", "true");
       // El motivo, visible: `title` no lo revela en táctil ni lo anuncia un lector.
       expect(
         screen.getByText(
@@ -392,7 +392,7 @@ describe("LinksPanel", () => {
       renderPanel("u1");
 
       const removeButton = await screen.findByRole("button", { name: "Quitar" });
-      await waitFor(() => expect(removeButton).toBeDisabled());
+      await waitFor(() => expect(removeButton).toHaveAttribute("aria-disabled", "true"));
       expect(
         await screen.findByText(
           "Solo el DM o quien creó la ficha de la que sale el enlace puede quitarlo.",
@@ -417,7 +417,7 @@ describe("LinksPanel", () => {
       renderPanel("creator1");
 
       const removeButton = await screen.findByRole("button", { name: "Quitar" });
-      await waitFor(() => expect(removeButton).not.toBeDisabled());
+      await waitFor(() => expect(removeButton).not.toHaveAttribute("aria-disabled"));
     });
   });
 });

@@ -193,8 +193,11 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   await expect(playerPage.getByRole("heading", { name: "Editar PNJ" })).toBeVisible();
   // Lee su contenido: el nombre real, no un formulario vacío.
   await expect(playerPage.getByLabel("Nombre")).toHaveValue("Gundren Rockseeker");
-  await expect(playerPage.getByLabel("Nombre")).toBeDisabled();
-  await expect(playerPage.getByRole("button", { name: "Guardar" })).toBeDisabled();
+  await expect(playerPage.getByLabel("Nombre")).toHaveAttribute("aria-disabled", "true");
+  await expect(playerPage.getByRole("button", { name: "Guardar" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
   // getByText alone matches both the row's badge (still in the DOM behind the modal) and the
   // editor's own read-only notice — scope to the paragraph the editor renders.
   await expect(
@@ -224,7 +227,7 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   // — con un motivo, no en silencio.
   await playerPage.getByRole("tab", { name: "Sesiones" }).click();
   const playerNewSession = playerPage.getByRole("button", { name: "Nueva sesión" });
-  await expect(playerNewSession).toBeDisabled();
+  await expect(playerNewSession).toHaveAttribute("aria-disabled", "true");
   await expect(playerPage.getByText("Solo el DM puede crear o editar sesiones.")).toBeVisible();
 
   // El DM, en su propia sesión de navegador, sí puede: sin esto la comprobación de arriba

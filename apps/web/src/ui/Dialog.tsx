@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { Button } from "./Button";
 import { IconoCerrar } from "./Iconos";
 
 export interface DialogProps {
@@ -18,6 +19,19 @@ export interface DialogProps {
   acciones?: ReactNode;
   /** Vitela: para leer prosa del mundo, no para operar formularios. */
   pergamino?: boolean;
+  /**
+   * **Hay algo escrito sin guardar** (ficha U8, plan 14).
+   *
+   * Cuando vale `true`, las **tres** salidas —`Escape`, el clic en el velo y el aspa— dejan de
+   * cerrar directamente y preguntan primero. Con el cuerpo de una ficha dentro, cerrar sin avisar
+   * es perder trabajo, y las tres salidas son igual de fáciles de rozar sin querer.
+   *
+   * **Solo avisa si de verdad hay cambios**, y de eso responde quien monta el cajón: un aviso que
+   * salta siempre se aprende a descartar sin leer en dos días, y entonces tampoco protege el día
+   * que importa. Por eso es un booleano que el consumidor calcula comparando **valores**, no un
+   * «este cajón tiene formulario».
+   */
+  hayCambiosSinGuardar?: boolean;
 }
 
 const FOCUSABLE_SELECTOR =
@@ -49,10 +63,31 @@ export function Dialog({
   subtitulo,
   acciones,
   pergamino = false,
+  hayCambiosSinGuardar = false,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
   const titleId = useId();
+  // U8 — la confirmación de salida. Vive dentro del propio cajón y no en otro superpuesto: dos
+  // capas apiladas se llevarían el atrapa-foco por delante.
+  const [preguntandoSalida, setPreguntandoSalida] = useState(false);
+
+  /**
+   * **La única puerta de salida.** Las tres —Escape, velo y aspa— pasan por aquí, porque si una
+   * sola se saltara la pregunta bastaría con rozarla para perder lo escrito, y sería justo la que
+   * nadie prueba.
+   */
+  const pedirCierre = () => {
+    if (hayCambiosSinGuardarRef.current) {
+      setPreguntandoSalida(true);
+      return;
+    }
+    onCloseRef.current();
+  };
+  // Se actualiza en un efecto, no durante el render: tocar un ref mientras se pinta es
+  // exactamente lo que la regla `react-hooks` prohíbe, y aquí no hace falta — el efecto del
+  // teclado lee `pedirCierreRef.current` cuando alguien pulsa, siempre después del render.
+  const pedirCierreRef = useRef(pedirCierre);
 
   // Fix round 1, Important 3: every consumer passes an inline arrow for onClose, so the
   // original `useEffect(..., [open, onClose])` tore the effect down and rebuilt it on every
@@ -64,8 +99,14 @@ export function Dialog({
   // how many times the parent re-renders in between. Dialog.test.tsx — "keeps focus in place
   // across a parent re-render while open" — fails on the old deps array.
   const onCloseRef = useRef(onClose);
+  // Misma razón que `onCloseRef`: el efecto del teclado se monta una vez con `[open]`, así que
+  // leer el booleano directamente lo congelaría en el valor que tuviera al abrir — y el cajón se
+  // abre siempre **sin** cambios.
+  const hayCambiosSinGuardarRef = useRef(hayCambiosSinGuardar);
   useEffect(() => {
     onCloseRef.current = onClose;
+    hayCambiosSinGuardarRef.current = hayCambiosSinGuardar;
+    pedirCierreRef.current = pedirCierre;
   });
 
   useEffect(() => {
@@ -88,7 +129,7 @@ export function Dialog({
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
-        onCloseRef.current();
+        pedirCierreRef.current();
         return;
       }
       if (e.key !== "Tab" || !dialogEl) return;
@@ -148,7 +189,7 @@ export function Dialog({
       // `justify-end` + `items-stretch`: el cajón se pega a la derecha y ocupa toda la altura.
       // Sin `p-s4`: un cajón no flota, se apoya en el borde.
       className="anim-surge fixed inset-0 z-40 flex items-stretch justify-end bg-[color:var(--veil)] backdrop-blur-[2px]"
-      onClick={onClose}
+      onClick={pedirCierre}
     >
       <div
         ref={dialogRef}
@@ -158,7 +199,8 @@ export function Dialog({
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={[
-          "flex h-full w-full flex-col border-l border-copper font-chrome text-chrome-sm shadow-2xl outline-none",
+          // `relative` para que el aviso de U8 se ancle al cajón y no al documento.
+          "relative flex h-full w-full flex-col border-l border-copper font-chrome text-chrome-sm shadow-2xl outline-none",
           // `bg-vellum` / `text-vellum-ink` son los tokens que ya viste la vitela en `Panel`;
           // la TEXTURA (las dos manchas radiales de la maqueta) es de la capa visual y entra
           // con su carril.
@@ -178,13 +220,49 @@ export function Dialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={pedirCierre}
             aria-label="Cerrar (Escape)"
             className="shrink-0 rounded-radius-sm p-s1 text-muted transition-colors hover:text-text"
           >
             {/* Dibujado, nunca un glifo de fuente: regla vinculante de docs/04-convenciones.md. */}
             <IconoCerrar className="h-5 w-5" />
           </button>
+          {/* **El aviso de U8, dentro del propio cajón.** Va aquí y no en un segundo superpuesto
+              porque dos capas apiladas se pelean por el atrapa-foco, que es exactamente el defecto
+              que este componente existe para no tener.
+
+              `alertdialog` y no `dialog`: interrumpe para pedir una decisión, y un lector de
+              pantalla tiene que anunciarlo entero al aparecer.
+
+              **Y nunca dice «¿estás seguro?»**: nombra lo que se pierde. «Seguro» se pulsa sin
+              leer, y además tranquiliza justo cuando no toca. */}
+          {preguntandoSalida && (
+            <div
+              role="alertdialog"
+              aria-label="Hay cambios sin guardar"
+              className="absolute inset-x-0 top-0 z-10 border-b border-warning bg-surface p-s3"
+            >
+              <p className="font-chrome text-chrome-sm text-text">
+                Lo que has escrito aquí <strong>no se ha guardado</strong>. Si sales ahora, se
+                pierde.
+              </p>
+              <div className="mt-s2 flex flex-wrap gap-s2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setPreguntandoSalida(false);
+                    onCloseRef.current();
+                  }}
+                >
+                  Salir y perderlo
+                </Button>
+                <Button type="button" variant="primary" onClick={() => setPreguntandoSalida(false)}>
+                  Seguir escribiendo
+                </Button>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* El cuerpo es lo único que scrollea. La cabecera y el pie se quedan quietos, que es

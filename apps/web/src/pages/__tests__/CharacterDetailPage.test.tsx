@@ -193,7 +193,7 @@ describe("CharacterDetailPage — un solo camino de edición", () => {
     montar();
 
     const borrar = await screen.findByRole("button", { name: "Borrar" });
-    expect(borrar).toBeDisabled();
+    expect(borrar).toHaveAttribute("aria-disabled", "true");
     expect(borrar).toHaveAttribute("title", MOTIVO);
     expect(screen.getByRole("radio", { name: /Solo el DM/ })).toBeDisabled();
     expect(screen.getAllByText(MOTIVO).length).toBeGreaterThan(0);

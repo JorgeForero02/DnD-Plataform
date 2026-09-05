@@ -78,7 +78,7 @@ describe("la acción Ayudar", () => {
     const help = vi.spyOn(sheetApi, "help").mockResolvedValue(undefined as never);
     montar();
     const boton = await screen.findByRole("button", { name: "Ayudar" });
-    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute("aria-disabled", "true");
 
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "ch-brann" } });
     expect(boton).toBeEnabled();

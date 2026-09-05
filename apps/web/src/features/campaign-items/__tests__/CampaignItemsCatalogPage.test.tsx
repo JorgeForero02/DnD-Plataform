@@ -234,7 +234,7 @@ describe("CampaignItemsCatalogPage — crear un arma", () => {
     // Lo tecleado sigue ahí: el rechazo no vació el formulario.
     expect(screen.getByLabelText("Nombre")).toHaveValue("Espada rota");
     // El botón de guardar sigue activo — nunca se deshabilita.
-    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).not.toHaveAttribute("aria-disabled");
   });
 });
 

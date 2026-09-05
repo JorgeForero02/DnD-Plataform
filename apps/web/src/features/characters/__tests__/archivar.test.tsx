@@ -74,7 +74,7 @@ describe("Archivar — el gesto fácil, en la ficha del personaje", () => {
   it("a quien no puede editar se le deshabilita con el motivo, no se le esconde", () => {
     montarAjustes({ puedeEditar: false });
     const archivar = screen.getByRole("button", { name: "Archivar" });
-    expect(archivar).toBeDisabled();
+    expect(archivar).toHaveAttribute("aria-disabled", "true");
     expect(archivar).toHaveAttribute("title", MOTIVO);
   });
 
@@ -177,7 +177,7 @@ describe("El archivo tiene puerta de salida", () => {
   it("quien no puede devolverlo lo ve deshabilitado con el motivo, no escondido", () => {
     montarArchivo({ puedeDevolver: () => false });
     const boton = screen.getByRole("button", { name: "Devolver a la mesa" });
-    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute("aria-disabled", "true");
     expect(boton).toHaveAttribute("title", "Solo el dueño o el DM puede devolver este personaje.");
   });
 

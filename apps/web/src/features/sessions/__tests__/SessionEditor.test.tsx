@@ -221,7 +221,7 @@ describe("SessionEditor (delete)", () => {
     });
 
     const deleteButton = screen.getByRole("button", { name: "Borrar" });
-    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toHaveAttribute("aria-disabled", "true");
     expect(deleteButton).toHaveAttribute("title", "Solo el DM puede crear o editar sesiones.");
     fireEvent.click(deleteButton);
     expect(spy).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe("SessionEditor (delete)", () => {
 
   it("quien sí puede editar, sí puede borrar (comportamiento 5)", () => {
     renderEditEditor(existingSession, { readOnly: false });
-    expect(screen.getByRole("button", { name: "Borrar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Borrar" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("el fallo del servidor al borrar se ve (comportamiento 6)", async () => {

@@ -300,7 +300,7 @@ describe("EntityEditor (delete)", () => {
     });
 
     const deleteButton = await screen.findByRole("button", { name: "Borrar" });
-    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toHaveAttribute("aria-disabled", "true");
     expect(deleteButton).toHaveAttribute("title", "Solo el DM o quien lo creó puede editarlo.");
     fireEvent.click(deleteButton);
     expect(spy).not.toHaveBeenCalled();
@@ -312,7 +312,7 @@ describe("EntityEditor (delete)", () => {
     renderEditEditor(editedEntity, { readOnly: false });
 
     const deleteButton = await screen.findByRole("button", { name: "Borrar" });
-    expect(deleteButton).not.toBeDisabled();
+    expect(deleteButton).not.toHaveAttribute("aria-disabled");
   });
 
   it("el fallo del servidor al borrar se ve (comportamiento 6)", async () => {

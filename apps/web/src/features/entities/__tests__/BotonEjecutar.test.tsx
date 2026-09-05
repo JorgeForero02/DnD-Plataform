@@ -49,7 +49,7 @@ describe("el botón de la batuta", () => {
     vi.spyOn(rulesApi, "fetchRules").mockResolvedValue([]);
     montar();
     const boton = await screen.findByRole("button", { name: "Ejecutar" });
-    await waitFor(() => expect(boton).toBeDisabled());
+    await waitFor(() => expect(boton).toHaveAttribute("aria-disabled", "true"));
     expect(screen.getByText(/Ninguna regla espera a esta ficha/i)).toBeInTheDocument();
   });
 

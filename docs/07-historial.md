@@ -38,6 +38,41 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Cerrar sin guardar pregunta, y un botón apagado sigue alcanzable (2026-09-06, plan 14 · U8, U9)
+
+**U8 — cerrar con lo escrito sin guardar.** `Escape`, el clic en el velo y el aspa **descartaban
+sin decir nada**. Con el cuerpo de una ficha dentro eso es perder trabajo, y las tres salidas son
+igual de fáciles de rozar, así que **las tres pasan ahora por la misma puerta**: si una sola se la
+saltara sería justo la que nadie prueba.
+
+**Solo avisa si de verdad hay cambios, y eso se compara con VALORES**, no con una bandera de «he
+tecleado»: la plantilla de una ficha nueva no cuenta como cambio, y escribir y borrar tampoco. Un
+aviso que salta siempre se aprende a descartar sin leer en dos días, y entonces tampoco protege el
+día que importa — hay una prueba de la mitad que se olvida: **sin cambios no pregunta**.
+
+Y el aviso **nombra lo que se pierde** en vez de decir «¿estás seguro?», que se pulsa sin leer.
+
+**U9 — `aria-disabled`, no `disabled`.** Este producto deshabilita en vez de esconder y escribe el
+motivo, y ahí estaba la otra mitad del problema: con `disabled` de verdad **el botón sale del
+recorrido de teclado**, así que quien navega con teclado o con lector no llega a él **ni al motivo**.
+El botón informaba a quien mira y ocultaba la información a quien no. Medido el 2026-09-05: **cero
+usos de `aria-disabled` en toda la web**.
+
+El arreglo vive en `ui/Button.tsx`, un solo sitio para toda la aplicación, más los dos botones crudos
+que también apagan con motivo. **Y la mitad que hay que poner a mano**: `aria-disabled` no impide
+pulsar, así que el `onClick` se ignora allí mismo — sin eso, el botón haría exactamente lo que dice
+que no puede hacer, que es peor que el problema original.
+
+**Los campos de formulario conservan `disabled`**, y es deliberado: un `<input>` apagado no tiene
+motivo que leer al tabular, y `aria-disabled` no impediría escribir en él.
+
+**76 aserciones cambiaron de forma**, y una de ellas destapó algo real: un `waitFor(() =>
+expect(boton).not.toBeDisabled())` pasaba al instante porque el atributo ya no existía nunca, y el
+clic salía **antes** de que el rol se resolviera. La espera miraba la señal equivocada; ahora mira
+`aria-disabled`.
+
+**Cómo revertirlo.** `git revert` del commit. Nada de esto toca datos.
+
 ## «+2 a Fuerza durante una hora»: modificadores temporales (2026-09-06, plan 13 · M8)
 
 **Qué.** Lo pidieron **los jugadores, por su nombre** —*«subidas y bajadas de atributos

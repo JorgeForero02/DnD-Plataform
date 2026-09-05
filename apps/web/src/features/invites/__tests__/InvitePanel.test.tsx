@@ -45,7 +45,9 @@ describe("InvitePanel", () => {
     const spy = vi.spyOn(invitesApi, "createInvite").mockResolvedValue(invite);
     renderPanel();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
@@ -66,7 +68,9 @@ describe("InvitePanel", () => {
     });
     renderPanel();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
@@ -85,7 +89,9 @@ describe("InvitePanel", () => {
     vi.spyOn(invitesApi, "createInvite").mockResolvedValue(invite);
     renderPanel();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
 
     // Depends on state, unlike the removed test that asserted a paragraph rendered on every
@@ -115,7 +121,9 @@ describe("InvitePanel", () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
     renderPanel();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
     fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
     await screen.findByLabelText("Enlace de invitación");
@@ -143,7 +151,9 @@ describe("InvitePanel", () => {
     vi.spyOn(invitesApi, "createInvite").mockRejectedValue(new Error("DM role required"));
     renderPanel();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Generar invitación" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Generar invitación" }));
@@ -166,7 +176,7 @@ describe("InvitePanel", () => {
     renderPanel();
 
     const button = await screen.findByRole("button", { name: "Generar invitación" });
-    await waitFor(() => expect(button).toBeDisabled());
+    await waitFor(() => expect(button).toHaveAttribute("aria-disabled", "true"));
     expect(
       screen.getByText("Solo el DM de la campaña puede generar invitaciones."),
     ).toBeInTheDocument();
@@ -181,7 +191,7 @@ describe("InvitePanel", () => {
     renderPanel();
 
     const button = screen.getByRole("button", { name: "Generar invitación" });
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Comprobando permisos…")).toBeInTheDocument();
   });
 
@@ -198,7 +208,7 @@ describe("InvitePanel", () => {
     renderPanel();
 
     const button = await screen.findByRole("button", { name: "Generar invitación" });
-    await waitFor(() => expect(button).toBeDisabled());
+    await waitFor(() => expect(button).toHaveAttribute("aria-disabled", "true"));
     expect(screen.getByText("Comprobando permisos…")).toBeInTheDocument();
     expect(
       screen.queryByText("Solo el DM de la campaña puede generar invitaciones."),
@@ -206,7 +216,7 @@ describe("InvitePanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
 
-    await waitFor(() => expect(button).not.toBeDisabled());
+    await waitFor(() => expect(button).not.toHaveAttribute("aria-disabled"));
     expect(fetchMembers).toHaveBeenCalledTimes(2);
   });
 });

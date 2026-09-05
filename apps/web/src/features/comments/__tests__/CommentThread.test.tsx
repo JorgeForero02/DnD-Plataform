@@ -71,7 +71,7 @@ describe("CommentThread", () => {
     renderThread();
 
     const deleteButton = await screen.findByRole("button", { name: "Borrar" });
-    await waitFor(() => expect(deleteButton).not.toBeDisabled());
+    await waitFor(() => expect(deleteButton).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(deleteButton);
 
     expect(
@@ -97,7 +97,7 @@ describe("CommentThread", () => {
       renderThread();
 
       const deleteButton = await screen.findByRole("button", { name: "Borrar" });
-      await waitFor(() => expect(deleteButton).toBeDisabled());
+      await waitFor(() => expect(deleteButton).toHaveAttribute("aria-disabled", "true"));
       // Arreglo 2 (1.16-fix): the reason must be visible text, not just `title` — touch has
       // no way to reveal a tooltip and screen readers don't announce it.
       expect(
@@ -128,8 +128,8 @@ describe("CommentThread", () => {
 
       const deleteButtons = await screen.findAllByRole("button", { name: "Borrar" });
       expect(deleteButtons).toHaveLength(2);
-      await waitFor(() => expect(deleteButtons[0]).not.toBeDisabled());
-      expect(deleteButtons[1]).toBeDisabled();
+      await waitFor(() => expect(deleteButtons[0]).not.toHaveAttribute("aria-disabled"));
+      expect(deleteButtons[1]).toHaveAttribute("aria-disabled", "true");
     });
 
     it("deja Borrar habilitado para el propio autor, aunque no sea DM", async () => {
@@ -144,7 +144,7 @@ describe("CommentThread", () => {
       renderThread();
 
       const deleteButton = await screen.findByRole("button", { name: "Borrar" });
-      await waitFor(() => expect(deleteButton).not.toBeDisabled());
+      await waitFor(() => expect(deleteButton).not.toHaveAttribute("aria-disabled"));
     });
 
     it("deja Borrar habilitado para el DM sobre el comentario de otro", async () => {
@@ -159,7 +159,7 @@ describe("CommentThread", () => {
       renderThread();
 
       const deleteButton = await screen.findByRole("button", { name: "Borrar" });
-      await waitFor(() => expect(deleteButton).not.toBeDisabled());
+      await waitFor(() => expect(deleteButton).not.toHaveAttribute("aria-disabled"));
     });
   });
 });

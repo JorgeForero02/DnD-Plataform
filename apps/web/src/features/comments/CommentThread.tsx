@@ -72,13 +72,20 @@ export function CommentThread({ campaignId, entityId }: { campaignId: string; en
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    // `aria-disabled` no impide pulsar: sin esto, el botón haría justo lo que dice
+                    // que no puede hacer.
+                    if (!canDelete) return;
                     deleteComment.mutate(c.id, {
                       onError: (err) => setError((err as Error).message),
-                    })
-                  }
-                  disabled={!canDelete}
-                  className="text-chrome-sm text-danger-text disabled:cursor-not-allowed disabled:text-muted"
+                    });
+                  }}
+                  // Ficha U9 — **`aria-disabled`, no `disabled`.** El motivo va escrito debajo, y
+                  // un botón fuera del recorrido de teclado se lleva el motivo con él.
+                  aria-disabled={!canDelete || undefined}
+                  className={`text-chrome-sm ${
+                    canDelete ? "text-danger-text" : "cursor-not-allowed text-muted"
+                  }`}
                 >
                   Borrar
                 </button>

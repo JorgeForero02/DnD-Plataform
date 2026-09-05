@@ -73,7 +73,7 @@ describe("los modificadores temporales", () => {
     vi.spyOn(api, "fetchTemporaryModifiers").mockResolvedValue([]);
     montar();
     const boton = await screen.findByRole("button", { name: "Ponerlo" });
-    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute("aria-disabled", "true");
     fireEvent.change(screen.getByPlaceholderText("Poción de fuerza de gigante"), {
       target: { value: "Bendición del druida" },
     });

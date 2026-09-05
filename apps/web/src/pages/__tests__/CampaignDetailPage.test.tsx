@@ -259,19 +259,19 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
 
     const newButton = await screen.findByRole("button", { name: "Nueva sesión" });
-    await waitFor(() => expect(newButton).toBeDisabled());
+    await waitFor(() => expect(newButton).toHaveAttribute("aria-disabled", "true"));
 
     // The row itself is never disabled: it's the only detail view. Clicking it opens the
     // editor.
     const row = screen.getByRole("button", { name: /Session Zero/ });
-    await waitFor(() => expect(row).not.toBeDisabled());
+    await waitFor(() => expect(row).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(row);
 
     expect(await screen.findByRole("heading", { name: "Editar sesión" })).toBeInTheDocument();
     // But it opens read-only: fields are disabled and Guardar can't be pressed.
     expect(screen.getByLabelText("Título")).toBeDisabled();
     const saveButton = screen.getByRole("button", { name: "Guardar" });
-    expect(saveButton).toBeDisabled();
+    expect(saveButton).toHaveAttribute("aria-disabled", "true");
     expect(screen.getAllByText("Solo el DM puede crear o editar sesiones.").length).toBeGreaterThan(
       0,
     );
@@ -283,13 +283,13 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(await screen.findByRole("tab", { name: "Sesiones" }));
 
     const newButton = await screen.findByRole("button", { name: "Nueva sesión" });
-    await waitFor(() => expect(newButton).not.toBeDisabled());
+    await waitFor(() => expect(newButton).not.toHaveAttribute("aria-disabled"));
 
     const row = await screen.findByRole("button", { name: /Session Zero/ });
     fireEvent.click(row);
     expect(await screen.findByRole("heading", { name: "Editar sesión" })).toBeInTheDocument();
     expect(screen.getByLabelText("Título")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("lets a player open an entity created by someone else and read it, but not save changes", async () => {
@@ -305,7 +305,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     expect(screen.queryByRole("button", { name: "Nuevo PNJ" })).not.toBeInTheDocument();
 
     const row = await screen.findByRole("link", { name: /Strahd von Zarovich/ });
-    await waitFor(() => expect(row).not.toBeDisabled());
+    await waitFor(() => expect(row).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(row);
 
     // La fila lleva a la página de lectura; el editor se abre desde ahí, que es la diferencia
@@ -317,7 +317,10 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(
       screen.getAllByText("Solo el DM o quien lo creó puede editarlo.").length,
     ).toBeGreaterThan(0);
@@ -356,7 +359,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(await screen.findByRole("button", { name: /^PNJ/ }));
 
     const row = await screen.findByRole("link", { name: /Mi propio NPC/ });
-    await waitFor(() => expect(row).not.toBeDisabled());
+    await waitFor(() => expect(row).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(row);
     // Reseño 2026-09-02: la fila lleva a la página de lectura; el editor se abre desde ella,
     // que es justo la diferencia entre leer una ficha y editarla.
@@ -367,7 +370,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     );
     expect(await screen.findByRole("heading", { name: "Editar PNJ" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("la fila de un personaje dice su raza y su clase aunque solo tenga las claves de la hoja", async () => {
@@ -391,10 +394,10 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
 
     const newButton = await screen.findByRole("button", { name: "Nuevo personaje" });
-    await waitFor(() => expect(newButton).not.toBeDisabled());
+    await waitFor(() => expect(newButton).not.toHaveAttribute("aria-disabled"));
 
     const row = await screen.findByRole("link", { name: /Strahd/ });
-    await waitFor(() => expect(row).not.toBeDisabled());
+    await waitFor(() => expect(row).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(row);
 
     // **Ya no hay diálogo de edición**: la hoja se toca donde se lee. Lo que se comprueba es que
@@ -409,7 +412,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // La visibilidad y el borrado viven ahora en la propia página, deshabilitados con su motivo
     // — lo comprueba pages/__tests__/CharacterDetailPage.test.tsx.
     expect(screen.queryByRole("button", { name: "Ajustes y borrado" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Borrar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Borrar" })).toHaveAttribute("aria-disabled", "true");
     // Fix round 1 (post-1.18b review), Important 9: this row-shape (a muted "Nivel N" chip
     // followed by the reason) was left on --muted while EntityTab's identical shape was fixed
     // — the same sentence read as two different things in two tabs of one screen. Revert the
@@ -448,17 +451,19 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     fireEvent.click(await screen.findByRole("button", { name: "Personajes" }));
 
     const row = await screen.findByRole("link", { name: /Mi propio personaje/ });
-    await waitFor(() => expect(row).not.toBeDisabled());
+    await waitFor(() => expect(row).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(row);
 
     // El dueño edita donde lee: el nombre y la historia son campos, no un diálogo.
-    expect(await screen.findByRole("button", { name: "Mi propio personaje" })).not.toBeDisabled();
-    expect(screen.getByTitle("Editar Historia del personaje")).not.toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Mi propio personaje" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
+    expect(screen.getByTitle("Editar Historia del personaje")).not.toHaveAttribute("aria-disabled");
     // H6: la visibilidad se elige aquí mismo, en radios, sin abrir nada.
     expect(
       screen.getByRole("radio", { name: /Todos los que se sientan a esta mesa/ }),
     ).toBeChecked();
-    expect(screen.getByRole("button", { name: "Borrar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Borrar" })).not.toHaveAttribute("aria-disabled");
   });
 
   // Arreglo 4: a failed members fetch must read as "still don't know", never as "not a
@@ -493,7 +498,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     // InvitePanel's own container so this stays about InvitePanel specifically, not whichever
     // of the three happens to settle first.
     const invitePanel = generateButton.closest("div") as HTMLElement;
-    await waitFor(() => expect(generateButton).toBeDisabled());
+    await waitFor(() => expect(generateButton).toHaveAttribute("aria-disabled", "true"));
     // Never the "no permission" message — the legitimate DM must not be told they aren't one.
     expect(within(invitePanel).getByText("Comprobando permisos…")).toBeInTheDocument();
     expect(
@@ -505,7 +510,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
     falla = false;
     fireEvent.click(retryButton);
 
-    await waitFor(() => expect(generateButton).not.toBeDisabled());
+    await waitFor(() => expect(generateButton).not.toHaveAttribute("aria-disabled"));
     // Que el reintento **pide de verdad**, sin fijar cuántas veces se pidió antes.
     expect(fetchMembers.mock.calls.length).toBeGreaterThan(llamadasAntes);
   });
@@ -913,7 +918,10 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     await renderAjustes();
     expect(await screen.findByDisplayValue("Curse of Strahd")).toBeDisabled();
     expect(screen.getByDisplayValue("spooky")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByText("Solo el DM puede editar la campaña.")).toBeInTheDocument();
     // Fix round 2, IMPORTANT B: DeleteButton only ever exposes disabledReason via title=,
     // invisible on touch and to a screen reader — CampaignSettings.tsx has to put the
@@ -927,7 +935,7 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     await renderAjustes();
     expect(await screen.findByDisplayValue("Curse of Strahd")).not.toBeDisabled();
     expect(screen.getByDisplayValue("spooky")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Guardar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).not.toHaveAttribute("aria-disabled");
     expect(screen.queryByText("Solo el DM puede editar la campaña.")).not.toBeInTheDocument();
   });
 
@@ -1098,7 +1106,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     // (SPEC GAP 2 of the fix round) — wait for the settled, enabled one before clicking, or
     // the click lands on a button whose onClick a real <button disabled> never fires.
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Salir de la campaña" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Salir de la campaña" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
     fireEvent.click(screen.getByRole("button", { name: "Salir de la campaña" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, salir" }));
@@ -1140,7 +1150,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     // Same race as the test above: wait for the disabled-while-checking button to settle
     // into its enabled form before clicking it.
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Salir de la campaña" })).not.toBeDisabled(),
+      expect(screen.getByRole("button", { name: "Salir de la campaña" })).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
     fireEvent.click(screen.getByRole("button", { name: "Salir de la campaña" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sí, salir" }));
@@ -1227,7 +1239,7 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     // The bottom "Salir de la campaña" slot: disabled and visible, never hidden, while the
     // role — DM or player — isn't known yet (SPEC GAP 2 of the fix round).
     const leaveButton = screen.getByRole("button", { name: "Salir de la campaña" });
-    expect(leaveButton).toBeDisabled();
+    expect(leaveButton).toHaveAttribute("aria-disabled", "true");
   });
 
   it("con un fallo al comprobar el rol, ambos paneles siguen diciendo 'Comprobando permisos…', nunca 'no eres DM', y ofrecen Reintentar", async () => {
@@ -1247,7 +1259,10 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
     expect(
       screen.queryByText("El DM no puede salir de su propia campaña; bórrala."),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Salir de la campaña" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Salir de la campaña" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });
 

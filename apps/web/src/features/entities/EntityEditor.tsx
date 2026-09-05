@@ -68,9 +68,11 @@ export function EntityEditor({
   // solo se distinguían por la pestaña de la que venías. La plantilla propone y no obliga: son
   // encabezados de Markdown que se borran si estorban. Al **editar** no se toca nada, faltaría
   // más: ahí manda lo que ya estaba escrito.
-  const [bodyText, setBodyText] = useState(
-    entity ? bodyToText(entity.body) : PLANTILLA_POR_TIPO[type].plantilla,
-  );
+  // **El punto de partida, guardado aparte** (U8): es contra esto contra lo que se compara para
+  // saber si hay algo sin guardar. En una ficha nueva la plantilla NO cuenta como cambio — nadie
+  // la escribió—, así que cerrar una ficha nueva intacta no pregunta nada.
+  const cuerpoInicial = entity ? bodyToText(entity.body) : PLANTILLA_POR_TIPO[type].plantilla;
+  const [bodyText, setBodyText] = useState(cuerpoInicial);
   const [bodyView, setBodyView] = useState<"edit" | "preview">("edit");
   const [specificPlayerIds, setSpecificPlayerIds] = useState<string[]>([]);
   // Tracks which entity's grants are already loaded into specificPlayerIds, so the seeding
@@ -104,6 +106,18 @@ export function EntityEditor({
   const comments = useComments(entity?.id ?? "", { enabled: isEdit });
   const deleteEntity = useDeleteEntity(campaignId, type);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  /**
+   * **Qué cuenta como «hay cambios»** (U8). Los cuatro campos que se escriben a mano, comparados
+   * con lo que la ficha guardada tiene ahora mismo. En una ficha nueva, cualquier cosa escrita.
+   *
+   * `visibility` y las concesiones **no** entran: se cambian con un control que guarda al elegir,
+   * así que no hay nada pendiente que perder por ahí.
+   */
+  const hayCambiosSinGuardar =
+    name !== (entity?.name ?? "") ||
+    tagsRaw !== (entity?.tags ?? []).join(", ") ||
+    bodyText !== cuerpoInicial;
 
   const onConfirmDelete = async () => {
     if (!entity) return;
@@ -189,6 +203,14 @@ export function EntityEditor({
       onClose={onClose}
       size="lg"
       title={isEdit ? TITULO_EDITAR[type] : TITULO_NUEVO[type]}
+      // **Ficha U8 (plan 14): cerrar con lo escrito sin guardar pregunta primero.** Con el cuerpo
+      // de una ficha dentro, `Escape`, el clic fuera o el aspa perdían trabajo sin decir nada — y
+      // las tres son igual de fáciles de rozar.
+      //
+      // **Se comparan VALORES contra lo que hay guardado**, no una bandera de «he tecleado»: un
+      // aviso que salta siempre —o que salta porque el usuario escribió y borró— se aprende a
+      // descartar sin leer en dos días, y entonces tampoco protege el día que importa.
+      hayCambiosSinGuardar={hayCambiosSinGuardar}
     >
       <div className="space-y-4">
         <form onSubmit={onSubmit} className="space-y-3">

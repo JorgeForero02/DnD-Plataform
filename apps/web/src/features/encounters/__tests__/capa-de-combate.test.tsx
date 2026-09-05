@@ -204,7 +204,10 @@ describe("entrar en combate", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
     const dialogo = await screen.findByRole("dialog");
-    expect(within(dialogo).getByRole("button", { name: "Tirar iniciativa" })).toBeDisabled();
+    expect(within(dialogo).getByRole("button", { name: "Tirar iniciativa" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(within(dialogo).getByText("Nadie elegido todavía")).toBeInTheDocument();
   });
 

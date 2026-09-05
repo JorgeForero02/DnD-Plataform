@@ -296,7 +296,7 @@ describe("Condiciones — la concentración (ficha M17)", () => {
     });
 
     const boton = screen.getByRole("button", { name: "Aplicar condición" });
-    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute("aria-disabled", "true");
     expect(boton).toHaveAttribute("title", "Escribe en qué conjuro se concentra.");
     fireEvent.click(boton);
     expect(espia).not.toHaveBeenCalled();

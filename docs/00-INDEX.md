@@ -9,17 +9,24 @@ funciona.
 **No es** mapas, ni tiempo real, ni 3D, ni IA: eso son las fases 3–5 y cada una recibe su
 propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 
-**Sí tiene. Las fases 2 y 2.5 están en producción** desde el 2026-09-04 (`924058d`). **Lo que NO
-está desplegado es el reseño de la mesa** —rehecho entero en cuatro olas el 4 y el 5 de septiembre—
-ni los tres commits de la Ola 3.
+**Sí tiene, y está desplegado: las fases 2 y 2.5, el reseño de la mesa y los quince planes del
+2026-09-05.** El autor desplegó dos veces ese día y `dnd.supportive.pro` sirve la imagen etiquetada
+**`6eb2590`** — comprobado en el servidor: `docker ps` en `vps1new` da
+`5awvsn1dnkexhcjzg7kjwom6_api:6eb259008369192543f9323ca928ed252e10ca18`.
 
-**Ojo con los tres estados, que desde el 2026-09-05 ya no son dos:** `main` local y `origin/main`
-**van a la par** (se empujaron 39 commits ese día), y **producción va por detrás de los dos**.
-Empujar a GitHub **no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión
-del autor: ver [03-despliegue.md](./03-despliegue.md).
+> **Hasta el 2026-09-05 aquí ponía que el reseño de la mesa NO estaba desplegado y que producción
+> iba por detrás de los dos `main`.** Las dos frases caducaron con ese despliegue.
 
-**El trabajo pendiente está planificado**, uno por fichero, en
-[superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md).
+**Los tres estados, hoy:** `main` local va **dos commits de documentación** por delante de
+`origin/main` y de producción, y **no hay ningún cambio de código sin desplegar** (`git diff
+--name-only 6eb2590..HEAD` no toca `apps/` ni `packages/`). Empujar a GitHub **no despliega nada**
+— el CI solo prueba, y el despliegue es manual por decisión del autor: ver
+[03-despliegue.md](./03-despliegue.md).
+
+**Los quince planes del 2026-09-05 están cerrados**, uno por fichero, en
+[superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md), y lo que
+decidieron mientras se ejecutaban está en [decisiones.md](./decisiones.md). **Lo que queda por hacer
+no es un plan, es jugar**: la partida de prueba con dos cuentas de jugador (D-OP-3).
 
 
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
@@ -63,7 +70,7 @@ miente. En su lugar:
 
 | Documento | Contenido |
 |---|---|
-| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las once de mecánica de 2B, las seis de 2C, las cuatro de 2D, **las diez de la fase 2.5**, **las once del reseño de la mesa** (`D-R-*`) y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
+| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las de mecánica de 2B, 2C, 2D y 2.5, las del reseño de la mesa (`D-R-*`), las veinticuatro del autor del 2026-09-04 (`D-OP-*`), las de la investigación del 2026-09-05, **las que la ejecución de esa noche obligó a tomar** (`E-*`, y varias van contra su propio plan) y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
 | `superpowers/specs/` y `superpowers/plans/` | Los documentos completos, por si hace falta el razonamiento entero o saber qué se creía en una fecha |
 | `superpowers/notes/` | Los prompts de arranque de cada fase |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |

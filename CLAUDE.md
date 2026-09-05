@@ -15,18 +15,29 @@ de `Character`**—, con su pestaña «Bestiario». **No es** mapas, tiempo real
 posteriores, y la **fase 3 ya tiene su alcance escrito**
 ([spec](docs/superpowers/specs/2026-09-03-fase-3-alcance-design.md)).
 
-**Las fases 2 y 2.5 están enteras Y DESPLEGADAS** — encuentros, daño con traza, condiciones en las
-tiradas y el combate como capa de la mesa se subieron a producción el 2026-09-04 (`924058d`).
+**Las fases 2 y 2.5 están enteras y en producción, y el reseño de la mesa también.** El autor
+desplegó a mano el 2026-09-05 y `dnd.supportive.pro` sirve la imagen etiquetada **`6eb2590`** —
+comprobado en el servidor y no de memoria: `docker ps` en `vps1new` da
+`5awvsn1dnkexhcjzg7kjwom6_api:6eb259008369192543f9323ca928ed252e10ca18`. Con ella van el reseño
+entero (la mesa a pantalla completa fuera de `AppShell`, `Dialog` como cajón, los seis carriles
+fusionados y la Ola 3), los quince planes de la noche, la bandeja de avisos y el canal en vivo.
 
-**Lo que NO está desplegado es el reseño de la mesa**, rehecho entero entre el 4 y el 5 de
-septiembre en cuatro olas: la mesa a pantalla completa fuera de `AppShell`, `Dialog` convertido en
-cajón, seis carriles fusionados, y la Ola 3 que midió qué mecánicas seguían sin pantalla. **Local va
-por delante de `dnd.supportive.pro` y se queda así hasta que el autor pida desplegar.**
+> **Hasta el 2026-09-05 este bloque decía que el reseño NO estaba desplegado y que «local va por
+> delante de `dnd.supportive.pro`».** Las dos frases caducaron con ese despliegue, y es el mismo
+> fallo de siempre: prosa de estado escrita a mano en el fichero que se manda leer primero.
 
-Lo que le falta a todo esto es usarse: **la partida de prueba con dos cuentas de jugador**. Y el
-trabajo pendiente está **planificado uno por uno** en
-[docs/superpowers/plans/2026-09-05-planes/](docs/superpowers/plans/2026-09-05-planes/00-INDICE.md),
-con su trazabilidad contra la auditoría de la cola larga.
+**Lo único que separa hoy `main` de producción es documentación**: `git diff --name-only
+6eb2590..HEAD` no toca `apps/` ni `packages/`. Lo que **no** ha cambiado es la regla: **el
+despliegue no se lanza sin que lo pida el autor**.
+
+**Los quince planes del 2026-09-05 están cerrados** — el índice y el bloque «Avance» de cada uno
+dicen cuál con qué commit:
+[docs/superpowers/plans/2026-09-05-planes/](docs/superpowers/plans/2026-09-05-planes/00-INDICE.md).
+Lo que decidieron **mientras se ejecutaban** está recogido, una línea por decisión, en
+[docs/decisiones.md](docs/decisiones.md), que es lo que se lee en vez de releerlos.
+
+Lo que le falta a todo esto es usarse: **la partida de prueba con dos cuentas de jugador**
+(D-OP-3), que sigue siendo lo que cierra la fase 2.
 
 > Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
 > falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que

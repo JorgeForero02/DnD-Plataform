@@ -139,15 +139,44 @@ disposiciones para el autor, y la decisión D1 anotada como aplicada en el maest
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ | 2026-09-05 | Pasos 1–2: invertida **una copia** al pintar (`apps/web/src/features/sessions/hilo/HiloDeSesion.tsx:162`, `const enOrden = [...eventos].reverse()`); `marcarVisto` sigue con `eventos[0].id` (`HiloDeSesion.tsx:123`), sin tocar. |
+| ✅ | 2026-09-05 | Paso 3–4: anclaje al fondo con tolerancia. `TOLERANCIA_FONDO` y `estaAlFondo` (`HiloDeSesion.tsx:82`, `HiloDeSesion.tsx:85`), efecto de anclaje (`HiloDeSesion.tsx:185`), `alDesplazar` (`HiloDeSesion.tsx:205`). |
+| ✅ | 2026-09-05 | Paso 4 bis: aviso «Hay algo nuevo abajo», pulsable (`HiloDeSesion.tsx:300`), con `IconoBajarAlFondo` dibujado en `apps/web/src/features/sessions/iconos.tsx:204`. |
+| ✅ | 2026-09-05 | Paso 5: el compositor sigue **fuera** del contenedor que scrollea — el `<form>` es hermano del envoltorio del hilo (`HiloDeSesion.tsx:314`). |
+| ✅ | 2026-09-05 | Paso 6: `loQueTePerdiste` **no se tocó**; la franja no dice ninguna dirección (`apps/web/src/features/sessions/reincorporarse.ts:90`, «Desde aquí te perdiste N sucesos»). |
+| ✅ | 2026-09-05 | Pruebas RTL, tres casos, en `apps/web/src/features/sessions/__tests__/mesa-de-sesion.test.tsx:310`. |
+| ✅ | 2026-09-05 | Prueba de navegador en `apps/web/e2e/mesa-mide.spec.ts:255`. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **No había flecha hacia abajo dibujada.** `ui/Iconos.tsx` tiene derecha e izquierda y ninguna
+  abajo, y añadirla allí obliga a mover el conteo de su prueba (`apps/web/src/ui/__tests__/Iconos.test.tsx:97`,
+  «los 23 conceptos … 28 componentes»), que es un fichero fuera de este plan. `04-convenciones.md`
+  dice literalmente que **cada módulo grande dibuja los suyos**, y este icono solo lo usa el hilo:
+  vive en `features/sessions/iconos.tsx`. Paso 1 + paso 2, sin abrir ficha.
+- **El aviso necesitaba un ancestro posicionado que no scrollease.** Dentro del `<ol>` se iría con
+  el texto (trampa declarada del plan). Se añadió un envoltorio `relative flex min-h-0 flex-1
+  flex-col` (`HiloDeSesion.tsx:248`) **sin `aria-label`**, para que la medida 4 de
+  `mesa-mide.spec.ts` —que barre `main [aria-label], main section`— siga contando exactamente los
+  mismos paneles que antes.
+- **El efecto de anclaje se dispara con el id del más reciente, no con el array.** La caché
+  devuelve un array nuevo en cada sondeo de quince segundos aunque no haya llegado nada; anclar
+  por eso movería la vista sin motivo. `idMasReciente` (`HiloDeSesion.tsx:184`).
+- **`pnpm verify` se ponía rojo por el propio slot, y no por el código.**
+  `apps/web/src/__tests__/worktree-slot.test.ts:30` («sin definir la variable, da slot 0») solo
+  limpiaba `WORKTREE_SLOT` **después** de cada caso, así que con `WORKTREE_SLOT=2` exportado —lo
+  que `docs/02-entorno.md` manda para trabajar en paralelo— salía «expected 2 to be +0». Se limpia
+  ahora **antes** (`:22`) y el valor del shell se devuelve al terminar (`:25`). Cambio de una línea,
+  alineado con lo que el fichero ya hacía, y sin ficha: paso 1 y paso 2.
+- **Sin fuente externa: no había ninguna duda de reglas de D&D en este plan.** Es maquetación y
+  comportamiento de cliente, así que no hay cita que poner en el commit.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- Nada del plan queda pendiente. Lo único que este plan **no** decide, y se dejó como está a
+  propósito: sellar desde el compositor **estando el lector arriba** tampoco baja la vista, solo
+  enseña el aviso. Distinguir «lo escribí yo» exigiría comparar autoría en el efecto y el plan no
+  lo pide.

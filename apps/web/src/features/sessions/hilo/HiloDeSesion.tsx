@@ -1,9 +1,9 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
 import type { GameEventRow } from "../log-api";
 import { useStampNote } from "../hooks";
 import { ICONO_SELLO, NOMBRE_SELLO, SELLOS_EN_ORDEN } from "../vocabulario";
-import { IconoRegistro } from "../iconos";
+import { IconoBajarAlFondo, IconoRegistro } from "../iconos";
 import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "../reincorporarse";
 import { PanelDeMesa } from "../PanelDeMesa";
 import { useMembers } from "../../campaigns/members";
@@ -48,6 +48,43 @@ import { IconoPluma } from "../../../ui/Iconos";
 // imposibilidad técnica**: las opacidades sueltas compilan desde B0 (la escala se abrió a los cien
 // pasos justo para esto), así que copiar la maqueta al pie de la letra es una línea en cada sitio
 // el día que se decida que se quiere.
+//
+// **D1 (2026-09-05): el hilo se lee como una conversación, lo último abajo.** Palabras del autor:
+// *«esto es el chat de mesa que muestra el historial, se supone que lo último siempre va en línea
+// como si fuera una conversación»*. Tres cosas que hay que entender de cómo está resuelto:
+//
+//  1. **Se invierte al PINTAR, no al pedir.** El servidor sigue mandando el más reciente primero
+//     y no se toca: `nextCursor` sale de la última fila traída, así que invertir la consulta
+//     rompería la paginación por cursor. Lo que se pinta es `[...eventos].reverse()` — **una
+//     copia**, porque `reverse` muta y el array llega de la caché de TanStack Query, donde
+//     mutarlo corrompe lo que ven otros componentes sin fallar de forma visible.
+//  2. **La marca de leído sigue saliendo de `eventos[0].id`**, el original, que sigue siendo el
+//     más reciente. Escribirla desde el array invertido daría el mismo suceso por un rodeo que
+//     es un sitio donde equivocarse.
+//  3. **`loQueTePerdiste` no se ha tocado.** Devuelve el más ANTIGUO de los no leídos, y con el
+//     orden nuevo ese suceso es justo por donde hay que seguir leyendo: la franja queda con lo
+//     no leído **por debajo**, que es lo que su comentario decía querer y el orden viejo le
+//     negaba.
+//
+// **El anclaje es la mitad delicada y el corazón del plan.** Se baja al fondo al montar y cuando
+// llega algo nuevo, pero **solo si el lector ya estaba al fondo** (`TOLERANCIA_FONDO`). Si estaba
+// leyendo más arriba no se mueve nada y se le ofrece un aviso pulsable: un chat que te arrastra
+// mientras lees es peor que uno que no se mueve. Nada de esto se puede probar en `jsdom`, que no
+// maqueta y devuelve `scrollHeight` y `clientHeight` a cero — **cualquier prueba de anclaje
+// pasaría siempre**. Se mide en `apps/web/e2e/mesa-mide.spec.ts`.
+
+/**
+ * Cuánto puede haberse separado del fondo el lector y aun así contar como «está al fondo», en
+ * píxeles. No es un número de gusto: sin holgura, media línea de desplazamiento —o un redondeo
+ * del navegador con `zoom` puesto— dejaría de anclar y el chat se congelaría solo. Ochenta es
+ * poco más de una línea del hilo y bastante menos que un mensaje.
+ */
+const TOLERANCIA_FONDO = 80;
+
+/** Si al lector le queda menos que la tolerancia por debajo, está leyendo lo último. */
+function estaAlFondo(el: HTMLElement): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < TOLERANCIA_FONDO;
+}
 
 /**
  * El registro en vivo, y debajo lo que se usa para escribirlo.
@@ -121,6 +158,56 @@ export function HiloDeSesion({
   const tiradaLigada = (p: GameEventPayload) =>
     p.type === "ATTACK_RESOLVED" ? (porId.get(p.rollEventId) ?? null) : null;
 
+  // **Lo último abajo**: se pinta sobre una COPIA invertida. `eventos` no se toca nunca.
+  const enOrden = [...eventos].reverse();
+
+  // --- El anclaje al fondo ---
+  //
+  // `alFondo` vive en una referencia y no en un estado a propósito: se actualiza en cada píxel de
+  // desplazamiento y volver a pintar el hilo entero por eso sería tirar la máquina. Lo que sí es
+  // estado es el aviso, porque se ve.
+  const listaRef = useRef<HTMLOListElement>(null);
+  const alFondoRef = useRef(true);
+  const [hayNuevoAbajo, setHayNuevoAbajo] = useState(false);
+
+  const bajarAlFondo = useCallback(() => {
+    const el = listaRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    alFondoRef.current = true;
+    setHayNuevoAbajo(false);
+  }, []);
+
+  // El efecto se dispara con el id del más reciente, no con el array: la caché devuelve un array
+  // nuevo en cada sondeo aunque no haya llegado nada, y anclar por eso movería la vista sin
+  // motivo.
+  const idMasReciente = eventos[0]?.id ?? null;
+  useEffect(() => {
+    const el = listaRef.current;
+    if (!el || idMasReciente === null) return;
+    // **Esta condición es el corazón del plan.** Si el lector se ha ido hacia arriba, no se
+    // mueve nada: se le avisa y baja él si quiere.
+    if (!alFondoRef.current) {
+      setHayNuevoAbajo(true);
+      return;
+    }
+    // Dos veces, y no por superstición: en el commit las medidas ya son buenas, pero una
+    // tipografía que llega tarde de Google Fonts cambia la altura después de este momento y
+    // dejaría el hilo un par de líneas por encima del fondo. El cuadro siguiente lo remata.
+    const anclar = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    anclar();
+    const cuadro = requestAnimationFrame(anclar);
+    return () => cancelAnimationFrame(cuadro);
+  }, [idMasReciente]);
+
+  const alDesplazar = (e: React.UIEvent<HTMLOListElement>) => {
+    const fondo = estaAlFondo(e.currentTarget);
+    alFondoRef.current = fondo;
+    if (fondo) setHayNuevoAbajo(false);
+  };
+
   const hayTexto = texto.trim().length > 0;
 
   const poner = async (kind: SessionNoteKind) => {
@@ -155,47 +242,72 @@ export function HiloDeSesion({
           nombres que los títulos de los sellos del hilo, así que sin una lista que se pueda
           nombrar una prueba no distingue «el sello dice Hallazgo» de «hay un botón de
           Hallazgo». Esa confusión dejó pasar una mutación real. */}
-      <ol
-        aria-label="Sucesos de la sesión"
-        className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-s5 py-s4"
-      >
-        {eventos.length === 0 && (
-          <li className="font-chrome text-chrome-sm text-muted">
-            Todavía no ha pasado nada en esta sesión.
-          </li>
+      {/* El envoltorio existe para el aviso: flota sobre el pie del hilo, así que necesita un
+          ancestro posicionado que NO sea el contenedor que scrollea —dentro se iría con el
+          texto—. No lleva `aria-label` a propósito: no es una región, es una costura. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <ol
+          ref={listaRef}
+          onScroll={alDesplazar}
+          aria-label="Sucesos de la sesión"
+          className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-s5 py-s4"
+        >
+          {enOrden.length === 0 && (
+            <li className="font-chrome text-chrome-sm text-muted">
+              Todavía no ha pasado nada en esta sesión.
+            </li>
+          )}
+          {enOrden.map((e) => {
+            // La franja va **encima** del primer suceso que no viste, así que se pinta antes de
+            // su línea. Con el orden de conversación eso deja lo no leído **por debajo**, que es
+            // exactamente lo que `loQueTePerdiste` decía querer y el orden viejo le negaba: su
+            // `desde` es el más ANTIGUO de los nuevos, o sea por donde hay que seguir leyendo.
+            // `role="separator"` y no un `<li>` de texto: es una marca de lectura, no un suceso
+            // más de la partida, y confundirlos en la lista sería mentir sobre lo que pasó en la
+            // mesa.
+            const franja =
+              perdido.desde === e.id ? (
+                <li
+                  key={`${e.id}-franja`}
+                  role="separator"
+                  aria-label={fraseDeLoPerdido(perdido.cuantos)}
+                >
+                  <p className="my-s2 flex items-center gap-s2 font-chrome text-chrome-xs uppercase tracking-widest text-copper-text">
+                    <span aria-hidden="true" className="h-px flex-1 bg-copper" />
+                    {fraseDeLoPerdido(perdido.cuantos)}
+                    <span aria-hidden="true" className="h-px flex-1 bg-copper" />
+                  </p>
+                </li>
+              ) : null;
+            return (
+              <Fragment key={e.id}>
+                {franja}
+                <MensajeDelHilo
+                  evento={e}
+                  autor={nombreDe.get(e.actorUserId) ?? "Alguien"}
+                  ligada={tiradaLigada(e.payload)}
+                  nuevo={esNuevo(e.createdAt)}
+                />
+              </Fragment>
+            );
+          })}
+        </ol>
+
+        {/* El aviso, y por qué existe: cuando llega algo nuevo y el lector está más arriba, la
+            vista NO se mueve. Sin este botón, lo nuevo estaría fuera de pantalla sin decirlo.
+            Va en `--accent`, que es el color de «esto se puede pulsar», y sobre `bg-surface`
+            opaco para que se lea encima del texto del hilo. */}
+        {hayNuevoAbajo && (
+          <button
+            type="button"
+            onClick={bajarAlFondo}
+            className="absolute bottom-s3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-radius-sm border border-accent bg-surface px-s3 py-1 font-chrome text-chrome-xs text-accent-text"
+          >
+            <IconoBajarAlFondo className="h-4 w-4" />
+            Hay algo nuevo abajo
+          </button>
         )}
-        {eventos.map((e) => {
-          // La franja va **encima** del primer suceso que no viste, así que se pinta antes de
-          // su línea. `role="separator"` y no un `<li>` de texto: es una marca de lectura, no
-          // un suceso más de la partida, y confundirlos en la lista sería mentir sobre lo que
-          // pasó en la mesa.
-          const franja =
-            perdido.desde === e.id ? (
-              <li
-                key={`${e.id}-franja`}
-                role="separator"
-                aria-label={fraseDeLoPerdido(perdido.cuantos)}
-              >
-                <p className="my-s2 flex items-center gap-s2 font-chrome text-chrome-xs uppercase tracking-widest text-copper-text">
-                  <span aria-hidden="true" className="h-px flex-1 bg-copper" />
-                  {fraseDeLoPerdido(perdido.cuantos)}
-                  <span aria-hidden="true" className="h-px flex-1 bg-copper" />
-                </p>
-              </li>
-            ) : null;
-          return (
-            <Fragment key={e.id}>
-              {franja}
-              <MensajeDelHilo
-                evento={e}
-                autor={nombreDe.get(e.actorUserId) ?? "Alguien"}
-                ligada={tiradaLigada(e.payload)}
-                nuevo={esNuevo(e.createdAt)}
-              />
-            </Fragment>
-          );
-        })}
-      </ol>
+      </div>
 
       {/* El compositor: **fuera del scroll**, siempre a la vista, y con la pluma delante como en
           la maqueta. Los seis botones son el envío, uno por clase de sello. */}

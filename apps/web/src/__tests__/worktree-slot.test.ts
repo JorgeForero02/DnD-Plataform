@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   apiPortForSlot,
   databaseNameForSlot,
@@ -12,8 +12,19 @@ import {
 // lo recogería nadie y "parecería" verde sin haber corrido nunca.
 
 describe("getWorktreeSlot", () => {
-  afterEach(() => {
+  // **Se limpia ANTES de cada caso, no solo después.** Solo limpiaba después, así que el caso
+  // «sin definir la variable» leía lo que trajera el shell: quien corre `pnpm verify` con
+  // `WORKTREE_SLOT=2` exportado —lo que pide `docs/02-entorno.md` para trabajar en paralelo—
+  // veía «expected 2 to be +0» y una suite roja **por su propio entorno**, no por el código.
+  // Medido el 2026-09-05 en el worktree del plan 04. El valor del shell se devuelve al final,
+  // porque este proceso no es solo nuestro.
+  const original = process.env.WORKTREE_SLOT;
+  beforeEach(() => {
     delete process.env.WORKTREE_SLOT;
+  });
+  afterAll(() => {
+    if (original === undefined) delete process.env.WORKTREE_SLOT;
+    else process.env.WORKTREE_SLOT = original;
   });
 
   it("sin definir la variable, da slot 0", () => {

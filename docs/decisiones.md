@@ -135,7 +135,7 @@ SRD llevan su fundamento: son las que **no se vuelven a preguntar**.
 
 | | Decisión |
 |---|---|
-| D1 | **El hilo se lee como una conversación: lo último abajo.** La franja de «te perdiste» pasa a marcar el punto por debajo del cual está lo no leído, con el scroll anclado abajo y sin saltar si se está leyendo arriba |
+| D1 ✅ | **APLICADA el 2026-09-05** ([plan 04](./superpowers/plans/2026-09-05-planes/04-hilo-conversacion.md), `apps/web/src/features/sessions/hilo/HiloDeSesion.tsx:162`). **El hilo se lee como una conversación: lo último abajo.** La franja de «te perdiste» pasa a marcar el punto por debajo del cual está lo no leído, con el scroll anclado abajo y sin saltar si se está leyendo arriba |
 | D2 | **Manda `04-convenciones.md` sobre el cobre**: un cobre nunca es un botón, el chip activo se queda en `--accent` y **la maqueta se corrige** |
 | D3 | **El color de un personaje lo elige su jugador**, con un por defecto determinista salido de su `id`. Es `Character.color` y sirve para **la voz en el hilo y el retrato en el elenco** |
 | D4 | **El tablero telaraña se retira y lo sustituye la línea de tiempo de la campaña**, ya encargada en [el prompt de Figma Make §18](./superpowers/specs/2026-09-02-prompt-figma-make.md). Muere con él el solape medido de chinchetas |

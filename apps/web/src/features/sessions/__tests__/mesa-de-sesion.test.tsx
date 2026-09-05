@@ -307,6 +307,74 @@ describe("el registro en vivo", () => {
     await waitFor(() => expect(registro.textContent).toContain("ves menos, nunca más"));
   });
 
+  // --- D1: el hilo se lee como una conversación ---
+  //
+  // Tres sucesos con fechas separadas, del más reciente al más antiguo, que es como los manda el
+  // servidor. Lo que estas pruebas comprueban es que se PINTAN al revés y que nada de lo que
+  // depende del orden original se rompió por el camino.
+  //
+  // **Lo que aquí NO se puede probar es el anclaje del scroll**, y decirlo importa: `jsdom` no
+  // maqueta, así que `scrollHeight` y `clientHeight` valen 0 y cualquier aserción sobre el
+  // desplazamiento pasaría con el código roto. Eso se mide en `apps/web/e2e/mesa-mide.spec.ts`.
+  const viejo = { ...anotacion, id: "e-viejo", createdAt: "2026-09-02T21:00:00.000Z" };
+  const medio = { ...anotacion, id: "e-medio", createdAt: "2026-09-02T21:10:00.000Z" };
+  const recien = { ...anotacion, id: "e-recien", createdAt: "2026-09-02T21:20:00.000Z" };
+
+  /** Los tres, como los manda el servidor: más reciente primero. */
+  function conLosTres() {
+    localStorage.clear();
+    vi.spyOn(logApi, "fetchGameEvents").mockResolvedValue({
+      nextCursor: null,
+      events: [recien, medio, viejo] as never,
+    });
+  }
+
+  it("lo último va abajo: el orden de los nodos es del más antiguo al más reciente", async () => {
+    conLosTres();
+
+    montar();
+
+    const lista = await screen.findByRole("list", { name: "Sucesos de la sesión" });
+    await waitFor(() => expect(lista.querySelectorAll("[data-suceso]")).toHaveLength(3));
+    // **Por el orden de los NODOS, no por el texto**: los tres dicen lo mismo, y comprobarlo por
+    // texto pasaría igual con la lista al revés.
+    const ids = [...lista.querySelectorAll("[data-suceso]")].map((el) =>
+      el.getAttribute("data-suceso"),
+    );
+    expect(ids).toEqual(["e-viejo", "e-medio", "e-recien"]);
+  });
+
+  it("la marca de leído sigue siendo el más RECIENTE, con el hilo ya invertido", async () => {
+    conLosTres();
+
+    montar();
+
+    await screen.findByRole("list", { name: "Sucesos de la sesión" });
+    // Si alguien la sacara del array invertido —`enOrden[enOrden.length - 1]` es el mismo suceso
+    // por un rodeo, pero `enOrden[0]` no—, esto se pone rojo.
+    await waitFor(() => expect(localStorage.getItem("dnd-mesa-visto:c1")).toBe("e-recien"));
+  });
+
+  it("con marca puesta, la franja de «te perdiste» deja lo no leído POR DEBAJO", async () => {
+    conLosTres();
+    localStorage.setItem("dnd-mesa-visto:c1", "e-viejo");
+
+    montar();
+
+    const lista = await screen.findByRole("list", { name: "Sucesos de la sesión" });
+    const franja = await within(lista).findByRole("separator");
+    expect(franja).toHaveAttribute("aria-label", "Desde aquí te perdiste 2 sucesos");
+
+    // Lo que de verdad cambia con el orden nuevo: **dos sucesos por debajo de la franja**. Con la
+    // lista al revés la franja quedaba arriba del todo con cero debajo, que es justo lo que el
+    // comentario de `loQueTePerdiste` decía querer evitar.
+    const hijos = [...lista.children];
+    const posicion = hijos.indexOf(franja);
+    expect(posicion).toBeGreaterThanOrEqual(0);
+    const debajo = hijos.slice(posicion + 1).filter((el) => el.hasAttribute("data-suceso"));
+    expect(debajo.map((el) => el.getAttribute("data-suceso"))).toEqual(["e-medio", "e-recien"]);
+  });
+
   it("un jugador no tiene el selector de «ver como»: no es suyo", async () => {
     conMiembros("PLAYER");
     montar("u-ana");

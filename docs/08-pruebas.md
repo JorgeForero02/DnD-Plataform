@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 40 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 41 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 25 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -221,6 +221,7 @@ en verde.
 | `character-state` | Recursos propios, gastarlos, y las tres reglas de descanso que importan: **el largo devuelve la mitad de los dados de golpe, no todos**, y **el brujo repone en el corto**. Un jugador no puede subir un recurso `DM_ONLY`. |
 | `inspiracion` | **El camino entero de la inspiración** (plan 08, ficha I8): que la fila **se siembra al crear el personaje** —no al terminar la ficha, porque no viene de la clase—, que **reponer un `DM_ONLY` es 403 para su dueño** (el jugador no se la concede a sí mismo), que **dos concesiones seguidas dejan una** (`max: 1`, que es la regla del SRD escrita donde se cumple), que gastarla **tira 2d20 y la deja a cero en la misma transacción**, que sin ella es **409 y no queda ni tirada ni gasto**, que con desventaja declarada es **400 en vez de quemarla**, y que **regalarla mueve las dos filas y deja un solo suceso** con los dos nombres. Lo que ningún mock ve: que después del 409 el registro no creció. |
 | `ayudar` | **La acción Ayudar** (plan 08, ficha I8): la marca la recibe **el ayudado**, con el nombre de quien ayuda y un vencimiento de **un asalto exacto**; la hoja **sugiere ventaja en el ataque** y dice por qué; al pasar el asalto **vence y queda marcada**, no desaparece (D-2C-2), y deja de calcular; **se consume con el primer ataque** —dos dados— y el segundo ya tira uno; ayudarse a sí mismo es 400 y a alguien de otra campaña 404. El registro cuenta las dos mitades: quién ayudó y que se usó. |
+| `batuta` | **La batuta de punta a punta** (plan 09, fichas I19 y I20): ejecutar es **solo del DM** (403 al jugador) y una ficha de otra campaña es **404, no 403**; **el camino entero** —el DM ata una regla en frío, pulsa, y el pasadizo aparece en la lista del jugador—, que es lo único que demuestra que el cable está conectado; **ejecutar no edita la ficha**; el suceso es **`DM_ONLY`** y el jugador no lo ve. Y `CHARACTER_ATTACKED` (I20) **se dispara con un ataque resuelto**, sin suceso nuevo. |
 | `level-up` | Subir de nivel escribe su suceso y sube los PG máximos en la cantidad prevista; el previo es idempotente; **el nivel 20 es el techo**. |
 | `catalog-y-velocidad` | El catálogo en español y **la velocidad ya afectada por las condiciones, con su traza**, servidos por el servidor. Existe para que la pantalla **deje de calcular**: es el viaje lo que hay que demostrar. |
 | `inventory` | Meter, equipar, mover y gastar. **Dos peticiones simultáneas de equipar en la misma ranura vacía: una gana y la otra no**, y lo garantiza un índice único parcial. Un objeto `DM_ONLY` no se le puede dar a quien no lo ve, y **uno de otra campaña del mismo DM no entra**. La bolsa no baja de cero. |

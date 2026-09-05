@@ -66,3 +66,16 @@ export function deleteEntity(campaignId: string, entityId: string): Promise<{ de
     body: JSON.stringify({}),
   });
 }
+
+/**
+ * **Ejecutar una ficha** (plan 09, I19): el DM pulsa y las reglas que la esperaban se disparan.
+ * Sin cuerpo — lo que se ejecuta lo dice la URL—, pero se manda `{}` por la trampa de siempre:
+ * `apiFetch` pone `Content-Type: application/json` y Fastify responde 500 a esa cabecera con el
+ * cuerpo realmente vacío.
+ */
+export function executeEntity(campaignId: string, entityId: string) {
+  return apiFetch(`/campaigns/${campaignId}/entities/${entityId}/execute`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}

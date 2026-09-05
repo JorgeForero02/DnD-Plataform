@@ -27,6 +27,8 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   // Narración: el mundo hablando. Solo los tres sucesos de entidad.
   ENTITY_OPENED: "narracion",
   ENTITY_REVEALED: "narracion",
+  // I19: la batuta. Es dirección, no narración de la mesa — y va `DM_ONLY`.
+  DM_EXECUTED: "sistema",
   ENTITY_LINKED: "narracion",
   ENTITY_RETYPED: "narracion",
   // Ola 3: comentar una ficha es el mundo hablando, con los otros sucesos de entidad.
@@ -77,10 +79,11 @@ function soloElTipo(type: GameEventType): GameEventPayload {
 describe("de un suceso del registro a un tipo de mensaje", () => {
   // La red contra el `default` «para que compile»: se recorre la fuente única de tipos, no una
   // lista copiada aquí. Un tipo nuevo en `GAME_EVENT_TYPES` sin decisión pone esto rojo.
-  it("clasifica los 38 tipos de suceso, sin dejarse ninguno", () => {
-    // 38 desde el 2026-09-06: `ENTITY_RETYPED` (I16) y `RESOURCE_GIVEN` (I8). Escrito a propósito — si
+  it("clasifica los 39 tipos de suceso, sin dejarse ninguno", () => {
+    // 39 desde el 2026-09-06: `ENTITY_RETYPED` (I16), `RESOURCE_GIVEN` (I8) y `DM_EXECUTED` (I19).
+    // El número está escrito a propósito — si
     // alguien añade un tipo y no lo clasifica, esta cuenta lo dice antes que el `switch`.
-    expect(GAME_EVENT_TYPES).toHaveLength(38);
+    expect(GAME_EVENT_TYPES).toHaveLength(39);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

@@ -103,7 +103,10 @@ const TODAS: [ParteDeRegla, string][] = [
 
 describe("la frase concuerda con las cajas", () => {
   it("las 24 piezas que la paleta ofrece: cada una, colocada, aparece en la frase y en su parte", () => {
-    expect(TODAS).toHaveLength(28 - DISPARADORES_SIN_MOTOR.length);
+    // 29 piezas en total desde el 2026-09-06: entró `CHARACTER_ATTACKED` (plan 09, I20). Lo que
+    // la paleta OFRECE son esas menos las retiradas, y por eso la resta está escrita y no el
+    // número final: si mañana se retira otra, esta cuenta sigue siendo cierta sola.
+    expect(TODAS).toHaveLength(29 - DISPARADORES_SIN_MOTOR.length);
 
     for (const [parte, clave] of TODAS) {
       montar();

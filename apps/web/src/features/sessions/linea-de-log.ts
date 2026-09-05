@@ -111,6 +111,10 @@ export function lineaDeLog(p: GameEventPayload): string {
       return `Gasta ${p.amount} de ${p.label} (quedan ${p.remaining})`;
     case "RESOURCE_RESTORED":
       return `Recupera ${p.amount} de ${p.label} (quedan ${p.remaining})`;
+    case "DM_EXECUTED":
+      // **La batuta** (I19). Solo la lee el DM —el suceso es `DM_ONLY`—, así que la frase habla en
+      // sus términos: lo que la mesa verá son los efectos, cada uno por su cuenta.
+      return `Ejecuta «${p.entityName ?? "una ficha"}»: dispara las reglas que la esperaban`;
     case "RESOURCE_GIVEN":
       // **De quién a quién, en una sola frase.** El SRD permite regalar la inspiración, y con dos
       // líneas sueltas —un gasto y una reposición— la mesa no sabría que fue el mismo gesto.

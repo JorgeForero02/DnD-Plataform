@@ -41,6 +41,17 @@ export function triggersDe(suceso: SucesoRegistrado): RuleTrigger[] {
     // suceso. Ahora los escribe su gesto — comentar una ficha, y entrar por una invitacion.
     case "ENTITY_COMMENTED":
       return [{ kind: "ENTITY_COMMENTED", entityId: p.entityId }];
+    // I19 — **la batuta.** `entityId` sale del payload y no del sujeto: el sujeto es la campana,
+    // porque ejecutar es un gesto de direccion y no un cambio en la ficha. Mismo patron que
+    // `ENTITY_COMMENTED`.
+    case "DM_EXECUTED":
+      return [{ kind: "DM_EXECUTED", entityId: p.entityId }];
+    // I20 — **«cuando ataquen a este personaje»**, que es lo que `ENTITY_ATTACKED` prometia y no
+    // podia cumplir: se atacan criaturas, no fichas del mundo. **No hace falta suceso nuevo**:
+    // `ATTACK_RESOLVED` se escribe desde 2.5.3 y su SUJETO es el objetivo, asi que la clave sale
+    // de `subjectId` — como en `ENTITY_OPENED`, y no del payload, donde solo esta el atacante.
+    case "ATTACK_RESOLVED":
+      return [{ kind: "CHARACTER_ATTACKED", characterId: suceso.subjectId }];
     case "MEMBER_JOINED":
       return [{ kind: "MEMBER_JOINED" }];
     case "ENTITY_LINKED":

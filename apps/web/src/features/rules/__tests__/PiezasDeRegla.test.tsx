@@ -46,19 +46,23 @@ describe("EditorDeDisparador", () => {
   // **El ejemplo era `MEMBER_JOINED` y dejo de valer en la Ola 3**, cuando ese suceso paso a
   // existir de verdad: la prueba se puso roja sola, que es exactamente lo que tenia que pasar.
   it("una regla ya guardada con un suceso retirado lo enseña marcado y deshabilitado", () => {
+    // **El ejemplo cambió de `DM_EXECUTED` a `ENTITY_ATTACKED` el 2026-09-06** (plan 09): la
+    // batuta ya tiene su gesto y vuelve a la paleta. `ENTITY_ATTACKED` se queda retirado **para
+    // siempre** —se atacan criaturas, no fichas del mundo—, así que es el caso permanente de esta
+    // regla de interfaz: un valor guardado que el selector no ofrece se enseña, no se esconde.
     render(
       <EditorDeDisparador
-        value={{ kind: "DM_EXECUTED" } as RuleTrigger}
+        value={{ kind: "ENTITY_ATTACKED", entityId: "e1" } as RuleTrigger}
         entities={[]}
         onChange={vi.fn()}
       />,
     );
 
     const desplegable = screen.getByLabelText("Cuando") as HTMLSelectElement;
-    const opcion = [...desplegable.options].find((o) => o.value === "DM_EXECUTED");
+    const opcion = [...desplegable.options].find((o) => o.value === "ENTITY_ATTACKED");
     expect(opcion).toBeDefined();
     expect(opcion?.disabled).toBe(true);
-    expect(desplegable.value).toBe("DM_EXECUTED");
+    expect(desplegable.value).toBe("ENTITY_ATTACKED");
     expect(screen.getByRole("alert").textContent).toContain("no dispara este suceso");
   });
 

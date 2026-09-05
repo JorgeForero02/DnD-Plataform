@@ -38,6 +38,47 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La batuta: el DM prepara en frío y en la mesa solo pulsa (2026-09-06, plan 09 · I19 e I20)
+
+**Qué.** *«El DM lee el diálogo en voz alta, pulsa, y pasa lo que tenía que pasar.»* El disparador
+`DM_EXECUTED` estaba en el vocabulario del motor de reglas **desde el principio** y **no existía el
+gesto en ninguna pantalla**, así que nadie escribía el suceso y estaba retirado de la oferta. Era una
+función que faltaba, no un cable suelto.
+
+**Por qué importa más de lo que parece.** Hasta hoy el motor reaccionaba a cosas que ocurren solas
+—se abre una ficha, se pone una marca, se tira—. Con la batuta, el DM **ata por adelantado** lo que
+pasa al abrir el cofre o al entrar en la cripta, y en la mesa solo pulsa. Es lo que convierte el
+motor en algo que se usa **preparando la sesión**.
+
+**Cómo.** Suceso nuevo con su migración; `entityId` en el **payload** y no en el sujeto —ejecutar no
+es algo que le pase a la ficha—; ruta `POST /campaigns/:id/entities/:entityId/execute` **solo DM**;
+visibilidad **`DM_ONLY`**, porque lo que la mesa ve son los **efectos**, cada uno con la suya. Y
+**ejecutar no edita**: escribe el suceso y nada más.
+
+**Y el botón no finge.** Cuenta cuántas reglas **armadas** escuchan a esa ficha y lo dice; con cero
+se apaga con su motivo. No es control de acceso —el servidor acepta igual, y así debe ser—: es no
+ofrecer un gesto que no va a hacer nada. Se cuenta en la pantalla porque la lista de reglas ya está
+pedida; un endpoint para contar sería una segunda verdad.
+
+**`ENTITY_ATTACKED` se retira, y se queda en el esquema para siempre.** Se atacan **criaturas**: un
+lugar no se ataca, y aquí se ataca a un `Character`. **Medido antes de decidir: 244 reglas guardadas,
+ninguna lo usa** — pero quitarlo del esquema haría que una regla vieja **dejara de poder leerse**, y
+la regla de interfaz dice que un valor guardado que el selector no ofrece se enseña marcado. Lo que
+sí sirve es **`CHARACTER_ATTACKED`**, y **no necesita suceso nuevo**: lo alimenta `ATTACK_RESOLVED`,
+que se escribe desde 2.5.3 y cuyo sujeto es el objetivo.
+
+**El fallo que esto destapó, y que no era de este plan:** `matchesTrigger` tenía un
+`default: return false`, así que **un disparador nuevo sin su `case` no coincidía nunca, en
+silencio**. Le pasó a `CHARACTER_ATTACKED` en su primera pasada: el vocabulario lo admitía, el editor
+lo ofrecía, el motor lo recibía, y no pasaba nada. Ahora ese `default` lleva un `never` y el olvido
+es un error de compilación.
+
+**Mutación probada**: quitando el `case` de `DM_EXECUTED` del puente, el e2e del camino entero se
+pone rojo y los otros cinco siguen verdes — que es exactamente lo que el plan pedía demostrar.
+
+**Cómo revertirlo.** `git revert` del commit. El valor del enum se queda en la base sin usar, que no
+rompe nada; una regla guardada con `DM_EXECUTED` volvería a pintarse marcada y no seleccionable.
+
 ## Ayudar da ventaja y caduca cuando el SRD dice (2026-09-06, plan 08 · I8)
 
 **Qué.** La acción **Ayudar** existe en el SRD y la maqueta la pintaba como «Ayuda de Mira **+1d4**».

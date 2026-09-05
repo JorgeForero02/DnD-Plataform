@@ -63,6 +63,19 @@ export class EntitiesController {
     return this.entities.update(req.user.id, campaignId, entityId, body);
   }
 
+  /**
+   * **La batuta** (I19). `POST` y no `PATCH`: no cambia la ficha, ocurre. Sin cuerpo — lo que se
+   * ejecuta lo dice la URL.
+   */
+  @Post(":entityId/execute")
+  execute(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("entityId") entityId: string,
+  ) {
+    return this.entities.execute(req.user.id, campaignId, entityId);
+  }
+
   @Delete(":entityId")
   remove(
     @Req() req: { user: { id: string } },

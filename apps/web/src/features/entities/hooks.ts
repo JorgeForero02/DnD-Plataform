@@ -7,6 +7,7 @@ import {
   createEntity,
   updateEntity,
   deleteEntity,
+  executeEntity,
 } from "./api";
 
 export const entitiesKey = (campaignId: string, type: EntityType) =>
@@ -93,6 +94,22 @@ export function useUpdateEntity(campaignId: string, type: EntityType) {
       // The reading page's own branch — without this, saving from the detail page leaves that
       // very page showing what you just changed away from.
       qc.invalidateQueries({ queryKey: entityDetailKey(campaignId, vars.entityId) });
+    },
+  });
+}
+
+/**
+ * **La batuta** (plan 09, I19). Ejecutar **no edita la ficha**, así que no se invalida ni la ficha
+ * ni la lista: lo único que cambia es el registro de la campaña y, con él, lo que el motor haya
+ * disparado. Se invalidan los sucesos y las trazas del motor, que es donde el DM va a mirar.
+ */
+export function useExecuteEntity(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (entityId: string) => executeEntity(campaignId, entityId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
+      void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "rules"] });
     },
   });
 }

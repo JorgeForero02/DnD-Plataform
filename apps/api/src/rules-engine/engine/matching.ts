@@ -37,13 +37,24 @@ export function matchesTrigger(trigger: RuleTrigger, event: RuleTrigger): boolea
       if (trigger.label === undefined) return true;
       return trigger.label === ev.label;
     }
+    case "CHARACTER_ATTACKED": {
+      const ev = event as Extract<RuleTrigger, { kind: "CHARACTER_ATTACKED" }>;
+      return trigger.characterId === ev.characterId;
+    }
     case "ABILITY_ROLL": {
       const ev = event as Extract<RuleTrigger, { kind: "ABILITY_ROLL" }>;
       if (trigger.outcome !== ev.outcome) return false;
       if (trigger.skill === undefined) return true;
       return trigger.skill === ev.skill;
     }
-    default:
+    default: {
+      // **Un disparador nuevo sin `case` aquí NO coincide nunca, y antes lo hacía en silencio.**
+      // Pasó con `CHARACTER_ATTACKED` (plan 09, I20): el vocabulario lo admitía, el editor lo
+      // ofrecía, el motor lo recibía... y esta función devolvía `false` sin que nada avisara. El
+      // `never` convierte ese olvido en un error de compilación, que es donde tiene que doler.
+      const nunca: never = trigger;
+      void nunca;
       return false;
+    }
   }
 }

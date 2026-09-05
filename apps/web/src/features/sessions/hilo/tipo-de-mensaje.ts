@@ -58,8 +58,14 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
       // hecho que la mesa puede querer leer y deshacer. Va con abrir, revelar y enlazar.
       return "narracion";
 
-    // Sentarse a la mesa es de la campana, no del mundo ni de un personaje: andamiaje.
+    // Sentarse a la mesa es de la campana, no del mundo ni de un personaje: andamiaje. Y la
+    // batuta (I19) es **direccion del DM**, no algo que la mesa vea pasar: su suceso va `DM_ONLY`,
+    // asi que solo lo lee el, y lo que la mesa ve son los EFECTOS con su propia visibilidad.
+    //
+    // (El comentario va aqui arriba y no entre los dos `case`: entre etiquetas rompe
+    // `no-fallthrough`, y ya nos mordio una vez el 2026-09-06.)
     case "MEMBER_JOINED":
+    case "DM_EXECUTED":
       return "sistema";
 
     case "ABILITY_ROLL":

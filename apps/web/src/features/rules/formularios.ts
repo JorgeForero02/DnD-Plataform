@@ -32,6 +32,8 @@ export function disparadorPorDefecto(kind: RuleTrigger["kind"]): RuleTrigger {
       return { kind, key: "" };
     case "ENTITY_LINKED":
       return { kind, fromId: "", toId: "" };
+    case "CHARACTER_ATTACKED":
+      return { kind, characterId: "" };
     case "ABILITY_ROLL":
       return { kind, outcome: "SUCCESS" };
   }

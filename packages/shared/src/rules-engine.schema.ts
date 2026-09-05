@@ -54,7 +54,20 @@ export const ruleTriggerSchema = z.discriminatedUnion("kind", [
     skill: z.string().min(1).max(60).optional(),
     outcome: z.enum(["FAILURE", "SUCCESS", "NATURAL_ONE", "NATURAL_TWENTY"]),
   }),
+  /**
+   * **Retirado de la oferta, conservado en el esquema** (plan 09, ficha I20). Ver
+   * `DISPARADORES_SIN_MOTOR`: se atacan criaturas, no fichas del mundo, y lo que si sirve es
+   * `CHARACTER_ATTACKED`. No se borra para que una regla guardada con el se siga pudiendo leer.
+   */
   z.object({ kind: z.literal("ENTITY_ATTACKED"), ...entityRef.shape }),
+  /**
+   * **«Cuando ataquen a este personaje»** (plan 09, ficha I20). Lo alimenta `ATTACK_RESOLVED`, que
+   * se escribe desde 2.5.3, asi que no hace falta ningun suceso nuevo: solo leerlo.
+   *
+   * Es el disparador que `ENTITY_ATTACKED` prometia y no podia cumplir: aqui se ataca a un
+   * `Character`, y un PNJ es una fila de `Character` desde 2D.
+   */
+  z.object({ kind: z.literal("CHARACTER_ATTACKED"), characterId: z.string().min(1).max(60) }),
   z.object({ kind: z.literal("MEMBER_JOINED") }),
 ]);
 export type RuleTrigger = z.infer<typeof ruleTriggerSchema>;
@@ -67,19 +80,27 @@ export type RuleTrigger = z.infer<typeof ruleTriggerSchema>;
  * API—, y dos listas que tienen que coincidir divergen en cuanto una se toca sin la otra. Es la
  * ficha C6-1, y su cierre escrito era exactamente esto.
  *
- * Quedan dos, y cada uno por su motivo, que **no es pereza**:
+ Queda UNO, y por su motivo, que **no es pereza**:
  *
- * - `DM_EXECUTED` es «la batuta»: el DM lee el dialogo en voz alta, pulsa, y pasa lo que tenia
- *   que pasar. **No existe ese gesto en ninguna pantalla**, asi que el suceso no tendria quien
- *   lo escribiera. Es una funcion que falta, no un cable suelto.
  * - `ENTITY_ATTACKED` apunta a una **ficha del mundo**, y en esta aplicacion se ataca a un
- *   **personaje** (`Character`), no a una entidad. Conectarlo pide antes decidir que significa
- *   atacar un lugar o un PNJ sin hoja, y esa decision es del autor.
+ *   **personaje** (`Character`) — un PNJ es una fila de `Character` desde 2D—, no a una entidad.
+ *   **No hay forma honesta de conectarlo**: un lugar o un documento no se atacan. Y lo que la mesa
+ *   quiere de verdad —«cuando ataquen a este PNJ, dispara esto»— ya existe: es
+ *   `CHARACTER_ATTACKED`, alimentado por `ATTACK_RESOLVED`, que se escribe desde 2.5.3.
+ *
+ *   **Se queda en el esquema para siempre, y esa es la decision** (plan 09, ficha I20, 2026-09-06).
+ *   Quitarlo del esquema Zod haria que una regla guardada con el **dejara de poder leerse**, y la
+ *   regla de interfaz vinculante dice lo contrario: un valor guardado que el selector no ofrece se
+ *   ensena marcado, no se esconde. Medido antes de decidir: **244 reglas guardadas, ninguna lo
+ *   usa** — pero un esquema que se rompe con un dato viejo se rompe una sola vez y ya es tarde.
+ *
+ * `DM_EXECUTED` **salio de esta lista el 2026-09-06** (plan 09, ficha I19): ya tiene su gesto, su
+ * suceso y su boton en la ficha del mundo.
  *
  * Una regla ya guardada con uno de estos se pinta **marcada y no seleccionable**, que es la regla
  * de interfaz vinculante: un valor guardado que el selector no ofrece se ensena, no se esconde.
  */
-export const DISPARADORES_SIN_MOTOR = ["DM_EXECUTED", "ENTITY_ATTACKED"] as const;
+export const DISPARADORES_SIN_MOTOR = ["ENTITY_ATTACKED"] as const;
 
 /** Si un suceso guardado llegara alguna vez al motor. `false` = se pinta marcado. */
 export function elMotorDispara(kind: RuleTrigger["kind"]): boolean {

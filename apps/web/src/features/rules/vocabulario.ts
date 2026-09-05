@@ -61,9 +61,13 @@ export const EFECTOS = clavesDeUnion(ruleEffectSchema) as RuleEffect["kind"][];
  *
  * **Dos de los cuatro ya se implementaron** (Ola 3, 2026-09-04): `ENTITY_COMMENTED` y
  * `MEMBER_JOINED` existen ahora como suceso y su gesto los escribe, asi que la paleta los
- * recupera sola. Quedan `DM_EXECUTED` —cuyo gesto, «la batuta», no existe en ninguna pantalla— y
- * `ENTITY_ATTACKED`, que apunta a una ficha del mundo cuando aqui se ataca a un personaje: eso
- * pide una decision del autor antes que codigo.
+ * recupera sola. **Y `DM_EXECUTED` se implemento el 2026-09-06** (plan 09, ficha I19): «la batuta» ya tiene su
+ * boton en la ficha del mundo, asi que la paleta tambien lo recupera.
+ *
+ * **Queda uno, y para siempre**: `ENTITY_ATTACKED` apunta a una ficha del mundo cuando aqui se
+ * ataca a un **personaje**. No hay forma honesta de conectarlo —un lugar no se ataca—, y lo que la
+ * mesa quiere ya existe: `CHARACTER_ATTACKED`. Se conserva en el esquema para que una regla vieja
+ * se siga pudiendo leer; ver `DISPARADORES_SIN_MOTOR` en `@dnd/shared`.
  *
  * **Y la lista ya no esta duplicada.** Vivia aqui y en `UNREACHABLE_TRIGGER_KINDS` de la API;
  * ahora las dos leen `DISPARADORES_SIN_MOTOR` de `@dnd/shared`, que es donde este proyecto guarda
@@ -107,6 +111,7 @@ export const NOMBRE_DISPARADOR: Record<RuleTrigger["kind"], string> = {
   ENTITY_LINKED: "Se enlazan dos entradas del mundo",
   ABILITY_ROLL: "Una tirada de característica",
   ENTITY_ATTACKED: "Atacan a una entrada del mundo",
+  CHARACTER_ATTACKED: "Atacan a un personaje",
   MEMBER_JOINED: "Alguien se une a la campaña",
 };
 
@@ -250,6 +255,12 @@ export function describirDisparador(
     case "DM_EXECUTED":
     case "ENTITY_ATTACKED":
       return `${base}: «${nombreFicha(trigger.entityId)}»`;
+    case "CHARACTER_ATTACKED":
+      // **El nombre del personaje no se resuelve aquí**, y es a propósito: `nombreFicha` mira las
+      // fichas del mundo, y un personaje no es una. Antes que enseñar un nombre equivocado se
+      // enseña el identificador, que es cierto. Cuando el editor sepa listar personajes, aquí
+      // entra su nombre y no un tercer diccionario.
+      return `${base}: ${trigger.characterId}`;
     case "FLAG_SET":
     case "SIGNAL_RAISED":
       return `${base}: «${trigger.key}»`;

@@ -52,6 +52,11 @@ export const GAME_EVENT_TYPES = [
   // otro jugador, y con `RESOURCE_SPENT` + `RESOURCE_RESTORED` la mesa veria dos sucesos sueltos
   // sin saber que son el mismo gesto ni de quien a quien fue.
   "RESOURCE_GIVEN",
+  // I19 (2026-09-06) — **la batuta**: el DM lee el dialogo en voz alta, pulsa, y pasa lo que tenia
+  // que pasar. El disparador estaba en el vocabulario del motor desde el principio y **no existia
+  // el gesto en ninguna pantalla**, asi que nadie escribia el suceso: era una funcion que faltaba,
+  // no un cable suelto. Es lo que convierte el motor en algo que se usa PREPARANDO la sesion.
+  "DM_EXECUTED",
   "FLAG_SET",
   "SET_CHANGED",
   "SIGNAL_RAISED",
@@ -304,6 +309,22 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("ENTITY_COMMENTED"),
+    entityId: z.string().min(1),
+    entityName: z.string().max(200).optional(),
+  }),
+  /**
+   * **La batuta** (I19). El DM ejecuta una ficha del mundo y las reglas que la esperaban se
+   * disparan.
+   *
+   * **`entityId` va en el payload y no en el sujeto**, igual que `ENTITY_COMMENTED`: el sujeto de
+   * este suceso es la campana —es un gesto de direccion, no un cambio en la ficha— y el motor lee
+   * la entidad de aqui.
+   *
+   * **`DM_ONLY` siempre.** Ejecutar es de direccion; lo que la mesa ve son los EFECTOS que las
+   * reglas produzcan, cada uno con su propia visibilidad.
+   */
+  z.object({
+    type: z.literal("DM_EXECUTED"),
     entityId: z.string().min(1),
     entityName: z.string().max(200).optional(),
   }),

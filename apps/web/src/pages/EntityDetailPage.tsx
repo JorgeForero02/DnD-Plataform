@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
 import { useEntityDetail } from "../features/entities/hooks";
+import { BotonEjecutar } from "../features/entities/BotonEjecutar";
 import { BotonRevelar } from "../features/entities/BotonRevelar";
 import { EntityEditor } from "../features/entities/EntityEditor";
 import { Markdown } from "../features/entities/Markdown";
@@ -66,6 +67,8 @@ export function EntityDetailPage() {
   const navigate = useNavigate();
 
   const roleUnresolved = roleLoading || roleError;
+  // **Mientras el rol no se sabe, no eres DM**: «no lo sé» nunca se trata como «sí».
+  const esDM = !roleUnresolved && role === "DM";
   const puedeEditar =
     !roleUnresolved && entity !== undefined && (role === "DM" || entity.createdById === userId);
   const motivo = roleUnresolved
@@ -133,6 +136,10 @@ export function EntityDetailPage() {
                 `ENTITY_REVEALED` que el motor de reglas escucha dependía de que alguien
                 recordara cuál. Se pinta solo cuando de verdad haría crecer el conjunto de
                 quien la ve (`sePuedeRevelar`). */}
+            {/* **La batuta** (I19), junto a revelar y no dentro de un menú: son los dos gestos de
+                dirección sobre esta ficha. Solo el DM — el servidor lo impone con `requireDM`, y
+                aquí no se ofrece porque un botón que va a dar 403 promete algo falso. */}
+            {esDM && <BotonEjecutar campaignId={id} entityId={entity.id} />}
             {puedeEditar && (
               <BotonRevelar
                 campaignId={id}

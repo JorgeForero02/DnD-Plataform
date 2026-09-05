@@ -20,8 +20,11 @@ import {
 // pruebas fallan antes de que la clave cruda llegue a la pantalla.
 
 describe("el vocabulario cubre exactamente lo que admite el esquema", () => {
-  it("los 12 disparadores salen del esquema y todos están traducidos", () => {
-    expect(DISPARADORES).toHaveLength(12);
+  it("los 13 disparadores salen del esquema y todos están traducidos", () => {
+    // 13 desde el 2026-09-06: entra `CHARACTER_ATTACKED` (plan 09, ficha I20), que es el que
+    // `ENTITY_ATTACKED` prometía y no podía cumplir. El número está escrito a propósito: añadir un
+    // disparador sin traducirlo pone esto rojo antes de que la clave cruda llegue a la pantalla.
+    expect(DISPARADORES).toHaveLength(13);
     for (const kind of DISPARADORES) {
       expect(NOMBRE_DISPARADOR[kind], `sin traducir: ${kind}`).toBeTruthy();
       expect(NOMBRE_DISPARADOR[kind]).not.toBe(kind);

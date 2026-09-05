@@ -284,6 +284,47 @@ export class EntitiesService {
     });
   }
 
+  /**
+   * **La batuta** (plan 09, ficha I19): el DM pulsa y las reglas que esperaban a esta ficha se
+   * disparan.
+   *
+   * **Ejecutar NO edita la ficha.** No cambia un campo, no la revela, no la marca: escribe un
+   * suceso y nada más. Es lo que la convierte en una herramienta de **preparación** — el DM ata en
+   * frío lo que pasa al abrir el cofre o al leer la inscripción, y en la mesa solo pulsa.
+   *
+   * **Solo el DM**, y el suceso es **`DM_ONLY` siempre**: ejecutar es un gesto de dirección. Lo que
+   * la mesa ve son los EFECTOS que las reglas produzcan, cada uno con su propia visibilidad. Si el
+   * suceso heredara la visibilidad de la ficha, la mesa vería «el DM ejecutó *La cripta*» y con
+   * ello el nombre de una ficha que quizá no debía conocer.
+   */
+  async execute(userId: string, campaignId: string, entityId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    const entity = await this.prisma.entity.findFirst({
+      where: { id: entityId, campaignId },
+      select: { id: true, name: true },
+    });
+    // 404 y no 403: el DM de otra campaña no tiene por qué enterarse de que esa ficha existe.
+    if (!entity) throw new NotFoundException("Entity not found");
+
+    return this.prisma.transaction(async (tx) => {
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          // **El sujeto es la campaña, no la ficha**, y el `entityId` va en el payload: esto no es
+          // algo que le pase a la ficha, es algo que hace el DM. El motor lo lee de ahí, con el
+          // mismo patrón que `ENTITY_COMMENTED`.
+          subjectType: "campaign",
+          subjectId: campaignId,
+          visibility: "DM_ONLY",
+          payload: { type: "DM_EXECUTED", entityId: entity.id, entityName: entity.name },
+        },
+        tx,
+      );
+      return { executed: true, entityId: entity.id };
+    });
+  }
+
   async remove(userId: string, campaignId: string, entityId: string) {
     await this.membership.requireMember(campaignId, userId);
     await this.requireEditable(userId, campaignId, entityId);

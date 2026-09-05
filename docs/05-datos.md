@@ -755,3 +755,35 @@ con la del ayudante, ayudar a un PNJ `DM_ONLY` lo habría anunciado a la mesa.
 **El flanqueo no existe en el modelo**, y es una decisión: es una regla **opcional del DMG**, no del
 SRD, da **ventaja** y no un `+3` —ese +2 es de 3.ª edición y de Pathfinder—, y necesitaría saber
 quién está adyacente a quién, o sea el tablero de la fase 3.
+
+## La batuta y el disparador que se retira (plan 09, fichas I19 y I20)
+
+**`DM_EXECUTED`** (migración `20260906040000_dm_executed_event`) es *«la batuta»*: el DM lee el
+diálogo en voz alta, pulsa sobre una ficha del mundo, y **pasa lo que tenía que pasar**. Estaba en
+el vocabulario del motor de reglas **desde el principio** y no existía el gesto en ninguna pantalla,
+así que nadie escribía el suceso: era una función que faltaba, no un cable suelto. Con él, el motor
+deja de ser solo reactivo — el DM **ata en frío** lo que ocurre al abrir el cofre o al entrar en la
+cripta, y en la mesa solo pulsa.
+
+- **`entityId` va en el `payload`, no en el sujeto.** El sujeto es la campaña: ejecutar no es algo
+  que le pase a la ficha, es algo que hace el DM. Mismo patrón que `ENTITY_COMMENTED`.
+- **`DM_ONLY` siempre.** Si heredara la visibilidad de la ficha, la mesa leería «el DM ejecutó *La
+  cripta*» y con ello el nombre de una ficha que quizá no debía conocer. Lo que la mesa ve son los
+  **efectos**, cada uno con su propia visibilidad.
+- **Ejecutar no edita.** No cambia un campo, no revela, no marca: escribe el suceso y nada más.
+
+**`ENTITY_ATTACKED` se retira de la oferta y se conserva en el esquema, para siempre** (I20). Se
+atacan **criaturas**; un lugar o un documento no se atacan, y aquí se ataca a un `Character` —un PNJ
+es una fila de `Character` desde 2D—, mientras el disparador apunta a una `Entity`. **No hay forma
+honesta de conectarlo.** Medido antes de decidir: **244 reglas guardadas, ninguna lo usa** — pero
+quitarlo del esquema Zod haría que una regla guardada con él **dejara de poder leerse**, y la regla
+de interfaz vinculante dice lo contrario: un valor guardado que el selector no ofrece se enseña
+marcado, no se esconde. Se queda en `DISPARADORES_SIN_MOTOR`, que es exactamente para esto.
+
+**Lo que sí sirve es `CHARACTER_ATTACKED`**, y **no necesita ningún suceso nuevo**: lo alimenta
+`ATTACK_RESOLVED`, que se escribe desde 2.5.3 y cuyo **sujeto es el objetivo**. Solo faltaba leerlo.
+
+> **Trampa que costó una prueba roja:** `matchesTrigger` (`rules-engine/engine/matching.ts`) tenía un
+> `default: return false`, así que un disparador nuevo sin su `case` **no coincidía nunca y en
+> silencio** — el vocabulario lo admitía, el editor lo ofrecía y el motor lo recibía. Ahora ese
+> `default` lleva un `never`: el olvido es un error de compilación.

@@ -119,15 +119,46 @@ solo estado coherente**: lo que el motor dispara es exactamente lo que el editor
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **9.1 · La batuta.** Suceso `DM_EXECUTED` (`packages/shared/src/game-event.schema.ts`) + migración `apps/api/prisma/migrations/20260906040000_dm_executed_event/`. `case` en `apps/api/src/rules-engine/game-event-triggers.ts:45`. Ruta `EntitiesService.execute` (`apps/api/src/entities/entities.service.ts:288`) y su `@Post(":entityId/execute")`. Fuera de `DISPARADORES_SIN_MOTOR` en `packages/shared/src/rules-engine.schema.ts:88`, **en el mismo commit**. Botón en `apps/web/src/features/entities/BotonEjecutar.tsx`, montado en `apps/web/src/pages/EntityDetailPage.tsx:139`. **Commit `<pendiente 09>`** |
+| ✅ hecho | 2026-09-06 | **9.2 · `ENTITY_ATTACKED`.** **Se conserva** en el esquema y se queda en `DISPARADORES_SIN_MOTOR` para siempre, con su motivo escrito. Entra `CHARACTER_ATTACKED` (`rules-engine.schema.ts`), alimentado por `ATTACK_RESOLVED` en `game-event-triggers.ts:53` y comparado en `apps/api/src/rules-engine/engine/matching.ts:47`. **Commit `<pendiente 09>`** |
+| ✅ | 2026-09-06 | **EL PLAN 09 ESTÁ CERRADO**, con su e2e (`apps/api/test/batuta.e2e-spec.ts`, 6 verdes) y su mutación. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **9.2 · MEDÍ LOS DATOS ANTES DE DECIDIR, como pedía el plan: 244 reglas guardadas y NINGUNA usa
+  `ENTITY_ATTACKED`** (ni `DM_EXECUTED`). Aun así **se conserva en el esquema**, que es la otra
+  salida que el propio plan ofrecía: quitarlo del Zod haría que una regla guardada con él **dejara
+  de poder leerse**, y la regla de interfaz vinculante dice lo contrario. Cero filas hoy en la base
+  de desarrollo no es cero filas nunca, y un esquema que se rompe con un dato viejo se rompe **una
+  sola vez** y ya es tarde. Queda en `DISPARADORES_SIN_MOTOR` **para siempre**, con su motivo.
+- **EL FALLO QUE ESTO DESTAPÓ, Y NO ERA DE ESTE PLAN.** `matchesTrigger`
+  (`apps/api/src/rules-engine/engine/matching.ts`) tenía un `default: return false`: **un disparador
+  nuevo sin su `case` no coincide nunca, y en silencio**. Le pasó a `CHARACTER_ATTACKED` en la
+  primera pasada —vocabulario, editor y puente todos correctos, y no ocurría nada—, y solo lo vio el
+  e2e. Ese `default` lleva ahora un `never`: el olvido es un error de compilación. **Sin el e2e
+  contra Postgres esto habría llegado a la mesa del autor como «el motor no funciona a veces».**
+- **9.1 · `entityId` va en el PAYLOAD y el sujeto es la campaña.** Ejecutar **no es algo que le pase
+  a la ficha**, es algo que hace el DM. Mismo patrón que `ENTITY_COMMENTED`, y por eso el motor lo
+  lee del payload.
+- **9.1 · `DM_ONLY` siempre, y no la visibilidad de la ficha.** Heredarla habría hecho que la mesa
+  leyera «el DM ejecutó *La cripta*» y con ello el nombre de una ficha que quizá no debía conocer.
+  Lo que la mesa ve son los EFECTOS, cada uno con la suya.
+- **9.1 · El botón cuenta en la PANTALLA, no en un endpoint nuevo.** La lista de reglas ya está
+  pedida en la sesión del DM (`useRules`); un endpoint para contar sería una segunda verdad sobre lo
+  mismo, con las dos pudiendo discrepar.
+- **9.1 · Y no cuenta de más:** solo las **armadas**, solo las de **esta** ficha y solo las de
+  `DM_EXECUTED`. Contar de más es la misma mentira al revés — prometer que va a pasar algo que no
+  pasa—, y hay una prueba de las tres exclusiones.
+- **9.2 · `CHARACTER_ATTACKED` sale del SUJETO de `ATTACK_RESOLVED`**, no de su payload: el payload
+  lleva el **atacante** (`attackerId`) y el sujeto es **el objetivo**, que es de quien habla el
+  disparador. Leer el payload habría dado la regla al revés.
+- **Un ejemplo de prueba tuvo que cambiar, y se declara.** «Una regla guardada con un suceso retirado
+  se enseña marcada» usaba `DM_EXECUTED`; ahora usa `ENTITY_ATTACKED`, que es el caso **permanente**.
+  La prueba no se debilitó: cambió de sujeto porque su sujeto dejó de estar retirado.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **Nada. El plan 09 está cerrado.** Lo siguiente es el plan 11.

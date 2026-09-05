@@ -549,7 +549,14 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   await expect(
     dmPage.getByRole("heading", { name: "La Ciudadela de los Vientos Eternos" }),
   ).toBeVisible();
-  const playerRow = dmPage.getByRole("listitem").filter({ hasText: jugador.displayName });
+  // **Acotado a la lista de miembros**, y no al documento entero: desde el plan 11 el panel de
+  // invitaciones tiene su propia lista, y una de sus filas dice «la usó <nombre>» — el mismo texto.
+  // Sin acotar, el localizador cazaba dos elementos y fallaba por ambigüedad, que es exactamente lo
+  // que este recorrido tiene que distinguir: el miembro y el enlace que usó no son la misma cosa.
+  const playerRow = dmPage
+    .getByRole("list", { name: "Miembros de la campaña" })
+    .getByRole("listitem")
+    .filter({ hasText: jugador.displayName });
   await expect(playerRow).toBeVisible();
   // El DM nunca ve "Salir de la campaña": ve el motivo que da el servidor.
   await expect(dmPage.getByRole("button", { name: "Salir de la campaña" })).toHaveCount(0);

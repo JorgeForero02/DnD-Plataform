@@ -116,6 +116,21 @@ test("el DM invita, el jugador entra por el enlace y no ve la entidad DM_ONLY", 
   const inviteUrl = await linkField.inputValue();
   expect(inviteUrl).toMatch(/\/join\/.+/);
 
+  // **Plan 11 (D3b y A3): el enlace aparece en la lista de repartidos, y con su caducidad.**
+  // Hasta este plan las invitaciones se generaban **a ciegas** — nadie sabía cuántas vivían—, y el
+  // propio panel lo advertía. Esto se mide en el navegador y no en `jsdom` porque lo que importa
+  // es que la lista se **refresque sola** al generar: es una invalidación de consulta, y una
+  // unitaria con el hook mockeado no la habría visto.
+  const repartidos = dmPage.getByRole("region", { name: "Enlaces repartidos" });
+  await expect(repartidos).toBeVisible();
+  const cola = inviteUrl.slice(-6);
+  const fila = repartidos.getByRole("listitem").filter({ hasText: cola });
+  await expect(fila).toContainText("Sin usar");
+  // El selector propone siete días, así que el enlace nuevo **caduca**, y la fila lo dice.
+  await expect(fila).toContainText("caduca el");
+  // **Y el token entero no está en la pantalla**: solo su cola.
+  await expect(repartidos).not.toContainText(inviteUrl.split("/join/")[1]);
+
   // Arreglo 2: el DM abre su propio enlace para comprobar que funciona. Antes de 1.14-fix la
   // aceptación se disparaba sola al montar y esto quemaba el enlace (usedAt se marcaba aunque
   // el rol no cambiara) sin que nadie lo avisara. Ahora ve una confirmación explícita, dice

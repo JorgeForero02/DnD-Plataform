@@ -18,7 +18,7 @@
 > se conserva tal cual se escribió, incluida su frase «`main` en `4c7c3a2`», que ya no es cierta —
 > un documento fechado no se reescribe. Lo que es cierto **hoy** está aquí.
 
-**`main` en `d48f268`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
+**`main` en `bf1b1c9`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
 worktree de trabajo abiertos.**
 
 | Plan | Estado | Commits |
@@ -33,15 +33,16 @@ worktree de trabajo abiertos.**
 | **05** · El color de cada personaje | ✅ **cerrado** (D3 aplicada) | `1aba8b2` · `14bbd44` |
 | **08** · Inspiración y Ayudar | ✅ **cerrado**, las dos (I8) | `1758c21` · `ad128ca` |
 | **09** · La batuta y `ENTITY_ATTACKED` | ✅ **cerrado** (I19, I20) | `d48f268` |
-| **11 · 12 · 13 · 14** | ⬜ sin empezar | — |
+| **11** · La administración de la mesa | ✅ **cerrado** (D2, D3b, A3) | `bf1b1c9` |
+| **12 · 13 · 14** | ⬜ sin empezar | — |
 | **10** · La documentación | ⬜ va **al final**, y buena parte ya se escribió por el camino | — |
 
 **El orden recomendado para lo que queda**, con las dependencias ya resueltas:
 
 ```
-11 → 13 → 14 → 12     (y el 10 al final)
+13 → 14 → 12     (y el 10 al final)
 
-07, 05, 08 y 09 ya están cerrados.
+07, 05, 08, 09 y 11 ya están cerrados.
 ```
 
 **Lo que la noche del 05 dejó dicho y no está en ningún plan:**

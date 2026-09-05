@@ -13,6 +13,13 @@ import { Propuestas } from "./Propuestas";
 import { TrazaDeReglas } from "./TrazaDeReglas";
 import { useCreateRule, useDeleteRule, useDryRun, useRules, useUpdateRule } from "./hooks";
 import { IconoPropuesta, IconoTraza } from "./iconos";
+// Auditoría de la mesa §8.1 — marcas, conjuntos y señales llevaban desde 2A en el servidor sin
+// una sola llamada desde la web. Se montan aquí, y no en una pestaña propia de la campaña,
+// porque son lo que las reglas leen y escriben: el DM que arma una cadena necesita poder poner
+// su primera marca sin cambiar de pantalla. El taller del DM (carril C4) las quiere en «Lo que
+// sabe la mesa»; cuando exista, consume `features/world-state/hooks.ts` o se lleva este panel
+// entero.
+import { PanelDeEstadoDelMundo } from "../world-state/PanelDeEstadoDelMundo";
 
 // Tarea 2A.17 — el punto de montaje único de la pantalla del motor de reglas.
 //
@@ -207,6 +214,11 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
                 activo={pestana === "propuestas"}
               />
             ),
+          },
+          {
+            id: "mundo",
+            label: "Estado del mundo",
+            content: <PanelDeEstadoDelMundo campaignId={campaignId} />,
           },
           {
             id: "traza",

@@ -37,6 +37,68 @@ export const CONDICIONES = clavesDeUnion(ruleConditionSchema) as RuleCondition["
 /** Los 8 efectos. */
 export const EFECTOS = clavesDeUnion(ruleEffectSchema) as RuleEffect["kind"][];
 
+/**
+ * **Los cuatro sucesos que el motor NO dispara**, y por eso el editor deja de ofrecerlos
+ * (auditoría de la mesa, §8.3).
+ *
+ * `apps/api/src/rules-engine/game-event-triggers.ts` traduce cada suceso del registro a los
+ * disparadores que produce, y su `switch` **no tiene `case` para ninguno de estos cuatro**: caen
+ * en el `default` y devuelven lista vacía. Una regla armada sobre cualquiera de ellos se puede
+ * escribir, ensayar en seco y guardar, **y no se dispara jamás en una partida**.
+ *
+ * La regla del proyecto es que si el texto y el servidor discrepan, **miente el texto**. Aquí el
+ * texto es toda la paleta: ofrecerlos es prometer una regla que el motor no cumple.
+ *
+ * **Se retiran de lo que se OFRECE, no del esquema.** `ruleTriggerSchema` sigue teniendo los
+ * doce, y `DISPARADORES` sigue devolviendo los doce, porque quitarlos del vocabulario compartido
+ * rompería las reglas ya guardadas que los usan: dejarían de validar, y una regla guardada que no
+ * valida es una regla que se pierde. Lo que hacen las pantallas con una regla vieja que los use
+ * es lo que manda la regla vinculante de interfaz — *«un valor guardado que un selector no ofrece
+ * se muestra marcado y no seleccionable»* (`docs/04-convenciones.md`): se pinta, se dice que no
+ * se disparará, y no se puede volver a elegir.
+ *
+ * **Implementarlos es tocar el servidor**, que no es de este carril. El día que
+ * `game-event-triggers.ts` tenga sus cuatro `case`, esta lista se vacía y la paleta los recupera
+ * sola — no hay nada más que deshacer.
+ *
+ * **Y sí, es una segunda copia de una lista del servidor, y el motivo es una frontera de trabajo,
+ * no una imposibilidad.** La de allí es `UNREACHABLE_TRIGGER_KINDS`
+ * (`apps/api/src/rules-engine/trace-payload.ts:109`). Esto son **cuatro literales de
+ * `RuleTrigger["kind"]`**, y `packages/shared/src` es justo donde este proyecto guarda la forma
+ * de los datos una sola vez: cabrían ahí perfectamente, y las dos copias desaparecerían. No se
+ * hizo porque **el carril que escribió esto no tocaba `packages/shared`** — su encargo era la
+ * web—, y una constante compartida se añade sin prisa el día que alguien trabaje en esa frontera.
+ * Escrito aquí para que nadie deduzca de la duplicación que había una razón técnica.
+ *
+ * Mientras tanto **no pueden divergir en silencio sobre una regla ya guardada**: el servidor
+ * aplica la suya a cada fila y manda el veredicto en `RuleRow.triggerReachableToday`, que es lo
+ * que pinta el aviso de `ListaDeReglas`. Si alguien implementa un disparador allí y olvida
+ * quitarlo de aquí, la lista deja de avisar mientras la paleta lo sigue escondiendo, y eso se ve.
+ */
+export const DISPARADORES_SIN_MOTOR: RuleTrigger["kind"][] = [
+  "ENTITY_COMMENTED",
+  "DM_EXECUTED",
+  "ENTITY_ATTACKED",
+  "MEMBER_JOINED",
+];
+
+/** Los sucesos que el editor ofrece: los del esquema menos los que el motor no dispara. */
+export const DISPARADORES_OFRECIDOS = DISPARADORES.filter(
+  (kind) => !DISPARADORES_SIN_MOTOR.includes(kind),
+);
+
+/** Si un suceso guardado llegará alguna vez al motor. `false` = se pinta marcado. */
+export function elMotorLoDispara(kind: string): boolean {
+  return !(DISPARADORES_SIN_MOTOR as string[]).includes(kind);
+}
+
+/**
+ * La frase que acompaña a un suceso que el motor no dispara. **Se dice entera, no se abrevia**:
+ * quien ve una regla suya marcada necesita saber que no es un aviso de estilo.
+ */
+export const AVISO_SIN_MOTOR =
+  "El motor no dispara este suceso todavía: una regla armada sobre él no llegará a ejecutarse. Ya no se puede elegir.";
+
 // ---------------------------------------------------------------------------------------------
 // Los diccionarios
 // ---------------------------------------------------------------------------------------------

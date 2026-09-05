@@ -10,7 +10,9 @@ import {
   disparadorPorDefecto,
 } from "./formularios";
 import {
-  DISPARADORES,
+  AVISO_SIN_MOTOR,
+  DISPARADORES_OFRECIDOS,
+  elMotorLoDispara,
   NOMBRE_ACCION_CONJUNTO,
   NOMBRE_AUDIENCIA,
   NOMBRE_RESULTADO_TIRADA,
@@ -246,13 +248,29 @@ export function EditorDeDisparador({
           // anterior que el esquema del servidor rechaza.
           onChange={(e) => onChange(disparadorPorDefecto(e.target.value as RuleTrigger["kind"]))}
         >
-          {DISPARADORES.map((kind) => (
+          {/* **Un valor guardado que el selector no ofrece se muestra marcado y no
+              seleccionable** (regla vinculante de `docs/04-convenciones.md`). Los cuatro sucesos
+              que el motor no dispara (auditoría §8.3) salen de la lista ofrecida, pero una regla
+              vieja armada sobre uno de ellos tiene que poder leerse: se pinta su opción,
+              `disabled`, con la advertencia pegada, en vez de que el desplegable se quede
+              apuntando a otra cosa y mienta sobre lo que hay guardado. */}
+          {!elMotorLoDispara(value.kind) && (
+            <option value={value.kind} disabled>
+              {nombreDisparador(value.kind)} — el motor no lo dispara
+            </option>
+          )}
+          {DISPARADORES_OFRECIDOS.map((kind) => (
             <option key={kind} value={kind}>
               {nombreDisparador(kind)}
             </option>
           ))}
         </select>
       </Field>
+      {!elMotorLoDispara(value.kind) && (
+        <p role="alert" className="font-chrome text-chrome-xs text-warning-text">
+          {AVISO_SIN_MOTOR}
+        </p>
+      )}
       <CamposDeDisparador value={value} entities={entities} onChange={onChange} />
     </div>
   );

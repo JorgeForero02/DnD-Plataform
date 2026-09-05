@@ -28,42 +28,51 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## La mesa deja de ser una página y pasa a ser una cabina (2026-09-04)
+## El reseño de la mesa: la cabina y las mecánicas que no tenían pantalla (2026-09-04)
 
-**Qué.** El armazón de la mesa, en `main`, y **seis carriles cerrados en sus ramas sin fusionar**
-(`carril/c1..c6`; C2, C3 y C5 ya dentro). `SesionPage` deja `AppShell` y `PageHeader`: la mesa
-ocupa la ventana (`flex h-screen flex-col overflow-hidden`), con **scroll por panel** y `min-h-0`
-en todos los ancestros —sin él un hijo de flex/grid no encoge por debajo de su contenido y el
-`overflow-y-auto` **no se activa jamás**, que era el defecto—. `ui/Dialog` pasa de cuadro centrado
-a **cajón lateral** (26/40/58 rem, variante `pergamino`, ranuras de subtítulo y acciones), que
-heredan sus 24 usos. `tokens.css` gana `.scroll-quiet` —que se usaba **sin existir**—, `.capitular`
-y los tres `@keyframes` con `prefers-reduced-motion`. `MesaDeSesion.tsx` baja de **992 líneas a un
-compositor de ~150** y las piezas se reparten en `elenco/`, `hilo/`, `dm/` y `taller/`.
+**Qué.** Dos entregas del mismo día contra la auditoría de la mesa: **el armazón** y **el §8**.
 
-**Por qué así.** La auditoría del 2026-09-04 midió que se había **adaptado** la maqueta en vez de
-**sustituirla**, y que las desviaciones estaban escritas en comentarios como si fueran acuerdos.
-Partir el compositor por carpetas es lo que permitió que seis carriles trabajaran sin tocar el
-mismo fichero.
+**El armazón.** `SesionPage` deja `AppShell` y `PageHeader`: la mesa ocupa la ventana
+(`flex h-screen flex-col overflow-hidden`), con **scroll por panel** y `min-h-0` en todos los
+ancestros —sin él un hijo de flex/grid no encoge por debajo de su contenido y el `overflow-y-auto`
+**no se activa jamás**, que era el defecto—. `ui/Dialog` pasa de cuadro centrado a **cajón lateral**
+(26/40/58 rem, variante `pergamino`, ranuras de subtítulo y acciones), que heredan sus 24 usos.
+`tokens.css` gana `.scroll-quiet` —que se usaba **sin existir**—, `.capitular` y los tres
+`@keyframes`. `MesaDeSesion.tsx` baja de **992 líneas a un compositor de ~150**, con las piezas
+repartidas en `elenco/`, `hilo/`, `dm/` y `taller/` para que seis carriles no compartieran fichero.
 
-**Lo que esto NO cierra, y hay que decirlo:** el panel de dados **está construido y no lo monta
-nadie**, así que «no hay dados en la mesa» sigue abierto; y el ±5 del elenco —la ruta que un DM usa
-en combate— sigue mandando `{ delta }` sin tipo de daño, así que **las resistencias de 2.5.1 aún no
-se cobran desde la mesa**. Las dos son cableado de dos líneas, descritas en el traspaso.
+**Las mecánicas sin pantalla (§8): diez conectadas, nueve jugadas enteras en el navegador.**
+Reglas construidas, probadas y desplegadas que **ninguna pantalla podía disparar**:
 
-**Pruebas.** Ninguna nueva: se suspendió escribirlas por el camino para hacerlas en una sola tanda,
-que **no se llegó a correr**. Se actualizaron —nunca desactivaron— las que afirmaban la maquetación
-vieja. **Playwright no se ha ejecutado ni una vez en todo el día.** Queda escrito
-`e2e/mesa-mide.spec.ts`, el recorrido que mide lo que `jsdom` no ve: la página no scrollea, el hilo
-sí, la rejilla llega al pie, ningún panel se corta sin poder desplazarse, y abrir un cajón no
-desmonta el hilo.
+- **Tipo de daño y su traza** (2.5.1): `changeHp` aceptaba `damageType` y las dos pantallas que
+  cambian PG mandaban `{ delta }`, así que las resistencias **no reducían nada jamás**. **Arreglada
+  UNA de las dos: la hoja.** El ±5 del elenco sigue sin tipo, así que **el dragón resistente al
+  fuego todavía no se cobra desde la mesa** (ficha **C6-5**).
+- **El daño atado a su tirada** (2.5.4), **«Revelar» como botón**, **marcas, conjuntos y señales**
+  (cinco rutas huérfanas desde 2A), **sintonización**, **descanso interrumpido**, **statblocks
+  propios** (crear, editar y borrar), **`useSetHp`** en la corrección exacta de la hoja, y
+  **`lastFiredAt`**. `tempHp` de un PNJ queda pintado y **sin verificar**: nada los concede (**C6-4**).
+- **Se retiran cuatro disparadores de la paleta**: `ENTITY_COMMENTED`, `DM_EXECUTED`,
+  `ENTITY_ATTACKED` y `MEMBER_JOINED` se ofrecían y `game-event-triggers.ts` no tiene `case` para
+  ninguno. El esquema compartido los conserva —quitarlos rompería reglas guardadas— y una regla
+  vieja que los use se pinta marcada y no seleccionable.
+- **Un defecto que apareció al probarlo:** la ficha de un PNJ era **inalcanzable** —el enlace del
+  bestiario aterrizaba en una pantalla que busca en `useCharacters`, que excluye a los PNJ desde
+  2D.6—, o sea que el único sitio donde las resistencias se aplican no tenía pantalla.
 
-**Cómo revertir.** `git revert` de los tres merges y de `7e4c178`; el armazón es `a1d4a1d`. Nada de
-esto toca el servidor ni migra datos.
+**Por qué así.** La auditoría midió que se había **adaptado** la maqueta en vez de **sustituirla**,
+y que las desviaciones estaban escritas en comentarios como si fueran acuerdos.
 
-> **El traspaso completo está fuera del repositorio a propósito** —es material de una sesión, no
-> del proyecto—, junto a la auditoría que originó el trabajo, en el directorio de trabajo del autor
-> (`traspaso-ola2-2026-09-04.md`): estado por carril, orden de ensamblado, ranuras por conectar con
-> sus props, conflictos previsibles y diecisiete trampas medidas.
+**Lo que esto NO cierra, y hay que decirlo.** El **panel de dados está construido y no lo monta
+nadie**, así que «no hay dados en la mesa» sigue abierto. **Playwright no se ejecutó ni una vez en
+todo el día**: queda escrito `apps/web/e2e/mesa-mide.spec.ts`, el recorrido que mide lo que `jsdom`
+no ve —la página no scrollea, el hilo sí, la rejilla llega al pie, ningún panel se corta, y abrir
+un cajón no desmonta el hilo—, **sin ejecutar**. No se escribió ninguna prueba nueva: se suspendió
+a propósito para hacerlas en una sola tanda. Las que afirmaban la maquetación vieja se
+**actualizaron**, nunca se desactivaron.
+
+**Cómo revertir.** `git revert` de los merges de carril y del armazón (`a1d4a1d`). Nada de esto
+toca `apps/api` ni `packages/shared`, y no hay migración.
 
 ## 2.5.5 · Las condiciones llegan a las tiradas (2026-09-04)
 

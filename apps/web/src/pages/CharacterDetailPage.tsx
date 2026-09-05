@@ -1,10 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
+import type { Character } from "../features/characters/api";
 import { useCharacters, useUpdateCharacter } from "../features/characters/hooks";
 import { AjustesDePersonaje } from "../features/characters/AjustesDePersonaje";
 import { descriptorDePersonaje } from "../features/characters/descriptor";
 import { HojaCalculada } from "../features/character-sheet/HojaCalculada";
+import { useCharacterSheet } from "../features/character-sheet/hooks";
 import { TextoEditable } from "../features/character-sheet/EdicionEnSitio";
 import { CHECKING_PERMISSIONS } from "../features/campaigns/PermissionStatus";
 import { useAuthStore } from "../store/auth.store";
@@ -38,7 +40,31 @@ export function CharacterDetailPage() {
   const actualizar = useUpdateCharacter(id ?? "");
   const navigate = useNavigate();
 
-  const personaje = personajes?.find((c) => c.id === characterId);
+  // **Y si no está en la lista, se pregunta por la hoja** (carril C6, 2026-09-04).
+  //
+  // La lista de personajes **excluye a los PNJ desde 2D.6** —esa lista es quién se sienta a la
+  // mesa, no un listado de combate—, así que el enlace que el bestiario pone a la ficha de un PNJ
+  // («En la mesa») aterrizaba aquí y esta página decía «Este personaje no existe o no puedes
+  // verlo» **sobre un PNJ que el DM acababa de bajar él mismo**. Consecuencia real: el único
+  // sitio donde las resistencias de 2.5.1 se pueden aplicar —un personaje con `statblockRef`, es
+  // decir un PNJ— no tenía pantalla donde aplicarlas.
+  //
+  // `GET .../characters/:id/sheet` **sí** existe y devuelve la fila del personaje en
+  // `character`, ya filtrada por `canView` en el servidor: encontrarlo ahí es exactamente la
+  // misma garantía que encontrarlo en la lista. No se inventa ningún endpoint y no se relaja
+  // ninguna comprobación — se lee el que ya se estaba pidiendo dos líneas más abajo.
+  const hoja = useCharacterSheet(id, characterId);
+  const deLaLista = personajes?.find((c) => c.id === characterId);
+  const deLaHoja = hoja.data?.character;
+  const personaje =
+    deLaLista ??
+    (deLaHoja && deLaHoja.id === characterId
+      ? {
+          ...deLaHoja,
+          visibility: deLaHoja.visibility as Character["visibility"],
+          createdAt: "",
+        }
+      : undefined);
   const roleUnresolved = roleLoading || roleError;
   const puedeEditar =
     !roleUnresolved && personaje !== undefined && (role === "DM" || personaje.ownerId === user?.id);
@@ -58,7 +84,9 @@ export function CharacterDetailPage() {
     { label: campaign?.name ?? "Campaña", to: `/campaigns/${id}` },
   ];
 
-  if (isLoading) {
+  // La espera cubre las dos consultas: sin esto, un PNJ pintaba el «no disponible» durante el
+  // instante entre que la lista responde (sin él) y la hoja llega (con él).
+  if (isLoading || (!deLaLista && hoja.isLoading)) {
     return (
       <AppShell header={header}>
         <PageHeader title="Cargando…" crumbs={migas} />
@@ -66,7 +94,7 @@ export function CharacterDetailPage() {
     );
   }
 
-  if (isError || !personaje) {
+  if ((isError && hoja.isError) || !personaje) {
     return (
       <AppShell header={header}>
         <PageHeader title="Personaje no disponible" crumbs={migas} />

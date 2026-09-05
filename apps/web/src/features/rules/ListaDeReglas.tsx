@@ -79,6 +79,18 @@ export function ListaDeReglas({
                 : "sin dato de disparos"}
               {regla.maxFires !== null && ` de ${regla.maxFires}`}
             </span>
+            {/* **Cuándo se disparó la última vez**: llegaba del servidor y no se pintaba
+                (auditoría §8.5). «12 disparos» sin fecha no distingue una regla que actuó
+                anoche de una que actuó en la sesión tres. La fecha va con el formato del
+                navegador de quien mira, y el `title` lleva la hora exacta. */}
+            {regla.lastFiredAt && (
+              <span
+                className="font-chrome text-chrome-xs text-muted"
+                title={new Date(regla.lastFiredAt).toLocaleString()}
+              >
+                · última vez el {new Date(regla.lastFiredAt).toLocaleDateString()}
+              </span>
+            )}
           </div>
 
           <p className="mt-1 font-chrome text-chrome-xs text-muted">

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useMyRole } from "../features/campaigns/members";
 import { useEntityDetail } from "../features/entities/hooks";
+import { BotonRevelar } from "../features/entities/BotonRevelar";
 import { EntityEditor } from "../features/entities/EntityEditor";
 import { Markdown } from "../features/entities/Markdown";
 import { ETIQUETA_DE_TIPO } from "../features/entities/resumen";
@@ -126,12 +127,27 @@ export function EntityDetailPage() {
           </span>
         }
         actions={
-          <Button variant="secondary" onClick={() => setEditing(true)} title={motivo}>
-            <span className="inline-flex items-center gap-s2">
-              <IconoLapiz />
-              {puedeEditar ? "Editar" : "Ver el texto completo"}
-            </span>
-          </Button>
+          <span className="flex flex-wrap items-center gap-s2">
+            {/* Auditoría de la mesa §8.4 — **el botón que dice «Revelar»**. Hasta hoy revelar
+                era cambiar un desplegable dentro del formulario de edición, y el suceso
+                `ENTITY_REVEALED` que el motor de reglas escucha dependía de que alguien
+                recordara cuál. Se pinta solo cuando de verdad haría crecer el conjunto de
+                quien la ve (`sePuedeRevelar`). */}
+            {puedeEditar && (
+              <BotonRevelar
+                campaignId={id}
+                type={entity.type}
+                entityId={entity.id}
+                visibility={entity.visibility}
+              />
+            )}
+            <Button variant="secondary" onClick={() => setEditing(true)} title={motivo}>
+              <span className="inline-flex items-center gap-s2">
+                <IconoLapiz />
+                {puedeEditar ? "Editar" : "Ver el texto completo"}
+              </span>
+            </Button>
+          </span>
         }
       />
 

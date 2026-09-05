@@ -113,27 +113,36 @@ puede comprobar sin marcar el suceso, y eso es una columna nueva.
 se pueda borrar de `rollAttackSchema` sin romper nada; y (2) una tirada de ataque ya cobrada no se
 pueda volver a cobrar. Hasta las dos, no es «si y solo si».
 
-## P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha (2026-09-04, B1)
+## Deuda del carril C6 — las mecánicas sin pantalla (2026-09-04)
 
-**Encontrado al construir la cabecera de escena, y tumba media premisa del reseño.** El §5 del
-[reseño de la mesa](./superpowers/specs/2026-09-03-reseno-de-la-mesa-design.md) dice que la
-cabecera «cambia sola con los sucesos que ya emitimos», y lo ilustra con *«el DM revela "El Puerto
-Viejo" y la cabecera pasa a decirlo»*. Para el reloj y los presentes es cierto. **Para el lugar no.**
+| Ficha | Qué | Por qué queda abierta |
+|---|---|---|
+| **C6-1** | **Los cuatro disparadores del motor siguen sin `case`**: `ENTITY_COMMENTED`, `DM_EXECUTED`, `ENTITY_ATTACKED`, `MEMBER_JOINED` (`apps/api/src/rules-engine/game-event-triggers.ts:29-75`) | Se han **retirado de lo que el editor ofrece** (`DISPARADORES_SIN_MOTOR`, en `features/rules/vocabulario.ts`) porque una regla armada sobre ellos se guarda y no se dispara jamás, y la interfaz no puede prometer lo que el motor no cumple. Implementarlos es servidor. **Cierra cuando** el `switch` los traduzca: entonces esa lista se vacía y la paleta los recupera sola. Y **es una segunda copia** de `UNREACHABLE_TRIGGER_KINDS` (`apps/api/src/rules-engine/trace-payload.ts:109`) **por una frontera de trabajo, no por una imposibilidad**: son cuatro literales de `RuleTrigger["kind"]` y caben en `packages/shared/src`, que es donde este proyecto guarda la forma de los datos una sola vez; el carril que las escribió no tocaba ese paquete. **La mudanza a `@dnd/shared` es el cierre de esta ficha**, y hasta entonces las dos no pueden divergir en silencio sobre una regla guardada, porque el aviso de `ListaDeReglas` lo manda el servidor |
+| **C6-2** | **`GET .../statblocks` no devuelve `visibility`** (`aStatblock()`, `statblocks.service.ts:184`) | El editor de criaturas propias (`apps/web/src/features/bestiario/EditorDeStatblock.tsx`) **no puede enseñar quién la ve al editarla**, porque no lo sabe, así que **omite el campo** en el `PUT` para no pisar una criatura que el DM ya había enseñado a la mesa. Se dice en pantalla en vez de esconderlo. **Cierra cuando** el servidor incluya el campo en la lectura: son dos líneas y el formulario ya tiene el selector escrito |
+| **C6-3** | **El vocabulario de tipos de daño sigue triplicado** y las tres copias **no dicen lo mismo**: `character-sheet` y `campaign-items` traducen `LIGHTNING` como «relámpago»; `inventory` abrevia y dice «rayo» | La decisión D-OP-14 (un módulo con `nombreTipoDano` y `nombreTipoDanoCorto`) **no se aplicó a ciegas**: el corto existe para que la fila de inventario quepa, y unificar sin más rompería ese ancho. El selector de daño nuevo usa el largo de `character-sheet` y lo dice en su comentario. **Cierra cuando** el módulo único exponga las dos formas y las tres features importen de él |
+| **C6-5** | **Solo una de las dos pantallas que cambian PG manda el tipo de daño.** La hoja sí; el ±5 del elenco (`apps/web/src/features/sessions/elenco/FichaDeElenco.tsx`) sigue mandando `{ delta }` | Y **es la ruta que un DM usa en combate** —el gesto rápido sobre el retrato, no abrir la hoja entera—, así que la mecánica insignia de 2.5.1 sigue sin poder ocurrir en mitad de una partida. No es un olvido: ese fichero es de otro carril. La pieza que falta **ya está escrita y exportada**, `SelectorDeTipoDeDano` (`apps/web/src/features/character-sheet/AplicarDano.tsx`), autónoma y sin consultas dentro. **Cierra cuando** el cajón del elenco la monte en su ranura `ranuraTipoDeDano` y pase su valor a `tipoDeDano` |
+| **C6-4** | **`NpcEnLaMesa.tempHp` se pinta pero no se ha podido ver con datos** | Ninguna pantalla da PG temporales a un PNJ todavía, así que el campo siempre llega a 0. El código está (`apps/web/src/features/bestiario/PanelDeBestiario.tsx`, «+N temporales», aparte y nunca sumado). **Cierra cuando** exista el gesto que los concede |
 
-El tipo `ENTITY_REVEALED` está declarado en `@dnd/shared` desde 2A y **el único sitio del servidor
-que lo escribe es el motor de reglas** (`apps/api/src/rules-engine/rules-engine.service.ts`, el
-efecto `REVEAL_ENTITY`). Subir a mano la visibilidad de una ficha —que es como se revela un lugar
-casi siempre— **no deja ningún suceso**. Comprobado con un barrido: fuera del motor de reglas no
-hay un solo `type: "ENTITY_REVEALED"` en `apps/api/src`.
+## ~~P1 · Nadie escribe `ENTITY_REVEALED` cuando el DM revela una ficha~~ — CERRADA (2026-09-04, C6)
 
-**El arreglo es del carril del motor y es pequeño**: cuando `EntitiesService` sube la visibilidad
-de una ficha, emitir el suceso con su `entityName`. Nada más — el navegador ya sabe qué hacer con
-él (`features/sessions/escena.ts`, con sus once pruebas), así que **la cabecera se enciende sola el
-día que el suceso exista** y no hay que tocar la pantalla.
+**Estaba arreglada y la ficha seguía diciendo que no.** Lo destapó el carril C6 al construir el
+botón «Revelar»: el texto de abajo afirmaba, con un barrido citado, que *«fuera del motor de reglas
+no hay un solo `type: "ENTITY_REVEALED"` en `apps/api/src`»*, y eso **ya era falso**.
+`EntitiesService.update` (`apps/api/src/entities/entities.service.ts:184-243`) compara el conjunto
+de quién veía la ficha antes con el de quién la ve después y, **si creció**, escribe el suceso con
+su `entityName` — que es exactamente el arreglo que esta ficha pedía. La visibilidad del suceso
+hereda la de la entidad, con la salvedad de `SPECIFIC_PLAYERS`, que tiene su propia ficha más
+abajo.
 
-Mientras tanto la cabecera de escena manda el título de la sesión, que sí existe siempre, y el
-lugar aparece solo cuando de verdad lo hay. **No se inventa un nombre**: es lo que la maqueta hacía
-y lo que [04-convenciones.md](./04-convenciones.md) prohíbe al adoptarla.
+Así que la cabecera de escena **ya se enciende sola**, y lo que faltaba no era el suceso: era el
+gesto. Hasta el 2026-09-04 la única forma de revelar era cambiar un desplegable dentro del
+formulario de edición. Ahora hay un botón que dice «Revelar a la mesa»
+(`apps/web/src/features/entities/BotonRevelar.tsx`), y con él se ve el `ENTITY_REVEALED` de verdad
+en el registro.
+
+**Se deja escrita en vez de borrada** porque el error que enseña no es el de reglas: una ficha de
+deuda con un barrido citado dentro **envejece igual que el código**, y esta llevaba al menos una
+tanda mintiendo con pruebas aparentes.
 
 ## P3 · «Dónde se quedó» no viaja en el listado de campañas (2026-09-04, B3)
 

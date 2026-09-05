@@ -1,3 +1,4 @@
+import { damageTypeSchema } from "@dnd/shared";
 import type {
   AbilityKey,
   DamageType,
@@ -93,6 +94,20 @@ export const NOMBRE_TIPO_DANO: Record<DamageType, string> = {
 export function nombreTipoDano(tipo: DamageType): string {
   return NOMBRE_TIPO_DANO[tipo] ?? `Sin traducir: ${tipo}`;
 }
+
+/**
+ * Los trece tipos de daño, **en el orden que los declara `@dnd/shared`** y no en una lista
+ * escrita a mano: el selector de daño de `PuntosDeGolpe.tsx` los ofrece todos, y una copia
+ * suelta se desincronizaría el día que el SRD gane uno.
+ *
+ * **Se usa el diccionario largo de esta feature, no el de `features/inventory`.** Los dos
+ * existen y **no dicen lo mismo**: inventory abrevia («contund.», «perf.») y traduce
+ * `LIGHTNING` como «rayo», porque cabe en una fila estrecha de una tabla. Aquí el tipo se elige
+ * en un desplegable y se lee entero, así que manda el largo — «relámpago». Unificar los tres
+ * diccionarios es la decisión D-OP-14 y **no se aplica aquí**: cambiar el corto rompería el
+ * ancho de la tabla de inventario, que es justo lo que el corto existe para conservar.
+ */
+export const TIPOS_DE_DANO = damageTypeSchema.options;
 
 export const NOMBRE_PROPIEDAD_ARMA: Record<WeaponProperty, string> = {
   AMMUNITION: "Munición",
@@ -367,6 +382,14 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   // (`exhaustion:<nivel>`), que se lee con `nivelDeAgotamientoDeSourceKey`. Escribir «nivel 4»
   // aquí mentiría en cuanto alguien llegara al 5.
   "maxHp.exhaustion.half": "Agotamiento: los puntos de golpe máximos, a la mitad",
+  // Tarea 2.5.1 — la traza de daño (`apps/api/src/character-state/damage/apply-damage-modifiers.ts`).
+  // **Faltaban las cuatro**, y no se notaba porque ninguna pantalla pintaba esa traza: el
+  // servidor la devolvía en `changeHp` y no la leía nadie. Al pintarla, cada paso habría salido
+  // como «Sin traducir: damage.raw».
+  "damage.raw": "Daño de la tirada, antes de resistencias",
+  "damage.modifier.immune": "Inmunidad: el daño de este tipo no le llega",
+  "damage.modifier.resist": "Resistencia: la mitad, redondeando hacia abajo",
+  "damage.modifier.vulnerable": "Vulnerabilidad: el doble",
 };
 
 /**

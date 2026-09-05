@@ -113,6 +113,10 @@ export const GAME_EVENT_TYPES = [
   // campana por una invitacion.
   "ENTITY_COMMENTED",
   "MEMBER_JOINED",
+  // La iniciativa y el bando (2026-09-05). El DM fuerza el arranque sin esperar a todos: el
+  // sistema reparte la tirada que faltaba, y la mesa tiene que ver que fue el sistema y no el
+  // jugador quien tiró.
+  "INITIATIVE_ROLLED_BY_SYSTEM",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -544,6 +548,17 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("CHARACTER_RESTORED"),
     characterName: z.string().max(120).optional(),
+  }),
+  /**
+   * El DM fuerza el arranque del encuentro sin esperar a que todos los jugadores tiren
+   * (2026-09-05): el sistema tira **por** quien faltaba, y la línea de tiempo tiene que decir que
+   * fue el sistema y no ese jugador quien tiró.
+   */
+  z.object({
+    type: z.literal("INITIATIVE_ROLLED_BY_SYSTEM"),
+    characterName: z.string().max(120).optional(),
+    roll: z.number().int().min(1).max(20),
+    total: z.number().int(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

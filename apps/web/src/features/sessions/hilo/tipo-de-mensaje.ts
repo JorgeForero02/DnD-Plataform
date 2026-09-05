@@ -69,10 +69,13 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "DM_EXECUTED":
       return "sistema";
 
+    // La iniciativa que reparte el sistema (2026-09-05) trae un número tirado, igual que las
+    // demás: no deja de ser una tirada por venir forzada.
     case "ABILITY_ROLL":
     case "DEATH_SAVE":
     case "TABLE_ROLLED":
     case "ATTACK_RESOLVED":
+    case "INITIATIVE_ROLLED_BY_SYSTEM":
       return "tirada";
 
     case "HP_CHANGED":

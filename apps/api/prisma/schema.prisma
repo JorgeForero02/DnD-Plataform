@@ -26,10 +26,14 @@ enum SessionStatus {
   CLOSED
 }
 
-// Tarea 2.5.2 — un encuentro es un estado del combate, no un tipo de sesión más: **ACTIVE** es
-// la única que participa en el índice único parcial de abajo («como mucho un encuentro activo
-// por sesión»); ENDED es el estado final y no vuelve a activarse.
+// Tarea 2.5.2 — un encuentro es un estado del combate, no un tipo de sesión más. Desde el
+// 2026-09-05, **PREPARING y ACTIVE** son las dos que participan en el índice único parcial de
+// abajo («como mucho un encuentro sin terminar por sesión»); ENDED es el estado final y no
+// vuelve a activarse.
 enum EncounterStatus {
+  // Pedido pero sin empezar: falta que algún jugador tire su iniciativa. Ver el plan de
+  // 2026-09-05. **No es un estado terminal**: o pasa a ACTIVE, o el DM cancela y se BORRA.
+  PREPARING
   ACTIVE
   ENDED
 }
@@ -90,6 +94,9 @@ enum GameEventType {
   // cumplir porque no existian como suceso. Ahora los escribe su gesto.
   ENTITY_COMMENTED
   MEMBER_JOINED
+  // La iniciativa la reparte el sistema cuando el DM fuerza el arranque sin esperar a todos
+  // (2026-09-05): un suceso propio, no un ENCOUNTER_STARTED que finja que tiró cada jugador.
+  INITIATIVE_ROLLED_BY_SYSTEM
 }
 
 enum ResourceReset {
@@ -185,23 +192,23 @@ model User {
 }
 
 model Campaign {
-  id          String           @id @default(cuid())
-  name        String
-  description String?
-  ownerId     String
-  createdAt   DateTime         @default(now())
-  members     CampaignMember[]
-  entities    Entity[]
-  sessions    Session[]
-  invites     Invite[]
-  characters  Character[]
-  gameEvents  GameEvent[]
-  flags       CampaignFlag[]
-  sets        CampaignSet[]
-  rules       Rule[]
-  items       CampaignItem[]
+  id           String           @id @default(cuid())
+  name         String
+  description  String?
+  ownerId      String
+  createdAt    DateTime         @default(now())
+  members      CampaignMember[]
+  entities     Entity[]
+  sessions     Session[]
+  invites      Invite[]
+  characters   Character[]
+  gameEvents   GameEvent[]
+  flags        CampaignFlag[]
+  sets         CampaignSet[]
+  rules        Rule[]
+  items        CampaignItem[]
   rollRequests RollRequest[]
-  tables      DmTable[]
+  tables       DmTable[]
 
   // Interruptor general del motor, por campana (contencion operativa, punto 6 de la spec de
   // autoridad). Un DM que ve algo raro lo apaga entero sin tener que desarmar regla por regla.
@@ -216,8 +223,8 @@ model Campaign {
   // El reloj de la campana (2C.3): **segundos de juego**, no una fecha. Un asalto son seis, asi
   // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
   // es una capa de presentacion encima; al reves no se puede.
-  clockSeconds Int @default(0)
-  statblocks CampaignStatblock[]
+  clockSeconds Int                 @default(0)
+  statblocks   CampaignStatblock[]
 }
 
 model CampaignMember {
@@ -256,22 +263,22 @@ model Invite {
 }
 
 model Entity {
-  id          String                  @id @default(cuid())
-  campaignId  String
-  type        EntityType
-  name        String
-  body        Json?
-  tags        String[]                @default([])
-  visibility  Visibility              @default(DM_ONLY)
-  createdById String
-  createdAt   DateTime                @default(now())
-  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  grants      EntityVisibilityGrant[]
-  linksFrom   EntityLink[]            @relation("linkFrom")
-  linksTo     EntityLink[]            @relation("linkTo")
-  comments    Comment[]
+  id            String                  @id @default(cuid())
+  campaignId    String
+  type          EntityType
+  name          String
+  body          Json?
+  tags          String[]                @default([])
+  visibility    Visibility              @default(DM_ONLY)
+  createdById   String
+  createdAt     DateTime                @default(now())
+  campaign      Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  grants        EntityVisibilityGrant[]
+  linksFrom     EntityLink[]            @relation("linkFrom")
+  linksTo       EntityLink[]            @relation("linkTo")
+  comments      Comment[]
   /// Las sesiones que abren su escena en esta ficha. Lado inverso de `Session.openingEntity`.
-  opensSessions Session[]             @relation("SessionOpeningEntity")
+  opensSessions Session[]               @relation("SessionOpeningEntity")
 }
 
 model EntityLink {
@@ -353,8 +360,8 @@ model Session {
   openingEntityId String?
   openingEntity   Entity? @relation("SessionOpeningEntity", fields: [openingEntityId], references: [id], onDelete: SetNull)
 
-  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  encounters  Encounter[]
+  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  encounters Encounter[]
 
   // Como maximo una sesion IN_PROGRESS por campana. Lo garantiza un indice unico PARCIAL, que
   // Prisma no sabe expresar y va como SQL crudo dentro de la migracion:
@@ -376,18 +383,22 @@ model Encounter {
   sessionId      String
   status         EncounterStatus @default(ACTIVE)
   // Empieza en el asalto 1, como en la mesa: no hay "asalto 0".
-  round           Int            @default(1)
+  round          Int             @default(1)
   // La posición (`Combatant.position`) de quien tiene el turno ahora mismo.
-  activePosition  Int            @default(0)
+  activePosition Int             @default(0)
   createdAt      DateTime        @default(now())
   session        Session         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   combatants     Combatant[]
+  rollRequests   RollRequest[]
 
-  // Como máximo un encuentro ACTIVE por sesión. Mismo patrón que
+  // Como máximo un encuentro sin terminar por sesión. Mismo patrón que
   // "session_one_in_progress_per_campaign": un índice único PARCIAL que Prisma no sabe expresar
   // en el esquema y va como SQL crudo dentro de la migración:
   //   CREATE UNIQUE INDEX "encounter_one_active_per_session"
-  //     ON "Encounter" ("sessionId") WHERE "status" = 'ACTIVE';
+  //     ON "Encounter" ("sessionId") WHERE "status" IN ('ACTIVE', 'PREPARING');
+  // Recontado el 2026-09-05: con PREPARING como estado más, el WHERE viejo (solo ACTIVE) dejaba
+  // convivir un encuentro preparándose con uno activo, que es justo el lío que este índice
+  // existe para impedir.
   // Una comprobación en el servicio sería una carrera esperando a ocurrir en cuanto el DM tenga
   // dos pestañas abiertas, y por eso su prueba es e2e contra Postgres real y no unitaria.
 }
@@ -411,7 +422,7 @@ enum CombatantSide {
 }
 
 model Combatant {
-  id          String    @id @default(cuid())
+  id          String @id @default(cuid())
   encounterId String
   characterId String
   // El número de iniciativa, **editable por el DM** tras la tirada (el SRD deja los empates a
@@ -430,7 +441,7 @@ model Combatant {
   /// creatures, so each member of the group acts at the same time.»* Actuar a la vez es ocupar
   /// **una sola entrada** del orden. Dos personajes y seis goblins son ocho combatientes y
   /// **siete posiciones**.
-  position    Int
+  position Int
 
   /// **`NEUTRAL` por defecto, y no `ENEMY`.** Los combatientes que ya existen se crearon sin
   /// bando, y un valor por defecto que **afirme** algo convertiría filas viejas en una afirmación
@@ -439,11 +450,11 @@ model Combatant {
   /// **Lo pone el DM al empezar el encuentro; el servidor no lo adivina** — no hay ningún dato del
   /// que deducirlo. Ni el tipo de ficha ni la visibilidad sirven: un PNJ `DM_ONLY` puede ser el
   /// aliado que aparece a mitad de escena.
-  side        CombatantSide @default(NEUTRAL)
+  side CombatantSide @default(NEUTRAL)
 
-  createdAt   DateTime  @default(now())
-  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   /// **La restriccion correcta es esta, y la primera version puso otra.** Aqui habia
   /// `@@unique([encounterId, position])`, que hacia imposible el agrupamiento y obligaba a dar
@@ -488,7 +499,7 @@ model GameEvent {
   /// esquema ya usa `String[]` en otros sitios; y lo que se pierde —integridad referencial: el id
   /// de un usuario borrado no casa con nadie— es inofensivo, porque `canView` solo pregunta si el
   /// espectador está en la lista.
-  grantedUserIds String[]   @default([])
+  grantedUserIds String[] @default([])
 
   /// **La tirada de ataque que este suceso cobra** (D-OP-15, 2026-09-05).
   ///
@@ -505,8 +516,8 @@ model GameEvent {
   /// parcial.
   attackRollEventId String? @unique
 
-  createdAt   DateTime      @default(now())
-  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, createdAt])
   @@index([sessionId, createdAt])
@@ -551,17 +562,17 @@ model Character {
 
   // --- La hoja de 5.a edicion (2A.6). Se guarda lo DECIDIDO, nunca lo calculado ---
   // Seis columnas y no un JSON: son seis, son fijas, y hay que poder consultarlas.
-  str        Int?
-  dex        Int?
-  con        Int?
-  int        Int?
-  wis        Int?
-  cha        Int?
-  raceKey    String?
-  subraceKey String?
-  classKey   String?
+  str           Int?
+  dex           Int?
+  con           Int?
+  int           Int?
+  wis           Int?
+  cha           Int?
+  raceKey       String?
+  subraceKey    String?
+  classKey      String?
   // Las elecciones resueltas, por clave de concesion: { "half-elf-asi": ["dex","int"] }.
-  choices    Json?
+  choices       Json?
   // Casillas de equipo. **Vacia en 2A**: se modela en 2B, pero la columna existe desde ahora
   // porque anadirla despues de que existan mil personajes cuesta una migracion con datos.
   equippedSlots Json?
@@ -579,14 +590,14 @@ model Character {
 
   // --- Estado mutable (2A.7). PG maximos NO se guardan: se calculan ---
   // `null` = a PG maximos; se materializa al primer cambio.
-  currentHp  Int?
+  currentHp          Int?
   // No se suman a los actuales: se gastan primero, y dos fuentes no se acumulan.
-  tempHp     Int        @default(0)
+  tempHp             Int  @default(0)
   // Concurrencia optimista para las correcciones absolutas del DM.
-  version    Int        @default(0)
+  version            Int  @default(0)
   // Tiradas de salvacion contra muerte: tres y tres, casillas y no un numero.
-  deathSaveSuccesses Int @default(0)
-  deathSaveFailures  Int @default(0)
+  deathSaveSuccesses Int  @default(0)
+  deathSaveFailures  Int  @default(0)
 
   /// Fase 2D — si esto tiene valor, este «personaje» es un PNJ instanciado desde un statblock:
   /// `SRD:goblin` o `CAMPAIGN:<id>`. Entonces `classKey`, `raceKey` y `level` NO se usan, y sus
@@ -605,21 +616,21 @@ model Character {
   // --- La bolsa (2B, hueco H6). Cinco columnas y no un total normalizado: la mesa dice «tres
   // monedas de plata», no «0,3 po», y un total en oro obliga a decidir que hacer con 12,37 ya
   // escritos el dia que alguien quiera las cinco. ---
-  cp         Int        @default(0)
-  sp         Int        @default(0)
-  ep         Int        @default(0)
-  gp         Int        @default(0)
-  pp         Int        @default(0)
+  cp Int @default(0)
+  sp Int @default(0)
+  ep Int @default(0)
+  gp Int @default(0)
+  pp Int @default(0)
 
-  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  resources  CharacterResource[]
-  conditions CharacterCondition[]
-  inventory  InventoryItem[]
-  rollRequests RollRequest[]
-  combatants Combatant[]
+  campaign           Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  resources          CharacterResource[]
+  conditions         CharacterCondition[]
+  inventory          InventoryItem[]
+  rollRequests       RollRequest[]
+  combatants         Combatant[]
+  temporaryModifiers TemporaryModifier[]
 
   @@index([campaignId])
-  temporaryModifiers TemporaryModifier[]
 }
 
 // Recursos consumibles (2A.8): inspiracion, furia, ki, dados de golpe, espacios de conjuro.
@@ -651,23 +662,23 @@ model CharacterResource {
 // **La columna del personaje NO se toca.** Esto se suma al DERIVAR: si mutara la Fuerza, al caducar
 // habria que restar, y cualquier fallo dejaria al personaje cambiado para siempre.
 model TemporaryModifier {
-  id          String    @id @default(cuid())
-  characterId String
+  id             String    @id @default(cuid())
+  characterId    String
   /// Que toca, de un **vocabulario cerrado** (`TEMPORARY_MODIFIER_TARGETS`, en `@dnd/shared`): las
   /// seis caracteristicas, la CA y las velocidades. Libre llegaria a la pantalla sin traducir y al
   /// motor sin significado, y un modificador a algo que la hoja no calcula es un numero decorativo.
-  target      String
+  target         String
   /// **Puede ser negativo**: los jugadores pidieron subidas Y bajadas.
-  amount      Int
+  amount         Int
   /// «Pocion de fuerza de gigante». Se pinta en la traza, que es lo que impide un +2 sin origen.
-  reason      String
+  reason         String
   /// Segundos del **reloj de campana** (2C.3), no tiempo de pared. `null` = hasta que alguien lo
   /// quite. Se resuelve al leer, como el vencimiento de una condicion (2C.4): sin barrido y sin una
   /// segunda verdad que pueda discrepar.
   expiresAtClock Int?
-  grantedById String
-  createdAt   DateTime  @default(now())
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  grantedById    String
+  createdAt      DateTime  @default(now())
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([characterId])
 }
@@ -677,21 +688,21 @@ model TemporaryModifier {
 // El informe de huecos aviso de que un enum cerrado deja fuera «concentrandose en Bendicion»,
 // y anadirla despues seria una migracion de enum.
 model CharacterCondition {
-  id          String    @id @default(cuid())
-  characterId String
-  key         String
+  id             String    @id @default(cuid())
+  characterId    String
+  key            String
   // Nivel, para el agotamiento (1..6). `null` en las que no lo tienen.
-  level       Int?
+  level          Int?
   // Cuando vence, **en segundos del reloj de la campana** (2C.4). `null` = indefinida.
   //
   // **No hay columna `expired`**: si esta vencida es una resta contra el reloj, y guardarlo seria
   // una segunda verdad que puede discrepar de la primera. Ademas obligaria a un barrido periodico
   // que, si no corre, dejaria una condicion frenando a alguien despues de su hora.
   expiresAtClock Int?
-  note        String?
-  appliedById String
-  createdAt   DateTime  @default(now())
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  note           String?
+  appliedById    String
+  createdAt      DateTime  @default(now())
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, key])
   @@index([characterId])
@@ -700,16 +711,16 @@ model CharacterCondition {
 // Una tabla del DM (2C.6). **Primitiva, no «funcionalidad de pifias»**: tirar sobre una tabla con
 // sus resultados y su visibilidad sirve igual para botin, rumores y encuentros aleatorios.
 model DmTable {
-  id          String     @id @default(cuid())
+  id          String         @id @default(cuid())
   campaignId  String
   name        String
   description String?
-  visibility  Visibility @default(DM_ONLY)
+  visibility  Visibility     @default(DM_ONLY)
   // Para que se consulta sola: NONE (solo a mano), CRITICAL o FUMBLE.
-  trigger     String     @default("NONE")
-  createdAt   DateTime   @default(now())
+  trigger     String         @default("NONE")
+  createdAt   DateTime       @default(now())
   entries     DmTableEntry[]
-  campaign    Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign    Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
 }
@@ -734,33 +745,46 @@ model DmTableEntry {
 // de partida es un registro de hechos que no se modifican. Ademas hay que poder preguntar «que me
 // han pedido», que es una consulta por columnas, no un recorrido del log.
 model RollRequest {
-  id            String   @id @default(cuid())
-  campaignId    String
+  id              String     @id @default(cuid())
+  campaignId      String
   // A quien se le pide. Una peticion por personaje, aunque el DM pida a cinco a la vez: asi cada
   // uno tira con SU modificador y el registro no tiene que desenredar despues quien fallo.
-  characterId   String
-  requestedById String
+  characterId     String
+  requestedById   String
   // Que valor de la hoja se tira: `skill.perception`, `save.con`. **No una expresion**: el
   // modificador lo pone el servidor con la hoja de quien tira, en el momento de tirar.
-  key           String
-  label         String
-  dc            Int?
-  mode          String   @default("NORMAL")
-  audience      String   @default("PUBLIC")
-  createdAt     DateTime @default(now())
+  key             String
+  label           String
+  dc              Int?
+  mode            String     @default("NORMAL")
+  audience        String     @default("PUBLIC")
+  createdAt       DateTime   @default(now())
   // Cuando se respondio y con que tirada. `null` = pendiente, que es lo que la pantalla sondea.
-  resolvedAt    DateTime?
+  resolvedAt      DateTime?
   resolvedEventId String?
-  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// De qué encuentro salió, si salió de uno. **Nulo en toda petición normal, a propósito**: una
+  /// petición de percepción no viene de un combate y no debe fingir que sí.
+  ///
+  /// Con él, el encuentro sabe a quién espera (sus peticiones sin `resolvedAt`), la pantalla del
+  /// jugador sabe que ESTA se presenta a lo grande, y al responder se sabe dónde escribir.
+  /// Un booleano `esIniciativa` mentiría el día que haya otra petición ligada a algo.
+  encounterId     String?
+  encounter       Encounter? @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  /// Cerrada porque el DM forzó el arranque, **no porque alguien la respondiera**. Con
+  /// `resolvedAt` puesto y `resolvedEventId` nulo, esto es lo que separa «lo anularon» de
+  /// «lo respondí yo»: sin ella la pantalla del jugador le diría que tiró él.
+  cancelledAt     DateTime?
+  campaign        Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  character       Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, resolvedAt])
   @@index([characterId, resolvedAt])
+  @@index([encounterId])
 }
 
 // Bandeja de notificaciones (2A.14). Sin tiempo real: se pide al cargar.
 model Notification {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   campaignId  String?
   type        String
@@ -769,7 +793,7 @@ model Notification {
   subjectType String?
   subjectId   String?
   readAt      DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
@@ -801,13 +825,13 @@ model CampaignSet {
 }
 
 model CampaignSetMember {
-  id          String      @id @default(cuid())
-  setId       String
-  memberType  String
-  memberId    String
-  addedById   String
-  createdAt   DateTime    @default(now())
-  set         CampaignSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  id         String      @id @default(cuid())
+  setId      String
+  memberType String
+  memberId   String
+  addedById  String
+  createdAt  DateTime    @default(now())
+  set        CampaignSet @relation(fields: [setId], references: [id], onDelete: Cascade)
 
   // Anadir dos veces el mismo elemento NO lo duplica: los efectos son idempotentes.
   @@unique([setId, memberType, memberId])
@@ -842,16 +866,16 @@ model Rule {
   effects    Json
 
   /// Tope de disparos (contencion, punto 6). `null` = sin tope.
-  maxFires    Int?
-  fireCount   Int        @default(0)
+  maxFires     Int?
+  fireCount    Int       @default(0)
   /// Para la condicion «esta regla no se ha disparado nunca» — el «once» de Ink.
-  lastFiredAt DateTime?
+  lastFiredAt  DateTime?
   /// Por que quedo rota. Se ensena; no se borra la regla.
   brokenReason String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  campaign  Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   traces    RuleTrace[]
 
   @@index([campaignId, status])
@@ -860,7 +884,7 @@ model Rule {
 // La traza de un disparo. **Es la funcionalidad, no un adorno**: responde «por que se revelo
 // esto» y, con el antes y el despues de cada efecto, permite deshacerlo.
 model RuleTrace {
-  id          String          @id @default(cuid())
+  id          String @id @default(cuid())
   campaignId  String
   ruleId      String
   /// La version de la regla que se disparo, no la actual.
@@ -876,7 +900,7 @@ model RuleTrace {
   depth   Int    @default(0)
   chainId String
 
-  status RuleTraceStatus
+  status  RuleTraceStatus
   /// Un elemento por efecto, cada uno con su ANTES y su DESPUES. Sin eso, deshacer es imposible.
   effects Json
   /// Por que se paro, por que hay conflicto, o el motivo que escribio el DM al aplicar.
@@ -889,7 +913,6 @@ model RuleTrace {
   @@index([chainId])
   @@index([status])
 }
-
 
 // ============================================================================================
 // Fase 2B — objetos, inventario y equipar.
@@ -984,20 +1007,20 @@ enum WeaponProperty {
 /// Un objeto propio de la campana: el *homebrew* que el documento fuente ya pedia. El catalogo
 /// SRD **no** vive aqui: vive en codigo (`apps/api/src/rules/catalog/`), como razas y clases.
 model CampaignItem {
-  id          String   @id @default(cuid())
-  campaignId  String
-  name        String
-  kind        ItemKind
+  id                 String     @id @default(cuid())
+  campaignId         String
+  name               String
+  kind               ItemKind
   /// La prosa: que parece, de donde salio. La pidio por su nombre el DM asesor.
-  description String?
+  description        String?
   /// En **onzas**, entero. En libras el SRD tiene fracciones; en onzas no.
-  weightOz    Int      @default(0)
+  weightOz           Int        @default(0)
   /// En **piezas de cobre**, la unidad mas pequena, para que no haya decimales.
-  costCp      Int?
+  costCp             Int?
   /// Lista cerrada de efectos numericos, validada al escribir por `itemEffectSchema`.
-  effects     Json?
-  requiresAttunement Boolean @default(false)
-  slot        EquipSlot?
+  effects            Json?
+  requiresAttunement Boolean    @default(false)
+  slot               EquipSlot?
 
   // --- Arma ---
   weaponCategory   WeaponCategory?
@@ -1014,8 +1037,8 @@ model CampaignItem {
   baseAc              Int?
   /// `null` = sin tope (ligera); `2` en media; **`0` en pesada, que no suma nada**.
   dexCap              Int?
-  strengthRequirement Int     @default(0)
-  stealthDisadvantage Boolean @default(false)
+  strengthRequirement Int            @default(0)
+  stealthDisadvantage Boolean        @default(false)
 
   /// Un objeto propio nace **visible para la mesa** (hueco H9). El DM que prepara la mazmorra lo
   /// pone `DM_ONLY` a mano, y entonces no se le puede dar a un jugador sin subirle la
@@ -1024,7 +1047,7 @@ model CampaignItem {
   createdById String
   createdAt   DateTime   @default(now())
 
-  campaign  Campaign                     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign  Campaign                      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   grants    CampaignItemVisibilityGrant[]
   inventory InventoryItem[]
 
@@ -1065,7 +1088,6 @@ model InventoryItem {
   @@index([characterId])
   @@index([campaignItemId])
 }
-
 
 /// Fase 2D — un statblock propio del DM. El camino GENERAL: la mesa del autor usa sus propios
 /// monstruos mas que los del libro, y el catalogo del SRD solo cubre quince.
@@ -1128,7 +1150,7 @@ model CampaignStatblock {
   /// BORRARLA. Sobrevivio a un `pnpm verify` en verde porque el cliente generado de aquella
   /// maquina si la tenia. Lo caza el build, no una prueba: por eso `pnpm build` esta dentro de
   /// `pnpm verify`.
-  damageModifiers       Json?
+  damageModifiers Json?
 
   /// En pies, como el resto de la aplicacion.
   darkvisionFeet Int?

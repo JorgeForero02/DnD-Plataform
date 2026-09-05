@@ -197,4 +197,19 @@ describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
       "Vuelve del archivo Kaelith",
     );
   });
+
+  // 2026-09-05 — la iniciativa y el bando: el sistema tira por quien faltaba.
+  it("la iniciativa forzada por el sistema dice que fue el sistema quien tiró", () => {
+    expect(
+      lineaDeLog({
+        type: "INITIATIVE_ROLLED_BY_SYSTEM",
+        characterName: "Kaelith",
+        roll: 14,
+        total: 16,
+      }),
+    ).toBe("El sistema tira la iniciativa por Kaelith (16)");
+    expect(lineaDeLog({ type: "INITIATIVE_ROLLED_BY_SYSTEM", roll: 5, total: 5 })).toBe(
+      "El sistema tira la iniciativa por alguien (5)",
+    );
+  });
 });

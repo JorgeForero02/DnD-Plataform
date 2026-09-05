@@ -254,6 +254,13 @@ export function lineaDeLog(p: GameEventPayload): string {
       return `Se archiva a ${p.characterName}`;
     case "CHARACTER_RESTORED":
       return `Vuelve del archivo ${p.characterName}`;
+
+    // --- 2026-09-05: la iniciativa y el bando ---
+    case "INITIATIVE_ROLLED_BY_SYSTEM":
+      // **El sistema tiró, no el jugador.** El DM forzó el arranque sin esperar a todos, y la
+      // frase tiene que dejarlo claro: quien lea el registro no puede confundirlo con una tirada
+      // propia.
+      return `El sistema tira la iniciativa por ${p.characterName ?? "alguien"} (${p.total})`;
   }
 }
 

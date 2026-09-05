@@ -134,7 +134,7 @@ línea correspondiente anotada en `Mine/pendientes-maestro-2026-09-04.md`.
 | ✅ hecho | 2026-09-05 | **Paso 3 · lychee.** El barrido del plan (`*.yml`, `*.yaml`, `*.json`, `*.toml`, `*.mjs`, sin `node_modules/` ni `.superpowers/`) **devuelve cero líneas**. No había integración que retirar |
 | ✅ hecho | 2026-09-05 | **Mutación.** `const __mutacion: number = "no soy un número";` al final de `apps/web/src/main.tsx` → `pnpm build` cae con `src/main.tsx(30,7): error TS2322: Type 'string' is not assignable to type 'number'.` y salida **2**. Deshecha (`git diff apps/web/src/main.tsx` vacío) |
 | ✅ hecho | 2026-09-05 | **Documentación.** Tres fichas tachadas en `docs/06-pendientes.md` (TipTap, `pnpm build` en CI, `lychee`) con fecha y `fichero:línea`; corregido `docs/04-convenciones.md`, que afirmaba que CI **no** llama a `pnpm build`; entrada nueva en `docs/07-historial.md` |
-| ✅ hecho | 2026-09-05 | **`pnpm verify` en verde, salida 0**, con el gancho de pre-commit corriendo. Commit `fbc5d99` |
+| ✅ hecho | 2026-09-05 | **`pnpm verify` en verde, salida 0**, con el gancho de pre-commit corriendo. Commit `6240f58` |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 

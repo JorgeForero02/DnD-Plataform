@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { DerivedValue, RollMode, RollResult, SuggestedRollMode } from "@dnd/shared";
 import { fraseDeSugerencia } from "./sugerencia";
 import { Button } from "../../ui/Button";
@@ -50,6 +50,7 @@ export function PanelDeTirada({
   resultado,
   derivado,
   sugerencia,
+  ranuraInspiracion,
 }: {
   /** Qué se tira: «Percepción», «Salvación de Fuerza». */
   etiqueta: string;
@@ -69,6 +70,15 @@ export function PanelDeTirada({
    * miente sobre un personaje del que no sabemos las condiciones.
    */
   sugerencia?: SuggestedRollMode;
+  /**
+   * **Dónde entra «gastar la inspiración»** (plan 08, ficha I8). Una ranura y no un `boolean`:
+   * este panel no sabe de personajes ni de recursos, y meterle una consulta lo ataría a la hoja.
+   * Quien lo monta pasa `<GastarInspiracion>` si en su sitio tiene sentido, y nada si no.
+   *
+   * Va **debajo del selector de ventaja y encima de «Tirar»**, que es el orden en el que se
+   * decide: primero cómo tiras, después con qué la refuerzas, y al final tiras.
+   */
+  ranuraInspiracion?: ReactNode;
 }) {
   const caja = useRef<HTMLDivElement>(null);
   const aviso = fraseDeSugerencia(sugerencia);
@@ -115,6 +125,8 @@ export function PanelDeTirada({
       )}
 
       <SelectorDeVentaja value={modo} onChange={onModo} etiqueta={etiqueta} disabled={pendiente} />
+
+      {ranuraInspiracion}
 
       <div className="mt-s2 flex items-center gap-s2">
         <Button

@@ -66,45 +66,84 @@ export const VISIBILIDAD_POR_AUDIENCIA = {
   BLIND: "DM_ONLY",
 } as const satisfies Record<RollAudience, Visibility>;
 
-export const createRollSchema = z.object({
-  /** `d20`, `2d20kh1`, `4d6kh3`, `1d8+3`… Lo valida el evaluador de 2A.1. */
-  expression: z.string().min(1).max(120),
-  /** Qué se está tirando, en palabras: «Percepción», «Salvación de Destreza». */
-  label: z.string().min(1).max(120).optional(),
-  /**
-   * Clase de Dificultad, si la había. **Opcional a propósito:** en la mesa se tira muchas veces
-   * sin CD —daño, iniciativa, una tirada de dados a secas— y obligar a poner una convertiría
-   * cada tirada en una pregunta.
-   */
-  dc: z.number().int().min(1).max(50).optional(),
-  /** El personaje que tira, si es de alguien. Sin él, la tirada es de la campaña. */
-  characterId: z.string().cuid().optional(),
-  /**
-   * La sesión a la que pertenece. **Si no se dice, se usa la que esté en curso**, que es lo que
-   * quiere quien tira durante una partida; y si no hay ninguna, la tirada queda fuera de sesión
-   * en vez de fallar.
-   */
-  sessionId: z.string().cuid().optional(),
-  /**
-   * **A quién va dirigida.** Ver `rollAudienceSchema`: el nivel de visibilidad se deriva, no se
-   * elige a mano.
-   */
-  audience: rollAudienceSchema.default("PUBLIC"),
-  /**
-   * **Ventaja y desventaja como concepto de juego, no como sintaxis.**
-   *
-   * El plan de 2A las dejó fuera explícitamente —«aquí `kh1` es solo sintaxis»— y esa decisión
-   * se tomó cuando no había pantalla. Con pantalla es insostenible: salen en casi todos los
-   * turnos de 5.ª edición (ataque furtivo, ayuda, estar derribado, asustado, invisible), y sin
-   * esto el jugador tiene que salir de la hoja y escribir `2d20kh1+3` a mano — que es la imagen
-   * del papel al lado del portátil que esta herramienta existe para quitar.
-   *
-   * **Lo compone el servidor**, no el cliente: la regla es «dos d20, te quedas el mejor (o el
-   * peor)», y esa es una regla del juego. Un cliente que mandara la expresión ya montada podría
-   * decir que tira con ventaja y mandar `3d20kh1`.
-   */
-  mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
-});
+export const createRollSchema = z
+  .object({
+    /** `d20`, `2d20kh1`, `4d6kh3`, `1d8+3`… Lo valida el evaluador de 2A.1. */
+    expression: z.string().min(1).max(120),
+    /** Qué se está tirando, en palabras: «Percepción», «Salvación de Destreza». */
+    label: z.string().min(1).max(120).optional(),
+    /**
+     * Clase de Dificultad, si la había. **Opcional a propósito:** en la mesa se tira muchas veces
+     * sin CD —daño, iniciativa, una tirada de dados a secas— y obligar a poner una convertiría
+     * cada tirada en una pregunta.
+     */
+    dc: z.number().int().min(1).max(50).optional(),
+    /** El personaje que tira, si es de alguien. Sin él, la tirada es de la campaña. */
+    characterId: z.string().cuid().optional(),
+    /**
+     * La sesión a la que pertenece. **Si no se dice, se usa la que esté en curso**, que es lo que
+     * quiere quien tira durante una partida; y si no hay ninguna, la tirada queda fuera de sesión
+     * en vez de fallar.
+     */
+    sessionId: z.string().cuid().optional(),
+    /**
+     * **A quién va dirigida.** Ver `rollAudienceSchema`: el nivel de visibilidad se deriva, no se
+     * elige a mano.
+     */
+    audience: rollAudienceSchema.default("PUBLIC"),
+    /**
+     * **Ventaja y desventaja como concepto de juego, no como sintaxis.**
+     *
+     * El plan de 2A las dejó fuera explícitamente —«aquí `kh1` es solo sintaxis»— y esa decisión
+     * se tomó cuando no había pantalla. Con pantalla es insostenible: salen en casi todos los
+     * turnos de 5.ª edición (ataque furtivo, ayuda, estar derribado, asustado, invisible), y sin
+     * esto el jugador tiene que salir de la hoja y escribir `2d20kh1+3` a mano — que es la imagen
+     * del papel al lado del portátil que esta herramienta existe para quitar.
+     *
+     * **Lo compone el servidor**, no el cliente: la regla es «dos d20, te quedas el mejor (o el
+     * peor)», y esa es una regla del juego. Un cliente que mandara la expresión ya montada podría
+     * decir que tira con ventaja y mandar `3d20kh1`.
+     */
+    mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
+    /**
+     * **Gastar la inspiracion en ESTA tirada** (plan 08, ficha I8).
+     *
+     * SRD 5.1: *«If you have inspiration, you can expend it when you make an attack roll, saving
+     * throw, or ability check. Spending your inspiration gives you advantage on that roll.»*
+     *
+     * **Va en la misma peticion que la tirada, y no es un boton aparte**, porque gastar y tirar por
+     * separado deja dos formas de romperlo: gastarla y que la tirada falle —inspiracion perdida sin
+     * tirar— o tirar y que el gasto falle —ventaja gratis—. Aqui el servidor gasta y tira en la
+     * misma transaccion, o no hace ninguna de las dos cosas.
+     *
+     * **Exige `characterId`**: la inspiracion es de un personaje, no de una persona.
+     */
+    spendInspiration: z.boolean().default(false),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.spendInspiration) return;
+    // **Sin personaje no hay inspiracion que gastar.** Se rechaza aqui, en el esquema, y no en el
+    // servicio: es una incoherencia de la peticion, no un estado del mundo.
+    if (!v.characterId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["characterId"],
+        message: "La inspiracion es de un personaje: di cual tira.",
+      });
+    }
+    // **Y no se quema para nada.** SRD: *«If circumstances cause a roll to have both advantage
+    // and disadvantage, you are considered to have neither of them»*, asi que gastarla en una
+    // tirada que ya declaras con desventaja la consumiria para acabar tirando normal. Se rechaza
+    // en vez de dejar que se pierda: quien tira decide antes, con el dato delante.
+    if (v.mode === "DISADVANTAGE") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["spendInspiration"],
+        message:
+          "La ventaja de la inspiracion y esa desventaja se anulan: tirarias normal y la perderias.",
+      });
+    }
+  });
 export type CreateRollInput = z.infer<typeof createRollSchema>;
 export type RollMode = CreateRollInput["mode"];
 

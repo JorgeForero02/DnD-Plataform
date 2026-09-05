@@ -72,7 +72,21 @@ export const createRollRequestSchema = z.object({
 export type CreateRollRequestInput = z.infer<typeof createRollRequestSchema>;
 
 /** Al responderla, quien tira solo elige si la hace: el resto ya lo dijo el DM. */
-export const answerRollRequestSchema = z.object({});
+/**
+ * Responder a una petición del DM. El cuerpo estaba **vacío a propósito** —qué se tira lo decidió
+ * quien lo pidió—, y sigue siéndolo salvo por una cosa que sí decide quien tira:
+ *
+ * **gastar su inspiración** (plan 08, ficha I8). SRD 5.1: se gasta *«when you make an attack roll,
+ * saving throw, or ability check»*, y una petición del DM es exactamente una salvación o una
+ * prueba: dos de las tres. Dejarlo fuera habría hecho que la inspiración no sirviera justo donde
+ * el DM te pone a prueba.
+ *
+ * **El modo lo sigue fijando la petición**, no esto: si el DM pidió desventaja, la inspiración se
+ * anularía con ella y se perdería para nada, así que el servidor lo rechaza en vez de quemarla.
+ */
+export const answerRollRequestSchema = z.object({
+  spendInspiration: z.boolean().default(false),
+});
 export type AnswerRollRequestInput = z.infer<typeof answerRollRequestSchema>;
 
 export const listRollRequestsSchema = z.object({

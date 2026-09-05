@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
+  AnswerRollRequestInput,
   CreateRollRequestInput,
   ListRollRequestsInput,
   RollAudience,
@@ -104,7 +105,12 @@ export class RollRequestsService {
    * lee de la hoja **en el momento de tirar**, así que subir de nivel o ponerse una armadura entre
    * que el DM pide y el jugador tira da el número correcto, no el que era verdad hace diez minutos.
    */
-  async answer(userId: string, campaignId: string, requestId: string): Promise<RollResult> {
+  async answer(
+    userId: string,
+    campaignId: string,
+    requestId: string,
+    input: AnswerRollRequestInput,
+  ): Promise<RollResult> {
     const miembro = await this.membership.requireMember(campaignId, userId);
     const peticion = await this.prisma.rollRequest.findFirst({
       where: { id: requestId, campaignId },
@@ -133,6 +139,9 @@ export class RollRequestsService {
       label: peticion.label,
       characterId: peticion.characterId,
       mode: peticion.mode as RollMode,
+      // Lo decide quien responde, no quien pidió: es SU inspiración. El esquema de la tirada
+      // rechaza la combinación con desventaja, así que aquí no hay nada más que comprobar.
+      spendInspiration: input.spendInspiration,
       audience: peticion.audience as RollAudience,
       ...(peticion.dc === null ? {} : { dc: peticion.dc }),
     });

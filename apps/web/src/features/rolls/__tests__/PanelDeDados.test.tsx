@@ -69,6 +69,8 @@ describe("PanelDeDados — tirar", () => {
       expression: "1d20+3",
       audience: "PUBLIC",
       mode: "ADVANTAGE",
+      // Este panel no tiene personaje, así que nunca gasta inspiración (plan 08, I8).
+      spendInspiration: false,
     });
   });
 
@@ -96,6 +98,7 @@ describe("PanelDeDados — tirar", () => {
       dc: 15,
       audience: "BLIND",
       mode: "NORMAL",
+      spendInspiration: false,
     });
   });
 

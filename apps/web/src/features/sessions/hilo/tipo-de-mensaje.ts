@@ -73,6 +73,7 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "REST_DECLARED":
     case "RESOURCE_SPENT":
     case "RESOURCE_RESTORED":
+    case "RESOURCE_GIVEN":
     case "LEVEL_CHANGED":
     case "CONDITION_APPLIED":
     case "CONDITION_REMOVED":

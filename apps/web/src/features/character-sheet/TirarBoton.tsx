@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { DerivedValue, RollMode, RollResult, SuggestedRollMode } from "@dnd/shared";
 import { modoSugerido } from "../rolls/sugerencia";
 import { DadoDibujado } from "../rolls/DadoDibujado";
+import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { PanelDeTirada } from "../rolls/PanelDeTirada";
 import { useCreateRoll } from "./hooks";
 
@@ -63,6 +64,8 @@ export function TirarBoton({
   // mano sigue mandando mientras el panel está abierto; cerrar y volver a abrir parte otra vez de
   // lo que el servidor cree, que es lo que se quiere: cada tirada es una decisión nueva.
   const [modo, setModo] = useState<RollMode>(() => modoSugerido(sugerencia));
+  // I8: se decide al abrir el panel, como el modo, y se reinicia con él.
+  const [gastarInspiracion, setGastarInspiracion] = useState(false);
   const [resultado, setResultado] = useState<RollResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dado = useRef<HTMLButtonElement>(null);
@@ -84,7 +87,15 @@ export function TirarBoton({
       // misma razón que en el resto del producto: la mesa ve lo que se tira, no solo el DM. Y es
       // **la audiencia**, no el nivel de visibilidad: la traducción a `PLAYERS` la hace el
       // servidor, que es donde vive la regla.
-      { expression: expresion, label: etiqueta, characterId, audience: "PUBLIC", mode: modo },
+      {
+        expression: expresion,
+        label: etiqueta,
+        characterId,
+        audience: "PUBLIC",
+        mode: modo,
+        // El servidor gasta y tira en la misma transacción (ficha I8).
+        spendInspiration: gastarInspiracion && modo !== "DISADVANTAGE",
+      },
       {
         onSuccess: (r) => {
           setError(null);
@@ -134,6 +145,16 @@ export function TirarBoton({
           resultado={resultado}
           derivado={derivado}
           sugerencia={sugerencia}
+          ranuraInspiracion={
+            <GastarInspiracion
+              campaignId={campaignId}
+              characterId={characterId}
+              modo={modo}
+              value={gastarInspiracion}
+              onChange={setGastarInspiracion}
+              disabled={crearTirada.isPending}
+            />
+          }
         />
       )}
     </span>

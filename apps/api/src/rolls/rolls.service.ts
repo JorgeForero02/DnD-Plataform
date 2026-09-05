@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -27,6 +28,7 @@ import { DmTablesService } from "../dm-tables/dm-tables.service";
 import { canView } from "../common/visibility";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { CLAVE_INSPIRACION } from "../character-state/resources/resources.service";
 
 /** Token del tirador. Solo lo rellena una prueba; en producción no hay proveedor. */
 export const DICE_ROLLER = "DICE_ROLLER";
@@ -47,6 +49,19 @@ export const DICE_ROLLER = "DICE_ROLLER";
  * personaje a 1 PG.
  */
 const TIPOS_DE_TIRADA: GameEventType[] = ["ABILITY_ROLL", "DEATH_SAVE"];
+
+/**
+ * Lo que este servicio necesita para tirar.
+ *
+ * Es `CreateRollInput` con **`spendInspiration` opcional**, y esa es la única diferencia. El campo
+ * tiene `.default(false)` en el esquema, así que toda petición que entra por HTTP llega con él
+ * puesto; los **llamadores internos** —la iniciativa, el daño de un ataque, la respuesta a una
+ * petición del DM— no hablan de inspiración, y obligarles a escribir `spendInspiration: false`
+ * habría metido esa palabra en una docena de sitios donde no significa nada.
+ */
+export type PeticionDeTirada = Omit<CreateRollInput, "spendInspiration"> & {
+  spendInspiration?: boolean;
+};
 
 @Injectable()
 export class RollsService {
@@ -76,7 +91,7 @@ export class RollsService {
   async roll(
     userId: string,
     campaignId: string,
-    input: CreateRollInput,
+    input: PeticionDeTirada,
     interno?: { attackRollEventId?: string },
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
@@ -87,9 +102,32 @@ export class RollsService {
     // El nivel de visibilidad **se deriva** del vocabulario de mesa; nadie manda un `DM_ONLY`.
     const visibility = VISIBILIDAD_POR_AUDIENCIA[input.audience];
 
+    // **La inspiracion se gasta y se tira en el mismo gesto** (plan 08, ficha I8). El esquema ya
+    // garantiza que hay `characterId` y que el modo no es desventaja; lo que falta comprobar es
+    // que la tiene, y eso es estado del mundo: **gastar lo que no se tiene es 409**, no una
+    // ventaja regalada. La fila se descuenta dentro de la transaccion de mas abajo.
+    let inspiracion: { id: string; label: string } | null = null;
+    if (input.spendInspiration) {
+      if (!characterId) throw new BadRequestException("La inspiracion es de un personaje.");
+      const fila = await this.prisma.characterResource.findUnique({
+        where: { characterId_key: { characterId, key: CLAVE_INSPIRACION } },
+      });
+      if (!fila || fila.current < 1) {
+        throw new ConflictException({
+          code: "RESOURCE_EMPTY",
+          message: "No tiene inspiración que gastar.",
+        });
+      }
+      inspiracion = { id: fila.id, label: fila.label };
+    }
+
+    // **La ventaja la compone el servidor**, tambien cuando la trae la inspiracion: un cliente que
+    // mandara la expresion ya montada podria decir que tira con ventaja y mandar `3d20kh1`.
+    const modo = inspiracion ? "ADVANTAGE" : input.mode;
+
     let resultado: DiceRollResult;
     try {
-      resultado = rollExpression(conVentaja(input.expression, input.mode), this.roller);
+      resultado = rollExpression(conVentaja(input.expression, modo), this.roller);
     } catch (error) {
       // Una expresión inválida es **400 con su motivo**, no un 500 ni un total que miente.
       if (error instanceof DiceExpressionError)
@@ -144,6 +182,35 @@ export class RollsService {
         },
         tx,
       );
+
+      // **Y el gasto va DENTRO de la misma transaccion que la tirada**: o se gasta y se tira, o no
+      // pasa ninguna de las dos cosas. Su suceso es el de siempre —`RESOURCE_SPENT`—, con el
+      // motivo puesto, para que la mesa lea «gastó Inspiración» junto a la tirada que la usó.
+      if (inspiracion && characterId) {
+        await tx.characterResource.update({
+          where: { id: inspiracion.id },
+          data: { current: 0 },
+        });
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            sessionId,
+            subjectType: "character",
+            subjectId: characterId,
+            visibility,
+            payload: {
+              type: "RESOURCE_SPENT",
+              key: CLAVE_INSPIRACION,
+              label: inspiracion.label,
+              amount: 1,
+              remaining: 0,
+              reason: "Ventaja en esta tirada",
+            },
+          },
+          tx,
+        );
+      }
 
       // **La tabla de la casa, si la casa la tiene encendida** (2C.6). Solo se pregunta cuando hay
       // un natural que cantar, así que una tirada corriente no paga ninguna consulta de más — y con

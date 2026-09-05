@@ -377,6 +377,23 @@ export function spendResource(
   });
 }
 
+/**
+ * **Regalar un recurso a otro personaje de la mesa** (plan 08, ficha I8). Un solo gesto: el
+ * servidor mueve las dos filas en la misma transacción y deja un `RESOURCE_GIVEN`.
+ */
+export function giveResource(
+  campaignId: string,
+  characterId: string,
+  key: string,
+  toCharacterId: string,
+  amount = 1,
+): Promise<ResourceRow> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/resources/${key}/give`, {
+    method: "POST",
+    body: JSON.stringify({ toCharacterId, amount }),
+  });
+}
+
 export function restoreResource(
   campaignId: string,
   characterId: string,

@@ -688,3 +688,39 @@ otro campo suyo.
 **Por qué en `Character` y no en `CampaignMember`:** el dato es del personaje. Un jugador con dos
 personajes quiere dos voces, y hasta hoy no las tenía porque la voz del hilo era una huella del
 `actorUserId`.
+
+## La inspiración vive en `CharacterResource`, no en una columna (plan 08, ficha I8)
+
+**No hay `Character.inspired`, y no es un olvido.** El plan pedía un booleano; lo que ya había en el
+código es mejor y es lo que manda: `CharacterResource` es *«un contador con máximo que un descanso
+repone»* y `schema.prisma` la nombra desde 2A.8 como **«recursos consumibles: inspiracion, furia,
+ki…»** — la inspiración es literalmente el primer ejemplo con el que esa tabla se escribió. Una
+columna nueva habría sido **una segunda verdad sobre el mismo hecho**, con dos sitios que pueden
+discrepar.
+
+La fila es `key: "inspiration"`, `max: 1`, `resetOn: NONE`, `grantedBy: DM_ONLY`:
+
+- **`max: 1` es la regla del SRD escrita donde se cumple** —se tiene o no se tiene—, y el recorte de
+  `ResourcesService.adjust` la hace cumplir: dos concesiones seguidas dejan una.
+- **`NONE`**: no la repone ningún descanso. La da el DM por interpretar bien; dormir no la gana.
+- **`DM_ONLY`** cierra quién puede **subirla**. Gastarla y regalarla son de su dueño.
+
+**Se siembra al crear el personaje** (`CharactersService.create`, en la misma transacción), y **no**
+en `ResourcesService.seedResourcesFor`, que siembra lo que implica *la clase* y por eso corre al
+terminar la ficha. La inspiración no viene de la clase: sembrarla allí habría dejado sin ella justo
+al personaje recién creado, que es a quien el DM más quiere dársela.
+
+### Dos cambios de comportamiento que esto trajo, y valen para TODOS los recursos
+
+1. **Gastar más de lo que hay es `409`**, no un recorte silencioso a cero. Antes, pedir un espacio de
+   conjuro con cero devolvía **200 y `current: 0`** — la misma respuesta exacta que gastarlo de
+   verdad—, así que nadie podía distinguir «lo has usado» de «no tenías». Reponer de más sí sigue
+   topando en el máximo: ahí quedarse en el tope es el resultado correcto.
+2. **Reponer un recurso `DM_ONLY` exige ser DM.** El candado vivía solo en `upsert`, con el argumento
+   de que gastar y reponer «solo mueven el contador». Para la furia (`OWNER`) da igual; para la
+   inspiración **no**: reponer es exactamente conceder, y sin esto un jugador se la habría dado a sí
+   mismo con el «+1» de su propia hoja.
+
+**Regalar** es `POST .../resources/:key/give`: mueve las dos filas en **una transacción** y deja un
+solo suceso `RESOURCE_GIVEN` con los dos nombres. Dos peticiones sueltas —un gasto y una
+reposición— podrían dejar la inspiración en los dos personajes o en ninguno.

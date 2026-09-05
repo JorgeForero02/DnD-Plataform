@@ -34,6 +34,20 @@ export const spendResourceSchema = z.object({
 export type SpendResourceInput = z.infer<typeof spendResourceSchema>;
 
 /**
+ * **Regalar un recurso a otro personaje de la mesa** (plan 08, ficha I8).
+ *
+ * Del SRD, sobre la inspiración: *«you can give it to another player»*. No es un gasto seguido de
+ * una reposición —eso serían dos peticiones y un momento en que la inspiracion esta en los dos o
+ * en ninguno—, es **un solo gesto** que el servidor resuelve en una transaccion.
+ */
+export const giveResourceSchema = z.object({
+  toCharacterId: z.string().min(1),
+  amount: z.number().int().min(1).max(9999).default(1),
+  reason: z.string().max(280).optional(),
+});
+export type GiveResourceInput = z.infer<typeof giveResourceSchema>;
+
+/**
  * Declarar un descanso.
  *
  * **Corto**: repone lo marcado `SHORT_REST` y permite gastar dados de golpe para curarse.

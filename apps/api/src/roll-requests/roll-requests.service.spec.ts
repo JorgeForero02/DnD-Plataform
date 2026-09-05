@@ -168,7 +168,7 @@ describe("RollRequestsService", () => {
         hojaCon({ "skill.perception": { key: "skill.perception", total: 7, steps: [] } }),
       );
 
-      await service.answer("jugador", "c1", "rr1");
+      await service.answer("jugador", "c1", "rr1", { spendInspiration: false });
 
       expect(rolls.roll).toHaveBeenCalledWith(
         "jugador",
@@ -194,7 +194,7 @@ describe("RollRequestsService", () => {
       sheets.getSheet.mockResolvedValue(
         hojaCon({ "skill.perception": { key: "skill.perception", total: 0, steps: [] } }),
       );
-      await service.answer("jugador", "c1", "rr1");
+      await service.answer("jugador", "c1", "rr1", { spendInspiration: false });
       expect(rolls.roll.mock.calls[0][2].expression).toBe("1d20");
     });
 
@@ -203,7 +203,7 @@ describe("RollRequestsService", () => {
       sheets.getSheet.mockResolvedValue(
         hojaCon({ "skill.perception": { key: "skill.perception", total: -1, steps: [] } }),
       );
-      await service.answer("jugador", "c1", "rr1");
+      await service.answer("jugador", "c1", "rr1", { spendInspiration: false });
       expect(rolls.roll.mock.calls[0][2].expression).toBe("1d20-1");
     });
 
@@ -213,7 +213,7 @@ describe("RollRequestsService", () => {
         mode: "ADVANTAGE",
         audience: "BLIND",
       });
-      await service.answer("jugador", "c1", "rr1");
+      await service.answer("jugador", "c1", "rr1", { spendInspiration: false });
       expect(rolls.roll.mock.calls[0][2]).toMatchObject({
         mode: "ADVANTAGE",
         audience: "BLIND",
@@ -223,37 +223,43 @@ describe("RollRequestsService", () => {
     it("**otro jugador no puede responder por ti**, y recibe 404, no 403", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
       // **404 y no 403**: un 403 confirmaría que esa petición existe en esta campaña.
-      await expect(service.answer("otro", "c1", "rr1")).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.answer("otro", "c1", "rr1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(NotFoundException);
       expect(rolls.roll).not.toHaveBeenCalled();
     });
 
     it("el DM sí puede responderla: es la misma regla que tirar por un personaje", async () => {
       membership.requireMember.mockResolvedValue({ role: "DM" });
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
-      await expect(service.answer("dm", "c1", "rr1")).resolves.toBeDefined();
+      await expect(
+        service.answer("dm", "c1", "rr1", { spendInspiration: false }),
+      ).resolves.toBeDefined();
     });
 
     it("una petición ya respondida no se responde dos veces", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue({ ...pendiente, resolvedAt: new Date() });
-      await expect(service.answer("jugador", "c1", "rr1")).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.answer("jugador", "c1", "rr1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(BadRequestException);
       expect(rolls.roll).not.toHaveBeenCalled();
     });
 
     it("**pedir un valor que la hoja no deriva es un 400**, no una tirada de 1d20+0", async () => {
       // Un cero silencioso es un número que la mesa se cree.
       prisma.rollRequest.findFirst.mockResolvedValue({ ...pendiente, key: "skill.inventada" });
-      await expect(service.answer("jugador", "c1", "rr1")).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.answer("jugador", "c1", "rr1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(BadRequestException);
       expect(rolls.roll).not.toHaveBeenCalled();
     });
 
     it("**se marca respondida DESPUÉS de tirar**: si la tirada falla, el botón sigue ahí", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
       rolls.roll.mockRejectedValue(new Error("la base se cayó"));
-      await expect(service.answer("jugador", "c1", "rr1")).rejects.toThrow();
+      await expect(
+        service.answer("jugador", "c1", "rr1", { spendInspiration: false }),
+      ).rejects.toThrow();
       expect(prisma.rollRequest.updateMany).not.toHaveBeenCalled();
     });
 
@@ -264,14 +270,14 @@ describe("RollRequestsService", () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
       prisma.rollRequest.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.answer("jugador", "c1", "rr1")).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.answer("jugador", "c1", "rr1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it("y al responderla queda atada a la tirada que la respondió", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue(pendiente);
-      await service.answer("jugador", "c1", "rr1");
+      await service.answer("jugador", "c1", "rr1", { spendInspiration: false });
       expect(prisma.rollRequest.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           // **La condición va en el `where`**, no en un `if` de antes: entre la lectura y esta

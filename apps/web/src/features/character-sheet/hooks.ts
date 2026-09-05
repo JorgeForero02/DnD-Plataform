@@ -164,6 +164,28 @@ export function useResources(campaignId: string, characterId: string) {
   });
 }
 
+/**
+ * Regalar (I8). **Invalida los recursos de LOS DOS**: el de quien da y el de quien recibe, porque
+ * las dos listas cambian y la del destinatario está abierta en su hoja mientras juega.
+ */
+export function useGiveResource(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { key: string; toCharacterId: string; amount?: number }) =>
+      characterSheetApi.giveResource(
+        campaignId,
+        characterId,
+        vars.key,
+        vars.toCharacterId,
+        vars.amount ?? 1,
+      ),
+    onSuccess: (_r, vars) => {
+      void qc.invalidateQueries({ queryKey: resourcesKey(campaignId, characterId) });
+      void qc.invalidateQueries({ queryKey: resourcesKey(campaignId, vars.toCharacterId) });
+    },
+  });
+}
+
 export function useSpendResource(campaignId: string, characterId: string) {
   const qc = useQueryClient();
   return useMutation({

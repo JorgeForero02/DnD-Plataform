@@ -1,3 +1,9 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -8,7 +14,13 @@ import { ResourcesService } from "./resources.service";
 
 describe("ResourcesService", () => {
   let service: ResourcesService;
-  const character = { id: "c1", ownerId: "owner1", visibility: "PLAYERS", campaignId: "cmp1" };
+  const character = {
+    id: "c1",
+    ownerId: "owner1",
+    name: "Kaelith",
+    visibility: "PLAYERS",
+    campaignId: "cmp1",
+  };
   const prisma = {
     character: { findFirst: jest.fn() },
     user: { findUnique: jest.fn() },
@@ -166,7 +178,12 @@ describe("ResourcesService", () => {
       expect(res).toEqual({ id: "r1", current: 1 });
     });
 
-    it("gastar más de lo que hay se queda en 0, nunca en negativo", async () => {
+    it("**gastar más de lo que hay se rechaza**, y ya no se recorta a 0 en silencio", async () => {
+      // **Esta prueba decía lo contrario hasta el plan 08, y el cambio es deliberado.** Afirmaba
+      // que gastar 99 de 1 «se queda en 0, nunca en negativo», que es cierto para el número y
+      // falso para la mesa: la respuesta era un 200 idéntico al de un gasto legítimo, así que
+      // nadie podía saber que el ki no estaba. La ficha I8 lo pidió para la inspiración y se
+      // aplica a todos los recursos, porque un espacio de conjuro fantasma es el mismo defecto.
       membership.getMembership.mockResolvedValue({ role: "PLAYER" });
       prisma.characterResource.findUnique.mockResolvedValue({
         id: "r1",
@@ -175,9 +192,28 @@ describe("ResourcesService", () => {
         current: 1,
         max: 4,
       });
+
+      await expect(
+        service.spend("owner1", "cmp1", "c1", "ki", { amount: 99 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      // Y no se escribe nada: ni la fila ni el registro.
+      expect(prisma.characterResource.update).not.toHaveBeenCalled();
+      expect(events.record).not.toHaveBeenCalled();
+    });
+
+    it("gastar EXACTAMENTE lo que hay sí vale, y deja el contador en cero", async () => {
+      // El borde del rechazo de arriba: `current === amount` no es «más de lo que hay».
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.characterResource.findUnique.mockResolvedValue({
+        id: "r1",
+        key: "ki",
+        label: "Ki",
+        current: 4,
+        max: 4,
+      });
       prisma.characterResource.update.mockResolvedValue({ id: "r1", current: 0 });
 
-      await service.spend("owner1", "cmp1", "c1", "ki", { amount: 99 });
+      await service.spend("owner1", "cmp1", "c1", "ki", { amount: 4 });
 
       expect(prisma.characterResource.update).toHaveBeenCalledWith({
         where: { id: "r1" },
@@ -226,6 +262,81 @@ describe("ResourcesService", () => {
 
       await expect(
         service.spend("owner1", "cmp1", "c1", "inspiration", { amount: 1 }),
+      ).resolves.toBeDefined();
+    });
+
+    // --- Plan 08, ficha I8 ---
+
+    it("**gastar lo que no tienes es 409, no un 200 que parece que funcionó**", async () => {
+      // Hasta hoy el recorte de abajo se lo tragaba: pedir un espacio con cero devolvía 200 y
+      // `current: 0`, la misma respuesta exacta que gastarlo de verdad. Quien llamaba no podía
+      // distinguir «lo has usado» de «no tenías», y en la mesa eso es un conjuro gratis.
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.characterResource.findUnique.mockResolvedValue({
+        id: "r1",
+        key: "inspiration",
+        label: "Inspiración",
+        current: 0,
+        max: 1,
+        grantedBy: "DM_ONLY",
+      });
+      await expect(
+        service.spend("owner1", "cmp1", "c1", "inspiration", { amount: 1 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.characterResource.update).not.toHaveBeenCalled();
+      expect(events.record).not.toHaveBeenCalled();
+    });
+
+    it("**y REPONER un recurso DM_ONLY es 403 para el jugador**: reponer es conceder", async () => {
+      // El candado vivía solo en `upsert`. Con la inspiración sembrada, un jugador se la habría
+      // dado a sí mismo pulsando «+» en su propia hoja, y «la concede el DM» sería un adorno.
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.characterResource.findUnique.mockResolvedValue({
+        id: "r1",
+        key: "inspiration",
+        label: "Inspiración",
+        current: 0,
+        max: 1,
+        grantedBy: "DM_ONLY",
+      });
+      await expect(
+        service.restore("owner1", "cmp1", "c1", "inspiration", { amount: 1 }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.characterResource.update).not.toHaveBeenCalled();
+    });
+
+    it("el DM sí la concede, y el tope de 1 impide acumularla", async () => {
+      // SRD: *«you either have inspiration or you don't»*. Dos concesiones seguidas dejan UNA.
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+      prisma.characterResource.findUnique.mockResolvedValue({
+        id: "r1",
+        key: "inspiration",
+        label: "Inspiración",
+        current: 1,
+        max: 1,
+        grantedBy: "DM_ONLY",
+      });
+      prisma.characterResource.update.mockResolvedValue({ id: "r1", current: 1 });
+      await service.restore("dm1", "cmp1", "c1", "inspiration", { amount: 1 });
+      expect(prisma.characterResource.update).toHaveBeenCalledWith({
+        where: { id: "r1" },
+        data: { current: 1 },
+      });
+    });
+
+    it("un recurso OWNER lo sigue reponiendo su dueño: el candado es solo del DM_ONLY", async () => {
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.characterResource.findUnique.mockResolvedValue({
+        id: "r2",
+        key: "rage",
+        label: "Furia",
+        current: 1,
+        max: 3,
+        grantedBy: "OWNER",
+      });
+      prisma.characterResource.update.mockResolvedValue({ id: "r2", current: 2 });
+      await expect(
+        service.restore("owner1", "cmp1", "c1", "rage", { amount: 1 }),
       ).resolves.toBeDefined();
     });
 
@@ -279,6 +390,157 @@ describe("ResourcesService", () => {
           where: { characterId_key: { characterId: "c1", key: "spell-slot-1" } },
           create: expect.objectContaining({ current: 2, max: 2, resetOn: "SHORT_REST" }),
         }),
+      );
+    });
+  });
+
+  describe("la siembra de la inspiración (I8)", () => {
+    it("**se siembra a cero, con tope 1 y DM_ONLY**, y NO desde `seedResourcesFor`", async () => {
+      // Va en su propio método porque **no viene de la clase**: la da el DM, a cualquiera, y
+      // `seedResourcesFor` corre al terminar la ficha —cuando ya hay clase y nivel—, así que un
+      // personaje recién creado se habría quedado sin ella justo cuando el DM más quiere darla.
+      // A cero para que la hoja tenga algo que enseñar: sin fila, «no la tienes» y «este
+      // personaje no sabe qué es la inspiración» se verían igual. Tope 1 porque el SRD dice
+      // *«you either have inspiration or you don't»* — **y por eso no hace falta un booleano en
+      // `Character`**: esta tabla ya es un contador con máximo.
+      await service.seedInspirationFor("c1");
+      expect(prisma.characterResource.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { characterId_key: { characterId: "c1", key: "inspiration" } },
+          create: expect.objectContaining({
+            current: 0,
+            max: 1,
+            resetOn: "NONE",
+            grantedBy: "DM_ONLY",
+          }),
+          // **Lo que ya tenga NO se toca**: subir de nivel no regala ni quita inspiración.
+          update: {},
+        }),
+      );
+    });
+  });
+
+  describe("give() — regalar, que es un gesto del SRD", () => {
+    beforeEach(() => {
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.character.findFirst.mockResolvedValue(character);
+    });
+
+    it("mueve las DOS filas en una sola transacción y deja UN suceso", async () => {
+      // Con un gasto y una reposición sueltos, un fallo en medio deja la inspiración en los dos
+      // personajes o en ninguno, y ninguna de las dos cosas se arregla mirando la pantalla.
+      prisma.character.findFirst
+        .mockResolvedValueOnce(character)
+        .mockResolvedValueOnce({ id: "c2", name: "Sirella", visibility: "PLAYERS" });
+      prisma.characterResource.findUnique
+        .mockResolvedValueOnce({
+          id: "r1",
+          key: "inspiration",
+          label: "Inspiración",
+          current: 1,
+          max: 1,
+          resetOn: "NONE",
+          grantedBy: "DM_ONLY",
+        })
+        .mockResolvedValueOnce(null);
+      prisma.characterResource.update.mockResolvedValue({ id: "r1", current: 0 });
+      prisma.characterResource.upsert.mockResolvedValue({ id: "r2", current: 1 });
+
+      await service.give("owner1", "cmp1", "c1", "inspiration", {
+        toCharacterId: "c2",
+        amount: 1,
+      });
+
+      expect(prisma.transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.characterResource.update).toHaveBeenCalledWith({
+        where: { id: "r1" },
+        data: { current: 0 },
+      });
+      expect(prisma.characterResource.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ create: expect.objectContaining({ current: 1 }) }),
+      );
+      // **Un solo suceso, y con los dos nombres**: dos líneas sueltas no dirían que fue el mismo
+      // gesto ni de quién a quién.
+      expect(events.record).toHaveBeenCalledTimes(1);
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "RESOURCE_GIVEN",
+            fromName: character.name,
+            toName: "Sirella",
+            remaining: 0,
+          }),
+        }),
+        prisma,
+      );
+    });
+
+    it("regalar lo que no se tiene es 409, y no escribe nada", async () => {
+      prisma.character.findFirst
+        .mockResolvedValueOnce(character)
+        .mockResolvedValueOnce({ id: "c2", name: "Sirella", visibility: "PLAYERS" });
+      prisma.characterResource.findUnique.mockResolvedValueOnce({
+        id: "r1",
+        key: "inspiration",
+        label: "Inspiración",
+        current: 0,
+        max: 1,
+        resetOn: "NONE",
+        grantedBy: "DM_ONLY",
+      });
+
+      await expect(
+        service.give("owner1", "cmp1", "c1", "inspiration", { toCharacterId: "c2", amount: 1 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    it("**el destinatario se busca acotado por la campaña**, y fuera de ella es 404", async () => {
+      // Sin el `campaignId` se podría pasar inspiración a un personaje de otra mesa. Y es 404, no
+      // 403: un 403 confirmaría que ese personaje existe en algún sitio.
+      prisma.character.findFirst.mockResolvedValueOnce(character).mockResolvedValueOnce(null);
+      await expect(
+        service.give("owner1", "cmp1", "c1", "inspiration", { toCharacterId: "ajeno", amount: 1 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.character.findFirst).toHaveBeenLastCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ campaignId: "cmp1" }) }),
+      );
+    });
+
+    it("regalárselo a sí mismo es 400: no es un gesto, es un no-op con dos escrituras", async () => {
+      await expect(
+        service.give("owner1", "cmp1", "c1", "inspiration", { toCharacterId: "c1", amount: 1 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("el tope del destinatario manda: regalarle a quien ya la tiene NO la acumula", async () => {
+      // SRD: se tiene o no se tiene. Lo que sobra no se devuelve — se regaló.
+      prisma.character.findFirst
+        .mockResolvedValueOnce(character)
+        .mockResolvedValueOnce({ id: "c2", name: "Sirella", visibility: "PLAYERS" });
+      prisma.characterResource.findUnique
+        .mockResolvedValueOnce({
+          id: "r1",
+          key: "inspiration",
+          label: "Inspiración",
+          current: 1,
+          max: 1,
+          resetOn: "NONE",
+          grantedBy: "DM_ONLY",
+        })
+        .mockResolvedValueOnce({ id: "r2", key: "inspiration", current: 1, max: 1 });
+      prisma.characterResource.update.mockResolvedValue({ id: "r1", current: 0 });
+      prisma.characterResource.upsert.mockResolvedValue({ id: "r2", current: 1 });
+
+      await service.give("owner1", "cmp1", "c1", "inspiration", {
+        toCharacterId: "c2",
+        amount: 1,
+      });
+
+      expect(prisma.characterResource.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ update: { current: 1 } }),
       );
     });
   });

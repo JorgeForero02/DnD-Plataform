@@ -61,10 +61,19 @@ export function createRollRequest(
  * features/campaigns/members.ts): `apiFetch` siempre pone `Content-Type: application/json` y
  * Fastify responde 500 a esa cabecera con el cuerpo realmente vacío.
  */
-export function answerRollRequest(campaignId: string, requestId: string): Promise<RollResult> {
+export function answerRollRequest(
+  campaignId: string,
+  requestId: string,
+  /**
+   * **Gastar su inspiración en esta tirada** (plan 08, I8). Es lo único que decide quien responde:
+   * qué se tira, con qué CD y quién lo ve lo dijo el DM al pedirla. SRD: se gasta en un ataque,
+   * una salvación o una prueba, y una petición del DM es una de las dos últimas.
+   */
+  spendInspiration = false,
+): Promise<RollResult> {
   return apiFetch<RollResult>(`/campaigns/${campaignId}/roll-requests/${requestId}/roll`, {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify({ spendInspiration }),
   });
 }
 

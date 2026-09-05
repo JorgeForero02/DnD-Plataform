@@ -93,7 +93,8 @@ describe("TiradasPendientes", () => {
     );
 
     await waitFor(() => expect(responder).toHaveBeenCalledTimes(1));
-    expect(responder).toHaveBeenCalledWith(CAMPANA, "req-1");
+    // El tercer argumento es «gastar la inspiración» (plan 08, I8): sin marcarla, `false`.
+    expect(responder).toHaveBeenCalledWith(CAMPANA, "req-1", false);
     expect(await screen.findByText("17")).toBeInTheDocument();
   });
 

@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { useDeclareRest, useResources, useRestoreResource, useSpendResource } from "./hooks";
+import { useMyRole } from "../campaigns/members";
+import { RegalarInspiracion } from "./RegalarInspiracion";
+
+/** La clave del recurso de la inspiración, escrita igual que en el servidor. */
+const CLAVE_INSPIRACION = "inspiration";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { NOMBRE_RESET_RECURSO } from "./vocabulario";
@@ -20,6 +25,10 @@ export function RecursosYDescansos({
   puedeEditar: boolean;
 }) {
   const { data: recursos, isLoading } = useResources(campaignId, characterId);
+  // **Quién eres en esta mesa**, para no ofrecer el «+1» de un recurso que solo concede el DM.
+  // Mientras el rol no se sabe —`undefined`— se trata como «no DM»: no lo sé nunca es sí.
+  const { role } = useMyRole(campaignId);
+  const esDm = role === "DM";
   const gastar = useSpendResource(campaignId, characterId);
   const reponer = useRestoreResource(campaignId, characterId);
   const descansar = useDeclareRest(campaignId, characterId);
@@ -115,11 +124,15 @@ export function RecursosYDescansos({
           {otros.map((r) => (
             <li
               key={r.key}
-              className="flex items-center justify-between gap-s2 rounded-radius-sm border border-muted px-s3 py-s2"
+              className="flex flex-wrap items-center justify-between gap-s2 rounded-radius-sm border border-muted px-s3 py-s2"
             >
               <div>
                 <p className="font-chrome text-chrome-sm leading-tight text-text">{r.label}</p>
-                <p className={PROSA_DE_HOJA}>{NOMBRE_RESET_RECURSO[r.resetOn]}</p>
+                <p className={PROSA_DE_HOJA}>
+                  {NOMBRE_RESET_RECURSO[r.resetOn]}
+                  {/* Decir QUIÉN lo da evita que la ausencia del «+1» parezca un fallo. */}
+                  {r.grantedBy === "DM_ONLY" && !esDm ? " · la concede el DM" : ""}
+                </p>
               </div>
               <span className="font-data text-chrome-md text-text">
                 {r.current}
@@ -137,16 +150,36 @@ export function RecursosYDescansos({
                   >
                     −1
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="px-1.5 py-0.5 text-chrome-xs"
-                    onClick={() => reponer.mutate({ key: r.key, amount: 1 })}
-                    disabled={(r.max !== null && r.current >= r.max) || reponer.isPending}
-                    aria-label={`Reponer uno de ${r.label}`}
-                  >
-                    +1
-                  </Button>
+                  {/* **El «+1» de un recurso `DM_ONLY` solo lo tiene el DM** (I8). No es control
+                      de acceso —el servidor lo rechaza con 403 desde el plan 08, que es donde
+                      vive la regla—: es que ofrecer un botón que va a dar 403 promete algo falso.
+                      La inspiración la concede el DM por interpretar bien; la furia o el ki son
+                      `OWNER` y su dueño los repone como siempre. */}
+                  {(r.grantedBy !== "DM_ONLY" || esDm) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="px-1.5 py-0.5 text-chrome-xs"
+                      onClick={() => reponer.mutate({ key: r.key, amount: 1 })}
+                      disabled={(r.max !== null && r.current >= r.max) || reponer.isPending}
+                      aria-label={`Reponer uno de ${r.label}`}
+                    >
+                      +1
+                    </Button>
+                  )}
+                </div>
+              )}
+              {/* **Regalar solo aparece en la inspiración**, y es del SRD. Ver
+                  `RegalarInspiracion.tsx` para por qué no está en las demás filas. */}
+              {puedeEditar && r.key === CLAVE_INSPIRACION && (
+                <div className="basis-full">
+                  <RegalarInspiracion
+                    campaignId={campaignId}
+                    characterId={characterId}
+                    clave={r.key}
+                    etiqueta={r.label}
+                    tiene={r.current > 0}
+                  />
                 </div>
               )}
             </li>

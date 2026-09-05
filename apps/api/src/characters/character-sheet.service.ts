@@ -1391,6 +1391,10 @@ export class CharacterSheetService {
         label: `Ataque con ${ataque.name}`,
         characterId,
         mode: input.mode,
+        // Pasa tal cual: el gasto y la tirada tienen que ir en la misma transacción, y quien la
+        // abre es `RollsService`. Componerlo aquí —gastar y luego pedir la tirada— dejaría el
+        // hueco de perder la inspiración sin tirar.
+        spendInspiration: input.spendInspiration,
         audience: input.audience ?? audienciaPorDefecto,
       });
     }
@@ -1410,6 +1414,9 @@ export class CharacterSheetService {
       // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el
       // dado de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
       mode: "NORMAL",
+      // Y tampoco inspiración: el SRD la gasta en ataque, salvación o prueba, y el daño no es
+      // ninguna de las tres. El esquema ya rechaza pedirlo; esto es la otra mitad de esa verdad.
+      spendInspiration: false,
       audience: input.audience ?? "PUBLIC",
     } as const;
 
@@ -1597,6 +1604,7 @@ export class CharacterSheetService {
       label: `Ataque con ${ataque.name}`,
       characterId,
       mode: modo,
+      spendInspiration: input.spendInspiration,
       audience: input.audience ?? audienciaPorDefecto,
     });
 

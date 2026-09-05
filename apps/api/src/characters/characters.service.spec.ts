@@ -3,6 +3,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { CharactersService } from "./characters.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ResourcesService } from "../character-state/resources/resources.service";
 import { GameEventsService } from "../game-events/game-events.service";
 
 describe("CharactersService", () => {
@@ -20,6 +21,8 @@ describe("CharactersService", () => {
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
   const gameEvents = { record: jest.fn().mockResolvedValue(undefined) };
+  // I8: crear un personaje siembra su fila de inspiración, en la misma transacción.
+  const resources = { seedInspirationFor: jest.fn().mockResolvedValue(undefined) };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -28,11 +31,14 @@ describe("CharactersService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: gameEvents },
+        { provide: ResourcesService, useValue: resources },
       ],
     }).compile();
     service = ref.get(CharactersService);
     jest.clearAllMocks();
     membership.getMembership.mockResolvedValue({ role: "DM" });
+    // Crear pasa por `prisma.transaction` desde I8: el personaje y su inspiración nacen juntos.
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
   });
 
   function txMock(updateResult: unknown) {

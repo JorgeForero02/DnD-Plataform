@@ -8,6 +8,7 @@ import { ResultadoDeTirada } from "../ResultadoDeTirada";
 import { TiradaACiegas } from "../TiradaACiegas";
 import { SelectorDeVentaja } from "../SelectorDeVentaja";
 import { SelectorDeAudiencia } from "../SelectorDeAudiencia";
+import { GastarInspiracion } from "./GastarInspiracion";
 import { conDadoAnadido } from "../expresion";
 import { DADOS_DE_ATAJO } from "../vocabulario";
 import { useCreateRoll } from "../hooks";
@@ -54,10 +55,12 @@ import { DadoTridimensional } from "./DadoTridimensional";
 //     aplasta a dos: elegir «privada» dejaría de ser posible. Además `docs/04-convenciones.md`
 //     exige que una opción con significado se vea entera, con su frase — que es justo lo que ese
 //     control hace, y equivocarse en él enseña a la mesa algo que no debía ver.
-//  2. **La maqueta trae botones de intervención inventados** («Ventaja por flanqueo +3», «Ayuda de
-//     Mira +1d4», «Usar inspiración»). No se pintan: **no hay nada en el servidor detrás de
-//     ninguno de los tres**, y un botón que promete algo que el servidor no hace es exactamente lo
-//     que las convenciones prohíben. Lo que sí existe —ventaja, desventaja y audiencia— está.
+//  2. **De los tres botones de intervención de la maqueta, solo uno es cierto**, y desde el plan
+//     08 ese uno está: «Usar inspiración» (`GastarInspiracion`), que el SRD respalda y el servidor
+//     hace. Los otros dos siguen sin pintarse, y ahora por su regla y no por falta de servidor:
+//     «Ventaja por flanqueo +3» es **opcional del DMG** y además da ventaja, no un número, y
+//     necesitaría saber quién está adyacente a quién; «Ayuda de Mira +1d4» es la acción **Ayudar**,
+//     que también da **ventaja** —el +1d4 es `Bless`, que es otra cosa—.
 
 /** Los tres instantes. */
 type Momento = "antes" | "durante" | "despues";
@@ -104,6 +107,7 @@ export function PanelDeDadosDeLaMesa({
   const [motivo, setMotivo] = useState(motivoInicial);
   const [cd, setCd] = useState("");
   const [modo, setModo] = useState<RollMode>("NORMAL");
+  const [gastarInspiracion, setGastarInspiracion] = useState(false);
   const [audiencia, setAudiencia] = useState<RollAudience>("PUBLIC");
   const [sinAnimacion, setSinAnimacion] = useState(false);
   const [momento, setMomento] = useState<Momento>("antes");
@@ -144,6 +148,8 @@ export function PanelDeDadosDeLaMesa({
         ...(characterId ? { characterId } : {}),
         audience: audiencia,
         mode: modo,
+        // **El servidor gasta y tira en la misma transacción**: aquí solo se pide.
+        spendInspiration: gastarInspiracion && modo !== "DISADVANTAGE",
       },
       {
         // **Primero el número, después el dado.** El cubo empieza a rodar cuando el resultado ya
@@ -283,6 +289,15 @@ export function PanelDeDadosDeLaMesa({
                 disabled={tirar.isPending}
               />
             </div>
+
+            <GastarInspiracion
+              campaignId={campaignId}
+              characterId={characterId}
+              modo={modo}
+              value={gastarInspiracion}
+              onChange={setGastarInspiracion}
+              disabled={tirar.isPending}
+            />
 
             <div className="grid gap-s3 sm:grid-cols-[2fr_1fr]">
               <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">

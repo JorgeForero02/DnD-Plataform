@@ -134,15 +134,58 @@ mención explícita de que el flanqueo se dejó fuera a propósito** — o algui
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-06 | **8.1 · Inspiración, entera.** Fila `inspiration` (`max: 1`, `DM_ONLY`) sembrada en `apps/api/src/characters/characters.service.ts:29` vía `ResourcesService.seedInspirationFor` (`resources.service.ts:349`). `give()` en `resources.service.ts:260`, ruta en `resources.controller.ts:51`. Suceso `RESOURCE_GIVEN` + migración `20260906030000_resource_given_event/`. `spendInspiration` en `createRollSchema`, `rollAttackSchema`, `resolveAttackSchema` y `answerRollRequestSchema`; lo resuelve `apps/api/src/rolls/rolls.service.ts:92`. Web: `apps/web/src/features/rolls/panel/GastarInspiracion.tsx`, montado en el panel de la mesa, la hoja, el ataque y las tiradas pendientes; regalar en `character-sheet/RegalarInspiracion.tsx`. **Commit `<pendiente 8.1>`** |
+| 🟨 en marcha | 2026-09-06 | **8.2 · Ayudar.** Sin empezar todavía: es una condición con vencimiento sobre el ayudado, y ese sistema existe desde 2C.4. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **EL PLAN PEDÍA `Character.inspired Boolean` Y NO SE HA HECHO.** No cuadraba con lo que ya hay:
+  `CharacterResource` es *«un contador con máximo que un descanso repone»* y `schema.prisma:604` la
+  nombra desde 2A.8 como «recursos consumibles: **inspiracion**, furia, ki…» — era el primer ejemplo
+  con el que esa tabla se escribió, y hasta la spec de 2A la usa como caso de prueba
+  (`resources.service.spec.ts:69`, `key: "inspiration"`, `DM_ONLY`). Una columna nueva habría sido
+  **una segunda verdad sobre el mismo hecho**, con dos sitios que pueden discrepar. El argumento del
+  plan para el booleano —«guardar un número invitaría a acumular»— lo resuelve `max: 1`, que es la
+  misma regla escrita donde se cumple. **La investigación decía «ninguno de los tres existe» y en
+  esto se equivocaba**: el almacenamiento existía y estaba documentado.
+- **Se siembra al CREAR el personaje, no en `seedResourcesFor`.** Ese método siembra lo que implica
+  la clase y por eso corre al terminar la ficha; la inspiración no viene de la clase. Sembrarla allí
+  la dejaba fuera justo del personaje recién creado — **lo cazó el e2e**, no la lectura.
+- **Dos agujeros que solo se vieron al sembrarla, y se arreglan para TODOS los recursos:**
+  · **Gastar lo que no hay devolvía 200.** El recorte inferior se tragaba el exceso: pedir un espacio
+  de conjuro con cero respondía **igual** que gastarlo. Ahora **409**, con su prueba, y la prueba
+  vieja que afirmaba «se queda en 0» está reescrita **diciendo que el cambio es deliberado**.
+  · **Reponer no pasaba por el candado de `grantedBy`.** Vivía solo en `upsert`. Con la inspiración
+  sembrada, el «+1» de la propia hoja se la habría concedido al jugador. **Mutación probada**: sin
+  el candado, `inspiracion.e2e-spec.ts` da 201 donde espera 403.
+- **`spendInspiration` viaja EN la petición de la tirada, no en un botón aparte.** Gastar y tirar por
+  separado deja dos formas de romperlo: gastarla y que la tirada falle —perdida sin tirar— o tirar y
+  que el gasto falle —ventaja gratis—. Va en las **cuatro** puertas donde el SRD la permite: tirada
+  libre, hoja, ataque y respuesta a una petición del DM. **En el daño no**, y el esquema lo rechaza:
+  el SRD nombra ataque, salvación y prueba, y el daño no lleva d20.
+- **Con desventaja declarada es 400, no un gasto silencioso.** SRD: *«you are considered to have
+  neither of them»*. Gastarla ahí sería perderla para tirar normal. Rechazar protege el recurso;
+  quemarlo habría sido «correcto» y hostil.
+- **El «+1» de un recurso `DM_ONLY` deja de pintarse para quien no es DM.** No es control de acceso
+  —eso lo impone el servidor—: es que un botón que va a dar 403 promete algo falso. Y la fila dice
+  «la concede el DM» para que su ausencia no parezca un fallo.
+- **`RollsService.roll` acepta `spendInspiration` opcional** (`PeticionDeTirada`). El esquema le da
+  `.default(false)`, así que toda petición HTTP llega con él; obligar a los llamadores internos —la
+  iniciativa, el daño, la respuesta a una petición— a escribir `spendInspiration: false` habría
+  metido esa palabra en una docena de sitios donde no significa nada.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **8.2 · Ayudar.** Es una **condición con vencimiento** sobre el ayudado
+  (`CharacterCondition.expiresAtClock`, 2C.4), con quien ayuda como origen. Los dos límites que sí se
+  pueden implementar: **se consume con la primera tirada de ataque** y **vence al principio del turno
+  siguiente del ayudante**. El tercero —el enemigo a 5 pies de quien ayuda— **no se comprueba** y la
+  pantalla tiene que decirlo: *«la cercanía la juzgas tú»*.
+- La sugerencia de ventaja ya sabe leer condiciones
+  (`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts`): la clave nueva entra en
+  `VENTAJA_EN_ATAQUE`.
+- **Mutación obligatoria del plan**: quitar el vencimiento de la ayuda y comprobar que su prueba se
+  pone roja.

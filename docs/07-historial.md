@@ -38,6 +38,46 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La inspiración existe: la concede el DM, se gasta y se regala (2026-09-06, plan 08 · I8)
+
+**Qué.** De los tres botones de intervención que pinta la maqueta, **dos son falsos** y uno era una
+promesa vacía. Ahora ese uno funciona de punta a punta.
+
+- «Ventaja por flanqueo **+3**»: el flanqueo es **opcional del DMG**, no del SRD, y da **ventaja**,
+  no un número —el +2 es de 3.ª y de Pathfinder—. Además necesitaría saber quién está adyacente a
+  quién, o sea el tablero. **No se construye, y el commit lo dice para que no parezca un olvido.**
+- «Ayuda de Mira **+1d4**»: **Ayudar** existe y da **ventaja**; el +1d4 es `Bless`. Va en 8.2.
+- «Usar inspiración»: correcto, y es lo que se ha construido.
+
+**Cómo, y aquí está la decisión.** **No hay `Character.inspired`.** El plan pedía un booleano, pero
+`CharacterResource` ya es *«un contador con máximo»* y `schema.prisma` la nombra desde 2A.8 como
+«recursos consumibles: **inspiracion**, furia, ki…»: era literalmente el primer ejemplo con el que
+esa tabla se escribió. Una columna nueva habría sido **una segunda verdad sobre el mismo hecho**. La
+fila es `key: "inspiration"`, `max: 1` —*«you either have inspiration or you don't»*—, `NONE` y
+`DM_ONLY`, y **se siembra al crear el personaje**, no al terminar la ficha: no viene de la clase.
+
+**Dos agujeros que aparecieron al sembrarla, y valen para todos los recursos:**
+
+1. **Gastar lo que no hay devolvía 200.** El recorte de abajo se tragaba el exceso, así que pedir un
+   espacio de conjuro con cero respondía **exactamente igual** que gastarlo. Ahora es **409**.
+2. **Reponer no pasaba por el candado de `grantedBy`.** El candado vivía solo en `upsert`. Con la
+   inspiración sembrada, un jugador se la habría concedido a sí mismo pulsando «+1» en su propia
+   hoja. Ahora reponer un `DM_ONLY` exige ser DM. **Probado por mutación**: quitando el candado, el
+   e2e se pone rojo con 201 donde esperaba 403.
+
+**Gastar y tirar son un solo gesto.** `spendInspiration` viaja **en la petición de la tirada** —del
+panel de la mesa, de la hoja, del ataque y de una petición del DM—, y el servidor gasta y tira en la
+misma transacción. Por separado había dos formas de romperlo: gastarla y que la tirada falle
+—perdida sin tirar—, o tirar y que el gasto falle —ventaja gratis—. Y **con desventaja declarada se
+rechaza con 400** en vez de quemarla para nada: se anularían.
+
+**Regalar** (`POST .../resources/:key/give`) mueve las dos filas en una transacción y deja **un
+solo** suceso `RESOURCE_GIVEN` con los dos nombres. Es SRD: *«you can give it to another player»*.
+
+**Cómo revertirlo.** `git revert` del commit y `ALTER TYPE` no se puede deshacer sin recrear el
+enum; el valor `RESOURCE_GIVEN` puede quedarse sin usar sin romper nada. Las filas sembradas de
+inspiración son inertes si nadie las lee.
+
 ## Cada personaje tiene su color, y es el mismo en el hilo y en el elenco (2026-09-06, plan 05 · D3)
 
 **Qué.** Hasta hoy la voz de una intervención en el hilo era una **huella del `actorUserId` sobre

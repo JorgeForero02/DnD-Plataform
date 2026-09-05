@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import {
+  answerRollRequestSchema,
   createRollRequestSchema,
   listRollRequestsSchema,
+  type AnswerRollRequestInput,
   type CreateRollRequestInput,
   type ListRollRequestsInput,
 } from "@dnd/shared";
@@ -38,15 +40,19 @@ export class RollRequestsController {
   }
 
   /**
-   * Responderla tirando. **Sin cuerpo**: qué se tira, con qué CD y quién lo ve ya lo dijo el DM al
-   * pedirla, y dejar que quien responde lo cambiara convertiría la petición en una sugerencia.
+   * Responderla tirando. **Qué se tira, con qué CD y quién lo ve ya lo dijo el DM al pedirla**, y
+   * dejar que quien responde lo cambiara convertiría la petición en una sugerencia.
+   *
+   * Lo único que trae el cuerpo es **gastar su inspiración** (plan 08, I8): eso no lo decide quien
+   * pide, porque es de quien tira. El cuerpo es opcional y vacío significa que no.
    */
   @Post(":requestId/roll")
   answer(
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
     @Param("requestId") requestId: string,
+    @Body(new ZodValidationPipe(answerRollRequestSchema)) body: AnswerRollRequestInput,
   ) {
-    return this.requests.answer(req.user.id, campaignId, requestId);
+    return this.requests.answer(req.user.id, campaignId, requestId, body);
   }
 }

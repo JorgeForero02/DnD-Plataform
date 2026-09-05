@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { CreateCharacterInput, UpdateCharacterInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ResourcesService } from "../character-state/resources/resources.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { audienciaDeSuceso, canView, Viewer } from "../common/visibility";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -11,6 +12,7 @@ export class CharactersService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly gameEvents: GameEventsService,
+    private readonly resources: ResourcesService,
   ) {}
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
@@ -27,17 +29,26 @@ export class CharactersService {
 
   async create(userId: string, campaignId: string, input: CreateCharacterInput) {
     await this.membership.requireMember(campaignId, userId);
-    return this.prisma.character.create({
-      data: {
-        campaignId,
-        ownerId: userId,
-        name: input.name,
-        race: input.race,
-        class: input.class,
-        level: input.level,
-        bio: input.bio,
-        visibility: input.visibility,
-      },
+    // **El personaje y su fila de inspiración nacen juntos** (plan 08, ficha I8), en una
+    // transacción: media creación —un personaje al que el DM no puede conceder nada— sería un
+    // estado que solo se arregla a mano. La escritura la hace `ResourcesService`, que sigue
+    // siendo la única puerta sobre `CharacterResource`.
+    return this.prisma.transaction(async (tx) => {
+      const personaje = await tx.character.create({
+        data: {
+          campaignId,
+          ownerId: userId,
+          name: input.name,
+          race: input.race,
+          class: input.class,
+          level: input.level,
+          bio: input.bio,
+          visibility: input.visibility,
+          color: input.color ?? null,
+        },
+      });
+      await this.resources.seedInspirationFor(personaje.id, tx);
+      return personaje;
     });
   }
 

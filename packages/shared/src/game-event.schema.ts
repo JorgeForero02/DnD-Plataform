@@ -48,6 +48,10 @@ export const GAME_EVENT_TYPES = [
   // quedara constancia**. El registro es la auditoria de esta aplicacion: un cambio de naturaleza
   // que no aparece en el no se puede deshacer porque nadie sabe que paso.
   "ENTITY_RETYPED",
+  // I8 (2026-09-06) — **regalar inspiracion es un hecho propio.** El SRD dice que se puede dar a
+  // otro jugador, y con `RESOURCE_SPENT` + `RESOURCE_RESTORED` la mesa veria dos sucesos sueltos
+  // sin saber que son el mismo gesto ni de quien a quien fue.
+  "RESOURCE_GIVEN",
   "FLAG_SET",
   "SET_CHANGED",
   "SIGNAL_RAISED",
@@ -207,6 +211,18 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     key: z.string().min(1).max(60),
     label: z.string().min(1).max(120),
     amount: z.number().int().positive(),
+    remaining: z.number().int().nonnegative(),
+    reason,
+  }),
+  z.object({
+    type: z.literal("RESOURCE_GIVEN"),
+    key: z.string().min(1).max(60),
+    label: z.string().min(1).max(120),
+    amount: z.number().int().positive(),
+    /** Quien lo da, y a quien. **Nombres, no claves**: el registro se lee. */
+    fromName: z.string().min(1).max(120),
+    toName: z.string().min(1).max(120),
+    /** Lo que le queda a quien lo dio, para que la mesa vea que se quedo sin ello. */
     remaining: z.number().int().nonnegative(),
     reason,
   }),

@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 38 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 39 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 25 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -219,6 +219,7 @@ en verde.
 |---|---|
 | `character-sheet` | Rellenar la hoja y que el servidor derive PG máximos y CA. Una hoja a medias devuelve **un motivo, no un 500**; una clave de catálogo desconocida es 400. **Dos deltas de PG lanzados a la vez aterrizan los dos** —el Prisma simulado no bloquea filas, así que esa carrera solo se ve aquí—; una corrección absoluta exige DM y versión, y una versión vieja da 409 **con el estado actual dentro**. Salvaciones de muerte, el cuadro de ataques y el 403 de quien no es miembro. |
 | `character-state` | Recursos propios, gastarlos, y las tres reglas de descanso que importan: **el largo devuelve la mitad de los dados de golpe, no todos**, y **el brujo repone en el corto**. Un jugador no puede subir un recurso `DM_ONLY`. |
+| `inspiracion` | **El camino entero de la inspiración** (plan 08, ficha I8): que la fila **se siembra al crear el personaje** —no al terminar la ficha, porque no viene de la clase—, que **reponer un `DM_ONLY` es 403 para su dueño** (el jugador no se la concede a sí mismo), que **dos concesiones seguidas dejan una** (`max: 1`, que es la regla del SRD escrita donde se cumple), que gastarla **tira 2d20 y la deja a cero en la misma transacción**, que sin ella es **409 y no queda ni tirada ni gasto**, que con desventaja declarada es **400 en vez de quemarla**, y que **regalarla mueve las dos filas y deja un solo suceso** con los dos nombres. Lo que ningún mock ve: que después del 409 el registro no creció. |
 | `level-up` | Subir de nivel escribe su suceso y sube los PG máximos en la cantidad prevista; el previo es idempotente; **el nivel 20 es el techo**. |
 | `catalog-y-velocidad` | El catálogo en español y **la velocidad ya afectada por las condiciones, con su traza**, servidos por el servidor. Existe para que la pantalla **deje de calcular**: es el viaje lo que hay que demostrar. |
 | `inventory` | Meter, equipar, mover y gastar. **Dos peticiones simultáneas de equipar en la misma ranura vacía: una gana y la otra no**, y lo garantiza un índice único parcial. Un objeto `DM_ONLY` no se le puede dar a quien no lo ve, y **uno de otra campaña del mismo DM no entra**. La bolsa no baja de cero. |

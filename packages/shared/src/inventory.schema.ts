@@ -119,33 +119,66 @@ export type ChangeMoneyInput = z.infer<typeof changeMoneySchema>;
  * Un ataque tal y como lo pide la pantalla. **El servidor compone la expresión**, igual que hace
  * con la ventaja desde 2A.13: un cliente que la montara podría decir que tira 1d8 y mandar 1d12.
  */
-export const rollAttackSchema = z.object({
-  /** Qué mitad se tira: el ataque o el daño. Son dos tiradas, no una. */
-  part: z.enum(["ATTACK", "DAMAGE"]),
-  mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
-  /** A dos manos, en un arma versátil: cambia el dado de daño, no el de ataque. */
-  versatile: z.boolean().default(false),
-  /**
-   * **La tirada de ATAQUE cuyo daño se está cobrando** — el `eventId` que `rollAttack` y
-   * `resolveAttack` devuelven. De ahí, y solo de ahí, sale si el golpe fue crítico: el servidor
-   * lee el `natural` que quedó escrito en ese suceso, del mismo personaje, la misma campaña y
-   * **el mismo ataque**.
-   *
-   * **Aquí había un `critical: boolean` y se quitó el 2026-09-05 (ficha C2.5-2, cerrada).** Era un
-   * campo que el cuerpo de la petición declaraba y el servidor se creía: cualquiera podía pedir el
-   * daño duplicado sin haber sacado un 20. Es la misma regla que `resolveAttackSchema` ya aplicaba
-   * desde la ficha R2C-2 —*«eso lo decide la tirada, no quien la pide»*—, y ahora las dos puertas
-   * dicen lo mismo.
-   *
-   * **Opcional a propósito, y sin él NO hay crítico**: pedir el daño sin decir qué tirada se cobra
-   * es legítimo —se tira daño suelto—, y entonces no hay ningún 20 al que agarrarse.
-   */
-  attackRollEventId: z.string().min(1).optional(),
-  /**
-   * A quién va dirigida la tirada. **El mismo vocabulario que la pantalla de dados**
-   * (`rollAudienceSchema`), no el nivel de visibilidad crudo: aquí había una copia literal del
-   * enum de visibilidad, que es la forma de los datos escrita dos veces.
-   */
-  audience: rollAudienceSchema.optional(),
-});
+export const rollAttackSchema = z
+  .object({
+    /** Qué mitad se tira: el ataque o el daño. Son dos tiradas, no una. */
+    part: z.enum(["ATTACK", "DAMAGE"]),
+    mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
+    /**
+     * **Gastar la inspiración en esta tirada de ATAQUE** (plan 08, ficha I8).
+     *
+     * SRD 5.1: *«you can expend it when you make an attack roll, saving throw, or ability check»*.
+     * El ataque es una de las tres, así que sin esto la inspiración cubriría **la mitad del SRD** y
+     * justo la mitad que se usa en combate.
+     *
+     * **En el DAÑO no**, y el servidor lo rechaza: el daño no es ninguna de las tres tiradas que la
+     * regla nombra, y además no se tira con ventaja — se tiran dados de daño, no un d20.
+     */
+    spendInspiration: z.boolean().default(false),
+    /** A dos manos, en un arma versátil: cambia el dado de daño, no el de ataque. */
+    versatile: z.boolean().default(false),
+    /**
+     * **La tirada de ATAQUE cuyo daño se está cobrando** — el `eventId` que `rollAttack` y
+     * `resolveAttack` devuelven. De ahí, y solo de ahí, sale si el golpe fue crítico: el servidor
+     * lee el `natural` que quedó escrito en ese suceso, del mismo personaje, la misma campaña y
+     * **el mismo ataque**.
+     *
+     * **Aquí había un `critical: boolean` y se quitó el 2026-09-05 (ficha C2.5-2, cerrada).** Era un
+     * campo que el cuerpo de la petición declaraba y el servidor se creía: cualquiera podía pedir el
+     * daño duplicado sin haber sacado un 20. Es la misma regla que `resolveAttackSchema` ya aplicaba
+     * desde la ficha R2C-2 —*«eso lo decide la tirada, no quien la pide»*—, y ahora las dos puertas
+     * dicen lo mismo.
+     *
+     * **Opcional a propósito, y sin él NO hay crítico**: pedir el daño sin decir qué tirada se cobra
+     * es legítimo —se tira daño suelto—, y entonces no hay ningún 20 al que agarrarse.
+     */
+    attackRollEventId: z.string().min(1).optional(),
+    /**
+     * A quién va dirigida la tirada. **El mismo vocabulario que la pantalla de dados**
+     * (`rollAudienceSchema`), no el nivel de visibilidad crudo: aquí había una copia literal del
+     * enum de visibilidad, que es la forma de los datos escrita dos veces.
+     */
+    audience: rollAudienceSchema.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.spendInspiration) return;
+    // **La inspiración no se gasta en el daño.** El SRD nombra tres tiradas —ataque, salvación y
+    // prueba— y el daño no es ninguna; además la ventaja es del d20, y el daño no lleva d20.
+    if (v.part === "DAMAGE") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["spendInspiration"],
+        message: "La inspiración da ventaja en la tirada de ataque, no en la de daño.",
+      });
+    }
+    // Misma razón que en `createRollSchema`: se anularían y se perdería para nada.
+    if (v.mode === "DISADVANTAGE") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["spendInspiration"],
+        message:
+          "La ventaja de la inspiración y esa desventaja se anulan: tirarías normal y la perderías.",
+      });
+    }
+  });
 export type RollAttackInput = z.infer<typeof rollAttackSchema>;

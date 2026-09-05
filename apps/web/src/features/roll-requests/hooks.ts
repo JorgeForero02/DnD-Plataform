@@ -51,7 +51,10 @@ export function useCreateRollRequest(campaignId: string) {
 export function useAnswerRollRequest(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (requestId: string) => rollRequestsApi.answerRollRequest(campaignId, requestId),
+    mutationFn: (vars: string | { requestId: string; spendInspiration?: boolean }) =>
+      typeof vars === "string"
+        ? rollRequestsApi.answerRollRequest(campaignId, vars)
+        : rollRequestsApi.answerRollRequest(campaignId, vars.requestId, vars.spendInspiration),
     onSuccess: () => {
       // La petición deja de estar pendiente…
       void qc.invalidateQueries({ queryKey: rollRequestsKey(campaignId) });

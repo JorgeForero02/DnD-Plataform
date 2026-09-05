@@ -923,6 +923,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "ATTACK",
+      spendInspiration: false,
       mode: "ADVANTAGE",
       versatile: false,
     });
@@ -939,6 +940,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "NORMAL",
       versatile: true,
     });
@@ -960,6 +962,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "NORMAL",
       versatile: false,
       attackRollEventId: "ev-atk-20",
@@ -985,6 +988,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "NORMAL",
       versatile: false,
       attackRollEventId: "ev-atk-20",
@@ -1021,6 +1025,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "NORMAL",
       versatile: false,
       attackRollEventId: "ev-atk-11",
@@ -1046,6 +1051,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "NORMAL",
       versatile: false,
       attackRollEventId: "ev-sigilo-20",
@@ -1069,6 +1075,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "NORMAL",
       versatile: false,
     });
@@ -1089,6 +1096,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     await expect(
       service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
         part: "DAMAGE",
+        spendInspiration: false,
         mode: "NORMAL",
         versatile: false,
         attackRollEventId: "ev-ajeno",
@@ -1101,6 +1109,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
+      spendInspiration: false,
       mode: "ADVANTAGE",
       versatile: false,
     });
@@ -1125,6 +1134,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     await expect(
       service.rollAttack("otro", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
         part: "ATTACK",
+        spendInspiration: false,
         mode: "NORMAL",
         versatile: false,
       }),
@@ -1137,6 +1147,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     await expect(
       service.rollAttack("p1", "c1", "ch1", "SRD:greataxe", {
         part: "ATTACK",
+        spendInspiration: false,
         mode: "NORMAL",
         versatile: false,
       }),
@@ -1781,6 +1792,7 @@ describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => 
       service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
         targetCharacterId: "target1",
         mode: "NORMAL",
+        spendInspiration: false,
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -1793,6 +1805,7 @@ describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => 
         await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
           targetCharacterId: id,
           mode: "NORMAL",
+          spendInspiration: false,
         });
         return "no lanzó";
       } catch (e) {
@@ -1809,6 +1822,7 @@ describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => 
     const r = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
     expect(r).toHaveProperty("verdict");
   });
@@ -1819,6 +1833,7 @@ describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => 
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
     expect(prisma.combatant.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1868,6 +1883,7 @@ describe("D-OP-13 — el estado del OBJETIVO cambia cómo se tira contra él", (
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
     expect(modoUsado(rolls)).toBe("ADVANTAGE");
   });
@@ -1877,6 +1893,7 @@ describe("D-OP-13 — el estado del OBJETIVO cambia cómo se tira contra él", (
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
     expect(modoUsado(rolls)).toBe("NORMAL");
   });
@@ -1886,6 +1903,7 @@ describe("D-OP-13 — el estado del OBJETIVO cambia cómo se tira contra él", (
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
     expect(modoUsado(rolls)).toBe("DISADVANTAGE");
   });
@@ -1897,6 +1915,7 @@ describe("D-OP-13 — el estado del OBJETIVO cambia cómo se tira contra él", (
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "DISADVANTAGE",
+      spendInspiration: false,
     });
     expect(modoUsado(rolls)).toBe("NORMAL");
   });
@@ -1912,6 +1931,7 @@ describe("D-OP-13 — el estado del OBJETIVO cambia cómo se tira contra él", (
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
     expect(modoUsado(rolls)).toBe("NORMAL");
   });
@@ -1936,6 +1956,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(res.verdict).toBe("HIT");
@@ -1966,6 +1987,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(res.verdict).toBe("HIT");
@@ -1989,6 +2011,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(res.verdict).toBe("MISS");
@@ -2014,6 +2037,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(res.verdict).toBe("CRITICAL");
@@ -2038,6 +2062,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(res.verdict).toBe("MISS");
@@ -2054,6 +2079,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
       audience: "BLIND",
     });
 
@@ -2079,6 +2105,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     // Solo dos claves: la tirada (que ya sabía esconderse a sí misma desde 2C) y el veredicto
@@ -2099,6 +2126,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
       service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
         targetCharacterId: "no-existe",
         mode: "NORMAL",
+        spendInspiration: false,
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -2112,6 +2140,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
       service.resolveAttack("p1", "c1", "ch1", "SRD:greataxe", {
         targetCharacterId: "target1",
         mode: "NORMAL",
+        spendInspiration: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -2166,6 +2195,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(resolverParaHoja).toHaveBeenCalled();
@@ -2193,6 +2223,7 @@ describe("2.5.3 — lo que la revisión de cierre dejó cubierto", () => {
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     // Sin este suceso, «el sistema propone; el DM dispone» no existía: el veredicto solo vivía
@@ -2235,6 +2266,7 @@ describe("2.5.3 — lo que la revisión de cierre dejó cubierto", () => {
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     // Anunciar a la mesa «alguien atacó a X» cuando X está escondido revelaría que X existe. El
@@ -2273,12 +2305,14 @@ describe("2.5.3 — lo que la revisión de cierre dejó cubierto", () => {
       service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
         targetCharacterId: "target1",
         mode: "NORMAL",
+        spendInspiration: false,
       }),
     ).rejects.toThrow(/no se puede resolver ahora mismo/i);
     await expect(
       service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
         targetCharacterId: "target1",
         mode: "NORMAL",
+        spendInspiration: false,
       }),
     ).rejects.not.toThrow(/CAMPAIGN:borrado/);
   });
@@ -2305,6 +2339,7 @@ describe("2.5.3 — lo que la revisión de cierre dejó cubierto", () => {
     await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       targetCharacterId: "target1",
       mode: "NORMAL",
+      spendInspiration: false,
     });
 
     expect(rolls.roll).toHaveBeenCalledWith(

@@ -9,6 +9,7 @@ import { AUDIENCIAS_DE_TIRADA, modoDeTirada } from "../rolls/vocabulario";
 import { useCharacters } from "../characters/hooks";
 import type { RollRequestRow } from "./api";
 import { useAnswerRollRequest, useRollRequests } from "./hooks";
+import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { nombreDeClave } from "./vocabulario";
 
 // Tarea 2C.5 — **lo que te han pedido.**
@@ -52,6 +53,8 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   const peticiones = useRollRequests(campaignId);
   const personajes = useCharacters(campaignId);
   const responder = useAnswerRollRequest(campaignId);
+  // Por petición, porque cada una es una decisión distinta.
+  const [inspirados, setInspirados] = useState<Record<string, boolean>>({});
 
   const yaRespondidas = new Set(respondidas.map((r) => r.id));
   // La lista que sondea el servidor ya viene solo con las pendientes (`includeResolved=false`),
@@ -73,19 +76,24 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   }
 
   function alTirar(peticion: RollRequestRow) {
+    const conInspiracion = inspirados[peticion.id] === true;
     setErrores((actuales) => {
       const siguiente = { ...actuales };
       delete siguiente[peticion.id];
       return siguiente;
     });
-    responder.mutate(peticion.id, {
-      onSuccess: (resultado) =>
-        setRespondidas((actuales) => [
-          { id: peticion.id, etiqueta: peticion.label, resultado },
-          ...actuales,
-        ]),
-      onError: (e) => setErrores((actuales) => ({ ...actuales, [peticion.id]: mensajeDeError(e) })),
-    });
+    responder.mutate(
+      { requestId: peticion.id, spendInspiration: conInspiracion },
+      {
+        onSuccess: (resultado) =>
+          setRespondidas((actuales) => [
+            { id: peticion.id, etiqueta: peticion.label, resultado },
+            ...actuales,
+          ]),
+        onError: (e) =>
+          setErrores((actuales) => ({ ...actuales, [peticion.id]: mensajeDeError(e) })),
+      },
+    );
   }
 
   return (
@@ -115,6 +123,17 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
+                {/* **La inspiración también sirve aquí** (I8): una petición del DM es una
+                    salvación o una prueba, dos de las tres tiradas del SRD. El modo lo fijó quien
+                    pidió, así que con desventaja el control se apaga solo. */}
+                <GastarInspiracion
+                  campaignId={campaignId}
+                  characterId={peticion.characterId}
+                  modo={peticion.mode}
+                  value={inspirados[peticion.id] === true}
+                  onChange={(v) => setInspirados((actuales) => ({ ...actuales, [peticion.id]: v }))}
+                  disabled={responder.isPending}
+                />
                 <div className="mt-1">
                   <Button
                     type="button"

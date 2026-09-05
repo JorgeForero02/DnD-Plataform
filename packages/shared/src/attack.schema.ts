@@ -47,15 +47,34 @@ export type AttackVerdict = z.infer<typeof attackVerdictSchema>;
  * `critical`**: a diferencia de `rollAttackSchema` (2C), aquí no hay nada que el cliente decida
  * sobre si el golpe fue crítico — sale de la propia tirada, no del cuerpo de la petición.
  */
-export const resolveAttackSchema = z.object({
-  targetCharacterId: z.string().cuid(),
-  mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
-  /**
-   * A quién va dirigida la tirada del ataque. **Opcional a propósito**: si no se dice, el
-   * servidor la deriva de la visibilidad de quien ataca, igual que hace `rollAttack` desde 2C.
-   */
-  audience: rollAudienceSchema.optional(),
-});
+export const resolveAttackSchema = z
+  .object({
+    targetCharacterId: z.string().cuid(),
+    mode: z.enum(["NORMAL", "ADVANTAGE", "DISADVANTAGE"]).default("NORMAL"),
+    /**
+     * **Gastar la inspiración en esta tirada de ataque** (plan 08, ficha I8). Misma regla y mismo
+     * campo que `rollAttackSchema`: el ataque resuelto contra un objetivo sigue siendo una tirada de
+     * ataque, y dejarlo fuera aquí habría hecho que la inspiración funcionara en un botón y no en el
+     * de al lado.
+     */
+    spendInspiration: z.boolean().default(false),
+    /**
+     * A quién va dirigida la tirada del ataque. **Opcional a propósito**: si no se dice, el
+     * servidor la deriva de la visibilidad de quien ataca, igual que hace `rollAttack` desde 2C.
+     */
+    audience: rollAudienceSchema.optional(),
+  })
+  .superRefine((v, ctx) => {
+    // Se anularían y se perdería para nada. Misma comprobación que las otras dos puertas.
+    if (v.spendInspiration && v.mode === "DISADVANTAGE") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["spendInspiration"],
+        message:
+          "La ventaja de la inspiración y esa desventaja se anulan: tirarías normal y la perderías.",
+      });
+    }
+  });
 export type ResolveAttackInput = z.infer<typeof resolveAttackSchema>;
 
 /**

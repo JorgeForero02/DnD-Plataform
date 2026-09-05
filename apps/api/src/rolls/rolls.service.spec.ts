@@ -1,11 +1,16 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
-import type { CreateRollInput, RollResult, RollResultRevealed } from "@dnd/shared";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
+import type { RollResult, RollResultRevealed } from "@dnd/shared";
 import type { Roller } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
 import { DmTablesService } from "../dm-tables/dm-tables.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { conVentaja, RollsService } from "./rolls.service";
+import { conVentaja, RollsService, type PeticionDeTirada } from "./rolls.service";
 
 // Tarea 2A.13.
 //
@@ -24,6 +29,8 @@ function montar(roller: Roller) {
     character: { findFirst: jest.fn(), findMany: jest.fn() },
     session: { findFirst: jest.fn() },
     user: { findUnique: jest.fn() },
+    // I8: la inspiración se gasta DENTRO de la transacción de la tirada.
+    characterResource: { findUnique: jest.fn(), update: jest.fn() },
     // 2C.6: la tirada y la tabla que dispara se escriben en la misma transacción.
     transaction: jest.fn(),
   };
@@ -39,7 +46,7 @@ function montar(roller: Roller) {
     tables as unknown as DmTablesService,
     roller,
   );
-  const tirar = (userId: string, campaignId: string, input: CreateRollInput) =>
+  const tirar = (userId: string, campaignId: string, input: PeticionDeTirada) =>
     service.roll(userId, campaignId, input).then(revelada);
   membership.requireMember.mockResolvedValue({ role: "PLAYER" });
   membership.getMembership.mockResolvedValue({ role: "PLAYER" });
@@ -210,7 +217,11 @@ describe("lo que se devuelve y lo que se escribe", () => {
   it("una expresión inválida es 400 con su motivo, y NO se escribe nada en el log", async () => {
     const { service, events } = montar(dadosFijos(1));
     await expect(
-      service.roll("u1", "c1", { expression: "4d", audience: "PUBLIC", mode: "NORMAL" }),
+      service.roll("u1", "c1", {
+        expression: "4d",
+        audience: "PUBLIC",
+        mode: "NORMAL",
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(events.record).not.toHaveBeenCalled();
   });
@@ -604,5 +615,94 @@ describe("«solo las mías» lo resuelve el servidor (ficha C2C-7)", () => {
     await service.list("u1", "c1", { limit: 50, mine: false });
 
     expect(prisma.character.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("gastar la inspiración en la misma tirada (plan 08, ficha I8)", () => {
+  // SRD 5.1: *«If you have inspiration, you can expend it when you make an attack roll, saving
+  // throw, or ability check. Spending your inspiration gives you advantage on that roll.»*
+  //
+  // Lo que estas pruebas defienden **no es la ventaja**, es que gastar y tirar sean **un solo
+  // gesto**. Por separado hay dos formas de romperlo: gastarla y que la tirada falle —perdida sin
+  // tirar— o tirar y que el gasto falle —ventaja gratis—.
+
+  function conPersonaje(roller: Roller, inspiracion: number | null) {
+    const m = montar(roller);
+    m.prisma.character.findFirst.mockResolvedValue({
+      id: "ch1",
+      ownerId: "u1",
+      visibility: "PLAYERS",
+    });
+    m.prisma.characterResource.findUnique.mockResolvedValue(
+      inspiracion === null
+        ? null
+        : { id: "r1", key: "inspiration", label: "Inspiración", current: inspiracion, max: 1 },
+    );
+    m.prisma.characterResource.update.mockResolvedValue({ id: "r1", current: 0 });
+    return m;
+  }
+
+  it("**la ventaja la compone el servidor**: tira 2d20 y se queda el mejor", async () => {
+    // Dos dados fijos: si tirara uno solo, el total sería el primero.
+    const { service } = conPersonaje(dadosFijos(7, 18), 1);
+    const r = revelada(
+      await service.roll("u1", "c1", {
+        expression: "d20",
+        audience: "PUBLIC",
+        mode: "NORMAL",
+        characterId: "ch1",
+        spendInspiration: true,
+      }),
+    );
+    expect(r.rolls).toEqual([7, 18]);
+    expect(r.total).toBe(18);
+  });
+
+  it("y el gasto va DENTRO de la transacción de la tirada, con su suceso", async () => {
+    const { service, prisma, events } = conPersonaje(dadosFijos(7, 18), 1);
+    await service.roll("u1", "c1", {
+      expression: "d20",
+      audience: "PUBLIC",
+      mode: "NORMAL",
+      characterId: "ch1",
+      spendInspiration: true,
+    });
+    expect(prisma.characterResource.update).toHaveBeenCalledWith({
+      where: { id: "r1" },
+      data: { current: 0 },
+    });
+    // Dos sucesos: la tirada y el gasto, los dos con la MISMA transacción.
+    const tipos = events.record.mock.calls.map(
+      (c) => (c[2] as { payload: { type: string } }).payload.type,
+    );
+    expect(tipos).toEqual(["ABILITY_ROLL", "RESOURCE_SPENT"]);
+    for (const llamada of events.record.mock.calls) expect(llamada[3]).toBe(prisma);
+  });
+
+  it("**sin inspiración es 409, y no se tira ni se escribe nada**", async () => {
+    const { service, prisma, events } = conPersonaje(dadosFijos(7, 18), 0);
+    await expect(
+      service.roll("u1", "c1", {
+        expression: "d20",
+        audience: "PUBLIC",
+        mode: "NORMAL",
+        characterId: "ch1",
+        spendInspiration: true,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(events.record).not.toHaveBeenCalled();
+    expect(prisma.characterResource.update).not.toHaveBeenCalled();
+  });
+
+  it("sin pedirla, ni se consulta la fila ni se toca", async () => {
+    // Una tirada corriente no paga una consulta de más por una regla que no está usando.
+    const { service, prisma } = conPersonaje(dadosFijos(11), 1);
+    await service.roll("u1", "c1", {
+      expression: "d20",
+      audience: "PUBLIC",
+      mode: "NORMAL",
+      characterId: "ch1",
+    });
+    expect(prisma.characterResource.findUnique).not.toHaveBeenCalled();
   });
 });

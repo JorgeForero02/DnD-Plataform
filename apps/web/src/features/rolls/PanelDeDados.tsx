@@ -96,6 +96,10 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
     tirar.mutate(
       {
         expression: expresion.trim(),
+        // **Este panel no tiene personaje**, y la inspiración es de un personaje. El control vive
+        // en el panel de la mesa (`panel/PanelDeDadosDeLaMesa.tsx`), que sí sabe por quién tira, y
+        // en la hoja. Aquí sería una casilla que siempre da 400.
+        spendInspiration: false,
         ...(motivo.trim() ? { label: motivo.trim() } : {}),
         ...(cdNumero !== undefined && Number.isFinite(cdNumero) ? { dc: cdNumero } : {}),
         audience: audiencia,

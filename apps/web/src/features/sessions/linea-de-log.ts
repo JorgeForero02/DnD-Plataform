@@ -111,6 +111,10 @@ export function lineaDeLog(p: GameEventPayload): string {
       return `Gasta ${p.amount} de ${p.label} (quedan ${p.remaining})`;
     case "RESOURCE_RESTORED":
       return `Recupera ${p.amount} de ${p.label} (quedan ${p.remaining})`;
+    case "RESOURCE_GIVEN":
+      // **De quién a quién, en una sola frase.** El SRD permite regalar la inspiración, y con dos
+      // líneas sueltas —un gasto y una reposición— la mesa no sabría que fue el mismo gesto.
+      return `${p.fromName} le da ${p.amount} de ${p.label} a ${p.toName} (le quedan ${p.remaining})`;
     case "LEVEL_CHANGED":
       return `Sube de nivel: ${p.from} → ${p.to}`;
     case "ABILITY_ROLL": {

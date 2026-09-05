@@ -197,6 +197,10 @@ export class EncountersService {
         characterId: representante.id,
         sessionId,
         mode: "NORMAL",
+        // La iniciativa **no es** ninguna de las tres tiradas del SRD en las que se gasta la
+        // inspiración (ataque, salvación, prueba): es una tirada de Destreza aparte, y el
+        // servidor la lanza por el grupo, no la pide un jugador.
+        spendInspiration: false,
         // **La audiencia sale de la visibilidad del personaje, NUNCA es `PUBLIC` fija.**
         //
         // Lo cazó la revisión de cierre, y es **la misma forma exacta** de un fallo ya arreglado

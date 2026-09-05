@@ -4,6 +4,7 @@ import type { AttackDto } from "./api";
 import { useRollAttack } from "./hooks";
 import { DadoDibujado } from "../rolls/DadoDibujado";
 import { SelectorDeVentaja } from "../rolls/SelectorDeVentaja";
+import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
 import { TiradaACiegas } from "../rolls/TiradaACiegas";
 import { Button } from "../../ui/Button";
@@ -60,6 +61,7 @@ export function TirarAtaqueBoton({
   const dado = useRef<HTMLButtonElement>(null);
   const caja = useRef<HTMLDivElement>(null);
   const grupoMano = useId();
+  const [gastarInspiracion, setGastarInspiracion] = useState(false);
 
   useEffect(() => {
     if (abierto) caja.current?.focus();
@@ -77,6 +79,9 @@ export function TirarAtaqueBoton({
         input: {
           part: "ATTACK",
           mode: modoAtaque,
+          // I8: el ataque es una de las TRES tiradas del SRD en las que se gasta la inspiración,
+          // y el servidor gasta y tira en la misma transacción.
+          spendInspiration: gastarInspiracion && modoAtaque !== "DISADVANTAGE",
           versatile: false,
           audience: "PUBLIC",
         },
@@ -100,6 +105,9 @@ export function TirarAtaqueBoton({
         input: {
           part: "DAMAGE",
           mode: "NORMAL",
+          // **En el daño no.** El SRD la gasta en ataque, salvación o prueba, y el daño no es
+          // ninguna; el esquema compartido lo rechaza si alguien lo intenta.
+          spendInspiration: false,
           versatile: dosManos,
           // **La tirada que se está cobrando.** Sin ella el servidor no duplica nada: el crítico
           // dejó de ser algo que el cuerpo de la petición pueda declarar. Y la base tiene un
@@ -161,6 +169,14 @@ export function TirarAtaqueBoton({
               value={modoAtaque}
               onChange={setModoAtaque}
               etiqueta={`ataque con ${ataque.name}`}
+              disabled={tirar.isPending}
+            />
+            <GastarInspiracion
+              campaignId={campaignId}
+              characterId={characterId}
+              modo={modoAtaque}
+              value={gastarInspiracion}
+              onChange={setGastarInspiracion}
               disabled={tirar.isPending}
             />
             <div className="mt-s2">

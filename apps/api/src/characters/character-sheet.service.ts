@@ -59,6 +59,10 @@ import {
 } from "../character-state/speed/effective-speed";
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import {
+  combinarModo,
+  modoContraObjetivo,
+} from "../character-state/roll-mode/modo-contra-objetivo";
+import {
   maxHpConAgotamiento,
   muertoPorAgotamiento,
   nivelDeAgotamiento,
@@ -1551,6 +1555,28 @@ export class CharacterSheetService {
     // comparar con nada.
     const ac = await this.caDelObjetivo(target);
 
+    // **D-OP-13: el estado del OBJETIVO cambia cómo se tira contra él.** 2.5.5 implementó la
+    // desventaja del ciego —«¿cómo tiro yo?»— y dejó fuera la otra mitad de la misma frase del
+    // SRD: *"Attack rolls against the creature have advantage"*. Esa mitad no puede vivir en
+    // `suggested-roll-mode.ts`, que responde a la pregunta del que tira; vive aquí, que es el
+    // único sitio donde se conoce al objetivo.
+    //
+    // Se filtran las vencidas contra el reloj de campaña, igual que hace la hoja: una condición
+    // caducada sigue en la fila y no calcula nada.
+    const [condicionesDelObjetivo, campanaDelReloj] = await Promise.all([
+      this.prisma.characterCondition.findMany({
+        where: { characterId: target.id },
+        select: { key: true, level: true, expiresAtClock: true },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    const contra = modoContraObjetivo(
+      condicionesActivas(condicionesDelObjetivo, campanaDelReloj.clockSeconds),
+    );
+    // **Y se combinan con la regla del SRD, no sumando:** ventaja y desventaja se anulan, y dos
+    // del mismo signo siguen siendo una.
+    const modo = combinarModo(input.mode, contra.effect);
+
     // Misma regla que `rollAttack`: la audiencia por defecto sale de la visibilidad de QUIEN
     // ATACA, nunca `PUBLIC` fija — es la fuga que ya volvió una vez en 2.5.2 (ver el comentario
     // de `rollAttack`, arriba, y el de `EncountersService.start`).
@@ -1567,7 +1593,7 @@ export class CharacterSheetService {
       expression: conSigno("1d20", ataque.attackBonus.total),
       label: `Ataque con ${ataque.name}`,
       characterId,
-      mode: input.mode,
+      mode: modo,
       audience: input.audience ?? audienciaPorDefecto,
     });
 

@@ -159,8 +159,8 @@ D-OP-12**, dicho explícitamente en su commit.
 |---|---|---|
 | ✅ hecho | 2026-09-05 | **3.1 · D-OP-12 + P1 + P3-archivar.** Columna `grantedUserIds String[]` en `apps/api/prisma/schema.prisma:456-470`, migración `apps/api/prisma/migrations/20260905040000_game_event_granted_users/migration.sql`. `recordGameEventSchema` la acepta (`packages/shared/src/game-event.schema.ts:467-477`), `record()` la guarda y `canSee` la pasa a `canView` (`apps/api/src/game-events/game-events.service.ts:181`). **Parche de `entities.service.ts` retirado** con su comentario reescrito (`:220-241`). `audienciaDeSuceso` nueva en `apps/api/src/common/visibility.ts`. **Commit `52a461f`** |
 | ✅ hecho | 2026-09-05 | **3.2 · D-OP-11 · el oráculo de la CA.** `sePuedeApuntar` en `apps/api/src/characters/character-sheet.service.ts:246-280` (`canView` **o** combatiente de encuentro **activo**), aplicado en `resolveAttack` con **el mismo 404** que un id inventado. Comentario del método reescrito: decía «por qué no exige `canView`». **Commit `11c607c`** |
-| ✅ hecho | 2026-09-05 | **3.3 · D-OP-15.** Columna `attackRollEventId String? @unique` en `apps/api/prisma/schema.prisma:471-486`, migración `apps/api/prisma/migrations/20260905050000_damage_charged_once/migration.sql`. La escribe `RollsService.roll` por un **parámetro interno** (`apps/api/src/rolls/rolls.service.ts:69-82`), y `rollAttack` traduce el `P2002` a 409 (`apps/api/src/characters/character-sheet.service.ts:1378-1400`). **Commit `<pendiente 3.3>`** |
-| ⬜ sin empezar | — | 3.4 · D-OP-13 · la ventaja de atacar a un ciego |
+| ✅ hecho | 2026-09-05 | **3.3 · D-OP-15.** Columna `attackRollEventId String? @unique` en `apps/api/prisma/schema.prisma:471-486`, migración `apps/api/prisma/migrations/20260905050000_damage_charged_once/migration.sql`. La escribe `RollsService.roll` por un **parámetro interno** (`apps/api/src/rolls/rolls.service.ts:69-82`), y `rollAttack` traduce el `P2002` a 409 (`apps/api/src/characters/character-sheet.service.ts:1378-1400`). **Commit `5481225`** |
+| ✅ hecho | 2026-09-05 | **3.4 · D-OP-13 · la ventaja de atacar a un ciego.** Módulo puro nuevo `apps/api/src/character-state/roll-mode/modo-contra-objetivo.ts` con la tabla del SRD **verificada en inglés**, aplicado en `resolveAttack` (`apps/api/src/characters/character-sheet.service.ts:1487-1512`). Cierra **L3** en `docs/06-pendientes.md`. **Commit `<pendiente 3.4>`** |
 | ⬜ sin empezar | — | 3.5 · D-OP-17 · «dónde se quedó» en el listado |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
@@ -217,14 +217,33 @@ fuente si la hubo):
   no tenían nada que ver. Tres pruebas sí se actualizaron —las que **sí** mandan el campo—, y eso es
   honesto: la llamada ahora lleva un argumento más.
 
+- **3.4 · La tabla entra ENTERA, no solo `blinded`.** El plan pedía la ventaja contra un ciego; el
+  SRD dice lo mismo, con la misma frase, de `paralyzed`, `petrified`, `restrained`, `stunned` y
+  `unconscious`, y lo contrario de `invisible`. Escribir seis literales en una tabla que ya existía
+  no abre ningún frente, y dejarlos fuera habría sido una omisión que alguien tendría que descubrir
+  atacando a un paralizado y viendo que no pasa nada. **Las reglas de D&D son verdad absoluta.**
+- **3.4 · `prone` se queda fuera, y eso es una decisión, no un olvido.** *"advantage if the attacker
+  is within 5 feet… Otherwise, disadvantage"*: **depende de la distancia**, y hasta la fase 3 no hay
+  tablero. Elegir una de las dos mitades sería inventarse la mitad de las veces. Mismo criterio con
+  el crítico automático de `paralyzed`/`unconscious`. Es exactamente el que ya usaba
+  `suggested-roll-mode.ts` para el fallo automático del ciego.
+- **3.4 · Módulo nuevo y no una función más en `suggested-roll-mode.ts`.** Ese fichero declara en su
+  cabecera, desde antes de esto, que deja fuera *«Attack rolls **against** the creature»* porque
+  responde a otra pregunta. Meterlo ahí habría convertido su comentario en mentira.
+- **`docs/07-historial.md` se pasó de 400 líneas** con las cinco entradas del plan 03 (413). Se
+  archivaron **dos entradas enteras, sin resumir**, en
+  `docs/_archivo/historial-2026-09-03-y-04-sueltas.md`, que es una de las dos salidas legítimas que
+  el propio fichero declara.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
+<!-- hecho:
 - **3.4 · D-OP-13, la ventaja de atacar a un ciego.** Falta **la ventaja del ATACANTE** contra un
   objetivo ciego; la desventaja del ciego ya está (`apps/api/src/character-state/roll-mode/suggested-roll-mode.ts:81`).
   Va **en el camino del ataque**, que conoce al objetivo desde 2.5.3, y **no** en
   `suggested-roll-mode.ts`, que responde a otra pregunta —«¿cómo tiro yo?»— y lo dice en su propio
   comentario. Lo que sigue fuera: el fallo automático de pruebas que requieren vista, porque el
-  servidor no sabe si esta prueba concreta la requiere.
+  servidor no sabe si esta prueba concreta la requiere. -->
 - **3.5 · D-OP-17, «dónde se quedó».** `campaigns.service.ts#listForUser` devuelve hoy rol y número
   de miembros; hay que añadir la crónica de la última sesión `CLOSED` **filtrada por
   `recapVisibility`** —que desde el plan 02 es columna, así que es una consulta—. **El caso que se

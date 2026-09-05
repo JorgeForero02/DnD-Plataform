@@ -23,6 +23,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-hasta-2026-09-02.md`](./_archivo/historial-hasta-2026-09-02.md) | Todo el 2026-09-02 —la fase 2A entera, la ronda de interfaz, la primera puesta en producción— y **las entradas por tarea del 2026-09-03** (2B, 2C y 2D, tarea a tarea) |
 > | [`_archivo/historial-2026-09-04-por-tarea.md`](./_archivo/historial-2026-09-04-por-tarea.md) | **El 2026-09-04 se cerraron ocho tandas con sus ocho revisiones**, y sus entradas por tarea no caben aquí. Tres de ellas viven ahí: 2.5.2, B1.2 y la de `ENTITY_REVEALED` + archivar |
 > | [`_archivo/historial-2026-09-04-tandas.md`](./_archivo/historial-2026-09-04-tandas.md) | Las tandas por tarea del 2026-09-03 y 04 —2.5.3, 2.5.4, 2.5.5, 2.5.6, B4 y B5—, movidas enteras el 2026-09-05 |
+> | [`_archivo/historial-2026-09-03-y-04-sueltas.md`](./_archivo/historial-2026-09-03-y-04-sueltas.md) | **La comprobación en producción de 2D** y **la auditoría de la documentación del 2026-09-04**, movidas enteras el 2026-09-05 (segundo corte de la noche: las cinco entradas del plan 03 dejaron el fichero en 413 de 400) |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -59,6 +60,40 @@ jugador nombrado; copiar la visibilidad tal cual en el archivar tumba el del due
 **Cómo revertirlo.** `git revert` del commit y una migración con
 `ALTER TABLE "GameEvent" DROP COLUMN "grantedUserIds"`. Vuelve el parche de `DM_ONLY`, que era la
 etiqueta honesta de lo que pasaba.
+
+---
+
+## Atacar a un ciego da ventaja, y esa mitad faltaba (2026-09-05, plan 03 · D-OP-13)
+
+**Qué.** El SRD dice de `blinded` una frase con **dos mitades**: *"Attack rolls against the creature
+have advantage, and the creature's attack rolls have disadvantage."* 2.5.5 implementó la segunda y
+declaró que la primera quedaba fuera **con su motivo**: `suggested-roll-mode.ts` responde «¿cómo
+tiro **yo**?», y quien ataca no tiene por qué estar mirando la hoja del atacado. Esa mitad vive
+ahora donde sí se conoce al objetivo: **el camino del ataque**.
+
+**La tabla, verificada en inglés contra `dnd5eapi.co` el 2026-09-05.** Dan ventaja a quien ataca
+`blinded`, `paralyzed`, `petrified`, `restrained`, `stunned` y `unconscious`; da **desventaja**
+`invisible`.
+
+**Y dos reglas se dejan fuera, dichas:** `prone` da ventaja *"if the attacker is within 5 feet…
+Otherwise, disadvantage"*, y el crítico automático de `paralyzed`/`unconscious` tiene la misma
+condición. **Dependen de la distancia y hasta la fase 3 no hay tablero**: elegir una de las dos
+mitades sería inventarse la mitad de las veces. Es el mismo criterio con el que 2.5.5 dejó fuera el
+fallo automático de pruebas que requieren vista.
+
+**Se combina con la regla del SRD, no sumando.** *"If circumstances cause a roll to have both
+advantage and disadvantage, you are considered to have neither of them."* Dos causas del mismo signo
+siguen siendo una; una de cada signo da **normal**. Contar causas inventaría una regla de mayorías
+que la 5.ª edición no tiene.
+
+**Cierra L3**, que decía que `blinded` no calculaba nada.
+
+**Cómo se comprobó.** Doce pruebas de la función pura y cinco del camino del ataque —incluida una
+condición **ya vencida**, que no cambia nada—. Mutación: al anular la rama de ventaja, **siete**
+pruebas se ponen rojas.
+
+**Cómo revertirlo.** `git revert` del commit: el modo vuelve a ser el que pide quien tira. No hay
+migración ni dato nuevo.
 
 ---
 
@@ -340,40 +375,3 @@ pueda abrir ninguna—: sale para jugadores solo si las dos fichas ya las ve la 
 
 **Cómo revertir.** `git revert` de los merges de carril y del armazón (`a1d4a1d`). Nada de esto
 toca `packages/shared` y no hay migración; el suceso del enlace es `apps/api` y se revierte solo.
-
-## Lo comprobado EN PRODUCCIÓN al desplegar la fase 2D (2026-09-03)
-
----
-
-## La documentación, auditada contra lo que hay (2026-09-04)
-
-**Pedido por el autor al cerrar la jornada, y encontró cinco desajustes y un hallazgo de producto.**
-Los controles automáticos (`check:docs`, `check:estado`, `check:historial`) estaban los tres en
-verde: lo que se les escapa es exactamente lo que se buscó a mano.
-
-- **`08-pruebas.md` decía 268 e2e de API y 106 de navegador**; las cifras reales, vueltas a medir,
-  son **269 y 108**. El documento avisa de que ese par se escribe a mano porque solo lo sabe el
-  corredor, y es justo el que se queda atrás.
-- **`00-INDEX.md` contaba «las cinco decisiones de la fase 2.5»**: son **diez**, y las **once del
-  reseño de la mesa** no se contaban en ninguna parte.
-- **`00-INDEX.md` abría con «toda la fase 2 está en producción»** sin decir que la 2.5 y el reseño
-  entero están en `main` y **sin desplegar**. Lo mismo en `03-despliegue.md`, que decía «EN
-  PRODUCCIÓN desde el 2026-09-02» y no que producción va por detrás.
-- **`01-arquitectura.md` no tenía el módulo `encounters`** — el único de la API que faltaba, con
-  dos endpoints añadidos este mismo día—, ni nombraba `concentration/`, ni la capa de combate de
-  `apps/web/src/features/encounters/`.
-
-**Y debajo de un fallo de prueba había algo real.** Al remedir los e2e, `pnj-en-la-mesa` salió
-rojo: comprobaba que la CA de un statblock `DM_ONLY` no llega al jugador con
-`JSON.stringify(...).not.toContain("17")`, y el cuerpo lleva `createdAt` en ISO — **entre las 17:00
-y las 18:00 la hora contenía «17»**. Once horas de cada doce pasaba. Ahora recorre **cada valor**
-del árbol con su tipo, y lleva su control.
-
-Al mirar ese cuerpo se vio lo que la prueba **no** comprobaba: **las seis características del
-statblock `DM_ONLY` y los PG exactos sí llegan al jugador**, en la misma respuesta que dice «los
-números de este PNJ no son públicos». Ficha **P1** abierta con la evidencia y las dos salidas
-posibles; **no se cambia el comportamiento sin el autor**, porque las dos son decisiones suyas.
-
-**Revertir:** un commit; solo documentación y una prueba.
-
----

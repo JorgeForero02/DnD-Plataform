@@ -1829,6 +1829,92 @@ describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => 
   });
 });
 
+describe("D-OP-13 — el estado del OBJETIVO cambia cómo se tira contra él", () => {
+  function contraUnObjetivoCon(...condiciones: string[]) {
+    const montado = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 4,
+      total: 14,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+    montado.prisma.characterCondition.findMany.mockImplementation(
+      ({ where }: { where: { characterId: string } }) =>
+        Promise.resolve(
+          where.characterId === "target1"
+            ? condiciones.map((key) => ({ key, level: null, expiresAtClock: null }))
+            : [],
+        ),
+    );
+    return montado;
+  }
+
+  const modoUsado = (rolls: { roll: jest.Mock }) =>
+    (rolls.roll.mock.calls.at(-1)![2] as { mode: string }).mode;
+
+  it("**atacar a un objetivo CIEGO se tira con ventaja**", async () => {
+    // SRD 5.1, `blinded`: *"Attack rolls against the creature have advantage, and the creature's
+    // attack rolls have disadvantage."* La segunda mitad ya estaba desde 2.5.5; esta es la
+    // primera, y no podía vivir en `suggested-roll-mode.ts`, que responde «¿cómo tiro YO?».
+    const { service, rolls } = contraUnObjetivoCon("blinded");
+    await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+    expect(modoUsado(rolls)).toBe("ADVANTAGE");
+  });
+
+  it("sin condiciones en el objetivo, se tira como se pidió", async () => {
+    const { service, rolls } = contraUnObjetivoCon();
+    await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+    expect(modoUsado(rolls)).toBe("NORMAL");
+  });
+
+  it("atacar a un INVISIBLE se tira con desventaja", async () => {
+    const { service, rolls } = contraUnObjetivoCon("invisible");
+    await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+    expect(modoUsado(rolls)).toBe("DISADVANTAGE");
+  });
+
+  it("**y lo del objetivo se anula con lo que pide quien tira**, no se acumula", async () => {
+    // El caso de mesa: tiro con desventaja —estoy asustado— contra alguien cegado. Ni ventaja ni
+    // desventaja: un solo d20, que es lo que dice el SRD.
+    const { service, rolls } = contraUnObjetivoCon("blinded");
+    await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "DISADVANTAGE",
+    });
+    expect(modoUsado(rolls)).toBe("NORMAL");
+  });
+
+  it("una condición del objetivo YA VENCIDA no cambia nada", async () => {
+    // Se filtran contra el reloj de campaña igual que hace la hoja: una condición caducada sigue
+    // en su fila y no calcula nada. El reloj del montaje va a 0, así que `expiresAtClock: 0` ya
+    // venció.
+    const { service, rolls, prisma } = contraUnObjetivoCon();
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "blinded", level: null, expiresAtClock: 0 },
+    ]);
+    await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+    });
+    expect(modoUsado(rolls)).toBe("NORMAL");
+  });
+});
+
 describe("2.5.3 — el ataque, comparado en el servidor", () => {
   it("con el total por encima de la CA del objetivo, el veredicto es HIT", async () => {
     const { service, rolls } = conAtacanteYObjetivo({

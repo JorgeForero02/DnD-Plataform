@@ -7,6 +7,7 @@ import { GAME_EVENT_TYPES, gameEventPayloadSchema } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { conBuzonDeSucesos } from "../common/after-commit";
+import { LiveBus } from "../live/live-bus";
 import { GameEventsService } from "./game-events.service";
 
 // Tarea 2A.5.
@@ -52,6 +53,8 @@ describe("GameEventsService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: EventEmitter2, useValue: emitter },
+        // Plan 12 · 12.3: `record` publica el aviso en vivo además de emitir el suceso.
+        { provide: LiveBus, useValue: { publish: jest.fn() } },
       ],
     }).compile();
     service = ref.get(GameEventsService);
@@ -314,6 +317,8 @@ describe("ver el log por los ojos de otro jugador", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: EventEmitter2, useValue: emitter },
+        // Plan 12 · 12.3: `record` publica el aviso en vivo además de emitir el suceso.
+        { provide: LiveBus, useValue: { publish: jest.fn() } },
       ],
     }).compile();
     service = ref.get(GameEventsService);

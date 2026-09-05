@@ -8,6 +8,7 @@ import type {
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
 import * as characterSheetApi from "./api";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 // Tarea 2A.10. Claves jerárquicas bajo la raíz `["campaigns", campaignId, ...]`
 // (docs/04-convenciones.md): invalidar `sheetKey` invalida solo la hoja de este personaje, y
@@ -72,8 +73,13 @@ export function useCatalog() {
  *
  * Treinta segundos sirven para el reloj y el inventario porque nadie los tiene al lado de su
  * propia contradicción.
+ *
+ * **Plan 12 · 12.3 — y ahora sale de `lib/sondeo.ts`.** El razonamiento de arriba sigue siendo
+ * cierto entre estas dos consultas: se refrescan **juntas**, que era el punto. Lo que cambia es
+ * que ya no es el camino principal —lo es el canal en vivo— y que su número lo decide un solo
+ * sitio: había diez intervalos con cuatro valores, y once ediciones para cambiar uno.
  */
-export const SONDEO_DE_MESA_MS = 15_000;
+export const SONDEO_DE_MESA_MS = SONDEO_DE_RED_DE_SEGURIDAD_MS;
 
 export function useCharacterSheet(campaignId: string, characterId: string) {
   return useQuery({
@@ -302,7 +308,7 @@ export function useGameClock(campaignId: string, options?: { enabled?: boolean }
   return useQuery({
     queryKey: clockKey(campaignId),
     queryFn: () => characterSheetApi.fetchClock(campaignId),
-    refetchInterval: 30_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
     enabled: Boolean(campaignId) && (options?.enabled ?? true),
   });
 }

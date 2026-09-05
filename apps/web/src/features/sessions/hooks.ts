@@ -6,6 +6,7 @@ import { fetchSessions, createSession, updateSession, deleteSession } from "./ap
 // (misma trampa documentada en docs/04-convenciones.md).
 import * as sessionsApi from "./api";
 import * as logApi from "./log-api";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 export const sessionsKey = (campaignId: string) => ["campaigns", campaignId, "sessions"] as const;
 
@@ -67,7 +68,7 @@ export function useCurrentSession(campaignId: string) {
     queryKey: currentSessionKey(campaignId),
     queryFn: () => sessionsApi.fetchCurrentSession(campaignId),
     enabled: Boolean(campaignId),
-    refetchInterval: 30_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
     refetchOnWindowFocus: true,
   });
 }
@@ -115,7 +116,7 @@ export function useGameLog(campaignId: string, opciones: { sessionId?: string; a
     queryKey: gameLogKey(campaignId, opciones.sessionId, opciones.as),
     queryFn: () => logApi.fetchGameEvents(campaignId, opciones),
     enabled: Boolean(campaignId),
-    refetchInterval: 15_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
   });
 }
 

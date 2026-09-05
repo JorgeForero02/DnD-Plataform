@@ -142,8 +142,8 @@ comprobación detrás de nginx y Traefik hecha en el servidor**, no supuesta.
 |---|---|---|
 | ✅ hecho | 2026-09-05 | **12.1 · los dos avisos que nadie emitía.** Emisores: `apps/api/src/comments/comments.service.ts:78` (`comment.added`, **fuera** de la transacción) y `apps/api/src/sessions/sessions.service.ts:148` (`session.scheduled`, en `create` y en `update` **solo si la fecha cambia**). Oyentes: `apps/api/src/notifications/notifications.service.ts:176` y `:236`, con `visoresDeLaMesa()` extraído en `:99`. Pruebas: `apps/api/src/notifications/notifications.service.spec.ts` (17 verdes) y `apps/api/test/notifications.e2e-spec.ts` (7 verdes). **Mutación probada**: sin `canView`, roja **solo** «NO llega a quien no puede ver la ficha». **Commit `98fa00b`** |
 | ✅ hecho | 2026-09-05 | **Fallo ajeno al plan, encontrado por el camino.** La suite `notifications` de la API estaba **roja en `main`**: `POST /campaigns/:id/invites` daba 400 a una petición sin cuerpo aunque su esquema tiene todo opcional. Arreglado en `apps/api/src/common/zod-validation.pipe.ts:20`, con tres pruebas en su spec. **Commit `98fa00b`** |
-| ✅ hecho | 2026-09-05 | **12.2 · la bandeja.** `apps/web/src/features/notifications/`: `api.ts` (las dos rutas que ya existían), `hooks.ts` (`SONDEO_DE_AVISOS_MS = 30_000`, sin sesión no pregunta), `vocabulario.ts` (`Record` **exhaustivo** por tipo: frase y destino) y `BandejaDeAvisos.tsx`. Montada en el chrome (`apps/web/src/ui/AppShell.tsx:121`) y en la banda de la mesa (`features/sessions/BandaDeMesa.tsx:108`), que vive fuera de `AppShell`. Icono nuevo: `ui/Iconos.tsx:341`. Pruebas: `features/notifications/__tests__/BandejaDeAvisos.test.tsx` (7) y `apps/web/e2e/bandeja-de-avisos.spec.ts` (dos navegadores). **Commit `<pendiente 12.2>`** |
-| ⬜ sin empezar | — | **12.3 · el nervio en vivo.** |
+| ✅ hecho | 2026-09-05 | **12.2 · la bandeja.** `apps/web/src/features/notifications/`: `api.ts` (las dos rutas que ya existían), `hooks.ts` (`SONDEO_DE_AVISOS_MS = 30_000`, sin sesión no pregunta), `vocabulario.ts` (`Record` **exhaustivo** por tipo: frase y destino) y `BandejaDeAvisos.tsx`. Montada en el chrome (`apps/web/src/ui/AppShell.tsx:121`) y en la banda de la mesa (`features/sessions/BandaDeMesa.tsx:108`), que vive fuera de `AppShell`. Icono nuevo: `ui/Iconos.tsx:341`. Pruebas: `features/notifications/__tests__/BandejaDeAvisos.test.tsx` (7) y `apps/web/e2e/bandeja-de-avisos.spec.ts` (dos navegadores). **Commit `e2dc957`** |
+| ✅ hecho | 2026-09-05 | **12.3 · el nervio en vivo (D-OP-22).** API: `apps/api/src/live/live-bus.ts` (mensaje agnóstico del transporte, limitación de un solo contenedor escrita dentro), `live.service.ts` (`assertCanJoin` en su propio método; billete de un solo uso, 30 s), `live.controller.ts` (latido de 15 s, `X-Accel-Buffering: no`). Emisión **solo** en `apps/api/src/game-events/game-events.service.ts:97`, tras el commit. Web: `apps/web/src/features/live/canal.ts`, montado en `pages/CampaignDetailPage.tsx` y `pages/SesionPage.tsx`. Sondeo unificado en `apps/web/src/lib/sondeo.ts` a **60 s** (11 puntos). Pruebas: `apps/api/src/live/live.service.spec.ts` (8) y `apps/web/e2e/nervio-en-vivo.spec.ts` (2, con control). **Commit `<pendiente 12.3>`** |
 | ⛔ bloqueado | 2026-09-05 | **La comprobación de `X-Accel-Buffering` detrás de nginx y Traefik**, que la «Definición de terminado» exige hacer **en el servidor**. El prompt de arranque prohíbe desplegar esta noche; las dos no se pueden cumplir a la vez. Se deja escrito y sin dar por hecho. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
@@ -180,9 +180,26 @@ fuente si la hubo):
   envuelve `App` entero (`apps/web/src/main.tsx:27`), así que la prueba se acerca a lo que se
   monta de verdad en vez de alejarse.
 
+- **El canal manda avisos y NO datos, y por eso no filtra.** Un canal tonto no puede filtrar mal.
+  El coste son ~60 ms de más por recarga; el beneficio es que `canView` sigue viviendo en un solo
+  sitio.
+- **El billete se comprueba DOS veces**: al emitirlo y al canjearlo. Entre las dos cosas caben
+  treinta segundos, y en treinta segundos a alguien se le puede haber echado de la mesa.
+- **`assertCanJoin` está fuera del controlador de SSE** para que el WebSocket de la fase 3.C lo
+  reutilice, en vez de escribir la segunda copia de «quién puede» que este proyecto prohíbe.
+- **El latido no estaba en el plan y sí en el acompañante**, y sin él el canal parece roto: el
+  navegador reconecta cada minuto sin ningún error visible.
+- **El sondeo se unificó en una constante y bajó a 60 s.** Eran diez intervalos con cuatro valores
+  en siete módulos; once ediciones para cambiar un número, y el olvidado no da error. Queda **una
+  excepción declarada**: la petición de tirada, a 15 s, porque es una pregunta hecha en voz alta.
+- **La prueba del nervio necesita su control.** Con el canal apagado, la campana no se enciende
+  sola: sin esa segunda prueba, la primera solo demostraría que el aviso se escribió.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- **12.3, el nervio en vivo.** Antes, leer `docs/superpowers/specs/2026-09-05-nervio-en-vivo-transporte-design.md`**:
+- **El plan 12 está cerrado menos un punto**, y ese punto es el ⛔ de arriba: `X-Accel-Buffering`
+  **detrás de nginx y Traefik de verdad**, que exige desplegar. El resto está verde y medido.
+- Referencia del transporte, si hace falta volver: `docs/superpowers/specs/2026-09-05-nervio-en-vivo-transporte-design.md`**:
   corrige cuatro números del plan (no hay «un sondeo» sino **diez `refetchInterval` con cuatro
   valores**, son **93** invalidaciones y no 47, falta el **latido** cada 15-20 s, y `EventSource`
   gasta una de las seis conexiones por origen en HTTP/1.1, que muerde **en local con Vite**).

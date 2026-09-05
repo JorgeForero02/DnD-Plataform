@@ -7,6 +7,7 @@ import type {
 import * as inventoryApi from "./api";
 import type { InventoryRow } from "./api";
 import { useSrdResolvedItems } from "../campaign-items/hooks";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 // Carril B4 — la clave del catálogo SRD, sin `campaignId`: el mismo catálogo sirve a cualquier
 // mesa (`CatalogController`), así que cachearlo por campaña solo lo pediría dos veces sin motivo.
@@ -41,7 +42,7 @@ export function useInventory(campaignId: string, characterId: string) {
     // desde su portátil y, sin esto, a los jugadores no les aparecía hasta volver a la pestaña:
     // la invalidación solo alcanza al navegador que hizo el cambio. Treinta segundos es lo que
     // ya usan las sesiones, y de momento se juega presencialmente — el tiempo real es la fase 4.
-    refetchInterval: 30_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
     queryKey: inventoryKey(campaignId, characterId),
     queryFn: () => inventoryApi.fetchInventory(campaignId, characterId),
     enabled: Boolean(campaignId && characterId),

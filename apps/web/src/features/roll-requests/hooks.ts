@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateRollRequestInput } from "@dnd/shared";
 import * as rollRequestsApi from "./api";
+import { SONDEO_DE_PETICIONES_MS } from "../../lib/sondeo";
 
 // Tarea 2C.5 — los hooks de las peticiones de tirada. Misma convención que `features/rolls` y
 // `features/inventory`: las llamadas internas pasan por `rollRequestsApi.xxx(...)` y no por el
@@ -12,15 +13,8 @@ import * as rollRequestsApi from "./api";
 export const rollRequestsKey = (campaignId: string) =>
   ["campaigns", campaignId, "roll-requests"] as const;
 
-/**
- * **Quince segundos, y es más corto que los treinta del inventario a propósito.**
- *
- * El inventario sondea un estado que cambia de vez en cuando; esto es **una pregunta que espera
- * respuesta**: el DM dice «tirad percepción» en voz alta y mira la pantalla. Medio minuto de
- * silencio entre la frase y el botón hace que alguien tire con dados de plástico, que es
- * exactamente lo que esta herramienta existe para quitar. El tiempo real es la fase 4.
- */
-export const SONDEO_DE_PETICIONES_MS = 15_000;
+// **Quince segundos, y es la única excepción declarada**: su porqué está escrito entero en
+// `lib/sondeo.ts`, que es de donde sale el número.
 
 export function useRollRequests(campaignId: string, query: { includeResolved?: boolean } = {}) {
   return useQuery({

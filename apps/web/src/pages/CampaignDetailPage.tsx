@@ -55,6 +55,7 @@ import { PanelDeDados } from "../features/rolls/PanelDeDados";
 import { PanelDeTablas } from "../features/dm-tables/PanelDeTablas";
 import { IconoTabla } from "../features/dm-tables/iconos";
 import { DadoDibujado } from "../features/rolls/DadoDibujado";
+import { useCanalEnVivo } from "../features/live/canal";
 
 type TabConfig =
   | { kind: "overview"; label: string; group?: string }
@@ -606,6 +607,11 @@ export function CampaignDetailPage() {
   const { data: campaign, isLoading, isError } = useCampaign(id);
   const { user, logout } = useAuthStore();
   const { data: todasLasEntidades } = useAllEntities(id);
+
+  // **Plan 12 · 12.3 — el nervio en vivo.** Mientras esta pantalla esté abierta, la mesa avisa de
+  // lo que cambia y las consultas se recargan solas por su ruta autorizada. Se cierra al
+  // desmontar; si el canal no se puede abrir, queda el sondeo de red de seguridad.
+  useCanalEnVivo(id);
 
   // Reseño 2026-09-02 — the open section lives in the URL. Two reasons, and the second is the
   // one that matters: a section becomes linkable and survives a reload, and an uncontrolled

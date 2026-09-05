@@ -30,6 +30,7 @@ import { CampaignItemsModule } from "./campaign-items/campaign-items.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { EncountersModule } from "./encounters/encounters.module";
 import { UsersModule } from "./users/users.module";
+import { LiveModule } from "./live/live.module";
 import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.constants";
 
 @Module({
@@ -54,6 +55,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     SessionsModule,
     CharactersModule,
     GameEventsModule,
+    LiveModule,
     MembersModule,
     RollsModule,
     GameClockModule,

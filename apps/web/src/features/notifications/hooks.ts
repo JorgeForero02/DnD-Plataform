@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../../store/auth.store";
 import * as notificationsApi from "./api";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 // Plan 12 · 12.2 — los hooks de la bandeja. Misma convención que el resto de features: las
 // llamadas internas pasan por `notificationsApi.xxx(...)` y no por el import nombrado, porque las
@@ -9,13 +10,10 @@ import * as notificationsApi from "./api";
 export const notificationsKey = ["notifications"] as const;
 
 /**
- * **Treinta segundos, y esto es la red de seguridad, no el camino principal.**
- *
- * El camino principal llega en 12.3 —el canal en vivo—, y entonces este número sube a los 60 s que
- * el plan pide. Mientras tanto medio minuto es lo que hay entre «te han comentado» y enterarte, y
- * es el mismo valor que ya usan el inventario y el reloj.
+ * **La red de seguridad, no el camino principal**: el camino es el canal en vivo
+ * (`features/live/canal.ts`), que invalida esta consulta en cuanto pasa algo en la mesa.
  */
-export const SONDEO_DE_AVISOS_MS = 30_000;
+export const SONDEO_DE_AVISOS_MS = SONDEO_DE_RED_DE_SEGURIDAD_MS;
 
 export function useNotifications(limit = 20) {
   // **Sin sesión no se pregunta.** La cabecera se pinta también en las pantallas públicas

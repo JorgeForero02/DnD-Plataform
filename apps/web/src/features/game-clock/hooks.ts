@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdvanceClockInput } from "@dnd/shared";
 import * as clockApi from "./api";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 /** Clave jerárquica, como todo lo de una campaña. */
 export const clockKey = (campaignId: string) => ["campaigns", campaignId, "clock"] as const;
@@ -14,7 +15,7 @@ export function useGameClock(campaignId: string) {
   return useQuery({
     queryKey: clockKey(campaignId),
     queryFn: () => clockApi.fetchClock(campaignId),
-    refetchInterval: 30_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
   });
 }
 

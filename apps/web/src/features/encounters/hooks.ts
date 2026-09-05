@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as encountersApi from "./api";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 export const currentEncounterKey = (campaignId: string, sessionId: string) =>
   ["encounters", campaignId, sessionId, "current"] as const;
@@ -17,7 +18,7 @@ export function useCurrentEncounter(campaignId: string, sessionId: string | unde
     queryKey: currentEncounterKey(campaignId, sessionId ?? ""),
     queryFn: () => encountersApi.fetchCurrentEncounter(campaignId, sessionId!),
     enabled: Boolean(campaignId && sessionId),
-    refetchInterval: 10_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
     refetchOnWindowFocus: true,
   });
 }

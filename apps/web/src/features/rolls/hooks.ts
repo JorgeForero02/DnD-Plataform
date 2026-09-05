@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateRollInput } from "@dnd/shared";
 import * as rollsApi from "./api";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
 // Tarea 2C.2 — los hooks de la pantalla de dados. Misma convención que `features/inventory`: las
 // llamadas internas pasan por `rollsApi.xxx(...)` y no por el import nombrado, porque las
@@ -35,7 +36,7 @@ export function useRollLog(campaignId: string, filtro: FiltroDeTiradas = {}) {
     // portátiles y la invalidación solo alcanza al navegador que hizo la petición: sin esto, las
     // tiradas de los demás no aparecen hasta volver a la pestaña. Treinta segundos es lo que ya
     // usan las otras dos pantallas; el tiempo real es la fase 4.
-    refetchInterval: 30_000,
+    refetchInterval: SONDEO_DE_RED_DE_SEGURIDAD_MS,
     queryKey: rollsKey(campaignId, filtro),
     queryFn: () => rollsApi.fetchRolls(campaignId, filtro),
     enabled: Boolean(campaignId),

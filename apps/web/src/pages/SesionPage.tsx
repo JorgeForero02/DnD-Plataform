@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { MesaDeSesion } from "../features/sessions/MesaDeSesion";
+import { useCanalEnVivo } from "../features/live/canal";
 
 // **La mesa, y es la única pantalla del producto que NO va dentro del armazón común.**
 //
@@ -24,6 +25,10 @@ import { MesaDeSesion } from "../features/sessions/MesaDeSesion";
 
 export function SesionPage() {
   const { id } = useParams<{ id: string }>();
+  // **Plan 12 · 12.3 — el nervio en vivo, y aquí es donde más se nota**: la mesa es la pantalla
+  // que dos personas miran a la vez. El gancho va antes del `return` temprano porque un gancho
+  // condicional no es un gancho; sin `id` no abre nada.
+  useCanalEnVivo(id);
   if (!id) return null;
   return <MesaDeSesion campaignId={id} />;
 }

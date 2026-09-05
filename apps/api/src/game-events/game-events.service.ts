@@ -11,6 +11,7 @@ import type { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import { encolarTrasCommit } from "../common/after-commit";
 import { canView, type Viewer } from "../common/visibility";
+import { LiveBus } from "../live/live-bus";
 import { PrismaService } from "../prisma/prisma.service";
 
 // Tarea 2A.5 — el log de partida.
@@ -27,6 +28,7 @@ export class GameEventsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly emitter: EventEmitter2,
+    private readonly live: LiveBus,
   ) {}
 
   /**
@@ -81,11 +83,27 @@ export class GameEventsService {
     // ciclo entre los dos módulos —el motor escribe eventos, los eventos disparan el motor— y
     // Nest solo lo resolvería con un `forwardRef`, que es esconder el ciclo en vez de quitarlo.
     // El emisor ya está en la aplicación y ya se usa para lo mismo en `notifications`.
-    const emitir = () =>
-      // `emitAsync` y no `emit`: **hay que esperar al motor.** Con `emit` la evaluación quedaba
+    const emitir = async () => {
+      // **Plan 12 · 12.3 — el nervio en vivo se emite AQUÍ Y EN NINGÚN OTRO SITIO.**
+      //
+      // `record` es el punto por donde pasa todo lo que ocurre en una mesa, así que es el único
+      // sitio donde un aviso no se puede olvidar. Un segundo emisor en cualquier servicio sería
+      // un aviso que llega sin dejar rastro en el registro — y el registro es lo que se lee
+      // cuando alguien pregunta qué pasó.
+      //
+      // **Va un aviso, no el suceso.** Ni el `payload` ni la visibilidad viajan: quien lo reciba
+      // recarga por su ruta autorizada, donde `canView` sigue mandando. Y va junto a la emisión
+      // interna para que herede lo mismo: **después del commit**, nunca antes.
+      this.live.publish({
+        type: payload.type,
+        campaignId,
+        subjectType: input.subjectType,
+        subjectId: input.subjectId,
+      });
+      // `emitAsync` y no `emit`: **hay que esperar al motor**, y por eso la promesa se DEVUELVE. Con `emit` la evaluación quedaba
       // suelta en la cola de microtareas y el comentario que prometía «evalúa dentro de la
       // petición» era falso (ficha M2B-3).
-      this.emitter.emitAsync("game_event.recorded", {
+      return this.emitter.emitAsync("game_event.recorded", {
         campaignId,
         actorUserId,
         type: payload.type,
@@ -99,6 +117,7 @@ export class GameEventsService {
         // re-entrar no aporta nada y sí puede tumbar el proceso.
         fromRulesEngine: options?.fromRulesEngine === true,
       });
+    };
 
     // **Con una transacción abierta, la emisión se aplaza hasta el commit.** El motor trabaja por
     // otra conexión: emitir aquí le haría leer el mundo de antes del suceso y escribir sus efectos

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as sheetApi from "../api";
 import { SONDEO_DE_MESA_MS, useCharacterSheet, useConditions } from "../hooks";
+import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../../lib/sondeo";
 
 // **Las barras de vida de la mesa mentían.** `useCharacterSheet` y `useConditions` no sondeaban:
 // el DM pulsaba −5 en su portátil, el registro de al lado lo contaba a los quince segundos y la
@@ -43,8 +44,15 @@ afterEach(() => {
 });
 
 describe("la mesa sondea la vida y las condiciones", () => {
-  it("el intervalo es el mismo que el del registro: la barra y la línea no pueden contradecirse", () => {
-    expect(SONDEO_DE_MESA_MS).toBe(15_000);
+  it("el intervalo sale de UN solo sitio y es el de la red de seguridad", () => {
+    // **Plan 12 · 12.3 — el número cambió de 15 s a 60 s, y es una decisión, no un ajuste.** El
+    // sondeo dejó de ser el camino principal: lo es el canal en vivo (`features/live/canal.ts`),
+    // que invalida estas dos consultas en cuanto pasa algo en la mesa. Lo que esto sigue
+    // protegiendo es lo mismo de antes —que **las dos** se refresquen, y **juntas**, para que la
+    // barra y el registro no se contradigan—, y ahora además que el número **no esté suelto**:
+    // había diez intervalos con cuatro valores distintos y once ediciones para cambiar uno.
+    expect(SONDEO_DE_MESA_MS).toBe(SONDEO_DE_RED_DE_SEGURIDAD_MS);
+    expect(SONDEO_DE_RED_DE_SEGURIDAD_MS).toBe(60_000);
   });
 
   it("vuelve a pedir la hoja y las condiciones al pasar el intervalo", async () => {

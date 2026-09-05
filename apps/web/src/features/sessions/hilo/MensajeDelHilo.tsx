@@ -5,7 +5,8 @@ import { NOMBRE_SELLO } from "../vocabulario";
 import { Badge } from "../../../ui/Badge";
 import { TiradaIncrustada } from "./TiradaIncrustada";
 import { datosDeTirada } from "./tirada";
-import { colorDeVoz, tipoDeMensaje } from "./tipo-de-mensaje";
+import { tipoDeMensaje } from "./tipo-de-mensaje";
+import { vozDePersonaje, type ConColor } from "../../../dominio/voces";
 
 // **Los cinco tipos de mensaje de la maqueta**, copiados de
 // `prototipo/src/features/HiloDeSesion.tsx` clase a clase: narración con capitular, personaje con
@@ -86,12 +87,23 @@ function tituloDeSello(p: GameEventPayload): string {
 export function MensajeDelHilo({
   evento,
   autor,
+  personaje,
   ligada,
   nuevo,
 }: {
   evento: GameEventRow;
   /** El nombre de quien lo hizo. El hilo manda «Alguien» si no conoce a ese miembro. */
   autor: string;
+  /**
+   * **El personaje que habla, si el hilo pudo saber cuál era** (plan 05, D3).
+   *
+   * De él sale el color de la voz, y del PERSONAJE —no del usuario—, que es lo que hace que los
+   * dos personajes de un mismo jugador no salgan idénticos. Cuando no se puede resolver, el
+   * compositor manda el propio `actorUserId` como identificador de la huella: sigue habiendo un
+   * color estable, lo que no hay es un color **elegido**. Quién lo resuelve y con qué reglas está
+   * en `HiloDeSesion.tsx`; aquí solo se pinta.
+   */
+  personaje: ConColor;
   /** La tirada de la que cuelga un ataque, si está en la ventana del registro. */
   ligada?: GameEventPayload | null;
   /** Llegó después de que se abriera la pantalla: entra con `surge`. */
@@ -174,7 +186,7 @@ export function MensajeDelHilo({
   // como en la maqueta; **la hora va detrás y en la misma línea**, no debajo. Una firma por
   // mensaje partía en dos cada intervención y devolvía al hilo el aspecto de lista que esto
   // viene a quitar. La insignia solo aparece si el suceso no es de la mesa entera.
-  const voz = colorDeVoz(evento.actorUserId);
+  const voz = vozDePersonaje(personaje);
   return (
     <li data-suceso={evento.id} className={contenedor}>
       <p className="my-s1 max-w-[62ch] font-world text-world-base">

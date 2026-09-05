@@ -30,6 +30,7 @@ const personaje: Character = {
   visibility: "PLAYERS",
   createdAt: "x",
   archivedAt: null,
+  color: null,
 };
 
 const MOTIVO = "Solo el dueño o el DM puede editar este personaje.";

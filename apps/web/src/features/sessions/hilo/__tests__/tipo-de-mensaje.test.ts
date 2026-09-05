@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GAME_EVENT_TYPES, type GameEventPayload, type GameEventType } from "@dnd/shared";
-import { colorDeVoz, tipoDeMensaje, type TipoDeMensaje } from "../tipo-de-mensaje";
+import { tipoDeMensaje, type TipoDeMensaje } from "../tipo-de-mensaje";
 
 // Qué defiende este fichero, en una frase: **que los 36 tipos de suceso del registro estén
 // clasificados, cada uno en el cubo que le toca, y que el color de una voz sea siempre uno de los
@@ -104,39 +104,7 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
   });
 });
 
-describe("el color de una voz", () => {
-  // Los cuatro tokens declarados, tal y como `ui/tokens.css` los resuelve. **Ningún color
-  // literal**: si alguien mete un hexadecimal o una clase de fuera de esta lista, esto se rompe.
-  const VOCES_DECLARADAS = [
-    "text-text",
-    "text-copper-text",
-    "text-accent-text",
-    "text-danger-text",
-  ];
-
-  // La promesa que sustituye al campo de color que el modelo no tiene: el mismo identificador da
-  // siempre el mismo color, en cualquier recarga y en cualquier navegador.
-  it("es determinista: el mismo identificador da el mismo token dos veces", () => {
-    for (const id of ["u-elara", "u-dm", "", "ç", "usuario con espacios", "cmXyZ0123456789"]) {
-      expect(colorDeVoz(id)).toBe(colorDeVoz(id));
-    }
-  });
-
-  // La regla de «ningún color literal» de `docs/04-convenciones.md`, blindada: nunca sale nada
-  // que no esté en la paleta.
-  it("siempre devuelve uno de los cuatro tokens declarados", () => {
-    for (let i = 0; i < 500; i += 1) {
-      expect(VOCES_DECLARADAS).toContain(colorDeVoz(`u-${i}`));
-    }
-    expect(VOCES_DECLARADAS).toContain(colorDeVoz(""));
-  });
-
-  // Comportamiento actual y declarado: cuatro voces se reparten la mesa. No se comprueba que no
-  // colisionen —colisionan, y está escrito en el fichero—; se comprueba que la paleta se usa
-  // entera, porque un hash que devolviera siempre el mismo token pasaría la prueba de arriba.
-  it("reparte sobre los cuatro tokens y no se queda en uno solo", () => {
-    const vistos = new Set<string>();
-    for (let i = 0; i < 200; i += 1) vistos.add(colorDeVoz(`u-${i}`));
-    expect(vistos.size).toBe(VOCES_DECLARADAS.length);
-  });
-});
+// **El color de una voz ya no se prueba aquí.** Se fue con `colorDeVoz` al plan 05: lo decide
+// `apps/web/src/dominio/voces.ts`, sobre el PERSONAJE y ocho colores, y se prueba en
+// `apps/web/src/dominio/__tests__/voces.test.ts` junto con el retrato del elenco —que es la mitad
+// que faltaba, y la razón de que la función se moviera fuera del hilo.

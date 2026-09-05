@@ -33,6 +33,7 @@ const created: Character = {
   visibility: "PLAYERS",
   createdAt: "x",
   archivedAt: null,
+  color: null,
 };
 
 describe("CharacterEditor (crear)", () => {

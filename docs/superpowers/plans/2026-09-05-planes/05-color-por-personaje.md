@@ -136,7 +136,10 @@ tres personajes de tres colores** para el autor, y D3 anotada como aplicada en e
 | Estado | Cuándo | Qué |
 |---|---|---|
 | ✅ hecho | 2026-09-06 | **Servidor (pasos 1-4).** Columna `Character.color String?` (`apps/api/prisma/schema.prisma:502`) con migración `apps/api/prisma/migrations/20260906020000_character_color/`. Lista cerrada `CHARACTER_COLORS` + `characterColorSchema` en `packages/shared/src/character.schema.ts:20`, colgada de `createCharacterSchema` como `.nullable().optional()`. Escritura en `apps/api/src/characters/characters.service.ts:121`. Documentado en `docs/05-datos.md`. **Commit `<pendiente servidor>`** |
-| 🟨 en marcha | 2026-09-06 | **Web (pasos 5-8).** Empieza por los cuatro tokens de voz nuevos en `apps/web/src/ui/tokens.css`, medidos en los tres temas. |
+| ✅ hecho | 2026-09-06 | **Web (pasos 5-8).** Cuatro tokens de voz nuevos en `apps/web/src/ui/tokens.css:56` (en los **cinco** bloques de tema) y en `apps/web/tailwind.config.js:45`. Función única `vozDePersonaje` en `apps/web/src/dominio/voces.ts`; `colorDeVoz` **borrado** de `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts:99`. La voz la pinta `hilo/MensajeDelHilo.tsx:196` y el retrato `elenco/FichaDeElenco.tsx:333`, los dos con la misma función. Selector nuevo en `apps/web/src/features/characters/SelectorDeColor.tsx`, montado en `AjustesDePersonaje.tsx:139`. **Commit `<pendiente web>`** |
+| ✅ hecho | 2026-09-06 | **Las 24 mediciones, en el navegador.** `apps/web/e2e/tokens-contrast.spec.ts:241` mide las ocho voces sobre `--bg` y sobre `--surface` en los tres temas. Peor caso **4.85:1** (cobre sobre fondo claro) contra 4.5 exigido; las cuatro nuevas van de 5.78 a 10.02. Los números están anotados en `tokens.css` y coinciden con la salida. |
+| ✅ hecho | 2026-09-06 | **Mutación probada.** Con el defecto ignorando el `color` guardado, `apps/web/src/dominio/__tests__/voces.test.ts` da 2 rojas: «lo elegido manda» (`expected 'arena' to be 'tinta'`) y «el retrato y la voz son el mismo color». Restaurado, 7/7 verdes. |
+| ✅ | 2026-09-06 | **EL PLAN 05 ESTÁ CERRADO.** D3 anotada como aplicada en `docs/decisiones.md:140`. Captura para el autor en `apps/web/e2e-resultados/mesa-tres-colores.png`, mirada: Sivrin arena, Bran salvia, Elara ciruela. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
@@ -161,13 +164,33 @@ fuente si la hubo):
   es exactamente la regla que pedía el plan. Un endpoint aparte habría sido una segunda puerta a la
   que mantener la misma matriz.
 
+- **Las ocho claves no bastan: el hilo no sabe quién habla.** El registro guarda el **usuario** que
+  actuó, no el personaje, así que «colorear por el personaje» no era un cambio de firma, era una
+  resolución. Está escrita en `HiloDeSesion.tsx:114-146` con tres reglas: (1) si el suceso es
+  **sobre** un personaje, ese; (2) si no, y el actor lleva **un solo** personaje vivo, ese; (3) si
+  lleva dos o más, **ninguno** y la huella cae sobre su `actorUserId`. Elegir por él pintaría a un
+  personaje con el color de su hermano, que es peor que un color sin dueño. Los archivados cuentan
+  para (1) —un suceso viejo sigue siendo suyo— y no para (2).
+- **`colorDeVoz` se borra, no se deja como envoltorio.** Una función que siga aceptando un `id`
+  suelto permite volver a colorear por el usuario sin que nadie lo note. En su sitio queda un
+  comentario que dice adónde se fue y por qué.
+- **El retrato del elenco pierde su borde de cobre fijo** y pasa a `border-current`, que es el color
+  del personaje. Era la otra mitad del mismo defecto —el borde también decía «cobre para todos»— y
+  dejarlo habría dado un retrato con dos colores.
+- **Lo que se cuenta como «color en uso» incluye los de por defecto.** Un choque se ve igual de feo
+  lo haya elegido alguien o le haya tocado, así que el aviso mira `colorDePersonaje` y no
+  `character.color`. Los archivados no cuentan: no están en la mesa.
+- **Una clave que ya no existe cae al defecto en vez de romper.** Es dato viejo de una lista
+  anterior, no un error; sigue habiendo un color y sigue siendo suyo. Con prueba.
+- **`CharacterRow` también declara `color`.** El servidor ya mandaba la fila entera; sin declararlo,
+  la hoja no podía pasar el personaje a `vozDePersonaje` sin inventarse el campo. Es el mismo
+  descuido que tuvo `archivedAt` hasta el plan 06 — el campo viajaba y el tipo lo callaba.
+
 **Lo siguiente exacto, si me quedo aquí:**
 
-- Cuatro tokens de voz **nuevos** en `apps/web/src/ui/tokens.css` (salvia, ciruela, índigo, arena),
+- ~~Cuatro tokens de voz **nuevos**~~ en `apps/web/src/ui/tokens.css` (salvia, ciruela, índigo, arena),
   en los **tres** bloques de tema, y sus contrastes medidos en `apps/web/e2e/tokens-contrast.spec.ts`.
-  Las otras cuatro voces reutilizan `--text`, `--copper-text`, `--accent-text` y `--danger-text`, que
-  ya son tinta legible. **Ni `--warning-text` ni `--muted`.**
-- Después: `colorDeVoz` pasa a recibir el personaje
-  (`apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts:106`, consumidor en
-  `hilo/MensajeDelHilo.tsx:177`), el retrato del elenco llama a la misma función, y el selector de
-  muestras en la hoja que **avisa** —no prohíbe— de un color ya usado.
+  ~~Las otras cuatro voces reutilizan `--text`, `--copper-text`, `--accent-text` y `--danger-text`.~~
+- ~~Después: `colorDeVoz` pasa a recibir el personaje, el retrato del elenco llama a la misma
+  función, y el selector de muestras en la hoja que **avisa** —no prohíbe— de un color ya usado.~~
+- **Todo hecho. Nada pendiente en este plan.** Lo siguiente es el plan 08.

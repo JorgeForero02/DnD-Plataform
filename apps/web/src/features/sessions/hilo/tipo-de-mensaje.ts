@@ -96,38 +96,19 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
   }
 }
 
-/**
- * La paleta de voces. **Cuatro tokens, los mismos cuatro que la maqueta**
- * (`colorVoz` en `prototipo/src/features/HiloDeSesion.tsx`): tinta, cobre, señal y peligro.
- *
- * Nunca hexadecimales: `docs/04-convenciones.md` prohíbe el color literal, y estos cuatro
- * resuelven contra las variables de `ui/tokens.css`, así que siguen al tema y a las tres pieles.
- */
-const VOCES = ["text-text", "text-copper-text", "text-accent-text", "text-danger-text"] as const;
-
-/**
- * El color de una voz, **derivado del identificador**.
- *
- * **La decisión, y por qué se toma aquí.** La maqueta le da a cada personaje un color escrito a
- * mano en sus datos. El modelo real no tiene campo de color en ningún esquema, y este carril no
- * puede añadir uno —eso es servidor y datos compartidos—. Así que el color se deriva de forma
- * determinista del identificador de quien habla: el mismo identificador da siempre el mismo
- * color, en cualquier navegador y en cualquier recarga, sin guardar nada.
- *
- * **De quién es el identificador: del actor** (`actorUserId`), no del sujeto. Es lo que hace que
- * el nombre que se pinta y el color que lo pinta sean de la misma persona; el nombre del
- * personaje no viaja en el payload de estos sucesos, solo su identificador, así que colorear por
- * el sujeto pintaría el nombre de una persona con el color de otra. El día que un personaje tenga
- * su propio color declarado, esta función se cambia por ese campo y nada más.
- *
- * **No es una escala de significado.** Cuatro voces se repiten en una mesa de seis, y eso es
- * aceptable porque el color aquí no distingue nada que importe: el nombre está escrito al lado.
- * Es la misma limitación que la maqueta.
- */
-export function colorDeVoz(id: string): string {
-  let acumulado = 0;
-  for (let i = 0; i < id.length; i += 1) {
-    acumulado = (acumulado * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  return VOCES[acumulado % VOCES.length];
-}
+// **`colorDeVoz` se fue, y esto explica adónde** (plan 05, decisión D3, 2026-09-06).
+//
+// Vivía aquí una huella del `actorUserId` sobre CUATRO clases de Tailwind. Tenía dos defectos que
+// no se arreglaban desde este fichero:
+//
+//   · **Cuatro tonos.** Con cinco personas en la mesa, dos compartían color y nadie podía
+//     arreglarlo, porque no había nada que elegir.
+//   · **La huella era del USUARIO.** Los dos personajes de un mismo jugador salían idénticos, que
+//     es justamente lo que un color por personaje viene a distinguir.
+//
+// Y el elenco pintaba **cobre para todos** por su cuenta: dos cálculos para «¿de qué color es
+// esta persona?». Ahora hay uno solo, en `apps/web/src/dominio/voces.ts` (`vozDePersonaje`), sobre
+// ocho colores y con `Character.color` mandando cuando su jugador ha elegido.
+//
+// **No dejes aquí un envoltorio de compatibilidad.** Una función que reciba un `id` suelto vuelve
+// a permitir colorear por el usuario sin que nadie lo note, que es el fallo que se acaba de quitar.

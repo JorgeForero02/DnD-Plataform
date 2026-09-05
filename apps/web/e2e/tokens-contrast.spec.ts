@@ -238,6 +238,34 @@ for (const theme of ["dark", "light", "reading"] as const) {
       record(theme, "cobre como filete", contrastRatio(border, ruleBg), 3);
     }
 
+    // --- Plan 05 (D3): las OCHO voces de personaje, en los dos fondos donde se pintan. Una voz
+    // es texto normal, así que 4.5:1, y se mide sobre --bg (el hilo cuando va a sangre) y sobre
+    // --surface (el panel del hilo y la columna del elenco). **Ninguna voz nueva se acepta sin su
+    // medición**: las cuatro nuevas entran por aquí o no entran. Los nombres salen del propio DOM,
+    // así que un color añadido a CHARACTER_COLORS se mide solo. ---
+    {
+      const claves = await page
+        .locator("[data-voz]")
+        .evaluateAll((els) => els.map((e) => e.getAttribute("data-voz") ?? ""));
+      expect(claves.length).toBeGreaterThanOrEqual(8);
+      for (const clave of claves) {
+        const sobreFondo = await effectiveTextColours(page.locator(`[data-voz="${clave}"]`));
+        record(
+          theme,
+          `voz ${clave} sobre fondo`,
+          contrastRatio(sobreFondo.color, sobreFondo.bg),
+          4.5,
+        );
+        const sobrePanel = await effectiveTextColours(page.locator(`[data-voz-panel="${clave}"]`));
+        record(
+          theme,
+          `voz ${clave} sobre panel`,
+          contrastRatio(sobrePanel.color, sobrePanel.bg),
+          4.5,
+        );
+      }
+    }
+
     // --- Buttons: label text, normal-size body text, needs 4.5:1 ---
     for (const name of ["Guardar", "Cancelar", "Ver más", "Borrar", "Abrir diálogo"]) {
       const { color, bg } = await effectiveTextColours(

@@ -39,6 +39,7 @@ const PERSONAJE_BASE = {
   visibility: "PUBLIC" as const,
   createdAt: "2026-01-01",
   archivedAt: null,
+  color: null,
 };
 
 function renderOverview() {

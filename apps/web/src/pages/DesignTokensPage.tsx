@@ -1,5 +1,7 @@
 import { useLayoutEffect, useState } from "react";
 import type { Visibility } from "@dnd/shared";
+import { CHARACTER_COLORS } from "@dnd/shared";
+import { vozDePersonaje } from "../dominio/voces";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
 import { Panel } from "../ui/Panel";
@@ -35,6 +37,14 @@ const VELLUM_SAMPLE_MARKDOWN =
 // that every real screen follows the theme instead of being hard-pinned dark. This route still
 // reads ?theme= itself (below), which is what the contrast spec drives directly instead of
 // clicking a button; the global toggle renders on this route too, same as on every other.
+// Las ocho voces con su clase, escritas UNA vez para las dos secciones de arriba: pintarlas dos
+// veces a mano dejaría que una se midiera y la otra no. La lista sale de `@dnd/shared`, así que un
+// color nuevo aparece aquí solo y **entra en la medición sin que nadie se acuerde**.
+const VOCES_MEDIDAS = CHARACTER_COLORS.map((clave) => ({
+  clave,
+  clase: vozDePersonaje({ id: "x", color: clave }),
+}));
+
 export function DesignTokensPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -112,6 +122,29 @@ export function DesignTokensPage() {
           Cobre legible — pertenece al mundo, no es un botón
         </p>
         <hr className="border-t border-copper" data-token="copper-rule" />
+      </section>
+
+      {/* Plan 05 (D3) — **las ocho voces**, aquí para que se midan de verdad. Cuatro reutilizan
+          tokens que ya existían y cuatro son nuevas; el contraste se comprueba sobre `--bg` (esta
+          sección) y sobre `--surface` (la de abajo), que son los dos fondos donde se pinta una voz.
+          Sin esto, `tokens-contrast.spec.ts` no tendría nada que leer y los cuatro tonos nuevos
+          entrarían por opinión. */}
+      <section aria-label="voces de personaje sobre el fondo" className="mb-6 flex flex-wrap gap-3">
+        {VOCES_MEDIDAS.map(({ clave, clase }) => (
+          <p key={clave} className={`text-chrome-base ${clase}`} data-voz={clave}>
+            {clave}
+          </p>
+        ))}
+      </section>
+      <section
+        aria-label="voces de personaje sobre panel"
+        className="mb-6 flex flex-wrap gap-3 bg-surface p-3"
+      >
+        {VOCES_MEDIDAS.map(({ clave, clase }) => (
+          <p key={clave} className={`text-chrome-base ${clase}`} data-voz-panel={clave}>
+            {clave}
+          </p>
+        ))}
       </section>
 
       <section aria-label="botones" className="mb-6 flex flex-wrap gap-2">

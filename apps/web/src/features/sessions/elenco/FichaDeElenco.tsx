@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import type { DamageType } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
+import { vozDePersonaje } from "../../../dominio/voces";
 import {
   useCharacterSheet,
   useChangeHp,
@@ -100,7 +101,7 @@ export function FichaDeElenco({
         </span>
       )}
       <div className="flex items-center gap-s2">
-        <Retrato nombre={personaje.name} />
+        <Retrato personaje={personaje} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-title text-chrome-md leading-tight text-text">
             {personaje.name}
@@ -320,18 +321,26 @@ function Condiciones({
  * maqueta. **La inicial es texto, no un icono**: la regla que prohíbe los glifos prohíbe usarlos
  * *como dibujo*, y aquí la letra ES el dato. `aria-hidden` porque el nombre entero está al lado.
  *
- * **La forma es la de la maqueta** —cuadrado de esquina blanda, no un círculo—. Lo que no se
- * puede copiar es el COLOR: allí cada personaje tiene el suyo (`p.retrato`) y aquí **no hay ese
- * dato en el modelo**, así que se usa el cobre de la identidad. Inventarme un color a partir del
- * nombre sería fabricar un dato que la mesa creería que significa algo. Preguntado al autor.
+ * **La forma es la de la maqueta** —cuadrado de esquina blanda, no un círculo—. El COLOR ya no es
+ * cobre para todos: desde el plan 05 el personaje tiene el suyo (`Character.color`), y cuando no ha
+ * elegido, la huella determinista de su `id`. **Lo decide `vozDePersonaje`, la misma función que
+ * pinta su voz en el hilo** — un solo sitio decide el color de alguien, y hay una prueba de que el
+ * retrato y la voz del mismo personaje coinciden.
+ *
+ * Hasta hoy esto decía «no hay ese dato en el modelo» y usaba el cobre de la identidad. Ya lo hay.
  */
-export function Retrato({ nombre }: { nombre: string }) {
+export function Retrato({
+  personaje,
+}: {
+  personaje: { id: string; name: string; color?: string | null };
+}) {
+  const voz = vozDePersonaje(personaje);
   return (
     <span
       aria-hidden="true"
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-radius-sm border border-copper bg-surface font-title text-chrome-md text-copper-text"
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-radius-sm border border-current bg-surface font-title text-chrome-md ${voz}`}
     >
-      {nombre.trim().charAt(0).toUpperCase()}
+      {personaje.name.trim().charAt(0).toUpperCase()}
     </span>
   );
 }

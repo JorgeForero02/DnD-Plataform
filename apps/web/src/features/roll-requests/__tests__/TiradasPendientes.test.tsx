@@ -48,6 +48,7 @@ const BRANN: Character = {
   visibility: "PLAYERS",
   createdAt: "2026-01-01",
   archivedAt: null,
+  color: null,
 };
 
 function pintar() {

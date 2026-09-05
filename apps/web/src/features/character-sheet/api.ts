@@ -53,6 +53,12 @@ export interface CharacterRow {
   deathSaveSuccesses: number;
   deathSaveFailures: number;
   /**
+   * **El color de su voz y de su retrato** (plan 05, D3). El servidor manda la fila entera, así
+   * que viaja igual que `archivedAt`; se declara para que la hoja pueda pasar el personaje a
+   * `vozDePersonaje` sin inventarse el campo. `null` = no ha elegido, y entonces manda la huella.
+   */
+  color: string | null;
+  /**
    * **Cuándo se archivó, o `null` si está en la mesa.** El servidor manda la fila entera
    * (`character-sheet.service.ts`, `return { character, ... }`), así que este campo **ya viajaba**
    * y solo faltaba declararlo. Sin él, la hoja de un personaje archivado —a la que se llega por

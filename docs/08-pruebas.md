@@ -42,7 +42,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
 > - **Ficheros de e2e de API:** 38 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 24 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 25 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -283,7 +283,8 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 | Suite | Qué mide |
 |---|---|
 | `armazon` | El pie apoyado en el borde inferior con poco contenido; **ninguna entrada del carril sin su icono dibujado**; la marca. |
-| `tokens-contrast` | **El contraste real, medido, en los tres temas** (Oscuro, Claro y Lectura) y en las pantallas de sesión, campaña, 404, atribución y cuenta. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
+| `color-de-personaje` | **El color de un personaje, de punta a punta** (plan 05, D3): sin elegir, el selector lo dice; elegir **sobrevive a una recarga entera**, que es lo único que demuestra que llegó al servidor; repetir un color de otro **se avisa nombrando a quién y no se bloquea**; y en la mesa, **tres personajes con tres tintas distintas**, una de ellas exactamente la que se eligió. Los colores se leen del DOM calculado, no del nombre de la clase: `jsdom` no resuelve una clase de Tailwind hasta un color, que es la trampa declarada de este proyecto. Deja la captura que el plan pedía en `apps/web/e2e-resultados/`. |
+| `tokens-contrast` | **El contraste real, medido, en los tres temas** (Oscuro, Claro y Lectura) y en las pantallas de sesión, campaña, 404, atribución y cuenta. Desde el plan 05 mide también **las ocho voces de personaje**, cada una sobre `--bg` y sobre `--surface`, que son los dos fondos donde se pintan: **ninguna voz nueva se acepta sin su medición**, y los nombres salen del propio DOM para que un color añadido a `CHARACTER_COLORS` se mida solo. Y que un control de formulario **no dispare el zoom de iOS Safari** en un puntero basto. |
 | `clases-que-si-pintan` | Que las superficies que la aplicación promete **se pintan de verdad** — la comprobación que caza una clase de Tailwind que no existe y compila a nada. |
 | `ficha-lectura` | El enlace que se lee como frase por sus dos lados; la capitular, los párrafos y la medida corta; el contraste de la página de lectura en los dos temas. |
 | `mesa-mide` | **La mesa medida en un navegador**: la página no scrollea y el hilo sí, la rejilla llega al pie, ningún panel se corta sin poder desplazarse y abrir un cajón no desmonta el hilo. **Y desde D1 (2026-09-05), el hilo como conversación**: al abrir está **al fondo**, con el scroll subido un suceso nuevo **no roba la posición** y sale un aviso pulsable, y estando al fondo sí baja. Nada de eso se puede probar en `jsdom`, donde `scrollHeight` y `clientHeight` valen cero y **cualquier aserción de anclaje pasa siempre**. |

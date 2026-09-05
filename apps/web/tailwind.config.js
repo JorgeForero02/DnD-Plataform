@@ -42,6 +42,16 @@ export default {
         // has to be told apart from another by position alone.
         copper: "rgb(var(--copper-ch) / <alpha-value>)",
         "copper-text": "rgb(var(--copper-text-ch) / <alpha-value>)",
+        // Plan 05 (D3) — las CUATRO voces nuevas. Un personaje tiene su color en el hilo y en el
+        // elenco, y con cuatro tonos dos personas compartian voz. Las otras cuatro voces no
+        // aparecen aqui porque ya existen arriba: text, copper-text, accent-text y danger-text.
+        // Estos cuatro NO son de proposito general: nombran una voz, no un estado, y por eso no
+        // se reutiliza warning-text (el ambar de "cuidado") ni muted ("esto esta apagado").
+        // Sus contrastes en los tres temas estan medidos y anotados en ui/tokens.css.
+        "voz-salvia": "rgb(var(--voz-salvia-ch) / <alpha-value>)",
+        "voz-ciruela": "rgb(var(--voz-ciruela-ch) / <alpha-value>)",
+        "voz-indigo": "rgb(var(--voz-indigo-ch) / <alpha-value>)",
+        "voz-arena": "rgb(var(--voz-arena-ch) / <alpha-value>)",
       },
       fontFamily: {
         title: "var(--font-title)",

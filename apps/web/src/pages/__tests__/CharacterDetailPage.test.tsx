@@ -29,6 +29,8 @@ const personaje: Character = {
   class: null,
   level: 3,
   archivedAt: null,
+
+  color: null,
   bio: "Pactó con un demonio",
   visibility: "PLAYERS",
   createdAt: "x",
@@ -243,6 +245,8 @@ describe("archivar en la hoja: cuándo se ofrece y qué pasa con un archivado", 
     // existe para impedir.
     montar([], {
       character: { ...personaje, archivedAt: "2026-09-05T01:00:00.000Z" },
+
+      color: null,
       sheet: null,
     });
 

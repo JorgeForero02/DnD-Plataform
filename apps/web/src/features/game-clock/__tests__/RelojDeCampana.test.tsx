@@ -60,6 +60,8 @@ function personaje(id: string, name: string): Character {
     visibility: "PLAYERS",
     createdAt: "2026-01-01",
     archivedAt: null,
+
+    color: null,
   };
 }
 

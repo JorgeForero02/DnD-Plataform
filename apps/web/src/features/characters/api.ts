@@ -17,6 +17,14 @@ export interface Character {
   level: number;
   bio: string | null;
   visibility: Visibility;
+  /**
+   * **El color de su voz en el hilo y de su retrato en el elenco** (plan 05, decisión D3).
+   *
+   * Una **clave** de `CHARACTER_COLORS`, nunca un hexadecimal, y `null` cuando su jugador no ha
+   * elegido: entonces el color lo deriva `vozDePersonaje` del `id`. Se lee y se escribe, pero
+   * **nunca se guarda el valor derivado** — un defecto escrito dejaría de ser un defecto.
+   */
+  color: string | null;
   createdAt: string;
   /**
    * **Cuándo se archivó, o `null` si está en la mesa.**

@@ -7,6 +7,9 @@ import { IconoBajarAlFondo, IconoRegistro } from "../iconos";
 import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "../reincorporarse";
 import { PanelDeMesa } from "../PanelDeMesa";
 import { useMembers } from "../../campaigns/members";
+import { useCharacters } from "../../characters/hooks";
+import type { Character } from "../../characters/api";
+import type { ConColor } from "../../../dominio/voces";
 import type { Member } from "../../campaigns/members";
 import { Button } from "../../../ui/Button";
 import { MensajeDelHilo } from "./MensajeDelHilo";
@@ -111,6 +114,40 @@ export function HiloDeSesion({
   const [soloDm, setSoloDm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nombreDe = new Map((miembros ?? []).map((m: Member) => [m.userId, m.displayName]));
+
+  // **Quién habla, para el color de su voz** (plan 05, D3). El color sale del PERSONAJE, y el
+  // registro guarda el usuario que actuó, así que hay que resolverlo — y las reglas de esa
+  // resolución están aquí, escritas, en vez de repartidas por la pantalla:
+  //
+  //   1. **Si el suceso es SOBRE un personaje** (`subjectType === "character"`), ese. Es el caso
+  //      que de verdad importa —daño, condiciones, tiradas— y es exacto.
+  //   2. **Si no, y el actor lleva UN solo personaje vivo en la mesa**, ese. Sin ambigüedad no hay
+  //      nada que adivinar.
+  //   3. **Si lleva dos o más, ninguno**: la huella cae sobre su `actorUserId`. Elegir por él
+  //      pintaría a un personaje con el color de su hermano, que es peor que un color sin dueño.
+  //
+  // Los archivados cuentan para el punto 1 —un suceso viejo sigue siendo de ese personaje— y no
+  // para el 2, donde lo que se busca es «con quién está jugando ahora».
+  const { data: personajes } = useCharacters(campaignId);
+  const personajePorId = new Map((personajes ?? []).map((p: Character) => [p.id, p]));
+  const unicoDe = new Map<string, Character>();
+  const ambiguos = new Set<string>();
+  for (const p of personajes ?? []) {
+    if (p.archivedAt) continue;
+    if (unicoDe.has(p.ownerId)) ambiguos.add(p.ownerId);
+    else unicoDe.set(p.ownerId, p);
+  }
+  const vozDe = (e: GameEventRow): ConColor => {
+    if (e.subjectType === "character") {
+      const suyo = personajePorId.get(e.subjectId);
+      if (suyo) return suyo;
+    }
+    if (!ambiguos.has(e.actorUserId)) {
+      const unico = unicoDe.get(e.actorUserId);
+      if (unico) return unico;
+    }
+    return { id: e.actorUserId };
+  };
 
   // **La marca se congela al montar, a propósito.** Si se releyera en cada sondeo, la franja
   // desaparecería a los quince segundos —justo cuando alguien vuelve a la mesa y todavía no ha
@@ -285,6 +322,7 @@ export function HiloDeSesion({
                 <MensajeDelHilo
                   evento={e}
                   autor={nombreDe.get(e.actorUserId) ?? "Alguien"}
+                  personaje={vozDe(e)}
                   ligada={tiradaLigada(e.payload)}
                   nuevo={esNuevo(e.createdAt)}
                 />

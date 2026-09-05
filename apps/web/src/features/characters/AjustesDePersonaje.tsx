@@ -3,6 +3,7 @@ import type { Visibility } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { DeleteButton } from "../../components/DeleteButton";
 import { BotonArchivar } from "./BotonArchivar";
+import { SelectorDeColor } from "./SelectorDeColor";
 import { VisibilityChooser } from "../entities/VisibilityChooser";
 import { CHARACTER_VISIBILITIES } from "./niveles";
 import {
@@ -137,6 +138,15 @@ export function AjustesDePersonaje({
 
   return (
     <div className="space-y-s4">
+      {/* El color va antes que la visibilidad: es lo primero que un jugador quiere tocar de su
+          personaje, y no tiene consecuencias que haya que pensarse. */}
+      <SelectorDeColor
+        campaignId={campaignId}
+        character={character}
+        puedeEditar={puedeEditar}
+        motivo={motivo}
+      />
+
       <VisibilityChooser
         value={visibilidad}
         onChange={onElegir}

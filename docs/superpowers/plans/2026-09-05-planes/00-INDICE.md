@@ -18,7 +18,7 @@
 > se conserva tal cual se escribió, incluida su frase «`main` en `4c7c3a2`», que ya no es cierta —
 > un documento fechado no se reescribe. Lo que es cierto **hoy** está aquí.
 
-**`main` en `37cba01`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
+**`main` en `1aba8b2`** (más el commit de la web del 05, que va detrás de esta línea), árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
 worktree de trabajo abiertos.**
 
 | Plan | Estado | Commits |
@@ -29,14 +29,17 @@ worktree de trabajo abiertos.**
 | **04** · El hilo como conversación | ✅ **cerrado y fusionado** | `7d5baf6` → `be41fd2` |
 | **06** · Un gesto, un dueño | ✅ **cerrado y fusionado** | `4a22bc7` → `d613611` |
 | **15** · El crítico y lo pequeño | ✅ **cerrado**, las cuatro fichas | `ede50af` · `c884321` · `e76511a` |
-| **07** · Consolidación | ⬜ **el siguiente** — su dependencia (06) ya está | — |
-| **05 · 08 · 09 · 11 · 12 · 13 · 14** | ⬜ sin empezar | — |
+| **07** · Consolidación | ✅ **cerrado**, las tres | `dc4d6aa` · `83cee63` |
+| **05** · El color de cada personaje | ✅ **cerrado** (D3 aplicada) | `1aba8b2` · el de la web |
+| **08 · 09 · 11 · 12 · 13 · 14** | ⬜ sin empezar | — |
 | **10** · La documentación | ⬜ va **al final**, y buena parte ya se escribió por el camino | — |
 
 **El orden recomendado para lo que queda**, con las dependencias ya resueltas:
 
 ```
-07 → 05 → 08 → 09 → 11 → 13 → 14 → 12     (y el 10 al final)
+08 → 09 → 11 → 13 → 14 → 12     (y el 10 al final)
+
+07 y 05 ya están cerrados.
 ```
 
 **Lo que la noche del 05 dejó dicho y no está en ningún plan:**

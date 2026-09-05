@@ -48,6 +48,8 @@ const character: CharacterRow = {
   class: null,
   level: 3,
   archivedAt: null,
+
+  color: null,
   bio: null,
   visibility: "PLAYERS",
   str: 10,

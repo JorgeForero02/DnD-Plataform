@@ -38,6 +38,42 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Cada personaje tiene su color, y es el mismo en el hilo y en el elenco (2026-09-06, plan 05 · D3)
+
+**Qué.** Hasta hoy la voz de una intervención en el hilo era una **huella del `actorUserId` sobre
+cuatro tonos**, y el retrato del elenco era **cobre para todos**. Dos defectos y un solo arreglo:
+con cinco personas en la mesa dos compartían color y **nadie podía cambiarlo**, y los dos personajes
+de un mismo jugador salían idénticos porque la huella era del usuario, no del personaje.
+
+**Cómo.** `Character.color`, nulable y sin valor por defecto en la base (migración
+`20260906020000_character_color`). Guarda una **clave** de una lista cerrada de ocho
+(`CHARACTER_COLORS`, en `packages/shared`), nunca un hexadecimal: el mismo color tiene que verse en
+los tres temas y una clave se puede medir de contraste una vez. `null` significa «no he elegido», y
+entonces manda una huella **del `id` del personaje** — el mismo personaje, el mismo color, siempre.
+Una clave escrita no se pisa nunca.
+
+**Un solo sitio decide el color de alguien:** `vozDePersonaje` (`apps/web/src/dominio/voces.ts`).
+Lo llaman la voz del hilo y el retrato del elenco, que antes eran dos cálculos distintos.
+
+**Cuatro tokens de voz NUEVOS** —salvia, ciruela, índigo y arena— en `apps/web/src/ui/tokens.css`,
+en los tres temas, **con sus 24 contrastes medidos en el navegador** y anotados en el propio
+fichero. Ninguno reutiliza `--warning-text` (el ámbar de «cuidado») ni `--muted` («esto está
+apagado»). Las otras cuatro voces sí son tokens que ya existían y que no cambian de oficio. El peor
+de los 24 es 4.85:1 sobre 4.5 exigido.
+
+**Y el selector avisa, no prohíbe:** si otro personaje de la mesa ya va de ese color, se dice y se
+nombra a quién, y se deja elegir igual. El color no distingue nada que importe — el nombre va
+escrito al lado.
+
+**Cómo revertirlo.** `git revert` de los dos commits (`1aba8b2` servidor, el de web) y
+`ALTER TABLE "Character" DROP COLUMN "color"`. La columna es nulable y nada más la lee, así que
+dejarla puesta tampoco rompe nada.
+
+**Trampa que costó tiempo:** el hilo solo conoce el **usuario** que actuó, no el personaje. Quién
+habla se resuelve en `HiloDeSesion.tsx` con tres reglas escritas —el sujeto si el suceso es sobre un
+personaje; si no, el único personaje vivo de ese jugador; y si lleva dos o más, ninguno—, porque
+elegir por él pintaría a un personaje con el color de su hermano.
+
 ## Reclasificar una ficha dice lo que cuesta, y deja rastro (2026-09-06, plan 07 · I16)
 
 **Qué.** Cambiar el tipo de una ficha ya escrita convertía un PNJ con statblock, enlaces y

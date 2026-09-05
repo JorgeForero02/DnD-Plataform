@@ -53,6 +53,36 @@
   --warning-ch: 224 168 60;
   --warning-text-ch: 224 168 60;
 
+  /* **Las cuatro voces nuevas** (plan 05, decision D3). Cada personaje tiene SU color en el hilo y
+   * en el elenco. Hasta hoy la voz era una huella sobre CUATRO tonos y con cinco personas en la
+   * mesa dos compartian color, sin que nadie pudiera arreglarlo.
+   *
+   * **Son tokens NUEVOS y solo para esto.** No se reutiliza `--warning-text` -gastar el ambar de
+   * «cuidado» como voz lo quema- ni `--muted`, que significa «esto esta apagado». Las otras cuatro
+   * voces SI son tokens que ya existian y que no cambian de oficio al usarse aqui: `--text`,
+   * `--copper-text`, `--accent-text` y `--danger-text` ya son tinta legible por definicion.
+   *
+   * **Ocho es el techo, y es una decision:** mas de ocho voces en una mesa no se distinguen aunque
+   * el token exista.
+   *
+   * **Contrastes medidos** (el minimo de texto es 4.5:1) sobre `--bg` y sobre `--surface`, que son
+   * los dos fondos donde se pinta una voz -el hilo va sobre panel-. Los mide de verdad
+   * `apps/web/e2e/tokens-contrast.spec.ts` en los tres temas; estos son los numeros que salen:
+   *
+   *   |         | Oscuro bg/sup | Claro bg/sup | Lectura bg/sup |
+   *   |---------|---------------|--------------|----------------|
+   *   | salvia  | 8.83 / 7.79   | 6.17 / 6.90  | 8.42 / 7.73    |
+   *   | ciruela | 7.75 / 6.84   | 6.80 / 7.60  | 7.78 / 7.14    |
+   *   | indigo  | 7.53 / 6.65   | 7.14 / 7.99  | 7.65 / 7.02    |
+   *   | arena   | 10.01 / 8.83  | 5.78 / 6.46  | 10.02 / 9.20   |
+   *
+   * Lectura lleva su propia terna y no hereda la de Oscuro: su mesa es mas calida (36 29 18 frente
+   * a 16 23 28) y un verde frio que canta sobre pizarra se apaga sobre vitela. */
+  --voz-salvia-ch: 141 194 145;
+  --voz-ciruela-ch: 203 152 214;
+  --voz-indigo-ch: 152 163 233;
+  --voz-arena-ch: 214 190 143;
+
   /* Derivados del canal, UNA sola vez para los cuatro temas. */
   --bg: rgb(var(--bg-ch));
   --surface: rgb(var(--surface-ch));
@@ -65,6 +95,10 @@
   --copper-text: rgb(var(--copper-text-ch));
   --danger: rgb(var(--danger-ch));
   --danger-text: rgb(var(--danger-text-ch));
+  --voz-salvia: rgb(var(--voz-salvia-ch));
+  --voz-ciruela: rgb(var(--voz-ciruela-ch));
+  --voz-indigo: rgb(var(--voz-indigo-ch));
+  --voz-arena: rgb(var(--voz-arena-ch));
 
   /* B0 (2026-09-04) - **la tinta de la vitela, que hasta ahora no hacia falta y ahora si.**
    *
@@ -259,6 +293,10 @@
     --danger-text-ch: 155 58 49;
     --warning-ch: 122 83 16;
     --warning-text-ch: 122 83 16;
+    --voz-salvia-ch: 42 92 52;
+    --voz-ciruela-ch: 111 51 122;
+    --voz-indigo-ch: 55 63 150;
+    --voz-arena-ch: 108 82 26;
 
     /* Task H4 — see the :root block for why these three exist and why the two gradient tokens
      * are capped at 5%. Light theme inverts the logic of the vignette: on a bright sheet the edge
@@ -290,6 +328,10 @@
   --danger-text-ch: 155 58 49;
   --warning-ch: 122 83 16;
   --warning-text-ch: 122 83 16;
+  --voz-salvia-ch: 42 92 52;
+  --voz-ciruela-ch: 111 51 122;
+  --voz-indigo-ch: 55 63 150;
+  --voz-arena-ch: 108 82 26;
 
   /* Task H4 — see the :root block for why these three exist and why the two gradient tokens
    * are capped at 5%. Light theme inverts the logic of the vignette: on a bright sheet the edge
@@ -320,6 +362,10 @@
   --danger-text-ch: 224 128 118;
   --warning-ch: 224 168 60;
   --warning-text-ch: 224 168 60;
+  --voz-salvia-ch: 141 194 145;
+  --voz-ciruela-ch: 203 152 214;
+  --voz-indigo-ch: 152 163 233;
+  --voz-arena-ch: 214 190 143;
 
   /* Task H4 — the paper of the vellum sheet. Same three values as the bare :root block
    * above, where the reasoning and the measured worst-case ratios are written down. */
@@ -362,6 +408,10 @@
   --danger-text-ch: 229 133 121;
   --warning-ch: 230 178 74;
   --warning-text-ch: 230 178 74;
+  --voz-salvia-ch: 150 196 146;
+  --voz-ciruela-ch: 212 160 214;
+  --voz-indigo-ch: 162 172 235;
+  --voz-arena-ch: 222 198 150;
 
   /* **Y aqui hay una divergencia deliberada con el prototipo, medida y no opinada.**
    *

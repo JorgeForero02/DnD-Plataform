@@ -13,7 +13,7 @@ import * as api from "../api";
 //    cruda** («PIERCING», «FINESSE», «VERSATILE»…) llega al DOM;
 //  · pulsar el dado abre el panel, y «Tirar ataque» manda `part: "ATTACK"` con el modo elegido
 //    y **nunca una expresión**: la compone el servidor;
-//  · el daño a dos manos manda `versatile: true`, y el crítico manda `critical: true`;
+//  · el daño a dos manos manda `versatile: true`, y el daño **cuelga de la tirada de ataque**;
 //  · un arma sin competencia lo dice en su propia fila;
 //  · sin ninguna arma equipada, la hoja dice qué hacer, no deja un hueco.
 
@@ -187,16 +187,64 @@ describe("AtaquesYLanzamiento", () => {
     );
   });
 
-  it("el crítico manda critical: true", async () => {
+  it("**el daño cuelga de la tirada de ataque, y ya no hay casilla que marcar** (C2.5-2)", async () => {
+    // El defecto que esto cierra: había una casilla «Crítico» que el jugador marcaba a mano y el
+    // servidor se creía, así que cualquiera podía pedir el daño duplicado sin haber sacado un 20.
+    // Ahora se manda el `eventId` de la tirada de ataque y **el servidor lee su `natural`**.
+    const espia = vi
+      .spyOn(api, "rollAttack")
+      .mockResolvedValue(tirada({ eventId: "ev-atk-1", natural: "TWENTY", total: 25 }));
+    montar([estoque]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
+    // La casilla ya no existe: el crítico no se declara.
+    expect(screen.queryByRole("checkbox", { name: "Crítico" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tirar ataque con Estoque" }));
+    await waitFor(() => expect(espia).toHaveBeenCalledTimes(1));
+    // Y se dice lo que pasó, en vez de ofrecer declararlo.
+    await screen.findByText(/Fue un 20 natural/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tirar daño de Estoque" }));
+    await waitFor(() => expect(espia).toHaveBeenCalledTimes(2));
+    const [, , , input] = espia.mock.calls[1];
+    expect(input).toEqual(
+      expect.objectContaining({ part: "DAMAGE", attackRollEventId: "ev-atk-1" }),
+    );
+  });
+
+  it("sin haber tirado el ataque, el daño NO manda ninguna tirada que cobrar", async () => {
+    // El caso que hay que dejar escrito: sin `attackRollEventId` el servidor no duplica nada. La
+    // pantalla lo dice antes de que se pulse, en vez de dejar creer que el crítico se perdió.
     const espia = vi.spyOn(api, "rollAttack").mockResolvedValue(tirada());
     montar([estoque]);
 
     fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Crítico" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tirar daño de Estoque" }));
+    expect(screen.getByText(/Tira primero el ataque/)).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "Tirar daño de Estoque" }));
     await waitFor(() => expect(espia).toHaveBeenCalled());
     const [, , , input] = espia.mock.calls[0];
-    expect(input).toEqual(expect.objectContaining({ part: "DAMAGE", critical: true }));
+    expect(input).not.toHaveProperty("attackRollEventId");
+  });
+
+  it("y un ataque que NO sacó 20 lo dice, y su daño se cobra igual sobre esa tirada", async () => {
+    // «Un 20 en otra tirada no vale» lo prueba el servidor (`character-sheet.service.spec.ts`);
+    // lo que le toca a la pantalla es no mentir sobre lo que pasó en ESTA.
+    const espia = vi
+      .spyOn(api, "rollAttack")
+      .mockResolvedValue(tirada({ eventId: "ev-atk-2", natural: "NONE" }));
+    montar([estoque]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tirar ataque con Estoque" }));
+    await waitFor(() => expect(espia).toHaveBeenCalledTimes(1));
+    await screen.findByText(/No fue un 20 natural/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tirar daño de Estoque" }));
+    await waitFor(() => expect(espia).toHaveBeenCalledTimes(2));
+    expect(espia.mock.calls[1][3]).toEqual(
+      expect.objectContaining({ attackRollEventId: "ev-atk-2" }),
+    );
   });
 });

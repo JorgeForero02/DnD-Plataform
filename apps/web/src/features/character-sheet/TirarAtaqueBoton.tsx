@@ -40,11 +40,22 @@ export function TirarAtaqueBoton({
   const [abierto, setAbierto] = useState(false);
   const [modoAtaque, setModoAtaque] = useState<RollMode>("NORMAL");
   const [dosManos, setDosManos] = useState(false);
-  const [critico, setCritico] = useState(false);
   const [resultadoAtaque, setResultadoAtaque] = useState<RollResult | null>(null);
   const [resultadoDano, setResultadoDano] = useState<RollResult | null>(null);
   const [errorAtaque, setErrorAtaque] = useState<string | null>(null);
   const [errorDano, setErrorDano] = useState<string | null>(null);
+  /**
+   * **El crítico ya no lo declara nadie: sale de la tirada de ataque de este mismo panel.**
+   *
+   * Había aquí una casilla «Crítico» que el jugador marcaba a mano, y el servidor se la creía. Con
+   * `attackRollEventId` (ficha C2.5-2) la duplicación de dados **cuelga de una tirada real**: el
+   * servidor lee el `natural` que quedó escrito en ese suceso, del mismo personaje, la misma
+   * campaña y **el mismo ataque**. Aquí solo se enseña lo que ya pasó.
+   */
+  // `RollResult` es una unión sobre `revealed`: una tirada a ciegas no trae `natural`, y ahí no se
+  // puede afirmar nada — decir «no fue crítico» sería tan falso como decir que sí.
+  const criticoDeLaTirada =
+    resultadoAtaque?.revealed === true && resultadoAtaque.natural === "TWENTY";
   const dado = useRef<HTMLButtonElement>(null);
   const caja = useRef<HTMLDivElement>(null);
   const grupoMano = useId();
@@ -90,7 +101,14 @@ export function TirarAtaqueBoton({
           part: "DAMAGE",
           mode: "NORMAL",
           versatile: dosManos,
-          critical: critico,
+          // Se manda todavía, y **el servidor lo ignora** cuando llega `attackRollEventId`. Se
+          // quita del esquema en el commit siguiente: al revés habría una ventana en la que el
+          // crítico no funciona.
+          critical: false,
+          // **La tirada que se está cobrando.** Sin ella el servidor no duplica nada: el crítico
+          // dejó de ser algo que el cuerpo de la petición pueda declarar. Y la base tiene un
+          // índice único sobre este campo, así que **el mismo ataque no se cobra dos veces**.
+          ...(resultadoAtaque?.eventId ? { attackRollEventId: resultadoAtaque.eventId } : {}),
           audience: "PUBLIC",
         },
       },
@@ -231,18 +249,15 @@ export function TirarAtaqueBoton({
               </fieldset>
             )}
 
-            <label className="flex items-center gap-s2 font-chrome text-chrome-sm text-text">
-              <input
-                type="checkbox"
-                checked={critico}
-                disabled={tirar.isPending}
-                onChange={() => setCritico((v) => !v)}
-                className="accent-[var(--accent)]"
-              />
-              Crítico
-            </label>
+            {/* **El crítico se enseña, no se elige.** Era una casilla que el jugador marcaba a
+                mano y el servidor se creía; ahora sale del `natural` de la tirada de ataque de
+                arriba, leído en el servidor sobre el suceso que esa tirada dejó escrito. */}
             <p className={`mt-1 ${PROSA_DE_HOJA}`}>
-              Duplica los dados de daño; el modificador no cambia.
+              {resultadoAtaque === null
+                ? "Tira primero el ataque: el daño se cobra sobre esa tirada, y de ella sale si fue crítico."
+                : criticoDeLaTirada
+                  ? "Fue un 20 natural: el daño duplicará los dados. El modificador no cambia."
+                  : "No fue un 20 natural, así que el daño va sin duplicar."}
             </p>
 
             <div className="mt-s2">

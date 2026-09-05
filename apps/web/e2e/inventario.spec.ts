@@ -140,6 +140,23 @@ test("un arma equipada aparece en el cuadro de ataques, se tira, y la tabla no d
   // `ResultadoDeTirada` lo publica como `role="status"` con los dados y la suma dentro.
   await expect(panel.getByRole("status").first()).toBeVisible({ timeout: 15_000 });
 
+  // **El crítico se enseña, no se elige** (C2.5-2). Había aquí una casilla «Crítico» que el
+  // jugador marcaba a mano y el servidor se creía; ahora el daño manda el `eventId` de la tirada
+  // de ataque y el servidor lee su `natural`. La casilla no existe, y el panel dice lo que pasó.
+  await expect(panel.getByRole("checkbox", { name: "Crítico" })).toHaveCount(0);
+  // **El regex casa con las dos frases a propósito** —«Fue un 20 natural» y «No fue un 20
+  // natural»—: el servidor tira de verdad y un 20 sale una vez de cada veinte. Lo que se afirma
+  // aquí es que el panel **dice qué pasó**, no cuál de las dos salió; que el 20 duplique los dados
+  // lo prueba el servidor, que es donde se decide.
+  await expect(panel.getByText(/20 natural/)).toBeVisible();
+
+  // Y el daño se cobra sobre esa tirada. **Dos veces no**: la base tiene un índice único sobre el
+  // `attackRollEventId`, así que el segundo intento es un 409 y la pantalla lo dice en línea.
+  await panel.getByRole("button", { name: "Tirar daño de Espada larga" }).click();
+  await expect(panel.getByRole("status").nth(1)).toBeVisible({ timeout: 15_000 });
+  await panel.getByRole("button", { name: "Tirar daño de Espada larga" }).click();
+  await expect(panel.getByText(/ya se había cobrado/)).toBeVisible({ timeout: 15_000 });
+
   // La tabla desplaza lo suyo dentro de su contenedor…
   const contenedor = tabla.locator("..");
   expect(await contenedor.evaluate((el) => getComputedStyle(el).overflowX)).toBe("auto");

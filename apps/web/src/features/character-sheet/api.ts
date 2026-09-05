@@ -52,6 +52,13 @@ export interface CharacterRow {
   version: number;
   deathSaveSuccesses: number;
   deathSaveFailures: number;
+  /**
+   * **Cuándo se archivó, o `null` si está en la mesa.** El servidor manda la fila entera
+   * (`character-sheet.service.ts`, `return { character, ... }`), así que este campo **ya viajaba**
+   * y solo faltaba declararlo. Sin él, la hoja de un personaje archivado —a la que se llega por
+   * una URL vieja, porque la lista ya no lo enseña— se pintaba idéntica a la de uno vivo.
+   */
+  archivedAt: string | null;
   /** Anulaciones manuales del DM sobre valores derivados: `{ "ac": 18 }`. */
   overrides: Record<string, number> | null;
 }

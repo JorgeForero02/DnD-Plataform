@@ -28,12 +28,13 @@ const personaje: Character = {
   classKey: null,
   class: null,
   level: 3,
+  archivedAt: null,
   bio: "Pactó con un demonio",
   visibility: "PLAYERS",
   createdAt: "x",
 };
 
-function montar(personajes: Character[] = [personaje]) {
+function montar(personajes: Character[] = [personaje], hoja?: unknown) {
   vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
     id: "c1",
     name: "Fuera del Abismo",
@@ -42,8 +43,14 @@ function montar(personajes: Character[] = [personaje]) {
     createdAt: "x",
   });
   vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue(personajes);
-  // La hoja calculada tiene sus propias pruebas; aquí solo hace falta que no estorbe.
-  vi.spyOn(sheetApi, "fetchSheet").mockRejectedValue(new Error("sin hoja en esta prueba"));
+  // La hoja calculada tiene sus propias pruebas; por defecto no estorba. Pero **la hoja es la
+  // única fuente cuando el personaje no está en la lista** —un PNJ, o uno archivado—, así que las
+  // pruebas de ese camino le pasan una de verdad.
+  if (hoja === undefined) {
+    vi.spyOn(sheetApi, "fetchSheet").mockRejectedValue(new Error("sin hoja en esta prueba"));
+  } else {
+    vi.spyOn(sheetApi, "fetchSheet").mockResolvedValue(hoja as never);
+  }
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -204,5 +211,44 @@ describe("CharacterDetailPage — un solo camino de edición", () => {
     const guardado = await screen.findByRole("radio", { name: /Jugadores concretos/ });
     expect(guardado).toBeChecked();
     expect(guardado).toBeDisabled();
+  });
+});
+
+describe("archivar en la hoja: cuándo se ofrece y qué pasa con un archivado", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    comoDuenio();
+  });
+
+  it("**un personaje que solo se encuentra por su hoja NO ofrece «Archivar»**", async () => {
+    // El cableado que nadie probaba (`puedeArchivar={deLaLista !== undefined}`): la lista de la
+    // mesa excluye a los PNJ y a los ya archivados, que son justo los dos casos en que `archive`
+    // no haría nada útil. Si esto se cambiara a `true`, la hoja de un PNJ ofrecería un gesto que
+    // el servidor contesta con 404 — y hasta hoy ninguna prueba se habría puesto roja.
+    montar([], { character: { ...personaje, archivedAt: null }, sheet: null });
+
+    await screen.findByText("Kaelith");
+    expect(screen.queryByRole("button", { name: /Archivar/i })).not.toBeInTheDocument();
+  });
+
+  it("y el que sí está en la lista lo ofrece", async () => {
+    montar();
+    expect(await screen.findByRole("button", { name: /Archivar/i })).toBeInTheDocument();
+  });
+
+  it("**la hoja de un personaje ARCHIVADO lo dice, deja devolverlo y NO ofrece borrar**", async () => {
+    // Se llega aquí por una URL vieja —el archivo no enlaza a la hoja—, así que es exactamente el
+    // caso peligroso: hasta hoy se pintaba idéntica a la de un personaje vivo, con su botón de
+    // borrar puesto. Un DM podía borrarlo creyéndolo en juego, que es la pérdida que archivar
+    // existe para impedir.
+    montar([], {
+      character: { ...personaje, archivedAt: "2026-09-05T01:00:00.000Z" },
+      sheet: null,
+    });
+
+    await screen.findByText("Kaelith");
+    expect(screen.getByText(/Este personaje está archivado/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Devolver a la mesa" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Borrar/i })).not.toBeInTheDocument();
   });
 });

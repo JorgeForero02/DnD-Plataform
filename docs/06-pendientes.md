@@ -588,7 +588,7 @@ cerraron ese mismo día** (media competencia, Ataque Extra, espacios de conjuro 
 | | Qué | Dónde va, y por qué no ahora |
 |---|---|---|
 | **M8** | **Modificadores temporales con caducidad** — *«+2 a Fuerza durante una hora»*. Lo pidieron los jugadores y **no está escrito en ningún plan**: no es un estado con nombre ni un objeto equipado, es un modificador con fecha de fin | Necesita el **reloj de campaña**, que es 2C. El modelo de modificadores de 2A ya sabría aplicarlo; falta quién decide que ha caducado. Meterlo sin reloj sería un campo que nadie limpia |
-| **M9** | **El personaje se archiva, no se borra — SERVIDOR HECHO (2.5.8), PANTALLA PENDIENTE.** Existen `POST …/archive`, `POST …/unarchive` y `GET …/characters/archived`, con su columna, sus sucesos y sus e2e. **Lo que NO existe es el gesto**: `grep -rn "archiv" apps/web/src` da cero, así que el único botón sigue siendo el borrado definitivo | El spec §2.5.8 cierra con «lo que cambia es **cuál de los dos gestos es el fácil**», y hoy no cambia ninguno: **la premisa de esta ficha sigue vigente palabra por palabra** con la aplicación en producción. La revisión de cierre del 2026-09-04 la encontró tachada sin estarlo. **Entra con la pantalla de personajes del carril gráfico**, y hasta entonces no se vuelve a dar por cerrada |
+| **M9** | ~~**El personaje se archiva, no se borra**~~ **— CERRADA el 2026-09-05 (plan 06).** El gesto existe en `apps/web/src/features/characters/BotonArchivar.tsx`, montado en `AjustesDePersonaje.tsx` junto a borrar y **más barato que él**; la puerta de salida es `features/characters/ArchivoDePersonajes.tsx`, montada en la lista de personajes de `pages/CampaignDetailPage.tsx`; y las tres llamadas que faltaban están en `features/characters/api.ts`. `grep -rn "archiv" apps/web/src` ya no da cero. Probado por `features/characters/__tests__/archivar.test.tsx` y por el camino entero de `apps/web/e2e/archivar.spec.ts` | Lo que la ficha exigía era que **cambiara cuál de los dos gestos es el fácil**, y cambia: archivar es un botón `secondary` con una confirmación que dice **que se recupera**, y borrar conserva su filete de peligro y ahora además **nombra archivar como la salida barata**. Con ella se cierra el último de los tres gestos de **D-OP-8** |
 | **M10a** | ~~**Revocar una concesión de visibilidad**~~ **— MITAD FALSA, comprobada el 2026-09-05.** `entities.service.ts:171` hace `deleteMany` y reescribe las concesiones al editar: **revocar sí se puede**. La ficha decía lo contrario | **Lo que sigue vivo es M10b** |
 | **M10b** | **Editar en silencio** — la hidra falsa (respuesta 2). El DM cambia una ficha ya revelada y nadie se entera. Es un problema distinto del de revocar, y por eso se parten | Sin resolver. Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
 | **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
@@ -1155,6 +1155,30 @@ servidor y discrepan, miente el texto*. Aquí discrepan.
 medias: `pnj-en-la-mesa.e2e-spec.ts` recorre **cada valor** del cuerpo desde el 2026-09-04, así que
 añadir `expect(valores).not.toContain(18)` es una línea — hoy se pondría roja.
 
+## P3 · El suceso de archivar no se lee desde la mesa con una sesión abierta (2026-09-05, plan 06)
+
+**Medido, no supuesto.** `characters.service.ts:157` escribe `CHARACTER_ARCHIVED` **sin
+`sessionId`** —archivar es un acto de la campaña, no de una partida—, y
+`game-events.service.ts:143` filtra estricto: con `sessionId` en la consulta, los sucesos de
+campaña quedan fuera. Como `MesaDeSesion.tsx:73` pasa siempre la sesión abierta, **la línea «Se
+archiva a X» no aparece en el hilo mientras se juega**. Y el DM en reposo tampoco la ve, porque sin
+sesión ve el taller, que no tiene hilo (`MesaDeSesion.tsx:138`).
+
+**Dónde sí se lee hoy, y está probado:** la mesa en reposo de un jugador —el único caso en que el
+hilo se pinta con el registro de la campaña entera—, en
+`apps/web/e2e/archivar.spec.ts`.
+
+**No se arregló aquí, y el motivo es la frontera.** Las dos salidas razonables se salen del plan 06
+(`solo apps/web/src`) o abren un frente: **(a)** que el registro de la mesa mezcle los sucesos de
+la campaña sin sesión con los de la sesión abierta —decisión de producto sobre qué es «el hilo», no
+un arreglo—; **(b)** que `archive` reciba la sesión en curso, que es `apps/api` y además convierte
+un acto de campaña en uno de partida. **Descartado de entrada** filtrar en el cliente: el servidor
+ya no manda esos sucesos, así que no habría nada que filtrar.
+
+Es hermano de **P3-archivar** del plan 03 —que arregla a **quién** llega el suceso
+(`grantedUserIds`)— pero no el mismo: aquel es de visibilidad y este de **encuadre**. Los dos
+tienen que estar para que el registro cuente la verdad.
+
 ## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
 
 **`apiFetch` ya no manda `Content-Type` cuando no hay cuerpo**, que era la causa por la que
@@ -1210,7 +1234,7 @@ Ningún carril podía consolidarlo: todos tenían `features/**` prohibido. Todos
 provisionales lo declaran en su cabecera. **Al deduplicar, ojo con el tamaño**: los de `ui/` usan
 `1em` con `align-[-0.125em]`; algunos de carril usan `h-4 w-4`.
 
-## P2 · Tres pantallas revelan la misma ficha, cada una con su copia del predicado (2026-09-04)
+## ~~P2 · Tres pantallas revelan la misma ficha, cada una con su copia del predicado~~ — CERRADA (la cerró la Ola 2; comprobada el 2026-09-05, plan 06)
 
 El `RevelarAlgo` de `apps/web/src/features/sessions/dm/` (en `main`), el botón por fila de
 `PrepararSesion` en `apps/web/src/features/sessions/taller/` (`carril/c4`) y el `BotonRevelar` de
@@ -1220,6 +1244,21 @@ y los tres reimplementan el mismo predicado de «se puede revelar», que es **ma
 — justo lo que `CLAUDE.md` obliga a escribir una sola vez. **Debe mandar el de
 `apps/web/src/features/entities/`** (dueño del dominio, ya exportado); los otros dos conservan su
 cajón y le pasan los props.
+
+**Ya manda, y hay exactamente un predicado.** Medido el 2026-09-05 con
+`grep -rn "sePuedeRevelar|BotonRevelar" apps/web/src`:
+`features/entities/BotonRevelar.tsx:54` es la única definición de `sePuedeRevelar`, y **la importan
+dos consumidores**: `features/sessions/dm/RevelarAlgo.tsx:4` y
+`features/sessions/taller/PrepararSesion.tsx:8`. El tercero, `pages/EntityDetailPage.tsx:6`, importa
+**solo `BotonRevelar`** y nombra el predicado en un comentario (`:135`), no lo llama. Cero copias del
+predicado y cero mutaciones sueltas.
+
+> **La cita se corrigió al fusionar** (2026-09-05): decía «sus **tres** consumidores la importan», y
+> el tercero no la importa. La **conclusión** —una definición, cero copias— era y sigue siendo
+> cierta; la evidencia citada no lo era. Es exactamente el género de mentira que `check:docs` no
+> caza, porque la frase está impecable. **La ficha se tacha sin tocar una línea de código**: la Ola 2
+la había cerrado y el maestro no se había enterado — el plan 06 avisaba de ello para que nadie
+duplicara el trabajo, y así fue.
 
 ## P2 · Dos fichas de este documento mienten con un barrido citado dentro (2026-09-04)
 

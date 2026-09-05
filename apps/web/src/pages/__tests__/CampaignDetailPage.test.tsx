@@ -223,6 +223,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         bio: null,
         visibility: "PLAYERS",
         createdAt: "x",
+        archivedAt: null,
       },
     ]);
     // Reseño 2026-09-02: la fila lleva a EntityDetailPage, que pide la ficha por su id. Sin
@@ -436,6 +437,7 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
         bio: null,
         visibility: "PLAYERS",
         createdAt: "x",
+        archivedAt: null,
       },
     ]);
     renderPage();
@@ -653,6 +655,7 @@ describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
       bio: null,
       visibility: "PLAYERS" as const,
       createdAt: "x",
+      archivedAt: null,
     };
     const second = { ...first, id: "ch2", name: "Elara" };
     let deleted = false;

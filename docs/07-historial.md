@@ -23,11 +23,69 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-hasta-2026-09-02.md`](./_archivo/historial-hasta-2026-09-02.md) | Todo el 2026-09-02 —la fase 2A entera, la ronda de interfaz, la primera puesta en producción— y **las entradas por tarea del 2026-09-03** (2B, 2C y 2D, tarea a tarea) |
 > | [`_archivo/historial-2026-09-04-por-tarea.md`](./_archivo/historial-2026-09-04-por-tarea.md) | **El 2026-09-04 se cerraron ocho tandas con sus ocho revisiones**, y sus entradas por tarea no caben aquí. Tres de ellas viven ahí: 2.5.2, B1.2 y la de `ENTITY_REVEALED` + archivar |
 > | [`_archivo/historial-2026-09-04-tandas.md`](./_archivo/historial-2026-09-04-tandas.md) | Las tandas por tarea del 2026-09-03 y 04 —2.5.3, 2.5.4, 2.5.5, 2.5.6, B4 y B5—, movidas enteras el 2026-09-05 |
+> | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3 y la auditoría de la cola larga**, de la madrugada del 2026-09-05, movida entera esa misma noche: los planes 01–06 escribieron ocho entradas y no caben |
 > | [`_archivo/historial-2026-09-04-reseno-de-la-mesa.md`](./_archivo/historial-2026-09-04-reseno-de-la-mesa.md) | **El reseño de la mesa del 2026-09-04** —la cabina y las mecánicas que no tenían pantalla—, movido entero el 2026-09-05 (tercer corte de la noche) |
 > | [`_archivo/historial-2026-09-03-y-04-sueltas.md`](./_archivo/historial-2026-09-03-y-04-sueltas.md) | **La comprobación en producción de 2D** y **la auditoría de la documentación del 2026-09-04**, movidas enteras el 2026-09-05 (segundo corte de la noche: las cinco entradas del plan 03 dejaron el fichero en 413 de 400) |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
+
+---
+
+## Un personaje se archiva, y vuelve (2026-09-05, plan 06)
+
+**Ficha M9, abierta desde 2.5.8 y tachada en falso una vez.** El servidor sabía archivar —`POST
+…/archive`, `POST …/unarchive`, `GET …/characters/archived`, con su columna, sus sucesos y sus
+e2e— y **la web no llamaba a ninguna de las tres**: el único `archiv` de `apps/web/src` era la
+traducción de la línea del registro. Es el patrón que este proyecto ha cerrado en falso cuatro
+veces: servidor hecho, nadie que lo use.
+
+**Lo que entra, en un commit:** las tres llamadas y sus hooks
+(`features/characters/api.ts`, `hooks.ts`), el gesto (`features/characters/BotonArchivar.tsx`,
+montado en `AjustesDePersonaje.tsx`) y **la puerta de salida**
+(`features/characters/ArchivoDePersonajes.tsx`, en la lista de personajes). Las dos mitades
+juntas a propósito: un archivo sin listado es un borrado con otro nombre.
+
+**Por qué archivar cuesta menos que borrar, y se ve.** Botón `secondary` frente al filete de
+peligro; la confirmación **dice la consecuencia y que se recupera** en vez de preguntar si estás
+seguro; y el borrado ahora **nombra archivar** como la salida barata. Si los dos gestos cuestan lo
+mismo, la gente borra.
+
+**Y una ficha nueva, medida al escribir el recorrido:** el suceso de archivar se guarda **sin
+sesión**, y el hilo de la mesa filtra por la sesión abierta, así que la línea no se lee mientras
+se juega. Queda en `06-pendientes.md` con las dos salidas y lo descartado; arreglarla es
+`apps/api` o una decisión de producto, ninguna de las dos de este plan.
+
+**De paso se tachó** la ficha «tres pantallas revelan la misma ficha»: la Ola 2 la había cerrado
+y el maestro no se había enterado. **Cero líneas de código**, solo el barrido que lo demuestra.
+
+**Revertir:** un commit. Sin migraciones y sin tocar la API — quitarlo devuelve el borrado como
+único gesto, que es exactamente el estado que la ficha describía.
+
+**Y lo que encontró su revisión, que entró al fusionar.** Nada bloqueaba —el revisor corrió él mismo
+el recorrido de navegador y la suite RTL, y verificó que `deLaLista !== undefined` **falla cerrado**,
+nunca abierto—, pero dejó cinco cosas y las cinco se arreglaron aquí:
+
+- **La hoja de un personaje ARCHIVADO se pintaba idéntica a la de uno vivo, con su botón de borrar
+  puesto.** Su ruta sigue viva —`getSheet` no mira `archivedAt`— y el archivo **no enlaza a la
+  hoja**, así que la única puerta era una URL vieja: exactamente el caso peligroso. Un DM lo borraba
+  creyéndolo en juego, que es la pérdida que archivar existe para impedir. Ahora la hoja **lo dice**,
+  ofrece **devolverlo**, y **no ofrece borrar** hasta que esté de vuelta. No es control de acceso —el
+  servidor sigue aceptando el borrado—: es no poner el gesto caro delante de quien no sabe dónde
+  está.
+- **`archivedAt` ya viajaba y el tipo no lo declaraba.** El servidor manda la fila entera desde
+  2.5.8; solo faltaba escribirlo en `Character` y en `CharacterRow`. Al declararlo, el compilador
+  encontró **nueve fixtures** que lo daban por inexistente.
+- **El archivo no tenía estado de error**: un fallo de red dejaba una campaña con todo archivado
+  leyéndose «Ningún personaje todavía» —la trampa que el plan nombra, entrando por la puerta de al
+  lado—.
+- **El cableado `puedeArchivar={deLaLista !== undefined}` no lo cubría ninguna prueba**: cambiarlo a
+  `true` habría ofrecido «Archivar» en un PNJ, con 404 al pulsarlo, sin que nada se pusiera rojo.
+  Ahora hay una prueba por cada lado.
+- **Dos frases quedaban mintiendo**: `decisiones.md` decía que de `D-OP-8` «queda archivar», y la
+  ficha tachada citaba **tres** consumidores de `sePuedeRevelar` cuando el tercero solo importa el
+  botón. La conclusión de esa ficha era correcta; **la evidencia no**, y es justo el género que
+  `check:docs` no caza.
 
 ---
 
@@ -308,47 +366,3 @@ de algo. Deshecha después. `pnpm verify` en verde con el gancho.
 **Cómo revertirlo.** `git revert` del commit: devuelve los seis paquetes a `devDependencies`,
 regenera el lockfile con `pnpm install` y quita el paso de CI. Nada depende de ello en tiempo de
 ejecución.
-
-## La Ola 3, las 21 decisiones y la auditoría de la cola larga (2026-09-05)
-
-**Qué.** Tres commits de código y el cierre de la deuda de decisión que arrastraba el proyecto.
-
-**Las mecánicas que quedaban sin pantalla.** Se repitió el barrido del §8 de la auditoría de la
-mesa sobre el árbol ya ensamblado: **de quince, diez estaban resueltas y ninguna se había caído**
-—los dos únicos hooks huérfanos ya lo eran antes de `a1d4a1d`, comprobado con `git grep`—. De las
-cinco restantes se cerraron tres:
-
-- **`ENTITY_LINKED`** (`6f3d141`): `LinksService.create` escribía la fila y **no emitía el suceso**,
-  así que una regla sobre «cuando se enlacen dos fichas» no se disparaba jamás. Enlace y suceso van
-  ahora en la misma transacción, y **la visibilidad del suceso no se hereda de un extremo**: un
-  enlace revela que dos cosas tienen que ver aunque no se pueda abrir ninguna, así que sale para
-  jugadores **solo si las dos fichas ya las ve la mesa**.
-- **`concentrationSave`** (`e3c0d4f`): el servidor lo devolvía desde 2C y **ninguna pantalla lo
-  leía**, así que la tirada aparecía en la bandeja del jugador y quien aplicó el golpe no sabía que
-  la había provocado. Y `PonerDano` cerraba su cajón sin traza: el aviso se habría pintado y
-  destruido en el mismo fotograma.
-- **Dos de los cuatro disparadores muertos** (`4c7c3a2`): no les faltaba un `case`, **no existían
-  como suceso**. `ENTITY_COMMENTED` y `MEMBER_JOINED` ya los escribe su gesto. Los otros dos siguen
-  retirados **con su motivo escrito**: `DM_EXECUTED` no tiene gesto en ninguna pantalla, y
-  `ENTITY_ATTACKED` apunta a una ficha del mundo cuando aquí se ataca a un personaje. Cierra de paso
-  **C6-1**: la lista de disparadores sin motor vivía dos veces y ahora vive en `@dnd/shared`.
-
-**Las decisiones.** Veintiuna cerradas: cuatro del autor —el hilo se lee como una conversación con
-lo último abajo; manda `04-convenciones.md` sobre el cobre; el color lo elige el jugador; **el
-tablero telaraña se sustituye por la línea de tiempo**—, nueve por investigación contra el SRD y
-siete por recomendación. Con una regla nueva y vinculante: **las reglas de D&D son verdad absoluta,
-y la maqueta no es fuente de reglas**.
-
-**La auditoría de la cola larga.** Las 55 secciones de `06-pendientes.md` leídas y contrastadas
-contra el código. **Siete fichas afirmaban que faltaba algo que ya estaba hecho** —entre ellas que
-el elenco no mandaba el tipo de daño, que `recordEntityOpened` no estaba conectado y que equipar no
-dejaba rastro—, y una, `M10`, es falsa en su primera mitad y cierta en la segunda.
-
-**Por qué así.** Las siete fichas caducas tenían **su evidencia escrita, y era cierta el día que se
-escribió**. Una ficha con un barrido citado dentro envejece igual que el código: por eso lo que se
-tache lleva desde ahora **la prueba de cuándo**, no solo la de qué.
-
-**Cómo revertir.** Los tres commits son independientes y se revierten por separado. `6f3d141` y
-`4c7c3a2` llevan migración —una columna de enum cada uno—; los valores de un enum de PostgreSQL **se
-añaden y no se quitan**, así que revertir el código deja el valor huérfano en la base, que es
-inofensivo.

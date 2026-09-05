@@ -47,6 +47,7 @@ const character: CharacterRow = {
   race: null,
   class: null,
   level: 3,
+  archivedAt: null,
   bio: null,
   visibility: "PLAYERS",
   str: 10,

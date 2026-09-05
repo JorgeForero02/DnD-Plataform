@@ -110,7 +110,7 @@ una está fuera del repositorio, en el documento de trabajo que las recogió; aq
 | D-OP-5 | **2.5.7** (ataques de oportunidad) entra **después de la partida de agentes**, escrito con lo que cuenten al jugarla |
 | D-OP-6 | Contraseñas: **mitigación de coste cero**. Cada jugador comprueba que entra antes del día |
 | D-OP-7 | `--warning` y `--success` se resuelven antes de B5 — **resuelto**: ver la sección de convenciones |
-| D-OP-8 | Archivar (M9), revelar (P1) y concentración (M17) entran **antes de la partida de prueba**. Dos hechos; **queda archivar** |
+| D-OP-8 | Archivar (M9), revelar (P1) y concentración (M17) entran **antes de la partida de prueba**. **Los tres hechos** el 2026-09-05: archivar con su pantalla y su archivo (plan 06), revelar ya lo había cerrado la Ola 2 |
 | D-OP-9 | `race`/`class`: **primero el diálogo de creación pasa al catálogo**, después la migración borra las columnas. Al revés, cada personaje nuevo nacería sin ninguna |
 | D-OP-10 | Los temas **Claro y Lectura se ajustan al prototipo** (papel cálido, pliego de vitela) |
 | D-OP-11 | **El oráculo de la CA se cierra**: el objetivo pasa `canView` o es combatiente del encuentro activo; si no, **404 idéntico al de un id inventado** |

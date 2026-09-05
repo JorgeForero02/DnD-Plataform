@@ -110,15 +110,45 @@ maestro — y con ella **el último de los tres gestos de D-OP-8**.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ | 2026-09-05 | **Comprobado que «Revelar» no se toca**: `features/entities/BotonRevelar.tsx:54` es el único `sePuedeRevelar`, y `sessions/dm/RevelarAlgo.tsx:4` y `sessions/taller/PrepararSesion.tsx:8` lo importan. Cero copias. No se editó ninguno de los tres. |
+| ✅ | 2026-09-05 | **Las tres llamadas que faltaban**, en `features/characters/api.ts:72` (`fetchArchivedCharacters`), `:76` (`archiveCharacter`) y `:85` (`unarchiveCharacter`). |
+| ✅ | 2026-09-05 | **Los hooks**, `features/characters/hooks.ts:56` (`archivedCharactersKey`, cuelga de `charactersKey`), `:59` (`useArchivedCharacters`), `:76` (`useArchiveCharacter`), `:84` (`useUnarchiveCharacter`). Invalidan personajes **y** `["campaigns", id, "events"]`, que es otra raíz. |
+| ✅ | 2026-09-05 | **El gesto**, `features/characters/BotonArchivar.tsx` — `secondary`, no `danger`; confirmación que dice la consecuencia. Montado en `features/characters/AjustesDePersonaje.tsx:134`, encima de borrar. |
+| ✅ | 2026-09-05 | **La puerta de salida**, `features/characters/ArchivoDePersonajes.tsx`, montada en `pages/CampaignDetailPage.tsx:550`; el hueco vacío nombra a los archivados en `:485`. |
+| ✅ | 2026-09-05 | **RTL**, `features/characters/__tests__/archivar.test.tsx` — 12 casos en verde. |
+| ✅ | 2026-09-05 | **Navegador**, `apps/web/e2e/archivar.spec.ts` — el camino entero y la línea del registro. |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **`DeleteButton` con otro rótulo, o un componente aparte.** `components/DeleteButton.tsx:19` ya
+  tiene `label`/`confirmLabel` para dos gestos que no borran, así que reutilizarlo era el camino
+  corto — pero habría hecho falta un tercer eje, el **tono**, y con él archivar y borrar quedan a
+  un `prop` de volver a pesar lo mismo. El plan pide justo lo contrario. Elegido:
+  `features/characters/BotonArchivar.tsx`, con su propio botón `secondary` y su confirmación sin
+  filete rojo. **Dura** porque la diferencia de peso es estructural, no un parámetro.
+- **Cómo sabe la web que archivar aplica a este personaje.** `Character`
+  (`features/characters/api.ts:4`) y `CharacterRow`
+  (`features/character-sheet/api.ts:30`) **no traen `statblockRef`**, y el servidor devuelve 404
+  al archivar un PNJ (`characters.service.ts:149`). Pedir el campo era tocar `apps/api`, fuera de
+  mi frontera. Elegido: el dato que ya está en la pantalla — `deLaLista !== undefined` en
+  `pages/CharacterDetailPage.tsx:192`. La lista excluye **exactamente** a los PNJ y a los ya
+  archivados (`characters.service.ts:57`), que son los dos casos en que el gesto no haría nada
+  útil. **No es control de acceso** (lo impone `requireEditable`): es que allí el gesto no existe.
+- **Devolver no lleva confirmación.** Es el gesto que deshace; pedir permiso para deshacer cobra
+  dos veces el mismo camino y empuja hacia el borrado, que es lo que este plan combate.
+- **El archivo se pide siempre, no al abrirlo.** Su **conteo** hace falta antes que su contenido:
+  sin él, el hueco vacío de una campaña con todo archivado se lee como una campaña que perdió a
+  sus personajes (paso 5 del plan). `pages/CampaignDetailPage.tsx:450`.
+- **`pnpm verify` se corre SIN `WORKTREE_SLOT`.** Con la variable exportada,
+  `apps/web/src/__tests__/worktree-slot.test.ts:19` («sin definir la variable, da slot 0») falla
+  por el entorno, no por el código. La variable es para los servidores y Playwright
+  (`docs/02-entorno.md`, «Trabajar en paralelo»); la suite unitaria no la quiere. No se tocó la
+  prueba: se corrigió cómo se invoca.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- Nada de este plan. Está cerrado: código, RTL, e2e, mutación y M9 tachada en
+  `docs/06-pendientes.md`.

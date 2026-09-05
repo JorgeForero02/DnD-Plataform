@@ -47,6 +47,7 @@ const BRANN: Character = {
   bio: null,
   visibility: "PLAYERS",
   createdAt: "2026-01-01",
+  archivedAt: null,
 };
 
 function pintar() {

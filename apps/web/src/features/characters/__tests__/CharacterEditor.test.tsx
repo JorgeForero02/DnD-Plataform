@@ -32,6 +32,7 @@ const created: Character = {
   bio: null,
   visibility: "PLAYERS",
   createdAt: "x",
+  archivedAt: null,
 };
 
 describe("CharacterEditor (crear)", () => {

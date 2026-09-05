@@ -59,6 +59,7 @@ function personaje(id: string, name: string): Character {
     bio: null,
     visibility: "PLAYERS",
     createdAt: "2026-01-01",
+    archivedAt: null,
   };
 }
 

@@ -346,6 +346,16 @@ model Encounter {
 // **`position` es la que ordena los turnos, y es de la base, no del servicio.** "Una posición no
 // se repite en un encuentro" es un índice único normal (Prisma sí lo expresa): dos combatientes
 // con la misma posición son un estado inconsistente, no una carrera a medias.
+/// El bando de un combatiente **dentro de este encuentro**, y por eso vive aquí y no en
+/// `Character`. «Enemigo» no es una propiedad de una criatura: es una relación en un momento. Un
+/// `Character.faction` habría que mantenerlo sincronizado con la ficción y se pudre el día que el
+/// mercader se vuelve enemigo; aquí es un dato de vida corta que **muere con el encuentro**.
+enum CombatantSide {
+  ALLY
+  ENEMY
+  NEUTRAL
+}
+
 model Combatant {
   id          String    @id @default(cuid())
   encounterId String
@@ -367,6 +377,16 @@ model Combatant {
   /// **una sola entrada** del orden. Dos personajes y seis goblins son ocho combatientes y
   /// **siete posiciones**.
   position    Int
+
+  /// **`NEUTRAL` por defecto, y no `ENEMY`.** Los combatientes que ya existen se crearon sin
+  /// bando, y un valor por defecto que **afirme** algo convertiría filas viejas en una afirmación
+  /// que nadie hizo. `NEUTRAL` significa literalmente «no se ha dicho».
+  ///
+  /// **Lo pone el DM al empezar el encuentro; el servidor no lo adivina** — no hay ningún dato del
+  /// que deducirlo. Ni el tipo de ficha ni la visibilidad sirven: un PNJ `DM_ONLY` puede ser el
+  /// aliado que aparece a mitad de escena.
+  side        CombatantSide @default(NEUTRAL)
+
   createdAt   DateTime  @default(now())
   encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)

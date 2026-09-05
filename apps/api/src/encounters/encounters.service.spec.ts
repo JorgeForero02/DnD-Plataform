@@ -158,6 +158,105 @@ describe("EncountersService", () => {
     expect(todasLasPosiciones.size).toBe(3);
   });
 
+  describe("el bando de un combatiente (plan 02)", () => {
+    function dosPersonajesListos() {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+      prisma.character.findMany.mockResolvedValue([
+        { id: "pc1", statblockRef: null },
+        { id: "gob1", statblockRef: null },
+      ]);
+      sheets.getInitiativeModifier.mockResolvedValue(0);
+      let siguienteTotal = 20;
+      rolls.roll.mockImplementation(async () => ({
+        revealed: true,
+        total: siguienteTotal--,
+        eventId: "rev",
+      }));
+      prisma.encounter.create.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+      });
+    }
+
+    it("guarda el bando que dice el DM, personaje a personaje", async () => {
+      dosPersonajesListos();
+
+      const encuentro = await service.start("dm", "c1", "s1", {
+        characterIds: ["pc1", "gob1"],
+        sides: { pc1: "ALLY", gob1: "ENEMY" },
+      });
+
+      const porPersonaje = new Map(
+        encuentro.combatants.map((c: { characterId: string; side: string }) => [
+          c.characterId,
+          c.side,
+        ]),
+      );
+      expect(porPersonaje.get("pc1")).toBe("ALLY");
+      expect(porPersonaje.get("gob1")).toBe("ENEMY");
+    });
+
+    it("quien no viene clasificado entra como NEUTRAL, que es «no se ha dicho»", async () => {
+      dosPersonajesListos();
+
+      const encuentro = await service.start("dm", "c1", "s1", {
+        characterIds: ["pc1", "gob1"],
+        sides: { pc1: "ALLY" },
+      });
+
+      const porPersonaje = new Map(
+        encuentro.combatants.map((c: { characterId: string; side: string }) => [
+          c.characterId,
+          c.side,
+        ]),
+      );
+      // **NEUTRAL y no ENEMY**: el servidor no rellena el hueco con una suposición. Un valor por
+      // defecto que afirmara algo convertiría un silencio en una afirmación que nadie hizo.
+      expect(porPersonaje.get("gob1")).toBe("NEUTRAL");
+    });
+
+    it("get() le manda el bando al jugador, junto al combatiente que ya podía ver", async () => {
+      prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
+      prisma.user.findUnique.mockResolvedValue({ id: "p1", isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [
+          {
+            id: "c0",
+            characterId: "pc1",
+            initiative: 18,
+            position: 0,
+            side: "ALLY",
+            character: { visibility: "PLAYERS", ownerId: "p1" },
+          },
+          {
+            id: "c1",
+            characterId: "gob1",
+            initiative: 12,
+            position: 1,
+            side: "ENEMY",
+            character: { visibility: "DM_ONLY", ownerId: "dm" },
+          },
+        ],
+      });
+
+      const visto = await service.get("p1", "c1", "s1", "enc1");
+
+      // El goblin escondido sigue sin aparecer —su bando no es una puerta trasera para verlo—, y
+      // el aliado que sí se ve llega con el suyo.
+      expect(visto.combatants).toHaveLength(1);
+      expect(visto.combatants[0]).toMatchObject({ characterId: "pc1", side: "ALLY" });
+    });
+  });
+
   it("advanceTurn() recorre el orden y sube de asalto al llegar al final", async () => {
     prisma.encounter.findFirst.mockResolvedValue({
       id: "enc1",

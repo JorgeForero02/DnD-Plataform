@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import {
   SEGUNDOS_POR_ASALTO,
+  type CombatantSide,
   type SetInitiativeInput,
   type StartEncounterInput,
 } from "@dnd/shared";
@@ -56,6 +57,8 @@ export interface FilaDeCombatiente {
   initiative: number;
   groupKey: string;
   position: number;
+  /** El bando dentro de este encuentro. `recolocar` no lo usa, pero lo devuelve intacto. */
+  side: CombatantSide;
 }
 
 /** Lo mínimo del cliente de Prisma que `recolocar` necesita — el `tx` real lo cumple de sobra. */
@@ -241,6 +244,9 @@ export class EncountersService {
                 initiative: puntuaciones.get(personaje.id)!,
                 groupKey: claveDe.get(personaje.id)!,
                 position: 0,
+                // Quien no venga clasificado entra como `NEUTRAL`, que es lo que significa «no se
+                // ha dicho». El servidor no rellena el hueco con una suposición.
+                side: input.sides?.[personaje.id] ?? "NEUTRAL",
               },
             }),
           ),
@@ -378,6 +384,10 @@ export class EncountersService {
         characterId: c.characterId,
         initiative: c.initiative,
         position: c.position,
+        // El bando viaja con el combatiente y no necesita filtro propio: quien llega hasta aquí ya
+        // pasó por `canView` sobre su personaje, y saber de qué lado está alguien a quien ya se ve
+        // no revela nada que la ficha no dijera.
+        side: c.side,
       }));
 
     // **Las posiciones visibles se renumeran densas, y esto no es cosmética.** La revisión de

@@ -29,6 +29,34 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Las tres columnas: el bando, dónde abre la escena y la crónica fuera del Json (2026-09-05)
+
+**Qué.** Plan 02 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/02-tres-columnas.md).
+Tres campos pequeños que arreglan una mentira y desbloquean «dónde se quedó» y la línea de tiempo.
+El principio que gobierna las tres: **lo que se filtra es columna; lo que solo se pinta puede ser
+Json**.
+
+**`Combatant.side`, el bando (migración `20260905010000_combatant_side`).** `CombatantSide` con
+`ALLY`, `ENEMY` y `NEUTRAL`, en el **encuentro** y no en `Character`: «enemigo» es una relación en
+un momento, no una propiedad de una criatura. Por defecto `NEUTRAL` —«no se ha dicho»—, lo dice el
+DM al empezar (`startEncounterSchema.sides`) y el servidor no lo adivina.
+
+**Un hallazgo real de la prueba, y cambió dónde vive el código.** La comprobación de «me has dado el
+bando de alguien que no combate» estaba en `EncountersService.start`, **después** del 409 de «ya hay
+un encuentro activo»: contra una sesión que ya combatía, la misma petición mal construida devolvía
+409 en vez de 400. Se movió al esquema de `@dnd/shared` (`superRefine`), donde el `ZodValidationPipe`
+la aplica antes de que el servicio mire ningún estado — que además es lo que la convención del
+proyecto manda.
+
+**Cómo se comprobó.** Dos mutaciones. Con el valor por defecto en `ENEMY`, el e2e contra Postgres
+que afirma que el personaje sin clasificar llega `NEUTRAL` se pone rojo (`Expected: "NEUTRAL" ·
+Received: "ENEMY"`). Con el `superRefine` anulado, la prueba del esquema que rechaza un bando
+sobrante se pone roja. Las dos deshechas.
+
+**Cómo revertirlo.** `git revert` de los commits del plan y una migración que haga
+`ALTER TABLE "Combatant" DROP COLUMN "side"` + `DROP TYPE "CombatantSide"`. Nada lee la columna
+fuera de los encuentros.
+
 ## Las tres baratas: TipTap empaquetado, `build` en CI y la ficha de `lychee` (2026-09-05)
 
 **Qué.** Plan 01 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/01-tres-baratas.md),

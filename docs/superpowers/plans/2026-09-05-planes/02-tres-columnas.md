@@ -180,15 +180,53 @@ la mitad del motivo de este plan.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-05 | **2.1 · `Combatant.side`.** Enum `CombatantSide` y columna en `apps/api/prisma/schema.prisma:349-393`; migración `apps/api/prisma/migrations/20260905010000_combatant_side/migration.sql`, aplicada con `prisma migrate deploy`. `combatantSideSchema` y `sides` en `packages/shared/src/encounter.schema.ts`; el servicio lo escribe y lo devuelve en `apps/api/src/encounters/encounters.service.ts`. **Commit `<pendiente>`** |
+| 🟨 en marcha | 2026-09-05 | **2.2 · `Session.openingEntityId`** — sin empezar |
+| 🟨 en marcha | 2026-09-05 | **2.3 · `Session.recap` y `recapVisibility`** — sin empezar |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **2.1 · `prisma migrate dev` no se puede usar en esta máquina: es interactivo y la herramienta
+  Bash no lo es** (`Error: Prisma Migrate has detected that the environment is non-interactive`).
+  La migración se escribió **a mano** en
+  `apps/api/prisma/migrations/20260905010000_combatant_side/migration.sql` y se aplicó con
+  `prisma migrate deploy`, que sí es no interactivo. Es el mismo camino que siguieron las
+  migraciones anteriores del repositorio (`20260905000000_commented_and_joined_events` es SQL
+  escrito a mano). Dura porque no depende de una terminal.
+- **2.1 · El 400 del bando estaba tapado por el 409, y lo destapó la prueba.** La comprobación de
+  «me has dado el bando de alguien que no combate» la escribí primero en
+  `EncountersService.start`, después del `ConflictException` de «ya hay un encuentro activo». El
+  e2e que la probaba **recibió 409 y no 400**, porque la sesión ya tenía encuentro. Se movió al
+  esquema (`startEncounterSchema.superRefine`, `packages/shared/src/encounter.schema.ts:76-99`),
+  donde el `ZodValidationPipe` la aplica antes de mirar estado alguno. Dura porque es **donde la
+  convención del proyecto dice que vive la validación** —«ninguna validación en el servicio que el
+  esquema ya cubra», `docs/04-convenciones.md`— y porque el código de estado deja de depender de si
+  hay pelea. La prueba unitaria del 400 se sustituyó por una del esquema, en
+  `packages/shared/src/encounter.schema.test.ts`.
+- **2.1 · `sides` es un mapa opcional y NO se cambió `characterIds` por un array de objetos.**
+  Cambiar la forma habría roto el contrato que la mesa ya usa y obligado a tocar `apps/web`, que
+  esta noche lleva otro carril. `characterIds` dice *quiénes combaten*; `sides` dice *de qué lado
+  está cada uno*, que es otra pregunta.
+- **Corregida de paso una errata en `docs/05-datos.md`**: decía «Queda declarado enQueda declarado
+  en».
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **2.2 · `Session.openingEntityId`.** El modelo `Session` está en
+  `apps/api/prisma/schema.prisma:283-313`; hay que añadir `openingEntityId String?` y la relación
+  `openingEntity Entity? @relation("SessionOpeningEntity", ..., onDelete: SetNull)`, y el lado
+  inverso en `Entity` (`apps/api/prisma/schema.prisma:237-252`). El filtrado va en
+  `SessionsService.get`/`list` (`apps/api/src/sessions/sessions.service.ts:53-74`), que hoy
+  devuelven la fila cruda: **si el espectador no puede ver la ficha de apertura, el campo llega
+  AUSENTE, no `null` con nombre.** Ojo: `SessionsService.canSee` pasa `createdById: ""` y
+  `grantedUserIds: []`, que para una `Entity` **no vale** — hay que leer sus `grants` y su
+  `createdById` de verdad.
+- **2.3 · `Session.recap` + `recapVisibility`.** El defecto está en
+  `apps/api/src/sessions/sessions.service.ts:175` (escribe `notes: { recap }`) y en la línea 184
+  (`visibility: closed.visibility`, cuando el esquema ya acepta `input.recapVisibility`,
+  `packages/shared/src/session.schema.ts:73-77`). La migración tiene que **copiar** lo que ya hay:
+  `UPDATE "Session" SET "recap" = "notes"->>'recap' WHERE "notes" ? 'recap' ...`, **sin borrar la
+  clave de `notes`**.

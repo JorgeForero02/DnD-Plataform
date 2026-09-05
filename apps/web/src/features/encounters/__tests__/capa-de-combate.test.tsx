@@ -39,9 +39,12 @@ const ENCUENTRO: Encounter = {
   round: 2,
   activePosition: 0,
   combatants: [
-    { id: "cb1", characterId: "p-thora", initiative: 18, position: 0 },
-    { id: "cb2", characterId: "g1", initiative: 11, position: 1 },
-    { id: "cb3", characterId: "g2", initiative: 11, position: 1 },
+    // `side` desde el plan 02: el bando lo dice el DM al empezar el encuentro. Esta pantalla
+    // todavía no lo pinta —el dato llega y no se usa—, así que aquí solo hace falta para que el
+    // fixture tenga la forma que el servidor devuelve de verdad.
+    { id: "cb1", characterId: "p-thora", initiative: 18, position: 0, side: "ALLY" as const },
+    { id: "cb2", characterId: "g1", initiative: 11, position: 1, side: "ENEMY" as const },
+    { id: "cb3", characterId: "g2", initiative: 11, position: 1, side: "ENEMY" as const },
   ],
 };
 

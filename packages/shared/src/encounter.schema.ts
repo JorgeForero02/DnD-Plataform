@@ -15,12 +15,27 @@ import { z } from "zod";
 export const encounterStatusSchema = z.enum(["ACTIVE", "ENDED"]);
 export type EncounterStatus = z.infer<typeof encounterStatusSchema>;
 
+/**
+ * El bando de un combatiente **dentro de este encuentro**.
+ *
+ * Vive en el combatiente y no en el personaje a propósito: «enemigo» no es una propiedad de una
+ * criatura, es **una relación en un momento**. Un `Character.faction` habría que mantenerlo
+ * sincronizado con la ficción y se pudre el día que el mercader se vuelve enemigo; aquí es un dato
+ * de vida corta que muere con el encuentro, que es lo correcto.
+ *
+ * **`NEUTRAL` significa «no se ha dicho»**, no «indiferente»: es lo que traen las filas viejas y lo
+ * que trae un combatiente que el DM no clasificó.
+ */
+export const combatantSideSchema = z.enum(["ALLY", "ENEMY", "NEUTRAL"]);
+export type CombatantSide = z.infer<typeof combatantSideSchema>;
+
 /** Un combatiente, ya filtrado por `canView` y con la posición renumerada densa. */
 export const combatantSchema = z.object({
   id: z.string().cuid(),
   characterId: z.string().cuid(),
   initiative: z.number().int(),
   position: z.number().int().nonnegative(),
+  side: combatantSideSchema,
 });
 export type Combatant = z.infer<typeof combatantSchema>;
 
@@ -52,9 +67,46 @@ export type Encounter = z.infer<typeof encounterSchema>;
  * un grupo de criaturas idénticas, de modo que todos los miembros de dicho grupo actuarán a la
  * vez."* Agruparlos no lo decide quien llama: lo decide el servidor mirando `statblockRef`.
  */
-export const startEncounterSchema = z.object({
-  characterIds: z.array(z.string().cuid()).min(1).max(50),
-});
+export const startEncounterSchema = z
+  .object({
+    characterIds: z.array(z.string().cuid()).min(1).max(50),
+    /**
+     * El bando de cada uno, **por id de personaje**. Opcional, y quien falte entra como `NEUTRAL`.
+     *
+     * **El servidor no lo adivina, y no puede.** No hay ningún dato del que deducirlo: ni el tipo de
+     * ficha ni la visibilidad sirven —un PNJ `DM_ONLY` puede ser el aliado que aparece a mitad de
+     * escena—. Por eso lo dice quien empieza el encuentro, que siempre es el DM.
+     *
+     * **Es un mapa aparte y no un array de objetos** para no romper el contrato que la mesa ya usa:
+     * `characterIds` sigue diciendo *quiénes combaten*, que es una pregunta distinta de *de qué lado
+     * está cada uno*. Una clave que no esté en `characterIds` es un error de quien llama y el
+     * servidor la rechaza con un 400, en vez de tragársela en silencio.
+     */
+    sides: z.record(z.string().cuid(), combatantSideSchema).optional(),
+  })
+  /**
+   * **La comprobación vive aquí y no en el servicio, y eso lo decidió una prueba en rojo.**
+   *
+   * Estaba en `EncountersService.start`, después de la comprobación de «ya hay un encuentro
+   * activo», así que una petición mal construida contra una sesión que ya combatía recibía un
+   * **409** en vez de un 400: «llegaste tarde» en lugar de «tu petición está mal». Aquí la aplica
+   * el `ZodValidationPipe` antes de que el servicio mire ningún estado, que es lo que la
+   * convención del proyecto manda —ninguna validación en el servicio que el esquema ya cubra— y lo
+   * que hace que el código de estado diga la verdad.
+   */
+  .superRefine((valor, ctx) => {
+    if (!valor.sides) return;
+    const combaten = new Set(valor.characterIds);
+    for (const id of Object.keys(valor.sides)) {
+      if (!combaten.has(id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["sides", id],
+          message: "Se ha indicado el bando de alguien que no entra al combate",
+        });
+      }
+    }
+  });
 export type StartEncounterInput = z.infer<typeof startEncounterSchema>;
 
 /**

@@ -195,7 +195,7 @@ no del personaje.
 
 Con dos personajes y seis goblins hay **ocho combatientes y tres posiciones** (dos grupos de uno
 más el de goblins). El spec de la fase 2.5 (§2.5.2) dice «siete» para ese ejemplo y la cifra no
-sale de ninguna lectura; el modelo que describe sí es el correcto. Queda declarado enQueda declarado en
+sale de ninguna lectura; el modelo que describe sí es el correcto. Queda declarado en
 [06-pendientes.md](./06-pendientes.md) para que el autor lo confirme o corrija el spec.
 
 **`Encounter.round`** empieza en 1 (no hay «asalto 0») y **`Encounter.activePosition`** guarda la
@@ -205,6 +205,28 @@ por el mismo camino que cualquier otro avance del reloj (`GameClockService.advan
 parámetro `tx` opcional para compartir la transacción del turno) — así las condiciones de 2C.4, que
 ya caducan solas contra ese reloj, **empiezan a caducar en combate sin que este código sepa nada de
 condiciones**.
+
+**`Combatant.side` es el bando, y vive en el encuentro a propósito (plan 02, 2026-09-05).**
+`CombatantSide` tiene tres valores —`ALLY`, `ENEMY`, `NEUTRAL`— y **no está en `Character`**:
+«enemigo» no es una propiedad de una criatura, es **una relación en un momento**. Un
+`Character.faction` habría que mantenerlo sincronizado con la ficción y se pudre el día que el
+mercader se vuelve enemigo; aquí es un dato de vida corta que muere con el encuentro.
+
+- **Por defecto `NEUTRAL`, y no `ENEMY`.** Las filas que ya existían se crearon sin bando, y un
+  valor por defecto que **afirme** algo las convertiría en una afirmación que nadie hizo. `NEUTRAL`
+  significa literalmente «no se ha dicho».
+- **Lo dice el DM al empezar el encuentro** (`startEncounterSchema.sides`, un mapa
+  `characterId → bando`); **el servidor no lo adivina** porque no hay dato del que deducirlo — ni el
+  tipo de ficha ni la visibilidad sirven: un PNJ `DM_ONLY` puede ser el aliado que aparece a mitad
+  de escena.
+- **Un bando para alguien que no entra al combate es un 400**, y la comprobación vive en el esquema
+  de `@dnd/shared` y no en el servicio. Estuvo en el servicio y una prueba la tumbó: allí llegaba
+  **después** del 409 de «ya hay un encuentro activo», así que la misma petición mal construida daba
+  409 contra una sesión que ya combatía. Un código de estado que depende de si hay pelea no dice la
+  verdad.
+- **No necesita filtro propio.** El bando viaja con el combatiente, y un combatiente solo llega a un
+  espectador si su `Character` pasó `canView`: saber de qué lado está alguien a quien ya se ve no
+  revela nada.
 
 **El orden se calcula UNA VEZ al empezar el encuentro y se guarda.** El SRD: el orden de iniciativa
 no cambia de asalto a asalto. `Combatant.initiative` sigue siendo editable por el DM después (como

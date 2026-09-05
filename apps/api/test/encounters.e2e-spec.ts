@@ -133,7 +133,15 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     const r = await request(app.getHttpServer())
       .post(encUrl())
       .set("Authorization", `Bearer ${tokenDM}`)
-      .send({ characterIds: [pc1Id, pc2Id, ...goblinIds] });
+      // El DM clasifica a pc1 y a los goblins; **a pc2 lo deja sin decir nada a propósito**, que
+      // es lo que prueba el valor por defecto de la columna contra Postgres real.
+      .send({
+        characterIds: [pc1Id, pc2Id, ...goblinIds],
+        sides: {
+          [pc1Id]: "ALLY",
+          ...Object.fromEntries(goblinIds.map((id) => [id, "ENEMY"])),
+        },
+      });
     expect(r.status).toBe(201);
     encounterId = r.body.id;
     expect(r.body.status).toBe("ACTIVE");
@@ -162,6 +170,27 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       [pc1Id, pc2Id].includes(c.characterId),
     );
     expect(new Set(pjs.map((c: { position: number }) => c.position)).size).toBe(2);
+
+    // **El bando, contra Postgres real.** pc1 va como aliado, los seis goblins como enemigos, y
+    // pc2 —del que nadie dijo nada— llega como `NEUTRAL`, que es literalmente «no se ha dicho».
+    // Un valor por defecto que afirmara algo convertiría ese silencio en una afirmación.
+    const bandoDe = new Map<string, string>(
+      r.body.combatants.map((c: { characterId: string; side: string }) => [c.characterId, c.side]),
+    );
+    expect(bandoDe.get(pc1Id)).toBe("ALLY");
+    expect(bandoDe.get(pc2Id)).toBe("NEUTRAL");
+    expect(goblinIds.map((id) => bandoDe.get(id))).toEqual(Array(6).fill("ENEMY"));
+  });
+
+  it("un bando para alguien que no entra al combate es un 400 y NO crea el encuentro", async () => {
+    // Va después del encuentro ya creado a propósito: si el 400 no saltara, lo siguiente que se
+    // encontraría esta petición es el 409 de «ya hay un encuentro activo», y un 409 no distingue
+    // «te he rechazado la petición mal construida» de «llegaste tarde». El 400 tiene que ganar.
+    const r = await request(app.getHttpServer())
+      .post(encUrl())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [pc1Id], sides: { [pc2Id]: "ENEMY" } });
+    expect(r.status).toBe(400);
   });
 
   it("y queda escrito en la línea de tiempo, visible para el jugador", async () => {

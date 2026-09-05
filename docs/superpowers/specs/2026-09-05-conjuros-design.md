@@ -1,166 +1,175 @@
-# Los conjuros — un mago que puede lanzar algo
+# Lo que una cosa HACE — conjuros y aptitudes son el mismo problema
 
-> Escrito el 2026-09-05, después de que el autor se hiciera un mago y no encontrara ni un hechizo.
-> **Decisión suya, ese mismo día: se hace la versión larga** —los conjuros de verdad, no un aviso de
-> «todavía no»—, y *«no me preocupa alargar la partida de agentes»*.
+> **Este documento se reescribió el 2026-09-05, el mismo día.** Su primera versión se llamaba «Los
+> conjuros» y trataba los hechizos como una fase y los rasgos de clase como otra. **Eso era el
+> error**, y el autor lo señaló con una pregunta: *«¿esto de conjuros incluye ataques de otras
+> clases? Un bárbaro tiene ataques aparte de atacar con la espada, ¿no?»*
 >
-> **Qué arregla.** La hoja de un lanzador enseña **sus casillas de espacios de conjuro y no hay nada
-> que meter dentro**. Medido: cero conjuros en `apps/api/src` y `packages/shared/src`.
+> **No los incluía, y debería.** Un conjuro y una aptitud de clase comparten casi todo: los dos son
+> algo que un personaje puede hacer, que gasta un recurso, que elige objetivo, que tira o pide una
+> tirada, y que a veces deja un efecto con duración. Diseñarlos por separado es cómo se acaba con
+> dos motores que hacen lo mismo mal.
 >
-> **No está roto: está declarado fuera de alcance** desde 2A, en la cabecera de
-> `apps/api/src/rules/catalog/spell-slots.ts` — *«lo que entra es la tabla, no la matemática de
-> conjuros… lo que sigue fuera es la interpretación de cada conjuro: preparados contra conocidos,
-> trucos que escalan, y la lista por clase»*. Esta spec cierra ese hueco.
+> **Y es la quinta vez que este proyecto declara el mismo patrón** —construido por dentro, sin
+> pantalla que lo use—. Por eso este documento **no es un plan**: es la mitad de diseño de un
+> trabajo que el autor partió en tres, y el paso que va antes es **auditar**.
 
 ---
 
-## 1 · Lo que ya está construido, y es más de lo que parece
+## 1 · El encargo del autor, en sus tres partes
 
-| Pieza | Estado | Dónde |
-|---|---|---|
-| Espacios de conjuro por nivel, **con sus tres progresiones** (`FULL`, `HALF`, `PACT`) | **hecho** | `apps/api/src/rules/catalog/spell-slots.ts:25` |
-| Gastar y reponer un espacio, con su descanso | **hecho** — son recursos, como la inspiración | `apps/api/src/character-state/resources/resources.service.ts:408` |
-| El brujo repone en descanso **corto**; el resto en el largo | **hecho** | `spellSlotResetOn` |
-| **Concentración y su CD** —10 o la mitad del daño, la mayor— | **hecho** | `apps/api/src/character-state/concentration/concentration.ts:61` |
-| Salvación pedida al recibir daño concentrando | **hecho** | `AplicarDano.tsx:116` |
-| Pedir una tirada a varios personajes, con CD y modo | **hecho** | `apps/api/src/roll-requests/` |
-| Condiciones que caducan solas | **hecho** | 2C |
-| Las doce clases del SRD | **hecho** | `apps/api/src/rules/catalog/classes.ts` |
-| **La lista de conjuros** | **NO existe** | — |
-| **Lanzar uno** | **NO existe** | — |
+El 2026-09-05, después de encontrar cinco huecos usando la aplicación:
 
-**El andamio está entero.** Falta el contenido y el gesto.
+1. **Arreglar la iniciativa y el bando** —
+   [su plan](../plans/2026-09-05-iniciativa-y-bando.md), quince tareas, se ejecuta aparte.
+2. **Auditar TODO** el sistema de ataques, aptitudes y lo relacionado con las hojas de personaje y
+   los PNJ enemigos.
+3. **Planificar lo que falte**, con la auditoría delante.
 
----
+**Este documento sirve al 3, y no puede escribirse entero hasta que exista el 2.** Lo que trae ya es
+el modelo, que es lo que la auditoría necesita para saber qué buscar.
 
-## 2 · El alcance, y lo que deliberadamente queda fuera
-
-### Entra
-
-- **El catálogo de conjuros del SRD 5.1**, con su atribución, como ya se hizo con armas, armaduras,
-  objetos y monstruos.
-- **Qué conjuros tiene cada personaje**: preparados o conocidos, según su clase.
-- **Lanzar uno**: gastar el espacio, elegir objetivo si lo tiene, tirar lo que haya que tirar, y que
-  el resultado llegue a la mesa con su traza.
-- **Los trucos**, que no gastan espacio y escalan por nivel de personaje.
-
-### No entra
-
-- **Rituales.** Son una segunda vía de lanzamiento con su propio tiempo, y el reloj de campaña
-  tendría que entenderlos. Su propia tanda.
-- **Componentes materiales con coste.** Piden inventario de reactivos y una economía que no existe.
-  Los componentes sin coste se muestran como texto y no se comprueban.
-- **Áreas de efecto medidas.** Un cono de 15 pies necesita el tablero de la fase 3. Hasta entonces el
-  conjuro **dice a cuántos afecta y el DM elige a quiénes**, que es lo que hace una mesa sin mapa.
-- **Invocaciones y familiares**: crean criaturas, y eso es el bestiario más un dueño.
+> *«Es un poco humillante que haya muchas cosas y no se puedan usar porque no está bien
+> planeado.»* — el autor, 2026-09-05. Tiene razón, y la causa es identificable: **se ha planificado
+> por capas** —el motor, la hoja, los objetos, los sucesos— **en vez de por «¿se puede jugar una
+> sesión?»**. Cada capa se cerró en verde y ninguna se usó.
 
 ---
 
-## 3 · Las cuatro decisiones que este diseño toma, y por qué
+## 2 · Lo medido: qué hay y qué no
 
-Ninguna es libre: **el SRD contesta las cuatro**, y en este proyecto eso manda.
+**Construido, y es más de lo que parecía:**
 
-### 3.1 · Preparados y conocidos son cosas distintas, y no se pueden unificar
+| Pieza | Dónde |
+|---|---|
+| Espacios de conjuro por nivel, tres progresiones (`FULL`/`HALF`/`PACT`) | `apps/api/src/rules/catalog/spell-slots.ts:25` |
+| Gastarlos y reponerlos; el brujo en descanso **corto** | `apps/api/src/character-state/resources/resources.service.ts:408` |
+| **CD de salvación de conjuro**, derivada con traza | `apps/api/src/rules/engine.ts:333` |
+| **Ataque mágico**, derivado con traza | `apps/api/src/rules/engine.ts:342` |
+| Concentración y su CD (10 o la mitad del daño) | `apps/api/src/character-state/concentration/concentration.ts:61` |
+| Pedir una salvación con CD a varios a la vez | `apps/api/src/roll-requests/` |
+| Condiciones que caducan solas | fase 2C |
+| Ataques derivados del arma equipada, con traza y competencia | `apps/api/src/rules/attacks.ts` |
+| Motor de reglas suceso–condición–efecto, de vocabulario cerrado | `apps/api/src/rules-engine/` |
 
-El SRD reparte a los lanzadores en dos familias, y meterlos en una sola tabla es el error obvio:
+**Lo que falta:**
 
-- **Preparan de una lista completa** —clérigo, druida, paladín—: acceden a **todos** los conjuros de
-  su clase y cada día eligen cuántos llevar preparados.
-- **Conocen un número fijo** —bardo, hechicero, brujo, explorador—: aprenden pocos y esos son los
-  suyos hasta subir de nivel.
-- **El mago es el tercero y no es ninguno de los dos**: tiene **libro de conjuros**, aprende los que
-  copia, y **prepara** de entre los de su libro.
+| Hueco | Medida |
+|---|---|
+| **Ningún conjuro existe** | cero en `apps/api/src` y `packages/shared/src` |
+| **Las aptitudes de clase son solo un nombre** | `f(1, "rage", "Furia")` en `catalog/classes.ts:60`; **cero usos** de `"rage"` o `"extra-attack"` en todo el árbol |
+| **Nada que un personaje pueda «hacer»** más allá de pegar con lo equipado | — |
 
-**Se modelan las tres**, porque son tres y fingir que son dos deja al mago mal. La clase dice cuál
-le toca; el personaje no lo elige.
+El alcance de las aptitudes **está declarado** en la cabecera de `classes.ts`: *«se transcribe el
+NOMBRE de cada aptitud y el nivel al que llega, no su texto de reglas»*. No está roto: está sin
+hacer, y desde la mesa no se distingue.
 
-### 3.2 · Los trucos no gastan espacio, y escalan por nivel de PERSONAJE
-
-No por nivel de conjuro ni por espacios gastados. Es la trampa clásica: un truco de un mago de nivel
-5 pega más que el mismo truco de nivel 1, **sin gastar nada**. Si se modelan como «conjuros de nivel
-0 que consumen un espacio de nivel 0», sale mal a la primera.
-
-### 3.3 · Un conjuro con salvación NO tira el atacante: tira el objetivo
-
-Y eso ya está construido: **es una petición de tirada**, igual que la iniciativa. El lanzador dice
-«lanzo bola de fuego», el servidor calcula la CD con su hoja, y **a cada objetivo le llega su
-petición de salvación de Destreza**.
-
-**Es la misma tubería que el plan de la iniciativa acaba de estrenar**, y esa reutilización es la
-razón de que esta fase quepa.
-
-### 3.4 · La concentración ya existe: se conecta, no se reescribe
-
-Un conjuro que la pida **marca al lanzador como concentrando**, y el mecanismo que ya hay —la CD de
-10 o la mitad del daño, y la salvación al recibir golpes— se dispara solo. **Lanzar un segundo
-conjuro de concentración termina el primero**, y eso lo dice el servidor, no la pantalla.
+**Lo que eso significa jugando:** un guerrero y un bárbaro de nivel 5 juegan **exactamente igual** —
+los dos pegan una vez con su arma—, y un mago no puede lanzar nada.
 
 ---
 
-## 4 · El modelo
+## 3 · La idea que lo une, y de dónde sale
+
+**Foundry VTT, sistema `dnd5e`** (MIT, clonado en `Mine/referencia-foundry-dnd5e`, FUERA del repositorio y solo
+para leer) **no modela «conjuros» y «aptitudes» por separado**. Modela **lo que una cosa hace**, con
+un vocabulario cerrado de actividades (`module/data/activity/`):
 
 ```
-Spell              el catálogo del SRD: nombre, nivel, escuela, tiempo, alcance,
-                   componentes, duración, concentración, texto, y qué tira
-CharacterSpell     qué conjuros tiene este personaje, y si están preparados hoy
+attack · save · check · damage · heal · cast · summon
+enchant · forward · order · teleport · transform · utility
 ```
 
-**El catálogo es de solo lectura y no vive en la base**, igual que armas, armaduras y monstruos: es
-un fichero del servidor con su atribución, y `CharacterSpell` apunta a él por clave. Meterlo en
-Postgres obligaría a migrar cada corrección de una errata.
+Y entonces:
 
-**El DM puede añadir conjuros propios**, como ya puede con objetos y statblocks — y por el mismo
-motivo: una mesa inventa cosas. Esos sí van a la base.
+| Lo que en la mesa se llama | Es |
+|---|---|
+| Bola de fuego | un conjuro con actividad **`save`** y daño |
+| Curar heridas | un conjuro con **`heal`** |
+| Un ataque con hacha | un objeto con **`attack`** |
+| **Furia** | una aptitud con **`utility`** y un efecto con duración |
+| **Ataque adicional** | una aptitud que **modifica** cuántas veces se ataca |
+| Aliento de dragón | un statblock con **`save`** — el mismo mecanismo del PNJ |
 
----
+**Un conjuro deja de ser especial.** Y las tres cosas que este proyecto trata por separado —ataques
+de arma, conjuros y aptitudes— pasan a ser **la misma estructura con distinto origen**.
 
-## 5 · Las pantallas
-
-**La hoja gana una pestaña «Conjuros»** junto a la de ataques, y enseña tres cosas:
-
-1. **Los espacios**, que ya se pintan hoy — pero ahora con algo debajo.
-2. **Lo que este personaje puede lanzar**, agrupado por nivel, con lo preparado destacado.
-3. **El botón de lanzar**, que pregunta el nivel del espacio si el conjuro sube al gastarlo.
-
-**Y el cuadro de ataques vacío deja de mentir por omisión** —la ficha P3 del 2026-09-05—: si no hay
-armas equipadas, lo dice y dice por dónde se arregla.
-
-**Preparar** es su propia pantalla y solo aparece para quien prepara: una lista con casillas y un
-contador —«5 de 7 preparados»—, y el servidor rechazando el sexto si solo caben cinco.
+**Y esto no es adoptar Foundry: es reconocer que ya vamos por ahí.** El motor de reglas de este
+proyecto es suceso–condición–efecto de vocabulario cerrado, que es la misma familia de idea. Lo que
+falta es **aplicarla a lo que un personaje puede hacer**, no solo a lo que el DM automatiza.
 
 ---
 
-## 6 · Lo que hay que probar, y lo que se rompe si no
+## 4 · El modelo que propone este diseño
 
-- **Las tres familias**: un clérigo ve toda su lista, un bardo solo los suyos, un mago solo los de su
-  libro. **Esta es la que se olvida** y la que deja al mago mal.
-- **Un truco no gasta espacio**, y su daño sube al subir el personaje.
-- **Lanzar sin espacios es 409**, no un 200 silencioso — el mismo defecto que el plan 08 ya arregló
-  para los recursos: *«gastar más de lo que hay devolvía 200»*.
-- **Un conjuro con salvación crea una petición por objetivo**, con la CD de la hoja del lanzador.
-- **El segundo conjuro de concentración termina el primero**, y lo decide el servidor.
-- **La puerta**: preparar los conjuros de otro es 403.
+```
+Actividad     lo que algo HACE, de un vocabulario CERRADO
+              (el de Foundry es una buena base; el nuestro puede ser menor)
 
-**Mutación obligatoria:** quita la comprobación de espacios disponibles y comprueba que la prueba
-del 409 se pone roja.
+Aptitud       algo que un personaje PUEDE hacer, con:
+              · de dónde viene (clase, raza, objeto, conjuro)
+              · qué consume (espacio, uso, nada)
+              · sus actividades
+```
+
+**Tres consecuencias que hacen que valga la pena:**
+
+**Un catálogo, no tres.** Conjuros del SRD, aptitudes de clase y acciones de statblock caben en la
+misma tabla con distinto origen. Hoy los statblocks ya guardan `actions[].desc` como **texto libre**
+— el seed lo descubrió el 2026-09-05 — y eso es la misma información sin estructura.
+
+**Una pantalla, no tres.** «Qué puedo hacer en mi turno» es una lista: ataques, conjuros preparados,
+aptitudes con usos. Hoy los ataques tienen su cuadro y lo demás no tiene sitio.
+
+**Y el vocabulario cerrado es lo que impide la deriva.** Si `save` significa una cosa, la significa
+para un conjuro, para una aptitud y para el aliento del dragón. Ese es exactamente el argumento por
+el que este proyecto ya tiene cerrado el vocabulario del motor de reglas.
 
 ---
 
-## 7 · Por qué esto llega ahora y no antes
+## 5 · Lo que este diseño NO decide, porque va después de auditar
 
-Dos razones, y las dos son de oportunidad:
+**A propósito.** Planificar antes de auditar es el error que trajo hasta aquí.
 
-**La tubería de peticiones acaba de demostrarse.** Una salvación contra un conjuro es exactamente
-una petición de tirada con CD, y el plan de la iniciativa la deja rodada. Hacer los conjuros antes
-habría significado construirla dos veces.
+- **Cuántas actividades** entran. Trece es lo que Foundry necesitó en diez años; nosotros
+  probablemente empecemos con cuatro o cinco.
+- **Cuántos conjuros del SRD**: los ~300, o de nivel 0 a 3 —que cubren una campaña de niveles 1 a 5,
+  más de lo que la partida de prueba va a jugar— y el resto después, que es el mismo fichero con más
+  filas.
+- **Qué aptitudes entran primero.** Las de las clases que alguien vaya a jugar, no las doscientas.
+- **Si los trucos entran ya.** Recomendación: **sí** — un mago de nivel 1 sin trucos no tiene nada
+  que hacer en el asalto 2.
+- **Cómo se modelan las tres familias de lanzador.** El SRD tiene **tres** y aplanarlas a dos deja al
+  mago mal: preparan de la lista completa (clérigo, druida, paladín), conocen un número fijo (bardo,
+  hechicero, brujo, explorador), y el mago **prepara de su libro**.
 
-**Y la partida a ciegas lo va a exigir.** Tres agentes van a jugar dos sesiones; si uno se hace mago
-—y alguien siempre se hace mago— la primera pregunta va a ser dónde están sus hechizos. El autor
-decidió que prefiere alargar la prueba antes que hacerla con un mago que no puede lanzar nada.
+---
 
-## Lo que falta decidir, y es del autor
+## 6 · Lo que la auditoría tiene que contestar
 
-- **Cuántos conjuros entran del SRD**: los ~300 completos, o los de nivel 0 a 3, que cubren una
-  campaña entera de niveles 1 a 5 y son la mitad del trabajo.
-- **Si los trucos entran en la primera tanda** o después. Yo los metería: un mago de nivel 1 sin
-  trucos se queda sin nada que hacer en el asalto 2.
+Es el paso 2 del encargo, y este documento existe para decirle qué buscar:
+
+1. **De todo lo construido en hojas, ataques, aptitudes, objetos y statblocks: ¿qué se puede usar
+   desde una pantalla, y qué no?** Con su `fichero:línea` en las dos columnas.
+2. **¿Qué está a medias** — servidor sin pantalla, o pantalla sin servidor?
+3. **¿Qué se guarda como texto libre** que debería tener estructura? `actions[].desc` de los
+   statblocks es el caso conocido; probablemente no el único.
+4. **¿Qué falta para jugar una sesión entera** con un guerrero, un bárbaro y un mago de nivel 3, sin
+   que ninguno tenga que decir «esto lo hacemos de palabra»?
+
+**La cuarta es la que manda.** Las tres primeras miden el código; esa mide el producto, y es la que
+no se hizo nunca.
+
+## Atribución
+
+`Mine/referencia-foundry-dnd5e` es el sistema **dnd5e de Foundry VTT**, licencia **MIT**, clonado el
+2026-09-05 **solo para estudiar cómo modela** aptitudes y conjuros.
+
+**Vive FUERA del repositorio, y eso es deliberado.** El primer intento lo puso dentro con una entrada
+en `.gitignore`, y `pnpm verify` se cayó al instante: **`.gitignore` no excluye nada de ESLint**, que
+se puso a analizar 275 MB de código ajeno. Excluirlo habría exigido tocar cuatro configuraciones
+—ESLint, Prettier, `tsconfig` y Vitest— y bastaba olvidar una. Un material de referencia no es parte
+del proyecto: no debe vivir dentro de él.
+
+Si alguna vez se copiara código suyo, la licencia MIT obliga a conservar su aviso de copyright — y a
+decirlo aquí.

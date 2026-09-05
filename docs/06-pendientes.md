@@ -169,10 +169,23 @@ de un mago enseña sus casillas de espacios de conjuro y no hay nada que meter d
 conjuros no es un mago, y es lo primero que va a preguntar cualquiera que se haga uno.
 
 **Decisión del autor, 2026-09-05: se hace la versión larga** —los conjuros de verdad—, y no le
-preocupa que alargue la partida de agentes. Tiene su propio diseño:
+preocupa que alargue la partida de agentes.
+
+**Y ese mismo día se descubrió que NO es un hueco suyo: es el mismo que el de las aptitudes.** Las
+aptitudes de clase también son solo un nombre —`f(1, "rage", "Furia")` en
+`apps/api/src/rules/catalog/classes.ts:60`, con **cero usos** de `"rage"` o `"extra-attack"` en todo
+el árbol—, así que un bárbaro de nivel 5 juega **exactamente igual** que un guerrero: los dos pegan
+una vez con su arma.
+
+Un conjuro y una aptitud son **lo mismo con distinto origen**: algo que un personaje puede hacer, que
+gasta un recurso, elige objetivo, tira o pide una tirada, y a veces deja un efecto con duración. El
+diseño está en
 [`superpowers/specs/2026-09-05-conjuros-design.md`](./superpowers/specs/2026-09-05-conjuros-design.md).
 
-**Cierra con esa fase**, no con una tanda.
+**Cierra con el trabajo que el autor partió en tres el 2026-09-05**: arreglar la iniciativa (su plan
+ya está escrito), **auditar el sistema entero de ataques, aptitudes y hojas**, y planificar lo que
+falte **con esa auditoría delante**. Planificarlo antes de auditarlo repetiría el error que lo trajo
+hasta aquí.
 
 
 ## P2 · Nadie propone terminar el combate, y «derrotado» ya está decidido (2026-09-05)

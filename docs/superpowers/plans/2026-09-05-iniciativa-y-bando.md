@@ -1324,19 +1324,16 @@ git commit -m "feat(web): an empty attack table says what is missing and where t
 
 ---
 
-## Lo que viene DESPUÉS de este plan, y no cabe aquí
+## Lo que este plan NO toca, y va aparte
 
-**Los conjuros.** Un mago no tiene ni un hechizo —medido el 2026-09-05: cero conjuros en
-`apps/api/src` y `packages/shared/src`—, y el autor decidió ese día hacer **la versión larga**. Tiene
-su propio diseño: [`../specs/2026-09-05-conjuros-design.md`](../specs/2026-09-05-conjuros-design.md).
+**Los conjuros y los rasgos de clase.** Un mago no tiene ni un hechizo y la Furia de un bárbaro es
+**solo un nombre** — medido el 2026-09-05: cero conjuros en `apps/api/src`, y cero usos de `"rage"`
+o `"extra-attack"` fuera del catálogo.
 
-**No se mete en este plan a propósito**: la lista por clase, preparados contra conocidos, los trucos
-que escalan y el lanzamiento con objetivo son una fase, y meterlos aquí lo haría inentregable.
-
-Va detrás, y **se apoya en la tubería que la tarea 3 deja rodada**: una salvación contra un conjuro
-es exactamente una petición de tirada con CD. Hacer los conjuros antes habría significado construirla
-dos veces.
-
+**No entran aquí, y tampoco son dos cosas.** El autor pidió el 2026-09-05 partir el trabajo en tres,
+y esto es el tercero: **una auditoría del sistema de ataques, aptitudes y hojas entero, y después su
+planificación**. Meterlo en este plan lo haría inentregable, y planificarlo antes de auditarlo
+repetiría el error que lo trajo hasta aquí.
 
 ## Definición de terminado
 

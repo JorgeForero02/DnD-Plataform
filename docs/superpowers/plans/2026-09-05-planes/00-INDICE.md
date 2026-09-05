@@ -12,6 +12,43 @@
 > **Estado del árbol al escribir esto:** `main` en `4c7c3a2`, limpio, `pnpm verify` en verde, y sin
 > ramas ni worktrees de trabajo abiertos.
 
+## DÓNDE ESTÁ ESTO AHORA (actualizado el 2026-09-06)
+
+> **Este bloque se actualiza; el resto del fichero NO.** Lo de abajo es el encargo del 2026-09-05 y
+> se conserva tal cual se escribió, incluida su frase «`main` en `4c7c3a2`», que ya no es cierta —
+> un documento fechado no se reescribe. Lo que es cierto **hoy** está aquí.
+
+**`main` en `37cba01`**, árbol limpio, `pnpm verify` en verde. **Nada a medias: no hay rama ni
+worktree de trabajo abiertos.**
+
+| Plan | Estado | Commits |
+|---|---|---|
+| **01** · Las tres baratas | ✅ **cerrado** | `6240f58` · `197256e` |
+| **02** · Las tres columnas | ✅ **cerrado** | `41013cd` · `9b4a0a3` · `e258d60` · `3bbdb1c` |
+| **03** · El carril del motor | ✅ **cerrado**, las cinco fichas | `52a461f` · `11c607c` · `5481225` · `0776569` · `288b3ea` |
+| **04** · El hilo como conversación | ✅ **cerrado y fusionado** | `7d5baf6` → `be41fd2` |
+| **06** · Un gesto, un dueño | ✅ **cerrado y fusionado** | `4a22bc7` → `d613611` |
+| **15** · El crítico y lo pequeño | ✅ **cerrado**, las cuatro fichas | `ede50af` · `c884321` · `e76511a` |
+| **07** · Consolidación | ⬜ **el siguiente** — su dependencia (06) ya está | — |
+| **05 · 08 · 09 · 11 · 12 · 13 · 14** | ⬜ sin empezar | — |
+| **10** · La documentación | ⬜ va **al final**, y buena parte ya se escribió por el camino | — |
+
+**El orden recomendado para lo que queda**, con las dependencias ya resueltas:
+
+```
+07 → 05 → 08 → 09 → 11 → 13 → 14 → 12     (y el 10 al final)
+```
+
+**Lo que la noche del 05 dejó dicho y no está en ningún plan:**
+
+- **Los e2e de API se corren ENTEROS al ensamblar**, no solo por fichero. Correrlos juntos destapó
+  que `PrismaService` no se desconectaba y que la suite no podía terminar en esta máquina — un
+  defecto que ni CI ve. Está arreglado; la costumbre es lo que hay que conservar.
+- **Cada carril entregado en verde pasó por revisión y la revisión encontró algo real en los dos
+  casos**, uno de ellos bloqueante. No es opcional.
+- **El tope de `07-historial.md` es 1000 desde el 2026-09-05** (era 400), como decisión declarada en
+  `docs/04-convenciones.md`. Sigue sin poder resumirse una entrada para que quepa.
+
 ## Las reglas que valen para todos los planes
 
 1. **Ninguna tarea se cierra sin prueba real en verde y sin mirar la salida.** Si toca una pantalla,

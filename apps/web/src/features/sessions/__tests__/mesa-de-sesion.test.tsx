@@ -256,7 +256,13 @@ describe("el registro en vivo", () => {
     // revisión.
     const lista = await screen.findByRole("list", { name: "Sucesos de la sesión" });
     expect(await within(lista).findByText("Hallazgo")).toBeInTheDocument();
-    expect(within(lista).getByText("Hallazgo: media carta con el sello")).toBeInTheDocument();
+    // **Sigue comprobando lo mismo: la clase se ve, y el texto de la anotación se ve.** Lo que
+    // cambia es dónde: desde que el hilo pinta los cinco tipos de mensaje de la maqueta, la clase
+    // va en la banda de cobre (la línea de arriba) y el texto va debajo, sin repetir la palabra.
+    // Antes se pedía «Hallazgo: media carta con el sello», que era la frase entera de
+    // `lineaDeLog` con la clase pegada delante — y esa frase se seguía leyendo dos veces.
+    // `lineaDeLog` no ha cambiado; lo que cambió es qué parte de su salida pinta el hilo.
+    expect(within(lista).getByText("media carta con el sello")).toBeInTheDocument();
     expect(within(lista).getByText(/^Ana ·/)).toBeInTheDocument();
     // El suceso del motor se lee igual, pero no se le inventa una categoría: sin chip.
     expect(within(lista).getByText("Pierde 7 PG (24 → 17)")).toBeInTheDocument();

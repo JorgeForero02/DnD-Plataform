@@ -399,15 +399,31 @@ trae, y el hueco está declarado en
 
 ## Dejado por la segunda tanda de la ronda de interfaz (2026-09-02, madrugada)
 
-- **El arrastre del editor de reglas no está probado en un navegador, y puede que no funcione.**
-  Es lo más serio de esta lista. En la página del editor **no se dispara ni un `dragstart`**.
-  Descartado ya: `dragTo` frente a ratón paso a paso, `<button>` frente a `<div draggable>`,
-  con y sin `clip-path`, con y sin `user-select: none`. El dato que apunta a dónde mirar: un
-  `<div draggable>` **trivial** inyectado *dentro del diálogo* tampoco arrastra, y uno inyectado
-  *fuera* sí — así que **es del contexto, no de la pieza**. Sospechas sin comprobar: el atrapa-
-  foco del diálogo, o algo del apilado. Mientras esto siga abierto, **la ruta de teclado y
-  pulsación es la única que se puede afirmar**, y esa sí está probada. Si al final resulta que el
-  arrastre no funciona para una persona, R1 no está terminada.
+- ~~**El arrastre del editor de reglas no está probado en un navegador, y puede que no funcione.**~~
+  **CERRADA (2026-09-06), remedida en el navegador** — plan 14, punto 14.1. La medición está en
+  `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` y **repite el experimento original**, no uno
+  parecido: el mismo `<div draggable>` trivial, dentro del cajón y fuera, comparados. El resultado,
+  con su fecha: **`dragstart` FUERA: SÍ · `dragstart` DENTRO del cajón: SÍ.** Y el arrastre real,
+  con ratón paso a paso, también: `apps/web/e2e/reglas-arrastrar.spec.ts` pasa sus **ocho**
+  recorridos, incluido *«arrastrar una pieza hasta su carril la coloca de verdad»*.
+
+  **Lo que había caducado era la premisa, no el diagnóstico.** Aquel dato era cierto contra el
+  `Dialog` de entonces —cuadro centrado con `max-h-[85vh]`—, y la Ola 0 lo convirtió en **cajón
+  lateral de altura completa**: justo la variable que la medición culpaba. Es lo que D-OP-19 dejó
+  escrito que había que rehacer.
+
+  **La primera pasada de esta remedición dio un control falso** —«fuera: NO»— porque la sonda se
+  añadía al final del `body` y en la página de campaña caía fuera de la vista: geometría, no
+  contexto. Se fijó su posición y entonces midió. Queda escrito porque una medición con el control
+  roto habría «confirmado» el diagnóstico viejo por el motivo equivocado.
+
+  Texto original:
+  > En la página del editor **no se dispara ni un `dragstart`**. Descartado ya: `dragTo` frente a
+  > ratón paso a paso, `<button>` frente a `<div draggable>`, con y sin `clip-path`, con y sin
+  > `user-select: none`. El dato que apunta a dónde mirar: un `<div draggable>` **trivial**
+  > inyectado *dentro del diálogo* tampoco arrastra, y uno inyectado *fuera* sí — así que **es del
+  > contexto, no de la pieza**. Sospechas sin comprobar: el atrapa-foco del diálogo, o algo del
+  > apilado.
 - ~~**`BarraDeSesion` y la cabecera se pelean por la misma banda.**~~ **CERRADA (2026-09-05):**
   `features/sessions/BarraDeSesion.tsx:45` define `PEGADA_BAJO_LA_CABECERA` y el `sticky` lo lleva
   el envoltorio; además la mesa ya no vive dentro de `AppShell`. Texto original: ~~Las dos son

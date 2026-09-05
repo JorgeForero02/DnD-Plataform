@@ -37,15 +37,19 @@ import { PanelDeTablas } from "../../dm-tables/PanelDeTablas";
 // | Bloques de reglas | `ReglasEnLaMesa` (lectura) | `features/rules` |
 // | Tablas | `PanelDeTablas` | `features/dm-tables` |
 //
-// **La única que no se cablea entera es «Bloques de reglas», y la razón está en `ReglasEnLaMesa`
-// con su fecha de caducidad puesta.** En dos líneas: hay una medición que dice que el editor de
-// reglas no arrastra dentro de un superpuesto, **pero esa medición es contra el `Dialog` viejo**
-// —el cuadro centrado de `max-h-[85vh]`— y la Ola 0 lo convirtió en un cajón de altura completa,
-// que es justo la variable que aquella medición culpaba. **Está pendiente de remedir en el
-// navegador**, y lo hace el ensamblado. Mientras el dato no se rehaga no se monta el editor aquí:
-// montar sobre una premisa caducada y montar sobre una premisa desmentida se parecen demasiado.
-// Lo que sí se monta —qué reglas están escuchando ahora mismo, leídas en voz alta— vale por sí
-// solo y no depende de cómo salga la medición.
+// **«Bloques de reglas» sigue montando lectura y no el editor, pero ya NO por falta de datos.**
+//
+// La medición se rehizo el **2026-09-06** (plan 14, punto 14.1,
+// `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts`) y el resultado es que **`dragstart` SÍ llega
+// dentro del cajón**: el diagnóstico viejo era cierto contra el `Dialog` de entonces —cuadro
+// centrado de `max-h-[85vh]`— y la Ola 0 lo convirtió en cajón de altura completa, que era justo la
+// variable que culpaba. La ficha R1 está cerrada.
+//
+// Así que la premisa que impedía montar el editor aquí **ya no existe**, y lo que queda es una
+// decisión de pantalla, no de datos: **qué quiere el DM en mitad de la mesa**. Lo que se monta
+// —qué reglas están escuchando ahora mismo, leídas en voz alta— es lo que se consulta en juego;
+// escribir una regla nueva es preparación, y para eso está su pestaña con la pantalla entera.
+// Montarlo aquí es posible desde hoy, y es una tanda con su ficha, no una línea en esta.
 //
 // ## Uno a la vez
 //

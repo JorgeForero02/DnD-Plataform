@@ -20,7 +20,8 @@ import { PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 //
 // **La expresión la compone siempre el servidor** (`character-sheet.service.ts`, comentario de
 // cabecera de `rollAttackSchema`): esta pantalla nunca manda `1d8+3`, solo `part`, `mode`,
-// `versatile` y `critical`. Un cliente que montara la expresión podría decir que ataca con una
+// `versatile` y, desde el 2026-09-05, el `attackRollEventId` de la tirada que se cobra — **nunca
+// un `critical` declarado a mano**. Un cliente que montara la expresión podría decir que ataca con una
 // daga y tirar `1d12`.
 //
 // **El daño no tiene ventaja.** El servidor ignora `mode` para `part: "DAMAGE"` — la ventaja es
@@ -77,7 +78,6 @@ export function TirarAtaqueBoton({
           part: "ATTACK",
           mode: modoAtaque,
           versatile: false,
-          critical: false,
           audience: "PUBLIC",
         },
       },
@@ -101,10 +101,6 @@ export function TirarAtaqueBoton({
           part: "DAMAGE",
           mode: "NORMAL",
           versatile: dosManos,
-          // Se manda todavía, y **el servidor lo ignora** cuando llega `attackRollEventId`. Se
-          // quita del esquema en el commit siguiente: al revés habría una ventana en la que el
-          // crítico no funciona.
-          critical: false,
           // **La tirada que se está cobrando.** Sin ella el servidor no duplica nada: el crítico
           // dejó de ser algo que el cuerpo de la petición pueda declarar. Y la base tiene un
           // índice único sobre este campo, así que **el mismo ataque no se cobra dos veces**.

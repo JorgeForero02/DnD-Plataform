@@ -166,7 +166,6 @@ describe("AtaquesYLanzamiento", () => {
         part: "ATTACK",
         mode: "ADVANTAGE",
         versatile: false,
-        critical: false,
       }),
     );
     expect(input).not.toHaveProperty("expression");
@@ -182,9 +181,7 @@ describe("AtaquesYLanzamiento", () => {
 
     await waitFor(() => expect(espia).toHaveBeenCalled());
     const [, , , input] = espia.mock.calls[0];
-    expect(input).toEqual(
-      expect.objectContaining({ part: "DAMAGE", versatile: true, critical: false }),
-    );
+    expect(input).toEqual(expect.objectContaining({ part: "DAMAGE", versatile: true }));
   });
 
   it("**el daño cuelga de la tirada de ataque, y ya no hay casilla que marcar** (C2.5-2)", async () => {

@@ -139,15 +139,59 @@ caída**, y C2.5-2, C6-2, D3 y la ficha de `tags` anotadas en el maestro.
 
 | Estado | Cuándo | Qué |
 |---|---|---|
-| ⬜ sin empezar | — | — |
+| ✅ hecho | 2026-09-05 | **15.1-A · la web manda el `eventId`.** `apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`: fuera la casilla «Crítico», el daño manda `attackRollEventId` del ataque tirado en el mismo panel, y el panel **dice** lo que pasó. Commit `ede50af` |
+| ✅ hecho | 2026-09-05 | **15.1-B · fuera `critical` del esquema.** `packages/shared/src/inventory.schema.ts` ya no lo declara y `esCriticoDesdeLaTirada` devuelve `false` sin tirada citada (`apps/api/src/characters/character-sheet.service.ts:1465`). **C2.5-2 cierra entera.** Commit `<pendiente 15.1-B>` |
+| ⬜ sin empezar | — | 15.2 · C6-2 · `GET statblocks` no devuelve `visibility` |
+| ✅ hecho | 2026-09-05 | **15.3 · D3 · el endpoint de salud.** `apps/api/src/health/health.controller.ts` con su módulo, `SELECT 1` y **503** si la base no contesta; sin autenticación y sin contar nada. El `healthcheck` de `docker-compose.prod.yml:79-92` apunta ahí **y mira el código de estado**. **Commit `<pendiente 15.3>`** |
+| ⬜ sin empezar | — | 15.4 · `tags` sin unicidad |
 
 **Leyenda:** ⬜ sin empezar · 🟨 en marcha · ✅ hecho · ⛔ bloqueado (di por qué y qué descartaste).
 
 **Lo que decidí por los cuatro pasos** (qué no cuadraba · qué elegí · por qué es duradero · la
 fuente si la hubo):
 
-- _(nada todavía)_
+- **15.1 · Se respetó el orden que el plan exige, y por eso son DOS commits.** Primero la web manda
+  el campo, después se quita `critical`. En un solo commit no habría ventana, pero en dos se puede
+  revertir el segundo sin dejar el crítico roto — que es de lo que hablaba el plan.
+- **15.1 · La casilla no se sustituyó por otra casilla, sino por una frase.** «Fue un 20 natural»,
+  «No fue un 20 natural», o «tira primero el ataque». Un control que enseña lo que ya pasó no es un
+  control: es información, y ponerlo como casilla invitaría a volver a declararlo.
+- **15.1 · Una prueba afirmaba justo lo contrario y se reescribió**, no se borró: decía «sin
+  `attackRollEventId`, sigue mandando el `critical` del cuerpo — el camino de siempre no cambia», y
+  ese camino **era el hueco**. Ahora afirma que sin tirada citada **no hay crítico**, y que ni
+  siquiera se pregunta a la base.
+- **15.1 · El e2e cubre además el cobro doble**, que es la mitad que puso el plan 03: el segundo
+  intento sobre la misma tirada es un 409 y la pantalla lo dice en línea.
+- **Fuera del plan, para el autor: `docs/07-historial.md` se archivó SEIS veces esta noche.** El
+  tope de 400 líneas está pensado para un ritmo más lento; diez entradas en una madrugada lo hacen
+  saltar cada dos commits. **No lo he cambiado** —subirlo es una decisión declarada y es suya—, pero
+  conviene saberlo.
 
 **Lo siguiente exacto, si me quedo aquí:**
 
-- _(nada todavía)_
+- **15.3 · El sondeo del compose ahora MIRA el código de estado.** Antes era
+  `fetch(...).then(()=>process.exit(0))`: cualquier respuesta valía, que es exactamente por qué un
+  404 pasaba por sano. Ahora es `then(r=>process.exit(r.ok?0:1))`. Cambiar el endpoint sin cambiar
+  esto habría dejado el 503 sin quien lo leyera.
+- **15.3 · El endpoint no dice por qué está enfermo, y es deliberado.** Un cuerpo con el error de
+  Prisma dentro cuenta el motor, la versión y a veces el nombre de la base a cualquiera que sondee.
+  El detalle va a los registros del servidor.
+
+**Lo siguiente exacto, si me quedo aquí:**
+
+- **15.2 · C6-2.** `aStatblock()` en `apps/api/src/statblocks/statblocks.service.ts` **no incluye
+  `visibility`** aunque el servicio sí filtra por él, así que el editor de criaturas omite el campo
+  en el `PUT` para no pisar una criatura ya enseñada. Son dos líneas **y una decisión que hay que
+  escribir**: hay una ficha hermana —`OWNER_DM` en un statblock se comporta como `DM_ONLY`— que
+  **no cierra con esto**, así que o se excluye ese valor del selector con su motivo, o se arregla
+  antes. **Decídelo y escríbelo; no lo dejes al azar.**
+- **15.3 · D3.** Cero controladores de salud: `GET /` responde 404 y el `healthcheck` del
+  `docker-compose.prod.yml` depende de eso. Hace falta `GET /health` que **compruebe la base**
+  (`SELECT 1`), sin autenticación y **sin filtrar nada** —ni versiones ni conteos—, y actualizar el
+  compose, o el endpoint es decorativo. **Y probarlo con la base caída**, o se habrá escrito un
+  endpoint que siempre dice que sí.
+- **15.4 · `tags` sin unicidad.** `entity.schema.ts` no deduplica y «lich, lich» persiste dos veces;
+  las filas dedupan **al pintar**, que tapa el síntoma. La recomendación del plan —y la comparto—
+  es **normalizar al guardar, no rechazar**. Más la prueba del `PATCH` **sin `tags`** que comprueba
+  que siguen ahí: hoy funciona por la alineación de `.partial()` sobre `.default([])` y la guarda
+  `!== undefined`, y quien quite cualquiera de las dos **borra etiquetas en silencio**.

@@ -77,16 +77,17 @@ services:
     # tiene que estar aceptando conexiones ANTES —de ahí el service_healthy de arriba, no un
     # depends_on a secas, que solo espera a que el contenedor exista.
     healthcheck:
-      # La API NO tiene endpoint de salud hoy: `GET /` responde 404 (no hay controlador raíz,
-      # apps/api/src/app.module.ts). Esto comprueba que el servidor HTTP responde algo, que
-      # es lo que hay; un 404 resuelve el fetch igual que un 200. NO comprueba que la base de
-      # datos siga viva. Está anotado como pendiente en docs/06-pendientes.md.
+      # Apunta a `GET /health` desde el 2026-09-05 (ficha D3). Antes sondeaba `GET /`, que responde
+      # 404, y **un 404 resuelve el fetch igual que un 200**: el contenedor se declaraba sano con
+      # Postgres caído. Ahora el endpoint hace un `SELECT 1`, así que esto comprueba la cadena
+      # entera —servidor HTTP y base— y **se mira el codigo de estado**, no solo que la peticion no
+      # explote: un 503 es exactamente lo que este sondeo tiene que ver como enfermo.
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/').then(()=>process.exit(0)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s

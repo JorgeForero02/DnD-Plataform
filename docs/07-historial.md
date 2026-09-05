@@ -23,12 +23,73 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-hasta-2026-09-02.md`](./_archivo/historial-hasta-2026-09-02.md) | Todo el 2026-09-02 —la fase 2A entera, la ronda de interfaz, la primera puesta en producción— y **las entradas por tarea del 2026-09-03** (2B, 2C y 2D, tarea a tarea) |
 > | [`_archivo/historial-2026-09-04-por-tarea.md`](./_archivo/historial-2026-09-04-por-tarea.md) | **El 2026-09-04 se cerraron ocho tandas con sus ocho revisiones**, y sus entradas por tarea no caben aquí. Tres de ellas viven ahí: 2.5.2, B1.2 y la de `ENTITY_REVEALED` + archivar |
 > | [`_archivo/historial-2026-09-04-tandas.md`](./_archivo/historial-2026-09-04-tandas.md) | Las tandas por tarea del 2026-09-03 y 04 —2.5.3, 2.5.4, 2.5.5, 2.5.6, B4 y B5—, movidas enteras el 2026-09-05 |
+> | [`_archivo/historial-2026-09-05-hilo-conversacion.md`](./_archivo/historial-2026-09-05-hilo-conversacion.md) | **El hilo como conversación** (plan 04) y **lo que encontró su revisión**, de la noche del 2026-09-05 |
+> | [`_archivo/historial-2026-09-05-tres-baratas.md`](./_archivo/historial-2026-09-05-tres-baratas.md) | **Las tres baratas** (TipTap empaquetado, `build` en CI y la ficha de `lychee`), de la noche del 2026-09-05, movida esa misma noche |
 > | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3 y la auditoría de la cola larga**, de la madrugada del 2026-09-05, movida entera esa misma noche: los planes 01–06 escribieron ocho entradas y no caben |
 > | [`_archivo/historial-2026-09-04-reseno-de-la-mesa.md`](./_archivo/historial-2026-09-04-reseno-de-la-mesa.md) | **El reseño de la mesa del 2026-09-04** —la cabina y las mecánicas que no tenían pantalla—, movido entero el 2026-09-05 (tercer corte de la noche) |
 > | [`_archivo/historial-2026-09-03-y-04-sueltas.md`](./_archivo/historial-2026-09-03-y-04-sueltas.md) | **La comprobación en producción de 2D** y **la auditoría de la documentación del 2026-09-04**, movidas enteras el 2026-09-05 (segundo corte de la noche: las cinco entradas del plan 03 dejaron el fichero en 413 de 400) |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
+
+---
+
+## La API dice si está sana, y para eso mira la base (2026-09-05, plan 15 · D3)
+
+**Qué.** No había endpoint de salud, y el `healthcheck` de producción sondeaba `GET /`, que responde
+**404**. Un 404 resuelve el `fetch` igual que un 200, así que **el contenedor se declaraba sano con
+Postgres caído**: detectaba un proceso muerto y nada más.
+
+**`GET /health` hace un `SELECT 1`** y devuelve **503** si la base no contesta. Una API que responde
+con la base caída está mintiendo sobre su salud, y el único que se entera es el jugador.
+
+**Lo que NO dice es la mitad del diseño.** No lleva autenticación —un comprobador de salud no puede
+tener credenciales— y por eso **no cuenta nada**: ni versión, ni número de campañas, ni el nombre de
+la base. Y cuando está enfermo **tampoco dice por qué**: el detalle va a los registros del servidor,
+no a la respuesta.
+
+**El compose apunta ahí y mira el código de estado**, no solo que la petición no explote — un 503 es
+exactamente lo que este sondeo tiene que leer como enfermo.
+
+**Cómo se comprobó.** Cinco pruebas, y la que importa es la de **la base caída**: un `/health` que
+solo devuelve `{ status: "ok" }` pasa siempre, y escribir eso es escribir un endpoint que nunca dice
+que no. Mutación: quitando el `SELECT 1`, esa prueba recibe **200** donde espera 503.
+
+**Al desplegar:** cambiar el compose **recompila la imagen en Coolify**, así que esto viaja con el
+siguiente despliegue, no suelto.
+
+**Cómo revertirlo.** `git revert` del commit y devolver el `healthcheck` a `GET /`.
+
+---
+
+## El crítico deja de declararse (2026-09-05, plan 15 · C2.5-2 cerrada entera)
+
+**Qué.** Había un `critical: boolean` en el cuerpo de la petición de daño, y una casilla «Crítico»
+en el panel de ataque que el jugador marcaba a mano. El servidor se la creía: **cualquiera podía
+pedir el daño duplicado sin haber sacado un 20**. El campo ya no existe.
+
+**Ahora el daño cita la tirada que cobra.** La pantalla manda el `eventId` de la tirada de ataque
+hecha en ese mismo panel, y el servidor lee el `natural` que quedó escrito en su suceso —del mismo
+personaje, la misma campaña y **el mismo ataque**—. Sin tirada citada **no hay crítico**: pedir daño
+suelto es legítimo y va sin duplicar.
+
+**Y la casilla no se sustituyó por otra casilla: se sustituyó por una frase.** «Fue un 20 natural»,
+«No fue un 20 natural», o «tira primero el ataque». Enseñar lo que pasó, en vez de ofrecer
+declararlo.
+
+**Es la misma regla que `resolveAttackSchema` ya aplicaba** desde la ficha R2C-2 —*«eso lo decide la
+tirada, no quien la pide»*—, así que ahora las dos puertas de ataque dicen lo mismo.
+
+**El orden importaba.** Primero la web mandó el campo, **después** se quitó `critical`: al revés hay
+una ventana en la que el crítico no funciona. Son dos commits por eso.
+
+**Con esto C2.5-2 cierra entera**: su otra condición —que una tirada cobrada no se pueda cobrar dos
+veces— la puso el plan 03 con el índice único, y el navegador recorre las dos de punta a punta.
+
+**Cómo se comprobó.** Mutación: si `esCriticoDesdeLaTirada` vuelve a creerse el cuerpo, dos pruebas
+se ponen rojas. Y en el navegador, el segundo cobro de la misma tirada es un 409 con su frase.
+
+**Cómo revertirlo.** `git revert` de los dos commits, en orden inverso.
 
 ---
 
@@ -337,56 +398,3 @@ crónicas viejas siguen dentro de `notes`**, que esta migración no tocó, así 
 ninguna.
 
 ---
-
-## El hilo se lee como una conversación: lo último abajo (2026-09-05)
-
-**Qué.** Plan 04 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/04-hilo-conversacion.md),
-decisión **D1**, en un commit y solo en la web. El registro de la sesión se pinta del más antiguo
-al más reciente (`apps/web/src/features/sessions/hilo/HiloDeSesion.tsx:162`), sobre **una copia**
-invertida: el servidor sigue mandando el más reciente primero porque de ese orden depende la
-paginación por cursor, y `reverse` muta. El scroll se ancla al fondo, pero **solo si el lector ya
-estaba ahí** (`:185`); si estaba leyendo más arriba no se mueve nada y sale un aviso pulsable
-(`:300`). `loQueTePerdiste` **no se tocó**: su `desde` ya era el más antiguo de los no leídos, y con
-el orden nuevo la franja queda con lo no leído por debajo, que es lo que su comentario decía querer.
-
-**Cómo se comprobó.** Tres unitarias nuevas por orden de nodos, no por texto
-(`apps/web/src/features/sessions/__tests__/mesa-de-sesion.test.tsx:310`) y tres medidas de
-navegador (`apps/web/e2e/mesa-mide.spec.ts:255`), porque en `jsdom` `scrollHeight` vale cero y
-**cualquier aserción de anclaje pasa siempre**. Mutación obligatoria: quitar la condición
-`alFondoRef.current` deja el `expect(...scrollTop).toBe(arriba)` en rojo; devolver `enOrden` a
-`eventos` tumba dos unitarias; sacar la marca de leído del array invertido tumba la tercera. Las
-tres deshechas después.
-
-**Lo que encontró su revisión, y por qué importa más que el defecto.** El carril entregó verde y una
-revisión con contexto limpio encontró un **bloqueante real**: `apps/web/e2e/sesion.spec.ts` daba por
-visto **el último nodo del DOM** —que hasta ese commit era el más antiguo— para comprobar la franja
-de «te perdiste». Con el hilo invertido, el último nodo es el **más reciente**: no quedaba nada
-perdido y la franja no se pintaba. Se arregló al fusionar (`ids[0]`) y se comprobó **volviendo a
-romperlo**: con la línea vieja, ese recorrido cae. La lección no es el diff: **el orden del DOM es
-una interfaz compartida**, y voltearlo obligaba a mirar los cuatro recorridos que lo consumen, no
-solo el que se estaba editando.
-
-**Cómo revertirlo.** `git revert` del commit: el hilo vuelve a pintarse del más reciente primero,
-sin anclaje ni aviso. No hay migración, ni cambio de API, ni dato guardado nuevo.
-
-## Las tres baratas: TipTap empaquetado, `build` en CI y la ficha de `lychee` (2026-09-05)
-
-**Qué.** Plan 01 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/01-tres-baratas.md),
-en un commit y sin comportamiento nuevo.
-
-- **Los seis paquetes de TipTap pasan de `devDependencies` a `dependencies`**
-  (`apps/web/package.json:19-24`), con las versiones intactas. Su único consumidor sigue siendo un
-  script, así que nada se rompía hoy: se rompería **solo en producción** el día que el editor los
-  importara desde `src/` y `pnpm install --prod` los dejara fuera de la imagen.
-- **CI ejecuta `pnpm build`** (`.github/workflows/ci.yml:47`), **antes de `lint`**. Hasta hoy un
-  error de compilación que ninguna prueba tocara llegaba a `main` en verde.
-- **`lychee` se cierra por medición, no por retirada:** el barrido no encuentra **ninguna**
-  mención viva fuera de `.superpowers/`, o sea que la integración nunca existió.
-
-**Cómo se comprobó.** Mutación obligatoria: un `const x: number = "cadena"` en
-`apps/web/src/main.tsx` hace caer `pnpm build` con `error TS2322` y salida 2 — el paso de CI sirve
-de algo. Deshecha después. `pnpm verify` en verde con el gancho.
-
-**Cómo revertirlo.** `git revert` del commit: devuelve los seis paquetes a `devDependencies`,
-regenera el lockfile con `pnpm install` y quita el paso de CI. Nada depende de ello en tiempo de
-ejecución.

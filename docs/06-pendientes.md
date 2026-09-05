@@ -102,7 +102,27 @@ van de lo más reciente a lo más viejo dentro de cada bloque, y **la fecha de
 esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres secciones del
 día siguiente ya escritas debajo, y lo cazó una auditoría.
 
-## C2.5-2 · El crítico de la DAMAGE de `rollAttack`, atado a la tirada A MEDIAS (2026-09-04, 2.5.4)
+## ~~C2.5-2 · El crítico de la DAMAGE de `rollAttack`, atado a la tirada A MEDIAS~~ — CERRADA ENTERA (2026-09-05, planes 03 y 15)
+
+> **Las dos condiciones cumplidas, y en el orden que la ficha exigía.**
+>
+> **(1) La web manda el `eventId` de su propia tirada de ataque** y `critical` **ya no existe en el
+> esquema** (`packages/shared/src/inventory.schema.ts`): el panel de ataque
+> (`apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`) perdió la casilla «Crítico» que el
+> jugador marcaba a mano, y en su sitio **dice lo que pasó** —«Fue un 20 natural», «No fue un 20
+> natural», o «tira primero el ataque»—. `esCriticoDesdeLaTirada` devuelve **false** sin tirada
+> citada (`apps/api/src/characters/character-sheet.service.ts:1465`), así que no queda ninguna
+> puerta por la que declarar un crítico. Es la misma regla que `resolveAttackSchema` aplicaba desde
+> R2C-2: *«eso lo decide la tirada, no quien la pide»*.
+>
+> **(2) Una tirada ya cobrada no se puede volver a cobrar**, y lo impide el índice único de
+> `GameEvent.attackRollEventId` (plan 03, D-OP-15). El navegador lo comprueba de punta a punta en
+> `apps/web/e2e/inventario.spec.ts`: el segundo intento es un 409 y la pantalla lo dice en línea.
+>
+> **El orden importaba y se respetó**: primero la web mandó el campo (`ede50af`), después se quitó
+> `critical`. Al revés habría una ventana en la que el crítico no funciona. Texto original abajo.
+
+
 
 **2.5.4 añadió el camino correcto, sin cerrar del todo el hueco.** `rollAttackSchema` gana
 `attackRollEventId` opcional (solo-añadido, `@dnd/shared`): con él, la DAMAGE de un ataque
@@ -685,7 +705,7 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 | | Qué | Por qué importa |
 |---|---|---|
-| **D3** | **La API no tiene endpoint de salud** | No hay `@Controller("health")` ni controlador raíz: `GET /` responde 404. La comprobación del compose acepta ese 404 como señal de vida, así que **detecta un proceso caído pero no una base de datos caída**. Un `/health` que haga un `SELECT 1` es un cambio de código con su propia ficha, no un efecto colateral |
+| ~~**D3**~~ | ~~**La API no tiene endpoint de salud**~~ **CERRADA (2026-09-05, plan 15).** `GET /health` existe (`apps/api/src/health/health.controller.ts`), hace un `SELECT 1` y devuelve **503** si la base no contesta; sin autenticación y **sin contar nada** —ni versión, ni conteos, ni el nombre de la base—, porque quien sondea desde fuera no es el orquestador. El `healthcheck` de `docker-compose.prod.yml:79-92` apunta ahí **y mira el código de estado**, no solo que la petición no explote. Probado con la base caída, que es lo único que distingue un endpoint de salud de una constante. **Ojo al desplegar:** cambiar el compose recompila la imagen en Coolify. Texto original: | ~~No hay `@Controller("health")` ni controlador raíz: `GET /` responde 404. La comprobación del compose acepta ese 404 como señal de vida, así que **detecta un proceso caído pero no una base de datos caída**~~ |
 | **D5** | **Nadie ha restaurado nunca una copia de *esta* base** — ahora con más motivo: ya existen copias diarias reales que nadie ha probado a restaurar | Una copia sin restauración probada es una hipótesis. Requisitos reales de la restauración en [03-despliegue.md](./03-despliegue.md) |
 | **D7** | **Corregir `TRUST_PROXY` en Coolify sale caro** | Ahí las variables de entorno son argumentos de construcción: cambiar una **recompila la imagen**. Por eso el valor vive en el compose y no en la UI |
 | **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |

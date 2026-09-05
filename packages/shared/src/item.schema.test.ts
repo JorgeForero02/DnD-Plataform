@@ -193,9 +193,9 @@ describe("dinero", () => {
 });
 
 describe("tirada de ataque", () => {
-  it("por defecto es normal, a una mano y sin crítico", () => {
+  it("por defecto es normal y a una mano", () => {
     const r = rollAttackSchema.parse({ part: "ATTACK" });
-    expect(r).toMatchObject({ mode: "NORMAL", versatile: false, critical: false });
+    expect(r).toMatchObject({ mode: "NORMAL", versatile: false });
   });
 
   it("rechaza una mitad que no existe", () => {
@@ -204,8 +204,16 @@ describe("tirada de ataque", () => {
 
   // Tarea 2.5.4 (ficha C2.5-2) — `attackRollEventId`: la duplicación de dados atada a una
   // tirada real, no al `critical` que declara el cuerpo.
-  it("acepta el cuerpo de siempre, sin attackRollEventId", () => {
-    const r = rollAttackSchema.safeParse({ part: "DAMAGE", critical: true });
+  it("**no acepta un `critical` a mano** — eso lo decide la tirada, no quien la pide (C2.5-2)", () => {
+    // Es la misma regla que `resolveAttackSchema` aplica desde R2C-2, y desde el 2026-09-05 las
+    // dos puertas de ataque dicen lo mismo. Zod ignora las claves de más, así que lo que se afirma
+    // es que **no sobrevive al parseo**: nada de lo que llegue por aquí puede duplicar dados.
+    const r = rollAttackSchema.parse({ part: "DAMAGE", critical: true } as never);
+    expect(r).not.toHaveProperty("critical");
+  });
+
+  it("pedir daño sin citar ninguna tirada es legítimo, y entonces no hay crítico", () => {
+    const r = rollAttackSchema.safeParse({ part: "DAMAGE" });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.attackRollEventId).toBeUndefined();
   });

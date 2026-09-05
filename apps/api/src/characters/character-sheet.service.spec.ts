@@ -925,7 +925,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       part: "ATTACK",
       mode: "ADVANTAGE",
       versatile: false,
-      critical: false,
     });
 
     expect(rolls.roll).toHaveBeenCalledWith(
@@ -942,7 +941,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       part: "DAMAGE",
       mode: "NORMAL",
       versatile: true,
-      critical: false,
     });
 
     expect(rolls.roll).toHaveBeenCalledWith(
@@ -953,13 +951,18 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
   });
 
   it("un crítico duplica los DADOS y nunca el modificador", async () => {
-    const { service, rolls } = conEspada();
+    const { service, rolls, prisma } = conEspada();
+    // El crítico ya no se declara: se cita la tirada de ataque que lo sacó (C2.5-2, cerrada el
+    // 2026-09-05). El `payload` es el que `RollsService` escribe en el suceso de esa tirada.
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      payload: { natural: "TWENTY", reason: "Ataque con Espada larga" },
+    });
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
       mode: "NORMAL",
       versatile: false,
-      critical: true,
+      attackRollEventId: "ev-atk-20",
     });
 
     // 1d8+2 crítico es 2d8+2. Si saliera 2d8+4, el modificador se estaría duplicando también.
@@ -967,6 +970,9 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       "p1",
       "c1",
       expect.objectContaining({ expression: "2d8+2" }),
+      // Y la tirada que se cobra queda escrita: la base tiene un índice único sobre ella, así que
+      // este mismo crítico no se puede cobrar dos veces (D-OP-15).
+      { attackRollEventId: "ev-atk-20" },
     );
   });
 
@@ -981,7 +987,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       part: "DAMAGE",
       mode: "NORMAL",
       versatile: false,
-      critical: false,
       attackRollEventId: "ev-atk-20",
     });
 
@@ -1018,7 +1023,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       part: "DAMAGE",
       mode: "NORMAL",
       versatile: false,
-      critical: true,
       attackRollEventId: "ev-atk-11",
     });
 
@@ -1044,7 +1048,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       part: "DAMAGE",
       mode: "NORMAL",
       versatile: false,
-      critical: true,
       attackRollEventId: "ev-sigilo-20",
     });
 
@@ -1058,21 +1061,24 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     );
   });
 
-  it("sin attackRollEventId, sigue mandando el critical del cuerpo — el camino de siempre no cambia", async () => {
+  it("**sin attackRollEventId NO hay crítico**, porque ya no queda nada que declararlo", async () => {
+    // Esta prueba afirmaba lo contrario hasta el 2026-09-05 —«sigue mandando el `critical` del
+    // cuerpo»— y ese era el hueco: un campo que la petición declaraba y el servidor se creía.
+    // Ahora pedir daño sin decir qué tirada se cobra es legítimo y **va sin duplicar**.
     const { service, rolls, prisma } = conEspada();
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
       part: "DAMAGE",
       mode: "NORMAL",
       versatile: false,
-      critical: true,
     });
 
     expect(rolls.roll).toHaveBeenCalledWith(
       "p1",
       "c1",
-      expect.objectContaining({ expression: "2d8+2" }),
+      expect.objectContaining({ expression: "1d8+2" }),
     );
+    // Y ni siquiera se pregunta a la base: sin tirada citada no hay nada que leer.
     expect(prisma.gameEvent.findFirst).not.toHaveBeenCalled();
   });
 
@@ -1085,7 +1091,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
         part: "DAMAGE",
         mode: "NORMAL",
         versatile: false,
-        critical: false,
         attackRollEventId: "ev-ajeno",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -1098,7 +1103,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       part: "DAMAGE",
       mode: "ADVANTAGE",
       versatile: false,
-      critical: false,
     });
 
     expect(rolls.roll).toHaveBeenCalledWith(
@@ -1123,7 +1127,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
         part: "ATTACK",
         mode: "NORMAL",
         versatile: false,
-        critical: false,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
@@ -1136,7 +1139,6 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
         part: "ATTACK",
         mode: "NORMAL",
         versatile: false,
-        critical: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });

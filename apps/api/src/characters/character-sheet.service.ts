@@ -1459,7 +1459,10 @@ export class CharacterSheetService {
     nombreDelAtaque: string,
     input: RollAttackInput,
   ): Promise<boolean> {
-    if (!input.attackRollEventId) return input.critical;
+    // **Sin tirada citada no hay crítico.** Aquí se devolvía `input.critical`, el campo que el
+    // cuerpo de la petición declaraba; se quitó del esquema el 2026-09-05 y con él la última
+    // puerta por la que alguien podía pedir el daño duplicado sin haber sacado un 20.
+    if (!input.attackRollEventId) return false;
     const evento = await this.prisma.gameEvent.findFirst({
       where: {
         id: input.attackRollEventId,

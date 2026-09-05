@@ -4,6 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./prisma/prisma.module";
+import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
 import { CampaignsModule } from "./campaigns/campaigns.module";
 import { InvitesModule } from "./invites/invites.module";
@@ -41,6 +42,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
       { name: "default", ttl: RATE_LIMIT_WINDOW_MS, limit: DEFAULT_RATE_LIMIT },
     ]),
     PrismaModule,
+    HealthModule,
     UsersModule,
     AuthModule,
     CampaignsModule,

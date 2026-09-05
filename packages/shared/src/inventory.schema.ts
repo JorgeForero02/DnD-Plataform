@@ -126,17 +126,19 @@ export const rollAttackSchema = z.object({
   /** A dos manos, en un arma versátil: cambia el dado de daño, no el de ataque. */
   versatile: z.boolean().default(false),
   /**
-   * Daño crítico: **se duplican los dados, nunca el modificador** (SRD 5.1). **Sigue siendo lo
-   * que decide la duplicación cuando NO se manda `attackRollEventId`** — es la ficha C2.5-2,
-   * abierta a propósito hasta que el carril que rehace `apps/web` mande el `eventId` de verdad
-   * (`docs/06-pendientes.md`). Con `attackRollEventId`, este campo se ignora.
-   */
-  critical: z.boolean().default(false),
-  /**
-   * Tarea 2.5.4 (ficha C2.5-2 del spec de 2.5.3, cerrada aquí). El `eventId` de la tirada de
-   * ATAQUE que sacó el crítico —`resolveAttack` ya lo devuelve en `roll.eventId`—, para que la
-   * duplicación de dados cuelgue de una tirada real y no de lo que declare el cuerpo de esta
-   * petición. **Opcional**: sin él, manda `critical` como hasta ahora.
+   * **La tirada de ATAQUE cuyo daño se está cobrando** — el `eventId` que `rollAttack` y
+   * `resolveAttack` devuelven. De ahí, y solo de ahí, sale si el golpe fue crítico: el servidor
+   * lee el `natural` que quedó escrito en ese suceso, del mismo personaje, la misma campaña y
+   * **el mismo ataque**.
+   *
+   * **Aquí había un `critical: boolean` y se quitó el 2026-09-05 (ficha C2.5-2, cerrada).** Era un
+   * campo que el cuerpo de la petición declaraba y el servidor se creía: cualquiera podía pedir el
+   * daño duplicado sin haber sacado un 20. Es la misma regla que `resolveAttackSchema` ya aplicaba
+   * desde la ficha R2C-2 —*«eso lo decide la tirada, no quien la pide»*—, y ahora las dos puertas
+   * dicen lo mismo.
+   *
+   * **Opcional a propósito, y sin él NO hay crítico**: pedir el daño sin decir qué tirada se cobra
+   * es legítimo —se tira daño suelto—, y entonces no hay ningún 20 al que agarrarse.
    */
   attackRollEventId: z.string().min(1).optional(),
   /**

@@ -155,8 +155,12 @@ export class EncountersService {
     await this.membership.requireDM(campaignId, userId);
     await this.sesion(campaignId, sessionId);
 
+    // `PREPARING` cuenta como «sin terminar» igual que `ACTIVE`: la tarea 1 recontó el índice
+    // único parcial de la base con este mismo motivo (`encounter_one_active_per_session` cubre
+    // ambos), y este guardián —que solo da un 409 legible antes de gastar tiradas— tiene que
+    // ver lo mismo que ve la base o deja de servir de aviso previo.
     const yaActivo = await this.prisma.encounter.findFirst({
-      where: { sessionId, status: "ACTIVE" },
+      where: { sessionId, status: { in: ["ACTIVE", "PREPARING"] } },
     });
     if (yaActivo) throw new ConflictException("Ya hay un encuentro activo en esta sesión");
 
@@ -172,18 +176,33 @@ export class EncountersService {
     // Agrupar por `statblockRef`: los PNJ idénticos (los goblins de 2D) comparten grupo y, con
     // él, una única tirada. Un personaje sin `statblockRef` es su propio grupo de uno — no hace
     // falta un caso especial, la clave `statblockRef ?? id` ya lo hace único.
-    const grupos = new Map<string, (typeof combatientes)[number][]>();
+    //
+    // La clave se calcula para **todos** los combatientes —también hace falta para el `groupKey`
+    // de quien no tira aquí—, pero los grupos que se tiran solo se forman con los del DM.
     const claveDe = new Map<string, string>();
     for (const personaje of combatientes) {
-      const clave = personaje.statblockRef ?? personaje.id;
-      claveDe.set(personaje.id, clave);
+      claveDe.set(personaje.id, personaje.statblockRef ?? personaje.id);
+    }
+
+    // **El criterio es si el dueño es el DM, no si «tiene dueño».** `Character.ownerId` es
+    // obligatorio, así que un goblin del DM también tiene dueño: preguntar por su existencia no
+    // distingue nada. Y NO se mira `statblockRef` a propósito — un PNJ jugable es una fila de
+    // `Character` como cualquier otra desde 2D, y quien lo lleva decide si tira, no de dónde
+    // salieron sus números.
+    const suyos = combatientes.filter((c) => c.ownerId === userId);
+    const ajenos = combatientes.filter((c) => c.ownerId !== userId);
+
+    const grupos = new Map<string, (typeof combatientes)[number][]>();
+    for (const personaje of suyos) {
+      const clave = claveDe.get(personaje.id)!;
       const grupo = grupos.get(clave) ?? [];
       grupo.push(personaje);
       grupos.set(clave, grupo);
     }
 
-    // Una tirada por grupo. **El azar es del servidor** (`RollsService`, el tirador inyectable de
-    // 2C); el resultado se copia a todos los miembros del grupo porque compartieron la tirada.
+    // Una tirada por grupo, y solo de los del DM: a los `ajenos` no se les tira, se les pide.
+    // **El azar es del servidor** (`RollsService`, el tirador inyectable de 2C); el resultado se
+    // copia a todos los miembros del grupo porque compartieron la tirada.
     const puntuaciones = new Map<string, number>(); // characterId -> initiative
     for (const [, miembros] of grupos) {
       const representante = miembros[0];
@@ -232,26 +251,53 @@ export class EncountersService {
     // El orden se calcula UNA VEZ aquí y se guarda — el SRD: no cambia de asalto a asalto.
     const ordenados = [...combatientes];
 
+    // Si queda algún `ajeno` sin tirar, el encuentro nace `PREPARING`: aún faltan iniciativas
+    // por pedir y no se puede jugar el primer asalto sin ellas. Sin nadie ajeno, el DM combate
+    // solo contra los suyos y arranca `ACTIVE` directamente, como hasta ahora.
+    const status = ajenos.length > 0 ? "PREPARING" : "ACTIVE";
+
     try {
       const creado = await this.prisma.transaction(async (tx) => {
         const encounter = await tx.encounter.create({
-          data: { sessionId, status: "ACTIVE", round: 1, activePosition: 0 },
+          data: { sessionId, status, round: 1, activePosition: 0 },
         });
         // Se crean con `position: 0` y se coloca a todos de una vez con `recolocar`, que es la
         // ÚNICA función que sabe convertir «iniciativa + grupo» en «orden». Que la use tanto
         // empezar como corregir un número es lo que impide que las dos se separen.
+        //
+        // Los `ajenos` entran con `initiative: 0` — todavía no se les ha tirado nada, se les ha
+        // pedido — y la tarea siguiente es la que escribe el número de verdad al responder.
         await Promise.all(
           ordenados.map((personaje) =>
             tx.combatant.create({
               data: {
                 encounterId: encounter.id,
                 characterId: personaje.id,
-                initiative: puntuaciones.get(personaje.id)!,
+                initiative: puntuaciones.get(personaje.id) ?? 0,
                 groupKey: claveDe.get(personaje.id)!,
                 position: 0,
                 // Quien no venga clasificado entra como `NEUTRAL`, que es lo que significa «no se
                 // ha dicho». El servidor no rellena el hueco con una suposición.
                 side: input.sides?.[personaje.id] ?? "NEUTRAL",
+              },
+            }),
+          ),
+        );
+        // Una petición de tirada por cada `ajeno`, ligada a este encuentro. **La audiencia es la
+        // misma que usa la tirada del servidor arriba**: la ve la mesa si el personaje la ve, y
+        // por el mismo motivo — con `PUBLIC` fija, un PNJ escondido cantaba su iniciativa.
+        await Promise.all(
+          ajenos.map((personaje) =>
+            tx.rollRequest.create({
+              data: {
+                campaignId,
+                characterId: personaje.id,
+                requestedById: userId,
+                encounterId: encounter.id,
+                key: "initiative",
+                label: "Iniciativa",
+                mode: "NORMAL",
+                audience: loVeLaMesa(personaje.visibility) ? "PUBLIC" : "DM_PRIVATE",
               },
             }),
           ),

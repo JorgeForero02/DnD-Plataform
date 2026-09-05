@@ -37,6 +37,7 @@ describe("EncountersService", () => {
     encounter: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
     character: { findMany: jest.fn() },
     combatant: { create: jest.fn(), update: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
+    rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
@@ -99,8 +100,10 @@ describe("EncountersService", () => {
           update: prisma.combatant.update,
           findMany: prisma.combatant.findMany,
         },
+        rollRequest: { create: prisma.rollRequest.create },
       }),
     );
+    prisma.rollRequest.create.mockResolvedValue({ id: "req1" });
   });
 
   it("start() requires DM: a player gets 403", async () => {
@@ -113,7 +116,7 @@ describe("EncountersService", () => {
 
   it("start() 404 si algún personaje no existe en la campaña", async () => {
     prisma.encounter.findFirst.mockResolvedValue(null);
-    prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null }]);
+    prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null, ownerId: "dm" }]);
     await expect(
       service.start("dm", "c1", "s1", { characterIds: ["ch1", "ch2"] }),
     ).rejects.toBeInstanceOf(NotFoundException);
@@ -121,7 +124,7 @@ describe("EncountersService", () => {
 
   it("start() rechaza con 409 si la sesión ya tiene un encuentro activo", async () => {
     prisma.encounter.findFirst.mockResolvedValue({ id: "enc0", status: "ACTIVE" });
-    prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null }]);
+    prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null, ownerId: "dm" }]);
     await expect(service.start("dm", "c1", "s1", { characterIds: ["ch1"] })).rejects.toBeInstanceOf(
       ConflictException,
     );
@@ -133,10 +136,11 @@ describe("EncountersService", () => {
     const goblins = Array.from({ length: 6 }, (_, i) => ({
       id: `gob${i}`,
       statblockRef: "SRD:goblin",
+      ownerId: "dm",
     }));
     const personajes = [
-      { id: "pc1", statblockRef: null },
-      { id: "pc2", statblockRef: null },
+      { id: "pc1", statblockRef: null, ownerId: "dm" },
+      { id: "pc2", statblockRef: null, ownerId: "dm" },
     ];
     prisma.character.findMany.mockResolvedValue([...personajes, ...goblins]);
 
@@ -184,8 +188,8 @@ describe("EncountersService", () => {
     function dosPersonajesListos() {
       prisma.encounter.findFirst.mockResolvedValue(null);
       prisma.character.findMany.mockResolvedValue([
-        { id: "pc1", statblockRef: null },
-        { id: "gob1", statblockRef: null },
+        { id: "pc1", statblockRef: null, ownerId: "dm" },
+        { id: "gob1", statblockRef: null, ownerId: "dm" },
       ]);
       sheets.getInitiativeModifier.mockResolvedValue(0);
       let siguienteTotal = 20;
@@ -396,8 +400,16 @@ describe("EncountersService", () => {
   it("dos grupos con la misma tirada quedan cada uno en SU posición, sin intercalarse", async () => {
     prisma.encounter.findFirst.mockResolvedValue(null);
     const bichos = [
-      ...Array.from({ length: 3 }, (_, i) => ({ id: `orco${i}`, statblockRef: "SRD:orc" })),
-      ...Array.from({ length: 3 }, (_, i) => ({ id: `gob${i}`, statblockRef: "SRD:goblin" })),
+      ...Array.from({ length: 3 }, (_, i) => ({
+        id: `orco${i}`,
+        statblockRef: "SRD:orc",
+        ownerId: "dm",
+      })),
+      ...Array.from({ length: 3 }, (_, i) => ({
+        id: `gob${i}`,
+        statblockRef: "SRD:goblin",
+        ownerId: "dm",
+      })),
     ];
     prisma.character.findMany.mockResolvedValue(bichos);
     sheets.getInitiativeModifier.mockResolvedValue(0);

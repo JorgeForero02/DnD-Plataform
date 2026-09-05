@@ -144,7 +144,10 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       });
     expect(r.status).toBe(201);
     encounterId = r.body.id;
-    expect(r.body.status).toBe("ACTIVE");
+    // **`PREPARING`, no `ACTIVE`, y desde la tarea 2 (2026-09-05).** pc1 y pc2 son del jugador,
+    // no del DM que empieza el combate: `start()` ya no tira por ellos, les pide la iniciativa.
+    // Ver el puente al final de esta prueba.
+    expect(r.body.status).toBe("PREPARING");
     expect(r.body.round).toBe(1);
     expect(r.body.combatants).toHaveLength(8);
 
@@ -180,6 +183,33 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     expect(bandoDe.get(pc1Id)).toBe("ALLY");
     expect(bandoDe.get(pc2Id)).toBe("NEUTRAL");
     expect(goblinIds.map((id) => bandoDe.get(id))).toEqual(Array(6).fill("ENEMY"));
+
+    // **Puente temporal hasta la tarea 3.** Responder la petición de iniciativa y escribirla en
+    // el combatiente es la tarea siguiente, que todavía no existe — así que el resto de esta
+    // suite (turnos, condiciones) no tiene ninguna puerta de la API para pasar de `PREPARING` a
+    // `ACTIVE`. Se hace aquí a mano, contra la base, exactamente lo que esa tarea hará: fija una
+    // iniciativa real a los dos pendientes (con el endpoint que ya existe, `setInitiative`, que
+    // de paso recoloca el orden), cierra sus peticiones y sube el encuentro — para que el resto
+    // de la suite siga probando lo que probaba antes de que el reparto por dueño existiera.
+    const pendientes = await prisma.rollRequest.findMany({
+      where: { encounterId, resolvedAt: null },
+    });
+    expect(pendientes.map((p) => p.characterId).sort()).toEqual([pc1Id, pc2Id].sort());
+    for (const peticion of pendientes) {
+      const combatiente = r.body.combatants.find(
+        (c: { characterId: string }) => c.characterId === peticion.characterId,
+      );
+      const patched = await request(app.getHttpServer())
+        .patch(encUrl(`/${encounterId}/combatants/${combatiente.id}`))
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ initiative: 10 });
+      expect(patched.status).toBe(200);
+    }
+    await prisma.rollRequest.updateMany({
+      where: { id: { in: pendientes.map((p) => p.id) } },
+      data: { resolvedAt: new Date() },
+    });
+    await prisma.encounter.update({ where: { id: encounterId }, data: { status: "ACTIVE" } });
   });
 
   it("un bando para alguien que no entra al combate es un 400 y NO crea el encuentro", async () => {

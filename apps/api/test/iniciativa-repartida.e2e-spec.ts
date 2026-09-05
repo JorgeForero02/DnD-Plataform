@@ -1,0 +1,211 @@
+import { Test } from "@nestjs/testing";
+import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
+import request from "supertest";
+import { AppModule } from "../src/app.module";
+import { PrismaService } from "../src/prisma/prisma.service";
+
+// Tarea 2 (2026-09-05) contra Postgres real.
+//
+// **Por qué esto no es la unitaria.** `encounters.service.spec.ts` usa un Prisma simulado
+// (`apps/api/src/encounters/encounters.service.spec.ts:13-21`) que no tiene fila real de
+// `RollRequest` que leer: las cuatro pruebas del brief de la tarea 2 comprueban que `start()`
+// **escribe filas** —una petición por ajeno, un combatiente en 0 sin tirar—, así que van aquí.
+//
+// Cada escenario usa **su propia sesión**: un encuentro `PREPARING` no se puede terminar con
+// `end()` (exige `ACTIVE`), así que reutilizar sesión entre pruebas dejaría el índice único
+// parcial de la base bloqueando el siguiente `start()` con un 409 que no es lo que se prueba.
+describe("start() reparte por dueño: pide a quien no es el DM, tira por los suyos", () => {
+  let app: NestFastifyApplication;
+  let prisma: PrismaService;
+  const emailDM = `dm-rep${Date.now()}@b.com`;
+  const emailPL = `pl-rep${Date.now()}@b.com`;
+  let tokenDM = "";
+  let tokenPL = "";
+  let campaignId = "";
+  let pjId = "";
+  let segundoPjId = "";
+  let goblinId = "";
+  let banditoId = "";
+  let pnjCedidoId = "";
+
+  const s = () => app.getHttpServer();
+
+  async function nuevaSesion(titulo: string): Promise<string> {
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ title: titulo, visibility: "PLAYERS" });
+    return r.body.id as string;
+  }
+
+  async function nuevoPersonajeDelJugador(nombre: string, dex: number): Promise<string> {
+    const id = (
+      await request(s())
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ name: nombre, level: 1 })
+    ).body.id;
+    await request(s())
+      .patch(`/campaigns/${campaignId}/characters/${id}/sheet`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({
+        abilities: { str: 12, dex, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "fighter" },
+        choices: { "fighter-skills": ["athletics", "perception"] },
+      });
+    return id;
+  }
+
+  async function nuevoPnjDelDm(ref: string): Promise<string> {
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/npcs`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ ref, count: 1, hp: "AVERAGE" });
+    expect(r.status).toBe(201);
+    return r.body[0].id as string;
+  }
+
+  beforeAll(async () => {
+    const ref = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = ref.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+    prisma = app.get(PrismaService);
+
+    tokenDM = (
+      await request(s())
+        .post("/auth/register")
+        .send({ email: emailDM, password: "password123", displayName: "DM" })
+    ).body.token;
+    tokenPL = (
+      await request(s())
+        .post("/auth/register")
+        .send({ email: emailPL, password: "password123", displayName: "PL" })
+    ).body.token;
+    campaignId = (
+      await request(s())
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ name: "Campaña del reparto" })
+    ).body.id;
+    const invite = (
+      await request(s())
+        .post(`/campaigns/${campaignId}/invites`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.token;
+    await request(s()).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${tokenPL}`);
+
+    pjId = await nuevoPersonajeDelJugador("Thora", 16);
+    segundoPjId = await nuevoPersonajeDelJugador("Brann", 12);
+    goblinId = await nuevoPnjDelDm("SRD:goblin");
+    banditoId = await nuevoPnjDelDm("SRD:bandit");
+
+    // Un PNJ con el mismo statblock que el goblin, pero **cedido**: su dueño pasa a ser la
+    // jugadora. No hay endpoint que ceda un PNJ todavía (es de otra tarea); se hace directo por
+    // Prisma, que es legítimo para preparar el estado de un e2e cuando la API no lo expone aún.
+    const pnjCedido = await nuevoPnjDelDm("SRD:goblin");
+    await prisma.character.update({
+      where: { id: pnjCedido },
+      data: { ownerId: (await prisma.user.findUnique({ where: { email: emailPL } }))!.id },
+    });
+    pnjCedidoId = pnjCedido;
+  });
+
+  afterAll(async () => {
+    if (campaignId) await prisma.campaign.deleteMany({ where: { id: campaignId } });
+    await prisma.user.deleteMany({ where: { email: { in: [emailDM, emailPL] } } });
+    await app.close();
+  });
+
+  it("le pide la iniciativa a quien NO es el DM, y tira por los del DM", async () => {
+    const sessionId = await nuevaSesion("Reparto 1");
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [pjId, goblinId] });
+    expect(r.status).toBe(201);
+    expect(r.body.status).toBe("PREPARING");
+
+    const peticiones = await prisma.rollRequest.findMany({
+      where: { encounterId: r.body.id },
+    });
+    expect(peticiones).toHaveLength(1);
+    expect(peticiones[0].characterId).toBe(pjId);
+    expect(peticiones[0].key).toBe("initiative");
+
+    const goblin = await prisma.combatant.findFirst({
+      where: { encounterId: r.body.id, characterId: goblinId },
+    });
+    expect(goblin!.initiative).toBeGreaterThan(0);
+
+    // Y el pjId, que sigue sin tirar, entra en 0 — no un número inventado.
+    const pj = await prisma.combatant.findFirst({
+      where: { encounterId: r.body.id, characterId: pjId },
+    });
+    expect(pj!.initiative).toBe(0);
+  });
+
+  it("un PNJ cedido a un jugador también recibe petición", async () => {
+    const sessionId = await nuevaSesion("Reparto 2");
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [pnjCedidoId] });
+    expect(r.status).toBe(201);
+    expect(r.body.status).toBe("PREPARING");
+
+    const peticiones = await prisma.rollRequest.findMany({
+      where: { encounterId: r.body.id },
+    });
+    expect(peticiones.map((p) => p.characterId)).toEqual([pnjCedidoId]);
+  });
+
+  it("empieza ACTIVE directo si el DM combate solo contra los suyos", async () => {
+    const sessionId = await nuevaSesion("Reparto 3");
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [goblinId, banditoId] });
+    expect(r.status).toBe(201);
+    expect(r.body.status).toBe("ACTIVE");
+
+    const peticiones = await prisma.rollRequest.findMany({
+      where: { encounterId: r.body.id },
+    });
+    expect(peticiones).toHaveLength(0);
+  });
+
+  it("un jugador con dos personajes recibe dos peticiones", async () => {
+    const sessionId = await nuevaSesion("Reparto 4");
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [pjId, segundoPjId] });
+    expect(r.status).toBe(201);
+    expect(r.body.status).toBe("PREPARING");
+
+    const peticiones = await prisma.rollRequest.findMany({
+      where: { encounterId: r.body.id },
+    });
+    expect(peticiones).toHaveLength(2);
+  });
+
+  // El guardián de `start()` daba un 409 legible mirando solo `ACTIVE`; la tarea 1 recontó el
+  // índice único parcial de la base a `IN ('ACTIVE','PREPARING')` y el guardián se quedó corto —
+  // dejaba abrir un segundo encuentro mientras el primero seguía `PREPARING` esperando peticiones.
+  it("un encuentro PREPARING también cuenta como activo para el 409 legible", async () => {
+    const sessionId = await nuevaSesion("Reparto 5 (guardián)");
+    const primero = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [pjId, goblinId] });
+    expect(primero.body.status).toBe("PREPARING");
+
+    const segundo = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [segundoPjId] });
+    expect(segundo.status).toBe(409);
+  });
+});

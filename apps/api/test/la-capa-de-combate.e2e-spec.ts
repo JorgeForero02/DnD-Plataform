@@ -117,6 +117,35 @@ describe("La capa de combate de la mesa (e2e)", () => {
       .send({ characterIds: [pcId, ...goblinIds] });
     expect(creado.status).toBe(201);
 
+    // **Puente temporal hasta la tarea 3.** `pcId` es del jugador, no del DM que empieza el
+    // combate: desde la tarea 2 (2026-09-05) `start()` ya no tira por él, le pide la iniciativa,
+    // y el encuentro nace `PREPARING`. Responder esa petición y escribir la iniciativa es la
+    // tarea siguiente, que todavía no existe, así que se hace aquí a mano lo que ella hará —
+    // fijar una iniciativa real y subir el encuentro— para que el resto de este fichero (que
+    // prueba `current` y `end`, no el reparto) siga probando lo que probaba antes.
+    if (creado.body.status === "PREPARING") {
+      const pendientes = await prisma.rollRequest.findMany({
+        where: { encounterId: creado.body.id, resolvedAt: null },
+      });
+      for (const peticion of pendientes) {
+        const combatiente = creado.body.combatants.find(
+          (c: { characterId: string }) => c.characterId === peticion.characterId,
+        );
+        await request(s)
+          .patch(encUrl(`/${creado.body.id}/combatants/${combatiente.id}`))
+          .set("Authorization", auth(tokenDM))
+          .send({ initiative: 10 });
+      }
+      await prisma.rollRequest.updateMany({
+        where: { id: { in: pendientes.map((p) => p.id) } },
+        data: { resolvedAt: new Date() },
+      });
+      await prisma.encounter.update({
+        where: { id: creado.body.id },
+        data: { status: "ACTIVE" },
+      });
+    }
+
     // **Nadie le pasa el id.** Es exactamente la situación de recargar la mesa.
     const actual = await request(s).get(encUrl("/current")).set("Authorization", auth(tokenDM));
     expect(actual.status).toBe(200);
@@ -249,11 +278,17 @@ describe("La capa de combate de la mesa (e2e)", () => {
     expect(viejo.body.status).toBe("ENDED");
 
     // Y el índice único es parcial sobre ACTIVE, así que el siguiente combate no choca con él.
+    //
+    // **Un goblin del DM, no `pcId`.** Con `pcId` —del jugador— este `start()` nacería
+    // `PREPARING` desde la tarea 2 (2026-09-05), y la prueba siguiente necesita `current` en
+    // `ACTIVE` sin más trámite: lo que se comprueba aquí es que el índice deja empezar otro
+    // encuentro, no el reparto por dueño, que ya tiene su propio fichero.
     const otro = await request(s)
       .post(encUrl())
       .set("Authorization", auth(tokenDM))
-      .send({ characterIds: [pcId] });
+      .send({ characterIds: [goblinIds[0]] });
     expect(otro.status).toBe(201);
+    expect(otro.body.status).toBe("ACTIVE");
     expect(otro.body.id).not.toBe(actual.id);
   });
 

@@ -123,6 +123,39 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
         sides: { [characterId]: "ALLY", [targetId]: "ENEMY" },
       });
     expect(encuentro.status).toBe(201);
+
+    // **Puente temporal hasta la tarea 3.** `characterId` es del jugador, no del DM que empieza
+    // el combate: desde la tarea 2 (2026-09-05) `start()` ya no tira por él, le pide la
+    // iniciativa, y el encuentro nace `PREPARING` — un estado que `getSheet` no cuenta como
+    // «en la mesa» (busca `status: "ACTIVE"`), así que sin este puente el ataque vería un 404
+    // por «no lo tienes delante» en vez de comparar el ataque, que es lo que prueba este fichero.
+    // Responder la petición y escribir la iniciativa es la tarea siguiente, que todavía no
+    // existe, así que aquí se hace a mano lo que ella hará: fijar una iniciativa real y subir
+    // el encuentro.
+    if (encuentro.body.status === "PREPARING") {
+      const pendientes = await prisma.rollRequest.findMany({
+        where: { encounterId: encuentro.body.id, resolvedAt: null },
+      });
+      for (const peticion of pendientes) {
+        const combatiente = encuentro.body.combatants.find(
+          (c: { characterId: string }) => c.characterId === peticion.characterId,
+        );
+        await request(s)
+          .patch(
+            `/campaigns/${campaignId}/sessions/${sesion.body.id}/encounters/${encuentro.body.id}/combatants/${combatiente.id}`,
+          )
+          .set("Authorization", auth(tokenDM))
+          .send({ initiative: 10 });
+      }
+      await prisma.rollRequest.updateMany({
+        where: { id: { in: pendientes.map((p) => p.id) } },
+        data: { resolvedAt: new Date() },
+      });
+      await prisma.encounter.update({
+        where: { id: encuentro.body.id },
+        data: { status: "ACTIVE" },
+      });
+    }
   });
 
   afterAll(async () => {

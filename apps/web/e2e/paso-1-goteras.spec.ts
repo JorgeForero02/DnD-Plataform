@@ -95,27 +95,87 @@ test("el DM crea «Furia 2/2» desde la hoja, y la gasta", async ({ page }) => {
   await expect(recursos.getByText("1 / 2")).toBeVisible({ timeout: 15_000 });
 });
 
-// --- Tareas 11 y 12 · lo que NO está aquí, y por qué -----------------------------------------
+// --- Tarea 11 ------------------------------------------------------------------------------
+
+/**
+ * **Añade un objeto del catálogo y lo deja en la mochila.** El panel de «Añadir objeto» **se queda
+ * abierto tras el alta**, así que la segunda vez no hay botón que pulsar para abrirlo: se
+ * comprueba y solo se abre si hace falta. Eso fue uno de los cuatro fallos de selector de la
+ * primera tanda.
+ */
+async function anadirDelCatalogo(page: Page, nombre: string) {
+  const abrir = page.getByRole("button", { name: "Añadir objeto", exact: true });
+  const panel = page.locator('section[aria-label="Añadir objeto"]');
+  // **Abrir y comprobar que abrió, reintentando.** La primera versión pulsaba una vez y seguía: el
+  // clic aterrizaba mientras la hoja todavía se montaba —la ficha acaba de escribirse y la
+  // derivación llega después—, React reemplazaba el nodo, y el clic se perdía **sin error**. El
+  // fallo aparecía 90 s más tarde buscando el buscador, con el botón de abrir todavía en la
+  // página. `toPass` es la forma que Playwright documenta para esto: repetir el gesto hasta que su
+  // efecto se vea, en vez de confiar en que un clic siempre cuenta.
+  await expect(async () => {
+    if (await abrir.count()) await abrir.first().click();
+    await expect(panel).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  await panel.getByLabel(/Buscar objeto por nombre/i).fill(nombre);
+  await panel
+    .getByRole("button", { name: new RegExp(`^${nombre}`) })
+    .first()
+    .click();
+  await panel.getByRole("button", { name: "Añadir", exact: true }).click();
+}
+
+/**
+ * **Equipa el primer objeto que todavía se pueda equipar, en la mano que se le diga.**
+ *
+ * Las dos claves de que esto no parpadee, y las dos costaron una tanda:
+ *
+ * 1. **`Confirmar` con `exact`.** `getByRole("button", { name: /confirmar|equipar/i })` resolvía
+ *    **al «Equipar» de la propia fila**, que está antes en el DOM: el recorrido volvía a abrir el
+ *    selector en vez de confirmarlo, y el fallo salía tres pasos después con otra cara.
+ * 2. **Se espera al EFECTO, no a un tiempo.** Al equipar, la lista se invalida y la fila **salta
+ *    de «Encima» a «Equipado»**, así que el nodo que se acaba de pulsar deja de existir —«element
+ *    was detached from the DOM»—. Esperar a que el texto diga en qué mano está es esperar a que el
+ *    remonte haya terminado, y eso sí es estable.
+ */
+async function equiparEnMano(page: Page, mano: "Mano principal" | "Mano izquierda") {
+  await page.getByRole("button", { name: "Equipar", exact: true }).first().click();
+  await page.getByRole("radio", { name: mano, exact: true }).click();
+  await page.getByRole("button", { name: "Confirmar", exact: true }).click();
+  const enLaMano = mano === "Mano principal" ? "en mano" : "en la mano izquierda";
+  await expect(page.getByText(enLaMano, { exact: false }).first()).toBeVisible({ timeout: 20_000 });
+}
+
+test("dos dagas, una en cada mano, y el cuadro de ataques enseña las dos", async ({ page }) => {
+  // **La pantalla no mandaba `slot` al equipar**: el servidor lo aceptaba y el motor lo usaba para
+  // decidir si un arma versátil va a dos manos, pero no había forma de poner nada en la izquierda.
+  // Un pícaro con dos dagas no existía.
+  await registrarse(page);
+  await crearCampana(page, "La mesa de las dos manos");
+  await crearPersonajeConFicha(page, "Brann Yunque");
+
+  await anadirDelCatalogo(page, "Daga");
+  await anadirDelCatalogo(page, "Daga");
+
+  await equiparEnMano(page, "Mano principal");
+  await equiparEnMano(page, "Mano izquierda");
+
+  // **La prueba de que el `slot` llegó al servidor no es la fila del inventario: es el CUADRO DE
+  // ATAQUES**, que lo compone el motor a partir de lo equipado. Dos filas «Daga» ahí significan
+  // dos manos ocupadas de verdad.
+  const ataques = page.getByRole("region", { name: /ataques/i });
+  await expect(ataques.getByRole("row", { name: /Daga/ })).toHaveCount(2, { timeout: 20_000 });
+});
+
+// --- Tarea 12 · lo que NO está aquí, y por qué ----------------------------------------------
 //
-// **Las dos pruebas de navegador de estas tareas se midieron y NO se commitean, porque
-// parpadean.** Una prueba que da verde y rojo en dos pasadas seguidas sobre el mismo código no
-// defiende nada y envenena la suite; dejarla dentro sería peor que no tenerla.
+// **La prueba de navegador de «cambiar quién ve una criatura» se midió y NO se commitea, porque
+// parpadea.** Una prueba que da verde y rojo en dos pasadas seguidas sobre el mismo código no
+// defiende nada y envenena la suite.
 //
-// Lo que se midió, para que el siguiente no empiece de cero:
-//
-// - **Dos dagas (tarea 11).** El recorrido llega hasta el final: se añaden las dos, se abre el
-//   selector de mano y se pulsa. Falla al marcar el radio o al confirmar, con «element was
-//   detached from the DOM» o esperando estabilidad: **la fila se remonta al equipar** —la lista se
-//   invalida y el objeto salta de «Encima» a «Equipado»— y el chooser se va con ella. Acotar la
-//   fila a la que todavía tiene «Equipar» arregló una mitad y no la otra. Su ayudante para añadir
-//   objetos se fue con la prueba: `inventario.spec.ts` tiene uno equivalente, y dejar aquí uno sin
-//   usar habría sido decoración.
-// - **Cambiar quién ve una criatura (tarea 12).** Pasó en una pasada y falló en la siguiente,
-//   siempre en la última aserción: al reabrir el editor el radio vuelve sin marcar. **El servidor
-//   NO es el problema**, y eso sí está probado: `apps/api/test/statblocks.e2e-spec.ts` comprueba
-//   que el `PUT` guarda el nivel nuevo y que releer la lista lo devuelve.
-//
-// Queda ficha en `docs/06-pendientes.md` con lo que se descartó antes de abrirla.
+// Lo medido: pasa en una pasada y falla en la siguiente, siempre en la última aserción — al
+// reabrir el editor el radio vuelve sin marcar. **El servidor NO es el problema**, y eso sí está
+// probado: `apps/api/test/statblocks.e2e-spec.ts` comprueba que el `PUT` guarda el nivel nuevo y
+// que releer la lista lo devuelve. Queda su ficha en `docs/06-pendientes.md`.
 
 // --- Un defecto de maquetación ya arreglado, que no debe volver -----------------------------
 

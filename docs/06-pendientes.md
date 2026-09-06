@@ -148,7 +148,7 @@ y desde el 2026-09-06 las quince le dan 403. **Es un botón que el servidor rech
 justamente lo que la revisión del prototipo dejó escrito como defecto. Se cierra en el mismo paso 1,
 en el carril de pantalla.
 
-## P2 · Las dos pantallas del paso 1 no tienen prueba de navegador estable (2026-09-06, paso 1 · tareas 11 y 12)
+## P2 · La pantalla de la tarea 12 no tiene prueba de navegador estable (2026-09-06, paso 1 · **la 11 cerrada el mismo día**)
 
 **La ficha se abre después de los tres pasos, y dice qué se descartó en cada uno.** Las tareas 11
 (equipar en la mano izquierda) y 12 (cambiar quién ve una criatura) están hechas, probadas por
@@ -158,10 +158,19 @@ da verde y rojo en dos pasadas seguidas sobre el mismo código no defiende nada 
 
 **Lo medido, para no empezar de cero:**
 
-- **Dos dagas.** El recorrido llega hasta el final —se añaden las dos, se abre el selector de mano
-  y se pulsa— y muere al marcar el radio o al confirmar, con «element was detached from the DOM» o
-  esperando estabilidad. **La causa está localizada:** la fila se remonta al equipar —la lista se
-  invalida y el objeto salta de «Encima» a «Equipado»— y el selector de mano se va con ella.
+- ~~**Dos dagas.**~~ **CERRADA el 2026-09-06** (`apps/web/e2e/paso-1-goteras.spec.ts`, «dos dagas,
+  una en cada mano»): **tres pasadas seguidas en verde**, de 6 a 8 s cada una. **No era un defecto de
+  la pantalla y eso se comprobó a mano en el navegador antes de tocar la prueba**: equipar dos dagas
+  y ver las dos filas en el cuadro de ataques funciona. Eran **dos fallos de la prueba**, los dos
+  invisibles porque ninguno da error donde ocurre:
+  **(a)** `getByRole("button", { name: /confirmar|equipar/i })` resolvía **al «Equipar» de la propia
+  fila**, que está antes en el DOM, así que el recorrido reabría el selector en vez de confirmarlo;
+  **(b)** un clic sobre «Añadir objeto» aterrizaba mientras la hoja aún se montaba, React
+  reemplazaba el nodo y **el clic se perdía sin error** — se arregla con `toPass`, repitiendo el
+  gesto hasta que su efecto se ve.
+  Y el remonte que el diagnóstico anterior señalaba **es real y es correcto**: la fila salta de
+  «Encima» a «Equipado». Lo que había que cambiar no era la pantalla, era **esperar al efecto en vez
+  de al elemento**.
 - **Cambiar quién ve una criatura.** Pasó en una pasada y falló en la siguiente, siempre en la
   última aserción: al reabrir el editor el radio vuelve sin marcar. **El servidor no es el
   problema**, y eso sí está probado: `apps/api/test/statblocks.e2e-spec.ts` comprueba que el `PUT`
@@ -179,7 +188,7 @@ es exactamente lo que este proyecto tiene prohibido.
 **Paso 3**: la inestabilidad es de las que Playwright documenta como re-render durante la acción;
 la salida recomendada —esperar a un estado estable en vez de al elemento— es lo que ya se intentó.
 
-**Cierra cuando** las dos tengan un recorrido de navegador que pase **dos veces seguidas**. Y ojo
+**Cierra cuando** la de la tarea 12 tenga un recorrido de navegador que pase **dos veces seguidas**. Y ojo
 con el diagnóstico: en cinco pasadas de la suite entera fallaron además `inventario`,
 `nervio-en-vivo`, `bestiario` y `campana`, **cada vez unas distintas y todas pasaron solas después**
 — esta máquina da falsos rojos bajo carga, y eso ya está documentado en `docs/08-pruebas.md`.

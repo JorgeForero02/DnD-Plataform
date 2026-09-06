@@ -65,7 +65,10 @@ pruebas de contraste, la medición del `/NN` y la del solape del conmutador, los
 B1.2 y B1.3, el del mundo como destino y los cajones de B4, y el combate entero de 2.5.6). **Los dos
 verdes en la misma tarde, en una sola pasada cada uno.** **Desde el 2026-09-05 son 109**: D1 añadió
 el hilo como conversación a `mesa-mide`, y ese fichero se corrió entero y en verde en su propia
-pasada (3 de 3) — el recuento de los otros 22 no se ha vuelto a medir ese día. Este par sí se
+pasada (3 de 3) — el recuento de los otros 22 no se ha vuelto a medir ese día. **Y el 2026-09-06 son 130 en 33 ficheros**,
+contados con `playwright test --list` y no a mano: los nuevos son los tres recorridos de `paso-1-goteras`
+—crear y gastar un recurso, las dos dagas y la medición del botón de la bolsa— más lo que trajo la
+tanda del paso 1. Este par sí se
 escribe a mano, porque solo
 lo sabe el corredor: un bloque declarado dentro de un bucle sobre los tres temas ejecuta más pruebas
 de las que se pueden contar leyendo

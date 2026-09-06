@@ -1,6 +1,29 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { NumeroEditable, SelectorEditable, TextoEditable } from "../EdicionEnSitio";
+import { Caracteristicas, FichaEditable } from "../IdentidadEditable";
+
+// **Estos dos se importan arriba y no dentro de cada prueba, y eso NO es estilo.** Un
+// `await import()` en el cuerpo de una prueba mete el coste de transformar el módulo dentro de
+// su presupuesto de 5 s, y con la máquina cargada —la suite entera, o un agente compilando al
+// lado— ese presupuesto se agota: la prueba muere por `Test timed out in 5000ms` **sin haber
+// medido nada**, y su DOM se queda sin limpiar, así que la siguiente cuenta doce «sin calcular»
+// donde hay seis. Medido el 2026-09-06: verde tres de tres en solitario, roja dentro de
+// `pnpm verify`. Es la misma trampa de máquina cargada que `docs/08-pruebas.md` documenta para
+// Playwright, aquí en vitest.
+
+/**
+ * La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
+ * características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
+ * juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
+ */
+const IdentidadEditable = (p: Parameters<typeof Caracteristicas>[0]) => (
+  <>
+    <FichaEditable {...p} />
+    <Caracteristicas {...p} />
+  </>
+);
 
 // Las reglas de guardado que salieron de la investigación del 2026-09-02 (Primer de GitHub,
 // sistema de diseño de GitLab). No son gusto: cada una evita un fallo documentado.
@@ -167,17 +190,6 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
   // (raza, clase, características) y el del nombre y la historia.
 
   it("IdentidadEditable pinta selectores y números, no un botón que abre un diálogo", async () => {
-    // La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
-    // características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
-    // juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
-    const mod = await import("../IdentidadEditable");
-    const IdentidadEditable = (p: Parameters<typeof mod.Caracteristicas>[0]) => (
-      <>
-        <mod.FichaEditable {...p} />
-        <mod.Caracteristicas {...p} />
-      </>
-    );
-    const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     render(
@@ -214,17 +226,6 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
   });
 
   it("sin la hoja derivada no se inventa un modificador: se dice que no hay", async () => {
-    // La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
-    // características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
-    // juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
-    const mod = await import("../IdentidadEditable");
-    const IdentidadEditable = (p: Parameters<typeof mod.Caracteristicas>[0]) => (
-      <>
-        <mod.FichaEditable {...p} />
-        <mod.Caracteristicas {...p} />
-      </>
-    );
-    const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
     render(
@@ -245,17 +246,6 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
 
 describe("las dos reglas de la identidad que solo se ven al usarla", () => {
   const montar = async (over: Record<string, unknown>, sheet: unknown) => {
-    // La identidad se partió en dos componentes al adoptar la maqueta —la ficha y las
-    // características son dos tarjetas—, y lo que estas pruebas afirman sigue siendo de las dos
-    // juntas: que se edita en el sitio y que no hay ningún botón que abra un diálogo.
-    const mod = await import("../IdentidadEditable");
-    const IdentidadEditable = (p: Parameters<typeof mod.Caracteristicas>[0]) => (
-      <>
-        <mod.FichaEditable {...p} />
-        <mod.Caracteristicas {...p} />
-      </>
-    );
-    const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
       <QueryClientProvider client={qc}>

@@ -131,26 +131,6 @@ montaje, nunca en el camino que la tarea 3 prueba.
 **Cierra cuando** alguien reproduzca el 500 fuera de un test (tres `PATCH .../sheet` reales y
 concurrentes de tres jugadores) y encuentre la causa exacta en `character-sheet.service.ts`.
 
-## P1 · Un encuentro `PREPARING` no se puede terminar (2026-09-05, ronda de arreglo 1 de la tarea 2)
-
-**Bloqueo conocido, no un fallo.** `EncountersService.end()` exige `status === "ACTIVE"`
-(`apps/api/src/encounters/encounters.service.ts:415`) y no se ha tocado a propósito: la puerta
-declarada para un combate `PREPARING` que nunca llegó a empezar —el DM se arrepiente, o los
-jugadores tardan demasiado en tirar— es el `DELETE` de la tarea 4 del plan
-`2026-09-05-iniciativa-y-bando`, no una segunda salida por `end()`. «No es historia, es un clic
-deshecho»: un combate que nunca empezó no deja rastro que archivar, así que no le vale la misma
-puerta que a uno que sí se jugó.
-
-**El efecto mientras tanto:** un encuentro `PREPARING` **bloquea la sesión** — el índice único
-parcial recontado por la tarea 1 (`encounter_one_active_per_session`, cubre `ACTIVE` y
-`PREPARING`) impide empezar un segundo combate en la misma sesión hasta que el primero se
-resuelva, y sin la tarea 3 (responder la petición de iniciativa) ni la tarea 4 (el `DELETE`), no
-hay ninguna puerta que lo resuelva. Si una partida real se queda con un `PREPARING` colgado antes
-de que esas dos tareas existan, la sesión queda inutilizable hasta que se arreglen a mano por
-Prisma.
-
-**Cierra cuando** exista el `DELETE` de la tarea 4 (o la tarea 3 cierre el `PREPARING` de verdad).
-
 ## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando

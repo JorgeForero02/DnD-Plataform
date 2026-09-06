@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   setInitiativeSchema,
   startEncounterSchema,
@@ -88,5 +99,33 @@ export class EncountersController {
     @Param("encounterId") encounterId: string,
   ) {
     return this.encounters.advanceTurn(req.user.id, campaignId, sessionId, encounterId);
+  }
+
+  /**
+   * Tarea 4 — el DM empieza sin esperar a quien no ha tirado.
+   */
+  @Post(":encounterId/force-start")
+  forceStart(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+    @Param("encounterId") encounterId: string,
+  ) {
+    return this.encounters.forceStart(req.user.id, campaignId, sessionId, encounterId);
+  }
+
+  /**
+   * Tarea 4 — cancelar un combate que nunca empezó. Solo `PREPARING`; uno `ACTIVE` se termina
+   * con `POST .../end`, no se borra.
+   */
+  @Delete(":encounterId")
+  @HttpCode(204)
+  cancel(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+    @Param("encounterId") encounterId: string,
+  ) {
+    return this.encounters.cancel(req.user.id, campaignId, sessionId, encounterId);
   }
 }

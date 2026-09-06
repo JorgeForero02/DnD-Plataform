@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type {
   AnswerRollRequestInput,
   CreateRollRequestInput,
@@ -126,6 +131,15 @@ export class RollRequestsService {
     // revés era la incoherencia que señaló la revisión.
     if (!peticion || (peticion.character.ownerId !== userId && miembro.role !== "DM")) {
       throw new NotFoundException("Esa petición no existe en esta campaña.");
+    }
+    // **Antes que el `resolvedAt` genérico, y a propósito.** Una petición forzada
+    // (`EncountersService.forceStart`, tarea 4) también queda con `resolvedAt` puesto —así deja
+    // de contar como pendiente—, así que si este `if` fuera el único, el jugador que llega tarde
+    // vería el mismo «ya se respondió» que cualquier petición normal cerrada. `cancelledAt` es lo
+    // que distingue «tiraste tú» de «tiró el sistema porque el DM no esperó», y esa distinción es
+    // la que le importa a la pantalla del jugador.
+    if (peticion.cancelledAt) {
+      throw new ConflictException("El combate ya empezó y tu iniciativa la tiró el sistema.");
     }
     if (peticion.resolvedAt) {
       throw new BadRequestException("Esa petición ya se respondió.");

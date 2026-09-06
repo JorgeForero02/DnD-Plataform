@@ -779,4 +779,130 @@ export class EncountersService {
       return { cerrada: true, empezo: arrancado.count === 1 };
     });
   }
+
+  /**
+   * Tarea 4 — el DM empieza sin esperar a quien no ha tirado. **El servidor tira por él y LO
+   * DICE**: la frase importa tanto como el número, porque un jugador que vuelve tiene derecho a
+   * saber que su iniciativa no la tiró él (`INITIATIVE_ROLLED_BY_SYSTEM`).
+   *
+   * **Anular no es responder.** La petición se cierra con `cancelledAt` puesto y
+   * `resolvedEventId` nulo — nadie respondió, y confundir las dos haría que la pantalla del
+   * jugador dijera que tiró él. `RollRequestsService.answer` lee `cancelledAt` para dar el 409
+   * a quien llegue tarde.
+   *
+   * **Dos carreras posibles, y las dos tienen que acabar bien:**
+   *
+   * 1. Un jugador responde su propia petición **mientras** este método está en marcha, antes de
+   *    que le toque el turno en el bucle. El `updateMany` de abajo lleva el mismo guardián que
+   *    usa `aplicarIniciativaDePeticion` (`resolvedAt: null`): si el jugador ganó la carrera, este
+   *    `count` sale en cero y el bucle no toca ni el combatiente ni el registro — la iniciativa
+   *    que ya escribió el jugador no se pisa.
+   * 2. Todas las peticiones se resuelven por su cuenta (el último jugador tira justo mientras el
+   *    DM pulsaba el botón) y el encuentro pasa a `ACTIVE` por la vía normal. Este método no lo
+   *    sabe hasta que llega a su último `updateMany` de estado, que en ese caso no toca ninguna
+   *    fila (`status: "PREPARING"` ya no es cierto) — no revienta, solo no hace nada.
+   *
+   * La escritura del combatiente va **dentro** del `antesDeLeer` de `recolocar`, nunca antes de
+   * llamarla, por la misma razón que ya obligó a `setInitiative` y a `aplicarIniciativaDePeticion`
+   * (ronda de arreglo 1): el candado del encuentro tiene que tomarse antes de tocar la fila del
+   * `Combatant`.
+   */
+  async forceStart(userId: string, campaignId: string, sessionId: string, encounterId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    await this.sesion(campaignId, sessionId);
+    const encuentro = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, sessionId, status: "PREPARING" },
+      include: { rollRequests: { where: { resolvedAt: null }, include: { character: true } } },
+    });
+    if (!encuentro) throw new NotFoundException("Ese combate no está preparándose.");
+
+    for (const peticion of encuentro.rollRequests) {
+      const modificador = await this.sheets.getInitiativeModifier(
+        userId,
+        campaignId,
+        peticion.characterId,
+      );
+      const resultado = await this.rolls.roll(userId, campaignId, {
+        expression: conSigno(modificador),
+        label: "Iniciativa",
+        characterId: peticion.characterId,
+        sessionId,
+        mode: "NORMAL",
+        spendInspiration: false,
+        audience: loVeLaMesa(peticion.character.visibility) ? "PUBLIC" : "DM_PRIVATE",
+      });
+      if (!resultado.revealed) {
+        throw new BadRequestException("La tirada de iniciativa no se pudo leer");
+      }
+
+      await this.prisma.transaction(async (tx) => {
+        // **Anular no es responder.** `resolvedEventId` se queda nulo: nadie respondió esta
+        // petición, y confundirlas haría que la pantalla del jugador dijera que él tiró.
+        const cerrada = await tx.rollRequest.updateMany({
+          where: { id: peticion.id, resolvedAt: null },
+          data: { resolvedAt: new Date(), cancelledAt: new Date() },
+        });
+        // Carrera 1: el jugador ya la había respondido él mismo. No se pisa su iniciativa ni se
+        // escribe un suceso de sistema sobre una tirada que nunca pasó.
+        if (cerrada.count === 0) return;
+
+        await recolocar(tx, encounterId, async () => {
+          await tx.combatant.updateMany({
+            where: { encounterId, characterId: peticion.characterId },
+            data: { initiative: resultado.total },
+          });
+        });
+
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            sessionId,
+            subjectType: "encounter",
+            subjectId: encounterId,
+            // Misma visibilidad que el personaje: un PNJ escondido no delata su iniciativa por
+            // esta puerta cuando ya no la delataba por ninguna otra.
+            visibility: peticion.character.visibility,
+            payload: {
+              type: "INITIATIVE_ROLLED_BY_SYSTEM",
+              characterId: peticion.characterId,
+              characterName: peticion.character.name,
+              total: resultado.total,
+            },
+          },
+          tx,
+        );
+      });
+    }
+
+    // Carrera 2: si todas las peticiones ya se resolvieron por su cuenta, el encuentro puede
+    // haber pasado a `ACTIVE` sin este método — el `where` no encuentra nada que tocar y no pasa
+    // nada.
+    await this.prisma.encounter.updateMany({
+      where: { id: encounterId, status: "PREPARING" },
+      data: { status: "ACTIVE" },
+    });
+    return this.get(userId, campaignId, sessionId, encounterId);
+  }
+
+  /**
+   * Tarea 4 — el DM se arrepiente antes de empezar. **Se BORRA, no se marca `ENDED`**: un
+   * combate que nunca empezó no es historia, es un clic deshecho, y dejarlo llena el registro de
+   * ruido (decisión del autor, 2026-09-05). Las peticiones de tirada ligadas a este encuentro se
+   * van por cascada (`onDelete: Cascade` de `RollRequest.encounterId`).
+   *
+   * Cierra la ficha «P1 · Un encuentro `PREPARING` no se puede terminar» de
+   * `docs/06-pendientes.md`: hasta esta tarea, un `PREPARING` abandonado bloqueaba la sesión sin
+   * ninguna puerta que lo resolviera.
+   */
+  async cancel(userId: string, campaignId: string, sessionId: string, encounterId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    await this.sesion(campaignId, sessionId);
+    const borrado = await this.prisma.encounter.deleteMany({
+      where: { id: encounterId, sessionId, status: "PREPARING" },
+    });
+    if (borrado.count === 0) {
+      throw new ConflictException("Ese combate ya empezó: no se puede cancelar, se termina.");
+    }
+  }
 }

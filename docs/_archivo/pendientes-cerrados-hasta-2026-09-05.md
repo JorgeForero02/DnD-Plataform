@@ -540,3 +540,28 @@ la petición de verdad por HTTP contra `POST /campaigns/:id/roll-requests/:id/ro
 
 Y `EncountersService.aplicarIniciativaDePeticion` (`apps/api/test/iniciativa-pedida.e2e-spec.ts`)
 prueba el camino real de punta a punta, incluida la carrera de tres respuestas simultáneas.
+
+---
+
+## ~~P1 · Un encuentro `PREPARING` no se puede terminar~~ — CERRADA 2026-09-05 (tarea 4)
+
+**Bloqueo conocido, no un fallo**, mientras estuvo abierta (desde la ronda de arreglo 1 de la
+tarea 2, 2026-09-05). `EncountersService.end()` exige `status === "ACTIVE"` y no se tocó a
+propósito: la puerta declarada para un combate `PREPARING` que nunca llegó a empezar —el DM se
+arrepiente, o los jugadores tardan demasiado en tirar— era el `DELETE` de la tarea 4 del plan
+`2026-09-05-iniciativa-y-bando`, no una segunda salida por `end()`. «No es historia, es un clic
+deshecho»: un combate que nunca empezó no deja rastro que archivar, así que no le valía la misma
+puerta que a uno que sí se jugó.
+
+**La cita se desplazó dos veces mientras la ficha estuvo abierta**, y es la prueba de por qué
+esta ficha ahora lleva fecha además de cita: nació apuntando a
+`apps/api/src/encounters/encounters.service.ts:415`, y el 2026-09-05, al cerrarla, la misma
+comprobación vivía en la línea `:460` — el fichero se había reescrito por en medio (las tareas 3
+y 4 le añadieron dos métodos enteros antes de ese punto). Verificado antes de tachar: la línea
+citada en el documento vivo seguía siendo la comprobación correcta, solo que en otro número.
+
+**Cierra con** `EncountersService.cancel` y `DELETE /campaigns/:id/sessions/:sid/encounters/:eid`
+(tarea 4): borra el encuentro y sus `RollRequest` por cascada, y solo si sigue `PREPARING` — uno
+`ACTIVE` sigue sin más salida que `end()`. Prueba real:
+`apps/api/test/iniciativa-forzada.e2e-spec.ts`, casos «cancelar BORRA el encuentro y sus
+peticiones» y «cancelar un combate YA empezado no se puede».

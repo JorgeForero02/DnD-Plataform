@@ -212,4 +212,94 @@ describe("El daño, con su traza (e2e)", () => {
       .send({ delta: -5, rollEventId: "clx000000000000000000009" });
     expect(r.status).toBe(403);
   });
+
+  it("un enano recibe la MITAD del daño de veneno, y la traza dice por qué", async () => {
+    // **Paso 1, tarea 8b.** Los modificadores de daño solo se consultaban si el personaje tenía
+    // statblock, y **un PJ nunca lo tiene** (`characters.service.ts` filtra `statblockRef: null`
+    // a propósito), así que un enano recibía el veneno entero con la traza convincente al lado.
+    //
+    // SRD 5.1, Dwarven Resilience: «You have advantage on saving throws against poison, and you
+    // have resistance against poison damage.»
+    const s = app.getHttpServer();
+    const enano = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", auth(tokenPL))
+        .send({ name: "Brann", level: 8, visibility: "PLAYERS" })
+    ).body.id;
+    await request(s)
+      .patch(`${ficha(enano)}/sheet`)
+      .set("Authorization", auth(tokenPL))
+      .send({
+        abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "dwarf" },
+        subrace: { source: "SRD", key: "dwarf-hill" },
+        class: { source: "SRD", key: "fighter" },
+        choices: { "fighter-skills": ["athletics", "perception"] },
+      })
+      .expect(200);
+
+    const antes = (
+      await request(s)
+        .get(`${ficha(enano)}/sheet`)
+        .set("Authorization", auth(tokenPL))
+    ).body.hp.current;
+
+    const veneno = await request(s)
+      .post(`${ficha(enano)}/hp`)
+      .set("Authorization", auth(tokenDM))
+      .send({ delta: -10, damageType: "POISON" });
+    expect(veneno.status).toBe(201);
+
+    const despues = (
+      await request(s)
+        .get(`${ficha(enano)}/sheet`)
+        .set("Authorization", auth(tokenPL))
+    ).body.hp.current;
+    expect(despues).toBe(antes - 5);
+
+    // **Y la traza dice por qué**, con el nombre del rasgo: una resta sin origen es justo lo que
+    // esta plataforma existe para no tener.
+    expect(JSON.stringify(veneno.body.damageTrace)).toMatch(/resist/i);
+    expect(JSON.stringify(veneno.body.damageTrace)).toMatch(/Resistencia enana/);
+  });
+
+  it("y el mismo enano recibe entero un daño al que no es resistente", async () => {
+    // El contrapunto: sin él, «la mitad» podría estar aplicándose a todo.
+    const s = app.getHttpServer();
+    const enano = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", auth(tokenPL))
+        .send({ name: "Brann II", level: 8, visibility: "PLAYERS" })
+    ).body.id;
+    await request(s)
+      .patch(`${ficha(enano)}/sheet`)
+      .set("Authorization", auth(tokenPL))
+      .send({
+        abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "dwarf" },
+        subrace: { source: "SRD", key: "dwarf-hill" },
+        class: { source: "SRD", key: "fighter" },
+        choices: { "fighter-skills": ["athletics", "perception"] },
+      })
+      .expect(200);
+
+    const antes = (
+      await request(s)
+        .get(`${ficha(enano)}/sheet`)
+        .set("Authorization", auth(tokenPL))
+    ).body.hp.current;
+    await request(s)
+      .post(`${ficha(enano)}/hp`)
+      .set("Authorization", auth(tokenDM))
+      .send({ delta: -10, damageType: "SLASHING" })
+      .expect(201);
+    const despues = (
+      await request(s)
+        .get(`${ficha(enano)}/sheet`)
+        .set("Authorization", auth(tokenPL))
+    ).body.hp.current;
+    expect(despues).toBe(antes - 10);
+  });
 });

@@ -1177,11 +1177,20 @@ export class CharacterSheetService {
         // número, no sobre el bruto de la tirada (SRD 5.1, «la resistencia y la vulnerabilidad se
         // aplican después del resto de modificadores al daño» — aquí no hay ningún otro
         // modificador antes, así que esta es la primera y única reducción).
-        if (input.damageType && character.statblockRef && this.statblocks) {
-          const statblock = await this.statblocks.resolver(campaignId, character.statblockRef);
+        if (input.damageType) {
+          // **Dos fuentes, una forma** (paso 1, tarea 8b). Un PNJ los saca de su statblock; **un
+          // personaje jugador de sus rasgos**, y hasta el 2026-09-06 no los sacaba de ningún
+          // sitio: la condición de aquí exigía `statblockRef`, y `characters.service.ts` filtra
+          // `statblockRef: null` a propósito para un PJ. Así que **un enano recibía el veneno
+          // entero** y un tiefling ardía con el fuego entero, con la traza convincente al lado.
+          //
           // `damageModifiers` es opcional en `@dnd/shared` a propósito (ver el comentario de
-          // `damageModifiersSchema`): un statblock guardado antes de esta tarea no lo tiene.
-          const modificadores = statblock?.damageModifiers ?? [];
+          // `damageModifiersSchema`): un statblock guardado antes de aquella tarea no lo tiene.
+          const modificadores =
+            character.statblockRef && this.statblocks
+              ? ((await this.statblocks.resolver(campaignId, character.statblockRef))
+                  ?.damageModifiers ?? [])
+              : sheet.damageModifiers;
           if (modificadores.length > 0) {
             damageTrace = applyDamageModifiers(danio, input.damageType, modificadores);
             danio = damageTrace.total;

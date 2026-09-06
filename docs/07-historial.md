@@ -48,6 +48,11 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 8b · y `changeHp` las aplica.** La condición exigía `statblockRef`, y un PJ nunca lo
+  tiene. Ahora hay **dos fuentes con una sola forma**: la del statblock para un PNJ y la de los
+  rasgos para un jugador. Un enano recibe 5 de 10 de veneno **con la traza diciendo «Resistencia
+  enana»**, y 10 de 10 de cortante. **Cómo se revierte:** el commit.
+
 - **Tarea 8a · de dónde salen las resistencias al daño de un personaje jugador.** La maquinaria
   existía y estaba probada, pero los rasgos de raza eran **puro texto**, así que un enano recibía
   el veneno entero y un tiefling ardía con el fuego entero, con la traza convincente al lado. Hay

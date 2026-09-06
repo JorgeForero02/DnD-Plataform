@@ -180,3 +180,67 @@ medias: `pnj-en-la-mesa.e2e-spec.ts` recorre **cada valor** del cuerpo desde el 
 añadir `expect(valores).not.toContain(18)` es una línea — hoy se pondría roja.
 
 </details>
+
+
+---
+
+## ~~P1 · La resistencia, vulnerabilidad e inmunidad al daño no se aplican NUNCA a un personaje de jugador~~ — **CERRADA el 2026-09-06** (paso 1, tareas 8a y 8b)
+
+**Cerrada en dos commits**, que es como el aviso de la sesión de acompañamiento propuso partirla y
+resultó ser el corte bueno:
+
+- **8a** (`4713c7c`) — de dónde salen: un `kind: "damageModifier"` en `rules/catalog/types.ts` con
+  **la misma forma** que `statblock.damageModifiers`, el enano y el tiefling declarándolo con su
+  cita del SRD en inglés, y `resolve.ts` agregándolo. **El dracónido se queda como texto a
+  propósito**: su resistencia depende de un linaje que es una elección que el catálogo no modela.
+- **8b** — `changeHp` lee esa fuente cuando no hay `statblockRef`. La prueba
+  `character-sheet.service.spec.ts` que afirmaba lo contrario **se corrigió, no se borró**: lo que
+  sigue siendo cierto —que un daño al que no eres resistente entra entero— es lo que mide ahora.
+
+**Lo que el «cierra cuando» pedía, medido:** un enano recibe 5 de 10 de veneno con su traza
+diciendo «Resistencia enana», y el mismo enano recibe 10 de 10 de cortante. Mutación: dejar la
+fuente en `[]` devuelve 74 donde la prueba espera 79.
+
+<details><summary>Lo que decía la ficha (2026-09-06)</summary>
+
+**Verificado leyendo `changeHp`:** los modificadores de daño solo se consultan si
+`character.statblockRef` existe y hay resolutor de statblocks —
+`apps/api/src/characters/character-sheet.service.ts:1138`, `if (input.damageType &&
+character.statblockRef && this.statblocks)`—, y **un personaje de jugador nunca tiene
+`statblockRef`**: `apps/api/src/characters/characters.service.ts:68` filtra explícitamente
+`statblockRef: null` para separar «quién se sienta a la mesa» de los PNJ instanciados (fase 2D).
+Esto ya estaba probado y declarado a propósito, no es un descuido nuevo: «con damageType pero sin
+statblockRef (un jugador), tampoco se reduce nada» (`apps/api/src/characters/character-sheet.service.spec.ts:1364`).
+
+**Lo que eso significa en la mesa:** un enano recibe un veneno entero — el SRD 5.1 le da
+resistencia al veneno (*«Dwarven Resilience»*) — y un tiefling arde con el fuego entero — el SRD
+le da resistencia al fuego —, con una traza convincente al lado que nunca se dispara porque
+`applyDamageModifiers` (`apps/api/src/character-state/damage/apply-damage-modifiers.ts`) jamás
+llega a ejecutarse para un PJ.
+
+**La maquinaria de aplicar el modificador ya existe y está bien probada** (`applyDamageModifiers`,
+el tipo de daño en el suceso, la traza en la respuesta). **Lo que falta es de dónde salen los
+modificadores de UN PERSONAJE DE JUGADOR.** Hoy solo hay una fuente: `statblock.damageModifiers`
+(2.5.1, pieza B), y los rasgos de raza que darían resistencia (`apps/api/src/rules/catalog/races.ts`)
+son **puro texto decorativo** — `kind: "feature"` con un `name` y un `labelKey`, sin ningún dato
+estructurado. No existe ningún `kind` de concesión para resistencia/vulnerabilidad/inmunidad en
+`apps/api/src/rules/catalog/types.ts`.
+
+**Por qué se deja a medias y no se fuerza (tarea 14, 2026-09-06):** cerrar esto de verdad exige, como
+mínimo: (1) un `kind` nuevo de concesión en el catálogo (`types.ts`) que declare
+resistencia/vulnerabilidad/inmunidad por tipo de daño, reutilizando el esquema de
+`damageModifiers` de `@dnd/shared` en vez de inventar uno segundo; (2) rellenar `races.ts` con los
+rasgos reales del SRD que hoy son solo prosa (resistencia enana al veneno, resistencia del
+tiefling al fuego, y cualquier otro que el SRD 5.1 dé estructurado); (3) que `resolve.ts` agregue
+esas concesiones en algo que la hoja derive (`derived.damageModifiers` o similar), con su traza,
+igual que ya hace con velocidad o habilidades; y (4) que `changeHp` lea esa fuente para un PJ
+—`character.statblockRef` nulo— en vez de (o además de) la del statblock. Es una feature con su
+propio diseño de datos, no un cambio de una línea, y forzarla dentro de esta tarea habría sido
+la «media tarea inventada como entera» que este proyecto no quiere.
+
+**Cierra cuando** un personaje de jugador con un rasgo de resistencia/vulnerabilidad/inmunidad al
+daño lo vea aplicarse de verdad en `changeHp`, con su traza, exactamente igual que un PNJ con
+statblock — probado con mutación: quitarle el origen del modificador (statblock o lo que lo
+sustituya) tiene que enrojecer la prueba que compruebe la reducción.
+
+</details>

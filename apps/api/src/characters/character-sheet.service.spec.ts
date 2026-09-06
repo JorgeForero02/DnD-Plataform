@@ -1361,7 +1361,13 @@ describe("tarea 2.5.1 — un damageType en changeHp reduce el daño por resisten
     expect(res).not.toHaveProperty("damageTrace");
   });
 
-  it("con damageType pero sin statblockRef (un jugador), tampoco se reduce nada", async () => {
+  it("con damageType y sin statblockRef, un daño al que NO se es resistente sigue entero", async () => {
+    // **Esta prueba afirmaba lo contrario hasta el 2026-09-06** —«con `damageType` pero sin
+    // `statblockRef` (un jugador), tampoco se reduce nada»— y era cierta: los modificadores solo
+    // se consultaban si había statblock, y un PJ nunca lo tiene. **Se corrige, no se borra**: lo
+    // que sigue siendo verdad es que un daño al que el personaje no es resistente entra entero, y
+    // eso es lo que mide ahora. La mitad que dejó de ser verdad es la de «tampoco», y su caso
+    // nuevo está justo debajo.
     const statblocks = { resolver: jest.fn(), resolverParaHoja: jest.fn() };
     const { service, prisma, characters } = montar(undefined, statblocks);
     const fila = personaje({ currentHp: MAX_HP });
@@ -1370,6 +1376,7 @@ describe("tarea 2.5.1 — un damageType en changeHp reduce el daño por resisten
 
     await service.changeHp("dm1", "c1", "ch1", { delta: -10, damageType: "BLUDGEONING" });
 
+    // El resolutor de statblocks **sigue sin llamarse**: un PJ no tiene plantilla que resolver.
     expect(statblocks.resolver).not.toHaveBeenCalled();
     expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(MAX_HP - 10);
   });

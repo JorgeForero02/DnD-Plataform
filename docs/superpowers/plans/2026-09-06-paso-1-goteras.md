@@ -1532,4 +1532,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 7 · Consumir un objeto hace algo | ✅ | `ceecb64` | Aplica los efectos que **ya declara**, por la maquinaria de M8; los seis que no caben **se nombran** |
 | 17 · La sala de espera no lee «todos han tirado» por un corte | ✅ | `99a1983` | Filtro por encuentro **y la pantalla lo manda**; ficha tachada y archivada |
 | 18 · La fuga del PNJ revelado | ✅ | `6940265` | Las seis características fuera, **los PG dentro**; las dos mutaciones medidas |
-| 8a · De dónde salen las resistencias de un PJ | ✅ | el de abajo | `kind: "damageModifier"`, enano y tiefling del SRD, y `resolve` las agrega — **sin tocar un punto de golpe** |
+| 8a · De dónde salen las resistencias de un PJ | ✅ | `4713c7c` | `kind: "damageModifier"`, enano y tiefling del SRD, y `resolve` las agrega — **sin tocar un punto de golpe** |
+| 8b · `changeHp` las aplica | ✅ | el de abajo | Ficha tachada y archivada; la prueba que afirmaba lo contrario **se corrige, no se borra** |

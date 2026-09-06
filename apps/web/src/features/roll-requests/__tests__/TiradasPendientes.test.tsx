@@ -6,6 +6,7 @@ import * as rollRequestsApi from "../api";
 import type { RollRequestRow } from "../api";
 import * as charactersApi from "../../characters/api";
 import type { Character } from "../../characters/api";
+import * as characterSheetApi from "../../character-sheet/api";
 
 // Tarea 2C.5 — la mitad de quien recibe el recado. Se prueba **lo que puede romperse en
 // silencio**:
@@ -15,6 +16,10 @@ import type { Character } from "../../characters/api";
 //  · que una respuesta `revealed: false` dice que se tiró a ciegas y **no** deja escapar un
 //    total — el agujero que 2C.1 cerró en el servidor y que aquí se podía reabrir;
 //  · que sin peticiones **no se pinta ninguna caja**, ni siquiera una vacía.
+//
+// Tarea 9 (plan 2026-09-05-iniciativa-y-bando) suma una más:
+//
+//  · que **solo** la petición con `encounterId` usa `PanelDeIniciativa` — una normal, no.
 
 const CAMPANA = "camp-1";
 
@@ -54,16 +59,18 @@ const BRANN: Character = {
 
 function pintar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={qc}>
       <TiradasPendientes campaignId={CAMPANA} />
     </QueryClientProvider>,
   );
+  return { ...utils, qc };
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([BRANN]);
+  vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue([]);
 });
 
 describe("TiradasPendientes", () => {
@@ -133,5 +140,46 @@ describe("TiradasPendientes", () => {
     await waitFor(() => expect(rollRequestsApi.fetchRollRequests).toHaveBeenCalled());
     await waitFor(() => expect(container).toBeEmptyDOMElement());
     expect(screen.queryByText("Te han pedido tirar")).not.toBeInTheDocument();
+  });
+
+  it("una petición normal NO usa el panel de iniciativa", async () => {
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PENDIENTE]);
+
+    pintar();
+
+    expect(await screen.findByText("Percepción para ver si oís al posadero")).toBeInTheDocument();
+    expect(screen.queryByText(/empieza el combate/i)).not.toBeInTheDocument();
+  });
+
+  it("una petición con encounterId usa el panel de iniciativa, y no la caja de siempre", async () => {
+    const DE_ENCUENTRO: RollRequestRow = { ...PENDIENTE, id: "req-2", encounterId: "enc-1" };
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([DE_ENCUENTRO]);
+
+    pintar();
+
+    expect(await screen.findByText(/empieza el combate/i)).toBeInTheDocument();
+    // No pasa por la caja pequeña de «Te han pedido tirar»: nada de eso se pinta para ella.
+    expect(screen.queryByText("Te han pedido tirar")).not.toBeInTheDocument();
+  });
+
+  it("cuando su petición deja de estar en la lista, el panel de iniciativa se va solo", async () => {
+    const DE_ENCUENTRO: RollRequestRow = { ...PENDIENTE, id: "req-2", encounterId: "enc-1" };
+    const fetchMock = vi
+      .spyOn(rollRequestsApi, "fetchRollRequests")
+      .mockResolvedValue([DE_ENCUENTRO]);
+
+    const { qc } = pintar();
+
+    expect(await screen.findByText(/empieza el combate/i)).toBeInTheDocument();
+
+    // El DM cancela el combate: la petición desaparece del listado sin que nadie tirara y sin
+    // ningún suceso de resolución — exactamente lo que pasa cuando se borra sin escribir nada.
+    // Se fuerza el refresco en vez de esperar los 60 s del sondeo (`lib/sondeo.ts`): el panel
+    // se pinta **a partir de los datos**, así que en cuanto los datos cambian, tiene que irse
+    // solo — sin que nadie tenga que pulsar nada, y sin un estado propio que lo mantenga vivo.
+    fetchMock.mockResolvedValue([]);
+    await qc.refetchQueries({ queryKey: ["campaigns", CAMPANA, "roll-requests"] });
+
+    await waitFor(() => expect(screen.queryByText(/empieza el combate/i)).not.toBeInTheDocument());
   });
 });

@@ -11,6 +11,7 @@ import type { RollRequestRow } from "./api";
 import { useAnswerRollRequest, useRollRequests } from "./hooks";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { nombreDeClave } from "./vocabulario";
+import { PanelDeIniciativa } from "./PanelDeIniciativa";
 
 // Tarea 2C.5 — **lo que te han pedido.**
 //
@@ -64,9 +65,26 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
     (p) => p.resolvedAt === null && !yaRespondidas.has(p.id),
   );
 
-  // **Sin peticiones no se pinta ninguna caja.** Una caja vacía que dice «no te han pedido nada»
-  // ocupa el sitio de lo primero que se lee en esta pantalla y no informa de nada: la ausencia de
-  // peticiones ya se ve porque no hay peticiones.
+  // **Lo único que distingue «te piden iniciativa» de «te piden Percepción» es `encounterId`**
+  // (tarea 8, `RollRequestRow.encounterId`: nulo en todas las peticiones normales, a propósito).
+  // Las que traen encuentro se pintan grandes, con `PanelDeIniciativa`; el resto sigue en la caja
+  // de siempre. El panel **se pinta a partir de esta lista y desaparece solo**: en cuanto su
+  // petición deja de estar en `peticiones.data` —porque se respondió, o porque el DM canceló el
+  // combate y la borró sin dejar suceso— deja de estar en `deEncuentro` y el panel se va con ella.
+  //
+  // **`Boolean(...)` y no `!== null`.** Hay pruebas de otra pantalla (`sessions/mesa-de-sesion`)
+  // que construyen la petición a mano sin declarar `encounterId` en absoluto —nace `undefined`,
+  // no `null`— y ese es exactamente el caso que una comparación estricta contra `null` clasifica
+  // mal: `undefined !== null` es `true`, así que esas peticiones normales habrían caído en
+  // `deEncuentro` por un campo que ni siquiera estaba ahí. `Boolean` trata `null` y `undefined`
+  // igual, que es lo que la regla de negocio pide: «trae un encuentro de verdad», no «no es
+  // exactamente `null`».
+  const deEncuentro = pendientes.filter((p) => Boolean(p.encounterId));
+  const normales = pendientes.filter((p) => !p.encounterId);
+
+  // **Sin nada que pintar no se pinta ninguna caja.** Una caja vacía que dice «no te han pedido
+  // nada» ocupa el sitio de lo primero que se lee en esta pantalla y no informa de nada: la
+  // ausencia de peticiones ya se ve porque no hay peticiones.
   if (pendientes.length === 0 && respondidas.length === 0) return null;
 
   function nombreDelPersonaje(peticion: RollRequestRow): string | null {
@@ -97,79 +115,106 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <section aria-label="Tiradas que te han pedido" className="mb-s5">
-      <Panel className="max-w-[40rem]">
-        <h3 className="font-title text-chrome-lg leading-tight text-text">Te han pedido tirar</h3>
+    <>
+      {deEncuentro.map((peticion) => (
+        <PanelDeIniciativa
+          key={peticion.id}
+          peticion={peticion}
+          campaignId={campaignId}
+          nombrePersonaje={nombreDelPersonaje(peticion)}
+          conInspiracion={inspirados[peticion.id] === true}
+          onCambiarInspiracion={(v) =>
+            setInspirados((actuales) => ({ ...actuales, [peticion.id]: v }))
+          }
+          onTirar={() => alTirar(peticion)}
+          tirando={responder.isPending}
+          error={errores[peticion.id]}
+        />
+      ))}
 
-        <ul className="mt-s3 flex flex-col gap-s2">
-          {pendientes.map((peticion) => {
-            const quien = nombreDelPersonaje(peticion);
-            const error = errores[peticion.id];
-            return (
-              <li
-                key={peticion.id}
-                data-peticion={peticion.id}
-                className="rounded-radius-sm border border-muted bg-surface px-s2 py-1.5"
-              >
-                <p className="font-chrome text-chrome-sm text-text">{peticion.label}</p>
-                <p className="mt-0.5 font-chrome text-chrome-xs text-muted">
-                  {[
-                    quien,
-                    nombreDeClave(peticion.key),
-                    peticion.dc !== null ? `CD ${peticion.dc}` : null,
-                    modoDeTirada(peticion.mode).etiqueta,
-                    etiquetaDeAudiencia(peticion.audience),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {/* **La inspiración también sirve aquí** (I8): una petición del DM es una
+      {(normales.length > 0 || respondidas.length > 0) && (
+        <section aria-label="Tiradas que te han pedido" className="mb-s5">
+          <Panel className="max-w-[40rem]">
+            <h3 className="font-title text-chrome-lg leading-tight text-text">
+              Te han pedido tirar
+            </h3>
+
+            <ul className="mt-s3 flex flex-col gap-s2">
+              {normales.map((peticion) => {
+                const quien = nombreDelPersonaje(peticion);
+                const error = errores[peticion.id];
+                return (
+                  <li
+                    key={peticion.id}
+                    data-peticion={peticion.id}
+                    className="rounded-radius-sm border border-muted bg-surface px-s2 py-1.5"
+                  >
+                    <p className="font-chrome text-chrome-sm text-text">{peticion.label}</p>
+                    <p className="mt-0.5 font-chrome text-chrome-xs text-muted">
+                      {[
+                        quien,
+                        nombreDeClave(peticion.key),
+                        peticion.dc !== null ? `CD ${peticion.dc}` : null,
+                        modoDeTirada(peticion.mode).etiqueta,
+                        etiquetaDeAudiencia(peticion.audience),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    {/* **La inspiración también sirve aquí** (I8): una petición del DM es una
                     salvación o una prueba, dos de las tres tiradas del SRD. El modo lo fijó quien
                     pidió, así que con desventaja el control se apaga solo. */}
-                <GastarInspiracion
-                  campaignId={campaignId}
-                  characterId={peticion.characterId}
-                  modo={peticion.mode}
-                  value={inspirados[peticion.id] === true}
-                  onChange={(v) => setInspirados((actuales) => ({ ...actuales, [peticion.id]: v }))}
-                  disabled={responder.isPending}
-                />
-                <div className="mt-1">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => alTirar(peticion)}
-                    aria-label={`Tirar: ${peticion.label}`}
-                  >
-                    <DadoDibujado />
-                    Tirar
-                  </Button>
-                </div>
-                {error && (
-                  <p role="alert" className="mt-1 font-chrome text-chrome-xs text-danger-text">
-                    {error}
-                  </p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                    <GastarInspiracion
+                      campaignId={campaignId}
+                      characterId={peticion.characterId}
+                      modo={peticion.mode}
+                      value={inspirados[peticion.id] === true}
+                      onChange={(v) =>
+                        setInspirados((actuales) => ({ ...actuales, [peticion.id]: v }))
+                      }
+                      disabled={responder.isPending}
+                    />
+                    <div className="mt-1">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => alTirar(peticion)}
+                        aria-label={`Tirar: ${peticion.label}`}
+                      >
+                        <DadoDibujado />
+                        Tirar
+                      </Button>
+                    </div>
+                    {error && (
+                      <p role="alert" className="mt-1 font-chrome text-chrome-xs text-danger-text">
+                        {error}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
 
-        {respondidas.map((r) =>
-          r.resultado.revealed ? (
-            <div key={r.id} className="mt-s3">
-              {/* El total en grande, igual que en la tarjeta de tirada libre: es lo que se canta
-                  en la mesa. El desglose de debajo dice de dónde salió — nunca un número solo. */}
-              <p className="text-center font-data text-chrome-xl text-text">{r.resultado.total}</p>
-              <ResultadoDeTirada resultado={r.resultado} etiqueta={r.etiqueta} />
-            </div>
-          ) : (
-            <div key={r.id} className="mt-s3">
-              <TiradaACiegas etiqueta={r.etiqueta} expresion={r.resultado.expression} />
-            </div>
-          ),
-        )}
-      </Panel>
-    </section>
+            {respondidas.map((r) =>
+              r.resultado.revealed ? (
+                <div key={r.id} className="mt-s3">
+                  {/* El total en grande, igual que en la tarjeta de tirada libre: es lo que se
+                      canta en la mesa. El desglose de debajo dice de dónde salió — nunca un
+                      número solo. */}
+                  <p className="text-center font-data text-chrome-xl text-text">
+                    {r.resultado.total}
+                  </p>
+                  <ResultadoDeTirada resultado={r.resultado} etiqueta={r.etiqueta} />
+                </div>
+              ) : (
+                <div key={r.id} className="mt-s3">
+                  <TiradaACiegas etiqueta={r.etiqueta} expresion={r.resultado.expression} />
+                </div>
+              ),
+            )}
+          </Panel>
+        </section>
+      )}
+    </>
   );
 }

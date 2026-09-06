@@ -47,6 +47,14 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 5 · una fórmula de CA ya puede sumar más de una característica.** `AcFormula.addAbility`
+  admitía **una**, y las dos Defensas sin armadura del SRD 5.1 suman dos —bárbaro DES+CON, monje
+  DES+SAB—, así que un bárbaro salía con la CA baja **y la traza convincente al lado**. Pasa a
+  `addAbilities`, con el **tope por característica** y no de la fórmula: la armadura media sigue
+  topando la Destreza en +2 sin hablar por las demás. `addAbility`/`abilityCap` se retiran **sin
+  alias**. No mecaniza la aptitud —eso es el paso 2—: hace que el modelo pueda decirla. **Cómo se
+  revierte:** el commit entero; su superficie son tres ficheros y sus dos specs.
+
 - **Tarea 1 · un jugador podía concederse ventaja permanente, y ya no.** `PUT
   …/conditions/helped` sin duración daba **ventaja renovable en todos sus ataques**: la
   autorización era correcta —el personaje es suyo— y el agujero estaba en que **la clave es texto

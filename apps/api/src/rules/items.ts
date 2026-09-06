@@ -75,8 +75,9 @@ export function armorToAcContribution(
       key,
       labelKey,
       base: armor.baseAc,
-      addAbility: "dex",
-      abilityCap: armor.dexCap,
+      // La armadura solo topa la Destreza, y la topa **a ella**: el tope es por característica
+      // desde el 2026-09-06, así que esto dice lo mismo que decía y ya no habla por las demás.
+      addAbilities: [{ ability: "dex", cap: armor.dexCap }],
       sourceType: "item",
       sourceKey: key,
     },

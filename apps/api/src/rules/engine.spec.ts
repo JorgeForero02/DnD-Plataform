@@ -31,8 +31,7 @@ const COTA_DE_MALLA: AcFormula = {
   base: 16,
   // Armadura pesada: la Destreza **no suma nada**. Tope 0, no «sin Destreza»: la diferencia
   // importa porque el recorte se enseña en la traza.
-  addAbility: "dex",
-  abilityCap: 0,
+  addAbilities: [{ ability: "dex", cap: 0 }],
   sourceType: "item",
   sourceKey: "chain-mail",
 };
@@ -41,8 +40,7 @@ const ARMADURA_MEDIA: AcFormula = {
   key: "half-plate",
   labelKey: "ac.halfPlate",
   base: 15,
-  addAbility: "dex",
-  abilityCap: 2,
+  addAbilities: [{ ability: "dex", cap: 2 }],
   sourceType: "item",
   sourceKey: "half-plate",
 };
@@ -150,7 +148,7 @@ describe("la CA: el caso que un modelo aditivo calcula mal", () => {
             key: "unarmored",
             labelKey: "ac.unarmored",
             base: 10,
-            addAbility: "dex",
+            addAbilities: [{ ability: "dex" }],
             sourceType: "base",
             sourceKey: "unarmored",
           },
@@ -545,8 +543,7 @@ describe("un tope de Destreza de 0 no deja sumar, y tampoco deja restar", () => 
     key: "plate",
     labelKey: "armor.plate",
     base: 18,
-    addAbility: "dex",
-    abilityCap: 0,
+    addAbilities: [{ ability: "dex", cap: 0 }],
     sourceType: "item",
     sourceKey: "plate",
   };
@@ -568,7 +565,12 @@ describe("un tope de Destreza de 0 no deja sumar, y tampoco deja restar", () => 
   });
 
   it("pero en armadura MEDIA una Destreza negativa sí resta: ahí el tope es un máximo", () => {
-    const media: AcFormula = { ...PLACAS, key: "hide", base: 12, abilityCap: 2 };
+    const media: AcFormula = {
+      ...PLACAS,
+      key: "hide",
+      base: 12,
+      addAbilities: [{ ability: "dex", cap: 2 }],
+    };
     const r = derive(
       personaje({
         abilities: { str: 16, dex: 8, con: 14, int: 10, wis: 10, cha: 10 },
@@ -577,5 +579,112 @@ describe("un tope de Destreza de 0 no deja sumar, y tampoco deja restar", () => 
     );
 
     expect(r.derived.ac.total).toBe(11);
+  });
+});
+
+describe("una fórmula de CA puede sumar MÁS DE UNA característica (paso 1, tarea 5)", () => {
+  // **SRD 5.1, Barbarian, Unarmored Defense:** *«While you are not wearing any armor, your Armor
+  // Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield
+  // and still gain this benefit.»* Y el monje: *«While you are wearing no armor and not wielding a
+  // shield, your AC equals 10 + your Dexterity modifier + your Wisdom modifier.»*
+  //
+  // Ninguna de las dos era expresable con una sola característica, así que un bárbaro salía con
+  // **la CA más baja de lo que le toca y con la traza convincente al lado** — que es peor que un
+  // error visible. **Ninguna de las dos topa nada**, y por eso el tope pasa a ser **por
+  // característica** y no global: la armadura media sigue topando la Destreza en +2 sin que eso
+  // diga nada de la Constitución.
+  //
+  // Esta tarea NO mecaniza la aptitud: no añade la Defensa sin armadura al catálogo de clases
+  // —eso es el paso 2—. Lo que arregla es que el modelo pueda decirla.
+
+  const DEFENSA_SIN_ARMADURA_BARBARO: AcFormula = {
+    key: "unarmored-defense-barbarian",
+    labelKey: "ac.unarmoredDefense",
+    base: 10,
+    addAbilities: [{ ability: "dex" }, { ability: "con" }],
+    sourceType: "class",
+    sourceKey: "barbarian",
+  };
+
+  it("un bárbaro con DES +2 y CON +3 sin armadura tiene CA 15, con los dos pasos en la traza", () => {
+    const r = derive(
+      personaje({
+        // DES 14 => +2, CON 16 => +3.
+        abilities: { str: 16, dex: 14, con: 16, int: 10, wis: 10, cha: 10 },
+        acFormulas: [DEFENSA_SIN_ARMADURA_BARBARO],
+      }),
+    );
+
+    expect(r.derived.ac.total).toBe(15);
+    expect(r.derived.ac.steps.filter((p) => p.op === "add")).toHaveLength(2);
+    // La traza tiene que **sumar el total**: una explicación que no cuadra es peor que ninguna.
+    expect(r.derived.ac.steps.reduce((suma, p) => suma + p.amount, 0)).toBe(15);
+  });
+
+  it("y la traza nombra las DOS características, no una sola dos veces", () => {
+    const r = derive(
+      personaje({
+        abilities: { str: 16, dex: 14, con: 16, int: 10, wis: 10, cha: 10 },
+        acFormulas: [DEFENSA_SIN_ARMADURA_BARBARO],
+      }),
+    );
+
+    const sumas = r.derived.ac.steps.filter((p) => p.op === "add").map((p) => p.labelKey);
+    expect(sumas).toEqual(["abilityMod.dex", "abilityMod.con"]);
+  });
+
+  it("el monje suma Sabiduría, y una característica negativa RESTA cuando no hay tope", () => {
+    // Sin tope la regla es una suma pelada: 10 + DES + SAB. Con SAB 8 (−1) el número baja, y eso
+    // es correcto — el tope de la armadura es lo que convierte una suma en «suma, como mucho».
+    const monje: AcFormula = {
+      key: "unarmored-defense-monk",
+      labelKey: "ac.unarmoredDefense",
+      base: 10,
+      addAbilities: [{ ability: "dex" }, { ability: "wis" }],
+      sourceType: "class",
+      sourceKey: "monk",
+    };
+    const r = derive(
+      personaje({
+        abilities: { str: 10, dex: 14, con: 10, int: 10, wis: 8, cha: 10 },
+        acFormulas: [monje],
+      }),
+    );
+
+    expect(r.derived.ac.total).toBe(11);
+  });
+
+  it("el tope es POR CARACTERÍSTICA: topar la Destreza no toca a la Constitución", () => {
+    // Fórmula inventada a propósito para el caso que la interfaz vieja no podía ni escribir.
+    const mixta: AcFormula = {
+      key: "mixta",
+      labelKey: "ac.unarmoredDefense",
+      base: 10,
+      addAbilities: [{ ability: "dex", cap: 2 }, { ability: "con" }],
+      sourceType: "class",
+      sourceKey: "mixta",
+    };
+    const r = derive(
+      personaje({
+        // DES 18 => +4 (topado a 2), CON 16 => +3 (sin tope).
+        abilities: { str: 10, dex: 18, con: 16, int: 10, wis: 10, cha: 10 },
+        acFormulas: [mixta],
+      }),
+    );
+
+    expect(r.derived.ac.total).toBe(15);
+    expect(r.derived.ac.steps.reduce((suma, p) => suma + p.amount, 0)).toBe(15);
+  });
+
+  it("una fórmula sin características es un número pelado", () => {
+    const armadura: AcFormula = {
+      key: "natural",
+      labelKey: "ac.natural",
+      base: 17,
+      sourceType: "base",
+      sourceKey: "natural",
+    };
+    const r = derive(personaje({ acFormulas: [armadura] }));
+    expect(r.derived.ac.total).toBe(17);
   });
 });

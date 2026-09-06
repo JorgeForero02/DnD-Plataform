@@ -1413,6 +1413,12 @@ sigue **por donde diga este bloque**, no por donde se crea recordar.
 **Correcciones al plan encontradas al ejecutarlo** (el plan es un encargo fechado: se corrige
 encima, no se reescribe):
 
+- **El paso de traza se distingue por `op`, no por `kind`.** La prueba que el plan escribe
+  (`ca.steps.filter((s) => s.kind === "add")`) no compila contra `TraceStep`. **Y eso enseñó algo
+  peor:** `npx jest --silent` con un fichero que **no compila** imprime «675 passed» sin una sola
+  línea de error, así que un fichero de pruebas entero puede no ejecutarse y parecer verde. Con el
+  campo corregido son 733. **No se lee un conteo de `--silent` como prueba de que algo corrió.**
+
 - **La constante se llama `CLAVE_AYUDA`, no `CLAVE_DE_AYUDA`.** Ya existía en
   `packages/shared/src/character-state.schema.ts` desde el plan 08; la tarea 1 solo le añade
   `esClaveReservada` al lado en vez de declararla otra vez.
@@ -1450,9 +1456,15 @@ de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba 
   que el motor lea una condición más. **Si me equivoco cuesta una línea**: sacar `prone` (y las
   que se decidan) de `esClaveReservada`, que vive en un solo sitio.
 
+- **Tarea 5 · la Defensa sin armadura NO se añade al catálogo de clases.** El modelo ya puede
+  decirla y las pruebas la usan como fixture, pero mecanizar la aptitud del bárbaro y la del monje
+  es el paso 2 (*«no mecaniza ninguna aptitud»*). **Si me equivoco cuesta una fila de catálogo**,
+  no un rediseño: la interfaz que hacía falta ya está.
+
 | Tarea | Estado | Commit | Qué cerró |
 |---|---|---|---|
 | — · `EdicionEnSitio` inestable | ✅ | `e926b91` | Bloqueaba **todos** los commits del día |
 | 0 · Tachar lo que anoche cerró | ✅ | `6f94334` | Las dos fichas comprobadas una a una antes de tachar; van al archivo, no tachadas en el documento vivo |
 | — · Un e2e afirmaba lo contrario que su código | ✅ | `3ec2d76` | `character-state` esperaba **201** al reponer un `DM_ONLY` siendo el dueño; `1758c21` lo cerró a propósito y la prueba llevaba roja desde entonces **sin que nadie mirara**, porque los e2e no entran en `pnpm verify` |
-| 1 · Un jugador no se concede una mecánica | ✅ | el de abajo | `helped` no entra por la puerta genérica **para nadie**; una clave del SRD, solo el DM |
+| 1 · Un jugador no se concede una mecánica | ✅ | `62e3d7b` | `helped` no entra por la puerta genérica **para nadie**; una clave del SRD, solo el DM |
+| 5 · La CA suma más de una característica | ✅ | el de abajo | `addAbilities` con **tope por característica**; `addAbility`/`abilityCap` desaparecen sin alias |

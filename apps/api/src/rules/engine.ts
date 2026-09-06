@@ -45,18 +45,36 @@ export interface Modifier {
  * Una fórmula candidata de CA. **Se evalúan todas y gana la mayor** — que es exactamente lo que
  * dicen las reglas y lo que un modelo aditivo se salta.
  */
+/** Una característica que suma a una fórmula de CA, con **su** tope. */
+export interface AcAbility {
+  ability: AbilityKey;
+  /**
+   * Tope **de esta característica**. `0` en armadura pesada (**no suma nada**), `2` en media,
+   * `undefined` en ligera o sin armadura (**sin tope**).
+   *
+   * **Es por característica y no de la fórmula entera**, y esa es la diferencia que trajo la
+   * Defensa sin armadura: una fórmula puede topar la Destreza y no topar la otra. Un tope global
+   * habría obligado a elegir entre las dos.
+   */
+  cap?: number;
+}
+
 export interface AcFormula {
   key: string;
   labelKey: string;
   /** El número del que parte: 10 sin armadura, 16 con cota de malla. */
   base: number;
-  /** Qué característica suma, si suma alguna. */
-  addAbility?: AbilityKey;
   /**
-   * Tope de esa característica. `0` en armadura pesada (**no suma nada**), `2` en media,
-   * `undefined` en ligera o sin armadura (**sin tope**).
+   * Qué características suman. **Vacío o ausente = la fórmula es un número pelado.**
+   *
+   * Eran una sola (`addAbility` + `abilityCap`) hasta el 2026-09-06, y con una no cabía ninguna
+   * de las dos Defensas sin armadura del SRD 5.1 — la del bárbaro es *«10 + your Dexterity
+   * modifier + your Constitution modifier»* y la del monje *«10 + your Dexterity modifier + your
+   * Wisdom modifier»*—, así que un bárbaro salía con **la CA más baja de lo que le toca y con la
+   * traza convincente al lado**. Los dos campos viejos **no se conservan como alias**: dos formas
+   * de decir lo mismo es como se cuela un tope aplicado dos veces.
    */
-  abilityCap?: number;
+  addAbilities?: AcAbility[];
   sourceType: TraceStep["sourceType"];
   sourceKey: string;
 }
@@ -361,7 +379,7 @@ function calcularCa(
     key: "unarmored",
     labelKey: "ac.unarmored",
     base: 10,
-    addAbility: "dex",
+    addAbilities: [{ ability: "dex" }],
     sourceType: "base",
     sourceKey: "unarmored",
   };
@@ -373,9 +391,12 @@ function calcularCa(
     ];
     let total = formula.base;
 
-    if (formula.addAbility) {
-      const bruto = mods[formula.addAbility];
-      const tope = formula.abilityCap;
+    // **Un paso por característica.** Recorrer aquí en vez de sumar antes es lo que hace que la
+    // traza enseñe «+2 por Destreza» y «+3 por Constitución» por separado, que es lo que alguien
+    // pregunta en la mesa cuando no le cuadra su CA.
+    for (const suma of formula.addAbilities ?? []) {
+      const bruto = mods[suma.ability];
+      const tope = suma.cap;
       // **Un tope de 0 significa «no suma», no «suma como mucho cero».** La diferencia solo se
       // ve con una Destreza mala: el SRD dice que la armadura pesada *no te deja sumar* el
       // modificador, y `Math.min(−1, 0)` lo dejaba **restar**. Un enano con Destreza 8 y
@@ -391,9 +412,7 @@ function calcularCa(
       // todavía**; apareció al enchufar el inventario de 2B, que es exactamente para lo que
       // sirve enchufar cosas. Ahora los pasos suman el total, que es lo mínimo que se le puede
       // pedir a una explicación.
-      steps.push(
-        paso("add", bruto, "ability", formula.addAbility, `abilityMod.${formula.addAbility}`),
-      );
+      steps.push(paso("add", bruto, "ability", suma.ability, `abilityMod.${suma.ability}`));
       total += aplicado;
       // El recorte se **enseña**: sin este paso, «CA 16» con Destreza 20 parece un error. La
       // condición es «el aplicado no es el bruto», no «el bruto se pasa del tope»: con armadura

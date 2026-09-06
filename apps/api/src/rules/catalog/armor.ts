@@ -10,7 +10,8 @@
 // (`resolvedItemSchema` en `@dnd/shared`). Peso en **onzas** (16 oz = 1 lb, el SRD lo da en
 // libras) y precio en **piezas de cobre** (1 po = 100 pc).
 //
-// El tope de Destreza es lo que 2A.2 llama `abilityCap`, y la diferencia entre `0` y
+// El tope de Destreza es lo que el motor llama `cap` dentro de `addAbilities` (era `abilityCap`
+// hasta el 2026-09-06, cuando el tope pasó a ser por característica), y la diferencia entre `0` y
 // `undefined` no es cosmética: en armadura pesada la Destreza **se recorta a cero y el recorte
 // se enseña en la traza**; en ligera no hay tope. Un `0` mal puesto da una CA silenciosamente
 // baja y un `undefined` mal puesto la da silenciosamente alta.

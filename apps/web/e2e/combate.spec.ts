@@ -98,7 +98,11 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
   const dialogo = page.getByRole("dialog");
   await dialogo.getByRole("checkbox", { name: /Thora/ }).click();
   await dialogo.getByRole("checkbox", { name: /Brann/ }).click();
-  await dialogo.getByRole("button", { name: "Tirar iniciativa" }).click();
+  // Tarea 7 (iniciativa y bando): el botón pide, no tira — pero Thora y Brann son del mismo
+  // DM que pulsa aquí, así que no hay ningún `ajeno` a quien pedirle nada y el encuentro nace
+  // `ACTIVE` directo (`encounters.service.ts`, `ajenos.length > 0 ? "PREPARING" : "ACTIVE"`).
+  // Este recorrido sigue probando exactamente lo mismo: solo cambió el rótulo.
+  await dialogo.getByRole("button", { name: "Pedir iniciativa" }).click();
 
   const tira = page.getByRole("region", { name: "Orden de turnos" });
   await expect(tira).toBeVisible({ timeout: 15_000 });

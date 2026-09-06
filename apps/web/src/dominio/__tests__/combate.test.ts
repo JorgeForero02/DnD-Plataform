@@ -14,8 +14,28 @@ describe("el vocabulario del combate", () => {
     }
   });
 
-  it("ningún valor crudo se escapa", () => {
-    expect(NOMBRE_BANDO.ENEMY).toBe("Enemigo");
-    expect(NOMBRE_ESTADO_DE_COMBATE.PREPARING).toBe("Preparando combate");
+  it("ningún valor crudo se escapa: las seis claves, una por una", () => {
+    const NOMBRE_BANDO_ESPERADO: Record<string, string> = {
+      ALLY: "Aliado",
+      ENEMY: "Enemigo",
+      NEUTRAL: "Neutral",
+    };
+    const NOMBRE_ESTADO_ESPERADO: Record<string, string> = {
+      PREPARING: "Preparando combate",
+      ACTIVE: "En combate",
+      ENDED: "Combate terminado",
+    };
+
+    for (const [clave, esperado] of Object.entries(NOMBRE_BANDO_ESPERADO)) {
+      const valor = NOMBRE_BANDO[clave as keyof typeof NOMBRE_BANDO];
+      expect(valor).toBe(esperado);
+      expect(valor).not.toBe(clave);
+    }
+
+    for (const [clave, esperado] of Object.entries(NOMBRE_ESTADO_ESPERADO)) {
+      const valor = NOMBRE_ESTADO_DE_COMBATE[clave as keyof typeof NOMBRE_ESTADO_DE_COMBATE];
+      expect(valor).toBe(esperado);
+      expect(valor).not.toBe(clave);
+    }
   });
 });

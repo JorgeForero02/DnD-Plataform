@@ -1535,7 +1535,22 @@ encuentro de 2.5.6), no antes.
 
 > **La sala de espera (tarea 8, 2026-09-05) abrió aquí dos fichas que la ronda de arreglo 1
 > (2026-09-06) cerró, y no como deuda.** El canal en vivo ya invalida `useCurrentEncounter`
-> (`apps/web/src/features/live/canal.ts`, por predicado); y que un jugador no vea la cuenta ni
-> los nombres de quién falta es una decisión confirmada, no un hueco — las dos están en
-> `docs/decisiones.md` (E-N-5, E-N-6). La lección, no la deuda: **no se abre ficha por algo que
-> se sabe arreglar** — se intenta el cambio pequeño primero, y solo si no lo hay se anota.
+> (`apps/web/src/features/live/canal.ts`, con `encountersKey(campaignId)` — un predicado a mano
+> resultó no hacer falta, ver `docs/decisiones.md` E-N-6); y que un jugador no vea la cuenta ni
+> los nombres de quién falta es una decisión confirmada, no un hueco (E-N-5). La lección, no la
+> deuda: **no se abre ficha por algo que se sabe arreglar** — se intenta el cambio pequeño
+> primero, y solo si no lo hay se anota.
+
+### `RollRequestsService.list` corta en 50 sin filtrar por encuentro (hallazgo de la ronda de arreglo 2, 2026-09-06)
+
+`apps/api/src/roll-requests/roll-requests.service.ts:97-107`: la lista pendiente de una campaña
+sale con `take: 50` ordenada por `createdAt desc`, sin ningún filtro por `encounterId`. Una
+campaña activa que acumule más de 50 peticiones pendientes de OTRO tipo —percepciones, salvaciones
+pedidas por el DM durante la sesión— antes de que alguien abra un combate empujaría fuera del
+corte las peticiones de iniciativa del encuentro nuevo, y la sala de espera
+(`TiraDeIniciativa.tsx`) leería «todos han tirado su iniciativa» sin que nadie hubiera tirado
+nada: el `[]` que devuelve la página de 50 es indistinguible de «cero pendientes de verdad».
+
+**Es del servidor y de otra tarea, no se toca aquí.** La medida más simple sería que `list`
+aceptara (u ordenara primero) por `encounterId` cuando la pantalla lo necesita, en vez de fiarse
+de que 50 filas por `createdAt` siempre contengan las de un combate recién abierto.

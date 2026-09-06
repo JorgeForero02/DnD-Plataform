@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import type { Encounter } from "@dnd/shared";
 import {
   useAdvanceTurn,
@@ -12,6 +13,7 @@ import type { NpcEnLaMesa } from "../bestiario/api";
 import { useMembers } from "../campaigns/members";
 import { useRollRequests } from "../roll-requests/hooks";
 import { NOMBRE_ESTADO_DE_COMBATE } from "../../dominio/combate";
+import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 
@@ -290,18 +292,40 @@ function SalaDeEspera({
   // `EmpezarCombate` para el botón de empezar.
   const miembros = useMembers(campaignId).data ?? [];
   // **Su propio sondeo de 15 s** (`SONDEO_DE_PETICIONES_MS`, `lib/sondeo.ts`) y el mismo canal en
-  // vivo que ya invalida `["campaigns", campaignId, …]` — no se toca ninguno de los dos. Lo que
-  // SÍ falta: la clave de esta consulta (`currentEncounterKey`, `hooks.ts`) empieza en
-  // `["encounters", …]`, no en `["campaigns", …]`, así que el mismo aviso NO reabastece por sí
-  // solo el contador de arriba — solo el sondeo de 10 s de `useCurrentEncounter` lo hace. Queda
-  // dicho en el informe de esta tarea; no lo arregla esta ronda.
-  const peticiones = useRollRequests(campaignId, { includeResolved: false }).data ?? [];
+  // vivo (`features/live/canal.ts`), que desde la ronda de arreglo 1 invalida también el
+  // encuentro en curso — no se toca ninguno de los dos.
+  //
+  // **Sin objeto de opciones, a propósito.** `TiradasPendientes.tsx` pide exactamente esto mismo
+  // con `useRollRequests(campaignId)`, y `{ includeResolved: false }` es el valor por defecto
+  // de todas formas (`roll-requests/api.ts`): pasarlo aquí solo servía para que la clave de
+  // consulta llevara un objeto distinto (`{}` frente a `{ includeResolved: false }`, que
+  // `JSON.stringify` no ve iguales) y las dos pantallas sondearan la MISMA URL con DOS entradas
+  // de caché capaces de divergir. La revisión lo cazó.
+  const peticionesQuery = useRollRequests(campaignId);
+  const peticiones = peticionesQuery.data ?? [];
 
   const pendientes = peticiones.filter(
     (p) => p.encounterId === encuentro.id && p.key === "initiative",
   );
   const total = encuentro.combatants.length;
   const respondido = total - pendientes.length;
+
+  const miId = useAuthStore((s) => s.user?.id);
+  /**
+   * **¿Combato yo en esto?** Si ninguno de mis personajes está entre los combatientes, la sala
+   * de espera no es mía: soy un miembro de la campaña mirando un combate ajeno, y decirle a esa
+   * persona «ya has tirado» —lo que pasaba antes de esta ronda de arreglo, porque cero
+   * pendientes es indistinguible de «ya resolví las mías»— es el dato más personal de todos,
+   * inventado. El DM no pasa por esta comprobación: la sala siempre es «suya» en el sentido de
+   * que la dirige, tenga o no un personaje propio en la pelea.
+   *
+   * **Hueco conocido:** un PNJ cedido a un jugador (`quienEs` más abajo) no cuenta aquí, porque
+   * `NpcEnLaMesa` no trae `ownerId` — el mismo dato que falta para nombrarlo también falta para
+   * saber que ES tuyo. Ese jugador vería «no participas» aunque lleve un PNJ en la pelea.
+   */
+  const soyCombatiente = personajes.some(
+    (c) => c.ownerId === miId && encuentro.combatants.some((cb) => cb.characterId === c.id),
+  );
 
   /** El personaje detrás de la petición, y si se pudo nombrar a SU JUGADOR o solo al personaje. */
   const quienEs = (characterId: string): { nombre: string; esJugador: boolean } => {
@@ -329,6 +353,58 @@ function SalaDeEspera({
     })
     .join(" y ");
 
+  // **El cuerpo de la pantalla, en el orden en que de verdad se decide.**
+  //
+  // «No participo» va primero porque no depende de que la petición de tirada haya resuelto —se
+  // sabe con lo que ya hay en `encuentro`/`personajes`— y porque es la mentira más grave de las
+  // posibles: a alguien que mira un combate ajeno se le decía «ya has tirado», que es el dato
+  // más personal de todos, inventado. No aplica al DM: la sala es «suya» dirija o no un
+  // personaje propio.
+  //
+  // «Comprobando…» y el aviso de error van antes que cualquier cifra: la revisión encontró que
+  // `.data ?? []` colapsaba *cargando*, *falló* y *no hay ninguna pendiente* en el mismo `[]`, así
+  // que el primer render —y cualquier `GET` que fallara— leía «Todos han tirado. Puedes empezar
+  // cuando quieras» antes de que la respuesta llegara siquiera. Es la peor dirección posible para
+  // un botón que fuerza el combate sin esperar a quien falte.
+  let cuerpo: ReactNode;
+  if (!esDm && !soyCombatiente) {
+    cuerpo = (
+      <p className="font-chrome text-chrome-xs text-muted">
+        La mesa está preparando un combate. No participas en él.
+      </p>
+    );
+  } else if (peticionesQuery.isPending) {
+    cuerpo = <p className="font-chrome text-chrome-xs text-muted">Comprobando quién ha tirado…</p>;
+  } else if (peticionesQuery.isError) {
+    cuerpo = (
+      <p role="alert" className="font-chrome text-chrome-xs text-danger-text">
+        No se ha podido comprobar quién ha tirado: {(peticionesQuery.error as Error).message}
+      </p>
+    );
+  } else if (esDm) {
+    cuerpo = (
+      <p className="font-chrome text-chrome-xs text-muted">
+        {pendientes.length > 0
+          ? `Esperando a ${textoDeEspera}.`
+          : "Todos han tirado su iniciativa. Puedes empezar cuando quieras."}
+      </p>
+    );
+  } else {
+    cuerpo = (
+      <p className="font-chrome text-chrome-xs text-muted">
+        {pendientes.length > 0
+          ? "Todavía te falta tirar tu iniciativa."
+          : "Ya has tirado. Esperando a que responda el resto de la mesa."}
+      </p>
+    );
+  }
+
+  // **Solo el DM, y solo cuando la lista de pendientes ya resolvió.** Pintar «N de M» mientras
+  // `peticionesQuery` está cargando o falló es exactamente el mismo fallo que `cuerpo` de arriba
+  // evita en la frase: una cifra calculada sobre un `[]` que no es «cero pendientes», es «todavía
+  // no lo sé».
+  const contadorListo = esDm && !peticionesQuery.isPending && !peticionesQuery.isError;
+
   return (
     <section
       aria-label={NOMBRE_ESTADO_DE_COMBATE.PREPARING}
@@ -338,8 +414,14 @@ function SalaDeEspera({
         <span className="font-title text-chrome-sm uppercase tracking-widest text-warning-text">
           {NOMBRE_ESTADO_DE_COMBATE.PREPARING}
         </span>
-        {esDm && (
-          <span className="font-data text-chrome-xs tabular-nums text-muted">
+        {contadorListo && (
+          // **El texto visible es breve a propósito** («2 de 4»), pero un número suelto no es
+          // una frase para quien lo escucha con un lector de pantalla — de ahí el `aria-label`
+          // con el sustantivo que el texto visible se calla.
+          <span
+            className="font-data text-chrome-xs tabular-nums text-muted"
+            aria-label={`${respondido} de ${total} combatientes han tirado su iniciativa`}
+          >
             {`${respondido} de ${total}`}
           </span>
         )}
@@ -351,10 +433,16 @@ function SalaDeEspera({
               variant="ghost"
               className="px-2 py-0.5 text-chrome-xs"
               disabled={forceStart.isPending}
+              aria-describedby={forceStart.isPending ? "sala-espera-empezar-motivo" : undefined}
               onClick={() => forceStart.mutate(encuentro.id)}
             >
               Empezar igualmente
             </Button>
+            {forceStart.isPending && (
+              <span id="sala-espera-empezar-motivo" className="sr-only">
+                Enviando la petición de empezar el combate sin esperar a los que faltan.
+              </span>
+            )}
             <Button
               type="button"
               variant="danger"
@@ -367,41 +455,34 @@ function SalaDeEspera({
         )}
       </div>
 
-      {esDm ? (
-        <p className="font-chrome text-chrome-xs text-muted">
-          {pendientes.length > 0
-            ? `Esperando a ${textoDeEspera}.`
-            : "Todos han tirado su iniciativa. Puedes empezar cuando quieras."}
-        </p>
-      ) : (
-        <p className="font-chrome text-chrome-xs text-muted">
-          {pendientes.length > 0
-            ? "Todavía te falta tirar tu iniciativa."
-            : "Ya has tirado. Esperando a que responda el resto de la mesa."}
-        </p>
-      )}
+      {cuerpo}
 
       {forceStart.isError && (
         <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
           No se ha podido empezar el combate: {(forceStart.error as Error).message}
         </p>
       )}
-      {cancelar.isError && (
-        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
-          No se ha podido cancelar el combate: {(cancelar.error as Error).message}
-        </p>
-      )}
 
       {cancelando && (
         <Dialog open onClose={() => setCancelando(false)} title="Cancelar el combate">
           {/* **La consecuencia, no un «¿seguro?».** Cancelar BORRA el combate y las peticiones de
-              iniciativa de todos, tiradas o no, y no deja rastro en el registro —a diferencia de
-              terminar un combate `ACTIVE`, que sí queda con sus asaltos—: quien pulse esto tiene
-              que leerlo antes, no adivinarlo tras un «sí» reflejo. */}
+              iniciativa de todos, tiradas o no; **lo que ya se tiró NO se borra**: las iniciativas
+              que ya se resolvieron —la del DM al empezar el encuentro, y la de quien haya
+              respondido— son sucesos ya escritos en el registro (`ABILITY_ROLL`,
+              `rolls.service.ts`) y `cancel()` solo borra `RollRequest` y `Encounter`
+              (`encounters.service.ts`), nunca sucesos. Decir lo contrario —«no queda rastro»,
+              como decía la primera versión de este texto— era la misma mentira que este diálogo
+              existe para no cometer: quien pulse esto tiene que leer la consecuencia de verdad,
+              no una más cómoda. */}
           <p className="font-chrome text-chrome-sm text-text">
-            Se borra el combate entero y las peticiones de iniciativa de todos —tiradas o no—. No
-            llegó a jugarse ni un asalto, así que tampoco queda rastro en el registro.
+            Se borra el combate entero y las peticiones de iniciativa de todos —tiradas o no—. Las
+            iniciativas que ya se tiraron siguen en el registro de la mesa: cancelar no las borra.
           </p>
+          {cancelar.isError && (
+            <p role="alert" className="mt-s3 font-chrome text-chrome-xs text-danger-text">
+              No se ha podido cancelar el combate: {(cancelar.error as Error).message}
+            </p>
+          )}
           <div className="mt-s4 flex justify-end gap-s3">
             <Button type="button" variant="ghost" onClick={() => setCancelando(false)}>
               No, seguir esperando
@@ -410,12 +491,18 @@ function SalaDeEspera({
               type="button"
               variant="danger"
               disabled={cancelar.isPending}
+              aria-describedby={cancelar.isPending ? "sala-espera-cancelar-motivo" : undefined}
               onClick={() =>
                 cancelar.mutate(encuentro.id, { onSuccess: () => setCancelando(false) })
               }
             >
               Cancelar el combate
             </Button>
+            {cancelar.isPending && (
+              <span id="sala-espera-cancelar-motivo" className="sr-only">
+                Enviando la cancelación del combate.
+              </span>
+            )}
           </div>
         </Dialog>
       )}

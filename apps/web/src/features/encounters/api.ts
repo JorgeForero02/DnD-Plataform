@@ -94,9 +94,12 @@ export function forceStartEncounter(
 
 /**
  * Tarea 4 — cancelar un combate que nunca empezó a jugarse. Solo `PREPARING`; el servidor
- * responde **204** (`EncountersController.cancel`) y borra el encuentro y sus peticiones de
- * iniciativa sin dejar rastro en el registro — por eso el gesto lleva su propio diálogo
- * explicando la consecuencia (`TiraDeIniciativa.tsx`), no un «¿seguro?» genérico.
+ * responde **204** (`EncountersController.cancel`) y borra el `Encounter` y sus `RollRequest`,
+ * **nunca sucesos** (`encounters.service.ts`, método `cancel`) — la tirada de iniciativa que el
+ * DM ya lanzó al empezar el encuentro, y la de quien haya respondido antes de que se cancele,
+ * quedan escritas en el registro para siempre. Por eso el gesto lleva su propio diálogo
+ * explicando la consecuencia REAL (`TiraDeIniciativa.tsx`), no un «¿seguro?» genérico ni una
+ * promesa de borrado total que el servidor no cumple.
  */
 export function cancelEncounter(
   campaignId: string,

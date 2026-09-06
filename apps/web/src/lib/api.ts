@@ -54,6 +54,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   // que consume la web. Sin este guardián, cancelar un combate desde el navegador lanzaba
   // `SyntaxError: Unexpected end of JSON input` aunque el servidor hubiera hecho exactamente lo
   // que se le pidió — el fallo era del cliente leyendo su propio éxito como un error.
+  //
+  // **Quien llama a un endpoint 204 tiene que tipar `T` como `void`** (ver `cancelEncounter`,
+  // `features/encounters/api.ts`): esto devuelve `undefined`, y pedir aquí un tipo con campos
+  // obligatorios compila pero miente en tiempo de ejecución — el objeto que promete no existe.
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }

@@ -4,8 +4,21 @@ import * as encountersApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 import { rollRequestsKey } from "../roll-requests/hooks";
 
+/**
+ * La raíz de todo lo que cuelga de los encuentros de una campaña, **exportada para que
+ * `features/live/canal.ts` la use tal cual** — TanStack Query v5 hace coincidir
+ * `invalidateQueries({ queryKey })` **por prefijo** salvo `exact: true` (la misma regla que ya
+ * usa esa línea con `["campaigns", campaignId]`), así que invalidar esto invalida
+ * `currentEncounterKey` de CUALQUIER sesión sin necesitar el `sessionId`, que el aviso del canal
+ * no lleva. La ronda de arreglo 1 (2026-09-06) había escrito en su lugar un predicado a mano
+ * justificado con «no hay un array exacto que invalidar» — la propia coincidencia por prefijo
+ * que este comentario describe ya lo resolvía, así que el predicado no hacía falta y su
+ * justificación era falsa. Corregido, y con él `docs/decisiones.md` (E-N-6).
+ */
+export const encountersKey = (campaignId: string) => ["encounters", campaignId] as const;
+
 export const currentEncounterKey = (campaignId: string, sessionId: string) =>
-  ["encounters", campaignId, sessionId, "current"] as const;
+  [...encountersKey(campaignId), sessionId, "current"] as const;
 
 /**
  * El encuentro activo, resondeado como la sesión: **cada 10 s y al volver a la ventana.**

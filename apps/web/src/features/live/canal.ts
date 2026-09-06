@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/api";
 import { notificationsKey } from "../notifications/hooks";
+import { encountersKey } from "../encounters/hooks";
 
 // Plan 12 · 12.3 (D-OP-22) — **el nervio en vivo, en el navegador.**
 //
@@ -88,15 +89,14 @@ export function useCanalEnVivo(campaignId: string | undefined) {
         // (`features/encounters/hooks.ts`) es `["encounters", campaignId, sessionId, "current"]`
         // — empieza en `"encounters"`, no en `"campaigns"` — así que el DM veía «0 de 3» hasta el
         // siguiente sondeo de 10 s (`SONDEO_DE_RED_DE_SEGURIDAD_MS`) aunque los tres ya hubieran
-        // tirado. **Por predicado y no realineando la clave**: `currentEncounterKey` no lleva el
-        // `sessionId` en el aviso —el servidor solo manda `campaignId`— así que no hay un array
-        // exacto que invalidar, y cambiar su prefijo tocaría cada mutación de
-        // `features/encounters/hooks.ts` (pasar turno, terminar, empezar igualmente, cancelar)
-        // para ganar un requisito que un predicado resuelve sin tocar ninguna.
-        void qc.invalidateQueries({
-          predicate: (query) =>
-            query.queryKey[0] === "encounters" && query.queryKey[1] === campaignId,
-        });
+        // tirado. **Se invalida con `encountersKey(campaignId)`** —`["encounters", campaignId]`,
+        // sin `sessionId`— porque `invalidateQueries({ queryKey })` coincide **por prefijo**
+        // salvo `exact: true`, exactamente la misma regla que ya usa la línea de arriba con
+        // `["campaigns", campaignId]`: no hace falta el `sessionId` para invalidar TODAS las
+        // sesiones de esta campaña, así que tampoco hacía falta el predicado que esta línea tuvo
+        // en la ronda de arreglo 1 — la revisión lo cazó, con la justificación escrita («no hay
+        // un array exacto que invalidar») siendo ella misma falsa.
+        void qc.invalidateQueries({ queryKey: encountersKey(campaignId) });
       };
     })();
 

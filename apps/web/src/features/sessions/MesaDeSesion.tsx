@@ -78,8 +78,9 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   });
   const { data: personajes } = useCharacters(campaignId);
   // **Los PNJ también combaten**, y `useCharacters` no los trae: esa lista es «quién se sienta a
-  // la mesa». Sin esta, el orden de turnos llamaba «Alguien» a un PNJ y el diálogo de combate no
-  // lo ofrecía siquiera.
+  // la mesa». Sin esta, el orden de turnos llamaba «Alguien» a un PNJ, el diálogo de combate no
+  // lo ofrecía siquiera, y el elenco no tenía manera de dañarlo ni ponerle una condición (tarea
+  // 9b, 2026-09-06) — tres pantallas comparten esta única consulta, ninguna pide la suya.
   const { data: pnjs } = useNpcs(campaignId);
   const miId = useAuthStore((st) => st.user?.id);
   // **Uno a la vez**: el estrato superpuesto del reseño. Abrir la bolsa cierra la hoja.
@@ -220,6 +221,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
                 campaignId={campaignId}
                 asistencia={sesion?.attendance ?? null}
                 esDm={esDm}
+                pnjs={pnjs ?? []}
               />
               <RailDePaneles
                 onAbrir={setPanel}

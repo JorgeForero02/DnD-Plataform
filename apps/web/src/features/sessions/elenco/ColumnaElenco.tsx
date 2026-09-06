@@ -1,12 +1,14 @@
 import { IconoElenco } from "../iconos";
 import { PanelDeMesa } from "../PanelDeMesa";
 import { FichaDeElenco } from "./FichaDeElenco";
+import { FichaDePnj } from "./FichaDePnj";
 import { useMembers } from "../../campaigns/members";
 import type { Member } from "../../campaigns/members";
 import { useCharacters } from "../../characters/hooks";
 import { useCurrentSession } from "../hooks";
 import { useCurrentEncounter } from "../../encounters/hooks";
 import { useAuthStore } from "../../../store/auth.store";
+import type { NpcEnLaMesa } from "../../bestiario/api";
 
 // **Carril C2 (2026-09-04) — el elenco con mandos.** Lo que la Ola 0 movió aquí era la versión
 // vieja; esto es lo que pedía la auditoría del 2026-09-04 (§1): mandos «Daño», «Condición» y el
@@ -31,15 +33,31 @@ import { useAuthStore } from "../../../store/auth.store";
  * React Query devuelve **la misma consulta**, no una segunda: comparten clave, así que no hay ni
  * una petición más de las que ya había. Si el compositor acaba pasando el encuentro, estas dos
  * líneas se sustituyen por una prop y nada más cambia.
+ *
+ * **Los PNJ, en cambio, SÍ llegan por prop** (tarea 9b, 2026-09-06): a diferencia del encuentro,
+ * `MesaDeSesion.tsx` ya los pedía con `useNpcs` para el orden de turnos y el diálogo de combate —
+ * pedirlos otra vez aquí sería la segunda consulta que el párrafo de arriba dice que no hace
+ * falta para el encuentro, solo que esta vez sí evitable porque el compositor ya tiene el dato en
+ * la mano. Sin ellos, el DM no tenía manera de quitarles vida ni ponerles condiciones desde la
+ * mesa: `useCharacters` los excluye a propósito (`characters.service.ts`, «quién se sienta a la
+ * mesa»), así que ningún PNJ ha pisado nunca esta columna.
  */
 export function ColumnaElenco({
   campaignId,
   asistencia,
   esDm,
+  pnjs = [],
 }: {
   campaignId: string;
   asistencia: { userId: string; characterId?: string }[] | null;
   esDm: boolean;
+  /**
+   * **Los PNJ de la mesa, ya filtrados por `canView` en el servidor** (`useNpcs`, misma regla
+   * que `bestiario/api.ts` documenta): uno que el DM no ha revelado no llega aquí, y esta columna
+   * no lo compensa ni lo relaja — si algún día llegara uno que no debería, es un fallo del
+   * servidor, no algo que esconder en la pantalla.
+   */
+  pnjs?: NpcEnLaMesa[];
 }) {
   const { data: miembros } = useMembers(campaignId);
   const { data: personajes } = useCharacters(campaignId);
@@ -74,6 +92,26 @@ export function ColumnaElenco({
       : [],
   );
 
+  // **Cuándo se enseña un PNJ en el elenco: solo mientras combate.** Fuera de combate la columna
+  // es la mesa, no el bestiario entero — un PNJ que el DM tiene instanciado pero no ha metido en
+  // pelea no aporta nada que se mire treinta veces por sesión, que es el criterio que ya usa el
+  // resto de esta columna. `encuentro.combatants` es la lista de quién combate AHORA MISMO, y
+  // cruzarla con `pnjs` (ya filtrados por `canView`) da exactamente eso: los PNJ que están en la
+  // pelea, en el orden en que combaten. Un combatiente sin PNJ correspondiente es un personaje de
+  // jugador (ya pintado arriba) o un PNJ que este espectador no puede ver — ninguno de los dos
+  // casos añade nada aquí.
+  const combatientesPnj = encuentro
+    ? encuentro.combatants
+        .map((c) => ({ combatant: c, pnj: pnjs.find((p) => p.id === c.characterId) }))
+        .filter(
+          (x): x is { combatant: (typeof encuentro.combatants)[number]; pnj: NpcEnLaMesa } =>
+            x.pnj !== undefined,
+        )
+        .sort((a, b) => a.combatant.position - b.combatant.position)
+    : [];
+
+  const nadaEnLaMesa = enMesa.length === 0 && combatientesPnj.length === 0;
+
   return (
     <PanelDeMesa
       etiqueta="En la mesa"
@@ -87,11 +125,11 @@ export function ColumnaElenco({
           Nadie declaró quién vino al empezar la sesión.
         </p>
       )}
-      {enMesa.length === 0 ? (
+      {nadaEnLaMesa ? (
         <p className="font-chrome text-chrome-xs text-muted">
           Ningún personaje en la mesa todavía.
         </p>
-      ) : mios.length > 0 && !esDm ? (
+      ) : enMesa.length === 0 ? null : mios.length > 0 && !esDm ? (
         // **La disposición del jugador**, y sale de una frase del autor que invierte el modelo
         // de Baldur's Gate 3: *«en BG3 es un jugador manejando varios; acá somos varios
         // manejando uno propio»*. En BG3 los retratos del grupo son MANDOS —pulsas uno y pasas
@@ -161,6 +199,31 @@ export function ColumnaElenco({
                 conMandos={esDm}
                 puedeCambiarPg={!esDm && p.ownerId === miId}
                 turnoActual={deQuienEsElTurno.has(p.id)}
+                enCombate={enCombate}
+              />
+            ))}
+          </ul>
+        </>
+      )}
+      {combatientesPnj.length > 0 && (
+        // **Los PNJ en combate, aparte del grupo.** El jugador los ve para saber cómo va la
+        // pelea —PG, condiciones, de qué bando— pero **sin mandos**: la regla de la mesa es que
+        // sobre el personaje de otro no van botones, y un PNJ no es de nadie que esté jugando.
+        // El DM sí los lleva, porque de eso trataba el encargo: hasta hoy no había manera de
+        // quitarles vida ni ponerles condiciones desde aquí.
+        <>
+          <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-warning-text">
+            PNJ en combate
+          </h4>
+          <ul className="flex flex-col gap-s2">
+            {combatientesPnj.map(({ combatant, pnj }) => (
+              <FichaDePnj
+                key={pnj.id}
+                campaignId={campaignId}
+                pnj={pnj}
+                bando={combatant.side}
+                esDm={esDm}
+                turnoActual={deQuienEsElTurno.has(pnj.id)}
                 enCombate={enCombate}
               />
             ))}

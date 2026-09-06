@@ -266,8 +266,12 @@ export function FichaDeElenco({
  *
  * **Una condición vencida se marca, no desaparece.** El servidor la deja en la lista a propósito
  * (decisión D-2C-2) para que nadie vea cambiar sus números sin saber por qué.
+ *
+ * **Exportada** (tarea 9b, 2026-09-06): `FichaDePnj.tsx` la reutiliza para los PNJ en combate —
+ * no lee nada de `Character`, solo `campaignId` y la lista de condiciones, así que sirve igual
+ * para un personaje que para un PNJ, que es la misma fila por debajo.
  */
-function Condiciones({
+export function Condiciones({
   campaignId,
   condiciones,
 }: {

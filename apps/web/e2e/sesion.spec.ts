@@ -313,6 +313,65 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   ).toBeVisible({ timeout: 15_000 });
 });
 
+test("la hoja dentro del cajón: la tira fija no se come su cuerpo, y la bolsa cabe", async ({
+  page,
+}) => {
+  // **Los dos defectos que el autor vio en pantalla el 2026-09-06 vivían aquí**, y en ningún otro
+  // sitio: en la hoja abierta DENTRO del cajón, no en la hoja a página completa.
+  //
+  //   · La tira de los cinco números llevaba `top-16` y `-mt-s5` escritos a mano —los 64px de la
+  //     cabecera de `AppShell`—. Dentro de un cajón esa cabecera no existe, así que se paraba 64px
+  //     por debajo del borde y **se solapaba 72px con su propio cuerpo**.
+  //   · Y el botón «Aplicar» de las monedas **se salía 24,5px de su tarjeta**: con tres columnas,
+  //     en la columna estrecha del cajón cada celda queda en 77px y el botón mide 70.
+  //
+  // **Y esta prueba existe porque la primera que se escribió NO los protegía.** Medía el botón en
+  // la hoja a PÁGINA COMPLETA, donde las tarjetas son anchas y nunca se salió: devolver
+  // `sm:grid-cols-3` —el defecto exacto— la dejaba en verde. Comprobar la pieza donde no se rompe
+  // es probar que existe, no que actúa.
+  const cuenta = await registrarse(page);
+  await crearCampanaConSesion(page);
+  await crearPersonajeConHoja(page, "Borin Barbaférrea");
+
+  await page.getByRole("link", { name: "La mesa de prueba" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByLabel(cuenta.displayName).check();
+  await page
+    .getByLabel(`Personaje de ${cuenta.displayName}`)
+    .selectOption({ label: "Borin Barbaférrea" });
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  await page
+    .getByRole("button", { name: "Abrir la ficha de Borin Barbaférrea" })
+    .click({ timeout: 20_000 });
+
+  // 1 · La tira fija y el cuerpo de la hoja son HERMANOS: el borde de abajo de una no puede
+  //     pasarse del borde de arriba del otro. Con el defecto había 72px de solape; sin él, aire.
+  const tira = page.locator('section[aria-label="resumen de combate"]');
+  await expect(tira).toBeVisible({ timeout: 20_000 });
+  const solape = await tira.evaluate((el) => {
+    const cuerpo = el.nextElementSibling;
+    if (!cuerpo) throw new Error("la tira no tiene cuerpo detrás");
+    return el.getBoundingClientRect().bottom - cuerpo.getBoundingClientRect().top;
+  });
+  expect(solape).toBeLessThanOrEqual(0);
+
+  // 2 · El botón de una moneda, medido contra SU tarjeta, en la columna estrecha del cajón.
+  const boton = page.getByRole("button", { name: "Aplicar cambio de cobre" }).first();
+  await boton.scrollIntoViewIfNeeded();
+  const desborde = await boton.evaluate((el) => {
+    const tarjeta = el.closest("div.rounded-radius-sm.border");
+    if (!tarjeta) throw new Error("el botón no está dentro de una tarjeta");
+    return el.getBoundingClientRect().right - tarjeta.getBoundingClientRect().right;
+  });
+  expect(desborde).toBeLessThanOrEqual(0);
+});
+
 test("una anotación hecha desde la mesa aparece con su chip de clase y con quién la puso", async ({
   page,
 }) => {

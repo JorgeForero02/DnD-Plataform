@@ -98,6 +98,11 @@ export const GAME_EVENT_TYPES = [
   "TURN_ADVANCED",
   "ENCOUNTER_ENDED",
   "ROUND_ADVANCED",
+  // Paso 1, tarea 16 — **lo que se corrige también viaja por el canal en vivo**. Corregir el
+  // bando y el reajuste del turno activo que hace `setInitiative` cambiaban la mesa sin escribir
+  // nada, así que una segunda pestaña no se enteraba hasta refrescar.
+  "COMBATANT_SIDE_CHANGED",
+  "ACTIVE_TURN_SHIFTED",
   // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9). **Dos tipos y no uno con una
   // bandera**: la línea de tiempo cuenta "qué pasó", y "se archivó" y "se recuperó" son dos
   // hechos distintos con su propio momento, igual que CONDITION_APPLIED/CONDITION_REMOVED.
@@ -485,6 +490,29 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   }),
 
   // --- Iniciativa y orden de turnos (2.5.2) ---
+  /**
+   * **De qué lado a cuál**, y sin nombres ni posiciones: el suceso es `PLAYERS` y la ficha del
+   * encuentro ya filtra por `canView`, así que nombrar al combatiente anunciaría uno que quien
+   * lee puede no poder ver. Es la misma razón por la que `TURN_ADVANCED` viaja sin posiciones.
+   */
+  z.object({
+    type: z.literal("COMBATANT_SIDE_CHANGED"),
+    encounterId: z.string().min(1).max(60),
+    from: z.string().min(1).max(20),
+    to: z.string().min(1).max(20),
+  }),
+
+  /**
+   * **El turno activo cambió de combatiente sin que nadie pasara turno**, porque el DM corrigió
+   * una iniciativa y el orden se recolocó. Sin este suceso, la otra pestaña seguía señalando a
+   * quien ya no le toca.
+   */
+  z.object({
+    type: z.literal("ACTIVE_TURN_SHIFTED"),
+    encounterId: z.string().min(1).max(60),
+    round: z.number().int().min(1).max(1000),
+  }),
+
   z.object({
     type: z.literal("ENCOUNTER_STARTED"),
     encounterId: z.string().cuid(),

@@ -547,4 +547,67 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`);
     expect(r.status).toBe(403);
   });
+
+  it("corregir el bando deja suceso, y dice de qué lado a cuál (paso 1, tarea 16)", async () => {
+    // **`setSide` no escribía nada**, así que una segunda pestaña no se enteraba hasta refrescar:
+    // el canal en vivo se alimenta de sucesos, no de sondeo.
+    const s = app.getHttpServer();
+    const encuentro = await request(s)
+      .get(encUrl(`/${encounterId}`))
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const combatiente = encuentro.body.combatants.find(
+      (c: { characterId: string }) => c.characterId === pc1Id,
+    );
+    const bandoAntes = combatiente.side;
+    const bandoNuevo = bandoAntes === "ALLY" ? "ENEMY" : "ALLY";
+
+    await request(s)
+      .patch(encUrl(`/${encounterId}/combatants/${combatiente.id}/side`))
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ side: bandoNuevo })
+      .expect(200);
+
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .query({ limit: 50 })
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const suceso = log.body.events.find(
+      (e: { type: string }) => e.type === "COMBATANT_SIDE_CHANGED",
+    );
+    expect(suceso).toBeDefined();
+    expect(suceso.payload).toMatchObject({ from: bandoAntes, to: bandoNuevo });
+    // **El jugador lo ve**: si el suceso fuera del DM, la segunda pestaña seguiría sin enterarse.
+    expect(suceso.visibility).toBe("PLAYERS");
+  });
+
+  it("y corregirlo al MISMO bando no escribe un suceso de nada", async () => {
+    const s = app.getHttpServer();
+    const encuentro = await request(s)
+      .get(encUrl(`/${encounterId}`))
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const combatiente = encuentro.body.combatants.find(
+      (c: { characterId: string }) => c.characterId === pc1Id,
+    );
+
+    const antes = (
+      await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.events.filter((e: { type: string }) => e.type === "COMBATANT_SIDE_CHANGED").length;
+
+    await request(s)
+      .patch(encUrl(`/${encounterId}/combatants/${combatiente.id}/side`))
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ side: combatiente.side })
+      .expect(200);
+
+    const despues = (
+      await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.events.filter((e: { type: string }) => e.type === "COMBATANT_SIDE_CHANGED").length;
+    expect(despues).toBe(antes);
+  });
 });

@@ -376,25 +376,6 @@ faltaban ya existen:
 **Lo que queda, y no es esta ficha:** `setSide` y el reajuste de `activePosition` todavía no
 emiten suceso por el canal en vivo — ficha propia, ver «P2-eventos» más abajo.
 
-## P2-eventos · `setSide` y el reajuste de `activePosition` no emiten suceso: no viajan por el canal en vivo (2026-09-05, ronda de arreglo 1 de la tarea 5)
-
-**Decidido con la pantalla, no aquí** — queda para las tareas 8 y 10, que son las que montan el
-canal en vivo del combate. Lo que hoy cuesta, mientras tanto:
-
-- **`EncountersService.setSide`** corrige el bando (`PATCH .../combatants/:cid/side`) y no llama a
-  `GameEventsService.record`. Quien lo escribió lo ve al releer (`get()` al final del método); una
-  segunda pestaña abierta en la misma mesa **no se entera hasta que alguien la refresque** — nada
-  que hoy escuche el registro (`TURN_ADVANCED`, `ENCOUNTER_STARTED`…) avisa de un cambio de bando.
-- **El ajuste de `activePosition`** que la misma ronda de arreglo añadió a `setInitiative` —seguir
-  el turno por identidad cuando el combate está `ACTIVE` (ver `docs/07-historial.md`)— tampoco
-  escribe suceso. Es un efecto **secundario** de corregir un número de iniciativa, y hoy es
-  invisible por el mismo canal: el `PATCH .../combatants/:cid` no emite nada distinto de lo que ya
-  emitía antes de la ronda de arreglo (que es ninguno), así que quien mire otra pestaña no sabe que
-  el turno activo cambió de combatiente hasta que refresca.
-
-**Cierra cuando** las tareas 8 y 10 decidan qué suceso (si alguno) corresponde a cada uno de los dos
-casos y lo escriban — no antes, porque decidirlo sin la pantalla delante sería adivinar el vocabulario.
-
 ## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 
 **Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela

@@ -97,6 +97,11 @@ enum GameEventType {
   // La iniciativa la reparte el sistema cuando el DM fuerza el arranque sin esperar a todos
   // (2026-09-05): un suceso propio, no un ENCOUNTER_STARTED que finja que tiró cada jugador.
   INITIATIVE_ROLLED_BY_SYSTEM
+  // Paso 1, tarea 16 (2026-09-06): corregir el bando y el reajuste del turno activo se escribian
+  // **sin dejar suceso**, asi que una segunda pestana no se enteraba hasta refrescar. Un valor de
+  // este enum se ANADE, nunca se edita ni se borra.
+  COMBATANT_SIDE_CHANGED
+  ACTIVE_TURN_SHIFTED
 }
 
 enum ResourceReset {

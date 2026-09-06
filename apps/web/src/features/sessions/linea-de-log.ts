@@ -1,4 +1,5 @@
-import type { EntityType, GameEventPayload, SessionNoteKind } from "@dnd/shared";
+import type { CombatantSide, EntityType, GameEventPayload, SessionNoteKind } from "@dnd/shared";
+import { NOMBRE_BANDO } from "../../dominio/combate";
 import { nombreAnulable, nombreCondicion } from "../character-sheet/vocabulario";
 import { NOMBRE_MONEDA, NOMBRE_RANURA, NOMBRE_ZONA } from "../inventory/vocabulario";
 import { NOMBRE_SELLO } from "./vocabulario";
@@ -238,6 +239,14 @@ export function lineaDeLog(p: GameEventPayload): string {
       return `Pasa el turno (asalto ${p.round})`;
     case "ROUND_ADVANCED":
       return `Asalto ${p.to}`;
+    case "COMBATANT_SIDE_CHANGED":
+      // **El vocabulario en español se escribe una sola vez**, en `dominio/combate.ts`: ningún
+      // valor de enumeración llega a la pantalla, ni siquiera dentro de una frase de registro.
+      return `El DM corrige un bando: de ${NOMBRE_BANDO[p.from as CombatantSide] ?? p.from} a ${NOMBRE_BANDO[p.to as CombatantSide] ?? p.to}`;
+    case "ACTIVE_TURN_SHIFTED":
+      // **Sin nombres**, por lo mismo que `TURN_ADVANCED`: el suceso no los trae, y quien lee
+      // puede no poder ver al combatiente del que se habla.
+      return `Cambia a quién le toca (asalto ${p.round})`;
     case "ENCOUNTER_ENDED":
       return p.rounds === 1
         ? "Termina el combate en un asalto"

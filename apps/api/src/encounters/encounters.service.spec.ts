@@ -133,6 +133,9 @@ describe("EncountersService", () => {
           update: prisma.combatant.update,
           updateMany: prisma.combatant.updateMany,
           findMany: prisma.combatant.findMany,
+          // Paso 1, tarea 16: `setSide` lee el bando de antes en la misma transacción, para que
+          // su suceso pueda decir **de qué lado a cuál**.
+          findFirst: prisma.combatant.findFirst,
         },
         rollRequest: { create: prisma.rollRequest.create },
         campaign: { findUniqueOrThrow: prisma.campaign.findUniqueOrThrow },
@@ -569,7 +572,11 @@ describe("EncountersService", () => {
     });
 
     it("el DM cambia el bando de un combatiente", async () => {
-      prisma.combatant.updateMany.mockResolvedValue({ count: 1 });
+      // **Desde el paso 1, tarea 16, `setSide` lee el bando de antes y escribe su suceso**, así
+      // que ya no es un `updateMany` suelto: es un `findFirst` + un `update` dentro de una
+      // transacción, para que el registro pueda decir de qué lado a cuál.
+      prisma.combatant.findFirst.mockResolvedValue({ side: "ALLY" });
+      prisma.combatant.update.mockResolvedValue({ id: "comb1", side: "ENEMY" });
       // El estado que `get()` lee DESPUÉS de la escritura ya trae el bando corregido — es lo que
       // `combatant.updateMany` acaba de guardar en una base real.
       prisma.encounter.findFirst.mockResolvedValue({
@@ -594,11 +601,24 @@ describe("EncountersService", () => {
         side: "ENEMY",
       });
 
-      expect(prisma.combatant.updateMany).toHaveBeenCalledWith({
-        where: { id: "comb1", encounterId: "enc1", encounter: { sessionId: "s1" } },
+      expect(prisma.combatant.update).toHaveBeenCalledWith({
+        where: { id: "comb1" },
         data: { side: "ENEMY" },
       });
       expect(resultado.combatants[0]).toMatchObject({ characterId: "pc1", side: "ENEMY" });
+      // **Y deja rastro, con los dos lados.** Sin esto, el canal en vivo no tiene de qué tirar.
+      expect(events.record).toHaveBeenCalledWith(
+        "dm",
+        "c1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "COMBATANT_SIDE_CHANGED",
+            from: "ALLY",
+            to: "ENEMY",
+          }),
+        }),
+        expect.anything(),
+      );
     });
 
     it("cambiar el bando sin ser DM es 403", async () => {
@@ -610,7 +630,7 @@ describe("EncountersService", () => {
       // **Por el motivo correcto**: nada se escribió. Si el 403 llegara por otra vía (un
       // `NotFoundException` que Nest tradujera distinto, por ejemplo), esta llamada sí se habría
       // hecho.
-      expect(prisma.combatant.updateMany).not.toHaveBeenCalled();
+      expect(prisma.combatant.update).not.toHaveBeenCalled();
     });
   });
 

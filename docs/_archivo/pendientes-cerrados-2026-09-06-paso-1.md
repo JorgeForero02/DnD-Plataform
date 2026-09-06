@@ -244,3 +244,43 @@ statblock — probado con mutación: quitarle el origen del modificador (statblo
 sustituya) tiene que enrojecer la prueba que compruebe la reducción.
 
 </details>
+
+
+---
+
+## ~~P2-eventos · `setSide` y el reajuste de `activePosition` no emiten suceso~~ — **CERRADA el 2026-09-06** (paso 1, tarea 16)
+
+Dos tipos nuevos en el vocabulario cerrado —`COMBATANT_SIDE_CHANGED` y `ACTIVE_TURN_SHIFTED`—, su
+`record` **dentro de la misma transacción** que la escritura, y su línea en español en
+`linea-de-log.ts`, con el nombre del bando saliendo de `dominio/combate.ts`: **ningún valor de
+enumeración llega a la pantalla**, tampoco dentro de una frase de registro. Un valor del enum de
+PostgreSQL **se añade** (migración `20260906140000_side_and_turn_events`), nunca se edita.
+
+**La ficha decía «que lo decidan las tareas 8 y 10, que montan la pantalla». Ya estaban montadas**,
+que era su condición.
+
+Los dos sucesos viajan **sin nombres ni posiciones**, por lo mismo que `TURN_ADVANCED`: son
+`PLAYERS` y la ficha del encuentro renumera denso para que nadie cuente los huecos de lo que no ve.
+Y corregir al **mismo** bando no escribe nada, que también está probado. Mutación: neutralizar la
+condición del `record` pone roja la unitaria de `setSide`.
+
+<details><summary>Lo que decía la ficha (2026-09-05)</summary>
+
+**Decidido con la pantalla, no aquí** — queda para las tareas 8 y 10, que son las que montan el
+canal en vivo del combate. Lo que hoy cuesta, mientras tanto:
+
+- **`EncountersService.setSide`** corrige el bando (`PATCH .../combatants/:cid/side`) y no llama a
+  `GameEventsService.record`. Quien lo escribió lo ve al releer (`get()` al final del método); una
+  segunda pestaña abierta en la misma mesa **no se entera hasta que alguien la refresque** — nada
+  que hoy escuche el registro (`TURN_ADVANCED`, `ENCOUNTER_STARTED`…) avisa de un cambio de bando.
+- **El ajuste de `activePosition`** que la misma ronda de arreglo añadió a `setInitiative` —seguir
+  el turno por identidad cuando el combate está `ACTIVE` (ver `docs/07-historial.md`)— tampoco
+  escribe suceso. Es un efecto **secundario** de corregir un número de iniciativa, y hoy es
+  invisible por el mismo canal: el `PATCH .../combatants/:cid` no emite nada distinto de lo que ya
+  emitía antes de la ronda de arreglo (que es ninguno), así que quien mire otra pestaña no sabe que
+  el turno activo cambió de combatiente hasta que refresca.
+
+**Cierra cuando** las tareas 8 y 10 decidan qué suceso (si alguno) corresponde a cada uno de los dos
+casos y lo escriban — no antes, porque decidirlo sin la pantalla delante sería adivinar el vocabulario.
+
+</details>

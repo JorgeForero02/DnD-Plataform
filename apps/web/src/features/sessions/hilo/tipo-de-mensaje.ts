@@ -105,6 +105,10 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "CLOCK_ADVANCED":
     case "TURN_ADVANCED":
     case "ROUND_ADVANCED":
+    case "COMBATANT_SIDE_CHANGED":
+    case "ACTIVE_TURN_SHIFTED":
+      // Los dos últimos (paso 1, tarea 16) son el sistema contando un reajuste de la mesa, no una
+      // persona hablando: el mismo cubo que pasar turno o subir de asalto.
       return "sistema";
   }
 }

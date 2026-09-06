@@ -648,10 +648,33 @@ export class EncountersService {
         }
 
         if (nuevaActiva !== activaAntes) {
-          await tx.encounter.update({
+          const actualizado = await tx.encounter.update({
             where: { id: encounterId },
             data: { activePosition: nuevaActiva },
           });
+          // **Y se dice** (paso 1, tarea 16). Este reajuste cambia de combatiente el turno activo
+          // sin que nadie pase turno, y hasta hoy no escribía nada: una segunda pestaña seguía
+          // señalando a quien ya no le toca hasta que refrescara. Va en la misma transacción que
+          // la escritura: si el reajuste se deshace, el aviso se va con él.
+          await this.events.record(
+            userId,
+            campaignId,
+            {
+              sessionId,
+              subjectType: "encounter",
+              subjectId: encounterId,
+              visibility: "PLAYERS",
+              // **Sin posiciones ni nombres**, por lo mismo que `TURN_ADVANCED`: el suceso es
+              // `PLAYERS` y la ficha del encuentro renumera denso justo para que nadie cuente los
+              // huecos de los combatientes que no ve.
+              payload: {
+                type: "ACTIVE_TURN_SHIFTED",
+                encounterId,
+                round: actualizado.round,
+              },
+            },
+            tx,
+          );
         }
       }
 
@@ -680,11 +703,40 @@ export class EncountersService {
     // de que `get()` devolviera el 404 — que además nunca deshacía nada, porque este método no
     // corre en transacción.
     await this.sesion(campaignId, sessionId);
-    const tocado = await this.prisma.combatant.updateMany({
-      where: { id: combatantId, encounterId, encounter: { sessionId } },
-      data: { side: input.side },
+    // **Se lee el bando de antes dentro de la misma transacción que lo cambia** (paso 1, tarea
+    // 16): el suceso dice **de qué lado a cuál**, y leerlo fuera dejaría un hueco en el que otro
+    // DM lo cambiara y el registro contara una corrección que no ocurrió.
+    await this.prisma.transaction(async (tx) => {
+      const antes = await tx.combatant.findFirst({
+        where: { id: combatantId, encounterId, encounter: { sessionId } },
+        select: { side: true },
+      });
+      if (!antes) throw new NotFoundException("Ese combatiente no está en este combate.");
+
+      await tx.combatant.update({ where: { id: combatantId }, data: { side: input.side } });
+
+      // **Y ahora deja rastro.** `setSide` no escribía ningún suceso, así que una segunda pestaña
+      // no se enteraba de la corrección hasta refrescar: el canal en vivo se alimenta de sucesos.
+      if (antes.side !== input.side) {
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            sessionId,
+            subjectType: "encounter",
+            subjectId: encounterId,
+            visibility: "PLAYERS",
+            payload: {
+              type: "COMBATANT_SIDE_CHANGED",
+              encounterId,
+              from: antes.side,
+              to: input.side,
+            },
+          },
+          tx,
+        );
+      }
     });
-    if (tocado.count === 0) throw new NotFoundException("Ese combatiente no está en este combate.");
     return this.get(userId, campaignId, sessionId, encounterId);
   }
 

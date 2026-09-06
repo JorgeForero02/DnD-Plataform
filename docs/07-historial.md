@@ -48,6 +48,14 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 16 · corregir el bando no viajaba por el canal en vivo.** `setSide` cambiaba el lado
+  **sin escribir ningún suceso**, y el reajuste de `activePosition` que hace `setInitiative`
+  cambiaba de combatiente el turno activo sin decir nada: una segunda pestaña seguía señalando a
+  quien ya no le toca hasta refrescar. Dos tipos nuevos en el vocabulario cerrado, su `record`
+  dentro de la misma transacción que la escritura, y su línea en español con el nombre del bando
+  saliendo del vocabulario del dominio. **Cómo se revierte:** el commit; el enum de PostgreSQL solo
+  crece, así que revertirlo no rompe filas escritas.
+
 - **Tarea 9 · un descanso avanza el reloj de campaña** (D-A-1: largo 8 h, corto 1 h). Hasta hoy
   `rest.service` **leía** el reloj y no lo movía nunca, y su propio 409 mandaba «avanza el reloj de
   la campaña» a mano: ocho horas de descanso no caducaban nada y la regla de un descanso largo por

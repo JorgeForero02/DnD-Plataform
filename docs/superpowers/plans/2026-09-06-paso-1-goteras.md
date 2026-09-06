@@ -795,7 +795,7 @@ git commit -m "feat(api): a player character's damage resistances finally apply"
 
 ---
 
-## Tarea 9 · El descanso mueve el reloj · NO SE EJECUTA SIN DECISIÓN DEL AUTOR
+## Tarea 9 · El descanso mueve el reloj · DESBLOQUEADA (D-A-1, 2026-09-06)
 
 `apps/api/src/character-state/rest/rest.service.ts` **lee** el reloj (`:101`, `:153`, `:232`) y no lo
 avanza nunca: `GameClockService.advance` tiene exactamente dos llamadores, el controlador del reloj y
@@ -808,9 +808,14 @@ bloquea de más hasta que el DM avance el reloj a mano.
 «avanza el reloj de la campaña». **Así que esto es media decisión y media gotera, y no se arregla
 solo.** Que un descanso mueva ocho horas **cambia el comportamiento de todo lo que caduca**.
 
-- [ ] **Paso 0 · El autor lo declara en `docs/04-convenciones.md`.** Sin esa línea escrita, esta
-      tarea **no se empieza**. Si el autor dice que no, se cierra la tarea con una línea en la ficha
-      y se sigue.
+**El autor lo decidió el 2026-09-06 y ya está escrito** en `docs/04-convenciones.md` y en
+`docs/decisiones.md` como **D-A-1**: *«ya lo hace en combate; el descanso también. El DM programa el
+descanso y decide, así se cierra entre sesión y sesión.»* **Largo 8 h, corto 1 h**, y la regla de un
+descanso largo por 24 h sigue en pie — **y ahora se cumple sola**, sin que nadie avance el reloj a
+mano.
+
+- [ ] **Paso 0 · Lee la línea de `docs/04-convenciones.md`** antes de tocar nada, y comprueba que
+      dice lo que este plan dice que dice. Si no está, **para**: alguien la borró.
 - [ ] **Paso 1 · Pruebas:** un descanso largo avanza 8 h · uno corto, 1 h · las condiciones de
       minutos caducan solas al descansar · **dos descansos largos seguidos siguen dando 409** por
       las 24 h.
@@ -1246,7 +1251,7 @@ git commit -m "fix(api): pending rolls can be asked for by encounter, not just t
 
 ---
 
-## Tarea 18 · La fuga del PNJ revelado · NO SE EJECUTA SIN DECISIÓN DEL AUTOR
+## Tarea 18 · La fuga del PNJ revelado · DESBLOQUEADA (D-A-2, 2026-09-06)
 
 **Es lo más grave de lo que quedó fuera de la spec**, y no se arregla solo porque las dos salidas son
 decisiones del autor y **no son equivalentes** (`docs/06-pendientes.md:1222`).
@@ -1267,17 +1272,105 @@ iniciativa.
 instanciar —decisión D-2D-2, «un PNJ en la mesa es una fila de `Character`»— y `getSheet` devuelve
 esa fila a quien pasa `canSee`. **Las dos piezas son correctas por separado.**
 
-- [ ] **Paso 0 · El autor elige una de las dos, y se escribe:**
-      **(a)** ocultar esas columnas a quien no sea DM ni dueño — coherente con la frase, y hay que
-      decidir qué sigue viendo un jugador (¿los PG actuales, para saber si está malherido?); o
-      **(b)** cambiar la frase y aceptar que revelar un PNJ revela sus características — más barato,
-      y entonces la garantía real es «no verás su CA ni su traza».
+**El autor eligió la salida (a) el 2026-09-06** —ocultar— **con una excepción nombrada: los PG
+actuales sí se ven.** Está escrito en `docs/04-convenciones.md` y en `docs/decisiones.md` como
+**D-A-2**. El motivo es de mesa y conviene tenerlo delante al implementar: **saber que un enemigo
+está malherido se ve en la ficción y es información legítima; su hoja no lo es.**
+
+Así que, para un PNJ `PUBLIC` visto por un jugador que no es su dueño:
+
+```
+currentHp        ← SÍ se ve
+str dex con int wis cha · maxHp · AC · competencia · traza · nota del libro   ← NO
+```
+
 - [ ] **Paso 1 · La prueba que lo destapa es UNA LÍNEA**, y la ficha ya la deja escrita:
-      `pnj-en-la-mesa.e2e-spec.ts` recorre cada valor del cuerpo desde el 2026-09-04, así que
-      `expect(valores).not.toContain(18)` **se pondría roja hoy**. Escríbela primero, sea cual sea la
-      salida elegida — con (b) lo que cambia es el texto que se comprueba, no que haya prueba.
-- [ ] **Paso 2 · Implementa la salida elegida.**
-- [ ] **Paso 3 · Mutación** y commit, con la decisión escrita en `docs/decisiones.md`.
+      `pnj-en-la-mesa.e2e-spec.ts` recorre **cada valor** del cuerpo desde el 2026-09-04, así que
+      `expect(valores).not.toContain(18)` **se pondría roja hoy**. Escríbela primero.
+
+- [ ] **Paso 2 · Y escribe la otra mitad, que es la que evita pasarse de celo:**
+
+```ts
+it("pero los PG actuales SÍ los ve: saber que está malherido es de la mesa", async () => {
+  const cuerpo = await hojaComoJugador(pnjPublicoId);
+  expect(cuerpo.currentHp).toBe(85);
+  expect(cuerpo.hp.max).toBeNull();
+});
+```
+
+- [ ] **Paso 3 · Implementa el ocultado** en el camino de lectura, **no en la pantalla**: quien
+      responde es el servidor, y esconder un campo en el navegador no es esconderlo. Cuida que la
+      frase que acompaña la respuesta **diga lo que ahora es verdad** — si sigue diciendo «sus
+      números no son públicos» mientras manda los PG, vuelve a mentir, solo que menos.
+- [ ] **Paso 4 · Mutación** — devuelve la fila entera: la prueba del paso 1 se pone **roja**.
+      Deshaz. Y quita `currentHp`: la del paso 2 se pone roja. **Las dos direcciones, porque la
+      decisión tiene dos mitades.**
+- [ ] **Paso 5 · Tacha la ficha** y commit.
+
+```bash
+git add apps/api docs
+git commit -m "fix(api): a revealed NPC shows its current hit points and nothing else"
+```
+
+---
+
+## Tarea 19 · Cancelar un combate avisa a quien estaba esperando · DECIDIDA (D-A-3, 2026-09-06)
+
+Hoy `EncountersService.cancel` borra el `Encounter` y sus `RollRequest` **sin escribir ningún
+suceso**, a propósito: *«no es historia, es un clic deshecho»*. El coste quedó anotado y **el autor
+lo revisó el 2026-09-06**: *«sí avisa al jugador; pese a que no queda trazabilidad, puede descolocar
+a un jugador»*.
+
+**Esto corrige la decisión anterior** (E-IB-4 en `docs/decisiones.md`), y el motivo del cambio es el
+jugador, no el historial: a quien tenía una petición pendiente **le desaparece la entrada de la
+bandeja sin explicación**.
+
+**La trampa de diseño, que la ficha ya dejó resuelta:** el sujeto del suceso **no puede ser el
+encuentro** —ya no existe para serlo—. Tiene que ser la **sesión** (`subjectType: "session"`), con un
+tipo nuevo en `packages/shared/src/game-event.schema.ts`, **sin ligar a ningún `Encounter`** porque
+para cuando alguien lo lea no habrá ninguno que enlazar.
+
+**Ficheros:**
+- Modificar: `packages/shared/src/game-event.schema.ts` (junto a `ENCOUNTER_STARTED`, línea 97)
+- Modificar: `apps/api/src/encounters/encounters.service.ts` (`cancel`)
+- Modificar: `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts` y `linea-de-log.ts`
+- Prueba: el spec del servicio, y su e2e
+
+- [ ] **Paso 1 · Escribe las pruebas que fallan**
+
+```ts
+it("cancelar deja un suceso de SESIÓN, no de encuentro", async () => {
+  await service.cancel(dmId, campaignId, sessionId, encounterId);
+  const [suceso] = await eventos.list(dmId, campaignId);
+  expect(suceso.type).toBe("ENCOUNTER_CANCELLED");
+  expect(suceso.subjectType).toBe("session");
+  expect(suceso.subjectId).toBe(sessionId);
+});
+
+it("y el jugador que esperaba lo ve en su bandeja", async () => {
+  await pedirIniciativa();
+  await service.cancel(dmId, campaignId, sessionId, encounterId);
+  const avisos = await avisosDe(jugadoraId);
+  expect(avisos.some((a) => /combate.*cancelado/i.test(a.texto))).toBe(true);
+});
+```
+
+- [ ] **Paso 2 · Córrelas** — fallan.
+- [ ] **Paso 3 · La implementación.** El `record` va **dentro de la misma transacción** que el
+      borrado: si el borrado se deshace, el aviso no puede quedarse. **Un valor de enum de
+      PostgreSQL se añade, nunca se edita ni se borra.** Y su línea de registro se escribe en
+      español en `linea-de-log.ts`, con el vocabulario que ya existe.
+- [ ] **Paso 4 · Córrelas** — pasan.
+- [ ] **Paso 5 · Mutación** — quita el `record`: la primera se pone **roja**. Deshaz.
+- [ ] **Paso 6 · Tacha la ficha** (`docs/06-pendientes.md:145`) y **corrige E-IB-4 en
+      `docs/decisiones.md`**, que decía lo contrario: no se borra, se dice que el autor la revisó y
+      por qué.
+- [ ] **Paso 7 · Commit**
+
+```bash
+git add packages/shared apps/api apps/web docs
+git commit -m "feat: cancelling a fight tells the players who were waiting for it"
+```
 
 ---
 

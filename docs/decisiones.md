@@ -352,6 +352,19 @@ tiene el razonamiento completo; aquí solo la línea.
 | E-IB-33 | **El orden de objetivos de un ataque es relativo al bando de quien ataca** (contrario primero, neutral, propio), no una tabla fija: con la tabla fija, un PNJ del DM —que es `ENEMY`— vería primero a sus propios aliados (R44) |
 | E-IB-34 | **La fuga de CA por ataques repetidos no se cierra en T13**: no estaba fuera de alcance técnico, estaba fuera del alcance del encargo (tres ficheros de `apps/web`), y con esta tarea hecha es más barata de cerrar de lo que su ficha suponía (R45) |
 
+## Las cinco del autor (2026-09-06) · destraban los pasos 1 y 3
+
+Preguntadas con su recomendación, contestadas todas. **Las dos primeras destraban tareas que estaban
+escritas y paradas**; las tres últimas fijan el criterio del catálogo antes de escribir el conversor.
+
+| | Decisión |
+|---|---|
+| D-A-1 | **Un descanso avanza el reloj de campaña**: largo 8 h, corto 1 h. *«Ya lo hace en combate; el descanso también. El DM programa el descanso y decide, así se cierra entre sesión y sesión.»* Cambia el comportamiento de todo lo que caduca, y por eso se declara en [04-convenciones](./04-convenciones.md) y no se cuela en un arreglo. Destraba la **tarea 9** del [paso 1](./superpowers/plans/2026-09-06-paso-1-goteras.md) |
+| D-A-2 | **Un PNJ revelado esconde sus números, MENOS sus puntos de golpe**: los PG actuales son lo único que ven sus jugadores. Cierra la fuga de las seis características de un statblock `DM_ONLY`, y elige la salida (a) —ocultar— frente a (b) —cambiar la frase—. Motivo: saber que un enemigo está malherido es información de mesa legítima; su hoja no. Destraba la **tarea 18** del paso 1 |
+| D-A-3 | **Cancelar un combate SÍ avisa al jugador** que tenía una petición de iniciativa pendiente. *«Pese a que no queda trazabilidad, puede descolocar a un jugador.»* Corrige la decisión anterior de dejarlo en silencio (E-IB-4): el sujeto del aviso no puede ser el encuentro —ya no existe— sino la **sesión** |
+| D-A-4 | **Armas, armaduras y monstruos SE REEMPLAZAN por los de Foundry.** *«Lo ideal sí sería reemplazar.»* Cierra en sentido contrario a la recomendación de la spec del [paso 3](./superpowers/specs/2026-09-05-paso-3-catalogo-design.md), que proponía decidirlo con el conversor escrito: se sabe ya, y el conversor se escribe sabiéndolo. **Las invariantes probadas de lo transcrito a mano se conservan y se aplican a lo importado** |
+| D-A-5 | **Sin traducción oficial, el nombre se queda en inglés; las descripciones se intentan en español y, si el YAML no lo permite, se quedan en inglés.** Lo que **no** cambia: un nombre no se traduce por criterio propio —falló en 2 de 15 monstruos: *goblin* no es «trasgo», *wight* es «Tumulario»— y una **frase de reglas** en español sale del SRD oficial, nunca de una paráfrasis |
+
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 
 **Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con

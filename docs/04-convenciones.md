@@ -137,6 +137,24 @@ nombres de las cosas del código, no.
   fuga aprenderlo). Revelar el PNJ no revela su statblock: hay que comprobar **las dos**, y quien
   derive algo a partir de una plantilla tiene que preguntar por la plantilla.
 
+- **Un descanso avanza el reloj de campaña: largo 8 h, corto 1 h** (D-A-1, decisión del autor del
+  2026-09-06). Hasta entonces `rest.service.ts` **leía** el reloj y no lo movía nunca, y su propio
+  409 mandaba «avanza el reloj de la campaña» a mano. **Se declara aquí porque cambia el
+  comportamiento de todo lo que caduca** —condiciones, concentración, la ventaja de Ayudar—, y eso
+  es lo que se quiere: *«ya lo hace en combate; el descanso también. El DM programa el descanso y
+  decide, así se cierra entre sesión y sesión.»* La regla de **un descanso largo por 24 h sigue en
+  pie**, y ahora se cumple sola.
+
+- **Revelar un PNJ revela sus PG actuales y NADA MÁS de sus números** (D-A-2, decisión del autor
+  del 2026-09-06). Sus seis características, su CA, sus PG máximos, su competencia y su traza
+  siguen siendo del DM aunque el PNJ esté `PUBLIC`. **El motivo es de mesa, no técnico:** saber
+  que un enemigo está malherido se ve en la ficción y es información legítima; su hoja no lo es.
+  > Lo que había antes no era una decisión, era una fuga: `npcs.service.ts` copia las
+  > características del statblock a la fila de `Character` al instanciar —D-2D-2, «un PNJ en la
+  > mesa es una fila de `Character`»— y `getSheet` devolvía esa fila entera, **en la misma
+  > respuesta que decía «los números de este PNJ no son públicos»**. Las dos piezas eran correctas
+  > por separado.
+
 - **Un 400 de validación se escribe para que una persona lo lea y sepa qué arreglar**
   (`apps/api/src/common/validation-errors.ts`, desde el 2026-09-02). Sale una frase en español
   que la interfaz imprime tal cual, más una lista `errores` con el campo culpable, su ruta y el

@@ -597,7 +597,7 @@ export class CharacterSheetService {
     const [todas, campana] = await Promise.all([
       this.prisma.characterCondition.findMany({
         where: { characterId },
-        select: { key: true, level: true, expiresAtClock: true },
+        select: { key: true, level: true, expiresAtClock: true, expiryEdge: true },
       }),
       this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
     ]);
@@ -764,7 +764,14 @@ export class CharacterSheetService {
     const [fila, campana] = await Promise.all([
       this.prisma.characterCondition.findUnique({
         where: { characterId_key: { characterId, key: CLAVE_AYUDA } },
-        select: { id: true, note: true, key: true, level: true, expiresAtClock: true },
+        select: {
+          id: true,
+          note: true,
+          key: true,
+          level: true,
+          expiresAtClock: true,
+          expiryEdge: true,
+        },
       }),
       this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
     ]);
@@ -923,7 +930,7 @@ export class CharacterSheetService {
     const [condiciones, temporales, campana] = await Promise.all([
       client.characterCondition.findMany({
         where: { characterId: character.id },
-        select: { key: true, level: true, expiresAtClock: true },
+        select: { key: true, level: true, expiresAtClock: true, expiryEdge: true },
       }),
       // M8: los modificadores temporales entran por el mismo sitio y con el mismo reloj. Se piden
       // aquí y no dentro de la derivación porque este es el único punto que ya lee el reloj: dos
@@ -1197,7 +1204,7 @@ export class CharacterSheetService {
         if (danio > 0 && !massive && before > 0 && resultante > 0) {
           const condiciones = await tx.characterCondition.findMany({
             where: { characterId },
-            select: { key: true, expiresAtClock: true },
+            select: { key: true, expiresAtClock: true, expiryEdge: true },
           });
           const campanaActual = await tx.campaign.findUniqueOrThrow({
             where: { id: campaignId },
@@ -1715,7 +1722,7 @@ export class CharacterSheetService {
     const [condicionesDelObjetivo, campanaDelReloj] = await Promise.all([
       this.prisma.characterCondition.findMany({
         where: { characterId: target.id },
-        select: { key: true, level: true, expiresAtClock: true },
+        select: { key: true, level: true, expiresAtClock: true, expiryEdge: true },
       }),
       this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
     ]);

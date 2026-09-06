@@ -29,6 +29,20 @@ export interface CondicionConVencimiento {
   level?: number | null;
   /** Segundos del reloj de la campaña en que vence. `null` = indefinida, la quita el DM. */
   expiresAtClock?: number | null;
+  /**
+   * **En qué borde de turno se corta** (paso 1, tarea 4). `null` = la decide el reloj, que es el
+   * camino de todas las condiciones que ya existían.
+   *
+   * **CUIDADO al leer condiciones con un `select` explícito: hay que pedir esta columna.** Si se
+   * omite, la fila llega con `undefined` y la condición vuelve a caducar por reloj **en
+   * silencio** — pasó al escribir esto: `ayudaViva` seleccionaba cinco columnas a mano y la
+   * ventaja se moría antes de tiempo, con la prueba en rojo y ninguna pista de por qué.
+   *
+   * Se dejó **opcional** y no obligatorio a propósito: obligatorio, el compilador señala a cada
+   * lector —que es mejor— pero rompía treinta y nueve sitios, casi todos fixtures de pruebas que
+   * no tienen nada que ver con bordes de turno. Queda ficha en `docs/06-pendientes.md`.
+   */
+  expiryEdge?: string | null;
 }
 
 /**
@@ -43,6 +57,16 @@ export function condicionVencida(
   condicion: CondicionConVencimiento,
   relojSegundos: number,
 ): boolean {
+  // **Con un borde puesto, el reloj NO decide.** La condición vive hasta que el combatiente
+  // indicado cruce ese borde, y quien lo detecta es `advanceTurn`: en ese momento le pone
+  // `expiresAtClock` al reloj de ese instante y **borra el borde**, así que a partir de entonces
+  // esta función vuelve a contestar con la resta de siempre.
+  //
+  // Existe por la acción Ayudar: el reloj solo sube al **cerrar** un asalto, así que un
+  // vencimiento a `reloj + 6s` vence al **empezar** el asalto siguiente —antes del turno de
+  // nadie— y quien actuaba antes que su ayudante llegaba a su turno con la ventaja ya vencida.
+  // Determinista, la mitad de los órdenes de iniciativa.
+  if (condicion.expiryEdge) return false;
   if (condicion.expiresAtClock === null || condicion.expiresAtClock === undefined) return false;
   return relojSegundos >= condicion.expiresAtClock;
 }

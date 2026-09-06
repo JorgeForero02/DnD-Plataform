@@ -104,6 +104,10 @@ export class GameClockService {
       const candidatas = await tx.characterCondition.findMany({
         where: {
           expiresAtClock: { gt: antes.clockSeconds, lte: despues.clockSeconds },
+          // **Con un borde de turno puesto, el reloj no la vence y por tanto no la anuncia**
+          // (paso 1, tarea 4). Su `expiresAtClock` es solo el respaldo de fuera de combate;
+          // anunciarla aquí diría que se perdió una ventaja que sigue viva.
+          expiryEdge: null,
           character: { campaignId },
         },
         select: {

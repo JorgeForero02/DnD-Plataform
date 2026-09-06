@@ -50,6 +50,11 @@ describe("EncountersService", () => {
     },
     rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
+    // **Paso 1, tarea 4:** al empezar turno, `advanceTurn` corta las condiciones que esperaban ese
+    // borde —hoy, la marca de Ayudar— poniéndoles el reloj de ese instante. Necesita el reloj de
+    // la campaña y la escritura sobre las condiciones.
+    campaign: { findUniqueOrThrow: jest.fn().mockResolvedValue({ clockSeconds: 0 }) },
+    characterCondition: { updateMany: jest.fn() },
     transaction: jest.fn(),
     // **Ronda de arreglo 1 (I-1): `recolocar` ahora toma un candado (`bloquearEncuentro`) como
     // primera operación**, así que el `tx` de mentira necesita un `$queryRaw` que responda —lo
@@ -130,6 +135,8 @@ describe("EncountersService", () => {
           findMany: prisma.combatant.findMany,
         },
         rollRequest: { create: prisma.rollRequest.create },
+        campaign: { findUniqueOrThrow: prisma.campaign.findUniqueOrThrow },
+        characterCondition: { updateMany: prisma.characterCondition.updateMany },
         $queryRaw: prisma.$queryRaw,
       }),
     );

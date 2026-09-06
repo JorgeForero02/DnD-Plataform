@@ -48,6 +48,15 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 4 · la acción Ayudar caducaba antes de tiempo para media mesa.** El reloj solo sube al
+  **cerrar** un asalto, así que la marca a `reloj + 6s` vencía al **empezar** el siguiente, antes
+  del turno de nadie: quien actuaba antes que su ayudante llegaba a su turno sin ventaja, y eso es
+  determinista en la mitad de los órdenes de iniciativa. Una condición puede ahora cortarse en un
+  **borde de turno** (`expiryEdge`, vocabulario cerrado de cuatro tomado de Foundry) en vez de en
+  el reloj, y quien lo cruza es `advanceTurn`. Fuera de combate no hay borde y manda el reloj de
+  siempre. **Las dos pantallas que ya prometían esto no se tocan: hoy dicen la verdad.** **Cómo se
+  revierte:** el commit; las dos columnas nacen `NULL` y sin ellas todo caduca como antes.
+
 - **Tarea 3 · dos concentraciones a la vez, y una sola salvación.** El `upsert` de condiciones es
   por clave exacta y cada conjuro genera la suya, así que dos convivían; y como `estaConcentrado`
   devuelve un booleano, `changeHp` pedía **una** salvación para las dos. Empezar una concentración

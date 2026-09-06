@@ -1444,6 +1444,14 @@ encima, no se reescribe):
   (`docs/decisiones.md:337`), con `E-IB-12` al lado nombrando la misma decisión del autor. Al
   ejecutar la tarea 19 se corrige **E-IB-18**.
 
+- **De la partición en 4a/4b se conserva el ORDEN, no el commit aparte.** El aviso pedía commitear
+  primero la prueba **roja**, y tiene razón en lo que importa: sin ese rojo el campo nuevo se
+  añadiría por fe. La prueba se escribió primero y se midió roja —`Expected: "ADVANTAGE" /
+  Received: "NORMAL"`, con el arreglo sin escribir— y eso queda en el mensaje del commit. Pero
+  **dejarla roja en `main` choca con una regla que no se negocia** («ninguna tarea se cierra sin
+  prueba real en verde»), y la precedencia dice que manda el `CLAUDE.md` del repositorio sobre una
+  sugerencia de proceso. Así que van en un commit.
+
 - **La tarea 4 se parte en 4a y 4b, y la 8 en 8a y 8b.** Aviso de la sesión de acompañamiento
   (`d-d-plataform-ea`) el 2026-09-06, comprobado antes de aceptarlo. **4a** es la prueba e2e
   reescrita con un combate real, sola y **roja** contra el código de hoy: sin ese rojo el campo
@@ -1487,4 +1495,5 @@ de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba 
 | 2 · Las inmunidades a condición dejan de ser prosa | ✅ | `fc01106` | `srdConditionSchema`, migración de datos y `apply` rechaza con motivo |
 | — · Revisión de la tarea 5 (6 hallazgos) | ✅ | `36ab260` | El recorte de la traza nombra la característica; una característica repetida lanza; **y una afirmación mía era falsa** |
 | — · El historial no cabía | ✅ | `02c19d8` | Seis entradas por tarea al archivo, enteras |
-| 3 · Una sola concentración | ✅ | el de abajo | La segunda retira la primera **con su suceso**; el segundo defecto (una salvación para dos) desaparece solo |
+| 3 · Una sola concentración | ✅ | `a812ae1` | La segunda retira la primera **con su suceso**; el segundo defecto (una salvación para dos) desaparece solo |
+| 4 · Ayudar caduca cuando el SRD dice | ✅ | el de abajo | Borde de turno; **4a y 4b van juntas** (abajo el porqué) |

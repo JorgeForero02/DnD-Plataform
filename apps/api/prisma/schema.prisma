@@ -699,6 +699,18 @@ model CharacterCondition {
   // una segunda verdad que puede discrepar de la primera. Ademas obligaria a un barrido periodico
   // que, si no corre, dejaria una condicion frenando a alguien despues de su hora.
   expiresAtClock Int?
+  // **En que borde de turno se corta** (paso 1, tarea 4). `null` = la decide el reloj, y ese es
+  // el camino de TODAS las condiciones que ya existian. Con un borde puesto, el reloj NO decide:
+  // la condicion vive hasta que el combatiente de `sourceCharacterId` cruce ese borde, y quien lo
+  // detecta es `advanceTurn`, que en ese momento le pone `expiresAtClock` al reloj de ese
+  // instante y borra el borde. Asi la pregunta «esta vencida?» sigue siendo una resta.
+  //
+  // Vocabulario cerrado de cuatro (`BORDES_DE_CADUCIDAD` en `@dnd/shared`). Es texto y no un enum
+  // de PostgreSQL porque el enum lo validan Zod y el servicio, y un enum de base se anade pero no
+  // se edita ni se borra.
+  expiryEdge     String?
+  // El combatiente cuyo turno corta la condicion. Solo tiene sentido con `expiryEdge`.
+  sourceCharacterId String?
   note           String?
   appliedById    String
   createdAt      DateTime  @default(now())

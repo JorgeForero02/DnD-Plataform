@@ -223,7 +223,7 @@ export class RestService {
       const [condiciones, campana] = await Promise.all([
         tx.characterCondition.findMany({
           where: { characterId: character.id },
-          select: { key: true, level: true, expiresAtClock: true },
+          select: { key: true, level: true, expiresAtClock: true, expiryEdge: true },
         }),
         tx.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
       ]);

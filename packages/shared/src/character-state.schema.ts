@@ -123,6 +123,31 @@ export type SrdCondition = z.infer<typeof srdConditionSchema>;
  * ventaja del ataque (`suggested-roll-mode.ts`). Esta escrita aqui, en `shared`, porque la usan el
  * servidor y la pantalla y una clave copiada en dos sitios acaba escrita de dos formas.
  */
+/**
+ * **En que BORDE de turno se corta una condicion** (paso 1, tarea 4, 2026-09-06).
+ *
+ * Foundry separa dos cosas que aqui estaban fundidas (`module/data/shared/duration-field.mjs` de
+ * `Mine/referencia-foundry-dnd5e`): **cuanto dura** y **en que borde de turno se corta**. El
+ * segundo es un vocabulario cerrado de cuatro, cruce de quien x que borde
+ * (`module/documents/active-effect.mjs`).
+ *
+ * Lo que NO se copia de ahi: su vencimiento es un calculo vivo en el cliente que ejecuta el GM
+ * activo, y resuelve una concurrencia entre navegadores **que un servidor no tiene**.
+ *
+ * `sourceStart` es el de la accion Ayudar: SRD 5.1, *«the first attack roll is made with
+ * advantage»* y dura hasta **el principio del siguiente turno de quien ayuda**. Los otros tres
+ * estan escritos porque el vocabulario es el que es —no se inventa uno de uno— y porque un enum
+ * de PostgreSQL se anade pero no se edita.
+ */
+export const BORDES_DE_CADUCIDAD = [
+  "sourceStart",
+  "sourceEnd",
+  "targetStart",
+  "targetEnd",
+] as const;
+export const bordeDeCaducidadSchema = z.enum(BORDES_DE_CADUCIDAD);
+export type BordeDeCaducidad = (typeof BORDES_DE_CADUCIDAD)[number];
+
 export const CLAVE_AYUDA = "helped";
 
 /**

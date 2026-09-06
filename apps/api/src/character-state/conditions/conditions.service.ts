@@ -276,6 +276,25 @@ export class ConditionsService {
 
     return this.prisma.transaction(async (tx) => {
       const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+
+      // **Si hay combate, la marca se corta en el turno del ayudante y no en el reloj.**
+      //
+      // SRD 5.1, «Help»: la ventaja dura hasta *«the start of your next turn»* — el turno de quien
+      // ayuda. El reloj de campaña solo sube al **cerrar** un asalto, así que `reloj + 6s` vencía
+      // al **empezar** el asalto siguiente, antes del turno de nadie: quien actuaba antes que su
+      // ayudante llegaba a su turno con la ventaja ya vencida, y eso pasaba en la mitad de los
+      // órdenes de iniciativa.
+      //
+      // **Fuera de combate no hay borde que cruzar**, así que ahí se conserva el vencimiento por
+      // reloj de siempre: sin encuentro activo, un borde dejaría la marca viva para siempre.
+      const enCombate = await tx.combatant.findFirst({
+        where: { characterId: helperCharacterId, encounter: { status: "ACTIVE" } },
+        select: { id: true },
+      });
+      const borde = enCombate
+        ? { expiryEdge: "sourceStart", sourceCharacterId: helperCharacterId }
+        : { expiryEdge: null, sourceCharacterId: null };
+
       const condition = await tx.characterCondition.upsert({
         where: { characterId_key: { characterId: ayudado.id, key: CLAVE_AYUDA } },
         create: {
@@ -287,11 +306,16 @@ export class ConditionsService {
           // puede llevar dos: sin esto no se sabría cuál de los dos ayudó.
           note: `Te ayuda ${ayudante.name}`,
           appliedById: userId,
+          // El vencimiento por reloj se escribe **igual**: con borde no lo mira nadie, y es el
+          // que vale fuera de combate. Con él, una marca de un combate que se acabó tampoco se
+          // queda viva para siempre.
           expiresAtClock: campana.clockSeconds + SEGUNDOS_POR_ASALTO,
+          ...borde,
         },
         update: {
           note: `Te ayuda ${ayudante.name}`,
           appliedById: userId,
+          ...borde,
           // Ayudar otra vez **renueva**: es lo que hace un jugador en la mesa, y dejar la caducidad
           // vieja habría hecho que la segunda ayuda naciera medio muerta.
           expiresAtClock: campana.clockSeconds + SEGUNDOS_POR_ASALTO,

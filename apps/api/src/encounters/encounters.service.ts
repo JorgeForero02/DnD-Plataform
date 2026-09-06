@@ -786,6 +786,28 @@ export class EncountersService {
         );
       }
 
+      // **Aquí se cruza el borde de turno** (paso 1, tarea 4). Quien empieza turno corta las
+      // condiciones que esperaban justamente eso —hoy, la marca de la acción Ayudar, que el SRD
+      // mantiene hasta *«the start of your next turn»* de quien ayudó—.
+      //
+      // No se borran: se les pone `expiresAtClock` al reloj de este instante y se les quita el
+      // borde, así que a partir de aquí «¿está vencida?» vuelve a ser la resta de siempre y la
+      // condición **sigue en la hoja, marcada** (D-2C-2). Va dentro de esta transacción: si el
+      // turno no avanza, la ventaja no se pierde.
+      const empiezanTurno = encounter.combatants
+        .filter((c) => c.position === toPosition)
+        .map((c) => c.characterId);
+      if (empiezanTurno.length > 0) {
+        const reloj = await tx.campaign.findUniqueOrThrow({
+          where: { id: campaignId },
+          select: { clockSeconds: true },
+        });
+        await tx.characterCondition.updateMany({
+          where: { expiryEdge: "sourceStart", sourceCharacterId: { in: empiezanTurno } },
+          data: { expiryEdge: null, sourceCharacterId: null, expiresAtClock: reloj.clockSeconds },
+        });
+      }
+
       return { ...actualizado, roundAdvanced: sube };
     });
   }

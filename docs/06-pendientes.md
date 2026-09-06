@@ -4,8 +4,10 @@
 [`_archivo/pendientes-cerrados-hasta-2026-09-02.md`](./_archivo/pendientes-cerrados-hasta-2026-09-02.md)
 las que este documento seguía arrastrando tachadas en
 [`_archivo/pendientes-cerrados-hasta-2026-09-03.md`](./_archivo/pendientes-cerrados-hasta-2026-09-03.md),
-y las **37** que cerraron los quince planes de la noche del 2026-09-05 en
-[`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md).
+las **37** que cerraron los quince planes de la noche del 2026-09-05 en
+[`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md),
+y las que cierra el paso 1 «las goteras» del 2026-09-06 en
+[`_archivo/pendientes-cerrados-2026-09-06-paso-1.md`](./_archivo/pendientes-cerrados-2026-09-06-paso-1.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -187,30 +189,6 @@ invitar a un segundo DM). Corregirlo sin ese caso real delante sería una regla 
 práctica — hasta entonces, queda anotado para que la próxima persona que toque `start()` no
 lo redescubra desde cero.
 
-## P1 · El ataque comparado contra la CA existe en el servidor y ninguna pantalla lo llama (2026-09-05)
-
-**Encontrado por el autor usando la aplicación, y es la tercera vez que aparece este patrón en un
-día.** El servidor sabe resolver un ataque contra un objetivo:
-
-- `apps/api/src/characters/character-sheet.controller.ts:137` — `@Post("sheet/attacks/:attackKey/resolve")`
-- `packages/shared/src/attack.schema.ts:52` — `targetCharacterId: z.string().cuid()`
-- y el motor de reglas escucha `CHARACTER_ATTACKED` (`apps/api/src/rules-engine/engine/matching.ts:40`).
-
-**Y nadie lo llama.** Barrido del 2026-09-05 sobre `apps/web/src`: **cero** apariciones de
-`resolveAttack` o `attacks/resolve`, y el único `targetCharacterId` que manda el navegador es el de
-**Ayudar** (`apps/web/src/features/sessions/elenco/AyudarA.tsx:71`).
-
-**Lo que eso significa en la mesa:** el botón de atacar **solo tira dados**. El jugador saca un 17 y
-se lo dice al DM de viva voz, que decide de cabeza si acierta. La comparación contra la CA, la
-traza, el crítico y el suceso que dispara las reglas **están construidos y no se usan**.
-
-**Ojo con la ficha vieja.** «El ataque es un oráculo sobre la CA» se dio por cerrada con el plan 03,
-y se cerró **la mitad del servidor**: la pantalla nunca llegó. Es el mismo cierre a medias que ya se
-declaró cuatro veces —servidor hecho, nadie que lo dispare—.
-
-**Cierra cuando** el jugador pueda elegir a quién ataca desde el cuadro de ataques y el resultado
-diga si acierta.
-
 ## P3 · Cerrado: no faltaba curar, faltaba el gesto rápido del elenco (medido mal el 2026-09-05, cerrado el 2026-09-06)
 
 **Esta ficha decía «nadie puede curar a nadie, ni a sí mismo» y afirmaba que `PonerDano` era «lo
@@ -282,21 +260,6 @@ la «media tarea inventada como entera» que este proyecto no quiere.
 daño lo vea aplicarse de verdad en `changeHp`, con su traza, exactamente igual que un PNJ con
 statblock — probado con mutación: quitarle el origen del modificador (statblock o lo que lo
 sustituya) tiene que enrojecer la prueba que compruebe la reducción.
-
-## P3 · Un cuadro de ataques vacío no dice por qué está vacío (2026-09-05)
-
-**No es un fallo: es una explicación que falta**, y confundió al autor hasta hacerle pensar que
-faltaba una opción de su clase.
-
-Los ataques **no se escogen, se derivan de lo equipado** — `apps/api/src/rules/attacks.ts` lo dice en
-su cabecera: *«entra qué hay equipado más lo que ya derivó el motor; sale, por cada arma, el bono de
-ataque con su traza»*. Es el SRD y está bien.
-
-Pero un personaje sin arma en la mano ve **un cuadro vacío y ningún motivo**, y de ahí se deduce
-«esta pantalla no me deja elegir ataques», que es exactamente lo contrario de lo que pasa.
-
-**Cierra cuando** el cuadro vacío diga qué falta y por dónde se arregla —«no llevas ningún arma
-equipada; equipa una desde la Bolsa»—, sin inventarse ataques que el SRD no da.
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 

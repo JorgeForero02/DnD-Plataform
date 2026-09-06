@@ -1401,3 +1401,43 @@ paso 2, y meterlo aquí convertiría trece arreglos independientes en una fase c
 
 Lo que sí hace es **dejar de mentir**: hoy tres números salen mal con traza convincente, y construir
 el paso 2 encima de una medición falsa es edificar sobre arena.
+
+---
+
+# Avance
+
+**Se escribe al cerrar CADA tarea, no al final del día.** Es lo único que sobrevive a que se
+compacte el contexto de quien ejecuta: si eso pasa, se relee el plan, este bloque y `git log`, y se
+sigue **por donde diga este bloque**, no por donde se crea recordar.
+
+**Correcciones al plan encontradas al ejecutarlo** (el plan es un encargo fechado: se corrige
+encima, no se reescribe):
+
+- **La tarea 19 cita `E-IB-4` y la decisión que corrige es `E-IB-18`.** Comprobado el 2026-09-06
+  sobre `52a9c5c`: `docs/decisiones.md:323` (E-IB-4) habla de la firma real de
+  `GameEventsService.record`, y la de «`cancel()` no escribe suceso» es **E-IB-18**
+  (`docs/decisiones.md:337`), con `E-IB-12` al lado nombrando la misma decisión del autor. Al
+  ejecutar la tarea 19 se corrige **E-IB-18**.
+
+- **La tarea 4 se parte en 4a y 4b, y la 8 en 8a y 8b.** Aviso de la sesión de acompañamiento
+  (`d-d-plataform-ea`) el 2026-09-06, comprobado antes de aceptarlo. **4a** es la prueba e2e
+  reescrita con un combate real, sola y **roja** contra el código de hoy: sin ese rojo el campo
+  nuevo se añadiría por fe. **4b** es el campo, la migración, el borde `sourceStart` y
+  `condicionVencida`. **8a** es el `kind` nuevo, `races.ts` con las razas del SRD y `resolve.ts`
+  agregando con traza —se prueba entero sin tocar un punto de golpe—, y **8b** es `changeHp`
+  leyendo esa fuente, con la corrección de `character-sheet.service.spec.ts:1364`. La mutación de
+  la 8 va en 8b, que es donde está lo que protege. **No es trabajo extra:** el mismo código con la
+  mitad de superficie por revisión.
+
+**Y una cosa que no estaba en el plan y bloqueaba el día entero:** `pnpm verify` salía **rojo sobre
+el árbol limpio**, y verde en la pasada anterior sin ningún cambio de código en medio.
+`EdicionEnSitio.test.tsx` hacía `await import()` **dentro** de tres pruebas, así que el coste de
+transformar esos módulos contaba dentro de su presupuesto de 5 s; con la máquina cargada se agota,
+la prueba muere por `Test timed out in 5000ms` **sin haber medido nada**, su DOM no se limpia, y la
+siguiente cuenta doce «sin calcular» donde hay seis. Verde tres de tres en solitario y roja dentro
+de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba (`e926b91`).
+
+| Tarea | Estado | Commit | Qué cerró |
+|---|---|---|---|
+| — · `EdicionEnSitio` inestable | ✅ | `e926b91` | Bloqueaba **todos** los commits del día |
+| 0 · Tachar lo que anoche cerró | ✅ | el de abajo | Las dos fichas comprobadas una a una antes de tachar; van al archivo, no tachadas en el documento vivo |

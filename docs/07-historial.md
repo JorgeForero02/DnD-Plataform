@@ -40,6 +40,25 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Paso 1 · Las goteras — los números dejan de mentir (2026-09-06, en curso)
+
+**Qué se entrega.** El plan [`2026-09-06-paso-1-goteras.md`](./superpowers/plans/2026-09-06-paso-1-goteras.md),
+tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «Avance» de ese
+plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
+depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
+
+- **Tarea 0 · dos fichas describían como pendiente algo ya entregado.** `P1` (el ataque comparado
+  contra la CA sin pantalla que lo llame) y la segunda `P3` (un cuadro de ataques vacío sin
+  motivo) las cerraron las tareas 13 y 15 de la tanda de la iniciativa y nadie las tachó. Se
+  comprobaron las dos citas abriendo los ficheros antes de tachar
+  —`apps/web/src/features/character-sheet/api.ts:563` y
+  `apps/web/src/features/character-sheet/hooks.ts:397` para la primera,
+  `apps/web/src/features/character-sheet/AtaquesYLanzamiento.tsx:157` para la segunda— y se
+  movieron **enteras** a
+  [`_archivo/pendientes-cerrados-2026-09-06-paso-1.md`](./_archivo/pendientes-cerrados-2026-09-06-paso-1.md),
+  que es lo que exige `check:docs`: lo tachado sale del documento vivo, no se queda tachado en él.
+  La segunda además **se renombra a `P3b`**, porque había dos fichas distintas llamadas `P3`.
+
 ## Cada jugador pide su propia iniciativa, y el DM puede decir de qué bando está cada uno (2026-09-05/06, plan `iniciativa-y-bando`)
 
 **Qué se entregó.** Las quince tareas del plan

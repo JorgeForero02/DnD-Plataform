@@ -1413,6 +1413,13 @@ sigue **por donde diga este bloque**, no por donde se crea recordar.
 **Correcciones al plan encontradas al ejecutarlo** (el plan es un encargo fechado: se corrige
 encima, no se reescribe):
 
+- **`conditionImmunities` es `text[]`, no `jsonb`.** La migración que el plan propone
+  (`jsonb_array_elements_text`) falla con `function jsonb_array_elements_text(text[]) does not
+  exist` — comprobado contra la base el 2026-09-06. La escrita usa `unnest` + `array_agg`. Y el
+  paso 1 del plan («mira qué hay guardado antes de tipar nada») dio **una** fila de statblock
+  propio con la lista **vacía**: no había nada que mapear en desarrollo, pero producción es otra
+  base y por eso la migración se escribe igual.
+
 - **El paso de traza se distingue por `op`, no por `kind`.** La prueba que el plan escribe
   (`ca.steps.filter((s) => s.kind === "add")`) no compila contra `TraceStep`. **Y eso enseñó algo
   peor:** `npx jest --silent` con un fichero que **no compila** imprime «675 passed» sin una sola
@@ -1467,4 +1474,6 @@ de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba 
 | 0 · Tachar lo que anoche cerró | ✅ | `6f94334` | Las dos fichas comprobadas una a una antes de tachar; van al archivo, no tachadas en el documento vivo |
 | — · Un e2e afirmaba lo contrario que su código | ✅ | `3ec2d76` | `character-state` esperaba **201** al reponer un `DM_ONLY` siendo el dueño; `1758c21` lo cerró a propósito y la prueba llevaba roja desde entonces **sin que nadie mirara**, porque los e2e no entran en `pnpm verify` |
 | 1 · Un jugador no se concede una mecánica | ✅ | `62e3d7b` | `helped` no entra por la puerta genérica **para nadie**; una clave del SRD, solo el DM |
-| 5 · La CA suma más de una característica | ✅ | el de abajo | `addAbilities` con **tope por característica**; `addAbility`/`abilityCap` desaparecen sin alias |
+| 5 · La CA suma más de una característica | ✅ | `f460ea0` | `addAbilities` con **tope por característica**; `addAbility`/`abilityCap` desaparecen sin alias |
+| — · Revisión de la tarea 1 (10 hallazgos) | ✅ | `5081c46` | `remove()` era la otra mitad de la puerta; una prueba había dejado de medir la propiedad; tres comentarios mentían |
+| 2 · Las inmunidades a condición dejan de ser prosa | ✅ | el de abajo | `srdConditionSchema`, migración de datos y `apply` rechaza con motivo |

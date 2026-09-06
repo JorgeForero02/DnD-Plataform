@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { CampaignsModule } from "../campaigns/campaigns.module";
 import { GameEventsModule } from "../game-events/game-events.module";
+import { StatblocksModule } from "../statblocks/statblocks.module";
 import { ConditionsController, HelpController } from "./conditions/conditions.controller";
 import { ConditionsService } from "./conditions/conditions.service";
 import { ResourcesController } from "./resources/resources.controller";
@@ -17,7 +18,11 @@ import { TemporaryModifiersService } from "./temporary-modifiers/temporary-modif
 // `CharacterStateModule` en vez de reimplementar la siembra de dados de golpe y espacios de
 // conjuro.
 @Module({
-  imports: [CampaignsModule, GameEventsModule],
+  // `StatblocksModule` entra por la tarea 2 del paso 1: aplicar una condicion tiene que poder
+  // preguntar a que es inmune el statblock del que salio el personaje. No hay ciclo — statblocks
+  // no importa a quien lo usa — y `ConditionsService` lo recibe `@Optional()`, asi que un e2e que
+  // monte este modulo solo sigue funcionando.
+  imports: [CampaignsModule, GameEventsModule, StatblocksModule],
   controllers: [
     ResourcesController,
     RestController,

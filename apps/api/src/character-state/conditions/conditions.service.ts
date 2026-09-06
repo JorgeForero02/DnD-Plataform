@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import {
   CLAVE_AYUDA,
@@ -15,6 +16,7 @@ import { condicionVencida } from "./vencimiento";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { StatblocksService } from "../../statblocks/statblocks.service";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
 // Tarea 2A.12 — condiciones. **La clave es libre**: las quince del SRD (`SRD_CONDITIONS`,
@@ -33,7 +35,32 @@ export class ConditionsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
+    /**
+     * **Opcional, igual que en `CharacterSheetService` y por el mismo motivo:** varios e2e montan
+     * `CharacterStateModule` solo y no instancian ningún PNJ. Sin resolutor, un personaje sin
+     * statblock —que es todo personaje jugador— se comporta exactamente igual que antes.
+     */
+    @Optional() private readonly statblocks?: StatblocksService,
   ) {}
+
+  /**
+   * A qué condiciones es inmune este personaje, **según el statblock del que salió**.
+   *
+   * Devuelve `[]` cuando no hay statblock, que es el caso de **todo personaje jugador**
+   * (`characters.service.ts` filtra `statblockRef: null` a propósito). Es el mismo camino que ya
+   * usa `changeHp` para los modificadores de daño: `character.statblockRef` + la puerta única
+   * `StatblocksService.resolver`.
+   */
+  private async inmunidadesDe(
+    character: {
+      statblockRef: string | null;
+    },
+    campaignId: string,
+  ): Promise<string[]> {
+    if (!character.statblockRef || !this.statblocks) return [];
+    const statblock = await this.statblocks.resolver(campaignId, character.statblockRef);
+    return statblock?.conditionImmunities ?? [];
+  }
 
   /**
    * Las condiciones del personaje, **cada una diciendo si ya venció** (2C.4).
@@ -99,6 +126,14 @@ export class ConditionsService {
     // pasa a pedírselo al DM, porque `prone` es una de las quince.
     if (esClaveReservada(input.key) && !esDM) {
       throw new ForbiddenException("Esa condición la aplica el DM.");
+    }
+
+    // **Una inmunidad que nadie consulta es prosa.** El statblock del que sale un PNJ ya declara a
+    // qué es inmune, y hasta hoy nadie leía el campo: se podía envenenar a un esqueleto con su
+    // inmunidad escrita al lado. Es un 400 **con su motivo**, no un silencio ni una fila guardada.
+    const inmunidades = await this.inmunidadesDe(character, campaignId);
+    if (inmunidades.includes(input.key)) {
+      throw new BadRequestException(`${character.name} es inmune a esa condición.`);
     }
 
     return this.prisma.transaction(async (tx) => {

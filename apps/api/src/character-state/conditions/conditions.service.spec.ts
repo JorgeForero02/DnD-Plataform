@@ -3,6 +3,7 @@ import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { StatblocksService } from "../../statblocks/statblocks.service";
 import { ConditionsService } from "./conditions.service";
 
 // Tarea 2A.12.
@@ -26,6 +27,7 @@ describe("ConditionsService", () => {
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn() };
+  const statblocks = { resolver: jest.fn() };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -34,6 +36,7 @@ describe("ConditionsService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        { provide: StatblocksService, useValue: statblocks },
       ],
     }).compile();
     service = ref.get(ConditionsService);
@@ -43,6 +46,7 @@ describe("ConditionsService", () => {
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
+    statblocks.resolver.mockResolvedValue(null);
   });
 
   it("el dueño puede aplicar una condición sobre su propio personaje", async () => {
@@ -128,6 +132,51 @@ describe("ConditionsService", () => {
     });
 
     expect(c.key).toBe("mojado");
+  });
+
+  // **Una inmunidad que nadie consulta es prosa** (paso 1, tarea 2). El statblock del que sale un
+  // PNJ ya declara a qué es inmune; hasta el 2026-09-06 nadie leía el campo, así que **se podía
+  // envenenar a un esqueleto**.
+
+  it("aplicar `poisoned` a un esqueleto se rechaza con motivo legible", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue({
+      ...character,
+      name: "Esqueleto",
+      statblockRef: "SRD:skeleton",
+    });
+    statblocks.resolver.mockResolvedValue({ conditionImmunities: ["poisoned", "exhaustion"] });
+
+    await expect(service.apply("dm1", "cmp1", "c1", { key: "poisoned" })).rejects.toThrow(
+      /inmune/i,
+    );
+    expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
+  it("una condición a la que no es inmune sigue entrando", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue({
+      ...character,
+      name: "Esqueleto",
+      statblockRef: "SRD:skeleton",
+    });
+    statblocks.resolver.mockResolvedValue({ conditionImmunities: ["poisoned"] });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "prone" });
+
+    const c = await service.apply("dm1", "cmp1", "c1", { key: "prone" });
+
+    expect(c.key).toBe("prone");
+  });
+
+  it("un personaje jugador no tiene statblock: para él la lista está vacía y nada cambia", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "poisoned" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "poisoned" });
+
+    expect(prisma.characterCondition.upsert).toHaveBeenCalled();
+    // Ni siquiera se pregunta por un statblock que no existe.
+    expect(statblocks.resolver).not.toHaveBeenCalled();
   });
 
   it("otro jugador que no es dueño ni DM no puede aplicar una condición", async () => {

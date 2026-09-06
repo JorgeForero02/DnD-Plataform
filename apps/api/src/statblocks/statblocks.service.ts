@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   origenDeRef,
+  SRD_CONDITIONS,
   type CreateCampaignStatblockInput,
   type ProficiencyLevel,
   type SkillKey,
+  type SrdCondition,
   type Statblock,
   type UpdateCampaignStatblockInput,
   type Visibility,
@@ -222,7 +224,14 @@ export function aStatblock(fila: FilaStatblock): Statblock & { visibility: Visib
     damageImmunities: fila.damageImmunities,
     damageVulnerabilities: fila.damageVulnerabilities,
     damageModifiers: (fila.damageModifiers ?? []) as Statblock["damageModifiers"],
-    conditionImmunities: fila.conditionImmunities,
+    // **Se filtra al leer, y esa es la misma regla que la migración.** La columna es `text[]` y
+    // el tipo pasó a exigir una de las quince del SRD el 2026-09-06; una fila escrita antes puede
+    // traer una etiqueta que no se pudo mapear. Se deja fuera **esa entrada** y la criatura sale
+    // entera, en vez de mentir con un `as` que dejaría pasar la etiqueta muerta hasta el motor,
+    // donde no cruzaría con ninguna clave y volvería a ser prosa.
+    conditionImmunities: fila.conditionImmunities.filter((c): c is SrdCondition =>
+      (SRD_CONDITIONS as readonly string[]).includes(c),
+    ),
     ...(fila.darkvisionFeet ? { darkvisionFeet: fila.darkvisionFeet } : {}),
     otherSenses: fila.otherSenses,
     speeds: (fila.speeds ?? {}) as Statblock["speeds"],

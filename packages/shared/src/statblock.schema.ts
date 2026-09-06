@@ -2,6 +2,7 @@ import { z } from "zod";
 import { abilityKeySchema, proficiencyLevelSchema, SKILLS } from "./rules/trace.schema";
 import { visibilitySchema } from "./visibility.schema";
 import { damageTypeSchema } from "./item.schema";
+import { srdConditionSchema } from "./character-state.schema";
 
 /**
  * Fase 2D — la forma de un statblock de PNJ.
@@ -191,7 +192,15 @@ export const statblockSchema = z.object({
   damageResistances: z.array(damageTagSchema).default([]),
   damageImmunities: z.array(damageTagSchema).default([]),
   damageVulnerabilities: z.array(damageTagSchema).default([]),
-  conditionImmunities: z.array(z.string().min(1).max(60)).default([]),
+  /**
+   * **Tipado como sus dos vecinas, y por el mismo motivo** (paso 1, tarea 2, 2026-09-06). Mientras
+   * fue texto libre nadie pudo consumirlo: un `"veneno"` escrito a mano no cruza con la clave
+   * `poisoned` que usa el motor, así que **se podia envenenar a un esqueleto** con su inmunidad
+   * declarada al lado. El catalogo del SRD ya escribia las claves buenas
+   * (`apps/api/src/rules/catalog/monsters-srd.ts`); lo unico que faltaba era que el tipo lo
+   * exigiera y que alguien lo leyera.
+   */
+  conditionImmunities: z.array(srdConditionSchema).default([]),
 
   /**
    * Tarea 2.5.1 — la parte estructurada de la resistencia, al lado de las tres listas de prosa

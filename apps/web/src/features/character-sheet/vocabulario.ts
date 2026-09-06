@@ -1,6 +1,7 @@
 import { CLAVE_AYUDA, damageTypeSchema } from "@dnd/shared";
 import type {
   AbilityKey,
+  AttackVerdict,
   ProficiencyLevel,
   SkillKey,
   TraceOp,
@@ -589,6 +590,17 @@ export function describirAviso(warning: {
       return `Sin traducir: ${warning.code}`;
   }
 }
+
+/**
+ * El veredicto de un ataque resuelto contra un objetivo (tarea 13, `attackResolutionSchema`).
+ * **Tres estados, no dos** — el crítico dobla los dados de daño y decirlo en la misma palabra que
+ * un impacto corriente perdería esa distinción en la única pantalla que la enseña.
+ */
+export const NOMBRE_VEREDICTO: Record<AttackVerdict, string> = {
+  HIT: "Impacta",
+  MISS: "Falla",
+  CRITICAL: "¡Crítico!",
+};
 
 /** Los valores derivados que el DM puede anular a mano (`OVERRIDABLE_KEYS` de `@dnd/shared`). */
 export const NOMBRE_ANULABLE: Record<string, string> = {

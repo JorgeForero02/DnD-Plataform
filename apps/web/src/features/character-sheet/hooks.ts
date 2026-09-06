@@ -1,14 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChangeHpInput,
+  CombatantSide,
   CreateRollInput,
   DeclareRestInput,
+  ResolveAttackInput,
   RollAttackInput,
   SetHpInput,
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
 import * as characterSheetApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
+import { useCurrentSession } from "../sessions/hooks";
+import { useCurrentEncounter } from "../encounters/hooks";
+import { useCharacters } from "../characters/hooks";
+import { useNpcs } from "../bestiario/hooks";
 
 // Tarea 2A.10. Claves jerárquicas bajo la raíz `["campaigns", campaignId, ...]`
 // (docs/04-convenciones.md): invalidar `sheetKey` invalida solo la hoja de este personaje, y
@@ -379,4 +385,81 @@ export function useRollAttack(campaignId: string, characterId: string) {
     mutationFn: (vars: { attackKey: string; input: RollAttackInput }) =>
       characterSheetApi.rollAttack(campaignId, characterId, vars.attackKey, vars.input),
   });
+}
+
+/**
+ * Tarea 13 — tira un ataque contra un objetivo y trae el veredicto del servidor. Tampoco invalida
+ * la hoja: resolver un ataque no cambia PG ni recursos por sí solo, el DM aplica el daño aparte.
+ */
+export function useResolveAttack(campaignId: string, characterId: string) {
+  return useMutation({
+    mutationFn: (vars: { attackKey: string; input: ResolveAttackInput }) =>
+      characterSheetApi.resolveAttack(campaignId, characterId, vars.attackKey, vars.input),
+  });
+}
+
+/** Un combatiente del encuentro, con nombre — la forma que necesita un selector de objetivo. */
+export interface CombatienteObjetivo {
+  characterId: string;
+  nombre: string;
+  side: CombatantSide;
+}
+
+/**
+ * **El bando contrario se propone primero.** Es una preferencia de orden para la mesa habitual
+ * —quien mira esta hoja suele atacar al enemigo—, no una puerta: la tercera prueba del brief de
+ * la tarea 13 exige que se pueda elegir cualquiera de la lista igual, y esta tabla solo decide en
+ * qué orden se ofrecen.
+ */
+const PRIORIDAD_BANDO: Record<CombatantSide, number> = { ENEMY: 0, NEUTRAL: 1, ALLY: 2 };
+
+/**
+ * Los objetivos posibles de un ataque: **los combatientes del encuentro en marcha**, con nombre.
+ *
+ * **No `useCharacters` a secas.** Esa lista es «quién se sienta a la mesa»
+ * (`characters.service.ts:68`, `statblockRef: null`), así que un PNJ —el objetivo más habitual de
+ * un ataque— no sale nunca en ella. El objetivo sale de `Encounter.combatants`
+ * (`features/encounters/hooks.ts`), que sí los incluye porque desde 2D un PNJ en la mesa es una
+ * fila de `Character` igual que cualquier otra; el nombre para pintarlo se cruza con
+ * `useCharacters` (jugadores) y `useNpcs` (PNJ), igual que ya hace `ColumnaElenco.tsx`.
+ *
+ * **La sesión y el encuentro se piden aquí, sin que nadie los pase por parámetro** — mismo motivo
+ * que documenta `ColumnaElenco.tsx`: React Query comparte la consulta por clave, así que esto no
+ * es una petición de más si la mesa ya la tiene abierta, y esta hoja funciona igual si se abre
+ * sola, sin la mesa alrededor.
+ *
+ * Solo hay objetivos con el encuentro `ACTIVE`: en `PREPARING` (sala de espera) todavía no hay
+ * turnos, y `ENDED` ya no es un combate. Fuera de esos casos el botón se queda como estaba: solo
+ * tira, sin pedir objetivo.
+ */
+export function useCombatientesDelEncuentro(
+  campaignId: string,
+  characterId: string,
+): { combatientes: CombatienteObjetivo[]; enCombate: boolean } {
+  const { data: sesion } = useCurrentSession(campaignId);
+  const { data: encuentro } = useCurrentEncounter(campaignId, sesion?.id);
+  const enCombate = encuentro?.status === "ACTIVE";
+  const { data: personajes } = useCharacters(campaignId);
+  const { data: pnjs } = useNpcs(campaignId, { enabled: enCombate });
+
+  if (!enCombate || !encuentro) {
+    return { combatientes: [], enCombate: false };
+  }
+
+  const nombreDe = new Map<string, string>();
+  for (const p of personajes ?? []) nombreDe.set(p.id, p.name);
+  for (const n of pnjs ?? []) nombreDe.set(n.id, n.name);
+
+  const combatientes = encuentro.combatants
+    // Nunca a uno mismo (el servidor ya lo rechaza con un 400) y nunca a quien todavía no tiene
+    // nombre resuelto — el mismo cruce que hace `ColumnaElenco.tsx` para no pintar un hueco.
+    .filter((c) => c.characterId !== characterId && nombreDe.has(c.characterId))
+    .map((c) => ({
+      characterId: c.characterId,
+      nombre: nombreDe.get(c.characterId)!,
+      side: c.side,
+    }))
+    .sort((a, b) => PRIORIDAD_BANDO[a.side] - PRIORIDAD_BANDO[b.side]);
+
+  return { combatientes, enCombate: true };
 }

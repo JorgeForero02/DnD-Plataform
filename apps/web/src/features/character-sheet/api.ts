@@ -1,5 +1,6 @@
 import type {
   AbilityKey,
+  AttackResolution,
   ChangeHpInput,
   CreateRollInput,
   DamageType,
@@ -9,6 +10,7 @@ import type {
   DerivationWarning,
   RollSuggestions,
   DerivedValue,
+  ResolveAttackInput,
   RollAttackInput,
   RollResult,
   SetHpInput,
@@ -536,6 +538,28 @@ export function rollAttack(
 ): Promise<RollResult> {
   return apiFetch(
     `/campaigns/${campaignId}/characters/${characterId}/sheet/attacks/${attackKey}/roll`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+/**
+ * Tarea 13 (plan de iniciativa y bando) — tira el ataque contra un objetivo, **y el servidor dice
+ * si acierta**. Misma ruta que ya existe en `character-sheet.controller.ts` desde 2.5.3; hasta
+ * hoy ninguna pantalla la llamaba, así que un ataque solo tiraba el dado y nunca decía si
+ * impactaba. La CA del objetivo nunca viaja aquí ni en la respuesta — el servidor la compara, no
+ * la publica.
+ */
+export function resolveAttack(
+  campaignId: string,
+  characterId: string,
+  attackKey: string,
+  input: ResolveAttackInput,
+): Promise<AttackResolution> {
+  return apiFetch(
+    `/campaigns/${campaignId}/characters/${characterId}/sheet/attacks/${attackKey}/resolve`,
     {
       method: "POST",
       body: JSON.stringify(input),

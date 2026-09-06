@@ -6,6 +6,10 @@ import type { RollResultRevealed } from "@dnd/shared";
 import { AtaquesYLanzamiento } from "../AtaquesYLanzamiento";
 import type { AttackDto, CalculatedSheet } from "../api";
 import * as api from "../api";
+import * as sessionsApi from "../../sessions/api";
+import * as encountersApi from "../../encounters/api";
+import * as charactersApi from "../../characters/api";
+import * as bestiarioApi from "../../bestiario/api";
 
 // Carril B3 (fase 2B/2C) — el cuadro de ataques de verdad. Lo que importa aquí:
 //
@@ -113,7 +117,16 @@ function montar(attacks: AttackDto[]) {
 }
 
 describe("AtaquesYLanzamiento", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    // Tarea 13 — `TirarAtaqueBoton` pregunta por el encuentro en marcha para ofrecer objetivo.
+    // Sin sesión, no hay combate que preguntar: se queda en el comportamiento de siempre, «solo
+    // tira», que es lo único que este fichero prueba.
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(null);
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(null);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
+  });
 
   it("pinta la fila con nombre, bono, daño y tipo — y ninguna enumeración cruda", async () => {
     montar([estoque]);
@@ -156,7 +169,7 @@ describe("AtaquesYLanzamiento", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
     fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tirar ataque con Estoque" }));
+    fireEvent.click(screen.getByRole("button", { name: "Atacar con Estoque" }));
 
     await waitFor(() => expect(espia).toHaveBeenCalled());
     const [, , attackKey, input] = espia.mock.calls[0];
@@ -197,7 +210,7 @@ describe("AtaquesYLanzamiento", () => {
     // La casilla ya no existe: el crítico no se declara.
     expect(screen.queryByRole("checkbox", { name: "Crítico" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Tirar ataque con Estoque" }));
+    fireEvent.click(screen.getByRole("button", { name: "Atacar con Estoque" }));
     await waitFor(() => expect(espia).toHaveBeenCalledTimes(1));
     // Y se dice lo que pasó, en vez de ofrecer declararlo.
     await screen.findByText(/Fue un 20 natural/);
@@ -234,7 +247,7 @@ describe("AtaquesYLanzamiento", () => {
     montar([estoque]);
 
     fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tirar ataque con Estoque" }));
+    fireEvent.click(screen.getByRole("button", { name: "Atacar con Estoque" }));
     await waitFor(() => expect(espia).toHaveBeenCalledTimes(1));
     await screen.findByText(/No fue un 20 natural/);
 

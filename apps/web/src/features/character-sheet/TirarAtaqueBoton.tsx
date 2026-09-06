@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { RollMode, RollResult } from "@dnd/shared";
+import type { AttackVerdict, RollMode, RollResult } from "@dnd/shared";
 import type { AttackDto } from "./api";
-import { useRollAttack } from "./hooks";
+import { useCombatientesDelEncuentro, useResolveAttack, useRollAttack } from "./hooks";
 import { DadoDibujado } from "../rolls/DadoDibujado";
 import { SelectorDeVentaja } from "../rolls/SelectorDeVentaja";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
@@ -9,6 +9,8 @@ import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
 import { TiradaACiegas } from "../rolls/TiradaACiegas";
 import { Button } from "../../ui/Button";
 import { PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
+import { NOMBRE_VEREDICTO } from "./vocabulario";
+import { NOMBRE_BANDO } from "../../dominio/combate";
 
 // Carril B3 (fase 2B/2C) — el dado de una fila del cuadro de ataques.
 //
@@ -28,6 +30,14 @@ import { PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 // **El daño no tiene ventaja.** El servidor ignora `mode` para `part: "DAMAGE"` — la ventaja es
 // del d20, no de los dados de daño —, así que aquí no se le ofrece el selector de tres estados:
 // ofrecerlo mentiría sobre lo que hace.
+//
+// **Tarea 13 (2026-09-05, iniciativa y bando) — atacar sirve de algo.** Hasta hoy el botón de
+// ataque tiraba el dado y nada más, aunque el servidor ya sabía resolver el ataque contra un
+// objetivo desde 2.5.3 (`POST .../sheet/attacks/:attackKey/resolve`): el mismo cierre a medias
+// que este proyecto ya había declarado cuatro veces. Con un encuentro `ACTIVE`, el botón «Atacar»
+// abre la lista de combatientes en vez de tirar directamente; sin combate, sigue igual que
+// siempre. La lista propone primero el bando contrario, pero el servidor **no impide** apuntar a
+// cualquiera — el mismo criterio que este proyecto ya aplicó al bando en sí.
 
 export function TirarAtaqueBoton({
   campaignId,
@@ -39,11 +49,18 @@ export function TirarAtaqueBoton({
   ataque: AttackDto;
 }) {
   const tirar = useRollAttack(campaignId, characterId);
+  const resolver = useResolveAttack(campaignId, characterId);
+  // Tarea 13 — **los objetivos salen del encuentro en marcha, nunca de `useCharacters`**: esa
+  // lista es «quién se sienta a la mesa» y un PNJ, el objetivo natural de un ataque, no sale
+  // nunca en ella. Ver el comentario de `useCombatientesDelEncuentro` en `hooks.ts`.
+  const { combatientes, enCombate } = useCombatientesDelEncuentro(campaignId, characterId);
   const [abierto, setAbierto] = useState(false);
+  const [objetivoAbierto, setObjetivoAbierto] = useState(false);
   const [modoAtaque, setModoAtaque] = useState<RollMode>("NORMAL");
   const [dosManos, setDosManos] = useState(false);
   const [resultadoAtaque, setResultadoAtaque] = useState<RollResult | null>(null);
   const [resultadoDano, setResultadoDano] = useState<RollResult | null>(null);
+  const [veredicto, setVeredicto] = useState<AttackVerdict | null>(null);
   const [errorAtaque, setErrorAtaque] = useState<string | null>(null);
   const [errorDano, setErrorDano] = useState<string | null>(null);
   /**
@@ -89,14 +106,61 @@ export function TirarAtaqueBoton({
       {
         onSuccess: (r) => {
           setErrorAtaque(null);
+          setVeredicto(null);
           setResultadoAtaque(r);
         },
         onError: (err) => {
           setResultadoAtaque(null);
+          setVeredicto(null);
           setErrorAtaque((err as Error).message);
         },
       },
     );
+
+  /**
+   * Tarea 13 — el mismo ataque, pero **contra un objetivo**: el servidor tira y compara con su CA,
+   * y aquí solo se enseña el veredicto que devuelve (`docs`: la CA nunca viaja, ni aquí ni en el
+   * suceso).
+   */
+  const atacarObjetivo = (targetCharacterId: string) => {
+    setObjetivoAbierto(false);
+    resolver.mutate(
+      {
+        attackKey: ataque.key,
+        input: {
+          targetCharacterId,
+          mode: modoAtaque,
+          spendInspiration: gastarInspiracion && modoAtaque !== "DISADVANTAGE",
+          audience: "PUBLIC",
+        },
+      },
+      {
+        onSuccess: (r) => {
+          setErrorAtaque(null);
+          setResultadoAtaque(r.roll);
+          setVeredicto(r.verdict ?? null);
+        },
+        onError: (err) => {
+          setResultadoAtaque(null);
+          setVeredicto(null);
+          setErrorAtaque((err as Error).message);
+        },
+      },
+    );
+  };
+
+  /**
+   * **Con combate en marcha, el botón abre la lista de objetivos; sin combate, tira sin más.**
+   * Es la misma decisión que ya tomó la tarea: elegir a quién apuntar solo tiene sentido cuando
+   * hay un encuentro que sepa quién más está en la mesa.
+   */
+  const alPulsarAtacar = () => {
+    if (enCombate && combatientes.length > 0) {
+      setObjetivoAbierto((v) => !v);
+    } else {
+      tirarAtaque();
+    }
+  };
 
   const tirarDano = () =>
     tirar.mutate(
@@ -183,13 +247,43 @@ export function TirarAtaqueBoton({
               <Button
                 type="button"
                 variant="primary"
-                onClick={tirarAtaque}
-                disabled={tirar.isPending}
-                aria-label={`Tirar ataque con ${ataque.name}`}
+                onClick={alPulsarAtacar}
+                disabled={tirar.isPending || resolver.isPending}
+                aria-expanded={enCombate && combatientes.length > 0 ? objetivoAbierto : undefined}
+                aria-label={`Atacar con ${ataque.name}`}
               >
-                Tirar ataque
+                Atacar
               </Button>
             </div>
+
+            {/* **Con combate en marcha, elegir objetivo — se propone primero el bando
+                contrario, pero cualquiera de la lista se puede pulsar.** El servidor no impide
+                atacar a un aliado (confusión, un hechizo que domina, una traición): esta lista
+                solo ordena, nunca cierra una opción. */}
+            {objetivoAbierto && (
+              <ul
+                role="listbox"
+                aria-label={`Objetivo del ataque con ${ataque.name}`}
+                className="mt-s2 flex flex-col gap-1 rounded-radius-sm border border-muted p-1"
+              >
+                {combatientes.map((c) => (
+                  <li key={c.characterId}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      onClick={() => atacarObjetivo(c.characterId)}
+                      disabled={resolver.isPending}
+                      className="flex w-full items-baseline justify-between gap-s2 rounded-radius-sm px-s2 py-1 text-left font-chrome text-chrome-sm text-text hover:bg-[color:var(--accent-tint)] disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      <span>{c.nombre}</span>
+                      <span className="text-chrome-xs text-muted">{NOMBRE_BANDO[c.side]}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {errorAtaque && (
               <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
                 {errorAtaque}
@@ -198,11 +292,22 @@ export function TirarAtaqueBoton({
             {resultadoAtaque && (
               <div className="mt-s2">
                 {resultadoAtaque.revealed ? (
-                  <ResultadoDeTirada
-                    resultado={resultadoAtaque}
-                    etiqueta={`Ataque con ${ataque.name}`}
-                    derivado={ataque.attackBonus}
-                  />
+                  <>
+                    <ResultadoDeTirada
+                      resultado={resultadoAtaque}
+                      etiqueta={`Ataque con ${ataque.name}`}
+                      derivado={ataque.attackBonus}
+                    />
+                    {veredicto && (
+                      <p
+                        className={`mt-1 font-chrome text-chrome-sm font-semibold ${
+                          veredicto === "MISS" ? "text-muted" : "text-accent-text"
+                        }`}
+                      >
+                        {NOMBRE_VEREDICTO[veredicto]}
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <TiradaACiegas
                     etiqueta={`Ataque con ${ataque.name}`}

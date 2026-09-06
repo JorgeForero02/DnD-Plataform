@@ -48,6 +48,12 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 12 · el editor de criaturas mentía al editar.** El selector de visibilidad ya existía y
+  ya se pintaba al **crear**; al editar, la otra rama del ternario decía *«el servidor no manda ese
+  dato al leer la criatura»* y **sí lo manda**. Además de incumplir la regla vinculante —si el
+  texto explica una regla del servidor y discrepan, miente el texto—, dejaba sin **ninguna** forma
+  de cambiar quién ve una criatura propia ya creada. **Cómo se revierte:** el commit.
+
 - **Tarea 19 · cancelar un combate no avisaba a quien estaba esperando** (D-A-3). `cancel` borraba
   el encuentro y sus peticiones **sin escribir nada**, a propósito —«no es historia, es un clic
   deshecho»—, y el coste era que a quien tenía una petición pendiente **le desaparecía la entrada

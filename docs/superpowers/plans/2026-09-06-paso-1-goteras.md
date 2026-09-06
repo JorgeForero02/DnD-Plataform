@@ -1483,12 +1483,21 @@ implementador por árbol**.
 una mutación se lleva por delante TODO lo no commiteado de ese fichero**, no solo la mutación. Pasó
 con `conditions.service.ts` dos veces. Se deshace con la edición inversa, nunca con `checkout`.
 
-**Lo que la revisión de 2 y 3 dejó pendiente y va a la tarea 12**, porque es su mismo fichero: el
-editor de criaturas **no tiene ningún control para las inmunidades a condición**, así que un DM no
-puede declarar ninguna, y al guardar reenvía la lista ya filtrada —o sea que la primera edición por
-cualquier otro motivo **borraría** una etiqueta que la migración no supiera mapear. El comentario de
-la migración que afirmaba lo contrario ya está corregido, y su mapa ampliado con las formas
-femeninas y `veneno`, que son justo las que escribiría quien no las puede volver a escribir.
+**Lo que la revisión de 2 y 3 dejó pendiente, y por qué NO entra en la tarea 12.** El editor de
+criaturas no tiene control para las inmunidades a condición y al guardar reenvía la lista ya
+filtrada, así que la primera edición por cualquier otro motivo borraría una etiqueta que la
+migración no supiera mapear. Al abrir el fichero se ve que **tampoco edita `damageResistances`,
+`damageImmunities` ni `damageVulnerabilities`**: no es un hueco de este campo, es el bloque entero
+que la cola larga de la tarea 13 nombra («diez campos del editor de criaturas… resistencias»).
+Meterlo con calzador en la 12 sería juntar dos superficies que no comparten forma de probarse, que
+es justo lo que el aviso de la sesión de acompañamiento pedía evitar.
+
+**Y sobre la pérdida en sí, la decisión y su coste:** se acepta. Lo que se pierde es una etiqueta
+que el motor **no puede leer** —por eso la tarea 2 tipó el campo—, la migración ya mapea las dos
+lenguas, los dos géneros y `veneno`, y el comentario que decía que el DM podía volver a escribirla
+está corregido. Conservar prosa inservible dentro de una columna tipada es exactamente lo que la
+tarea 2 quitó. **Si me equivoco cuesta que el DM reescriba esa inmunidad** en el control que la
+tarea 13 debe añadir.
 
 **Decisiones tomadas sin el autor, con lo que costarían si me equivoco:**
 
@@ -1545,4 +1554,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 8b · `changeHp` las aplica | ✅ | `3bf2ed9` | Ficha tachada y archivada; la prueba que afirmaba lo contrario **se corrige, no se borra** |
 | 9 · El descanso mueve el reloj | ✅ | `f38c8bb` | D-A-1 comprobada en `04-convenciones.md` antes de tocar nada; largo 8 h, corto 1 h |
 | 16 · El bando corregido viaja por el canal | ✅ | `87df552` | Dos tipos nuevos, el `record` en la misma transacción, y su línea en español; ficha archivada |
-| 19 · Cancelar un combate avisa | ✅ | el de abajo | Sujeto **sesión**, sin `encounterId`; **E-IB-18 tachada y explicada**, no borrada |
+| 19 · Cancelar un combate avisa | ✅ | `5b2dba0` | Sujeto **sesión**, sin `encounterId`; **E-IB-18 tachada y explicada**, no borrada |
+| 12 · El editor de criaturas deja de mentir al editar | ✅ | el de abajo | El selector se pinta en los dos casos; falta su paso por el navegador, que va en la tanda única |

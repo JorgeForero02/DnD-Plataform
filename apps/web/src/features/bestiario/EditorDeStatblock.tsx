@@ -522,13 +522,17 @@ export function EditorDeStatblock({
           />
         </Field>
 
-        {statblock ? (
-          <p className="font-chrome text-chrome-sm text-muted">
-            Quién la ve no se toca desde aquí: el servidor no manda ese dato al leer la criatura,
-            así que este formulario no puede decir cuál es sin arriesgarse a cambiarla. Se queda
-            exactamente como estaba.
-          </p>
-        ) : (
+        {
+          // **Se pinta igual al crear y al editar** (paso 1, tarea 12, 2026-09-06).
+          //
+          // Aquí había un ternario, y al EDITAR ponía: *«Quién la ve no se toca desde aquí: el
+          // servidor no manda ese dato al leer la criatura»*. **El servidor sí lo manda** —
+          // `aStatblock` lo devuelve y `borradorDe` ya lo recogía con
+          // `visibility: s.visibility ?? "DM_ONLY"`—, así que el párrafo incumplía la regla
+          // vinculante: *si la interfaz explica una regla del servidor y discrepan, miente el
+          // texto*. Y su consecuencia era peor que la mentira: **no había ninguna forma de cambiar
+          // quién ve una criatura propia ya creada.**
+          //
           // **El componente que la regla exige ya existe** (`entities/VisibilityChooser.tsx`):
           // radios verticales, cada uno con su frase, y con el manejo de «valor guardado fuera
           // de lista». Lo que había aquí era un `<select>` —que `docs/04-convenciones.md`
@@ -548,7 +552,7 @@ export function EditorDeStatblock({
             niveles={NIVELES_DE_CRIATURA}
             onChange={(v) => setB({ ...b, visibility: v })}
           />
-        )}
+        }
       </div>
     </Dialog>
   );

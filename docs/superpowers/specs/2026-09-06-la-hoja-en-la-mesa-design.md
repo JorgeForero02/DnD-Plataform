@@ -26,7 +26,7 @@ qué es cara.
 | Pieza | Estado real |
 |---|---|
 | **Pestañas** | `apps/web/src/ui/Tabs.tsx` — primitiva del proyecto, con dos disposiciones (tira y lateral), iconos opcionales y grupos. **Ya la usan** el bestiario, las crónicas, el editor de entidades y el taller del DM |
-| **Retrato** | `Retrato`, en `features/sessions/elenco/FichaDeElenco.tsx:306`. Hoy pinta un marcador; el arte entra ahí cuando lo haya |
+| **Retrato** | `Retrato`, en `features/sessions/elenco/FichaDeElenco.tsx:306`. Pinta **la inicial del personaje en su propio color**, y hay prueba de que ese color coincide con su voz en el hilo. **Es el retrato acordado** mientras no haya almacenamiento |
 | **Filtros** | `ui/FilterChip.tsx`, ya en uso en el bestiario (`PanelDeBestiario.tsx:340`) |
 | **Los cinco números** | la tira fija de `HojaCalculada` — CA, iniciativa, velocidad, PG y competencia, **con su traza detrás** |
 | **Las once ranuras** | `equipSlotSchema`: manos, armadura, cabeza, cuello, capa, dos anillos, manos, pies y «otro». **El dato está aunque no se dibuje el maniquí** |
@@ -56,10 +56,14 @@ icons/consumables/potions/… 57 objetos
 clon son **unos 30 SVG de Game-Icons.net** (`icons/LICENSE`), en **CC BY 3.0** y CC0 — reutilizables
 citando autor.
 
-**Decisión que este diseño toma:** la lista **no lleva imagen por objeto**. Si algún día se quiere
-una pista visual, es **un dibujo por TIPO** —espada, arco, poción, pergamino, anillo, armadura,
-escudo…— de Game-Icons con su atribución, o dibujado como manda la regla del proyecto. **Quince
-siluetas, no ochocientas.**
+**Decisión del autor, 2026-09-06: no hay imágenes de objeto, y no las va a haber.** Ni en la
+lista, ni en el inventario, ni **en la tienda cuando exista**. La referencia no es la rejilla de
+*Divinity* sino la lista de *Final Fantasy*: **nombre, cantidad y sus acciones**, en texto.
+
+Eso zanja el problema entero en vez de administrarlo: no hay licencia que revisar, no hay
+ochocientas piezas de arte que conseguir, y **no hay una rejilla que se lea peor que una lista**
+mientras el arte no llegue. Si algún día se quisiera una pista visual, sería **un dibujo por TIPO**
+—quince siluetas, no ochocientas— y entraría como decisión nueva, no como deuda de esta.
 
 ### 3.2 · No hay ningún menú contextual en toda la aplicación
 
@@ -76,9 +80,18 @@ formas de llegar.
 ### 3.3 · No hay dónde guardar un retrato
 
 **No existe subida de ficheros en ninguna parte del proyecto**: ni `multipart`, ni almacenamiento
-de imágenes, ni un campo de avatar. El retrato de esta spec es **el hueco y su marcador**; guardar
-una imagen es un trabajo aparte —dónde viven los ficheros, cuánto pesan, quién los ve— y **no entra
-aquí**. El autor ya lo dijo: *«se hará en el futuro»*.
+de imágenes, ni un campo de avatar. Guardar una imagen es un trabajo aparte —dónde viven los
+ficheros, cuánto pesan, quién los ve— y **no entra aquí**.
+
+**Decisión del autor, 2026-09-06: mientras no haya almacenamiento, el retrato es la INICIAL del
+personaje.** Y eso **ya está hecho y probado**: `Retrato`
+(`features/sessions/elenco/FichaDeElenco.tsx:306`) pinta la primera letra del nombre **en el color
+propio del personaje**, que decide `vozDePersonaje` —la misma función que colorea su voz en el
+hilo—, y hay una prueba de que el retrato y la voz del mismo personaje coinciden.
+
+Así que aquí no se construye un marcador nuevo: **se reutiliza ese componente, más grande**. Cuando
+haya almacenamiento, la imagen entra en el mismo hueco y la inicial se queda como reserva para quien
+no suba ninguna.
 
 ---
 
@@ -204,10 +217,12 @@ pantalla se hace antes, el menú nace con un hueco que hay que volver a abrir.
 
 1. **¿Qué pestaña abre por defecto?** Recomendado: **Números**, que es lo que se mira más veces por
    sesión. La alternativa razonable es **Ataques** si la hoja se usa sobre todo en combate.
-2. **¿La lista lleva silueta por tipo, o solo texto?** Recomendado: **empezar sin dibujo** y
-   añadirlo después si la lista se hace difícil de barrer. Es reversible y no bloquea nada.
-3. **¿Las pestañas son tira arriba o columna lateral?** `Tabs` hace las dos. Recomendado: **tira**
+2. **¿Las pestañas son tira arriba o columna lateral?** `Tabs` hace las dos. Recomendado: **tira**
    dentro de la mesa —hay poco ancho— y **lateral** en la hoja a página completa.
+
+> **Dos preguntas que estaban aquí ya no lo están, porque el autor las contestó el 2026-09-06**: no
+> hay imágenes de objeto —tampoco en la tienda— y el retrato es la inicial del personaje mientras no
+> exista almacenamiento.
 
 ## Definición de terminado del diseño
 

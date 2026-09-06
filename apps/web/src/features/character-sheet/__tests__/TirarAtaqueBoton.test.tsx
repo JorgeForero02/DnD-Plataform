@@ -123,15 +123,35 @@ function montar() {
   );
 }
 
-async function abrirPanelYAtacar() {
+/**
+ * `Button` (`ui/Button.tsx`, ficha U9) desactiva con `aria-disabled`, no con el atributo nativo
+ * `disabled` — a propósito, para que el botón se quede en el recorrido de teclado y su motivo se
+ * pueda leer. `toBeDisabled()`/`toBeEnabled()` de jest-dom miran el atributo nativo, así que no
+ * sirven aquí: esto mira lo mismo que mira el propio componente antes de decidir si ignora el
+ * click.
+ */
+function estaDesactivado(el: HTMLElement) {
+  return el.getAttribute("aria-disabled") === "true";
+}
+
+/**
+ * Abre el panel y espera a que el botón «Atacar» deje de estar desactivado antes de pulsarlo.
+ *
+ * **No es un rodeo de la prueba: es el propio arreglo de la carrera de carga (I-2, ronda de
+ * arreglo 1).** Mientras la sesión, el encuentro o los nombres siguen en vuelo, el botón está
+ * desactivado (por `cargando`) precisamente para que no se pueda pulsar y caer en la tirada suelta
+ * sin objetivo. Esta espera reproduce lo que ve quien juega: pulsar un botón apagado no hace nada
+ * (el propio `Button` ignora el click), así que no hace falta que la prueba lo compruebe pulsando.
+ */
+async function abrirPanelYEsperarAtacar() {
   fireEvent.click(screen.getByRole("button", { name: `Tirada de ${ESTOQUE.name}` }));
   const boton = await screen.findByRole("button", { name: /atacar/i });
-  // El botón solo declara `aria-expanded` una vez que el encuentro (y los nombres que lo
-  // acompañan) terminaron de cargar — antes vale `undefined` y no aparece en el DOM. Esperarlo
-  // evita pulsar «Atacar» a medio cargar, que dispararía la tirada suelta en vez de abrir la
-  // lista: el mismo defecto que cazó la primera versión de esta prueba.
-  await waitFor(() => expect(boton).toHaveAttribute("aria-expanded"));
-  fireEvent.click(boton);
+  await waitFor(() => expect(estaDesactivado(boton)).toBe(false));
+  return boton;
+}
+
+async function abrirPanelYAtacar() {
+  fireEvent.click(await abrirPanelYEsperarAtacar());
 }
 
 beforeEach(() => {
@@ -143,12 +163,17 @@ describe("con combate en marcha", () => {
     vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(SESION);
     vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(
       encuentro([
-        { id: "cb-goblin", characterId: "n-goblin", initiative: 15, position: 0, side: "ENEMY" },
+        // "p-hero" — el propio atacante — es ALLY en este encuentro: es el caso normal (un
+        // jugador que combate). Su bando propio hace que el contrario (ENEMY, el Goblin) se
+        // proponga primero — I-4, ronda de arreglo 1: no es una tabla fija, es relativo a quien
+        // ataca.
+        { id: "cb-hero", characterId: "p-hero", initiative: 20, position: 0, side: "ALLY" },
+        { id: "cb-goblin", characterId: "n-goblin", initiative: 15, position: 1, side: "ENEMY" },
         {
           id: "cb-bandido",
           characterId: "p-bandido",
           initiative: 10,
-          position: 1,
+          position: 2,
           side: "ALLY",
         },
       ]),
@@ -189,6 +214,92 @@ describe("con combate en marcha", () => {
     expect(opciones[0]).toHaveTextContent("Goblin capataz");
     expect(opciones[1]).toHaveTextContent("Bandido arrepentido");
   });
+
+  // I-5, ronda de arreglo 1: **esta sí pulsa la opción** — a diferencia de la de arriba, que solo
+  // mira el orden— y comprueba lo que de verdad se pinta del resultado: el veredicto traducido, y
+  // que el valor crudo del servidor («CRITICAL») nunca llega a pantalla.
+  it("pulsa un objetivo, y el veredicto llega traducido — nunca el valor crudo del servidor", async () => {
+    vi.spyOn(api, "resolveAttack").mockResolvedValue({
+      roll: tirada({ natural: "TWENTY", total: 25 }),
+      verdict: "CRITICAL",
+    });
+
+    montar();
+    await abrirPanelYAtacar();
+    fireEvent.click(await screen.findByRole("option", { name: /goblin/i }));
+
+    expect(await screen.findByText("¡Crítico!")).toBeInTheDocument();
+    expect(screen.queryByText("CRITICAL", { exact: false })).not.toBeInTheDocument();
+    // Y el panel de daño lo dice con el mismo veredicto, no con su propia cuenta del `natural`
+    // (I-3): si algún día discreparan, esta es la frase que tiene que ganar.
+    expect(screen.getByText(/el servidor dice que fue crítico/i)).toBeInTheDocument();
+  });
+});
+
+// I-4, ronda de arreglo 1 — el orden es relativo a QUIEN ATACA, no una tabla fija. Aquí quien
+// ataca (`p-hero`) es él mismo un combatiente `ENEMY` (un PNJ del DM): con la tabla fija de la
+// primera versión, vería primero a los suyos (otros `ENEMY`); con el arreglo, ve primero al
+// bando contrario, que es `ALLY`.
+describe("con el atacante como combatiente ENEMY", () => {
+  beforeEach(() => {
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(SESION);
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(
+      encuentro([
+        { id: "cb-hero", characterId: "p-hero", initiative: 20, position: 0, side: "ENEMY" },
+        { id: "cb-goblin", characterId: "n-goblin", initiative: 15, position: 1, side: "ENEMY" },
+        {
+          id: "cb-bandido",
+          characterId: "p-bandido",
+          initiative: 10,
+          position: 2,
+          side: "ALLY",
+        },
+      ]),
+    );
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([BANDIDO_ALIADO]);
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([GOBLIN]);
+  });
+
+  it("propone al bando ALLY primero, porque el propio atacante es ENEMY", async () => {
+    vi.spyOn(api, "resolveAttack").mockResolvedValue({ roll: tirada() });
+
+    montar();
+    await abrirPanelYAtacar();
+
+    const opciones = await screen.findAllByRole("option");
+    expect(opciones).toHaveLength(2);
+    expect(opciones[0]).toHaveTextContent("Bandido arrepentido");
+    expect(opciones[1]).toHaveTextContent("Goblin capataz");
+  });
+});
+
+// I-2, ronda de arreglo 1 — la carrera de carga. Mientras la sesión/el encuentro/los nombres
+// siguen en vuelo, el botón tiene que quedarse desactivado: si no lo estuviera, pulsarlo caería
+// en la tirada suelta sin objetivo, en silencio, aunque SÍ hubiera combate en marcha.
+describe("mientras se comprueba si hay combate (I-2)", () => {
+  it("el botón «Atacar» está desactivado, con su motivo, hasta saber si hay encuentro", async () => {
+    let resolverSesion!: (v: Session | null) => void;
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockReturnValue(
+      new Promise((resolve) => {
+        resolverSesion = resolve;
+      }),
+    );
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(null);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
+    const tirar = vi.spyOn(api, "rollAttack").mockResolvedValue(tirada());
+
+    montar();
+    fireEvent.click(screen.getByRole("button", { name: `Tirada de ${ESTOQUE.name}` }));
+    const boton = await screen.findByRole("button", { name: /atacar/i });
+
+    expect(estaDesactivado(boton)).toBe(true);
+    fireEvent.click(boton);
+    expect(tirar).not.toHaveBeenCalled();
+
+    resolverSesion(null);
+    await waitFor(() => expect(estaDesactivado(boton)).toBe(false));
+  });
 });
 
 describe("sin combate", () => {
@@ -204,8 +315,7 @@ describe("sin combate", () => {
     const resolver = vi.spyOn(api, "resolveAttack");
 
     montar();
-    fireEvent.click(screen.getByRole("button", { name: `Tirada de ${ESTOQUE.name}` }));
-    fireEvent.click(await screen.findByRole("button", { name: /atacar/i }));
+    await abrirPanelYAtacar();
 
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
     await waitFor(() => expect(tirar).toHaveBeenCalled());

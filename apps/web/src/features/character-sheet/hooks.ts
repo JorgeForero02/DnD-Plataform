@@ -406,12 +406,29 @@ export interface CombatienteObjetivo {
 }
 
 /**
- * **El bando contrario se propone primero.** Es una preferencia de orden para la mesa habitual
- * —quien mira esta hoja suele atacar al enemigo—, no una puerta: la tercera prueba del brief de
- * la tarea 13 exige que se pueda elegir cualquiera de la lista igual, y esta tabla solo decide en
- * qué orden se ofrecen.
+ * **El bando contrario se propone primero — el contrario de QUIEN ATACA, no una tabla fija.**
+ *
+ * La ronda de arreglo 1 sobre la tarea 13 lo corrigió: la primera versión ordenaba siempre
+ * `ENEMY, NEUTRAL, ALLY` sin mirar el bando de quien ataca, con la excusa de que cruzarlo
+ * «exigiría cruzar su combatiente también» — y su combatiente **ya estaba** en
+ * `encuentro.combatants`, descartado en el filtro sin mirarlo. Con la tabla fija, un PNJ del DM
+ * —que es `ENEMY`— vería primero a sus propios aliados (otros `ENEMY`) y solo después al grupo.
+ *
+ * `NEUTRAL` no tiene un contrario que proponer antes: se queda con el orden por defecto.
  */
-const PRIORIDAD_BANDO: Record<CombatantSide, number> = { ENEMY: 0, NEUTRAL: 1, ALLY: 2 };
+const CONTRARIO_DE: Record<CombatantSide, CombatantSide> = {
+  ALLY: "ENEMY",
+  ENEMY: "ALLY",
+  NEUTRAL: "NEUTRAL",
+};
+
+function prioridadBando(bandoPropio: CombatantSide): Record<CombatantSide, number> {
+  const contrario = CONTRARIO_DE[bandoPropio];
+  if (contrario === bandoPropio) {
+    return { ENEMY: 0, NEUTRAL: 1, ALLY: 2 };
+  }
+  return { [contrario]: 0, NEUTRAL: 1, [bandoPropio]: 2 } as Record<CombatantSide, number>;
+}
 
 /**
  * Los objetivos posibles de un ataque: **los combatientes del encuentro en marcha**, con nombre.
@@ -431,24 +448,47 @@ const PRIORIDAD_BANDO: Record<CombatantSide, number> = { ENEMY: 0, NEUTRAL: 1, A
  * Solo hay objetivos con el encuentro `ACTIVE`: en `PREPARING` (sala de espera) todavía no hay
  * turnos, y `ENDED` ya no es un combate. Fuera de esos casos el botón se queda como estaba: solo
  * tira, sin pedir objetivo.
+ *
+ * **`cargando`, y por qué existe** (ronda de arreglo 1, I-2): mientras la sesión, el encuentro o
+ * los nombres siguen en vuelo, `enCombate` todavía no puede distinguirse de «no hay combate» —
+ * las dos empiezan en `false`. Sin esta señal, pulsar «Atacar» justo en ese hueco caía al
+ * `tirarAtaque()` de siempre: una tirada suelta, sin objetivo, silenciosa e irreversible. Quien
+ * llama debe desactivar el botón mientras esto sea `true`, no solo mientras `enCombate` sea falso.
  */
 export function useCombatientesDelEncuentro(
   campaignId: string,
   characterId: string,
-): { combatientes: CombatienteObjetivo[]; enCombate: boolean } {
-  const { data: sesion } = useCurrentSession(campaignId);
-  const { data: encuentro } = useCurrentEncounter(campaignId, sesion?.id);
-  const enCombate = encuentro?.status === "ACTIVE";
-  const { data: personajes } = useCharacters(campaignId);
-  const { data: pnjs } = useNpcs(campaignId, { enabled: enCombate });
+): { combatientes: CombatienteObjetivo[]; enCombate: boolean; cargando: boolean } {
+  const sesionQ = useCurrentSession(campaignId);
+  const encuentroQ = useCurrentEncounter(campaignId, sesionQ.data?.id);
+  const enCombate = encuentroQ.data?.status === "ACTIVE";
+  const personajesQ = useCharacters(campaignId);
+  const pnjsQ = useNpcs(campaignId, { enabled: enCombate });
 
-  if (!enCombate || !encuentro) {
-    return { combatientes: [], enCombate: false };
+  // Mientras no se sepa si hay combate (sesión o encuentro en vuelo), o mientras se sepa que SÍ
+  // lo hay pero los nombres de sus combatientes todavía no llegaron, no hay respuesta honesta
+  // que dar: ni `combatientes` ni `enCombate` son de fiar todavía.
+  const cargando =
+    sesionQ.isLoading ||
+    encuentroQ.isLoading ||
+    (enCombate && (personajesQ.isLoading || pnjsQ.isLoading));
+
+  if (!enCombate || !encuentroQ.data) {
+    return { combatientes: [], enCombate: false, cargando };
   }
+  const encuentro = encuentroQ.data;
 
   const nombreDe = new Map<string, string>();
-  for (const p of personajes ?? []) nombreDe.set(p.id, p.name);
-  for (const n of pnjs ?? []) nombreDe.set(n.id, n.name);
+  for (const p of personajesQ.data ?? []) nombreDe.set(p.id, p.name);
+  for (const n of pnjsQ.data ?? []) nombreDe.set(n.id, n.name);
+
+  // El bando de quien ataca, si es uno de los combatientes — que lo sea es lo habitual, ya que
+  // atacar contra un objetivo solo tiene sentido dentro de un encuentro donde ambos combaten.
+  // `ENEMY` es la caída si no está: es la mejor suposición sin más información, y coincide con
+  // el caso más común (un PNJ del DM que ataca sin haberse añadido él mismo al encuentro).
+  const bandoPropio =
+    encuentro.combatants.find((c) => c.characterId === characterId)?.side ?? "ENEMY";
+  const prioridad = prioridadBando(bandoPropio);
 
   const combatientes = encuentro.combatants
     // Nunca a uno mismo (el servidor ya lo rechaza con un 400) y nunca a quien todavía no tiene
@@ -459,7 +499,7 @@ export function useCombatientesDelEncuentro(
       nombre: nombreDe.get(c.characterId)!,
       side: c.side,
     }))
-    .sort((a, b) => PRIORIDAD_BANDO[a.side] - PRIORIDAD_BANDO[b.side]);
+    .sort((a, b) => prioridad[a.side] - prioridad[b.side]);
 
-  return { combatientes, enCombate: true };
+  return { combatientes, enCombate: true, cargando };
 }

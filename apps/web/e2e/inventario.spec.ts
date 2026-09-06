@@ -135,7 +135,7 @@ test("un arma equipada aparece en el cuadro de ataques, se tira, y la tabla no d
   // **El servidor tira.** La pantalla pide la tirada y enseña el desglose que le llega.
   await tabla.getByRole("button", { name: "Tirada de Espada larga" }).click();
   const panel = ataques.getByRole("group", { name: "Tirada de Espada larga" });
-  await panel.getByRole("button", { name: "Tirar ataque con Espada larga" }).click();
+  await panel.getByRole("button", { name: "Atacar con Espada larga" }).click();
   // El desglose, no solo el total: un número sin explicación genera la siguiente pregunta al DM.
   // `ResultadoDeTirada` lo publica como `role="status"` con los dados y la suma dentro.
   await expect(panel.getByRole("status").first()).toBeVisible({ timeout: 15_000 });

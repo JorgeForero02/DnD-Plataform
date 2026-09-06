@@ -116,6 +116,20 @@ function montar(attacks: AttackDto[]) {
   );
 }
 
+/**
+ * Pulsa «Atacar con X» esperando primero a que deje de estar desactivado.
+ *
+ * **Tarea 13, ronda de arreglo 1 (I-2).** El botón se desactiva (`aria-disabled`, `ui/Button.tsx`)
+ * mientras `TirarAtaqueBoton` todavía no sabe si hay combate —aquí, mientras se resuelve el
+ * `null` simulado de `fetchCurrentSession`—; pulsarlo antes de esa espera es exactamente la
+ * carrera de carga que la ronda de arreglo cerró, y `Button` la ignora en silencio.
+ */
+async function pulsarAtacar(nombre: string) {
+  const boton = await screen.findByRole("button", { name: nombre });
+  await waitFor(() => expect(boton).not.toHaveAttribute("aria-disabled", "true"));
+  fireEvent.click(boton);
+}
+
 describe("AtaquesYLanzamiento", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -169,7 +183,7 @@ describe("AtaquesYLanzamiento", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
     fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
-    fireEvent.click(screen.getByRole("button", { name: "Atacar con Estoque" }));
+    await pulsarAtacar("Atacar con Estoque");
 
     await waitFor(() => expect(espia).toHaveBeenCalled());
     const [, , attackKey, input] = espia.mock.calls[0];
@@ -210,7 +224,7 @@ describe("AtaquesYLanzamiento", () => {
     // La casilla ya no existe: el crítico no se declara.
     expect(screen.queryByRole("checkbox", { name: "Crítico" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Atacar con Estoque" }));
+    await pulsarAtacar("Atacar con Estoque");
     await waitFor(() => expect(espia).toHaveBeenCalledTimes(1));
     // Y se dice lo que pasó, en vez de ofrecer declararlo.
     await screen.findByText(/Fue un 20 natural/);
@@ -247,7 +261,7 @@ describe("AtaquesYLanzamiento", () => {
     montar([estoque]);
 
     fireEvent.click(screen.getByRole("button", { name: "Tirada de Estoque" }));
-    fireEvent.click(screen.getByRole("button", { name: "Atacar con Estoque" }));
+    await pulsarAtacar("Atacar con Estoque");
     await waitFor(() => expect(espia).toHaveBeenCalledTimes(1));
     await screen.findByText(/No fue un 20 natural/);
 

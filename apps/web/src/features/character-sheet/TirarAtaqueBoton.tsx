@@ -38,6 +38,12 @@ import { NOMBRE_BANDO } from "../../dominio/combate";
 // abre la lista de combatientes en vez de tirar directamente; sin combate, sigue igual que
 // siempre. La lista propone primero el bando contrario, pero el servidor **no impide** apuntar a
 // cualquiera — el mismo criterio que este proyecto ya aplicó al bando en sí.
+//
+// **Ronda de arreglo 1 (2026-09-06)** cerró un crítico (la carrera de carga podía disparar la
+// tirada suelta sin objetivo mientras el encuentro todavía no se conocía — ver `cargando` en
+// `useCombatientesDelEncuentro`), corrigió el orden de la lista (el bando contrario es el de
+// QUIEN ATACA, no una tabla fija) y dejó el veredicto del servidor como única fuente del crítico
+// cuando lo hay.
 
 export function TirarAtaqueBoton({
   campaignId,
@@ -53,7 +59,14 @@ export function TirarAtaqueBoton({
   // Tarea 13 — **los objetivos salen del encuentro en marcha, nunca de `useCharacters`**: esa
   // lista es «quién se sienta a la mesa» y un PNJ, el objetivo natural de un ataque, no sale
   // nunca en ella. Ver el comentario de `useCombatientesDelEncuentro` en `hooks.ts`.
-  const { combatientes, enCombate } = useCombatientesDelEncuentro(campaignId, characterId);
+  const {
+    combatientes,
+    enCombate,
+    // **I-2, ronda de arreglo 1.** Mientras esto es `true`, `enCombate` todavía no distingue «no
+    // hay combate» de «no se sabe todavía»: el botón se desactiva hasta saberlo, para no caer en
+    // la tirada suelta por una carrera de carga.
+    cargando,
+  } = useCombatientesDelEncuentro(campaignId, characterId);
   const [abierto, setAbierto] = useState(false);
   const [objetivoAbierto, setObjetivoAbierto] = useState(false);
   const [modoAtaque, setModoAtaque] = useState<RollMode>("NORMAL");
@@ -73,11 +86,22 @@ export function TirarAtaqueBoton({
    */
   // `RollResult` es una unión sobre `revealed`: una tirada a ciegas no trae `natural`, y ahí no se
   // puede afirmar nada — decir «no fue crítico» sería tan falso como decir que sí.
+  //
+  // **Solo para el camino SIN objetivo** (`tirarAtaque`, que nunca trae veredicto). Con
+  // objetivo, el servidor ya manda `verdict: "CRITICAL"` en la misma respuesta —ver
+  // `criticoMostrado`, más abajo— y recalcularlo aquí es la misma regla escrita dos veces: el
+  // día que exista otra vía de crítico (rango ampliado de pícaro o campeón) que no sea un 20
+  // natural, esta cuenta discreparía del veredicto en el mismo panel (I-3, ronda de arreglo 1).
   const criticoDeLaTirada =
     resultadoAtaque?.revealed === true && resultadoAtaque.natural === "TWENTY";
+  /** Lo que de verdad se enseña: el veredicto del servidor si lo hay, la cuenta local si no. */
+  const criticoMostrado = veredicto ? veredicto === "CRITICAL" : criticoDeLaTirada;
   const dado = useRef<HTMLButtonElement>(null);
   const caja = useRef<HTMLDivElement>(null);
   const grupoMano = useId();
+  const idBase = useId();
+  const idCargando = `${idBase}-cargando`;
+  const idEnviando = `${idBase}-enviando`;
   const [gastarInspiracion, setGastarInspiracion] = useState(false);
 
   useEffect(() => {
@@ -86,6 +110,10 @@ export function TirarAtaqueBoton({
 
   const cerrar = () => {
     setAbierto(false);
+    // Menor, ronda de arreglo 1: sin esto, la lista de objetivos quedaba abierta en el estado y
+    // reaparecía ya desplegada —con su `aria-expanded` heredado— la próxima vez que se abriera
+    // el panel, aunque nadie hubiera vuelto a pulsar «Atacar».
+    setObjetivoAbierto(false);
     dado.current?.focus();
   };
 
@@ -153,8 +181,13 @@ export function TirarAtaqueBoton({
    * **Con combate en marcha, el botón abre la lista de objetivos; sin combate, tira sin más.**
    * Es la misma decisión que ya tomó la tarea: elegir a quién apuntar solo tiene sentido cuando
    * hay un encuentro que sepa quién más está en la mesa.
+   *
+   * **Mientras `cargando` sea `true`, el botón está desactivado** (más abajo) y esto no debería
+   * poder dispararse — se deja la comprobación aquí también, por si acaso, para que la carrera de
+   * carga (I-2) no pueda colarse por un camino que no sea el `disabled`.
    */
   const alPulsarAtacar = () => {
+    if (cargando) return;
     if (enCombate && combatientes.length > 0) {
       setObjetivoAbierto((v) => !v);
     } else {
@@ -215,7 +248,14 @@ export function TirarAtaqueBoton({
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.stopPropagation();
-              cerrar();
+              // Menor, ronda de arreglo 1: con la lista de objetivos abierta, Escape la cierra a
+              // ELLA — un cierre a la vez, como cualquier menú anidado — y solo cierra el panel
+              // entero en la segunda pulsación, cuando ya no hay nada más pequeño que cerrar.
+              if (objetivoAbierto) {
+                setObjetivoAbierto(false);
+              } else {
+                cerrar();
+              }
             }
           }}
           className="absolute right-0 top-[calc(100%+0.25rem)] z-30 w-[21rem] max-w-[calc(100vw-2rem)] rounded-radius-md border border-accent bg-surface p-s3 text-left shadow-[0_18px_40px_-24px_var(--sheet-shadow)]"
@@ -248,12 +288,29 @@ export function TirarAtaqueBoton({
                 type="button"
                 variant="primary"
                 onClick={alPulsarAtacar}
-                disabled={tirar.isPending || resolver.isPending}
+                disabled={tirar.isPending || resolver.isPending || cargando}
                 aria-expanded={enCombate && combatientes.length > 0 ? objetivoAbierto : undefined}
                 aria-label={`Atacar con ${ataque.name}`}
+                aria-describedby={
+                  [
+                    cargando ? idCargando : null,
+                    tirar.isPending || resolver.isPending ? idEnviando : null,
+                  ]
+                    .filter((x): x is string => x !== null)
+                    .join(" ") || undefined
+                }
               >
                 Atacar
               </Button>
+              {/* **El botón que se apaga dice su motivo, asociado** (regla vinculante de
+                  interfaz) — no un botón mudo mientras la carrera de carga (I-2) todavía no sabe
+                  si hay combate. */}
+              <span id={idCargando} className="sr-only">
+                Comprobando si hay combate en marcha.
+              </span>
+              <span id={idEnviando} className="sr-only">
+                Enviando la tirada.
+              </span>
             </div>
 
             {/* **Con combate en marcha, elegir objetivo — se propone primero el bando
@@ -267,18 +324,27 @@ export function TirarAtaqueBoton({
                 className="mt-s2 flex flex-col gap-1 rounded-radius-sm border border-muted p-1"
               >
                 {combatientes.map((c) => (
-                  <li key={c.characterId}>
-                    <button
+                  // `role="presentation"` — el `<li>` no es un hijo ARIA válido de `listbox`; el
+                  // hijo válido es el `option` de dentro, y esto lo saca de en medio sin cambiar
+                  // el marcado semántico HTML (menor, ronda de arreglo 1).
+                  <li key={c.characterId} role="presentation">
+                    {/* `Button` y no un `<button>` a mano: **aria-disabled, no `disabled`**
+                        (ficha U9, `ui/Button.tsx`) — un botón desactivado sale del recorrido de
+                        teclado con el atributo nativo, y esto es exactamente el mismo apagado
+                        temporal que ya usa «Atacar» mientras vuela la mutación. */}
+                    <Button
                       type="button"
+                      variant="ghost"
                       role="option"
                       aria-selected="false"
                       onClick={() => atacarObjetivo(c.characterId)}
                       disabled={resolver.isPending}
-                      className="flex w-full items-baseline justify-between gap-s2 rounded-radius-sm px-s2 py-1 text-left font-chrome text-chrome-sm text-text hover:bg-[color:var(--accent-tint)] disabled:cursor-not-allowed disabled:opacity-70"
+                      aria-describedby={resolver.isPending ? idEnviando : undefined}
+                      className="!flex w-full items-baseline justify-between gap-s2 text-left font-normal hover:bg-[color:var(--accent-tint)]"
                     >
                       <span>{c.nombre}</span>
                       <span className="text-chrome-xs text-muted">{NOMBRE_BANDO[c.side]}</span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -372,9 +438,15 @@ export function TirarAtaqueBoton({
             <p className={`mt-1 ${PROSA_DE_HOJA}`}>
               {resultadoAtaque === null
                 ? "Tira primero el ataque: el daño se cobra sobre esa tirada, y de ella sale si fue crítico."
-                : criticoDeLaTirada
-                  ? "Fue un 20 natural: el daño duplicará los dados. El modificador no cambia."
-                  : "No fue un 20 natural, así que el daño va sin duplicar."}
+                : veredicto
+                  ? // Con objetivo, lo dice el veredicto del servidor — no un 20 natural recalculado
+                    // aquí, que un día podría discrepar (I-3, ronda de arreglo 1).
+                    criticoMostrado
+                    ? "El servidor dice que fue crítico: el daño duplicará los dados. El modificador no cambia."
+                    : "El servidor dice que no fue crítico, así que el daño va sin duplicar."
+                  : criticoMostrado
+                    ? "Fue un 20 natural: el daño duplicará los dados. El modificador no cambia."
+                    : "No fue un 20 natural, así que el daño va sin duplicar."}
             </p>
 
             <div className="mt-s2">

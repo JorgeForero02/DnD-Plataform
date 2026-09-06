@@ -1508,4 +1508,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | — · El historial no cabía | ✅ | `02c19d8` | Seis entradas por tarea al archivo, enteras |
 | 3 · Una sola concentración | ✅ | `a812ae1` | La segunda retira la primera **con su suceso**; el segundo defecto (una salvación para dos) desaparece solo |
 | 4 · Ayudar caduca cuando el SRD dice | ✅ | `7b2b8c2` | Borde de turno; **4a y 4b van juntas** (abajo el porqué) |
-| — · Revisión de 2 y 3 (13 hallazgos) | ✅ | el de abajo | Las unitarias de concentración **no medían el `where`**; el mapa de la migración perdía las formas femeninas; un `@Optional()` fallaba abierto |
+| — · Revisión de 2 y 3 (13 hallazgos) | ✅ | `b95635f` | Las unitarias de concentración **no medían el `where`**; el mapa de la migración perdía las formas femeninas; un `@Optional()` fallaba abierto |
+| 6 · Un PNJ es competente con sus armas | ✅ | el de abajo | Las dos categorías enteras, no una lista inventada; el PJ sin competencia **sigue** con su aviso |

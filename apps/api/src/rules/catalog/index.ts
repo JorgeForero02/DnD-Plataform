@@ -112,7 +112,20 @@ export function deriveNpc(statblock: Statblock, extraModifiers: Modifier[] = [])
     // la mesa lee, no un número que el motor reparta. Prometer dos ataques porque el troll dice
     // «tres ataques» sería que la hoja arbitrara un combate que 2D declara fuera de alcance.
     attacksPerAction: 1,
-    weaponProficiencies: [],
+    /**
+     * **Un PNJ es competente con las armas que maneja**, y por eso son las dos categorías enteras
+     * y no una lista inventada arma por arma.
+     *
+     * Aquí ponía `[]`, y eso hacía que darle una cimitarra del catálogo a un goblin para que
+     * pudiera atacar lo dejara tirando a **+2 donde el SRD da +4** —*«Scimitar. Melee Weapon
+     * Attack: +4 to hit»*, con Destreza 14 (+2) y bono de competencia +2 por su VD 1/4—, y encima
+     * con el aviso `attack_not_proficient` al lado: el motor sabiéndolo y sin poder hacer nada.
+     *
+     * **No inventa nada**: un statblock del SRD ya trae su bono calculado, y el arma que empuña un
+     * PNJ la elige el DM al dársela. Enumerar armas sueltas sería transcribir a mano lo que el
+     * libro ya da resuelto, y equivocarse en una.
+     */
+    weaponProficiencies: ["simple", "martial"],
     spellSlots: [],
     // «NONE» y no `undefined`: un PNJ no tiene espacios de conjuro, así que no hay nada que
     // reponer, y eso es un valor del vocabulario y no un hueco.

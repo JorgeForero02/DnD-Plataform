@@ -48,6 +48,13 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 6 · un goblin no era competente ni con su propia cimitarra.** `deriveNpc` dejaba
+  `weaponProficiencies` vacía, así que atacaba a **+2 donde el SRD da +4**, con el aviso
+  `attack_not_proficient` al lado —el motor sabiéndolo y sin poder hacer nada—. Un PNJ es
+  competente con lo que maneja: las dos categorías enteras, no una lista transcrita arma por arma.
+  **Un PJ sin competencia sigue recibiendo su aviso y sin sumar el bono**, y hay prueba de eso.
+  **Cómo se revierte:** una línea.
+
 - **Tarea 4 · la acción Ayudar caducaba antes de tiempo para media mesa.** El reloj solo sube al
   **cerrar** un asalto, así que la marca a `reloj + 6s` vencía al **empezar** el siguiente, antes
   del turno de nadie: quien actuaba antes que su ayudante llegaba a su turno sin ventaja, y eso es

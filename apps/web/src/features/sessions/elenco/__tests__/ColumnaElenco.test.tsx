@@ -59,6 +59,19 @@ const GOBLIN: NpcEnLaMesa = {
   conditions: [],
 };
 
+// **I-1, ronda de arreglo 1** — un PNJ instanciado que NO combate en este encuentro. La mutación
+// barata (vaciar el cruce) enrojece con solo `GOBLIN`; la que de verdad prueba el cruce es esta:
+// si la columna pintara el catálogo entero de PNJ en vez de cruzarlo con `encuentro.combatants`,
+// este apareceria también, y ninguna prueba de este fichero lo cazaría sin él.
+const OGRO_FUERA_DE_COMBATE: NpcEnLaMesa = {
+  id: "n-ogro",
+  name: "Ogro del sótano",
+  statblockRef: "srd-ogre",
+  currentHp: 59,
+  visibility: "PLAYERS",
+  conditions: [],
+};
+
 function encuentroActivo(): Encounter {
   return {
     id: "enc-1",
@@ -143,5 +156,45 @@ describe("el elenco enseña a los PNJ combatientes (tarea 9b)", () => {
     await screen.findByText("Corvin Vhael");
     expect(screen.queryByText("PNJ en combate")).not.toBeInTheDocument();
     expect(screen.queryByText("Goblin capataz")).not.toBeInTheDocument();
+  });
+
+  // I-1 (ronda de arreglo 1) — **la dirección cara de la mutación**: ensanchar el cruce (pintar
+  // el catálogo entero de PNJ en vez de solo quien combate) no enrojecía ninguna prueba anterior,
+  // porque el único PNJ del fichero SÍ estaba en `encuentro.combatants`. Esta prueba mete uno que
+  // no lo está.
+  it("un PNJ instanciado que no combate en ESTE encuentro no aparece en la columna", async () => {
+    montar([GOBLIN, OGRO_FUERA_DE_COMBATE]);
+
+    expect(await screen.findByText("Goblin capataz")).toBeInTheDocument();
+    expect(screen.queryByText("Ogro del sótano")).not.toBeInTheDocument();
+  });
+
+  // I-1 — **sin encuentro, la sección entera falta**, no solo sus PNJ: `combatientesPnj` sale de
+  // `encuentro.combatants`, y sin encuentro no hay combatientes que cruzar. Un personaje de
+  // jugador (`Corvin Vhael`) se sigue viendo — la mesa no depende del combate.
+  it("sin encuentro no hay sección de PNJ, aunque la lista de PNJ no esté vacía", async () => {
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(null);
+
+    montar([GOBLIN]);
+
+    await screen.findByText("Corvin Vhael");
+    expect(screen.queryByText("PNJ en combate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Goblin capataz")).not.toBeInTheDocument();
+  });
+});
+
+// C-1 / I-5 (ronda de arreglo 1) — **el mando de bando, cableado de verdad desde la columna.**
+// Las pruebas de `FichaDeElenco.test.tsx` montan esa ficha sola, con props a mano — no afirman
+// que `ColumnaElenco` de verdad le pase `sessionId`/`encounterId`/`combatanteId`, y ese hueco es
+// literalmente por qué el crítico (el PNJ sin mando de bando) pasó desapercibido. Esto prueba el
+// cableado real, para el personaje de jugador Y para el PNJ.
+describe("el DM corrige el bando desde la columna de verdad (C-1, I-5)", () => {
+  it("el grupo «Bando de …» aparece para el personaje de jugador y para el PNJ combatiente", async () => {
+    montar([GOBLIN]);
+
+    expect(await screen.findByRole("group", { name: "Bando de Corvin Vhael" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("group", { name: "Bando de Goblin capataz" }),
+    ).toBeInTheDocument();
   });
 });

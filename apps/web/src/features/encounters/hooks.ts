@@ -82,6 +82,12 @@ export function useSetInitiative(campaignId: string, sessionId: string | undefin
  * Tarea 10 — corregir el bando de un combatiente con el combate en marcha. La invalida igual
  * que `useSetInitiative`: cambia el mismo `Encounter` que ya cachea `currentEncounterKey`, no
  * escribe sucesos nuevos que el registro necesite enterarse.
+ *
+ * **No emite ningún suceso por el canal en vivo** (`features/live/canal.ts`), a diferencia de
+ * otras acciones del encuentro (ronda de arreglo 1 sobre la tarea 9b, 2026-09-06, hallazgo del
+ * revisor): quien pulsa ve el cambio al momento porque esta invalidación es local, pero los
+ * demás navegadores de la mesa siguen viendo el bando viejo hasta el próximo sondeo de
+ * `useCurrentEncounter` (`SONDEO_DE_RED_DE_SEGURIDAD_MS`, 10 s) — no hasta que el canal avise.
  */
 export function useSetSide(campaignId: string, sessionId: string | undefined) {
   const invalidar = useInvalidar(campaignId, sessionId);

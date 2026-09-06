@@ -83,6 +83,15 @@ export function ColumnaElenco({
   // «ahora no te toca a ti» sin delatar a quién, cuando el espectador no puede ver a ese
   // combatiente. Y varios combatientes comparten posición cuando el servidor los agrupó por
   // `statblockRef` (seis goblins son UN turno), así que esto es un conjunto, no un id.
+  //
+  // **`enCombate` es `true` también con el encuentro en `PREPARING`** (I-6, ronda de arreglo 1
+  // sobre la tarea 9b) — declarado a propósito, no un descuido: en la sala de espera el DM
+  // sigue montando la escena (`sides` ya viaja desde `EmpezarCombate.tsx`, pero nadie ha tirado
+  // iniciativa todavía), y rectificar quién es enemigo de quién ANTES de que el orden se fije es
+  // exactamente cuando más sirve — corregirlo ya en `ACTIVE` significa que alguien actuó ya bajo
+  // el bando equivocado. Es distinto del orden de turnos (`TiraDeIniciativa.tsx`), que sí espera
+  // a `ACTIVE` porque un orden de `PREPARING` sería un orden que aún no existe; el bando, en
+  // cambio, ya existe desde que se creó el encuentro.
   const enCombate = Boolean(encuentro);
   const deQuienEsElTurno = new Set(
     encuentro && encuentro.activePosition !== null
@@ -224,7 +233,11 @@ export function ColumnaElenco({
         // El DM sí los lleva, porque de eso trataba el encargo: hasta hoy no había manera de
         // quitarles vida ni ponerles condiciones desde aquí.
         <>
-          <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-warning-text">
+          {/* **El mismo tono que los otros dos encabezados de la columna** (m-5, ronda de
+              arreglo 1): iba en `text-warning-text`, así que un PNJ ALIADO se leía bajo un
+              rótulo de amenaza — el ámbar aquí no describe a nadie en concreto, describe la
+              SECCIÓN, y la sección no es «enemigos». */}
+          <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
             PNJ en combate
           </h4>
           <ul className="flex flex-col gap-s2">
@@ -237,6 +250,9 @@ export function ColumnaElenco({
                 esDm={esDm}
                 turnoActual={deQuienEsElTurno.has(pnj.id)}
                 enCombate={enCombate}
+                sessionId={sesion?.id}
+                encounterId={encuentro?.id}
+                combatanteId={combatant.id}
               />
             ))}
           </ul>

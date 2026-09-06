@@ -93,7 +93,9 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
     // El bando actual se ve, no solo se infiere del color (regla vinculante de la interfaz).
     expect(screen.getByRole("button", { name: /Aliado \(su bando actual\)/i })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: /^Enemigo/i }));
+    // **El rótulo accesible dice qué hace el botón** (ronda de arreglo 1, I-menor): «Marcar a
+    // Corvin Vhael como Enemigo», no «Enemigo a Corvin Vhael».
+    fireEvent.click(screen.getByRole("button", { name: /Marcar a Corvin Vhael como Enemigo/i }));
 
     await waitFor(() =>
       expect(cambiarBando).toHaveBeenCalledWith("c1", "s1", "enc-1", "cb-corvin", {

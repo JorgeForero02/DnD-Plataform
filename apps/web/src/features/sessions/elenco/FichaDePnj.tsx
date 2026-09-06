@@ -1,15 +1,11 @@
-import { useId, useState } from "react";
-import type { CombatantSide, DamageType } from "@dnd/shared";
+import type { CombatantSide } from "@dnd/shared";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import { useCharacterSheet, useConditions } from "../../character-sheet/hooks";
-import { HojaCalculada } from "../../character-sheet/HojaCalculada";
-import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
-import { IconoEscudo, IconoEspada, IconoOjo } from "../../../ui/Iconos";
-import { Dialog } from "../../../ui/Dialog";
+import { IconoEscudo } from "../../../ui/Iconos";
 import { NOMBRE_BANDO } from "../../../dominio/combate";
 import { Retrato, BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
-import { PonerCondicion } from "./PonerCondicion";
-import { PonerDano } from "./PonerDano";
+import { MandosDeCombatiente } from "./MandosDeCombatiente";
+import { CorregirBando } from "./CorregirBando";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -35,6 +31,22 @@ import { PonerDano } from "./PonerDano";
  * **El bando se dice con palabra, nunca con color** (regla vinculante de `docs/04-convenciones.md`):
  * `NOMBRE_BANDO` traduce `CombatantSide`, y el único color que se admite es `--warning` para
  * `ENEMY` — no hay `--success` para `ALLY`, así que un aliado se distingue por la palabra sola.
+ *
+ * **Los PG máximos y la CA exacta no se enseñan a un jugador** (ronda de arreglo 1 sobre la
+ * tarea 9b, I-2): `NpcEnLaMesa` omite `maxHp` A PROPÓSITO (`bestiario/api.ts`: «derivarlo en dos
+ * sitios discreparía en cuanto hubiera agotamiento», y hasta ahora los PG de un PNJ solo se veían
+ * en pantallas del DM), y la CA exacta de un enemigo es precisamente el oráculo que D-OP-11
+ * decidió no dar. Que `useCharacterSheet` los entregue igual —el servidor no distingue rol para
+ * ESTE endpoint— no convierte enseñarlos en una decisión tomada: se colaron porque la ficha los
+ * leía sin mirar quién pregunta. Con `!esDm` no se pasa el máximo —`BarraDePuntosDeGolpe`
+ * degrada sola a «Sin puntos de golpe en la hoja.» cuando falta— ni se pinta la CA; el DM sigue
+ * viendo los dos.
+ *
+ * **El bando también se corrige aquí (C-1, misma ronda).** El caso principal del bando es el
+ * enemigo, y el enemigo casi siempre es un PNJ: sin este mando, el DM podía convertir a un
+ * personaje de jugador en enemigo pero no podía tocar el bando del goblin — la funcionalidad
+ * nacía coja. `CorregirBando` es el mismo componente que usa `FichaDeElenco`, no una segunda
+ * copia (ver I-3 de esta misma ronda).
  */
 export function FichaDePnj({
   campaignId,
@@ -43,6 +55,9 @@ export function FichaDePnj({
   esDm,
   turnoActual = false,
   enCombate = false,
+  sessionId,
+  encounterId,
+  combatanteId,
 }: {
   campaignId: string;
   pnj: NpcEnLaMesa;
@@ -51,16 +66,22 @@ export function FichaDePnj({
   esDm: boolean;
   turnoActual?: boolean;
   enCombate?: boolean;
+  /** La sesión del encuentro — la ruta de `setSide` cuelga de ella. */
+  sessionId?: string;
+  /** El encuentro en marcha. */
+  encounterId?: string;
+  /** El `Combatant.id` de este PNJ en ese encuentro — no `pnj.id`. */
+  combatanteId?: string;
 }) {
   const { data: hoja } = useCharacterSheet(campaignId, pnj.id);
   const { data: condiciones } = useConditions(campaignId, pnj.id);
-  const [panel, setPanel] = useState<"dano" | "condicion" | "hoja" | null>(null);
-  const [tipoDeDano, setTipoDeDano] = useState<DamageType | "">("");
-  const idTipoDeDano = useId();
 
   const actual = hoja?.hp.current ?? pnj.currentHp ?? null;
-  const maximo = hoja?.hp.max ?? null;
-  const ca = hoja?.sheet?.derived.ac?.total ?? null;
+  // **Solo el DM ve el máximo y la CA exacta** (I-2): `useCharacterSheet` los trae para
+  // cualquiera que pueda ver al PNJ —el endpoint no distingue rol—, pero enseñarlos era una
+  // decisión que nadie había tomado, solo una lectura que no miraba quién pregunta.
+  const maximo = esDm ? (hoja?.hp.max ?? null) : null;
+  const ca = esDm ? (hoja?.sheet?.derived.ac?.total ?? null) : null;
 
   return (
     <li
@@ -101,83 +122,23 @@ export function FichaDePnj({
       <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
 
       {esDm && (
-        <div className="mt-s2 flex items-center gap-s1">
-          <button
-            type="button"
-            onClick={() => setPanel("dano")}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-danger px-1 py-1 font-chrome text-chrome-xs text-danger-text hover:bg-[color:var(--danger-tint)]"
-          >
-            <IconoEspada className="h-3.5 w-3.5" />
-            Daño
-            <span className="sr-only"> a {pnj.name}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPanel("condicion")}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-warning px-1 py-1 font-chrome text-chrome-xs text-warning-text hover:bg-[color:var(--warning-tint)]"
-          >
-            Condición
-            <span className="sr-only"> a {pnj.name}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPanel("hoja")}
-            aria-label={`Abrir la ficha de ${pnj.name}`}
-            className="rounded-radius-sm border border-muted p-1 text-muted hover:text-text"
-          >
-            <IconoOjo className="h-4 w-4" />
-          </button>
-        </div>
+        <MandosDeCombatiente
+          campaignId={campaignId}
+          characterId={pnj.id}
+          nombre={pnj.name}
+          enCombate={enCombate}
+        />
       )}
 
-      {esDm && (
-        <>
-          <PonerDano
-            campaignId={campaignId}
-            characterId={pnj.id}
-            nombre={pnj.name}
-            abierto={panel === "dano"}
-            onCerrar={() => {
-              setPanel(null);
-              setTipoDeDano("");
-            }}
-            tipoDeDano={tipoDeDano || undefined}
-            ranuraTipoDeDano={
-              <div className="mt-s3 flex items-center gap-s2">
-                <label
-                  className="font-chrome text-chrome-sm text-text"
-                  htmlFor={`${idTipoDeDano}-tipo`}
-                >
-                  De qué tipo
-                </label>
-                <SelectorDeTipoDeDano
-                  id={`${idTipoDeDano}-tipo`}
-                  value={tipoDeDano}
-                  onChange={setTipoDeDano}
-                />
-              </div>
-            }
-          />
-          <PonerCondicion
-            campaignId={campaignId}
-            characterId={pnj.id}
-            nombre={pnj.name}
-            abierto={panel === "condicion"}
-            enCombate={enCombate}
-            onCerrar={() => setPanel(null)}
-          />
-          <Dialog
-            open={panel === "hoja"}
-            onClose={() => setPanel(null)}
-            title={pnj.name}
-            subtitulo="Su hoja, sin salir de la mesa."
-            size="xl"
-          >
-            {panel === "hoja" && (
-              <HojaCalculada campaignId={campaignId} characterId={pnj.id} puedeEditar />
-            )}
-          </Dialog>
-        </>
+      {esDm && enCombate && sessionId && encounterId && combatanteId && (
+        <CorregirBando
+          campaignId={campaignId}
+          sessionId={sessionId}
+          encounterId={encounterId}
+          combatanteId={combatanteId}
+          bando={bando}
+          nombre={pnj.name}
+        />
       )}
     </li>
   );

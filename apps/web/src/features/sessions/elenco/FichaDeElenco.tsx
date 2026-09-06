@@ -1,9 +1,7 @@
-import { useId, useState } from "react";
-import type { CombatantSide, DamageType } from "@dnd/shared";
+import type { CombatantSide } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
 import { vozDePersonaje } from "../../../dominio/voces";
-import { BANDOS } from "../../../dominio/combate";
 import { AyudarA } from "./AyudarA";
 import {
   useCharacterSheet,
@@ -11,16 +9,12 @@ import {
   useConditions,
   useGameClock,
 } from "../../character-sheet/hooks";
-import { useSetSide } from "../../encounters/hooks";
-import { HojaCalculada } from "../../character-sheet/HojaCalculada";
-import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
 import { nombreCondicion } from "../../character-sheet/vocabulario";
 import { describirRestante } from "../../character-sheet/duraciones";
-import { IconoEscudo, IconoEspada, IconoOjo } from "../../../ui/Iconos";
+import { IconoEscudo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
-import { Dialog } from "../../../ui/Dialog";
-import { PonerCondicion } from "./PonerCondicion";
-import { PonerDano } from "./PonerDano";
+import { MandosDeCombatiente } from "./MandosDeCombatiente";
+import { CorregirBando } from "./CorregirBando";
 
 /**
  * Un personaje en la mesa: retrato, quién lo lleva, puntos de golpe, condiciones y —solo para el
@@ -51,6 +45,12 @@ import { PonerDano } from "./PonerDano";
  * `border-danger/40` y `IconGarra` no pasan la regla vinculante del reseño (el bando se distingue
  * por palabra, y como mucho `--warning` para el enemigo) — así que la garra no se dibuja aquí y
  * el filete de la tarjeta no cambia con el bando.
+ *
+ * **Ojo: el bando no es «dueño o DM» como el resto** (I-menor, ronda de arreglo 1 sobre la tarea
+ * 9b) — `EncountersController`/`setSide` exigen **DM y nada más**: un jugador no corrige el bando
+ * ni siquiera del personaje que lleva él mismo, porque el bando es una decisión de mesa, no del
+ * personaje. `conMandos` ya es «esDm» en el único sitio que lo enciende (`ColumnaElenco.tsx`), así
+ * que en la práctica coincide, pero la puerta real es más estrecha que la del resto de esta ficha.
  *
  * **No son radios con su frase**, a diferencia de los de `EmpezarCombate.tsx`: allí se explica
  * una decisión que se toma una vez y con calma; aquí es una corrección rápida en la fila más
@@ -102,13 +102,6 @@ export function FichaDeElenco({
   const { data: hoja } = useCharacterSheet(campaignId, personaje.id);
   const { data: condiciones } = useConditions(campaignId, personaje.id);
   const cambiarPg = useChangeHp(campaignId, personaje.id);
-  const cambiarBando = useSetSide(campaignId, sessionId);
-  const [panel, setPanel] = useState<"dano" | "condicion" | "hoja" | null>(null);
-  // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
-  // `Dialog` cerrado y lo que hace falta es poder LIMPIARLO al cerrar: el estado que sobrevive a
-  // un cierre es exactamente el que hizo que la hoja mandara una causa falsa (ver `PonerDano`).
-  const [tipoDeDano, setTipoDeDano] = useState<DamageType | "">("");
-  const idTipoDeDano = useId();
 
   const actual = hoja?.hp.current ?? null;
   const maximo = hoja?.hp.max ?? null;
@@ -199,33 +192,12 @@ export function FichaDeElenco({
       <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
 
       {conMandos && (
-        <div className="mt-s2 flex items-center gap-s1">
-          <button
-            type="button"
-            onClick={() => setPanel("dano")}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-danger px-1 py-1 font-chrome text-chrome-xs text-danger-text hover:bg-[color:var(--danger-tint)]"
-          >
-            <IconoEspada className="h-3.5 w-3.5" />
-            Daño
-            <span className="sr-only"> a {personaje.name}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPanel("condicion")}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-warning px-1 py-1 font-chrome text-chrome-xs text-warning-text hover:bg-[color:var(--warning-tint)]"
-          >
-            Condición
-            <span className="sr-only"> a {personaje.name}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPanel("hoja")}
-            aria-label={`Abrir la ficha de ${personaje.name}`}
-            className="rounded-radius-sm border border-muted p-1 text-muted hover:text-text"
-          >
-            <IconoOjo className="h-4 w-4" />
-          </button>
-        </div>
+        <MandosDeCombatiente
+          campaignId={campaignId}
+          characterId={personaje.id}
+          nombre={personaje.name}
+          enCombate={enCombate}
+        />
       )}
 
       {/* **Corregir el bando, solo con el combate en marcha.** Sin encuentro no hay de qué
@@ -234,101 +206,14 @@ export function FichaDeElenco({
           juntos son «este personaje combate ahora mismo», lo mismo que ya exige `PonerCondicion`
           con su `enCombate` para contar asaltos. */}
       {conMandos && enCombate && bando && sessionId && encounterId && combatanteId && (
-        <div
-          role="group"
-          aria-label={`Bando de ${personaje.name}`}
-          className="mt-s2 flex flex-wrap items-center gap-s1"
-        >
-          <span className="font-chrome text-chrome-xs text-muted">Bando</span>
-          {BANDOS.map((b) => {
-            const esElActual = b.valor === bando;
-            return (
-              <button
-                key={b.valor}
-                type="button"
-                disabled={esElActual || cambiarBando.isPending}
-                onClick={() =>
-                  cambiarBando.mutate({ encounterId, combatantId: combatanteId, side: b.valor })
-                }
-                className={[
-                  "rounded-radius-sm border px-1.5 py-0.5 font-chrome text-chrome-xs disabled:cursor-not-allowed disabled:opacity-70",
-                  b.valor === "ENEMY"
-                    ? "border-warning text-warning-text hover:bg-[color:var(--warning-tint)]"
-                    : "border-muted text-text hover:bg-surface",
-                ].join(" ")}
-              >
-                {b.nombre}
-                {esElActual && " (su bando actual)"}
-                <span className="sr-only"> a {personaje.name}</span>
-              </button>
-            );
-          })}
-          {cambiarBando.isError && (
-            <span role="alert" className="w-full font-chrome text-chrome-xs text-danger-text">
-              {(cambiarBando.error as Error).message}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Los tres cajones del mando. **Uno a la vez**, como el estrato superpuesto del reseño:
-          `panel` es un solo estado, así que abrir «Condición» cierra «Daño». */}
-      {conMandos && (
-        <>
-          <PonerDano
-            campaignId={campaignId}
-            characterId={personaje.id}
-            nombre={personaje.name}
-            abierto={panel === "dano"}
-            onCerrar={() => {
-              setPanel(null);
-              // Se limpia con el cierre: si no, el siguiente golpe al mismo personaje saldría
-              // «de fuego» porque el anterior lo era, y nadie lo habría vuelto a decir.
-              setTipoDeDano("");
-            }}
-            tipoDeDano={tipoDeDano || undefined}
-            // **El selector es el de la hoja, no una copia.** `SelectorDeTipoDeDano` no consulta
-            // nada y su vocabulario es el largo de `character-sheet`; escribir aquí un segundo
-            // desplegable sería una quinta lista de tipos de daño en la aplicación.
-            ranuraTipoDeDano={
-              <div className="mt-s3 flex items-center gap-s2">
-                <label
-                  className="font-chrome text-chrome-sm text-text"
-                  htmlFor={`${idTipoDeDano}-tipo`}
-                >
-                  De qué tipo
-                </label>
-                <SelectorDeTipoDeDano
-                  id={`${idTipoDeDano}-tipo`}
-                  value={tipoDeDano}
-                  onChange={setTipoDeDano}
-                />
-              </div>
-            }
-          />
-          <PonerCondicion
-            campaignId={campaignId}
-            characterId={personaje.id}
-            nombre={personaje.name}
-            abierto={panel === "condicion"}
-            enCombate={enCombate}
-            onCerrar={() => setPanel(null)}
-          />
-          <Dialog
-            open={panel === "hoja"}
-            onClose={() => setPanel(null)}
-            title={personaje.name}
-            subtitulo="Su hoja, sin salir de la mesa."
-            size="xl"
-          >
-            {panel === "hoja" && (
-              // `puedeEditar` va en `true` porque este cajón solo existe en la disposición del
-              // DM, y el servidor deja editar a DM o dueño (`requireEditable`). Si algún día se
-              // abriera desde otro sitio, el valor tiene que venir de quien sepa el rol.
-              <HojaCalculada campaignId={campaignId} characterId={personaje.id} puedeEditar />
-            )}
-          </Dialog>
-        </>
+        <CorregirBando
+          campaignId={campaignId}
+          sessionId={sessionId}
+          encounterId={encounterId}
+          combatanteId={combatanteId}
+          bando={bando}
+          nombre={personaje.name}
+        />
       )}
     </li>
   );

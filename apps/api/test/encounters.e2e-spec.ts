@@ -3,7 +3,6 @@ import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
-import { resolverPreparingAMano } from "./helpers/resolver-preparing-a-mano";
 
 // Tarea 2.5.2 contra Postgres real.
 //
@@ -19,7 +18,6 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
   const emailDM = `dm-enc${Date.now()}@b.com`;
   const emailPL = `pl-enc${Date.now()}@b.com`;
   let tokenDM = "";
-  let dmUserId = "";
   let tokenPL = "";
   let campaignId = "";
   let sessionId = "";
@@ -43,7 +41,6 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       .post("/auth/register")
       .send({ email: emailDM, password: "password123", displayName: "DM" });
     tokenDM = dm.body.token;
-    dmUserId = dm.body.user.id;
     tokenPL = (
       await request(s)
         .post("/auth/register")
@@ -187,30 +184,31 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     expect(goblinIds.map((id) => bandoDe.get(id))).toEqual(Array(6).fill("ENEMY"));
   });
 
-  // **Puente temporal hasta la tarea 3** (`docs/06-pendientes.md`). Responder la petición de
-  // iniciativa y escribirla en el combatiente es la tarea siguiente, que todavía no existe —
-  // así que el resto de esta suite (turnos, condiciones) no tiene ninguna puerta de la API para
-  // pasar de `PREPARING` a `ACTIVE`. Vive en su propia prueba, no dentro de «OCHO combatientes
-  // y TRES posiciones»: mutar ahí dejaba CUATRO posiciones (el número lo destapó la revisión —
-  // `setInitiative` separa a quien corrige de su grupo, `groupKey: combatantId`), y el nombre de
-  // esa prueba dejaba de ser cierto.
-  it("se resuelve a mano hasta que exista la tarea 3 (puente)", async () => {
+  // Responder la petición de iniciativa por el camino real (tarea 3, 2026-09-05): sin ella, el
+  // resto de esta suite (turnos, condiciones) no tenía ninguna puerta de la API para pasar de
+  // `PREPARING` a `ACTIVE`, y por eso vivía en su propia prueba con un puente a mano. Vive en su
+  // propia prueba, no dentro de «OCHO combatientes y TRES posiciones»: mutar ahí dejaba CUATRO
+  // posiciones (el número lo destapó la revisión — `setInitiative` separa a quien corrige de su
+  // grupo, `groupKey: combatantId`), y el nombre de esa prueba dejaba de ser cierto.
+  it("responder la iniciativa por HTTP arranca el combate", async () => {
     const r = await request(app.getHttpServer())
       .get(encUrl(`/${encounterId}`))
       .set("Authorization", `Bearer ${tokenDM}`);
     expect(r.body.status).toBe("PREPARING");
 
-    await resolverPreparingAMano({
-      app,
-      prisma,
-      tokenDM,
-      dmUserId,
-      campaignId,
-      sessionId,
-      encUrl,
-      encounterId,
-      combatants: r.body.combatants,
+    // pc1 y pc2 son los dos del jugador — las dos peticiones pendientes de este encuentro son
+    // suyas.
+    const pendientes = await prisma.rollRequest.findMany({
+      where: { encounterId, resolvedAt: null },
     });
+    expect(pendientes.length).toBeGreaterThan(0);
+    for (const peticion of pendientes) {
+      const respuesta = await request(app.getHttpServer())
+        .post(`/campaigns/${campaignId}/roll-requests/${peticion.id}/roll`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({});
+      expect(respuesta.status).toBe(201);
+    }
 
     const despues = await request(app.getHttpServer())
       .get(encUrl(`/${encounterId}`))

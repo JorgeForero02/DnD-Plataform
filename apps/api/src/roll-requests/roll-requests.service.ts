@@ -9,6 +9,8 @@ import type {
 } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
+import { EncountersService } from "../encounters/encounters.service";
+import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RollsService } from "../rolls/rolls.service";
 
@@ -36,6 +38,8 @@ export class RollRequestsService {
     private readonly membership: MembershipService,
     private readonly rolls: RollsService,
     private readonly sheets: CharacterSheetService,
+    private readonly encounters: EncountersService,
+    private readonly events: GameEventsService,
   ) {}
 
   /** Pedir. **Solo el DM**: es un acto de arbitraje. */
@@ -161,6 +165,37 @@ export class RollRequestsService {
     });
     if (cerrada.count === 0) {
       throw new BadRequestException("Esa petición ya se respondió.");
+    }
+
+    // **Después de ganar la carrera, no antes.** Si se escribiera antes del `updateMany` de
+    // arriba, un doble clic colocaría dos veces al mismo combatiente con dos tiradas distintas.
+    if (peticion.encounterId) {
+      // La iniciativa nunca se pide a ciegas (`start()` solo usa `PUBLIC` o `DM_PRIVATE`), pero
+      // el tipo de `resultado` es una unión discriminada y el compilador no lo sabe: sin este
+      // guardián, `resultado.total` no existe en la rama `revealed: false`.
+      if (!resultado.revealed) {
+        throw new BadRequestException("La tirada de iniciativa no se pudo leer");
+      }
+      const { empezo } = await this.encounters.aplicarIniciativaDePeticion(
+        peticion.encounterId,
+        peticion.characterId,
+        resultado.total,
+      );
+      if (empezo) {
+        // **`RollRequest` NO tiene `sessionId`** — la sesión sale del encuentro, que es quien la
+        // tiene.
+        const encuentro = await this.prisma.encounter.findUnique({
+          where: { id: peticion.encounterId },
+          select: { sessionId: true },
+        });
+        await this.events.record(userId, campaignId, {
+          sessionId: encuentro!.sessionId,
+          subjectType: "encounter",
+          subjectId: peticion.encounterId,
+          visibility: "PLAYERS",
+          payload: { type: "ENCOUNTER_STARTED", encounterId: peticion.encounterId },
+        });
+      }
     }
 
     return resultado;

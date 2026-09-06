@@ -66,7 +66,7 @@ interface TxDeCombatientes {
   combatant: {
     findMany(args: {
       where: { encounterId: string };
-      orderBy?: { position: "asc" };
+      orderBy?: { position: "asc" } | { id: "asc" };
     }): Promise<FilaDeCombatiente[]>;
     update(args: { where: { id: string }; data: { position: number } }): Promise<unknown>;
   };
@@ -87,7 +87,14 @@ interface TxDeCombatientes {
 const SEPARADOR_DE_CLAVE = "\u0000";
 
 async function recolocar(tx: TxDeCombatientes, encounterId: string) {
-  const filas = await tx.combatant.findMany({ where: { encounterId } });
+  // **`orderBy: { id: "asc" }`, y no es cosmético — lo destapó la prueba de la carrera de la
+  // tarea 3.** Sin un orden fijo, `findMany` no promete devolver las filas siempre en el mismo
+  // orden, así que dos transacciones concurrentes (tres jugadores respondiendo a la vez) podían
+  // mandar sus `UPDATE` de posición en órdenes distintos y cruzados — cada una bloqueada
+  // esperando una fila que la otra ya tenía tomada — y Postgres cortaba una de las dos con un
+  // «deadlock detected» (40P01). Con las dos transacciones actualizando siempre en el MISMO
+  // orden, la segunda simplemente espera a que la primera termine; nunca se cruzan.
+  const filas = await tx.combatant.findMany({ where: { encounterId }, orderBy: { id: "asc" } });
 
   const entradas = [
     ...new Set(filas.map((f) => `${f.initiative}${SEPARADOR_DE_CLAVE}${f.groupKey}`)),
@@ -645,6 +652,53 @@ export class EncountersService {
       }
 
       return { ...actualizado, roundAdvanced: sube };
+    });
+  }
+
+  /**
+   * Tarea 3 — escribe la iniciativa que acaba de tirar un jugador y recoloca el orden. Si con
+   * ella no queda ninguna petición pendiente, **el combate empieza**.
+   *
+   * **Lo llama `roll-requests`, no al revés.** `recolocar` es privada de este módulo y es la
+   * ÚNICA que sabe convertir «iniciativa + grupo» en «orden»; exponerla sería abrir la puerta a
+   * una segunda forma de ordenar. La dirección es acíclica: `encounters` no importa
+   * `roll-requests`.
+   *
+   * **Empieza bloqueando la fila del encuentro (`FOR UPDATE`), y no es cosmético.** Lo destapó
+   * la prueba de la carrera: con tres jugadores respondiendo a la vez, tres transacciones
+   * abrían **a la vez** y las tres recolocaban las MISMAS filas de `Combatant` sin ningún orden
+   * entre ellas — Postgres cortaba una con «deadlock detected» (40P01) en vez de dejarlas en
+   * cola. El mismo patrón que ya usan `inventory.service.ts` y `character-sheet.service.ts`
+   * para lo mismo: la fila que se bloquea serializa a quien compite por el mismo agregado,
+   * como una cola de un solo carril. Encuentros DISTINTOS no se bloquean entre sí — cada uno es
+   * su propia fila.
+   */
+  async aplicarIniciativaDePeticion(
+    encounterId: string,
+    characterId: string,
+    initiative: number,
+  ): Promise<{ empezo: boolean }> {
+    return this.prisma.transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Encounter" WHERE id = ${encounterId} FOR UPDATE`;
+      await tx.combatant.updateMany({
+        where: { encounterId, characterId },
+        data: { initiative },
+      });
+      await recolocar(tx, encounterId);
+
+      const pendientes = await tx.rollRequest.count({
+        where: { encounterId, resolvedAt: null },
+      });
+      if (pendientes > 0) return { empezo: false };
+
+      // **`updateMany` con el estado en el `where`, no `update`.** Con tres jugadores
+      // respondiendo a la vez, dos pueden ver cero pendientes; solo uno toca la fila y solo ese
+      // escribe el suceso. Es el mismo guardián que usa `answer` para no tirar dos veces.
+      const arrancado = await tx.encounter.updateMany({
+        where: { id: encounterId, status: "PREPARING" },
+        data: { status: "ACTIVE" },
+      });
+      return { empezo: arrancado.count === 1 };
     });
   }
 }

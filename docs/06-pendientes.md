@@ -138,30 +138,6 @@ invitar a un segundo DM). Corregirlo sin ese caso real delante sería una regla 
 práctica — hasta entonces, queda anotado para que la próxima persona que toque `start()` no
 lo redescubra desde cero.
 
-## P2 · Tres e2e siguen resolviendo un `PREPARING` a mano hasta que exista la tarea 3 (2026-09-05, ronda de arreglo 1 de la tarea 2)
-
-Desde que `start()` reparte por dueño (tarea 2), varios e2e ya existentes montan combates
-mixtos —un personaje del jugador junto a PNJ del DM— para probar algo que **no** es el reparto:
-pasar turno, terminar el combate, que caduque una condición, comparar un ataque. Esos combates
-nacen `PREPARING`, y como la tarea 3 (responder la petición de iniciativa y escribir el número
-real) todavía no existe, no hay ninguna puerta de la API que los suba a `ACTIVE`. Los que lo
-necesitan llaman a un puente compartido y explícito,
-`apps/api/test/helpers/resolver-preparing-a-mano.ts`, que hace a mano exactamente lo que esa
-tarea hará —fija una iniciativa real, cierra las peticiones, sube el encuentro y escribe
-`ENCOUNTER_STARTED`— y nunca en silencio: si se llama sobre un encuentro que no tenía ninguna
-petición pendiente, `expect(pendientes.length).toBeGreaterThan(0)` lo revienta.
-
-Ficheros que lo usan, a 2026-09-05:
-
-- `apps/api/test/encounters.e2e-spec.ts` — tras la prueba de conteo «OCHO combatientes y TRES
-  posiciones», que ya no muta nada dentro de sí misma (lo señaló la revisión: mutar ahí dejaba
-  cuatro posiciones en vez de las tres que el nombre de la prueba anuncia).
-- `apps/api/test/ataque-comparado-en-el-servidor.e2e-spec.ts` — en su `beforeAll`, porque el
-  atacante **tiene que ser** el personaje de un jugador (es lo que prueba el fichero).
-
-**Cierra cuando** exista la tarea 3: bórrese el helper y sus llamadas, y sustitúyanse por
-responder la petición de verdad por HTTP.
-
 ## P1 · El ataque comparado contra la CA existe en el servidor y ninguna pantalla lo llama (2026-09-05)
 
 **Encontrado por el autor usando la aplicación, y es la tercera vez que aparece este patrón en un

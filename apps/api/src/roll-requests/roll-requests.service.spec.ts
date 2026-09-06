@@ -2,6 +2,8 @@ import { Test } from "@nestjs/testing";
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { MembershipService } from "../campaigns/membership.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
+import { EncountersService } from "../encounters/encounters.service";
+import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RollsService } from "../rolls/rolls.service";
 import { RollRequestsService } from "./roll-requests.service";
@@ -24,6 +26,12 @@ describe("RollRequestsService", () => {
   const membership = { requireDM: jest.fn(), requireMember: jest.fn() };
   const rolls = { roll: jest.fn() };
   const sheets = { getSheet: jest.fn() };
+  // Tarea 3: `answer` escribe la iniciativa en el combatiente cuando la petición viene de un
+  // encuentro (`peticion.encounterId`). Ninguna de las peticiones de este fichero lleva
+  // `encounterId`, así que esta rama no se ejerce aquí — sí en `iniciativa-pedida.e2e-spec.ts`,
+  // contra Postgres real, que es donde importa que escriba de verdad.
+  const encounters = { aplicarIniciativaDePeticion: jest.fn() };
+  const events = { record: jest.fn() };
 
   const hojaCon = (derived: Record<string, { key: string; total: number; steps: [] }>) => ({
     sheet: { derived, speeds: {}, warnings: [] },
@@ -37,6 +45,8 @@ describe("RollRequestsService", () => {
         { provide: MembershipService, useValue: membership },
         { provide: RollsService, useValue: rolls },
         { provide: CharacterSheetService, useValue: sheets },
+        { provide: EncountersService, useValue: encounters },
+        { provide: GameEventsService, useValue: events },
       ],
     }).compile();
     service = ref.get(RollRequestsService);

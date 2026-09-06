@@ -15,5 +15,9 @@ import { EncountersService } from "./encounters.service";
   imports: [CampaignsModule, GameEventsModule, CharactersModule, RollsModule, GameClockModule],
   controllers: [EncountersController],
   providers: [EncountersService],
+  // Tarea 3 (2026-09-05): `RollRequestsService.answer` necesita `aplicarIniciativaDePeticion`
+  // para escribir la iniciativa que acaba de tirar un `ajeno`. No hay ciclo — `encounters` no
+  // importa `roll-requests` — y no debe haberlo: la dirección es acíclica a propósito.
+  exports: [EncountersService],
 })
 export class EncountersModule {}

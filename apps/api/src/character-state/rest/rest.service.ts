@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
-import { SEGUNDOS_POR_DIA, type DeclareRestInput } from "@dnd/shared";
+import { SEGUNDOS_POR_DIA, SEGUNDOS_POR_HORA, type DeclareRestInput } from "@dnd/shared";
 import { condicionVencida } from "../conditions/vencimiento";
 import type { Character, CharacterResource, Prisma } from "@prisma/client";
 import { MembershipService } from "../../campaigns/membership.service";
 import { rollExpression } from "../../dice/dice";
+import { GameClockService } from "../../game-clock/game-clock.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { abilityModifier } from "../../rules/engine";
@@ -39,6 +40,7 @@ export class RestService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
+    private readonly clock: GameClockService,
   ) {}
 
   async declare(userId: string, campaignId: string, characterId: string, input: DeclareRestInput) {
@@ -61,8 +63,32 @@ export class RestService {
       const recursos = await tx.characterResource.findMany({ where: { characterId } });
 
       if (input.kind === "LONG") {
+        // **La comprobación de las 24 h va ANTES de avanzar**, porque pregunta cuándo fue el
+        // último descanso, no cuándo termina este.
         await this.comprobarDescansoLargo(tx, character, campaignId, input);
       }
+
+      // **Un descanso avanza el reloj de campaña: largo 8 h, corto 1 h** (D-A-1, decisión del
+      // autor del 2026-09-06, declarada en `docs/04-convenciones.md`).
+      //
+      // Hasta hoy este servicio **leía** el reloj y no lo movía nunca, y su propio 409 mandaba
+      // «avanza el reloj de la campaña» a mano: ocho horas de descanso no caducaban nada, y la
+      // regla de un descanso largo por 24 h bloqueaba de más hasta que el DM lo hiciera. Ahora se
+      // cumple sola —tres descansos largos suman las 24 h—, y todo lo que caduca por reloj
+      // —condiciones, modificadores temporales— caduca al descansar, que es lo que se quería.
+      //
+      // Va **dentro de esta misma transacción**, como hace `advanceTurn`: si el descanso se
+      // deshace, las ocho horas se van con él.
+      await this.clock.avanzar(
+        userId,
+        campaignId,
+        {
+          kind: "TIME",
+          seconds: input.kind === "LONG" ? 8 * SEGUNDOS_POR_HORA : SEGUNDOS_POR_HORA,
+          reason: input.kind === "LONG" ? "Descanso largo" : "Descanso corto",
+        },
+        tx,
+      );
 
       if (input.kind === "SHORT") {
         await this.reponerPorTipo(tx, recursos, "SHORT_REST");

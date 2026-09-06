@@ -1492,6 +1492,15 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 
 **Decisiones tomadas sin el autor, con lo que costarían si me equivoco:**
 
+- **Tarea 9 · el avance del reloj por descanso NO exige ser DM.** `GameClockService.advance` pide
+  `requireDM`, y declarar un descanso es de **dueño o DM**: con la comprobación puesta, un jugador
+  que descansara recibiría un 403 en mitad de su propio descanso. Se parte en dos: `advance`
+  —la puerta HTTP, que sigue siendo del DM— y `avanzar`, interna, para quien **ya comprobó su
+  autoridad** y mueve el reloj como consecuencia de lo que acaba de autorizar. Lo que avanza no lo
+  elige quien llama: son ocho horas o una, fijas por el tipo de descanso. **El coste aceptado:** un
+  jugador puede mover el reloj descansando, y eso es visible —el avance escribe su suceso
+  `PLAYERS`—. **Si me equivoco cuesta una línea**: exigir DM dentro de `declare` para el avance.
+
 - **Tarea 7 · consumir aplica los efectos como modificadores temporales SIN duración.** El paso 1
   del plan pedía medir primero qué efectos declaran los consumibles del catálogo, y la medición
   dice que **el catálogo del SRD no tiene ni un solo objeto `CONSUMABLE`**: los únicos consumibles
@@ -1533,4 +1542,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 17 · La sala de espera no lee «todos han tirado» por un corte | ✅ | `99a1983` | Filtro por encuentro **y la pantalla lo manda**; ficha tachada y archivada |
 | 18 · La fuga del PNJ revelado | ✅ | `6940265` | Las seis características fuera, **los PG dentro**; las dos mutaciones medidas |
 | 8a · De dónde salen las resistencias de un PJ | ✅ | `4713c7c` | `kind: "damageModifier"`, enano y tiefling del SRD, y `resolve` las agrega — **sin tocar un punto de golpe** |
-| 8b · `changeHp` las aplica | ✅ | el de abajo | Ficha tachada y archivada; la prueba que afirmaba lo contrario **se corrige, no se borra** |
+| 8b · `changeHp` las aplica | ✅ | `3bf2ed9` | Ficha tachada y archivada; la prueba que afirmaba lo contrario **se corrige, no se borra** |
+| 9 · El descanso mueve el reloj | ✅ | el de abajo | D-A-1 comprobada en `04-convenciones.md` antes de tocar nada; largo 8 h, corto 1 h |

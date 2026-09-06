@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
+import { GameClockService } from "../../game-clock/game-clock.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { RestService } from "./rest.service";
@@ -42,6 +43,10 @@ describe("RestService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        // **D-A-1 (paso 1, tarea 9):** un descanso avanza el reloj —largo 8 h, corto 1 h— dentro
+        // de su misma transacción. Aquí no se mide el reloj, se mide el descanso: basta con que
+        // el doble responda.
+        { provide: GameClockService, useValue: { avanzar: jest.fn().mockResolvedValue({}) } },
       ],
     }).compile();
     service = ref.get(RestService);
@@ -276,6 +281,10 @@ describe("las tres reglas del descanso largo que el reloj hace comprobables (2C.
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        // **D-A-1 (paso 1, tarea 9):** un descanso avanza el reloj —largo 8 h, corto 1 h— dentro
+        // de su misma transacción. Aquí no se mide el reloj, se mide el descanso: basta con que
+        // el doble responda.
+        { provide: GameClockService, useValue: { avanzar: jest.fn().mockResolvedValue({}) } },
       ],
     }).compile();
     service = ref.get(RestService);
@@ -405,6 +414,10 @@ describe("dos bordes del descanso que una revisión contra la fuente encontró",
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        // **D-A-1 (paso 1, tarea 9):** un descanso avanza el reloj —largo 8 h, corto 1 h— dentro
+        // de su misma transacción. Aquí no se mide el reloj, se mide el descanso: basta con que
+        // el doble responda.
+        { provide: GameClockService, useValue: { avanzar: jest.fn().mockResolvedValue({}) } },
       ],
     }).compile();
     service = ref.get(RestService);

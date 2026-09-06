@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { CampaignsModule } from "../campaigns/campaigns.module";
 import { GameEventsModule } from "../game-events/game-events.module";
+import { GameClockModule } from "../game-clock/game-clock.module";
 import { StatblocksModule } from "../statblocks/statblocks.module";
 import { ConditionsController, HelpController } from "./conditions/conditions.controller";
 import { ConditionsService } from "./conditions/conditions.service";
@@ -22,7 +23,7 @@ import { TemporaryModifiersService } from "./temporary-modifiers/temporary-modif
   // preguntar a que es inmune el statblock del que salio el personaje. No hay ciclo — statblocks
   // no importa a quien lo usa — y `ConditionsService` lo recibe `@Optional()`, asi que un e2e que
   // monte este modulo solo sigue funcionando.
-  imports: [CampaignsModule, GameEventsModule, StatblocksModule],
+  imports: [CampaignsModule, GameEventsModule, StatblocksModule, GameClockModule],
   controllers: [
     ResourcesController,
     RestController,

@@ -54,7 +54,28 @@ export class GameClockService {
     tx?: Prisma.TransactionClient,
   ): Promise<AdvanceClockResult> {
     await this.membership.requireDM(campaignId, userId);
+    return this.avanzar(userId, campaignId, input, tx);
+  }
 
+  /**
+   * **Avanzar el reloj sin volver a preguntar quién eres**, para quien ya comprobó su propia
+   * autoridad y mueve el reloj como CONSECUENCIA de lo que acaba de autorizar.
+   *
+   * Hoy la usa el descanso (D-A-1, paso 1 tarea 9): declarar un descanso es de dueño o DM, y lo
+   * que avanza no lo elige quien llama —son ocho horas o una, fijas por el tipo de descanso—, así
+   * que no es una escritura arbitraria prestada. **Lo que sí permite, y se acepta a propósito:**
+   * un jugador puede mover el reloj descansando. Es visible —el avance escribe su suceso
+   * `PLAYERS`— y es lo que la decisión del autor pedía: *«ya lo hace en combate; el descanso
+   * también»*.
+   *
+   * **No se expone por HTTP.** El controlador del reloj sigue siendo del DM.
+   */
+  async avanzar(
+    userId: string,
+    campaignId: string,
+    input: AdvanceClockInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<AdvanceClockResult> {
     const segundos = input.kind === "TIME" ? input.seconds : input.hours * SEGUNDOS_POR_HORA;
     const ritmo = input.kind === "TRAVEL" ? RITMO_DE_VIAJE[input.pace] : null;
     const millas = ritmo && input.kind === "TRAVEL" ? ritmo.milesPerHour * input.hours : undefined;

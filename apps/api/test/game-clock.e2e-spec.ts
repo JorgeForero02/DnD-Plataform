@@ -132,12 +132,71 @@ describe("El reloj de la campaña (e2e)", () => {
   });
 
   describe("las reglas del descanso que el reloj hace comprobables", () => {
+    let relojAntesDelPrimerLargo = 0;
+
     it("el primer descanso largo entra", async () => {
+      relojAntesDelPrimerLargo = (
+        await request(app.getHttpServer())
+          .get(`/campaigns/${campaignId}/clock`)
+          .set("Authorization", `Bearer ${tokenPL}`)
+      ).body.seconds;
       const r = await request(app.getHttpServer())
         .post(`/campaigns/${campaignId}/characters/${characterId}/rest`)
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ kind: "LONG" });
       expect(r.status).toBe(201);
+    });
+
+    it("y ese descanso largo AVANZÓ el reloj ocho horas (D-A-1, paso 1 tarea 9)", async () => {
+      // **Hasta el 2026-09-06 el descanso leía el reloj y no lo movía nunca**, y su propio 409
+      // mandaba «avanza el reloj de la campaña» a mano: ocho horas de descanso no caducaban nada.
+      // La prueba va después del primer largo, que es quien lo movió.
+      const reloj = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/clock`)
+        .set("Authorization", `Bearer ${tokenPL}`);
+      expect(reloj.body.seconds).toBe(relojAntesDelPrimerLargo + 8 * 3600);
+    });
+
+    it("un descanso corto avanza una hora, no ocho", async () => {
+      const s = app.getHttpServer();
+      const antes = (
+        await request(s)
+          .get(`/campaigns/${campaignId}/clock`)
+          .set("Authorization", `Bearer ${tokenPL}`)
+      ).body.seconds;
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters/${characterId}/rest`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ kind: "SHORT" })
+        .expect(201);
+      const despues = (
+        await request(s)
+          .get(`/campaigns/${campaignId}/clock`)
+          .set("Authorization", `Bearer ${tokenPL}`)
+      ).body.seconds;
+      expect(despues - antes).toBe(3600);
+    });
+
+    it("una condición de minutos caduca sola al descansar, sin que nadie toque el reloj", async () => {
+      const s = app.getHttpServer();
+      await request(s)
+        .put(`/campaigns/${campaignId}/characters/${characterId}/conditions/poisoned`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ durationSeconds: 600 })
+        .expect(200);
+
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters/${characterId}/rest`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ kind: "SHORT" })
+        .expect(201);
+
+      const condiciones = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${characterId}/conditions`)
+        .set("Authorization", `Bearer ${tokenPL}`);
+      const veneno = condiciones.body.find((c: { key: string }) => c.key === "poisoned");
+      // **Vencida, y no borrada** (D-2C-2): sigue en la hoja, marcada.
+      expect(veneno.expired).toBe(true);
     });
 
     it("**el segundo en menos de 24 horas de juego se rechaza con un 409 que dice cuánto falta**", async () => {

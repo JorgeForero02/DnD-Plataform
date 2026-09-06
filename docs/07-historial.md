@@ -48,6 +48,12 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 9 · un descanso avanza el reloj de campaña** (D-A-1: largo 8 h, corto 1 h). Hasta hoy
+  `rest.service` **leía** el reloj y no lo movía nunca, y su propio 409 mandaba «avanza el reloj de
+  la campaña» a mano: ocho horas de descanso no caducaban nada y la regla de un descanso largo por
+  24 h bloqueaba de más. Ahora se cumple sola y todo lo que caduca por reloj caduca al descansar.
+  El avance va **dentro de la misma transacción** que el descanso. **Cómo se revierte:** el commit.
+
 - **Tarea 8b · y `changeHp` las aplica.** La condición exigía `statblockRef`, y un PJ nunca lo
   tiene. Ahora hay **dos fuentes con una sola forma**: la del statblock para un PNJ y la de los
   rasgos para un jugador. Un enano recibe 5 de 10 de veneno **con la traza diciendo «Resistencia

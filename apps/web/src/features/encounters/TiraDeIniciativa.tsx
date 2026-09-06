@@ -258,6 +258,12 @@ export function TiraDeIniciativa({
  * proyecto no se permite (docs/04-convenciones.md: «si el texto explica una regla del servidor y
  * discrepan, miente el texto»). Por eso el desglose fino va solo con `esDm`, y quien no lo es
  * recibe una frase sobre su propio estado, que es lo único que puede saber de verdad.
+ *
+ * **Confirmado por el autor en la ronda de arreglo 1 (2026-09-06): no se toca.** Ensanchar
+ * `RollRequestsService.list` para que un jugador vea también las peticiones ajenas sería
+ * ensanchar lo que el servidor entrega solo para pintar un contador bonito, y `canView` es el
+ * dueño único de quién ve qué en este proyecto — no una regla de visibilidad más que cada
+ * pantalla negocia a su conveniencia.
  */
 function SalaDeEspera({
   campaignId,

@@ -83,6 +83,20 @@ export function useCanalEnVivo(campaignId: string | undefined) {
         // ya acota a la campaña, así que esto no recarga nada de otra mesa.
         void qc.invalidateQueries({ queryKey: ["campaigns", campaignId] });
         void qc.invalidateQueries({ queryKey: notificationsKey });
+        // **El encuentro en curso queda fuera del prefijo de arriba, y sin esto la sala de
+        // espera (tarea 8) se quedaba muerta**: `currentEncounterKey`
+        // (`features/encounters/hooks.ts`) es `["encounters", campaignId, sessionId, "current"]`
+        // — empieza en `"encounters"`, no en `"campaigns"` — así que el DM veía «0 de 3» hasta el
+        // siguiente sondeo de 10 s (`SONDEO_DE_RED_DE_SEGURIDAD_MS`) aunque los tres ya hubieran
+        // tirado. **Por predicado y no realineando la clave**: `currentEncounterKey` no lleva el
+        // `sessionId` en el aviso —el servidor solo manda `campaignId`— así que no hay un array
+        // exacto que invalidar, y cambiar su prefijo tocaría cada mutación de
+        // `features/encounters/hooks.ts` (pasar turno, terminar, empezar igualmente, cancelar)
+        // para ganar un requisito que un predicado resuelve sin tocar ninguna.
+        void qc.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "encounters" && query.queryKey[1] === campaignId,
+        });
       };
     })();
 

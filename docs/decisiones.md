@@ -305,6 +305,8 @@ lo que decía —es un encargo fechado y no se reescribe—, así que lo que man
 | E-N-2 | La campaña de demostración **se siembra por HTTP y no por Prisma** (`scripts/seed-demo.mjs`): así encontró seis contratos mal entendidos que unas filas perfectas escritas por Prisma no habrían destapado |
 | E-N-3 | **Una cuenta que no sea de `@demo.invalid` no se crea nunca desde el seed**: registrar el correo real de alguien con una contraseña inventada es crear su cuenta |
 | E-N-4 | **El bando de un combatiente no recibe un valor por defecto inventado**: todos entran `NEUTRAL` y falta la pantalla que lo elija. Marcar a los PNJ como enemigos «porque suele ser así» sería el servidor decidiendo por el DM |
+| E-N-5 | **La sala de espera no le enseña a un jugador la cuenta ni los nombres de quién falta** (solo su propio estado): `RollRequestsService.list` recorta lo que ve a sus propios personajes, y ensanchar esa regla para pintar un contador bonito sería `canView` dejando de ser el dueño único de quién ve qué. Confirmado por el autor en la ronda de arreglo 1 (2026-09-06): no se toca |
+| E-N-6 | **El encuentro en curso se invalida por predicado, no realineando su clave bajo `["campaigns", …]`**: el aviso del canal en vivo no lleva `sessionId`, así que no hay un array exacto que invalidar, y cambiar el prefijo de `currentEncounterKey` tocaría las cuatro mutaciones que ya cuelgan de ella (pasar turno, terminar, empezar igualmente, cancelar) para ganar algo que un predicado resuelve sin tocar ninguna |
 
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 

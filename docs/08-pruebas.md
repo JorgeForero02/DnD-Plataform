@@ -316,12 +316,15 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 
 Se dice aquí para que nadie lo dé por cubierto al leer la lista de arriba.
 
-- **Nada de un sistema de encuentros**, porque no existe: no hay iniciativa, ni turnos, ni un
-  ataque comparado contra la CA en el servidor, ni daño aplicado desde una tirada. **Desde 2.5.1
-  sí hay tipos de daño y resistencias que reducen de verdad** (`tipos-de-dano-y-resistencias`),
-  pero eso es una pieza del motor, no un encuentro. **Es un bloque
-  planificado** —el plan maestro lo sitúa entre la fase 2 y la 3— y lo único suyo que ya está
-  construido son los statblocks de PNJ con PG vivos, que entregó 2D.
+- **El ataque no se ve resolverse en el navegador de punta a punta.** El ataque contra la CA está
+  medido en el servidor desde 2.5.3 (`ataque-comparado-en-el-servidor`) y el daño con su traza
+  desde 2.5.4 (`dano-con-su-traza`); elegir objetivo entre los combatientes del encuentro está
+  probado en RTL (`apps/web/src/features/character-sheet/__tests__/TirarAtaqueBoton.test.tsx`,
+  2026-09-05/06). **Lo que ningún recorrido de navegador hace todavía es pulsar «Atacar», ver el
+  veredicto traducido y el daño bajar solo desde esa tirada**: `combate.spec.ts` mide entrar en
+  combate, ver el orden y pasar turno, e `iniciativa-en-vivo.spec.ts` mide pedir y responder la
+  iniciativa; ninguno de los dos ataca. `sesion.spec.ts` mide el gesto de anotar daño desde el
+  elenco, pero con un número **escrito a mano**, no con el resultado de una tirada de ataque.
 - **La partida de prueba con dos cuentas de jugador reales**, jugada por personas. `partida`
   recorre los doce pasos por HTTP, pero **nadie ha jugado una sesión de verdad en producción**: es
   lo único que le queda a la fase 2.

@@ -134,8 +134,9 @@ concurrentes de tres jugadores) y encuentre la causa exacta en `character-sheet.
 ## P2-cancelar · `EncountersService.cancel` borra la petición del jugador sin decírselo (2026-09-05, ronda de arreglo 1 de la tarea 4)
 
 **Decisión del autor, no un hueco a rellenar sin más.** `cancel()` borra el `Encounter` y sus
-`RollRequest` (`apps/api/src/encounters/encounters.service.ts:958`, método `cancel`) sin escribir
-ningún suceso — a propósito: «no es historia, es un clic deshecho», y un suceso con
+`RollRequest` (`apps/api/src/encounters/encounters.service.ts:1051`, método `cancel`, cita
+comprobada en `04b6e2b` — el fichero se ha reescrito varias veces y el número se mueve) sin
+escribir ningún suceso — a propósito: «no es historia, es un clic deshecho», y un suceso con
 `subjectType: "encounter"` sobre un sujeto que acaba de desaparecer sería justo la historia que
 esa decisión dice que no se guarda.
 
@@ -158,7 +159,8 @@ implemente ese suceso de sesión.
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando
 `Character.ownerId` contra `userId` —quien pulsó el botón de empezar el combate—, no contra «es un
-DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:198-199`).
+DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:244-245`, cita comprobada en
+`04b6e2b` — el fichero se ha reescrito varias veces y el número se mueve).
 `MembershipService` sí sabe contar cuántos DM quedarían en una campaña
 (`apps/api/src/campaigns/membership.service.ts:82-90`), así que la información para distinguir
 «mi PNJ» de «el PNJ de otro DM» existe, pero `start()` no la usa.

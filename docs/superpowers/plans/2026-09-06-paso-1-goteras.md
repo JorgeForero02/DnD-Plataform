@@ -1520,4 +1520,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 4 · Ayudar caduca cuando el SRD dice | ✅ | `7b2b8c2` | Borde de turno; **4a y 4b van juntas** (abajo el porqué) |
 | — · Revisión de 2 y 3 (13 hallazgos) | ✅ | `b95635f` | Las unitarias de concentración **no medían el `where`**; el mapa de la migración perdía las formas femeninas; un `@Optional()` fallaba abierto |
 | 6 · Un PNJ es competente con sus armas | ✅ | `5518aec` | Las dos categorías enteras, no una lista inventada; el PJ sin competencia **sigue** con su aviso |
-| 7 · Consumir un objeto hace algo | ✅ | el de abajo | Aplica los efectos que **ya declara**, por la maquinaria de M8; los seis que no caben **se nombran** |
+| 7 · Consumir un objeto hace algo | ✅ | `ceecb64` | Aplica los efectos que **ya declara**, por la maquinaria de M8; los seis que no caben **se nombran** |
+| 17 · La sala de espera no lee «todos han tirado» por un corte | ✅ | el de abajo | Filtro por encuentro **y la pantalla lo manda**; ficha tachada y archivada |

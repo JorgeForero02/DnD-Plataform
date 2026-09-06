@@ -222,4 +222,64 @@ describe("Petición de tirada (e2e)", () => {
       { key: "nearly-impossible", dc: 30 },
     ]);
   });
+
+  it("con 60 peticiones sueltas, las de un encuentro siguen saliendo (paso 1, tarea 17)", async () => {
+    const s = app.getHttpServer();
+    // **El corte de cincuenta hacía mentir a la sala de espera.** La lista sale por fecha
+    // descendente con `take: 50`; con más de cincuenta pendientes de otro tipo, las de iniciativa
+    // del combate recién abierto se caen de la página y `TiraDeIniciativa` lee «todos han tirado»
+    // sin que nadie haya tirado. El `[]` de la página cincuenta es indistinguible de cero.
+    //
+    // Contra Postgres y no con un Prisma simulado **a propósito**: lo que falla aquí son el `take`
+    // y el `orderBy` de verdad, y un mock devuelve lo que se le ponga sin mirar ninguno.
+
+    // La petición del combate va PRIMERO, que es lo que la condena con el orden descendente.
+    const sesion = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "La sala de espera", visibility: "PLAYERS" })
+    ).body.id;
+    const laDelCombate = (
+      await request(s)
+        .post(reqUrl())
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [characterId], key: "initiative", label: "Iniciativa" })
+    ).body[0];
+    // El encuentro no lo abre esta prueba —eso es otra suite—; lo que hace falta es que la fila
+    // esté ligada a uno, y eso es legítimo prepararlo por Prisma cuando la API no lo expone así.
+    const encuentro = await prisma.encounter.create({
+      data: { sessionId: sesion, status: "PREPARING", round: 1, activePosition: 0 },
+    });
+    await prisma.rollRequest.update({
+      where: { id: laDelCombate.id },
+      data: { encounterId: encuentro.id },
+    });
+
+    for (let i = 0; i < 60; i++) {
+      await request(s)
+        .post(reqUrl())
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [characterId], key: "skill.perception", label: `Ruido ${i}` })
+        .expect(201);
+    }
+
+    // **Sin filtro, la del combate ya no está**: es exactamente el fallo, y sigue ahí porque el
+    // arreglo no sube el tope.
+    const sinFiltro = await request(s)
+      .get(reqUrl())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .expect(200);
+    expect(sinFiltro.body).toHaveLength(50);
+    expect(sinFiltro.body.map((r: { id: string }) => r.id)).not.toContain(laDelCombate.id);
+
+    // **Con el filtro, sí.** Es lo que permite a la sala de espera distinguir «nadie ha tirado» de
+    // «se cayeron de la página».
+    const conFiltro = await request(s)
+      .get(reqUrl())
+      .query({ encounterId: encuentro.id })
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .expect(200);
+    expect(conFiltro.body.map((r: { id: string }) => r.id)).toEqual([laDelCombate.id]);
+  });
 });

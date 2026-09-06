@@ -16,7 +16,10 @@ export const rollRequestsKey = (campaignId: string) =>
 // **Quince segundos, y es la única excepción declarada**: su porqué está escrito entero en
 // `lib/sondeo.ts`, que es de donde sale el número.
 
-export function useRollRequests(campaignId: string, query: { includeResolved?: boolean } = {}) {
+export function useRollRequests(
+  campaignId: string,
+  query: { includeResolved?: boolean; encounterId?: string } = {},
+) {
   return useQuery({
     refetchInterval: SONDEO_DE_PETICIONES_MS,
     queryKey: [...rollRequestsKey(campaignId), query] as const,

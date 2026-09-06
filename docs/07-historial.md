@@ -48,6 +48,15 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 17 · la sala de espera podía leer «todos han tirado» sin que nadie tirara.** La lista de
+  peticiones pendientes salía con `take: 50` por fecha descendente y **sin filtro por encuentro**,
+  así que una campaña con más de cincuenta pendientes de otro tipo empujaba fuera de la página las
+  de iniciativa del combate recién abierto — y el `[]` de la página cincuenta es indistinguible de
+  «cero pendientes de verdad». Se cierra por las **dos** mitades: el servidor acepta `encounterId`
+  —**sin subir el tope**, que solo movería el problema— y la pantalla lo **manda** en vez de
+  filtrar en el cliente, que no puede recuperar lo que el servidor ya recortó. **Cómo se
+  revierte:** el commit.
+
 - **Tarea 7 · beberse una poción solo la borraba del inventario.** `consume` resolvía la
   definición del objeto y **nunca miraba sus efectos** —grep de `effects` en `inventory.service.ts`:
   cero—, que solo se leían al derivar la hoja y **desde lo equipado**. Ahora aplica los que el

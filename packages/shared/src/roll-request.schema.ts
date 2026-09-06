@@ -95,5 +95,16 @@ export const listRollRequestsSchema = z.object({
    * `includeResolved` salen también las respondidas, para repasar al terminar la sesión.
    */
   includeResolved: z.coerce.boolean().default(false),
+  /**
+   * **Filtra por encuentro**, y existe porque el corte de la página mentía (paso 1, tarea 17).
+   *
+   * La lista sale con `take: 50` por fecha descendente. Una campaña con más de cincuenta
+   * peticiones pendientes de otro tipo empujaría fuera del corte las de iniciativa del combate
+   * recién abierto, y la sala de espera leería **«todos han tirado»** sin que nadie hubiera
+   * tirado: el `[]` de la página cincuenta es indistinguible de «cero pendientes de verdad».
+   *
+   * **No se sube el `take`**: un tope más alto solo mueve el problema más lejos.
+   */
+  encounterId: z.string().cuid().optional(),
 });
 export type ListRollRequestsInput = z.infer<typeof listRollRequestsSchema>;

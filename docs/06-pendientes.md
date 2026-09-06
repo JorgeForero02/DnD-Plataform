@@ -1611,20 +1611,6 @@ encuentro de 2.5.6), no antes.
 > deuda: **no se abre ficha por algo que se sabe arreglar** — se intenta el cambio pequeño
 > primero, y solo si no lo hay se anota.
 
-### `RollRequestsService.list` corta en 50 sin filtrar por encuentro (hallazgo de la ronda de arreglo 2, 2026-09-06)
-
-`apps/api/src/roll-requests/roll-requests.service.ts:97-107`: la lista pendiente de una campaña
-sale con `take: 50` ordenada por `createdAt desc`, sin ningún filtro por `encounterId`. Una
-campaña activa que acumule más de 50 peticiones pendientes de OTRO tipo —percepciones, salvaciones
-pedidas por el DM durante la sesión— antes de que alguien abra un combate empujaría fuera del
-corte las peticiones de iniciativa del encuentro nuevo, y la sala de espera
-(`TiraDeIniciativa.tsx`) leería «todos han tirado su iniciativa» sin que nadie hubiera tirado
-nada: el `[]` que devuelve la página de 50 es indistinguible de «cero pendientes de verdad».
-
-**Es del servidor y de otra tarea, no se toca aquí.** La medida más simple sería que `list`
-aceptara (u ordenara primero) por `encounterId` cuando la pantalla lo necesita, en vez de fiarse
-de que 50 filas por `createdAt` siempre contengan las de un combate recién abierto.
-
 ### `NpcEnLaMesa` no trae `ownerId`: un PNJ cedido a un jugador es más restrictivo en la pantalla que en el servidor (I-4, ronda de arreglo 1 sobre la tarea 9b, 2026-09-06)
 
 El servidor **sí** trata a un PNJ cedido por dueño: `apps/api/src/encounters/encounters.service.ts:244-245`

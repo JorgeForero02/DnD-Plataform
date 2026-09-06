@@ -57,10 +57,15 @@ export interface RollRequestRow {
 
 export function fetchRollRequests(
   campaignId: string,
-  query: { includeResolved?: boolean } = {},
+  query: { includeResolved?: boolean; encounterId?: string } = {},
 ): Promise<RollRequestRow[]> {
   const p = new URLSearchParams();
   p.set("includeResolved", String(query.includeResolved ?? false));
+  // **`encounterId` viaja al servidor, no se filtra aquí** (paso 1, tarea 17). La lista sale con
+  // `take: 50` por fecha descendente: con más de cincuenta pendientes de otro tipo, las de
+  // iniciativa se caen de la página y la sala de espera lee «todos han tirado» sin que nadie haya
+  // tirado. Filtrar en el cliente lo que el servidor ya recortó no puede recuperarlas.
+  if (query.encounterId) p.set("encounterId", query.encounterId);
   return apiFetch<RollRequestRow[]>(`/campaigns/${campaignId}/roll-requests?${p.toString()}`);
 }
 

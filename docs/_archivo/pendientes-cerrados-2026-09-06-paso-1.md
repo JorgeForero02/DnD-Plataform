@@ -84,3 +84,34 @@ Pero un personaje sin arma en la mano ve **un cuadro vacío y ningún motivo**, 
 equipada; equipa una desde la Bolsa»—, sin inventarse ataques que el SRD no da.
 
 </details>
+
+
+---
+
+## ~~`RollRequestsService.list` corta en 50 sin filtrar por encuentro~~ — **CERRADA el 2026-09-06** (paso 1, tarea 17)
+
+**Cerrada por las dos mitades, que es lo que hacía falta.** En el servidor,
+`apps/api/src/roll-requests/roll-requests.service.ts` acepta `encounterId` y filtra por él —**sin
+subir el `take`**, que solo movería el problema más lejos—; en la pantalla,
+`apps/web/src/features/encounters/TiraDeIniciativa.tsx` lo **manda** en vez de filtrar en el
+cliente, que es lo que no podía recuperar lo que el servidor ya había recortado.
+
+Probado contra Postgres (`apps/api/test/peticion-de-tirada.e2e-spec.ts`): con la petición del
+combate escrita primero y sesenta sueltas después, **sin filtro no está en la lista** —el fallo,
+que sigue ahí— y **con filtro sí**. Mutación: quitar el filtro devuelve 50 donde la prueba espera 1.
+
+<details><summary>Lo que decía la ficha (2026-09-06)</summary>
+
+`apps/api/src/roll-requests/roll-requests.service.ts:97-107`: la lista pendiente de una campaña
+sale con `take: 50` ordenada por `createdAt desc`, sin ningún filtro por `encounterId`. Una
+campaña activa que acumule más de 50 peticiones pendientes de OTRO tipo —percepciones, salvaciones
+pedidas por el DM durante la sesión— antes de que alguien abra un combate empujaría fuera del
+corte las peticiones de iniciativa del encuentro nuevo, y la sala de espera
+(`TiraDeIniciativa.tsx`) leería «todos han tirado su iniciativa» sin que nadie hubiera tirado
+nada: el `[]` que devuelve la página de 50 es indistinguible de «cero pendientes de verdad».
+
+**Es del servidor y de otra tarea, no se toca aquí.** La medida más simple sería que `list`
+aceptara (u ordenara primero) por `encounterId` cuando la pantalla lo necesita, en vez de fiarse
+de que 50 filas por `createdAt` siempre contengan las de un combate recién abierto.
+
+</details>

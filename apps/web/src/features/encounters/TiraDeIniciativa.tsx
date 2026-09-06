@@ -301,7 +301,12 @@ function SalaDeEspera({
   // consulta llevara un objeto distinto (`{}` frente a `{ includeResolved: false }`, que
   // `JSON.stringify` no ve iguales) y las dos pantallas sondearan la MISMA URL con DOS entradas
   // de caché capaces de divergir. La revisión lo cazó.
-  const peticionesQuery = useRollRequests(campaignId);
+  //
+  // **Y desde el paso 1 sí lleva un dato: el encuentro.** Filtrarlo en el cliente no bastaba —el
+  // servidor recorta a cincuenta por fecha, así que las de iniciativa podían no llegar nunca— y
+  // esa es la diferencia entre «nadie ha tirado» y «se cayeron de la página». La entrada de caché
+  // distinta es correcta aquí: es otra URL con otros datos.
+  const peticionesQuery = useRollRequests(campaignId, { encounterId: encuentro.id });
   const peticiones = peticionesQuery.data ?? [];
 
   const pendientes = peticiones.filter(

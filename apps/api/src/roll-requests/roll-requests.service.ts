@@ -118,6 +118,12 @@ export class RollRequestsService {
         campaignId,
         ...(miembro.role === "DM" ? {} : { character: { ownerId: userId } }),
         ...(query.includeResolved ? {} : { resolvedAt: null }),
+        // **El corte de cincuenta es el que hacía mentir a la sala de espera.** Sin este filtro,
+        // una campaña con más de cincuenta pendientes de otro tipo empuja fuera de la página las
+        // de iniciativa del combate recién abierto, y `TiraDeIniciativa` lee «todos han tirado»
+        // sin que nadie haya tirado. Se filtra; **no se sube el tope**, que solo movería el
+        // problema más lejos.
+        ...(query.encounterId ? { encounterId: query.encounterId } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: 50,

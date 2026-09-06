@@ -108,7 +108,7 @@ function montarSala({
   }
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const vista = render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
         <TiraDeIniciativa
@@ -122,6 +122,7 @@ function montarSala({
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return Object.assign(vista, { espiaPeticiones });
 }
 
 beforeEach(() => {
@@ -252,5 +253,21 @@ describe("la sala de espera: quién ha tirado y a quién se espera", () => {
     await waitFor(() => expect(espia).toHaveBeenCalled());
     const aviso = await within(dialogo).findByRole("alert");
     expect(aviso).toHaveTextContent(/no se ha podido cancelar el combate/i);
+  });
+
+  it("pide las peticiones POR ENCUENTRO, no la lista entera (paso 1, tarea 17)", async () => {
+    // **Filtrar en el cliente no bastaba.** El servidor devuelve como mucho cincuenta por fecha
+    // descendente, así que con la campaña llena de pendientes de otro tipo las de iniciativa no
+    // llegan nunca, y esta pantalla leería «todos han tirado» sin que nadie hubiera tirado. Lo que
+    // se comprueba es que el filtro **viaja**, porque un filtro de cliente no puede recuperar lo
+    // que el servidor ya recortó.
+    const { espiaPeticiones } = montarSala();
+
+    await waitFor(() =>
+      expect(espiaPeticiones).toHaveBeenCalledWith(
+        "c1",
+        expect.objectContaining({ encounterId: "e1" }),
+      ),
+    );
   });
 });

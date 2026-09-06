@@ -43,15 +43,15 @@ const ETIQUETAS_QUE_EL_MOTOR_PUEDE_EMITIR = [
   "abilityMod.wis",
   "abilityMod.cha",
   // engine.ts — recorte de CA por tope de Destreza (una por armadura con `dexCap`)
-  "ac.cap.hide",
-  "ac.cap.chain-shirt",
-  "ac.cap.scale-mail",
-  "ac.cap.breastplate",
-  "ac.cap.half-plate",
-  "ac.cap.ring-mail",
-  "ac.cap.chain-mail",
-  "ac.cap.splint",
-  "ac.cap.plate",
+  "ac.cap.hide.dex",
+  "ac.cap.chain-shirt.dex",
+  "ac.cap.scale-mail.dex",
+  "ac.cap.breastplate.dex",
+  "ac.cap.half-plate.dex",
+  "ac.cap.ring-mail.dex",
+  "ac.cap.chain-mail.dex",
+  "ac.cap.splint.dex",
+  "ac.cap.plate.dex",
   // resolve.ts (formulasDeArmadura) — una por armadura del catálogo (apps/api/.../armor.ts)
   "armor.padded",
   "armor.leather",
@@ -118,8 +118,8 @@ const ETIQUETAS_QUE_EL_MOTOR_PUEDE_EMITIR = [
   "item.SRD:chain-mail",
   "item.SRD:chain-mail.strengthPenalty",
   "item.CAMPAIGN:ckly2p7mv0000qzrmn831h5x9",
-  "ac.cap.SRD:chain-mail",
-  "ac.cap.CAMPAIGN:ckly2p7mv0000qzrmn831h5x9",
+  "ac.cap.SRD:chain-mail.dex",
+  "ac.cap.CAMPAIGN:ckly2p7mv0000qzrmn831h5x9.dex",
 ];
 
 describe("traducirLabelKey — cobertura de todas las claves que el motor puede emitir", () => {

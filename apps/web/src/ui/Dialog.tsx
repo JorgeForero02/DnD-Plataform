@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Button } from "./Button";
 import { IconoCerrar } from "./Iconos";
 
@@ -198,6 +198,13 @@ export function Dialog({
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
+        // **Dentro del cajón no hay cabecera de aplicación, así que no hay escalón.** El cajón se
+        // pinta dentro del `<main>` de `AppShell`, que declara `--tira-fija-top: 4rem` para que
+        // una tira `sticky` no se meta debajo de su cabecera; aquí esa cabecera no existe y
+        // heredar su altura deja la tira flotando 64px por debajo del borde. Se reponen a cero
+        // **aquí y no en cada contenido**: quien abre un cajón no tiene por qué saber que dentro
+        // cambian las reglas de lo que se pega.
+        style={{ "--tira-fija-top": "0px", "--tira-fija-pull": "0px" } as CSSProperties}
         className={[
           // `relative` para que el aviso de U8 se ancle al cajón y no al documento.
           "relative flex h-full w-full flex-col border-l border-copper font-chrome text-chrome-sm shadow-2xl outline-none",

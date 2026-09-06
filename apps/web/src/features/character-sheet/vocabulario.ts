@@ -454,9 +454,16 @@ export function traducirLabelKey(labelKey: string): Traduccion {
     return { texto: NOMBRE_HABILIDAD.perception, conocida: true };
   }
 
-  m = /^ac\.cap\.([a-z0-9-]+)$/.exec(labelKey);
-  if (m && m[1] in NOMBRE_ARMADURA) {
-    return { texto: `Tope de Destreza de ${NOMBRE_ARMADURA[m[1]]}`, conocida: true };
+  // **El recorte nombra la característica que recorta, y no la escribe a fuego.** Hasta el
+  // 2026-09-06 aquí ponía «Tope de Destreza de X» para cualquier `ac.cap.*`, y el motor pasó ese
+  // día a topar **por característica**: un tope de Constitución se habría pintado como uno de
+  // Destreza, que es el texto mintiendo sobre una regla del servidor.
+  m = /^ac\.cap\.([a-z0-9-]+)\.([a-z]+)$/.exec(labelKey);
+  if (m && m[1] in NOMBRE_ARMADURA && m[2] in NOMBRE_CARACTERISTICA) {
+    return {
+      texto: `Tope de ${NOMBRE_CARACTERISTICA[m[2] as AbilityKey]} de ${NOMBRE_ARMADURA[m[1]]}`,
+      conocida: true,
+    };
   }
 
   // **Modificador temporal** (plan 13, ficha M8). El motor no devuelve prosa en español, así que
@@ -491,9 +498,12 @@ export function traducirLabelKey(labelKey: string): Traduccion {
     };
   }
 
-  m = /^ac\.cap\.(SRD:[a-z0-9-]+|CAMPAIGN:[A-Za-z0-9]+)$/.exec(labelKey);
-  if (m) {
-    return { texto: `Tope de Destreza de ${nombreDeRefDeObjeto(m[1])}`, conocida: true };
+  m = /^ac\.cap\.(SRD:[a-z0-9-]+|CAMPAIGN:[A-Za-z0-9]+)\.([a-z]+)$/.exec(labelKey);
+  if (m && m[2] in NOMBRE_CARACTERISTICA) {
+    return {
+      texto: `Tope de ${NOMBRE_CARACTERISTICA[m[2] as AbilityKey]} de ${nombreDeRefDeObjeto(m[1])}`,
+      conocida: true,
+    };
   }
 
   m = /^race\.([a-zA-Z]+)\.([a-zA-Z]+)$/.exec(labelKey);

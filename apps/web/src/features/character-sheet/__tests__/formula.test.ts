@@ -74,7 +74,7 @@ describe("formulaDeUnaLinea sigue en pie tras mudarse de fichero", () => {
           amount: -2,
           sourceType: "item",
           sourceKey: "SRD:chain-mail",
-          labelKey: "ac.cap.SRD:chain-mail",
+          labelKey: "ac.cap.SRD:chain-mail.dex",
         },
       ],
     };

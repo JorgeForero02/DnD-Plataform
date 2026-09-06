@@ -1421,10 +1421,18 @@ encima, no se reescribe):
   base y por eso la migración se escribe igual.
 
 - **El paso de traza se distingue por `op`, no por `kind`.** La prueba que el plan escribe
-  (`ca.steps.filter((s) => s.kind === "add")`) no compila contra `TraceStep`. **Y eso enseñó algo
-  peor:** `npx jest --silent` con un fichero que **no compila** imprime «675 passed» sin una sola
-  línea de error, así que un fichero de pruebas entero puede no ejecutarse y parecer verde. Con el
-  campo corregido son 733. **No se lee un conteo de `--silent` como prueba de que algo corrió.**
+  (`ca.steps.filter((s) => s.kind === "add")`) no compila contra `TraceStep`. Con el campo
+  corregido, `src/rules` pasa de «675» a **733**.
+
+  > **Y aquí me equivoqué yo, y la revisión de la tarea 5 lo midió.** Escribí —aquí y en el commit
+  > `f460ea0`— que `npx jest --silent` imprime un conteo verde para un fichero que no compila «sin
+  > una sola línea de error», y **es falso**: jest imprime `FAIL`, el error de TypeScript entero,
+  > `Test Suites: 1 failed` y **sale con código 1**, así que `pnpm verify` y el gancho lo cazan. Lo
+  > que sí es cierto, y es la mitad útil, es que **la línea `Tests: N passed` sale verde y no
+  > incluye el fichero**. Lo que me lo ocultó fue **mi propio `grep`**: filtraba por `Tests:` —que
+  > no casa con `Test Suites:`— y por `error TS`, que tampoco casaba porque jest mete códigos ANSI
+  > **entre** las dos palabras (`error[0m[90m TS2339`). La lección buena no es sobre jest:
+  > **un `grep` sobre salida coloreada puede tragarse justo la línea que buscas.**
 
 - **La constante se llama `CLAVE_AYUDA`, no `CLAVE_DE_AYUDA`.** Ya existía en
   `packages/shared/src/character-state.schema.ts` desde el plan 08; la tarea 1 solo le añade

@@ -8,7 +8,7 @@
 // the chrome is the dark instrument you OPERATE, and it never borrows the world's voice.
 // Panels with tone="vellum" are where the world is READ. A settings form is never parchment.
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link, useMatch } from "react-router-dom";
 import { CartographicGrid } from "./Ornament";
 import { Logo } from "./Logo";
@@ -240,7 +240,25 @@ export function AppShell({
               <div className="sticky top-20">{aside}</div>
             </aside>
           )}
-          <main className="flex min-w-0 flex-1 flex-col">
+          {/* **De cuánto es el escalón bajo el que se pega una tira fija, declarado por quien
+              sabe la respuesta.** La cabecera de la aplicación mide `h-16`, así que dentro de
+              `AppShell` una tira `sticky` tiene que pararse 4rem más abajo o se le mete debajo;
+              y `-1.5rem` la sube hasta la banda del nombre, que es donde la maqueta la pone.
+              **Fuera de aquí —dentro de un cajón— no hay ninguna de las dos cosas**, y por eso
+              el valor por defecto de las dos variables es cero: `Dialog` no hereda un escalón
+              que en su interior no existe. Antes esos dos números estaban escritos a mano en
+              `HojaCalculada`, así que la hoja se pegaba 64px por debajo del borde del cajón y
+              **se solapaba 72px con su propio cuerpo** — medido en el navegador el 2026-09-06,
+              porque `jsdom` no maqueta y ninguna prueba unitaria podía verlo. */}
+          <main
+            className="flex min-w-0 flex-1 flex-col"
+            style={
+              {
+                "--tira-fija-top": "4rem",
+                "--tira-fija-pull": "-1.5rem",
+              } as CSSProperties
+            }
+          >
             <div className="flex-1">{children}</div>
             {/* La atribucion del SRD va AQUI y no en cada pantalla: la CC BY la pide en la obra
                 distribuida, y el armazon es lo unico que toda pantalla con sesion comparte.

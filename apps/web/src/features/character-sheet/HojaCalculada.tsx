@@ -178,7 +178,12 @@ export function HojaCalculada({
           había entre ellas era el defecto que el autor señaló. */}
       <section
         aria-label="resumen de combate"
-        className="sticky top-16 z-20 -mx-s2 -mt-s5 border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
+        // **El escalón lo declara quien lo tiene, no esta hoja.** `AppShell` pone
+        // `--tira-fija-top: 4rem` porque su cabecera mide `h-16`, y `--tira-fija-pull: -1.5rem`
+        // para subir la tira a la banda del nombre. Dentro de un cajón no hay ninguna de las
+        // dos cosas y las variables valen **cero**: escribir `top-16` aquí hacía que la tira se
+        // parase 64px por debajo del borde del cajón y **se solapase 72px con su propio cuerpo**.
+        className="sticky top-[var(--tira-fija-top,0px)] z-20 -mx-s2 mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
       >
         <div className="flex flex-wrap items-start justify-end gap-s2">
           <ValorDerivado variante="compacta" etiqueta="CA" valor={sheet.derived.ac} />

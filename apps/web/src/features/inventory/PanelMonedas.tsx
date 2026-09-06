@@ -42,7 +42,13 @@ export function PanelMonedas({
   return (
     <div className="rounded-radius-sm border border-muted bg-surface p-s4">
       <h2 className="mb-s3 font-chrome text-chrome-sm font-semibold text-text">Monedas</h2>
-      <div className="grid grid-cols-2 gap-s3 sm:grid-cols-3">
+      {/* **Dos columnas y ya, y el control apilado dentro.** Con `sm:grid-cols-3` cada celda se
+          quedaba en unos 85px dentro de la columna de la hoja, y ahí no caben una casilla de 4rem
+          y un botón «Aplicar» en la misma línea: el botón **se salía de su tarjeta**, medido en el
+          navegador el 2026-09-06 sobre la hoja de un PNJ. La casilla pasa a ocupar el ancho y el
+          botón va debajo; en cuanto hay sitio (`sm:`) vuelven a la misma línea. Es maquetación, o
+          sea que **se comprueba en el navegador y no en `jsdom`**. */}
+      <div className="grid grid-cols-2 gap-s3">
         {COIN_KEYS.map((key) => (
           <div
             key={key}
@@ -53,14 +59,14 @@ export function PanelMonedas({
               {purse[key]}
             </p>
             <p className="mb-s2 font-chrome text-chrome-xs text-muted">{NOMBRE_MONEDA[key]}</p>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <label className="sr-only" htmlFor={`delta-${key}`}>
                 Cambio de {NOMBRE_MONEDA[key]}
               </label>
               <input
                 id={`delta-${key}`}
                 type="number"
-                className={fieldControlClass + " w-16"}
+                className={fieldControlClass + " w-full min-w-0 sm:w-16"}
                 value={deltas[key] ?? ""}
                 onChange={(e) => setDeltas((d) => ({ ...d, [key]: e.target.value }))}
                 placeholder="0"
@@ -77,6 +83,7 @@ export function PanelMonedas({
                 variant="secondary"
                 aria-label={`Aplicar cambio de ${NOMBRE_MONEDA[key]}`}
                 aria-busy={aplicando === key}
+                className="w-full sm:w-auto"
                 onClick={() => aplicar(key)}
               >
                 Aplicar

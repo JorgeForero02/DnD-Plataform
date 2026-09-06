@@ -55,6 +55,10 @@ export interface AcAbility {
    * **Es por característica y no de la fórmula entera**, y esa es la diferencia que trajo la
    * Defensa sin armadura: una fórmula puede topar la Destreza y no topar la otra. Un tope global
    * habría obligado a elegir entre las dos.
+   *
+   * **Entero y no negativo.** El tipo no lo puede decir, pero quien lo alimenta sí lo acota
+   * (`dexCap` en `packages/shared/src/item.schema.ts` es entero de 0 a 10). Un `cap` negativo
+   * entraría por el `Math.min` y **restaría**; uno fraccionario daría una CA con decimales.
    */
   cap?: number;
 }
@@ -386,6 +390,16 @@ function calcularCa(
   const candidatas = input.acFormulas?.length ? input.acFormulas : [sinArmadura];
 
   const evaluadas = candidatas.map((formula) => {
+    // **Una característica no se suma dos veces**, y esto es la misma guardia que justificó no
+    // dejar `addAbility` como alias: dos formas de decir lo mismo es como se cuela un valor
+    // aplicado dos veces. Con el array, el peligro se mudó dentro del array — y una traza con la
+    // Destreza repetida **cuadra**, así que ningún invariante de los que hay lo cazaría.
+    const nombradas = (formula.addAbilities ?? []).map((a) => a.ability);
+    if (new Set(nombradas).size !== nombradas.length) {
+      throw new Error(
+        `La fórmula de CA "${formula.key}" suma la misma característica más de una vez.`,
+      );
+    }
     const steps: TraceStep[] = [
       paso("base", formula.base, formula.sourceType, formula.sourceKey, formula.labelKey),
     ];
@@ -425,7 +439,14 @@ function calcularCa(
             aplicado - bruto,
             formula.sourceType,
             formula.sourceKey,
-            `ac.cap.${formula.key}`,
+            // **El paso nombra la característica recortada, no solo la fórmula.** Con el tope
+            // por característica, dos topes distintos en la misma fórmula producían dos pasos
+            // indistinguibles —misma `op`, misma `labelKey`, mismo origen— y la pantalla los
+            // traducía **los dos** como «Tope de Destreza», que sería el texto mintiendo sobre
+            // una regla del servidor. Hoy no es alcanzable (solo la armadura topa, y solo la
+            // Destreza); era una mina armada para el paso 2. La traza se deriva al leer, así que
+            // cambiar el formato no migra nada.
+            `ac.cap.${formula.key}.${suma.ability}`,
           ),
         );
       }

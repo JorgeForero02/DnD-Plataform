@@ -676,6 +676,53 @@ describe("una fórmula de CA puede sumar MÁS DE UNA característica (paso 1, ta
     expect(r.derived.ac.steps.reduce((suma, p) => suma + p.amount, 0)).toBe(15);
   });
 
+  it("con DOS topes distintos, cada paso de recorte dice a QUÉ característica recorta", () => {
+    // El caso que faltaba, y el único donde la suma de la traza no es trivial. Hoy no es
+    // alcanzable desde datos —solo la armadura topa, y solo la Destreza—, y por eso la prueba
+    // existe: es la mina que el paso 2 pisaría.
+    const dosTopes: AcFormula = {
+      key: "dos-topes",
+      labelKey: "ac.unarmoredDefense",
+      base: 10,
+      addAbilities: [
+        { ability: "dex", cap: 2 },
+        { ability: "con", cap: 1 },
+      ],
+      sourceType: "class",
+      sourceKey: "dos-topes",
+    };
+    const r = derive(
+      personaje({
+        // DES 18 => +4 (topado a 2), CON 16 => +3 (topado a 1).
+        abilities: { str: 10, dex: 18, con: 16, int: 10, wis: 10, cha: 10 },
+        acFormulas: [dosTopes],
+      }),
+    );
+
+    expect(r.derived.ac.total).toBe(13);
+    expect(r.derived.ac.steps.reduce((suma, p) => suma + p.amount, 0)).toBe(13);
+
+    const recortes = r.derived.ac.steps.filter((p) => p.op === "cap").map((p) => p.labelKey);
+    // **Dos pasos distinguibles.** Con la clave de la fórmula sola serían idénticos, y la
+    // pantalla traduciría los dos como «Tope de Destreza».
+    expect(recortes).toEqual(["ac.cap.dos-topes.dex", "ac.cap.dos-topes.con"]);
+  });
+
+  it("sumar la misma característica dos veces es un error, no una CA inflada", () => {
+    const repetida: AcFormula = {
+      key: "repetida",
+      labelKey: "ac.unarmoredDefense",
+      base: 10,
+      addAbilities: [{ ability: "dex" }, { ability: "dex" }],
+      sourceType: "class",
+      sourceKey: "repetida",
+    };
+
+    // Una traza con la Destreza repetida **cuadra**, así que ningún invariante de los que hay lo
+    // cazaría: la CA saldría alta y su explicación diría que sí.
+    expect(() => derive(personaje({ acFormulas: [repetida] }))).toThrow(/más de una vez/);
+  });
+
   it("una fórmula sin características es un número pelado", () => {
     const armadura: AcFormula = {
       key: "natural",

@@ -33,9 +33,10 @@ function conSigno(modificador: number): string {
 }
 
 /**
- * **La única función que convierte «iniciativa + grupo» en «orden», y por eso la usan las dos**
- * —empezar un encuentro y corregir un número—. Dos copias de esta regla se habrían separado a la
- * semana, y separarse aquí significa que la mesa juega en un orden distinto del que enseña.
+ * **La única función que convierte «iniciativa + grupo» en «orden», y por eso la usan las
+ * tres** —empezar un encuentro, corregir un número y aplicar la iniciativa de una petición—.
+ * Copiar esta regla en más de un sitio se habría separado a la semana, y separarse aquí
+ * significa que la mesa juega en un orden distinto del que enseña.
  *
  * Dos reglas del SRD 5.1 («Initiative»), las dos citadas porque las dos deciden código:
  *
@@ -61,17 +62,6 @@ export interface FilaDeCombatiente {
   side: CombatantSide;
 }
 
-/** Lo mínimo del cliente de Prisma que `recolocar` necesita — el `tx` real lo cumple de sobra. */
-interface TxDeCombatientes {
-  combatant: {
-    findMany(args: {
-      where: { encounterId: string };
-      orderBy?: { position: "asc" } | { id: "asc" };
-    }): Promise<FilaDeCombatiente[]>;
-    update(args: { where: { id: string }; data: { position: number } }): Promise<unknown>;
-  };
-}
-
 /**
  * El separador con el que se compone la clave «iniciativa + grupo». Un carácter que **no puede
  * aparecer** en ninguna de las dos mitades, para que dos combatientes distintos no colisionen.
@@ -86,14 +76,59 @@ interface TxDeCombatientes {
  */
 const SEPARADOR_DE_CLAVE = "\u0000";
 
-async function recolocar(tx: TxDeCombatientes, encounterId: string) {
-  // **`orderBy: { id: "asc" }`, y no es cosmético — lo destapó la prueba de la carrera de la
-  // tarea 3.** Sin un orden fijo, `findMany` no promete devolver las filas siempre en el mismo
-  // orden, así que dos transacciones concurrentes (tres jugadores respondiendo a la vez) podían
-  // mandar sus `UPDATE` de posición en órdenes distintos y cruzados — cada una bloqueada
-  // esperando una fila que la otra ya tenía tomada — y Postgres cortaba una de las dos con un
-  // «deadlock detected» (40P01). Con las dos transacciones actualizando siempre en el MISMO
-  // orden, la segunda simplemente espera a que la primera termine; nunca se cruzan.
+/**
+ * Toma el candado de la fila del `Encounter` (`SELECT ... FOR UPDATE`) y devuelve su estado,
+ * leído en la MISMA consulta bloqueante — nunca una lectura y luego un candado por separado, que
+ * dejaría una ventana entre las dos.
+ *
+ * **Es la única función que ejecuta este SQL.** `recolocar` la llama siempre, primero de todo, y
+ * `EncountersService.aplicarIniciativaDePeticion` la llama TAMBIÉN, directamente, porque necesita
+ * el estado para decidir si toca algo (ronda de arreglo 1, I-3) antes incluso de invocar
+ * `recolocar`. Repetir la misma `SELECT ... FOR UPDATE` dentro de la MISMA transacción no vuelve
+ * a bloquear: Postgres ya sabe que esta transacción tiene el candado, así que la segunda llamada
+ * solo confirma lo que ya era cierto.
+ *
+ * **Por qué existe un candado aquí y no solo el `orderBy` de antes.** La primera versión de este
+ * arreglo (tarea 3) se conformó con ordenar `findMany` por `id` para que dos transacciones
+ * escribieran los combatientes siempre en el mismo orden, y bastaba mientras las únicas
+ * concurrentes eran tres respuestas de iniciativa entre sí. La ronda de arreglo 1 encontró el
+ * caso que ese arreglo no cubría: `setInitiative` escribe la fila del combatiente que corrige
+ * ANTES de llamar a `recolocar`, sin tomar ningún candado — dos `setInitiative` a la vez, o uno
+ * contra una respuesta de iniciativa, se cruzaban igual y volvían al mismo «deadlock detected»
+ * (40P01). Un candado sobre la fila del `Encounter`, tomado antes de tocar ningún `Combatant`,
+ * serializa a cualquiera que compita por el mismo encuentro sin que cada llamador tenga que
+ * acordarse de nada: solo tiene que seguir llamando a `recolocar`, como ya hacía.
+ */
+async function bloquearEncuentro(
+  tx: Prisma.TransactionClient,
+  encounterId: string,
+): Promise<string | undefined> {
+  const filas = await tx.$queryRaw<
+    { status: string }[]
+  >`SELECT status FROM "Encounter" WHERE id = ${encounterId} FOR UPDATE`;
+  return filas[0]?.status;
+}
+
+/**
+ * **Toma el candado del `Encounter` como PRIMERA operación**, antes de leer o tocar ningún
+ * `Combatant` — ver `bloquearEncuentro`. `antesDeLeer`, si se pasa, se ejecuta DESPUÉS del
+ * candado y ANTES de leer las filas: es el hueco donde un llamador escribe su propio cambio (la
+ * iniciativa que acaba de tirar un jugador, el número que corrige el DM) sin arriesgarse a tocar
+ * esa fila antes de tener el candado del encuentro. Si esa escritura pasara antes de llamar
+ * aquí, esta misma transacción entraría a competir por el candado del encuentro mientras ya
+ * sostiene el candado de una fila de `Combatant` — y otra transacción que sí tenga el candado
+ * del encuentro y necesite esa misma fila (recolocar toca TODAS las del encuentro) se cruzaría
+ * con ella: cada una esperando lo que la otra ya tiene. Es la forma exacta del `40P01` que esta
+ * función existe para cerrar.
+ */
+async function recolocar(
+  tx: Prisma.TransactionClient,
+  encounterId: string,
+  antesDeLeer?: () => Promise<void>,
+): Promise<FilaDeCombatiente[]> {
+  await bloquearEncuentro(tx, encounterId);
+  if (antesDeLeer) await antesDeLeer();
+
   const filas = await tx.combatant.findMany({ where: { encounterId }, orderBy: { id: "asc" } });
 
   const entradas = [
@@ -110,14 +145,17 @@ async function recolocar(tx: TxDeCombatientes, encounterId: string) {
 
   const posicionDe = new Map(entradas.map((e, i) => [e.clave, i]));
 
-  await Promise.all(
-    filas.map((f) =>
-      tx.combatant.update({
-        where: { id: f.id },
-        data: { position: posicionDe.get(`${f.initiative}${SEPARADOR_DE_CLAVE}${f.groupKey}`)! },
-      }),
-    ),
-  );
+  // **`for...of` con `await`, no `Promise.all`** (M-1 de la ronda de arreglo 1). El orden en el
+  // que estos `UPDATE` llegan a Postgres importaba —es la mitad de lo que evita el 40P01, junto
+  // al candado de arriba— y `Promise.all` solo lo respeta porque en la práctica encola las
+  // promesas en el orden del array; nada del lenguaje lo garantiza. Con el bucle secuencial, el
+  // orden lo impone la sintaxis, no una casualidad de implementación.
+  for (const f of filas) {
+    await tx.combatant.update({
+      where: { id: f.id },
+      data: { position: posicionDe.get(`${f.initiative}${SEPARADOR_DE_CLAVE}${f.groupKey}`)! },
+    });
+  }
 
   return tx.combatant.findMany({ where: { encounterId }, orderBy: { position: "asc" } });
 }
@@ -538,17 +576,21 @@ export class EncountersService {
     if (!combatiente) throw new NotFoundException("Combatant not found");
 
     return this.prisma.transaction(async (tx) => {
-      await tx.combatant.update({
-        where: { id: combatantId },
-        data: {
-          initiative: input.initiative,
-          // **Sale de su grupo.** Un número corregido a mano es exactamente «este ya no actúa
-          // con los demás»: si siguiera compartiendo clave de grupo, volvería a caer en la
-          // misma posición que sus idénticos y la corrección no serviría de nada.
-          groupKey: combatantId,
-        },
+      // **La escritura va DENTRO del `antesDeLeer` de `recolocar`, no antes de llamarlo** (ronda
+      // de arreglo 1, I-1): así el candado del encuentro se toma antes de tocar esta fila, y dos
+      // `setInitiative` a la vez —o uno contra una respuesta de iniciativa— dejan de cruzarse.
+      const filas = await recolocar(tx, encounterId, async () => {
+        await tx.combatant.update({
+          where: { id: combatantId },
+          data: {
+            initiative: input.initiative,
+            // **Sale de su grupo.** Un número corregido a mano es exactamente «este ya no actúa
+            // con los demás»: si siguiera compartiendo clave de grupo, volvería a caer en la
+            // misma posición que sus idénticos y la corrección no serviría de nada.
+            groupKey: combatantId,
+          },
+        });
       });
-      const filas = await recolocar(tx, encounterId);
       return filas.find((f) => f.id === combatantId)!;
     });
   }
@@ -656,49 +698,85 @@ export class EncountersService {
   }
 
   /**
-   * Tarea 3 — escribe la iniciativa que acaba de tirar un jugador y recoloca el orden. Si con
-   * ella no queda ninguna petición pendiente, **el combate empieza**.
+   * Tarea 3 — cierra la petición de iniciativa, escribe el número en el combatiente y recoloca
+   * el orden. Si con ella no queda ninguna petición pendiente, **el combate empieza**.
    *
    * **Lo llama `roll-requests`, no al revés.** `recolocar` es privada de este módulo y es la
    * ÚNICA que sabe convertir «iniciativa + grupo» en «orden»; exponerla sería abrir la puerta a
    * una segunda forma de ordenar. La dirección es acíclica: `encounters` no importa
    * `roll-requests`.
    *
-   * **Empieza bloqueando la fila del encuentro (`FOR UPDATE`), y no es cosmético.** Lo destapó
-   * la prueba de la carrera: con tres jugadores respondiendo a la vez, tres transacciones
-   * abrían **a la vez** y las tres recolocaban las MISMAS filas de `Combatant` sin ningún orden
-   * entre ellas — Postgres cortaba una con «deadlock detected» (40P01) en vez de dejarlas en
-   * cola. El mismo patrón que ya usan `inventory.service.ts` y `character-sheet.service.ts`
-   * para lo mismo: la fila que se bloquea serializa a quien compite por el mismo agregado,
-   * como una cola de un solo carril. Encuentros DISTINTOS no se bloquean entre sí — cada uno es
-   * su propia fila.
+   * **Ronda de arreglo 1 (I-2) — cierra la petición EN ESTA MISMA transacción, no en una que ya
+   * confirmó antes de llegar aquí.** Antes, `RollRequestsService.answer` cerraba la petición con
+   * su propio `updateMany` y LUEGO abría esta transacción para escribir la iniciativa: si esta
+   * fallaba —un deadlock, un `timeout`, una caída— la petición quedaba resuelta para siempre sin
+   * que su iniciativa se escribiera nunca, y si era la última el encuentro se quedaba
+   * `PREPARING` sin ninguna petición pendiente y sin ninguna puerta que lo sacara de ahí (`end()`
+   * exige `ACTIVE`, el índice único parcial cuenta `PREPARING`). Cerrar aquí, con el mismo
+   * guardián (`resolvedAt: null` en el `where`), hace que las dos escrituras confirmen juntas o
+   * ninguna: si esta transacción se deshace, la petición sigue pendiente y el jugador puede
+   * volver a intentarlo — la tirada en sí, hecha antes de llamar aquí por `RollsService.roll` en
+   * su propia transacción, no se pierde ni se repite.
+   *
+   * **Ronda de arreglo 1 (I-3) — si el encuentro ya no está `PREPARING`, no toca nada.** Hoy es
+   * inalcanzable —nada saca a un encuentro de `PREPARING` salvo esta misma función—, pero el
+   * `force-start` de la tarea 4 lo abrirá: una respuesta que llegara tarde a un combate ya
+   * `ACTIVE` recolocaría las posiciones en mitad de la pelea mientras `activePosition` se queda
+   * donde estaba, y el puntero de turno pasaría a señalar a otro combatiente sin que nada lo
+   * registre. El estado se lee con `bloquearEncuentro`, la misma consulta bloqueante que usa
+   * `recolocar`, así que no hay ventana entre leer el estado y decidir.
    */
   async aplicarIniciativaDePeticion(
     encounterId: string,
+    requestId: string,
     characterId: string,
     initiative: number,
-  ): Promise<{ empezo: boolean }> {
+    resolvedEventId: string,
+  ): Promise<{ cerrada: boolean; empezo: boolean }> {
     return this.prisma.transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Encounter" WHERE id = ${encounterId} FOR UPDATE`;
-      await tx.combatant.updateMany({
-        where: { encounterId, characterId },
-        data: { initiative },
+      // Mismo guardián que usaba `RollRequestsService.answer` antes de esta ronda: solo toca la
+      // fila que SIGUE sin responder. Si no tocó ninguna, otra respuesta ganó la carrera.
+      const cerrada = await tx.rollRequest.updateMany({
+        where: { id: requestId, resolvedAt: null },
+        data: { resolvedAt: new Date(), resolvedEventId },
       });
-      await recolocar(tx, encounterId);
+      if (cerrada.count === 0) return { cerrada: false, empezo: false };
 
+      const estado = await bloquearEncuentro(tx, encounterId);
+      if (estado !== "PREPARING") return { cerrada: true, empezo: false };
+
+      await recolocar(tx, encounterId, async () => {
+        await tx.combatant.updateMany({
+          where: { encounterId, characterId },
+          data: { initiative },
+        });
+      });
+
+      // **Este conteo es el guardián de verdad contra el suceso duplicado, y la mutación de la
+      // ronda de arreglo 1 lo confirmó** (bypasearlo puso la prueba de la carrera en rojo — tres
+      // sucesos en vez de uno — mientras que mutar el `estado` de arriba o el `updateMany` de
+      // abajo, por separado, no la movía). No es casualidad: con el candado del encuentro
+      // tomado ANTES (`bloquearEncuentro`, dentro de `recolocar`) y Postgres en `READ
+      // COMMITTED`, la transacción que gana la carrera por el candado todavía NO ve el cierre de
+      // las otras peticiones —siguen sin confirmar, bloqueadas esperando el mismo candado—, así
+      // que ve `pendientes > 0` y sale sin arrancar. Solo la ÚLTIMA en confirmar llega a ver las
+      // demás ya cerradas y en cero.
       const pendientes = await tx.rollRequest.count({
         where: { encounterId, resolvedAt: null },
       });
-      if (pendientes > 0) return { empezo: false };
+      if (pendientes > 0) return { cerrada: true, empezo: false };
 
-      // **`updateMany` con el estado en el `where`, no `update`.** Con tres jugadores
-      // respondiendo a la vez, dos pueden ver cero pendientes; solo uno toca la fila y solo ese
-      // escribe el suceso. Es el mismo guardián que usa `answer` para no tirar dos veces.
+      // **`updateMany` con el estado en el `where`, no `update`, aunque hoy sea cinturón sobre
+      // tirantes.** Con el candado del encuentro de por medio, el conteo de arriba ya basta para
+      // que como mucho una transacción llegue aquí con `pendientes === 0` — esta comprobación es
+      // la misma que usaba `answer` antes de esta ronda para no tirar dos veces, y se deja como
+      // segunda red: si algún día el candado se debilita o se quita, esta sigue impidiendo dos
+      // arranques sin depender de que la otra se acuerde de hacerlo.
       const arrancado = await tx.encounter.updateMany({
         where: { id: encounterId, status: "PREPARING" },
         data: { status: "ACTIVE" },
       });
-      return { empezo: arrancado.count === 1 };
+      return { cerrada: true, empezo: arrancado.count === 1 };
     });
   }
 }

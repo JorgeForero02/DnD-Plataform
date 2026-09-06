@@ -150,37 +150,36 @@ export class RollRequestsService {
       ...(peticion.dc === null ? {} : { dc: peticion.dc }),
     });
 
-    // **Se marca respondida después de tirar, no antes.** Si se marcara antes y la tirada fallara
-    // —una expresión imposible, la base caída—, la petición quedaría cerrada sin tirada: el
-    // jugador vería desaparecer el botón sin que hubiera pasado nada.
-    //
-    // **Y se cierra con la condición dentro del `where`**, no con el `if` de arriba: entre aquella
-    // lectura y esta escritura cabe otra petición entera —un doble clic, o dos pestañas—, y las dos
-    // pasaban la comprobación y tiraban. La regla del proyecto dice que lo que la base puede
-    // garantizar lo garantiza la base: aquí la garantía es que el `updateMany` solo toca la fila
-    // que **sigue** sin responder, y si no tocó ninguna es que ganó la otra.
-    const cerrada = await this.prisma.rollRequest.updateMany({
-      where: { id: peticion.id, resolvedAt: null },
-      data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
-    });
-    if (cerrada.count === 0) {
-      throw new BadRequestException("Esa petición ya se respondió.");
-    }
-
-    // **Después de ganar la carrera, no antes.** Si se escribiera antes del `updateMany` de
-    // arriba, un doble clic colocaría dos veces al mismo combatiente con dos tiradas distintas.
+    // **Camino de iniciativa: cerrar la petición y escribir el número confirman JUNTOS.** Ronda
+    // de arreglo 1 (I-2): antes, el `updateMany` de más abajo cerraba la petición en SU PROPIA
+    // transacción y luego se abría otra para escribir la iniciativa en `EncountersService`; un
+    // fallo entre las dos (deadlock, timeout, caída) dejaba la petición resuelta para siempre
+    // sin iniciativa escrita, y si era la última el encuentro se quedaba `PREPARING` sin ninguna
+    // petición pendiente y sin ninguna puerta que lo sacara de ahí. Ahora las dos escrituras
+    // viven en la transacción de `aplicarIniciativaDePeticion`: confirman juntas o ninguna.
     if (peticion.encounterId) {
-      // La iniciativa nunca se pide a ciegas (`start()` solo usa `PUBLIC` o `DM_PRIVATE`), pero
-      // el tipo de `resultado` es una unión discriminada y el compilador no lo sabe: sin este
-      // guardián, `resultado.total` no existe en la rama `revealed: false`.
+      // **Invariante, no error de usuario recuperable** (M-2 de la ronda de arreglo 1). La
+      // iniciativa nunca se pide a ciegas (`start()` solo usa `PUBLIC` o `DM_PRIVATE`), así que
+      // esta rama es hoy inalcanzable: si `revealed` fuera `false` aquí, algo rompió esa
+      // garantía en otra parte del código, no algo que el jugador hizo mal. Se deja el guardián
+      // porque el tipo de `resultado` es una unión discriminada y el compilador no lo sabe —sin
+      // él, `resultado.total` no existe en la rama `revealed: false`— y porque, con la petición
+      // cerrándose dentro de la misma transacción que la iniciativa (I-2), este chequeo ya no
+      // puede dejar la petición resuelta sin su número escrito: si lanza, nada de lo de abajo
+      // ha corrido todavía.
       if (!resultado.revealed) {
         throw new BadRequestException("La tirada de iniciativa no se pudo leer");
       }
-      const { empezo } = await this.encounters.aplicarIniciativaDePeticion(
+      const { cerrada, empezo } = await this.encounters.aplicarIniciativaDePeticion(
         peticion.encounterId,
+        peticion.id,
         peticion.characterId,
         resultado.total,
+        resultado.eventId,
       );
+      if (!cerrada) {
+        throw new BadRequestException("Esa petición ya se respondió.");
+      }
       if (empezo) {
         // **`RollRequest` NO tiene `sessionId`** — la sesión sale del encuentro, que es quien la
         // tiene.
@@ -196,6 +195,24 @@ export class RollRequestsService {
           payload: { type: "ENCOUNTER_STARTED", encounterId: peticion.encounterId },
         });
       }
+      return resultado;
+    }
+
+    // **Se marca respondida después de tirar, no antes.** Si se marcara antes y la tirada fallara
+    // —una expresión imposible, la base caída—, la petición quedaría cerrada sin tirada: el
+    // jugador vería desaparecer el botón sin que hubiera pasado nada.
+    //
+    // **Y se cierra con la condición dentro del `where`**, no con el `if` de arriba: entre aquella
+    // lectura y esta escritura cabe otra petición entera —un doble clic, o dos pestañas—, y las dos
+    // pasaban la comprobación y tiraban. La regla del proyecto dice que lo que la base puede
+    // garantizar lo garantiza la base: aquí la garantía es que el `updateMany` solo toca la fila
+    // que **sigue** sin responder, y si no tocó ninguna es que ganó la otra.
+    const cerrada = await this.prisma.rollRequest.updateMany({
+      where: { id: peticion.id, resolvedAt: null },
+      data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
+    });
+    if (cerrada.count === 0) {
+      throw new BadRequestException("Esa petición ya se respondió.");
     }
 
     return resultado;

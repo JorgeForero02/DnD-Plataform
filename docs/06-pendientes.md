@@ -98,6 +98,39 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
+## P1 · `CharacterSheetService.updateSheet` da un 500 intermitente con varios `PATCH .../sheet` concurrentes (2026-09-05, ronda de arreglo 1 de la tarea 3)
+
+**Encontrado montando el escenario de la prueba de la carrera de la tarea 3, no en el código que
+esa tarea toca.** `apps/api/test/iniciativa-pedida.e2e-spec.ts` creaba tres personajes de tres
+jugadores distintos con `Promise.all`, y de vez en cuando (más o menos una vez cada cinco u ocho
+ejecuciones) uno de los tres `PATCH /campaigns/:id/characters/:id/sheet` concurrentes devolvía
+**500** con `PrismaClientKnownRequestError: Record to update not found` sobre
+`this.prisma.character.update()` (`apps/api/src/characters/character-sheet.service.ts:714`) —
+para un `characterId` que existía de sobra: la fila la acababa de crear el `POST` anterior de la
+misma prueba, con éxito comprobado.
+
+**No es un fallo del `characterId`, es un fallo de proceso.** `updateSheet` lee el personaje con
+`requireEditable` (un `findFirst` simple, sin candado) al principio, hace un rato de cómputo puro
+—`equipoEquipado`, `construirBuild`, `deriveCharacter`— y solo al final escribe con
+`this.prisma.character.update({ where: { id: characterId }, data })`. Entre esas dos, no hay
+ninguna transacción que las una: cada una es su propia conexión de Prisma. Con tres jugadores
+DISTINTOS haciendo `PATCH` de tres personajes DISTINTOS al mismo tiempo, ninguno debería tocar la
+fila de otro — y sin embargo el error aparece. No se ha llegado a la causa exacta (no es el
+guardián de esta tarea, que solo toca `Encounter`/`Combatant`/`RollRequest`); son candidatas
+razonables una condición de carrera en el pool de conexiones de Prisma, o algo en el camino de
+`requireEditable` → `equipoEquipado` que no se ha mirado con este hallazgo delante.
+
+**Cómo se esquivó, y por qué esquivarlo fue lo correcto para la tarea 3:** el fichero afectado
+creaba los tres personajes en paralelo solo para montar el escenario de la prueba —lo que de
+verdad hace falta que sea concurrente es responder las tres peticiones de iniciativa, no crear
+los personajes—, así que se cambió a secuencial y el fallo dejó de aparecer en más de treinta
+ejecuciones seguidas de la suite. Perseguir la causa real de este 500 es trabajo de otro día: no
+toca ningún fichero de esta tarea, y las dos veces que se reprodujo fue siempre en la fase de
+montaje, nunca en el camino que la tarea 3 prueba.
+
+**Cierra cuando** alguien reproduzca el 500 fuera de un test (tres `PATCH .../sheet` reales y
+concurrentes de tres jugadores) y encuentre la causa exacta en `character-sheet.service.ts`.
+
 ## P1 · Un encuentro `PREPARING` no se puede terminar (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 **Bloqueo conocido, no un fallo.** `EncountersService.end()` exige `status === "ACTIVE"`

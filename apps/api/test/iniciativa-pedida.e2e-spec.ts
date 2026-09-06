@@ -90,8 +90,10 @@ describe("Responder la petición de iniciativa coloca al combatiente y arranca e
    *
    * **Reutiliza cuentas ya registradas en `beforeAll`, no crea las suyas.** `AUTH_RATE_LIMIT`
    * es 5 registros por IP y por minuto (`rate-limit.constants.ts`), y este fichero comparte un
-   * único contador de `ThrottlerStorage` — cinco registros justos (DM + tres jugadores) caben;
-   * seis no.
+   * único contador de `ThrottlerStorage` — **cuatro** registros (DM + tres jugadores) caben
+   * de sobra; no hace falta apurar el límite creando una cuenta nueva por prueba. Los tres
+   * `POST /invites/:token/accept` de `nuevoJugador` cuentan aparte —comparten su propio límite
+   * de intentos, no el de `/auth/register`—, y tres también caben con margen.
    */
   async function empezarConDosJugadores() {
     const sessionId = await nuevaSesion(`Con dos ${Date.now()}`);
@@ -122,9 +124,15 @@ describe("Responder la petición de iniciativa coloca al combatiente y arranca e
     duenos = jugadores.map((j) => j.userId);
 
     const sessionId = await nuevaSesion(`Con tres ${Date.now()}`);
-    const personajes = await Promise.all(
-      jugadores.map((j, i) => nuevoPersonajeDelJugador(j.token, `PJ${i}${Date.now()}`, 12 + i)),
-    );
+    // **Secuencial, no `Promise.all`.** Crear los tres personajes a la vez destapó un fallo
+    // intermitente ajeno a esta tarea —`CharacterSheetService.updateSheet` da un 500 («Record to
+    // update not found») cuando varios `PATCH .../sheet` de personajes DISTINTOS llegan a la vez—
+    // y no es lo que esta prueba mide: lo que tiene que ser concurrente es responder las tres
+    // peticiones de iniciativa, más abajo, no montar el escenario.
+    const personajes: string[] = [];
+    for (const [i, j] of jugadores.entries()) {
+      personajes.push(await nuevoPersonajeDelJugador(j.token, `PJ${i}${Date.now()}`, 12 + i));
+    }
 
     const r = await request(s())
       .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)

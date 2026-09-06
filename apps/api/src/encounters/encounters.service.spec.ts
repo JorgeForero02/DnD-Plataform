@@ -40,6 +40,10 @@ describe("EncountersService", () => {
     rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
+    // **Ronda de arreglo 1 (I-1): `recolocar` ahora toma un candado (`bloquearEncuentro`) como
+    // primera operación**, así que el `tx` de mentira necesita un `$queryRaw` que responda —lo
+    // que devuelva no importa aquí, ningún camino unitario mira el estado que trae de vuelta.
+    $queryRaw: jest.fn().mockResolvedValue([{ status: "PREPARING" }]),
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn().mockResolvedValue({ id: "ev1" }) };
@@ -101,6 +105,7 @@ describe("EncountersService", () => {
           findMany: prisma.combatant.findMany,
         },
         rollRequest: { create: prisma.rollRequest.create },
+        $queryRaw: prisma.$queryRaw,
       }),
     );
     prisma.rollRequest.create.mockResolvedValue({ id: "req1" });

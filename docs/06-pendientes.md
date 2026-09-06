@@ -385,23 +385,27 @@ suite entera en verde.
 herramientas del DM se alcancen enteras a 390 px. Va con U2, que es su vecina: la navegación
 estrecha ya se remidió en el plan 14 y **pasó**, así que lo que queda es la mesa, no el armazón.
 
-## P2 · El bando de un combatiente no se puede elegir ni corregir desde ninguna pantalla (2026-09-05, paseo de uso)
+## P2 · Cerrado: el bando de un combatiente ya se elige y se corrige desde pantalla (2026-09-05, paseo de uso — cerrado el 2026-09-06)
 
-**`sides` está en el esquema del servidor y no lo manda nadie**, así que **todos los combatientes
-entran `NEUTRAL`**. La columna existe desde el plan 02 (`41013cd`, «a combatant has a side, and it
-lives where the fight does») y **ninguna pantalla la escribe**.
+**Cerrada por el plan `2026-09-05-iniciativa-y-bando.md`, tareas 7 y 9b/10.** Las dos pantallas que
+faltaban ya existen:
 
-Es el patrón que este proyecto ha cerrado en falso cinco veces: **servidor hecho, nadie que lo
-dispare = la ficha sigue abierta**.
+- **Se elige al meter a alguien en combate**: `EmpezarCombate.tsx` manda `sides` con un radio por
+  combatiente (`apps/web/src/features/encounters/EmpezarCombate.tsx:133`, `radiogroup`; el envío
+  en `:245`), con una sugerencia rellenada (grupo propio `ALLY`, PNJ de la mesa `ENEMY`) que el DM
+  ve y cambia de un clic — commit `c8395ec`.
+- **Se corrige después**, desde la ficha del elenco y desde la del PNJ por igual: el componente
+  compartido `CorregirBando` (`apps/web/src/features/sessions/elenco/CorregirBando.tsx:41`) llama a
+  `PATCH .../combatants/:cid/side` — commits `149bd93` (radios, ficha del PJ) y `6259e1a` (extraído
+  y cableado también en la ficha del PNJ, que era el caso principal: el enemigo).
+- **El vocabulario vive una sola vez**, en `apps/web/src/dominio/combate.ts` (Ruling R7 del ledger
+  de esa noche, no en `features/encounters/` como proponía el plan, porque lo importan dos
+  features distintas) — commit `d5f5fc7`.
+- **El bando se distingue por palabra, no por color** (D-OP-7): ninguna de las dos pantallas usa
+  `--success`, que no existe.
 
-**Y lo que NO se hizo, que es la parte que importa:** no se inventó un valor por defecto del tipo
-«los PNJ son enemigos». Eso sería **el servidor decidiendo por el DM** — un capataz puede ser enemigo
-el jueves y aliado el viernes, y la mesa lo sabe antes que el esquema. El hueco es que falta el
-gesto, no que falte una regla.
-
-**Cierra cuando** el DM pueda elegir el bando **al meter a alguien en combate** y corregirlo después
-desde el orden de turnos, con su vocabulario en español escrito una sola vez, como manda la regla de
-que ningún valor de enumeración llega a la pantalla.
+**Lo que queda, y no es esta ficha:** `setSide` y el reajuste de `activePosition` todavía no
+emiten suceso por el canal en vivo — ficha propia, ver «P2-eventos» más abajo.
 
 ## P2-eventos · `setSide` y el reajuste de `activePosition` no emiten suceso: no viajan por el canal en vivo (2026-09-05, ronda de arreglo 1 de la tarea 5)
 
@@ -1497,7 +1501,7 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 | # | Qué falta | Por qué importa |
 |---|---|---|
 | **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
-| **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts` | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, pero con más superficie. Candidato claro a `@dnd/shared` |
+| **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
 | **S12** | **`listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`** | `docs/01-arquitectura.md` dice que la forma de los datos vive en un solo sitio y **eso ya tiene dos excepciones**. O se declara la excepción (los esquemas de consulta locales a un endpoint pueden vivir junto al controlador) o se mueven |
 | **U6-visibilidad** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
 | **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |

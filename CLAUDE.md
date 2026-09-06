@@ -26,9 +26,17 @@ fusionados y la Ola 3), los quince planes de la noche, la bandeja de avisos y el
 > delante de `dnd.supportive.pro`».** Las dos frases caducaron con ese despliegue, y es el mismo
 > fallo de siempre: prosa de estado escrita a mano en el fichero que se manda leer primero.
 
-**Lo único que separa hoy `main` de producción es documentación**: `git diff --name-only
-6eb2590..HEAD` no toca `apps/` ni `packages/`. Lo que **no** ha cambiado es la regla: **el
-despliegue no se lanza sin que lo pida el autor**.
+**Y desde el 2026-09-05/06 hay un plan más, cerrado en local y SIN desplegar**: la iniciativa la
+piden los jugadores y el DM elige el bando, quince tareas propias (ver
+[docs/07-historial.md](docs/07-historial.md) y el bloque «Avance» de
+[docs/superpowers/plans/2026-09-05-iniciativa-y-bando.md](docs/superpowers/plans/2026-09-05-iniciativa-y-bando.md)).
+**`main` ya no le saca a producción solo documentación**: `git diff --name-only 6eb2590..HEAD`
+toca 70 ficheros de `apps/` y `packages/`, con dos migraciones. Lo que **no** ha cambiado es la
+regla: **el despliegue no se lanza sin que lo pida el autor**.
+
+> **Hasta el 2026-09-06 este párrafo decía que lo único que separaba `main` de producción era
+> documentación.** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
+> caducidad de la que ya avisa el bloque de arriba sobre el reseño de la mesa.
 
 **Los quince planes del 2026-09-05 están cerrados** — el índice y el bloque «Avance» de cada uno
 dicen cuál con qué commit:

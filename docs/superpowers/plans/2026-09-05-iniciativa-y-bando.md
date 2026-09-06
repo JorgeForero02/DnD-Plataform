@@ -1350,3 +1350,47 @@ probadas (índice, reparto, carrera, 403 de forzar, 403 de bando, canal apagado)
   decisión propia sobre qué cuenta como derrotado.**
 - **No toca el agrupado de criaturas idénticas.**
 - **No toca `setInitiative`**: corregir el número sigue siendo del DM.
+
+## Avance
+
+**Las quince tareas están completas**, más una tarea fuera de plan (la X, un diagnóstico) y una
+añadida en marcha (la 9b, no prevista aquí). Detalle por tarea, revisiones y hallazgos en el
+ledger: `.superpowers/sdd/2026-09-05-iniciativa-y-bando/progress.md`. Resumen por tarea:
+
+| Tarea | Estado | Commit(s) |
+|---|---|---|
+| 1 · `PREPARING`, columnas de `RollRequest`, índice recontado | Completa | `2e3563a`..`5369362` |
+| 2 · Se pide la iniciativa a cada jugador | Completa | `6e0d38c`..`eafc736` |
+| 3 · Responder la petición aplica la iniciativa y arranca el combate | Completa | `d299bfa`..`276d59c` |
+| 4 · Forzar el arranque, y cancelar borra | Completa | `63ed464`..`fc05387` |
+| 5 · Corregir el bando en marcha (y el asalto que `setInitiative` podía saltarse) | Completa | `d08d803`..`04b6e2b` |
+| X · (fuera de plan) el «500 intermitente» de `updateSheet` | Completa — medido y descartado, no era del servicio | `04b6e2b`..`3e35629` |
+| 6 · Vocabulario de bandos y estados de combate | Completa | `d5f5fc7`..`2f0b376` |
+| 7 · El diálogo de empezar combate manda el bando | Completa | `c8395ec`..`090a671` |
+| 8 · Sala de espera del DM | Completa | `7c19e3b`..`664d1d9` |
+| 9 · El jugador ve su propio estado y el modificador antes de tirar | Completa | `f378acd`..`75f6460` |
+| 9b · (añadida en marcha) PNJ en la columna del elenco, con mandos de bando | Completa | `92fdcce`, cerrada junto a la 10 en `6259e1a` |
+| 10 · Corregir el bando desde el orden de turnos | Completa | `149bd93`, cerrada junto a la 9b en `6259e1a` |
+| 11 · e2e de dos navegadores | Completa | `d5dee56` |
+| 12 · Esta documentación | Completa | (este commit) |
+| 13 · Un ataque elige objetivo, y el servidor dice si acierta | Completa | `10c4d24`..`084550a` |
+| 14 · Curar entra por la misma puerta que el daño | Completa | `8cf9e4a` |
+| 15 · El cuadro de ataques vacío explica, y las competencias con armas dejan de mentir | Completa | `8466c82` |
+
+**Decisiones tomadas sin el autor**, íntegras en [`docs/decisiones.md`](../../decisiones.md)
+(`E-IB-1` a `E-IB-34`) — treinta y cuatro, varias contra el propio texto de este plan: la
+transacción que fusiona cerrar la petición de iniciativa y escribir el número (paso 2 de la
+tarea 3 pedía dos pasos), `end()` sin tocar porque la salida de un combate que no empezó es el
+`DELETE` de cancelar, el vocabulario en `apps/web/src/dominio/combate.ts` y no en
+`features/encounters/` como pedía la tarea 6, `encounterId` fuera del esquema público del `POST`
+de peticiones (paso 3 de la tarea 3), y que la tarea 14 no construyera una puerta nueva porque
+curar ya funcionaba desde la hoja — solo faltaba el gesto de la mesa.
+
+**Lo siguiente exacto:** este plan está cerrado. Lo que sigue no es un plan, es jugar: la partida
+de prueba con dos cuentas de jugador (D-OP-3), que es lo único que le falta a la fase 2 para
+cerrarse — ver [`docs/06-pendientes.md`](../../06-pendientes.md). Deuda que este plan deja
+abierta y con ficha propia: `setSide` y el reajuste de `activePosition` no emiten suceso por el
+canal en vivo (P2-eventos); la resistencia/vulnerabilidad/inmunidad al daño de un personaje de
+jugador (P1, tarea 14); y los tipos duplicados a mano en
+`apps/web/src/features/character-sheet/api.ts` frente a `apps/api/src/rules/` (S11, tercer caso
+medido el 2026-09-06).

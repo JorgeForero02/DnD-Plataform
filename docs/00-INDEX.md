@@ -17,16 +17,22 @@ propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 > **Hasta el 2026-09-05 aquí ponía que el reseño de la mesa NO estaba desplegado y que producción
 > iba por detrás de los dos `main`.** Las dos frases caducaron con ese despliegue.
 
-**Los tres estados, hoy:** `main` local va **dos commits de documentación** por delante de
-`origin/main` y de producción, y **no hay ningún cambio de código sin desplegar** (`git diff
---name-only 6eb2590..HEAD` no toca `apps/` ni `packages/`). Empujar a GitHub **no despliega nada**
-— el CI solo prueba, y el despliegue es manual por decisión del autor: ver
-[03-despliegue.md](./03-despliegue.md).
+**Y desde el 2026-09-05/06 hay un plan más, ya cerrado en local y SIN desplegar: la iniciativa la
+piden los jugadores, y el DM elige el bando** —quince tareas propias, ver
+[07-historial.md](./07-historial.md)—. **`main` local ya no va solo por delante en documentación**:
+`git diff --name-only 6eb2590..HEAD` toca **70 ficheros de `apps/` y `packages/`**, con dos
+migraciones incluidas. Empujar a GitHub **no despliega nada** — el CI solo prueba, y el despliegue
+es manual por decisión del autor: ver [03-despliegue.md](./03-despliegue.md).
+
+> **Hasta este mismo bloque, hasta el 2026-09-06, aquí ponía que «no hay ningún cambio de código
+> sin desplegar».** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
+> caducidad que ya avisó el párrafo de arriba sobre el reseño de la mesa.
 
 **Los quince planes del 2026-09-05 están cerrados**, uno por fichero, en
 [superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md), y lo que
 decidieron mientras se ejecutaban está en [decisiones.md](./decisiones.md). **Lo que queda por hacer
-no es un plan, es jugar**: la partida de prueba con dos cuentas de jugador (D-OP-3).
+no es un plan, es jugar**: la partida de prueba con dos cuentas de jugador (D-OP-3) — y ahora, para
+jugarla en producción, primero desplegar lo de arriba.
 
 
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
@@ -101,7 +107,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `084550a` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `1839057` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

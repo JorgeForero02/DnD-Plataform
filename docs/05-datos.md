@@ -176,11 +176,42 @@ compartieron la misma tirada, no una fila compartida entre los seis.
 Dos restricciones que garantiza la base, no un `if` del servicio — la misma convención que
 `session_one_in_progress_per_campaign` (2A.5) y `DmTable` (2C.6):
 
-- **Como mucho un `Encounter` `ACTIVE` por sesión**: índice único parcial
+- **Como mucho un `Encounter` sin terminar por sesión**: índice único parcial
   (`encounter_one_active_per_session`, escrito a mano en la migración porque Prisma no sabe
-  expresarlo), sobre `sessionId` con `WHERE status = 'ACTIVE'`.
+  expresarlo), sobre `sessionId` con `WHERE status IN ('ACTIVE', 'PREPARING')`. **Recontado el
+  2026-09-05** (plan `2026-09-05-iniciativa-y-bando.md`, tarea 1): el `WHERE` original solo
+  miraba `ACTIVE`, y con `PREPARING` como estado nuevo eso dejaba convivir un encuentro
+  preparándose con uno ya activo en la misma sesión — justo el lío que este índice existe para
+  impedir. Sigue siendo e2e contra Postgres real, no unitaria, por la misma razón que las otras
+  dos: una comprobación en el servicio es una carrera esperando a que el DM tenga dos pestañas
+  abiertas.
 - **Una posición no se repite dentro de un encuentro**: `@@unique([encounterId, position])` sobre
   `Combatant`, que Prisma sí expresa directamente en el esquema.
+
+**`Encounter.status` tiene un tercer valor, `PREPARING`** (plan `2026-09-05-iniciativa-y-bando.md`,
+tarea 1). Un encuentro nace `PREPARING` cuando alguno de los personajes que entran en él no es del
+DM: falta que esos jugadores tiren su propia iniciativa antes de que el combate pueda empezar. Si
+todos los que entran son del DM, nace `ACTIVE` directamente, como siempre — nadie a quien pedirle
+nada. `PREPARING` **no es un estado terminal**: o pasa a `ACTIVE` cuando la última petición se
+responde (`aplicarIniciativaDePeticion`, dentro de la misma transacción que cierra esa petición) o
+el DM lo cancela, y cancelar **lo borra** — «no es historia, es un clic deshecho», así que un
+combate que nunca empezó no deja fila ni suceso.
+
+**`RollRequest` gana dos columnas** para poder ser también la petición de iniciativa:
+
+- **`encounterId`** (nulo salvo que la petición sea de iniciativa): de qué encuentro salió, si
+  salió de uno. Nulo a propósito en toda petición normal —una de percepción no viene de un
+  combate y no debe fingir que sí—. Con él, el encuentro sabe a quién espera (sus peticiones sin
+  `resolvedAt`), la pantalla del jugador sabe que ESTA se presenta a lo grande, y al responder se
+  sabe dónde escribir la iniciativa. Un booleano `esIniciativa` habría mentido el día que exista
+  otra petición ligada a algo que no sea un encuentro. **No es un campo del esquema público del
+  `POST`** (`createRollRequestSchema`): nadie lo consume desde ahí, `EncountersService` la escribe
+  directamente con `tx.rollRequest.create`, y dejarlo en el esquema público habría prometido una
+  garantía que ese endpoint no da.
+- **`cancelledAt`**: cerrada porque el DM forzó el arranque (`force-start`, sin esperar a los
+  rezagados), **no** porque alguien la respondiera. Con `resolvedAt` puesto y `resolvedEventId`
+  nulo, esto es lo que separa «lo anularon» de «lo respondí yo» — sin ella la pantalla del
+  jugador le diría que tiró él cuando en realidad el DM cerró el combate sin esperarlo.
 
 **`position` es del GRUPO, y varios combatientes la comparten.** Sale del SRD 5.1
 («Initiative»): *«The DM makes one roll for an entire group of identical creatures, so each member

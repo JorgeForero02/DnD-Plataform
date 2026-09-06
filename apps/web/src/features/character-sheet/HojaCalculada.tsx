@@ -14,7 +14,7 @@ import { Anulaciones } from "./Anulaciones";
 import { AtaquesYLanzamiento } from "./AtaquesYLanzamiento";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { DadosDeGolpe, PercepcionPasiva, SalvacionesDeMuerte } from "./TarjetasDeEstado";
-import { Personalidad, RasgosYAptitudes } from "./BloquesDelPie";
+import { CompetenciasConArmas, Personalidad, RasgosYAptitudes } from "./BloquesDelPie";
 import { AvisoDeDm } from "./AvisoDeDm";
 import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
 import { Caracteristicas, FichaEditable } from "./IdentidadEditable";
@@ -437,7 +437,8 @@ export function HojaCalculada({
         <PaginaDeInventario campaignId={campaignId} characterId={characterId} />
 
         {/* El pie: lo que se lee una vez por sesión y no se consulta en mitad de un turno. */}
-        <div className="grid items-start gap-s4 lg:grid-cols-2">
+        <div className="grid items-start gap-s4 lg:grid-cols-3">
+          <CompetenciasConArmas weaponProficiencies={sheet.weaponProficiencies} />
           <RasgosYAptitudes features={sheet.features} />
           <Personalidad bio={character.bio} />
         </div>

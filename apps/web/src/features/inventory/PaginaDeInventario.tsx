@@ -58,14 +58,14 @@ export function PaginaDeInventario({
   // tanto.
   if (inventario.isPending) {
     return (
-      <section aria-label="inventario">
+      <section id="inventario" aria-label="inventario">
         <p className="font-chrome text-chrome-sm text-muted">Cargando inventario…</p>
       </section>
     );
   }
   if (inventario.isError || !inventario.data) {
     return (
-      <section aria-label="inventario">
+      <section id="inventario" aria-label="inventario">
         <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
           {mensajeDeError(inventario.error)}
         </p>
@@ -176,7 +176,11 @@ export function PaginaDeInventario({
     // **Una región con nombre, no un `<div>` suelto y no un `<h1>`.** Esta pantalla se monta
     // dentro de la hoja de personaje, que ya tiene su titular: un segundo `<h1>` deja a quien
     // navega con lector de pantalla con dos títulos de página en la misma página.
-    <section aria-label="inventario" className="flex flex-col gap-s4 lg:flex-row lg:items-start">
+    <section
+      id="inventario"
+      aria-label="inventario"
+      className="flex flex-col gap-s4 lg:flex-row lg:items-start"
+    >
       <div className="min-w-0 flex-1">
         <h2 className="mb-s4 font-title text-chrome-lg text-text">Inventario</h2>
         {aviso && <AvisoDeEquipar aviso={aviso} />}

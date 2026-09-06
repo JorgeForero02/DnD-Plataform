@@ -41,6 +41,7 @@ const sheet: CalculatedSheet = {
   raceKey: "human",
   classKey: "rogue",
   attacksPerAction: 1,
+  weaponProficiencies: ["simple"],
   spellSlots: [],
   spellSlotResetOn: "NONE",
 };
@@ -171,10 +172,16 @@ describe("AtaquesYLanzamiento", () => {
     expect(screen.getByText("Sin competencia")).toBeInTheDocument();
   });
 
-  it("sin ninguna arma equipada, la hoja dice qué hacer, no deja un hueco", () => {
+  it("sin armas equipadas, dice que falta y por donde se arregla", () => {
     montar([]);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByText(/Equipa un arma en el inventario/)).toBeInTheDocument();
+    expect(screen.getByText(/no llevas ningún arma equipada/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /bolsa/i })).toBeInTheDocument();
+  });
+
+  it("con armas, ni rastro del aviso", () => {
+    montar([estoque]);
+    expect(screen.queryByText(/no llevas ningún arma/i)).not.toBeInTheDocument();
   });
 
   it("pulsar el dado y «Tirar ataque» manda part ATTACK con el modo elegido, nunca una expresión", async () => {

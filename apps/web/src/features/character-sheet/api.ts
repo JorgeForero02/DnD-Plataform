@@ -103,6 +103,14 @@ export interface CalculatedSheet {
   subraceKey?: string;
   classKey: string;
   attacksPerAction: number;
+  /**
+   * Competencias con armas de la clase **y de la raza** (auditoría de mecánica de 2B). El
+   * servidor la manda desde siempre (`character-sheet.service.ts`, `sheet.weaponProficiencies`);
+   * solo faltaba declararla aquí. Mezcla categorías (`"simple"`, `"martial"`) y armas concretas
+   * que un rasgo racial concede sueltas (p. ej. «hacha de batalla» del entrenamiento de combate
+   * enano) — la misma clave con la que trabaja `apps/api/src/rules/attacks.ts`.
+   */
+  weaponProficiencies: string[];
   spellSlots: SpellSlotDto[];
   spellSlotResetOn: "SHORT_REST" | "LONG_REST" | "NONE";
 }

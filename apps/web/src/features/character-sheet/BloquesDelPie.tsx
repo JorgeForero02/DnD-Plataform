@@ -1,19 +1,45 @@
 import type { ResolvedFeatureDto } from "./api";
 import { PROSA_DE_HOJA, ROTULO_DE_CASILLA, TarjetaDeHoja } from "./Tarjeta";
+import { nombreCompetenciaArma } from "./vocabulario";
 
-// **El pie de la hoja de la maqueta**: tres bloques en fila —competencias e idiomas, rasgos y
-// aptitudes, y personalidad—, lo que se lee una vez por sesión y no se consulta en mitad de un
-// turno. Aquí van dos de los tres, y el que falta se dice:
+// **El pie de la hoja de la maqueta**: tres bloques en fila —competencias, rasgos y aptitudes, y
+// personalidad—, lo que se lee una vez por sesión y no se consulta en mitad de un turno.
 //
-//  · **Competencias e idiomas no se dibuja.** El catálogo del servidor las tiene
-//    (`weaponProficiencies`, en `apps/api/src/rules/catalog/classes.ts`) pero
-//    `CharacterSheet` no las devuelve, así que pintarlas exigiría o inventarlas en el navegador
-//    o tocar la API. Se reporta como hueco, no se rellena con un recuadro punteado más: un
-//    hueco anunciado por bloque está bien, tres seguidos son una hoja de promesas.
+//  · **Competencias con armas sí se dibuja.** Hasta el 2026-09-06 este comentario decía que
+//    `CharacterSheet` no devolvía `weaponProficiencies` y que pintarlas exigiría tocar la API —
+//    era falso: `character-sheet.service.ts` ya la mete en la respuesta (auditoría de mecánica
+//    de 2B); lo que faltaba era que el DTO del navegador la declarase (`features/character-sheet/api.ts`).
+//    **Los idiomas siguen sin modelo** —ninguna capa del servidor los guarda todavía—, así que el
+//    bloque solo es de armas y no promete idiomas que no tiene.
 //  · **Personalidad sí**, con lo que hay. La maqueta la parte en Rasgo · Ideal · Vínculo ·
 //    Defecto, que son cuatro campos que el modelo no tiene; lo que sí tiene es la biografía del
 //    personaje, y es donde la mesa escribe justamente eso. Se pinta esa, con su nombre real, y
 //    los cuatro campos se declaran pendientes en vez de fingirse con la biografía troceada.
+
+/**
+ * Competencias con armas: categorías (armas sencillas/marciales) y armas concretas sueltas por
+ * un rasgo racial, **cada una una vez** — la clave nunca cruda (`nombreCompetenciaArma`).
+ *
+ * Sin ninguna (un PNJ instanciado desde un statblock: `deriveNpc` la manda vacía porque un
+ * statblock no declara esto), el bloque no se dibuja — mismo criterio que `RasgosYAptitudes`.
+ */
+export function CompetenciasConArmas({ weaponProficiencies }: { weaponProficiencies: string[] }) {
+  if (weaponProficiencies.length === 0) return null;
+  return (
+    <TarjetaDeHoja titulo="Competencias con armas" etiqueta="competencias con armas">
+      <ul className="flex flex-wrap gap-s2">
+        {weaponProficiencies.map((clave) => (
+          <li
+            key={clave}
+            className="rounded-radius-sm border border-muted px-s2 py-1 font-chrome text-chrome-sm text-text"
+          >
+            {nombreCompetenciaArma(clave)}
+          </li>
+        ))}
+      </ul>
+    </TarjetaDeHoja>
+  );
+}
 
 /**
  * Rasgos y aptitudes, **uno por línea** en vez de una fila de cápsulas.

@@ -111,6 +111,43 @@ export function nombrePropiedadArma(propiedad: WeaponProperty): string {
   return NOMBRE_PROPIEDAD_ARMA[propiedad] ?? `Sin traducir: ${propiedad}`;
 }
 
+/**
+ * `weaponProficiencies` mezcla dos categorías (`"simple"`, `"martial"`) con armas concretas que
+ * un rasgo racial concede sueltas — «Entrenamiento de combate enano» da el hacha de batalla, el
+ * hacha de mano, el martillo ligero y el martillo de guerra sin dar toda la marcial
+ * (`apps/api/src/rules/catalog/races.ts`). Las armas concretas son las que un bárbaro, un
+ * druida o un monje pueden llevar sin ser competentes en todo lo marcial
+ * (`apps/api/src/rules/catalog/classes.ts`) — el mismo cierre del SRD 5.1, calcado a mano por el
+ * mismo motivo que el resto de este fichero.
+ */
+export const NOMBRE_COMPETENCIA_ARMA: Record<string, string> = {
+  simple: "Armas sencillas",
+  martial: "Armas marciales",
+  greatclub: "Garrote grande",
+  dagger: "Daga",
+  dart: "Dardo",
+  javelin: "Jabalina",
+  mace: "Maza",
+  quarterstaff: "Bastón",
+  scimitar: "Cimitarra",
+  sickle: "Hoz",
+  sling: "Honda",
+  spear: "Lanza",
+  "hand-crossbow": "Ballesta de mano",
+  "long-sword": "Espada larga",
+  rapier: "Estoque",
+  "short-sword": "Espada corta",
+  "light-crossbow": "Ballesta ligera",
+  battleaxe: "Hacha de batalla",
+  handaxe: "Hacha de mano",
+  "light-hammer": "Martillo ligero",
+  warhammer: "Martillo de guerra",
+};
+
+export function nombreCompetenciaArma(clave: string): string {
+  return NOMBRE_COMPETENCIA_ARMA[clave] ?? `Sin traducir: ${clave}`;
+}
+
 /** La bolsa: las cinco monedas del SRD, en el orden en que se leen de mayor a menor valor. */
 export const NOMBRE_MONEDA: Record<"pp" | "gp" | "ep" | "sp" | "cp", string> = {
   pp: "Platino",

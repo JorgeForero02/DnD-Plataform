@@ -143,6 +143,7 @@ const sheet: CalculatedSheet = {
   subraceKey: undefined,
   classKey: "wizard",
   attacksPerAction: 1,
+  weaponProficiencies: ["simple"],
   spellSlots: [{ spellLevel: 1, slots: 4 }],
   spellSlotResetOn: "LONG_REST",
 };
@@ -492,12 +493,16 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
     pintarHoja(); // sheetResponse trae attacks: []
     const seccion = await screen.findByRole("region", { name: "ataques y lanzamiento" });
     expect(within(seccion).queryByRole("table")).not.toBeInTheDocument();
-    expect(within(seccion).getByText(/Equipa un arma en el inventario/)).toBeInTheDocument();
+    expect(within(seccion).getByText(/no llevas ningún arma equipada/i)).toBeInTheDocument();
+    expect(within(seccion).getByRole("link", { name: /bolsa/i })).toBeInTheDocument();
   });
 
-  it("el pie trae rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {
+  it("el pie trae competencias con armas, rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {
     pintarHoja();
-    const rasgos = await screen.findByRole("region", { name: "rasgos y aptitudes" });
+    const competencias = await screen.findByRole("region", { name: "competencias con armas" });
+    expect(within(competencias).getByText("Armas sencillas")).toBeInTheDocument();
+
+    const rasgos = screen.getByRole("region", { name: "rasgos y aptitudes" });
     expect(within(rasgos).getByText("Lanzamiento de conjuros")).toBeInTheDocument();
 
     const personalidad = screen.getByRole("region", { name: "personalidad" });

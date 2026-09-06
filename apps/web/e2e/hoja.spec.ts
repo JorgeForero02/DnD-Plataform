@@ -716,7 +716,8 @@ test("la maqueta adoptada: la tabla de ataques cabe, y la página no se desplaza
   // desplazamiento propio se mide en `inventario.spec.ts`, que sí equipa un arma.
   const ataques = page.getByRole("region", { name: "ataques y lanzamiento" });
   await expect(ataques).toBeVisible();
-  await expect(ataques.getByText(/Equipa un arma en el inventario/)).toBeVisible();
+  await expect(ataques.getByText(/no llevas ningún arma equipada/i)).toBeVisible();
+  await expect(ataques.getByRole("link", { name: /bolsa/i })).toBeVisible();
   await expect(ataques.getByRole("table")).toHaveCount(0);
 
   // El documento NO se desplaza en horizontal, con la ventana estrecha de un portátil.

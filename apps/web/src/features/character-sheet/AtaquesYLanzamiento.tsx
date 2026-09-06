@@ -154,12 +154,19 @@ export function AtaquesYLanzamiento({
   return (
     <TarjetaDeHoja titulo="Ataques y lanzamiento" etiqueta="ataques y lanzamiento">
       {attacks.length === 0 ? (
-        // **Sin arma equipada, la hoja dice qué hacer** — no un hueco. Es el mismo criterio que
-        // el aviso del inventario en `HojaCalculada.tsx`: un sitio anunciado se enchufa, no se
-        // deja preguntándose por qué está vacío.
+        // **Sin arma equipada, la hoja dice por qué está vacío** — no un hueco mudo. Esta tabla
+        // se deriva de lo equipado (`apps/api/src/rules/attacks.ts`, que es el SRD): sin nada
+        // equipado no hay nada que derivar, y eso confundió al autor hasta hacerle pensar que su
+        // clase no le dejaba elegir ataques. El enlace baja a la bolsa —`id="inventario"` en
+        // `PaginaDeInventario.tsx`, montada más abajo en esta misma hoja— en vez de mandar a
+        // otra pantalla: equipar cambia la CA de arriba delante de quien lo hace.
         <p className={PROSA_DE_HOJA}>
-          No hay ningún arma equipada. Equipa un arma en el inventario para que aparezca aquí, con
-          su bono y su daño.
+          No llevas ningún arma equipada, así que no hay nada que calcular todavía. Equipa un arma
+          en la{" "}
+          <a href="#inventario" className="text-accent-text underline hover:no-underline">
+            bolsa
+          </a>{" "}
+          para que aparezca aquí, con su bono y su daño.
           {sheet.derived["attack.spell"] && " Tu ataque de conjuro no necesita arma y sigue abajo."}
         </p>
       ) : (

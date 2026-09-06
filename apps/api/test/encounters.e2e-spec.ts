@@ -358,6 +358,76 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     expect(despues.initiative).toBe(30);
   });
 
+  // Tarea 5 (I-1 de la ronda de arreglo): la unitaria con Prisma simulado no puede cazar C-1
+  // (`where` sin `sessionId`) porque su `findMany`/`updateMany` de mentira ignoran ese filtro —
+  // solo Postgres real lo hace cumplir.
+  it("el DM corrige el bando de un combatiente con el combate en marcha", async () => {
+    const combatiente = (
+      await request(app.getHttpServer())
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.combatants.find((c: { characterId: string }) => c.characterId === pc1Id);
+
+    const r = await request(app.getHttpServer())
+      .patch(encUrl(`/${encounterId}/combatants/${combatiente.id}/side`))
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ side: "ENEMY" });
+    expect(r.status).toBe(200);
+    const cambiado = r.body.combatants.find((c: { id: string }) => c.id === combatiente.id);
+    expect(cambiado.side).toBe("ENEMY");
+  });
+
+  it("el bando de un combatiente de OTRA campaña es 404, y la fila ajena queda intacta (C-1 de la revisión)", async () => {
+    const s = app.getHttpServer();
+    const emailDM2 = `dm-enc-ajena${Date.now()}@b.com`;
+    const tokenDM2 = (
+      await request(s)
+        .post("/auth/register")
+        .send({ email: emailDM2, password: "password123", displayName: "DM ajeno" })
+    ).body.token;
+    const campaignId2 = (
+      await request(s)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenDM2}`)
+        .send({ name: "Otra mesa" })
+    ).body.id;
+    const sessionId2 = (
+      await request(s)
+        .post(`/campaigns/${campaignId2}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM2}`)
+        .send({ title: "Otra sesión", visibility: "PLAYERS" })
+    ).body.id;
+    const goblinAjeno = await request(s)
+      .post(`/campaigns/${campaignId2}/npcs`)
+      .set("Authorization", `Bearer ${tokenDM2}`)
+      .send({ ref: "SRD:goblin", count: 1, hp: "AVERAGE" });
+    expect(goblinAjeno.status).toBe(201);
+    const encuentroAjeno = await request(s)
+      .post(`/campaigns/${campaignId2}/sessions/${sessionId2}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM2}`)
+      .send({ characterIds: [goblinAjeno.body[0].id] });
+    expect(encuentroAjeno.status).toBe(201);
+    const combatienteAjeno = encuentroAjeno.body.combatants[0];
+
+    // El DM de la PRIMERA campaña, con SU PROPIA sesión válida en la URL (sessionId, campaignId),
+    // manda el par encounterId/combatantId de la SEGUNDA. Con `sessionId` decorativo, esta
+    // escritura se confirmaba antes de que `get()` devolviera el 404.
+    const r = await request(s)
+      .patch(encUrl(`/${encuentroAjeno.body.id}/combatants/${combatienteAjeno.id}/side`))
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ side: "ENEMY" });
+    expect(r.status).toBe(404);
+
+    // Y la fila ajena sigue intacta. **Sin esta relectura la prueba pasaría igual con el
+    // fallo**: hoy también devuelve 404 — la diferencia es que antes del arreglo ya había
+    // mutado antes de contestarlo.
+    const filaAjena = await prisma.combatant.findUnique({ where: { id: combatienteAjeno.id } });
+    expect(filaAjena?.side).toBe(combatienteAjeno.side);
+
+    await prisma.campaign.deleteMany({ where: { id: campaignId2 } });
+    await prisma.user.deleteMany({ where: { email: emailDM2 } });
+  });
+
   it("un jugador ve la lista de combate, pero NO los goblins que el DM no ha revelado", async () => {
     const r = await request(app.getHttpServer())
       .get(encUrl(`/${encounterId}`))
@@ -376,13 +446,26 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       .set("Authorization", `Bearer ${tokenDM}`);
     expect(relojInicial.body.seconds).toBe(0);
 
-    // **TRES pases, no ocho, y esa diferencia ES la regla de la iniciativa de grupo.** Dos
-    // personajes son dos grupos de uno y los seis goblins son uno solo: tres entradas de orden.
-    // Con una posición por combatiente la mesa jugaría seis turnos de goblin seguidos y el
-    // asalto subiría cinco pasos tarde — lo contrario de *«each member of the group acts at the
-    // same time»* (SRD 5.1, «Initiative»).
+    // **TRES entradas de orden, sí — eso es estructural** (dos personajes son dos grupos de uno,
+    // los seis goblins uno solo: SRD, «each member of the group acts at the same time»). **Los
+    // pases hasta el fin de asalto NO son una constante de esta prueba**, y dejaron de serlo con
+    // la tarea 5: `setInitiative`, con el combate `ACTIVE`, sigue el turno por IDENTIDAD cuando
+    // recoloca (ronda de arreglo — un DM que corrige a otro combatiente que no tenía el turno
+    // puede desplazar `activePosition` de la posición 0 a la 1 o a la 2, si a quien tenía el
+    // turno le tocó otro puesto). De qué tirada real salió cada iniciativa decide DESDE dónde se
+    // cuenta, así que se calcula, no se supone.
+    const antes = await request(s)
+      .get(encUrl(`/${encounterId}`))
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const posicionesDistintas = [
+      ...new Set(antes.body.combatants.map((c: { position: number }) => c.position)),
+    ].sort((a, b) => (a as number) - (b as number)) as number[];
+    expect(posicionesDistintas).toHaveLength(3);
+    const indiceActual = posicionesDistintas.indexOf(antes.body.activePosition);
+    const pasesHastaFinDeAsalto = posicionesDistintas.length - indiceActual;
+
     let ultimo: request.Response | null = null;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < pasesHastaFinDeAsalto; i++) {
       ultimo = await request(s)
         .post(encUrl(`/${encounterId}/advance-turn`))
         .set("Authorization", `Bearer ${tokenDM}`);
@@ -402,7 +485,7 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`);
     expect(
       log.body.events.filter((e: { type: string }) => e.type === "TURN_ADVANCED"),
-    ).toHaveLength(3);
+    ).toHaveLength(pasesHastaFinDeAsalto);
     const subida = log.body.events.find((e: { type: string }) => e.type === "ROUND_ADVANCED");
     expect(subida).toBeDefined();
     expect(subida.payload).toMatchObject({ from: 1, to: 2, clockSeconds: 6 });

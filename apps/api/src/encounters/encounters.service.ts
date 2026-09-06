@@ -611,11 +611,17 @@ export class EncountersService {
         });
       });
 
-      // **Corregir con el combate en marcha no puede saltarse un asalto.** `recolocar` renumera
-      // denso: si el combatiente corregido compartía `activePosition` con sus idénticos, esa
-      // posición desaparece del todo al recolocar. Sin este bloque, `advanceTurn` hace
-      // `posiciones.indexOf(activePosition)` → -1, `(−1 + 1) % n` → 0, y el siguiente «Pasar
-      // turno» sube de asalto y avanza el reloj de campaña seis segundos sin que nadie lo pidiera.
+      // **Lo que se pierde no es el número, es a quién señala.** `recolocar` renumera denso, y el
+      // número de entradas nunca DECRECE al corregir un combatiente (a lo mucho se le saca de su
+      // grupo, nunca se borra a nadie) — así que `activePosition` **siempre** sigue siendo un
+      // índice válido dentro del array que lee `advanceTurn`; `posiciones.indexOf(activePosition)`
+      // nunca da -1 por esta vía (verificado con la ronda de arreglo de la revisión, matemática y
+      // por simulación, en los dos casos: grupo y solitario). Lo que sí puede pasar es que ese
+      // mismo número, tras la recolocación, apunte a un combatiente DISTINTO del que tenía el
+      // turno —«robo de identidad»—, y **solo cuando el corregido estaba solo en esa posición**
+      // (no compartida con idénticos) ese número puede además convertirse en el ÚLTIMO índice del
+      // asalto sin serlo de verdad: ahí es donde el siguiente «Pasar turno» sube de asalto y
+      // avanza el reloj de campaña seis segundos sin que nadie lo pidiera.
       //
       // **El turno se conserva por identidad, no por número.** `idsEnElTurno` es quién ocupaba
       // `activePosition` justo antes de recolocar — puede ser un grupo entero de idénticos, del
@@ -667,8 +673,15 @@ export class EncountersService {
     input: SetSideInput,
   ) {
     await this.membership.requireDM(campaignId, userId);
+    // **Los dos escalones, como en `setInitiative` y el resto del servicio** (ronda de arreglo 1,
+    // C-1): `requireDM` solo dice que quien llama es DM de ESTA campaña, no que `encounterId`
+    // cuelgue de `sessionId`. Sin `sesion()` y sin `encounter: { sessionId }` en el `where`, un DM
+    // podía dar el par de identificadores de una campaña ajena y la escritura se confirmaba antes
+    // de que `get()` devolviera el 404 — que además nunca deshacía nada, porque este método no
+    // corre en transacción.
+    await this.sesion(campaignId, sessionId);
     const tocado = await this.prisma.combatant.updateMany({
-      where: { id: combatantId, encounterId },
+      where: { id: combatantId, encounterId, encounter: { sessionId } },
       data: { side: input.side },
     });
     if (tocado.count === 0) throw new NotFoundException("Ese combatiente no está en este combate.");

@@ -588,7 +588,7 @@ describe("EncountersService", () => {
       });
 
       expect(prisma.combatant.updateMany).toHaveBeenCalledWith({
-        where: { id: "comb1", encounterId: "enc1" },
+        where: { id: "comb1", encounterId: "enc1", encounter: { sessionId: "s1" } },
         data: { side: "ENEMY" },
       });
       expect(resultado.combatants[0]).toMatchObject({ characterId: "pc1", side: "ENEMY" });
@@ -686,31 +686,127 @@ describe("EncountersService", () => {
         data: { activePosition: 0 },
       });
 
-      // Con `activePosition` siguiendo a solo1 (0), «Pasar turno» avanza a pc2 (1) SIN terminar
-      // el asalto: es pc2 quien falta por actuar, no un salto de ronda fantasma.
+      // **`advanceTurn` lee lo que `setInitiative` ACABA de escribir, no un número a mano.** La
+      // primera versión de esta mitad rehacía `encounter.findFirst` con un `activePosition: 0`
+      // tecleado, así que pasaba igual con la mutación neutralizada — no probaba el enlace, solo
+      // repetía la aserción de arriba con otras palabras (M-2 de la revisión). Aquí se relee de
+      // los mocks compartidos: `combatantesReales` es la misma tabla que `recolocar` acaba de
+      // reescribir (el `update` de combatientes muta el mismo array `creadas` que sirve a
+      // `findMany`), y `activePositionEscrita` es el argumento real de la ÚLTIMA llamada a
+      // `encounter.update` — si el ajuste no se hubiera hecho, esa llamada no existiría y esta
+      // línea rompería aquí mismo, antes de llegar a `advanceTurn`.
+      const combatantesReales = await (prisma.combatant.findMany as jest.Mock)({});
+      const llamadas = (prisma.encounter.update as jest.Mock).mock.calls;
+      const activePositionEscrita = llamadas[llamadas.length - 1][0].data.activePosition;
+
       prisma.encounter.findFirst.mockResolvedValue({
         id: "enc1",
         sessionId: "s1",
         status: "ACTIVE",
         round: 1,
-        activePosition: 0,
-        combatants: [
-          { id: solo1.id, position: 0 },
-          { id: pc2.id, position: 1 },
-        ],
-      });
-      prisma.encounter.update.mockResolvedValue({
-        id: "enc1",
-        sessionId: "s1",
-        status: "ACTIVE",
-        round: 1,
-        activePosition: 1,
+        activePosition: activePositionEscrita,
+        combatants: combatantesReales,
       });
 
       const resultado = await service.advanceTurn("dm", "c1", "s1", "enc1");
 
+      // Con `activePosition` siguiendo a solo1, «Pasar turno» avanza a pc2 SIN terminar el
+      // asalto: es pc2 quien falta por actuar, no un salto de ronda fantasma.
       expect(resultado.roundAdvanced).toBe(false);
       expect(clock.advance).not.toHaveBeenCalled();
+    });
+
+    it("también sigue por identidad a quien tenía el turno SIN haber sido tocado (I-2 de la revisión)", async () => {
+      // El caso más frecuente: el DM corrige a alguien que NO tiene el turno. pc1 tiene el
+      // turno (posición 0, en solitario); el DM sube a un goblin del grupo (posición 1).
+      const pc1 = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc1", initiative: 18, groupKey: "pc1" },
+      });
+      await (prisma.combatant.update as jest.Mock)({
+        where: { id: pc1.id },
+        data: { position: 0 },
+      });
+      const goblins: { id: string }[] = [];
+      for (const id of ["g1", "g2", "g3"]) {
+        const fila = await (prisma.combatant.create as jest.Mock)({
+          data: { encounterId: "enc1", characterId: id, initiative: 12, groupKey: "SRD:goblin" },
+        });
+        await (prisma.combatant.update as jest.Mock)({
+          where: { id: fila.id },
+          data: { position: 1 },
+        });
+        goblins.push(fila);
+      }
+
+      // El turno es de pc1 (posición 0), NO del grupo que se va a corregir.
+      prisma.combatant.findFirst.mockResolvedValue({ id: goblins[0].id, encounterId: "enc1" });
+      prisma.encounter.findUnique.mockResolvedValue({
+        id: "enc1",
+        status: "ACTIVE",
+        activePosition: 0,
+      });
+
+      // g1 sube por encima de pc1: pc1 (que tenía el turno y no se tocó) pasa de la posición 0 a
+      // la 1. Sin seguirlo por identidad, `activePosition` se quedaría en el 0 de siempre, que
+      // ahora es g1 — un robo de identidad sobre el turno activo sin haberlo corregido.
+      await service.setInitiative("dm", "c1", "s1", "enc1", goblins[0].id, { initiative: 25 });
+
+      expect(prisma.encounter.update).toHaveBeenCalledWith({
+        where: { id: "enc1" },
+        data: { activePosition: 1 },
+      });
+    });
+
+    it("si a quien tenía el turno ya no se le encuentra tras recolocar, cae a la posición anterior que quede — nunca a -1 (M-3 de la revisión)", async () => {
+      // Defiende una rama que hoy no ejercita ninguna ruta real (`setInitiative` no borra
+      // combatientes): que a quien tenía el turno se le pierda el rastro tras `recolocar`. Se
+      // simula devolviendo un id fantasma para la consulta de «quién ocupaba `activePosition`»,
+      // que no aparece entre las filas reales que `recolocar` devuelve.
+      const pc1 = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc1", initiative: 18, groupKey: "pc1" },
+      });
+      await (prisma.combatant.update as jest.Mock)({
+        where: { id: pc1.id },
+        data: { position: 0 },
+      });
+      const goblins: { id: string }[] = [];
+      for (const id of ["g1", "g2", "g3"]) {
+        const fila = await (prisma.combatant.create as jest.Mock)({
+          data: { encounterId: "enc1", characterId: id, initiative: 12, groupKey: "SRD:goblin" },
+        });
+        await (prisma.combatant.update as jest.Mock)({
+          where: { id: fila.id },
+          data: { position: 1 },
+        });
+        goblins.push(fila);
+      }
+      const soloZ = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "soloZ", initiative: 5, groupKey: "soloZ" },
+      });
+      await (prisma.combatant.update as jest.Mock)({
+        where: { id: soloZ.id },
+        data: { position: 2 },
+      });
+
+      prisma.combatant.findFirst.mockResolvedValue({ id: goblins[0].id, encounterId: "enc1" });
+      prisma.encounter.findUnique.mockResolvedValue({
+        id: "enc1",
+        status: "ACTIVE",
+        // El turno "era" de la posición 2 (soloZ), pero la consulta de abajo va a decir que la
+        // ocupaba un fantasma que no existe entre los combatientes reales.
+        activePosition: 2,
+      });
+      prisma.combatant.findMany.mockImplementationOnce(async () => [{ id: "fantasma-sin-fila" }]);
+
+      // g1 sube por encima de pc1: entradas nuevas: g1(0), pc1(1), goblins restantes(2), soloZ(3).
+      await service.setInitiative("dm", "c1", "s1", "enc1", goblins[0].id, { initiative: 30 });
+
+      // El fantasma no está entre las filas reales: se cae a la posición inmediatamente anterior
+      // a la vieja (2) que quede entre las reales — la 1 —, nunca a -1 ni a `undefined`.
+      expect(prisma.encounter.update).toHaveBeenCalledWith({
+        where: { id: "enc1" },
+        data: { activePosition: 1 },
+      });
     });
   });
 });

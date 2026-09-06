@@ -859,3 +859,61 @@ tache lleva desde ahora **la prueba de cuándo**, no solo la de qué.
 `4c7c3a2` llevan migración —una columna de enum cada uno—; los valores de un enum de PostgreSQL **se
 añaden y no se quitan**, así que revertir el código deja el valor huérfano en la base, que es
 inofensivo.
+
+---
+
+## Tarea 5: corregir el bando en marcha, y el asalto que `setInitiative` podía saltarse (2026-09-05, plan «iniciativa y bando»)
+
+**Qué.** `EncountersService.setSide` (`PATCH .../combatants/:cid/side`, DM-only, no toca el orden
+—no llama a `recolocar`—) y un arreglo en `setInitiative`: con el combate `ACTIVE`, corregir la
+iniciativa de un combatiente que compartía `activePosition` con sus idénticos podía dejar ese
+número apuntando a un combatiente distinto del que de verdad tenía el turno («robo de identidad»),
+y en el caso de un combatiente solo en su posición, **también** el último asalto podía subir de
+ronda y mover el reloj de campaña sin que nadie pasara turno de verdad. Ahora se sigue el turno
+**por identidad**: se mira quién ocupaba `activePosition` antes de recolocar y se relee su
+posición nueva; si ya no está, cae a la posición inmediatamente anterior de las que queden, nunca
+a -1.
+
+**El mecanismo real, verificado y no el hipotetizado.** El primer análisis (mío, y el que encargó
+la tarea) hablaba de `posiciones.indexOf(activePosition)` → -1. Es imposible por esta vía:
+`recolocar` renumera denso y el número de posiciones nunca DECRECE al corregir un combatiente —
+`activePosition` sigue siendo siempre un índice válido. Lo que de verdad se pierde es a quién
+señala ese número, y solo cuando el corregido estaba solo en su posición (no compartida) ese mismo
+número puede convertirse en el último índice del asalto sin serlo de verdad, que es donde el
+reloj se mueve sin permiso. Verificado con matemática y con simulación en la ronda de arreglo 1.
+
+**Ronda de arreglo 1 — un crítico real, y una regresión propia que solo el e2e completo destapó:**
+
+- **C-1:** `setSide` comprobaba `requireDM(campaignId, userId)` pero el `where` del `updateMany`
+  no colgaba de `sessionId` — un DM podía dar el par `encounterId`/`combatantId` de OTRA campaña y
+  la escritura se confirmaba antes de que `get()` devolviera el 404 (y como el método no corre en
+  transacción, ese 404 no deshacía nada). Arreglado con los mismos dos escalones que ya usa
+  `setInitiative`: `sesion(campaignId, sessionId)` y `encounter: { sessionId }` en el `where`.
+  Cazado por un e2e nuevo que relee la fila ajena tras el 404 — sin esa relectura la prueba pasaba
+  igual con el fallo, porque el 404 ya salía antes también.
+- **La propia suite e2e (`encounters.e2e-spec.ts`) se rompió al ejecutarla entera**, no por C-1:
+  el arreglo del asalto perdido hace que `activePosition` deje de estar siempre en 0 tras una
+  corrección con el combate `ACTIVE` —ahora sigue a quien de verdad tiene el turno—, y una prueba
+  vieja asumía «tres pases, siempre desde la posición 0» para completar una ronda. Con una tirada
+  real que dejara a otro combatiente en la posición 0 antes de la corrección, el asalto se
+  completaba en menos de tres pases y la prueba salía roja de forma intermitente (dependiente del
+  dado). Se corrigió calculando cuántos pases hacen falta desde el estado real en vez de
+  suponerlo — verificado con **ocho ejecuciones seguidas** en verde tras el cambio.
+- Dos pruebas unitarias nuevas que el primer envío no tenía: corregir a quien NO tiene el turno
+  (el caso más frecuente) y la rama de caída cuando a quien tenía el turno no se le encuentra tras
+  recolocar (código muerto hoy — ninguna ruta borra combatientes desde `setInitiative` — pero
+  cubierto con el mock en vez de dejarlo sin ejercitar).
+
+**Lo que se dejó fuera a propósito.** Ni `setSide` ni el reajuste de `activePosition` emiten
+suceso: no viajan por el canal en vivo hasta que las tareas 8 y 10 (la pantalla) decidan su
+vocabulario. Ficha abierta en `docs/06-pendientes.md` (P2-eventos).
+
+**Cómo se comprobó.** Mutación obligatoria, dos veces: quitar `requireDM` de `setSide` pone su
+403 en rojo por `TypeError` (no por otro 403 coincidente — se revisó el motivo exacto, como pedía
+la tarea 4); quitar el ajuste de `activePosition` pone en rojo las cuatro unitarias del asalto
+perdido. Las dos deshechas después. `pnpm verify` en verde; el e2e completo de `encounters` en
+verde ocho veces seguidas.
+
+**Cómo revertir.** Tres commits independientes: el de `setSide`, el del asalto perdido, y el de
+esta ronda de arreglo (C-1 + la prueba e2e cross-campaña + el cálculo dinámico de pases). Ninguno
+lleva migración.

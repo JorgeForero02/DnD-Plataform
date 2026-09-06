@@ -659,3 +659,37 @@ describe("los atajos del rail", () => {
     expect(screen.queryByRole("dialog", { name: "Tu hoja" })).not.toBeInTheDocument();
   });
 });
+
+describe("los dados de la mesa están montados (paso 1, tarea 14)", () => {
+  // **La ficha decía que el panel estaba construido y no lo montaba nadie**, y el 2026-09-06 ya no
+  // era cierto: `MesaDeSesion` lo monta. Lo que faltaba —y es lo que esta prueba añade— es algo
+  // que impida que vuelva a desmontarse sin que nadie se entere, que es como llegó a estar
+  // escrito y sin usar.
+  it("la mesa ofrece los dados, y el panel se monta FUERA del <main>", async () => {
+    conMiembros("DM");
+    montar("u-dm");
+
+    fireEvent.click(await screen.findByRole("button", { name: /dados/i }));
+
+    const panel = await screen.findByRole("region", { name: "Tirada" });
+    // **Fuera del `<main>` a propósito**: es `fixed inset-x-0 bottom-0 z-30`, se ancla a la
+    // ventana. Dentro de la rejilla no aportaría nada y heredaría sus medidas. Y su `z-30` está
+    // por debajo del `z-40` de los cajones para que se pueda **tirar mirando la hoja** — lo que
+    // `jsdom` no puede comprobar es el apilamiento, y por eso eso se mide en el navegador.
+    expect(panel.closest("main")).toBeNull();
+  });
+
+  it("y se cierra con el mismo botón: alterna, no es un cajón", async () => {
+    conMiembros("DM");
+    montar("u-dm");
+
+    const boton = await screen.findByRole("button", { name: /dados/i });
+    fireEvent.click(boton);
+    expect(await screen.findByRole("region", { name: "Tirada" })).toBeInTheDocument();
+
+    fireEvent.click(boton);
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Tirada" })).not.toBeInTheDocument(),
+    );
+  });
+});

@@ -1184,19 +1184,6 @@ en comentarios.
 vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
 el navegador**: supertest no pone la cabecera si no hay `.send()`.
 
-## P1 · El panel de dados existe y no lo monta nadie (2026-09-04)
-
-`features/rolls/panel/PanelDeDadosDeLaMesa.tsx` y su cubo tridimensional están construidos,
-revisados y en `main`. **`grep -rn "PanelDeDadosDeLaMesa" apps/web/src` devuelve solo su
-declaración.** La fila ALTA de la auditoría —*«no hay dados en la mesa: `MesaDeSesion.tsx` no
-importa nada de `features/rolls`»*— **sigue exactamente igual que antes de construirlo**.
-
-Cierra con dos líneas en el compositor: una entrada `"dados"` en `RailDePaneles` y el panel montado
-**fuera del `<main>`**, con `campaignId`, `sessionId`, `characterId` y `onCerrar`. Va a `z-30`
-frente al `z-40` de los cajones, que es como la maqueta los hace convivir.
-
-**Es el caso número cinco de «una ficha no se cierra sin pantalla».**
-
 ## P2 · Dos fichas de este documento mienten con un barrido citado dentro (2026-09-04)
 
 **P1 de `ENTITY_REVEALED` llevaba al menos una tanda afirmando, con su `grep` citado, algo que el

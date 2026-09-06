@@ -1413,6 +1413,13 @@ sigue **por donde diga este bloque**, no por donde se crea recordar.
 **Correcciones al plan encontradas al ejecutarlo** (el plan es un encargo fechado: se corrige
 encima, no se reescribe):
 
+- **La tarea 14 ya estaba hecha.** El plan dice que `grep -rn "PanelDeDadosDeLaMesa" apps/web/src`
+  devuelve **solo su declaración**; el 2026-09-06 devuelve **cuatro** apariciones, y
+  `MesaDeSesion.tsx` lo monta fuera del `<main>` con su propio estado y su `z-30` documentado. Es
+  el mismo tipo de caducidad que la tarea 0 encontró en dos fichas. Lo que sí faltaba —y es lo que
+  hace la tarea— es **la prueba que impide que vuelva a desmontarse**, que es exactamente como
+  llegó a estar escrito y sin usar.
+
 - **`conditionImmunities` es `text[]`, no `jsonb`.** La migración que el plan propone
   (`jsonb_array_elements_text`) falla con `function jsonb_array_elements_text(text[]) does not
   exist` — comprobado contra la base el 2026-09-06. La escrita usa `unnest` + `array_agg`. Y el
@@ -1555,4 +1562,5 @@ tarea 13 debe añadir.
 | 9 · El descanso mueve el reloj | ✅ | `f38c8bb` | D-A-1 comprobada en `04-convenciones.md` antes de tocar nada; largo 8 h, corto 1 h |
 | 16 · El bando corregido viaja por el canal | ✅ | `87df552` | Dos tipos nuevos, el `record` en la misma transacción, y su línea en español; ficha archivada |
 | 19 · Cancelar un combate avisa | ✅ | `5b2dba0` | Sujeto **sesión**, sin `encounterId`; **E-IB-18 tachada y explicada**, no borrada |
-| 12 · El editor de criaturas deja de mentir al editar | ✅ | el de abajo | El selector se pinta en los dos casos; falta su paso por el navegador, que va en la tanda única |
+| 12 · El editor de criaturas deja de mentir al editar | ✅ | `4a75bd3` | El selector se pinta en los dos casos; falta su paso por el navegador, que va en la tanda única |
+| 14 · El panel de dados, montado | ✅ | el de abajo | **Ya estaba montado**; lo que faltaba era la prueba que impide que se desmonte |

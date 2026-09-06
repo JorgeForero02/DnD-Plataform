@@ -48,6 +48,12 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 14 · el panel de dados ya estaba montado, y nada lo sujetaba.** La ficha decía que
+  `grep` devolvía solo su declaración; el 2026-09-06 devuelve cuatro apariciones y `MesaDeSesion`
+  lo monta **fuera del `<main>`**, con estado propio para que abrir la hoja no lo cierre. Lo que
+  faltaba era la prueba que impide que se desmonte otra vez — que es justo como llegó a estar
+  escrito y sin usar. **Cómo se revierte:** el commit.
+
 - **Tarea 12 · el editor de criaturas mentía al editar.** El selector de visibilidad ya existía y
   ya se pintaba al **crear**; al editar, la otra rama del ternario decía *«el servidor no manda ese
   dato al leer la criatura»* y **sí lo manda**. Además de incumplir la regla vinculante —si el

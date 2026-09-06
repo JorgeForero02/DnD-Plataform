@@ -330,3 +330,33 @@ habrá ninguno que enlazar).
 implemente ese suceso de sesión.
 
 </details>
+
+
+---
+
+## ~~P1 · El panel de dados existe y no lo monta nadie~~ — **CERRADA el 2026-09-06** (paso 1, tarea 14)
+
+**Ya estaba montado al llegar a la tarea, y eso es lo que hay que decir.** `MesaDeSesion.tsx` lo
+monta **fuera del `<main>`**, con su propio estado —los dados no son un cajón, y por eso abrir la
+hoja no los cierra— y el `z-30` frente al `z-40` de los cajones documentado en el sitio. El `grep`
+que la ficha cita en «solo su declaración» da hoy cuatro apariciones.
+
+**Lo que sí faltaba, y es lo que aporta la tarea:** nada impedía que volviera a desmontarse. Dos
+pruebas nuevas en `mesa-de-sesion.test.tsx` lo sujetan —el panel existe al pulsar «Dados» y
+`panel.closest("main")` es `null`, y el mismo botón lo quita— y la mutación está medida: apagar el
+montaje las pone rojas. **El apilamiento no lo puede ver `jsdom`**: eso se mide en el navegador.
+
+<details><summary>Lo que decía la ficha (2026-09-04)</summary>
+
+`features/rolls/panel/PanelDeDadosDeLaMesa.tsx` y su cubo tridimensional están construidos,
+revisados y en `main`. **`grep -rn "PanelDeDadosDeLaMesa" apps/web/src` devuelve solo su
+declaración.** La fila ALTA de la auditoría —*«no hay dados en la mesa: `MesaDeSesion.tsx` no
+importa nada de `features/rolls`»*— **sigue exactamente igual que antes de construirlo**.
+
+Cierra con dos líneas en el compositor: una entrada `"dados"` en `RailDePaneles` y el panel montado
+**fuera del `<main>`**, con `campaignId`, `sessionId`, `characterId` y `onCerrar`. Va a `z-30`
+frente al `z-40` de los cajones, que es como la maqueta los hace convivir.
+
+**Es el caso número cinco de «una ficha no se cierra sin pantalla».**
+
+</details>

@@ -56,6 +56,50 @@ un número creíble es exactamente lo que aquí no puede pasar.
 
 ---
 
+## Tarea 0 · Los diez conjuros, antes de fijar el molde · aprobada el 2026-09-06
+
+**No estaba en la spec: la propuso la sesión de acompañamiento y el autor la aprobó.** Va **antes**
+de escribir el esquema definitivo de la actividad (tareas 5 y 6), y es media jornada.
+
+**No importa ningún conjuro.** No toca el catálogo, no añade nada al proyecto y no adelanta el
+paso 3: es un mapeo **a mano, sobre papel**, para comprobar que la forma aguanta antes de fijarla.
+Al terminar, el proyecto sigue teniendo **cero hechizos**, que es lo correcto.
+
+**Qué se coge**, de `Mine/referencia-foundry-dnd5e/packs/_source/spells/` —**carpeta SIN sufijo
+`24`**, que las de `24` son las reglas de 2024—: diez conjuros elegidos para que duelan.
+
+| Cuántos | Cuáles, y qué ponen a prueba |
+|---|---|
+| 5 | uno de cada actividad: `ataque` · `salvación` · `dados` · `utilidad` · `prueba` |
+| 1 | con **concentración** — que la duración y el efecto que deja caben |
+| 1 | que **escala con el nivel de espacio** — el origen `escala` de la tarea 4 |
+| 1 | de los **21 que caen fuera** de las cinco actividades — que se importa con su texto y no rompe nada |
+| 1 | con **usos propios** — que `uses` es `CharacterResource` y no una tabla nueva |
+| 1 | con **materiales con coste** — el campo que nadie recuerda hasta que falta |
+
+**El criterio de éxito y el de fracaso, escritos antes de empezar:**
+
+- **Si los diez entran sin inventar campos**, la forma aguanta y los 320 del paso 3 entrarán.
+- **Si dos no entran, PARA.** Escribe qué no encajó, corrige el esquema, y solo entonces sigue.
+  Descubrirlo aquí cuesta media jornada; descubrirlo en el paso 3 cuesta una migración del catálogo
+  entero.
+
+- [ ] **Paso 1** · Elige los diez y anótalos con su ruta de fichero.
+- [ ] **Paso 2** · Mapea cada uno contra el borrador, campo a campo, en el bloque «Avance».
+- [ ] **Paso 3** · Escribe el veredicto: cuántos entraron tal cual, cuáles obligaron a cambiar el
+      esquema y qué se cambió.
+- [ ] **Paso 4 · Commit** — solo documentación, **ni una línea de código**.
+
+```bash
+git add docs
+git commit -m "docs(plans): ten spells mapped by hand before the activity shape is fixed"
+```
+
+> **No commitees YAML de Foundry.** Vive fuera del repositorio a propósito, su código no se ejecuta
+> nunca, y lo que se conserva aquí es **lo aprendido**, no sus ficheros.
+
+---
+
 ## Restricciones globales
 
 - **La forma de los datos vive una sola vez**, en `packages/shared/src`.

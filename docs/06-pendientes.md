@@ -1532,3 +1532,21 @@ con cobertura manda a quien lo lea a buscar algo que no existe.
 
 Entra con la pantalla del daño aplicado (probablemente parte de 2.5.4 o de la pantalla del
 encuentro de 2.5.6), no antes.
+
+### La sala de espera (tarea 8, 2026-09-05) — dos huecos que quedaron señalados, no arreglados
+
+**`useCurrentEncounter` no se refresca con el canal en vivo.** `useCanalEnVivo` invalida
+`["campaigns", campaignId, …]`; `currentEncounterKey` (`apps/web/src/features/encounters/hooks.ts`)
+empieza en `["encounters", …]`, así que el aviso del canal no la toca. El contador de la sala de
+espera y el propio paso de `PREPARING` a `ACTIVE` dependen del sondeo de 10 s
+(`SONDEO_DE_RED_DE_SEGURIDAD_MS`), no del canal — funciona, pero más despacio de lo que podría.
+Realinear la clave bajo `["campaigns", campaignId, …]` lo arreglaría, pero la consulta la usa
+también el orden de turnos ya en `ACTIVE`, así que no es un cambio de una sola pantalla.
+
+**Un jugador no ve la cuenta ni los nombres de quién falta en su propia sala de espera.**
+`RollRequestsService.list` recorta lo que ve un jugador a sus propios personajes (regla de
+`apps/api/src/roll-requests/roll-requests.service.ts`, no de esta tarea), así que
+`TiraDeIniciativa.tsx` solo le puede enseñar «te falta a ti» o «ya has tirado», nunca «2 de 4» ni
+los nombres de los demás — eso sería inventar un dato que el servidor no le ha dado. Si algún día
+se quiere que un jugador vea también QUIÉN falta (no el porqué de cada petición), hace falta
+ampliar esa regla de visibilidad a propósito, con su propia decisión.

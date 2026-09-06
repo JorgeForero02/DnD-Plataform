@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { StartEncounterInput } from "@dnd/shared";
 import * as encountersApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
+import { rollRequestsKey } from "../roll-requests/hooks";
 
 export const currentEncounterKey = (campaignId: string, sessionId: string) =>
   ["encounters", campaignId, sessionId, "current"] as const;
@@ -70,5 +71,38 @@ export function useEndEncounter(campaignId: string, sessionId: string | undefine
     mutationFn: (encounterId: string) =>
       encountersApi.endEncounter(campaignId, sessionId!, encounterId),
     onSuccess: invalidar,
+  });
+}
+
+/**
+ * Las dos que solo existen mientras el encuentro está `PREPARING` (tarea 8, sala de espera):
+ * **también invalidan las peticiones de tirada**, además de lo que ya invalida `useInvalidar`.
+ * Las dos escriben en `RollRequest` —`forceStart` las resuelve, `cancel` las borra— y sin este
+ * segundo `invalidateQueries` la sala de espera seguiría contando pendientes que el servidor ya
+ * había cerrado, hasta el siguiente sondeo de `useRollRequests` (quince segundos).
+ */
+export function useForceStartEncounter(campaignId: string, sessionId: string | undefined) {
+  const invalidar = useInvalidar(campaignId, sessionId);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (encounterId: string) =>
+      encountersApi.forceStartEncounter(campaignId, sessionId!, encounterId),
+    onSuccess: () => {
+      invalidar();
+      void qc.invalidateQueries({ queryKey: rollRequestsKey(campaignId) });
+    },
+  });
+}
+
+export function useCancelEncounter(campaignId: string, sessionId: string | undefined) {
+  const invalidar = useInvalidar(campaignId, sessionId);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (encounterId: string) =>
+      encountersApi.cancelEncounter(campaignId, sessionId!, encounterId),
+    onSuccess: () => {
+      invalidar();
+      void qc.invalidateQueries({ queryKey: rollRequestsKey(campaignId) });
+    },
   });
 }

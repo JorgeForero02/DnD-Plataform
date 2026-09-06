@@ -48,6 +48,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     const text = await res.text();
     throw new ApiError(readableErrorMessage(text) || `Request failed: ${res.status}`, res.status);
   }
+  // **204 no trae cuerpo, y `res.json()` revienta contra un cuerpo vacío.** Hasta la tarea 8
+  // (2026-09-05, iniciativa y bando) ningún endpoint de este proyecto contestaba 204 — el
+  // cancelar un combate (`DELETE .../encounters/:id`, tarea 4) es el primero, y es el primero
+  // que consume la web. Sin este guardián, cancelar un combate desde el navegador lanzaba
+  // `SyntaxError: Unexpected end of JSON input` aunque el servidor hubiera hecho exactamente lo
+  // que se le pidió — el fallo era del cliente leyendo su propio éxito como un error.
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 

@@ -29,6 +29,16 @@ export interface RollRequestRow {
   /** `null` = pendiente. Es lo que sondea la pantalla. */
   resolvedAt: string | null;
   resolvedEventId: string | null;
+  /**
+   * De qué encuentro salió, o `null` si no salió de ninguno (`schema.prisma`, `RollRequest`).
+   *
+   * **El servidor ya lo manda** — `RollRequestsService.list` hace un `findMany` sin `select`,
+   * así que el campo viaja desde siempre — pero este tipo, escrito a mano, no lo declaraba.
+   * Sin él, la sala de espera de un encuentro (tarea 8, 2026-09-05) no tenía forma de saber
+   * cuáles de las peticiones pendientes de la campaña son las SUYAS: cualquier petición de
+   * percepción abierta en otra sesión habría contado como alguien sin tirar iniciativa.
+   */
+  encounterId: string | null;
 }
 
 export function fetchRollRequests(

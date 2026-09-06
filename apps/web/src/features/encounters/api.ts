@@ -75,3 +75,33 @@ export function endEncounter(
     { method: "POST" },
   );
 }
+
+/**
+ * Tarea 4 (2026-09-05, iniciativa y bando) — el DM empieza sin esperar a quien no ha tirado.
+ * El servidor tira por cada petición de iniciativa pendiente y anula el resto de la petición
+ * —no la responde en su nombre—, así que el registro no dice nunca que un jugador tiró algo
+ * que no tiró.
+ */
+export function forceStartEncounter(
+  campaignId: string,
+  sessionId: string,
+  encounterId: string,
+): Promise<Encounter> {
+  return apiFetch<Encounter>(`${base(campaignId, sessionId)}/${encounterId}/force-start`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Tarea 4 — cancelar un combate que nunca empezó a jugarse. Solo `PREPARING`; el servidor
+ * responde **204** (`EncountersController.cancel`) y borra el encuentro y sus peticiones de
+ * iniciativa sin dejar rastro en el registro — por eso el gesto lleva su propio diálogo
+ * explicando la consecuencia (`TiraDeIniciativa.tsx`), no un «¿seguro?» genérico.
+ */
+export function cancelEncounter(
+  campaignId: string,
+  sessionId: string,
+  encounterId: string,
+): Promise<void> {
+  return apiFetch<void>(`${base(campaignId, sessionId)}/${encounterId}`, { method: "DELETE" });
+}

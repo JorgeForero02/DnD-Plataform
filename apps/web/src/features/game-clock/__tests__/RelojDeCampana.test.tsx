@@ -79,6 +79,7 @@ function peticion(id: string, characterId: string): RollRequestRow {
     createdAt: "2026-01-01",
     resolvedAt: null,
     resolvedEventId: null,
+    encounterId: null,
   };
 }
 

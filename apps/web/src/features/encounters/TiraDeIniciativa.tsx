@@ -1,8 +1,17 @@
 import { useState } from "react";
 import type { Encounter } from "@dnd/shared";
-import { useAdvanceTurn, useEndEncounter, useSetInitiative } from "./hooks";
+import {
+  useAdvanceTurn,
+  useCancelEncounter,
+  useEndEncounter,
+  useForceStartEncounter,
+  useSetInitiative,
+} from "./hooks";
 import type { Character } from "../characters/api";
 import type { NpcEnLaMesa } from "../bestiario/api";
+import { useMembers } from "../campaigns/members";
+import { useRollRequests } from "../roll-requests/hooks";
+import { NOMBRE_ESTADO_DE_COMBATE } from "../../dominio/combate";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 
@@ -66,6 +75,26 @@ export function TiraDeIniciativa({
     porPosicion.set(c.position, [...(porPosicion.get(c.position) ?? []), c]);
   }
   const turnos = [...porPosicion.entries()].sort((a, b) => a[0] - b[0]);
+
+  // **Mientras se prepara, no hay orden que pintar.** El encuentro nace `PREPARING` en cuanto
+  // alguien que no es el DM combate (tarea 2): sus combatientes ya existen, con posición 0 y una
+  // iniciativa de relleno hasta que respondan, así que pintar la tira de arriba sobre un
+  // encuentro así habría enseñado un orden que todavía no es el orden — el SRD dice que se fija
+  // una vez, y aquí ni siquiera se ha fijado. La sala de espera es lo que se ve en su lugar, y se
+  // va sola en cuanto el servidor pasa el encuentro a `ACTIVE` (el siguiente sondeo, o el mismo
+  // aviso del canal en vivo que ya invalida esta consulta).
+  if (encuentro.status === "PREPARING") {
+    return (
+      <SalaDeEspera
+        campaignId={campaignId}
+        sessionId={sessionId}
+        encuentro={encuentro}
+        personajes={personajes}
+        pnjs={pnjs}
+        esDm={esDm}
+      />
+    );
+  }
 
   return (
     <section
@@ -209,6 +238,180 @@ export function TiraDeIniciativa({
           actual={encuentro.combatants.find((c) => c.id === corrigiendo)?.initiative ?? 0}
           onClose={() => setCorrigiendo(null)}
         />
+      )}
+    </section>
+  );
+}
+
+/**
+ * Tarea 8 (2026-09-05, iniciativa y bando) — **la sala de espera**: lo que se ve en vez del
+ * orden de turnos mientras el encuentro está `PREPARING`. Nace con esta forma porque alguien que
+ * no es el DM combate (tarea 2), y el DM no puede fingir que ya hay un orden: lo único que
+ * cambia entre esto y la tira de arriba es que aquí no hay nada que pasar, solo alguien a quien
+ * esperar.
+ *
+ * **La cuenta exacta y los nombres solo son honestos para el DM.** `RollRequestsService.list`
+ * recorta lo que ve un jugador a sus propios personajes —la misma regla que ya cumple
+ * `useRollRequests` en `TiradasPendientes.tsx`—, así que un jugador nunca recibe la lista
+ * completa de quién falta: solo sabe si a ÉL le falta algo. Pintarle un «2 de 4» con esos datos
+ * sería inventar una cifra que el servidor no le ha dado, y ese es justo el fallo que este
+ * proyecto no se permite (docs/04-convenciones.md: «si el texto explica una regla del servidor y
+ * discrepan, miente el texto»). Por eso el desglose fino va solo con `esDm`, y quien no lo es
+ * recibe una frase sobre su propio estado, que es lo único que puede saber de verdad.
+ */
+function SalaDeEspera({
+  campaignId,
+  sessionId,
+  encuentro,
+  personajes,
+  pnjs,
+  esDm,
+}: {
+  campaignId: string;
+  sessionId: string;
+  encuentro: Encounter;
+  personajes: Character[];
+  pnjs: NpcEnLaMesa[];
+  esDm: boolean;
+}) {
+  const forceStart = useForceStartEncounter(campaignId, sessionId);
+  const cancelar = useCancelEncounter(campaignId, sessionId);
+  const [cancelando, setCancelando] = useState(false);
+
+  // **Los dos botones son cortesía, no la puerta.** `force-start` y el `DELETE` del encuentro
+  // exigen DM en el servidor (`EncountersController`, tarea 4): esconderlos aquí solo evita
+  // prometerle a un jugador un botón que el servidor va a rechazar, exactamente como ya comenta
+  // `EmpezarCombate` para el botón de empezar.
+  const miembros = useMembers(campaignId).data ?? [];
+  // **Su propio sondeo de 15 s** (`SONDEO_DE_PETICIONES_MS`, `lib/sondeo.ts`) y el mismo canal en
+  // vivo que ya invalida `["campaigns", campaignId, …]` — no se toca ninguno de los dos. Lo que
+  // SÍ falta: la clave de esta consulta (`currentEncounterKey`, `hooks.ts`) empieza en
+  // `["encounters", …]`, no en `["campaigns", …]`, así que el mismo aviso NO reabastece por sí
+  // solo el contador de arriba — solo el sondeo de 10 s de `useCurrentEncounter` lo hace. Queda
+  // dicho en el informe de esta tarea; no lo arregla esta ronda.
+  const peticiones = useRollRequests(campaignId, { includeResolved: false }).data ?? [];
+
+  const pendientes = peticiones.filter(
+    (p) => p.encounterId === encuentro.id && p.key === "initiative",
+  );
+  const total = encuentro.combatants.length;
+  const respondido = total - pendientes.length;
+
+  /** El personaje detrás de la petición, y si se pudo nombrar a SU JUGADOR o solo al personaje. */
+  const quienEs = (characterId: string): { nombre: string; esJugador: boolean } => {
+    const personaje = personajes.find((c) => c.id === characterId);
+    if (personaje) {
+      // **Cruzando con los miembros de la campaña**, que la mesa ya carga (`ColumnaElenco`
+      // consulta la misma clave): el combatiente solo trae `characterId`, nunca el jugador.
+      const miembro = miembros.find((m) => m.userId === personaje.ownerId);
+      if (miembro) return { nombre: miembro.displayName, esJugador: true };
+      // Personaje sin miembro localizado (la lista aún no cargó, o su dueño ya no está en la
+      // campaña): se nombra al personaje y se dice que no es lo mismo, en vez de fingir.
+      return { nombre: personaje.name, esJugador: false };
+    }
+    // **Un PNJ cedido no sale en `personajes`** (`GET /characters` filtra `statblockRef: null`)
+    // y `NpcEnLaMesa` no trae `ownerId`: no hay ningún dato del que sacar a su jugador. Se nombra
+    // al PNJ y se dice lo que es, en vez de adivinar.
+    const pnj = pnjs.find((p) => p.id === characterId);
+    return { nombre: pnj?.name ?? "alguien", esJugador: false };
+  };
+
+  const textoDeEspera = pendientes
+    .map((p) => {
+      const { nombre, esJugador } = quienEs(p.characterId);
+      return esJugador ? nombre : `${nombre} (no se sabe qué jugador lo lleva)`;
+    })
+    .join(" y ");
+
+  return (
+    <section
+      aria-label={NOMBRE_ESTADO_DE_COMBATE.PREPARING}
+      className="rounded-radius-md border border-warning/40 bg-surface px-s3 py-s2"
+    >
+      <div className="mb-s2 flex flex-wrap items-center gap-s2">
+        <span className="font-title text-chrome-sm uppercase tracking-widest text-warning-text">
+          {NOMBRE_ESTADO_DE_COMBATE.PREPARING}
+        </span>
+        {esDm && (
+          <span className="font-data text-chrome-xs tabular-nums text-muted">
+            {`${respondido} de ${total}`}
+          </span>
+        )}
+        <span className="h-px flex-1 bg-warning/30" />
+        {esDm && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              className="px-2 py-0.5 text-chrome-xs"
+              disabled={forceStart.isPending}
+              onClick={() => forceStart.mutate(encuentro.id)}
+            >
+              Empezar igualmente
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              className="px-2 py-0.5 text-chrome-xs"
+              onClick={() => setCancelando(true)}
+            >
+              Cancelar
+            </Button>
+          </>
+        )}
+      </div>
+
+      {esDm ? (
+        <p className="font-chrome text-chrome-xs text-muted">
+          {pendientes.length > 0
+            ? `Esperando a ${textoDeEspera}.`
+            : "Todos han tirado su iniciativa. Puedes empezar cuando quieras."}
+        </p>
+      ) : (
+        <p className="font-chrome text-chrome-xs text-muted">
+          {pendientes.length > 0
+            ? "Todavía te falta tirar tu iniciativa."
+            : "Ya has tirado. Esperando a que responda el resto de la mesa."}
+        </p>
+      )}
+
+      {forceStart.isError && (
+        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
+          No se ha podido empezar el combate: {(forceStart.error as Error).message}
+        </p>
+      )}
+      {cancelar.isError && (
+        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
+          No se ha podido cancelar el combate: {(cancelar.error as Error).message}
+        </p>
+      )}
+
+      {cancelando && (
+        <Dialog open onClose={() => setCancelando(false)} title="Cancelar el combate">
+          {/* **La consecuencia, no un «¿seguro?».** Cancelar BORRA el combate y las peticiones de
+              iniciativa de todos, tiradas o no, y no deja rastro en el registro —a diferencia de
+              terminar un combate `ACTIVE`, que sí queda con sus asaltos—: quien pulse esto tiene
+              que leerlo antes, no adivinarlo tras un «sí» reflejo. */}
+          <p className="font-chrome text-chrome-sm text-text">
+            Se borra el combate entero y las peticiones de iniciativa de todos —tiradas o no—. No
+            llegó a jugarse ni un asalto, así que tampoco queda rastro en el registro.
+          </p>
+          <div className="mt-s4 flex justify-end gap-s3">
+            <Button type="button" variant="ghost" onClick={() => setCancelando(false)}>
+              No, seguir esperando
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={cancelar.isPending}
+              onClick={() =>
+                cancelar.mutate(encuentro.id, { onSuccess: () => setCancelando(false) })
+              }
+            >
+              Cancelar el combate
+            </Button>
+          </div>
+        </Dialog>
       )}
     </section>
   );

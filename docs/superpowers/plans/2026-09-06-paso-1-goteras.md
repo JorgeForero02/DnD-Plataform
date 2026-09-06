@@ -1033,6 +1033,267 @@ git commit -m "fix(web): the creature editor lets you change who sees an existin
 
 ---
 
+# Añadido tras releer el informe de la noche (2026-09-06)
+
+**La spec del paso 1 se escribió el 2026-09-05 por la tarde, y esa noche pasaron cosas.** Al
+repasar `Mine/informe-iniciativa-y-bando.md` y las fichas abiertas de `docs/06-pendientes.md`
+aparecieron **cinco cosas que encajan aquí y no estaban en la spec**. Van con el mismo criterio: son
+goteras o cosas construidas y no enchufadas, no funcionalidades nuevas.
+
+## Tarea 0 · Tachar lo que anoche cerró y no tachó · VA ANTES QUE NADA
+
+**Dos fichas describen como pendiente algo que ya está hecho**, y este documento no puede mentir en
+las dos direcciones:
+
+- `docs/06-pendientes.md:190` — «El ataque comparado contra la CA existe en el servidor y ninguna
+  pantalla lo llama». **Comprobado el 2026-09-06:** `apps/web/src/features/character-sheet/api.ts:563`
+  exporta `resolveAttack` y `hooks.ts:397` lo llama. La cerró la tarea 13.
+- `docs/06-pendientes.md:286` — «Un cuadro de ataques vacío no dice por qué». **Comprobado:**
+  `AtaquesYLanzamiento.tsx:157-164` ya lo explica y enlaza a la Bolsa. La cerró la tarea 15.
+
+- [ ] **Paso 1** · Comprueba tú las dos citas antes de tachar. Si alguna no cuadra, **no taches**:
+      busca el mecanismo.
+- [ ] **Paso 2** · Táchalas con su fecha y su `fichero:línea`, y muévelas al archivo como se hace
+      aquí.
+- [ ] **Paso 3 · Commit**
+
+```bash
+git add docs
+git commit -m "docs(pendientes): two fichas describe as missing what last night shipped"
+```
+
+---
+
+## Tarea 14 · El panel de dados, montado
+
+```
+apps/web/src/features/rolls/panel/PanelDeDadosDeLaMesa.tsx
+```
+
+Está **construido, revisado y en `main`**, y `grep -rn "PanelDeDadosDeLaMesa" apps/web/src` devuelve
+**solo su declaración**. La fila ALTA de la auditoría —«no hay dados en la mesa»— sigue igual que
+antes de construirlo. **Es el caso número cinco de «una ficha no se cierra sin pantalla»**
+(`docs/06-pendientes.md:1305`).
+
+**Ficheros:**
+- Modificar: el compositor de la mesa (el que monta `RailDePaneles`)
+- Prueba: el test del compositor
+- Prueba de navegador: en la tanda del final
+
+- [ ] **Paso 1 · La prueba que falla**
+
+```tsx
+it("la mesa ofrece los dados, y el panel se monta fuera del <main>", async () => {
+  render(<MesaDeSesion {...props} />);
+  await userEvent.click(screen.getByRole("button", { name: /dados/i }));
+  const panel = screen.getByTestId("panel-de-dados");
+  expect(panel.closest("main")).toBeNull();
+});
+```
+
+- [ ] **Paso 2 · Córrela** — falla.
+- [ ] **Paso 3 · La implementación**, que la ficha ya deja escrita: una entrada `"dados"` en
+      `RailDePaneles` y el panel montado **fuera del `<main>`**, con `campaignId`, `sessionId`,
+      `characterId` y `onCerrar`. Va a **`z-30`** frente al `z-40` de los cajones, que es como la
+      maqueta los hace convivir.
+- [ ] **Paso 4 · Córrela** — pasa.
+- [ ] **Paso 5 · El navegador**, en la tanda del final: abrir los dados, tirar, y ver la tirada en
+      el hilo. **Y comprueba el apilamiento de verdad**, que `jsdom` no maqueta: el panel por
+      encima de la mesa y por debajo de un cajón abierto.
+- [ ] **Paso 6 · Tacha la ficha** y commit.
+
+```bash
+git add apps/web docs
+git commit -m "feat(web): the table finally has dice — the built panel is mounted"
+```
+
+---
+
+## Tarea 15 · Un PNJ cedido a un jugador se puede manejar desde su pantalla
+
+El servidor **ya trata a un PNJ cedido por dueño**: `encounters.service.ts:244-245` separa las
+peticiones de iniciativa por `ownerId` sin mirar `statblockRef`, y `requireEditable` le dejaría
+cambiarle los PG y ponerle condiciones. **La pantalla es más restrictiva que el servidor**: solo da
+mandos al DM, porque `NpcEnLaMesa` (`apps/web/src/features/bestiario/api.ts`) **no trae `ownerId`** —
+no hay dato del que leer «es tuyo» (`docs/06-pendientes.md:1617`).
+
+**No es un agujero de seguridad** —la pantalla nunca promete más de lo que da— pero sí una función
+que el servidor permite y la interfaz no deja usar: un jugador con un PNJ cedido **no puede anotarle
+el golpe que acaba de recibir** sin pedírselo al DM.
+
+**Ficheros:**
+- Modificar: `apps/api/src/statblocks/npcs.controller.ts` y su tipo de respuesta (`ownerId`)
+- Modificar: `apps/web/src/features/bestiario/api.ts` (`NpcEnLaMesa`)
+- Modificar: `apps/web/src/features/sessions/elenco/FichaDePnj.tsx`
+- Prueba: el spec de `npcs` en API, y el de `FichaDePnj` en web
+
+- [ ] **Paso 1 · Las pruebas que fallan**
+
+```ts
+it("GET /npcs devuelve el dueño de cada PNJ", async () => {
+  const [pnj] = await controller.list(dmId, campaignId);
+  expect(pnj).toHaveProperty("ownerId");
+});
+```
+
+```tsx
+it("el dueño de un PNJ cedido ve sus mandos; otro jugador no", () => {
+  render(<FichaDePnj pnj={{ ...goblin, ownerId: miId }} miId={miId} soyDm={false} />);
+  expect(screen.getByRole("button", { name: /daño/i })).toBeInTheDocument();
+
+  render(<FichaDePnj pnj={{ ...goblin, ownerId: "otro" }} miId={miId} soyDm={false} />);
+  expect(screen.queryByRole("button", { name: /daño/i })).not.toBeInTheDocument();
+});
+```
+
+- [ ] **Paso 2 · Córrelas** — fallan.
+- [ ] **Paso 3 · La implementación:** `ownerId: string | null` en la respuesta, y en la web
+      condicionar los mandos a `pnj.ownerId === miId` **además de** al DM, igual que ya hace
+      `FichaDeElenco` con `puedeCambiarPg`. **Esconder el botón no es control de acceso**: la puerta
+      real sigue siendo `requireEditable` en el servidor, y esto es cortesía.
+- [ ] **Paso 4 · Córrelas** — pasan.
+- [ ] **Paso 5 · Mutación** — deja `ownerId` fuera de la respuesta: la primera se pone **roja**.
+      Deshaz.
+- [ ] **Paso 6 · Tacha la ficha** y commit.
+
+```bash
+git add apps/api apps/web docs
+git commit -m "feat: a player who owns a lent NPC can finally manage it from the table"
+```
+
+---
+
+## Tarea 16 · Corregir el bando viaja por el canal en vivo
+
+`EncountersService.setSide` corrige el bando y **no llama a `GameEventsService.record`**, así que una
+segunda pestaña **no se entera hasta que refresque**. Lo mismo con el reajuste de `activePosition`
+que la tarea 5 de anoche añadió a `setInitiative`: el turno activo cambia de combatiente y **nadie
+se entera** (`docs/06-pendientes.md:410`).
+
+**La ficha decía «que lo decidan las tareas 8 y 10, que montan la pantalla». Ya están montadas**, así
+que el vocabulario se puede decidir con la pantalla delante, que era la condición.
+
+**Ficheros:**
+- Modificar: `packages/shared/src/game-event.schema.ts` (los tipos nuevos)
+- Modificar: `apps/api/src/encounters/encounters.service.ts` (`setSide`, `setInitiative`)
+- Modificar: `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts` y `linea-de-log.ts`
+- Prueba e2e: `apps/api/test/encounters.e2e-spec.ts`
+- Prueba de navegador: la de dos navegadores que ya existe
+
+- [ ] **Paso 1 · La prueba que falla**
+
+```ts
+it("corregir el bando deja suceso, y dice de qué lado a cuál", async () => {
+  await service.setSide(dmId, campaignId, sessionId, encounterId, combatanteId, { side: "ALLY" });
+  const [suceso] = await eventos.list(dmId, campaignId);
+  expect(suceso.type).toBe("COMBATANT_SIDE_CHANGED");
+  expect(suceso.payload).toMatchObject({ from: "ENEMY", to: "ALLY" });
+});
+```
+
+- [ ] **Paso 2 · Córrela** — falla.
+- [ ] **Paso 3 · La implementación.** Dos tipos nuevos en el vocabulario cerrado, su línea de
+      registro en español, y el `record` dentro de **la misma transacción** que la escritura. **Un
+      valor de enum de PostgreSQL se añade, nunca se edita.**
+- [ ] **Paso 4 · Córrela** — pasa.
+- [ ] **Paso 5 · Mutación** — quita el `record`: se pone **roja**. Deshaz.
+- [ ] **Paso 6 · El navegador:** dos pestañas, el DM corrige el bando en una y **la otra lo ve sin
+      recargar**. Esa es la prueba de que viaja por el canal y no por el sondeo.
+- [ ] **Paso 7 · Tacha la ficha** y commit.
+
+```bash
+git add packages/shared apps/api apps/web docs
+git commit -m "feat: correcting a side and a turn shift travel on the live channel"
+```
+
+---
+
+## Tarea 17 · La sala de espera no puede leer «todos han tirado» por un corte de página
+
+`apps/api/src/roll-requests/roll-requests.service.ts:97-107`: la lista pendiente sale con `take: 50`
+por `createdAt desc` **sin filtro por `encounterId`**. Una campaña con más de 50 peticiones
+pendientes de otro tipo empujaría fuera del corte las de iniciativa del combate recién abierto, y
+`TiraDeIniciativa.tsx` leería **«todos han tirado»** sin que nadie hubiera tirado: el `[]` de la
+página 50 es indistinguible de «cero pendientes de verdad» (`docs/06-pendientes.md:1606`).
+
+**Ficheros:**
+- Modificar: `apps/api/src/roll-requests/roll-requests.service.ts:97-107`
+- Modificar: `packages/shared/src/roll-request.schema.ts` (el filtro, si hace falta)
+- Prueba: `apps/api/src/roll-requests/roll-requests.service.spec.ts`
+
+- [ ] **Paso 1 · La prueba que falla**
+
+```ts
+it("con 60 peticiones de otro tipo, las de un encuentro siguen saliendo", async () => {
+  for (let i = 0; i < 60; i++) await crearPeticionSuelta();
+  const { id: encounterId } = await empezarCombate();
+  const pendientes = await service.list(dmId, campaignId, { encounterId });
+  expect(pendientes).not.toHaveLength(0);
+});
+```
+
+- [ ] **Paso 2 · Córrela** — falla.
+- [ ] **Paso 3 · La implementación:** `list` acepta `encounterId` y filtra por él. **No subas el
+      `take`**: un tope más alto solo mueve el problema más lejos.
+- [ ] **Paso 4 · Córrela** — pasa.
+- [ ] **Paso 5 · Mutación** — quita el filtro: se pone **roja**. Deshaz.
+- [ ] **Paso 6 · Tacha la ficha** y commit.
+
+```bash
+git add apps/api packages/shared docs
+git commit -m "fix(api): pending rolls can be asked for by encounter, not just the last fifty"
+```
+
+---
+
+## Tarea 18 · La fuga del PNJ revelado · NO SE EJECUTA SIN DECISIÓN DEL AUTOR
+
+**Es lo más grave de lo que quedó fuera de la spec**, y no se arregla solo porque las dos salidas son
+decisiones del autor y **no son equivalentes** (`docs/06-pendientes.md:1222`).
+
+Sobre una corrida real, un jugador que pide la hoja de un PNJ revelado recibe:
+
+```
+"str":18,"dex":8,"con":18,"int":6,"wis":12,"cha":5      ← las del statblock DM_ONLY
+"currentHp":85
+"reason":"Los números de este PNJ no son públicos: su ficha es del DM."
+```
+
+**La misma respuesta dice que sus números no son públicos y trae seis de ellos.** Con las seis
+características se reconstruyen los seis modificadores de salvación, los dieciocho de habilidad y la
+iniciativa.
+
+**Y no es un descuido:** `npcs.service.ts:69` copia las características a la fila de `Character` al
+instanciar —decisión D-2D-2, «un PNJ en la mesa es una fila de `Character`»— y `getSheet` devuelve
+esa fila a quien pasa `canSee`. **Las dos piezas son correctas por separado.**
+
+- [ ] **Paso 0 · El autor elige una de las dos, y se escribe:**
+      **(a)** ocultar esas columnas a quien no sea DM ni dueño — coherente con la frase, y hay que
+      decidir qué sigue viendo un jugador (¿los PG actuales, para saber si está malherido?); o
+      **(b)** cambiar la frase y aceptar que revelar un PNJ revela sus características — más barato,
+      y entonces la garantía real es «no verás su CA ni su traza».
+- [ ] **Paso 1 · La prueba que lo destapa es UNA LÍNEA**, y la ficha ya la deja escrita:
+      `pnj-en-la-mesa.e2e-spec.ts` recorre cada valor del cuerpo desde el 2026-09-04, así que
+      `expect(valores).not.toContain(18)` **se pondría roja hoy**. Escríbela primero, sea cual sea la
+      salida elegida — con (b) lo que cambia es el texto que se comprueba, no que haya prueba.
+- [ ] **Paso 2 · Implementa la salida elegida.**
+- [ ] **Paso 3 · Mutación** y commit, con la decisión escrita en `docs/decisiones.md`.
+
+---
+
+## Y esto va a la cola larga de la tarea 13
+
+- **La mesa a 390 px reparte sus tres columnas a lo ancho** (`docs/06-pendientes.md:370`). Es
+  posición y tamaño: **se mide en el navegador con números**, no en `jsdom`. Cabe en la misma tanda
+  de Playwright que las tareas 10 a 12 y la 14.
+- **`OWNER_DM` en un statblock se comporta como `DM_ONLY`** (`:1331`).
+
+**Y esto NO entra en el paso 1, a propósito:** «nadie propone terminar el combate» (`:335`) es una
+funcionalidad con su propia media pieza construida, no una gotera; la vitela de «Lectura» (`:429`) y
+el tema Claro (`:448`) son del carril gráfico. Se quedan donde están.
+
+---
+
 ## Definición de terminado
 
 `pnpm verify` en verde · **las tres de B abiertas en el navegador**, no solo en `jsdom` · **las citas

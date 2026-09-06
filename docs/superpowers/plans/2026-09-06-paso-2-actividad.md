@@ -16,6 +16,14 @@ y la traza. **Lo que falta es el pegamento y el vocabulario, no la maquinaria.**
 
 **Spec:** [`docs/superpowers/specs/2026-09-05-paso-2-actividad-design.md`](../specs/2026-09-05-paso-2-actividad-design.md)
 
+> **Y su precursor, que NO es un modelo rival:**
+> [`2026-09-05-conjuros-design.md`](../specs/2026-09-05-conjuros-design.md) es el documento que unió
+> conjuros y aptitudes en un solo problema —«los dos son algo que un personaje puede hacer, que
+> gasta un recurso, que elige objetivo, que tira o pide una tirada»— y que **dejó a propósito sin
+> decidir cuántas actividades entran**, porque eso tocaba después de auditar. La spec de arriba es
+> quien lo contesta: **cinco**. Si los dos documentos parecen decir cosas distintas, manda la del
+> paso 2; el otro se lee para saber por qué el problema tiene esta forma.
+
 ---
 
 ## Lo que hay que tener claro antes de la primera línea
@@ -67,6 +75,34 @@ un número creíble es exactamente lo que aquí no puede pasar.
   ficha. Y no se pregunta al autor lo que las reglas o el código ya contestan.
 
 ---
+
+---
+
+## Lo que compartes con la otra sesión, medido fichero a fichero
+
+**El plan del botín (`2026-09-06-botin-y-reparto-plan.md`) corre a la vez que este.** Se comprobó
+extrayendo las rutas de los dos planes y cruzándolas: **coincidís en exactamente dos ficheros de
+código**, y en los tres documentos que se generan solos.
+
+| Fichero | Tú escribes | La otra sesión escribe | Cómo se resuelve |
+|---|---|---|---|
+| `apps/api/prisma/schema.prisma` | columnas en `model Combatant` | un campo en `model DmTableEntry` | Modelos distintos y lejanos en el fichero: git los fusiona. **Cada uno crea SU migración**; el orden lo dan las marcas de tiempo y no chocan |
+| `packages/shared/src/game-event.schema.ts` | el suceso de gastar | el del reparto | **Un enum solo CRECE: añade al final y no reordenes.** Si hay conflicto es de una línea |
+| `docs/00-INDEX.md` · `docs/08-pruebas.md` | los genera `pnpm update:estado` | ídem | **Van a chocar seguro**: llevan el hash del commit dentro. **No se resuelven a mano**: al fusionar se acepta cualquiera de los dos y se ejecuta `pnpm update:estado` otra vez |
+| `docs/06-pendientes.md` · `07-historial.md` · `decisiones.md` | añades al final | ídem | Conflicto de añadido, trivial |
+
+**Lo que NO compartes**: `src/activities`, `rules/catalog`, `origen`/`activity`/`action-economy`,
+`web/character-sheet` y `web/encounters` son solo tuyos; `dm-tables`, `inventory`,
+`web/features/inventory` y `web/sessions/elenco` son solo suyos.
+
+**Y dos cosas de máquina que sí os pisan aunque los ficheros no:**
+
+- **Una sola tanda de Playwright en toda la máquina.** Avisa antes de lanzarla y espera si la otra
+  sesión está corriendo. Dos a la vez dieron **82 fallos falsos**.
+- **La memoria.** El gancho de pre-commit corre `pnpm verify` **entero** —compila los tres paquetes—
+  y dos a la vez con sendos servidores de desarrollo levantados **han tumbado un commit por falta de
+  memoria** en esta misma máquina, el 2026-09-06. Si vas a commitear y sabes que la otra sesión está
+  compilando, **espera treinta segundos**; es más barato que repetir el commit.
 
 ## Los ficheros, y de qué responde cada uno
 
@@ -202,6 +238,8 @@ regalan acciones y ninguno estará modelado el primer día.
 - Modificar: `apps/api/src/encounters/encounters.controller.ts` (la ruta)
 - Modificar: `apps/api/src/encounters/encounters.service.ts` (el método)
 - Modificar: `packages/shared/src/game-event.schema.ts` (el suceso)
+- Modificar: `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts` y `linea-de-log.ts`
+  **(su línea legible en español)**
 - Prueba: `apps/api/src/encounters/encounters.service.spec.ts` y su e2e
 
 **Interfaces · produce:**
@@ -247,6 +285,12 @@ Que el servidor no arbitre las reglas no significa que no controle quién escrib
 - [ ] **Paso 2 · Córrelas** — fallan.
 - [ ] **Paso 3 · La implementación.** La velocidad sale de la hoja derivada, que ya la calcula con su
       traza — **no la recalcules aquí**. El suceso se escribe **en la misma transacción**.
+
+      > **Y su línea en español entra en ESTE commit, no después.** Un tipo de suceso nuevo sin su
+      > forma legible es un valor de enumeración llegando a la pantalla, que es el fallo que este
+      > proyecto vio **tres veces en una sola mañana** (`(LOCATION)`, `PUBLIC`, `Nuevo LOCATION`).
+      > `tipo-de-mensaje.ts` decide de qué tipo es la línea del hilo y `linea-de-log.ts` la escribe;
+      > las dos tienen prueba, y añadir un tipo sin tocarlas las pone rojas. **Esa es la red.**
 - [ ] **Paso 4 · Córrelas** — pasan.
 - [ ] **Paso 5 · Mutación** — haz que el segundo gasto lance en vez de avisar: la segunda prueba se
       pone **roja**. Deshaz. *(Esa mutación demuestra la decisión del autor, no solo el código.)*

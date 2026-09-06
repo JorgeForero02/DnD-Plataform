@@ -140,7 +140,15 @@ El menú ofrece **solo lo que el servidor ya sabe hacer**, y cada entrada con su
 | **Sintonizar / dejar de sintonizar** | con su tope de tres | ídem |
 | **Guardar** / **Llevar encima** | mueve entre los tres sitios | ídem |
 | **Consumir** | lo gasta y aplica lo que declare | `consume` |
-| **Dar a…** | elige destinatario | **llega con el plan del botín**, no antes |
+| **Dar a…** | elige destinatario | **llega con el plan del botín**, no antes — y **se reutiliza su componente** |
+
+> **«Dar a…» NO se construye aquí, y esto evita una tercera copia.** El plan del botín lo crea en
+> `features/sessions/elenco/DarObjeto.tsx` —elegir destinatario entre los personajes de la sesión— y
+> **esta pantalla monta ese mismo componente** desde el menú de la fila. Es el escarmiento que el
+> proyecto ya tiene escrito: la duplicación entre `FichaDePnj` y `FichaDeElenco` llegó a ~95 líneas
+> de 184 antes de que alguien la extrajera, y las tres copias del vocabulario del daño nacieron
+> igual. **Si al llegar aquí el componente del botín no existe, esta entrada del menú no se pinta**
+> — no se hace una versión propia «mientras tanto».
 
 **«Vender» NO entra**, y no por olvido: no hay comercio, y un menú que ofrece vender sin vender es
 la clase de promesa falsa que este proyecto lleva un día entero corrigiendo. Cuando entre, entra por

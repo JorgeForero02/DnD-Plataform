@@ -63,6 +63,34 @@ que se construye es **el puente y la pantalla**, no la maquinaria.
   el SRD y el código que ya hay? → ¿lo contesta la fuente? → **solo entonces** ficha— y **no se
   pregunta al autor** lo que las reglas o el código ya contestan.
 
+---
+
+## Lo que compartes con la otra sesión, medido fichero a fichero
+
+**El plan del paso 2 (`2026-09-06-paso-2-actividad.md`) corre a la vez que este.** Se comprobó
+extrayendo las rutas de los dos planes y cruzándolas: **coincidís en exactamente dos ficheros de
+código**, y en los tres documentos que se generan solos.
+
+| Fichero | Tú escribes | La otra sesión escribe | Cómo se resuelve |
+|---|---|---|---|
+| `apps/api/prisma/schema.prisma` | un campo en `model DmTableEntry` | columnas en `model Combatant` | Modelos distintos y lejanos en el fichero: git los fusiona. **Cada uno crea SU migración**; el orden lo dan las marcas de tiempo y no chocan |
+| `packages/shared/src/game-event.schema.ts` | el suceso del reparto | el de gastar | **Un enum solo CRECE: añade al final y no reordenes.** Si hay conflicto es de una línea |
+| `docs/00-INDEX.md` · `docs/08-pruebas.md` | los genera `pnpm update:estado` | ídem | **Van a chocar seguro**: llevan el hash del commit dentro. **No se resuelven a mano**: al fusionar se acepta cualquiera de los dos y se ejecuta `pnpm update:estado` otra vez |
+| `docs/06-pendientes.md` · `07-historial.md` · `decisiones.md` | añades al final | ídem | Conflicto de añadido, trivial |
+
+**Lo que NO compartes**: `dm-tables`, `inventory`, `web/features/inventory` y
+`web/sessions/elenco` son solo tuyos; `src/activities`, `rules/catalog`,
+`origen`/`activity`/`action-economy`, `web/character-sheet` y `web/encounters` son solo suyos.
+
+**Y dos cosas de máquina que sí os pisan aunque los ficheros no:**
+
+- **Una sola tanda de Playwright en toda la máquina.** Avisa antes de lanzarla y espera si la otra
+  sesión está corriendo. Dos a la vez dieron **82 fallos falsos**.
+- **La memoria.** El gancho de pre-commit corre `pnpm verify` **entero** —compila los tres paquetes—
+  y dos a la vez con sendos servidores de desarrollo levantados **han tumbado un commit por falta de
+  memoria** en esta misma máquina, el 2026-09-06. Si vas a commitear y sabes que la otra sesión está
+  compilando, **espera treinta segundos**; es más barato que repetir el commit.
+
 ## Los ficheros
 
 | Fichero | Qué responde |

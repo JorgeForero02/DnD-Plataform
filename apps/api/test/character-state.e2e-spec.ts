@@ -126,14 +126,32 @@ describe("Estado de personaje: recursos, descansos y condiciones (e2e)", () => {
       .send({ label: "Inspiración", current: 1, max: 1, resetOn: "NONE", grantedBy: "OWNER" });
     expect(intento.status).toBe(403);
 
-    // El dueño SÍ puede gastarla/reponerla una vez concedida: el candado es sobre crearla o
-    // subirle el máximo, no sobre usar lo que ya tiene.
-    const gasto = await request(s())
+    // **Reponer un `DM_ONLY` también es 403 para su dueño, y eso lo endureció el plan 08**
+    // (`1758c21`): reponer es exactamente conceder, así que un jugador se habría dado inspiración
+    // a sí mismo pulsando «+» en su propia hoja. Hasta el 2026-09-06 estas seis líneas afirmaban
+    // lo contrario —esperaban un 201— y llevaban rojas desde ese commit sin que nadie mirara: los
+    // e2e no entran en `pnpm verify`. **Se corrige la prueba, no el código**, porque la regla que
+    // el código aplica es la del SRD y la defiende entera `inspiracion.e2e-spec.ts`.
+    const reponer = await request(s())
       .post(`${base()}/resources/inspiration/restore`)
       .set("Authorization", `Bearer ${tokenPL}`)
       .send({ amount: 1 });
+    expect(reponer.status).toBe(403);
+
+    // **Lo que sí es del dueño es USAR lo que ya tiene**, que es lo que esta prueba quería decir:
+    // el candado está sobre conceder, no sobre gastar. Se lo concede el DM y el jugador lo gasta.
+    const concede = await request(s())
+      .post(`${base()}/resources/inspiration/restore`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ amount: 1 });
+    expect(concede.status).toBe(201);
+
+    const gasto = await request(s())
+      .post(`${base()}/resources/inspiration/spend`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ amount: 1 });
     expect(gasto.status).toBe(201);
-    expect(gasto.body.current).toBe(1);
+    expect(gasto.body.current).toBe(0);
   });
 
   it("MUTACIÓN CLAVE: un descanso largo recupera la mitad de los dados de golpe, no todos", async () => {

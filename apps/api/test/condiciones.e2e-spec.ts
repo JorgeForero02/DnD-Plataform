@@ -80,6 +80,10 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`)
       .send({});
     expect(r.status).toBe(403);
+    // **Se afirma la CAUSA y no solo el número.** Los tres 403 de esta suite podrían venir de la
+    // autorización si alguien cambiara de dueño el personaje del `beforeAll`, y entonces medirían
+    // la propiedad sin avisar de que han dejado de medir esto.
+    expect(r.body.message).toMatch(/Ayudar/);
 
     // Y no se ha escrito nada: un 403 que además guarda la fila sería peor que ninguno.
     const fila = await prisma.characterCondition.findFirst({
@@ -94,6 +98,7 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({});
     expect(r.status).toBe(403);
+    expect(r.body.message).toMatch(/Ayudar/);
   });
 
   it("una condición del SRD tampoco entra si quien la escribe es la jugadora", async () => {
@@ -102,6 +107,7 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`)
       .send({});
     expect(r.status).toBe(403);
+    expect(r.body.message).toMatch(/la aplica el DM/);
   });
 
   it("pero el DM SÍ envenena a alguien: eso es jugar, y sigue funcionando", async () => {
@@ -121,5 +127,29 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
     expect(r.status).toBe(200);
     expect(r.body.key).toBe("mojado");
     expect(r.body.note).toBe("Me caí al río");
+  });
+
+  it("y quitar una del SRD también es del DM: si no, la desventaja dura lo que tarde en pulsar", async () => {
+    const s = app.getHttpServer();
+    // El DM se la pone (la prueba de arriba ya dejó `poisoned` puesta).
+    const quita = await request(s)
+      .delete(`${condUrl()}/poisoned`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(quita.status).toBe(403);
+    expect(quita.body.message).toMatch(/la quita el DM/);
+
+    // Sigue puesta: un 403 que además borrara la fila sería peor que ninguno.
+    const fila = await prisma.characterCondition.findFirst({
+      where: { characterId, key: "poisoned" },
+    });
+    expect(fila).not.toBeNull();
+  });
+
+  it("pero la nota suya se la quita ella", async () => {
+    const s = app.getHttpServer();
+    const quita = await request(s)
+      .delete(`${condUrl()}/mojado`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(quita.status).toBe(200);
   });
 });

@@ -100,6 +100,54 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
+## P1 · Quedan dos puertas por las que un jugador se concede una mecánica, y las dos se dejan a propósito (2026-09-06, revisión del paso 1 · tarea 1)
+
+**Esta ficha se abre después de recorrer los tres pasos anteriores, y dice qué se descartó en cada
+uno** — que es lo que la hace útil dentro de tres meses. La tarea 1 cerró la puerta genérica de
+condiciones; la revisión encontró que el resultado que el commit prometía —«un jugador no puede
+concederse una mecánica»— **sigue siendo alcanzable por otras dos**.
+
+**Puerta A · Ayudar con un segundo personaje propio.** `ConditionsService.help` exige dueño o DM
+**del ayudante**, y del ayudado solo que esté en la campaña; crear personajes no tiene tope
+(`apps/api/src/characters/characters.service.ts`). Así que un jugador con dos personajes se da
+`helped` desde uno al otro. **No es teórico:** `apps/api/test/ayudar.e2e-spec.ts` crea los dos con
+**el mismo token de jugadora** y espera 201, y `apps/web/src/features/sessions/elenco/AyudarA.tsx`
+filtra los candidatos solo por «no soy yo», así que el desplegable ofrece tu otro personaje.
+
+- **Paso 1 descartado** — el arreglo rápido sería prohibir que ayudante y ayudado compartan dueño.
+- **Paso 2 lo tumba, y esta es la razón de peso:** el SRD **permite** que dos criaturas distintas se
+  ayuden, y que las lleve la misma persona no las convierte en una. Prohibirlo sería inventarse una
+  regla que el manual no tiene, y este proyecto tiene escrito que las reglas de D&D son verdad
+  absoluta.
+- **Paso 3:** lo que el SRD **sí** cobra es que Ayudar es una **acción**, y por tanto una por turno.
+  Eso es la economía de acciones, que **es el paso 2 del plan maestro** y está explícitamente fuera
+  del paso 1. Con ella, esta puerta se cierra sola y sin ninguna regla inventada.
+
+**Cierra cuando** exista la economía de acciones y Ayudar cueste la acción del ayudante.
+
+**Puerta B · Los modificadores temporales.** `TemporaryModifiersService.grant` pide solo
+`requireOwnerOrDM`, y lo que concede entra en la derivación de la hoja: **un jugador puede darse
+`+10` al ataque, sin caducidad y con el motivo que quiera**, que es estrictamente más que la ventaja
+de `helped`.
+
+- **Paso 1 descartado** — cerrarlo a DM son tres líneas.
+- **Paso 2 lo frena:** es una **decisión escrita del autor** con un caso de uso real —beberse una
+  poción que ya llevas encima no debería ser una petición al DM—. Lo que sí caducó es la mitad de su
+  argumento: decía «es la misma autoridad que gobierna aplicarse una condición», y eso dejó de ser
+  cierto el 2026-09-06. El docstring ya está corregido.
+- **Paso 3:** la salida buena es que el camino legítimo deje de necesitar esta puerta — **la tarea 7
+  de este mismo plan** hace que consumir un objeto aplique sus efectos. Con ella, la poción entra
+  por su sitio y este `grant` puede cerrarse sin quitarle nada a nadie.
+
+**Cierra cuando** la tarea 7 esté hecha y se decida si `grant` pasa a ser del DM. **Es una decisión
+del autor**, no del agente: quita una capacidad que él concedió por escrito.
+
+**Puerta C, y esta sí es media pieza que falta:** la hoja ofrece a un jugador las **quince**
+condiciones del SRD sobre su propio personaje (`apps/web/src/features/character-sheet/Condiciones.tsx`),
+y desde el 2026-09-06 las quince le dan 403. **Es un botón que el servidor rechaza**, que es
+justamente lo que la revisión del prototipo dejó escrito como defecto. Se cierra en el mismo paso 1,
+en el carril de pantalla.
+
 ## P1 · El «500 intermitente» de `CharacterSheetService.updateSheet` era `supertest`, no el servicio (medido y descartado en `9ef7245`)
 
 **Esta ficha acusaba al código equivocado.** Decía que varios `PATCH /campaigns/:id/characters/:id/sheet`

@@ -131,9 +131,36 @@ describe("ConditionsService", () => {
   });
 
   it("otro jugador que no es dueño ni DM no puede aplicar una condición", async () => {
+    // **La clave es LIBRE a propósito, y el mensaje se afirma.** Con una del SRD esta prueba
+    // seguiría verde aunque se borrara `requireOwnerOrDM`, porque la pararía el control de clave
+    // reservada: sería la única prueba de propiedad de este servicio midiendo otra cosa. Es el
+    // fallo que este proyecto ya se comió una vez —un 403 de otro servicio dando por buena una
+    // mutación— y por eso aquí se comprueba la causa y no el número.
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
-    await expect(service.apply("otro-jugador", "cmp1", "c1", { key: "prone" })).rejects.toThrow();
+    await expect(service.apply("otro-jugador", "cmp1", "c1", { key: "mojado" })).rejects.toThrow(
+      /Solo el DM o el dueño/,
+    );
     expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
+  it("quitar una condición del SRD también es del DM: poner y quitar son la misma concesión", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.characterCondition.findUnique.mockResolvedValue({ id: "cond1", key: "poisoned" });
+
+    await expect(service.remove("owner1", "cmp1", "c1", "poisoned")).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.delete).not.toHaveBeenCalled();
+  });
+
+  it("pero el dueño sí se quita una nota suya", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.characterCondition.findUnique.mockResolvedValue({ id: "cond2", key: "mojado" });
+    prisma.characterCondition.delete.mockResolvedValue({ id: "cond2" });
+
+    await service.remove("owner1", "cmp1", "c1", "mojado");
+
+    expect(prisma.characterCondition.delete).toHaveBeenCalledWith({ where: { id: "cond2" } });
   });
 
   it("el agotamiento lleva su nivel, y una condición sin nivel lo guarda como null", async () => {

@@ -65,9 +65,15 @@ export class TemporaryModifiersService {
    * **Quién puede: el DM o el dueño del personaje**, y esto es una decisión que el plan pedía
    * escribir. El argumento es que la mayoría de estos efectos salen de algo que el jugador hace
    * —beberse una poción que ya está en su inventario— y obligar a que el DM los teclee convertiría
-   * una acción de un turno en una petición. Es la misma autoridad que ya gobierna gastar un recurso
-   * o aplicarse una condición (`requireOwnerOrDM`), así que no abre ninguna puerta nueva: quien
-   * puede escribir en esa hoja, puede esto.
+   * una acción de un turno en una petición.
+   *
+   * **Ojo: la mitad de ese argumento caducó el 2026-09-06.** Aquí ponía además que «es la misma
+   * autoridad que ya gobierna gastar un recurso **o aplicarse una condición**, así que no abre
+   * ninguna puerta nueva», y desde el paso 1 aplicarse una condición del SRD **ya no es del
+   * dueño**. Así que esto sí es hoy la puerta más ancha que le queda a un jugador para
+   * concederse una mecánica —un `+10` al ataque, sin caducidad, con el motivo que quiera— y la
+   * decisión de dejarla abierta se mantiene por su OTRA mitad, la de la poción, no por la
+   * comparación. Queda anotado en `docs/06-pendientes.md` con lo que se descartó.
    *
    * **La duración es del reloj de campaña**, no de pared: «una hora» son 3600 segundos de partida.
    * Se guarda el instante absoluto en que vence y no la duración, por lo mismo que las condiciones:

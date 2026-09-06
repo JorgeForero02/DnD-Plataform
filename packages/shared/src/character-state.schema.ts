@@ -137,8 +137,21 @@ export const CLAVE_AYUDA = "helped";
  * Lo que esto NO dice es que la clave este prohibida: dice que **hay que preguntar quien llama**.
  * El DM sigue envenenando a la mesa por esta ruta, que es como se juega.
  *
- * Vive en `shared` porque la usan el servidor y la pantalla, y una lista copiada en dos sitios
- * acaba escrita de dos formas.
+ * **Lo que deja fuera a proposito, y no es un olvido:** la concentracion, que el motor lee por
+ * PREFIJO (`CONCENTRATION_KEY_PREFIX`, `apps/api/src/character-state/concentration/`) y no por
+ * igualdad. Un jugador que lanza un conjuro tiene que poder marcar que se concentra sobre si
+ * mismo: es lo que hace, no algo que se concede. La contrapartida esta escrita donde toca —
+ * recibir dano le pide la salvacion.
+ *
+ * **Compara por igualdad exacta, y eso es correcto porque los motores tambien.**
+ * `suggested-roll-mode.ts`, `effective-speed.ts` y `modo-contra-objetivo.ts` comparan la clave
+ * tal cual, y el esquema no recorta ni normaliza, asi que `"Helped"` o `"prone "` no los lee
+ * nadie y no hay nada que reservar. **Si algun dia un motor normaliza la clave, esta funcion
+ * tiene que normalizarla igual**, o la reserva se rodea escribiendo una mayuscula.
+ *
+ * Vive en `shared` y no en la API porque describe el contrato de los datos, que es lo que
+ * `shared` guarda; **hoy solo la usa el servidor** y la pantalla todavia ofrece las quince a
+ * cualquiera (ficha en `docs/06-pendientes.md`).
  */
 export function esClaveReservada(key: string): boolean {
   return key === CLAVE_AYUDA || (SRD_CONDITIONS as readonly string[]).includes(key);

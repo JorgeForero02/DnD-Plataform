@@ -19,9 +19,13 @@ import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/characte
 
 // Tarea 2A.12 — condiciones. **La clave es libre**: las quince del SRD (`SRD_CONDITIONS`,
 // `@dnd/shared`) las entiende el motor de velocidad efectiva (`../speed/effective-speed.ts`);
-// cualquier otra se guarda y se enseña igual, y no calcula nada. Este servicio no distingue
-// las dos — esa distinción es asunto de quien LEE las condiciones para derivar algo, no de
-// quien las guarda.
+// cualquier otra se guarda y se enseña igual, y no calcula nada.
+//
+// **Y desde el paso 1 (2026-09-06) este servicio SÍ distingue las dos, al escribir y al borrar.**
+// Aquí ponía lo contrario —«esa distinción es asunto de quien LEE las condiciones, no de quien las
+// guarda»— y era exactamente el argumento que dejó el agujero: quien lee busca `helped` **solo por
+// clave**, así que si quien guarda no mira nada, escribir la clave a mano es concederse la
+// mecánica. Guardar y leer no son independientes cuando lo guardado es una entrada del motor.
 
 @Injectable()
 export class ConditionsService {
@@ -57,7 +61,13 @@ export class ConditionsService {
     }));
   }
 
-  /** Aplicar y quitar: DM o dueño. Aplicar dos veces la misma clave la reemplaza, no la duplica. */
+  /**
+   * Aplicar: DM o dueño, **con una excepción que no es de propiedad sino de clave** — una condición
+   * que el servidor interpreta (las quince del SRD, y `helped`) no se escribe por aquí salvo que
+   * quien llame sea el DM, y `helped` no se escribe por aquí nunca. Ver `esClaveReservada`.
+   *
+   * Aplicar dos veces la misma clave la reemplaza, no la duplica.
+   */
   async apply(userId: string, campaignId: string, characterId: string, input: ApplyConditionInput) {
     const character = await requireVisibleCharacter(
       this.prisma,
@@ -242,13 +252,21 @@ export class ConditionsService {
       campaignId,
       characterId,
     );
-    await requireOwnerOrDM(
+    const esDM = await requireOwnerOrDM(
       this.membership,
       campaignId,
       userId,
       character,
       "Solo el DM o el dueño puede quitar una condición.",
     );
+
+    // **Poner y quitar son la misma concesión, y cerrar solo una no cierra nada.** Si el jugador
+    // no puede envenenarse pero sí puede quitarse el veneno que le acaba de poner el DM, la
+    // desventaja dura lo que tarde en pulsar. La regla es la misma de `apply`: una clave que el
+    // servidor interpreta la maneja el DM; una nota propia sigue siendo del dueño.
+    if (esClaveReservada(key) && !esDM) {
+      throw new ForbiddenException("Esa condición la quita el DM.");
+    }
 
     const existing = await this.prisma.characterCondition.findUnique({
       where: { characterId_key: { characterId, key } },

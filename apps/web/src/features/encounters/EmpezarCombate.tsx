@@ -1,21 +1,30 @@
 import { useState } from "react";
+import type { CombatantSide } from "@dnd/shared";
 import { useStartEncounter } from "./hooks";
 import type { Character } from "../characters/api";
 import type { NpcEnLaMesa } from "../bestiario/api";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 import { descriptorDePersonaje } from "../characters/descriptor";
+import { BANDOS } from "../../dominio/combate";
 
 // Tarea 2.5.6 — **entrar en combate es un momento, no una pantalla.**
 //
 // §5 del reseño lo dice así, y por eso esto es un botón en la mesa y un diálogo de una pregunta:
-// quiénes combaten. Nada más. **La iniciativa la tira el servidor** —el jugador manda a quién
-// representa, no un resultado (2.5.2)— y los PNJ idénticos se agrupan solos por su `statblockRef`,
-// que también decide el servidor: *«Tu GM hará una única tirada para todo un grupo de criaturas
-// idénticas»*.
+// quiénes combaten y de qué lado está cada uno. Los PNJ idénticos se agrupan solos por su
+// `statblockRef`, que decide el servidor: *«Tu GM hará una única tirada para todo un grupo de
+// criaturas idénticas»*.
 //
 // **Solo el DM.** No es esconder un botón: `EncountersService.start` exige DM, y esta pantalla
 // enseña lo que el servidor permite en vez de prometer lo que va a rechazar.
+//
+// Tarea 7 (2026-09-05, iniciativa y bando) — **el servidor ya no tira la iniciativa: cada jugador
+// tira la suya.** Este diálogo decía lo contrario desde que se escribió, y hoy además manda el
+// bando: `startEncounterSchema` acepta `sides` desde el plan 02 y lo rechaza si trae una clave que
+// no combate (`packages/shared/src/encounter.schema.ts`). El bando de cada uno es una propuesta
+// visible y editable, sembrada por dónde vive cada candidato — el grupo entra aliado, los PNJ de
+// la mesa entran enemigos — nunca un valor oculto: el servidor no puede adivinarlo (no hay dato del
+// que deducirlo) y por eso lo dice quien empieza el encuentro.
 
 export function EmpezarCombate({
   campaignId,
@@ -86,16 +95,56 @@ function DialogoDeCombate({
   onClose: () => void;
 }) {
   const empezar = useStartEncounter(campaignId, sessionId);
+
+  // **Todos los candidatos, no solo los personajes**: la propuesta de bando (paso siguiente) se
+  // siembra para el grupo Y para los PNJ, así que hace falta la lista entera desde el principio.
+  const candidatos = [
+    ...personajes.map((c) => ({ id: c.id, esDelGrupo: true })),
+    ...pnjs.map((p) => ({ id: p.id, esDelGrupo: false })),
+  ];
+
   const [elegidos, setElegidos] = useState<string[]>([]);
+
+  // **Una propuesta rellenada y visible, no un valor oculto.** El grupo suele ser aliado y los PNJ
+  // de la mesa enemigos; el DM lo ve marcado y lo cambia de un clic. El servidor sigue sin
+  // adivinar nada: `encounter.schema.ts` dice que no puede, y no puede.
+  const [bandos, setBandos] = useState<Record<string, CombatantSide>>(() =>
+    Object.fromEntries(candidatos.map((c) => [c.id, c.esDelGrupo ? "ALLY" : "ENEMY"])),
+  );
 
   const alternar = (id: string) =>
     setElegidos((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
+  const cambiarBando = (id: string, side: CombatantSide) =>
+    setBandos((prev) => ({ ...prev, [id]: side }));
+
+  const filaDeBando = (id: string) => (
+    <div className="mt-1 flex flex-wrap gap-x-s3 gap-y-1 pl-s2">
+      {BANDOS.map((b) => (
+        <label
+          key={b.valor}
+          className="flex cursor-pointer items-center gap-1 font-chrome text-chrome-xs text-muted"
+        >
+          <input
+            type="radio"
+            name={`bando-${id}`}
+            value={b.valor}
+            checked={bandos[id] === b.valor}
+            onChange={() => cambiarBando(id, b.valor)}
+            className="accent-[var(--accent)]"
+          />
+          <span className="text-text">{b.nombre}</span>
+          <span>({b.explicacion})</span>
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <Dialog open onClose={onClose} title="Entrar en combate" size="lg">
       <p className="font-chrome text-chrome-sm text-muted">
-        Elige quién combate. La iniciativa la tira el servidor, y las criaturas idénticas actúan a
-        la vez con una sola tirada.
+        Elige quién combate y de qué lado está. Cada jugador tira la suya; tú tiras la de los tuyos.
+        Las criaturas idénticas actúan a la vez con una sola tirada.
       </p>
 
       {/* **Dos grupos, y separados a propósito.** Un PNJ es una fila de `Character` igual que un
@@ -123,6 +172,7 @@ function DialogoDeCombate({
                 {descriptorDePersonaje(c)}
               </span>
             </label>
+            {filaDeBando(c.id)}
           </li>
         ))}
         {pnjs.length > 0 && (
@@ -144,6 +194,7 @@ function DialogoDeCombate({
                 {p.currentHp === null ? "sin PG anotados" : `${p.currentHp} PG`}
               </span>
             </label>
+            {filaDeBando(p.id)}
           </li>
         ))}
       </ul>
@@ -158,7 +209,7 @@ function DialogoDeCombate({
         <span className="font-chrome text-chrome-xs text-muted">
           {elegidos.length === 0
             ? "Nadie elegido todavía"
-            : `${elegidos.length} ${elegidos.length === 1 ? "combatiente" : "combatientes"}`}
+            : `${elegidos.length} ${elegidos.length === 1 ? "tirará" : "tirarán"} su iniciativa`}
         </span>
         <span className="flex gap-s3">
           <Button type="button" variant="ghost" onClick={onClose}>
@@ -168,9 +219,17 @@ function DialogoDeCombate({
             type="button"
             variant="primary"
             disabled={elegidos.length === 0 || empezar.isPending}
-            onClick={() => empezar.mutate(elegidos, { onSuccess: onClose })}
+            onClick={() =>
+              empezar.mutate(
+                {
+                  characterIds: elegidos,
+                  sides: Object.fromEntries(elegidos.map((id) => [id, bandos[id] ?? "NEUTRAL"])),
+                },
+                { onSuccess: onClose },
+              )
+            }
           >
-            Tirar iniciativa
+            Pedir iniciativa
           </Button>
         </span>
       </div>

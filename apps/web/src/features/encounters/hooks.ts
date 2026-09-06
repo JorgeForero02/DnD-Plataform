@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { StartEncounterInput } from "@dnd/shared";
 import * as encountersApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
@@ -37,8 +38,8 @@ function useInvalidar(campaignId: string, sessionId: string | undefined) {
 export function useStartEncounter(campaignId: string, sessionId: string | undefined) {
   const invalidar = useInvalidar(campaignId, sessionId);
   return useMutation({
-    mutationFn: (characterIds: string[]) =>
-      encountersApi.startEncounter(campaignId, sessionId!, { characterIds }),
+    mutationFn: (input: StartEncounterInput) =>
+      encountersApi.startEncounter(campaignId, sessionId!, input),
     onSuccess: invalidar,
   });
 }

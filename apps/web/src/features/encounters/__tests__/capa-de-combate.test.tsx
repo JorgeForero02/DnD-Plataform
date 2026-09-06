@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
 import { TiraDeIniciativa } from "../TiraDeIniciativa";
-import { EmpezarCombate } from "../EmpezarCombate";
 import * as encountersApi from "../api";
 import type { Character } from "../../characters/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
@@ -187,86 +186,10 @@ describe("quién puede tocar el combate", () => {
   });
 });
 
-describe("entrar en combate", () => {
-  function montarEmpezar(personajes: Character[] = [THORA, GOBLIN_A], pnjs: NpcEnLaMesa[] = []) {
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(
-      <QueryClientProvider client={qc}>
-        <MemoryRouter>
-          <EmpezarCombate campaignId="c1" sessionId="s1" personajes={personajes} pnjs={pnjs} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-  }
-
-  it("manda a quién representa cada uno, y ningún número: la iniciativa la tira el servidor", async () => {
-    const espia = vi.spyOn(encountersApi, "startEncounter").mockResolvedValue(ENCUENTRO);
-    montarEmpezar();
-
-    fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
-    const dialogo = await screen.findByRole("dialog");
-    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Thora Piedrahonda/ }));
-    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Goblin/ }));
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Tirar iniciativa" }));
-
-    await waitFor(() =>
-      expect(espia).toHaveBeenCalledWith("c1", "s1", { characterIds: ["p-thora", "g1"] }),
-    );
-  });
-
-  it("sin nadie elegido no se puede tirar: un combate de cero combatientes no existe", async () => {
-    montarEmpezar();
-
-    fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
-    const dialogo = await screen.findByRole("dialog");
-    expect(within(dialogo).getByRole("button", { name: "Tirar iniciativa" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
-    expect(within(dialogo).getByText("Nadie elegido todavía")).toBeInTheDocument();
-  });
-
-  it("sin ningún personaje en la campaña se dice por qué, en texto que se puede leer", () => {
-    // **No un botón deshabilitado con el motivo en un `title`**: un botón deshabilitado no recibe
-    // foco, así que ese tooltip no lo alcanza nadie con teclado ni con lector de pantalla. La
-    // versión anterior lo hacía así y esta prueba afirmaba sobre algo que el usuario no percibe.
-    montarEmpezar([]);
-    expect(screen.queryByRole("button", { name: "Entrar en combate" })).not.toBeInTheDocument();
-    expect(
-      screen.getByText("No hay ningún personaje en esta campaña con el que combatir."),
-    ).toBeInTheDocument();
-  });
-
-  // --- Lo que encontró un paseo de uso sobre la campaña de demostración, no una prueba ---
-
-  it("ofrece también los PNJ de la mesa, en su propio grupo", async () => {
-    const espia = vi.spyOn(encountersApi, "startEncounter").mockResolvedValue(ENCUENTRO);
-    montarEmpezar([THORA], [KLARG]);
-
-    fireEvent.click(screen.getByRole("button", { name: "Entrar en combate" }));
-    const dialogo = await screen.findByRole("dialog");
-    expect(within(dialogo).getByText("El grupo")).toBeInTheDocument();
-    expect(within(dialogo).getByText("PNJ en la mesa")).toBeInTheDocument();
-
-    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Thora/ }));
-    fireEvent.click(within(dialogo).getByRole("checkbox", { name: /Klarg/ }));
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Tirar iniciativa" }));
-
-    // **Un PNJ entra al combate por su id de personaje**, igual que cualquiera: es una fila de
-    // `Character`, y esa decisión es la que hace barata toda la fase 2D.
-    await waitFor(() =>
-      expect(espia).toHaveBeenCalledWith("c1", "s1", { characterIds: ["p-thora", "npc-klarg"] }),
-    );
-  });
-
-  it("sin personajes pero CON un PNJ, el combate sigue siendo posible", async () => {
-    montarEmpezar([], [KLARG]);
-    expect(
-      screen.queryByText("No hay ningún personaje en esta campaña con el que combatir."),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Entrar en combate" })).toBeInTheDocument();
-  });
-});
+// El bloque «entrar en combate» (el diálogo `EmpezarCombate`) se mudó entero a
+// `EmpezarCombate.test.tsx` en la tarea 7 (2026-09-05, iniciativa y bando): esa tarea le cambia
+// el botón, el texto de cabecera y la forma del `POST` (ahora manda `sides`), así que sus pruebas
+// viven junto al componente que describen en vez de aquí, que es sobre la tira de turnos.
 
 describe("el nombre de un PNJ en el orden de turnos", () => {
   it("se lee, en vez de «Alguien»", () => {

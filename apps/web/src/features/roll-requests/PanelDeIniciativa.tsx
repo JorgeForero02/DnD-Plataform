@@ -79,7 +79,14 @@ export function PanelDeIniciativa({
   const clave = claveTraducida === peticion.label ? null : claveTraducida;
 
   return (
-    <section aria-labelledby={idTitulo} className="mb-s5">
+    <section
+      aria-labelledby={idTitulo}
+      className="mb-s5"
+      // Tarea 11 (2026-09-05, iniciativa-y-bando) — el ancla del e2e que mide este panel a
+      // 390 px con `boundingBox`: `jsdom` no maqueta, así que sin un navegador de verdad esta
+      // anchura nunca se había comprobado.
+      data-testid="panel-de-iniciativa"
+    >
       <Panel className="max-w-[24rem] border-warning">
         <div className="flex items-center gap-s2">
           <IconoEspada className="h-6 w-6 text-warning-text" />

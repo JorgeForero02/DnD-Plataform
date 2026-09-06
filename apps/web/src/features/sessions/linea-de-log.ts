@@ -243,6 +243,11 @@ export function lineaDeLog(p: GameEventPayload): string {
       // **El vocabulario en español se escribe una sola vez**, en `dominio/combate.ts`: ningún
       // valor de enumeración llega a la pantalla, ni siquiera dentro de una frase de registro.
       return `El DM corrige un bando: de ${NOMBRE_BANDO[p.from as CombatantSide] ?? p.from} a ${NOMBRE_BANDO[p.to as CombatantSide] ?? p.to}`;
+    case "ENCOUNTER_CANCELLED":
+      // **Se dice que se canceló, no que «no llegó a empezar»**: quien lee esto puede tener una
+      // petición de iniciativa que acaba de desaparecerle de la bandeja, y esta línea es su
+      // explicación.
+      return "El DM cancela el combate antes de empezar";
     case "ACTIVE_TURN_SHIFTED":
       // **Sin nombres**, por lo mismo que `TURN_ADVANCED`: el suceso no los trae, y quien lee
       // puede no poder ver al combatiente del que se habla.

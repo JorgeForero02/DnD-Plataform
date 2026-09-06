@@ -102,6 +102,9 @@ enum GameEventType {
   // este enum se ANADE, nunca se edita ni se borra.
   COMBATANT_SIDE_CHANGED
   ACTIVE_TURN_SHIFTED
+  // Paso 1, tarea 19 (D-A-3, 2026-09-06): cancelar un combate avisa a quien esperaba. El sujeto
+  // es la SESION y no el encuentro, que ya no existe para serlo.
+  ENCOUNTER_CANCELLED
 }
 
 enum ResourceReset {

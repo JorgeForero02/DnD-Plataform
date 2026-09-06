@@ -48,6 +48,14 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 19 · cancelar un combate no avisaba a quien estaba esperando** (D-A-3). `cancel` borraba
+  el encuentro y sus peticiones **sin escribir nada**, a propósito —«no es historia, es un clic
+  deshecho»—, y el coste era que a quien tenía una petición pendiente **le desaparecía la entrada
+  de la bandeja sin explicación**. El autor revisó esa decisión. El sujeto del suceso es la
+  **sesión** y no el encuentro, que ya no existe para serlo, y no lleva `encounterId`: sería una
+  referencia a una fila borrada. **E-IB-18 se tacha en `decisiones.md` y se dice quién la revisó**,
+  no se borra. **Cómo se revierte:** el commit.
+
 - **Tarea 16 · corregir el bando no viajaba por el canal en vivo.** `setSide` cambiaba el lado
   **sin escribir ningún suceso**, y el reajuste de `activePosition` que hace `setInitiative`
   cambiaba de combatiente el turno activo sin decir nada: una segunda pestaña seguía señalando a

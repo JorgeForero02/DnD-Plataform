@@ -5,6 +5,7 @@ import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { EncountersService } from "../src/encounters/encounters.service";
+import { GameEventsService } from "../src/game-events/game-events.service";
 import { RollRequestsService } from "../src/roll-requests/roll-requests.service";
 
 // Tarea 4 (2026-09-05) contra Postgres real.
@@ -19,6 +20,7 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
   let app: NestFastifyApplication;
   let prisma: PrismaService;
   let service: EncountersService;
+  let eventos: GameEventsService;
   let rollRequests: RollRequestsService;
   const emailDM = `dm-ifz${Date.now()}@b.com`;
   let tokenDM = "";
@@ -146,6 +148,7 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
     prisma = app.get(PrismaService);
     service = app.get(EncountersService);
     rollRequests = app.get(RollRequestsService);
+    eventos = app.get(GameEventsService);
 
     const dm = await request(s())
       .post("/auth/register")
@@ -232,6 +235,36 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
 
     expect(await prisma.encounter.findUnique({ where: { id: encuentro.id } })).toBeNull();
     expect(await prisma.rollRequest.count({ where: { encounterId: encuentro.id } })).toBe(0);
+  });
+
+  it("cancelar deja un suceso de SESIÓN, no de encuentro (paso 1, tarea 19 · D-A-3)", async () => {
+    // **El sujeto no puede ser el encuentro: ya no existe para serlo.** Y el suceso no lleva
+    // `encounterId`, que sería una referencia a una fila borrada.
+    const { sessionId, encuentro } = await empezarConDosJugadores();
+    await service.cancel(dmId, campaignId, sessionId, encuentro.id);
+
+    const suceso = await prisma.gameEvent.findFirst({
+      where: { type: "ENCOUNTER_CANCELLED", campaignId },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(suceso).not.toBeNull();
+    expect(suceso!.subjectType).toBe("session");
+    expect(suceso!.subjectId).toBe(sessionId);
+    // **`PLAYERS`**: si fuera del DM, el aviso no llegaría a quien esperaba, que es todo el
+    // motivo por el que el autor corrigió E-IB-18.
+    expect(suceso!.visibility).toBe("PLAYERS");
+  });
+
+  it("y el jugador que esperaba lo VE en su registro", async () => {
+    // La otra mitad: que el suceso exista no sirve si quien tenía la petición pendiente no lo ve.
+    const { sessionId, encuentro } = await empezarConDosJugadores();
+    const antes = await eventos.list(jugadoraId, campaignId, { limit: 50 });
+    await service.cancel(dmId, campaignId, sessionId, encuentro.id);
+    const despues = await eventos.list(jugadoraId, campaignId, { limit: 50 });
+
+    const nuevos = despues.events.length - antes.events.length;
+    expect(nuevos).toBeGreaterThan(0);
+    expect(despues.events.some((e) => e.type === "ENCOUNTER_CANCELLED")).toBe(true);
   });
 
   /**

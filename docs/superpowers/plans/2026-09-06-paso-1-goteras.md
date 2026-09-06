@@ -1544,4 +1544,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 8a · De dónde salen las resistencias de un PJ | ✅ | `4713c7c` | `kind: "damageModifier"`, enano y tiefling del SRD, y `resolve` las agrega — **sin tocar un punto de golpe** |
 | 8b · `changeHp` las aplica | ✅ | `3bf2ed9` | Ficha tachada y archivada; la prueba que afirmaba lo contrario **se corrige, no se borra** |
 | 9 · El descanso mueve el reloj | ✅ | `f38c8bb` | D-A-1 comprobada en `04-convenciones.md` antes de tocar nada; largo 8 h, corto 1 h |
-| 16 · El bando corregido viaja por el canal | ✅ | el de abajo | Dos tipos nuevos, el `record` en la misma transacción, y su línea en español; ficha archivada |
+| 16 · El bando corregido viaja por el canal | ✅ | `87df552` | Dos tipos nuevos, el `record` en la misma transacción, y su línea en español; ficha archivada |
+| 19 · Cancelar un combate avisa | ✅ | el de abajo | Sujeto **sesión**, sin `encounterId`; **E-IB-18 tachada y explicada**, no borrada |

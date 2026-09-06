@@ -284,3 +284,49 @@ canal en vivo del combate. Lo que hoy cuesta, mientras tanto:
 casos y lo escriban — no antes, porque decidirlo sin la pantalla delante sería adivinar el vocabulario.
 
 </details>
+
+
+---
+
+## ~~P2-cancelar · `EncountersService.cancel` borra la petición del jugador sin decírselo~~ — **CERRADA el 2026-09-06** (paso 1, tarea 19 · D-A-3)
+
+**Cerrada corrigiendo una decisión, no ejecutando una pendiente.** E-IB-18 decía que cancelar no
+escribe suceso —«no es historia, es un clic deshecho»— y **el autor la revisó**: *«pese a que no
+queda trazabilidad, puede descolocar a un jugador»*. El motivo del cambio es el jugador y no el
+historial: a quien tenía una petición pendiente le desaparecía la entrada de la bandeja sin
+explicación.
+
+**La trampa de diseño que la ficha ya dejaba resuelta**, y que se respeta: el sujeto **no puede ser
+el encuentro** —ya no existe para serlo—, así que es la **sesión**, y el suceso **no lleva
+`encounterId`**, que sería una referencia a una fila borrada. El `record` va dentro de la misma
+transacción que el borrado.
+
+Probado en `apps/api/test/iniciativa-forzada.e2e-spec.ts`: el suceso es de sesión, es `PLAYERS`, y
+**la jugadora que esperaba lo ve en su registro**. Mutación: quitar el `record` pone rojas las dos.
+**E-IB-18 no se borra de `docs/decisiones.md`**: se tacha y se dice quién la revisó y por qué.
+
+<details><summary>Lo que decía la ficha (2026-09-05)</summary>
+
+**Decisión del autor, no un hueco a rellenar sin más.** `cancel()` borra el `Encounter` y sus
+`RollRequest` (`apps/api/src/encounters/encounters.service.ts:1051`, método `cancel`, cita
+comprobada en `04b6e2b` — el fichero se ha reescrito varias veces y el número se mueve) sin
+escribir ningún suceso — a propósito: «no es historia, es un clic deshecho», y un suceso con
+`subjectType: "encounter"` sobre un sujeto que acaba de desaparecer sería justo la historia que
+esa decisión dice que no se guarda.
+
+**El coste que deja, y por qué queda anotado igual.** Un jugador con una petición de iniciativa
+pendiente ve desaparecer esa entrada de su bandeja sin ninguna explicación — no hay 409, no hay
+suceso, no hay nada: la fila simplemente deja de estar. Es exactamente el mismo silencio que
+`cancel` elige a propósito para el registro de la mesa, pero visto desde la pantalla del jugador
+en vez de desde el historial.
+
+**Si el autor decide algún día que hace falta avisar,** el sujeto del suceso no puede ser el
+encuentro —ya no existe para serlo—: tendría que ser la **sesión** (`subjectType: "session"`),
+con un tipo nuevo declarado en `packages/shared/src/game-event.schema.ts` (algo como
+`ENCOUNTER_CANCELLED`, sin ligar a ningún `Encounter` porque para cuando alguien lo lea ya no
+habrá ninguno que enlazar).
+
+**Cierra cuando** el autor decida que el silencio le cuesta más de lo que ahorra, y alguien
+implemente ese suceso de sesión.
+
+</details>

@@ -45,6 +45,8 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "SESSION_CLOSED":
     case "ENCOUNTER_STARTED":
     case "ENCOUNTER_ENDED":
+    case "ENCOUNTER_CANCELLED":
+      // Cancelar es el otro extremo de empezar: un sello de la sesión, no una línea de sistema.
       return "sello";
 
     // Comentar una ficha (Ola 3) entra aqui y no con los de persona: es el mundo hablando,

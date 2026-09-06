@@ -1133,6 +1133,29 @@ export class EncountersService {
       if (borrado.count === 0) {
         throw new ConflictException("Ese combate ya empezó: no se puede cancelar, se termina.");
       }
+
+      // **Y ahora avisa** (D-A-3, decisión del autor del 2026-09-06, que corrige E-IB-18).
+      //
+      // Aquí no se escribía nada a propósito —«no es historia, es un clic deshecho»— y el coste
+      // quedó anotado: a quien tenía una petición de iniciativa pendiente **le desaparecía la
+      // entrada de la bandeja sin explicación**. El motivo del cambio es el jugador, no el
+      // historial.
+      //
+      // **El sujeto es la SESIÓN y no el encuentro**, que ya no existe para serlo, y el suceso no
+      // lleva `encounterId`: sería una referencia a una fila borrada. Va **dentro de la misma
+      // transacción** que el borrado: si el borrado se deshace, el aviso no puede quedarse.
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          sessionId,
+          subjectType: "session",
+          subjectId: sessionId,
+          visibility: "PLAYERS",
+          payload: { type: "ENCOUNTER_CANCELLED" },
+        },
+        tx,
+      );
     });
   }
 }

@@ -103,6 +103,8 @@ export const GAME_EVENT_TYPES = [
   // nada, así que una segunda pestaña no se enteraba hasta refrescar.
   "COMBATANT_SIDE_CHANGED",
   "ACTIVE_TURN_SHIFTED",
+  // Paso 1, tarea 19 — **cancelar un combate avisa a quien estaba esperando** (D-A-3).
+  "ENCOUNTER_CANCELLED",
   // Archivar un personaje en vez de borrarlo (2.5.8, ficha M9). **Dos tipos y no uno con una
   // bandera**: la línea de tiempo cuenta "qué pasó", y "se archivó" y "se recuperó" son dos
   // hechos distintos con su propio momento, igual que CONDITION_APPLIED/CONDITION_REMOVED.
@@ -495,6 +497,20 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
    * encuentro ya filtra por `canView`, así que nombrar al combatiente anunciaría uno que quien
    * lee puede no poder ver. Es la misma razón por la que `TURN_ADVANCED` viaja sin posiciones.
    */
+  /**
+   * **El sujeto es la SESIÓN, no el encuentro**, y no es un detalle: para cuando alguien lea este
+   * suceso el `Encounter` ya no existe, así que no hay nada que enlazar. Tampoco lleva
+   * `encounterId`: sería una referencia a una fila borrada.
+   *
+   * **Corrige la decisión E-IB-18** —«cancelar no escribe suceso: no es historia, es un clic
+   * deshecho»—, revisada por el autor el 2026-09-06 (D-A-3): *«pese a que no queda trazabilidad,
+   * puede descolocar a un jugador»*. El motivo del cambio es el jugador y no el historial: a quien
+   * tenía una petición pendiente **le desaparecía la entrada de la bandeja sin explicación**.
+   */
+  z.object({
+    type: z.literal("ENCOUNTER_CANCELLED"),
+  }),
+
   z.object({
     type: z.literal("COMBATANT_SIDE_CHANGED"),
     encounterId: z.string().min(1).max(60),

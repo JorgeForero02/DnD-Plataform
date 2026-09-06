@@ -192,30 +192,6 @@ siguiente que vea un P2025 en un e2e concurrente no vuelva a perseguir un fantas
 que alguien reproduzca un 500 real **contra un servidor con `app.listen()`**, dentro o fuera de
 un test — eso sí sería un caso nuevo, no este.
 
-## P2-cancelar · `EncountersService.cancel` borra la petición del jugador sin decírselo (2026-09-05, ronda de arreglo 1 de la tarea 4)
-
-**Decisión del autor, no un hueco a rellenar sin más.** `cancel()` borra el `Encounter` y sus
-`RollRequest` (`apps/api/src/encounters/encounters.service.ts:1051`, método `cancel`, cita
-comprobada en `04b6e2b` — el fichero se ha reescrito varias veces y el número se mueve) sin
-escribir ningún suceso — a propósito: «no es historia, es un clic deshecho», y un suceso con
-`subjectType: "encounter"` sobre un sujeto que acaba de desaparecer sería justo la historia que
-esa decisión dice que no se guarda.
-
-**El coste que deja, y por qué queda anotado igual.** Un jugador con una petición de iniciativa
-pendiente ve desaparecer esa entrada de su bandeja sin ninguna explicación — no hay 409, no hay
-suceso, no hay nada: la fila simplemente deja de estar. Es exactamente el mismo silencio que
-`cancel` elige a propósito para el registro de la mesa, pero visto desde la pantalla del jugador
-en vez de desde el historial.
-
-**Si el autor decide algún día que hace falta avisar,** el sujeto del suceso no puede ser el
-encuentro —ya no existe para serlo—: tendría que ser la **sesión** (`subjectType: "session"`),
-con un tipo nuevo declarado en `packages/shared/src/game-event.schema.ts` (algo como
-`ENCOUNTER_CANCELLED`, sin ligar a ningún `Encounter` porque para cuando alguien lo lea ya no
-habrá ninguno que enlazar).
-
-**Cierra cuando** el autor decida que el silencio le cuesta más de lo que ahorra, y alguien
-implemente ese suceso de sesión.
-
 ## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando

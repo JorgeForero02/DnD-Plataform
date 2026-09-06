@@ -73,6 +73,7 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   // Sentarse a la mesa es de la campana: ni mundo ni personaje.
   MEMBER_JOINED: "sistema",
   COMBATANT_SIDE_CHANGED: "sistema",
+  ENCOUNTER_CANCELLED: "sello",
   ACTIVE_TURN_SHIFTED: "sistema",
 };
 
@@ -88,15 +89,16 @@ function soloElTipo(type: GameEventType): GameEventPayload {
 describe("de un suceso del registro a un tipo de mensaje", () => {
   // La red contra el `default` «para que compile»: se recorre la fuente única de tipos, no una
   // lista copiada aquí. Un tipo nuevo en `GAME_EVENT_TYPES` sin decisión pone esto rojo.
-  it("clasifica los 45 tipos de suceso, sin dejarse ninguno", () => {
+  it("clasifica los 46 tipos de suceso, sin dejarse ninguno", () => {
     // 40 desde el 2026-09-06: `ENTITY_RETYPED` (I16), `RESOURCE_GIVEN` (I8), `DM_EXECUTED` (I19) y
     // `MEMBER_ROLE_CHANGED` (D2), 42 con los dos de los modificadores temporales (M8), 43 con
     // `INITIATIVE_ROLLED_BY_SYSTEM` (2026-09-05: la iniciativa y el bando) y **45 con los dos del
     // paso 1, tarea 16** —`COMBATANT_SIDE_CHANGED` y `ACTIVE_TURN_SHIFTED`—, que son los dos
-    // reajustes que cambiaban la mesa sin escribir nada.
+    // reajustes que cambiaban la mesa sin escribir nada, y **46 con `ENCOUNTER_CANCELLED`**
+    // (tarea 19, D-A-3): cancelar un combate avisa a quien esperaba.
     // El número está escrito a propósito — si
     // alguien añade un tipo y no lo clasifica, esta cuenta lo dice antes que el `switch`.
-    expect(GAME_EVENT_TYPES).toHaveLength(45);
+    expect(GAME_EVENT_TYPES).toHaveLength(46);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

@@ -39,6 +39,20 @@ export interface RollRequestRow {
    * percepción abierta en otra sesión habría contado como alguien sin tirar iniciativa.
    */
   encounterId: string | null;
+  /**
+   * Ronda de arreglo 1 (tarea 9) — el modificador con el que se va a tirar, **calculado por el
+   * servidor** (`RollRequestsService.list`, la misma función privada que usa `answer()` para
+   * tirar de verdad). `null` cuando la hoja de ese personaje no deriva —le faltan características,
+   * raza o clase— y también en cualquier petición ya respondida, que no tiene «antes de tirar» que
+   * enseñar.
+   *
+   * **Opcional y no obligatorio**, aunque el servidor lo manda siempre desde esta ronda: hay
+   * fixtures de otras pantallas (`features/encounters`, `features/game-clock`) que construyen un
+   * `RollRequestRow` a mano y son de otro carril de trabajo en este mismo árbol — declararlo
+   * obligatorio les rompería el tipo sin tocar una sola línea suya. `undefined` se trata igual que
+   * `null`: sin número.
+   */
+  modifier?: number | null;
 }
 
 export function fetchRollRequests(

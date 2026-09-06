@@ -93,10 +93,27 @@ export class RollRequestsService {
    *
    * **Pendientes por defecto**, que es lo que sondea una pantalla: pedirlo todo cada treinta
    * segundos para descartar en el cliente lo respondido es tráfico que crece con la partida.
+   *
+   * **Ronda de arreglo 1 (tarea 9) — cada fila pendiente trae ya su `modifier`.** El panel del
+   * jugador tiene que enseñar con qué va a tirar **antes** de tirar, y ese número no se puede
+   * inventar en el navegador: es una regla del juego (subir de nivel, ponerse una armadura, una
+   * condición) y las reglas viven en el servidor. Se calcula con `modificadorDeLaHoja`, **la misma
+   * función privada que ya usa `answer()` de más abajo** para tirar de verdad — no una segunda
+   * fórmula que se pudiera desincronizar de la primera.
+   *
+   * **Solo para las pendientes**: una petición ya respondida no tiene «antes de tirar» que
+   * enseñar, y recalcular su hoja de hoy diría un número que no es el que salió entonces.
+   *
+   * **Y nunca revienta el listado.** Una hoja que no deriva —faltan características, raza o
+   * clase— es un 400 al responder (`modificadorDeLaHoja` lo dice con esas palabras), pero el
+   * listado no es responder: si una fila no se puede calcular, esa fila manda `null` y las demás
+   * siguen. Quien no debería ver esa petición no la ve ni con modificador ni sin él: `findMany` ya
+   * filtró por dueño o por DM antes de llegar aquí, así que `modificadorDeLaHoja` se llama con el
+   * mismo `userId` que pidió el listado y no puede leer una hoja ajena.
    */
   async list(userId: string, campaignId: string, query: ListRollRequestsInput) {
     const miembro = await this.membership.requireMember(campaignId, userId);
-    return this.prisma.rollRequest.findMany({
+    const filas = await this.prisma.rollRequest.findMany({
       where: {
         campaignId,
         ...(miembro.role === "DM" ? {} : { character: { ownerId: userId } }),
@@ -105,6 +122,35 @@ export class RollRequestsService {
       orderBy: { createdAt: "desc" },
       take: 50,
     });
+    return Promise.all(
+      filas.map(async (fila) => ({
+        ...fila,
+        modifier:
+          fila.resolvedAt === null
+            ? await this.modificadorSeguro(userId, campaignId, fila.characterId, fila.key)
+            : null,
+      })),
+    );
+  }
+
+  /**
+   * `modificadorDeLaHoja`, pero para un listado: una hoja que no deriva no puede tirar abajo toda
+   * la lista de peticiones. `NotFoundException` entra en el mismo `catch` que `BadRequestException`
+   * porque la ausencia de visibilidad (`CharacterSheetService.getSheet` → `canSee`) es, para este
+   * propósito, la misma respuesta que «no se pudo calcular»: sin número, no un 404 a media lista.
+   */
+  private async modificadorSeguro(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    key: string,
+  ): Promise<number | null> {
+    try {
+      return await this.modificadorDeLaHoja(userId, campaignId, characterId, key);
+    } catch (error) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException) return null;
+      throw error;
+    }
   }
 
   /**

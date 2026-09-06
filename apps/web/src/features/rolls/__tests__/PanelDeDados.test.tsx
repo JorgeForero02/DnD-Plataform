@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { PanelDeDados } from "../PanelDeDados";
 import * as rollsApi from "../api";
 import type { FilaDeTirada, PaginaDeTiradas } from "../api";
+import * as rollRequestsApi from "../../roll-requests/api";
 import { ApiError } from "../../../lib/api";
 
 // Tarea 2C.2 — la pantalla de dados. Se prueba **lo que puede romperse en silencio**:
@@ -40,6 +41,13 @@ function pintar(qc = nuevoQc()) {
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(rollsApi, "fetchRolls").mockResolvedValue(REGISTRO_VACIO);
+  // `PanelDeDados` monta `TiradasPendientes` por dentro (comentario de arriba en aquel fichero:
+  // «arriba del todo de la pantalla de dados»). Sin este mock, la petición real fallaba en
+  // silencio y antes de la ronda de arreglo 1 no se notaba —el error se tragaba con un `return
+  // null`—; desde que ese error se dice con un `role="alert"` (I-2), un `fetchRollRequests` sin
+  // mockear aquí pintaba un segundo aviso que chocaba con el `findByRole("alert")` de la prueba
+  // del 400. Sin peticiones es exactamente lo que esta pantalla necesita: ninguna caja.
+  vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([]);
 });
 
 describe("PanelDeDados — tirar", () => {

@@ -12,6 +12,7 @@ import * as charactersApi from "../../characters/api";
 import * as sheetApi from "../../character-sheet/api";
 import * as entitiesHooks from "../../entities/hooks";
 import * as rollRequestsApi from "../../roll-requests/api";
+import type { RollRequestRow } from "../../roll-requests/api";
 import { useAuthStore } from "../../../store/auth.store";
 
 // La mesa adoptada de la maqueta. Lo que se prueba aquí es lo que la pantalla **hace**, no cómo
@@ -435,7 +436,12 @@ describe("las peticiones de tirada se ven desde la mesa", () => {
   // el DM pedía una tirada y el jugador no se enteraba. Es provisional hasta el rediseño, pero
   // mientras exista tiene que estar probado: sin este caso, quitarlo de la mesa vuelve a dejar la
   // función invisible sin que nada se ponga rojo.
-  const PETICION = {
+  // Ronda de arreglo 1 (I-5) — `encounterId: null` explícito, no ausente. El contrato del
+  // servidor es `null`: `schema.prisma` lo declara opcional pero `RollRequestsService.list` hace
+  // un `findMany` sin `select`, así que el campo viaja siempre, en toda petición, desde antes de
+  // que este tipo lo declarara. Omitirlo aquí era la fixture mintiendo sobre lo que el servidor
+  // manda, tapado con `as never` — justo lo que `RollRequestRow` declara para que no compile.
+  const PETICION: RollRequestRow = {
     id: "req-1",
     campaignId: "c1",
     characterId: "p-corvin",
@@ -448,10 +454,11 @@ describe("las peticiones de tirada se ven desde la mesa", () => {
     createdAt: "2026-09-02T21:00:00.000Z",
     resolvedAt: null,
     resolvedEventId: null,
+    encounterId: null,
   };
 
   it("la petición pendiente aparece en la mesa, con su botón de tirar", async () => {
-    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PETICION] as never);
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PETICION]);
 
     montar("u-ana");
 
@@ -476,7 +483,7 @@ describe("las peticiones de tirada se ven desde la mesa", () => {
     // sondeando en paralelo**: dos consultas serían dos intervalos de quince segundos y el doble
     // de carga sobre el servidor para siempre. Con una sola clave hay un solo intervalo.
     // En la aplicación real ni siquiera coinciden: las pestañas solo pintan la activa.
-    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PETICION] as never);
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PETICION]);
 
     useAuthStore.setState({ user: { id: "u-ana", email: "x@y.z", displayName: "Yo" } as never });
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

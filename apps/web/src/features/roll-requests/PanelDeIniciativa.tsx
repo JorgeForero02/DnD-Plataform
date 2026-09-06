@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Button, Panel } from "../../ui";
 import { IconoEspada } from "../../ui/Iconos";
 import { DadoDibujado } from "../rolls/DadoDibujado";
@@ -17,14 +18,20 @@ import { nombreDeClave } from "./vocabulario";
 // `RollRequestRow.encounterId`), y `TiradasPendientes` es quien decide, mirando ese campo, cuál de
 // las dos pintar.
 //
-// **El modificador que pide el brief no se pinta.** El brief pide enseñarlo antes de tirar, y eso
-// exige que lo mande el servidor — recalcularlo en el navegador sería reinventar la derivación de
-// la hoja (`apps/api/src/rules/`) por triplicado, y la primera vez que el motor cambiara una
-// fórmula, esta pantalla mentiría con un número que parece de fiar. Se comprobó qué devuelve de
-// verdad `GET .../roll-requests` (`features/roll-requests/api.ts`, `RollRequestRow`): trae `key`,
-// `dc`, `mode` y `audience`, no un modificador. Así que aquí se enseña lo que sí llega — la
-// prueba del servidor, no un número inventado — y el hueco queda anotado en el informe de esta
-// tarea para quien decida si merece la pena que el servidor lo mande.
+// **El modificador (ronda de arreglo 1) ahora sí viaja, y lo manda el servidor.** La primera
+// versión de este panel no lo enseñaba: `RollRequestRow` no lo declaraba y recalcularlo aquí
+// habría sido reinventar la derivación de la hoja (`apps/api/src/rules/`) por triplicado. La
+// corrección no fue inventarlo en el navegador — sigue sin serlo — sino que
+// `RollRequestsService.list` lo calcula con **la misma función privada que ya usa `answer()`**
+// para tirar de verdad (`modificadorDeLaHoja`), así que el número que se ve antes de tirar es el
+// mismo que se va a usar al tirar. Puede llegar `null` —una hoja que no deriva (personaje
+// incompleto) no puede dar un modificador— y entonces este panel no enseña ningún número: nunca
+// uno inventado.
+const formatoModificador = (n: number): string => {
+  if (n > 0) return `+${n}`;
+  if (n < 0) return `−${Math.abs(n)}`;
+  return "+0";
+};
 export interface PanelDeIniciativaProps {
   /** La petición de la que salió este panel. Su `encounterId` ya no nulo es lo que la trajo aquí. */
   peticion: RollRequestRow;
@@ -62,13 +69,24 @@ export function PanelDeIniciativa({
   const modo = modoDeTirada(peticion.mode);
   const idMotivoApagado = `tirando-iniciativa-${peticion.id}`;
   const motivoApagado = tirando ? idMotivoApagado : undefined;
+  const idTitulo = useId();
+
+  // **Ronda de arreglo 1 (C-1) — la clave se omite cuando repite el rótulo.** El servidor pide
+  // iniciativa con `key: "initiative"` y `label: "Iniciativa"` (`encounters.service.ts`): las dos
+  // se traducen a la misma palabra, así que sin este descarte el panel diría «Iniciativa» en el
+  // título y otra vez «Iniciativa» en el renglón de debajo, como si fueran dos datos distintos.
+  const claveTraducida = nombreDeClave(peticion.key);
+  const clave = claveTraducida === peticion.label ? null : claveTraducida;
 
   return (
-    <section aria-label="Empieza el combate" className="mb-s5">
+    <section aria-labelledby={idTitulo} className="mb-s5">
       <Panel className="max-w-[24rem] border-warning">
         <div className="flex items-center gap-s2">
           <IconoEspada className="h-6 w-6 text-warning-text" />
-          <h3 className="font-title text-chrome-lg uppercase tracking-wide text-warning-text">
+          <h3
+            id={idTitulo}
+            className="font-title text-chrome-lg uppercase tracking-wide text-warning-text"
+          >
             Empieza el combate
           </h3>
         </div>
@@ -80,7 +98,7 @@ export function PanelDeIniciativa({
 
         <p className="mt-0.5 font-chrome text-chrome-xs text-muted">
           {[
-            nombreDeClave(peticion.key),
+            clave,
             peticion.dc !== null ? `CD ${peticion.dc}` : null,
             // Ningún valor de enumeración llega a la pantalla: si el modo no es el normal, se
             // dice con la misma frase que ya traduce `features/rolls/vocabulario.ts` — la única
@@ -90,6 +108,15 @@ export function PanelDeIniciativa({
             .filter(Boolean)
             .join(" · ")}
         </p>
+
+        {/* **El modificador, antes de tirar** (ronda de arreglo 1, I-2): lo manda el servidor,
+            calculado con la misma hoja que va a usar la tirada de verdad. Sin él —hoja que no
+            deriva— no se pinta ningún número, ni se intenta adivinar. */}
+        {peticion.modifier != null && (
+          <p className="mt-1 font-data text-chrome-sm text-text">
+            {formatoModificador(peticion.modifier)}
+          </p>
+        )}
 
         <div className="mt-s3">
           <GastarInspiracion

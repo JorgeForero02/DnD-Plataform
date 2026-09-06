@@ -43,6 +43,13 @@ export const HABILIDADES: readonly OpcionDeTirada[] = (Object.keys(SKILLS) as Sk
  * `traducirLabelKey`: nunca devuelve la clave cruda como si fuera prosa.
  */
 export function nombreDeClave(key: string): string {
+  // **Ronda de arreglo 1 (tarea 9) — `initiative` no tiene punto.** Es la única clave derivada de
+  // la hoja que no sigue la forma `dominio.resto` (`rules/engine.ts`: `derived.initiative`), así
+  // que las tres expresiones regulares de abajo la dejaban caer hasta «Sin traducir: initiative»
+  // — y esa era exactamente la clave que manda el servidor al pedir iniciativa
+  // (`encounters.service.ts`), no una clave de prueba: se veía en el 100% de los combates.
+  if (key === "initiative") return "Iniciativa";
+
   const habilidad = /^skill\.(.+)$/.exec(key);
   if (habilidad && habilidad[1] in SKILLS) return NOMBRE_HABILIDAD[habilidad[1] as SkillKey];
 

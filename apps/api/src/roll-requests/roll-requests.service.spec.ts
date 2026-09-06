@@ -155,6 +155,54 @@ describe("RollRequestsService", () => {
       await service.list("jugador", "c1", { includeResolved: true });
       expect(prisma.rollRequest.findMany.mock.calls[0][0].where.resolvedAt).toBeUndefined();
     });
+
+    // Ronda de arreglo 1 (tarea 9) — el modificador de cada fila pendiente.
+    it("una fila pendiente trae su modificador, calculado con la misma hoja que usa `answer()`", async () => {
+      prisma.rollRequest.findMany.mockResolvedValue([
+        {
+          id: "rr1",
+          characterId: "ch1",
+          key: "skill.perception",
+          resolvedAt: null,
+        },
+      ]);
+      sheets.getSheet.mockResolvedValue(
+        hojaCon({ "skill.perception": { key: "skill.perception", total: 5, steps: [] } }),
+      );
+
+      const [fila] = await service.list("jugador", "c1", { includeResolved: false });
+
+      expect(fila.modifier).toBe(5);
+      expect(sheets.getSheet).toHaveBeenCalledWith("jugador", "c1", "ch1");
+    });
+
+    it("una hoja que no deriva manda `null`, y no revienta el resto del listado", async () => {
+      prisma.rollRequest.findMany.mockResolvedValue([
+        { id: "rr1", characterId: "ch1", key: "skill.perception", resolvedAt: null },
+        { id: "rr2", characterId: "ch2", key: "skill.perception", resolvedAt: null },
+      ]);
+      sheets.getSheet
+        .mockResolvedValueOnce({ sheet: null }) // ch1: le faltan características, raza o clase.
+        .mockResolvedValueOnce(
+          hojaCon({ "skill.perception": { key: "skill.perception", total: 3, steps: [] } }),
+        );
+
+      const filas = await service.list("jugador", "c1", { includeResolved: false });
+
+      expect(filas[0].modifier).toBeNull();
+      expect(filas[1].modifier).toBe(3);
+    });
+
+    it("una petición ya respondida no recalcula: su modificador es `null` sin tocar la hoja", async () => {
+      prisma.rollRequest.findMany.mockResolvedValue([
+        { id: "rr1", characterId: "ch1", key: "skill.perception", resolvedAt: new Date() },
+      ]);
+
+      const [fila] = await service.list("jugador", "c1", { includeResolved: true });
+
+      expect(fila.modifier).toBeNull();
+      expect(sheets.getSheet).not.toHaveBeenCalled();
+    });
   });
 
   describe("responder", () => {

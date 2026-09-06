@@ -39,6 +39,27 @@ const PENDIENTE: RollRequestRow = {
   encounterId: null,
 };
 
+// Ronda de arreglo 1 (C-1) — la clave real que manda el servidor al pedir iniciativa
+// (`encounters.service.ts`), no una clave inventada con forma de característica. Con
+// `save.dex`/`skill.perception` estas pruebas no habrían visto que `nombreDeClave` no conocía
+// `initiative` en absoluto.
+const DE_ENCUENTRO: RollRequestRow = {
+  id: "req-2",
+  campaignId: CAMPANA,
+  characterId: "ch-1",
+  requestedById: "dm1",
+  key: "initiative",
+  label: "Iniciativa",
+  dc: null,
+  mode: "NORMAL",
+  audience: "PUBLIC",
+  createdAt: "2026-01-01",
+  resolvedAt: null,
+  resolvedEventId: null,
+  encounterId: "enc-1",
+  modifier: 2,
+};
+
 const BRANN: Character = {
   id: "ch-1",
   campaignId: CAMPANA,
@@ -152,7 +173,6 @@ describe("TiradasPendientes", () => {
   });
 
   it("una petición con encounterId usa el panel de iniciativa, y no la caja de siempre", async () => {
-    const DE_ENCUENTRO: RollRequestRow = { ...PENDIENTE, id: "req-2", encounterId: "enc-1" };
     vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([DE_ENCUENTRO]);
 
     pintar();
@@ -160,10 +180,11 @@ describe("TiradasPendientes", () => {
     expect(await screen.findByText(/empieza el combate/i)).toBeInTheDocument();
     // No pasa por la caja pequeña de «Te han pedido tirar»: nada de eso se pinta para ella.
     expect(screen.queryByText("Te han pedido tirar")).not.toBeInTheDocument();
+    // Y el modificador que mandó el servidor se ve antes de tirar.
+    expect(screen.getByText("+2")).toBeInTheDocument();
   });
 
   it("cuando su petición deja de estar en la lista, el panel de iniciativa se va solo", async () => {
-    const DE_ENCUENTRO: RollRequestRow = { ...PENDIENTE, id: "req-2", encounterId: "enc-1" };
     const fetchMock = vi
       .spyOn(rollRequestsApi, "fetchRollRequests")
       .mockResolvedValue([DE_ENCUENTRO]);
@@ -181,5 +202,69 @@ describe("TiradasPendientes", () => {
     await qc.refetchQueries({ queryKey: ["campaigns", CAMPANA, "roll-requests"] });
 
     await waitFor(() => expect(screen.queryByText(/empieza el combate/i)).not.toBeInTheDocument());
+  });
+
+  // Ronda de arreglo 1 (I-6) — el resultado de una iniciativa ya tirada tiene su propio sitio, y
+  // no aterriza bajo el rótulo de la caja pequeña, que hablaría de una petición pendiente que ya
+  // no existe.
+  it("al tirar la iniciativa, el resultado sale en su propia caja, no en «Te han pedido tirar»", async () => {
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([DE_ENCUENTRO]);
+    vi.spyOn(rollRequestsApi, "answerRollRequest").mockResolvedValue({
+      revealed: true,
+      eventId: "ev-3",
+      expression: "1d20+2",
+      audience: "PUBLIC",
+      rolls: [14],
+      kept: [14],
+      dropped: [],
+      modifier: 2,
+      total: 16,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    pintar();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Tirar iniciativa/i }));
+
+    expect(await screen.findByText("16")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Tu iniciativa" })).toBeInTheDocument();
+    // El panel grande ya se fue (la petición dejó de estar pendiente) y la caja pequeña de
+    // siempre nunca llegó a abrirse: no había ninguna petición normal ni respuesta normal que la
+    // justificara.
+    expect(screen.queryByText(/empieza el combate/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Te han pedido tirar")).not.toBeInTheDocument();
+  });
+
+  // I-3 — dos peticiones de iniciativa a la vez (un jugador con dos personajes): tirar en una no
+  // puede apagar el botón de la otra.
+  it("con dos peticiones de iniciativa, tirar una no apaga el botón de la otra", async () => {
+    const OTRA: RollRequestRow = { ...DE_ENCUENTRO, id: "req-3", characterId: "ch-2" };
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([DE_ENCUENTRO, OTRA]);
+    // No se resuelve nunca: lo que importa es el instante en que la mutación está en vuelo.
+    vi.spyOn(rollRequestsApi, "answerRollRequest").mockReturnValue(new Promise(() => {}));
+
+    pintar();
+
+    const botones = await screen.findAllByRole("button", { name: /Tirar iniciativa/i });
+    expect(botones).toHaveLength(2);
+
+    fireEvent.click(botones[0]);
+
+    await waitFor(() => expect(botones[0]).toHaveAttribute("aria-disabled", "true"));
+    // El segundo botón sigue activo: nadie tiró por ese personaje.
+    expect(botones[1]).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  // I-4 — la ausencia de panel afirma «no hay ningún combate esperándote». Con la consulta en
+  // error eso es mentira por omisión.
+  it("si no se puede comprobar si hay peticiones, lo dice, no se queda callado", async () => {
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockRejectedValue(new Error("caído"));
+
+    pintar();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /No se pudo comprobar si te han pedido tirar/,
+    );
   });
 });

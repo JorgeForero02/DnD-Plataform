@@ -45,6 +45,14 @@ interface Respondida {
   id: string;
   etiqueta: string;
   resultado: RollResult;
+  /**
+   * Ronda de arreglo 1 (I-6) — de qué caja salió, para saber a cuál de las dos volver con el
+   * resultado. Antes de esta marca, el resultado de **cualquier** petición aterrizaba en la caja
+   * pequeña «Te han pedido tirar» — incluida la de iniciativa, que ya se había ido de
+   * `PanelDeIniciativa` sin dejar rastro. El jugador tiraba en el panel grande y el número le
+   * aparecía en un rótulo que ya no describía nada pendiente.
+   */
+  esDeEncuentro: boolean;
 }
 
 export function TiradasPendientes({ campaignId }: { campaignId: string }) {
@@ -81,6 +89,23 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   // exactamente `null`».
   const deEncuentro = pendientes.filter((p) => Boolean(p.encounterId));
   const normales = pendientes.filter((p) => !p.encounterId);
+  // I-6 — el resultado de una respondida vuelve a la caja de la que salió su petición, no a la
+  // que quede montada. `respondidasDeEncuentro` tiene su propio sitio (ver más abajo); la caja
+  // pequeña solo abre por `normales` o por `respondidasNormales`, nunca por las dos mezcladas.
+  const respondidasDeEncuentro = respondidas.filter((r) => r.esDeEncuentro);
+  const respondidasNormales = respondidas.filter((r) => !r.esDeEncuentro);
+
+  // I-4 — la ausencia de panel **afirma algo**: «no hay ningún combate esperándote, no te han
+  // pedido nada». Con la consulta en error eso es mentira por omisión: no se sabe si hay algo
+  // esperando o no, y quedarse callado se lee exactamente igual que «no hay nada». Se dice en vez
+  // de callar, y antes del `return null` de abajo, que es el que confundía las dos cosas.
+  if (peticiones.isError) {
+    return (
+      <p role="alert" className="mb-s5 font-chrome text-chrome-sm text-danger-text">
+        No se pudo comprobar si te han pedido tirar.
+      </p>
+    );
+  }
 
   // **Sin nada que pintar no se pinta ninguna caja.** Una caja vacía que dice «no te han pedido
   // nada» ocupa el sitio de lo primero que se lee en esta pantalla y no informa de nada: la
@@ -95,6 +120,7 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
 
   function alTirar(peticion: RollRequestRow) {
     const conInspiracion = inspirados[peticion.id] === true;
+    const esDeEncuentro = Boolean(peticion.encounterId);
     setErrores((actuales) => {
       const siguiente = { ...actuales };
       delete siguiente[peticion.id];
@@ -105,12 +131,25 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
       {
         onSuccess: (resultado) =>
           setRespondidas((actuales) => [
-            { id: peticion.id, etiqueta: peticion.label, resultado },
+            { id: peticion.id, etiqueta: peticion.label, resultado, esDeEncuentro },
             ...actuales,
           ]),
         onError: (e) =>
           setErrores((actuales) => ({ ...actuales, [peticion.id]: mensajeDeError(e) })),
       },
+    );
+  }
+
+  // I-3 — `responder.isPending` es el estado de LA MUTACIÓN, no el de esta petición. Un jugador
+  // con dos personajes puede recibir dos peticiones de iniciativa a la vez (dos paneles): al tirar
+  // en una, `isPending` se pone en marcha para las DOS, y la que nadie pulsó también apagaría su
+  // botón diciendo «Ya está en camino» sobre una tirada que no mandó nadie. `variables` es la que
+  // sí distingue una petición de otra — es lo que se pasó a `mutate` para ESTA llamada.
+  function tirandoEsta(requestId: string): boolean {
+    return (
+      responder.isPending &&
+      typeof responder.variables === "object" &&
+      responder.variables?.requestId === requestId
     );
   }
 
@@ -127,12 +166,38 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
             setInspirados((actuales) => ({ ...actuales, [peticion.id]: v }))
           }
           onTirar={() => alTirar(peticion)}
-          tirando={responder.isPending}
+          tirando={tirandoEsta(peticion.id)}
           error={errores[peticion.id]}
         />
       ))}
 
-      {(normales.length > 0 || respondidas.length > 0) && (
+      {/* I-6 — el resultado de una iniciativa ya tirada, en su propio sitio. El panel grande de
+          arriba desaparece en cuanto la petición deja de estar pendiente (se pinta a partir de
+          `deEncuentro`); esto es lo que queda en su lugar, y no la caja pequeña de más abajo, que
+          habla de peticiones que siguen esperando. */}
+      {respondidasDeEncuentro.map((r) => (
+        <section aria-label="Tu iniciativa" className="mb-s5" key={r.id}>
+          <Panel className="max-w-[24rem] border-warning">
+            <h3 className="font-title text-chrome-lg uppercase tracking-wide text-warning-text">
+              Iniciativa tirada
+            </h3>
+            {r.resultado.revealed ? (
+              <div className="mt-s2">
+                <p className="text-center font-data text-chrome-xl text-text">
+                  {r.resultado.total}
+                </p>
+                <ResultadoDeTirada resultado={r.resultado} etiqueta={r.etiqueta} />
+              </div>
+            ) : (
+              <div className="mt-s2">
+                <TiradaACiegas etiqueta={r.etiqueta} expresion={r.resultado.expression} />
+              </div>
+            )}
+          </Panel>
+        </section>
+      ))}
+
+      {(normales.length > 0 || respondidasNormales.length > 0) && (
         <section aria-label="Tiradas que te han pedido" className="mb-s5">
           <Panel className="max-w-[40rem]">
             <h3 className="font-title text-chrome-lg leading-tight text-text">
@@ -195,7 +260,7 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
               })}
             </ul>
 
-            {respondidas.map((r) =>
+            {respondidasNormales.map((r) =>
               r.resultado.revealed ? (
                 <div key={r.id} className="mt-s3">
                   {/* El total en grande, igual que en la tarjeta de tirada libre: es lo que se

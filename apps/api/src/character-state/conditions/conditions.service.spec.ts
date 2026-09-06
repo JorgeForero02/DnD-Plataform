@@ -19,6 +19,7 @@ describe("ConditionsService", () => {
       findUnique: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     // 2C.4: el reloj de la campaña — la caducidad de una condición y el agotamiento que parte
     // los PG máximos se calculan contra él.
@@ -47,6 +48,7 @@ describe("ConditionsService", () => {
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
     statblocks.resolver.mockResolvedValue(null);
+    prisma.characterCondition.findMany.mockResolvedValue([]);
   });
 
   it("el dueño puede aplicar una condición sobre su propio personaje", async () => {
@@ -177,6 +179,65 @@ describe("ConditionsService", () => {
     expect(prisma.characterCondition.upsert).toHaveBeenCalled();
     // Ni siquiera se pregunta por un statblock que no existe.
     expect(statblocks.resolver).not.toHaveBeenCalled();
+  });
+
+  // **SRD 5.1, «Concentration»:** *«Casting another spell that requires concentration. You lose
+  // concentration on a spell if you cast another spell that requires concentration. **You can't
+  // concentrate on two spells at once.**»* El `upsert` es por clave exacta y cada conjuro genera
+  // la suya, así que hasta el 2026-09-06 dos conjuros eran dos filas y **convivían** — y con dos
+  // vivas `changeHp` pedía **una sola** salvación, porque `estaConcentrado` devuelve un booleano.
+  // Retirando la anterior al empezar la siguiente, el segundo defecto desaparece solo.
+
+  it("empezar una segunda concentración retira la primera", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { id: "cc-bless", key: "concentrating:bless" },
+    ]);
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "concentrating:hold-person" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "concentrating:hold-person" });
+
+    expect(prisma.characterCondition.delete).toHaveBeenCalledWith({ where: { id: "cc-bless" } });
+  });
+
+  it("y el registro dice cuál se perdió", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { id: "cc-bless", key: "concentrating:bless" },
+    ]);
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "concentrating:hold-person" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "concentrating:hold-person" });
+
+    expect(events.record).toHaveBeenCalledWith(
+      "dm1",
+      "cmp1",
+      expect.objectContaining({
+        payload: { type: "CONDITION_REMOVED", key: "concentrating:bless" },
+      }),
+      prisma,
+    );
+  });
+
+  it("renovar LA MISMA concentración no la retira a sí misma", async () => {
+    // El `upsert` ya la reemplaza; borrarla antes dejaría un suceso de pérdida que no ocurrió.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "concentrating:bless" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "concentrating:bless" });
+
+    expect(prisma.characterCondition.delete).not.toHaveBeenCalled();
+  });
+
+  it("una condición que NO es de concentración no toca las concentraciones vivas", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "poisoned" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "poisoned" });
+
+    expect(prisma.characterCondition.findMany).not.toHaveBeenCalled();
+    expect(prisma.characterCondition.delete).not.toHaveBeenCalled();
   });
 
   it("otro jugador que no es dueño ni DM no puede aplicar una condición", async () => {

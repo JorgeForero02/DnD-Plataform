@@ -12,6 +12,7 @@ import {
   type ApplyConditionInput,
   type HelpInput,
 } from "@dnd/shared";
+import { CONCENTRATION_KEY_PREFIX } from "../concentration/concentration";
 import { condicionVencida } from "./vencimiento";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -146,6 +147,44 @@ export class ConditionsService {
       const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
       const expiresAtClock =
         input.durationSeconds === undefined ? null : campana.clockSeconds + input.durationSeconds;
+
+      // **SRD 5.1, «Concentration»:** *«Casting another spell that requires concentration. You lose
+      // concentration on a spell if you cast another spell that requires concentration. You can't
+      // concentrate on two spells at once.»*
+      //
+      // El `upsert` de abajo es **por clave exacta** y cada conjuro genera la suya
+      // (`CONCENTRATION_KEY_PREFIX`), así que dos conjuros distintos eran dos filas y convivían.
+      // Encima, `estaConcentrado` devuelve un **booleano**, de modo que con dos vivas `changeHp`
+      // pedía **una sola** salvación: retirando la anterior aquí, ese segundo defecto desaparece
+      // solo — que es la señal de que el arreglo va en el sitio bueno.
+      //
+      // **Se retira al ESCRIBIR y no al leer** porque perder una concentración es un suceso de la
+      // mesa: alguien tiene que enterarse de que la Bendición se cayó. Un filtro al leer lo
+      // habría hecho desaparecer en silencio.
+      if (input.key.startsWith(CONCENTRATION_KEY_PREFIX)) {
+        const previas = await tx.characterCondition.findMany({
+          where: {
+            characterId,
+            key: { startsWith: CONCENTRATION_KEY_PREFIX, not: input.key },
+          },
+        });
+        for (const previa of previas) {
+          await tx.characterCondition.delete({ where: { id: previa.id } });
+          // El mismo suceso que emite retirar una condición a mano, no uno nuevo: la línea de
+          // tiempo ya sabe leerlo y la pantalla ya sabe pintarlo.
+          await this.events.record(
+            userId,
+            campaignId,
+            {
+              subjectType: "character",
+              subjectId: characterId,
+              visibility: character.visibility,
+              payload: { type: "CONDITION_REMOVED", key: previa.key },
+            },
+            tx,
+          );
+        }
+      }
 
       const condition = await tx.characterCondition.upsert({
         where: { characterId_key: { characterId, key: input.key } },

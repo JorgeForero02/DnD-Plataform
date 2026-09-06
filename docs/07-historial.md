@@ -48,6 +48,12 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 3 · dos concentraciones a la vez, y una sola salvación.** El `upsert` de condiciones es
+  por clave exacta y cada conjuro genera la suya, así que dos convivían; y como `estaConcentrado`
+  devuelve un booleano, `changeHp` pedía **una** salvación para las dos. Empezar una concentración
+  retira las demás **con su suceso** —perder la Bendición es algo de lo que la mesa se entera—, y
+  con eso el segundo defecto desaparece solo. **Cómo se revierte:** quitar el bloque de `apply`.
+
 - **Tarea 2 · se podía envenenar a un esqueleto.** `conditionImmunities` era texto libre entre dos
   vecinas tipadas, así que **nadie podía consumirlo**. Pasa a las quince del SRD, con migración de
   datos que mapea lo conocido y **deja fuera lo que no reconoce sin borrar la fila**, y `apply`

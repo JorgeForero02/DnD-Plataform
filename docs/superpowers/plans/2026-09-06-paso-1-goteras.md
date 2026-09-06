@@ -1484,4 +1484,7 @@ de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba 
 | 1 · Un jugador no se concede una mecánica | ✅ | `62e3d7b` | `helped` no entra por la puerta genérica **para nadie**; una clave del SRD, solo el DM |
 | 5 · La CA suma más de una característica | ✅ | `f460ea0` | `addAbilities` con **tope por característica**; `addAbility`/`abilityCap` desaparecen sin alias |
 | — · Revisión de la tarea 1 (10 hallazgos) | ✅ | `5081c46` | `remove()` era la otra mitad de la puerta; una prueba había dejado de medir la propiedad; tres comentarios mentían |
-| 2 · Las inmunidades a condición dejan de ser prosa | ✅ | el de abajo | `srdConditionSchema`, migración de datos y `apply` rechaza con motivo |
+| 2 · Las inmunidades a condición dejan de ser prosa | ✅ | `fc01106` | `srdConditionSchema`, migración de datos y `apply` rechaza con motivo |
+| — · Revisión de la tarea 5 (6 hallazgos) | ✅ | `36ab260` | El recorte de la traza nombra la característica; una característica repetida lanza; **y una afirmación mía era falsa** |
+| — · El historial no cabía | ✅ | `02c19d8` | Seis entradas por tarea al archivo, enteras |
+| 3 · Una sola concentración | ✅ | el de abajo | La segunda retira la primera **con su suceso**; el segundo defecto (una salvación para dos) desaparece solo |

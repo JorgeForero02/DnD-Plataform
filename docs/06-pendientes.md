@@ -98,38 +98,49 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
-## P1 · `CharacterSheetService.updateSheet` da un 500 intermitente con varios `PATCH .../sheet` concurrentes (2026-09-05, ronda de arreglo 1 de la tarea 3)
+## P1 · El «500 intermitente» de `CharacterSheetService.updateSheet` era `supertest`, no el servicio (medido y descartado en `9ef7245`)
 
-**Encontrado montando el escenario de la prueba de la carrera de la tarea 3, no en el código que
-esa tarea toca.** `apps/api/test/iniciativa-pedida.e2e-spec.ts` creaba tres personajes de tres
-jugadores distintos con `Promise.all`, y de vez en cuando (más o menos una vez cada cinco u ocho
-ejecuciones) uno de los tres `PATCH /campaigns/:id/characters/:id/sheet` concurrentes devolvía
-**500** con `PrismaClientKnownRequestError: Record to update not found` sobre
-`this.prisma.character.update()` (`apps/api/src/characters/character-sheet.service.ts:714`) —
-para un `characterId` que existía de sobra: la fila la acababa de crear el `POST` anterior de la
-misma prueba, con éxito comprobado.
+**Esta ficha acusaba al código equivocado.** Decía que varios `PATCH /campaigns/:id/characters/:id/sheet`
+concurrentes de personajes DISTINTOS podían hacer que `this.prisma.character.update()`
+(`apps/api/src/characters/character-sheet.service.ts`, dentro de `updateSheet`) fallara con
+`PrismaClientKnownRequestError P2025` («Record to update not found»), y apuntaba como sospechosa a
+«una condición de carrera en el pool de conexiones de Prisma». Se ha medido y **esa hipótesis está
+descartada**: no hay ninguna carrera en `updateSheet` ni en el pool de Prisma.
 
-**No es un fallo del `characterId`, es un fallo de proceso.** `updateSheet` lee el personaje con
-`requireEditable` (un `findFirst` simple, sin candado) al principio, hace un rato de cómputo puro
-—`equipoEquipado`, `construirBuild`, `deriveCharacter`— y solo al final escribe con
-`this.prisma.character.update({ where: { id: characterId }, data })`. Entre esas dos, no hay
-ninguna transacción que las una: cada una es su propia conexión de Prisma. Con tres jugadores
-DISTINTOS haciendo `PATCH` de tres personajes DISTINTOS al mismo tiempo, ninguno debería tocar la
-fila de otro — y sin embargo el error aparece. No se ha llegado a la causa exacta (no es el
-guardián de esta tarea, que solo toca `Encounter`/`Combatant`/`RollRequest`); son candidatas
-razonables una condición de carrera en el pool de conexiones de Prisma, o algo en el camino de
-`requireEditable` → `equipoEquipado` que no se ha mirado con este hallazgo delante.
+**Lo que de verdad pasa: es `supertest` disparando `app.listen(0)` una vez por petición.**
+`supertest` (`lib/test.js:63` dentro de su paquete, versión `7.2.2` <!-- docs-lint-ignore -->) hace
+`if (!addr) this._server = app.listen(0)` cada vez que le pasan un servidor que todavía no está
+escuchando. Si dos o más
+`request(app.getHttpServer())` corren **a la vez** contra una app montada con
+`Test.createTestingModule(...).init()` sin haber llamado nunca a `app.listen()` —que es la
+convención de **toda** la suite `.e2e-spec.ts` de este repositorio—, varias llamadas a
+`app.listen(0)` compiten sobre el mismo `http.Server`. Esa carrera es de la librería de test, no
+del código de la API, y el P2025 que salía era uno de sus síntomas.
 
-**Cómo se esquivó, y por qué esquivarlo fue lo correcto para la tarea 3:** el fichero afectado
-creaba los tres personajes en paralelo solo para montar el escenario de la prueba —lo que de
-verdad hace falta que sea concurrente es responder las tres peticiones de iniciativa, no crear
-los personajes—, así que se cambió a secuencial y el fallo dejó de aparecer en más de treinta
-ejecuciones seguidas de la suite. Perseguir la causa real de este 500 es trabajo de otro día: no
-toca ningún fichero de esta tarea, y las dos veces que se reprodujo fue siempre en la fase de
-montaje, nunca en el camino que la tarea 3 prueba.
+**Cómo se midió, con las cifras:**
 
-**Cierra cuando** alguien reproduzca el 500 fuera de un test (tres `PATCH .../sheet` reales y
-concurrentes de tres jugadores) y encuentre la causa exacta en `character-sheet.service.ts`.
+1. El 500 se reproducía de forma fiable (en los primeros 1 a 10 intentos de tres `PATCH`
+   concurrentes) dentro de un e2e con ese arranque sin `app.listen()`.
+2. La misma lógica de negocio, sin tocar una línea, lanzada contra una app que sí llama a
+   `app.listen(0)` antes de las peticiones concurrentes: **0 fallos en 150-200 intentos** con
+   hasta 6-8 jugadores por intento, vía el propio arnés de test.
+3. La prueba decisiva: la API real levantada con `pnpm --filter @dnd/api start:dev` (código sin
+   ningún cambio) recibió **200 intentos × 4 jugadores** y luego **100 intentos × 8 jugadores**
+   —hasta 900 peticiones HTTP reales concurrentes, por `fetch` de Node, sin `supertest` de por
+   medio—: **cero 500, cero fallos**.
+
+**Qué significa en la práctica.** Una prueba que lanza peticiones concurrentes con `supertest`
+contra una app que nunca llamó a `app.listen()` puede fallar sin que haya nada roto en el
+producto. Quien se encuentre esto tiene dos salidas: serializar el montaje de la prueba —que es
+justo lo que ya hizo `apps/api/test/iniciativa-pedida.e2e-spec.ts`, sin saber entonces por qué
+funcionaba— o hacer que esa suite concreta llame a `app.listen()` de verdad. Esta ficha no cambia
+la convención del repo ni toca ningún e2e existente: solo deja escrito el porqué, para que el
+siguiente que vea un P2025 en un e2e concurrente no vuelva a perseguir un fantasma en
+`character-sheet.service.ts`.
+
+**Cierra** con este mismo texto: no hay arreglo pendiente en `updateSheet`, y no se reabre salvo
+que alguien reproduzca un 500 real **contra un servidor con `app.listen()`**, dentro o fuera de
+un test — eso sí sería un caso nuevo, no este.
 
 ## P2-cancelar · `EncountersService.cancel` borra la petición del jugador sin decírselo (2026-09-05, ronda de arreglo 1 de la tarea 4)
 

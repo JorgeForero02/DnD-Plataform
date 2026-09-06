@@ -134,7 +134,7 @@ concurrentes de tres jugadores) y encuentre la causa exacta en `character-sheet.
 ## P2-cancelar · `EncountersService.cancel` borra la petición del jugador sin decírselo (2026-09-05, ronda de arreglo 1 de la tarea 4)
 
 **Decisión del autor, no un hueco a rellenar sin más.** `cancel()` borra el `Encounter` y sus
-`RollRequest` (`apps/api/src/encounters/encounters.service.ts`, método `cancel`) sin escribir
+`RollRequest` (`apps/api/src/encounters/encounters.service.ts:958`, método `cancel`) sin escribir
 ningún suceso — a propósito: «no es historia, es un clic deshecho», y un suceso con
 `subjectType: "encounter"` sobre un sujeto que acaba de desaparecer sería justo la historia que
 esa decisión dice que no se guarda.

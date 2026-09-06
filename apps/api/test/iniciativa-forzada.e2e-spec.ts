@@ -238,37 +238,38 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
    * I-2 (ronda de arreglo 1) — la carrera REAL, no la secuencial de la prueba de arriba.
    *
    * La jugadora pulsa «Tirar» sobre su propia petición **en el mismo instante** en que el DM
-   * fuerza el encuentro. Antes de esta ronda, si `forceStart` ganaba la carrera de cerrar la
+   * fuerza el encuentro. Antes de esa ronda, si `forceStart` ganaba la carrera de cerrar la
    * petición, `aplicarIniciativaDePeticion` (llamado desde dentro de `answer`) veía
    * `cerrada: false` y `answer` lo traducía SIEMPRE en `BadRequestException("Esa petición ya se
    * respondió.")` — un 400 que le decía a la jugadora que ella ya había tirado, cuando en
-   * realidad tiró de verdad (gastó un d20 real) y el sistema decidió sin ella. Repetido varias
-   * veces porque el resultado de la carrera no es determinista: unas veces gana la jugadora
-   * (su respuesta se aplica y `forceStart` la salta en silencio), otras gana `forceStart`
-   * (la jugadora recibe el 409 con su motivo). Las dos salidas tienen que dejar el encuentro
-   * consistente y ninguna puede ser un 500 ni un 400 con el motivo equivocado.
+   * realidad tiró de verdad (gastó un d20 real) y el sistema decidió sin ella.
+   *
+   * **Ronda de arreglo 2 — la prueba tiene que EXIGIR el reparto, no solo tolerarlo.** La primera
+   * versión metía la comprobación del 409 dentro de un `if (respuesta.status === "rejected")`:
+   * si en una tanda ninguna vuelta perdía la carrera, esa rama no se ejecutaba nunca y la prueba
+   * pasaba igual con el arreglo de I-2 deshecho — medía «no revienta pase lo que pase», no «quien
+   * pierde recibe 409». Ahora se acumulan los resultados de las **quince** vueltas y se exige, al
+   * final, que **al menos una** haya perdido la carrera (`rejected`) y que **todas** las que la
+   * perdieron traigan el 409 con su motivo — nunca el 400 genérico ni un 500. Con la frecuencia
+   * medida en la ronda anterior (4 de 6, ~66% por vuelta), la probabilidad de que las quince
+   * vueltas ganen todas la jugadora es `0.34^15 ≈ 3×10⁻⁷`: no es una garantía matemática, pero es
+   * la misma clase de margen con la que la tarea 3 aceptó su propia carrera de tres respuestas.
    */
   it("responder y forzar a la vez: quien pierde la carrera real recibe 409, no 400 (I-2)", async () => {
-    // Seis escenarios completos (cada uno crea sesión, dos personajes con hoja y encuentro)
-    // no caben en el timeout por defecto de Jest cuando la suite entera compite por la misma
-    // base — sobre todo corriendo junto al resto de e2e de API.
-    for (let intento = 0; intento < 6; intento++) {
+    const resultados: PromiseSettledResult<unknown>[] = [];
+
+    for (let intento = 0; intento < 15; intento++) {
       const { sessionId, encuentro, peticiones } = await empezarConDosJugadores();
 
       const [respuesta, forzado] = await Promise.allSettled([
         rollRequests.answer(jugadoraId, campaignId, peticiones[0].id, { spendInspiration: false }),
         service.forceStart(dmId, campaignId, sessionId, encuentro.id),
       ]);
+      resultados.push(respuesta);
 
       // `forceStart` nunca revienta por esta carrera: si pierde la petición de la jugadora, la
       // salta en silencio (`cerrada.count === 0`) y sigue con el resto.
       expect(forzado.status).toBe("fulfilled");
-
-      if (respuesta.status === "rejected") {
-        // Perdió la carrera de verdad: 409 con el motivo correcto, nunca el 400 genérico.
-        expect(respuesta.reason).toMatchObject({ status: 409 });
-        expect((respuesta.reason as Error).message).toContain("tiró el sistema");
-      }
 
       // Gane quien gane, el encuentro termina `ACTIVE`, sin peticiones pendientes y con
       // exactamente un `INITIATIVE_ROLLED_BY_SYSTEM` como mucho (el del jugador ausente; el de
@@ -287,6 +288,17 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
         where: { subjectId: encuentro.id, type: "ENCOUNTER_STARTED" },
       });
       expect(empezo).toBe(1);
+    }
+
+    // **Aquí es donde la prueba deja de ser tolerante y pasa a exigir.** Sin esto, deshacer el
+    // arreglo de I-2 (volver al `BadRequestException` genérico) no movía ni una sola aserción de
+    // las de arriba: todas viven dentro del bucle y ninguna mira el contenido de un rechazo que
+    // podría no haber ocurrido nunca en esta tanda.
+    const rechazos = resultados.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(rechazos.length).toBeGreaterThan(0);
+    for (const rechazo of rechazos) {
+      expect(rechazo.reason).toMatchObject({ status: 409 });
+      expect((rechazo.reason as Error).message).toContain("tiró el sistema");
     }
   }, 30000);
 

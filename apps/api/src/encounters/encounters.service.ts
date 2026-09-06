@@ -802,10 +802,37 @@ export class EncountersService {
    *    sabe hasta que llega a su último `updateMany` de estado, que en ese caso no toca ninguna
    *    fila (`status: "PREPARING"` ya no es cierto) — no revienta, solo no hace nada.
    *
+   * **Ronda de arreglo 1 (I-3) — el estado se re-lee bajo el candado del encuentro, dentro de
+   * cada iteración, exactamente como hace `aplicarIniciativaDePeticion`.** Si el encuentro deja
+   * de ser `PREPARING` entre el `findFirst` de arriba y esta iteración —un `cancel` desde otra
+   * pestaña que lo borró, o las peticiones restantes resolviéndose por su cuenta— esta rama
+   * corta antes de recolocar posiciones o escribir un suceso sobre un encuentro que ya no está
+   * en la ventana que este método existe para cerrar. En la práctica es cinturón sobre tirantes:
+   * si `cerrada.count === 1` es porque nadie más cerró esta petición todavía, y eso ya implica
+   * que el encuentro no pudo haber terminado de arrancar por la vía normal (le faltaba esta
+   * misma petición) ni pudo haberse borrado (el borrado se lleva las peticiones por cascada, así
+   * que `cerrada.count` habría sido 0). Se deja igual, con el mismo criterio que ya aplicó la
+   * tarea 3 a `aplicarIniciativaDePeticion`: es la protección barata contra el día que ese
+   * razonamiento deje de sostenerse.
+   *
    * La escritura del combatiente va **dentro** del `antesDeLeer` de `recolocar`, nunca antes de
    * llamarla, por la misma razón que ya obligó a `setInitiative` y a `aplicarIniciativaDePeticion`
    * (ronda de arreglo 1): el candado del encuentro tiene que tomarse antes de tocar la fila del
    * `Combatant`.
+   *
+   * **Ronda de arreglo 1 (I-1) — si el `updateMany` final arranca el encuentro, se escribe
+   * `ENCOUNTER_STARTED`, igual que los otros dos caminos a `ACTIVE`** (`start()` cuando nace
+   * activo, `RollRequestsService.answer` cuando la última respuesta lo arranca). Sin esto no
+   * había línea «Empieza el combate» en el registro para este camino, y tampoco aviso por el
+   * canal en vivo — que se publica dentro de `GameEventsService.record`, no en ningún otro sitio.
+   *
+   * **Ronda de arreglo 1 (M-8) — un fallo a mitad del bucle deja el encuentro a medias, y es
+   * recuperable.** Si la tirada o la transacción de una iteración lanzan (una hoja que deja de
+   * derivar, un timeout de base), las peticiones ya procesadas por iteraciones anteriores quedan
+   * ancladas y el encuentro sigue `PREPARING` — ni a medio arrancar ni corrupto, solo parado.
+   * Volver a llamar a `forceStart` retoma desde ahí: el `findFirst` de arriba solo trae las
+   * peticiones que **siguen** `resolvedAt: null`, así que las ya ancladas no se repiten y las
+   * restantes se procesan igual que la primera vez.
    */
   async forceStart(userId: string, campaignId: string, sessionId: string, encounterId: string) {
     await this.membership.requireDM(campaignId, userId);
@@ -846,6 +873,10 @@ export class EncountersService {
         // escribe un suceso de sistema sobre una tirada que nunca pasó.
         if (cerrada.count === 0) return;
 
+        // I-3: re-lectura bajo el candado del encuentro — ver el docstring de arriba.
+        const estado = await bloquearEncuentro(tx, encounterId);
+        if (estado !== "PREPARING") return;
+
         await recolocar(tx, encounterId, async () => {
           await tx.combatant.updateMany({
             where: { encounterId, characterId: peticion.characterId },
@@ -860,9 +891,13 @@ export class EncountersService {
             sessionId,
             subjectType: "encounter",
             subjectId: encounterId,
-            // Misma visibilidad que el personaje: un PNJ escondido no delata su iniciativa por
-            // esta puerta cuando ya no la delataba por ninguna otra.
-            visibility: peticion.character.visibility,
+            // M-5: **NO** la visibilidad cruda del personaje — `OWNER_DM` se resuelve contra el
+            // actor del suceso, que aquí es el DM, así que un PNJ `OWNER_DM` produciría un aviso
+            // que su propio dueño no ve, y `SPECIFIC_PLAYERS` no lo vería nadie sin sus
+            // `grantedUserIds` (que aquí no se pasan). Mismo predicado que la audiencia de la
+            // tirada, dos líneas más arriba: la mesa lo ve si el personaje la ve, en privado del
+            // DM si no.
+            visibility: loVeLaMesa(peticion.character.visibility) ? "PLAYERS" : "DM_ONLY",
             payload: {
               type: "INITIATIVE_ROLLED_BY_SYSTEM",
               characterId: peticion.characterId,
@@ -878,31 +913,59 @@ export class EncountersService {
     // Carrera 2: si todas las peticiones ya se resolvieron por su cuenta, el encuentro puede
     // haber pasado a `ACTIVE` sin este método — el `where` no encuentra nada que tocar y no pasa
     // nada.
-    await this.prisma.encounter.updateMany({
+    const arrancado = await this.prisma.encounter.updateMany({
       where: { id: encounterId, status: "PREPARING" },
       data: { status: "ACTIVE" },
     });
+    // I-1: **este** es el camino que de verdad arrancó el combate — los otros dos ya escriben el
+    // suyo (`start()` al nacer activo, `answer()` cuando la última respuesta normal lo arranca).
+    if (arrancado.count === 1) {
+      await this.events.record(userId, campaignId, {
+        sessionId,
+        subjectType: "encounter",
+        subjectId: encounterId,
+        visibility: "PLAYERS",
+        payload: { type: "ENCOUNTER_STARTED", encounterId },
+      });
+    }
     return this.get(userId, campaignId, sessionId, encounterId);
   }
 
   /**
    * Tarea 4 — el DM se arrepiente antes de empezar. **Se BORRA, no se marca `ENDED`**: un
    * combate que nunca empezó no es historia, es un clic deshecho, y dejarlo llena el registro de
-   * ruido (decisión del autor, 2026-09-05). Las peticiones de tirada ligadas a este encuentro se
-   * van por cascada (`onDelete: Cascade` de `RollRequest.encounterId`).
+   * ruido (decisión del autor, 2026-09-05).
    *
-   * Cierra la ficha «P1 · Un encuentro `PREPARING` no se puede terminar» de
-   * `docs/06-pendientes.md`: hasta esta tarea, un `PREPARING` abandonado bloqueaba la sesión sin
-   * ninguna puerta que lo resolviera.
+   * **Ronda de arreglo 1 (I-4) — envuelto en transacción, e hijos antes que padre.** Los demás
+   * caminos del módulo bloquean primero la `RollRequest` (un `updateMany` sobre su fila) y
+   * después el `Encounter` (`bloquearEncuentro`, dentro de `recolocar` o llamado directo); este
+   * método hacía lo contrario —borraba el `Encounter` primero y dejaba que la cascada de la base
+   * se llevara las peticiones después—, y un `cancel` concurrente con una respuesta o con un
+   * `force-start` competía por los candados en el orden opuesto: la misma familia de
+   * interbloqueo (`40P01`) que cerró la ronda de arreglo de la tarea 3. Ahora se borran las
+   * `RollRequest` primero, a mano, y el `Encounter` después; si el `Encounter` no calificaba
+   * (`status` ya no es `PREPARING`, o no existe), el `ConflictException` se lanza **dentro** de
+   * la transacción — Prisma deshace el borrado de las peticiones con ella, así que un intento
+   * fallido no deja nada a medias.
+   *
+   * **M-7 — no escribe ningún suceso, y es a propósito.** El encuentro deja de existir: un
+   * suceso con `subjectType: "encounter"` sobre un sujeto borrado sería exactamente la historia
+   * que la decisión del autor dice que no se guarda. El coste de esto —al jugador con una
+   * petición de iniciativa pendiente se le borra de la bandeja sin explicación— queda anotado en
+   * `docs/06-pendientes.md`: si algún día hay que avisarle, el sujeto tendría que ser la
+   * **sesión**, porque el encuentro ya no está para serlo.
    */
   async cancel(userId: string, campaignId: string, sessionId: string, encounterId: string) {
     await this.membership.requireDM(campaignId, userId);
     await this.sesion(campaignId, sessionId);
-    const borrado = await this.prisma.encounter.deleteMany({
-      where: { id: encounterId, sessionId, status: "PREPARING" },
+    await this.prisma.transaction(async (tx) => {
+      await tx.rollRequest.deleteMany({ where: { encounterId } });
+      const borrado = await tx.encounter.deleteMany({
+        where: { id: encounterId, sessionId, status: "PREPARING" },
+      });
+      if (borrado.count === 0) {
+        throw new ConflictException("Ese combate ya empezó: no se puede cancelar, se termina.");
+      }
     });
-    if (borrado.count === 0) {
-      throw new ConflictException("Ese combate ya empezó: no se puede cancelar, se termina.");
-    }
   }
 }

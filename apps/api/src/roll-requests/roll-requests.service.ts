@@ -152,6 +152,24 @@ export class RollRequestsService {
       peticion.key,
     );
 
+    // **M-6 (ronda de arreglo 1 de la tarea 4) — re-lectura justo antes de tirar, para estrechar
+    // la ventana entre el `if` de arriba y la tirada real.** No la cierra del todo: mantener esta
+    // fila bloqueada mientras se llama a `RollsService.roll` —un servicio ajeno, con su propia
+    // transacción— sería peor que la ventana que deja. Si el jugador la pierde de todos modos —el
+    // DM fuerza el encuentro entre esta línea y la siguiente—, la tirada de abajo **ocurre de
+    // verdad**: gasta su d20 igual que cualquier otra, y sencillamente no se aplica. Quien decide
+    // qué fue de ella es el `if (!cerrada)` de más abajo, no esta comprobación.
+    const releida = await this.prisma.rollRequest.findUnique({
+      where: { id: peticion.id },
+      select: { resolvedAt: true, cancelledAt: true },
+    });
+    if (releida?.cancelledAt) {
+      throw new ConflictException("El combate ya empezó y tu iniciativa la tiró el sistema.");
+    }
+    if (releida?.resolvedAt) {
+      throw new BadRequestException("Esa petición ya se respondió.");
+    }
+
     const resultado = await this.rolls.roll(userId, campaignId, {
       expression: conSigno("1d20", modificador),
       label: peticion.label,
@@ -192,6 +210,21 @@ export class RollRequestsService {
         resultado.eventId,
       );
       if (!cerrada) {
+        // **I-2 (ronda de arreglo 1 de la tarea 4) — un `cerrada: false` de aquí puede significar
+        // dos cosas MUY distintas, y hasta esta ronda las dos daban el mismo 400.** Si perdió la
+        // carrera contra otra respuesta normal, «ya se respondió» es la verdad. Pero si la perdió
+        // contra `EncountersService.forceStart` —que cierra esta misma petición con
+        // `cancelledAt`, no con una respuesta, mientras la tirada de arriba ya estaba en marcha—
+        // el jugador SÍ tiró (acaba de gastar un d20 real) y lo que pasó no es que «ya
+        // respondiera»: el sistema decidió sin él mientras tiraba. Se relee la fila para
+        // distinguir las dos, en vez de fiarse del `cerrada: false` a secas.
+        const actual = await this.prisma.rollRequest.findUnique({
+          where: { id: peticion.id },
+          select: { cancelledAt: true },
+        });
+        if (actual?.cancelledAt) {
+          throw new ConflictException("El combate ya empezó y tu iniciativa la tiró el sistema.");
+        }
         throw new BadRequestException("Esa petición ya se respondió.");
       }
       if (empezo) {

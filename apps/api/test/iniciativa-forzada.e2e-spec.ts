@@ -189,6 +189,14 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
     });
     expect(sucesos).toHaveLength(1);
 
+    // I-1 (ronda de arreglo 1): forzar también escribe `ENCOUNTER_STARTED`, igual que los otros
+    // dos caminos a `ACTIVE` — sin esto no había línea «Empieza el combate» en el registro ni
+    // aviso por el canal en vivo para este camino.
+    const empezo = await prisma.gameEvent.count({
+      where: { subjectId: encuentro.id, type: "ENCOUNTER_STARTED" },
+    });
+    expect(empezo).toBe(1);
+
     const combatientes = await prisma.combatant.findMany({ where: { encounterId: encuentro.id } });
     expect(combatientes.every((c) => c.initiative !== 0)).toBe(true);
 
@@ -224,6 +232,103 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
 
     expect(await prisma.encounter.findUnique({ where: { id: encuentro.id } })).toBeNull();
     expect(await prisma.rollRequest.count({ where: { encounterId: encuentro.id } })).toBe(0);
+  });
+
+  /**
+   * I-2 (ronda de arreglo 1) — la carrera REAL, no la secuencial de la prueba de arriba.
+   *
+   * La jugadora pulsa «Tirar» sobre su propia petición **en el mismo instante** en que el DM
+   * fuerza el encuentro. Antes de esta ronda, si `forceStart` ganaba la carrera de cerrar la
+   * petición, `aplicarIniciativaDePeticion` (llamado desde dentro de `answer`) veía
+   * `cerrada: false` y `answer` lo traducía SIEMPRE en `BadRequestException("Esa petición ya se
+   * respondió.")` — un 400 que le decía a la jugadora que ella ya había tirado, cuando en
+   * realidad tiró de verdad (gastó un d20 real) y el sistema decidió sin ella. Repetido varias
+   * veces porque el resultado de la carrera no es determinista: unas veces gana la jugadora
+   * (su respuesta se aplica y `forceStart` la salta en silencio), otras gana `forceStart`
+   * (la jugadora recibe el 409 con su motivo). Las dos salidas tienen que dejar el encuentro
+   * consistente y ninguna puede ser un 500 ni un 400 con el motivo equivocado.
+   */
+  it("responder y forzar a la vez: quien pierde la carrera real recibe 409, no 400 (I-2)", async () => {
+    // Seis escenarios completos (cada uno crea sesión, dos personajes con hoja y encuentro)
+    // no caben en el timeout por defecto de Jest cuando la suite entera compite por la misma
+    // base — sobre todo corriendo junto al resto de e2e de API.
+    for (let intento = 0; intento < 6; intento++) {
+      const { sessionId, encuentro, peticiones } = await empezarConDosJugadores();
+
+      const [respuesta, forzado] = await Promise.allSettled([
+        rollRequests.answer(jugadoraId, campaignId, peticiones[0].id, { spendInspiration: false }),
+        service.forceStart(dmId, campaignId, sessionId, encuentro.id),
+      ]);
+
+      // `forceStart` nunca revienta por esta carrera: si pierde la petición de la jugadora, la
+      // salta en silencio (`cerrada.count === 0`) y sigue con el resto.
+      expect(forzado.status).toBe("fulfilled");
+
+      if (respuesta.status === "rejected") {
+        // Perdió la carrera de verdad: 409 con el motivo correcto, nunca el 400 genérico.
+        expect(respuesta.reason).toMatchObject({ status: 409 });
+        expect((respuesta.reason as Error).message).toContain("tiró el sistema");
+      }
+
+      // Gane quien gane, el encuentro termina `ACTIVE`, sin peticiones pendientes y con
+      // exactamente un `INITIATIVE_ROLLED_BY_SYSTEM` como mucho (el del jugador ausente; el de
+      // la jugadora solo existe si perdió su propia carrera).
+      expect((await recargar(encuentro.id))!.status).toBe("ACTIVE");
+      const pendientes = await prisma.rollRequest.count({
+        where: { encounterId: encuentro.id, resolvedAt: null },
+      });
+      expect(pendientes).toBe(0);
+      const sucesosDeSistema = await prisma.gameEvent.count({
+        where: { subjectId: encuentro.id, type: "INITIATIVE_ROLLED_BY_SYSTEM" },
+      });
+      expect(sucesosDeSistema).toBeGreaterThanOrEqual(1);
+      expect(sucesosDeSistema).toBeLessThanOrEqual(2);
+      const empezo = await prisma.gameEvent.count({
+        where: { subjectId: encuentro.id, type: "ENCOUNTER_STARTED" },
+      });
+      expect(empezo).toBe(1);
+    }
+  }, 30000);
+
+  /**
+   * M-8 (ronda de arreglo 1) — un fallo a mitad del bucle deja el encuentro a medias, y el
+   * docstring de `forceStart` dice que retomar es tan simple como llamarlo otra vez. Se comprueba
+   * forjando a mano el estado que un fallo a mitad de camino habría dejado —una petición ya
+   * anulada por una iteración anterior, el resto todavía pendiente, el encuentro seguía
+   * `PREPARING`— y llamando a `forceStart` una segunda vez sobre ese estado, sin pasar por la
+   * primera iteración real.
+   */
+  it("una llamada repetida retoma desde donde se quedó (M-8)", async () => {
+    const { sessionId, encuentro, peticiones } = await empezarConDosJugadores();
+
+    // Forjado a mano: lo que la iteración de `peticiones[0]` habría dejado si `forceStart` hubiera
+    // corrido hasta ahí y fallado justo después.
+    await prisma.rollRequest.update({
+      where: { id: peticiones[0].id },
+      data: { resolvedAt: new Date(), cancelledAt: new Date() },
+    });
+    await prisma.combatant.updateMany({
+      where: { encounterId: encuentro.id, characterId: peticiones[0].characterId },
+      data: { initiative: 7 },
+    });
+    expect((await recargar(encuentro.id))!.status).toBe("PREPARING");
+
+    await service.forceStart(dmId, campaignId, sessionId, encuentro.id);
+
+    expect((await recargar(encuentro.id))!.status).toBe("ACTIVE");
+    const pendientes = await prisma.rollRequest.count({
+      where: { encounterId: encuentro.id, resolvedAt: null },
+    });
+    expect(pendientes).toBe(0);
+    const combatientes = await prisma.combatant.findMany({ where: { encounterId: encuentro.id } });
+    expect(combatientes.every((c) => c.initiative !== 0)).toBe(true);
+    // Solo UN suceso de sistema: el de `peticiones[1]`, la única que esta segunda llamada
+    // procesó de verdad. La de `peticiones[0]` ya estaba anulada antes de que `forceStart`
+    // volviera a correr, así que no genera una segunda.
+    const sucesos = await prisma.gameEvent.count({
+      where: { subjectId: encuentro.id, type: "INITIATIVE_ROLLED_BY_SYSTEM" },
+    });
+    expect(sucesos).toBe(1);
   });
 
   it("cancelar un combate YA empezado no se puede", async () => {

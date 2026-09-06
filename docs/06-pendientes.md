@@ -131,6 +131,29 @@ montaje, nunca en el camino que la tarea 3 prueba.
 **Cierra cuando** alguien reproduzca el 500 fuera de un test (tres `PATCH .../sheet` reales y
 concurrentes de tres jugadores) y encuentre la causa exacta en `character-sheet.service.ts`.
 
+## P2-cancelar · `EncountersService.cancel` borra la petición del jugador sin decírselo (2026-09-05, ronda de arreglo 1 de la tarea 4)
+
+**Decisión del autor, no un hueco a rellenar sin más.** `cancel()` borra el `Encounter` y sus
+`RollRequest` (`apps/api/src/encounters/encounters.service.ts`, método `cancel`) sin escribir
+ningún suceso — a propósito: «no es historia, es un clic deshecho», y un suceso con
+`subjectType: "encounter"` sobre un sujeto que acaba de desaparecer sería justo la historia que
+esa decisión dice que no se guarda.
+
+**El coste que deja, y por qué queda anotado igual.** Un jugador con una petición de iniciativa
+pendiente ve desaparecer esa entrada de su bandeja sin ninguna explicación — no hay 409, no hay
+suceso, no hay nada: la fila simplemente deja de estar. Es exactamente el mismo silencio que
+`cancel` elige a propósito para el registro de la mesa, pero visto desde la pantalla del jugador
+en vez de desde el historial.
+
+**Si el autor decide algún día que hace falta avisar,** el sujeto del suceso no puede ser el
+encuentro —ya no existe para serlo—: tendría que ser la **sesión** (`subjectType: "session"`),
+con un tipo nuevo declarado en `packages/shared/src/game-event.schema.ts` (algo como
+`ENCOUNTER_CANCELLED`, sin ligar a ningún `Encounter` porque para cuando alguien lo lea ya no
+habrá ninguno que enlazar).
+
+**Cierra cuando** el autor decida que el silencio le cuesta más de lo que ahorra, y alguien
+implemente ese suceso de sesión.
+
 ## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando

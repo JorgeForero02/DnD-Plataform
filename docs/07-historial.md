@@ -48,6 +48,13 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 11 · un pícaro con dos dagas no existía.** La pantalla del inventario **no mandaba
+  `slot` al equipar** —grep de `slot` en ese fichero: cero—, aunque el servidor lo acepta desde 2B
+  y el motor lo usa para la mano ocupada y para el arma ligera de la izquierda. Equipar un arma
+  pregunta ahora la mano con **radios**, y cuando una no está disponible —un arma a dos manos— **se
+  escribe el motivo** en vez de dejarlo adivinar. Lo que no es un arma se equipa sin preguntar:
+  sería un paso que no decide nada. **Cómo se revierte:** el commit.
+
 - **Tarea 10 · no se podía crear un recurso desde la aplicación.** La ruta existía desde 2A y la
   web llamaba a `/spend`, `/give` y `/restore` y **nunca al `PUT`**: se podía gastar, regalar y
   reponer un recurso y no crearlo, y como la siembra solo pone dados de golpe y espacios de

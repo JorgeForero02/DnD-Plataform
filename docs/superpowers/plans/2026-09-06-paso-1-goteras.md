@@ -1565,4 +1565,5 @@ tarea 13 debe añadir.
 | 12 · El editor de criaturas deja de mentir al editar | ✅ | `4a75bd3` | El selector se pinta en los dos casos; falta su paso por el navegador, que va en la tanda única |
 | 14 · El panel de dados, montado | ✅ | `41feede` | **Ya estaba montado**; lo que faltaba era la prueba que impide que se desmonte |
 | 15 · Un PNJ cedido se maneja desde su pantalla | ✅ | `9423e80` | `ownerId` viaja y la ficha lo lee; una prueba vieja pasaba por la razón equivocada |
-| 10 · Se puede crear un recurso desde la aplicación | ✅ | el de abajo | `PUT` enchufado; `resetOn` en **radios con su frase**; el navegador va en la tanda única |
+| 10 · Se puede crear un recurso desde la aplicación | ✅ | `69938a6` | `PUT` enchufado; `resetOn` en **radios con su frase**; el navegador va en la tanda única |
+| 11 · Pelear con dos armas | ✅ | el de abajo | La mano en **radios**, el motivo escrito cuando falta una; el navegador va en la tanda única |

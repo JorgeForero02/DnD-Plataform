@@ -380,3 +380,99 @@ describe("PaginaDeInventario", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("pelear con dos armas (paso 1, tarea 11)", () => {
+  // **La pantalla no mandaba `slot` al equipar**: grep de `slot` en `PaginaDeInventario` daba
+  // cero. El servidor lo acepta desde 2B y el motor lo usa —`rules/attacks.ts` mira `OFF_HAND`
+  // para la mano ocupada y para el arma ligera de la izquierda—, así que **un pícaro con dos
+  // dagas no existía**.
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const daga = objeto({
+    name: "Daga",
+    kind: "WEAPON",
+    weightOz: 16,
+    weapon: {
+      category: "SIMPLE",
+      range: "MELEE",
+      damageDice: "1d4",
+      damageType: "PIERCING",
+      properties: ["FINESSE", "LIGHT"],
+    },
+  });
+
+  const espadon = objeto({
+    name: "Espadón",
+    kind: "WEAPON",
+    weightOz: 96,
+    weapon: {
+      category: "MARTIAL",
+      range: "MELEE",
+      damageDice: "2d6",
+      damageType: "SLASHING",
+      properties: ["HEAVY", "TWO_HANDED"],
+    },
+  });
+
+  it("equipar un arma pide la mano y manda el slot", async () => {
+    const filas = [fila({ id: "ca-daga", location: "CARRIED", item: daga })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
+      fila({ id: "ca-daga", location: "EQUIPPED", slot: "OFF_HAND", item: daga }),
+    );
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Equipar" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Mano izquierda" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() =>
+      expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith("c1", "ch1", "ca-daga", {
+        location: "EQUIPPED",
+        slot: "OFF_HAND",
+      }),
+    );
+  });
+
+  it("un arma a dos manos no ofrece la izquierda, y DICE por qué", async () => {
+    const filas = [fila({ id: "ca-esp", location: "CARRIED", item: espadon })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Equipar" }));
+
+    expect(screen.queryByRole("radio", { name: "Mano izquierda" })).not.toBeInTheDocument();
+    // **El motivo se escribe.** Un control que desaparece sin explicación es la peor versión de
+    // decir que no.
+    expect(screen.getByText(/ocupa las dos manos/i)).toBeInTheDocument();
+  });
+
+  it("lo que no es un arma se equipa sin preguntar nada", async () => {
+    // Preguntar la mano para una armadura sería un paso que no decide nada.
+    const filas = [fila({ id: "ca-1", location: "CARRIED", item: cuerda })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
+      fila({ id: "ca-1", location: "EQUIPPED", item: cuerda }),
+    );
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Equipar" }));
+
+    await waitFor(() =>
+      expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith("c1", "ch1", "ca-1", {
+        location: "EQUIPPED",
+      }),
+    );
+  });
+});

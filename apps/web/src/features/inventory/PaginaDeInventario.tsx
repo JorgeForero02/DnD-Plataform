@@ -10,6 +10,8 @@ import {
   useRemoveInventoryItem,
 } from "./hooks";
 import { AvisoDeEquipar } from "./AvisoDeEquipar";
+import { ElegirMano } from "./ElegirMano";
+import type { EquipSlot } from "@dnd/shared";
 import type { AvisoEquiparInfo } from "./AvisoDeEquipar";
 import { ConfirmarSoltar } from "./ConfirmarSoltar";
 import { PanelCarga } from "./PanelCarga";
@@ -46,6 +48,15 @@ export function PaginaDeInventario({
   const gastarObjeto = useConsumeInventoryItem(campaignId, characterId);
 
   const [aviso, setAviso] = useState<AvisoEquiparInfo | null>(null);
+  /**
+   * **Equipar un arma pregunta la mano** (paso 1, tarea 11). El servidor acepta `slot` desde 2B
+   * (`updateInventoryItemSchema`) y el motor lo usa —`rules/attacks.ts` mira `OFF_HAND` para la
+   * mano ocupada y para el arma ligera de la izquierda— y **la pantalla no lo ofrecía**: grep de
+   * `slot` en este fichero daba cero. Consecuencia: **un pícaro con dos dagas no existía**.
+   */
+  const [manoPara, setManoPara] = useState<string | null>(null);
+  const [manoElegida, setManoElegida] = useState<EquipSlot>("MAIN_HAND");
+
   const [filaEnVuelo, setFilaEnVuelo] = useState<string | null>(null);
   const [erroresPorFila, setErroresPorFila] = useState<Record<string, string>>({});
   const [filaASoltar, setFilaASoltar] = useState<InventoryRow | null>(null);
@@ -79,14 +90,15 @@ export function PaginaDeInventario({
   const guardados = items.filter((r) => r.location === "STORED");
   const sintonizados = items.filter((r) => r.attuned).length;
 
-  const cambiarZona = (row: InventoryRow, destino: "EQUIPPED" | "CARRIED") => {
+  const cambiarZona = (row: InventoryRow, destino: "EQUIPPED" | "CARRIED", slot?: EquipSlot) => {
     setErroresPorFila((e) => ({ ...e, [row.id]: "" }));
     setFilaEnVuelo(row.id);
     cambiarUbicacion.mutate(
-      { rowId: row.id, input: { location: destino } },
+      { rowId: row.id, input: { location: destino, ...(slot ? { slot } : {}) } },
       {
         onSuccess: (resultado) => {
           setFilaEnVuelo(null);
+          setManoPara(null);
           const { acAntes, acDespues } = resultado;
           if (acAntes != null && acDespues != null && acAntes !== acDespues) {
             setAviso({
@@ -219,10 +231,27 @@ export function PaginaDeInventario({
               row={row}
               ocupado={filaEnVuelo === row.id}
               error={erroresPorFila[row.id] || undefined}
-              onAccionPrincipal={() => cambiarZona(row, "EQUIPPED")}
+              onAccionPrincipal={() =>
+                // **Un arma pregunta la mano; lo demás va a su ranura de siempre.** Preguntarla
+                // para una armadura sería un paso que no decide nada.
+                esArma(row)
+                  ? (setManoElegida("MAIN_HAND"), setManoPara(row.id))
+                  : cambiarZona(row, "EQUIPPED")
+              }
               onSoltar={() => setFilaASoltar(row)}
               onGastar={sePuedeGastar(row) ? () => gastar(row) : undefined}
-            />
+            >
+              {manoPara === row.id && (
+                <ElegirMano
+                  nombre={row.item.name}
+                  aDosManos={aDosManos(row)}
+                  valor={manoElegida}
+                  onElegir={setManoElegida}
+                  onConfirmar={() => cambiarZona(row, "EQUIPPED", manoElegida)}
+                  onCancelar={() => setManoPara(null)}
+                />
+              )}
+            </FilaObjeto>
           ))}
         </ZonaDeObjetos>
 
@@ -263,4 +292,17 @@ export function PaginaDeInventario({
       )}
     </section>
   );
+}
+
+/** Un arma es lo único que pregunta la mano: una armadura va a su ranura y no decide nada. */
+function esArma(row: InventoryRow): boolean {
+  return row.item.kind === "WEAPON";
+}
+
+/**
+ * **A dos manos según lo que declara el arma**, no según su nombre. `TWO_HANDED` es una propiedad
+ * del catálogo (`item.schema.ts`), y es la que el motor mira para decidir el daño versátil.
+ */
+function aDosManos(row: InventoryRow): boolean {
+  return (row.item.weapon?.properties ?? []).includes("TWO_HANDED");
 }

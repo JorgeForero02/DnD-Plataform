@@ -1,4 +1,5 @@
 import type { ResolvedItem } from "@dnd/shared";
+import type { ReactNode } from "react";
 import type { InventoryRow } from "./api";
 import { Button } from "../../ui/Button";
 import { IconoObjeto } from "./iconos";
@@ -32,6 +33,7 @@ export function FilaObjeto({
   onSintonizar,
   ocupado,
   error,
+  children,
 }: {
   row: InventoryRow;
   /** El botón de la derecha: equipar, quitar o traer, según la zona en la que vive la fila. */
@@ -57,6 +59,12 @@ export function FilaObjeto({
   ocupado: boolean;
   /** El rechazo del servidor para esta fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
+  /**
+   * Lo que la fila despliega debajo cuando la acción principal necesita una decisión más — hoy,
+   * **en qué mano va un arma** (paso 1, tarea 11). Va aquí dentro y no en un diálogo: se toca
+   * donde se lee, y la mano es una propiedad de esta fila.
+   */
+  children?: ReactNode;
 }) {
   const { item } = row;
   const dato = datoDeObjeto(item);
@@ -134,6 +142,7 @@ export function FilaObjeto({
           {error}
         </p>
       )}
+      {children}
     </li>
   );
 }

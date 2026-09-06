@@ -577,10 +577,28 @@ export class EncountersService {
     if (!combatiente) throw new NotFoundException("Combatant not found");
 
     return this.prisma.transaction(async (tx) => {
+      // **Quién tenía el turno ANTES de tocar nada**, para poder seguirlo después de recolocar
+      // (ver el bloque de abajo). Se lee dentro del `antesDeLeer` de `recolocar`: el candado del
+      // encuentro ya está tomado en ese punto, así que esta lectura ve el estado real y no una
+      // foto de antes de la cola.
+      let statusAntes: string | undefined;
+      let activaAntes: number | undefined;
+      let idsEnElTurno: string[] = [];
+
       // **La escritura va DENTRO del `antesDeLeer` de `recolocar`, no antes de llamarlo** (ronda
       // de arreglo 1, I-1): así el candado del encuentro se toma antes de tocar esta fila, y dos
       // `setInitiative` a la vez —o uno contra una respuesta de iniciativa— dejan de cruzarse.
       const filas = await recolocar(tx, encounterId, async () => {
+        const encuentroActual = await tx.encounter.findUnique({ where: { id: encounterId } });
+        statusAntes = encuentroActual?.status;
+        activaAntes = encuentroActual?.activePosition ?? undefined;
+        if (statusAntes === "ACTIVE" && activaAntes !== undefined) {
+          const enElTurno = await tx.combatant.findMany({
+            where: { encounterId, position: activaAntes },
+          });
+          idsEnElTurno = enElTurno.map((f: { id: string }) => f.id);
+        }
+
         await tx.combatant.update({
           where: { id: combatantId },
           data: {
@@ -592,6 +610,45 @@ export class EncountersService {
           },
         });
       });
+
+      // **Corregir con el combate en marcha no puede saltarse un asalto.** `recolocar` renumera
+      // denso: si el combatiente corregido compartía `activePosition` con sus idénticos, esa
+      // posición desaparece del todo al recolocar. Sin este bloque, `advanceTurn` hace
+      // `posiciones.indexOf(activePosition)` → -1, `(−1 + 1) % n` → 0, y el siguiente «Pasar
+      // turno» sube de asalto y avanza el reloj de campaña seis segundos sin que nadie lo pidiera.
+      //
+      // **El turno se conserva por identidad, no por número.** `idsEnElTurno` es quién ocupaba
+      // `activePosition` justo antes de recolocar — puede ser un grupo entero de idénticos, del
+      // que como mucho UNO (`combatantId`) cambia de clave de grupo aquí. Cualquier otro miembro
+      // sigue con la misma iniciativa y la misma clave que antes, así que su posición nueva es la
+      // que de verdad importa: si el grupo no se partió del todo, todos sus miembros restantes
+      // coinciden en ella. Si `combatantId` estaba solo en esa posición, se sigue a sí mismo.
+      if (statusAntes === "ACTIVE" && activaAntes !== undefined && idsEnElTurno.length > 0) {
+        const representante = idsEnElTurno.find((id) => id !== combatantId) ?? idsEnElTurno[0];
+        const filaDelRepresentante = filas.find((f) => f.id === representante);
+
+        let nuevaActiva: number;
+        if (filaDelRepresentante) {
+          nuevaActiva = filaDelRepresentante.position;
+        } else {
+          // El combatiente que tenía el turno ya no está en el encuentro (ninguna ruta de hoy lo
+          // borra desde aquí, pero `recolocar` no lo garantiza para siempre): se cae a la
+          // posición inmediatamente anterior de las que queden, nunca a -1.
+          const posicionesRestantes = [...new Set(filas.map((f) => f.position))].sort(
+            (a, b) => a - b,
+          );
+          const anterior = [...posicionesRestantes].reverse().find((p) => p < activaAntes!);
+          nuevaActiva = anterior ?? posicionesRestantes[0] ?? 0;
+        }
+
+        if (nuevaActiva !== activaAntes) {
+          await tx.encounter.update({
+            where: { id: encounterId },
+            data: { activePosition: nuevaActiva },
+          });
+        }
+      }
+
       return filas.find((f) => f.id === combatantId)!;
     });
   }

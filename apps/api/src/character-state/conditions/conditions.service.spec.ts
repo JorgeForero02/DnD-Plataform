@@ -1,3 +1,4 @@
+import { ForbiddenException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -45,10 +46,14 @@ describe("ConditionsService", () => {
   });
 
   it("el dueño puede aplicar una condición sobre su propio personaje", async () => {
+    // **La clave era `prone` y ahora es libre**, y no es un detalle de la prueba: desde el
+    // 2026-09-06 un jugador no puede escribirse una condición **del SRD** sobre sí mismo, porque
+    // el motor las lee para decidir tiradas. Lo que esta prueba defiende —que anotarse algo sobre
+    // el propio personaje sigue funcionando— no ha cambiado.
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
-    prisma.characterCondition.upsert.mockResolvedValue({ key: "prone" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "mojado" });
 
-    await service.apply("owner1", "cmp1", "c1", { key: "prone" });
+    await service.apply("owner1", "cmp1", "c1", { key: "mojado" });
 
     expect(prisma.characterCondition.upsert).toHaveBeenCalled();
     expect(events.record).toHaveBeenCalledWith(
@@ -66,6 +71,63 @@ describe("ConditionsService", () => {
     await service.apply("dm1", "cmp1", "c1", { key: "grappled" });
 
     expect(prisma.characterCondition.upsert).toHaveBeenCalled();
+  });
+
+  // **Un jugador puede ponerse una nota; no puede concederse una mecánica** (paso 1, tarea 1).
+  //
+  // La autorización de arriba es correcta y no se toca: que alguien se tumbe sobre su propio
+  // personaje está bien. El agujero era otro — **la clave es texto libre** y sin `durationSeconds`
+  // la condición es indefinida, así que `PUT …/conditions/helped` daba **ventaja permanente y
+  // renovable en todos los ataques**, saltándose los tres controles de la acción Ayudar:
+  // `ayudaViva` busca esa marca **solo por clave**, sin mirar quién la puso.
+  //
+  // La regla NO es «las quince del SRD se prohíben»: el DM envenena a alguien por esta ruta y eso
+  // tiene que seguir funcionando. Es **el DM sí, el jugador sobre sí mismo no**, y `helped`
+  // **nadie**.
+
+  it("un jugador no puede aplicarse `helped` a sí mismo", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    await expect(service.apply("owner1", "cmp1", "c1", { key: "helped" })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
+  it("el DM tampoco: la marca la pone la acción Ayudar, no una ruta genérica", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    await expect(service.apply("dm1", "cmp1", "c1", { key: "helped" })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
+  it("una condición del SRD no entra a mano por esta puerta si quien llama es el jugador", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    await expect(service.apply("owner1", "cmp1", "c1", { key: "poisoned" })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
+  it("pero el DM SÍ se la aplica: es como se envenena a alguien en la mesa", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "poisoned" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "poisoned" });
+
+    expect(prisma.characterCondition.upsert).toHaveBeenCalled();
+  });
+
+  it("una nota propia sin efecto mecánico sigue funcionando", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "mojado" });
+
+    const c = await service.apply("owner1", "cmp1", "c1", {
+      key: "mojado",
+      note: "Me caí al río",
+    });
+
+    expect(c.key).toBe("mojado");
   });
 
   it("otro jugador que no es dueño ni DM no puede aplicar una condición", async () => {

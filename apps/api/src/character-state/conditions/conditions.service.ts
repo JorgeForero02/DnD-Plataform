@@ -1,7 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   CLAVE_AYUDA,
   SEGUNDOS_POR_ASALTO,
+  esClaveReservada,
   type ApplyConditionInput,
   type HelpInput,
 } from "@dnd/shared";
@@ -60,13 +66,30 @@ export class ConditionsService {
       campaignId,
       characterId,
     );
-    await requireOwnerOrDM(
+    const esDM = await requireOwnerOrDM(
       this.membership,
       campaignId,
       userId,
       character,
       "Solo el DM o el dueño puede aplicar una condición.",
     );
+
+    // **La marca de Ayudar la pone `help()`, y nadie más.** Por esta ruta no entra ni el DM:
+    // `ayudaViva` la busca **solo por clave** (`character-sheet.service.ts`), sin mirar quién la
+    // puso ni si hubo ayudante, así que escribirla a mano es concederse ventaja saltándose los
+    // tres controles de la acción.
+    if (input.key === CLAVE_AYUDA) {
+      throw new ForbiddenException(
+        "La ventaja de Ayudar la concede la acción Ayudar, no esta ruta.",
+      );
+    }
+    // **Una condición del SRD la pone el DM.** Un jugador puede anotarse lo que quiera sobre sí
+    // mismo —una nota no calcula nada—, pero no darse un estado que el motor lee para decidir
+    // tiradas y velocidad. El coste conocido de la regla, y se acepta a propósito: tumbarse solo
+    // pasa a pedírselo al DM, porque `prone` es una de las quince.
+    if (esClaveReservada(input.key) && !esDM) {
+      throw new ForbiddenException("Esa condición la aplica el DM.");
+    }
 
     return this.prisma.transaction(async (tx) => {
       // **El vencimiento se guarda absoluto, no como una duración.** Guardar «dura una hora»

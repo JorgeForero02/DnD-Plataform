@@ -126,6 +126,25 @@ export type SrdCondition = z.infer<typeof srdConditionSchema>;
 export const CLAVE_AYUDA = "helped";
 
 /**
+ * **¿Esta clave la INTERPRETA el servidor?** (paso 1, tarea 1).
+ *
+ * Las quince del SRD cambian el modo de tirada sugerido y la velocidad efectiva; `helped` concede
+ * ventaja en el ataque. Ninguna de las dos cosas puede escribirse por la puerta generica de
+ * condiciones sin mirar quien llama: la clave es texto libre y sin `durationSeconds` la condicion
+ * es indefinida, asi que un jugador podia concederse **ventaja permanente y renovable** sobre si
+ * mismo.
+ *
+ * Lo que esto NO dice es que la clave este prohibida: dice que **hay que preguntar quien llama**.
+ * El DM sigue envenenando a la mesa por esta ruta, que es como se juega.
+ *
+ * Vive en `shared` porque la usan el servidor y la pantalla, y una lista copiada en dos sitios
+ * acaba escrita de dos formas.
+ */
+export function esClaveReservada(key: string): boolean {
+  return key === CLAVE_AYUDA || (SRD_CONDITIONS as readonly string[]).includes(key);
+}
+
+/**
  * Ayudar a alguien de la mesa.
  *
  * **Lo unico que se declara es a quien**, porque es lo unico que el servidor puede saber. El SRD

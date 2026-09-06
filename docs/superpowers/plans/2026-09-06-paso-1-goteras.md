@@ -1413,6 +1413,10 @@ sigue **por donde diga este bloque**, no por donde se crea recordar.
 **Correcciones al plan encontradas al ejecutarlo** (el plan es un encargo fechado: se corrige
 encima, no se reescribe):
 
+- **La constante se llama `CLAVE_AYUDA`, no `CLAVE_DE_AYUDA`.** Ya existía en
+  `packages/shared/src/character-state.schema.ts` desde el plan 08; la tarea 1 solo le añade
+  `esClaveReservada` al lado en vez de declararla otra vez.
+
 - **La tarea 19 cita `E-IB-4` y la decisión que corrige es `E-IB-18`.** Comprobado el 2026-09-06
   sobre `52a9c5c`: `docs/decisiones.md:323` (E-IB-4) habla de la firma real de
   `GameEventsService.record`, y la de «`cancel()` no escribe suceso» es **E-IB-18**
@@ -1437,7 +1441,18 @@ la prueba muere por `Test timed out in 5000ms` **sin haber medido nada**, su DOM
 siguiente cuenta doce «sin calcular» donde hay seis. Verde tres de tres en solitario y roja dentro
 de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba (`e926b91`).
 
+**Decisiones tomadas sin el autor, con lo que costarían si me equivoco:**
+
+- **Tarea 1 · un jugador deja de poder tumbarse solo.** La regla que el plan escribe es uniforme
+  —clave del SRD ⇒ solo el DM— y `prone` es una de las quince, así que «me tumbo» pasa a
+  pedírselo al DM. La alternativa era una lista de condiciones «que solo te perjudican», y eso es
+  justo lo que el paso 1 de los cuatro llama abrir un frente nuevo: habría que revisarla cada vez
+  que el motor lea una condición más. **Si me equivoco cuesta una línea**: sacar `prone` (y las
+  que se decidan) de `esClaveReservada`, que vive en un solo sitio.
+
 | Tarea | Estado | Commit | Qué cerró |
 |---|---|---|---|
 | — · `EdicionEnSitio` inestable | ✅ | `e926b91` | Bloqueaba **todos** los commits del día |
-| 0 · Tachar lo que anoche cerró | ✅ | el de abajo | Las dos fichas comprobadas una a una antes de tachar; van al archivo, no tachadas en el documento vivo |
+| 0 · Tachar lo que anoche cerró | ✅ | `6f94334` | Las dos fichas comprobadas una a una antes de tachar; van al archivo, no tachadas en el documento vivo |
+| — · Un e2e afirmaba lo contrario que su código | ✅ | `3ec2d76` | `character-state` esperaba **201** al reponer un `DM_ONLY` siendo el dueño; `1758c21` lo cerró a propósito y la prueba llevaba roja desde entonces **sin que nadie mirara**, porque los e2e no entran en `pnpm verify` |
+| 1 · Un jugador no se concede una mecánica | ✅ | el de abajo | `helped` no entra por la puerta genérica **para nadie**; una clave del SRD, solo el DM |

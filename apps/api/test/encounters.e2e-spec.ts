@@ -498,9 +498,14 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       const s = app.getHttpServer();
       // El reloj está a 6 tras la prueba anterior. Se aplica una condición que dura un asalto
       // más (6 segundos): vence exactamente cuando se complete la próxima vuelta.
+      //
+      // **La aplica el DM, y desde el 2026-09-06 no es indiferente quién** (paso 1, tarea 1): una
+      // condición del SRD ya no la escribe un jugador sobre su propio personaje, porque el motor
+      // las lee para decidir tiradas. Lo que esta prueba mide —que vence sola al pasar el reloj—
+      // no depende de quién la puso, así que se cambia el token y nada más.
       await request(s)
         .put(`/campaigns/${campaignId}/characters/${pc1Id}/conditions/poisoned`)
-        .set("Authorization", `Bearer ${tokenPL}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
         .send({ durationSeconds: 6 });
 
       const antes = await request(s)

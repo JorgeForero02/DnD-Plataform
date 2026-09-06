@@ -47,6 +47,14 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 1 · un jugador podía concederse ventaja permanente, y ya no.** `PUT
+  …/conditions/helped` sin duración daba **ventaja renovable en todos sus ataques**: la
+  autorización era correcta —el personaje es suyo— y el agujero estaba en que **la clave es texto
+  libre** y `ayudaViva` la busca **solo por clave**. Ahora `esClaveReservada` (`@dnd/shared`)
+  separa lo que el servidor **interpreta** de lo que solo guarda: `helped` no entra por esa puerta
+  **para nadie**, una condición del SRD solo la escribe el DM, y una nota propia sigue siendo del
+  dueño. **Cómo se revierte:** quitar las dos comprobaciones de `ConditionsService.apply`.
+
 - **Tarea 0 · dos fichas describían como pendiente algo ya entregado.** `P1` (el ataque comparado
   contra la CA sin pantalla que lo llame) y la segunda `P3` (un cuadro de ataques vacío sin
   motivo) las cerraron las tareas 13 y 15 de la tanda de la iniciativa y nadie las tachó. Se

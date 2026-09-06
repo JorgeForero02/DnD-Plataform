@@ -454,6 +454,20 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     item: z.string().min(1).max(120),
     ref: z.string().min(1).max(80),
     quantity: z.number().int().min(1).max(9999),
+    /**
+     * **Qué efectos del objeto se aplicaron al consumirlo** (paso 1, tarea 7). Hasta el
+     * 2026-09-06 `consume` resolvía la definición del objeto y **no miraba sus efectos**, así que
+     * beberse una poción solo la borraba del inventario.
+     */
+    effectsApplied: z.array(z.string().min(1).max(40)).max(12).optional(),
+    /**
+     * **Y cuáles NO se pudieron aplicar, dicho en vez de descartado en silencio.** Los nueve
+     * efectos de objeto son pasivos y permanentes, y solo tres —CA, característica y velocidad—
+     * caben en el vocabulario cerrado de los modificadores temporales, que es la única forma que
+     * hay hoy de colgarle algo a un personaje. Un efecto de competencia o de arma **no se
+     * inventa**: se nombra aquí para que la mesa sepa que lo tiene que arbitrar.
+     */
+    effectsNotApplied: z.array(z.string().min(1).max(40)).max(12).optional(),
   }),
 
   /**

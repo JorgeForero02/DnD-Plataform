@@ -1483,6 +1483,16 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 
 **Decisiones tomadas sin el autor, con lo que costarían si me equivoco:**
 
+- **Tarea 7 · consumir aplica los efectos como modificadores temporales SIN duración.** El paso 1
+  del plan pedía medir primero qué efectos declaran los consumibles del catálogo, y la medición
+  dice que **el catálogo del SRD no tiene ni un solo objeto `CONSUMABLE`**: los únicos consumibles
+  con efectos son los que escribe el DM. De los nueve efectos de objeto, **tres** caben en el
+  vocabulario cerrado de los modificadores temporales (CA, característica, velocidad) y seis no.
+  Se aplican los tres con `expiresAtClock: null` —«hasta que alguien lo quite», que es lo que ya
+  significa ese `null`— y **los seis restantes se nombran en el suceso** en vez de descartarse en
+  silencio. No se inventa ningún efecto de curación: eso es el paso 2. **Si me equivoco cuesta un
+  `UPDATE`**: los modificadores son filas que el DM ya sabe quitar desde su pantalla.
+
 - **Tarea 1 · un jugador deja de poder tumbarse solo.** La regla que el plan escribe es uniforme
   —clave del SRD ⇒ solo el DM— y `prone` es una de las quince, así que «me tumbo» pasa a
   pedírselo al DM. La alternativa era una lista de condiciones «que solo te perjudican», y eso es
@@ -1509,4 +1519,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 3 · Una sola concentración | ✅ | `a812ae1` | La segunda retira la primera **con su suceso**; el segundo defecto (una salvación para dos) desaparece solo |
 | 4 · Ayudar caduca cuando el SRD dice | ✅ | `7b2b8c2` | Borde de turno; **4a y 4b van juntas** (abajo el porqué) |
 | — · Revisión de 2 y 3 (13 hallazgos) | ✅ | `b95635f` | Las unitarias de concentración **no medían el `where`**; el mapa de la migración perdía las formas femeninas; un `@Optional()` fallaba abierto |
-| 6 · Un PNJ es competente con sus armas | ✅ | el de abajo | Las dos categorías enteras, no una lista inventada; el PJ sin competencia **sigue** con su aviso |
+| 6 · Un PNJ es competente con sus armas | ✅ | `5518aec` | Las dos categorías enteras, no una lista inventada; el PJ sin competencia **sigue** con su aviso |
+| 7 · Consumir un objeto hace algo | ✅ | el de abajo | Aplica los efectos que **ya declara**, por la maquinaria de M8; los seis que no caben **se nombran** |

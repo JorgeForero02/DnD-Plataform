@@ -14,6 +14,7 @@ import {
   type ConsumeInventoryItemInput,
   type CoinKey,
   type EquipSlot,
+  type ItemEffect,
   type ItemKind,
   type ItemLocation,
   type ResolvedItem,
@@ -327,6 +328,46 @@ export class InventoryService {
   }
 
   /**
+   * **De los efectos que declara un objeto a lo que el servidor sabe colgarle a un personaje.**
+   *
+   * Los nueve efectos de objeto son **pasivos y permanentes** —suman a una característica, a la
+   * CA, a la velocidad—, no «cura 2d4+2»: esta tarea **no inventa un efecto de curación**, que es
+   * el paso 2, donde una poción será un objeto con una actividad. Lo que sí puede hacerse hoy es
+   * que consumir aplique lo que el objeto **ya dice** que hace.
+   *
+   * La maquinaria es la de los modificadores temporales (M8), que es la única forma que hay de
+   * colgarle un número a un personaje sin tocar el motor, y su vocabulario cerrado son **las seis
+   * características, la CA y las cinco velocidades**. Tres de los nueve efectos caben ahí; los
+   * otros seis —competencias, salvaciones, PG máximos y los dos del arma— **no se fuerzan**: se
+   * devuelven aparte para que el suceso los nombre.
+   *
+   * **Sin duración a propósito:** un efecto de objeto no declara ninguna, y fingir una sería
+   * inventarse una regla. `expiresAtClock: null` es exactamente «hasta que alguien lo quite», que
+   * es lo que el DM hace cuando la ficción lo diga.
+   */
+  private modificadoresDeEfectos(effects: ItemEffect[]): {
+    aplicables: { target: string; amount: number }[];
+    noAplicables: string[];
+  } {
+    const aplicables: { target: string; amount: number }[] = [];
+    const noAplicables: string[] = [];
+    for (const efecto of effects) {
+      if (efecto.kind === "ac") {
+        aplicables.push({ target: "ac", amount: efecto.amount });
+      } else if (efecto.kind === "abilityScore" && efecto.mode === "add") {
+        aplicables.push({ target: `ability.${efecto.ability}`, amount: efecto.amount });
+      } else if (efecto.kind === "speed") {
+        aplicables.push({ target: `speed.${efecto.movement}`, amount: efecto.amount });
+      } else {
+        // `abilityScore` en modo `set` tampoco entra: un modificador temporal **suma**, y fijar
+        // una puntuación es un `override` que este vocabulario no tiene.
+        noAplicables.push(efecto.kind);
+      }
+    }
+    return { aplicables, noAplicables };
+  }
+
+  /**
    * Escribe el suceso del inventario **dentro de la misma transacción que el cambio**, que es lo
    * que ya hacen los puntos de golpe: si el cambio se deshace, su rastro se va con él.
    *
@@ -489,11 +530,32 @@ export class InventoryService {
         await tx.inventoryItem.update({ where: { id: rowId }, data: { quantity: restantes } });
       }
 
+      // **Consumir un objeto aplica los efectos que YA declara**, y hasta el 2026-09-06 no lo
+      // hacía: `consume` resolvía la definición y nunca miraba `effects` —grep de `effects` en
+      // este fichero daba **cero**—, así que beberse una poción solo la borraba del inventario.
+      // Los efectos solo se leían al derivar la hoja, y **desde lo equipado**.
+      const { aplicables, noAplicables } = this.modificadoresDeEfectos(itemDef.effects ?? []);
+      for (const modificador of aplicables) {
+        await tx.temporaryModifier.create({
+          data: {
+            characterId,
+            target: modificador.target,
+            amount: modificador.amount,
+            // El motivo se pinta en la traza, que es lo que impide un +2 sin origen.
+            reason: itemDef.name,
+            expiresAtClock: null,
+            grantedById: userId,
+          },
+        });
+      }
+
       await this.registrarSuceso(userId, campaignId, character, tx, {
         type: "ITEM_REMOVED",
         item: itemDef.name,
         ref: itemDef.ref,
         quantity: input.amount,
+        ...(aplicables.length > 0 ? { effectsApplied: aplicables.map((m) => m.target) } : {}),
+        ...(noAplicables.length > 0 ? { effectsNotApplied: noAplicables } : {}),
       });
 
       return { remaining: restantes, deleted: restantes === 0 };

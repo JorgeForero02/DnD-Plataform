@@ -48,6 +48,14 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 7 · beberse una poción solo la borraba del inventario.** `consume` resolvía la
+  definición del objeto y **nunca miraba sus efectos** —grep de `effects` en `inventory.service.ts`:
+  cero—, que solo se leían al derivar la hoja y **desde lo equipado**. Ahora aplica los que el
+  objeto ya declara, con la maquinaria de los modificadores temporales (M8) y sin duración, y el
+  suceso dice **cuáles se aplicaron y cuáles no**: de los nueve efectos de objeto solo tres caben
+  en ese vocabulario, y los otros seis se nombran en vez de descartarse en silencio. **No inventa
+  un efecto de curación**: eso es el paso 2. **Cómo se revierte:** el commit.
+
 - **Tarea 6 · un goblin no era competente ni con su propia cimitarra.** `deriveNpc` dejaba
   `weaponProficiencies` vacía, así que atacaba a **+2 donde el SRD da +4**, con el aviso
   `attack_not_proficient` al lado —el motor sabiéndolo y sin poder hacer nada—. Un PNJ es

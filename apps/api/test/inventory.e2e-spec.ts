@@ -320,4 +320,81 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     const lista = await request(s()).get(base()).set("Authorization", `Bearer ${tokenPL}`);
     expect(lista.body.items.find((i: { id: string }) => i.id === fila.id)).toBeUndefined();
   });
+
+  it("consumir un objeto con efecto lo aplica, y el registro dice cuál y cuál no", async () => {
+    const s = app.getHttpServer();
+    // **Un objeto del DM con dos efectos: uno que el servidor sabe colgar y otro que no.** Los
+    // nueve efectos de objeto son pasivos y permanentes; solo la CA, las características y las
+    // velocidades caben en el vocabulario de los modificadores temporales, que es la única
+    // maquinaria que hay hoy para colgarle un número a un personaje.
+    const pocion = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/items`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Poción de piel de corteza",
+          kind: "CONSUMABLE",
+          visibility: "PLAYERS",
+          effects: [
+            { kind: "ac", amount: 1 },
+            { kind: "saveProficiency", ability: "con" },
+          ],
+        })
+    ).body;
+    expect(pocion.id).toBeDefined();
+
+    // El personaje de esta suite nace sin hoja, y sin ella no hay CA que mirar. Se rellena aquí
+    // —es la última prueba del fichero— porque **el número de la hoja es la única evidencia de
+    // que el efecto llegó al motor**: contar filas de `TemporaryModifier` probaría la escritura,
+    // no la derivación.
+    await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({
+        abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "dwarf" },
+        subrace: { source: "SRD", key: "dwarf-hill" },
+        class: { source: "SRD", key: "fighter" },
+        choices: { "fighter-skills": ["athletics", "perception"] },
+      })
+      .expect(200);
+
+    const caAntes = (
+      await request(s)
+        .get(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+    ).body.sheet.derived.ac.total;
+
+    const fila = (
+      await request(s)
+        .post(base())
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ ref: { source: "CAMPAIGN", id: pocion.id }, quantity: 1 })
+    ).body;
+
+    await request(s)
+      .post(`${base()}/${fila.id}/consume`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ amount: 1 })
+      .expect(201);
+
+    // **El número de la hoja cambia**, que es lo único que demuestra que el efecto llegó al motor.
+    const caDespues = (
+      await request(s)
+        .get(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+    ).body.sheet.derived.ac.total;
+    expect(caDespues).toBe(caAntes + 1);
+
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const suceso = log.body.events.find(
+      (e: { type: string; payload: { item?: string } }) =>
+        e.type === "ITEM_REMOVED" && e.payload.item === "Poción de piel de corteza",
+    );
+    expect(suceso.payload.effectsApplied).toEqual(["ac"]);
+    // **Y el que no se pudo aplicar se NOMBRA, en vez de descartarse en silencio.**
+    expect(suceso.payload.effectsNotApplied).toEqual(["saveProficiency"]);
+  });
 });

@@ -97,14 +97,20 @@ describe("Errores de validación legibles (e2e)", () => {
       .send({ name: "Regla sin disparador", trigger: {}, effects: [] });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toContain("El campo «trigger.kind» solo admite estos valores:");
-    expect(res.body.message).toContain("«SESSION_STARTED»");
+    // **Trece disparadores pasan del tope de doce, y la frase cambia a propósito.**
+    // `MAX_VALORES_LISTADOS` existe porque «por encima de esto, listar los valores estorba más de
+    // lo que ayuda», y el disparador número trece —`CHARACTER_ATTACKED`, del plan de la batuta del
+    // DM— cruzó la línea el 2026-09-05. Lo que esta prueba protege de verdad **no es la prosa**:
+    // es que quien recibe el 400 pueda saber qué se admite, y para eso la lista entera sigue
+    // viajando en `errores[].admitidos`, que es lo que se comprueba tres líneas más abajo.
+    expect(res.body.message).toContain("El campo «trigger.kind» no admite ese valor");
     const trigger = res.body.errores.find((e: { campo: string }) => e.campo === "trigger.kind") as {
       ruta: unknown[];
       admitidos: string[];
     };
     expect(trigger.ruta).toEqual(["trigger", "kind"]);
     expect(trigger.admitidos).toContain("FLAG_SET");
+    expect(trigger.admitidos).toContain("SESSION_STARTED");
     // Y el segundo problema del mismo cuerpo sigue ahí: la lista de efectos está vacía.
     expect(res.body.errores.map((e: { campo: string }) => e.campo)).toContain("effects");
   });

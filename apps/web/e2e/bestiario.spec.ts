@@ -37,7 +37,13 @@ async function abrirBestiario(page: Page) {
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La cripta de Sarnath" }).click();
   await page.getByRole("button", { name: "Bestiario" }).click();
-  await expect(page.getByRole("heading", { name: "Bestiario" })).toBeVisible();
+  // **El cajón, no «un encabezado que ponga Bestiario».** Hay DOS: el título del `Dialog` y el
+  // que el propio panel pinta en su cabecera, y cuál de los dos está montado depende de en qué
+  // punto de la animación mire Playwright — por eso este ayudante pasaba en unas pruebas y en
+  // otras moría con «strict mode violation: resolved to 2 elements», sin que nadie tocara el
+  // bestiario. `Dialog` pone `aria-labelledby` en su título, así que el cajón tiene nombre
+  // accesible propio y **eso no es ambiguo**.
+  await expect(page.getByRole("dialog", { name: "Bestiario" })).toBeVisible();
 }
 
 test("las quince criaturas del libro llegan, con sus números", async ({ page }) => {

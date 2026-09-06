@@ -1,8 +1,9 @@
 import { useId, useState } from "react";
-import type { DamageType } from "@dnd/shared";
+import type { CombatantSide, DamageType } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
 import { vozDePersonaje } from "../../../dominio/voces";
+import { BANDOS } from "../../../dominio/combate";
 import { AyudarA } from "./AyudarA";
 import {
   useCharacterSheet,
@@ -10,6 +11,7 @@ import {
   useConditions,
   useGameClock,
 } from "../../character-sheet/hooks";
+import { useSetSide } from "../../encounters/hooks";
 import { HojaCalculada } from "../../character-sheet/HojaCalculada";
 import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
 import { nombreCondicion } from "../../character-sheet/vocabulario";
@@ -39,6 +41,23 @@ import { PonerDano } from "./PonerDano";
  * tuyo, así que su retrato es información, no un mando. El DM sí los tiene porque él sí maneja a
  * muchos. Esconderlos **no es control de acceso** —el servidor exige dueño o DM igual, y por eso
  * la regla se cumple aunque alguien fabrique la petición—: es no prometer lo que va a dar 403.
+ *
+ * **El bando se corrige aquí, junto a «Daño» y «Condición»** (tarea 10, 2026-09-05 — «un aliado
+ * te traiciona en el segundo asalto»). El prototipo (`prototipo/src/features/FichaDeElenco.tsx`)
+ * ya resolvía el bando en la ficha del elenco al EMPEZAR el combate —el `esEnemigo` de su
+ * `variante` pinta el borde y el icono de garra una sola vez, sin mando para cambiarlo—, así que
+ * no hay una segunda pantalla de la que copiar el gesto de CORREGIRLO; esto es la puerta que
+ * faltaba, hermana de «Corregir» en la tira de iniciativa. Se aparta del prototipo en el color:
+ * `border-danger/40` y `IconGarra` no pasan la regla vinculante del reseño (el bando se distingue
+ * por palabra, y como mucho `--warning` para el enemigo) — así que la garra no se dibuja aquí y
+ * el filete de la tarjeta no cambia con el bando.
+ *
+ * **No son radios con su frase**, a diferencia de los de `EmpezarCombate.tsx`: allí se explica
+ * una decisión que se toma una vez y con calma; aquí es una corrección rápida en la fila más
+ * estrecha de la ficha, junto a dos botones más. Sigue siendo «elegir entre los tres bandos, y
+ * visibles» —nada se esconde en un desplegable—, pero es el gesto «marcar como», y por eso el
+ * bando actual tiene que verse: su botón queda desactivado y lo dice en su propio rótulo, no en
+ * un color aparte.
  */
 export function FichaDeElenco({
   campaignId,
@@ -49,6 +68,10 @@ export function FichaDeElenco({
   conMandos = false,
   turnoActual = false,
   enCombate = false,
+  bando,
+  sessionId,
+  encounterId,
+  combatanteId,
 }: {
   campaignId: string;
   personaje: Character;
@@ -63,10 +86,23 @@ export function FichaDeElenco({
   turnoActual?: boolean;
   /** Hay encuentro activo: la duración de una condición se puede contar en asaltos. */
   enCombate?: boolean;
+  /**
+   * El bando de este personaje EN EL ENCUENTRO en marcha (`Combatant.side`), no una propiedad
+   * suya. `undefined` cuando no hay encuentro o este personaje no combate: entonces no hay nada
+   * que corregir y el mando no se pinta.
+   */
+  bando?: CombatantSide;
+  /** La sesión del encuentro — la ruta de `setSide` cuelga de ella, igual que la de iniciativa. */
+  sessionId?: string;
+  /** El encuentro en marcha. */
+  encounterId?: string;
+  /** El `Combatant.id` de este personaje en ese encuentro — no `personaje.id`. */
+  combatanteId?: string;
 }) {
   const { data: hoja } = useCharacterSheet(campaignId, personaje.id);
   const { data: condiciones } = useConditions(campaignId, personaje.id);
   const cambiarPg = useChangeHp(campaignId, personaje.id);
+  const cambiarBando = useSetSide(campaignId, sessionId);
   const [panel, setPanel] = useState<"dano" | "condicion" | "hoja" | null>(null);
   // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
   // `Dialog` cerrado y lo que hace falta es poder LIMPIARLO al cerrar: el estado que sobrevive a
@@ -189,6 +225,49 @@ export function FichaDeElenco({
           >
             <IconoOjo className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {/* **Corregir el bando, solo con el combate en marcha.** Sin encuentro no hay de qué
+          bando hablar —el bando vive en el `Combatant`, no en el personaje— y por eso, además
+          de `conMandos`, hace falta `bando`/`sessionId`/`encounterId`/`combatanteId`: los cuatro
+          juntos son «este personaje combate ahora mismo», lo mismo que ya exige `PonerCondicion`
+          con su `enCombate` para contar asaltos. */}
+      {conMandos && enCombate && bando && sessionId && encounterId && combatanteId && (
+        <div
+          role="group"
+          aria-label={`Bando de ${personaje.name}`}
+          className="mt-s2 flex flex-wrap items-center gap-s1"
+        >
+          <span className="font-chrome text-chrome-xs text-muted">Bando</span>
+          {BANDOS.map((b) => {
+            const esElActual = b.valor === bando;
+            return (
+              <button
+                key={b.valor}
+                type="button"
+                disabled={esElActual || cambiarBando.isPending}
+                onClick={() =>
+                  cambiarBando.mutate({ encounterId, combatantId: combatanteId, side: b.valor })
+                }
+                className={[
+                  "rounded-radius-sm border px-1.5 py-0.5 font-chrome text-chrome-xs disabled:cursor-not-allowed disabled:opacity-70",
+                  b.valor === "ENEMY"
+                    ? "border-warning text-warning-text hover:bg-[color:var(--warning-tint)]"
+                    : "border-muted text-text hover:bg-surface",
+                ].join(" ")}
+              >
+                {b.nombre}
+                {esElActual && " (su bando actual)"}
+                <span className="sr-only"> a {personaje.name}</span>
+              </button>
+            );
+          })}
+          {cambiarBando.isError && (
+            <span role="alert" className="w-full font-chrome text-chrome-xs text-danger-text">
+              {(cambiarBando.error as Error).message}
+            </span>
+          )}
         </div>
       )}
 

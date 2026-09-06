@@ -1,4 +1,4 @@
-import type { Encounter, SetInitiativeInput, StartEncounterInput } from "@dnd/shared";
+import type { Encounter, SetInitiativeInput, SetSideInput, StartEncounterInput } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Tarea 2.5.6 — **la capa de combate de la mesa.**
@@ -51,6 +51,24 @@ export function setInitiative(
 ): Promise<Encounter> {
   return apiFetch<Encounter>(
     `${base(campaignId, sessionId)}/${encounterId}/combatants/${combatantId}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+  );
+}
+
+/**
+ * Tarea 10 (2026-09-05, iniciativa y bando) — el DM corrige el bando con el combate en marcha:
+ * un aliado te traiciona en el segundo asalto. Hermana de `setInitiative`, misma ruta con
+ * `/side` al final (`EncountersController.setSide`).
+ */
+export function setSide(
+  campaignId: string,
+  sessionId: string,
+  encounterId: string,
+  combatantId: string,
+  input: SetSideInput,
+): Promise<Encounter> {
+  return apiFetch<Encounter>(
+    `${base(campaignId, sessionId)}/${encounterId}/combatants/${combatantId}/side`,
     { method: "PATCH", body: JSON.stringify(input) },
   );
 }

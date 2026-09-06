@@ -92,6 +92,14 @@ export function ColumnaElenco({
       : [],
   );
 
+  // **El combatiente de cada personaje, por `characterId`.** Un PNJ ES una fila de `Character`
+  // (tarea 9b lo dice arriba) y un personaje de jugador también puede combatir con un bando
+  // corregible (tarea 10): la misma lista de `encuentro.combatants` sirve para las dos fichas,
+  // solo que `FichaDePnj` ya la cruzaba con `pnjs` y aquí se cruza con los personajes de la mesa.
+  const combatientePorPersonaje = new Map(
+    (encuentro?.combatants ?? []).map((c) => [c.characterId, c]),
+  );
+
   // **Cuándo se enseña un PNJ en el elenco: solo mientras combate.** Fuera de combate la columna
   // es la mesa, no el bestiario entero — un PNJ que el DM tiene instanciado pero no ha metido en
   // pelea no aporta nada que se mire treinta veces por sesión, que es el criterio que ya usa el
@@ -200,6 +208,10 @@ export function ColumnaElenco({
                 puedeCambiarPg={!esDm && p.ownerId === miId}
                 turnoActual={deQuienEsElTurno.has(p.id)}
                 enCombate={enCombate}
+                bando={combatientePorPersonaje.get(p.id)?.side}
+                sessionId={sesion?.id}
+                encounterId={encuentro?.id}
+                combatanteId={combatientePorPersonaje.get(p.id)?.id}
               />
             ))}
           </ul>

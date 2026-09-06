@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { StartEncounterInput } from "@dnd/shared";
+import type { CombatantSide, StartEncounterInput } from "@dnd/shared";
 import * as encountersApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 import { rollRequestsKey } from "../roll-requests/hooks";
@@ -73,6 +73,22 @@ export function useSetInitiative(campaignId: string, sessionId: string | undefin
     mutationFn: (v: { encounterId: string; combatantId: string; initiative: number }) =>
       encountersApi.setInitiative(campaignId, sessionId!, v.encounterId, v.combatantId, {
         initiative: v.initiative,
+      }),
+    onSuccess: invalidar,
+  });
+}
+
+/**
+ * Tarea 10 — corregir el bando de un combatiente con el combate en marcha. La invalida igual
+ * que `useSetInitiative`: cambia el mismo `Encounter` que ya cachea `currentEncounterKey`, no
+ * escribe sucesos nuevos que el registro necesite enterarse.
+ */
+export function useSetSide(campaignId: string, sessionId: string | undefined) {
+  const invalidar = useInvalidar(campaignId, sessionId);
+  return useMutation({
+    mutationFn: (v: { encounterId: string; combatantId: string; side: CombatantSide }) =>
+      encountersApi.setSide(campaignId, sessionId!, v.encounterId, v.combatantId, {
+        side: v.side,
       }),
     onSuccess: invalidar,
   });

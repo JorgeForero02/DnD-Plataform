@@ -48,6 +48,14 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 10 · no se podía crear un recurso desde la aplicación.** La ruta existía desde 2A y la
+  web llamaba a `/spend`, `/give` y `/restore` y **nunca al `PUT`**: se podía gastar, regalar y
+  reponer un recurso y no crearlo, y como la siembra solo pone dados de golpe y espacios de
+  conjuro, **una fila «Furia» no podía existir** — ni con ella ninguna aptitud con usos, que es la
+  única puerta por la que entrarían hoy sin tocar el motor. El formulario pone `resetOn` en
+  **radios con su frase** —tres opciones con significado no se esconden en un desplegable— y las
+  frases viven una sola vez, en el vocabulario del dominio. **Cómo se revierte:** el commit.
+
 - **Tarea 15 · un PNJ cedido a un jugador no se podía manejar desde su pantalla.** El servidor ya
   lo trataba por dueño —`requireEditable` le deja cambiarle los PG y ponerle condiciones—, y la
   interfaz era más restrictiva **solo porque `ownerId` no viajaba**: no había de dónde leer «es

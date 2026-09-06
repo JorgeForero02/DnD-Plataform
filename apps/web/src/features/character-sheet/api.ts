@@ -16,6 +16,7 @@ import type {
   SetHpInput,
   TraceStep,
   UpdateCharacterSheetInput,
+  UpsertResourceInput,
   WeaponProperty,
 } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
@@ -372,6 +373,30 @@ export interface ResourceRow {
 
 export function fetchResources(campaignId: string, characterId: string): Promise<ResourceRow[]> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/resources`);
+}
+
+/**
+ * **Crear o reescribir un recurso.** La ruta existía desde 2A y **la web no la llamaba nunca**
+ * (paso 1, tarea 10): se podía gastar, regalar y reponer un recurso, y no crearlo — y
+ * `seedResourcesFor` solo siembra dados de golpe y espacios de conjuro, así que una fila «Furia»
+ * no podía existir.
+ *
+ * **Importa más de lo que parece:** es la única puerta por la que una aptitud con usos entra hoy
+ * sin tocar el motor.
+ *
+ * La regla de autorización es del servidor y está medida, no supuesta: `resources.service.upsert`
+ * llama a `requireOwnerOrDM` y **solo rechaza** si el recurso es `DM_ONLY` y quien llama no es DM.
+ * Un jugador **sí** puede crearse uno `OWNER`; lo que no puede es crearse uno que solo suba el DM.
+ */
+export function upsertResource(
+  campaignId: string,
+  characterId: string,
+  input: UpsertResourceInput,
+): Promise<ResourceRow> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/resources/${input.key}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export function spendResource(

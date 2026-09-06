@@ -8,6 +8,7 @@ import type {
   RollAttackInput,
   SetHpInput,
   UpdateCharacterSheetInput,
+  UpsertResourceInput,
 } from "@dnd/shared";
 import * as characterSheetApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
@@ -254,6 +255,19 @@ export function useRemoveTemporaryModifier(campaignId: string, characterId: stri
     mutationFn: (id: string) =>
       characterSheetApi.removeTemporaryModifier(campaignId, characterId, id),
     onSuccess: () => invalidarTemporales(qc, campaignId, characterId),
+  });
+}
+
+/**
+ * **Crear un recurso.** Invalida la lista de recursos, igual que gastar o reponer: la fila nueva
+ * tiene que aparecer sin recargar.
+ */
+export function useUpsertResource(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpsertResourceInput) =>
+      characterSheetApi.upsertResource(campaignId, characterId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: resourcesKey(campaignId, characterId) }),
   });
 }
 

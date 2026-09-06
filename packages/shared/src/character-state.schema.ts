@@ -8,6 +8,8 @@ import { z } from "zod";
  * cinco funcionalidades.
  */
 export const resourceResetSchema = z.enum(["NONE", "SHORT_REST", "LONG_REST"]);
+/** El tipo, para que la pantalla no vuelva a escribir los tres valores a mano. */
+export type ResourceReset = z.infer<typeof resourceResetSchema>;
 
 /**
  * Quién puede subirlo. Es el **caso estrecho** de permisos por campo que 2A sí necesita —la

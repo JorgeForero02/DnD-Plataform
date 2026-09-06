@@ -262,6 +262,19 @@ export const NOMBRE_RESET_RECURSO: Record<string, string> = {
   LONG_REST: "Descanso largo",
 };
 
+/**
+ * **Qué significa cada reposición**, para los radios de crear un recurso (paso 1, tarea 10).
+ *
+ * Una opción con significado no se esconde en un desplegable (`docs/04-convenciones.md`): son
+ * tres, cada una quiere decir algo distinto, y **cada una lleva la frase que explica qué hace**.
+ * Se escribe aquí, junto a su nombre, para que nadie componga una segunda versión en la pantalla.
+ */
+export const EXPLICACION_RESET_RECURSO: Record<string, string> = {
+  NONE: "Lo repone el DM cuando toque, o nadie. Para lo que se gana y se gasta una vez.",
+  SHORT_REST: "Vuelve al máximo en cuanto la mesa para un rato. Lo del brujo y el monje.",
+  LONG_REST: "Vuelve al máximo al dormir. Lo más común: furia, ki, invocaciones.",
+};
+
 export const NOMBRE_CONCEDIDO_POR: Record<string, string> = {
   DM_ONLY: "Solo el DM",
   OWNER: "El dueño",

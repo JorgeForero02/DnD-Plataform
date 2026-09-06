@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { useDeclareRest, useResources, useRestoreResource, useSpendResource } from "./hooks";
+import {
+  useDeclareRest,
+  useResources,
+  useRestoreResource,
+  useSpendResource,
+  useUpsertResource,
+} from "./hooks";
 import { useMyRole } from "../campaigns/members";
 import { RegalarInspiracion } from "./RegalarInspiracion";
 
@@ -7,7 +13,8 @@ import { RegalarInspiracion } from "./RegalarInspiracion";
 const CLAVE_INSPIRACION = "inspiration";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
-import { NOMBRE_RESET_RECURSO } from "./vocabulario";
+import { EXPLICACION_RESET_RECURSO, NOMBRE_RESET_RECURSO } from "./vocabulario";
+import type { ResourceReset } from "@dnd/shared";
 import { PROSA_DE_HOJA } from "./Tarjeta";
 import { PREFIJO_DADOS_DE_GOLPE } from "./TarjetasDeEstado";
 
@@ -32,6 +39,17 @@ export function RecursosYDescansos({
   const gastar = useSpendResource(campaignId, characterId);
   const reponer = useRestoreResource(campaignId, characterId);
   const descansar = useDeclareRest(campaignId, characterId);
+  const crear = useUpsertResource(campaignId, characterId);
+  // **El formulario de crear vive cerrado.** Es un gesto de preparación, no de mesa: abrirlo
+  // siempre robaría sitio a lo que se mira en cada turno.
+  const [creando, setCreando] = useState(false);
+  const [nombreNuevo, setNombreNuevo] = useState("");
+  const [maximoNuevo, setMaximoNuevo] = useState("1");
+  const [resetNuevo, setResetNuevo] = useState<ResourceReset>("LONG_REST");
+  // **`DM_ONLY` solo se ofrece al DM, y eso NO es el control de acceso.** La puerta es
+  // `resources.service.upsert`, que rechaza un `DM_ONLY` de quien no es DM; esto evita ofrecer un
+  // botón que va a dar 403. Un jugador SÍ puede crearse uno `OWNER`, y eso está bien.
+  const [soloDmNuevo, setSoloDmNuevo] = useState(false);
   const [dadosAGastar, setDadosAGastar] = useState("0");
   // Tarea 2C.3 — **solo el largo se puede interrumpir**, porque solo el largo cambia de
   // comportamiento: `rest.service.ts:72` mira `interrupted` en la rama del descanso largo y
@@ -116,6 +134,134 @@ export function RecursosYDescansos({
           {(descansar.error as Error).message}
         </p>
       )}
+
+      {/* **Crear un recurso** (paso 1, tarea 10). La ruta existía desde 2A y la web no la llamaba
+          nunca: se podía gastar, regalar y reponer, y no crear — así que una fila «Furia» no podía
+          existir, y con ella tampoco ninguna aptitud con usos. */}
+      {puedeEditar &&
+        (creando ? (
+          <form
+            className="flex flex-col gap-s2 rounded-radius-sm border border-muted p-s3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const max = Number(maximoNuevo);
+              crear.mutate(
+                {
+                  // **La clave la compone la pantalla y el rótulo lo escribe la persona.** El
+                  // servidor la usa como identificador dentro del personaje, así que se
+                  // normaliza; el nombre legible viaja aparte y es el que se pinta.
+                  key: nombreNuevo
+                    .trim()
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[̀-ͯ]/g, "")
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-|-$/g, ""),
+                  label: nombreNuevo.trim(),
+                  // **Nace lleno.** Un recurso recién declarado con cero usos es una fila que no
+                  // sirve para nada hasta que alguien la reponga, y nadie pide eso.
+                  current: max,
+                  max,
+                  resetOn: resetNuevo,
+                  grantedBy: soloDmNuevo ? "DM_ONLY" : "OWNER",
+                },
+                {
+                  onSuccess: () => {
+                    setCreando(false);
+                    setNombreNuevo("");
+                    setMaximoNuevo("1");
+                  },
+                },
+              );
+            }}
+          >
+            <label className="flex flex-col gap-1">
+              <span className="font-chrome text-chrome-sm text-text">Nombre</span>
+              <input
+                className={fieldControlClass}
+                value={nombreNuevo}
+                maxLength={120}
+                required
+                onChange={(e) => setNombreNuevo(e.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-chrome text-chrome-sm text-text">Máximo</span>
+              <input
+                className={fieldControlClass}
+                type="number"
+                min={0}
+                max={9999}
+                value={maximoNuevo}
+                onChange={(e) => setMaximoNuevo(e.target.value)}
+              />
+            </label>
+
+            {/* **Radios con su frase, no un desplegable** (`docs/04-convenciones.md`): son tres
+                opciones y cada una quiere decir algo distinto. Las frases viven una sola vez, en
+                el vocabulario del dominio. */}
+            <fieldset className="rounded-radius-sm border border-muted p-s2">
+              <legend className="px-1 font-chrome text-chrome-sm text-text">
+                Cuándo se repone
+              </legend>
+              <div className="space-y-1">
+                {(["LONG_REST", "SHORT_REST", "NONE"] as const).map((valor) => (
+                  <label key={valor} className="flex cursor-pointer items-start gap-s2">
+                    <input
+                      type="radio"
+                      name="resetOn"
+                      checked={resetNuevo === valor}
+                      onChange={() => setResetNuevo(valor)}
+                      className="mt-1 accent-[var(--accent)]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-chrome text-chrome-sm text-text">
+                        {NOMBRE_RESET_RECURSO[valor]}
+                      </span>
+                      <span className="block font-chrome text-chrome-xs leading-snug text-muted">
+                        {EXPLICACION_RESET_RECURSO[valor]}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {esDm && (
+              <label className="flex cursor-pointer items-start gap-s2">
+                <input
+                  type="radio"
+                  name="grantedBy"
+                  checked={soloDmNuevo}
+                  onChange={() => setSoloDmNuevo(true)}
+                  className="mt-1 accent-[var(--accent)]"
+                  aria-label="Solo el DM lo repone"
+                />
+                <span className="font-chrome text-chrome-xs leading-snug text-muted">
+                  Solo el DM lo repone. Para lo que se concede, como la inspiración.
+                </span>
+              </label>
+            )}
+
+            {crear.isError && (
+              <p role="alert" className={`${PROSA_DE_HOJA} text-danger-text`}>
+                {(crear.error as Error).message}
+              </p>
+            )}
+
+            <div className="flex gap-s2">
+              {/* **El botón de guardar nunca se deshabilita** (`docs/04-convenciones.md`). */}
+              <Button type="submit">Crear</Button>
+              <Button type="button" variant="ghost" onClick={() => setCreando(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <Button type="button" variant="secondary" onClick={() => setCreando(true)}>
+            Nuevo recurso
+          </Button>
+        ))}
 
       {otros.length === 0 ? (
         <p className={PROSA_DE_HOJA}>Sin más recursos que los dados de golpe.</p>

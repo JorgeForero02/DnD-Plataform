@@ -33,8 +33,15 @@ export const SRD_RACES: SrdRace[] = [
         labelKey: "race.dwarf.speed",
       },
       {
+        // **SRD 5.1, Dwarven Resilience:** *«You have advantage on saving throws against poison,
+        // and you have **resistance against poison damage**.»* La mitad de la ventaja en las
+        // salvaciones sigue sin mecanizarse —eso es una sugerencia de modo de tirada y no un
+        // modificador de daño—; la resistencia **sí**, y es la que hacía que un enano recibiera
+        // el veneno entero con la traza convincente al lado.
         id: "dwarf-resilience",
-        kind: "feature",
+        kind: "damageModifier",
+        damageType: "POISON",
+        effect: "RESIST",
         name: "Resistencia enana",
         labelKey: "race.dwarf.resilience",
       },
@@ -255,6 +262,13 @@ export const SRD_RACES: SrdRace[] = [
         labelKey: "race.dragonborn.breath",
       },
       {
+        // **El dracónido se queda como rasgo de texto, y a propósito.** SRD 5.1, Damage
+        // Resistance: *«You have resistance to the damage type associated with your draconic
+        // ancestry»*, y ese linaje es una **elección** de entre diez que este catálogo no modela
+        // (`dragonborn-ancestry` es hoy un `feature`, no un `abilityChoice`). Escribir aquí un
+        // tipo de daño concreto sería elegir por el jugador; escribir los diez, darle diez
+        // resistencias. Se mecaniza cuando exista la elección — es el mismo criterio que deja la
+        // ventaja en salvaciones del enano sin mecanizar.
         id: "dragonborn-resistance",
         kind: "feature",
         name: "Resistencia al daño",
@@ -436,8 +450,12 @@ export const SRD_RACES: SrdRace[] = [
         labelKey: "race.tiefling.speed",
       },
       {
+        // **SRD 5.1, Hellish Resistance:** *«You have resistance to fire damage.»* Una frase, sin
+        // condiciones ni elecciones: cabe entera en la concesión.
         id: "tiefling-hellish-resistance",
-        kind: "feature",
+        kind: "damageModifier",
+        damageType: "FIRE",
+        effect: "RESIST",
         name: "Resistencia infernal",
         labelKey: "race.tiefling.hellishResistance",
       },

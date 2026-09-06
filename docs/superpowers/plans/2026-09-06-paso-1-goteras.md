@@ -1470,6 +1470,15 @@ la prueba muere por `Test timed out in 5000ms` **sin haber medido nada**, su DOM
 siguiente cuenta doce «sin calcular» donde hay seis. Verde tres de tres en solitario y roja dentro
 de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba (`e926b91`).
 
+**Y algo que hay que decir de `36ab260`, porque su mensaje no lo dice:** ese commit contiene además
+**dos arreglos de maquetación que no escribió esta sesión** —la tira fija de `HojaCalculada` dentro
+de un cajón, y el botón «Aplicar» de `PanelMonedas` saliéndose de su tarjeta—. Los hizo la sesión de
+acompañamiento en el mismo árbol y mi `git add -A` los recogió. Son cuatro clases, dos `import type`
+y dos objetos `style`: cero lógica, y `pnpm verify` pasó con ellos dentro. **No se reescribe el
+commit** —ya está en la historia y rehacerla a mitad de plan es peor—, se dice aquí y en
+`07-historial.md`. Es exactamente la trampa que `docs/04-convenciones.md` describe: **un
+implementador por árbol**.
+
 **Y una trampa de esta máquina que me costó dos veces: `git checkout -- <fichero>` para deshacer
 una mutación se lleva por delante TODO lo no commiteado de ese fichero**, no solo la mutación. Pasó
 con `conditions.service.ts` dos veces. Se deshace con la edición inversa, nunca con `checkout`.
@@ -1522,4 +1531,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | 6 · Un PNJ es competente con sus armas | ✅ | `5518aec` | Las dos categorías enteras, no una lista inventada; el PJ sin competencia **sigue** con su aviso |
 | 7 · Consumir un objeto hace algo | ✅ | `ceecb64` | Aplica los efectos que **ya declara**, por la maquinaria de M8; los seis que no caben **se nombran** |
 | 17 · La sala de espera no lee «todos han tirado» por un corte | ✅ | `99a1983` | Filtro por encuentro **y la pantalla lo manda**; ficha tachada y archivada |
-| 18 · La fuga del PNJ revelado | ✅ | el de abajo | Las seis características fuera, **los PG dentro**; las dos mutaciones medidas |
+| 18 · La fuga del PNJ revelado | ✅ | `6940265` | Las seis características fuera, **los PG dentro**; las dos mutaciones medidas |
+| 8a · De dónde salen las resistencias de un PJ | ✅ | el de abajo | `kind: "damageModifier"`, enano y tiefling del SRD, y `resolve` las agrega — **sin tocar un punto de golpe** |

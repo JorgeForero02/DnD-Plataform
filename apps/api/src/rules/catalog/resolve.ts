@@ -15,6 +15,7 @@ import {
   characterBuildSchema,
   type AbilityKey,
   type CharacterBuildInput,
+  type DamageModifier,
   type DerivationWarning,
   type Movement,
   type ProficiencyLevel,
@@ -83,6 +84,14 @@ export interface ResolvedBuild {
    * antes solo miraba la clase y el enano perdía las suyas.
    */
   weaponProficiencies: string[];
+  /**
+   * **Resistencias, inmunidades y vulnerabilidades al daño que dan los rasgos** (paso 1, tarea 8).
+   *
+   * **La misma forma que `statblock.damageModifiers`** de `@dnd/shared`, y no un segundo esquema:
+   * `changeHp` tiene una sola función que aplicarlos (`applyDamageModifiers`), y dos formas de
+   * decir lo mismo la obligarían a saber de las dos.
+   */
+  damageModifiers: DamageModifier[];
   /** Velocidades **en pies**. 2A.12 les aplicará las condiciones. */
   speeds: Partial<Record<"walk" | "climb" | "swim" | "fly" | "burrow", number>>;
   /**
@@ -179,6 +188,7 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
   const features: ResolvedFeature[] = [];
   const speeds: ResolvedBuild["speeds"] = {};
   const weaponProficiencies: string[] = [...characterClass.weaponProficiencies];
+  const damageModifiers: DamageModifier[] = [];
   const skillProficiencies: Partial<Record<SkillKey, ProficiencyLevel>> = {
     ...build.skillProficiencies,
   };
@@ -290,6 +300,18 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
         // nombre, y para el cuadro de ataques es un bonificador que aparece.
         for (const clave of grant.keys)
           if (!weaponProficiencies.includes(clave)) weaponProficiencies.push(clave);
+        features.push({ sourceKey, labelKey: grant.labelKey, name: grant.name });
+        break;
+      case "damageModifier":
+        // **Se guarda el modificador Y se enseña el rasgo**, igual que hace la competencia con
+        // armas: para la mesa es una aptitud con nombre, y para `changeHp` es la mitad del daño.
+        // El `note` lleva el nombre del rasgo, que es lo que hace que la traza del daño diga
+        // **por qué** se redujo en vez de enseñar una resta sin origen.
+        damageModifiers.push({
+          damageType: grant.damageType,
+          effect: grant.effect,
+          note: grant.name,
+        });
         features.push({ sourceKey, labelKey: grant.labelKey, name: grant.name });
         break;
       case "feature":
@@ -413,6 +435,7 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     warnings,
     features,
     weaponProficiencies,
+    damageModifiers,
     speeds: speedsConEquipo,
     attacksPerAction: ataquesPorAccion(characterClass, build.level),
     spellSlots: spellSlotsFor(characterClass.spellProgression, build.level),

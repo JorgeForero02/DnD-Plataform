@@ -48,6 +48,22 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 8a · de dónde salen las resistencias al daño de un personaje jugador.** La maquinaria
+  existía y estaba probada, pero los rasgos de raza eran **puro texto**, así que un enano recibía
+  el veneno entero y un tiefling ardía con el fuego entero, con la traza convincente al lado. Hay
+  un `kind` de concesión nuevo con **la misma forma** que `statblock.damageModifiers` —no un
+  segundo esquema, o `changeHp` tendría que saber de los dos—, el enano y el tiefling lo declaran
+  con su cita del SRD, y `resolve.ts` lo agrega. **El dracónido se queda como texto a propósito**:
+  su resistencia depende de un linaje que es una elección que el catálogo no modela. Se prueba
+  **sin tocar un punto de golpe**; aplicarlo es 8b. **Cómo se revierte:** el commit.
+
+> **`36ab260` contiene además dos arreglos de maquetación que no son suyos**, escritos por otra
+> sesión en el mismo árbol y recogidos por un `git add -A`: la tira fija de `HojaCalculada` dentro
+> de un cajón (se solapaba 72 px con su cuerpo) y el botón «Aplicar» de `PanelMonedas` (se salía
+> 24,5 px de su tarjeta). Cuatro clases, dos `import type` y dos objetos `style`, sin lógica. Se
+> dice aquí en vez de reescribir la historia a mitad de plan. **La regla que lo evita ya estaba
+> escrita**: un implementador por árbol.
+
 - **Tarea 18 · un PNJ revelado entregaba las seis características de un statblock `DM_ONLY`.** La
   misma respuesta decía que sus números no eran públicos y traía seis de ellos, con los que se
   reconstruyen los seis modificadores de salvación, los dieciocho de habilidad y la iniciativa. No

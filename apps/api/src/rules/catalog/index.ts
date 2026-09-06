@@ -33,7 +33,7 @@ export * from "./difficulty";
 
 export * from "./monsters-srd";
 
-import type { DerivationResult, Statblock } from "@dnd/shared";
+import type { DamageModifier, DerivationResult, Statblock } from "@dnd/shared";
 import { derive, type Modifier } from "../engine";
 import { entradaDeMotorDe } from "../monster";
 import { SRD_ARMOR } from "./armor";
@@ -81,6 +81,12 @@ export interface CharacterSheet extends DerivationResult {
   attacksPerAction: number;
   /** Competencias con armas de la clase **y de la raza** (auditoría de mecánica de 2B). */
   weaponProficiencies: string[];
+  /**
+   * **Resistencias al daño que dan los rasgos** (paso 1, tarea 8), con la misma forma que
+   * `statblock.damageModifiers`. Vacía en un PNJ: sus modificadores salen del statblock, que es
+   * la fuente que `changeHp` ya consultaba.
+   */
+  damageModifiers: DamageModifier[];
   /** Espacios de conjuro y donde se reponen (hueco M3). */
   spellSlots: ResolvedBuild["spellSlots"];
   spellSlotResetOn: ResolvedBuild["spellSlotResetOn"];
@@ -126,6 +132,9 @@ export function deriveNpc(statblock: Statblock, extraModifiers: Modifier[] = [])
      * libro ya da resuelto, y equivocarse en una.
      */
     weaponProficiencies: ["simple", "martial"],
+    // **Vacía a propósito en un PNJ.** Los suyos salen del statblock, que es donde `changeHp` ya
+    // los leía; ponerlos también aquí sería la segunda fuente que esta tarea evita.
+    damageModifiers: [],
     spellSlots: [],
     // «NONE» y no `undefined`: un PNJ no tiene espacios de conjuro, así que no hay nada que
     // reponer, y eso es un valor del vocabulario y no un hueco.
@@ -174,6 +183,7 @@ export function deriveCharacter(
     classKey: resuelto.characterClass.key,
     attacksPerAction: resuelto.attacksPerAction,
     weaponProficiencies: resuelto.weaponProficiencies,
+    damageModifiers: resuelto.damageModifiers,
     spellSlots: resuelto.spellSlots,
     spellSlotResetOn: resuelto.spellSlotResetOn,
   };

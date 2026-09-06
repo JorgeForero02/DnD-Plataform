@@ -9,7 +9,7 @@
 // El motor (`../engine.ts`) no importa nada de aquí: recibe modificadores ya resueltos, y esa
 // separación es lo que permite que un fallo de transcripción no parezca un fallo del motor.
 
-import type { AbilityKey, ProficiencyLevel, SkillKey } from "@dnd/shared";
+import type { AbilityKey, DamageModifier, ProficiencyLevel, SkillKey } from "@dnd/shared";
 import type { SpellProgression } from "./spell-slots";
 
 /**
@@ -38,6 +38,7 @@ export type Grant =
   | SpeedGrant
   | HpPerLevelGrant
   | WeaponProficiencyGrant
+  | DamageModifierGrant
   | FeatureGrant;
 
 export interface GrantBase {
@@ -103,6 +104,25 @@ export interface WeaponProficiencyGrant extends GrantBase {
   kind: "weaponProficiency";
   keys: string[];
   /** Nombre en español del rasgo que la concede, para que la hoja lo siga enseñando. */
+  name: string;
+}
+
+/**
+ * **Resistencia, inmunidad o vulnerabilidad al daño que da un rasgo de raza** (paso 1, tarea 8).
+ *
+ * Existía la maquinaria —`applyDamageModifiers`, probada— y **no existía de dónde salían los
+ * modificadores de un personaje jugador**: los rasgos de raza eran puro texto (`kind: "feature"`),
+ * así que un enano recibía el veneno entero y un tiefling ardía con el fuego entero, con la traza
+ * convincente al lado.
+ *
+ * **Reutiliza la forma de `statblock.damageModifiers`** (`@dnd/shared`) y no inventa una segunda:
+ * si acabaran siendo dos formas de decir lo mismo, `changeHp` tendría que saber de las dos.
+ */
+export interface DamageModifierGrant extends GrantBase {
+  kind: "damageModifier";
+  damageType: DamageModifier["damageType"];
+  effect: DamageModifier["effect"];
+  /** Nombre en español del rasgo que la concede. La interfaz nunca lo compone desde la clave. */
   name: string;
 }
 

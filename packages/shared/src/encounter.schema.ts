@@ -118,3 +118,13 @@ export const setInitiativeSchema = z.object({
   initiative: z.number().int().min(-20).max(60),
 });
 export type SetInitiativeInput = z.infer<typeof setInitiativeSchema>;
+
+/**
+ * El DM corrige el bando con el combate en marcha — un aliado te traiciona al segundo asalto.
+ * Hermana de `setInitiativeSchema`: sin ella, el bando sería la única decisión del combate que no
+ * se puede rectificar.
+ */
+export const setSideSchema = z.object({
+  side: combatantSideSchema,
+});
+export type SetSideInput = z.infer<typeof setSideSchema>;

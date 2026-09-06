@@ -36,7 +36,13 @@ describe("EncountersService", () => {
     session: { findFirst: jest.fn() },
     encounter: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
     character: { findMany: jest.fn() },
-    combatant: { create: jest.fn(), update: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
+    combatant: {
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
     rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
     transaction: jest.fn(),
@@ -528,5 +534,57 @@ describe("EncountersService", () => {
     await expect(
       service.setInitiative("p1", "c1", "s1", "enc1", "comb1", { initiative: 10 }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  describe("setSide() (tarea 5)", () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue({ id: "dm", isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+    });
+
+    it("el DM cambia el bando de un combatiente", async () => {
+      prisma.combatant.updateMany.mockResolvedValue({ count: 1 });
+      // El estado que `get()` lee DESPUÉS de la escritura ya trae el bando corregido — es lo que
+      // `combatant.updateMany` acaba de guardar en una base real.
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [
+          {
+            id: "comb1",
+            characterId: "pc1",
+            initiative: 18,
+            position: 0,
+            side: "ENEMY",
+            character: { visibility: "PLAYERS", ownerId: "dm" },
+          },
+        ],
+      });
+
+      const resultado = await service.setSide("dm", "c1", "s1", "enc1", "comb1", {
+        side: "ENEMY",
+      });
+
+      expect(prisma.combatant.updateMany).toHaveBeenCalledWith({
+        where: { id: "comb1", encounterId: "enc1" },
+        data: { side: "ENEMY" },
+      });
+      expect(resultado.combatants[0]).toMatchObject({ characterId: "pc1", side: "ENEMY" });
+    });
+
+    it("cambiar el bando sin ser DM es 403", async () => {
+      membership.requireDM.mockRejectedValue(new ForbiddenException());
+
+      await expect(
+        service.setSide("p1", "c1", "s1", "enc1", "comb1", { side: "ENEMY" }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      // **Por el motivo correcto**: nada se escribió. Si el 403 llegara por otra vía (un
+      // `NotFoundException` que Nest tradujera distinto, por ejemplo), esta llamada sí se habría
+      // hecho.
+      expect(prisma.combatant.updateMany).not.toHaveBeenCalled();
+    });
   });
 });

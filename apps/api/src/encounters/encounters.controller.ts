@@ -12,8 +12,10 @@ import {
 } from "@nestjs/common";
 import {
   setInitiativeSchema,
+  setSideSchema,
   startEncounterSchema,
   type SetInitiativeInput,
+  type SetSideInput,
   type StartEncounterInput,
 } from "@dnd/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -72,6 +74,29 @@ export class EncountersController {
     @Body(new ZodValidationPipe(setInitiativeSchema)) body: SetInitiativeInput,
   ) {
     return this.encounters.setInitiative(
+      req.user.id,
+      campaignId,
+      sessionId,
+      encounterId,
+      combatantId,
+      body,
+    );
+  }
+
+  /**
+   * Tarea 5 — corregir el bando con el combate en marcha. Hermana de `setInitiative`: no toca el
+   * orden, solo de qué lado está este combatiente.
+   */
+  @Patch(":encounterId/combatants/:combatantId/side")
+  setSide(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+    @Param("encounterId") encounterId: string,
+    @Param("combatantId") combatantId: string,
+    @Body(new ZodValidationPipe(setSideSchema)) body: SetSideInput,
+  ) {
+    return this.encounters.setSide(
       req.user.id,
       campaignId,
       sessionId,

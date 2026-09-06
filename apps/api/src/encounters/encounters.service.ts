@@ -8,6 +8,7 @@ import {
   SEGUNDOS_POR_ASALTO,
   type CombatantSide,
   type SetInitiativeInput,
+  type SetSideInput,
   type StartEncounterInput,
 } from "@dnd/shared";
 import { Prisma } from "@prisma/client";
@@ -593,6 +594,28 @@ export class EncountersService {
       });
       return filas.find((f) => f.id === combatantId)!;
     });
+  }
+
+  /**
+   * El DM corrige el bando de un combatiente con el combate en marcha — un aliado que traiciona
+   * al segundo asalto, o un enemigo que se rinde. **No toca el orden**: `setSide` no llama a
+   * `recolocar` porque el bando no decide quién actúa cuándo, solo de qué lado está cada uno.
+   */
+  async setSide(
+    userId: string,
+    campaignId: string,
+    sessionId: string,
+    encounterId: string,
+    combatantId: string,
+    input: SetSideInput,
+  ) {
+    await this.membership.requireDM(campaignId, userId);
+    const tocado = await this.prisma.combatant.updateMany({
+      where: { id: combatantId, encounterId },
+      data: { side: input.side },
+    });
+    if (tocado.count === 0) throw new NotFoundException("Ese combatiente no está en este combate.");
+    return this.get(userId, campaignId, sessionId, encounterId);
   }
 
   /**

@@ -192,6 +192,24 @@ dice qué se leerá ahí cuando exista, en vez de inventarse un resumen.
 > **Lo que NO se cierra, y se sigue aceptando con las mismas palabras:** contra un objetivo que sí
 > puedes ver, atacarlo repetidamente sigue dando su CA. Es lo que pasa en una mesa, y el SRD lo
 > respalda. Texto original abajo.
+>
+> **Sigue sin cerrarse, y la razón por la que no se tocó en la tarea 13 (2026-09-06, ronda de
+> arreglo 1) no es la que su primer informe dio.** Ese informe dijo que exigir «objetivo ∈
+> combatientes del encuentro activo» —quitando la mitad `canView` de `sePuedeApuntar`— «exigiría
+> decidir qué pasa fuera de combate». **Eso ya está decidido, y por este mismo documento**: el
+> barrido de la ficha P1 de arriba (2026-09-05) ya comprobó que **cero** pantallas llamaban a
+> `resolveAttack`, y la tarea 13 construyó **la única que lo hace** —y esa pantalla nunca manda
+> `resolve` fuera de un encuentro `ACTIVE` (`useCombatientesDelEncuentro`,
+> `apps/web/src/features/character-sheet/hooks.ts`). Así que hoy, con evidencia y no con
+> suposición, **cerrarlo del todo no rompería ninguna interfaz existente**: no hay ninguna que
+> dependa de resolver fuera de combate.
+>
+> La razón real de por qué sigue abierta es más aburrida y más honesta: es un cambio de **API**
+> (`character-sheet.service.ts:sePuedeApuntar`) con su propio e2e de servidor
+> (`ataque-comparado-en-el-servidor.e2e-spec.ts`) detrás, y el encargo de la tarea 13 listaba tres
+> ficheros de `apps/web`. Estaba al alcance técnico de quien lo hizo, no al alcance del encargo que
+> le dieron. Sigue siendo una ficha barata de cerrar — más barata que cuando se escribió, porque ya
+> no hace falta adivinar el impacto en pantallas: se puede medir.
 
 
 

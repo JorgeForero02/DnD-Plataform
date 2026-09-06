@@ -360,3 +360,47 @@ frente al `z-40` de los cajones, que es como la maqueta los hace convivir.
 **Es el caso número cinco de «una ficha no se cierra sin pantalla».**
 
 </details>
+
+
+---
+
+## ~~`NpcEnLaMesa` no trae `ownerId`: un PNJ cedido es más restrictivo en la pantalla que en el servidor~~ — **CERRADA el 2026-09-06** (paso 1, tarea 15)
+
+`GET /npcs` devuelve `ownerId` y `FichaDePnj` condiciona los mandos a `pnj.ownerId === miId`
+**además de** al DM. **No es una fuga**: el dueño de un PNJ que ya estás viendo no dice nada que la
+lista no diga —`canView` decidió antes que puedes verlo— y es el mismo campo que la lista de
+personajes publica desde 2A.
+
+**Esconder el botón no es control de acceso**: la puerta real sigue siendo `requireEditable` en el
+servidor, y esto es cortesía **en las dos direcciones** — no enseñar un mando que va a dar 403, y no
+esconder uno que sí se puede usar.
+
+Y una prueba vieja se corrigió por el camino: «un jugador ve al PNJ pero no lleva mandos sobre él»
+montaba el goblin del DM con la sesión iniciada **como el DM**, así que el espectador era su dueño y
+pasaba por la razón equivocada. Mutación: quitar `ownerId` de la respuesta pone roja la del e2e.
+
+<details><summary>Lo que decía la ficha (2026-09-06)</summary>
+
+El servidor **sí** trata a un PNJ cedido por dueño: `apps/api/src/encounters/encounters.service.ts:244-245`
+separa las peticiones de iniciativa por `ownerId` sin mirar `statblockRef`, así que un PNJ cedido a
+un jugador le genera a ÉL la petición de iniciativa, y `requireEditable` (`characters.service.ts`)
+le dejaría cambiarle los PG y ponerle condiciones igual que a un personaje propio — un PNJ es una
+fila de `Character`, y el servidor no distingue.
+
+**La pantalla es más restrictiva: nunca.** `ColumnaElenco.tsx`/`FichaDePnj.tsx` (tarea 9b) solo dan
+mandos («Daño», «Condición», bando) al DM — nunca a un jugador, sea o no el dueño del PNJ cedido —
+porque `NpcEnLaMesa` (`apps/web/src/features/bestiario/api.ts`) **no trae `ownerId`**: no hay dato
+del que leer «es tuyo». `TiraDeIniciativa.tsx` ya documenta el mismo hueco para nombrar al jugador
+que falta por tirar («Hueco conocido», su comentario sobre `soyCombatiente`).
+
+**No es un agujero de seguridad** —la pantalla nunca promete más de lo que da, y el servidor sigue
+siendo quien de verdad autoriza—, pero sí es una función que el servidor permite y la interfaz no
+deja usar: un jugador con un PNJ cedido no puede anotarle el golpe que acaba de recibir sin pedirle
+al DM que lo haga por él.
+
+**Cómo se cierra:** añadir `ownerId: string | null` a la respuesta de `GET /campaigns/:id/npcs`
+(`NpcsController`/`NpcEnLaMesa`), y en la web condicionar los mandos de `FichaDePnj` también a
+`pnj.ownerId === miId`, igual que ya hace `FichaDeElenco` con `puedeCambiarPg`. No se hace en esta
+ronda porque toca el contrato del endpoint, y esta ronda es de arreglos sobre lo ya construido.
+
+</details>

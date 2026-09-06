@@ -1563,4 +1563,5 @@ tarea 13 debe añadir.
 | 16 · El bando corregido viaja por el canal | ✅ | `87df552` | Dos tipos nuevos, el `record` en la misma transacción, y su línea en español; ficha archivada |
 | 19 · Cancelar un combate avisa | ✅ | `5b2dba0` | Sujeto **sesión**, sin `encounterId`; **E-IB-18 tachada y explicada**, no borrada |
 | 12 · El editor de criaturas deja de mentir al editar | ✅ | `4a75bd3` | El selector se pinta en los dos casos; falta su paso por el navegador, que va en la tanda única |
-| 14 · El panel de dados, montado | ✅ | el de abajo | **Ya estaba montado**; lo que faltaba era la prueba que impide que se desmonte |
+| 14 · El panel de dados, montado | ✅ | `41feede` | **Ya estaba montado**; lo que faltaba era la prueba que impide que se desmonte |
+| 15 · Un PNJ cedido se maneja desde su pantalla | ✅ | `9423e80` | `ownerId` viaja y la ficha lo lee; una prueba vieja pasaba por la razón equivocada |

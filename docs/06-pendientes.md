@@ -1468,27 +1468,3 @@ encuentro de 2.5.6), no antes.
 > los nombres de quién falta es una decisión confirmada, no un hueco (E-N-5). La lección, no la
 > deuda: **no se abre ficha por algo que se sabe arreglar** — se intenta el cambio pequeño
 > primero, y solo si no lo hay se anota.
-
-### `NpcEnLaMesa` no trae `ownerId`: un PNJ cedido a un jugador es más restrictivo en la pantalla que en el servidor (I-4, ronda de arreglo 1 sobre la tarea 9b, 2026-09-06)
-
-El servidor **sí** trata a un PNJ cedido por dueño: `apps/api/src/encounters/encounters.service.ts:244-245`
-separa las peticiones de iniciativa por `ownerId` sin mirar `statblockRef`, así que un PNJ cedido a
-un jugador le genera a ÉL la petición de iniciativa, y `requireEditable` (`characters.service.ts`)
-le dejaría cambiarle los PG y ponerle condiciones igual que a un personaje propio — un PNJ es una
-fila de `Character`, y el servidor no distingue.
-
-**La pantalla es más restrictiva: nunca.** `ColumnaElenco.tsx`/`FichaDePnj.tsx` (tarea 9b) solo dan
-mandos («Daño», «Condición», bando) al DM — nunca a un jugador, sea o no el dueño del PNJ cedido —
-porque `NpcEnLaMesa` (`apps/web/src/features/bestiario/api.ts`) **no trae `ownerId`**: no hay dato
-del que leer «es tuyo». `TiraDeIniciativa.tsx` ya documenta el mismo hueco para nombrar al jugador
-que falta por tirar («Hueco conocido», su comentario sobre `soyCombatiente`).
-
-**No es un agujero de seguridad** —la pantalla nunca promete más de lo que da, y el servidor sigue
-siendo quien de verdad autoriza—, pero sí es una función que el servidor permite y la interfaz no
-deja usar: un jugador con un PNJ cedido no puede anotarle el golpe que acaba de recibir sin pedirle
-al DM que lo haga por él.
-
-**Cómo se cierra:** añadir `ownerId: string | null` a la respuesta de `GET /campaigns/:id/npcs`
-(`NpcsController`/`NpcEnLaMesa`), y en la web condicionar los mandos de `FichaDePnj` también a
-`pnj.ownerId === miId`, igual que ya hace `FichaDeElenco` con `puedeCambiarPg`. No se hace en esta
-ronda porque toca el contrato del endpoint, y esta ronda es de arreglos sobre lo ya construido.

@@ -48,6 +48,13 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 15 · un PNJ cedido a un jugador no se podía manejar desde su pantalla.** El servidor ya
+  lo trataba por dueño —`requireEditable` le deja cambiarle los PG y ponerle condiciones—, y la
+  interfaz era más restrictiva **solo porque `ownerId` no viajaba**: no había de dónde leer «es
+  tuyo», así que un jugador no podía anotarle el golpe que acababa de recibir sin pedírselo al DM.
+  **Esconder el botón no es control de acceso**: la puerta sigue siendo el servidor y esto es
+  cortesía en las dos direcciones. **Cómo se revierte:** `9423e80`.
+
 - **Tarea 14 · el panel de dados ya estaba montado, y nada lo sujetaba.** La ficha decía que
   `grep` devolvía solo su declaración; el 2026-09-06 devuelve cuatro apariciones y `MesaDeSesion`
   lo monta **fuera del `<main>`**, con estado propio para que abrir la hoja no lo cierre. Lo que

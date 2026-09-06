@@ -22,7 +22,7 @@ import { BANDOS } from "../../dominio/combate";
 // tira la suya.** Este diálogo decía lo contrario desde que se escribió, y hoy además manda el
 // bando: `startEncounterSchema` acepta `sides` desde el plan 02 y lo rechaza si trae una clave que
 // no combate (`packages/shared/src/encounter.schema.ts`). El bando de cada uno es una propuesta
-// visible y editable, sembrada por dónde vive cada candidato — el grupo entra aliado, los PNJ de
+// visible y editable, derivada de dónde vive cada candidato — el grupo entra aliado, los PNJ de
 // la mesa entran enemigos — nunca un valor oculto: el servidor no puede adivinarlo (no hay dato del
 // que deducirlo) y por eso lo dice quien empieza el encuentro.
 
@@ -96,21 +96,28 @@ function DialogoDeCombate({
 }) {
   const empezar = useStartEncounter(campaignId, sessionId);
 
-  // **Todos los candidatos, no solo los personajes**: la propuesta de bando (paso siguiente) se
-  // siembra para el grupo Y para los PNJ, así que hace falta la lista entera desde el principio.
+  // **Todos los candidatos, no solo los elegidos**: hace falta saber quién es «del grupo» para
+  // proponerle el bando por defecto, tanto al pintar la fila como al mandar el `POST`.
   const candidatos = [
-    ...personajes.map((c) => ({ id: c.id, esDelGrupo: true })),
-    ...pnjs.map((p) => ({ id: p.id, esDelGrupo: false })),
+    ...personajes.map((c) => ({ id: c.id, nombre: c.name, esDelGrupo: true })),
+    ...pnjs.map((p) => ({ id: p.id, nombre: p.name, esDelGrupo: false })),
   ];
+  const candidatoDe = new Map(candidatos.map((c) => [c.id, c]));
 
   const [elegidos, setElegidos] = useState<string[]>([]);
 
-  // **Una propuesta rellenada y visible, no un valor oculto.** El grupo suele ser aliado y los PNJ
-  // de la mesa enemigos; el DM lo ve marcado y lo cambia de un clic. El servidor sigue sin
-  // adivinar nada: `encounter.schema.ts` dice que no puede, y no puede.
-  const [bandos, setBandos] = useState<Record<string, CombatantSide>>(() =>
-    Object.fromEntries(candidatos.map((c) => [c.id, c.esDelGrupo ? "ALLY" : "ENEMY"])),
-  );
+  // **La propuesta no se siembra una vez: se deriva en cada pintado.** Un `useState` inicializado
+  // con los candidatos del primer render se queda fijo — si la lista de PNJ crece con el diálogo
+  // abierto (`useNpcs` se invalida al instanciar uno nuevo), esa fila nueva llegaría sin ningún
+  // radio marcado y, si el DM la tocaba, el resultado dependía de qué faltara en el mapa. Aquí
+  // `bandos` solo guarda lo que el DM ha cambiado a mano; quien no está en el mapa recibe la
+  // propuesta —ALLY para el grupo, ENEMY para los PNJ— calculada en el momento, nunca un valor
+  // oculto: el servidor no puede adivinarlo (`encounter.schema.ts` dice que no puede) y por eso
+  // lo dice quien empieza el encuentro.
+  const [bandos, setBandos] = useState<Record<string, CombatantSide>>({});
+
+  const bandoDe = (id: string): CombatantSide =>
+    bandos[id] ?? (candidatoDe.get(id)?.esDelGrupo ? "ALLY" : "ENEMY");
 
   const alternar = (id: string) =>
     setElegidos((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -118,18 +125,25 @@ function DialogoDeCombate({
   const cambiarBando = (id: string, side: CombatantSide) =>
     setBandos((prev) => ({ ...prev, [id]: side }));
 
-  const filaDeBando = (id: string) => (
-    <div className="mt-1 flex flex-wrap gap-x-s3 gap-y-1 pl-s2">
+  // **Solo para quien ya está elegido.** Clasificar a alguien que no va a entrar al combate no
+  // tiene destinatario: doce radios para dos combatientes obligaban a leer de más para encontrar
+  // los que sí importaban.
+  const filaDeBando = (id: string, nombre: string) => (
+    <div
+      role="radiogroup"
+      aria-label={`Bando de ${nombre}`}
+      className="mt-s1 flex flex-wrap gap-x-s3 gap-y-s1 pl-s2"
+    >
       {BANDOS.map((b) => (
         <label
           key={b.valor}
-          className="flex cursor-pointer items-center gap-1 font-chrome text-chrome-xs text-muted"
+          className="flex cursor-pointer items-center gap-s1 font-chrome text-chrome-xs text-muted"
         >
           <input
             type="radio"
             name={`bando-${id}`}
             value={b.valor}
-            checked={bandos[id] === b.valor}
+            checked={bandoDe(id) === b.valor}
             onChange={() => cambiarBando(id, b.valor)}
             className="accent-[var(--accent)]"
           />
@@ -172,7 +186,7 @@ function DialogoDeCombate({
                 {descriptorDePersonaje(c)}
               </span>
             </label>
-            {filaDeBando(c.id)}
+            {elegidos.includes(c.id) && filaDeBando(c.id, c.name)}
           </li>
         ))}
         {pnjs.length > 0 && (
@@ -194,7 +208,7 @@ function DialogoDeCombate({
                 {p.currentHp === null ? "sin PG anotados" : `${p.currentHp} PG`}
               </span>
             </label>
-            {filaDeBando(p.id)}
+            {elegidos.includes(p.id) && filaDeBando(p.id, p.name)}
           </li>
         ))}
       </ul>
@@ -206,10 +220,14 @@ function DialogoDeCombate({
       )}
 
       <div className="mt-s4 flex items-center justify-between gap-s3">
-        <span className="font-chrome text-chrome-xs text-muted">
+        {/* **Contar «combatientes», no «quién tira».** Esta pantalla no sabe quién es el DM de la
+            partida (no llega `ownerId` de los PNJ, y los idénticos comparten una tirada): decir
+            «N tirarán su iniciativa» sería la misma mentira que esta tarea vino a quitar del
+            párrafo de arriba, solo que ahora en el contador. */}
+        <span id="empezar-combate-recuento" className="font-chrome text-chrome-xs text-muted">
           {elegidos.length === 0
             ? "Nadie elegido todavía"
-            : `${elegidos.length} ${elegidos.length === 1 ? "tirará" : "tirarán"} su iniciativa`}
+            : `${elegidos.length} ${elegidos.length === 1 ? "combatiente" : "combatientes"}`}
         </span>
         <span className="flex gap-s3">
           <Button type="button" variant="ghost" onClick={onClose}>
@@ -219,11 +237,12 @@ function DialogoDeCombate({
             type="button"
             variant="primary"
             disabled={elegidos.length === 0 || empezar.isPending}
+            aria-describedby={elegidos.length === 0 ? "empezar-combate-recuento" : undefined}
             onClick={() =>
               empezar.mutate(
                 {
                   characterIds: elegidos,
-                  sides: Object.fromEntries(elegidos.map((id) => [id, bandos[id] ?? "NEUTRAL"])),
+                  sides: Object.fromEntries(elegidos.map((id) => [id, bandoDe(id)])),
                 },
                 { onSuccess: onClose },
               )

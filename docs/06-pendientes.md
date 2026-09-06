@@ -148,6 +148,42 @@ y desde el 2026-09-06 las quince le dan 403. **Es un botón que el servidor rech
 justamente lo que la revisión del prototipo dejó escrito como defecto. Se cierra en el mismo paso 1,
 en el carril de pantalla.
 
+## P2 · Las dos pantallas del paso 1 no tienen prueba de navegador estable (2026-09-06, paso 1 · tareas 11 y 12)
+
+**La ficha se abre después de los tres pasos, y dice qué se descartó en cada uno.** Las tareas 11
+(equipar en la mano izquierda) y 12 (cambiar quién ve una criatura) están hechas, probadas por
+componente **y con su mutación medida**; lo que no hay es el recorrido de navegador que el plan
+exige para el grupo B. Se midió cinco veces y **parpadea**, así que no se commiteó: una prueba que
+da verde y rojo en dos pasadas seguidas sobre el mismo código no defiende nada y envenena la suite.
+
+**Lo medido, para no empezar de cero:**
+
+- **Dos dagas.** El recorrido llega hasta el final —se añaden las dos, se abre el selector de mano
+  y se pulsa— y muere al marcar el radio o al confirmar, con «element was detached from the DOM» o
+  esperando estabilidad. **La causa está localizada:** la fila se remonta al equipar —la lista se
+  invalida y el objeto salta de «Encima» a «Equipado»— y el selector de mano se va con ella.
+- **Cambiar quién ve una criatura.** Pasó en una pasada y falló en la siguiente, siempre en la
+  última aserción: al reabrir el editor el radio vuelve sin marcar. **El servidor no es el
+  problema**, y eso sí está probado: `apps/api/test/statblocks.e2e-spec.ts` comprueba que el `PUT`
+  guarda el nivel nuevo y que releer la lista lo devuelve.
+
+**Paso 1 descartado** — no hay un cambio rápido: lo intentado (acotar la fila a la que todavía
+tiene «Equipar», esperar a cualquiera de los dos estados del buscador, subir el presupuesto a 90 s)
+arregló cuatro fallos y no estos dos.
+
+**Paso 2**: el arreglo probable **cambia el comportamiento de la pantalla**, no la prueba — que el
+selector de mano no se desmonte al invalidar, o que el editor de criaturas se remonte con el dato
+fresco. Eso es una decisión de interfaz, y tocarla a ciegas para que una prueba deje de parpadear
+es exactamente lo que este proyecto tiene prohibido.
+
+**Paso 3**: la inestabilidad es de las que Playwright documenta como re-render durante la acción;
+la salida recomendada —esperar a un estado estable en vez de al elemento— es lo que ya se intentó.
+
+**Cierra cuando** las dos tengan un recorrido de navegador que pase **dos veces seguidas**. Y ojo
+con el diagnóstico: en cinco pasadas de la suite entera fallaron además `inventario`,
+`nervio-en-vivo`, `bestiario` y `campana`, **cada vez unas distintas y todas pasaron solas después**
+— esta máquina da falsos rojos bajo carga, y eso ya está documentado en `docs/08-pruebas.md`.
+
 ## P1 · El «500 intermitente» de `CharacterSheetService.updateSheet` era `supertest`, no el servicio (medido y descartado en `9ef7245`)
 
 **Esta ficha acusaba al código equivocado.** Decía que varios `PATCH /campaigns/:id/characters/:id/sheet`

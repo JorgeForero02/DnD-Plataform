@@ -1506,6 +1506,17 @@ está corregido. Conservar prosa inservible dentro de una columna tipada es exac
 tarea 2 quitó. **Si me equivoco cuesta que el DM reescriba esa inmunidad** en el control que la
 tarea 13 debe añadir.
 
+**La tanda de navegador, y por qué termina con una ficha en vez de con cuatro recorridos.** Se
+corrió **cinco veces** (cuatro completas, ~13 min cada una). La suite existente **no está rota**:
+en cada pasada fallaron ficheros **distintos** —`inventario`, `nervio-en-vivo`, `bestiario`,
+`campana`— y **todos pasaron solos después**, que es el falso rojo por carga que `docs/08-pruebas.md`
+ya documenta. De los cuatro recorridos nuevos, **dos quedan y pasan** (crear un recurso, y la
+medición con números del botón de la bolsa) y **dos parpadean**: los de las tareas 11 y 12. No se
+commitean —una prueba que da verde y rojo en dos pasadas seguidas sobre el mismo código no defiende
+nada— y lo medido queda en `docs/06-pendientes.md` y en el propio fichero de la especificación.
+**Del lado del servidor la 12 sí queda probada**: `statblocks.e2e-spec.ts` comprueba que el `PUT`
+guarda la visibilidad y que releer la lista la devuelve.
+
 **Decisiones tomadas sin el autor, con lo que costarían si me equivoco:**
 
 - **Tarea 9 · el avance del reloj por descanso NO exige ser DM.** `GameClockService.advance` pide
@@ -1566,4 +1577,5 @@ tarea 13 debe añadir.
 | 14 · El panel de dados, montado | ✅ | `41feede` | **Ya estaba montado**; lo que faltaba era la prueba que impide que se desmonte |
 | 15 · Un PNJ cedido se maneja desde su pantalla | ✅ | `9423e80` | `ownerId` viaja y la ficha lo lee; una prueba vieja pasaba por la razón equivocada |
 | 10 · Se puede crear un recurso desde la aplicación | ✅ | `69938a6` | `PUT` enchufado; `resetOn` en **radios con su frase**; el navegador va en la tanda única |
-| 11 · Pelear con dos armas | ✅ | el de abajo | La mano en **radios**, el motivo escrito cuando falta una; el navegador va en la tanda única |
+| 11 · Pelear con dos armas | ✅ | `d3d8f28` | La mano en **radios**, el motivo escrito cuando falta una |
+| — · La tanda de navegador | ⚠️ | el de abajo | **Dos de cuatro recorridos nuevos parpadean** y no se commitean; ficha abierta con lo medido |

@@ -48,6 +48,13 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **La tanda de navegador cierra con dos recorridos nuevos y una ficha.** De los cuatro escritos,
+  crear un recurso y la medición del botón de la bolsa pasan y se quedan; los de las tareas 11 y 12
+  **parpadean** —verde y rojo en pasadas seguidas sobre el mismo código— y no se commitean, con lo
+  medido escrito en `docs/06-pendientes.md`. La 12 sí queda probada por el lado del servidor.
+  **Y la suite existente no está rota:** en cinco pasadas fallaron ficheros distintos cada vez y
+  todos pasaron solos después — el falso rojo por carga que `08-pruebas.md` ya documenta.
+
 - **Tarea 11 · un pícaro con dos dagas no existía.** La pantalla del inventario **no mandaba
   `slot` al equipar** —grep de `slot` en ese fichero: cero—, aunque el servidor lo acepta desde 2B
   y el motor lo usa para la mano ocupada y para el arma ligera de la izquierda. Equipar un arma

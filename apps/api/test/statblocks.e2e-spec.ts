@@ -226,4 +226,43 @@ describe("Statblocks de PNJ (e2e)", () => {
     expect(r.status).toBe(200);
     expect(await prisma.campaignStatblock.count({ where: { id: statblockId } })).toBe(0);
   });
+
+  it("cambiar la visibilidad de una criatura propia PERSISTE (paso 1, tarea 12)", async () => {
+    // La prueba de navegador de la tarea 12 llegaba hasta aquí y decía que el radio volvía sin
+    // marcar. Esto separa las dos mitades: si el servidor guarda y devuelve el nivel nuevo, lo que
+    // falla es la pantalla; si no, es el servidor.
+    const s = app.getHttpServer();
+    const creada = await request(s)
+      .post(`/campaigns/${campaignId}/statblocks`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        name: "Cosa que se revela",
+        size: "LARGE",
+        type: "ABERRATION",
+        ac: 13,
+        hitDiceCount: 5,
+        abilities: { str: 12, dex: 12, con: 12, int: 6, wis: 10, cha: 5 },
+        cr: 1,
+      });
+    expect(creada.status).toBe(201);
+    // **El identificador viaja dentro del `ref`**: `aStatblock` devuelve la forma común, que lleva
+    // `CAMPAIGN:<id>` y no una columna `id` — el prefijo lo pone el servidor a propósito.
+    const id = String(creada.body.ref).split(":")[1];
+    // **Nace escondida**: preparar la mazmorra no puede ser filtrarla.
+    expect(creada.body.visibility).toBe("DM_ONLY");
+
+    const editada = await request(s)
+      .put(`/campaigns/${campaignId}/statblocks/${id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ visibility: "PUBLIC" });
+    expect(editada.status).toBe(200);
+    expect(editada.body.visibility).toBe("PUBLIC");
+
+    // Y al volver a leerla, sigue siendo la nueva.
+    const lista = await request(s)
+      .get(`/campaigns/${campaignId}/statblocks`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const vuelta = lista.body.campaign.find((c: { ref: string }) => c.ref === creada.body.ref);
+    expect(vuelta.visibility).toBe("PUBLIC");
+  });
 });

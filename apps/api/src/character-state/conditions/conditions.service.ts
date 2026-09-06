@@ -3,16 +3,16 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Optional,
 } from "@nestjs/common";
 import {
   CLAVE_AYUDA,
   SEGUNDOS_POR_ASALTO,
   esClaveReservada,
   type ApplyConditionInput,
+  type SrdCondition,
   type HelpInput,
 } from "@dnd/shared";
-import { CONCENTRATION_KEY_PREFIX } from "../concentration/concentration";
+import { CONCENTRATION_KEY_PREFIX, esConcentracion } from "../concentration/concentration";
 import { condicionVencida } from "./vencimiento";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -37,11 +37,13 @@ export class ConditionsService {
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
     /**
-     * **Opcional, igual que en `CharacterSheetService` y por el mismo motivo:** varios e2e montan
-     * `CharacterStateModule` solo y no instancian ningún PNJ. Sin resolutor, un personaje sin
-     * statblock —que es todo personaje jugador— se comporta exactamente igual que antes.
+     * **Obligatorio, y aquí ponía que era opcional «porque varios e2e montan
+     * `CharacterStateModule` solo».** Era falso: hay uno, y lo monta junto a `AppModule`. Lo que
+     * sí hacía el `@Optional()` era que un fallo futuro de cableado **apagara la comprobación de
+     * inmunidad en silencio** — una regla que falla abierta. `character-state.module.ts` importa
+     * `StatblocksModule`, así que el proveedor está siempre.
      */
-    @Optional() private readonly statblocks?: StatblocksService,
+    private readonly statblocks: StatblocksService,
   ) {}
 
   /**
@@ -57,8 +59,8 @@ export class ConditionsService {
       statblockRef: string | null;
     },
     campaignId: string,
-  ): Promise<string[]> {
-    if (!character.statblockRef || !this.statblocks) return [];
+  ): Promise<readonly SrdCondition[]> {
+    if (!character.statblockRef) return [];
     const statblock = await this.statblocks.resolver(campaignId, character.statblockRef);
     return statblock?.conditionImmunities ?? [];
   }
@@ -132,8 +134,14 @@ export class ConditionsService {
     // **Una inmunidad que nadie consulta es prosa.** El statblock del que sale un PNJ ya declara a
     // qué es inmune, y hasta hoy nadie leía el campo: se podía envenenar a un esqueleto con su
     // inmunidad escrita al lado. Es un 400 **con su motivo**, no un silencio ni una fila guardada.
+    // **Un jugador nunca llega hasta aquí con una inmunidad, y no es casualidad que importe.**
+    // Las quince inmunidades posibles son exactamente las claves reservadas, así que el 403 de
+    // arriba lo para antes: el 400 que dice «X es inmune» —que revela algo de un statblock que
+    // puede ser `DM_ONLY`— solo lo puede ver el DM, que ya podía leerlo. Si algún día una
+    // inmunidad dejara de ser clave reservada, este orden habría que rehacerlo, y hay un e2e que
+    // se pondría rojo.
     const inmunidades = await this.inmunidadesDe(character, campaignId);
-    if (inmunidades.includes(input.key)) {
+    if ((inmunidades as readonly string[]).includes(input.key)) {
       throw new BadRequestException(`${character.name} es inmune a esa condición.`);
     }
 
@@ -161,13 +169,18 @@ export class ConditionsService {
       // **Se retira al ESCRIBIR y no al leer** porque perder una concentración es un suceso de la
       // mesa: alguien tiene que enterarse de que la Bendición se cayó. Un filtro al leer lo
       // habría hecho desaparecer en silencio.
-      if (input.key.startsWith(CONCENTRATION_KEY_PREFIX)) {
-        const previas = await tx.characterCondition.findMany({
-          where: {
-            characterId,
-            key: { startsWith: CONCENTRATION_KEY_PREFIX, not: input.key },
-          },
-        });
+      if (esConcentracion(input.key)) {
+        // **Solo las que siguen vivas.** Una concentración ya vencida se queda en la hoja
+        // marcada a propósito (D-2C-2); retirarla aquí anunciaría una pérdida que ya ocurrió y
+        // que el jugador ya vio.
+        const previas = (
+          await tx.characterCondition.findMany({
+            where: {
+              characterId,
+              key: { startsWith: CONCENTRATION_KEY_PREFIX, not: input.key },
+            },
+          })
+        ).filter((c) => esConcentracion(c.key) && !condicionVencida(c, campana.clockSeconds));
         for (const previa of previas) {
           await tx.characterCondition.delete({ where: { id: previa.id } });
           // El mismo suceso que emite retirar una condición a mano, no uno nuevo: la línea de

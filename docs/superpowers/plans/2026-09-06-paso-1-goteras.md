@@ -1470,6 +1470,17 @@ la prueba muere por `Test timed out in 5000ms` **sin haber medido nada**, su DOM
 siguiente cuenta doce «sin calcular» donde hay seis. Verde tres de tres en solitario y roja dentro
 de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba (`e926b91`).
 
+**Y una trampa de esta máquina que me costó dos veces: `git checkout -- <fichero>` para deshacer
+una mutación se lleva por delante TODO lo no commiteado de ese fichero**, no solo la mutación. Pasó
+con `conditions.service.ts` dos veces. Se deshace con la edición inversa, nunca con `checkout`.
+
+**Lo que la revisión de 2 y 3 dejó pendiente y va a la tarea 12**, porque es su mismo fichero: el
+editor de criaturas **no tiene ningún control para las inmunidades a condición**, así que un DM no
+puede declarar ninguna, y al guardar reenvía la lista ya filtrada —o sea que la primera edición por
+cualquier otro motivo **borraría** una etiqueta que la migración no supiera mapear. El comentario de
+la migración que afirmaba lo contrario ya está corregido, y su mapa ampliado con las formas
+femeninas y `veneno`, que son justo las que escribiría quien no las puede volver a escribir.
+
 **Decisiones tomadas sin el autor, con lo que costarían si me equivoco:**
 
 - **Tarea 1 · un jugador deja de poder tumbarse solo.** La regla que el plan escribe es uniforme
@@ -1496,4 +1507,5 @@ de la suite: esa asimetría es la firma. Arreglado subiendo los `import` arriba 
 | — · Revisión de la tarea 5 (6 hallazgos) | ✅ | `36ab260` | El recorte de la traza nombra la característica; una característica repetida lanza; **y una afirmación mía era falsa** |
 | — · El historial no cabía | ✅ | `02c19d8` | Seis entradas por tarea al archivo, enteras |
 | 3 · Una sola concentración | ✅ | `a812ae1` | La segunda retira la primera **con su suceso**; el segundo defecto (una salvación para dos) desaparece solo |
-| 4 · Ayudar caduca cuando el SRD dice | ✅ | el de abajo | Borde de turno; **4a y 4b van juntas** (abajo el porqué) |
+| 4 · Ayudar caduca cuando el SRD dice | ✅ | `7b2b8c2` | Borde de turno; **4a y 4b van juntas** (abajo el porqué) |
+| — · Revisión de 2 y 3 (13 hallazgos) | ✅ | el de abajo | Las unitarias de concentración **no medían el `where`**; el mapa de la migración perdía las formas femeninas; un `@Optional()` fallaba abierto |

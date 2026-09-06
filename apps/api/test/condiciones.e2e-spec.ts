@@ -152,4 +152,79 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`);
     expect(quita.status).toBe(200);
   });
+
+  // **Contra Postgres, y por eso existen estas cuatro.** Las unitarias usan un Prisma simulado que
+  // devuelve lo que se le ponga sin mirar el `where`: pasan igual con `startsWith` borrado, con el
+  // `not:` borrado, y hasta si el código borrara TODAS las condiciones del personaje. Lo midió la
+  // revisión del 2026-09-06.
+
+  it("empezar una segunda concentración retira la primera, y solo esa", async () => {
+    const s = app.getHttpServer();
+    // Una condición que NO es de concentración, para comprobar que el borrado no se la lleva.
+    await request(s)
+      .put(`${condUrl()}/mojado`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ note: "Sigo mojada" })
+      .expect(200);
+
+    await request(s)
+      .put(`${condUrl()}/concentrating-on-bless`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({})
+      .expect(200);
+    await request(s)
+      .put(`${condUrl()}/concentrating-on-haste`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({})
+      .expect(200);
+
+    const filas = await prisma.characterCondition.findMany({ where: { characterId } });
+    const claves = filas.map((f) => f.key).sort();
+    expect(claves).toContain("concentrating-on-haste");
+    expect(claves).not.toContain("concentrating-on-bless");
+    // La que no era concentración sigue ahí: el `startsWith` del `where` hace falta de verdad.
+    expect(claves).toContain("mojado");
+  });
+
+  it("renovar LA MISMA concentración no la retira a sí misma", async () => {
+    const s = app.getHttpServer();
+    await request(s)
+      .put(`${condUrl()}/concentrating-on-haste`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ note: "renovada" })
+      .expect(200);
+
+    const fila = await prisma.characterCondition.findFirst({
+      where: { characterId, key: "concentrating-on-haste" },
+    });
+    expect(fila).not.toBeNull();
+    expect(fila?.note).toBe("renovada");
+  });
+
+  it("una clave que solo EMPIEZA por las letras del prefijo no es una concentración", async () => {
+    const s = app.getHttpServer();
+    // Sin separador no es concentración: si lo fuera, se llevaría por delante la de arriba.
+    await request(s)
+      .put(`${condUrl()}/concentrating`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({})
+      .expect(200);
+
+    const fila = await prisma.characterCondition.findFirst({
+      where: { characterId, key: "concentrating-on-haste" },
+    });
+    expect(fila).not.toBeNull();
+  });
+
+  it("un jugador recibe 403 y NO el 400 de inmunidad: el oráculo no se abre por ahí", async () => {
+    // Las quince inmunidades posibles son exactamente las claves reservadas, así que el 403 llega
+    // primero. Si algún día una inmunidad dejara de serlo, esta prueba se pondría roja y habría
+    // que rehacer el orden — que es justo lo que se quiere que pase.
+    const r = await request(app.getHttpServer())
+      .put(`${condUrl()}/stunned`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({});
+    expect(r.status).toBe(403);
+    expect(r.body.message).not.toMatch(/inmune/i);
+  });
 });

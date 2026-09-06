@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -19,7 +19,6 @@ describe("ConditionsService", () => {
       findUnique: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
-      deleteMany: jest.fn(),
     },
     // 2C.4: el reloj de la campaña — la caducidad de una condición y el agotamiento que parte
     // los PG máximos se calculan contra él.
@@ -149,6 +148,11 @@ describe("ConditionsService", () => {
     });
     statblocks.resolver.mockResolvedValue({ conditionImmunities: ["poisoned", "exhaustion"] });
 
+    // **El tipo Y el motivo.** Solo con `/inmune/i` esta prueba pasaría con cualquier excepción
+    // que llevara esa palabra, incluida una de otro control.
+    await expect(service.apply("dm1", "cmp1", "c1", { key: "poisoned" })).rejects.toThrow(
+      BadRequestException,
+    );
     await expect(service.apply("dm1", "cmp1", "c1", { key: "poisoned" })).rejects.toThrow(
       /inmune/i,
     );
@@ -350,6 +354,9 @@ describe("condiciones con duración (2C.4)", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        // Obligatorio desde el paso 1, tarea 2: aplicar una condición pregunta a qué es inmune el
+        // statblock del que salió el personaje. Aquí no hay ninguno y devuelve `null`.
+        { provide: StatblocksService, useValue: { resolver: jest.fn().mockResolvedValue(null) } },
       ],
     }).compile();
     service = ref.get(ConditionsService);

@@ -37,14 +37,29 @@ import { condicionesActivas, type CondicionConVencimiento } from "../conditions/
  */
 export const CONCENTRATION_KEY_PREFIX = "concentrating";
 
+/**
+ * **Los dos separadores que cuentan como concentración**, y por qué hace falta decirlo.
+ *
+ * El prefijo suelto convertía en concentración cualquier clave que empezara por esas letras
+ * —`"concentrating"` a secas, o un hipotético `"concentratingly"`—, y el código vivo usa **dos**
+ * convenciones: `concentrating-on-bless` en las suites de 2.5 y `concentrating:bless` en las del
+ * paso 1. Se admiten las dos y se exige el separador, que es lo que las hace inequívocas.
+ */
+const SEPARADORES_DE_CONCENTRACION = ["-", ":"] as const;
+
+/** ¿Esta clave marca una concentración? Es la ÚNICA puerta: nadie compara el prefijo a mano. */
+export function esConcentracion(key: string): boolean {
+  return SEPARADORES_DE_CONCENTRACION.some((sep) =>
+    key.startsWith(`${CONCENTRATION_KEY_PREFIX}${sep}`),
+  );
+}
+
 /** ¿Hay, entre las condiciones VIGENTES (no vencidas), alguna de concentración? */
 export function estaConcentrado(
   condiciones: CondicionConVencimiento[],
   relojSegundos: number,
 ): boolean {
-  return condicionesActivas(condiciones, relojSegundos).some((c) =>
-    c.key.startsWith(CONCENTRATION_KEY_PREFIX),
-  );
+  return condicionesActivas(condiciones, relojSegundos).some((c) => esConcentracion(c.key));
 }
 
 /**

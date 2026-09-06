@@ -67,8 +67,8 @@ depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero 
   vecinas tipadas, así que **nadie podía consumirlo**. Pasa a las quince del SRD, con migración de
   datos que mapea lo conocido y **deja fuera lo que no reconoce sin borrar la fila**, y `apply`
   rechaza con un 400 que dice por qué. Un personaje jugador no tiene statblock: para él la lista
-  está vacía y no cambia nada. **Cómo se revierte:** el commit, y la migración es un `UPDATE` que
-  no cambia el tipo de la columna.
+  está vacía y no cambia nada. **Cómo se revierte:** el commit — pero **las etiquetas que la
+  migración no supo mapear no vuelven**: revertir no las devuelve.
 
 - **Tarea 5 · una fórmula de CA ya puede sumar más de una característica.** `AcFormula.addAbility`
   admitía **una**, y las dos Defensas sin armadura del SRD 5.1 suman dos —bárbaro DES+CON, monje

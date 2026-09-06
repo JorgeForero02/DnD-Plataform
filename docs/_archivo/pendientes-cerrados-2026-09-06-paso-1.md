@@ -404,3 +404,38 @@ al DM que lo haga por él.
 ronda porque toca el contrato del endpoint, y esta ronda es de arreglos sobre lo ya construido.
 
 </details>
+
+## ~~P2 · Las pantallas del paso 1 no tienen prueba de navegador estable~~ — **CERRADA el 2026-09-06**
+
+**Las dos mitades cerradas el mismo día en que se abrió, y ninguna era un defecto de pantalla.**
+`apps/web/e2e/paso-1-goteras.spec.ts` — «dos dagas, una en cada mano» y «se puede cambiar quién ve
+una criatura propia ya creada», **tres pasadas seguidas en verde cada una**, de 4 a 12 s.
+
+**Las dos se recorrieron A MANO en el navegador antes de tocar la prueba**, y las dos funcionaban:
+equipar dos dagas deja las dos filas en el cuadro de ataques (`MAIN_HAND` y `OFF_HAND`, +5 y
+`1d4+3`, leídas del servidor), y cambiar la visibilidad de una criatura recién creada aguanta el
+guardado, la reapertura **y una recarga completa de la página** (`PUT 200` seguido del `GET` de la
+lista, observados en el tráfico).
+
+**Eran cuatro fallos de prueba, y tres comparten la misma raíz: mirar demasiado pronto.**
+
+1. **El confirmar del selector de mano resolvía al «Equipar» de la propia fila**, que está antes en
+   el DOM: el recorrido reabría el selector en vez de confirmarlo, y el fallo salía tres pasos
+   después con otra cara.
+2. **El clic que abre «Añadir objeto» aterrizaba con la hoja aún montándose** —la ficha se acababa
+   de escribir y su derivación llega después—, React reemplazaba el nodo y **el clic se perdía sin
+   error**. Se arregla con `toPass`: repetir el gesto hasta que su efecto se vea.
+3. **`getByRole("radio", { name: /Jugadores/ })` marcaba el radio de «Público»**, porque el nombre
+   accesible incluye su frase y la de Público dice literalmente *«hoy es lo mismo que
+   «Jugadores»»*. Los glifos `○ ◐ ●` —la excepción declarada para los cinco niveles— sirven justo
+   para desambiguar.
+4. **Se reabría el editor con el `PUT` todavía en vuelo**, así que se leía el valor de antes y
+   parecía que no se había guardado. Se espera a que el cajón se cierre.
+
+**El remonte que el diagnóstico anterior señalaba es real y es correcto**: al equipar, la fila salta
+de «Encima» a «Equipado». Lo que había que cambiar no era la pantalla — era **esperar al efecto en
+vez de al elemento**.
+
+**Y la advertencia que traía sigue en pie**: en cinco pasadas de la suite fallaron además
+`inventario`, `nervio-en-vivo`, `bestiario` y `campana`, **cada vez unas distintas y todas pasaron
+solas después**. Esta máquina da rojos falsos bajo carga, y eso está en `docs/08-pruebas.md`.

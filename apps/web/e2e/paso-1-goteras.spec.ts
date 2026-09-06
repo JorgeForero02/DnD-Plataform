@@ -166,16 +166,44 @@ test("dos dagas, una en cada mano, y el cuadro de ataques enseña las dos", asyn
   await expect(ataques.getByRole("row", { name: /Daga/ })).toHaveCount(2, { timeout: 20_000 });
 });
 
-// --- Tarea 12 · lo que NO está aquí, y por qué ----------------------------------------------
-//
-// **La prueba de navegador de «cambiar quién ve una criatura» se midió y NO se commitea, porque
-// parpadea.** Una prueba que da verde y rojo en dos pasadas seguidas sobre el mismo código no
-// defiende nada y envenena la suite.
-//
-// Lo medido: pasa en una pasada y falla en la siguiente, siempre en la última aserción — al
-// reabrir el editor el radio vuelve sin marcar. **El servidor NO es el problema**, y eso sí está
-// probado: `apps/api/test/statblocks.e2e-spec.ts` comprueba que el `PUT` guarda el nivel nuevo y
-// que releer la lista lo devuelve. Queda su ficha en `docs/06-pendientes.md`.
+// --- Tarea 12 -----------------------------------------------------------------------------
+
+test("se puede cambiar quién ve una criatura propia ya creada", async ({ page }) => {
+  // **El editor solo ofrecía el selector AL CREAR.** Al editar pintaba un párrafo diciendo que el
+  // servidor no manda ese dato — y sí lo manda—, así que no había forma de cambiar quién ve una
+  // criatura que ya existía. Es la regla vinculante: si el texto explica una regla del servidor y
+  // discrepan, miente el texto.
+  await registrarse(page);
+  await crearCampana(page, "La mesa del bestiario");
+
+  await page.getByRole("button", { name: "Bestiario" }).click();
+  await page.getByRole("button", { name: "Escribir una criatura" }).click();
+  await page.getByRole("textbox", { name: "Cómo se llama" }).fill("Sabueso de humo");
+  await page.getByRole("button", { name: "Guardar la criatura" }).click();
+
+  // **`◐Jugadores` y no `/Jugadores/`, y esto es lo que hacía parpadear la prueba anterior.**
+  // El nombre accesible de un radio incluye SU FRASE, y la de «Público» dice literalmente «hoy es
+  // lo mismo que «Jugadores»». Así que `/Jugadores/` resolvía **al radio de Público**, se marcaba
+  // el equivocado y la aserción final fallaba tres pasos después. Los glifos que abren cada
+  // nombre —`○ ◐ ●`— son la excepción declarada para los cinco niveles de visibilidad
+  // (`features/sessions/iconos.tsx`), y sirven justo para desambiguar aquí.
+  const jugadores = /^[^A-Za-zÁÉÍÓÚ]*Jugadores/;
+
+  await page.getByRole("button", { name: "Editar" }).first().click();
+  await expect(page.getByRole("radio", { name: jugadores })).not.toBeChecked();
+  await page.getByRole("radio", { name: jugadores }).click();
+  // **Esperar a que el cajón se cierre, que es la señal de que el `PUT` volvió.** Sin esto la
+  // prueba reabre el editor mientras el guardado sigue en vuelo, lo encuentra con el dato de
+  // antes, y el fallo parece «no se guardó» cuando lo que pasó es que se miró demasiado pronto.
+  // Es el mismo error que las dos dagas, con otra cara: esperar a un tiempo en vez de a un efecto.
+  await page.getByRole("button", { name: "Guardar los cambios" }).click();
+  await expect(page.getByRole("heading", { name: /^Editar / })).toBeHidden({ timeout: 15_000 });
+
+  // Y la prueba de verdad: **reabrir y encontrarlo puesto**. El servidor ya se comprueba en
+  // `apps/api/test/statblocks.e2e-spec.ts`; lo que aquí se mide es que la pantalla lo lea de vuelta.
+  await page.getByRole("button", { name: "Editar" }).first().click();
+  await expect(page.getByRole("radio", { name: jugadores })).toBeChecked({ timeout: 15_000 });
+});
 
 // --- Un defecto de maquetación ya arreglado, que no debe volver -----------------------------
 

@@ -917,3 +917,46 @@ verde ocho veces seguidas.
 **Cómo revertir.** Tres commits independientes: el de `setSide`, el del asalto perdido, y el de
 esta ronda de arreglo (C-1 + la prueba e2e cross-campaña + el cálculo dinámico de pases). Ninguno
 lleva migración.
+
+## Tarea 14: el brief pedía una puerta nueva de curar; la puerta ya existía (2026-09-06, plan «iniciativa y bando»)
+
+**El brief (`task-14-brief.md`) partía de dos afirmaciones falsas**, verificadas antes de tocar
+código: «hoy no se puede subir un punto de golpe a nadie» y «no hay otra puerta». `PuntosDeGolpe.tsx`
+en la hoja de personaje ya mandaba deltas positivos por los botones «Recibo daño»/«Me curo», y el
+servidor (`changeHp`) ya los procesaba enteros — tope por arriba, borrado de salvaciones de muerte
+al levantar a alguien desde 0, rechazo a revivir en silencio a quien tiene tres fracasos —, probado
+desde antes de esta fecha en `character-sheet.service.spec.ts`.
+
+**Lo único que faltaba era el gesto rápido de la mesa.** `PonerDano.tsx`
+(`apps/web/src/features/sessions/elenco/`), el cajón que un DM usa en combate sin abrir la hoja
+entera, solo mandaba `delta: -n`. Se refactorizó a un componente interno (`Gesto`) parametrizado
+por `modo: "dano" | "curar"`, y se exportan dos gestos con nombre — `PonerDano` y `Curar` —, no una
+segunda puerta: mismo hook `useChangeHp`, mismo cajón, el signo del delta y el rótulo cambiados.
+`Curar` no ofrece tipo de daño ni «Crítico» porque el servidor los descarta o los ignora en la rama
+de curar. Montado en `MandosDeCombatiente.tsx` como tercer botón junto a «Daño» y «Condición», para
+personajes de jugador y PNJ instanciados por igual (ambos pasan por el mismo componente).
+
+**Regla citada, SRD 5.1, "Damage and Healing" → "Healing" (inglés):** *"Hit points regained are
+added to current hit points... A creature's hit points can't exceed its hit point maximum, so any
+hit points regained in excess of this number are lost."* El tope es del servidor
+(`clamp(before + input.delta, 0, maxHp)`); la pantalla nueva no recorta nada, solo enseña lo que
+vuelve.
+
+**`docs/06-pendientes.md`** — la ficha «Nadie puede curar a nadie» se reescribió (no se borró):
+baja de P1 a P3-cerrada, con el error de medición documentado (se buscó el nombre `curar`/`heal` en
+vez del comportamiento — un delta positivo). Se abrió una P1 nueva y distinta: la resistencia,
+vulnerabilidad e inmunidad al daño no se aplican nunca a un personaje de jugador porque
+`changeHp` solo las consulta si `character.statblockRef` existe, y un PJ nunca lo tiene
+(`characters.service.ts:68`) — los rasgos de raza que darían resistencia (enano/veneno,
+tiefling/fuego) son hoy prosa decorativa en el catálogo, sin dato estructurado. Se deja explícitamente
+sin cerrar: conectar ese origen es una feature de varios ficheros (un `kind` nuevo en el catálogo,
+datos reales en `races.ts`, agregación en `resolve.ts`, lectura nueva en `changeHp`), no un cambio
+de una línea, y forzarla dentro de esta tarea habría sido media tarea vestida de entera.
+
+**Cómo se comprobó.** `apps/web/src/features/sessions/elenco/__tests__/Curar.test.tsx`, prueba
+nueva. **Mutación**: cambiar el signo del delta en la rama `curar` de `Gesto` puso roja la primera
+prueba por el motivo correcto (`delta: -7` en vez de `delta: 7`); revertido. `pnpm verify` en
+verde completo (build, lint, formato, check:docs, check:estado, check:historial, unitarias).
+
+**Cómo revertir.** Un commit: `PonerDano.tsx`, `MandosDeCombatiente.tsx`, el test nuevo y los dos
+documentos. Sin migración, sin cambio de servidor.

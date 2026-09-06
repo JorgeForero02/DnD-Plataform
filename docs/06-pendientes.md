@@ -211,22 +211,77 @@ declaró cuatro veces —servidor hecho, nadie que lo dispare—.
 **Cierra cuando** el jugador pueda elegir a quién ataca desde el cuadro de ataques y el resultado
 diga si acierta.
 
-## P1 · Nadie puede curar a nadie, ni a sí mismo (2026-09-05)
+## P3 · Cerrado: no faltaba curar, faltaba el gesto rápido del elenco (medido mal el 2026-09-05, cerrado el 2026-09-06)
 
-**Lo único que mueve puntos de golpe en toda la web es `PonerDano`, y siempre hacia abajo**:
-`apps/web/src/features/sessions/elenco/PonerDano.tsx:123` manda `delta: -n`. Búsqueda de `heal` o
-`curar` en `apps/web/src/features/character-sheet/api.ts`: **cero**.
+**Esta ficha decía «nadie puede curar a nadie, ni a sí mismo» y afirmaba que `PonerDano` era «lo
+único que mueve puntos de golpe en toda la web, y siempre hacia abajo». Las dos frases eran
+falsas**, y se dejan aquí explicadas en vez de borradas porque el error de medición es el que
+importa recordar.
 
-Así que un clérigo no puede curar a un compañero, ni un jugador beber su propia poción. **El hook
-`useChangeHp` acepta un delta relativo y el signo no está prohibido en el servidor**: la puerta
-existe y la pantalla solo la usa en un sentido.
+**Cómo se midió mal:** se buscó `heal` y `curar` en
+`apps/web/src/features/character-sheet/api.ts` y dio cero, y de ahí se concluyó que curar no
+existía. **Pero la curación no se llama `curar` en el código: es un delta con signo positivo por
+la misma función `changeHp`.** Buscar el nombre en vez del comportamiento es lo que dejó fuera
+`apps/web/src/features/character-sheet/PuntosDeGolpe.tsx`, donde `aplicarDelta(1)` ya mandaba
+`delta: signo * Math.abs(n)` con signo positivo, detrás de un botón que se llama literalmente **«Me
+curo»** (con su hermano «Recibo daño» — la decisión I9 de dos gestos con nombre, sin signo en el
+campo, ya estaba aplicada ahí). Y el servidor (`changeHp`,
+`apps/api/src/characters/character-sheet.service.ts`) ya trataba el delta positivo entero: topa
+por arriba, borra las salvaciones de muerte al levantar a alguien desde 0 y rechaza revivir en
+silencio a quien tiene tres fracasos — probado en
+`apps/api/src/characters/character-sheet.service.spec.ts` (buscar «curar» en ese fichero) desde
+antes de esta fecha.
 
-**Y se vuelve grave con la decisión de qué cuenta como derrotado**: un personaje a 0 PG tira
-salvaciones contra muerte —el mecanismo existe— pero **nadie puede levantarlo**, porque no hay forma
-de subirle un punto de golpe. La regla queda a medias por falta de pantalla.
+**Lo que sí faltaba era mucho más pequeño**: el gesto rápido de la mesa,
+`apps/web/src/features/sessions/elenco/PonerDano.tsx`, solo mandaba `delta: -n`, y su propia
+cabecera decía que es «la ruta que un DM usa de verdad en combate — no abrir la hoja entera». Ahí,
+y solo ahí, no se podía curar. **Cerrado en la tarea 14 (2026-09-06):** `PonerDano.tsx` ahora
+expone también `Curar`, el mismo componente (`Gesto`) con el signo del delta cambiado, montado en
+`MandosDeCombatiente.tsx` como un tercer botón junto a «Daño» y «Condición» — para personajes de
+jugador y para PNJ instanciados por igual, porque los dos usan el mismo `MandosDeCombatiente`.
+Prueba: `apps/web/src/features/sessions/elenco/__tests__/Curar.test.tsx`.
 
-**Cierra cuando** se pueda subir PG a un personaje desde la mesa y desde la hoja, con su suceso y su
-traza, y con la puerta del servidor comprobando quién puede hacerlo.
+## P1 · La resistencia, vulnerabilidad e inmunidad al daño no se aplican NUNCA a un personaje de jugador (2026-09-06)
+
+**Verificado leyendo `changeHp`:** los modificadores de daño solo se consultan si
+`character.statblockRef` existe y hay resolutor de statblocks —
+`apps/api/src/characters/character-sheet.service.ts:1138`, `if (input.damageType &&
+character.statblockRef && this.statblocks)`—, y **un personaje de jugador nunca tiene
+`statblockRef`**: `apps/api/src/characters/characters.service.ts:68` filtra explícitamente
+`statblockRef: null` para separar «quién se sienta a la mesa» de los PNJ instanciados (fase 2D).
+Esto ya estaba probado y declarado a propósito, no es un descuido nuevo: «con damageType pero sin
+statblockRef (un jugador), tampoco se reduce nada» (`apps/api/src/characters/character-sheet.service.spec.ts:1364`).
+
+**Lo que eso significa en la mesa:** un enano recibe un veneno entero — el SRD 5.1 le da
+resistencia al veneno (*«Dwarven Resilience»*) — y un tiefling arde con el fuego entero — el SRD
+le da resistencia al fuego —, con una traza convincente al lado que nunca se dispara porque
+`applyDamageModifiers` (`apps/api/src/character-state/damage/apply-damage-modifiers.ts`) jamás
+llega a ejecutarse para un PJ.
+
+**La maquinaria de aplicar el modificador ya existe y está bien probada** (`applyDamageModifiers`,
+el tipo de daño en el suceso, la traza en la respuesta). **Lo que falta es de dónde salen los
+modificadores de UN PERSONAJE DE JUGADOR.** Hoy solo hay una fuente: `statblock.damageModifiers`
+(2.5.1, pieza B), y los rasgos de raza que darían resistencia (`apps/api/src/rules/catalog/races.ts`)
+son **puro texto decorativo** — `kind: "feature"` con un `name` y un `labelKey`, sin ningún dato
+estructurado. No existe ningún `kind` de concesión para resistencia/vulnerabilidad/inmunidad en
+`apps/api/src/rules/catalog/types.ts`.
+
+**Por qué se deja a medias y no se fuerza (tarea 14, 2026-09-06):** cerrar esto de verdad exige, como
+mínimo: (1) un `kind` nuevo de concesión en el catálogo (`types.ts`) que declare
+resistencia/vulnerabilidad/inmunidad por tipo de daño, reutilizando el esquema de
+`damageModifiers` de `@dnd/shared` en vez de inventar uno segundo; (2) rellenar `races.ts` con los
+rasgos reales del SRD que hoy son solo prosa (resistencia enana al veneno, resistencia del
+tiefling al fuego, y cualquier otro que el SRD 5.1 dé estructurado); (3) que `resolve.ts` agregue
+esas concesiones en algo que la hoja derive (`derived.damageModifiers` o similar), con su traza,
+igual que ya hace con velocidad o habilidades; y (4) que `changeHp` lea esa fuente para un PJ
+—`character.statblockRef` nulo— en vez de (o además de) la del statblock. Es una feature con su
+propio diseño de datos, no un cambio de una línea, y forzarla dentro de esta tarea habría sido
+la «media tarea inventada como entera» que este proyecto no quiere.
+
+**Cierra cuando** un personaje de jugador con un rasgo de resistencia/vulnerabilidad/inmunidad al
+daño lo vea aplicarse de verdad en `changeHp`, con su traza, exactamente igual que un PNJ con
+statblock — probado con mutación: quitarle el origen del modificador (statblock o lo que lo
+sustituya) tiene que enrojecer la prueba que compruebe la reducción.
 
 ## P3 · Un cuadro de ataques vacío no dice por qué está vacío (2026-09-05)
 

@@ -29,6 +29,12 @@ export interface NpcEnLaMesa {
   tempHp?: number;
   visibility: string;
   /**
+   * **De quién es este PNJ** (paso 1, tarea 15). Sin este dato la pantalla no podía leer «es
+   * tuyo», así que un jugador con un PNJ cedido no tenía mandos **aunque el servidor se los
+   * permitiera** — no podía anotarle el golpe que acababa de recibir sin pedírselo al DM.
+   */
+  ownerId: string;
+  /**
    * Las condiciones **vivas**, ya filtradas por el servidor contra el reloj de campaña: una
    * vencida sigue en la ficha, marcada, pero no viaja aquí.
    *

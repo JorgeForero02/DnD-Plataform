@@ -493,4 +493,20 @@ describe("Un PNJ en la mesa (e2e)", () => {
         .length,
     );
   });
+
+  it("GET /npcs devuelve el dueño de cada PNJ (paso 1, tarea 15)", async () => {
+    // **La pantalla era más restrictiva que el servidor solo porque este dato no viajaba.** El
+    // servidor ya trata a un PNJ cedido por dueño —`encounters.service` separa las peticiones de
+    // iniciativa por `ownerId`, y `requireEditable` le deja cambiarle los PG—, pero `NpcEnLaMesa`
+    // no traía `ownerId`, así que no había de dónde leer «es tuyo».
+    const lista = await request(app.getHttpServer())
+      .get(npcs())
+      .set("Authorization", auth(tokenDM));
+    expect(lista.status).toBe(200);
+    expect(lista.body.length).toBeGreaterThan(0);
+    for (const pnj of lista.body) {
+      expect(pnj).toHaveProperty("ownerId");
+      expect(typeof pnj.ownerId).toBe("string");
+    }
+  });
 });

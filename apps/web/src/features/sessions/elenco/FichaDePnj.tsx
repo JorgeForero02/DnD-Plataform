@@ -53,6 +53,7 @@ export function FichaDePnj({
   pnj,
   bando,
   esDm,
+  miId,
   turnoActual = false,
   enCombate = false,
   sessionId,
@@ -64,6 +65,12 @@ export function FichaDePnj({
   /** El bando de este combatiente EN ESTE encuentro (`Combatant.side`), no una propiedad suya. */
   bando: CombatantSide;
   esDm: boolean;
+  /**
+   * Quién está mirando. **Un PNJ cedido a un jugador es suyo** (paso 1, tarea 15): el servidor ya
+   * lo trata así —`requireEditable` le deja cambiarle los PG y ponerle condiciones— y la pantalla
+   * era más restrictiva **solo porque `ownerId` no viajaba**.
+   */
+  miId?: string;
   turnoActual?: boolean;
   enCombate?: boolean;
   /** La sesión del encuentro — la ruta de `setSide` cuelga de ella. */
@@ -82,6 +89,12 @@ export function FichaDePnj({
   // decisión que nadie había tomado, solo una lectura que no miraba quién pregunta.
   const maximo = esDm ? (hoja?.hp.max ?? null) : null;
   const ca = esDm ? (hoja?.sheet?.derived.ac?.total ?? null) : null;
+
+  // **Los mandos son del DM o del dueño**, igual que `FichaDeElenco` ya hace con `puedeCambiarPg`.
+  // **Esconder el botón no es control de acceso**: la puerta real sigue siendo `requireEditable`
+  // en el servidor, y esto es cortesía — enseñar un mando que va a dar 403 es peor que no
+  // enseñarlo, y esconderle a alguien uno que sí puede usar es la otra mitad del mismo defecto.
+  const puedeManejarlo = esDm || (miId !== undefined && pnj.ownerId === miId);
 
   return (
     <li
@@ -121,7 +134,7 @@ export function FichaDePnj({
 
       <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
 
-      {esDm && (
+      {puedeManejarlo && (
         <MandosDeCombatiente
           campaignId={campaignId}
           characterId={pnj.id}

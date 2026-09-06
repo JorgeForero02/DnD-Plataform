@@ -58,6 +58,7 @@ const KLARG: NpcEnLaMesa = {
   name: "Klarg",
   statblockRef: "CAMPAIGN:cap",
   currentHp: 27,
+  ownerId: "u-dm",
   visibility: "DM_ONLY",
 };
 

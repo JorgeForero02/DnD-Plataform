@@ -248,6 +248,7 @@ export function ColumnaElenco({
                 pnj={pnj}
                 bando={combatant.side}
                 esDm={esDm}
+                miId={miId}
                 turnoActual={deQuienEsElTurno.has(pnj.id)}
                 enCombate={enCombate}
                 sessionId={sesion?.id}

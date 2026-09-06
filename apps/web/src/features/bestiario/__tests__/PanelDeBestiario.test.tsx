@@ -182,6 +182,7 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
         name: "Goblin 1",
         statblockRef: "SRD:goblin",
         currentHp: 7,
+        ownerId: "u-dm",
         visibility: "DM_ONLY",
       },
       {
@@ -189,6 +190,7 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
         name: "Goblin 2",
         statblockRef: "SRD:goblin",
         currentHp: 7,
+        ownerId: "u-dm",
         visibility: "DM_ONLY",
       },
     ]);
@@ -214,6 +216,7 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
         name: "Goblin 1",
         statblockRef: "SRD:goblin",
         currentHp: 4,
+        ownerId: "u-dm",
         visibility: "DM_ONLY",
       },
     ]);
@@ -230,6 +233,7 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
         name: "Goblin 1",
         statblockRef: "SRD:goblin",
         currentHp: 4,
+        ownerId: "u-dm",
         visibility: "DM_ONLY",
       },
     ]);
@@ -246,6 +250,7 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
         name: "Ogro",
         statblockRef: "SRD:ogre",
         currentHp: 30,
+        ownerId: "u-dm",
         visibility: "DM_ONLY",
         conditions: [
           { key: "prone", level: 1 },
@@ -267,7 +272,14 @@ describe("PanelDeBestiario — bajar una criatura a la mesa", () => {
   it("no pinta el PG máximo: su fuente única es la ficha", async () => {
     comoDm();
     vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([
-      { id: "n1", name: "Ogro", statblockRef: "SRD:ogre", currentHp: 30, visibility: "DM_ONLY" },
+      {
+        id: "n1",
+        name: "Ogro",
+        statblockRef: "SRD:ogre",
+        currentHp: 30,
+        ownerId: "u-dm",
+        visibility: "DM_ONLY",
+      },
     ]);
     renderPanel();
     const lista = await screen.findByTestId("pnj-en-la-mesa");

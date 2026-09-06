@@ -55,6 +55,7 @@ const GOBLIN: NpcEnLaMesa = {
   name: "Goblin capataz",
   statblockRef: "srd-goblin",
   currentHp: 7,
+  ownerId: "u-dm",
   visibility: "PLAYERS",
   conditions: [],
 };
@@ -68,6 +69,7 @@ const OGRO_FUERA_DE_COMBATE: NpcEnLaMesa = {
   name: "Ogro del sótano",
   statblockRef: "srd-ogre",
   currentHp: 59,
+  ownerId: "u-dm",
   visibility: "PLAYERS",
   conditions: [],
 };
@@ -97,6 +99,17 @@ function hoja(current: number, max: number): sheetApi.SheetResponse {
       status: "alive",
     } as sheetApi.SheetResponse["deathSaves"],
   };
+}
+
+/** Como `montar`, pero diciendo QUIÉN mira: es lo que decide si un PNJ cedido es suyo. */
+function montarComo(quienSoy: string, pnj: NpcEnLaMesa) {
+  useAuthStore.setState({ user: { id: quienSoy, email: "x@y.z", displayName: "Yo" } as never });
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <ColumnaElenco campaignId="c1" asistencia={null} esDm={false} pnjs={[pnj]} />
+    </QueryClientProvider>,
+  );
 }
 
 function montar(pnjs: NpcEnLaMesa[] | undefined, esDm = true) {
@@ -144,7 +157,11 @@ describe("el elenco enseña a los PNJ combatientes (tarea 9b)", () => {
   });
 
   it("un jugador ve al PNJ pero no lleva mandos sobre él", async () => {
-    montar([GOBLIN], false);
+    // **Un jugador que NO es su dueño**, y desde el paso 1 (tarea 15) ese matiz decide. Esta
+    // prueba montaba el goblin del DM con la sesión iniciada como `u-dm`, así que el espectador
+    // era su dueño: pasaba por la razón equivocada. Lo que defiende —que un PNJ ajeno no trae
+    // mandos— no ha cambiado.
+    montarComo("u-otro", GOBLIN);
 
     expect(await screen.findByText("Goblin capataz")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Daño a Goblin capataz" })).not.toBeInTheDocument();
@@ -196,5 +213,28 @@ describe("el DM corrige el bando desde la columna de verdad (C-1, I-5)", () => {
     expect(
       await screen.findByRole("group", { name: "Bando de Goblin capataz" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("un PNJ cedido a un jugador es suyo en la pantalla (paso 1, tarea 15)", () => {
+  // **El servidor ya lo trataba así**: `encounters.service` separa las peticiones de iniciativa
+  // por `ownerId` sin mirar `statblockRef`, y `requireEditable` le deja cambiarle los PG y
+  // ponerle condiciones. La pantalla era más restrictiva **solo porque `ownerId` no viajaba**: no
+  // había de dónde leer «es tuyo», y un jugador con un PNJ cedido no podía anotarle el golpe que
+  // acababa de recibir sin pedírselo al DM.
+  //
+  // **Esconder el botón no es control de acceso**: la puerta real es `requireEditable`. Esto es
+  // cortesía en las dos direcciones — no enseñar un mando que va a dar 403, y no esconder uno que
+  // sí se puede usar.
+
+  it("el dueño de un PNJ cedido ve sus mandos", async () => {
+    montarComo("u-pl", { ...GOBLIN, ownerId: "u-pl" });
+    expect(await screen.findByRole("button", { name: /daño/i })).toBeInTheDocument();
+  });
+
+  it("y otro jugador que no es su dueño, no", async () => {
+    montarComo("u-pl", { ...GOBLIN, ownerId: "u-otro" });
+    await screen.findByText(/Goblin/);
+    expect(screen.queryByRole("button", { name: /daño/i })).not.toBeInTheDocument();
   });
 });

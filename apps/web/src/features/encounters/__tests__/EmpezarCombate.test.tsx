@@ -41,6 +41,7 @@ const SYLAS: NpcEnLaMesa = {
   name: "Sylas",
   statblockRef: "SRD:bandit-captain",
   currentHp: 65,
+  ownerId: "u-dm",
   visibility: "DM_ONLY",
 };
 

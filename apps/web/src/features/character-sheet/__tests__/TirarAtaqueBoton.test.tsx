@@ -49,6 +49,7 @@ const GOBLIN: NpcEnLaMesa = {
   name: "Goblin capataz",
   statblockRef: "srd-goblin",
   currentHp: 7,
+  ownerId: "u-dm",
   visibility: "PLAYERS",
   conditions: [],
 };

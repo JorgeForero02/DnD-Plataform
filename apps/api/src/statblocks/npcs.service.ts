@@ -139,6 +139,19 @@ export class NpcsService {
         tempHp: f.tempHp,
         visibility: f.visibility,
         /**
+         * **De quién es** (paso 1, tarea 15). El servidor **ya** trata a un PNJ cedido por dueño
+         * —`encounters.service` separa las peticiones de iniciativa por `ownerId` sin mirar
+         * `statblockRef`, y `requireEditable` le dejaría cambiarle los PG y ponerle condiciones—,
+         * y la pantalla era más restrictiva que él **solo porque este dato no viajaba**: no había
+         * de dónde leer «es tuyo».
+         *
+         * No es una fuga: el `ownerId` de un PNJ que ya estás viendo no dice nada que la lista no
+         * diga —`canView` ya decidió arriba que puedes verlo—, y es el mismo campo que la lista
+         * de personajes publica desde 2A.
+         */
+        ownerId: f.ownerId,
+
+        /**
          * Las condiciones **vivas**: una vencida sigue en la ficha, marcada, pero ya no aplica
          * (2C.4). Filtrarlas aquí es lo que impide que la caducidad dependa de que alguien haya
          * abierto la pantalla de condiciones.

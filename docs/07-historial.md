@@ -48,6 +48,15 @@ tarea a tarea. El avance vivo, con el commit de cada una, está en el bloque «A
 plan; aquí solo el hito. **Cómo se revierte:** cada tarea es un commit independiente y ninguna
 depende de la anterior salvo las que el plan declara (2, 3 y 4 sobre el fichero de la 1).
 
+- **Tarea 18 · un PNJ revelado entregaba las seis características de un statblock `DM_ONLY`.** La
+  misma respuesta decía que sus números no eran públicos y traía seis de ellos, con los que se
+  reconstruyen los seis modificadores de salvación, los dieciocho de habilidad y la iniciativa. No
+  era un descuido: `npcs.service.ts` copia las características a la fila de `Character` al
+  instanciar (D-2D-2) y `getSheet` devolvía esa fila — **las dos piezas eran correctas por
+  separado**. Se aplica la decisión del autor (**D-A-2**): se ocultan, **menos los puntos de golpe
+  actuales**, porque saber que un enemigo está malherido se ve en la ficción. La frase que
+  acompaña la respuesta se corrige con ella. **Cómo se revierte:** el commit.
+
 - **Tarea 17 · la sala de espera podía leer «todos han tirado» sin que nadie tirara.** La lista de
   peticiones pendientes salía con `take: 50` por fecha descendente y **sin filtro por encuentro**,
   así que una campaña con más de cincuenta pendientes de otro tipo empujaba fuera de la página las

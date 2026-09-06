@@ -363,6 +363,15 @@ describe("Un PNJ en la mesa (e2e)", () => {
     recorrer2(hoja.body, valores);
     expect(valores).not.toContain(17); // la CA, como número
     expect(valores.filter((v) => typeof v === "string" && v.includes("caparazón"))).toEqual([]);
+    // **Y tampoco sus seis características** (D-A-2, 2026-09-06). `npcs.service.ts` las copia a la
+    // fila de `Character` al instanciar —D-2D-2, «un PNJ en la mesa es una fila de `Character`»— y
+    // `getSheet` devolvía esa fila **en la misma respuesta que decía que sus números no eran
+    // públicos**: con las seis se reconstruyen los seis modificadores de salvación, los dieciocho
+    // de habilidad y la iniciativa. Es UNA LÍNEA, y se ponía roja antes de este arreglo.
+    expect(valores).not.toContain(18); // Fuerza y Constitución
+    expect(valores).not.toContain(6); // Inteligencia
+    expect(hoja.body.character.str).toBeNull();
+    expect(hoja.body.character.cha).toBeNull();
     // Y el motivo **no miente**: no dice que la plantilla no exista, dice que no es suya.
     expect(hoja.body.reason).not.toContain("ya no existe");
 
@@ -376,6 +385,60 @@ describe("Un PNJ en la mesa (e2e)", () => {
     const valoresDelDm: unknown[] = [];
     recorrer2(delDm.body, valoresDelDm);
     expect(valoresDelDm).toContain(17);
+  });
+
+  it("pero los PG actuales SÍ los ve: saber que está malherido es de la mesa", async () => {
+    // **La otra mitad de D-A-2, y la que evita pasarse de celo.** Ocultarlo todo sería tan malo
+    // como la fuga: que un enemigo esté a punto de caer se ve en la ficción, y es exactamente lo
+    // que un jugador puede saber mirando. Su hoja no lo es.
+    const plantilla = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/statblocks`)
+      .set("Authorization", auth(tokenDM))
+      .send({
+        name: "Cosa malherida",
+        size: "LARGE",
+        type: "ABERRATION",
+        ac: 19,
+        hitDiceCount: 9,
+        abilities: { str: 19, dex: 7, con: 19, int: 5, wis: 13, cha: 4 },
+        cr: 5,
+      });
+    const cosaId = (
+      await request(app.getHttpServer())
+        .post(npcs())
+        .set("Authorization", auth(tokenDM))
+        .send({ ref: plantilla.body.ref })
+    ).body[0].id;
+    await request(app.getHttpServer())
+      .patch(ficha(cosaId))
+      .set("Authorization", auth(tokenDM))
+      .send({ visibility: "PLAYERS" });
+
+    // El DM le pega, que es como llega a estar malherido en la mesa.
+    const golpe = await request(app.getHttpServer())
+      .post(`${ficha(cosaId)}/hp`)
+      .set("Authorization", auth(tokenDM))
+      .send({ delta: -12 });
+    expect(golpe.status).toBe(201);
+
+    // Lo que el DM ve, para comparar contra lo que ve la jugadora: el mismo número de PG actuales
+    // y **nada más**.
+    const hojaDelDm = await request(app.getHttpServer())
+      .get(`${ficha(cosaId)}/sheet`)
+      .set("Authorization", auth(tokenDM));
+    expect(hojaDelDm.body.hp.max).toBeGreaterThan(0);
+
+    const hoja = await request(app.getHttpServer())
+      .get(`${ficha(cosaId)}/sheet`)
+      .set("Authorization", auth(tokenPL));
+    expect(hoja.status).toBe(200);
+    expect(hoja.body.hp.current).toBe(hojaDelDm.body.hp.current);
+    expect(hoja.body.hp.current).toBeLessThan(hojaDelDm.body.hp.max);
+    // **Y su máximo NO**, que es lo que convertiría «malherido» en un número exacto de su ficha.
+    expect(hoja.body.hp.max).toBeNull();
+    // La frase acompaña lo que de verdad pasa: si siguiera diciendo «sus números no son públicos»
+    // mientras manda los PG, volvería a mentir, solo que menos.
+    expect(hoja.body.reason).toMatch(/puntos de golpe actuales/i);
   });
 
   it("un PNJ del SRD sí enseña sus números: el libro lo puede leer cualquiera", async () => {

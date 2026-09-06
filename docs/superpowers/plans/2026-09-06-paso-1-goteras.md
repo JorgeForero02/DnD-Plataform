@@ -1521,4 +1521,5 @@ femeninas y `veneno`, que son justo las que escribiría quien no las puede volve
 | — · Revisión de 2 y 3 (13 hallazgos) | ✅ | `b95635f` | Las unitarias de concentración **no medían el `where`**; el mapa de la migración perdía las formas femeninas; un `@Optional()` fallaba abierto |
 | 6 · Un PNJ es competente con sus armas | ✅ | `5518aec` | Las dos categorías enteras, no una lista inventada; el PJ sin competencia **sigue** con su aviso |
 | 7 · Consumir un objeto hace algo | ✅ | `ceecb64` | Aplica los efectos que **ya declara**, por la maquinaria de M8; los seis que no caben **se nombran** |
-| 17 · La sala de espera no lee «todos han tirado» por un corte | ✅ | el de abajo | Filtro por encuentro **y la pantalla lo manda**; ficha tachada y archivada |
+| 17 · La sala de espera no lee «todos han tirado» por un corte | ✅ | `99a1983` | Filtro por encuentro **y la pantalla lo manda**; ficha tachada y archivada |
+| 18 · La fuga del PNJ revelado | ✅ | el de abajo | Las seis características fuera, **los PG dentro**; las dos mutaciones medidas |

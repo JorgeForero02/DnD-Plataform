@@ -96,7 +96,14 @@ type ResultadoConstruccion = { build: CharacterBuild } | { reason: string };
  * necesita el nivel —la muerte del nivel 6, tarea 2.5.5— lo tiene sin repetir la consulta de
  * condiciones que esa función ya hace.
  */
-type HojaDerivada = ({ sheet: CharacterSheet } | { reason: string }) & { exhaustion: number };
+type HojaDerivada = ({ sheet: CharacterSheet } | { reason: string }) & {
+  exhaustion: number;
+  /**
+   * **El PNJ se ve, sus números no** (D-A-2, 2026-09-06). Marca el único caso en que la fila del
+   * personaje NO puede salir entera: un PNJ que el DM reveló cuyo statblock sigue siendo suyo.
+   */
+  numerosOcultos?: boolean;
+};
 
 /**
  * De fila persistida a `CharacterBuild`, o al motivo por el que no se puede construir uno.
@@ -477,8 +484,32 @@ export class CharacterSheetService {
       maxHp !== null && currentHpCrudo !== null ? Math.min(currentHpCrudo, maxHp) : currentHpCrudo;
     const exceedsMax = maxHp !== null && currentHpCrudo !== null ? currentHpCrudo > maxHp : false;
 
+    // **La fila entera NO sale cuando los números son del DM** (D-A-2, 2026-09-06).
+    //
+    // `npcs.service.ts` copia las características del statblock a la fila de `Character` al
+    // instanciar —D-2D-2, «un PNJ en la mesa es una fila de `Character`»— y esto devolvía esa fila
+    // **en la misma respuesta que decía que sus números no eran públicos**: con las seis
+    // características se reconstruyen los seis modificadores de salvación, los dieciocho de
+    // habilidad y la iniciativa. Las dos piezas eran correctas por separado.
+    //
+    // **Los PG actuales sí se ven, y es la mitad que no hay que pasarse de celo en ocultar:**
+    // saber que un enemigo está malherido se ve en la ficción y es información legítima de mesa;
+    // su hoja no lo es.
+    const personajeQueSale =
+      "numerosOcultos" in resultado && resultado.numerosOcultos
+        ? {
+            ...character,
+            str: null,
+            dex: null,
+            con: null,
+            int: null,
+            wis: null,
+            cha: null,
+          }
+        : character;
+
     return {
-      character,
+      character: personajeQueSale,
       sheet,
       attacks,
       /** La bolsa, para que la hoja no tenga que pedirla aparte. */
@@ -997,7 +1028,7 @@ export class CharacterSheetService {
     character: FilaPersonaje,
     /** Los temporales vivos (M8): un PNJ jugable también puede llevar un +2 con caducidad. */
     temporales: Modifier[] = [],
-  ): Promise<{ sheet: CharacterSheet } | { reason: string }> {
+  ): Promise<{ sheet: CharacterSheet } | { reason: string; numerosOcultos?: boolean }> {
     if (!this.statblocks) {
       return {
         reason:
@@ -1021,8 +1052,12 @@ export class CharacterSheetService {
       // Y el motivo **no miente**: quien mira ya sabe que la criatura existe —está viéndola en la
       // mesa—, así que decirle que sus números no son públicos no le descubre nada. Colapsarlo en
       // «no existe» habría sido más cómodo y habría sido falso.
+      // **Y ahora la frase dice lo que de verdad pasa** (D-A-2): los PG actuales SÍ viajan, así
+      // que decir «sus números no son públicos» a secas volvería a mentir, solo que menos.
       return {
-        reason: "Los números de este PNJ no son públicos: su ficha es del DM.",
+        reason:
+          "De este PNJ solo se ven sus puntos de golpe actuales: el resto de su ficha es del DM.",
+        numerosOcultos: true,
       };
     }
     if ("ausente" in resuelto) {

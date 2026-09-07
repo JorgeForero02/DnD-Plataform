@@ -42,7 +42,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
 > - **Ficheros de e2e de API:** 53 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 35 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 36 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -305,6 +305,7 @@ verde — ya pasó con un borde partido, y por eso estas comprobaciones son regl
 | `clases-que-si-pintan` | Que las superficies que la aplicación promete **se pintan de verdad** — la comprobación que caza una clase de Tailwind que no existe y compila a nada. |
 | `ficha-lectura` | El enlace que se lee como frase por sus dos lados; la capitular, los párrafos y la medida corta; el contraste de la página de lectura en los dos temas. |
 | `mesa-mide` | **La mesa medida en un navegador**: la página no scrollea y el hilo sí, la rejilla llega al pie, ningún panel se corta sin poder desplazarse y abrir un cajón no desmonta el hilo. **Y desde D1 (2026-09-05), el hilo como conversación**: al abrir está **al fondo**, con el scroll subido un suceso nuevo **no roba la posición** y sale un aviso pulsable, y estando al fondo sí baja. Nada de eso se puede probar en `jsdom`, donde `scrollHeight` y `clientHeight` valen cero y **cualquier aserción de anclaje pasa siempre**. |
+| `dar-a-un-pnj` | **Que la segunda lista del selector de «Dar…» llega de verdad** (ficha P2-3): un Ogro bajado a la mesa desde el bestiario aparece entre los destinatarios, junto al personaje que ya estaba. La aserción del personaje va **antes** a propósito: sin ella, un cajón vacío por cualquier otro motivo se leería como «el PNJ no llegó». Comprobado por mutación: quitando la lista de PNJ del `useMemo`, el Ogro desaparece y el personaje sigue. El caso que la ficha nombra —un jugador con un PNJ **cedido**— no se puede montar en un navegador porque **no existe ninguna puerta para ceder un PNJ** (ficha P2-9), y vive en la prueba de componente con la API simulada. |
 | `capturas-comparacion` | Capturas de nuestras pantallas **para compararlas con el prototipo**. No afirma nada por sí sola: es material para el ojo humano. |
 
 ---

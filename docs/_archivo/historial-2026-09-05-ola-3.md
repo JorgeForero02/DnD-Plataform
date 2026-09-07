@@ -49,3 +49,31 @@ tache lleva desde ahora **la prueba de cuándo**, no solo la de qué.
 `4c7c3a2` llevan migración —una columna de enum cada uno—; los valores de un enum de PostgreSQL **se
 añaden y no se quitan**, así que revertir el código deja el valor huérfano en la base, que es
 inofensivo.
+
+---
+
+## Las tres baratas: TipTap empaquetado, `build` en CI y la ficha de `lychee` (2026-09-05)
+
+**Qué.** Plan 01 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/01-tres-baratas.md),
+en un commit y sin comportamiento nuevo.
+
+- **Los seis paquetes de TipTap pasan de `devDependencies` a `dependencies`**
+  (`apps/web/package.json:19-24`), con las versiones intactas. Su único consumidor sigue siendo un
+  script, así que nada se rompía hoy: se rompería **solo en producción** el día que el editor los
+  importara desde `src/` y `pnpm install --prod` los dejara fuera de la imagen.
+- **CI ejecuta `pnpm build`** (`.github/workflows/ci.yml:47`), **antes de `lint`**. Hasta hoy un
+  error de compilación que ninguna prueba tocara llegaba a `main` en verde.
+- **`lychee` se cierra por medición, no por retirada:** el barrido no encuentra **ninguna**
+  mención viva fuera de `.superpowers/`, o sea que la integración nunca existió.
+
+**Cómo se comprobó.** Mutación obligatoria: un `const x: number = "cadena"` en
+`apps/web/src/main.tsx` hace caer `pnpm build` con `error TS2322` y salida 2 — el paso de CI sirve
+de algo. Deshecha después. `pnpm verify` en verde con el gancho.
+
+**Cómo revertirlo.** `git revert` del commit: devuelve los seis paquetes a `devDependencies`,
+regenera el lockfile con `pnpm install` y quita el paso de CI. Nada depende de ello en tiempo de
+ejecución.
+
+> **Movida aquí el 2026-09-07**, entera y sin reescribir, al insertar la entrada de la tanda
+> corta de las seis fichas: el fichero quedó en 1011 de 1000 y esta era la entrada más antigua que
+> seguía completa.

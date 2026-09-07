@@ -7,6 +7,7 @@ import * as charactersApi from "../../../characters/api";
 import type { Character } from "../../../characters/api";
 import * as inventoryApi from "../../../inventory/api";
 import * as campaignItemsApi from "../../../campaign-items/api";
+import * as bestiarioApi from "../../../bestiario/api";
 
 // Tarea B4 — «Dar…» sin salir de la mesa.
 //
@@ -39,6 +40,18 @@ function personaje(id: string, name: string): Character {
 const MARTA = personaje("ch-marta", "Marta");
 const BRANN = personaje("ch-brann", "Brann");
 
+// **Ficha P2-3.** Un PNJ es una fila de `Character`, pero `CharactersService.list()` filtra
+// `statblockRef: null` a propósito: esa lista es «quién se sienta a la mesa». Un PNJ cedido a un
+// jugador vive en la otra lista, la del bestiario, que es la que trae `ownerId`.
+const ZARRA_LA_CEDIDA = {
+  id: "npc-zarra",
+  name: "Zarra",
+  statblockRef: "SRD:commoner",
+  currentHp: 4,
+  visibility: "PLAYERS",
+  ownerId: "u1",
+};
+
 function montar(props: Partial<ComponentProps<typeof DarObjeto>> & { soyDm: boolean }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -54,6 +67,7 @@ describe("DarObjeto", () => {
     vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([MARTA, BRANN]);
     vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([]);
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([]);
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
   });
 
   it("el DM elige destinatario entre todo el elenco", async () => {
@@ -68,6 +82,20 @@ describe("DarObjeto", () => {
     fireEvent.click(await screen.findByRole("button", { name: /dar/i }));
     expect(await screen.findByRole("radio", { name: /Brann/i })).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /Marta/i })).not.toBeInTheDocument();
+  });
+
+  // **Ficha P2-3 — un gesto que se ofrece sin datos para completarlo.**
+  //
+  // El jugador al que el DM le cedió un PNJ ve el botón «Dar…» y el diálogo se abría **vacío**:
+  // su `miPersonajeId` es el id del PNJ, y `fetchCharacters` no trae PNJ. No era una fuga de
+  // autorización —el servidor no cambia de postura— sino una lista a la que le faltaba la mitad.
+  it("un jugador que maneja un PNJ cedido se encuentra a ese PNJ en la lista", async () => {
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([ZARRA_LA_CEDIDA]);
+    montar({ soyDm: false, miPersonajeId: "npc-zarra" });
+    fireEvent.click(await screen.findByRole("button", { name: /dar/i }));
+    expect(await screen.findByRole("radio", { name: /Zarra/i })).toBeInTheDocument();
+    // Y sigue siendo solo el suyo: un PNJ en la lista no abre la de los demás.
+    expect(screen.queryByRole("radio", { name: /Brann/i })).not.toBeInTheDocument();
   });
 
   it("no ofrece repartir entre todos", async () => {

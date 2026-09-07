@@ -9,7 +9,9 @@ las **37** que cerraron los quince planes de la noche del 2026-09-05 en
 y las que cierra el paso 1 «las goteras» del 2026-09-06 en
 [`_archivo/pendientes-cerrados-2026-09-06-paso-1.md`](./_archivo/pendientes-cerrados-2026-09-06-paso-1.md).
 y las **tres que llevaban «Cerrado» en su propio título** en
-[`_archivo/pendientes-cerrados-2026-09-06-poda.md`](./_archivo/pendientes-cerrados-2026-09-06-poda.md).
+[`_archivo/pendientes-cerrados-2026-09-06-poda.md`](./_archivo/pendientes-cerrados-2026-09-06-poda.md),
+y las **seis de la tanda corta del 2026-09-07** en
+[`_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -1404,40 +1406,6 @@ encuentro de 2.5.6), no antes.
 > deuda: **no se abre ficha por algo que se sabe arreglar** — se intenta el cambio pequeño
 > primero, y solo si no lo hay se anota.
 
-### A11-usos-sin-tope — un recurso con `max: null` no se repone en un descanso ni se gasta sin tope de verdad (2026-09-07)
-
-**Abierto, encontrado al sembrar la Furia (paso 2, tarea A11), fuera de su frontera de ficheros.**
-El SRD declara la Furia «Unlimited» a partir de nivel 20 (`ItemGrant.usos.sinTopeDesde`,
-`resolve.ts` ya pone `usos.max: null` — verificado y en verde). Pero **dos puertas que ya
-existían no saben leer ese `null`**:
-
-- `RestService` (método de reposición por descanso, `rest.service.ts`) solo repone un recurso si
-  `recurso.max !== null` — un recurso sin tope **nunca se repone en un descanso**, aunque su
-  `resetOn` sea `LONG_REST`.
-- `ActivitiesService.consumir` compara `recurso.current < item.cantidad` sin mirar `max` en
-  ningún momento — un recurso "sin tope" sigue gastándose de un contador finito como cualquier
-  otro.
-
-**Lo que A11 hizo para no dejarlo roto sin resolver el problema de fondo:** `seedResourcesFor`
-siembra `current` con un marcador finito (`MARCADOR_DE_USOS_SIN_TOPE`, `resources.service.ts`,
-hoy `1_000_000`) en vez de fingir un número del SRD que no existe — el SRD dice "Unlimited", no
-una cifra. Es una cota práctica, no una regla de juego, y funciona mientras nadie gaste un millón
-de veces la Furia en una sesión.
-
-**El arreglo de verdad** es que quien gasta y quien repone un `CharacterResource` miren
-`max === null` ANTES de mirar `current` y, si es así, no comparen ni descuenten nada — la misma
-idea que `ResourcesService.adjust` ya aplica al RECORTAR por arriba (`resource.max ??
-Number.POSITIVE_INFINITY`), llevada también a la comparación de si queda algo que gastar. Toca
-`ActivitiesService.consumir` y `RestService`, ninguno de los dos en la frontera de A11.
-
-> **Ronda de arreglo 1 (importante I4): `seedResourcesFor` ya no deja el `current` finito
-> atascado al subir a nivel 20.** La primera versión solo actualizaba `max` al subir de nivel
-> (`update: { max: actividad.usos.max }`), así que un bárbaro de nivel 19 con, digamos, un uso
-> gastado de tres subía a nivel 20 con `max: null` y `current: 2` — y como `RestService` no toca
-> una fila con `max: null`, «sin tope» se habría quedado en «dos usos para siempre». Ahora, **solo
-> en el instante en que `max` pasa a ser `null`**, `current` también sube al marcador. El resto de
-> la deuda de arriba (`consumir()` y `RestService` sin mirar `max`) sigue abierta.
-
 ### A11-lanzado-cuenta-como-cuerpo-a-cuerpo — el bono de daño de la Furia se cuela en un arma arrojada (2026-09-07)
 
 **Abierto, menor, fuera de la frontera de A11.** `bonoDeFuria`
@@ -1450,45 +1418,6 @@ LANZADAS**, porque esa función no distingue «empuñar» de «lanzar»: solo mi
 furia se lleva el +2 sin merecerlo. No es arreglable dentro de `character-sheet.service.ts`:
 `rollAttack` no tiene un modo «arrojado» del que depender — hace falta que `rules/attacks.ts`
 distinga las dos formas del mismo arma, que es un cambio de forma, no de un `if`.
-
-### P2-0 · `ConditionsService.apply` pide una segunda conexión del pool cuando corre dentro de la transacción de otro servicio (2026-09-07)
-
-**Abierto, encontrado en la revisión de cierre de la documentación.** El patrón `tx?` opcional
-(ver [01-arquitectura.md](./01-arquitectura.md)) existe para no tomar una segunda conexión con la
-primera ya abierta. `changeHp` y `RollRequestsService.create` lo cumplen **para su comprobación de
-autorización**: con `tx`, la repiten contra ese mismo cliente. `ConditionsService.apply` no tiene
-esa rama — reciba `tx` o no, siempre llama a `requireVisibleCharacter(this.prisma, …)` y
-`requireOwnerOrDM(…)` contra la conexión por defecto, y usa `tx` solo para escribir al final. No es
-hipotético: `ActivitiesService.usar` lo llama **con** `tx` (`activities.service.ts:266`), así que
-ese camino abre exactamente la segunda conexión que el patrón existía para evitar. El arreglo es
-que `apply` reciba también una variante de sus dos comprobaciones que acepte un
-`Prisma.TransactionClient`, igual que ya hacen `changeHp` y `create`.
-
-> **Lo que este arreglo NO cierra, medido al hacerlo (2026-09-07):** de las seis consultas que
-> `apply` hace antes de escribir, **tres** pasan a ir por el `tx` —buscar el personaje, resolver el
-> visor y leer las inmunidades del statblock— y **tres siguen yendo por el pool**, todas por el
-> mismo motivo: `MembershipService` no tiene la puerta. Ni `requireMember`
-> (`apps/api/src/campaigns/membership.service.ts`) ni `requireDM` ni `getMembership` aceptan un
-> cliente, así que `membership.requireMember` (dentro de `requireVisibleCharacterWithViewer`),
-> `membership.getMembership` (dentro de `viewerFor`) y `requireOwnerOrDM` (en `apply`) siguen
-> abriendo conexión propia. **Darle el mismo parámetro opcional a `MembershipService` es la tarea
-> que falta**, y toca a todo el que lo usa, no solo a esta ruta: por eso no entró aquí.
-
-### P2-0b · `changeHp` con `tx` tampoco evita del todo la segunda conexión — el hueco está en calcular la hoja, no en autorizar (2026-09-07)
-
-**Abierto, encontrado revisando la propia corrección de P2-0.** La autorización de `changeHp` sí
-va contra el cliente correcto cuando recibe `tx` (ver P2-0), pero eso no es todo lo que `changeHp`
-hace antes de escribir: dentro de `changeHpEnTransaccion`
-(`apps/api/src/characters/character-sheet.service.ts:1196`), la llamada a
-`this.construirODenegar(userId, character)` **no le pasa el `tx`**, aunque `construirODenegar`
-acepta un tercer parámetro `tx?: Prisma.TransactionClient` (línea 1028) precisamente para esto. De
-ahí cuelgan `equipoEquipado` (línea 390) y `viewerFor` (línea 297), y ninguna de las dos declara
-siquiera un parámetro `tx`: las dos hablan con `this.prisma` sin condición. El resultado es que
-`changeHp` con `tx`, hoy, sigue abriendo varias conexiones por la puerta por defecto —para leer el
-inventario equipado y para resolver el visor— mientras la transacción ajena que le pasaron sigue
-abierta. El arreglo es doble: que `equipoEquipado` y `viewerFor` acepten un `tx?` opcional (el
-mismo patrón que el resto de esta tanda ya usa), y que `construirODenegar` se lo reenvíe a las dos
-en vez de solo a `hojaOMotivo`.
 
 ### P2-1 · La clave de una condición es un contrato de seguridad, y hoy lo sostiene la costumbre (2026-09-07)
 
@@ -1575,16 +1504,6 @@ pantalla— y le falta el primer eslabón: hoy la única forma de sembrar una fi
 `curl` directo a la API, y la definición de terminado del plan botín solo es alcanzable sobre una
 tabla sembrada así.
 
-### P2-3 · Un jugador con un PNJ cedido ve una lista de destinatarios vacía al abrir «Dar…» (2026-09-07)
-
-**Abierto, gesto muerto en pantalla.** `fetchCharacters` (`apps/web/src/features/characters/api.ts`)
-llama a `CharactersService.list()`, que filtra `statblockRef: null` a propósito —excluye PNJ del
-listado de personajes jugadores—. El selector de destinatarios de «Dar…» (B4/B5) construye su lista
-de nombres a partir de esa misma llamada, así que un jugador al que el DM le cedió el control de un
-PNJ ve el botón «Dar…» pero el diálogo se abre sin nadie a quien elegir. No es una fuga de
-autorización —el servidor no cambia de postura—, es una pantalla que ofrece un gesto sin datos para
-completarlo.
-
 ### P2-4 · La autorización de `changeHp` y el `requireDM` de `RollRequestsService.create` dejan inusables media docena de conjuros de clérigo (2026-09-07)
 
 **DECIDIDO por el autor el 2026-09-07: se construye la segunda puerta** (opción A de las tres que
@@ -1623,29 +1542,48 @@ no se aplica solo, y la mesa lo arbitra a mano leyendo el resultado de la tirada
 `salvacion.siSalva` (`z.enum(["ninguno", "mitad"])`, `packages/shared/src/activity.schema.ts`)
 dentro de `answer()` es la tarea que falta, no un arreglo de esta tanda.
 
-### P2-6 · `ActivitiesService.consumir` lee y escribe sin `SELECT … FOR UPDATE` (2026-09-07)
+### P2-8 · `buildResponse` dentro de la transacción de `changeHp` sigue leyendo por el pool (2026-09-07)
 
-**Abierto, menor.** `consumir()` (`apps/api/src/activities/activities.service.ts`) lee un
-`CharacterResource` con `findUnique` y lo actualiza con `update`, sin bloquear la fila —igual que
-`ResourcesService.adjust`—, así que dos usos concurrentes de la misma actividad pueden leer el
-mismo `current` y perder uno de los dos descuentos. `changeHp`, a un metro de distancia en el mismo
-flujo (`character-sheet.service.ts`), sí toma el candado con `SELECT ... FOR UPDATE` sobre
-`Character`. El arreglo es el mismo patrón, aplicado a `CharacterResource`.
+**Abierto, menor, encontrado al cerrar P2-0b.** Con `tx`, `changeHp` ya autoriza y **deriva la
+hoja** contra ese cliente. Lo que queda fuera es el final del camino feliz: `changeHpEnTransaccion`
+termina llamando a `this.buildResponse(userId, actualizado)`
+(`apps/api/src/characters/character-sheet.service.ts`), y `buildResponse` no acepta `tx` — de ahí
+cuelgan otra vez `equipoEquipado` y `viewerFor`, que ahora **sí** saben aceptarlo pero no reciben
+nada. Es el mismo defecto que P2-0b, un tramo más abajo: una conexión más con la transacción ajena
+todavía abierta, esta vez para redactar la respuesta.
 
-### P2-7 · Dos huecos de red que no falla nada hoy, pero que nada impide que fallen mañana (2026-09-07)
+Se dejó fuera a propósito porque la prueba de P2-0b se mide sobre un `changeHp` que se rechaza
+antes de llegar aquí, y ampliarla a este tramo habría sido arreglar dos cosas con una prueba. El
+arreglo es el mismo de siempre: un `tx?` en `buildResponse` y reenviarlo desde los tres llamadores
+que ya están dentro de una transacción.
 
-**Abierto, dos hallazgos de la revisión de B1+B2 y B3, ninguno de comportamiento medido incorrecto.**
+### P2-9 · No hay ninguna puerta para ceder un PNJ a un jugador (2026-09-07)
 
-- **No hay prueba de servicio de que un `entrega` malformado en el `Json` de `DmTableEntry` no
-  rompa la tirada.** El guardián que de verdad actúa al leer es `entregaSchema.safeParse`
-  (`DmTablesService.resolverEntrega`, `dm-tables.service.ts:262`) — no
-  `entregaResueltaSchema`, que solo se usa como tipo de salida. El comportamiento **se verificó
-  por ejecución** en la re-revisión de B1+B2 (un `entregaRaw` que no valida hace que `parsed.success`
-  sea `false` y la función devuelva `undefined`, así que la tirada sigue con su texto); lo que
-  falta es la prueba que lo sujete, para que un cambio futuro no lo rompa en silencio.
-- **Un campo del `payload` de un `GameEvent` solo lo sujeta el `tsc` de la web, no un guardián de
-  servidor.** Quitar un campo del esquema de `@dnd/shared` deja las tres suites en verde y la API
-  compilando: un *spread* de TypeScript no comprueba propiedades sobrantes, y `record`
-  (`game-events.service.ts`) valida con `.parse()`, que **descarta** las claves desconocidas en vez
-  de rechazarlas. El campo se tiraría en silencio en producción el día que alguien lo quite del
-  esquema sin darse cuenta de que la web todavía lo manda.
+**Abierto, encontrado al escribir el e2e de P2-3.** Varias fichas y comentarios de este proyecto
+hablan de «un PNJ cedido» —P2-3 lo pone en su título, y la nota de `NpcsService.list` explica que
+`ownerId` viaja para que la pantalla pueda leer «es tuyo»—, pero **ese estado no se puede alcanzar
+usando el producto**: `NpcsService.instanciar` escribe `ownerId: userId` (el DM),
+`updateCharacterSchema` no tiene `ownerId`, y ningún endpoint de `npcs` ni de `characters` lo
+cambia. Hoy la única forma de tener un PNJ de un jugador es escribir la fila a mano en la base.
+
+Consecuencia práctica, y por eso se anota en vez de dejarlo implícito: **el caso que P2-3 nombra
+solo se puede probar con la API simulada**, y su recorrido de navegador mide la otra mitad del
+mismo carril de datos (que la lista de PNJ llega al selector). Decidir si ceder un PNJ es una
+funcionalidad que se quiere —y con qué permiso— es del autor, no de un agente.
+
+### P2-10 · Dos pruebas se pasan del tiempo por defecto cuando la suite entera corre junta (2026-09-07)
+
+**Abierto, ninguna es un defecto del código.** Medido tres veces durante la tanda del 2026-09-07,
+en las dos direcciones:
+
+- `apps/api/test/peticion-de-tirada.e2e-spec.ts`, «con 60 peticiones sueltas…»: **1,4 s** corriendo
+  su fichero solo, y **más de 5 000 ms** —el tope por defecto de Jest— con **toda** la suite de e2e
+  de API a la vez (los conteos, en [08-pruebas.md](./08-pruebas.md)). Repitiendo por separado, pasa.
+- `apps/api/src/auth/auth.service.spec.ts`, `changePassword()`: cae dos veces con `pnpm verify`
+  entero (las unitarias de la web corriendo en paralelo en la misma máquina) y pasa siempre sola.
+  Es `argon2`, que es caro a propósito.
+
+El coste no es el fallo, es el diagnóstico: un rojo así **parece** un defecto del cambio que acabas
+de hacer y cuesta una vuelta entera descartarlo. El arreglo, si se quiere, es un `test.setTimeout`
+explícito en las dos —el mismo que `paso-1-goteras.spec.ts` ya declara y explica— y no bajar el
+paralelismo.

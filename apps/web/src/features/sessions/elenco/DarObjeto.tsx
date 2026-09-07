@@ -6,6 +6,7 @@ import { Button } from "../../../ui/Button";
 import { Dialog } from "../../../ui/Dialog";
 import { IconoMochila } from "../../../ui/Iconos";
 import { RadioGroup } from "../../campaign-items/RadioGroup";
+import { useNpcs } from "../../bestiario/hooks";
 import { fetchCharacters } from "../../characters/api";
 import { charactersKey } from "../../characters/hooks";
 import { useAddInventoryItem, useChangeMoney } from "../../inventory/hooks";
@@ -106,19 +107,29 @@ export function DarObjeto({
     queryFn: () => fetchCharacters(campaignId),
     enabled: abierto,
   });
-  // **`fetchCharacters` no trae PNJ** (filtra `statblockRef: null` en el servidor,
-  // `characters.service.ts`), así que esta lista es siempre de personajes de jugador. Un jugador
-  // que maneja un PNJ cedido (`soyDm=false`, `miPersonajeId=pnj.id`) no encontrará su propio id
-  // aquí y verá la lista de destinatarios vacía — dar objetos a/desde un PNJ controlado no está
-  // resuelto por B4/B5, y queda dicho en el informe en vez de fingido con un candidato de más.
-  const candidatos = useMemo<CandidatoADestinatario[]>(
-    () =>
-      (personajes ?? [])
-        .filter((p) => !p.archivedAt)
-        .filter((p) => soyDm || p.id === miPersonajeId)
-        .map((p) => ({ id: p.id, nombre: p.name })),
-    [personajes, soyDm, miPersonajeId],
-  );
+  // **`fetchCharacters` no trae PNJ, y por eso hace falta la segunda lista** (ficha P2-3).
+  // `CharactersService.list()` filtra `statblockRef: null` a propósito —esa lista es «quién se
+  // sienta a la mesa»— así que un jugador con un PNJ cedido (`soyDm=false`,
+  // `miPersonajeId=pnj.id`) no encontraba su propio id ahí y **el cajón se abría vacío**: un
+  // gesto ofrecido sin datos para completarlo. Los PNJ ya visibles para quien mira viven en la
+  // otra puerta, `GET /npcs`, filtrada por `canView` en el servidor igual que la primera.
+  //
+  // **Esto no mueve la autorización ni un milímetro**: quien de verdad decide si el objeto entra
+  // en esa bolsa es `requireOwnerOrDM` en `inventory.service.ts`. Lo que se arregla aquí es la
+  // pantalla, que prometía un gesto que no podía completar.
+  const { data: pnj } = useNpcs(campaignId, { enabled: abierto });
+  const candidatos = useMemo<CandidatoADestinatario[]>(() => {
+    const deLaMesa = (personajes ?? [])
+      .filter((p) => !p.archivedAt)
+      .map((p) => ({ id: p.id, nombre: p.name }));
+    // Un PNJ no se archiva —no sale del listado por esa vía—, así que aquí no hay filtro de
+    // archivados que aplicar: el servidor ya decidió cuáles viajan.
+    const cedidos = (pnj ?? []).map((p) => ({ id: p.id, nombre: p.name }));
+    // **El mismo filtro para los dos**, y no uno por lista: un jugador se ve a sí mismo, sea su
+    // personaje o el PNJ que le cedieron; el DM ve la mesa entera. Dos reglas distintas para la
+    // misma pregunta es como se abre el próximo hueco.
+    return [...deLaMesa, ...cedidos].filter((c) => soyDm || c.id === miPersonajeId);
+  }, [personajes, pnj, soyDm, miPersonajeId]);
 
   const objetosDeEntregaFija = entregaFija?.objetos?.length ?? 0;
 

@@ -4,6 +4,7 @@ import { MembershipService } from "../../campaigns/membership.service";
 import { GameClockService } from "../../game-clock/game-clock.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { MARCADOR_DE_USOS_SIN_TOPE } from "../resources/resources.service";
 import { RestService } from "./rest.service";
 
 // Tarea 2A.8.
@@ -84,6 +85,45 @@ describe("RestService", () => {
       where: { id: "r2" },
       data: { current: 3 },
     });
+  });
+
+  // **Ficha A11-usos-sin-tope — `max: null` es "sin tope", no "no lo repongas nunca".**
+  //
+  // `reponerPorTipo` exigía `recurso.max !== null` para tocar una fila, así que la Furia de un
+  // bárbaro de nivel 20 —el SRD la declara *Unlimited* y `resolve.ts` la siembra con `max: null`—
+  // **no se reponía en ningún descanso**, por mucho que su `resetOn` dijera `LONG_REST`. Un
+  // recurso sin tope que se queda a medias para siempre es peor que uno con tope.
+  it("un recurso SIN TOPE también se repone en su descanso: `max: null` no lo exime", async () => {
+    prisma.characterResource.findMany.mockResolvedValue([
+      { id: "sinTope", key: "rage", current: 7, max: null, resetOn: "LONG_REST" },
+    ]);
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+
+    expect(prisma.characterResource.update).toHaveBeenCalledWith({
+      where: { id: "sinTope" },
+      data: { current: MARCADOR_DE_USOS_SIN_TOPE },
+    });
+  });
+
+  // El otro lado de la misma moneda: ya lleno, no se escribe. Sin esta, la de arriba pasaría
+  // igual con un `update` incondicional, que es escribir en cada descanso sobre cada fila.
+  it("y si ya está en el marcador, el descanso no lo vuelve a escribir", async () => {
+    prisma.characterResource.findMany.mockResolvedValue([
+      {
+        id: "sinTope",
+        key: "rage",
+        current: MARCADOR_DE_USOS_SIN_TOPE,
+        max: null,
+        resetOn: "LONG_REST",
+      },
+    ]);
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+
+    expect(prisma.characterResource.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "sinTope" } }),
+    );
   });
 
   it("MUTACIÓN CLAVE: descanso LARGO recupera la mitad de los dados de golpe, **redondeando hacia ABAJO** y no todos", async () => {

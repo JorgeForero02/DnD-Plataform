@@ -208,7 +208,13 @@ describe("ActivitiesService", () => {
     characters.set(fila.id, fila);
   }
 
-  function sembrarRecurso(characterId: string, key: string, current: number, max: number) {
+  function sembrarRecurso(
+    characterId: string,
+    key: string,
+    current: number,
+    /** `null` es «sin tope»: el vocabulario que el SRD escribe *Unlimited*. */
+    max: number | null,
+  ) {
     recursos.set(`${characterId}:${key}`, {
       id: `res-${characterId}-${key}`,
       characterId,
@@ -536,6 +542,35 @@ describe("ActivitiesService", () => {
     expect(r.aviso).toMatch(/sin usos/i);
     expect(combatiente(personajeId)?.bonusUsed).toBe(false);
     expect(encounters.gastar).not.toHaveBeenCalled();
+  });
+
+  // **Ficha A11-usos-sin-tope — «sin tope» tiene que significar algo para quien gasta.**
+  //
+  // `consumir()` comparaba `recurso.current < item.cantidad` sin mirar `max` en ningún momento,
+  // así que un recurso declarado *Unlimited* por el SRD (`max: null` — la Furia a partir de nivel
+  // 20) se gastaba de un contador finito como cualquier otro, y se acababa. El marcador que
+  // `seedResourcesFor` siembra en `current` es una cota práctica **mientras** el `null` no se
+  // entienda; entenderlo es esto.
+  it("con `max: null`, usar la actividad NO descuenta nada", async () => {
+    const rec = recurso(personajeId, "rage")!;
+    rec.max = null;
+    rec.current = 1;
+
+    const r = await service.usar(jugadoraId, campaignId, personajeId, "rage");
+
+    expect(r.aviso).toBeUndefined();
+    expect(recurso(personajeId, "rage")?.current).toBe(1);
+  });
+
+  it("y con `max: null` a cero tampoco se queda sin usos: no hay contador contra el que comparar", async () => {
+    const rec = recurso(personajeId, "rage")!;
+    rec.max = null;
+    rec.current = 0;
+
+    const r = await service.usar(jugadoraId, campaignId, personajeId, "rage");
+
+    expect(r.aviso).toBeUndefined();
+    expect(combatiente(personajeId)?.bonusUsed).toBe(true);
   });
 
   it("una actividad de salvación crea la petición de tirada con su CD", async () => {

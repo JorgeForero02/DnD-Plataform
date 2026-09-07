@@ -306,7 +306,7 @@ export class ActivitiesService {
   ): Promise<ResultadoDeConsumo> {
     if (consumo.length === 0) return { ok: true, pasos: [] };
 
-    const filas: { id: string; label: string; current: number }[] = [];
+    const filas: { id: string; label: string; current: number; max: number | null }[] = [];
     for (const item of consumo) {
       // **La fila se BLOQUEA, no solo se lee** (ficha P2-6). Con `findUnique`, dos usos
       // simultáneos de la misma actividad leían el mismo `current` y los dos escribían el mismo
@@ -318,10 +318,14 @@ export class ActivitiesService {
       // reloj: dos usos de la MISMA actividad piden los mismos recursos en la misma secuencia,
       // así que no hay dos caminos que puedan cruzarse.
       const bloqueadas = await tx.$queryRaw<
-        { id: string; label: string; current: number }[]
-      >`SELECT id, label, current FROM "CharacterResource" WHERE "characterId" = ${actorId} AND key = ${item.recurso} FOR UPDATE`;
+        { id: string; label: string; current: number; max: number | null }[]
+      >`SELECT id, label, current, max FROM "CharacterResource" WHERE "characterId" = ${actorId} AND key = ${item.recurso} FOR UPDATE`;
       const recurso = bloqueadas[0];
-      if (!recurso || recurso.current < item.cantidad) {
+      // **`max === null` se mira ANTES que `current`** (ficha A11-usos-sin-tope). Un recurso que
+      // el SRD declara *Unlimited* —la Furia a partir de nivel 20— no tiene contador contra el
+      // que comparar: preguntarle si «le quedan usos» es la pregunta equivocada. Antes se
+      // comparaba igual, así que «sin tope» se gastaba de un contador finito y se acababa.
+      if (!recurso || (recurso.max !== null && recurso.current < item.cantidad)) {
         return {
           ok: false,
           motivo: `Sin usos de «${recurso?.label ?? item.recurso}» que gastar.`,
@@ -333,6 +337,16 @@ export class ActivitiesService {
     const pasos: PasoDeConsumo[] = [];
     for (const [i, item] of consumo.entries()) {
       const fila = filas[i];
+      // Y tampoco se descuenta: restarle a «sin tope» lo dejaría, con el tiempo, en un número.
+      if (fila.max === null) {
+        pasos.push({
+          key: item.recurso,
+          label: fila.label,
+          amount: item.cantidad,
+          remaining: fila.current,
+        });
+        continue;
+      }
       const remaining = fila.current - item.cantidad;
       await tx.characterResource.update({ where: { id: fila.id }, data: { current: remaining } });
       pasos.push({ key: item.recurso, label: fila.label, amount: item.cantidad, remaining });

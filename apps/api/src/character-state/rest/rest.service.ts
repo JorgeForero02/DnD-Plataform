@@ -9,6 +9,7 @@ import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { abilityModifier } from "../../rules/engine";
 import { maxHpDe } from "../common/max-hp";
+import { MARCADOR_DE_USOS_SIN_TOPE } from "../resources/resources.service";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
 // Tarea 2A.8 — descansos. Ampliada en 2C.3 con las tres reglas que el reloj hace comprobables.
@@ -190,10 +191,19 @@ export class RestService {
     resetOn: "SHORT_REST" | "LONG_REST",
   ) {
     for (const recurso of recursos) {
-      if (recurso.resetOn === resetOn && recurso.max !== null && recurso.current !== recurso.max) {
+      if (recurso.resetOn !== resetOn) continue;
+      // **`max === null` se mira ANTES que `current`** (ficha A11-usos-sin-tope). «Sin tope» no es
+      // «no lo repongas nunca», que es lo que este método hacía: exigía `max !== null` para tocar
+      // la fila, así que la Furia de un bárbaro de nivel 20 —*Unlimited* en el SRD, `max: null` al
+      // sembrarla— no se reponía en ningún descanso por mucho que su `resetOn` dijera
+      // `LONG_REST`. Un recurso sin tope se repone al marcador, que es lo que este proyecto usa
+      // como «no se te van a acabar» mientras `current` sea un `Int` de Postgres (ver
+      // `MARCADOR_DE_USOS_SIN_TOPE` y su nota, en `resources.service.ts`).
+      const lleno = recurso.max ?? MARCADOR_DE_USOS_SIN_TOPE;
+      if (recurso.current !== lleno) {
         await tx.characterResource.update({
           where: { id: recurso.id },
-          data: { current: recurso.max },
+          data: { current: lleno },
         });
       }
     }

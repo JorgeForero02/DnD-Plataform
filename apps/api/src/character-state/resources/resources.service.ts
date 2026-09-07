@@ -492,11 +492,16 @@ export class ResourcesService {
  * a diferencia de `max`, que sí lo dice con `null`. Un millón de usos es, en la práctica, «no se
  * te van a acabar en una sesión», sin fingir ser una medida de reglas (el mismo motivo por el que
  * este proyecto no copia el `999` de Foundry para "infinito" — ver `classes.ts`, la nota grande
- * sobre `RASGO_FURIA`). Queda declarado como deuda: el camino correcto es que quien gasta y quien
- * repone un recurso miren `max === null` antes de mirar `current`, y hoy ninguno de los dos lo
- * hace (`docs/06-pendientes.md`).
+ * sobre `RASGO_FURIA`).
+ *
+ * **Y desde la ficha A11-usos-sin-tope (2026-09-07), los dos que decían no mirarlo lo miran**:
+ * `ActivitiesService.consumir` ya no compara ni descuenta cuando `max === null`, y `RestService`
+ * repone esa fila hasta este marcador en vez de saltársela. Lo que sigue haciendo falta —y por lo
+ * que este número **no** sobra— es `ResourcesService.adjust`, la puerta del `+`/`−` a mano: ahí
+ * `current` sigue siendo un entero que se mueve, y sin un valor de partida grande el `−` de un
+ * recurso sin tope lo dejaría en cero. Sigue siendo una cota práctica, no una regla de juego.
  */
-const MARCADOR_DE_USOS_SIN_TOPE = 1_000_000;
+export const MARCADOR_DE_USOS_SIN_TOPE = 1_000_000;
 
 /**
  * El texto que ve el jugador, por la clave estable de la actividad (`ClassFeature.key`). Hoy solo

@@ -600,6 +600,62 @@ justo la protección que su propia tarea añadía.
 (seguridad, calidad de pruebas, cascada y accesibilidad) sobre el mismo diff, y el orquestador
 junta los hallazgos.
 
+### La frontera del encargo es de ficheros **y** de herramientas
+
+La frontera de rutas de arriba es necesaria y **no basta**: un implementador acotado a `apps/api`
+sigue pudiendo desplegar, empujar a `main`, tocar la base o lanzar Playwright encima de la tanda
+de otro. La protección era la prosa del encargo, no el sistema.
+
+**Bloque obligatorio en todo encargo, además de la frontera de rutas:**
+
+```text
+Y esto es lo que NO haces, pase lo que pase:
+- No despliegas. El despliegue lo lanza el autor a mano.
+- No corres Playwright ni los e2e de API: los corre el orquestador, y uno a la vez.
+- No dejas un `dev:api` arrancado a mano cuando termines, ni compilas la API mientras
+  corre una tanda.
+- No commiteas: la revisión va antes. No empujas. No lanzas más agentes.
+- No desactivas una prueba, ni bajas un umbral, ni silencias una regla, ni saltas el gancho.
+- No rediseñas lo ya decidido: si una decisión te parece mala, la cumples y la anotas.
+Si crees que necesitas salirte de esta frontera: repórtalo y para.
+```
+
+**Por rol, lo que de verdad necesita:**
+
+| Rol | Superficie mínima |
+|---|---|
+| **Implementador** | Leer · escribir dentro de su frontera · `pnpm verify` y las unitarias de su paquete |
+| **Revisor** | **Solo lectura** y compilar para diagnosticar — y **limpiar lo que compile**: un revisor dejó un `dist/` sin rastrear |
+| **Explorador / localizador** | Solo lectura |
+| **Orquestador** | Todo, porque es quien responde. Y es el único que corre Playwright |
+
+**Y lo que el encargo prohíbe también se comprueba al cerrar la tanda**, no se da por hecho:
+`git log` sin commits del implementador, árbol sin ficheros fuera de la frontera, y ningún proceso
+suelto — `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*worktrees*' }`.
+Una prohibición que nadie verifica es una sugerencia.
+
+### Observabilidad de la tanda
+
+Cuando algo sale mal en una tanda se reconstruye a mano desde `git log` y desde informes que este
+mismo documento declara que **no son evidencia**. Los patrones caros —un agente dando vueltas, dos
+suites chocando, una tanda que se comió el contexto sin producir— se detectan a ojo y tarde.
+
+**Quien orquesta escribe esta tabla en el ledger de la tanda**, una fila por tarea:
+
+| Tarea | Vueltas hasta cerrar | Qué encontró la revisión | Tiempo perdido y en qué |
+|---|---|---|---|
+| T1 | 1 | | |
+
+**Cómo se lee:**
+
+- **Dos vueltas o más señalan un encargo malo, no un agente malo.** Se corrige el brief siguiente.
+- **Lo que encuentra la revisión es la métrica del proceso.** Esta sección ya dice que los tres
+  hallazgos críticos de aquella sesión los encontró la revisión y ninguno el implementador: eso es
+  exactamente lo que esta tabla mide sesión a sesión, en vez de recordarlo una vez.
+- Lo que aparezca en «tiempo perdido» —los 82 fallos falsos de dos tandas de Playwright, el
+  `dev:api` compartido que costó un diagnóstico entero— es candidato a regla o a tarea del banco
+  ([10-banco-de-tareas.md](./10-banco-de-tareas.md)).
+
 ## Una duda de reglas se resuelve con la fuente, no con criterio (2026-09-03)
 
 **Regla del autor, y no es opcional:** *«si tienes una duda de reglas o de sistemas o de cómo
@@ -622,6 +678,42 @@ tabla de dificultades resultó estar en el SRD, y el statblock de un PNJ dejó d
 habrían salido peor a ojo. Ver
 [el contraste de 2B](./superpowers/specs/2026-09-03-contraste-de-reglas-2B.md) y
 [el alcance de 2C](./superpowers/specs/2026-09-03-fase-2C-alcance-design.md).
+
+## Antes de abrir una ficha: cuatro pasos, y solo el cuarto la abre
+
+**No se abren fichas a la ligera.** Una ficha nueva es una pieza que falta con una nota encima, y
+este tablero ya pasa de mil líneas: cada ficha que sobra compite con las que duelen.
+
+Regla del autor, hasta hoy solo escrita en los prompts de arranque. **Es del repositorio**, no de
+una sesión concreta.
+
+1. **¿Hay un cambio rápido y duradero** que se alinee con el código que ya existe? Si la solución
+   obliga a rehacerla en dos semanas, no es esta.
+2. **¿Cumple las reglas?** El SRD y el código que ya existe son verdades probadas. Alterar una
+   pide razón de peso, **escrita**.
+3. **¿Lo contesta la fuente?** Aquí la fuente es literal y está a mano: **el SRD 5.1** manda, en
+   inglés, y después cómo lo resuelve una mesa virtual conocida. La cita va en el mismo commit
+   (§ *Una duda de reglas se resuelve con la fuente*). **La maqueta no es fuente de reglas.**
+4. **Solo aquí** se abre ficha en [06-pendientes.md](./06-pendientes.md), con lo que se midió y lo
+   que se descartó.
+
+**Y no se espera al autor:** si hay solución viable, se aplica.
+
+### Los cuatro casos en los que el paso 1 NO aplica
+
+Sin esta frontera, «si hay solución viable la aplicas» empuja a arreglar en caliente justo lo que
+había que preguntar. En estos cuatro casos **se abre ficha directamente y no se toca**:
+
+| Caso | Por qué |
+|---|---|
+| **Una decisión que ya tomó el autor** | Cumplirla y anotar el desacuerdo, nunca rediseñarla por cuenta propia |
+| **Migración o cambio de datos** | Va sola, con su nombre, y no colgada de otro arreglo |
+| **Cambio de comportamiento sin una prueba que se le vea fallar antes** | Sin esa prueba no se sabe si el arreglo arregla |
+| **Lo que solo se juzga usándolo** | Una pantalla que no se explica no la caza ninguna suite: se anota y se mira con el navegador delante |
+
+**La evidencia de que hace falta**, medida en otro repositorio de este PC el 2026-09-06: aplicados
+a siete fichas recién abiertas, **tres se cerraron arreglándolas y dos estaban mal planteadas** —
+cinco de siete no debían existir.
 
 ## Precedencia
 

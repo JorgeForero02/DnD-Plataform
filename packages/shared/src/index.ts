@@ -24,3 +24,4 @@ export * from "./attack.schema";
 export * from "./roll-suggestion.schema";
 export * from "./action-economy.schema";
 export * from "./origen.schema";
+export * from "./activity.schema";

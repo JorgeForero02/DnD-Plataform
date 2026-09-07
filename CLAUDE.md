@@ -1,55 +1,32 @@
 # D&D Platform — instrucciones del proyecto
 
-Plataforma para gestionar campañas de D&D: mundo tipo wiki (entidades enlazadas entre sí),
-sesiones y personajes, con **cinco niveles de visibilidad** por objeto. Herramienta propia
-para la mesa del autor primero; SaaS después. **Sí tiene motor de reglas desde la fase 2A**:
-derivación de hoja de 5.ª edición con traza (`apps/api/src/rules/`) y reglas
-suceso–condición–efecto de vocabulario cerrado (`apps/api/src/rules-engine/`), con su pantalla
-en la pestaña «Reglas». **Y desde la fase 2B tiene objetos con datos**: catálogo SRD 5.1 y objetos propios del DM,
-inventario con ranuras, manos y sintonización, dinero, y el cuadro de ataques —el equipo entra en
-el motor y **sale en la traza**. **Desde 2C** tiene dados con ventaja y relanzado, reloj de
-campaña en segundos, descansos con sus reglas de tiempo, condiciones que caducan solas, petición
-de tirada y tablas de la casa. **Y desde 2D los PNJ tienen números**: statblocks del SRD 5.1 y
-propios del DM, PNJ jugables que reciben daño y cogen condiciones —**un PNJ en la mesa es una fila
-de `Character`**—, con su pestaña «Bestiario». **No es** mapas, tiempo real ni 3D: eso son fases
-posteriores, y la **fase 3 ya tiene su alcance escrito**
-([spec](docs/superpowers/specs/2026-09-03-fase-3-alcance-design.md)).
+**Qué es.** Plataforma para gestionar campañas de D&D 5.ª edición: mundo tipo wiki con entidades
+enlazadas entre sí, sesiones y personajes, y **cinco niveles de visibilidad** por objeto.
+Herramienta propia para la mesa del autor primero; SaaS después.
 
-**Las fases 2 y 2.5 están enteras y en producción, y el reseño de la mesa también.** El autor
-desplegó a mano el 2026-09-05 y `dnd.supportive.pro` sirve la imagen etiquetada **`6eb2590`** —
-comprobado en el servidor y no de memoria: `docker ps` en `vps1new` da
-`5awvsn1dnkexhcjzg7kjwom6_api:6eb259008369192543f9323ca928ed252e10ca18`. Con ella van el reseño
-entero (la mesa a pantalla completa fuera de `AppShell`, `Dialog` como cajón, los seis carriles
-fusionados y la Ola 3), los quince planes de la noche, la bandeja de avisos y el canal en vivo.
+**Tiene motor de reglas**: derivación de hoja de 5.ª edición con traza (`apps/api/src/rules/`) y
+reglas suceso–condición–efecto de vocabulario cerrado (`apps/api/src/rules-engine/`). Objetos con
+datos, dados, reloj de campaña, condiciones y PNJ con statblock — **un PNJ en la mesa es una fila
+de `Character`**.
 
-> **Hasta el 2026-09-05 este bloque decía que el reseño NO estaba desplegado y que «local va por
-> delante de `dnd.supportive.pro`».** Las dos frases caducaron con ese despliegue, y es el mismo
-> fallo de siempre: prosa de estado escrita a mano en el fichero que se manda leer primero.
+**No es** mapas, tiempo real ni 3D.
 
-**Y desde el 2026-09-05/06 hay un plan más, cerrado en local y SIN desplegar**: la iniciativa la
-piden los jugadores y el DM elige el bando, quince tareas propias (ver
-[docs/07-historial.md](docs/07-historial.md) y el bloque «Avance» de
-[docs/superpowers/plans/2026-09-05-iniciativa-y-bando.md](docs/superpowers/plans/2026-09-05-iniciativa-y-bando.md)).
-**`main` ya no le saca a producción solo documentación**: `git diff --name-only 6eb2590..HEAD`
-toca 70 ficheros de `apps/` y `packages/`, con dos migraciones. Lo que **no** ha cambiado es la
-regla: **el despliegue no se lanza sin que lo pida el autor**.
+## Este fichero no dice en qué estado está el proyecto
 
-> **Hasta el 2026-09-06 este párrafo decía que lo único que separaba `main` de producción era
-> documentación.** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
-> caducidad de la que ya avisa el bloque de arriba sobre el reseño de la mesa.
+**Y es a propósito.** Qué fases están cerradas, qué imagen sirve producción, qué separa `main` del
+despliegue y cuántas pruebas hay **no se escribe aquí**: se lee de donde una máquina lo mantiene o
+se mide en el momento.
 
-**Los quince planes del 2026-09-05 están cerrados** — el índice y el bloque «Avance» de cada uno
-dicen cuál con qué commit:
-[docs/superpowers/plans/2026-09-05-planes/](docs/superpowers/plans/2026-09-05-planes/00-INDICE.md).
-Lo que decidieron **mientras se ejecutaban** está recogido, una línea por decisión, en
-[docs/decisiones.md](docs/decisiones.md), que es lo que se lee en vez de releerlos.
+| Lo que quieras saber | Dónde está, de verdad |
+|---|---|
+| Estado, rama, commit y conteos | El **bloque generado** de [docs/00-INDEX.md](docs/00-INDEX.md), que escribe `scripts/update-estado.mjs` y comprueba `pnpm check:estado` |
+| Qué se entregó y por qué | [docs/07-historial.md](docs/07-historial.md) |
+| Qué está abierto | [docs/06-pendientes.md](docs/06-pendientes.md) |
+| Qué se decidió y no se re-litiga | [docs/decisiones.md](docs/decisiones.md) |
+| Qué hay en `main` que no esté en producción | **Se mide**: `git diff --name-only <imagen desplegada>..HEAD`. Y qué imagen corre se comprueba en el servidor, no de memoria |
 
-Lo que le falta a todo esto es usarse: **la partida de prueba con dos cuentas de jugador**
-(D-OP-3), que sigue siendo lo que cierra la fase 2.
-
-> Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
-> falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que
-> **los dos que se mandan leer primero se contradecían**.
+**Lo único de estado que sí vive aquí, porque es una regla y no un dato:** el despliegue **no se
+lanza sin que lo pida el autor**, y lo lanza él a mano.
 
 ## Lee esto antes de tocar código
 
@@ -123,3 +100,26 @@ pnpm dev:api                             # API en :3000
 pnpm dev:web                             # web en :5173
 pnpm format                              # aplica Prettier
 ```
+
+---
+
+## Por qué este fichero ya no narra el estado
+
+Lo narró hasta el 2026-09-06, y **caducó tres veces**. Los tres avisos se conservan **enteros y
+sin reescribir** —un registro fechado no se resume— porque son la razón de la regla de arriba:
+
+> **Hasta el 2026-09-05 este bloque decía que el reseño NO estaba desplegado y que «local va por
+> delante de `dnd.supportive.pro`».** Las dos frases caducaron con ese despliegue, y es el mismo
+> fallo de siempre: prosa de estado escrita a mano en el fichero que se manda leer primero.
+
+> **Hasta el 2026-09-06 este párrafo decía que lo único que separaba `main` de producción era
+> documentación.** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
+> caducidad de la que ya avisa el bloque de arriba sobre el reseño de la mesa.
+
+> Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
+> falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que
+> **los dos que se mandan leer primero se contradecían**.
+
+**La regla que sale de ahí:** el estado se genera o se mide; en este fichero solo va lo que sigue
+siendo cierto mañana. Lo que una máquina puede escribir, lo escribe ella
+([04-convenciones.md](docs/04-convenciones.md), § *Nivel de verificación*).

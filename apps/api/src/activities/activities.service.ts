@@ -308,9 +308,19 @@ export class ActivitiesService {
 
     const filas: { id: string; label: string; current: number }[] = [];
     for (const item of consumo) {
-      const recurso = await tx.characterResource.findUnique({
-        where: { characterId_key: { characterId: actorId, key: item.recurso } },
-      });
+      // **La fila se BLOQUEA, no solo se lee** (ficha P2-6). Con `findUnique`, dos usos
+      // simultáneos de la misma actividad leían el mismo `current` y los dos escribían el mismo
+      // número: un descuento perdido y una furia gratis. Es el mismo candado que `changeHp` toma
+      // sobre `Character` a un metro de distancia y en este mismo flujo
+      // (`character-sheet.service.ts`), aplicado aquí a `CharacterResource`.
+      //
+      // **Se toma en el mismo orden en que viene `consumption`**, que es orden de datos y no de
+      // reloj: dos usos de la MISMA actividad piden los mismos recursos en la misma secuencia,
+      // así que no hay dos caminos que puedan cruzarse.
+      const bloqueadas = await tx.$queryRaw<
+        { id: string; label: string; current: number }[]
+      >`SELECT id, label, current FROM "CharacterResource" WHERE "characterId" = ${actorId} AND key = ${item.recurso} FOR UPDATE`;
+      const recurso = bloqueadas[0];
       if (!recurso || recurso.current < item.cantidad) {
         return {
           ok: false,

@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 52 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 53 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 35 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -252,6 +252,7 @@ en verde.
 | `ataque-comparado-en-el-servidor` | El ataque contra la CA, comparado en el servidor (2.5.3). Un jugador ataca a un plebeyo del SRD `DM_ONLY` hasta ver «impacta», y **en ningún cuerpo HTTP serializado —ni el de la respuesta, ni el del registro de la partida— aparece la CA del objetivo**, salga lo que salga en cada intento. Objetivo inexistente es 404; sin ser miembro, 403; sin token, 401. |
 | `la-capa-de-combate` | Las dos puertas que 2.5.6 necesitaba, y sin las cuales la pantalla no existe. **`current` contesta `null`, no un 404**: no estar en combate es lo normal. Empezado el combate lo encuentra **sin conocer su id**, que es exactamente recargar la mesa. **El jugador ve su combate y no cuántos enemigos escondidos hay** —un combatiente, posición 0, sin huecos que se puedan contar—. Terminar exige DM (403 para el jugador, y sigue activo después), deja el encuentro en `ENDED` sin borrar nada, permite empezar el siguiente, y **terminarlo dos veces es 409 y un solo final en el registro**. |
 | `dano-con-su-traza` | El daño aplicado desde la tirada (2.5.4). **`rollEventId` sobrevive el viaje de ida y vuelta por la columna `Json`** y aparece en el `HP_CHANGED` del registro; uno inventado o de otra campaña es 400 contra la base real, no contra un mock que siempre dice que sí. Un personaje **de nivel 8** con una condición `concentrating-*` que recibe 25 de daño hace que el sistema **pida** una salvación de Constitución con CD 12 — el nivel es parte de la prueba: a nivel 1 esos 25 son muerte masiva y no se pide nada, que es lo que dejaba este recorrido en rojo el día que se escribió sin ejecutarlo, visible donde `GET /roll-requests` la sondea de verdad — y responderla sigue el camino de 2C.5 sin tocar. Dos golpes concentrados piden **dos** peticiones, nunca una. |
+| `usos-concurrentes` | **Que dos usos a la vez de la misma actividad no pierden un descuento** (ficha P2-6). Tres peticiones de Furia lanzadas sin esperar a la anterior sobre un bárbaro con tres usos dejan el recurso en **0**; con `findUnique` en vez de `SELECT … FOR UPDATE` las tres leían 3 y las tres escribían 2, o sea dos furias gratis. **No cabe en una unitaria y por eso está aquí**: el Prisma simulado no bloquea filas, así que la versión rota y la arreglada le dan el mismo resultado. |
 
 ### La partida entera
 

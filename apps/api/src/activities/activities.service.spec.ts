@@ -379,16 +379,15 @@ describe("ActivitiesService", () => {
     );
     prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
       const tx = {
+        // **Ficha P2-6: la fila se lee BLOQUEADA, con SQL crudo**, porque `SELECT … FOR UPDATE` no
+        // se puede expresar con el cliente de Prisma. Aquí el doble solo devuelve la misma fila
+        // que devolvía `findUnique`: un mock no bloquea nada, y por eso la prueba de que el
+        // candado actúa está en `test/usos-concurrentes.e2e-spec.ts` y no puede estar aquí.
+        $queryRaw: jest.fn(async (_sql: TemplateStringsArray, characterId: string, key: string) => {
+          const fila = recursos.get(`${characterId}:${key}`);
+          return fila ? [fila] : [];
+        }),
         characterResource: {
-          findUnique: jest.fn(
-            async ({
-              where,
-            }: {
-              where: { characterId_key: { characterId: string; key: string } };
-            }) =>
-              recursos.get(`${where.characterId_key.characterId}:${where.characterId_key.key}`) ??
-              null,
-          ),
           update: jest.fn(
             async ({ where, data }: { where: { id: string }; data: { current: number } }) => {
               const fila = [...recursos.values()].find((r) => r.id === where.id);

@@ -34,6 +34,7 @@ lanza sin que lo pida el autor**, y lo lanza él a mano.
 |---|---|
 | `docs/00-INDEX.md` | Mapa de documentos, con el commit/rama/conteo de unitarias actuales en su bloque generado. **Empieza aquí.** |
 | `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
+| `docs/como-seguir.md` | **Si no sabes por dónde entrar**: qué ya está puesto, qué sigue y qué no decide un agente. |
 | `docs/decisiones.md` | **Una línea por decisión tomada, con enlace a su razonamiento.** Sustituye a releer `docs/superpowers/`, que son el 61% de la documentación y están fuera del camino de lectura |
 | `docs/prompts.md` | **Prompts listos para pegar** que sirven cualquier día: arrancar sesión, correr el banco, encargar a un subagente. |
 | `docs/10-banco-de-tareas.md` | **Antes y después de cambiar una regla, este fichero o una skill**: tres tareas fijas que dicen si el cambio mejoró o empeoró. |

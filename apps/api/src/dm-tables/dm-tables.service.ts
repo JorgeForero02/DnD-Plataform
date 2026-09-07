@@ -1,10 +1,23 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import type { CreateDmTableInput, DmTableRoll, SetHouseTablesInput, Visibility } from "@dnd/shared";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  entregaSchema,
+  type CreateDmTableInput,
+  type DmTableRoll,
+  type EntregaResuelta,
+  type SetHouseTablesInput,
+  type Visibility,
+} from "@dnd/shared";
 import type { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, type Viewer } from "../common/visibility";
 import { rollExpression, type Roller } from "../dice/dice";
 import { GameEventsService } from "../game-events/game-events.service";
+import { resolveContentRef } from "../inventory/common/resolve-item";
 import { PrismaService } from "../prisma/prisma.service";
 
 // Tarea 2C.6 — **las tablas del DM: una regla de la casa, dicha a la vista.**
@@ -169,7 +182,7 @@ export class DmTablesService {
       id: string;
       name: string;
       visibility: string;
-      entries: { min: number; max: number; text: string }[];
+      entries: { min: number; max: number; text: string; entrega?: unknown }[];
     },
     opciones?: { trigger?: "CRITICAL" | "FUMBLE"; tx?: Prisma.TransactionClient; roller?: Roller },
   ): Promise<DmTableRoll> {
@@ -202,6 +215,16 @@ export class DmTablesService {
       opciones?.tx,
     );
 
+    // **Lo resuelto es de la respuesta, no del registro.** El suceso de arriba lleva solo el
+    // texto, tal y como se leyó en voz alta ese día; si un objeto se renombra mañana, el registro
+    // de hace tres sesiones tiene que seguir diciendo lo que se leyó entonces. Resolver la entrega
+    // aquí, después de grabar el suceso, es lo que mantiene esa frontera.
+    const entrega = await this.resolverEntrega(
+      campaignId,
+      fila.entrega,
+      opciones?.tx ?? this.prisma,
+    );
+
     return {
       tableId: tabla.id,
       tableName: tabla.name,
@@ -209,6 +232,75 @@ export class DmTablesService {
       roll: valor,
       text: fila.text,
       eventId: evento.id,
+      ...(entrega ? { entrega } : {}),
+    };
+  }
+
+  /**
+   * Traduce la `entrega` guardada en la fila —referencias al catálogo— a lo que la pantalla puede
+   * enseñar: objetos con nombre, peso y precio. **Una `ref` que ya no existe no tumba la
+   * tirada**: el DM pudo borrar el objeto propio que la tabla sigue nombrando, y eso se dice con
+   * un motivo legible, no con un dato inventado en su lugar.
+   *
+   * **Un fallo del servidor no es lo mismo que una `ref` caduca, y aquí no se confunden.** Solo
+   * se captura `BadRequestException` —el que lanza `resolveContentRef` cuando la clave o el
+   * objeto de campaña no existen—; cualquier otro error (una caída de Postgres, por ejemplo) se
+   * propaga tal cual. Convertir un fallo del servidor en un `ausente: true` sería peor que dejar
+   * que reviente: la mesa leería «este objeto ya no existe» de un objeto que existe perfectamente,
+   * y la traza del error real desaparecería justo cuando más hace falta.
+   */
+  private async resolverEntrega(
+    campaignId: string,
+    entregaRaw: unknown,
+    client: Prisma.TransactionClient | PrismaService,
+  ): Promise<EntregaResuelta | undefined> {
+    // **El `Json` de la fila se valida antes de usarse, no se da por bueno con un `as`.** Se
+    // escribió con este mismo esquema al crear o editar la tabla, así que en el camino normal
+    // siempre pasa; pero un dato que llegó a la base por otra vía no debe copiarse a la respuesta
+    // sin pasar por el esquema, y un `entrega` que no valida se trata como ausente en vez de como
+    // un error de la tirada.
+    const parsed = entregaSchema.safeParse(entregaRaw);
+    if (!parsed.success) return undefined;
+    const entrega = parsed.data;
+
+    const objetos = entrega.objetos
+      ? await Promise.all(
+          entrega.objetos.map(async (objeto) => {
+            try {
+              const { resolved } = await resolveContentRef(
+                this.prisma,
+                campaignId,
+                objeto.ref,
+                client,
+              );
+              return {
+                ausente: false as const,
+                ref: objeto.ref,
+                cantidad: objeto.cantidad,
+                name: resolved.name,
+                weightOz: resolved.weightOz,
+                ...(resolved.costCp !== undefined ? { costCp: resolved.costCp } : {}),
+              };
+            } catch (error) {
+              // La visibilidad y las concesiones nominales del objeto de campaña, que
+              // `resolveContentRef` también devuelve, se ignoran a propósito: el DM ya lo metió
+              // en una tabla que él mismo controla, y eso autoriza que su nombre salga en la
+              // tirada igual que autoriza el resto de la fila.
+              if (!(error instanceof BadRequestException)) throw error;
+              return {
+                ausente: true as const,
+                ref: objeto.ref,
+                cantidad: objeto.cantidad,
+                motivo: error.message,
+              };
+            }
+          }),
+        )
+      : undefined;
+
+    return {
+      ...(objetos ? { objetos } : {}),
+      ...(entrega.monedas ? { monedas: entrega.monedas } : {}),
     };
   }
 

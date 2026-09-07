@@ -782,6 +782,10 @@ model DmTableEntry {
   min     Int
   max     Int
   text    String
+  /// Tarea B1 — lo que entrega esta fila: objetos y monedas, con la forma de `entregaSchema`
+  /// (`packages/shared/src/dm-table.schema.ts`). `Json` y NO se consulta nunca por dentro: se lee
+  /// entera al tirar la tabla. `null` es una fila que no entrega nada (rumores, encuentros).
+  entrega Json?
   table   DmTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
   @@index([tableId])

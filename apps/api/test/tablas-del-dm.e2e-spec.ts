@@ -274,4 +274,68 @@ describe("Tablas del DM (e2e)", () => {
     const campana = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
     expect(campana.houseTablesEnabled).toBe(true);
   });
+
+  it("tarea B2 — tirar una tabla de botín devuelve el objeto resuelto, con nombre", async () => {
+    const s = app.getHttpServer();
+    const crear = await request(s)
+      .post(url())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        name: "Botín (B2)",
+        visibility: "PLAYERS",
+        entries: [
+          {
+            min: 1,
+            max: 20,
+            text: "Una espada corta y 15 mo",
+            entrega: {
+              objetos: [{ ref: { source: "SRD", key: "short-sword" }, cantidad: 1 }],
+              monedas: { gp: 15 },
+            },
+          },
+        ],
+      });
+    expect(crear.status).toBe(201);
+
+    const tirada = await request(s)
+      .post(`${url()}/${crear.body.id}/roll`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+
+    expect(tirada.status).toBe(201);
+    // **Ninguna clave de catálogo llega a la pantalla**: viaja el nombre, no `short-sword`.
+    expect(tirada.body.entrega.objetos[0]).toMatchObject({
+      ref: { source: "SRD", key: "short-sword" },
+      name: "Espada corta",
+    });
+    expect(tirada.body.entrega.monedas).toEqual({ gp: 15 });
+  });
+
+  it("tarea B2 — una `ref` de campaña ya borrada sale ausente y **no tumba la tirada** (404 evitado)", async () => {
+    const s = app.getHttpServer();
+    const crear = await request(s)
+      .post(url())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({
+        name: "Botín caduco (B2)",
+        visibility: "PLAYERS",
+        entries: [
+          {
+            min: 1,
+            max: 20,
+            text: "Un objeto que ya no existe",
+            entrega: { objetos: [{ ref: { source: "CAMPAIGN", id: "no-existe" }, cantidad: 1 }] },
+          },
+        ],
+      });
+    expect(crear.status).toBe(201);
+
+    const tirada = await request(s)
+      .post(`${url()}/${crear.body.id}/roll`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+
+    expect(tirada.status).toBe(201);
+    expect(tirada.body.text).toBeTruthy();
+    expect(tirada.body.entrega.objetos[0]).toMatchObject({ ausente: true });
+    expect(typeof tirada.body.entrega.objetos[0].motivo).toBe("string");
+  });
 });

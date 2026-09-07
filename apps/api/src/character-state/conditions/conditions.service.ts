@@ -119,8 +119,9 @@ export class ConditionsService {
    * arreglo 1 (I2). **Y desde la ficha P2-0 (2026-09-07) aquí sí se hace**: con `tx`, tanto
    * `requireVisibleCharacter` como `inmunidadesDe` van contra ese cliente. Lo que faltaba era que
    * `StatblocksService.resolver` aceptara un cliente por fuera, y ahora lo acepta —el mismo
-   * parámetro opcional que el resto de esta tanda—. `requireOwnerOrDM` sigue yendo por
-   * `MembershipService`, que no tiene esa puerta: es el resto del hueco, y está dicho en su ficha.
+   * parámetro opcional que el resto de esta tanda—. Las tres consultas que siguen yendo
+   * por el pool son las de `MembershipService`, que no tiene esa puerta — el resto del hueco, con
+   * su medición escrita en el cuerpo de la ficha P2-0 (`docs/06-pendientes.md`).
    *
    * **`concedidoPorActividad`, aditivo, ronda de arreglo 1 de A11 (crítico 2).** `raging` se
    * volvió clave reservada (`esClaveReservada`, `@dnd/shared`) para cerrar el agujero por el que

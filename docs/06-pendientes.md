@@ -1464,6 +1464,16 @@ ese camino abre exactamente la segunda conexión que el patrón existía para ev
 que `apply` reciba también una variante de sus dos comprobaciones que acepte un
 `Prisma.TransactionClient`, igual que ya hacen `changeHp` y `create`.
 
+> **Lo que este arreglo NO cierra, medido al hacerlo (2026-09-07):** de las seis consultas que
+> `apply` hace antes de escribir, **tres** pasan a ir por el `tx` —buscar el personaje, resolver el
+> visor y leer las inmunidades del statblock— y **tres siguen yendo por el pool**, todas por el
+> mismo motivo: `MembershipService` no tiene la puerta. Ni `requireMember`
+> (`apps/api/src/campaigns/membership.service.ts`) ni `requireDM` ni `getMembership` aceptan un
+> cliente, así que `membership.requireMember` (dentro de `requireVisibleCharacterWithViewer`),
+> `membership.getMembership` (dentro de `viewerFor`) y `requireOwnerOrDM` (en `apply`) siguen
+> abriendo conexión propia. **Darle el mismo parámetro opcional a `MembershipService` es la tarea
+> que falta**, y toca a todo el que lo usa, no solo a esta ruta: por eso no entró aquí.
+
 ### P2-0b · `changeHp` con `tx` tampoco evita del todo la segunda conexión — el hueco está en calcular la hoja, no en autorizar (2026-09-07)
 
 **Abierto, encontrado revisando la propia corrección de P2-0.** La autorización de `changeHp` sí

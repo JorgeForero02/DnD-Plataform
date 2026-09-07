@@ -1450,3 +1450,179 @@ LANZADAS**, porque esa función no distingue «empuñar» de «lanzar»: solo mi
 furia se lleva el +2 sin merecerlo. No es arreglable dentro de `character-sheet.service.ts`:
 `rollAttack` no tiene un modo «arrojado» del que depender — hace falta que `rules/attacks.ts`
 distinga las dos formas del mismo arma, que es un cambio de forma, no de un `if`.
+
+### P2-0 · `ConditionsService.apply` pide una segunda conexión del pool cuando corre dentro de la transacción de otro servicio (2026-09-07)
+
+**Abierto, encontrado en la revisión de cierre de la documentación.** El patrón `tx?` opcional
+(ver [01-arquitectura.md](./01-arquitectura.md)) existe para no tomar una segunda conexión con la
+primera ya abierta. `changeHp` y `RollRequestsService.create` lo cumplen **para su comprobación de
+autorización**: con `tx`, la repiten contra ese mismo cliente. `ConditionsService.apply` no tiene
+esa rama — reciba `tx` o no, siempre llama a `requireVisibleCharacter(this.prisma, …)` y
+`requireOwnerOrDM(…)` contra la conexión por defecto, y usa `tx` solo para escribir al final. No es
+hipotético: `ActivitiesService.usar` lo llama **con** `tx` (`activities.service.ts:266`), así que
+ese camino abre exactamente la segunda conexión que el patrón existía para evitar. El arreglo es
+que `apply` reciba también una variante de sus dos comprobaciones que acepte un
+`Prisma.TransactionClient`, igual que ya hacen `changeHp` y `create`.
+
+### P2-0b · `changeHp` con `tx` tampoco evita del todo la segunda conexión — el hueco está en calcular la hoja, no en autorizar (2026-09-07)
+
+**Abierto, encontrado revisando la propia corrección de P2-0.** La autorización de `changeHp` sí
+va contra el cliente correcto cuando recibe `tx` (ver P2-0), pero eso no es todo lo que `changeHp`
+hace antes de escribir: dentro de `changeHpEnTransaccion`
+(`apps/api/src/characters/character-sheet.service.ts:1196`), la llamada a
+`this.construirODenegar(userId, character)` **no le pasa el `tx`**, aunque `construirODenegar`
+acepta un tercer parámetro `tx?: Prisma.TransactionClient` (línea 1028) precisamente para esto. De
+ahí cuelgan `equipoEquipado` (línea 390) y `viewerFor` (línea 297), y ninguna de las dos declara
+siquiera un parámetro `tx`: las dos hablan con `this.prisma` sin condición. El resultado es que
+`changeHp` con `tx`, hoy, sigue abriendo varias conexiones por la puerta por defecto —para leer el
+inventario equipado y para resolver el visor— mientras la transacción ajena que le pasaron sigue
+abierta. El arreglo es doble: que `equipoEquipado` y `viewerFor` acepten un `tx?` opcional (el
+mismo patrón que el resto de esta tanda ya usa), y que `construirODenegar` se lo reenvíe a las dos
+en vez de solo a `hojaOMotivo`.
+
+### P2-1 · La clave de una condición es un contrato de seguridad, y hoy lo sostiene la costumbre (2026-09-07)
+
+**Medido por tercera vez, abriendo los seis ficheros que de verdad leen una condición por su
+clave — las dos vueltas anteriores contaron tres ficheros y se quedaron cortas las dos veces:
+«cinco» la primera, «once en tres ficheros» la segunda, ninguna de las dos completa.**
+
+- `suggested-roll-mode.ts` — **seis**: `condition.key === "exhaustion"` (línea 136),
+  `VENTAJA_EN_ATAQUE.has(condition.key)` (línea 152, el `Set` que lleva `"invisible"` **y**
+  `CLAVE_AYUDA` dentro), `DESVENTAJA_EN_ATAQUE.has(condition.key)` (línea 153, cinco claves del
+  SRD), `DESVENTAJA_EN_PRUEBAS.has(condition.key)` (línea 158, dos claves),
+  `CONDICIONES_DE_FALLO_AUTOMATICO.has(condition.key)` (línea 166, cuatro claves) y
+  `condition.key === "restrained"` otra vez, en la rama de salvación (línea 170).
+- `effective-speed.ts` — **tres**: `CONDICIONES_A_CERO.has(condition.key)` (línea 70, seis
+  claves), `condition.key === "prone"` (línea 74) y `condition.key === "exhaustion"` (línea 81).
+- `character-sheet.service.ts` — **dos**: la consulta por `key: CLAVE_AYUDA` en `ayudaViva`
+  (línea 825) y la consulta por `key: CLAVE_FURIA_ACTIVA` en `bonoDeFuria` (línea 1803, `raging`).
+- **`modo-contra-objetivo.ts` — dos, que faltaban en las dos cuentas anteriores**:
+  `VENTAJA_CONTRA.has(condicion.key)` (línea 67, seis claves) y
+  `DESVENTAJA_CONTRA.has(condicion.key)` (línea 69, `invisible`). No es código muerto: lo usa
+  `character-sheet.service.ts:1946` (`modoContraObjetivo`, el modo de tirada de quien ATACA a
+  alguien con esa condición — pregunta distinta de «¿cómo tiro yo?», por eso vive en su propio
+  fichero).
+- **`character-state/common/agotamiento.ts` — uno, que también faltaba**: `condiciones.find((c) =>
+  c.key === "exhaustion")` (línea 48, `nivelDeAgotamiento`). Lo consumen
+  `character-state/common/max-hp.ts:69` y `character-sheet.service.ts:1004`: no es código muerto
+  tampoco.
+- **`character-state/rest/rest.service.ts` — uno más**: la consulta por `characterId_key: { …,
+  key: "exhaustion" }` en `bajarAgotamiento` (línea 316).
+
+**Quince lecturas en seis ficheros del motor**, no once en tres. La **puerta**
+(`ConditionsService.apply` / `.remove`, `character-state/conditions/conditions.service.ts`) es
+**tres comparaciones, no una**: `input.key === CLAVE_AYUDA` para rechazar escribir `helped` por
+esta ruta (línea 169), y `esClaveReservada(...)` llamada dos veces —al aplicar (línea 178) y al
+retirar (línea 454). Quince lecturas más tres de la puerta hacen **dieciocho sitios distintos**.
+
+**El argumento del dos-de-dos sigue en pie, y sigue siendo el que importa.** De las claves leídas
+en el motor —`exhaustion`, `restrained`, `blinded`, `frightened`, `poisoned`, `prone`, `invisible`,
+`paralyzed`, `petrified`, `stunned`, `unconscious`, `grappled`— **todas** son del SRD y llegaron
+reservadas de oficio con la lista de quince condiciones; **las dos que no lo son —`helped` y
+`raging`— son exactamente las dos que hubo que acordarse de añadir a mano** a `esClaveReservada`,
+y las dos se añadieron **después** de que el agujero ya estuviera abierto en producción: `raging`
+es, letra por letra, la reincidencia del mismo fallo que `helped` cerró once tareas antes. No hay
+ningún caso en el que la costumbre haya funcionado a la primera.
+
+**Tres opciones, descartadas las dos primeras — no se decide hoy:**
+
+- **(a) Procedencia en la fila** (escrita por una actividad frente a puesta a mano). Descartada:
+  el DM aplicando `poisoned` a mano **sí** tiene que seguir contando como una condición que el
+  motor interpreta el día que algo lea `poisoned`, así que la procedencia no puede ser el único
+  criterio.
+- **(b) Espacio de nombres `sys:`** que la puerta genérica rechazara de oficio. Retirada por quien
+  la propuso a la vista de la ficha siguiente: el tráfico del paso 3 va sobre todo por otra
+  puerta, así que esta sería una valla en un camino que casi nadie usa.
+- **(c) La recomendada: una prueba que barra los seis ficheros del motor** buscando lecturas de
+  `condition.key` (o del nombre local que use cada fichero — `condicion.key`, `c.key`) y exija que
+  cada clave leída esté en `esClaveReservada` — el mismo tipo de red que ya existe para los
+  glifos prohibidos y para el enum de Prisma contra `GAME_EVENT_TYPES`. **Se dimensiona con la
+  lista de arriba entera, no con una parte de ella**: una prueba que solo buscara comparaciones
+  `=== "..."` literales dejaría fuera los **siete** `Set.has(...)` de la lista —
+  `VENTAJA_EN_ATAQUE`, `DESVENTAJA_EN_ATAQUE`, `DESVENTAJA_EN_PRUEBAS`,
+  `CONDICIONES_DE_FALLO_AUTOMATICO` y `CONDICIONES_A_CERO`, más `VENTAJA_CONTRA` y
+  `DESVENTAJA_CONTRA` de `modo-contra-objetivo.ts`, que las dos cuentas anteriores de esta misma
+  ficha tampoco vieron—, y con ellos se le escaparía la única lectura de `helped` que vive dentro
+  de un `Set` (`VENTAJA_EN_ATAQUE`). Es, literalmente, el mismo patrón por el que este proyecto ya
+  se olvidó de reservar `helped` y `raging` una vez cada uno: mirar solo una forma de comparar y
+  no la otra. Su pega real: se burla leyendo la clave desde una variable (`const k = "..."`,
+  comparar contra `k`), que no es lo que hace quien añade un `if` de buena fe — el fallo realista
+  es olvidarse, no evadir. **Para estrecharla**, el motor tendría que leer la clave **solo de
+  constantes declaradas en `shared`** y la prueba comprobar importaciones en vez de literales, que
+  es lo que `CLAVE_FURIA_ACTIVA` ya hace hoy sin que nada lo obligue.
+
+**No se decide esta noche**: el arreglo de fondo depende de cuántos casos traiga el conversor del
+paso 3 — ver la ficha siguiente y `docs/superpowers/specs/2026-09-05-paso-3-catalogo-design.md`.
+
+### P2-2 · La `entrega` de una fila solo se puede escribir por API (2026-09-07)
+
+**Abierto, ninguna tarea del plan lo encargó.** `entregaSchema` (`packages/shared/src/dm-table.schema.ts`)
+valida objetos y monedas al escribir, y el servidor las resuelve al tirar
+(`docs/05-datos.md`), pero el formulario de crear/editar una tabla de la casa
+(`apps/web/src/features/dm-tables/`) no tiene ningún campo para redactar una `entrega`. La
+funcionalidad está construida por los dos extremos —escribir por HTTP y leer resuelta en la
+pantalla— y le falta el primer eslabón: hoy la única forma de sembrar una fila con `entrega` es un
+`curl` directo a la API, y la definición de terminado del plan botín solo es alcanzable sobre una
+tabla sembrada así.
+
+### P2-3 · Un jugador con un PNJ cedido ve una lista de destinatarios vacía al abrir «Dar…» (2026-09-07)
+
+**Abierto, gesto muerto en pantalla.** `fetchCharacters` (`apps/web/src/features/characters/api.ts`)
+llama a `CharactersService.list()`, que filtra `statblockRef: null` a propósito —excluye PNJ del
+listado de personajes jugadores—. El selector de destinatarios de «Dar…» (B4/B5) construye su lista
+de nombres a partir de esa misma llamada, así que un jugador al que el DM le cedió el control de un
+PNJ ve el botón «Dar…» pero el diálogo se abre sin nadie a quien elegir. No es una fuga de
+autorización —el servidor no cambia de postura—, es una pantalla que ofrece un gesto sin datos para
+completarlo.
+
+### P2-4 · La autorización de `changeHp` y el `requireDM` de `RollRequestsService.create` dejan inusables media docena de conjuros de clérigo (2026-09-07)
+
+**Abierto, hay que decidirlo antes del paso 3.** `changeHp` exige dueño-o-DM
+(`character-sheet.service.ts`, `autorizarEdicionConCliente` / `requireEditable`): un clérigo no
+puede curar al personaje de otro jugador con una actividad, porque el objetivo de la curación no es
+quien la usa. Y `RollRequestsService.create` empieza por `requireDM`
+(`roll-requests.service.ts:78`): toda actividad de salvación —`salvacion`— es hoy exclusiva del DM,
+así que un jugador no puede lanzar un conjuro que pida tirada de salvación a otro personaje.
+
+Sin arreglarlo, media docena de conjuros de clérigo nacen inusables el día que el paso 3 los
+importe. **El arreglo propuesto es una segunda entrada** en los dos servicios, cuyo permiso no sea
+«puedes editar esta ficha» sino «vienes de un efecto ya autorizado sobre un objetivo que `canView`
+te deja ver» — el mismo desdoblamiento que ya existe entre `record` y `recordFromEngine`
+(`docs/01-arquitectura.md`). Aflojar `requireEditable` a secas abriría el `PATCH` de cualquier
+personaje ajeno; llamar con el id del DM sería un diputado confundido de manual.
+
+### P2-5 · El daño de una actividad de salvación no se aplica al responderla (2026-09-07)
+
+**Abierto, decisión de una funcionalidad y no de pegamento.** `ActivitiesService.usar` crea la
+petición de tirada de una `salvacion` con su `dc` y sus `dados`, pero `RollRequestsService.answer`
+no aplica el daño ni la mitad al recibir la respuesta: hoy `usar` devuelve un aviso de que el daño
+no se aplica solo, y la mesa lo arbitra a mano leyendo el resultado de la tirada. Cablear
+`salvacion.siSalva` (`z.enum(["ninguno", "mitad"])`, `packages/shared/src/activity.schema.ts`)
+dentro de `answer()` es la tarea que falta, no un arreglo de esta tanda.
+
+### P2-6 · `ActivitiesService.consumir` lee y escribe sin `SELECT … FOR UPDATE` (2026-09-07)
+
+**Abierto, menor.** `consumir()` (`apps/api/src/activities/activities.service.ts`) lee un
+`CharacterResource` con `findUnique` y lo actualiza con `update`, sin bloquear la fila —igual que
+`ResourcesService.adjust`—, así que dos usos concurrentes de la misma actividad pueden leer el
+mismo `current` y perder uno de los dos descuentos. `changeHp`, a un metro de distancia en el mismo
+flujo (`character-sheet.service.ts`), sí toma el candado con `SELECT ... FOR UPDATE` sobre
+`Character`. El arreglo es el mismo patrón, aplicado a `CharacterResource`.
+
+### P2-7 · Dos huecos de red que no falla nada hoy, pero que nada impide que fallen mañana (2026-09-07)
+
+**Abierto, dos hallazgos de la revisión de B1+B2 y B3, ninguno de comportamiento medido incorrecto.**
+
+- **No hay prueba de servicio de que un `entrega` malformado en el `Json` de `DmTableEntry` no
+  rompa la tirada.** El guardián que de verdad actúa al leer es `entregaSchema.safeParse`
+  (`DmTablesService.resolverEntrega`, `dm-tables.service.ts:262`) — no
+  `entregaResueltaSchema`, que solo se usa como tipo de salida. El comportamiento **se verificó
+  por ejecución** en la re-revisión de B1+B2 (un `entregaRaw` que no valida hace que `parsed.success`
+  sea `false` y la función devuelva `undefined`, así que la tirada sigue con su texto); lo que
+  falta es la prueba que lo sujete, para que un cambio futuro no lo rompa en silencio.
+- **Un campo del `payload` de un `GameEvent` solo lo sujeta el `tsc` de la web, no un guardián de
+  servidor.** Quitar un campo del esquema de `@dnd/shared` deja las tres suites en verde y la API
+  compilando: un *spread* de TypeScript no comprueba propiedades sobrantes, y `record`
+  (`game-events.service.ts`) valida con `.parse()`, que **descarta** las claves desconocidas en vez
+  de rechazarlas. El campo se tiraría en silencio en producción el día que alguien lo quite del
+  esquema sin darse cuenta de que la web todavía lo manda.

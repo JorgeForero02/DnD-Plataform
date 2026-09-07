@@ -429,3 +429,39 @@ git commit -m "docs: a table can hand over loot, and the table decides who keeps
 mutación por tarea**, probada y deshecha · las tablas de rumores existentes **tirando exactamente
 igual que antes** · y **el botín de un combate repartido sin salir de la mesa**, que es la única
 prueba que le importa al DM.
+
+# Avance
+
+Lo escribe el orquestador **al cerrar cada tarea**, no al final. Ejecutado por superficie junto al
+plan A del paso 2, con un ledger y una tabla de observabilidad compartidos
+(`.superpowers/sdd/2026-09-06-tanda-paso2-y-botin/progress.md`, local, no viaja con el clon).
+
+## Tareas 1 y 2 · Una fila puede entregar algo, y tirarla lo resuelve — HECHAS (commit `eaa333e`)
+
+`DmTableEntry.entrega` (`Json?`, migración `dm_table_entry_loot`): objetos por `ContentRef` —la
+unión que ya existía, nunca la cadena `"SRD:short-sword"`— y las cinco columnas de moneda.
+Opcional: una tabla de rumores no entrega nada y no cambia su comportamiento de hoy. Al tirar, los
+objetos vuelven **resueltos** por nombre; una referencia caduca marca esa entrada `ausente` con un
+motivo legible y la tirada sigue, pero un fallo real de la base se relanza tal cual —tragarlo
+dentro de la transacción del disparo automático de un crítico borraría la única pista de qué pasó—.
+Detalle completo en [05-datos.md](../../05-datos.md). **Quedó fuera, con ficha abierta**: el
+formulario de crear tablas no tiene campo para redactar `entrega`, así que hoy solo se siembra por
+API.
+
+## Tarea 3 · Dar algo dice quién lo dio — HECHA (commit `cbbfebf`)
+
+La premisa del plan —«hoy un objeto aparece en una bolsa y nadie sabe de dónde salió»— era falsa:
+`ITEM_ADDED` y `MONEY_CHANGED` ya llevaban actor, objeto y cantidad. Lo que faltaba era un campo
+opcional `de`, relleno solo cuando quien actúa no es el dueño del personaje, sobre los dos tipos de
+suceso que ya existían — sin tipo de suceso nuevo, sin migración de esquema. Ver D-P2-7 en
+[decisiones.md](../../decisiones.md).
+
+## Tareas 4 y 5 · «Dar…» desde la mesa y desde la tirada — HECHAS (commit `c36a099`; e2e en `8d4de37`)
+
+El gesto de dar vive en la mesa —un radio con un nombre, el objeto del selector de catálogo que ya
+existía— y lo reutiliza el resultado de una tirada de tabla. Sin «dar a todos», sin repartir oro a
+partes iguales, sin comercio: el sistema entrega, la mesa decide (ver
+[04-convenciones.md](../../04-convenciones.md)). La revisión encontró y cerró una clave de
+catálogo pintada tal cual en pantalla por el mensaje de error del servidor. **Quedó fuera, con
+ficha abierta**: un jugador con un PNJ cedido ve la lista de destinatarios vacía, porque
+`fetchCharacters` excluye PNJ por diseño del servidor.

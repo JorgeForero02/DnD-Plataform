@@ -977,3 +977,77 @@ una hora; descubrirlo en el paso 3 habría costado migrar el catálogo entero.**
 faltaban, no un modelo distinto. Las cinco actividades siguen cubriendo lo que la spec contó, el
 `summon` entra con su texto sin romper nada, y `uses` sigue siendo `CharacterResource`. **Con el
 esquema corregido, los 320 del paso 3 entran.**
+
+## Tarea 1 · El combatiente cuenta lo que gasta — HECHA (commit `2bd7769`)
+
+`Combatant` gana `actionUsed`, `bonusUsed`, `reactionUsed` (booleanos) y `movementUsed` (entero),
+y `advanceTurn` los repone al **empezar** el turno de quien entra, no al terminar el de quien
+sale — SRD 5.1, «Reactions»: *«you regain your reaction at the start of your turn»*. Se repone por
+`position`, no por fila, para que un grupo de idénticos lo recupere a la vez. Detalle completo en
+[05-datos.md](../../05-datos.md). **Quedó fuera**: `setInitiative` recoloca la iniciativa a mitad
+de combate sin decidir si eso «empieza» un turno nuevo — el SRD no contempla editar la iniciativa
+ya tirada. Ficha abierta en [06-pendientes.md](../../06-pendientes.md).
+
+## Tarea 2 · Gastar, sin impedir — HECHA (commit `bea4e80`)
+
+`ActivitiesService` gasta por `Combatant` a través de un único punto: registra y avisa
+(`ACTION_SPENT`) si algo se pasa de lo que queda, y nunca lo rechaza — hay decenas de aptitudes que
+conceden acciones extra y ninguna se modela hoy. `canView` decide qué combatiente existe para quien
+pregunta (un PNJ escondido es 404, nunca 403) y dueño-o-DM decide quién puede gastar. La revisión
+encontró y cerró una fuga real por 403 (ver `docs/decisiones.md` y el ledger). **La copia a mano de
+«dueño o DM»** ya vive en tres sitios distintos (`gastar`, `RollsService.comprobarPersonaje`,
+`requireEditable`); unificarla es refactor de otra frontera, con ficha abierta.
+
+## Tarea 4 · `Origen` — de dónde sale un número — HECHA (commit `f9463c2`)
+
+Siete variantes cerradas y `resolverOrigen`, que nunca devuelve un número sin su paso de traza ni
+un cero cuando no sabe la respuesta — la frontera deliberada con el `simplifyBonus` de Foundry, que
+sí lo hace. Detalle en [04-convenciones.md](../../04-convenciones.md).
+
+## Tarea 5 · La forma común de una actividad — HECHA (commit `620b969`)
+
+`activation`, `consumption`, `target`, `range`, `duration`, `effects`, `description` y
+`materiales`, con los nombres de campo de Foundry (baratos de copiar, caros de inventar) y las
+implementaciones propias. `uses` no aparece: **es** `CharacterResource` — ver
+[05-datos.md](../../05-datos.md).
+
+## Tarea 6 · Las cinco actividades — HECHA (commit `267b063`)
+
+`ataque`, `salvacion`, `dados`, `utilidad` y `prueba`, discriminadas por `tipo`. `ataque` y
+`salvacion` llevan su propio `dados` opcional (D-P2-2, `docs/decisiones.md`); `prueba.ability`
+admite `"lanzamiento"` con `cd` opcional (D-P2-3). Cubre las 319 activaciones y las 150 actividades
+`save` y 18 `attack` del SRD sin partir ninguna.
+
+## Tarea 7 · Ejecutar una actividad — HECHA (commit `8f36024`)
+
+`ActivitiesService.usar` conecta lo que ya existía: uses de `CharacterResource`, coste de
+`Combatant`, CD de `spellSaveDc`, daño/curación de `changeHp`, salvación de una `RollRequest` — todo
+en una sola transacción con el patrón `tx?` (ver [01-arquitectura.md](../../01-arquitectura.md)).
+`nivelDeEspacio` se deriva del recurso gastado de verdad, nunca del cliente (D-P2-6). **Quedó
+fuera, con ficha en 06-pendientes.md**: el daño de una salvación no se aplica solo al responderla
+(se avisa y lo arbitra la mesa); la autorización de `changeHp` y el `requireDM` de
+`RollRequestsService.create` dejan inusables las actividades de un clérigo sobre otro personaje —
+hay que decidirlo antes del paso 3; y `consumir()` gasta sin `SELECT … FOR UPDATE`.
+
+## Tarea 8 · `subclassKey` — un camino, no todos — HECHA (commit `9cdb639`)
+
+El fallo vivo en producción no era «todos los caminos a la vez» —el catálogo tiene una sola
+subclase por clase—, era que el único camino se aplicaba **aunque no se hubiera elegido**, a todo
+bárbaro de nivel ≥ 3. Arreglado en los dos sitios donde vivía: `resolve.ts` y
+`level-up.service.ts`. Detalle, y el efecto sobre datos ya desplegados, en
+[05-datos.md](../../05-datos.md).
+
+## Tareas 9 y 10 · `ItemGrant` y `ScaleValue` — HECHAS (commit `19a6444`)
+
+Una clase concede una actividad con sus usos y sus escalas; los ocho números del bárbaro
+verificados contra el SRD 5.1 en inglés. «Sin tope» se escribe `null` (D-P2-4); un tramo de escala
+se extiende hacia arriba y por eso no hay guarda por encima del último (D-P2-5).
+
+## Tareas 3 y 11 · La Furia, de punta a punta — HECHAS (commit `cb6c285`; e2e corregido en `2228341` y `8d4de37`)
+
+La mesa muestra la economía del turno leída del servidor, no memorizada por el navegador (crítico
+real que la revisión encontró: el propio e2e escrito afirmaba lo contrario). `raging` se reservó
+—reincidencia exacta del agujero de `helped`— y el dueño puede quitarse su propia Furia
+(`appliedById`), como pide el SRD. **Quedó fuera, con ficha abierta**: un recurso con `max: null`
+no se repone en un descanso ni lo respeta `consumir()`, y una jabalina o un hacha de mano
+**lanzadas** se llevan el bono de Furia como si fueran cuerpo a cuerpo.

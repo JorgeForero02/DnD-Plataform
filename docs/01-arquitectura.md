@@ -71,7 +71,8 @@ por su cuenta**.
 | `bestiario` (web) | La pestaña del bestiario (2D.5): las fichas del SRD y las del DM, y el botón que baja una criatura a la mesa. Va **justo antes de «Catálogo»**, que es donde la pone el prototipo, y por el mismo motivo: es la cara mecánica de algo que ya tiene ficha de mundo | pinta lo que el servidor le manda; el botón solo se le enseña al DM, y eso **no** es el control de acceso |
 | `npcs` (dentro de `statblocks`) | Bajar un statblock a la mesa (2D.4): de una plantilla nacen N combatientes, y **un PNJ en la mesa es una fila de `Character`** — no un modelo nuevo. Lo que lo distingue es `statblockRef`; `classKey`, `raceKey` y `level` quedan sin usar | instanciar, solo DM; listar, filtrado por `canView` |
 | `statblocks` | Los statblocks de PNJ (2D.3): el catálogo del SRD 5.1 **en código** y los propios del DM **en la base**, con una sola forma resuelta y **una sola puerta que traduce un `ref`** (`SRD:goblin` o `CAMPAIGN:<id>`). Es el mismo reparto que 2B eligió para los objetos | escribir, solo DM; leer, filtrado por `canView` |
-| `dm-tables` | Las tablas del DM (2C.6): tirar sobre una tabla con sus resultados y su visibilidad. **Regla de la casa, con interruptor por campaña y apagada por defecto** — el SRD no trae ninguna tabla de críticos ni de pifias | escribir, solo DM; leer, filtrado por `canView` |
+| `dm-tables` | Las tablas del DM (2C.6): tirar sobre una tabla con sus resultados y su visibilidad. **Regla de la casa, con interruptor por campaña y apagada por defecto** — el SRD no trae ninguna tabla de críticos ni de pifias. Desde el paso botín (2026-09-06) una fila puede llevar `entrega` (objetos y monedas), y tirarla devuelve esos objetos ya resueltos por nombre | escribir, solo DM; leer, filtrado por `canView` |
+| `activities` (paso 2, 2026-09-06) | Usar una actividad de la hoja (`POST .../characters/:characterId/activities/:activityKey/use`): gasta lo que declare `consumption` (que apunta a un `CharacterResource` por clave, nunca un contador propio), cobra la acción por la puerta de `Combatant` (2.5.2/A1) y aplica sus `effects` — daño o curación por `changeHp`, una salvación por `RollRequestsService`, una condición por `ConditionsService`. No calcula nada por su cuenta: todo número sale de `resolverOrigen` (`rules/engine.ts`) con su paso de traza | dueño o DM del personaje que usa la actividad |
 
 ### Las tres capas de la fase 2A, y por qué no se tocan entre sí
 
@@ -122,6 +123,52 @@ propiedad. Ver [05-datos.md](./05-datos.md) para la semántica de cada nivel.
 > `user.isAdmin`) `entities`, `characters`, `character-sheet`, `comments`, `links`, `sessions`,
 > `game-events`, `rules-engine` y `campaign-items`. Anotada en
 > [06-pendientes.md](./06-pendientes.md).
+
+### Un `tx?` opcional y aditivo, porque `PrismaService.transaction` no anida
+
+Usar una actividad (`ActivitiesService.usar`) tiene que gastar un recurso, cobrar una acción,
+aplicar daño o curación, pedir una salvación y aplicar una condición **en una sola transacción**: o
+se escribe todo o no se escribe nada. El problema es que cada una de esas piezas ya era un servicio
+con su propia transacción, y `PrismaService.transaction` **no anida** — abrir una segunda dentro de
+la primera no comparte candados ni revierte junto con ella.
+
+La solución, ya probada dos veces antes del paso 2 (`DmTablesService.tirarSobre` y
+`GameEventsService.record`), se extendió en esta tanda a **tres** servicios más:
+`CharacterSheetService.changeHp`, `RollRequestsService.create` y `ConditionsService.apply`
+ganaron un parámetro **`tx?: Prisma.TransactionClient` opcional y aditivo** — sin él, el servicio
+abre su propia transacción como siempre; con él, corre dentro de la que le pasan. Ningún llamador
+existente cambia.
+
+**Y el `tx?` no siempre evita la segunda conexión, y eso es una deuda real en dos frentes
+distintos, no una errata.**
+
+Para la **autorización**: `changeHp` y `RollRequestsService.create` tienen una rama explícita
+(`autorizarEdicionConCliente` / `autorizarYComprobarPersonajesConCliente`) que repite su
+comprobación **contra el cliente que les pasan**. `ConditionsService.apply` no tiene esa rama:
+reciba `tx` o no, empieza siempre llamando a `requireVisibleCharacter(this.prisma, …)` y
+`requireOwnerOrDM(…)` contra la conexión por defecto. No es hipotético: `ActivitiesService` la
+llama **con** `tx` (`activities.service.ts:266`), así que ese camino abre ahí una segunda conexión
+del pool. Ficha **P2-0** en [06-pendientes.md](./06-pendientes.md).
+
+Pero **ni siquiera `changeHp` cumple el patrón entero**, y esto es un hallazgo distinto del de
+arriba, no el mismo con otro nombre: dentro de `changeHpEnTransaccion`, la llamada a
+`this.construirODenegar(userId, character)` (`character-sheet.service.ts:1196`) **no le pasa el
+`tx`**, aunque `construirODenegar` sí acepta uno (línea 1028). De ahí cuelgan `equipoEquipado` y
+`viewerFor` (líneas 390 y 297), que ni siquiera declaran un parámetro `tx` — hablan con
+`this.prisma` siempre. Así que **`changeHp` con `tx`, hoy, sigue pidiendo varias consultas por la
+conexión por defecto mientras la transacción ajena está abierta**: la autorización sí va contra el
+cliente correcto (la frase de arriba, acotada, sigue siendo cierta), pero calcular la hoja para
+saber los PG máximos no. Ficha hermana, **P2-0b**, en [06-pendientes.md](./06-pendientes.md).
+
+**El parámetro no es siempre el último tampoco.** En `changeHp` y en `create` sí lo es; en
+`ConditionsService.apply` va seguido de un `opciones?: { concedidoPorActividad?: boolean }` — el
+mismo patrón que ya traía su precedente, `GameEventsService.record(actorUserId, campaignId, input,
+tx?, options?)`.
+
+**Por qué aditivo y no un rediseño**: reescribir esos tres servicios para que solo supieran operar
+dentro de una transacción ajena habría tocado a todos sus llamadores actuales para nada — lo único
+nuevo es que ahora tienen un llamador más. Un `tx?` que por defecto abre su propia transacción es la
+forma más barata de dar una puerta nueva sin mover la que ya existía.
 
 ## Estructura de la web
 

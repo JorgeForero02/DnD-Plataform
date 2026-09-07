@@ -940,3 +940,68 @@ las condiciones y por el mismo motivo; **quitarlo a mano no lo emite**, porque n
 > Es coherente con cómo se calcula todo lo demás —la caducidad es una resta contra el reloj, no un
 > estado guardado— y es lo mismo que ya le pasa a una condición. Se deja así **a propósito**: la
 > alternativa sería guardar «ya venció», que es exactamente la segunda verdad que 2C.4 rechazó.
+
+## `Combatant` gana su propia economía de acciones (paso 2, tarea A1, 2026-09-06)
+
+**Cuatro columnas** (migración `20260906160000_combatant_action_economy`): `actionUsed`,
+`bonusUsed` y `reactionUsed` (booleanos) más `movementUsed` (entero, en pies). Antes de esta tarea
+el combate tenía turno y orden, pero nada guardaba **qué se había gastado dentro de un turno**; la
+pantalla se lo inventaba en el navegador (ver la ficha de A3+A11 abajo).
+
+**Se reponen al EMPEZAR el turno de quien entra, no al terminar el de quien sale.** SRD 5.1,
+«Reactions»: *«you regain your reaction at the start of your turn»*
+(<https://5thsrd.org/combat/actions-in-combat/#reactions>). `EncountersService.advanceTurn` repone
+por `position` —no por fila— sobre los combatientes que **entran** en `toPosition`, en la misma
+transacción que mueve el turno: entre el final de un turno y el principio del siguiente nadie tiene
+reacción, que es justo lo que permite que solo se pueda reaccionar una vez por asalto. Repartirlo a
+seis goblins que comparten posición es la misma consulta que ya agrupaba su iniciativa.
+
+**El servidor cuenta y avisa; no impide.** Gastar por encima de lo que queda (`ActivitiesService`,
+tarea A2) no se rechaza: se registra con un aviso (`ACTION_SPENT`) y la mesa decide, porque hay
+decenas de aptitudes que conceden acciones extra y ninguna se modela el primer día — la misma
+postura que este proyecto ya tomó con los bandos y con terminar un combate. Lo único que el servidor
+sí impide es **quién** puede gastar (dueño o DM) y **qué ve**: un combatiente de un PNJ escondido es
+un 404, nunca un 403 que confirmaría que existe.
+
+## `uses` de una actividad **es** `CharacterResource`, no una tabla nueva (paso 2, tarea A4/A5)
+
+`activity.schema.ts` no tiene un campo `uses`: lo que una actividad gasta lo declara `consumption`,
+apuntando por **clave** a un `CharacterResource` que ya existe (`current`, `max`, `resetOn`,
+`grantedBy`). La Furia del bárbaro es la prueba en un sentido — sus usos son una fila de esa tabla,
+sembrada por `ItemGrant` — y **el catálogo del SRD la confirma en el sentido contrario**: de los 320
+conjuros contados en `docs/superpowers/specs/2026-09-05-paso-3-catalogo-design.md`, **ninguno**
+declara `uses` propios en los datos de Foundry (`uses.max` viene vacío en los 320 ficheros), porque
+lo que un conjuro gasta es un **espacio de lanzamiento**, no un contador suyo. Modelar `uses` como
+tabla aparte habría sido una segunda verdad sobre el mismo hecho para el único caso —una aptitud de
+clase— que ya tiene dónde vivir.
+
+**«Sin tope» se escribe `null`, nunca un número grande.** `CharacterResource.max` ya era nulable y
+`adjust()` ya leía `max ?? Number.POSITIVE_INFINITY`; la Furia a nivel 20 («Unlimited» en el SRD)
+usa exactamente ese vocabulario en vez de repetir el `999` que Foundry escribe para lo mismo —un
+número creíble y falso, el mismo fallo que `simplifyBonus` (ver `04-convenciones.md` § *Idioma* y
+`packages/shared/src/origen.schema.ts`). La tabla de escala (`ScaleValue`) se queda solo con
+números: la ausencia de tope vive en `uses`, no en la escala, porque un tramo de escala describe
+«desde aquí, cuánto», nunca «no hay límite».
+
+## La columna `entrega` de `DmTableEntry` (paso botín, tarea B1, 2026-09-06)
+
+`entrega Json?` (migración `20260907010000_dm_table_entry_loot`) es lo que una fila de una tabla de
+la casa reparte al salir: objetos por `ContentRef` —la unión que ya existía en
+`character-build.schema.ts`, nunca una cadena tipo `"SRD:short-sword"`— y las cinco columnas de
+moneda. **Opcional a propósito**: la misma tabla sirve para rumores y para encuentros, que no
+entregan nada, y una fila sin `entrega` no cambia su comportamiento de hoy en absoluto.
+
+**Es un `Json` que no se consulta por dentro**, la única forma en que este proyecto acepta uno (ver
+la regla del log, más arriba): nada filtra ni ordena tablas por lo que entregan, así que no hay
+motivo para promocionar un campo a columna. Se valida al escribir y al leer con `entregaSchema` /
+`entregaResueltaSchema` de `@dnd/shared`, y al tirar la tabla los objetos se devuelven **resueltos**
+por nombre —nunca la clave del catálogo— para que la pantalla no tenga que traducir nada.
+
+**Una referencia caduca no tira la fila.** Si el DM borró el `CampaignItem` que una entrada
+prometía, esa entrada vuelve marcada `ausente` con un motivo legible, y el resto de la tirada sigue
+—el mismo trato que ya recibe una clase que dejó de existir en el catálogo—. Lo que **no** se
+perdona es un fallo real de la base: se relanza tal cual, porque la tirada de un crítico corre
+dentro de la transacción que la disparó y tragarse el error ahí borraría la única pista de qué pasó.
+
+**Deuda declarada, no de esta tarea**: `entrega` solo se puede escribir hoy por API — el formulario
+de crear tablas no tiene campo para redactarla. Ficha en [06-pendientes.md](./06-pendientes.md).

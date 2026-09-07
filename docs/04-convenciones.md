@@ -111,6 +111,16 @@ Reglas que aplican sin excepción:
 **Interfaz y documentación en español.** Los textos que ve el usuario son españoles; los
 nombres de las cosas del código, no.
 
+**Excepción declarada (2026-09-07): el vocabulario de dominio de D&D se escribe en español,
+también en identificadores.** La regla de arriba llevaba tiempo incumplida sin que nadie lo
+dijera —el repositorio ya tenía `recolocar`, `sesion`, `comprobarPersonaje`, `excedido`,
+`cantidad`— y el paso 2 añadió `gastar`, `Origen`, `Coste`, `nivelDeEspacio` y `actividad` al
+mismo montón. **Una regla que nadie cumple y que nadie ha declarado rota es peor que una
+excepción escrita**: la primera dice una cosa y el código dice otra sin que se note; la segunda
+es verdad. Lo que sigue en inglés es todo lo que no es vocabulario de la mesa: nombres de
+patrón (`resolver`, `service`, `schema`), infraestructura y las claves de traza (`sourceType`,
+`abilityMod.str`), que son código y conviven con las del motor.
+
 ## API
 
 - Un módulo por concepto: `servicio` + `servicio.spec.ts`, `controlador`, `módulo`, e2e.
@@ -205,6 +215,37 @@ nombres de las cosas del código, no.
   (`apps/api/src/common/after-commit.ts`); `$transaction` no. **La regla es estructural a
   propósito**: una que dependa de acordarse se paga otra vez con la siguiente transacción que
   alguien escriba, y ninguna prueba de comportamiento puede fallar por código que aún no existe.
+
+- **Un número derivado nunca es una cadena evaluable.** `Origen` (`packages/shared/src/origen.schema.ts`)
+  tiene siete variantes cerradas —fijo, modificador de característica, competencia, tabla de
+  escala, modificador de lanzamiento, nivel de espacio, CD de conjuro— y `resolverOrigen` las
+  convierte en un valor **y** su paso de traza; nunca en un número suelto. Es la frontera
+  deliberada con Foundry: su `simplifyBonus` (fichero `utils.mjs`, fuera de este repositorio)
+  evalúa una cadena como `"@mod + 2"`
+  y devuelve **0 en silencio** si la evaluación falla — un fallo convertido en un número creíble,
+  que es lo único que este proyecto no se puede permitir teniendo una traza que promete explicar
+  cada cifra. Por eso cada variante de `Origen` **lanza** cuando le falta el dato que necesita
+  (una puntuación ausente entra como `NaN`, que `Number.isFinite` rechaza) en vez de devolver
+  cero. Que no se reabra: hay una prueba que rechaza explícitamente una cadena con forma de
+  fórmula en el lugar de un `Origen`.
+
+- **Dos decisiones del autor sobre el paso 2 de la actividad (2026-09-06).** *Cinco actividades
+  separadas* (`ataque`, `salvacion`, `dados`, `utilidad`, `prueba`), discriminadas por `tipo`:
+  el SRD distingue una salvación de una prueba de característica, y fusionar un vocabulario
+  cerrado es fácil de hacer y caro de deshacer con datos ya escritos. Y **el servidor cuenta y
+  avisa, pero no impide** gastar de más: spend una acción de más y el servidor lo registra con un
+  aviso (`ACTION_SPENT`) en vez de rechazarlo, porque hay decenas de aptitudes que conceden
+  acciones extra y ninguna se modela el primer día — impedirlo sería el servidor arbitrando la
+  mesa, que este proyecto ya declinó hacer con los bandos y con terminar un combate.
+
+- **El reparto de botín no es automático, y el comercio queda fuera hasta que se pida jugando.**
+  «Dar…» (paso botín) pone el objeto o el dinero en manos de un destinatario concreto que la mesa
+  elige; no hay «dar a todos», no hay repartir oro a partes iguales y no hay intercambio entre
+  personajes. Hay una prueba (`DarObjeto.test.tsx`) que afirma la ausencia de las dos primeras en
+  un mismo `expect`; **el comercio no tiene prueba propia** —no hay nada que montar, así que no
+  hay ausencia que medir en la pantalla—, y una decisión que no se puede medir vuelve como
+  funcionalidad de conveniencia la siguiente vez que alguien la pida. **El sistema entrega; la
+  mesa decide** cómo se reparte lo entregado.
 
 ## Web
 

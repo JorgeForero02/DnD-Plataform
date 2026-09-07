@@ -229,3 +229,32 @@ Este documento **no es un plan**. Está terminado cuando el autor apruebe la par
 —estructura de Foundry, nombres del SRD español, inglés conservado—, el orden de los cuatro
 catálogos, y la regla de rechazar en voz alta. Su plan por tareas se escribe **después del paso 2**,
 porque el destino del mapeo no existe todavía.
+
+## 10 · Añadido tras el paso 2 (2026-09-07): el tráfico entra sobre todo por modificadores numéricos, no por condiciones
+
+**No es deuda: es un dato sobre por dónde hay que mirar cuando se escriba el conversor.** El
+recuento de **72 conjuros de 320 con 316 cambios sobre 68 claves distintas** vive medido en
+[`2026-09-07-paso-3-lo-que-cabe-medido.md`](../specs/2026-09-07-paso-3-lo-que-cabe-medido.md), no
+en el plan del paso 2 — esta sección solo añade el dato de **por dónde entra ese tráfico** en los
+datos de Foundry, que ese documento no nombraba: la mayoría no son condiciones del SRD, son
+cambios a un número.
+
+Dos rutas nombradas, y con destino distinto — **no las trato igual, porque una entra hoy y la otra
+no cabe todavía**:
+
+- **`shield`** cambia `system.attributes.ac.bonus` — un bonus a la Clase de Armadura, no una
+  condición que el personaje «tenga puesta». **Esta sí entra por la puerta que ya existe**:
+  `TemporaryModifier.target` (`docs/05-datos.md`) incluye `"ac"` entre sus doce objetivos, y
+  `amount` es un entero — exactamente la forma de `shield`.
+- **`bless`** cambia `system.bonuses.*` — un bonus a tiradas de ataque y de salvación. **Esta NO
+  cabe todavía, y por el mismo motivo que ya está medido en el documento citado arriba**: no hay
+  ningún objetivo de `TemporaryModifier` para un bono a tiradas —los doce son las seis
+  características, `ac` y las cinco velocidades—, y aunque lo hubiera, `amount` es
+  `z.number().int()`: el `+1d4` de Bendición no es un entero y no se puede representar hoy. Es,
+  letra por letra, el caso que ese documento clasifica como «falta, y es el caro».
+
+Ninguno de los dos pasa por `esClaveReservada` ni por el resto de sitios que leen
+`CharacterCondition.key` (ver la ficha **P2-1** de [06-pendientes.md](../../06-pendientes.md)): son
+cambios numéricos, no condiciones, y por eso **blindar la puerta de las claves de condición protege
+la puerta pequeña** — el conversor va a necesitar sobre todo un mapeo de modificadores numéricos, y
+uno de ellos (el bono a tiradas, no entero) todavía no tiene dónde aterrizar.

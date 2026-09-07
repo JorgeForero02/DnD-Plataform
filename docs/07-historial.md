@@ -28,6 +28,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-por-tarea.md`](./_archivo/historial-2026-09-05-por-tarea.md) | **El detalle por tarea de los planes 03 y 15**, nueve entradas movidas enteras el 2026-09-05 cuando el fichero llegó a 997 de 1000, **y una segunda remesa** con el detalle por tarea de los planes 05, 07 y 08, movida cuando volvió a llenarse. Sus hitos se quedan arriba
 > | [`_archivo/historial-2026-09-06-planes-09-11-13-14-por-tarea.md`](./_archivo/historial-2026-09-06-planes-09-11-13-14-por-tarea.md) | **El detalle por tarea de los planes 09, 11, 13 y 14**, seis entradas movidas enteras el 2026-09-06 al llegar el fichero a 968 de 1000 ejecutando el paso 1. Sus hitos se quedan arriba
 > | [`_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md`](./_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md) | **El detalle por tarea de las tareas 5 y 14 del plan `iniciativa-y-bando`**, movidas enteras el 2026-09-06 al escribir el hito de la tanda completa. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, movida entera el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó el fichero por encima de su tope de 1000 líneas, y esta fue la más antigua. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -38,6 +39,71 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Paso 2 — la actividad, sus cinco formas y la economía de la mesa (2026-09-06/07)
+
+**Qué.** Las once tareas del plan [`2026-09-06-paso-2-actividad.md`](./superpowers/plans/2026-09-06-paso-2-actividad.md),
+en nueve commits de tarea —dos de ellos juntan dos tareas cada uno (9+10 y 3+11)— más dos commits
+de corrección de sus e2e: la economía de acciones del combate (`Combatant.actionUsed/bonusUsed/reactionUsed/movementUsed`,
+repuesta al empezar el turno de quien entra); `Origen`, un número que nunca miente sobre su
+procedencia; las cinco actividades del SRD (`ataque`, `salvacion`, `dados`, `utilidad`, `prueba`)
+con su propio `dados`; usarla gastando por las puertas que ya existían (`changeHp`,
+`RollRequestsService.create`, `ConditionsService.apply`, con el patrón `tx?` extendido a los
+tres — con un hueco real que quedó abierto en uno de ellos, ver
+[06-pendientes.md](./06-pendientes.md)); una subclase por personaje y no todas a la vez; conceder
+una actividad desde el catálogo con sus usos y sus escalas; y la Furia de punta a punta, con la
+economía visible en la mesa.
+
+**Por qué.** Un mago sigue sin hechizos hasta el paso 3, y este paso existía para que quepan: la
+tarea 0 mapeó diez conjuros a mano contra el borrador del plan y ocho no cabían, así que el esquema
+se corrigió antes de escribir código (D-P2-1 a D-P2-6 en [decisiones.md](./decisiones.md)).
+
+**Cómo se comprobó.** Trece de trece tareas de la tanda con implementador —contando también el
+plan botín, más abajo, y sin contar la tarea 0, que fue papel sin implementador— mordieron algo
+real en su primera revisión con contexto limpio; ninguno de los hallazgos lo vio quien implementó. Los tres más graves de este plan: una fuga por 403 en `gastar` sobre un PNJ
+escondido; `raging` interpretada por el servidor sin estar en la lista de claves reservadas —un
+jugador se llevaba +2 de daño permanente gratis—, reincidencia exacta del agujero que se cerró para
+`helped`; y un interbloqueo real en el orden de los candados de `changeHp`. Detalle completo, tarea
+a tarea, en el bloque «Avance» del plan y en `.superpowers/sdd/2026-09-06-tanda-paso2-y-botin/progress.md`
+(local, no viaja con el clon).
+
+**Cómo revertir.** Once commits independientes de `2bd7769` a `2228341`/`8d4de37`
+(`git log --oneline 7e7f92b..HEAD`); revertir uno deshace su tarea. Dos llevan migración:
+`combatant_action_economy` (las cuatro columnas de `Combatant`) y `character_subclass`
+(`Character.subclassKey`) — revertir el código deja las columnas sin escritor, sin dato que
+perder. **`character_subclass` tiene efecto sobre datos ya en producción**: un personaje de nivel
+≥ `chosenAtLevel` pierde los rasgos de su camino hasta que alguien elija uno, que es el arreglo y no
+una regresión — ver [05-datos.md](./05-datos.md). Nueve fichas de deuda quedaron abiertas en
+[06-pendientes.md](./06-pendientes.md), la más urgente antes del paso 3 siendo la autorización de
+`changeHp` y de `RollRequestsService.create` sobre actividades de otro personaje.
+
+## Botín y reparto — una tabla entrega, y decir quién dio (2026-09-06)
+
+**Qué.** Cinco tareas del plan [`2026-09-06-botin-y-reparto-plan.md`](./superpowers/plans/2026-09-06-botin-y-reparto-plan.md),
+en tres commits: una fila de `DmTable` puede llevar `entrega` (objetos por `ContentRef` y las cinco
+monedas), y tirarla devuelve esos objetos ya resueltos por nombre; dar un objeto o dinero dice
+**quién** lo dio, con un campo opcional `de` sobre los sucesos que ya existían; y «Dar…» se hace
+desde la mesa y desde el resultado de una tirada, sin abrir la ficha de quien recibe.
+
+**Por qué.** La premisa del plan —«hoy un objeto aparece en una bolsa y nadie sabe de dónde
+salió»— era falsa: el rastro (`ITEM_ADDED`, `MONEY_CHANGED`) ya existía, y no hacía falta un tipo
+de suceso nuevo (D-P2-7). Y lo que la mesa decide, la mesa decide: no hay «dar a todos», ni
+repartir oro a partes iguales, ni comercio — las dos primeras las cubre una prueba de ausencia;
+el comercio no se construyó, así que no hay pantalla de la que medir su ausencia.
+
+**Cómo se comprobó.** Un `catch` que tragaba cualquier fallo de Postgres y lo presentaba como «ese
+objeto ya no existe» dentro de la transacción del disparo automático, borrando la pista del error
+real. Nueve mutaciones de aflojamiento sobre el campo `entrega`, las nueve en verde antes del
+arreglo. Y una clave de catálogo inventada (`shortsword`, que no existe — es `short-sword`) citada
+tres veces por un encargo del orquestador y corregida las tres contra el catálogo real.
+
+**Cómo revertir.** Tres commits (`eaa333e`, `cbbfebf`, `c36a099`), independientes entre sí y del
+paso 2. `eaa333e` lleva la migración `dm_table_entry_loot` (columna `entrega Json?`); revertir el
+código deja la columna sin escritores, sin fila sembrada fuera de las pruebas que la use. Dos
+fichas quedaron abiertas: el formulario de crear tablas no tiene campo para redactar `entrega`, y
+un jugador con un PNJ cedido ve la lista de destinatarios vacía al abrir «Dar…».
 
 ---
 
@@ -898,46 +964,11 @@ ejecución.
 
 ---
 
-## La Ola 3, las 21 decisiones y la auditoría de la cola larga (2026-09-05)
+## La Ola 3, las 21 decisiones y la auditoría de la cola larga (2026-09-05) — archivada
 
-**Qué.** Tres commits de código y el cierre de la deuda de decisión que arrastraba el proyecto.
-
-**Las mecánicas que quedaban sin pantalla.** Se repitió el barrido del §8 de la auditoría de la
-mesa sobre el árbol ya ensamblado: **de quince, diez estaban resueltas y ninguna se había caído**
-—los dos únicos hooks huérfanos ya lo eran antes de `a1d4a1d`, comprobado con `git grep`—. De las
-cinco restantes se cerraron tres:
-
-- **`ENTITY_LINKED`** (`6f3d141`): `LinksService.create` escribía la fila y **no emitía el suceso**,
-  así que una regla sobre «cuando se enlacen dos fichas» no se disparaba jamás. Enlace y suceso van
-  ahora en la misma transacción, y **la visibilidad del suceso no se hereda de un extremo**: un
-  enlace revela que dos cosas tienen que ver aunque no se pueda abrir ninguna, así que sale para
-  jugadores **solo si las dos fichas ya las ve la mesa**.
-- **`concentrationSave`** (`e3c0d4f`): el servidor lo devolvía desde 2C y **ninguna pantalla lo
-  leía**, así que la tirada aparecía en la bandeja del jugador y quien aplicó el golpe no sabía que
-  la había provocado. Y `PonerDano` cerraba su cajón sin traza: el aviso se habría pintado y
-  destruido en el mismo fotograma.
-- **Dos de los cuatro disparadores muertos** (`4c7c3a2`): no les faltaba un `case`, **no existían
-  como suceso**. `ENTITY_COMMENTED` y `MEMBER_JOINED` ya los escribe su gesto. Los otros dos siguen
-  retirados **con su motivo escrito**: `DM_EXECUTED` no tiene gesto en ninguna pantalla, y
-  `ENTITY_ATTACKED` apunta a una ficha del mundo cuando aquí se ataca a un personaje. Cierra de paso
-  **C6-1**: la lista de disparadores sin motor vivía dos veces y ahora vive en `@dnd/shared`.
-
-**Las decisiones.** Veintiuna cerradas: cuatro del autor —el hilo se lee como una conversación con
-lo último abajo; manda `04-convenciones.md` sobre el cobre; el color lo elige el jugador; **el
-tablero telaraña se sustituye por la línea de tiempo**—, nueve por investigación contra el SRD y
-siete por recomendación. Con una regla nueva y vinculante: **las reglas de D&D son verdad absoluta,
-y la maqueta no es fuente de reglas**.
-
-**La auditoría de la cola larga.** Las 55 secciones de `06-pendientes.md` leídas y contrastadas
-contra el código. **Siete fichas afirmaban que faltaba algo que ya estaba hecho** —entre ellas que
-el elenco no mandaba el tipo de daño, que `recordEntityOpened` no estaba conectado y que equipar no
-dejaba rastro—, y una, `M10`, es falsa en su primera mitad y cierta en la segunda.
-
-**Por qué así.** Las siete fichas caducas tenían **su evidencia escrita, y era cierta el día que se
-escribió**. Una ficha con un barrido citado dentro envejece igual que el código: por eso lo que se
-tache lleva desde ahora **la prueba de cuándo**, no solo la de qué.
-
-**Cómo revertir.** Los tres commits son independientes y se revierten por separado. `6f3d141` y
-`4c7c3a2` llevan migración —una columna de enum cada uno—; los valores de un enum de PostgreSQL **se
-añaden y no se quitan**, así que revertir el código deja el valor huérfano en la base, que es
-inofensivo.
+**Movida entera** a [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md)
+el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó este fichero por encima de su
+tope de 1000 líneas, y esta era la entrada más antigua. En una línea: tres commits de código (`ENTITY_LINKED` empezó a emitirse,
+`concentrationSave` ganó pantalla y dos disparadores muertos se retiraron con su motivo escrito),
+veintiuna decisiones cerradas y una auditoría de las 55 fichas de `06-pendientes.md` que encontró
+siete caducadas por describir un hueco que ya estaba cerrado.

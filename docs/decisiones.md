@@ -366,6 +366,26 @@ escritas y paradas**; las tres últimas fijan el criterio del catálogo antes de
 | D-A-5 | **Sin traducción oficial, el nombre se queda en inglés; las descripciones se intentan en español y, si el YAML no lo permite, se quedan en inglés.** Lo que **no** cambia: un nombre no se traduce por criterio propio —falló en 2 de 15 monstruos: *goblin* no es «trasgo», *wight* es «Tumulario»— y una **frase de reglas** en español sale del SRD oficial, nunca de una paráfrasis |
 | D-A-6 | **Antes de fijar el esquema de la actividad se mapean DIEZ conjuros a mano** —uno de cada actividad, uno con concentración, uno que escala, uno de los que caen fuera, uno con usos y uno con materiales con coste—. No importa nada ni toca el catálogo: es papel. **Si dos no entran, se corrige el esquema antes de escribir código.** Media jornada aquí evita una migración del catálogo entero en el paso 3. Propuesta de la sesión de acompañamiento, aprobada por el autor el 2026-09-06 |
 
+## Paso 2 y botín (2026-09-06/07) · [plan A](./superpowers/plans/2026-09-06-paso-2-actividad.md) · [plan B](./superpowers/plans/2026-09-06-botin-y-reparto-plan.md)
+
+Diecinueve tareas, dos planes ejecutados por superficie. El detalle de cada corrección está en
+`.superpowers/sdd/2026-09-06-tanda-paso2-y-botin/progress.md` (local, no viaja con el clon) y en el
+informe para el autor, `informe-paso-2-y-botin.md` (fuera de este repositorio); aquí solo las
+decisiones que no se pueden deducir del código.
+
+| | Decisión |
+|---|---|
+| D-P2-1 | **El esquema corregido de la actividad manda sobre el texto del plan** donde discrepen. La tarea 0 mapeó diez conjuros contra el borrador del plan y ocho no cabían — el esquema corregido está en `.superpowers/sdd/2026-09-06-tanda-paso2-y-botin/briefs/esquema-corregido.md` |
+| D-P2-2 | **`ataque` y `salvacion` llevan su propio `dados` opcional**, no uno separado de la actividad: en Foundry una actividad `attack` lleva su `damage` dentro y una `save` también — partirlas dejaba 81 actividades del SRD sin una forma de una pieza |
+| D-P2-3 | **`prueba.ability` admite `"lanzamiento"` y su `cd` es opcional.** Una prueba de característica, a diferencia de una salvación, no siempre nombra una característica concreta (`counterspell` es del ejemplo) ni siempre trae una CD derivable (4 de 14 actividades `check` del SRD no traen ninguna) |
+| D-P2-4 | **«Sin tope» se dice con `null`, nunca con un número grande.** `CharacterResource.max` ya era nulable; escribir un `999` como hace Foundry sería el mismo `simplifyBonus` con otra cara — ver [04-convenciones.md](./04-convenciones.md) |
+| D-P2-5 | **Un tramo de una tabla de escala se extiende hacia arriba**, y por eso no hay guarda por encima del último: la Furia es +4 de daño a nivel 20 porque el tramo del 16 sigue vigente, y una guarda ahí haría reventar la hoja de todo bárbaro de nivel 17 a 20 |
+| D-P2-6 | **`nivelDeEspacio` se deriva del recurso que se gastó de verdad, nunca se confía del cliente.** Lo que el cliente manda elige qué espacio gastar, no a qué nivel se lanzó: sin esto, declarar nivel 9 y pagar un espacio de nivel 1 es trampa gratis |
+| D-P2-7 | **B3 NO añade un tipo de suceso `ITEM_GIVEN`.** Su premisa —«hoy un objeto aparece en una bolsa y nadie sabe de dónde salió»— es falsa: `ITEM_ADDED` y `MONEY_CHANGED` ya llevan actor, objeto y cantidad. Lo que faltaba era decir **quién** lo dio, y eso es un campo opcional `de` sobre los dos tipos que ya existían, nunca un tercero — un valor de enum de PostgreSQL se añade y no se borra jamás |
+| D-P2-8 | **`ContentRef` es la unión de objetos que ya existía** (`{source, key}` / `{source, id}` de `character-build.schema.ts`), no la cadena `"SRD:short-sword"` que escribía la prosa de ambos planes. El código manda sobre el texto caducado |
+| D-P2-9 | **El dueño de una condición reservada puede retirarla él mismo si fue él quien la puso** (`appliedById`), para cumplir el SRD sobre la Furia («puedes terminar tu furia como acción adicional»). La condición que un DM aplicó a mano sigue necesitando al DM para quitarla |
+| D-P2-10 | **`raging` y las claves de condición que no son del SRD se reservan en cuanto el servidor las interpreta.** Reincidencia exacta del agujero que el paso 1 cerró para `helped`: sin reservarla, un jugador podía darse a sí mismo +2 de daño permanente sin gastar nada |
+
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 
 **Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con

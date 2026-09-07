@@ -12,6 +12,14 @@ cuando se congelaron, no descripciones del sistema de hoy. Si un documento de aq
 | [`pendientes-cerrados-hasta-2026-09-03.md`](./pendientes-cerrados-hasta-2026-09-03.md) | Las **65 fichas tachadas** que `06-pendientes.md` seguía arrastrando: cerradas, resueltas o contestadas. Se seleccionaron con una regla mecánica —todo lo tachado sale, ninguna ficha abierta se toca— y varias explican una afirmación que resultó falsa | 2026-09-03 |
 | [`pendientes-cerrados-2026-09-06-poda.md`](./pendientes-cerrados-2026-09-06-poda.md) | Las **tres fichas que `06-pendientes.md` seguía arrastrando con «Cerrado» en su propio título**. Dos explican un **error de medición** —una ficha afirmaba que nadie podía curar a nadie, y el grep que lo hizo creer— y por eso se archivan en vez de borrarse | 2026-09-06 |
 | [`plataforma-dnd-documentacion.md`](./plataforma-dnd-documentacion.md) | **El documento fuente original del producto (2026-07-02).** Lleva su propia advertencia dentro, y hay que leerla: propone Redis, BullMQ, WebSockets, S3, una tabla por tipo de entidad y una hoja de personaje **almacenada** — o sea, lo contrario de cinco decisiones que el resto de la documentación defiende. Estaba en `docs/` junto a los documentos vivos, con la misma voz de autoridad | 2026-09-03 |
+| [`historial-2026-09-05-ola-3.md`](./historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, la entrada más antigua de `07-historial.md` cuando ese fichero llegó a 1004 de sus 1000 líneas al cerrar la documentación del paso 2 y el botín | 2026-09-07 |
+
+> **Esta tabla lleva un rezago conocido**: la tabla de archivados de `07-historial.md` cita diez
+> ficheros de `_archivo/`, y contando todas sus menciones (también fuera de esa tabla) el
+> documento entero cita doce — más filas de las que esta lista tiene. No es una prueba de que
+> falten ficheros de verdad: es una prueba de que nadie ha barrido las dos tablas una contra otra
+> desde que empezaron a divergir. Sujeto a saldarse cuando alguien haga ese barrido, no en esta
+> tarea.
 
 **Por qué existe esto.** El protocolo de documentación fija umbrales: `07-historial` se archiva
 al pasar de ~600 líneas, y `06-pendientes` se poda cuando mezcla abierto con cerrado. Los dos los

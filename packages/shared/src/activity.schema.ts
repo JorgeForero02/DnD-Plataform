@@ -554,6 +554,20 @@ export const actividadSchema = z
   .superRefine(salvacionMitadTieneDados);
 export type Actividad = z.infer<typeof actividadSchema>;
 
+// ---------------------------------------------------------------------------------------------
+// Tarea A7 (paso 2) — el cuerpo de la petición que usa una actividad.
+//
+// **Nada de la forma de la actividad se toca aquí.** Esto es lo único nuevo: qué manda el cliente
+// al pulsar «usar». `objetivos` son ids de `Character` (nunca más de doce, el mismo tope que ya usa
+// `createRollRequestSchema.characterIds`, porque una petición de tirada nacida de una actividad de
+// salvación reutiliza esa misma cota) y `nivelDeEspacio` solo importa cuando la actividad se paga
+// con un espacio de conjuro de nivel superior al mínimo.
+export const usarActividadSchema = z.object({
+  objetivos: z.array(z.string().cuid()).max(12).optional(),
+  nivelDeEspacio: z.number().int().min(1).max(9).optional(),
+});
+export type UsarActividadInput = z.infer<typeof usarActividadSchema>;
+
 /**
  * Comprobación de tipos, sin coste en tiempo de ejecución: si alguien añade una sexta rama a la
  * unión de `actividadSchema` sin añadir su literal a `TIPOS_DE_ACTIVIDAD` (o al revés), esto deja

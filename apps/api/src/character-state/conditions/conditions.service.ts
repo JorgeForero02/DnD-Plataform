@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import {
   CLAVE_AYUDA,
   SEGUNDOS_POR_ASALTO,
@@ -11,6 +12,7 @@ import {
   type ApplyConditionInput,
   type SrdCondition,
   type HelpInput,
+  type Visibility,
 } from "@dnd/shared";
 import { CONCENTRATION_KEY_PREFIX, esConcentracion } from "../concentration/concentration";
 import { condicionVencida } from "./vencimiento";
@@ -97,8 +99,29 @@ export class ConditionsService {
    * quien llame sea el DM, y `helped` no se escribe por aquí nunca. Ver `esClaveReservada`.
    *
    * Aplicar dos veces la misma clave la reemplaza, no la duplica.
+   *
+   * **`tx` opcional, aditivo (tarea A7, vuelta de arreglo 1).** Usar una actividad aplica su
+   * efecto y sus `effects[]` en la misma transacción — «gasté el recurso y la condición no se
+   * aplicó» es exactamente el estado a medias que ese encargo existe para impedir. Mismo patrón
+   * que `CharacterSheetService.changeHp` y `RollRequestsService.create`: el cuerpo que escribe se
+   * extrae a un método privado que recibe el cliente; **sin `tx` no cambia nada**.
+   *
+   * Las comprobaciones de arriba (visibilidad, dueño-o-DM, clave reservada, inmunidad) siguen
+   * contra `this.prisma`/`this.membership`/`this.statblocks` **incluso con `tx`** — a diferencia
+   * de `changeHp` y `create`, que sí se movieron al cliente de la transacción en la vuelta de
+   * arreglo 1 (I2). Aquí no se hizo el mismo movimiento: `inmunidadesDe` llama a
+   * `StatblocksService.resolver`, que tiene su propia `PrismaService` y no acepta un cliente por
+   * fuera, así que empujar esto contra `tx` habría exigido tocar un cuarto fichero fuera de la
+   * frontera de esta tarea. Queda como el mismo género de límite que I2 describe para
+   * `changeHp`/`create`, declarado en el informe.
    */
-  async apply(userId: string, campaignId: string, characterId: string, input: ApplyConditionInput) {
+  async apply(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    input: ApplyConditionInput,
+    tx?: Prisma.TransactionClient,
+  ) {
     const character = await requireVisibleCharacter(
       this.prisma,
       this.membership,
@@ -145,98 +168,110 @@ export class ConditionsService {
       throw new BadRequestException(`${character.name} es inmune a esa condición.`);
     }
 
-    return this.prisma.transaction(async (tx) => {
-      // **El vencimiento se guarda absoluto, no como una duración.** Guardar «dura una hora»
-      // obligaría a saber desde cuándo, y ese «desde cuándo» es otra columna que puede
-      // discrepar; con el instante en que vence, la pregunta «¿sigue viva?» es una resta contra
-      // el reloj y no hay dos datos que mantener de acuerdo. Se calcula **al aplicarla**, con el
-      // reloj de ese momento: renovar una condición es volver a aplicarla, que es lo que hace un
-      // DM en la mesa.
-      const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
-      const expiresAtClock =
-        input.durationSeconds === undefined ? null : campana.clockSeconds + input.durationSeconds;
+    const ejecutar = (cliente: Prisma.TransactionClient) =>
+      this.aplicarEnTransaccion(cliente, userId, campaignId, characterId, character, input);
+    return tx ? ejecutar(tx) : this.prisma.transaction(ejecutar);
+  }
 
-      // **SRD 5.1, «Concentration»:** *«Casting another spell that requires concentration. You lose
-      // concentration on a spell if you cast another spell that requires concentration. You can't
-      // concentrate on two spells at once.»*
-      //
-      // El `upsert` de abajo es **por clave exacta** y cada conjuro genera la suya
-      // (`CONCENTRATION_KEY_PREFIX`), así que dos conjuros distintos eran dos filas y convivían.
-      // Encima, `estaConcentrado` devuelve un **booleano**, de modo que con dos vivas `changeHp`
-      // pedía **una sola** salvación: retirando la anterior aquí, ese segundo defecto desaparece
-      // solo — que es la señal de que el arreglo va en el sitio bueno.
-      //
-      // **Se retira al ESCRIBIR y no al leer** porque perder una concentración es un suceso de la
-      // mesa: alguien tiene que enterarse de que la Bendición se cayó. Un filtro al leer lo
-      // habría hecho desaparecer en silencio.
-      if (esConcentracion(input.key)) {
-        // **Solo las que siguen vivas.** Una concentración ya vencida se queda en la hoja
-        // marcada a propósito (D-2C-2); retirarla aquí anunciaría una pérdida que ya ocurrió y
-        // que el jugador ya vio.
-        const previas = (
-          await tx.characterCondition.findMany({
-            where: {
-              characterId,
-              key: { startsWith: CONCENTRATION_KEY_PREFIX, not: input.key },
-            },
-          })
-        ).filter((c) => esConcentracion(c.key) && !condicionVencida(c, campana.clockSeconds));
-        for (const previa of previas) {
-          await tx.characterCondition.delete({ where: { id: previa.id } });
-          // El mismo suceso que emite retirar una condición a mano, no uno nuevo: la línea de
-          // tiempo ya sabe leerlo y la pantalla ya sabe pintarlo.
-          await this.events.record(
-            userId,
-            campaignId,
-            {
-              subjectType: "character",
-              subjectId: characterId,
-              visibility: character.visibility,
-              payload: { type: "CONDITION_REMOVED", key: previa.key },
-            },
-            tx,
-          );
-        }
-      }
+  /** El cuerpo de `apply` que escribe, sin abrir su propia transacción — ver el comentario de arriba. */
+  private async aplicarEnTransaccion(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    character: { visibility: Visibility },
+    input: ApplyConditionInput,
+  ) {
+    // **El vencimiento se guarda absoluto, no como una duración.** Guardar «dura una hora»
+    // obligaría a saber desde cuándo, y ese «desde cuándo» es otra columna que puede
+    // discrepar; con el instante en que vence, la pregunta «¿sigue viva?» es una resta contra
+    // el reloj y no hay dos datos que mantener de acuerdo. Se calcula **al aplicarla**, con el
+    // reloj de ese momento: renovar una condición es volver a aplicarla, que es lo que hace un
+    // DM en la mesa.
+    const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+    const expiresAtClock =
+      input.durationSeconds === undefined ? null : campana.clockSeconds + input.durationSeconds;
 
-      const condition = await tx.characterCondition.upsert({
-        where: { characterId_key: { characterId, key: input.key } },
-        create: {
-          characterId,
-          key: input.key,
-          level: input.level ?? null,
-          note: input.note ?? null,
-          appliedById: userId,
-          expiresAtClock,
-        },
-        update: {
-          level: input.level ?? null,
-          note: input.note ?? null,
-          appliedById: userId,
-          // **Se escribe siempre, también cuando es `null`.** Volver a aplicar una condición sin
-          // duración tiene que dejarla indefinida: si el `null` no se escribiera, heredaría en
-          // silencio la caducidad de la vez anterior y se apagaría sola sin que nadie lo pidiera.
-          expiresAtClock,
-        },
-      });
-      await this.events.record(
-        userId,
-        campaignId,
-        {
-          subjectType: "character",
-          subjectId: characterId,
-          visibility: character.visibility,
-          payload: {
-            type: "CONDITION_APPLIED",
-            key: input.key,
-            level: input.level,
-            reason: input.note,
+    // **SRD 5.1, «Concentration»:** *«Casting another spell that requires concentration. You lose
+    // concentration on a spell if you cast another spell that requires concentration. You can't
+    // concentrate on two spells at once.»*
+    //
+    // El `upsert` de abajo es **por clave exacta** y cada conjuro genera la suya
+    // (`CONCENTRATION_KEY_PREFIX`), así que dos conjuros distintos eran dos filas y convivían.
+    // Encima, `estaConcentrado` devuelve un **booleano**, de modo que con dos vivas `changeHp`
+    // pedía **una sola** salvación: retirando la anterior aquí, ese segundo defecto desaparece
+    // solo — que es la señal de que el arreglo va en el sitio bueno.
+    //
+    // **Se retira al ESCRIBIR y no al leer** porque perder una concentración es un suceso de la
+    // mesa: alguien tiene que enterarse de que la Bendición se cayó. Un filtro al leer lo
+    // habría hecho desaparecer en silencio.
+    if (esConcentracion(input.key)) {
+      // **Solo las que siguen vivas.** Una concentración ya vencida se queda en la hoja
+      // marcada a propósito (D-2C-2); retirarla aquí anunciaría una pérdida que ya ocurrió y
+      // que el jugador ya vio.
+      const previas = (
+        await tx.characterCondition.findMany({
+          where: {
+            characterId,
+            key: { startsWith: CONCENTRATION_KEY_PREFIX, not: input.key },
           },
-        },
-        tx,
-      );
-      return condition;
+        })
+      ).filter((c) => esConcentracion(c.key) && !condicionVencida(c, campana.clockSeconds));
+      for (const previa of previas) {
+        await tx.characterCondition.delete({ where: { id: previa.id } });
+        // El mismo suceso que emite retirar una condición a mano, no uno nuevo: la línea de
+        // tiempo ya sabe leerlo y la pantalla ya sabe pintarlo.
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            subjectId: characterId,
+            visibility: character.visibility,
+            payload: { type: "CONDITION_REMOVED", key: previa.key },
+          },
+          tx,
+        );
+      }
+    }
+
+    const condition = await tx.characterCondition.upsert({
+      where: { characterId_key: { characterId, key: input.key } },
+      create: {
+        characterId,
+        key: input.key,
+        level: input.level ?? null,
+        note: input.note ?? null,
+        appliedById: userId,
+        expiresAtClock,
+      },
+      update: {
+        level: input.level ?? null,
+        note: input.note ?? null,
+        appliedById: userId,
+        // **Se escribe siempre, también cuando es `null`.** Volver a aplicar una condición sin
+        // duración tiene que dejarla indefinida: si el `null` no se escribiera, heredaría en
+        // silencio la caducidad de la vez anterior y se apagaría sola sin que nadie lo pidiera.
+        expiresAtClock,
+      },
     });
+    await this.events.record(
+      userId,
+      campaignId,
+      {
+        subjectType: "character",
+        subjectId: characterId,
+        visibility: character.visibility,
+        payload: {
+          type: "CONDITION_APPLIED",
+          key: input.key,
+          level: input.level,
+          reason: input.note,
+        },
+      },
+      tx,
+    );
+    return condition;
   }
 
   /**

@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import type {
   AnswerRollRequestInput,
   CreateRollRequestInput,
@@ -47,8 +49,32 @@ export class RollRequestsService {
     private readonly events: GameEventsService,
   ) {}
 
-  /** Pedir. **Solo el DM**: es un acto de arbitraje. */
-  async create(userId: string, campaignId: string, input: CreateRollRequestInput) {
+  /**
+   * Pedir. **Solo el DM**: es un acto de arbitraje.
+   *
+   * **`tx` opcional, aditivo (tarea A7, paso 2).** Una actividad de salvación crea la petición de
+   * tirada en la MISMA transacción que gasta su recurso — `PrismaService.transaction` no anida, y
+   * abrir una segunda transacción aquí dentro de la de la actividad rompería la garantía de «a
+   * medias no se queda». Mismo patrón que `CharacterSheetService.changeHp` y precedente en
+   * `DmTablesService.tirarSobre`: el cuerpo va en un método privado que recibe el cliente, y
+   * **sin `tx` el comportamiento no cambia**, sigue abriendo su propia transacción.
+   *
+   * **Vuelta de arreglo 1 (I2), mismo arreglo que en `changeHp`:** con `tx`, `requireDM` y la
+   * comprobación de que los personajes son de esta campaña se hacen contra ESE cliente — no
+   * contra `this.prisma`, que pediría una segunda conexión del pool mientras la de quien llama
+   * sigue abierta.
+   */
+  async create(
+    userId: string,
+    campaignId: string,
+    input: CreateRollRequestInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    if (tx) {
+      await this.autorizarYComprobarPersonajesConCliente(tx, userId, campaignId, input);
+      return this.crearEnTransaccion(tx, userId, campaignId, input);
+    }
+
     await this.membership.requireDM(campaignId, userId);
 
     // Todos los personajes tienen que ser de esta campaña. **Se comprueba en una consulta y no en
@@ -66,26 +92,61 @@ export class RollRequestsService {
       throw new NotFoundException("Alguno de esos personajes no está en esta campaña.");
     }
 
-    return this.prisma.transaction(async (tx) => {
-      const creadas = [];
-      for (const characterId of input.characterIds) {
-        creadas.push(
-          await tx.rollRequest.create({
-            data: {
-              campaignId,
-              characterId,
-              requestedById: userId,
-              key: input.key,
-              label: input.label,
-              dc: input.dc ?? null,
-              mode: input.mode,
-              audience: input.audience,
-            },
-          }),
-        );
-      }
-      return creadas;
+    return this.prisma.transaction((cliente) =>
+      this.crearEnTransaccion(cliente, userId, campaignId, input),
+    );
+  }
+
+  /**
+   * La misma autorización y comprobación de personajes que el camino de siempre, pero contra el
+   * cliente que se le pasa — mismos mensajes, misma excepción.
+   */
+  private async autorizarYComprobarPersonajesConCliente(
+    cliente: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    input: CreateRollRequestInput,
+  ): Promise<void> {
+    const miembro = await cliente.campaignMember.findUnique({
+      where: { campaignId_userId: { campaignId, userId } },
     });
+    if (!miembro) throw new ForbiddenException("Not a member of this campaign");
+    if (miembro.role !== "DM") throw new ForbiddenException("DM role required");
+
+    const personajes = await cliente.character.findMany({
+      where: { id: { in: input.characterIds }, campaignId, archivedAt: null },
+      select: { id: true },
+    });
+    if (personajes.length !== input.characterIds.length) {
+      throw new NotFoundException("Alguno de esos personajes no está en esta campaña.");
+    }
+  }
+
+  /** El cuerpo de `create`, sin abrir su propia transacción — ver el comentario de arriba. */
+  private async crearEnTransaccion(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    input: CreateRollRequestInput,
+  ) {
+    const creadas = [];
+    for (const characterId of input.characterIds) {
+      creadas.push(
+        await tx.rollRequest.create({
+          data: {
+            campaignId,
+            characterId,
+            requestedById: userId,
+            key: input.key,
+            label: input.label,
+            dc: input.dc ?? null,
+            mode: input.mode,
+            audience: input.audience,
+          },
+        }),
+      );
+    }
+    return creadas;
   }
 
   /**

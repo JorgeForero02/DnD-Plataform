@@ -69,6 +69,43 @@ describe("RollRequestsService", () => {
   });
 
   describe("pedir", () => {
+    // Tarea A7 (paso 2), vuelta de arreglo 2 — la re-revisión midió que `dc: null` fijo en
+    // `crearEnTransaccion` dejaba la suite entera en verde: `activities.service.spec.ts` solo
+    // comprueba lo que `ActivitiesService` MANDA a un `RollRequestsService` mockeado, nunca el
+    // `create()` real, que es donde vive el dato. Esta prueba cierra ese hueco donde el defecto
+    // vive de verdad.
+    it("dc llega a la fila creada — no se pierde entre el cuerpo y la escritura", async () => {
+      prisma.character.findMany.mockResolvedValue([{ id: "a" }]);
+
+      const [creada] = await service.create("dm", "c1", {
+        characterIds: ["a"],
+        key: "save.dex",
+        label: "Salvación de Destreza",
+        dc: 15,
+        mode: "NORMAL",
+        audience: "PUBLIC",
+      });
+
+      expect(creada.dc).toBe(15);
+      expect(prisma.rollRequest.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ dc: 15 }),
+      });
+    });
+
+    it("una petición sin dc guarda null, no un dato inventado", async () => {
+      prisma.character.findMany.mockResolvedValue([{ id: "a" }]);
+
+      const [creada] = await service.create("dm", "c1", {
+        characterIds: ["a"],
+        key: "skill.perception",
+        label: "Percepción",
+        mode: "NORMAL",
+        audience: "PUBLIC",
+      });
+
+      expect(creada.dc).toBeNull();
+    });
+
     it("**una petición por personaje**, aunque el DM pida a tres a la vez", async () => {
       // Así cada uno tira con SU modificador, y el registro no tiene que desenredar después quién
       // de los tres falló.

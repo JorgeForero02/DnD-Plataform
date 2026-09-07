@@ -18,6 +18,11 @@ import { TemporaryModifiersService } from "./temporary-modifiers/temporary-modif
 // nivel un personaje (`characters/`, fuera de esta frontera): así ese módulo importa
 // `CharacterStateModule` en vez de reimplementar la siembra de dados de golpe y espacios de
 // conjuro.
+//
+// `ConditionsService` se exporta desde la vuelta de arreglo 1 de la tarea A7 (paso 2): usar una
+// actividad aplica sus `effects[]` en la misma transacción que gasta el recurso, y
+// `ActivitiesModule` necesita inyectar el servicio para llamar a `apply(..., tx)` — el mismo
+// motivo por el que `RollRequestsModule` exporta `RollRequestsService`.
 @Module({
   // `StatblocksModule` entra por la tarea 2 del paso 1: aplicar una condicion tiene que poder
   // preguntar a que es inmune el statblock del que salio el personaje. No hay ciclo — statblocks
@@ -32,6 +37,6 @@ import { TemporaryModifiersService } from "./temporary-modifiers/temporary-modif
     TemporaryModifiersController,
   ],
   providers: [ResourcesService, RestService, ConditionsService, TemporaryModifiersService],
-  exports: [ResourcesService],
+  exports: [ResourcesService, ConditionsService],
 })
 export class CharacterStateModule {}

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Optional,
@@ -1085,259 +1086,325 @@ export class CharacterSheetService {
     return derivarOMotivo(resuelto.build, [...modificadoresDeAnulacion(character), ...temporales]);
   }
 
-  async changeHp(userId: string, campaignId: string, characterId: string, input: ChangeHpInput) {
+  /**
+   * **Tarea A7 (paso 2) — `tx` opcional, aditivo.** Una actividad gasta su recurso, cambia PG y
+   * escribe su suceso en una sola transacción, y `PrismaService.transaction` no anida: llamar a
+   * este método dentro de la transacción de la actividad con la puerta de siempre abriría una
+   * segunda transacción independiente, y la garantía de «a medias no se queda» se rompería justo
+   * donde más importa. La solución tiene precedente en este mismo proyecto
+   * (`DmTablesService.tirarSobre` acepta `opciones.tx` por la misma razón): el cuerpo se extrae a
+   * un método privado que recibe el cliente, y este método público decide con cuál — el suyo
+   * propio si no le dan uno, o el que le pasen. **Sin `tx`, el comportamiento no cambia en nada**:
+   * sigue abriendo su propia transacción, y ningún llamador existente lo nota.
+   *
+   * **Vuelta de arreglo 1 (I2): con `tx`, la autorización se comprueba contra ESE cliente, no
+   * contra `this.prisma`.** La primera versión llamaba a `this.membership.requireMember` y a
+   * `this.characters.requireEditable` **siempre**, aunque llegara un `tx` — las dos usan su
+   * propia `PrismaService` por dentro, así que cada llamada pedía una conexión nueva del pool
+   * mientras la de quien llama (`ActivitiesService`, con su propia transacción ya abierta) seguía
+   * tomada. Con el pool justo, eso es agotamiento y `transaction timeout`, no un interbloqueo de
+   * candados pero sí el mismo género de fallo: dos conexiones donde debería bastar una. Con `tx`,
+   * la comprobación se hace con una consulta equivalente contra ESE cliente; sin `tx`, el camino
+   * de siempre no cambia una coma.
+   */
+  async changeHp(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    input: ChangeHpInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    if (tx) {
+      await this.autorizarEdicionConCliente(tx, userId, campaignId, characterId);
+      return this.changeHpEnTransaccion(tx, userId, campaignId, characterId, input);
+    }
     await this.membership.requireMember(campaignId, userId);
     // Comprueba dueño-o-DM antes de bloquear la fila: es una lectura de más, pero evita
     // mantener el candado abierto mientras se resuelve un 403.
     await this.characters.requireEditable(userId, campaignId, characterId);
+    return this.prisma.transaction((cliente) =>
+      this.changeHpEnTransaccion(cliente, userId, campaignId, characterId, input),
+    );
+  }
 
-    return this.prisma.transaction(async (tx) => {
-      const filas = await tx.$queryRaw<
-        FilaPersonaje[]
-      >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
-      const character = filas[0];
-      if (!character) throw new NotFoundException("Character not found");
-
-      const sheet = await this.construirODenegar(userId, character);
-      const maxHp = sheet.derived.maxHp.total;
-      const before = character.currentHp ?? maxHp;
-
-      // **Un personaje muerto no se cura con puntos de golpe.** A 0 PG y con tres fracasos está
-      // muerto (SRD): la magia de curación no lo levanta, hace falta resurrección, que esta
-      // fase no modela. Hasta hoy, echarle diez puntos lo devolvía a la vida con el contador a
-      // cero y sin aviso — un clérigo deshacía una muerte por accidente y nadie se enteraba. Lo
-      // encontró un DM dirigiendo una partida de prueba. Se rechaza con un motivo en vez de
-      // resucitar en silencio; bajar los PG de un cadáver (un delta negativo) sigue permitido.
-      if (before === 0 && character.deathSaveFailures >= 3 && input.delta > 0) {
-        throw new BadRequestException(
-          "Este personaje está muerto: los puntos de golpe no lo reviven. Hace falta magia de resurrección, que aún no se modela.",
-        );
-      }
-
-      let tempHp = character.tempHp;
-      let after: number;
-
-      // --- Lo que el daño y la curación le hacen a las salvaciones de muerte -------------
-      //
-      // Estas tres reglas del SRD vivían en la cabeza de la mesa y no en el código, y la
-      // consecuencia era un fallo activo: **curar a un personaje a 0 PG le dejaba los fracasos
-      // encima**, sesión tras sesión. Lo encontró una investigación de huecos de mecánica.
-      let successes = character.deathSaveSuccesses;
-      let failures = character.deathSaveFailures;
-      let massive = false;
-      // Tarea 2.5.1, pieza C. **Solo se rellena si de verdad se redujo algo** — un delta sin
-      // `damageType`, o uno que no toca ninguna resistencia, deja esto vacío y el camino de hoy
-      // no cambia en nada, que es lo que hace la pieza reversible.
-      let damageTrace: ReturnType<typeof applyDamageModifiers> | null = null;
-      // **El delta que se ESCRIBE en el registro, que no siempre es el que llegó.** Lo encontró
-      // la revisión de cierre del 2026-09-04: el suceso guardaba `input.delta` —el daño bruto—
-      // mientras `from`/`to` ya venían del daño reducido, y eso hacía dos cosas malas a la vez.
-      //
-      //   1. **Filtraba.** Un jugador que ve «Pierde 25 PG (45 → 33)» deduce que hay una
-      //      resistencia, y la plantilla de la que sale puede ser `DM_ONLY`. Es la doctrina del
-      //      proyecto —«si no se debe saber, no se envía»— rota por el canal que el propio spec
-      //      de 2.5.1 nombra: el suceso del registro.
-      //   2. **Mentía.** `linea-de-log.ts` imprime literalmente `Pierde |delta| PG (from → to)`,
-      //      así que la línea se contradecía consigo misma.
-      //
-      // Se registra el daño **realmente aplicado**. Ojo con el precedente que sí se conserva:
-      // `delta` ya podía no cuadrar con `to − from` cuando los PG temporales absorben, y eso se
-      // queda — aquello es explicable con lo que el jugador ya ve; esto publicaba un número
-      // secreto.
-      let deltaRegistrado = input.delta;
-      // Tarea 2.5.4. **De qué tirada sale este daño**, y comprobada, no solo declarada: un
-      // `rollEventId` inventado (o de otra campaña) escribiría una causa falsa en el registro,
-      // que es justo lo que esta tarea existe para evitar. `undefined` cuando no se manda.
-      let concentrationSave: { requestId: string; dc: number } | undefined;
-      if (input.rollEventId) {
-        const tiradaCitada = await tx.gameEvent.findFirst({
-          // **Y tiene que ser una tirada, no cualquier suceso de la campaña.** La primera versión
-          // solo comprobaba `id` + `campaignId`, así que el id de un comentario, de una condición
-          // aplicada o de un `ENTITY_REVEALED` pasaba el filtro y quedaba escrito en el registro
-          // como «de qué tirada salió este daño». Eso es exactamente la causa falsa que la tarea
-          // existe para impedir, solo que más difícil de detectar que un id inventado, porque el
-          // id sí existe. Lo encontró la revisión de cierre.
-          where: {
-            id: input.rollEventId,
-            campaignId,
-            type: { in: ["ABILITY_ROLL", "DEATH_SAVE"] },
-          },
-          select: { id: true },
-        });
-        if (!tiradaCitada) {
-          throw new BadRequestException("Esa tirada no existe en esta campaña.");
-        }
-      }
-
-      if (input.delta < 0) {
-        // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
-        let danio = -input.delta;
-        // **La resistencia y la vulnerabilidad se aplican antes de tocar los PG temporales**: son
-        // el daño de verdad que llega al personaje, y los PG temporales se gastan sobre ESE
-        // número, no sobre el bruto de la tirada (SRD 5.1, «la resistencia y la vulnerabilidad se
-        // aplican después del resto de modificadores al daño» — aquí no hay ningún otro
-        // modificador antes, así que esta es la primera y única reducción).
-        if (input.damageType) {
-          // **Dos fuentes, una forma** (paso 1, tarea 8b). Un PNJ los saca de su statblock; **un
-          // personaje jugador de sus rasgos**, y hasta el 2026-09-06 no los sacaba de ningún
-          // sitio: la condición de aquí exigía `statblockRef`, y `characters.service.ts` filtra
-          // `statblockRef: null` a propósito para un PJ. Así que **un enano recibía el veneno
-          // entero** y un tiefling ardía con el fuego entero, con la traza convincente al lado.
-          //
-          // `damageModifiers` es opcional en `@dnd/shared` a propósito (ver el comentario de
-          // `damageModifiersSchema`): un statblock guardado antes de aquella tarea no lo tiene.
-          const modificadores =
-            character.statblockRef && this.statblocks
-              ? ((await this.statblocks.resolver(campaignId, character.statblockRef))
-                  ?.damageModifiers ?? [])
-              : sheet.damageModifiers;
-          if (modificadores.length > 0) {
-            damageTrace = applyDamageModifiers(danio, input.damageType, modificadores);
-            danio = damageTrace.total;
-            deltaRegistrado = -danio;
-          }
-        }
-        const gastoTemporal = Math.min(tempHp, danio);
-        tempHp -= gastoTemporal;
-        const efectivo = danio - gastoTemporal;
-
-        // **El sobrante se calcula ANTES de recortar**, o el `clamp` borra la evidencia: si lo
-        // que pasa de 0 iguala o supera los PG máximos, el personaje muere en el acto, sin
-        // tiradas. Recortar primero y preguntar después es el error que hace desaparecer esa
-        // muerte.
-        const sobrante = efectivo - before;
-        if (before > 0 && sobrante >= maxHp) {
-          massive = true;
-          failures = 3;
-        } else if (before === 0 && efectivo > 0) {
-          // **Golpear a quien ya está a 0 suma un fracaso, y dos si el golpe fue crítico.** Es
-          // el momento más frecuente del juego —el remate al que está en el suelo— y hasta hoy
-          // no dejaba ningún rastro.
-          failures = Math.min(3, failures + (input.critical ? 2 : 1));
-        }
-
-        // **La salvación de concentración** (hueco M17). *«Whenever you take damage while you
-        // are concentrating on a spell, you must make a Constitution saving throw to maintain
-        // your concentration. The DC equals 10 or half the damage you take, whichever number is
-        // higher.»* / *«If you take damage from multiple sources ... you make a separate saving
-        // throw for each source of damage»* (SRD 5.1, "Casting a Spell" — inglés, verificado
-        // contra dos fuentes que citan el texto CC-BY original). **Basta con pedirla**: se crea
-        // la petición de tirada de siempre (2C.5) y el sistema no decide si se pierde — eso lo
-        // resuelve quien la responde. Una por golpe, nunca deduplicada: es literalmente lo que
-        // pide "por cada fuente de daño".
-        //
-        // **Con el daño TOMADO, no con el que atravesó los PG temporales**, y las dos cosas que
-        // eso cambia las encontró la revisión de cierre.
-        //
-        //  1. **Los PG temporales no eximen de la salvación.** La regla dice *«whenever you take
-        //     damage»*, y el propio SRD describe los temporales como algo que se gasta *cuando
-        //     tomas daño* («when you have temporary hit points and take damage»): absorben el
-        //     golpe, no lo impiden. Se pedía con `efectivo`, así que un mago con 5 temporales que
-        //     encajaba 5 no tiraba nada — y con 12 tiraba contra CD 10 en vez de CD 10 (aquí
-        //     coinciden) pero con 30 tiraba contra CD 9→10 en vez de CD 15. La CD sale del mismo
-        //     número: *«half the damage you take»*.
-        //  2. **A 0 PG no se pide, porque ya no hay nada que mantener.** *«You lose concentration
-        //     on a spell if you are incapacitated or if you die»*, y quedar inconsciente es estar
-        //     incapacitado: el que cae a 0 pierde la concentración sin tirar, y el que ya estaba a
-        //     0 no la tenía. Pedir la salvación ahí es pedirle al jugador que tire para conservar
-        //     algo que la regla ya le quitó.
-        //
-        // `massive` queda fuera por lo mismo, y ahora es redundante —una muerte masiva deja en 0—
-        // pero se conserva explícito: dice lo que quiere decir sin depender de la aritmética.
-        const resultante = clamp(before - efectivo, 0, maxHp);
-        if (danio > 0 && !massive && before > 0 && resultante > 0) {
-          const condiciones = await tx.characterCondition.findMany({
-            where: { characterId },
-            select: { key: true, expiresAtClock: true, expiryEdge: true },
-          });
-          const campanaActual = await tx.campaign.findUniqueOrThrow({
-            where: { id: campaignId },
-            select: { clockSeconds: true },
-          });
-          if (estaConcentrado(condiciones, campanaActual.clockSeconds)) {
-            const dc = concentrationSaveDc(danio);
-            const peticion = await tx.rollRequest.create({
-              data: {
-                campaignId,
-                characterId,
-                requestedById: userId,
-                key: "save.con",
-                label: `Salvación de concentración (CD ${dc})`,
-                dc,
-                mode: "NORMAL",
-                // Misma regla que el resto del servicio: la audiencia sale de la visibilidad del
-                // personaje, no `PUBLIC` fija.
-                audience: loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE",
-              },
-            });
-            concentrationSave = { requestId: peticion.id, dc };
-          }
-        }
-
-        after = resultante;
-      } else {
-        after = clamp(before + input.delta, 0, maxHp);
-        // **Recuperar un solo PG estando a 0 borra los dos contadores.** No es una cortesía: el
-        // SRD dice que vuelves en ti, y arrastrar fracasos de una caída anterior mataría a
-        // alguien por algo que ya sobrevivió.
-        if (before === 0 && after > 0) {
-          successes = 0;
-          failures = 0;
-        }
-      }
-
-      const actualizado = await tx.character.update({
-        where: { id: characterId },
-        data: {
-          currentHp: after,
-          tempHp,
-          version: character.version + 1,
-          deathSaveSuccesses: successes,
-          deathSaveFailures: failures,
-        },
-      });
-
-      await this.events.record(
-        userId,
-        campaignId,
-        {
-          sessionId: await this.sesionActiva(campaignId, tx),
-          subjectType: "character",
-          subjectId: characterId,
-          visibility: character.visibility,
-          payload: {
-            type: "HP_CHANGED",
-            delta: deltaRegistrado,
-            from: before,
-            to: after,
-            // **Solo un delta NEGATIVO lleva tipo de daño.** También de la revisión de cierre:
-            // sin la comprobación del signo se podía etiquetar una CURACIÓN como de fuego, y
-            // entonces la única consulta para la que existe esta columna —«¿de qué murió
-            // Elara?»— devolvía curaciones. El comentario de `game-event.schema.ts` ya
-            // afirmaba que «una curación no tiene tipo de daño que contar»; el código no lo
-            // impedía.
-            ...(input.delta < 0 && input.damageType ? { damageType: input.damageType } : {}),
-            ...(input.critical ? { critical: true } : {}),
-            // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
-            // error de la herramienta.
-            ...(massive ? { massive: true } : {}),
-            // Tarea 2.5.4 — de qué tirada salió, ya comprobada arriba contra la base.
-            ...(input.rollEventId ? { rollEventId: input.rollEventId } : {}),
-            reason: input.reason,
-          },
-        },
-        tx,
-      );
-
-      const respuesta = await this.buildResponse(userId, actualizado);
-      // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
-      // sería un número sin origen, y esta tarea existe justo para lo contrario.
-      return {
-        ...respuesta,
-        ...(damageTrace ? { damageTrace } : {}),
-        ...(concentrationSave ? { concentrationSave } : {}),
-      };
+  /**
+   * La misma autorización que `MembershipService.requireMember` +
+   * `CharactersService.requireEditable`, pero contra el cliente que se le pasa — nunca contra
+   * `this.prisma`. Mismos mensajes, mismas excepciones: quien llama no puede notar la diferencia
+   * salvo por la conexión que usa.
+   */
+  private async autorizarEdicionConCliente(
+    cliente: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    characterId: string,
+  ): Promise<void> {
+    const miembro = await cliente.campaignMember.findUnique({
+      where: { campaignId_userId: { campaignId, userId } },
     });
+    if (!miembro) throw new ForbiddenException("Not a member of this campaign");
+    const character = await cliente.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character) throw new NotFoundException("Character not found");
+    if (miembro.role !== "DM" && character.ownerId !== userId) {
+      throw new ForbiddenException("Only the DM or the owner can modify this");
+    }
+  }
+
+  /** El cuerpo de `changeHp`, sin abrir su propia transacción — ver el comentario de arriba. */
+  private async changeHpEnTransaccion(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    input: ChangeHpInput,
+  ) {
+    const filas = await tx.$queryRaw<
+      FilaPersonaje[]
+    >`SELECT * FROM "Character" WHERE id = ${characterId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+    const character = filas[0];
+    if (!character) throw new NotFoundException("Character not found");
+
+    const sheet = await this.construirODenegar(userId, character);
+    const maxHp = sheet.derived.maxHp.total;
+    const before = character.currentHp ?? maxHp;
+
+    // **Un personaje muerto no se cura con puntos de golpe.** A 0 PG y con tres fracasos está
+    // muerto (SRD): la magia de curación no lo levanta, hace falta resurrección, que esta
+    // fase no modela. Hasta hoy, echarle diez puntos lo devolvía a la vida con el contador a
+    // cero y sin aviso — un clérigo deshacía una muerte por accidente y nadie se enteraba. Lo
+    // encontró un DM dirigiendo una partida de prueba. Se rechaza con un motivo en vez de
+    // resucitar en silencio; bajar los PG de un cadáver (un delta negativo) sigue permitido.
+    if (before === 0 && character.deathSaveFailures >= 3 && input.delta > 0) {
+      throw new BadRequestException(
+        "Este personaje está muerto: los puntos de golpe no lo reviven. Hace falta magia de resurrección, que aún no se modela.",
+      );
+    }
+
+    let tempHp = character.tempHp;
+    let after: number;
+
+    // --- Lo que el daño y la curación le hacen a las salvaciones de muerte -------------
+    //
+    // Estas tres reglas del SRD vivían en la cabeza de la mesa y no en el código, y la
+    // consecuencia era un fallo activo: **curar a un personaje a 0 PG le dejaba los fracasos
+    // encima**, sesión tras sesión. Lo encontró una investigación de huecos de mecánica.
+    let successes = character.deathSaveSuccesses;
+    let failures = character.deathSaveFailures;
+    let massive = false;
+    // Tarea 2.5.1, pieza C. **Solo se rellena si de verdad se redujo algo** — un delta sin
+    // `damageType`, o uno que no toca ninguna resistencia, deja esto vacío y el camino de hoy
+    // no cambia en nada, que es lo que hace la pieza reversible.
+    let damageTrace: ReturnType<typeof applyDamageModifiers> | null = null;
+    // **El delta que se ESCRIBE en el registro, que no siempre es el que llegó.** Lo encontró
+    // la revisión de cierre del 2026-09-04: el suceso guardaba `input.delta` —el daño bruto—
+    // mientras `from`/`to` ya venían del daño reducido, y eso hacía dos cosas malas a la vez.
+    //
+    //   1. **Filtraba.** Un jugador que ve «Pierde 25 PG (45 → 33)» deduce que hay una
+    //      resistencia, y la plantilla de la que sale puede ser `DM_ONLY`. Es la doctrina del
+    //      proyecto —«si no se debe saber, no se envía»— rota por el canal que el propio spec
+    //      de 2.5.1 nombra: el suceso del registro.
+    //   2. **Mentía.** `linea-de-log.ts` imprime literalmente `Pierde |delta| PG (from → to)`,
+    //      así que la línea se contradecía consigo misma.
+    //
+    // Se registra el daño **realmente aplicado**. Ojo con el precedente que sí se conserva:
+    // `delta` ya podía no cuadrar con `to − from` cuando los PG temporales absorben, y eso se
+    // queda — aquello es explicable con lo que el jugador ya ve; esto publicaba un número
+    // secreto.
+    let deltaRegistrado = input.delta;
+    // Tarea 2.5.4. **De qué tirada sale este daño**, y comprobada, no solo declarada: un
+    // `rollEventId` inventado (o de otra campaña) escribiría una causa falsa en el registro,
+    // que es justo lo que esta tarea existe para evitar. `undefined` cuando no se manda.
+    let concentrationSave: { requestId: string; dc: number } | undefined;
+    if (input.rollEventId) {
+      const tiradaCitada = await tx.gameEvent.findFirst({
+        // **Y tiene que ser una tirada, no cualquier suceso de la campaña.** La primera versión
+        // solo comprobaba `id` + `campaignId`, así que el id de un comentario, de una condición
+        // aplicada o de un `ENTITY_REVEALED` pasaba el filtro y quedaba escrito en el registro
+        // como «de qué tirada salió este daño». Eso es exactamente la causa falsa que la tarea
+        // existe para impedir, solo que más difícil de detectar que un id inventado, porque el
+        // id sí existe. Lo encontró la revisión de cierre.
+        where: {
+          id: input.rollEventId,
+          campaignId,
+          type: { in: ["ABILITY_ROLL", "DEATH_SAVE"] },
+        },
+        select: { id: true },
+      });
+      if (!tiradaCitada) {
+        throw new BadRequestException("Esa tirada no existe en esta campaña.");
+      }
+    }
+
+    if (input.delta < 0) {
+      // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
+      let danio = -input.delta;
+      // **La resistencia y la vulnerabilidad se aplican antes de tocar los PG temporales**: son
+      // el daño de verdad que llega al personaje, y los PG temporales se gastan sobre ESE
+      // número, no sobre el bruto de la tirada (SRD 5.1, «la resistencia y la vulnerabilidad se
+      // aplican después del resto de modificadores al daño» — aquí no hay ningún otro
+      // modificador antes, así que esta es la primera y única reducción).
+      if (input.damageType) {
+        // **Dos fuentes, una forma** (paso 1, tarea 8b). Un PNJ los saca de su statblock; **un
+        // personaje jugador de sus rasgos**, y hasta el 2026-09-06 no los sacaba de ningún
+        // sitio: la condición de aquí exigía `statblockRef`, y `characters.service.ts` filtra
+        // `statblockRef: null` a propósito para un PJ. Así que **un enano recibía el veneno
+        // entero** y un tiefling ardía con el fuego entero, con la traza convincente al lado.
+        //
+        // `damageModifiers` es opcional en `@dnd/shared` a propósito (ver el comentario de
+        // `damageModifiersSchema`): un statblock guardado antes de aquella tarea no lo tiene.
+        const modificadores =
+          character.statblockRef && this.statblocks
+            ? ((await this.statblocks.resolver(campaignId, character.statblockRef))
+                ?.damageModifiers ?? [])
+            : sheet.damageModifiers;
+        if (modificadores.length > 0) {
+          damageTrace = applyDamageModifiers(danio, input.damageType, modificadores);
+          danio = damageTrace.total;
+          deltaRegistrado = -danio;
+        }
+      }
+      const gastoTemporal = Math.min(tempHp, danio);
+      tempHp -= gastoTemporal;
+      const efectivo = danio - gastoTemporal;
+
+      // **El sobrante se calcula ANTES de recortar**, o el `clamp` borra la evidencia: si lo
+      // que pasa de 0 iguala o supera los PG máximos, el personaje muere en el acto, sin
+      // tiradas. Recortar primero y preguntar después es el error que hace desaparecer esa
+      // muerte.
+      const sobrante = efectivo - before;
+      if (before > 0 && sobrante >= maxHp) {
+        massive = true;
+        failures = 3;
+      } else if (before === 0 && efectivo > 0) {
+        // **Golpear a quien ya está a 0 suma un fracaso, y dos si el golpe fue crítico.** Es
+        // el momento más frecuente del juego —el remate al que está en el suelo— y hasta hoy
+        // no dejaba ningún rastro.
+        failures = Math.min(3, failures + (input.critical ? 2 : 1));
+      }
+
+      // **La salvación de concentración** (hueco M17). *«Whenever you take damage while you
+      // are concentrating on a spell, you must make a Constitution saving throw to maintain
+      // your concentration. The DC equals 10 or half the damage you take, whichever number is
+      // higher.»* / *«If you take damage from multiple sources ... you make a separate saving
+      // throw for each source of damage»* (SRD 5.1, "Casting a Spell" — inglés, verificado
+      // contra dos fuentes que citan el texto CC-BY original). **Basta con pedirla**: se crea
+      // la petición de tirada de siempre (2C.5) y el sistema no decide si se pierde — eso lo
+      // resuelve quien la responde. Una por golpe, nunca deduplicada: es literalmente lo que
+      // pide "por cada fuente de daño".
+      //
+      // **Con el daño TOMADO, no con el que atravesó los PG temporales**, y las dos cosas que
+      // eso cambia las encontró la revisión de cierre.
+      //
+      //  1. **Los PG temporales no eximen de la salvación.** La regla dice *«whenever you take
+      //     damage»*, y el propio SRD describe los temporales como algo que se gasta *cuando
+      //     tomas daño* («when you have temporary hit points and take damage»): absorben el
+      //     golpe, no lo impiden. Se pedía con `efectivo`, así que un mago con 5 temporales que
+      //     encajaba 5 no tiraba nada — y con 12 tiraba contra CD 10 en vez de CD 10 (aquí
+      //     coinciden) pero con 30 tiraba contra CD 9→10 en vez de CD 15. La CD sale del mismo
+      //     número: *«half the damage you take»*.
+      //  2. **A 0 PG no se pide, porque ya no hay nada que mantener.** *«You lose concentration
+      //     on a spell if you are incapacitated or if you die»*, y quedar inconsciente es estar
+      //     incapacitado: el que cae a 0 pierde la concentración sin tirar, y el que ya estaba a
+      //     0 no la tenía. Pedir la salvación ahí es pedirle al jugador que tire para conservar
+      //     algo que la regla ya le quitó.
+      //
+      // `massive` queda fuera por lo mismo, y ahora es redundante —una muerte masiva deja en 0—
+      // pero se conserva explícito: dice lo que quiere decir sin depender de la aritmética.
+      const resultante = clamp(before - efectivo, 0, maxHp);
+      if (danio > 0 && !massive && before > 0 && resultante > 0) {
+        const condiciones = await tx.characterCondition.findMany({
+          where: { characterId },
+          select: { key: true, expiresAtClock: true, expiryEdge: true },
+        });
+        const campanaActual = await tx.campaign.findUniqueOrThrow({
+          where: { id: campaignId },
+          select: { clockSeconds: true },
+        });
+        if (estaConcentrado(condiciones, campanaActual.clockSeconds)) {
+          const dc = concentrationSaveDc(danio);
+          const peticion = await tx.rollRequest.create({
+            data: {
+              campaignId,
+              characterId,
+              requestedById: userId,
+              key: "save.con",
+              label: `Salvación de concentración (CD ${dc})`,
+              dc,
+              mode: "NORMAL",
+              // Misma regla que el resto del servicio: la audiencia sale de la visibilidad del
+              // personaje, no `PUBLIC` fija.
+              audience: loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE",
+            },
+          });
+          concentrationSave = { requestId: peticion.id, dc };
+        }
+      }
+
+      after = resultante;
+    } else {
+      after = clamp(before + input.delta, 0, maxHp);
+      // **Recuperar un solo PG estando a 0 borra los dos contadores.** No es una cortesía: el
+      // SRD dice que vuelves en ti, y arrastrar fracasos de una caída anterior mataría a
+      // alguien por algo que ya sobrevivió.
+      if (before === 0 && after > 0) {
+        successes = 0;
+        failures = 0;
+      }
+    }
+
+    const actualizado = await tx.character.update({
+      where: { id: characterId },
+      data: {
+        currentHp: after,
+        tempHp,
+        version: character.version + 1,
+        deathSaveSuccesses: successes,
+        deathSaveFailures: failures,
+      },
+    });
+
+    await this.events.record(
+      userId,
+      campaignId,
+      {
+        sessionId: await this.sesionActiva(campaignId, tx),
+        subjectType: "character",
+        subjectId: characterId,
+        visibility: character.visibility,
+        payload: {
+          type: "HP_CHANGED",
+          delta: deltaRegistrado,
+          from: before,
+          to: after,
+          // **Solo un delta NEGATIVO lleva tipo de daño.** También de la revisión de cierre:
+          // sin la comprobación del signo se podía etiquetar una CURACIÓN como de fuego, y
+          // entonces la única consulta para la que existe esta columna —«¿de qué murió
+          // Elara?»— devolvía curaciones. El comentario de `game-event.schema.ts` ya
+          // afirmaba que «una curación no tiene tipo de daño que contar»; el código no lo
+          // impedía.
+          ...(input.delta < 0 && input.damageType ? { damageType: input.damageType } : {}),
+          ...(input.critical ? { critical: true } : {}),
+          // Una muerte sin tiradas necesita explicarse en la línea de tiempo, o parece un
+          // error de la herramienta.
+          ...(massive ? { massive: true } : {}),
+          // Tarea 2.5.4 — de qué tirada salió, ya comprobada arriba contra la base.
+          ...(input.rollEventId ? { rollEventId: input.rollEventId } : {}),
+          reason: input.reason,
+        },
+      },
+      tx,
+    );
+
+    const respuesta = await this.buildResponse(userId, actualizado);
+    // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
+    // sería un número sin origen, y esta tarea existe justo para lo contrario.
+    return {
+      ...respuesta,
+      ...(damageTrace ? { damageTrace } : {}),
+      ...(concentrationSave ? { concentrationSave } : {}),
+    };
   }
 
   async setHp(userId: string, campaignId: string, characterId: string, input: SetHpInput) {

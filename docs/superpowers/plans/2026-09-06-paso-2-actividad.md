@@ -894,3 +894,86 @@ que es la única prueba que le importa a la mesa.
   activo y resuelve una concurrencia entre navegadores **que un servidor no tiene** — su precio es
   que sin un GM conectado su sistema **se niega a romper concentración**
   (`module/documents/active-effect.mjs:793-797`). Nosotros derivamos al leer, como ya hacemos.
+
+---
+
+# Avance
+
+Lo escribe el orquestador **al cerrar cada tarea**, no al final. Si una compactación se lleva la
+sesión, se relee este bloque y `git log`, y se sigue por donde diga aquí.
+
+## Tarea 0 · Los diez conjuros — HECHA (2026-09-06). **El esquema borrador NO aguantó.**
+
+**Ocho de los diez obligaron a cambiar el esquema. Dos entraron tal cual.** El plan decía «si dos no
+entran, para y corrige el esquema antes de escribir una línea de código», y eso es lo que se hizo:
+las tareas 4, 5 y 6 se escriben ya contra el esquema corregido de abajo. **Descubrirlo aquí costó
+una hora; descubrirlo en el paso 3 habría costado migrar el catálogo entero.**
+
+### Los diez, con su ruta
+
+| # | Qué ponía a prueba | Fichero (`Mine/referencia-foundry-dnd5e/packs/_source/`) | ¿Entró? |
+|---|---|---|---|
+| 1 | `ataque` | `spells/cantrip/fire-bolt.yml` | No — escalado de truco |
+| 2 | `salvación` | `spells/3rd-level/fireball.yml` | No — escalado por espacio, CD de lanzamiento |
+| 3 | `dados` (curación) | `spells/1st-level/cure-wounds.yml` | No — `bonus: '@mod'` |
+| 4 | `utilidad` | `spells/1st-level/shield.yml` | No — falta la condición de la reacción |
+| 5 | `prueba` | `spells/3rd-level/counterspell.yml` | No — `ability: spellcasting`, CD no derivable |
+| 6 | concentración | `spells/1st-level/bless.yml` | No — duración y concentración; objetivos `@item.level + 2` |
+| 7 | escala con nivel de espacio | `spells/1st-level/magic-missile.yml` | No — **ni Foundry lo modela** |
+| 8 | fuera de las cinco | `spells/3rd-level/conjure-animals.yml` (`summon`) | **Sí** — entra como `utilidad` + texto |
+| 9 | usos propios | `classfeatures/barbarian/barbarian-features/rage.yml` | **Sí** |
+| 10 | materiales con coste | `spells/3rd-level/revivify.yml` | No — falta `materiales`; y su curación es fija |
+
+> **El caso 9 no es un conjuro, y eso ya es un hallazgo.** Se buscó un conjuro del SRD con `uses`
+> propios y **no existe ninguno**: en los 320 ficheros `uses.max` está vacío, porque lo que un
+> conjuro gasta es un **espacio** (`consumption.spellSlot: true`), no un contador suyo. Los usos
+> propios viven en las aptitudes, y por eso el caso se tomó de la Furia — que además es la tarea 11.
+> **Confirma la decisión de la spec:** `uses` **es** `CharacterResource`, y la Furia lo demuestra sin
+> un solo conjuro.
+
+### Los nueve cambios al esquema, cada uno con el fichero que lo obligó
+
+1. **`Origen` gana `lanzamiento`.** `cure-wounds` pone `healing.bonus: '@mod'` y `counterspell` pone
+   `check.ability: spellcasting`: **un conjuro no puede nombrar una característica concreta**, porque
+   depende de la clase de quien lo lanza. El borrador solo tenía `modificador` con `abilityKey`.
+2. **`Origen` gana `nivelDeEspacio`.** `bless` declara sus objetivos como `'@item.level + 2'`.
+3. **`Origen` gana `cdDeConjuro`.** `fireball` pone `save.dc.calculation: spellcasting`; ya existe
+   `spellSaveDc` derivada con traza, y esto es su puerta desde una actividad.
+4. **`dados` admite CERO dados.** `revivify` cura exactamente 1 punto:
+   `healing: { number: null, denomination: null, custom: { formula: '1' } }`. Con `n` y `caras`
+   obligatorios no cabe. Pasan a ser opcionales, y **una expresión sin dados es solo su `bonus`**.
+5. **`dados` gana `escalado`.** `fireball` lleva `scaling: { mode: whole, number: 1 }` (+1d6 por
+   espacio por encima del 3.º) y `fire-bolt` escala **por nivel de personaje**, que es otra cosa. Son
+   dos ejes y hay que distinguirlos: `{ por: "espacio" | "nivelDePersonaje", n, caras }`.
+6. **`activation` deja de ser solo un `Coste`.** `activation.type` de Foundry admite `minute` y
+   `hour` con su `value`. **`Coste` (cinco valores) es la economía del turno y no se toca**; la
+   activación de una actividad es una unión: `{ coste: Coste }` o `{ tiempo: { valor, unidad } }`.
+   El propio plan ya lo anticipaba en la tarea 5 («acción · adicional · reacción · **minutos**»).
+7. **`activation` gana `condicion`.** `shield` y `counterspell` son reacciones con su disparador
+   escrito: *«which you take when you are hit by an attack»*. Una reacción sin su condición no se
+   puede usar en la mesa.
+8. **`duration` es `{ valor, unidad, concentracion }`.** En `bless`, la concentración vive en
+   `properties: [concentration]` del objeto y la duración en `duration: { value: '1', units: minute }`
+   — **no** en `duration.concentration` de la actividad, que ahí vale `false`. Copiar el sitio
+   equivocado habría dado un `bless` sin concentración.
+9. **La forma común gana `materiales?: { texto, consumido, costeCp }`.** `revivify` lo trae:
+   `{ value: 'Diamonds worth 300gp…', consumed: true, cost: 100 }`.
+
+### Tres cosas que se aprendieron y no son cambios de esquema
+
+- **`activation` está en DOS niveles en sus datos y se contradicen.** En `shield`, el objeto dice
+  `reaction` y la actividad dice `action` — con `override: false`, que significa «hereda del
+  objeto». **La actividad manda solo si `override` es verdadero.** Nosotros lo ponemos en **un solo
+  sitio**; copiar los dos habría dado un `shield` que cuesta una acción.
+- **`magic-missile` no escala ni en Foundry.** Sus datos declaran **un** dardo
+  (`number: 1, denomination: 4, bonus: '1'`) y `scaling.mode: ''`. Los tres dardos y el cuarto por
+  espacio son **prosa**. No es un hueco nuestro: es que ese conjuro se tira a mano en todas partes.
+- **Sus propios datos discrepan de su propio texto.** `revivify` dice «Diamonds worth 300gp» y
+  declara `cost: 100`. Es el argumento entero de por qué se copian los **nombres** y no los valores.
+
+### Veredicto
+
+**La forma aguanta; el borrador no.** Ninguno de los nueve cambios es estructural: son campos que
+faltaban, no un modelo distinto. Las cinco actividades siguen cubriendo lo que la spec contó, el
+`summon` entra con su texto sin romper nada, y `uses` sigue siendo `CharacterResource`. **Con el
+esquema corregido, los 320 del paso 3 entran.**

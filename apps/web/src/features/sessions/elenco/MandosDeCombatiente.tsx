@@ -4,6 +4,7 @@ import { HojaCalculada } from "../../character-sheet/HojaCalculada";
 import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
 import { IconoCorazon, IconoEspada, IconoOjo } from "../../../ui/Iconos";
 import { Dialog } from "../../../ui/Dialog";
+import { DarObjeto } from "./DarObjeto";
 import { PonerCondicion } from "./PonerCondicion";
 import { Curar, PonerDano } from "./PonerDano";
 
@@ -24,18 +25,40 @@ import { Curar, PonerDano } from "./PonerDano";
  * cada ficha): por eso `puedeEditar` en `HojaCalculada` va siempre en `true` — el servidor deja
  * editar a DM o dueño (`requireEditable`), y esta fila nunca aparece salvo en la disposición del
  * DM. Si algún día se montara desde otro sitio, ese valor tiene que venir de quien sepa el rol.
+ *
+ * **«Dar» (tarea B4, 2026-09-06)** es el quinto mando: el problema medido en el encargo era que
+ * dar un objeto exigía abrir la hoja de quien lo recibe, y con cuatro jugadores y un cofre eso
+ * eran cuatro pantallas. `DarObjeto` es un componente aparte porque B5 lo reutiliza entero desde
+ * el resultado de una tirada de botín, y escribir un segundo habría sido justo la duplicación que
+ * ese plan evita.
+ *
+ * **Arreglo de vuelta 1 — este panel NO es siempre del DM.** La afirmación de que «esta fila
+ * nunca aparece salvo en la disposición del DM» era falsa: `FichaDePnj.tsx` la monta también para
+ * el jugador dueño de un PNJ cedido (`puedeManejarlo = esDm || pnj.ownerId === miId`), y ese
+ * jugador no es el DM. Con `soyDm` fijo en `true`, ese jugador veía «Dar» con todo el elenco como
+ * destinatarios y un botón que el servidor le iba a rechazar con 403 — exactamente lo que la
+ * regla del proyecto prohíbe («no se le ofrece a un jugador un botón que el servidor va a
+ * rechazar»). Por eso `soyDm` ahora es un prop de verdad, que cada ficha pasa con su rol real.
  */
 export function MandosDeCombatiente({
   campaignId,
   characterId,
   nombre,
   enCombate,
+  soyDm,
 }: {
   campaignId: string;
   characterId: string;
   nombre: string;
   /** Con encuentro activo se ofrece la escala de asaltos en «Condición»; sin él, solo el reloj. */
   enCombate: boolean;
+  /**
+   * El rol real de quien mira, no una constante. `FichaDeElenco` lo pasa como `esDm`
+   * (`conMandos` ya lo es en su único sitio de montaje); `FichaDePnj` lo pasa como su propio
+   * `esDm`, que es distinto de `puedeManejarlo` — un jugador con un PNJ cedido maneja el panel
+   * sin ser el DM.
+   */
+  soyDm: boolean;
 }) {
   const [panel, setPanel] = useState<"dano" | "curar" | "condicion" | "hoja" | null>(null);
   // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
@@ -73,6 +96,11 @@ export function MandosDeCombatiente({
           Condición
           <span className="sr-only"> a {nombre}</span>
         </button>
+        {/* «Dar» abre su propio cajón (`DarObjeto`), no uno de los tres de aquí arriba: no
+            reparte NADA para {nombre} en particular — el destinatario se elige dentro, entre todo
+            el elenco. Vive en esta fila por comodidad de la mesa, no porque el gesto sea del
+            personaje sobre el que está montada. */}
+        <DarObjeto campaignId={campaignId} soyDm={soyDm} miPersonajeId={characterId} />
         <button
           type="button"
           onClick={() => setPanel("hoja")}

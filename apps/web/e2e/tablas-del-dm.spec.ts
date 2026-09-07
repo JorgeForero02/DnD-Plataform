@@ -1,5 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
+/** Se usa para MONTAR contra la API (sembrar lo que la pantalla todavía no puede escribir), nunca
+ * para comprobar: lo que se mide sigue pasando en pantalla. Mismo patrón que
+ * `condiciones-en-la-mesa.spec.ts`. */
+async function comoLaSesion(page: Page) {
+  const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+  return { Authorization: `Bearer ${token}` };
+}
+
 // Tarea 2C.6 — **las tablas del DM, en el navegador.**
 //
 // Lo que se mide aquí y no se puede medir en otro sitio: que la pantalla **dice lo que estas
@@ -105,4 +113,78 @@ test("**editar una tabla reemplaza sus filas**, y la tabla guardada sigue siendo
 
   await expect(page.getByText("El posadero miente.")).toBeVisible();
   await expect(page.getByText("Nadie sabe nada.")).toHaveCount(0);
+});
+
+// Tarea B5 — «tirar una tabla de botín y dar lo que sale, en dos clics» (definición de terminado
+// del plan de botín y reparto).
+//
+// **El formulario de crear tabla no tiene todavía campos para `entrega`** — B4/B5 solo construyen
+// la mitad de "enseñar y dar" lo que una fila entrega, no la de autorarla desde la pantalla; eso
+// queda abierto para `docs/06-pendientes.md`. Por eso la tabla con botín se siembra por la API
+// (mismo patrón que `condiciones-en-la-mesa.spec.ts`), y lo que se mide en el navegador es la
+// mitad que sí se construyó: la tirada enseña el objeto por su nombre, no por su clave, y darlo
+// a un segundo personaje lo hace aparecer en su inventario sin recargar.
+test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo mete en su bolsa", async ({
+  page,
+}) => {
+  await abrirTablas(page);
+  const url = page.url();
+  const campaignId = url.split("/campaigns/")[1].split("/")[0];
+
+  // Un segundo personaje, para tener a quién dárselo: el DM no se da cosas a sí mismo en esta
+  // prueba porque eso no demuestra el radio de destinatario.
+  await page.getByRole("button", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Nuevo personaje" }).click();
+  await page.getByLabel("Nombre").fill("Marta");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  const tabla = await page.request.post(`/api/campaigns/${campaignId}/tables`, {
+    headers: await comoLaSesion(page),
+    data: {
+      name: "Cofre del vestíbulo",
+      visibility: "DM_ONLY",
+      trigger: "NONE",
+      entries: [
+        {
+          min: 1,
+          max: 1,
+          text: "Una espada corta y quince monedas de oro.",
+          entrega: {
+            objetos: [{ ref: { source: "SRD", key: "short-sword" }, cantidad: 1 }],
+            monedas: { gp: 15 },
+          },
+        },
+      ],
+    },
+  });
+  expect(tabla.ok()).toBe(true);
+
+  await page.getByRole("tab", { name: "Tablas" }).click();
+  await expect(page.getByText("Cofre del vestíbulo")).toBeVisible();
+  await page.getByRole("button", { name: "Tirar" }).click();
+
+  const resultado = page.getByRole("status");
+  // Nunca la clave: si esto se rompiera pintando la `ref` en vez del `name`, esta línea es la que
+  // se pone roja.
+  await expect(resultado.getByText("Espada corta")).toBeVisible();
+  await expect(resultado.getByText(/15 monedas de oro/i)).toBeVisible();
+  await expect(page.getByText("short-sword")).toHaveCount(0);
+
+  await resultado.getByRole("button", { name: /dar/i }).click();
+  await page.getByRole("radio", { name: "Marta" }).click();
+  await page.getByRole("button", { name: "Entregar" }).click();
+  await expect(page.getByText("Entregado.")).toBeVisible();
+
+  // Se comprueba donde de verdad importa: en la bolsa de Marta, sin recargar la página. La
+  // región de inventario vive en la propia página del personaje, sin una pestaña aparte (mismo
+  // patrón que `inventario.spec.ts`).
+  await page.getByRole("button", { name: "Personajes" }).click();
+  await page.getByRole("link", { name: "Marta" }).click();
+  const inventarioDeMarta = page.getByRole("region", { name: "inventario" });
+  await expect(inventarioDeMarta.getByText("Espada corta")).toBeVisible();
+  // Y las monedas, no solo el objeto (arreglo de vuelta 1, I3): el puente
+  // `ResultadoDeTabla` → `DarObjeto` → `changeMoney` es una petición aparte de la del objeto, y
+  // hasta este arreglo nada, ni en unitarias ni aquí, comprobaba que el oro llegara de verdad.
+  await expect(inventarioDeMarta.getByText("15")).toBeVisible();
 });

@@ -71,6 +71,21 @@ export const ABREVIATURA_MONEDA: Record<CoinKey, string> = {
   pp: "ppt",
 };
 
+/**
+ * «15 monedas de oro» / «1 moneda de oro» (tarea B4/B5, arreglo de vuelta 1). Escrita una sola
+ * vez aquí porque `DarObjeto.tsx` y `ResultadoDeTabla.tsx` la necesitaban las dos y la tenían
+ * a mano, sin plural — «1 monedas de oro» llegó a pantalla antes de que esto existiera.
+ *
+ * **A propósito distinta de `dineroLegible` en `sessions/linea-de-log.ts`** («+15 oro»): esa es
+ * una anotación compacta de delta para una línea de registro que ya lleva su signo; esta es una
+ * entrada de una lista de lo que se entrega, junto a nombres de objeto completos («Espada
+ * corta»), donde una forma tan corta como «+15 oro» desentonaría. Las dos formas son correctas
+ * para su sitio y no se han igualado a propósito.
+ */
+export function fraseDeMoneda(clave: CoinKey, cantidad: number): string {
+  return `${cantidad} ${cantidad === 1 ? "moneda" : "monedas"} de ${NOMBRE_MONEDA[clave]}`;
+}
+
 /** El subtítulo tenue de una fila: tipo del objeto, y su ranura en mano si la tiene. */
 export function subtituloDeObjeto(kind: ItemKind, slotEnMano?: EquipSlot): string {
   const base = NOMBRE_TIPO_OBJETO[kind];

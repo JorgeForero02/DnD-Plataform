@@ -217,6 +217,43 @@ describe("PanelDeTablas — la lista", () => {
     expect(resultado).toHaveTextContent("7");
   });
 
+  // Arreglo de vuelta 1 (I2, B5) — **`ResultadoDeTabla` montado de verdad desde `PanelDeTablas`**,
+  // no solo probado aislado en su propio fichero. Devolver `FichaDeTabla` a su párrafo previo (sin
+  // `entrega` ni «Dar») dejaba el resto de esta suite en verde.
+  it("tirar una tabla con botín enseña el objeto por su nombre y ofrece darlo (B5, montado de verdad)", async () => {
+    comoDm();
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [tablaDePifias],
+      houseTablesEnabled: false,
+    });
+    vi.spyOn(dmTablesApi, "rollDmTable").mockResolvedValue({
+      tableId: "t1",
+      tableName: "Pifias de combate",
+      die: 20,
+      roll: 3,
+      text: "Un arma suelta.",
+      eventId: "ev9",
+      entrega: {
+        objetos: [
+          {
+            ausente: false,
+            ref: { source: "SRD", key: "short-sword" },
+            cantidad: 1,
+            name: "Espada corta",
+            weightOz: 32,
+            costCp: 1000,
+          },
+        ],
+      },
+    });
+    renderPanel();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Tirar/ }));
+
+    expect(await screen.findByText("Espada corta")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /dar/i })).toBeInTheDocument();
+  });
+
   it("la visibilidad se pinta traducida y nunca como el valor del enum", async () => {
     comoDm();
     vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({

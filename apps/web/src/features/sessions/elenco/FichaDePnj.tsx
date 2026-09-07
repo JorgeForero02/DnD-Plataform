@@ -140,6 +140,10 @@ export function FichaDePnj({
           characterId={pnj.id}
           nombre={pnj.name}
           enCombate={enCombate}
+          // **`soyDm`, no `puedeManejarlo`** (arreglo de vuelta 1 sobre B4): el jugador dueño de
+          // un PNJ cedido maneja este panel sin ser el DM, y con `puedeManejarlo` —o peor, con un
+          // `true` fijo— ese jugador vería «Dar» con todo el elenco como destinatarios.
+          soyDm={esDm}
         />
       )}
 

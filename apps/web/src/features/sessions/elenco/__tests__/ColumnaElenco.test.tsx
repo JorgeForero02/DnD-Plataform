@@ -253,4 +253,18 @@ describe("un PNJ cedido a un jugador es suyo en la pantalla (paso 1, tarea 15)",
     await screen.findByText(/Goblin/);
     expect(screen.queryByRole("button", { name: /daño/i })).not.toBeInTheDocument();
   });
+
+  // Arreglo de vuelta 1 (I4) — **el dueño de un PNJ cedido no es el DM.** `MandosDeCombatiente`
+  // llevaba `soyDm` fijo en `true` sin mirar quién mira de verdad: este jugador podía abrir «Dar»
+  // y ver a Corvin Vhael —el resto del elenco, ajeno a él— como destinatario, un gesto que el
+  // servidor le iba a rechazar con 403. No es un agujero de autorización (`requireOwnerOrDM`
+  // sigue entero), pero el proyecto no ofrece un botón que el servidor va a rechazar.
+  it("el dueño de un PNJ cedido no ve al resto del elenco como destinatario al dar (no es DM)", async () => {
+    montarComo("u-pl", { ...GOBLIN, ownerId: "u-pl" });
+
+    fireEvent.click(await screen.findByRole("button", { name: /dar/i }));
+    // Corvin Vhael es un personaje de jugador ajeno a "u-pl": si `soyDm` volviera a fijarse en
+    // `true`, aparecería aquí como una opción más.
+    expect(screen.queryByRole("radio", { name: /Corvin Vhael/i })).not.toBeInTheDocument();
+  });
 });

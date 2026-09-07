@@ -127,3 +127,18 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
     expect(screen.queryByRole("group", { name: /Bando de/i })).not.toBeInTheDocument();
   });
 });
+
+// Arreglo de vuelta 1 sobre B4 (I2, I4) — **`DarObjeto` montado de verdad, no solo probado
+// aislado.** Devolver `MandosDeCombatiente` a no llevar «Dar», o fijar su `soyDm` a `true` sin
+// mirar el rol real, dejaba esta suite (y la de `DarObjeto.test.tsx`) en verde por separado.
+describe("el mando «Dar» aparece con los mandos del DM (B4)", () => {
+  it("con mandos, el DM ve «Dar»", async () => {
+    montar({ conMandos: true });
+    expect(await screen.findByRole("button", { name: /dar/i })).toBeInTheDocument();
+  });
+
+  it("sin mandos, un jugador no ve «Dar»", () => {
+    montar({ conMandos: false });
+    expect(screen.queryByRole("button", { name: /dar/i })).not.toBeInTheDocument();
+  });
+});

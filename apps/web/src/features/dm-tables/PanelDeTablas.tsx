@@ -20,6 +20,7 @@ import {
   useUpdateDmTable,
 } from "./hooks";
 import { IconoEditar, IconoTabla, IconoTirar } from "./iconos";
+import { ResultadoDeTabla } from "./ResultadoDeTabla";
 import { DISPARADORES, POSICIONES_DE_LA_CASA, disparadorDeTabla } from "./vocabulario";
 
 // Tarea 2C.6 — **las tablas del DM**.
@@ -295,15 +296,7 @@ function FichaDeTabla({
       </ul>
 
       {tirar.data && tirar.data.tableId === tabla.id && (
-        <p
-          role="status"
-          className="mt-s3 rounded-radius-sm border border-copper bg-bg p-s2 font-chrome text-chrome-sm text-text"
-        >
-          <span className="font-data text-copper-text">
-            d{tirar.data.die} → {tirar.data.roll}
-          </span>{" "}
-          {tirar.data.text}
-        </p>
+        <ResultadoDeTabla tirada={tirar.data} soyDm={esDm} campaignId={campaignId} />
       )}
       {tirar.isError && (
         <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">

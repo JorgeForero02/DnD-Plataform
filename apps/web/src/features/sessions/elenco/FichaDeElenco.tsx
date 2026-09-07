@@ -197,6 +197,10 @@ export function FichaDeElenco({
           characterId={personaje.id}
           nombre={personaje.name}
           enCombate={enCombate}
+          // `conMandos` YA es «esDm» en el único sitio que lo enciende (`ColumnaElenco.tsx`, ver
+          // el comentario de arriba sobre el mando de bando) — así que es el mismo valor, no uno
+          // inventado para esta llamada.
+          soyDm={conMandos}
         />
       )}
 

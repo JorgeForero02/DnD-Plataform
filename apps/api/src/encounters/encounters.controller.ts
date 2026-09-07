@@ -11,9 +11,11 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  gastarSchema,
   setInitiativeSchema,
   setSideSchema,
   startEncounterSchema,
+  type GastarInput,
   type SetInitiativeInput,
   type SetSideInput,
   type StartEncounterInput,
@@ -97,6 +99,29 @@ export class EncountersController {
     @Body(new ZodValidationPipe(setSideSchema)) body: SetSideInput,
   ) {
     return this.encounters.setSide(
+      req.user.id,
+      campaignId,
+      sessionId,
+      encounterId,
+      combatantId,
+      body,
+    );
+  }
+
+  /**
+   * Paso 2, tarea A2 — gastar un trozo de la economía del turno. Dueño del personaje o DM;
+   * cualquier otro jugador recibe un 403 de `EncountersService.gastar`.
+   */
+  @Patch(":encounterId/combatants/:combatantId/spend")
+  gastar(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+    @Param("encounterId") encounterId: string,
+    @Param("combatantId") combatantId: string,
+    @Body(new ZodValidationPipe(gastarSchema)) body: GastarInput,
+  ) {
+    return this.encounters.gastar(
       req.user.id,
       campaignId,
       sessionId,

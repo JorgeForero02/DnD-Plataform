@@ -98,6 +98,9 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "ITEM_REMOVED":
     case "CHARACTER_ARCHIVED":
     case "CHARACTER_RESTORED":
+    case "ACTION_SPENT":
+      // Paso 2, tarea A2: gastar la economía del turno le pasa a alguien de la mesa, igual que
+      // gastar un recurso o perder puntos de golpe.
       return "personaje";
 
     case "FLAG_SET":

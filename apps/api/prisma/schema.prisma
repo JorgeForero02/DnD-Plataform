@@ -105,6 +105,9 @@ enum GameEventType {
   // Paso 1, tarea 19 (D-A-3, 2026-09-06): cancelar un combate avisa a quien esperaba. El sujeto
   // es la SESION y no el encuentro, que ya no existe para serlo.
   ENCOUNTER_CANCELLED
+  // Paso 2, tarea A2 (2026-09-06): gastar la economia del turno deja rastro, y se escribe aunque
+  // ya estuviera gastado. Un valor de este enum se ANADE, nunca se edita ni se borra.
+  ACTION_SPENT
 }
 
 enum ResourceReset {

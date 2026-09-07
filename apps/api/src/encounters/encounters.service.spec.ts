@@ -32,6 +32,11 @@ describe("el enum de Prisma y el z.enum de @dnd/shared no se separan (EncounterS
 
 describe("EncountersService", () => {
   let service: EncountersService;
+  // **Vuelta de arreglo 1 sobre A2.** El `tx` de mentira es un objeto NUEVO en cada llamada a
+  // `prisma.transaction` — capturarlo aquí es lo que permite comprobar que `events.record` recibe
+  // ESE objeto y no `prisma` a secas. Sin esto, `expect.anything()` acepta cualquiera de los dos
+  // y la prueba «en la misma transacción» no comprueba lo que su nombre promete.
+  let ultimoTx: Record<string, unknown> | undefined;
   const prisma = {
     session: { findFirst: jest.fn() },
     encounter: {
@@ -63,7 +68,7 @@ describe("EncountersService", () => {
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn().mockResolvedValue({ id: "ev1" }) };
-  const sheets = { getInitiativeModifier: jest.fn() };
+  const sheets = { getInitiativeModifier: jest.fn(), getSheet: jest.fn() };
   const rolls = { roll: jest.fn() };
   const clock = { advance: jest.fn() };
 
@@ -93,7 +98,18 @@ describe("EncountersService", () => {
     // mano que siempre daría la respuesta esperada.
     const creadas: Record<string, unknown>[] = [];
     prisma.combatant.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
-      const fila = { id: `comb${creadas.length}`, ...data };
+      // **Los cuatro valores por defecto de la columna, no `undefined`.** Sin esto, un
+      // combatiente recién creado por la fixture no tenía economía del turno hasta que un test
+      // se la ponía a mano — `gastar` (paso 2, tarea A2) sí lee esas columnas desde el primer
+      // gasto, y `undefined` no es «nada gastado todavía».
+      const fila = {
+        id: `comb${creadas.length}`,
+        actionUsed: false,
+        bonusUsed: false,
+        reactionUsed: false,
+        movementUsed: 0,
+        ...data,
+      };
       creadas.push(fila);
       return Promise.resolve(fila);
     });
@@ -120,6 +136,16 @@ describe("EncountersService", () => {
         return Promise.resolve(filas);
       },
     );
+    // **Paso 2, tarea A2** — `gastar` relee la fila DENTRO de la transacción antes de escribir
+    // (`tx.combatant.findFirst`), y también la lee ANTES de abrir transacción para comprobar
+    // quién puede escribir. Las dos lecturas van sobre la misma tabla `creadas`, así que el
+    // segundo gasto de una prueba ve lo que escribió el primero — igual que ya hacía `findMany`.
+    // Los tests que necesiten otra forma (un id que no está en `creadas`, un combatiente suelto
+    // de otra prueba) siguen pudiendo pisarlo con su propio `mockResolvedValue`.
+    prisma.combatant.findFirst.mockImplementation(({ where }: { where?: { id?: string } } = {}) => {
+      const fila = creadas.find((f) => f.id === where?.id);
+      return Promise.resolve(fila ?? null);
+    });
     // **Paso 2, tarea A1** — `advanceTurn` repone la economía del turno con un `updateMany` por
     // posición. Filtra sobre las mismas filas de `creadas`, igual que `combatant.update` ya
     // hacía por id.
@@ -142,8 +168,9 @@ describe("EncountersService", () => {
       },
     );
 
-    prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
-      cb({
+    ultimoTx = undefined;
+    prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => {
+      const tx = {
         encounter: {
           create: prisma.encounter.create,
           update: prisma.encounter.update,
@@ -162,8 +189,10 @@ describe("EncountersService", () => {
         campaign: { findUniqueOrThrow: prisma.campaign.findUniqueOrThrow },
         characterCondition: { updateMany: prisma.characterCondition.updateMany },
         $queryRaw: prisma.$queryRaw,
-      }),
-    );
+      };
+      ultimoTx = tx;
+      return cb(tx);
+    });
     prisma.rollRequest.create.mockResolvedValue({ id: "req1" });
   });
 
@@ -984,6 +1013,221 @@ describe("EncountersService", () => {
         where: { id: "enc1" },
         data: { activePosition: 1 },
       });
+    });
+  });
+
+  // Paso 2, tarea A2 — la puerta para gastar la economía del turno que A1 dejó puesta.
+  describe("gastar() (paso 2, tarea A2)", () => {
+    const campaignId = "c1";
+    const sessionId = "s1";
+    const encId = "enc1";
+    const jugadoraId = "jugadora1";
+
+    /**
+     * Un combatiente con su personaje ya adjunto, tal y como lo devuelve el `include` real.
+     * `visibility` es `PLAYERS` por defecto — el 403 de ownership solo tiene sentido probarlo
+     * sobre algo que SÍ se ve; lo que no se ve tiene su propia prueba con `DM_ONLY`.
+     */
+    async function combatienteDe(characterId: string, ownerId: string, visibility = "PLAYERS") {
+      const fila = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: encId, characterId, initiative: 10, position: 0 },
+      });
+      fila.character = { ownerId, visibility };
+      return fila as { id: string };
+    }
+
+    beforeEach(() => {
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      sheets.getSheet.mockResolvedValue({ effectiveSpeeds: { walk: { total: 30 } } });
+      // `gastar` mira `canView` antes que la autorización de escritura (vuelta de arreglo 1): le
+      // hace falta un `viewer` completo, igual que `get()`.
+      prisma.user.findUnique.mockResolvedValue({ id: jugadoraId, isAdmin: false });
+    });
+
+    it("gastar la acción la marca", async () => {
+      const { id: cId } = await combatienteDe("pj1", jugadoraId);
+
+      const r = await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "ACTION",
+      });
+
+      expect(r.economia.actionUsed).toBe(true);
+      expect(r.excedido).toBe(false);
+    });
+
+    // **La que define la tarea.** La mutación que la pone roja —lanzar en vez de avisar en el
+    // segundo gasto— está descrita y deshecha en el informe.
+    //
+    // **Vuelta de arreglo 1** — «avisa» no es solo el valor de retorno: «se registra, se avisa y
+    // se deja pasar» son TRES cosas, y la revisión midió que la unitaria de antes no comprobaba
+    // la primera. Un `if (!excedido) await this.events.record(...)` dejaba esto en verde igual.
+    it("gastarla dos veces AVISA pero no impide, y las DOS quedan registradas", async () => {
+      const { id: cId } = await combatienteDe("pj1", jugadoraId);
+
+      await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, { coste: "ACTION" });
+      const r = await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "ACTION",
+      });
+
+      expect(r.excedido).toBe(true); // avisa
+      expect(r.economia.actionUsed).toBe(true); // y no revienta
+
+      // Las dos escrituras dejan su suceso — «se registra» no es opcional para la que avisa.
+      const sucesosDeAccion = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "ACTION_SPENT",
+      );
+      expect(sucesosDeAccion).toHaveLength(2);
+      expect(sucesosDeAccion[0][2].payload.excedido).toBe(false);
+      expect(sucesosDeAccion[1][2].payload.excedido).toBe(true);
+    });
+
+    it("el movimiento se acumula y avisa al pasarse de su velocidad", async () => {
+      const { id: cId } = await combatienteDe("pj1", jugadoraId);
+
+      await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "MOVEMENT",
+        cantidad: 20,
+      });
+      const r = await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "MOVEMENT",
+        cantidad: 20,
+      });
+
+      expect(r.economia.movementUsed).toBe(40);
+      expect(r.excedido).toBe(true); // velocidad 30
+    });
+
+    // **Vuelta de arreglo 1 — «velocidad cero» y «no sé su velocidad» no son lo mismo.** Un
+    // statblock a medio construir no declara `walk`, y `?? 0` convertía ese hueco en «se pasó de
+    // cero pies», un aviso falso escrito en el sitio que la mesa lee seis semanas después. Sin
+    // esta prueba, ninguna de las otras dos de movimiento lo cazaba: las dos mockean
+    // `getSheet` con `walk: { total: 30 }`.
+    it("sin velocidad de caminar en la hoja, el movimiento NUNCA avisa — no es lo mismo no saberla que tenerla a cero", async () => {
+      const { id: cId } = await combatienteDe("pj-sin-hoja", jugadoraId);
+      sheets.getSheet.mockResolvedValue({ effectiveSpeeds: {} });
+
+      const r = await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "MOVEMENT",
+        cantidad: 20,
+      });
+
+      expect(r.economia.movementUsed).toBe(20);
+      expect(r.excedido).toBe(false);
+    });
+
+    it("un jugador no gasta por el combatiente de otro", async () => {
+      const { id: combatanteDeOtro } = await combatienteDe("pj-otro", "otraJugadora");
+
+      await expect(
+        service.gastar(jugadoraId, campaignId, sessionId, encId, combatanteDeOtro, {
+          coste: "ACTION",
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      // Nada se escribió: el 403 se lanza antes de abrir la transacción.
+      expect(prisma.combatant.update).not.toHaveBeenCalled();
+    });
+
+    // **Vuelta de arreglo 1 — 404, no 403, para lo que `get()` ya esconde.** `docs/04-
+    // convenciones.md`: «un 403 sobre algo que no deberías saber que existe es una filtración: va
+    // 404». Un PNJ `DM_ONLY` no aparece en la lista de combate de este jugador (mismo `canView`
+    // que usa `get()`); si `gastar` contestara 403, la respuesta distinta de un 404 normal le
+    // confirmaría que ese combatiente existe.
+    it("un PNJ DM_ONLY que el jugador no ve es 404, no 403 — no delata que existe", async () => {
+      const { id: cId } = await combatienteDe("goblin-escondido", "otroDM", "DM_ONLY");
+
+      await expect(
+        service.gastar(jugadoraId, campaignId, sessionId, encId, cId, { coste: "ACTION" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.gastar(jugadoraId, campaignId, sessionId, encId, cId, { coste: "ACTION" }),
+      ).rejects.not.toBeInstanceOf(ForbiddenException);
+      expect(prisma.combatant.update).not.toHaveBeenCalled();
+    });
+
+    // **La otra mitad del 403 de arriba.** Si el guardián solo comprobara "eres el dueño" y no
+    // "o eres el DM", esta prueba lo pondría en rojo: el DM lleva PNJ que no son suyos y tiene
+    // que poder gastar su economía igual que la de sus propios personajes.
+    it("el DM sí gasta por un combatiente que no es suyo", async () => {
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+      const { id: cId } = await combatienteDe("goblin1", "otraJugadora");
+
+      const r = await service.gastar("dm", campaignId, sessionId, encId, cId, {
+        coste: "REACTION",
+      });
+
+      expect(r.economia.reactionUsed).toBe(true);
+    });
+
+    // **`FREE` no consume nada y nunca excede.** Si se tratara como cualquier otro coste, esta
+    // prueba lo pondría en rojo: nada de lo que devuelve cambiaría, pero se comprobaría contra
+    // una columna que `FREE` no toca.
+    it("FREE no consume nada, nunca excede, y aun así se registra", async () => {
+      const { id: cId } = await combatienteDe("pj1", jugadoraId);
+
+      const r = await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "FREE",
+      });
+
+      expect(r.excedido).toBe(false);
+      expect(r.economia).toEqual({
+        actionUsed: false,
+        bonusUsed: false,
+        reactionUsed: false,
+        movementUsed: 0,
+      });
+      expect(prisma.combatant.update).not.toHaveBeenCalled();
+      expect(events.record).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({
+          payload: expect.objectContaining({ type: "ACTION_SPENT", coste: "FREE" }),
+        }),
+        ultimoTx,
+      );
+    });
+
+    // **El suceso se escribe, con lo que hace falta para traducirlo**, y va dentro de la MISMA
+    // transacción que la fila — se le pasa el `tx`, no `this.prisma` a secas.
+    //
+    // **Vuelta de arreglo 1** — `expect.anything()` acepta tanto el `tx` de verdad como
+    // `this.prisma`, así que esta prueba no comprobaba lo que su nombre promete. Se compara
+    // contra `ultimoTx`, el objeto que el `mockImplementation` de `prisma.transaction` acaba de
+    // crear para ESTA llamada — y se comprueba además que NO es `prisma` a secas.
+    it("escribe ACTION_SPENT en la misma transacción (el tx de verdad, no `this.prisma`)", async () => {
+      const { id: cId } = await combatienteDe("pj1", jugadoraId);
+
+      await service.gastar(jugadoraId, campaignId, sessionId, encId, cId, {
+        coste: "MOVEMENT",
+        cantidad: 15,
+      });
+
+      expect(ultimoTx).toBeDefined();
+      expect(ultimoTx).not.toBe(prisma);
+      expect(events.record).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({
+          sessionId,
+          subjectType: "character",
+          subjectId: "pj1",
+          visibility: "PLAYERS",
+          payload: expect.objectContaining({
+            type: "ACTION_SPENT",
+            encounterId: encId,
+            combatantId: cId,
+            coste: "MOVEMENT",
+            cantidad: 15,
+            excedido: false,
+          }),
+        }),
+        ultimoTx,
+      );
+    });
+
+    it("gastar sobre un combatiente que no existe es 404", async () => {
+      await expect(
+        service.gastar(jugadoraId, campaignId, sessionId, encId, "fantasma", { coste: "ACTION" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

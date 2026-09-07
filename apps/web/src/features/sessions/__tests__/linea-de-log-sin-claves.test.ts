@@ -212,4 +212,103 @@ describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
       "El sistema tira la iniciativa por alguien (5)",
     );
   });
+
+  // Paso 2, tarea A2 — gastar la economía del turno. **Nunca "ACTION" ni "MOVEMENT" en la
+  // frase**: es el mismo fallo que ya se vio tres veces en una mañana con `(LOCATION)`, `PUBLIC`
+  // y `Nuevo LOCATION`.
+  it("gastar un coste dice su nombre en español, nunca la clave del enum", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "ACTION",
+        excedido: false,
+      }),
+    ).toBe("Gasta una acción");
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "BONUS",
+        excedido: false,
+      }),
+    ).toBe("Gasta una acción adicional");
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "REACTION",
+        excedido: false,
+      }),
+    ).toBe("Gasta una reacción");
+    for (const linea of [
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "ACTION",
+        excedido: false,
+      }),
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "MOVEMENT",
+        cantidad: 20,
+        excedido: false,
+      }),
+    ]) {
+      expect(linea).not.toMatch(/ACTION|BONUS|REACTION|MOVEMENT|FREE/);
+    }
+  });
+
+  it("gastar dos veces avisa en la frase, y no impide nada que la línea calle", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "ACTION",
+        excedido: true,
+      }),
+    ).toBe("Gasta una acción (ya la tenía gastada)");
+  });
+
+  it("el movimiento lleva los pies, y avisa si se pasa de su velocidad", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "MOVEMENT",
+        cantidad: 20,
+        excedido: false,
+      }),
+    ).toBe("Se mueve 20 pies");
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "MOVEMENT",
+        cantidad: 20,
+        excedido: true,
+      }),
+    ).toBe("Se mueve 20 pies (se pasa de su velocidad)");
+  });
+
+  it("la interacción libre no gasta nada, y nunca avisa", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTION_SPENT",
+        encounterId: "e1",
+        combatantId: "cb1",
+        coste: "FREE",
+        excedido: false,
+      }),
+    ).toBe("Usa una interacción libre");
+  });
 });

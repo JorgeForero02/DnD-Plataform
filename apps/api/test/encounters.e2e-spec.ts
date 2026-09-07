@@ -610,4 +610,105 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
     ).body.events.filter((e: { type: string }) => e.type === "COMBATANT_SIDE_CHANGED").length;
     expect(despues).toBe(antes);
   });
+
+  // Paso 2, tarea A2 — gastar la economía del turno. Lo unitario ya prueba el aviso y el 403 de
+  // ownership con un Prisma simulado; esto prueba lo que aquel no puede: el pipe de Zod de
+  // verdad (`cantidad` obligatoria con `MOVEMENT`), y que la escritura persiste en Postgres.
+  describe("gastar() (paso 2, tarea A2)", () => {
+    let combatantePc1Id = "";
+
+    beforeAll(async () => {
+      const encuentro = await request(app.getHttpServer())
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", `Bearer ${tokenDM}`);
+      combatantePc1Id = encuentro.body.combatants.find(
+        (c: { characterId: string }) => c.characterId === pc1Id,
+      ).id;
+    });
+
+    it("el dueño gasta su acción, y la segunda vez avisa en vez de rechazar (200, no 409)", async () => {
+      const s = app.getHttpServer();
+      const primero = await request(s)
+        .patch(encUrl(`/${encounterId}/combatants/${combatantePc1Id}/spend`))
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ coste: "ACTION" });
+      expect(primero.status).toBe(200);
+      expect(primero.body).toMatchObject({ excedido: false });
+      expect(primero.body.economia.actionUsed).toBe(true);
+
+      // **La doctrina de verdad, contra Postgres.** Gastar dos veces no es un 409: se registra,
+      // se avisa y se deja pasar — bloquear sería el servidor arbitrando la mesa.
+      const segundo = await request(s)
+        .patch(encUrl(`/${encounterId}/combatants/${combatantePc1Id}/spend`))
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ coste: "ACTION" });
+      expect(segundo.status).toBe(200);
+      expect(segundo.body.excedido).toBe(true);
+      expect(segundo.body.economia.actionUsed).toBe(true);
+    });
+
+    it("MOVEMENT sin `cantidad` es 400: el pipe de Zod lo exige de verdad", async () => {
+      const r = await request(app.getHttpServer())
+        .patch(encUrl(`/${encounterId}/combatants/${combatantePc1Id}/spend`))
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ coste: "MOVEMENT" });
+      expect(r.status).toBe(400);
+    });
+
+    it("un jugador no gasta por el combatiente de otro (403, contra Postgres real)", async () => {
+      const encuentro = await request(app.getHttpServer())
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", `Bearer ${tokenDM}`);
+      const combatienteAjeno = encuentro.body.combatants.find(
+        (c: { characterId: string }) => c.characterId === pc2Id,
+      );
+
+      // tokenPL es dueño de pc1 y pc2 en esta suite (los creó todos el mismo jugador), así que
+      // para probar el 403 de verdad hace falta un TERCER usuario sin ningún personaje propio.
+      const s = app.getHttpServer();
+      const emailAjeno = `pl-enc-ajeno${Date.now()}@b.com`;
+      const tokenAjeno = (
+        await request(s)
+          .post("/auth/register")
+          .send({ email: emailAjeno, password: "password123", displayName: "Ajeno" })
+      ).body.token;
+      const invite = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/invites`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+      ).body.token;
+      await request(s)
+        .post(`/invites/${invite}/accept`)
+        .set("Authorization", `Bearer ${tokenAjeno}`);
+
+      const r = await request(s)
+        .patch(encUrl(`/${encounterId}/combatants/${combatienteAjeno.id}/spend`))
+        .set("Authorization", `Bearer ${tokenAjeno}`)
+        .send({ coste: "ACTION" });
+      expect(r.status).toBe(403);
+
+      // Y no dejó rastro: la fila ajena sigue como estaba.
+      const filaAjena = await prisma.combatant.findUnique({ where: { id: combatienteAjeno.id } });
+      expect(filaAjena?.actionUsed).toBe(false);
+
+      await prisma.user.deleteMany({ where: { email: emailAjeno } });
+    });
+
+    it("y queda escrito en la línea de tiempo, con el coste y si avisó", async () => {
+      const log = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/events`)
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${tokenPL}`);
+      const sucesos = log.body.events.filter((e: { type: string }) => e.type === "ACTION_SPENT");
+      expect(sucesos.length).toBeGreaterThanOrEqual(2);
+      expect(sucesos[0].payload).toMatchObject({ coste: "ACTION" });
+      // Uno avisó y el otro no: es exactamente la doctrina «se registra, se avisa, se deja
+      // pasar» — los dos sucesos existen, no solo el primero.
+      const avisos = new Set(
+        sucesos.map((e: { payload: { excedido: boolean } }) => e.payload.excedido),
+      );
+      expect(avisos.has(true)).toBe(true);
+      expect(avisos.has(false)).toBe(true);
+    });
+  });
 });

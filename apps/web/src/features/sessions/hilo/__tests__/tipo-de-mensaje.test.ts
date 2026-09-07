@@ -62,6 +62,8 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   ITEM_REMOVED: "personaje",
   CHARACTER_ARCHIVED: "personaje",
   CHARACTER_RESTORED: "personaje",
+  // Paso 2, tarea A2: gastar la economía del turno es algo que le pasa a alguien de la mesa.
+  ACTION_SPENT: "personaje",
   // Sistema: andamiaje de la partida, en cursiva y apagado.
   FLAG_SET: "sistema",
   SET_CHANGED: "sistema",
@@ -98,7 +100,8 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
     // (tarea 19, D-A-3): cancelar un combate avisa a quien esperaba.
     // El número está escrito a propósito — si
     // alguien añade un tipo y no lo clasifica, esta cuenta lo dice antes que el `switch`.
-    expect(GAME_EVENT_TYPES).toHaveLength(46);
+    // **47 con `ACTION_SPENT`** (paso 2, tarea A2): gastar la economía del turno.
+    expect(GAME_EVENT_TYPES).toHaveLength(47);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

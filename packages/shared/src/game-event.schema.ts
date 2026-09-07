@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { roleSchema, visibilitySchema } from "./visibility.schema";
 import { damageTypeSchema } from "./item.schema";
+import { costeSchema } from "./action-economy.schema";
 
 // Tarea 2A.5 — el log de partida.
 //
@@ -124,6 +125,10 @@ export const GAME_EVENT_TYPES = [
   // sistema reparte la tirada que faltaba, y la mesa tiene que ver que fue el sistema y no el
   // jugador quien tiró.
   "INITIATIVE_ROLLED_BY_SYSTEM",
+  // Paso 2, tarea A2 (2026-09-06) — gastar la economía del turno deja rastro. **Se escribe
+  // aunque ya estuviera gastado** («el sistema propone, tú decides»): `excedido`, en el
+  // `payload`, es el aviso, y bloquear sería el servidor arbitrando la mesa.
+  "ACTION_SPENT",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -622,6 +627,23 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     characterId: z.string().min(1),
     characterName: z.string().max(120).optional(),
     total: z.number().int(),
+  }),
+  /**
+   * Paso 2, tarea A2 — gastar un trozo de la economía del turno. **Se escribe igual cuando ya
+   * estaba gastado** (`excedido: true`): la doctrina del autor es que el servidor avisa y no
+   * bloquea, hay decenas de rasgos que regalan acciones y ninguno estará modelado el primer día.
+   *
+   * `cantidad` solo viaja con `MOVEMENT` — para los demás costes no significa nada y no se manda.
+   */
+  z.object({
+    type: z.literal("ACTION_SPENT"),
+    encounterId: z.string().cuid(),
+    combatantId: z.string().cuid(),
+    coste: costeSchema,
+    /** Pies, solo con `MOVEMENT`. */
+    cantidad: z.number().int().positive().max(1000).optional(),
+    /** TRUE cuando ya estaba gastado, o el movimiento se pasó de su velocidad. */
+    excedido: z.boolean(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

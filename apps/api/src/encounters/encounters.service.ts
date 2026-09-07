@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import {
   SEGUNDOS_POR_ASALTO,
   type CombatantSide,
+  type EconomiaDelTurno,
+  type GastarInput,
   type SetInitiativeInput,
   type SetSideInput,
   type StartEncounterInput,
@@ -1168,6 +1171,159 @@ export class EncountersService {
         },
         tx,
       );
+    });
+  }
+
+  /**
+   * Paso 2, tarea A2 — gasta un trozo de la economía del turno (`action-economy.schema.ts`).
+   *
+   * **«El sistema propone; tú decides».** Si ya estaba gastado —o el movimiento se pasa de su
+   * velocidad— `excedido` sale en `true`, pero la escritura se hace igual: hay decenas de rasgos
+   * que regalan una acción extra y ninguno estará modelado el primer día. Bloquear sería el
+   * servidor arbitrando la mesa, la misma decisión que ya se tomó con el bando y con el fin del
+   * combate.
+   *
+   * **Lo que sí es del servidor es quién escribe.** Dueño del personaje o DM — el mismo criterio
+   * que `CharactersService.requireEditable` usa para editar una ficha, repetido aquí sin
+   * importarlo porque ese servicio no está en la frontera de este encargo—: un jugador no gasta
+   * por el combatiente de otro, y eso sí es un 403.
+   *
+   * **Salvo que ese combatiente no debiera ni saber que existe.** Un PNJ `DM_ONLY` que `get()` ya
+   * le escondía (filtrando por `canView`, su dueño único de «quién ve qué») no puede convertirse
+   * en 403 aquí: `docs/04-convenciones.md` es literal —*«un 403 sobre algo que no deberías saber
+   * que existe es una filtración: va 404»*—, y la excepción de esa regla («quien pregunta ya sabe
+   * que existe») no se aplica cuando el listado se lo oculta. Por eso el guardián se parte en dos
+   * comprobaciones distintas, no una: primero si LO VE, y solo si lo ve, si puede ESCRIBIR.
+   *
+   * `input.cantidad` solo importa con `MOVEMENT`, en pies. **La velocidad sale de la hoja
+   * derivada** (`CharacterSheetService.getSheet`, con su propia traza de condiciones) y no se
+   * recalcula aquí — sería una segunda fórmula separándose de la primera la próxima vez que una
+   * condición cambie la velocidad. **Sin velocidad de caminar en la hoja no es «velocidad cero»,
+   * es «no lo sé»** — un statblock a medio construir no tiene por qué declarar `walk`, y tratar
+   * ese hueco como cero convertiría cualquier movimiento en un aviso falso.
+   *
+   * El estado se relee **dentro** de la transacción, justo antes de escribir: es el gasto que de
+   * verdad se está aplicando, no una foto de antes de la cola. El suceso se escribe en la MISMA
+   * transacción que la fila, igual que el resto del módulo.
+   */
+  async gastar(
+    userId: string,
+    campaignId: string,
+    sessionId: string,
+    encounterId: string,
+    combatantId: string,
+    input: GastarInput,
+  ): Promise<{ economia: EconomiaDelTurno; excedido: boolean }> {
+    await this.membership.requireMember(campaignId, userId);
+    await this.sesion(campaignId, sessionId);
+
+    const combatiente = await this.prisma.combatant.findFirst({
+      where: { id: combatantId, encounterId, encounter: { sessionId } },
+      include: { character: true },
+    });
+    if (!combatiente) throw new NotFoundException("Combatant not found");
+
+    // **Primero si lo VE, con `canView` — el mismo filtro que `get()` aplica sobre este mismo
+    // `character`.** Un combatiente que la ficha del encuentro ya esconde no puede delatarse por
+    // la puerta trasera de un 403: si no lo ve, la respuesta es la misma que un id inventado.
+    const viewer = await this.viewerFor(userId, campaignId);
+    if (
+      !canView(viewer, {
+        visibility: combatiente.character.visibility,
+        createdById: combatiente.character.ownerId,
+        grantedUserIds: [],
+      })
+    ) {
+      throw new NotFoundException("Combatant not found");
+    }
+
+    // **Y solo si lo ve, si puede ESCRIBIR.** Dueño o DM, nunca un jugador ajeno — esto sí es un
+    // 403: el combatiente es visible, lo que falta es permiso para gastar por él.
+    const miembro = await this.membership.getMembership(campaignId, userId);
+    if (miembro?.role !== "DM" && combatiente.character.ownerId !== userId) {
+      throw new ForbiddenException("Solo el dueño del personaje o el DM pueden gastar por él");
+    }
+
+    // Solo MOVEMENT necesita saber cuánta velocidad hay — el resto de costes no la usan para
+    // nada, y pedirla siempre sería una consulta de más en el camino caliente del combate.
+    // `undefined` cuando la hoja no declara `walk`: no hay velocidad que comparar, así que nunca
+    // se puede decir que se pasó de ella.
+    let velocidad: number | undefined;
+    if (input.coste === "MOVEMENT") {
+      const hoja = await this.sheets.getSheet(userId, campaignId, combatiente.characterId);
+      velocidad = hoja.effectiveSpeeds.walk?.total;
+    }
+
+    return this.prisma.transaction(async (tx) => {
+      const actual = await tx.combatant.findFirst({ where: { id: combatantId } });
+      if (!actual) throw new NotFoundException("Combatant not found");
+
+      let excedido: boolean;
+      let data: Record<string, boolean | number>;
+      switch (input.coste) {
+        case "ACTION":
+          excedido = actual.actionUsed;
+          data = { actionUsed: true };
+          break;
+        case "BONUS":
+          excedido = actual.bonusUsed;
+          data = { bonusUsed: true };
+          break;
+        case "REACTION":
+          excedido = actual.reactionUsed;
+          data = { reactionUsed: true };
+          break;
+        case "MOVEMENT": {
+          const nuevo = actual.movementUsed + (input.cantidad ?? 0);
+          excedido = velocidad === undefined ? false : nuevo > velocidad;
+          data = { movementUsed: nuevo };
+          break;
+        }
+        case "FREE":
+          // No consume nada y nunca excede: es la interacción libre. Se registra igual, para
+          // que la mesa la vea — por eso sigue hasta `events.record` sin tocar ninguna columna.
+          excedido = false;
+          data = {};
+          break;
+      }
+
+      const actualizado =
+        Object.keys(data).length > 0
+          ? await tx.combatant.update({ where: { id: combatantId }, data })
+          : actual;
+
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          sessionId,
+          subjectType: "character",
+          subjectId: combatiente.characterId,
+          // **La visibilidad del PERSONAJE, no `PLAYERS` fija** — mismo motivo que
+          // `ATTACK_RESOLVED`: un PNJ escondido no puede anunciarle a la mesa que gastó su turno
+          // solo por haber gastado algo.
+          visibility: combatiente.character.visibility,
+          payload: {
+            type: "ACTION_SPENT",
+            encounterId,
+            combatantId,
+            coste: input.coste,
+            ...(input.coste === "MOVEMENT" ? { cantidad: input.cantidad } : {}),
+            excedido,
+          },
+        },
+        tx,
+      );
+
+      return {
+        economia: {
+          actionUsed: actualizado.actionUsed,
+          bonusUsed: actualizado.bonusUsed,
+          reactionUsed: actualizado.reactionUsed,
+          movementUsed: actualizado.movementUsed,
+        },
+        excedido,
+      };
     });
   }
 }

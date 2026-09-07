@@ -1,4 +1,10 @@
-import type { CombatantSide, EntityType, GameEventPayload, SessionNoteKind } from "@dnd/shared";
+import type {
+  Coste,
+  CombatantSide,
+  EntityType,
+  GameEventPayload,
+  SessionNoteKind,
+} from "@dnd/shared";
 import { NOMBRE_BANDO } from "../../dominio/combate";
 import { nombreAnulable, nombreCondicion } from "../character-sheet/vocabulario";
 import { NOMBRE_MONEDA, NOMBRE_RANURA, NOMBRE_ZONA } from "../inventory/vocabulario";
@@ -77,6 +83,17 @@ function dineroLegible(p: {
     .map((k) => `${p[k]! > 0 ? "+" : ""}${p[k]} ${NOMBRE_MONEDA[k]}`);
   return partes.length ? partes.join(", ") : "nada";
 }
+
+/**
+ * Los tres costes que se nombran con un sustantivo propio (paso 2, tarea A2). `MOVEMENT` y
+ * `FREE` tienen su propia frase más abajo —el primero lleva pies, el segundo no gasta nada— así
+ * que no hace falta que esta tabla sea `Record<Coste, string>` completa.
+ */
+const NOMBRE_COSTE: Record<Extract<Coste, "ACTION" | "BONUS" | "REACTION">, string> = {
+  ACTION: "una acción",
+  BONUS: "una acción adicional",
+  REACTION: "una reacción",
+};
 
 const RESULTADO_MUERTE: Record<string, string> = {
   SUCCESS: "un éxito",
@@ -256,6 +273,21 @@ export function lineaDeLog(p: GameEventPayload): string {
       return p.rounds === 1
         ? "Termina el combate en un asalto"
         : `Termina el combate tras ${p.rounds} asaltos`;
+
+    // --- Paso 2, tarea A2: gastar la economía del turno ---
+    case "ACTION_SPENT": {
+      // **Ningún valor de enumeración llega a la pantalla.** Nunca "ACTION" ni "MOVEMENT": el
+      // vocabulario en español se escribe una sola vez, aquí arriba (`NOMBRE_COSTE`).
+      if (p.coste === "FREE") return "Usa una interacción libre";
+      if (p.coste === "MOVEMENT") {
+        return p.excedido
+          ? `Se mueve ${p.cantidad} pies (se pasa de su velocidad)`
+          : `Se mueve ${p.cantidad} pies`;
+      }
+      return p.excedido
+        ? `Gasta ${NOMBRE_COSTE[p.coste]} (ya la tenía gastada)`
+        : `Gasta ${NOMBRE_COSTE[p.coste]}`;
+    }
 
     // --- 2.5.3: el ataque comparado en el servidor ---
     case "ATTACK_RESOLVED":

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { costeSchema } from "./action-economy.schema";
 
 // Tarea 2.5.2 — iniciativa y orden de turnos.
 //
@@ -128,3 +129,27 @@ export const setSideSchema = z.object({
   side: combatantSideSchema,
 });
 export type SetSideInput = z.infer<typeof setSideSchema>;
+
+/**
+ * Paso 2, tarea A2 — gastar un trozo de la economía del turno (`action-economy.schema.ts`).
+ *
+ * **`cantidad` solo aplica a `MOVEMENT`, en pies, y por eso es obligatoria justo ahí.** Para los
+ * demás costes no significa nada y el servidor la ignora si llega de todos modos — no es un 400,
+ * porque «acción, y además 20» no es una petición mal formada, es una petición con un campo de
+ * sobra que no cambia lo que se gasta.
+ */
+export const gastarSchema = z
+  .object({
+    coste: costeSchema,
+    cantidad: z.number().int().positive().max(1000).optional(),
+  })
+  .superRefine((valor, ctx) => {
+    if (valor.coste === "MOVEMENT" && valor.cantidad === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cantidad"],
+        message: "Cuántos pies de movimiento gasta",
+      });
+    }
+  });
+export type GastarInput = z.infer<typeof gastarSchema>;

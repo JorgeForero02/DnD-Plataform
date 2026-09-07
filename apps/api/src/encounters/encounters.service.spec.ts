@@ -120,6 +120,27 @@ describe("EncountersService", () => {
         return Promise.resolve(filas);
       },
     );
+    // **Paso 2, tarea A1** — `advanceTurn` repone la economía del turno con un `updateMany` por
+    // posición. Filtra sobre las mismas filas de `creadas`, igual que `combatant.update` ya
+    // hacía por id.
+    prisma.combatant.updateMany.mockImplementation(
+      ({
+        where,
+        data,
+      }: {
+        where?: { encounterId?: string; position?: number; characterId?: string };
+        data: Record<string, unknown>;
+      }) => {
+        const afectadas = creadas.filter(
+          (f) =>
+            (where?.encounterId === undefined || f.encounterId === where.encounterId) &&
+            (where?.position === undefined || f.position === where.position) &&
+            (where?.characterId === undefined || f.characterId === where.characterId),
+        );
+        for (const fila of afectadas) Object.assign(fila, data);
+        return Promise.resolve({ count: afectadas.length });
+      },
+    );
 
     prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
       cb({
@@ -397,6 +418,135 @@ describe("EncountersService", () => {
     await expect(service.advanceTurn("dm", "c1", "s1", "enc1")).rejects.toBeInstanceOf(
       ConflictException,
     );
+  });
+
+  // **Paso 2, tarea A1.** `gastar` todavía no existe —es la tarea 2—, así que aquí se simula el
+  // estado gastado poniendo las columnas directamente en la fila de la fixture que crea
+  // `combatant.create`, en vez de inventar un método público que la tarea 2 tendría que rehacer.
+  describe("advanceTurn() repone la economía del turno (paso 2, tarea A1)", () => {
+    it("al empezar su turno, el combatiente recupera acción, adicional y movimiento", async () => {
+      const activo = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc-activo", initiative: 10, position: 0 },
+      });
+      const objetivo = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc-objetivo", initiative: 8, position: 1 },
+      });
+      // gastar(objetivo, "ACTION"); gastar(objetivo, "BONUS")
+      objetivo.actionUsed = true;
+      objetivo.bonusUsed = true;
+      objetivo.movementUsed = 15;
+
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [activo, objetivo],
+      });
+      prisma.encounter.update.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 1,
+      });
+
+      await service.advanceTurn("dm", "c1", "s1", "enc1"); // le toca a él
+
+      expect(objetivo.actionUsed).toBe(false);
+      expect(objetivo.bonusUsed).toBe(false);
+      expect(objetivo.movementUsed).toBe(0);
+    });
+
+    // **La que importa.** Si la reposición se hiciera sobre quien TERMINA turno en vez de sobre
+    // quien lo EMPIEZA, esta prueba se pone en rojo — ver la mutación descrita en el informe.
+    it("la reacción se repone al empezar SU turno, no al final del turno anterior", async () => {
+      const c0 = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc0", initiative: 20, position: 0 },
+      });
+      const c1 = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc1", initiative: 15, position: 1 },
+      });
+      const combatiente = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pc2", initiative: 10, position: 2 },
+      });
+
+      // gastar(combatiente, "REACTION"): reacciona en el turno de otro.
+      combatiente.reactionUsed = true;
+
+      const estado = {
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [c0, c1, combatiente],
+      };
+      // `findFirst`/`update` sobre el mismo objeto mutable, porque esta prueba encadena dos
+      // llamadas a `advanceTurn` y la segunda tiene que ver el `activePosition` que dejó la
+      // primera.
+      prisma.encounter.findFirst.mockImplementation(() => Promise.resolve({ ...estado }));
+      prisma.encounter.update.mockImplementation(
+        ({ data }: { data: { activePosition: number; round: number } }) => {
+          Object.assign(estado, data);
+          return Promise.resolve({ ...estado });
+        },
+      );
+
+      await service.advanceTurn("dm", "c1", "s1", "enc1"); // turno del siguiente (pc1)
+      expect(combatiente.reactionUsed).toBe(true); // SIGUE gastada: no era su turno
+
+      await service.advanceTurn("dm", "c1", "s1", "enc1"); // vuelve a tocarle (position 2)
+      expect(combatiente.reactionUsed).toBe(false);
+    });
+
+    // **Vuelta de arreglo 1.** Con un solo combatiente por posición, un `update` sobre una fila
+    // suelta habría bastado y esta suite entera seguiría en verde — justo el fallo que el encargo
+    // señala con los seis goblins. Dos combatientes en la MISMA posición (mismo grupo) obligan a
+    // que la reposición sea un `updateMany` por posición, no un `update` por fila.
+    it("dos combatientes del mismo grupo (misma position) recuperan los dos al empezar ese turno", async () => {
+      const activo = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "pj", initiative: 20, position: 0 },
+      });
+      const goblin1 = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "goblin1", initiative: 10, position: 1 },
+      });
+      const goblin2 = await (prisma.combatant.create as jest.Mock)({
+        data: { encounterId: "enc1", characterId: "goblin2", initiative: 10, position: 1 },
+      });
+
+      // gastar(goblin1, "ACTION"); gastar(goblin2, "ACTION"), etc. — a los dos del grupo.
+      for (const g of [goblin1, goblin2]) {
+        g.actionUsed = true;
+        g.bonusUsed = true;
+        g.movementUsed = 30;
+      }
+
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [activo, goblin1, goblin2],
+      });
+      prisma.encounter.update.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 1,
+      });
+
+      await service.advanceTurn("dm", "c1", "s1", "enc1"); // le toca al grupo de goblins
+
+      for (const g of [goblin1, goblin2]) {
+        expect(g.actionUsed).toBe(false);
+        expect(g.bonusUsed).toBe(false);
+        expect(g.movementUsed).toBe(0);
+      }
+    });
   });
 
   // **Esta prueba afirmaba lo contrario, y la revisión de cierre la desmontó.** Decía «solo

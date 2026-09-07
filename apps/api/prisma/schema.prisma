@@ -460,6 +460,16 @@ model Combatant {
   /// aliado que aparece a mitad de escena.
   side CombatantSide @default(NEUTRAL)
 
+  /// **La economía de acciones del turno en curso** (paso 2). Se repone al EMPEZAR el turno de
+  /// este combatiente, no al terminar el anterior: entre medias no tienes reacción, y por eso
+  /// puedes reaccionar una sola vez por asalto. Ponerlo en el sitio equivocado deja a un
+  /// guerrero atacando de oportunidad dos veces.
+  actionUsed   Boolean @default(false)
+  bonusUsed    Boolean @default(false)
+  reactionUsed Boolean @default(false)
+  /// En pies. `0` = no se ha movido.
+  movementUsed Int     @default(0)
+
   createdAt DateTime  @default(now())
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)

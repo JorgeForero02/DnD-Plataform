@@ -860,6 +860,18 @@ export class EncountersService {
         });
       }
 
+      // **Paso 2, tarea A1 — la economía del turno se repone al EMPEZAR, no al terminar.** SRD
+      // 5.1, «Reactions»: *«you regain your reaction at the start of your turn»*. Por eso esto
+      // toca a quien entra en `toPosition` y no a quien sale de `encounter.activePosition`: entre
+      // el final de un turno y el principio del siguiente nadie tiene reacción, y es justo lo que
+      // hace que solo se pueda reaccionar una vez por asalto. Se repone por `position`, no por
+      // fila, porque varios combatientes —seis goblins idénticos— comparten posición y actúan a
+      // la vez.
+      await tx.combatant.updateMany({
+        where: { encounterId: encounter.id, position: toPosition },
+        data: { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 },
+      });
+
       return { ...actualizado, roundAdvanced: sube };
     });
   }

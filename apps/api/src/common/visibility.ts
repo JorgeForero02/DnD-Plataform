@@ -4,6 +4,13 @@ export interface Viewer {
   userId: string;
   role: Role | null;
   isAdmin: boolean;
+  /**
+   * El nombre legible de quien pregunta, cuando ya se ha ido a buscar su fila de `User` de
+   * todos modos (B3). Opcional porque los `viewerFor` que cada servicio se escribe por su
+   * cuenta no lo rellenan, y no tienen por qué: solo lo usa quien ya tiene el `Viewer` en la
+   * mano y necesita citar a esa persona en un registro.
+   */
+  displayName?: string;
 }
 
 export interface ViewableResource {

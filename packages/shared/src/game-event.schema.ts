@@ -441,6 +441,12 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
    * Un objeto entra en el inventario de alguien. **El nombre viaja en el suceso**, no solo su
    * referencia: la línea de tiempo se lee meses después, y para entonces el objeto puede haberse
    * borrado del catálogo de la campaña.
+   *
+   * `de` (B3) es **opcional y solo aparece cuando quien actúa no es el dueño del personaje**: un
+   * jugador que se añade algo a su propia bolsa no «recibe de» nadie. Lleva el **nombre legible**
+   * de quien lo dio, nunca un `id` ni una clave — la regla de «ningún valor de enumeración ni
+   * clave llega a la pantalla» alcanza también a un `cuid` en el registro. Todo el historial
+   * anterior a B3 no trae este campo y sigue siendo válido.
    */
   z.object({
     type: z.literal("ITEM_ADDED"),
@@ -448,6 +454,7 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     ref: z.string().min(1).max(80),
     quantity: z.number().int().min(1).max(9999),
     location: z.enum(["EQUIPPED", "CARRIED", "STORED"]),
+    de: z.string().min(1).max(120).optional(),
   }),
 
   /** Se equipa, se guarda, se saca del cofre o se sintoniza. */
@@ -485,6 +492,9 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   /**
    * Un movimiento de la bolsa. **Los deltas por denominación, no un total**: la mesa dice «tres
    * de plata», y guardar el total normalizado obliga a inventarse un cambio que nadie pidió.
+   *
+   * `de` (B3): la misma regla que en `ITEM_ADDED` — opcional, solo cuando quien actúa no es el
+   * dueño del personaje, y con el nombre legible de quien lo dio, nunca un `id`.
    */
   z.object({
     type: z.literal("MONEY_CHANGED"),
@@ -494,6 +504,7 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     gp: z.number().int().optional(),
     pp: z.number().int().optional(),
     reason,
+    de: z.string().min(1).max(120).optional(),
   }),
 
   // --- Iniciativa y orden de turnos (2.5.2) ---

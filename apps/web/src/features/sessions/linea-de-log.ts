@@ -204,16 +204,22 @@ export function lineaDeLog(p: GameEventPayload): string {
     }
 
     // --- 2B: el botín y el inventario ---
-    case "MONEY_CHANGED":
-      return `Cambia el dinero: ${dineroLegible(p)}`;
-    case "ITEM_ADDED":
+    case "MONEY_CHANGED": {
+      // `de` (B3) solo aparece cuando quien actuó no es el dueño del personaje: es el nombre
+      // legible de quien lo dio, nunca un `id`.
+      const deQuien = p.de ? `, de ${p.de}` : "";
+      return `Cambia el dinero: ${dineroLegible(p)}${deQuien}`;
+    }
+    case "ITEM_ADDED": {
       // **Sin el aspa de multiplicar**, y no es un capricho: `×` (U+00D7) está en la lista de
       // glifos prohibidos de la regla «los iconos se dibujan», y la prueba de `ui/Iconos` mira
       // el TEXTO FUENTE además del DOM. Aquí no hacía de icono —era una cantidad— pero la regla
       // es por nombre, y una excepción por caso es como se pierden las reglas.
+      const deQuien = p.de ? `, de ${p.de}` : "";
       return p.quantity > 1
-        ? `Consigue ${p.item} (${p.quantity} unidades, ${NOMBRE_ZONA[p.location].toLowerCase()})`
-        : `Consigue ${p.item} (${NOMBRE_ZONA[p.location].toLowerCase()})`;
+        ? `Consigue ${p.item} (${p.quantity} unidades, ${NOMBRE_ZONA[p.location].toLowerCase()})${deQuien}`
+        : `Consigue ${p.item} (${NOMBRE_ZONA[p.location].toLowerCase()})${deQuien}`;
+    }
     case "ITEM_MOVED": {
       // `slot` viaja como cadena libre en el payload (`z.string().max(20)`), no como el enum
       // `EquipSlot`, así que se traduce si se reconoce y se cita tal cual si no. Inventarle una

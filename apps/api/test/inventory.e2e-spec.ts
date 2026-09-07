@@ -295,6 +295,66 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     expect(anadido.payload).toMatchObject({ item: "Antorcha", quantity: 2 });
   });
 
+  // B3 — dar algo a alguien dice quién lo dio. El rastro (quién, qué y a quién) ya existía;
+  // lo que faltaba era el nombre legible en el `payload` para que la frase del registro lo diga.
+  it("el DM le da un objeto al personaje de otro y el suceso dice quién lo dio, con su nombre", async () => {
+    const add = await request(s())
+      .post(base())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ ref: { source: "SRD", key: "short-sword" }, quantity: 1 });
+    expect(add.status).toBe(201);
+
+    const log = await request(s())
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const suceso = log.body.events.find(
+      (e: { type: string; payload: { ref?: string } }) =>
+        e.type === "ITEM_ADDED" && e.payload.ref === "SRD:short-sword",
+    );
+    expect(suceso).toBeDefined();
+    // El nombre legible del DM, no su `id`: ningún valor de enumeración ni clave llega a la
+    // pantalla, y un `cuid` en el registro es exactamente eso.
+    expect(suceso.payload.de).toBe("DM");
+  });
+
+  it("el dueño se añade algo a su propia bolsa, y el suceso no dice «de» nadie", async () => {
+    const add = await request(s())
+      .post(base())
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ ref: { source: "SRD", key: "club" }, quantity: 1 });
+    expect(add.status).toBe(201);
+
+    const log = await request(s())
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const suceso = log.body.events.find(
+      (e: { type: string; payload: { ref?: string } }) =>
+        e.type === "ITEM_ADDED" && e.payload.ref === "SRD:club",
+    );
+    expect(suceso).toBeDefined();
+    expect(suceso.payload.de).toBeUndefined();
+  });
+
+  it("el DM cambia el dinero del personaje de otro y el suceso dice quién lo dio", async () => {
+    const money = () => `/campaigns/${campaignId}/characters/${characterId}/money`;
+
+    const cambio = await request(s())
+      .patch(money())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ gp: 3, reason: "recompensa de la posada" });
+    expect(cambio.status).toBe(200);
+
+    const log = await request(s())
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    const suceso = log.body.events.find(
+      (e: { type: string; payload: { reason?: string } }) =>
+        e.type === "MONEY_CHANGED" && e.payload.reason === "recompensa de la posada",
+    );
+    expect(suceso).toBeDefined();
+    expect(suceso.payload.de).toBe("DM");
+  });
+
   it("gastar un consumible descuenta unidades, y la última se lleva la fila", async () => {
     const fila = (
       await request(s())

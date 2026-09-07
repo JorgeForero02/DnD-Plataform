@@ -312,3 +312,42 @@ describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
     ).toBe("Usa una interacción libre");
   });
 });
+
+// **Quién lo dio** (ficha B3). El rastro ya existía —`ITEM_ADDED` y `MONEY_CHANGED` llevan
+// `actorUserId` y `subjectId`—, lo que faltaba era que la FRASE lo dijera. `de` es opcional:
+// todo el historial escrito antes de B3 no lo trae y su frase no cambia.
+describe("quién lo dio (B3)", () => {
+  it("un suceso sin `de` se lee exactamente como hoy: nadie sabe si lo trae la mesa vieja", () => {
+    expect(
+      lineaDeLog({
+        type: "ITEM_ADDED",
+        item: "Espada corta",
+        ref: "SRD:short-sword",
+        quantity: 1,
+        location: "CARRIED",
+      }),
+    ).toBe("Consigue Espada corta (encima)");
+    expect(lineaDeLog({ type: "MONEY_CHANGED", gp: 12, sp: -3 })).toBe(
+      "Cambia el dinero: +12 oro, -3 plata",
+    );
+  });
+
+  it("dar un objeto dice quién lo dio, con su nombre y no con su id", () => {
+    expect(
+      lineaDeLog({
+        type: "ITEM_ADDED",
+        item: "Espada corta",
+        ref: "SRD:short-sword",
+        quantity: 1,
+        location: "CARRIED",
+        de: "Marta",
+      }),
+    ).toBe("Consigue Espada corta (encima), de Marta");
+  });
+
+  it("cambiar el dinero de otro también lo dice", () => {
+    expect(lineaDeLog({ type: "MONEY_CHANGED", gp: 12, sp: -3, de: "El DM" })).toBe(
+      "Cambia el dinero: +12 oro, -3 plata, de El DM",
+    );
+  });
+});

@@ -1,3 +1,4 @@
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
@@ -62,7 +63,11 @@ describe("InventoryService", () => {
     membership.requireMember.mockResolvedValue(undefined);
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.character.findFirst.mockResolvedValue(character);
-    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    // **`displayName` presente por defecto.** Sin él, la ausencia de `de` en las pruebas "el
+    // dueño se añade algo a sí mismo" pasaría por el motivo equivocado: no porque la condición
+    // «solo cuando quien actúa no es el dueño» las proteja, sino porque no habría ningún nombre
+    // que poner. Con un nombre siempre disponible, la mutación que borra esa condición sí se ve.
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false, displayName: "Alguien" });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.$queryRaw.mockImplementation(async () => {
       const actual = await prisma.character.findFirst.mock.results.at(-1)?.value;
@@ -123,7 +128,7 @@ describe("InventoryService", () => {
           quantity: 1,
           location: "CARRIED",
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow(ForbiddenException);
       expect(prisma.inventoryItem.create).not.toHaveBeenCalled();
     });
 
@@ -173,14 +178,60 @@ describe("InventoryService", () => {
         Promise.resolve({ role: userId === "dm1" ? "DM" : "PLAYER" }),
       );
 
-      await expect(
-        service.add("dm1", "cmp1", "c1", {
+      let error: unknown;
+      try {
+        await service.add("dm1", "cmp1", "c1", {
           ref: { source: "CAMPAIGN", id: "ci1" },
           quantity: 1,
           location: "CARRIED",
-        }),
-      ).rejects.toThrow(/no puede ver/);
+        });
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as Error).message).toMatch(/no puede ver/);
       expect(prisma.inventoryItem.create).not.toHaveBeenCalled();
+    });
+
+    // B3 — dar algo a alguien dice quién lo dio. El rastro (actor, sujeto, qué) ya existía;
+    // lo que faltaba era el nombre legible dentro del `payload` para que la frase del registro
+    // lo diga. `de` es opcional y solo aparece cuando quien actúa no es el dueño.
+    it("dar un objeto deja un suceso que dice quién lo dio, con su nombre y no con su id", async () => {
+      membership.getMembership.mockImplementation((_c: string, userId: string) =>
+        Promise.resolve({ role: userId === "dm1" ? "DM" : "PLAYER" }),
+      );
+      prisma.user.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+        Promise.resolve(
+          where.id === "dm1" ? { isAdmin: false, displayName: "El DM" } : { isAdmin: false },
+        ),
+      );
+      prisma.inventoryItem.create.mockResolvedValue(row());
+
+      await service.add("dm1", "cmp1", "c1", {
+        ref: { source: "SRD", key: "dagger" },
+        quantity: 1,
+        location: "CARRIED",
+      });
+
+      const [, , eventoArg] = events.record.mock.calls.at(-1)!;
+      expect(eventoArg.subjectId).toBe("c1");
+      expect(eventoArg.payload).toMatchObject({ type: "ITEM_ADDED", quantity: 1 });
+      // El valor exacto, no `expect.any(String)`: si el `de` llevara el `id` del DM en vez de
+      // su nombre, `expect.any(String)` lo habría dejado pasar igual.
+      expect(eventoArg.payload.de).toBe("El DM");
+    });
+
+    it("el dueño se añade algo a su propia bolsa: el suceso no lleva `de`", async () => {
+      prisma.inventoryItem.create.mockResolvedValue(row());
+
+      await service.add("owner1", "cmp1", "c1", {
+        ref: { source: "SRD", key: "dagger" },
+        quantity: 1,
+        location: "CARRIED",
+      });
+
+      const [, , eventoArg] = events.record.mock.calls.at(-1)!;
+      expect(eventoArg.payload).not.toHaveProperty("de");
     });
   });
 
@@ -449,6 +500,26 @@ describe("InventoryService", () => {
         expect.anything(),
       );
       expect(res.gp).toBe(25);
+      // Es el propio dueño quien mueve su bolsa: no hay nadie de quien «recibirlo».
+      expect(events.record.mock.calls.at(-1)![2].payload).not.toHaveProperty("de");
+    });
+
+    it("B3: el DM cambia el dinero de un personaje ajeno y el suceso dice quién lo dio", async () => {
+      membership.getMembership.mockImplementation((_c: string, userId: string) =>
+        Promise.resolve({ role: userId === "dm1" ? "DM" : "PLAYER" }),
+      );
+      prisma.user.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+        Promise.resolve(
+          where.id === "dm1" ? { isAdmin: false, displayName: "El DM" } : { isAdmin: false },
+        ),
+      );
+      prisma.character.update.mockResolvedValue({ ...character, gp: 25 });
+
+      await service.changeMoney("dm1", "cmp1", "c1", { gp: 5, reason: "botín" });
+
+      const eventoArg = events.record.mock.calls.at(-1)![2];
+      expect(eventoArg.payload).toMatchObject({ type: "MONEY_CHANGED", gp: 5 });
+      expect(eventoArg.payload.de).toBe("El DM");
     });
 
     it("MUTACIÓN CLAVE: un delta que dejaría una moneda en negativo se rechaza con 400, sin tocar nada", async () => {

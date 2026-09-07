@@ -22,7 +22,13 @@ export async function viewerFor(
     membership.getMembership(campaignId, userId),
     prisma.user.findUnique({ where: { id: userId } }),
   ]);
-  return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
+  return {
+    userId,
+    role: member?.role ?? null,
+    isAdmin: user?.isAdmin ?? false,
+    // La fila ya se ha traído entera para mirar `isAdmin`: el nombre viaja gratis (B3).
+    displayName: user?.displayName,
+  };
 }
 
 function canSeeCharacter(viewer: Viewer, character: Pick<Character, "ownerId" | "visibility">) {
@@ -44,13 +50,36 @@ export async function requireVisibleCharacter(
   campaignId: string,
   characterId: string,
 ): Promise<Character> {
+  const { character } = await requireVisibleCharacterWithViewer(
+    prisma,
+    membership,
+    userId,
+    campaignId,
+    characterId,
+  );
+  return character;
+}
+
+/**
+ * Igual que `requireVisibleCharacter`, pero además entrega el `Viewer` de quien pregunta —con su
+ * `displayName`, ya en la mano tras `viewerFor`—, para quien necesite citar a esa persona sin
+ * pagar una segunda consulta por la misma fila de `User` (B3, inventario: dar algo a alguien
+ * dice quién lo dio).
+ */
+export async function requireVisibleCharacterWithViewer(
+  prisma: PrismaService,
+  membership: MembershipService,
+  userId: string,
+  campaignId: string,
+  characterId: string,
+): Promise<{ character: Character; viewer: Viewer }> {
   await membership.requireMember(campaignId, userId);
   const character = await prisma.character.findFirst({ where: { id: characterId, campaignId } });
   const viewer = await viewerFor(prisma, membership, userId, campaignId);
   if (!character || !canSeeCharacter(viewer, character)) {
     throw new NotFoundException("Character not found");
   }
-  return character;
+  return { character, viewer };
 }
 
 /** DM o dueño: el único par que puede escribir en el inventario o la bolsa de un personaje. */

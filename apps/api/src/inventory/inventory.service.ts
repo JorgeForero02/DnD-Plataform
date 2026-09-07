@@ -29,6 +29,7 @@ import { canView } from "../common/visibility";
 import {
   requireOwnerOrDM,
   requireVisibleCharacter,
+  requireVisibleCharacterWithViewer,
   viewerFor,
   viewerForCharacterOwner,
 } from "../common/character-viewer";
@@ -244,7 +245,7 @@ export class InventoryService {
   }
 
   async add(userId: string, campaignId: string, characterId: string, input: AddInventoryItemInput) {
-    const character = await requireVisibleCharacter(
+    const { character, viewer: actor } = await requireVisibleCharacterWithViewer(
       this.prisma,
       this.membership,
       userId,
@@ -288,6 +289,8 @@ export class InventoryService {
       await this.ensureSlotAllowed(characterId, campaignId, resolved, placement.slot as EquipSlot);
     }
 
+    const de = userId !== character.ownerId ? actor.displayName : undefined;
+
     try {
       return await this.prisma.transaction(async (tx) => {
         // **El mismo candado que `update`, y en el mismo orden.** Sin esto, meter un objeto
@@ -319,6 +322,7 @@ export class InventoryService {
           ref: resolved.ref,
           quantity: input.quantity,
           location: placement.location,
+          ...(de ? { de } : {}),
         });
         return fila;
       });
@@ -603,7 +607,7 @@ export class InventoryService {
     characterId: string,
     input: ChangeMoneyInput,
   ) {
-    const character = await requireVisibleCharacter(
+    const { character, viewer: actor } = await requireVisibleCharacterWithViewer(
       this.prisma,
       this.membership,
       userId,
@@ -617,6 +621,8 @@ export class InventoryService {
       const delta = input[key];
       if (delta !== undefined && delta !== 0) deltas[key] = delta;
     }
+
+    const de = userId !== character.ownerId ? actor.displayName : undefined;
 
     return this.prisma.transaction(async (tx) => {
       // **La fila se bloquea antes de mirar el saldo.** La primera versión comprobaba el saldo
@@ -658,7 +664,12 @@ export class InventoryService {
           // tocar `packages/shared`, así que lo dejó como una señal genérica con el detalle en
           // prosa y lo declaró; al integrar, el tipo se añadió de verdad — un movimiento de
           // dinero guardado como texto libre no se puede sumar ni filtrar después.
-          payload: { type: "MONEY_CHANGED", ...deltas, reason: input.reason },
+          payload: {
+            type: "MONEY_CHANGED",
+            ...deltas,
+            reason: input.reason,
+            ...(de ? { de } : {}),
+          },
         },
         tx,
       );

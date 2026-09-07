@@ -104,7 +104,11 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   // --- La actividad, con sus usos, ya en la ficha standalone ---
   const actividades = page.getByRole("region", { name: "actividades" });
   await expect(actividades).toBeVisible();
-  await expect(actividades.getByText("Furia")).toBeVisible();
+  // `exact: true`: sin él, «Furia» también casa con el botón «Usar Furia» y con la frase que
+  // explica cuánto dura, y el localizador cae en modo estricto con tres elementos — se afirma el
+  // nombre de la actividad, no cualquier texto que la mencione (misma trampa ya pagada con
+  // `getByRole("radio", { name: /Jugadores/ })`).
+  await expect(actividades.getByText("Furia", { exact: true })).toBeVisible();
   await expect(actividades.getByText("3 / 3 usos")).toBeVisible();
   // Nunca la clave cruda: la regla de enumeraciones que llegan a pantalla.
   await expect(page.getByText("rage", { exact: true })).toHaveCount(0);
@@ -152,7 +156,15 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   // construcción y no probaría nada (mismo criterio que `subir-nivel.spec.ts` deja escrito para
   // el nivel).
   const condiciones = cajonDeLaHoja.getByRole("region", { name: /condicion/i });
-  await expect(condiciones.getByText("En furia")).toBeVisible({ timeout: 10_000 });
+  // Ni con `exact: true` basta: la opción `<option>En furia</option>` del desplegable de «Nueva
+  // condición» vive en esta misma región y su texto también es exactamente «En furia», así que
+  // el localizador seguía cayendo en modo estricto con dos elementos. Se afirma la condición
+  // aplicada de verdad — su fila de lista, `<li>` en `Condiciones.tsx` — y no cualquier texto
+  // que la mencione (misma trampa que ya avisa el encargo, y la misma de «Furia» más arriba, y
+  // el mismo patrón de `condiciones-en-la-mesa.spec.ts` para "Concentración").
+  await expect(condiciones.getByRole("listitem").filter({ hasText: "En furia" })).toBeVisible({
+    timeout: 10_000,
+  });
   await expect(page.getByText("Sin traducir: raging")).toHaveCount(0);
 
   // --- Cerrar la hoja: la economía del turno, en la mesa, refleja el gasto ---
@@ -176,5 +188,11 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   // `bonoDeFuria` encontró la condición viva (`character-sheet.service.ts`).
   await page.keyboard.press("Escape");
   const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
-  await expect(sucesos.getByText(/Daño de Hacha grande.*Furia/)).toBeVisible({ timeout: 10_000 });
+  // El suceso pinta el motivo dos veces —un rótulo y, debajo, la tirada con su resultado— y las
+  // dos casan con el mismo patrón, así que el localizador caía en modo estricto con dos
+  // elementos. Se afirma la fila con el resultado tirado (trae `=`), que es lo que de verdad
+  // demuestra que la tirada se hizo, y no solo que su rótulo se pintó.
+  await expect(sucesos.getByText(/Daño de Hacha grande.*Furia.*=/)).toBeVisible({
+    timeout: 10_000,
+  });
 });

@@ -100,7 +100,20 @@ test("elegir camino en la hoja hace aparecer su rasgo, sin recargar", async ({ p
   await expect(page.getByText(/^berserker$/)).toHaveCount(0);
 
   // --- Elegir ES la acción completa: no hay botón de guardar que pulsar ---
-  await radio.check();
+  //
+  // `radio.check()` se investigó y se descartó a propósito: `RadiosEditables`
+  // (`EdicionEnSitio.tsx`) no ecoa la elección en un estado local optimista — su `checked` sale
+  // sin más de la prop `valor`, que solo cambia cuando `character.subclassKey` vuelve del
+  // servidor tras el `PATCH` (exactamente el mismo diseño que `SelectorEditable` ya usa para
+  // Raza y Clase, ninguna de las dos con eco local). `check()` de Playwright hace su propia
+  // verificación de estado casi en el mismo tick del clic, y ese hueco async basta para que la
+  // dé por fallida aunque el clic real dispare el `onChange`, la mutación llegue y el radio
+  // acabe marcado un instante después — confirmado aquí mismo capturando la respuesta del PATCH
+  // (devuelve `subclassKey: "berserker"`) y viendo `isChecked()` en `true` tras esperar. Por eso
+  // se separa en clic + espera explícita, que es el mismo patrón que ya usan otros radios
+  // respaldados por un viaje al servidor en este mismo directorio (p. ej.
+  // `paso-1-goteras.spec.ts`).
+  await radio.click();
   await expect(radio).toBeChecked({ timeout: 10_000 });
 
   // --- El rasgo aparece SIN recargar la página ---

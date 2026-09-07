@@ -129,7 +129,11 @@ test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo me
 }) => {
   await abrirTablas(page);
   const url = page.url();
-  const campaignId = url.split("/campaigns/")[1].split("/")[0];
+  // La navegación por secciones va en `?seccion=`, no en un segmento de ruta (ver
+  // `CampaignDetailPage.tsx`): la URL abierta en «Tablas» es `/campaigns/<id>?seccion=tables`.
+  // Cortar solo por "/" dejaba el `?seccion=tables` pegado al id y la siembra por API pedía una
+  // ruta que no existe.
+  const campaignId = url.split("/campaigns/")[1].split(/[/?]/)[0];
 
   // Un segundo personaje, para tener a quién dárselo: el DM no se da cosas a sí mismo en esta
   // prueba porque eso no demuestra el radio de destinatario.
@@ -138,6 +142,33 @@ test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo me
   await page.getByLabel("Nombre").fill("Marta");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  // `HojaCalculada` no monta `PaginaDeInventario` (y por tanto no hay region «inventario»)
+  // mientras la hoja está a medias — necesita raza, clase y las seis características. Un
+  // personaje recién creado no trae nada de eso, así que sin este paso la comprobación de más
+  // abajo nunca encontraría la bolsa de Marta. No es lo que este encargo mide —eso ya lo cubre
+  // `inventario.spec.ts`—, así que se completa por la API y no por el formulario.
+  await page.getByRole("link", { name: "Marta" }).click();
+  await expect(page.getByRole("heading", { name: "Marta" })).toBeVisible();
+  const characterId = page.url().split("/personajes/")[1];
+  const hojaDeMarta = await page.request.patch(
+    `/api/campaigns/${campaignId}/characters/${characterId}/sheet`,
+    {
+      headers: await comoLaSesion(page),
+      data: {
+        abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "fighter" },
+        level: 1,
+      },
+    },
+  );
+  expect(hojaDeMarta.ok()).toBe(true);
+
+  // Vuelve a la pestaña «Tablas» por la propia URL: tras el PATCH ya no hay un cajón abierto que
+  // cerrar, y `?seccion=` es justo el mecanismo que la nota de arriba describe para llegar ahí.
+  await page.goto(`/campaigns/${campaignId}?seccion=tables`);
+  await expect(page.getByRole("heading", { name: "Tablas del DM" })).toBeVisible();
 
   const tabla = await page.request.post(`/api/campaigns/${campaignId}/tables`, {
     headers: await comoLaSesion(page),
@@ -160,14 +191,22 @@ test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo me
   });
   expect(tabla.ok()).toBe(true);
 
+  // Se siembra por la API, no por la pantalla (comentario de cabecera): la lista de tablas la
+  // trae `useQuery` con su caché normal, que no se entera de una fila que entró por fuera hasta
+  // que algo la fuerce a pedirla otra vez — mismo patrón que `comoLaSesion` deja escrito en
+  // `condiciones-en-la-mesa.spec.ts` para la ficha sembrada por API.
+  await page.reload();
   await page.getByRole("tab", { name: "Tablas" }).click();
   await expect(page.getByText("Cofre del vestíbulo")).toBeVisible();
   await page.getByRole("button", { name: "Tirar" }).click();
 
   const resultado = page.getByRole("status");
+  // `exact: true`: sin él, «Espada corta» también casa por subcadena con el párrafo del texto
+  // de la fila («…Una espada corta y quince monedas de oro.») y el localizador cae en modo
+  // estricto con dos elementos — la misma trampa que ya avisa el encargo para `furia.spec.ts`.
   // Nunca la clave: si esto se rompiera pintando la `ref` en vez del `name`, esta línea es la que
   // se pone roja.
-  await expect(resultado.getByText("Espada corta")).toBeVisible();
+  await expect(resultado.getByText("Espada corta", { exact: true })).toBeVisible();
   await expect(resultado.getByText(/15 monedas de oro/i)).toBeVisible();
   await expect(page.getByText("short-sword")).toHaveCount(0);
 
@@ -175,6 +214,10 @@ test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo me
   await page.getByRole("radio", { name: "Marta" }).click();
   await page.getByRole("button", { name: "Entregar" }).click();
   await expect(page.getByText("Entregado.")).toBeVisible();
+  // «Dar…» es su propio cajón (`DarObjeto` monta un `Dialog`) y queda abierto tras entregar: hay
+  // que cerrarlo o su velo tapa el botón «Personajes» de detrás (misma razón que ya se documenta
+  // arriba para el cajón de «Personajes»).
+  await page.keyboard.press("Escape");
 
   // Se comprueba donde de verdad importa: en la bolsa de Marta, sin recargar la página. La
   // región de inventario vive en la propia página del personaje, sin una pestaña aparte (mismo

@@ -163,6 +163,11 @@ function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) 
     gameEvent: { findFirst: jest.fn().mockResolvedValue({ id: "ev1" }) },
     // Tarea 2.5.4: la salvación de concentración se pide creando la fila de siempre (2C.5).
     rollRequest: { create: jest.fn().mockResolvedValue({ id: "req1" }) },
+    // **Ficha P2-0b**: derivar la hoja dentro de la transacción lee el equipo equipado y el visor
+    // por ESTE cliente. Un `Prisma.TransactionClient` de verdad tiene los dos modelos; este doble
+    // no los tenía, y por eso el hueco no se veía desde aquí.
+    inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
+    user: { findUnique: jest.fn().mockResolvedValue({ isAdmin: false }) },
   };
   prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   return tx;
@@ -501,6 +506,40 @@ describe("lo que el daño y la curación le hacen a las salvaciones de muerte", 
       where: { id: "ch1" },
       data: expect.objectContaining({ deathSaveSuccesses: 0, deathSaveFailures: 0 }),
     });
+  });
+});
+
+// **Ficha P2-0b — con `tx`, `changeHp` tampoco puede leer por la puerta de al lado.**
+//
+// La autorización ya iba contra el cliente que le pasan (P2-0/I2), pero derivar la hoja no:
+// `construirODenegar` recibía el `tx` y solo se lo daba a `hojaOMotivo`, mientras `equipoEquipado`
+// y `viewerFor` hablaban con `this.prisma` sin condición. Resultado: leer el inventario equipado y
+// resolver el visor abrían conexiones nuevas con la transacción ajena todavía abierta.
+//
+// La prueba mira **qué cliente recibió cada consulta**. El resultado era correcto antes y después,
+// que es exactamente por qué ninguna prueba lo cazaba.
+describe("ficha P2-0b — con `tx`, derivar la hoja va por ESE cliente", () => {
+  // **Se mide sobre un `changeHp` que se rechaza a mitad**, y no por comodidad: `construirODenegar`
+  // corre ANTES de esa negativa, y así la prueba no arrastra la lectura que `buildResponse` hace al
+  // final del camino feliz —que sigue yendo por el pool y tiene su propia ficha—. Lo que se afirma
+  // aquí es exactamente lo que P2-0b describe y nada más.
+  it("el inventario equipado y el visor se leen del `tx`, no del pool", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje({ currentHp: 0, deathSaveFailures: 3 });
+    const tx = montarTransaccion(prisma, fila) as unknown as Record<string, unknown>;
+    // Lo que `autorizarEdicionConCliente` necesita del cliente que le pasan.
+    tx.campaignMember = { findUnique: jest.fn().mockResolvedValue({ role: "DM" }) };
+    (tx.character as { findFirst?: unknown }).findFirst = jest.fn().mockResolvedValue(fila);
+
+    await expect(
+      // Curar a un muerto: se deniega **después** de derivar la hoja.
+      service.changeHp("p1", "c1", "ch1", { delta: 10 }, tx as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect((tx.inventoryItem as { findMany: jest.Mock }).findMany).toHaveBeenCalled();
+    expect((tx.user as { findUnique: jest.Mock }).findUnique).toHaveBeenCalled();
+    expect(prisma.inventoryItem.findMany).not.toHaveBeenCalled();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 });
 

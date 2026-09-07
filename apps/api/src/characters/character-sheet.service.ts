@@ -294,10 +294,18 @@ export class CharacterSheetService {
     @Optional() private readonly statblocks?: StatblocksService,
   ) {}
 
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
+  /**
+   * **`tx` opcional, el patrón de siempre** (ficha P2-0b): quien ya tiene una transacción abierta
+   * resuelve el visor por ese cliente en vez de pedirle al pool una segunda conexión.
+   */
+  private async viewerFor(
+    userId: string,
+    campaignId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Viewer> {
     const [member, user] = await Promise.all([
       this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
+      (tx ?? this.prisma).user.findUnique({ where: { id: userId } }),
     ]);
     return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
   }
@@ -390,14 +398,17 @@ export class CharacterSheetService {
   private async equipoEquipado(
     userId: string,
     character: FilaPersonaje,
+    /** El cliente de la transacción de quien llama, si hay una (ficha P2-0b). */
+    tx?: Prisma.TransactionClient,
   ): Promise<{ items: ResolvedItem[]; warnings: DerivationWarning[] }> {
-    const filas = await this.prisma.inventoryItem.findMany({
+    const cliente = tx ?? this.prisma;
+    const filas = await cliente.inventoryItem.findMany({
       where: { characterId: character.id, location: "EQUIPPED" },
       orderBy: { createdAt: "asc" },
     });
     if (filas.length === 0) return { items: [], warnings: [] };
 
-    const viewer = await this.viewerFor(userId, character.campaignId);
+    const viewer = await this.viewerFor(userId, character.campaignId, tx);
     const items: ResolvedItem[] = [];
     const warnings: DerivationWarning[] = [];
     let ocultos = 0;
@@ -411,6 +422,7 @@ export class CharacterSheetService {
           this.prisma,
           character.campaignId,
           ref,
+          cliente,
         );
         const puedeVerlo =
           !campaignItem ||
@@ -1029,12 +1041,12 @@ export class CharacterSheetService {
   ): Promise<CharacterSheet> {
     // Para calcular los PG máximos da igual quién mira: se usa el equipo **sin redactar**, que
     // es el estado real del personaje. La redacción es de identidad, nunca de número.
-    const { items } = await this.equipoEquipado(character.ownerId, character);
+    const { items } = await this.equipoEquipado(character.ownerId, character, tx);
     // **Quien muta es el dueño o el DM** (`requireEditable`), y el dueño de un PNJ es el DM, así
     // que este espectador siempre ve la plantilla. Se pasa igualmente en vez de saltarse la
     // comprobación: un atajo aquí sería el hueco por el que entre la próxima fuga.
     const resultado = await this.hojaOMotivo(
-      await this.viewerFor(userId, character.campaignId),
+      await this.viewerFor(userId, character.campaignId, tx),
       character,
       items,
       tx,
@@ -1193,7 +1205,7 @@ export class CharacterSheetService {
     const character = filas[0];
     if (!character) throw new NotFoundException("Character not found");
 
-    const sheet = await this.construirODenegar(userId, character);
+    const sheet = await this.construirODenegar(userId, character, tx);
     const maxHp = sheet.derived.maxHp.total;
     const before = character.currentHp ?? maxHp;
 
@@ -1457,7 +1469,7 @@ export class CharacterSheetService {
         });
       }
 
-      const sheet = await this.construirODenegar(userId, character);
+      const sheet = await this.construirODenegar(userId, character, tx);
       const maxHp = sheet.derived.maxHp.total;
       const data: Record<string, unknown> = { version: character.version + 1 };
       const eventosAEscribir: GameEventPayload[] = [];
@@ -1532,7 +1544,7 @@ export class CharacterSheetService {
       const character = filas[0];
       if (!character) throw new NotFoundException("Character not found");
 
-      const sheet = await this.construirODenegar(userId, character);
+      const sheet = await this.construirODenegar(userId, character, tx);
       const maxHp = sheet.derived.maxHp.total;
       const currentHp = character.currentHp ?? maxHp;
       if (currentHp !== 0)

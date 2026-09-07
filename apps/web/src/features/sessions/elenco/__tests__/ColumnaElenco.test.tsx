@@ -74,6 +74,8 @@ const OGRO_FUERA_DE_COMBATE: NpcEnLaMesa = {
   conditions: [],
 };
 
+const SIN_GASTAR = { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 };
+
 function encuentroActivo(): Encounter {
   return {
     id: "enc-1",
@@ -82,8 +84,22 @@ function encuentroActivo(): Encounter {
     round: 1,
     activePosition: 0,
     combatants: [
-      { id: "cb-corvin", characterId: "p-corvin", initiative: 18, position: 0, side: "ALLY" },
-      { id: "cb-goblin", characterId: "n-goblin", initiative: 9, position: 1, side: "ENEMY" },
+      {
+        id: "cb-corvin",
+        characterId: "p-corvin",
+        initiative: 18,
+        position: 0,
+        side: "ALLY",
+        ...SIN_GASTAR,
+      },
+      {
+        id: "cb-goblin",
+        characterId: "n-goblin",
+        initiative: 9,
+        position: 1,
+        side: "ENEMY",
+        ...SIN_GASTAR,
+      },
     ],
   };
 }

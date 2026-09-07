@@ -725,6 +725,58 @@ describe("EncountersService", () => {
       expect(visto.activePosition).toBeNull();
     });
 
+    // Ronda de arreglo 1 (A3/A11) — crítico 1. Hasta esta ronda `get()` serializaba cinco campos
+    // a mano y se dejaba las cuatro columnas de la economía del turno (tarea A2) fuera de la
+    // respuesta: la fila ya las traía —Prisma no necesita un `select` para devolverlas— y nadie
+    // las leía al construir el combatiente visible. La mesa (`TiraDeIniciativa.tsx`) no tenía
+    // ninguna fuente de verdad y tuvo que inventarse un estado de cliente que se desincronizaba
+    // en cuanto la acción adicional se gastaba por una puerta que no fuera `PATCH .../spend`
+    // (`ActivitiesService.usar`, tarea A11).
+    it("la economía del turno de cada combatiente viaja en la respuesta, tal cual la tiene la fila", async () => {
+      prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
+      prisma.user.findUnique.mockResolvedValue({ id: "p1", isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [
+          {
+            id: "c0",
+            characterId: "pc1",
+            initiative: 18,
+            position: 0,
+            side: "ALLY",
+            actionUsed: true,
+            bonusUsed: true,
+            reactionUsed: false,
+            movementUsed: 15,
+            character: { visibility: "PLAYERS", ownerId: "p1" },
+          },
+        ],
+      });
+
+      const visto = await service.get("p1", "c1", "s1", "enc1");
+
+      // Aserción de identidad sobre el combatiente entero, no `objectContaining`: si `get()`
+      // dejara de copiar una de las cuatro columnas, o copiara la de otro combatiente por error,
+      // esto lo cazaría — `objectContaining` habría dejado pasar exactamente el hueco que este
+      // caso existe para cerrar.
+      expect(visto.combatants[0]).toEqual({
+        id: "c0",
+        characterId: "pc1",
+        initiative: 18,
+        position: 0,
+        side: "ALLY",
+        actionUsed: true,
+        bonusUsed: true,
+        reactionUsed: false,
+        movementUsed: 15,
+      });
+    });
+
     it("y el DM lo ve entero, con las posiciones de verdad", async () => {
       encuentroConGoblinesEscondidos();
       membership.getMembership.mockResolvedValue({ role: "DM" });

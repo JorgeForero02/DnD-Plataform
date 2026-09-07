@@ -249,9 +249,23 @@ export class ActivitiesService {
       // **`effects[]`, dentro de la MISMA transacción (vuelta de arreglo 1).** «Gasté el recurso
       // y la condición no se aplicó» es el estado a medias que esta tarea existe para impedir, y
       // es justo lo que A11 necesita: el bárbaro entra en furia y aparece su estado.
+      //
+      // **`concedidoPorActividad` solo se pasa cuando el destino es quien usa la actividad
+      // (ronda de arreglo 1 de A11, crítico 2).** `raging` se volvió clave reservada para que
+      // nadie se la escriba a sí mismo gratis por la puerta genérica de condiciones — y esta
+      // puerta, la de usar una actividad de verdad, tiene que poder seguir dándosela a quien
+      // gastó su acción adicional y su uso. Pero **nunca** a un objetivo distinto: una actividad
+      // futura con `effects` y `objetivos` no puede convertirse en la vía por la que un jugador
+      // le aplica una condición reservada a OTRO personaje sin que decida el DM — eso seguiría
+      // siendo exactamente el agujero que esta clave existe para cerrar, solo que por esta otra
+      // puerta. Hoy la única actividad con `effects` (la Furia) no declara `objetivos`, así que
+      // `destinatariosOrdenados` siempre la deja en `[actor]` — pero la condición se escribe
+      // explícita, no se confía en que siga siendo así.
       for (const efecto of actividad.effects) {
         for (const destino of destinatarios) {
-          await this.conditions.apply(userId, campaignId, destino.id, efecto, tx);
+          await this.conditions.apply(userId, campaignId, destino.id, efecto, tx, {
+            concedidoPorActividad: destino.id === actor.id,
+          });
         }
       }
 

@@ -9,18 +9,17 @@ import { ACTIVITY_CATALOG, type ActivityCatalog } from "../src/activities/activi
 // Tarea A7 (paso 2) — el borde HTTP de `POST .../activities/:activityKey/use`, contra Postgres
 // real. **Se escribe, no se corre**: lo corre el orquestador, uno a la vez (docs/08-pruebas.md).
 //
-// **Todavía no hay catálogo de actividades** (eso es A9 y A11): `ACTIVITY_CATALOG` no tiene
-// proveedor real en `AppModule`, así que `ActivitiesService.usar()` siempre responde "no existe
-// la actividad" para cualquier clave — ni una sola actividad real existe hoy en producción. Lo
-// que este e2e demuestra, honestamente, es lo que SÍ es cierto con ese catálogo vacío: la ruta
-// está montada, exige token, exige dueño-o-DM del personaje que actúa, y solo entonces mira si la
-// actividad existe.
-//
-// **Vuelta de arreglo 2 — el recorrido de una salvación, contra Postgres real.** Para eso hace
-// falta UNA actividad de verdad, así que este fichero anula `ACTIVITY_CATALOG` con un catálogo de
-// prueba de una sola entrada (`overrideProvider`) — el mismo patrón que ya usan otros e2e para
-// inyectar un tirador determinista. Cuando A9/A11 siembren el catálogo real, esta anulación se
-// puede quitar sin tocar el resto del fichero.
+// **Actualizado en la tarea A11: `ACTIVITY_CATALOG` ya tiene proveedor real en `AppModule`**
+// (`activities.module.ts`), así que en producción "rage" —y cualquier otra clave que un rasgo de
+// clase o de subclase conceda— ya resuelve a una `Actividad` de verdad. Este fichero sigue
+// anulando el token con `catalogoDePrueba` (`overrideProvider`, el mismo patrón que ya usan otros
+// e2e para inyectar un tirador determinista) porque quiere una actividad de SALVACIÓN aislada
+// para su propia prueba —"rage" es `utilidad` y no sirve para eso—, y esa anulación tiene un
+// efecto secundario que las pruebas de abajo dependen de él a propósito: con `catalogoDePrueba`,
+// "rage" vuelve a no existir DENTRO de este fichero, así que el 404 de "el dueño puede
+// intentarlo" sigue midiendo lo mismo que medía antes de A11 —la ruta entera sin una actividad
+// real detrás—, y no dice nada sobre lo que corre en producción. El recorrido de "rage" de
+// verdad, con el catálogo real, está en `furia.e2e-spec.ts`.
 const actividadDeSalvacionDePrueba: Actividad = {
   tipo: "salvacion",
   activation: { coste: "ACTION" },
@@ -126,7 +125,7 @@ describe("Usar una actividad (e2e)", () => {
     expect(r.status).toBe(403);
   });
 
-  it("el dueño puede intentarlo, y hoy — catálogo vacío — la actividad no existe: 404", async () => {
+  it("el dueño puede intentarlo, y con el catálogo de prueba de este fichero «rage» no existe: 404", async () => {
     const r = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/characters/${personajeDelJugador}/activities/rage/use`)
       .set("Authorization", `Bearer ${tokenPL}`)

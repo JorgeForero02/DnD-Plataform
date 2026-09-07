@@ -114,6 +114,30 @@ export class ConditionsService {
    * fuera, así que empujar esto contra `tx` habría exigido tocar un cuarto fichero fuera de la
    * frontera de esta tarea. Queda como el mismo género de límite que I2 describe para
    * `changeHp`/`create`, declarado en el informe.
+   *
+   * **`concedidoPorActividad`, aditivo, ronda de arreglo 1 de A11 (crítico 2).** `raging` se
+   * volvió clave reservada (`esClaveReservada`, `@dnd/shared`) para cerrar el agujero por el que
+   * cualquier jugador podía escribírsela a sí mismo sin gastar nada — pero `ActivitiesService.usar`
+   * llama a este mismo método para aplicar `effects[]` **como el jugador que usó la actividad**,
+   * no como el DM, y una Furia que solo el DM pudiera activar no sería la Furia.
+   *
+   * **Por qué HTTP nunca puede activarlo, y la razón FUERTE, no la débil (ronda de arreglo 2).**
+   * `ConditionsController` no lo pasa nunca al llamar a `apply` — eso ya bastaría por sí solo, y
+   * es la razón real: el cuerpo de la petición entra como CUARTO argumento posicional y
+   * `opciones` es el SEXTO, así que ningún controlador que arme esta llamada con el cuerpo puede
+   * alcanzarlo sin escribir el código para hacerlo. Que `opciones.concedidoPorActividad` **tampoco**
+   * esté en `applyConditionSchema` es una segunda cerradura, no la primera: un `z.object` de Zod 3
+   * descarta claves desconocidas por defecto, pero esa protección desaparece el día que alguien le
+   * ponga `.passthrough()` a ese esquema por otro motivo. La razón posicional no depende de eso.
+   *
+   * **Quien SÍ lo abre tiene que acotarlo él mismo.** Este método no decide a quién se le puede
+   * conceder algo "porque una actividad lo pide" — eso lo decide `ActivitiesService.usar`, que
+   * solo lo pasa `true` cuando `destino.id === actor.id` (ver su propio comentario y su prueba:
+   * "hacia un objetivo que NO es quien usa la actividad viaja con `concedidoPorActividad: false`,
+   * aunque sea la MISMA jugadora"). Sin ese acotamiento en el llamador, un usuario con dos
+   * personajes podría usar una actividad con `effects` y `objetivos` para ponerle una condición
+   * reservada a su OTRO personaje sin que decida el DM — el mismo diputado confundido de siempre,
+   * solo que a través de esta puerta en vez de otra.
    */
   async apply(
     userId: string,
@@ -121,6 +145,7 @@ export class ConditionsService {
     characterId: string,
     input: ApplyConditionInput,
     tx?: Prisma.TransactionClient,
+    opciones?: { concedidoPorActividad?: boolean },
   ) {
     const character = await requireVisibleCharacter(
       this.prisma,
@@ -150,7 +175,7 @@ export class ConditionsService {
     // mismo —una nota no calcula nada—, pero no darse un estado que el motor lee para decidir
     // tiradas y velocidad. El coste conocido de la regla, y se acepta a propósito: tumbarse solo
     // pasa a pedírselo al DM, porque `prone` es una de las quince.
-    if (esClaveReservada(input.key) && !esDM) {
+    if (esClaveReservada(input.key) && !esDM && !opciones?.concedidoPorActividad) {
       throw new ForbiddenException("Esa condición la aplica el DM.");
     }
 
@@ -406,18 +431,29 @@ export class ConditionsService {
       "Solo el DM o el dueño puede quitar una condición.",
     );
 
-    // **Poner y quitar son la misma concesión, y cerrar solo una no cierra nada.** Si el jugador
-    // no puede envenenarse pero sí puede quitarse el veneno que le acaba de poner el DM, la
-    // desventaja dura lo que tarde en pulsar. La regla es la misma de `apply`: una clave que el
-    // servidor interpreta la maneja el DM; una nota propia sigue siendo del dueño.
-    if (esClaveReservada(key) && !esDM) {
-      throw new ForbiddenException("Esa condición la quita el DM.");
-    }
-
     const existing = await this.prisma.characterCondition.findUnique({
       where: { characterId_key: { characterId, key } },
     });
     if (!existing) throw new NotFoundException("Condition not found");
+
+    // **Poner y quitar son la misma concesión, y cerrar solo una no cierra nada.** Si el jugador
+    // no puede envenenarse pero sí puede quitarse el veneno que le acaba de poner el DM, la
+    // desventaja dura lo que tarde en pulsar. La regla es la misma de `apply`: una clave que el
+    // servidor interpreta la maneja el DM; una nota propia sigue siendo del dueño.
+    //
+    // **Excepción, ronda de arreglo 2 — SRD 5.1, «Rage»: *"You can also end your rage on your
+    // turn as a bonus action."*** Las reglas de D&D son verdad absoluta en este proyecto: un
+    // jugador SÍ puede apagar su propia Furia, y `raging` se volvió clave reservada en la ronda
+    // de arreglo 1 sin dejarle esa puerta — la re-revisión lo cazó. `appliedById` ya contesta
+    // "quién la puso" sin inventar una lista nueva: si fue el propio dueño (`existing.appliedById
+    // === userId`) quien la escribió —por su propia actividad, `concedidoPorActividad` en
+    // `apply()`—, puede quitársela él mismo. **El reverso sigue intacto**: un `poisoned` que puso
+    // el DM tiene `appliedById` del DM, así que esta misma comprobación sigue exigiendo DM para
+    // quitarlo — `existing.appliedById !== userId` para el dueño de la ficha envenenada.
+    const puedeQuitarlaElMismo = existing.appliedById === userId;
+    if (esClaveReservada(key) && !esDM && !puedeQuitarlaElMismo) {
+      throw new ForbiddenException("Esa condición la quita el DM.");
+    }
 
     return this.prisma.transaction(async (tx) => {
       await tx.characterCondition.delete({ where: { id: existing.id } });

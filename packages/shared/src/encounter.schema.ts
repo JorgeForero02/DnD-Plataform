@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { costeSchema } from "./action-economy.schema";
+import { costeSchema, economiaDelTurnoSchema } from "./action-economy.schema";
 
 // Tarea 2.5.2 — iniciativa y orden de turnos.
 //
@@ -30,14 +30,28 @@ export type EncounterStatus = z.infer<typeof encounterStatusSchema>;
 export const combatantSideSchema = z.enum(["ALLY", "ENEMY", "NEUTRAL"]);
 export type CombatantSide = z.infer<typeof combatantSideSchema>;
 
-/** Un combatiente, ya filtrado por `canView` y con la posición renumerada densa. */
-export const combatantSchema = z.object({
-  id: z.string().cuid(),
-  characterId: z.string().cuid(),
-  initiative: z.number().int(),
-  position: z.number().int().nonnegative(),
-  side: combatantSideSchema,
-});
+/**
+ * Un combatiente, ya filtrado por `canView` y con la posición renumerada densa.
+ *
+ * **Lleva su economía del turno desde la ronda de arreglo 1 de A3/A11.** Hasta esa revisión
+ * `EncountersService.get()` serializaba solo cinco campos y se dejaba fuera las cuatro columnas
+ * que el propio modelo Prisma ya tenía (tarea A2): la mesa no tenía ninguna fuente de verdad para
+ * «qué le queda a cada uno», y `apps/web/src/features/encounters/TiraDeIniciativa.tsx` tuvo que
+ * inventarse un estado de cliente que se desincronizaba en cuanto la acción adicional se gastaba
+ * por una puerta que no fuera la de gastar directamente (`usar()` de una actividad, tarea A11) —
+ * el jugador pulsaba «Usar Furia» y la pantalla seguía diciendo «disponible». Se reutiliza
+ * `economiaDelTurnoSchema` con `.shape`, no una copia: es literalmente el mismo dato que ya
+ * declaraba A1, con el mismo Zod, así que un campo que se le añada allí llega aquí solo.
+ */
+export const combatantSchema = z
+  .object({
+    id: z.string().cuid(),
+    characterId: z.string().cuid(),
+    initiative: z.number().int(),
+    position: z.number().int().nonnegative(),
+    side: combatantSideSchema,
+  })
+  .extend(economiaDelTurnoSchema.shape);
 export type Combatant = z.infer<typeof combatantSchema>;
 
 export const encounterSchema = z.object({

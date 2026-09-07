@@ -21,7 +21,7 @@
 // hay un invariante que comprueba que no se dupliquen. Repetir un dato es cómo empiezan a
 // discrepar.
 
-import { SKILLS, type Actividad, type SkillKey } from "@dnd/shared";
+import { CLAVE_FURIA_ACTIVA, SKILLS, type Actividad, type SkillKey } from "@dnd/shared";
 import type { ClassFeature, SrdClass } from "./types";
 
 /** El bardo elige entre **todas**. Se escribe la lista entera y no `[]` con una nota: una lista
@@ -66,6 +66,42 @@ function f(level: number, key: string, name: string): ClassFeature {
 // La guarda de `resolverOrigen` que lanza solo protege POR DEBAJO del primer tramo; por encima no
 // hay guarda ninguna, así que "lanza en vez de mentir" no era cierto y había que comprobarlo, no
 // suponerlo.
+// Tarea A11 (paso 2) — lo que la Furia HACE, verificado en inglés contra 5thsrd.org, «The
+// Barbarian» (mismo texto que el SRD 5.1 de Wizards, CC BY 4.0):
+//
+//   «you gain the following benefits while raging: […] you have advantage on Strength checks
+//   and Strength saving throws. […] you have resistance to bludgeoning, piercing, and slashing
+//   damage. […] you can't cast or concentrate on spells.» Y, sobre cuánto dura: «Your rage
+//   lasts for 1 minute. It ends early if you are knocked unconscious or if your turn ends and
+//   you haven't attacked a hostile creature since your last turn or taken damage since then.»
+//   Y, sobre la armadura: «you can't do so while wearing heavy armor.»
+//
+// **Lo que este catálogo SÍ deja automatizado**, con las puertas que el proyecto ya tiene: la
+// condición se aplica sola al usar la actividad (`effects`, más abajo — `ActivitiesService.usar`
+// ya aplica `effects[]` para las cinco actividades por igual, tarea A7) y dura sus 60 segundos de
+// reloj de campaña (1 minuto, SRD) sin que nadie tenga que apagarla a mano. El daño cuerpo a
+// cuerpo con Fuerza sube por su propio camino (`CharacterSheetService.rollAttack`, que lee esta
+// misma condición y la tabla de escala `rage-damage` ya declarada más abajo).
+//
+// **Lo que NO se automatiza, a propósito, y por qué**: ni «se acaba si no atacas ni recibes daño
+// en un asalto» —no hay ningún enganche al final de un asalto que compruebe qué hizo cada
+// combatiente, y fingirlo sería inventar un motor de combate que este encargo no construye—, ni
+// la ventaja en pruebas y salvaciones de Fuerza, ni la resistencia a los tres tipos de daño, ni
+// que no lanzar conjuros exija además soltar la concentración, ni que no funcione con armadura
+// pesada: el vocabulario de `effects` (`applyConditionSchema`) solo sabe marcar una condición con
+// su duración, no «da ventaja en X» ni «resiste Y» ni «se apaga si Z» — la nota grande de
+// `activity.schema.ts` ya declara ese recorte como deliberado. Existir sin automatizarse es mejor
+// que no existir: se escribe en `description`, y si la interfaz y el servidor discreparan algún
+// día, manda el servidor.
+//
+// **`CLAVE_FURIA_ACTIVA` se reexporta desde `@dnd/shared` (ronda de arreglo 1, crítico 2) y no se
+// declara aquí.** `esClaveReservada` (`character-state.schema.ts`) tiene que reconocer esta clave
+// para que la puerta genérica de condiciones no deje que cualquier jugador se regale +2 al daño
+// escribiendo `{ key: "raging" }` sobre su propia ficha sin gastar nada — y `shared` no puede
+// importar de `apps/api`. Declararla dos veces (aquí y en `shared`) es exactamente cómo una clave
+// reservada deja de estarlo el día que una de las dos copias cambia sola.
+export { CLAVE_FURIA_ACTIVA };
+
 const FURIA: Actividad = {
   tipo: "utilidad",
   activation: { coste: "BONUS" },
@@ -74,7 +110,15 @@ const FURIA: Actividad = {
   // `uses`).
   consumption: [{ recurso: "rage", cantidad: 1 }],
   duration: { valor: 1, unidad: "minuto", concentracion: false },
-  effects: [],
+  // 60 segundos de reloj de campaña = 1 minuto = 10 asaltos (`SEGUNDOS_POR_ASALTO`): el mismo
+  // reloj que ya hace caducar solas las condiciones de 2C, aplicado aquí sin motor nuevo.
+  effects: [{ key: CLAVE_FURIA_ACTIVA, durationSeconds: 60, note: "Furia activa" }],
+  description:
+    "Mientras dura (1 minuto): ventaja en pruebas y salvaciones de Fuerza, resistencia a daño " +
+    "contundente, perforante y cortante, y no puedes lanzar conjuros ni llevar armadura pesada. " +
+    "El servidor SÍ marca el estado y SÍ sube tu daño cuerpo a cuerpo con Fuerza (mira la traza " +
+    "del golpe); el resto de esta lista, y que la Furia se corte si pasas un asalto entero sin " +
+    "atacar ni recibir daño, los arbitra la mesa.",
 };
 
 const RASGO_FURIA: ClassFeature = {

@@ -50,7 +50,17 @@ function encuentroTrasCorreccion(): Encounter {
     round: 2,
     activePosition: 0,
     combatants: [
-      { id: "cb-corvin", characterId: "p-corvin", initiative: 18, position: 0, side: "ENEMY" },
+      {
+        id: "cb-corvin",
+        characterId: "p-corvin",
+        initiative: 18,
+        position: 0,
+        side: "ENEMY",
+        actionUsed: false,
+        bonusUsed: false,
+        reactionUsed: false,
+        movementUsed: 0,
+      },
     ],
   };
 }

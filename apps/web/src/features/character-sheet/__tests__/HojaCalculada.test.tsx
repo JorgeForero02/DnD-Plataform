@@ -558,3 +558,51 @@ describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la 
     expect(screen.queryByRole("region", { name: "vista de DM" })).not.toBeInTheDocument();
   });
 });
+
+// Ronda de arreglo 1 — importante I1. `Actividades.test.tsx` prueba el componente en aislamiento
+// y eso nunca demuestra que `HojaCalculada` lo monte de verdad: medido, desmontar
+// `<Actividades ... />` de `HojaCalculada.tsx` deja **1213/1213 en verde**. Esta descripción
+// monta la hoja entera con una actividad concedida de verdad en `sheet.activities` y comprueba
+// que la tarjeta y el botón llegan a la pantalla — no una copia aislada del componente.
+describe("Actividades llega a la hoja de verdad (importante I1)", () => {
+  const sheetConFuria: SheetResponse = {
+    ...sheetResponse,
+    sheet: {
+      ...sheet,
+      activities: [
+        {
+          tipo: "utilidad",
+          activation: { coste: "BONUS" },
+          consumption: [{ recurso: "rage", cantidad: 1 }],
+          duration: { valor: 1, unidad: "minuto", concentracion: false },
+          effects: [{ key: "raging", durationSeconds: 60 }],
+          key: "rage",
+          usos: { max: 3, resetOn: "LONG_REST" },
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetConFuria);
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue([]);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue([]);
+  });
+
+  it("la tarjeta «Actividades» y su botón «Usar Furia» llegan a la pantalla montados dentro de la hoja", async () => {
+    pintarHoja(true);
+
+    const tarjeta = await screen.findByRole("region", { name: "actividades" });
+    expect(within(tarjeta).getByText("Furia")).toBeInTheDocument();
+    expect(within(tarjeta).getByRole("button", { name: "Usar Furia" })).toBeInTheDocument();
+  });
+
+  it("sin ninguna actividad concedida, la tarjeta no se monta — no hay una caja vacía que enseñar", async () => {
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
+    pintarHoja(true);
+
+    await screen.findByText("Salvaciones", { exact: true });
+    expect(screen.queryByRole("region", { name: "actividades" })).not.toBeInTheDocument();
+  });
+});

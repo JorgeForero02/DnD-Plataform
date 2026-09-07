@@ -1208,13 +1208,178 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     const { service } = conEspada();
 
     await expect(
-      service.rollAttack("p1", "c1", "ch1", "SRD:greataxe", {
+      service.rollAttack("p1", "c1", "ch1", "SRD:greataxe:MAIN_HAND", {
         part: "ATTACK",
         spendInspiration: false,
         mode: "NORMAL",
         versatile: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe("paso 2, tarea A11 — el daño de la Furia, con su propia traza", () => {
+  const BARBARO = {
+    abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+    race: { source: "SRD" as const, key: "human" },
+    class: { source: "SRD" as const, key: "barbarian" },
+    level: 3,
+    choices: { "barbarian-skills": ["athletics", "intimidation"] },
+  };
+  const HOJA_BARBARO = deriveCharacter(BARBARO);
+
+  function barbaroConHachaADosManos() {
+    return {
+      id: "ch1",
+      campaignId: "c1",
+      ownerId: "p1",
+      name: "Grosk",
+      race: null,
+      class: null,
+      level: BARBARO.level,
+      bio: null,
+      visibility: "PLAYERS" as const,
+      createdAt: new Date(),
+      str: BARBARO.abilities.str,
+      dex: BARBARO.abilities.dex,
+      con: BARBARO.abilities.con,
+      int: BARBARO.abilities.int,
+      wis: BARBARO.abilities.wis,
+      cha: BARBARO.abilities.cha,
+      raceKey: BARBARO.race.key,
+      subraceKey: null,
+      classKey: BARBARO.class.key,
+      choices: BARBARO.choices,
+      equippedSlots: null,
+      currentHp: HOJA_BARBARO.derived.maxHp.total,
+      tempHp: 0,
+      version: 0,
+      statblockRef: null,
+      overrides: null,
+      archivedAt: null,
+    } as unknown as Character;
+  }
+
+  function conBarbaroEnFuria() {
+    const montado = montar();
+    const personaje = barbaroConHachaADosManos();
+    montado.prisma.character.findFirst.mockResolvedValue(personaje);
+    montado.characters.requireEditable.mockResolvedValue(personaje);
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("greataxe", { slot: "MAIN_HAND" }),
+    ]);
+    // La condición que deja `FURIA.effects` al usar la actividad (`CLAVE_FURIA_ACTIVA`,
+    // `rules/catalog/classes.ts`), viva y sin vencer.
+    montado.prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "raging", level: null, expiresAtClock: null, expiryEdge: null },
+    ]);
+    return montado;
+  }
+
+  it("con la Furia activa, el daño cuerpo a cuerpo sube +2 (nivel 3: tramo `rage-damage` desde 1) y la traza dice de dónde sale", async () => {
+    const { service, rolls } = conBarbaroEnFuria();
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:greataxe:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    // El hacha a dos manos es `1d12` y Fuerza 16 da +3: sin Furia sería `1d12+3`.
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d12+5", label: expect.stringContaining("Furia") }),
+    );
+  });
+
+  it("la traza del golpe trae el paso ENTERO de la escala `rage-damage`, no un número suelto", async () => {
+    const { service } = conBarbaroEnFuria();
+
+    const golpe = await service.rollAttack("p1", "c1", "ch1", "SRD:greataxe:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    // Menor de la ronda de arreglo 1: `.toMatch(/rage-damage/)` sobre la cadena entera seguía en
+    // verde aunque `sourceType` o `amount` cambiaran a cualquier cosa — mientras `sourceKey`
+    // siguiera diciendo "rage-damage" en algún sitio del JSON, daba igual el resto. Aserción de
+    // identidad sobre el paso completo: es exactamente lo que produce `resolverOrigen` para
+    // `{ tipo: "escala", clave: "rage-damage" }` a nivel 3 (tramo `desde: 1`, valor 2).
+    expect((golpe as { trace?: unknown }).trace).toEqual([
+      {
+        op: "base",
+        amount: 2,
+        sourceType: "class",
+        sourceKey: "rage-damage",
+        labelKey: "scale.rage-damage",
+      },
+    ]);
+  });
+
+  it("sin la condición activa, el mismo bárbaro con la misma hacha NO gana el bono ni trae `trace`", async () => {
+    const { service, rolls, prisma } = conBarbaroEnFuria();
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+
+    const golpe = await service.rollAttack("p1", "c1", "ch1", "SRD:greataxe:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d12+3" }),
+    );
+    expect((golpe as { trace?: unknown }).trace).toBeUndefined();
+  });
+
+  it("una condición de Furia ya VENCIDA no suma nada — la misma regla de vencimiento que el resto del fichero", async () => {
+    const { service, rolls, prisma } = conBarbaroEnFuria();
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "c1", clockSeconds: 10_000 });
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "raging", level: null, expiresAtClock: 100, expiryEdge: null },
+    ]);
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:greataxe:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "1d12+3" }),
+    );
+  });
+
+  it("un ataque a DISTANCIA no gana el bono de Furia aunque esté activa: el SRD lo restringe a cuerpo a cuerpo con Fuerza", async () => {
+    const montado = montar();
+    const personaje = barbaroConHachaADosManos();
+    montado.prisma.character.findFirst.mockResolvedValue(personaje);
+    montado.characters.requireEditable.mockResolvedValue(personaje);
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("longbow", { slot: "MAIN_HAND" }),
+    ]);
+    montado.prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "raging", level: null, expiresAtClock: null, expiryEdge: null },
+    ]);
+
+    const golpe = await montado.service.rollAttack("p1", "c1", "ch1", "SRD:longbow:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    expect((golpe as { trace?: unknown }).trace).toBeUndefined();
   });
 });
 
@@ -2207,7 +2372,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     prisma.inventoryItem.findMany.mockResolvedValue([]);
 
     await expect(
-      service.resolveAttack("p1", "c1", "ch1", "SRD:greataxe", {
+      service.resolveAttack("p1", "c1", "ch1", "SRD:greataxe:MAIN_HAND", {
         targetCharacterId: "target1",
         mode: "NORMAL",
         spendInspiration: false,

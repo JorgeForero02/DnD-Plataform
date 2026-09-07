@@ -521,6 +521,18 @@ export class EncountersService {
         // pasó por `canView` sobre su personaje, y saber de qué lado está alguien a quien ya se ve
         // no revela nada que la ficha no dijera.
         side: c.side,
+        // **La economía del turno, desde la ronda de arreglo 1 de A3/A11.** Las cuatro columnas
+        // ya existían en la fila (tarea A2) y `gastar()` ya las devolvía en su propia respuesta;
+        // lo que faltaba era que ESTA respuesta —la que la tira de iniciativa sondea de verdad—
+        // las llevara también. Sin esto, un gasto que llegaba por una puerta distinta de
+        // `PATCH .../spend` (`ActivitiesService.usar`, tarea A11) nunca se reflejaba aquí, y el
+        // cliente tenía que inventarse un estado propio que se desincronizaba en cuanto alguien
+        // gastaba por la otra puerta. Misma visibilidad que el resto de la fila: no hace falta un
+        // filtro nuevo, `canView` ya decidió si este combatiente se ve.
+        actionUsed: c.actionUsed,
+        bonusUsed: c.bonusUsed,
+        reactionUsed: c.reactionUsed,
+        movementUsed: c.movementUsed,
       }));
 
     // **Las posiciones visibles se renumeran densas, y esto no es cosmética.** La revisión de

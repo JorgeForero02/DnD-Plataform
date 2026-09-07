@@ -8,6 +8,7 @@ import { Test } from "@nestjs/testing";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { deriveCharacter } from "../../rules/catalog";
 import { ResourcesService } from "./resources.service";
 
 // Tarea 2A.8.
@@ -361,7 +362,7 @@ describe("ResourcesService", () => {
       prisma.characterResource.upsert.mockResolvedValue({});
       await service.seedResourcesFor(
         "c1",
-        { classKey: "barbarian", spellSlots: [], spellSlotResetOn: "NONE" },
+        { classKey: "barbarian", spellSlots: [], spellSlotResetOn: "NONE", activities: [] },
         5,
       );
 
@@ -381,6 +382,7 @@ describe("ResourcesService", () => {
           classKey: "warlock",
           spellSlots: [{ spellLevel: 1, slots: 2 }],
           spellSlotResetOn: "SHORT_REST",
+          activities: [],
         },
         3,
       );
@@ -389,6 +391,159 @@ describe("ResourcesService", () => {
         expect.objectContaining({
           where: { characterId_key: { characterId: "c1", key: "spell-slot-1" } },
           create: expect.objectContaining({ current: 2, max: 2, resetOn: "SHORT_REST" }),
+        }),
+      );
+    });
+  });
+
+  describe("seedResourcesFor() — las actividades concedidas (paso 2, tarea A11)", () => {
+    // **Con una hoja de verdad, no fabricada.** `deriveCharacter` es el mismo motor que
+    // construye la hoja de cualquier personaje real; usarlo aquí es la diferencia entre probar
+    // "si le doy a esta función un array con la forma correcta" y probar el hueco de verdad que
+    // esta tarea cierra — nadie sembraba `rage` aunque `resolve.ts` (A9/A10) ya supiera decir
+    // cuántos usos le tocan a ESTE bárbaro a ESTE nivel.
+    function hojaDeBarbaro(level: number) {
+      return deriveCharacter({
+        abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "barbarian" },
+        level,
+        choices: { "barbarian-skills": ["athletics", "intimidation"] },
+      });
+    }
+
+    it("**la más importante de las dos tareas**: un bárbaro recién creado siembra su fila «rage», con el máximo real de su nivel y LONG_REST — sin esto, usar la Furia da «no te quedan usos» de un recurso que nunca existió", async () => {
+      prisma.characterResource.upsert.mockResolvedValue({});
+      const hoja = hojaDeBarbaro(3);
+      // Verificado contra el catálogo antes de afirmarlo en la prueba (barbarian-rages: 1→2,
+      // 3→3): un bárbaro de nivel 3 tiene 3 usos, no 2. El propio encargo citaba "max 2" para un
+      // bárbaro recién creado sin decir su nivel — comprobado aquí contra `classes.ts`, no contra
+      // la cita.
+      expect(hoja.activities.find((a) => a.key === "rage")?.usos?.max).toBe(3);
+
+      await service.seedResourcesFor(
+        "c1",
+        {
+          classKey: "barbarian",
+          spellSlots: [],
+          spellSlotResetOn: "NONE",
+          activities: hoja.activities,
+        },
+        3,
+      );
+
+      expect(prisma.characterResource.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { characterId_key: { characterId: "c1", key: "rage" } },
+          create: expect.objectContaining({
+            label: "Furia",
+            current: 3,
+            max: 3,
+            resetOn: "LONG_REST",
+            grantedBy: "OWNER",
+          }),
+        }),
+      );
+    });
+
+    it("un mago no siembra ningún recurso «rage»: la concesión de otra clase no llega", async () => {
+      prisma.characterResource.upsert.mockResolvedValue({});
+      const hoja = deriveCharacter({
+        abilities: { str: 8, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "wizard" },
+        level: 1,
+      });
+      expect(hoja.activities.find((a) => a.key === "rage")).toBeUndefined();
+
+      await service.seedResourcesFor(
+        "c2",
+        {
+          classKey: "wizard",
+          spellSlots: [],
+          spellSlotResetOn: "LONG_REST",
+          activities: hoja.activities,
+        },
+        1,
+      );
+
+      const clavesSembradas = prisma.characterResource.upsert.mock.calls.map(
+        (llamada) => (llamada[0] as { create: { key: string } }).create.key,
+      );
+      expect(clavesSembradas).not.toContain("rage");
+    });
+
+    // **Sobre la segunda dimensión que pedía el encargo** («una concesión de subclase solo
+    // llega si esa subclase está elegida»): comprobado contra el catálogo y NO es cierto que
+    // haya hoy una concesión real atada a una subclase — `grep` de `grant:` en `classes.ts`
+    // encuentra una sola entrada, la Furia, y es un rasgo de CLASE (nivel 1), no de subclase.
+    // Escribir esa prueba habría exigido fabricar un segundo `ItemGrant` en una subclase que el
+    // catálogo no tiene, exactamente lo que esta tanda pide no hacer. La dimensión gemela que sí
+    // es real y ya está cubierta, sin repetirla aquí: `resolve.spec.ts`,
+    // "subclassKey — un personaje tiene una subclase, no todas (A8)" prueba ese mismo filtro
+    // sobre los RASGOS de subclase (con nombre, sin `ItemGrant`) contra el catálogo real —
+    // `resolve.ts` aplica exactamente el mismo `if (feature.level <= build.level)` y el mismo
+    // filtro de subclase elegida a `concederActividadDe` que a `features.push`, así que es la
+    // MISMA guarda, no una que se quede sin ejercitar. Queda declarado, no silenciado.
+
+    it("a nivel 20 la Furia es ilimitada: siembra con `max: null` y un marcador finito en `current`, nunca el tramo de nivel 17", async () => {
+      prisma.characterResource.upsert.mockResolvedValue({});
+      const hoja = hojaDeBarbaro(20);
+      expect(hoja.activities.find((a) => a.key === "rage")?.usos).toEqual({
+        max: null,
+        resetOn: "LONG_REST",
+      });
+
+      await service.seedResourcesFor(
+        "c1",
+        {
+          classKey: "barbarian",
+          spellSlots: [],
+          spellSlotResetOn: "NONE",
+          activities: hoja.activities,
+        },
+        20,
+      );
+
+      expect(prisma.characterResource.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { characterId_key: { characterId: "c1", key: "rage" } },
+          // `1_000_000` es el marcador declarado junto a `MARCADOR_DE_USOS_SIN_TOPE`: no es una
+          // cifra del SRD (que dice "Unlimited", no un número), es la deuda que deja escrita el
+          // comentario de `resources.service.ts` — `current` es una columna `Int`, no admite
+          // ausencia como sí admite `max`.
+          create: expect.objectContaining({ max: null, current: 1_000_000 }),
+        }),
+      );
+    });
+
+    // Importante I4 (ronda de arreglo 1). Medido: sin esta rama, un bárbaro que ya tenía la fila
+    // `rage` sembrada (nivel 19, con un uso gastado) y sube a nivel 20 recibía `update: { max:
+    // null }` — el `current` finito de antes se quedaba tal cual, y ningún descanso vuelve a
+    // tocar una fila con `max: null` (`RestService`, ficha `A11-usos-sin-tope`). «Sin tope» se
+    // habría quedado, en la práctica, en el número de usos que le quedaran al subir de nivel,
+    // para siempre.
+    it("al subir a nivel 20, una fila `rage` YA EXISTENTE también se sube al marcador de sin tope, no solo `max`", async () => {
+      prisma.characterResource.upsert.mockResolvedValue({});
+      const hoja = hojaDeBarbaro(20);
+
+      await service.seedResourcesFor(
+        "c1",
+        {
+          classKey: "barbarian",
+          spellSlots: [],
+          spellSlotResetOn: "NONE",
+          activities: hoja.activities,
+        },
+        20,
+      );
+
+      expect(prisma.characterResource.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { characterId_key: { characterId: "c1", key: "rage" } },
+          // Aserción de identidad sobre la rama `update` completa: si alguien volviera a dejarla
+          // en `{ max: null }` a secas, esto lo cazaría con el `current` que faltaría.
+          update: { max: null, current: 1_000_000 },
         }),
       );
     });

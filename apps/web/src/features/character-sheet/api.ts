@@ -2,6 +2,7 @@ import type {
   AbilityKey,
   AttackResolution,
   ChangeHpInput,
+  CharacterSheetActivity,
   CreateRollInput,
   DamageType,
   DeathSaveInput,
@@ -17,6 +18,7 @@ import type {
   TraceStep,
   UpdateCharacterSheetInput,
   UpsertResourceInput,
+  UsarActividadInput,
   WeaponProperty,
 } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
@@ -116,6 +118,19 @@ export interface CalculatedSheet {
   weaponProficiencies: string[];
   spellSlots: SpellSlotDto[];
   spellSlotResetOn: "SHORT_REST" | "LONG_REST" | "NONE";
+  /**
+   * Paso 2, tarea A11 — actividades con nombre y mecánica propia que el catálogo concede (hoy,
+   * solo la Furia). **`Actividad` es de `@dnd/shared`, sin calcar a mano**: a diferencia del
+   * resto de este fichero, esta forma no vive en `apps/api`, vive en el paquete que los dos lados
+   * ya comparten — copiarla aquí sería la misma clase de segunda fuente que la regla del proyecto
+   * prohíbe. Ya viajaba en la respuesta de `GET .../sheet` desde que existe (`sheet` es la
+   * `CharacterSheet` completa); solo faltaba declararlo en este tipo.
+   *
+   * **Opcional en el tipo, misma razón que `attacks` y `money` más abajo**: los mocks de otras
+   * pantallas de esta carpeta no tienen por qué conocer un campo que no usan. Quien lo pinta cae
+   * a la lista vacía si no llega.
+   */
+  activities?: CharacterSheetActivity[];
 }
 
 /** `AttackDamage` de `apps/api/src/rules/attacks.ts`, calcada a mano — mismo motivo que arriba. */
@@ -657,4 +672,28 @@ export function removeTemporaryModifier(
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers/${id}`, {
     method: "DELETE",
   });
+}
+
+/**
+ * Paso 2, tarea A11 — **usar una actividad** (`ActivitiesController.usar`, `POST
+ * .../activities/:activityKey/use`). El servidor gasta lo que cuesta, aplica su efecto y avisa
+ * si algo se pasó — nunca rechaza (misma doctrina que la economía del turno, tarea A2): un
+ * `aviso` en la respuesta es información para la mesa, no un error HTTP.
+ */
+export interface UsarActividadResultado {
+  aviso?: string;
+  cd?: number;
+  traza?: TraceStep[];
+}
+
+export function usarActividad(
+  campaignId: string,
+  characterId: string,
+  activityKey: string,
+  input: UsarActividadInput = {},
+): Promise<UsarActividadResultado> {
+  return apiFetch(
+    `/campaigns/${campaignId}/characters/${characterId}/activities/${activityKey}/use`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }

@@ -660,12 +660,41 @@ describe("ActivitiesService", () => {
   it("effects[] se aplica en la misma transacción que el consumo del recurso", async () => {
     await service.usar(jugadoraId, campaignId, personajeId, "rage-con-estado");
 
+    // **`concedidoPorActividad: true`, ronda de arreglo 1 (crítico 2).** `raging` se volvió
+    // clave reservada (`esClaveReservada`, `@dnd/shared`), así que sin este cuarto argumento
+    // `ConditionsService.apply` real exigiría DM — y quien está usando su propia Furia aquí es
+    // la jugadora, no el DM. Se pasa `true` porque el destino es ella misma (`personajeId`, el
+    // mismo id que usa la actividad): nunca viajaría así hacia un objetivo distinto.
     expect(conditions.apply).toHaveBeenCalledWith(
       jugadoraId,
       campaignId,
       personajeId,
       { key: "raging", note: "Furia del bárbaro" },
       ultimoTx,
+      { concedidoPorActividad: true },
+    );
+  });
+
+  // Ronda de arreglo 2 — la propia barrera de `concedidoPorActividad` no tenía prueba. Sin ella,
+  // `destino.id === actor.id` se podía volver `true` a secas —la mutación de la re-revisión lo
+  // demostró: 1716/1716 en verde con el acotamiento borrado— y quedar sujeto solo a que
+  // `ConditionsService.apply` vuelva a comprobar `requireOwnerOrDM` sobre el destino, que es una
+  // comprobación de OTRO fichero. `jugadoraId` es dueña de `personajeId` **y** de `magaAjenaId`
+  // (fixture ya declarada arriba, "dueña DISTINTA de la del clérigo" — de ambos hay que leer que
+  // es distinta de la del clérigo, no de la jugadora): el caso exacto que el ruling señala, un
+  // usuario con dos personajes usando una actividad propia contra su OTRO personaje.
+  it("effects[] hacia un objetivo que NO es quien usa la actividad viaja con `concedidoPorActividad: false`, aunque sea la MISMA jugadora", async () => {
+    await service.usar(jugadoraId, campaignId, personajeId, "rage-con-estado", {
+      objetivos: [magaAjenaId],
+    });
+
+    expect(conditions.apply).toHaveBeenCalledWith(
+      jugadoraId,
+      campaignId,
+      magaAjenaId,
+      { key: "raging", note: "Furia del bárbaro" },
+      ultimoTx,
+      { concedidoPorActividad: false },
     );
   });
 

@@ -43,6 +43,9 @@ const GOBLIN_B = { ...GOBLIN_A, id: "g2" };
 /** Un personaje de campaña que NO combate en `PREPARANDO`, para el caso «no participo». */
 const AJENO: Character = { ...MARTA, id: "p-ajeno", ownerId: "u-ajeno", name: "Sinvela" };
 
+/** En reposo: nada gastado. Un encuentro `PREPARING` no ha tenido ni un turno todavía. */
+const SIN_GASTAR = { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 };
+
 /** Cuatro combatientes: dos del DM ya tirados, dos jugadores todavía sin responder. */
 const PREPARANDO: Encounter = {
   id: "e1",
@@ -51,10 +54,38 @@ const PREPARANDO: Encounter = {
   round: 1,
   activePosition: 0,
   combatants: [
-    { id: "cb1", characterId: "p-marta", initiative: 0, position: 0, side: "ALLY" as const },
-    { id: "cb2", characterId: "p-kevin", initiative: 0, position: 0, side: "ALLY" as const },
-    { id: "cb3", characterId: "g1", initiative: 14, position: 0, side: "ENEMY" as const },
-    { id: "cb4", characterId: "g2", initiative: 9, position: 0, side: "ENEMY" as const },
+    {
+      id: "cb1",
+      characterId: "p-marta",
+      initiative: 0,
+      position: 0,
+      side: "ALLY" as const,
+      ...SIN_GASTAR,
+    },
+    {
+      id: "cb2",
+      characterId: "p-kevin",
+      initiative: 0,
+      position: 0,
+      side: "ALLY" as const,
+      ...SIN_GASTAR,
+    },
+    {
+      id: "cb3",
+      characterId: "g1",
+      initiative: 14,
+      position: 0,
+      side: "ENEMY" as const,
+      ...SIN_GASTAR,
+    },
+    {
+      id: "cb4",
+      characterId: "g2",
+      initiative: 9,
+      position: 0,
+      side: "ENEMY" as const,
+      ...SIN_GASTAR,
+    },
   ],
 };
 

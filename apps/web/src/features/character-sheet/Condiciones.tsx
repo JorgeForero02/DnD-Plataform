@@ -69,6 +69,13 @@ export const EFECTO_CONDICION: Record<string, string> = {
   // **No es del SRD**: es la marca de la acción Ayudar (plan 08, I8). Va aquí porque comparte
   // pantalla con las quince, y sin su línea el jugador vería un rótulo sin decir qué hace.
   [CLAVE_AYUDA]: "Ventaja en tu primer ataque. Caduca al empezar el turno de quien te ayudó.",
+  // **Tampoco es del SRD** (paso 2, tarea A11): es la marca de la Furia del bárbaro. **Solo dice
+  // lo que el servidor hace de verdad** —sube el daño cuerpo a cuerpo, con su traza— porque el
+  // resto de la lista del SRD (ventaja, resistencia, sin conjuros, sin armadura pesada) no lo
+  // comprueba nadie todavía; decirlo aquí sería la interfaz prometiendo una regla del servidor
+  // que no existe.
+  raging:
+    "Ventaja y resistencia del SRD no se calculan solas; sube tu daño cuerpo a cuerpo. Dura 1 minuto.",
 };
 
 /**

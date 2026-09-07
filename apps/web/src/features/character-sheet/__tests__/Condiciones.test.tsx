@@ -125,7 +125,11 @@ describe("Condiciones — invariantes del texto", () => {
     // NO lo escribe nadie a mano —lo pone el servidor al ayudar, un asalto exacto (plan 08, I8)—,
     // así que su línea *tiene* que decirlo. Callarlo sería el defecto contrario: un jugador
     // creyendo que la ventaja le dura toda la escena.
-    const conVencimientoDelServidor = new Set([CLAVE_AYUDA]);
+    //
+    // **`raging` entra por el mismo motivo** (paso 2, tarea A11): su duración de 1 minuto la pone
+    // el servidor al usar la Furia (`FURIA.effects`, `classes.ts`), no el DM a mano, así que su
+    // línea también tiene que decirlo.
+    const conVencimientoDelServidor = new Set([CLAVE_AYUDA, "raging"]);
     const prohibido = /ronda|turno|minuto|hora|expir|dura(?:nte|ción)|hasta el final|cuenta atrás/i;
     const culpables = Object.entries(EFECTO_CONDICION)
       .filter(([clave]) => !conVencimientoDelServidor.has(clave))

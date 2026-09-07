@@ -123,6 +123,39 @@ describe("ConditionsService", () => {
     expect(prisma.characterCondition.upsert).toHaveBeenCalled();
   });
 
+  // Ronda de arreglo 1 de A11, crítico 2 — `raging` se volvió clave reservada
+  // (`esClaveReservada`, `@dnd/shared`) para cerrar exactamente este agujero: sin ella, un
+  // jugador podía escribirse `{ key: "raging" }` sobre su propio personaje —es su ficha,
+  // `requireOwnerOrDM` no lo para— y llevarse el +2 de daño de la Furia (`bonoDeFuria`,
+  // `character-sheet.service.ts`) sin gastar la acción adicional ni un uso.
+  it("un jugador no puede escribirse `raging` a sí mismo por la puerta genérica de condiciones", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    await expect(service.apply("owner1", "cmp1", "c1", { key: "raging" })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
+  it("el DM SÍ se la aplica por esta puerta, igual que `poisoned`: es el mismo caso, la mesa arbitrando a mano", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "raging" });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "raging" });
+
+    expect(prisma.characterCondition.upsert).toHaveBeenCalled();
+  });
+
+  it("y un jugador, sin ser DM, SÍ la recibe cuando `concedidoPorActividad` lo dice: es la puerta que usa una actividad ya validada, nunca HTTP", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.characterCondition.upsert.mockResolvedValue({ key: "raging" });
+
+    await service.apply("owner1", "cmp1", "c1", { key: "raging" }, undefined, {
+      concedidoPorActividad: true,
+    });
+
+    expect(prisma.characterCondition.upsert).toHaveBeenCalled();
+  });
+
   it("una nota propia sin efecto mecánico sigue funcionando", async () => {
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.characterCondition.upsert.mockResolvedValue({ key: "mojado" });
@@ -260,6 +293,41 @@ describe("ConditionsService", () => {
   it("quitar una condición del SRD también es del DM: poner y quitar son la misma concesión", async () => {
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.characterCondition.findUnique.mockResolvedValue({ id: "cond1", key: "poisoned" });
+
+    await expect(service.remove("owner1", "cmp1", "c1", "poisoned")).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.delete).not.toHaveBeenCalled();
+  });
+
+  // Ronda de arreglo 2 — SRD 5.1, «Rage»: *"You can also end your rage on your turn as a bonus
+  // action."* Las reglas de D&D son verdad absoluta en este proyecto, y `raging` se volvió clave
+  // reservada en la ronda de arreglo 1 sin dejarle al jugador esta puerta — lo cazó la
+  // re-revisión, no mi propio informe.
+  it("el dueño SÍ puede quitarse `raging` si fue ÉL quien la puso (appliedById === userId)", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.characterCondition.findUnique.mockResolvedValue({
+      id: "cond-furia",
+      key: "raging",
+      appliedById: "owner1",
+    });
+    prisma.characterCondition.delete.mockResolvedValue({ id: "cond-furia" });
+
+    await service.remove("owner1", "cmp1", "c1", "raging");
+
+    expect(prisma.characterCondition.delete).toHaveBeenCalledWith({ where: { id: "cond-furia" } });
+  });
+
+  // El reverso: el mismo jugador, la MISMA clave reservada, pero puesta por el DM — el veneno
+  // que le acaba de echar el DM sigue exigiendo al DM para quitarlo. `appliedById` es del DM, no
+  // suyo, así que la excepción de arriba no aplica.
+  it("pero NO puede quitarse un `raging`/`poisoned` que puso el DM: `appliedById` decide, no la clave", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.characterCondition.findUnique.mockResolvedValue({
+      id: "cond-veneno",
+      key: "poisoned",
+      appliedById: "dm1",
+    });
 
     await expect(service.remove("owner1", "cmp1", "c1", "poisoned")).rejects.toThrow(
       ForbiddenException,

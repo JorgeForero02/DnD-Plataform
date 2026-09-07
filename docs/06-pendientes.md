@@ -89,7 +89,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-06** (los quince planes de
+Última revisión: **2026-09-07** (los quince planes de
 [`superpowers/plans/2026-09-05-planes/`](./superpowers/plans/2026-09-05-planes/00-INDICE.md),
 que cerraron catorce y dejaron el 12 en marcha; y el saneamiento del mismo día: 37 fichas tachadas
 archivadas, 59 fechas corregidas y la ficha de la copia de seguridad cerrada como decisión). **La
@@ -1403,3 +1403,50 @@ encuentro de 2.5.6), no antes.
 > los nombres de quién falta es una decisión confirmada, no un hueco (E-N-5). La lección, no la
 > deuda: **no se abre ficha por algo que se sabe arreglar** — se intenta el cambio pequeño
 > primero, y solo si no lo hay se anota.
+
+### A11-usos-sin-tope — un recurso con `max: null` no se repone en un descanso ni se gasta sin tope de verdad (2026-09-07)
+
+**Abierto, encontrado al sembrar la Furia (paso 2, tarea A11), fuera de su frontera de ficheros.**
+El SRD declara la Furia «Unlimited» a partir de nivel 20 (`ItemGrant.usos.sinTopeDesde`,
+`resolve.ts` ya pone `usos.max: null` — verificado y en verde). Pero **dos puertas que ya
+existían no saben leer ese `null`**:
+
+- `RestService` (método de reposición por descanso, `rest.service.ts`) solo repone un recurso si
+  `recurso.max !== null` — un recurso sin tope **nunca se repone en un descanso**, aunque su
+  `resetOn` sea `LONG_REST`.
+- `ActivitiesService.consumir` compara `recurso.current < item.cantidad` sin mirar `max` en
+  ningún momento — un recurso "sin tope" sigue gastándose de un contador finito como cualquier
+  otro.
+
+**Lo que A11 hizo para no dejarlo roto sin resolver el problema de fondo:** `seedResourcesFor`
+siembra `current` con un marcador finito (`MARCADOR_DE_USOS_SIN_TOPE`, `resources.service.ts`,
+hoy `1_000_000`) en vez de fingir un número del SRD que no existe — el SRD dice "Unlimited", no
+una cifra. Es una cota práctica, no una regla de juego, y funciona mientras nadie gaste un millón
+de veces la Furia en una sesión.
+
+**El arreglo de verdad** es que quien gasta y quien repone un `CharacterResource` miren
+`max === null` ANTES de mirar `current` y, si es así, no comparen ni descuenten nada — la misma
+idea que `ResourcesService.adjust` ya aplica al RECORTAR por arriba (`resource.max ??
+Number.POSITIVE_INFINITY`), llevada también a la comparación de si queda algo que gastar. Toca
+`ActivitiesService.consumir` y `RestService`, ninguno de los dos en la frontera de A11.
+
+> **Ronda de arreglo 1 (importante I4): `seedResourcesFor` ya no deja el `current` finito
+> atascado al subir a nivel 20.** La primera versión solo actualizaba `max` al subir de nivel
+> (`update: { max: actividad.usos.max }`), así que un bárbaro de nivel 19 con, digamos, un uso
+> gastado de tres subía a nivel 20 con `max: null` y `current: 2` — y como `RestService` no toca
+> una fila con `max: null`, «sin tope» se habría quedado en «dos usos para siempre». Ahora, **solo
+> en el instante en que `max` pasa a ser `null`**, `current` también sube al marcador. El resto de
+> la deuda de arriba (`consumir()` y `RestService` sin mirar `max`) sigue abierta.
+
+### A11-lanzado-cuenta-como-cuerpo-a-cuerpo — el bono de daño de la Furia se cuela en un arma arrojada (2026-09-07)
+
+**Abierto, menor, fuera de la frontera de A11.** `bonoDeFuria`
+(`apps/api/src/characters/character-sheet.service.ts`) sube el daño cuando `ataque.ability ===
+"str"`, que es lo que devuelve `decidirCaracteristica` (`rules/attacks.ts`) para cualquier arma sin
+`FINESSE` a cuerpo a cuerpo — **y también para una jabalina o un hacha de mano (`THROWN`)
+LANZADAS**, porque esa función no distingue «empuñar» de «lanzar»: solo mira si el arma tiene
+`FINESSE`, no con qué mano llega el golpe. El SRD 5.1 solo da el bono en un ataque cuerpo a cuerpo
+(*"When you make a melee weapon attack using Strength"*), así que lanzar un hacha de mano en
+furia se lleva el +2 sin merecerlo. No es arreglable dentro de `character-sheet.service.ts`:
+`rollAttack` no tiene un modo «arrojado» del que depender — hace falta que `rules/attacks.ts`
+distinga las dos formas del mismo arma, que es un cambio de forma, no de un `if`.

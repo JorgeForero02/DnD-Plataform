@@ -1,4 +1,11 @@
-import type { Encounter, SetInitiativeInput, SetSideInput, StartEncounterInput } from "@dnd/shared";
+import type {
+  EconomiaDelTurno,
+  Encounter,
+  GastarInput,
+  SetInitiativeInput,
+  SetSideInput,
+  StartEncounterInput,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Tarea 2.5.6 — **la capa de combate de la mesa.**
@@ -125,4 +132,22 @@ export function cancelEncounter(
   encounterId: string,
 ): Promise<void> {
   return apiFetch<void>(`${base(campaignId, sessionId)}/${encounterId}`, { method: "DELETE" });
+}
+
+/**
+ * Paso 2, tarea A3 — gastar un trozo de la economía del turno propio (`EconomiaDeAccion.tsx`).
+ * El servidor cuenta y avisa, nunca rechaza (tarea A2, `EncountersService.gastar`): la respuesta
+ * trae la economía ya actualizada y si este gasto se ha pasado de lo que quedaba.
+ */
+export function spendAction(
+  campaignId: string,
+  sessionId: string,
+  encounterId: string,
+  combatantId: string,
+  input: GastarInput,
+): Promise<{ economia: EconomiaDelTurno; excedido: boolean }> {
+  return apiFetch<{ economia: EconomiaDelTurno; excedido: boolean }>(
+    `${base(campaignId, sessionId)}/${encounterId}/combatants/${combatantId}/spend`,
+    { method: "PATCH", body: JSON.stringify(input) },
+  );
 }

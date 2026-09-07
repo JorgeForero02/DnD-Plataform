@@ -8,6 +8,7 @@ import { EleccionesPendientes } from "./EleccionesPendientes";
 import { PuntosDeGolpe } from "./PuntosDeGolpe";
 import { ModificadoresTemporales } from "./ModificadoresTemporales";
 import { RecursosYDescansos } from "./RecursosYDescansos";
+import { Actividades } from "./Actividades";
 import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
 import { Anulaciones } from "./Anulaciones";
@@ -334,6 +335,20 @@ export function HojaCalculada({
                 puedeEditar={puedeEditar}
               />
             </TarjetaDeHoja>
+
+            {/* Paso 2, tarea A11 — el botón de usar una actividad (hoy, solo la Furia). Solo se
+                monta cuando el catálogo concede alguna: un personaje sin clase, o de una clase
+                sin actividades completas, no tiene nada que enseñar aquí. */}
+            {(sheet.activities ?? []).length > 0 && (
+              <TarjetaDeHoja titulo="Actividades" etiqueta="actividades">
+                <Actividades
+                  campaignId={campaignId}
+                  characterId={characterId}
+                  activities={sheet.activities ?? []}
+                  puedeEditar={puedeEditar}
+                />
+              </TarjetaDeHoja>
+            )}
 
             {/* **Modificadores temporales** (plan 13, M8), junto a las condiciones y no dentro de
                 ellas: comparten la caducidad, pero una condición es una regla del SRD con nombre

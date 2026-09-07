@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
 import { TiraDeIniciativa } from "../TiraDeIniciativa";
 import * as encountersApi from "../api";
+import * as characterSheetApi from "../../character-sheet/api";
 import type { Character } from "../../characters/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
+import { useAuthStore } from "../../../store/auth.store";
 
 // Tarea 2.5.6 — la capa de combate. Lo que se prueba aquí es lo que la capa **hace**: qué se puede
 // tocar, qué se manda al servidor y qué NO se enseña. Lo que solo se ve maquetado (que la tira no
@@ -31,6 +33,13 @@ const THORA: Character = {
 const GOBLIN_A = { ...THORA, id: "g1", name: "Goblin", ownerId: "u-dm" };
 const GOBLIN_B = { ...GOBLIN_A, id: "g2" };
 
+/**
+ * En reposo: nada gastado. Es el estado real de un combatiente al empezar su turno, y estas
+ * pruebas miden el orden y quién puede tocar el combate, no la economía (eso lo prueba
+ * `EconomiaDeAccion.test.tsx`) — spread para no repetir los cuatro campos en cada fila.
+ */
+const SIN_GASTAR = { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 };
+
 /** Un personaje en la posición 0 y dos goblins compartiendo la 1: dos turnos, tres filas. */
 const ENCUENTRO: Encounter = {
   id: "e1",
@@ -42,9 +51,30 @@ const ENCUENTRO: Encounter = {
     // `side` desde el plan 02: el bando lo dice el DM al empezar el encuentro. Esta pantalla
     // todavía no lo pinta —el dato llega y no se usa—, así que aquí solo hace falta para que el
     // fixture tenga la forma que el servidor devuelve de verdad.
-    { id: "cb1", characterId: "p-thora", initiative: 18, position: 0, side: "ALLY" as const },
-    { id: "cb2", characterId: "g1", initiative: 11, position: 1, side: "ENEMY" as const },
-    { id: "cb3", characterId: "g2", initiative: 11, position: 1, side: "ENEMY" as const },
+    {
+      id: "cb1",
+      characterId: "p-thora",
+      initiative: 18,
+      position: 0,
+      side: "ALLY" as const,
+      ...SIN_GASTAR,
+    },
+    {
+      id: "cb2",
+      characterId: "g1",
+      initiative: 11,
+      position: 1,
+      side: "ENEMY" as const,
+      ...SIN_GASTAR,
+    },
+    {
+      id: "cb3",
+      characterId: "g2",
+      initiative: 11,
+      position: 1,
+      side: "ENEMY" as const,
+      ...SIN_GASTAR,
+    },
   ],
 };
 
@@ -197,8 +227,22 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
     const conPnj: Encounter = {
       ...ENCUENTRO,
       combatants: [
-        { id: "cb1", characterId: "p-thora", initiative: 18, position: 0, side: "ALLY" as const },
-        { id: "cb9", characterId: "npc-klarg", initiative: 9, position: 1, side: "ENEMY" as const },
+        {
+          id: "cb1",
+          characterId: "p-thora",
+          initiative: 18,
+          position: 0,
+          side: "ALLY" as const,
+          ...SIN_GASTAR,
+        },
+        {
+          id: "cb9",
+          characterId: "npc-klarg",
+          initiative: 9,
+          position: 1,
+          side: "ENEMY" as const,
+          ...SIN_GASTAR,
+        },
       ],
     };
     montarTira(conPnj);
@@ -226,6 +270,7 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
                   initiative: 9,
                   position: 0,
                   side: "ENEMY" as const,
+                  ...SIN_GASTAR,
                 },
               ],
             }}
@@ -238,5 +283,47 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
     );
     const tira = screen.getByRole("region", { name: "Orden de turnos" });
     expect(within(tira).getByText("Alguien")).toBeInTheDocument();
+  });
+});
+
+// Ronda de arreglo 1 — crítico 1 e importante I1. `EconomiaDeAccion.test.tsx` prueba el
+// componente en aislamiento; eso nunca demuestra que llegue a la tira montada de verdad, ni que
+// lea la economía del ENCUENTRO en vez de un estado inventado en el cliente. Medido: desmontar
+// `<MiEconomia ... />` de `TiraDeIniciativa.tsx` deja pasar toda la suite del feature.
+describe("la economía del turno propio llega a la tira, leída del encuentro (crítico 1 / I1)", () => {
+  beforeEach(() => {
+    useAuthStore.setState({ user: { id: "u-ana", email: "a@b.c", displayName: "Ana" } as never });
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
+      character: THORA as never,
+      sheet: null,
+      hp: { current: null, max: null, temp: 0, version: 0, exceedsMax: false },
+      deathSaves: { successes: 0, failures: 0, status: "alive" },
+      effectiveSpeeds: { walk: { total: 30, steps: [] } },
+    });
+  });
+
+  it("con mi combatiente en su turno y todo en reposo, la tira dice «disponible» en los tres costes", async () => {
+    montarTira();
+
+    const economia = await screen.findByRole("region", { name: "Lo que te queda del turno" });
+    expect(within(economia).getByText("Acción: disponible")).toBeInTheDocument();
+    expect(within(economia).getByText("Acción adicional: disponible")).toBeInTheDocument();
+    // La velocidad tarda un sondeo aparte (`useCharacterSheet`): se espera su texto, no se lee
+    // en el primer render.
+    await waitFor(() => expect(within(economia).getByText("30 pies")).toBeInTheDocument());
+  });
+
+  it("**la fuente es el combatiente, no un estado del cliente**: si `get()` dice gastado, la tira dice «usada»", async () => {
+    const conAccionGastada: Encounter = {
+      ...ENCUENTRO,
+      combatants: ENCUENTRO.combatants.map((c) =>
+        c.characterId === "p-thora" ? { ...c, actionUsed: true, bonusUsed: true } : c,
+      ),
+    };
+    montarTira(conAccionGastada);
+
+    const economia = await screen.findByRole("region", { name: "Lo que te queda del turno" });
+    expect(within(economia).getByText("Acción: usada")).toBeInTheDocument();
+    expect(within(economia).getByText("Acción adicional: usada")).toBeInTheDocument();
   });
 });

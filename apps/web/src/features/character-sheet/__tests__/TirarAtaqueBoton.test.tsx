@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Encounter, RollResultRevealed } from "@dnd/shared";
+import type { EconomiaDelTurno, Encounter, RollResultRevealed } from "@dnd/shared";
 import { TirarAtaqueBoton } from "../TirarAtaqueBoton";
 import type { AttackDto } from "../api";
 import * as api from "../api";
@@ -72,14 +72,29 @@ const BANDIDO_ALIADO: Character = {
   archivedAt: null,
 };
 
-function encuentro(combatants: Encounter["combatants"]): Encounter {
+/**
+ * `combatants` acepta la economía del turno como opcional: la mayoría de estas pruebas prueba
+ * el ataque, no quién ha gastado qué, y desde que `combatantSchema` la exige (ronda de arreglo 1
+ * de A3/A11) escribirla a mano en cada fixture sería ruido sin nada que ver con lo que cada
+ * prueba mide. Todo llega en reposo por defecto, que es el estado inicial real de un combatiente.
+ */
+function encuentro(
+  combatants: (Omit<Encounter["combatants"][number], keyof EconomiaDelTurno> &
+    Partial<EconomiaDelTurno>)[],
+): Encounter {
   return {
     id: "enc-1",
     sessionId: "s1",
     status: "ACTIVE",
     round: 1,
     activePosition: 0,
-    combatants,
+    combatants: combatants.map((c) => ({
+      actionUsed: false,
+      bonusUsed: false,
+      reactionUsed: false,
+      movementUsed: 0,
+      ...c,
+    })),
   };
 }
 

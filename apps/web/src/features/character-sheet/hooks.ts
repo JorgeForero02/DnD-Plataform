@@ -9,11 +9,12 @@ import type {
   SetHpInput,
   UpdateCharacterSheetInput,
   UpsertResourceInput,
+  UsarActividadInput,
 } from "@dnd/shared";
 import * as characterSheetApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 import { useCurrentSession } from "../sessions/hooks";
-import { useCurrentEncounter } from "../encounters/hooks";
+import { encountersKey, useCurrentEncounter } from "../encounters/hooks";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
 
@@ -292,6 +293,38 @@ export function useRestoreResource(campaignId: string, characterId: string) {
         vars.reason,
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: resourcesKey(campaignId, characterId) }),
+  });
+}
+
+/**
+ * Paso 2, tarea A11 — usar una actividad (`ActivitiesController.usar`).
+ *
+ * Invalida **tres** consultas, porque un solo gasto puede tocar las tres: `resourcesKey` (gasta
+ * un uso, tarea A9), `conditionsKey` (`effects[]` deja su condición, tarea A7) y `sheetKey`
+ * (`gastarActivacion` puede marcar la economía del turno si hay combate — no viaja en esta
+ * respuesta, pero la hoja sondea de todas formas y sondear de más es más barato que un estado
+ * a medias). **Nunca `onError`**: el servidor no rechaza el gasto (doctrina de A2/A7), así que
+ * un `aviso` en la respuesta es información para la pantalla, no un fallo de la petición.
+ */
+export function useUsarActividad(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { activityKey: string; input?: UsarActividadInput }) =>
+      characterSheetApi.usarActividad(campaignId, characterId, vars.activityKey, vars.input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: resourcesKey(campaignId, characterId) });
+      void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, characterId) });
+      void qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) });
+      // **Ronda de arreglo 1 (crítico 1).** `usar()` puede gastar la economía del turno
+      // (`ActivitiesService.gastarActivacion`, tarea A11) si hay combate — y desde que
+      // `EncountersService.get()` serializa esa economía (misma ronda de arreglo), la tira de
+      // iniciativa la lee de ahí. Sin esta invalidación, pulsar «Usar Furia» dejaba la mesa
+      // diciendo «Acción adicional: disponible» hasta el siguiente sondeo — el hallazgo exacto
+      // de la revisión. `encountersKey(campaignId)` invalida por PREFIJO sin necesitar el
+      // `sessionId`, que este gancho no tiene en su firma (mismo patrón que ya documenta
+      // `encountersKey`, pensado para `features/live/canal.ts`).
+      void qc.invalidateQueries({ queryKey: encountersKey(campaignId) });
+    },
   });
 }
 

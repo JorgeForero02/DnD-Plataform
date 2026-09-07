@@ -6,12 +6,15 @@ import {
   useCancelEncounter,
   useEndEncounter,
   useForceStartEncounter,
+  useGastar,
   useSetInitiative,
 } from "./hooks";
+import { EconomiaDeAccion } from "./EconomiaDeAccion";
 import type { Character } from "../characters/api";
 import type { NpcEnLaMesa } from "../bestiario/api";
 import { useMembers } from "../campaigns/members";
 import { useRollRequests } from "../roll-requests/hooks";
+import { useCharacterSheet } from "../character-sheet/hooks";
 import { NOMBRE_ESTADO_DE_COMBATE } from "../../dominio/combate";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
@@ -179,6 +182,13 @@ export function TiraDeIniciativa({
         })}
       </ol>
 
+      <MiEconomia
+        campaignId={campaignId}
+        sessionId={sessionId}
+        encuentro={encuentro}
+        personajes={personajes}
+      />
+
       {/* **Si pasar turno falla, se dice.** No tenerlo fue un hueco real y lo destapó el
           recorrido de navegador: la petición se caía y la tira se quedaba tan tranquila en el
           mismo asalto, así que parecía que el botón no hacía nada. Un botón que falla en silencio
@@ -242,6 +252,81 @@ export function TiraDeIniciativa({
         />
       )}
     </section>
+  );
+}
+
+/**
+ * Paso 2, tarea A3 — **la economía del turno propio, sobre la tira.**
+ *
+ * Solo se pinta si el combatiente de la mesa lleva a MI personaje: un espectador que solo
+ * dirige PNJ del DM, o que no combate en este encuentro, no tiene turno propio que enseñar.
+ *
+ * **La economía se LEE del combatiente, nunca se guarda aparte.** Hasta la ronda de arreglo 1
+ * esto llevaba su propio `useState`, sembrado en cero y actualizado solo con la respuesta de
+ * `PATCH .../spend` — y `Encounter.combatants` no traía `actionUsed`/`bonusUsed`/`reactionUsed`/
+ * `movementUsed` en absoluto (la tarea A2 los añadió al modelo Prisma y a `gastar()`, pero
+ * `EncountersService.get()` seguía serializando solo cinco campos a mano). El resultado medido:
+ * un jugador pulsaba «Usar Furia» —que gasta la acción adicional en el servidor por la puerta de
+ * `ActivitiesService.usar`, tarea A11— y esta pantalla, que solo escuchaba el `PATCH` directo,
+ * seguía diciendo «disponible». La revisión lo cazó con el propio e2e de A11. Ahora
+ * `combatantSchema` lleva las cuatro columnas (`packages/shared/src/encounter.schema.ts`) y
+ * `get()` las serializa (`encounters.service.ts`), así que esta pantalla no necesita guardar
+ * nada: el sondeo de `useCurrentEncounter` ya trae el estado real, gástelo quien lo gaste.
+ *
+ * `excedido` sigue siendo un aviso local y efímero: no es un dato del encuentro, es «tu último
+ * gasto se pasó», y se apaga solo en cuanto deja de ser mi turno o cambia el asalto.
+ */
+function MiEconomia({
+  campaignId,
+  sessionId,
+  encuentro,
+  personajes,
+}: {
+  campaignId: string;
+  sessionId: string;
+  encuentro: Encounter;
+  personajes: Character[];
+}) {
+  const miId = useAuthStore((s) => s.user?.id);
+  const miPersonaje = personajes.find((c) => c.ownerId === miId);
+  const miCombatiente = miPersonaje
+    ? encuentro.combatants.find((c) => c.characterId === miPersonaje.id)
+    : undefined;
+
+  const { data: hoja } = useCharacterSheet(campaignId, miPersonaje?.id ?? "");
+  const gastar = useGastar(campaignId, sessionId);
+
+  const [excedido, setExcedido] = useState(false);
+
+  const esMiTurno =
+    miCombatiente !== undefined && encuentro.activePosition === miCombatiente.position;
+
+  // **Se ajusta DURANTE el render, no en un efecto** — el patrón que React recomienda para
+  // «reiniciar el estado cuando algo cambia» (https://react.dev/learn/you-might-not-need-an-effect),
+  // y el que exige la regla de lint de este proyecto. Solo queda por reiniciar el aviso de
+  // exceso: la economía en sí ya no es estado de este componente.
+  const claveDeTurno = esMiTurno ? `turno-${encuentro.round}` : "no-me-toca";
+  const [claveVista, setClaveVista] = useState(claveDeTurno);
+  if (claveVista !== claveDeTurno) {
+    setClaveVista(claveDeTurno);
+    setExcedido(false);
+  }
+
+  if (!miCombatiente) return null;
+
+  return (
+    <EconomiaDeAccion
+      economia={miCombatiente}
+      velocidad={hoja?.effectiveSpeeds?.walk?.total}
+      excedido={excedido}
+      gastando={gastar.isPending}
+      onGastar={({ coste, cantidad }) => {
+        gastar.mutate(
+          { encounterId: encuentro.id, combatantId: miCombatiente.id, coste, cantidad },
+          { onSuccess: (data) => setExcedido(data.excedido) },
+        );
+      }}
+    />
   );
 }
 

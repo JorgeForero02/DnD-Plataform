@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CombatantSide, StartEncounterInput } from "@dnd/shared";
+import type { CombatantSide, GastarInput, StartEncounterInput } from "@dnd/shared";
 import * as encountersApi from "./api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 import { rollRequestsKey } from "../roll-requests/hooks";
@@ -126,6 +126,30 @@ export function useForceStartEncounter(campaignId: string, sessionId: string | u
       invalidar();
       void qc.invalidateQueries({ queryKey: rollRequestsKey(campaignId) });
     },
+  });
+}
+
+/**
+ * Paso 2, tarea A3 — gastar la economía del turno propio.
+ *
+ * **Invalida `currentEncounterKey` desde la ronda de arreglo 1.** `get()` ahora serializa las
+ * cuatro columnas de la economía en cada combatiente (`packages/shared/src/encounter.schema.ts`,
+ * `encounters.service.ts`), así que la fuente de verdad de «qué me queda» es el propio encuentro
+ * sondeado por `useCurrentEncounter` — no un estado local de este gancho. Sin esta invalidación,
+ * el gasto tardaría hasta el siguiente sondeo (`SONDEO_DE_RED_DE_SEGURIDAD_MS`) en verse: la
+ * misma clase de retraso que la ronda de arreglo 1 encontró real cuando el gasto llegaba por
+ * `ActivitiesService.usar` (tarea A11) en vez de por este `PATCH` directo. También invalida el
+ * registro: `ACTION_SPENT` escribe un suceso que la mesa está mirando.
+ */
+export function useGastar(campaignId: string, sessionId: string | undefined) {
+  const invalidar = useInvalidar(campaignId, sessionId);
+  return useMutation({
+    mutationFn: (v: { encounterId: string; combatantId: string } & GastarInput) =>
+      encountersApi.spendAction(campaignId, sessionId!, v.encounterId, v.combatantId, {
+        coste: v.coste,
+        cantidad: v.cantidad,
+      }),
+    onSuccess: invalidar,
   });
 }
 

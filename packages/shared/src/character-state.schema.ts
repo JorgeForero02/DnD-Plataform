@@ -153,6 +153,16 @@ export type BordeDeCaducidad = (typeof BORDES_DE_CADUCIDAD)[number];
 export const CLAVE_AYUDA = "helped";
 
 /**
+ * **La marca que deja la Furia del bárbaro al usarse** (paso 2, tarea A11). Vive aquí, junto a
+ * `CLAVE_AYUDA`, y no en `apps/api/src/rules/catalog/classes.ts` —donde se declaró primero—
+ * porque `esClaveReservada` (más abajo) tiene que reconocerla, y `shared` no puede importar de
+ * `apps/api`. `classes.ts` importa esta constante en vez de declarar su propia cadena: dos
+ * literales `"raging"` en dos ficheros es exactamente cómo una clave reservada deja de estarlo el
+ * día que uno de los dos cambia y el otro no se entera.
+ */
+export const CLAVE_FURIA_ACTIVA = "raging";
+
+/**
  * **¿Esta clave la INTERPRETA el servidor?** (paso 1, tarea 1).
  *
  * Las quince del SRD cambian el modo de tirada sugerido y la velocidad efectiva; `helped` concede
@@ -179,9 +189,23 @@ export const CLAVE_AYUDA = "helped";
  * Vive en `shared` y no en la API porque describe el contrato de los datos, que es lo que
  * `shared` guarda; **hoy solo la usa el servidor** y la pantalla todavia ofrece las quince a
  * cualquiera (ficha en `docs/06-pendientes.md`).
+ *
+ * **`raging` entró en la ronda de arreglo 1 de la tarea A11, y es la reincidencia exacta del
+ * agujero que esta función cierra para `helped`.** `bonoDeFuria`
+ * (`apps/api/src/characters/character-sheet.service.ts`) sube el daño cuerpo a cuerpo con Fuerza
+ * mientras exista una `CharacterCondition` con esta clave — es, letra por letra, «una condición
+ * que el servidor interpreta», la categoría que el párrafo de arriba describe. Sin esta línea,
+ * `ConditionsService.apply` dejaba escribir `{ key: "raging" }` sobre el propio personaje a
+ * cualquier jugador (`requireOwnerOrDM` pasa: es su ficha) y se llevaba +2 permanente al daño sin
+ * gastar la acción adicional ni un uso de la Furia — la vía entera que `usar()` existe para
+ * cerrar, abierta por la puerta de al lado.
  */
 export function esClaveReservada(key: string): boolean {
-  return key === CLAVE_AYUDA || (SRD_CONDITIONS as readonly string[]).includes(key);
+  return (
+    key === CLAVE_AYUDA ||
+    key === CLAVE_FURIA_ACTIVA ||
+    (SRD_CONDITIONS as readonly string[]).includes(key)
+  );
 }
 
 /**

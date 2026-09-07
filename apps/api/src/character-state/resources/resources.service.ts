@@ -373,10 +373,23 @@ export class ResourcesService {
    * **`level` aparte de `sheet`**: `CharacterSheet` (`../../rules/catalog`) no lleva el nivel
    * del personaje —lo consume ya resuelto en `spellSlots`—, y el máximo de dados de golpe SÍ es
    * el nivel en bruto. Pedirlo aparte es más honesto que adivinarlo de la hoja.
+   *
+   * **Paso 2, tarea A11 — también siembra las actividades concedidas (`sheet.activities`).**
+   * Hasta esta tarea nadie sembraba `rage`: `resolve.ts` (A9/A10) ya sabía DECIR que un bárbaro
+   * de nivel 3 tiene la Furia con 3 usos, pero nada escribía la fila de `CharacterResource` que
+   * `ActivitiesService.usar` necesita para gastarla — un jugador pulsaba «Furia» y recibía «no
+   * te quedan usos» de un recurso que nunca existió. `sheet.activities` llega **ya filtrada**
+   * por nivel y por subclase elegida (`resolve.ts`, `concederActividadDe`): esta función no
+   * repite ningún filtro, siembra lo que la hoja ya decidió que el personaje tiene.
+   *
+   * `Pick` se amplía con `"activities"` y no cambia la firma para quien ya llama con una
+   * `CharacterSheet` completa (`characters/character-sheet.service.ts`,
+   * `level-up/level-up.service.ts`): los dos ya pasan la hoja entera, así que ningún llamador
+   * existente necesita tocarse.
    */
   async seedResourcesFor(
     characterId: string,
-    sheet: Pick<CharacterSheet, "classKey" | "spellSlots" | "spellSlotResetOn">,
+    sheet: Pick<CharacterSheet, "classKey" | "spellSlots" | "spellSlotResetOn" | "activities">,
     level: number,
     tx?: Prisma.TransactionClient,
   ): Promise<void> {
@@ -423,5 +436,75 @@ export class ResourcesService {
         update: { max: slot.slots, resetOn: sheet.spellSlotResetOn },
       });
     }
+
+    // Paso 2, tarea A11 — las actividades que el catálogo concede con sus propios usos (hoy,
+    // solo la Furia). Nada que gastar sin esta fila: ver el comentario grande de arriba.
+    for (const actividad of sheet.activities) {
+      if (!actividad.usos) continue;
+
+      // **`max: null` es "sin tope" (nivel 20 de la Furia), y aquí es donde ese vocabulario
+      // choca con una columna `Int` que no admite ausencia.** `current` sigue siendo un número
+      // real: se siembra con `MARCADOR_DE_USOS_SIN_TOPE`, declarado y explicado más abajo — no
+      // es una cifra del SRD, es un límite práctico hasta que exista un camino de gasto que
+      // trate `max === null` como "nunca compares con `current`" (hoy no lo hay:
+      // `ActivitiesService.consumir` y `RestService` comparan `current` sin mirar `max`, y el
+      // segundo ni siquiera repone un recurso con `max: null` en un descanso — ver
+      // `docs/06-pendientes.md`, ficha añadida en esta misma tarea). Fuera de la frontera de
+      // A11: los dos ficheros que lo arreglarían de verdad no están en su encargo.
+      const current = actividad.usos.max ?? MARCADOR_DE_USOS_SIN_TOPE;
+
+      await client.characterResource.upsert({
+        where: { characterId_key: { characterId, key: actividad.key } },
+        create: {
+          characterId,
+          key: actividad.key,
+          label: ETIQUETA_DE_ACTIVIDAD[actividad.key] ?? actividad.key,
+          current,
+          max: actividad.usos.max,
+          resetOn: actividad.usos.resetOn,
+          grantedBy: "OWNER",
+        },
+        // **Solo el tope se actualiza al subir de nivel; lo ya gastado no se toca** — la misma
+        // regla que ya aplican los dados de golpe y los espacios de conjuro, arriba. Un bárbaro
+        // que ya gastó su Furia esta sesión no la recupera de regalo al subir de nivel 8 a 9.
+        //
+        // **Excepción declarada (importante I4, ronda de arreglo 1): al entrar en `max: null`,
+        // `current` también se sube al marcador.** Sin esto, un bárbaro que sube de nivel 19 a
+        // 20 con, digamos, un uso gastado de tres se queda en `current: 2`, `max: null` — y
+        // ningún descanso vuelve a tocar esa fila (`RestService` no repone un `max: null`, la
+        // otra mitad de esta misma deuda). «Sin tope» se quedaría, en la práctica, en «dos usos
+        // para siempre»: exactamente lo que este marcador existe para evitar. Es la única
+        // excepción a «lo ya gastado no se toca», y solo aplica en el instante en que `max` pasa
+        // a ser `null` — el resto de las subidas de nivel (2 a 3, 8 a 9…) no la disparan porque
+        // el `max` de antes ya no era `null` para empezar.
+        update:
+          actividad.usos.max === null
+            ? { max: null, current: MARCADOR_DE_USOS_SIN_TOPE }
+            : { max: actividad.usos.max },
+      });
+    }
   }
 }
+
+/**
+ * **No es un número del SRD.** El SRD dice "Unlimited" (nivel 20 de la Furia), no un entero, y
+ * la columna `current` de `CharacterResource` es un `Int` de Postgres que no admite «sin tope» —
+ * a diferencia de `max`, que sí lo dice con `null`. Un millón de usos es, en la práctica, «no se
+ * te van a acabar en una sesión», sin fingir ser una medida de reglas (el mismo motivo por el que
+ * este proyecto no copia el `999` de Foundry para "infinito" — ver `classes.ts`, la nota grande
+ * sobre `RASGO_FURIA`). Queda declarado como deuda: el camino correcto es que quien gasta y quien
+ * repone un recurso miren `max === null` antes de mirar `current`, y hoy ninguno de los dos lo
+ * hace (`docs/06-pendientes.md`).
+ */
+const MARCADOR_DE_USOS_SIN_TOPE = 1_000_000;
+
+/**
+ * El texto que ve el jugador, por la clave estable de la actividad (`ClassFeature.key`). Hoy solo
+ * hay una entrada porque solo hay una actividad completa en el catálogo (`RASGO_FURIA`, tarea
+ * A11); una clave sin entrada aquí no revienta — enseña su propia clave, que es peor que una
+ * traducción y mejor que una excepción, y una prueba puede barrer esta tabla contra las claves
+ * reales del catálogo el día que haya una segunda.
+ */
+const ETIQUETA_DE_ACTIVIDAD: Record<string, string> = {
+  rage: "Furia",
+};

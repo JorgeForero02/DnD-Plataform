@@ -28,10 +28,17 @@ import type {
   OverridableKey,
   RollSuggestions,
   SetOverrideInput,
+  TraceStep,
   UpdateCharacterSheetInput,
 } from "@dnd/shared";
-import type { Modifier } from "../rules/engine";
+import {
+  resolverOrigen,
+  tablaDeEscalas,
+  type ContextoDeDerivacion,
+  type Modifier,
+} from "../rules/engine";
 import { buildAttacks, type Attack } from "../rules/attacks";
+import { CLAVE_FURIA_ACTIVA, SRD_CLASSES } from "../rules/catalog/classes";
 import { resolveContentRef } from "../inventory/common/resolve-item";
 import {
   deriveCharacter,
@@ -1684,9 +1691,31 @@ export class CharacterSheetService {
       input,
     );
     const dados = esCritico ? duplicarDados(dano.dice) : dano.dice;
+
+    // Paso 2, tarea A11 — el daño de la Furia, con su propia traza.
+    //
+    // SRD 5.1, «Rage»: *«When you make a melee weapon attack using Strength, you gain the
+    // following benefits [...] you deal extra damage»* — solo cuerpo a cuerpo, solo con Fuerza.
+    // `ataque.ability` ya dice cuál de las dos usa este arma (`decidirCaracteristica`,
+    // `rules/attacks.ts`), y es lo más cerca que este modelo llega a esa condición —**no es
+    // idéntica, y hay un caso real donde se separan (menor de la ronda de arreglo 1)**: un hacha
+    // de mano o una jabalina (`THROWN`, sin `FINESSE`) siguen resolviendo `ability: "str"` aunque
+    // se LANCEN, porque `decidirCaracteristica` no distingue «llevar el arma» de «lanzarla» — y
+    // el SRD solo da el bono en un ataque CUERPO A CUERPO, no en uno arrojado. No es arreglable
+    // aquí: `rollAttack` no tiene un modo «arrojado» del que depender, y separarlo es trabajo de
+    // `rules/attacks.ts`, fuera de esta frontera. Se acepta y se declara, no se esconde detrás de
+    // un comentario que diga que la condición es exacta cuando no lo es.
+    //
+    // La condición que comprueba es la que deja `FURIA.effects` al usar la actividad
+    // (`CLAVE_FURIA_ACTIVA`, `rules/catalog/classes.ts`) — la misma puerta genérica que ya
+    // aplica cualquier otro efecto (`ActivitiesService.usar`), filtrada contra el reloj de
+    // campaña con la misma función que usa el resto de este fichero para cualquier condición
+    // (`condicionesActivas`).
+    const bonoFuria = await this.bonoDeFuria(campaignId, characterId, character, ataque.ability);
+
     const peticion = {
-      expression: conSigno(dados, dano.modifier),
-      label: `Daño de ${ataque.name}${esCritico ? " (crítico)" : ""}`,
+      expression: conSigno(dados, dano.modifier + (bonoFuria?.valor ?? 0)),
+      label: `Daño de ${ataque.name}${esCritico ? " (crítico)" : ""}${bonoFuria ? " + Furia" : ""}`,
       characterId,
       // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el
       // dado de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
@@ -1701,11 +1730,14 @@ export class CharacterSheetService {
       // **D-OP-15: la tirada que se está cobrando queda escrita, con índice único detrás.** El
       // cuarto argumento **solo se pasa cuando hay algo que decir**: un `undefined` explícito
       // cambiaría la forma de todas las llamadas del camino de siempre sin añadir nada.
-      return await (input.attackRollEventId
+      const tirada = await (input.attackRollEventId
         ? this.rolls.roll(userId, campaignId, peticion, {
             attackRollEventId: input.attackRollEventId,
           })
         : this.rolls.roll(userId, campaignId, peticion));
+      // **`trace` solo viaja cuando hay algo que explicar** (mismo criterio que el cuarto
+      // argumento de arriba): un golpe sin Furia no gana un campo nuevo que nadie mira.
+      return bonoFuria ? { ...tirada, trace: [bonoFuria.paso] } : tirada;
     } catch (error) {
       // **El segundo cobro lo rechaza la BASE, no un `if`.** P2002 = violación de restricción
       // única. Comprobarlo en el servicio sería una carrera esperando a ocurrir en cuanto alguien
@@ -1737,6 +1769,60 @@ export class CharacterSheetService {
    * solo-añadir, y un cambio de comportamiento silencioso ahí sería peor que el hueco que cierra
    * a medias.
    */
+  /**
+   * Paso 2, tarea A11 — cuánto sube el daño con Fuerza mientras dura la Furia, y su paso de
+   * traza. `undefined` cuando no aplica —`ability !== "str"`, sin la condición viva, o una clase
+   * que el catálogo ya no reconoce—, nunca un cero silencioso: un cero sumado a la expresión de
+   * daño se ve igual que «no hay Furia» y esta función no tiene por qué fingir que sabe la
+   * diferencia si `resolverOrigen` no puede resolverla.
+   *
+   * **`ability !== "str"` no es lo mismo que «arma a distancia o con Destreza» (menor de la
+   * ronda de arreglo 1, corregido en la llamada de arriba).** Un hacha de mano o una jabalina
+   * LANZADAS (`THROWN`, sin `FINESSE`) siguen resolviendo `ability: "str"` en
+   * `decidirCaracteristica` (`rules/attacks.ts`), que no distingue empuñar de lanzar — así que
+   * esta función SÍ les da el bono, aunque el SRD solo lo da en un ataque cuerpo a cuerpo. Ver el
+   * comentario de la llamada y la ficha `A11-lanzado-cuenta-como-cuerpo-a-cuerpo` en
+   * `docs/06-pendientes.md`.
+   *
+   * **Por qué la comprobación de la condición va ANTES de tocar la tabla de escala.** Pedir la
+   * tabla y resolver el origen para descartarlo después sería trabajo de sobra en el camino
+   * caliente de un ataque sin Furia —la inmensa mayoría—, y `resolverOrigen` **lanza** si el
+   * nivel del personaje no llega al primer tramo: nunca debería intentarse resolver sin haber
+   * confirmado antes que hay algo que resolver.
+   */
+  private async bonoDeFuria(
+    campaignId: string,
+    characterId: string,
+    character: FilaPersonaje,
+    ability: AbilityKey,
+  ): Promise<{ valor: number; paso: TraceStep } | undefined> {
+    if (ability !== "str") return undefined;
+
+    const [condiciones, campana] = await Promise.all([
+      this.prisma.characterCondition.findMany({
+        where: { characterId, key: CLAVE_FURIA_ACTIVA },
+        select: { key: true, level: true, expiresAtClock: true, expiryEdge: true },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    if (condicionesActivas(condiciones, campana.clockSeconds).length === 0) return undefined;
+
+    const clase = SRD_CLASSES.find((c) => c.key === character.classKey);
+    if (!clase?.scales?.["rage-damage"]) return undefined;
+
+    // **`abilities` sin puntuaciones de verdad, a propósito.** `resolverOrigen` con
+    // `tipo: "escala"` solo lee `ctx.escalas` y `ctx.level` (ver `engine.ts`): rellenar las seis
+    // características con ceros no cambia el resultado, y así se reutiliza la misma función
+    // probada de `resolverOrigen` en vez de repetir su lógica de tramos aquí — que es
+    // precisamente la lección de esta tanda sobre no separar dos fórmulas de un mismo cálculo.
+    const ctx: ContextoDeDerivacion = {
+      abilities: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      level: character.level,
+      escalas: tablaDeEscalas(clase.scales),
+    };
+    return resolverOrigen({ tipo: "escala", clave: "rage-damage" }, ctx);
+  }
+
   private async esCriticoDesdeLaTirada(
     campaignId: string,
     characterId: string,

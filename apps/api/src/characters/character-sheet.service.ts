@@ -479,12 +479,24 @@ export class CharacterSheetService {
     });
   }
 
-  private async buildResponse(userId: string, character: FilaPersonaje) {
-    const equipo = await this.equipoEquipado(userId, character);
+  /**
+   * **`tx` opcional, el mismo patrón que el resto** (ficha P2-8). Redactar la respuesta lee el
+   * equipo equipado y resuelve el visor, exactamente igual que derivar la hoja, así que quien la
+   * pide desde dentro de una transacción abierta tiene que pasarle su cliente. Hasta el
+   * 2026-09-07 no lo aceptaba: `changeHp` con `tx` cerraba su camino feliz abriendo una conexión
+   * más solo para escribir lo que iba a devolver.
+   */
+  private async buildResponse(
+    userId: string,
+    character: FilaPersonaje,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const equipo = await this.equipoEquipado(userId, character, tx);
     const resultado = await this.hojaOMotivo(
-      await this.viewerFor(userId, character.campaignId),
+      await this.viewerFor(userId, character.campaignId, tx),
       character,
       equipo.items,
+      tx,
     );
     let sheet: CharacterSheet | null = "sheet" in resultado ? resultado.sheet : null;
     const reason: string | undefined = "reason" in resultado ? resultado.reason : undefined;
@@ -1436,7 +1448,7 @@ export class CharacterSheetService {
       tx,
     );
 
-    const respuesta = await this.buildResponse(userId, actualizado);
+    const respuesta = await this.buildResponse(userId, actualizado, tx);
     // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
     // sería un número sin origen, y esta tarea existe justo para lo contrario.
     return {
@@ -1465,7 +1477,7 @@ export class CharacterSheetService {
       if (character.version !== input.expectedVersion) {
         throw new ConflictException({
           message: "La versión enviada ya no es la actual.",
-          ...(await this.buildResponse(userId, character)),
+          ...(await this.buildResponse(userId, character, tx)),
         });
       }
 
@@ -1524,7 +1536,7 @@ export class CharacterSheetService {
           tx,
         );
       }
-      return await this.buildResponse(userId, actualizado);
+      return await this.buildResponse(userId, actualizado, tx);
     });
   }
 
@@ -1627,7 +1639,7 @@ export class CharacterSheetService {
             : "dying";
 
       return {
-        ...(await this.buildResponse(userId, actualizado)),
+        ...(await this.buildResponse(userId, actualizado, tx)),
         deathSaves: { successes, failures, status },
       };
     });

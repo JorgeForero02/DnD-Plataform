@@ -543,6 +543,36 @@ describe("ficha P2-0b — con `tx`, derivar la hoja va por ESE cliente", () => {
   });
 });
 
+// **Ficha P2-8 — el tramo que P2-0b no podía cubrir: redactar la respuesta.**
+//
+// `buildResponse` cierra el camino feliz de `changeHp` y hablaba con `this.prisma` sin condición,
+// aunque `equipoEquipado` y `viewerFor` ya sabían aceptar un cliente. Con la transacción ajena
+// todavía abierta, eso es una conexión más del pool solo para escribir la respuesta.
+//
+// **Por eso esta prueba NO se puede fusionar con la de arriba.** Aquella se mide sobre un
+// `changeHp` que se rechaza antes de llegar aquí —es lo que la hace medir `construirODenegar` y
+// nada más—, así que el tramo de abajo le queda fuera por construcción. Aquí el `changeHp`
+// **termina**, y entonces `prisma.inventoryItem.findMany` sin llamadas significa que las DOS
+// lecturas —la de derivar y la de redactar— fueron por el `tx`.
+describe("ficha P2-8 — con `tx`, redactar la respuesta también va por ESE cliente", () => {
+  it("un `changeHp` que TERMINA no toca el pool ni una vez", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje({ currentHp: MAX_HP });
+    const tx = montarTransaccion(prisma, fila) as unknown as Record<string, unknown>;
+    tx.campaignMember = { findUnique: jest.fn().mockResolvedValue({ role: "DM" }) };
+    (tx.character as { findFirst?: unknown }).findFirst = jest.fn().mockResolvedValue(fila);
+
+    const res = await service.changeHp("p1", "c1", "ch1", { delta: -1 }, tx as never);
+
+    // Que de verdad llegó al final, y no se quedó a medias sin que nadie lo notara.
+    expect(res.hp.current).toBe(MAX_HP - 1);
+    expect((tx.inventoryItem as { findMany: jest.Mock }).findMany).toHaveBeenCalled();
+    expect((tx.user as { findUnique: jest.Mock }).findUnique).toHaveBeenCalled();
+    expect(prisma.inventoryItem.findMany).not.toHaveBeenCalled();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+});
+
 describe("la siembra de recursos al terminar la ficha", () => {
   // Este agujero estuvo abierto desde 2A.8: `seedResourcesFor` tenía su prueba y **no lo
   // llamaba nadie**, así que ningún personaje tenía dados de golpe ni espacios de conjuro y el

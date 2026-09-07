@@ -386,6 +386,40 @@ describe("ConditionsService", () => {
       prisma,
     );
   });
+
+  // **Ficha P2-0 — con `tx`, `apply` no puede pedir una segunda conexión del pool.**
+  //
+  // `ActivitiesService.usar` llama a `apply` **con** el `tx` de su propia transacción. Todo lo
+  // que `apply` hace antes de escribir —buscar el personaje, resolver el visor, leer las
+  // inmunidades de su statblock— iba contra `this.prisma`, o sea contra una conexión distinta de
+  // la que ya está ocupada: exactamente lo que el patrón `tx?` existe para evitar.
+  //
+  // La prueba mira **qué cliente recibió cada consulta**, no el resultado: el resultado era
+  // correcto antes y después, y por eso ninguna prueba lo cazaba.
+  it("con `tx`, la autorización y las inmunidades van contra ESE cliente y no contra el pool", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    const pnj = { ...character, statblockRef: "SRD:goblin" };
+    const tx = {
+      character: { findFirst: jest.fn().mockResolvedValue(pnj) },
+      user: { findUnique: jest.fn().mockResolvedValue({ isAdmin: false }) },
+      campaign: { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }) },
+      characterCondition: {
+        findMany: jest.fn().mockResolvedValue([]),
+        upsert: jest.fn().mockResolvedValue({ key: "poisoned" }),
+        delete: jest.fn(),
+      },
+    };
+    statblocks.resolver.mockResolvedValue({ conditionImmunities: [] });
+
+    await service.apply("dm1", "cmp1", "c1", { key: "poisoned" }, tx as never);
+
+    expect(tx.character.findFirst).toHaveBeenCalled();
+    expect(tx.user.findUnique).toHaveBeenCalled();
+    expect(prisma.character.findFirst).not.toHaveBeenCalled();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    // Y la lectura del statblock, que es la tercera consulta de la lista, va por el mismo sitio.
+    expect(statblocks.resolver).toHaveBeenCalledWith("cmp1", "SRD:goblin", undefined, tx);
+  });
 });
 
 describe("condiciones con duración (2C.4)", () => {

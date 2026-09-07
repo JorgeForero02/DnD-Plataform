@@ -61,9 +61,16 @@ export class ConditionsService {
       statblockRef: string | null;
     },
     campaignId: string,
+    /** El cliente de la transacción de quien llama, si hay una — ver `apply` y la ficha P2-0. */
+    tx?: Prisma.TransactionClient,
   ): Promise<readonly SrdCondition[]> {
     if (!character.statblockRef) return [];
-    const statblock = await this.statblocks.resolver(campaignId, character.statblockRef);
+    const statblock = await this.statblocks.resolver(
+      campaignId,
+      character.statblockRef,
+      undefined,
+      tx,
+    );
     return statblock?.conditionImmunities ?? [];
   }
 
@@ -109,11 +116,11 @@ export class ConditionsService {
    * Las comprobaciones de arriba (visibilidad, dueño-o-DM, clave reservada, inmunidad) siguen
    * contra `this.prisma`/`this.membership`/`this.statblocks` **incluso con `tx`** — a diferencia
    * de `changeHp` y `create`, que sí se movieron al cliente de la transacción en la vuelta de
-   * arreglo 1 (I2). Aquí no se hizo el mismo movimiento: `inmunidadesDe` llama a
-   * `StatblocksService.resolver`, que tiene su propia `PrismaService` y no acepta un cliente por
-   * fuera, así que empujar esto contra `tx` habría exigido tocar un cuarto fichero fuera de la
-   * frontera de esta tarea. Queda como el mismo género de límite que I2 describe para
-   * `changeHp`/`create`, declarado en el informe.
+   * arreglo 1 (I2). **Y desde la ficha P2-0 (2026-09-07) aquí sí se hace**: con `tx`, tanto
+   * `requireVisibleCharacter` como `inmunidadesDe` van contra ese cliente. Lo que faltaba era que
+   * `StatblocksService.resolver` aceptara un cliente por fuera, y ahora lo acepta —el mismo
+   * parámetro opcional que el resto de esta tanda—. `requireOwnerOrDM` sigue yendo por
+   * `MembershipService`, que no tiene esa puerta: es el resto del hueco, y está dicho en su ficha.
    *
    * **`concedidoPorActividad`, aditivo, ronda de arreglo 1 de A11 (crítico 2).** `raging` se
    * volvió clave reservada (`esClaveReservada`, `@dnd/shared`) para cerrar el agujero por el que
@@ -153,6 +160,7 @@ export class ConditionsService {
       userId,
       campaignId,
       characterId,
+      tx,
     );
     const esDM = await requireOwnerOrDM(
       this.membership,
@@ -188,7 +196,7 @@ export class ConditionsService {
     // puede ser `DM_ONLY`— solo lo puede ver el DM, que ya podía leerlo. Si algún día una
     // inmunidad dejara de ser clave reservada, este orden habría que rehacerlo, y hay un e2e que
     // se pondría rojo.
-    const inmunidades = await this.inmunidadesDe(character, campaignId);
+    const inmunidades = await this.inmunidadesDe(character, campaignId, tx);
     if ((inmunidades as readonly string[]).includes(input.key)) {
       throw new BadRequestException(`${character.name} es inmune a esa condición.`);
     }

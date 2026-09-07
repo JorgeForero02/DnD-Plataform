@@ -385,6 +385,7 @@ decisiones que no se pueden deducir del código.
 | D-P2-8 | **`ContentRef` es la unión de objetos que ya existía** (`{source, key}` / `{source, id}` de `character-build.schema.ts`), no la cadena `"SRD:short-sword"` que escribía la prosa de ambos planes. El código manda sobre el texto caducado |
 | D-P2-9 | **El dueño de una condición reservada puede retirarla él mismo si fue él quien la puso** (`appliedById`), para cumplir el SRD sobre la Furia («puedes terminar tu furia como acción adicional»). La condición que un DM aplicó a mano sigue necesitando al DM para quitarla |
 | D-P2-10 | **`raging` y las claves de condición que no son del SRD se reservan en cuanto el servidor las interpreta.** Reincidencia exacta del agujero que el paso 1 cerró para `helped`: sin reservarla, un jugador podía darse a sí mismo +2 de daño permanente sin gastar nada |
+| D-P2-11 | **Un jugador puede curar a otro y pedirle una salvación, pero SOLO por una segunda puerta**: una entrada cuyo permiso no es «puedes editar esta ficha» sino «vienes de una actividad ya autorizada sobre un objetivo que `canView` te deja ver». El `PATCH` directo de `changeHp` sigue exigiendo dueño-o-DM. Decisión del autor, 2026-09-07, sobre la ficha P2-4 — copia el desdoblamiento que `recordFromEngine` (`game-events.service.ts:224`) ya usa desde el motor. Aflojar `requireEditable` a secas quedó descartado: abriría el `PATCH` de cualquier personaje ajeno |
 
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 

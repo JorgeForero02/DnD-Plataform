@@ -95,13 +95,24 @@ export class StatblocksService {
    * `DM_ONLY` está evitando. El `viewer` es opcional porque el motor a veces resuelve para el
    * propio servidor, donde no hay nadie mirando.
    */
-  async resolver(campaignId: string, ref: string, viewer?: Viewer): Promise<Statblock | null> {
+  async resolver(
+    campaignId: string,
+    ref: string,
+    viewer?: Viewer,
+    /**
+     * **El patrón `tx?` de siempre** (ficha P2-0). Quien resuelve un `ref` desde dentro de una
+     * transacción ajena le pasa su cliente, para no pedirle al pool una segunda conexión con la
+     * primera ocupada. Sin él, el comportamiento no cambia: un `ref` del SRD ni siquiera toca la
+     * base.
+     */
+    cliente?: Prisma.TransactionClient,
+  ): Promise<Statblock | null> {
     const origen = origenDeRef(ref);
     if (!origen) return null;
 
     if (origen.source === "SRD") return SRD_STATBLOCK_POR_REF.get(ref) ?? null;
 
-    const fila = await this.prisma.campaignStatblock.findFirst({
+    const fila = await (cliente ?? this.prisma).campaignStatblock.findFirst({
       where: { id: origen.id, campaignId },
     });
     if (!fila) return null;

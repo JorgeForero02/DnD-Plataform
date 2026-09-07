@@ -1,5 +1,5 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
-import type { Character } from "@prisma/client";
+import type { Character, Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { canView, type Viewer } from "./visibility";
@@ -11,16 +11,24 @@ import { canView, type Viewer } from "./visibility";
 //
 // La deuda estaba declarada en `docs/06-pendientes.md` y se cierra aquí en vez de crecer.
 
-/** El visor: quién pregunta, con qué rol en la campaña y si es administrador. */
+/**
+ * El visor: quién pregunta, con qué rol en la campaña y si es administrador.
+ *
+ * **`cliente` es el patrón `tx?` de siempre** (ficha P2-0): quien ya tiene una transacción
+ * abierta le pasa su cliente y estas lecturas van por ahí, en vez de pedirle al pool una segunda
+ * conexión mientras la primera sigue ocupada. Sin él, el comportamiento no cambia en nada.
+ */
 export async function viewerFor(
   prisma: PrismaService,
   membership: MembershipService,
   userId: string,
   campaignId: string,
+  cliente?: Prisma.TransactionClient,
 ): Promise<Viewer> {
+  const db = cliente ?? prisma;
   const [member, user] = await Promise.all([
     membership.getMembership(campaignId, userId),
-    prisma.user.findUnique({ where: { id: userId } }),
+    db.user.findUnique({ where: { id: userId } }),
   ]);
   return {
     userId,
@@ -49,6 +57,7 @@ export async function requireVisibleCharacter(
   userId: string,
   campaignId: string,
   characterId: string,
+  cliente?: Prisma.TransactionClient,
 ): Promise<Character> {
   const { character } = await requireVisibleCharacterWithViewer(
     prisma,
@@ -56,6 +65,7 @@ export async function requireVisibleCharacter(
     userId,
     campaignId,
     characterId,
+    cliente,
   );
   return character;
 }
@@ -72,10 +82,12 @@ export async function requireVisibleCharacterWithViewer(
   userId: string,
   campaignId: string,
   characterId: string,
+  cliente?: Prisma.TransactionClient,
 ): Promise<{ character: Character; viewer: Viewer }> {
   await membership.requireMember(campaignId, userId);
-  const character = await prisma.character.findFirst({ where: { id: characterId, campaignId } });
-  const viewer = await viewerFor(prisma, membership, userId, campaignId);
+  const db = cliente ?? prisma;
+  const character = await db.character.findFirst({ where: { id: characterId, campaignId } });
+  const viewer = await viewerFor(prisma, membership, userId, campaignId, cliente);
   if (!character || !canSeeCharacter(viewer, character)) {
     throw new NotFoundException("Character not found");
   }

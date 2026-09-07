@@ -1577,7 +1577,20 @@ completarlo.
 
 ### P2-4 · La autorización de `changeHp` y el `requireDM` de `RollRequestsService.create` dejan inusables media docena de conjuros de clérigo (2026-09-07)
 
-**Abierto, hay que decidirlo antes del paso 3.** `changeHp` exige dueño-o-DM
+**DECIDIDO por el autor el 2026-09-07: se construye la segunda puerta** (opción A de las tres que
+se le plantearon; ver `D-P2-11` en [decisiones.md](./decisiones.md)). Sigue **abierto** porque falta
+implementarlo: es su propia tarea, no entra en la tanda corta de arreglos. Las otras dos opciones
+quedaron descartadas y no se re-litigan — «solo el DM, y el clérigo le pide la curación» esquiva hoy
+una puerta que el paso 3 necesita igualmente para el daño con salvación, las condiciones sobre un
+enemigo y los PG temporales sobre un compañero; y aflojar `requireEditable` a secas abriría el
+`PATCH` de cualquier personaje ajeno.
+
+**Medido el 2026-09-07 al decidirlo, y la ficha original se quedaba corta: la puerta está cerrada
+por los dos lados.** En `roll-requests.service.ts:104`, incluso la ruta interna que recibe un `tx`
+—la que usa el motor— vuelve a comprobar `miembro.role !== "DM"`. No hay rendija por la que entre
+una actividad de jugador hoy.
+
+**El estado original de la ficha, que sigue siendo la descripción del problema.** `changeHp` exige dueño-o-DM
 (`character-sheet.service.ts`, `autorizarEdicionConCliente` / `requireEditable`): un clérigo no
 puede curar al personaje de otro jugador con una actividad, porque el objetivo de la curación no es
 quien la usa. Y `RollRequestsService.create` empieza por `requireDM`

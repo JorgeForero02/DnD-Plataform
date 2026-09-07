@@ -592,6 +592,21 @@ model Character {
   raceKey       String?
   subraceKey    String?
   classKey      String?
+  /// **Un personaje tiene UNA subclase, no todas** (encargo A8, 2026-09-07). Hasta esta columna
+  /// no existir, `resolve.ts` recorria TODAS las subclases de la clase y aplicaba sus rasgos por
+  /// nivel: un barbaro de nivel 3 tenia a la vez los rasgos de cada camino que el catalogo
+  /// definiera para "barbaro" — un fallo vivo en produccion, no una mejora.
+  ///
+  /// **Nulable, y sin relacion foranea** por el mismo motivo que `classKey`: el catalogo del SRD
+  /// vive en codigo (`apps/api/src/rules/catalog/classes.ts`), no en una tabla. `null` significa
+  /// "todavia no ha elegido camino", que es un estado legitimo hasta el nivel en que la clase
+  /// elige (`chosenAtLevel`, distinto por clase).
+  ///
+  /// **Una subclase que no es de la clase actual no revienta la hoja.** Es el mismo criterio que
+  /// ya usa `resolve.ts` con `stale_choice`: un dato viejo no es un dato invalido. Puede quedar
+  /// asi si la clase cambia sin que se actualice la subclase a mano, o si el catalogo deja de
+  /// tener esa clave; en los dos casos la hoja simplemente no aplica esos rasgos y avisa.
+  subclassKey   String?
   // Las elecciones resueltas, por clave de concesion: { "half-elf-asi": ["dex","int"] }.
   choices       Json?
   // Casillas de equipo. **Vacia en 2A**: se modela en 2B, pero la columna existe desde ahora
@@ -621,8 +636,8 @@ model Character {
   deathSaveFailures  Int  @default(0)
 
   /// Fase 2D — si esto tiene valor, este «personaje» es un PNJ instanciado desde un statblock:
-  /// `SRD:goblin` o `CAMPAIGN:<id>`. Entonces `classKey`, `raceKey` y `level` NO se usan, y sus
-  /// numeros derivados salen del statblock por el camino de monstruo del motor.
+  /// `SRD:goblin` o `CAMPAIGN:<id>`. Entonces `classKey`, `subclassKey`, `raceKey` y `level` NO
+  /// se usan, y sus numeros derivados salen del statblock por el camino de monstruo del motor.
   ///
   /// **Cadena y no clave foranea a proposito**, igual que `ResolvedItem.ref` de 2B: el catalogo
   /// del SRD vive en codigo y no tiene fila a la que apuntar.

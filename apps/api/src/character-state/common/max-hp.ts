@@ -52,6 +52,14 @@ export function maxHpDe(
       race: { source: "SRD", key: raceKey },
       subrace: character.subraceKey ? { source: "SRD", key: character.subraceKey } : undefined,
       class: { source: "SRD", key: classKey },
+      // Encargo A8 (2026-09-07), vuelta de arreglo 1. **Hoy no cambia ningún número**: ninguna
+      // subclase de este catálogo toca `hpPerLevel` ni ningún modificador que afecte a los PG
+      // máximos. Se pasa de todos modos porque esta es la tercera construcción de un
+      // `CharacterBuild` a partir de la fila (`resolve.ts`/`character-sheet.service.ts` y
+      // `level-up.service.ts` son las otras dos) — omitirla aquí es la misma clase de fallo que
+      // ya mordió dos veces: basta que un rasgo futuro de subclase toque PG máximos para que esta
+      // función calcule un tope de curación distinto al de la propia hoja.
+      subclass: character.subclassKey ? { source: "SRD", key: character.subclassKey } : undefined,
       level: character.level,
       choices: (character.choices as Record<string, string[]> | null) ?? undefined,
     });

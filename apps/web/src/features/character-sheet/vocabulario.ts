@@ -343,6 +343,58 @@ export const NOMBRE_CLASE: Record<string, string> = {
   wizard: "Mago",
 };
 
+// --- Subclases del SRD 5.1 (apps/api/src/rules/catalog/classes.ts). Encargo A8 (2026-09-07). ---
+//
+// **El nombre ya lo manda `GET /catalog`** (igual que raza, subraza y clase): esto es solo para
+// el caso huérfano — una `subclassKey` guardada que la lista de opciones de la clase actual no
+// ofrece, típicamente porque es la subclase de OTRA clase (un bárbaro con "champion", del
+// guerrero). Sin esto, esa ficha enseñaría la clave cruda en vez de "Campeón".
+export const NOMBRE_SUBCLASE: Record<string, string> = {
+  berserker: "Senda del berserker",
+  lore: "Colegio del conocimiento",
+  "life-domain": "Dominio de la vida",
+  "circle-of-the-land": "Círculo de la tierra",
+  champion: "Campeón",
+  "open-hand": "Camino de la mano abierta",
+  "oath-of-devotion": "Juramento de entrega",
+  hunter: "Cazador",
+  thief: "Ladrón",
+  "draconic-bloodline": "Linaje dracónico",
+  "the-fiend": "El Infernal",
+  evocation: "Escuela de evocación",
+};
+
+/**
+ * La frase que acompaña a cada camino en los radios de elegirlo (`docs/04-convenciones.md`:
+ * «una opción con significado no se esconde en un desplegable», con su frase al lado). Es
+ * **tema, no una regla que el servidor calcule**: ningún rasgo de subclase de este catálogo tiene
+ * hoy efecto numérico en el motor (`ClassFeature`, «solo el nombre»), así que describir aquí un
+ * bono concreto sería la interfaz prometiendo una regla que el servidor no aplica.
+ */
+export const EXPLICACION_SUBCLASE: Record<string, string> = {
+  berserker: "El camino de la furia sin control: pura violencia cuerpo a cuerpo.",
+  lore: "El bardo erudito, tan hábil con las palabras como con los secretos ajenos.",
+  "life-domain": "El clérigo sanador por excelencia, devoto de mantener con vida a los suyos.",
+  "circle-of-the-land": "El druida ligado a un paisaje concreto y sus fuerzas naturales.",
+  champion: "El guerrero más directo: pura potencia física, sin florituras.",
+  "open-hand": "El monje que perfecciona el combate a mano desnuda por encima de cualquier arma.",
+  "oath-of-devotion": "El paladín del juramento clásico: honestidad, valor y proteger al débil.",
+  hunter: "El explorador especializado en enfrentarse a amenazas concretas del territorio.",
+  thief: "El pícaro más ágil: experto en escalar, colarse y usar objetos a su favor.",
+  "draconic-bloodline": "El hechicero con sangre de dragón corriendo por sus venas.",
+  "the-fiend": "El brujo cuyo pacto es con un señor de un plano infernal.",
+  evocation: "El mago especializado en conjurar destrucción a distancia.",
+};
+
+export function nombreSubclase(key: string): string {
+  return nombreOSinTraducir(NOMBRE_SUBCLASE, key);
+}
+
+/** La frase de un camino, o una genérica si el catálogo trae una subclase que aún no está aquí. */
+export function explicacionSubclase(key: string): string {
+  return EXPLICACION_SUBCLASE[key] ?? "Un camino del SRD 5.1.";
+}
+
 function nombreOSinTraducir(dic: Record<string, string>, clave: string): string {
   return dic[clave] ?? `Sin traducir: ${clave}`;
 }
@@ -614,6 +666,18 @@ export function describirAviso(warning: {
     }
     case "stale_choice":
       return `Hay una elección guardada («${d.grantId ?? warning.key}») que ya no corresponde a la raza o clase actual.`;
+    // Encargo A8 (2026-09-07), vuelta de arreglo 1 — menor. El mismo código cubre dos causas: no
+    // se ha elegido ninguna subclase todavía, o la guardada no pertenece a esta clase (un dato
+    // caduco, como `stale_choice`). **Antes esto decía «todavía no has elegido» en los dos
+    // casos**, y eso es falso en el segundo: sí eligió, y la propia pantalla enseña «guardado, ya
+    // no disponible» al lado. `reason` distingue las dos frases sin inventar un segundo código.
+    case "subclass_not_chosen": {
+      const nivel = typeof d.chosenAtLevel === "number" ? d.chosenAtLevel : "?";
+      if (d.reason === "wrong_class") {
+        return `La subclase guardada no pertenece a esta clase: no se aplica ninguno de sus rasgos. Elige un camino válido.`;
+      }
+      return `Todavía no has elegido un camino (subclase) para esta clase. Se elige al nivel ${nivel}.`;
+    }
     // --- Carril B3 (fase 2B/2C) — avisos del equipo equipado (`rules/attacks.ts`, `rules/items.ts`). ---
     case "attack_not_proficient": {
       const nombre = typeof d.name === "string" ? d.name : "esta arma";

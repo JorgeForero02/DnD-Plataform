@@ -358,14 +358,57 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
         labelKey: `class.${characterClass.key}.${feature.key}`,
         name: feature.name,
       });
-  for (const subclase of characterClass.subclasses)
-    for (const feature of subclase.features)
+
+  // **Encargo A8 (2026-09-07) — un personaje tiene UNA subclase, no todas.** Aquí ponía un
+  // bucle sobre `characterClass.subclasses` ENTERO, sin mirar nunca qué había elegido el
+  // personaje: recorría todas las subclases de la clase y aplicaba sus rasgos por nivel. Con el
+  // catálogo de hoy —una sola subclase por clase— eso se veía como el rasgo de esa senda
+  // apareciendo con la elección puesta a `null`, que es la ficha de cualquier personaje recién
+  // creado; con una segunda subclase habría sido, literalmente, los rasgos de los dos caminos
+  // a la vez.
+  //
+  // **Nunca lanza.** Una `subclassKey` que no pertenece a esta clase —de otra clase, o de un
+  // catálogo que ya cambió— no es una ficha imposible: es el mismo caso que `stale_choice` ya
+  // cubre para las elecciones. No se aplica ningún rasgo y se avisa; la hoja sigue siendo
+  // legible.
+  const subclassRef = build.subclass;
+  const subclass =
+    subclassRef?.source === "SRD"
+      ? characterClass.subclasses.find((s) => s.key === subclassRef.key)
+      : undefined;
+
+  if (subclass) {
+    for (const feature of subclass.features)
       if (feature.level <= build.level)
         features.push({
-          sourceKey: subclase.key,
-          labelKey: `subclass.${subclase.key}.${feature.key}`,
+          sourceKey: subclass.key,
+          labelKey: `subclass.${subclass.key}.${feature.key}`,
           name: feature.name,
         });
+  } else if (characterClass.subclasses.length > 0) {
+    // **`chosenAtLevel` se lee del catálogo, nunca a mano**: varía por clase (clérigo 1, druida
+    // 2, guerrero 3), y escribirlo aquí habría sido la misma clase de mentira que ya se evitó al
+    // sacar el nivel de lanzamiento de conjuros del código a la tabla. Con varias subclases se
+    // toma la más temprana: es un rasgo de la CLASE, no de cada camino, y todas las subclases de
+    // hoy coinciden en su valor.
+    const chosenAtLevel = Math.min(...characterClass.subclasses.map((s) => s.chosenAtLevel));
+    if (build.level >= chosenAtLevel) {
+      warnings.push({
+        code: "subclass_not_chosen",
+        key: "subclass",
+        // Vuelta de arreglo 1 (revisión) — menor: el mismo código cubre dos causas distintas, y
+        // sin `reason` la frase mentía en una de ellas. «No has elegido» es falso cuando SÍ hay
+        // una `subclassKey` guardada y lo que pasa es que no pertenece a esta clase — la propia
+        // pantalla lo enseña aparte, marcado como huérfano. `reason` deja que `describirAviso`
+        // (web) diga la frase que corresponde a cada caso, sin inventar un segundo código.
+        data: {
+          classKey: characterClass.key,
+          chosenAtLevel,
+          reason: subclassRef ? "wrong_class" : "not_chosen",
+        },
+      });
+    }
+  }
 
   const { acFormulas, acBonuses } = formulasDeArmadura(build.armor ?? []);
 

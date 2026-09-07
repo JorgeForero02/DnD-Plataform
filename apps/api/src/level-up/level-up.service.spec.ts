@@ -159,6 +159,51 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
       expect(claves).toContain("fast-movement");
     });
 
+    // Encargo A8 (2026-09-07), vuelta de arreglo 1. El fallo vivía en DOS sitios: `resolve.ts`
+    // (la hoja de después) y aquí (el previo de antes) — y este era el más grave de los dos,
+    // porque el nivel 3 se alcanza precisamente pasando por este previo. Sin el filtro, el
+    // diálogo de subida de nivel prometía «Frenesí» a un bárbaro que nunca había elegido camino,
+    // y la hoja de después no se lo daba: dos pantallas del mismo personaje diciendo cosas
+    // distintas.
+    it("el previo NO promete el rasgo de un camino sin elegirlo (el fallo vivo, en el previo)", async () => {
+      const { service, prisma } = montar();
+      // Nivel 2 → 3: el bárbaro elige camino exactamente al nivel 3, y "frenzy" es un rasgo de
+      // "berserker" a ese nivel. Sin `subclassKey`, esto es la ficha de cualquier bárbaro que
+      // sube a nivel 3 por primera vez.
+      prisma.character.findFirst.mockResolvedValue(
+        personaje({ classKey: "barbarian", level: 2, subclassKey: null }),
+      );
+
+      const preview = await service.preview("p1", "c1", "ch1", false);
+
+      expect(preview.newFeatures.map((f) => f.key)).not.toContain("frenzy");
+    });
+
+    it("y sí lo anuncia cuando el camino elegido es el que lo trae", async () => {
+      const { service, prisma } = montar();
+      prisma.character.findFirst.mockResolvedValue(
+        personaje({ classKey: "barbarian", level: 2, subclassKey: "berserker" }),
+      );
+
+      const preview = await service.preview("p1", "c1", "ch1", false);
+
+      const rasgo = preview.newFeatures.find((f) => f.key === "frenzy");
+      expect(rasgo).toEqual({ source: "subclass", key: "frenzy", name: "Frenesí" });
+    });
+
+    it("una subclassKey de otra clase no revienta el previo: no anuncia su rasgo", async () => {
+      // "champion" es la subclase del guerrero, no del bárbaro — mismo caso que
+      // `resolve.spec.ts` en el catálogo.
+      const { service, prisma } = montar();
+      prisma.character.findFirst.mockResolvedValue(
+        personaje({ classKey: "barbarian", level: 2, subclassKey: "champion" }),
+      );
+
+      const preview = await service.preview("p1", "c1", "ch1", false);
+
+      expect(preview.newFeatures.map((f) => f.key)).not.toContain("frenzy");
+    });
+
     it("avisa de la mejora de característica pendiente en un nivel de asiLevels, y no en otro", async () => {
       const { service, prisma } = montar();
       prisma.character.findFirst.mockResolvedValue(personaje({ classKey: "fighter", level: 3 }));

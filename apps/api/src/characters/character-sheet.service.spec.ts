@@ -777,6 +777,51 @@ describe("las elecciones se validan al escribir, no solo al derivar", () => {
   });
 });
 
+// Encargo A8 (2026-09-07), vuelta de arreglo 1 — I2: las dos guardas de escritura que hacen
+// irreproducible por la API pública el estado que `resolve.spec.ts` prueba como tolerado (una
+// subclase de otra clase). Sin ellas, ese estado dejaría de ser algo que solo puede llegar por un
+// dato viejo o un camino futuro, y pasaría a ser algo que cualquier `PATCH` puede crear.
+describe("subclassKey — las guardas de escritura (A8, vuelta de arreglo 1)", () => {
+  it("una subclase que no es de la clase actual se rechaza con 400, no se guarda", async () => {
+    const { service, prisma, characters } = montar();
+    const guardado = personaje({ classKey: "barbarian", raceKey: "human", subraceKey: null });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue(guardado);
+
+    // "champion" es la subclase del guerrero, no del bárbaro.
+    await expect(
+      service.updateSheet("owner1", "cmp1", "ch1", {
+        subclass: { source: "SRD", key: "champion" },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("cambiar de clase borra la subclase guardada, en la misma escritura", async () => {
+    const { service, prisma, characters } = montar();
+    const guardado = personaje({
+      classKey: "barbarian",
+      subclassKey: "berserker",
+      raceKey: "human",
+      subraceKey: null,
+    });
+    characters.requireEditable.mockResolvedValue(guardado);
+    prisma.character.update.mockResolvedValue({ ...guardado, classKey: "fighter" });
+
+    await service.updateSheet("owner1", "cmp1", "ch1", {
+      class: { source: "SRD", key: "fighter" },
+    });
+
+    // Sin `objectContaining`: solo se manda `class` en el cuerpo, así que `data` es exactamente
+    // estas dos claves — una comprobación laxa aquí dejaría pasar un `subclassKey` que no se
+    // hubiera borrado de verdad si algo más lo añadiera a `data` por otro lado.
+    expect(prisma.character.update).toHaveBeenCalledWith({
+      where: { id: "ch1" },
+      data: { classKey: "fighter", subclassKey: null },
+    });
+  });
+});
+
 describe("un muerto no se cura con puntos de golpe, y el combate se graba en su sesión", () => {
   it("curar a un personaje con tres fracasos a 0 PG es un 400, no una resurrección silenciosa", async () => {
     // Lo encontró un DM en una partida de prueba: echar diez puntos a un muerto lo devolvía a la

@@ -165,6 +165,36 @@ modelo no hace en ningún sitio, y la traza de la CA delataría el número igual
   comprobación en el servicio es una carrera esperando a ocurrir en cuanto alguien tenga dos
   pestañas abiertas.
 
+## `Character.subclassKey` — un camino, no todos (encargo A8, 2026-09-07)
+
+**`String?` nulable y sin clave foránea, igual que `classKey`**: el catálogo del SRD vive en
+código (`apps/api/src/rules/catalog/classes.ts`), no en una tabla. `null` significa «todavía no
+ha elegido camino», y es un estado legítimo hasta el nivel en que la clase elige —`chosenAtLevel`,
+distinto por clase (clérigo 1, druida 2, guerrero 3) y leído del catálogo, nunca escrito a mano.
+
+Era un fallo vivo en producción, no una mejora: hasta esta columna, `resolve.ts` recorría **todas**
+las subclases de la clase resuelta y aplicaba sus rasgos por nivel sin mirar nunca qué había
+elegido el personaje. Con el catálogo de hoy —una sola subclase por clase, comprobado con un
+invariante en `catalog.spec.ts`— el efecto no era «dos caminos a la vez»: era que el rasgo del
+único camino aparecía **igual con la elección puesta a `null`**, que es la ficha de cualquier
+personaje recién creado de nivel igual o mayor que `chosenAtLevel`.
+
+**Nunca revienta la hoja.** Una `subclassKey` que no pertenece a la clase actual —de otra clase,
+o de un catálogo que ya cambió— es el mismo caso que `stale_choice` ya cubre para las elecciones:
+un dato viejo no es un dato inválido, así que no se aplica ningún rasgo y se avisa
+(`subclass_not_chosen`) en vez de lanzar. Al **escribir**, sí es distinto: `updateSheet` rechaza
+con 400 una subclase que no sea de la clase actual, y **cambiar de clase borra la subclase
+guardada en la misma escritura** (mismo mecanismo que ya existía para `subraceKey` al cambiar de
+raza). El único camino honesto para llegar a un `subclassKey` que no encaje con la clase es un
+dato anterior a esta columna, o una vía de escritura futura que no pase por este servicio — la
+tolerancia de `resolveBuild` es la red de seguridad para eso, no una puerta abierta hoy.
+
+**Efecto sobre datos vivos, para quien despliegue esto:** un personaje de nivel igual o mayor que
+`chosenAtLevel` que ya exista en producción **pierde los rasgos de su camino hasta que alguien
+elija uno** en la hoja (la columna nace `null` para todo el mundo). No hay migración de datos que
+lo evite sin adivinar qué camino tenía cada mesa en la cabeza — es el mismo motivo por el que
+`choices` tampoco se migra a mano cuando cambia una raza o una clase.
+
 ## Iniciativa y orden de turnos (2.5.2)
 
 **`Encounter` cuelga de la `Session`**, que ya es el estado mutable de la partida. Dentro,

@@ -1,7 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { NumeroEditable, SelectorEditable, TextoEditable } from "../EdicionEnSitio";
+import {
+  NumeroEditable,
+  RadiosEditables,
+  SelectorEditable,
+  TextoEditable,
+} from "../EdicionEnSitio";
 import { Caracteristicas, FichaEditable } from "../IdentidadEditable";
 
 // **Estos dos se importan arriba y no dentro de cada prueba, y eso NO es estilo.** Un
@@ -148,6 +153,167 @@ describe("un desplegable se guarda solo al elegir", () => {
   });
 });
 
+// Encargo A8 (2026-09-07) — el camino se elige con radios, no con un desplegable
+// (`docs/04-convenciones.md`): elegir camino es una opción con significado, y son pocas.
+describe("radios que se guardan solos al elegir (encargo A8)", () => {
+  it("elegir ES la acción completa: no hay nada más que confirmar", async () => {
+    const guardar = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RadiosEditables
+        etiqueta="Camino"
+        valor=""
+        opciones={[
+          { valor: "berserker", texto: "Senda del berserker", explicacion: "Furia sin control." },
+        ]}
+        onGuardar={guardar}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Senda del berserker" }));
+
+    await waitFor(() => expect(guardar).toHaveBeenCalledWith("berserker"));
+  });
+
+  it("elegir el mismo valor otra vez no escribe nada", async () => {
+    const guardar = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RadiosEditables
+        etiqueta="Camino"
+        valor="berserker"
+        opciones={[
+          { valor: "berserker", texto: "Senda del berserker", explicacion: "Furia sin control." },
+        ]}
+        onGuardar={guardar}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Senda del berserker" }));
+
+    await waitFor(() => expect(guardar).not.toHaveBeenCalled());
+  });
+
+  it("un valor guardado que las opciones NO ofrecen se enseña, marcado y no seleccionable", () => {
+    // Regla vinculante: una opción invisible es un dato que se pierde en el siguiente guardado
+    // sin que nadie se entere. Es el caso exacto del bárbaro con la subclase del guerrero.
+    render(
+      <RadiosEditables
+        etiqueta="Camino"
+        valor="champion"
+        opciones={[
+          { valor: "berserker", texto: "Senda del berserker", explicacion: "Furia sin control." },
+        ]}
+        onGuardar={vi.fn()}
+        nombrarHuerfano={() => "Campeón"}
+      />,
+    );
+
+    // Por rol y nombre, no por texto: un radio sin `<label htmlFor>` ni `aria-label` puede
+    // pasar una búsqueda por texto y aun así anunciarse a un lector de pantalla como «radio,
+    // marcado, deshabilitado» sin decir de qué. Esto comprueba las dos cosas a la vez.
+    const huerfano = screen.getByRole("radio", { name: "Campeón" });
+    expect(huerfano).toBeChecked();
+    expect(huerfano).toBeDisabled();
+    expect(screen.getByText("guardado, ya no disponible")).toBeInTheDocument();
+    // Y **la clave cruda no llega a la pantalla**: solo el nombre resuelto.
+    expect(screen.queryByText(/champion/)).not.toBeInTheDocument();
+  });
+});
+
+describe("el selector de camino (subclase) en la ficha (encargo A8)", () => {
+  const montarConCatalogo = async (
+    over: Record<string, unknown>,
+    subclases: { key: string; name: string; chosenAtLevel: number }[],
+  ) => {
+    const api = await import("../api");
+    vi.spyOn(api, "fetchCatalog").mockResolvedValue({
+      races: [{ key: "human", name: "Humano", subraces: [] }],
+      classes: [{ key: "barbarian", name: "Bárbaro", hitDie: 12, subclasses: subclases }],
+      armor: [],
+    });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <FichaEditable
+          campaignId="c1"
+          characterId="ch1"
+          character={
+            {
+              id: "ch1",
+              level: 3,
+              raceKey: "human",
+              classKey: "barbarian",
+              subclassKey: null,
+              ...over,
+            } as never
+          }
+          puedeEditar
+        />
+      </QueryClientProvider>,
+    );
+    return api;
+  };
+
+  const berserker = { key: "berserker", name: "Senda del berserker", chosenAtLevel: 3 };
+
+  it("no aparece antes del nivel en que la clase elige camino", async () => {
+    await montarConCatalogo({ level: 2 }, [berserker]);
+    await screen.findByLabelText("Clase");
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+
+  it("un valor ya elegido NUNCA desaparece, aunque el nivel baje por debajo de chosenAtLevel (I3)", async () => {
+    // Regla vinculante: un valor guardado que un selector no ofrece se muestra, marcado y no
+    // seleccionable, y NUNCA desaparece. Un bárbaro que eligió camino al nivel 3 y a quien luego
+    // se le baja el nivel a 1 sigue teniendo esa elección en la fila — la pantalla tiene que
+    // seguir enseñándola, no esconder el selector entero.
+    await montarConCatalogo({ level: 1, subclassKey: "berserker" }, [berserker]);
+    const radio = await screen.findByRole("radio", { name: "Senda del berserker" });
+    expect(radio).toBeChecked();
+    vi.restoreAllMocks();
+  });
+
+  it("aparece desde el nivel en que la clase elige, con el nombre resuelto y su frase", async () => {
+    await montarConCatalogo({ level: 3 }, [berserker]);
+    const radio = await screen.findByRole("radio", { name: "Senda del berserker" });
+    expect(radio).toBeInTheDocument();
+    // Nunca la clave cruda del catálogo.
+    expect(screen.queryByText(/^berserker$/)).not.toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+
+  it("elegir un camino lo guarda con la referencia SRD", async () => {
+    const api = await montarConCatalogo({ level: 3 }, [berserker]);
+    const espia = vi.spyOn(api, "updateSheet").mockResolvedValue({} as never);
+
+    const radio = await screen.findByRole("radio", { name: "Senda del berserker" });
+    fireEvent.click(radio);
+
+    await waitFor(() =>
+      expect(espia).toHaveBeenCalledWith(
+        "c1",
+        "ch1",
+        expect.objectContaining({ subclass: { source: "SRD", key: "berserker" } }),
+      ),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it("una subclave de otra clase no revienta la pantalla: se enseña marcada y no seleccionable", async () => {
+    // "champion" es la subclase del guerrero, no del bárbaro — el mismo caso que prueba
+    // `resolve.spec.ts` en el servidor.
+    await montarConCatalogo({ level: 3, subclassKey: "champion" }, [berserker]);
+    await screen.findByRole("radio", { name: "Senda del berserker" });
+
+    const huerfano = screen.getByRole("radio", { name: "Campeón" });
+    expect(huerfano).toBeChecked();
+    expect(huerfano).toBeDisabled();
+    expect(screen.getByText("guardado, ya no disponible")).toBeInTheDocument();
+    expect(screen.queryByText(/^champion$/)).not.toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+});
+
 describe("el texto libre se guarda con botón, no solo", () => {
   it("teclear es un proceso: hace falta confirmar", async () => {
     const guardar = vi.fn().mockResolvedValue(undefined);
@@ -289,7 +455,7 @@ describe("las dos reglas de la identidad que solo se ven al usarla", () => {
         { key: "elf", name: "Elfo", subraces: [{ key: "elf-high", name: "Alto elfo" }] },
         { key: "dwarf", name: "Enano", subraces: [] },
       ],
-      classes: [{ key: "wizard", name: "Mago", hitDie: 6 }],
+      classes: [{ key: "wizard", name: "Mago", hitDie: 6, subclasses: [] }],
       armor: [],
     });
     const espia = vi.spyOn(api, "updateSheet").mockResolvedValue({} as never);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describirAviso, traducirLabelKey } from "../vocabulario";
+import { describirAviso, explicacionSubclase, traducirLabelKey } from "../vocabulario";
 
 // Tarea 2A.10 — "toda labelKey que el motor puede devolver tiene traducción (recórrelas y
 // compruébalo)". Esta lista es la enumeración manual de cada `labelKey` que
@@ -153,11 +153,75 @@ describe("ningún aviso del servidor puede salir «Sin traducir»", () => {
     "unresolved_choice",
     "duplicate_skill_choice",
     "stale_choice",
+    // Encargo A8 (2026-09-07) — `apps/api/src/rules/catalog/resolve.ts`.
+    "subclass_not_chosen",
   ];
 
   it.each(CODIGOS_QUE_EMITE_LA_API)("«%s» tiene frase en español", (code) => {
     const frase = describirAviso({ code, key: "x", data: { name: "Espada larga", item: "SRD:x" } });
     expect(frase).not.toMatch(/Sin traducir/);
     expect(frase.length).toBeGreaterThan(10);
+  });
+});
+
+// Encargo A8 (2026-09-07), vuelta de arreglo 1 — menor. `subclass_not_chosen` cubre dos causas
+// distintas y **antes decían la misma frase**, que mentía en una de las dos: «todavía no has
+// elegido» es falso cuando SÍ hay una subclase guardada y lo que pasa es que no es de esta clase.
+describe("subclass_not_chosen dice una frase distinta según el motivo", () => {
+  it("sin elegir ninguna, dice que falta elegir y a qué nivel", () => {
+    const frase = describirAviso({
+      code: "subclass_not_chosen",
+      data: { reason: "not_chosen", chosenAtLevel: 3 },
+    });
+    expect(frase).toMatch(/todavía no has elegido/i);
+    expect(frase).toContain("3");
+  });
+
+  it("con una guardada de otra clase, dice que no es de esta clase — nunca «no has elegido»", () => {
+    const frase = describirAviso({
+      code: "subclass_not_chosen",
+      data: { reason: "wrong_class", chosenAtLevel: 3 },
+    });
+    expect(frase).not.toMatch(/todavía no has elegido/i);
+    expect(frase).toMatch(/no pertenece a esta clase/i);
+  });
+});
+
+// Encargo A8 (2026-09-07), vuelta de arreglo 2 — una cosa suelta que pidió la revisión.
+//
+// `explicacionSubclase` tiene un fallback genérico («Un camino del SRD 5.1.») para cuando el
+// catálogo trae una subclase que el diccionario no cubre — y sin esta prueba, ese fallback podía
+// quedarse puesto para siempre sin que nadie se enterara: el patrón ya establecido más arriba
+// para `ETIQUETAS_QUE_EL_MOTOR_PUEDE_EMITIR` es exactamente este, una lista copiada a mano de
+// `apps/api/src/rules/catalog/classes.ts` (la web no puede importar de `apps/api`), porque si
+// alguien añade una clase nueva y se olvida de la frase, algo tiene que enterarse antes que un
+// jugador viendo «Un camino del SRD 5.1.» en la pantalla.
+const SUBCLASES_DEL_CATALOGO = [
+  "berserker", // Bárbaro — Senda del berserker
+  "lore", // Bardo — Colegio del conocimiento
+  "life-domain", // Clérigo — Dominio de la vida
+  "circle-of-the-land", // Druida — Círculo de la tierra
+  "champion", // Guerrero — Campeón
+  "open-hand", // Monje — Camino de la mano abierta
+  "oath-of-devotion", // Paladín — Juramento de entrega
+  "hunter", // Explorador — Cazador
+  "thief", // Pícaro — Ladrón
+  "draconic-bloodline", // Hechicero — Linaje dracónico
+  "the-fiend", // Brujo — El Infernal
+  "evocation", // Mago — Escuela de evocación
+];
+
+describe("cada subclase del catálogo tiene su propia frase, no el fallback genérico", () => {
+  const FALLBACK = "Un camino del SRD 5.1.";
+
+  it.each(SUBCLASES_DEL_CATALOGO)("«%s» no cae en el fallback", (clave) => {
+    const frase = explicacionSubclase(clave);
+    expect(frase).not.toBe(FALLBACK);
+    expect(frase.length).toBeGreaterThan(10);
+  });
+
+  it("una clave que de verdad no está en el catálogo sí cae en el fallback", () => {
+    // El fallback existe para algo: comprobar que sigue ahí para lo que de verdad no se conoce.
+    expect(explicacionSubclase("esto-no-existe-en-ningun-catalogo")).toBe(FALLBACK);
   });
 });

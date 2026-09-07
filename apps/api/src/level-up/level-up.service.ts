@@ -144,6 +144,23 @@ export class LevelUpService {
       race: { source: "SRD", key: character.raceKey! },
       subrace: character.subraceKey ? { source: "SRD", key: character.subraceKey } : undefined,
       class: { source: "SRD", key: character.classKey! },
+      // Encargo A8 (2026-09-07), vuelta de arreglo 2. **Corregido tras la re-revisión: esto NO
+      // es lo que arregla el crítico de esta tarea, y decirlo como si lo fuera era la mitad no
+      // defendida del arreglo.** El fallo de verdad —el previo prometiendo el rasgo de un camino
+      // sin elegirlo— vivía en el bucle de `newFeatures` de `calcularDiff`, que lee
+      // `character.subclassKey` y `claseSrd.subclasses` DIRECTAMENTE y no depende de `sheetFrom`
+      // ni de `sheetTo` en absoluto: ese es el que tiene sus tres pruebas y su mutación abajo.
+      //
+      // Este campo solo llega a `deriveCharacter` (`sheetFrom`/`sheetTo`), y esas dos hojas solo
+      // alimentan PG máximos, bonificador de competencia, ataques por acción y espacios de
+      // conjuro — **ninguna subclase de este catálogo toca ninguno de los cuatro hoy**, así que
+      // quitar esta línea no pone ninguna prueba en rojo (comprobado). Se deja de todos modos por
+      // el mismo motivo que en `max-hp.ts`: es la tercera construcción de un `CharacterBuild`
+      // desde la fila, y basta un rasgo futuro de subclase que module uno de esos cuatro para que
+      // `sheetFrom`/`sheetTo` calculen distinto de la propia hoja si esto no viajara ya. **No se
+      // fabrica una subclase de mentira en el catálogo solo para darle un guardián a esta línea**
+      // — una prueba que existe para justificar una línea no mide el producto, mide la línea.
+      subclass: character.subclassKey ? { source: "SRD", key: character.subclassKey } : undefined,
       level,
       choices: (character.choices as CharacterChoices | null) ?? undefined,
       items,
@@ -249,10 +266,20 @@ export class LevelUpService {
     for (const feature of claseSrd.features)
       if (feature.level === to)
         newFeatures.push({ source: "class", key: feature.key, name: feature.name });
-    for (const subclase of claseSrd.subclasses)
-      for (const feature of subclase.features)
-        if (feature.level === to)
-          newFeatures.push({ source: "subclass", key: feature.key, name: feature.name });
+    // Encargo A8 (2026-09-07), vuelta de arreglo 1. **Aquí ponía el mismo bucle sin filtrar que
+    // `resolve.ts` tenía antes de A8**: recorría TODAS las subclases de la clase y anunciaba sus
+    // rasgos por nivel, sin mirar nunca cuál había elegido el personaje. Con `subclass` ya
+    // viajando en `buildFor`, `sheetTo` (arriba) ya calcula esto bien — pero este bucle vive
+    // aparte, para el diff que se enseña ANTES de confirmar, y seguía sin filtrar: el previo le
+    // prometía «Frenesí» a un bárbaro sin camino elegido, y la hoja de después no se lo daba.
+    // **Nunca lanza** por el mismo motivo que `resolve.ts`: una subclase de otra clase, o que ya
+    // no exista en el catálogo, no es una ficha imposible — simplemente no aporta rasgo aquí.
+    const subclaseElegida = character.subclassKey
+      ? claseSrd.subclasses.find((s) => s.key === character.subclassKey)
+      : undefined;
+    for (const feature of subclaseElegida?.features ?? [])
+      if (feature.level === to)
+        newFeatures.push({ source: "subclass", key: feature.key, name: feature.name });
 
     const slotsFrom = spellSlotsFor(claseSrd.spellProgression, from);
     const slotsTo = spellSlotsFor(claseSrd.spellProgression, to);

@@ -125,6 +125,76 @@ describe("Hoja de personaje y PG (e2e)", () => {
     expect(res.status).toBe(400);
   });
 
+  // Encargo A8 (2026-09-07), vuelta de arreglo 1 — I2. Estas dos pruebas usan un personaje
+  // APARTE (no `characterId`, el de la historia de arriba): las de más abajo dependen de que
+  // siga siendo un guerrero con su cota de malla y su espada equipadas, y cambiar su clase a
+  // mitad de la suite las rompería sin que tuviera nada que ver con lo que se está probando.
+  //
+  // Son la mitad que cierra el argumento con el que se borró el e2e de navegador del selector:
+  // el estado «una subclase de otra clase, guardada de antes» no se puede alcanzar hoy por la
+  // API pública, y estas dos pruebas son las que demuestran que **las guardas que lo impiden
+  // siguen ahí** — contra Postgres real, no contra un Prisma simulado.
+  it("una subclase que no es de la clase del personaje es 400, y no se guarda", async () => {
+    const s = app.getHttpServer();
+    const otroId = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ name: "Bruga Puñoduro", level: 3, visibility: "PLAYERS" })
+    ).body.id;
+    const otraSheetUrl = `/campaigns/${campaignId}/characters/${otroId}/sheet`;
+
+    await request(s)
+      .patch(otraSheetUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({
+        abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "barbarian" },
+      });
+
+    // "champion" es la subclase del guerrero, no del bárbaro.
+    const res = await request(s)
+      .patch(otraSheetUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ subclass: { source: "SRD", key: "champion" } });
+    expect(res.status).toBe(400);
+
+    const get = await request(s).get(otraSheetUrl).set("Authorization", `Bearer ${tokenA}`);
+    expect(get.body.character.subclassKey).toBeNull();
+  });
+
+  it("cambiar de clase deja subclassKey en null, en la misma escritura", async () => {
+    const s = app.getHttpServer();
+    const otroId = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ name: "Devrik Cambiacamino", level: 3, visibility: "PLAYERS" })
+    ).body.id;
+    const otraSheetUrl = `/campaigns/${campaignId}/characters/${otroId}/sheet`;
+
+    await request(s)
+      .patch(otraSheetUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({
+        abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "barbarian" },
+        subclass: { source: "SRD", key: "berserker" },
+      });
+    const antes = await request(s).get(otraSheetUrl).set("Authorization", `Bearer ${tokenA}`);
+    expect(antes.body.character.subclassKey).toBe("berserker");
+
+    await request(s)
+      .patch(otraSheetUrl)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ class: { source: "SRD", key: "fighter" } });
+
+    const despues = await request(s).get(otraSheetUrl).set("Authorization", `Bearer ${tokenA}`);
+    expect(despues.body.character.subclassKey).toBeNull();
+  });
+
   it("un jugador que no es el dueño ni el DM no puede editar la hoja de otro (403)", async () => {
     const res = await request(app.getHttpServer())
       .patch(sheetUrl())

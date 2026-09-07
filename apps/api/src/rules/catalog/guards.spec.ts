@@ -124,9 +124,13 @@ describe("las aptitudes de clase llegan a la hoja", () => {
     expect(hoja.features.map((f) => f.name)).not.toContain("Ataque adicional");
   });
 
-  it("las de subclase entran también, y no antes de su nivel", () => {
-    const nivel3 = deriveCharacter(ficha({ level: 3 }));
-    const nivel2 = deriveCharacter(ficha({ level: 2 }));
+  it("las de subclase entran también, y no antes de su nivel — habiéndola elegido (encargo A8)", () => {
+    // Desde el encargo A8 (2026-09-07) un rasgo de subclase solo entra si la ficha eligió esa
+    // subclase: sin `subclass`, esto ya no aparecería ni al nivel 3. La subclase del guerrero es
+    // "campeón" (`champion`), y "Crítico mejorado" es uno de sus rasgos.
+    const subclass = { source: "SRD" as const, key: "champion" };
+    const nivel3 = deriveCharacter(ficha({ level: 3, subclass }));
+    const nivel2 = deriveCharacter(ficha({ level: 2, subclass }));
     expect(nivel3.features.map((f) => f.name)).toContain("Crítico mejorado");
     expect(nivel2.features.map((f) => f.name)).not.toContain("Crítico mejorado");
   });

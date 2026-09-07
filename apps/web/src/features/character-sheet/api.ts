@@ -49,6 +49,8 @@ export interface CharacterRow {
   raceKey: string | null;
   subraceKey: string | null;
   classKey: string | null;
+  /** Encargo A8 (2026-09-07). `null` = todavía no ha elegido camino. */
+  subclassKey: string | null;
   choices: Record<string, string[]> | null;
   currentHp: number | null;
   tempHp: number;
@@ -255,9 +257,23 @@ export interface CatalogRace {
   subraces: { key: string; name: string }[];
 }
 
+/** Encargo A8 (2026-09-07). `chosenAtLevel` varía por clase: clérigo 1, druida 2, guerrero 3. */
+export interface CatalogSubclass {
+  key: string;
+  name: string;
+  chosenAtLevel: number;
+}
+
+export interface CatalogClass {
+  key: string;
+  name: string;
+  hitDie: number;
+  subclasses: CatalogSubclass[];
+}
+
 export interface Catalog {
   races: CatalogRace[];
-  classes: { key: string; name: string; hitDie: number }[];
+  classes: CatalogClass[];
   armor: { key: string; name: string; category: string }[];
 }
 

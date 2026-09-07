@@ -1,9 +1,16 @@
 import type { AbilityKey } from "@dnd/shared";
-import { NumeroEditable, SelectorEditable } from "./EdicionEnSitio";
+import { NumeroEditable, RadiosEditables, SelectorEditable } from "./EdicionEnSitio";
 import { useCatalog, useUpdateSheet } from "./hooks";
 import type { CharacterRow } from "./api";
 import { resumenDeAjustes } from "./formula";
-import { NOMBRE_CARACTERISTICA, nombreClase, nombreRaza, nombreSubraza } from "./vocabulario";
+import {
+  explicacionSubclase,
+  NOMBRE_CARACTERISTICA,
+  nombreClase,
+  nombreRaza,
+  nombreSubclase,
+  nombreSubraza,
+} from "./vocabulario";
 import type { CalculatedSheet } from "./api";
 import { CAJA_DE_HOJA, PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 
@@ -45,6 +52,20 @@ export function FichaEditable({
     (s) => ({ valor: s.key, texto: s.name }),
   );
   const clases = (catalogo?.classes ?? []).map((c) => ({ valor: c.key, texto: c.name }));
+
+  // Encargo A8 (2026-09-07) — el camino (subclase) de la clase actual, y a qué nivel se elige.
+  // **Ninguna subclase se elige antes de `chosenAtLevel`**, así que el selector ni se pinta hasta
+  // entonces (regla vinculante de la pantalla). Con varias subclases se toma la más temprana: es
+  // un rasgo de la CLASE, no de cada camino — mismo criterio que ya usa `resolve.ts`.
+  const claseActual = catalogo?.classes.find((c) => c.key === character.classKey);
+  const subclases = claseActual?.subclasses ?? [];
+  const chosenAtLevel =
+    subclases.length > 0 ? Math.min(...subclases.map((s) => s.chosenAtLevel)) : undefined;
+  const caminosDeLaClase = subclases.map((s) => ({
+    valor: s.key,
+    texto: s.name,
+    explicacion: explicacionSubclase(s.key),
+  }));
 
   const motivo = "Solo el dueño del personaje o el DM pueden editarlo.";
 
@@ -129,6 +150,35 @@ export function FichaEditable({
           />
         </label>
       </div>
+
+      {/* Encargo A8 (2026-09-07), vuelta de arreglo 1 — I3. **No aparece antes de
+          `chosenAtLevel` para elegir por primera vez**: ofrecerlo mentiría sobre la regla del
+          SRD. Pero **un valor ya guardado nunca desaparece** (`docs/04-convenciones.md`): un
+          bárbaro que eligió camino al nivel 3 y a quien luego se le baja el nivel a 1 sigue
+          teniendo esa elección en la fila, y el selector tiene que seguir enseñándola aunque el
+          nivel actual ya no la justifique. `caminosDeLaClase` no filtra por nivel, así que si
+          `subclassKey` sigue siendo una subclase válida de esta clase, aquí se ve marcada y
+          editable; si dejó de serlo (cambió de clase sin pasar por aquí), `RadiosEditables` la
+          enseña como huérfana — el mismo mecanismo de siempre. */}
+      {chosenAtLevel !== undefined &&
+        (character.level >= chosenAtLevel || character.subclassKey) && (
+          <div className="flex flex-col gap-1">
+            <span className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+              Camino (se elige al nivel {chosenAtLevel})
+            </span>
+            <RadiosEditables
+              etiqueta="Camino"
+              valor={character.subclassKey ?? ""}
+              opciones={caminosDeLaClase}
+              nombrarHuerfano={nombreSubclase}
+              disabled={!puedeEditar}
+              motivoDeshabilitado={motivo}
+              onGuardar={async (v) =>
+                actualizar.mutateAsync({ subclass: v ? { source: "SRD", key: v } : null })
+              }
+            />
+          </div>
+        )}
     </div>
   );
 }

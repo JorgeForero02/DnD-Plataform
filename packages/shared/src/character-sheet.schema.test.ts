@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeHpSchema } from "./index";
+import { changeHpSchema, updateCharacterSheetSchema } from "./index";
 
 // Capa 1 de `docs/08-pruebas.md`. Tarea 2.5.1 — `damageType` en el cuerpo de "aplicar un
 // delta de PG" es opcional: el camino de siempre (una curación, un golpe sin tipo declarado)
@@ -40,5 +40,28 @@ describe("changeHpSchema — rollEventId", () => {
   it("rechaza un rollEventId vacío: una cadena vacía no es un identificador", () => {
     const r = changeHpSchema.safeParse({ delta: -5, rollEventId: "" });
     expect(r.success).toBe(false);
+  });
+});
+
+// Encargo A8 (2026-09-07) — `subclass` en el cuerpo de "escribir la hoja". Mismo trato que
+// `subrace`: opcional (una hoja sin ella sigue validando) y nulable (así se limpia una elección).
+describe("updateCharacterSheetSchema — subclass", () => {
+  it("acepta el cuerpo de siempre, sin subclass", () => {
+    const r = updateCharacterSheetSchema.safeParse({ level: 3 });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta una referencia SRD", () => {
+    const r = updateCharacterSheetSchema.safeParse({
+      subclass: { source: "SRD", key: "berserker" },
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.subclass).toEqual({ source: "SRD", key: "berserker" });
+  });
+
+  it("acepta null para limpiar la elección", () => {
+    const r = updateCharacterSheetSchema.safeParse({ subclass: null });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.subclass).toBeNull();
   });
 });

@@ -139,6 +139,7 @@ function construirBuild(
       race: { source: "SRD", key: character.raceKey! },
       subrace: character.subraceKey ? { source: "SRD", key: character.subraceKey } : undefined,
       class: { source: "SRD", key: character.classKey! },
+      subclass: character.subclassKey ? { source: "SRD", key: character.subclassKey } : undefined,
       level: character.level,
       choices: (character.choices as CharacterChoices | null) ?? undefined,
       // **El equipo equipado entra por la misma puerta que la raza y la clase** (fase 2B). Va
@@ -688,6 +689,25 @@ export class CharacterSheetService {
         const classKey = claveSrd(input.class);
         findClass(input.class);
         data.classKey = classKey;
+        // **Cambiar de clase borra la subclase**, con el mismo motivo que cambiar de raza borra
+        // la subraza: un bárbaro que pasa a ser guerrero no puede seguir teniendo "berserker"
+        // guardado. Si `input.subclass` también viene en este cuerpo, la rama de abajo lo
+        // sobrescribe después con el valor bueno.
+        data.subclassKey = null;
+      }
+      if (input.subclass !== undefined) {
+        if (input.subclass === null) {
+          data.subclassKey = null;
+        } else {
+          const subclassKey = claveSrd(input.subclass);
+          const classKeyEfectiva = (data.classKey as string | undefined) ?? character.classKey;
+          if (!classKeyEfectiva)
+            throw new BadRequestException("No se puede fijar una subclase sin clase.");
+          const clase = findClass({ source: "SRD", key: classKeyEfectiva });
+          if (!clase.subclasses.some((s) => s.key === subclassKey))
+            throw new BadRequestException("Esa subclase no pertenece a la clase del personaje.");
+          data.subclassKey = subclassKey;
+        }
       }
     } catch (error) {
       if (error instanceof UnknownContentError) throw new BadRequestException(error.message);

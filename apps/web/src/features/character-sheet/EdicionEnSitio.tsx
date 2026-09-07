@@ -249,6 +249,142 @@ export function SelectorEditable({
 }
 
 /**
+ * Radios que se guardan solos al elegir. **También es el caso R1**: elegir un camino ya es la
+ * decisión completa.
+ *
+ * **Radios y no un desplegable** (`docs/04-convenciones.md`): elegir camino es una opción con
+ * significado, y son pocas — cada una lleva la frase que explica qué es, visible a la vez que
+ * las demás y no escondida detrás de un clic.
+ *
+ * Mismo trato que `SelectorEditable` para un valor guardado que la lista ya no ofrece: se enseña,
+ * marcado y no seleccionable, nunca desaparece.
+ */
+export function RadiosEditables({
+  etiqueta,
+  valor,
+  opciones,
+  onGuardar,
+  nombrarHuerfano,
+  disabled,
+  motivoDeshabilitado,
+}: {
+  /** Da nombre al grupo de radios (para el lector de pantalla, no visible). */
+  etiqueta: string;
+  valor: string;
+  opciones: { valor: string; texto: string; explicacion: string }[];
+  onGuardar: (nuevo: string) => Promise<unknown>;
+  /** Mismo motivo que en `SelectorEditable`: la clave cruda no puede llegar a la pantalla. */
+  nombrarHuerfano?: (clave: string) => string;
+  disabled?: boolean;
+  motivoDeshabilitado?: string;
+}) {
+  const grupo = useId();
+  const [estado, setEstado] = useState<Estado>("quieto");
+  const [error, setError] = useState<string | null>(null);
+  const huerfano = valor && !opciones.some((o) => o.valor === valor) ? valor : null;
+
+  const elegir = async (nuevo: string) => {
+    if (nuevo === valor) return;
+    setEstado("guardando");
+    setError(null);
+    try {
+      await onGuardar(nuevo);
+      setEstado("quieto");
+    } catch (err) {
+      setEstado("error");
+      setError((err as Error).message);
+    }
+  };
+
+  return (
+    <fieldset
+      className="min-w-0"
+      disabled={disabled}
+      title={disabled ? motivoDeshabilitado : undefined}
+    >
+      <legend className="sr-only">{etiqueta}</legend>
+      <div className="flex flex-col gap-1">
+        {opciones.map((o) => {
+          const elegido = o.valor === valor;
+          const idRadio = `${grupo}-${o.valor}-radio`;
+          const idFrase = `${grupo}-${o.valor}-frase`;
+          return (
+            <div
+              key={o.valor}
+              className={[
+                "flex items-baseline gap-s2 rounded-radius-sm border px-s2 py-1 transition-colors",
+                elegido ? "border-accent bg-[color:var(--accent-tint)]" : "border-muted",
+              ].join(" ")}
+            >
+              <input
+                id={idRadio}
+                type="radio"
+                name={grupo}
+                value={o.valor}
+                checked={elegido}
+                disabled={disabled}
+                onChange={() => void elegir(o.valor)}
+                aria-describedby={idFrase}
+                className="accent-[var(--accent)]"
+              />
+              {/* La frase va FUERA del `<label>`: dentro pasaría a formar parte del NOMBRE del
+                  control, y es su descripción, no su nombre (mismo motivo que
+                  `SelectorDeVentaja.tsx`). */}
+              <label
+                htmlFor={idRadio}
+                className={`shrink-0 font-chrome text-chrome-sm text-text ${
+                  disabled ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
+              >
+                {o.texto}
+              </label>
+              <span id={idFrase} className="font-chrome text-chrome-xs leading-snug text-muted">
+                {o.explicacion}
+              </span>
+            </div>
+          );
+        })}
+        {huerfano &&
+          (() => {
+            // Vuelta de arreglo 1 (revisión) — menor: este radio no llevaba `<label htmlFor>` ni
+            // `aria-label`, así que un lector de pantalla anunciaba «radio, marcado,
+            // deshabilitado» sin decir de qué. Mismo patrón que los radios normales de arriba:
+            // el nombre accesible viene de una etiqueta asociada, y la frase va aparte, como su
+            // descripción.
+            const idRadio = `${grupo}-huerfano-radio`;
+            const idFrase = `${grupo}-huerfano-frase`;
+            const nombre = nombrarHuerfano ? nombrarHuerfano(huerfano) : huerfano;
+            return (
+              <div className="flex items-baseline gap-s2 rounded-radius-sm border border-muted px-s2 py-1">
+                <input
+                  id={idRadio}
+                  type="radio"
+                  name={grupo}
+                  checked
+                  disabled
+                  readOnly
+                  aria-describedby={idFrase}
+                  className="accent-[var(--muted)]"
+                />
+                <label
+                  htmlFor={idRadio}
+                  className="shrink-0 cursor-not-allowed font-chrome text-chrome-sm text-muted"
+                >
+                  {nombre}
+                </label>
+                <span id={idFrase} className="font-chrome text-chrome-xs leading-snug text-muted">
+                  guardado, ya no disponible
+                </span>
+              </div>
+            );
+          })()}
+      </div>
+      <Estadillo estado={estado} error={error} />
+    </fieldset>
+  );
+}
+
+/**
  * Texto libre con guardado **explícito** (R1): teclear es un proceso, no un gesto.
  *
  * El botón aparece solo cuando hay algo que guardar, y **nunca está deshabilitado** (R3).

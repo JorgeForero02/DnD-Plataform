@@ -61,6 +61,7 @@ const character: CharacterRow = {
   raceKey: "half-elf",
   subraceKey: null,
   classKey: "wizard",
+  subclassKey: null,
   choices: { "half-elf-skills": ["stealth", "perception"] },
   currentHp: 15,
   tempHp: 0,
@@ -263,7 +264,7 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
 
 const catalogo: Catalog = {
   races: [{ key: "half-elf", name: "Semielfo", subraces: [] }],
-  classes: [{ key: "wizard", name: "Mago", hitDie: 6 }],
+  classes: [{ key: "wizard", name: "Mago", hitDie: 6, subclasses: [] }],
   armor: [],
 };
 

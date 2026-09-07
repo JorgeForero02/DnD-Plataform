@@ -48,6 +48,18 @@ export const characterBuildSchema = z.object({
   race: contentRefSchema,
   subrace: contentRefSchema.optional(),
   class: contentRefSchema,
+  /**
+   * **Opcional, y a propósito.** Una subclase no se elige hasta que la clase lo permite
+   * (`chosenAtLevel` en el catálogo, distinto por clase: clérigo 1, druida 2, guerrero 3), así
+   * que un personaje reciente no tiene ninguna, y eso es un estado legítimo, no un dato que
+   * falta.
+   *
+   * **`resolveBuild` nunca lanza por esta clave.** Si no coincide con ninguna subclase de la
+   * clase resuelta —porque es de otra clase, o porque ya no existe en el catálogo— no se aplica
+   * ningún rasgo de subclase y se avisa (`subclass_not_chosen`): un dato caduco no vuelve
+   * ilegible la hoja, el mismo criterio que ya usa `stale_choice`.
+   */
+  subclass: contentRefSchema.optional(),
   // **1 a 20.** Sin este tope, el nivel 21 daba bonificador de competencia +7, fuera de la
   // tabla del SRD y sin que ningún invariante lo notara; y un nivel 0 o negativo daba PG
   // máximos negativos, porque el suelo del motor es `level` y no 1.

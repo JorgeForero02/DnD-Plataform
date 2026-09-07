@@ -22,6 +22,12 @@ export const updateCharacterSheetSchema = z.object({
   race: contentRefSchema.optional(),
   subrace: contentRefSchema.nullable().optional(),
   class: contentRefSchema.optional(),
+  /**
+   * `null` limpia la subclase elegida, igual que `subrace`. **El servicio la limpia también al
+   * cambiar de clase**, en la misma escritura: una subclase que se queda de la clase anterior es
+   * exactamente el dato caduco que `resolveBuild` tolera pero que aquí es barato no crear.
+   */
+  subclass: contentRefSchema.nullable().optional(),
   level: z.number().int().min(1).max(20).optional(),
   choices: characterChoicesSchema.optional(),
 });

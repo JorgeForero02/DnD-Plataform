@@ -33,6 +33,14 @@ export class CatalogController {
         key: klass.key,
         name: klass.name,
         hitDie: klass.hitDie,
+        // Encargo A8 (2026-09-07) — el selector de camino necesita saber QUÉ subclases hay y A
+        // QUÉ NIVEL se eligen, sin transcribirlas a mano en el navegador: la misma razón por la
+        // que ya viaja `subraces` dentro de cada raza, arriba.
+        subclasses: klass.subclasses.map((sub) => ({
+          key: sub.key,
+          name: sub.name,
+          chosenAtLevel: sub.chosenAtLevel,
+        })),
       })),
       armor: SRD_ARMOR.map((armor) => ({
         key: armor.key,

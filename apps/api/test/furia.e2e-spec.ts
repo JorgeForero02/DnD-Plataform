@@ -33,6 +33,7 @@ describe("La Furia, de punta a punta (e2e)", () => {
   let barbaroId = "";
   let goblinId = "";
   let hachaKey = "";
+  let hachaRowId = "";
   let encounterId = "";
   let combatantId = "";
 
@@ -112,11 +113,16 @@ describe("La Furia, de punta a punta (e2e)", () => {
       });
 
     // El hacha grande: cuerpo a cuerpo con Fuerza, la única combinación que la Furia sube.
-    await request(s())
+    const equipoDelHacha = await request(s())
       .post(`${base()}/inventory`)
       .set("Authorization", auth(tokenPL))
       .send({ ref: { source: "SRD", key: "greataxe" }, location: "EQUIPPED", slot: "MAIN_HAND" });
+    expect(equipoDelHacha.status).toBe(201);
+    hachaRowId = equipoDelHacha.body.id;
     const hoja = await request(s()).get(sheetUrl()).set("Authorization", auth(tokenPL));
+    // **Mensaje que dice la verdad si esto falla**, en vez de un `TypeError` sobre `undefined`
+    // que no dice qué ataques SÍ había — la lección de la primera corrida real de este fichero.
+    expect(hoja.body.attacks.map((a: { name: string }) => a.name)).toContain("Hacha grande");
     hachaKey = hoja.body.attacks.find((a: { name: string }) => a.name === "Hacha grande").key;
 
     // Un goblin del DM, para que el ataque tenga a quién apuntar (no se resuelve el impacto en
@@ -228,16 +234,40 @@ describe("La Furia, de punta a punta (e2e)", () => {
     // prueba quiere medir (el SRD la restringe a cuerpo a cuerpo con Fuerza,
     // `bonoDeFuria`/`character-sheet.service.ts`, comprobado por `ataque.ability`). Una prueba
     // que pasa por el motivo equivocado es peor que no tenerla.
-    await request(s())
+    //
+    // **La honda ("sling"), no el arco largo — corregido tras la primera corrida real de este
+    // fichero, y en DOS pasos, no uno.** El arco largo (`longbow`) es un arma A DOS MANOS
+    // (`properties: ["AMMUNITION", "HEAVY", "TWO_HANDED"]`, `weapons.ts`); ni siquiera hacía
+    // falta que LO fuera para que la primera versión de este fichero fallara, porque
+    // `InventoryService.ensureSlotAllowed` bloquea la mano izquierda **mientras la mano
+    // principal lleve cualquier arma a dos manos** (`inventory.service.ts`: "La mano principal
+    // lleva … un arma a dos manos: no queda hueco para la mano izquierda") — el hacha grande YA
+    // estaba puesta ahí. La primera corrida real lo confirmó: incluso cambiando el arco por la
+    // honda (que no es a dos manos) equipar en `OFF_HAND` seguía devolviendo 409, porque el
+    // problema nunca fue el arma nueva, fue la mano principal ocupada. Se desequipa el hacha
+    // primero (`PATCH` a `CARRIED`, la mochila del esquema — no "BACKPACK", que no es un valor
+    // de `itemLocationSchema`) y la honda entra en `MAIN_HAND`, libre — no hace falta
+    // llevar las dos a la vez: el resto del fichero ya no vuelve a tirar con el hacha.
+    const desequiparHacha = await request(s())
+      .patch(`${base()}/inventory/${hachaRowId}`)
+      .set("Authorization", auth(tokenPL))
+      .send({ location: "CARRIED", slot: null });
+    expect(desequiparHacha.status).toBe(200);
+    const equipoDeLaHonda = await request(s())
       .post(`${base()}/inventory`)
       .set("Authorization", auth(tokenPL))
-      .send({ ref: { source: "SRD", key: "longbow" }, location: "EQUIPPED", slot: "OFF_HAND" });
-    const hojaConArco = await request(s()).get(sheetUrl()).set("Authorization", auth(tokenPL));
-    const arcoKey = hojaConArco.body.attacks.find(
-      (a: { name: string }) => a.name === "Arco largo",
+      .send({ ref: { source: "SRD", key: "sling" }, location: "EQUIPPED", slot: "MAIN_HAND" });
+    expect(equipoDeLaHonda.status).toBe(201);
+    const hojaConHonda = await request(s()).get(sheetUrl()).set("Authorization", auth(tokenPL));
+    const nombresDeAtaques = hojaConHonda.body.attacks.map((a: { name: string }) => a.name);
+    // **Un mensaje que dice la verdad si esto vuelve a fallar**, en vez de un `TypeError` sobre
+    // `undefined` que no dice qué SÍ había en la hoja — la lección exacta de esta ronda.
+    expect(nombresDeAtaques).toContain("Honda");
+    const hondaKey = hojaConHonda.body.attacks.find(
+      (a: { name: string }) => a.name === "Honda",
     ).key;
     const golpeADistancia = await request(s())
-      .post(`${sheetUrl()}/attacks/${encodeURIComponent(arcoKey)}/roll`)
+      .post(`${sheetUrl()}/attacks/${encodeURIComponent(hondaKey)}/roll`)
       .set("Authorization", auth(tokenPL))
       .send({ part: "DAMAGE", mode: "NORMAL" });
     expect(golpeADistancia.status).toBe(201);

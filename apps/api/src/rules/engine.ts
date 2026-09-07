@@ -6,6 +6,7 @@ import {
   type DerivationWarning,
   type DerivedValue,
   type Movement,
+  type Origen,
   type ProficiencyLevel,
   type SkillKey,
   type TraceStep,
@@ -168,6 +169,152 @@ export function proficiencyBonus(level: number): number {
  */
 export function averageHitDie(hitDieSize: number): number {
   return Math.floor(hitDieSize / 2) + 1;
+}
+
+/**
+ * Lo que necesita `resolverOrigen` para resolver un `Origen`. **No lee el catálogo de clases**:
+ * las tablas de escala llegan ya resueltas en `escalas`, y las llena la tarea A10. Sin esta
+ * separación, probar `escala` exigiría datos que son de otra tarea.
+ */
+export interface ContextoDeDerivacion {
+  abilities: Record<AbilityKey, number>;
+  level: number;
+  /** La característica de lanzamiento de quien usa la actividad, si su clase lanza. */
+  spellcastingAbility?: AbilityKey;
+  /** El nivel del espacio con el que se lanzó, cuando aplica. */
+  nivelDeEspacio?: number;
+  /** La CD de conjuro ya derivada — `spellSaveDc` sale del motor con su traza. */
+  cdDeConjuro?: number;
+  /** Tramos por clave: `[{ desde: 1, valor: 2 }, { desde: 9, valor: 3 }]`. La llena A10. */
+  escalas: ReadonlyMap<string, readonly { desde: number; valor: number }[]>;
+}
+
+/**
+ * La puntuación de una característica, **comprobada**. `EngineInput.abilities` la exige por el
+ * tipo, pero `ContextoDeDerivacion` la arma quien llama —a veces con datos de la base, un
+ * statblock incompleto o un PNJ importado a medias—, y ahí el tipo ya no protege nada en tiempo
+ * de ejecución. Sin esta guarda, una puntuación ausente entra en `abilityModifier` como
+ * `undefined` y sale `NaN`: exactamente el mismo fallo convertido en número creíble que
+ * `resolverOrigen` existe para evitar, solo que aplazado hasta que alguien intente sumar ese
+ * `NaN` o validarlo con `traceStepSchema`.
+ */
+function puntuacionDeCaracteristica(ctx: ContextoDeDerivacion, ability: AbilityKey): number {
+  const puntuacion = ctx.abilities[ability];
+  if (typeof puntuacion !== "number" || !Number.isFinite(puntuacion)) {
+    throw new Error(`Este contexto no trae la puntuación de "${ability}".`);
+  }
+  return puntuacion;
+}
+
+/**
+ * Resuelve un `Origen` a su valor y **deja su paso en la traza** — nunca un número pelado. Es la
+ * frontera con Foundry: donde ellos evalúan una cadena como `"@mod + 2"` y `simplifyBonus`
+ * devuelve 0 en silencio si algo no evalúa, aquí un origen que no se puede resolver **lanza**.
+ * Un fallo convertido en un número creíble es peor que una excepción.
+ *
+ * **Todos los pasos que produce son `op: "base"`.** `resolverOrigen` no sabe si a este valor lo
+ * va a acompañar otro en la misma fórmula (una tirada de daño suma `modificador` + `competencia`)
+ * o si lo sustituye por completo: eso lo decide quien compone la actividad, no esta función. Es
+ * responsabilidad de quien consuma este paso reetiquetar el `op` a `"add"` cuando lo inserte
+ * junto a otros — igual que hace `derive()` al construir sus propios `TraceStep` a mano. Dejarlo
+ * aquí en `"base"` sin decir esto habría sido una trampa para A5/A6, que sí componen varios
+ * orígenes en una sola fórmula.
+ */
+export function resolverOrigen(
+  origen: Origen,
+  ctx: ContextoDeDerivacion,
+): { valor: number; paso: TraceStep } {
+  switch (origen.tipo) {
+    case "fijo":
+      return {
+        valor: origen.valor,
+        paso: paso("base", origen.valor, "base", "fixed", "fixedValue"),
+      };
+
+    case "modificador": {
+      const valor = abilityModifier(puntuacionDeCaracteristica(ctx, origen.ability));
+      return {
+        valor,
+        paso: paso("base", valor, "ability", origen.ability, `abilityMod.${origen.ability}`),
+      };
+    }
+
+    case "competencia": {
+      const valor = proficiencyBonus(ctx.level);
+      return { valor, paso: paso("base", valor, "proficiency", "activity", "proficiencyBonus") };
+    }
+
+    case "escala": {
+      const tramos = ctx.escalas.get(origen.clave);
+      if (!tramos || tramos.length === 0) {
+        throw new Error(`No hay tabla de escala para "${origen.clave}".`);
+      }
+      const aplicables = tramos.filter((tramo) => tramo.desde <= ctx.level);
+      if (aplicables.length === 0) {
+        throw new Error(`La tabla de escala "${origen.clave}" no cubre el nivel ${ctx.level}.`);
+      }
+      // El tramo que aplica es el de mayor `desde` que no supere el nivel — **no** el de mayor
+      // `valor`, y **no** el último del array. La tabla es una lista sin garantía de orden ni de
+      // monotonía (nada en el tipo obliga a que un `desde` mayor traiga un `valor` mayor), así
+      // que las tres reglas («mayor `desde`», «mayor `valor`», «último elemento») solo coinciden
+      // por casualidad en una tabla creciente y bien ordenada.
+      const tramo = aplicables.reduce((mejor, actual) =>
+        actual.desde > mejor.desde ? actual : mejor,
+      );
+      return {
+        valor: tramo.valor,
+        paso: paso("base", tramo.valor, "class", origen.clave, `scale.${origen.clave}`),
+      };
+    }
+
+    case "lanzamiento": {
+      // Un conjuro no puede nombrar una característica concreta: depende de la clase de quien
+      // lo lanza. Un no-lanzador usando una actividad de conjuro es un fallo de datos, no un
+      // modificador de cero.
+      if (!ctx.spellcastingAbility) {
+        throw new Error("Este contexto no tiene característica de lanzamiento.");
+      }
+      const habilidad = ctx.spellcastingAbility;
+      const valor = abilityModifier(puntuacionDeCaracteristica(ctx, habilidad));
+      return {
+        valor,
+        paso: paso("base", valor, "ability", habilidad, `abilityMod.${habilidad}`),
+      };
+    }
+
+    case "nivelDeEspacio": {
+      if (ctx.nivelDeEspacio === undefined) {
+        throw new Error("Este contexto no trae el nivel del espacio con el que se lanzó.");
+      }
+      return {
+        valor: ctx.nivelDeEspacio,
+        paso: paso("base", ctx.nivelDeEspacio, "level", "spellSlot", "spellSlotLevel"),
+      };
+    }
+
+    case "cdDeConjuro": {
+      if (ctx.cdDeConjuro === undefined) {
+        throw new Error("Este contexto no trae una CD de conjuro derivada.");
+      }
+      // `"base"` y no `"class"`: desde una actividad, `spellSaveDc` es un valor ya derivado que
+      // se toma como dado, no una regla de clase. `derive()` la construye con pasos `"base"`,
+      // `"proficiency"` y `"ability"` — ninguno dice `"class"` — y el paso aquí apunta a la
+      // clave de ese valor derivado, no a una fuente nueva.
+      return {
+        valor: ctx.cdDeConjuro,
+        paso: paso("base", ctx.cdDeConjuro, "base", "spellSaveDc", "spellSaveDc"),
+      };
+    }
+
+    default: {
+      // Exhaustivo en compilación (TypeScript reduce `origen` a `never` aquí porque las siete
+      // variantes de arriba ya cubren la unión) y una guarda real en ejecución: un `tipo` que
+      // llegó sin pasar por `origenSchema.parse` —JSON crudo de la base, un PNJ importado a
+      // medias— no cae en un `undefined` mudo, lanza con el `tipo` que trajo.
+      const comoLlego = origen as unknown as { tipo?: unknown };
+      throw new Error(`Origen con tipo desconocido: "${String(comoLlego.tipo)}".`);
+    }
+  }
 }
 
 export function derive(input: EngineInput): DerivationResult {

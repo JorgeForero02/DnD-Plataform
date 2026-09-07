@@ -1,10 +1,13 @@
+import type { AbilityKey, Origen } from "@dnd/shared";
 import {
   abilityModifier,
   averageHitDie,
   derive,
   proficiencyBonus,
+  resolverOrigen,
   totalConModificadores,
   type AcFormula,
+  type ContextoDeDerivacion,
   type EngineInput,
   type Modifier,
 } from "./engine";
@@ -733,5 +736,252 @@ describe("una fórmula de CA puede sumar MÁS DE UNA característica (paso 1, ta
     };
     const r = derive(personaje({ acFormulas: [armadura] }));
     expect(r.derived.ac.total).toBe(17);
+  });
+});
+
+// Tarea A4 (paso 2). `ctx()` construye un `ContextoDeDerivacion` de mentira: `resolverOrigen`
+// no lee el catálogo de clases (eso es la tarea A10), así que la tabla de escala de estas
+// pruebas es una tabla inventada a mano, igual que la clase y la armadura de arriba.
+function ctx(parcial: Partial<ContextoDeDerivacion> = {}): ContextoDeDerivacion {
+  return {
+    abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+    level: 1,
+    escalas: new Map([
+      [
+        "rage-damage",
+        [
+          { desde: 1, valor: 2 },
+          { desde: 9, valor: 3 },
+          { desde: 16, valor: 4 },
+        ],
+      ],
+    ]),
+    ...parcial,
+  };
+}
+
+describe("resolverOrigen: de dónde sale un número, nunca un cero en silencio", () => {
+  it("fijo: devuelve el valor tal cual, con su paso entero", () => {
+    const { valor, paso } = resolverOrigen({ tipo: "fijo", valor: 2 }, ctx({}));
+    expect(valor).toBe(2);
+    // Aserción de identidad, no `objectContaining`: si `sourceType` o `sourceKey` mintieran
+    // sobre el origen (por ejemplo, "manual" en vez de "base"), esto lo cazaría.
+    expect(paso).toEqual({
+      op: "base",
+      amount: 2,
+      sourceType: "base",
+      sourceKey: "fixed",
+      labelKey: "fixedValue",
+    });
+  });
+
+  it("fijo: un valor negativo también es un `Origen` válido", () => {
+    // Cambiar el retorno de esta rama a `-origen.valor` dejaría esta prueba en rojo; sin ella,
+    // `origen.schema.test.ts` (que nunca llama a `resolverOrigen`) no lo habría cazado.
+    const { valor } = resolverOrigen({ tipo: "fijo", valor: -2 }, ctx({}));
+    expect(valor).toBe(-2);
+  });
+
+  it("un modificador sale con su nombre en la traza, con su paso entero", () => {
+    const { valor, paso } = resolverOrigen(
+      { tipo: "modificador", ability: "str" },
+      ctx({ abilities: { str: 16, dex: 10, con: 10, int: 10, wis: 10, cha: 10 } }),
+    );
+    expect(valor).toBe(3);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 3,
+      sourceType: "ability",
+      sourceKey: "str",
+      labelKey: "abilityMod.str",
+    });
+  });
+
+  it("modificador: lanza si la puntuación no está en el contexto, en vez de devolver NaN", () => {
+    // `EngineInput.abilities` obliga a las seis por el tipo, pero `ContextoDeDerivacion` lo
+    // arma quien llama —un statblock incompleto, un PNJ importado a medias— y ahí el tipo ya
+    // no protege nada en tiempo de ejecución. Sin la guarda, esto da `NaN`, no un throw.
+    const abilities = {
+      str: undefined,
+      dex: 10,
+      con: 10,
+      int: 10,
+      wis: 10,
+      cha: 10,
+    } as unknown as Record<AbilityKey, number>;
+    expect(() =>
+      resolverOrigen({ tipo: "modificador", ability: "str" }, ctx({ abilities })),
+    ).toThrow();
+  });
+
+  it("la competencia sale del nivel, no de un número escrito a mano, con su paso entero", () => {
+    const { valor, paso } = resolverOrigen({ tipo: "competencia" }, ctx({ level: 5 }));
+    expect(valor).toBe(3);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 3,
+      sourceType: "proficiency",
+      sourceKey: "activity",
+      labelKey: "proficiencyBonus",
+    });
+  });
+
+  it("una escala lee la tabla por nivel, con su paso entero", () => {
+    const { valor, paso } = resolverOrigen(
+      { tipo: "escala", clave: "rage-damage" },
+      ctx({ level: 9 }),
+    );
+    expect(valor).toBe(3);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 3,
+      sourceType: "class",
+      sourceKey: "rage-damage",
+      labelKey: "scale.rage-damage",
+    });
+  });
+
+  it("una escala en un nivel anterior lee el tramo anterior, no el más alto", () => {
+    // Con la tabla de `rage-damage` (creciente y bien ordenada), el filtro por nivel ya deja un
+    // solo tramo aplicable a nivel 3: esta prueba comprueba que se elige ESE tramo y no uno
+    // posterior, pero no distingue por sí sola «mayor `desde`» de «mayor `valor`» — con un solo
+    // candidato las dos reglas coinciden. Esa distinción la hacen las dos pruebas siguientes,
+    // con una tabla que deja más de un tramo aplicable y que además no es monótona.
+    const { valor } = resolverOrigen({ tipo: "escala", clave: "rage-damage" }, ctx({ level: 3 }));
+    expect(valor).toBe(2);
+  });
+
+  it("una escala NO monótona: gana el tramo de mayor `desde`, no el de mayor `valor`", () => {
+    // Mutación que esta prueba cazaría (verificada abajo, en el informe): cambiar
+    // `actual.desde > mejor.desde` por `actual.valor > mejor.valor` da 2 en vez de 1.
+    const noMonotona = new Map([
+      [
+        "no-monotona",
+        [
+          { desde: 1, valor: 2 },
+          { desde: 9, valor: 1 },
+        ],
+      ],
+    ]);
+    const { valor } = resolverOrigen(
+      { tipo: "escala", clave: "no-monotona" },
+      ctx({ level: 9, escalas: noMonotona }),
+    );
+    expect(valor).toBe(1);
+  });
+
+  it("una escala con los tramos declarados al revés da el mismo resultado", () => {
+    // Mismo caso que el anterior pero con el array en orden inverso: una implementación que
+    // «coja el último tramo del array» en vez del de mayor `desde` daría 2 aquí (el último
+    // elemento es `{ desde: 1, valor: 2 }`), y coincidiría por casualidad en la prueba de
+    // arriba porque ahí el orden del array ya era el correcto.
+    const invertida = new Map([
+      [
+        "no-monotona-invertida",
+        [
+          { desde: 9, valor: 1 },
+          { desde: 1, valor: 2 },
+        ],
+      ],
+    ]);
+    const { valor } = resolverOrigen(
+      { tipo: "escala", clave: "no-monotona-invertida" },
+      ctx({ level: 9, escalas: invertida }),
+    );
+    expect(valor).toBe(1);
+  });
+
+  it("escala: lanza si la tabla no existe (un origen desconocido NO devuelve cero en silencio)", () => {
+    // **La prueba que tiene que ponerse ROJA si se revierte a un cero en silencio.**
+    expect(() =>
+      resolverOrigen({ tipo: "escala", clave: "no-existe" } as Origen, ctx({})),
+    ).toThrow();
+  });
+
+  it("escala: lanza si el nivel no llega al primer tramo de la tabla", () => {
+    const tardia = new Map([["tardia", [{ desde: 5, valor: 1 }]]]);
+    expect(() =>
+      resolverOrigen({ tipo: "escala", clave: "tardia" }, ctx({ level: 1, escalas: tardia })),
+    ).toThrow();
+  });
+
+  it("lanzamiento: usa el modificador de la característica de lanzamiento, con su paso entero", () => {
+    const { valor, paso } = resolverOrigen(
+      { tipo: "lanzamiento" },
+      ctx({
+        spellcastingAbility: "wis",
+        abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 16, cha: 10 },
+      }),
+    );
+    expect(valor).toBe(3);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 3,
+      sourceType: "ability",
+      sourceKey: "wis",
+      labelKey: "abilityMod.wis",
+    });
+  });
+
+  it("lanzamiento: lanza si el contexto no trae característica de lanzamiento", () => {
+    // Un no-lanzador usando una actividad de conjuro es un fallo de datos, no un modificador de
+    // cero: sin esta excepción, un PNJ mal etiquetado tiraría con un bono de 0 creíble.
+    expect(() => resolverOrigen({ tipo: "lanzamiento" }, ctx({}))).toThrow();
+  });
+
+  it("lanzamiento: lanza si la característica de lanzamiento no tiene puntuación en el contexto", () => {
+    const abilities = {
+      str: 10,
+      dex: 10,
+      con: 10,
+      int: 10,
+      wis: undefined,
+      cha: 10,
+    } as unknown as Record<AbilityKey, number>;
+    expect(() =>
+      resolverOrigen({ tipo: "lanzamiento" }, ctx({ spellcastingAbility: "wis", abilities })),
+    ).toThrow();
+  });
+
+  it("nivelDeEspacio: devuelve el nivel del espacio con el que se lanzó, con su paso entero", () => {
+    const { valor, paso } = resolverOrigen({ tipo: "nivelDeEspacio" }, ctx({ nivelDeEspacio: 3 }));
+    expect(valor).toBe(3);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 3,
+      sourceType: "level",
+      sourceKey: "spellSlot",
+      labelKey: "spellSlotLevel",
+    });
+  });
+
+  it("nivelDeEspacio: lanza si no hay ningún espacio en el contexto", () => {
+    expect(() => resolverOrigen({ tipo: "nivelDeEspacio" }, ctx({}))).toThrow();
+  });
+
+  it("cdDeConjuro: devuelve la CD de conjuro ya derivada, apuntando a su propia clave", () => {
+    const { valor, paso } = resolverOrigen({ tipo: "cdDeConjuro" }, ctx({ cdDeConjuro: 15 }));
+    expect(valor).toBe(15);
+    // `"base"`, no `"class"`: desde una actividad, `spellSaveDc` es un valor ya derivado que se
+    // toma como dado. `derive()` la construye con pasos `"base"`/`"proficiency"`/`"ability"`;
+    // ninguno de esos tres dice `"class"`.
+    expect(paso).toEqual({
+      op: "base",
+      amount: 15,
+      sourceType: "base",
+      sourceKey: "spellSaveDc",
+      labelKey: "spellSaveDc",
+    });
+  });
+
+  it("cdDeConjuro: lanza si no hay ninguna CD derivada en el contexto", () => {
+    expect(() => resolverOrigen({ tipo: "cdDeConjuro" }, ctx({}))).toThrow();
+  });
+
+  it("un tipo de origen que no existe en la unión también lanza, no cae en un switch en silencio", () => {
+    // Distinto del caso "escala: lanza si la tabla no existe": aquí el `tipo` mismo es ajeno a
+    // las siete variantes, así que golpea el `default` del switch y no una rama real. Llega así
+    // cuando algo no pasó por `origenSchema.parse` — JSON crudo, un dato importado a medias.
+    expect(() => resolverOrigen({ tipo: "no-existe" } as unknown as Origen, ctx({}))).toThrow();
   });
 });

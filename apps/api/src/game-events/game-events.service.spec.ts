@@ -80,6 +80,30 @@ describe("GameEventsService", () => {
     expect(prisma.gameEvent.create).not.toHaveBeenCalled();
   });
 
+  // **Ficha P2-7 — descartar en silencio no es validar.**
+  //
+  // `.parse()` de un `z.object` de Zod 3 **quita** las claves que no conoce y sigue adelante. Eso
+  // convierte «quitar un campo del esquema de `@dnd/shared` sin darse cuenta de que la web todavía
+  // lo manda» en un dato que se tira en producción con las tres suites en verde: un *spread* de
+  // TypeScript no comprueba propiedades sobrantes, así que el `tsc` tampoco lo caza. El guardián
+  // tiene que **rechazar**, que es lo que un guardián hace.
+  it("record() rechaza una clave que el esquema no conoce, en vez de tirarla en silencio", async () => {
+    await expect(
+      service.record("u1", "c1", {
+        subjectType: "session",
+        subjectId: "s1",
+        visibility: "PLAYERS",
+        payload: {
+          type: "SESSION_STARTED",
+          sessionTitle: "La cripta",
+          // El campo que alguien quitó del esquema y la web sigue mandando.
+          quienLaAbrio: "Mira",
+        } as never,
+      }),
+    ).rejects.toThrow(/quienLaAbrio/);
+    expect(prisma.gameEvent.create).not.toHaveBeenCalled();
+  });
+
   it("record() guarda el tipo como columna, no solo dentro del payload", async () => {
     prisma.gameEvent.create.mockResolvedValue({ id: "e1" });
     await service.record("u1", "c1", {

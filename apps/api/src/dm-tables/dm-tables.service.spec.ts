@@ -81,6 +81,25 @@ const tablaConRefCaduca = {
   ],
 };
 
+// **Ficha P2-7.** El `Json` de `DmTableEntry` es una columna sin forma: lo que se escribe por la
+// API pasa por `entregaSchema`, pero un dato que llegó a la base por otra vía —un `curl`, una
+// migración, la mano de alguien— no. Esta fila es exactamente eso: una `entrega` que no valida.
+const tablaConEntregaMalformada = {
+  id: "t5",
+  name: "Botín malformado",
+  visibility: "PLAYERS",
+  trigger: "NONE",
+  entries: [
+    {
+      min: 1,
+      max: 10,
+      text: "Algo que la fila dice mal",
+      // `objetos` tendría que ser una lista de `{ ref, cantidad }`. No lo es.
+      entrega: { objetos: "una espada corta", monedas: { gp: "muchas" } },
+    },
+  ],
+};
+
 const tablaDeRumores = {
   id: "t4",
   name: "Rumores",
@@ -202,8 +221,9 @@ describe("DmTablesService", () => {
       beforeEach(() => {
         prisma.dmTable.findFirst.mockImplementation(({ where }: { where: { id: string } }) =>
           Promise.resolve(
-            [tablaDeBotin, tablaConRefCaduca, tablaDeRumores].find((t) => t.id === where.id) ??
-              null,
+            [tablaDeBotin, tablaConRefCaduca, tablaConEntregaMalformada, tablaDeRumores].find(
+              (t) => t.id === where.id,
+            ) ?? null,
           ),
         );
       });
@@ -229,6 +249,21 @@ describe("DmTablesService", () => {
         expect((r.entrega?.objetos?.[0] as { motivo?: string }).motivo).toBe(
           "Ese objeto de campaña no existe, o no es de esta campaña.",
         );
+      });
+
+      // **Ficha P2-7 — el guardián existía y no lo sujetaba nadie.**
+      //
+      // El que actúa al leer es `entregaSchema.safeParse` dentro de `resolverEntrega`; NO
+      // `entregaResueltaSchema`, que solo se usa como tipo de salida. Su comportamiento se había
+      // verificado **por ejecución** y no por prueba, así que quitarlo dejaba las tres suites en
+      // verde. Lo que la tabla promete es el texto: una `entrega` que no se entiende se trata como
+      // ausente, nunca como un error que se lleve por delante la tirada.
+      it("un `entrega` malformado en el `Json` NO rompe la tirada: sale sin entrega, con su texto", async () => {
+        const r = await service.roll("dm", "c1", tablaConEntregaMalformada.id);
+        expect(r.text).toBe("Algo que la fila dice mal");
+        expect(r.entrega).toBeUndefined();
+        // Y no se intentó resolver nada: el esquema para antes de llegar al catálogo.
+        expect(resolveContentRefMock).not.toHaveBeenCalled();
       });
 
       it("una tabla de rumores tira exactamente como antes", async () => {

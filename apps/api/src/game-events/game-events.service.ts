@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   gameEventPayloadSchema,
@@ -51,6 +56,20 @@ export class GameEventsService {
     // `Json` en la base y esta es la única barrera que tiene. Un evento mal formado escrito hoy
     // es una línea de tiempo que no se puede pintar dentro de seis meses.
     const payload = gameEventPayloadSchema.parse(input.payload);
+    // **Y lo que el esquema no conoce se RECHAZA, no se descarta** (ficha P2-7). Un `z.object` de
+    // Zod 3 quita las claves desconocidas y sigue adelante, que es lo peor de los dos mundos: el
+    // día que alguien quite un campo del esquema de `@dnd/shared` sin ver que la web todavía lo
+    // manda, las tres suites siguen en verde —un *spread* de TypeScript no comprueba propiedades
+    // sobrantes, así que el `tsc` tampoco lo caza— y el campo se tira en silencio en producción.
+    // Aquí se compara lo que entró con lo que sobrevivió al esquema y se dice cuál falta.
+    const sobrantes = Object.entries(input.payload as Record<string, unknown>)
+      .filter(([clave, valor]) => valor !== undefined && !(clave in payload))
+      .map(([clave]) => clave);
+    if (sobrantes.length > 0) {
+      throw new BadRequestException(
+        `El suceso «${payload.type}» trae claves que su esquema no conoce: ${sobrantes.join(", ")}.`,
+      );
+    }
     const client = tx ?? this.prisma;
     // Tarea 2.5.1 — promovido a columna: `payload.damageType` solo vive en `HP_CHANGED`, pero
     // "¿de qué murió Elara?" es una pregunta que un campo dentro del `Json` no puede contestar

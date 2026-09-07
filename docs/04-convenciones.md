@@ -15,6 +15,15 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
   recomendadas de JS y de typescript-eslint, más `react-hooks` y `react-refresh` en la web.
   `eslint-config-prettier` va **el último** para que el formato no lo discutan dos
   herramientas.
+- **Los tipos comodín son error en el código de aplicación, y el techo es cero.** Medido el
+  2026-09-06 sobre todo el repositorio: `no-explicit-any` daba **cero hallazgos** fuera de las
+  pruebas. Venía heredado como **aviso** de la configuración recomendada, y un aviso que nadie
+  ha tenido que atender nunca no dice nada sobre si entra el siguiente — `pnpm verify` pasa con
+  avisos. En error no cuesta nada hoy y hace que sostenga la máquina lo que hasta ahora
+  sostenía la costumbre. **Los ficheros de prueba siguen exentos** y con su motivo escrito: las
+  aserciones sobre dobles piden tipado laxo. Si una frontera de verdad no se puede tipar, el
+  camino es `unknown` con su comprobación, o un `eslint-disable-next-line` con la razón — nunca
+  un comodín en silencio.
 - `pnpm format:check` es **Prettier** (`.prettierrc.json`: 100 columnas, comillas dobles,
   comas finales). `pnpm format` lo aplica.
   **El Markdown está excluido a propósito** (`.prettierignore`): la documentación se escribe a

@@ -41,6 +41,26 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El cero de tipos comodín deja de depender de la costumbre (2026-09-06)
+
+**Qué:** `no-explicit-any` pasa de **aviso heredado** a **error** en `apps/api/src`,
+`apps/web/src` y `packages/shared/src`. Las pruebas siguen exentas, con el motivo que ya estaba
+escrito.
+
+**Por qué:** la medición del día contradijo a la sospecha. Se auditó el repositorio esperando
+encontrar la regla apagada y deuda escondida, y lo que hay es **cero** comodines en código de
+aplicación: la excepción de `eslint.config.mjs` estaba acotada a las pruebas desde el principio.
+Lo que no había era nada que **sostuviera** ese cero — un aviso no frena un commit, y
+`pnpm verify` pasa con avisos. Poner en error una regla que hoy da cero cuesta cero y convierte
+una costumbre en una propiedad comprobada.
+
+**Verificado por mutación:** se añadió `(x: any) => x` en un fichero de la web, `eslint` lo
+rechazó **como error** —no como aviso— y se restauró.
+
+**Cómo revertir:** quitar el bloque de reglas nuevo de `eslint.config.mjs`. No toca ni una línea
+de código de aplicación.
+
+
 ## El proceso pasa a medirse, y la frontera del encargo deja de ser solo de ficheros (2026-09-06)
 
 **Qué:** cuatro cosas, todas documentación y ninguna toca comportamiento.

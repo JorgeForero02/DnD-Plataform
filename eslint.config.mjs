@@ -77,6 +77,29 @@ export default tseslint.config(
     },
   },
 
+  // Wildcard types are an error in source, and the ceiling is zero.
+  //
+  // Measured 2026-09-06 over the whole repository: `no-explicit-any` reported ZERO findings in
+  // application code. It was already inherited as a warning from the recommended set, and a
+  // warning that nobody has ever had to act on says nothing about whether the next one gets in
+  // — `pnpm verify` passes with warnings. Promoting it to an error costs nothing today and
+  // makes the machine hold a property that until now was held by habit.
+  //
+  // Why it matters more here than the count suggests: a type is a constraint an agent reads
+  // without spending a line of documentation or a turn of context, and the compiler answers in
+  // seconds instead of in review. Every escape hatch is that guardrail switched off, exactly
+  // where guessing is most expensive.
+  //
+  // If a boundary genuinely cannot be typed — a third-party payload, a driver's shape — the way
+  // through is `unknown` plus a narrowing check, or a documented `eslint-disable-next-line` with
+  // the reason. Not a silent `any`.
+  {
+    files: ["apps/api/src/**/*.ts", "apps/web/src/**/*.{ts,tsx}", "packages/shared/src/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
+
   // Tests: jest and vitest globals, and assertions on mocks need loose typing.
   {
     files: [

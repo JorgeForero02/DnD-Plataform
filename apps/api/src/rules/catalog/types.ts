@@ -9,7 +9,15 @@
 // El motor (`../engine.ts`) no importa nada de aquí: recibe modificadores ya resueltos, y esa
 // separación es lo que permite que un fallo de transcripción no parezca un fallo del motor.
 
-import type { AbilityKey, DamageModifier, ProficiencyLevel, SkillKey } from "@dnd/shared";
+import type {
+  AbilityKey,
+  Actividad,
+  DamageModifier,
+  Origen,
+  ProficiencyLevel,
+  ResourceReset,
+  SkillKey,
+} from "@dnd/shared";
 import type { SpellProgression } from "./spell-slots";
 
 /**
@@ -29,6 +37,14 @@ export type CreatureSize = "TINY" | "SMALL" | "MEDIUM" | "LARGE" | "HUGE" | "GAR
  * No es un `Modifier` del motor: el motor solo entiende los fijos. Traducir concesiones a
  * modificadores es trabajo del resolutor (`resolve.ts`), y las que llevan elección **no se
  * traducen** hasta que 2A.4 añada la fila de elección que las resuelve.
+ *
+ * **`ItemGrant` NO está en esta unión, a propósito (vuelta de arreglo 1, crítico I1).** `Grant[]`
+ * es lo que trae `race.grants` y `subrace.grants`, y ahí lo resuelve `aplicarConcesion` — un
+ * `switch (grant.kind)` sin `default` que solo conoce las nueve ramas de abajo. Meter `ItemGrant`
+ * en la unión no le daba una rama en ese `switch`: el compilador no avisaba y una `ItemGrant`
+ * puesta por error en `race.grants` se habría tirado en silencio. `ItemGrant` solo llega por
+ * `ClassFeature.grant`, que tiene su propio camino (`concederActividadDe` en `resolve.ts`) — no
+ * necesita estar en `Grant` para eso, y estarlo solo abría un agujero que nadie usa hoy.
  */
 export type Grant =
   | AbilityGrant
@@ -133,6 +149,47 @@ export interface FeatureGrant extends GrantBase {
   name: string;
 }
 
+/**
+ * **Concede una actividad completa, con sus propios usos si los tiene** (tarea A9). Es lo que
+ * distingue a la Furia de cualquier otra aptitud de clase: hasta hoy `f(1, "rage", "Furia")` era
+ * literalmente todo lo que el catálogo sabía de ella, y la hoja no podía enseñar un botón porque
+ * no había nada mecánico que pulsar.
+ *
+ * **`actividad` es la forma de A5/A6** (`Actividad` en `@dnd/shared`), tal cual, y no una copia:
+ * el catálogo declara una actividad como cualquier otra que llegue en el paso 3.
+ *
+ * **`usos.max` es un `Origen`, nunca un entero.** La Furia da 2 usos a nivel 1 y sube por tramos
+ * (SRD 5.1, Barbarian: columna «Rages»); escribir `2` a mano habría acertado al nivel 1 y
+ * mentido a partir del 3. La tabla que resuelve ese origen —`{ tipo: "escala", clave: ... }`— es
+ * la tarea A10, y vive en `classes.ts`, junto a la clase que la declara.
+ *
+ * **`resetOn` es el vocabulario que ya existe** (`ResourceReset` de `@dnd/shared`): no se
+ * inventa un tercer enum para decir lo mismo que `CharacterResource.resetOn` ya dice.
+ *
+ * **`sinTopeDesde` (vuelta de arreglo 1, crítico I1) — «sin tope» ya es ciudadano de primera en
+ * la puerta que va a persistir esto.** SRD 5.1: la Furia es «Unlimited» a partir de nivel 20, y
+ * la tabla de escala de `max` (un `Origen`) **no aprende a decir «ilimitado»** — sigue siendo
+ * solo números, tramo a tramo. Lo que hace falta es no evaluar esa tabla en absoluto a partir del
+ * nivel que el SRD marca como sin tope: `ResolvedActivityUses.max` (`@dnd/shared`) ya es
+ * `number | null`, el mismo vocabulario que `CharacterResource.max` en Prisma y que
+ * `ResourcesService.adjust` ya sabe leer (`resource.max ?? Number.POSITIVE_INFINITY`). Sin este
+ * campo, un bárbaro de nivel 20 —una ficha legal, `level` llega hasta 20— seguía leyendo el
+ * tramo de mayor `desde` (17 → 6) y su hoja mentía con un número creíble y silencioso: el mismo
+ * fallo de `simplifyBonus` que este proyecto existe para no repetir, solo que sin la guarda de
+ * `resolverOrigen` para cazarlo (esa guarda solo lanza POR DEBAJO del primer tramo, nunca por
+ * encima).
+ */
+export interface ItemGrant extends GrantBase {
+  kind: "grant";
+  actividad: Actividad;
+  usos?: {
+    max: Origen;
+    resetOn: ResourceReset;
+    /** Nivel desde el que `usos.max` deja de tener tope y `ResolvedActivityUses.max` es `null`. */
+    sinTopeDesde?: number;
+  };
+}
+
 export interface SrdSubrace {
   key: string;
   name: string;
@@ -160,6 +217,13 @@ export interface ClassFeature {
   level: number;
   key: string;
   name: string;
+  /**
+   * Lo que este rasgo concede además de su nombre — hoy, **solo** una actividad con sus usos
+   * (`ItemGrant`, tarea A9). Ausente en casi todos los rasgos, que siguen siendo nombre y nivel
+   * a propósito (ver el alcance declarado arriba): **solo la Furia gana su forma completa**,
+   * decisión del autor del 2026-09-06 que no se reabre aquí.
+   */
+  grant?: ItemGrant;
 }
 
 export interface SrdSubclass {
@@ -224,6 +288,27 @@ export interface SrdClass {
   features: ClassFeature[];
   /** El SRD trae **una** por clase. Se modela para que quepa el homebrew de 2B. */
   subclasses: SrdSubclass[];
+  /**
+   * **Las tablas de escala de la clase, por clave** (tarea A10). Un tramo dice desde qué nivel
+   * aplica y qué valor tiene; la lista no promete estar ordenada — `resolverOrigen`
+   * (`../engine.ts`) ya no asume monotonía ni orden, y esta tabla tampoco lo necesita.
+   *
+   * **Cada clave es la de un `Origen` de tipo `escala`** (`{ tipo: "escala", clave }`,
+   * `@dnd/shared`), y por eso vive junto a la clase que la declara: es SU dato, no una tabla
+   * global de todo el catálogo que cualquier clase pudiera pisar por accidente.
+   */
+  scales?: Record<string, readonly ScaleStep[]>;
+}
+
+/**
+ * Un tramo de una tabla de escala: desde qué nivel de PERSONAJE aplica, y qué valor tiene.
+ * **Es la misma forma que `ContextoDeDerivacion.escalas` ya espera** (`../engine.ts`, tarea A4):
+ * no se declara una segunda aquí, se reutiliza su estructura para que `resolve.ts` solo tenga
+ * que envolver el `Record` en el `ReadonlyMap` que el motor sabe leer.
+ */
+export interface ScaleStep {
+  desde: number;
+  valor: number;
 }
 
 export type ArmorCategory = "LIGHT" | "MEDIUM" | "HEAVY" | "SHIELD";

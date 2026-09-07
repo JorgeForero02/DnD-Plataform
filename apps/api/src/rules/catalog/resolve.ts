@@ -15,6 +15,7 @@ import {
   characterBuildSchema,
   type AbilityKey,
   type CharacterBuildInput,
+  type CharacterSheetActivity,
   type DamageModifier,
   type DerivationWarning,
   type Movement,
@@ -33,13 +34,29 @@ import {
   InvalidEquipmentError,
   ORDEN_COMPETENCIA,
 } from "../items";
-import { totalConModificadores, type AcFormula, type EngineInput, type Modifier } from "../engine";
+import {
+  resolverOrigen,
+  tablaDeEscalas,
+  totalConModificadores,
+  type AcFormula,
+  type ContextoDeDerivacion,
+  type EngineInput,
+  type Modifier,
+} from "../engine";
 import { SRD_ARMOR } from "./armor";
 import { validatePicks, type ChoiceGrant } from "./choices";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
 import { spellSlotResetOn, spellSlotsFor, type SpellSlot } from "./spell-slots";
-import type { ContentRef, Grant, SrdArmor, SrdClass, SrdRace, SrdSubrace } from "./types";
+import type {
+  ClassFeature,
+  ContentRef,
+  Grant,
+  SrdArmor,
+  SrdClass,
+  SrdRace,
+  SrdSubrace,
+} from "./types";
 
 /** Re-exportado tal cual: los consumidores existentes lo importan de `./resolve`. */
 export { InvalidEquipmentError };
@@ -79,6 +96,13 @@ export interface ResolvedBuild {
    */
   warnings: DerivationWarning[];
   features: ResolvedFeature[];
+  /**
+   * Actividades que el catálogo concede con nombre y mecánica propia (tarea A9) — hoy, solo la
+   * Furia. Sus `usos`, si los tiene, ya están resueltos a un número de ESTE personaje a ESTE
+   * nivel; el resto de `Origen` que la actividad lleve dentro (el bono de un ataque, por
+   * ejemplo) se queda sin resolver hasta que se USE, con el contexto de quien la usa.
+   */
+  activities: CharacterSheetActivity[];
   /**
    * Competencias con armas de la **clase más la raza**. La hoja las pasa al cuadro de ataques;
    * antes solo miraba la clase y el enano perdía las suyas.
@@ -186,6 +210,18 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
   const pendingChoices: PendingChoice[] = [];
   const warnings: DerivationWarning[] = [];
   const features: ResolvedFeature[] = [];
+  const activities: CharacterSheetActivity[] = [];
+  // El contexto que necesita `resolverOrigen` para resolver los `usos.max` de una concesión
+  // (tarea A9): solo pide puntuaciones, nivel y las tablas de escala de LA CLASE de este
+  // personaje, nunca las del catálogo entero, para que una clave de escala repetida entre dos
+  // clases no pise la que no toca. **`SrdSubclass` no tiene su propio `scales` hoy** (nada lo
+  // necesita: la Furia es de la clase base) — si algún día hace falta, este mapa tendrá que
+  // fusionar también `subclass?.scales`.
+  const ctxDeConcesiones: ContextoDeDerivacion = {
+    abilities: build.abilities,
+    level: build.level,
+    escalas: tablaDeEscalas({ ...characterClass.scales }),
+  };
   const speeds: ResolvedBuild["speeds"] = {};
   const weaponProficiencies: string[] = [...characterClass.weaponProficiencies];
   const damageModifiers: DamageModifier[] = [];
@@ -317,6 +353,23 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
       case "feature":
         features.push({ sourceKey, labelKey: grant.labelKey, name: grant.name });
         break;
+      default: {
+        // **Sin cajón de sastre, a propósito** (vuelta de arreglo 2 — mismo razonamiento que
+        // `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts` y `linea-de-log.ts`): sobre
+        // una unión discriminada eso lo hace exhaustivo, así que el día que `Grant` gane una
+        // variante nueva sin rama aquí, **el build se pone rojo EN ESTE FICHERO** en vez de caer
+        // en silencio en un valor por defecto. Es exactamente lo que le pasó a `ItemGrant` en la
+        // vuelta de arreglo 1: estuvo dentro de esta unión sin una rama que la resolviera, y
+        // `tsc --noEmit` compiló con éxito — el compilador no protegía este sitio. `grant` se
+        // reduce a `never` aquí porque las nueve ramas de arriba ya cubren toda la unión; si deja
+        // de reducirse, es que falta una rama y esto no compila. Y si algo la esquivara en
+        // ejecución (JSON crudo sin pasar por el catálogo tipado), se lanza con el `kind` que
+        // trajo en vez de tirar la concesión sin avisar.
+        const nunca: never = grant;
+        throw new Error(
+          `Concesión de tipo desconocido: "${String((nunca as { kind?: unknown }).kind)}".`,
+        );
+      }
     }
   };
 
@@ -348,16 +401,48 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     if (!concesionesConocidas.has(grantId))
       warnings.push({ code: "stale_choice", key: grantId, data: { grantId } });
 
+  /**
+   * Tarea A9. Un rasgo puede además CONCEDER una actividad usable (hoy, solo la Furia): si la
+   * trae, se resuelve su `usos.max` —un `Origen`, nunca un número escrito a mano— con el
+   * contexto de este personaje y se añade a `activities`. **El mismo filtro por nivel que ya
+   * gobierna `features`** decide si llega: se llama solo cuando `feature.level <= build.level`
+   * ya se comprobó, no un segundo filtro que pudiera discrepar del primero.
+   *
+   * **`sinTopeDesde` (vuelta de arreglo 1, crítico I1) se comprueba ANTES de tocar la tabla de
+   * escala.** A partir de ese nivel el SRD ya no da un tramo: da "sin tope", y la tabla de
+   * `usos.max` no sabe decir eso — solo números. La guarda de `resolverOrigen` que lanza por un
+   * origen fuera de rango **solo protege por DEBAJO del primer tramo**; por encima, sin esta
+   * comprobación, se habría leído el tramo de mayor `desde` y dado un número que parece correcto
+   * y no lo es. Con la comprobación, `null` sale antes de que `resolverOrigen` entre en juego.
+   */
+  const concederActividadDe = (feature: ClassFeature): void => {
+    if (!feature.grant) return;
+    const { actividad, usos } = feature.grant;
+    const sinTope = usos?.sinTopeDesde !== undefined && build.level >= usos.sinTopeDesde;
+    activities.push({
+      ...actividad,
+      key: feature.key,
+      usos: usos
+        ? {
+            max: sinTope ? null : resolverOrigen(usos.max, ctxDeConcesiones).valor,
+            resetOn: usos.resetOn,
+          }
+        : undefined,
+    });
+  };
+
   // Aptitudes de clase y de subclase hasta el nivel actual. Antes solo salian las de raza, y
   // la ficha S2 de 06 afirmaba que la hoja ya podia decir "al nivel 5 ganas Ataque
   // adicional": era falso, y la revision lo cazo.
   for (const feature of characterClass.features)
-    if (feature.level <= build.level)
+    if (feature.level <= build.level) {
       features.push({
         sourceKey: characterClass.key,
         labelKey: `class.${characterClass.key}.${feature.key}`,
         name: feature.name,
       });
+      concederActividadDe(feature);
+    }
 
   // **Encargo A8 (2026-09-07) — un personaje tiene UNA subclase, no todas.** Aquí ponía un
   // bucle sobre `characterClass.subclasses` ENTERO, sin mirar nunca qué había elegido el
@@ -379,12 +464,16 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
 
   if (subclass) {
     for (const feature of subclass.features)
-      if (feature.level <= build.level)
+      if (feature.level <= build.level) {
         features.push({
           sourceKey: subclass.key,
           labelKey: `subclass.${subclass.key}.${feature.key}`,
           name: feature.name,
         });
+        // Mismo mecanismo que arriba, y de propósito: una concesión de subclase solo puede
+        // llegar hasta aquí si `subclass` ya es la elegida — el filtro de A8, no uno nuevo.
+        concederActividadDe(feature);
+      }
   } else if (characterClass.subclasses.length > 0) {
     // **`chosenAtLevel` se lee del catálogo, nunca a mano**: varía por clase (clérigo 1, druida
     // 2, guerrero 3), y escribirlo aquí habría sido la misma clase de mentira que ya se evitó al
@@ -477,6 +566,7 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     pendingChoices,
     warnings,
     features,
+    activities,
     weaponProficiencies,
     damageModifiers,
     speeds: speedsConEquipo,

@@ -173,8 +173,9 @@ export function averageHitDie(hitDieSize: number): number {
 
 /**
  * Lo que necesita `resolverOrigen` para resolver un `Origen`. **No lee el catálogo de clases**:
- * las tablas de escala llegan ya resueltas en `escalas`, y las llena la tarea A10. Sin esta
- * separación, probar `escala` exigiría datos que son de otra tarea.
+ * las tablas de escala llegan ya resueltas en `escalas`. Sin esta separación, probar `escala`
+ * habría exigido los datos reales de una clase antes de que existieran (tarea A10, que ya los
+ * declara en `catalog/classes.ts` y los trae hasta aquí con `tablaDeEscalas`, más abajo).
  */
 export interface ContextoDeDerivacion {
   abilities: Record<AbilityKey, number>;
@@ -187,6 +188,25 @@ export interface ContextoDeDerivacion {
   cdDeConjuro?: number;
   /** Tramos por clave: `[{ desde: 1, valor: 2 }, { desde: 9, valor: 3 }]`. La llena A10. */
   escalas: ReadonlyMap<string, readonly { desde: number; valor: number }[]>;
+}
+
+/**
+ * Convierte las tablas de escala del catálogo (un `Record` por clave, tarea A10) en el
+ * `ReadonlyMap` que `ContextoDeDerivacion.escalas` espera. **Es la única puerta**: sin ella,
+ * cada consumidor (`resolve.ts` hoy; `ActivitiesService`, mañana) construiría su propio mapa a
+ * mano, y dos formas de decir «esta clave tiene estos tramos» es exactamente cómo una tabla de
+ * escala y su copia acaban discrepando.
+ *
+ * Vive aquí y no en el catálogo porque es la forma del CONTEXTO del motor, no un dato del SRD:
+ * el catálogo declara sus tramos como el `Record` que le es natural a una clase con varias
+ * tablas propias (`SrdClass.scales`), y esta función es la traducción a lo que `resolverOrigen`
+ * sabe leer. El motor sigue sin importar nada de `catalog/` — es `catalog/resolve.ts` quien
+ * llama a esto, nunca al revés.
+ */
+export function tablaDeEscalas(
+  tablas: Record<string, readonly { desde: number; valor: number }[]>,
+): ContextoDeDerivacion["escalas"] {
+  return new Map(Object.entries(tablas));
 }
 
 /**
@@ -249,10 +269,27 @@ export function resolverOrigen(
       if (!tramos || tramos.length === 0) {
         throw new Error(`No hay tabla de escala para "${origen.clave}".`);
       }
+      // Un nivel por DEBAJO del primer tramo no tiene respuesta: la tabla no dice nada sobre
+      // ese nivel, y ahí sí hay que lanzar en vez de fingir un cero (la lección de siempre).
       const aplicables = tramos.filter((tramo) => tramo.desde <= ctx.level);
       if (aplicables.length === 0) {
         throw new Error(`La tabla de escala "${origen.clave}" no cubre el nivel ${ctx.level}.`);
       }
+      // **Por ENCIMA del último tramo no hay guarda, y es a propósito — no es el mismo agujero
+      // que el de abajo (vuelta de arreglo 2).** Un tramo declara «desde aquí», no «solo aquí»:
+      // se EXTIENDE hacia arriba hasta el siguiente tramo, o hasta el final de la progresión si
+      // no hay ninguno más. Es literalmente la razón de ser de una tabla por tramos y no de
+      // veinte filas (tarea A10) — el daño de Furia es `1→+2, 9→+3, 16→+4`, y a nivel 20 son
+      // **+4** precisamente porque el tramo de 16 sigue vigente. Si esta rama lanzara por encima
+      // del último tramo, todo bárbaro de nivel 17 a 20 haría reventar su propia hoja al intentar
+      // leer su daño de Furia — el «arreglo» sería mucho peor que lo que corrige.
+      //
+      // El nivel 20 de la Furia («Unlimited») **no es un valor de esta tabla**: el SRD no dice
+      // «un número más alto», dice que deja de haber tope, y eso es la AUSENCIA de un valor, no
+      // uno. Por eso vive en `ItemGrant.usos.sinTopeDesde` (`catalog/types.ts`) y se resuelve
+      // ANTES de llegar aquí (`resolve.ts`, `concederActividadDe`): esta función sigue sin saber
+      // decir «sin límite», y no tiene que aprender — la tabla se queda solo con números.
+      //
       // El tramo que aplica es el de mayor `desde` que no supere el nivel — **no** el de mayor
       // `valor`, y **no** el último del array. La tabla es una lista sin garantía de orden ni de
       // monotonía (nada en el tipo obliga a que un `desde` mayor traiga un `valor` mayor), así

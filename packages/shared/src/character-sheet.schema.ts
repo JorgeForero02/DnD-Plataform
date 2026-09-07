@@ -1,9 +1,11 @@
 import { z } from "zod";
+import type { Actividad } from "./activity.schema";
 import {
   abilityScoresSchema,
   characterChoicesSchema,
   contentRefSchema,
 } from "./character-build.schema";
+import type { ResourceReset } from "./character-state.schema";
 import { damageTypeSchema } from "./item.schema";
 
 // Tareas 2A.6 y 2A.7 — la hoja persistida y su estado mutable.
@@ -194,3 +196,52 @@ export type SetOverrideInput = z.infer<typeof setOverrideSchema>;
 /** El mapa guardado: clave derivada → número. */
 export const overridesSchema = z.record(overridableKeySchema, z.number().int());
 export type Overrides = z.infer<typeof overridesSchema>;
+
+// --- Tarea A9 (paso 2) — una actividad concedida, tal como la enseña la hoja ---
+
+/**
+ * Los usos propios de una actividad concedida, **ya resueltos a un número concreto** — nunca un
+ * `Origen` sin resolver. La Furia da 2 usos a nivel 1 y sube por tramos (SRD 5.1, columna
+ * «Rages» de la tabla del bárbaro); lo que la hoja enseña es el número de ESTE personaje a ESTE
+ * nivel, no la fórmula de la que sale.
+ *
+ * **`resetOn` reutiliza `ResourceReset`** (`character-state.schema.ts`): es el mismo vocabulario
+ * cerrado que ya usa `CharacterResource.resetOn`, no un tercer enum que diga lo mismo.
+ *
+ * **`max` es `number | null` (vuelta de arreglo 1, crítico I1), y `null` significa «sin tope»** —
+ * el mismo vocabulario que `CharacterResource.max` ya usa en Prisma, que `ResourcesService.upsert`
+ * ya escribe (`input.max ?? null`) y que `adjust()` ya sabe leer
+ * (`resource.max ?? Number.POSITIVE_INFINITY`). Hace falta porque el SRD 5.1 declara la Furia
+ * «Unlimited» a partir de nivel 20: la tabla de escala de la que sale `max` **no aprende a decir
+ * "ilimitado"** —sigue siendo tramos numéricos, tarea A10—, así que el catálogo declara desde qué
+ * nivel deja de evaluarse esa tabla (`ItemGrant.usos.sinTopeDesde`) y `resolve.ts` pone `null`
+ * directamente, sin inventar un número grande que haga de infinito de facto (eso es exactamente
+ * lo que Foundry hace con `999`, y es el mismo fallo de `simplifyBonus` que este proyecto existe
+ * para no repetir).
+ */
+export interface ResolvedActivityUses {
+  max: number | null;
+  resetOn: ResourceReset;
+}
+
+/**
+ * Una actividad concedida por el catálogo, tal como la enseña `hoja.activities` (`ItemGrant`,
+ * `apps/api/src/rules/catalog/types.ts`, tarea A9).
+ *
+ * **No es un esquema de entrada.** Nadie manda esto en un `body`: lo compone `resolveBuild` a
+ * partir del catálogo, y la propia `Actividad` que contiene ya pasó por `actividadSchema` al
+ * declararse — validarla otra vez aquí sería repetir un trabajo que ya se hizo. Por eso es un
+ * tipo, no un `z.object`, igual que `ResolvedFeature` o `PendingChoice`
+ * (`apps/api/src/rules/catalog/resolve.ts`), que tampoco son esquemas de entrada.
+ *
+ * **`key` identifica la actividad de forma estable** (`"rage"`) para que la pantalla y las
+ * pruebas la busquen sin tener que mirar la traza ni el `labelKey` de la concesión que la trajo.
+ * Sus demás campos son exactamente los de `Actividad`: `activation`, `consumption`, `dados`, lo
+ * que traiga según su `tipo` — **sin resolver los `Origen` que lleve dentro** (el bono de un
+ * ataque, el `bonus` de una expresión de dados): esos se resuelven al USARLA, con el contexto
+ * de quien la usa, no al enseñar la hoja.
+ */
+export type CharacterSheetActivity = Actividad & {
+  key: string;
+  usos?: ResolvedActivityUses;
+};

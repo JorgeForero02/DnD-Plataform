@@ -62,6 +62,11 @@ export interface CharacterSheet extends DerivationResult {
    * numérico y las de clase y subclase hasta el nivel actual.
    */
   features: ResolvedFeature[];
+  /**
+   * Actividades con nombre y mecánica propia que el catálogo concede (tarea A9) — hoy, solo la
+   * Furia. Vacía en un PNJ: nace de la clase, y un statblock no tiene una.
+   */
+  activities: ResolvedBuild["activities"];
   /** Velocidades base **en pies**. 2A.12 les aplicará las condiciones. */
   speeds: ResolvedBuild["speeds"];
   /**
@@ -112,6 +117,7 @@ export function deriveNpc(statblock: Statblock, extraModifiers: Modifier[] = [])
     warnings: derivado.warnings,
     pendingChoices: [],
     features: [],
+    activities: [],
     speeds: entrada.baseSpeeds,
     statblockRef: statblock.ref,
     // **Uno**, y dicho aquí en vez de heredado: el «ataque múltiple» de un statblock es prosa que
@@ -177,6 +183,7 @@ export function deriveCharacter(
     // `resolveBuild` aparte y derivar dos veces. Lo cazó la revisión, y sale gratis ahora que
     // no hay ningún consumidor que migrar.
     features: resuelto.features,
+    activities: resuelto.activities,
     speeds: resuelto.speeds,
     raceKey: resuelto.race.key,
     subraceKey: resuelto.subrace?.key,

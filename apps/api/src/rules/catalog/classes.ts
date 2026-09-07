@@ -21,7 +21,7 @@
 // hay un invariante que comprueba que no se dupliquen. Repetir un dato es cómo empiezan a
 // discrepar.
 
-import { SKILLS, type SkillKey } from "@dnd/shared";
+import { SKILLS, type Actividad, type SkillKey } from "@dnd/shared";
 import type { ClassFeature, SrdClass } from "./types";
 
 /** El bardo elige entre **todas**. Se escribe la lista entera y no `[]` con una nota: una lista
@@ -33,6 +33,69 @@ const TODAS_LAS_HABILIDADES = Object.keys(SKILLS) as SkillKey[];
 function f(level: number, key: string, name: string): ClassFeature {
   return { level, key, name };
 }
+
+// --- Tarea A9 + A10 (2026-09-07) — la Furia: la única aptitud que hoy gana forma completa ---
+//
+// **Verificado contra el SRD 5.1 en inglés, no copiado de Foundry sin comprobar.** Fuente:
+// 5thsrd.org, «The Barbarian» (mismo texto que el SRD 5.1 original de Wizards, CC BY 4.0):
+//
+//   «In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus
+//   action. […] Once you have raged the number of times shown for your barbarian level in the
+//   Rages column of the Barbarian table, you must finish a long rest before you can rage
+//   again.»
+//
+// Tabla del SRD (columnas «Rages» y «Rage Damage»): nivel 1 → 2 usos / +2 al daño; 3 → 3; 6 → 4;
+// 9 → +3 al daño; 12 → 5; 16 → +4 al daño; 17 → 6; **20 → «Unlimited»**. Coincide exactamente con
+// `classfeatures/barbarian/barbarian-features/rage.yml` de Foundry (activación `bonus`,
+// `uses.recovery: [{ period: lr, type: recoverAll }]`) y con su tabla de clase
+// (`classes/barbarian.yml`, `ScaleValue` `rages` y `rage-damage`) — sin discrepancia que resolver
+// a favor del SRD en este caso.
+//
+// **«Unlimited» a nivel 20 NO entra en la TABLA de escala (vuelta de arreglo 1, crítico I1).**
+// Foundry lo representa como `999` —un número grande que hace de infinito de facto—, y ese es
+// exactamente el truco de `simplifyBonus` que este proyecto existe para no repetir: un número
+// inventado que parece una respuesta. `Origen` (`escala`) solo sabe devolver el valor de un
+// tramo, nunca "sin límite", y la tabla `barbarian-rages` de abajo se queda solo con números.
+//
+// Lo que SÍ representa el nivel 20 es `RASGO_FURIA.grant.usos.sinTopeDesde: 20`: desde ese
+// nivel, `resolve.ts` ni siquiera evalúa la tabla de escala, y `ResolvedActivityUses.max` sale
+// `null` — el mismo «sin tope» que ya usa `CharacterResource.max` en Prisma. La primera versión
+// de esta tarea no tenía este campo, y la revisión lo cazó midiendo en ejecución: un bárbaro de
+// nivel 20 leía el tramo de mayor `desde` (17 → 6) y su hoja decía "6 usos de Furia" — un número
+// creíble, silencioso y falso, exactamente en el fichero cuyo comentario dice estar evitando eso.
+// La guarda de `resolverOrigen` que lanza solo protege POR DEBAJO del primer tramo; por encima no
+// hay guarda ninguna, así que "lanza en vez de mentir" no era cierto y había que comprobarlo, no
+// suponerlo.
+const FURIA: Actividad = {
+  tipo: "utilidad",
+  activation: { coste: "BONUS" },
+  // El propio uso de la Furia: consume la clave "rage" de `CharacterResource`, la misma que
+  // describen sus `usos` más abajo — nunca una tabla nueva (ver `activity.schema.ts`, nota sobre
+  // `uses`).
+  consumption: [{ recurso: "rage", cantidad: 1 }],
+  duration: { valor: 1, unidad: "minuto", concentracion: false },
+  effects: [],
+};
+
+const RASGO_FURIA: ClassFeature = {
+  level: 1,
+  key: "rage",
+  name: "Furia",
+  grant: {
+    kind: "grant",
+    id: "barbarian-rage",
+    labelKey: "class.barbarian.rage",
+    actividad: FURIA,
+    // El número de usos sube por tramos con el nivel (tabla `barbarian-rages`, más abajo): no se
+    // escribe `2` a mano, que acertaría a nivel 1 y mentiría a partir del 3. Y a partir de 20 no
+    // hay tramo que valga: el SRD lo declara sin tope (ver la nota grande de arriba).
+    usos: {
+      max: { tipo: "escala", clave: "barbarian-rages" },
+      resetOn: "LONG_REST",
+      sinTopeDesde: 20,
+    },
+  },
+};
 
 const ASI_ESTANDAR = [4, 8, 12, 16, 19];
 
@@ -57,7 +120,7 @@ export const SRD_CLASSES: SrdClass[] = [
     attacksPerAction: [{ fromLevel: 5, attacks: 2 }],
     asiLevels: ASI_ESTANDAR,
     features: [
-      f(1, "rage", "Furia"),
+      RASGO_FURIA,
       f(1, "unarmored-defense", "Defensa sin armadura"),
       f(2, "reckless-attack", "Ataque temerario"),
       f(2, "danger-sense", "Sentir el peligro"),
@@ -86,6 +149,22 @@ export const SRD_CLASSES: SrdClass[] = [
         ],
       },
     ],
+    // Tarea A10. Tramos, no veinte filas — y **sin el nivel 20** (ver la nota grande de arriba,
+    // sobre `RASGO_FURIA`): el SRD lo declara "Unlimited", que no es un tramo numérico.
+    scales: {
+      "barbarian-rages": [
+        { desde: 1, valor: 2 },
+        { desde: 3, valor: 3 },
+        { desde: 6, valor: 4 },
+        { desde: 12, valor: 5 },
+        { desde: 17, valor: 6 },
+      ],
+      "rage-damage": [
+        { desde: 1, valor: 2 },
+        { desde: 9, valor: 3 },
+        { desde: 16, valor: 4 },
+      ],
+    },
   },
   {
     key: "bard",

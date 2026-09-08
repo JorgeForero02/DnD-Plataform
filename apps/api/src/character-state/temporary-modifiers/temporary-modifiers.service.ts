@@ -93,13 +93,22 @@ export class TemporaryModifiersService {
       campaignId,
       characterId,
     );
-    await requireOwnerOrDM(
-      this.membership,
-      campaignId,
-      userId,
-      character,
-      "Solo el DM o el dueño puede poner un modificador temporal.",
-    );
+    // **Solo el DM** (ficha P1, puerta B — cerrada el 2026-09-07).
+    //
+    // Hasta hoy esto era `requireOwnerOrDM`, y con eso un jugador podía **darse `+10` al ataque,
+    // sin caducidad y con el motivo que quisiera**, entrando en la derivación de su propia hoja.
+    // La puerta se concedió con un caso de uso real —«beberse una poción que ya llevas encima no
+    // debería ser una petición al DM»— y **ese caso dejó de necesitarla el 2026-09-06**: consumir
+    // un objeto aplica sus efectos por su cuenta, escribiendo **directo con el `tx`**
+    // (`inventory.service.ts:546`) sin pasar por aquí. Se comprobó antes de cerrarla, y hay una
+    // prueba que lo sostiene (`inventory.service.spec.ts`, «beberse una poción sigue aplicando…»).
+    //
+    // Descartada la variante de «caducidad obligatoria para el jugador», con su motivo: un `+10`
+    // que dura todo el combate sigue siendo un `+10` en el combate.
+    //
+    // `remove` sigue siendo dueño-o-DM **a propósito**: ahí el reparto es otro y no se cambia de
+    // paso en un commit que va de conceder.
+    await this.membership.requireDM(campaignId, userId);
 
     return this.prisma.transaction(async (tx) => {
       const campana = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });

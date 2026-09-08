@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ModificadoresTemporales } from "../ModificadoresTemporales";
 import type { TemporaryModifierRow } from "../api";
 import * as api from "../api";
+import * as members from "../../campaigns/members";
 
 // Plan 13, ficha M8 — **«+2 a Fuerza durante una hora».**
 //
@@ -26,7 +27,18 @@ function fila(over: Partial<TemporaryModifierRow>): TemporaryModifierRow {
   };
 }
 
-function montar(puedeEditar = true) {
+/**
+ * `rol` por defecto DM porque **conceder pasó a ser suyo el 2026-09-07** (ficha P1, puerta B): la
+ * mayoría de estas pruebas ejercitan el formulario, y montarlas como jugador mediría otra cosa.
+ * Quien quiera el caso del jugador lo pide, que es justo lo que hace la prueba de esa ficha.
+ */
+function montar(puedeEditar = true, rol: "DM" | "PLAYER" = "DM") {
+  vi.spyOn(members, "useMyRole").mockReturnValue({
+    role: rol,
+    isLoading: false,
+    isError: false,
+    retry: () => {},
+  });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -98,10 +110,35 @@ describe("los modificadores temporales", () => {
     );
   });
 
+  // **La prueba de la puerta B** (ficha P1, cerrada el 2026-09-07).
+  //
+  // El jugador es dueño de su personaje —`puedeEditar` sigue siendo cierto, y por eso puede
+  // **quitar**—, pero **conceder** ya no es suyo: el servidor devuelve 403, así que dejar el
+  // formulario puesto sería un botón que el servidor rechaza, que este proyecto declara defecto.
+  // Lo que NO pierde es ver sus modificadores activos: esconderlos le dejaría con un número en la
+  // hoja que no puede explicar.
+  it("un jugador ve sus modificadores y puede quitarlos, pero **ya no puede escribirse uno**", async () => {
+    vi.spyOn(api, "fetchTemporaryModifiers").mockResolvedValue([fila({})]);
+    montar(true, "PLAYER");
+
+    expect(await screen.findByText(/Poción de fuerza de gigante/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Quitar/ })).toBeInTheDocument();
+
+    // Ni el gesto ni los campos: no queda ninguna forma de intentarlo.
+    expect(screen.queryByRole("button", { name: "Ponerlo" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Motivo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("A qué")).not.toBeInTheDocument();
+  });
+
   it("quien no puede editar **los ve y no los toca**", async () => {
     // Esconderlos le dejaría con un número que no puede explicar; el control lo impone el servidor.
+    //
+    // **El rol se dice ahora explícitamente** (2026-09-07): «no puede editar» es un jugador que no
+    // es dueño, y hasta hoy este montaje no declaraba rol porque daba igual. Desde que conceder es
+    // del DM sí importa, y dejarlo implícito habría hecho pasar esta prueba con el formulario
+    // puesto.
     vi.spyOn(api, "fetchTemporaryModifiers").mockResolvedValue([fila({})]);
-    montar(false);
+    montar(false, "PLAYER");
     expect(await screen.findByText(/Poción de fuerza de gigante/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Quitar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ponerlo" })).not.toBeInTheDocument();

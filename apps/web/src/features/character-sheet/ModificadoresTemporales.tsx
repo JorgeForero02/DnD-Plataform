@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMyRole } from "../campaigns/members";
 import { TEMPORARY_MODIFIER_TARGETS, type TemporaryModifierTarget } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
@@ -62,6 +63,19 @@ export function ModificadoresTemporales({
   characterId: string;
   puedeEditar: boolean;
 }) {
+  // **Conceder es del DM desde el 2026-09-07** (ficha P1, puerta B): el servidor responde 403 a
+  // cualquier otro, y dejar el formulario puesto sería ofrecer un gesto que la API rechaza — que
+  // este proyecto declara defecto en `04-convenciones.md`.
+  //
+  // Va por `useMyRole` y no por una prop nueva porque es el patrón que ya usan `Anulaciones` y
+  // `RecursosYDescansos` para lo mismo. **`puedeEditar` sigue mandando en «Quitar»**: `remove`
+  // continúa siendo dueño-o-DM en el servidor, así que son dos permisos distintos y aquí se leen
+  // como dos.
+  // Se llama `esDm` y no `puedeConceder` porque **ese nombre ya está cogido** más abajo, y
+  // significa otra cosa: si el formulario está listo para enviarse. Dos permisos y una validez de
+  // formulario en el mismo componente son tres cosas, y las tres se leen por su nombre.
+  const { role } = useMyRole(campaignId);
+  const esDm = role === "DM";
   const { data: filas, isLoading } = useTemporaryModifiers(campaignId, characterId);
   const conceder = useGrantTemporaryModifier(campaignId, characterId);
   const quitar = useRemoveTemporaryModifier(campaignId, characterId);
@@ -125,7 +139,7 @@ export function ModificadoresTemporales({
         </ul>
       )}
 
-      {puedeEditar && (
+      {esDm && (
         <div className="flex flex-col gap-s1">
           <div className="flex flex-wrap items-end gap-s2">
             <label className="flex flex-col gap-0.5 font-chrome text-chrome-xs text-muted">

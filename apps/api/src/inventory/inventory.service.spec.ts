@@ -41,6 +41,9 @@ describe("InventoryService", () => {
       deleteMany: jest.fn(),
     },
     campaignItem: { findFirst: jest.fn() },
+    // `consume` aplica los efectos del objeto escribiendo aquí **directo con el `tx`**, sin pasar
+    // por `TemporaryModifiersService.grant` — que desde el 2026-09-07 es solo del DM.
+    temporaryModifier: { create: jest.fn() },
     // La bolsa bloquea la fila del personaje antes de mirar el saldo (`FOR UPDATE`), como hacen
     // los puntos de golpe: el Prisma simulado devuelve el personaje que la prueba haya puesto.
     $queryRaw: jest.fn(),
@@ -605,6 +608,45 @@ describe("InventoryService", () => {
       ).rejects.toMatchObject({ status: 400 });
       expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
       expect(prisma.inventoryItem.delete).not.toHaveBeenCalled();
+    });
+
+    // **El camino legítimo, y por qué esta prueba existe.**
+    //
+    // El 2026-09-07 se cerró `grant` a solo-DM (ficha P1, puerta B). Esa puerta se había concedido
+    // por un caso de uso real —«beberse una poción que ya llevas encima no debería ser una
+    // petición al DM»—, así que **cerrarla solo es correcto si este camino sigue abierto**: lo
+    // ejecuta el **dueño jugador** (`owner1`, no un DM) y escribe el modificador **directo con el
+    // `tx`**. Sin esta prueba, aquel commit podía romper la mitad buena sin que nada enrojeciera.
+    it("beberse una poción sigue aplicando su efecto, y lo hace el dueño sin pedirle nada al DM", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(
+        row({ srdKey: null, campaignItemId: "ci1", quantity: 1 }),
+      );
+      prisma.campaignItem.findFirst.mockResolvedValue({
+        id: "ci1",
+        campaignId: "cmp1",
+        name: "Poción de piel de roble",
+        visibility: "PLAYERS",
+        createdById: "dm",
+        // `resolveContentRef` compone el `grantedUserIds` de `canView` desde aquí: sin la lista
+        // la resolución revienta antes de llegar al efecto, y el fallo sale como un `map` de
+        // `undefined` que no dice nada del objeto.
+        grants: [],
+        effects: [{ kind: "ac", amount: 2 }],
+      });
+      prisma.inventoryItem.delete.mockResolvedValue({});
+
+      await service.consume("owner1", "cmp1", "c1", "row1", { amount: 1 });
+
+      expect(prisma.temporaryModifier.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          characterId: "c1",
+          target: "ac",
+          amount: 2,
+          // El motivo se pinta en la traza: es lo que impide un +2 sin origen.
+          reason: "Poción de piel de roble",
+          grantedById: "owner1",
+        }),
+      });
     });
 
     it("y deja rastro: gastar una poción es algo que la mesa recuerda mal una semana después", async () => {

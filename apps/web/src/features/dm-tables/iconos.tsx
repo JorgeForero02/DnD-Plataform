@@ -45,3 +45,19 @@ export function IconoEditar({ className }: Props) {
     </svg>
   );
 }
+
+/**
+ * Entrega: un saco atado, que es lo que una fila de botín deja caer.
+ *
+ * Dibujado y no un glifo, por la misma razón que los tres de arriba — y aquí importa el doble:
+ * este icono va dentro de un botón que ya dice en palabras si la fila entrega algo, así que si el
+ * dibujo no se pinta no se pierde ninguna información.
+ */
+export function IconoEntrega({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M9 3.5h6l-1.2 3H10.2z" />
+      <path d="M10.2 6.5c-3 1.6-4.7 4.2-4.7 7.4 0 4 2.9 6.6 6.5 6.6s6.5-2.6 6.5-6.6c0-3.2-1.7-5.8-4.7-7.4" />
+    </svg>
+  );
+}

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PanelDeTablas } from "../PanelDeTablas";
 import * as dmTablesApi from "../api";
 import type { DmTable } from "../api";
 import * as membersApi from "../../campaigns/members";
+import * as campaignItemsApi from "../../campaign-items/api";
 import { useAuthStore } from "../../../store/auth.store";
 import { ApiError } from "../../../lib/api";
 
@@ -317,6 +318,144 @@ describe("PanelDeTablas — la lista", () => {
     await screen.findByText("Al sacar una pifia");
     expect(screen.getByText("1–5")).toBeInTheDocument();
     expect(screen.getByText("Se te encasquilla el arma.")).toBeInTheDocument();
+  });
+});
+
+// **Ficha P2-2 — el eslabón que faltaba: redactar la entrega desde la pantalla.**
+//
+// La funcionalidad estaba construida por los dos extremos —se escribe por HTTP, se lee resuelta al
+// tirar— y no tenía primer eslabón: la única forma de sembrar una fila con entrega era un `curl`, y
+// sobre una tabla sembrada así se declaró terminado el plan del botín.
+//
+// **La entrega se edita en un panel propio por fila y no en línea**, porque la fila ya lleva tres
+// campos y una entrega es una lista de objetos con cantidad más cinco monedas. Metida en línea, cada
+// fila se vuelve enorme — y esta mesa ya tiene una ficha abierta por repartir mal a lo ancho a
+// 390 px. El botón dice si la fila YA tiene entrega, para que se vea sin abrir.
+describe("PanelDeTablas — redactar la entrega de una fila (ficha P2-2)", () => {
+  beforeEach(() => {
+    comoDm();
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([
+      {
+        ref: "SRD:short-sword",
+        source: "SRD",
+        name: "Espada corta",
+        kind: "WEAPON",
+        weightOz: 32,
+        costCp: 1000,
+        effects: [],
+        requiresAttunement: false,
+      },
+    ] as never);
+    vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([]);
+  });
+
+  it("el botón de una fila SIN entrega lo dice, y el de una fila CON entrega también", async () => {
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [tablaDeBotin],
+      houseTablesEnabled: false,
+    });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+
+    // La fila sembrada ya entrega algo, y se ve **sin abrir el panel**: es la mitad de la decisión
+    // de que la entrega viva en un editor secundario.
+    expect(
+      screen.getByRole("button", { name: /Entrega de la fila 1: 1 objeto y monedas/ }),
+    ).toBeInTheDocument();
+
+    // Y una fila nueva no entrega nada, que es el caso de una tabla de rumores.
+    fireEvent.click(screen.getByRole("button", { name: "Añadir fila" }));
+    expect(
+      screen.getByRole("button", { name: /Entrega de la fila 2: no entrega nada/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("se compone una entrega con objeto Y monedas, y viaja en el cuerpo al guardar", async () => {
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [],
+      houseTablesEnabled: false,
+    });
+    const crear = vi.spyOn(dmTablesApi, "createDmTable").mockResolvedValue(tablaDeBotin);
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "Crear tabla" }));
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Botín del alijo" } });
+    fireEvent.change(screen.getAllByLabelText("Hasta")[0], { target: { value: "10" } });
+    fireEvent.change(screen.getAllByLabelText("Resultado")[0], {
+      target: { value: "Una espada corta y 15 mo" },
+    });
+
+    // El panel de la entrega, que es su propio estrato.
+    fireEvent.click(screen.getByRole("button", { name: /Entrega de la fila 1/ }));
+    const panel = await screen.findByRole("dialog", { name: /Entrega/ });
+
+    // **Un objeto Y monedas a la vez**: el esquema solo prohíbe que la entrega esté vacía, no que
+    // coexistan, así que la pantalla tampoco puede obligar a elegir.
+    fireEvent.click(await within(panel).findByRole("button", { name: /Espada corta/ }));
+    fireEvent.change(within(panel).getByLabelText("Cuántas"), { target: { value: "2" } });
+    fireEvent.click(within(panel).getByRole("button", { name: "Añadir a la entrega" }));
+    fireEvent.change(within(panel).getByLabelText("oro"), { target: { value: "15" } });
+    fireEvent.click(within(panel).getByRole("button", { name: "Guardar la entrega" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar tabla" }));
+
+    await waitFor(() => expect(crear).toHaveBeenCalled());
+    const [, cuerpo] = crear.mock.calls[0];
+    expect(cuerpo.entries[0].entrega).toEqual({
+      objetos: [{ ref: { source: "SRD", key: "short-sword" }, cantidad: 2 }],
+      monedas: { gp: 15 },
+    });
+  });
+
+  // **Los topes de la pantalla son los del esquema, no unos parecidos** (regla vinculante de
+  // `docs/04-convenciones.md`: si el texto explica una regla del servidor y discrepan, miente el
+  // texto). `entregaObjetoSchema` es `min(1).max(999)` y las monedas `min(0).max(1_000_000)`.
+  it("los topes que ofrece son los que el servidor acepta", async () => {
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [tablaDeBotin],
+      houseTablesEnabled: false,
+    });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Entrega de la fila 1/ }));
+    const panel = await screen.findByRole("dialog", { name: /Entrega/ });
+
+    const cuantas = within(panel).getByLabelText<HTMLInputElement>("Cuántas");
+    expect(cuantas.min).toBe("1");
+    expect(cuantas.max).toBe("999");
+    const oro = within(panel).getByLabelText<HTMLInputElement>("oro");
+    expect(oro.min).toBe("0");
+    expect(oro.max).toBe("1000000");
+  });
+
+  // Las cinco monedas, con su nombre legible y **ni una clave de enumeración en pantalla**. El
+  // vocabulario se escribe una vez por dominio: `NOMBRE_MONEDA` vive en `features/inventory` y se
+  // importa, no se vuelve a escribir aquí.
+  it("las cinco monedas salen con su nombre, nunca con su clave", async () => {
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [tablaDeBotin],
+      houseTablesEnabled: false,
+    });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Entrega de la fila 1/ }));
+    const panel = await screen.findByRole("dialog", { name: /Entrega/ });
+
+    for (const nombre of ["cobre", "plata", "electro", "oro", "platino"]) {
+      expect(within(panel).getByLabelText(nombre)).toBeInTheDocument();
+    }
+    // **Se mira etiqueta por etiqueta, no el texto del panel entero**, y esto lo enseñó la
+    // primera versión de esta prueba: `textContent` concatena los rótulos sin separador, así que
+    // «cobre» + «plata» produce la cadena «ep» y la prueba se acusaba a sí misma sobre una
+    // pantalla correcta. Es el mismo error que ya tumbó una medición de contraste en este
+    // proyecto — cuando salta demasiado fácil, comprueba QUÉ estás midiendo.
+    for (const clave of ["cp", "sp", "ep", "gp", "pp"]) {
+      expect(within(panel).queryByLabelText(clave)).not.toBeInTheDocument();
+    }
+    // Estas dos sí son inequívocas: ninguna palabra española las contiene.
+    const texto = panel.textContent ?? "";
+    for (const prefijo of ["SRD:", "CAMPAIGN:"]) {
+      expect(texto).not.toContain(prefijo);
+    }
   });
 });
 

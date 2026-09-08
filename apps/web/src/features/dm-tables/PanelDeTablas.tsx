@@ -19,6 +19,7 @@ import {
   useSetHouseTables,
   useUpdateDmTable,
 } from "./hooks";
+import { EditorDeEntrega } from "./EditorDeEntrega";
 import { IconoEditar, IconoTabla, IconoTirar } from "./iconos";
 import { ResultadoDeTabla } from "./ResultadoDeTabla";
 import { DISPARADORES, POSICIONES_DE_LA_CASA, disparadorDeTabla } from "./vocabulario";
@@ -224,6 +225,7 @@ function FichaDeTabla({
   if (editando) {
     return (
       <FormularioDeTabla
+        campaignId={campaignId}
         titulo={`Editar «${tabla.name}»`}
         textoDeGuardar="Guardar cambios"
         // Todo lo que la tabla tiene hoy, filas incluidas. Un campo que no se rellenara aquí se
@@ -393,6 +395,7 @@ function CrearTabla({ campaignId }: { campaignId: string }) {
 
   return (
     <FormularioDeTabla
+      campaignId={campaignId}
       titulo="Nueva tabla"
       textoDeGuardar="Guardar tabla"
       valores={TABLA_NUEVA}
@@ -420,6 +423,7 @@ function CrearTabla({ campaignId }: { campaignId: string }) {
  * es, y por eso los dos no pueden separarse.
  */
 function FormularioDeTabla({
+  campaignId,
   titulo,
   textoDeGuardar,
   valores,
@@ -427,6 +431,8 @@ function FormularioDeTabla({
   onGuardar,
   onCancelar,
 }: {
+  /** Para el catálogo propio de la campaña dentro del editor de entrega. */
+  campaignId: string;
   titulo: string;
   textoDeGuardar: string;
   valores: ValoresDeTabla;
@@ -545,6 +551,20 @@ function FormularioDeTabla({
                   />
                 </Field>
               </div>
+              {/* **La entrega vive en su propio panel** (ficha P2-2): la fila ya lleva tres campos
+                  y una entrega es una lista de objetos más cinco monedas. El botón dice lo que hay
+                  dentro **sin abrirlo**, que es lo que impide que el editor secundario esconda
+                  nada. `campaignId` llega desde arriba porque el catálogo de la campaña es suyo. */}
+              <EditorDeEntrega
+                campaignId={campaignId}
+                indice={indice + 1}
+                entrega={fila.entrega}
+                onCambiar={(entrega) =>
+                  setFilas((previas) =>
+                    previas.map((f, i) => (i === indice ? { ...f, entrega } : f)),
+                  )
+                }
+              />
               <Button
                 type="button"
                 variant="ghost"

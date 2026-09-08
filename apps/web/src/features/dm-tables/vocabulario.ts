@@ -1,4 +1,5 @@
-import type { TableTrigger } from "@dnd/shared";
+import type { EntregaInput, TableTrigger } from "@dnd/shared";
+import { COIN_KEYS } from "@dnd/shared";
 
 // Tarea 2C.6 — el vocabulario de una tabla del DM.
 //
@@ -73,3 +74,21 @@ export const POSICIONES_DE_LA_CASA: readonly {
       "Un crítico o una pifia consultan además la tabla que tenga ese disparador, y el resultado entra en la partida.",
   },
 ];
+
+/**
+ * **Lo que el botón dice sin abrirse.** Es la mitad de la decisión de esconder la entrega en un
+ * panel: si el botón no cuenta lo que hay dentro, el DM tiene que abrir las veinte filas para
+ * saber cuál da botín.
+ */
+export function resumenDeEntrega(entrega: EntregaInput | undefined): string {
+  if (!entrega) return "no entrega nada";
+  const objetos = entrega.objetos?.length ?? 0;
+  const hayMonedas = COIN_KEYS.some((clave) => (entrega.monedas?.[clave] ?? 0) > 0);
+  const trozos: string[] = [];
+  if (objetos > 0) trozos.push(`${objetos} ${objetos === 1 ? "objeto" : "objetos"}`);
+  if (hayMonedas) trozos.push("monedas");
+  // Una entrega presente pero sin nada dentro no debería existir —el `.refine` del esquema la
+  // rechaza— pero si llegara de la base escrita por otra vía, se dice en vez de pintar un botón
+  // que promete algo y no lo tiene.
+  return trozos.length === 0 ? "no entrega nada" : trozos.join(" y ");
+}

@@ -52,6 +52,14 @@ elenco queda en 16 px de alto con cabecera de 36—, así que se revirtió y la 
 arreglo falso vuelva a colar. Falta una **decisión del autor** entre tres salidas, en
 [06-pendientes.md](./06-pendientes.md). **Revertir**: borrar la prueba; no hay código que deshacer.
 
+## `[[bahia]]` encuentra «Bahía» (2026-09-07, ficha P4)
+
+`normalizar` de `wikilinks.ts` pliega los diacríticos antes de comparar: hasta hoy el DM que
+tecleaba el enlace sin tilde veía su ficha dada por **inexistente**. La prueba que fijaba lo
+contrario **avisaba en su comentario de que cambiarla sería a propósito** — es esto, y se
+reescribió con la razón dentro: 4 en rojo antes, 1251 en verde después. Decisión y precio en
+[decisiones.md](./decisiones.md) (D-P4-1). **Revertir**: deshacer el commit, es una función pura.
+
 ---
 
 ## El DM escribe el botín, y de paso deja de borrarlo (2026-09-07, ficha P2-2)
@@ -908,8 +916,7 @@ entera en una máquina. Es el argumento de por qué ensamblar y probar el árbol
 ## Un personaje se archiva, y vuelve (2026-09-05, plan 06) — archivada
 
 **Movida entera** a [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md)
-el 2026-09-07, en el mismo corte que se llevó a la Ola 3 y a las otras tres: escribir la entrada de
-la mesa a 390 px dejó este fichero en 1003 de sus 1000 líneas, y esta era la más antigua sin
+el 2026-09-07, en el mismo corte que se llevó a la Ola 3 y a las otras tres: **ese día el fichero rebasó su tope dos veces** —al cerrar la ficha P4 quedó en 1001 líneas y al escribir la entrada de la mesa a 390 px en 1003—, y esta era la más antigua que quedaba sin
 archivar. En una línea: la ficha M9 —servidor hecho desde 2.5.8 y **ninguna** de sus tres llamadas
 en la web—, el archivo y su puerta de salida en un commit, y las cinco cosas que encontró su
 revisión, entre ellas que la hoja de un personaje archivado ofrecía borrarlo.

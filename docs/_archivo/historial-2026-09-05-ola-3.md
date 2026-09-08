@@ -5,9 +5,7 @@ entradas del paso 2 y el botín dejó ese fichero por encima de su tope de 1000 
 la entrada más antigua en ese momento; su hito se resume en el stub que queda allí.
 
 **Este fichero acumula el corte entero de esa noche y lo que vino después**: a las cuatro entradas
-se sumó, el mismo 2026-09-07, «Un personaje se archiva, y vuelve», cuando escribir la entrada de la
-mesa a 390 px volvió a dejar `07-historial.md` por encima del tope. Ninguna se reescribió al
-moverla.
+del 2026-09-07 se sumó, ese mismo día, «Un personaje se archiva, y vuelve», cuando `07-historial.md` volvió a rebasar su tope —dos veces esa noche: al cerrar la ficha P4 y al escribir la medición de la mesa a 390 px—. Ninguna se reescribió al moverla.
 
 ---
 

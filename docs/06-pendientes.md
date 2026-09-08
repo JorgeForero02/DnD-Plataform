@@ -1235,14 +1235,6 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
   ni lo garantiza**: el día que un llamante le pase una lista ordenada por nombre, el desempate
   cambia sin que falle nada.
 
-## P4 · `[[bahia]]` no encuentra «Bahía» (2026-09-04)
-
-`normalizar` de `wikilinks.ts` hace `trim`, colapsa espacios y baja a minúsculas, pero **no quita
-diacríticos**. Para un mundo escrito en español eso muerde: el DM escribe el enlace sin tilde y la
-ficha se anuncia como inexistente. **Era una decisión no declarada**; ahora está fijada por una
-prueba cuyo comentario dice que cambiarla la rompe **a propósito**. Se cierra con
-`.normalize("NFD").replace(/\p{Diacritic}/gu, "")`.
-
 ## P4 — Limpieza
 
 - **`viewerFor(userId, campaignId)` está duplicado** en los servicios de entidades, enlaces,

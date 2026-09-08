@@ -26,12 +26,37 @@ import type { Entity } from "../../entities/api";
 export interface CitaDeFicha {
   /** El nombre tal y como aparece en la prosa. */
   texto: string;
-  /** El mismo nombre normalizado para comparar: sin espacios de sobra y en minúsculas. */
+  /**
+   * El mismo nombre pasado por `normalizar`: sin espacios de sobra, en minúsculas y **sin
+   * diacríticos**, así que «Bahía» y «bahia» comparten clave. Sirve para comparar y para nada
+   * más — lo que se enseña es `texto`.
+   */
   clave: string;
 }
 
+/**
+ * La clave con la que se compara un nombre: sin espacios de sobra, en minúsculas y **sin
+ * diacríticos**.
+ *
+ * Plegar los acentos es deliberado y se decidió el 2026-09-07 (ficha P4): en un mundo escrito en
+ * español, el DM teclea `[[bahia]]` y la ficha «Bahía» se anunciaba como inexistente. Casar de
+ * más aquí tiende el enlace que pidió; casar de menos lo pierde en silencio.
+ *
+ * Se pliega el **rango de marcas combinantes**, no `\p{Diacritic}`: esa clase incluye también
+ * `^` y `` ` `` como caracteres sueltos, y borrarlos de un nombre de ficha sería un efecto que
+ * nadie pidió. Es la misma forma que ya usa `claveDeConcentracion` en
+ * `apps/web/src/features/character-sheet/vocabulario.ts`.
+ *
+ * **Se normaliza para comparar, nunca para mostrar**: `CitaDeFicha.texto` conserva lo que el DM
+ * tecleó, porque el aviso de pantalla señala su prosa y no una versión aplanada de ella.
+ */
 function normalizar(nombre: string): string {
-  return nombre.trim().replace(/\s+/g, " ").toLocaleLowerCase("es");
+  return nombre
+    .trim()
+    .replace(/\s+/g, " ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es");
 }
 
 /**
@@ -66,9 +91,14 @@ export interface CitasResueltas {
 }
 
 /**
- * Casa las citas con las fichas de la campaña **por nombre**, ignorando mayúsculas y espacios de
- * sobra. Si dos fichas se llaman igual gana la primera de la lista, y esa ambigüedad se resuelve
- * a mano en el panel de enlaces: inventar un desempate sería adivinar.
+ * Casa las citas con las fichas de la campaña **por nombre**, ignorando mayúsculas, espacios de
+ * sobra y **acentos** — `normalizar` decide qué cuenta como el mismo nombre.
+ *
+ * Cuando dos fichas caen en la misma clave gana **la primera de la lista**, y la otra queda
+ * inalcanzable desde cualquier `[[…]]`. Eso ya pasaba con dos nombres idénticos; desde que se
+ * pliegan los acentos (D-P4-1) pasa también con «Bahía» y «Bahia», que es el precio declarado de
+ * esa decisión y no un caso raro. La ambigüedad se resuelve a mano en el panel de enlaces:
+ * inventar un desempate sería adivinar.
  */
 export function resolverCitas(
   citas: CitaDeFicha[],

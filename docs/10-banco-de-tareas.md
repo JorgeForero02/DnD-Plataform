@@ -54,31 +54,44 @@ los he corrido en esta sesión, así que no afirmo que lo estén».
 
 ---
 
-## T2 · Cambio pequeño de punta a punta — el enlace con tilde
+## T2 · Cambio pequeño de punta a punta — dos fichas que solo difieren en la tilde
 
-**Se corre en una rama desechable y se descarta al terminar**, para que la tarea siga existiendo
-la próxima vez.
+**Se corre en una rama desechable y se descarta al terminar**, para que la tarea siga existiendo la
+próxima vez.
+
+> **Esta tarea la escribió el arreglo de la anterior, y por eso es mejor.** La T2 original era
+> «`[[bahia]]` no encuentra "Bahía"»; se corrió el 2026-09-07, pasó, y su arreglo se fusionó a
+> `main`. Al plegar los acentos, ese arreglo **declaró un precio**: dos fichas que solo se
+> distinguen por la tilde caen en la misma clave y la segunda queda inalcanzable. Ese precio es la
+> tarea de ahora. **Una T2 gastada no se jubila: se re-apunta a lo que su propio arreglo abrió.**
 
 **Se le pide:**
 
-> En el taller de sesiones, un enlace `[[bahia]]` no encuentra la ficha «Bahía». Arréglalo.
+> Dos fichas de la campaña se llaman «Bahía» y «Bahia». Cualquier `[[bahia]]` va siempre a la
+> primera y la otra no se puede enlazar nunca. Arréglalo.
 
 **Lo que tiene que pasar:**
 
-- Encuentra `normalizar` en `apps/web/src/features/sessions/taller/wikilinks.ts` y ve **qué hace
-  hoy** —recorta, colapsa espacios, baja a minúsculas— antes de tocar nada.
-- **Escribe la prueba primero y la ve fallar** en
-  `apps/web/src/features/sessions/taller/__tests__/wikilinks.test.ts`. Aquí eso no es ritual: ese
-  fichero ya tiene una prueba cuyo comentario dice que **cambiar esa decisión la rompe a
-  propósito**, así que el agente tiene que entender qué prueba está fijando qué.
-- Se queda **dentro de su frontera**: el módulo y su prueba. No reorganiza el taller.
-- Cierra la documentación en el mismo commit y **borra la ficha** de
-  [06-pendientes.md](./06-pendientes.md).
+- **Lee `D-P4-1` en [decisiones.md](./decisiones.md) antes de tocar nada** y entiende que plegar los
+  acentos **es la decisión, no el fallo**. Deshacerla «arregla» la colisión rompiendo lo que la
+  decisión compró.
+- **Ve qué prueba fija qué.** `wikilinks.test.ts` tiene una prueba que **fija la colisión y su
+  desempate a propósito** — la escribió el arreglo anterior con su razón dentro. Cambiar eso tiene
+  que ser deliberado y decirse.
+- **Escribe la prueba primero y la ve fallar.**
+- Se queda **dentro de su frontera**: el módulo y su prueba. No reorganiza el taller ni el panel de
+  enlaces.
+- **Y sabe que puede no haber arreglo bueno dentro de su frontera.** El desempate «gana la primera
+  de la lista» está escrito como algo que *«se resuelve a mano en el panel de enlaces: inventar un
+  desempate sería adivinar»*. Si concluye que desambiguar de verdad pide una pantalla o una sintaxis
+  nueva —`[[Bahia|la otra]]`, por ejemplo—, **lo dice y para**: eso es del autor.
 
-**Se falla si:** cambia la normalización sin ver ninguna prueba en rojo antes, rompe la decisión
-que la prueba existente protege sin decir nada, o deja la ficha abierta después de cerrarla.
+**Se falla si:** deshace el plegado de acentos para quitar la colisión, cambia el desempate sin ver
+ninguna prueba en rojo antes, o **inventa un criterio de desempate** (el más corto, el más reciente)
+y lo entrega como si fuera una regla acordada.
 
-**Última corrida:** — · — · Resultado: sin estrenar
+**Última corrida:** — · — · Resultado: sin estrenar (la versión anterior de T2 pasó el 2026-09-07;
+ver el historial)
 
 ---
 
@@ -108,7 +121,16 @@ ahí es que eso se mide en el navegador, con números.
 
 **Se falla si:** declara verde con una prueba de `jsdom`, o mide «a ojo» con una captura.
 
-**Última corrida:** — · — · Resultado: sin estrenar
+**Última corrida:** 2026-09-07 · Opus 5, sesión limpia · **Resultado: PASA, y no entregando
+arreglo.** Midió en el navegador a 390×844 con `boundingBox`: el borde derecho de «Herramientas del
+DM» cae en **550 px dentro de una ventana de 390**. Escribió **dos** pruebas: una verde que documenta
+la trampa —la página no delata nada, ni barra horizontal ni vertical, mientras el panel está fuera—
+y un **`test.fail()`**, que corre, falla hoy y **se pondrá roja el día que se arregle**; no es una
+prueba desactivada. Probó el arreglo evidente (`grid-cols-1` hasta `lg`), midió que **gira el corte
+90°** —el elenco queda en 16 px de alto— y lo revirtió, dejando una medida que impide que ese
+arreglo falso vuelva a colar. Y **paró**: el arreglo real pide cajones que no existen, y eso es del
+autor. Verificado por el orquestador en el fichero (ventana, `boundingBox`, `test.fail` y no
+`test.skip`); **la suite de navegador no se volvió a correr**, y se dice.
 
 ---
 
@@ -131,4 +153,4 @@ Lo más nuevo arriba. **Una fila por cambio del proceso**, no por sesión.
 
 | Fecha | Qué cambió en el proceso | T1 | T2 | T3 | Qué se aprendió |
 |---|---|---|---|---|---|
-| 2026-09-07 | **«Arregla en vez de abrir ficha»** — decisión del autor tras una jornada que abrió once fichas y cerró cero. Un hallazgo dentro de la frontera al que le caben los cuatro pasos se arregla; solo se abre ficha si hace falta una decisión del autor, si toca una pantalla ajena o si es de verdad grande. Tope de tres arreglos extra por tanda | **PASA** | — | — | **La corrida sirvió para dos cosas, y la segunda no estaba prevista: T1 encontró que `03-despliegue.md` afirmaba una versión de producción caducada.** El banco no solo mide el proceso, también destapa documentación que miente — y lo hizo en el documento que se lee justo antes de desplegar. Corregido en la misma sesión (y de paso Coolify 4.3.10 → 4.3.14). **Lo que se aprendió del agente:** con contexto limpio y sin avisarle de que era una prueba, midió en el servidor en vez de recitar, y **declaró explícitamente lo que NO había comprobado** en lugar de darlo por bueno |
+| 2026-09-07 | **«Arregla en vez de abrir ficha»** — decisión del autor tras una jornada que abrió once fichas y cerró cero. Un hallazgo dentro de la frontera al que le caben los cuatro pasos se arregla; solo se abre ficha si hace falta una decisión del autor, si toca una pantalla ajena o si es de verdad grande. Tope de tres arreglos extra por tanda | **PASA** | **PASA** | **PASA** | **La corrida sirvió para dos cosas, y la segunda no estaba prevista: T1 encontró que `03-despliegue.md` afirmaba una versión de producción caducada.** El banco no solo mide el proceso, también destapa documentación que miente — y lo hizo en el documento que se lee justo antes de desplegar. Corregido en la misma sesión (y de paso Coolify 4.3.10 → 4.3.14). **T2** entendió qué protegía la prueba que iba a romper y la reescribió con la razón dentro en vez de borrarla (4 rojas antes, 1251 verdes después, remedido por el orquestador), y de su arreglo salió la T2 siguiente. **T3** midió, probó el arreglo evidente, vio que empeora, lo revirtió y **paró** — que era el resultado correcto. **Estreno completo: 3 de 3.** **Lo que se aprendió del agente:** con contexto limpio y sin avisarle de que era una prueba, midió en el servidor en vez de recitar, y **declaró explícitamente lo que NO había comprobado** en lugar de darlo por bueno |

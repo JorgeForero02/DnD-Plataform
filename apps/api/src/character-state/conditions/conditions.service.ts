@@ -372,8 +372,16 @@ export class ConditionsService {
       const enCombate = await tx.combatant.findFirst({
         where: { characterId: helperCharacterId, encounter: { status: "ACTIVE" } },
         // `actionUsed` y `encounterId` los pide el gasto de más abajo; el borde solo necesitaba
-        // saber que existe.
-        select: { id: true, actionUsed: true, encounterId: true },
+        // saber que existe. **Y `sessionId` con ellos**: sin él el suceso nace con `sessionId`
+        // nulo y `GameEventsService.list` lo filtra fuera —la mesa siempre consulta por la sesión
+        // abierta (`MesaDeSesion.tsx:76`)—, así que el gasto se anotaba en la columna y **no se
+        // veía en el hilo**. Un aviso que nadie lee no es un aviso.
+        select: {
+          id: true,
+          actionUsed: true,
+          encounterId: true,
+          encounter: { select: { sessionId: true } },
+        },
       });
       const borde = enCombate
         ? { expiryEdge: "sourceStart", sourceCharacterId: helperCharacterId }
@@ -411,7 +419,13 @@ export class ConditionsService {
       // exige dueño-o-DM **del ayudante**, del ayudado solo que esté en la campaña, y crear
       // personajes no tiene tope. **Prohibirlo estaba descartado con motivo** —el SRD permite que
       // dos criaturas se ayuden, y que las lleve la misma persona no las convierte en una—; lo que
-      // el SRD sí cobra es que Ayudar es una **acción**, y con eso la puerta se cierra sola.
+      // el SRD sí cobra es que Ayudar es una **acción**, y con eso la puerta **se estrecha**.
+      //
+      // **Hasta dónde, porque «se cierra sola» sería falso y aquí ponía eso.** Esto cuenta y
+      // avisa, no impide —doctrina heredada del paso 2—, así que quien insista puede seguir
+      // llamando y cada llamada renueva la marca. Lo que cambia es que **queda dicho** en el hilo
+      // de la mesa con su `excedido`, y que el DM lo ve. Cerrarla del todo sería rechazar, y eso
+      // contradiría la decisión del paso 2: se deja anotado en vez de prometer lo que no hace.
       //
       // **Se hereda la doctrina del paso 2 y no se inventa otra**: `EncountersService.gastar`
       // (`encounters.service.ts:1277`) marca `excedido` y **no lanza nunca**. Gastar cuenta y
@@ -431,6 +445,7 @@ export class ConditionsService {
           userId,
           campaignId,
           {
+            sessionId: enCombate.encounter.sessionId,
             subjectType: "character",
             subjectId: helperCharacterId,
             // La del AYUDANTE aquí: este suceso habla de quien gasta, no de quien recibe.

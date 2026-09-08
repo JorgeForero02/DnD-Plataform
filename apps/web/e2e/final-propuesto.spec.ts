@@ -151,6 +151,20 @@ test("el último enemigo cae: la mesa lo propone y el combate NO se cierra solo"
   // número absoluto se rompería si mañana el gris se afina, pero «el caído está más apagado que
   // quien sigue de pie» es lo que de verdad se quiere.
   await expect(tira.getByText("Cayó")).toHaveCount(1);
+
+  // **Y antes de medir el gris, se saca a Gorm del turno.** El gris es
+  // `caido && !actual ? "opacity-50" : ""`: al combatiente **activo** no se le atenúa nunca, a
+  // propósito —de quien va ahora se habla en presente aunque haya caído—. La iniciativa la tira un
+  // d20, así que sin esto la prueba medía la casilla de Gorm con el turno puesto **una de cada
+  // dos veces** y fallaba por una razón que no tiene nada que ver con lo que comprueba. Es
+  // intermitencia, que es peor que un fallo: se aprende a ignorarla.
+  const casillaDeGorm = tira.locator("li").filter({ hasText: "Gorm" }).first();
+  for (let i = 0; i < 4 && (await casillaDeGorm.getByText("Le toca").count()) > 0; i += 1) {
+    await page.getByRole("button", { name: "Pasar turno" }).click();
+    await expect(casillaDeGorm.getByText("Le toca")).toHaveCount(0, { timeout: 10_000 });
+  }
+  await expect(casillaDeGorm.getByText("Le toca")).toHaveCount(0);
+
   const opacidadDe = (nombre: string) =>
     tira
       .locator("li")

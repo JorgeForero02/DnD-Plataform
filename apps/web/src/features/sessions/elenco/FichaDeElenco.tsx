@@ -112,7 +112,15 @@ export function FichaDeElenco({
   // Hasta hoy sus salvaciones solo se leían **abriendo su hoja**, que es justo lo que nadie hace
   // mientras se juega. Se enseñan **solo mientras está cayendo**: con las casillas a cero y en
   // pie serían información muerta ocupando la tarjeta.
-  const salvaciones = hoja?.deathSaves?.status === "dying" ? hoja.deathSaves : null;
+  // **Se enseñan mientras está en el suelo, no solo mientras cae.** La primera versión miraba
+  // `status === "dying"` y las escondía justo al estabilizarse (tres éxitos) — que es cuando el DM
+  // más las necesita: «estable» y «de vuelta en pie» son cosas distintas y sin esta línea solo se
+  // distinguen abriendo la hoja. Lo cazó la revisión del 2026-09-07.
+  //
+  // La condición es **estar a 0 PG**, no el estado a secas: `dead` también se alcanza por
+  // agotamiento con los PG intactos, y ahí no hay salvaciones que contar.
+  const salvaciones =
+    actual === 0 && hoja?.deathSaves?.status !== "alive" ? hoja?.deathSaves : null;
   const maximo = hoja?.hp.max ?? null;
   const ca = hoja?.sheet?.derived.ac?.total ?? null;
   const descriptor = descriptorDePersonaje(personaje);
@@ -169,6 +177,11 @@ export function FichaDeElenco({
           className="mt-s1 font-chrome text-chrome-xs text-muted"
         >
           <span className="uppercase tracking-wide">Salvaciones</span>{" "}
+          {/* **Ningún valor de enumeración llega a la pantalla**: la forma legible se escribe una
+              vez y se importa. Aquí son tres y viven pegadas a su uso porque no las lee nadie
+              más; el día que las lea otra pantalla, se suben a un vocabulario. */}
+          <strong className="text-text">{palabraDeEstadoDeMuerte(salvaciones.status)}</strong>
+          {" · "}
           {/* Con palabras además del número: «1 / 2» sin decir cuál es cuál obliga a recordar el
               orden, y esto se lee de reojo en mitad de un combate. */}
           <strong className="text-success-text">{salvaciones.successes} logradas</strong>
@@ -357,6 +370,27 @@ export function Retrato({
  * El ancho va en estilo en línea porque es un valor **calculado**, no una decisión de diseño: no
  * hay clase de Tailwind para «el 72,4 % de la vida que le queda a este personaje».
  */
+/**
+ * Cómo se dice en la mesa el estado de quien está a 0 PG. **`alive` no está** a propósito: si lo
+ * estuviera, este bloque se pintaría con alguien en pie y no habría nada que contar.
+ */
+const ESTADO_DE_MUERTE: Record<"dying" | "stable" | "dead", string> = {
+  dying: "Cayendo",
+  stable: "Estable",
+  dead: "Muerto",
+};
+
+/**
+ * La palabra, o `null` si no hay nada que decir.
+ *
+ * **`alive` se estrecha aquí y no en el sitio de uso** porque el tipo lo incluye aunque la guarda
+ * de arriba lo excluya en ejecución, y forzarlo con un `as` sería pedirle al compilador que se
+ * calle sobre un caso que sí existe en el tipo.
+ */
+function palabraDeEstadoDeMuerte(status: "alive" | "dying" | "stable" | "dead"): string | null {
+  return status === "alive" ? null : ESTADO_DE_MUERTE[status];
+}
+
 export function BarraDePuntosDeGolpe({
   nombre,
   actual,

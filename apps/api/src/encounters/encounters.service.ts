@@ -400,6 +400,20 @@ export class EncountersService {
         }
         return { encounter, combatants: filas };
       });
+      // **Devuelve las filas crudas, y hoy eso NO cumple `encounterSchema`.** Le faltan
+      // `derrotado` y `finalPropuesto` —obligatorios desde el 2026-09-07— y las posiciones van sin
+      // renumerar, mientras el cliente lo tipa como `Encounter`
+      // (`apps/web/src/features/encounters/api.ts:45`). Es inocuo **solo** porque
+      // `useStartEncounter` tira la respuesta e invalida.
+      //
+      // Se intentó arreglar devolviendo por `get()` y **se revirtió**: cuatro pruebas de este
+      // servicio afirman sobre lo que `start()` escribió —bandos, agrupación por `statblockRef`,
+      // posiciones de dos grupos con la misma tirada— y con `get()` pasarían a afirmar sobre el
+      // mock de lectura. Cambiar pruebas de comportamiento por pruebas de mock es empeorarlas.
+      //
+      // **Lo que falta es una decisión, no una línea**: si `start()` debe devolver la vista
+      // filtrada del espectador o el resultado crudo de la creación. Queda en
+      // `docs/06-pendientes.md`.
       return { ...creado.encounter, combatants: creado.combatants };
     } catch (error) {
       // P2002 = violación de restricción única: el índice parcial ganó la carrera a la

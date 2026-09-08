@@ -96,16 +96,36 @@ describe("Modificadores temporales (e2e)", () => {
     // Libre llegaría a la pantalla sin traducir y al motor sin significado.
     await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      // **Conceder es del DM desde el 2026-09-07** (ficha P1, puerta B). Estos recorridos iban con
+      // el token del jugador dueño y ahora reciben 403; lo que prueban —la derivación, la traza,
+      // el vencimiento— no ha cambiado, así que cambia el token y no la aserción. Que el jugador
+      // ya no pueda es su propia prueba, la de abajo.
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ target: "carisma-de-verdad", amount: 2, reason: "x" })
       .expect(400);
+  });
+
+  // **La puerta B, cerrada el 2026-09-07** (ficha P1). Hasta ese día un jugador dueño de su
+  // personaje podía escribirse un `+10` al ataque, sin caducidad y con el motivo que quisiera, y
+  // entraba en la derivación de su propia hoja. Va de punta a punta y no solo en la unitaria
+  // porque lo que se cierra es **una ruta HTTP**: la guarda del servicio y el cableado del
+  // controlador son dos cosas, y esta prueba sostiene las dos.
+  it("un jugador dueño ya NO puede concederse un modificador: **403**", async () => {
+    const antes = await fuerza();
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ target: "ability.str", amount: 10, reason: "porque sí" })
+      .expect(403);
+    // Y no se le coló por el camino: su Fuerza es la misma que antes de intentarlo.
+    expect((await fuerza()).total).toBe(antes.total);
   });
 
   it("**la Fuerza derivada sube, y la traza dice de dónde sale**", async () => {
     const antes = await fuerza();
     const r = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({
         target: "ability.str",
         amount: 2,
@@ -173,7 +193,7 @@ describe("Modificadores temporales (e2e)", () => {
     const antes = await fuerza();
     await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/characters/${characterId}/temporary-modifiers`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ target: "ability.str", amount: -3, reason: "Maldición del pantano" })
       .expect(201);
     expect((await fuerza()).total).toBe(antes.total - 3);

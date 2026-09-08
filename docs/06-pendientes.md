@@ -108,6 +108,28 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
+## P3 · `start()` devuelve un encuentro que ya no cumple su propio esquema (2026-09-07, revisión)
+
+`EncountersService.start()` devuelve `{ ...creado.encounter, combatants: creado.combatants }`:
+filas de `Combatant` crudas. Desde que `derrotado` y `finalPropuesto` son **obligatorios** en
+`packages/shared/src/encounter.schema.ts`, esa respuesta **no valida**, y el cliente la tipa como
+`Encounter` (`apps/web/src/features/encounters/api.ts:45`). Las posiciones tampoco van renumeradas,
+que es anterior a esto.
+
+**Hoy es inocuo** y por eso es P3: `useStartEncounter` tira la respuesta e invalida la consulta.
+Muerde el día que alguien la parsee con `encounterSchema` —error de validación— o lea `derrotado`
+de ahí —`undefined` silencioso—.
+
+**Se intentó y se revirtió, a propósito.** Devolver por `get()` lo arregla en una línea y **empeora
+cuatro pruebas**: `agrupa a los combatientes con el mismo statblockRef`, las dos del bando y la de
+los dos grupos con la misma tirada afirman sobre lo que `start()` **escribió**, y con `get()`
+pasarían a afirmar sobre el mock de lectura. Cambiar pruebas de comportamiento por pruebas de mock
+no es un arreglo.
+
+**Por qué no se cierra sin el autor:** falta decidir **qué debe devolver `start()`** —la vista
+filtrada del espectador, como `get()`, o el resultado crudo de la creación— y esa decisión cambia
+qué miden esas cuatro pruebas. Es contrato, no limpieza.
+
 ## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando

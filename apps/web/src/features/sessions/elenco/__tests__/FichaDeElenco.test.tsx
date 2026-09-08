@@ -184,6 +184,23 @@ describe("un personaje a 0 PG", () => {
     expect(salvaciones).toHaveTextContent("2");
   });
 
+  // **Estabilizarse no es levantarse.** Con tres éxitos el estado pasa a `stable` y el personaje
+  // **sigue en el suelo**: si la tarjeta escondiera las casillas justo ahí, el DM vería
+  // desaparecer la línea que estaba mirando un segundo antes y no podría distinguir «estable» de
+  // «de vuelta en pie» sin abrir la hoja — que es exactamente el problema que esto vino a
+  // arreglar. Lo cazó la revisión del 2026-09-07.
+  it("un estabilizado sigue enseñándolas, y dice que está estable", async () => {
+    vi.spyOn(sheetApi, "fetchSheet").mockResolvedValue(aCero({ successes: 3, status: "stable" }));
+    montar();
+    const salvaciones = await screen.findByLabelText("Salvaciones contra muerte");
+    expect(salvaciones).toHaveTextContent("3");
+    // **La palabra, no el valor del enum**: `stable` no llega nunca a la pantalla.
+    expect(salvaciones).toHaveTextContent(/Estable/i);
+    // Con límite de palabra: «Estable» contiene «stable» como subcadena, así que un
+    // `not.toHaveTextContent("stable")` a secas suspende la traducción correcta.
+    expect(salvaciones.textContent).not.toMatch(/\bstable\b/);
+  });
+
   // **Y no se enseñan cuando no vienen a cuento**: un personaje en pie con las casillas a cero
   // llenaría la mesa de información muerta.
   //

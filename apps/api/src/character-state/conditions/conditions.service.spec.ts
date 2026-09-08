@@ -80,7 +80,14 @@ describe("ConditionsService", () => {
     });
 
     it("en combate gasta la acción del ayudante", async () => {
-      prisma.combatant.findFirst.mockResolvedValue({ id: "cb1", actionUsed: false });
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: "cb1",
+        actionUsed: false,
+        encounterId: "enc1",
+        // La sesión viaja con el encuentro: el suceso del gasto la necesita o el hilo
+        // de la mesa no lo enseña nunca.
+        encounter: { sessionId: "s1" },
+      });
       prisma.combatant.update.mockResolvedValue({ id: "cb1", actionUsed: true });
 
       await service.help("owner1", "cmp1", "c1", { targetCharacterId: "c2" });
@@ -94,7 +101,14 @@ describe("ConditionsService", () => {
     it("**ayudar dos veces en el mismo turno lo DICE**: el segundo sale marcado como excedido", async () => {
       // La segunda vez el combatiente ya tiene la acción gastada. No se rechaza —esa es la
       // doctrina del paso 2— pero el suceso lo cuenta, que es lo que la mesa lee.
-      prisma.combatant.findFirst.mockResolvedValue({ id: "cb1", actionUsed: true });
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: "cb1",
+        actionUsed: true,
+        encounterId: "enc1",
+        // La sesión viaja con el encuentro: el suceso del gasto la necesita o el hilo
+        // de la mesa no lo enseña nunca.
+        encounter: { sessionId: "s1" },
+      });
       prisma.combatant.update.mockResolvedValue({ id: "cb1", actionUsed: true });
 
       await service.help("owner1", "cmp1", "c1", { targetCharacterId: "c2" });
@@ -103,6 +117,10 @@ describe("ConditionsService", () => {
         "owner1",
         "cmp1",
         expect.objectContaining({
+          // **`sessionId` es la mitad del aviso**: sin él `GameEventsService.list` lo filtra fuera
+          // y el hilo no lo enseña jamás, así que el gasto se anotaría en la columna y la mesa no
+          // se enteraría — dejando a medias lo que esta ficha prometía, «cuenta y avisa».
+          sessionId: "s1",
           payload: expect.objectContaining({
             type: "ACTION_SPENT",
             coste: "ACTION",

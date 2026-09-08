@@ -176,7 +176,12 @@ describe("quién puede tocar el combate", () => {
   });
 
   it("el DM pasa turno contra la API de verdad", async () => {
-    const espia = vi.spyOn(encountersApi, "advanceTurn").mockResolvedValue(ENCUENTRO);
+    // `advanceTurn` devuelve el encuentro **más `roundAdvanced`** desde la ficha P3 (2026-09-08):
+    // el campo no es parte del `Encounter` y el tipo del cliente lo dice, así que el simulacro
+    // tiene que darlo. Ninguna pantalla lo lee todavía; esta prueba solo comprueba que se llama.
+    const espia = vi
+      .spyOn(encountersApi, "advanceTurn")
+      .mockResolvedValue({ ...ENCUENTRO, roundAdvanced: false });
     montarTira();
 
     fireEvent.click(screen.getByRole("button", { name: "Pasar turno" }));

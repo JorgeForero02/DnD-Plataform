@@ -109,30 +109,6 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
-## P3 · `advanceTurn()` y `setInitiative()` devuelven algo que no es un `Encounter` (2026-09-08)
-
-**Es el resto de la ficha P3 que se cerró creyendo que no quedaba nada.** Aquella iba de
-`start()`, y su argumento —«los hermanos ya devuelven por `get()`»— nombraba a `advanceTurn()`
-entre ellos. **Era falso**, y con el nombre mal puesto la ficha se archivó dando por cerrada una
-deuda que sigue viva en otros dos sitios. Lo cazó la revisión del propio commit que la cerró.
-
-| Método | Qué devuelve hoy | Cómo lo tipa el cliente |
-|---|---|---|
-| `advanceTurn()` (`encounters.service.ts:924`) | `{ ...actualizado, roundAdvanced }` — la fila cruda de `Encounter`, **sin `combatants` y sin `finalPropuesto`** | `Promise<Encounter>` (`apps/web/src/features/encounters/api.ts:87`) |
-| `setInitiative()` (`encounters.service.ts:730`) | **una sola fila de `Combatant`** | `Promise<Encounter>` (`apps/web/src/features/encounters/api.ts:57`) |
-
-Los que sí devuelven por `get()`, comprobado con `grep -n "return this.get("`: `start()`,
-`current()`, `setSide()` y `forceStart()`.
-
-**Es inocuo hoy y por eso es P3**, exactamente por lo mismo que lo era el de `start()`: los hooks
-tiran la respuesta e invalidan la consulta. Muerde el día que alguien la parsee con
-`encounterSchema` o lea `combatants` de ahí.
-
-**Cómo se cierra, y ya está probado en `start()`:** devolver por `this.get(...)` y **reapuntar a la
-escritura** las pruebas que afirmen sobre el valor devuelto por comodidad. Ojo con `advanceTurn()`,
-que además lleva `roundAdvanced` — ese dato no está en `encounterSchema` y hay que decidir si viaja
-aparte o se deriva, que es la única pregunta de verdad de esta ficha.
-
 ## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando

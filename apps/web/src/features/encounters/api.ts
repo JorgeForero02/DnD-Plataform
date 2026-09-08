@@ -84,10 +84,15 @@ export function advanceTurn(
   campaignId: string,
   sessionId: string,
   encounterId: string,
-): Promise<Encounter> {
-  return apiFetch<Encounter>(`${base(campaignId, sessionId)}/${encounterId}/advance-turn`, {
-    method: "POST",
-  });
+  // **`Encounter` MÁS el campo hermano**, y el tipo lo dice en vez de afirmar que es un
+  // `Encounter` a secas (ficha P3, 2026-09-08). `roundAdvanced` no es parte del encuentro: es qué
+  // pasó en esta llamada. No lo consume ninguna pantalla todavía — se conserva porque es
+  // información real que el servidor ya sabe y que la mesa querrá pintar algún día.
+): Promise<Encounter & { roundAdvanced: boolean }> {
+  return apiFetch<Encounter & { roundAdvanced: boolean }>(
+    `${base(campaignId, sessionId)}/${encounterId}/advance-turn`,
+    { method: "POST" },
+  );
 }
 
 export function endEncounter(

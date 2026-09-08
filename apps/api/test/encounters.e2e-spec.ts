@@ -325,13 +325,22 @@ describe("Iniciativa y orden de turnos (e2e)", () => {
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({ initiative: 30 });
     expect(r.status).toBe(200);
-    expect(r.body.initiative).toBe(30);
+
+    // **La respuesta es el encuentro entero desde el 2026-09-08** (ficha P3): `setInitiative`
+    // devolvía la fila que había tocado y el cliente ya la tipaba como `Encounter`. Estas dos
+    // aserciones leían `r.body.initiative` y `r.body.position` porque esa fila era lo que volvía;
+    // ahora se leen del combatiente **dentro** del encuentro, que además las mide en su contexto:
+    // la posición de uno solo no significa nada sin las de los demás.
+    const corregido = (
+      r.body.combatants as { id: string; initiative: number; position: number }[]
+    ).find((c) => c.id === combatiente.id)!;
+    expect(corregido.initiative).toBe(30);
     // **Y el orden se recoloca.** 30 es más que cualquier tirada de este encuentro, así que
     // quien lo recibe pasa al frente. La versión anterior exigía que la posición **no** se
     // tocara, y era cierto — pero `advanceTurn` ordena solo por `position`, así que corregir el
     // número no cambiaba nada del juego y la única razón por la que el SRD deja editarlo
     // —deshacer un empate— no se cumplía.
-    expect(r.body.position).toBe(0);
+    expect(corregido.position).toBe(0);
   });
 
   // Y la mitad que faltaba, que es la que el fallo de arriba dejó al descubierto: **el límite

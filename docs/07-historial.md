@@ -42,6 +42,25 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Los dos que quedaban: `advanceTurn()` y `setInitiative()` (2026-09-08)
+
+El resto de la deuda que la entrada de abajo dio por cerrada nombrando mal a un hermano. Los dos
+devuelven ya por `get()`, y con eso **ningún endpoint de encuentros devuelve filas crudas**.
+
+**La pregunta que quedaba para el autor la contestó una medición:** `roundAdvanced` **no lo consume
+nadie** —cero usos en `apps/web`—, así que derivarlo sería inventar trabajo para nadie y borrarlo
+tiraría un dato real que cuatro pruebas fijan. Viaja **al lado**, fuera del encuentro, y el tipo
+del cliente lo dice: `Encounter & { roundAdvanced: boolean }`.
+
+**Dos cosas que aparecieron al hacerlo**, ninguna prevista: `get()` usa el pool, así que la
+composición de la respuesta tuvo que salir **fuera** de la transacción —el mismo defecto que este
+proyecto arregló tres veces en septiembre— y en los dos métodos el `return this.prisma.transaction`
+hacía **inalcanzable** la línea nueva. Y el arnés del spec arrastraba `mockResolvedValueOnce` sin
+consumir entre pruebas, porque `clearAllMocks` no vacía esa cola: una prueba fallaba por lo que
+encolaba otra.
+
+**Revertir:** un commit. Toca `encounters.service.ts`, su spec, un e2e y el tipo del cliente.
+
 ## `start()` devuelve por `get()`, como sus tres hermanos (2026-09-08, ficha P3)
 
 La ficha se abrió anoche **al revertir este mismo arreglo**, y el revert era correcto con lo que se
@@ -873,43 +892,12 @@ ya no describía la pantalla.
 **Cómo revertirlo.** `git revert` del commit. Los avisos siguen escribiéndose en el servidor: lo
 que desaparece es la puerta para verlos.
 
-## Los dos avisos que nadie emitía, y un POST sin cuerpo que no debía ser un 400 (2026-09-05, plan 12 · 12.1)
+## Los dos avisos que nadie emitía, y un POST sin cuerpo que no debía ser un 400 (2026-09-05, plan 12 · 12.1) — archivada
 
-**Qué.** `COMMENT_ADDED` y `SESSION_SCHEDULED` llevaban desde la tarea 2A.14 en el contrato de
-`@dnd/shared` **sin un solo emisor**: dos tipos de aviso declarados que ningún usuario podía recibir
-jamás. Ahora los emiten `CommentsService` y `SessionsService`, y los escucha
-`NotificationsService` con el mismo patrón de `@OnEvent` que los otros dos.
-
-**Lo que decide cada aviso, y no es cosmética:**
-
-- **El aviso de un comentario pasa por `canView`.** Decirle a alguien «han comentado esta ficha» le
-  confirma que la ficha existe, y esa confirmación es exactamente lo que esconde una visibilidad
-  `DM_ONLY`. Va al DM y al autor de la ficha, **y solo si además pueden verla**.
-- **El cuerpo del comentario no viaja en el aviso**, por el mismo motivo por el que no viaja en su
-  suceso: el hilo tiene su propia puerta, con su propio `canView`, y una segunda copia del texto
-  sería una segunda puerta con otras reglas.
-- **Nadie se avisa de lo que acaba de hacer.** Un DM que comenta veinte fichas seguidas genera cero
-  avisos para sí mismo, y hay una prueba que cuenta esas veinte.
-- **Una sesión se anuncia cuando GANA fecha**, no cada vez que se guarda: sin fecha no hay nada que
-  apuntar en el calendario, y volver a guardar la misma fecha no es una noticia.
-- **El aviso se emite FUERA de la transacción del comentario.** Dentro se habría escrito aunque el
-  comentario acabase deshecho, y el oyente lee la ficha por su cuenta: dentro leería filas que
-  todavía nadie ha confirmado.
-
-**Y un fallo que apareció por el camino, ajeno al plan.** La suite `notifications` de la API estaba
-**roja en `main`** y nadie lo había visto: `POST /campaigns/:id/invites` respondía **400 «Falta el
-cuerpo de la petición»** a una petición sin cuerpo, aunque su esquema tiene **todos los campos
-opcionales**. Fastify entrega `undefined` cuando no hay cuerpo, y `z.object` lo rechaza. Pedir una
-invitación sin opciones no es una petición mal formada: es la petición por defecto. `ZodValidationPipe`
-prueba ahora `{}` **solo cuando el argumento es el cuerpo y el esquema no exige nada**; si sí exige
-campos, el 400 sale igual que antes, con su frase y su detalle.
-
-**Verificación por mutación.** Quitado el `canView` del aviso del comentario, se pone roja **una
-sola** prueba —«NO llega a quien no puede ver la ficha, aunque sea el autor»— y las otras dieciséis
-siguen verdes. Restaurado, 17 en verde.
-
-**Cómo revertirlo.** `git revert` del commit. Los avisos ya escritos quedan en la bandeja, que es
-donde deben quedarse.
+**Movida entera** a [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md)
+el 2026-09-08: la entrada de `advanceTurn()` y `setInitiative()` dejó este fichero en 1019 de sus
+1000 líneas, y esta era la más antigua sin archivar. En una línea: dos sucesos que el servidor
+declaraba y no emitía, y un `POST` sin cuerpo que devolvía 400 sin motivo.
 
 ## Los planes 03 y 15, ficha a ficha (2026-09-05) — archivadas
 

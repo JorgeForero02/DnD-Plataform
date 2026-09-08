@@ -84,6 +84,13 @@ describe("EncountersService", () => {
    */
   const creadas: Record<string, unknown>[] = [];
 
+  /**
+   * El encuentro tal y como queda en la base simulada. Hace falta desde que `advanceTurn()` y
+   * `setInitiative()` devuelven por `get()` (ficha P3, 2026-09-08): ese `get()` **relee**, así que
+   * sin reflejar los `update` la respuesta traería el asalto anterior.
+   */
+  const encuentroSimulado: Record<string, unknown> = {};
+
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
       providers: [
@@ -139,6 +146,22 @@ describe("EncountersService", () => {
     //
     // El guardián del 409 de `start()` consulta por `status` y cada prueba le pone su
     // `mockResolvedValueOnce`; lo que devuelve esta implementación es la **relectura por id**.
+    // El encuentro simulado, que los `update` van modificando: `get()` **relee**, así que un
+    // simulado que no reflejara la escritura devolvería el asalto viejo. Es el mismo trato que
+    // `creadas` da a los combatientes.
+    Object.assign(encuentroSimulado, {
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+    });
+    // **`mockReset` antes de instalar la implementación, y hace falta.** `jest.clearAllMocks()`
+    // borra las llamadas pero **no la cola de `mockResolvedValueOnce`**: un `Once` que una prueba
+    // encolara y no llegara a consumir se lo comía la siguiente, que además fallaba en un sitio
+    // que no tenía nada que ver. Con varias pruebas encolando lecturas, eso es acoplamiento por
+    // orden de ejecución.
+    prisma.encounter.findFirst.mockReset();
     prisma.encounter.findFirst.mockImplementation(
       async ({ where }: { where?: Record<string, unknown> } = {}) => {
         // **Ramifica por el `where`, y no es un detalle.** Con una implementación que devolviera
@@ -146,12 +169,16 @@ describe("EncountersService", () => {
         // sin poder comprobarse: su prueba pasaría igual sin su propio mock, y cualquier prueba
         // futura que olvidara silenciarlo fallaría con un `ConflictException` que no explica nada.
         if (where?.status) return null;
+        // **Si ya hubo un `update`, la relectura devuelve LO QUE ESE UPDATE DEJÓ.** Cada prueba
+        // que avanza el turno declara el estado final en su propio `encounter.update`
+        // —`round: 2`, la posición nueva—, así que leerlo de ahí es más fiel que mantener una
+        // segunda copia aquí que habría que acordarse de sincronizar. Sin esto, `get()` devolvía
+        // el asalto anterior y las pruebas de `advanceTurn` medían el estado de antes.
+        const ultimo = prisma.encounter.update.mock.results.at(-1);
+        const trasElUpdate = ultimo?.type === "return" ? await ultimo.value : null;
         return {
-          id: "enc1",
-          sessionId: "s1",
-          status: "ACTIVE",
-          round: 1,
-          activePosition: 0,
+          ...encuentroSimulado,
+          ...(trasElUpdate ?? {}),
           combatants: creadas.map((f) => ({
             ...f,
             character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
@@ -275,6 +302,156 @@ describe("EncountersService", () => {
   // **Y no pierde nada al pasar por el filtro**, comprobado y no supuesto: `start()` empieza por
   // `requireDM`, y `canView` devuelve `true` para el DM en su segunda línea
   // (`common/visibility.ts:24`). El espectador es siempre quien lo ve todo.
+  // **Los dos que quedaban fuera del patrón** (ficha P3 del 2026-09-08, el resto de la anterior).
+  //
+  // `advanceTurn()` devolvía `{ ...actualizado, roundAdvanced }` —la fila cruda del encuentro, sin
+  // `combatants`— y `setInitiative()` devolvía **una sola fila de `Combatant`**, y los dos los
+  // tipa el cliente como `Encounter`. Ahora devuelven por `get()` como `start()`, `current()`,
+  // `setSide()` y `forceStart()`.
+  //
+  // **`roundAdvanced` viaja AL LADO, no dentro**, y la decisión salió de una medición: no lo
+  // consume ni una pantalla (cero usos en `apps/web`), así que derivarlo obligaría a quien llama a
+  // recordar el asalto anterior para nada, y borrarlo tiraría un dato real —«este avance cambió de
+  // asalto»— que el servidor ya sabe. La respuesta es el encuentro **más** ese campo hermano, y el
+  // tipo del cliente lo dice en vez de mentir.
+  //
+  // **Comprobado, no supuesto:** los dos empiezan por `requireDM` igual que `start()`, así que el
+  // espectador de `get()` es siempre el DM y `canView` no recorta ningún combatiente
+  // (`common/visibility.ts:24`). Si admitieran al dueño, un `DM_ONLY` podría desaparecer de la
+  // respuesta y eso sería otra conversación.
+  describe("los dos que quedaban devolviendo filas crudas", () => {
+    // **Ids con forma de `cuid`**, y no es un capricho del arnés: `encounterSchema` los valida con
+    // `.cuid()`, así que los `enc1`/`comb0` que usa el resto del fichero no pasarían — y lo que
+    // aquí se comprueba es justo que la respuesta valida.
+    const ENC = "clzq0a0000000000000000enc";
+    const SES = "clzq0a0000000000000000ses";
+    const CB0 = "clzq0a0000000000000000cb0";
+    const PC1 = "clzq0a0000000000000000pc1";
+
+    /** Lo que `get()` leerá: el espectador DM y el encuentro con su combatiente completo. */
+    function relecturaDeGet(over: Record<string, unknown> = {}) {
+      prisma.user.findUnique.mockResolvedValueOnce({ id: "dm", isAdmin: false });
+      membership.getMembership.mockResolvedValueOnce({ role: "DM" });
+      prisma.encounter.findFirst.mockResolvedValueOnce({
+        id: ENC,
+        sessionId: SES,
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [
+          {
+            id: CB0,
+            characterId: PC1,
+            initiative: 18,
+            position: 0,
+            side: "ALLY",
+            actionUsed: false,
+            bonusUsed: false,
+            reactionUsed: false,
+            movementUsed: 0,
+            character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
+          },
+        ],
+        ...over,
+      });
+    }
+
+    it("advanceTurn() devuelve un **`Encounter` válido**, con `roundAdvanced` al lado", async () => {
+      // La lectura que hace el propio método, antes de la relectura de `get()`.
+      prisma.encounter.findFirst.mockResolvedValueOnce({
+        id: ENC,
+        sessionId: SES,
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [
+          { id: CB0, characterId: PC1, position: 0, initiative: 18 },
+          { id: "cb1", characterId: "pc2", position: 1, initiative: 9 },
+        ],
+      });
+      prisma.encounter.update.mockResolvedValue({
+        id: ENC,
+        sessionId: SES,
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 1,
+      });
+      clock.advance.mockResolvedValue({ from: 0, to: 6, seconds: 6, eventId: "ev" });
+      relecturaDeGet({ activePosition: 1 });
+
+      const { roundAdvanced: _r, ...encuentro } = await service.advanceTurn("dm", "c1", SES, ENC);
+      void _r;
+
+      // **Solo el esquema.** El campo hermano tiene su propia prueba justo debajo, y están
+      // separadas a propósito: si las dos aserciones vivieran juntas, una sola mutación
+      // —quitar `roundAdvanced`— tumbaría las dos cosas y no diría cuál sostiene cuál.
+      expect(() => encounterSchema.parse(encuentro)).not.toThrow();
+    });
+
+    it("...y `roundAdvanced` sigue viajando a su lado, fuera del encuentro", async () => {
+      prisma.encounter.findFirst.mockResolvedValueOnce({
+        id: ENC,
+        sessionId: SES,
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: [
+          { id: CB0, characterId: PC1, position: 0, initiative: 18 },
+          { id: "cb1", characterId: "pc2", position: 1, initiative: 9 },
+        ],
+      });
+      prisma.encounter.update.mockResolvedValue({
+        id: ENC,
+        sessionId: SES,
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 1,
+      });
+      clock.advance.mockResolvedValue({ from: 0, to: 6, seconds: 6, eventId: "ev" });
+      relecturaDeGet({ activePosition: 1 });
+
+      const devuelto = await service.advanceTurn("dm", "c1", SES, ENC);
+
+      expect(typeof devuelto.roundAdvanced).toBe("boolean");
+      // Y **fuera del encuentro**, que es la mitad declarada de la decisión: no es un campo del
+      // `Encounter`, es qué pasó en esta llamada. Se afirma sobre el esquema y no sobre el
+      // resultado de validar — Zod descarta las claves de más sin quejarse, así que un
+      // `safeParse(...).success === false` no diría nada: pasaría igual con el campo dentro.
+      expect(Object.keys(encounterSchema.shape)).not.toContain("roundAdvanced");
+    });
+
+    it("setInitiative() devuelve el **encuentro entero**, no la fila que tocó", async () => {
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: CB0,
+        encounterId: ENC,
+        characterId: PC1,
+        initiative: 10,
+        groupKey: PC1,
+      });
+      await (prisma.combatant.create as jest.Mock)({
+        data: {
+          id: CB0,
+          encounterId: ENC,
+          characterId: PC1,
+          position: 0,
+          initiative: 10,
+          side: "ALLY",
+          groupKey: PC1,
+        },
+      });
+      relecturaDeGet();
+
+      const devuelto = await service.setInitiative("dm", "c1", SES, ENC, CB0, {
+        initiative: 15,
+      });
+
+      // **Y no se le inventa un `roundAdvanced` por simetría**: este método no cambia de asalto,
+      // así que un campo hermano aquí afirmaría algo que no ocurre.
+      expect(() => encounterSchema.parse(devuelto)).not.toThrow();
+      expect(devuelto).not.toHaveProperty("roundAdvanced");
+    });
+  });
+
   it("start() devuelve un encuentro que **valida contra `encounterSchema`**", async () => {
     prisma.encounter.findFirst.mockResolvedValueOnce(null); // el guardián del 409
     prisma.character.findMany.mockResolvedValue([
@@ -481,7 +658,7 @@ describe("EncountersService", () => {
   });
 
   it("advanceTurn() recorre el orden y sube de asalto al llegar al final", async () => {
-    prisma.encounter.findFirst.mockResolvedValue({
+    prisma.encounter.findFirst.mockResolvedValueOnce({
       id: "enc1",
       sessionId: "s1",
       status: "ACTIVE",
@@ -516,7 +693,7 @@ describe("EncountersService", () => {
   });
 
   it("advanceTurn() a media ronda NO toca el reloj", async () => {
-    prisma.encounter.findFirst.mockResolvedValue({
+    prisma.encounter.findFirst.mockResolvedValueOnce({
       id: "enc1",
       sessionId: "s1",
       status: "ACTIVE",
@@ -543,7 +720,7 @@ describe("EncountersService", () => {
   });
 
   it("advanceTurn() sobre un encuentro que no está ACTIVE es un 409", async () => {
-    prisma.encounter.findFirst.mockResolvedValue({
+    prisma.encounter.findFirst.mockResolvedValueOnce({
       id: "enc1",
       sessionId: "s1",
       status: "ENDED",
@@ -572,7 +749,7 @@ describe("EncountersService", () => {
       objetivo.bonusUsed = true;
       objetivo.movementUsed = 15;
 
-      prisma.encounter.findFirst.mockResolvedValue({
+      prisma.encounter.findFirst.mockResolvedValueOnce({
         id: "enc1",
         sessionId: "s1",
         status: "ACTIVE",
@@ -622,7 +799,18 @@ describe("EncountersService", () => {
       // `findFirst`/`update` sobre el mismo objeto mutable, porque esta prueba encadena dos
       // llamadas a `advanceTurn` y la segunda tiene que ver el `activePosition` que dejó la
       // primera.
-      prisma.encounter.findFirst.mockImplementation(() => Promise.resolve({ ...estado }));
+      // El `character` de cada combatiente hace falta desde que `advanceTurn` devuelve por
+      // `get()` (ficha P3, 2026-09-08): esa lectura filtra por `canView`, que lo mira. No cambia
+      // lo que esta prueba mide — la reposición de la reacción —, solo completa la fila.
+      prisma.encounter.findFirst.mockImplementation(() =>
+        Promise.resolve({
+          ...estado,
+          combatants: estado.combatants.map((c: Record<string, unknown>) => ({
+            ...c,
+            character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
+          })),
+        }),
+      );
       prisma.encounter.update.mockImplementation(
         ({ data }: { data: { activePosition: number; round: number } }) => {
           Object.assign(estado, data);
@@ -659,7 +847,7 @@ describe("EncountersService", () => {
         g.movementUsed = 30;
       }
 
-      prisma.encounter.findFirst.mockResolvedValue({
+      prisma.encounter.findFirst.mockResolvedValueOnce({
         id: "enc1",
         sessionId: "s1",
         status: "ACTIVE",
@@ -699,14 +887,18 @@ describe("EncountersService", () => {
     }
     prisma.combatant.findFirst.mockResolvedValue({ id: "comb0", encounterId: "enc1" });
 
-    const resultado = await service.setInitiative("dm", "c1", "s1", "enc1", "comb0", {
-      initiative: 20,
-    });
+    await service.setInitiative("dm", "c1", "s1", "enc1", "comb0", { initiative: 20 });
 
     // El corregido sube al frente y **deja de compartir posición** con los otros dos.
-    expect(resultado.initiative).toBe(20);
-    expect(resultado.position).toBe(0);
+    //
+    // **Se mira la fila escrita, no el valor devuelto** (2026-09-08). Estas dos aserciones leían
+    // `resultado.initiative` y `resultado.position` porque `setInitiative` devolvía justo esa
+    // fila; era comodidad, no lo que la prueba comprueba —que la corrección recoloca el orden—, y
+    // las ataba a la forma de la respuesta. El resto de la prueba ya miraba `filas`.
     const filas = await (prisma.combatant.findMany as jest.Mock)({});
+    const corregido = filas.find((f: any) => f.id === "comb0");
+    expect(corregido.initiative).toBe(20);
+    expect(corregido.position).toBe(0);
     const posiciones = new Map(filas.map((f: any) => [f.id, f.position]));
     expect(posiciones.get("comb1")).toBe(1);
     expect(posiciones.get("comb2")).toBe(1);
@@ -1167,7 +1359,7 @@ describe("EncountersService", () => {
       const llamadas = (prisma.encounter.update as jest.Mock).mock.calls;
       const activePositionEscrita = llamadas[llamadas.length - 1][0].data.activePosition;
 
-      prisma.encounter.findFirst.mockResolvedValue({
+      prisma.encounter.findFirst.mockResolvedValueOnce({
         id: "enc1",
         sessionId: "s1",
         status: "ACTIVE",

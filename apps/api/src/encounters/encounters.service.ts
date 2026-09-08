@@ -632,7 +632,7 @@ export class EncountersService {
     });
     if (!combatiente) throw new NotFoundException("Combatant not found");
 
-    return this.prisma.transaction(async (tx) => {
+    await this.prisma.transaction(async (tx) => {
       // **Quién tenía el turno ANTES de tocar nada**, para poder seguirlo después de recolocar
       // (ver el bloque de abajo). Se lee dentro del `antesDeLeer` de `recolocar`: el candado del
       // encuentro ya está tomado en ese punto, así que esta lectura ve el estado real y no una
@@ -734,8 +734,16 @@ export class EncountersService {
         }
       }
 
+      // **El encuentro entero, no la fila que se tocó** (ficha P3, 2026-09-08): el cliente lo
+      // tipa como `Encounter` y devolvía un solo `Combatant`. **Sin `roundAdvanced`**: corregir
+      // una iniciativa no cambia de asalto, y añadirlo por simetría con `advanceTurn()` afirmaría
+      // algo que aquí no ocurre. Y `get()` va **fuera** de la transacción, por lo mismo que en
+      // `advanceTurn()`: leer por el pool con una transacción abierta pide una segunda conexión.
+      // La transacción ya no devuelve la fila a nadie: la respuesta se compone fuera.
       return filas.find((f) => f.id === combatantId)!;
     });
+
+    return this.get(userId, campaignId, sessionId, encounterId);
   }
 
   /**
@@ -829,8 +837,10 @@ export class EncountersService {
     const toPosition = posiciones[indiceSiguiente];
     const nuevoAsalto = sube ? encounter.round + 1 : encounter.round;
 
-    return this.prisma.transaction(async (tx) => {
-      const actualizado = await tx.encounter.update({
+    await this.prisma.transaction(async (tx) => {
+      // Ya no se recoge el resultado: la respuesta se compone fuera con `get()`, y quedarse la
+      // fila aquí solo invitaría a devolverla otra vez.
+      await tx.encounter.update({
         where: { id: encounter.id },
         data: { activePosition: toPosition, round: nuevoAsalto },
       });
@@ -928,8 +938,26 @@ export class EncountersService {
         data: { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 },
       });
 
-      return { ...actualizado, roundAdvanced: sube };
+      // **El encuentro entero por `get()`, y `roundAdvanced` AL LADO** (ficha P3, 2026-09-08).
+      //
+      // Devolvía `{ ...actualizado, roundAdvanced }`: la fila cruda, sin `combatants` y sin
+      // `finalPropuesto`, mientras el cliente lo tipa como `Encounter`. Ahora sigue el patrón de
+      // `start()`, `current()`, `setSide()` y `forceStart()`.
+      //
+      // **Por qué al lado y no dentro ni derivado**, y lo decidió una medición: `roundAdvanced` no
+      // lo consume **ninguna** pantalla. Derivarlo obligaría a quien llama a recordar el asalto
+      // anterior para compararlo, o sea inventar trabajo para nadie; borrarlo tiraría un dato real
+      // que el servidor ya sabe y que cuatro pruebas fijan. Va fuera del objeto que valida contra
+      // `encounterSchema` porque **no es parte del encuentro**: es qué pasó en esta llamada.
+      //
+      // **La transacción devuelve solo el dato; `get()` se llama FUERA de ella.** Leer con
+      // `this.prisma` dentro de una transacción abierta pide una segunda conexión del pool
+      // mientras la primera sigue tomada, que es exactamente el defecto que este proyecto ya
+      // arregló tres veces (`3524ef7`, `85d0882`, `6b16804`). `setSide()` lo hace así.
+      // La transacción no devuelve nada: `sube` se calculó antes de abrirla y sigue en alcance.
     });
+
+    return { ...(await this.get(userId, campaignId, sessionId, encounterId)), roundAdvanced: sube };
   }
 
   /**

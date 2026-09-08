@@ -1472,6 +1472,32 @@ dentro de `answer()` es la tarea que falta, no un arreglo de esta tanda.
 
 ### P2-9 · No hay ninguna puerta para ceder un PNJ a un jugador (2026-09-07)
 
+**DECIDIDO por el autor el 2026-09-07: sí se quiere, pero se diseña DENTRO del paso 3**, no como
+endpoint suelto. El motivo salió de ir al manual en vez de decidirlo a ojo, y cambia la forma del
+arreglo: **el SRD parte el permiso en dos, y ceder el `ownerId` daría las dos mitades a la vez.**
+
+> *«It acts on each of your turns. **You decide what action it takes and how it moves. The DM has
+> the creature's Statistics and resolves all of its Actions and Movement.**»* — Polimorfar
+> verdadero, SRD 5.1, leído en la copia de Foundry que vive **fuera del repositorio**
+> (`referencia-foundry-dnd5e`, carpeta `spells` sin sufijo `24`). Igual en Insecto
+> gigante (*«The DM has the Statistics for these creatures and resolves their Actions and
+> Movement»*) y en Animar muertos (*«the DM has the creature's game statistics»*).
+>
+> Y donde no hay statblock ajeno, el verbo sigue siendo **obedecer**, no controlar: *«always obeys
+> your commands. In combat, it rolls its own initiative and acts on its own turn»* (Encontrar
+> familiar) · *«They obey any verbal commands that you issue… If you don't issue any commands, they
+> defend themselves»* (Convocar animales). **La única vez que el SRD dice «you control it» es en
+> posesión** (*Magic Jar*), donde el jugador **es** la criatura.
+
+**Lo que eso implica para el modelo, y por eso no es un endpoint de una línea:** el jugador
+**decide** la acción; el DM **tiene los números y los resuelve**. Nuestro permiso de hoy es
+dueño-o-DM, que no sabe expresar esa mitad — hace falta un tercer modo, y es la misma pieza que
+`invocar` necesita en el paso 3 (un PNJ con `ownerId` del invocador, ver
+[2026-09-07-paso-3-lo-que-cabe-medido.md](./superpowers/specs/2026-09-07-paso-3-lo-que-cabe-medido.md)).
+**Se diseña una vez, allí, en vez de dos veces mal.** Emparenta con `D-P2-11` (la segunda puerta de
+P2-4): las dos son «un permiso que no es *puedes editar esta ficha*».
+
+
 **Abierto, encontrado al escribir el e2e de P2-3.** Varias fichas y comentarios de este proyecto
 hablan de «un PNJ cedido» —P2-3 lo pone en su título, y la nota de `NpcsService.list` explica que
 `ownerId` viaja para que la pantalla pueda leer «es tuyo»—, pero **ese estado no se puede alcanzar

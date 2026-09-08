@@ -68,6 +68,20 @@ colapsaría en «solo el DM» y prometería algo que no da. Razonado en
   otro». Se puede ensayar en seco sin que ocurra nada.
 - **Puedes anular cualquier número** de una hoja. La anulación sale en la traza con su motivo:
   la máquina calcula, tú arbitras.
+- **El combate te propone terminarse, y no se termina solo.** Cuando no queda nadie en pie de un
+  bando, la mesa te lo dice y **el botón de terminar sigue siendo tuyo**: un enemigo a cero puede
+  estar inconsciente, los enemigos huyen, y un combate se acaba parlamentando con el jefe en pie.
+  La propuesta **solo la ves tú**, y a propósito: se calcula sobre todos los combatientes, así que
+  enseñársela a un jugador le diría que no quedan enemigos cuando aún hay uno escondido que él no
+  ve.
+- **Un personaje jugador a cero puntos de golpe NO desaparece de la mesa.** Se queda, en gris y
+  con la etiqueta «Cayó», y con sus salvaciones contra muerte a la vista. **Esa asimetría es del
+  manual, no nuestra**: en la quinta edición un monstruo a cero muere —salvo que tú decidas otra
+  cosa, y el SRD nombra la excepción— y un personaje jugador cae inconsciente y empieza a tirar.
+- **Los modificadores temporales los pones tú.** Un jugador ve los suyos activos y puede
+  quitárselos, pero **escribir uno a mano es tuyo** desde el 2026-09-07: era la puerta más ancha
+  que quedaba para concederse un `+10` sin gastar nada. Lo que un jugador hace por su cuenta
+  —beberse una poción que ya lleva— **aplica sus efectos solo**, sin pedírtelo.
 
 ## Lo que sigue arbitrándose a mano
 
@@ -130,6 +144,12 @@ merece la pena contar.
   expresión que quieras. El desglose se ve entero, con los dados descartados tachados. **El azar
   lo hace el servidor**, no tu navegador.
 - **Ventaja y desventaja** son una elección al tirar, no algo que haya que escribir a mano.
+- **Ayudar cuesta tu acción del turno.** Es la regla del manual —Ayudar es una acción— y desde el
+  2026-09-07 la mesa la cobra: se descuenta y se anuncia. **Fuera de combate no cuesta nada**,
+  porque sin turnos no hay economía que gastar.
+- **Un modificador temporal lo pone el DM**, no tú. Ves los tuyos activos y puedes quitártelos.
+  Lo que sí haces solo: **beberte una poción de tu inventario aplica sus efectos** sin pedirle
+  nada a nadie.
 - **Cuando tu DM te pide una tirada**, te aparece sola. Si la pidió a ciegas, tú no verás el
   resultado: solo él.
 - **Puntos de golpe.** Los subes y los bajas tú, con su rastro en la crónica. A cero empiezan

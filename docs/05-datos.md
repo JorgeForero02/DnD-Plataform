@@ -973,6 +973,50 @@ postura que este proyecto ya tomó con los bandos y con terminar un combate. Lo 
 sí impide es **quién** puede gastar (dueño o DM) y **qué ve**: un combatiente de un PNJ escondido es
 un 404, nunca un 403 que confirmaría que existe.
 
+## `derrotado` y `finalPropuesto`: el combate propone su final (2026-09-08)
+
+**Ninguno de los dos es una columna.** Se calculan al leer el encuentro (`EncountersService.get`) y
+viajan en su respuesta, porque los dos son preguntas sobre el estado de ahora y guardarlas sería la
+segunda verdad que este documento rechaza en cada sección donde aparece la tentación.
+
+- **`derrotado`** por combatiente: su personaje está a cero puntos de golpe. Nada retira a nadie de
+  la mesa —**y esto corrige una creencia que la ficha original daba por hecha**: se comprobó que
+  ningún punto de `apps/api/src/encounters/` lee `currentHp`, así que nunca hubo nadie retirando a
+  nadie. Lo que faltaba era **decir en qué estado está**, no dejar de borrarlo.
+- **`finalPropuesto`**: no queda nadie en pie de uno de los bandos.
+
+**`NEUTRAL` no cuenta para ningún lado.** Significa literalmente «no se ha dicho» —ver el comentario
+de `Side` en el esquema— y proponer el final sobre un silencio afirmaría algo que nadie declaró.
+
+> **`finalPropuesto` se calcula sobre TODOS los combatientes y se entrega SOLO al DM**, y esas dos
+> mitades van juntas o no valen. Calcularlo sobre los visibles le diría a un jugador que no queda
+> ningún enemigo en pie **cuando queda un trasgo `DM_ONLY` que él no ve** — la misma fuga que
+> `activePosition` ya cierra devolviendo `null`. La lista de combatientes sí se filtra por
+> `canView`; el veredicto sobre el combate, no: se omite.
+
+**Y propone, no cierra.** Es la doctrina impresa de las Herramientas del DM —*«el sistema propone;
+tú decides»*— y aquí además la respalda el SRD 5.1 mejor de lo que el plan suponía: en «Monsters and
+Death» la muerte de un monstruo a 0 PG es **costumbre del DM con excepciones nombradas**, no una
+regla automática. Un cierre automático sería el servidor decidiendo por él.
+
+## Todos los endpoints de encuentro devuelven la misma forma (2026-09-08)
+
+**`start()`, `advanceTurn()` y `setInitiative()` devolvían filas crudas de `Combatant`** mientras el
+cliente las tipaba como `Encounter`: sin `derrotado`, sin `finalPropuesto`, y por tanto sin validar
+contra `encounterSchema` desde que existen esos dos campos. Era inocuo solo porque la web tira esas
+respuestas e invalida la consulta — **un tipo que miente deja pasar exactamente eso**.
+
+Los tres devuelven ahora por `get()`, como ya hacían `current()`, `setSide()` y `forceStart()`. **El
+filtro por espectador no recorta nada por esos tres caminos**, comprobado y no supuesto: los tres
+empiezan por `requireDM` y `canView` devuelve `true` para el DM en su segunda línea
+(`common/visibility.ts`).
+
+**`roundAdvanced` viaja al lado, no dentro.** No es parte de un encuentro —es algo que pasó en esta
+llamada—, así que la respuesta de `advanceTurn()` es el encuentro **más** ese campo hermano, y el
+tipo del cliente lo dice en vez de fingir que es un `Encounter` a secas. Se descartó derivarlo
+(obligaría a quien llama a recordar el asalto anterior) y borrarlo (es información real que la mesa
+querrá pintar, aunque hoy no la pinte nadie).
+
 ## `uses` de una actividad **es** `CharacterResource`, no una tabla nueva (paso 2, tarea A4/A5)
 
 `activity.schema.ts` no tiene un campo `uses`: lo que una actividad gasta lo declara `consumption`,

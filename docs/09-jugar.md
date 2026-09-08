@@ -74,14 +74,23 @@ colapsaría en «solo el DM» y prometería algo que no da. Razonado en
 No son sorpresas y no van a aparecer solas a mitad de partida; cada uno tiene su ficha en
 [06-pendientes.md](./06-pendientes.md).
 
-- **El orden de iniciativa y los turnos.** La hoja te da el modificador; el orden lo llevas tú.
-- **Que una tirada haga daño a alguien.** Tirar y cambiar los puntos de golpe son dos gestos
-  distintos, así que la crónica no relaciona la muerte con el golpe que la causó.
-- **Las condiciones no sugieren ventaja ni desventaja.** Un personaje apresado o envenenado
-  tira normal; quien decide es quien tira.
-- **La concentración** se apunta y nadie la comprueba al recibir daño.
+> **Cuatro de las líneas de esta lista caducaron y se quitan el 2026-09-08**, en vez de
+> corregirse una a una: decían que arbitrabas a mano el orden de iniciativa, la traza del daño, la
+> ventaja de las condiciones y la concentración, y **las cuatro las hace el motor** desde la fase
+> 2.5. Esta página es la que se le da a la mesa, así que una carencia que ya no existe le hace a un
+> DM trabajo que la plataforma ya hizo — el mismo género de mentira del que
+> [CLAUDE.md](../CLAUDE.md) ya conserva tres avisos. Lo que sigue vivo se queda abajo.
+
 - **El agotamiento** solo llega al motor por la velocidad y los puntos de golpe máximos. Sus
   desventajas se arbitran.
+- **Los conjuros y las aptitudes con nombre.** Existen los espacios de conjuro y el nombre de cada
+  aptitud de clase, y **no existe ni un hechizo**: un mago ve sus casillas vacías y un bárbaro de
+  nivel 5 pega igual que un guerrero. Es el **paso 3** —el catálogo—, no la fase 3. Mientras tanto
+  se juegan de palabra.
+- **Un jugador no puede curar a otro ni pedirle una salvación** (ficha `P2-4`). Está decidido cómo
+  se arregla y aún no está construido: hoy lo hace el DM.
+- **El daño de una actividad de salvación no se aplica al responderla** (ficha `P2-5`). El servidor
+  pide la tirada y dice el resultado; **quitar los puntos de golpe lo haces tú**.
 - **«Hasta el próximo descanso largo» no es una duración.** Es un suceso, y fingir que son
   segundos sería mentir: esas condiciones se ponen indefinidas y las quitas tú.
 - **No hay segundo DM.** Toda invitación entra como jugador y el papel no se cambia después. Y

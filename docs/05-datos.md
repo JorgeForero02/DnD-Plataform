@@ -926,10 +926,20 @@ aplica primero los `add` y después lo que sustituye o recorta.
 desaparece** (D-2C-2): sigue en la hoja, apagado, hasta que alguien lo quite — así el jugador ve
 **por qué** perdió el +2, que es la mitad del valor de la ficha.
 
-**Quién puede: el DM o el dueño** (`requireOwnerOrDM`), y es una decisión. La mayoría de estos
-efectos salen de algo que el jugador hace —beberse una poción que ya está en su inventario— y obligar
-a que el DM los teclee convertiría una acción de un turno en una petición. Es la misma autoridad que
-ya gobierna gastar un recurso o aplicarse una condición: no abre ninguna puerta nueva.
+**Quién puede conceder: solo el DM** (`requireDM`), desde el 2026-09-07. **Quitar sigue siendo del
+DM o del dueño**, que es un reparto distinto y no se cambió de pasada.
+
+> **Aquí ponía lo contrario, y por eso se cuenta en vez de sustituirse en silencio.** Decía «el DM o
+> el dueño», con este argumento: la mayoría de estos efectos salen de algo que el jugador hace
+> —beberse una poción que ya lleva encima— y obligar a que el DM los teclee convertiría una acción
+> de un turno en una petición. **Ese argumento se cumplió por otro lado**: desde el 2026-09-06,
+> consumir un objeto aplica sus efectos solo, escribiendo el modificador por dentro de la misma
+> transacción (`inventory.service.ts`), sin pasar por esta puerta. Lo que quedaba de ella era el
+> atajo: un jugador podía darse **`+10` al ataque, sin caducidad y con el motivo que quisiera**, y
+> eso entra en la derivación de su propia hoja. Decisión del autor del 2026-09-07, ficha `P1`
+> (puerta B); la pantalla dejó de ofrecer el formulario en el mismo commit, porque un botón que el
+> servidor contesta con 403 es un defecto declarado en
+> [04-convenciones.md](./04-convenciones.md).
 
 **Conceder y vencer dejan suceso** (`TEMP_MODIFIER_GRANTED` / `TEMP_MODIFIER_EXPIRED`), con la
 visibilidad **del personaje** y no `PLAYERS` fijo — un PNJ `DM_ONLY` al que se le pone un +2 no puede

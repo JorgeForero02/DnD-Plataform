@@ -387,6 +387,12 @@ decisiones que no se pueden deducir del código.
 | D-P2-10 | **`raging` y las claves de condición que no son del SRD se reservan en cuanto el servidor las interpreta.** Reincidencia exacta del agujero que el paso 1 cerró para `helped`: sin reservarla, un jugador podía darse a sí mismo +2 de daño permanente sin gastar nada |
 | D-P2-11 | **Un jugador puede curar a otro y pedirle una salvación, pero SOLO por una segunda puerta**: una entrada cuyo permiso no es «puedes editar esta ficha» sino «vienes de una actividad ya autorizada sobre un objetivo que `canView` te deja ver». El `PATCH` directo de `changeHp` sigue exigiendo dueño-o-DM. Decisión del autor, 2026-09-07, sobre la ficha P2-4 — copia el desdoblamiento que `recordFromEngine` (`game-events.service.ts:224`) ya usa desde el motor. Aflojar `requireEditable` a secas quedó descartado: abriría el `PATCH` de cualquier personaje ajeno |
 
+## Fichas sueltas de la cola larga (2026-09-07)
+
+| | Decisión |
+|---|---|
+| D-P4-1 | **Un `[[nombre]]` casa sin acentos**: `normalizar` de `wikilinks.ts` pliega las marcas combinantes antes de comparar, así que `[[bahia]]` encuentra «Bahía». Se pliegan también **ñ y diéresis**, igual que ya hacía `claveDeConcentracion`; en español la ñ es letra propia, así que es una concesión deliberada a quien teclea sin ella. Precio declarado: dos fichas que solo difieran en la tilde colisionan y gana la primera de la lista, el mismo desempate que ya existía. Se pliega el **rango de marcas combinantes** y no `\p{Diacritic}`, que arrastraría `^` y `` ` `` sueltos. Normaliza **para comparar, nunca para mostrar** |
+
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 
 **Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con

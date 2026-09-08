@@ -115,17 +115,57 @@ describe("casar las citas con las fichas de la campaña", () => {
     }
   });
 
-  // **Comportamiento actual, no deseo: los acentos NO se normalizan.** `[[bahia]]` no encuentra
-  // «Bahía». Es una decisión que hoy no está declarada en ningún sitio, así que se fija aquí para
-  // que quien la cambie sepa que rompe esta prueba **a propósito** y no por accidente — y para
-  // que, si se cambia, se cambie con su línea en `docs/06-pendientes.md`.
-  it("no normaliza los acentos: [[bahia]] no encuentra «Bahía»", () => {
+  // **Los acentos ya no separan una cita de su ficha (P4, cerrada el 2026-09-07).** Hasta hoy
+  // esta prueba fijaba lo contrario —`[[bahia]]` daba «Bahía» por inexistente— y su comentario
+  // avisaba de que cambiarla sería a propósito. Esto es ese propósito: para un mundo escrito en
+  // español, que el DM escriba el enlace sin tilde y la ficha se anuncie como inexistente muerde
+  // a diario. La decisión queda en `docs/decisiones.md`.
+  it("normaliza los acentos: [[bahia]] encuentra «Bahía»", () => {
     const bahia = ficha("e-bahia", "Bahía");
     const resultado = resolverCitas(citasDelTexto("[[bahia]]"), [bahia]);
-    expect(resultado.encontradas).toEqual([]);
-    expect(resultado.sinFicha.map((c) => c.texto)).toEqual(["bahia"]);
-    // Escrito con su acento sí la encuentra, así que el fallo es solo de acentos y no del casado.
+    expect(resultado.encontradas).toHaveLength(1);
+    expect(resultado.encontradas[0].fichaDestino.id).toBe("e-bahia");
+    expect(resultado.sinFicha).toEqual([]);
+    // Y sigue encontrándola escrita con su acento, en cualquier caja.
     expect(resolverCitas(citasDelTexto("[[BAHÍA]]"), [bahia]).encontradas).toHaveLength(1);
+  });
+
+  // **El texto que se enseña en pantalla no se toca**: la normalización es solo para comparar.
+  // Si el aviso mostrara la forma normalizada, el DM leería un nombre que él no escribió.
+  it("normalizar para comparar no reescribe lo que el DM tecleó", () => {
+    const [cita] = citasDelTexto("[[Bahía de los Ahogados]]");
+    expect(cita.texto).toBe("Bahía de los Ahogados");
+    expect(cita.clave).toBe("bahia de los ahogados");
+  });
+
+  // **La ñ también se pliega, y se dice aquí porque es la parte discutible.** En español la ñ es
+  // letra propia, no una n con adorno, así que plegarla es una concesión deliberada a quien
+  // teclea sin ella — la misma que ya hace `claveDeConcentracion` en
+  // `apps/web/src/features/character-sheet/vocabulario.ts`. Casar de más aquí solo tiende un
+  // enlace que el DM pidió; casar de menos lo pierde en silencio.
+  it("pliega también la ñ y la diéresis", () => {
+    const montana = ficha("e-montana", "Paso de la Montaña");
+    const pinguino = ficha("e-pinguino", "Bahía del Pingüino");
+    const resultado = resolverCitas(
+      citasDelTexto("[[Paso de la Montana]] y [[bahia del pinguino]]"),
+      [montana, pinguino],
+    );
+    expect(resultado.encontradas.map((e) => e.fichaDestino.id)).toEqual([
+      "e-montana",
+      "e-pinguino",
+    ]);
+    expect(resultado.sinFicha).toEqual([]);
+  });
+
+  // **Dos fichas que solo se distinguen por la tilde ahora colisionan**, y el desempate es el que
+  // ya existía: gana la primera de la lista. Se fija para que la colisión no sea una sorpresa el
+  // día que aparezca — es el precio declarado de plegar acentos, no un fallo nuevo.
+  it("dos fichas que solo difieren en la tilde colisionan, y gana la primera de la lista", () => {
+    const conTilde = ficha("e-con", "Bahía");
+    const sinTilde = ficha("e-sin", "Bahia");
+    const resultado = resolverCitas(citasDelTexto("[[bahia]]"), [conTilde, sinTilde]);
+    expect(resultado.encontradas).toHaveLength(1);
+    expect(resultado.encontradas[0].fichaDestino.id).toBe("e-con");
   });
 
   // Sin citas no hay nada que resolver, y las tres listas salen vacías en vez de indefinidas.

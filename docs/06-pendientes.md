@@ -15,7 +15,10 @@ y las **seis de la tanda corta del 2026-09-08** en
 y las **tres de la tanda B, el mismo día**, en
 [`_archivo/pendientes-cerrados-2026-09-07-tanda-b.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-b.md),
 y **P2-2, el formulario de entrega**, en
-[`_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md`](./_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md).
+[`_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md`](./_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md),
+y las **dieciocho que el reconocimiento del 2026-09-08 encontró falsas** —cuatro de ellas P1, y
+diez con un barrido o una cita de línea dentro— en
+[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -44,7 +47,7 @@ es lo que evita volver a creérsela.
 > |---|---|
 > | `docs/decisiones.md` y el plan 05 | **El color de cada personaje** — decisión del autor, aplicada |
 > | El plan 15 y la auditoría de la cola larga | **La API no tiene endpoint de salud** — cerrada |
-> | Este documento, más abajo | **Una invitación no se puede listar ni revocar** — la cerró el plan 11, que la llamó `D3b` |
+> | Este documento, hasta el 2026-09-08 | **Una invitación no se puede listar ni revocar** — la cerró el plan 11, que la llamó `D3b`, y este documento la siguió listando como P1 abierta hasta que el reconocimiento del 2026-09-08 la archivó. **La contradicción vivía entre esta tabla y el cuerpo**, que es la razón por la que esta fila se conserva |
 > | `superpowers/plans/2026-09-02-plan-interfaz-y-contenido.md` | **El alcance de la línea de tiempo** |
 > | `superpowers/specs/2026-09-02-auditoria-interfaz.md` | **«Ningún elemento memorable»** |
 >
@@ -95,8 +98,14 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-08** (el resto de la ficha P3, que se archivó creyendo cerrada una
-deuda que sigue viva en `advanceTurn()` y `setInitiative()`; y antes, los quince planes de
+Última revisión: **2026-09-08** (el **reconocimiento**: unas cincuenta y cinco fichas leídas contra
+el árbol, **dieciocho archivadas por falsas** —cuatro de ellas P1— y el resto de las tocadas
+corregidas en sitio: **ocho citas de línea desplazadas**, dos enunciados que iban al revés (`J6` y
+`N4`), la lista de `viewerFor` que había crecido de cinco servicios a trece, y varias mitades
+falsas retiradas de fichas que siguen abiertas por la otra mitad; antes, el mismo día, el resto de
+la ficha P3, que se
+archivó creyendo cerrada una deuda que sigue viva en `advanceTurn()` y `setInitiative()`; y antes,
+los quince planes de
 [`superpowers/plans/2026-09-05-planes/`](./superpowers/plans/2026-09-05-planes/00-INDICE.md),
 que cerraron catorce y dejaron el 12 en marcha; y el saneamiento del mismo día: 37 fichas tachadas
 archivadas, 59 fechas corregidas y la ficha de la copia de seguridad cerrada como decisión). **La
@@ -113,7 +122,9 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 
 `EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando
 `Character.ownerId` contra `userId` —quien pulsó el botón de empezar el combate—, no contra «es un
-DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:244-245`, cita comprobada en
+DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:247-248`, remedido el
+2026-09-08 — la cita anterior decía `:244-245`; el reparto vive en el par `suyos`/`ajenos`, y ese
+nombre sobrevive al número. Antes, cita comprobada en
 `04b6e2b` — el fichero se ha reescrito varias veces y el número se mueve).
 `MembershipService` sí sabe contar cuántos DM quedarían en una campaña
 (`apps/api/src/campaigns/membership.service.ts:82-90`), así que la información para distinguir
@@ -148,10 +159,28 @@ conjuros no es un mago, y es lo primero que va a preguntar cualquiera que se hag
 preocupa que alargue la partida de agentes.
 
 **Y ese mismo día se descubrió que NO es un hueco suyo: es el mismo que el de las aptitudes.** Las
-aptitudes de clase también son solo un nombre —`f(1, "rage", "Furia")` en
-`apps/api/src/rules/catalog/classes.ts:60`, con **cero usos** de `"rage"` o `"extra-attack"` en todo
-el árbol—, así que un bárbaro de nivel 5 juega **exactamente igual** que un guerrero: los dos pegan
-una vez con su arma.
+aptitudes de clase eran solo un nombre —`f(1, "rage", "Furia")` en el catálogo de clases, con
+**cero usos** de `"rage"` o `"extra-attack"` en todo el árbol—, así que un bárbaro de nivel 5
+jugaba **exactamente igual** que un guerrero: los dos pegaban una vez con su arma.
+
+> **La mitad de la Furia se cerró, y esta ficha no se enteró hasta el 2026-09-08.** Ya no es una
+> línea suelta: `RASGO_FURIA` (`apps/api/src/rules/catalog/classes.ts:124`) declara la aptitud con
+> su concesión de usos, y `apps/api/src/activities/` la ejecuta —`"rage"` consume su recurso
+> (`activities.service.ts`, con la clave declarada en su catálogo) y tiene su recorrido de
+> navegador en `apps/web/e2e/furia.spec.ts`—. La construyeron A9, A10 y A11. Así que **el bárbaro
+> ya no juega igual que el guerrero**, y la frase de arriba se conserva en pasado en vez de
+> borrarse porque es el razonamiento que abrió esta ficha.
+>
+> **Y la cita de esta ficha se había desplazado**: decía `classes.ts:60`, que hoy es un comentario
+> sobre el nivel 20 de la Furia, no su declaración. Corregida arriba, y con el nombre delante del
+> número para que la próxima vez se pueda encontrar sin él.
+>
+> **Lo que sigue midiéndose igual es `"extra-attack"`**: sus siete apariciones están todas en
+> `classes.ts` (líneas 172, 401, 403, 407, 445, 497 y 551) y `rules/attacks.ts` no lo lee, así que
+> el nivel 5 del guerrero sigue pegando una vez. Y **de conjuros no hay ni uno**, que es el
+> enunciado principal de esta ficha y no ha cambiado: `rules/catalog/` no tiene fichero de
+> conjuros, y un barrido de nombres reales del SRD por api, web y `packages/shared` no devuelve
+> más que fixtures de prueba y comentarios.
 
 Un conjuro y una aptitud son **lo mismo con distinto origen**: algo que un personaje puede hacer, que
 gasta un recurso, elige objetivo, tira o pide una tirada, y a veces deja un efecto con duración. El
@@ -410,7 +439,10 @@ rojo—. Las cuatro tienen ahora su prueba con mutación comprobada.
 escribir en él?) estaba escrito dos veces y 2B iba a escribir la tercera. Vive ahora en
 `apps/api/src/common/character-viewer.ts`. Siguen con su copia propia `entities`, `characters`,
 `character-sheet`, `comments`, `links`, `sessions`, `game-events`, `rules-engine` y
-`campaign-items`.
+`campaign-items` — **y cuatro más que esta lista no nombraba, remedido el 2026-09-08**:
+`dm-tables`, `encounters`, `npcs` y `statblocks`. **Trece en total, y solo tres servicios
+importan el común**, así que la casa se pagó y casi nadie se ha mudado. La deuda viva es la línea
+de `viewerFor` en **P4 — Limpieza**, que es donde se mide.
 
 ## Lo que dejó abierto la auditoría de mecánica de 2B (2026-09-03, noche)
 
@@ -595,7 +627,7 @@ Lo que falta, y va como **tarea 1.18**:
 | | Hallazgo | Gravedad |
 |---|---|---|
 | 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
-| 8 | **HECHO a medias** (1.18a, mitad de servidor): ya se puede cambiar el nombre visible y la contraseña por API —exigiendo la actual, verificada con argon2—, y cambiarla **invalida los tokens anteriores**. Falta la **pantalla** (va en 1.18b). **Recuperarla si se olvida sigue BLOQUEADO**: necesita servicio de correo, que no existe; se decide junto al despliegue | web |
+| 8 | **HECHO, servidor y pantalla.** Se puede cambiar el nombre visible y la contraseña —exigiendo la actual, verificada con argon2—, y cambiarla **invalida los tokens anteriores**. **La pantalla también está**: `pages/AccountPage.tsx`, con su formulario de nombre y el de contraseña; la frase «falta la pantalla (va en 1.18b)» era falsa y se retiró el 2026-09-08. **Lo único que sigue BLOQUEADO es recuperarla si se olvida**: necesita servicio de correo, que no existe — su ficha viva es **D8** del bloque de despliegue | cerrado salvo la recuperación |
 
 ### Deuda de la capa visual, tras 1.19b (2026-09-01)
 
@@ -679,9 +711,11 @@ Detalle y evidencia en
 cerrar la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido a propósito, ver
 "Antes de la primera partida" más abajo en este mismo documento.
 
-| | Hallazgo | Dónde falla |
-|---|---|---|
-| B3 | **No se puede cambiar el nombre visible ni la contraseña**, ni recuperarla si se olvida — va con la **tarea 1.18** (seguridad), no con 1.17 | API + web |
+> **B3 se archivó el 2026-09-08, y con ella esta tabla se quedó vacía.** Decía que no se puede
+> cambiar el nombre visible ni la contraseña: `pages/AccountPage.tsx` hace las dos. La tercera
+> parte —recuperarla si se olvida— **no se pierde**: vive en **D8** del bloque de despliegue,
+> que es donde le corresponde por depender de un servicio de correo. La medición está en
+> [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
 
 > **B1 y B2, cerrados del todo en 1.17d (2026-09-01).** La tarea 1.17a (mismo día) había
 > entregado los tres endpoints con sus pruebas — ver [05-datos.md](./05-datos.md) y la entrada
@@ -758,76 +792,78 @@ vez: comentarios, campañas (desde 1.17d), miembros, los siete campos de `Entity
 de visibilidad entera —los recortes de `features/sessions/SessionEditor.tsx` y
 `features/characters/CharacterEditor.tsx` corresponden con los límites reales del modelo
 descritos en [05-datos.md](./05-datos.md), y ninguno de los dos editores miente al usuario.
-**El núcleo de la promesa —quién ve qué— está entero.** Lo que falta es casi todo *movimiento*:
-navegar, buscar, ordenar y administrar la mesa.
+**El núcleo de la promesa —quién ve qué— está entero.** Y la frase con la que esta sección cerraba
+—*«lo que falta es casi todo movimiento: navegar, buscar, ordenar y administrar la mesa»*— **ya solo
+es cierta en dos de sus cuatro tercios, remedido el 2026-09-08**: navegar se puede (los enlaces
+llevan a su ficha, y hay página de detalle con URL propia) y administrar la mesa también (cambiar
+el rol de un miembro, listar y revocar invitaciones). **Buscar y ordenar siguen abiertos**, en `E1`
+y `D4`. Se conserva citada porque era el resumen de la pasada, y su caducidad es el hallazgo.
 
 | | Hallazgo | Prioridad | Evidencia |
 |---|---|---|---|
-| D1 | **Cuenta sin pantalla** — nombre visible y contraseña solo cambiables por API. **Ya asignado a la tarea 1.18b**, no es hueco nuevo | P1 — **asignado** | `auth/auth.controller.ts:63` y `:83` exponen los dos `PATCH`; `grep -rn "auth/me\|auth/password" apps/web/src` solo encuentra el `GET` de `features/auth/api.ts` |
-| D2 | **No se puede invitar a un segundo DM, ni ascender a nadie**: el rol de un miembro es inmutable de por vida | P1 | `prisma/schema.prisma:73` declara `role Role @default(PLAYER)` y `invites/invites.service.ts:29` lo respeta al aceptar, pero `invites/invites.service.ts:17-19` crea la invitación **sin `role`**, el controlador no acepta cuerpo, y no existe ningún `PATCH .../members/:userId` |
-| D3 | **Una invitación no se puede listar ni revocar**: se generan a ciegas y valen para siempre | P1 | `schema.prisma:74-75` escribe `createdAt`/`usedAt` y ninguna pantalla los lee; `invites/invites.controller.ts` tiene exactamente dos rutas (ni `GET` de lista ni `DELETE`); `features/invites/InvitePanel.tsx` solo muestra el último enlace, y solo hasta que se recargue |
-| D4 | **La fecha de una sesión no se ve en la lista ni la ordena** | P1 | `schema.prisma:129` la guarda y `features/sessions/SessionEditor.tsx` la edita, pero la fila (`pages/CampaignDetailPage.tsx:220-224`) pinta título y distintivo y nada más; el servidor ordena por `createdAt: "desc"` (`sessions/sessions.service.ts:48`) |
-| D5 | **Raza, clase y biografía se editan y no salen en la lista de personajes** | P2 | `schema.prisma:141-144` los guarda, `features/characters/CharacterEditor.tsx` los edita, y la fila (`pages/CampaignDetailPage.tsx:284-285`) pinta nombre y nivel. Relacionado: `GET .../characters/:id` y `GET .../sessions/:id` no los llama nadie, porque el modal de edición se siembra desde el objeto de la lista — no es un fallo, es no tener vista de detalle |
-| D6 | **`User.isAdmin` no tiene ninguna puerta de concesión**: es el permiso más potente del sistema y no lo gobierna nada | P2 | `schema.prisma:38` lo declara y `common/visibility.ts:16` lo respeta de verdad (salta toda la matriz de visibilidad); `grep -rn "isAdmin" apps packages` fuera de esos lectores **no encuentra un solo escritor**: solo un `UPDATE` a mano en Postgres |
-| D7 | **`Campaign.ownerId` es una segunda fuente de verdad que nadie consulta** | P3 | Se escribe en `campaigns/campaigns.service.ts:20` y ninguna comprobación de autorización lo lee: todas pasan por `membership.requireDM`, que mira `CampaignMember.role`. La web lo declara en su tipo y tampoco lo usa |
-| D8 | **Ninguna pantalla muestra ninguna fecha**, comentarios incluidos | P3 | `grep -rn "createdAt" apps/web/src --include=*.tsx` fuera de comprobaciones: **cero**. `features/comments/CommentThread.tsx` pinta autor y cuerpo, sin marca de tiempo |
-| D9 | **Seis emisiones de evento sin un solo oyente** — andamiaje futuro, no afecta al usuario | P3 | `campaigns/campaigns.service.ts`, `entities/entities.service.ts` e `invites/invites.service.ts` emiten por `EventEmitter2`; `grep -rn "OnEvent" apps/api/src`: **cero** |
+| D4 | **La fecha de una sesión no la ORDENA el servidor.** Su primera mitad —«no se ve en la lista»— era falsa y se archivó el 2026-09-08 | P2 (bajado de P1: se ve, solo no ordena) | La fila **sí** pinta la fecha, con «sin fecha» cuando no hay: `pages/CampaignDetailPage.tsx:422`. Lo que sigue: `sessions/sessions.service.ts:189` ordena por `createdAt: "desc"`, así que la lista no va por cuándo se juega. **Las dos citas de la versión anterior de esta fila estaban desplazadas** y señalaban código de otra cosa |
+| D6 | **`User.isAdmin` no tiene ninguna puerta de concesión**: es el permiso más potente del sistema y no lo gobierna nada | P2 | `common/visibility.ts:23` es el `if (viewer.isAdmin) return true;` que salta toda la matriz; remedido el 2026-09-08, `isAdmin` fuera de sus lectores **no tiene un solo escritor** —los dos únicos aciertos son un comentario de `links/links.service.ts` y un `?? false` de `notifications/notifications.service.ts`—: solo un `UPDATE` a mano en Postgres. (La cita anterior, `:16`, se había desplazado) |
+| D7 | **`Campaign.ownerId` es una segunda fuente de verdad que nadie consulta** | P3 | Se escribe en `campaigns/campaigns.service.ts:21` —remedido el 2026-09-08; la cita anterior decía `:20`— y se emite en el suceso de la 25. Ninguna comprobación de autorización lo lee: todas pasan por `membership.requireDM`, que mira `CampaignMember.role`. La web lo declara en su tipo y tampoco lo usa |
 | E1 | **Sesiones y Personajes siguen sin buscador ni filtro**, y **no hay búsqueda que cruce pestañas** — ya declarado bajo la tabla de 1.17, confirmado abierto | P2 — ya declarado | `features/entities/EntityFilterBar.tsx` se monta solo en `EntityTab` de `pages/CampaignDetailPage.tsx` y filtra la lista ya cargada de **un solo tipo**; `fetchAllEntities` (`features/entities/api.ts`) ya trae todos los tipos y solo lo consume el selector de destino de enlaces |
-| E2 | **Los enlaces del mundo no se pueden recorrer, y son de un solo sentido** | P1 | `features/links/LinksPanel.tsx` pinta el destino como **texto plano**, no como enlace, así que ver una relación no lleva a ella; y `links/links.service.ts:49` consulta `where: { fromId: entityId }`, así que **no hay enlaces entrantes** — ninguna ficha sabe quién la menciona. **La tercera parte de este hallazgo se cerró el 2026-09-02**: el panel ya no vive dentro del editor, sino en la página de lectura de la ficha |
-| E3 | **Diez campos con límite en el servidor que la pantalla no anuncia**, y el error vuelve crudo y en inglés | P2 | `grep -rn "maxLength" apps/web/src`: **cero**; el único límite en cliente es `min`/`max` del nivel (`features/characters/CharacterEditor.tsx:151-152`). Los límites reales viven en `packages/shared/src` (`campaign.schema.ts`, `entity.schema.ts`, `session.schema.ts`, `character.schema.ts`) |
 
-**Lo que estas líneas significan en una mesa real**, ordenado por cuándo duele y no por
+> **Siete de las doce filas de esta tabla se archivaron el 2026-09-08 por falsas** —`D1`, `D2`,
+> `D3`, `D5`, `D8`, `D9` y `E2`—, y `D4` se quedó con la mitad que sigue siendo verdad. Están en
+> [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md)
+> con la medición de cada una. **Esta sección era la más falsa del documento**, y no por azar:
+> es la que más citas de línea llevaba dentro, y una cita de línea se pudre en la siguiente
+> edición del fichero que cita.
+
+**Lo que queda de estas líneas en una mesa real**, ordenado por cuándo duele y no por
 dificultad, porque es la pregunta que hizo el autor:
 
-- **Antes de sentarse, el DM no puede tener un co-DM** (D2). Si la mesa tiene dos narradores,
-  uno entra como jugador y ve la campaña como jugador, sin camino de vuelta: nadie puede
-  ascender a nadie y `campaigns/membership.service.ts` prohíbe al DM salir. Peor: como la
-  **recuperación de contraseña está bloqueada** (ver abajo), si esa cuenta se pierde **la
-  campaña queda huérfana para siempre**. D2 y D1 juntos son un modo de fallo, no dos molestias.
-- **No sabe qué invitaciones ha mandado ni cuáles siguen vivas** (D3). Con cuatro jugadores son
-  cuatro enlaces irrevocables y sin registro; si uno se filtra en un chat de grupo, no hay nada
-  que pulsar. `InvitePanel.tsx` es honesto y lo dice en pantalla, pero eso documenta el
-  problema, no lo resuelve.
-- **Preparando el mundo, no puede recorrer los enlaces que acaba de crear** (E2). Es el
-  hallazgo más importante de la pasada y es de dirección inversa: la pantalla **ofrece** una
-  wiki de entidades enlazadas y **no deja andar por ella**. Es literalmente lo que el paso 2 de
-  [09-jugar.md](./09-jugar.md) llama *"el valor de la herramienta"*.
-  Y como no hay enlaces entrantes, la ficha del NPC no sabe en qué misiones sale, que es la
-  forma en que se pregunta de verdad.
-- **Durante la partida, nadie sabe cuándo es la próxima sesión sin abrirlas una a una** (D4), y
-  un jugador no ve quién es quién en el grupo más allá del nombre y el nivel (D5).
+- **Durante la partida, la lista de sesiones no va por cuándo se juega** (D4). La fecha se ve en
+  cada fila —eso se arregló—, pero el orden lo pone `createdAt`, así que la próxima sesión no
+  está donde la mesa la busca. Es un `orderBy`.
+- **Buscar sigue siendo de un solo tipo** (E1). La búsqueda por texto ya la hace el servidor y ya
+  pasa por `canView` antes que por el texto, pero solo desde la pestaña del mundo: no hay una que
+  cruce sesiones y personajes.
+- **Y dos que son decisión, no código** (D6 y D7): o se le da una puerta a `isAdmin` y se declara
+  cuál de las dos fuentes manda sobre «quién manda aquí», o se escribe que son de mantenimiento
+  manual.
+
+> **Lo que este bloque decía y ya no dice.** Sus cuatro afirmaciones más duras —el DM no puede
+> tener un co-DM, no sabe qué invitaciones ha mandado, no puede recorrer los enlaces que acaba de
+> crear, y «la campaña queda huérfana para siempre» si se pierde la cuenta del DM— **eran las
+> cuatro falsas**, y la última era un modo de fallo construido sumando dos fichas que ya estaban
+> cerradas. Se conservan enteras en el archivo, porque una consecuencia razonada a partir de dos
+> premisas falsas es más instructiva que las premisas solas.
 
 **La recuperación de contraseña no es un hueco simple y no se cuenta como tal.** Está
 **bloqueada por un servicio de correo que no existe**, y así está declarado en el propio código
 (`packages/shared/src/auth.schema.ts:18-20`: *"Password RECOVERY (forgotten password) is out of
 scope — it needs an email service that doesn't exist"*). Es una **decisión de despliegue**, se
-toma junto con el VPS (ver [03-despliegue.md](./03-despliegue.md)), y hasta entonces agrava a
-D2 en vez de resolverse por su cuenta. Ya está dicho así en la fila 8 de la tabla de seguridad,
-arriba; se repite aquí porque D2 la convierte en algo peor que una molestia.
+toma junto con el VPS (ver [03-despliegue.md](./03-despliegue.md)) y su ficha viva es **D8** del
+bloque de despliegue, más abajo. **Hasta el 2026-09-08 esta frase decía que «agrava a D2»**, y
+D2 —no se puede ascender a nadie— llevaba cerrada desde el plan 11: la recuperación sigue
+bloqueada, pero ya no convierte una cuenta perdida en una campaña huérfana, porque otro DM puede
+existir.
 
-**Coste declarado, para poder decidir sin volver a mirar el código:** D4 y D5 son triviales
-(una línea en la fila, un `orderBy`); D2 es bajo en el servidor —una entrada de cuerpo en
-`POST /campaigns/:id/invites` reutilizando el `roleSchema` que ya existe en
-`packages/shared/src/visibility.schema.ts`— y medio si además se quiere cambiar el rol de un
-miembro ya dentro (hay que decidir qué pasa si el último DM se degrada); D3 es medio-bajo; E3
-es bajo si la respuesta es traducir el error de Zod una sola vez en `lib/api.ts`; E2 es el
-caro, porque su arreglo de verdad es **una página de detalle de entidad con URL propia**, y los
-otros dos puntos —enlace navegable y enlaces entrantes— dependen de ella para no quedarse en
-parche. D6 y D7 son **decisión, no código**: o se le da una puerta a `isAdmin` y se declara
-cuál de las dos fuentes manda sobre "quién manda aquí", o se escribe que son de mantenimiento
-manual — pero D7 se rompe solo en cuanto exista D2.
+**Coste declarado, para poder decidir sin volver a mirar el código:** D4 es trivial (un
+`orderBy`); E1 es medio, porque una búsqueda que cruce pestañas necesita decidir qué devuelve el
+servidor cuando los tipos son distintos. D6 y D7 son **decisión, no código**: o se le da una
+puerta a `isAdmin` y se declara cuál de las dos fuentes manda sobre «quién manda aquí», o se
+escribe que son de mantenimiento manual.
 
-**Dos cosas que conviene no leer mal:**
+**Tres cosas que conviene no leer mal:**
 
 - **Ninguna prueba iba a encontrar nada de esto.** La suite (unitarias: bloque generado de
   [00-INDEX.md](./00-INDEX.md); navegador: [08-pruebas.md](./08-pruebas.md)) verifica que **lo
-  que existe** funciona. Nada puede ponerse rojo porque un enlace no sea navegable, porque la
-  fila de una sesión no pinte su fecha o porque un campo del esquema no tenga escritor. Es el
-  mismo punto ciego estructural que motivó el contraste de 1.17.
-- **Las citas del informe original apuntaban al commit `70b353c`.** Las de esta tabla están
-  reescritas contra el árbol actual, porque la tarea 1.19b (`1bf0351`, capa de tokens)
-  reordenó los ficheros de `apps/web/src` y desplazó sus líneas — las de `apps/api` y
-  `packages/shared` no se movieron. Si alguien recupera el informe original, sus números de
+  que existe** funciona. Nada puede ponerse rojo porque un campo del esquema no tenga escritor.
+  Es el mismo punto ciego estructural que motivó el contraste de 1.17.
+- **Y ninguna prueba iba a encontrar que estas fichas habían caducado, que es el problema
+  simétrico y el que de verdad pasó.** Siete de las doce se arreglaron sin que nadie volviera a
+  esta tabla, en la semana siguiente a escribirla. Lo único que las cazó fue leer el texto contra
+  el código — no un control. `pnpm check:docs` sí habría cazado las citas de línea desplazadas **si
+  hubieran apuntado más allá del final del fichero**; apuntaban dentro, a código de otra cosa, y
+  eso ninguna expresión regular lo ve.
+- **Las citas del informe original apuntaban al commit `70b353c`.** Las de esta tabla se
+  reescribieron contra el árbol del 2026-09-01, y **se volvieron a reescribir el 2026-09-08**
+  porque se habían desplazado otra vez. Si alguien recupera el informe original, sus números de
   línea de web hay que leerlos sobre `70b353c`, no sobre `main`.
 
 ## El despliegue de la fase 2, y cómo se verifica (decidido 2026-09-03)
@@ -926,8 +962,12 @@ CI. Decisión: se activa como tarea propia, no de rebote.
 **Sin umbral de cobertura (N2) ni mutación (N3).** No declarados y no prometidos. Ruta de
 mejora, no compromiso.
 
-**No hay prueba de rechazo por validación** en personajes (`level > 20` devuelve 400 y nadie
-lo comprueba). Detectado en la tarea 1.9.
+> **La tercera línea de esta sección se archivó el 2026-09-08.** Decía *«no hay prueba de rechazo
+> por validación en personajes (`level > 20` devuelve 400 y nadie lo comprueba)»*, y
+> `level-up.service.spec.ts` lo comprueba dos veces desde entonces. La medición está en
+> [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
+> **Lo que sigue siendo cierto de esta sección son sus dos primeras líneas**: el lint sin tipos y
+> la ausencia de umbral de cobertura y de mutación.
 
 ## P3.5 — Limitaciones conocidas de la tarea 1.13-fix
 
@@ -966,8 +1006,12 @@ comportamiento:
 - **Aceptar una invitación no es transaccional** y **el token no caduca ni es revocable**.
   Tarea 1.4; visible desde la interfaz desde la 1.14 (ver "Cerrados" arriba) — el DM ahora ve
   y comparte el enlace, así que la falta de caducidad deja de ser un detalle interno.
-- **`specificPlayerIds` no se valida contra los miembros de la campaña**: se puede conceder
-  acceso a alguien de fuera. Queda inerte, pero se guarda. Tarea 1.5.
+- **Las concesiones de visibilidad no se validan contra los miembros de la campaña**: se puede
+  conceder acceso a alguien de fuera. Queda inerte, pero se guarda. Tarea 1.5. **El símbolo que
+  esta línea citaba —`specificPlayerIds`— ya no existe en ninguna capa**, y se corrigió el
+  2026-09-08: hoy son `grants` en la base y `grantedUserIds` en el borde. El hueco sigue igual —
+  `entities/entities.service.ts:200` borra y vuelve a crear las concesiones, y el `requireMember`
+  de ese método comprueba **a quien llama, no a los concedidos**.
 - **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
   aceptan sin aviso. Tarea 1.5.
 - **`Session` y `Character` no tienen `grants` ni creador propio** → `SPECIFIC_PLAYERS` es
@@ -1057,6 +1101,36 @@ código desmentía.** Al buscar más casos aparecieron dos:
 **Una ficha con un barrido dentro envejece igual que el código, y encima parece probada.** Las ~30
 secciones sin auditar merecen una pasada con esto en mente.
 
+### La pasada se hizo el 2026-09-08, y eran dieciocho
+
+**Sigue abierta como ficha, y ahora con su medida.** El reconocimiento de ese día leyó unas
+cincuenta y cinco fichas contra el árbol y encontró **dieciocho falsas**, no dos —`E3` y `D8`
+incluidas, que llevaban desde el 2026-09-04 declaradas mentirosas **y en la tabla igual**—. Están
+en
+[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md),
+cada una con su medición.
+
+**Lo que la pasada añade a esta ficha, y es lo que la mantiene abierta:**
+
+- **El barrido no es la única forma que envejece.** Diez de las dieciocho llevaban dentro un
+  barrido, un símbolo o una **cita de línea**, y las citas de línea fueron las peores: siguen
+  apuntando **dentro** del fichero, a código de otra cosa, así que `pnpm check:docs` no las ve —
+  ese control solo caza la línea que se pasa del final. Se corrigieron **ocho** en esta pasada, en
+  `encounters`, `roll-requests`, `entities`, `classes`, `visibility`, `campaigns`,
+  `CampaignDetailPage` y `sessions`.
+- **Y una lista enumerada envejece igual, en las dos direcciones.** La línea de `viewerFor`
+  nombraba cinco servicios y hoy son trece; corregirla a la baja, con un barrido truncado por un
+  `head`, **estuvo a punto de meter una mentira nueva en esta misma pasada**.
+- **La pasada estuvo a punto de mentir dos veces, y las dos por el mismo atajo.** La otra fue
+  `N4`: se dio por cerrada al encontrar `ruleName` en `rules-engine.service.ts:406`, que es el
+  **aviso** de la propuesta y no su **listado** —`listProposals` devuelve las filas crudas—, así
+  que la ficha seguía siendo cierta. **El atajo, en los dos casos, fue creer un acierto de `grep`
+  sin leer qué lo rodea**, que es exactamente el modo de fallo que esta ficha describe, cometido
+  por quien venía a arreglarlo. Queda dicho porque es el riesgo de este trabajo, no una anécdota.
+- **La forma que no envejece** es la que ya usa `04-convenciones.md` desde que le pasó lo mismo:
+  **nombrar el símbolo y dejar el barrido escrito para que se vuelva a correr**, en vez de pegar
+  su resultado.
+
 ## P2 · `OWNER_DM` en un statblock se comporta como `DM_ONLY` (2026-09-04)
 
 `statblocks.service.ts:163-171` pasa `createdById: ""` a `canView`, y `canView:26-27` resuelve
@@ -1078,17 +1152,17 @@ lista del editor con una línea.
 - **`stampSessionNoteSchema` acepta el sello vacío.** Los dos compositores lo impiden en pantalla;
   `text` sigue siendo `optional()` sin `min(1)`, así que una llamada directa a la API crea el sello
   que dice «Nota». Y los ya escritos siguen en la base, entrando en la crónica de cierre.
-- **`changeHp` no comprueba que el `rollEventId` tenga que ver con ese personaje** ni que sea
-  reciente. La guarda de signo del cliente es **la única** defensa contra atar una curación a una
-  tirada de daño.
-- **`houseTablesEnabled` no tiene `GET`**: la pantalla se ve apagada aunque esté encendido.
+- **`changeHp` no comprueba que el `rollEventId` tenga que ver con ese PERSONAJE**, ni que sea
+  reciente. **Lo que esta línea decía de más se retiró el 2026-09-08**: afirmaba que la guarda de
+  signo del cliente era «la única» defensa, y no lo es —`characters/character-sheet.service.ts:1271`
+  exige que la tirada citada exista en la campaña **y sea de tipo `ABILITY_ROLL` o `DEATH_SAVE`**,
+  y lanza 400 si no. El comentario de ese bloque cuenta además que la primera versión solo miraba
+  identificador y campaña, así que el id de un comentario o de un `ENTITY_REVEALED` pasaba el
+  filtro. Lo que queda abierto es el personaje y la recencia.
 - **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
 - ~~**`GET .../statblocks` no devuelve `visibility`**~~ (ficha C6-2, **cerrada el 2026-09-05**).
-- **`ENTITY_LINKED` no se escribe nunca**: enlazar dos fichas no deja rastro ni dispara una regla.
 - **El taller CONVIVE con las listas CRUD de `CampaignDetailPage`.** Nadie ha perdido nada, pero la
   sustitución de la §2 de la auditoría **no está completa** hasta que se decida qué se cae de ahí.
-- **`DISPARADORES_SIN_MOTOR` está duplicado** entre web y API. Caben en `packages/shared/src`; se
-  duplicaron **por una frontera de trabajo, no por una imposibilidad**.
 - **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
   La respuesta buena es una ruta de enlaces por campaña.
 
@@ -1105,14 +1179,23 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
   comentario lo dice; el del módulo sigue diciendo lo otro. **Corregir el comentario.**
 - **«Gana el más reciente» en `wikilinks.ts` es cierto por acoplamiento.** `resolverCitas` es pura
   y se queda con **la primera de la lista**; que esa sea la más reciente depende de que
-  `entities.service.ts:77` devuelva `orderBy: { createdAt: "desc" }`. **Nada en el módulo lo dice
+  `entities.service.ts:102` devuelva `orderBy: { createdAt: "desc" }` —remedido el 2026-09-08; la
+  cita anterior decía `:77`—. **Nada en el módulo lo dice
   ni lo garantiza**: el día que un llamante le pase una lista ordenada por nombre, el desempate
   cambia sin que falle nada.
 
 ## P4 — Limpieza
 
-- **`viewerFor(userId, campaignId)` está duplicado** en los servicios de entidades, enlaces,
-  comentarios, sesiones y personajes. Candidato a extraerse a `common/`. Detectado en 1.7.
+- **`viewerFor(userId, campaignId)` está duplicado en TRECE servicios**, y la casa común a la que
+  llevarlo ya existe: `common/character-viewer.ts`, que 2B pagó en vez de heredar. Detectado en
+  1.7 y **remedido el 2026-09-08, al alza**: esta línea nombraba cinco (entidades, enlaces,
+  comentarios, sesiones y personajes) y los cinco siguen, pero se les han sumado
+  `character-sheet`, `game-events`, `rules-engine`, `campaign-items`, `dm-tables`, `encounters`,
+  `npcs` y `statblocks`. Solo tres servicios importan el común —`activities`, `inventory` y
+  `campaign-items`—, y **`campaign-items` hace las dos cosas a la vez**: lo importa y declara el
+  suyo. La lista completa se mide con `grep -rln "private async viewerFor" apps/api/src`, que es
+  más fiable que enumerarla aquí — enumerar tres sitios cuando había siete ya caducó una vez en
+  `04-convenciones.md`, y esta lista acaba de caducar por lo mismo.
 - **`CreateCampaignModal` mantiene un estado de error local** que duplica `mutation.error`.
   Tarea 1.10.
 - **Avisos ruidosos que conviene callar bien, no silenciar**: `ts-jest` se queja de compilar
@@ -1219,6 +1302,16 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 3. **La regla del juego copiada en el navegador** porque el servidor no la exponía: la velocidad
    efectiva, y el catálogo de razas y clases.
 
+> **Dos filas de esta tabla se archivaron el 2026-09-08 por falsas**, y una tercera se precisó:
+> `U8-glifos` (los seis glifos de fuente se dibujaron, y `04-convenciones.md` declaró además la
+> excepción de `ui/Badge.tsx` que la propia ficha exigía) y `D9` (los cinco módulos sin pantalla
+> las tienen). La precisada es `N4`, que **sigue abierta**: el nombre de la regla viaja en el
+> aviso de la propuesta y no en su listado, así que el arreglo es un `include`, no inventar el
+> dato. **Y añade un cuarto patrón a los tres de arriba, el que este documento sufre de
+> verdad:** una ficha que describe con precisión el arreglo que le falta **no se vuelve a leer el
+> día que ese arreglo se entrega**. `U8-glifos` pedía la prueba que hoy existe y `D9` pedía la
+> pantalla que hoy existe; las dos siguieron abiertas.
+
 | # | Qué falta | Por qué importa |
 |---|---|---|
 | **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
@@ -1226,10 +1319,8 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 | **S12** | **`listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`** | `docs/01-arquitectura.md` dice que la forma de los datos vive en un solo sitio y **eso ya tiene dos excepciones**. O se declara la excepción (los esquemas de consulta locales a un endpoint pueden vivir junto al controlador) o se mueven |
 | **U6-visibilidad** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
 | **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
-| **U8-glifos** | **Seis glifos de fuente incumplen la regla de iconos dibujados**, incluido el `✓` que la propia regla pone como ejemplo prohibido | En `InvitePanel`, `AccountPage`, `LoginPage`, `Field`, `Traza` y `Ornament`. O se dibujan como el resto, o `docs/04-convenciones.md` amplía la excepción por escrito — que es lo que la regla exige. Lo que no puede quedarse es la regla conviviendo con su propio contraejemplo |
 | **N3-notify** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
-| **N4** | **El listado de propuestas no trae el nombre de la regla**, solo su identificador | La pantalla lo cruza con la lista y, si no está, pinta «regla borrada». Es un dato que la API debería dar |
-| **D9** | **Cinco módulos de la API no tienen pantalla**: log de partida, listado de tiradas, avisos, marcas y conjuntos del mundo, y el estado de sesión (empezar y cerrar) | `docs/01-arquitectura.md` los describe como si el producto los ofreciera; hoy se usan **solo con un cliente HTTP**. Para la partida de la semana que viene lo que más se echa en falta es **empezar y cerrar sesión desde la pantalla**: sin eso, todos los sucesos se escriben fuera de sesión |
+| **N4** | **El listado de propuestas no trae el nombre de la regla**, solo su identificador | Abierto, **confirmado midiendo el 2026-09-08**: `RulesEngineService.listProposals` devuelve las filas de `ruleTrace` sin `include` de la regla, así que el nombre no viaja, y `features/rules/Propuestas.tsx:38` lo cruza contra la lista de reglas con «regla borrada» de respaldo. **El dato precisa, que la fila no daba:** el aviso de una propuesta **sí** lo lleva —`rules-engine/rules-engine.service.ts:406` manda `ruleName` en el `RULE_PROPOSAL`—, así que el arreglo es un `include` en el listado, no inventar el dato |
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
 
 ### Huecos de mecánica — lo que falta para jugar de verdad
@@ -1265,11 +1356,9 @@ dirigir tres horas de verdad.
 | # | Qué encontró el DM | Estado |
 |---|---|---|
 | **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta |
-| **J6** | **`ENTITY_REVEALED` viaja con la carga vacía** (`{type}`): no dice qué ficha ni a qué visibilidad, y es el momento dramático de la campaña | Abierto. El puente ya sabe el `entityId`; falta enriquecer el payload |
+| **J6** | **`ENTITY_REVEALED` viaja con la carga vacía cuando lo emite EL MOTOR** (`{type}` a secas): no dice qué ficha ni a qué visibilidad | Abierto **por la mitad que importa**. Remedido el 2026-09-08: el camino de la pantalla ya manda el nombre —`entities/entities.service.ts:306` escribe `entityName`—, pero `rules-engine/rules-engine.service.ts:515` sigue emitiendo el payload pelado, y **ese es justo el camino de la revelación automática**, o sea el momento dramático que la ficha nombra. La fila decía «viaja con la carga vacía» sin distinguir los dos caminos |
 | **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto. El motivo sí queda en `GET /events`; la traza podría enseñar «fijada a 18» en vez del delta |
-| **J8** | **La invitación es de un solo uso y no se pueden listar ni revocar**: el DM emite códigos a ciegas | Abierto. Un `GET /campaigns/:id/invites` y un estado de la invitación |
-| **J9** | **Los errores de Zod salen crudos al usuario** (`fieldErrors {"kind":["Required"]}`, «Required» en inglés) | Abierto. Un filtro que traduzca el error de validación a un mensaje de dominio |
-| **J10** | **La CA admite hasta 999 y el modificador de tirada no tiene tope** (`1d20+9999` → 10005) | Abierto, y menor: trampas a ojos vista que el DM vigila a mano, no fallos de seguridad. Un tope razonable las cerraría |
+| **J10** | **El modificador de tirada no tiene tope** (`1d20+9999`) | Abierto, y menor: trampa a ojos vista que el DM vigila a mano, no un fallo de seguridad. `roll.schema.ts:72` valida `expression` como cadena de hasta 120 caracteres, así que el número cabe. **La otra mitad de esta fila era falsa y se retiró el 2026-09-08**: la CA no admite hasta 999 — `character-sheet.schema.ts:167` la topa en 50 y `statblock.schema.ts:156` en 40 |
 | **J11** | **`POST /rules` no valida al armar que la entidad del efecto sea de tu campaña** | Abierto e inerte: `applyRealEffects` y la auditoría acotan por `campaignId`, así que la regla queda `BROKEN`. Sería más limpio rechazar al armar |
 
 **El veredicto del DM, sin diplomacia:** la fase de **preparación** (wiki, cinco visibilidades,
@@ -1279,39 +1368,32 @@ tres cosas que ya están fichadas arriba como huecos de mecánica: **no puede ll
 monstruo (M13), no hay iniciativa (M14), y el registro no reconstruye la sesión (J4/J5, en
 parte cerrado)**. Son la misma lista que las auditorías, vista desde la silla del director.
 
-### L2-traza-dano — la traza de resistencia (2.5.1) no tiene pantalla ni vocabulario en español (2026-09-03)
+> **Este veredicto caducó, y su remisión ya no lleva a ninguna parte. Medido el 2026-09-08.** Se
+> conserva porque es lo que dijo un agente jugando el 2026-09-02, y un veredicto fechado no se
+> reescribe — pero **dos de sus tres motivos están cerrados** y el tercero solo a medias:
+>
+> - **Los PG de un monstruo sí se llevan**, desde la mesa: `features/sessions/elenco/FichaDePnj.tsx`
+>   los pinta y da los mandos **solo al DM**, con los PG máximos y la CA exacta escondidos al
+>   jugador.
+> - **Hay iniciativa**: `features/encounters/TiraDeIniciativa.tsx` y `EmpezarCombate.tsx`, con
+>   corrección de la tirada, y sus recorridos de navegador en `apps/web/e2e/combate.spec.ts` y
+>   `apps/web/e2e/iniciativa-en-vivo.spec.ts`.
+> - **Del registro sigue faltando el suceso de muerte**, que es la ficha `J5` de arriba y sigue
+>   abierta.
+>
+> **Y los tres identificadores que cita no existen en este documento**: `M13`, `M14` y `J4`
+> aparecen **solo aquí**, así que «ya están fichadas arriba» es falso desde que se podaron. Es el
+> coste de remitir por identificador a una ficha que otro puede archivar: la remisión sobrevive a
+> su destino.
 
-> **Lleva sufijo porque `L2` ya existía** —«arco y radio de visión», más arriba en este mismo
-> fichero—, y la regla de nombres de arriba dice que manda la aparición más temprana. Corregido
-> en la revisión de cierre del 2026-09-04, junto con los dos errores de abajo.
-
-**Abierto, y a propósito: 2.5.1 es servidor.** `apps/api/src/character-state/damage/apply-damage-modifiers.ts`
-devuelve `labelKey`s nuevas (`damage.raw`, `damage.modifier.resist`, `.vulnerable`, `.immune`)
-que hoy no tienen traducción en `apps/web/src/features/character-sheet/vocabulario.ts` ni en
-ningún otro sitio de la web — si algo las pinta tal cual, sale la clave en inglés. (`.cancelled`
-**ya no existe**: la revisión de cierre encontró que resistencia y vulnerabilidad no se cancelan,
-se encadenan.)
-
-**Y hay un dato que esta ficha se dejaba, que es el que de verdad importa al arreglarla:** la
-traducción de los trece `DamageType` ya existe **tres veces**, las tres con el mismo nombre
-`NOMBRE_TIPO_DANO`:
-
-- `apps/web/src/features/campaign-items/vocabulario.ts:81`
-- `apps/web/src/features/character-sheet/vocabulario.ts:77`
-- `apps/web/src/features/inventory/vocabulario.ts:57`
-
-Eso contradice la regla vinculante de que **la forma legible se escribe una sola vez por
-dominio**, así que la tarea no es «añadir una cuarta»: es dejar una y que las otras la importen.
-(La revisión de cierre contó dos y se dejó la de `character-sheet`; se comprobó con un barrido
-antes de escribir esta línea, que es lo que la regla de «evidencia antes que afirmación» pide
-incluso de un hallazgo de revisión.)
-
-La primera versión de esta ficha citaba un símbolo inventado —«`nombreDeTipoDeDaño` o como se
-llame en esa capa»—, que es exactamente el registro que `04-convenciones.md` prohíbe: un nombre
-con cobertura manda a quien lo lea a buscar algo que no existe.
-
-Entra con la pantalla del daño aplicado (probablemente parte de 2.5.4 o de la pantalla del
-encuentro de 2.5.6), no antes.
+> **`L2-traza-daño` se archivó el 2026-09-08, cerrada por las dos mitades.** Las cuatro claves
+> del daño tienen traducción en `features/character-sheet/vocabulario.ts` (líneas 504 a 507), y
+> `NOMBRE_TIPO_DANO` ya no existe tres veces sino una, en `dominio/dano.ts`. **Era la ficha con
+> más citas de línea de todas, y las tres estaban obsoletas**: razonaba bien, medía bien y citaba
+> bien el día que se escribió, y nada de eso la salvó. Su texto entero, con la medición que la
+> cierra, en
+> [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
+> **El identificador no se recicla**, como manda la regla de nombres de la cabecera.
 
 > **La sala de espera (tarea 8, 2026-09-05) abrió aquí dos fichas que la ronda de arreglo 1
 > (2026-09-06) cerró, y no como deuda.** El canal en vivo ya invalida `useCurrentEncounter`
@@ -1345,7 +1427,8 @@ enemigo y los PG temporales sobre un compañero; y aflojar `requireEditable` a s
 `PATCH` de cualquier personaje ajeno.
 
 **Medido el 2026-09-07 al decidirlo, y la ficha original se quedaba corta: la puerta está cerrada
-por los dos lados.** En `roll-requests.service.ts:104`, incluso la ruta interna que recibe un `tx`
+por los dos lados.** En `roll-requests.service.ts:114` —remedido el 2026-09-08; la cita anterior
+decía `:104`—, incluso la ruta interna que recibe un `tx`
 —la que usa el motor— vuelve a comprobar `miembro.role !== "DM"`. No hay rendija por la que entre
 una actividad de jugador hoy.
 

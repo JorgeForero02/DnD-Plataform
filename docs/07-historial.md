@@ -29,6 +29,8 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-06-planes-09-11-13-14-por-tarea.md`](./_archivo/historial-2026-09-06-planes-09-11-13-14-por-tarea.md) | **El detalle por tarea de los planes 09, 11, 13 y 14**, seis entradas movidas enteras el 2026-09-06 al llegar el fichero a 968 de 1000 ejecutando el paso 1. Sus hitos se quedan arriba
 > | [`_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md`](./_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md) | **El detalle por tarea de las tareas 5 y 14 del plan `iniciativa-y-bando`**, movidas enteras el 2026-09-06 al escribir el hito de la tanda completa. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, movida entera el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó el fichero por encima de su tope de 1000 líneas, y esta fue la más antigua. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-bandeja-de-avisos.md`](./_archivo/historial-2026-09-05-bandeja-de-avisos.md) | **La bandeja de avisos**, movida entera el 2026-09-08 al llegar el fichero a 988 de 1000 y no caber la entrada del reconocimiento. Era la entrada completa más antigua. Su cabecera de archivo cuenta la ironía que salió ese día: `01-arquitectura.md` seguía negando esta bandeja tres días después de entregarla. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -41,6 +43,52 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## El reconocimiento: dieciocho fichas que el código desmentía (2026-09-08)
+
+**Qué.** Se leyeron unas cincuenta y cinco fichas de [06-pendientes.md](./06-pendientes.md) contra
+el árbol —las que llevaban dentro una cita, un símbolo o un barrido, porque esas se verifican o se
+caen solas—. **Dieciocho eran falsas**, cuatro de ellas P1, y se archivaron enteras en
+[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md)
+con la medición de cada una. El resto de las tocadas se corrigió en sitio: **ocho citas de línea
+desplazadas**, dos enunciados al revés (`J6` y `N4`), la lista de `viewerFor` que había crecido de
+cinco servicios a trece, y varias mitades falsas retiradas de fichas que siguen abiertas por la
+otra mitad. **Y el veredicto del DM de la mesa de agentes del 2026-09-02 se anotó en vez de
+archivarse** —un veredicto fechado no se reescribe—: sus tres motivos para «el combate no aguanta
+el sábado» son hoy dos cerrados y uno a medias, y **los tres identificadores que cita (`M13`, `M14`
+y `J4`) no existen en el documento**, así que su «ya están fichadas arriba» llevaba tiempo sin
+llevar a ninguna parte. **Y tres documentos de estado mentían por su cuenta**, corregidos también:
+[01-arquitectura.md](./01-arquitectura.md) negaba la bandeja de avisos y remitía a una ficha que ya
+no existía; [05-datos.md](./05-datos.md) decía —con un «esto sí es cierto hoy» delante— que no hay
+`features/notifications` ni pantalla de estado del mundo, y las dos existen; y
+[como-seguir.md](./como-seguir.md) enlazaba a un índice de superpowers que nunca se escribió. Sin
+tocar código.
+
+**Por qué.** `E2` —«los enlaces del mundo no se pueden recorrer»— era P1 y su propia tabla la
+llamaba «el hallazgo más importante de la pasada»: llevaba cerrada, con página de detalle, enlaces
+entrantes y todo. Una ficha falsa de prioridad alta es trabajo que se hace dos veces, o un arreglo
+que deshace el que ya existe. **Y el patrón que las explica casi todas:** una ficha que describe
+con precisión el arreglo que le falta **no se vuelve a leer el día que ese arreglo se entrega**.
+`U8-glifos` pedía la prueba que hoy existe, `D9` la pantalla que hoy existe, `J9` el filtro que hoy
+cita la ficha desde dentro del código.
+
+**Lo que ningún control iba a cazar, y por qué.** `pnpm check:docs` comprueba que una cita
+`fichero.ts:NN` no se pase del final del fichero. Las ocho desplazadas apuntaban **dentro**, a
+código de otra cosa: bien formadas y falsas. Y `05-datos.md` llevaba tres días declarando `D2` y
+`D9` cerradas **mientras `06-pendientes.md` las listaba abiertas** — una contradicción entre dos
+documentos del mismo directorio que ningún barrido de rutas puede ver. Es la mitad semántica que
+[04-convenciones.md](./04-convenciones.md) ya declara que solo caza una lectura deliberada.
+
+**Y la pasada estuvo a punto de mentir dos veces**, las dos por creer un acierto de `grep` sin leer
+qué lo rodea: se rebajó la lista de `viewerFor` a cuatro servicios con un barrido truncado por un
+`head` cuando son trece, y se dio `N4` por cerrada al encontrar `ruleName` en el **aviso** de una
+propuesta, que no es su **listado**. Las dos se deshicieron midiendo otra vez; queda escrito en la
+ficha de los barridos que envejecen, porque el modo de fallo lo cometió quien venía a arreglarlo.
+
+**Cómo revertirlo.** Solo documentación: `git revert` del commit devuelve las dieciocho fichas a
+`06-pendientes.md`, restaura las correcciones en sitio y en los tres documentos de estado, y borra
+los dos ficheros nuevos de `_archivo/` — el del reconocimiento y el de la bandeja de avisos, que
+salió de `07` para hacer sitio a esta entrada.
 
 ## Los dos que quedaban: `advanceTurn()` y `setInitiative()` (2026-09-08)
 
@@ -801,96 +849,25 @@ protección por la comodidad de un script es justo lo que este proyecto no hace.
 **Cómo revertirlo.** `node scripts/seed-demo.mjs --limpiar` borra las campañas sembradas; el script
 se puede borrar sin tocar nada más.
 
-## El nervio en vivo: avisos que llegan solos, y un sondeo que deja de ser el camino (2026-09-05, plan 12 · 12.3, D-OP-22)
+## El nervio en vivo: avisos que llegan solos, y un sondeo que deja de ser el camino (2026-09-05, plan 12 · 12.3, D-OP-22) — archivada
 
-**Qué.** Un canal SSE por campaña que manda **avisos, no datos**: «ha cambiado algo en esta mesa».
-El navegador **recarga por el endpoint autorizado de siempre**, donde `canView` sigue mandando.
+Entera en
+[`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md),
+movida el 2026-09-08 al pasarse este fichero de sus 1000 líneas. **El hito:** un canal SSE por
+campaña que manda **avisos, no datos** —el navegador recarga por el endpoint autorizado, donde
+`canView` sigue mandando—, con billete de un solo uso de 30 s, latido de 15 s, y el sondeo bajado a
+60 s desde una sola constante. **Un canal tonto no filtra, y por lo tanto no puede filtrar mal.**
 
-**Esa es la razón de diseño entera**: un canal tonto no filtra, y por lo tanto **no puede filtrar
-mal**. Mandar el dato ahorraría una petición y metería la matriz de visibilidad en un segundo
-sitio, que es el fallo que este proyecto ya declaró que no repite.
+## La bandeja de avisos: el servidor llevaba desde 2A.14 hablando solo (2026-09-05, plan 12 · 12.2) — archivada
 
-**Las decisiones, una a una:**
-
-- **Billete de un solo uso y vida corta** (30 s). `EventSource` **no manda cabeceras**, y un token
-  en la URL **acaba en los registros de los proxies**. El billete se pide por la ruta autenticada
-  normal y se canjea al abrir. **Y al canjearlo se vuelve a comprobar quién puede escuchar**: entre
-  pedirlo y usarlo caben treinta segundos, y en treinta segundos a alguien se le puede haber echado
-  de la mesa.
-- **La autorización vive en su propio método** (`assertCanJoin`), **fuera del controlador de SSE**,
-  para que el WebSocket de la fase 3.C la reutilice tal cual en vez de escribir una segunda copia.
-- **El mensaje del bus es agnóstico del transporte** —`{ type, campaignId, subjectType, subjectId }`
-  y nada más—: ni `event:` ni `data:` asoman por la capa del bus. La fase 3.C trae fichas que se
-  arrastran y llega **antes** que la 4; si el bus tuviera sabor a SSE, habría que rehacerlo.
-- **La emisión ocurre SOLO en `GameEventsService.record`**, junto a la emisión interna y por lo
-  tanto **después del commit**. Un segundo emisor sería un aviso que llega sin dejar rastro en el
-  registro.
-- **El latido, cada 15 s.** Un canal ocioso lo corta un proxy: sin `:\n\n` periódico, el navegador
-  reconecta cada minuto **sin error visible**, solo reconexiones. Es una línea y ahorra una tarde.
-- **`X-Accel-Buffering: no`**, porque nginx acumula por defecto: el canal funcionaría perfecto en
-  local y llegaría a ráfagas en producción.
-- **La limitación está escrita en el código, no arreglada**: el bus reparte **en memoria**, dentro
-  de un proceso. Con varias réplicas, un aviso publicado en la A no llega a la B. Hoy hay **un solo
-  contenedor**; el día que haya réplicas —o presencia— entra Redis detrás de esta misma interfaz.
-
-**Y el sondeo deja de ser el camino principal, pero NO se quita.** Un canal que se cae en silencio
-con el sondeo quitado es peor que no tener canal. Lo que sí cambió es que **había diez
-`refetchInterval` con cuatro valores distintos** en siete módulos, y solo dos salían de una
-constante: alargarlo eran once ediciones, y el que se olvidara **no daba error**, daba una pantalla
-refrescándose sola. Ahora sale de `apps/web/src/lib/sondeo.ts`, a **60 s**, con **una sola excepción
-declarada**: la petición de tirada del DM sigue en 15 s, porque es una pregunta que espera respuesta
-en voz alta.
-
-**Medido con dos navegadores** (`apps/web/e2e/nervio-en-vivo.spec.ts`): la jugadora comenta y la
-campana del DM se enciende **sin recargar** en menos de 20 s, cuando el sondeo está en 60. **Y con
-su control**: el mismo recorrido con el canal apagado no enciende nada en diez segundos, y
-recargando sí. Sin ese control, la primera prueba no demostraría que mide el canal.
-
-**Lo que queda sin comprobar, y se dice en voz alta:** `X-Accel-Buffering` **detrás de nginx y
-Traefik de verdad**. En local no hay proxies, así que esto está probado contra Vite. La comprobación
-en el servidor es lo único del plan 12 que no se puede cerrar sin desplegar.
-
-**Cómo revertirlo.** `git revert` del commit. Con el canal fuera, el sondeo de 60 s sigue trayendo
-todo, más despacio.
-
-## La bandeja de avisos: el servidor llevaba desde 2A.14 hablando solo (2026-09-05, plan 12 · 12.2)
-
-**Qué.** `apps/api/src/notifications/` existía **entero** —tabla, servicio y dos rutas— y **ningún
-fichero de `apps/web/src` lo mencionaba**: nadie veía un aviso nunca. Es el patrón que este
-proyecto ha cerrado en falso cuatro veces —servidor hecho, nadie que lo use—, y ahora tiene
-pantalla: `apps/web/src/features/notifications/`, montada en el chrome junto al conmutador de tema.
-
-**Con tres cosas y ninguna más**, que es lo que el plan pedía:
-
-- **Cuántas sin leer, y si son cero no hay distintivo.** Un cero con globo es ruido y además miente
-  sobre que haya algo que atender. El número va también en el nombre accesible del botón, porque un
-  lector de pantalla no ve un círculo.
-- **La lista, cada aviso con su enlace al sitio donde pasó.** Y si a un aviso le falta el sujeto, se
-  pinta **sin enlace**: llevar a un 404 es peor que no llevar a ninguna parte.
-- **Marcar leído y marcar todo leído.** Abrir un aviso **es** leerlo, y solo se marca si hacía
-  falta: una petición por cada clic en algo ya leído es ruido contra el servidor.
-
-**Lo que NO hace: borrar.** Un aviso leído se apaga; el historial se queda.
-
-**Y dos decisiones que no se ven:**
-
-- **La frase de cada aviso se escribe una vez** (`vocabulario.ts`), con un `Record` **exhaustivo**
-  por tipo: un tipo nuevo en `@dnd/shared` sin frase aquí **no compila**, en vez de asomar su
-  enumeración en la bandeja de alguien. Es la regla que ya falló tres veces en una mañana.
-- **La bandeja se monta en dos sitios y es el mismo componente.** La mesa vive fuera de `AppShell`
-  y no hereda la cabecera; dos bandejas serían dos contadores, y uno de los dos acabaría mintiendo.
-
-**Medido en el navegador** con dos contextos (`apps/web/e2e/bandeja-de-avisos.spec.ts`), incluido lo
-que `jsdom` no puede decir: que el distintivo **no tapa** «Cuenta» y que el panel **cabe en la
-ventana**. Y con siete pruebas de pantalla en `features/notifications/__tests__/`.
-
-**Y otro rojo ajeno arreglado por el camino**: `apps/web/e2e/invitacion.spec.ts` exigía
-`aria-disabled` en un **campo de formulario**. Lo que U9 cambió fueron los **botones** —un botón
-apagado tiene algo que explicar al pulsarlo; un `input` no—, y el barrido dejó ahí una aserción que
-ya no describía la pantalla.
-
-**Cómo revertirlo.** `git revert` del commit. Los avisos siguen escribiéndose en el servidor: lo
-que desaparece es la puerta para verlos.
+Entera en
+[`_archivo/historial-2026-09-05-bandeja-de-avisos.md`](./_archivo/historial-2026-09-05-bandeja-de-avisos.md),
+movida el 2026-09-08 al llegar este fichero a 988 de 1000. **El hito:** `notifications` existía
+entero en el servidor desde 2A.14 y ningún fichero de `apps/web/src` lo mencionaba; ahora tiene
+pantalla (`features/notifications/`, montada en el chrome), con cuántas sin leer, la lista enlazada
+y marcar leído — y sin borrar. Su cabecera de archivo cuenta además la ironía que salió el día que
+se archivó: [01-arquitectura.md](./01-arquitectura.md) seguía negando esta bandeja tres días
+después de entregarla.
 
 ## Los dos avisos que nadie emitía, y un POST sin cuerpo que no debía ser un 400 (2026-09-05, plan 12 · 12.1) — archivada
 

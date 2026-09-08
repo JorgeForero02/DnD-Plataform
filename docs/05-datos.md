@@ -430,9 +430,14 @@ desde 2A.10** (`apps/web/src/features/character-sheet/`). **El estado de sesión
 mesa con elenco y registro en vivo, y botones para empezar y cerrar. Hasta ese día no los había,
 y por eso **los sucesos se escribían fuera de sesión** — la ficha **D9**, ya cerrada.
 
-Lo que sigue **sin** pantalla, y esto sí es cierto hoy, son **los avisos y las marcas y
-conjuntos**: existen por HTTP, se prueban por e2e y solo se usan con un cliente HTTP. No hay
-`features/notifications` ni pantalla de estado del mundo.
+> **Y aquí este párrafo decía una mentira con un «esto sí es cierto hoy» delante, hasta el
+> 2026-09-08.** Decía: *«Lo que sigue **sin** pantalla, y esto sí es cierto hoy, son los avisos y
+> las marcas y conjuntos… No hay `features/notifications` ni pantalla de estado del mundo»*. Las
+> dos existen: `apps/web/src/features/notifications/` (la bandeja, montada en `ui/AppShell.tsx`) y
+> `apps/web/src/features/world-state/`. **La frase que se blinda a sí misma —«esto sí es cierto
+> hoy»— es la que más hay que comprobar**, porque le pide al lector que no lo haga. Se conserva
+> citada en vez de borrarse por eso. La ficha `D9` que la acompañaba se archivó el mismo día; ver
+> [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
 
 **4 · `Character.overrides`** (2026-09-02, migración `character_manual_overrides`). Anulaciones
 manuales del DM sobre valores **derivados**: `{ "ac": 18 }`. Es la válvula de escape de «se

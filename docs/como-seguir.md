@@ -4,9 +4,12 @@
 está puesto** (para que nadie lo vuelva a montar), **qué sigue** y en qué orden, y **qué no decide
 un agente**.
 
-No es un plan de producto: el alcance por fases vive en
-[superpowers/](./superpowers/README.md) y lo abierto en [06-pendientes.md](./06-pendientes.md).
+No es un plan de producto: el alcance por fases vive en `docs/superpowers/plans/` —al que **se
+entra por [decisiones.md](./decisiones.md)**, una línea por decisión, y no releyéndolo entero— y lo
+abierto en [06-pendientes.md](./06-pendientes.md).
 Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agentes.
+
+*(Hasta el 2026-09-08 la línea de arriba enlazaba a `superpowers/README.md`, que **no existe**: el protocolo lo pide como índice por fecha, aquí nunca se escribió, y en su lugar se decidió `decisiones.md`. Que el fichero no exista es el punto de esta frase, de ahí el escape del lint.)* <!-- docs-lint-ignore -->
 
 > **Si esta página y el repositorio discrepan, manda el repositorio.** Aquí no se escribe estado
 > que una máquina pueda medir — esa es la regla que `CLAUDE.md` estrenó el 2026-09-06.

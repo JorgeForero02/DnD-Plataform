@@ -13,7 +13,9 @@ y las **tres que llevaban «Cerrado» en su propio título** en
 y las **seis de la tanda corta del 2026-09-07** en
 [`_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md),
 y las **tres de la tanda B, el mismo día**, en
-[`_archivo/pendientes-cerrados-2026-09-07-tanda-b.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-b.md).
+[`_archivo/pendientes-cerrados-2026-09-07-tanda-b.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-b.md),
+y **P2-2, el formulario de entrega**, en
+[`_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md`](./_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -1420,17 +1422,6 @@ LANZADAS**, porque esa función no distingue «empuñar» de «lanzar»: solo mi
 furia se lleva el +2 sin merecerlo. No es arreglable dentro de `character-sheet.service.ts`:
 `rollAttack` no tiene un modo «arrojado» del que depender — hace falta que `rules/attacks.ts`
 distinga las dos formas del mismo arma, que es un cambio de forma, no de un `if`.
-
-### P2-2 · La `entrega` de una fila solo se puede escribir por API (2026-09-07)
-
-**Abierto, ninguna tarea del plan lo encargó.** `entregaSchema` (`packages/shared/src/dm-table.schema.ts`)
-valida objetos y monedas al escribir, y el servidor las resuelve al tirar
-(`docs/05-datos.md`), pero el formulario de crear/editar una tabla de la casa
-(`apps/web/src/features/dm-tables/`) no tiene ningún campo para redactar una `entrega`. La
-funcionalidad está construida por los dos extremos —escribir por HTTP y leer resuelta en la
-pantalla— y le falta el primer eslabón: hoy la única forma de sembrar una fila con `entrega` es un
-`curl` directo a la API, y la definición de terminado del plan botín solo es alcanzable sobre una
-tabla sembrada así.
 
 ### P2-4 · La autorización de `changeHp` y el `requireDM` de `RollRequestsService.create` dejan inusables media docena de conjuros de clérigo (2026-09-07)
 

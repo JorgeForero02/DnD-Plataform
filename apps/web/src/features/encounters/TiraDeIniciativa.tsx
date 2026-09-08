@@ -135,10 +135,33 @@ export function TiraDeIniciativa({
         )}
       </div>
 
+      {/* **El sistema propone; el DM decide** (ficha P2, 2026-09-07).
+          Doctrina impresa de las Herramientas del DM: «Nada llega a la mesa hasta que lo
+          confirmas». Y el SRD 5.1 lo respalda hasta para el monstruo — «Monsters and Death»:
+          *«Most DMs have a monster die the instant it drops to 0 hit points»*, o sea costumbre del
+          DM, con los villanos como excepción explícita. Un enemigo a 0 puede estar inconsciente,
+          los enemigos huyen, y un combate se acaba parlamentando con el jefe en pie.
+          **No se añade un botón nuevo**: el de «Terminar el combate», que ya estaba, es la
+          confirmación. Dos caminos para el mismo gesto serían dos sitios donde equivocarse.
+          Solo se pinta si el servidor lo propone, y a un jugador nunca se lo propone. */}
+      {encuentro.finalPropuesto && (
+        <p
+          role="status"
+          aria-label="Sin enemigos en pie"
+          className="mb-s2 rounded-radius-sm border border-copper/40 bg-copper/10 px-s3 py-s1 font-chrome text-chrome-xs text-copper-text"
+        >
+          No queda ningún enemigo en pie. <strong>Si el combate ha terminado, ciérralo tú</strong> —
+          esto no lo cierra solo.
+        </p>
+      )}
+
       <ol className="scroll-quiet flex items-center gap-s1 overflow-x-auto">
         {turnos.map(([posicion, grupo]) => {
           const actual = posicion === encuentro.activePosition;
           const nombres = grupo.map((c) => nombreDe(c.characterId)).join(" · ");
+          // **`every` y no `some`**: una posición puede llevar un grupo entero —dos goblins que
+          // tiraron juntos— y apagar la casilla porque uno cayó diría que cayeron los dos.
+          const caido = grupo.every((c) => c.derrotado);
           return (
             <li
               key={posicion}
@@ -149,6 +172,9 @@ export function TiraDeIniciativa({
               className={[
                 "flex shrink-0 flex-col items-center rounded-radius-sm border px-s3 py-s1",
                 actual ? "border-warning bg-warning/15" : "border-muted/25",
+                // El gris de quien cayó. **Nunca es el único portador del significado**: debajo va
+                // el rótulo «Cayó», igual que «Le toca» acompaña al color del turno.
+                caido && !actual ? "opacity-50" : "",
               ].join(" ")}
             >
               <span
@@ -165,6 +191,11 @@ export function TiraDeIniciativa({
               {actual && (
                 <span className="font-chrome text-chrome-xs uppercase tracking-wide text-warning-text">
                   Le toca
+                </span>
+              )}
+              {caido && (
+                <span className="font-chrome text-chrome-xs uppercase tracking-wide text-muted">
+                  Cayó
                 </span>
               )}
               {esDm && (

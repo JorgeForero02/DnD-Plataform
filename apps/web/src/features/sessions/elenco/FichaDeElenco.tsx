@@ -104,6 +104,15 @@ export function FichaDeElenco({
   const cambiarPg = useChangeHp(campaignId, personaje.id);
 
   const actual = hoja?.hp.current ?? null;
+  // **Un personaje jugador a 0 PG no desaparece de la mesa: se queda tirando** (ficha P2,
+  // 2026-09-07). SRD 5.1, «Falling Unconscious»: cae inconsciente y empieza a hacer salvaciones
+  // contra muerte — al revés que un monstruo, que en «Monsters and Death» *«most DMs have die the
+  // instant it drops to 0»*. La asimetría es del manual, no una preferencia de esta casa.
+  //
+  // Hasta hoy sus salvaciones solo se leían **abriendo su hoja**, que es justo lo que nadie hace
+  // mientras se juega. Se enseñan **solo mientras está cayendo**: con las casillas a cero y en
+  // pie serían información muerta ocupando la tarjeta.
+  const salvaciones = hoja?.deathSaves?.status === "dying" ? hoja.deathSaves : null;
   const maximo = hoja?.hp.max ?? null;
   const ca = hoja?.sheet?.derived.ac?.total ?? null;
   const descriptor = descriptorDePersonaje(personaje);
@@ -153,6 +162,20 @@ export function FichaDeElenco({
       </div>
 
       <BarraDePuntosDeGolpe nombre={personaje.name} actual={actual} maximo={maximo} />
+
+      {salvaciones && (
+        <p
+          aria-label="Salvaciones contra muerte"
+          className="mt-s1 font-chrome text-chrome-xs text-muted"
+        >
+          <span className="uppercase tracking-wide">Salvaciones</span>{" "}
+          {/* Con palabras además del número: «1 / 2» sin decir cuál es cuál obliga a recordar el
+              orden, y esto se lee de reojo en mitad de un combate. */}
+          <strong className="text-success-text">{salvaciones.successes} logradas</strong>
+          {" · "}
+          <strong className="text-danger-text">{salvaciones.failures} fallidas</strong>
+        </p>
+      )}
 
       {puedeCambiarPg && maximo !== null && (
         // Dos golpes, no un formulario. La corrección exacta se hace en la hoja, con su control

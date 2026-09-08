@@ -83,6 +83,7 @@ function encuentroActivo(): Encounter {
     status: "ACTIVE",
     round: 1,
     activePosition: 0,
+    finalPropuesto: false,
     combatants: [
       {
         id: "cb-corvin",
@@ -90,6 +91,7 @@ function encuentroActivo(): Encounter {
         initiative: 18,
         position: 0,
         side: "ALLY",
+        derrotado: false,
         ...SIN_GASTAR,
       },
       {
@@ -98,6 +100,7 @@ function encuentroActivo(): Encounter {
         initiative: 9,
         position: 1,
         side: "ENEMY",
+        derrotado: false,
         ...SIN_GASTAR,
       },
     ],

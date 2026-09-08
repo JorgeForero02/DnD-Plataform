@@ -53,6 +53,7 @@ const PREPARANDO: Encounter = {
   status: "PREPARING",
   round: 1,
   activePosition: 0,
+  finalPropuesto: false,
   combatants: [
     {
       id: "cb1",
@@ -60,6 +61,7 @@ const PREPARANDO: Encounter = {
       initiative: 0,
       position: 0,
       side: "ALLY" as const,
+      derrotado: false,
       ...SIN_GASTAR,
     },
     {
@@ -68,6 +70,7 @@ const PREPARANDO: Encounter = {
       initiative: 0,
       position: 0,
       side: "ALLY" as const,
+      derrotado: false,
       ...SIN_GASTAR,
     },
     {
@@ -76,6 +79,7 @@ const PREPARANDO: Encounter = {
       initiative: 14,
       position: 0,
       side: "ENEMY" as const,
+      derrotado: false,
       ...SIN_GASTAR,
     },
     {
@@ -84,6 +88,7 @@ const PREPARANDO: Encounter = {
       initiative: 9,
       position: 0,
       side: "ENEMY" as const,
+      derrotado: false,
       ...SIN_GASTAR,
     },
   ],

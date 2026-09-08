@@ -85,6 +85,7 @@ describe("entrar en combate: quién combate y de qué lado", () => {
       status: "PREPARING",
       round: 1,
       activePosition: null,
+      finalPropuesto: false,
       combatants: [],
     });
     montar();
@@ -149,6 +150,7 @@ describe("entrar en combate: quién combate y de qué lado", () => {
       status: "ACTIVE",
       round: 1,
       activePosition: 0,
+      finalPropuesto: false,
       combatants: [],
     });
     montar([THORA, GOBLIN_A], []);
@@ -175,6 +177,7 @@ describe("entrar en combate: quién combate y de qué lado", () => {
       status: "ACTIVE",
       round: 1,
       activePosition: 0,
+      finalPropuesto: false,
       combatants: [],
     });
     montar([THORA, GOBLIN_A], []);

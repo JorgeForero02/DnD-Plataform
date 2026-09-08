@@ -88,6 +88,7 @@ function encuentro(
     status: "ACTIVE",
     round: 1,
     activePosition: 0,
+    finalPropuesto: false,
     combatants: combatants.map((c) => ({
       actionUsed: false,
       bonusUsed: false,
@@ -183,14 +184,29 @@ describe("con combate en marcha", () => {
         // jugador que combate). Su bando propio hace que el contrario (ENEMY, el Goblin) se
         // proponga primero — I-4, ronda de arreglo 1: no es una tabla fija, es relativo a quien
         // ataca.
-        { id: "cb-hero", characterId: "p-hero", initiative: 20, position: 0, side: "ALLY" },
-        { id: "cb-goblin", characterId: "n-goblin", initiative: 15, position: 1, side: "ENEMY" },
+        {
+          id: "cb-hero",
+          characterId: "p-hero",
+          initiative: 20,
+          position: 0,
+          side: "ALLY",
+          derrotado: false,
+        },
+        {
+          id: "cb-goblin",
+          characterId: "n-goblin",
+          initiative: 15,
+          position: 1,
+          side: "ENEMY",
+          derrotado: false,
+        },
         {
           id: "cb-bandido",
           characterId: "p-bandido",
           initiative: 10,
           position: 2,
           side: "ALLY",
+          derrotado: false,
         },
       ]),
     );
@@ -261,14 +277,29 @@ describe("con el atacante como combatiente ENEMY", () => {
     vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(SESION);
     vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(
       encuentro([
-        { id: "cb-hero", characterId: "p-hero", initiative: 20, position: 0, side: "ENEMY" },
-        { id: "cb-goblin", characterId: "n-goblin", initiative: 15, position: 1, side: "ENEMY" },
+        {
+          id: "cb-hero",
+          characterId: "p-hero",
+          initiative: 20,
+          position: 0,
+          side: "ENEMY",
+          derrotado: false,
+        },
+        {
+          id: "cb-goblin",
+          characterId: "n-goblin",
+          initiative: 15,
+          position: 1,
+          side: "ENEMY",
+          derrotado: false,
+        },
         {
           id: "cb-bandido",
           characterId: "p-bandido",
           initiative: 10,
           position: 2,
           side: "ALLY",
+          derrotado: false,
         },
       ]),
     );

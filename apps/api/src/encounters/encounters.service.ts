@@ -533,6 +533,10 @@ export class EncountersService {
         bonusUsed: c.bonusUsed,
         reactionUsed: c.reactionUsed,
         movementUsed: c.movementUsed,
+        // **Cayó.** `currentHp` es nulable y `null` significa «a tope» (así lo escribe
+        // `rest.service.ts:117` al descansar), así que la comparación es contra 0 y no una
+        // falsedad: `null` no es cero. No se llama `muerto` porque no lo está — ver el contrato.
+        derrotado: c.character.currentHp === 0,
       }));
 
     // **Las posiciones visibles se renumeran densas, y esto no es cosmética.** La revisión de
@@ -551,6 +555,20 @@ export class EncountersService {
       ? densa.get(encounter.activePosition)!
       : null;
 
+    // **La propuesta de terminar, y se calcula sobre TODOS los combatientes, no sobre los
+    // visibles.** Sobre los visibles, un jugador que no ve al último goblin escondido recibiría
+    // «ya no queda ninguno en pie» — que es exactamente la fuga que el filtro de arriba existe
+    // para impedir. Por eso se mira `encounter.combatants` y no `combatants`, y por eso el
+    // resultado **solo se le entrega al DM**: es su gesto y es su información.
+    //
+    // Que haya al menos un `ENEMY` es parte de la condición: un encuentro de exploración sin
+    // enemigos no debe ofrecerse a cerrarse por vacuidad —«todos los enemigos han caído» es
+    // trivialmente cierto sobre una lista vacía, y sería un aviso falso en cada encuentro social.
+    const enemigos = encounter.combatants.filter((c) => c.side === "ENEMY");
+    const esDm = viewer.role === "DM";
+    const finalPropuesto =
+      esDm && enemigos.length > 0 && enemigos.every((c) => c.character.currentHp === 0);
+
     return {
       id: encounter.id,
       sessionId: encounter.sessionId,
@@ -558,6 +576,7 @@ export class EncountersService {
       round: encounter.round,
       activePosition: activaVisible,
       combatants: combatants.map((c) => ({ ...c, position: densa.get(c.position)! })),
+      finalPropuesto,
     };
   }
 

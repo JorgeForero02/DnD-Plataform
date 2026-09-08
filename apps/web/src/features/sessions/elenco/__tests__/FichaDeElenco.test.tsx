@@ -60,8 +60,10 @@ function encuentroTrasCorreccion(): Encounter {
         bonusUsed: false,
         reactionUsed: false,
         movementUsed: 0,
+        derrotado: false,
       },
     ],
+    finalPropuesto: false,
   };
 }
 
@@ -140,5 +142,60 @@ describe("el mando «Dar» aparece con los mandos del DM (B4)", () => {
   it("sin mandos, un jugador no ve «Dar»", () => {
     montar({ conMandos: false });
     expect(screen.queryByRole("button", { name: /dar/i })).not.toBeInTheDocument();
+  });
+});
+
+// -------------------------------------------------------------------------------------------
+// **Un personaje jugador a 0 PG sigue en la mesa, con sus salvaciones a la vista.** Ficha P2.
+//
+// **La ficha suponía que desaparecía, y era falso**: nada en `apps/api/src/encounters/` mira
+// `currentHp`, así que nadie retiraba a nadie. Lo que de verdad faltaba era que la mesa **dijera
+// en qué estado está**: hasta hoy sus salvaciones solo se leían abriendo su hoja, que es
+// justamente lo que no se hace mientras se juega.
+//
+// La asimetría con un monstruo es del SRD 5.1, verificada en inglés antes de implementarla —
+// «Falling Unconscious»: el personaje cae inconsciente y **empieza a tirar salvaciones contra
+// muerte**; «Monsters and Death»: al monstruo *«most DMs have it die the instant it drops to 0»*.
+describe("un personaje a 0 PG", () => {
+  function aCero(over: Partial<sheetApi.SheetResponse["deathSaves"]> = {}) {
+    return {
+      ...hoja(),
+      hp: { current: 0, max: 58, temp: 0, version: 1, exceedsMax: false },
+      deathSaves: {
+        successes: 1,
+        failures: 2,
+        status: "dying",
+        ...over,
+      } as sheetApi.SheetResponse["deathSaves"],
+    };
+  }
+
+  it("**sigue en la mesa** y enseña sus salvaciones contra muerte", async () => {
+    vi.spyOn(sheetApi, "fetchSheet").mockResolvedValue(aCero());
+    montar();
+
+    // Sigue ahí: la ficha no se retira ni se vacía. `findAllByText` porque el nombre aparece
+    // más de una vez en la tarjeta —título y descriptor—, y `findByText` reventaría por eso y no
+    // por lo que se mide.
+    expect((await screen.findAllByText(/Corvin/)).length).toBeGreaterThan(0);
+    // Y se lee en qué estado está, sin abrir su hoja.
+    const salvaciones = await screen.findByLabelText("Salvaciones contra muerte");
+    expect(salvaciones).toHaveTextContent("1");
+    expect(salvaciones).toHaveTextContent("2");
+  });
+
+  // **Y no se enseñan cuando no vienen a cuento**: un personaje en pie con las casillas a cero
+  // llenaría la mesa de información muerta.
+  //
+  // **Esta prueba se escribió mal la primera vez y la mutación lo cazó**, que es para lo que
+  // sirve: anclaba en `findAllByText(/Corvin/)`, y el nombre sale de la **prop**, no de la hoja.
+  // Resolvía al instante, el `queryByLabelText` corría antes de que la hoja llegara, y la prueba
+  // pasaba **aunque el componente pintara las salvaciones siempre**. Ahora espera a la barra de
+  // PG, que solo existe cuando la hoja ha cargado: sin ese anclaje esto no mide nada.
+  it("no las enseña si está en pie", async () => {
+    vi.spyOn(sheetApi, "fetchSheet").mockResolvedValue(hoja());
+    montar();
+    await screen.findByRole("img", { name: /42 de 58 puntos de golpe/ });
+    expect(screen.queryByLabelText("Salvaciones contra muerte")).not.toBeInTheDocument();
   });
 });

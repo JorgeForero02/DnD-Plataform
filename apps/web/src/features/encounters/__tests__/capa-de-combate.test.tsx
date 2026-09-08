@@ -40,6 +40,9 @@ const GOBLIN_B = { ...GOBLIN_A, id: "g2" };
  */
 const SIN_GASTAR = { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 };
 
+/** En pie. `derrotado` llegó con la ficha del final propuesto (2026-09-07). */
+const EN_PIE = { ...SIN_GASTAR, derrotado: false };
+
 /** Un personaje en la posición 0 y dos goblins compartiendo la 1: dos turnos, tres filas. */
 const ENCUENTRO: Encounter = {
   id: "e1",
@@ -47,6 +50,7 @@ const ENCUENTRO: Encounter = {
   status: "ACTIVE",
   round: 2,
   activePosition: 0,
+  finalPropuesto: false,
   combatants: [
     // `side` desde el plan 02: el bando lo dice el DM al empezar el encuentro. Esta pantalla
     // todavía no lo pinta —el dato llega y no se usa—, así que aquí solo hace falta para que el
@@ -57,7 +61,7 @@ const ENCUENTRO: Encounter = {
       initiative: 18,
       position: 0,
       side: "ALLY" as const,
-      ...SIN_GASTAR,
+      ...EN_PIE,
     },
     {
       id: "cb2",
@@ -65,7 +69,7 @@ const ENCUENTRO: Encounter = {
       initiative: 11,
       position: 1,
       side: "ENEMY" as const,
-      ...SIN_GASTAR,
+      ...EN_PIE,
     },
     {
       id: "cb3",
@@ -73,7 +77,7 @@ const ENCUENTRO: Encounter = {
       initiative: 11,
       position: 1,
       side: "ENEMY" as const,
-      ...SIN_GASTAR,
+      ...EN_PIE,
     },
   ],
 };
@@ -233,7 +237,7 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
           initiative: 18,
           position: 0,
           side: "ALLY" as const,
-          ...SIN_GASTAR,
+          ...EN_PIE,
         },
         {
           id: "cb9",
@@ -241,7 +245,7 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
           initiative: 9,
           position: 1,
           side: "ENEMY" as const,
-          ...SIN_GASTAR,
+          ...EN_PIE,
         },
       ],
     };
@@ -270,7 +274,7 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
                   initiative: 9,
                   position: 0,
                   side: "ENEMY" as const,
-                  ...SIN_GASTAR,
+                  ...EN_PIE,
                 },
               ],
             }}
@@ -325,5 +329,58 @@ describe("la economía del turno propio llega a la tira, leída del encuentro (c
     const economia = await screen.findByRole("region", { name: "Lo que te queda del turno" });
     expect(within(economia).getByText("Acción: usada")).toBeInTheDocument();
     expect(within(economia).getByText("Acción adicional: usada")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// **El combate propone terminarse, y los caídos se ven caídos.** Ficha P2, 2026-09-07.
+//
+// La doctrina impresa de las Herramientas del DM manda aquí: *«El sistema propone; tú decides.
+// Nada llega a la mesa hasta que lo confirmas.»* Y el SRD 5.1 la respalda incluso para el
+// monstruo: «Monsters and Death» dice que *«Most DMs have a monster die the instant it drops to 0
+// hit points»* — **costumbre del DM**, con villanos como excepción explícita. Así que la pantalla
+// **avisa** y el DM pulsa; no se cierra sola.
+describe("la propuesta de terminar y los caídos", () => {
+  function conCaidos(finalPropuesto: boolean) {
+    return {
+      ...ENCUENTRO,
+      finalPropuesto,
+      combatants: ENCUENTRO.combatants.map((c) =>
+        c.side === "ENEMY" ? { ...c, derrotado: true } : c,
+      ),
+    };
+  }
+
+  it("**no propone nada mientras el servidor no lo diga**", () => {
+    montarTira(conCaidos(false));
+    expect(screen.queryByRole("status", { name: /Sin enemigos en pie/i })).not.toBeInTheDocument();
+  });
+
+  it("cuando el servidor lo propone, lo dice — y el gesto de terminar sigue siendo del DM", () => {
+    montarTira(conCaidos(true));
+    expect(screen.getByRole("status", { name: /Sin enemigos en pie/i })).toBeInTheDocument();
+    // El botón que ya existía es la confirmación: no se añade un segundo camino para lo mismo.
+    expect(screen.getByRole("button", { name: "Terminar el combate" })).toBeInTheDocument();
+  });
+
+  // **Y el jugador no la ve**, porque el servidor no se la manda: `finalPropuesto` llega en
+  // `false` a quien no es DM. Esta prueba fija que la pantalla no se lo inventa por su cuenta
+  // mirando los `derrotado` que sí puede ver.
+  it("un jugador no ve la propuesta aunque vea caídos", () => {
+    montarTira({ ...conCaidos(false) }, false);
+    expect(screen.queryByRole("status", { name: /Sin enemigos en pie/i })).not.toBeInTheDocument();
+  });
+
+  // **El gris no puede ser el único portador del significado** — misma regla que obliga a «Le
+  // toca» a llevar rótulo y a la barra de PG a llevar su cifra al lado. Así que se comprueba el
+  // rótulo, que además es lo único que `jsdom` puede medir honestamente.
+  it("un caído lo DICE, no solo se pone gris", () => {
+    montarTira(conCaidos(true));
+    expect(screen.getByText("Cayó")).toBeInTheDocument();
+  });
+
+  it("y quien sigue en pie no lo dice", () => {
+    montarTira(ENCUENTRO);
+    expect(screen.queryByText("Cayó")).not.toBeInTheDocument();
   });
 });

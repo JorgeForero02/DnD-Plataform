@@ -665,6 +665,100 @@ describe("EncountersService", () => {
     expect([...posicionPorClave.get("orc")!][0]).toBe(1);
   });
 
+  // ---------------------------------------------------------------------------------------
+  // **El combate PROPONE terminarse; no se termina solo.** Ficha P2, cerrada el 2026-09-07.
+  //
+  // **Dos frases de esa ficha eran falsas al abrirla y hay que decirlo**: decía que «hoy todos los
+  // combatientes son NEUTRAL, así que no se puede ni calcular» —el bando existe desde el paso 2,
+  // `schema.prisma:429`— y daba por hecho que un jugador a 0 PG desaparecía de la mesa, cuando
+  // **nada en `encounters/` mira `currentHp`**: no desaparecía nadie.
+  //
+  // **Por qué se propone en vez de cerrar**, y lo dice el SRD 5.1 (2014) mejor que el plan.
+  // «Monsters and Death»: *«Most DMs have a monster die the instant it drops to 0 hit points,
+  // rather than having it fall unconscious and make death saving throws. Mighty villains and
+  // special nonplayer characters are common exceptions; the DM might have them fall unconscious
+  // and follow the same rules as player characters.»* O sea que ni siquiera la muerte del monstruo
+  // es automática en 5.1: **es costumbre del DM, con excepciones explícitas**. Un cierre
+  // automático sería el servidor decidiendo por él.
+  describe("get() — la propuesta de terminar", () => {
+    function encuentro(combatants: unknown[], rol = "DM") {
+      prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
+      prisma.user.findUnique.mockResolvedValue({ id: "u1", isAdmin: false });
+      membership.getMembership.mockResolvedValue({ role: rol });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "enc1",
+        sessionId: "s1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants,
+      });
+    }
+    const heroe = {
+      id: "cb0",
+      characterId: "pc1",
+      initiative: 18,
+      position: 0,
+      side: "ALLY",
+      character: { visibility: "PLAYERS", ownerId: "u1", currentHp: 12 },
+    };
+    const goblin = (over: Record<string, unknown> = {}) => ({
+      id: "cb1",
+      characterId: "gob1",
+      initiative: 9,
+      position: 1,
+      side: "ENEMY",
+      character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 7, ...over },
+    });
+
+    it("con un enemigo en pie no propone nada", async () => {
+      encuentro([heroe, goblin()]);
+      const r = await service.get("u1", "c1", "s1", "enc1");
+      expect(r.finalPropuesto).toBe(false);
+    });
+
+    it("**con todos los enemigos a 0 PG, lo propone**", async () => {
+      encuentro([heroe, goblin({ currentHp: 0 })]);
+      const r = await service.get("u1", "c1", "s1", "enc1");
+      expect(r.finalPropuesto).toBe(true);
+      // Y no cierra nada por su cuenta: sigue ACTIVE hasta que el DM lo diga.
+      expect(r.status).toBe("ACTIVE");
+      expect(prisma.encounter.update).not.toHaveBeenCalled();
+    });
+
+    it("marca **derrotado** a quien está a 0, y solo a ese", async () => {
+      encuentro([heroe, goblin({ currentHp: 0 })]);
+      const r = await service.get("u1", "c1", "s1", "enc1");
+      expect(r.combatants.map((c) => c.derrotado)).toEqual([false, true]);
+    });
+
+    // **`NEUTRAL` no cuenta como bando en pie ni como enemigo caído**: significa «no se ha dicho»,
+    // y una propuesta basada en un silencio sería una afirmación inventada.
+    it("un NEUTRAL en pie no impide la propuesta, y un NEUTRAL a 0 no la provoca", async () => {
+      const neutral = { ...goblin(), id: "cb2", characterId: "n1", position: 2, side: "NEUTRAL" };
+      encuentro([heroe, goblin({ currentHp: 0 }), neutral]);
+      expect((await service.get("u1", "c1", "s1", "enc1")).finalPropuesto).toBe(true);
+
+      encuentro([heroe, { ...neutral, character: { ...neutral.character, currentHp: 0 } }]);
+      expect((await service.get("u1", "c1", "s1", "enc1")).finalPropuesto).toBe(false);
+    });
+
+    // Sin ningún ENEMY no hay nada que proponer: un encuentro de exploración no se ofrece a
+    // cerrarse solo porque nadie esté peleando.
+    it("sin enemigos no propone", async () => {
+      encuentro([heroe]);
+      expect((await service.get("u1", "c1", "s1", "enc1")).finalPropuesto).toBe(false);
+    });
+
+    // **La propuesta es del DM y solo suya.** Calcularla para el jugador filtraría por la puerta
+    // de atrás: un jugador que no ve al último goblin escondido deduciría que ya no queda ninguno
+    // en pie. Es la misma fuga que `activePosition` cierra devolviendo `null`.
+    it("un jugador NO recibe la propuesta, aunque los enemigos estén a 0", async () => {
+      encuentro([heroe, goblin({ currentHp: 0 })], "PLAYER");
+      expect((await service.get("u1", "c1", "s1", "enc1")).finalPropuesto).toBe(false);
+    });
+  });
+
   describe("get() y lo que NO se le manda a un jugador", () => {
     function encuentroConGoblinesEscondidos() {
       prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
@@ -774,6 +868,12 @@ describe("EncountersService", () => {
         bonusUsed: true,
         reactionUsed: false,
         movementUsed: 15,
+        // Añadido el 2026-09-07 con la ficha del final propuesto. **Esta aserción es de identidad
+        // a propósito**, así que un campo nuevo la rompe — que es lo que se quiere: obliga a
+        // mirar si el campo debía estar ahí en vez de dejarlo colarse. Este `false` sale de un
+        // combatiente cuyo `character` no declara `currentHp` en este montaje, y `undefined === 0`
+        // es falso, que es la respuesta correcta: no consta que haya caído.
+        derrotado: false,
       });
     });
 

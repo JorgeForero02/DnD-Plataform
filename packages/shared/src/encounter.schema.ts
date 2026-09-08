@@ -50,6 +50,18 @@ export const combatantSchema = z
     initiative: z.number().int(),
     position: z.number().int().nonnegative(),
     side: combatantSideSchema,
+    /**
+     * **Está a 0 puntos de golpe.** Lo deriva el servidor de `Character.currentHp`, que hasta hoy
+     * no salía por aquí: `encounters/` no miraba los PG en ninguna parte.
+     *
+     * Se llama `derrotado` y **no `muerto`**, y es deliberado. SRD 5.1, «Monsters and Death»:
+     * *«Most DMs have a monster die the instant it drops to 0 hit points… Mighty villains and
+     * special nonplayer characters are common exceptions.»* Ni siquiera un monstruo a 0 está
+     * muerto por regla — es costumbre del DM, con excepciones. Y un personaje jugador a 0 está
+     * inconsciente tirando salvaciones, no muerto. Un solo nombre para los dos solo puede ser el
+     * que describe lo que se ve: cayó.
+     */
+    derrotado: z.boolean(),
   })
   .extend(economiaDelTurnoSchema.shape);
 export type Combatant = z.infer<typeof combatantSchema>;
@@ -70,6 +82,23 @@ export const encounterSchema = z.object({
    */
   activePosition: z.number().int().nonnegative().nullable(),
   combatants: z.array(combatantSchema),
+  /**
+   * **El sistema propone; el DM decide.** Cierto cuando el encuentro tiene al menos un `ENEMY` y
+   * **todos** sus `ENEMY` están a 0 PG.
+   *
+   * No cierra nada: el encuentro sigue `ACTIVE` hasta que el DM lo termine. Un enemigo a 0 puede
+   * estar inconsciente, los enemigos huyen, y un combate se acaba parlamentando con el jefe en
+   * pie — un cierre automático sería el servidor decidiendo por él, y es justo lo que la doctrina
+   * impresa de las Herramientas del DM prohíbe.
+   *
+   * **`NEUTRAL` no cuenta**: significa «no se ha dicho», y proponer sobre un silencio sería
+   * afirmar algo que nadie declaró.
+   *
+   * **Llega en `false` a quien no es DM**, y esa es su parte de seguridad: calcularlo para un
+   * jugador le diría que ya no queda ningún enemigo en pie **incluido el que no puede ver**. Es la
+   * misma fuga que `activePosition` cierra devolviendo `null`.
+   */
+  finalPropuesto: z.boolean(),
 });
 export type Encounter = z.infer<typeof encounterSchema>;
 

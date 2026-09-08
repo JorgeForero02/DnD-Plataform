@@ -223,6 +223,9 @@ describe("Petición de tirada (e2e)", () => {
     ]);
   });
 
+  // Esta es la que la ficha P2-10 nombraba: 1,4 s sola, y por encima del tope por defecto con la
+  // suite entera junta. Ya no lleva número propio — el tope de esta capa se declara una sola vez,
+  // en `test/tiempo-de-espera.ts`, con la medición que lo justifica.
   it("con 60 peticiones sueltas, las de un encuentro siguen saliendo (paso 1, tarea 17)", async () => {
     const s = app.getHttpServer();
     // **El corte de cincuenta hacía mentir a la sala de espera.** La lista sale por fecha

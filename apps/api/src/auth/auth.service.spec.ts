@@ -5,6 +5,18 @@ import * as argon2 from "argon2";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
 
+// **El tiempo de espera de este fichero, declarado y explicado** (ficha P2-10).
+//
+// Los 5 000 ms por defecto de Jest se quedan cortos aquí en cuanto la máquina tiene algo más que
+// hacer: **cada** prueba de abajo hashea o verifica con `argon2`, que es caro **a propósito** —es
+// la defensa de las contraseñas, no un ajuste de rendimiento, y por eso no se abarata—. Solo, el
+// fichero tarda ~5 s en total; con las unitarias de la web corriendo en paralelo, `changePassword`
+// se pasó del tope dos veces durante la tanda del 2026-09-07.
+//
+// El coste no era el rojo, era el diagnóstico: parece un defecto del cambio que acabas de hacer, y
+// descartarlo cuesta una vuelta entera. El número se declara aquí en vez de dejarlo implícito.
+jest.setTimeout(30_000);
+
 describe("AuthService", () => {
   let service: AuthService;
   const users = {

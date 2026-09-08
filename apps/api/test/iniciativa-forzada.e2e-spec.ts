@@ -333,7 +333,14 @@ describe("El DM empieza sin esperar y cancela lo que nunca empezó (e2e)", () =>
       expect(rechazo.reason).toMatchObject({ status: 409 });
       expect((rechazo.reason as Error).message).toContain("tiró el sistema");
     }
-  }, 30000);
+    // **Noventa segundos, y el número tiene medición detrás** (ficha P2-10). Quince vueltas, cada
+    // una montando su encuentro con dos jugadores y provocando una carrera de verdad: **5,4 s con
+    // la máquina para ella sola**, la prueba más lenta de toda la suite de e2e con diferencia. Los
+    // 30 s que traía se los comía la contención —medido: 125 s de reloj para este fichero con las
+    // unitarias de la web corriendo a la vez—, y era la ÚNICA que seguía cayendo después de subir
+    // el tope general de la capa (`test/tiempo-de-espera.ts`). Sigue siendo un tope de verdad: si
+    // la carrera se atasca, muere igual.
+  }, 90000);
 
   /**
    * M-8 (ronda de arreglo 1) — un fallo a mitad del bucle deja el encuentro a medias, y el

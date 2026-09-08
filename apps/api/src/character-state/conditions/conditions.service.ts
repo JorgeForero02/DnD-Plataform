@@ -371,7 +371,9 @@ export class ConditionsService {
       // reloj de siempre: sin encuentro activo, un borde dejaría la marca viva para siempre.
       const enCombate = await tx.combatant.findFirst({
         where: { characterId: helperCharacterId, encounter: { status: "ACTIVE" } },
-        select: { id: true },
+        // `actionUsed` y `encounterId` los pide el gasto de más abajo; el borde solo necesitaba
+        // saber que existe.
+        select: { id: true, actionUsed: true, encounterId: true },
       });
       const borde = enCombate
         ? { expiryEdge: "sourceStart", sourceCharacterId: helperCharacterId }
@@ -403,6 +405,48 @@ export class ConditionsService {
           expiresAtClock: campana.clockSeconds + SEGUNDOS_POR_ASALTO,
         },
       });
+      // **Ayudar cuesta la acción de quien ayuda** (ficha P1, puerta A — 2026-09-07).
+      //
+      // Sin esto, un jugador con dos personajes se daba `helped` de uno al otro sin límite: `help`
+      // exige dueño-o-DM **del ayudante**, del ayudado solo que esté en la campaña, y crear
+      // personajes no tiene tope. **Prohibirlo estaba descartado con motivo** —el SRD permite que
+      // dos criaturas se ayuden, y que las lleve la misma persona no las convierte en una—; lo que
+      // el SRD sí cobra es que Ayudar es una **acción**, y con eso la puerta se cierra sola.
+      //
+      // **Se hereda la doctrina del paso 2 y no se inventa otra**: `EncountersService.gastar`
+      // (`encounters.service.ts:1277`) marca `excedido` y **no lanza nunca**. Gastar cuenta y
+      // avisa, no impide — así que aquí tampoco se rechaza nada: se gasta y se dice.
+      //
+      // Se escribe **en esta misma transacción** en vez de llamar a `gastar`: aquel pide
+      // `sessionId` y `encounterId` que esta ruta no recibe, y abriría una segunda transacción
+      // sobre la fila que ya tenemos aquí. El criterio es el mismo; el camino, el más corto.
+      //
+      // **Fuera de combate no gasta nada y no falla**, y es un supuesto declarado del autor
+      // (2026-09-07): la economía vive en `Combatant`, o sea dentro de un encuentro. Sin turnos no
+      // hay economía que cobrar, y la puerta se cierra donde importa, que es la pelea.
+      if (enCombate) {
+        const excedido = enCombate.actionUsed;
+        await tx.combatant.update({ where: { id: enCombate.id }, data: { actionUsed: true } });
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            subjectId: helperCharacterId,
+            // La del AYUDANTE aquí: este suceso habla de quien gasta, no de quien recibe.
+            visibility: ayudante.visibility,
+            payload: {
+              type: "ACTION_SPENT",
+              encounterId: enCombate.encounterId,
+              combatantId: enCombate.id,
+              coste: "ACTION",
+              excedido,
+            },
+          },
+          tx,
+        );
+      }
+
       await this.events.record(
         userId,
         campaignId,

@@ -23,6 +23,9 @@ describe("ConditionsService", () => {
     // 2C.4: el reloj de la campaña — la caducidad de una condición y el agotamiento que parte
     // los PG máximos se calculan contra él.
     campaign: { findUniqueOrThrow: jest.fn() },
+    // Ayudar cuesta la acción de quien ayuda (ficha P1, puerta A — 2026-09-07): `help` busca al
+    // combatiente del ayudante y le gasta la acción **dentro de la misma transacción**.
+    combatant: { findFirst: jest.fn(), update: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
@@ -48,6 +51,86 @@ describe("ConditionsService", () => {
     prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
     statblocks.resolver.mockResolvedValue(null);
     prisma.characterCondition.findMany.mockResolvedValue([]);
+  });
+
+  // ---------------------------------------------------------------------------------------
+  // **Ayudar cuesta la acción de quien ayuda** — ficha P1, puerta A, cerrada el 2026-09-07.
+  //
+  // El agujero: `help` exige dueño-o-DM **del ayudante** y del ayudado solo que esté en la
+  // campaña, y crear personajes no tiene tope. Así que **un jugador con dos personajes se daba
+  // `helped` de uno al otro** indefinidamente.
+  //
+  // **La salida no es prohibirlo**, y eso ya estaba descartado con motivo: el SRD permite que dos
+  // criaturas se ayuden, y que las lleve la misma persona no las convierte en una. Lo que el SRD
+  // sí cobra es que Ayudar es una **acción**, y por tanto una por turno.
+  //
+  // **Y se hereda la doctrina del paso 2, no se inventa otra**: `EncountersService.gastar`
+  // devuelve `excedido` y **no lanza nunca** — cuenta y avisa, no impide. Así que estas pruebas
+  // miden **el aviso y el gasto**, no un 403. Se comprobó leyendo `encounters.service.ts:1277`
+  // antes de escribir la aserción.
+  describe("help() — Ayudar cuesta la acción", () => {
+    const ayudado = { id: "c2", name: "Mira", visibility: "PLAYERS", campaignId: "cmp1" };
+
+    beforeEach(() => {
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.character.findFirst
+        .mockResolvedValueOnce({ ...character, name: "Bram" }) // el ayudante, por requireVisible
+        .mockResolvedValueOnce(ayudado); // el ayudado
+      prisma.characterCondition.upsert.mockResolvedValue({ key: "helped" });
+    });
+
+    it("en combate gasta la acción del ayudante", async () => {
+      prisma.combatant.findFirst.mockResolvedValue({ id: "cb1", actionUsed: false });
+      prisma.combatant.update.mockResolvedValue({ id: "cb1", actionUsed: true });
+
+      await service.help("owner1", "cmp1", "c1", { targetCharacterId: "c2" });
+
+      expect(prisma.combatant.update).toHaveBeenCalledWith({
+        where: { id: "cb1" },
+        data: { actionUsed: true },
+      });
+    });
+
+    it("**ayudar dos veces en el mismo turno lo DICE**: el segundo sale marcado como excedido", async () => {
+      // La segunda vez el combatiente ya tiene la acción gastada. No se rechaza —esa es la
+      // doctrina del paso 2— pero el suceso lo cuenta, que es lo que la mesa lee.
+      prisma.combatant.findFirst.mockResolvedValue({ id: "cb1", actionUsed: true });
+      prisma.combatant.update.mockResolvedValue({ id: "cb1", actionUsed: true });
+
+      await service.help("owner1", "cmp1", "c1", { targetCharacterId: "c2" });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "ACTION_SPENT",
+            coste: "ACTION",
+            excedido: true,
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    // **El supuesto declarado por el autor, 2026-09-07.** La economía vive en `Combatant`, o sea
+    // solo dentro de un encuentro. Sin turnos no hay economía que cobrar, así que fuera de combate
+    // `help` no gasta nada y no falla. La puerta se cierra donde importa, que es la pelea.
+    it("fuera de combate no gasta nada y sigue funcionando", async () => {
+      prisma.combatant.findFirst.mockResolvedValue(null);
+
+      await service.help("owner1", "cmp1", "c1", { targetCharacterId: "c2" });
+
+      expect(prisma.combatant.update).not.toHaveBeenCalled();
+      expect(events.record).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({
+          payload: expect.objectContaining({ type: "ACTION_SPENT" }),
+        }),
+        expect.anything(),
+      );
+    });
   });
 
   it("el dueño puede aplicar una condición sobre su propio personaje", async () => {

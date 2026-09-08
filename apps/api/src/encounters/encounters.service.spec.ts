@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
-import { encounterStatusSchema } from "@dnd/shared";
+import { encounterSchema, encounterStatusSchema } from "@dnd/shared";
 import { EncountersService } from "./encounters.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -72,6 +72,18 @@ describe("EncountersService", () => {
   const rolls = { roll: jest.fn() };
   const clock = { advance: jest.fn() };
 
+  /**
+   * **Las filas de `Combatant` tal y como quedan escritas en el Prisma simulado**, después de que
+   * `recolocar` haya repartido las posiciones con sus `update`.
+   *
+   * Vive aquí arriba desde el 2026-09-07 (ficha P3) para que las pruebas de comportamiento de
+   * `start()` puedan afirmar sobre **lo que se escribió** en vez de sobre lo que devolvió el
+   * método. Antes lo miraban por el `return` —por comodidad, no porque el valor devuelto fuera lo
+   * que probaban—, y eso las ataba a por dónde vuelve la respuesta: al pasar `start()` a devolver
+   * por `get()` se caían cuatro pruebas que no tenían nada que ver con ese cambio.
+   */
+  const creadas: Record<string, unknown>[] = [];
+
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
       providers: [
@@ -96,7 +108,7 @@ describe("EncountersService", () => {
     // `update` que guarde la posición. Simularlo con un array es más fiel que devolver una
     // constante: así la prueba mide el reparto de posiciones de verdad y no una lista escrita a
     // mano que siempre daría la respuesta esperada.
-    const creadas: Record<string, unknown>[] = [];
+    creadas.length = 0;
     prisma.combatant.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
       // **Los cuatro valores por defecto de la columna, no `undefined`.** Sin esto, un
       // combatiente recién creado por la fixture no tenía economía del turno hasta que un test
@@ -120,6 +132,24 @@ describe("EncountersService", () => {
         return Promise.resolve(fila ?? { id: where.id, ...data });
       },
     );
+    // **La lectura del encuentro se simula desde las filas escritas**, igual que `findMany` de
+    // abajo. Hace falta desde que `start()` devuelve por `get()` (ficha P3): ese `get()` relee el
+    // encuentro, y un Prisma simulado que solo sabe crear obligaría a cada prueba a escribir a
+    // mano la respuesta que espera — que es la forma de acabar midiendo el mock.
+    //
+    // El guardián del 409 de `start()` consulta por `status` y cada prueba le pone su
+    // `mockResolvedValueOnce`; lo que devuelve esta implementación es la **relectura por id**.
+    prisma.encounter.findFirst.mockImplementation(async () => ({
+      id: "enc1",
+      sessionId: "s1",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+      combatants: creadas.map((f) => ({
+        ...f,
+        character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
+      })),
+    }));
     prisma.combatant.findMany.mockImplementation(
       ({
         where,
@@ -205,7 +235,7 @@ describe("EncountersService", () => {
   });
 
   it("start() 404 si algún personaje no existe en la campaña", async () => {
-    prisma.encounter.findFirst.mockResolvedValue(null);
+    prisma.encounter.findFirst.mockResolvedValueOnce(null); // solo el guardián del 409
     prisma.character.findMany.mockResolvedValue([{ id: "ch1", statblockRef: null, ownerId: "dm" }]);
     await expect(
       service.start("dm", "c1", "s1", { characterIds: ["ch1", "ch2"] }),
@@ -221,8 +251,72 @@ describe("EncountersService", () => {
     expect(sheets.getInitiativeModifier).not.toHaveBeenCalled();
   });
 
+  // **Lo que `start()` devuelve tiene que ser un `Encounter` de verdad** (ficha P3, 2026-09-07).
+  //
+  // Hasta hoy devolvía `{ ...creado.encounter, combatants: creado.combatants }`: filas de
+  // `Combatant` crudas, sin `derrotado` y sin `finalPropuesto` en el encuentro —los dos
+  // obligatorios en `encounterSchema` desde que el combate propone su final—, mientras el cliente
+  // lo tipa como `Encounter`.
+  //
+  // **La decisión (autor, 2026-09-07) es devolver por `get()`, como sus tres hermanos**:
+  // `current()`, `advanceTurn()` y `forceStart()` ya lo hacían, así que esto no eran dos diseños
+  // posibles sino el único que se había quedado fuera del patrón del fichero.
+  //
+  // **Y no pierde nada al pasar por el filtro**, comprobado y no supuesto: `start()` empieza por
+  // `requireDM`, y `canView` devuelve `true` para el DM en su segunda línea
+  // (`common/visibility.ts:24`). El espectador es siempre quien lo ve todo.
+  it("start() devuelve un encuentro que **valida contra `encounterSchema`**", async () => {
+    prisma.encounter.findFirst.mockResolvedValueOnce(null); // el guardián del 409
+    prisma.character.findMany.mockResolvedValue([
+      { id: "pc1", statblockRef: null, ownerId: "dm" },
+      { id: "gob1", statblockRef: "SRD:goblin", ownerId: "dm" },
+    ]);
+    sheets.getInitiativeModifier.mockResolvedValue(2);
+    rolls.roll.mockResolvedValue({ revealed: true, total: 15, eventId: "rev" });
+    prisma.encounter.create.mockResolvedValue({
+      id: "clzq0a0000000000000000enc",
+      sessionId: "clzq0a0000000000000000ses",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+    });
+    // Lo que `get()` leerá después de crear: las filas con su personaje, que es lo que la
+    // respuesta cruda no traía.
+    prisma.encounter.findFirst.mockResolvedValue({
+      id: "clzq0a0000000000000000enc",
+      sessionId: "clzq0a0000000000000000ses",
+      status: "ACTIVE",
+      round: 1,
+      activePosition: 0,
+      combatants: [
+        {
+          id: "clzq0a0000000000000000cb1",
+          characterId: "clzq0a0000000000000000pc1",
+          initiative: 15,
+          position: 0,
+          side: "ALLY",
+          actionUsed: false,
+          bonusUsed: false,
+          reactionUsed: false,
+          movementUsed: 0,
+          character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
+        },
+      ],
+    });
+    prisma.user.findUnique.mockResolvedValue({ id: "dm", isAdmin: false });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const devuelto = await service.start("dm", "c1", "clzq0a0000000000000000ses", {
+      characterIds: ["pc1", "gob1"],
+    });
+
+    // **Se valida con el esquema entero, no con `objectContaining`**: lo que esta ficha arregla es
+    // precisamente que faltaban campos, y una aserción parcial no ve lo que falta.
+    expect(() => encounterSchema.parse(devuelto)).not.toThrow();
+  });
+
   it("agrupa a los combatientes con el mismo statblockRef: una sola tirada para el grupo entero", async () => {
-    prisma.encounter.findFirst.mockResolvedValue(null);
+    prisma.encounter.findFirst.mockResolvedValueOnce(null); // solo el guardián del 409
     const goblins = Array.from({ length: 6 }, (_, i) => ({
       id: `gob${i}`,
       statblockRef: "SRD:goblin",
@@ -250,17 +344,20 @@ describe("EncountersService", () => {
       round: 1,
       activePosition: 0,
     });
-    const encuentro = await service.start("dm", "c1", "s1", {
+    await service.start("dm", "c1", "s1", {
       characterIds: [...personajes, ...goblins].map((p) => p.id),
     });
 
+    // **Se afirma sobre lo ESCRITO (`creadas`), no sobre lo devuelto.** Lo que esta prueba
+    // comprueba es que `start()` agrupa por `statblockRef` al crear los combatientes; mirarlo por
+    // el `return` era comodidad, y ataba la prueba a por dónde vuelve la respuesta.
     // Ocho combatientes (2D: un PNJ en la mesa es una fila de Character).
-    expect(encuentro.combatants).toHaveLength(8);
+    expect(creadas).toHaveLength(8);
     // Una sola tirada por grupo: dos personajes (grupo de uno cada uno) + un grupo de seis
     // goblins = tres tiradas, no ocho.
     expect(rolls.roll).toHaveBeenCalledTimes(3);
     // Los seis goblins comparten la misma iniciativa: compartieron la tirada.
-    const goblinCombatants = encuentro.combatants.filter((c: any) =>
+    const goblinCombatants = creadas.filter((c: any) =>
       goblins.some((g) => g.id === c.characterId),
     );
     const iniciativasGoblin = new Set(goblinCombatants.map((c: any) => c.initiative));
@@ -270,13 +367,13 @@ describe("EncountersService", () => {
     const posicionesGoblin = new Set(goblinCombatants.map((c: any) => c.position));
     expect(posicionesGoblin.size).toBe(1);
     // Dos personajes (dos grupos de uno) + un grupo de seis goblins = TRES entradas de orden.
-    const todasLasPosiciones = new Set(encuentro.combatants.map((c: any) => c.position));
+    const todasLasPosiciones = new Set(creadas.map((c: any) => c.position));
     expect(todasLasPosiciones.size).toBe(3);
   });
 
   describe("el bando de un combatiente (plan 02)", () => {
     function dosPersonajesListos() {
-      prisma.encounter.findFirst.mockResolvedValue(null);
+      prisma.encounter.findFirst.mockResolvedValueOnce(null); // solo el guardián del 409
       prisma.character.findMany.mockResolvedValue([
         { id: "pc1", statblockRef: null, ownerId: "dm" },
         { id: "gob1", statblockRef: null, ownerId: "dm" },
@@ -300,16 +397,15 @@ describe("EncountersService", () => {
     it("guarda el bando que dice el DM, personaje a personaje", async () => {
       dosPersonajesListos();
 
-      const encuentro = await service.start("dm", "c1", "s1", {
+      await service.start("dm", "c1", "s1", {
         characterIds: ["pc1", "gob1"],
         sides: { pc1: "ALLY", gob1: "ENEMY" },
       });
 
+      // Sobre lo escrito: el bando es una columna que `start()` rellena, no una forma de la
+      // respuesta.
       const porPersonaje = new Map(
-        encuentro.combatants.map((c: { characterId: string; side: string }) => [
-          c.characterId,
-          c.side,
-        ]),
+        (creadas as { characterId: string; side: string }[]).map((c) => [c.characterId, c.side]),
       );
       expect(porPersonaje.get("pc1")).toBe("ALLY");
       expect(porPersonaje.get("gob1")).toBe("ENEMY");
@@ -318,16 +414,13 @@ describe("EncountersService", () => {
     it("quien no viene clasificado entra como NEUTRAL, que es «no se ha dicho»", async () => {
       dosPersonajesListos();
 
-      const encuentro = await service.start("dm", "c1", "s1", {
+      await service.start("dm", "c1", "s1", {
         characterIds: ["pc1", "gob1"],
         sides: { pc1: "ALLY" },
       });
 
       const porPersonaje = new Map(
-        encuentro.combatants.map((c: { characterId: string; side: string }) => [
-          c.characterId,
-          c.side,
-        ]),
+        (creadas as { characterId: string; side: string }[]).map((c) => [c.characterId, c.side]),
       );
       // **NEUTRAL y no ENEMY**: el servidor no rellena el hueco con una suposición. Un valor por
       // defecto que afirmara algo convertiría un silencio en una afirmación que nadie hizo.
@@ -617,7 +710,7 @@ describe("EncountersService", () => {
   // anterior —solo por `id` de personaje— seis goblins y cuatro orcos con la misma tirada se
   // ordenaban por `cuid` y quedaban **intercalados**.
   it("dos grupos con la misma tirada quedan cada uno en SU posición, sin intercalarse", async () => {
-    prisma.encounter.findFirst.mockResolvedValue(null);
+    prisma.encounter.findFirst.mockResolvedValueOnce(null); // solo el guardián del 409
     const bichos = [
       ...Array.from({ length: 3 }, (_, i) => ({
         id: `orco${i}`,
@@ -642,12 +735,15 @@ describe("EncountersService", () => {
       activePosition: 0,
     });
 
-    const encuentro = await service.start("dm", "c1", "s1", {
+    await service.start("dm", "c1", "s1", {
       characterIds: bichos.map((b) => b.id),
     });
 
+    // Sobre lo escrito: las posiciones las reparte `recolocar` con sus `update`, y `creadas`
+    // recoge el estado final de la base simulada. Es más fiel que el `return`, que solo era el
+    // sitio más cómodo desde donde mirarlas.
     const posicionPorClave = new Map<string, Set<number>>();
-    for (const c of encuentro.combatants as { characterId: string; position: number }[]) {
+    for (const c of creadas as unknown as { characterId: string; position: number }[]) {
       const clave = c.characterId.startsWith("orco") ? "orc" : "goblin";
       posicionPorClave.set(clave, (posicionPorClave.get(clave) ?? new Set()).add(c.position));
     }

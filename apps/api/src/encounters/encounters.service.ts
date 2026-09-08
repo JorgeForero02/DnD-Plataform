@@ -400,21 +400,22 @@ export class EncountersService {
         }
         return { encounter, combatants: filas };
       });
-      // **Devuelve las filas crudas, y hoy eso NO cumple `encounterSchema`.** Le faltan
-      // `derrotado` y `finalPropuesto` —obligatorios desde el 2026-09-07— y las posiciones van sin
-      // renumerar, mientras el cliente lo tipa como `Encounter`
-      // (`apps/web/src/features/encounters/api.ts:45`). Es inocuo **solo** porque
-      // `useStartEncounter` tira la respuesta e invalida.
+      // **Se devuelve por `get()`, como sus tres hermanos.** `current()`, `advanceTurn()` y
+      // `forceStart()` ya lo hacían: esto no eran dos diseños posibles, era el único que se había
+      // quedado fuera del patrón del fichero. Devolvía las filas crudas de `Combatant`, sin
+      // `derrotado` y sin `finalPropuesto`, mientras el cliente lo tipa como `Encounter` — o sea
+      // que no validaba contra `encounterSchema` desde que el combate propone su final.
       //
-      // Se intentó arreglar devolviendo por `get()` y **se revirtió**: cuatro pruebas de este
-      // servicio afirman sobre lo que `start()` escribió —bandos, agrupación por `statblockRef`,
-      // posiciones de dos grupos con la misma tirada— y con `get()` pasarían a afirmar sobre el
-      // mock de lectura. Cambiar pruebas de comportamiento por pruebas de mock es empeorarlas.
+      // **Y no pierde nada al pasar por el filtro de `get()`, comprobado y no supuesto:** este
+      // método empieza por `requireDM`, y `canView` devuelve `true` para el DM en su segunda
+      // línea (`common/visibility.ts:24`). El espectador de esta llamada es siempre quien lo ve
+      // todo, así que ni se recorta un combatiente ni se renumera nada que no estuviera ya denso.
       //
-      // **Lo que falta es una decisión, no una línea**: si `start()` debe devolver la vista
-      // filtrada del espectador o el resultado crudo de la creación. Queda en
-      // `docs/06-pendientes.md`.
-      return { ...creado.encounter, combatants: creado.combatants };
+      // La primera vez esto se revirtió porque tumbaba cuatro pruebas de este servicio. **El
+      // defecto estaba en ellas**: afirmaban sobre el valor devuelto por comodidad, no porque el
+      // valor devuelto fuera lo que probaban. Reapuntadas a lo que `start()` **escribe**, siguen
+      // siendo pruebas de comportamiento y ya no dependen de por dónde vuelva la respuesta.
+      return this.get(userId, campaignId, sessionId, creado.encounter.id);
     } catch (error) {
       // P2002 = violación de restricción única: el índice parcial ganó la carrera a la
       // comprobación de arriba (el DM abrió dos pestañas). El mensaje es el mismo 409 legible.

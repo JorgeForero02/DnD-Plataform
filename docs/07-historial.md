@@ -42,6 +42,26 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## `start()` devuelve por `get()`, como sus tres hermanos (2026-09-08, ficha P3)
+
+La ficha se abrió anoche **al revertir este mismo arreglo**, y el revert era correcto con lo que se
+sabía: devolver por `get()` tumbaba cuatro pruebas del servicio. Lo que faltaba era un dato —
+`current()`, `advanceTurn()` y `forceStart()` **ya devolvían por `get()`**—, y con él no eran dos
+diseños posibles sino el único endpoint fuera del patrón de su fichero.
+
+**El defecto estaba en las cuatro pruebas**, no en la línea: afirmaban sobre el valor devuelto por
+comodidad, no porque fuera lo que probaban. Reapuntadas a lo que `start()` **escribe** siguen
+siendo pruebas de comportamiento. La mutación lo separa en los dos sentidos: volver a las filas
+crudas enrojece solo la del esquema; romper el agrupado por `statblockRef`, solo las suyas.
+
+**Comprobado y no supuesto**, que era la duda que quedaba: `get()` filtra por `canView`, pero
+`start()` empieza por `requireDM` y `visibility.ts:24` devuelve `true` para el DM, así que no se
+recorta ningún combatiente. Y las posiciones no cambian de valor: `recolocar` ya las escribe
+densas, de modo que para el DM el renumerado es la identidad — lo confirmaron los e2e que afirman
+`[0, 1, 2]` sin tocarlos.
+
+**Revertir:** un commit. Solo toca `encounters.service.ts` y su spec.
+
 ## Lo que la poda desbloqueó: tres fichas que ya se podían cerrar (2026-09-07)
 
 Ninguna era nueva. Las tres llevaban semanas con una cláusula «Cierra cuando…» **que el paso 2
@@ -915,27 +935,12 @@ este fichero llegó a 1018 de sus 1000 líneas. Lo que cerraron:
 - **Plan 08 · inspiración y Ayudar** (I8) — la inspiración **no** es un booleano nuevo: es un
   `CharacterResource` con `max: 1`; y Ayudar es una condición que **caduca cuando el SRD dice**.
 
-## La suite e2e de API entera vuelve a poder correrse (2026-09-05)
+## La suite e2e de API entera vuelve a poder correrse (2026-09-05) — archivada
 
-**Encontrado al ensamblar.** Con los cinco carriles de la noche en `main` se corrieron los e2e de
-API **todos juntos** —algo que no se hacía: se corrían por fichero—, y **una docena de suites no
-arrancaban**, arrastrando decenas de pruebas en rojo. El mensaje mandaba a mirar las credenciales, que estaban bien; lo que
-Postgres decía por debajo era `FATAL: sorry, too many clients already`.
-
-**`PrismaService` no se desconectaba nunca.** Implementaba `OnModuleInit` y no `OnModuleDestroy`,
-así que cada `app.close()` de cada fichero de prueba dejaba su pool abierto: 37 ficheros contra
-`max_connections = 100`. El arreglo es el patrón canónico de Nest + Prisma, y en producción además
-hace un apagado ordenado.
-
-**Medido antes y después:** de una docena de suites muertas a **la suite entera en verde** —los
-conteos viven en [08-pruebas.md](./08-pruebas.md)—, con las conexiones estables en 40 durante la
-tanda y en 6 al acabar.
-
-**Por qué llevaba tiempo escondido:** por fichero no se ve, y **CI tampoco lo ve**, porque allí cada
-worker de Jest es un proceso que muere y libera lo suyo. Solo enseña la cara al correr la suite
-entera en una máquina. Es el argumento de por qué ensamblar y probar el árbol junto no es papeleo.
-
-**Cómo revertirlo.** `git revert` del commit: vuelve el pool sin cerrar.
+**Movida entera** a [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md)
+el 2026-09-08: escribir la entrada de `start()` dejó este fichero en 1010 de sus 1000 líneas, y
+esta era la más antigua sin archivar. En una línea: la suite de e2e de API había dejado de poder
+correrse entera y volvió a hacerlo.
 
 ---
 

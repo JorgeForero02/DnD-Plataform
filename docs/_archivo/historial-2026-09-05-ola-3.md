@@ -7,6 +7,9 @@ la entrada más antigua en ese momento; su hito se resume en el stub que queda a
 **Este fichero acumula el corte entero de esa noche y lo que vino después**: a las cuatro entradas
 del 2026-09-07 se sumó, ese mismo día, «Un personaje se archiva, y vuelve», cuando `07-historial.md` volvió a rebasar su tope —dos veces esa noche: al cerrar la ficha P4 y al escribir la medición de la mesa a 390 px—. Ninguna se reescribió al moverla.
 
+**Y una sexta el 2026-09-08**: «La suite e2e de API entera vuelve a poder correrse», cuando la
+entrada de `start()` devolviendo por `get()` volvió a pasarse del tope. Tampoco se reescribió.
+
 ---
 
 ## La Ola 3, las 21 decisiones y la auditoría de la cola larga (2026-09-05)
@@ -242,3 +245,27 @@ nunca abierto—, pero dejó cinco cosas y las cinco se arreglaron aquí:
   ficha tachada citaba **tres** consumidores de `sePuedeRevelar` cuando el tercero solo importa el
   botón. La conclusión de esa ficha era correcta; **la evidencia no**, y es justo el género que
   `check:docs` no caza.
+
+---
+
+## La suite e2e de API entera vuelve a poder correrse (2026-09-05)
+
+**Encontrado al ensamblar.** Con los cinco carriles de la noche en `main` se corrieron los e2e de
+API **todos juntos** —algo que no se hacía: se corrían por fichero—, y **una docena de suites no
+arrancaban**, arrastrando decenas de pruebas en rojo. El mensaje mandaba a mirar las credenciales, que estaban bien; lo que
+Postgres decía por debajo era `FATAL: sorry, too many clients already`.
+
+**`PrismaService` no se desconectaba nunca.** Implementaba `OnModuleInit` y no `OnModuleDestroy`,
+así que cada `app.close()` de cada fichero de prueba dejaba su pool abierto: 37 ficheros contra
+`max_connections = 100`. El arreglo es el patrón canónico de Nest + Prisma, y en producción además
+hace un apagado ordenado.
+
+**Medido antes y después:** de una docena de suites muertas a **la suite entera en verde** —los
+conteos viven en [08-pruebas.md](./08-pruebas.md)—, con las conexiones estables en 40 durante la
+tanda y en 6 al acabar.
+
+**Por qué llevaba tiempo escondido:** por fichero no se ve, y **CI tampoco lo ve**, porque allí cada
+worker de Jest es un proceso que muere y libera lo suyo. Solo enseña la cara al correr la suite
+entera en una máquina. Es el argumento de por qué ensamblar y probar el árbol junto no es papeleo.
+
+**Cómo revertirlo.** `git revert` del commit: vuelve el pool sin cerrar.

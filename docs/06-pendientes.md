@@ -11,7 +11,9 @@ y las que cierra el paso 1 «las goteras» del 2026-09-06 en
 y las **tres que llevaban «Cerrado» en su propio título** en
 [`_archivo/pendientes-cerrados-2026-09-06-poda.md`](./_archivo/pendientes-cerrados-2026-09-06-poda.md),
 y las **seis de la tanda corta del 2026-09-07** en
-[`_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md).
+[`_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md),
+y las **tres de la tanda B, el mismo día**, en
+[`_archivo/pendientes-cerrados-2026-09-07-tanda-b.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-b.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -1419,80 +1421,6 @@ furia se lleva el +2 sin merecerlo. No es arreglable dentro de `character-sheet.
 `rollAttack` no tiene un modo «arrojado» del que depender — hace falta que `rules/attacks.ts`
 distinga las dos formas del mismo arma, que es un cambio de forma, no de un `if`.
 
-### P2-1 · La clave de una condición es un contrato de seguridad, y hoy lo sostiene la costumbre (2026-09-07)
-
-**Medido por tercera vez, abriendo los seis ficheros que de verdad leen una condición por su
-clave — las dos vueltas anteriores contaron tres ficheros y se quedaron cortas las dos veces:
-«cinco» la primera, «once en tres ficheros» la segunda, ninguna de las dos completa.**
-
-- `suggested-roll-mode.ts` — **seis**: `condition.key === "exhaustion"` (línea 136),
-  `VENTAJA_EN_ATAQUE.has(condition.key)` (línea 152, el `Set` que lleva `"invisible"` **y**
-  `CLAVE_AYUDA` dentro), `DESVENTAJA_EN_ATAQUE.has(condition.key)` (línea 153, cinco claves del
-  SRD), `DESVENTAJA_EN_PRUEBAS.has(condition.key)` (línea 158, dos claves),
-  `CONDICIONES_DE_FALLO_AUTOMATICO.has(condition.key)` (línea 166, cuatro claves) y
-  `condition.key === "restrained"` otra vez, en la rama de salvación (línea 170).
-- `effective-speed.ts` — **tres**: `CONDICIONES_A_CERO.has(condition.key)` (línea 70, seis
-  claves), `condition.key === "prone"` (línea 74) y `condition.key === "exhaustion"` (línea 81).
-- `character-sheet.service.ts` — **dos**: la consulta por `key: CLAVE_AYUDA` en `ayudaViva`
-  (línea 825) y la consulta por `key: CLAVE_FURIA_ACTIVA` en `bonoDeFuria` (línea 1803, `raging`).
-- **`modo-contra-objetivo.ts` — dos, que faltaban en las dos cuentas anteriores**:
-  `VENTAJA_CONTRA.has(condicion.key)` (línea 67, seis claves) y
-  `DESVENTAJA_CONTRA.has(condicion.key)` (línea 69, `invisible`). No es código muerto: lo usa
-  `character-sheet.service.ts:1946` (`modoContraObjetivo`, el modo de tirada de quien ATACA a
-  alguien con esa condición — pregunta distinta de «¿cómo tiro yo?», por eso vive en su propio
-  fichero).
-- **`character-state/common/agotamiento.ts` — uno, que también faltaba**: `condiciones.find((c) =>
-  c.key === "exhaustion")` (línea 48, `nivelDeAgotamiento`). Lo consumen
-  `character-state/common/max-hp.ts:69` y `character-sheet.service.ts:1004`: no es código muerto
-  tampoco.
-- **`character-state/rest/rest.service.ts` — uno más**: la consulta por `characterId_key: { …,
-  key: "exhaustion" }` en `bajarAgotamiento` (línea 316).
-
-**Quince lecturas en seis ficheros del motor**, no once en tres. La **puerta**
-(`ConditionsService.apply` / `.remove`, `character-state/conditions/conditions.service.ts`) es
-**tres comparaciones, no una**: `input.key === CLAVE_AYUDA` para rechazar escribir `helped` por
-esta ruta (línea 169), y `esClaveReservada(...)` llamada dos veces —al aplicar (línea 178) y al
-retirar (línea 454). Quince lecturas más tres de la puerta hacen **dieciocho sitios distintos**.
-
-**El argumento del dos-de-dos sigue en pie, y sigue siendo el que importa.** De las claves leídas
-en el motor —`exhaustion`, `restrained`, `blinded`, `frightened`, `poisoned`, `prone`, `invisible`,
-`paralyzed`, `petrified`, `stunned`, `unconscious`, `grappled`— **todas** son del SRD y llegaron
-reservadas de oficio con la lista de quince condiciones; **las dos que no lo son —`helped` y
-`raging`— son exactamente las dos que hubo que acordarse de añadir a mano** a `esClaveReservada`,
-y las dos se añadieron **después** de que el agujero ya estuviera abierto en producción: `raging`
-es, letra por letra, la reincidencia del mismo fallo que `helped` cerró once tareas antes. No hay
-ningún caso en el que la costumbre haya funcionado a la primera.
-
-**Tres opciones, descartadas las dos primeras — no se decide hoy:**
-
-- **(a) Procedencia en la fila** (escrita por una actividad frente a puesta a mano). Descartada:
-  el DM aplicando `poisoned` a mano **sí** tiene que seguir contando como una condición que el
-  motor interpreta el día que algo lea `poisoned`, así que la procedencia no puede ser el único
-  criterio.
-- **(b) Espacio de nombres `sys:`** que la puerta genérica rechazara de oficio. Retirada por quien
-  la propuso a la vista de la ficha siguiente: el tráfico del paso 3 va sobre todo por otra
-  puerta, así que esta sería una valla en un camino que casi nadie usa.
-- **(c) La recomendada: una prueba que barra los seis ficheros del motor** buscando lecturas de
-  `condition.key` (o del nombre local que use cada fichero — `condicion.key`, `c.key`) y exija que
-  cada clave leída esté en `esClaveReservada` — el mismo tipo de red que ya existe para los
-  glifos prohibidos y para el enum de Prisma contra `GAME_EVENT_TYPES`. **Se dimensiona con la
-  lista de arriba entera, no con una parte de ella**: una prueba que solo buscara comparaciones
-  `=== "..."` literales dejaría fuera los **siete** `Set.has(...)` de la lista —
-  `VENTAJA_EN_ATAQUE`, `DESVENTAJA_EN_ATAQUE`, `DESVENTAJA_EN_PRUEBAS`,
-  `CONDICIONES_DE_FALLO_AUTOMATICO` y `CONDICIONES_A_CERO`, más `VENTAJA_CONTRA` y
-  `DESVENTAJA_CONTRA` de `modo-contra-objetivo.ts`, que las dos cuentas anteriores de esta misma
-  ficha tampoco vieron—, y con ellos se le escaparía la única lectura de `helped` que vive dentro
-  de un `Set` (`VENTAJA_EN_ATAQUE`). Es, literalmente, el mismo patrón por el que este proyecto ya
-  se olvidó de reservar `helped` y `raging` una vez cada uno: mirar solo una forma de comparar y
-  no la otra. Su pega real: se burla leyendo la clave desde una variable (`const k = "..."`,
-  comparar contra `k`), que no es lo que hace quien añade un `if` de buena fe — el fallo realista
-  es olvidarse, no evadir. **Para estrecharla**, el motor tendría que leer la clave **solo de
-  constantes declaradas en `shared`** y la prueba comprobar importaciones en vez de literales, que
-  es lo que `CLAVE_FURIA_ACTIVA` ya hace hoy sin que nada lo obligue.
-
-**No se decide esta noche**: el arreglo de fondo depende de cuántos casos traiga el conversor del
-paso 3 — ver la ficha siguiente y `docs/superpowers/specs/2026-09-05-paso-3-catalogo-design.md`.
-
 ### P2-2 · La `entrega` de una fila solo se puede escribir por API (2026-09-07)
 
 **Abierto, ninguna tarea del plan lo encargó.** `entregaSchema` (`packages/shared/src/dm-table.schema.ts`)
@@ -1542,21 +1470,6 @@ no se aplica solo, y la mesa lo arbitra a mano leyendo el resultado de la tirada
 `salvacion.siSalva` (`z.enum(["ninguno", "mitad"])`, `packages/shared/src/activity.schema.ts`)
 dentro de `answer()` es la tarea que falta, no un arreglo de esta tanda.
 
-### P2-8 · `buildResponse` dentro de la transacción de `changeHp` sigue leyendo por el pool (2026-09-07)
-
-**Abierto, menor, encontrado al cerrar P2-0b.** Con `tx`, `changeHp` ya autoriza y **deriva la
-hoja** contra ese cliente. Lo que queda fuera es el final del camino feliz: `changeHpEnTransaccion`
-termina llamando a `this.buildResponse(userId, actualizado)`
-(`apps/api/src/characters/character-sheet.service.ts`), y `buildResponse` no acepta `tx` — de ahí
-cuelgan otra vez `equipoEquipado` y `viewerFor`, que ahora **sí** saben aceptarlo pero no reciben
-nada. Es el mismo defecto que P2-0b, un tramo más abajo: una conexión más con la transacción ajena
-todavía abierta, esta vez para redactar la respuesta.
-
-Se dejó fuera a propósito porque la prueba de P2-0b se mide sobre un `changeHp` que se rechaza
-antes de llegar aquí, y ampliarla a este tramo habría sido arreglar dos cosas con una prueba. El
-arreglo es el mismo de siempre: un `tx?` en `buildResponse` y reenviarlo desde los tres llamadores
-que ya están dentro de una transacción.
-
 ### P2-9 · No hay ninguna puerta para ceder un PNJ a un jugador (2026-09-07)
 
 **Abierto, encontrado al escribir el e2e de P2-3.** Varias fichas y comentarios de este proyecto
@@ -1570,20 +1483,3 @@ Consecuencia práctica, y por eso se anota en vez de dejarlo implícito: **el ca
 solo se puede probar con la API simulada**, y su recorrido de navegador mide la otra mitad del
 mismo carril de datos (que la lista de PNJ llega al selector). Decidir si ceder un PNJ es una
 funcionalidad que se quiere —y con qué permiso— es del autor, no de un agente.
-
-### P2-10 · Dos pruebas se pasan del tiempo por defecto cuando la suite entera corre junta (2026-09-07)
-
-**Abierto, ninguna es un defecto del código.** Medido tres veces durante la tanda del 2026-09-07,
-en las dos direcciones:
-
-- `apps/api/test/peticion-de-tirada.e2e-spec.ts`, «con 60 peticiones sueltas…»: **1,4 s** corriendo
-  su fichero solo, y **más de 5 000 ms** —el tope por defecto de Jest— con **toda** la suite de e2e
-  de API a la vez (los conteos, en [08-pruebas.md](./08-pruebas.md)). Repitiendo por separado, pasa.
-- `apps/api/src/auth/auth.service.spec.ts`, `changePassword()`: cae dos veces con `pnpm verify`
-  entero (las unitarias de la web corriendo en paralelo en la misma máquina) y pasa siempre sola.
-  Es `argon2`, que es caro a propósito.
-
-El coste no es el fallo, es el diagnóstico: un rojo así **parece** un defecto del cambio que acabas
-de hacer y cuesta una vuelta entera descartarlo. El arreglo, si se quiere, es un `test.setTimeout`
-explícito en las dos —el mismo que `paso-1-goteras.spec.ts` ya declara y explica— y no bajar el
-paralelismo.

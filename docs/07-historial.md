@@ -42,6 +42,37 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Tanda B — tres arreglos de API, y una ficha que se equivocaba de tamaño (2026-09-07)
+
+**Qué.** Las tres fichas que la tanda corta dejó abiertas, en tres commits, cada una con su
+mutación pieza a pieza:
+
+- **P2-8** — `buildResponse` cierra el camino feliz de `changeHp` y hablaba con `this.prisma`
+  aunque `equipoEquipado` y `viewerFor` ya sabían aceptar un cliente. Acepta el `tx?` y se lo
+  reenvía; se lo pasan los **cuatro** llamadores que corren dentro de una transacción —uno más de
+  los tres contados, y el que faltaba era el de `changeHpEnTransaccion`, que es el que la ficha
+  nombra—. Su prueba se mide sobre un `changeHp` que **termina**: la de P2-0b no podía.
+- **P2-1** — la red que exige que toda clave de condición que el motor lee esté en
+  `esClaveReservada`, con la opción (c) de la ficha. Mira **las tres formas** —comparación
+  literal, pertenencia a un conjunto y consulta a la base—, y cazarla solo por literales habría
+  perdido los siete `Set` y con ellos la única lectura de `helped`.
+- **P2-10** — la ficha se quedaba corta **en el tamaño**, y es la razón de escribir esta entrada
+  aparte. Decía «dos pruebas lentas»; medido, son **veintitrés suites y 204 pruebas**, casi todas
+  cayendo en el `beforeAll` que monta la aplicación y registra cuentas con `argon2`. **Arreglar
+  las dos que nombraba habría dejado veintiuna suites igual de frágiles y la ficha tachada.** Se
+  mide antes de arreglar, aunque la ficha diga que ya midió.
+
+**Cómo se verificó.** `pnpm verify` en verde en cada commit. P2-10 no lleva paso 1 —no hay
+comportamiento incorrecto que ver fallar— y se demuestra al revés: la misma contención que dejó 23
+suites rojas las deja **todas verdes** después, sin bajar el paralelismo ni abaratar `argon2`, que
+es una defensa. P2-1 se cazó por mutación cinco veces, incluida la más importante: la propia red
+estrechada contra sí misma.
+
+**Cómo revertir.** Los tres commits son independientes. Revertir el de P2-1 solo quita una red;
+revertir el de P2-10 devuelve la fragilidad de diagnóstico, no un defecto de producto.
+
+---
+
 ## Tanda corta — los seis arreglos que dejó abiertos el paso 2 (2026-09-07)
 
 **Qué.** Seis fichas de [06-pendientes.md](./06-pendientes.md) cerradas en seis commits, cada una
@@ -877,102 +908,24 @@ nunca abierto—, pero dejó cinco cosas y las cinco se arreglaron aquí:
 
 ---
 
-## Las tres columnas: el bando, dónde abre la escena y la crónica fuera del Json (2026-09-05)
+## Las tres columnas: el bando, dónde abre la escena y la crónica fuera del Json (2026-09-05) — archivada
 
-**Qué.** Plan 02 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/02-tres-columnas.md).
-Tres campos pequeños que arreglan una mentira y desbloquean «dónde se quedó» y la línea de tiempo.
-El principio que gobierna las tres: **lo que se filtra es columna; lo que solo se pinta puede ser
-Json**.
-
-**`Combatant.side`, el bando (migración `20260905010000_combatant_side`).** `CombatantSide` con
-`ALLY`, `ENEMY` y `NEUTRAL`, en el **encuentro** y no en `Character`: «enemigo» es una relación en
-un momento, no una propiedad de una criatura. Por defecto `NEUTRAL` —«no se ha dicho»—, lo dice el
-DM al empezar (`startEncounterSchema.sides`) y el servidor no lo adivina.
-
-**Un hallazgo real de la prueba, y cambió dónde vive el código.** La comprobación de «me has dado el
-bando de alguien que no combate» estaba en `EncountersService.start`, **después** del 409 de «ya hay
-un encuentro activo»: contra una sesión que ya combatía, la misma petición mal construida devolvía
-409 en vez de 400. Se movió al esquema de `@dnd/shared` (`superRefine`), donde el `ZodValidationPipe`
-la aplica antes de que el servicio mire ningún estado — que además es lo que la convención del
-proyecto manda.
-
-**Cómo se comprobó.** Dos mutaciones. Con el valor por defecto en `ENEMY`, el e2e contra Postgres
-que afirma que el personaje sin clasificar llega `NEUTRAL` se pone rojo (`Expected: "NEUTRAL" ·
-Received: "ENEMY"`). Con el `superRefine` anulado, la prueba del esquema que rechaza un bando
-sobrante se pone roja. Las dos deshechas.
-
-**`Session.openingEntityId`, dónde abre la escena (migración
-`20260905020000_session_opening_entity`).** `ON DELETE SET NULL` y no `CASCADE` —borrar un lugar no
-borra la sesión que pasó allí, comprobado borrando la entidad de verdad—, y **lo que se devuelve
-pasa por `canView`**: si el espectador no puede ver la ficha, el campo llega **ausente**, ni con
-nombre ni con id. Dejar el id sería confirmar que la sesión abre en algo escondido. Apuntar a una
-ficha de otra campaña es **404**, no 400.
-
-**Y aquí salió el fallo contrario a una fuga.** `SessionsService.canSee` pasa `createdById: ""` y
-`grantedUserIds: []`, que para una `Session` vale porque no tiene ni creador ni concesiones — para
-una `Entity` **no**. Con ese atajo, una ficha de apertura `OWNER_DM` o `SPECIFIC_PLAYERS` se habría
-escondido de quien **sí** tenía derecho a verla, y ninguna prueba de fuga caza eso. La ficha se lee
-con sus `grants` y su `createdById` de verdad, y hay una prueba por cada lado.
-
-**Mutación del bando y de la apertura.** Al devolver `openingEntityId` cuando la ficha no es
-visible, el e2e se pone rojo con el id filtrado en la salida.
-
-**`Session.recap` y `Session.recapVisibility`, la crónica fuera del Json (migración
-`20260905030000_session_recap_column`).** La pantalla ya ofrecía elegir quién ve la crónica, el
-esquema ya la aceptaba, y el servicio **publicaba el suceso con la visibilidad de la sesión**: elegir
-no hacía absolutamente nada. Ahora son columnas —porque se filtran— y el suceso sale con la
-visibilidad de **la crónica**.
-
-**Y salió un segundo fallo que nadie buscaba: `notes` tenía otro dueño.** El motor de reglas escribe
-ahí un array de cadenas (`ADD_SESSION_NOTE`), así que una nota puesta por una regla **borraba la
-crónica** en silencio — el `Array.isArray` fallaba sobre `{ recap: ... }` y empezaba un array nuevo.
-Sacar la crónica del Json no es orden: es dejar de perder datos.
-
-**La pantalla también, porque si no la ficha no cierra.** El diálogo de cierre estrena el selector de
-visibilidad que ya existía (`VisibilityChooser`), con los tres niveles que una sesión admite —
-`OWNER_DM` y `SPECIFIC_PLAYERS` sobre una crónica no seleccionan a nadie, porque una `Session` no
-tiene ni creador ni concesiones—. Servidor arreglado y nadie que lo use es una ficha abierta.
-
-**Cómo revertirlo.** `git revert` de los commits del plan y una migración que haga
-`ALTER TABLE "Combatant" DROP COLUMN "side"` + `DROP TYPE "CombatantSide"` y
-`ALTER TABLE "Session" DROP COLUMN "openingEntityId"`, `"recap"` y `"recapVisibility"`. **Las
-crónicas viejas siguen dentro de `notes`**, que esta migración no tocó, así que revertir no pierde
-ninguna.
+**Movida entera** a [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md)
+el 2026-09-07, en el mismo corte que se llevó la del hilo. En una línea: los tres carriles del
+plan 03 —el bando de cada combatiente, dónde abre la escena una sesión, y la crónica sacada del
+`Json` a su propia columna—, y la lección de que **los defectos aparecen al juntar carriles que
+estaban verdes por separado**.
 
 ---
 
----
+## El hilo se lee como una conversación: lo último abajo (2026-09-05) — archivada
 
-## El hilo se lee como una conversación: lo último abajo (2026-09-05)
-
-**Qué.** Plan 04 de [los planes del 2026-09-05](./superpowers/plans/2026-09-05-planes/04-hilo-conversacion.md),
-decisión **D1**, en un commit y solo en la web. El registro de la sesión se pinta del más antiguo
-al más reciente (`apps/web/src/features/sessions/hilo/HiloDeSesion.tsx:162`), sobre **una copia**
-invertida: el servidor sigue mandando el más reciente primero porque de ese orden depende la
-paginación por cursor, y `reverse` muta. El scroll se ancla al fondo, pero **solo si el lector ya
-estaba ahí** (`:185`); si estaba leyendo más arriba no se mueve nada y sale un aviso pulsable
-(`:300`). `loQueTePerdiste` **no se tocó**: su `desde` ya era el más antiguo de los no leídos, y con
-el orden nuevo la franja queda con lo no leído por debajo, que es lo que su comentario decía querer.
-
-**Cómo se comprobó.** Tres unitarias nuevas por orden de nodos, no por texto
-(`apps/web/src/features/sessions/__tests__/mesa-de-sesion.test.tsx:310`) y tres medidas de
-navegador (`apps/web/e2e/mesa-mide.spec.ts:255`), porque en `jsdom` `scrollHeight` vale cero y
-**cualquier aserción de anclaje pasa siempre**. Mutación obligatoria: quitar la condición
-`alFondoRef.current` deja el `expect(...scrollTop).toBe(arriba)` en rojo; devolver `enOrden` a
-`eventos` tumba dos unitarias; sacar la marca de leído del array invertido tumba la tercera. Las
-tres deshechas después.
-
-**Lo que encontró su revisión, y por qué importa más que el defecto.** El carril entregó verde y una
-revisión con contexto limpio encontró un **bloqueante real**: `apps/web/e2e/sesion.spec.ts` daba por
-visto **el último nodo del DOM** —que hasta ese commit era el más antiguo— para comprobar la franja
-de «te perdiste». Con el hilo invertido, el último nodo es el **más reciente**: no quedaba nada
-perdido y la franja no se pintaba. Se arregló al fusionar (`ids[0]`) y se comprobó **volviendo a
-romperlo**: con la línea vieja, ese recorrido cae. La lección no es el diff: **el orden del DOM es
-una interfaz compartida**, y voltearlo obligaba a mirar los cuatro recorridos que lo consumen, no
-solo el que se estaba editando.
-
-**Cómo revertirlo.** `git revert` del commit: el hilo vuelve a pintarse del más reciente primero,
-sin anclaje ni aviso. No hay migración, ni cambio de API, ni dato guardado nuevo.
+**Movida entera** a [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md)
+el 2026-09-07, al insertar la entrada de la tanda B: el fichero quedó en 1032 de 1000 y esta era la
+más antigua que seguía completa. En una línea: el registro de la sesión pasó a pintarse del más
+antiguo al más reciente sobre una copia invertida, anclado al fondo **solo si el lector ya estaba
+ahí**; y su revisión encontró que voltear el orden del DOM rompía un recorrido que daba por visto
+el último nodo — **el orden del DOM es una interfaz compartida**.
 
 ---
 

@@ -1,10 +1,18 @@
 # Despliegue
 
-> **Producción va POR DETRÁS de `main` desde el 2026-09-04.** Sirve lo que se subió el
-> 2026-09-02; la fase 2.5 entera (encuentros, daño con traza, condiciones en las tiradas, el
-> combate en la mesa) y el reseño de la mesa (B0–B5) están cerrados en local **y sin desplegar**,
-> por la regla de que desplegar lo pide el autor. Nada de lo de abajo cambia; lo que cambia es
-> **qué versión hay arriba**.
+> **Producción va POR DETRÁS de `main`, y CUÁNTO no se escribe aquí: se mide.**
+> `git diff --name-only <imagen desplegada>..HEAD`, y qué imagen corre se comprueba en el
+> servidor (`docker ps`), nunca de memoria. Nada de lo de abajo cambia; lo que cambia es **qué
+> versión hay arriba**.
+>
+> **Esta cabecera volvió a caducar, y van cuatro.** Hasta el 2026-09-07 decía que producción
+> servía «lo que se subió el 2026-09-02» y que la fase 2.5 y el reseño de la mesa (B0–B5) estaban
+> «cerrados en local y sin desplegar». Las dos frases eran falsas desde el 2026-09-06: 2.5 y B0–B5
+> subieron ese día en `06202b1`, que es lo que el servidor sirve mientras se escribe esto. Lo
+> encontró la tarea T1 del [banco de tareas](./10-banco-de-tareas.md) en su primera corrida —el
+> agente lo cazó sin que nadie se lo dijera— y por eso el párrafo pasa a decir cómo medirlo en vez
+> de decir el dato: **un número de versión escrito a mano en el documento que se lee antes de
+> desplegar es el mismo fallo que [CLAUDE.md](../CLAUDE.md) ya conserva tres veces.**
 >
 > **Estado: EN PRODUCCIÓN desde el 2026-09-02.** `https://dnd.supportive.pro` sirve la
 > aplicación desde `vps1new`, con los tres contenedores de la pila en `healthy`.
@@ -16,7 +24,7 @@
 > abajo, y **no es lo mismo que la lista original**: tres de sus siete puntos ya están hechos y
 > con su evidencia.
 
-- **Servidor:** `vps1new` (`159.195.240.38`), Debian 13 dedicado, **Coolify 4.3.10** con
+- **Servidor:** `vps1new` (`159.195.240.38`), Debian 13 dedicado, **Coolify 4.3.14** con
   **Traefik** (`coolify-proxy`) de proxy inverso y Let's Encrypt para los certificados. Ya
   aloja otras cinco aplicaciones.
 - **Dominio:** `dnd.supportive.pro`, que ya resuelve a esa IP.

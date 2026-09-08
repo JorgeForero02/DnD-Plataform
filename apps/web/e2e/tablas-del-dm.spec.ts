@@ -118,9 +118,12 @@ test("**editar una tabla reemplaza sus filas**, y la tabla guardada sigue siendo
 // Tarea B5 — «tirar una tabla de botín y dar lo que sale, en dos clics» (definición de terminado
 // del plan de botín y reparto).
 //
-// **El formulario de crear tabla no tiene todavía campos para `entrega`** — B4/B5 solo construyen
-// la mitad de "enseñar y dar" lo que una fila entrega, no la de autorarla desde la pantalla; eso
-// queda abierto para `docs/06-pendientes.md`. Por eso la tabla con botín se siembra por la API
+// **Esta prueba siembra por la API, y desde la ficha P2-2 (2026-09-07) ya NO es porque la pantalla
+// no sepa** — sabe, y lo demuestra la prueba del final de este fichero. Se conserva sembrando por
+// la API a propósito: lo que mide es la mitad de «enseñar y dar» —la tirada enseña el objeto por
+// su nombre y darlo lo mete en la bolsa de otro—, y llegar hasta aquí redactando la entrega a mano
+// alargaría el recorrido sin medir nada nuevo. Aquí ponía que el formulario «no tiene todavía
+// campos para `entrega`»; eso caducó con esa ficha. Por eso la tabla con botín se siembra por la API
 // (mismo patrón que `condiciones-en-la-mesa.spec.ts`), y lo que se mide en el navegador es la
 // mitad que sí se construyó: la tirada enseña el objeto por su nombre, no por su clave, y darlo
 // a un segundo personaje lo hace aparecer en su inventario sin recargar.
@@ -230,4 +233,78 @@ test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo me
   // `ResultadoDeTabla` → `DarObjeto` → `changeMoney` es una petición aparte de la del objeto, y
   // hasta este arreglo nada, ni en unitarias ni aquí, comprobaba que el oro llegara de verdad.
   await expect(inventarioDeMarta.getByText("15")).toBeVisible();
+});
+
+// **Ficha P2-2 — la prueba que decide si el eslabón está puesto.**
+//
+// Todo lo demás de esta ficha es andamiaje; esto es lo único que demuestra que un DM puede sembrar
+// una fila con botín **desde la pantalla**, sin un `curl` y sin tocar la base, y que lo que sembró
+// se entrega de verdad al tirar. Recorre el ida y vuelta entero: formulario → `POST` → columna
+// `Json` → `resolverEntrega` → pantalla.
+//
+// **Y edita-y-guarda, que es la mitad que casi se pierde.** El defecto que esta ficha destapó no
+// era el de crear: `DmTableEntry` no declaraba `entrega` en la web, así que abrir el formulario de
+// una tabla con botín y pulsar «Guardar cambios» **la borraba** —las filas se reemplazan enteras y
+// el servicio las borra y las vuelve a crear—. Por eso el recorrido no termina al crear: edita el
+// texto, guarda, y vuelve a tirar para comprobar que el botín sigue ahí.
+test("el DM redacta la entrega desde la pantalla, y sobrevive a editar la tabla", async ({
+  page,
+}) => {
+  await abrirTablas(page);
+
+  await page.getByRole("button", { name: "Crear tabla" }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Cofre redactado a mano");
+  // Una sola fila que cubre el 1: la tabla se tira con un d1 y siempre cae aquí, así que la
+  // prueba no depende del azar.
+  await page.getByLabel("Desde", { exact: true }).first().fill("1");
+  await page.getByLabel("Hasta", { exact: true }).first().fill("1");
+  await page.getByLabel("Resultado", { exact: true }).first().fill("Lo que hay en el cofre.");
+
+  // --- La entrega, en su propio panel ---
+  await page.getByRole("button", { name: /Entrega de la fila 1: no entrega nada/ }).click();
+  const panel = page.getByRole("dialog", { name: /Entrega de la fila 1/ });
+  await expect(panel).toBeVisible();
+
+  await panel.getByLabel("Buscar en el catálogo").fill("Espada corta");
+  await panel.getByRole("button", { name: "Espada corta" }).click();
+  await panel.getByLabel("Cuántas").fill("2");
+  await panel.getByRole("button", { name: "Añadir a la entrega" }).click();
+  // **Objetos Y monedas a la vez**, que es lo que el esquema permite y la pantalla no puede
+  // impedir.
+  await panel.getByLabel("oro").fill("15");
+  await panel.getByRole("button", { name: "Guardar la entrega" }).click();
+
+  // El botón lo dice **sin abrirse**: es la mitad de la decisión de esconderlo en un panel.
+  await expect(
+    page.getByRole("button", { name: /Entrega de la fila 1: 1 objeto y monedas/ }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Guardar tabla" }).click();
+  await expect(page.getByText("Cofre redactado a mano")).toBeVisible();
+
+  // --- Y se tira: lo sembrado a mano se entrega ---
+  await page.getByRole("button", { name: "Tirar" }).click();
+  const resultado = page.getByRole("status");
+  // **Sin `exact: true`, y a diferencia de la prueba de arriba**: aquí se sembraron DOS unidades,
+  // así que `ResultadoDeTabla` pinta «Espada corta x2» y una coincidencia exacta no casa. La
+  // trampa que obligaba a `exact` allí —el nombre repetido en el texto de la fila— no existe aquí
+  // porque el texto de esta fila no nombra la espada. Y la cantidad **se afirma**: es la mitad de
+  // lo que se redactó a mano, y sin comprobarla la prueba pasaría con un 1 escrito por defecto.
+  await expect(resultado.getByText(/Espada corta x2/)).toBeVisible();
+  await expect(resultado.getByText(/15 monedas de oro/i)).toBeVisible();
+  // Nunca la clave del catálogo.
+  await expect(page.getByText("short-sword")).toHaveCount(0);
+
+  // --- Editar y guardar NO se lleva el botín por delante ---
+  await page.getByRole("button", { name: /Editar/ }).click();
+  await page
+    .getByLabel("Resultado", { exact: true })
+    .first()
+    .fill("Lo que hay en el cofre, atado.");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText("Lo que hay en el cofre, atado.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Tirar" }).click();
+  await expect(resultado.getByText(/Espada corta x2/)).toBeVisible();
+  await expect(resultado.getByText(/15 monedas de oro/i)).toBeVisible();
 });

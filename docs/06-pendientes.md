@@ -308,6 +308,51 @@ suite entera en verde.
 herramientas del DM se alcancen enteras a 390 px. Va con U2, que es su vecina: la navegación
 estrecha ya se remidió en el plan 14 y **pasó**, así que lo que queda es la mesa, no el armazón.
 
+### Ya no es una sospecha: está medida (2026-09-07)
+
+`apps/web/e2e/mesa-en-estrecho.spec.ts` la fija con números en un navegador de verdad, y trae dos
+pruebas a propósito: una **en verde** que deja escrito que la página no delata nada —ni barra
+horizontal ni vertical, con el panel fuera— y otra con **`test.fail()`** que es el defecto, con sus
+cinco aserciones en modo blando para que **todas se evalúen en cada pasada** en vez de abortar en la
+primera. `test.fail()` y no un `skip`: se ejecuta, y **se pondrá roja el día que alguien lo
+arregle**. Ocho medidas en rojo el 2026-09-07:
+
+- el **borde derecho del panel en 550 px** dentro de una ventana de 390;
+- **los seis botones** de la maqueta fuera, entre 426 y 537;
+- y **el hilo estrangulado a 48 px de ancho**, que no estaba en el enunciado de esta ficha y es
+  igual de grave: no es solo que las herramientas no se vean, es que **el centro tampoco se lee**.
+
+**Aviso para quien la arregle**: además del `test.fail`, la prueba **en verde** lleva una aserción
+que fija el defecto (`el panel acaba fuera`), así que **también se pondrá roja**. Su mensaje dice
+qué hacer. Es deliberado: lo que la rodea sí es invariante.
+
+**Y se intentó el arreglo evidente, que no vale.** Apilar en una columna hasta `lg`
+(`grid-cols-1 lg:grid-cols-[17rem_1fr_15rem]`) mete las herramientas dentro de la ventana y
+**gira el corte 90°**: a 390×844 el `main` tiene **466 px de alto**, y repartidos entre tres
+regiones el elenco se queda en **16 px de alto con una cabecera de 36**. Se revirtió. Las guardas
+**C, D y E** de esa prueba existen para que ese arreglo falso no pase por bueno otra vez, y la **D**
+—ninguna región por debajo de 120 px de alto— se escribió **en altura a propósito**: la E depende de
+que la envoltura aplastada conserve `overflow` visible para delatarse, y eso es una condición
+prestada, no la propiedad que se quiere medir.
+
+De paso quedó localizada una trampa real e independiente: la columna del elenco usa
+`grid-rows-[1fr_auto]`, y un `1fr` de rejilla es `minmax(auto,1fr)` que **no encoge por debajo de
+su contenido**, así que su `overflow-y-auto` no llega a activarse. A 1280 sobra alto y no se nota.
+`minmax(0,1fr)` lo arregla; **no se ha aplicado** porque sin apilado no cambia nada visible y
+mezclarlo aquí escondería a cuál de los dos cambios responde la medida.
+
+**Lo que falta es una decisión del autor, no más maquetación a ciegas.** La salida que haría la
+casa —llevar el elenco y las herramientas a **cajones del rail**— pide dos cajones que hoy no
+existen: el rail tiene hoja, bolsa, mundo y dados, y ninguno de esos dos. Eso es navegación nueva
+con sus iconos dibujados y su tecla, y las reglas de interfaz de este proyecto no dejan
+improvisarlo. Las tres salidas, para elegir:
+
+| Salida | Qué cuesta |
+|---|---|
+| Elenco y herramientas a **cajones del rail** | Dos cajones nuevos, dos iconos, dos teclas. Es lo coherente con «un panel tiene tecla porque se quita» |
+| La mesa **scrollea como una página** solo en estrecho | Una línea, pero **contradice el reseño**: «la pantalla donde se juega no es un artículo» fue el defecto que `mesa-mide` nació para impedir |
+| **Pestañas** entre las tres regiones a 390 | Ni cajón ni columna: un cuarto patrón de navegación en una casa que ya tiene tres |
+
 ## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
 
 **Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela

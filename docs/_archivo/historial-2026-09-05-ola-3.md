@@ -4,6 +4,11 @@ Movida entera y sin reescribir desde `docs/07-historial.md` el 2026-09-07: inser
 entradas del paso 2 y el botín dejó ese fichero por encima de su tope de 1000 líneas, y esta era
 la entrada más antigua en ese momento; su hito se resume en el stub que queda allí.
 
+**Este fichero acumula el corte entero de esa noche y lo que vino después**: a las cuatro entradas
+se sumó, el mismo 2026-09-07, «Un personaje se archiva, y vuelve», cuando escribir la entrada de la
+mesa a 390 px volvió a dejar `07-historial.md` por encima del tope. Ninguna se reescribió al
+moverla.
+
 ---
 
 ## La Ola 3, las 21 decisiones y la auditoría de la cola larga (2026-09-05)
@@ -182,3 +187,60 @@ ninguna.
 
 > **Movida aqui el 2026-09-07**, entera y sin reescribir, en el mismo corte que se llevo la del
 > hilo: la entrada de la tanda B no cabia y esta era la siguiente mas antigua completa.
+
+---
+
+## Un personaje se archiva, y vuelve (2026-09-05, plan 06)
+
+**Ficha M9, abierta desde 2.5.8 y tachada en falso una vez.** El servidor sabía archivar —`POST
+…/archive`, `POST …/unarchive`, `GET …/characters/archived`, con su columna, sus sucesos y sus
+e2e— y **la web no llamaba a ninguna de las tres**: el único `archiv` de `apps/web/src` era la
+traducción de la línea del registro. Es el patrón que este proyecto ha cerrado en falso cuatro
+veces: servidor hecho, nadie que lo use.
+
+**Lo que entra, en un commit:** las tres llamadas y sus hooks
+(`features/characters/api.ts`, `hooks.ts`), el gesto (`features/characters/BotonArchivar.tsx`,
+montado en `AjustesDePersonaje.tsx`) y **la puerta de salida**
+(`features/characters/ArchivoDePersonajes.tsx`, en la lista de personajes). Las dos mitades
+juntas a propósito: un archivo sin listado es un borrado con otro nombre.
+
+**Por qué archivar cuesta menos que borrar, y se ve.** Botón `secondary` frente al filete de
+peligro; la confirmación **dice la consecuencia y que se recupera** en vez de preguntar si estás
+seguro; y el borrado ahora **nombra archivar** como la salida barata. Si los dos gestos cuestan lo
+mismo, la gente borra.
+
+**Y una ficha nueva, medida al escribir el recorrido:** el suceso de archivar se guarda **sin
+sesión**, y el hilo de la mesa filtra por la sesión abierta, así que la línea no se lee mientras
+se juega. Queda en `06-pendientes.md` con las dos salidas y lo descartado; arreglarla es
+`apps/api` o una decisión de producto, ninguna de las dos de este plan.
+
+**De paso se tachó** la ficha «tres pantallas revelan la misma ficha»: la Ola 2 la había cerrado
+y el maestro no se había enterado. **Cero líneas de código**, solo el barrido que lo demuestra.
+
+**Revertir:** un commit. Sin migraciones y sin tocar la API — quitarlo devuelve el borrado como
+único gesto, que es exactamente el estado que la ficha describía.
+
+**Y lo que encontró su revisión, que entró al fusionar.** Nada bloqueaba —el revisor corrió él mismo
+el recorrido de navegador y la suite RTL, y verificó que `deLaLista !== undefined` **falla cerrado**,
+nunca abierto—, pero dejó cinco cosas y las cinco se arreglaron aquí:
+
+- **La hoja de un personaje ARCHIVADO se pintaba idéntica a la de uno vivo, con su botón de borrar
+  puesto.** Su ruta sigue viva —`getSheet` no mira `archivedAt`— y el archivo **no enlaza a la
+  hoja**, así que la única puerta era una URL vieja: exactamente el caso peligroso. Un DM lo borraba
+  creyéndolo en juego, que es la pérdida que archivar existe para impedir. Ahora la hoja **lo dice**,
+  ofrece **devolverlo**, y **no ofrece borrar** hasta que esté de vuelta. No es control de acceso —el
+  servidor sigue aceptando el borrado—: es no poner el gesto caro delante de quien no sabe dónde
+  está.
+- **`archivedAt` ya viajaba y el tipo no lo declaraba.** El servidor manda la fila entera desde
+  2.5.8; solo faltaba escribirlo en `Character` y en `CharacterRow`. Al declararlo, el compilador
+  encontró **nueve fixtures** que lo daban por inexistente.
+- **El archivo no tenía estado de error**: un fallo de red dejaba una campaña con todo archivado
+  leyéndose «Ningún personaje todavía» —la trampa que el plan nombra, entrando por la puerta de al
+  lado—.
+- **El cableado `puedeArchivar={deLaLista !== undefined}` no lo cubría ninguna prueba**: cambiarlo a
+  `true` habría ofrecido «Archivar» en un PNJ, con 404 al pulsarlo, sin que nada se pusiera rojo.
+  Ahora hay una prueba por cada lado.
+- **Dos frases quedaban mintiendo**: `decisiones.md` decía que de `D-OP-8` «queda archivar», y la
+  ficha tachada citaba **tres** consumidores de `sePuedeRevelar` cuando el tercero solo importa el
+  botón. La conclusión de esa ficha era correcta; **la evidencia no**, y es justo el género que
+  `check:docs` no caza.

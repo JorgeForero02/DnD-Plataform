@@ -20,6 +20,18 @@ a medio hacer**, y se cerró al día siguiente con la decisión del autor.
 > el reparto del bando, el desempate de dos grupos—. Reapuntadas a la escritura siguen siendo
 > pruebas de comportamiento y dejaron de depender de por dónde vuelve la respuesta. Cambiarlas por
 > pruebas del mock habría sido empeorarlas; eso no ocurrió.
+>
+> ### Corrección del mismo día, añadida y no sustituida
+>
+> El párrafo de arriba nombra a `advanceTurn()` entre los hermanos que ya devolvían por `get()`.
+> **Es falso**, y se descubrió en la revisión del commit que cerró esta ficha: los que lo hacen son
+> `current()`, `setSide()` y `forceStart()`. Se añade en vez de corregirlo arriba porque este
+> fichero es un registro y **lo que se creyó entonces vale como dato**.
+>
+> **Consecuencia real, y no es cosmética:** la deuda que esta ficha describía **no quedó cerrada
+> del todo**. `advanceTurn()` y `setInitiative()` siguen devolviendo algo que no valida contra
+> `encounterSchema`, tipado como `Encounter` en el cliente. Tiene ficha propia y abierta en
+> `docs/06-pendientes.md` desde el 2026-09-08.
 
 ---
 

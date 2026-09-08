@@ -46,8 +46,13 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 La ficha se abrió anoche **al revertir este mismo arreglo**, y el revert era correcto con lo que se
 sabía: devolver por `get()` tumbaba cuatro pruebas del servicio. Lo que faltaba era un dato —
-`current()`, `advanceTurn()` y `forceStart()` **ya devolvían por `get()`**—, y con él no eran dos
-diseños posibles sino el único endpoint fuera del patrón de su fichero.
+`current()`, `setSide()` y `forceStart()` **ya devolvían por `get()`**—, y con él `start()` no era
+un diseño alternativo sino un endpoint fuera del patrón mayoritario de su fichero.
+
+> **Ese dato se escribió mal y la revisión lo cazó**: decía `advanceTurn()`, que **no** devuelve
+> por `get()`. El nombre se puso de memoria sobre tres números de línea. La línea sigue siendo
+> correcta, pero **la deuda no estaba cerrada del todo**: sobrevive en `advanceTurn()` y
+> `setInitiative()`, con ficha propia en [06-pendientes.md](./06-pendientes.md).
 
 **El defecto estaba en las cuatro pruebas**, no en la línea: afirmaban sobre el valor devuelto por
 comodidad, no porque fuera lo que probaban. Reapuntadas a lo que `start()` **escribe** siguen

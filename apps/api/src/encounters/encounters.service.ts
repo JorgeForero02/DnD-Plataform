@@ -400,9 +400,16 @@ export class EncountersService {
         }
         return { encounter, combatants: filas };
       });
-      // **Se devuelve por `get()`, como sus tres hermanos.** `current()`, `advanceTurn()` y
-      // `forceStart()` ya lo hacían: esto no eran dos diseños posibles, era el único que se había
-      // quedado fuera del patrón del fichero. Devolvía las filas crudas de `Combatant`, sin
+      // **Se devuelve por `get()`, como la mayoría de sus hermanos.** Lo hacen `current()`,
+      // `setSide()` y `forceStart()` — comprobado con `grep -n "return this.get("` sobre este
+      // fichero, y **no de memoria**: la primera versión de este comentario decía «`current()`,
+      // `advanceTurn()` y `forceStart()`» y era **falso**, porque `advanceTurn` devuelve
+      // `{ ...actualizado, roundAdvanced }`. El comentario carga con el argumento entero del
+      // cambio, así que equivocarse en un nombre lo invalidaba entero.
+      //
+      // **Y quedan dos fuera del patrón, que no son de esta tarea**: `advanceTurn()` y
+      // `setInitiative()` siguen devolviendo filas crudas tipadas como `Encounter` en el cliente.
+      // Es la misma deuda que esta ficha cerró aquí, y tiene la suya en `docs/06-pendientes.md`. Devolvía las filas crudas de `Combatant`, sin
       // `derrotado` y sin `finalPropuesto`, mientras el cliente lo tipa como `Encounter` — o sea
       // que no validaba contra `encounterSchema` desde que el combate propone su final.
       //

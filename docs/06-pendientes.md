@@ -10,7 +10,7 @@ y las que cierra el paso 1 «las goteras» del 2026-09-06 en
 [`_archivo/pendientes-cerrados-2026-09-06-paso-1.md`](./_archivo/pendientes-cerrados-2026-09-06-paso-1.md).
 y las **tres que llevaban «Cerrado» en su propio título** en
 [`_archivo/pendientes-cerrados-2026-09-06-poda.md`](./_archivo/pendientes-cerrados-2026-09-06-poda.md),
-y las **seis de la tanda corta del 2026-09-07** en
+y las **seis de la tanda corta del 2026-09-08** en
 [`_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-corta.md),
 y las **tres de la tanda B, el mismo día**, en
 [`_archivo/pendientes-cerrados-2026-09-07-tanda-b.md`](./_archivo/pendientes-cerrados-2026-09-07-tanda-b.md),
@@ -95,7 +95,8 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-07** (los quince planes de
+Última revisión: **2026-09-08** (el resto de la ficha P3, que se archivó creyendo cerrada una
+deuda que sigue viva en `advanceTurn()` y `setInitiative()`; y antes, los quince planes de
 [`superpowers/plans/2026-09-05-planes/`](./superpowers/plans/2026-09-05-planes/00-INDICE.md),
 que cerraron catorce y dejaron el 12 en marcha; y el saneamiento del mismo día: 37 fichas tachadas
 archivadas, 59 fechas corregidas y la ficha de la copia de seguridad cerrada como decisión). **La
@@ -107,6 +108,30 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > reciente a lo más viejo» y no es cierto: hay bloques del 2026-09-04 y del 05 incrustados en medio
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
+
+## P3 · `advanceTurn()` y `setInitiative()` devuelven algo que no es un `Encounter` (2026-09-08)
+
+**Es el resto de la ficha P3 que se cerró creyendo que no quedaba nada.** Aquella iba de
+`start()`, y su argumento —«los hermanos ya devuelven por `get()`»— nombraba a `advanceTurn()`
+entre ellos. **Era falso**, y con el nombre mal puesto la ficha se archivó dando por cerrada una
+deuda que sigue viva en otros dos sitios. Lo cazó la revisión del propio commit que la cerró.
+
+| Método | Qué devuelve hoy | Cómo lo tipa el cliente |
+|---|---|---|
+| `advanceTurn()` (`encounters.service.ts:924`) | `{ ...actualizado, roundAdvanced }` — la fila cruda de `Encounter`, **sin `combatants` y sin `finalPropuesto`** | `Promise<Encounter>` (`apps/web/src/features/encounters/api.ts:87`) |
+| `setInitiative()` (`encounters.service.ts:730`) | **una sola fila de `Combatant`** | `Promise<Encounter>` (`apps/web/src/features/encounters/api.ts:57`) |
+
+Los que sí devuelven por `get()`, comprobado con `grep -n "return this.get("`: `start()`,
+`current()`, `setSide()` y `forceStart()`.
+
+**Es inocuo hoy y por eso es P3**, exactamente por lo mismo que lo era el de `start()`: los hooks
+tiran la respuesta e invalidan la consulta. Muerde el día que alguien la parsee con
+`encounterSchema` o lea `combatants` de ahí.
+
+**Cómo se cierra, y ya está probado en `start()`:** devolver por `this.get(...)` y **reapuntar a la
+escritura** las pruebas que afirmen sobre el valor devuelto por comodidad. Ojo con `advanceTurn()`,
+que además lleva `roundAdvanced` — ese dato no está en `encounterSchema` y hay que decidir si viaja
+aparte o se deriva, que es la única pregunta de verdad de esta ficha.
 
 ## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
 

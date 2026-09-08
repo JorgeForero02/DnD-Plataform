@@ -139,17 +139,26 @@ describe("EncountersService", () => {
     //
     // El guardián del 409 de `start()` consulta por `status` y cada prueba le pone su
     // `mockResolvedValueOnce`; lo que devuelve esta implementación es la **relectura por id**.
-    prisma.encounter.findFirst.mockImplementation(async () => ({
-      id: "enc1",
-      sessionId: "s1",
-      status: "ACTIVE",
-      round: 1,
-      activePosition: 0,
-      combatants: creadas.map((f) => ({
-        ...f,
-        character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
-      })),
-    }));
+    prisma.encounter.findFirst.mockImplementation(
+      async ({ where }: { where?: Record<string, unknown> } = {}) => {
+        // **Ramifica por el `where`, y no es un detalle.** Con una implementación que devolviera
+        // siempre lo mismo, el guardián del 409 de `start()` —que consulta por `status`— quedaba
+        // sin poder comprobarse: su prueba pasaría igual sin su propio mock, y cualquier prueba
+        // futura que olvidara silenciarlo fallaría con un `ConflictException` que no explica nada.
+        if (where?.status) return null;
+        return {
+          id: "enc1",
+          sessionId: "s1",
+          status: "ACTIVE",
+          round: 1,
+          activePosition: 0,
+          combatants: creadas.map((f) => ({
+            ...f,
+            character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
+          })),
+        };
+      },
+    );
     prisma.combatant.findMany.mockImplementation(
       ({
         where,
@@ -258,9 +267,10 @@ describe("EncountersService", () => {
   // obligatorios en `encounterSchema` desde que el combate propone su final—, mientras el cliente
   // lo tipa como `Encounter`.
   //
-  // **La decisión (autor, 2026-09-07) es devolver por `get()`, como sus tres hermanos**:
-  // `current()`, `advanceTurn()` y `forceStart()` ya lo hacían, así que esto no eran dos diseños
-  // posibles sino el único que se había quedado fuera del patrón del fichero.
+  // **La decisión (autor, 2026-09-07) es devolver por `get()`, como la mayoría de sus hermanos**:
+  // `current()`, `setSide()` y `forceStart()` ya lo hacían. **`advanceTurn()` no**, y aquí ponía
+  // que sí: el nombre se puso de memoria sobre unos números de línea, y el comentario cargaba con
+  // el argumento entero del cambio. Corregido el 2026-09-08 con `grep` delante.
   //
   // **Y no pierde nada al pasar por el filtro**, comprobado y no supuesto: `start()` empieza por
   // `requireDM`, y `canView` devuelve `true` para el DM en su segunda línea
@@ -303,8 +313,12 @@ describe("EncountersService", () => {
         },
       ],
     });
-    prisma.user.findUnique.mockResolvedValue({ id: "dm", isAdmin: false });
-    membership.getMembership.mockResolvedValue({ role: "DM" });
+    // **`Once` y no `mockResolvedValue`**: `beforeEach` llama a `jest.clearAllMocks()`, que borra
+    // las llamadas pero **no las implementaciones**, y `jest.config.js` no pone `resetMocks`. Un
+    // valor permanente aquí dejaría a todas las pruebas de más abajo con un espectador DM
+    // heredado — y son justo las que miden qué ve cada rol. `viewerFor` consulta cada uno una vez.
+    prisma.user.findUnique.mockResolvedValueOnce({ id: "dm", isAdmin: false });
+    membership.getMembership.mockResolvedValueOnce({ role: "DM" });
 
     const devuelto = await service.start("dm", "c1", "clzq0a0000000000000000ses", {
       characterIds: ["pc1", "gob1"],

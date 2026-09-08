@@ -33,6 +33,33 @@ const tablaDePifias: DmTable = {
   ],
 };
 
+/**
+ * **Una tabla de botín: la que tiene `entrega` en una de sus filas** (ficha P2-2).
+ *
+ * Hasta hoy este tipo no existía en la web —`DmTableEntry` era `{ id, min, max, text }`— y el
+ * servidor sí manda la columna. Con las filas viajando enteras al editar, eso significaba que
+ * abrir el formulario de una tabla sembrada y pulsar «Guardar cambios» **le borraba el botín**.
+ */
+const tablaDeBotin: DmTable = {
+  id: "t2",
+  name: "Botín del alijo",
+  description: "Lo que hay en el cofre.",
+  visibility: "DM_ONLY",
+  trigger: "NONE",
+  entries: [
+    {
+      id: "b1",
+      min: 1,
+      max: 10,
+      text: "Una espada corta y 15 monedas de oro",
+      entrega: {
+        objetos: [{ ref: { source: "SRD", key: "short-sword" }, cantidad: 1 }],
+        monedas: { gp: 15 },
+      },
+    },
+  ],
+};
+
 function comoDm() {
   useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
 }
@@ -374,6 +401,45 @@ describe("PanelDeTablas — editar una tabla (ficha C2C-6)", () => {
     await waitFor(() => expect(editar).toHaveBeenCalled());
     const [, , cuerpo] = editar.mock.calls[0];
     expect(cuerpo.entries).toEqual([{ min: 1, max: 5, text: "Se te encasquilla el arma." }]);
+  });
+
+  // **Ficha P2-2 — editar una tabla no puede llevarse su botín por delante.**
+  //
+  // Editar manda **las filas enteras** por decisión declarada (`updateDmTableSchema`: se validan
+  // como conjunto). Con `entrega` fuera del tipo de la web, el formulario reconstruía cada fila sin
+  // ella y el `PUT` la sobrescribía con nada. Sobre la única tabla sembrada que existía —por
+  // `curl`, porque hasta esta ficha no había formulario— abrir y guardar la vaciaba.
+  it("editar una tabla CONSERVA la entrega de sus filas, aunque se toque otra cosa", async () => {
+    comoDm();
+    vi.spyOn(dmTablesApi, "fetchDmTables").mockResolvedValue({
+      tables: [tablaDeBotin],
+      houseTablesEnabled: false,
+    });
+    const editar = vi.spyOn(dmTablesApi, "updateDmTable").mockResolvedValue(tablaDeBotin);
+
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+    await screen.findByRole("heading", { name: /Editar «Botín del alijo»/ });
+
+    // Se corrige el texto, que es lo que uno viene a hacer. La entrega ni se toca.
+    fireEvent.change(screen.getAllByLabelText("Resultado")[0], {
+      target: { value: "Una espada corta y 15 mo, en un saco" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(editar).toHaveBeenCalled());
+    const [, , cuerpo] = editar.mock.calls[0];
+    expect(cuerpo.entries).toEqual([
+      {
+        min: 1,
+        max: 10,
+        text: "Una espada corta y 15 mo, en un saco",
+        entrega: {
+          objetos: [{ ref: { source: "SRD", key: "short-sword" }, cantidad: 1 }],
+          monedas: { gp: 15 },
+        },
+      },
+    ]);
   });
 
   it("un jugador no ve «Editar»", async () => {

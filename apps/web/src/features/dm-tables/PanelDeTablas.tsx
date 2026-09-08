@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { CreateDmTableInput, TableTrigger, Visibility } from "@dnd/shared";
+import type { CreateDmTableInput, EntregaInput, TableTrigger, Visibility } from "@dnd/shared";
 import { Badge } from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
@@ -44,6 +44,16 @@ interface FilaEnEdicion {
   min: string;
   max: string;
   text: string;
+  /**
+   * **Lo que la fila entrega** (ficha P2-2). Ausente = no entrega nada, que es el caso de una tabla
+   * de rumores y el que trae `FILA_VACIA`.
+   *
+   * A diferencia de los tres de arriba **no se guarda como texto**: los otros son entradas
+   * controladas que el DM teclea carácter a carácter, y esto es una estructura que se compone en
+   * su propio panel y solo se confirma entera. Convertirla a texto y de vuelta sería inventar un
+   * formato intermedio para nada.
+   */
+  entrega?: EntregaInput;
 }
 
 export function PanelDeTablas({ campaignId }: { campaignId: string }) {
@@ -350,6 +360,9 @@ function valoresDe(tabla: DmTable): ValoresDeTabla {
       min: String(fila.min),
       max: String(fila.max),
       text: fila.text,
+      // **Se lleva la entrega tal cual llegó.** Sin esta línea, editar la borra: las filas se
+      // reemplazan enteras y una fila reconstruida sin `entrega` la deja fuera del `PUT`.
+      ...(fila.entrega ? { entrega: fila.entrega } : {}),
     })),
   };
 }
@@ -447,6 +460,10 @@ function FormularioDeTabla({
         min: Number(fila.min),
         max: Number(fila.max),
         text: fila.text,
+        // Igual que la descripción de la tabla: **una entrega ausente no se manda**. El esquema la
+        // tiene opcional y mandar un objeto vacío sería mandar algo que su propio `.refine`
+        // rechaza — «una entrega vacía no vale: o entrega algo, o no está».
+        ...(fila.entrega ? { entrega: fila.entrega } : {}),
       })),
     };
     onGuardar(input);

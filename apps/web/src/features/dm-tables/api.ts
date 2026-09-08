@@ -1,6 +1,7 @@
 import type {
   CreateDmTableInput,
   DmTableRoll,
+  EntregaInput,
   TableTrigger,
   UpdateDmTableInput,
   Visibility,
@@ -17,6 +18,17 @@ export interface DmTableEntry {
   min: number;
   max: number;
   text: string;
+  /**
+   * **Lo que esta fila entrega, si entrega algo** (ficha P2-2). El servidor la manda desde que la
+   * columna existe —las entradas viajan por `include`— y **este tipo no la declaraba**, así que la
+   * pantalla no podía ni leerla ni devolverla.
+   *
+   * No era un campo de más: editar una tabla **reemplaza sus filas enteras** (`updateDmTableSchema`,
+   * y el servicio hace `deleteMany` y las vuelve a crear), así que una fila reconstruida sin
+   * `entrega` no dejaba la entrega vacía — la borraba. Abrir el formulario de una tabla con botín y
+   * pulsar «Guardar cambios» se lo llevaba por delante.
+   */
+  entrega?: EntregaInput;
 }
 
 export interface DmTable {

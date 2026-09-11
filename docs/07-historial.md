@@ -44,6 +44,17 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Cerrar fichas, tanda 1 — las de API puras (2026-09-10)
+
+Una por commit, cada una con su prueba roja antes y su mutación. El texto entero de cada ficha y
+su medición están en
+[`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+
+- **J6** — el `ENTITY_REVEALED` del motor lleva `entityName`, como el de la pantalla
+  (`rules-engine.service.ts`, `applyRealEffects`). **Por qué:** era el camino de la revelación
+  automática y el hilo no podía decir qué apareció. **Revertir:** quitar el `findFirst` y el campo
+  del payload; el esquema lo tiene opcional, nada más se rompe.
+
 ## La poda: treinta y nueve bloques fuera del tablero, y doce decisiones con fila (2026-09-10)
 
 **Qué.** Se clasificaron **todas** las secciones abiertas de [06-pendientes.md](./06-pendientes.md)

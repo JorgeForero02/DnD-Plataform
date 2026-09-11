@@ -222,6 +222,40 @@ describe("Motor de reglas (e2e)", () => {
     });
   });
 
+  describe("la revelación automática cuenta QUÉ se reveló (ficha J6)", () => {
+    it("el ENTITY_REVEALED que escribe el motor lleva el nombre de la ficha, como el de la pantalla", async () => {
+      // Ficha J6 (2026-09-02): el camino de la pantalla (`entities.service.ts`) escribe
+      // `entityName`; el del motor escribía `{ type }` a secas — y ese es justo el momento
+      // dramático, la revelación que dispara una regla. Sin el nombre, la línea del hilo no
+      // puede decir qué apareció.
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro que se abre");
+      const objetivo = await crearFicha("La cripta bajo el muro", "DM_ONLY");
+
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Revelar la cripta",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "REVEAL_ENTITY", entityId: objetivo, visibility: "PLAYERS" }],
+        });
+      expect(regla.status).toBe(201);
+
+      await rulesEngine.evaluate(campaignId, { kind: "ENTITY_OPENED", entityId: muro }, userPL);
+
+      const suceso = await prisma.gameEvent.findFirst({
+        where: { campaignId, type: "ENTITY_REVEALED", subjectId: objetivo },
+      });
+      expect(suceso).not.toBeNull();
+      expect(suceso?.payload).toMatchObject({
+        type: "ENTITY_REVEALED",
+        entityName: "La cripta bajo el muro",
+      });
+    });
+  });
+
   describe("el ensayo en seco no miente sobre lo que hizo", () => {
     it("dice qué PASARÍA, no que pasó: nunca devuelve APPLIED, y no persiste", async () => {
       // El fallo que encontró un DM: el `dry-run` marcaba la traza como APPLIED, así que quien lo

@@ -503,6 +503,14 @@ export class RulesEngineService {
         case "REVEAL_ENTITY":
         case "HIDE_ENTITY": {
           if (app.before === app.after) break; // idempotente: sin cambio real, sin ruido en el log
+          // Ficha J6 (2026-09-02, cerrada el 2026-09-10): el suceso lleva el nombre de la ficha,
+          // igual que el camino de la pantalla (`entities.service.ts`). Sin él, la revelación
+          // automática —el momento dramático— salía en el hilo sin decir qué apareció. Se lee la
+          // fila antes de tocarla porque `updateMany` solo devuelve un conteo.
+          const ficha = await this.prisma.entity.findFirst({
+            where: { id: effect.entityId, campaignId },
+            select: { name: true },
+          });
           await this.prisma.entity.updateMany({
             where: { id: effect.entityId, campaignId },
             data: { visibility: effect.visibility },
@@ -512,7 +520,10 @@ export class RulesEngineService {
               subjectType: "campaign",
               subjectId: effect.entityId,
               visibility: effect.visibility,
-              payload: { type: "ENTITY_REVEALED" },
+              payload: {
+                type: "ENTITY_REVEALED",
+                ...(ficha ? { entityName: ficha.name } : {}),
+              },
             });
           }
           break;

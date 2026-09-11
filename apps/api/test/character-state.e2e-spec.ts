@@ -62,7 +62,7 @@ describe("Estado de personaje: recursos, descansos y condiciones (e2e)", () => {
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenPL}`)
-        .send({ name: "Kelemvor", class: "warlock", level: 3, visibility: "PLAYERS" })
+        .send({ name: "Kelemvor", level: 3, visibility: "PLAYERS" })
     ).body.id;
     // Constitución 14 (+2), para que la curación de los dados de golpe sea siempre positiva y
     // comprobable sin depender de la tirada.

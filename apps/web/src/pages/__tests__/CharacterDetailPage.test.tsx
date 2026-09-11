@@ -22,11 +22,9 @@ const personaje: Character = {
   campaignId: "c1",
   ownerId: "owner1",
   name: "Kaelith",
-  race: null,
   raceKey: null,
   subraceKey: null,
   classKey: null,
-  class: null,
   level: 3,
   archivedAt: null,
 

@@ -65,8 +65,6 @@ const BRANN: Character = {
   campaignId: CAMPANA,
   ownerId: "u1",
   name: "Brann",
-  race: null,
-  class: null,
   raceKey: null,
   subraceKey: null,
   classKey: null,

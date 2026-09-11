@@ -44,8 +44,6 @@ const character: CharacterRow = {
   campaignId: "c1",
   ownerId: "u1",
   name: "Elowen",
-  race: null,
-  class: null,
   level: 3,
   archivedAt: null,
 

@@ -38,8 +38,6 @@ export interface CharacterRow {
   campaignId: string;
   ownerId: string;
   name: string;
-  race: string | null;
-  class: string | null;
   level: number;
   bio: string | null;
   visibility: string;

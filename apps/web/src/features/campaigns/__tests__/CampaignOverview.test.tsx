@@ -30,8 +30,6 @@ const SESION_BASE = {
 const PERSONAJE_BASE = {
   campaignId: "c1",
   ownerId: "u1",
-  race: null,
-  class: null,
   raceKey: null,
   subraceKey: null,
   classKey: null,

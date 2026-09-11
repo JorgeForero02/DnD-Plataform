@@ -27,6 +27,14 @@ describe("phase1 schemas", () => {
     expect(r.level).toBe(1);
     expect(r.visibility).toBe("PLAYERS");
   });
+  // D-CF-27: `race`/`class` de texto libre se retiraron del esquema (la clave del catálogo
+  // manda). El esquema no es `.strict()`, así que una clave desconocida se descarta en
+  // silencio: el resultado parseado no debe llevar ni rastro de ella.
+  it("createCharacter strips a free-text race/class instead of storing it", () => {
+    const r = createCharacterSchema.parse({ name: "Ezmerelda", race: "Elfo", class: "Bruja" });
+    expect(r).not.toHaveProperty("race");
+    expect(r).not.toHaveProperty("class");
+  });
   it("createSession defaults visibility=PLAYERS and requires title", () => {
     expect(createSessionSchema.safeParse({}).success).toBe(false);
     expect(createSessionSchema.parse({ title: "Session 1" }).visibility).toBe("PLAYERS");

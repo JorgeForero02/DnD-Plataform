@@ -73,6 +73,9 @@ commit y su migración inversa está descrita en la cabecera del SQL.
   migración borra duplicados quedándose con el más antiguo (en local había cero) y crea el índice;
   Prisma no lo sabe expresar, así que vive solo en el SQL y el esquema lo dice en un comentario.
   El segundo enlace igual ya es 409 (e2e en `links`).
+- **3 · `DROP COLUMN race, class`** (D-CF-27): sin medir filas, por decisión del autor. El contrato
+  de creación y edición descarta el texto libre y `tsc` barrió los lectores en API y web. Quien
+  solo tuviera texto libre y ninguna clave del catálogo se queda sin raza ni clase en pantalla.
 
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
 

@@ -32,8 +32,6 @@ export class CharactersService {
           campaignId,
           ownerId: userId,
           name: input.name,
-          race: input.race,
-          class: input.class,
           level: input.level,
           bio: input.bio,
           visibility: input.visibility,
@@ -117,8 +115,6 @@ export class CharactersService {
     await this.requireEditable(userId, campaignId, characterId);
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data.name = input.name;
-    if (input.race !== undefined) data.race = input.race;
-    if (input.class !== undefined) data.class = input.class;
     if (input.level !== undefined) data.level = input.level;
     if (input.bio !== undefined) data.bio = input.bio;
     if (input.visibility !== undefined) data.visibility = input.visibility;

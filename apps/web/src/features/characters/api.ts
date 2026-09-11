@@ -6,11 +6,6 @@ export interface Character {
   campaignId: string;
   ownerId: string;
   name: string;
-  // Texto libre **heredado**. Ya no lo escribe nadie: la hoja escribe las claves de abajo.
-  // Se sigue leyendo para no perder de vista a los personajes escritos a mano antes del
-  // catálogo — ver `descriptor.ts`, que decide cuál de los dos gana.
-  race: string | null;
-  class: string | null;
   raceKey: string | null;
   subraceKey: string | null;
   classKey: string | null;

@@ -59,8 +59,6 @@ const BANDIDO_ALIADO: Character = {
   campaignId: "c1",
   ownerId: "u-otro",
   name: "Bandido arrepentido",
-  race: null,
-  class: null,
   raceKey: null,
   subraceKey: null,
   classKey: null,

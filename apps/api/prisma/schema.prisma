@@ -562,12 +562,10 @@ model Character {
   /// personaje tiene el mismo color siempre sin que nadie tenga que elegir para empezar a jugar.
   /// Un valor escrito significa «lo elegi yo» y no se pisa nunca.
   color      String?
-  // `race` y `class` son texto libre HEREDADO y se conservan a proposito: puede haber
-  // personajes escritos a mano en la mesa del autor, y borrarles el texto seria destruir datos
-  // por una migracion de conveniencia. La hoja los muestra solo si no hay clave. Se retiran
-  // cuando el autor confirme que no queda ninguno.
-  race       String?
-  class      String?
+  // `race` y `class` (texto libre heredado) se retiraron en D-CF-27 (2026-09-11): la clave del
+  // catalogo (`raceKey`/`subraceKey`/`classKey`) es la unica verdad desde la Tarea 24, y el autor
+  // decidio tirar las columnas SIN medir su contenido ("no hay datos que valgan") — no hubo
+  // conteo previo de filas con texto libre.
   level      Int        @default(1)
   bio        String?
   visibility Visibility @default(PLAYERS)

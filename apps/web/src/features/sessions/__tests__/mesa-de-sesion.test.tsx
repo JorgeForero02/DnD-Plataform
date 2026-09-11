@@ -41,8 +41,6 @@ const CORVIN = {
   campaignId: "c1",
   ownerId: "u-ana",
   name: "Corvin Vhael",
-  race: null,
-  class: null,
   raceKey: "human",
   subraceKey: null,
   classKey: "rogue",

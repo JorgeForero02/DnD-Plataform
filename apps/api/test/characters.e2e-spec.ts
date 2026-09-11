@@ -69,7 +69,7 @@ describe("Characters (e2e)", () => {
     const res = await request(s)
       .post(`/campaigns/${campaignId}/characters`)
       .set("Authorization", `Bearer ${tokenP1}`)
-      .send({ name: "Aragorn", race: "Human", class: "Ranger", level: 3, visibility: "PLAYERS" });
+      .send({ name: "Aragorn", level: 3, visibility: "PLAYERS" });
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("Aragorn");
     aragornId = res.body.id;
@@ -82,6 +82,26 @@ describe("Characters (e2e)", () => {
       .post(`/campaigns/${campaignId}/characters`)
       .set("Authorization", `Bearer ${tokenP1}`)
       .send({ name: "Secret", visibility: "DM_ONLY" });
+  });
+
+  // D-CF-27 (2026-09-11): `race`/`class` de texto libre se retiraron de la base y del esquema.
+  // El esquema no es `.strict()`, así que la clave desconocida se descarta en silencio — no
+  // debe quedar rastro de ella ni en la respuesta ni en la fila que guarda la base.
+  it("creating with a free-text race/class stores nothing under those keys", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .post(`/campaigns/${campaignId}/characters`)
+      .set("Authorization", `Bearer ${tokenP1}`)
+      .send({ name: "Bilbo", race: "Hobbit", class: "Ladrón", visibility: "PLAYERS" });
+    expect(res.status).toBe(201);
+    expect(res.body).not.toHaveProperty("race");
+    expect(res.body).not.toHaveProperty("class");
+    const fila = await prisma.character.findUniqueOrThrow({ where: { id: res.body.id } });
+    expect(fila).not.toHaveProperty("race");
+    expect(fila).not.toHaveProperty("class");
+    // Personaje de usar y tirar: no debe quedar en el listado que comprueban las pruebas
+    // siguientes, que fijan exactamente quién ve a quién en esta misma campaña.
+    await prisma.character.delete({ where: { id: res.body.id } });
   });
 
   it("player list is canView-filtered; DM sees all", async () => {

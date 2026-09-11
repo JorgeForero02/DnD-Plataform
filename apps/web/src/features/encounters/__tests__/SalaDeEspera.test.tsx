@@ -26,8 +26,6 @@ const MARTA: Character = {
   campaignId: "c1",
   ownerId: "u-marta",
   name: "Fenwick",
-  race: null,
-  class: null,
   raceKey: null,
   subraceKey: null,
   classKey: null,

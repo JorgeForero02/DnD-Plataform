@@ -84,7 +84,7 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenPL}`)
-        .send({ name: "Duernor", class: "fighter", level: 3, visibility: "PLAYERS" })
+        .send({ name: "Duernor", level: 3, visibility: "PLAYERS" })
     ).body.id;
     await prisma.character.update({ where: { id: characterId }, data: { str: 14 } });
   });
@@ -146,7 +146,7 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     const nuevo = await request(s())
       .post(`/campaigns/${campaignId}/characters`)
       .set("Authorization", `Bearer ${tokenPL2}`)
-      .send({ name: "Con hoja", class: "fighter", level: 1, visibility: "PLAYERS" });
+      .send({ name: "Con hoja", level: 1, visibility: "PLAYERS" });
     expect(nuevo.status).toBe(201);
     const idConHoja = nuevo.body.id as string;
     const baseConHoja = `/campaigns/${campaignId}/characters/${idConHoja}/inventory`;

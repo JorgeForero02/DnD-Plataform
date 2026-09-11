@@ -773,3 +773,12 @@ Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 medi
 **Texto original:**
 
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
+
+## Columnas race/class de texto libre (migración 3 de D-CF-14, D-CF-27, 2026-09-11)
+
+`DROP COLUMN race, class` en `Character`, sin medir filas por decisión del autor. El catálogo (`raceKey`/`subraceKey`/`classKey`) es la única verdad; el contrato de creación/edición ya no acepta el texto libre (prueba roja en shared: el campo se descarta) y `tsc` barrió los lectores en API y web. Un personaje que solo tuviera texto libre y ninguna clave pasa a no mostrar raza ni clase.
+
+**Texto original:**
+
+- **Las columnas `race`/`class` se pueden retirar en cuanto el autor confirme** que no queda
+  ningún personaje escrito a mano antes del catálogo. Hoy siguen ahí a propósito.

@@ -54,8 +54,6 @@ function personaje(id: string, name: string): Character {
     campaignId: "c1",
     ownerId: "u1",
     name,
-    race: null,
-    class: null,
     raceKey: null,
     subraceKey: null,
     classKey: null,

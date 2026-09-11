@@ -19,8 +19,6 @@ const THORA: Character = {
   campaignId: "c1",
   ownerId: "u-ana",
   name: "Thora Piedrahonda",
-  race: null,
-  class: null,
   raceKey: "dwarf",
   subraceKey: null,
   classKey: "fighter",

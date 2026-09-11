@@ -44,7 +44,7 @@ describe("Errores de validación legibles (e2e)", () => {
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenDM}`)
-        .send({ name: "Kelemvor", class: "warlock", level: 3, visibility: "PLAYERS" })
+        .send({ name: "Kelemvor", level: 3, visibility: "PLAYERS" })
     ).body.id;
   });
 

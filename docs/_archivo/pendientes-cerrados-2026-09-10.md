@@ -615,3 +615,69 @@ lista del editor con una línea.
 
 - **`Session` no tiene `grants`** → `SPECIFIC_PLAYERS` es inerte en ella y el selector lo ofrece igual.
   Tarea 1.8. *(La mitad de `Character` era falsa desde `common/character-viewer.ts`; archivada.)*
+
+## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (eran 22)
+
+**Cerrada el 2026-09-11 (Task 29).** Los 21 `body: JSON.stringify({})` reales (el «22.º» era un comentario que lo citaba) y sus comentarios (que describían un `apiFetch` que ya no existe) salen; la unitaria de `level-up` que fijaba `"{}"` afirma ahora `body` ausente (roja antes). **La prueba real es la tanda de Playwright** que el orquestador corre al cerrar la tanda 5: supertest no pone la cabecera sin `.send()`, solo el navegador lo caza.
+
+**Texto original:**
+
+## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
+
+**`apiFetch` ya no manda `Content-Type` cuando no hay cuerpo**, que era la causa por la que
+Fastify rechazaba con 400 todo POST sin cuerpo. Desde la tarea 1.14, dieciocho llamadas de
+`apps/web` llevan el rodeo `body: JSON.stringify({})` con su comentario explicando el 400 —y una
+unitaria, `features/level-up/__tests__/api.test.ts`, que fija `expect(init.body).toBe("{}")`—.
+
+**Siguen funcionando**, así que no corre prisa; lo que ya no es cierto son sus comentarios, que
+describen un `apiFetch` que no existe. Documentación que miente en dieciocho sitios, aunque sea
+en comentarios.
+
+**Cierra cuando** se quiten los dieciocho `JSON.stringify({})` y la unitaria que fija la forma
+vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
+el navegador**: supertest no pone la cabecera si no hay `.send()`.
+
+## 1.18b · El aviso «no puedes editar esto» solo se medía en la página de tokens
+
+**Cerrada el 2026-09-11 (Task 30).** `apps/web/e2e/no-puedes-editar.spec.ts`, con dos navegadores: el DM crea la ficha, el jugador la abre y ve el control con `aria-disabled` y el motivo visible, con su contraste medido como en `tokens-contrast.spec.ts`. Corrido en la tanda de pantalla.
+
+**Texto original:**
+
+- **El aviso «no puedes editar esto» de una fila sigue midiéndose solo en la página de tokens**,
+  no en la pantalla de un jugador que no sea el creador — haría falta un segundo contexto de
+  navegador en el recorrido. El resto de las mediciones sí son sobre pantallas reales.
+
+## U7-contraste · La pantalla de subida de nivel no tiene medición de contraste en navegador
+
+**Cerrada el 2026-09-11 (Task 31).** `tokens-contrast.spec.ts` visita también la pantalla de subida de nivel en los tres temas, con el mismo patrón que las cinco de siempre. Corrido en la tanda de pantalla.
+
+**Texto original:**
+
+| **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
+
+## U6 · Sin prueba de accesibilidad automática ni de móvil real
+
+**Cerrada en su mitad medible el 2026-09-11 (Task 32).** `apps/web/e2e/teclado.spec.ts` recorre con `Tab`/`Enter`/`Escape` de la lista de campañas a una ficha del mundo y vuelta, comprobando en cada parada el foco y su anillo calculado, y que ningún control interactivo lleve `tabindex="-1"` sin `aria-hidden`. Lector de pantalla y móvil real siguen sin automatizar: son herramientas, no una prueba que se pueda escribir hoy, y se dicen aquí en vez de quedar como ficha.
+
+**Texto original:**
+
+| **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
+
+## Sección · P1 — Huecos de verificación
+
+**Archivada el 2026-09-11 con U6 (Task 32):** era la misma frontera vista desde otro sitio — «lo que no existe: recorrido de teclado» ya existe (`teclado.spec.ts`); lector de pantalla, móvil real y rendimiento quedan dichos en la ficha U6 archivada. Sus dos párrafos se conservan por la lección que llevan.
+
+**Texto original:**
+
+## P1 — Huecos de verificación
+
+**La accesibilidad se mide a medias, no a cero.** `apps/web/e2e/tokens-contrast.spec.ts` mide
+**contraste real en los dos temas** sobre cinco pantallas, y comprueba que un control de
+formulario no dispare el zoom de iOS Safari. Lo que **no** existe: recorrido de teclado,
+lector de pantalla, viewport de teléfono y rendimiento. Es la misma frontera que declara la
+ficha **U6** de este documento.
+
+> Esta línea decía «no hay prueba de accesibilidad… ninguna herramienta lo mira hoy», y se
+> contradecía con su propia ficha U6 doce secciones más abajo y con un fichero de pruebas que
+> lleva meses en verde. **Dos frases del mismo documento que no se leen la una a la otra es la
+> forma más barata de mentir.**

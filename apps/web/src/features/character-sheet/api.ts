@@ -258,9 +258,6 @@ export function clearOverride(
 ): Promise<SheetResponse> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/overrides/${target}`, {
     method: "DELETE",
-    // Mismo motivo que en `removeCondition`: `apiFetch` siempre manda Content-Type JSON y
-    // Fastify rechaza esa cabecera con el cuerpo vacío de verdad.
-    body: JSON.stringify({}),
   });
 }
 
@@ -571,9 +568,6 @@ export function removeCondition(
 ): Promise<{ deleted: boolean }> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/conditions/${key}`, {
     method: "DELETE",
-    // apiFetch siempre manda Content-Type: application/json; Fastify rechaza esa cabecera con
-    // un cuerpo de verdad vacío (mismo comentario en features/entities/api.ts).
-    body: JSON.stringify({}),
   });
 }
 

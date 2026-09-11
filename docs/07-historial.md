@@ -66,6 +66,10 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 5 (c), medir en el navegador** (un lote, cuatro fichas): fuera los 21
+  `JSON.stringify({})`; el aviso «no puedes editar» medido en la pantalla de un jugador con dos
+  navegadores; la subida de nivel en `tokens-contrast`; y un recorrido de teclado. **Revertir:**
+  los e2e se pueden quitar; los 22 cuerpos vacíos no hacen falta volver a ponerlos.
 - **Tanda 5 (b), pantalla** (un lote, dos fichas + una falsa): la tirada de ataque elige audiencia
   (I10); la sesión deja de ofrecer `SPECIFIC_PLAYERS`, que era inerte sin concesiones (P3); y
   «la petición de concentración no dice que lo es» resultó **falsa** al abrirla: el `label` ya lo

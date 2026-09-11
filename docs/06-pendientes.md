@@ -432,7 +432,6 @@ Lo entregado está en [07-historial](./07-historial.md) y su porqué en
 | | Qué | Por qué importa |
 |---|---|---|
 | **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
-| **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
 
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 
@@ -444,12 +443,6 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 | | Qué | Por qué importa |
 |---|---|---|
-
-## Deuda nueva aceptada en 1.18b (2026-09-01)
-
-- **El aviso «no puedes editar esto» de una fila sigue midiéndose solo en la página de tokens**,
-  no en la pantalla de un jugador que no sea el creador — haría falta un segundo contexto de
-  navegador en el recorrido. El resto de las mediciones sí son sobre pantallas reales.
 
 ## Segunda pasada del contraste modelo/API ↔ pantalla (2026-09-01)
 
@@ -567,19 +560,6 @@ que la base aguante.
 tiene su fecha de caducidad en el día que existan datos que a alguien le dolería perder, y ese día
 llegará con el tiempo real, no con esta prueba.
 
-## P1 — Huecos de verificación
-
-**La accesibilidad se mide a medias, no a cero.** `apps/web/e2e/tokens-contrast.spec.ts` mide
-**contraste real en los dos temas** sobre cinco pantallas, y comprueba que un control de
-formulario no dispare el zoom de iOS Safari. Lo que **no** existe: recorrido de teclado,
-lector de pantalla, viewport de teléfono y rendimiento. Es la misma frontera que declara la
-ficha **U6** de este documento.
-
-> Esta línea decía «no hay prueba de accesibilidad… ninguna herramienta lo mira hoy», y se
-> contradecía con su propia ficha U6 doce secciones más abajo y con un fichero de pruebas que
-> lleva meses en verde. **Dos frases del mismo documento que no se leen la una a la otra es la
-> forma más barata de mentir.**
-
 ## P2 — Ruta de mejora del nivel
 
 **Linting sin información de tipos.** `typescript-eslint` corre en modo básico; el modo
@@ -624,21 +604,6 @@ empujar es una acción hacia fuera.
 
 Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
 sí mismo**.
-
-## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
-
-**`apiFetch` ya no manda `Content-Type` cuando no hay cuerpo**, que era la causa por la que
-Fastify rechazaba con 400 todo POST sin cuerpo. Desde la tarea 1.14, dieciocho llamadas de
-`apps/web` llevan el rodeo `body: JSON.stringify({})` con su comentario explicando el 400 —y una
-unitaria, `features/level-up/__tests__/api.test.ts`, que fija `expect(init.body).toBe("{}")`—.
-
-**Siguen funcionando**, así que no corre prisa; lo que ya no es cierto son sus comentarios, que
-describen un `apiFetch` que no existe. Documentación que miente en dieciocho sitios, aunque sea
-en comentarios.
-
-**Cierra cuando** se quiten los dieciocho `JSON.stringify({})` y la unitaria que fija la forma
-vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
-el navegador**: supertest no pone la cabecera si no hay `.send()`.
 
 ## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
 
@@ -722,7 +687,6 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 |---|---|---|
 | **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
-| **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
 
 ### Huecos de mecánica — lo que falta para jugar de verdad

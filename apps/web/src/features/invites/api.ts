@@ -63,7 +63,6 @@ export function revokeInvite(inviteId: string): Promise<{ revoked: true }> {
 export function acceptInvite(token: string): Promise<AcceptedInvite> {
   return apiFetch<AcceptedInvite>(`/invites/${token}/accept`, {
     method: "POST",
-    body: JSON.stringify({}),
   });
 }
 

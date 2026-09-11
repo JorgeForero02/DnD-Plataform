@@ -67,23 +67,15 @@ export function updateEntity(
 export function deleteEntity(campaignId: string, entityId: string): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/entities/${entityId}`, {
     method: "DELETE",
-    // apiFetch (lib/api.ts) always sends Content-Type: application/json; Fastify 500s on
-    // that combined with a genuinely empty body ("Body cannot be empty…") — the exact bug
-    // 1.14 hit and fixed for invites' POST calls. A DELETE has nothing to say, but it still
-    // needs a body to match its own header.
-    body: JSON.stringify({}),
   });
 }
 
 /**
  * **Ejecutar una ficha** (plan 09, I19): el DM pulsa y las reglas que la esperaban se disparan.
- * Sin cuerpo — lo que se ejecuta lo dice la URL—, pero se manda `{}` por la trampa de siempre:
- * `apiFetch` pone `Content-Type: application/json` y Fastify responde 500 a esa cabecera con el
- * cuerpo realmente vacío.
+ * Sin cuerpo — lo que se ejecuta lo dice la URL.
  */
 export function executeEntity(campaignId: string, entityId: string) {
   return apiFetch(`/campaigns/${campaignId}/entities/${entityId}/execute`, {
     method: "POST",
-    body: JSON.stringify({}),
   });
 }

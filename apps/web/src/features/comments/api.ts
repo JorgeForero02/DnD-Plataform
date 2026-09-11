@@ -24,6 +24,5 @@ export function deleteComment(commentId: string): Promise<{ deleted: boolean }> 
   // Task 1.16: same fix as features/links/api.ts's deleteLink, found the same way.
   return apiFetch<{ deleted: boolean }>(`/comments/${commentId}`, {
     method: "DELETE",
-    body: JSON.stringify({}),
   });
 }

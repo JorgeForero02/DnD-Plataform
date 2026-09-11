@@ -68,9 +68,6 @@ export function deleteCharacter(
 ): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/characters/${characterId}`, {
     method: "DELETE",
-    // See the same comment in features/entities/api.ts: apiFetch always sends a JSON
-    // Content-Type, and Fastify rejects that paired with a truly empty body.
-    body: JSON.stringify({}),
   });
 }
 
@@ -93,15 +90,11 @@ export function fetchArchivedCharacters(campaignId: string): Promise<Character[]
 export function archiveCharacter(campaignId: string, characterId: string): Promise<Character> {
   return apiFetch<Character>(`/campaigns/${campaignId}/characters/${characterId}/archive`, {
     method: "POST",
-    // Mismo motivo que en `deleteCharacter`: `apiFetch` manda siempre un Content-Type de JSON y
-    // Fastify rechaza esa cabecera con el cuerpo realmente vacío.
-    body: JSON.stringify({}),
   });
 }
 
 export function unarchiveCharacter(campaignId: string, characterId: string): Promise<Character> {
   return apiFetch<Character>(`/campaigns/${campaignId}/characters/${characterId}/unarchive`, {
     method: "POST",
-    body: JSON.stringify({}),
   });
 }

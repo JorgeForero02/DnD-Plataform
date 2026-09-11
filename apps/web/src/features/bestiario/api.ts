@@ -79,9 +79,6 @@ export function updateStatblock(
 export function deleteStatblock(campaignId: string, statblockId: string): Promise<unknown> {
   return apiFetch(`/campaigns/${campaignId}/statblocks/${statblockId}`, {
     method: "DELETE",
-    // `apiFetch` manda siempre `Content-Type: application/json`, y Fastify rechaza esa cabecera
-    // con un cuerpo de verdad vacío. Misma trampa que documenta `features/entities/api.ts`.
-    body: JSON.stringify({}),
   });
 }
 

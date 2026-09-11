@@ -49,7 +49,8 @@ describe("api de la subida de nivel", () => {
     expect(url).toBe("/api/campaigns/c1/characters/ch1/level-up");
     expect(url).not.toContain("roll");
     expect(init.method).toBe("POST");
-    // Cuerpo vacío de verdad + Content-Type: application/json = 500 de Fastify (1.14, 1.16).
-    expect(init.body).toBe("{}");
+    // Sin cuerpo de verdad: apiFetch ya no manda Content-Type sin body, así que no hace falta
+    // el rodeo `JSON.stringify({})` de antes (tarea 29).
+    expect(init.body).toBeUndefined();
   });
 });

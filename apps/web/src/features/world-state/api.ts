@@ -92,10 +92,6 @@ export function removeSetMember(
     `/campaigns/${campaignId}/sets/${encodeURIComponent(key)}/members/${input.memberType}/${encodeURIComponent(input.memberId)}`,
     {
       method: "DELETE",
-      // `apiFetch` manda siempre `Content-Type: application/json` y Fastify rechaza esa
-      // cabecera con un cuerpo de verdad vacío. Hay ficha para quitarlo; hasta entonces, hace
-      // falta (auditoría §7, trampa 7).
-      body: JSON.stringify({}),
     },
   );
 }

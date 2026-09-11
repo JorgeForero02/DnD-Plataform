@@ -746,6 +746,100 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Task 31 — la sexta pantalla real: el diálogo de subida de nivel (features/level-up/). Mismo
+// guion que subir-nivel.spec.ts (raza enana, clase guerrero, nivel 1, características completas)
+// para que el previo del servidor traiga un diff de verdad —PG máximos, dados de golpe,
+// bonificador de competencia, aptitud nueva— en vez del 400 "faltan raza, clase o
+// características" que se pintaría con un personaje vacío. Se mide el diálogo abierto: su
+// título, el cuerpo del diff, el aviso sobre la tirada y los tres botones.
+function nuevaCuentaNivel() {
+  return nuevaCuenta("nivel-contraste");
+}
+
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en la pantalla de subida de nivel (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuentaNivel();
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+    await page.getByLabel("Nombre").fill("Campaña de contraste (nivel)");
+    await page.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("link", { name: "Campaña de contraste (nivel)" }).click();
+    await expect(page.getByRole("heading", { name: "Campaña de contraste (nivel)" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Personajes" }).click();
+    await page.getByRole("button", { name: "Nuevo personaje" }).click();
+    await page.getByLabel("Nombre").fill("Dain Yunquefirme");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+    await page.getByRole("link", { name: /Dain Yunquefirme/ }).click();
+    await expect(page.getByRole("heading", { name: "Dain Yunquefirme" })).toBeVisible();
+
+    await page.getByLabel("Raza", { exact: true }).selectOption("dwarf");
+    await page.getByLabel("Clase", { exact: true }).selectOption("fighter");
+    await page.getByLabel("Nivel", { exact: true }).fill("1");
+    await page.getByLabel("Nivel", { exact: true }).blur();
+    const caracteristicas: [string, string][] = [
+      ["Fuerza", "16"],
+      ["Destreza", "12"],
+      ["Constitución", "14"],
+      ["Inteligencia", "10"],
+      ["Sabiduría", "10"],
+      ["Carisma", "8"],
+    ];
+    for (const [nombre, valor] of caracteristicas) {
+      const campo = page.getByLabel(nombre, { exact: true });
+      await campo.fill(valor);
+      await campo.blur();
+    }
+    await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("button", { name: "Subir a nivel 2" }).click();
+    const dialogo = page.getByRole("dialog", { name: "Subir de nivel" });
+    await expect(dialogo).toBeVisible();
+    await expect(dialogo.getByText("Nivel 1 → 2")).toBeVisible({ timeout: 10_000 });
+
+    {
+      const { color, bg } = await effectiveTextColours(
+        dialogo.getByRole("heading", { name: "Subir de nivel" }),
+      );
+      record(theme, "subida de nivel: título del diálogo", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(dialogo.getByText("Nivel 1 → 2"));
+      record(theme, "subida de nivel: cabecera del diff", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        dialogo.getByText("Puntos de golpe máximos"),
+      );
+      record(theme, "subida de nivel: etiqueta de fila del diff", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        dialogo.getByText(/Tirar el dado deja la tirada en el registro/),
+      );
+      record(theme, "subida de nivel: aviso sobre la tirada", contrastRatio(color, bg), 4.5);
+    }
+    for (const name of ["Tirar el dado de golpe", "Confirmar subida de nivel", "Cancelar"]) {
+      const { color, bg } = await effectiveTextColours(
+        dialogo.getByRole("button", { name, exact: true }),
+      );
+      record(theme, `subida de nivel: botón "${name}" texto`, contrastRatio(color, bg), 4.5);
+    }
+
+    await page.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dialogo).toBeHidden();
+  });
+}
+
 // Fix round 2 (post-1.19b review): fix round 1's "computed size, not explicitness"
 // argument was correct about the test, then lost to the very cascade it was reasoning
 // about -- the element-selector override it shipped in tokens.css never beat

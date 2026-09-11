@@ -49,10 +49,6 @@ export function changeMemberRole(
 export function removeMember(campaignId: string, userId: string): Promise<{ removed: boolean }> {
   return apiFetch<{ removed: boolean }>(`/campaigns/${campaignId}/members/${userId}`, {
     method: "DELETE",
-    // Same trap as deleteCampaign (features/campaigns/api.ts) and the five DELETEs from
-    // task 1.16: apiFetch always sends Content-Type: application/json, and Fastify 500s on
-    // that combined with a genuinely empty body.
-    body: JSON.stringify({}),
   });
 }
 

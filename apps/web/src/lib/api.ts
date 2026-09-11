@@ -33,8 +33,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       //
       // Lo que hace 2.5.6 es **arreglar la causa en vez de pagar el peaje diecinueve veces**: los
       // dos endpoints nuevos sin cuerpo —pasar turno, terminar el combate— fueron los primeros
-      // que no copiaron el rodeo, y volvieron a caer en el mismo 400. Los dieciocho rodeos siguen
-      // funcionando y ahora son innecesarios; su limpieza está en `docs/06-pendientes.md`.
+      // que no copiaron el rodeo, y volvieron a caer en el mismo 400. Los veintiún rodeos que
+      // quedaban ya se quitaron: ahora una llamada sin cuerpo simplemente no pasa `body`.
       //
       // Y el motivo por el que solo lo ve el navegador sigue en pie: **supertest no pone la
       // cabecera si no hay `.send()`**, así que los e2e de API pasan en verde sobre el camino

@@ -158,9 +158,6 @@ export function updateRule(
 export function deleteRule(campaignId: string, ruleId: string): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`${raiz(campaignId)}/${ruleId}`, {
     method: "DELETE",
-    // `apiFetch` siempre manda `Content-Type: application/json`, y Fastify rechaza esa cabecera
-    // con un cuerpo de verdad vacío (mismo comentario en `features/entities/api.ts`).
-    body: JSON.stringify({}),
   });
 }
 

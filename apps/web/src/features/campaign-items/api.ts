@@ -153,9 +153,5 @@ export function deleteCampaignItem(
 ): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/items/${itemId}`, {
     method: "DELETE",
-    // Mismo escollo que las cinco DELETE de la tarea 1.16 (entities/api.ts): apiFetch siempre
-    // manda Content-Type: application/json, y Fastify da 500 con eso y un cuerpo de verdad
-    // vacío.
-    body: JSON.stringify({}),
   });
 }

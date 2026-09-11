@@ -66,9 +66,6 @@ export function deleteSession(
 ): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/sessions/${sessionId}`, {
     method: "DELETE",
-    // See the same comment in features/entities/api.ts: apiFetch always sends a JSON
-    // Content-Type, and Fastify rejects that paired with a truly empty body.
-    body: JSON.stringify({}),
   });
 }
 

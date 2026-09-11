@@ -79,8 +79,5 @@ export function fetchLevelUpPreview(
 export function applyLevelUp(campaignId: string, characterId: string): Promise<LevelUpResult> {
   return apiFetch<LevelUpResult>(`/campaigns/${campaignId}/characters/${characterId}/level-up`, {
     method: "POST",
-    // apiFetch siempre manda Content-Type: application/json, y Fastify rechaza esa cabecera con
-    // un cuerpo vacío de verdad (el 500 que cazaron 1.14 y 1.16).
-    body: JSON.stringify({}),
   });
 }

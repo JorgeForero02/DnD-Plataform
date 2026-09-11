@@ -84,18 +84,13 @@ export function updateDmTable(
 export function deleteDmTable(campaignId: string, tableId: string): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`/campaigns/${campaignId}/tables/${tableId}`, {
     method: "DELETE",
-    // Mismo escollo que las cinco DELETE de la tarea 1.16 (features/entities/api.ts): `apiFetch`
-    // manda siempre `Content-Type: application/json`, y Fastify da 500 con eso y un cuerpo de
-    // verdad vacío.
-    body: JSON.stringify({}),
   });
 }
 
-/** Tirarla a mano. Sin cuerpo, pero con el `{}` por el mismo motivo que la DELETE de arriba. */
+/** Tirarla a mano. Sin cuerpo. */
 export function rollDmTable(campaignId: string, tableId: string): Promise<DmTableRoll> {
   return apiFetch<DmTableRoll>(`/campaigns/${campaignId}/tables/${tableId}/roll`, {
     method: "POST",
-    body: JSON.stringify({}),
   });
 }
 

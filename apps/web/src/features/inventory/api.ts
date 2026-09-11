@@ -75,9 +75,6 @@ export function removeInventoryItem(
 ): Promise<{ deleted: boolean }> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/inventory/${rowId}`, {
     method: "DELETE",
-    // Mismo motivo que `character-sheet/api.ts`: `apiFetch` siempre manda un Content-Type
-    // JSON, y Fastify rechaza esa cabecera con un cuerpo de verdad vacío.
-    body: JSON.stringify({}),
   });
 }
 

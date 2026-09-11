@@ -1,6 +1,6 @@
 # Entorno de desarrollo
 
-Requisitos: Node ≥ 20, pnpm 10.32.1 (lo fija `packageManager`), Docker Desktop.
+Requisitos: Node ≥ 22 (D-CF-13; lo fija `engines` y lo prueba `node-22-pins.test.ts`), pnpm 10.32.1 (lo fija `packageManager`), Docker Desktop.
 
 ## Arranque
 

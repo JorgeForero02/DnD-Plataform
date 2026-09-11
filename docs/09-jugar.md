@@ -95,8 +95,10 @@ No son sorpresas y no van a aparecer solas a mitad de partida; cada uno tiene su
 > DM trabajo que la plataforma ya hizo — el mismo género de mentira del que
 > [CLAUDE.md](../CLAUDE.md) ya conserva tres avisos. Lo que sigue vivo se queda abajo.
 
-- **El agotamiento** solo llega al motor por la velocidad y los puntos de golpe máximos. Sus
-  desventajas se arbitran.
+- **El agotamiento** llega al motor por la velocidad y los puntos de golpe máximos, **mata en
+  el nivel 6** (`muertoPorAgotamiento`) y en los niveles 1 y 3 **sugiere desventaja** en pruebas,
+  ataques y salvaciones (`suggested-roll-mode.ts`); lo que sigue arbitrándose es aplicar esa
+  desventaja cuando el jugador no acepta la sugerencia.
 - **Los conjuros y las aptitudes con nombre.** Existen los espacios de conjuro y el nombre de cada
   aptitud de clase, y **no existe ni un hechizo**: un mago ve sus casillas vacías y un bárbaro de
   nivel 5 pega igual que un guerrero. Es el **paso 3** —el catálogo—, no la fase 3. Mientras tanto
@@ -115,7 +117,8 @@ No son sorpresas y no van a aparecer solas a mitad de partida; cada uno tiene su
   deja la campaña sin nadie»: las dos llevaban falsas desde el plan 11, que trajo el cambio de
   papel —Resumen → miembros— y la lista de invitaciones con revocar.)*
 - **Las sesiones van por cuándo se juegan** desde el 2026-09-10: la más lejana arriba, las sin
-  fecha detrás. Una fecha puesta todavía no se puede quitar.
+  fecha detrás. Una fecha puesta se quita dejando el campo vacío al editar la sesión (desde el
+  2026-09-11; hasta entonces esta línea decía que no se podía).
 - **Nada de mapas, imágenes, adjuntos ni tiempo real.** Son fases posteriores.
 
 ---

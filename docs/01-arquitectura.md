@@ -360,12 +360,14 @@ origen.
 - **Minimalismo de infraestructura.** Sin Redis, sin colas, sin S3, sin WebSockets, sin
   servicio de IA hasta que una fase los necesite. Hoy: Postgres + Nest + React y nada más.
 - **Eventos de dominio** vía `@nestjs/event-emitter`, en proceso y sin infraestructura. Se
-  emiten **siete** —`campaign.created`, `campaign.updated`, `campaign.deleted`,
-  `campaign.member.removed` (`campaigns.service.ts`), `campaign.member_joined`, `entity.created`
-  y **`game_event.recorded`** (`game-events.service.ts`)—, y hay **tres** `@OnEvent`:
-  `notifications` consume `campaign.member_joined` y `entity.created`, y
-  `rules-engine/game-event-bridge.ts` consume `game_event.recorded`, que es **cómo el log de la
-  partida despierta al motor de reglas**. Un puente y no una llamada directa porque el motor
+  emiten **nueve** —`campaign.created`, `campaign.updated`, `campaign.deleted`,
+  `campaign.member.removed` (`campaigns.service.ts`), `campaign.member_joined`, `entity.created`,
+  `comment.added` (`comments.service.ts`), `session.scheduled` (`sessions.service.ts`) y
+  **`game_event.recorded`** (`game-events.service.ts`)—, y hay **cinco** `@OnEvent`: los cuatro
+  de `notifications` (`member_joined`, `entity.created`, `comment.added`, `session.scheduled`) y
+  `rules-engine/game-event-bridge.ts`, que consume `game_event.recorded` — **cómo el log de la
+  partida despierta al motor de reglas**. (Hasta el 2026-09-11 este párrafo decía siete y tres:
+  el censo a mano caducó dos veces; si vuelve a caducar, se sustituye por una prueba que cuente.) Un puente y no una llamada directa porque el motor
   escribe eventos: llamarle desde el log cerraría un ciclo entre los dos módulos que Nest solo
   tapa con `forwardRef`. Los cuatro de `campaigns.service.ts` siguen sin consumidor
   ([06-pendientes](./06-pendientes.md), **N1**).

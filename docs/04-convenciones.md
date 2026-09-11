@@ -464,9 +464,9 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   filtró por `canView`; solo puede **quitar de la vista** filas que la persona ya tenía
   derecho a ver — nunca puede añadir ni decidir qué entra en esa lista. Confundir "el
   servidor no lo mandó" con "el cliente lo escondió" es el error exacto que `canView` existe
-  para no cometer. Si una tarea futura necesitase filtrar algo que el servidor no manda hoy
-  (p. ej. buscar por texto dentro del cuerpo), la búsqueda tiene que hacerse **en el
-  servidor**, no ampliando este filtro de cliente para que reciba más de lo que debería.
+  para no cometer. La búsqueda por texto dentro del cuerpo es el ejemplo ya resuelto: se hace
+  **en el servidor**, filtrada por `canView` antes que por el texto (ficha U3, 2026-09-05/06), y
+  no ampliando este filtro de cliente para que reciba más de lo que debería.
 
 ## Los tokens de color se declaran por CANALES (B0, 2026-09-04)
 

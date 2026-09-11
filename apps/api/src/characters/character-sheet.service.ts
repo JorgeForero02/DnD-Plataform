@@ -2170,6 +2170,38 @@ export class CharacterSheetService {
     // lea otra cosa, y un comentario no lo impide.
     return resultado.sheet.derived.ac.total;
   }
+
+  /**
+   * La CA del personaje, calculada **dentro de una transacción abierta**, con el `tx` de quien
+   * llama (M2B-11). Neutral a propósito — no se llama "AfterWrite": el inventario la pide dos
+   * veces en la misma transacción de `update()`, antes y después de escribir el cambio, para
+   * poder devolver `{ item, acBefore, ac }` en un solo viaje — la pantalla hacía `fetchAc` →
+   * `PATCH` → `fetchAc`, y si el segundo `fetchAc` fallaba, la ficha se quedaba enseñando la CA
+   * vieja aunque el servidor ya hubiera escrito el cambio.
+   *
+   * **Reutiliza `construirODenegar`**, el mismo camino que ya usan `getSheet` y `changeHp`: no
+   * hay una segunda fórmula de CA, solo un segundo llamante. `null` cuando no hay hoja que
+   * derivar —un PNJ sin plantilla, por ejemplo—, que es un hueco tan legítimo como el que ya deja
+   * `equipoEquipado` con un objeto no resoluble: equipar no tiene por qué fallar por eso.
+   *
+   * **El `catch` solo atrapa el "no hay hoja"** (`BadRequestException`, lo que lanza
+   * `construirODenegar` cuando `hojaOMotivo` no puede derivar). Cualquier otro fallo —una
+   * consulta rota, una excepción de Prisma— se propaga: silenciarlo aquí escondería un error real
+   * detrás de un `ac: null` que parecería un caso legítimo.
+   */
+  async armorClassInTransaction(
+    userId: string,
+    character: FilaPersonaje,
+    tx: Prisma.TransactionClient,
+  ): Promise<number | null> {
+    try {
+      const sheet = await this.construirODenegar(userId, character, tx);
+      return sheet.derived.ac.total;
+    } catch (e) {
+      if (e instanceof BadRequestException) return null;
+      throw e;
+    }
+  }
 }
 
 /** `1d8` + 3 → `1d8+3`; + 0 → `1d8`; − 1 → `1d8-1`. El evaluador no entiende un `+0`. */

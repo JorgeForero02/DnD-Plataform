@@ -128,7 +128,7 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 >
 > | Ficha | Qué se decidió | Dónde se hace |
 > |---|---|---|
-> | X1 `RestKind` · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · J7 motivo de anulación · I3/M2B-15 identificado · `race`/`class` | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` después del diálogo de creación |
+> | X1 `RestKind` · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · J7 motivo de anulación · I3/M2B-15 identificado · `race`/`class` · suceso de cambio de cantidad (revisión de M2B-8) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` después del diálogo de creación |
 > | S4 rasgos raciales · M2B-4 cargas | D-CF-20/21: por el conversor de Foundry | **Paso 3**, tareas 2b y `uses` de objeto |
 > | R1 límite por IP · D8 correo · P3 archivar en la mesa · H7 rearmar · E0 TipTap · P6 Node | D-CF-12, 13, 17, 18, 19 y H7 «se rearma editando» | **Esta sesión**, con código |
 > | P2 mesa a 390 px | D-CF-3: fase 3 | Con el tablero |
@@ -394,8 +394,6 @@ arregló el mismo día y lo que el refutador corrigió, está en
 | **M2B-4** | **Quedan las cargas** (una varita de siete usos que se repone en el descanso) | La munición del SRD ya está sembrada (flechas, virotes, balas, agujas) y **gastar un consumible existe** (`POST .../inventory/:rowId/consume`, con su rastro en la línea de tiempo y la fila que desaparece al llegar a cero). Lo que falta son las **cargas**: columnas `chargesCurrent`/`chargesMax`/`rechargeOn` en `InventoryItem` y reponerlas dentro de la transacción del descanso. Es una migración, y por eso no entró de madrugada |
 | **M2B-15** | **«Lo tengo pero no sé qué hace» — la mitad que falta** | Revisa el motivo de la decisión D-2B-8: **es práctica estándar**, no exótica — Foundry lo trae de serie con una bandera `identified` y hay módulos dedicados. Y **media solución ya está construida**: la redacción de 2B (se tacha el nombre, se conserva el número) es el mismo mecanismo de presentación. Falta el interruptor del DM y un nombre alternativo («una espada de aspecto extraño») |
 | **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
-| **M2B-8** | **`quantity` es absoluto donde el dinero es delta** | Dos personas descontando una flecha a la vez dejan 19 en vez de 18. No rompe ningún invariante —por eso no es urgente— pero es la misma carrera que la bolsa ya tiene resuelta |
-| **M2B-11** | **Equipar son tres peticiones desde la pantalla** | `fetchAc` → `PATCH` → `fetchAc`. Si la segunda lectura falla, la mutación se marca como error, no se invalida la caché y la pantalla enseña un estado que el servidor ya cambió. Lo correcto es que el `PATCH` devuelva la CA nueva |
 
 ## Iluminación y visión (pregunta del autor, 2026-09-02)
 

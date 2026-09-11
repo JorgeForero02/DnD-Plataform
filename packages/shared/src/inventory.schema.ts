@@ -34,6 +34,17 @@ export type AddInventoryItemInput = z.infer<typeof addInventoryItemSchema>;
 export const updateInventoryItemSchema = z
   .object({
     quantity: z.number().int().min(1).max(9999).optional(),
+    /**
+     * El delta de la carrera (M2B-8, imita `consumeInventoryItemSchema`): dos personas
+     * descontando una flecha a la vez con `quantity` absoluto pisan el mismo número — la que
+     * escribe segunda deja el que leyó primero, no el resultado de las dos restas. El servicio
+     * lo aplica con `increment` dentro de la transacción que ya bloquea la fila.
+     */
+    quantityDelta: z
+      .number()
+      .int()
+      .refine((n) => n !== 0, { message: "El delta de cantidad no puede ser cero." })
+      .optional(),
     location: itemLocationSchema.optional(),
     /** `null` la libera. Obligatoria al pasar a `EQUIPPED` si el objeto tiene ranura. */
     slot: equipSlotSchema.nullable().optional(),
@@ -43,8 +54,55 @@ export const updateInventoryItemSchema = z
   })
   .refine((v) => Object.keys(v).length > 0, {
     message: "No hay nada que cambiar en esta petición.",
+  })
+  .refine((v) => v.quantity === undefined || v.quantityDelta === undefined, {
+    message: "No se puede fijar una cantidad absoluta y un delta a la vez.",
+    path: ["quantityDelta"],
   });
 export type UpdateInventoryItemInput = z.infer<typeof updateInventoryItemSchema>;
+
+/**
+ * La fila del inventario tal cual queda tras el `PATCH`: lo que ya devolvía el endpoint, sin
+ * resolver contra el catálogo (eso lo hace el listado, no esta mutación).
+ */
+export const inventoryItemRowSchema = z.object({
+  id: z.string(),
+  characterId: z.string(),
+  quantity: z.number().int(),
+  location: itemLocationSchema,
+  slot: equipSlotSchema.nullable(),
+  attuned: z.boolean(),
+  storedAt: z.string().nullable(),
+  note: z.string().nullable(),
+});
+export type InventoryItemRow = z.infer<typeof inventoryItemRowSchema>;
+
+/**
+ * La respuesta del `PATCH` de equipar/desequipar/mover/sintonizar/cambiar cantidad (M2B-11): el
+ * objeto tal cual queda, **más la CA de antes y de después de escribir**.
+ *
+ * Existe porque hasta esta ficha la pantalla hacía `fetchAc` → `PATCH` → `fetchAc`: dos
+ * peticiones que no tienen nada que ver con equipar, y si la segunda fallaba después de un
+ * `PATCH` que sí había escrito, la ficha se quedaba enseñando la CA de antes. Las dos CA que
+ * viajan aquí las calcula el servidor **dentro de la misma transacción** que el cambio — el
+ * mismo motivo por el que el suceso de inventario se escribe ahí y no fuera.
+ *
+ * **`acBefore` viaja también, y no solo `ac`** (fix de ronda 1, Q-2): la pantalla no siempre
+ * tiene la hoja ya cargada en caché para leer "el antes" por su cuenta —el diálogo de la bolsa
+ * desde la mesa monta el inventario sin la hoja—, y ahí el aviso "CA 13 -> 14" desaparecía en
+ * silencio. Con las dos mitades en la misma respuesta, la pantalla no depende de qué más haya
+ * cargado antes.
+ *
+ * `null` en cualquiera de las dos cuando el personaje no tiene hoja que derivar (un PNJ sin
+ * plantilla, por ejemplo): equipar no tiene por qué fallar por eso, así que el hueco viaja como
+ * dato y no como error.
+ */
+export const updateInventoryItemResponseSchema = z.object({
+  item: inventoryItemRowSchema,
+  acBefore: z.number().nullable(),
+  ac: z.number().nullable(),
+});
+export type UpdateInventoryItemResponse = z.infer<typeof updateInventoryItemResponseSchema>;
 
 /**
  * Gastar un consumible: una poción que se bebe, una antorcha que se quema, un paquete de

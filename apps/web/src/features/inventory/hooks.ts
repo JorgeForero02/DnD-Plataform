@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AddInventoryItemInput,
   ChangeMoneyInput,
+  InventoryItemRow,
   UpdateInventoryItemInput,
 } from "@dnd/shared";
 import * as inventoryApi from "./api";
-import type { InventoryRow } from "./api";
 import { useSrdResolvedItems } from "../campaign-items/hooks";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
 
@@ -68,7 +68,7 @@ export function useAddInventoryItem(campaignId: string, characterId: string) {
 }
 
 export interface ResultadoDeUbicacion {
-  row: InventoryRow;
+  row: InventoryItemRow;
   /** CA antes de la mutación, o `null` si la hoja no estaba calculada. */
   acAntes: number | null;
   /** CA después, con el mismo `null` posible. */
@@ -80,6 +80,15 @@ export interface ResultadoDeUbicacion {
  * (`updateInventoryItemSchema`, "una sola frase"). Además captura la Clase de Armadura antes y
  * después del cambio, porque el aviso de confirmación del prototipo ("CA 13 -> 14") es la
  * conexión que hace único al producto: el objeto que te pones y el número que sube.
+ *
+ * **Ya no hay dos `fetchAc`** (M2B-11): hasta esta ficha esto era `fetchAc` → `PATCH` →
+ * `fetchAc`, y si el segundo fallaba la pantalla se quedaba enseñando la CA de antes aunque el
+ * servidor ya hubiera escrito el cambio. **Las dos mitades viajan en la respuesta del `PATCH`**
+ * (`{ item, acBefore, ac }`, las dos calculadas por el servidor dentro de la misma transacción) —
+ * fix de ronda 1 (Q-2): la primera versión leía "el antes" de la caché de TanStack Query de la
+ * hoja, y el diálogo "Tu bolsa" de la mesa (`MesaDeSesion`) monta este inventario **sin** haber
+ * cargado esa hoja, así que la caché estaba vacía y el aviso desaparecía en silencio justo donde
+ * más se usa. Ahora no depende de qué más se haya cargado antes.
  */
 export function useCambiarUbicacion(campaignId: string, characterId: string) {
   const qc = useQueryClient();
@@ -88,15 +97,12 @@ export function useCambiarUbicacion(campaignId: string, characterId: string) {
       rowId: string;
       input: UpdateInventoryItemInput;
     }): Promise<ResultadoDeUbicacion> => {
-      const acAntes = await inventoryApi.fetchAc(campaignId, characterId);
-      const row = await inventoryApi.updateInventoryItem(
-        campaignId,
-        characterId,
-        vars.rowId,
-        vars.input,
-      );
-      const acDespues = await inventoryApi.fetchAc(campaignId, characterId);
-      return { row, acAntes, acDespues };
+      const {
+        item,
+        acBefore: acAntes,
+        ac: acDespues,
+      } = await inventoryApi.updateInventoryItem(campaignId, characterId, vars.rowId, vars.input);
+      return { row: item, acAntes, acDespues };
     },
     onSuccess: () => invalidarTrasCambio(qc, campaignId, characterId),
   });

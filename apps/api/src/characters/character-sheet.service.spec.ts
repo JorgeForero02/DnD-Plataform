@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
-import type { Character } from "@prisma/client";
+import type { Character, Prisma } from "@prisma/client";
 import type { Roller } from "../dice/dice";
 import { deriveCharacter, findSrdItem } from "../rules/catalog";
 import { MembershipService } from "../campaigns/membership.service";
@@ -2771,6 +2771,38 @@ describe("2.5.3 — lo que la revisión de cierre dejó cubierto", () => {
       "p1",
       "c1",
       expect.objectContaining({ audience: "PUBLIC" }),
+    );
+  });
+});
+
+describe("armorClassInTransaction — M2B-11, fix de ronda 1 (Q-3)", () => {
+  it("devuelve el número cuando la hoja se puede derivar", async () => {
+    const { service, prisma } = montar();
+    const tx = prisma as unknown as Prisma.TransactionClient;
+
+    const ac = await service.armorClassInTransaction("p1", personaje(), tx);
+
+    expect(ac).toBe(HOJA_EJEMPLO.derived.ac.total);
+  });
+
+  it("null cuando no hay hoja que derivar (falta raza y clase) — no revienta", async () => {
+    const { service, prisma } = montar();
+    const tx = prisma as unknown as Prisma.TransactionClient;
+    const sinConstruir = personaje({ raceKey: null, classKey: null, subraceKey: null });
+
+    await expect(service.armorClassInTransaction("p1", sinConstruir, tx)).resolves.toBeNull();
+  });
+
+  it("un fallo que NO es 'falta de datos' se propaga, no se traga como null", async () => {
+    const { service, prisma } = montar();
+    const tx = prisma as unknown as Prisma.TransactionClient;
+    // `equipoEquipado` lee el equipo con `inventoryItem.findMany` sin envolverlo en un `try`
+    // propio (solo la resolución de cada fila lo está) — un fallo aquí es un error real de la
+    // base, no un "PNJ sin plantilla" ni ningún otro caso legítimo de `BadRequestException`.
+    prisma.inventoryItem.findMany.mockRejectedValueOnce(new Error("la base se cayó"));
+
+    await expect(service.armorClassInTransaction("p1", personaje(), tx)).rejects.toThrow(
+      "la base se cayó",
     );
   });
 });

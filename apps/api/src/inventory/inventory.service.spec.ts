@@ -5,6 +5,7 @@ import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { InventoryService } from "./inventory.service";
+import { CharacterSheetService } from "../characters/character-sheet.service";
 
 // Carril A4 — el inventario, el equipo y la bolsa, con el Prisma simulado.
 //
@@ -51,6 +52,9 @@ describe("InventoryService", () => {
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
   const events = { record: jest.fn() };
+  // M2B-11: `update()` le pide la CA a la hoja antes y después de escribir; aquí basta con un
+  // número fijo, la fórmula real la prueba `character-sheet.service.spec.ts`.
+  const characterSheet = { armorClassInTransaction: jest.fn() };
 
   beforeEach(async () => {
     const ref = await Test.createTestingModule({
@@ -59,12 +63,14 @@ describe("InventoryService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: MembershipService, useValue: membership },
         { provide: GameEventsService, useValue: events },
+        { provide: CharacterSheetService, useValue: characterSheet },
       ],
     }).compile();
     service = ref.get(InventoryService);
     jest.resetAllMocks();
     membership.requireMember.mockResolvedValue(undefined);
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    characterSheet.armorClassInTransaction.mockResolvedValue(15);
     prisma.character.findFirst.mockResolvedValue(character);
     // **`displayName` presente por defecto.** Sin él, la ausencia de `de` en las pruebas "el
     // dueño se añade algo a sí mismo" pasaría por el motivo equivocado: no porque la condición
@@ -461,6 +467,50 @@ describe("InventoryService", () => {
       expect(prisma.inventoryItem.update).toHaveBeenCalledWith({
         where: { id: "row1" },
         data: expect.objectContaining({ location: "CARRIED", slot: null, attuned: false }),
+      });
+    });
+  });
+
+  describe("update() — quantityDelta (M2B-8)", () => {
+    it("aplica el delta con increment dentro de la transacción", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 20 }));
+      prisma.inventoryItem.update.mockResolvedValue(row({ quantity: 18 }));
+
+      await service.update("owner1", "cmp1", "c1", "row1", { quantityDelta: -2 });
+
+      expect(prisma.inventoryItem.update).toHaveBeenCalledWith({
+        where: { id: "row1" },
+        data: expect.objectContaining({ quantity: { increment: -2 } }),
+      });
+    });
+
+    it("un delta que dejaría la cantidad por debajo de 1 es 409, y no escribe nada", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 1 }));
+
+      await expect(
+        service.update("owner1", "cmp1", "c1", "row1", { quantityDelta: -1 }),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+    });
+
+    it("Q-4: un delta positivo que se pasaría de 9999 también es 409, y no escribe nada", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 9998 }));
+
+      await expect(
+        service.update("owner1", "cmp1", "c1", "row1", { quantityDelta: 5 }),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+    });
+
+    it("un delta positivo que se queda justo en 9999 sí funciona", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 9998 }));
+      prisma.inventoryItem.update.mockResolvedValue(row({ quantity: 9999 }));
+
+      await service.update("owner1", "cmp1", "c1", "row1", { quantityDelta: 1 });
+
+      expect(prisma.inventoryItem.update).toHaveBeenCalledWith({
+        where: { id: "row1" },
+        data: expect.objectContaining({ quantity: { increment: 1 } }),
       });
     });
   });

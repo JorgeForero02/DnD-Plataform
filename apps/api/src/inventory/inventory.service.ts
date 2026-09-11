@@ -34,6 +34,7 @@ import {
   viewerForCharacterOwner,
 } from "../common/character-viewer";
 import { resolveContentRef, resolveInventoryRowItem } from "./common/resolve-item";
+import { CharacterSheetService } from "../characters/character-sheet.service";
 
 // Carril A4 — el inventario de un personaje, equipar, sintonizar y la bolsa (hueco H1).
 //
@@ -160,6 +161,8 @@ export class InventoryService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly events: GameEventsService,
+    // M2B-11: la CA que devuelve `update()` la calcula la hoja, no una segunda fórmula aquí.
+    private readonly characterSheet: CharacterSheetService,
   ) {}
 
   async list(userId: string, campaignId: string, characterId: string) {
@@ -430,6 +433,31 @@ export class InventoryService {
       const row = await tx.inventoryItem.findFirst({ where: { id: rowId, characterId } });
       if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
 
+      // **`quantityDelta` es la misma carrera que ya resuelve `consume`, imitada aquí** (M2B-8):
+      // dos `PATCH` con `quantity` absoluto leen la misma cantidad de partida y la segunda
+      // escritura pisa la resta de la primera. El delta se aplica con `increment` más abajo, así
+      // que la comprobación de mínimo se hace contra la fila que ESTA transacción acaba de leer
+      // con el candado puesto — no puede quedar obsoleta antes de escribir.
+      //
+      // **Baja de 1 es un 409, y no se borra la fila**: borrar al llegar a cero es el gesto de
+      // `consume` (un consumible que se acaba), no el de mover cantidades con el `PATCH` genérico.
+      // **Y un delta positivo tampoco puede saltarse el tope absoluto** (`quantity` en el
+      // esquema va hasta 9999): sin este chequeo, una pila ya en 9999 más un delta positivo se
+      // escribiría por encima del máximo que el propio esquema le impone a `quantity`.
+      if (input.quantityDelta !== undefined) {
+        const restantes = row.quantity + input.quantityDelta;
+        if (restantes < 1) {
+          throw new ConflictException(
+            `Solo quedan ${row.quantity}: un delta de ${input.quantityDelta} las dejaría en ${restantes}.`,
+          );
+        }
+        if (restantes > 9999) {
+          throw new ConflictException(
+            `Como mucho puede haber 9999: un delta de ${input.quantityDelta} sobre ${row.quantity} las dejaría en ${restantes}.`,
+          );
+        }
+      }
+
       const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row, tx);
 
       const placement = resolvePlacement(
@@ -452,6 +480,14 @@ export class InventoryService {
         await this.ensureAttunementAllowed(characterId, campaignId, rowId, tx);
       }
 
+      // **`acBefore` se calcula ANTES de escribir** (fix round 1, Q-2): la pantalla que abre el
+      // diálogo de la bolsa desde la mesa monta el inventario sin haber cargado la hoja, así que
+      // la caché de TanStack Query no tenía nada que leer y el aviso "CA 13 -> 14" desaparecía en
+      // silencio ahí. Ahora las dos mitades del aviso viajan en la misma respuesta, calculadas
+      // dentro de la misma transacción — la de antes contra la fila tal cual estaba, la de
+      // después contra lo que `escribirColocacion` acaba de dejar.
+      const acBefore = await this.characterSheet.armorClassInTransaction(userId, character, tx);
+
       const actualizado = await this.escribirColocacion(tx, rowId, placement, input);
       if (placement.location !== row.location || placement.attuned !== row.attuned) {
         await this.registrarSuceso(userId, campaignId, character, tx, {
@@ -464,7 +500,9 @@ export class InventoryService {
           ...(placement.attuned !== row.attuned ? { attuned: placement.attuned } : {}),
         });
       }
-      return actualizado;
+
+      const ac = await this.characterSheet.armorClassInTransaction(userId, character, tx);
+      return { item: actualizado, acBefore, ac };
     });
   }
 
@@ -480,6 +518,17 @@ export class InventoryService {
       slot: placement.slot,
       attuned: placement.attuned,
       ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
+      // **Lo que serializa las dos peticiones es el candado `FOR UPDATE` sobre el personaje**
+      // (arriba, al abrir la transacción) — eso es lo único que garantiza que la fila que lee
+      // esta transacción no quede obsoleta antes de escribir. `increment` es defensa en
+      // profundidad, no la razón de la corrección: si ese candado alguna vez se moviera o se
+      // quitara, `increment` seguiría sumando de forma atómica en la misma sentencia SQL en vez
+      // de leer-y-sumar en memoria (la mutación de esta tarea es justo cambiar esto por un
+      // cálculo en memoria, y con el candado puesto la carrera NO vuelve — hace falta romper
+      // también el candado para reproducirla, ver el informe).
+      ...(input.quantityDelta !== undefined
+        ? { quantity: { increment: input.quantityDelta } }
+        : {}),
       ...(input.storedAt !== undefined ? { storedAt: input.storedAt } : {}),
       ...(input.note !== undefined ? { note: input.note } : {}),
     };

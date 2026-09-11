@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import type { ResolvedItem } from "@dnd/shared";
+import type { InventoryItemRow, ResolvedItem } from "@dnd/shared";
 import { PaginaDeInventario } from "../PaginaDeInventario";
 import * as inventoryApi from "../api";
 import type { InventoryResponse, InventoryRow } from "../api";
@@ -89,6 +89,24 @@ function fila(overrides: Partial<InventoryRow>): InventoryRow {
   };
 }
 
+/**
+ * La fila cruda que devuelve el `PATCH` (M2B-11): `{ item, ac }`, no la fila resuelta contra el
+ * catálogo que devuelve el listado — `item` aquí es `InventoryItemRow`, sin `item.item`.
+ */
+function filaCruda(overrides: Partial<InventoryItemRow> = {}): InventoryItemRow {
+  return {
+    id: "row-1",
+    characterId: "ch1",
+    quantity: 1,
+    location: "CARRIED",
+    slot: null,
+    attuned: false,
+    storedAt: null,
+    note: null,
+    ...overrides,
+  };
+}
+
 function respuesta(items: InventoryRow[]): InventoryResponse {
   return {
     items,
@@ -136,10 +154,13 @@ describe("PaginaDeInventario", () => {
   it("pulsar «Equipar» manda el PATCH con location EQUIPPED", async () => {
     const filas = [fila({ id: "ca-1", location: "CARRIED", item: cuerda })];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
-    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
-      fila({ id: "ca-1", location: "EQUIPPED", item: cuerda }),
-    );
+    // M2B-11: el `PATCH` ya trae las dos CA en `{ item, acBefore, ac }` — no hay `fetchAc` que
+    // espiar, porque ya no existe (se borró con el segundo viaje que sustituye).
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({ id: "ca-1", location: "EQUIPPED" }),
+      acBefore: 12,
+      ac: 14,
+    });
 
     render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
       wrapper: wrapper(nuevoQc()),
@@ -158,10 +179,11 @@ describe("PaginaDeInventario", () => {
       fila({ id: "eq-1", location: "EQUIPPED", slot: "RING_1", attuned: true, item: anillo }),
     ];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
-    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
-      fila({ id: "eq-1", location: "CARRIED", item: anillo }),
-    );
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({ id: "eq-1", location: "CARRIED" }),
+      acBefore: 16,
+      ac: 14,
+    });
 
     render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
       wrapper: wrapper(nuevoQc()),
@@ -178,10 +200,17 @@ describe("PaginaDeInventario", () => {
   it("equipar algo que cambia la CA enseña el aviso de confirmación con el antes y el después", async () => {
     const filas = [fila({ id: "ca-1", location: "CARRIED", item: anillo })];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValueOnce(13).mockResolvedValueOnce(14);
-    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
-      fila({ id: "ca-1", location: "EQUIPPED", slot: "RING_1", item: anillo }),
-    );
+    // Fix de ronda 1 (Q-2): las dos mitades del aviso viajan en la respuesta del `PATCH`
+    // (`acBefore` y `ac`) — **sin nada en la caché de la hoja**. Es justo el caso que rompía en
+    // «Tu bolsa» desde la mesa: esa pantalla monta el inventario sin haber cargado la hoja antes,
+    // así que si el aviso dependiera de esa caché (como en la primera versión de esta ficha)
+    // desaparecería en silencio. Aquí no hay `qc.setQueryData` de ningún tipo — si el aviso
+    // aparece, es porque vino todo en la respuesta.
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({ id: "ca-1", location: "EQUIPPED", slot: "RING_1" }),
+      acBefore: 13,
+      ac: 14,
+    });
 
     render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
       wrapper: wrapper(nuevoQc()),
@@ -198,7 +227,6 @@ describe("PaginaDeInventario", () => {
   it("un 400 del servidor al equipar se enseña en línea y no borra la fila", async () => {
     const filas = [fila({ id: "ca-1", location: "CARRIED", item: cuerda })];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(null);
     vi.spyOn(inventoryApi, "updateInventoryItem").mockRejectedValue(
       new ApiError('La ranura ya la ocupa "Otro objeto".', 409),
     );
@@ -419,10 +447,11 @@ describe("pelear con dos armas (paso 1, tarea 11)", () => {
   it("equipar un arma pide la mano y manda el slot", async () => {
     const filas = [fila({ id: "ca-daga", location: "CARRIED", item: daga })];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
-    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
-      fila({ id: "ca-daga", location: "EQUIPPED", slot: "OFF_HAND", item: daga }),
-    );
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({ id: "ca-daga", location: "EQUIPPED", slot: "OFF_HAND" }),
+      acBefore: 12,
+      ac: 14,
+    });
 
     render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
       wrapper: wrapper(nuevoQc()),
@@ -442,7 +471,6 @@ describe("pelear con dos armas (paso 1, tarea 11)", () => {
   it("un arma a dos manos no ofrece la izquierda, y DICE por qué", async () => {
     const filas = [fila({ id: "ca-esp", location: "CARRIED", item: espadon })];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
 
     render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
       wrapper: wrapper(nuevoQc()),
@@ -459,10 +487,11 @@ describe("pelear con dos armas (paso 1, tarea 11)", () => {
     // Preguntar la mano para una armadura sería un paso que no decide nada.
     const filas = [fila({ id: "ca-1", location: "CARRIED", item: cuerda })];
     vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
-    vi.spyOn(inventoryApi, "fetchAc").mockResolvedValue(14);
-    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue(
-      fila({ id: "ca-1", location: "EQUIPPED", item: cuerda }),
-    );
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({ id: "ca-1", location: "EQUIPPED" }),
+      acBefore: 12,
+      ac: 14,
+    });
 
     render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
       wrapper: wrapper(nuevoQc()),

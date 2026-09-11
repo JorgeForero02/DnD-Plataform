@@ -66,6 +66,10 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 4 (b), inventario** (un lote, dos fichas): la cantidad se ajusta por delta con
+  `increment` (M2B-8, la carrera de las flechas), y equipar devuelve la CA nueva en la misma
+  respuesta (M2B-11, adiós a `fetchAc` antes y después). **Revertir:** quitar `quantityDelta`
+  del esquema; volver a las tres peticiones en el hook.
 - **Tanda 4 (a), motor** (un lote, dos fichas): aviso `armor_not_proficient` con su frase (I6,
   SRD 5.1 *Armor Proficiency*), y «estable» sobrevive a la petición como condición reservada
   `stable` que el daño o la curación retiran (H1b, SRD 5.1 *Stabilizing a Creature*).

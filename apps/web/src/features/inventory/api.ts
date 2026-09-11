@@ -6,6 +6,7 @@ import type {
   ItemLocation,
   ResolvedItem,
   UpdateInventoryItemInput,
+  UpdateInventoryItemResponse,
 } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
@@ -49,12 +50,18 @@ export function addInventoryItem(
   });
 }
 
+/**
+ * Mover, equipar, desequipar, sintonizar o cambiar la cantidad. Devuelve `{ item, acBefore, ac }`
+ * (M2B-11): las dos CA las calcula el servidor en la misma transacción que el cambio, así que la
+ * pantalla no tiene que volver a preguntar por ellas con una segunda petición ni depender de
+ * tener la hoja ya cargada en otro sitio.
+ */
 export function updateInventoryItem(
   campaignId: string,
   characterId: string,
   rowId: string,
   input: UpdateInventoryItemInput,
-): Promise<InventoryRow> {
+): Promise<UpdateInventoryItemResponse> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/inventory/${rowId}`, {
     method: "PATCH",
     body: JSON.stringify(input),
@@ -99,18 +106,4 @@ export function changeMoney(
     method: "PATCH",
     body: JSON.stringify(input),
   });
-}
-
-/**
- * Solo la Clase de Armadura calculada, para el aviso de confirmación al equipar
- * ("CA 13 -> 14"). **No se reimplementa la fórmula de CA aquí**: es la regla de siempre
- * (`canView`/el motor son el dueño único de sus cálculos), así que se le pregunta a la hoja de
- * verdad y se lee un único número. `null` cuando la hoja no está calculada todavía (una elección
- * pendiente, por ejemplo) — el aviso simplemente no se enseña en ese caso.
- */
-export async function fetchAc(campaignId: string, characterId: string): Promise<number | null> {
-  const respuesta = await apiFetch<{
-    sheet: { derived: Record<string, { total: number }> } | null;
-  }>(`/campaigns/${campaignId}/characters/${characterId}/sheet`);
-  return respuesta.sheet?.derived.ac?.total ?? null;
 }

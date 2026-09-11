@@ -7,6 +7,7 @@ import {
   rollAttackSchema,
   updateCampaignItemSchema,
   updateInventoryItemSchema,
+  updateInventoryItemResponseSchema,
   COIN_VALUE_CP,
 } from "./index";
 
@@ -172,6 +173,39 @@ describe("inventario", () => {
 
   it("la ranura se puede liberar con null", () => {
     expect(updateInventoryItemSchema.safeParse({ slot: null }).success).toBe(true);
+  });
+
+  it("acepta un delta de cantidad, entero y distinto de cero", () => {
+    expect(updateInventoryItemSchema.safeParse({ quantityDelta: -1 }).success).toBe(true);
+    expect(updateInventoryItemSchema.safeParse({ quantityDelta: 0 }).success).toBe(false);
+    expect(updateInventoryItemSchema.safeParse({ quantityDelta: 1.5 }).success).toBe(false);
+  });
+
+  it("quantity y quantityDelta son excluyentes: la absoluta y el delta no viajan juntas", () => {
+    expect(updateInventoryItemSchema.safeParse({ quantity: 5, quantityDelta: -1 }).success).toBe(
+      false,
+    );
+  });
+
+  it("la respuesta del PATCH lleva el objeto, la CA de antes y la de después, cualquiera puede ser null", () => {
+    const fila = {
+      id: "row-1",
+      characterId: "c1",
+      quantity: 1,
+      location: "EQUIPPED" as const,
+      slot: "MAIN_HAND" as const,
+      attuned: false,
+      storedAt: null,
+      note: null,
+    };
+    expect(
+      updateInventoryItemResponseSchema.safeParse({ item: fila, acBefore: 13, ac: 16 }).success,
+    ).toBe(true);
+    expect(
+      updateInventoryItemResponseSchema.safeParse({ item: fila, acBefore: null, ac: null }).success,
+    ).toBe(true);
+    expect(updateInventoryItemResponseSchema.safeParse({ item: fila, ac: 16 }).success).toBe(false);
+    expect(updateInventoryItemResponseSchema.safeParse({ item: fila }).success).toBe(false);
   });
 });
 

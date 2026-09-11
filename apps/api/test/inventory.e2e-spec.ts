@@ -130,11 +130,78 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`)
       .send({ location: "EQUIPPED", slot: "MAIN_HAND" });
     expect(equip.status).toBe(200);
-    expect(equip.body).toMatchObject({ location: "EQUIPPED", slot: "MAIN_HAND" });
+    // M2B-11: la respuesta es `{ item, ac }`, no la fila cruda — la pantalla ya no necesita
+    // pedir la CA aparte.
+    expect(equip.body.item).toMatchObject({ location: "EQUIPPED", slot: "MAIN_HAND" });
 
     const list = await request(s()).get(base()).set("Authorization", `Bearer ${tokenPL}`);
     const fila = list.body.items.find((i: { id: string }) => i.id === rowId);
     expect(fila.location).toBe("EQUIPPED");
+  });
+
+  it("el PATCH de equipar devuelve `{ item, ac }`, y la CA es la de la hoja de verdad (M2B-11)", async () => {
+    // Personaje aparte, con hoja completa desde ya: el compartido de esta suite «nace sin
+    // hoja» a propósito (se rellena en la última prueba del fichero), y sin raza ni clase
+    // `construirODenegar` no tiene CA que calcular.
+    const nuevo = await request(s())
+      .post(`/campaigns/${campaignId}/characters`)
+      .set("Authorization", `Bearer ${tokenPL2}`)
+      .send({ name: "Con hoja", class: "fighter", level: 1, visibility: "PLAYERS" });
+    expect(nuevo.status).toBe(201);
+    const idConHoja = nuevo.body.id as string;
+    const baseConHoja = `/campaigns/${campaignId}/characters/${idConHoja}/inventory`;
+
+    const build = await request(s())
+      .patch(`/campaigns/${campaignId}/characters/${idConHoja}/sheet`)
+      .set("Authorization", `Bearer ${tokenPL2}`)
+      .send({
+        abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "dwarf" },
+        subrace: { source: "SRD", key: "dwarf-hill" },
+        class: { source: "SRD", key: "fighter" },
+        choices: { "fighter-skills": ["athletics", "perception"] },
+      });
+    expect(build.status).toBe(200);
+
+    const add = await request(s())
+      .post(baseConHoja)
+      .set("Authorization", `Bearer ${tokenPL2}`)
+      .send({ ref: { source: "SRD", key: "shield" }, quantity: 1 });
+    expect(add.status).toBe(201);
+    const rowId = add.body.id as string;
+
+    // La CA de antes de equipar, para comparar contra `acBefore` (fix de ronda 1, Q-2).
+    const sheetAntes = await request(s())
+      .get(`/campaigns/${campaignId}/characters/${idConHoja}/sheet`)
+      .set("Authorization", `Bearer ${tokenPL2}`);
+    const caAntesDeEquipar = sheetAntes.body.sheet.derived.ac.total as number;
+
+    const equip = await request(s())
+      .patch(`${baseConHoja}/${rowId}`)
+      .set("Authorization", `Bearer ${tokenPL2}`)
+      .send({ location: "EQUIPPED", slot: "OFF_HAND" });
+    expect(equip.status).toBe(200);
+    expect(typeof equip.body.ac).toBe("number");
+    // La respuesta ya no es la fila cruda: va envuelta en `{ item, acBefore, ac }`.
+    expect(equip.body.item).toMatchObject({ location: "EQUIPPED", slot: "OFF_HAND" });
+    // **`acBefore` viaja en la misma respuesta** (fix de ronda 1, Q-2): la pantalla que abre el
+    // diálogo de la bolsa desde la mesa no siempre tiene la hoja en caché para leer "el antes"
+    // por su cuenta, así que el servidor lo manda ya calculado.
+    expect(equip.body.acBefore).toBe(caAntesDeEquipar);
+
+    const sheet = await request(s())
+      .get(`/campaigns/${campaignId}/characters/${idConHoja}/sheet`)
+      .set("Authorization", `Bearer ${tokenPL2}`);
+    expect(equip.body.ac).toBe(sheet.body.sheet.derived.ac.total);
+
+    // Desequipar también devuelve la CA que resulta, no la de antes: el escudo da +2.
+    const unequip = await request(s())
+      .patch(`${baseConHoja}/${rowId}`)
+      .set("Authorization", `Bearer ${tokenPL2}`)
+      .send({ location: "CARRIED", slot: null });
+    expect(unequip.status).toBe(200);
+    expect(unequip.body.acBefore).toBe(equip.body.ac);
+    expect(unequip.body.ac).toBe(equip.body.ac - 2);
   });
 
   it("equipar otro objeto en MAIN_HAND, que ya está ocupada, es 409 (por la comprobación previa)", async () => {
@@ -182,6 +249,54 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     // las dos podrían colar.
     expect(statuses).toContain(409);
     expect(statuses.some((code) => code === 200 || code === 201)).toBe(true);
+  });
+
+  it("MUTACIÓN CLAVE contra Postgres real: dos PATCH concurrentes con quantityDelta sobre 20 dejan 18, no 19 (M2B-8)", async () => {
+    // Con `quantity` absoluto (19 y 19, cada petición leyendo 20 por su cuenta) las dos
+    // peticiones pisarían el mismo número y la pila quedaría en 19 tras dos descuentos — el
+    // mismo fallo que la bolsa ya resuelve con un delta. El candado de la fila (`FOR UPDATE`,
+    // el mismo que ya usa `update`) serializa los dos `increment` y la resta de verdad ocurre.
+    const add = await request(s())
+      .post(base())
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ ref: { source: "SRD", key: "dagger" }, quantity: 20, location: "CARRIED" });
+    expect(add.status).toBe(201);
+    const rowId = add.body.id as string;
+
+    const [a, b] = await Promise.all([
+      request(s())
+        .patch(`${base()}/${rowId}`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ quantityDelta: -1 }),
+      request(s())
+        .patch(`${base()}/${rowId}`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ quantityDelta: -1 }),
+    ]);
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+
+    const list = await request(s()).get(base()).set("Authorization", `Bearer ${tokenPL}`);
+    const fila = list.body.items.find((i: { id: string }) => i.id === rowId);
+    expect(fila.quantity).toBe(18);
+  });
+
+  it("un delta que dejaría la cantidad por debajo de 1 se rechaza con 409, sin borrar la fila (borrar es cosa de `consume`)", async () => {
+    const add = await request(s())
+      .post(base())
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ ref: { source: "SRD", key: "dagger" }, quantity: 1, location: "CARRIED" });
+    expect(add.status).toBe(201);
+    const rowId = add.body.id as string;
+
+    const patch = await request(s())
+      .patch(`${base()}/${rowId}`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ quantityDelta: -1 });
+    expect(patch.status).toBe(409);
+
+    const list = await request(s()).get(base()).set("Authorization", `Bearer ${tokenPL}`);
+    expect(list.body.items.some((i: { id: string }) => i.id === rowId)).toBe(true);
   });
 
   it("un jugador ajeno (miembro, pero ni DM ni dueño) no puede escribir en el inventario (403)", async () => {

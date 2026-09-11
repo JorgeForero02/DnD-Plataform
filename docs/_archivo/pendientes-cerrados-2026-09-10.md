@@ -479,3 +479,19 @@ found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 **Texto original:**
 
 | **H1b** | **«Estable» no sobrevive a la petición que lo produce.** Estabilizarse con tres éxitos —o revivir con un 20 natural— pone los contadores de tiradas de muerte a cero, así que un `GET` posterior **no distingue «acaba de estabilizarse» de «acaba de caer a 0 PG»** | La hoja tiene que poder decir si el personaje está estable: es lo primero que pregunta la mesa. El estado correcto sale hoy **solo en la respuesta de la propia tirada**. **Y la solución ya existe sin migración**: `CharacterCondition` acepta **clave libre** desde 2A.12, así que «estable» cabe ahí como condición, que además es lo que es. Cuesta conectar dos módulos y decidirlo; se deja escrito para que 2A.10 no lo improvise |
+
+## M2B-8 · `quantity` es absoluto donde el dinero es delta
+
+**Cerrada el 2026-09-11 (Task 17).** `updateInventoryItemSchema` admite `quantityDelta` (entero ≠ 0), excluyente con `quantity`; el servicio lo aplica con `increment` dentro de la transacción y devuelve 409 si bajara de 1 (gastar hasta cero sigue siendo `consume`). La pantalla no tiene hoy ningún gesto ± ni editor absoluto de cantidad que migrar (medido): el delta queda disponible en el contrato para quien lo monte. e2e: dos `PATCH` concurrentes con `-1` sobre 20 dejan 18 (roja antes: 19). Mutación: leer-y-escribir en vez de `increment` devuelve la carrera.
+
+**Texto original:**
+
+| **M2B-8** | **`quantity` es absoluto donde el dinero es delta** | Dos personas descontando una flecha a la vez dejan 19 en vez de 18. No rompe ningún invariante —por eso no es urgente— pero es la misma carrera que la bolsa ya tiene resuelta |
+
+## M2B-11 · Equipar son tres peticiones desde la pantalla
+
+**Cerrada el 2026-09-11 (Task 18).** El `PATCH` de equipar devuelve `{ item, ac }` con la CA calculada dentro de la misma transacción (reutilizando la derivación de la hoja con `tx`); el `PATCH` devuelve `{ item, acBefore, ac }` —las dos CA calculadas en la misma transacción, antes y después de escribir— y el hook de la web las lee de la respuesta; `fetchAc` desaparece del todo. (La primera versión leía el «antes» de la caché de TanStack y perdía el aviso en «Tu bolsa» de la mesa, donde la hoja no está cargada; lo cazó la revisión.) Forma de la respuesta declarada en `@dnd/shared`. Mutación: devolver la CA vieja enrojece el e2e.
+
+**Texto original:**
+
+| **M2B-11** | **Equipar son tres peticiones desde la pantalla** | `fetchAc` → `PATCH` → `fetchAc`. Si la segunda lectura falla, la mutación se marca como error, no se invalida la caché y la pantalla enseña un estado que el servidor ya cambió. Lo correcto es que el `PATCH` devuelva la CA nueva |

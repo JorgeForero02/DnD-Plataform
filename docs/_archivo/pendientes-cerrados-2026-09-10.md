@@ -50,3 +50,16 @@ esta.
 
 - **Aceptar una invitación no es transaccional.** Tarea 1.4. *(La segunda mitad de esta línea —«el
   token no caduca ni es revocable»— la cerró el plan 11 y está archivada.)*
+
+## P3 · Las concesiones de visibilidad no se validan contra los miembros de la campaña
+
+**Cerrada el 2026-09-10.** `entities/entities.service.ts`, `requireGrantsToMembers`, llamada desde `create` y `update`: cada id de `specificPlayerIds` tiene que ser miembro de la campaña o la petición entera es 400 (misma frase para «no existe» y «no es miembro»). Prueba: `apps/api/test/entities.e2e-spec.ts`, «una concesión a alguien que NO es miembro … se rechaza con 400 y no se guarda» — roja antes (200 y la fila guardada), verde después; unitaria «create() rejects a grant to someone who is not a member». **Nota sobre la propia ficha:** su «corrección» del 2026-09-08 decía que `specificPlayerIds` ya no existía en ninguna capa; existe en `entity.schema.ts` y aquí. Lo que se llama `grantedUserIds` es el suceso, no la entidad.
+
+**Texto original:**
+
+- **Las concesiones de visibilidad no se validan contra los miembros de la campaña**: se puede
+  conceder acceso a alguien de fuera. Queda inerte, pero se guarda. Tarea 1.5. **El símbolo que
+  esta línea citaba —`specificPlayerIds`— ya no existe en ninguna capa**, y se corrigió el
+  2026-09-08: hoy son `grants` en la base y `grantedUserIds` en el borde. El hueco sigue igual —
+  `entities/entities.service.ts:200` borra y vuelve a crear las concesiones, y el `requireMember`
+  de ese método comprueba **a quien llama, no a los concedidos**.

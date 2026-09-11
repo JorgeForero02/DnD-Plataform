@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, type ListEntitiesQuery } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -41,9 +47,30 @@ export class EntitiesService {
    * Lo que el jugador **sigue teniendo** es su voz: comentarios en las fichas que puede ver, su
    * personaje, y el registro de la partida. Escribir el mundo no es su papel.
    */
+  /**
+   * **Una concesión solo puede nombrar a un miembro de la campaña** (ficha P3 «las concesiones no se
+   * validan contra los miembros», cerrada el 2026-09-10). Antes se guardaba cualquier id: quedaba
+   * inerte —`canView` exige ser miembro antes de mirar concesiones— pero una fila que promete lo
+   * que no hace es una mentira en la base, y el día que alguien entre en la campaña la encontraría
+   * concedida sin que nadie lo decidiera. Se rechaza entera, con la misma frase para «no existe» y
+   * «no es miembro»: el 400 no puede ser un oráculo de cuentas.
+   */
+  private async requireGrantsToMembers(campaignId: string, userIds: string[] | undefined) {
+    if (!userIds?.length) return;
+    const miembros = await this.prisma.campaignMember.count({
+      where: { campaignId, userId: { in: userIds } },
+    });
+    if (miembros !== new Set(userIds).size) {
+      throw new BadRequestException(
+        "Solo se puede conceder una ficha a personas que ya estén en la campaña.",
+      );
+    }
+  }
+
   async create(userId: string, campaignId: string, input: CreateEntityInput) {
     await this.membership.requireDM(campaignId, userId);
     const { specificPlayerIds, ...rest } = input;
+    await this.requireGrantsToMembers(campaignId, specificPlayerIds);
     const entity = await this.prisma.entity.create({
       data: {
         campaignId,
@@ -188,6 +215,7 @@ export class EntitiesService {
       })
     ).map((g) => g.userId);
     const { specificPlayerIds, ...rest } = input;
+    await this.requireGrantsToMembers(campaignId, specificPlayerIds);
     const data: Record<string, unknown> = {};
     if (rest.type !== undefined) data.type = rest.type;
     if (rest.name !== undefined) data.name = rest.name;

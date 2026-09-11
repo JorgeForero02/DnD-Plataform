@@ -302,4 +302,32 @@ describe("Entities visibility (e2e)", () => {
     });
     expect(filas).toBe(0);
   });
+
+  it("una concesión a alguien que NO es miembro de la campaña se rechaza con 400 y no se guarda (ficha P3 · concesiones)", async () => {
+    // Hasta el 2026-09-10 `update` hacía `createMany` con lo que llegara: se podía conceder una
+    // ficha a un usuario de fuera. Quedaba inerte —`canView` exige ser miembro antes de mirar
+    // concesiones— pero se guardaba, y una fila que promete algo que no hace es una mentira en
+    // la base. El de fuera se crea por Prisma para no gastar el límite de `/auth/register`.
+    const s = app.getHttpServer();
+    const forastero = await prisma.user.create({
+      data: { email: `fuera${Date.now()}@b.com`, passwordHash: "x", displayName: "Fuera" },
+    });
+    const created = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "El que nadie de fuera debe ver", visibility: "DM_ONLY" });
+    const entityId = created.body.id;
+
+    const res = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${entityId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ visibility: "SPECIFIC_PLAYERS", specificPlayerIds: [playerId, forastero.id] });
+    expect(res.status).toBe(400);
+    const grants = await prisma.entityVisibilityGrant.findMany({ where: { entityId } });
+    expect(grants).toEqual([]);
+    // Y la visibilidad tampoco cambió: la petición se rechaza entera, no a medias.
+    const fila = await prisma.entity.findUnique({ where: { id: entityId } });
+    expect(fila?.visibility).toBe("DM_ONLY");
+    await prisma.user.delete({ where: { id: forastero.id } });
+  });
 });

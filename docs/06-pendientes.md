@@ -706,12 +706,6 @@ mejora, no compromiso.
 Ninguna es un agujero de lectura —nadie ve contenido ajeno—, pero todas degradan el
 comportamiento:
 
-- **Las concesiones de visibilidad no se validan contra los miembros de la campaña**: se puede
-  conceder acceso a alguien de fuera. Queda inerte, pero se guarda. Tarea 1.5. **El símbolo que
-  esta línea citaba —`specificPlayerIds`— ya no existe en ninguna capa**, y se corrigió el
-  2026-09-08: hoy son `grants` en la base y `grantedUserIds` en el borde. El hueco sigue igual —
-  `entities/entities.service.ts:200` borra y vuelve a crear las concesiones, y el `requireMember`
-  de ese método comprueba **a quien llama, no a los concedidos**.
 - **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
   aceptan sin aviso. Tarea 1.5.
 - **`Session` no tiene `grants`** → `SPECIFIC_PLAYERS` es inerte en ella y el selector lo ofrece igual.

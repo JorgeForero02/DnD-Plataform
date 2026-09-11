@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { WorldStateService } from "../world-state/world-state.service";
 import { EntitiesService } from "./entities.service";
@@ -15,6 +15,9 @@ describe("EntitiesService", () => {
     // pide aparte porque `requireEditable` no las trae. Por defecto, ninguna.
     entityVisibilityGrant: { findMany: jest.fn().mockResolvedValue([]) },
     user: { findUnique: jest.fn() },
+    // Las concesiones solo pueden nombrar a miembros (P3, 2026-09-10): por defecto, todos los
+    // ids que lleguen lo son — la prueba que quiera un forastero baja el conteo.
+    campaignMember: { count: jest.fn() },
     // `transaction` simula lo que hace `PrismaService.transaction` de verdad: corre `fn` con un
     // `tx` propio de la prueba (ver `txMock` abajo), que trae los métodos que usa `update()` y
     // que `entity.findFirst`/`create` no cubren.
@@ -68,7 +71,22 @@ describe("EntitiesService", () => {
     expect(prisma.entity.create).not.toHaveBeenCalled();
   });
 
+  it("create() rejects a grant to someone who is not a member, before writing anything", async () => {
+    prisma.campaignMember.count.mockResolvedValue(1); // de dos ids, solo uno es miembro
+    await expect(
+      service.create("dm1", "c1", {
+        type: "NPC",
+        name: "Strahd",
+        tags: [],
+        visibility: "SPECIFIC_PLAYERS",
+        specificPlayerIds: ["p1", "fuera"],
+      } as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.entity.create).not.toHaveBeenCalled();
+  });
+
   it("create() writes grants for SPECIFIC_PLAYERS and emits entity.created", async () => {
+    prisma.campaignMember.count.mockResolvedValue(2);
     prisma.entity.create.mockResolvedValue({ id: "e1", type: "NPC" });
     await service.create("dm1", "c1", {
       type: "NPC",

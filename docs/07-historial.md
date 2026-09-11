@@ -73,6 +73,10 @@ su medición están en
   y el gasto es un `updateMany` condicional que decide la carrera (`invites.service.ts`).
   **Por qué:** tres peticiones a la vez entraban las tres por un enlace de un solo uso.
   **Revertir:** volver a los tres viajes sueltos; la prueba de carrera del e2e enrojece.
+- **P3 · concesiones a no miembros** — `requireGrantsToMembers` en `create` y `update` de
+  entidades: un id que no sea miembro tumba la petición entera con 400. **Por qué:** se guardaba
+  una concesión inerte que se activaría sola el día que esa cuenta entrara. **Revertir:** quitar el
+  método y sus dos llamadas.
 - **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
   rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda

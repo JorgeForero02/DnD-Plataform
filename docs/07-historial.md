@@ -49,6 +49,15 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La tanda de migraciones de D-CF-14, un commit por migración (2026-09-11)
+
+Sobre `main`, después de fusionar `ficha/tanda-2-a-5`. Cada migración es SQL escrito a mano con su
+cabecera, aplicada en local con `migrate deploy`; nada se despliega. **Revertir:** cada una es su
+commit y su migración inversa está descrita en la cabecera del SQL.
+
+- **1 · `DROP TYPE "RestKind"`** (X1): nadie lo usaba. Queda `no-dead-enum.spec.ts`, que hace
+  fallar el próximo enum sin campo.
+
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
 
 Las fichas que el autor decidió el 2026-09-10 y llevan código; una por commit, prueba roja antes y

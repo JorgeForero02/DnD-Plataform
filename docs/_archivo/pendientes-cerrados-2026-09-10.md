@@ -765,3 +765,11 @@ Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 medi
 **Texto original:**
 
 | **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto, y **medido el 2026-09-10: no es un arreglo pequeño, es un cambio de forma de datos**. El motivo no se guarda en ningún sitio: `Character.overrides` es `{clave: número}` (`overridesSchema`, `packages/shared/src/character-sheet.schema.ts`) y `setOverride` manda el `reason` solo al suceso. Enseñarlo en la traza obliga a cambiar ese `Json` a `{clave: {value, reason}}` con filas ya escritas como número, y `Anulaciones.tsx` lo lee como mapa de números. Es «migración o cambio de datos» (caso 2 de `04-convenciones.md`): **lo decide el autor**. La mitad barata —que la traza diga «fijada a 18» en vez de «+6»— es solo pantalla y no cierra la ficha |
+
+## X1 · RestKind, el enum muerto (migración 1 de D-CF-14, 2026-09-11)
+
+`DROP TYPE "RestKind"` en `20260911100000_drop_rest_kind`. Comprobado con grep: ningún modelo, campo ni import lo usaba. Queda una guarda genérica, `apps/api/src/prisma/no-dead-enum.spec.ts`, que recorre cada `enum` del esquema y exige que sea tipo de algún campo — roja con RestKind, verde sin él.
+
+**Texto original:**
+
+| **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |

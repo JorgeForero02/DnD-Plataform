@@ -146,11 +146,6 @@ enum RuleTraceStatus {
   CONFLICT
 }
 
-enum RestKind {
-  SHORT
-  LONG
-}
-
 /// Fase 2D. Los seis tamanos del SRD 5.1. De aqui sale el dado de golpe de una criatura.
 enum CreatureSize {
   TINY
@@ -300,6 +295,11 @@ model EntityLink {
   from   Entity  @relation("linkFrom", fields: [fromId], references: [id], onDelete: Cascade)
   to     Entity  @relation("linkTo", fields: [toId], references: [id], onDelete: Cascade)
 
+  // Este índice deja pasar dos enlaces sin rótulo entre las mismas fichas: Postgres trata dos
+  // NULL como distintos, así que `label` nulo no choca contra sí mismo. Ese hueco lo cierra un
+  // índice único PARCIAL (`WHERE label IS NULL`) que Prisma no puede declarar aquí y que vive
+  // solo en la migración `20260911100001_entity_link_nolabel_unique`. Este `@@unique` sigue
+  // siendo el único que cubre los enlaces CON rótulo.
   @@unique([fromId, toId, label])
 }
 

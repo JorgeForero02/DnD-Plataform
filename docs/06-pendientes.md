@@ -128,7 +128,7 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 >
 > | Ficha | Qué se decidió | Dónde se hace |
 > |---|---|---|
-> | X1 `RestKind` · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · I3/M2B-15 identificado · `race`/`class` · suceso de cambio de cantidad (revisión de M2B-8) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
+> | ~~X1 `RestKind`~~ (hecha) · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · I3/M2B-15 identificado · `race`/`class` · suceso de cambio de cantidad (revisión de M2B-8) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
 > | S4 rasgos raciales · M2B-4 cargas | D-CF-20/21: por el conversor de Foundry | **Paso 3**, tareas 2b y `uses` de objeto |
 > | R1 límite por IP · D8 correo · P3 archivar en la mesa · H7 rearmar · E0 TipTap · P6 Node | D-CF-12, 13, 17, 18, 19 y H7 «se rearma editando» | **Esta sesión**, con código |
 > | P2 mesa a 390 px | **Aplazada por el autor el 2026-09-11** (D-CF-26): quiere un diseño responsive nuevo y busca referencias él | Cuando el autor traiga el diseño; ninguna de las tres salidas de abajo se toca |
@@ -651,7 +651,6 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 | # | Qué falta | Por qué importa |
 |---|---|---|
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
-| **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
 
 ### Huecos de mecánica — lo que falta para jugar de verdad
 

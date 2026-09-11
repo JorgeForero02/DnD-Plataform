@@ -55,6 +55,9 @@ describe("EncountersService", () => {
     },
     rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
+    // El reparto de `start()` pregunta quiénes son DM de la campaña (ficha P2 «dos DM», 2026-09-10):
+    // por defecto, solo `dm`, que es el dueño de todos los PNJ de estas pruebas.
+    campaignMember: { findMany: jest.fn() },
     // **Paso 1, tarea 4:** al empezar turno, `advanceTurn` corta las condiciones que esperaban ese
     // borde —hoy, la marca de Ayudar— poniéndoles el reloj de ese instante. Necesita el reloj de
     // la campaña y la escritura sobre las condiciones.
@@ -108,6 +111,7 @@ describe("EncountersService", () => {
     events.record.mockResolvedValue({ id: "ev1" });
     membership.requireDM.mockResolvedValue(undefined);
     membership.requireMember.mockResolvedValue(undefined);
+    prisma.campaignMember.findMany.mockResolvedValue([{ userId: "dm" }]);
     prisma.session.findFirst.mockResolvedValue({ id: "s1", campaignId: "c1" });
     // **El Prisma simulado tiene que saber releer.** `recolocar` —la única función que convierte
     // «iniciativa + grupo» en «orden»— lee las filas recién creadas, las coloca y las vuelve a

@@ -126,35 +126,6 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
-## P2 · Con más de un DM en la campaña, `start()` reparte por «quien empieza», no por «es DM» (2026-09-05, ronda de arreglo 1 de la tarea 2)
-
-`EncountersService.start()` decide quién tira y a quién se le pide la iniciativa comparando
-`Character.ownerId` contra `userId` —quien pulsó el botón de empezar el combate—, no contra «es un
-DM de esta campaña» (`apps/api/src/encounters/encounters.service.ts:247-248`, remedido el
-2026-09-08 — la cita anterior decía `:244-245`; el reparto vive en el par `suyos`/`ajenos`, y ese
-nombre sobrevive al número. Antes, cita comprobada en
-`04b6e2b` — el fichero se ha reescrito varias veces y el número se mueve).
-`MembershipService` sí sabe contar cuántos DM quedarían en una campaña
-(`apps/api/src/campaigns/membership.service.ts:82-90`), así que la información para distinguir
-«mi PNJ» de «el PNJ de otro DM» existe, pero `start()` no la usa.
-
-**El efecto, con dos DM en la misma campaña:** si el DM A empieza el combate, un PNJ del DM B cae
-del lado de los `ajenos` y recibe una petición de iniciativa que no tiene por qué —el DM B no es
-un jugador esperando su turno, es el otro árbitro de la mesa. **Se queda así a propósito**: el
-criterio "quien empieza el combate tira los suyos" es simple y correcto para el caso de un solo
-DM, que es el único que existe hoy en la plataforma (una campaña no tiene ninguna pantalla para
-invitar a un segundo DM). Corregirlo sin ese caso real delante sería una regla especulativa.
-
-**Cierra cuando** exista una forma de tener dos DM en la misma campaña Y alguien lo note en la
-práctica — hasta entonces, queda anotado para que la próxima persona que toque `start()` no
-lo redescubra desde cero.
-
-**Pasada por los cuatro pasos el 2026-09-10, y sale del cubo «decide el autor»:** la premisa de
-arriba ya no es cierta —**sí** hay forma de tener dos DM: `PATCH` de papel del plan 11
-(`apps/api/src/members/`)—, el cambio es corto y duradero (`suyos` = «su dueño es DM de la
-campaña», que `MembershipService` ya sabe contestar) y la prueba que lo ve fallar es una unitaria
-con dos DM. No cae en ninguno de los cuatro casos: lo decidió un agente, no el autor. **Se arregla.**
-
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 
 **Medido:** búsqueda de cualquier conjuro concreto en `apps/api/src` y `packages/shared/src` —

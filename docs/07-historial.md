@@ -85,6 +85,9 @@ su medición están en
   `findById` en `me()`.
 - **D4** — la lista de sesiones va por `scheduledAt` (desc, sin fecha al final) y no por
   `createdAt` (`sessions.service.ts`, `list`; D-CF-1). **Revertir:** volver al `orderBy` viejo.
+- **P2 · `start()` con dos DM** — «suyos» es «su dueño es DM de la campaña», no «quien pulsó»
+  (`encounters.service.ts`). Salió de «decide el autor» porque su premisa —no hay segundo DM—
+  caducó con el plan 11. **Revertir:** volver a comparar con `userId`.
 - **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
   rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda

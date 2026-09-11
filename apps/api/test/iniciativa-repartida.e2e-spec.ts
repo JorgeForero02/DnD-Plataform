@@ -180,6 +180,51 @@ describe("start() reparte por dueño: pide a quien no es el DM, tira por los suy
     expect(peticiones.map((p) => p.characterId)).toEqual([pnjCedidoId]);
   });
 
+  it("un PNJ del OTRO DM es «suyo»: se tira por él y no se le pide iniciativa (ficha P2 · dos DM)", async () => {
+    // Hasta el 2026-09-10 el reparto comparaba `ownerId` con quien pulsó el botón, así que con
+    // dos DM el PNJ del otro caía en `ajenos` y recibía una petición que no tiene por qué: el
+    // otro DM no es un jugador esperando su turno, es el otro árbitro. La ficha decía «no hay
+    // forma de tener dos DM»; el plan 11 la dio (`PATCH /members/:userId`), y aquí se usa.
+    const emailDM2 = `dm2-rep${Date.now()}@b.com`;
+    const tokenDM2 = (
+      await request(s())
+        .post("/auth/register")
+        .send({ email: emailDM2, password: "password123", displayName: "DM2" })
+    ).body.token;
+    const dm2Id = (await prisma.user.findUnique({ where: { email: emailDM2 } }))!.id;
+    const invite = (
+      await request(s())
+        .post(`/campaigns/${campaignId}/invites`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+    ).body.token;
+    await request(s()).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${tokenDM2}`);
+    const ascenso = await request(s())
+      .patch(`/campaigns/${campaignId}/members/${dm2Id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ role: "DM" });
+    expect(ascenso.status).toBe(200);
+    const pnjDelOtroDm = (
+      await request(s())
+        .post(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", `Bearer ${tokenDM2}`)
+        .send({ ref: "SRD:bandit", count: 1, hp: "AVERAGE" })
+    ).body[0].id as string;
+
+    const sessionId = await nuevaSesion("Reparto con dos DM");
+    const r = await request(s())
+      .post(`/campaigns/${campaignId}/sessions/${sessionId}/encounters`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ characterIds: [goblinId, pnjDelOtroDm] });
+    expect(r.status).toBe(201);
+    // Nadie a quien pedir: los dos son de un DM, así que nace ACTIVE con las iniciativas puestas.
+    expect(r.body.status).toBe("ACTIVE");
+    const peticiones = await prisma.rollRequest.findMany({ where: { encounterId: r.body.id } });
+    expect(peticiones).toEqual([]);
+    const combatientes = await prisma.combatant.findMany({ where: { encounterId: r.body.id } });
+    expect(combatientes.map((c) => c.initiative)).not.toContain(0);
+    await prisma.user.deleteMany({ where: { email: emailDM2 } });
+  });
+
   it("empieza ACTIVE directo si el DM combate solo contra los suyos", async () => {
     const sessionId = await nuevaSesion("Reparto 3");
     const r = await request(s())

@@ -239,13 +239,21 @@ export class EncountersService {
     // jugable es una fila de `Character` como cualquier otra desde 2D, y quien lo lleva decide
     // si tira, no de dónde salieron sus números.
     //
-    // **Con más de un DM en la campaña, esto compara contra quien pulsó el botón, no contra «es
-    // DM»** — un PNJ de OTRO DM caería del lado de `ajenos` y recibiría una petición de
-    // iniciativa que no tiene por qué. `membership.service.ts` sí sabe contar cuántos DM quedan
-    // en una campaña; este método no distingue entre ellos. Queda anotado como caso conocido en
-    // `docs/06-pendientes.md` — no lo arregla esta ronda.
-    const suyos = combatientes.filter((c) => c.ownerId === userId);
-    const ajenos = combatientes.filter((c) => c.ownerId !== userId);
+    // **Y «suyo» es «su dueño es un DM de esta campaña», no «su dueño es quien pulsó el botón»**
+    // (ficha P2 «con más de un DM», cerrada el 2026-09-10). Con dos DM —posible desde el plan
+    // 11— el PNJ del otro caía en `ajenos` y recibía una petición de iniciativa que no tiene por
+    // qué: el otro DM no es un jugador esperando su turno, es el otro árbitro de la mesa. Quien
+    // empieza sigue siendo quien tira; solo cambia por quién.
+    const dms = new Set(
+      (
+        await this.prisma.campaignMember.findMany({
+          where: { campaignId, role: "DM" },
+          select: { userId: true },
+        })
+      ).map((m) => m.userId),
+    );
+    const suyos = combatientes.filter((c) => dms.has(c.ownerId));
+    const ajenos = combatientes.filter((c) => !dms.has(c.ownerId));
 
     // **Se valida la hoja de los `ajenos` antes de crear nada.** No se les tira, pero si su hoja
     // no deriva —le faltan características, raza o clase— antes de esta tarea `start()` ya daba

@@ -32,11 +32,15 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 ## Qué sigue, en este orden
 
-### 1 · Terminar la poda del tablero — **necesita al autor**
+### 1 · Terminar la poda del tablero — **lo mecánico ya está; queda lo del autor**
 
-El 2026-09-06 salieron las tres fichas que llevaban «Cerrado» en su propio título. **Lo que queda
-no es mecánico**, y por eso se paró ahí: hay dos docenas de secciones fechadas antes del
-2026-09-04 y varias sin fecha, y saber cuál sigue viva **solo lo sabe el autor**.
+El 2026-09-06 salieron las tres fichas que llevaban «Cerrado» en su propio título, y **el
+2026-09-10 salieron treinta y nueve bloques más** —falsas, tachadas y decisiones disfrazadas de
+deuda— con los cuatro pasos de [04-convenciones.md](./04-convenciones.md) delante
+([`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md)).
+**Lo que queda no es mecánico**: las secciones que sobreviven son migraciones, decisiones de
+producto y lo que solo se juzga jugando, y cada una lleva ya su medición en el 06 para que el
+autor decida sin volver al código.
 
 **Cómo se hace, cuando se haga:**
 

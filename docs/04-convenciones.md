@@ -267,6 +267,12 @@ patrón (`resolver`, `service`, `schema`), infraestructura y las claves de traza
   `border-copper`…), que es lo que hace que el tema cambie solo. **No se añaden `slate`, `gray`
   ni `indigo`.** Textos en español.
 
+- **La densidad base es 14 px, y los controles de formulario llevan suelo de 16 px en pantallas
+  táctiles** (`@media (pointer: coarse)`, `ui/tokens.css`). Decidida con las pantallas delante en
+  1.19b (2026-09-01) y declarada aquí el 2026-09-10 (D-POD-9), que es donde faltaba: vivía como
+  «deuda» en `06-pendientes.md` sin que hubiera nada que hacer. Por debajo de 16 px iOS Safari hace
+  zoom al enfocar, y lo que dispara el zoom es el tamaño **calculado**, no la clase escrita.
+
 - **Sí hay sistema de diseño, desde el 2026-09-02.** Esta línea decía «sin sistema de diseño
   para el MVP» y describía el estilo como `bg-slate-900` + `indigo-600`; llevaba desfasada
   desde la tarea 1.19, que introdujo la capa de tokens y las primitivas. **Documentación que

@@ -398,6 +398,32 @@ decisiones que no se pueden deducir del código.
 |---|---|
 | D-P4-1 | **Un `[[nombre]]` casa sin acentos**: `normalizar` de `wikilinks.ts` pliega las marcas combinantes antes de comparar, así que `[[bahia]]` encuentra «Bahía». Se pliegan también **ñ y diéresis**, igual que ya hacía `claveDeConcentracion`; en español la ñ es letra propia, así que es una concesión deliberada a quien teclea sin ella. Precio declarado: dos fichas que solo difieran en la tilde colisionan y gana la primera de la lista, el mismo desempate que ya existía. Se pliega el **rango de marcas combinantes** y no `\p{Diacritic}`, que arrastraría `^` y `` ` `` sueltos. Normaliza **para comparar, nunca para mostrar** |
 
+## La poda del 2026-09-10 · [archivo](./_archivo/pendientes-cerrados-2026-09-10-poda.md)
+
+**Doce decisiones que vivían en `06-pendientes.md` disfrazadas de deuda**, sacadas de ahí con los
+cuatro pasos de [04-convenciones.md](./04-convenciones.md). Ninguna es nueva: cada una ya estaba
+tomada en la propia ficha, en el código o en otro documento; lo que faltaba era la fila.
+
+| | Decisión |
+|---|---|
+| D-POD-1 | **`@testing-library/user-event` no se instala hasta que una prueba lo necesite.** Una dependencia sin consumidor es peso muerto, y `fireEvent` comprueba lo que hoy hace falta |
+| D-POD-2 | **El catálogo del SRD se queda en `apps/api/src/rules/catalog/`**; su único consumidor es la API y la web lo pide por `GET /catalog`. Si algún día hace falta el paquete, es un `git mv` |
+| D-POD-3 | **La red y la cerbatana quedan fuera del catálogo de armas** mientras `damageDice` exija un dado; lo declara la cabecera de `weapons.ts`. Cambiar la forma es del paso 3, si el conversor lo pide |
+| D-POD-4 | **El conteo de unitarias del bloque generado es una cota inferior, y se declara así** en el propio bloque. Leer el informe del corredor haría caro a `check:estado`, que está donde está por ser barato |
+| D-POD-5 | **El `PATCH` absoluto de PG del DM no se recorta contra el máximo**; el `POST` de delta sí. Un DM que escribe un número quiere ese número (2A.7) |
+| D-POD-6 | **El token vive en `localStorage`**, compromiso conocido desde la auditoría de seguridad del 2026-09-01. Cambiarlo es una tarea con su ficha, no una deuda abierta sin plazo |
+| D-POD-7 | **`JwtStrategy.validate` consulta la base en cada petición**: es el precio de invalidar los tokens al cambiar la contraseña. Si pesa, `select` estrecho; si aún pesa, caché corta |
+| D-POD-8 | **`main.ts` no tiene prueba de que llame a `loadBootEnv()`**: la garantía vive dentro de `buildAdapter()`, donde sí la fija una prueba; la llamada de `main.ts` es cinturón y tirantes |
+| D-POD-9 | **La densidad base de la interfaz es 14 px, con suelo de 16 px en pantallas táctiles** (`pointer: coarse`), porque por debajo iOS Safari hace zoom al enfocar y lo que dispara el zoom es el tamaño **calculado**. Va a [04-convenciones.md](./04-convenciones.md) |
+| D-POD-10 | **Una etiqueta seleccionada en el filtro sobrevive a su propio botón** (1.17c): reconciliarla en silencio haría mentir al contador «N de M». Si molesta jugando, la tarea es mostrarla huérfana, no borrarla |
+| D-POD-11 | **MADR se adopta solo hacia adelante**, sin migrar los specs existentes: un documento fechado no se reescribe |
+| D-POD-12 | **El modificador de una tirada no lleva tope**: el SRD no da ninguno, `1d20+9999` es trampa a ojos vista y la vigila el DM. No es fallo de seguridad |
+
+**Y tres que salen de «decide el autor» por los mismos cuatro pasos, sin cerrarse**: `start()` con
+dos DM (la premisa «no hay pantalla para un segundo DM» caducó con el plan 11), `U10` (las frases de
+visibilidad pueden salir de una matriz que una prueba compara con `canView`) y `M2B-14` (el SRD 5.1
+trae *Weapon/Armor/Shield +1, +2, +3*: transcripción, no producto). Se arreglan como fichas B.
+
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 
 **Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con

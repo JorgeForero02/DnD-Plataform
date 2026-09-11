@@ -18,7 +18,9 @@ y **P2-2, el formulario de entrega**, en
 [`_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md`](./_archivo/pendientes-cerrados-2026-09-07-formulario-de-entrega.md),
 y las **dieciocho que el reconocimiento del 2026-09-08 encontró falsas** —cuatro de ellas P1, y
 diez con un barrido o una cita de línea dentro— en
-[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
+[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md),
+y los **39 bloques de la poda del 2026-09-10** —falsas, tachadas y decididas— en
+[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -98,7 +100,13 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-08** (el **reconocimiento**: unas cincuenta y cinco fichas leídas contra
+Última revisión: **2026-09-10** (la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
+cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
+entero en
+[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md);
+y tres fichas que salen de «decide el autor» porque los cuatro pasos las contestan: `start()` con
+dos DM, `U10` y `M2B-14`. Antes, el 2026-09-08, el **reconocimiento**: unas cincuenta y cinco fichas leídas contra
 el árbol, **dieciocho archivadas por falsas** —cuatro de ellas P1— y el resto de las tocadas
 corregidas en sitio: **ocho citas de línea desplazadas**, dos enunciados que iban al revés (`J6` y
 `N4`), la lista de `viewerFor` que había crecido de cinco servicios a trece, y varias mitades
@@ -140,6 +148,12 @@ invitar a un segundo DM). Corregirlo sin ese caso real delante sería una regla 
 **Cierra cuando** exista una forma de tener dos DM en la misma campaña Y alguien lo note en la
 práctica — hasta entonces, queda anotado para que la próxima persona que toque `start()` no
 lo redescubra desde cero.
+
+**Pasada por los cuatro pasos el 2026-09-10, y sale del cubo «decide el autor»:** la premisa de
+arriba ya no es cierta —**sí** hay forma de tener dos DM: `PATCH` de papel del plan 11
+(`apps/api/src/members/`)—, el cambio es corto y duradero (`suyos` = «su dueño es DM de la
+campaña», que `MembershipService` ya sabe contestar) y la prueba que lo ve fallar es una unitaria
+con dos DM. No cae en ninguno de los cuatro casos: lo decidió un agente, no el autor. **Se arregla.**
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 
@@ -313,37 +327,6 @@ trae, y el hueco está declarado en
 
 ## Dejado por la segunda tanda de la ronda de interfaz (2026-09-02, madrugada)
 
-- ~~**El arrastre del editor de reglas no está probado en un navegador, y puede que no funcione.**~~
-  **CERRADA (2026-09-05), remedida en el navegador** — plan 14, punto 14.1. La medición está en
-  `apps/web/e2e/arrastre-dentro-del-cajon.spec.ts:85` y **repite el experimento original**, no uno
-  parecido: el mismo `<div draggable>` trivial, dentro del cajón y fuera, comparados. El resultado,
-  con su fecha: **`dragstart` FUERA: SÍ · `dragstart` DENTRO del cajón: SÍ.** Y el arrastre real,
-  con ratón paso a paso, también: `apps/web/e2e/reglas-arrastrar.spec.ts` pasa sus **ocho**
-  recorridos, incluido *«arrastrar una pieza hasta su carril la coloca de verdad»*.
-
-  **Lo que había caducado era la premisa, no el diagnóstico.** Aquel dato era cierto contra el
-  `Dialog` de entonces —cuadro centrado con `max-h-[85vh]`—, y la Ola 0 lo convirtió en **cajón
-  lateral de altura completa**: justo la variable que la medición culpaba. Es lo que D-OP-19 dejó
-  escrito que había que rehacer.
-
-  **La primera pasada de esta remedición dio un control falso** —«fuera: NO»— porque la sonda se
-  añadía al final del `body` y en la página de campaña caía fuera de la vista: geometría, no
-  contexto. Se fijó su posición y entonces midió. Queda escrito porque una medición con el control
-  roto habría «confirmado» el diagnóstico viejo por el motivo equivocado.
-
-  Texto original:
-  > En la página del editor **no se dispara ni un `dragstart`**. Descartado ya: `dragTo` frente a
-  > ratón paso a paso, `<button>` frente a `<div draggable>`, con y sin `clip-path`, con y sin
-  > `user-select: none`. El dato que apunta a dónde mirar: un `<div draggable>` **trivial**
-  > inyectado *dentro del diálogo* tampoco arrastra, y uno inyectado *fuera* sí — así que **es del
-  > contexto, no de la pieza**. Sospechas sin comprobar: el atrapa-foco del diálogo, o algo del
-  > apilado.
-- ~~**`BarraDeSesion` y la cabecera se pelean por la misma banda.**~~ **CERRADA (2026-09-05):**
-  `features/sessions/BarraDeSesion.tsx:45` define `PEGADA_BAJO_LA_CABECERA` y el `sticky` lo lleva
-  el envoltorio; además la mesa ya no vive dentro de `AppShell`. Texto original: ~~Las dos son
-  `sticky top-0`; la barra va a `z-30` y la cabecera también es fija. Con una sesión en curso se
-  solapan. Es previo a esta tanda y no lo tocó nadie. La cabecera de combate de la hoja va a
-  `top-16` y quedará por debajo de la barra, no encima, así que el defecto se ve más ahora.
 - **El diálogo de creación de personaje todavía pide raza y clase como texto libre.** Desde que
   `descriptor.ts` prefiere las claves del catálogo, un personaje creado ahí nace con las columnas
   heredadas y **sin clave**, que es el caso menos bueno de los dos. Debería ofrecer los
@@ -351,26 +334,9 @@ trae, y el hueco está declarado en
   la regla de que un botón de guardar no se deshabilita.
 - **Las columnas `race`/`class` se pueden retirar en cuanto el autor confirme** que no queda
   ningún personaje escrito a mano antes del catálogo. Hoy siguen ahí a propósito.
-- **`@testing-library/user-event` no está instalado**, así que las pruebas de componente que
-  querrían simular teclado real usan `fireEvent`. No es falso —se comprueba que el control es
-  activable y que su activación coloca— pero es menos fiel.
-- ~~**`ui/Iconos.tsx` no tiene icono de inventario.**~~ **CERRADA (2026-09-05)**, y hoy el problema
-  es el **contrario**: hay conceptos duplicados entre `ui/Iconos.tsx` y nueve ficheros de
-  `features/` (escudo ×3, mochila ×3, sol ×2, luna ×2). Lo cierra el **plan 07**. Texto original:
-  ~~La hoja dibuja un `IconoArcon` local; cuando
-  2B monte el inventario debería subir a la casa común.
 
 ## Dejado por E0, la prueba de ida y vuelta de TipTap (2026-09-02)
 
-- ~~**Las dependencias de TipTap están en `devDependencies`.**~~ **CERRADA (2026-09-05, plan 01):**
-  los seis paquetes están ahora en `dependencies` de `apps/web/package.json:19-24`, con las mismas
-  versiones (`^3.31.0`) y con el movimiento reflejado en `pnpm-lock.yaml`. No se esperó a que `src/`
-  los importara a propósito: la ficha condicionaba el arreglo a un momento futuro que nadie iba a
-  vigilar. Texto original: ~~Hoy su único consumidor es
-  `scripts/e0-tiptap-roundtrip.mjs`, que no se empaqueta. **E1 tiene que moverlas a
-  `dependencies` en cuanto las importe desde `src/`**, o la imagen de producción se
-  construirá sin ellas y el editor no existirá allí. Es un fallo que no se ve en local,
-  porque en local están instaladas igual.~~
 - **TipTap descarta tablas, imágenes y listas de tareas sin decir nada** si no se registran
   `TableKit`, `Image`, `TaskList` y `TaskItem`. No lanza, no avisa: el Markdown entra con la
   tabla y sale sin ella. El script lo demuestra corriéndolo sin `--completo`. Cuando E1
@@ -404,7 +370,6 @@ quedan aquí para que no se deshagan sin darse cuenta.
 | | Qué | Por qué importa, y qué cuesta cambiarlo |
 |---|---|---|
 | **S2** | **De cada aptitud de clase se transcribió el nombre y el nivel, no su texto de reglas** | El plan (§4.3) pedía «aptitudes por nivel como texto». La hoja puede decir «al nivel 5 ganas Ataque adicional» —desde el arreglo de la revisión, que metió las aptitudes de clase y subclase en `features`; antes esta ficha **afirmaba que ya lo hacía y era falso**—, pero no puede explicar qué hace cada una. Traducir a mano el texto completo de unas doscientas aptitudes es donde una transcripción se llena de errores que **ningún invariante puede cazar**. Añadirlo después es rellenar un campo, no cambiar una forma |
-| **S3** | **El catálogo vive en `apps/api/src/rules/catalog/`, no en un paquete `packages/srd`** | El plan (§4.1) dejaba las dos abiertas. Hoy **solo lo consume el propio borde de la API, dentro de `apps/api`**, y crear un paquete costaría cableado de compilación por cero beneficio. (La justificación anterior decía «un solo consumidor, el motor» y era **al revés**: la dirección real es `catalog → engine`. Corregido tras la revisión.) La web ya los pide por endpoint (`GET /catalog`, `apps/api/src/rules/catalog.controller.ts`, creado el 2026-09-02 al ver que la pantalla los tenía transcritos a mano). La deuda de fondo sigue: el catálogo continúa dentro de `apps/api`. Si aun así conviene el paquete, es un `git mv` |
 | **S4** | **Los rasgos raciales sin efecto numérico se listan, pero no hacen nada** (Suertudo, Astucia gnoma, Aguante implacable…) | Salen por `features` para que la hoja los enseñe. Automatizarlos es 2C, igual que las condiciones. Está dicho aquí para que nadie los lea en la hoja y suponga que el motor los aplica |
 | **S6** | **La mejora de característica de los niveles de `asiLevels` no se modela todavía como elección** (2A.4) | Es el mismo mecanismo que el «+1 a dos» del semielfo, y el plan (§3) las nombra juntas. No entra aún porque «+2 a una **o** +1 a dos» es una concesión con **dos modos**, y quien decide la forma de la subida de nivel es 2A.9. **Ojo: no son solo 4/8/12/16/19** — el guerrero tiene 4/6/8/12/14/16/19 y el pícaro 4/8/10/12/16/19, y están en `asiLevels`; quien implemente 2A.9 leyendo solo esta línea se dejaría tres niveles. Añadirlo es un `kind` nuevo en `Grant` |
 | **S10** | **[revisión] El nivel y el nombre de las ~203 aptitudes de clase no están fijados por ninguna prueba** | `reference.spec.ts` fija dado de golpe, salvaciones, `asiLevels`, número de habilidades, lanzamiento, subclase y su nivel, y todas las cifras de razas y armaduras — **mover una aptitud de nivel, en cambio, no pone nada en rojo** (comprobado: la mutación «evasión del pícaro del 7 al 4» sigue pasando). Fijarlas sería transcribir los mismos datos **dos veces**, y dos copias derivan. Lo que protege esas filas es que el diff se entregó legible y se revisó con el SRD delante |
@@ -417,14 +382,11 @@ son decisiones tomadas a conciencia, no olvidos.
 | | Qué | Por qué importa, y qué cuesta cambiarlo |
 |---|---|---|
 | **I1** | **Cuatro nombres de arma en español están sin contrastar con el PDF oficial** — «Guja» (glaive), «Almádena» (maul), «Mangual» (flail) y «Lanza de caballería» (lance) | Los nombres del catálogo son los de la traducción oficial de Wizards, no una traducción nuestra, y así lo declara `NOTICE.md`. Quien transcribió la tabla los señaló en su informe como los de menor confianza — **en el código no hay ninguna marca que los distinga del resto**, así que esta ficha es el único rastro. **Prioridad baja y coste mínimo** —cambiar una cadena—, pero si están mal, `NOTICE.md` afirma algo que no es. Se contrasta con el SRD 5.1 en español cuando haya acceso al documento |
-| **I2** | **Dos armas del SRD no están: la red y la cerbatana** | Ninguna cabe en la forma: la red no hace daño y la cerbatana hace «1» fijo, no un dado. Modelarlas exige que `damageDice` admita un daño plano o nulo, que es un cambio de forma en `packages/shared`. Declarado en la cabecera de `weapons.ts` para que no parezca un olvido |
 | **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
 | **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
 | **I6** | **Las competencias de armadura no producen aviso todavía** | El catálogo ya las tiene en claves de máquina (`light`, `medium`, `heavy`, `shield`) desde 2B, y el SRD dice que llevar armadura sin competencia da desventaja en todo lo de Fuerza y Destreza y **prohíbe lanzar conjuros**. El motor ya sabe emitir avisos y el de armas ya existe (`attack_not_proficient`): falta el de armadura, que es el mismo mecanismo |
 | **I7** | **El tabú del druida se perdió al pasar las competencias a claves** | El SRD dice «ligera, media y escudos, **no metálicos**». Eso no es una competencia menos —un druida *sabe* usar una cota de escamas, pero no quiere— y modelarlo como competencia le negaría una armadura que la regla sí permite. Hoy vive en un comentario de `classes.ts`; su sitio es el texto de la aptitud, cuando exista dónde ponerlo |
-| **I9** | **El conteo de unitarias del bloque de estado es una cota inferior, no lo que imprime el corredor** | `scripts/update-estado.mjs` cuenta **declaraciones**, y un bloque `it.each` declara una y ejecuta varias: hay más de cuarenta, así que la cifra va varios cientos por debajo de la real. El comentario del script decía «nada aquí usa `.each`» e **invitaba a comprobarlo con un grep**; el grep lo desmiente. Corregido el texto y ampliada la expresión regular para que al menos cuente el bloque, pero **la cifra sigue sin ser la del corredor**. El arreglo de verdad es leer los informes de `vitest`/`jest` (`--reporter=json`) en vez de contar líneas, y cuesta que `check:estado` deje de ser barato — que es justo por lo que está donde está en `pnpm verify`. Lo encontró la auditoría de documentación de 2B |
 | **I10** | **Una tirada de ataque siempre se publica como `PLAYERS`** | El esquema (`rollAttackSchema`) acepta `visibility` y el servidor la respeta, pero la pantalla (`apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`) no la ofrece. Para un DM que tira con un PNJ es un problema real: la etiqueta de la tirada lleva el nombre del arma, y una tirada suya que no quería enseñar aparece en el registro de la mesa. Es el selector de visibilidad que ya existe en el panel de tiradas general, montado también aquí |
-| **I8** | **El nombre legible de una competencia ya no existe en ninguna parte** | Al pasar `weaponProficiencies`/`armorProficiencies` a claves de máquina, las frases en español («Armas marciales») desaparecieron. **Nadie las pintaba**, así que no se rompió nada, pero el día que la hoja quiera enseñar «Competencias e idiomas» hará falta la tabla de traducción — en la pantalla, como con toda clave del catálogo, y no de vuelta en el dato |
 
 **Lo que la revisión de 2B encontró y se arregló el mismo día** (no queda deuda, se anota porque
 la lección sí): la hoja leía el equipo **sin pasar por `canView`**, así que el nombre y el
@@ -462,22 +424,11 @@ arregló el mismo día y lo que el refutador corrigió, está en
 | | Qué falta | Qué cuesta, y qué pasa mientras tanto |
 |---|---|---|
 | **M2B-4** | **Quedan las cargas** (una varita de siete usos que se repone en el descanso) | La munición del SRD ya está sembrada (flechas, virotes, balas, agujas) y **gastar un consumible existe** (`POST .../inventory/:rowId/consume`, con su rastro en la línea de tiempo y la fila que desaparece al llegar a cero). Lo que falta son las **cargas**: columnas `chargesCurrent`/`chargesMax`/`rechargeOn` en `InventoryItem` y reponerlas dentro de la transacción del descanso. Es una migración, y por eso no entró de madrugada |
-| **M2B-14** | **Los objetos mágicos genéricos del SRD se pueden sembrar y no están** | **Arma +1/+2/+3, Armadura +1 y Escudo +1 sí están en el SRD 5.1**, bajo la misma CC BY que el resto: la cabecera del catálogo dice «ningún objeto mágico» y eso es más restrictivo de lo que la licencia pide. Con los efectos `weaponAttack`/`weaponDamage` ya abiertos, sembrarlos es transcribir cinco filas. Es decisión de producto, no arreglo. Comprobado en [el contraste de reglas](./superpowers/specs/2026-09-03-contraste-de-reglas-2B.md) |
+| **M2B-14** | **Los objetos mágicos genéricos del SRD se pueden sembrar y no están** | **Arma +1/+2/+3, Armadura +1 y Escudo +1 sí están en el SRD 5.1**, bajo la misma CC BY que el resto: la cabecera del catálogo dice «ningún objeto mágico» y eso es más restrictivo de lo que la licencia pide. Con los efectos `weaponAttack`/`weaponDamage` ya abiertos, sembrarlos es transcribir cinco filas. **Pasada por los cuatro pasos el 2026-09-10: no es decisión de producto, es una transcripción que la fuente contesta** (SRD 5.1, «Magic Items»: *Weapon, +1, +2, or +3* · *Armor, +1, +2, or +3* · *Shield, +1, +2, or +3*); la cabecera restrictiva la escribió un agente. **Se siembra**, con la cita en el commit. Comprobado en [el contraste de reglas](./superpowers/specs/2026-09-03-contraste-de-reglas-2B.md) |
 | **M2B-15** | **«Lo tengo pero no sé qué hace» — la mitad que falta** | Revisa el motivo de la decisión D-2B-8: **es práctica estándar**, no exótica — Foundry lo trae de serie con una bandera `identified` y hay módulos dedicados. Y **media solución ya está construida**: la redacción de 2B (se tacha el nombre, se conserva el número) es el mismo mecanismo de presentación. Falta el interruptor del DM y un nombre alternativo («una espada de aspecto extraño») |
 | **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
 | **M2B-8** | **`quantity` es absoluto donde el dinero es delta** | Dos personas descontando una flecha a la vez dejan 19 en vez de 18. No rompe ningún invariante —por eso no es urgente— pero es la misma carrera que la bolsa ya tiene resuelta |
 | **M2B-11** | **Equipar son tres peticiones desde la pantalla** | `fetchAc` → `PATCH` → `fetchAc`. Si la segunda lectura falla, la mutación se marca como error, no se invalida la caché y la pantalla enseña un estado que el servidor ya cambió. Lo correcto es que el `PATCH` devuelva la CA nueva |
-| **M2B-12** | **La hoja lee el inventario por otra conexión dentro de una transacción bloqueada** | El refutador rebajó esto de «incorrección» a **higiene**: lo que se lee está confirmado, pero son N+1 consultas sosteniendo un candado de fila. Se arregla pasando el `tx` hasta `equipoEquipado` |
-
-## Lo que dejó la auditoría de documentación (2026-09-02)
-
-Dos agentes auditaron los ocho documentos numerados **contra el código**, afirmación por
-afirmación. **Treinta hallazgos, todos corregidos el mismo día** salvo estos tres, que son
-trabajo y no una frase:
-
-| | Qué | Por qué importa |
-|---|---|---|
-| **A3** | **El censo de controladores caducado también está en `docker-compose.prod.yml`**, en el comentario que justifica la comprobación de salud de la API | Es la misma mentira en dos sitios; se corrigió la del documento y queda la del compose. Cambiar el compose recompila la imagen en Coolify, así que **se hace con el siguiente despliegue, no suelto** |
 
 ## Iluminación y visión (pregunta del autor, 2026-09-02)
 
@@ -496,16 +447,6 @@ traza). Lo demás queda colocado, no olvidado.
 | | Qué | Por qué importa |
 |---|---|---|
 | **H1b** | **«Estable» no sobrevive a la petición que lo produce.** Estabilizarse con tres éxitos —o revivir con un 20 natural— pone los contadores de tiradas de muerte a cero, así que un `GET` posterior **no distingue «acaba de estabilizarse» de «acaba de caer a 0 PG»** | La hoja tiene que poder decir si el personaje está estable: es lo primero que pregunta la mesa. El estado correcto sale hoy **solo en la respuesta de la propia tirada**. **Y la solución ya existe sin migración**: `CharacterCondition` acepta **clave libre** desde 2A.12, así que «estable» cabe ahí como condición, que además es lo que es. Cuesta conectar dos módulos y decidirlo; se deja escrito para que 2A.10 no lo improvise |
-| **H2b** | **El `PATCH` absoluto de PG del DM no se recorta contra el máximo** (el `POST` de delta sí) | Es deliberado y coherente con «recortar al leer, nunca al recalcular»: **un DM que escribe un número quiere ese número**. Se anota porque parece un olvido y no lo es, y porque si algún día se decide lo contrario hay que decidirlo, no arreglarlo |
-
-## Cabos sueltos de 2A.14 y 2A.15 (2026-09-02)
-
-Los deja la implementacion **a proposito y dichos**, en vez de inventar el enganche.
-
-| | Que | Por que importa |
-|---|---|---|
-| **N2** | **`recordEntityOpened` esta implementado y NO esta conectado** al modulo de entidades | Es el suceso `ENTITY_OPENED` que el motor de reglas escucha (hueco **H3**), y ya se escribe con visibilidad `DM_ONLY` como se decidio. Conectarlo toca `entities`, que estaba fuera de la frontera de esa tarea. **Y con el va una obligacion que no se puede olvidar**: la interfaz tiene que avisar al jugador de que abrir una ficha puede disparar reglas — registrar quien abre que es vigilancia si nadie lo dice |
-| **N3** | **Los dos e2e nuevos declaran su propio `TestAppModule`** que reproduce la composicion de `app.module.ts` | Es una segunda copia del mismo hecho, y dos copias derivan — el problema exacto que este proyecto lleva todo el dia evitando. Nacio de una frontera de ficheros necesaria (el agente no podia tocar `app.module.ts`), y **se corrige en cuanto los modulos estan cableados**: pasan a importar `AppModule` como el resto |
 
 ## Encontrado al escribir 2A.13 (2026-09-02)
 
@@ -522,9 +463,6 @@ cerraron ese mismo día** (media competencia, Ataque Extra, espacios de conjuro 
 
 | | Qué | Dónde va, y por qué no ahora |
 |---|---|---|
-| **M8** | **Modificadores temporales con caducidad** — *«+2 a Fuerza durante una hora»*. Lo pidieron los jugadores y **no está escrito en ningún plan**: no es un estado con nombre ni un objeto equipado, es un modificador con fecha de fin | Necesita el **reloj de campaña**, que es 2C. El modelo de modificadores de 2A ya sabría aplicarlo; falta quién decide que ha caducado. Meterlo sin reloj sería un campo que nadie limpia |
-| **M9** | ~~**El personaje se archiva, no se borra**~~ **— CERRADA el 2026-09-05 (plan 06).** El gesto existe en `apps/web/src/features/characters/BotonArchivar.tsx`, montado en `AjustesDePersonaje.tsx` junto a borrar y **más barato que él**; la puerta de salida es `features/characters/ArchivoDePersonajes.tsx`, montada en la lista de personajes de `pages/CampaignDetailPage.tsx`; y las tres llamadas que faltaban están en `features/characters/api.ts`. `grep -rn "archiv" apps/web/src` ya no da cero. Probado por `features/characters/__tests__/archivar.test.tsx` y por el camino entero de `apps/web/e2e/archivar.spec.ts` | Lo que la ficha exigía era que **cambiara cuál de los dos gestos es el fácil**, y cambia: archivar es un botón `secondary` con una confirmación que dice **que se recupera**, y borrar conserva su filete de peligro y ahora además **nombra archivar como la salida barata**. Con ella se cierra el último de los tres gestos de **D-OP-8** |
-| **M10a** | ~~**Revocar una concesión de visibilidad**~~ **— MITAD FALSA, comprobada el 2026-09-05.** `entities.service.ts:171` hace `deleteMany` y reescribe las concesiones al editar: **revocar sí se puede**. La ficha decía lo contrario | **Lo que sigue vivo es M10b** |
 | **M10b** | **Editar en silencio** — la hidra falsa (respuesta 2). El DM cambia una ficha ya revelada y nadie se entera. Es un problema distinto del de revocar, y por eso se parten | Sin resolver. Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
 | **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
 
@@ -536,7 +474,7 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 | | Qué | Por qué aquí y no después |
 |---|---|---|
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
-| **A3-invitaciones** | **Invitaciones con usos máximos, caducidad y revocación** | Hoy es un enlace por persona —decisión declarada— y montar una mesa de cuatro exige generar cuatro. **Un enlace eterno no**: acaba circulando por un grupo y la visibilidad se apoya en quién es miembro |
+| **A3-invitaciones** | **Invitaciones con usos máximos** | Caducidad y revocación las cerró el plan 11 (`schema.prisma`, `expiresAt`/`revokedAt`, `bf1b1c9` 2026-09-05). Queda «usos máximos», que es una columna nueva: **migración**, y por eso no se arregla de pasada |
 
 ## Reseño de interfaz (2026-09-02) — lo que dejó abierto
 
@@ -547,55 +485,7 @@ Lo entregado está en [07-historial](./07-historial.md) y su porqué en
 |---|---|---|
 | **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
 | **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
-| **U10** | **El texto que explica la visibilidad no está atado a `canView`** | Las frases de `features/entities/visibilidad.ts` describen la matriz del servidor y **ya mintieron una vez** (prometían que «público» dejaba entrar a quien no fuera miembro). Hoy nada rompe si vuelven a divergir: haría falta una prueba que compare las dos, o aceptar explícitamente que es texto y se revisa a mano |
-
-## Lo que dijeron los jugadores (2026-09-02)
-
-Respondieron a las ocho preguntas de la presentación *"Delante de la pantalla"*. El detalle y el
-razonamiento están en
-[`superpowers/specs/2026-09-02-respuestas-jugadores-design.md`](./superpowers/specs/2026-09-02-respuestas-jugadores-design.md).
-Lo que mueve algo:
-
-| | Qué pidieron | Consecuencia |
-|---|---|---|
-| **Ranuras de equipo** | *"sí, es muy importante"* | El hueco H1 deja de ser recomendación: entra en 2B, con el objeto en **tres** estados (llevado / equipado / sintonizado, tope 3) |
-| **Inventario de hechizos** | Es lo primero que nombran al preguntarles qué llevan a mano | **Contradice la exclusión** de la spec de la fase 2. Recomendación: los espacios de conjuro entran como **recurso consumible** en 2A — el mismo contador que la inspiración— y fuera queda solo interpretar cada conjuro |
-| **Atributos temporales** | *"subidas y bajadas de atributos temporales"* | Hueco nuevo: un **modificador con caducidad** no está escrito ni en 2A ni en 2C |
-| **El DM edita sin avisar** | Con ejemplo: la **hidra falsa** | Hace falta **revocar** una concesión de visibilidad —hoy solo se puede conceder— y un interruptor de edición silenciosa. **Las notas del propio jugador no se borran**: es lo que hace que el truco funcione en la mesa |
-| **Compartir lo revelado** | *"si la quiero o no compartir"* | Capacidad nueva: que un jugador pase a otro lo que le contaron. Decidir si crea concesión (y el DM la ve y puede revocarla) |
-| **Varios personajes** | *"que se queden guardados como recuerdos… te pueden revivir"* | Un personaje **se archiva, no se borra**. Barato ahora; el borrado de hoy es definitivo |
-| **Móvil** | *"aunque es incómodo, sería interesante"* | Cada pantalla nueva se decide también en estrecho. Ya hay medio pago hecho: suelo de 16 px en controles táctiles (1.19b) |
-
-Sin cambios, y confirmado por ellos: no hace falta ver las tiradas ajenas en vivo (el sondeo
-basta) y los dados con física siguen siendo una opción, no una prioridad.
-
-## Antes de ejecutar 2A — huecos del alcance, sin decidir (2026-09-01)
-
-Salieron de una pregunta del autor: *"¿hay un sistema de manos? me pongo un escudo que me da más
-CA pero llevo un arma en la otra"*. La spec dice que los objetos se **equipan y desequipan** y
-**nunca dice dónde**: no hay ranuras. Buscando huecos de esa misma forma —la regla lo exige, la
-mesa lo toca pronto, y el alcance no tiene dónde ponerlo— aparecieron **doce**, en
-[`superpowers/specs/2026-09-01-huecos-fase-2-design.md`](./superpowers/specs/2026-09-01-huecos-fase-2-design.md),
-con 16 preguntas para el autor.
-
-> **Los cuatro de abajo están decididos desde el 2026-09-02**, en ausencia del autor y con su
-> permiso expreso: manos **reservadas como columna en 2A y modeladas en 2B**; descansos y dados
-> de golpe **en 2A**; PG temporales **en 2A, como columna propia**; pericia **en 2A, como tercer
-> estado por habilidad**. El razonamiento, y lo que cuesta si algún fallo está mal, en
-> [la parte 2 del plan, §1](./superpowers/plans/2026-09-02-fase-2A-parte-2-eventos-distancias-y-cierre.md).
-> Se conserva el planteamiento tal cual porque explica **por qué** había que decidirlos antes de
-> la primera migración:
->
-**Los cuatro que había que decidir antes de la primera migración** —los que cambian la **forma**
-de una tabla— **están decididos y aplicados**. Sus cuatro fichas se cerraron y viven en
-[`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md).
-
-**Y dos ausencias completas**, no decisiones: **el dinero** no aparece ni una vez en las 805
-líneas de la spec, y **un objeto del inventario no tiene visibilidad** — el DM prepara la
-mazmorra el jueves y la mesa le ve el botín el viernes.
-
-**Esto no se decide de pasada.** La spec de alcance es un registro fechado y no se reescribe:
-las decisiones que salgan de aquí entran en el plan de 2A, con su firma.
+| **U10** | **El texto que explica la visibilidad no está atado a `canView`** — **decidido el 2026-09-10 que sí hay prueba posible**: las frases salen de una matriz declarada (quién ve: miembro, no miembro, DM, creador, concedido) y una prueba compara esa matriz con `canView` sobre espectadores de mentira; si divergen, se pone roja | Las frases de `features/entities/visibilidad.ts` describen la matriz del servidor y **ya mintieron una vez** (prometían que «público» dejaba entrar a quien no fuera miembro). Hoy nada rompe si vuelven a divergir: haría falta una prueba que compare las dos, o aceptar explícitamente que es texto y se revisa a mano |
 
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 
@@ -607,58 +497,9 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 | | Qué | Por qué importa |
 |---|---|---|
-| **D5** | **Nadie ha restaurado nunca una copia de *esta* base** — ahora con más motivo: ya existen copias diarias reales que nadie ha probado a restaurar | Una copia sin restauración probada es una hipótesis. Requisitos reales de la restauración en [03-despliegue.md](./03-despliegue.md) |
-| **D7** | **Corregir `TRUST_PROXY` en Coolify sale caro** | Ahí las variables de entorno son argumentos de construcción: cambiar una **recompila la imagen**. Por eso el valor vive en el compose y no en la UI |
 | **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |
 
-## Antes de desplegar — seguridad
-
-**Auditoría hecha el 2026-09-01 sobre el commit `4a3fe43`, con todos los hallazgos verificados
-en el código.** El detalle, la evidencia y el orden de arreglo están en
-**[`superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md`](./superpowers/specs/2026-09-01-endurecimiento-seguridad-design.md)**
-— ahí está todo, para no tener que auditar otra vez.
-
-Lo que **sí** está cubierto (comprobado, no supuesto): inyección SQL, XSS, validación de
-entrada, contraseñas con argon2, autorización en el servidor y ausencia de secretos en el
-código.
-
-Lo que falta, y va como **tarea 1.18**:
-
-| | Hallazgo | Gravedad |
-|---|---|---|
-| 7 | El token vive en `localStorage` — compromiso conocido, no urgencia | Bajo |
-| 8 | **HECHO, servidor y pantalla.** Se puede cambiar el nombre visible y la contraseña —exigiendo la actual, verificada con argon2—, y cambiarla **invalida los tokens anteriores**. **La pantalla también está**: `pages/AccountPage.tsx`, con su formulario de nombre y el de contraseña; la frase «falta la pantalla (va en 1.18b)» era falsa y se retiró el 2026-09-08. **Lo único que sigue BLOQUEADO es recuperarla si se olvida**: necesita servicio de correo, que no existe — su ficha viva es **D8** del bloque de despliegue | cerrado salvo la recuperación |
-
-### Deuda de la capa visual, tras 1.19b (2026-09-01)
-
-Las 19 pantallas están convertidas: cero clases de paleta de Tailwind en `apps/web/src`, el
-interruptor de tema vive en el chrome, y el contraste se mide sobre pantallas **reales** en los
-dos temas. El defecto que motivó la tarea está cerrado: el distintivo `DM_ONLY` en tema claro
-pasó de **1,10:1 a 5,95:1**.
-
-Lo que queda abierto:
-
-- **Faltan `--warning` y `--success`, y tres sitios pagan por ello.** Los usos viejos de `amber`
-  y `emerald` se remapearon a los tokens existentes; siete de los once quedaron bien o mejor
-  (dos eran avisos mal etiquetados que ahora son rojos de verdad), pero tres perdieron su
-  registro: el aviso de que generar otro enlace **no anula los anteriores** (arreglado en
-  falso con `--danger-text`, que dice "peligro" donde toca decir "cuidado"), la razón por la
-  que no puedes editar una fila —que hoy se lee como metadato, igual que las etiquetas— y el
-  "Copiado." del panel de invitaciones, que usa el color de los enlaces. **Está esperando una
-  decisión del autor entre dos direcciones de paleta**, con los hexadecimales ya medidos en los
-  dos temas. No se inventa un color mientras tanto.
-- **La densidad quedó en 14 px de base**, decidida con las pantallas delante y no como efecto
-  colateral. Los controles de formulario llevan **suelo de 16 px en pantallas táctiles**
-  (`@media (pointer: coarse)`), porque por debajo de eso iOS Safari hace zoom al enfocar — la
-  primera versión del arreglo argumentaba que el riesgo no aplicaba "porque cada control lleva
-  clase explícita", y lo que dispara el zoom es el tamaño **calculado**.
-- ~~**La interfaz sigue mezclando idiomas**~~ — **CERRADA (2026-09-05)**: cero coincidencias de
-  *Email*, *Password* o *Log in* en `pages/LoginPage.tsx`. Texto original: ~~la pantalla de entrar dice *Email*, *Password* y
-  *Log in* en inglés, contra la regla del proyecto (interfaz en español). No se tocó dentro de
-  una tarea de color; es tarea propia, y arrastra los localizadores de los recorridos de
-  navegador.
-
-### Deuda nueva aceptada en 1.18b (2026-09-01)
+## Deuda nueva aceptada en 1.18b (2026-09-01)
 
 - **El mensaje de «se cerró tu sesión» solo se limpia al iniciar sesión con éxito.** Si el
   usuario se va a otra pantalla sin entrar, el mensaje sigue pendiente en memoria y reaparece la
@@ -672,107 +513,16 @@ Lo que queda abierto:
   no en la pantalla de un jugador que no sea el creador — haría falta un segundo contexto de
   navegador en el recorrido. El resto de las mediciones sí son sobre pantallas reales.
 
-### Deuda nueva aceptada en 1.18a (2026-09-01)
+## Deuda nueva aceptada en 1.18a (2026-09-01)
 
 Cada línea es un compromiso conocido, no un descuido:
 
-- **`JwtStrategy.validate` consulta la base en CADA petición autenticada**, y carga la fila
-  entera del usuario (el hash incluido) para devolver dos campos. Es el precio de invalidar los
-  tokens al cambiar la contraseña: el token no lleva ninguna señal de un cambio posterior, así
-  que la única forma es preguntar a la fuente de la verdad. Si algún día pesa, la salida es un
-  `select` estrecho y, si aún pesa, caché corta.
-- **Cerrado el 2026-09-02:** `POST /auth/register` y `POST /invites/:token/accept` llevaban
-  límite de intentos **sin ninguna prueba que se pusiera roja si se quitaba el decorador**. Ya la
-  tienen, comprobada por mutación. De paso se descubrió que el guardia de Nest indexa por
-  `Controlador-manejador-IP`, así que **cada ruta tiene su propio cubo** y no compiten por el
-  presupuesto — lo que sí competía era la preparación de la prueba de contraseña, que se
-  registraba por HTTP; ahora crea el usuario por dentro.
-- **`AUTH_RATE_LIMIT` (5/min) condiciona la suite e2e**: `auth.e2e-spec.ts` gasta 3 de esas 5
-  llamadas en la misma ventana. Quien añada un login de más verá un 429 que parece un fallo de
-  credenciales. **La respuesta es reestructurar el fichero, nunca subir la constante.**
 - **El `NotFoundException` de `GET /auth/me` quedó inalcanzable**: `JwtStrategy` ya rechaza con
   401 al usuario borrado antes de llegar al controlador. Mejor comportamiento, rama muerta.
 - **`PATCH /auth/password` no devuelve un token nuevo**, así que cambiar la contraseña y volver
   a entrar dentro del mismo segundo de reloj puede rechazar el token recién emitido (el `iat` de
   JWT tiene precisión de segundos y el empate se trata como caduco, a propósito). Es también la
   razón de la espera de 1,1 s en la e2e. Devolver un token fresco en la respuesta lo cerraría.
-- **Sin prueba automática de que `main.ts` llame a `loadBootEnv()`**: la garantía se movió
-  dentro de `buildAdapter()`, donde sí la fija una prueba. La llamada de `main.ts` es cinturón
-  y tirantes.
-
-## Tarea 1.17 — cierre real de la fase 1
-
-**Contraste sistemático entre lo que el modelo y la API permiten y lo que la pantalla ofrece**,
-hecho el 2026-09-01 al preguntar el autor si había un cuaderno para escribir la historia.
-Detalle y evidencia en
-**[`superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md`](./superpowers/specs/2026-09-01-cierre-fase-1-congruencia-design.md)**.
-**Las cuatro subtareas (1.17a-d) están hechas y comiteadas en `main`**: 1.17a en
-`cafc434`, 1.17b en `ede6d1e`, 1.17c en `64b1a67`, 1.17d en `158e72d`. Lo único que queda para
-cerrar la fase 1 de verdad es jugarla — un gate que el autor tiene suspendido a propósito, ver
-"Antes de la primera partida" más abajo en este mismo documento.
-
-> **B3 se archivó el 2026-09-08, y con ella esta tabla se quedó vacía.** Decía que no se puede
-> cambiar el nombre visible ni la contraseña: `pages/AccountPage.tsx` hace las dos. La tercera
-> parte —recuperarla si se olvida— **no se pierde**: vive en **D8** del bloque de despliegue,
-> que es donde le corresponde por depender de un servicio de correo. La medición está en
-> [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md).
-
-> **B1 y B2, cerrados del todo en 1.17d (2026-09-01).** La tarea 1.17a (mismo día) había
-> entregado los tres endpoints con sus pruebas — ver [05-datos.md](./05-datos.md) y la entrada
-> de 1.17a en [07-historial.md](./07-historial.md) — pero ninguna pantalla los consumía.
-> `CampaignSettings.tsx` y `MembersPanel.tsx` (nuevos, montados en la pestaña "Resumen" de
-> `CampaignDetailPage.tsx`) cierran ese hueco: editar nombre/descripción, borrar la campaña,
-> expulsar a un jugador y salirse, los cuatro con el mismo criterio de honestidad del resto de
-> la pantalla (deshabilitar con el motivo visible, nunca esconder ni afirmar "no tienes
-> permiso" mientras el rol se está comprobando). Detalle completo en la entrada de 1.17d en
-> [07-historial.md](./07-historial.md).
-
-> **C1 tampoco se marca cerrado del todo:** la tarea 1.17c (2026-09-01) entregó
-> `EntityFilterBar` (`features/entities/EntityFilterBar.tsx`) — buscar por nombre y filtrar
-> por etiqueta — pero su brief acotaba el trabajo a `EntityTab` a propósito, para no invadir
-> la zona de `overview` que 1.17d editaba en paralelo. `SessionsTab` y `CharactersTab` (mismo
-> fichero, `CampaignDetailPage.tsx`) siguen sin buscador ni filtro. Ver la entrada de 1.17c en
-> [07-historial.md](./07-historial.md).
-
-> **A1 (las fichas sin cuerpo de texto) no está en esta tabla a propósito**: tiene su propia
-> sección, **P0** (abajo), porque va **antes** que el resto de 1.17, no dentro. Las dos
-> secciones lo situaban de forma contradictoria — aquí se deja solo la remisión.
-
-**Deuda nueva, aceptada a conciencia al cerrar 1.17c:**
-
-- **Una etiqueta seleccionada puede sobrevivir a su propio botón.** Si se borra la única
-  entidad de la pestaña que llevaba una etiqueta mientras esa etiqueta está seleccionada en
-  el filtro, `availableTags` se recalcula sin ella (ya no hay ninguna entidad que la lleve) y
-  su botón desaparece de `EntityFilterBar`, pero `filter.tags` sigue conteniéndola — la
-  lista queda en "Ningún elemento coincide con el filtro." de forma permanente hasta que se
-  pulse "Quitar filtros". Es recuperable: "Quitar filtros" sigue visible porque se renderiza
-  según `value.tags.length`, no según si esas etiquetas siguen teniendo botón. **Decisión
-  deliberada, no un descuido**: reconciliar las etiquetas seleccionadas contra las disponibles
-  (quitando en silencio la que ya no exista) haría que el contador "N de M" mintiera sobre
-  qué se está filtrando de verdad en ese instante. Si esto molesta en uso real, la tarea es
-  mostrar la etiqueta huérfana en el filtro igualmente (con algún indicio de que ya no existe
-  en la lista), no borrarla del estado sin decirlo.
-- ~~**`entity.schema.ts` no impone unicidad en `tags`**~~ **CERRADA (2026-09-05, plan 15).** El
-  esquema compartido las **normaliza al guardar** con un `.transform` que conserva el orden de la
-  primera aparición (`packages/shared/src/entity.schema.ts:14-32`). **Se normaliza y no se rechaza**:
-  rechazar obliga a la persona a arreglar algo que la máquina arregla sola, y un duplicado no
-  expresa ninguna intención que la lista sin él no exprese. Vive en el esquema y no en `parseTags`
-  porque **la web no es la única puerta**: una normalización que solo hace el cliente es una que la
-  API no tiene. Texto original: ~~es `z.array(z.string().min(1).max(40)).max(50)`,
-  y `parseTags` (`EntityEditor.tsx`) solo recorta espacios y descarta vacíos — escribir
-  "lich, lich" persiste `["lich","lich"]` sin que nada lo impida, ni en el cliente ni en el
-  esquema compartido. Los distintivos de la fila (`CampaignDetailPage.tsx`, `EntityTab`)
-  dedupan con `Array.from(new Set(e.tags))` solo en el render, para no pintar el mismo
-  distintivo dos veces ni emitir el aviso de clave de React duplicada; los botones del filtro
-  ya eran seguros porque `availableTags` pasa por un `Set`. **No se tocó `parseTags` ni el
-  esquema**: decidir si una etiqueta duplicada debe rechazarse al guardar es una decisión
-  aparte de esta tarea, no un efecto colateral de pintar la lista.
-
-**Por qué ninguna prueba lo encontró:** la suite entera (unitarias: bloque generado de
-[00-INDEX.md](./00-INDEX.md); e2e: [08-pruebas.md](./08-pruebas.md)) verifica que **lo que
-existe** funciona;
-ninguna puede gritar por lo que falta. Es el punto ciego estructural de una suite, y por eso
-este contraste **se repite al cerrar cada fase**.
 
 ## Segunda pasada del contraste modelo/API ↔ pantalla (2026-09-01)
 
@@ -896,37 +646,6 @@ que la base aguante.
 tiene su fecha de caducidad en el día que existan datos que a alguien le dolería perder, y ese día
 llegará con el tiempo real, no con esta prueba.
 
-## Antes de la primera partida
-
-> **La primera partida queda aplazada por decisión del autor (2026-09-01):** no se juega hasta
-> tener al menos el tablero 2D de la fase 3, y quizá tampoco antes de las reglas de la fase 2.
-> **Eso suspende la regla de fase del plan**, que exigía usar una fase antes de empezar la
-> siguiente. Las carencias de abajo dejan de bloquear nada inmediato, pero siguen abiertas —
-> la de identidad/rol se cerró igual como tarea 1.15, y la de borrado entra como 1.16.
->
-> **El riesgo que se acepta, escrito para que nadie lo descubra tarde:** los planes de las
-> fases 2 a 5 se escribirán **sin realimentación de uso real**, que es exactamente lo que la
-> regla quería evitar. Para la fase 2 es tolerable —las reglas de 5e están escritas y no
-> dependen de esta mesa—; **para la fase 3 no**, porque un tablero se diseña alrededor de cómo
-> juega la gente. Si se llega a la 3 sin haber jugado, su plan debería empezar por una sesión
-> de prueba aunque sea con lo que haya.
-
-La fase 1 está construida y verificada (ver
-[09-jugar.md](./09-jugar.md) para cómo se monta esa sesión cuando llegue).
-La única carencia que quedaba de la lista original —no se podía borrar casi nada desde la
-interfaz— se cerró como tarea 1.16 (ver "Cerrados"). Queda esta:
-
-~~**No hay despliegue.** Sin VPS, la partida se juega en local y los jugadores tienen que estar
-en la misma red.~~ — **CERRADO el 2026-09-02, y esta frase llevaba un día siendo falsa.** Está
-en `dnd.supportive.pro` y los jugadores entran desde sus casas. Ver
-[03-despliegue.md](./03-despliegue.md).
-
-> Es **la misma mentira que había en «Decisiones abiertas»**, escrita en otro sitio: la
-> auditoría cazó aquella y esta se quedó, porque nada relaciona dos párrafos que dicen lo mismo
-> en un documento de mil líneas. Y el aviso de arriba también caducó: la partida ya no espera al
-> tablero, espera al tiempo real, por la decisión del autor del 2026-09-03 que está en
-> «Decisiones abiertas».
-
 ## P1 — Huecos de verificación
 
 **La accesibilidad se mide a medias, no a cero.** `apps/web/e2e/tokens-contrast.spec.ts` mide
@@ -939,18 +658,6 @@ ficha **U6** de este documento.
 > contradecía con su propia ficha U6 doce secciones más abajo y con un fichero de pruebas que
 > lleva meses en verde. **Dos frases del mismo documento que no se leen la una a la otra es la
 > forma más barata de mentir.**
-
-~~**CI nunca ejecuta `pnpm build`.**~~ **CERRADA (2026-09-05, plan 01):** el paso está en
-`.github/workflows/ci.yml:47`, **antes de `pnpm lint`** — `packages/shared` tiene que estar
-construido para que la API compile contra él, y un error de tipos es más barato de leer que
-novecientas pruebas rojas por la misma causa. Comprobado por mutación: con un `const x: number =
-"cadena"` en `apps/web/src/main.tsx`, `pnpm build` cae con `error TS2322` y salida 2. Texto
-original: ~~`.github/workflows/ci.yml` corre `lint`, `format:check`,
-`check:docs`, `check:estado`, `test` y `test:e2e` en el job `test`, pero no llama a `pnpm
-build` en ningún paso — el type-check completo de `tsc`/`nest build`/`vite build` de `pnpm
-verify` no corre en CI. Detectado durante la revisión de la tarea antideriva (2026-09-01);
-decisión explícita del revisor no arreglarlo en esa tarea (fuera de su alcance), dejarlo
-anotado aquí en su lugar.~~
 
 ## P2 — Ruta de mejora del nivel
 
@@ -1001,11 +708,8 @@ comportamiento:
 
 - **Un enlace duplicado devuelve 500 en vez de 409** (choca contra el índice único de
   `EntityLink`). Tarea 1.6.
-- **Crear un enlace no comprueba la visibilidad del destino** → sirve de oráculo de
-  existencia para un identificador ajeno. Tarea 1.6.
-- **Aceptar una invitación no es transaccional** y **el token no caduca ni es revocable**.
-  Tarea 1.4; visible desde la interfaz desde la 1.14 (ver "Cerrados" arriba) — el DM ahora ve
-  y comparte el enlace, así que la falta de caducidad deja de ser un detalle interno.
+- **Aceptar una invitación no es transaccional.** Tarea 1.4. *(La segunda mitad de esta línea —«el
+  token no caduca ni es revocable»— la cerró el plan 11 y está archivada.)*
 - **Las concesiones de visibilidad no se validan contra los miembros de la campaña**: se puede
   conceder acceso a alguien de fuera. Queda inerte, pero se guarda. Tarea 1.5. **El símbolo que
   esta línea citaba —`specificPlayerIds`— ya no existe en ninguna capa**, y se corrigió el
@@ -1014,13 +718,8 @@ comportamiento:
   de ese método comprueba **a quien llama, no a los concedidos**.
 - **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
   aceptan sin aviso. Tarea 1.5.
-- **`Session` y `Character` no tienen `grants` ni creador propio** → `SPECIFIC_PLAYERS` es
-  inerte en ellos y **el dueño de un personaje no ve el suyo si lo marca `DM_ONLY`**.
-  Tareas 1.8 y 1.9.
-- **Falta `key` en `EntityTab` al cambiar de pestaña** (`CampaignDetailPage.tsx:313`): hoy es
-  inofensivo porque `EntityTab` es la única instancia en esa posición del árbol, pero es un
-  riesgo latente si el modal deja de comportarse como modal (p. ej. dos `EntityTab` a la vez).
-  Observación del revisor de 1.12a, no arreglado.
+- **`Session` no tiene `grants`** → `SPECIFIC_PLAYERS` es inerte en ella y el selector lo ofrece igual.
+  Tarea 1.8. *(La mitad de `Character` era falsa desde `common/character-viewer.ts`; archivada.)*
 
 ## P1 · Un worktree de agente se ramifica de `origin/main`, que lleva desde julio sin actualizarse (2026-09-04)
 
@@ -1088,49 +787,6 @@ en comentarios.
 vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
 el navegador**: supertest no pone la cabecera si no hay `.send()`.
 
-## P2 · Dos fichas de este documento mienten con un barrido citado dentro (2026-09-04)
-
-**P1 de `ENTITY_REVEALED` llevaba al menos una tanda afirmando, con su `grep` citado, algo que el
-código desmentía.** Al buscar más casos aparecieron dos:
-
-| Ficha | Afirma | Realidad |
-|---|---|---|
-| **E3** | «`grep -rn "maxLength" apps/web/src`: cero» | **37 aciertos** en 10+ ficheros |
-| **D8** | «Ninguna pantalla muestra ninguna fecha» | Falsa desde `CampaignList`/`Overview`/`Cronicas`, y `ListaDeReglas` pinta «última vez el 4/9/2026» |
-
-**Una ficha con un barrido dentro envejece igual que el código, y encima parece probada.** Las ~30
-secciones sin auditar merecen una pasada con esto en mente.
-
-### La pasada se hizo el 2026-09-08, y eran dieciocho
-
-**Sigue abierta como ficha, y ahora con su medida.** El reconocimiento de ese día leyó unas
-cincuenta y cinco fichas contra el árbol y encontró **dieciocho falsas**, no dos —`E3` y `D8`
-incluidas, que llevaban desde el 2026-09-04 declaradas mentirosas **y en la tabla igual**—. Están
-en
-[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md),
-cada una con su medición.
-
-**Lo que la pasada añade a esta ficha, y es lo que la mantiene abierta:**
-
-- **El barrido no es la única forma que envejece.** Diez de las dieciocho llevaban dentro un
-  barrido, un símbolo o una **cita de línea**, y las citas de línea fueron las peores: siguen
-  apuntando **dentro** del fichero, a código de otra cosa, así que `pnpm check:docs` no las ve —
-  ese control solo caza la línea que se pasa del final. Se corrigieron **ocho** en esta pasada, en
-  `encounters`, `roll-requests`, `entities`, `classes`, `visibility`, `campaigns`,
-  `CampaignDetailPage` y `sessions`.
-- **Y una lista enumerada envejece igual, en las dos direcciones.** La línea de `viewerFor`
-  nombraba cinco servicios y hoy son trece; corregirla a la baja, con un barrido truncado por un
-  `head`, **estuvo a punto de meter una mentira nueva en esta misma pasada**.
-- **La pasada estuvo a punto de mentir dos veces, y las dos por el mismo atajo.** La otra fue
-  `N4`: se dio por cerrada al encontrar `ruleName` en `rules-engine.service.ts:406`, que es el
-  **aviso** de la propuesta y no su **listado** —`listProposals` devuelve las filas crudas—, así
-  que la ficha seguía siendo cierta. **El atajo, en los dos casos, fue creer un acierto de `grep`
-  sin leer qué lo rodea**, que es exactamente el modo de fallo que esta ficha describe, cometido
-  por quien venía a arreglarlo. Queda dicho porque es el riesgo de este trabajo, no una anécdota.
-- **La forma que no envejece** es la que ya usa `04-convenciones.md` desde que le pasó lo mismo:
-  **nombrar el símbolo y dejar el barrido escrito para que se vuelva a correr**, en vez de pegar
-  su resultado.
-
 ## P2 · `OWNER_DM` en un statblock se comporta como `DM_ONLY` (2026-09-04)
 
 `statblocks.service.ts:163-171` pasa `createdById: ""` a `canView`, y `canView:26-27` resuelve
@@ -1160,7 +816,6 @@ lista del editor con una línea.
   identificador y campaña, así que el id de un comentario o de un `ENTITY_REVEALED` pasaba el
   filtro. Lo que queda abierto es el personaje y la recencia.
 - **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
-- ~~**`GET .../statblocks` no devuelve `visibility`**~~ (ficha C6-2, **cerrada el 2026-09-05**).
 - **El taller CONVIVE con las listas CRUD de `CampaignDetailPage`.** Nadie ha perdido nada, pero la
   sustitución de la §2 de la auditoría **no está completa** hasta que se decida qué se cae de ahí.
 - **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
@@ -1238,32 +893,6 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
 - **Las fases 4 y 5** (tiempo real, 3D/IA) siguen sin plan, solo con el alcance del plan
   maestro. Cada una recibe el suyo al llegar.
 
-## P5 — Dejado fuera a propósito de la tarea antideriva (2026-09-01)
-
-- ~~**`lychee` 0.24.2 queda instalado en la máquina del autor, sin enganchar a nada.**~~
-  **CERRADA (2026-09-05, plan 01), y la verdad medida no es la que la ficha esperaba: la
-  integración nunca llegó a existir.** Un barrido de `*.yml`, `*.yaml`, `*.json`, `*.toml` y
-  `*.mjs` del repositorio, excluyendo `node_modules/` y `.superpowers/`, **no devuelve ni una
-  mención**: no hay nada que retirar ni nada que enganchar. La ficha se cierra porque no había
-  integración, no porque se haya quitado. Lo que sigue siendo cierto —y por eso se conserva— es
-  que **no sustituiría a `scripts/check-docs.mjs`**. Texto original: ~~Se
-  engancha en un commit aparte.~~ **No sustituye a `scripts/check-docs.mjs`** — se afirmó eso
-  antes de comprobarlo, y era falso: `lychee` mira enlaces Markdown `[texto](ruta)` y URLs; el
-  lint propio mira rutas citadas en prosa entre comillas invertidas, referencias
-  `fichero.ts:NN` con la línea fuera de rango, y conteos de pruebas fuera de su fuente. Una
-  ruta escrita como `` `features/entities/hooks.ts` `` no es un enlace Markdown y `lychee` ni
-  la ve. Medido en este repo: 128 enlaces, 15 únicos, `--offline` en 15 ms, cero errores — son
-  comprobaciones complementarias, no la misma.
-- **MADR (4.0.0) se adopta solo hacia adelante, no con migración retroactiva.** Migrar los
-  specs existentes a ese formato contradice la regla de que un documento fechado es un
-  registro y no se reescribe (ver `scripts/check-docs.mjs` y la regla de revisión en
-  [04-convenciones.md](./04-convenciones.md)). Su primer uso previsto es concreto: las
-  preguntas abiertas P0–P8 se han ido amontonando dentro de
-  `superpowers/specs/2026-09-01-fase-2-alcance-design.md`, que ya funciona como cajón de
-  sastre — cada una es en realidad una decisión pendiente con sus alternativas, o sea un ADR.
-  Salen a registros MADR numerados con estado cuando se escriba el plan de la fase 2, no
-  antes.
-
 ## P6 — Node 20 del proyecto, sin migrar (2026-09-01)
 
 - **La tarea 1.20 solo actualizó el runtime en el que corren las *acciones* de
@@ -1337,13 +966,6 @@ existe, y por eso están aquí y no en un plan futuro.
 > distintas, y la matriz de visibilidad solo sabe de la segunda. Confundirlas es cómo se acaba
 > metiendo ficción dentro del control de acceso.
 
-### Un riesgo con fecha: la sesión de la semana que viene
-
-La recuperación de contraseña **sigue bloqueada** (no hay servicio de correo) y el DM no puede
-reiniciar la de nadie. Con cinco personas y cuentas creadas hace un día, que alguien no pueda
-entrar el día de la partida no es improbable. **Mitigación de coste cero:** que cada jugador
-compruebe que entra *antes* del día, y que guarde su contraseña donde pueda recuperarla.
-
 ### Mesa de agentes del 2026-09-02 — un DM y un tramposo contra la API real
 
 Un agente jugó una partida entera de prueba contra la API y otro intentó romper la
@@ -1358,7 +980,6 @@ dirigir tres horas de verdad.
 | **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta |
 | **J6** | **`ENTITY_REVEALED` viaja con la carga vacía cuando lo emite EL MOTOR** (`{type}` a secas): no dice qué ficha ni a qué visibilidad | Abierto **por la mitad que importa**. Remedido el 2026-09-08: el camino de la pantalla ya manda el nombre —`entities/entities.service.ts:306` escribe `entityName`—, pero `rules-engine/rules-engine.service.ts:515` sigue emitiendo el payload pelado, y **ese es justo el camino de la revelación automática**, o sea el momento dramático que la ficha nombra. La fila decía «viaja con la carga vacía» sin distinguir los dos caminos |
 | **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto. El motivo sí queda en `GET /events`; la traza podría enseñar «fijada a 18» en vez del delta |
-| **J10** | **El modificador de tirada no tiene tope** (`1d20+9999`) | Abierto, y menor: trampa a ojos vista que el DM vigila a mano, no un fallo de seguridad. `roll.schema.ts:72` valida `expression` como cadena de hasta 120 caracteres, así que el número cabe. **La otra mitad de esta fila era falsa y se retiró el 2026-09-08**: la CA no admite hasta 999 — `character-sheet.schema.ts:167` la topa en 50 y `statblock.schema.ts:156` en 40 |
 | **J11** | **`POST /rules` no valida al armar que la entidad del efecto sea de tu campaña** | Abierto e inerte: `applyRealEffects` y la auditoría acotan por `campaignId`, así que la regla queda `BROKEN`. Sería más limpio rechazar al armar |
 
 **El veredicto del DM, sin diplomacia:** la fase de **preparación** (wiki, cinco visibilidades,

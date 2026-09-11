@@ -2,7 +2,7 @@
   "name": "@dnd/web",
   "version": "0.0.1",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "vite",
@@ -16,12 +16,6 @@
     "@dnd/shared": "workspace:*",
     "@hookform/resolvers": "^3.9.0",
     "@tanstack/react-query": "^5.51.0",
-    "@tiptap/core": "^3.31.0",
-    "@tiptap/extension-image": "^3.31.0",
-    "@tiptap/extension-list": "^3.31.0",
-    "@tiptap/extension-table": "^3.31.0",
-    "@tiptap/markdown": "^3.31.0",
-    "@tiptap/starter-kit": "^3.31.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-hook-form": "^7.52.0",

@@ -114,8 +114,10 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   // Tres guardas, y dos no están en la maqueta:
   //
   //  1. **Se ignoran mientras se escribe.** La maqueta mira `INPUT` y `TEXTAREA`; aquí hace falta
-  //     además `isContentEditable`, porque el editor del mundo es TipTap y su cuerpo no es ninguno
-  //     de los dos. Sin esto, escribir «nombre» en una ficha abriría la hoja tres veces.
+  //     además `isContentEditable` como guarda defensiva: el editor del mundo de hoy
+  //     (`EscribirFicha.tsx`) es un `<textarea>` y ya cubre ese caso, pero si algún día llega un
+  //     editor enriquecido su cuerpo no será ninguno de los dos elementos y esta guarda evita que
+  //     escribir «nombre» en él abra la hoja tres veces.
   //  2. **Con un modificador pulsado, no.** `Ctrl+N` abre una ventana del navegador y `Cmd+I` es
   //     del sistema; robarlos sería peor que no tener atajo.
   //  3. **No hacen lo que el botón se niega a hacer.** Sin personaje en la mesa, «Hoja» y «Bolsa»

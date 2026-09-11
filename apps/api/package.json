@@ -2,7 +2,7 @@
   "name": "@dnd/api",
   "version": "0.0.1",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "start:dev": "concurrently -k -n build,run \"nest build --watch\" \"node --watch dist/src/main.js\"",

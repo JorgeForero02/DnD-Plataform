@@ -1,4 +1,4 @@
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /app

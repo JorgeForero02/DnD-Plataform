@@ -65,6 +65,11 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **E0 · TipTap** — los seis paquetes `@tiptap/*`, el lock y el script E0 de ida y vuelta (`scripts/e0-tiptap-roundtrip.mjs`, borrado) <!-- docs-lint-ignore -->
+  salen (D-CF-12); una prueba impide que vuelvan sin decisión. **Revertir:** `git revert`.
+- **P6 · Node 22** — los cuatro pines a 22 y una prueba que los mantiene iguales (D-CF-13).
+  **Revertir:** los cuatro pines a 20 (y la prueba). Las imágenes se reconstruyen en el siguiente
+  despliegue, que lanza el autor.
 - **H7** — rearmar una regla sin tocar sus efectos revalida los guardados: contra una ficha
   borrada es 400 (`rules-engine.service.ts`, `update`). **Revertir:** quitar la rama de
   `status === "ARMED"` sin `effects`.

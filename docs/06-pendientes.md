@@ -321,19 +321,6 @@ trae, y el hueco está declarado en
 - **Las columnas `race`/`class` se pueden retirar en cuanto el autor confirme** que no queda
   ningún personaje escrito a mano antes del catálogo. Hoy siguen ahí a propósito.
 
-## Dejado por E0, la prueba de ida y vuelta de TipTap (2026-09-02)
-
-- **TipTap descarta tablas, imágenes y listas de tareas sin decir nada** si no se registran
-  `TableKit`, `Image`, `TaskList` y `TaskItem`. No lanza, no avisa: el Markdown entra con la
-  tabla y sale sin ella. El script lo demuestra corriéndolo sin `--completo`. Cuando E1
-  monte el editor, **esa lista de extensiones es parte del contrato**, no una preferencia,
-  y conviene que una prueba la fije.
-- **La normalización de Markdown es real aunque sea inofensiva:** `*` pasa a `-`, `_x_` a
-  `*x*`, la contrabarra de salto duro a dos espacios. Es estable —el segundo viaje ya no
-  cambia nada—, pero significa que **abrir un documento en el editor y guardarlo sin tocar
-  nada produce un diff**. Si algún día hay historial de versiones, habrá que decidir si eso
-  cuenta como una edición.
-
 ## Huecos abiertos de la fase 2A (2026-09-02)
 
 Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo están viven en
@@ -827,27 +814,6 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
   entera está más arriba, en «El despliegue de la fase 2, y cómo se verifica».
 - **Las fases 4 y 5** (tiempo real, 3D/IA) siguen sin plan, solo con el alcance del plan
   maestro. Cada una recibe el suyo al llegar.
-
-## P6 — Node 20 del proyecto, sin migrar (2026-09-01)
-
-- **La tarea 1.20 solo actualizó el runtime en el que corren las *acciones* de
-  `.github/workflows/ci.yml`** (`actions/checkout` a v7, `pnpm/action-setup` a v6,
-  `actions/setup-node` a v7, `actions/upload-artifact` a v7 — las cuatro corren ya sobre
-  Node 24, según su propio `action.yml`), porque GitHub avisaba de que las forzaba a correr
-  sobre un runtime distinto del que declaran. **Eso no toca el Node del propio proyecto**, que
-  sigue fijado en 20 en tres sitios distintos y ninguno de ellos se tocó:
-  `ci.yml` (`node-version: 20` en los dos jobs), `apps/api/package.json` y
-  `apps/web/package.json` (`engines.node: ">=20"`), y `apps/api/Dockerfile` /
-  `apps/web/Dockerfile` (`FROM node:20-slim`).
-- **Importa porque Node 20 deja soporte de mantenimiento (LTS) el 2026-04-30** — para cuando
-  se lea esto puede que ya lo haya dejado —, y a partir de ahí no recibe parches de seguridad.
-  No es urgente hoy, pero es deuda con fecha de caducidad conocida, no indefinida.
-- Migrar el Node del proyecto (probablemente a 22 LTS, o a la LTS vigente en el momento) es
-  una tarea aparte, con su propio alcance: subir `engines`, `ci.yml` y ambos Dockerfiles a la
-  vez para que no queden desincronizados, y comprobar con pruebas reales (`pnpm verify`,
-  `pnpm --filter @dnd/api test:e2e`, `pnpm --filter @dnd/web e2e`, y build de las imágenes
-  Docker) que nada se rompe con el cambio de runtime — no basta con que el CI actualizado en
-  esta tarea siga en verde, porque eso no ejercita esa migración en absoluto.
 
 ## Cierre de la fase 2A — lo que las auditorías del 2026-09-02 encontraron
 

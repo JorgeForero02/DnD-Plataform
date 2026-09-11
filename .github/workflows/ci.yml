@@ -25,7 +25,7 @@ jobs:
       # a `version` input here, or action-setup errors "Multiple versions specified".
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: "pnpm" }
+        with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       # Threshold is "high", not "moderate": `pnpm audit --prod` still finds 4 moderate
       # findings, both genuinely out of scope here — 3 react-router advisories in apps/web (a
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
-        with: { node-version: 20, cache: "pnpm" }
+        with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @dnd/api prisma:generate
       - run: pnpm --filter @dnd/api exec prisma migrate deploy

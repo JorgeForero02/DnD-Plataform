@@ -608,8 +608,10 @@ describe("los atajos del rail", () => {
     expect(await screen.findByRole("dialog", { name: "Consulta del mundo" })).toBeInTheDocument();
   });
 
-  // Guarda 1 — la que la maqueta sí tiene, ampliada. Sin `isContentEditable`, escribir «nombre»
-  // en el editor del mundo (TipTap, que no es `input` ni `textarea`) abriría la hoja tres veces.
+  // Guarda 1 — la que la maqueta sí tiene, ampliada. El editor del mundo de hoy
+  // (`EscribirFicha.tsx`) es un `<textarea>`, así que la maqueta ya lo cubre; `isContentEditable`
+  // es una guarda defensiva para un futuro editor enriquecido cuyo cuerpo no sería `input` ni
+  // `textarea`. Sin ella, escribir «nombre» en uno así abriría la hoja tres veces.
   it("se ignoran mientras se escribe, también en un editor enriquecido", async () => {
     montar("u-ana");
     await screen.findAllByText("Corvin Vhael");

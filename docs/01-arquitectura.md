@@ -9,7 +9,9 @@ packages/shared @dnd/shared — esquemas Zod compartidos por API y web
 ```
 
 pnpm workspaces, `packageManager: pnpm@10.32.1` (pin obligatorio: corepack traía pnpm 11 y
-rompía en Node 20 dentro de Docker). Node ≥ 20.
+rompía en Node 20 dentro de Docker). **Node ≥ 22** desde el 2026-09-11 (D-CF-13: Node 20 dejó de
+recibir parches el 2026-04-30); los cuatro pines —dos `Dockerfile`, `ci.yml` y los `engines`— los
+mantiene iguales una prueba en `apps/web/src/__tests__/`.
 
 **`@dnd/shared` es el único sitio donde vive la forma de los datos.** La API valida con esos
 esquemas en el borde (`ZodValidationPipe`) y la web construye sus formularios contra los

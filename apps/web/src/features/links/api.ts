@@ -1,4 +1,4 @@
-import type { CreateEntityLinkInput, EntityType } from "@dnd/shared";
+import type { CampaignLinkRow, CreateEntityLinkInput, EntityType } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 /**
@@ -35,6 +35,16 @@ export interface CreatedEntityLink {
 
 export function fetchLinks(entityId: string): Promise<EntityLink[]> {
   return apiFetch<EntityLink[]>(`/entities/${entityId}/links`);
+}
+
+/**
+ * Todos los enlaces de la campaña, en **una sola llamada** (Task 22). El taller pedía uno por
+ * ficha —hasta 18 al abrir, y `refetchOnWindowFocus` los repetía— porque hasta hoy la única ruta
+ * era `/entities/:id/links`. El servidor ya filtra por `canView` en los dos extremos; aquí no se
+ * filtra nada más.
+ */
+export function fetchCampaignLinks(campaignId: string): Promise<CampaignLinkRow[]> {
+  return apiFetch<CampaignLinkRow[]>(`/campaigns/${campaignId}/links`);
 }
 
 export function createLink(

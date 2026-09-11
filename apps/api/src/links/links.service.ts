@@ -9,7 +9,7 @@ import { CreateEntityLinkInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
-import { canView } from "../common/visibility";
+import { canView, type ViewableResource } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 
 /**
@@ -39,6 +39,27 @@ export type LinkDirection = "OUTGOING" | "INCOMING";
 function visibilidadDelEnlace(desde: Visibility, hasta: Visibility): Visibility {
   const laVeLaMesa = (v: Visibility) => v === "PUBLIC" || v === "PLAYERS";
   return laVeLaMesa(desde) && laVeLaMesa(hasta) ? "PLAYERS" : "DM_ONLY";
+}
+
+/**
+ * El adaptador de «una ficha con sus concesiones» al `ViewableResource` que pide `canView`.
+ *
+ * Vivía escrito dos veces —en `listFor` y en `listForCampaign`—, con la misma forma exacta
+ * (`visibility`, `createdById`, `grantedUserIds: grants.map(...)`). Dos copias de un adaptador
+ * de un único predicado son el mismo riesgo que la regla de oro ya nombra para `canView`: el día
+ * que una gane un campo y la otra no, empiezan a decidir cosas distintas sin que ninguna prueba
+ * lo note. Se extrae aquí, una vez, para que solo haya un sitio que tocar.
+ */
+function comoRecursoVisible(entidad: {
+  visibility: Visibility;
+  createdById: string;
+  grants: { userId: string }[];
+}): ViewableResource {
+  return {
+    visibility: entidad.visibility,
+    createdById: entidad.createdById,
+    grantedUserIds: entidad.grants.map((g) => g.userId),
+  };
 }
 
 @Injectable()
@@ -167,19 +188,63 @@ export class LinksService {
     // extremos: sin esto, abrir un lugar público delataría la existencia del culto `DM_ONLY`
     // que lo tiene enlazado.
     return rows
-      .filter((r) =>
-        canView(viewer, {
-          visibility: r.other.visibility,
-          createdById: r.other.createdById,
-          grantedUserIds: r.other.grants.map((g) => g.userId),
-        }),
-      )
+      .filter((r) => canView(viewer, comoRecursoVisible(r.other)))
       .map((r) => ({
         id: r.id,
         label: r.label,
         direction: r.direction,
         canRemove: r.canRemove,
         to: { id: r.other.id, name: r.other.name, type: r.other.type },
+      }));
+  }
+
+  /**
+   * Los enlaces de **toda la campaña**, en una sola llamada (Task 22, ficha «los enlaces del
+   * taller se piden una vez por campaña»). Hasta hoy el tablero pedía uno por ficha —hasta 18
+   * llamadas al abrir, y `refetchOnWindowFocus` las repetía— porque la única ruta que existía era
+   * `GET /entities/:id/links`.
+   *
+   * A diferencia de `listFor`, aquí no hay una ficha «propia» desde la que mirar `direction`: cada
+   * fila ya trae los dos extremos con nombre y tipo, así que `direction` no significa nada y no
+   * viaja. Solo se leen los enlaces por su `fromId` —no hay `toId` sin `fromId` en el mismo
+   * conjunto de fichas de la campaña, porque `create()` exige que las dos fichas sean de la misma
+   * campaña— así que recorrer `from` basta para tener todos los enlaces de la campaña.
+   *
+   * **Misma regla de `canView` que `listFor`, sobre los dos extremos**: un enlace no puede
+   * revelar una ficha que quien mira no puede ver, en ninguno de los dos lados.
+   *
+   * **El `where` restringe los DOS extremos a esta campaña**, no solo `from`. `create()` ya
+   * exige que las dos fichas sean de la misma campaña, así que hoy nunca hay un enlace cruzado
+   * — pero esa garantía vive en `create()`, no en el modelo, y una fila insertada por otra vía
+   * (una migración de datos, una consola, un bug futuro en `create()`) con `from` de esta
+   * campaña y `to` de otra se habría evaluado igualmente aquí, con un viewer que no es el suyo.
+   * Filtrar por los dos extremos hace que ese enlace nunca aparezca en esta lista, pase lo que
+   * pase en el resto del código.
+   */
+  async listForCampaign(userId: string, campaignId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
+
+    const links = await this.prisma.entityLink.findMany({
+      where: { from: { campaignId }, to: { campaignId } },
+      include: {
+        from: { include: { grants: true } },
+        to: { include: { grants: true } },
+      },
+    });
+
+    return links
+      .filter(
+        (l) =>
+          canView(viewer, comoRecursoVisible(l.from)) && canView(viewer, comoRecursoVisible(l.to)),
+      )
+      .map((l) => ({
+        id: l.id,
+        fromId: l.fromId,
+        toId: l.toId,
+        label: l.label as string | null,
+        from: { id: l.from.id, name: l.from.name, type: l.from.type },
+        to: { id: l.to.id, name: l.to.name, type: l.to.type },
       }));
   }
 

@@ -1,11 +1,9 @@
-import { useQueries } from "@tanstack/react-query";
 import { Badge } from "../../../ui/Badge";
 import { EmptyState } from "../../../ui/Collection";
 import { IconoDeTipo } from "../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
 import type { Entity } from "../../entities/api";
-import { fetchLinks } from "../../links/api";
-import { linksKey } from "../../links/hooks";
+import { useCampaignLinks } from "../../links/hooks";
 import { MAXIMO_DE_CHINCHETAS, claveDeHilo, posicionDeFicha } from "./posiciones";
 
 // **El tablero de detective.** Chinchetas en porcentajes e hilos de cobre discontinuos entre las
@@ -20,23 +18,26 @@ import { MAXIMO_DE_CHINCHETAS, claveDeHilo, posicionDeFicha } from "./posiciones
 // Lo que **no** se copia, porque aquí hay datos de verdad:
 //
 //  · Las posiciones no están escritas a mano (ver `posiciones.ts`, que explica la decisión).
-//  · Los enlaces se piden al servidor **por ficha**, que es la única ruta que existe
-//    (`GET /entities/:id/links`). Se piden con `useQueries` sobre la MISMA clave de consulta que
-//    `useLinks` (`linksKey`), así que abrir una ficha después no vuelve a pedir nada: comparten
-//    caché. La puerta de API sigue siendo la de `features/links` — aquí no se escribe otra.
-//  · Un enlace llega dos veces, una por cada extremo (`OUTGOING` en el suyo, `INCOMING` en el
-//    otro), así que los hilos se deduplican por pareja ordenada.
+//  · Los enlaces se piden **una vez por campaña** (`GET /campaigns/:id/links`, Task 22), con
+//    `useCampaignLinks`. Hasta esta tarea se pedían por ficha —hasta 18 llamadas al abrir el
+//    taller, y `refetchOnWindowFocus` las repetía—; ahora es una sola lista y este componente
+//    la recorre para armar el mapa de hilos. La puerta de API sigue siendo la de
+//    `features/links` — aquí no se escribe otra.
+//  · Cada enlace aparece **una vez** en la lista de campaña, con sus dos extremos (`fromId` y
+//    `toId`); no hace falta deduplicar por dirección como con la ruta por ficha.
 //
 // El servidor decide qué fichas y qué enlaces viajan (`canView`); este componente pinta lo que
 // llega y no filtra nada por su cuenta.
 
 export function TableroTelarana({
+  campaignId,
   fichas,
   seleccion,
   onSeleccion,
   cargando,
   error,
 }: {
+  campaignId: string;
   /** Ya filtradas por el servidor. El tablero solo recorta cuántas dibuja, y lo dice. */
   fichas: Entity[];
   seleccion: string | null;
@@ -50,26 +51,18 @@ export function TableroTelarana({
   const enElCorcho = ordenadas.slice(0, MAXIMO_DE_CHINCHETAS);
   const fuera = ordenadas.length - enElCorcho.length;
 
-  const enlaces = useQueries({
-    queries: enElCorcho.map((ficha) => ({
-      queryKey: linksKey(ficha.id),
-      queryFn: () => fetchLinks(ficha.id),
-    })),
-  });
+  const enlacesDeLaCampana = useCampaignLinks(campaignId);
 
   const enElCorchoPorId = new Map(enElCorcho.map((f) => [f.id, f]));
   const hilos = new Map<string, { a: Entity; b: Entity }>();
-  enlaces.forEach((consulta, i) => {
-    const origen = enElCorcho[i];
-    if (!origen) return;
-    for (const enlace of consulta.data ?? []) {
-      const otro = enElCorchoPorId.get(enlace.to.id);
-      // Un enlace con una ficha que no está en el corcho no se dibuja: un hilo que sale del
-      // tablero y no llega a ninguna parte se lee como un fallo de pintado.
-      if (!otro) continue;
-      hilos.set(claveDeHilo(origen.id, otro.id), { a: origen, b: otro });
-    }
-  });
+  for (const enlace of enlacesDeLaCampana.data ?? []) {
+    const a = enElCorchoPorId.get(enlace.fromId);
+    const b = enElCorchoPorId.get(enlace.toId);
+    // Un enlace con una ficha que no está en el corcho no se dibuja: un hilo que sale del
+    // tablero y no llega a ninguna parte se lee como un fallo de pintado.
+    if (!a || !b) continue;
+    hilos.set(claveDeHilo(a.id, b.id), { a, b });
+  }
 
   if (error) {
     return (

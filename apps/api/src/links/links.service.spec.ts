@@ -252,6 +252,24 @@ describe("LinksService", () => {
     expect(res.find((l) => l.id === "ent")!.canRemove).toBe(false);
   });
 
+  // Fix round 1, Low finding 1: `create()` ya exige que las dos fichas sean de la misma
+  // campaña, pero eso vive en `create()`, no en el `where` de la consulta — una fila insertada
+  // por otra vía con un extremo de otra campaña se habría evaluado igual. El `where` tiene que
+  // restringir los DOS lados, no solo `from`.
+  it("listForCampaign() restringe los DOS extremos a la campaña en el `where`", async () => {
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.entityLink.findMany.mockResolvedValue([]);
+
+    await service.listForCampaign("dm1", "c1");
+
+    expect(prisma.entityLink.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { from: { campaignId: "c1" }, to: { campaignId: "c1" } },
+      }),
+    );
+  });
+
   it("enlazar exige ser DM: un enlace revela que dos cosas tienen que ver", async () => {
     // Aunque el jugador no pueda abrir ninguna de las dos fichas, el enlace ya le cuenta algo.
     prisma.entity.findUnique.mockResolvedValue({ id: "e1", campaignId: "c1" });

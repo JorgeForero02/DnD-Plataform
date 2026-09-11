@@ -23,6 +23,12 @@ export class LinksController {
     return this.links.listFor(req.user.id, entityId);
   }
 
+  // Task 22: una sola llamada para todos los enlaces de la campaña, en vez de una por ficha.
+  @Get("campaigns/:campaignId/links")
+  listForCampaign(@Req() req: { user: { id: string } }, @Param("campaignId") campaignId: string) {
+    return this.links.listForCampaign(req.user.id, campaignId);
+  }
+
   @Delete("links/:linkId")
   remove(@Req() req: { user: { id: string } }, @Param("linkId") linkId: string) {
     return this.links.remove(req.user.id, linkId);

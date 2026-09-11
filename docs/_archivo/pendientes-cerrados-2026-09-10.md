@@ -547,3 +547,12 @@ found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 **Texto original:**
 
 | **H11** | **Nada ata el texto de la interfaz a `canView`** | Es el mismo U10 de más abajo, visto desde 2A: las frases de visibilidad **ya mintieron una vez** |
+
+## P3 · El taller dispara hasta 18 consultas de enlaces al abrir
+
+**Cerrada el 2026-09-11 (Task 22).** `GET /campaigns/:id/links` devuelve todos los enlaces de la campaña que el espectador puede ver **por los dos extremos** (`canView` sobre `from` y `to`, la misma regla que la lista por ficha); forma `campaignLinkRowSchema` en `@dnd/shared`; el taller hace **una** llamada (`useCampaignLinks`) y arma su mapa por ficha; crear o borrar un enlace invalida también `["campaigns", id, "links"]`. e2e: el jugador no ve un enlace cuyo extremo `DM_ONLY` no puede ver (roja antes); mutación: filtrar por un solo extremo enrojece. RTL: una llamada de campaña, cero por ficha.
+
+**Texto original:**
+
+- **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
+  La respuesta buena es una ruta de enlaces por campaña.

@@ -9,8 +9,10 @@ describe("Entity links (e2e)", () => {
   let prisma: PrismaService;
   const emailDM = `dm${Date.now()}@b.com`;
   const emailPL = `pl${Date.now()}@b.com`;
+  const emailOutsider = `out${Date.now()}@b.com`;
   let tokenDM = "";
   let tokenPL = "";
+  let tokenOutsider = "";
   let campaignId = "";
   let npcId = "";
   let pubLocId = "";
@@ -38,6 +40,10 @@ describe("Entity links (e2e)", () => {
       .post("/auth/register")
       .send({ email: emailPL, password: "password123", displayName: "PL" });
     tokenPL = regPL.body.token;
+    const regOutsider = await request(s)
+      .post("/auth/register")
+      .send({ email: emailOutsider, password: "password123", displayName: "OUT" });
+    tokenOutsider = regOutsider.body.token;
     campaignId = (
       await request(s)
         .post("/campaigns")
@@ -57,7 +63,7 @@ describe("Entity links (e2e)", () => {
 
   afterAll(async () => {
     if (campaignId) await prisma.campaign.deleteMany({ where: { id: campaignId } });
-    await prisma.user.deleteMany({ where: { email: { in: [emailDM, emailPL] } } });
+    await prisma.user.deleteMany({ where: { email: { in: [emailDM, emailPL, emailOutsider] } } });
     await app.close();
   });
 
@@ -131,5 +137,41 @@ describe("Entity links (e2e)", () => {
       .set("Authorization", `Bearer ${tokenPL}`);
     const enlacesPl = delJugador.body.events.filter((e: any) => e.type === "ENTITY_LINKED");
     expect(enlacesPl.map((e: any) => e.payload.toId)).toEqual([pubLocId]);
+  });
+
+  // Task 22: el taller pedía los enlaces ficha a ficha (hasta 18 llamadas al abrir). Ahora hay
+  // una sola ruta por campaña, filtrada por `canView` en LOS DOS extremos — la misma regla que
+  // `listFor` ya aplica por ficha.
+  describe("GET /campaigns/:campaignId/links", () => {
+    it("DM sees every link of the campaign", async () => {
+      const s = app.getHttpServer();
+      const res = await request(s)
+        .get(`/campaigns/${campaignId}/links`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(res.status).toBe(200);
+      // Los dos enlaces creados antes: NPC -> lugar público, NPC -> escondite secreto.
+      expect(res.body.length).toBe(2);
+      expect(res.body.map((l: any) => l.toId).sort()).toEqual([pubLocId, secretLocId].sort());
+      const publico = res.body.find((l: any) => l.toId === pubLocId);
+      expect(publico.from).toEqual({ id: npcId, name: "Strahd", type: "NPC" });
+      expect(publico.to).toEqual({ id: pubLocId, name: "Village", type: "LOCATION" });
+    });
+
+    it("the player does not see the link whose DM_ONLY end they cannot view", async () => {
+      const s = app.getHttpServer();
+      const res = await request(s)
+        .get(`/campaigns/${campaignId}/links`)
+        .set("Authorization", `Bearer ${tokenPL}`);
+      expect(res.status).toBe(200);
+      expect(res.body.map((l: any) => l.toId)).toEqual([pubLocId]);
+    });
+
+    it("a non-member gets 403", async () => {
+      const s = app.getHttpServer();
+      const res = await request(s)
+        .get(`/campaigns/${campaignId}/links`)
+        .set("Authorization", `Bearer ${tokenOutsider}`);
+      expect(res.status).toBe(403);
+    });
   });
 });

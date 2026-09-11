@@ -681,8 +681,6 @@ lista del editor con una línea.
   la misma tirada para varios objetivos, y la mesa la aplica cuando le toca. **Decide el autor** si
   se quiere un umbral, y cuál; sin él, esta línea es una observación, no una ficha.
 - **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
-- **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
-  La respuesta buena es una ruta de enlaces por campaña.
 
 ## P4 — Limpieza
 

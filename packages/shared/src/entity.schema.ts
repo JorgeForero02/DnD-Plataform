@@ -60,7 +60,24 @@ export const createCommentSchema = z.object({
   body: z.string().min(1).max(4000),
 });
 
+/**
+ * **Una fila del listado de enlaces por campaña** (`GET /campaigns/:id/links`, ficha «los enlaces
+ * del taller se piden una vez por campaña»). A diferencia de `EntityLink` (por ficha), aquí no hay
+ * un extremo «propio» desde el que mirar `direction` — la fila trae los dos extremos con nombre y
+ * tipo, y quien consuma la lista decide cómo agruparlos. `canView` ya se aplicó en el servidor a
+ * los DOS extremos antes de que la fila llegue aquí.
+ */
+export const campaignLinkRowSchema = z.object({
+  id: z.string(),
+  fromId: z.string(),
+  toId: z.string(),
+  label: z.string().nullable(),
+  from: z.object({ id: z.string(), name: z.string(), type: entityTypeSchema }),
+  to: z.object({ id: z.string(), name: z.string(), type: entityTypeSchema }),
+});
+
 export type CreateEntityInput = z.infer<typeof createEntitySchema>;
 export type UpdateEntityInput = z.infer<typeof updateEntitySchema>;
 export type CreateEntityLinkInput = z.infer<typeof createEntityLinkSchema>;
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+export type CampaignLinkRow = z.infer<typeof campaignLinkRowSchema>;

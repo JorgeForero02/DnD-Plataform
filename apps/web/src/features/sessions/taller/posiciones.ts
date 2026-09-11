@@ -138,9 +138,10 @@ export function posicionDeFicha(id: string, type: EntityType): PosicionEnElCorch
  * número satisfactorio y no se presenta como tal**: es lo mejor que da el reparto por `id`, y por
  * eso la decisión de colocar por conjunto está escalada.
  *
- * Tampoco es solo estética: los enlaces se piden **por ficha** (`GET /entities/:id/links` es la
- * única ruta que hay, `features/links/api.ts`), así que cada chincheta es además una consulta
- * abierta. El tablero dice en voz alta cuántas se ha dejado fuera en vez de recortar en silencio.
+ * Tampoco es solo estética: hasta la Task 22 los enlaces se pedían **por ficha**, así que cada
+ * chincheta era además una consulta abierta — hoy es una sola lista por campaña
+ * (`GET /campaigns/:id/links`), pero el techo de legibilidad del tablero sigue siendo el mismo.
+ * El tablero dice en voz alta cuántas se ha dejado fuera en vez de recortar en silencio.
  */
 export const MAXIMO_DE_CHINCHETAS = 18;
 

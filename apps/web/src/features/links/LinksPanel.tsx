@@ -127,8 +127,8 @@ export function LinksPanel({
 }) {
   const links = useLinks(entityId);
   const targets = useAllEntities(campaignId);
-  const createLink = useCreateLink(entityId);
-  const deleteLink = useDeleteLink(entityId);
+  const createLink = useCreateLink(entityId, campaignId);
+  const deleteLink = useDeleteLink(entityId, campaignId);
   const [toId, setToId] = useState("");
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);

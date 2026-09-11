@@ -66,6 +66,9 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 4 (e)**: los enlaces del taller se piden una vez por campaña (`GET /campaigns/:id/links`,
+  filtrado por `canView` en los dos extremos) en vez de una consulta por ficha. **Revertir:** el
+  taller vuelve a `useLinks` por ficha; la ruta puede quedarse.
 - **Tanda 4 (d)** (un lote, tres fichas): `viewerFor` vive una sola vez en `common/` y una prueba
   barre las copias (P4); y las frases de visibilidad salen de una matriz declarada en
   `@dnd/shared` (`QUIEN_VE`) que una prueba de la API compara con `canView` caso a caso (U10 y

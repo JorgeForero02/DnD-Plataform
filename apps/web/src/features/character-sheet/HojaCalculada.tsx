@@ -444,6 +444,7 @@ export function HojaCalculada({
           characterId={characterId}
           sheet={sheet}
           attacks={data.attacks ?? []}
+          visibilidadDelPersonaje={data.character.visibility}
         />
 
         {/* **El hueco del inventario, relleno (fase 2B).** Aquí hubo hasta hoy un recuadro

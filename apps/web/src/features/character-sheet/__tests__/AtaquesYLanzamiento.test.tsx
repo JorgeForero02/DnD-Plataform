@@ -112,7 +112,13 @@ function tirada(parcial: Partial<RollResultRevealed> = {}): RollResultRevealed {
 
 function montar(attacks: AttackDto[]) {
   return render(
-    <AtaquesYLanzamiento campaignId="c1" characterId="ch1" sheet={sheet} attacks={attacks} />,
+    <AtaquesYLanzamiento
+      campaignId="c1"
+      characterId="ch1"
+      sheet={sheet}
+      attacks={attacks}
+      visibilidadDelPersonaje="PLAYERS"
+    />,
     { wrapper: wrapper() },
   );
 }

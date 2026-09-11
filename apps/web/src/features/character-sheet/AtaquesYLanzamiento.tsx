@@ -104,10 +104,12 @@ function FilaDeArma({
   campaignId,
   characterId,
   ataque,
+  visibilidadDelPersonaje,
 }: {
   campaignId: string;
   characterId: string;
   ataque: AttackDto;
+  visibilidadDelPersonaje: string;
 }) {
   const notas = notasDeArma(ataque);
   return (
@@ -134,7 +136,12 @@ function FilaDeArma({
         {notas.length > 0 ? notas.join(", ") : <span aria-hidden="true">&mdash;</span>}
       </td>
       <td className="py-s2 align-middle">
-        <TirarAtaqueBoton campaignId={campaignId} characterId={characterId} ataque={ataque} />
+        <TirarAtaqueBoton
+          campaignId={campaignId}
+          characterId={characterId}
+          ataque={ataque}
+          visibilidadDelPersonaje={visibilidadDelPersonaje}
+        />
       </td>
     </tr>
   );
@@ -145,11 +152,21 @@ export function AtaquesYLanzamiento({
   characterId,
   sheet,
   attacks,
+  visibilidadDelPersonaje,
 }: {
   campaignId: string;
   characterId: string;
   sheet: CalculatedSheet;
   attacks: AttackDto[];
+  /**
+   * **Task 26 (I10, ronda de arreglo 1).** De aquí sale el valor con el que
+   * `TirarAtaqueBoton` siembra su selector de audiencia — la misma regla que ya aplica el
+   * servidor (`character-sheet.service.ts`, `audienciaPorDefecto`): un personaje que la mesa
+   * ya ve (`PUBLIC`/`PLAYERS`) empieza en «Pública»; cualquier otro, en «Privada del DM». Sin
+   * esto el selector nacía siempre en `PUBLIC`, contradiciendo en pantalla la audiencia que el
+   * propio servidor iba a usar si nadie tocaba nada.
+   */
+  visibilidadDelPersonaje: string;
 }) {
   return (
     <TarjetaDeHoja titulo="Ataques y lanzamiento" etiqueta="ataques y lanzamiento">
@@ -200,6 +217,7 @@ export function AtaquesYLanzamiento({
                   campaignId={campaignId}
                   characterId={characterId}
                   ataque={ataque}
+                  visibilidadDelPersonaje={visibilidadDelPersonaje}
                 />
               ))}
             </tbody>

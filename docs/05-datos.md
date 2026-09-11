@@ -693,7 +693,10 @@ jugador. En modo edición se sigue respetando la visibilidad que la entidad ya t
 ### Límites reales de hoy (MVP, aceptados a conciencia)
 
 - **`Session` y `Character` no tienen `grants` ni `createdById` propio.** Por eso
-  `SPECIFIC_PLAYERS` es inerte en los dos. En `Character` se usa `ownerId` como creador
+  `SPECIFIC_PLAYERS` es inerte en los dos. **Desde el 2026-09-11 una sesión ya no puede llevar
+  `SPECIFIC_PLAYERS` ni `OWNER_DM`**: `session.schema.ts` los excluye (400), el editor ofrece tres
+  niveles y una sesión guardada con uno de esos dos valores lo enseña marcado y no seleccionable
+  (en la base local había cero). El resto de este párrafo describe por qué eran inertes. En `Character` se usa `ownerId` como creador
   (`common/character-viewer.ts` lo pasa como `createdById` a `canView`), así que **el dueño sí
   ve su personaje aunque lo marque `DM_ONLY`** — hasta el 2026-09-10 esta línea decía lo
   contrario, y llevaba falsa desde el 2026-09-03. En

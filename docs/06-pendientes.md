@@ -348,7 +348,6 @@ son decisiones tomadas a conciencia, no olvidos.
 | **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
 | **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
 | **I7** | **El tabú del druida se perdió al pasar las competencias a claves** | El SRD dice «ligera, media y escudos, **no metálicos**». Eso no es una competencia menos —un druida *sabe* usar una cota de escamas, pero no quiere— y modelarlo como competencia le negaría una armadura que la regla sí permite. Hoy vive en un comentario de `classes.ts`; su sitio es el texto de la aptitud, cuando exista dónde ponerlo |
-| **I10** | **Una tirada de ataque siempre se publica como `PLAYERS`** | El esquema (`rollAttackSchema`) acepta `visibility` y el servidor la respeta, pero la pantalla (`apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`) no la ofrece. Para un DM que tira con un PNJ es un problema real: la etiqueta de la tirada lleva el nombre del arma, y una tirada suya que no quería enseñar aparece en el registro de la mesa. Es el selector de visibilidad que ya existe en el panel de tiradas general, montado también aquí |
 
 **Lo que la revisión de 2B encontró y se arregló el mismo día** (no queda deuda, se anota porque
 la lección sí): la hoja leía el equipo **sin pasar por `canView`**, así que el nombre y el
@@ -603,9 +602,6 @@ mejora, no compromiso.
 Ninguna es un agujero de lectura —nadie ve contenido ajeno—, pero todas degradan el
 comportamiento:
 
-- **`Session` no tiene `grants`** → `SPECIFIC_PLAYERS` es inerte en ella y el selector lo ofrece igual.
-  Tarea 1.8. *(La mitad de `Character` era falsa desde `common/character-viewer.ts`; archivada.)*
-
 ## P1 · Un worktree de agente se ramifica de `origin/main`, que lleva desde julio sin actualizarse (2026-09-04)
 
 **Encontrado al fusionar 2.5.5, y le costó a esa tanda una tarde de trabajo sobre una base que ya
@@ -659,7 +655,6 @@ el navegador**: supertest no pone la cabecera si no hay `.send()`.
   `characterId`)—, y «reciente» necesita un umbral que ninguna regla da: una bola de fuego cita
   la misma tirada para varios objetivos, y la mesa la aplica cuando le toca. **Decide el autor** si
   se quiere un umbral, y cuál; sin él, esta línea es una observación, no una ficha.
-- **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
 
 ## P4 — Limpieza
 

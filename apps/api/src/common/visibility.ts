@@ -1,4 +1,14 @@
 import type { Role, Visibility } from "@dnd/shared";
+import { loVeLaMesa } from "@dnd/shared";
+
+// **`loVeLaMesa` se movió a `@dnd/shared` (fix round 3, Task 26)**: la web necesitaba la misma
+// pregunta para sembrar un selector y no podía importar de aquí, así que copiarla a mano habría
+// sido reimplementar la matriz de visibilidad por segunda vez — lo que la regla que no se negocia
+// prohíbe. Se re-exporta desde aquí, sin cambiar su firma, para que ningún import existente en la
+// API (`activities.service.ts`, `character-sheet.service.ts`, `encounters.service.ts`) tenga que
+// tocarse: siguen escribiendo `import { loVeLaMesa } from "../common/visibility"` y funciona
+// igual, con la única fuente de verdad ahora en `@dnd/shared`.
+export { loVeLaMesa };
 
 export interface Viewer {
   userId: string;
@@ -55,24 +65,6 @@ export function canView(viewer: Viewer, resource: ViewableResource): boolean {
  * `SPECIFIC_PLAYERS` **con la lista vacía** era «revelar», y no lo es: la ficha pasa de verla una
  * persona a no verla nadie. Lo cazó la revisión de cierre del 2026-09-04.
  */
-/**
- * ¿Este nivel de visibilidad lo ve **la mesa entera**?
- *
- * Vive aquí, con `canView`, porque es un trozo de la misma matriz y **ya se ha escrito mal tres
- * veces**: el predicado `=== "PLAYERS"` se copió a `rollAttack`, a `resolveAttack` y a la tirada
- * de iniciativa de `EncountersService.start`, y en los tres se dejaba fuera a `PUBLIC`, que es el
- * más abierto de los cinco niveles. La consecuencia no es una fuga sino lo contrario, y por eso
- * ninguna prueba se ponía roja: un personaje `PUBLIC` escribía su tirada como `DM_PRIVATE` y
- * **ni su propio dueño la veía en el registro**. La regla que no se negocia dice que la matriz de
- * visibilidad no se reimplementa por ahí suelta; esto es cumplirla.
- *
- * `OWNER_DM` y `SPECIFIC_PLAYERS` no están, y no es un olvido: los ve **alguien**, no la mesa. Una
- * audiencia de registro solo distingue «todos» de «solo el DM», así que para esos dos lo correcto
- * es lo cerrado — quien tiene derecho a más lo verá por la ficha, no por la línea de tiempo.
- */
-export function loVeLaMesa(visibility: string): boolean {
-  return visibility === "PUBLIC" || visibility === "PLAYERS";
-}
 
 export type AudienciaDeJugadores = { tipo: "todos" } | { tipo: "algunos"; ids: Set<string> };
 

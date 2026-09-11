@@ -590,3 +590,28 @@ aplica. Las criaturas ya guardadas con ese nivel conservan su valor —`Visibili
 al final, marcado y no seleccionable—. **Lo que sigue abierto es el hueco de servidor**: pasar
 `fila.createdById` en vez de `""` en `puedeVer()`. El día que se haga, `OWNER_DM` vuelve a la
 lista del editor con una línea.
+
+## P3 · `concentrationSave` llega en la petición de tirada y ninguna pantalla dice que lo es
+
+**FALSA, medida el 2026-09-11 al abrirla (Task 28 del plan, no ejecutada):** la petición de tirada que crea `changeHp` lleva `label: «Salvación de concentración (CD N)»` (`apps/api/src/characters/character-sheet.service.ts`, en `changeHpEnTransaccion`) y la bandeja del jugador pinta ese `label` (`apps/web/src/features/roll-requests/TiradasPendientes.tsx`). La pantalla ya dice que lo es. Si se quiere además un chip, es diseño de pantalla, no un hueco.
+
+**Texto original:**
+
+- **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
+
+## I10 · Una tirada de ataque siempre se publica como `PLAYERS`
+
+**Cerrada el 2026-09-11 (Task 26).** `TirarAtaqueBoton.tsx` ofrece el mismo selector de audiencia que el panel de dados (radios con su frase) y manda `audience` en las tres tiradas del panel (ataque, ataque resuelto, daño); **arranca con el mismo defecto que el servidor** —`PUBLIC` si la mesa ve al personaje, `DM_PRIVATE` si es un PNJ oculto—, que el botón antes pisaba con un `PUBLIC` fijo. RTL roja antes; recorrido Playwright (el DM tira con un PNJ a «Solo DM» y el jugador no lo ve en el hilo) en la tanda de pantalla. Mutación: no mandar `visibility` enrojece.
+
+**Texto original:**
+
+| **I10** | **Una tirada de ataque siempre se publica como `PLAYERS`** | El esquema (`rollAttackSchema`) acepta `visibility` y el servidor la respeta, pero la pantalla (`apps/web/src/features/character-sheet/TirarAtaqueBoton.tsx`) no la ofrece. Para un DM que tira con un PNJ es un problema real: la etiqueta de la tirada lleva el nombre del arma, y una tirada suya que no quería enseñar aparece en el registro de la mesa. Es el selector de visibilidad que ya existe en el panel de tiradas general, montado también aquí |
+
+## P3 · `Session` no tiene `grants` → `SPECIFIC_PLAYERS` es inerte en ella
+
+**Cerrada el 2026-09-11 (Task 27) sin migración:** los dos niveles inertes se **retiran** de la sesión en vez de darle concesiones o creador: `session.schema.ts` excluye `SPECIFIC_PLAYERS` **y `OWNER_DM`** (sin `createdById` es idéntico a `DM_ONLY`, ver 05-datos) al crear, al actualizar y en la crónica de cierre (`recapVisibility`) (400 si llega), `SessionEditor` no lo ofrece y una sesión ya guardada con ese valor lo muestra marcado y no seleccionable (regla de la casa). El recuento en la base local de sesiones con ese valor va en el informe de la tarea. e2e y RTL rojas antes; mutación: quitar la exclusión enrojece.
+
+**Texto original:**
+
+- **`Session` no tiene `grants`** → `SPECIFIC_PLAYERS` es inerte en ella y el selector lo ofrece igual.
+  Tarea 1.8. *(La mitad de `Character` era falsa desde `common/character-viewer.ts`; archivada.)*

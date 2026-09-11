@@ -238,6 +238,29 @@ describe("empezar y cerrar", () => {
       ),
     );
   });
+
+  // Task 27 (P3, ronda del orquestador) — la crónica tiene el MISMO defecto que la sesión, un
+  // campo más allá: `SPECIFIC_PLAYERS` no tiene a quién conceder y `OWNER_DM` compara el
+  // `createdById: ""` de la sesión contra cualquiera, así que las dos producen exactamente el
+  // mismo lector que `DM_ONLY`. `ControlesDeSesion.tsx` ya solo ofrecía `["PUBLIC", "PLAYERS",
+  // "DM_ONLY"]`; esto lo deja comprobado, no solo cierto por lectura del código.
+  it("solo ofrece tres niveles para la crónica — nunca «Jugadores concretos» ni «DM y creador»", async () => {
+    vi.spyOn(logApi, "fetchGameEvents").mockResolvedValue({ nextCursor: null, events: [] });
+
+    montar(
+      <ControlesDeSesion
+        campaignId="c1"
+        session={sesion({ status: "IN_PROGRESS" })}
+        puedeGestionar
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+    await screen.findByLabelText("Qué pasó");
+
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(screen.queryByRole("radio", { name: /Jugadores concretos/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /DM y creador/ })).not.toBeInTheDocument();
+  });
 });
 
 describe("el log se lee en prosa, nunca en claves", () => {

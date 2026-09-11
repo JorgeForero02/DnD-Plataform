@@ -82,13 +82,23 @@ export function SessionEditor({
     ? `Vas a borrar la sesión "${session.title}". No se puede deshacer.`
     : "";
 
-  // A session can arrive with a visibility this editor doesn't itself offer (curl, a seed, a
-  // future client all pass the API's own schema). Without this, the <select> renders with no
-  // option matching the current value, so it paints blank with no explanation. Adding it back
-  // as its own option keeps the value visible and labeled for what it is; the state still
-  // holds it unchanged if the DM saves without touching the field. Once the DM picks anything
-  // else, this option disappears — there is no way back to it from here, which is correct:
-  // this form still can't express SPECIFIC_PLAYERS.
+  // A session can arrive with a visibility this editor doesn't itself offer (a row from before
+  // Task 27, a seed, or a direct write — `sessionVisibilitySchema` in `@dnd/shared` now rejects
+  // SPECIFIC_PLAYERS/OWNER_DM on write, but never rewrote the ones that already existed).
+  // `VisibilityChooser` still shows it, marked and disabled, so it doesn't paint blank with no
+  // explanation. Once the DM picks anything else, this option disappears — there is no way back
+  // to it from here, which is correct: this form still can't express SPECIFIC_PLAYERS.
+  //
+  // **Ronda de arreglo 2 — saving WITHOUT touching that radio must not resend it.** Before this
+  // fix, `onSubmit` sent whatever `visibility` held on every save, including one that only
+  // touched the title — and the server now answers with a 400 for a legacy value nobody chose.
+  // A button the server rejects is a defect, so this omits `visibility` from the PATCH whenever
+  // its CURRENT value isn't one of this editor's own three radios: that's true exactly when the
+  // DM never picked one — picking any of the three replaces the state with a value `VISIBILITIES`
+  // does include, so the check below can't mistake a deliberate choice for an untouched legacy
+  // value. An absent key means "leave it as-is" (`sessions.service.ts`), the same contract
+  // `notes`/`scheduledAt` already use below.
+  const conservandoValorHeredado = isEdit && !VISIBILITIES.includes(visibility);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +123,7 @@ export function SessionEditor({
     const clearingScheduledAt = isEdit && !scheduledAt && !!session?.scheduledAt;
     const payload = {
       title,
-      visibility,
+      ...(conservandoValorHeredado ? {} : { visibility }),
       ...(scheduledAt
         ? { scheduledAt: new Date(scheduledAt).toISOString() }
         : clearingScheduledAt

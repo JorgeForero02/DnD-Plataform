@@ -1,9 +1,16 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { AttackVerdict, RollMode, RollResult } from "@dnd/shared";
+import {
+  loVeLaMesa,
+  type AttackVerdict,
+  type RollAudience,
+  type RollMode,
+  type RollResult,
+} from "@dnd/shared";
 import type { AttackDto } from "./api";
 import { useCombatientesDelEncuentro, useResolveAttack, useRollAttack } from "./hooks";
 import { DadoDibujado } from "../rolls/DadoDibujado";
 import { SelectorDeVentaja } from "../rolls/SelectorDeVentaja";
+import { SelectorDeAudiencia } from "../rolls/SelectorDeAudiencia";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
 import { TiradaACiegas } from "../rolls/TiradaACiegas";
@@ -49,10 +56,13 @@ export function TirarAtaqueBoton({
   campaignId,
   characterId,
   ataque,
+  visibilidadDelPersonaje,
 }: {
   campaignId: string;
   characterId: string;
   ataque: AttackDto;
+  /** Ver `loVeLaMesa` (`@dnd/shared`): siembra el valor inicial del selector de audiencia. */
+  visibilidadDelPersonaje: string;
 }) {
   const tirar = useRollAttack(campaignId, characterId);
   const resolver = useResolveAttack(campaignId, characterId);
@@ -70,6 +80,21 @@ export function TirarAtaqueBoton({
   const [abierto, setAbierto] = useState(false);
   const [objetivoAbierto, setObjetivoAbierto] = useState(false);
   const [modoAtaque, setModoAtaque] = useState<RollMode>("NORMAL");
+  // Task 26 (I10) — **la misma decisión que ya tiene el panel de dados general** (`PanelDeDados`,
+  // `SelectorDeAudiencia`), que este botón no ofrecía: las tres tiradas de aquí mandaban
+  // `audience: "PUBLIC"` fijo. El servidor ya deriva una audiencia por defecto sensata de la
+  // visibilidad del personaje (`character-sheet.service.ts`, `audienciaPorDefecto`), pero un DM
+  // que quiere ocultar un ataque puntual —el suyo, o el de un PNJ que sí es público— no tenía
+  // cómo pedirlo desde aquí.
+  //
+  // **Ronda de arreglo 1 — el valor inicial ya no es `"PUBLIC"` a secas.** Sembrarlo así
+  // contradecía en pantalla, desde el primer render, la audiencia que el servidor iba a usar de
+  // verdad si nadie tocaba el selector: un PNJ `DM_ONLY` enseñaba «Pública» marcada mientras el
+  // servidor, sin audiencia explícita, iba a tirar en `DM_PRIVATE`. `useState(() => …)` —función,
+  // no valor— para no recalcular `loVeLaMesa` en cada render sin necesidad.
+  const [audiencia, setAudiencia] = useState<RollAudience>(() =>
+    loVeLaMesa(visibilidadDelPersonaje) ? "PUBLIC" : "DM_PRIVATE",
+  );
   const [dosManos, setDosManos] = useState(false);
   const [resultadoAtaque, setResultadoAtaque] = useState<RollResult | null>(null);
   const [resultadoDano, setResultadoDano] = useState<RollResult | null>(null);
@@ -128,7 +153,7 @@ export function TirarAtaqueBoton({
           // y el servidor gasta y tira en la misma transacción.
           spendInspiration: gastarInspiracion && modoAtaque !== "DISADVANTAGE",
           versatile: false,
-          audience: "PUBLIC",
+          audience: audiencia,
         },
       },
       {
@@ -159,7 +184,7 @@ export function TirarAtaqueBoton({
           targetCharacterId,
           mode: modoAtaque,
           spendInspiration: gastarInspiracion && modoAtaque !== "DISADVANTAGE",
-          audience: "PUBLIC",
+          audience: audiencia,
         },
       },
       {
@@ -210,7 +235,7 @@ export function TirarAtaqueBoton({
           // dejó de ser algo que el cuerpo de la petición pueda declarar. Y la base tiene un
           // índice único sobre este campo, así que **el mismo ataque no se cobra dos veces**.
           ...(resultadoAtaque?.eventId ? { attackRollEventId: resultadoAtaque.eventId } : {}),
-          audience: "PUBLIC",
+          audience: audiencia,
         },
       },
       {
@@ -283,6 +308,15 @@ export function TirarAtaqueBoton({
               onChange={setGastarInspiracion}
               disabled={tirar.isPending}
             />
+            {/* Task 26 — la misma audiencia para el ataque, el objetivo resuelto y el daño: es
+                un solo gesto de mesa (ocultar ESTE golpe), no tres decisiones sueltas. */}
+            <div className="mt-s2">
+              <SelectorDeAudiencia
+                value={audiencia}
+                onChange={setAudiencia}
+                disabled={tirar.isPending || resolver.isPending}
+              />
+            </div>
             <div className="mt-s2">
               <Button
                 type="button"
@@ -386,6 +420,12 @@ export function TirarAtaqueBoton({
 
           <section aria-label={`Daño de ${ataque.name}`} className="border-t border-muted pt-s2">
             <p className={`mb-1 ${ROTULO_DE_CASILLA}`}>Daño</p>
+            {/* La audiencia no se elige dos veces: es la misma decisión de arriba, en
+                «Ataque», y este texto lo dice donde se lee el daño — no solo en un comentario
+                que nadie ve en pantalla. */}
+            <p className={`mb-s2 ${PROSA_DE_HOJA}`}>
+              Se publica con la misma audiencia que el ataque, elegida arriba.
+            </p>
 
             {/* **Las dos manos, como radios con su explicación** (regla vinculante de interfaz):
                 un arma versátil ofrece las dos, no un desplegable ni un checkbox que se adivina. */}

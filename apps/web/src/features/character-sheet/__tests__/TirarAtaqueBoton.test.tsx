@@ -131,11 +131,19 @@ function tirada(parcial: Partial<RollResultRevealed> = {}): RollResultRevealed {
   };
 }
 
-function montar() {
+// `PLAYERS` por defecto: es la visibilidad más habitual de un personaje de la mesa, y con ella
+// `loVeLaMesa` da `true` — mismo valor inicial (`"PUBLIC"`) que ya esperaban las pruebas
+// existentes antes de la ronda de arreglo 1.
+function montar(visibilidadDelPersonaje = "PLAYERS") {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <TirarAtaqueBoton campaignId="c1" characterId="p-hero" ataque={ESTOQUE} />
+      <TirarAtaqueBoton
+        campaignId="c1"
+        characterId="p-hero"
+        ataque={ESTOQUE}
+        visibilidadDelPersonaje={visibilidadDelPersonaje}
+      />
     </QueryClientProvider>,
   );
 }
@@ -346,6 +354,100 @@ describe("mientras se comprueba si hay combate (I-2)", () => {
 
     resolverSesion(null);
     await waitFor(() => expect(estaDesactivado(boton)).toBe(false));
+  });
+});
+
+// Task 26 (I10) — **la tirada de ataque elige audiencia, como el panel de dados general.**
+//
+// El botón mandaba `audience: "PUBLIC"` fijo en las tres tiradas (ataque, resolver contra
+// objetivo, y daño). El agujero de fondo —un PNJ `DM_ONLY` que atacara delatando su propia
+// existencia a la mesa entera— ya lo cierra el SERVIDOR, no este botón: `rollAttack`/
+// `resolveAttack` (`character-sheet.service.ts`) derivan su propia audiencia por defecto de la
+// visibilidad del personaje cuando no se manda ninguna. Lo que faltaba aquí era la otra mitad —
+// un DM que SÍ quiere ocultar un ataque puntual (un PNJ que por lo demás es público) no tenía
+// cómo pedirlo— y, con ella, que el valor inicial del selector fuera esa MISMA regla del
+// servidor y no un `"PUBLIC"` fijo que la contradijera en pantalla antes de que nadie tocara
+// nada. Reusa `SelectorDeAudiencia`, el mismo componente del panel de dados general
+// (`PanelDeDados.tsx`): tres radios con su frase, nunca un desplegable.
+describe("audiencia de la tirada (Task 26)", () => {
+  beforeEach(() => {
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(null);
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(null);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
+  });
+
+  it("ofrece las tres audiencias como radios con su frase, nunca un desplegable", async () => {
+    montar();
+    fireEvent.click(screen.getByRole("button", { name: `Tirada de ${ESTOQUE.name}` }));
+
+    expect(await screen.findByRole("radio", { name: "Pública" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Privada del DM" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "A ciegas" })).toBeVisible();
+    expect(screen.getByText("La mesa entera ve el resultado.")).toBeVisible();
+    expect(screen.getByText("Solo el DM ve el resultado; tú no.")).toBeVisible();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("con un personaje PLAYERS, por defecto manda audience PUBLIC, y con «A ciegas» manda BLIND", async () => {
+    const tirar = vi.spyOn(api, "rollAttack").mockResolvedValue(tirada());
+
+    montar("PLAYERS");
+    await abrirPanelYAtacar();
+
+    await waitFor(() =>
+      expect(tirar).toHaveBeenCalledWith(
+        "c1",
+        "p-hero",
+        "SRD:rapier",
+        expect.objectContaining({ audience: "PUBLIC" }),
+      ),
+    );
+
+    tirar.mockClear();
+    fireEvent.click(screen.getByRole("radio", { name: "A ciegas" }));
+    fireEvent.click(screen.getByRole("button", { name: /atacar/i }));
+
+    await waitFor(() =>
+      expect(tirar).toHaveBeenCalledWith(
+        "c1",
+        "p-hero",
+        "SRD:rapier",
+        expect.objectContaining({ audience: "BLIND" }),
+      ),
+    );
+  });
+
+  // Ronda de arreglo 1 — **el valor inicial sigue la misma regla que el servidor**
+  // (`character-sheet.service.ts`, `audienciaPorDefecto`: `loVeLaMesa(character.visibility) ?
+  // "PUBLIC" : "DM_PRIVATE"`), no un `"PUBLIC"` fijo. Un PNJ `DM_ONLY` que no ve la mesa nace con
+  // «Privada del DM» ya marcada — la pantalla no puede prometer «Pública» mientras el servidor,
+  // sin que nadie toque nada, va a tirar en privado.
+  it("con un PNJ DM_ONLY, el selector nace en «Privada del DM», no en «Pública»", async () => {
+    const tirar = vi.spyOn(api, "rollAttack").mockResolvedValue(tirada());
+
+    montar("DM_ONLY");
+    const boton = await abrirPanelYEsperarAtacar();
+
+    expect(screen.getByRole("radio", { name: "Privada del DM" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Pública" })).not.toBeChecked();
+
+    fireEvent.click(boton);
+    await waitFor(() =>
+      expect(tirar).toHaveBeenCalledWith(
+        "c1",
+        "p-hero",
+        "SRD:rapier",
+        expect.objectContaining({ audience: "DM_PRIVATE" }),
+      ),
+    );
+  });
+
+  it("con un personaje PUBLIC, el selector también nace en «Pública»", async () => {
+    montar("PUBLIC");
+    await abrirPanelYEsperarAtacar();
+
+    expect(screen.getByRole("radio", { name: "Pública" })).toBeChecked();
   });
 });
 

@@ -9,7 +9,7 @@ import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { VisibilityChooser } from "../entities/VisibilityChooser";
-import type { Visibility } from "@dnd/shared";
+import type { CloseSessionInput } from "@dnd/shared";
 
 // Empezar y cerrar una sesión. **Los botones que faltaban.**
 //
@@ -233,7 +233,7 @@ function DialogoDeCierre({
    * Solo tres niveles, como en el editor de sesiones: una `Session` no tiene creador ni
    * concesiones, así que `OWNER_DM` y `SPECIFIC_PLAYERS` sobre una crónica no seleccionan a nadie.
    */
-  const [visibilidad, setVisibilidad] = useState<Visibility>("PLAYERS");
+  const [visibilidad, setVisibilidad] = useState<CloseSessionInput["recapVisibility"]>("PLAYERS");
   // Si el log llega después de montar el diálogo, el borrador se rellena una sola vez y no
   // vuelve a pisarse: machacar lo que el DM ya está escribiendo sería imperdonable.
   const [tocado, setTocado] = useState(false);
@@ -280,7 +280,12 @@ function DialogoDeCierre({
         >
           <VisibilityChooser
             value={visibilidad}
-            onChange={setVisibilidad}
+            // `VisibilityChooser.onChange` acepta cualquier `Visibility`, porque el mismo
+            // componente sirve a pantallas con los cinco niveles. Esta crónica solo ofrece tres
+            // `niveles` y nunca parte de un valor guardado fuera de esa lista —a diferencia de
+            // `SessionEditor.tsx`, aquí no hay una crónica previa que restaurar—, así que el
+            // molde solo puede llamar con uno de los tres que sí caben en `visibilidad`.
+            onChange={(siguiente) => setVisibilidad(siguiente as typeof visibilidad)}
             niveles={["PUBLIC", "PLAYERS", "DM_ONLY"]}
             disabled={cerrar.isPending}
           />

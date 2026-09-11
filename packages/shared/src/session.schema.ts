@@ -1,6 +1,21 @@
 import { z } from "zod";
 import { visibilitySchema } from "./visibility.schema";
 
+/**
+ * Task 27 (P3) — `Session` no tiene `grants`, así que `SPECIFIC_PLAYERS` («solo quienes elijas
+ * abajo») es inerte: no hay dónde elegir a nadie. Y `sessions.service.ts` escribe
+ * `createdById: ""`, así que `OWNER_DM` («tú y quien lo creó») compara ese `""` contra el
+ * `userId` de cualquiera y da `false` siempre — produce exactamente el mismo espectador que
+ * `DM_ONLY` (solo el DM) mientras su nombre promete un creador que no existe. Los dos son el
+ * mismo placebo del mismo agujero, y los dos se excluyen aquí, en el contrato, para que ningún
+ * cliente —web, curl, una integración futura— pueda guardar uno.
+ *
+ * `docs/05-datos.md` documenta el porqué; `apps/web/src/features/sessions/SessionEditor.tsx` ya
+ * no los ofrece por su cuenta desde antes de esta ficha — esto cierra la puerta del lado del
+ * servidor, que es la que de verdad cuenta.
+ */
+export const sessionVisibilitySchema = visibilitySchema.exclude(["SPECIFIC_PLAYERS", "OWNER_DM"]);
+
 export const createSessionSchema = z.object({
   title: z.string().min(1).max(160),
   /**
@@ -12,7 +27,7 @@ export const createSessionSchema = z.object({
    */
   scheduledAt: z.coerce.date().nullable().optional(),
   notes: z.unknown().optional(),
-  visibility: visibilitySchema.default("PLAYERS"),
+  visibility: sessionVisibilitySchema.default("PLAYERS"),
   /**
    * **Dónde abre la escena**: el id de una ficha del mundo de esta misma campaña.
    *
@@ -111,7 +126,11 @@ export type StampSessionNoteInput = z.infer<typeof stampSessionNoteSchema>;
 export const closeSessionSchema = z
   .object({
     recap: z.string().max(5000).optional(),
-    recapVisibility: visibilitySchema.default("PLAYERS"),
+    // Task 27 (P3, ronda del orquestador) — el mismo defecto de `visibility` un campo más allá:
+    // `SPECIFIC_PLAYERS` no tiene a quién conceder y `OWNER_DM` compara el `createdById: ""` de
+    // la sesión contra cualquiera, así que las dos producen el mismo lector que `DM_ONLY` para
+    // una crónica igual que para la sesión que la contiene.
+    recapVisibility: sessionVisibilitySchema.default("PLAYERS"),
   })
   .default({});
 export type CloseSessionInput = z.infer<typeof closeSessionSchema>;

@@ -324,4 +324,92 @@ describe("Sessions (e2e)", () => {
       expect(en_bd?.scheduledAt).toBeNull();
     });
   });
+
+  // Task 27 (P3) — `Session` no tiene `grants` ni un creador distinto del DM
+  // (`sessions.service.ts` escribe `createdById: ""`), así que `SPECIFIC_PLAYERS` y `OWNER_DM`
+  // son dos placebos: el primero no tiene a quién conceder, el segundo compara `""` contra
+  // cualquier `userId` y da siempre `false`. Los dos quedan excluidos del contrato
+  // (`sessionVisibilitySchema` en `@dnd/shared`), y el pipe los rechaza con 400 antes de que
+  // lleguen al servicio.
+  describe("la visibilidad de sesión excluye SPECIFIC_PLAYERS y OWNER_DM (Task 27)", () => {
+    it("POST con SPECIFIC_PLAYERS es 400", async () => {
+      const s = app.getHttpServer();
+      const res = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "Un secreto para nadie", visibility: "SPECIFIC_PLAYERS" });
+      expect(res.status).toBe(400);
+    });
+
+    it("POST con OWNER_DM es 400", async () => {
+      const s = app.getHttpServer();
+      const res = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "Tú y quien la creó", visibility: "OWNER_DM" });
+      expect(res.status).toBe(400);
+    });
+
+    it("PATCH con SPECIFIC_PLAYERS u OWNER_DM también es 400, sin tocar la sesión", async () => {
+      const s = app.getHttpServer();
+      const creada = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "Task 27 · PATCH", visibility: "PLAYERS" });
+      expect(creada.status).toBe(201);
+
+      const specific = await request(s)
+        .patch(`/campaigns/${campaignId}/sessions/${creada.body.id}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ visibility: "SPECIFIC_PLAYERS" });
+      expect(specific.status).toBe(400);
+
+      const owner = await request(s)
+        .patch(`/campaigns/${campaignId}/sessions/${creada.body.id}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ visibility: "OWNER_DM" });
+      expect(owner.status).toBe(400);
+
+      const en_bd = await prisma.session.findUnique({ where: { id: creada.body.id } });
+      expect(en_bd?.visibility).toBe("PLAYERS");
+    });
+
+    it("PUBLIC, PLAYERS y DM_ONLY se siguen aceptando", async () => {
+      const s = app.getHttpServer();
+      for (const visibility of ["PUBLIC", "PLAYERS", "DM_ONLY"]) {
+        const res = await request(s)
+          .post(`/campaigns/${campaignId}/sessions`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ title: `Task 27 · ${visibility}`, visibility });
+        expect(res.status).toBe(201);
+      }
+    });
+
+    // La crónica de cierre lleva su PROPIA visibilidad (`recapVisibility`, plan 02) — un campo
+    // distinto del de la sesión, con el mismo defecto exacto: `Session` no tiene grants ni un
+    // creador aparte del DM, así que `SPECIFIC_PLAYERS` y `OWNER_DM` son igual de inertes ahí.
+    it("cerrar con recapVisibility: OWNER_DM es 400", async () => {
+      const s = app.getHttpServer();
+      const creada = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "Task 27 · recapVisibility", visibility: "PLAYERS" });
+      expect(creada.status).toBe(201);
+      await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${creada.body.id}/start`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({});
+
+      const cerrado = await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${creada.body.id}/close`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ recap: "x", recapVisibility: "OWNER_DM" });
+      expect(cerrado.status).toBe(400);
+
+      // El rechazo no cierra la sesión a medias: sigue EN_CURSO, sin crónica.
+      const fila = await prisma.session.findUnique({ where: { id: creada.body.id } });
+      expect(fila?.status).toBe("IN_PROGRESS");
+      expect(fila?.recap).toBeNull();
+    });
+  });
 });

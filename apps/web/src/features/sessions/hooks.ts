@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { StampSessionNoteInput, StartSessionInput, Visibility } from "@dnd/shared";
+import type { CloseSessionInput, StampSessionNoteInput, StartSessionInput } from "@dnd/shared";
 import { fetchSessions, createSession, updateSession, deleteSession } from "./api";
 // Espacio de nombres para que los espías de vitest intercepten las llamadas internas
 // (misma trampa documentada en docs/04-convenciones.md).
@@ -85,7 +85,14 @@ export function useStartSession(campaignId: string) {
 export function useCloseSession(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { sessionId: string; recap?: string; recapVisibility?: Visibility }) =>
+    mutationFn: (v: {
+      sessionId: string;
+      recap?: string;
+      // Task 27 (P3, ronda del orquestador) — el tipo de `CloseSessionInput`, no el `Visibility`
+      // genérico: `recapVisibility` ya no admite `SPECIFIC_PLAYERS`/`OWNER_DM` en el contrato, y
+      // este hook no debe prometer un tipo más ancho que el que la API de verdad acepta.
+      recapVisibility?: CloseSessionInput["recapVisibility"];
+    }) =>
       sessionsApi.closeSession(campaignId, v.sessionId, {
         recap: v.recap,
         recapVisibility: v.recapVisibility ?? "PLAYERS",

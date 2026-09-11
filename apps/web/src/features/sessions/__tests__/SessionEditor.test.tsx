@@ -177,8 +177,11 @@ describe("SessionEditor (edit)", () => {
   });
 
   it("shows a saved visibility that the selector doesn't offer, instead of a blank select", () => {
-    // SPECIFIC_PLAYERS is not in this editor's own list (docs/05-datos.md), but the API
-    // schema still accepts it (seed, curl, a future client), so a session can arrive with it.
+    // SPECIFIC_PLAYERS is not in this editor's own list (docs/05-datos.md). Task 27 (P3) went
+    // further and made the API schema itself reject it on write — but a row saved by an OLDER
+    // build, a seed, or a direct write to the database can still carry it, and this is the
+    // read path: the editor still has to show what's actually stored, not pretend it never
+    // happens.
     const session: Session = { ...existingSession, visibility: "SPECIFIC_PLAYERS" };
     renderEditEditor(session);
 
@@ -188,6 +191,72 @@ describe("SessionEditor (edit)", () => {
     expect(guardada).toBeChecked();
     expect(guardada).toBeDisabled();
     expect(screen.getByText(/Valor guardado por otra pantalla/)).toBeInTheDocument();
+  });
+
+  // Task 27 (P3, ronda del orquestador) — **OWNER_DM es el mismo placebo que SPECIFIC_PLAYERS.**
+  // `Session` no tiene un creador distinto del DM (`sessions.service.ts` escribe
+  // `createdById: ""`), así que «DM y creador» produce exactamente el mismo espectador que
+  // «Solo DM» mientras promete uno que no existe. Se excluye de la misma lista y con el mismo
+  // trato: sigue mostrándose, marcada y no seleccionable, si ya estaba guardada.
+  it("shows a saved OWNER_DM the same way: marked and not selectable", () => {
+    const session: Session = { ...existingSession, visibility: "OWNER_DM" };
+    renderEditEditor(session);
+
+    const guardada = screen.getByRole("radio", { name: /DM y creador/ });
+    expect(guardada).toBeChecked();
+    expect(guardada).toBeDisabled();
+    expect(screen.getByText(/Valor guardado por otra pantalla/)).toBeInTheDocument();
+  });
+
+  it("never offers SPECIFIC_PLAYERS or OWNER_DM as choosable options — only three radios", () => {
+    renderEditor();
+
+    // Tres, y solo tres: Público, Jugadores, Solo DM. Ni «Jugadores concretos» ni «DM y
+    // creador» aparecen cuando no hay un valor guardado que obligue a conservarlos.
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(screen.queryByRole("radio", { name: /Jugadores concretos/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /DM y creador/ })).not.toBeInTheDocument();
+  });
+
+  // Task 27 (P3, ronda de arreglo 2) — **guardar sin tocar un valor heredado ya no reenvía ese
+  // valor.** Desde que `sessionVisibilitySchema` (`@dnd/shared`) rechaza `SPECIFIC_PLAYERS` y
+  // `OWNER_DM` con 400, una sesión que ya tuviera uno de los dos guardado (fila vieja, seed, o
+  // escritura directa) se volvía imposible de re-guardar sin tocar el selector: el radio de ese
+  // valor está marcado y no seleccionable, así que el DM no tiene manera de "arreglarlo" desde
+  // aquí, y el `PATCH` de cualquier otro cambio (el título, la fecha) reenviaba el mismo valor
+  // rechazado. La regla del orquestador: **un botón que el servidor rechaza es un defecto**, así
+  // que si `visibility` no cambió y arrancó fuera de la lista que este editor ofrece, se OMITE
+  // del `PATCH` — el servidor conserva lo que ya tenía (`sessions.service.ts`: una clave ausente
+  // es "no la toques", el mismo contrato que ya usan `notes` y `scheduledAt` en esta pantalla).
+  it("editando una sesión con SPECIFIC_PLAYERS guardado, sin tocar el selector: el PATCH no lleva visibility", async () => {
+    const spy = vi
+      .spyOn(sessionsApi, "updateSession")
+      .mockResolvedValue({ ...existingSession, visibility: "SPECIFIC_PLAYERS" });
+    const session: Session = { ...existingSession, visibility: "SPECIFIC_PLAYERS" };
+    renderEditEditor(session);
+
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Otro título" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    const [, , input] = spy.mock.calls[0];
+    expect(input.title).toBe("Otro título");
+    expect(input).not.toHaveProperty("visibility");
+  });
+
+  it("editando esa misma sesión, si el DM SÍ elige «Solo DM»: el PATCH manda DM_ONLY", async () => {
+    const spy = vi
+      .spyOn(sessionsApi, "updateSession")
+      .mockResolvedValue({ ...existingSession, visibility: "DM_ONLY" });
+    const session: Session = { ...existingSession, visibility: "SPECIFIC_PLAYERS" };
+    renderEditEditor(session);
+
+    fireEvent.click(screen.getByRole("radio", { name: /Solo DM/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    const [, , input] = spy.mock.calls[0];
+    expect(input.visibility).toBe("DM_ONLY");
   });
 });
 

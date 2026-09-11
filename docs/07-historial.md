@@ -66,6 +66,10 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 5 (b), pantalla** (un lote, dos fichas + una falsa): la tirada de ataque elige audiencia
+  (I10); la sesión deja de ofrecer `SPECIFIC_PLAYERS`, que era inerte sin concesiones (P3); y
+  «la petición de concentración no dice que lo es» resultó **falsa** al abrirla: el `label` ya lo
+  dice y la bandeja lo pinta. **Revertir:** una pieza cada uno.
 - **Tanda 5 (a), pantalla** (un lote, dos fichas): el diálogo de crear personaje usa el catálogo
   (raza, subraza, clase) y guarda claves —desbloquea la migración de `race`/`class`—, y
   `OWNER_DM` en un statblock vuelve a valer (el servidor pasaba `createdById: ""`). Sus recorridos

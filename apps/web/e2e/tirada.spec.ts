@@ -151,3 +151,147 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
   await expect(fila.getByRole("status")).toContainText("se queda el bajo", { timeout: 10_000 });
   await expect(fila.locator('[data-dado="descartado"]')).toHaveCount(1);
 });
+
+// Task 26 (I10) — **la tirada de ataque elige audiencia, contra la API real.**
+//
+// `TirarAtaqueBoton` mandaba `audience: "PUBLIC"` fijo en las tres tiradas del panel; ahora
+// ofrece el mismo `SelectorDeAudiencia` que `PanelDeDados`. Lo que ninguna unitaria (RTL, con
+// espías) puede demostrar es que el suceso que esa tirada escribe **de verdad** llega filtrado
+// por `canView` en el registro de otro usuario — necesita dos navegadores y el servidor real.
+//
+// El ataque es de un PNJ, a propósito: es el caso del brief, y es distinto de que el propio
+// atacante decida ocultarse su propia tirada — aquí el DM oculta el golpe de un PNJ que la
+// mesa, por lo demás, ve perfectamente (el PNJ en sí es `PLAYERS`; es SOLO este ataque el que
+// se pide `DM_ONLY`).
+function cuentaDeAtaque(prefijo: string) {
+  const marca = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+  return {
+    email: `ataque-${prefijo}-${marca}@example.com`,
+    password: "password123",
+    displayName: `${prefijo} ${marca}`,
+  };
+}
+
+async function registrarseComo(page: Page, cuenta: ReturnType<typeof cuentaDeAtaque>) {
+  await page.goto("/register");
+  await page.getByLabel("Nombre").fill(cuenta.displayName);
+  await page.getByLabel("Correo").fill(cuenta.email);
+  await page.getByLabel("Contraseña").fill(cuenta.password);
+  await page.getByRole("button", { name: "Crear cuenta" }).click();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+}
+
+test("Task 26 — el DM tira un ataque con un PNJ «A ciegas» y el jugador no lo ve en el registro", async ({
+  browser,
+}) => {
+  // Dos navegadores, una campaña, un PNJ equipado y dos registros comparados: el mismo
+  // presupuesto que `invitacion.spec.ts` y `peticion-de-tirada.spec.ts`.
+  test.setTimeout(120_000);
+
+  const dmContext = await browser.newContext();
+  const dmPage = await dmContext.newPage();
+  await registrarseComo(dmPage, cuentaDeAtaque("dm"));
+
+  await dmPage.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await dmPage.getByLabel("Nombre").fill("La emboscada del goblin");
+  await dmPage.getByRole("button", { name: "Crear" }).click();
+  await dmPage.getByRole("link", { name: "La emboscada del goblin" }).click();
+  await expect(dmPage.getByRole("heading", { name: "La emboscada del goblin" })).toBeVisible();
+  const campaignId = dmPage.url().split("/campaigns/")[1].split(/[/?]/)[0];
+
+  // --- Se invita a un jugador, para tener a alguien a quien esconderle el ataque. Se hace
+  // ahora, mientras el DM sigue en la página de la campaña con sus pestañas — más abajo el DM
+  // se va a la ficha del PNJ y ya no las tiene a mano. ---
+  await dmPage.getByRole("tab", { name: "Ajustes" }).click();
+  await dmPage.getByRole("button", { name: "Generar invitación" }).click();
+  const enlace = await dmPage.getByLabel("Enlace de invitación").inputValue();
+
+  const playerContext = await browser.newContext();
+  const playerPage = await playerContext.newPage();
+  await playerPage.goto(enlace);
+  await playerPage.getByRole("link", { name: "Crear cuenta" }).click();
+  const jugador = cuentaDeAtaque("jugador");
+  await playerPage.getByLabel("Nombre").fill(jugador.displayName);
+  await playerPage.getByLabel("Correo").fill(jugador.email);
+  await playerPage.getByLabel("Contraseña").fill(jugador.password);
+  await playerPage.getByRole("button", { name: "Crear cuenta" }).click();
+  await playerPage.getByRole("button", { name: "Unirse a la campaña" }).click();
+  await expect(playerPage.getByRole("heading", { name: "La emboscada del goblin" })).toBeVisible();
+
+  // --- Un PNJ bajado a la mesa: el atacante de esta prueba. `CajonesDelTaller` está siempre
+  // montado por encima de las pestañas (`CampaignDetailPage.tsx`), así que «Bestiario» no
+  // depende de en qué pestaña se quedó el DM tras invitar. ---
+  await dmPage.getByRole("button", { name: "Bestiario" }).click();
+  await expect(dmPage.getByRole("dialog", { name: "Bestiario" })).toBeVisible();
+  const goblin = dmPage.getByTestId("ficha-de-criatura").filter({ hasText: "Goblin" }).first();
+  await goblin.getByRole("button", { name: /Bajar a la mesa/i }).click();
+  const enLaMesa = dmPage.getByTestId("pnj-en-la-mesa");
+  await expect(enLaMesa).toContainText("Goblin", { timeout: 15_000 });
+
+  // --- **Su propia ficha, no el elenco de la mesa.** `ColumnaElenco.tsx` solo enseña a un PNJ
+  // mientras hay un encuentro `ACTIVE` (es una columna de combate, no la mesa entera), y con un
+  // encuentro en marcha el botón «Atacar» deja de tirar directo: abre la lista de objetivos.
+  // El bestiario enlaza cada PNJ de la mesa a la MISMA página que un personaje de jugador
+  // (`PanelDeBestiario.tsx`, «Estos PNJ… un enlace a su ficha» — un PNJ es una fila de
+  // `Character`), y ahí `AtaquesYLanzamiento` vive sin que exista ningún combate. ---
+  await enLaMesa.getByRole("link", { name: "Goblin" }).click();
+  await expect(dmPage.getByRole("heading", { name: "Goblin" })).toBeVisible();
+
+  // --- Se equipa un arma: sin arma no hay fila que tirar (`AtaquesYLanzamiento.tsx`, la misma
+  // regla que `equiparEspadaLarga` en `hoja.spec.ts`). ---
+  const inventario = dmPage.getByRole("region", { name: "inventario" });
+  await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
+  await inventario.getByLabel(/Buscar/).fill("Cimitarra");
+  await inventario
+    .getByRole("button", { name: /Cimitarra/ })
+    .first()
+    .click();
+  await inventario.getByRole("radio", { name: /Equipado/ }).check();
+  await inventario.getByRole("button", { name: "Añadir", exact: true }).click();
+  // **El cajón de «Añadir objeto» no se cierra solo al confirmar** (`SelectorDeObjeto.tsx`,
+  // `confirmarAlta` solo limpia lo elegido): se cierra a mano, con SU PROPIO «Cerrar», para que
+  // no queden dos botones «Cerrar» en la página cuando se abra el panel de la tirada más abajo.
+  await inventario.getByRole("button", { name: "Cerrar", exact: true }).click();
+
+  const tablaAtaques = dmPage.getByRole("region", { name: "ataques y lanzamiento" });
+  await expect(tablaAtaques.getByRole("table")).toBeVisible({ timeout: 15_000 });
+
+  // --- El ataque en sí, con audiencia «A ciegas» (BLIND → visibilidad DM_ONLY). Sin encuentro,
+  // el botón «Atacar» tira directo (`alPulsarAtacar`, `TirarAtaqueBoton.tsx`): no hay lista de
+  // objetivos que abrir. ---
+  await tablaAtaques.getByRole("button", { name: "Tirada de Cimitarra" }).click();
+  // Acotado al propio panel (`role="group"`, `aria-label="Tirada de Cimitarra"`): la página
+  // tiene, a la vez, el «Cerrar» de este panel Y el del cajón de objetos si no se hubiera
+  // cerrado — acotar es lo que evita el modo estricto de Playwright, no un accidente de orden.
+  const panelDeTirada = dmPage.getByRole("group", { name: "Tirada de Cimitarra" });
+  await panelDeTirada.getByRole("radio", { name: "A ciegas" }).check();
+  const botonAtacar = panelDeTirada.getByRole("button", { name: "Atacar con Cimitarra" });
+  await expect(botonAtacar).not.toHaveAttribute("aria-disabled", "true", { timeout: 10_000 });
+  await botonAtacar.click();
+  await expect(panelDeTirada.getByRole("status").first()).toBeVisible({ timeout: 10_000 });
+  await panelDeTirada.getByRole("button", { name: "Cerrar", exact: true }).click();
+
+  // --- El DM lo ve en su propio registro; el jugador, no. ---
+  await dmPage.goto(`/campaigns/${campaignId}`);
+  await dmPage.getByRole("tab", { name: "Dados" }).click();
+  const registroDm = dmPage.getByRole("region", { name: /registro de tiradas/i });
+  await expect(registroDm.locator('[data-tirada-tipo="ABILITY_ROLL"]')).toHaveCount(1, {
+    timeout: 15_000,
+  });
+
+  await playerPage.goto(`/campaigns/${campaignId}`);
+  await playerPage.getByRole("tab", { name: "Dados" }).click();
+  const registroJugador = playerPage.getByRole("region", { name: /registro de tiradas/i });
+  // El ancla no es que la región exista — existe desde el primer render, vacía —, sino que
+  // **ya cargó** y no tiene nada que enseñar: el texto de «sin nada todavía» es la prueba de
+  // que la consulta volvió (y, si hubiera sondeo, tuvo ocasión de traer algo) y siguió en cero.
+  await expect(
+    registroJugador.getByText("Todavía no se ha tirado nada en esta campaña."),
+  ).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(registroJugador.locator('[data-tirada-tipo="ABILITY_ROLL"]')).toHaveCount(0);
+
+  await dmContext.close();
+  await playerContext.close();
+});

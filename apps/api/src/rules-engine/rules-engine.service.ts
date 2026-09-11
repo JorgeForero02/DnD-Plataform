@@ -1,5 +1,10 @@
 import { randomUUID } from "crypto";
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type { Rule } from "@prisma/client";
 import {
   ruleConditionSchema,
@@ -53,6 +58,7 @@ export class RulesEngineService {
 
   async create(dmUserId: string, campaignId: string, input: CreateRuleInput) {
     await this.membership.requireDM(campaignId, dmUserId);
+    await this.requireEffectEntitiesInCampaign(campaignId, input.effects);
     const rule = await this.prisma.rule.create({
       data: {
         campaignId,
@@ -92,7 +98,10 @@ export class RulesEngineService {
     if (input.name !== undefined) data.name = input.name;
     if (input.trigger !== undefined) data.trigger = input.trigger;
     if (input.conditions !== undefined) data.conditions = input.conditions;
-    if (input.effects !== undefined) data.effects = input.effects;
+    if (input.effects !== undefined) {
+      await this.requireEffectEntitiesInCampaign(campaignId, input.effects);
+      data.effects = input.effects;
+    }
     if (input.mode !== undefined) data.mode = input.mode;
     if (input.maxFires !== undefined) data.maxFires = input.maxFires;
     if (input.status !== undefined) {
@@ -112,6 +121,36 @@ export class RulesEngineService {
     // ejecución en curso que pueda seguir corriendo con esta regla — cada evaluación relee
     // Postgres desde cero.
     return { deleted: true };
+  }
+
+  /**
+   * Ficha J11 (2026-09-02, cerrada el 2026-09-10): **la ficha de un efecto tiene que ser de esta
+   * campaña, y se comprueba al armar**, no al disparar. Antes cualquier cuid con forma válida se
+   * guardaba; `applyRealEffects` acota por campaña, así que la regla quedaba `BROKEN` e inerte —
+   * correcto para la seguridad, y aun así un botón que el servidor iba a rechazar. **El 400 no
+   * distingue «no existe» de «es de otra campaña»**: la misma frase para los dos, o el error se
+   * convierte en un oráculo de ids ajenos (convención de `validation-errors`).
+   */
+  private async requireEffectEntitiesInCampaign(
+    campaignId: string,
+    effects: CreateRuleInput["effects"],
+  ): Promise<void> {
+    const ids = new Set<string>();
+    for (const effect of effects) {
+      if (effect.kind === "REVEAL_ENTITY" || effect.kind === "HIDE_ENTITY")
+        ids.add(effect.entityId);
+      if (effect.kind === "RAISE_SIGNAL" && effect.originEntityId) ids.add(effect.originEntityId);
+    }
+    if (ids.size === 0) return;
+    const encontradas = await this.prisma.entity.findMany({
+      where: { id: { in: [...ids] }, campaignId },
+      select: { id: true },
+    });
+    if (encontradas.length !== ids.size) {
+      throw new BadRequestException(
+        "Un efecto apunta a una ficha que no pertenece a esta campaña.",
+      );
+    }
   }
 
   private async requireRule(campaignId: string, ruleId: string): Promise<Rule> {

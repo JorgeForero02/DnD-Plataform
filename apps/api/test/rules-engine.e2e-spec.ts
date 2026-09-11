@@ -222,6 +222,96 @@ describe("Motor de reglas (e2e)", () => {
     });
   });
 
+  describe("armar una regla comprueba que la ficha del efecto es de esta campaña (ficha J11)", () => {
+    // Antes, `create` y `update` guardaban cualquier `entityId` con forma de cuid: la regla
+    // quedaba `BROKEN` al dispararse porque `applyRealEffects` acota por campaña, o sea que era
+    // inerte — pero armar algo que nunca va a funcionar sin decirlo es exactamente lo que este
+    // proyecto llama «un botón que el servidor rechaza». Se rechaza al armar, con un 400 que no
+    // distingue «no existe» de «es de otra campaña»: el mismo mensaje para los dos.
+    let campanaAjena = "";
+    let fichaAjena = "";
+    beforeAll(async () => {
+      const s = app.getHttpServer();
+      const otra = await request(s)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ name: "La otra campaña del mismo DM" });
+      campanaAjena = otra.body.id;
+      const ficha = await request(s)
+        .post(`/campaigns/${campanaAjena}/entities`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ type: "LOCATION", name: "Ficha de la otra campaña", visibility: "DM_ONLY" });
+      fichaAjena = ficha.body.id;
+    });
+    afterAll(async () => {
+      if (campanaAjena) await prisma.campaign.deleteMany({ where: { id: campanaAjena } });
+    });
+
+    it("POST /rules con un efecto sobre una ficha de otra campaña es 400, y no se guarda nada", async () => {
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro de J11");
+      const antes = await prisma.rule.count({ where: { campaignId } });
+      const res = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Revela algo que no es de aquí",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "REVEAL_ENTITY", entityId: fichaAjena, visibility: "PLAYERS" }],
+        });
+      expect(res.status).toBe(400);
+      expect(await prisma.rule.count({ where: { campaignId } })).toBe(antes);
+    });
+
+    it("y un id inventado recibe byte a byte la misma respuesta que el de otra campaña", async () => {
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro de J11 bis");
+      const cuerpo = (entityId: string) => ({
+        name: "Revela algo",
+        mode: "AUTOMATIC",
+        trigger: { kind: "ENTITY_OPENED", entityId: muro },
+        effects: [{ kind: "REVEAL_ENTITY", entityId, visibility: "PLAYERS" }],
+      });
+      const ajena = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send(cuerpo(fichaAjena));
+      const inventada = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send(cuerpo("cl0000000000000000000inv"));
+      expect(ajena.status).toBe(400);
+      expect(inventada.status).toBe(400);
+      expect(inventada.body).toEqual(ajena.body);
+    });
+
+    it("PATCH /rules/:id también lo comprueba", async () => {
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro de J11 para editar");
+      const propia = await crearFicha("Ficha propia de J11");
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Regla válida",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "REVEAL_ENTITY", entityId: propia, visibility: "PLAYERS" }],
+        });
+      expect(regla.status).toBe(201);
+      const res = await request(s)
+        .patch(`/campaigns/${campaignId}/rules/${regla.body.id}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ effects: [{ kind: "HIDE_ENTITY", entityId: fichaAjena, visibility: "DM_ONLY" }] });
+      expect(res.status).toBe(400);
+      const guardada = await prisma.rule.findUnique({ where: { id: regla.body.id } });
+      expect(guardada?.effects).toEqual([
+        { kind: "REVEAL_ENTITY", entityId: propia, visibility: "PLAYERS" },
+      ]);
+    });
+  });
+
   describe("la revelación automática cuenta QUÉ se reveló (ficha J6)", () => {
     it("el ENTITY_REVEALED que escribe el motor lleva el nombre de la ficha, como el de la pantalla", async () => {
       // Ficha J6 (2026-09-02): el camino de la pantalla (`entities.service.ts`) escribe

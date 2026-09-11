@@ -30,6 +30,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md`](./_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md) | **El detalle por tarea de las tareas 5 y 14 del plan `iniciativa-y-bando`**, movidas enteras el 2026-09-06 al escribir el hito de la tanda completa. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, movida entera el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó el fichero por encima de su tope de 1000 líneas, y esta fue la más antigua. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-bandeja-de-avisos.md`](./_archivo/historial-2026-09-05-bandeja-de-avisos.md) | **La bandeja de avisos**, movida entera el 2026-09-08 al llegar el fichero a 988 de 1000 y no caber la entrada del reconocimiento. Era la entrada completa más antigua. Su cabecera de archivo cuenta la ironía que salió ese día: `01-arquitectura.md` seguía negando esta bandeja tres días después de entregarla. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -54,6 +55,14 @@ su medición están en
   (`rules-engine.service.ts`, `applyRealEffects`). **Por qué:** era el camino de la revelación
   automática y el hilo no podía decir qué apareció. **Revertir:** quitar el `findFirst` y el campo
   del payload; el esquema lo tiene opcional, nada más se rompe.
+- **J11** — armar una regla comprueba que la ficha de cada efecto es de esta campaña, y devuelve
+  400 sin distinguir «no existe» de «ajena» (`rules-engine.service.ts`,
+  `requireEffectEntitiesInCampaign`). **Por qué:** la regla quedaba `BROKEN` e inerte al disparar,
+  o sea un botón que el servidor iba a rechazar. **Revertir:** quitar el método y sus dos
+  llamadas; las tres pruebas J11 del e2e se ponen rojas.
+- **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda
+  en ningún sitio (`overrides` es `{clave: número}`) y enseñarlo en la traza es un cambio de forma
+  de un `Json` con datos escritos. Medición en el 06.
 
 ## La poda: treinta y nueve bloques fuera del tablero, y doce decisiones con fila (2026-09-10)
 
@@ -856,33 +865,14 @@ acorta lo visible a «Ver como» y **el nombre accesible se queda entero**.
 **Cómo revertirlo.** `git revert` del commit; los PNJ vuelven a estar en el bestiario y fuera del
 combate.
 
-## Una campaña de demostración que se siembra sola (2026-09-05)
+## Una campaña de demostración que se siembra sola (2026-09-05) — archivada
 
-**Qué.** `scripts/seed-demo.mjs` deja la aplicación con una mesa dentro: tres cuentas —DM y dos
-jugadores—, fichas del mundo con **los cinco niveles de visibilidad**, dos personajes con su color y
-su hoja derivada, un objeto propio del DM equipado y sintonizado, dinero, un statblock propio con su
-PNJ jugable, **una sesión cerrada con su crónica** y otra en curso con su encuentro e iniciativas,
-una regla del motor y avisos de verdad. Encargo del autor.
-
-**Habla por HTTP, no por Prisma**, y esa es la decisión que lo gobierna todo:
-
-- **Se puede correr contra producción** desde cualquier sitio, sin credenciales de Postgres.
-- **Prueba de verdad**: si una ruta se rompe, la siembra se para en esa línea y enseña el mensaje de
-  la API. Un script de Prisma habría escrito filas perfectas sobre una API rota — y de hecho esta
-  siembra encontró seis contratos que la documentación de mi cabeza tenía mal (`body.format`,
-  `weapon.damageDice`, `actions[].desc`, el dinero por `PATCH`, la lista de statblocks que trae dos
-  catálogos y `effects[].visibility`).
-- **No puede inventarse un permiso.** Cada cosa la crea quien la crearía en la mesa: los personajes
-  los crean **sus jugadores**, y el comentario que dispara el aviso lo escribe **la jugadora**,
-  porque nadie se avisa de lo que acaba de hacer.
-
-**Es idempotente**: cada paso mira primero si su cosa ya existe, por nombre. Y **el 429 se espera,
-no se sortea**: las rutas de autenticación están limitadas a cinco por minuto para frenar la fuerza
-bruta, así que el script duerme y reintenta en vez de pedir que se afloje el límite — cambiar una
-protección por la comodidad de un script es justo lo que este proyecto no hace.
-
-**Cómo revertirlo.** `node scripts/seed-demo.mjs --limpiar` borra las campañas sembradas; el script
-se puede borrar sin tocar nada más.
+Entera en
+[`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md),
+movida el 2026-09-10 al pasarse este fichero de sus 1000 líneas con la entrada de la tanda 1 de
+cerrar fichas. **El hito:** `scripts/seed-demo.mjs` siembra una mesa entera **por HTTP y no por
+Prisma** (E-N-2), idempotente, esperando el 429 en vez de sortearlo, y encontró seis contratos mal
+entendidos que unas filas perfectas no habrían destapado.
 
 ## El nervio en vivo: avisos que llegan solos, y un sondeo que deja de ser el camino (2026-09-05, plan 12 · 12.3, D-OP-22) — archivada
 

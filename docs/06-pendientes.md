@@ -978,8 +978,7 @@ dirigir tres horas de verdad.
 | # | Qué encontró el DM | Estado |
 |---|---|---|
 | **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta |
-| **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto. El motivo sí queda en `GET /events`; la traza podría enseñar «fijada a 18» en vez del delta |
-| **J11** | **`POST /rules` no valida al armar que la entidad del efecto sea de tu campaña** | Abierto e inerte: `applyRealEffects` y la auditoría acotan por `campaignId`, así que la regla queda `BROKEN`. Sería más limpio rechazar al armar |
+| **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto, y **medido el 2026-09-10: no es un arreglo pequeño, es un cambio de forma de datos**. El motivo no se guarda en ningún sitio: `Character.overrides` es `{clave: número}` (`overridesSchema`, `packages/shared/src/character-sheet.schema.ts`) y `setOverride` manda el `reason` solo al suceso. Enseñarlo en la traza obliga a cambiar ese `Json` a `{clave: {value, reason}}` con filas ya escritas como número, y `Anulaciones.tsx` lo lee como mapa de números. Es «migración o cambio de datos» (caso 2 de `04-convenciones.md`): **lo decide el autor**. La mitad barata —que la traza diga «fijada a 18» en vez de «+6»— es solo pantalla y no cierra la ficha |
 
 **El veredicto del DM, sin diplomacia:** la fase de **preparación** (wiki, cinco visibilidades,
 enlaces, comentarios, y el motor de reglas con su ensayo, propuestas y traza) la usaría el

@@ -127,6 +127,15 @@ export function equipmentToEngineInput(
    * penalización de diez pies no se aplica.
    */
   heavyArmorSpeedExempt = false,
+  /**
+   * Con qué categorías de armadura ("light", "medium", "heavy", "shield") tiene competencia el
+   * personaje (`SrdClass.armorProficiencies`, `catalog/types.ts`). **`undefined` y no `[]` por
+   * defecto**: los llamadores que todavía no pasan este dato (pruebas antiguas, el camino
+   * legado de `build.armor`) no piden el chequeo, y forzar `[]` los habría hecho avisar de una
+   * incompetencia que nadie preguntó. Cuando sí llega, es una lista cerrada: lo que no está,
+   * avisa (Tarea 15, I6).
+   */
+  armorProficiencies?: string[],
 ): EquipmentEngineInput {
   const modifiers: Modifier[] = [];
   const acFormulas: AcFormula[] = [];
@@ -141,6 +150,9 @@ export function equipmentToEngineInput(
     .map((item) => item.armor)
     .filter((armor): armor is NonNullable<typeof armor> => !!armor);
   assertValidArmorSet(armaduras);
+
+  const proficienciasDeArmaduraNormalizadas =
+    armorProficiencies && armorProficiencies.map((p) => p.trim().toLowerCase());
 
   const anotarCompetenciaHabilidad = (skill: SkillKey, nivel: ProficiencyLevel) => {
     const actual = skillProficiencies[skill] ?? "none";
@@ -263,6 +275,24 @@ export function equipmentToEngineInput(
             required: item.armor.strengthRequirement,
             actual: strengthScore,
           },
+        });
+      }
+
+      // **Sin competencia con la categoría, aviso — nunca un impedimento.** SRD 5.1, «Armor
+      // Proficiency»: *«If you wear armor that you lack proficiency with, you have disadvantage
+      // on any ability check, saving throw, or attack roll that involves Strength or Dexterity,
+      // and you can't cast spells.»* Es la misma doctrina que ya usa `attack_not_proficient`
+      // (`../attacks.ts`): el motor cuenta y avisa, y es la mesa quien aplica la desventaja —
+      // este motor no representa ventaja/desventaja como número. Sólo se comprueba cuando el
+      // llamador pasó `armorProficiencies`; sin ese dato, no se pregunta.
+      if (
+        proficienciasDeArmaduraNormalizadas &&
+        !proficienciasDeArmaduraNormalizadas.includes(item.armor.category.toLowerCase())
+      ) {
+        warnings.push({
+          code: "armor_not_proficient",
+          key: `armor.${item.ref}`,
+          data: { armorKey: item.ref, category: item.armor.category.toLowerCase() },
         });
       }
 

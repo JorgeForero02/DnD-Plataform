@@ -813,6 +813,19 @@ al personaje recién creado, que es a quien el DM más quiere dársela.
 solo suceso `RESOURCE_GIVEN` con los dos nombres. Dos peticiones sueltas —un gasto y una
 reposición— podrían dejar la inspiración en los dos personajes o en ninguno.
 
+## «Estable» es una condición reservada, no una columna (2026-09-11, ficha H1b)
+
+**No hay tabla ni columna nueva.** Estabilizarse con tres éxitos en las salvaciones contra la
+muerte crea `CharacterCondition` con `key: "stable"` (`CLAVE_ESTABLE`, en `@dnd/shared`), y
+`estadoDeMuerte` la lee: a 0 PG **y** con esa condición, el estado es `stable`; sin ella, `dying`.
+Antes los contadores volvían a cero al estabilizarse y un `GET` posterior no podía distinguir
+«acaba de estabilizarse» de «acaba de caer». **La retiran** cualquier daño a 0 PG, cualquier caída a 0, y cualquier subida por
+encima de 0 —curación, `PATCH` del DM o descanso— —SRD 5.1, *Stabilizing a Creature*: *«The creature stops being stable,
+and must start making death saving throws again, if it takes any damage»*—; un 20 natural revive
+a 1 PG y por tanto **no** deja estable. Es clave reservada como `raging` (D-P2-10): el endpoint
+público de condiciones la rechaza a todos, DM incluido. Lo que **no** se modela: el «recupera 1 PG
+al cabo de 1d4 horas» del SRD, porque no hay reloj de horas sobre el que apoyarlo.
+
 ## La acción Ayudar es una condición con vencimiento (plan 08, ficha I8)
 
 **No hay tabla nueva.** La marca que deja Ayudar es `CharacterCondition` con `key: "helped"`

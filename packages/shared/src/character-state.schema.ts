@@ -163,6 +163,27 @@ export const CLAVE_AYUDA = "helped";
 export const CLAVE_FURIA_ACTIVA = "raging";
 
 /**
+ * **La marca de que un personaje a 0 PG dejó de tirar salvaciones de muerte** (Tarea 16, H1b).
+ * Vive junto a `CLAVE_AYUDA` y `CLAVE_FURIA_ACTIVA` por el mismo motivo: `esClaveReservada`
+ * (más abajo) tiene que reconocerla, y `character-sheet.service.ts` la usa para no repetir el
+ * literal `"stable"` en dos sitios.
+ *
+ * SRD 5.1, «Stabilizing a Creature»: *«A stable creature doesn't make death saving throws, even
+ * though it has 0 hit points, but it does remain unconscious. The creature stops being stable,
+ * and must start making death saving throws again, if it takes any damage. A stable creature
+ * that isn't healed regains 1 hit point after 1d4 hours.»*
+ *
+ * **Por qué es una condición reservada y no una columna nueva.** Hasta la Tarea 16, `estabilizado`
+ * ponía los contadores de salvación a cero y no dejaba ningún rastro: un `GET` posterior no podía
+ * distinguir «está estable» de «acaba de caer a 0 PG y todavía no ha tirado nada» — los dos casos
+ * tienen `successes: 0, failures: 0`. `CharacterCondition` ya es donde vive un estado que dura
+ * hasta que algo lo quita, y una clave libre la escribiría cualquier jugador sobre sí mismo sin
+ * pasar por las tres tiradas que el SRD exige — la misma reincidencia que ya cerraron `helped` y
+ * `raging`.
+ */
+export const CLAVE_ESTABLE = "stable";
+
+/**
  * **¿Esta clave la INTERPRETA el servidor?** (paso 1, tarea 1).
  *
  * Las quince del SRD cambian el modo de tirada sugerido y la velocidad efectiva; `helped` concede
@@ -204,6 +225,7 @@ export function esClaveReservada(key: string): boolean {
   return (
     key === CLAVE_AYUDA ||
     key === CLAVE_FURIA_ACTIVA ||
+    key === CLAVE_ESTABLE ||
     (SRD_CONDITIONS as readonly string[]).includes(key)
   );
 }

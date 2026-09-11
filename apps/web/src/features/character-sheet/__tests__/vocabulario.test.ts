@@ -144,6 +144,7 @@ describe("ningún aviso del servidor puede salir «Sin traducir»", () => {
   // pintando «Sin traducir: versatile_needs_both_hands» porque nadie los tradujo al añadirlos.
   const CODIGOS_QUE_EMITE_LA_API = [
     "ac_formula_discarded",
+    "armor_not_proficient",
     "armor_stealth_disadvantage",
     "armor_strength_requirement_unmet",
     "attack_not_proficient",

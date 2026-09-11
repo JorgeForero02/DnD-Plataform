@@ -297,6 +297,123 @@ describe("Hoja de personaje y PG (e2e)", () => {
     expect(log.body.events[0].type).toBe("DEATH_SAVE");
   });
 
+  // --- Tarea 16 (H1b) — «estable» sobrevive a la petición -------------------------------------
+  //
+  // SRD 5.1, «Stabilizing a Creature»: *«A stable creature doesn't make death saving throws, even
+  // though it has 0 hit points, but it does remain unconscious. The creature stops being stable,
+  // and must start making death saving throws again, if it takes any damage.»* Hasta esta tarea,
+  // estabilizarse ponía los contadores a cero y un `GET` posterior no podía distinguir «está
+  // estable» de «acaba de caer a 0 PG y todavía no ha tirado nada»: los dos casos tienen
+  // `successes: 0, failures: 0`.
+  describe("«estable» sobrevive a la petición", () => {
+    const conditionsUrl = (key: string) =>
+      `/campaigns/${campaignId}/characters/${characterId}/conditions/${key}`;
+
+    it("un jugador no puede ponerse `stable` a mano por la puerta genérica de condiciones", async () => {
+      const res = await request(app.getHttpServer())
+        .put(conditionsUrl("stable"))
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({});
+      // Misma regla que `raging` (`esClaveReservada`, `@dnd/shared`): una clave que el motor
+      // interpreta la aplica el DM, nunca la puerta genérica que usa un jugador sobre sí mismo.
+      expect(res.status).toBe(403);
+    });
+
+    it('tras tres éxitos seguidos, GET da `deathSaves.status === "stable"`, y persiste en una segunda lectura', async () => {
+      const s = app.getHttpServer();
+      // Estabilizar depende del dado real (no hay roller sembrado en este e2e): se deja al
+      // personaje a un éxito de estabilizarse y se repite la tirada hasta que el dado real dé un
+      // éxito (≥10, sin ser 1 ni 20) — acotado a un número de intentos generoso porque un éxito
+      // simple sale más de la mitad de las veces.
+      const actual = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenDM}`);
+      await request(s)
+        .patch(hpUrl())
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ expectedVersion: actual.body.hp.version, currentHp: 0 });
+      await prisma.character.update({
+        where: { id: characterId },
+        data: { deathSaveSuccesses: 2, deathSaveFailures: 0 },
+      });
+
+      let estabilizado = false;
+      for (let intento = 0; intento < 25 && !estabilizado; intento++) {
+        const tirada = await request(s)
+          .post(deathSavesUrl())
+          .set("Authorization", `Bearer ${tokenA}`)
+          .send({});
+        if (tirada.body.deathSaves.status === "stable") {
+          estabilizado = true;
+          break;
+        }
+        // Cualquier otro resultado (fracaso, crítico, o un éxito que no llegó a tres porque el
+        // dado real dio otra cosa de camino) deja el personaje a 0 PG a falta de un éxito, otra
+        // vez, y se reintenta.
+        await prisma.character.update({
+          where: { id: characterId },
+          data: { currentHp: 0, deathSaveSuccesses: 2, deathSaveFailures: 0 },
+        });
+      }
+      expect(estabilizado).toBe(true);
+
+      const get = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+      expect(get.body.deathSaves).toEqual({ successes: 0, failures: 0, status: "stable" });
+    });
+
+    it("curar por encima de 0 quita «estable» y el estado vuelve a `alive`", async () => {
+      const s = app.getHttpServer();
+      // Se fuerza el estado «estable» directamente en la base — la condición ya se probó arriba
+      // creándose por la tirada real; aquí interesa solo qué le hace curar a esa condición.
+      await prisma.character.update({
+        where: { id: characterId },
+        data: { currentHp: 0, deathSaveSuccesses: 0, deathSaveFailures: 0 },
+      });
+      await prisma.characterCondition.upsert({
+        where: { characterId_key: { characterId, key: "stable" } },
+        create: {
+          characterId,
+          key: "stable",
+          appliedById: (await prisma.user.findFirstOrThrow({ where: { email: emailA } })).id,
+        },
+        update: {},
+      });
+      const antes = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenDM}`);
+      expect(antes.body.deathSaves.status).toBe("stable");
+
+      await request(s).post(hpUrl()).set("Authorization", `Bearer ${tokenDM}`).send({ delta: 5 });
+
+      const despues = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+      expect(despues.body.deathSaves.status).toBe("alive");
+      const condiciones = await prisma.characterCondition.findMany({ where: { characterId } });
+      expect(condiciones.some((c) => c.key === "stable")).toBe(false);
+    });
+
+    it("recibir daño a 0 PG estando estable quita «estable»: vuelve a tirar salvaciones", async () => {
+      const s = app.getHttpServer();
+      await prisma.character.update({
+        where: { id: characterId },
+        data: { currentHp: 0, deathSaveSuccesses: 0, deathSaveFailures: 0 },
+      });
+      await prisma.characterCondition.upsert({
+        where: { characterId_key: { characterId, key: "stable" } },
+        create: {
+          characterId,
+          key: "stable",
+          appliedById: (await prisma.user.findFirstOrThrow({ where: { email: emailA } })).id,
+        },
+        update: {},
+      });
+      const antes = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenDM}`);
+      expect(antes.body.deathSaves.status).toBe("stable");
+
+      await request(s).post(hpUrl()).set("Authorization", `Bearer ${tokenDM}`).send({ delta: -2 });
+
+      const despues = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+      expect(despues.body.deathSaves.status).not.toBe("stable");
+      const condiciones = await prisma.characterCondition.findMany({ where: { characterId } });
+      expect(condiciones.some((c) => c.key === "stable")).toBe(false);
+    });
+  });
+
   // --- Fase 2B/2C: equipar cambia el número, y el arma equipada se puede tirar ---------------
 
   it("equipar una cota de malla sube la CA de la hoja, y la traza gana un paso del objeto", async () => {

@@ -257,6 +257,17 @@ describe("ConditionsService", () => {
     expect(prisma.characterCondition.upsert).toHaveBeenCalled();
   });
 
+  // Tarea 16 (H1b) — `stable` se volvió clave reservada por la misma razón que `raging`: sin
+  // esta reserva, un jugador a 0 PG podía escribirse `{ key: "stable" }` sobre sí mismo y saltarse
+  // las tres tiradas de salvación de muerte que el SRD exige.
+  it("un jugador no puede escribirse `stable` a sí mismo por la puerta genérica de condiciones", async () => {
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    await expect(service.apply("owner1", "cmp1", "c1", { key: "stable" })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.characterCondition.upsert).not.toHaveBeenCalled();
+  });
+
   it("una nota propia sin efecto mecánico sigue funcionando", async () => {
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
     prisma.characterCondition.upsert.mockResolvedValue({ key: "mojado" });

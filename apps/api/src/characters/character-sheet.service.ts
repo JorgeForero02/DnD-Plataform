@@ -8,7 +8,7 @@ import {
   Inject,
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
-import { CLAVE_AYUDA, RANGO_DE_ANULACION } from "@dnd/shared";
+import { CLAVE_AYUDA, CLAVE_ESTABLE, RANGO_DE_ANULACION } from "@dnd/shared";
 import type {
   AbilityKey,
   Visibility,
@@ -111,6 +111,13 @@ type HojaDerivada = ({ sheet: CharacterSheet } | { reason: string }) & {
    * personaje NO puede salir entera: un PNJ que el DM reveló cuyo statblock sigue siendo suyo.
    */
   numerosOcultos?: boolean;
+  /**
+   * **Sigue estable** (Tarea 16, H1b): hay una `CharacterCondition` con la clave reservada
+   * `CLAVE_ESTABLE` sobre este personaje. Sale de aquí y no de una consulta propia de
+   * `estadoDeMuerte` por el mismo motivo que `exhaustion`: esta función ya pide las condiciones
+   * del personaje, y una segunda consulta sería la misma pregunta hecha dos veces.
+   */
+  stable: boolean;
 };
 
 /**
@@ -367,14 +374,23 @@ export class CharacterSheetService {
     character: FilaPersonaje,
     currentHpCrudo: number | null,
     nivelDeAgotamiento: number,
+    /**
+     * **Tarea 16 (H1b).** Hasta esta tarea, «estable» se leía de `successes >= 3` — y esos
+     * contadores vuelven a cero al estabilizar (`rollDeathSave`), así que un `GET` posterior con
+     * `successes: 0, failures: 0` no podía distinguir «está estable» de «acaba de caer a 0 PG y
+     * todavía no ha tirado nada». Ahora lo dice la condición reservada `CLAVE_ESTABLE`
+     * (`@dnd/shared`), que `hojaOMotivo` ya consulta junto al resto de condiciones vivas —ver su
+     * comentario—, y `successes >= 3` deja de mirarse aquí.
+     */
+    stable: boolean,
   ): DeathState {
     const successes = character.deathSaveSuccesses;
     const failures = character.deathSaveFailures;
     let status: DeathState["status"] = "alive";
     if (muertoPorAgotamiento(nivelDeAgotamiento)) status = "dead";
     else if (currentHpCrudo === 0) {
-      if (failures >= 3) status = "dead";
-      else if (successes >= 3) status = "stable";
+      if (stable) status = "stable";
+      else if (failures >= 3) status = "dead";
       else status = "dying";
     }
     return { successes, failures, status };
@@ -561,7 +577,12 @@ export class CharacterSheetService {
         version: character.version,
         exceedsMax,
       },
-      deathSaves: this.estadoDeMuerte(character, currentHpCrudo, resultado.exhaustion),
+      deathSaves: this.estadoDeMuerte(
+        character,
+        currentHpCrudo,
+        resultado.exhaustion,
+        resultado.stable,
+      ),
     };
   }
 
@@ -1025,16 +1046,21 @@ export class CharacterSheetService {
       }),
       client.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
     ]);
-    const nivel = nivelDeAgotamiento(condicionesActivas(condiciones, campana.clockSeconds));
+    const condicionesVivas = condicionesActivas(condiciones, campana.clockSeconds);
+    const nivel = nivelDeAgotamiento(condicionesVivas);
+    // Tarea 16 (H1b): «estable» es indefinida (sin `expiresAtClock`), así que basta con que
+    // exista entre las vivas — no hay reloj que la caduque sola, solo `changeHp` la retira.
+    const stable = condicionesVivas.some((c) => c.key === CLAVE_ESTABLE);
     const extras = modificadoresTemporales(temporales, campana.clockSeconds);
 
     const base = character.statblockRef
       ? await this.hojaDeStatblock(viewer, character, extras)
       : this.hojaDePersonaje(character, items, extras);
-    if (!("sheet" in base)) return { ...base, exhaustion: nivel };
-    if (nivel === 0) return { ...base, exhaustion: nivel };
+    if (!("sheet" in base)) return { ...base, exhaustion: nivel, stable };
+    if (nivel === 0) return { ...base, exhaustion: nivel, stable };
     return {
       exhaustion: nivel,
+      stable,
       sheet: {
         ...base.sheet,
         derived: {
@@ -1244,6 +1270,10 @@ export class CharacterSheetService {
     let successes = character.deathSaveSuccesses;
     let failures = character.deathSaveFailures;
     let massive = false;
+    // Tarea 16 (H1b). SRD 5.1, «Stabilizing a Creature»: *«The creature stops being stable, and
+    // must start making death saving throws again, if it takes any damage.»* Y, simétrico:
+    // curar por encima de 0 también la retira, porque «estable» solo describe a alguien a 0 PG.
+    let retirarEstable = false;
     // Tarea 2.5.1, pieza C. **Solo se rellena si de verdad se redujo algo** — un delta sin
     // `damageType`, o uno que no toca ninguna resistencia, deja esto vacío y el camino de hoy
     // no cambia en nada, que es lo que hace la pieza reversible.
@@ -1316,6 +1346,11 @@ export class CharacterSheetService {
           deltaRegistrado = -danio;
         }
       }
+      // **Antes de gastar los PG temporales**, con `danio` bruto y no `efectivo`: la regla dice
+      // «takes any damage», y el propio SRD trata los temporales como algo que se gasta AL
+      // recibir daño, no como algo que impide haberlo recibido.
+      if (before === 0 && danio > 0) retirarEstable = true;
+
       const gastoTemporal = Math.min(tempHp, danio);
       tempHp -= gastoTemporal;
       const efectivo = danio - gastoTemporal;
@@ -1394,6 +1429,13 @@ export class CharacterSheetService {
       }
 
       after = resultante;
+      // **Round 1 de revisión — una caída fresca nunca es estable.** El guardia de arriba
+      // (`before === 0 && danio > 0`) cubre a quien YA estaba a 0; este cubre al que llega a 0
+      // por primera vez con este golpe. Sin esto, una fila con un `stable` huérfano —dejado por
+      // `setHp` o un descanso que curó sin retirarlo, antes de este mismo arreglo— sobrevivía a
+      // la próxima caída y la hoja decía «estable» de alguien que acaba de desplomarse sin haber
+      // tirado una sola salvación.
+      if (before > 0 && after === 0) retirarEstable = true;
     } else {
       after = clamp(before + input.delta, 0, maxHp);
       // **Recuperar un solo PG estando a 0 borra los dos contadores.** No es una cortesía: el
@@ -1402,7 +1444,14 @@ export class CharacterSheetService {
       if (before === 0 && after > 0) {
         successes = 0;
         failures = 0;
+        retirarEstable = true;
       }
+    }
+
+    if (retirarEstable) {
+      await tx.characterCondition.deleteMany({
+        where: { characterId, key: CLAVE_ESTABLE },
+      });
     }
 
     const actualizado = await tx.character.update({
@@ -1496,6 +1545,16 @@ export class CharacterSheetService {
             from: antes,
             to: input.currentHp,
             reason: input.reason,
+          });
+          // **Round 1 de revisión — el PATCH del DM es el otro camino que escribe `currentHp` sin
+          // pasar por `changeHp`.** Corregir el número a mano —al máximo, a 0, a lo que sea— deja
+          // el mismo dato imposible que un descanso sin retirarla: «estable» describe SOLO el
+          // instante entre caer a 0 y que algo lo cambie, y aquí algo lo acaba de cambiar. Se
+          // retira siempre que el valor escrito sea distinto del que había, sin mirar de qué
+          // número a qué número: es la corrección del DM, no una regla de combate que necesite
+          // distinguir los casos.
+          await tx.characterCondition.deleteMany({
+            where: { characterId, key: CLAVE_ESTABLE },
           });
         }
       }
@@ -1599,6 +1658,28 @@ export class CharacterSheetService {
         failures = 0;
       }
 
+      // Tarea 16 (H1b) — la marca que deja estabilizarse. SRD 5.1, «Stabilizing a Creature»:
+      // *«A stable creature doesn't make death saving throws, even though it has 0 hit points»*.
+      // Se escribe como la condición reservada `CLAVE_ESTABLE` (`@dnd/shared`) y no como una
+      // columna, por lo mismo que reserva `raging` y `helped`: es un estado que dura hasta que
+      // algo lo quita, y `CharacterCondition` ya es donde vive eso.
+      if (estabilizado) {
+        await tx.characterCondition.upsert({
+          where: { characterId_key: { characterId, key: CLAVE_ESTABLE } },
+          create: { characterId, key: CLAVE_ESTABLE, appliedById: userId },
+          // Round 1 de revisión: re-estabilizar (tres éxitos otra vez, tras haber vuelto a caer
+          // y a estabilizarse) no tiene por qué cambiar quién la puso la primera vez — a
+          // diferencia de `ConditionsService.apply`, que si actualiza `appliedById` porque ahí
+          // es el DM aplicando una condición del SRD a mano, y quien la vuelve a aplicar importa.
+          update: {},
+        });
+      } else if (revivido) {
+        // Defensivo: un 20 natural siempre revive (código de arriba), así que este personaje no
+        // debería llegar aquí ya estable — pero si de algún modo lo estuviera, revivir a 1 PG
+        // no es "estar a 0 y estable", y dejar la condición puesta sería un dato imposible.
+        await tx.characterCondition.deleteMany({ where: { characterId, key: CLAVE_ESTABLE } });
+      }
+
       const actualizado = await tx.character.update({
         where: { id: characterId },
         data: {
@@ -1624,12 +1705,15 @@ export class CharacterSheetService {
         tx,
       );
 
-      // **Por qué el `status` de esta respuesta no sale del genérico `estadoDeMuerte`.** Al
-      // estabilizar o revivir, los contadores vuelven a cero — es lo que pide la especificación
-      // ("contadores a cero")—, así que una lectura posterior con esos ceros ya no puede
-      // distinguir "acaba de estabilizarse" de "recién llegó a 0 PG sin tirar todavía". El
-      // esquema no tiene una columna `stable` (2A.7 no la pide), así que ese matiz solo se
-      // conoce **en el instante de esta tirada**, y es aquí donde se informa.
+      // **Por qué el `status` de esta respuesta no sale del genérico `estadoDeMuerte`.** Esa
+      // función lee la condición reservada `CLAVE_ESTABLE` desde `hojaOMotivo` (Tarea 16), que
+      // aquí `buildResponse` volvería a consultar **después** de que el `upsert` de arriba ya
+      // la escribiera — daría el mismo resultado, pero sería una segunda vuelta a la base para
+      // una respuesta que ya conoce el dato en memoria (`estabilizado`, `revivido`) sin tirar de
+      // ella. Antes de esta tarea, además, era la ÚNICA forma de saberlo: los contadores volvían
+      // a cero al estabilizar y una lectura posterior no podía distinguir "acaba de
+      // estabilizarse" de "recién llegó a 0 PG sin tirar todavía" — el agujero que Tarea 16
+      // cierra con la condición.
       const status: DeathState["status"] = revivido
         ? "alive"
         : failures >= 3

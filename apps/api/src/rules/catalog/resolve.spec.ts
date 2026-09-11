@@ -1,6 +1,8 @@
+import type { ResolvedItem } from "@dnd/shared";
 import { resolverOrigen, tablaDeEscalas, type ContextoDeDerivacion } from "../engine";
 import { SRD_CLASSES } from "./classes";
 import { deriveCharacter } from "./index";
+import type { CharacterBuild } from "./resolve";
 
 // Encargo A8 (2026-09-07) — un personaje tiene UNA subclase, no todas.
 //
@@ -217,4 +219,52 @@ describe("ScaleValue — la tabla real del catálogo entra por resolverOrigen (A
   // dos en el nivel 1, el mínimo del juego, así que no hay una ficha real con la que reproducir
   // ese caso: la mutación (cambiar el lanzamiento por un cero) se comprobó igualmente contra la
   // prueba de A4, y queda citada en el informe de esta tarea.
+});
+
+// Round 1 de revisión, Tarea 15 (I6, medio) — el único cableado de producción de
+// `armor_not_proficient` es `resolveBuild` pasando `characterClass.armorProficiencies` a
+// `equipmentToEngineInput` (`resolve.ts`), y no tenía ninguna prueba a este nivel: `items.spec.ts`
+// cubre la función pura, pero nada comprobaba que `resolveBuild` de verdad le pasara el dato de
+// la clase. Sin esta prueba, borrar ese argumento —lo que hace la mutación de abajo— habría
+// pasado con toda la suite en verde.
+describe("armor_not_proficient viaja desde la clase hasta el aviso (Tarea 15, I6)", () => {
+  const cotaDePlacas: ResolvedItem = {
+    ref: "plate",
+    source: "SRD",
+    name: "Cota de placas",
+    kind: "ARMOR",
+    weightOz: 0,
+    effects: [],
+    requiresAttunement: false,
+    armor: {
+      category: "HEAVY",
+      baseAc: 18,
+      dexCap: 0,
+      strengthRequirement: 15,
+      stealthDisadvantage: true,
+    },
+  };
+
+  const build = (classKey: string): CharacterBuild => ({
+    abilities: { str: 16, dex: 10, con: 14, int: 12, wis: 10, cha: 8 },
+    race: { source: "SRD", key: "human" },
+    class: { source: "SRD", key: classKey },
+    level: 1,
+    items: [cotaDePlacas],
+  });
+
+  it("un mago con cota de placas avisa: el mago no es competente con armadura pesada", () => {
+    const hoja = deriveCharacter(build("wizard"));
+    expect(hoja.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "armor_not_proficient",
+        data: expect.objectContaining({ armorKey: "plate", category: "heavy" }),
+      }),
+    );
+  });
+
+  it("un guerrero con la misma cota de placas NO avisa: es competente con armadura pesada", () => {
+    const hoja = deriveCharacter(build("fighter"));
+    expect(hoja.warnings.some((w) => w.code === "armor_not_proficient")).toBe(false);
+  });
 });

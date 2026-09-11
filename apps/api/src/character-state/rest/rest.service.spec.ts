@@ -28,6 +28,9 @@ describe("RestService", () => {
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      // Round 1 de revisión — un descanso que devuelve PG puede dejar huérfana la condición
+      // reservada `stable` si no la retira (Tarea 16, H1b).
+      deleteMany: jest.fn(),
     },
     // 2C.3: el descanso largo lee el reloj de la campaña —«una vez cada 24 horas» son horas de
     // JUEGO, no del servidor— y marca cuándo terminó.
@@ -183,6 +186,18 @@ describe("RestService", () => {
     });
   });
 
+  // Round 1 de revisión, HIGH — a PG máximos nunca se está «estable» (Tarea 16, H1b): una fila
+  // huérfana ahí sería un dato imposible que sobreviviría al descanso.
+  it("descanso LARGO retira cualquier condición «stable» huérfana", async () => {
+    prisma.characterResource.findMany.mockResolvedValue([]);
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+    expect(prisma.characterCondition.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ characterId: "c1", key: "stable" }),
+      }),
+    );
+  });
+
   it("descanso LARGO baja un nivel de agotamiento, sin quitar más de uno", async () => {
     prisma.characterResource.findMany.mockResolvedValue([]);
     prisma.characterCondition.findUnique.mockResolvedValue({ id: "cond1", level: 3 });
@@ -222,6 +237,29 @@ describe("RestService", () => {
     );
     const llamada = (prisma.character.update as jest.Mock).mock.calls[0][0];
     expect(llamada.data.currentHp).toBeGreaterThan(character.currentHp);
+  });
+
+  // Round 1 de revisión, HIGH — gastar un dado de golpe en descanso corto puede sacar a alguien
+  // de 0 PG: esta función no exige el mínimo de 1 PG que sí exige el descanso largo
+  // (`comprobarDescansoLargo`). Es el mismo caso que curar por `changeHp` (Tarea 16, H1b): si
+  // venía «estable», deja de estarlo en cuanto vuelve a tener PG de verdad.
+  it("gastar un dado de golpe desde 0 PG retira la condición «stable»", async () => {
+    const desdeCero = { ...character, currentHp: 0 };
+    prisma.character.findFirst.mockResolvedValue(desdeCero);
+    prisma.character.findFirstOrThrow.mockResolvedValue(desdeCero);
+    prisma.characterResource.findMany.mockResolvedValue([
+      { id: "hd", key: "hit-dice-d10", current: 1, max: 1, resetOn: "NONE" },
+    ]);
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "SHORT", spendHitDice: 1 });
+
+    // Constitución 14 (+2): incluso la peor tirada de 1d10 cura al menos 3, así que `nuevo > 0`
+    // es seguro sin necesitar un roller sembrado.
+    expect(prisma.characterCondition.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ characterId: "c1", key: "stable" }),
+      }),
+    );
   });
 
   it("la curación por dados de golpe NO pasa de los PG máximos", async () => {
@@ -307,6 +345,7 @@ describe("las tres reglas del descanso largo que el reloj hace comprobables (2C.
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     campaign: { findUniqueOrThrow: jest.fn() },
     transaction: jest.fn(),
@@ -440,6 +479,7 @@ describe("dos bordes del descanso que una revisión contra la fuente encontró",
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     campaign: { findUniqueOrThrow: jest.fn() },
     transaction: jest.fn(),

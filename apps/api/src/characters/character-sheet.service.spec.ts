@@ -88,6 +88,9 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
       // todas las pruebas escritas antes de que la acción Ayudar existiera.
       findUnique: jest.fn().mockResolvedValue(null),
       delete: jest.fn(),
+      // Tarea 16 (H1b): «estable» retirado por daño a 0 PG o por curar por encima. Por defecto
+      // no borra nada, que es el estado de todas las pruebas escritas antes de que existiera.
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     // Fase 2B: la hoja lee el equipo **equipado** para derivar. Por defecto, sin equipo — que es
     // el estado de todas las pruebas escritas antes de que el inventario existiera.
@@ -154,6 +157,11 @@ function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) 
       // todas las pruebas escritas antes de que la acción Ayudar existiera.
       findUnique: jest.fn().mockResolvedValue(null),
       delete: jest.fn(),
+      // Tarea 16 (H1b): al estabilizar, se crea la condición reservada `stable`; al recibir daño
+      // a 0 PG o curar por encima, se retira. Por defecto no hacen nada, que es el estado de
+      // todas las pruebas escritas antes de que existiera.
+      upsert: jest.fn().mockResolvedValue({ id: "cond-stable", key: "stable" }),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     campaign: {
       findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }),
@@ -362,6 +370,25 @@ describe("CharacterSheetService — 2A.7 PG mutables", () => {
     );
   });
 
+  // Round 1 de revisión, HIGH — `setHp` (el PATCH absoluto del DM) escribe `currentHp` sin pasar
+  // por `changeHp`, así que un DM que corrige el número a mano de 0 a algo positivo dejaba la
+  // condición `stable` puesta: la hoja seguía diciendo «estable» de alguien que el DM acababa de
+  // levantar a mano.
+  it("setHp() de 0 a un PG positivo retira la condición «stable»", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje({ version: 0, currentHp: 0 });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.setHp("dm1", "c1", "ch1", { expectedVersion: 0, currentHp: 10 });
+
+    expect(tx.characterCondition.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ characterId: "ch1", key: "stable" }),
+      }),
+    );
+  });
+
   it("rollDeathSave() exige estar a 0 PG (400 si no)", async () => {
     const { service, characters, prisma } = montar();
     characters.requireEditable.mockResolvedValue(personaje());
@@ -414,6 +441,51 @@ describe("CharacterSheetService — 2A.7 PG mutables", () => {
     montarTransaccion(prisma2, filaEstable);
     const estable = await service2.rollDeathSave("p1", "c1", "ch1", {});
     expect(estable.deathSaves).toEqual({ successes: 0, failures: 0, status: "stable" });
+  });
+
+  // Tarea 16 (H1b) — «estable» sobrevive a la petición: hasta aquí, estabilizarse ponía los
+  // contadores a cero y un `GET` posterior no podía distinguir «está estable» de «acaba de caer a
+  // 0 PG y todavía no ha tirado nada» — los dos casos tienen `successes: 0, failures: 0`. SRD 5.1,
+  // «Stabilizing a Creature»: *«A stable creature doesn't make death saving throws, even though
+  // it has 0 hit points»*. Se resuelve con una `CharacterCondition` reservada (`CLAVE_ESTABLE`,
+  // `@dnd/shared`), no con una columna nueva: ver el comentario de esa constante.
+  it("estabilizar con tres éxitos crea la condición reservada `stable`", async () => {
+    const { service, characters, prisma } = montar(dadoFijo(15));
+    characters.requireEditable.mockResolvedValue(personaje());
+    const fila = personaje({ currentHp: 0, deathSaveSuccesses: 2 });
+    const tx = montarTransaccion(prisma, fila);
+
+    await service.rollDeathSave("p1", "c1", "ch1", {});
+
+    expect(tx.characterCondition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { characterId_key: { characterId: "ch1", key: "stable" } },
+      }),
+    );
+  });
+
+  it("un GET posterior distingue «estable» de «acaba de caer a 0 PG»: ambos tienen 0 y 0", async () => {
+    const { service, prisma } = montar();
+    // La condición ya existe — como si una tirada anterior la hubiera creado — y los contadores
+    // están a cero, que es justo el estado que antes de esta tarea era indistinguible del de
+    // alguien recién caído sin haber tirado todavía.
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { key: "stable", level: null, expiresAtClock: null, expiryEdge: null },
+    ]);
+    prisma.character.findFirst.mockResolvedValue(personaje({ currentHp: 0 }));
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.deathSaves).toEqual({ successes: 0, failures: 0, status: "stable" });
+  });
+
+  it("sin la condición, 0 y 0 a 0 PG sigue siendo «dying», no «stable»", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ currentHp: 0 }));
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.deathSaves).toEqual({ successes: 0, failures: 0, status: "dying" });
   });
 });
 
@@ -506,6 +578,55 @@ describe("lo que el daño y la curación le hacen a las salvaciones de muerte", 
       where: { id: "ch1" },
       data: expect.objectContaining({ deathSaveSuccesses: 0, deathSaveFailures: 0 }),
     });
+  });
+
+  // Tarea 16 (H1b). SRD 5.1, «Stabilizing a Creature»: *«The creature stops being stable, and
+  // must start making death saving throws again, if it takes any damage.»* Y, simétrico, curar
+  // por encima de 0 también la retira: ya no está a 0 PG, así que «estable» dejó de aplicar.
+  it("recibir daño estando a 0 PG retira la condición «stable»", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: 0, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -3 });
+
+    expect(tx.characterCondition.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ characterId: "ch1", key: "stable" }),
+      }),
+    );
+  });
+
+  it("curar por encima de 0 retira la condición «stable»", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: 0, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: 5 });
+
+    expect(tx.characterCondition.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ characterId: "ch1", key: "stable" }),
+      }),
+    );
+  });
+
+  // Round 1 de revisión, HIGH — un `stable` huérfano (dejado por `setHp` o un descanso antes de
+  // este mismo arreglo) sobrevivía a la PRÓXIMA caída si el guardia solo miraba `before === 0`:
+  // alguien que estaba de pie y acaba de desplomarse con este golpe heredaba la etiqueta de una
+  // caída anterior. Una caída fresca (`before > 0 && after === 0`) nunca es estable.
+  it("una caída fresca (de pie a 0 PG en este mismo golpe) retira cualquier `stable` huérfano", async () => {
+    const { service, prisma, characters } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const tx = montarTransaccion(prisma, personaje({ currentHp: 10, tempHp: 0 }));
+
+    await service.changeHp("p1", "c1", "ch1", { delta: -10 });
+
+    expect(tx.characterCondition.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ characterId: "ch1", key: "stable" }),
+      }),
+    );
   });
 });
 

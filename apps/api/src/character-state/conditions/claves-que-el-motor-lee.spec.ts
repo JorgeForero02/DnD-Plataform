@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CLAVE_AYUDA, CLAVE_FURIA_ACTIVA, esClaveReservada } from "@dnd/shared";
+import { CLAVE_AYUDA, CLAVE_ESTABLE, CLAVE_FURIA_ACTIVA, esClaveReservada } from "@dnd/shared";
 
 // **Ficha P2-1 — la clave de una condición es un contrato de seguridad, y lo sostenía la costumbre.**
 //
@@ -69,6 +69,10 @@ const PUERTA = "character-state/conditions/conditions.service.ts";
 const CONSTANTES: Record<string, string> = {
   CLAVE_AYUDA,
   CLAVE_FURIA_ACTIVA,
+  // Tarea 16 (H1b): `estadoDeMuerte` lee esta clave para distinguir «estable» de «acaba de caer
+  // a 0 PG», y `changeHp` la consulta y la retira. Mismo motivo que las otras dos: si el motor la
+  // lee, esta lista tiene que saber resolverla.
+  CLAVE_ESTABLE,
 };
 
 /** Un nombre local cualquiera para la fila de la condición: `condition`, `condicion`, `c`, `fila`. */

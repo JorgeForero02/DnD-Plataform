@@ -1,5 +1,10 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
-import { SEGUNDOS_POR_DIA, SEGUNDOS_POR_HORA, type DeclareRestInput } from "@dnd/shared";
+import {
+  CLAVE_ESTABLE,
+  SEGUNDOS_POR_DIA,
+  SEGUNDOS_POR_HORA,
+  type DeclareRestInput,
+} from "@dnd/shared";
 import { condicionVencida } from "../conditions/vencimiento";
 import type { Character, CharacterResource, Prisma } from "@prisma/client";
 import { MembershipService } from "../../campaigns/membership.service";
@@ -115,6 +120,13 @@ export class RestService {
         await tx.character.update({
           where: { id: characterId },
           data: { currentHp: null, deathSaveSuccesses: 0, deathSaveFailures: 0 },
+        });
+        // **Round 1 de revisión.** `comprobarDescansoLargo` ya exige al menos 1 PG para empezar,
+        // así que hoy no debería haber `stable` puesta al llegar aquí — pero a PG máximos jamás
+        // se está estable, y dejar una fila huérfana por si esa guarda cambia algún día es más
+        // barato que el bicho que produciría.
+        await tx.characterCondition.deleteMany({
+          where: { characterId, key: CLAVE_ESTABLE },
         });
         await this.recuperarMitadDadosDeGolpe(tx, recursos);
         await this.bajarAgotamiento(tx, characterId, campaignId);
@@ -275,6 +287,15 @@ export class RestService {
         where: { id: character.id },
         data: { currentHp: nuevo },
       });
+      // **Round 1 de revisión.** Gastar un dado de golpe en un descanso corto puede sacar a
+      // alguien de 0 PG —esta función no exige el mínimo de 1 que sí exige el descanso largo—,
+      // así que es el mismo caso que curar por `changeHp`: si venía «estable», deja de estarlo
+      // en cuanto tiene PG de verdad otra vez.
+      if (character.currentHp === 0 && nuevo > 0) {
+        await tx.characterCondition.deleteMany({
+          where: { characterId: character.id, key: CLAVE_ESTABLE },
+        });
+      }
     }
   }
 

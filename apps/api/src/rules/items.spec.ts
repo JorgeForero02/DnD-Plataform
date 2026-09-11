@@ -447,6 +447,62 @@ describe("el caso de mesa completo: cota de malla + escudo + anillo de CA", () =
   });
 });
 
+describe("armadura sin competencia (Tarea 15, I6)", () => {
+  // SRD 5.1, «Armor Proficiency»: *«If you wear armor that you lack proficiency with, you
+  // have disadvantage on any ability check, saving throw, or attack roll that involves
+  // Strength or Dexterity, and you can't cast spells.»* Es **solo aviso**: el motor cuenta y
+  // avisa, no impide (doctrina del paso 2) — nadie le quita la CA por no tener el entrenamiento.
+  const cotaDePlacas = objeto({
+    ref: "plate",
+    kind: "ARMOR",
+    armor: {
+      category: "HEAVY",
+      baseAc: 18,
+      dexCap: 0,
+      strengthRequirement: 15,
+      stealthDisadvantage: true,
+    },
+  });
+
+  it("sin competencia `heavy`, avisa con la clave de la armadura y la categoría", () => {
+    const r = equipmentToEngineInput([cotaDePlacas], 15, false, ["light", "medium"]);
+    expect(r.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "armor_not_proficient",
+        data: expect.objectContaining({ armorKey: "plate", category: "heavy" }),
+      }),
+    );
+  });
+
+  it("con competencia `heavy`, no avisa", () => {
+    const r = equipmentToEngineInput([cotaDePlacas], 15, false, ["light", "medium", "heavy"]);
+    expect(r.warnings.some((w) => w.code === "armor_not_proficient")).toBe(false);
+  });
+
+  it("sin pasar `armorProficiencies` (compatibilidad), no avisa — el llamador no pidió el chequeo", () => {
+    const r = equipmentToEngineInput([cotaDePlacas], 15);
+    expect(r.warnings.some((w) => w.code === "armor_not_proficient")).toBe(false);
+  });
+
+  // Round 1 de revisión, Low — la categoría "shield" no tenía ningún caso propio: las tres
+  // pruebas de arriba solo cubrían armadura de cuerpo (`HEAVY`). Un mago (`armorProficiencies:
+  // []` en `classes.ts`) con un escudo cabe en el mismo mecanismo y no lo probaba nada.
+  it("un mago con un escudo también avisa: `shield` es una categoría de armadura como cualquier otra", () => {
+    const escudo = objeto({
+      ref: "shield",
+      kind: "SHIELD",
+      armor: { category: "SHIELD", baseAc: 2, strengthRequirement: 0, stealthDisadvantage: false },
+    });
+    const r = equipmentToEngineInput([escudo], 10, false, []);
+    expect(r.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "armor_not_proficient",
+        data: expect.objectContaining({ armorKey: "shield", category: "shield" }),
+      }),
+    );
+  });
+});
+
 describe("`assertValidArmorSet`, el guardia que comparten las dos puertas del equipo", () => {
   it("no lanza con una armadura sola, o con una armadura y un escudo", () => {
     const armadura: ArmorLike = { category: "LIGHT", baseAc: 11 };

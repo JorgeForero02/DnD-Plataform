@@ -716,6 +716,14 @@ export function describirAviso(warning: {
         d.actual ?? "?"
       }): la velocidad al caminar baja 10 pies.`;
     }
+    case "armor_not_proficient": {
+      // SRD 5.1, «Armor Proficiency»: sin competencia hay desventaja en pruebas, salvaciones y
+      // ataques de Fuerza o Destreza, y no se pueden lanzar conjuros. Solo aviso: el motor no
+      // impide llevarla (Tarea 15, I6).
+      const nombre =
+        typeof d.armorKey === "string" ? nombreDeRefDeObjeto(d.armorKey) : "esta armadura";
+      return `Sin competencia con ${nombre.toLowerCase()}: desventaja en pruebas, salvaciones y ataques de Fuerza o Destreza, y no puedes lanzar conjuros mientras la lleves.`;
+    }
     case "versatile_needs_both_hands": {
       const nombre = typeof d.name === "string" ? d.name : "esta arma";
       // SRD 5.1: un arma versátil hace su dado mayor **empuñada con las dos manos**, y con un

@@ -512,6 +512,8 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     build.abilities.str,
     // La exención del enano: su velocidad no baja por armadura pesada (SRD 5.1).
     race.heavyArmorSpeedExempt ?? false,
+    // Tarea 15 (I6): con qué categorías de armadura es competente esta clase.
+    characterClass.armorProficiencies,
   );
   modifiers.push(...equipo.modifiers);
   acFormulas.push(...equipo.acFormulas);

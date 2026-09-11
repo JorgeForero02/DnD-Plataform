@@ -463,3 +463,19 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
 **Y una segunda, del mismo día:** `pnpm db:slot` **falla en un worktree** (`Command "prisma" not
 found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 `D&D-Plataform`). El agente creó y migró su base a mano. Es reproducible.
+
+## I6 · Las competencias de armadura no producen aviso todavía
+
+**Cerrada el 2026-09-11 (Task 15).** El motor emite `armor_not_proficient` con la clave y la categoría de la armadura cuando el personaje la lleva sin competencia (`light`/`medium`/`heavy`/`shield`), el mismo mecanismo que `attack_not_proficient`; la web tiene su frase en `vocabulario.ts` (el `Record` es exhaustivo). Solo aviso — «cuenta y avisa, no impide». SRD 5.1, *Armor Proficiency*: «If you wear armor that you lack proficiency with, you have disadvantage on any ability check, saving throw, or attack roll that involves Strength or Dexterity, and you can't cast spells.» Unitaria del motor roja antes; mutación: no emitir enrojece.
+
+**Texto original:**
+
+| **I6** | **Las competencias de armadura no producen aviso todavía** | El catálogo ya las tiene en claves de máquina (`light`, `medium`, `heavy`, `shield`) desde 2B, y el SRD dice que llevar armadura sin competencia da desventaja en todo lo de Fuerza y Destreza y **prohíbe lanzar conjuros**. El motor ya sabe emitir avisos y el de armas ya existe (`attack_not_proficient`): falta el de armadura, que es el mismo mecanismo |
+
+## H1b · «Estable» no sobrevive a la petición que lo produce
+
+**Cerrada el 2026-09-11 (Task 16), por la salida que la ficha proponía: condición reservada.** Estabilizarse (tres éxitos, o 20 natural sin revivir) crea la condición reservada `stable`; `estadoDeMuerte` la lee (`currentHp === 0 && stable → "stable"`); cualquier daño a 0 PG o curación por encima de 0 la retira; un jugador no puede ponérsela a mano (403, misma regla que `raging`, D-P2-10); un 20 natural revive a 1 PG y por tanto no deja «estable», como dice el SRD. SRD 5.1, *Stabilizing a Creature*: «A stable creature doesn't make death saving throws, even though it has 0 hit points, but it does remain unconscious. The creature stops being stable, and must start making death saving throws again, if it takes any damage.» e2e de salvaciones de muerte roja antes; mutación: no crear la condición enrojece.
+
+**Texto original:**
+
+| **H1b** | **«Estable» no sobrevive a la petición que lo produce.** Estabilizarse con tres éxitos —o revivir con un 20 natural— pone los contadores de tiradas de muerte a cero, así que un `GET` posterior **no distingue «acaba de estabilizarse» de «acaba de caer a 0 PG»** | La hoja tiene que poder decir si el personaje está estable: es lo primero que pregunta la mesa. El estado correcto sale hoy **solo en la respuesta de la propia tirada**. **Y la solución ya existe sin migración**: `CharacterCondition` acepta **clave libre** desde 2A.12, así que «estable» cabe ahí como condición, que además es lo que es. Cuesta conectar dos módulos y decidirlo; se deja escrito para que 2A.10 no lo improvise |

@@ -9,8 +9,9 @@ import { GameEventsService } from "../game-events/game-events.service";
 describe("InvitesService", () => {
   let service: InvitesService;
   const prisma = {
-    invite: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    invite: { create: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn() },
     campaignMember: { upsert: jest.fn() },
+    transaction: jest.fn(),
     // Lo lee `accept()` para poner el nombre en el suceso `MEMBER_JOINED`.
     user: { findUnique: jest.fn() },
   };
@@ -29,6 +30,7 @@ describe("InvitesService", () => {
     }).compile();
     service = ref.get(InvitesService);
     jest.clearAllMocks();
+    prisma.transaction.mockImplementation(async (fn: any) => fn(prisma));
   });
 
   it("create() requires DM then creates a token", async () => {
@@ -55,19 +57,36 @@ describe("InvitesService", () => {
       role: "PLAYER",
       usedAt: null,
     });
+    prisma.invite.updateMany.mockResolvedValue({ count: 1 });
     prisma.campaignMember.upsert.mockResolvedValue({ role: "PLAYER" });
     const r = await service.accept("abc", "u2");
     expect(prisma.campaignMember.upsert).toHaveBeenCalled();
-    expect(prisma.invite.update).toHaveBeenCalledWith({
-      where: { id: "i1" },
+    // Gastar el enlace es condicional —solo si sigue sin usar y sin revocar— y va dentro de la
+    // transacción: es la base la que decide quién gana una carrera (ficha P3, 2026-09-10).
+    expect(prisma.invite.updateMany).toHaveBeenCalledWith({
+      where: { id: "i1", usedAt: null, revokedAt: null },
       // **Y QUIÉN**, no solo cuándo (plan 11, ficha D3b): el listado del DM tiene que poder
       // decir «esta se la di a Marta y entró Marta», y `usedAt` no guardaba eso.
       data: { usedAt: expect.any(Date), usedById: "u2" },
     });
+    expect(prisma.transaction).toHaveBeenCalled();
     expect(events.emit).toHaveBeenCalledWith("campaign.member_joined", {
       campaignId: "c1",
       userId: "u2",
     });
     expect(r).toEqual({ campaignId: "c1", role: "PLAYER" });
+  });
+
+  it("accept() loses the race when the base says the invite was already spent, and seats nobody", async () => {
+    prisma.invite.findUnique.mockResolvedValue({
+      id: "i1",
+      campaignId: "c1",
+      role: "PLAYER",
+      usedAt: null,
+    });
+    prisma.invite.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.accept("abc", "u2")).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.campaignMember.upsert).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
   });
 });

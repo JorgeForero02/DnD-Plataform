@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
+import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../src/prisma/prisma.service";
 
 describe("Invites (e2e)", () => {
@@ -46,6 +47,7 @@ describe("Invites (e2e)", () => {
   afterAll(async () => {
     if (campaignId) await prisma.campaign.deleteMany({ where: { id: campaignId } });
     await prisma.user.deleteMany({ where: { email: { in: [emailA, emailB] } } });
+    await prisma.user.deleteMany({ where: { email: { startsWith: `carrera${suffix}` } } });
     await app.close();
   });
 
@@ -100,5 +102,42 @@ describe("Invites (e2e)", () => {
       .post(`/invites/${inviteToken}/accept`)
       .set("Authorization", `Bearer ${tokenB}`);
     expect(res.status).toBe(400);
+  });
+
+  it("three people accepting the same one-use invite at once: exactly one gets in (ficha P3 · aceptar no era transaccional)", async () => {
+    // Antes, `accept` leía el enlace, hacía el `upsert` del miembro y marcaba el enlace usado en
+    // tres viajes sueltos: tres peticiones a la vez pasaban las tres la comprobación de «vivo» y
+    // entraban las tres por un enlace de un solo uso. Ahora gastar el enlace es un `updateMany`
+    // condicional dentro de la transacción: gana una y las demás reciben el mismo 400 que un
+    // enlace inventado. Los usuarios se crean por Prisma y el token se firma directo porque
+    // `/auth/register` está limitado a cinco por minuto y esta suite ya gasta dos.
+    const s = app.getHttpServer();
+    const jwt = app.get(JwtService);
+    const invite = await request(s)
+      .post(`/campaigns/${campaignId}/invites`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    const corredores = await Promise.all(
+      [1, 2, 3].map((n) =>
+        prisma.user.create({
+          data: { email: `carrera${suffix}-${n}@b.com`, passwordHash: "x", displayName: `C${n}` },
+        }),
+      ),
+    );
+    const tokens = await Promise.all(
+      corredores.map((u) => jwt.signAsync({ sub: u.id, email: u.email })),
+    );
+    const antes = await prisma.campaignMember.count({ where: { campaignId } });
+
+    const respuestas = await Promise.all(
+      tokens.map((tk) =>
+        request(s)
+          .post(`/invites/${invite.body.token}/accept`)
+          .set("Authorization", `Bearer ${tk}`),
+      ),
+    );
+
+    const codigos = respuestas.map((r) => r.status).sort();
+    expect(codigos).toEqual([201, 400, 400]);
+    expect(await prisma.campaignMember.count({ where: { campaignId } })).toBe(antes + 1);
   });
 });

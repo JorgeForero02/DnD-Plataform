@@ -105,15 +105,26 @@ export class InvitesService {
     if (!invite || estadoDeInvitacion(invite, new Date()) !== "VIVA") {
       throw new BadRequestException("Invalid or already-used invite");
     }
-    const member = await this.prisma.campaignMember.upsert({
-      where: { campaignId_userId: { campaignId: invite.campaignId, userId } },
-      create: { campaignId: invite.campaignId, userId, role: invite.role },
-      update: {},
-    });
-    await this.prisma.invite.update({
-      where: { id: invite.id },
-      // **Y quién**, no solo cuándo: es lo que hace útil el listado del DM (ficha D3b).
-      data: { usedAt: new Date(), usedById: userId },
+    // **Gastar el enlace y sentar al miembro van en UNA transacción, y quien gasta el enlace es
+    // la base** (ficha P3 «aceptar una invitación no es transaccional», cerrada el 2026-09-10).
+    // Hasta entonces eran tres viajes sueltos, y tres peticiones a la vez pasaban las tres la
+    // comprobación de arriba: un enlace de un solo uso sentaba a tres personas. El `updateMany`
+    // condicional —solo si sigue sin usar y sin revocar— es el que decide quién gana; la lectura
+    // de arriba se queda como puerta barata y para que el mensaje siga siendo uno solo.
+    const member = await this.prisma.transaction(async (tx) => {
+      const gastado = await tx.invite.updateMany({
+        where: { id: invite.id, usedAt: null, revokedAt: null },
+        // **Y quién**, no solo cuándo: es lo que hace útil el listado del DM (ficha D3b).
+        data: { usedAt: new Date(), usedById: userId },
+      });
+      if (gastado.count === 0) {
+        throw new BadRequestException("Invalid or already-used invite");
+      }
+      return tx.campaignMember.upsert({
+        where: { campaignId_userId: { campaignId: invite.campaignId, userId } },
+        create: { campaignId: invite.campaignId, userId, role: invite.role },
+        update: {},
+      });
     });
     this.events.emit("campaign.member_joined", { campaignId: invite.campaignId, userId });
 

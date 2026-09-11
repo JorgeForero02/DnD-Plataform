@@ -41,3 +41,12 @@ esta.
 
 - **Un enlace duplicado devuelve 500 en vez de 409** (choca contra el índice único de
   `EntityLink`). Tarea 1.6.
+
+## P3 · Aceptar una invitación no es transaccional
+
+**Cerrada el 2026-09-10.** `invites/invites.service.ts`, `accept`: gastar el enlace y sentar al miembro van en una sola `PrismaService.transaction`, y **gastar es un `updateMany` condicional** (`usedAt: null, revokedAt: null`) — la base decide quién gana; quien pierde recibe el mismo 400 que un enlace inventado. Prueba: `apps/api/test/invites.e2e-spec.ts`, «three people accepting the same one-use invite at once: exactly one gets in» — roja tres veces de tres antes (`[201,201,201]`), verde después; unitaria nueva «loses the race … seats nobody». **Mutación:** quitar solo la condición del `updateMany` vuelve a sentar a tres (1 failed).
+
+**Texto original:**
+
+- **Aceptar una invitación no es transaccional.** Tarea 1.4. *(La segunda mitad de esta línea —«el
+  token no caduca ni es revocable»— la cerró el plan 11 y está archivada.)*

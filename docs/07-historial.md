@@ -30,6 +30,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md`](./_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md) | **El detalle por tarea de las tareas 5 y 14 del plan `iniciativa-y-bando`**, movidas enteras el 2026-09-06 al escribir el hito de la tanda completa. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, movida entera el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó el fichero por encima de su tope de 1000 líneas, y esta fue la más antigua. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-bandeja-de-avisos.md`](./_archivo/historial-2026-09-05-bandeja-de-avisos.md) | **La bandeja de avisos**, movida entera el 2026-09-08 al llegar el fichero a 988 de 1000 y no caber la entrada del reconocimiento. Era la entrada completa más antigua. Su cabecera de archivo cuenta la ironía que salió ese día: `01-arquitectura.md` seguía negando esta bandeja tres días después de entregarla. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md) | **El nervio medido en producción** y **el PNJ sin nombre en la pantalla**, movidas enteras el 2026-09-10 en el segundo corte de la sesión de cerrar fichas. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
@@ -68,6 +69,10 @@ su medición están en
   (`links.service.ts`, `create`). **Revertir:** quitar el `try/catch`. **De paso, medido y no
   arreglado:** dos enlaces **sin rótulo** entre las mismas fichas siguen entrando, porque Postgres
   no iguala dos `NULL` en el índice; cerrarlo es un índice parcial, o sea una migración del autor.
+- **P3 · aceptar una invitación** — gastar el enlace y sentar al miembro van en una transacción,
+  y el gasto es un `updateMany` condicional que decide la carrera (`invites.service.ts`).
+  **Por qué:** tres peticiones a la vez entraban las tres por un enlace de un solo uso.
+  **Revertir:** volver a los tres viajes sueltos; la prueba de carrera del e2e enrojece.
 - **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
   rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda
@@ -814,66 +819,19 @@ reparte sus tres columnas a lo ancho y las «Herramientas del DM» quedan cortad
 desbordamiento de la página —el contenedor tiene su propio desplazamiento—, pero en un móvil la
 mesa no se usa cómodamente. Es maquetación y pide su propia tanda.
 
-## El nervio en vivo, medido en producción detrás de nginx y Traefik (2026-09-05)
+## El nervio en vivo, medido en producción detrás de nginx y Traefik (2026-09-05) — archivada
 
-**Qué se comprobó, y por qué hacía falta el servidor.** El plan 12 dejaba un punto sin cerrar: *«la
-comprobación detrás de nginx y Traefik hecha en el servidor, no supuesta»*. **En local no hay
-proxies**, así que el canal podía funcionar perfecto aquí y llegar a ráfagas allí — nginx acumula
-por defecto, y ese es justo el fallo que `X-Accel-Buffering: no` existe para evitar.
+Entera en
+[`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md),
+movida el 2026-09-10 (segundo corte de la sesión de cerrar fichas). **El hito:** el canal SSE se
+comprobó **contra producción**, detrás de nginx y Traefik, y los sucesos llegaron; lo que viaja es
+un aviso sin dato, y `canView` sigue mandando en la recarga. **No confundirla con su hermana**, la
+entrega del canal (plan 12 · 12.3), archivada aparte.
 
-Desplegado `b9d6cce` (a mano, como manda `03-despliegue.md`), medido contra
-`https://dnd.supportive.pro` con una cuenta de la campaña de demostración:
+## Un PNJ podía pelear, pero la pantalla no sabía su nombre ni sabía meterlo (2026-09-05) — archivada
 
-| Qué | Resultado |
-|---|---|
-| Apertura del canal | `200`, `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `Transfer-Encoding: chunked`, `Server: nginx/1.31.5` |
-| Primer byte | `: abierto` **en el acto**, no al cerrar |
-| Tres sucesos provocados con el flujo abierto | llegaron **en el mismo segundo** en que se enviaron (14:17:16, :21, :27) |
-| Latido | `:` a los **15 segundos** de abrir |
-| Sin billete | `401` |
-
-**`X-Accel-Buffering` no aparece en la respuesta, y eso es lo correcto**: es una directiva **para**
-nginx, que la consume en vez de reenviarla. Lo que demuestra que funciona no es la cabecera, es que
-los sucesos lleguen sueltos — y llegaron.
-
-**Y lo que viaja por el canal es un aviso, no un dato**: `{"type":"ABILITY_ROLL","campaignId":…,
-"subjectType":"campaign","subjectId":…}`. Ni el resultado de la tirada ni su visibilidad: quien lo
-recibe recarga por su ruta, donde `canView` sigue mandando.
-
-**Lo que hay en producción y lo que no.** Producción corre **`b9d6cce`**: tiene el nervio, la
-bandeja y los dos avisos. **No tiene** `31dd05c` (el seed) ni `cc64ed7` (el PNJ que se llamaba
-«Alguien» y «Entrar en combate» sin PNJ que ofrecer), así que **esos dos defectos siguen ahí** hasta
-el siguiente despliegue.
-
-## Un PNJ podía pelear, pero la pantalla no sabía su nombre ni sabía meterlo (2026-09-05)
-
-**Qué.** Dos defectos de la capa de combate, encontrados **paseando la aplicación** sobre la
-campaña de demostración recién sembrada — no por una prueba:
-
-1. **En el orden de turnos, un PNJ se llamaba «Alguien»**, y se lo llamaba también al DM que
-   acababa de sacarlo del bestiario.
-2. **El diálogo de «Entrar en combate» no ofrecía ningún PNJ**: solo los personajes de los
-   jugadores. Se podía entrar en combate y **no había con quién combatir**; meter al capataz en la
-   iniciativa solo se podía por la API.
-
-**Por qué pasaba, y no era un descuido de dos líneas.** Un PNJ **es** una fila de `Character` —esa
-decisión es la que hizo barata toda la fase 2D—, pero `GET /characters` **no los lista a
-propósito**: esa lista es «quién se sienta a la mesa», y seis goblins mezclados con tres
-aventureros convierten la pantalla de personajes en un listado de combate. La mesa leía solo esa
-lista, así que para ella los PNJ no existían.
-
-**El arreglo es pasarle la segunda lista**, la del bestiario, que el servidor ya filtra por
-visibilidad. Con eso los dos defectos caen juntos, y **un PNJ que el jugador no puede ver sigue
-siendo «Alguien» para él**, que es lo correcto: la lista que no le llega no puede nombrárselo.
-
-**Y una molestia de maquetación, del mismo paseo**: el rótulo «Ver el registro como» de la banda de
-la mesa se partía en **tres renglones** y empujaba el resto de la fila, a 1280 px y peor a 390. Se
-acorta lo visible a «Ver como» y **el nombre accesible se queda entero**.
-
-**Mutación probada**: deshecho el nombre del PNJ, se pone roja **una sola** prueba de las 1093.
-
-**Cómo revertirlo.** `git revert` del commit; los PNJ vuelven a estar en el bestiario y fuera del
-combate.
+Entera en el mismo archivo de arriba, movida el 2026-09-10. **El hito:** los PNJ instanciados
+entran en la mesa con nombre y con su gesto de meterlos en el combate.
 
 ## Una campaña de demostración que se siembra sola (2026-09-05) — archivada
 

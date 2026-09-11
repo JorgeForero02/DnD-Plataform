@@ -7,7 +7,7 @@ import {
 } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, type Viewer } from "../common/visibility";
+import { canView, comoRecursoVisible, type Viewer } from "../common/visibility";
 
 // Tarea 2A.14 — la bandeja de notificaciones.
 //
@@ -140,15 +140,11 @@ export class NotificationsService {
     if (!entity) return;
 
     const visores = await this.visoresDeLaMesa(campaignId);
-    const grantedUserIds = entity.grants.map((g) => g.userId);
+    const recurso = comoRecursoVisible(entity);
 
     for (const viewer of visores) {
       if (viewer.userId === entity.createdById) continue; // quien la creó ya lo sabe
-      const puedeVer = canView(viewer, {
-        visibility: entity.visibility,
-        createdById: entity.createdById,
-        grantedUserIds,
-      });
+      const puedeVer = canView(viewer, recurso);
       // Notificar sin filtrar por visibilidad delataría la existencia de una entidad DM_ONLY
       // a quien no puede verla, aunque el contenido no viaje en el payload.
       if (!puedeVer) continue;
@@ -197,18 +193,14 @@ export class NotificationsService {
     if (!entity) return;
 
     const visores = await this.visoresDeLaMesa(campaignId);
-    const grantedUserIds = entity.grants.map((g) => g.userId);
+    const recurso = comoRecursoVisible(entity);
     const destinatarios = visores.filter((v) => v.role === "DM" || v.userId === entity.createdById);
 
     for (const viewer of destinatarios) {
       // **Nadie se avisa de lo que acaba de hacer.** Un DM que comenta veinte fichas seguidas
       // genera cero avisos para sí mismo.
       if (viewer.userId === actorId) continue;
-      const puedeVer = canView(viewer, {
-        visibility: entity.visibility,
-        createdById: entity.createdById,
-        grantedUserIds,
-      });
+      const puedeVer = canView(viewer, recurso);
       if (!puedeVer) continue;
       await this.notify(viewer.userId, {
         type: "COMMENT_ADDED",

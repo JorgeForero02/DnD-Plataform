@@ -11,6 +11,7 @@ import {
 } from "../hooks";
 import { linksKey } from "../../links/hooks";
 import { commentsKey } from "../../comments/hooks";
+import { campaignsKey } from "../../campaigns/hooks";
 import * as entitiesApi from "../api";
 import type { Entity } from "../api";
 
@@ -109,5 +110,61 @@ describe("entities hooks — cache invalidation across the two key branches (fix
     expect(qc.getQueryState(commentsKey("e-other"))?.isInvalidated).toBe(true);
     expect(qc.getQueryState(entitiesKey("c1", "NPC"))?.isInvalidated).toBe(true);
     expect(qc.getQueryState(allEntitiesKey("c1"))?.isInvalidated).toBe(true);
+  });
+
+  // Revisión final de `ficha/tanda-2-a-5`, Medium #5: la tarjeta de campaña en "Tus crónicas"
+  // muestra `entityCount` (Task 33), pero ninguna mutación de fichas invalidaba
+  // `campaignsKey`, así que crear, borrar o cambiar la visibilidad de una ficha dejaba ese
+  // número obsoleto hasta los 30s de `staleTime` (queryClient.ts).
+  it("crear una ficha también invalida campaignsKey, no solo sus propias listas", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(campaignsKey, []);
+    vi.spyOn(entitiesApi, "createEntity").mockResolvedValue(created);
+
+    const { result } = renderHook(() => useCreateEntity("c1", "NPC"), {
+      wrapper: makeWrapper(qc),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        type: "NPC",
+        name: "Acererak",
+        tags: [],
+        visibility: "OWNER_DM",
+      });
+    });
+
+    expect(qc.getQueryState(campaignsKey)?.isInvalidated).toBe(true);
+  });
+
+  it("borrar una ficha también invalida campaignsKey", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(campaignsKey, []);
+    vi.spyOn(entitiesApi, "deleteEntity").mockResolvedValue({ deleted: true });
+
+    const { result } = renderHook(() => useDeleteEntity("c1", "NPC"), {
+      wrapper: makeWrapper(qc),
+    });
+    await act(async () => {
+      await result.current.mutateAsync("e1");
+    });
+
+    expect(qc.getQueryState(campaignsKey)?.isInvalidated).toBe(true);
+  });
+
+  // Actualizar una ficha también cambia el conteo de otros: cambiar la visibilidad de PUBLIC
+  // a DM_ONLY la saca del `entityCount` de quien no es DM.
+  it("actualizar una ficha (p. ej. su visibilidad) también invalida campaignsKey", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(campaignsKey, []);
+    vi.spyOn(entitiesApi, "updateEntity").mockResolvedValue(created);
+
+    const { result } = renderHook(() => useUpdateEntity("c1", "NPC"), {
+      wrapper: makeWrapper(qc),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({ entityId: "e1", input: { visibility: "DM_ONLY" } });
+    });
+
+    expect(qc.getQueryState(campaignsKey)?.isInvalidated).toBe(true);
   });
 });

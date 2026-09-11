@@ -195,20 +195,30 @@ export class GameEventsService {
         select: { startedAt: true, createdAt: true, endedAt: true },
       });
       if (!session) throw new NotFoundException("Session not found");
-      const inicio = session.startedAt ?? session.createdAt;
-      // Fix round 1, hallazgo 1: la ventana tiene que CERRARSE cuando la sesión ya cerró
-      // (`endedAt`), o el hilo de una sesión terminada seguiría absorbiendo cualquier suceso de
-      // campaña futuro sin fin. Una sesión todavía abierta (`endedAt` nulo) no tiene tope: sigue
-      // en curso.
-      filtroSesion = {
-        OR: [
-          { sessionId: query.sessionId },
-          {
-            sessionId: null,
-            createdAt: session.endedAt ? { gte: inicio, lte: session.endedAt } : { gte: inicio },
-          },
-        ],
-      };
+      // Revisión final de `ficha/tanda-2-a-5`, Medium #4: una sesión PLANIFICADA (`startedAt`
+      // nulo) no tiene inicio real todavía — antes de esto `inicio = startedAt ?? createdAt`
+      // hacía que la ventana fuera `[createdAt, ∞)`, así que CUALQUIER suceso de campaña sin
+      // `sessionId` desde que se creó la fila (archivar, entrar…) aparecía en el hilo de toda
+      // sesión planificada creada antes, aunque esa sesión no se haya jugado nunca. Sin
+      // `startedAt` no se ensancha: el hilo es solo lo suyo.
+      if (!session.startedAt) {
+        filtroSesion = { sessionId: query.sessionId };
+      } else {
+        const inicio = session.startedAt;
+        // Fix round 1, hallazgo 1: la ventana tiene que CERRARSE cuando la sesión ya cerró
+        // (`endedAt`), o el hilo de una sesión terminada seguiría absorbiendo cualquier suceso
+        // de campaña futuro sin fin. Una sesión todavía abierta (`endedAt` nulo) no tiene tope:
+        // sigue en curso.
+        filtroSesion = {
+          OR: [
+            { sessionId: query.sessionId },
+            {
+              sessionId: null,
+              createdAt: session.endedAt ? { gte: inicio, lte: session.endedAt } : { gte: inicio },
+            },
+          ],
+        };
+      }
     }
 
     const rows = await this.prisma.gameEvent.findMany({

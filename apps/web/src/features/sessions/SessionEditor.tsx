@@ -115,11 +115,12 @@ export function SessionEditor({
     // survives a save that looks successful. In create mode there is no old value to
     // preserve, so an empty field is still omitted (the schema field is optional).
     //
-    // scheduledAt: updateSessionSchema (Task 6, P3.5) now accepts `null` as "clear the date",
-    // distinct from createSessionSchema which does not. So an empty field only sends `null`
-    // when editing a session that already had one; creating with an empty field still omits
-    // the key (there is no old date to clear), and editing a session that never had a date
-    // leaves the key omitted too (nothing changes).
+    // scheduledAt: both createSessionSchema and updateSessionSchema accept `null` as "no
+    // date" (packages/shared/src/session.schema.ts — ronda 1 de revisión, 2026-09-11, hizo
+    // que crear también lo aceptara). This editor still only SENDS `null` when editing a
+    // session that already had a date: creating with an empty field omits the key (there is
+    // no old date to clear, and the schema field is optional), and editing a session that
+    // never had a date leaves the key omitted too (nothing changes).
     const clearingScheduledAt = isEdit && !scheduledAt && !!session?.scheduledAt;
     const payload = {
       title,

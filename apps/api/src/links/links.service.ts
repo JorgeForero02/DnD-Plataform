@@ -9,7 +9,7 @@ import { CreateEntityLinkInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
-import { canView, type ViewableResource } from "../common/visibility";
+import { canView, comoRecursoVisible, loVeLaMesa } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 
 /**
@@ -37,30 +37,17 @@ export type LinkDirection = "OUTGOING" | "INCOMING";
  * opción que no miente.
  */
 function visibilidadDelEnlace(desde: Visibility, hasta: Visibility): Visibility {
-  const laVeLaMesa = (v: Visibility) => v === "PUBLIC" || v === "PLAYERS";
-  return laVeLaMesa(desde) && laVeLaMesa(hasta) ? "PLAYERS" : "DM_ONLY";
+  // Low #7, revisión final de `ficha/tanda-2-a-5`: copia inline retirada — `loVeLaMesa` vive
+  // en `@dnd/shared` (Task 26) precisamente para que no haya una segunda versión de este
+  // mismo predicado.
+  return loVeLaMesa(desde) && loVeLaMesa(hasta) ? "PLAYERS" : "DM_ONLY";
 }
 
-/**
- * El adaptador de «una ficha con sus concesiones» al `ViewableResource` que pide `canView`.
- *
- * Vivía escrito dos veces —en `listFor` y en `listForCampaign`—, con la misma forma exacta
- * (`visibility`, `createdById`, `grantedUserIds: grants.map(...)`). Dos copias de un adaptador
- * de un único predicado son el mismo riesgo que la regla de oro ya nombra para `canView`: el día
- * que una gane un campo y la otra no, empiezan a decidir cosas distintas sin que ninguna prueba
- * lo note. Se extrae aquí, una vez, para que solo haya un sitio que tocar.
- */
-function comoRecursoVisible(entidad: {
-  visibility: Visibility;
-  createdById: string;
-  grants: { userId: string }[];
-}): ViewableResource {
-  return {
-    visibility: entidad.visibility,
-    createdById: entidad.createdById,
-    grantedUserIds: entidad.grants.map((g) => g.userId),
-  };
-}
+// `comoRecursoVisible` — Low #12, revisión final de `ficha/tanda-2-a-5`: vivía definido aquí
+// (extraído en Task 22 de `listFor`/`listForCampaign`, que lo tenían cada uno por su cuenta) y
+// se movió a `../common/visibility`, junto a `canView`, porque el mismo adaptador reapareció
+// inline en `campaigns.service.ts` (Task 33) y ya en `entities.service.ts`: tres copias del
+// mismo predicado en vez de una.
 
 @Injectable()
 export class LinksService {

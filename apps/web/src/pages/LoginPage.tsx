@@ -21,17 +21,22 @@ export function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  // Fix round 1 (post-1.18b review), Critical 1, fix-of-the-fix: AccountPage.tsx's password
-  // form logs the session out THE INSTANT the server accepts the new password (no dead token
-  // lingers in localStorage), which means it can no longer keep its own success message on
-  // screen — the route guard unmounts it the same render. This is where that message actually
-  // gets read instead. First version carried it as react-router navigation state, which broke
-  // in the real browser: ProtectedRoute's own bare <Navigate to="/login" replace/> fires a
-  // SECOND, state-less history.replaceState a moment later and silently wiped it — caught only
-  // by the real Playwright journey (cuenta.spec.ts), never by a unit test with jsdom's
-  // MemoryRouter. auth.store.ts's `flash` field instead: not router history, so nothing
-  // router-driven can overwrite it. One-shot by convention, not by a timer: cleared below the
-  // moment a login actually succeeds, so it never survives into a session it wasn't about.
+  // Fix round 1 (post-1.18b review), Critical 1: a one-shot message for the next
+  // unauthenticated screen, read here. Carried as a field on auth.store.ts (`flash`) instead
+  // of react-router navigation state on purpose — a first version tried navigation state and
+  // it broke in the real browser: ProtectedRoute's own bare <Navigate to="/login" replace/>
+  // fires a SECOND, state-less history.replaceState a moment later and silently wiped it,
+  // caught only by a real Playwright journey, never by a unit test with jsdom's MemoryRouter. A
+  // store field isn't router history, so nothing router-driven can overwrite it.
+  //
+  // Its producer, as of the final review of `ficha/tanda-2-a-5` (Medium #3): AccountPage.tsx's
+  // password-change form no longer logs the session out on success (Task 20 dropped that), so
+  // it isn't the source. The real one is `useAuthRehydration` (features/auth/hooks.ts) logging
+  // this tab out on a 401 from /auth/me — the case is an admin resetting someone else's
+  // password: it invalidates the token on every OTHER tab that user had open, and this is the
+  // message they see when they land back here. One-shot by convention, not by a timer: cleared
+  // below the moment a login actually succeeds, so it never survives into a session it wasn't
+  // about.
   const flash = useAuthStore((s) => s.flash);
   const clearFlash = useAuthStore((s) => s.clearFlash);
   // Fix round 1 (Task 10), Critical: un `useEffect` de limpieza en el DESMONTAJE se ejecuta

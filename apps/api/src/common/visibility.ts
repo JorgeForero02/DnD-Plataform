@@ -29,6 +29,38 @@ export interface ViewableResource {
   grantedUserIds: string[];
 }
 
+/**
+ * El adaptador de «una fila con sus concesiones» al `ViewableResource` que pide `canView`.
+ *
+ * Vivía escrito inline en doce sitios —tres de ellos en `entities.service.ts` (reclasificar,
+ * `laAudienciaCrecio` y revelar), más `links.service.ts`, `campaigns.service.ts`,
+ * `campaign-items.service.ts` (dos), `comments.service.ts`, `inventory/common/resolve-item.ts`,
+ * `notifications.service.ts` (dos) y `sessions.service.ts`— con la misma forma exacta
+ * (`visibility`, `createdById`, `grantedUserIds: grants.map(...)`), una copia extraída
+ * (Task 22) y reescrita inline otra vez después (Task 33) sin que nada lo impidiera. Es el
+ * mismo riesgo que la regla de oro ya nombra para `canView`: el día que una gane un campo y
+ * las otras no, empiezan a decidir cosas distintas sin que ninguna prueba lo note. Aquí, junto
+ * a `canView`, es el único sitio que hay que tocar (Low #12, revisión final de
+ * `ficha/tanda-2-a-5`).
+ *
+ * Dos sitios se quedan fuera a propósito porque su fila no tiene esta forma exacta: en
+ * `rules-engine.service.ts` (aplicar reglas) la `visibility` viene del EFECTO de la regla, no de
+ * la entidad; en `campaign-items.service.ts` (bajar visibilidad) la `visibility` es la que se
+ * está proponiendo, no la que ya tiene la fila. Envolver esos dos en el adaptador escondería que
+ * están mirando una visibilidad distinta a la de `entity`/`prospectivo`.
+ */
+export function comoRecursoVisible(entidad: {
+  visibility: Visibility;
+  createdById: string;
+  grants: { userId: string }[];
+}): ViewableResource {
+  return {
+    visibility: entidad.visibility,
+    createdById: entidad.createdById,
+    grantedUserIds: entidad.grants.map((g) => g.userId),
+  };
+}
+
 export function canView(viewer: Viewer, resource: ViewableResource): boolean {
   if (viewer.isAdmin) return true;
   if (viewer.role === "DM") return true;

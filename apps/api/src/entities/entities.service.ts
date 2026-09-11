@@ -9,7 +9,12 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, type ListEntitiesQuery } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { audienciaDeSuceso, canView, laAudienciaCrecio } from "../common/visibility";
+import {
+  audienciaDeSuceso,
+  canView,
+  comoRecursoVisible,
+  laAudienciaCrecio,
+} from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { WorldStateService } from "../world-state/world-state.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -132,13 +137,9 @@ export class EntitiesService {
       include: { grants: true },
       orderBy: { createdAt: "desc" },
     });
-    const visibles = entities.filter((e) =>
-      canView(viewer, {
-        visibility: e.visibility,
-        createdById: e.createdById,
-        grantedUserIds: e.grants.map((g) => g.userId),
-      }),
-    );
+    // Low #12, revisión final de `ficha/tanda-2-a-5`: `comoRecursoVisible` (`common/
+    // visibility.ts`) en vez de esta misma traducción inline.
+    const visibles = entities.filter((e) => canView(viewer, comoRecursoVisible(e)));
 
     const texto = (query.q ?? "").trim().toLocaleLowerCase("es");
     if (texto === "") return visibles;
@@ -152,14 +153,7 @@ export class EntitiesService {
       where: { id: entityId, campaignId },
       include: { grants: true },
     });
-    if (
-      !entity ||
-      !canView(viewer, {
-        visibility: entity.visibility,
-        createdById: entity.createdById,
-        grantedUserIds: entity.grants.map((g) => g.userId),
-      })
-    ) {
+    if (!entity || !canView(viewer, comoRecursoVisible(entity))) {
       throw new NotFoundException("Entity not found");
     }
 
@@ -264,11 +258,7 @@ export class EntitiesService {
           {
             subjectType: "campaign",
             subjectId: entity.id,
-            ...audienciaDeSuceso({
-              visibility: entity.visibility,
-              createdById: entity.createdById,
-              grantedUserIds: entity.grants.map((g) => g.userId),
-            }),
+            ...audienciaDeSuceso(comoRecursoVisible(entity)),
             payload: {
               type: "ENTITY_RETYPED",
               entityName: entity.name,
@@ -310,11 +300,7 @@ export class EntitiesService {
             createdById: before.createdById,
             grantedUserIds: concesionesAntes,
           },
-          {
-            visibility: entity.visibility,
-            createdById: entity.createdById,
-            grantedUserIds: entity.grants.map((g) => g.userId),
-          },
+          comoRecursoVisible(entity),
         );
       if (crecio) {
         // **La visibilidad del suceso hereda la de la entidad, ahora sin parche.**
@@ -335,11 +321,7 @@ export class EntitiesService {
           {
             subjectType: "campaign",
             subjectId: entity.id,
-            ...audienciaDeSuceso({
-              visibility: entity.visibility,
-              createdById: entity.createdById,
-              grantedUserIds: entity.grants.map((g) => g.userId),
-            }),
+            ...audienciaDeSuceso(comoRecursoVisible(entity)),
             payload: { type: "ENTITY_REVEALED", entityName: entity.name },
           },
           tx,

@@ -183,6 +183,44 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
     expect(suceso).toBeUndefined();
   });
 
+  // Revisión final de `ficha/tanda-2-a-5`, Medium #4: una sesión PLANIFICADA (`startedAt` nulo,
+  // `endedAt` nulo) no tiene "inicio" real todavía — `inicio = session.startedAt ?? createdAt`
+  // hacía que la ventana fuera `[createdAt, ∞)`, absorbiendo CUALQUIER suceso de campaña sin
+  // `sessionId` desde que se creó la fila, aunque la sesión nunca se haya jugado.
+  it("una sesión PLANIFICADA (nunca empezada) no absorbe sucesos de campaña: solo los suyos propios", async () => {
+    const s = app.getHttpServer();
+
+    const planificada = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "Sesión planificada", visibility: "PLAYERS" })
+    ).body.id;
+
+    // Acto de campaña sin sesión, ocurrido DESPUÉS de crear la sesión planificada — con el bug,
+    // este suceso caería dentro de `[createdAt, ∞)` y aparecería en su hilo.
+    const otroPersonaje = (
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .send({ name: "Éomer", level: 3, visibility: "PLAYERS" })
+    ).body;
+    const archivado = await request(s)
+      .post(`/campaigns/${campaignId}/characters/${otroPersonaje.id}/archive`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(archivado.status).toBe(201);
+
+    const hilo = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .query({ sessionId: planificada })
+      .set("Authorization", `Bearer ${tokenDM}`);
+    expect(hilo.status).toBe(200);
+    const suceso = (hilo.body.events as { type: string; subjectId: string }[]).find(
+      (e) => e.type === "CHARACTER_ARCHIVED" && e.subjectId === otroPersonaje.id,
+    );
+    expect(suceso).toBeUndefined();
+  });
+
   it("pedir el hilo de una sesión de OTRA campaña es 404", async () => {
     const s = app.getHttpServer();
     const otra = (

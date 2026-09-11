@@ -827,8 +827,11 @@ Antes los contadores volvían a cero al estabilizarse y un `GET` posterior no po
 encima de 0 —curación, `PATCH` del DM o descanso— —SRD 5.1, *Stabilizing a Creature*: *«The creature stops being stable,
 and must start making death saving throws again, if it takes any damage»*—; un 20 natural revive
 a 1 PG y por tanto **no** deja estable. Es clave reservada como `raging` (D-P2-10): el endpoint
-público de condiciones la rechaza a todos, DM incluido. Lo que **no** se modela: el «recupera 1 PG
-al cabo de 1d4 horas» del SRD, porque no hay reloj de horas sobre el que apoyarlo.
+público de condiciones la rechaza a todos, DM incluido. **Y un personaje estable no tira salvación
+de muerte**: `rollDeathSave` lee la fila dentro de la misma transacción y responde 400 —la revisión
+final de la rama del 2026-09-11 encontró que sí dejaba tirar, acumulaba fallos y la tirada decía
+`dying` mientras la hoja decía `stable`—. Lo que **no** se modela: el «recupera 1 PG al cabo de
+1d4 horas» del SRD, porque no hay reloj de horas sobre el que apoyarlo.
 
 ## La acción Ayudar es una condición con vencimiento (plan 08, ficha I8)
 

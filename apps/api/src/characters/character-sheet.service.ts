@@ -1628,6 +1628,18 @@ export class CharacterSheetService {
       if (currentHp !== 0)
         throw new BadRequestException("Solo se puede tirar salvación de muerte a 0 PG.");
 
+      // High #2, revisión final de `ficha/tanda-2-a-5`. SRD 5.1, «Stabilizing a Creature»:
+      // *«A stable creature doesn't make death saving throws, even though it has 0 hit
+      // points»*. `estadoDeMuerte` ya leía `CLAVE_ESTABLE` para lo que la hoja MUESTRA (Tarea
+      // 16), pero esta tirada no la consultaba antes de tirar: un personaje estable podía
+      // seguir tirando, sus contadores se acumulaban sobre una fila que la hoja seguía
+      // declarando estable, y la tirada y la hoja se contradecían.
+      const yaEstable = await tx.characterCondition.findUnique({
+        where: { characterId_key: { characterId, key: CLAVE_ESTABLE } },
+      });
+      if (yaEstable)
+        throw new BadRequestException("Un personaje estable no tira salvaciones de muerte.");
+
       const tirada = rollExpression("1d20", this.roller);
       const dado = tirada.total;
 
@@ -1838,7 +1850,12 @@ export class CharacterSheetService {
       // Y tampoco inspiración: el SRD la gasta en ataque, salvación o prueba, y el daño no es
       // ninguna de las tres. El esquema ya rechaza pedirlo; esto es la otra mitad de esa verdad.
       spendInspiration: false,
-      audience: input.audience ?? "PUBLIC",
+      // Low #8, revisión final de `ficha/tanda-2-a-5`: era `?? "PUBLIC"` fijo, distinto del
+      // `audienciaPorDefecto` que ya usa el ATAQUE de arriba. Un cliente por API que omitiera
+      // `audience` en `part: "DAMAGE"` publicaba el daño de un PNJ `DM_ONLY` a toda la mesa —
+      // la web ya manda siempre `audience` (`TirarAtaqueBoton`), así que esto solo se veía por
+      // API directa.
+      audience: input.audience ?? audienciaPorDefecto,
     } as const;
 
     try {

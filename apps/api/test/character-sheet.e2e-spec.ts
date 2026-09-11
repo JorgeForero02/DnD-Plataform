@@ -412,6 +412,34 @@ describe("Hoja de personaje y PG (e2e)", () => {
       const condiciones = await prisma.characterCondition.findMany({ where: { characterId } });
       expect(condiciones.some((c) => c.key === "stable")).toBe(false);
     });
+
+    // Revisión final de `ficha/tanda-2-a-5`, High #2. SRD 5.1, «Stabilizing a Creature»:
+    // *«A stable creature doesn't make death saving throws»*.
+    it("tirar una salvación de muerte estando `stable` es 400, y la hoja sigue diciendo estable", async () => {
+      const s = app.getHttpServer();
+      await prisma.character.update({
+        where: { id: characterId },
+        data: { currentHp: 0, deathSaveSuccesses: 0, deathSaveFailures: 3 },
+      });
+      await prisma.characterCondition.upsert({
+        where: { characterId_key: { characterId, key: "stable" } },
+        create: {
+          characterId,
+          key: "stable",
+          appliedById: (await prisma.user.findFirstOrThrow({ where: { email: emailA } })).id,
+        },
+        update: {},
+      });
+
+      const tirada = await request(s)
+        .post(deathSavesUrl())
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({});
+      expect(tirada.status).toBe(400);
+
+      const get = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+      expect(get.body.deathSaves).toEqual({ successes: 0, failures: 3, status: "stable" });
+    });
   });
 
   // --- Fase 2B/2C: equipar cambia el número, y el arma equipada se puede tirar ---------------

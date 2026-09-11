@@ -4,6 +4,7 @@ import type { CampaignItem, Prisma } from "@prisma/client";
 import { findSrdItem } from "../../rules/catalog/items-srd";
 import { campaignItemToResolvedItem } from "../../campaign-items/campaign-item-to-resolved";
 import { PrismaService } from "../../prisma/prisma.service";
+import { comoRecursoVisible } from "../../common/visibility";
 
 // Carril A4 — resolver un `ContentRef` (SRD o de campaña) a la forma única que consumen el
 // inventario y la pantalla, `ResolvedItem` (`packages/shared/src/item.schema.ts`).
@@ -56,9 +57,7 @@ export async function resolveContentRef(
     resolved,
     campaignItem: {
       resolved,
-      visibility: row.visibility,
-      createdById: row.createdById,
-      grantedUserIds: row.grants.map((g) => g.userId),
+      ...comoRecursoVisible(row),
     },
   };
 }

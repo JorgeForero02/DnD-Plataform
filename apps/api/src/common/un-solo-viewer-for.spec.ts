@@ -31,8 +31,58 @@ function archivosTs(dir: string): string[] {
   return resultado;
 }
 
+// Low #11, revisión final de `ficha/tanda-2-a-5`: la regex original solo cazaba
+// `private`/`protected`/`public` — un método SIN palabra clave (`  async viewerFor(` o
+// `  viewerFor(`, legal en TS porque `public` es opcional y Prettier no lo añade) pasaba sin que
+// esta prueba se enterara. Se ancla a principio de línea (bandera `m`) con los modificadores
+// como opcionales, en vez de exigir uno: así una llamada como `const viewer = await viewerFor(`
+// o `await this.viewerFor(` no matchean, porque `const`/`await`/`this.` no son ninguno de los
+// modificadores admitidos y por tanto no empiezan la línea en la posición que la regex exige.
+const metodoConModificador = /^\s*(?:(?:private|protected|public|static|async)\s+)*viewerFor\s*\(/m;
+const funcionSuelta = /\b(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+viewerFor\s*\(/;
+
+function esDefinicionDeViewerFor(contenido: string): boolean {
+  return metodoConModificador.test(contenido) || funcionSuelta.test(contenido);
+}
+
+describe("regex de detección literal de viewerFor", () => {
+  const debeCazar: Array<[string, string]> = [
+    ["método private", "  private viewerFor(userId: string, campaignId: string) {"],
+    ["método protected async", "  protected async viewerFor(userId: string) {"],
+    ["método public", "  public viewerFor(userId: string) {"],
+    ["método static", "  static viewerFor(userId: string) {"],
+    ["función exportada", "export async function viewerFor(userId: string, campaignId: string) {"],
+    ["función suelta sin export", "function viewerFor(userId: string) {"],
+    // Caso literal de la revisión (#11): sin ninguna palabra clave delante.
+    ["método async sin modificador", "  async viewerFor(userId: string, campaignId: string) {"],
+    ["método sin modificador ni async", "  viewerFor(userId: string, campaignId: string) {"],
+  ];
+
+  const noDebeCazar: Array<[string, string]> = [
+    [
+      "llamada con const/await",
+      "    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);",
+    ],
+    ["llamada por this.", "    const viewer = await this.viewerFor(userId, campaignId);"],
+    ["import nombrado", "  viewerFor,"],
+    ["nombre distinto con el mismo prefijo", "  private viewerForCharacterOwner(userId: string) {"],
+    [
+      "comentario que solo lo menciona",
+      "// misma clase de deuda que GameEventsService.viewerFor ya acepta",
+    ],
+  ];
+
+  it.each(debeCazar)("caza: %s", (_nombre, snippet) => {
+    expect(esDefinicionDeViewerFor(snippet)).toBe(true);
+  });
+
+  it.each(noDebeCazar)("no caza: %s", (_nombre, snippet) => {
+    expect(esDefinicionDeViewerFor(snippet)).toBe(false);
+  });
+});
+
 describe("una sola casa para viewerFor", () => {
-  it("no hay un método viewerFor (private/protected, con o sin async) fuera de common/, salvo en la lista blanca declarada", () => {
+  it("no hay un método viewerFor (con o sin modificador) ni función suelta fuera de common/, salvo en la lista blanca declarada", () => {
     const srcRoot = join(__dirname, "..");
     const apiRoot = join(__dirname, "..", "..");
     const encontrados: string[] = [];
@@ -40,10 +90,7 @@ describe("una sola casa para viewerFor", () => {
       const relativoSrc = relative(srcRoot, ruta).split("\\").join("/");
       if (relativoSrc.startsWith("common/")) continue;
       const contenido = readFileSync(ruta, "utf8");
-      // `private`/`protected`, con o sin `async`: cualquier método `viewerFor` declarado dentro
-      // de una clase fuera de `common/` es la misma copia que esta prueba existe para cazar,
-      // tenga o no la forma exacta con la que se escribió la primera vez.
-      if (/(?:private|protected)\s+(?:async\s+)?viewerFor\(/.test(contenido)) {
+      if (esDefinicionDeViewerFor(contenido)) {
         encontrados.push(relative(apiRoot, ruta).split("\\").join("/"));
       }
     }

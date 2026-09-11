@@ -11,7 +11,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, Viewer } from "../common/visibility";
+import { canView, comoRecursoVisible, Viewer } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
 
@@ -84,13 +84,7 @@ export class SessionsService {
     // `null` es «no abre en ningún sitio» y se dice tal cual: es verdad y no esconde nada.
     if (!openingEntityId) return { ...resto, openingEntityId: null };
     const ficha = fichas.get(openingEntityId);
-    const visible =
-      ficha !== undefined &&
-      canView(viewer, {
-        visibility: ficha.visibility,
-        createdById: ficha.createdById,
-        grantedUserIds: ficha.grants.map((g) => g.userId),
-      });
+    const visible = ficha !== undefined && canView(viewer, comoRecursoVisible(ficha));
     if (!visible) return resto;
     return {
       ...resto,

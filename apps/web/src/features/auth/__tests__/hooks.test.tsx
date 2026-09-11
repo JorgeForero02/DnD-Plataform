@@ -55,6 +55,24 @@ describe("useAuthRehydration", () => {
     expect(useAuthStore.getState().user).toBeNull();
   });
 
+  // Revisión final de `ficha/tanda-2-a-5`, Medium #3: este es el único camino real que
+  // desconecta a alguien sin que lo pida — típicamente un reinicio de contraseña por el
+  // admin invalidando el token en OTRO navegador — y hasta ahora no dejaba ningún mensaje:
+  // `setFlash` no tenía productor y `LoginPage` mostraba el aviso a quien nunca lo veía. Aquí
+  // es donde de verdad se produce.
+  it("deja un flash para /login al cerrar sesión por un 401 (token invalidado en otro sitio)", async () => {
+    useAuthStore.setState({ token: "tok-invalidado", user: null, flash: null });
+    vi.spyOn(authApi, "fetchMe").mockRejectedValue(new ApiError("Unauthorized", 401));
+
+    renderHook(() => useAuthRehydration());
+
+    await waitFor(() =>
+      expect(useAuthStore.getState().flash).toBe(
+        "Tu sesión caducó o tu contraseña fue cambiada. Entra de nuevo.",
+      ),
+    );
+  });
+
   // Fix 3 of 1.15-fix: the API restarting, a 502 from Vite's dev proxy mid-request, or a
   // plain network hiccup all used to be treated exactly like an expired token — the token
   // got wiped and (with fix 2) the user landed back on the login screen mid-session. None of

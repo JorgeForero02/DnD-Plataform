@@ -402,6 +402,19 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 |---|---|---|
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
 
+## P3 · Un token robado y ya revocado sigue gastando el cubo de su dueño (2026-09-11)
+
+**Medido en la revisión final de `ficha/tanda-2-a-5`.** El límite por usuario
+(`user-or-ip-throttler.guard.ts`) verifica la **firma** del JWT para clavar el cubo a `user:<sub>`,
+pero no mira `passwordChangedAt`: un token sustraído y revocado por cambio de contraseña sigue
+firmado, así que en una ruta con `JwtAuthGuard` cuenta contra el cubo de la víctima (y luego recibe
+401 de `JwtStrategy`, que sí lo mira). Solo lo explota quien ya tiene un token robado, y lo peor
+que consigue es agotar 100/min de una cuenta. **Salidas medidas:** leer `passwordChangedAt` en
+el guard es una consulta más por petición (hoy el guard no toca la base); cachear el sello por
+usuario un minuto lo deja en una consulta por usuario y minuto. Por los cuatro pasos: no es un
+cambio rápido (añade una consulta al camino caliente) y ninguna regla lo contesta, así que queda
+como ficha con su coste escrito. No es urgente para una mesa de cinco.
+
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 
 Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y existe

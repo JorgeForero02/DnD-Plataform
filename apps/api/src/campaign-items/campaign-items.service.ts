@@ -9,7 +9,7 @@ import type { Visibility } from "@dnd/shared";
 import { CreateCampaignItemInput, UpdateCampaignItemInput, ResolvedItem } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView } from "../common/visibility";
+import { canView, comoRecursoVisible } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { campaignItemToResolvedItem, itemEffectsSchema } from "./campaign-item-to-resolved";
 
@@ -96,13 +96,7 @@ export class CampaignItemsService {
       include: { grants: true },
       orderBy: { createdAt: "desc" },
     });
-    return items.filter((i) =>
-      canView(viewer, {
-        visibility: i.visibility,
-        createdById: i.createdById,
-        grantedUserIds: i.grants.map((g) => g.userId),
-      }),
-    );
+    return items.filter((i) => canView(viewer, comoRecursoVisible(i)));
   }
 
   async get(userId: string, campaignId: string, itemId: string) {
@@ -112,14 +106,7 @@ export class CampaignItemsService {
       where: { id: itemId, campaignId },
       include: { grants: true },
     });
-    if (
-      !item ||
-      !canView(viewer, {
-        visibility: item.visibility,
-        createdById: item.createdById,
-        grantedUserIds: item.grants.map((g) => g.userId),
-      })
-    ) {
+    if (!item || !canView(viewer, comoRecursoVisible(item))) {
       // 404 y no 403: no se filtra información sobre qué existe a quien no lo puede ver.
       throw new NotFoundException("Item not found");
     }

@@ -50,4 +50,18 @@ describe("AuthGate — real app topology", () => {
     // Not just present in the DOM somewhere: it's what the screen actually shows.
     expect(screen.queryByRole("heading", { name: "Tus crónicas" })).not.toBeInTheDocument();
   });
+
+  // Revisión final de `ficha/tanda-2-a-5`, Medium #3: el caso real de producción para el
+  // `flash` de auth.store.ts — un token invalidado en OTRA pestaña (típicamente porque un
+  // admin reinició la contraseña de este usuario) — mostrado en /login por la topología real,
+  // no un store puesto a mano.
+  it("un 401 real (token invalidado en otro sitio) deja el aviso en /login, no una pantalla muda", async () => {
+    useAuthStore.setState({ token: "tok-invalidado", user: null });
+    vi.spyOn(authApi, "fetchMe").mockRejectedValue(new ApiError("Unauthorized", 401));
+    renderApp();
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Tu sesión caducó o tu contraseña fue cambiada. Entra de nuevo.",
+    );
+  });
 });

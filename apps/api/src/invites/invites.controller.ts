@@ -37,7 +37,9 @@ export class InvitesController {
     return this.invites.revoke(req.user.id, id);
   }
 
-  // Strict per-IP limit (hallazgo 3): brute force against invite tokens.
+  // Strict limit (hallazgo 3): brute force against invite tokens. The route carries the class
+  // JwtAuthGuard, so since 2026-09-11 the bucket is per user, not per IP (the token is 24 random
+  // bytes; N attacker accounts do not make it guessable).
   @Throttle({ default: { limit: AUTH_RATE_LIMIT, ttl: RATE_LIMIT_WINDOW_MS } })
   @Post("invites/:token/accept")
   accept(@Req() req: { user: { id: string } }, @Param("token") token: string) {

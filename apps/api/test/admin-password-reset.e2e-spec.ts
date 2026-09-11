@@ -89,6 +89,27 @@ describe("Reinicio de contraseña por administrador (e2e)", () => {
     expect(res.status).toBe(404);
   });
 
+  // Revisión final de `ficha/tanda-2-a-5`, Low #10: reiniciarse la CONTRASEÑA PROPIA por esta
+  // puerta era 200 y mataba la sesión del propio admin sin aviso (su `iat` queda
+  // `<= passwordChangedAt` y la siguiente petición suya da 401) — el formulario que existe
+  // para eso es `PATCH /auth/password`, que exige la contraseña actual.
+  it("el administrador no puede reiniciarse su propia contraseña por esta puerta (400)", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .post("/admin/password-resets")
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ email: emailAdmin, temporaryPassword: "temporal-456" });
+    expect(res.status).toBe(400);
+
+    // Y de verdad no cambió nada: la sesión del admin sigue viva y la contraseña es la misma.
+    const yo = await request(s).get("/auth/me").set("Authorization", `Bearer ${tokenAdmin}`);
+    expect(yo.status).toBe(200);
+    const sigueViva = await request(s)
+      .post("/auth/login")
+      .send({ email: emailAdmin, password: "password123" });
+    expect(sigueViva.status).toBe(201);
+  });
+
   it("GET /auth/me dice si soy administrador, para que la pantalla sepa qué ofrecer", async () => {
     const s = app.getHttpServer();
     const admin = await request(s).get("/auth/me").set("Authorization", `Bearer ${tokenAdmin}`);

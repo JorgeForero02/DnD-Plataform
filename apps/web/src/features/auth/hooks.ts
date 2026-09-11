@@ -20,6 +20,7 @@ export function useAuthRehydration(): { invalidToken: boolean } {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
+  const setFlash = useAuthStore((s) => s.setFlash);
   const [invalidToken, setInvalidToken] = useState(false);
   // Guards against firing a second request for the same token while the first is still in
   // flight — React 18 StrictMode's double-invoked effects in dev being the concrete case.
@@ -40,11 +41,18 @@ export function useAuthRehydration(): { invalidToken: boolean } {
         // means the next natural retry (a reload, a later request) gets a fresh chance —
         // requestedFor resets with a fresh mount, so it doesn't get stuck refusing forever.
         if (err instanceof ApiError && err.status === 401) {
+          // Revisión final de `ficha/tanda-2-a-5`, Medium #3: este es el caso real que el
+          // `flash` de `auth.store.ts` existe para cubrir — típicamente un reinicio de
+          // contraseña por el admin, que invalida el token de esta pestaña sin que quien la
+          // tiene abierta haya hecho nada. Antes de esto `setFlash` no tenía ningún productor:
+          // el mecanismo entero (campo, janitor, bloque en LoginPage) estaba montado sin que
+          // nada lo disparara.
+          setFlash("Tu sesión caducó o tu contraseña fue cambiada. Entra de nuevo.");
           logout();
           setInvalidToken(true);
         }
       });
-  }, [token, user, setUser, logout]);
+  }, [token, user, setUser, logout, setFlash]);
 
   return { invalidToken };
 }

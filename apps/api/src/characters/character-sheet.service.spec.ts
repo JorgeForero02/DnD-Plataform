@@ -479,6 +479,24 @@ describe("CharacterSheetService — 2A.7 PG mutables", () => {
     expect(res.deathSaves).toEqual({ successes: 0, failures: 0, status: "stable" });
   });
 
+  // Revisión final de `ficha/tanda-2-a-5`, High #2: SRD 5.1, «Stabilizing a Creature» —
+  // *«A stable creature doesn't make death saving throws»*. `estadoDeMuerte` ya lee la
+  // condición reservada `stable` para lo que MUESTRA la hoja, pero `rollDeathSave` no la
+  // consultaba antes de tirar: un personaje estable podía seguir tirando y sus contadores se
+  // acumulaban sobre una fila que la hoja seguía declarando estable.
+  it("rollDeathSave() rechaza con 400 si el personaje ya está `stable` (SRD 5.1)", async () => {
+    const { service, characters, prisma } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    const fila = personaje({ currentHp: 0, deathSaveSuccesses: 0, deathSaveFailures: 0 });
+    const tx = montarTransaccion(prisma, fila);
+    tx.characterCondition.findUnique.mockResolvedValue({ key: "stable" });
+
+    await expect(service.rollDeathSave("p1", "c1", "ch1", {})).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(tx.character.update).not.toHaveBeenCalled();
+  });
+
   it("sin la condición, 0 y 0 a 0 PG sigue siendo «dying», no «stable»", async () => {
     const { service, prisma } = montar();
     prisma.character.findFirst.mockResolvedValue(personaje({ currentHp: 0 }));
@@ -1661,6 +1679,35 @@ describe("paso 2, tarea A11 — el daño de la Furia, con su propia traza", () =
     });
 
     expect((golpe as { trace?: unknown }).trace).toBeUndefined();
+  });
+
+  // Revisión final de `ficha/tanda-2-a-5`, Low #8: la audiencia por defecto del DAÑO no era la
+  // del ATAQUE (`audienciaPorDefecto`, arriba) — un cliente por API que omita `audience` en
+  // `part: "DAMAGE"` publicaba la línea de daño de un PNJ `DM_ONLY` a toda la mesa como
+  // `"PUBLIC"` fijo. La web ya manda siempre `audience` (`TirarAtaqueBoton`), así que esto solo
+  // se veía por API directa.
+  it("el DAÑO de un PNJ `DM_ONLY` sin `audience` explícita no se publica como PUBLIC", async () => {
+    const montado = montar();
+    const pnj = personaje({ visibility: "DM_ONLY" });
+    montado.prisma.character.findFirst.mockResolvedValue(pnj);
+    montado.characters.requireEditable.mockResolvedValue(pnj);
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("long-sword", { slot: "MAIN_HAND" }),
+    ]);
+    const { service, rolls } = montado;
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ audience: "DM_PRIVATE" }),
+    );
   });
 });
 

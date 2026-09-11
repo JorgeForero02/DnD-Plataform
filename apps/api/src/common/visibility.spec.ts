@@ -1,4 +1,4 @@
-import { audienciaDeSuceso, canView, laAudienciaCrecio } from "./visibility";
+import { audienciaDeSuceso, canView, comoRecursoVisible, laAudienciaCrecio } from "./visibility";
 import type { Visibility } from "@dnd/shared";
 
 const OWNER = "owner1";
@@ -200,5 +200,33 @@ describe("audienciaDeSuceso — cómo se marca un suceso que habla de una cosa (
       grantedUserIds: concesiones,
     });
     expect(marca.grantedUserIds).not.toBe(concesiones);
+  });
+});
+
+// Low #12, revisión final de `ficha/tanda-2-a-5`: el adaptador «fila con concesiones →
+// ViewableResource» vivía tres veces (`links.service.ts`, `campaigns.service.ts`,
+// `entities.service.ts`) con la misma forma exacta. Se mueve aquí, junto a `canView`, para que
+// solo haya un sitio que tocar.
+describe("comoRecursoVisible", () => {
+  it("traduce visibility/createdById/grants[].userId al ViewableResource que pide canView", () => {
+    expect(
+      comoRecursoVisible({
+        visibility: "SPECIFIC_PLAYERS",
+        createdById: "dm1",
+        grants: [{ userId: "a" }, { userId: "b" }],
+      }),
+    ).toEqual({
+      visibility: "SPECIFIC_PLAYERS",
+      createdById: "dm1",
+      grantedUserIds: ["a", "b"],
+    });
+  });
+
+  it("sin concesiones, la lista sale vacía, no ausente", () => {
+    expect(comoRecursoVisible({ visibility: "PUBLIC", createdById: "dm1", grants: [] })).toEqual({
+      visibility: "PUBLIC",
+      createdById: "dm1",
+      grantedUserIds: [],
+    });
   });
 });

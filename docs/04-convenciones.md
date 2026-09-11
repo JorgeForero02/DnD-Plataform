@@ -617,8 +617,15 @@ límite», y hay pruebas que lo fijan.
 sola IP —la casa de alguien, una VPN— y con el cubo por IP el sondeo de un jugador gastaba el
 presupuesto de los cinco. El guard **verifica** el JWT (no lo decodifica: un `sub` inventado por
 petición sería un cubo nuevo por petición) y clava el cubo a `user:<sub>`; sin token válido, la IP.
-Las rutas sin sesión —login, registro, aceptar invitación— siguen por IP con su límite estrecho,
-que es donde el control protege de verdad. El número no cambia: 100 por minuto.
+Las rutas sin sesión —login y registro— siguen por IP con su límite estrecho, que es donde el
+control protege de verdad; aceptar una invitación exige sesión y por eso su límite estrecho cuenta
+por usuario (el token es de 24 bytes aleatorios: N cuentas no lo hacen adivinable). El número no cambia: 100 por minuto. **La frase anterior
+fue falsa durante un día**: la primera versión del guard clavaba el cubo a `user:<sub>` en cuanto
+la petición traía un Bearer válido, en cualquier ruta, así que N cuentas de un atacante daban N×5
+intentos por minuto de login contra una víctima desde una IP, y un token revocado por cambio de
+contraseña seguía gastando el cubo de su dueño. Desde la revisión final del 2026-09-11 el cubo por
+usuario solo se aplica en rutas que llevan `JwtAuthGuard` (el guard lo lee del `Reflector`); en las
+demás manda la IP aunque venga token, y hay un e2e que lo fija (`login-bucket-por-ip`).
 
 ## Trabajo con varios agentes a la vez
 

@@ -4,7 +4,7 @@ import { CreateCommentInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
-import { canView } from "../common/visibility";
+import { canView, comoRecursoVisible } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 
 @Injectable()
@@ -24,13 +24,7 @@ export class CommentsService {
     if (!entity) throw new NotFoundException("Entity not found");
     await this.membership.requireMember(entity.campaignId, userId);
     const viewer = await viewerFor(this.prisma, this.membership, userId, entity.campaignId);
-    if (
-      !canView(viewer, {
-        visibility: entity.visibility,
-        createdById: entity.createdById,
-        grantedUserIds: entity.grants.map((g) => g.userId),
-      })
-    ) {
+    if (!canView(viewer, comoRecursoVisible(entity))) {
       throw new ForbiddenException("You cannot access this entity");
     }
     return entity;

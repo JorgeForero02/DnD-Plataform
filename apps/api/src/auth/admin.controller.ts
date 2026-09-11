@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { adminPasswordResetSchema, type AdminPasswordResetInput } from "@dnd/shared";
 import { AdminGuard } from "../common/admin.guard";
@@ -23,9 +23,10 @@ export class AdminController {
   @HttpCode(200)
   @Post("password-resets")
   async resetPassword(
+    @Req() req: { user: { id: string } },
     @Body(new ZodValidationPipe(adminPasswordResetSchema)) body: AdminPasswordResetInput,
   ): Promise<{ success: true }> {
-    await this.auth.adminResetPassword(body);
+    await this.auth.adminResetPassword(req.user.id, body);
     return { success: true };
   }
 }

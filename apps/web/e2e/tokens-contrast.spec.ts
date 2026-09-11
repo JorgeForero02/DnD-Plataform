@@ -814,8 +814,17 @@ for (const theme of ["dark", "light", "reading"] as const) {
     // el fotograma A MEDIO CRUCE de esa transición de 100ms — un color interpolado que no es ni
     // el desactivado ni el final, y que dio 2.58:1 en un lote pero no en otro (visto en el
     // navegador: el botón final SÍ despeja 4.5:1 de sobra, ~5.4-5.7:1 medido en frío). No es un
-    // color del sistema — es una lectura a media transición. Se deja terminar antes de medir.
-    await page.waitForTimeout(150);
+    // color del sistema — es una lectura a media transición.
+    //
+    // Revisión final de `ficha/tanda-2-a-5`, Low #9: una espera fija (`waitForTimeout(150)`)
+    // es la forma más frágil de esperar esto en un CI lento — 150ms de reloj real no garantizan
+    // que la transición YA terminó, solo que probablemente lo hizo. Se espera primero a que el
+    // botón deje de estar deshabilitado (la condición real que dispara el cruce de estilo) y
+    // luego a que sus animaciones/transiciones en curso terminen de verdad, con la Web
+    // Animations API — así el test nunca lee a mitad de un cruce, sea cual sea la máquina.
+    const botonConfirmar = dialogo.getByRole("button", { name: "Confirmar subida de nivel" });
+    await expect(botonConfirmar).toBeEnabled();
+    await botonConfirmar.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 
     {
       const { color, bg } = await effectiveTextColours(

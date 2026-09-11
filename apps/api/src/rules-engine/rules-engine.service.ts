@@ -18,7 +18,7 @@ import {
 } from "@dnd/shared";
 import { z } from "zod";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView } from "../common/visibility";
+import { canView, comoRecursoVisible } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -326,14 +326,7 @@ export class RulesEngineService {
         // La ficha se borró desde entonces: se trata como DM_ONLY (deniega) en vez de enseñarla
         // por defecto — fallar cerrado, nunca abierto.
         const visible = entity
-          ? canView(
-              { userId, role: "PLAYER", isAdmin: false },
-              {
-                visibility: entity.visibility,
-                createdById: entity.createdById,
-                grantedUserIds: entity.grants.map((g) => g.userId),
-              },
-            )
+          ? canView({ userId, role: "PLAYER", isAdmin: false }, comoRecursoVisible(entity))
           : false;
         if (visible) out.push(row);
         continue;

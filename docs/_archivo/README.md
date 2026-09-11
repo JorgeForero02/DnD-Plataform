@@ -25,6 +25,7 @@ cuando se congelaron, no descripciones del sistema de hoy. Si un documento de aq
 | [`historial-2026-09-05-paseo-de-uso.md`](./historial-2026-09-05-paseo-de-uso.md) | **El paseo de uso contra producción**, entrada del 07 movida entera el 2026-09-11 en el tercer corte de la sesión. Su hito se queda arriba | 2026-09-11 |
 | [`historial-2026-09-05-la-documentacion-alcanza.md`](./historial-2026-09-05-la-documentacion-alcanza.md) | **La documentación alcanza a la noche del 2026-09-05**, entrada del 07 movida entera el 2026-09-11 (cuarto corte). Su hito se queda arriba | 2026-09-11 |
 | [`historial-2026-09-06-iniciativa-y-bando-hito.md`](./historial-2026-09-06-iniciativa-y-bando-hito.md) | **El hito del plan de iniciativa y bando**, entrada del 07 movida entera el 2026-09-11 (quinto corte). Su resumen se queda arriba | 2026-09-11 |
+| [`historial-2026-09-06-paso-1-goteras.md`](./historial-2026-09-06-paso-1-goteras.md) | **La entrada del paso 1 (las goteras) del 2026-09-06**, movida entera el 2026-09-11 en el sexto corte de la sesión de cerrar fichas; el avance por tarea sigue en el bloque «Avance» de su plan |
 | [`pendientes-cerrados-2026-09-10.md`](./pendientes-cerrados-2026-09-10.md) | **Las fichas del cubo B que la sesión del 2026-09-10 cerró con código**, una por commit y cada una con su prueba roja antes, su mutación y su `fichero:línea`. Crece durante la sesión | 2026-09-10 |
 
 > **Esta tabla lleva un rezago conocido**: la tabla de archivados de `07-historial.md` cita diez

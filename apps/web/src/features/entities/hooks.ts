@@ -9,6 +9,7 @@ import {
   deleteEntity,
   executeEntity,
 } from "./api";
+import { campaignsKey } from "../campaigns/hooks";
 
 export const entitiesKey = (campaignId: string, type: EntityType) =>
   ["campaigns", campaignId, "entities", type] as const;
@@ -69,6 +70,11 @@ export function useCreateEntity(campaignId: string, type: EntityType) {
       // entitiesKey(campaignId, type): invalidating the typed key alone leaves the link
       // target picker (useAllEntities) stale for up to staleTime (queryClient.ts:4).
       qc.invalidateQueries({ queryKey: allEntitiesKey(campaignId) });
+      // Revisión final de `ficha/tanda-2-a-5`, Medium #5: `campaignsKey` (["campaigns"]) es
+      // otra rama más, ajena a "entities" — la tarjeta de campaña en "Tus crónicas" enseña
+      // `entityCount` (Task 33) y sin esto se quedaba con el número viejo hasta 30s
+      // (queryClient.ts) después de crear una ficha.
+      void qc.invalidateQueries({ queryKey: campaignsKey });
     },
   });
 }
@@ -101,6 +107,10 @@ export function useUpdateEntity(campaignId: string, type: EntityType) {
       // The reading page's own branch — without this, saving from the detail page leaves that
       // very page showing what you just changed away from.
       qc.invalidateQueries({ queryKey: entityDetailKey(campaignId, vars.entityId) });
+      // Medium #5 (ver useCreateEntity arriba): actualizar cambia el conteo de otros también —
+      // por ejemplo, cambiar la visibilidad la saca o la mete en el `entityCount` de quien no
+      // es DM.
+      void qc.invalidateQueries({ queryKey: campaignsKey });
     },
   });
 }
@@ -144,6 +154,9 @@ export function useDeleteEntity(campaignId: string, type: EntityType) {
       // necessary, but the alternative is exactly the stale-picker bug this comment is next
       // to, just for a panel instead of a picker.
       qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === "entities" });
+      // Medium #5 (ver useCreateEntity arriba): borrar una ficha también le quita su cupo al
+      // `entityCount` de la tarjeta de campaña.
+      void qc.invalidateQueries({ queryKey: campaignsKey });
     },
   });
 }

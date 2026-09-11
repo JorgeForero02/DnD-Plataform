@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -91,9 +92,19 @@ export class AuthService {
    * tokens anteriores de esa persona — igual que si la hubiera cambiado ella. Quién puede llamar
    * lo decide `AdminGuard`, no este método.
    */
-  async adminResetPassword(input: AdminPasswordResetInput): Promise<void> {
+  async adminResetPassword(callerId: string, input: AdminPasswordResetInput): Promise<void> {
     const user = await this.users.findByEmail(input.email);
     if (!user) throw new NotFoundException("No hay ninguna cuenta con ese correo.");
+    // Low #10, revisión final de `ficha/tanda-2-a-5`: reiniciarse la CONTRASEÑA PROPIA por esta
+    // puerta daba 200 y mataba la sesión del propio admin en el acto, sin aviso (esta misma
+    // llamada sella `passwordChangedAt`, así que su siguiente petición ya da 401) — un efecto
+    // secundario que nadie pidió. El formulario que existe para cambiar la propia contraseña es
+    // `PATCH /auth/password`, que además exige la actual.
+    if (user.id === callerId) {
+      throw new BadRequestException(
+        "No puedes reiniciarte tu propia contraseña por aquí: usa el formulario de cambio de contraseña.",
+      );
+    }
     const passwordHash = await argon2.hash(input.temporaryPassword);
     await this.users.updatePasswordHash(user.id, passwordHash);
   }

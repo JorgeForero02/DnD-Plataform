@@ -235,7 +235,12 @@ describe("GameEventsService", () => {
     );
   });
 
-  it("la sesión sin `startedAt` usa su `createdAt` como inicio", async () => {
+  // Revisión final de `ficha/tanda-2-a-5`, Medium #4: antes de este arreglo, una sesión
+  // PLANIFICADA (`startedAt` nulo) usaba `createdAt` como inicio y ensanchaba con el `OR` de
+  // todos modos — la ventana quedaba `[createdAt, ∞)` y absorbía CUALQUIER suceso de campaña
+  // sin `sessionId` desde que se creó la fila, aunque la sesión nunca se hubiera jugado. Sin
+  // `startedAt` no hay ensanchado: el hilo es solo lo suyo.
+  it("la sesión sin `startedAt` (PLANIFICADA) no ensancha con el `OR`: solo sus propios sucesos", async () => {
     const creada = new Date("2026-09-11T09:00:00.000Z");
     prisma.session.findFirst.mockResolvedValue({
       startedAt: null,
@@ -246,10 +251,7 @@ describe("GameEventsService", () => {
     await service.list("p1", "c1", { limit: 50, sessionId: "s9" });
     expect(prisma.gameEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          campaignId: "c1",
-          OR: [{ sessionId: "s9" }, { sessionId: null, createdAt: { gte: creada } }],
-        },
+        where: { campaignId: "c1", sessionId: "s9" },
       }),
     );
   });

@@ -3,7 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateCampaignInput, UpdateCampaignInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "./membership.service";
-import { canView, Viewer } from "../common/visibility";
+import { canView, comoRecursoVisible, Viewer } from "../common/visibility";
 
 @Injectable()
 export class CampaignsService {
@@ -106,14 +106,11 @@ export class CampaignsService {
           createdById: "",
           grantedUserIds: [],
         });
+      // Low #12, revisión final de `ficha/tanda-2-a-5`: `comoRecursoVisible` (`common/
+      // visibility.ts`) en vez de esta misma traducción inline — era la tercera copia del
+      // mismo adaptador.
       const entityCount = entidades.filter(
-        (e) =>
-          e.campaignId === campana.id &&
-          canView(viewer, {
-            visibility: e.visibility,
-            createdById: e.createdById,
-            grantedUserIds: e.grants.map((g) => g.userId),
-          }),
+        (e) => e.campaignId === campana.id && canView(viewer, comoRecursoVisible(e)),
       ).length;
 
       if (!seVe) return { ...resto, entityCount };

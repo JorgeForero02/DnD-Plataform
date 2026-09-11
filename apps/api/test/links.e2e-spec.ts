@@ -80,6 +80,18 @@ describe("Entity links (e2e)", () => {
     expect(self.status).toBe(400);
   });
 
+  it("the same link twice is a 409, not a 500 (ficha P3 · enlace duplicado)", async () => {
+    // El índice único `(fromId, toId, label)` ya rechazaba el duplicado; lo que faltaba era
+    // traducir el choque de Prisma (P2002) a un conflicto legible en vez de dejarlo reventar.
+    const s = app.getHttpServer();
+    const repetido = await request(s)
+      .post(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ toId: pubLocId, label: "lives in" });
+    expect(repetido.status).toBe(409);
+    expect(repetido.body.message).toMatch(/ya existe/i);
+  });
+
   it("DM sees both links, player sees only the public-target link", async () => {
     const s = app.getHttpServer();
     const dm = await request(s)

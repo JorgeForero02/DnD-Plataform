@@ -32,3 +32,12 @@ esta.
 **Texto original:**
 
 | **N4** | **El listado de propuestas no trae el nombre de la regla**, solo su identificador | Abierto, **confirmado midiendo el 2026-09-08**: `RulesEngineService.listProposals` devuelve las filas de `ruleTrace` sin `include` de la regla, así que el nombre no viaja, y `features/rules/Propuestas.tsx:38` lo cruza contra la lista de reglas con «regla borrada» de respaldo. **El dato precisa, que la fila no daba:** el aviso de una propuesta **sí** lo lleva —`rules-engine/rules-engine.service.ts:406` manda `ruleName` en el `RULE_PROPOSAL`—, así que el arreglo es un `include` en el listado, no inventar el dato |
+
+## P3 · Un enlace duplicado devuelve 500 en vez de 409
+
+**Cerrada el 2026-09-10.** `links/links.service.ts`, `create`: el `P2002` del índice único `(fromId, toId, label)` se traduce a `ConflictException` («Ese enlace ya existe entre estas dos fichas»). Prueba: `apps/api/test/links.e2e-spec.ts`, «the same link twice is a 409, not a 500» — roja antes (500), verde después. **Lo que se midió de paso y NO se arregla aquí:** con `label` nulo, Postgres no considera iguales dos `NULL`, así que dos enlaces sin rótulo entre las mismas fichas siguen entrando. Cerrarlo es un índice único parcial (`WHERE label IS NULL`) = migración → del autor. Dicho en el comentario del código y en el 07; no se abre ficha.
+
+**Texto original:**
+
+- **Un enlace duplicado devuelve 500 en vez de 409** (choca contra el índice único de
+  `EntityLink`). Tarea 1.6.

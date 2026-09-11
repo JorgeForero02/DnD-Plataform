@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -79,9 +80,22 @@ export class LinksService {
     // que se está arreglando, así que no puede volver a producirse porque falle la segunda
     // escritura.
     return this.prisma.transaction(async (tx) => {
-      const enlace = await tx.entityLink.create({
-        data: { fromId: fromEntityId, toId: input.toId, label: input.label },
-      });
+      let enlace;
+      try {
+        enlace = await tx.entityLink.create({
+          data: { fromId: fromEntityId, toId: input.toId, label: input.label },
+        });
+      } catch (error) {
+        // El índice único `(fromId, toId, label)` ya rechazaba el duplicado; hasta el 2026-09-10
+        // el choque salía como 500. Aquí solo se traduce a un 409 legible (ficha P3 «un enlace
+        // duplicado»). Ojo: con `label` nulo Postgres no considera iguales dos NULL, así que dos
+        // enlaces sin rótulo entre las mismas fichas siguen entrando — cerrarlo es un índice
+        // parcial, o sea una migración, y no va colgado de este arreglo.
+        if ((error as { code?: string }).code === "P2002") {
+          throw new ConflictException("Ese enlace ya existe entre estas dos fichas.");
+        }
+        throw error;
+      }
 
       await this.gameEvents.record(
         userId,

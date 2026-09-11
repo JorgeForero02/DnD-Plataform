@@ -64,6 +64,12 @@ su medición están en
   pantalla deja de cruzar el id contra la lista de reglas. **Por qué:** el aviso ya lo llevaba y
   el listado no; el «regla borrada» de respaldo era un caso imposible. **Revertir:** quitar el
   `include` y devolver a `Propuestas` la prop `reglas`.
+- **P3 · enlace duplicado** — el `P2002` del índice único sale como 409 legible en vez de 500
+  (`links.service.ts`, `create`). **Revertir:** quitar el `try/catch`. **De paso, medido y no
+  arreglado:** dos enlaces **sin rótulo** entre las mismas fichas siguen entrando, porque Postgres
+  no iguala dos `NULL` en el índice; cerrarlo es un índice parcial, o sea una migración del autor.
+- **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
+  rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda
   en ningún sitio (`overrides` es `{clave: número}`) y enseñarlo en la traza es un cambio de forma
   de un `Json` con datos escritos. Medición en el 06.

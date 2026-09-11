@@ -706,8 +706,6 @@ mejora, no compromiso.
 Ninguna es un agujero de lectura —nadie ve contenido ajeno—, pero todas degradan el
 comportamiento:
 
-- **Un enlace duplicado devuelve 500 en vez de 409** (choca contra el índice único de
-  `EntityLink`). Tarea 1.6.
 - **Aceptar una invitación no es transaccional.** Tarea 1.4. *(La segunda mitad de esta línea —«el
   token no caduca ni es revocable»— la cerró el plan 11 y está archivada.)*
 - **Las concesiones de visibilidad no se validan contra los miembros de la campaña**: se puede

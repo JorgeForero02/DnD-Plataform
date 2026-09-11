@@ -214,3 +214,41 @@ con dos DM. No cae en ninguno de los cuatro casos: lo decidió un agente, no el 
 **Texto original:**
 
 | **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |
+
+## M2B-14 · Los objetos mágicos genéricos del SRD se pueden sembrar y no están
+
+**Cerrada el 2026-09-11 como decisión (D-CF-22), al abrirla:** «cinco filas» era falso. *Weapon, +1, +2, or +3* del SRD 5.1 **no es un objeto**: es una plantilla que se aplica a cualquier arma base (una espada larga +1 necesita el dado de la espada larga), y `ResolvedItem` exige un arma concreta. Eso es exactamente «encantar» del bloque D del paso 3 (efecto sobre un objeto con `restrictions.type: weapon`). Y **hoy ya se puede**: el DM crea «Espada larga +1» como objeto de campaña con los efectos `weaponAttack`/`weaponDamage` (+1) y `ac` (+1 para armadura y escudo), que existen desde 2B. La cabecera de `items-srd.ts` («ningún objeto mágico») sigue siendo cierta para el catálogo estático y deja de ser una restricción sobre la licencia: es una elección de forma.
+
+**Texto original:**
+
+| **M2B-14** | **Los objetos mágicos genéricos del SRD se pueden sembrar y no están** | **Arma +1/+2/+3, Armadura +1 y Escudo +1 sí están en el SRD 5.1**, bajo la misma CC BY que el resto: la cabecera del catálogo dice «ningún objeto mágico» y eso es más restrictivo de lo que la licencia pide. Con los efectos `weaponAttack`/`weaponDamage` ya abiertos, sembrarlos es transcribir cinco filas. **Pasada por los cuatro pasos el 2026-09-10: no es decisión de producto, es una transcripción que la fuente contesta** (SRD 5.1, «Magic Items»: *Weapon, +1, +2, or +3* · *Armor, +1, +2, or +3* · *Shield, +1, +2, or +3*); la cabecera restrictiva la escribió un agente. **Se siembra**, con la cita en el commit. Comprobado en [el contraste de reglas](./superpowers/specs/2026-09-03-contraste-de-reglas-2B.md) |
+
+## P3 · El suceso de archivar no se lee desde la mesa con una sesión abierta
+
+**Cerrada el 2026-09-11 (D-CF-19, salida (a)).** `game-events.service.ts`, `list`: con `sessionId`, el listado trae los sucesos de esa sesión **más** los de campaña sin sesión escritos entre su `startedAt` (o `createdAt`) y su `endedAt` si está cerrada — «se archiva a X», «entra Marta», «cambia de bando» aparecen en el hilo mientras se juega, y una sesión cerrada no absorbe lo que pase meses después. 404 si la sesión no es de la campaña, después de `requireMember`. Pruebas: `apps/api/test/hilo-mixto.e2e-spec.ts` (3; rojas antes), unitarias de `game-events` (72). Mutación: quitar la rama `sessionId: null` y quitar el `lte` enrojecen cada una su prueba. **De paso:** `/rolls?sessionId=` pasa por el mismo `list()` y se ensancha igual; sus suites siguen en verde. Implementado por subagente (Sonnet), revisado (Opus) con una ronda de arreglo: el tope superior lo puso la revisión, no la decisión.
+
+**Texto original:**
+
+## P3 · El suceso de archivar no se lee desde la mesa con una sesión abierta (2026-09-05, plan 06)
+
+**Medido, no supuesto.** `characters.service.ts:157` escribe `CHARACTER_ARCHIVED` **sin
+`sessionId`** —archivar es un acto de la campaña, no de una partida—, y
+`game-events.service.ts:143` filtra estricto: con `sessionId` en la consulta, los sucesos de
+campaña quedan fuera. Como `MesaDeSesion.tsx:73` pasa siempre la sesión abierta, **la línea «Se
+archiva a X» no aparece en el hilo mientras se juega**. Y el DM en reposo tampoco la ve, porque sin
+sesión ve el taller, que no tiene hilo (`MesaDeSesion.tsx:138`).
+
+**Dónde sí se lee hoy, y está probado:** la mesa en reposo de un jugador —el único caso en que el
+hilo se pinta con el registro de la campaña entera—, en
+`apps/web/e2e/archivar.spec.ts`.
+
+**No se arregló aquí, y el motivo es la frontera.** Las dos salidas razonables se salen del plan 06
+(`solo apps/web/src`) o abren un frente: **(a)** que el registro de la mesa mezcle los sucesos de
+la campaña sin sesión con los de la sesión abierta —decisión de producto sobre qué es «el hilo», no
+un arreglo—; **(b)** que `archive` reciba la sesión en curso, que es `apps/api` y además convierte
+un acto de campaña en uno de partida. **Descartado de entrada** filtrar en el cliente: el servidor
+ya no manda esos sucesos, así que no habría nada que filtrar.
+
+Es hermano de **P3-archivar** del plan 03 —que arregla a **quién** llega el suceso
+(`grantedUserIds`)— pero no el mismo: aquel es de visibilidad y este de **encuadre**. Los dos
+tienen que estar para que el registro cuente la verdad.

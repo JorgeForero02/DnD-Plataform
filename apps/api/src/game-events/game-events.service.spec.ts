@@ -39,6 +39,7 @@ describe("GameEventsService", () => {
   let service: GameEventsService;
   const prisma = {
     gameEvent: { create: jest.fn(), findMany: jest.fn() },
+    session: { findFirst: jest.fn() },
     user: { findUnique: jest.fn() },
   };
   const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
@@ -207,11 +208,78 @@ describe("GameEventsService", () => {
   });
 
   it("filtrar por sesión llega a la consulta como columna, no como filtro en memoria", async () => {
+    // D-CF-19: además de la sesión pedida, el hilo mixto trae los sucesos de campaña SIN
+    // sesión escritos DESPUÉS de que esta empezara. Sesión todavía abierta (`endedAt` nulo):
+    // sin tope superior.
+    const inicio = new Date("2026-09-11T10:00:00.000Z");
+    prisma.session.findFirst.mockResolvedValue({
+      startedAt: inicio,
+      createdAt: inicio,
+      endedAt: null,
+    });
+    prisma.gameEvent.findMany.mockResolvedValue([]);
+    await service.list("p1", "c1", { limit: 50, sessionId: "s9" });
+    // Fix round 1, hallazgo 2: solo las tres columnas que la resolución necesita, no la fila
+    // entera.
+    expect(prisma.session.findFirst).toHaveBeenCalledWith({
+      where: { id: "s9", campaignId: "c1" },
+      select: { startedAt: true, createdAt: true, endedAt: true },
+    });
+    expect(prisma.gameEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          campaignId: "c1",
+          OR: [{ sessionId: "s9" }, { sessionId: null, createdAt: { gte: inicio } }],
+        },
+      }),
+    );
+  });
+
+  it("la sesión sin `startedAt` usa su `createdAt` como inicio", async () => {
+    const creada = new Date("2026-09-11T09:00:00.000Z");
+    prisma.session.findFirst.mockResolvedValue({
+      startedAt: null,
+      createdAt: creada,
+      endedAt: null,
+    });
     prisma.gameEvent.findMany.mockResolvedValue([]);
     await service.list("p1", "c1", { limit: 50, sessionId: "s9" });
     expect(prisma.gameEvent.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { campaignId: "c1", sessionId: "s9" } }),
+      expect.objectContaining({
+        where: {
+          campaignId: "c1",
+          OR: [{ sessionId: "s9" }, { sessionId: null, createdAt: { gte: creada } }],
+        },
+      }),
     );
+  });
+
+  it("Fix round 1 — una sesión CERRADA (`endedAt`) acota el `OR` con `lte`, no solo `gte`", async () => {
+    const inicio = new Date("2026-09-11T10:00:00.000Z");
+    const fin = new Date("2026-09-11T13:00:00.000Z");
+    prisma.session.findFirst.mockResolvedValue({
+      startedAt: inicio,
+      createdAt: inicio,
+      endedAt: fin,
+    });
+    prisma.gameEvent.findMany.mockResolvedValue([]);
+    await service.list("p1", "c1", { limit: 50, sessionId: "s9" });
+    expect(prisma.gameEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          campaignId: "c1",
+          OR: [{ sessionId: "s9" }, { sessionId: null, createdAt: { gte: inicio, lte: fin } }],
+        },
+      }),
+    );
+  });
+
+  it("pedir el hilo de una sesión que no es de esta campaña es 404, no un oráculo de existencia", async () => {
+    prisma.session.findFirst.mockResolvedValue(null);
+    await expect(service.list("p1", "c1", { limit: 50, sessionId: "ajena" })).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prisma.gameEvent.findMany).not.toHaveBeenCalled();
   });
 
   it("record() emite el suceso para que el motor de reglas lo escuche", async () => {

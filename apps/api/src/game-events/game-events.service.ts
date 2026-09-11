@@ -183,10 +183,37 @@ export class GameEventsService {
     }
     const viewer = await this.viewerFor(query.as ?? userId, campaignId);
 
+    // D-CF-19 (ficha P3 «archivar») — el hilo de una sesión no es solo lo que ocurrió DENTRO de
+    // ella: «se archiva a X», «entra Marta» y cualquier otro acto de campaña sin `sessionId`
+    // ocurrido MIENTRAS se jugaba también cuentan la partida. Se resuelve el inicio de la sesión
+    // pedida y se amplía el filtro con un `OR`, en vez de comparar solo `sessionId`.
+    let filtroSesion: Prisma.GameEventWhereInput | undefined;
+    if (query.sessionId) {
+      const session = await this.prisma.session.findFirst({
+        where: { id: query.sessionId, campaignId },
+        select: { startedAt: true, createdAt: true, endedAt: true },
+      });
+      if (!session) throw new NotFoundException("Session not found");
+      const inicio = session.startedAt ?? session.createdAt;
+      // Fix round 1, hallazgo 1: la ventana tiene que CERRARSE cuando la sesión ya cerró
+      // (`endedAt`), o el hilo de una sesión terminada seguiría absorbiendo cualquier suceso de
+      // campaña futuro sin fin. Una sesión todavía abierta (`endedAt` nulo) no tiene tope: sigue
+      // en curso.
+      filtroSesion = {
+        OR: [
+          { sessionId: query.sessionId },
+          {
+            sessionId: null,
+            createdAt: session.endedAt ? { gte: inicio, lte: session.endedAt } : { gte: inicio },
+          },
+        ],
+      };
+    }
+
     const rows = await this.prisma.gameEvent.findMany({
       where: {
         campaignId,
-        ...(query.sessionId ? { sessionId: query.sessionId } : {}),
+        ...(filtroSesion ?? {}),
         ...(filtros?.types ? { type: { in: filtros.types } } : {}),
         ...(filtros?.subjectId ? { subjectId: filtros.subjectId } : {}),
         // Varios sujetos a la vez: «las tiradas de mis personajes». Una lista vacía es **ninguna**,

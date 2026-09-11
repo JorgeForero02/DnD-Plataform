@@ -30,6 +30,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md`](./_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md) | **El detalle por tarea de las tareas 5 y 14 del plan `iniciativa-y-bando`**, movidas enteras el 2026-09-06 al escribir el hito de la tanda completa. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, movida entera el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó el fichero por encima de su tope de 1000 líneas, y esta fue la más antigua. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-bandeja-de-avisos.md`](./_archivo/historial-2026-09-05-bandeja-de-avisos.md) | **La bandeja de avisos**, movida entera el 2026-09-08 al llegar el fichero a 988 de 1000 y no caber la entrada del reconocimiento. Era la entrada completa más antigua. Su cabecera de archivo cuenta la ironía que salió ese día: `01-arquitectura.md` seguía negando esta bandeja tres días después de entregarla. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-la-documentacion-alcanza.md`](./_archivo/historial-2026-09-05-la-documentacion-alcanza.md) | **La documentación alcanza a la noche del 2026-09-05**, movida entera el 2026-09-11 (cuarto corte). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-paseo-de-uso.md`](./_archivo/historial-2026-09-05-paseo-de-uso.md) | **El paseo de uso contra producción**, movida entera el 2026-09-11 (tercer corte). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md) | **El nervio medido en producción** y **el PNJ sin nombre en la pantalla**, movidas enteras el 2026-09-10 en el segundo corte de la sesión de cerrar fichas. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
@@ -59,6 +60,15 @@ mutación. Texto y medición en
   **Lección:** la primera prueba de «token falso» no cazaba la mutación `verify → decode` porque
   todos los tokens llevaban el mismo `sub`; una prueba que no se ve fallar con el mutante no
   prueba nada.
+- **P3 · archivar en la mesa** — el hilo de una sesión incluye los sucesos de campaña sin sesión
+  entre su inicio y su cierre (`game-events.service.ts`, `list`; D-CF-19 con el tope que puso la
+  revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
+  `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
+  Opus, una ronda de arreglo.
+- **M2B-14** — **no se cierra con código: se cierra como decisión** (D-CF-22). Un *Weapon +1* del
+  SRD no es un objeto sino una plantilla sobre un arma base —encantar, paso 3—, y el DM ya crea
+  «Espada larga +1» como objeto de campaña con `weaponAttack`/`weaponDamage`. La recomendación
+  del día anterior («cinco filas») estaba mal medida.
 - **D8** — la contraseña olvidada la reinicia un administrador con una temporal
   (`POST /admin/password-resets`, `AdminGuard`, bloque en «Cuenta» solo para `isAdmin`, que ahora
   viaja en `/auth/me`). Sin correo. Recorrido real con dos navegadores en `admin-reinicio.spec.ts`.
@@ -806,45 +816,13 @@ la reversión del esquema.
 
 ---
 
-## La documentación alcanza a la noche del 2026-09-05
+## La documentación alcanza a la noche del 2026-09-05 — archivada
 
-**Qué se entregó.** Cuatro unidades de documentación, en cuatro commits, para que el repositorio
-deje de ir por detrás de lo que esa noche decidió y desplegó:
-
-1. **Las decisiones de la ejecución** (`7423caf`). Los bloques «Avance» de los planes 05, 07, 08,
-   09, 11, 12, 13, 14 y 15 se escribieron **después** de `docs/decisiones.md`, y varios deciden
-   **contra su propio plan**: la inspiración no es `Character.inspired Boolean` sino un
-   `CharacterResource` con `max: 1`; `ENTITY_ATTACKED` se retira del vocabulario y **se conserva en
-   el esquema** —medido: 244 reglas guardadas, ninguna lo usa, pero quitarlo del Zod haría ilegible
-   una regla vieja—; el aviso del comentario pasa por `canView`; **el orden de los dos filtros de la
-   búsqueda es la seguridad**; el canal en vivo manda avisos y no datos; y `aria-disabled` va en
-   botones pero no en campos de formulario. Van como sección propia `E-*`, una línea cada una, más
-   la marca de qué `D-OP-*` e `I*` quedaron aplicadas y con qué commit.
-2. **La prosa caducada de los dos ficheros que se mandan leer primero** (`c6c0ccb`). `CLAUDE.md` y
-   `docs/00-INDEX.md` afirmaban que el reseño de la mesa **no** estaba desplegado y que «local va por
-   delante de `dnd.supportive.pro`». **Las dos son falsas desde el 2026-09-05.**
-3. **El índice de planes, que se contradecía** (`fc16abb`): daba el 10 y el 12 por sin empezar, y su
-   regla 6 seguía prohibiendo tocar `docs/06-pendientes.md` después de que el autor levantara esa
-   restricción.
-4. **`Mine/pendientes-maestro-2026-09-04.md` pasa a ser resumen** y apunta a `docs/`. Era la <!-- docs-lint-ignore -->
-   definición de terminado del plan 10. Vive fuera del repositorio, así que no lleva commit.
-
-**La evidencia, que es el punto de esta entrada.** El estado de producción **se midió en el
-servidor**, no se recordó: `docker ps` en `vps1new` sirve hoy
-`5awvsn1dnkexhcjzg7kjwom6_api:6eb259008369192543f9323ca928ed252e10ca18`, o sea la etiqueta
-**`6eb2590`** — un despliegue **más** de los que contaba el informe de la noche, que se quedó en
-`cc64ed7`. Y `git diff --name-only 6eb2590..HEAD` no toca `apps/` ni `packages/`: **lo único que
-separa `main` de producción es documentación.**
-
-**Por qué importa.** Es el mismo defecto de siempre, y por tercera vez en el mismo fichero: prosa de
-estado escrita a mano en el documento que todo el mundo lee primero. El bloque generado por
-`pnpm update:estado` no puede mentir porque lo comprueba `check:estado`; el párrafo de encima, sí.
-
-**Cómo revertirlo.** `git revert` de los cuatro commits, en orden inverso. No tocan código: no hay
-migración, ni contrato, ni pantalla. La cabecera de `pendientes-maestro-2026-09-04.md` se revierte a
-mano —está fuera del repositorio— y su cuerpo no se tocó.
-
----
+Entera en
+[`_archivo/historial-2026-09-05-la-documentacion-alcanza.md`](./_archivo/historial-2026-09-05-la-documentacion-alcanza.md),
+movida el 2026-09-11 (cuarto corte de la sesión de cerrar fichas). **El hito:** los documentos de
+estado 01–05 y 09 se pusieron al día con los quince planes de esa noche, en un commit propio y
+después de las tareas, no antes.
 
 ## El paseo de uso contra producción: un panel que se salía de la pantalla (2026-09-05) — archivada
 

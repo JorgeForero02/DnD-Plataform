@@ -408,7 +408,6 @@ arregló el mismo día y lo que el refutador corrigió, está en
 | | Qué falta | Qué cuesta, y qué pasa mientras tanto |
 |---|---|---|
 | **M2B-4** | **Quedan las cargas** (una varita de siete usos que se repone en el descanso) | La munición del SRD ya está sembrada (flechas, virotes, balas, agujas) y **gastar un consumible existe** (`POST .../inventory/:rowId/consume`, con su rastro en la línea de tiempo y la fila que desaparece al llegar a cero). Lo que falta son las **cargas**: columnas `chargesCurrent`/`chargesMax`/`rechargeOn` en `InventoryItem` y reponerlas dentro de la transacción del descanso. Es una migración, y por eso no entró de madrugada |
-| **M2B-14** | **Los objetos mágicos genéricos del SRD se pueden sembrar y no están** | **Arma +1/+2/+3, Armadura +1 y Escudo +1 sí están en el SRD 5.1**, bajo la misma CC BY que el resto: la cabecera del catálogo dice «ningún objeto mágico» y eso es más restrictivo de lo que la licencia pide. Con los efectos `weaponAttack`/`weaponDamage` ya abiertos, sembrarlos es transcribir cinco filas. **Pasada por los cuatro pasos el 2026-09-10: no es decisión de producto, es una transcripción que la fuente contesta** (SRD 5.1, «Magic Items»: *Weapon, +1, +2, or +3* · *Armor, +1, +2, or +3* · *Shield, +1, +2, or +3*); la cabecera restrictiva la escribió un agente. **Se siembra**, con la cita en el commit. Comprobado en [el contraste de reglas](./superpowers/specs/2026-09-03-contraste-de-reglas-2B.md) |
 | **M2B-15** | **«Lo tengo pero no sé qué hace» — la mitad que falta** | Revisa el motivo de la decisión D-2B-8: **es práctica estándar**, no exótica — Foundry lo trae de serie con una bandera `identified` y hay módulos dedicados. Y **media solución ya está construida**: la redacción de 2B (se tacha el nombre, se conserva el número) es el mismo mecanismo de presentación. Falta el interruptor del DM y un nombre alternativo («una espada de aspecto extraño») |
 | **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
 | **M2B-8** | **`quantity` es absoluto donde el dinero es delta** | Dos personas descontando una flecha a la vez dejan 19 en vez de 18. No rompe ningún invariante —por eso no es urgente— pero es la misma carrera que la bolsa ya tiene resuelta |
@@ -706,30 +705,6 @@ sí mismo**.
 **Y una segunda, del mismo día:** `pnpm db:slot` **falla en un worktree** (`Command "prisma" not
 found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 `D&D-Plataform`). El agente creó y migró su base a mano. Es reproducible.
-
-## P3 · El suceso de archivar no se lee desde la mesa con una sesión abierta (2026-09-05, plan 06)
-
-**Medido, no supuesto.** `characters.service.ts:157` escribe `CHARACTER_ARCHIVED` **sin
-`sessionId`** —archivar es un acto de la campaña, no de una partida—, y
-`game-events.service.ts:143` filtra estricto: con `sessionId` en la consulta, los sucesos de
-campaña quedan fuera. Como `MesaDeSesion.tsx:73` pasa siempre la sesión abierta, **la línea «Se
-archiva a X» no aparece en el hilo mientras se juega**. Y el DM en reposo tampoco la ve, porque sin
-sesión ve el taller, que no tiene hilo (`MesaDeSesion.tsx:138`).
-
-**Dónde sí se lee hoy, y está probado:** la mesa en reposo de un jugador —el único caso en que el
-hilo se pinta con el registro de la campaña entera—, en
-`apps/web/e2e/archivar.spec.ts`.
-
-**No se arregló aquí, y el motivo es la frontera.** Las dos salidas razonables se salen del plan 06
-(`solo apps/web/src`) o abren un frente: **(a)** que el registro de la mesa mezcle los sucesos de
-la campaña sin sesión con los de la sesión abierta —decisión de producto sobre qué es «el hilo», no
-un arreglo—; **(b)** que `archive` reciba la sesión en curso, que es `apps/api` y además convierte
-un acto de campaña en uno de partida. **Descartado de entrada** filtrar en el cliente: el servidor
-ya no manda esos sucesos, así que no habría nada que filtrar.
-
-Es hermano de **P3-archivar** del plan 03 —que arregla a **quién** llega el suceso
-(`grantedUserIds`)— pero no el mismo: aquel es de visibilidad y este de **encuadre**. Los dos
-tienen que estar para que el registro cuente la verdad.
 
 ## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
 

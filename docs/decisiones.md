@@ -447,9 +447,10 @@ Decisiones pequeñas tomadas al cerrar fichas del cubo B, una por commit.
 | D-CF-16 | **La sobrecarga entra como variante con interruptor por campaña, apagada por defecto**, y el motor deriva −10/−20 ft y el aviso de desventaja con traza. SRD 5.1, *Variant: Encumbrance* |
 | D-CF-17 | **El límite global de peticiones se cuenta por usuario cuando hay sesión iniciada**, por IP solo en las rutas sin token (R1): cinco jugadores por una VPN son una IP |
 | D-CF-18 | **La contraseña olvidada la reinicia un administrador** (`isAdmin`) con una temporal, sin servicio de correo (D8): cinco amigos y el autor de administrador |
-| D-CF-19 | **El hilo de una sesión mezcla los sucesos de campaña sin sesión posteriores a su inicio** (archivar, entrar, cambiar de bando): son cosas que pasan mientras se juega. Cierra «el suceso de archivar no se lee desde la mesa» |
+| D-CF-19 | **El hilo de una sesión mezcla los sucesos de campaña sin sesión posteriores a su inicio** (archivar, entrar, cambiar de bando): son cosas que pasan mientras se juega. **Y anteriores a su cierre**, añadido al ejecutarla el 2026-09-11: sin tope, una sesión cerrada absorbía lo que pasara meses después. Un suceso de campaña entre dos sesiones no sale en ninguna, y se asume. Cierra «el suceso de archivar no se lee desde la mesa» |
 | D-CF-20 | **Los rasgos raciales sin efecto (S4) entran por el conversor del paso 3**, tarea 2b, igual que los de clase: Foundry los trae como ítems con actividades |
 | D-CF-21 | **Las cargas de un objeto (M2B-4) entran en el paso 3** como `uses` con recuperación, el mismo vocabulario que un conjuro con usos |
+| D-CF-22 | **Los objetos mágicos genéricos del SRD (+1/+2/+3) no se siembran como objetos**: son una plantilla sobre un arma base, o sea «encantar» (paso 3, bloque D). Hoy el DM ya crea «Espada larga +1» como objeto de campaña con `weaponAttack`/`weaponDamage`. Revierte la recomendación del 2026-09-10 (M2B-14 como B-S), que se equivocó en la forma |
 | D-CF-1 | **La lista de sesiones va por cuándo se juega**: con fecha primero, de la más lejana a la más cercana —la próxima arriba, como el resto de listas de la casa ponen lo más reciente primero—, y las sin fecha detrás, por creación. Cierra D4 |
 
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)

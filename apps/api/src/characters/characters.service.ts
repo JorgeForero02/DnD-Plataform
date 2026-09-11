@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { audienciaDeSuceso, canView, Viewer } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
 
 @Injectable()
@@ -14,14 +15,6 @@ export class CharactersService {
     private readonly gameEvents: GameEventsService,
     private readonly resources: ResourcesService,
   ) {}
-
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
 
   private canSee(viewer: Viewer, ownerId: string, visibility: Visibility): boolean {
     return canView(viewer, { visibility, createdById: ownerId, grantedUserIds: [] });
@@ -54,7 +47,7 @@ export class CharactersService {
 
   async list(userId: string, campaignId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const characters = await this.prisma.character.findMany({
       // **Los PNJ instanciados no salen aquí** (2D.6). Un PNJ es una fila de `Character` —esa es
       // la decisión que hace barata toda la fase 2D— pero *esta* lista es «quién se sienta a la
@@ -78,7 +71,7 @@ export class CharactersService {
    */
   async listArchived(userId: string, campaignId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const characters = await this.prisma.character.findMany({
       where: { campaignId, statblockRef: null, archivedAt: { not: null } },
       orderBy: { archivedAt: "desc" },
@@ -88,7 +81,7 @@ export class CharactersService {
 
   async get(userId: string, campaignId: string, characterId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const character = await this.prisma.character.findFirst({
       where: { id: characterId, campaignId },
     });

@@ -16,6 +16,7 @@ import type { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import { encolarTrasCommit } from "../common/after-commit";
 import { canView, type Viewer } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 import { LiveBus } from "../live/live-bus";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -181,7 +182,7 @@ export class GameEventsService {
       const objetivo = await this.membership.getMembership(campaignId, query.as);
       if (!objetivo) throw new NotFoundException("Ese jugador no está en esta campaña.");
     }
-    const viewer = await this.viewerFor(query.as ?? userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, query.as ?? userId, campaignId);
 
     // D-CF-19 (ficha P3 «archivar») — el hilo de una sesión no es solo lo que ocurrió DENTRO de
     // ella: «se archiva a X», «entra Marta» y cualquier otro acto de campaña sin `sessionId`
@@ -247,17 +248,6 @@ export class GameEventsService {
     // frase cambiara. La consecuencia era que un suceso `SPECIFIC_PLAYERS` **no lo veía nadie**
     // salvo el DM, ni siquiera el jugador nombrado.
     return canView(viewer, { visibility, createdById: actorUserId, grantedUserIds });
-  }
-
-  // Duplicado a sabiendas con el de los otros servicios: la deuda de extraer `viewerFor` a
-  // `common/` está declarada en `docs/06-pendientes.md`, y resolverla aquí de tapadillo sería
-  // meter una refactorización dentro de una tarea que no la pidió.
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
   }
 
   /**

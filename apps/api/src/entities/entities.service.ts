@@ -9,7 +9,8 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateEntityInput, UpdateEntityInput, type ListEntitiesQuery } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { audienciaDeSuceso, canView, laAudienciaCrecio, Viewer } from "../common/visibility";
+import { audienciaDeSuceso, canView, laAudienciaCrecio } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 import { WorldStateService } from "../world-state/world-state.service";
 import { GameEventsService } from "../game-events/game-events.service";
 
@@ -26,14 +27,6 @@ export class EntitiesService {
      */
     @Optional() private readonly worldState?: WorldStateService,
   ) {}
-
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
 
   /**
    * **El mundo lo escribe el DM. Solo el DM.**
@@ -133,7 +126,7 @@ export class EntitiesService {
    */
   async list(userId: string, campaignId: string, query: ListEntitiesQuery = {}) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const entities = await this.prisma.entity.findMany({
       where: { campaignId, ...(query.type ? { type: query.type } : {}) },
       include: { grants: true },
@@ -154,7 +147,7 @@ export class EntitiesService {
 
   async get(userId: string, campaignId: string, entityId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const entity = await this.prisma.entity.findFirst({
       where: { id: entityId, campaignId },
       include: { grants: true },

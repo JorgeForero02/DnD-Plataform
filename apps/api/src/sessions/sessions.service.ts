@@ -12,6 +12,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, Viewer } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
 
 /** Lo que hace falta de una `Entity` para decidir si su nombre viaja, y para pintarlo si viaja. */
@@ -32,14 +33,6 @@ export class SessionsService {
     private readonly events: GameEventsService,
     private readonly emitter: EventEmitter2,
   ) {}
-
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
 
   private canSee(viewer: Viewer, visibility: Visibility): boolean {
     return canView(viewer, {
@@ -183,7 +176,7 @@ export class SessionsService {
 
   async list(userId: string, campaignId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const sessions = await this.prisma.session.findMany({
       where: { campaignId },
       // **La lista va por cuándo se juega, no por cuándo se creó** (ficha D4, cerrada el
@@ -200,7 +193,7 @@ export class SessionsService {
 
   async get(userId: string, campaignId: string, sessionId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, campaignId },
     });

@@ -82,6 +82,7 @@ import {
 } from "../character-state/concentration/concentration";
 import { rollSuggestionsFor } from "../character-state/roll-mode/suggested-roll-mode";
 import { canView, loVeLaMesa, Viewer } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
 //
@@ -302,22 +303,6 @@ export class CharacterSheetService {
   ) {}
 
   /**
-   * **`tx` opcional, el patrón de siempre** (ficha P2-0b): quien ya tiene una transacción abierta
-   * resuelve el visor por ese cliente en vez de pedirle al pool una segunda conexión.
-   */
-  private async viewerFor(
-    userId: string,
-    campaignId: string,
-    tx?: Prisma.TransactionClient,
-  ): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      (tx ?? this.prisma).user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
-
-  /**
    * ¿Se puede apuntar a este personaje? **`canView` o estar en el encuentro activo** (D-OP-11).
    *
    * Las dos mitades hacen falta y ninguna sobra. `canView` sola dejaría fuera al PNJ `DM_ONLY` que
@@ -333,7 +318,7 @@ export class CharacterSheetService {
     campaignId: string,
     target: { id: string; visibility: Visibility; ownerId: string },
   ): Promise<boolean> {
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     if (
       canView(viewer, {
         visibility: target.visibility,
@@ -424,7 +409,7 @@ export class CharacterSheetService {
     });
     if (filas.length === 0) return { items: [], warnings: [] };
 
-    const viewer = await this.viewerFor(userId, character.campaignId, tx);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, character.campaignId, tx);
     const items: ResolvedItem[] = [];
     const warnings: DerivationWarning[] = [];
     let ocultos = 0;
@@ -509,7 +494,7 @@ export class CharacterSheetService {
   ) {
     const equipo = await this.equipoEquipado(userId, character, tx);
     const resultado = await this.hojaOMotivo(
-      await this.viewerFor(userId, character.campaignId, tx),
+      await viewerFor(this.prisma, this.membership, userId, character.campaignId, tx),
       character,
       equipo.items,
       tx,
@@ -610,7 +595,7 @@ export class CharacterSheetService {
 
   async getSheet(userId: string, campaignId: string, characterId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const character = await this.prisma.character.findFirst({
       where: { id: characterId, campaignId },
     });
@@ -1084,7 +1069,7 @@ export class CharacterSheetService {
     // que este espectador siempre ve la plantilla. Se pasa igualmente en vez de saltarse la
     // comprobación: un atajo aquí sería el hueco por el que entre la próxima fuga.
     const resultado = await this.hojaOMotivo(
-      await this.viewerFor(userId, character.campaignId, tx),
+      await viewerFor(this.prisma, this.membership, userId, character.campaignId, tx),
       character,
       items,
       tx,

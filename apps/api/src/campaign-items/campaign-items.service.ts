@@ -9,7 +9,7 @@ import type { Visibility } from "@dnd/shared";
 import { CreateCampaignItemInput, UpdateCampaignItemInput, ResolvedItem } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, Viewer } from "../common/visibility";
+import { canView } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { campaignItemToResolvedItem, itemEffectsSchema } from "./campaign-item-to-resolved";
 
@@ -23,14 +23,6 @@ export class CampaignItemsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
   ) {}
-
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
 
   /** Columnas planas de arma/armadura desde el cuerpo común del esquema. */
   private weaponColumns(input: { weapon?: CreateCampaignItemInput["weapon"] }) {
@@ -98,7 +90,7 @@ export class CampaignItemsService {
 
   async list(userId: string, campaignId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const items = await this.prisma.campaignItem.findMany({
       where: { campaignId },
       include: { grants: true },
@@ -115,7 +107,7 @@ export class CampaignItemsService {
 
   async get(userId: string, campaignId: string, itemId: string) {
     await this.membership.requireMember(campaignId, userId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     const item = await this.prisma.campaignItem.findFirst({
       where: { id: itemId, campaignId },
       include: { grants: true },

@@ -121,10 +121,13 @@ propiedad. Ver [05-datos.md](./05-datos.md) para la semántica de cada nivel.
 > inventario de 2B. Lo que cerró la refactorización no fue la deuda escrita: fue que 2B estuvo a
 > punto de escribir la **tercera** copia de la misma regla de autorización.
 >
-> Siguen construyendo a mano su propio `viewerFor(userId, campaignId)` (rol en la campaña +
-> `user.isAdmin`) `entities`, `characters`, `character-sheet`, `comments`, `links`, `sessions`,
-> `game-events`, `rules-engine` y `campaign-items`. Anotada en
-> [06-pendientes.md](./06-pendientes.md).
+> **Y la otra mitad se pagó el 2026-09-11:** diez de las trece copias de
+> `viewerFor(userId, campaignId)` importan el común, y `common/un-solo-viewer-for.spec.ts` barre
+> el árbol para que no vuelva ninguna. **Tres se quedan a propósito y en su lista blanca**
+> —`dm-tables`, `npcs`, `statblocks`— porque no son copias: usan `requireMember` (403 al no
+> miembro) donde el común usa `getMembership` (rol nulo → `canView` niega). Unificarlas es una
+> decisión sobre 403 contra 404, no una limpieza. Lo que este párrafo enumeraba caducó dos veces;
+> por eso ahora lo cuenta una prueba.
 
 ### Un `tx?` opcional y aditivo, porque `PrismaService.transaction` no anida
 

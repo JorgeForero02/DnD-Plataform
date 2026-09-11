@@ -4,7 +4,8 @@ import { CreateCommentInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
-import { canView, Viewer } from "../common/visibility";
+import { canView } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 
 @Injectable()
 export class CommentsService {
@@ -15,14 +16,6 @@ export class CommentsService {
     private readonly emitter: EventEmitter2,
   ) {}
 
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
-
   private async requireViewableEntity(userId: string, entityId: string) {
     const entity = await this.prisma.entity.findUnique({
       where: { id: entityId },
@@ -30,7 +23,7 @@ export class CommentsService {
     });
     if (!entity) throw new NotFoundException("Entity not found");
     await this.membership.requireMember(entity.campaignId, userId);
-    const viewer = await this.viewerFor(userId, entity.campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, entity.campaignId);
     if (
       !canView(viewer, {
         visibility: entity.visibility,

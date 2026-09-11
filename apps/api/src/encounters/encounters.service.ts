@@ -21,7 +21,8 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollsService } from "../rolls/rolls.service";
 import { GameClockService } from "../game-clock/game-clock.service";
-import { canView, loVeLaMesa, Viewer } from "../common/visibility";
+import { canView, loVeLaMesa } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 
 // Tarea 2.5.2 — iniciativa y orden de turnos.
 //
@@ -174,14 +175,6 @@ export class EncountersService {
     private readonly rolls: RollsService,
     private readonly clock: GameClockService,
   ) {}
-
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
 
   private async sesion(campaignId: string, sessionId: string) {
     const session = await this.prisma.session.findFirst({ where: { id: sessionId, campaignId } });
@@ -523,7 +516,7 @@ export class EncountersService {
   async get(userId: string, campaignId: string, sessionId: string, encounterId: string) {
     await this.membership.requireMember(campaignId, userId);
     await this.sesion(campaignId, sessionId);
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
 
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, sessionId },
@@ -1315,7 +1308,7 @@ export class EncountersService {
     // **Primero si lo VE, con `canView` — el mismo filtro que `get()` aplica sobre este mismo
     // `character`.** Un combatiente que la ficha del encuentro ya esconde no puede delatarse por
     // la puerta trasera de un 403: si no lo ve, la respuesta es la misma que un id inventado.
-    const viewer = await this.viewerFor(userId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
     if (
       !canView(viewer, {
         visibility: combatiente.character.visibility,

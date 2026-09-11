@@ -329,7 +329,6 @@ Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo
 | | Qué | Por qué importa |
 |---|---|---|
 | **H10** | Las formas de área (cono, esfera, línea, cubo, cilindro) las necesitan el motor (2A) y los conjuros (2B) | Propuesta: viven en `@dnd/shared` desde 2A, aunque en 2A todavía no alcancen a nadie |
-| **H11** | **Nada ata el texto de la interfaz a `canView`** | Es el mismo U10 de más abajo, visto desde 2A: las frases de visibilidad **ya mintieron una vez** |
 
 ## Deuda de las tareas 2A.3 y 2A.4 (catálogo SRD y elecciones) — 2026-09-02
 
@@ -440,7 +439,6 @@ Lo entregado está en [07-historial](./07-historial.md) y su porqué en
 |---|---|---|
 | **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
 | **U6** | **Sin prueba de accesibilidad automática ni de móvil real** | Playwright mide contraste y un tamaño de fuente táctil, pero nadie comprueba el recorrido de teclado ni la lectura con ayudas técnicas. El fallo del nombre accesible («PNJ 12») lo cazó una prueba funcional de rebote, no una de accesibilidad |
-| **U10** | **El texto que explica la visibilidad no está atado a `canView`** — **decidido el 2026-09-10 que sí hay prueba posible**: las frases salen de una matriz declarada (quién ve: miembro, no miembro, DM, creador, concedido) y una prueba compara esa matriz con `canView` sobre espectadores de mentira; si divergen, se pone roja | Las frases de `features/entities/visibilidad.ts` describen la matriz del servidor y **ya mintieron una vez** (prometían que «público» dejaba entrar a quien no fuera miembro). Hoy nada rompe si vuelven a divergir: haría falta una prueba que compare las dos, o aceptar explícitamente que es texto y se revisa a mano |
 
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 
@@ -687,17 +685,6 @@ lista del editor con una línea.
   La respuesta buena es una ruta de enlaces por campaña.
 
 ## P4 — Limpieza
-
-- **`viewerFor(userId, campaignId)` está duplicado en TRECE servicios**, y la casa común a la que
-  llevarlo ya existe: `common/character-viewer.ts`, que 2B pagó en vez de heredar. Detectado en
-  1.7 y **remedido el 2026-09-08, al alza**: esta línea nombraba cinco (entidades, enlaces,
-  comentarios, sesiones y personajes) y los cinco siguen, pero se les han sumado
-  `character-sheet`, `game-events`, `rules-engine`, `campaign-items`, `dm-tables`, `encounters`,
-  `npcs` y `statblocks`. Solo tres servicios importan el común —`activities`, `inventory` y
-  `campaign-items`—, y **`campaign-items` hace las dos cosas a la vez**: lo importa y declara el
-  suyo. La lista completa se mide con `grep -rln "private async viewerFor" apps/api/src`, que es
-  más fiable que enumerarla aquí — enumerar tres sitios cuando había siete ya caducó una vez en
-  `04-convenciones.md`, y esta lista acaba de caducar por lo mismo.
 
 ## Decisiones abiertas
 

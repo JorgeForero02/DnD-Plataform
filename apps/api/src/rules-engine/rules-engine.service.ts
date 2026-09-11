@@ -18,7 +18,8 @@ import {
 } from "@dnd/shared";
 import { z } from "zod";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, type Viewer } from "../common/visibility";
+import { canView } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -166,17 +167,6 @@ export class RulesEngineService {
     return rule;
   }
 
-  // Duplicado a sabiendas con el de los otros servicios (`GameEventsService`,
-  // `NotificationsService`): la deuda de extraer `viewerFor` a `common/` ya está declarada en
-  // `docs/06-pendientes.md` y no es de esta tarea resolverla de tapadillo.
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
-
   /**
    * Punto 5 de la autoridad: por cada efecto que cambia una visibilidad, comprueba si el
    * jugador que disparó la regla podría ver el resultado por `canView` — y lo deja escrito,
@@ -200,7 +190,7 @@ export class RulesEngineService {
       return applications.map((a) => ({ ...a, canView: { applicable: false } }));
     }
 
-    const viewer = await this.viewerFor(triggeredByUserId, campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, triggeredByUserId, campaignId);
     const entities = await this.prisma.entity.findMany({
       where: { id: { in: targets }, campaignId },
       include: { grants: true },

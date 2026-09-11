@@ -66,6 +66,11 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 4 (d)** (un lote, tres fichas): `viewerFor` vive una sola vez en `common/` y una prueba
+  barre las copias (P4); y las frases de visibilidad salen de una matriz declarada en
+  `@dnd/shared` (`QUIEN_VE`) que una prueba de la API compara con `canView` caso a caso (U10 y
+  H11). **Revertir:** las copias no vuelven solas — es un `git revert`; la matriz se puede quitar
+  dejando las frases.
 - **Tanda 4 (c)** (un lote, dos fichas): `NOTIFY` del motor llega a la bandeja como `RULE_NOTIFY`
   (N3-notify), y cambiar la contraseña devuelve un token fresco con `iat` = segundo del cambio + 1,
   que vale al instante sin aflojar la regla del empate (1.18a). **Revertir:** quitar el caso

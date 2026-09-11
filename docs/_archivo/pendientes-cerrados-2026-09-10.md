@@ -514,3 +514,36 @@ found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
   a entrar dentro del mismo segundo de reloj puede rechazar el token recién emitido (el `iat` de
   JWT tiene precisión de segundos y el empate se trata como caduco, a propósito). Es también la
   razón de la espera de 1,1 s en la e2e. Devolver un token fresco en la respuesta lo cerraría.
+
+## P4 · `viewerFor(userId, campaignId)` está duplicado en trece servicios
+
+**Cerrada el 2026-09-11 (Task 21).** Diez servicios importan `viewerFor` de `common/character-viewer.ts` y borran su copia; **tres se quedan en lista blanca** (`dm-tables`, `npcs`, `statblocks`) porque no eran copias: usan `requireMember` (403 al no miembro) donde el común usa `getMembership` (rol nulo → `canView` niega). Unificarlas es decidir 403 contra 404 en esos tres módulos; queda dicho aquí, no como ficha. Prueba `apps/api/src/common/un-solo-viewer-for.spec.ts` que barre `apps/api/src` y afirma cero copias fuera de `common/` — roja con trece antes. Suite unitaria de la API entera en verde después.
+
+**Texto original:**
+
+- **`viewerFor(userId, campaignId)` está duplicado en TRECE servicios**, y la casa común a la que
+  llevarlo ya existe: `common/character-viewer.ts`, que 2B pagó en vez de heredar. Detectado en
+  1.7 y **remedido el 2026-09-08, al alza**: esta línea nombraba cinco (entidades, enlaces,
+  comentarios, sesiones y personajes) y los cinco siguen, pero se les han sumado
+  `character-sheet`, `game-events`, `rules-engine`, `campaign-items`, `dm-tables`, `encounters`,
+  `npcs` y `statblocks`. Solo tres servicios importan el común —`activities`, `inventory` y
+  `campaign-items`—, y **`campaign-items` hace las dos cosas a la vez**: lo importa y declara el
+  suyo. La lista completa se mide con `grep -rln "private async viewerFor" apps/api/src`, que es
+  más fiable que enumerarla aquí — enumerar tres sitios cuando había siete ya caducó una vez en
+  `04-convenciones.md`, y esta lista acaba de caducar por lo mismo.
+
+## U10 · El texto que explica la visibilidad no está atado a `canView`
+
+**Cerrada el 2026-09-11 (Task 23).** `packages/shared/src/visibility.schema.ts` declara la matriz `QUIEN_VE` (cinco niveles × cinco espectadores: no miembro, jugador, jugador concedido, creador, DM), y `apps/api/src/common/visibilidad-matriz.spec.ts` la compara con `canView` caso a caso: si la matriz miente, la prueba enrojece (comprobado poniendo un booleano falso primero). Las frases de `features/entities/visibilidad.ts` siguen escritas a mano; lo que las ata es `PATRON_DE_NIVEL` (a quién promete cada frase) y una prueba web por nivel que lo compara con `QUIEN_VE` — verificación, no composición; la primera versión lanzaba esa comprobación al cargar el módulo en producción y la revisión la sacó a la prueba. **Cierra también H11**, que era la misma ficha vista desde 2A.
+
+**Texto original:**
+
+| **U10** | **El texto que explica la visibilidad no está atado a `canView`** — **decidido el 2026-09-10 que sí hay prueba posible**: las frases salen de una matriz declarada (quién ve: miembro, no miembro, DM, creador, concedido) y una prueba compara esa matriz con `canView` sobre espectadores de mentira; si divergen, se pone roja | Las frases de `features/entities/visibilidad.ts` describen la matriz del servidor y **ya mintieron una vez** (prometían que «público» dejaba entrar a quien no fuera miembro). Hoy nada rompe si vuelven a divergir: haría falta una prueba que compare las dos, o aceptar explícitamente que es texto y se revisa a mano |
+
+## H11 · Nada ata el texto de la interfaz a `canView`
+
+**Cerrada el 2026-09-11 con U10 (Task 23):** es la misma ficha. La matriz `QUIEN_VE` de `@dnd/shared` es lo que ata el texto al servidor.
+
+**Texto original:**
+
+| **H11** | **Nada ata el texto de la interfaz a `canView`** | Es el mismo U10 de más abajo, visto desde 2A: las frases de visibilidad **ya mintieron una vez** |

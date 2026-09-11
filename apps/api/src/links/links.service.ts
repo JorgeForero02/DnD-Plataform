@@ -9,7 +9,8 @@ import { CreateEntityLinkInput, Visibility } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
-import { canView, Viewer } from "../common/visibility";
+import { canView } from "../common/visibility";
+import { viewerFor } from "../common/character-viewer";
 
 /**
  * De qué lado de la flecha está el enlace **visto desde la ficha que se está leyendo**.
@@ -47,14 +48,6 @@ export class LinksService {
     private readonly membership: MembershipService,
     private readonly gameEvents: GameEventsService,
   ) {}
-
-  private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {
-    const [member, user] = await Promise.all([
-      this.membership.getMembership(campaignId, userId),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-    ]);
-    return { userId, role: member?.role ?? null, isAdmin: user?.isAdmin ?? false };
-  }
 
   async create(userId: string, fromEntityId: string, input: CreateEntityLinkInput) {
     const from = await this.prisma.entity.findUnique({ where: { id: fromEntityId } });
@@ -134,7 +127,7 @@ export class LinksService {
     const entity = await this.prisma.entity.findUnique({ where: { id: entityId } });
     if (!entity) throw new NotFoundException("Entity not found");
     await this.membership.requireMember(entity.campaignId, userId);
-    const viewer = await this.viewerFor(userId, entity.campaignId);
+    const viewer = await viewerFor(this.prisma, this.membership, userId, entity.campaignId);
 
     const [outgoing, incoming] = await Promise.all([
       this.prisma.entityLink.findMany({

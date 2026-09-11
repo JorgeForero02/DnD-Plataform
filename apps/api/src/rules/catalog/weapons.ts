@@ -311,7 +311,10 @@ export const SRD_WEAPONS: SrdWeapon[] = [
   },
   {
     key: "maul",
-    name: "Almádena",
+    // SRD 5.1 en español (Nosolorol, trad. Ana Navalón),
+    // https://srd.nosolorol.com/DD5/equipamiento/armas.html: «maul» es «Mazo de guerra», no
+    // «Almádena» (contrastado el 2026-09-11, ficha I1).
+    name: "Mazo de guerra",
     category: "MARTIAL",
     range: "MELEE",
     damageDice: "2d6",

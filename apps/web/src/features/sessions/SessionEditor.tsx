@@ -105,14 +105,20 @@ export function SessionEditor({
     // survives a save that looks successful. In create mode there is no old value to
     // preserve, so an empty field is still omitted (the schema field is optional).
     //
-    // scheduledAt can't get the same treatment: createSessionSchema.scheduledAt is
-    // `z.coerce.date().optional()` without `.nullable()`, so there is no value this form can
-    // send that means "clear the date" against today's API. Left as a known limitation —
-    // see docs/06-pendientes.md — rather than guessed at here.
+    // scheduledAt: updateSessionSchema (Task 6, P3.5) now accepts `null` as "clear the date",
+    // distinct from createSessionSchema which does not. So an empty field only sends `null`
+    // when editing a session that already had one; creating with an empty field still omits
+    // the key (there is no old date to clear), and editing a session that never had a date
+    // leaves the key omitted too (nothing changes).
+    const clearingScheduledAt = isEdit && !scheduledAt && !!session?.scheduledAt;
     const payload = {
       title,
       visibility,
-      ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}),
+      ...(scheduledAt
+        ? { scheduledAt: new Date(scheduledAt).toISOString() }
+        : clearingScheduledAt
+          ? { scheduledAt: null }
+          : {}),
       ...(isEdit ? { notes: trimmedNotes } : trimmedNotes ? { notes: trimmedNotes } : {}),
     } as unknown as CreateSessionInput;
     try {

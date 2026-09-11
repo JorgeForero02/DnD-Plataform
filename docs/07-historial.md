@@ -65,6 +65,15 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 2, contrato compartido** (un lote, cuatro fichas): el sello vacío se rechaza
+  (`stampSessionNoteSchema`); la fecha de una sesión se puede quitar (`scheduledAt: null` en el
+  `PATCH`, `SessionEditor` lo manda al vaciar); los dos esquemas de consulta viven en
+  `@dnd/shared` (S12, sin excepción declarada); y **«Almádena» era «Mazo de guerra»** en el SRD
+  5.1 en español (I1, Nosolorol/Ana Navalón; los otros tres nombres eran correctos). **De paso,
+  la revisión encontró y se cerró en la misma ronda:** un `POST` de sesión con `scheduledAt:
+  null` se guardaba como 1970 (`coerce` sobre `null`); ahora crear también admite `null` como
+  «sin fecha». **Revertir:**
+  cada uno es un cambio de una pieza; el de S12 es una mudanza inversa.
 - **E0 · TipTap** — los seis paquetes `@tiptap/*`, el lock y el script E0 de ida y vuelta (`scripts/e0-tiptap-roundtrip.mjs`, borrado) <!-- docs-lint-ignore -->
   salen (D-CF-12); una prueba impide que vuelvan sin decisión. **Revertir:** `git revert`.
 - **P6 · Node 22** — los cuatro pines a 22 y una prueba que los mantiene iguales (D-CF-13).

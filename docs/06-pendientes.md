@@ -351,7 +351,6 @@ son decisiones tomadas a conciencia, no olvidos.
 
 | | Qué | Por qué importa, y qué cuesta cambiarlo |
 |---|---|---|
-| **I1** | **Cuatro nombres de arma en español están sin contrastar con el PDF oficial** — «Guja» (glaive), «Almádena» (maul), «Mangual» (flail) y «Lanza de caballería» (lance) | Los nombres del catálogo son los de la traducción oficial de Wizards, no una traducción nuestra, y así lo declara `NOTICE.md`. Quien transcribió la tabla los señaló en su informe como los de menor confianza — **en el código no hay ninguna marca que los distinga del resto**, así que esta ficha es el único rastro. **Prioridad baja y coste mínimo** —cambiar una cadena—, pero si están mal, `NOTICE.md` afirma algo que no es. Se contrasta con el SRD 5.1 en español cuando haya acceso al documento |
 | **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
 | **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
 | **I6** | **Las competencias de armadura no producen aviso todavía** | El catálogo ya las tiene en claves de máquina (`light`, `medium`, `heavy`, `shield`) desde 2B, y el SRD dice que llevar armadura sin competencia da desventaja en todo lo de Fuerza y Destreza y **prohíbe lanzar conjuros**. El motor ya sabe emitir avisos y el de armas ya existe (`attack_not_proficient`): falta el de armadura, que es el mismo mecanismo |
@@ -632,31 +631,6 @@ mejora, no compromiso.
 > **Lo que sigue siendo cierto de esta sección son sus dos primeras líneas**: el lint sin tipos y
 > la ausencia de umbral de cobertura y de mutación.
 
-## P3.5 — Limitaciones conocidas de la tarea 1.13-fix
-
-- **No se puede borrar la fecha de una sesión desde la web.** `createSessionSchema.scheduledAt`
-  es `z.coerce.date().optional()`, **sin `.nullable()`**
-  (`packages/shared/src/session.schema.ts`), así que no existe ningún valor que
-  `SessionEditor.tsx` pueda enviar en el `PATCH` que signifique "quita la fecha que ya tenía
-  la sesión": omitir la clave dice "no la toques", y no hay una representación de "vacío" que
-  el esquema acepte para `Date`. Arreglarlo pide `.nullable()` en el esquema y `data.scheduledAt
-  = null` en `sessions.service.ts` cuando llega `null` — cambios en `packages/shared` y
-  `apps/api`, fuera de alcance de esta tarea (prohibido tocarlos en el brief de 1.13-fix). El
-  resto de campos opcionales de sesión y personaje (`notes`, `race`, `class`, `bio`) sí se
-  pueden vaciar desde el editor, enviando la cadena vacía en vez de omitir la clave.
-- **La precarga de la fecha de una sesión en `SessionEditor.test.tsx` solo cuadra por
-  coincidencia.** `<input type="datetime-local">` tiene precisión de minutos;
-  `toDatetimeLocal` (`SessionEditor.tsx`) descarta los segundos al convertir el ISO del
-  servidor al valor del input. El fixture de la prueba usa una hora con segundos en `:00`
-  (`20:00:00Z`), así que el ida y vuelta (ISO → input → `new Date(...).toISOString()`) da el
-  mismo valor y la aserción pasa. Con una hora real como `20:00:30Z` el input truncaría a
-  `20:00` y la vuelta a ISO perdería los `:30`, así que la misma aserción **fallaría**. No es
-  un fallo del código de producción — es una limitación real y aceptada de
-  `datetime-local` (no hay forma de teclear segundos con ese tipo de input) — pero la
-  prueba no lo demuestra hoy: pasa por la casualidad del fixture, no porque compruebe la
-  pérdida. Comentario dejado en el propio fixture
-  (`apps/web/src/features/sessions/__tests__/SessionEditor.test.tsx`).
-
 ## P3 — Correcciones funcionales conocidas
 
 Ninguna es un agujero de lectura —nadie ve contenido ajeno—, pero todas degradan el
@@ -725,9 +699,6 @@ lista del editor con una línea.
 
 ## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
 
-- **`stampSessionNoteSchema` acepta el sello vacío.** Los dos compositores lo impiden en pantalla;
-  `text` sigue siendo `optional()` sin `min(1)`, así que una llamada directa a la API crea el sello
-  que dice «Nota». Y los ya escritos siguen en la base, entrando en la crónica de cierre.
 - **`changeHp` no comprueba que el `rollEventId` tenga que ver con ese PERSONAJE**, ni que sea
   reciente. **Lo que esta línea decía de más se retiró el 2026-09-08**: afirmaba que la guarda de
   signo del cliente era «la única» defensa, y no lo es —`characters/character-sheet.service.ts:1271`
@@ -846,7 +817,6 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 |---|---|---|
 | **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
-| **S12** | **`listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`** | `docs/01-arquitectura.md` dice que la forma de los datos vive en un solo sitio y **eso ya tiene dos excepciones**. O se declara la excepción (los esquemas de consulta locales a un endpoint pueden vivir junto al controlador) o se mueven |
 | **U6-visibilidad** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
 | **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
 | **N3-notify** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |

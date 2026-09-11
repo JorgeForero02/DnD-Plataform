@@ -282,4 +282,46 @@ describe("Sessions (e2e)", () => {
       expect(titulos).toEqual(["D4 · dentro de una semana", "D4 · mañana", "D4 · sin fecha"]);
     });
   });
+
+  describe("la fecha de una sesión se puede quitar (P3.5)", () => {
+    it("PATCH { scheduledAt: null } vacía la fecha", async () => {
+      const s = app.getHttpServer();
+      const creada = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          title: "P3.5 · con fecha",
+          visibility: "DM_ONLY",
+          scheduledAt: "2030-01-01T20:00:00.000Z",
+        });
+      expect(creada.body.scheduledAt).not.toBeNull();
+
+      const res = await request(s)
+        .patch(`/campaigns/${campaignId}/sessions/${creada.body.id}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ scheduledAt: null });
+      expect(res.status).toBe(200);
+      expect(res.body.scheduledAt).toBeNull();
+
+      const en_bd = await prisma.session.findUnique({ where: { id: creada.body.id } });
+      expect(en_bd?.scheduledAt).toBeNull();
+    });
+
+    // Revisión (ronda 1): un POST directo con `scheduledAt: null` no pasaba por el editor web
+    // (que nunca lo manda al crear), así que llegaba crudo al esquema de creación. Antes de
+    // este arreglo, `z.coerce.date().optional()` coaccionaba `null` a `new Date(null)` =
+    // 1970-01-01, no a "sin fecha".
+    it("POST con scheduledAt: null crea la sesión SIN fecha, no en 1970", async () => {
+      const s = app.getHttpServer();
+      const res = await request(s)
+        .post(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ title: "P3.5 · null al crear", visibility: "DM_ONLY", scheduledAt: null });
+      expect(res.status).toBe(201);
+      expect(res.body.scheduledAt).toBeNull();
+
+      const en_bd = await prisma.session.findUnique({ where: { id: res.body.id } });
+      expect(en_bd?.scheduledAt).toBeNull();
+    });
+  });
 });

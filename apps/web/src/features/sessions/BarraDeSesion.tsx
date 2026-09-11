@@ -130,10 +130,11 @@ function PanelDeSellos({ campaignId, onCerrar }: { campaignId: string; onCerrar:
   // El texto va sin `|| undefined`: si llegamos aquí es porque hay texto, y mandar `undefined`
   // desde un botón que solo se habilita con texto sería dejar viva la misma puerta por detrás.
   //
-  // **Y esto sigue siendo pantalla, no validación.** `stampSessionNoteSchema`
-  // (`packages/shared/src/session.schema.ts`) declara `text` como `optional()` sin `min(1)`, así
-  // que una llamada directa a la API sigue creando el sello vacío. El arreglo de verdad es ese
-  // `.min(1)` en el esquema compartido; queda preguntado al autor porque toca el servidor.
+  // **Y esto es defensa en profundidad, no la única barrera.** `stampSessionNoteSchema`
+  // (`packages/shared/src/session.schema.ts`) declara `text` con `.trim().min(1)` desde el
+  // 2026-09-11: una llamada directa a la API con `""` o solo espacios ya la rechaza el servidor.
+  // Esta comprobación de pantalla se queda igual — evita el viaje de red para el caso obvio —
+  // pero ya no es la única puerta.
   const poner = async (kind: SessionNoteKind) => {
     const anotado = texto.trim();
     if (anotado === "") return;

@@ -1,6 +1,7 @@
 import { SRD_ARMOR } from "./armor";
 import { SRD_CLASSES } from "./classes";
 import { SRD_RACES } from "./races";
+import { SRD_WEAPONS } from "./weapons";
 import type { AbilityGrant, Grant, SrdClass } from "./types";
 
 // Tarea 2A.3, **añadido tras la revisión del 2026-09-02**.
@@ -520,6 +521,12 @@ describe("los nombres en español son los de la traducción oficial del SRD 5.1"
 
   it.each(Object.entries(NOMBRES_ARMADURA))("la armadura %s se llama «%s»", (clave, nombre) => {
     expect(SRD_ARMOR.find((a) => a.key === clave)!.name).toBe(nombre);
+  });
+
+  // Task 8 (I1) — contrastado el 2026-09-11 contra el SRD 5.1 en español (Nosolorol, trad.
+  // Ana Navalón): «maul» es «Mazo de guerra», no «Almádena».
+  it("el arma maul se llama «Mazo de guerra»", () => {
+    expect(SRD_WEAPONS.find((w) => w.key === "maul")!.name).toBe("Mazo de guerra");
   });
 
   it.each(Object.entries(NOMBRES_APTITUD))("la aptitud %s se llama «%s»", (ruta, nombre) => {

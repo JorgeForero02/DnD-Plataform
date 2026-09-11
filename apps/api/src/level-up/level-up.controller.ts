@@ -2,7 +2,7 @@ import { Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/com
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { LevelUpService } from "./level-up.service";
-import { levelUpPreviewQuerySchema, type LevelUpPreviewQuery } from "./level-up.schema";
+import { levelUpPreviewQuerySchema, type LevelUpPreviewQuery } from "@dnd/shared";
 
 // Tarea 2A.9 — cuelga de un personaje ya existente, igual que `CharacterSheetController`
 // (2A.6/2A.7): son endpoints de un personaje, no del CRUD de `CharactersController`.

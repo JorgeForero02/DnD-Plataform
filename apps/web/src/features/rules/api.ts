@@ -1,5 +1,6 @@
 import type {
   CreateRuleInput,
+  ListTracesQuery,
   ResolveProposalInput,
   RuleCondition,
   RuleEffect,
@@ -199,7 +200,7 @@ export function resolveProposal(
 
 export function fetchTraces(
   campaignId: string,
-  opciones: { limit?: number; cursor?: string } = {},
+  opciones: Partial<ListTracesQuery> = {},
 ): Promise<PaginaDeTrazas> {
   const params = new URLSearchParams();
   if (opciones.limit !== undefined) params.set("limit", String(opciones.limit));

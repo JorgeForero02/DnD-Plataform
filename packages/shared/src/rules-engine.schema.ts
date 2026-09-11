@@ -247,3 +247,14 @@ export const dryRunRuleSchema = z.object({
   trigger: ruleTriggerSchema,
 });
 export type DryRunRuleInput = z.infer<typeof dryRunRuleSchema>;
+
+/**
+ * `GET .../traces` — paginación por cursor. **Tarea 7 (S12)**: vivía como una constante local en
+ * `rules-engine.controller.ts`; se mueve aquí porque el contrato es de `@dnd/shared`, no de la
+ * API.
+ */
+export const listTracesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().cuid().optional(),
+});
+export type ListTracesQuery = z.infer<typeof listTracesQuerySchema>;

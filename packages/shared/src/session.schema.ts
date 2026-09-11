@@ -3,7 +3,14 @@ import { visibilitySchema } from "./visibility.schema";
 
 export const createSessionSchema = z.object({
   title: z.string().min(1).max(160),
-  scheduledAt: z.coerce.date().optional(),
+  /**
+   * **`null` también se acepta al crear** (revisión ronda 1, 2026-09-11): sin `.nullable()`,
+   * `z.coerce.date()` coaccionaba un `null` explícito a `new Date(null)` = 1970-01-01, no a "sin
+   * fecha". El editor web nunca manda `null` al crear (un campo vacío se omite, como antes), pero
+   * una llamada directa a la API sí puede — y ese `null` debe significar "sin fecha", no una
+   * fecha real de hace 56 años.
+   */
+  scheduledAt: z.coerce.date().nullable().optional(),
   notes: z.unknown().optional(),
   visibility: visibilitySchema.default("PLAYERS"),
   /**
@@ -15,6 +22,14 @@ export const createSessionSchema = z.object({
    */
   openingEntityId: z.string().cuid().nullable().optional(),
 });
+/**
+ * **`scheduledAt` acepta `null` tanto al crear como al actualizar** (desde la revisión ronda 1,
+ * 2026-09-11 — antes solo aquí). La diferencia entre los dos verbos no está en el esquema: está
+ * en qué significa un campo *ausente*. Al crear, ausente es "sin fecha" (el estado inicial, no
+ * hay nada que quitar); al actualizar, ausente es "no la toques" y `null` es la única forma de
+ * decirle al `PATCH` «quita la fecha que ya tenía». `updateSessionSchema` no necesita su propio
+ * `.extend()` para `scheduledAt` porque `createSessionSchema` ya lo acepta `.nullable()`.
+ */
 export const updateSessionSchema = createSessionSchema.partial();
 
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
@@ -82,7 +97,7 @@ export type SessionNoteKind = z.infer<typeof sessionNoteKindSchema>;
 
 export const stampSessionNoteSchema = z.object({
   kind: sessionNoteKindSchema,
-  text: z.string().max(500).optional(),
+  text: z.string().trim().min(1).max(500).optional(),
   entityId: z.string().cuid().optional(),
   /**
    * Quién lo ve. **Por defecto `PLAYERS`**, porque un sello es la crónica de la mesa, no el

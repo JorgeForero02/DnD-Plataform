@@ -1,12 +1,9 @@
 import { z } from "zod";
 
-// Tarea 2A.9 — la subida de nivel.
-//
-// **Esquema provisional, fuera de `@dnd/shared`.** El encargo de esta tarea prohíbe tocar
-// `packages/shared/**`; si hiciera falta un esquema nuevo, tocaba definirlo aquí y reportarlo
-// para que se mueva. Este es ese caso: una sola consulta, de un solo endpoint, que no comparte
-// nada con otro módulo todavía. Cuando 2A.10 (la pantalla) necesite este contrato desde la web,
-// es candidato a `@dnd/shared`.
+// Tarea 2A.9 — la subida de nivel. **Tarea 7 (S12): movido desde
+// `apps/api/src/level-up/level-up.schema.ts`.** Aquella tarea lo dejó fuera de `@dnd/shared`
+// porque su encargo prohibía tocar este paquete, y anotó que era candidato a moverse en cuanto
+// hiciera falta desde otro lado — este es ese momento.
 //
 // **`roll` se coacciona igual que `unreadOnly` en `notification.schema.ts`**: un valor de
 // consulta HTTP es siempre texto, y `z.coerce.boolean()` es el patrón ya establecido en este

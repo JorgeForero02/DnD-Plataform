@@ -147,6 +147,18 @@ describe("SessionEditor (edit)", () => {
     expect(input).toHaveProperty("notes", "");
   });
 
+  it("sends null for scheduledAt when the date is cleared on a session that had one (P3.5)", async () => {
+    const spy = vi.spyOn(sessionsApi, "updateSession").mockResolvedValue(existingSession);
+    renderEditEditor(existingSession);
+
+    fireEvent.change(screen.getByLabelText("Fecha y hora"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    const [, , input] = spy.mock.calls[0];
+    expect(input).toHaveProperty("scheduledAt", null);
+  });
+
   it("shows a saved visibility that the selector doesn't offer, instead of a blank select", () => {
     // SPECIFIC_PLAYERS is not in this editor's own list (docs/05-datos.md), but the API
     // schema still accepts it (seed, curl, a future client), so a session can arrive with it.

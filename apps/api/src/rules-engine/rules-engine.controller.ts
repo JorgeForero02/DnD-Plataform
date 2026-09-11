@@ -13,27 +13,24 @@ import {
 import {
   createRuleSchema,
   dryRunRuleSchema,
+  listTracesQuerySchema,
   resolveProposalSchema,
   updateRuleSchema,
   type CreateRuleInput,
   type DryRunRuleInput,
+  type ListTracesQuery,
   type ResolveProposalInput,
   type UpdateRuleInput,
 } from "@dnd/shared";
-import { z } from "zod";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { RulesEngineService } from "./rules-engine.service";
 
 // Tarea 2A.16 — el controlador. Rutas bajo `campaigns/:campaignId/rules`, todas con el guard de
 // sesión; la autorización fina (solo DM) la decide el servicio, nunca aquí.
-
-/** Paginación de la traza. No existe un esquema para esto en `@dnd/shared` (fuera de la
- * frontera de esta tarea): se declara localmente, igual de válido por `ZodValidationPipe`. */
-const listTracesQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-  cursor: z.string().cuid().optional(),
-});
+//
+// Tarea 7 (S12): `listTracesQuerySchema` se mudó a `@dnd/shared` — el contrato es suyo, no de
+// este controlador.
 
 @UseGuards(JwtAuthGuard)
 @Controller("campaigns/:campaignId/rules")
@@ -60,7 +57,7 @@ export class RulesEngineController {
   listTraces(
     @Req() req: { user: { id: string } },
     @Param("campaignId") campaignId: string,
-    @Query(new ZodValidationPipe(listTracesQuerySchema)) query: { limit: number; cursor?: string },
+    @Query(new ZodValidationPipe(listTracesQuerySchema)) query: ListTracesQuery,
   ) {
     return this.rules.listTraces(req.user.id, campaignId, query);
   }

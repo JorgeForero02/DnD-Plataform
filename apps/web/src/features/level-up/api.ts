@@ -1,3 +1,4 @@
+import type { LevelUpPreviewQuery } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Tarea 2A.11 — el cliente HTTP de la subida de nivel. `apiFetch` es el único que habla HTTP
@@ -6,10 +7,9 @@ import { apiFetch } from "../../lib/api";
 // calcados a mano por la misma razón que en `features/character-sheet/api.ts`: `LevelUpPreview`
 // vive en `apps/api/src/level-up/`, y la web no puede — ni debe — importar de `apps/api`.
 //
-// **Hueco declarado:** este contrato es candidato a `@dnd/shared`, exactamente como avisa el
-// comentario de `apps/api/src/level-up/level-up.schema.ts`. La frontera de ficheros de esta
-// tarea prohíbe tocar `packages/shared/**`, así que la forma vive hoy dos veces. Queda en el
-// informe.
+// **Tarea 7 (S12): el hueco declarado se cerró.** `roll` ya tipa contra `LevelUpPreviewQuery`,
+// que ahora vive en `@dnd/shared` (`level-up.schema.ts`) — la forma de la consulta ya no se
+// escribe dos veces.
 
 /** Una aptitud nueva que el nivel de destino concede. `source` es una enumeración: se traduce. */
 export interface NewClassFeatureDto {
@@ -63,7 +63,7 @@ export interface LevelUpResult {
 export function fetchLevelUpPreview(
   campaignId: string,
   characterId: string,
-  roll = false,
+  roll: NonNullable<LevelUpPreviewQuery["roll"]> = false,
 ): Promise<LevelUpPreview> {
   const sufijo = roll ? "?roll=true" : "";
   return apiFetch<LevelUpPreview>(

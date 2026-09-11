@@ -306,3 +306,65 @@ tienen que estar para que el registro cuente la verdad.
   `pnpm --filter @dnd/api test:e2e`, `pnpm --filter @dnd/web e2e`, y build de las imágenes
   Docker) que nada se rompe con el cambio de runtime — no basta con que el CI actualizado en
   esta tarea siga en verde, porque eso no ejercita esa migración en absoluto.
+
+## P3 · `stampSessionNoteSchema` acepta el sello vacío
+
+**Cerrada el 2026-09-11.** `packages/shared/src/session.schema.ts`: `text` pasa por `.trim().min(1)` cuando viene; `undefined` sigue siendo el sello sin texto. Prueba en `packages/shared/src/__tests__/session.schema.test.ts` (roja antes con `""` y `"   "`); mutación: quitar `min(1)` enrojece. Los sellos vacíos ya escritos siguen en la base: no hay migración de datos y son inofensivos.
+
+**Texto original:**
+
+- **`stampSessionNoteSchema` acepta el sello vacío.** Los dos compositores lo impiden en pantalla;
+  `text` sigue siendo `optional()` sin `min(1)`, así que una llamada directa a la API crea el sello
+  que dice «Nota». Y los ya escritos siguen en la base, entrando en la crónica de cierre.
+
+## P3.5 · No se puede borrar la fecha de una sesión desde la web
+
+**Cerrada el 2026-09-11.** `updateSessionSchema.scheduledAt` admite `null` (`.extend` sobre el `partial()`; el de creación no cambia: no hay fecha vieja que quitar), `sessions.service.ts` ya propagaba `null`, y `SessionEditor.tsx` manda `scheduledAt: null` solo al editar una sesión que tenía fecha y vaciar el campo. Pruebas: e2e `sessions.e2e-spec.ts` (`PATCH { scheduledAt: null }` → 200 y nulo en la base) y RTL `SessionEditor.test.tsx`; rojas antes; mutación enrojece.
+
+**Texto original:**
+
+- **No se puede borrar la fecha de una sesión desde la web.** `createSessionSchema.scheduledAt`
+  es `z.coerce.date().optional()`, **sin `.nullable()`**
+  (`packages/shared/src/session.schema.ts`), así que no existe ningún valor que
+  `SessionEditor.tsx` pueda enviar en el `PATCH` que signifique "quita la fecha que ya tenía
+  la sesión": omitir la clave dice "no la toques", y no hay una representación de "vacío" que
+  el esquema acepte para `Date`. Arreglarlo pide `.nullable()` en el esquema y `data.scheduledAt
+  = null` en `sessions.service.ts` cuando llega `null` — cambios en `packages/shared` y
+  `apps/api`, fuera de alcance de esta tarea (prohibido tocarlos en el brief de 1.13-fix). El
+  resto de campos opcionales de sesión y personaje (`notes`, `race`, `class`, `bio`) sí se
+  pueden vaciar desde el editor, enviando la cadena vacía en vez de omitir la clave.
+
+## P3.5 · La precarga de la fecha en `SessionEditor.test.tsx` solo cuadra por coincidencia
+
+**Cerrada el 2026-09-11 dentro de la Task 9c del plan** (`docs/superpowers/plans/2026-09-11-cerrar-fichas-tandas-2-a-5.md`): se añade la prueba con `20:00:30Z` que afirma lo que de verdad pasa —el input muestra `T20:00` y guardar sin tocar manda `T20:00:00.000Z`— y se retira el comentario que confesaba la coincidencia. *(Archivada al cerrar la tanda 2 porque la tanda 3 la ejecuta en el mismo encargo que las otras tres de una pieza; si la 9c no se cerrara, esta ficha vuelve.)*
+
+**Texto original:**
+
+- **La precarga de la fecha de una sesión en `SessionEditor.test.tsx` solo cuadra por
+  coincidencia.** `<input type="datetime-local">` tiene precisión de minutos;
+  `toDatetimeLocal` (`SessionEditor.tsx`) descarta los segundos al convertir el ISO del
+  servidor al valor del input. El fixture de la prueba usa una hora con segundos en `:00`
+  (`20:00:00Z`), así que el ida y vuelta (ISO → input → `new Date(...).toISOString()`) da el
+  mismo valor y la aserción pasa. Con una hora real como `20:00:30Z` el input truncaría a
+  `20:00` y la vuelta a ISO perdería los `:30`, así que la misma aserción **fallaría**. No es
+  un fallo del código de producción — es una limitación real y aceptada de
+  `datetime-local` (no hay forma de teclear segundos con ese tipo de input) — pero la
+  prueba no lo demuestra hoy: pasa por la casualidad del fixture, no porque compruebe la
+  pérdida. Comentario dejado en el propio fixture
+  (`apps/web/src/features/sessions/__tests__/SessionEditor.test.tsx`).
+
+## S12 · `listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`
+
+**Cerrada el 2026-09-11.** Los dos esquemas de consulta viven en `packages/shared` (`rules-engine.schema.ts` y el nuevo `level-up.schema.ts`, exportados en `index.ts`); los controladores los importan de ahí y `apps/api/src/level-up/level-up.schema.ts` deja de definir el suyo; la web (`features/rules/api.ts`, `features/level-up/api.ts`) usa los tipos compartidos en vez de calcarlos. Prueba `packages/shared/src/__tests__/query-schemas.test.ts` (no compilaba antes). Sin mutación: es una mudanza. La excepción que la ficha ofrecía declarar («los esquemas de consulta pueden vivir junto al controlador») **no se declara**: la regla de `01-arquitectura.md` se cumple sin excepciones.
+
+**Texto original:**
+
+| **S12** | **`listTracesQuerySchema` y `levelUpPreviewQuerySchema` viven fuera de `@dnd/shared`** | `docs/01-arquitectura.md` dice que la forma de los datos vive en un solo sitio y **eso ya tiene dos excepciones**. O se declara la excepción (los esquemas de consulta locales a un endpoint pueden vivir junto al controlador) o se mueven |
+
+## I1 · Cuatro nombres de arma en español sin contrastar
+
+**Cerrada el 2026-09-11 contrastando con la fuente** —SRD 5.1 en español, Nosolorol, traducción de Ana Navalón, `https://srd.nosolorol.com/DD5/equipamiento/armas.html`—: **Guja, Mangual y Lanza de caballería eran correctos; *maul* es «Mazo de guerra», no «Almádena»**. Cambiada la cadena en `apps/api/src/rules/catalog/weapons.ts` con la cita al lado, y fijada en `reference.spec.ts`. `NOTICE.md` vuelve a ser cierto para las cuatro.
+
+**Texto original:**
+
+| **I1** | **Cuatro nombres de arma en español están sin contrastar con el PDF oficial** — «Guja» (glaive), «Almádena» (maul), «Mangual» (flail) y «Lanza de caballería» (lance) | Los nombres del catálogo son los de la traducción oficial de Wizards, no una traducción nuestra, y así lo declara `NOTICE.md`. Quien transcribió la tabla los señaló en su informe como los de menor confianza — **en el código no hay ninguna marca que los distinga del resto**, así que esta ficha es el único rastro. **Prioridad baja y coste mínimo** —cambiar una cadena—, pero si están mal, `NOTICE.md` afirma algo que no es. Se contrasta con el SRD 5.1 en español cuando haya acceso al documento |

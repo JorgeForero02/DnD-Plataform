@@ -814,7 +814,13 @@ lista del editor con una línea.
   exige que la tirada citada exista en la campaña **y sea de tipo `ABILITY_ROLL` o `DEATH_SAVE`**,
   y lanza 400 si no. El comentario de ese bloque cuenta además que la primera versión solo miraba
   identificador y campaña, así que el id de un comentario o de un `ENTITY_REVEALED` pasaba el
-  filtro. Lo que queda abierto es el personaje y la recencia.
+  filtro. Lo que queda abierto es el personaje y la recencia. **Medido el 2026-09-10 al intentar
+  cerrarla: ninguna de las dos mitades tiene un arreglo correcto sin una decisión.** «Que la
+  tirada sea de ese personaje» rechazaría el caso normal —el daño cita la tirada del **atacante**,
+  o una del DM sin personaje (`rolls.service.ts` escribe sujeto `campaign` cuando no hay
+  `characterId`)—, y «reciente» necesita un umbral que ninguna regla da: una bola de fuego cita
+  la misma tirada para varios objetivos, y la mesa la aplica cuando le toca. **Decide el autor** si
+  se quiere un umbral, y cuál; sin él, esta línea es una observación, no una ficha.
 - **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
 - **El taller CONVIVE con las listas CRUD de `CampaignDetailPage`.** Nadie ha perdido nada, pero la
   sustitución de la §2 de la auditoría **no está completa** hasta que se decida qué se cae de ahí.

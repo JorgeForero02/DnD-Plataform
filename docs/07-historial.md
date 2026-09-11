@@ -65,6 +65,12 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 3, web sueltas** (un lote, seis fichas): el comentario de `posiciones.ts` señala el
+  anillo; `resolverCitas` ordena por `createdAt` ella misma; la prueba de `SessionEditor` afirma
+  la pérdida de segundos en vez de pasar por coincidencia; `CreateCampaignModal` pinta
+  `mutation.error`; el flash de «se cerró tu sesión» se limpia al salir de la pantalla; un 500 en
+  el detalle de campaña dice «no se pudo cargar» con «Reintentar»; y las etiquetas de nivel viven
+  una vez en `visibilidad.ts` (U6-visibilidad). **Revertir:** cada una es un cambio de una pieza.
 - **Tanda 2, contrato compartido** (un lote, cuatro fichas): el sello vacío se rechaza
   (`stampSessionNoteSchema`); la fecha de una sesión se puede quitar (`scheduledAt: null` en el
   `PATCH`, `SessionEditor` lo manda al vaciar); los dos esquemas de consulta viven en

@@ -14,11 +14,6 @@ function renderEditor() {
   );
 }
 
-// scheduledAt has :00 seconds on purpose. <input type="datetime-local"> only has minute
-// precision (toDatetimeLocal in SessionEditor.tsx drops seconds), so the preload/round-trip
-// assertion below only matches by coincidence: with e.g. "20:00:30Z" the round trip would
-// lose the seconds and this same assertion would fail. That loss of precision is real and
-// not fixed here — see docs/06-pendientes.md.
 const existingSession: Session = {
   id: "s1",
   campaignId: "c1",
@@ -122,6 +117,28 @@ describe("SessionEditor (edit)", () => {
       notes: "Traer velas",
       visibility: "PLAYERS",
     });
+  });
+
+  it("loses the seconds of scheduledAt in the datetime-local round trip (documented, not fixed)", async () => {
+    // <input type="datetime-local"> only has minute precision (toDatetimeLocal in
+    // SessionEditor.tsx drops seconds). A session scheduled at :30 seconds shows a truncated
+    // input and, if saved untouched, is sent back with :00 seconds — silently losing them.
+    const withSeconds: Session = { ...existingSession, scheduledAt: "2026-09-05T20:00:30.000Z" };
+    const spy = vi.spyOn(sessionsApi, "updateSession").mockResolvedValue(withSeconds);
+    renderEditEditor(withSeconds);
+
+    // The input shows local time truncated to the minute, whatever the runner's timezone is —
+    // the same conversion SessionEditor.tsx does (pad(getHours):pad(getMinutes)).
+    const local = new Date(withSeconds.scheduledAt as string);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const expectedInputValue = `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}T${pad(local.getHours())}:${pad(local.getMinutes())}`;
+    expect(screen.getByLabelText("Fecha y hora")).toHaveValue(expectedInputValue);
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    const [, , input] = spy.mock.calls[0];
+    expect(input).toHaveProperty("scheduledAt", "2026-09-05T20:00:00.000Z");
   });
 
   it("shows the server error instead of failing silently", async () => {

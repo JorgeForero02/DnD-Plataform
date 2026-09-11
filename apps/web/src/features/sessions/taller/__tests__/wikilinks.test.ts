@@ -9,7 +9,7 @@ import { citasDelTexto, resolverCitas } from "../wikilinks";
 // verdad: se puede ejecutar entero en `node`, sin navegador ni servidor, así que no hay excusa
 // para dejar su comportamiento escrito solo en un comentario.
 
-function ficha(id: string, name: string): Entity {
+function ficha(id: string, name: string, createdAt = "2026-09-04T00:00:00.000Z"): Entity {
   return {
     id,
     campaignId: "c1",
@@ -18,7 +18,7 @@ function ficha(id: string, name: string): Entity {
     tags: [],
     visibility: "DM_ONLY",
     createdById: "u-dm",
-    createdAt: "2026-09-04T00:00:00.000Z",
+    createdAt,
   };
 }
 
@@ -93,16 +93,42 @@ describe("casar las citas con las fichas de la campaña", () => {
     expect(resultado.aSiMisma.map((c) => c.texto)).toEqual(["El Puerto Viejo"]);
   });
 
-  // Dos fichas con el mismo nombre: gana **la primera de la lista**, y el servidor devuelve las
-  // entidades de más nueva a más vieja (`entities.service.ts`, `orderBy: { createdAt: "desc" }`),
-  // así que en la pantalla eso es «gana la más reciente». La ambigüedad se resuelve a mano en el
-  // panel de enlaces: inventar un desempate sería adivinar.
-  it("con nombres duplicados gana la primera de la lista, que es la más reciente", () => {
-    const vieja = ficha("e-vieja", "Almacén cuatro");
-    const nueva = ficha("e-nueva", "Almacén cuatro");
+  // Dos fichas con el mismo nombre: gana **la más reciente**. `resolverCitas` ordena ella misma
+  // por `createdAt` desc antes de elegir — no depende de que quien la llame ya traiga la lista en
+  // ese orden (el servidor sí la manda así, `entities.service.ts`,
+  // `orderBy: { createdAt: "desc" }`, pero eso es una coincidencia de hoy, no un contrato). La
+  // ambigüedad se resuelve a mano en el panel de enlaces: inventar un desempate sería adivinar.
+  it("con nombres duplicados gana la más reciente, venga en el orden que venga la lista", () => {
+    const vieja = ficha("e-vieja", "Almacén cuatro", "2026-09-01T00:00:00.000Z");
+    const nueva = ficha("e-nueva", "Almacén cuatro", "2026-09-04T00:00:00.000Z");
     // Orden del servidor: la más reciente primero.
     const resultado = resolverCitas(citasDelTexto("[[Almacén cuatro]]"), [nueva, vieja]);
     expect(resultado.encontradas[0].fichaDestino.id).toBe("e-nueva");
+  });
+
+  // La prueba que de verdad defiende el ordenar: la lista llega **al revés** (la más vieja
+  // primero, como si quien llama no supiera del contrato del servidor) y aun así gana la más
+  // reciente.
+  it("gana la más reciente aunque la lista llegue en orden inverso", () => {
+    const vieja = ficha("e-vieja", "Almacén cuatro", "2026-09-01T00:00:00.000Z");
+    const nueva = ficha("e-nueva", "Almacén cuatro", "2026-09-04T00:00:00.000Z");
+    const resultado = resolverCitas(citasDelTexto("[[Almacén cuatro]]"), [vieja, nueva]);
+    expect(resultado.encontradas[0].fichaDestino.id).toBe("e-nueva");
+  });
+
+  // Fix round 1 (9b, Important): a igual `createdAt` el desempate es por `id`, no por el orden
+  // de llegada. Antes de este arreglo, dos `createdAt` iguales dejaban el resultado en manos del
+  // orden de `fichas` (un `sort` estable no reordena los empates); esta prueba lo comprueba con
+  // el id "mayor" primero en la lista, para que un desempate por orden de llegada (en vez de por
+  // id) se note.
+  it("con el mismo createdAt, gana el id menor, venga en el orden que venga la lista", () => {
+    const mismaFecha = "2026-09-04T00:00:00.000Z";
+    const b = ficha("e-b", "Almacén cuatro", mismaFecha);
+    const a = ficha("e-a", "Almacén cuatro", mismaFecha);
+    // "e-b" llega primero en la lista; si el desempate fuera por orden de llegada (no por id),
+    // ganaría "e-b".
+    const resultado = resolverCitas(citasDelTexto("[[Almacén cuatro]]"), [b, a]);
+    expect(resultado.encontradas[0].fichaDestino.id).toBe("e-a");
   });
 
   // Y es determinista: la misma lista da siempre el mismo ganador, tantas veces como se pida.

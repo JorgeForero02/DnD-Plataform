@@ -14,6 +14,7 @@ import * as membersApi from "../../features/campaigns/members";
 import * as linksApi from "../../features/links/api";
 import * as commentsApi from "../../features/comments/api";
 import { useAuthStore } from "../../store/auth.store";
+import { ApiError } from "../../lib/api";
 
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -148,8 +149,11 @@ describe("CampaignDetailPage", () => {
   // it last) — it lands here instead. Before this fix, a failed useCampaign() rendered an
   // empty <h1> and a tab strip of panels each failing on their own; revert the isError branch
   // in CampaignDetailPage.tsx and this fails, with an empty heading in its place.
-  it("says the campaign doesn't exist instead of an empty title when useCampaign fails", async () => {
-    vi.spyOn(campaignsApi, "fetchCampaign").mockRejectedValue(new Error("Not found"));
+  it("says the campaign doesn't exist instead of an empty title when useCampaign fails with 404", async () => {
+    // Task 11: la rama distingue «no disponible» (404/403) de «no se pudo cargar» (cualquier
+    // otro fallo); esta prueba fija el 404, así que el rechazo lleva ese status y no un `Error`
+    // a secas — un `Error` a secas ya no dispara este texto, dispara el de "no se pudo cargar".
+    vi.spyOn(campaignsApi, "fetchCampaign").mockRejectedValue(new ApiError("Not found", 404));
     renderPage();
 
     expect(
@@ -167,6 +171,48 @@ describe("CampaignDetailPage", () => {
     expect(encabezados.length).toBeGreaterThan(0);
     for (const h of encabezados) expect(h.textContent?.trim()).not.toBe("");
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  // Task 11 (ficha): un 500 o la red caída no son "no existe o no tienes acceso" — son un fallo
+  // de servidor que sí merece un reintento, y decirlo distinto no filtra nada de canView.
+  it("says it could not load and offers a retry when useCampaign fails with a 500", async () => {
+    const fetchCampaign = vi
+      .spyOn(campaignsApi, "fetchCampaign")
+      .mockRejectedValueOnce(new ApiError("Internal error", 500));
+    renderPage();
+
+    expect(await screen.findByText("No se pudo cargar la campaña")).toBeInTheDocument();
+    expect(screen.getByText("Vuelve a intentarlo en un momento.")).toBeInTheDocument();
+    expect(screen.queryByText("Esta campaña no existe o no tienes acceso")).not.toBeInTheDocument();
+    // Fix round 1 (Task 11, Minor): esta rama tiene su propio titular — "No se pudo cargar" —
+    // en vez de heredar "Campaña no disponible" (que sigue siendo el de la rama 404/403, un
+    // enunciado distinto para un fallo distinto).
+    expect(screen.getByRole("heading", { name: "No se pudo cargar" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Campaña no disponible" }),
+    ).not.toBeInTheDocument();
+
+    fetchCampaign.mockResolvedValueOnce({
+      id: "c1",
+      name: "Curse of Strahd",
+      description: null,
+      ownerId: "u1",
+      createdAt: "2026-01-01",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findByText("Curse of Strahd")).toBeInTheDocument();
+  });
+
+  // Un `Error` que no es `ApiError` (por ejemplo, la red caída antes de llegar al servidor) no
+  // debe tratarse como "no existe": tampoco sabe si existe o no, así que cae en "no se pudo
+  // cargar", igual que un 500.
+  it("treats a plain non-ApiError failure the same as a 500, not as a 404", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockRejectedValue(new Error("Network error"));
+    renderPage();
+
+    expect(await screen.findByText("No se pudo cargar la campaña")).toBeInTheDocument();
+    expect(screen.queryByText("Esta campaña no existe o no tienes acceso")).not.toBeInTheDocument();
   });
 });
 

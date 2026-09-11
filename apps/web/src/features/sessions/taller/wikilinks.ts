@@ -94,19 +94,36 @@ export interface CitasResueltas {
  * Casa las citas con las fichas de la campaña **por nombre**, ignorando mayúsculas, espacios de
  * sobra y **acentos** — `normalizar` decide qué cuenta como el mismo nombre.
  *
- * Cuando dos fichas caen en la misma clave gana **la primera de la lista**, y la otra queda
- * inalcanzable desde cualquier `[[…]]`. Eso ya pasaba con dos nombres idénticos; desde que se
- * pliegan los acentos (D-P4-1) pasa también con «Bahía» y «Bahia», que es el precio declarado de
- * esa decisión y no un caso raro. La ambigüedad se resuelve a mano en el panel de enlaces:
- * inventar un desempate sería adivinar.
+ * Cuando dos fichas caen en la misma clave **gana la más reciente por `createdAt`; a igual
+ * `createdAt`, por `id`** (orden lexicográfico, solo para que el resultado no dependa de en qué
+ * orden llegó la lista) — y la otra queda inalcanzable desde cualquier `[[…]]`. Eso ya pasaba con
+ * dos nombres idénticos; desde que se pliegan los acentos (D-P4-1) pasa también con «Bahía» y
+ * «Bahia», que es el precio declarado de esa decisión y no un caso raro. La ambigüedad se
+ * resuelve a mano en el panel de enlaces: inventar un desempate mejor sería adivinar.
  */
 export function resolverCitas(
   citas: CitaDeFicha[],
   fichas: Entity[],
   excluirId?: string,
 ): CitasResueltas {
+  // Gana la ficha más reciente cuando dos comparten nombre normalizado, y eso lo decide esta
+  // función, no quien la llama: se ordena aquí por `createdAt` desc antes de quedarse con la
+  // primera. El servidor ya manda las fichas en ese orden (`entities.service.ts`,
+  // `orderBy: { createdAt: "desc" }`), pero apoyarse en eso sin más acopla el desempate a un
+  // detalle de otro módulo que podría cambiar sin avisar aquí.
+  //
+  // Fix round 1 (9b, Important): a igual `createdAt` (dos fichas creadas en el mismo instante,
+  // o dos fixtures de prueba que no se molestan en variarlo) un `sort` estable deja el segundo
+  // desempate en manos de en qué orden llegó `fichas` — que es justo lo que este cambio existe
+  // para no depender. `id` como segunda clave (orden lexicográfico; no tiene significado, solo
+  // hace falta que sea el mismo siempre) hace que el resultado ya no dependa del orden de
+  // llegada en ningún caso.
+  const porCreacionDesc = [...fichas].sort((a, b) => {
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
   const porNombre = new Map<string, Entity>();
-  for (const ficha of fichas) {
+  for (const ficha of porCreacionDesc) {
     const clave = normalizar(ficha.name);
     if (!porNombre.has(clave)) porNombre.set(clave, ficha);
   }

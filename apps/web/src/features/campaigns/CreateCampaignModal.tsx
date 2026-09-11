@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import { createCampaignSchema, type CreateCampaignInput } from "@dnd/shared";
 import { useCreateCampaign } from "./hooks";
 import { Button } from "../../ui/Button";
@@ -14,14 +13,14 @@ export function CreateCampaignModal({ onClose }: { onClose: () => void }) {
     formState: { errors },
   } = useForm<CreateCampaignInput>({ resolver: zodResolver(createCampaignSchema) });
   const create = useCreateCampaign();
-  const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: CreateCampaignInput) => {
     try {
       await create.mutateAsync(data);
       onClose();
-    } catch (e) {
-      setError((e as Error).message);
+    } catch {
+      // El mensaje se pinta más abajo con `create.error`: no hace falta duplicarlo en estado
+      // local, y así no hay dos fuentes que puedan desincronizarse.
     }
   };
 
@@ -34,7 +33,9 @@ export function CreateCampaignModal({ onClose }: { onClose: () => void }) {
         <Field label="Descripción" error={errors.description?.message}>
           <textarea id="description" className={fieldControlClass} {...register("description")} />
         </Field>
-        {error && <p className="text-chrome-sm text-danger-text">{error}</p>}
+        {create.isError && (
+          <p className="text-chrome-sm text-danger-text">{(create.error as Error).message}</p>
+        )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar

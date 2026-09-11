@@ -1,4 +1,5 @@
 import type { Visibility } from "@dnd/shared";
+import { ETIQUETA_DE_NIVEL } from "../features/entities/visibilidad";
 
 // Task 1.19 — the one place colour carries meaning. A colour-blind DM must still tell the
 // five levels apart, so hue is never the only signal: each level also gets its own icon glyph
@@ -6,26 +7,28 @@ import type { Visibility } from "@dnd/shared";
 // also make the contrast measurement sample the wrong pixels) and its own border style.
 // Revert any one row below to the same icon/border as its neighbour and Badge.test.tsx's
 // "every level has a distinct icon and a distinct border style" assertion fails.
+// **La etiqueta ya no vive aquí** (U6-visibilidad): es `ETIQUETA_DE_NIVEL`, en
+// `features/entities/visibilidad.ts`, que este módulo importa como cualquier otro consumidor.
+// Icono, borde y tono siguen siendo de `Badge` — son maquetación, no vocabulario de dominio.
 const VISIBILITY_CONFIG: Record<
   Visibility,
-  { label: string; icon: string; border: string; tone: "muted" | "text" | "accent" | "danger" }
+  { icon: string; border: string; tone: "muted" | "text" | "accent" | "danger" }
 > = {
   // Reseño 2026-09-02, segunda pasada: el tono de PUBLIC baja a --muted. Público es el estado
   // por defecto de un mundo compartido y no tiene por qué llamar la atención; lo que un DM
   // necesita encontrar de un vistazo en una lista es lo que está OCULTO, no lo que está a la
   // vista de todos. Antes los cinco niveles gritaban igual.
-  PUBLIC: { label: "Público", icon: "○", border: "border-solid", tone: "muted" },
-  PLAYERS: { label: "Jugadores", icon: "◐", border: "border-solid", tone: "accent" },
+  PUBLIC: { icon: "○", border: "border-solid", tone: "muted" },
+  PLAYERS: { icon: "◐", border: "border-solid", tone: "accent" },
   SPECIFIC_PLAYERS: {
-    label: "Jugadores concretos",
     // Línea discontinua para "solo algunos": el borde roto dice lo mismo que la palabra, y lo
     // dice sin depender del color.
     icon: "◈",
     border: "border-dashed",
     tone: "accent",
   },
-  OWNER_DM: { label: "DM y creador", icon: "◆", border: "border-solid", tone: "text" },
-  DM_ONLY: { label: "Solo DM", icon: "●", border: "border-solid", tone: "danger" },
+  OWNER_DM: { icon: "◆", border: "border-solid", tone: "text" },
+  DM_ONLY: { icon: "●", border: "border-solid", tone: "danger" },
 };
 
 // Fix round 1, Important 4: the first version forced every label into plain --text to dodge
@@ -86,7 +89,7 @@ export function Badge({ visibility }: { visibility: Visibility }) {
       <span aria-hidden="true" className="text-[0.9em] leading-none">
         {config.icon}
       </span>
-      {config.label}
+      {ETIQUETA_DE_NIVEL[visibility]}
     </span>
   );
 }

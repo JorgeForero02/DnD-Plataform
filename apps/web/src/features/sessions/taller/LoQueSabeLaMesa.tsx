@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "../../../ui/Badge";
 import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
+import { ETIQUETA_DE_NIVEL } from "../../entities/visibilidad";
 import type { Entity } from "../../entities/api";
 import { useAllEntities } from "../../entities/hooks";
 import { IconoOjo, IconoOjoTachado } from "../../../ui/Iconos";
@@ -276,14 +277,29 @@ export function LoQueSabeLaMesa({ campaignId }: { campaignId: string }) {
           icono={<IconoOjo />}
           tono="accent"
           fichas={sabidas}
-          nota="Hoy «público» y «jugadores» llegan a las mismas personas: nadie de fuera de la campaña entra todavía."
+          // Fix round 1 (Task 12, Important): los nombres de nivel venían escritos a mano;
+          // ahora se leen de `ETIQUETA_DE_NIVEL` (features/entities/visibilidad.ts), la misma
+          // fuente que usa `Badge`. En minúsculas porque van dentro de la frase, no como
+          // etiqueta suelta.
+          nota={
+            <>
+              Hoy «{ETIQUETA_DE_NIVEL.PUBLIC.toLowerCase()}» y «
+              {ETIQUETA_DE_NIVEL.PLAYERS.toLowerCase()}» llegan a las mismas personas: nadie de
+              fuera de la campaña entra todavía.
+            </>
+          }
         />
         <Columna
           titulo="Sigue oculto"
           icono={<IconoOjoTachado />}
           tono="copper"
           fichas={ocultas}
-          nota="«Jugadores concretos» está aquí porque la mesa entera no lo sabe: quien tenga la concesión sí lo ve."
+          nota={
+            <>
+              «{ETIQUETA_DE_NIVEL.SPECIFIC_PLAYERS}» está aquí porque la mesa entera no lo sabe:
+              quien tenga la concesión sí lo ve.
+            </>
+          }
         />
       </div>
 

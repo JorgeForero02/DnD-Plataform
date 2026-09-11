@@ -120,8 +120,9 @@ export function posicionDeFicha(id: string, type: EntityType): PosicionEnElCorch
 
   // Los topes son **exactamente** el alcance geométrico (50 ± semieje), así que `acotar` es una
   // red y no un recorte: con los semiejes de arriba no se dispara nunca. Se comprobó sobre 3000
-  // identificadores. Si alguien sube un semieje y olvida el tope, esto empezaría a apilar fichas
-  // contra el borde en silencio — de ahí que los dos números se deriven de las constantes.
+  // identificadores. Los topes se derivan de los semiejes, así que subir un semieje no lo dispara:
+  // lo que sí lo dispara es **el anillo exterior** (`ANILLOS`), que no está atado a nada — con él
+  // a 1,2 en vez de 1 esta red pasa de 0 a 731 de 3000 fichas apiladas contra el borde, en silencio.
   return {
     x: acotar(50 + Math.cos(radianes) * SEMIEJE_X * anillo, 50 - SEMIEJE_X, 50 + SEMIEJE_X),
     y: acotar(50 + Math.sin(radianes) * SEMIEJE_Y * anillo, 50 - SEMIEJE_Y, 50 + SEMIEJE_Y),

@@ -368,3 +368,77 @@ tienen que estar para que el registro cuente la verdad.
 **Texto original:**
 
 | **I1** | **Cuatro nombres de arma en español están sin contrastar con el PDF oficial** — «Guja» (glaive), «Almádena» (maul), «Mangual» (flail) y «Lanza de caballería» (lance) | Los nombres del catálogo son los de la traducción oficial de Wizards, no una traducción nuestra, y así lo declara `NOTICE.md`. Quien transcribió la tabla los señaló en su informe como los de menor confianza — **en el código no hay ninguna marca que los distinga del resto**, así que esta ficha es el único rastro. **Prioridad baja y coste mínimo** —cambiar una cadena—, pero si están mal, `NOTICE.md` afirma algo que no es. Se contrasta con el SRD 5.1 en español cuando haya acceso al documento |
+
+## P3 · El aviso de `posiciones.ts` apunta al mando equivocado
+
+**Cerrada el 2026-09-11 (Task 9a).** El comentario de `apps/web/src/features/sessions/taller/posiciones.ts` dice ahora lo que la prueba defiende: el mando que apila fichas contra el borde es el **anillo exterior** (`ANILLOS`), no el semieje, que deriva el tope de sí mismo. Solo comentario; la prueba que lo defiende ya existía.
+
+**Texto original:**
+
+- **El aviso de `posiciones.ts` apunta al mando equivocado.** Su comentario avisa de «si alguien
+  sube un semieje y olvida el tope», pero **el tope se deriva del propio semieje**
+  (`50 ± SEMIEJE_X`), así que subirlo sube el tope con él y no apila nada. El mando que **sí**
+  dispara el recorte es **el anillo exterior**, que no está atado a nada: con `1.2` en vez de `1`,
+  **731 de 3000** fichas quedan pegadas al borde **en silencio**. La prueba nueva lo defiende y su
+  comentario lo dice; el del módulo sigue diciendo lo otro. **Corregir el comentario.**
+
+## P3 · «Gana el más reciente» en `wikilinks.ts` es cierto por acoplamiento
+
+**Cerrada el 2026-09-11 (Task 9b).** `resolverCitas` ordena ella misma por `createdAt` desc antes de elegir; ya no depende del `orderBy` de `entities.service.ts`. Prueba unitaria con la lista al revés (roja antes: elegía la vieja); mutación: quitar el `sort` enrojece.
+
+**Texto original:**
+
+- **«Gana el más reciente» en `wikilinks.ts` es cierto por acoplamiento.** `resolverCitas` es pura
+  y se queda con **la primera de la lista**; que esa sea la más reciente depende de que
+  `entities.service.ts:102` devuelva `orderBy: { createdAt: "desc" }` —remedido el 2026-09-08; la
+  cita anterior decía `:77`—. **Nada en el módulo lo dice
+  ni lo garantiza**: el día que un llamante le pase una lista ordenada por nombre, el desempate
+  cambia sin que falle nada.
+
+## 1.18b · El mensaje de «se cerró tu sesión» solo se limpia al iniciar sesión con éxito
+
+**Cerrada el 2026-09-11 (Task 10), con una lección.** La primera versión limpiaba el `flash` en el cleanup del `useEffect` de `LoginPage`, y la RTL pasaba — pero la app monta bajo `StrictMode` (`main.tsx`), que ejecuta el cleanup **al montar**: el flash no se veía nunca en dev ni en Playwright, y lo cazó la revisión reproduciéndolo con `StrictMode`, no la suite. Arreglo real: se limpia **por cambio de ruta** (`FlashJanitor` en `App.tsx`: en cualquier ruta que no sea `/login`, `clearFlash()`), idempotente bajo `StrictMode`. RTL con `StrictMode` (el flash sí se ve al montar) y sin él (irse a `/register` lo limpia); mutación: quitar el janitor enrojece.
+
+**Texto original:**
+
+- **El mensaje de «se cerró tu sesión» solo se limpia al iniciar sesión con éxito.** Si el
+  usuario se va a otra pantalla sin entrar, el mensaje sigue pendiente en memoria y reaparece la
+  próxima vez que monte el inicio de sesión en la misma pestaña. Solo en memoria, desaparece al
+  recargar.
+
+## 1.18b · La rama de error del detalle de campaña dice «no existe o no tienes acceso» ante cualquier fallo
+
+**Cerrada el 2026-09-11 (Task 11).** `CampaignDetailPage.tsx` distingue por `ApiError.status`: 404/403 → el texto de siempre (sin distinguirlos entre sí, regla de la casa); cualquier otro fallo (500, red caída) → «No se pudo cargar la campaña», «Vuelve a intentarlo en un momento» y un botón «Reintentar» que llama a `refetch`. RTL con `ApiError(…, 500)`; roja antes; mutación enrojece.
+
+**Texto original:**
+
+- **La rama de error del detalle de campaña dice «no existe o no tienes acceso» ante cualquier
+  fallo de la consulta**, incluido un 500 pasajero o una conexión caída (no hay reintentos). Un
+  mensaje que distinga por código sería más honesto, pero es un cambio más ancho que el hallazgo
+  que lo motivó.
+
+## U6-visibilidad · `VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`
+
+**Cerrada el 2026-09-11 (Task 12).** Las cinco etiquetas de nivel viven una vez en `features/entities/visibilidad.ts` (`ETIQUETA_DE_NIVEL`), junto a `EXPLICACION_DE_NIVEL`; `Badge` las importa y conserva icono, borde y tono. Prueba que compara lo que `Badge` pinta con la tabla; mutación: una etiqueta a mano en `Badge` enrojece.
+
+**Texto original:**
+
+| **U6-visibilidad** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
+
+## Sección · Dos acoplamientos no declarados, destapados al escribir sus pruebas (2026-09-04) — cabecera
+
+*(Las dos viñetas están archivadas arriba, Tasks 9a y 9b; esta era su introducción.)*
+
+**Texto original:**
+
+Los dos salieron de probar por mutación módulos puros que nadie había probado. Ninguno es un
+defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe que sostienen.
+
+## P4 · `CreateCampaignModal` mantiene un estado de error local que duplica `mutation.error`
+
+**Cerrada el 2026-09-11 (Task 9d).** El `useState` de error desaparece y la pantalla pinta `mutation.error`; el botón de guardar lleva `aria-disabled` si llevaba `disabled`. RTL que hace fallar la mutación y afirma el mensaje; mutación: quitar el `<p>` del error enrojece.
+
+**Texto original:**
+
+- **`CreateCampaignModal` mantiene un estado de error local** que duplica `mutation.error`.
+  Tarea 1.10.

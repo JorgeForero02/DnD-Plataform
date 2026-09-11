@@ -464,14 +464,6 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 ## Deuda nueva aceptada en 1.18b (2026-09-01)
 
-- **El mensaje de «se cerró tu sesión» solo se limpia al iniciar sesión con éxito.** Si el
-  usuario se va a otra pantalla sin entrar, el mensaje sigue pendiente en memoria y reaparece la
-  próxima vez que monte el inicio de sesión en la misma pestaña. Solo en memoria, desaparece al
-  recargar.
-- **La rama de error del detalle de campaña dice «no existe o no tienes acceso» ante cualquier
-  fallo de la consulta**, incluido un 500 pasajero o una conexión caída (no hay reintentos). Un
-  mensaje que distinga por código sería más honesto, pero es un cambio más ancho que el hallazgo
-  que lo motivó.
 - **El aviso «no puedes editar esto» de una fila sigue midiéndose solo en la página de tokens**,
   no en la pantalla de un jugador que no sea el creador — haría falta un segundo contexto de
   navegador en el recorrido. El resto de las mediciones sí son sobre pantallas reales.
@@ -716,24 +708,6 @@ lista del editor con una línea.
 - **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
   La respuesta buena es una ruta de enlaces por campaña.
 
-## P3 · Dos acoplamientos no declarados, destapados al escribir sus pruebas (2026-09-04)
-
-Los dos salieron de probar por mutación módulos puros que nadie había probado. Ninguno es un
-defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe que sostienen.
-
-- **El aviso de `posiciones.ts` apunta al mando equivocado.** Su comentario avisa de «si alguien
-  sube un semieje y olvida el tope», pero **el tope se deriva del propio semieje**
-  (`50 ± SEMIEJE_X`), así que subirlo sube el tope con él y no apila nada. El mando que **sí**
-  dispara el recorte es **el anillo exterior**, que no está atado a nada: con `1.2` en vez de `1`,
-  **731 de 3000** fichas quedan pegadas al borde **en silencio**. La prueba nueva lo defiende y su
-  comentario lo dice; el del módulo sigue diciendo lo otro. **Corregir el comentario.**
-- **«Gana el más reciente» en `wikilinks.ts` es cierto por acoplamiento.** `resolverCitas` es pura
-  y se queda con **la primera de la lista**; que esa sea la más reciente depende de que
-  `entities.service.ts:102` devuelva `orderBy: { createdAt: "desc" }` —remedido el 2026-09-08; la
-  cita anterior decía `:77`—. **Nada en el módulo lo dice
-  ni lo garantiza**: el día que un llamante le pase una lista ordenada por nombre, el desempate
-  cambia sin que falle nada.
-
 ## P4 — Limpieza
 
 - **`viewerFor(userId, campaignId)` está duplicado en TRECE servicios**, y la casa común a la que
@@ -746,8 +720,6 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
   suyo. La lista completa se mide con `grep -rln "private async viewerFor" apps/api/src`, que es
   más fiable que enumerarla aquí — enumerar tres sitios cuando había siete ya caducó una vez en
   `04-convenciones.md`, y esta lista acaba de caducar por lo mismo.
-- **`CreateCampaignModal` mantiene un estado de error local** que duplica `mutation.error`.
-  Tarea 1.10.
 - **Avisos ruidosos que conviene callar bien, no silenciar**: `ts-jest` se queja de compilar
   los `.js` de `packages/shared/dist` en los e2e, y Vite avisa de que
   `apps/web/postcss.config.js` no declara tipo de módulo. Ninguno lo tapa ESLint: son de
@@ -817,7 +789,6 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 |---|---|---|
 | **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
-| **U6-visibilidad** | **`VISIBILITY_CONFIG` no se exporta desde `ui/Badge.tsx`** | La pantalla del motor no puede nombrar un nivel de visibilidad dentro de una frase sin duplicar las cinco etiquetas, así que parte la frase y pinta una insignia al lado |
 | **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
 | **N3-notify** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |

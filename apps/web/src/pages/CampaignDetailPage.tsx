@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useCurrentSession } from "../features/sessions/hooks";
+import { ApiError } from "../lib/api";
 import { IconoEnJuego } from "../features/sessions/iconos";
 import type { EntityType } from "@dnd/shared";
 import { useCampaign } from "../features/campaigns/hooks";
@@ -604,7 +605,7 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
 
 export function CampaignDetailPage() {
   const { id = "" } = useParams();
-  const { data: campaign, isLoading, isError } = useCampaign(id);
+  const { data: campaign, isLoading, isError, error, refetch } = useCampaign(id);
   const { user, logout } = useAuthStore();
   const { data: todasLasEntidades } = useAllEntities(id);
 
@@ -790,12 +791,36 @@ export function CampaignDetailPage() {
   // account isn't a member of it — canView, apps/api/src/common/visibility.ts, forbids telling
   // the three apart, same as every other 404-vs-403 decision in this app).
   if (isError) {
+    // Un 404/403 (canView prohíbe distinguirlos, apps/api/src/common/visibility.ts) es "no
+    // disponible": ni un reintento ni la lectura de un mensaje de servidor van a cambiar eso.
+    // Cualquier otro fallo — un 500, la red caída, o un `Error` que no trae `status` porque ni
+    // siquiera llegó a hablar con el servidor — es otra cosa: puede que un reintento sí sirva,
+    // así que se dice y se ofrece el botón en vez de sugerir que la campaña no existe.
+    const noDisponible =
+      error instanceof ApiError && (error.status === 404 || error.status === 403);
+    if (noDisponible) {
+      return (
+        <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
+          <PageHeader title="Campaña no disponible" crumbs={[{ label: "Tus crónicas", to: "/" }]} />
+          <EmptyState title="Esta campaña no existe o no tienes acceso">
+            Puede que se haya borrado, que el enlace esté mal, o que no seas miembro de ella.
+            Distinguir esos tres casos diría más de lo que debe, así que no se distinguen.
+          </EmptyState>
+        </AppShell>
+      );
+    }
     return (
       <AppShell header={<AppHeader userName={user?.displayName} onLogout={logout} />}>
-        <PageHeader title="Campaña no disponible" crumbs={[{ label: "Tus crónicas", to: "/" }]} />
-        <EmptyState title="Esta campaña no existe o no tienes acceso">
-          Puede que se haya borrado, que el enlace esté mal, o que no seas miembro de ella.
-          Distinguir esos tres casos diría más de lo que debe, así que no se distinguen.
+        {/* Fix round 1 (Task 11, Minor): titular propio — "No se pudo cargar" — en vez de
+            heredar "Campaña no disponible" de la rama 404/403 de arriba. Son dos enunciados
+            distintos para dos fallos distintos: uno dice que la campaña no está, el otro que
+            no se sabe si lo está porque la petición falló. */}
+        <PageHeader title="No se pudo cargar" crumbs={[{ label: "Tus crónicas", to: "/" }]} />
+        <EmptyState
+          title="No se pudo cargar la campaña"
+          action={<Button onClick={() => refetch()}>Reintentar</Button>}
+        >
+          Vuelve a intentarlo en un momento.
         </EmptyState>
       </AppShell>
     );

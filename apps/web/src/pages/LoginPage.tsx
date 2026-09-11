@@ -34,6 +34,14 @@ export function LoginPage() {
   // moment a login actually succeeds, so it never survives into a session it wasn't about.
   const flash = useAuthStore((s) => s.flash);
   const clearFlash = useAuthStore((s) => s.clearFlash);
+  // Fix round 1 (Task 10), Critical: un `useEffect` de limpieza en el DESMONTAJE se ejecuta
+  // también al MONTAR bajo `React.StrictMode` (monta → efecto → limpieza → efecto de nuevo,
+  // `main.tsx` envuelve toda la app en `<React.StrictMode>`), así que el flash se borraba solo
+  // con visitar /login y nunca llegaba a verse ni en desarrollo ni en Playwright. El limpiado de
+  // "un solo uso, y se calla si el usuario se va sin entrar" vive ahora en `FlashJanitor`
+  // (`App.tsx`), que limpia por CAMBIO DE RUTA (cuando `pathname` deja de ser `/login`) en vez de
+  // por desmontaje — eso sí es idempotente bajo StrictMode, porque montar dos veces la misma
+  // ruta no cambia `pathname`.
 
   const onSubmit = async (data: LoginInput) => {
     try {

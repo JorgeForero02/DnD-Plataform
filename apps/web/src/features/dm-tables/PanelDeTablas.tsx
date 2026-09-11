@@ -252,7 +252,8 @@ function FichaDeTabla({
           )}
           <p className="mt-s2 flex flex-wrap items-center gap-s2">
             <span className="font-chrome text-chrome-xs text-muted">{disparador.etiqueta}</span>
-            {/* La forma legible del nivel de visibilidad se escribe una sola vez, en `ui/Badge`.
+            {/* La forma legible del nivel de visibilidad se escribe una sola vez, en
+                `features/entities/visibilidad.ts` (`ETIQUETA_DE_NIVEL`, que `Badge` importa).
                 Aquí solo se usa. */}
             <Badge visibility={tabla.visibility} />
           </p>

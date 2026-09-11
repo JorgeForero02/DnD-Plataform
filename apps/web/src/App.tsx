@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route, useMatch } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, useMatch, useLocation } from "react-router-dom";
+import { useAuthStore } from "./store/auth.store";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -29,6 +31,22 @@ function TemaFueraDeLaMesa() {
   return <ThemeToggle />;
 }
 
+// Fix round 1 (Task 10), Critical: LoginPage.tsx ya no limpia `flash` al desmontarse — un
+// `useEffect` de limpieza en el desmontaje también se dispara al MONTAR bajo
+// `React.StrictMode` (monta → efecto → limpieza → efecto otra vez, ver `main.tsx`), así que el
+// flash se borraba solo con abrir /login y nunca llegaba a pintarse. Limpiar por CAMBIO DE RUTA
+// en vez de por desmontaje es idempotente bajo StrictMode: montar dos veces la misma ruta no
+// cambia `pathname`, así que este efecto no hace nada la segunda vez. Vive dentro de
+// `<BrowserRouter>` (no fuera, como `TemaFueraDeLaMesa`) porque necesita `useLocation`.
+export function FlashJanitor() {
+  const { pathname } = useLocation();
+  const clearFlash = useAuthStore((s) => s.clearFlash);
+  useEffect(() => {
+    if (pathname !== "/login") clearFlash();
+  }, [pathname, clearFlash]);
+  return null;
+}
+
 export function App() {
   return (
     <BrowserRouter>
@@ -41,6 +59,7 @@ export function App() {
           not just /design-tokens. Fixed position, outside <Routes> so it survives every
           navigation without remounting or losing its own local state. */}
       <TemaFueraDeLaMesa />
+      <FlashJanitor />
       {/* AuthGate wraps every route, not just the protected ones: it's what turns a token
           that survives a reload in localStorage back into a user in memory
           (auth.store.ts, docs/01-arquitectura.md), and a token that no longer resolves can

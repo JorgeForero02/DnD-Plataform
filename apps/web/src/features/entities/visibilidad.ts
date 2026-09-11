@@ -8,6 +8,17 @@ import type { Visibility } from "@dnd/shared";
 // Esto es **texto de interfaz**, no una regla: quién ve qué lo decide `canView` en el servidor
 // (apps/api/src/common/visibility.ts). Si alguna vez dejan de coincidir, el que miente es este
 // fichero.
+// U6-visibilidad: la forma legible de cada nivel, para que una pantalla pueda nombrarlo dentro
+// de una frase sin duplicar el texto. `ui/Badge.tsx` importa esto en vez de guardar su propia
+// copia — antes vivía privado ahí dentro, y "una forma legible por dominio" no admite dos.
+export const ETIQUETA_DE_NIVEL: Record<Visibility, string> = {
+  PUBLIC: "Público",
+  PLAYERS: "Jugadores",
+  SPECIFIC_PLAYERS: "Jugadores concretos",
+  OWNER_DM: "DM y creador",
+  DM_ONLY: "Solo DM",
+};
+
 export const EXPLICACION_DE_NIVEL: Record<Visibility, string> = {
   // Ojo con esta frase: la primera versión prometía que "público" dejaba ver a quien no
   // estuviera en la campaña, y es MENTIRA. canView (apps/api/src/common/visibility.ts) devuelve

@@ -20,9 +20,11 @@ const VELLUM_EDGE_CLIP_PATH =
 // Task 1.19 — Panel.test.tsx asserts tone="vellum" carries the font-world class, the 66ch
 // measure, and this clip-path; revert either and that test fails while tone="chrome" still
 // passes, which is the point (chrome stays deliberately plain). The vellum panel also carries
-// a hairline `border-muted` — the brief's own words for the signature element: "separated by
-// a hairline rule and a subtly irregular top edge". The clip-path traces the border along the
-// torn silhouette on top; the straight hairline reads on the other three sides.
+// a hairline (`border-vellum-border`, ticket 38 — was `border-muted` until the reading theme's
+// hairline measured 2.78:1 against the mesa behind it) — the brief's own words for the
+// signature element: "separated by a hairline rule and a subtly irregular top edge". The
+// clip-path traces the border along the torn silhouette on top; the straight hairline reads on
+// the other three sides.
 export function Panel({ tone = "chrome", className = "", children }: PanelProps) {
   if (tone === "vellum") {
     return (
@@ -36,7 +38,14 @@ export function Panel({ tone = "chrome", className = "", children }: PanelProps)
           // medición de contraste de este fichero documenta — la clase repite ese mismo
           // `background-color` para que quitar `bg-vellum` no deje el panel transparente.
           "vellum-texture bg-vellum px-s6 pb-s6 font-world text-world-base text-vellum-ink",
-          "max-w-[66ch] border border-muted",
+          // Ticket 38 (2026-09-11) — `border-vellum-border`, no `border-muted`. Este filete se
+          // ve contra la mesa de FUERA del panel (lo que hay detrás, `resolveBackground` en
+          // `e2e/tokens-contrast.spec.ts` arranca en el padre), mientras que un `text-muted`
+          // dentro de la vitela se ve contra el propio papel — dos fondos que en Oscuro y Claro
+          // coinciden y en Lectura no (ver `--vellum-border-ch`, `tokens.css`). El panel
+          // `chrome` de abajo no tiene este problema — su fondo opaco es la misma mesa que lo
+          // rodea — y sigue con `border-muted`.
+          "max-w-[66ch] border border-vellum-border",
           className,
         ].join(" ")}
       >

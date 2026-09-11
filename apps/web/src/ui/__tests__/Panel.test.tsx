@@ -24,8 +24,12 @@ describe("Panel", () => {
     // Fix round 2, item 6: the hairline border Important 6 added ("separated by a hairline
     // rule and a subtly irregular top edge" — the brief's own words for this signature
     // element) had no coverage anywhere until now.
+    //
+    // Ticket 38 (2026-09-11): `border-vellum-border`, not `border-muted` — the reading theme's
+    // hairline measured 2.78:1 in the browser against the mesa behind the panel (`--muted-ch`
+    // there is tuned for text ON the paper, a different background). See `tokens.css`.
     expect(panel?.className).toMatch(/\bborder\b/);
-    expect(panel?.className).toMatch(/\bborder-muted\b/);
+    expect(panel?.className).toMatch(/\bborder-vellum-border\b/);
 
     // Fix round 1, small: jsdom never paints (docs/08-pruebas.md) — it cannot resolve a
     // Tailwind class to a real font or width, so this suite can only prove the primitive

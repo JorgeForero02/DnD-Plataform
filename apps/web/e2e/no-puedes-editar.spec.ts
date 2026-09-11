@@ -122,8 +122,10 @@ test("el jugador ve por qué no puede editar una ficha PLAYERS, con el motivo le
   await expect(fila).toBeVisible();
   await expect(fila).toContainText("Jugadores");
 
-  // Invitar (patrón de invitacion.spec.ts).
-  await dmPage.getByRole("link", { name: "Campaña del aviso de edición" }).click();
+  // Invitar (patrón de invitacion.spec.ts). Ese patrón sale de la ficha de una entidad por la
+  // miga con el nombre de la campaña — aquí no aplica: tras crear el PNJ seguimos en la lista
+  // de «El mundo» de la propia campaña, sin haber entrado en ninguna ficha, así que esa miga no
+  // existe todavía y basta con cambiar de pestaña.
   await dmPage.getByRole("tab", { name: "Resumen" }).click();
   const quienJuega = dmPage.getByRole("region", { name: "Quién juega" });
   await expect(quienJuega).toContainText("Todavía no hay jugadores", { timeout: 10_000 });

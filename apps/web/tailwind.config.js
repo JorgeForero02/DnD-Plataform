@@ -23,6 +23,10 @@ export default {
         // en Lectura, tinta parda, porque alli el pliego es claro (ver tokens.css).
         "vellum-ink": "rgb(var(--vellum-ink-ch) / <alpha-value>)",
         "vellum-muted": "rgb(var(--vellum-muted-ch) / <alpha-value>)",
+        // Ticket 38 — el filete de `Panel.tsx` (tone="vellum"), medido contra lo que hay
+        // DETRÁS del panel, no contra el propio papel (ver tokens.css). Alias exacto de
+        // `muted` en Oscuro y Claro; solo Lectura le da un valor propio.
+        "vellum-border": "rgb(var(--vellum-border-ch) / <alpha-value>)",
         text: "rgb(var(--text-ch) / <alpha-value>)",
         muted: "rgb(var(--muted-ch) / <alpha-value>)",
         accent: "rgb(var(--accent-ch) / <alpha-value>)",

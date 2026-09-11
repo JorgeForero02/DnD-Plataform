@@ -73,6 +73,15 @@ escribe a mano, porque solo
 lo sabe el corredor: un bloque declarado dentro de un bucle sobre los tres temas ejecuta más pruebas
 de las que se pueden contar leyendo
 el fichero, así que **la cifra buena es la que imprime el corredor**, no la de contar `test(`.
+**Y el 2026-09-11 son 151 en 42 ficheros** (`playwright test --list`), corridos **en una sola tanda
+al cerrar las fichas de las tandas 2 a 6**: 141 en verde, 1 saltado y 9 rojos a la primera —dos
+specs nuevos que nunca se habían corrido (`crear-personaje`, `no-puedes-editar`), el spec de
+contraste desfasado tras el token fresco del cambio de contraseña, un texto duplicado en la
+subida de nivel, y **un fallo de producto de verdad**: el filete del panel de vitela en Lectura
+daba 2,78:1 porque compartía canal con la tinta sobre el pliego, y un borde se mide contra lo que
+hay detrás del panel (ahora `--vellum-border`)—; los nueve cerrados y verdes en dos pasadas
+seguidas del trío de ficheros. `mesa-en-estrecho` sigue siendo el `test.fail` declarado de
+D-CF-26.
 
 > **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
 > navegador» y son **20**; antes había dicho «116 e2e de API en 22 suites» olvidando

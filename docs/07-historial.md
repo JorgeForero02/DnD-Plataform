@@ -66,6 +66,11 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **La tanda única de Playwright** (2026-09-11): 151 recorridos en 42 ficheros, 9 rojos a la
+  primera y los nueve cerrados —siete eran specs nuevos o desfasados, uno un texto duplicado, y
+  uno producto: el filete del panel de vitela en Lectura se medía contra el fondo de la mesa y no
+  contra el pliego, 2,78:1; ahora tiene canal propio, `--vellum-border`. Cifras y causas en
+  `08-pruebas.md`. **Revertir:** `--vellum-border` vuelve a `--copper-rule` en `Panel.tsx`.
 - **Tanda 6, las decisiones del autor del 2026-09-11** (tomadas con la otra sesión por los cuatro
   pasos, D-CF-23 a 28): la vitela de Lectura es el pliego claro del prototipo con su paleta de hoja
   entera; la anulación del DM guarda y enseña su motivo sin migración (J7), y de paso

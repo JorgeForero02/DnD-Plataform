@@ -727,21 +727,22 @@ for (const theme of ["dark", "light", "reading"] as const) {
       record(theme, "cuenta: confirmación de nombre texto", contrastRatio(color, bg), 4.5);
     }
 
-    // Fix round 1 (post-1.18b review), Critical 1: the flash banner LoginPage.tsx renders after
-    // AccountPage.tsx's password change (the message that used to live, unmeasured, on
-    // AccountPage's own now-removed success panel) — same success register, real screen, real
-    // PATCH /auth/password.
+    // Ticket 38 (2026-09-11) — desde la ficha 1.18a (token fresco, `e2e/cuenta.spec.ts`) cambiar
+    // la contraseña YA NO cierra la sesión ni manda a /login: el servidor emite un token nuevo,
+    // la cuenta lo guarda y confirma EN LA MISMA pantalla, con `role="status"`. El aviso de
+    // `LoginPage.tsx` que esto medía quedó sin consumidor real — se mide el que sí pinta hoy.
     await page.getByLabel("Contraseña actual").fill(cuenta.password);
     await page.getByLabel("Contraseña nueva").fill("password456");
     await page.getByRole("button", { name: "Cambiar contraseña" }).click();
-    await expect(page).toHaveURL(/\/login$/);
-    const flash = page.getByText(
-      "Contraseña actualizada. Inicia sesión otra vez con tu contraseña nueva.",
-    );
-    await expect(flash).toBeVisible();
+    await expect(page).toHaveURL(/\/account$/);
+    // `getByRole("status")` resolvería dos: el aviso de nombre de arriba sigue montado (su
+    // `saved` no se resetea al cambiar de formulario) y el de contraseña que acaba de aparecer.
+    // Por texto, como ya se hace con «Nombre actualizado.» más arriba.
+    const aviso = page.getByText("Contraseña actualizada.");
+    await expect(aviso).toBeVisible();
     {
-      const { color, bg } = await effectiveTextColours(flash);
-      record(theme, "login: aviso de contraseña cambiada texto", contrastRatio(color, bg), 4.5);
+      const { color, bg } = await effectiveTextColours(aviso);
+      record(theme, "cuenta: confirmación de contraseña texto", contrastRatio(color, bg), 4.5);
     }
   });
 }
@@ -806,6 +807,16 @@ for (const theme of ["dark", "light", "reading"] as const) {
     await expect(dialogo).toBeVisible();
     await expect(dialogo.getByText("Nivel 1 → 2")).toBeVisible({ timeout: 10_000 });
 
+    // Ticket 38 (2026-09-11) — «Confirmar subida de nivel» empieza deshabilitado (mientras
+    // `consulta.isLoading`) y `Button.tsx` cruza a su estilo `primary` con
+    // `transition-colors duration-100` en cuanto `previo` llega — el mismo instante en que el
+    // texto de arriba («Nivel 1 → 2») aparece. Medir el color justo aquí, sin margen, atrapaba
+    // el fotograma A MEDIO CRUCE de esa transición de 100ms — un color interpolado que no es ni
+    // el desactivado ni el final, y que dio 2.58:1 en un lote pero no en otro (visto en el
+    // navegador: el botón final SÍ despeja 4.5:1 de sobra, ~5.4-5.7:1 medido en frío). No es un
+    // color del sistema — es una lectura a media transición. Se deja terminar antes de medir.
+    await page.waitForTimeout(150);
+
     {
       const { color, bg } = await effectiveTextColours(
         dialogo.getByRole("heading", { name: "Subir de nivel" }),
@@ -817,8 +828,12 @@ for (const theme of ["dark", "light", "reading"] as const) {
       record(theme, "subida de nivel: cabecera del diff", contrastRatio(color, bg), 4.5);
     }
     {
+      // Sin `exact: true` esto resuelve DOS nodos: el `<dt>` de `DiffNivel.tsx` (`Fila`) que de
+      // verdad lleva la etiqueta, y la fila entera que lo envuelve (`<dt>` + `<dd>`), cuyo texto
+      // concatenado EMPIEZA por la misma cadena — "Puntos de golpe máximos38 → 46 (+8)" también
+      // la contiene como subcadena. Se mide la etiqueta que el jugador lee, no la fila.
       const { color, bg } = await effectiveTextColours(
-        dialogo.getByText("Puntos de golpe máximos"),
+        dialogo.getByText("Puntos de golpe máximos", { exact: true }),
       );
       record(theme, "subida de nivel: etiqueta de fila del diff", contrastRatio(color, bg), 4.5);
     }

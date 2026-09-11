@@ -86,6 +86,23 @@ describe("la vitela de Lectura es un pliego claro, como el prototipo", () => {
     }
   });
 
+  // Ticket 38 (2026-09-11) — el hairline de `Panel.tsx` (`border-vellum-border`) se pinta
+  // contra la mesa de FUERA del panel, no contra el papel: `e2e/tokens-contrast.spec.ts` mide el
+  // filete con `borderColourAgainstBg`, que arranca en `el.parentElement` a propósito (un
+  // filete se ve contra lo que hay detrás, no contra el propio relleno del elemento). Esta
+  // prueba compone la MISMA fórmula, contra la MISMA mesa (`--bg-ch` de Lectura), y no contra
+  // `--vellum-ch` como hacía la tabla fuera de línea que dio 4.7:1 y mintió: el navegador midió
+  // 2.78:1 la primera vez que `--vellum-border-ch` aliasaba a `--muted-ch` sin más.
+  it("el filete del panel de vitela (--vellum-border-ch) despeja 3:1 contra la mesa de Lectura, no contra el papel", () => {
+    const bg = canal(bloqueLectura, "bg");
+    const bloqueSabana = leerBloque(fuente, '[data-theme="reading"] [data-tone="vellum"] {');
+    const border = canal(bloqueSabana, "vellum-border");
+    expect(
+      contraste(border, bg),
+      "vellum-border-ch sobre bg-ch (la mesa detrás del panel)",
+    ).toBeGreaterThanOrEqual(3.3);
+  });
+
   // Ronda 1 de revisión, hallazgo 1 (crítico) — `--text-ch` SÍ se redefine dentro de la vitela.
   // Sin esto, `text-text` (la atribución del SRD en `AcercaDePage.tsx`, la biografía editable de
   // `CharacterDetailPage.tsx`) resuelve la tinta del cromo, clara, sobre el pliego claro: 1.02:1,

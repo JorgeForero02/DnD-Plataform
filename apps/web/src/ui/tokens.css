@@ -117,6 +117,21 @@
   --vellum-ink: rgb(var(--vellum-ink-ch));
   --vellum-muted: rgb(var(--vellum-muted-ch));
 
+  /* Ticket 38 (2026-09-11) — el filete del panel de vitela es un consumidor DISTINTO de
+   * `--muted-ch`, y compartir el canal fue el error: `Panel.tsx` pinta su borde de las CUATRO
+   * caras con `border-muted`, y ese borde se ve contra la mesa de FUERA del panel (lo que hay
+   * detrás, no el papel de dentro — así lo mide `borderColourAgainstBg` en
+   * `e2e/tokens-contrast.spec.ts`, que arranca en `el.parentElement` a propósito). El texto
+   * apagado que cuelga DENTRO de la vitela (`text-muted` sobre `AcercaDePage.tsx`,
+   * `CharacterDetailPage.tsx`) sí se ve contra el papel. Son dos fondos distintos, y en Oscuro y
+   * Claro coinciden lo bastante para que un solo canal sirviera a los dos sin que nadie lo
+   * notara — en Lectura no: el papel es claro y la mesa de fuera sigue oscura, y una tinta
+   * pensada para leerse sobre el papel (`111 98 68`) da 2.78:1 contra la mesa, por debajo de
+   * 3:1. Por defecto alias exacto de `--muted-ch`, así que Oscuro y Claro no cambian ni un
+   * pixel; solo Lectura redefine el suyo, más abajo. */
+  --vellum-border-ch: var(--muted-ch);
+  --vellum-border: rgb(var(--vellum-border-ch));
+
   /* Task 1.18b — the tenth token, and a reversible decision the author can still overturn (see
    * the report). "Orpiment" (dark #E0A83C, light #7A5310), added for exactly three sites that
    * were saying less than they should on --danger (overstating: a second link generation isn't
@@ -549,6 +564,14 @@
   --warning-ch: 122 83 16;
   --warning-text-ch: 122 83 16;
   --copper-rule: rgb(var(--copper-text-ch) / 0.85);
+  /* Ticket 38 — el hairline de `Panel.tsx` se ve contra la mesa oscura de Lectura
+   * (`--bg-ch: 36 29 18`), no contra este papel: medido en el navegador, `2.78:1`. Se reutiliza
+   * el mismo cobre claro que la mesa de Lectura ya usa para su propio `--copper-text-ch` FUERA
+   * de la vitela (`224 160 105`, redefinido arriba a un tono oscuro solo para leerse sobre el
+   * papel) — no puede citarse por `var()` porque este mismo bloque ya lo tapó, así que va el
+   * número literal, con su procedencia dicha. Contra `36 29 18` da 7.46:1, margen de sobra
+   * sobre el 3:1 exigido y sobre el 3.3 que pide el ticket. */
+  --vellum-border-ch: 224 160 105;
 }
 
 /* Task 1.19b — the density decision 1.19 deliberately deferred (see the fix round 2 note this

@@ -90,9 +90,13 @@ test("el contenido del diálogo cabe en la ventana, a 1280×800 y a 390×844", a
   await crearCampana(page, "El pozo de los ecos, estrecho");
   await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
-  const cuerpo = page.locator("[data-dialog-cuerpo]");
+  // Dos cajones legítimos coexisten aquí: el de la pestaña «Personajes» (la lista, debajo) y el
+  // de «Nuevo personaje» que se abre encima — ambos son `Dialog.tsx` y ambos llevan
+  // `[data-dialog-cuerpo]`. Se mide el de arriba, por su rol y su nombre accesible.
+  const dialogoCrear = page.getByRole("dialog", { name: "Nuevo personaje" });
+  const cuerpo = dialogoCrear.locator("[data-dialog-cuerpo]");
   await expect(cuerpo).toBeVisible();
-  const boton = page.getByRole("button", { name: "Guardar" });
+  const boton = dialogoCrear.getByRole("button", { name: "Guardar" });
 
   for (const tamano of [
     { width: 1280, height: 800 },

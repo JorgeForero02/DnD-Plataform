@@ -258,4 +258,28 @@ describe("Sessions (e2e)", () => {
       );
     });
   });
+
+  describe("el orden de la lista es cuándo se juega, no cuándo se creó (ficha D4)", () => {
+    it("las sesiones con fecha van primero, de la más lejana a la más cercana; las sin fecha, detrás", async () => {
+      // Hasta el 2026-09-10 `list` ordenaba por `createdAt`, así que la próxima sesión no estaba
+      // donde la mesa la busca. Se crean en un orden a propósito distinto del que se espera leer.
+      const s = app.getHttpServer();
+      const crear = (title: string, scheduledAt?: string) =>
+        request(s)
+          .post(`/campaigns/${campaignId}/sessions`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ title, visibility: "DM_ONLY", ...(scheduledAt ? { scheduledAt } : {}) });
+      await crear("D4 · sin fecha");
+      await crear("D4 · dentro de una semana", "2030-01-08T20:00:00.000Z");
+      await crear("D4 · mañana", "2030-01-02T20:00:00.000Z");
+
+      const lista = await request(s)
+        .get(`/campaigns/${campaignId}/sessions`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      const titulos = lista.body
+        .map((x: { title: string }) => x.title)
+        .filter((t: string) => t.startsWith("D4 · "));
+      expect(titulos).toEqual(["D4 · dentro de una semana", "D4 · mañana", "D4 · sin fecha"]);
+    });
+  });
 });

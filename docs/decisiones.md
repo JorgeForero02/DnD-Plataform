@@ -424,6 +424,14 @@ dos DM (la premisa «no hay pantalla para un segundo DM» caducó con el plan 11
 visibilidad pueden salir de una matriz que una prueba compara con `canView`) y `M2B-14` (el SRD 5.1
 trae *Weapon/Armor/Shield +1, +2, +3*: transcripción, no producto). Se arreglan como fichas B.
 
+## Cerrar fichas (2026-09-10) · [archivo](./_archivo/pendientes-cerrados-2026-09-10.md)
+
+Decisiones pequeñas tomadas al cerrar fichas del cubo B, una por commit.
+
+| | Decisión |
+|---|---|
+| D-CF-1 | **La lista de sesiones va por cuándo se juega**: con fecha primero, de la más lejana a la más cercana —la próxima arriba, como el resto de listas de la casa ponen lo más reciente primero—, y las sin fecha detrás, por creación. Cierra D4 |
+
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 
 **Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con

@@ -83,6 +83,8 @@ su medición están en
 - **1.18a · `/auth/me`** — la rama muerta se va con la consulta repetida: `JwtStrategy.validate`
   devuelve `displayName` y el controlador contesta con `req.user`. **Revertir:** volver a
   `findById` en `me()`.
+- **D4** — la lista de sesiones va por `scheduledAt` (desc, sin fecha al final) y no por
+  `createdAt` (`sessions.service.ts`, `list`; D-CF-1). **Revertir:** volver al `orderBy` viejo.
 - **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
   rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda

@@ -186,7 +186,12 @@ export class SessionsService {
     const viewer = await this.viewerFor(userId, campaignId);
     const sessions = await this.prisma.session.findMany({
       where: { campaignId },
-      orderBy: { createdAt: "desc" },
+      // **La lista va por cuándo se juega, no por cuándo se creó** (ficha D4, cerrada el
+      // 2026-09-10): con fecha primero, de la más lejana a la más cercana —la próxima sesión
+      // arriba, como el resto de listas de esta casa, que ponen lo más reciente primero—, y las
+      // sin fecha detrás, esas sí por creación. Antes iba entera por `createdAt`, y la próxima
+      // sesión no estaba donde la mesa la busca.
+      orderBy: [{ scheduledAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     });
     const visibles = sessions.filter((s) => this.canSee(viewer, s.visibility));
     const fichas = await this.fichasDeApertura(visibles);

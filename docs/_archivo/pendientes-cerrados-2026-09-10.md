@@ -81,3 +81,11 @@ esta.
 
 - **El `NotFoundException` de `GET /auth/me` quedó inalcanzable**: `JwtStrategy` ya rechaza con
   401 al usuario borrado antes de llegar al controlador. Mejor comportamiento, rama muerta.
+
+## D4 · La fecha de una sesión no la ORDENA el servidor
+
+**Cerrada el 2026-09-10.** `sessions/sessions.service.ts`, `list`: `orderBy: [{ scheduledAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }]` — con fecha primero, de la más lejana a la más cercana (la próxima arriba, como el resto de listas de la casa), y las sin fecha detrás por creación (decisión `D-CF-1` en `decisiones.md`). Prueba: `apps/api/test/sessions.e2e-spec.ts`, «las sesiones con fecha van primero…» — roja antes (orden de creación), verde después. El taller (`PrepararSesion.tsx`, `siguientePlanificada`) ordena por su cuenta y no cambia.
+
+**Texto original:**
+
+| D4 | **La fecha de una sesión no la ORDENA el servidor.** Su primera mitad —«no se ve en la lista»— era falsa y se archivó el 2026-09-08 | P2 (bajado de P1: se ve, solo no ordena) | La fila **sí** pinta la fecha, con «sin fecha» cuando no hay: `pages/CampaignDetailPage.tsx:422`. Lo que sigue: `sessions/sessions.service.ts:189` ordena por `createdAt: "desc"`, así que la lista no va por cuándo se juega. **Las dos citas de la versión anterior de esta fila estaban desplazadas** y señalaban código de otra cosa |

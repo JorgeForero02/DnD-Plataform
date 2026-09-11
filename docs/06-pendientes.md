@@ -549,7 +549,6 @@ y `D4`. Se conserva citada porque era el resumen de la pasada, y su caducidad es
 
 | | Hallazgo | Prioridad | Evidencia |
 |---|---|---|---|
-| D4 | **La fecha de una sesión no la ORDENA el servidor.** Su primera mitad —«no se ve en la lista»— era falsa y se archivó el 2026-09-08 | P2 (bajado de P1: se ve, solo no ordena) | La fila **sí** pinta la fecha, con «sin fecha» cuando no hay: `pages/CampaignDetailPage.tsx:422`. Lo que sigue: `sessions/sessions.service.ts:189` ordena por `createdAt: "desc"`, así que la lista no va por cuándo se juega. **Las dos citas de la versión anterior de esta fila estaban desplazadas** y señalaban código de otra cosa |
 | D6 | **`User.isAdmin` no tiene ninguna puerta de concesión**: es el permiso más potente del sistema y no lo gobierna nada | P2 | `common/visibility.ts:23` es el `if (viewer.isAdmin) return true;` que salta toda la matriz; remedido el 2026-09-08, `isAdmin` fuera de sus lectores **no tiene un solo escritor** —los dos únicos aciertos son un comentario de `links/links.service.ts` y un `?? false` de `notifications/notifications.service.ts`—: solo un `UPDATE` a mano en Postgres. (La cita anterior, `:16`, se había desplazado) |
 | D7 | **`Campaign.ownerId` es una segunda fuente de verdad que nadie consulta** | P3 | Se escribe en `campaigns/campaigns.service.ts:21` —remedido el 2026-09-08; la cita anterior decía `:20`— y se emite en el suceso de la 25. Ninguna comprobación de autorización lo lee: todas pasan por `membership.requireDM`, que mira `CampaignMember.role`. La web lo declara en su tipo y tampoco lo usa |
 | E1 | **Sesiones y Personajes siguen sin buscador ni filtro**, y **no hay búsqueda que cruce pestañas** — ya declarado bajo la tabla de 1.17, confirmado abierto | P2 — ya declarado | `features/entities/EntityFilterBar.tsx` se monta solo en `EntityTab` de `pages/CampaignDetailPage.tsx` y filtra la lista ya cargada de **un solo tipo**; `fetchAllEntities` (`features/entities/api.ts`) ya trae todos los tipos y solo lo consume el selector de destino de enlaces |
@@ -564,9 +563,6 @@ y `D4`. Se conserva citada porque era el resumen de la pasada, y su caducidad es
 **Lo que queda de estas líneas en una mesa real**, ordenado por cuándo duele y no por
 dificultad, porque es la pregunta que hizo el autor:
 
-- **Durante la partida, la lista de sesiones no va por cuándo se juega** (D4). La fecha se ve en
-  cada fila —eso se arregló—, pero el orden lo pone `createdAt`, así que la próxima sesión no
-  está donde la mesa la busca. Es un `orderBy`.
 - **Buscar sigue siendo de un solo tipo** (E1). La búsqueda por texto ya la hace el servidor y ya
   pasa por `canView` antes que por el texto, pero solo desde la pestaña del mundo: no hay una que
   cruce sesiones y personajes.
@@ -591,8 +587,8 @@ D2 —no se puede ascender a nadie— llevaba cerrada desde el plan 11: la recup
 bloqueada, pero ya no convierte una cuenta perdida en una campaña huérfana, porque otro DM puede
 existir.
 
-**Coste declarado, para poder decidir sin volver a mirar el código:** D4 es trivial (un
-`orderBy`); E1 es medio, porque una búsqueda que cruce pestañas necesita decidir qué devuelve el
+**Coste declarado, para poder decidir sin volver a mirar el código:** D4 se cerró el 2026-09-10 con
+ese `orderBy`; E1 es medio, porque una búsqueda que cruce pestañas necesita decidir qué devuelve el
 servidor cuando los tipos son distintos. D6 y D7 son **decisión, no código**: o se le da una
 puerta a `isAdmin` y se declara cuál de las dos fuentes manda sobre «quién manda aquí», o se
 escribe que son de mantenimiento manual.

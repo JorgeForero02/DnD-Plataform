@@ -15,6 +15,7 @@ import {
   type Visibility,
 } from "@dnd/shared";
 import { CONCENTRATION_KEY_PREFIX, esConcentracion } from "../concentration/concentration";
+import { NIVEL_DE_AGOTAMIENTO_QUE_MATA } from "../common/agotamiento";
 import { condicionVencida } from "./vencimiento";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
@@ -213,9 +214,21 @@ export class ConditionsService {
     userId: string,
     campaignId: string,
     characterId: string,
-    character: { visibility: Visibility },
+    character: { name: string; visibility: Visibility },
     input: ApplyConditionInput,
   ) {
+    // D-CF-14, commit 5 (J5). **El nivel de agotamiento ANTES de escribir**, para poder decir si
+    // ESTE `apply` es el que cruza el umbral de la muerte (SRD 5.1, tabla de agotamiento, nivel
+    // 6: «Death») o si el personaje ya estaba en nivel 6 y solo se está renovando la condición.
+    // Sin esta lectura previa, cada `apply` a nivel 6 —incluida una re-aplicación sin cambios—
+    // repetiría el suceso de muerte.
+    const agotamientoPrevio =
+      input.key === "exhaustion"
+        ? await tx.characterCondition.findUnique({
+            where: { characterId_key: { characterId, key: "exhaustion" } },
+          })
+        : null;
+
     // **El vencimiento se guarda absoluto, no como una duración.** Guardar «dura una hora»
     // obligaría a saber desde cuándo, y ese «desde cuándo» es otra columna que puede
     // discrepar; con el instante en que vence, la pregunta «¿sigue viva?» es una resta contra
@@ -305,6 +318,34 @@ export class ConditionsService {
       },
       tx,
     );
+
+    // D-CF-14, commit 5 (J5). **Solo en la transición**: el nivel anterior era menor que el que
+    // mata y el que se acaba de escribir ya lo alcanza. Volver a aplicar nivel 6 sobre un
+    // personaje que ya estaba en nivel 6 no repite la muerte — ya se registró la primera vez.
+    const nivelAnterior = agotamientoPrevio?.level ?? 0;
+    if (
+      input.key === "exhaustion" &&
+      (input.level ?? 0) >= NIVEL_DE_AGOTAMIENTO_QUE_MATA &&
+      nivelAnterior < NIVEL_DE_AGOTAMIENTO_QUE_MATA
+    ) {
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: character.visibility,
+          payload: {
+            type: "CHARACTER_DIED",
+            characterId,
+            name: character.name,
+            cause: "exhaustion",
+          },
+        },
+        tx,
+      );
+    }
+
     return condition;
   }
 

@@ -443,6 +443,62 @@ describe("CharacterSheetService — 2A.7 PG mutables", () => {
     expect(estable.deathSaves).toEqual({ successes: 0, failures: 0, status: "stable" });
   });
 
+  // D-CF-14, commit 5 (J5). El tercer fracaso deja de ser silencioso: registra CHARACTER_DIED
+  // con `cause: "death_saves"` y el `rollEventId` de la propia `DEATH_SAVE` que lo causó.
+  describe("el tercer fracaso registra CHARACTER_DIED", () => {
+    it("registra el suceso citando el DEATH_SAVE que acaba de escribir", async () => {
+      const { service, characters, prisma, events } = montar(dadoFijo(1));
+      characters.requireEditable.mockResolvedValue(personaje());
+      const fila = personaje({ currentHp: 0, deathSaveFailures: 2, name: "Elara" });
+      const tx = montarTransaccion(prisma, fila);
+      events.record.mockResolvedValueOnce({ id: "death-save-ev" }).mockResolvedValue({ id: "ev1" });
+
+      await service.rollDeathSave("p1", "c1", "ch1", {});
+
+      expect(events.record).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "CHARACTER_DIED",
+            characterId: "ch1",
+            cause: "death_saves",
+            rollEventId: "death-save-ev",
+          }),
+        }),
+        tx,
+      );
+    });
+
+    it("un segundo fracaso (sin llegar a tres) NO registra la muerte", async () => {
+      const { service, characters, prisma, events } = montar(dadoFijo(1));
+      characters.requireEditable.mockResolvedValue(personaje());
+      const fila = personaje({ currentHp: 0, deathSaveFailures: 0 });
+      montarTransaccion(prisma, fila);
+
+      await service.rollDeathSave("p1", "c1", "ch1", {});
+
+      const muertes = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "CHARACTER_DIED",
+      );
+      expect(muertes).toHaveLength(0);
+    });
+
+    it("un 20 natural que revive no registra la muerte", async () => {
+      const { service, characters, prisma, events } = montar(dadoFijo(20));
+      characters.requireEditable.mockResolvedValue(personaje());
+      const fila = personaje({ currentHp: 0, deathSaveSuccesses: 1, deathSaveFailures: 2 });
+      montarTransaccion(prisma, fila);
+
+      await service.rollDeathSave("p1", "c1", "ch1", {});
+
+      const muertes = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "CHARACTER_DIED",
+      );
+      expect(muertes).toHaveLength(0);
+    });
+  });
+
   // Tarea 16 (H1b) — «estable» sobrevive a la petición: hasta aquí, estabilizarse ponía los
   // contadores a cero y un `GET` posterior no podía distinguir «está estable» de «acaba de caer a
   // 0 PG y todavía no ha tirado nada» — los dos casos tienen `successes: 0, failures: 0`. SRD 5.1,
@@ -570,6 +626,83 @@ describe("lo que el daño y la curación le hacen a las salvaciones de muerte", 
       expect.objectContaining({ payload: expect.objectContaining({ massive: true }) }),
       expect.anything(),
     );
+  });
+
+  // D-CF-14, commit 5 (J5). Las dos transiciones de `changeHp` que llevan a la muerte.
+  describe("changeHp() registra CHARACTER_DIED en la transición", () => {
+    it('el daño masivo registra la muerte con cause "massive_damage"', async () => {
+      const { service, prisma, characters, events } = montar();
+      characters.requireEditable.mockResolvedValue(personaje());
+      const tx = montarTransaccion(prisma, personaje({ currentHp: 5, tempHp: 0, name: "Elara" }));
+
+      await service.changeHp("p1", "c1", "ch1", { delta: -(5 + MAX_HP) });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "CHARACTER_DIED",
+            characterId: "ch1",
+            name: "Elara",
+            cause: "massive_damage",
+          }),
+        }),
+        tx,
+      );
+    });
+
+    it('el remate a 0 PG que sube los fracasos a tres registra la muerte con cause "death_saves"', async () => {
+      const { service, prisma, characters, events } = montar();
+      characters.requireEditable.mockResolvedValue(personaje());
+      const tx = montarTransaccion(
+        prisma,
+        personaje({ currentHp: 0, tempHp: 0, deathSaveFailures: 2, name: "Elara" }),
+      );
+
+      await service.changeHp("p1", "c1", "ch1", { delta: -3, rollEventId: "roll1" });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "CHARACTER_DIED",
+            characterId: "ch1",
+            name: "Elara",
+            cause: "death_saves",
+            rollEventId: "roll1",
+          }),
+        }),
+        tx,
+      );
+    });
+
+    it("un golpe a quien ya está a 0 con solo UN fracaso previo no mata (deja en dos, no en tres)", async () => {
+      const { service, prisma, characters, events } = montar();
+      characters.requireEditable.mockResolvedValue(personaje());
+      montarTransaccion(prisma, personaje({ currentHp: 0, tempHp: 0, deathSaveFailures: 0 }));
+
+      await service.changeHp("p1", "c1", "ch1", { delta: -3 });
+
+      const muertes = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "CHARACTER_DIED",
+      );
+      expect(muertes).toHaveLength(0);
+    });
+
+    it("dañar a un cadáver que YA tenía tres fracasos no repite la muerte", async () => {
+      const { service, prisma, characters, events } = montar();
+      characters.requireEditable.mockResolvedValue(personaje());
+      montarTransaccion(prisma, personaje({ currentHp: 0, tempHp: 0, deathSaveFailures: 3 }));
+
+      await service.changeHp("p1", "c1", "ch1", { delta: -3 });
+
+      const muertes = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "CHARACTER_DIED",
+      );
+      expect(muertes).toHaveLength(0);
+    });
   });
 
   it("un golpe fuerte que NO llega a los PG máximos deja inconsciente, no muerto", async () => {

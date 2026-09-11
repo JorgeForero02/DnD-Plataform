@@ -60,6 +60,10 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   ITEM_ADDED: "personaje",
   ITEM_MOVED: "personaje",
   ITEM_REMOVED: "personaje",
+  // D-CF-14, commit 4: ajustar una pila le pasa a alguien de la mesa, igual que moverla.
+  ITEM_QUANTITY_CHANGED: "personaje",
+  // D-CF-14, commit 5 (J5): morir le pasa a alguien de la mesa, igual que perder puntos de golpe.
+  CHARACTER_DIED: "personaje",
   CHARACTER_ARCHIVED: "personaje",
   CHARACTER_RESTORED: "personaje",
   // Paso 2, tarea A2: gastar la economía del turno es algo que le pasa a alguien de la mesa.
@@ -91,7 +95,7 @@ function soloElTipo(type: GameEventType): GameEventPayload {
 describe("de un suceso del registro a un tipo de mensaje", () => {
   // La red contra el `default` «para que compile»: se recorre la fuente única de tipos, no una
   // lista copiada aquí. Un tipo nuevo en `GAME_EVENT_TYPES` sin decisión pone esto rojo.
-  it("clasifica los 46 tipos de suceso, sin dejarse ninguno", () => {
+  it("clasifica los 49 tipos de suceso, sin dejarse ninguno", () => {
     // 40 desde el 2026-09-06: `ENTITY_RETYPED` (I16), `RESOURCE_GIVEN` (I8), `DM_EXECUTED` (I19) y
     // `MEMBER_ROLE_CHANGED` (D2), 42 con los dos de los modificadores temporales (M8), 43 con
     // `INITIATIVE_ROLLED_BY_SYSTEM` (2026-09-05: la iniciativa y el bando) y **45 con los dos del
@@ -100,8 +104,11 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
     // (tarea 19, D-A-3): cancelar un combate avisa a quien esperaba.
     // El número está escrito a propósito — si
     // alguien añade un tipo y no lo clasifica, esta cuenta lo dice antes que el `switch`.
-    // **47 con `ACTION_SPENT`** (paso 2, tarea A2): gastar la economía del turno.
-    expect(GAME_EVENT_TYPES).toHaveLength(47);
+    // **47 con `ACTION_SPENT`** (paso 2, tarea A2): gastar la economía del turno, **48 con
+    // `ITEM_QUANTITY_CHANGED`** (D-CF-14, commit 4, M2B-8): el `PATCH` de cantidad de una pila
+    // ya puesta, y **49 con `CHARACTER_DIED`** (D-CF-14, commit 5, J5): la muerte deja de
+    // derivarse en silencio.
+    expect(GAME_EVENT_TYPES).toHaveLength(49);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

@@ -1,0 +1,11 @@
+-- D-CF-14, commit 5 (J5, 2026-09-11): la muerte se DERIVABA al leer la hoja (`estadoDeMuerte`,
+-- `character-sheet.service.ts`) sobre tres causas -- tres fracasos de salvacion de muerte, daño
+-- masivo, agotamiento nivel 6 -- y ninguna de las tres dejaba rastro en el registro: la linea de
+-- tiempo no podia responder "¿de que murio Elara?".
+--
+-- `ALTER TYPE ... ADD VALUE` no puede correr dentro de una transaccion en versiones de Postgres
+-- anteriores a la 12 (aqui se ejecuta sola, fuera de una transaccion explicita, por si acaso).
+-- No hay migracion de bajada: un valor de enum no se puede quitar sin recrear el tipo entero y
+-- reescribir cada fila que lo use, y este proyecto no lo necesita (un valor de este enum se
+-- ANADE, nunca se edita ni se borra).
+ALTER TYPE "GameEventType" ADD VALUE 'CHARACTER_DIED';

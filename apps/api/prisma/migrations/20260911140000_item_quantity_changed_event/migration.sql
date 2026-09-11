@@ -1,0 +1,11 @@
+-- D-CF-14, commit 4 (M2B-8, 2026-09-11): el `PATCH .../inventory/:id` con `quantity` (absoluta)
+-- o `quantityDelta` cambia la cantidad de una pila ya puesta en el inventario y hasta hoy no
+-- escribia ningun suceso -- `create` escribe ITEM_ADDED y `consume` escribe ITEM_REMOVED, pero
+-- ajustar una pila existente no dejaba rastro.
+--
+-- `ALTER TYPE ... ADD VALUE` no puede correr dentro de una transaccion en versiones de Postgres
+-- anteriores a la 12 (aqui se ejecuta sola, fuera de una transaccion explicita, por si acaso).
+-- No hay migracion de bajada: un valor de enum no se puede quitar sin recrear el tipo entero y
+-- reescribir cada fila que lo use, y este proyecto no lo necesita (un valor de este enum se
+-- ANADE, nunca se edita ni se borra).
+ALTER TYPE "GameEventType" ADD VALUE 'ITEM_QUANTITY_CHANGED';

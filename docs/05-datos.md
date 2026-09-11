@@ -101,7 +101,9 @@ datos:
   por oro es una decisión de la mesa.
 
 **Todo movimiento del inventario deja rastro en el log** (`ITEM_ADDED`, `ITEM_MOVED`,
-`ITEM_REMOVED`, y `MONEY_CHANGED` para la bolsa), escrito en la misma transacción que el cambio.
+`ITEM_REMOVED`, `ITEM_QUANTITY_CHANGED` desde el 2026-09-11 —el `PATCH` de cantidad no escribía
+nada, lo vio la revisión de M2B-8—, y `MONEY_CHANGED` para la bolsa), escrito en la misma
+transacción que el cambio.
 Ver la sección del log más arriba.
 
 **Borrar tiene dos comportamientos distintos, y es a propósito.** Borrar un personaje se lleva su
@@ -403,7 +405,10 @@ este log: `MONEY_CHANGED` (los deltas por denominación, nunca un total normaliz
 `ITEM_ADDED` / `ITEM_MOVED` / `ITEM_REMOVED`. Los cuatro se escriben **dentro de la misma
 transacción que el cambio que describen**, así que un cambio que se deshace se lleva su rastro con
 él. Antes de 2B el dinero dejaba huella y los objetos no, y con una semana entre sesiones eso
-significaba que nadie podía responder «¿quién cogió la gema?».
+significaba que nadie podía responder «¿quién cogió la gema?». **Y desde el 2026-09-11 la muerte
+también es un tipo**, `CHARACTER_DIED` (J5): la hoja seguía derivándola al leer —tres fracasos,
+daño masivo o agotamiento 6— y el registro no podía decir de qué murió nadie; ahora se escribe en
+la transición, una sola vez, con la causa cerrada y la tirada que la decidió.
 
 El `payload` está validado al escribir por una unión discriminada de Zod
 (`packages/shared/src/game-event.schema.ts`), discriminada por `type`. Añadir un tipo de evento

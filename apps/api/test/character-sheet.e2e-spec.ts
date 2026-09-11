@@ -442,6 +442,65 @@ describe("Hoja de personaje y PG (e2e)", () => {
     });
   });
 
+  // --- D-CF-14, commit 5 (J5) — el tercer fracaso registra CHARACTER_DIED ---------------------
+  //
+  // Sin un roller sembrado en este e2e, el dado es real: se deja al personaje a dos fracasos y
+  // se repite la tirada real hasta que caiga un resultado que la lleve a tres (cualquiera salvo
+  // un 20, que revive, o un éxito que no llegue a tres). Acotado a un número de intentos
+  // generoso: un fracaso simple o un crítico salen más de la mitad de las veces.
+  it("el tercer fracaso registra CHARACTER_DIED citando el DEATH_SAVE que lo causó", async () => {
+    const s = app.getHttpServer();
+    const actual = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenDM}`);
+    await request(s)
+      .patch(hpUrl())
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ expectedVersion: actual.body.hp.version, currentHp: 0 });
+    // Una prueba anterior puede haber dejado `stable` puesta (una tirada real puede estabilizar
+    // por sorpresa): se retira, o `rollDeathSave` rechazaría con 400 antes de llegar al dado.
+    await prisma.characterCondition.deleteMany({ where: { characterId, key: "stable" } });
+
+    let muerto = false;
+    for (let intento = 0; intento < 25 && !muerto; intento++) {
+      await prisma.character.update({
+        where: { id: characterId },
+        data: { currentHp: 0, deathSaveSuccesses: 0, deathSaveFailures: 2 },
+      });
+      const tirada = await request(s)
+        .post(deathSavesUrl())
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({});
+      if (tirada.status !== 201) {
+        throw new Error(
+          `tirada ${intento}: status ${tirada.status} body ${JSON.stringify(tirada.body)}`,
+        );
+      }
+      if (tirada.body.deathSaves.status === "dead") muerto = true;
+    }
+    expect(muerto).toBe(true);
+
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    const muerte = log.body.events.find((e: { type: string }) => e.type === "CHARACTER_DIED");
+    expect(muerte).toBeDefined();
+    expect(muerte.payload).toMatchObject({
+      characterId,
+      name: "Thorin",
+      cause: "death_saves",
+    });
+    const deathSave = log.body.events.find(
+      (e: { id: string }) => e.id === muerte.payload.rollEventId,
+    );
+    expect(deathSave).toBeDefined();
+    expect(deathSave.type).toBe("DEATH_SAVE");
+
+    // Deja al personaje revivido, para no contaminar las pruebas que siguen a esta en el fichero.
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { currentHp: maxHp, deathSaveSuccesses: 0, deathSaveFailures: 0 },
+    });
+  });
+
   // --- Fase 2B/2C: equipar cambia el número, y el arma equipada se puede tirar ---------------
 
   it("equipar una cota de malla sube la CA de la hoja, y la traza gana un paso del objeto", async () => {

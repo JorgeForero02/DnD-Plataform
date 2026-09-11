@@ -350,4 +350,46 @@ describe("quién lo dio (B3)", () => {
       "Cambia el dinero: +12 oro, -3 plata, de El DM",
     );
   });
+
+  // D-CF-14, commit 4 (M2B-8): el PATCH de cantidad ya deja rastro.
+  it("ajustar la cantidad de una pila dice el antes y el después", () => {
+    expect(
+      lineaDeLog({
+        type: "ITEM_QUANTITY_CHANGED",
+        item: "Antorcha",
+        ref: "SRD:torch",
+        from: 3,
+        to: 5,
+      }),
+    ).toBe("Ajusta Antorcha: 3 → 5");
+  });
+
+  // D-CF-14, commit 5 (J5): la muerte deja de derivarse en silencio.
+  it("la muerte dice quién y por qué causa, para cada una de las tres", () => {
+    expect(
+      lineaDeLog({
+        type: "CHARACTER_DIED",
+        characterId: "ch1",
+        name: "Elara",
+        cause: "death_saves",
+        rollEventId: "ev1",
+      }),
+    ).toBe("Muere Elara — tres fallos en las salvaciones");
+    expect(
+      lineaDeLog({
+        type: "CHARACTER_DIED",
+        characterId: "ch1",
+        name: "Elara",
+        cause: "massive_damage",
+      }),
+    ).toBe("Muere Elara — daño masivo");
+    expect(
+      lineaDeLog({
+        type: "CHARACTER_DIED",
+        characterId: "ch1",
+        name: "Elara",
+        cause: "exhaustion",
+      }),
+    ).toBe("Muere Elara — agotamiento");
+  });
 });

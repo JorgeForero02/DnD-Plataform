@@ -108,6 +108,11 @@ enum GameEventType {
   // Paso 2, tarea A2 (2026-09-06): gastar la economia del turno deja rastro, y se escribe aunque
   // ya estuviera gastado. Un valor de este enum se ANADE, nunca se edita ni se borra.
   ACTION_SPENT
+  // D-CF-14, commit 4 (M2B-8, 2026-09-11): el PATCH que cambia la cantidad de una pila ya
+  // puesta (absoluta o por delta) no escribia nada.
+  ITEM_QUANTITY_CHANGED
+  // D-CF-14, commit 5 (J5, 2026-09-11): la muerte se derivaba al leer y nunca se registraba.
+  CHARACTER_DIED
 }
 
 enum ResourceReset {

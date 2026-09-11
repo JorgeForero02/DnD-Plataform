@@ -76,6 +76,12 @@ commit y su migración inversa está descrita en la cabecera del SQL.
 - **3 · `DROP COLUMN race, class`** (D-CF-27): sin medir filas, por decisión del autor. El contrato
   de creación y edición descarta el texto libre y `tsc` barrió los lectores en API y web. Quien
   solo tuviera texto libre y ninguna clave del catálogo se queda sin raza ni clase en pantalla.
+- **4 y 5 · `ITEM_QUANTITY_CHANGED` y `CHARACTER_DIED`**, dos migraciones en **un** commit —se
+  declara la desviación de la letra de D-CF-14: los dos valores comparten el enum, la lista de
+  `@dnd/shared`, el renderizador del hilo y sus pruebas, y partir esos hunks a mano arriesgaba el
+  árbol; cada uno tiene su SQL—. El `PATCH` de cantidad deja «Ajusta Antorcha: 3 → 5»; la muerte se
+  escribe una sola vez, en la transición, por sus tres puertas, con causa cerrada y la tirada que
+  la decidió (J5).
 
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
 

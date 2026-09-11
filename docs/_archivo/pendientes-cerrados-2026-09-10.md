@@ -782,3 +782,11 @@ Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 medi
 
 - **Las columnas `race`/`class` se pueden retirar en cuanto el autor confirme** que no queda
   ningún personaje escrito a mano antes del catálogo. Hoy siguen ahí a propósito.
+
+## J5 · La muerte tiene suceso propio (migración 5 de D-CF-14, 2026-09-11)
+
+`CHARACTER_DIED` en `GameEventType`, con `{ characterId, name, cause, rollEventId? }` y `cause` como vocabulario cerrado (`death_saves` · `massive_damage` · `exhaustion`) traducido una vez en `CAUSA_DE_MUERTE`. Se escribe solo en la transición, en las tres puertas: el tercer fracaso de `rollDeathSave` (cita su propia `DEATH_SAVE`), el daño masivo o el remate a tres fracasos en `changeHp` (cita la tirada que el daño citaba), y el agotamiento que cruza a nivel 6. Un segundo golpe sobre un cadáver o reaplicar nivel 6 no repiten la muerte (pruebas). El hilo dice «Muere Elara — tres fallos en las salvaciones». El apunte de que `HP_CHANGED.rollEventId` no se pinta sigue siendo cierto y sigue sin ser ficha.
+
+**Texto original:**
+
+| **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta. **Apunte del 2026-09-11, no ficha:** el `rollEventId` de un `HP_CHANGED` se guarda y ningún componente del hilo lo pinta —solo `ATTACK_RESOLVED` enlaza su tirada (`HiloDeSesion.tsx`)—; cuando la muerte tenga suceso, que el daño enlace su tirada igual |

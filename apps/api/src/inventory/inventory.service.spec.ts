@@ -515,6 +515,66 @@ describe("InventoryService", () => {
     });
   });
 
+  describe("update() — ITEM_QUANTITY_CHANGED (D-CF-14, commit 4, M2B-8)", () => {
+    it("un PATCH con `quantity` absoluta que cambia la cantidad registra el suceso con `from`/`to`", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 3 }));
+      prisma.inventoryItem.update.mockResolvedValue(row({ quantity: 5 }));
+
+      await service.update("owner1", "cmp1", "c1", "row1", { quantity: 5 });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "ITEM_QUANTITY_CHANGED",
+            from: 3,
+            to: 5,
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it("un PATCH con `quantityDelta` que cambia la cantidad también registra el suceso", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 20 }));
+      prisma.inventoryItem.update.mockResolvedValue(row({ quantity: 18 }));
+
+      await service.update("owner1", "cmp1", "c1", "row1", { quantityDelta: -2 });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "owner1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "ITEM_QUANTITY_CHANGED",
+            from: 20,
+            to: 18,
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it("un PATCH con la misma `quantity` de siempre no registra nada", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 5 }));
+      prisma.inventoryItem.update.mockResolvedValue(row({ quantity: 5 }));
+
+      await service.update("owner1", "cmp1", "c1", "row1", { quantity: 5 });
+
+      expect(events.record).not.toHaveBeenCalled();
+    });
+
+    it("un PATCH que solo toca otro campo (p.ej. `storedAt`) no registra nada", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(row({ quantity: 5 }));
+      prisma.inventoryItem.update.mockResolvedValue(row({ quantity: 5, storedAt: "El Faro" }));
+
+      await service.update("owner1", "cmp1", "c1", "row1", { storedAt: "El Faro" });
+
+      expect(events.record).not.toHaveBeenCalled();
+    });
+  });
+
   describe("permisos y visibilidad", () => {
     it("un jugador ajeno no puede modificar el inventario (403)", async () => {
       membership.getMembership.mockResolvedValue({ role: "PLAYER" });

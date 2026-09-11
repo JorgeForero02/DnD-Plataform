@@ -160,7 +160,8 @@ merece la pena contar.
 - **Cuando tu DM te pide una tirada**, te aparece sola. Si la pidió a ciegas, tú no verás el
   resultado: solo él.
 - **Puntos de golpe.** Los subes y los bajas tú, con su rastro en la crónica. A cero empiezan
-  las salvaciones contra muerte, y estabilizarse y volver funcionan como en el manual.
+  las salvaciones contra muerte, y estabilizarse y volver funcionan como en el manual. Si mueres,
+  la crónica lo dice con la causa —tres fallos, daño masivo o agotamiento— y enlaza la tirada.
 - **Descansos.** Corto y largo, con lo que cada uno repone. El largo exige que haya pasado un
   día de juego y que no estés a cero.
 - **Inventario.** Mochila con su peso, ranuras de equipo, manos ocupadas, sintonización y las

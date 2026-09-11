@@ -1277,6 +1277,10 @@ export class CharacterSheetService {
     let successes = character.deathSaveSuccesses;
     let failures = character.deathSaveFailures;
     let massive = false;
+    // D-CF-14, commit 5 (J5). **Solo se rellena en la transición** —de vivo/moribundo a
+    // muerto—, nunca en un segundo golpe sobre un cadáver: `character.deathSaveFailures` es el
+    // valor de ANTES de este cambio (la variable local `failures`, más abajo, ya se muta).
+    let causaMuerte: "massive_damage" | "death_saves" | null = null;
     // Tarea 16 (H1b). SRD 5.1, «Stabilizing a Creature»: *«The creature stops being stable, and
     // must start making death saving throws again, if it takes any damage.»* Y, simétrico:
     // curar por encima de 0 también la retira, porque «estable» solo describe a alguien a 0 PG.
@@ -1370,11 +1374,15 @@ export class CharacterSheetService {
       if (before > 0 && sobrante >= maxHp) {
         massive = true;
         failures = 3;
+        // `before > 0` ya descarta que este personaje estuviera muerto (eso exige 0 PG): la
+        // muerte masiva es siempre una transición fresca.
+        causaMuerte = "massive_damage";
       } else if (before === 0 && efectivo > 0) {
         // **Golpear a quien ya está a 0 suma un fracaso, y dos si el golpe fue crítico.** Es
         // el momento más frecuente del juego —el remate al que está en el suelo— y hasta hoy
         // no dejaba ningún rastro.
         failures = Math.min(3, failures + (input.critical ? 2 : 1));
+        if (character.deathSaveFailures < 3 && failures >= 3) causaMuerte = "death_saves";
       }
 
       // **La salvación de concentración** (hueco M17). *«Whenever you take damage while you
@@ -1472,11 +1480,12 @@ export class CharacterSheetService {
       },
     });
 
+    const sessionIdHp = await this.sesionActiva(campaignId, tx);
     await this.events.record(
       userId,
       campaignId,
       {
-        sessionId: await this.sesionActiva(campaignId, tx),
+        sessionId: sessionIdHp,
         subjectType: "character",
         subjectId: characterId,
         visibility: character.visibility,
@@ -1503,6 +1512,32 @@ export class CharacterSheetService {
       },
       tx,
     );
+
+    // D-CF-14, commit 5 (J5). `causaMuerte` solo se rellenó en la transición (arriba): la
+    // muerte masiva no tira nada, y el remate a tres fracasos cita la MISMA tirada que el daño
+    // ya citaba (`input.rollEventId`) — si no vino ninguna, el suceso no inventa una.
+    if (causaMuerte) {
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          sessionId: sessionIdHp,
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: character.visibility,
+          payload: {
+            type: "CHARACTER_DIED",
+            characterId,
+            name: character.name,
+            cause: causaMuerte,
+            ...(causaMuerte === "death_saves" && input.rollEventId
+              ? { rollEventId: input.rollEventId }
+              : {}),
+          },
+        },
+        tx,
+      );
+    }
 
     const respuesta = await this.buildResponse(userId, actualizado, tx);
     // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
@@ -1709,20 +1744,47 @@ export class CharacterSheetService {
         },
       });
 
-      await this.events.record(
+      const sessionId = await this.sesionActiva(campaignId, tx);
+      const visibilidadTirada = input.visibility ?? character.visibility;
+      const deathSaveEvento = await this.events.record(
         userId,
         campaignId,
         {
           subjectType: "character",
-          sessionId: await this.sesionActiva(campaignId, tx),
+          sessionId,
           subjectId: characterId,
           // La visibilidad de la tirada la puede fijar quien tira —igual que en `RollsService`—;
           // por defecto, la de la ficha, para que no haga falta decidirlo cada vez.
-          visibility: input.visibility ?? character.visibility,
+          visibility: visibilidadTirada,
           payload: { type: "DEATH_SAVE", roll: dado, result, successes, failures },
         },
         tx,
       );
+
+      // D-CF-14, commit 5 (J5). **Solo en la transición**: `character.deathSaveFailures` es el
+      // valor ANTES de esta tirada (la variable local `failures` ya se mutó arriba), así que
+      // esto solo dispara cuando el tercer fracaso ACABA de llegar — nunca en una tirada
+      // posterior sobre un cadáver que ya tenía tres.
+      if (!revivido && !estabilizado && character.deathSaveFailures < 3 && failures >= 3) {
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            sessionId,
+            subjectId: characterId,
+            visibility: visibilidadTirada,
+            payload: {
+              type: "CHARACTER_DIED",
+              characterId,
+              name: character.name,
+              cause: "death_saves",
+              rollEventId: deathSaveEvento.id,
+            },
+          },
+          tx,
+        );
+      }
 
       // **Por qué el `status` de esta respuesta no sale del genérico `estadoDeMuerte`.** Esa
       // función lee la condición reservada `CLAVE_ESTABLE` desde `hojaOMotivo` (Tarea 16), que

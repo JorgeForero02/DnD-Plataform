@@ -57,6 +57,17 @@ const DISPARO_DE_TABLA: Record<string, string> = {
   FUMBLE: "por una pifia",
 };
 
+/**
+ * D-CF-14, commit 5 (J5). **Las tres, y solo las tres, formas de morir que el motor conoce**
+ * (`gameEventPayloadSchema`, `@dnd/shared`). Ningún valor de esta enumeración llega a la
+ * pantalla sin pasar por aquí, igual que `NOMBRE_ZONA` o `VEREDICTO` arriba.
+ */
+const CAUSA_DE_MUERTE: Record<"death_saves" | "massive_damage" | "exhaustion", string> = {
+  death_saves: "tres fallos en las salvaciones",
+  massive_damage: "daño masivo",
+  exhaustion: "agotamiento",
+};
+
 /** El reloj de campaña vive en segundos (D-2C-1); una mesa no lee segundos. */
 function duracionLegible(segundos: number): string {
   if (segundos < 60) return `${segundos} s`;
@@ -236,6 +247,10 @@ export function lineaDeLog(p: GameEventPayload): string {
     }
     case "ITEM_REMOVED":
       return p.quantity > 1 ? `Suelta ${p.item} (${p.quantity} unidades)` : `Suelta ${p.item}`;
+    // D-CF-14, commit 4 (M2B-8). El `PATCH` de cantidad, con el antes y el después: es la
+    // misma regla que `HP_CHANGED`, sin la cual no se podría leer sin recalcular la historia.
+    case "ITEM_QUANTITY_CHANGED":
+      return `Ajusta ${p.item}: ${p.from} → ${p.to}`;
 
     // --- 2C: el reloj, las condiciones que vencen solas y las tablas de la casa ---
     case "CLOCK_ADVANCED": {
@@ -294,6 +309,10 @@ export function lineaDeLog(p: GameEventPayload): string {
         ? `Gasta ${NOMBRE_COSTE[p.coste]} (ya la tenía gastada)`
         : `Gasta ${NOMBRE_COSTE[p.coste]}`;
     }
+
+    // D-CF-14, commit 5 (J5). La muerte deja de derivarse en silencio: dice quién y por qué.
+    case "CHARACTER_DIED":
+      return `Muere ${p.name} — ${CAUSA_DE_MUERTE[p.cause]}`;
 
     // --- 2.5.3: el ataque comparado en el servidor ---
     case "ATTACK_RESOLVED":

@@ -129,6 +129,16 @@ export const GAME_EVENT_TYPES = [
   // aunque ya estuviera gastado** («el sistema propone, tú decides»): `excedido`, en el
   // `payload`, es el aviso, y bloquear sería el servidor arbitrando la mesa.
   "ACTION_SPENT",
+  // D-CF-14, commit 4 (M2B-8) — **el `PATCH` de cantidad no dejaba rastro.** `consume` escribía
+  // `ITEM_REMOVED` y `create` escribía `ITEM_ADDED`, pero cambiar la cantidad de una pila ya
+  // puesta —absoluta o por delta— no escribía nada: una pila que pasaba de 3 a 5 antorchas no
+  // tenía ninguna línea que lo contara.
+  "ITEM_QUANTITY_CHANGED",
+  // D-CF-14, commit 5 (J5) — **la muerte se derivaba y nunca se registraba.** `estadoDeMuerte`
+  // (`character-sheet.service.ts`) calcula "muerto" al leer, así que el registro no podía
+  // responder «¿de qué murió Elara?»: ni la fecha, ni la causa, ni si fue una tirada la que lo
+  // decidió.
+  "CHARACTER_DIED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -490,6 +500,20 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   }),
 
   /**
+   * D-CF-14, commit 4 (M2B-8). **El `PATCH` con `quantity` (absoluta) o `quantityDelta` cambia
+   * la cuenta de una pila que ya está en el inventario** —no la crea (`ITEM_ADDED`) ni la agota
+   * (`ITEM_REMOVED`, que es `consume`)—, así que necesita su propio tipo. `from`/`to`, como en
+   * `HP_CHANGED`: sin el antes y el después la línea de tiempo no se puede leer sin recalcular.
+   */
+  z.object({
+    type: z.literal("ITEM_QUANTITY_CHANGED"),
+    item: z.string().min(1).max(120),
+    ref: z.string().min(1).max(80),
+    from: z.number().int().min(0).max(9999),
+    to: z.number().int().min(0).max(9999),
+  }),
+
+  /**
    * Un movimiento de la bolsa. **Los deltas por denominación, no un total**: la mesa dice «tres
    * de plata», y guardar el total normalizado obliga a inventarse un cambio que nadie pidió.
    *
@@ -655,6 +679,33 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     cantidad: z.number().int().positive().max(1000).optional(),
     /** TRUE cuando ya estaba gastado, o el movimiento se pasó de su velocidad. */
     excedido: z.boolean(),
+  }),
+
+  /**
+   * D-CF-14, commit 5 (J5). **La muerte se derivaba y nunca se registraba.** `estadoDeMuerte`
+   * (`character-sheet.service.ts`) la calcula al leer sobre tres causas —tres fracasos de
+   * muerte, daño masivo, agotamiento nivel 6—, y ninguna dejaba rastro: la línea de tiempo no
+   * podía responder «¿de qué murió Elara?».
+   *
+   * **`characterId` y `name` van en el `payload`** aunque el sujeto del suceso ya sea el
+   * personaje: `lineaDeLog` (`apps/web`) solo recibe el `payload`, nunca el suceso completo, y
+   * sin el nombre no puede componer «Muere Elara…».
+   *
+   * **`cause` es un vocabulario cerrado**, no texto libre: las tres causas son las únicas formas
+   * de morir que este motor conoce, y su frase legible vive en `CAUSA_DE_MUERTE`
+   * (`apps/web/src/features/sessions/linea-de-log.ts`) — ningún valor de esta enumeración llega
+   * a la pantalla sin pasar por ahí.
+   *
+   * **`rollEventId` es opcional y solo aparece con `"death_saves"`**: el tercer fracaso siempre
+   * sale de una tirada (la propia `DEATH_SAVE`, o la de daño citada por `changeHp`); el daño
+   * masivo no tira nada y el agotamiento tampoco.
+   */
+  z.object({
+    type: z.literal("CHARACTER_DIED"),
+    characterId: z.string().min(1),
+    name: z.string().min(1).max(120),
+    cause: z.enum(["death_saves", "massive_damage", "exhaustion"]),
+    rollEventId: z.string().min(1).optional(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

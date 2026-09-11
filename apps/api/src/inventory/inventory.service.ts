@@ -500,6 +500,19 @@ export class InventoryService {
           ...(placement.attuned !== row.attuned ? { attuned: placement.attuned } : {}),
         });
       }
+      // D-CF-14, commit 4 (M2B-8). **Solo cuando la cantidad de VERDAD cambió**: un `PATCH` de
+      // otro campo (ranura, sintonía, `storedAt`, `note`) no toca `quantity`, y `escribirColocacion`
+      // deja la fila igual — comparar contra `row.quantity`, la que esta transacción leyó con el
+      // candado puesto, es lo mismo que ya hace `ITEM_MOVED` arriba con `location`.
+      if (actualizado.quantity !== row.quantity) {
+        await this.registrarSuceso(userId, campaignId, character, tx, {
+          type: "ITEM_QUANTITY_CHANGED",
+          item: itemDef.name,
+          ref: itemDef.ref,
+          from: row.quantity,
+          to: actualizado.quantity,
+        });
+      }
 
       const ac = await this.characterSheet.armorClassInTransaction(userId, character, tx);
       return { item: actualizado, acBefore, ac };

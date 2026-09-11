@@ -10,7 +10,13 @@ import { ConditionsService } from "./conditions.service";
 
 describe("ConditionsService", () => {
   let service: ConditionsService;
-  const character = { id: "c1", ownerId: "owner1", visibility: "PLAYERS", campaignId: "cmp1" };
+  const character = {
+    id: "c1",
+    name: "Thorin",
+    ownerId: "owner1",
+    visibility: "PLAYERS",
+    campaignId: "cmp1",
+  };
   const prisma = {
     character: { findFirst: jest.fn() },
     user: { findUnique: jest.fn() },
@@ -466,6 +472,57 @@ describe("ConditionsService", () => {
     expect(prisma.characterCondition.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ create: expect.objectContaining({ level: 3 }) }),
     );
+  });
+
+  // D-CF-14, commit 5 (J5). SRD 5.1, tabla de agotamiento, nivel 6: «Death». Hasta esta tarea la
+  // muerte por agotamiento se DERIVABA (`estadoDeMuerte`) y nunca se registraba.
+  describe("el agotamiento nivel 6 registra CHARACTER_DIED", () => {
+    it('llegar a nivel 6 desde uno más bajo registra el suceso con cause "exhaustion"', async () => {
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+      // Sin condición previa (`findUnique` sin mock devuelve `undefined`): el nivel de partida es 0.
+      prisma.characterCondition.upsert.mockResolvedValue({ key: "exhaustion", level: 6 });
+
+      await service.apply("dm1", "cmp1", "c1", { key: "exhaustion", level: 6 });
+
+      expect(events.record).toHaveBeenCalledWith(
+        "dm1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            type: "CHARACTER_DIED",
+            characterId: "c1",
+            name: "Thorin",
+            cause: "exhaustion",
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it("un nivel por debajo de 6 no registra la muerte", async () => {
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+      prisma.characterCondition.upsert.mockResolvedValue({ key: "exhaustion", level: 3 });
+
+      await service.apply("dm1", "cmp1", "c1", { key: "exhaustion", level: 3 });
+
+      const muertes = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "CHARACTER_DIED",
+      );
+      expect(muertes).toHaveLength(0);
+    });
+
+    it("volver a aplicar nivel 6 estando YA en nivel 6 no repite el suceso", async () => {
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+      prisma.characterCondition.findUnique.mockResolvedValue({ key: "exhaustion", level: 6 });
+      prisma.characterCondition.upsert.mockResolvedValue({ key: "exhaustion", level: 6 });
+
+      await service.apply("dm1", "cmp1", "c1", { key: "exhaustion", level: 6 });
+
+      const muertes = events.record.mock.calls.filter(
+        (llamada) => llamada[2].payload.type === "CHARACTER_DIED",
+      );
+      expect(muertes).toHaveLength(0);
+    });
   });
 
   it("una clave que no es de las quince del SRD se guarda igual", async () => {

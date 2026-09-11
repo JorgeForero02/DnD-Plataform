@@ -128,7 +128,7 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 >
 > | Ficha | Qué se decidió | Dónde se hace |
 > |---|---|---|
-> | ~~X1 `RestKind`~~ · ~~enlaces sin rótulo~~ (hechas) · J5 muerte · I4/M2B-5 sobrecarga · I3/M2B-15 identificado · ~~`race`/`class`~~ (hecha) · suceso de cambio de cantidad (revisión de M2B-8) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
+> | ~~X1 `RestKind`~~ · ~~enlaces sin rótulo~~ · ~~J5 muerte~~ · I4/M2B-5 sobrecarga · I3/M2B-15 identificado · ~~`race`/`class`~~ · ~~suceso de cambio de cantidad~~ (hechas) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
 > | S4 rasgos raciales · M2B-4 cargas | D-CF-20/21: por el conversor de Foundry | **Paso 3**, tareas 2b y `uses` de objeto |
 > | R1 límite por IP · D8 correo · P3 archivar en la mesa · H7 rearmar · E0 TipTap · P6 Node | D-CF-12, 13, 17, 18, 19 y H7 «se rearma editando» | **Esta sesión**, con código |
 > | P2 mesa a 390 px | **Aplazada por el autor el 2026-09-11** (D-CF-26): quiere un diseño responsive nuevo y busca referencias él | Cuando el autor traiga el diseño; ninguna de las tres salidas de abajo se toca |
@@ -674,7 +674,6 @@ dirigir tres horas de verdad.
 
 | # | Qué encontró el DM | Estado |
 |---|---|---|
-| **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta. **Apunte del 2026-09-11, no ficha:** el `rollEventId` de un `HP_CHANGED` se guarda y ningún componente del hilo lo pinta —solo `ATTACK_RESOLVED` enlaza su tirada (`HiloDeSesion.tsx`)—; cuando la muerte tenga suceso, que el daño enlace su tirada igual |
 
 **El veredicto del DM, sin diplomacia:** la fase de **preparación** (wiki, cinco visibilidades,
 enlaces, comentarios, y el motor de reglas con su ensayo, propuestas y traza) la usaría el

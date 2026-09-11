@@ -80,6 +80,8 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "INITIATIVE_ROLLED_BY_SYSTEM":
       return "tirada";
 
+    // D-CF-14: ajustar una pila (commit 4, M2B-8) y morir (commit 5, J5) le pasan a alguien de
+    // la mesa, igual que el resto de este cubo — puntos de golpe, condiciones, objetos, dinero.
     case "HP_CHANGED":
     case "TEMP_HP_SET":
     case "REST_DECLARED":
@@ -96,6 +98,8 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "ITEM_ADDED":
     case "ITEM_MOVED":
     case "ITEM_REMOVED":
+    case "ITEM_QUANTITY_CHANGED":
+    case "CHARACTER_DIED":
     case "CHARACTER_ARCHIVED":
     case "CHARACTER_RESTORED":
     case "ACTION_SPENT":

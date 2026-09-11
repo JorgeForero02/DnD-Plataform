@@ -14,8 +14,8 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
 
 ## Antes de la primera sesión
 
-1. **Regístrate y crea la campaña.** Quien la crea es su DM, y eso no se puede traspasar
-   después.
+1. **Regístrate y crea la campaña.** Quien la crea es su DM. Después puedes ascender a otro
+   miembro a DM desde Resumen → miembros, y bajarte tú si queda otro.
 2. **Prepara el mundo.** Fichas por tipo —personaje no jugador, lugar, misión, facción, objeto,
    suceso, documento— con sus etiquetas, **enlazadas entre sí** y con su visibilidad puesta.
    Ahí está el valor de la herramienta: que el lugar enlace con quien lo habita y con la misión
@@ -24,9 +24,9 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
    - **Un enlace vale para una persona.** Para cuatro jugadores, cuatro enlaces.
    - **No abras tu propio enlace «para comprobar que va»**: unirte lo consume. La pantalla te
      avisa antes de que pulses.
-   - **Cópialos a un sitio seguro según los generas.** No hay lista de invitaciones enviadas, no
-     se sabe cuáles se usaron, y no se puede revocar ninguna: la pantalla solo enseña el último
-     enlace hasta que recargues.
+   - **La lista de invitaciones está en Resumen**: cuál se usó y por quién, cuál caducó, y un
+     botón para revocar la que se te fue a un chat equivocado. Las nuevas caducan a los siete
+     días si no eliges otra cosa.
 4. **Prepara tus monstruos**, si los vas a necesitar. La pestaña «Bestiario» trae criaturas del
    manual básico y admite las tuyas.
 
@@ -107,11 +107,15 @@ No son sorpresas y no van a aparecer solas a mitad de partida; cada uno tiene su
   pide la tirada y dice el resultado; **quitar los puntos de golpe lo haces tú**.
 - **«Hasta el próximo descanso largo» no es una duración.** Es un suceso, y fingir que son
   segundos sería mentir: esas condiciones se ponen indefinidas y las quitas tú.
-- **No hay segundo DM.** Toda invitación entra como jugador y el papel no se cambia después. Y
-  como tampoco se recupera una contraseña olvidada, perder la cuenta del DM deja la campaña sin
-  nadie que mande.
-- **Las sesiones se ordenan por cuándo se crearon, no por cuándo se juegan** — la fecha se ve en
-  la fila, pero el orden es el de creación. Y una fecha puesta no se puede quitar.
+- **Una contraseña olvidada no se recupera por correo: la reinicia el administrador.** Desde
+  el 2026-09-11, quien tenga la cuenta de administrador (hoy, el autor) ve en «Cuenta» un bloque
+  «Reiniciar la contraseña de una cuenta»: pone una temporal, se la dice en persona a quien la
+  olvidó, y esa persona entra con ella y la cambia en su propia «Cuenta». Su sesión abierta, si
+  la tenía, se cierra. *(Hasta ese día aquí ponía «no hay segundo DM» y «perder la cuenta del DM
+  deja la campaña sin nadie»: las dos llevaban falsas desde el plan 11, que trajo el cambio de
+  papel —Resumen → miembros— y la lista de invitaciones con revocar.)*
+- **Las sesiones van por cuándo se juegan** desde el 2026-09-10: la más lejana arriba, las sin
+  fecha detrás. Una fecha puesta todavía no se puede quitar.
 - **Nada de mapas, imágenes, adjuntos ni tiempo real.** Son fases posteriores.
 
 ---

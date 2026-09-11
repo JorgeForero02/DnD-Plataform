@@ -45,8 +45,8 @@ export class AuthController {
     // invalidate tokens after a password change) and rejects a deleted user with 401. So the
     // user is read from there: a second lookup here was a repeated query with an unreachable
     // 404 behind it (ficha 1.18a, cerrada el 2026-09-10).
-    const { id, email, displayName } = req.user;
-    return { id, email, displayName };
+    const { id, email, displayName, isAdmin } = req.user;
+    return { id, email, displayName, isAdmin };
   }
 
   // Display name only — email and id are immutable through this endpoint. The user comes
@@ -54,11 +54,16 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Patch("me")
   async updateDisplayName(
-    @Req() req: { user: { id: string; email: string } },
+    @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(updateDisplayNameSchema)) body: UpdateDisplayNameInput,
   ): Promise<AuthUser> {
     const user = await this.users.updateDisplayName(req.user.id, body.displayName);
-    return { id: user.id, email: user.email, displayName: user.displayName };
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      isAdmin: req.user.isAdmin,
+    };
   }
 
   // Password CHANGE (requires the current password, verified server-side) — not recovery.

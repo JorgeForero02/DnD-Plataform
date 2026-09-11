@@ -48,7 +48,14 @@ describe("Auth (e2e)", () => {
 
     const me = await request(server).get("/auth/me").set("Authorization", `Bearer ${token}`);
     expect(me.status).toBe(200);
-    expect(me.body).toEqual({ id: expect.any(String), email, displayName: "Gandalf" });
+    // `isAdmin` viaja desde el 2026-09-11 (D8): la pantalla decide qué ofrecer, el servidor sigue
+    // decidiendo quién puede.
+    expect(me.body).toEqual({
+      id: expect.any(String),
+      email,
+      displayName: "Gandalf",
+      isAdmin: false,
+    });
   });
 
   it("rejects /auth/me with no token", async () => {
@@ -64,7 +71,12 @@ describe("Auth (e2e)", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ displayName: "Gandalf the White" });
     expect(patch.status).toBe(200);
-    expect(patch.body).toEqual({ id: expect.any(String), email, displayName: "Gandalf the White" });
+    expect(patch.body).toEqual({
+      id: expect.any(String),
+      email,
+      displayName: "Gandalf the White",
+      isAdmin: false,
+    });
 
     const me = await request(server).get("/auth/me").set("Authorization", `Bearer ${token}`);
     expect(me.body.displayName).toBe("Gandalf the White");

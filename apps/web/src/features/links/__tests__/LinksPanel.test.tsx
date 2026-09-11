@@ -67,7 +67,9 @@ describe("LinksPanel", () => {
     // remove a link. Defaults every test to a DM (the widest permission) so the pre-existing
     // add/remove/error tests below keep exercising what they always did; the dedicated
     // "permiso" describe block below overrides this per test.
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "u1", displayName: "Creator", role: "PLAYER" },
@@ -381,7 +383,9 @@ describe("LinksPanel", () => {
   // decisión la manda resuelta el servidor en `canRemove`, en vez de recalcularla aquí.
   describe("permiso para quitar enlaces", () => {
     it("deshabilita Quitar, con el motivo, cuando el servidor dice que no", async () => {
-      useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+      useAuthStore.setState({
+        user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+      });
       vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "p1", displayName: "P", role: "PLAYER" },
@@ -407,7 +411,9 @@ describe("LinksPanel", () => {
     });
 
     it("deja Quitar habilitado cuando el servidor dice que sí, aunque no sea DM", async () => {
-      useAuthStore.setState({ user: { id: "creator1", email: "c@b.com", displayName: "C" } });
+      useAuthStore.setState({
+        user: { id: "creator1", email: "c@b.com", displayName: "C", isAdmin: false },
+      });
       vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "creator1", displayName: "C", role: "PLAYER" },

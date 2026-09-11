@@ -1,4 +1,9 @@
-import type { AuthResponse, ChangePasswordInput, UpdateDisplayNameInput } from "@dnd/shared";
+import type {
+  AuthResponse,
+  ChangePasswordInput,
+  UpdateDisplayNameInput,
+  AdminPasswordResetInput,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Same shape auth.schema.ts's AuthResponse already carries for register/login — this is the
@@ -25,6 +30,16 @@ export function updateDisplayName(input: UpdateDisplayNameInput): Promise<AuthRe
 export function changePassword(input: ChangePasswordInput): Promise<{ success: true }> {
   return apiFetch<{ success: true }>("/auth/password", {
     method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+// Ficha D8 (D-CF-18): un administrador pone una contraseña temporal a otra cuenta. La pantalla
+// solo ofrece el formulario si `/auth/me` dice `isAdmin`; quién puede lo decide el servidor
+// (`AdminGuard`), y a quien no puede le contesta 403.
+export function adminPasswordReset(input: AdminPasswordResetInput): Promise<{ success: true }> {
+  return apiFetch<{ success: true }>("/admin/password-resets", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }

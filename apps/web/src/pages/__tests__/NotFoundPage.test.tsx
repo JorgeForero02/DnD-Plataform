@@ -46,7 +46,10 @@ describe("NotFoundPage", () => {
   });
 
   it("sends a logged-in visitor back to the campaign list", () => {
-    useAuthStore.setState({ token: "tok", user: { id: "u1", email: "a@a.com", displayName: "A" } });
+    useAuthStore.setState({
+      token: "tok",
+      user: { id: "u1", email: "a@a.com", displayName: "A", isAdmin: false },
+    });
     renderAt("/una-ruta-inventada");
     fireEvent.click(screen.getByRole("button", { name: "Volver a mis campañas" }));
     expect(screen.getByText("Tus crónicas")).toBeInTheDocument();

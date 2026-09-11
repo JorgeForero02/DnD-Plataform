@@ -22,7 +22,7 @@ describe("useAuthRehydration", () => {
     const fetchMe = vi.spyOn(authApi, "fetchMe");
     useAuthStore.setState({
       token: "tok",
-      user: { id: "1", email: "a@b.com", displayName: "Gandalf" },
+      user: { id: "1", email: "a@b.com", displayName: "Gandalf", isAdmin: false },
     });
     renderHook(() => useAuthRehydration());
     expect(fetchMe).not.toHaveBeenCalled();
@@ -34,6 +34,7 @@ describe("useAuthRehydration", () => {
       id: "1",
       email: "a@b.com",
       displayName: "Gandalf",
+      isAdmin: false,
     });
 
     renderHook(() => useAuthRehydration());

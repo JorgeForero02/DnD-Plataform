@@ -43,7 +43,9 @@ beforeEach(() => {
 
 describe("PanelDeDados — quién puede pedir", () => {
   it("un jugador no ve el formulario de pedir", async () => {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Alice" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "Alice", isAdmin: false },
+    });
 
     pintar();
 
@@ -55,7 +57,9 @@ describe("PanelDeDados — quién puede pedir", () => {
   });
 
   it("el DM sí lo ve", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
 
     pintar();
 

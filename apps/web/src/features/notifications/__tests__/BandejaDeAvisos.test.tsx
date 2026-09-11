@@ -50,7 +50,10 @@ function pintar() {
 beforeEach(() => {
   vi.restoreAllMocks();
   // Sin sesión la bandeja no pregunta nada: es lo que evita un 401 por carga en `/acerca-de`.
-  useAuthStore.setState({ token: "t", user: { id: "u1", email: "u@b.com", displayName: "U" } });
+  useAuthStore.setState({
+    token: "t",
+    user: { id: "u1", email: "u@b.com", displayName: "U", isAdmin: false },
+  });
 });
 
 describe("BandejaDeAvisos", () => {

@@ -47,6 +47,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // El nombre visible va con el usuario de la petición: se lee fresco aquí en cada llamada
     // (nunca del token, que es inmutable), y así `GET /auth/me` no vuelve a preguntar. El hash
     // se queda fuera, como siempre.
-    return { id: user.id, email: user.email, displayName: user.displayName };
+    return { id: user.id, email: user.email, displayName: user.displayName, isAdmin: user.isAdmin };
   }
 }

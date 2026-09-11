@@ -264,7 +264,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   });
 
   function asPlayer() {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "p1", displayName: "P", role: "PLAYER" },
@@ -272,7 +274,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   }
 
   function asDM() {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "p1", displayName: "P", role: "PLAYER" },
@@ -359,7 +363,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   });
 
   it("lets a player edit an entity they created themselves", async () => {
-    useAuthStore.setState({ user: { id: "creator1", email: "c@b.com", displayName: "C" } });
+    useAuthStore.setState({
+      user: { id: "creator1", email: "c@b.com", displayName: "C", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "creator1", displayName: "C", role: "PLAYER" },
@@ -456,7 +462,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   });
 
   it("lets the owner edit their own character", async () => {
-    useAuthStore.setState({ user: { id: "owner1", email: "o@b.com", displayName: "O" } });
+    useAuthStore.setState({
+      user: { id: "owner1", email: "o@b.com", displayName: "O", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "owner1", displayName: "O", role: "PLAYER" },
@@ -506,7 +514,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   // let that tab's own useMyRole trigger a second, successful fetch on the same query key
   // (staleTime 0) before the assertions below run, hiding exactly the error state under test.
   it("treats a failed members fetch as 'still checking', not 'no permission', and offers a retry", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     // **Falla mientras se le diga que falle, no «la primera vez».** Con `mockRejectedValueOnce`
     // esta prueba dependía de **cuántos observadores** montaran la consulta de miembros, y B5 lo
     // rompió al pedirlos también en el resumen: la primera petición se la comía el tablero, y
@@ -555,7 +565,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
   // CampaignDetailPage.tsx (drop the `reason === CHECKING_PERMISSIONS` check) and this fails
   // even though the placeholder text itself is unchanged.
   it("the 'still checking' placeholder on a row stays muted, not warning", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
 
     renderPage();
@@ -577,7 +589,9 @@ describe("CampaignDetailPage — row opens for anyone who can view, editor hones
 describe("CampaignDetailPage — borrar desde la lista, con dos filas", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
     ]);
@@ -761,7 +775,9 @@ describe("CampaignDetailPage — EntityTab: etiquetas visibles y filtro por etiq
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
     ]);
@@ -953,7 +969,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   }
 
   function asPlayer() {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Jugadora" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "Jugadora", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "p1", displayName: "Jugadora", role: "PLAYER" },
@@ -961,7 +979,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   }
 
   function asDM() {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "p1", displayName: "Jugadora", role: "PLAYER" },
@@ -1276,7 +1296,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   // campaña." while their own members request is still in flight — that's a false "no
   // permission" claim, exactly what arreglo 4 (1.15-fix) exists to prevent everywhere else.
   it("mientras el rol está en vuelo, ambos paneles dicen 'Comprobando permisos…' y nunca afirman que no eres DM", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
 
     await renderAjustes();
@@ -1298,7 +1320,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
   });
 
   it("con un fallo al comprobar el rol, ambos paneles siguen diciendo 'Comprobando permisos…', nunca 'no eres DM', y ofrecen Reintentar", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockRejectedValue(new Error("network error"));
 
     await renderAjustes();
@@ -1329,7 +1353,9 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
 describe("CampaignDetailPage — la maqueta adoptada", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
     ]);

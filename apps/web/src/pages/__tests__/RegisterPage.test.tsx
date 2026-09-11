@@ -29,7 +29,7 @@ describe("RegisterPage", () => {
     invitesApi.savePendingInvite("tok-guardado");
     vi.spyOn(api, "register").mockResolvedValue({
       token: "jwt",
-      user: { id: "u1", email: "b@b.com", displayName: "B" },
+      user: { id: "u1", email: "b@b.com", displayName: "B", isAdmin: false },
     });
     renderRegister();
 
@@ -46,7 +46,7 @@ describe("RegisterPage", () => {
   it("with no pending invitation, navigates to the dashboard", async () => {
     vi.spyOn(api, "register").mockResolvedValue({
       token: "jwt",
-      user: { id: "u1", email: "b@b.com", displayName: "B" },
+      user: { id: "u1", email: "b@b.com", displayName: "B", isAdmin: false },
     });
     renderRegister();
 

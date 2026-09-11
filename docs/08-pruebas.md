@@ -41,8 +41,8 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 53 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 38 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 54 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 39 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -196,7 +196,8 @@ en verde.
 | Suite | Qué demuestra |
 |---|---|
 | `auth` | Registro, sesión y `/auth/me`. Cambiar el nombre visible y la contraseña; **cambiar la contraseña invalida los tokens emitidos antes**, que es una regla de seguridad y no una comodidad. Sin token, 401. |
-| `rate-limit` | El límite de intentos en registro, sesión, cambio de contraseña y aceptación de invitación: el 429 llega cuando se agotan, por IP. |
+| `rate-limit` | El límite de intentos en registro, sesión, cambio de contraseña y aceptación de invitación: el 429 llega cuando se agotan, por IP. **Y desde el 2026-09-11, el límite global cuenta por usuario con sesión iniciada**: dos usuarios desde una IP tienen dos cubos, y cien tokens falsos con `sub` distinto caen en uno solo, el de la IP. |
+| `admin-password-reset` | **La contraseña olvidada la reinicia un administrador** (D8): quien no lo es recibe 403; la temporal entra, la vieja no, y el token anterior del afectado caduca; `/auth/me` dice `isAdmin`. |
 | `trust-proxy` | **Que el límite no se puede evadir cambiando la cabecera `X-Forwarded-For`** en cada intento, y que un salto real distinto sí tiene su propia cuota. Es la comprobación que justifica el número de proxies de confianza en producción. |
 | `security-headers` | Las cabeceras de Helmet salen **en toda respuesta, incluida una 401**, y no hay cabeceras CORS si no se configuró origen. |
 | `invites` | El DM invita, el jugador acepta y entra; quien no es DM no puede invitar; **una invitación no se reutiliza**. |
@@ -270,6 +271,7 @@ en verde.
 |---|---|
 | `campana` | **Desde B4: el mundo es un solo destino** — los siete tipos ya no están en el carril, son filtros con `aria-pressed` dentro de él, y `?seccion=LOCATION` sigue abriendo los lugares en los dos sentidos. **Desde B3: la puerta de entrada** — elegir una crónica no navega, entrar sí, y va a la mesa y no a los ajustes. Del registro a ver una ficha creada; enlaces y comentarios ejercitados de verdad; borrar una entidad se lleva sus enlaces; crear sesión y personaje con su visibilidad; el Markdown que vuelve como encabezado; filtrar por etiqueta; y editar, expulsar y borrar desde Ajustes. |
 | `invitacion` | **Y desde B5, el camino nuevo**: el DM llega a la invitación **desde el resumen**, que le dice «Todavía no hay jugadores» —cosa que antes no decía: enseñaba personajes, que no es lo mismo— y le lleva a Ajustes en un clic; con el jugador ya dentro, **el aviso se apaga** y el papel sale traducido, nunca `PLAYER`. **Dos contextos de navegador**, con cookies y almacenamiento propios, como dos navegadores distintos: el DM invita, el jugador entra por el enlace, se registra desde ahí y **no ve la entidad `DM_ONLY`**. |
+| `admin-reinicio` | **El reinicio por administrador de punta a punta, con dos navegadores**: quien no es administrador no ve el bloque; el administrador —ascendido en la base por el CLI de Prisma, sin shell— pone la temporal, el bloque cabe en la ventana (medido), el amigo pierde su sesión y entra con la temporal. |
 | `cuenta` | Cambiar la contraseña **invalida el token viejo contra la API real**; la contraseña equivocada no cierra la sesión; una ruta inventada y una campaña inexistente dicen qué pasa **en vez de dejar la pantalla en blanco**. |
 | `condiciones-en-la-mesa` | **Las dos mitades con las que el motor de condiciones llega a la mesa** (fichas M16 y M17), que se habían dado por cerradas con el servidor hecho y ninguna pantalla usándolo. Marcar la concentración desde la hoja y que **entonces** 25 de daño hagan que el servidor pida la salvación con CD 12, vista donde el jugador la sondea — el nivel 8 del personaje es parte de la prueba: a nivel 1 esos 25 son muerte masiva. Y que una condición ponga su aviso **donde se decide el modo de la tirada**, preseleccionado y **editable**, sin aviso donde la regla no aplica (envenenado no toca las salvaciones de Fuerza). |
 | `combate` | **El combate entero desde la mesa** (2.5.6): entrar en combate, ver el orden, pasar turno hasta subir de asalto, recargar la página y que el combate siga, y salir. Lo que se demuestra aquí y no en `jsdom` es que **no se navega a ninguna parte** —la URL no cambia y el elenco y el registro siguen visibles debajo de la tira—, que **uno y solo uno tiene el turno**, y que la tira **no arrastra la página a lo ancho**. Y de paso caza lo que ninguna otra capa podía: **`apiFetch` mandaba `Content-Type: application/json` sin cuerpo**, y Fastify rechaza eso con un 400 — o sea que **todos los POST sin cuerpo estaban rotos desde el navegador** mientras los e2e de API pasaban en verde, porque supertest no pone esa cabecera si no hay `.send()`. |

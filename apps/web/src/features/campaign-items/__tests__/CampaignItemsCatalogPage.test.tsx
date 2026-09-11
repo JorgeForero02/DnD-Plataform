@@ -96,7 +96,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 
   it("mezcla las dos procedencias en una lista y marca cada una", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
     vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([objetoDelSrd]);
     renderPage();
@@ -109,7 +111,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 
   it("la búsqueda filtra la lista, y es de cliente sobre lo que el servidor ya mandó", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
     vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([objetoDelSrd]);
     renderPage();
@@ -124,7 +128,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 
   it("un objeto del SRD no se puede editar: es contenido de la obra, no de la campaña", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([]);
     vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([objetoDelSrd]);
     renderPage();
@@ -135,7 +141,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 
   it("un jugador ve la lista pero no el botón de crear", async () => {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Alice" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "Alice", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
     renderPage();
 
@@ -144,7 +152,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 
   it("el DM ve el botón de crear", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
     renderPage();
 
@@ -152,7 +162,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 
   it("ninguna enumeración cruda aparece en el DOM", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([
       objetoDelCatalogo,
       objetoConEfecto,
@@ -179,7 +191,9 @@ describe("CampaignItemsCatalogPage — lista", () => {
 describe("CampaignItemsCatalogPage — crear un arma", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
     ]);
@@ -247,7 +261,9 @@ describe("CampaignItemsCatalogPage — ficha y borrado", () => {
   });
 
   it("un jugador no ve los controles de escritura en la ficha", async () => {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Alice" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "Alice", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
     renderPage();
 
@@ -257,7 +273,9 @@ describe("CampaignItemsCatalogPage — ficha y borrado", () => {
   });
 
   it("el 409 al borrar se enseña con su frase", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([objetoDelCatalogo]);
     vi.spyOn(campaignItemsApi, "deleteCampaignItem").mockRejectedValue(
       new Error("2 personaje(s) llevan este objeto en su inventario; no se puede borrar."),

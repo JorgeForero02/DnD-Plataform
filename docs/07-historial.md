@@ -59,6 +59,13 @@ mutación. Texto y medición en
   **Lección:** la primera prueba de «token falso» no cazaba la mutación `verify → decode` porque
   todos los tokens llevaban el mismo `sub`; una prueba que no se ve fallar con el mutante no
   prueba nada.
+- **D8** — la contraseña olvidada la reinicia un administrador con una temporal
+  (`POST /admin/password-resets`, `AdminGuard`, bloque en «Cuenta» solo para `isAdmin`, que ahora
+  viaja en `/auth/me`). Sin correo. Recorrido real con dos navegadores en `admin-reinicio.spec.ts`.
+  **De paso, `09-jugar.md` mentía en tres sitios** —«no hay segundo DM», «no se puede revocar una
+  invitación», «perder la cuenta del DM deja la campaña sin nadie»— desde el plan 11; corregidos.
+  **Revertir:** quitar `AdminController` del módulo y el bloque de `AccountPage`; `isAdmin` en
+  `AuthUser` puede quedarse.
 
 ## Las decisiones del autor sobre el cubo D, y nueve fichas que cierran solas (2026-09-10)
 

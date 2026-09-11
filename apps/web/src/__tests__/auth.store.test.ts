@@ -12,7 +12,7 @@ describe("auth store", () => {
   it("setAuth stores token+user and persists token", () => {
     useAuthStore.getState().setAuth({
       token: "abc",
-      user: { id: "1", email: "a@b.com", displayName: "G" },
+      user: { id: "1", email: "a@b.com", displayName: "G", isAdmin: false },
     });
     expect(useAuthStore.getState().token).toBe("abc");
     expect(useAuthStore.getState().user?.email).toBe("a@b.com");
@@ -22,7 +22,7 @@ describe("auth store", () => {
   it("logout clears state and storage", () => {
     useAuthStore.getState().setAuth({
       token: "abc",
-      user: { id: "1", email: "a@b.com", displayName: "G" },
+      user: { id: "1", email: "a@b.com", displayName: "G", isAdmin: false },
     });
     useAuthStore.getState().logout();
     expect(useAuthStore.getState().token).toBeNull();
@@ -49,12 +49,15 @@ describe("auth store", () => {
     localStorage.setItem("dnd_token", "already-there");
     useAuthStore.setState({ token: "already-there", user: null });
 
-    useAuthStore.getState().setUser({ id: "1", email: "a@b.com", displayName: "Gandalf" });
+    useAuthStore
+      .getState()
+      .setUser({ id: "1", email: "a@b.com", displayName: "Gandalf", isAdmin: false });
 
     expect(useAuthStore.getState().user).toEqual({
       id: "1",
       email: "a@b.com",
       displayName: "Gandalf",
+      isAdmin: false,
     });
     expect(useAuthStore.getState().token).toBe("already-there");
     expect(localStorage.getItem("dnd_token")).toBe("already-there");

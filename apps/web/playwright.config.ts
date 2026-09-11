@@ -34,6 +34,9 @@ const BASE_DATABASE_URL =
   process.env.DATABASE_URL ??
   "postgresql://dnd:dnd@localhost:5432/dnd";
 const SLOT_DATABASE_URL = databaseUrlForSlot(BASE_DATABASE_URL, SLOT);
+// Los workers de Playwright heredan el entorno del runner: un e2e que necesite tocar la base
+// directamente (conceder `isAdmin`, que solo se da a mano — D-CF-7) la encuentra aquí.
+process.env.E2E_DATABASE_URL = SLOT_DATABASE_URL;
 
 export default defineConfig({
   testDir: "./e2e",

@@ -25,10 +25,10 @@ describe("AuthController", () => {
     // carga la fila entera en cada petición y rechaza con 401 al usuario borrado, así que
     // volver a buscarlo aquí era una consulta repetida con una rama muerta detrás.
     const result = await controller.me({
-      user: { id: "1", email: "a@b.com", displayName: "Gandalf" },
+      user: { id: "1", email: "a@b.com", displayName: "Gandalf", isAdmin: false },
     });
     expect(usersService.findById).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "Gandalf" });
+    expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "Gandalf", isAdmin: false });
   });
 
   it("updateDisplayName() renames the caller taken from the JWT, not the body", async () => {
@@ -39,11 +39,11 @@ describe("AuthController", () => {
       passwordHash: "should-not-leak",
     });
     const result = await controller.updateDisplayName(
-      { user: { id: "1", email: "a@b.com" } },
+      { user: { id: "1", email: "a@b.com", displayName: "Old", isAdmin: false } },
       { displayName: "New Name" },
     );
     expect(usersService.updateDisplayName).toHaveBeenCalledWith("1", "New Name");
-    expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "New Name" });
+    expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "New Name", isAdmin: false });
   });
 
   it("changePassword() delegates to AuthService with the caller's id from the JWT, never the body", async () => {

@@ -25,7 +25,9 @@ describe("CommentThread", () => {
     // delete a comment. Defaults every test here to its author (u1), the narrowest identity
     // that can still delete its own comment, so the pre-existing tests below keep exercising
     // what they always did; the dedicated "permiso" describe block overrides this per test.
-    useAuthStore.setState({ user: { id: "u1", email: "u@b.com", displayName: "Alice" } });
+    useAuthStore.setState({
+      user: { id: "u1", email: "u@b.com", displayName: "Alice", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "u1", displayName: "Alice", role: "DM" },
     ]);
@@ -84,7 +86,9 @@ describe("CommentThread", () => {
   // anyone but the DM or the comment's own author.
   describe("permiso para borrar comentarios", () => {
     it("deshabilita Borrar, con el motivo, para quien no es DM ni el autor", async () => {
-      useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+      useAuthStore.setState({
+        user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+      });
       vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "otro", displayName: "Otro", role: "PLAYER" },
@@ -114,7 +118,9 @@ describe("CommentThread", () => {
     // comment). This test is the one that would catch it: two comments, one the viewer's own,
     // one someone else's.
     it("con dos comentarios, habilita Borrar solo en el propio y lo deshabilita en el ajeno", async () => {
-      useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+      useAuthStore.setState({
+        user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+      });
       vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "otro", displayName: "Otro", role: "PLAYER" },
@@ -133,7 +139,9 @@ describe("CommentThread", () => {
     });
 
     it("deja Borrar habilitado para el propio autor, aunque no sea DM", async () => {
-      useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+      useAuthStore.setState({
+        user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+      });
       vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "p1", displayName: "P", role: "PLAYER" },
@@ -148,7 +156,9 @@ describe("CommentThread", () => {
     });
 
     it("deja Borrar habilitado para el DM sobre el comentario de otro", async () => {
-      useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+      useAuthStore.setState({
+        user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+      });
       vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
         { userId: "dm1", displayName: "DM", role: "DM" },
         { userId: "otro", displayName: "Otro", role: "PLAYER" },

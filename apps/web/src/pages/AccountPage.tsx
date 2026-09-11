@@ -7,6 +7,8 @@ import {
   changePasswordSchema,
   type UpdateDisplayNameInput,
   type ChangePasswordInput,
+  adminPasswordResetSchema,
+  type AdminPasswordResetInput,
 } from "@dnd/shared";
 import * as authApi from "../features/auth/api";
 import { useAuthStore } from "../store/auth.store";
@@ -41,6 +43,10 @@ export function AccountPage() {
       <div className="flex max-w-sm flex-col gap-4">
         <DisplayNameForm />
         <PasswordForm />
+        {/* Ficha D8 (D-CF-18): sin servicio de correo, la contraseña olvidada la reinicia un
+            administrador. El bloque solo se ofrece a quien el servidor dice que lo es; la
+            autorización de verdad es `AdminGuard`, y a un impostor le contestaría 403. */}
+        {user?.isAdmin && <AdminPasswordResetForm />}
         {/* U7: el ornamento se puede apagar. Va aquí y no en el conmutador de tema porque no es un
             tema —no cambia ningún color— y mezclarlos habría dado un control de cuatro estados que
             no dice qué hace ninguno. */}
@@ -206,6 +212,67 @@ function PasswordForm() {
           </p>
         )}
         <Button type="submit">Cambiar contraseña</Button>
+      </form>
+    </Panel>
+  );
+}
+
+/**
+ * Reinicio de contraseña de OTRA cuenta, solo para un administrador (ficha D8, D-CF-18). Pone una
+ * temporal; la persona entra con ella y la cambia en su propia cuenta con el formulario de arriba.
+ * El servidor caduca sus tokens anteriores, así que si estaba dentro, sale.
+ */
+function AdminPasswordResetForm() {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AdminPasswordResetInput>({ resolver: zodResolver(adminPasswordResetSchema) });
+  const [error, setError] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<string | null>(null);
+
+  const onSubmit = async (data: AdminPasswordResetInput) => {
+    setError(null);
+    setHecho(null);
+    try {
+      await authApi.adminPasswordReset(data);
+      setHecho(data.email);
+      reset();
+    } catch (e) {
+      setError(translateAccountError(e));
+    }
+  };
+
+  return (
+    <Panel tone="chrome">
+      <h2 className="text-chrome-sm font-semibold">Reiniciar la contraseña de una cuenta</h2>
+      <p className="mt-1 text-chrome-xs text-muted">
+        Para quien la haya olvidado. Le pones una temporal, entra con ella y la cambia aquí mismo.
+        Su sesión abierta, si la tenía, se cierra.
+      </p>
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-3 space-y-3">
+        <Field label="Correo de la cuenta" error={errors.email?.message}>
+          <input type="email" className={fieldControlClass} {...register("email")} />
+        </Field>
+        <Field
+          label="Contraseña temporal"
+          hint="Al menos 8 caracteres. Dísela en persona, no por escrito."
+          error={errors.temporaryPassword?.message}
+        >
+          <input type="text" className={fieldControlClass} {...register("temporaryPassword")} />
+        </Field>
+        {error && (
+          <p role="alert" className="text-chrome-sm text-danger-text">
+            {error}
+          </p>
+        )}
+        {hecho && (
+          <p role="status" className="flex items-center gap-1 text-chrome-sm text-accent-text">
+            <IconoConfirmacion className="h-[1em] w-[1em]" /> Temporal puesta a {hecho}.
+          </p>
+        )}
+        <Button type="submit">Poner la temporal</Button>
       </form>
     </Panel>
   );

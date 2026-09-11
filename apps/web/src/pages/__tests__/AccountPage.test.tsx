@@ -49,14 +49,49 @@ describe("AccountPage", () => {
     localStorage.clear();
     useAuthStore.setState({
       token: "tok",
-      user: { id: "u1", email: "a@a.com", displayName: "Alicia" },
+      user: { id: "u1", email: "a@a.com", displayName: "Alicia", isAdmin: false },
       flash: null,
     });
     localStorage.setItem("dnd_token", "tok");
   });
 
+  describe("reinicio de contraseña por administrador (ficha D8, D-CF-18)", () => {
+    it("quien no es administrador no ve el bloque", () => {
+      renderAccount();
+      expect(screen.queryByText(/Reiniciar la contraseña de una cuenta/)).not.toBeInTheDocument();
+    });
+
+    it("el administrador lo ve, y enviar llama al endpoint con correo y temporal", async () => {
+      useAuthStore.setState({
+        user: { id: "u1", email: "a@a.com", displayName: "Alicia", isAdmin: true },
+      });
+      const reset = vi.spyOn(authApi, "adminPasswordReset").mockResolvedValue({ success: true });
+      renderAccount();
+      expect(screen.getByText(/Reiniciar la contraseña de una cuenta/)).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Correo de la cuenta"), {
+        target: { value: "amigo@b.com" },
+      });
+      fireEvent.change(screen.getByLabelText("Contraseña temporal"), {
+        target: { value: "temporal-123" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Poner la temporal" }));
+      await waitFor(() =>
+        expect(reset).toHaveBeenCalledWith({
+          email: "amigo@b.com",
+          temporaryPassword: "temporal-123",
+        }),
+      );
+      expect(await screen.findByRole("status")).toHaveTextContent(/amigo@b.com/);
+    });
+  });
+
   it("saves a new display name and reflects it in the store, not just on screen", async () => {
-    const updated = { id: "u1", email: "a@a.com", displayName: "Alicia Renombrada" };
+    const updated = {
+      id: "u1",
+      email: "a@a.com",
+      displayName: "Alicia Renombrada",
+      isAdmin: false,
+    };
     const spy = vi.spyOn(authApi, "updateDisplayName").mockResolvedValue(updated);
     renderAccount();
 
@@ -87,7 +122,9 @@ describe("AccountPage", () => {
     expect((screen.getByLabelText("Nombre") as HTMLInputElement).value).toBe("");
 
     act(() => {
-      useAuthStore.setState({ user: { id: "u1", email: "a@a.com", displayName: "Alicia" } });
+      useAuthStore.setState({
+        user: { id: "u1", email: "a@a.com", displayName: "Alicia", isAdmin: false },
+      });
     });
 
     await waitFor(() =>

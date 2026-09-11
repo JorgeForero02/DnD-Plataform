@@ -4,6 +4,7 @@ import { PassportModule } from "@nestjs/passport";
 import { UsersModule } from "../users/users.module";
 import { requireJwtSecret } from "../common/jwt-secret";
 import { AuthService } from "./auth.service";
+import { AdminController } from "./admin.controller";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./jwt.strategy";
 
@@ -27,7 +28,7 @@ import { JwtStrategy } from "./jwt.strategy";
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AdminController],
   providers: [AuthService, JwtStrategy],
   // `JwtModule` sale para que el guard global del límite de peticiones pueda verificar el token
   // y clavar el cubo al usuario (ficha R1): el mismo secreto que firma es el que verifica.

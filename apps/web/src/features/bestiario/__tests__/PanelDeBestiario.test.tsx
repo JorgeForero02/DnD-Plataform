@@ -25,10 +25,14 @@ function renderPanel() {
 }
 
 function comoDm() {
-  useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+  useAuthStore.setState({
+    user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+  });
 }
 function comoJugador() {
-  useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "Alice" } });
+  useAuthStore.setState({
+    user: { id: "p1", email: "p@b.com", displayName: "Alice", isAdmin: false },
+  });
 }
 
 const goblin: Statblock = {

@@ -34,7 +34,7 @@ describe("JoinPage", () => {
   it("with an active session, shows a confirmation and does not accept until the user clicks", async () => {
     useAuthStore.setState({
       token: "jwt-abc",
-      user: { id: "u1", displayName: "DM", email: "dm@x.com" },
+      user: { id: "u1", displayName: "DM", email: "dm@x.com", isAdmin: false },
     });
     const spy = vi
       .spyOn(invitesApi, "acceptInvite")
@@ -53,7 +53,7 @@ describe("JoinPage", () => {
   it("accepts the token from the URL only after the explicit click, and navigates to the campaign the server returned", async () => {
     useAuthStore.setState({
       token: "jwt-abc",
-      user: { id: "u1", displayName: "DM", email: "dm@x.com" },
+      user: { id: "u1", displayName: "DM", email: "dm@x.com", isAdmin: false },
     });
     const spy = vi
       .spyOn(invitesApi, "acceptInvite")
@@ -71,7 +71,7 @@ describe("JoinPage", () => {
   it("does not accept twice from a rapid double click, even under React.StrictMode", async () => {
     useAuthStore.setState({
       token: "jwt-abc",
-      user: { id: "u1", displayName: "DM", email: "dm@x.com" },
+      user: { id: "u1", displayName: "DM", email: "dm@x.com", isAdmin: false },
     });
     const spy = vi
       .spyOn(invitesApi, "acceptInvite")
@@ -90,7 +90,7 @@ describe("JoinPage", () => {
   it("shows the server's error, in Spanish, for an invalid or already-used token, with a way out", async () => {
     useAuthStore.setState({
       token: "jwt-abc",
-      user: { id: "u1", displayName: "DM", email: "dm@x.com" },
+      user: { id: "u1", displayName: "DM", email: "dm@x.com", isAdmin: false },
     });
     vi.spyOn(invitesApi, "acceptInvite").mockRejectedValue(
       new Error("Invalid or already-used invite"),
@@ -108,7 +108,7 @@ describe("JoinPage", () => {
   it("clears the pending invite once an accept attempt starts, whether it succeeds or fails", async () => {
     useAuthStore.setState({
       token: "jwt-abc",
-      user: { id: "u1", displayName: "DM", email: "dm@x.com" },
+      user: { id: "u1", displayName: "DM", email: "dm@x.com", isAdmin: false },
     });
     invitesApi.savePendingInvite("tok-real");
     vi.spyOn(invitesApi, "acceptInvite").mockRejectedValue(new Error("boom"));

@@ -68,7 +68,9 @@ function montar(personajes: Character[] = [personaje], hoja?: unknown) {
 }
 
 function comoDuenio() {
-  useAuthStore.setState({ user: { id: "owner1", email: "o@b.com", displayName: "O" } });
+  useAuthStore.setState({
+    user: { id: "owner1", email: "o@b.com", displayName: "O", isAdmin: false },
+  });
   vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
     { userId: "dm1", displayName: "DM", role: "DM" },
     { userId: "owner1", displayName: "O", role: "PLAYER" },
@@ -76,7 +78,9 @@ function comoDuenio() {
 }
 
 function comoOtroJugador() {
-  useAuthStore.setState({ user: { id: "otro", email: "x@b.com", displayName: "X" } });
+  useAuthStore.setState({
+    user: { id: "otro", email: "x@b.com", displayName: "X", isAdmin: false },
+  });
   vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
     { userId: "dm1", displayName: "DM", role: "DM" },
     { userId: "otro", displayName: "X", role: "PLAYER" },

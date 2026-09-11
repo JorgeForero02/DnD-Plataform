@@ -477,7 +477,6 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 | | Qué | Por qué importa |
 |---|---|---|
-| **D8** | **Recuperar la contraseña olvidada sigue bloqueada: no hay servicio de correo** | Era "se decide junto al despliegue", y el despliegue ya está aquí. Hoy, un usuario que olvide su contraseña **no tiene salida**: el DM no puede reiniciarla y no hay correo que mandar. Hace falta decidir proveedor (y sus variables) o aceptar explícitamente que la primera mesa vive sin recuperación |
 
 ## Deuda nueva aceptada en 1.18b (2026-09-01)
 

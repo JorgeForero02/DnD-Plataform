@@ -28,7 +28,9 @@ function renderPanel() {
 }
 
 function asDM() {
-  useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+  useAuthStore.setState({
+    user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+  });
   vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
     { userId: "dm1", displayName: "DM", role: "DM" },
   ]);
@@ -167,7 +169,9 @@ describe("InvitePanel", () => {
   // player's POST with 403 (invites.service.ts, requireDM) whether or not this button is
   // disabled. This is only about not offering an action that's certain to fail.
   it("disables generating an invitation for a player, with an explanation", async () => {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
       { userId: "p1", displayName: "P", role: "PLAYER" },
@@ -186,7 +190,9 @@ describe("InvitePanel", () => {
   });
 
   it("disables generating an invitation while the role is still unknown, without hiding it", () => {
-    useAuthStore.setState({ user: { id: "p1", email: "p@b.com", displayName: "P" } });
+    useAuthStore.setState({
+      user: { id: "p1", email: "p@b.com", displayName: "P", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
     renderPanel();
 
@@ -200,7 +206,9 @@ describe("InvitePanel", () => {
   // players to their own campaign — and there must be a way to retry beyond
   // refetchOnWindowFocus happening to fire.
   it("treats a failed members fetch as 'still checking' rather than 'not the DM', and offers a retry", async () => {
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     const fetchMembers = vi
       .spyOn(membersApi, "fetchMembers")
       .mockRejectedValueOnce(new Error("network error"))

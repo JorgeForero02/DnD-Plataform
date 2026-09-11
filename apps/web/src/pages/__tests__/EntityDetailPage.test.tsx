@@ -62,7 +62,9 @@ function montar() {
 describe("EntityDetailPage — la pantalla donde se lee el mundo", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    useAuthStore.setState({ user: { id: "dm1", email: "dm@b.com", displayName: "DM" } });
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "dm1", displayName: "DM", role: "DM" },
     ]);

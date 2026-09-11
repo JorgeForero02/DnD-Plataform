@@ -27,7 +27,9 @@ describe("useMyRole", () => {
   });
 
   it("reports loading while the members list is still in flight", () => {
-    useAuthStore.setState({ user: { id: "u1", email: "a@b.com", displayName: "G" } });
+    useAuthStore.setState({
+      user: { id: "u1", email: "a@b.com", displayName: "G", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(() => useMyRole("c1"), { wrapper });
     expect(result.current.isLoading).toBe(true);
@@ -35,7 +37,9 @@ describe("useMyRole", () => {
   });
 
   it("resolves to DM when the current user's membership says DM", async () => {
-    useAuthStore.setState({ user: { id: "u1", email: "a@b.com", displayName: "G" } });
+    useAuthStore.setState({
+      user: { id: "u1", email: "a@b.com", displayName: "G", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "u1", displayName: "G", role: "DM" },
       { userId: "u2", displayName: "P", role: "PLAYER" },
@@ -46,7 +50,9 @@ describe("useMyRole", () => {
   });
 
   it("resolves to PLAYER when the current user's membership says PLAYER", async () => {
-    useAuthStore.setState({ user: { id: "u2", email: "b@b.com", displayName: "P" } });
+    useAuthStore.setState({
+      user: { id: "u2", email: "b@b.com", displayName: "P", isAdmin: false },
+    });
     vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
       { userId: "u1", displayName: "G", role: "DM" },
       { userId: "u2", displayName: "P", role: "PLAYER" },
@@ -63,7 +69,9 @@ describe("useMyRole", () => {
   // it as "still don't know" (never as "not a member"), and there has to be a way to retry
   // instead of only recovering by accident on refetchOnWindowFocus.
   it("reports isError (not a resolved role) when the members request fails, and offers a retry", async () => {
-    useAuthStore.setState({ user: { id: "u1", email: "a@b.com", displayName: "G" } });
+    useAuthStore.setState({
+      user: { id: "u1", email: "a@b.com", displayName: "G", isAdmin: false },
+    });
     const fetchMembers = vi
       .spyOn(membersApi, "fetchMembers")
       .mockRejectedValueOnce(new Error("network error"))

@@ -97,4 +97,27 @@ describe("auth store", () => {
     useAuthStore.getState().clearFlash();
     expect(useAuthStore.getState().flash).toBeNull();
   });
+
+  // Task 20 — PATCH /auth/password now returns a fresh token instead of logging the caller
+  // out. setToken() is what AccountPage.tsx's PasswordForm uses to adopt it: unlike setAuth(),
+  // there is no `user` in that response (the identity didn't change), so this must persist the
+  // token without touching the user already in the store.
+  it("setToken stores a fresh token, persists it, and leaves the user untouched", () => {
+    useAuthStore.setState({
+      token: "old-token",
+      user: { id: "1", email: "a@b.com", displayName: "Gandalf", isAdmin: false },
+    });
+    localStorage.setItem("dnd_token", "old-token");
+
+    useAuthStore.getState().setToken("fresh-token");
+
+    expect(useAuthStore.getState().token).toBe("fresh-token");
+    expect(localStorage.getItem("dnd_token")).toBe("fresh-token");
+    expect(useAuthStore.getState().user).toEqual({
+      id: "1",
+      email: "a@b.com",
+      displayName: "Gandalf",
+      isAdmin: false,
+    });
+  });
 });

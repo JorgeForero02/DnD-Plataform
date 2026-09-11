@@ -113,7 +113,8 @@ describe("Auth (e2e)", () => {
         .set("Authorization", `Bearer ${token}`)
         .send({ currentPassword: "password123", newPassword: "new-password-456" });
       expect(change.status).toBe(200);
-      expect(change.body).toEqual({ success: true });
+      expect(change.body).toMatchObject({ success: true });
+      expect(typeof change.body.token).toBe("string");
       // Never returns the password or its hash.
       expect(JSON.stringify(change.body)).not.toMatch(/password|hash/i);
 
@@ -131,32 +132,33 @@ describe("Auth (e2e)", () => {
         .send({ email, password: "password123" }); // login call 2/3
       expect(oldLogin.status).toBe(401);
 
-      // JWT `iat` has second-granularity, and jwt.strategy.ts treats a token minted in the
-      // exact same wall-clock second as the password change as stale too (see that file's
-      // comment on why the tie goes to "reject"). This wait guarantees the next login's `iat`
-      // lands in a later, distinct second — not asserting on a timing threshold, just avoiding
-      // a coin-flip on which second two back-to-back requests happen to land in.
-      await new Promise((resolve) => setTimeout(resolve, 1100));
-
-      const newLogin = await request(server)
-        .post("/auth/login")
-        .send({ email, password: "new-password-456" }); // login call 3/3
-      expect(newLogin.status).toBe(201);
-      const freshToken = newLogin.body.token;
-
+      // Task 20 — the fresh token PATCH /auth/password just returned must work IMMEDIATELY,
+      // in the exact same request-response cycle, with no wait: it carries an explicit `iat`
+      // one second past `passwordChangedAt` (auth.service.ts), so the tie-goes-to-reject rule
+      // in jwt.strategy.ts (`iat <= changedAtSeconds`) never applies to it. There used to be a
+      // 1.1s wait here to dodge that same-second collision for a token minted by a plain
+      // login() call; this token needs none of that.
+      const freshToken = change.body.token as string;
       const me = await request(server).get("/auth/me").set("Authorization", `Bearer ${freshToken}`);
       expect(me.status).toBe(200);
       expect(me.body.displayName).toBe("Gandalf the White");
 
+      // The new password itself also works for a fresh login (credentials really changed) —
+      // this doesn't need the token it returns, so no same-second race to dodge here either.
+      const newLogin = await request(server)
+        .post("/auth/login")
+        .send({ email, password: "new-password-456" }); // login call 3/3
+      expect(newLogin.status).toBe(201);
+
       // Restore the original password so a re-run of this suite (or a human) isn't left with
-      // a surprise. Uses the fresh token — the pre-change `token` variable is spent for good.
+      // a surprise. Uses the fresh token from the PATCH response — the pre-change `token`
+      // variable is spent for good.
       const restore = await request(server)
         .patch("/auth/password")
         .set("Authorization", `Bearer ${freshToken}`)
         .send({ currentPassword: "new-password-456", newPassword: "password123" });
       expect(restore.status).toBe(200);
     },
-    10_000, // the 1.1s wait above pushes this past Jest's default 5s test timeout
   );
 
   it("rejects PATCH /auth/password with no token", async () => {

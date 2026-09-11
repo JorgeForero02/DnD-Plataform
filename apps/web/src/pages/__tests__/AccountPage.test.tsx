@@ -176,14 +176,17 @@ describe("AccountPage", () => {
     );
   });
 
-  // Fix round 1 (post-1.18b review), CRITICAL 1 — the defect the review found: the previous
-  // version deferred logout() to a button click, leaving the token the server had already
-  // killed sitting in localStorage (and in the store, so every request kept sending it) for as
-  // long as the user stayed on the screen. This is the mechanical check: the instant the
-  // request succeeds, the token must be gone from BOTH places, with no click required. Proven
-  // by mutation (see the report): deferring logout() to a button turns this red.
-  it("CRITICAL: clears the token from the store and localStorage the instant the change succeeds, with no click required", async () => {
-    vi.spyOn(authApi, "changePassword").mockResolvedValue({ success: true });
+  // Task 20 — PATCH /auth/password now returns a fresh token instead of killing the caller's
+  // session (auth.service.ts signs it with an explicit `iat` so it works immediately). The old
+  // defect this test used to guard (a dead token left sitting in the store/localStorage) is now
+  // the OPPOSITE shape: the fresh token from the response must land in both places, replacing
+  // whatever was there — not null it out. Proven by mutation (see the report): adopting the
+  // OLD token (or none at all) instead of the response's turns this red.
+  it("stores the fresh token the server returns in the store and localStorage, with no click required", async () => {
+    vi.spyOn(authApi, "changePassword").mockResolvedValue({
+      success: true,
+      token: "fresh-token-456",
+    });
     renderAccount();
 
     fireEvent.change(screen.getByLabelText("Contraseña actual"), {
@@ -194,12 +197,15 @@ describe("AccountPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
 
-    await waitFor(() => expect(useAuthStore.getState().token).toBeNull());
-    expect(localStorage.getItem("dnd_token")).toBeNull();
+    await waitFor(() => expect(useAuthStore.getState().token).toBe("fresh-token-456"));
+    expect(localStorage.getItem("dnd_token")).toBe("fresh-token-456");
   });
 
-  it("on a successful change, navigates to /login and carries the explanation across, instead of leaving it behind on a route the guard just unmounted", async () => {
-    vi.spyOn(authApi, "changePassword").mockResolvedValue({ success: true });
+  it("on a successful change, shows an inline confirmation and stays on /account instead of navigating away", async () => {
+    vi.spyOn(authApi, "changePassword").mockResolvedValue({
+      success: true,
+      token: "fresh-token-456",
+    });
     renderAccount();
 
     fireEvent.change(screen.getByLabelText("Contraseña actual"), {
@@ -210,10 +216,9 @@ describe("AccountPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
 
-    expect(await screen.findByText("Pantalla de login")).toBeInTheDocument();
-    expect(
-      screen.getByText("Contraseña actualizada. Inicia sesión otra vez con tu contraseña nueva."),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toHaveTextContent("Contraseña actualizada.");
+    expect(screen.queryByText("Pantalla de login")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Contraseña actual")).toBeInTheDocument();
   });
 
   it("shows the password rules before the server ever gets a request", () => {

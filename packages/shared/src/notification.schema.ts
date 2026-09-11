@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPES = [
   "SESSION_SCHEDULED",
   "COMMENT_ADDED",
   "RULE_PROPOSAL",
+  "RULE_NOTIFY",
 ] as const;
 export const notificationTypeSchema = z.enum(NOTIFICATION_TYPES);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;

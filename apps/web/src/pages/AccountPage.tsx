@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
 import {
   updateDisplayNameSchema,
   changePasswordSchema,
@@ -144,47 +143,32 @@ function DisplayNameForm() {
 }
 
 function PasswordForm() {
-  const logout = useAuthStore((s) => s.logout);
-  const setFlash = useAuthStore((s) => s.setFlash);
-  const navigate = useNavigate();
+  const setToken = useAuthStore((s) => s.setToken);
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ChangePasswordInput>({ resolver: zodResolver(changePasswordSchema) });
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const onSubmit = async (data: ChangePasswordInput) => {
     setError(null);
+    setSaved(false);
     try {
-      await authApi.changePassword(data);
-      // Fix round 1 (post-1.18b review), Critical 1: the server has ALREADY invalidated every
-      // token issued before this change by the time this resolves (User.passwordChangedAt,
-      // docs/07-historial.md 1.18a) — the previous version deferred logout() to a button click
-      // and left the dead token sitting in localStorage AND in the store until then, so
-      // clicking "← Mis campañas" (still rendered above this form), or the browser's back
-      // button, sent a real request with a token the server had already killed: useCampaigns
-      // fired, got a 401 nothing reacted to (useAuthRehydration only ever checks a 401 on
-      // rehydration, when `user` is still null — it was not), and CampaignList rendered the
-      // raw server error. logout() now runs THE INSTANT the request succeeds, not on a later
-      // click — dnd_token is out of localStorage (and the store, and the query cache —
-      // auth.store.ts's logout(), Critical 2) before this function returns.
-      //
-      // That also means this component can't keep the confirmation on screen any longer: the
-      // moment `token` goes null, ProtectedRoute (wrapping /account, App.tsx) swaps this whole
-      // tree for <Navigate to="/login"/> on the very next render — there is no safe window left
-      // to show a message FROM here. Fix-of-the-fix (see auth.store.ts's `flash` field for the
-      // full story): the message first travelled as react-router navigation state, which broke
-      // in the REAL browser — ProtectedRoute's own bare <Navigate to="/login" replace/> fired a
-      // SECOND, state-less history.replaceState a moment after this one and silently wiped it,
-      // something only a real Playwright journey against a real browser caught (confirmed with
-      // a throwaway debug spec: three navigations to /login, the last carrying no state) — a
-      // unit test with jsdom's MemoryRouter never exercises that race at all. setFlash() writes
-      // to the auth store instead: not router history, so nothing router-driven can overwrite
-      // it, and LoginPage.tsx reads it directly.
-      setFlash("Contraseña actualizada. Inicia sesión otra vez con tu contraseña nueva.");
-      logout();
-      navigate("/login", { replace: true });
+      const { token } = await authApi.changePassword(data);
+      // Task 20 — the server invalidates every token issued before this change
+      // (User.passwordChangedAt), but the RESPONSE now carries a fresh one, signed to work
+      // immediately (auth.service.ts's explicit `iat`, one second past passwordChangedAt).
+      // Fix round 1 (post-1.18b review) used to log the caller out here and send them back to
+      // /login, because the old response had nothing to keep them signed in WITH — that
+      // constraint is gone now, so this adopts the fresh token instead (setToken(), the
+      // setAuth-shaped action for a response with no `user`) and stays on /account with an
+      // inline confirmation, the same pattern DisplayNameForm already uses above.
+      setToken(token);
+      setSaved(true);
+      reset();
     } catch (e) {
       setError(translateChangePasswordError(e));
     }
@@ -209,6 +193,12 @@ function PasswordForm() {
         {error && (
           <p role="alert" className="text-chrome-sm text-danger-text">
             {error}
+          </p>
+        )}
+        {saved && (
+          <p role="status" className="text-chrome-sm text-accent-text">
+            <IconoConfirmacion className="mr-1" />
+            Contraseña actualizada.
           </p>
         )}
         <Button type="submit">Cambiar contraseña</Button>

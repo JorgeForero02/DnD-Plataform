@@ -21,6 +21,7 @@ interface AuthState {
   flash: string | null;
   setAuth: (r: AuthResponse) => void;
   setUser: (user: AuthResponse["user"]) => void;
+  setToken: (token: string) => void;
   setFlash: (message: string) => void;
   clearFlash: () => void;
   logout: () => void;
@@ -38,6 +39,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   // in the user the store lost on reload. The token is already in localStorage from the
   // original login/register — this never touches it.
   setUser: (user) => set({ user }),
+  // Task 20 — PATCH /auth/password returns a fresh token, not a new identity: no `user` in
+  // that response, so this only touches the token (store and localStorage), the same shape of
+  // update setUser does for the identity half.
+  setToken: (token) => {
+    localStorage.setItem("dnd_token", token);
+    set({ token });
+  },
   setFlash: (message) => set({ flash: message }),
   clearFlash: () => set({ flash: null }),
   logout: () => {

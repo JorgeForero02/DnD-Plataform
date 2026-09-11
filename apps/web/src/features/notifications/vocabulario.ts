@@ -47,6 +47,10 @@ const FRASE: Record<NotificationType, (fila: NotificationRow) => string> = {
     return fecha ? `Hay ${que} en el calendario: ${fecha}.` : `Hay ${que} en el calendario.`;
   },
   RULE_PROPOSAL: () => "Alguien propone una regla para la mesa.",
+  RULE_NOTIFY: (f) => {
+    const mensaje = texto(f.payload, "message");
+    return mensaje ?? "Una regla de la mesa tiene un aviso para ti.";
+  },
 };
 
 /**
@@ -65,6 +69,9 @@ const DESTINO: Record<NotificationType, (fila: NotificationRow, campana: string)
     SESSION_STARTED: (f, c) => (f.subjectId ? `/campaigns/${c}/sesiones/${f.subjectId}` : null),
     SESSION_SCHEDULED: (f, c) => (f.subjectId ? `/campaigns/${c}/sesiones/${f.subjectId}` : null),
     RULE_PROPOSAL: (_f, c) => `/campaigns/${c}?seccion=rules`,
+    // Sin ficha, sesión ni regla propia a la que apuntar (`RULE_NOTIFY` no lleva `subjectId`):
+    // sin destino no se finge uno, y la fila se pinta sin enlace.
+    RULE_NOTIFY: () => null,
   };
 
 export function fraseDeAviso(fila: NotificationRow): string {

@@ -498,4 +498,82 @@ describe("Motor de reglas (e2e)", () => {
       expect(entidadTrasReactivar?.visibility).toBe("PLAYERS");
     });
   });
+
+  describe("el efecto NOTIFY llega a la bandeja (Tarea 19)", () => {
+    it("NOTIFY(PLAYERS) avisa a los jugadores y no al DM", async () => {
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro que avisa a la mesa");
+
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Avisar a los jugadores",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "NOTIFY", audience: "PLAYERS", message: "Algo se mueve en el muro." }],
+        });
+      expect(regla.status).toBe(201);
+
+      await rulesEngine.evaluate(campaignId, { kind: "ENTITY_OPENED", entityId: muro }, userPL);
+
+      const bandejaPL = await request(s)
+        .get("/notifications")
+        .set("Authorization", `Bearer ${tokenPL}`);
+      expect(bandejaPL.status).toBe(200);
+      const avisoPL = bandejaPL.body.notifications.find(
+        (n: { type: string; payload: { message?: string } }) =>
+          n.type === "RULE_NOTIFY" && n.payload.message === "Algo se mueve en el muro.",
+      );
+      expect(avisoPL).toBeDefined();
+
+      const bandejaDM = await request(s)
+        .get("/notifications")
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(bandejaDM.status).toBe(200);
+      const avisoDM = bandejaDM.body.notifications.find(
+        (n: { type: string; payload: { message?: string } }) =>
+          n.type === "RULE_NOTIFY" && n.payload.message === "Algo se mueve en el muro.",
+      );
+      expect(avisoDM).toBeUndefined();
+    });
+
+    it("NOTIFY(DM) avisa al DM y no a los jugadores", async () => {
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro que avisa al DM");
+
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Avisar al DM",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "NOTIFY", audience: "DM", message: "Un jugador tocó el muro." }],
+        });
+      expect(regla.status).toBe(201);
+
+      await rulesEngine.evaluate(campaignId, { kind: "ENTITY_OPENED", entityId: muro }, userPL);
+
+      const bandejaDM = await request(s)
+        .get("/notifications")
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(bandejaDM.status).toBe(200);
+      const avisoDM = bandejaDM.body.notifications.find(
+        (n: { type: string; payload: { message?: string } }) =>
+          n.type === "RULE_NOTIFY" && n.payload.message === "Un jugador tocó el muro.",
+      );
+      expect(avisoDM).toBeDefined();
+
+      const bandejaPL = await request(s)
+        .get("/notifications")
+        .set("Authorization", `Bearer ${tokenPL}`);
+      expect(bandejaPL.status).toBe(200);
+      const avisoPL = bandejaPL.body.notifications.find(
+        (n: { type: string; payload: { message?: string } }) =>
+          n.type === "RULE_NOTIFY" && n.payload.message === "Un jugador tocó el muro.",
+      );
+      expect(avisoPL).toBeUndefined();
+    });
+  });
 });

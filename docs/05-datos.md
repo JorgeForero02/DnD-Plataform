@@ -614,9 +614,10 @@ Dos detalles que no son obvios:
   mismo segundo del cambio no se puede demostrar posterior, y ante la duda se caduca. La
   función existe justo para el caso *"me robaron la contraseña"*, así que el fallo seguro es
   rechazar.
-- **La consecuencia real** es que cambiar la contraseña y volver a entrar dentro del mismo
-  segundo puede rechazar el token recién emitido. Se cierra el día que `PATCH /auth/password`
-  devuelva un token nuevo en su respuesta; está anotado.
+- **La consecuencia real era** que cambiar la contraseña y volver a entrar dentro del mismo
+  segundo podía rechazar el token recién emitido. **Cerrado el 2026-09-11:** `PATCH /auth/password`
+  devuelve un token fresco firmado con `iat` = segundo del cambio **+ 1**, que pasa la comparación
+  de arriba sin aflojarla, y la pantalla de cuenta lo guarda en vez de cerrar la sesión.
 
 ## El modelo de visibilidad
 

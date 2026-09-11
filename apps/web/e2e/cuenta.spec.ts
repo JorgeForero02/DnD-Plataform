@@ -48,14 +48,14 @@ test("cambiar la contraseña invalida el token viejo de verdad, contra la API re
   await page.getByLabel("Contraseña nueva").fill(nuevaPassword);
   await page.getByRole("button", { name: "Cambiar contraseña" }).click();
 
-  // Fix round 1, Critical 1: no click required for the token to die — it's already gone from
-  // localStorage (and the request below proves the SERVER already killed it too) by the time
-  // this screen has even finished navigating away.
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(
-    page.getByText("Contraseña actualizada. Inicia sesión otra vez con tu contraseña nueva."),
-  ).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem("dnd_token"))).toBeNull();
+  // Desde el 2026-09-11 (ficha 1.18a, token fresco) la pantalla NO cierra la sesión: el
+  // servidor devuelve un token nuevo, la cuenta lo guarda y confirma en línea. Lo que sigue
+  // siendo verdad —y es lo que esta prueba demuestra— es que el token VIEJO murió en el servidor.
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByRole("status")).toContainText("Contraseña actualizada");
+  const tokenNuevo = await page.evaluate(() => localStorage.getItem("dnd_token"));
+  expect(tokenNuevo).not.toBeNull();
+  expect(tokenNuevo).not.toBe(tokenViejo);
 
   // THE proof: the token captured before the change, used directly, against the real API — not
   // inferred from the new password working. Revert passwordChangedAt's enforcement in
@@ -65,7 +65,9 @@ test("cambiar la contraseña invalida el token viejo de verdad, contra la API re
   });
   expect(respuestaConTokenViejo.status()).toBe(401);
 
-  // The old password is really dead too.
+  // The old password is really dead too — se sale a mano para probar el login.
+  await page.getByRole("button", { name: "Salir" }).click();
+  await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel("Correo").fill(cuenta.email);
   await page.getByLabel("Contraseña").fill(cuenta.password);
   await page.getByRole("button", { name: "Entrar" }).click();

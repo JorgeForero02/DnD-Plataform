@@ -103,6 +103,11 @@ describe("AuthService", () => {
   it("changePassword() verifies the current password and stores a new hash", async () => {
     const hash = await argon2.hash("old-password");
     users.findById.mockResolvedValue({ id: "1", email: "a@b.com", passwordHash: hash });
+    users.updatePasswordHash.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      passwordChangedAt: new Date(),
+    });
     await service.changePassword("1", {
       currentPassword: "old-password",
       newPassword: "new-password",
@@ -111,5 +116,27 @@ describe("AuthService", () => {
     const [, newHash] = users.updatePasswordHash.mock.calls[0];
     expect(newHash).not.toBe(hash);
     expect(await argon2.verify(newHash, "new-password")).toBe(true);
+  });
+
+  // Task 20 — a fresh token, signed with an explicit `iat` one second past
+  // `passwordChangedAt`, so it reads as valid immediately (jwt.strategy.ts's tie-goes-to-reject
+  // check) instead of forcing the caller to wait for the clock to tick to a new second.
+  it("changePassword() returns a fresh token signed with iat = passwordChangedAt + 1s", async () => {
+    const hash = await argon2.hash("old-password");
+    users.findById.mockResolvedValue({ id: "1", email: "a@b.com", passwordHash: hash });
+    const passwordChangedAt = new Date("2026-01-01T00:00:00.000Z");
+    users.updatePasswordHash.mockResolvedValue({ id: "1", email: "a@b.com", passwordChangedAt });
+
+    const result = await service.changePassword("1", {
+      currentPassword: "old-password",
+      newPassword: "new-password",
+    });
+
+    expect(result).toEqual({ success: true, token: "token123" });
+    expect(jwt.signAsync).toHaveBeenCalledWith({
+      sub: "1",
+      email: "a@b.com",
+      iat: Math.floor(passwordChangedAt.getTime() / 1000) + 1,
+    });
   });
 });

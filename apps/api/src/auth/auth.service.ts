@@ -11,6 +11,7 @@ import {
   LoginInput,
   ChangePasswordInput,
   AuthResponse,
+  ChangePasswordResponse,
   type AdminPasswordResetInput,
 } from "@dnd/shared";
 import { UsersService } from "../users/users.service";
@@ -41,13 +42,29 @@ export class AuthService {
   // Password change (not recovery — the caller must already hold the current password).
   // The user id comes from the JWT (controller), never from the request body: a user can
   // only ever change their own password.
-  async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
+  async changePassword(
+    userId: string,
+    input: ChangePasswordInput,
+  ): Promise<ChangePasswordResponse> {
     const user = await this.users.findById(userId);
     if (!user) throw new NotFoundException("User not found");
     const ok = await argon2.verify(user.passwordHash, input.currentPassword);
     if (!ok) throw new UnauthorizedException("Current password is incorrect");
     const passwordHash = await argon2.hash(input.newPassword);
-    await this.users.updatePasswordHash(user.id, passwordHash);
+    const updated = await this.users.updatePasswordHash(user.id, passwordHash);
+    // Task 20 — without this, the token the caller was already holding is dead the instant this
+    // resolves (jwt.strategy.ts's `iat <= changedAtSeconds` check), and a change-and-immediately
+    // re-enter within the same second would reject even a BRAND NEW login token. The tie-goes-
+    // to-reject rule (decided in 1.18a) doesn't loosen: instead this token is minted with an
+    // explicit `iat`, one second past `passwordChangedAt`, so it reads as issued strictly AFTER
+    // the change without needing the wall clock to actually tick over. `jsonwebtoken` honours an
+    // `iat` already present in the payload instead of overwriting it (`payload.iat = payload.iat
+    // || Math.floor(Date.now() / 1000)` in its sign()) — no `nbf` is set, since that would only
+    // add a second failure mode (a clock-skewed verifier rejecting a technically-valid token),
+    // never a security property this system already needs.
+    const iat = Math.floor(updated.passwordChangedAt!.getTime() / 1000) + 1;
+    const token = await this.jwt.signAsync({ sub: user.id, email: user.email, iat });
+    return { success: true, token };
   }
 
   private async buildResponse(user: {

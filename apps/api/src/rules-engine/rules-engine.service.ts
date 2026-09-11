@@ -680,9 +680,20 @@ export class RulesEngineService {
           break;
         }
         case "NOTIFY": {
-          // Sin `NotificationType` que le corresponda en el vocabulario cerrado de
-          // `@dnd/shared` (fuera de esta frontera de tarea): queda completo en la traza —
-          // antes, después y mensaje — pero hoy no llega a la bandeja de notificaciones.
+          // Tarea 19 — `RULE_NOTIFY` ya existe en el vocabulario cerrado de `@dnd/shared`. El
+          // destinatario lo decide `audience`: "DM" son todos los miembros con rol DM, "PLAYERS"
+          // todos los miembros con rol PLAYER. Sin destino no se finge uno: no hay tercer caso.
+          const miembros = await this.membership.listMembers(campaignId);
+          const destinatarios = miembros.filter((m) =>
+            effect.audience === "DM" ? m.role === "DM" : m.role === "PLAYER",
+          );
+          for (const destinatario of destinatarios) {
+            await this.notifications.notify(destinatario.userId, {
+              type: "RULE_NOTIFY",
+              campaignId,
+              payload: { message: effect.message, audience: effect.audience },
+            });
+          }
           break;
         }
       }

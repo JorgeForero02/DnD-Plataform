@@ -53,3 +53,14 @@ export interface AuthResponse {
   token: string;
   user: AuthUser;
 }
+
+/**
+ * Tarea 20 — `PATCH /auth/password` ya no deja a quien acaba de cambiar su contraseña con un
+ * token muerto: devuelve uno fresco, firmado para que valga de inmediato (ver
+ * `auth.service.ts#changePassword` y el porqué del `iat` explícito). Sin `user`: la pantalla ya
+ * lo tiene, y el endpoint no cambia nada de la identidad.
+ */
+export interface ChangePasswordResponse {
+  success: true;
+  token: string;
+}

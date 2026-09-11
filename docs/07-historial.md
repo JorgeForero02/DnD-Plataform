@@ -66,6 +66,10 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 4 (c)** (un lote, dos fichas): `NOTIFY` del motor llega a la bandeja como `RULE_NOTIFY`
+  (N3-notify), y cambiar la contraseña devuelve un token fresco con `iat` = segundo del cambio + 1,
+  que vale al instante sin aflojar la regla del empate (1.18a). **Revertir:** quitar el caso
+  `NOTIFY`; volver a `{ success }` y al cierre de sesión en la pantalla.
 - **Tanda 4 (b), inventario** (un lote, dos fichas): la cantidad se ajusta por delta con
   `increment` (M2B-8, la carrera de las flechas), y equipar devuelve la CA nueva en la misma
   respuesta (M2B-11, adiós a `fetchAc` antes y después). **Revertir:** quitar `quantityDelta`

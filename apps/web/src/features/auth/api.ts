@@ -1,6 +1,7 @@
 import type {
   AuthResponse,
   ChangePasswordInput,
+  ChangePasswordResponse,
   UpdateDisplayNameInput,
   AdminPasswordResetInput,
 } from "@dnd/shared";
@@ -24,11 +25,14 @@ export function updateDisplayName(input: UpdateDisplayNameInput): Promise<AuthRe
 
 // PATCH /auth/password requires the current password (verified server-side with argon2, a 401
 // "Current password is incorrect" if it doesn't match — auth.service.ts) and invalidates every
-// token issued before the change (User.passwordChangedAt). Reacting to a successful change is
-// the caller's job (AccountPage.tsx): this function does not touch auth.store.ts itself, the
-// same way login()/register() in lib/api.ts don't either.
-export function changePassword(input: ChangePasswordInput): Promise<{ success: true }> {
-  return apiFetch<{ success: true }>("/auth/password", {
+// token issued before the change (User.passwordChangedAt) — INCLUDING the one the caller is
+// holding right now. Task 20: the response carries a fresh token (signed to work immediately,
+// see auth.service.ts's comment on its explicit `iat`), which is why the return type grew a
+// `token`. Reacting to it is still the caller's job (AccountPage.tsx, via auth.store.ts's
+// setToken): this function does not touch the store itself, the same way login()/register() in
+// lib/api.ts don't either.
+export function changePassword(input: ChangePasswordInput): Promise<ChangePasswordResponse> {
+  return apiFetch<ChangePasswordResponse>("/auth/password", {
     method: "PATCH",
     body: JSON.stringify(input),
   });

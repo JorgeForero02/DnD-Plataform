@@ -495,3 +495,22 @@ found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 **Texto original:**
 
 | **M2B-11** | **Equipar son tres peticiones desde la pantalla** | `fetchAc` → `PATCH` → `fetchAc`. Si la segunda lectura falla, la mutación se marca como error, no se invalida la caché y la pantalla enseña un estado que el servidor ya cambió. Lo correcto es que el `PATCH` devuelva la CA nueva |
+
+## N3-notify · `NOTIFY` del motor de reglas no llega a la bandeja
+
+**Cerrada el 2026-09-11 (Task 19).** Tipo `RULE_NOTIFY` en `NOTIFICATION_TYPES` (`Notification.type` es `String`: sin migración); `applyRealEffects` escribe una notificación por destinatario —`audience: DM` a cada DM de la campaña, `PLAYERS` a cada jugador— con el mensaje de la regla, y la bandeja tiene su frase (sin destino inventado). e2e del motor: el jugador la ve en `GET /notifications` y el DM no; roja antes; mutación: no notificar enrojece.
+
+**Texto original:**
+
+| **N3-notify** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
+
+## 1.18a · `PATCH /auth/password` no devuelve un token nuevo
+
+**Cerrada el 2026-09-11 (Task 20).** La respuesta es `{ success, token }` y el token fresco se firma con `iat` explícito = segundo de `passwordChangedAt` + 1, así que vale **inmediatamente** sin aflojar la regla del empate («`iat` igual al segundo del cambio = caduco», 1.18a); la espera de 1,1 s del e2e desaparece. La pantalla de cuenta guarda el token nuevo, confirma en línea y no manda al login. e2e de auth roja antes; mutación: devolver el token viejo enrojece. `cuenta.spec.ts` (Playwright) cambia de recorrido: lo corre el orquestador en la tanda de pantalla.
+
+**Texto original:**
+
+- **`PATCH /auth/password` no devuelve un token nuevo**, así que cambiar la contraseña y volver
+  a entrar dentro del mismo segundo de reloj puede rechazar el token recién emitido (el `iat` de
+  JWT tiene precisión de segundos y el empate se trata como caduco, a propósito). Es también la
+  razón de la espera de 1,1 s en la e2e. Devolver un token fresco en la respuesta lo cerraría.

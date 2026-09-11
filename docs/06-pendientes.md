@@ -459,15 +459,6 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
   no en la pantalla de un jugador que no sea el creador — haría falta un segundo contexto de
   navegador en el recorrido. El resto de las mediciones sí son sobre pantallas reales.
 
-## Deuda nueva aceptada en 1.18a (2026-09-01)
-
-Cada línea es un compromiso conocido, no un descuido:
-
-- **`PATCH /auth/password` no devuelve un token nuevo**, así que cambiar la contraseña y volver
-  a entrar dentro del mismo segundo de reloj puede rechazar el token recién emitido (el `iat` de
-  JWT tiene precisión de segundos y el empate se trata como caduco, a propósito). Es también la
-  razón de la espera de 1,1 s en la e2e. Devolver un token fresco en la respuesta lo cerraría.
-
 ## Segunda pasada del contraste modelo/API ↔ pantalla (2026-09-01)
 
 **Contraste hecho a mano sobre el commit `70b353c` de `main`**: los 10 modelos de
@@ -773,7 +764,6 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 | **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
 | **U7-contraste** | **La pantalla de subida de nivel no tiene medición de contraste en navegador** | El resto de pantallas sí. Los tokens que usa están medidos, pero **en otros contextos**, y la regla del proyecto es que lo que solo se ve maquetado se mide donde se maqueta |
-| **N3-notify** | **`NOTIFY` del motor de reglas no llega a la bandeja** | No hay tipo de aviso equivalente. La pantalla lo dice en vez de prometerlo, que es lo correcto, pero el efecto está a medias |
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
 
 ### Huecos de mecánica — lo que falta para jugar de verdad

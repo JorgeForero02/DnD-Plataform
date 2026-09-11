@@ -46,8 +46,8 @@ describe("AuthController", () => {
     expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "New Name", isAdmin: false });
   });
 
-  it("changePassword() delegates to AuthService with the caller's id from the JWT, never the body", async () => {
-    authService.changePassword.mockResolvedValue(undefined);
+  it("changePassword() delegates to AuthService with the caller's id from the JWT, never the body, and passes its fresh token through", async () => {
+    authService.changePassword.mockResolvedValue({ success: true, token: "fresh-token" });
     const result = await controller.changePassword(
       { user: { id: "1", email: "a@b.com" } },
       { currentPassword: "old-pass", newPassword: "new-password" },
@@ -56,6 +56,6 @@ describe("AuthController", () => {
       currentPassword: "old-pass",
       newPassword: "new-password",
     });
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, token: "fresh-token" });
   });
 });

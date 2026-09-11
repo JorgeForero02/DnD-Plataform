@@ -9,6 +9,7 @@ import {
   LoginInput,
   UpdateDisplayNameInput,
   ChangePasswordInput,
+  ChangePasswordResponse,
   AuthUser,
 } from "@dnd/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -81,8 +82,7 @@ export class AuthController {
   async changePassword(
     @Req() req: { user: { id: string; email: string } },
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
-  ): Promise<{ success: true }> {
-    await this.auth.changePassword(req.user.id, body);
-    return { success: true };
+  ): Promise<ChangePasswordResponse> {
+    return this.auth.changePassword(req.user.id, body);
   }
 }

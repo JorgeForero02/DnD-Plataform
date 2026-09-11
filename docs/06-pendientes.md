@@ -654,10 +654,6 @@ empujar es una acción hacia fuera.
 Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
 sí mismo**.
 
-**Y una segunda, del mismo día:** `pnpm db:slot` **falla en un worktree** (`Command "prisma" not
-found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
-`D&D-Plataform`). El agente creó y migró su base a mano. Es reproducible.
-
 ## P3 · Dieciocho llamadas arrastran un rodeo que ya no hace falta (2026-09-04, 2.5.6)
 
 **`apiFetch` ya no manda `Content-Type` cuando no hay cuerpo**, que era la causa por la que
@@ -720,10 +716,6 @@ lista del editor con una línea.
   suyo. La lista completa se mide con `grep -rln "private async viewerFor" apps/api/src`, que es
   más fiable que enumerarla aquí — enumerar tres sitios cuando había siete ya caducó una vez en
   `04-convenciones.md`, y esta lista acaba de caducar por lo mismo.
-- **Avisos ruidosos que conviene callar bien, no silenciar**: `ts-jest` se queja de compilar
-  los `.js` de `packages/shared/dist` en los e2e, y Vite avisa de que
-  `apps/web/postcss.config.js` no declara tipo de módulo. Ninguno lo tapa ESLint: son de
-  otras herramientas.
 
 ## Decisiones abiertas
 

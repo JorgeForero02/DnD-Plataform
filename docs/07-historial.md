@@ -65,6 +65,9 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 3, herramientas** (un lote, dos fichas): `ts-jest` deja de avisar por los `.js` de
+  `shared/dist` y `postcss.config` pasa a `.mjs`; `pnpm db:slot` funciona en una ruta con `&`
+  (sin `shell`, `execFileSync` sobre el CLI de Prisma). **Revertir:** una pieza cada uno.
 - **Tanda 3, web sueltas** (un lote, seis fichas): el comentario de `posiciones.ts` señala el
   anillo; `resolverCitas` ordena por `createdAt` ella misma; la prueba de `SessionEditor` afirma
   la pérdida de segundos en vez de pasar por coincidencia; `CreateCampaignModal` pinta

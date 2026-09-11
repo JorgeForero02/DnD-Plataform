@@ -29,13 +29,19 @@ import {
 } from "./worktree-slot.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const API_ENV_PATH = path.join(REPO_ROOT, "apps", "api", ".env");
-const SCHEMA_PATH = path.join(REPO_ROOT, "apps", "api", "prisma", "schema.prisma");
-// shell:true hace falta en Windows porque pnpm es un .cmd (invocarlo directo con stdin
-// pipeado falla con EINVAL). Nunca se le pasa un valor de entorno por argv — solo literales
-// de este script o nombres de flag — así que un shell no tiene nada propio que interpretar;
-// cualquier valor variable (la URL, el nombre de base) viaja por `env` o por `--stdin`.
-const PNPM = "pnpm";
+const API_DIR = path.join(REPO_ROOT, "apps", "api");
+const API_ENV_PATH = path.join(API_DIR, ".env");
+const SCHEMA_PATH = path.join(API_DIR, "prisma", "schema.prisma");
+// Se invoca el `prisma` de apps/api directamente con `process.execPath` — nada de
+// `pnpm ... exec prisma`, y sin abrir ningún intérprete de comandos de por medio. `pnpm` es
+// un `.cmd` en Windows y antes necesitaba justo eso para arrancar, pero ese intérprete
+// interpreta `&`, y esta ruta de repo lo lleva (`D&D-Plataform`): le cortaba el comando ahí y
+// `pnpm` nunca veía el resto de los argumentos ("Command \"prisma\" not found").
+// `execFileSync(process.execPath, [PRISMA_CLI, ...])` ejecuta el CLI de Prisma como script de
+// Node, sin ese intérprete de por medio, así que ni el `&` de la ruta ni nada de la URL o el
+// nombre de base (que siguen viajando por `env` o por `--stdin`, nunca por argv) tiene nada
+// que interpretar.
+const PRISMA_CLI = path.join(API_DIR, "node_modules", "prisma", "build", "index.js");
 
 let slot;
 try {
@@ -64,20 +70,19 @@ if (slot === 0) {
 }
 
 // Corre `prisma db execute` con el SQL por stdin y el datasource resuelto desde el schema +
-// DATABASE_URL en el entorno del proceso — nunca por argv, para que shell:true no pueda
-// partir ni reinterpretar una URL con `&`, `|`, `%`, backticks o `$(...)` (posibles en una
-// URL de Postgres con parámetros o una contraseña generada).
+// DATABASE_URL en el entorno del proceso — nunca por argv, y sin ningún intérprete de
+// comandos que pueda partir ni reinterpretar una URL con `&`, `|`, `%`, backticks o `$(...)`
+// (posibles en una URL de Postgres con parámetros o una contraseña generada).
 function runPrismaDbExecute(sql, databaseUrl) {
   const result = execFileSync(
-    PNPM,
-    ["--filter", "@dnd/api", "exec", "prisma", "db", "execute", "--schema", SCHEMA_PATH, "--stdin"],
+    process.execPath,
+    [PRISMA_CLI, "db", "execute", "--schema", SCHEMA_PATH, "--stdin"],
     {
-      cwd: REPO_ROOT,
+      cwd: API_DIR,
       env: { ...process.env, DATABASE_URL: databaseUrl },
       input: sql,
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf8",
-      shell: true,
     },
   );
   return result;
@@ -103,11 +108,10 @@ if (slot !== 0) {
 
 console.log(`Migrando "${dbName}"...`);
 try {
-  execFileSync(PNPM, ["--filter", "@dnd/api", "exec", "prisma", "migrate", "deploy"], {
-    cwd: REPO_ROOT,
+  execFileSync(process.execPath, [PRISMA_CLI, "migrate", "deploy", "--schema", SCHEMA_PATH], {
+    cwd: API_DIR,
     env: { ...process.env, DATABASE_URL: slotDatabaseUrl },
     stdio: "inherit",
-    shell: true,
   });
 } catch {
   console.error(

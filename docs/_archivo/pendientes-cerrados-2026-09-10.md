@@ -442,3 +442,24 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
 
 - **`CreateCampaignModal` mantiene un estado de error local** que duplica `mutation.error`.
   Tarea 1.10.
+
+## P4 · Avisos ruidosos que conviene callar bien, no silenciar
+
+**Cerrada el 2026-09-11 (Task 13).** `ts-jest` ya no recibe los `.js` de `packages/shared/dist` (transform acotado a `.ts` en la configuración de e2e de la API) y `postcss.config.js` pasa a `.mjs`, con lo que Vite deja de avisar. Sin prueba automática: la evidencia es la salida antes/después pegada en el informe de la tarea (ledger local de la sesión).
+
+**Texto original:**
+
+- **Avisos ruidosos que conviene callar bien, no silenciar**: `ts-jest` se queja de compilar
+  los `.js` de `packages/shared/dist` en los e2e, y Vite avisa de que
+  `apps/web/postcss.config.js` no declara tipo de módulo. Ninguno lo tapa ESLint: son de
+  otras herramientas.
+
+## P1 (mitad) · `pnpm db:slot` falla en un worktree por el `&` de la ruta
+
+**Cerrada el 2026-09-11 (Task 14).** `scripts/db-slot.mjs` deja el `shell: true` y llama a Prisma con `execFileSync(process.execPath, [prisma/build/index.js, …])`, el mismo patrón que `apps/web/e2e/admin-reinicio.spec.ts`; prueba en `apps/web/src/__tests__/` que barre el script (sin `shell: true`, con `process.execPath`). Reproducido antes (`Command "prisma" not found`) y ejecutado después con `WORKTREE_SLOT=1`. La otra mitad de la ficha —empujar `origin/main`— sigue siendo del autor.
+
+**Texto original:**
+
+**Y una segunda, del mismo día:** `pnpm db:slot` **falla en un worktree** (`Command "prisma" not
+found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
+`D&D-Plataform`). El agente creó y migró su base a mano. Es reproducible.

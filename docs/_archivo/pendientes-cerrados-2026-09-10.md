@@ -124,3 +124,77 @@ arriba ya no es cierta —**sí** hay forma de tener dos DM: `PATCH` de papel de
 (`apps/api/src/members/`)—, el cambio es corto y duradero (`suyos` = «su dueño es DM de la
 campaña», que `MembershipService` ya sabe contestar) y la prueba que lo ve fallar es una unitaria
 con dos DM. No cae en ninguno de los cuatro casos: lo decidió un agente, no el autor. **Se arregla.**
+
+## M10b · Editar en silencio (la hidra falsa)
+
+**Cerrada el 2026-09-10 como «ya es así» (D-CF-11).** No existe ningún suceso `ENTITY_UPDATED` en `packages/shared/src/game-event.schema.ts`: editar una ficha revelada no escribe nada en el registro, así que el DM ya cambia la hidra sin que nadie se entere. Los apuntes del jugador son filas de `Comment` aparte y no se tocan. La regla «las notas del jugador NO se borran» queda escrita en `05-datos.md`.
+
+**Texto original:**
+
+| **M10b** | **Editar en silencio** — la hidra falsa (respuesta 2). El DM cambia una ficha ya revelada y nadie se entera. Es un problema distinto del de revocar, y por eso se parten | Sin resolver. Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
+
+## H8 · El motor evalúa dentro de la petición que escribió el suceso
+
+**Cerrada el 2026-09-10 midiendo, no suponiendo (D-CF-4).** Medición desechable contra Postgres real, un jugador abriendo una ficha con N reglas automáticas `ENTITY_OPENED` → `REVEAL_ENTITY` encima: **0 reglas 50 ms · 10 reglas 110 ms · 50 reglas 380 ms** (medianas de 7), o sea **~6,5 ms por regla y apertura, lineal**, con una traza escrita por regla y apertura. Síncrono con el tope de diez saltos que ya existe aguanta una mesa real de sobra; el umbral para pensar en una cola es un disparador con más de ~50 reglas, y ninguna campaña está cerca.
+
+**Texto original:**
+
+| **H8** | El motor evalúa **dentro de la petición** que escribió el suceso | Con diez saltos y varias reglas, abrir una ficha puede tardar. Propuesta: síncrono con tope y cola si molesta — **hay que medirlo, no suponerlo** |
+
+## H9 · Las propuestas caducan
+
+**Cerrada el 2026-09-10 como decisión (D-CF-5): no caducan solas.** El DM las ve en su bandeja y las rechaza; caducarlas por tiempo sería el servidor arbitrando la mesa, que es lo que el paso 2 declinó hacer con los bandos y con terminar un combate. Si una bandeja vieja molesta, la señal correcta es la fecha en la fila, no un borrado.
+
+**Texto original:**
+
+| **H9** | **Las propuestas caducan.** Una propuesta de hace tres sesiones es ruido | Falta decidir el plazo |
+
+## D7 · `Campaign.ownerId` es una segunda fuente de verdad que nadie consulta
+
+**Cerrada el 2026-09-10 como decisión (D-CF-6).** `ownerId` es **quién la creó**, dato histórico; la autoridad es el rol de `CampaignMember` y así seguirá. Ninguna comprobación lo lee y ninguna debe leerlo. Escrito en `05-datos.md`.
+
+**Texto original:**
+
+| D7 | **`Campaign.ownerId` es una segunda fuente de verdad que nadie consulta** | P3 | Se escribe en `campaigns/campaigns.service.ts:21` —remedido el 2026-09-08; la cita anterior decía `:20`— y se emite en el suceso de la 25. Ninguna comprobación de autorización lo lee: todas pasan por `membership.requireDM`, que mira `CampaignMember.role`. La web lo declara en su tipo y tampoco lo usa |
+
+## D6 · `User.isAdmin` no tiene ninguna puerta de concesión
+
+**Cerrada el 2026-09-10 como decisión (D-CF-7).** Se concede a mano (`UPDATE "User" SET "isAdmin" = true`) y así se declara en `05-datos.md`. Y deja de ser una columna sin oficio: el reinicio de contraseña por administrador (D-CF-18, cierra D8) es su primera puerta de uso.
+
+**Texto original:**
+
+| D6 | **`User.isAdmin` no tiene ninguna puerta de concesión**: es el permiso más potente del sistema y no lo gobierna nada | P2 | `common/visibility.ts:23` es el `if (viewer.isAdmin) return true;` que salta toda la matriz; remedido el 2026-09-08, `isAdmin` fuera de sus lectores **no tiene un solo escritor** —los dos únicos aciertos son un comentario de `links/links.service.ts` y un `?? false` de `notifications/notifications.service.ts`—: solo un `UPDATE` a mano en Postgres. (La cita anterior, `:16`, se había desplazado) |
+
+## A3-invitaciones · Invitaciones con usos máximos
+
+**Cerrada el 2026-09-10 como decisión (D-CF-8).** Un enlace por persona se queda (E-11-*): el motivo de esta ficha —«un enlace eterno no»— lo cerraron la caducidad y la revocación del plan 11. Una invitación de N usos no la ha pedido nadie y añade una columna.
+
+**Texto original:**
+
+| **A3-invitaciones** | **Invitaciones con usos máximos** | Caducidad y revocación las cerró el plan 11 (`schema.prisma`, `expiresAt`/`revokedAt`, `bf1b1c9` 2026-09-05). Queda «usos máximos», que es una columna nueva: **migración**, y por eso no se arregla de pasada |
+
+## P4 · No hay política de retención de datos escrita
+
+**Cerrada el 2026-09-10 escribiéndola (D-CF-9), en `05-datos.md`:** nada se borra solo; una cuenta o una campaña se borra a petición de su dueño, por su botón; el registro de sucesos vive tanto como su campaña. Se revisa el día que haya usuarios que no sean la mesa del autor — y ese día lo dice el autor.
+
+**Texto original:**
+
+- **No hay política de retención de datos escrita.** Hace falta antes de que el sistema deje
+  de ser de uso personal. Ver [05-datos.md](./05-datos.md).
+
+## M11 · Que un jugador comparta lo que le revelaron
+
+**Cerrada el 2026-09-10 como decisión (D-CF-10): es un gesto social fuera del sistema.** Una concesión creada por un jugador sería una segunda puerta de «quién ve qué» y `canView` es dueño único. Si un jugador quiere que otro lo sepa, se lo cuenta, o se lo pide al DM, que sí concede.
+
+**Texto original:**
+
+| **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
+
+## P3 · El taller CONVIVE con las listas CRUD de `CampaignDetailPage`
+
+**Cerrada el 2026-09-10 como decisión (D-CF-2): conviven, con papeles.** Medido: el taller tiene tres cajones —Escribir ficha, Preparar sesión, Lo que sabe la mesa— y las pestañas de la campaña son Resumen, El mundo, Sesiones, Reglas, Dados, Tablas, Ajustes más los cajones Personajes/Bestiario/Catálogo. Solo se solapan en **escribir una ficha**. Papeles: el taller es donde el DM **prepara** (captura rápida, sesión, revelar); «El mundo» es el **archivo** (buscar, filtrar, editor completo, enlaces, comentarios). No se cae nada. **De paso:** `TableroTelarana` sigue montado aunque D4 (2026-09-05) lo dio por retirado a favor de una línea de tiempo que no existe; es una decisión sin ejecutar, no una ficha nueva.
+
+**Texto original:**
+
+- **El taller CONVIVE con las listas CRUD de `CampaignDetailPage`.** Nadie ha perdido nada, pero la
+  sustitución de la §2 de la auditoría **no está completa** hasta que se decida qué se cae de ahí.

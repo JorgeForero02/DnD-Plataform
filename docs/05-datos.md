@@ -692,8 +692,10 @@ jugador. En modo edición se sigue respetando la visibilidad que la entidad ya t
 ### Límites reales de hoy (MVP, aceptados a conciencia)
 
 - **`Session` y `Character` no tienen `grants` ni `createdById` propio.** Por eso
-  `SPECIFIC_PLAYERS` es inerte en los dos. En `Character` se usa `ownerId` como creador, con
-  la consecuencia de que **el dueño no ve su propio personaje si lo marca `DM_ONLY`**. En
+  `SPECIFIC_PLAYERS` es inerte en los dos. En `Character` se usa `ownerId` como creador
+  (`common/character-viewer.ts` lo pasa como `createdById` a `canView`), así que **el dueño sí
+  ve su personaje aunque lo marque `DM_ONLY`** — hasta el 2026-09-10 esta línea decía lo
+  contrario, y llevaba falsa desde el 2026-09-03. En
   `Session` no hay ningún campo de creador: `sessions.service.ts` pasa `createdById: ""` al
   comprobar visibilidad, así que la comparación de `OWNER_DM` (`createdById === viewer.userId`)
   es falsa para cualquier jugador — y como `visibility.ts` ya devuelve `true` para cualquier
@@ -728,9 +730,29 @@ lectura: nadie ve contenido que no le toque. Son casos degradados o mensajes de 
 ## Datos personales
 
 Se guarda: correo, nombre visible y `passwordHash` (argon2). **Nunca la contraseña en
-claro, nunca en un log.** No hay datos de menores ni categorías especiales. No hay política
-de retención escrita todavía — pendiente antes de que el sistema deje de ser de uso
-personal.
+claro, nunca en un log.** No hay datos de menores ni categorías especiales.
+
+**Retención (decidida el 2026-09-10, D-CF-9):** nada se borra solo. Una cuenta la borra su
+dueño; una campaña, su DM, por el botón que ya existe (tarea 1.17a), y con ella se va todo lo
+que cuelga de ella —fichas, sesiones, registro, invitaciones— por las claves en cascada. El
+registro de sucesos vive tanto como su campaña: es su auditoría. **Se revisa el día que haya
+usuarios que no sean la mesa del autor**, y ese día lo dice el autor; hasta entonces es de uso
+personal y esto es toda la política.
+
+## Tres cosas del modelo que parecen huecos y son decisiones (2026-09-10)
+
+- **`Campaign.ownerId` es quién la creó, y nada más** (D-CF-6). La autoridad la da el rol en
+  `CampaignMember` —`requireDM` mira eso— y ninguna comprobación lee `ownerId` ni debe leerlo.
+  Se conserva como dato histórico; con el cambio de papel del plan 11 el creador puede dejar de
+  ser DM y la campaña sigue teniendo dueño de rol.
+- **`User.isAdmin` se concede a mano** (D-CF-7): `UPDATE "User" SET "isAdmin" = true WHERE …`
+  en Postgres, y no hay pantalla ni endpoint que lo dé. Es el permiso que salta la matriz entera
+  (`common/visibility.ts`) y por eso no tiene puerta cómoda. Su primer oficio, más allá de leer:
+  el reinicio de contraseña por administrador (D-CF-18).
+- **Editar una ficha revelada no escribe suceso, y es a propósito** (D-CF-11, la «hidra falsa»
+  de los jugadores). No existe `ENTITY_UPDATED`; lo que sí se registra es revelar, reclasificar
+  y enlazar. **Los apuntes del jugador no se tocan nunca**: son filas de `Comment` y sobreviven
+  a cualquier edición de la ficha, que es lo que hace que el truco funcione en la mesa.
 
 ## El color de un personaje (plan 05, decisión D3)
 

@@ -121,6 +121,21 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
+> ## Decidido el 2026-09-10 y todavía abierto — el trabajo que queda, con su decisión tomada
+>
+> El autor aprobó las recomendaciones de la sesión de cerrar fichas (`D-CF-2` a `D-CF-21` en
+> [decisiones.md](./decisiones.md)). Lo que ya no espera decisión, solo manos:
+>
+> | Ficha | Qué se decidió | Dónde se hace |
+> |---|---|---|
+> | X1 `RestKind` · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · J7 motivo de anulación · I3/M2B-15 identificado · `race`/`class` | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` después del diálogo de creación |
+> | S4 rasgos raciales · M2B-4 cargas | D-CF-20/21: por el conversor de Foundry | **Paso 3**, tareas 2b y `uses` de objeto |
+> | R1 límite por IP · D8 correo · P3 archivar en la mesa · H7 rearmar · E0 TipTap · P6 Node | D-CF-12, 13, 17, 18, 19 y H7 «se rearma editando» | **Esta sesión**, con código |
+> | P2 mesa a 390 px | D-CF-3: fase 3 | Con el tablero |
+>
+> Las fichas siguen en su sitio de abajo hasta que su commit las archive; esta tabla dice que
+> ya no son «decide el autor».
+
 > **El orden de las secciones NO es fiable.** Este documento dijo durante meses que iban «de lo más
 > reciente a lo más viejo» y no es cierto: hay bloques del 2026-09-04 y del 05 incrustados en medio
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
@@ -327,8 +342,6 @@ Aparecieron al completar el plan y **no están resueltos**. Los cinco que sí lo
 | | Qué | Por qué importa |
 |---|---|---|
 | **H7** | Una regla que apunta a una ficha **borrada** | Queda **rota y marcada**, nunca se descarta en silencio. Falta decidir si se puede seguir armando |
-| **H8** | El motor evalúa **dentro de la petición** que escribió el suceso | Con diez saltos y varias reglas, abrir una ficha puede tardar. Propuesta: síncrono con tope y cola si molesta — **hay que medirlo, no suponerlo** |
-| **H9** | **Las propuestas caducan.** Una propuesta de hace tres sesiones es ruido | Falta decidir el plazo |
 | **H10** | Las formas de área (cono, esfera, línea, cubo, cilindro) las necesitan el motor (2A) y los conjuros (2B) | Propuesta: viven en `@dnd/shared` desde 2A, aunque en 2A todavía no alcancen a nadie |
 | **H11** | **Nada ata el texto de la interfaz a `canView`** | Es el mismo U10 de más abajo, visto desde 2A: las frases de visibilidad **ya mintieron una vez** |
 
@@ -434,8 +447,6 @@ cerraron ese mismo día** (media competencia, Ataque Extra, espacios de conjuro 
 
 | | Qué | Dónde va, y por qué no ahora |
 |---|---|---|
-| **M10b** | **Editar en silencio** — la hidra falsa (respuesta 2). El DM cambia una ficha ya revelada y nadie se entera. Es un problema distinto del de revocar, y por eso se parten | Sin resolver. Hoy `EntityVisibilityGrant` se crea y no se quita | «Fase 1 ampliada» según el documento de respuestas; no depende del motor. Su regla difícil ya está decidida y no hay que perderla: **las notas del jugador NO se borran**, porque el terror nace de que sus apuntes contradigan su memoria |
-| **M11** | **Que un jugador comparta lo que le revelaron** (respuesta 3) | Decisión abierta: o crea una concesión de verdad —que el DM ve y puede revocar, coherente con M10— o es un gesto social fuera del sistema. La primera es más trabajo y mucho más interesante |
 
 ## Pedido por el autor el 2026-09-02, colocado — antes de 2A
 
@@ -445,7 +456,6 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 | | Qué | Por qué aquí y no después |
 |---|---|---|
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
-| **A3-invitaciones** | **Invitaciones con usos máximos** | Caducidad y revocación las cerró el plan 11 (`schema.prisma`, `expiresAt`/`revokedAt`, `bf1b1c9` 2026-09-05). Queda «usos máximos», que es una columna nueva: **migración**, y por eso no se arregla de pasada |
 
 ## Reseño de interfaz (2026-09-02) — lo que dejó abierto
 
@@ -520,8 +530,6 @@ y `D4`. Se conserva citada porque era el resumen de la pasada, y su caducidad es
 
 | | Hallazgo | Prioridad | Evidencia |
 |---|---|---|---|
-| D6 | **`User.isAdmin` no tiene ninguna puerta de concesión**: es el permiso más potente del sistema y no lo gobierna nada | P2 | `common/visibility.ts:23` es el `if (viewer.isAdmin) return true;` que salta toda la matriz; remedido el 2026-09-08, `isAdmin` fuera de sus lectores **no tiene un solo escritor** —los dos únicos aciertos son un comentario de `links/links.service.ts` y un `?? false` de `notifications/notifications.service.ts`—: solo un `UPDATE` a mano en Postgres. (La cita anterior, `:16`, se había desplazado) |
-| D7 | **`Campaign.ownerId` es una segunda fuente de verdad que nadie consulta** | P3 | Se escribe en `campaigns/campaigns.service.ts:21` —remedido el 2026-09-08; la cita anterior decía `:20`— y se emite en el suceso de la 25. Ninguna comprobación de autorización lo lee: todas pasan por `membership.requireDM`, que mira `CampaignMember.role`. La web lo declara en su tipo y tampoco lo usa |
 | E1 | **Sesiones y Personajes siguen sin buscador ni filtro**, y **no hay búsqueda que cruce pestañas** — ya declarado bajo la tabla de 1.17, confirmado abierto | P2 — ya declarado | `features/entities/EntityFilterBar.tsx` se monta solo en `EntityTab` de `pages/CampaignDetailPage.tsx` y filtra la lista ya cargada de **un solo tipo**; `fetchAllEntities` (`features/entities/api.ts`) ya trae todos los tipos y solo lo consume el selector de destino de enlaces |
 
 > **Siete de las doce filas de esta tabla se archivaron el 2026-09-08 por falsas** —`D1`, `D2`,
@@ -775,8 +783,6 @@ lista del editor con una línea.
   la misma tirada para varios objetivos, y la mesa la aplica cuando le toca. **Decide el autor** si
   se quiere un umbral, y cuál; sin él, esta línea es una observación, no una ficha.
 - **`concentrationSave`** llega en la petición de tirada y ninguna pantalla dice que lo es.
-- **El taller CONVIVE con las listas CRUD de `CampaignDetailPage`.** Nadie ha perdido nada, pero la
-  sustitución de la §2 de la auditoría **no está completa** hasta que se decida qué se cae de ahí.
 - **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
   La respuesta buena es una ruta de enlaces por campaña.
 
@@ -816,8 +822,6 @@ defecto hoy; los dos rompen en silencio el día que alguien toque lo que no sabe
   los `.js` de `packages/shared/dist` en los e2e, y Vite avisa de que
   `apps/web/postcss.config.js` no declara tipo de módulo. Ninguno lo tapa ESLint: son de
   otras herramientas.
-- **No hay política de retención de datos escrita.** Hace falta antes de que el sistema deje
-  de ser de uso personal. Ver [05-datos.md](./05-datos.md).
 
 ## Decisiones abiertas
 

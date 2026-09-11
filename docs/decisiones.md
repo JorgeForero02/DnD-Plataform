@@ -430,6 +430,26 @@ Decisiones pequeñas tomadas al cerrar fichas del cubo B, una por commit.
 
 | | Decisión |
 |---|---|
+| D-CF-2 | **El taller y «El mundo» conviven, con papeles**: el taller es donde el DM **prepara** (captura rápida, sesión, revelar); «El mundo» es el **archivo** (buscar, filtrar, editor completo, enlaces, comentarios). Solo se solapaban en escribir una ficha, y no se cae nada. Cierra «el taller convive con las listas CRUD» |
+| D-CF-3 | **La mesa a 390 px se resuelve en la fase 3**, con la pantalla del tablero, que rehace la maqueta de la mesa: los cajones del rail se tirarían. El `test.fail` de `mesa-en-estrecho.spec.ts` queda de marcador |
+| D-CF-4 | **El motor sigue evaluando dentro de la petición, medido**: ~6,5 ms por regla y apertura, lineal (50 reglas sobre un disparador = 380 ms). Una cola solo si un disparador pasa de ~50 reglas. Cierra H8 |
+| D-CF-5 | **Las propuestas no caducan solas** (H9): el DM las rechaza; caducarlas sería el servidor arbitrando |
+| D-CF-6 | **`Campaign.ownerId` es quién la creó**, dato histórico; la autoridad es el rol (D7) |
+| D-CF-7 | **`isAdmin` se concede a mano** en Postgres y no tiene pantalla (D6); su primer oficio es D-CF-18 |
+| D-CF-8 | **Una invitación es de un uso** y no se añaden usos máximos (A3-invitaciones): su motivo lo cerraron caducidad y revocación |
+| D-CF-9 | **Retención: nada se borra solo**; cuenta y campaña a petición de su dueño; se revisa con usuarios externos. Escrita en [05-datos.md](./05-datos.md) |
+| D-CF-10 | **Compartir lo revelado es un gesto social fuera del sistema** (M11): `canView` sigue dueño único |
+| D-CF-11 | **Editar una ficha revelada no escribe suceso, y es a propósito** (M10b, la hidra falsa): no existe `ENTITY_UPDATED`; los apuntes del jugador son `Comment` y no se tocan |
+| D-CF-12 | **TipTap sale del repositorio**: seis paquetes en `dependencies` con cero imports; el editor rico no está en ningún plan y la vitela lee Markdown. Revierte la letra de D-OP-16, que daba por hecho un consumidor que nunca llegó |
+| D-CF-13 | **Node 22 LTS, ya**: Node 20 está sin parches desde 2026-04-30 y corre en producción; 22 es la LTS que Prisma 5.18 soporta. Adelanta la mitad de D-OP-18 por seguridad |
+| D-CF-14 | **Una tanda de migraciones al final de la fase 2**, un commit por migración: `DROP TYPE "RestKind"` (X1) · índice único parcial de enlaces sin rótulo · `CHARACTER_DIED` en `GameEventType` (J5) · interruptor de sobrecarga por campaña (I4/M2B-5) · `overrides` como `{value, reason?}` (J7) · `identified`/`unidentifiedName` en `InventoryItem` (I3/M2B-15) · `DROP COLUMN race, class` cuando el diálogo de creación use el catálogo |
+| D-CF-15 | **«Lo tengo pero no sé qué hace» SE CONSTRUYE**, con la forma de Foundry: `identified` y un nombre alternativo, interruptor del DM. Revierte D-2B-8 por decisión del autor del 2026-09-10 («no quiero cosas molestas en una partida») |
+| D-CF-16 | **La sobrecarga entra como variante con interruptor por campaña, apagada por defecto**, y el motor deriva −10/−20 ft y el aviso de desventaja con traza. SRD 5.1, *Variant: Encumbrance* |
+| D-CF-17 | **El límite global de peticiones se cuenta por usuario cuando hay sesión iniciada**, por IP solo en las rutas sin token (R1): cinco jugadores por una VPN son una IP |
+| D-CF-18 | **La contraseña olvidada la reinicia un administrador** (`isAdmin`) con una temporal, sin servicio de correo (D8): cinco amigos y el autor de administrador |
+| D-CF-19 | **El hilo de una sesión mezcla los sucesos de campaña sin sesión posteriores a su inicio** (archivar, entrar, cambiar de bando): son cosas que pasan mientras se juega. Cierra «el suceso de archivar no se lee desde la mesa» |
+| D-CF-20 | **Los rasgos raciales sin efecto (S4) entran por el conversor del paso 3**, tarea 2b, igual que los de clase: Foundry los trae como ítems con actividades |
+| D-CF-21 | **Las cargas de un objeto (M2B-4) entran en el paso 3** como `uses` con recuperación, el mismo vocabulario que un conjuro con usos |
 | D-CF-1 | **La lista de sesiones va por cuándo se juega**: con fecha primero, de la más lejana a la más cercana —la próxima arriba, como el resto de listas de la casa ponen lo más reciente primero—, y las sin fecha detrás, por creación. Cierra D4 |
 
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)

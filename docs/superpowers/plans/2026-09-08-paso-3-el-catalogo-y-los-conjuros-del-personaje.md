@@ -130,6 +130,12 @@ nivel 5 juega exactamente igual que un guerrero.
       vacía; **los conteos cuadran**; y **cuatro contrastadas a mano contra el SRD**.
 - [ ] **Paso 4 · Mutación** y commit.
 
+> **Añadido el 2026-09-10 (D-CF-20 y D-CF-21), sin reescribir el plan:** por este mismo conversor
+> entran **los rasgos raciales** (ficha S4: hoy se listan y no hacen nada; Foundry los trae como
+> ítems con actividades igual que los de clase) como **tarea 2b**, y **las cargas de un objeto**
+> (ficha M2B-4: una varita de siete usos que se repone al amanecer) como `uses` con recuperación,
+> el mismo vocabulario que un conjuro con usos — no como columnas propias de `InventoryItem`.
+
 ### Tarea 3 · Los 320 conjuros
 
 **El bloque grande, y el que hace que un mago exista.**

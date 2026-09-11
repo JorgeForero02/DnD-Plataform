@@ -188,6 +188,33 @@ describe("Motor de reglas (e2e)", () => {
       expect(segundaVez.status).toBe(403);
     });
 
+    it("el listado de propuestas trae el nombre de la regla, no solo su id (ficha N4)", async () => {
+      // Antes `listProposals` devolvía las filas de `ruleTrace` a secas y la pantalla cruzaba el
+      // `ruleId` contra la lista de reglas con «regla borrada» de respaldo — un respaldo que no
+      // puede darse: `RuleTrace.rule` es `onDelete: Cascade`. El aviso de la propuesta ya
+      // mandaba `ruleName`; el listado, no.
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro de N4");
+      const objetivo = await crearFicha("Secreto de N4", "DM_ONLY");
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "La regla con nombre",
+          mode: "PROPOSAL",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "REVEAL_ENTITY", entityId: objetivo, visibility: "PLAYERS" }],
+        });
+      await rulesEngine.evaluate(campaignId, { kind: "ENTITY_OPENED", entityId: muro }, userPL);
+
+      const propuestas = await request(s)
+        .get(`/campaigns/${campaignId}/rules/proposals`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      const propuesta = propuestas.body.find((t: { ruleId: string }) => t.ruleId === regla.body.id);
+      expect(propuesta).toBeDefined();
+      expect(propuesta.ruleName).toBe("La regla con nombre");
+    });
+
     it("rechazar una propuesta tampoco cambia nada, y queda REJECTED", async () => {
       const s = app.getHttpServer();
       const muro = await crearFicha("Otro muro");

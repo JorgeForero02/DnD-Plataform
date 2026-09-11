@@ -60,6 +60,10 @@ su medición están en
   `requireEffectEntitiesInCampaign`). **Por qué:** la regla quedaba `BROKEN` e inerte al disparar,
   o sea un botón que el servidor iba a rechazar. **Revertir:** quitar el método y sus dos
   llamadas; las tres pruebas J11 del e2e se ponen rojas.
+- **N4** — cada propuesta llega con `ruleName` (`listProposals`, `include` de la regla) y la
+  pantalla deja de cruzar el id contra la lista de reglas. **Por qué:** el aviso ya lo llevaba y
+  el listado no; el «regla borrada» de respaldo era un caso imposible. **Revertir:** quitar el
+  `include` y devolver a `Propuestas` la prop `reglas`.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda
   en ningún sitio (`overrides` es `{clave: número}`) y enseñarlo en la traza es un cambio de forma
   de un `Json` con datos escritos. Medición en el 06.

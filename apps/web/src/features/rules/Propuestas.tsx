@@ -1,6 +1,6 @@
 import { Button, EmptyState } from "../../ui";
 import type { Entity } from "../entities/api";
-import { leerPaquete, type RuleTraceRow, type RuleRow } from "./api";
+import { leerPaquete, type PropuestaRow } from "./api";
 import { useProposals, useResolveProposal } from "./hooks";
 import { IconoPropuesta } from "./iconos";
 import { ResumenDeEfectos } from "./ResumenDeEfectos";
@@ -21,12 +21,10 @@ function fechaLegible(iso: string): string {
 export function Propuestas({
   campaignId,
   entities,
-  reglas,
   activo,
 }: {
   campaignId: string;
   entities: Entity[];
-  reglas: RuleRow[];
   /** Solo se pide cuando la pestaña está a la vista. */
   activo: boolean;
 }) {
@@ -35,7 +33,6 @@ export function Propuestas({
 
   const nombrePorId = new Map(entities.map((e) => [e.id, e.name]));
   const nombreFicha = (id: string) => nombrePorId.get(id) ?? `entrada ${id.slice(-6)}`;
-  const nombreDeRegla = (id: string) => reglas.find((r) => r.id === id)?.name ?? "regla borrada";
 
   if (propuestas.isLoading) {
     return <p className="font-chrome text-chrome-sm text-muted">Cargando propuestas…</p>;
@@ -67,14 +64,12 @@ export function Propuestas({
           Solo cambia el mundo cuando pulses «Aplicar».
         </span>
       </p>
-      {filas.map((propuesta: RuleTraceRow) => {
+      {filas.map((propuesta: PropuestaRow) => {
         const paquete = leerPaquete(propuesta.effects);
         return (
           <article key={propuesta.id} className="rounded-radius-sm border border-muted p-s3">
             <header className="flex flex-wrap items-baseline gap-s2">
-              <h3 className="font-title text-chrome-md text-text">
-                {nombreDeRegla(propuesta.ruleId)}
-              </h3>
+              <h3 className="font-title text-chrome-md text-text">{propuesta.ruleName}</h3>
               <span className="font-data text-chrome-xs text-muted">
                 {fechaLegible(propuesta.createdAt)}
               </span>

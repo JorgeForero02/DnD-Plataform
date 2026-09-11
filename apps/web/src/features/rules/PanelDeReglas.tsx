@@ -210,7 +210,6 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
               <Propuestas
                 campaignId={campaignId}
                 entities={entities}
-                reglas={filas}
                 activo={pestana === "propuestas"}
               />
             ),

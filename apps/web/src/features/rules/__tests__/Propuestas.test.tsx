@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Propuestas } from "../Propuestas";
 import * as rulesApi from "../api";
-import type { RuleRow, RuleTraceRow } from "../api";
+import type { PropuestaRow } from "../api";
 
 // Tarea 2A.17 — "Aplicar manda {action:'APPLY'} y Rechazar manda {action:'REJECT'}".
 // Es el par de botones donde equivocarse cambia el mundo cuando el DM dijo que no.
@@ -15,17 +15,12 @@ function wrapper(qc: QueryClient) {
   };
 }
 
-const regla = {
-  id: "regla1",
-  name: "La puerta del santuario",
-  status: "ARMED",
-  mode: "PROPOSAL",
-} as RuleRow;
-
-const propuesta: RuleTraceRow = {
+const propuesta: PropuestaRow = {
   id: "traza1",
   campaignId: "c1",
   ruleId: "regla1",
+  // Ficha N4: el nombre viene del servidor, con la fila. La pantalla no lo cruza con nada.
+  ruleName: "La puerta del santuario",
   ruleVersion: 1,
   triggeredByUserId: "u1",
   delegatedByUserId: "u2",
@@ -48,7 +43,7 @@ const propuesta: RuleTraceRow = {
 
 function pintar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<Propuestas campaignId="c1" entities={[]} reglas={[regla]} activo />, {
+  render(<Propuestas campaignId="c1" entities={[]} activo />, {
     wrapper: wrapper(qc),
   });
 }
@@ -57,6 +52,11 @@ describe("Propuestas", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(rulesApi, "fetchProposals").mockResolvedValue([propuesta]);
+  });
+
+  it("la fila dice el nombre de la regla que trae el servidor (ficha N4)", async () => {
+    pintar();
+    expect(await screen.findByText(/La puerta del santuario/)).toBeInTheDocument();
   });
 
   it("dice, con todas las letras, que todavía no ha cambiado nada", async () => {

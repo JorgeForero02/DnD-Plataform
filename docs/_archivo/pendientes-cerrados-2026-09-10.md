@@ -24,3 +24,11 @@ esta.
 **Texto original:**
 
 | **J11** | **`POST /rules` no valida al armar que la entidad del efecto sea de tu campaña** | Abierto e inerte: `applyRealEffects` y la auditoría acotan por `campaignId`, así que la regla queda `BROKEN`. Sería más limpio rechazar al armar |
+
+## N4 · El listado de propuestas no trae el nombre de la regla
+
+**Cerrada el 2026-09-10.** `rules-engine.service.ts`, `listProposals`: `include: { rule: { select: { name } } }` y cada fila sale con `ruleName`. La pantalla (`features/rules/Propuestas.tsx`) lo pinta del servidor y **deja de recibir la lista de reglas** —`PanelDeReglas.tsx` ya no se la pasa— y desaparece el respaldo «regla borrada», que no podía darse (`RuleTrace.rule` es `onDelete: Cascade`). Tipo `PropuestaRow = RuleTraceRow & { ruleName }` en `features/rules/api.ts`. Pruebas: e2e de API «el listado de propuestas trae el nombre de la regla (ficha N4)», roja antes (`undefined`); RTL «la fila dice el nombre de la regla que trae el servidor», roja antes (la pantalla reventaba sin `reglas`). Solo texto: sin cambio de maquetación, no pide navegador.
+
+**Texto original:**
+
+| **N4** | **El listado de propuestas no trae el nombre de la regla**, solo su identificador | Abierto, **confirmado midiendo el 2026-09-08**: `RulesEngineService.listProposals` devuelve las filas de `ruleTrace` sin `include` de la regla, así que el nombre no viaja, y `features/rules/Propuestas.tsx:38` lo cruza contra la lista de reglas con «regla borrada» de respaldo. **El dato precisa, que la fila no daba:** el aviso de una propuesta **sí** lo lleva —`rules-engine/rules-engine.service.ts:406` manda `ruleName` en el `RULE_PROPOSAL`—, así que el arreglo es un `include` en el listado, no inventar el dato |

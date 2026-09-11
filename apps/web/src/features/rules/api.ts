@@ -175,8 +175,15 @@ export function dryRunRule(
   });
 }
 
-export function fetchProposals(campaignId: string): Promise<RuleTraceRow[]> {
-  return apiFetch<RuleTraceRow[]>(`${raiz(campaignId)}/proposals`);
+/**
+ * Una propuesta es una traza `PROPOSED` **con el nombre de su regla dentro** (ficha N4). Lo pone el
+ * servidor con un `include`; la pantalla no lo cruza contra la lista de reglas — el «regla borrada»
+ * que hacía de respaldo no podía darse, porque la traza se borra con su regla.
+ */
+export type PropuestaRow = RuleTraceRow & { ruleName: string };
+
+export function fetchProposals(campaignId: string): Promise<PropuestaRow[]> {
+  return apiFetch<PropuestaRow[]>(`${raiz(campaignId)}/proposals`);
 }
 
 export function resolveProposal(

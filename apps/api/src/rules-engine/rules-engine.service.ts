@@ -358,12 +358,21 @@ export class RulesEngineService {
   // La bandeja de propuestas — solo DM
   // ------------------------------------------------------------------------------------------
 
+  /**
+   * Ficha N4 (2026-09-02, cerrada el 2026-09-10): **cada propuesta lleva el nombre de su regla.**
+   * Antes devolvía las filas de `ruleTrace` a secas y la pantalla cruzaba el `ruleId` contra la
+   * lista de reglas con «regla borrada» de respaldo — un caso que no existe, porque la traza se
+   * borra con su regla (`onDelete: Cascade`). El aviso `RULE_PROPOSAL` ya mandaba `ruleName`; el
+   * listado se pone a su altura con un `include`, no inventando el dato.
+   */
   async listProposals(dmUserId: string, campaignId: string) {
     await this.membership.requireDM(campaignId, dmUserId);
-    return this.prisma.ruleTrace.findMany({
+    const filas = await this.prisma.ruleTrace.findMany({
       where: { campaignId, status: "PROPOSED" },
       orderBy: { createdAt: "desc" },
+      include: { rule: { select: { name: true } } },
     });
+    return filas.map(({ rule, ...traza }) => ({ ...traza, ruleName: rule.name }));
   }
 
   async resolveProposal(

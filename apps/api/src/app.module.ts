@@ -2,7 +2,8 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { UserOrIpThrottlerGuard } from "./common/user-or-ip-throttler.guard";
 import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
@@ -74,6 +75,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     EncountersModule,
     ActivitiesModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  // El cubo es por usuario con sesión y por IP sin ella (ficha R1, D-CF-17); ver el guard.
+  providers: [{ provide: APP_GUARD, useClass: UserOrIpThrottlerGuard }],
 })
 export class AppModule {}

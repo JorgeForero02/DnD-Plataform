@@ -29,5 +29,8 @@ import { JwtStrategy } from "./jwt.strategy";
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
+  // `JwtModule` sale para que el guard global del límite de peticiones pueda verificar el token
+  // y clavar el cubo al usuario (ficha R1): el mismo secreto que firma es el que verifica.
+  exports: [JwtModule],
 })
 export class AuthModule {}

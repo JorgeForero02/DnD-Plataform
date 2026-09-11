@@ -30,6 +30,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md`](./_archivo/historial-2026-09-05-y-06-iniciativa-y-bando-por-tarea.md) | **El detalle por tarea de las tareas 5 y 14 del plan `iniciativa-y-bando`**, movidas enteras el 2026-09-06 al escribir el hito de la tanda completa. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-ola-3.md`](./_archivo/historial-2026-09-05-ola-3.md) | **La Ola 3, las 21 decisiones y la auditoría de la cola larga**, movida entera el 2026-09-07: insertar las dos entradas del paso 2 y el botín dejó el fichero por encima de su tope de 1000 líneas, y esta fue la más antigua. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-05-bandeja-de-avisos.md`](./_archivo/historial-2026-09-05-bandeja-de-avisos.md) | **La bandeja de avisos**, movida entera el 2026-09-08 al llegar el fichero a 988 de 1000 y no caber la entrada del reconocimiento. Era la entrada completa más antigua. Su cabecera de archivo cuenta la ironía que salió ese día: `01-arquitectura.md` seguía negando esta bandeja tres días después de entregarla. Su hito se queda arriba
+> | [`_archivo/historial-2026-09-05-paseo-de-uso.md`](./_archivo/historial-2026-09-05-paseo-de-uso.md) | **El paseo de uso contra producción**, movida entera el 2026-09-11 (tercer corte). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md) | **El nervio medido en producción** y **el PNJ sin nombre en la pantalla**, movidas enteras el 2026-09-10 en el segundo corte de la sesión de cerrar fichas. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
@@ -45,6 +46,19 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
+
+Las fichas que el autor decidió el 2026-09-10 y llevan código; una por commit, prueba roja antes y
+mutación. Texto y medición en
+[`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+
+- **R1** — el límite global cuenta por usuario con sesión iniciada y por IP sin ella
+  (`common/user-or-ip-throttler.guard.ts`, `AuthModule` exporta `JwtModule`). **Por qué:** cinco
+  jugadores por una VPN eran una IP. **Revertir:** volver a `ThrottlerGuard` en `APP_GUARD`.
+  **Lección:** la primera prueba de «token falso» no cazaba la mutación `verify → decode` porque
+  todos los tokens llevaban el mismo `sub`; una prueba que no se ve fallar con el mutante no
+  prueba nada.
 
 ## Las decisiones del autor sobre el cubo D, y nueve fichas que cierran solas (2026-09-10)
 
@@ -825,35 +839,13 @@ mano —está fuera del repositorio— y su cuerpo no se tocó.
 
 ---
 
-## El paseo de uso contra producción: un panel que se salía de la pantalla (2026-09-05)
+## El paseo de uso contra producción: un panel que se salía de la pantalla (2026-09-05) — archivada
 
-**Recorrido visual con dos cuentas y dos anchos (1280 y 390) contra `dnd.supportive.pro`**, ya con
-`cc64ed7` desplegado. Encontró **una cosa**, y era de las que el autor llama «que molestan»:
-
-**A 390 px, el panel de la bandeja de avisos se salía por la izquierda.** Colgaba del botón con
-`right-0`, y el botón **no está pegado al borde** —lo empujan el conmutador de tema y «Cuenta»—, así
-que el borde izquierdo del panel caía **fuera de la pantalla**: se leía «…undren Piedrarroja». El
-navegador no da ningún error por pintar fuera del lienzo y `jsdom` no maqueta, así que esto solo se
-ve **mirando o midiendo**. Por debajo de `sm` el panel se ancla ahora **a la ventana** con su margen
-a cada lado; a partir de ahí vuelve a colgar del botón, que es donde tiene sitio.
-
-**Medido en el navegador** (`apps/web/e2e/bandeja-de-avisos.spec.ts`): a 390 px la caja del panel
-empieza en x ≥ 0 y termina dentro de la ventana. **Mutación**: con la clase anterior, x = **−166**.
-
-**Y dos arreglos del seed, encontrados usándolo desde otra sesión:**
-
-- **Decía ser idempotente y solo lo era con la misma contraseña.** Con otra, el login daba 401, caía
-  a registrar y el registro chocaba con un `409 Email already registered` que no explicaba nada.
-  Ahora lo dice: *«la cuenta existe, pero la contraseña que le estoy dando no es la suya»*.
-- **Una sola clave para las tres cuentas** impedía sembrar con una cuenta real como DM y las de
-  demostración como jugadores. Cada cuenta puede traer su correo y su contraseña. Y **una cuenta que
-  no sea de `@demo.invalid` no se crea nunca**: registrar el correo real de alguien con una
-  contraseña que se inventa un script es crear la cuenta de otra persona.
-
-**Lo que el paseo vio y sigue sin arreglar** (ficha en `06-pendientes.md`): **la mesa a 390 px**
-reparte sus tres columnas a lo ancho y las «Herramientas del DM» quedan cortadas. No hay
-desbordamiento de la página —el contenedor tiene su propio desplazamiento—, pero en un móvil la
-mesa no se usa cómodamente. Es maquetación y pide su propia tanda.
+Entera en
+[`_archivo/historial-2026-09-05-paseo-de-uso.md`](./_archivo/historial-2026-09-05-paseo-de-uso.md),
+movida el 2026-09-11 (tercer corte de la sesión de cerrar fichas). **El hito:** un paseo de uso a
+dos anchos contra producción, el seed corregido en tres contratos, y la mesa a 390 px medida y
+dejada como ficha en vez de arreglada a ciegas.
 
 ## El nervio en vivo, medido en producción detrás de nginx y Traefik (2026-09-05) — archivada
 

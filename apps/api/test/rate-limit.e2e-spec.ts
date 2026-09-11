@@ -4,7 +4,7 @@ import { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
 import { AppModule } from "../src/app.module";
-import { AUTH_RATE_LIMIT } from "../src/common/rate-limit.constants";
+import { AUTH_RATE_LIMIT, DEFAULT_RATE_LIMIT } from "../src/common/rate-limit.constants";
 import { buildAdapter } from "../src/configure-app";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { UsersService } from "../src/users/users.service";
@@ -167,4 +167,60 @@ describe("Rate limiting (e2e)", () => {
       expect(throttled.status).toBe(429);
     },
   );
+
+  describe("con sesión iniciada el cubo es por USUARIO, no por IP (ficha R1)", () => {
+    // Una mesa juega desde la casa de una persona o por una VPN: cinco jugadores son UNA IP, y
+    // con el cubo por IP el sondeo de uno gastaba el presupuesto de todos. Con token válido la
+    // clave es el usuario; sin token —o con uno falso— sigue siendo la IP, que es donde el
+    // límite protege de verdad (login, registro, aceptar invitación).
+    it(`dos usuarios desde la misma IP: el primero agota sus ${DEFAULT_RATE_LIMIT} y el segundo sigue en 200`, async () => {
+      const a = await mintToken("r1-a");
+      const b = await mintToken("r1-b");
+      for (let i = 1; i <= DEFAULT_RATE_LIMIT; i++) {
+        const r = await request(app.getHttpServer())
+          .get("/campaigns")
+          .set("Authorization", `Bearer ${a}`);
+        expect(r.status).toBe(200);
+      }
+      const agotado = await request(app.getHttpServer())
+        .get("/campaigns")
+        .set("Authorization", `Bearer ${a}`);
+      expect(agotado.status).toBe(429);
+      const otro = await request(app.getHttpServer())
+        .get("/campaigns")
+        .set("Authorization", `Bearer ${b}`);
+      expect(otro.status).toBe(200);
+    }, 60000);
+
+    it("un token FALSO no abre un cubo propio: cuenta como la IP", async () => {
+      // Si bastara con decodificar el `sub` sin verificar la firma, un cliente podría inventar
+      // un usuario distinto por petición y saltarse el límite en toda ruta autenticada.
+      // Cada token falso lleva un `sub` DISTINTO en su payload: si el guard decodificara sin
+      // verificar, cada uno abriría su cubo y el número 101 sería un 401, no un 429.
+      const falso = (n: number) => {
+        const cabecera = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString(
+          "base64url",
+        );
+        const cuerpo = Buffer.from(JSON.stringify({ sub: `inventado-${n}` })).toString("base64url");
+        return `${cabecera}.${cuerpo}.firma-que-no-vale`;
+      };
+      for (let i = 1; i <= DEFAULT_RATE_LIMIT; i++) {
+        const r = await request(app.getHttpServer())
+          .get("/campaigns")
+          .set("Authorization", `Bearer ${falso(i)}`);
+        expect(r.status).toBe(401);
+      }
+      // Cien tokens falsos distintos, un solo cubo: el de la IP.
+      const agotado = await request(app.getHttpServer())
+        .get("/campaigns")
+        .set("Authorization", `Bearer ${falso(0)}`);
+      expect(agotado.status).toBe(429);
+      // Y un usuario de verdad, desde esa misma IP, no paga por ellos.
+      const c = await mintToken("r1-c");
+      const real = await request(app.getHttpServer())
+        .get("/campaigns")
+        .set("Authorization", `Bearer ${c}`);
+      expect(real.status).toBe(200);
+    }, 60000);
+  });
 });

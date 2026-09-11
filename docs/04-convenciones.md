@@ -609,6 +609,14 @@ sitio en cada vuelta**, así que parece código frágil y no lo es. Se fija **so
 `apps/web/playwright.config.ts`; un valor vacío o mal escrito cae al de producción, nunca a «sin
 límite», y hay pruebas que lo fijan.
 
+**Y desde el 2026-09-11 el cubo del límite global es por USUARIO cuando hay sesión iniciada**
+(ficha R1, D-CF-17; `apps/api/src/common/user-or-ip-throttler.guard.ts`). Una mesa juega por una
+sola IP —la casa de alguien, una VPN— y con el cubo por IP el sondeo de un jugador gastaba el
+presupuesto de los cinco. El guard **verifica** el JWT (no lo decodifica: un `sub` inventado por
+petición sería un cubo nuevo por petición) y clava el cubo a `user:<sub>`; sin token válido, la IP.
+Las rutas sin sesión —login, registro, aceptar invitación— siguen por IP con su límite estrecho,
+que es donde el control protege de verdad. El número no cambia: 100 por minuto.
+
 ## Trabajo con varios agentes a la vez
 
 Escrito el 2026-09-01, después de una sesión con hasta cinco agentes en paralelo sobre este

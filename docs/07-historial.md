@@ -57,6 +57,11 @@ commit y su migración inversa está descrita en la cabecera del SQL.
 
 - **1 · `DROP TYPE "RestKind"`** (X1): nadie lo usaba. Queda `no-dead-enum.spec.ts`, que hace
   fallar el próximo enum sin campo.
+- **2 · Índice único parcial en `EntityLink` (`fromId`, `toId`) `WHERE label IS NULL`**: dos
+  enlaces sin rótulo entre las mismas fichas entraban porque Postgres no iguala dos `NULL`. La
+  migración borra duplicados quedándose con el más antiguo (en local había cero) y crea el índice;
+  Prisma no lo sabe expresar, así que vive solo en el SQL y el esquema lo dice en un comentario.
+  El segundo enlace igual ya es 409 (e2e en `links`).
 
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
 

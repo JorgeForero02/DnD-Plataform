@@ -98,6 +98,22 @@ describe("Entity links (e2e)", () => {
     expect(repetido.body.message).toMatch(/ya existe/i);
   });
 
+  it("the same unlabeled link twice is also a 409 (partial unique index, D-CF-14)", async () => {
+    // `@@unique([fromId, toId, label])` no basta con `label` nulo: Postgres trata dos NULL como
+    // distintos, así que dos enlaces sin rótulo entre las mismas fichas colaban los dos (ficha
+    // "links sin rótulo"). El índice único parcial `EntityLink_fromId_toId_nolabel_key` cierra el
+    // hueco a nivel de base; aquí se repite el enlace sin `label` creado arriba (npc -> secretLocId)
+    // para comprobar que el segundo choca. El manejo de P2002 en `LinksService.create` ya traducía
+    // ese choque a 409 para el índice con label, así que no hace falta tocar el servicio.
+    const s = app.getHttpServer();
+    const repetidoSinLabel = await request(s)
+      .post(`/entities/${npcId}/links`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ toId: secretLocId });
+    expect(repetidoSinLabel.status).toBe(409);
+    expect(repetidoSinLabel.body.message).toMatch(/ya existe/i);
+  });
+
   it("DM sees both links, player sees only the public-target link", async () => {
     const s = app.getHttpServer();
     const dm = await request(s)

@@ -89,9 +89,11 @@ export class LinksService {
       } catch (error) {
         // El índice único `(fromId, toId, label)` ya rechazaba el duplicado; hasta el 2026-09-10
         // el choque salía como 500. Aquí solo se traduce a un 409 legible (ficha P3 «un enlace
-        // duplicado»). Ojo: con `label` nulo Postgres no considera iguales dos NULL, así que dos
-        // enlaces sin rótulo entre las mismas fichas siguen entrando — cerrarlo es un índice
-        // parcial, o sea una migración, y no va colgado de este arreglo.
+        // duplicado»). Con `label` nulo Postgres no considera iguales dos NULL, así que ese
+        // índice por sí solo dejaba entrar dos enlaces sin rótulo entre las mismas fichas; desde
+        // la migración `20260911100001_entity_link_nolabel_unique` (commit 2 de D-CF-14) hay
+        // además un índice único PARCIAL sobre `(fromId, toId) WHERE label IS NULL` que cierra
+        // ese hueco y llega aquí con el mismo código `P2002`, así que no hace falta distinguirlo.
         if ((error as { code?: string }).code === "P2002") {
           throw new ConflictException("Ese enlace ya existe entre estas dos fichas.");
         }

@@ -37,7 +37,7 @@ Campaign ──> CampaignFlag         (marcas con nombre)
 
 Notification (por usuario; `campaignId` suelto, sin clave foránea)
 
-Entity ──> EntityLink (from → to, label; único por from+to+label)
+Entity ──> EntityLink (from → to, label; único por from+to+label, y por from+to cuando no hay rótulo — índice parcial solo en la migración, 2026-09-11)
        ──> EntityVisibilityGrant (entidad + usuario; único)
        ──> Comment (authorId, body)
 ```
@@ -56,7 +56,7 @@ campaña— pero conviene que esté escrito y no descubrirlo con filas huérfana
 una campaña, borrar una `Entity` se lleva también sus `EntityLink` (**en las dos
 direcciones**: tanto los que salen de ella como los que otras entidades tienen hacia ella,
 porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGrant` y sus
-`Comment`. **`Session` no tiene ninguna tabla colgando; `Character` sí desde 2A.8 y 2A.12**:
+`Comment`. **`Session` cuelga `Encounter` desde 2.5.2 —y con él `Combatant` y `RollRequest`, todo en cascada—; `Character` sí desde 2A.8 y 2A.12**:
 borrar un personaje se lleva sus `CharacterResource` y sus `CharacterCondition`, las dos en
 cascada. **`GameEvent` cuelga de la campaña, no de la
 sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
@@ -376,7 +376,7 @@ por dos motivos, y ninguno es la limpieza:
   cerrada de cada una **filtrada por visibilidad**, y filtrar por un campo dentro de un Json es lo
   que este proyecto ya decidió no hacer.
 - **`notes` tiene otro dueño.** El motor de reglas escribe ahí un **array de cadenas**
-  (`ADD_SESSION_NOTE`, `apps/api/src/rules-engine/rules-engine.service.ts:591-603`), así que una
+  (`ADD_SESSION_NOTE`, `apps/api/src/rules-engine/rules-engine.service.ts`, caso `ADD_SESSION_NOTE`), así que una
   nota puesta por una regla **se llevaba la crónica por delante** sin decir nada: el `Array.isArray`
   fallaba y empezaba un array nuevo. Sacarla del Json no es orden, es dejar de perder datos.
 
@@ -475,9 +475,11 @@ sin él, el comportamiento no cambia.
 Hasta ahora el único sitio que emitía `ENTITY_REVEALED` era el motor de reglas (efecto
 `REVEAL_ENTITY`). `EntitiesService.update` lo emite también cuando **sube** la visibilidad de
 una ficha, que es como se revela un lugar casi siempre en la mesa. «Sube» se define comparando
-el índice en `DM_ONLY < OWNER_DM < SPECIFIC_PLAYERS < PLAYERS < PUBLIC` —el mismo orden que
-`canView` (`apps/api/src/common/visibility.ts`) implementa de facto: cada nivel es un
-superconjunto estricto de audiencia sobre el anterior. Bajar la visibilidad **no** es revelar y
+**la audiencia como conjunto** (`laAudienciaCrecio`, en `apps/api/src/common/visibility.ts`,
+junto a `canView`), no un índice: los cinco niveles **no** forman una cadena de superconjuntos
+—`OWNER_DM` y `SPECIFIC_PLAYERS` son incomparables— y un índice lo dio por hecho y falló en
+revisión el 2026-09-04. (Hasta el 2026-09-11 esta frase decía lo contrario.) Bajar la
+visibilidad **no** es revelar y
 no emite nada. El suceso hereda la visibilidad **nueva** de la entidad (no la vieja, ni un valor
 fijo): un aviso de revelación no puede ser más secreto que la cosa revelada, ni más público que
 ella. Se escribe dentro de la misma `PrismaService.transaction` que el `UPDATE`, así que llega al
@@ -519,7 +521,7 @@ sesión y comprueban el rol **en el servidor** (`MembershipService`, nunca en el
   `prisma.campaign.delete({ where: { id } })`: el esquema ya cascadea (arriba) miembros,
   invitaciones, entidades —con sus enlaces en ambas direcciones, concesiones y
   comentarios—, sesiones y personajes. No hace falta borrar nada a mano. Emite
-  `campaign.deleted`. Probado con **recuentos reales de filas en diecisiete tablas**, no solo
+  `campaign.deleted`. Probado con **recuentos reales de filas en todas las tablas que cuelgan de la campaña** (dieciocho al 2026-09-11; la lista viva es la del e2e de `campaigns`), no solo
   por el código de estado: cuenta antes y después y exige cero. **Cada tabla nueva que cuelgue
   de una campaña se añade a ese recuento**, porque una que falte es un huérfano que no avisa —
   la operación devuelve 200 igual. Ver [08-pruebas.md](./08-pruebas.md).
@@ -658,7 +660,7 @@ Más el `isAdmin` del sistema, que ve todo — existe en el modelo (`User.isAdmi
 convertirse en admin desde la API. Es un límite conocido, no un mecanismo activo.
 
 **`PUBLIC` y `PLAYERS` producen hoy el mismo conjunto de espectadores.** `canView`
-(`visibility.ts:21-23`) devuelve `true` para ambos sin distinguirlos, y todo listado exige
+(`canView`, `visibility.ts`) devuelve `true` para ambos sin distinguirlos, y todo listado exige
 antes ser miembro de la campaña (`requireMember`) — así que, mientras no exista un modo de
 "campaña pública" que deje entrar a alguien sin membresía, `PUBLIC` no amplía nada frente a
 `PLAYERS`. La distinción está en el modelo y en el selector de visibilidad, lista para el día

@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  NotFoundException,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
   registerSchema,
@@ -49,12 +39,14 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get("me")
-  async me(@Req() req: { user: { id: string; email: string } }): Promise<AuthUser> {
-    // The JWT only carries { sub, email } (jwt.strategy.ts) — displayName is mutable and
-    // doesn't belong in the token — so it's looked up fresh on every call instead.
-    const user = await this.users.findById(req.user.id);
-    if (!user) throw new NotFoundException("User not found");
-    return { id: user.id, email: user.email, displayName: user.displayName };
+  me(@Req() req: { user: AuthUser }): AuthUser {
+    // The JWT only carries { sub, email } — displayName is mutable and doesn't belong in the
+    // token — but JwtStrategy.validate already loads the row on every request (it must, to
+    // invalidate tokens after a password change) and rejects a deleted user with 401. So the
+    // user is read from there: a second lookup here was a repeated query with an unreachable
+    // 404 behind it (ficha 1.18a, cerrada el 2026-09-10).
+    const { id, email, displayName } = req.user;
+    return { id, email, displayName };
   }
 
   // Display name only — email and id are immutable through this endpoint. The user comes

@@ -517,8 +517,6 @@ Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y exis
 
 Cada línea es un compromiso conocido, no un descuido:
 
-- **El `NotFoundException` de `GET /auth/me` quedó inalcanzable**: `JwtStrategy` ya rechaza con
-  401 al usuario borrado antes de llegar al controlador. Mejor comportamiento, rama muerta.
 - **`PATCH /auth/password` no devuelve un token nuevo**, así que cambiar la contraseña y volver
   a entrar dentro del mismo segundo de reloj puede rechazar el token recién emitido (el `iat` de
   JWT tiene precisión de segundos y el empate se trata como caduco, a propósito). Es también la

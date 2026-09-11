@@ -72,3 +72,12 @@ esta.
 
 - **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
   aceptan sin aviso. Tarea 1.5.
+
+## 1.18a · El `NotFoundException` de `GET /auth/me` quedó inalcanzable
+
+**Cerrada el 2026-09-10, y por el lado que la ficha no nombraba:** no se borró la rama muerta, se borró **la consulta repetida** que la sostenía. `JwtStrategy.validate` ya carga la fila del usuario en cada petición (es el precio de invalidar tokens al cambiar la contraseña, D-POD-7); ahora devuelve también `displayName`, y `GET /auth/me` contesta con `req.user` sin volver a `findById`. Pruebas: `auth.controller.spec.ts` «me() returns the user the strategy already loaded — no second lookup, no dead 404» y `jwt.strategy.spec.ts` (el nombre viaja, el hash no) — la suite del controlador no compilaba antes del arreglo y la del strategy estaba roja. e2e de auth 7/7.
+
+**Texto original:**
+
+- **El `NotFoundException` de `GET /auth/me` quedó inalcanzable**: `JwtStrategy` ya rechaza con
+  401 al usuario borrado antes de llegar al controlador. Mejor comportamiento, rama muerta.

@@ -1,4 +1,3 @@
-import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -21,23 +20,15 @@ describe("AuthController", () => {
     jest.clearAllMocks();
   });
 
-  it("me() looks the user up and returns id, email and displayName", async () => {
-    usersService.findById.mockResolvedValue({
-      id: "1",
-      email: "a@b.com",
-      displayName: "Gandalf",
-      passwordHash: "should-not-leak",
+  it("me() returns the user the strategy already loaded — no second lookup, no dead 404", async () => {
+    // Ficha 1.18a «el NotFoundException de GET /auth/me quedó inalcanzable»: JwtStrategy ya
+    // carga la fila entera en cada petición y rechaza con 401 al usuario borrado, así que
+    // volver a buscarlo aquí era una consulta repetida con una rama muerta detrás.
+    const result = await controller.me({
+      user: { id: "1", email: "a@b.com", displayName: "Gandalf" },
     });
-    const result = await controller.me({ user: { id: "1", email: "a@b.com" } });
-    expect(usersService.findById).toHaveBeenCalledWith("1");
+    expect(usersService.findById).not.toHaveBeenCalled();
     expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "Gandalf" });
-  });
-
-  it("me() throws NotFoundException if the token's user no longer exists", async () => {
-    usersService.findById.mockResolvedValue(null);
-    await expect(controller.me({ user: { id: "1", email: "a@b.com" } })).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
   });
 
   it("updateDisplayName() renames the caller taken from the JWT, not the body", async () => {

@@ -28,9 +28,18 @@ describe("JwtStrategy", () => {
   });
 
   it("accepts a token when the user never changed their password", async () => {
-    users.findById.mockResolvedValue({ id: "1", email: "a@b.com", passwordChangedAt: null });
+    users.findById.mockResolvedValue({
+      id: "1",
+      email: "a@b.com",
+      displayName: "Gandalf",
+      passwordChangedAt: null,
+      passwordHash: "must-not-leak",
+    });
     const result = await strategy.validate({ sub: "1", email: "a@b.com", iat: 1000 });
-    expect(result).toEqual({ id: "1", email: "a@b.com" });
+    // El nombre visible viaja con el usuario de la petición (leído fresco aquí, nunca del
+    // token, que es inmutable) y el hash NO: es lo que `GET /auth/me` devuelve sin volver a
+    // preguntar.
+    expect(result).toEqual({ id: "1", email: "a@b.com", displayName: "Gandalf" });
   });
 
   it("rejects a token issued strictly before the last password change", async () => {

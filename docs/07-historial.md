@@ -66,6 +66,14 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 6, las decisiones del autor del 2026-09-11** (tomadas con la otra sesión por los cuatro
+  pasos, D-CF-23 a 28): la vitela de Lectura es el pliego claro del prototipo con su paleta de hoja
+  entera; la anulación del DM guarda y enseña su motivo sin migración (J7), y de paso
+  `passivePerception` deja de ignorar la anulación; `changeHp`/`rollEventId` se cierra sin código
+  con la cita de Foundry y Roll20; la mesa a 390 px queda aplazada por el autor; `race`/`class` se
+  borran sin medir en la tanda de migraciones; y D6/D7 se archivan como lo que ya eran, D-CF-6/7.
+  **Revertir:** el bloque `[data-theme="reading"] [data-tone="vellum"]` de `tokens.css` y la unión
+  de `overridesSchema`; las filas viejas nunca se tocaron.
 - **Tanda 5 (d)** (un lote, tres fichas): las campañas dicen cuántas fichas ve quien mira (U4,
   contado con `canView`); las claves de traza del motor tienen una sola fuente y una prueba que
   caza una clave sin frase (S10-vocabulario); y el tema Claro es papel cálido como el prototipo

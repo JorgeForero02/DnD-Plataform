@@ -8,7 +8,13 @@ import {
   Inject,
 } from "@nestjs/common";
 import type { Character } from "@prisma/client";
-import { CLAVE_AYUDA, CLAVE_ESTABLE, RANGO_DE_ANULACION } from "@dnd/shared";
+import {
+  CLAVE_AYUDA,
+  CLAVE_ESTABLE,
+  normalizeOverride,
+  overrideValueSchema,
+  RANGO_DE_ANULACION,
+} from "@dnd/shared";
 import type {
   AbilityKey,
   Visibility,
@@ -205,14 +211,22 @@ function modificadoresDeAnulacion(character: FilaPersonaje): Modifier[] {
   const guardado = (character.overrides ?? {}) as Record<string, unknown>;
   const salida: Modifier[] = [];
   for (const [clave, valor] of Object.entries(guardado)) {
-    if (typeof valor !== "number") continue;
+    // Ronda 1 de revisión (2026-09-11), hallazgo 5 — la forma de `OverrideValue` se comprueba UNA
+    // vez, en `@dnd/shared`, no con un par de `typeof` reescritos aquí que pueden discrepar del
+    // esquema real (un `value` no entero tenía `typeof "number"` y se colaba). `safeParse` es el
+    // único juez de qué es una anulación válida; lo que no pasa se ignora igual que antes — un
+    // dato que no puede resolverse en un entero no es una anulación, sea cual sea su forma.
+    const analizado = overrideValueSchema.safeParse(valor);
+    if (!analizado.success) continue;
+    const { value, reason } = normalizeOverride(analizado.data);
     salida.push({
       target: clave,
       op: "override",
-      amount: valor,
+      amount: value,
       sourceType: "manual",
       sourceKey: clave,
       labelKey: "override.manual",
+      ...(reason ? { reason } : {}),
     });
   }
   return salida;
@@ -930,7 +944,12 @@ export class CharacterSheetService {
 
     const actuales = { ...((character.overrides ?? {}) as Overrides) };
     const previous = actuales[target];
-    actuales[target] = input.value;
+    // Ticket J7 (2026-09-11) — toda escritura NUEVA guarda el objeto, con el motivo solo cuando
+    // viene no vacío tras recortar espacios. Las filas legadas (un número a secas) no se
+    // reescriben por su cuenta: esta es la escritura de esta anulación, no una migración de las
+    // demás claves del mapa.
+    const motivo = input.reason?.trim();
+    actuales[target] = motivo ? { value: input.value, reason: motivo } : { value: input.value };
 
     const actualizado = await this.prisma.character.update({
       where: { id: characterId },
@@ -944,8 +963,11 @@ export class CharacterSheetService {
         type: "MANUAL_OVERRIDE_SET",
         target,
         value: input.value,
-        ...(previous !== undefined ? { previous } : {}),
-        ...(input.reason ? { reason: input.reason } : {}),
+        // El log del evento es siempre un número (`game-event.schema.ts`): `normalizeOverride`
+        // es lo que sabe leer una fila legada o ya migrada sin que este sitio reimplemente el
+        // `typeof`.
+        ...(previous !== undefined ? { previous: normalizeOverride(previous).value } : {}),
+        ...(motivo ? { reason: motivo } : {}),
       },
     });
     return await this.buildResponse(userId, actualizado);

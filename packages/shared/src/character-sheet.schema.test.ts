@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { changeHpSchema, updateCharacterSheetSchema } from "./index";
+import {
+  changeHpSchema,
+  normalizeOverride,
+  overridesSchema,
+  updateCharacterSheetSchema,
+} from "./index";
 
 // Capa 1 de `docs/08-pruebas.md`. Tarea 2.5.1 — `damageType` en el cuerpo de "aplicar un
 // delta de PG" es opcional: el camino de siempre (una curación, un golpe sin tipo declarado)
@@ -63,5 +68,50 @@ describe("updateCharacterSheetSchema — subclass", () => {
     const r = updateCharacterSheetSchema.safeParse({ subclass: null });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.subclass).toBeNull();
+  });
+});
+
+// Ticket J7 (2026-09-11) — el motivo del DM llega a la traza. `overridesSchema` pasa de
+// `Record<clave, number>` a `Record<clave, number | { value, reason? }>`, **unión sin
+// migración**: las filas viejas se quedan como números y nunca se reescriben; lo único nuevo es
+// que la forma admite el objeto también. `normalizeOverride` es el único sitio que decide cuál
+// de las dos formas tiene delante — API y web lo importan de aquí, ninguno reimplementa el
+// `typeof`.
+describe("overridesSchema — unión number | { value, reason? }", () => {
+  it("sigue aceptando el número de siempre (filas ya guardadas, nunca migradas)", () => {
+    const r = overridesSchema.safeParse({ ac: 18 });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta el objeto con motivo", () => {
+    const r = overridesSchema.safeParse({ ac: { value: 18, reason: "El DM lo dice" } });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta el objeto sin motivo: el motivo es opcional, como en setOverrideSchema", () => {
+    const r = overridesSchema.safeParse({ ac: { value: 18 } });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza un motivo de más de 280 caracteres, igual que setOverrideSchema", () => {
+    const r = overridesSchema.safeParse({ ac: { value: 18, reason: "x".repeat(281) } });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("normalizeOverride", () => {
+  it("un número legado se normaliza a { value }", () => {
+    expect(normalizeOverride(18)).toEqual({ value: 18 });
+  });
+
+  it("un objeto ya normalizado se devuelve tal cual", () => {
+    expect(normalizeOverride({ value: 18, reason: "El DM lo dice" })).toEqual({
+      value: 18,
+      reason: "El DM lo dice",
+    });
+  });
+
+  it("un objeto sin motivo se devuelve tal cual, sin inventar uno", () => {
+    expect(normalizeOverride({ value: 18 })).toEqual({ value: 18 });
   });
 });

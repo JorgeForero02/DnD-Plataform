@@ -14,11 +14,17 @@ import { NOMBRE_ANULABLE } from "./vocabulario";
 //     servidor rechaza el resto. Por eso la lista de abajo se genera de esa constante y no se
 //     escribe a mano: si mañana el servidor admite un sexto, esta frase lo dice sola.
 //  2. **El motivo NO es obligatorio.** `setOverride` (`character-sheet.service.ts`) lo guarda
-//     sólo `if (input.reason)`, y `Anulaciones.tsx` etiqueta su campo «Motivo (opcional)».
-//  3. **El motivo no aparece en la traza.** La traza la calcula el motor a partir de
-//     `character.overrides`, que es un `{clave: número}` sin sitio donde meter una frase; el
-//     motivo viaja en el `GameEvent` (`MANUAL_OVERRIDE_SET`), o sea en el registro de la partida.
-//     Lo que sí sale en la traza es el **paso** de la anulación con su delta.
+//     solo cuando llega recortado y no vacío (`input.reason?.trim()`), y `Anulaciones.tsx`
+//     etiqueta su campo «Motivo (opcional)».
+//  3. **Hasta el ticket J7 (2026-09-11) el motivo no aparecía en la traza — ya no es cierto.**
+//     `character.overrides` era `{clave: número}`, sin sitio donde meter una frase; desde J7 es
+//     una UNIÓN sin migración, `{clave: número | {value, reason?}}`
+//     (`overridesSchema`/`normalizeOverride`, `@dnd/shared`) — las filas viejas se quedan como
+//     número para siempre, y una fila nueva con motivo lo lleva consigo. El motor copia ese
+//     motivo al **paso** `override` de la traza (`engine.ts`), y `Traza.tsx` lo pinta como
+//     «fijada a N — motivo». El motivo TAMBIÉN sigue viajando en el `GameEvent`
+//     (`MANUAL_OVERRIDE_SET`), o sea en el registro de la partida — las dos cosas son ciertas a
+//     la vez, no una sustituye a la otra.
 //
 // Regla vinculante que esto aplica (docs/04-convenciones.md): *si la interfaz explica una regla
 // del servidor y discrepan, el que miente es el texto.*

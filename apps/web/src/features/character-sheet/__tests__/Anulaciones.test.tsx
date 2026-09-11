@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { Overrides } from "@dnd/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Anulaciones } from "../Anulaciones";
 import * as api from "../api";
@@ -9,7 +10,7 @@ import * as members from "../../campaigns/members";
 // un control que va a dar 403 es una mentira de interfaz—, que el valor viaje tal cual, y que
 // la clave anulada se pinte traducida y nunca como `ac` a pelo.
 
-function montar(overrides: Record<string, number> | null = null) {
+function montar(overrides: Overrides | null = null) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -74,8 +75,24 @@ describe("Anulaciones del DM", () => {
   it("una anulación puesta se ve con su nombre en español, nunca con la clave", () => {
     montar({ ac: 18 });
 
-    expect(screen.getByText("Clase de armadura: 18")).toBeInTheDocument();
+    expect(screen.getByText("Clase de armadura: fijada a 18")).toBeInTheDocument();
     expect(screen.queryByText(/^ac:/)).not.toBeInTheDocument();
+  });
+
+  // Ticket J7 (2026-09-11) — el motivo ya no se pierde: se guarda junto al valor
+  // (`{ value, reason }`, unión sin migración) y este panel lo enseña, a través del único sitio
+  // que sabe leer las dos formas (`normalizeOverride`, `@dnd/shared`).
+  it("ticket J7 — una anulación con motivo lo enseña tras un guion largo", () => {
+    montar({ ac: { value: 18, reason: "El DM lo dice" } });
+
+    expect(screen.getByText("Clase de armadura: fijada a 18 — El DM lo dice")).toBeInTheDocument();
+  });
+
+  it("ticket J7 — una fila legada (un número a secas) no enseña ningún motivo", () => {
+    montar({ ac: 18 });
+
+    expect(screen.getByText("Clase de armadura: fijada a 18")).toBeInTheDocument();
+    expect(screen.queryByText(/—/)).not.toBeInTheDocument();
   });
 
   it("quitarla llama al borrado con esa clave", async () => {

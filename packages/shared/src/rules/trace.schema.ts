@@ -61,6 +61,16 @@ export const traceStepSchema = z.object({
    * a otra interfaz. El español sale del catálogo, en la capa de presentación.
    */
   labelKey: z.string().min(1),
+  /**
+   * Ticket J7 (2026-09-11) — **el motivo que el DM escribió al fijar una anulación.** Solo lo
+   * lleva un paso `override` que venga de `modificadoresDeAnulacion` con `reason` guardado.
+   *
+   * **No es la excepción de "el motor nunca devuelve prosa en español" que dice el comentario
+   * de `labelKey` — es otro campo.** `labelKey` sigue siendo una clave estable que traduce el
+   * catálogo; `reason` es exactamente lo contrario: son las palabras del DM, tal cual las
+   * escribió, y no hay clave que traducir porque no hay vocabulario cerrado que las contenga.
+   */
+  reason: z.string().max(280).optional(),
 });
 export type TraceStep = z.infer<typeof traceStepSchema>;
 

@@ -252,6 +252,35 @@ describe("salvaciones, habilidades y pericia", () => {
     );
     expect(r.derived.passivePerception.total).toBe(10 + 3 + 3);
   });
+
+  // Ronda 2 de revisión (2026-09-11) — `passivePerception` es una de las cinco claves de
+  // `OVERRIDABLE_KEYS` y `derived.passivePerception` se construía a mano, sin pasar por
+  // `aplicar()`, así que una anulación del DM apuntada a ella no hacía nada: el ticket J7 existe
+  // exactamente para que "la anulación del DM funciona y enseña su motivo", y una clave anulable
+  // que el motor ignora contradice eso.
+  it("ticket J7, ronda 2 — una anulación del DM sobre la percepción pasiva sustituye el total y lleva su motivo", () => {
+    const r = derive(
+      personaje({
+        level: 5,
+        abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 16, cha: 10 },
+        skillProficiencies: { perception: "proficient" },
+        modifiers: [
+          {
+            target: "passivePerception",
+            op: "override",
+            amount: 20,
+            sourceType: "manual",
+            sourceKey: "dm",
+            labelKey: "override.manual",
+            reason: "El DM lo dice",
+          },
+        ],
+      }),
+    );
+    expect(r.derived.passivePerception.total).toBe(20);
+    const anulacion = r.derived.passivePerception.steps.find((p) => p.op === "override");
+    expect(anulacion).toMatchObject({ reason: "El DM lo dice" });
+  });
 });
 
 describe("conjuros", () => {
@@ -325,6 +354,26 @@ describe("modificadores externos", () => {
     expect(r.derived.ac.total).toBe(25);
     const anulacion = r.derived.ac.steps.find((p) => p.op === "override");
     expect(anulacion).toMatchObject({ amount: 14, sourceKey: "dm" });
+  });
+
+  it("ticket J7 — el motivo del DM viaja del modificador al paso de la traza", () => {
+    const r = derive(
+      personaje({
+        modifiers: [
+          {
+            target: "ac",
+            op: "override",
+            amount: 18,
+            sourceType: "manual",
+            sourceKey: "dm",
+            labelKey: "override.manual",
+            reason: "El DM lo dice",
+          },
+        ],
+      }),
+    );
+    const anulacion = r.derived.ac.steps.find((p) => p.op === "override");
+    expect(anulacion).toMatchObject({ reason: "El DM lo dice" });
   });
 });
 

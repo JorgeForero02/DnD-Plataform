@@ -535,13 +535,19 @@ describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la 
     // La maqueta decía «cualquier número»; son cinco, y salen de `OVERRIDABLE_KEYS`.
     expect(aviso.textContent).toMatch(/5 valores derivados/);
     expect(aviso.textContent).toMatch(/clase de armadura/);
-    // **El aviso es UNA línea desde la adopción de la maqueta**, así que las otras dos
-    // correcciones —«tienes que escribir el motivo» y «aparece en la traza», falsas las dos— se
-    // comprueban donde ahora viven: en la tarjeta de anulaciones, que es donde alguien está a
-    // punto de hacer una. Se siguen exigiendo; lo que no se puede es dejar de decirlas.
+    // **El aviso es UNA línea desde la adopción de la maqueta**, así que la otra corrección
+    // —«tienes que escribir el motivo», falsa— se comprueba donde ahora vive: en la tarjeta de
+    // anulaciones, que es donde alguien está a punto de hacer una. Se sigue exigiendo; lo que no
+    // se puede es dejar de decirla.
+    //
+    // Ticket J7 (2026-09-11): «el motivo no va a la traza» dejó de ser verdad — el motor lo
+    // copia al paso `override` y `Traza.tsx`/`Anulaciones.tsx` lo pintan. La prueba comprueba
+    // ahora lo contrario de lo que comprobaba, que es exactamente lo que pide no dejar mentir al
+    // texto.
     expect(aviso.textContent).not.toMatch(/registro de la partida/);
     const anulaciones = screen.getByRole("region", { name: "anulaciones del DM" });
-    expect(anulaciones.textContent).toMatch(/El motivo es opcional y no va a la traza/);
+    expect(anulaciones.textContent).toMatch(/el motivo es opcional/i);
+    expect(anulaciones.textContent).not.toMatch(/no va a la traza/);
     expect(anulaciones.textContent).toMatch(/registro de la partida/);
   });
 

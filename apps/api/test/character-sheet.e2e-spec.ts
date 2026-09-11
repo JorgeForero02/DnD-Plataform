@@ -437,6 +437,50 @@ describe("Hoja de personaje y PG (e2e)", () => {
     expect(ca.steps.reduce((t: number, p: { amount: number }) => t + p.amount, 0)).toBe(ca.total);
   });
 
+  // Ronda 1 de revisión, hallazgo 8 — el redondeo completo por HTTP real: `PUT overrides/:target`
+  // con un motivo pasa por `ZodValidationPipe`, se guarda como el objeto `{ value, reason }` en
+  // la columna JSON de Postgres (no simulado, como en `character-sheet.service.spec.ts`), y
+  // `GET .../sheet` lo lee de vuelta con el motivo puesto en el paso de la traza. Reutiliza el
+  // token y el personaje ya creados arriba — un `POST /auth/register` más aquí dispararía el
+  // límite de intentos del login.
+  it("ronda 1, hallazgo 8 — el motivo de una anulación viaja por HTTP y vuelve en la traza", async () => {
+    const s = app.getHttpServer();
+    const overridesUrl = `/campaigns/${campaignId}/characters/${characterId}/overrides`;
+
+    const put = await request(s)
+      .put(`${overridesUrl}/initiative`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ value: 7, reason: "Ronda 1 hallazgo 8" });
+    expect(put.status).toBe(200);
+
+    const guardado = await prisma.character.findUniqueOrThrow({ where: { id: characterId } });
+    expect(guardado.overrides).toMatchObject({
+      initiative: { value: 7, reason: "Ronda 1 hallazgo 8" },
+    });
+
+    const hoja = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+    expect(hoja.body.sheet.derived.initiative.total).toBe(7);
+    const paso = hoja.body.sheet.derived.initiative.steps.find(
+      (p: { sourceType: string }) => p.sourceType === "manual",
+    );
+    expect(paso.reason).toBe("Ronda 1 hallazgo 8");
+
+    // Y una fila legada (un número a secas, escrita directo en Postgres, como antes de esta
+    // ficha) sigue derivando: la unión no migra nada que ya estuviera guardado.
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { overrides: { ...(guardado.overrides as object), "speed.walk": 12 } },
+    });
+    const conLegado = await request(s).get(sheetUrl()).set("Authorization", `Bearer ${tokenA}`);
+    expect(conLegado.body.sheet.derived["speed.walk"].total).toBe(12);
+
+    // Deja el personaje como estaba para las pruebas siguientes de este fichero.
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { overrides: guardado.overrides as object },
+    });
+  });
+
   it("un arma equipada sale en el cuadro de ataques y el servidor tira por ella", async () => {
     const s = app.getHttpServer();
     const inventarioUrl = `/campaigns/${campaignId}/characters/${characterId}/inventory`;

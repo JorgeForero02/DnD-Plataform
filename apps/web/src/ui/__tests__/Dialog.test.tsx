@@ -55,6 +55,26 @@ describe("Dialog", () => {
     expect(screen.getByText("Confirmar borrado")).toBeInTheDocument();
   });
 
+  // Ronda 1 de revisión (2026-09-11), hallazgo 10 — el cajón `pergamino` pinta la vitela
+  // (`bg-vellum text-vellum-ink`) y necesita `data-tone="vellum"` para que la paleta de sheet
+  // por tema de `ui/tokens.css` lo alcance; sin el atributo, en Lectura sería un pliego claro
+  // con la tinta del cromo encima — el mismo defecto que el ticket P1 cerró en `Panel.tsx`.
+  it("el cajón pergamino lleva data-tone=vellum; el normal no lleva ninguno", () => {
+    const { rerender } = render(
+      <Dialog open onClose={vi.fn()} title="Crónica" pergamino>
+        contenido
+      </Dialog>,
+    );
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-tone", "vellum");
+
+    rerender(
+      <Dialog open onClose={vi.fn()} title="Formulario">
+        contenido
+      </Dialog>,
+    );
+    expect(screen.getByRole("dialog")).not.toHaveAttribute("data-tone");
+  });
+
   // Task 1.19 — the three behaviours the brief names explicitly. Each assertion below fails on
   // its own if the corresponding piece of Dialog.tsx's useEffect is removed.
   it("moves focus into the dialog on open and returns it to the trigger on close", () => {

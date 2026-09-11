@@ -90,9 +90,44 @@ function enfocarCausa(etiqueta: string) {
   destino.focus();
 }
 
-function PasoDeTraza({ paso }: { paso: TraceStep }) {
+/**
+ * Ticket J7 (2026-09-11) — el texto de un paso `override`. **«fijada a N»**, con el motivo del
+ * DM tras un guion largo cuando lo hay: eso es lo que anula de verdad significa, y es más claro
+ * que el nombre genérico de `traducirLabelKey` («Anulación del DM»), que no dice a qué se fijó.
+ *
+ * `total` es la suma corriente hasta este paso INCLUIDO. El motor guarda el DELTA en `amount`
+ * (`m.amount - corriendo`, `engine.ts`) precisamente para que la traza siga sumando, así que el
+ * total corriente que `ListaDeTraza` ya lleva **es** el valor fijado — no hay que leerlo de
+ * ningún otro sitio ni recalcularlo aquí.
+ */
+function textoDeAnulacion(total: number, reason?: string): string {
+  return reason ? `fijada a ${total} — ${reason}` : `fijada a ${total}`;
+}
+
+/**
+ * Ronda 1 de revisión (2026-09-11), hallazgo 2 — «fijada a N» es SOLO la anulación manual del
+ * DM, no cualquier paso `op === "override"`. El motor emite `override` desde otros tres sitios
+ * que no son una anulación de nadie: el suelo de 1 PG por nivel (`engine.ts`, `maxHp.minimum`),
+ * un efecto `set` de un objeto (`items.ts`) y una condición que deja la velocidad en 0
+ * (`effective-speed.ts`, `speed.condition.zero`) — más la inmunidad de daño
+ * (`apply-damage-modifiers.ts`, `damage.modifier.immune`). Todos ellos tienen su propia frase en
+ * `vocabulario.ts` y tienen que seguir saliendo tal cual; solo la anulación del DM cambia de
+ * frase por «fijada a N».
+ *
+ * **`labelKey === "override.manual"` y no `sourceType === "manual"`**: `effective-speed.ts`
+ * también marca sus pasos como `"manual"`, así que el `sourceType` no basta para distinguir una
+ * anulación real de una condición que apaga la velocidad. `"override.manual"` es exactamente la
+ * clave que escribe `modificadoresDeAnulacion` (`character-sheet.service.ts`) y ninguna otra
+ * fuente la usa.
+ */
+function esAnulacionDelDm(paso: TraceStep): boolean {
+  return paso.op === "override" && paso.labelKey === "override.manual";
+}
+
+function PasoDeTraza({ paso, total }: { paso: TraceStep; total: number }) {
   const { texto, conocida } = traducirLabelKey(paso.labelKey);
   const causa = causaEditableDe(paso);
+  const esAnulacion = esAnulacionDelDm(paso);
   const clase = ["font-chrome text-chrome-xs", conocida ? "text-muted" : "text-danger-text"].join(
     " ",
   );
@@ -101,7 +136,7 @@ function PasoDeTraza({ paso }: { paso: TraceStep }) {
       <span aria-hidden="true" className="mr-1 text-[0.85em] uppercase tracking-wide">
         {NOMBRE_OPERACION_TRAZA[paso.op]}
       </span>
-      <span>{texto}</span>
+      <span>{esAnulacion ? textoDeAnulacion(total, paso.reason) : texto}</span>
     </>
   );
 
@@ -127,8 +162,17 @@ function PasoDeTraza({ paso }: { paso: TraceStep }) {
         </span>
       )}
       <span className="font-data text-chrome-xs text-text">
-        {signoDe(paso)}
-        {Math.abs(paso.amount)}
+        {/* La columna numérica sí se queda en «= N» para CUALQUIER `override`, DM o no: la
+            revisión (hallazgo 2) confirma que esa mitad del cambio ya era correcta — un paso
+            `override` sustituye el total, así que "=" describe mejor lo que pasó que "+"/"−". */}
+        {paso.op === "override" ? (
+          `= ${total}`
+        ) : (
+          <>
+            {signoDe(paso)}
+            {Math.abs(paso.amount)}
+          </>
+        )}
       </span>
     </li>
   );
@@ -139,12 +183,25 @@ function PasoDeTraza({ paso }: { paso: TraceStep }) {
  * ataques (`AtaquesYLanzamiento.tsx`) despliegue el bono de un arma con la misma traza —incluido
  * el enlace de `causaEditableDe` a la característica que lo alimenta— sin reimplementar
  * `PasoDeTraza` en otro fichero: dos copias de esta lista es como una de las dos acaba mintiendo.
+ *
+ * **El total corriente se calcula aquí**, sumando `amount` paso a paso, y se le pasa a
+ * `PasoDeTraza` (ticket J7): es la lista quien tiene el índice, y es exactamente la suma que el
+ * motor prometió que cuadraría con el valor fijado de una anulación.
  */
 export function ListaDeTraza({ id, steps }: { id: string; steps: TraceStep[] }) {
+  // `reduce` en vez de una variable reasignada en el cuerpo del `map`: el linter de reglas de
+  // hooks prohíbe mutar una variable capturada durante el render (`react-hooks/immutability`),
+  // aunque aquí no hubiera ningún hook de por medio — es la misma regla que evita un estado
+  // que cambia entre renders sin que React se entere.
+  const totales = steps.reduce<number[]>((acc, paso) => {
+    const anterior = acc.length > 0 ? acc[acc.length - 1] : 0;
+    acc.push(anterior + paso.amount);
+    return acc;
+  }, []);
   return (
     <ul id={id} className="mt-s2 border-t border-muted pt-s2 text-left">
       {steps.map((paso, i) => (
-        <PasoDeTraza key={i} paso={paso} />
+        <PasoDeTraza key={i} paso={paso} total={totales[i]} />
       ))}
     </ul>
   );

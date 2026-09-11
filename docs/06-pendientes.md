@@ -100,7 +100,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-10** (la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+Última revisión: **2026-09-11** (la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
 código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
 cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
 entero en
@@ -128,10 +128,10 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 >
 > | Ficha | Qué se decidió | Dónde se hace |
 > |---|---|---|
-> | X1 `RestKind` · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · J7 motivo de anulación · I3/M2B-15 identificado · `race`/`class` · suceso de cambio de cantidad (revisión de M2B-8) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` después del diálogo de creación |
+> | X1 `RestKind` · enlaces sin rótulo · J5 muerte · I4/M2B-5 sobrecarga · I3/M2B-15 identificado · `race`/`class` · suceso de cambio de cantidad (revisión de M2B-8) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
 > | S4 rasgos raciales · M2B-4 cargas | D-CF-20/21: por el conversor de Foundry | **Paso 3**, tareas 2b y `uses` de objeto |
 > | R1 límite por IP · D8 correo · P3 archivar en la mesa · H7 rearmar · E0 TipTap · P6 Node | D-CF-12, 13, 17, 18, 19 y H7 «se rearma editando» | **Esta sesión**, con código |
-> | P2 mesa a 390 px | D-CF-3: fase 3 | Con el tablero |
+> | P2 mesa a 390 px | **Aplazada por el autor el 2026-09-11** (D-CF-26): quiere un diseño responsive nuevo y busca referencias él | Cuando el autor traiga el diseño; ninguna de las tres salidas de abajo se toca |
 >
 > Las fichas siguen en su sitio de abajo hasta que su commit las archive; esta tabla dice que
 > ya no son «decide el autor».
@@ -195,6 +195,10 @@ hasta aquí.
 
 ## P2 · La mesa a 390 px reparte sus tres columnas a lo ancho (2026-09-05, paseo de uso)
 
+> **Aplazada por el autor el 2026-09-11** (D-CF-26): quiere un diseño responsive nuevo para la mesa
+> y va a buscar referencias él. Hasta entonces **no se toca ninguna de las tres salidas** de abajo,
+> ni el `minmax(0,1fr)` del elenco, para no mezclar un parche con el diseño que viene.
+
 **Lo vio el paseo de uso con dos anchos** —1280 y 390— la noche del 2026-09-05, y **no se arregló a
 propósito**: es trabajo de maquetación, no un fallo suelto que se cierre con una línea.
 
@@ -255,25 +259,6 @@ improvisarlo. Las tres salidas, para elegir:
 | Elenco y herramientas a **cajones del rail** | Dos cajones nuevos, dos iconos, dos teclas. Es lo coherente con «un panel tiene tecla porque se quita» |
 | La mesa **scrollea como una página** solo en estrecho | Una línea, pero **contradice el reseño**: «la pantalla donde se juega no es un artículo» fue el defecto que `mesa-mide` nació para impedir |
 | **Pestañas** entre las tres regiones a 390 | Ni cajón ni columna: un cuarto patrón de navegación en una casa que ya tiene tres |
-
-## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
-
-**Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela
-**claro** (`#efe3c8`) sobre una mesa oscura. Se adoptó tal cual y se midió en el navegador:
-**1.02:1** el texto del panel de vitela y de la atribución del SRD, **1.51:1** un enlace dentro
-de él. El motivo no es el color del pliego, es que **sobre él la aplicación sigue imprimiendo
-con los tokens del chrome**, que en ese tema son claros.
-
-**Lo que haría falta**: una paleta de hoja completa —tinta, apagado, acento, código y filete—
-que se active dentro de `Panel tone="vellum"`. No es una línea; es una tanda con su medición.
-
-**Lo que ya está hecho para que sea barato**: `--vellum-ink` y `--vellum-muted` existen en
-`ui/tokens.css` y `ui/Panel.tsx` ya imprime a través de ellos. Hoy son alias de `--text` y
-`--muted` en los tres temas, así que no cambian nada; el día que se decida, el pliego claro
-entra redefiniéndolos en `[data-theme="reading"]` y añadiendo los que falten.
-
-Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 mediciones de
-`e2e/tokens-contrast.spec.ts`. Declarado también en [04-convenciones.md](./04-convenciones.md).
 
 ## La pantalla de juego con mapa — alcance nuevo, sin decidir (2026-09-02)
 
@@ -470,9 +455,10 @@ dificultad, porque es la pregunta que hizo el autor:
 - **Buscar sigue siendo de un solo tipo** (E1). La búsqueda por texto ya la hace el servidor y ya
   pasa por `canView` antes que por el texto, pero solo desde la pestaña del mundo: no hay una que
   cruce sesiones y personajes.
-- **Y dos que son decisión, no código** (D6 y D7): o se le da una puerta a `isAdmin` y se declara
-  cuál de las dos fuentes manda sobre «quién manda aquí», o se escribe que son de mantenimiento
-  manual.
+- D6 y D7 **ya no son decisión pendiente**: son `D-CF-6` y `D-CF-7` en
+  [decisiones.md](./decisiones.md) desde el 2026-09-10: `ownerId` es quién la creó y la
+  autoridad es el rol; `isAdmin` se concede a mano en Postgres y su primer oficio es el reinicio
+  de contraseña (`POST /admin/password-resets`, D-CF-18).
 
 > **Lo que este bloque decía y ya no dice.** Sus cuatro afirmaciones más duras —el DM no puede
 > tener un co-DM, no sabe qué invitaciones ha mandado, no puede recorrer los enlaces que acaba de
@@ -493,9 +479,7 @@ existir.
 
 **Coste declarado, para poder decidir sin volver a mirar el código:** D4 se cerró el 2026-09-10 con
 ese `orderBy`; E1 es medio, porque una búsqueda que cruce pestañas necesita decidir qué devuelve el
-servidor cuando los tipos son distintos. D6 y D7 son **decisión, no código**: o se le da una
-puerta a `isAdmin` y se declara cuál de las dos fuentes manda sobre «quién manda aquí», o se
-escribe que son de mantenimiento manual.
+servidor cuando los tipos son distintos. D6 y D7 se decidieron el 2026-09-10 (`D-CF-6`, `D-CF-7`).
 
 **Tres cosas que conviene no leer mal:**
 
@@ -589,22 +573,6 @@ empujar es una acción hacia fuera.
 Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
 sí mismo**.
 
-## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
-
-- **`changeHp` no comprueba que el `rollEventId` tenga que ver con ese PERSONAJE**, ni que sea
-  reciente. **Lo que esta línea decía de más se retiró el 2026-09-08**: afirmaba que la guarda de
-  signo del cliente era «la única» defensa, y no lo es —`characters/character-sheet.service.ts:1271`
-  exige que la tirada citada exista en la campaña **y sea de tipo `ABILITY_ROLL` o `DEATH_SAVE`**,
-  y lanza 400 si no. El comentario de ese bloque cuenta además que la primera versión solo miraba
-  identificador y campaña, así que el id de un comentario o de un `ENTITY_REVEALED` pasaba el
-  filtro. Lo que queda abierto es el personaje y la recencia. **Medido el 2026-09-10 al intentar
-  cerrarla: ninguna de las dos mitades tiene un arreglo correcto sin una decisión.** «Que la
-  tirada sea de ese personaje» rechazaría el caso normal —el daño cita la tirada del **atacante**,
-  o una del DM sin personaje (`rolls.service.ts` escribe sujeto `campaign` cuando no hay
-  `characterId`)—, y «reciente» necesita un umbral que ninguna regla da: una bola de fuego cita
-  la misma tirada para varios objetivos, y la mesa la aplica cuando le toca. **Decide el autor** si
-  se quiere un umbral, y cuál; sin él, esta línea es una observación, no una ficha.
-
 ## P4 — Limpieza
 
 ## Decisiones abiertas
@@ -697,8 +665,7 @@ dirigir tres horas de verdad.
 
 | # | Qué encontró el DM | Estado |
 |---|---|---|
-| **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta |
-| **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto, y **medido el 2026-09-10: no es un arreglo pequeño, es un cambio de forma de datos**. El motivo no se guarda en ningún sitio: `Character.overrides` es `{clave: número}` (`overridesSchema`, `packages/shared/src/character-sheet.schema.ts`) y `setOverride` manda el `reason` solo al suceso. Enseñarlo en la traza obliga a cambiar ese `Json` a `{clave: {value, reason}}` con filas ya escritas como número, y `Anulaciones.tsx` lo lee como mapa de números. Es «migración o cambio de datos» (caso 2 de `04-convenciones.md`): **lo decide el autor**. La mitad barata —que la traza diga «fijada a 18» en vez de «+6»— es solo pantalla y no cierra la ficha |
+| **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta. **Apunte del 2026-09-11, no ficha:** el `rollEventId` de un `HP_CHANGED` se guarda y ningún componente del hilo lo pinta —solo `ATTACK_RESOLVED` enlaza su tirada (`HiloDeSesion.tsx`)—; cuando la muerte tenga suceso, que el daño enlace su tirada igual |
 
 **El veredicto del DM, sin diplomacia:** la fase de **preparación** (wiki, cinco visibilidades,
 enlaces, comentarios, y el motor de reglas con su ensayo, propuestas y traza) la usaría el

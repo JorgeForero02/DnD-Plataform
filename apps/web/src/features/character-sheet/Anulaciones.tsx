@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { OVERRIDABLE_KEYS } from "@dnd/shared";
+import { normalizeOverride, OVERRIDABLE_KEYS, type Overrides } from "@dnd/shared";
 import { useClearOverride, useSetOverride } from "./hooks";
 import { useMyRole } from "../campaigns/members";
 import { Button } from "../../ui/Button";
@@ -23,9 +23,16 @@ import { PROSA_DE_HOJA, TarjetaDeHoja } from "./Tarjeta";
 // donde alguien está a punto de anular algo; antes iban en el aviso de la vista de DM, en un
 // párrafo de letra pequeña por encima de todos los números, y ahí no las leía nadie. Siguen
 // diciendo lo que hace el servidor y no lo que la maqueta prometía: no es «cualquier número»
-// (son cinco, `OVERRIDABLE_KEYS`), el motivo **no** es obligatorio (`setOverride` lo guarda solo
-// `if (input.reason)`), y el motivo **no** sale en la traza — la traza se calcula de
-// `character.overrides`, que es un mapa de clave a número sin sitio donde meter una frase.
+// (son cinco, `OVERRIDABLE_KEYS`) y el motivo **no** es obligatorio (`setOverride` lo guarda solo
+// si llega recortado y no vacío).
+//
+// **Ticket J7 (2026-09-11) — el motivo SÍ sale en la traza.** Hasta esta ficha, aquí decía lo
+// contrario: que `character.overrides` era un mapa de clave a número sin sitio donde meter una
+// frase, así que el motivo se perdía en cuanto se guardaba. Ya no: `overridesSchema` admite
+// `number | { value, reason? }` (unión sin migración — una fila vieja se queda como número para
+// siempre) y el motor copia ese motivo al paso `override` de la traza. Esta lista usa
+// `normalizeOverride` —el único sitio que sabe leer las dos formas— para enseñar el mismo
+// «fijada a N — motivo» que ahora también pinta `Traza.tsx`.
 
 export function Anulaciones({
   campaignId,
@@ -34,7 +41,7 @@ export function Anulaciones({
 }: {
   campaignId: string;
   characterId: string;
-  overrides: Record<string, number> | null;
+  overrides: Overrides | null;
 }) {
   const { role, isLoading } = useMyRole(campaignId);
   const fijar = useSetOverride(campaignId, characterId);
@@ -69,32 +76,37 @@ export function Anulaciones({
       <div className="flex flex-col gap-s2">
         <p className={`${PROSA_DE_HOJA} max-w-[66ch]`}>
           Fija un valor derivado a mano cuando el catálogo no lo cubra. La anulación aparece en la
-          traza del valor con su diferencia. El motivo es opcional y no va a la traza: queda en el
-          registro de la partida, junto al valor anterior.
+          traza del valor con su diferencia. El motivo es opcional y, si lo escribes, sale también
+          en la traza junto al valor fijado, además de quedar en el registro de la partida con el
+          valor anterior.
         </p>
 
         {puestas.length === 0 ? (
           <p className={PROSA_DE_HOJA}>Ninguna anulación puesta.</p>
         ) : (
           <ul className="flex flex-wrap gap-s2">
-            {puestas.map(([k, v]) => (
-              <li
-                key={k}
-                className="flex items-center gap-s2 rounded-radius-sm border border-muted px-s2 py-1 font-chrome text-chrome-xs text-text"
-              >
-                <span>
-                  {NOMBRE_ANULABLE[k] ?? `Sin traducir: ${k}`}: {v}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Quitar la anulación de ${NOMBRE_ANULABLE[k] ?? k}`}
-                  onClick={() => void quitar.mutateAsync(k).catch((e) => setError(e.message))}
-                  className="underline"
+            {puestas.map(([k, v]) => {
+              const { value, reason } = normalizeOverride(v);
+              return (
+                <li
+                  key={k}
+                  className="flex items-center gap-s2 rounded-radius-sm border border-muted px-s2 py-1 font-chrome text-chrome-xs text-text"
                 >
-                  Quitar
-                </button>
-              </li>
-            ))}
+                  <span>
+                    {NOMBRE_ANULABLE[k] ?? `Sin traducir: ${k}`}: fijada a {value}
+                    {reason ? ` — ${reason}` : ""}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Quitar la anulación de ${NOMBRE_ANULABLE[k] ?? k}`}
+                    onClick={() => void quitar.mutateAsync(k).catch((e) => setError(e.message))}
+                    className="underline"
+                  >
+                    Quitar
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
 

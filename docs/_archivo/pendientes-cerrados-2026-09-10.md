@@ -710,3 +710,58 @@ ficha **U6** de este documento.
 azulado). No se tocó en B0 **porque el nuestro está medido** y cambiar la paleta obliga a
 volver a medir las 19 comprobaciones de contraste en esa mitad. Es una decisión de identidad,
 no un defecto: si la mesa nueva se ve fría al lado de la maqueta, esta es la ficha.
+
+## changeHp y el rollEventId — cerrada sin código (P3, 2026-09-11, decisión del autor por los cuatro pasos)
+
+**Medición del 2026-09-11.** Lo que hay —la tirada citada existe en la campaña y es `ABILITY_ROLL` o `DEATH_SAVE` (`character-sheet.service.ts`)— es **más estricto que las dos mesas virtuales de referencia**. Foundry (sistema `dnd5e`, `module/documents/chat-message.mjs`, `applyChatCardDamage`) aplica el daño de cualquier tarjeta de chat a `canvas.tokens.controlled`: los tokens seleccionados en ese momento, sin comprobar edad del mensaje ni que la tirada fuera contra ese token. Roll20 ni siquiera enlaza tirada y daño: las barras del token se editan a mano desde el menú radial (wiki.roll20.net/Token_Features). Ninguna regla del SRD da un umbral de recencia, y exigir que la tirada sea del personaje rechazaría el caso normal (el daño cita la tirada del atacante). **Se cierra como observación**, D-CF-25. Hallazgo colateral apuntado junto a J5: el `rollEventId` de un `HP_CHANGED` se guarda y ningún componente del hilo lo pinta (solo `ATTACK_RESOLVED` enlaza su tirada, `HiloDeSesion.tsx`).
+
+**Texto original:**
+
+## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
+
+- **`changeHp` no comprueba que el `rollEventId` tenga que ver con ese PERSONAJE**, ni que sea
+  reciente. **Lo que esta línea decía de más se retiró el 2026-09-08**: afirmaba que la guarda de
+  signo del cliente era «la única» defensa, y no lo es —`characters/character-sheet.service.ts:1271`
+  exige que la tirada citada exista en la campaña **y sea de tipo `ABILITY_ROLL` o `DEATH_SAVE`**,
+  y lanza 400 si no. El comentario de ese bloque cuenta además que la primera versión solo miraba
+  identificador y campaña, así que el id de un comentario o de un `ENTITY_REVEALED` pasaba el
+  filtro. Lo que queda abierto es el personaje y la recencia. **Medido el 2026-09-10 al intentar
+  cerrarla: ninguna de las dos mitades tiene un arreglo correcto sin una decisión.** «Que la
+  tirada sea de ese personaje» rechazaría el caso normal —el daño cita la tirada del **atacante**,
+  o una del DM sin personaje (`rolls.service.ts` escribe sujeto `campaign` cuando no hay
+  `characterId`)—, y «reciente» necesita un umbral que ninguna regla da: una bola de fuego cita
+  la misma tirada para varios objetivos, y la mesa la aplica cuando le toca. **Decide el autor** si
+  se quiere un umbral, y cuál; sin él, esta línea es una observación, no una ficha.
+
+## P1 · La vitela de «Lectura» es un pliego claro (D-CF-23, 2026-09-11)
+
+**Hecho como el prototipo.** `[data-theme="reading"]` pone `--vellum-ch: 239 227 200` (#efe3c8), tinta `58 50 32` y apagado `111 98 68` (`prototipo/src/index.css:108-121`), y una paleta de hoja entera —texto, apagado, superficie, acento, cobre, peligro, aviso y filete, del tema Claro del prototipo— se activa dentro de `[data-tone="vellum"]` solo en ese tema; el cajón `pergamino` de `Dialog.tsx` lleva ahora `data-tone`. Prueba unitaria `ui/__tests__/vitela-lectura.test.ts` (canales y contraste WCAG calculado, roja antes); la medición de verdad, `tokens-contrast.spec.ts` tema `reading`, en la tanda de Playwright de cierre. La revisión atrapó que la primera versión no redefinía `--text-ch` y dejaba la atribución del SRD y la biografía a 1.02:1: la misma falla de la ficha.
+
+**Texto original:**
+
+## P1 · La vitela de «Lectura» no es un pliego claro, y el prototipo la quiere así (2026-09-04, B0)
+
+**Divergencia deliberada, medida.** El tema de lectura del prototipo pone un pliego de vitela
+**claro** (`#efe3c8`) sobre una mesa oscura. Se adoptó tal cual y se midió en el navegador:
+**1.02:1** el texto del panel de vitela y de la atribución del SRD, **1.51:1** un enlace dentro
+de él. El motivo no es el color del pliego, es que **sobre él la aplicación sigue imprimiendo
+con los tokens del chrome**, que en ese tema son claros.
+
+**Lo que haría falta**: una paleta de hoja completa —tinta, apagado, acento, código y filete—
+que se active dentro de `Panel tone="vellum"`. No es una línea; es una tanda con su medición.
+
+**Lo que ya está hecho para que sea barato**: `--vellum-ink` y `--vellum-muted` existen en
+`ui/tokens.css` y `ui/Panel.tsx` ya imprime a través de ellos. Hoy son alias de `--text` y
+`--muted` en los tres temas, así que no cambian nada; el día que se decida, el pliego claro
+entra redefiniéndolos en `[data-theme="reading"]` y añadiendo los que falten.
+
+Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 mediciones de
+`e2e/tokens-contrast.spec.ts`. Declarado también en [04-convenciones.md](./04-convenciones.md).
+
+## J7 · La anulación del DM enseña su motivo (D-CF-24, 2026-09-11)
+
+**Unión sin migración.** `overridesSchema` acepta por clave `number | { value, reason? }`; `normalizeOverride` vive una vez en `@dnd/shared` y lo importan API y web; las escrituras nuevas guardan el objeto y las filas viejas siguen como número. El motivo viaja en el `Modifier` al `TraceStep.reason` (palabras del DM, no prosa del servidor) y `Traza.tsx` pinta «fijada a N — motivo» solo en `override.manual` (las anulaciones del motor —suelo de PG, objeto `set`, velocidad 0, inmunidad— conservan su frase; lo cazó la revisión). De paso: `passivePerception` no pasaba por `aplicar()` y la anulación del DM sobre ella se ignoraba en silencio; corregido con prueba roja. Pruebas: motor, esquema, servicio, e2e HTTP y RTL.
+
+**Texto original:**
+
+| **J7** | **La anulación del DM sale como «+6» en la traza, sin el motivo** que escribió | Abierto, y **medido el 2026-09-10: no es un arreglo pequeño, es un cambio de forma de datos**. El motivo no se guarda en ningún sitio: `Character.overrides` es `{clave: número}` (`overridesSchema`, `packages/shared/src/character-sheet.schema.ts`) y `setOverride` manda el `reason` solo al suceso. Enseñarlo en la traza obliga a cambiar ese `Json` a `{clave: {value, reason}}` con filas ya escritas como número, y `Anulaciones.tsx` lo lee como mapa de números. Es «migración o cambio de datos» (caso 2 de `04-convenciones.md`): **lo decide el autor**. La mitad barata —que la traza diga «fijada a 18» en vez de «+6»— es solo pantalla y no cierra la ficha |

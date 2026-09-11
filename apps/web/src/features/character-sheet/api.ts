@@ -11,6 +11,7 @@ import type {
   DerivationWarning,
   RollSuggestions,
   DerivedValue,
+  Overrides,
   ResolveAttackInput,
   RollAttackInput,
   RollResult,
@@ -72,8 +73,12 @@ export interface CharacterRow {
    * una URL vieja, porque la lista ya no lo enseña— se pintaba idéntica a la de uno vivo.
    */
   archivedAt: string | null;
-  /** Anulaciones manuales del DM sobre valores derivados: `{ "ac": 18 }`. */
-  overrides: Record<string, number> | null;
+  /**
+   * Anulaciones manuales del DM sobre valores derivados: `{ "ac": 18 }` o, desde el ticket J7
+   * (2026-09-11), `{ "ac": { "value": 18, "reason": "..." } }`. **`Overrides` de `@dnd/shared`**,
+   * no un tipo redeclarado aquí: la forma de los datos vive una sola vez.
+   */
+  overrides: Overrides | null;
 }
 
 export interface PendingChoiceDto {

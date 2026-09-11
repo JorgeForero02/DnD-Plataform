@@ -512,9 +512,12 @@ quiere decir algo distinto.
 sobre mesa oscura. Se probó y midió **1.02:1** en el texto del panel y **1.51:1** en un enlace,
 porque sobre ese pliego todo lo que la aplicación imprime sigue siendo del color del chrome. Un
 pliego claro no necesita una tinta: necesita una paleta de hoja entera. Aquí la vitela de
-Lectura es oscura y queda ficha en [06-pendientes.md](./06-pendientes.md). Los tokens
-`--vellum-ink` / `--vellum-muted` existen ya —hoy alias de `--text`/`--muted` en los tres
-temas— porque son la costura por la que entraría ese pliego el día que se decida.
+Lectura fue oscura hasta el 2026-09-11. **Ese día se cerró la divergencia** (D-CF-23): el pliego
+de Lectura es el del prototipo (`#efe3c8`, tinta `#3a3220`, apagado `#6f6244`) y la paleta de hoja
+entera —texto, apagado, acento, cobre, peligro y filete— se activa dentro de `Panel tone="vellum"`
+solo en ese tema, redefiniendo los canales que el chrome ya consume. `--vellum-ink` /
+`--vellum-muted` siguen siendo alias de `--text`/`--muted` en Oscuro y Claro. La medición de
+verdad es la de `tokens-contrast.spec.ts` en el navegador, tema `reading`, pares del panel de vitela.
 
 ## Trampa de vitest que ya nos mordió
 

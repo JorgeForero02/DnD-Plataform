@@ -193,9 +193,35 @@ export const setOverrideSchema = z.object({
 });
 export type SetOverrideInput = z.infer<typeof setOverrideSchema>;
 
-/** El mapa guardado: clave derivada → número. */
-export const overridesSchema = z.record(overridableKeySchema, z.number().int());
+/**
+ * Un valor de anulación guardado, en cualquiera de sus dos formas.
+ *
+ * Ticket J7 (2026-09-11) — **unión, no migración.** Las filas de antes de esta ficha guardan un
+ * número a secas; escribirlas de nuevo con el motivo del DM habría exigido una migración que
+ * nadie pidió y una reescritura masiva de datos ya en producción. En vez de eso, la forma
+ * admite las dos: el número legado sigue siendo válido para siempre, y el objeto es la forma
+ * nueva para cuando el DM sí explica por qué. `reason` usa el mismo tope que `setOverrideSchema`
+ * — `max(280)` — porque es el mismo texto por el mismo motivo.
+ */
+export const overrideValueSchema = z.union([
+  z.number().int(),
+  z.object({ value: z.number().int(), reason: z.string().max(280).optional() }),
+]);
+export type OverrideValue = z.infer<typeof overrideValueSchema>;
+
+/** El mapa guardado: clave derivada → número legado u objeto `{ value, reason? }`. */
+export const overridesSchema = z.record(overridableKeySchema, overrideValueSchema);
 export type Overrides = z.infer<typeof overridesSchema>;
+
+/**
+ * El único sitio que decide qué forma tiene un valor de anulación guardado. API y web importan
+ * esto **de aquí**, nunca reimplementan el `typeof v === "number"`: es exactamente el defecto
+ * que esta ficha viene a evitar — dos copias de la misma regla que una de las dos acaba
+ * mintiendo (la misma razón por la que `canView` es dueño único de la visibilidad).
+ */
+export function normalizeOverride(v: OverrideValue): { value: number; reason?: string } {
+  return typeof v === "number" ? { value: v } : v;
+}
 
 // --- Tarea A9 (paso 2) — una actividad concedida, tal como la enseña la hoja ---
 

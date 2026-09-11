@@ -208,3 +208,104 @@ describe("ValorDerivado — el paso del agotamiento", () => {
     expect(container.querySelector('[data-untranslated="true"]')).toBeNull();
   });
 });
+
+// Ticket J7 (2026-09-11) — el motivo del DM llega hasta la traza. El paso guarda el DELTA
+// (`m.amount - corriendo`, `engine.ts`), así que la suma de `amount` hasta este paso INCLUIDO es
+// exactamente el valor fijado — no hace falta que `PasoDeTraza` reciba el valor por separado,
+// el running total de `ListaDeTraza` ya es ese número.
+describe("ValorDerivado — el motivo de una anulación del DM", () => {
+  it("con motivo: «fijada a 18 — El DM lo dice» y la cifra «= 18»", () => {
+    const ca: DerivedValue = {
+      key: "ac",
+      total: 18,
+      steps: [
+        {
+          op: "base",
+          amount: 15,
+          sourceType: "base",
+          sourceKey: "ac.unarmored",
+          labelKey: "ac.unarmored",
+        },
+        {
+          op: "override",
+          amount: 3,
+          sourceType: "manual",
+          sourceKey: "dm",
+          labelKey: "override.manual",
+          reason: "El DM lo dice",
+        },
+      ],
+    };
+    render(<ValorDerivado etiqueta="CA" valor={ca} />);
+    fireEvent.click(screen.getByRole("button", { name: "18" }));
+
+    expect(screen.getByText("fijada a 18 — El DM lo dice")).toBeInTheDocument();
+    expect(screen.getByText("= 18")).toBeInTheDocument();
+  });
+
+  it("sin motivo: solo «fijada a 18», sin guion largo ni motivo inventado", () => {
+    const ca: DerivedValue = {
+      key: "ac",
+      total: 18,
+      steps: [
+        {
+          op: "base",
+          amount: 15,
+          sourceType: "base",
+          sourceKey: "ac.unarmored",
+          labelKey: "ac.unarmored",
+        },
+        {
+          op: "override",
+          amount: 3,
+          sourceType: "manual",
+          sourceKey: "dm",
+          labelKey: "override.manual",
+        },
+      ],
+    };
+    render(<ValorDerivado etiqueta="CA" valor={ca} />);
+    fireEvent.click(screen.getByRole("button", { name: "18" }));
+
+    expect(screen.getByText("fijada a 18")).toBeInTheDocument();
+    expect(screen.queryByText(/—/)).not.toBeInTheDocument();
+    expect(screen.getByText("= 18")).toBeInTheDocument();
+  });
+
+  // Ronda 1 de revisión, hallazgo 2 — «fijada a N» es SOLO la anulación del DM
+  // (`labelKey === "override.manual"`, la clave que escribe `modificadoresDeAnulacion`), no
+  // cualquier paso `op === "override"`. El motor también emite `override` desde el suelo de PG
+  // (`maxHp.minimum`), un efecto `set` de objeto, una condición que deja la velocidad en 0 y una
+  // inmunidad de daño — todos con `sourceType: "manual"` en algún caso, así que discriminar por
+  // `sourceType` no basta. Cada uno de esos pasos tiene su propia frase en `vocabulario.ts` y
+  // tiene que seguir saliendo, no «fijada a 0» para los cuatro.
+  it("un override que NO es la anulación del DM conserva su frase traducida", () => {
+    const maxHp: DerivedValue = {
+      key: "maxHp",
+      total: 1,
+      steps: [
+        {
+          op: "base",
+          amount: -5,
+          sourceType: "class",
+          sourceKey: "wizard",
+          labelKey: "maxHp.firstLevel",
+        },
+        {
+          op: "override",
+          amount: 6,
+          sourceType: "manual",
+          sourceKey: "minimum",
+          labelKey: "maxHp.minimum",
+        },
+      ],
+    };
+    render(<ValorDerivado etiqueta="PG máximos" valor={maxHp} />);
+    fireEvent.click(screen.getByRole("button", { name: "1" }));
+
+    expect(screen.getByText("Mínimo de 1 PG por nivel")).toBeInTheDocument();
+    expect(screen.queryByText(/fijada a/)).not.toBeInTheDocument();
+    // La columna numérica sí puede seguir mostrando el total fijado.
+    expect(screen.getByText("= 1")).toBeInTheDocument();
+  });
+});

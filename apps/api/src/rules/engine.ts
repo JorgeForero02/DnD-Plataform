@@ -40,6 +40,12 @@ export interface Modifier {
   sourceType: TraceStep["sourceType"];
   sourceKey: string;
   labelKey: string;
+  /**
+   * Ticket J7 (2026-09-11) — el motivo que el DM escribió al fijar una anulación. Solo lo
+   * lleva un modificador `override` construido desde `modificadoresDeAnulacion`; `aplicar()` lo
+   * copia tal cual al `TraceStep` que genera, sin tocar ningún otro `op`.
+   */
+  reason?: string;
 }
 
 /**
@@ -471,15 +477,24 @@ export function derive(input: EngineInput): DerivationResult {
   }
 
   // --- Percepción pasiva: 10 + el bono de Percepción. Se usa constantemente en la mesa ---
+  //
+  // Ronda 2 de revisión (2026-09-11) — pasa por `aplicar()`, como cualquier otra clave
+  // derivada. Hasta esta ficha se construía el objeto a mano y una anulación del DM apuntada a
+  // `passivePerception` (una de las cinco de `OVERRIDABLE_KEYS`) no hacía nada: el motor nunca
+  // miraba `input.modifiers` para esta clave. El ticket J7 es "la anulación del DM funciona y
+  // enseña su motivo"; una clave anulable que el motor ignora contradice eso.
   const percepcion = derived["skill.perception"].total;
-  derived.passivePerception = {
-    key: "passivePerception",
-    total: 10 + percepcion,
-    steps: [
-      paso("base", 10, "base", "passive", "passive.base"),
-      paso("add", percepcion, "proficiency", "perception", "skill.perception"),
-    ],
-  };
+  derived.passivePerception = aplicar(
+    "passivePerception",
+    {
+      total: 10 + percepcion,
+      steps: [
+        paso("base", 10, "base", "passive", "passive.base"),
+        paso("add", percepcion, "proficiency", "perception", "skill.perception"),
+      ],
+    },
+    input.modifiers,
+  );
 
   // --- Sentidos ---
   derived["senses.darkvision"] = aplicar(
@@ -739,7 +754,9 @@ function aplicar(
   // decisión, no un accidente: el orden de la lista lo fija quien la construye. El paso guarda
   // el **delta** para que la traza siga sumando el total.
   for (const m of modifiers.filter((m) => m.target === key && m.op === "override")) {
-    steps.push(paso("override", m.amount - corriendo, m.sourceType, m.sourceKey, m.labelKey));
+    steps.push(
+      paso("override", m.amount - corriendo, m.sourceType, m.sourceKey, m.labelKey, m.reason),
+    );
     corriendo = m.amount;
   }
 
@@ -754,6 +771,7 @@ function paso(
   sourceType: TraceStep["sourceType"],
   sourceKey: string,
   labelKey: string,
+  reason?: string,
 ): TraceStep {
-  return { op, amount, sourceType, sourceKey, labelKey };
+  return { op, amount, sourceType, sourceKey, labelKey, ...(reason ? { reason } : {}) };
 }

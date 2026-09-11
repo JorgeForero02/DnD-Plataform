@@ -122,13 +122,22 @@
    * were saying less than they should on --danger (overstating: a second link generation isn't
    * a danger) or --muted (a reason indistinguishable from a tag chip) — see InvitePanel.tsx and
    * CampaignDetailPage.tsx's EntityTab. Unlike --accent/--danger, this single value already
-   * clears 4.5:1 against ALL THREE surfaces in BOTH themes (dark: 8.70/7.99/7.77 on
+   * clears 4.5:1 against ALL THREE surfaces in Dark and Light (dark: 8.70/7.99/7.77 on
    * bg/surface/vellum; light: 5.28/5.90/6.06 — measured in
    * e2e/tokens-contrast.spec.ts and .superpowers/sdd/briefs/1.18b-errores-y-cuenta-report.md),
    * so there is no separate *-text variant to keep in sync the way accent/danger needed —
-   * --warning and --warning-text are the same colour in both themes, on purpose.
+   * --warning and --warning-text are the same colour in both of THOSE two themes, on purpose.
    * No --success token: success reuses --accent-text plus a check glyph and an explicit word
    * (a second green would be two greens to learn — see the report).
+   *
+   * **Ronda 1 de revisión (2026-09-11) — esto ya no es "both themes", son tres, y Lectura no
+   * comparte el número.** Su propio bloque (`:root[data-theme="reading"]`, más abajo) le da a
+   * `--warning-text-ch` un valor propio de mesa oscura (`230 178 74`) que nada tiene que ver con
+   * este párrafo. Y dentro del panel de vitela de Lectura, la regla
+   * `[data-theme="reading"] [data-tone="vellum"]` redefine `--warning-text-ch` una TERCERA vez,
+   * al `122 83 16` de Claro — porque el literal del prototipo (`#8a6314`) daba 4.26:1 sobre el
+   * pliego claro, por debajo del 4.5:1 que este párrafo presume. Este comentario describe el
+   * token base en Dark/Light; no describe ni el tema Lectura ni su vitela.
    */
   --warning: rgb(var(--warning-ch));
   --warning-text: rgb(var(--warning-text-ch));
@@ -416,7 +425,11 @@
 :root[data-theme="reading"] {
   --bg-ch: 36 29 18;
   --surface-ch: 44 36 23;
-  --vellum-ch: 42 36 25;
+  /* Ticket P1 (2026-09-11): el pliego CLARO del prototipo (#efe3c8) — ver el comentario largo
+   * más abajo, junto a `--vellum-ink-ch` / `--vellum-muted-ch`, que son la otra mitad del
+   * mismo cambio. La mesa (`--bg` / `--surface`, arriba) sigue siendo la pizarra oscura y
+   * cálida de Lectura; solo el pliego cambia de bando. */
+  --vellum-ch: 239 227 200;
   --text-ch: 236 225 201;
   --muted-ch: 179 166 133;
   --accent-ch: 111 182 206;
@@ -432,28 +445,27 @@
   --voz-indigo-ch: 162 172 235;
   --voz-arena-ch: 222 198 150;
 
-  /* **Y aqui hay una divergencia deliberada con el prototipo, medida y no opinada.**
+  /* Ticket P1 (2026-09-11) — **la divergencia de arriba se cierra.** Hasta hoy este bloque
+   * decía que la vitela de Lectura se quedaba oscura porque un pliego claro "necesita una
+   * paleta entera de sheet - tinta, apagado, acento, codigo y filete -, y eso es una tanda con
+   * su ficha, no una linea en esta". Esta es esa ficha: `--vellum-ch` pasa a ser el pliego
+   * CLARO del prototipo (#efe3c8, `prototipo/src/index.css:108-121`) y la paleta de sheet que
+   * faltaba vive justo debajo, en la regla `[data-theme="reading"] [data-tone="vellum"]` — no
+   * aquí, porque solo debe pintar DENTRO del panel de vitela y en ningún otro sitio del cromo
+   * de Lectura, que sigue siendo la mesa oscura y calida que ya tenia.
    *
-   * Su tema de lectura pone un pliego CLARO (#efe3c8) sobre una mesa oscura. Se probo tal cual
-   * y no se sostiene: sobre ese pliego, todo lo que la aplicacion imprime sigue siendo del
-   * color del chrome, asi que el texto midio **1.02:1** y un enlace **1.51:1**. Un pliego claro
-   * no necesita una tinta, necesita **una paleta entera de sheet** - tinta, apagado, acento,
-   * codigo y filete -, y eso es una tanda con su ficha, no una linea en esta.
-   *
-   * Asi que la vitela de Lectura es oscura, como en el tema Oscuro, y el tema es lo que de
-   * verdad se pidio: **la misma mesa, mas calida**. La regla del proyecto ya lo dice - si el
-   * prototipo y una regla de `docs/04-convenciones.md` discrepan, manda el documento, y la
-   * discrepancia se declara en vez de dejarla implicita. Queda ficha en `06-pendientes.md`.
-   *
-   * `--vellum-ink` / `--vellum-muted` SE QUEDAN aunque hoy sean alias de `--text` / `--muted`
-   * en los tres temas: son exactamente la costura por donde entraria ese pliego claro el dia
-   * que se decida, y `ui/Panel.tsx` ya imprime a traves de ellos.
-   *
-   * Los tres valores de papel siguen la logica del tema oscuro - la sombra y la vineta
-   * oscurecen -, no la del claro. */
-  --sheet-shadow: rgb(0 0 0 / 0.62);
-  --vellum-laid: rgb(var(--copper-ch) / 0.045);
-  --vellum-vignette: rgb(0 0 0 / 0.22);
+   * `--vellum-ink` / `--vellum-muted` dejan de ser el alias de `--text` / `--muted` SOLO en
+   * este tema: son la tinta parda del prototipo (`--vellum-ink: #3a3220`,
+   * `--vellum-muted: #6f6244`), la costura por la que este pliego siempre iba a entrar. */
+  --vellum-ink-ch: 58 50 32;
+  --vellum-muted-ch: 111 98 68;
+
+  /* Los tres valores de papel ahora siguen la logica del tema Claro - la sombra y la vineta
+   * aclaran hacia el cobre, no hacia el negro -, porque el pliego ya es un papel claro y no
+   * tiene un borde gris. Mismos valores que el bloque `:root[data-theme="light"]` de arriba. */
+  --sheet-shadow: rgb(22 35 43 / 0.22);
+  --vellum-laid: rgb(143 82 40 / 0.05);
+  --vellum-vignette: rgb(143 82 40 / 0.05);
 
   --accent-tint: rgb(var(--accent-ch) / 0.14);
   --danger-tint: rgb(var(--danger-ch) / 0.14);
@@ -462,6 +474,81 @@
   --muted-tint: rgb(var(--muted-ch) / 0.16);
 
   color-scheme: dark;
+}
+
+/* Ticket P1 (2026-09-11), ronda 1 de revisión — **la paleta de sheet que el bloque de arriba
+ * prometía, esta vez completa.** Un pliego claro no se lee con la tinta del cromo: el bloque
+ * `:root[data-theme="reading"]` sigue siendo la mesa oscura para TODO lo demás (navegación,
+ * formularios, botones), pero dentro del panel de vitela (`ui/Panel.tsx`, `data-tone="vellum"`)
+ * el texto, el acento, el cobre, el peligro, la advertencia y el filete que ese panel pinta
+ * encima tienen que venir del tema CLARO del prototipo (`prototipo/src/index.css:89-104`),
+ * porque son los que de verdad se leen sobre `#efe3c8`. Medido el 2026-09-04: sin esta regla,
+ * el texto del panel daba 1.02:1 y un enlace 1.51:1.
+ *
+ * **`--text-ch` SÍ se redefine.** La primera versión de esta regla lo dejó fuera a propósito, y
+ * la revisión lo marcó CRÍTICO con razón: `text-text` es lo que pintan de verdad
+ * `AcercaDePage.tsx` (la atribución del SRD y la nota de modificación, ambas medidas por
+ * `apps/web/e2e/tokens-contrast.spec.ts:661-674` en los tres temas) y la biografía editable de
+ * `CharacterDetailPage.tsx` vía `EdicionEnSitio.tsx` — dos consumidores reales, no hipotéticos,
+ * sentados sobre la vitela sin pasar por `text-vellum-ink`. Sin esta línea esos dos sitios
+ * medían exactamente el 1.02:1 que esta ficha existe para cerrar, solo que un componente más
+ * allá del panel de Markdown que sí se arregló la primera vez.
+ *
+ * **Y `--surface-ch` tiene que acompañarlo.** Es la pieza que resuelve la objeción original: el
+ * código en línea de Markdown pinta `[&_code]:bg-surface [&_code]:text-text`, así que si
+ * `--text-ch` se oscurece y `--surface-ch` se queda en el cromo oscuro, el chip pasa a ser tinta
+ * oscura sobre un chip oscuro (1.21:1 — el mismo defecto, un sitio más allá). Redefiniendo
+ * también `--surface-ch` al papel claro del tema Claro (`243 239 230`, `tokens.css:338`), el
+ * chip se vuelve EXACTAMENTE lo que el tema Claro ya hace consigo mismo (chip 243 239 230 sobre
+ * papel 234 223 199, 1.09:1 de separación de superficie) — texto 11.04:1, nada roto.
+ *
+ * Solo se redefinen los canales que un elemento pinta REALMENTE encima de la vitela — verificado
+ * contra lo que mide `apps/web/e2e/tokens-contrast.spec.ts:377-412` y contra los consumidores
+ * reales del árbol (`grep` en `apps/web/src`):
+ *
+ *   - `--text-ch`: la atribución del SRD y la nota de modificación en `AcercaDePage.tsx`, y la
+ *     biografía editable de `CharacterDetailPage.tsx` (`EdicionEnSitio.tsx`). Medido por el e2e.
+ *   - `--surface-ch`: el chip del código en línea de Markdown (`bg-surface`), para que
+ *     `--text-ch` no lo deje ilegible — ver el párrafo de arriba.
+ *   - `--muted-ch`: el hairline del panel (`Panel.tsx` pone `border-muted` en el propio div) y
+ *     el texto apagado que cuelga dentro de una vitela (`text-muted`, `CharacterDetailPage.tsx`,
+ *     `AcercaDePage.tsx`). Medido por el e2e como "panel vellum borde (hairline)".
+ *   - `--accent-text-ch`: el enlace de Markdown (`[&_a]:text-accent-text`, `Markdown.tsx`).
+ *     Medido como "enlace en panel vellum texto".
+ *   - `--copper-text-ch`: la capitular de `CampaignOverview.tsx` (`text-copper-text` dentro de
+ *     su `Panel tone="vellum"`) — no lo mide el e2e de /design-tokens, pero es un consumidor
+ *     real y no un canal inventado.
+ *   - `--accent-ch` / `--copper-ch` / `--danger-ch` / `--warning-ch`: los cuatro se redefinen
+ *     junto a su pareja `-text`, aunque `--danger-ch` y `--warning-ch` no tengan hoy un borde o
+ *     relleno propio dentro de una vitela — la regla del proyecto es no dejar la mitad de un par
+ *     sin traducir (ronda 1, hallazgo 9): un `border-danger` o una caja de advertencia que un
+ *     carril futuro pinte ahí ya encuentra su mitad lista, en vez de heredar el cromo oscuro.
+ *     `--accent-ch` sí tiene consumidor real: `border-accent` en `EdicionEnSitio.tsx` (Guardar).
+ *     `--copper-ch` también: `border-copper` en el filete de `EntityDetailPage.tsx`.
+ *   - `--copper-rule`: no lo consume ningún elemento dentro de una vitela hoy, pero es el
+ *     filete que la ficha pide y que un carril futuro sí va a usar; se redefine sobre
+ *     `--copper-text-ch` (no sobre el `--copper-ch` translúcido al 45%, que da 1.73:1 aquí) y a
+ *     0.85 de alfa, que compone 3.83:1 sobre `#efe3c8` — el genérico de abajo no lo alcanzaba.
+ *
+ * **`--warning-text-ch` ya NO usa el literal exacto del prototipo (`#8a6314`).** Esa cifra da
+ * 4.26:1 sobre `#efe3c8`, por debajo de 4.5:1 — la ronda 1 de revisión lo marcó como "la mentira
+ * a punto de pasar" que la ficha original ya advertía. El propio proyecto resolvió esto una vez:
+ * el tema Claro oscureció el mismo ámbar del prototipo a `122 83 16` en la tarea 1.18b, por esta
+ * misma razón (`tokens.css:349`, 5.37:1). Se reutiliza ese valor aquí en vez de inventar uno
+ * nuevo — mismo ámbar que ya está en el sistema, no un tercero que aprender. */
+[data-theme="reading"] [data-tone="vellum"] {
+  --text-ch: 58 50 32;
+  --surface-ch: 243 239 230;
+  --muted-ch: 111 98 68;
+  --accent-ch: 47 118 144;
+  --accent-text-ch: 37 97 121;
+  --copper-ch: 169 95 44;
+  --copper-text-ch: 143 77 31;
+  --danger-ch: 155 58 49;
+  --danger-text-ch: 147 47 38;
+  --warning-ch: 122 83 16;
+  --warning-text-ch: 122 83 16;
+  --copper-rule: rgb(var(--copper-text-ch) / 0.85);
 }
 
 /* Task 1.19b — the density decision 1.19 deliberately deferred (see the fix round 2 note this
@@ -660,7 +747,11 @@ body {
  *     vellum-ink 11,85 → 11,39 · vellum-muted 5,25 → 5,05 · copper-text 6,31 → 6,07
  *   Claro    (244 239 226) → (236 230 214)
  *     vellum-ink 13,97 → 12,87 · vellum-muted 5,97 → 5,50 · copper-text 5,37 → 4,95
- *   Lectura  (42 36 25) → (46 39 25)
+ *   Lectura  (42 36 25) → (46 39 25) — **fila anterior al ticket P1 (2026-09-11)**, que
+ *     cambió `--vellum-ch` de Lectura al pliego claro del prototipo (239 227 200). Estos tres
+ *     números describen la vitela oscura que ya no existe en ese tema; el lote de Playwright
+ *     del orquestador es quien vuelve a medir el píxel compuesto sobre el pliego nuevo, no esta
+ *     cuenta a mano.
  *     vellum-ink 11,85 → 11,39 · vellum-muted 6,38 → 6,13 · copper-text 6,89 → 6,62
  *
  * **El peor par no era el que se esperaba.** La cuenta a mano decía que en los

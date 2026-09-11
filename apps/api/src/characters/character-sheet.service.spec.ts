@@ -871,6 +871,97 @@ describe("las anulaciones manuales del DM", () => {
     );
   });
 
+  // Ticket J7 (2026-09-11) — el motivo del DM llega a la traza. `overrides` pasa a admitir
+  // `number | { value, reason? }`; las filas legadas (un número a secas, como en casi todas las
+  // pruebas de arriba) siguen derivando exactamente igual — esa es la garantía de la unión sin
+  // migración, y ya la comprueba "la anulación gana sobre lo derivado..." al principio de este
+  // describe con `overrides: { ac: 18 }`.
+  it("ticket J7 — al fijarla con motivo, el motivo llega hasta el paso de la traza", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje();
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockImplementation(({ data }: { data: { overrides: object } }) => ({
+      ...fila,
+      ...data,
+    }));
+
+    const r = await service.setOverride("dm1", "cmp1", "ch1", "ac", {
+      value: 18,
+      reason: "El DM lo dice",
+    });
+
+    const anulacion = r.sheet!.derived.ac.steps.find((p) => p.sourceType === "manual");
+    expect(anulacion).toMatchObject({ reason: "El DM lo dice" });
+  });
+
+  it("ticket J7 — una fila legada con overrides como número (sin migrar) sigue derivando", async () => {
+    const { service, prisma } = montar();
+    // El dato tal cual lo dejó una escritura de ANTES de esta ficha: un número a secas, no
+    // `{ value, reason }`. La unión no reescribe filas viejas.
+    prisma.character.findFirst.mockResolvedValue(personaje({ overrides: { ac: 18 } }));
+
+    const r = await service.getSheet("owner1", "cmp1", "ch1");
+
+    expect(r.sheet!.derived.ac.total).toBe(18);
+    const anulacion = r.sheet!.derived.ac.steps.find((p) => p.sourceType === "manual");
+    expect(anulacion).toBeDefined();
+    expect(anulacion!.reason).toBeUndefined();
+  });
+
+  // Ronda 2 de revisión (2026-09-11) — el caso que no se podía probar hasta ahora:
+  // `passivePerception` es una de las cinco claves anulables, pero `engine.ts` la construía sin
+  // pasar por `aplicar()`, así que una anulación guardada —legada o nueva— no hacía nada. Ya se
+  // arregló el motor (`engine.spec.ts`); esta prueba pincha que el arreglo llega hasta la hoja
+  // completa con una fila LEGADA (un número a secas, como las que ya existen en producción).
+  it("ronda 2 — una fila legada con override numérico en passivePerception ahora sí deriva", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(
+      personaje({ overrides: { passivePerception: 20 } }),
+    );
+
+    const r = await service.getSheet("owner1", "cmp1", "ch1");
+
+    expect(r.sheet!.derived.passivePerception.total).toBe(20);
+    const anulacion = r.sheet!.derived.passivePerception.steps.find(
+      (p) => p.sourceType === "manual",
+    );
+    expect(anulacion).toBeDefined();
+  });
+
+  // Ronda 1 de revisión, hallazgo 5 — `modificadoresDeAnulacion` deja de reimplementar la forma
+  // de `OverrideValue` a mano (dos `typeof` que ya podían discrepar del esquema) y pasa por
+  // `overrideValueSchema.safeParse`. Efecto observable: un valor guardado que el esquema
+  // rechaza —aquí, un `value` no entero— se ignora, cosa que el `typeof === "number"` de antes
+  // NO hacía (un `18.5` tiene `typeof "number"` y se habría colado).
+  it("ronda 1, hallazgo 5 — un valor guardado no entero se ignora, no se cuela como anulación", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(
+      personaje({ overrides: { ac: { value: 18.5 } } as never }),
+    );
+
+    const r = await service.getSheet("owner1", "cmp1", "ch1");
+
+    const anulacion = r.sheet!.derived.ac.steps.find((p) => p.sourceType === "manual");
+    expect(anulacion).toBeUndefined();
+  });
+
+  // Ronda 1 de revisión, hallazgo 7 — la mitad de la decisión "unión sin migración" que faltaba
+  // por pinchar: fijar UNA clave no debe tocar el número legado de otra.
+  it("ronda 1, hallazgo 7 — fijar una clave deja el número legado de otra intacto", async () => {
+    const { service, prisma } = montar();
+    const fila = personaje({ overrides: { ac: 14, maxHp: 30 } });
+    prisma.character.findFirst.mockResolvedValue(fila);
+    prisma.character.update.mockResolvedValue(fila);
+
+    await service.setOverride("dm1", "cmp1", "ch1", "ac", { value: 18, reason: "Anillo" });
+
+    expect(prisma.character.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { overrides: { ac: { value: 18, reason: "Anillo" }, maxHp: 30 } },
+      }),
+    );
+  });
+
   it("quitarla devuelve el valor al que calcula el catálogo", async () => {
     const { service, prisma } = montar();
     prisma.character.findFirst.mockResolvedValue(personaje({ overrides: { ac: 18 } }));

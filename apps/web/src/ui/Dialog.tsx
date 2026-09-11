@@ -196,6 +196,13 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        // Ronda 1 de revisión (2026-09-11), hallazgo 10 — el cajón `pergamino` pinta
+        // `bg-vellum text-vellum-ink` pero, sin este atributo, ninguna paleta de sheet por tema
+        // (`[data-theme="reading"] [data-tone="vellum"]`, `ui/tokens.css`) llegaba a alcanzarlo:
+        // en Lectura habría sido un pliego claro con todo el contenido en tinta de cromo. Sin
+        // consumidor hoy (`grep` no encuentra ningún `pergamino` en uso), pero es la misma
+        // trampa que ya se cerró en `Panel.tsx`, un componente al lado.
+        data-tone={pergamino ? "vellum" : undefined}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         // **Dentro del cajón no hay cabecera de aplicación, así que no hay escalón.** El cajón se

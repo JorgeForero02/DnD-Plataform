@@ -77,6 +77,9 @@ su medición están en
   entidades: un id que no sea miembro tumba la petición entera con 400. **Por qué:** se guardaba
   una concesión inerte que se activaría sola el día que esa cuenta entrara. **Revertir:** quitar el
   método y sus dos llamadas.
+- **P3 · grants inertes** — conceder a jugadores concretos con otra visibilidad es 400, no un
+  descarte en silencio ni una fila inerte (`requireGrantsToMembers`, con la visibilidad
+  resultante). **Revertir:** quitar la comprobación de visibilidad del método.
 - **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
   rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
 - **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda

@@ -55,8 +55,20 @@ export class EntitiesService {
    * concedida sin que nadie lo decidiera. Se rechaza entera, con la misma frase para «no existe» y
    * «no es miembro»: el 400 no puede ser un oráculo de cuentas.
    */
-  private async requireGrantsToMembers(campaignId: string, userIds: string[] | undefined) {
+  private async requireGrantsToMembers(
+    campaignId: string,
+    userIds: string[] | undefined,
+    visibility: string,
+  ) {
     if (!userIds?.length) return;
+    // **Y solo tienen sentido con `SPECIFIC_PLAYERS`** (ficha P3 «los grants son inertes», cerrada
+    // el 2026-09-10). `create` las descartaba en silencio y `update` las guardaba igual: en los dos
+    // casos el DM creía haber concedido algo que la matriz no iba a mirar. Se dice, no se ignora.
+    if (visibility !== "SPECIFIC_PLAYERS") {
+      throw new BadRequestException(
+        "Las concesiones a jugadores concretos solo valen con la visibilidad «Jugadores concretos».",
+      );
+    }
     const miembros = await this.prisma.campaignMember.count({
       where: { campaignId, userId: { in: userIds } },
     });
@@ -70,7 +82,7 @@ export class EntitiesService {
   async create(userId: string, campaignId: string, input: CreateEntityInput) {
     await this.membership.requireDM(campaignId, userId);
     const { specificPlayerIds, ...rest } = input;
-    await this.requireGrantsToMembers(campaignId, specificPlayerIds);
+    await this.requireGrantsToMembers(campaignId, specificPlayerIds, rest.visibility);
     const entity = await this.prisma.entity.create({
       data: {
         campaignId,
@@ -80,10 +92,9 @@ export class EntitiesService {
         tags: rest.tags,
         visibility: rest.visibility,
         createdById: userId,
-        grants:
-          rest.visibility === "SPECIFIC_PLAYERS" && specificPlayerIds?.length
-            ? { create: specificPlayerIds.map((uid) => ({ userId: uid })) }
-            : undefined,
+        grants: specificPlayerIds?.length
+          ? { create: specificPlayerIds.map((uid) => ({ userId: uid })) }
+          : undefined,
       },
       include: { grants: true },
     });
@@ -215,7 +226,12 @@ export class EntitiesService {
       })
     ).map((g) => g.userId);
     const { specificPlayerIds, ...rest } = input;
-    await this.requireGrantsToMembers(campaignId, specificPlayerIds);
+    // Contra la visibilidad que va a quedar: la del cuerpo si viene, la guardada si no.
+    await this.requireGrantsToMembers(
+      campaignId,
+      specificPlayerIds,
+      rest.visibility ?? before.visibility,
+    );
     const data: Record<string, unknown> = {};
     if (rest.type !== undefined) data.type = rest.type;
     if (rest.name !== undefined) data.name = rest.name;

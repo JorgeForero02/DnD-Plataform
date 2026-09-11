@@ -330,4 +330,31 @@ describe("Entities visibility (e2e)", () => {
     expect(fila?.visibility).toBe("DM_ONLY");
     await prisma.user.delete({ where: { id: forastero.id } });
   });
+
+  it("concesiones con una visibilidad que no es SPECIFIC_PLAYERS se rechazan, no se ignoran (ficha P3 · grants inertes)", async () => {
+    // `create` las descartaba en silencio y `update` las guardaba igual: en los dos casos el
+    // DM creía haber concedido algo que no concede. Un 400 que lo diga vale más que cualquiera
+    // de las dos cosas.
+    const s = app.getHttpServer();
+    const creada = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "Inerte", visibility: "PLAYERS", specificPlayerIds: [playerId] });
+    expect(creada.status).toBe(400);
+
+    // Y en `update`, contra la visibilidad que YA tiene la ficha cuando el cuerpo no la trae.
+    const dmOnly = await request(s)
+      .post(`/campaigns/${campaignId}/entities`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ type: "NPC", name: "Sigue siendo del DM", visibility: "DM_ONLY" });
+    const res = await request(s)
+      .patch(`/campaigns/${campaignId}/entities/${dmOnly.body.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ specificPlayerIds: [playerId] });
+    expect(res.status).toBe(400);
+    const grants = await prisma.entityVisibilityGrant.findMany({
+      where: { entityId: dmOnly.body.id },
+    });
+    expect(grants).toEqual([]);
+  });
 });

@@ -63,3 +63,12 @@ esta.
   2026-09-08: hoy son `grants` en la base y `grantedUserIds` en el borde. El hueco sigue igual —
   `entities/entities.service.ts:200` borra y vuelve a crear las concesiones, y el `requireMember`
   de ese método comprueba **a quien llama, no a los concedidos**.
+
+## P3 · Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`, y aun así se aceptan sin aviso
+
+**Cerrada el 2026-09-10.** `entities.service.ts`, `requireGrantsToMembers` recibe además la visibilidad que va a quedar (la del cuerpo, o la guardada en `update`) y rechaza con 400 cualquier `specificPlayerIds` no vacío fuera de `SPECIFIC_PLAYERS`. Desaparece el descarte silencioso que `create` hacía. Los tres emisores (`EntityEditor`, `EscribirFicha`, `seed-demo.mjs`) ya solo mandan la lista con esa visibilidad, medido antes de cambiar el servidor. Prueba: e2e «concesiones con una visibilidad que no es SPECIFIC_PLAYERS se rechazan, no se ignoran» — roja antes (201), verde después.
+
+**Texto original:**
+
+- **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
+  aceptan sin aviso. Tarea 1.5.

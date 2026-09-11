@@ -706,8 +706,6 @@ mejora, no compromiso.
 Ninguna es un agujero de lectura —nadie ve contenido ajeno—, pero todas degradan el
 comportamiento:
 
-- **Los `grants` son inertes si la visibilidad no es `SPECIFIC_PLAYERS`**, y aun así se
-  aceptan sin aviso. Tarea 1.5.
 - **`Session` no tiene `grants`** → `SPECIFIC_PLAYERS` es inerte en ella y el selector lo ofrece igual.
   Tarea 1.8. *(La mitad de `Character` era falsa desde `common/character-viewer.ts`; archivada.)*
 

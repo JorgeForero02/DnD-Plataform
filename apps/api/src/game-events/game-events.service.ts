@@ -96,6 +96,8 @@ export class GameEventsService {
         // D-OP-15: quién cobra qué tirada. `undefined` deja la columna nula, y en PostgreSQL dos
         // nulos son distintos, así que los sucesos que no cobran nada no chocan entre sí.
         attackRollEventId: input.attackRollEventId ?? null,
+        // Migración 7, fix round 1 (M6): el `ref` estable del arma de una tirada de ataque.
+        attackRef: input.attackRef ?? null,
       },
     });
 
@@ -236,12 +238,27 @@ export class GameEventsService {
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     });
 
-    const events = rows.filter((row) =>
+    const filas = rows.filter((row) =>
       this.canSee(viewer, row.visibility, row.actorUserId, row.grantedUserIds),
     );
+    // Fix round 2 (R3) — **`attackRef` no sale para quien no es el DM.** Es el `ref` REAL de la
+    // fila (`character-sheet.service.ts`, `datosDeMesaParaAtaque`), y para un objeto del SRD el
+    // `ref` real ES su nombre (una clave pública): un jugador que lea su propio hilo de sucesos
+    // no debería poder leer `attackRef: "SRD:longsword"` de un arma que la propia fila (`item`
+    // del suceso, ya con `nombreVisible`) le enseña como «Espada de aspecto extraño». El DM sí
+    // lo ve —es quien necesita comprobar qué arma es, si hiciera falta—.
+    const esDM = viewer.role === "DM";
+    const events = esDM ? filas : filas.map((fila) => this.sinAttackRef(fila));
     const hayMas = rows.length === query.limit;
 
     return { events, nextCursor: hayMas ? rows[rows.length - 1].id : null };
+  }
+
+  /** Fix round 2 (R3) — quita `attackRef` de una fila para quien no es el DM (ver `list()`). */
+  private sinAttackRef<T extends { attackRef: string | null }>(fila: T): Omit<T, "attackRef"> {
+    const { attackRef, ...resto } = fila;
+    void attackRef;
+    return resto;
   }
 
   private canSee(

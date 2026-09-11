@@ -160,6 +160,16 @@ modelo no hace en ningún sitio, y la traza de la CA delataría el número igual
   Nace **`DM_ONLY`** —preparar la mazmorra no puede ser filtrarla— y cuelga de la campaña en
   cascada, contado de verdad en la prueba de borrado.
 
+- **`InventoryItem.identified` y `unidentifiedName`** (D-CF-15, 2026-09-11): «lo tengo pero no sé
+  qué hace», con la forma de Foundry. Capa ortogonal a `canView`, por fila y solo del DM: para
+  quien no es DM se sustituye la identidad —nombre, descripción, referencia— y se conservan los
+  números, en cada camino por el que un objeto sale del servidor (listado, hoja, ataques, traza,
+  sucesos del hilo, errores, tiradas). El dueño siempre ve sus filas; el catálogo puede bajar a
+  `DM_ONLY` mientras todas las filas en manos de jugadores estén sin identificar. De paso,
+  **`GameEvent.attackRef`** (columna, misma tanda): el crítico de un daño se casa con su ataque por
+  la referencia real del objeto y no por el nombre, que ahora puede cambiar entre el ataque y el
+  daño; es interna —no sale a quien no es DM— y los sucesos anteriores, sin ella, siguen casando
+  por nombre.
 - **`Campaign.encumbranceVariant`** (D-CF-16, 2026-09-11): la sobrecarga del SRD como variante,
   apagada por defecto y solo del DM. Encendida, el motor resta 10/20 pies por encima de 5×/10×
   Fuerza de peso llevado, ignora la columna de Fuerza de la armadura (lo manda la variante) y

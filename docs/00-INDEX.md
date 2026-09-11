@@ -110,12 +110,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `e321c55` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `1d2d450` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Declaraciones de prueba unitaria:** 2637 (shared 192, api 1313, web 1132). **Es una cota inferior, no lo
+> - **Declaraciones de prueba unitaria:** 2664 (shared 192, api 1334, web 1138). **Es una cota inferior, no lo
 >   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no
 >   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número
 >   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice

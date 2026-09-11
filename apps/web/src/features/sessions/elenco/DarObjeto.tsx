@@ -252,7 +252,7 @@ export function DarObjeto({
         // componente que la pantalla de inventario, apuntando a la bolsa del destinatario elegido.
         destinatario && (
           <div className="mt-s3">
-            <SelectorDeObjeto campaignId={campaignId} characterId={destinatario} />
+            <SelectorDeObjeto campaignId={campaignId} characterId={destinatario} esDM={soyDm} />
           </div>
         )
       )}

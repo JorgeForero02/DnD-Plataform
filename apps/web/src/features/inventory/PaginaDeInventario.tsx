@@ -19,6 +19,7 @@ import { PanelMonedas } from "./PanelMonedas";
 import { FilaObjeto } from "./FilaObjeto";
 import { SelectorDeObjeto } from "./SelectorDeObjeto";
 import { ZonaDeObjetos } from "./ZonaDeObjetos";
+import { useMyRole } from "../campaigns/members";
 
 // Carril B1 — la pantalla de inventario (pantalla 20 del prototipo, revisión obligatoria).
 // **Tres zonas rotuladas**, un aviso de confirmación arriba al equipar, carga y monedas en la
@@ -42,6 +43,10 @@ export function PaginaDeInventario({
   characterId: string;
 }) {
   const inventario = useInventory(campaignId, characterId);
+  // D-CF-15 — solo el DM identifica. Igual que en `RecursosYDescansos.tsx`: mientras el rol no
+  // se sabe, se trata como «no DM» — no lo sé nunca es sí.
+  const { role } = useMyRole(campaignId);
+  const esDM = role === "DM";
   const cambiarUbicacion = useCambiarUbicacion(campaignId, characterId);
   const removerObjeto = useRemoveInventoryItem(campaignId, characterId);
   const cambiarDinero = useChangeMoney(campaignId, characterId);
@@ -162,6 +167,29 @@ export function PaginaDeInventario({
     );
   };
 
+  /**
+   * Identificar o esconder un objeto (D-CF-15). **Misma mutación, mismo carril de error por
+   * fila** que sintonizar y mover de zona: el servidor es quien de verdad decide si esto se
+   * puede (403 si quien lo pide no es el DM), y el rechazo se pinta tal cual debajo de la fila.
+   */
+  const identificar = (
+    row: InventoryRow,
+    input: { identified?: boolean; unidentifiedName?: string | null },
+  ) => {
+    setErroresPorFila((e) => ({ ...e, [row.id]: "" }));
+    setFilaEnVuelo(row.id);
+    cambiarUbicacion.mutate(
+      { rowId: row.id, input },
+      {
+        onSuccess: () => setFilaEnVuelo(null),
+        onError: (error) => {
+          setFilaEnVuelo(null);
+          setErroresPorFila((e) => ({ ...e, [row.id]: mensajeDeError(error) }));
+        },
+      },
+    );
+  };
+
   const confirmarSoltar = () => {
     if (!filaASoltar) return;
     removerObjeto.mutate(filaASoltar.id, {
@@ -196,7 +224,7 @@ export function PaginaDeInventario({
       <div className="min-w-0 flex-1">
         <h2 className="mb-s4 font-title text-chrome-lg text-text">Inventario</h2>
         {aviso && <AvisoDeEquipar aviso={aviso} />}
-        <SelectorDeObjeto campaignId={campaignId} characterId={characterId} />
+        <SelectorDeObjeto campaignId={campaignId} characterId={characterId} esDM={esDM} />
 
         {/* «Sintonización: {usadas} de {tope}», como en `hoja/SeccionEquipo.tsx` del prototipo.
             **El tope sale de `@dnd/shared`** (`MAX_ATTUNED_ITEMS`), que es el mismo número que
@@ -216,6 +244,8 @@ export function PaginaDeInventario({
               error={erroresPorFila[row.id] || undefined}
               onAccionPrincipal={() => cambiarZona(row, "CARRIED")}
               onSoltar={() => setFilaASoltar(row)}
+              esDM={esDM}
+              onIdentificar={(input) => identificar(row, input)}
               // **Solo donde el servidor la acepta**: equipado y que el objeto la pida. En
               // «Encima» o «Guardado» el botón devolvería «Para sintonizar un objeto, primero
               // hay que llevarlo puesto», que es un rechazo evitable.
@@ -239,6 +269,8 @@ export function PaginaDeInventario({
                   : cambiarZona(row, "EQUIPPED")
               }
               onSoltar={() => setFilaASoltar(row)}
+              esDM={esDM}
+              onIdentificar={(input) => identificar(row, input)}
               onGastar={sePuedeGastar(row) ? () => gastar(row) : undefined}
             >
               {manoPara === row.id && (
@@ -264,6 +296,8 @@ export function PaginaDeInventario({
               error={erroresPorFila[row.id] || undefined}
               onAccionPrincipal={() => cambiarZona(row, "CARRIED")}
               onSoltar={() => setFilaASoltar(row)}
+              esDM={esDM}
+              onIdentificar={(input) => identificar(row, input)}
             />
           ))}
         </ZonaDeObjetos>

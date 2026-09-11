@@ -547,6 +547,12 @@ model GameEvent {
   /// parcial.
   attackRollEventId String? @unique
 
+  /// Migración 7, fix round 1 (M6) — el `ref` del arma de la tirada de ATAQUE, para casar el
+  /// crítico del daño por identidad estable y no por el nombre que llevaba `payload.reason`
+  /// («Ataque con X»): un objeto sin identificar cambia de nombre el día que el DM lo
+  /// identifica, y el `ref` no. Solo lo escribe el servidor (`RollsService.roll`, `interno`).
+  attackRef String?
+
   createdAt DateTime @default(now())
   campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -1137,6 +1143,14 @@ model InventoryItem {
   /// Donde esta guardado, si lo esta: «en la posada», «en el carro».
   storedAt       String?
   note           String?
+  /// D-CF-15 (migracion 7) — «lo tengo pero no se que es». Nace `true`: un objeto propio nace
+  /// visible en su identidad, igual que nace visible en su existencia (comentario de arriba
+  /// sobre `visibility`). Solo el DM lo pone en `false` a mano.
+  identified     Boolean      @default(true)
+  /// El alias que ve quien no es el DM mientras `identified` es `false` — «un anillo de aspecto
+  /// extraño». `null` hasta que el DM lo escribe; el servidor cae entonces en un titulo generico
+  /// (`NOMBRE_SIN_IDENTIFICAR`, `@dnd/shared`), nunca en el nombre real.
+  unidentifiedName String?
   createdAt      DateTime     @default(now())
 
   character    Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)

@@ -113,3 +113,26 @@ export const NOMBRE_PROCEDENCIA: Record<ProcedenciaObjeto, string> = {
   SRD: "catálogo",
   CAMPAIGN: "de la campaña",
 };
+
+// ---------------------------------------------------------------------------------------------
+// D-CF-15 (migración 7) — «lo tengo pero no sé qué es». No es un enum: es un booleano por fila
+// (`identified`) más un alias libre (`unidentifiedName`), así que aquí solo va la prosa fija
+// —la etiqueta y la explicación del control del DM—, no una tabla de traducción.
+// ---------------------------------------------------------------------------------------------
+
+/** La etiqueta que ve quien no es el DM junto al nombre de un objeto sin identificar. */
+export const ETIQUETA_SIN_IDENTIFICAR = "Sin identificar";
+
+/**
+ * La explicación bajo el interruptor del DM — por qué existe el control, no solo su nombre.
+ *
+ * Fix round 4 (D-CF-15) — el texto tiene que decir lo mismo que la regla 6 del servidor
+ * (`inventory.service.ts`, `add()`): un objeto cuya visibilidad de catálogo el dueño no ve
+ * TODAVÍA solo se puede dar así, sin identificar — identificado de entrada, el servidor lo
+ * rechaza con 400 hasta que se suba la visibilidad. Si el texto solo hablara del alias y
+ * discrepara de esta regla, mentiría (regla de interfaz de `docs/04-convenciones.md`).
+ */
+export const EXPLICACION_SIN_IDENTIFICAR =
+  "El jugador ve un alias en vez del nombre real, hasta que lo identifiques en la mesa. También " +
+  "es la única forma de dar un objeto cuya visibilidad en el catálogo el dueño todavía no ve: " +
+  "identificado, el servidor lo rechaza hasta que subas esa visibilidad.";

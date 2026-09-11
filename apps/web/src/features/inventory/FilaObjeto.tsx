@@ -1,9 +1,16 @@
-import type { ResolvedItem } from "@dnd/shared";
-import type { ReactNode } from "react";
+import { NOMBRE_SIN_IDENTIFICAR, type ResolvedItem } from "@dnd/shared";
+import { useState, type ReactNode } from "react";
 import type { InventoryRow } from "./api";
 import { Button } from "../../ui/Button";
-import { IconoObjeto } from "./iconos";
-import { danioCorto, NOMBRE_ACCION_ZONA, subtituloDeObjeto } from "./vocabulario";
+import { fieldControlClass } from "../../ui/Field";
+import { IconoObjeto, IconoSinIdentificar } from "./iconos";
+import {
+  danioCorto,
+  ETIQUETA_SIN_IDENTIFICAR,
+  EXPLICACION_SIN_IDENTIFICAR,
+  NOMBRE_ACCION_ZONA,
+  subtituloDeObjeto,
+} from "./vocabulario";
 import { formatearKg } from "./peso";
 
 // Carril B1 — la fila de una línea: nombre + subtítulo tenue, dato en cifras, peso, acción.
@@ -31,6 +38,8 @@ export function FilaObjeto({
   onSoltar,
   onGastar,
   onSintonizar,
+  esDM,
+  onIdentificar,
   ocupado,
   error,
   children,
@@ -56,6 +65,15 @@ export function FilaObjeto({
    * ofrecer un 400.
    */
   onSintonizar?: () => void;
+  /**
+   * **Solo el DM identifica** (D-CF-15): la autorización real vive en el servidor
+   * (`inventory.service.ts`, 403 a quien no sea el DM), y esta prop es la mitad de pantalla —
+   * ofrecer el control solo a quien de verdad puede usarlo, nunca esconderlo como si eso fuera
+   * el control de acceso.
+   */
+  esDM: boolean;
+  /** Cambia `identified` y/o `unidentifiedName` de esta fila. Ausente si `esDM` es falso. */
+  onIdentificar?: (input: { identified?: boolean; unidentifiedName?: string | null }) => void;
   ocupado: boolean;
   /** El rechazo del servidor para esta fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
@@ -73,6 +91,13 @@ export function FilaObjeto({
   // (`ui/__tests__/Iconos.test.tsx`) porque hacía de icono en otra pantalla — aquí es solo
   // texto de cantidad, pero la prueba barre el fichero entero y no distingue el contexto.
   const cantidad = row.quantity > 1 ? ` x${row.quantity}` : "";
+  // D-CF-15: `identified` llega `undefined` en cualquier fila anterior a la migración 7 que no
+  // se haya vuelto a leer — se trata igual que el `true` explícito de la columna (nace
+  // identificado), nunca como «sin identificar».
+  const sinIdentificar = item.identified === false;
+  // El campo de texto del DM es un borrador local: solo se manda al soltar el foco, para no
+  // disparar un `PATCH` por cada letra tecleada de un alias que la mesa todavía está pensando.
+  const [alias, setAlias] = useState(item.unidentifiedName ?? "");
 
   return (
     <li className="border-b border-[color:var(--copper-rule)] py-s2 last:border-b-0">
@@ -82,6 +107,15 @@ export function FilaObjeto({
           <p className="truncate font-chrome text-chrome-sm text-text">
             {item.name}
             {cantidad}
+            {/* El jugador ve la etiqueta dibujada junto al alias que ya le mandó el servidor
+                (`item.name` ya viene sustituido); el DM la ve además del nombre real, porque el
+                interruptor de abajo ya se lo dice — no hace falta repetirla dos veces para él. */}
+            {sinIdentificar && !esDM && (
+              <span className="ml-2 inline-flex items-center gap-1 align-middle font-chrome text-chrome-xs text-muted">
+                <IconoSinIdentificar />
+                {ETIQUETA_SIN_IDENTIFICAR}
+              </span>
+            )}
           </p>
           <p className="truncate font-chrome text-chrome-xs text-muted">
             {subtituloDeObjeto(
@@ -141,6 +175,42 @@ export function FilaObjeto({
         <p role="alert" className="mt-1 pl-s6 font-chrome text-chrome-xs text-danger-text">
           {error}
         </p>
+      )}
+      {esDM && onIdentificar && (
+        <div className="mt-1 pl-s6">
+          <label className="flex items-center gap-2 font-chrome text-chrome-xs text-text">
+            <input
+              type="checkbox"
+              checked={sinIdentificar}
+              aria-busy={ocupado}
+              onChange={(e) => onIdentificar({ identified: !e.target.checked })}
+              className="accent-[var(--accent)]"
+            />
+            Sin identificar
+          </label>
+          <p className="pl-6 font-chrome text-chrome-xs text-muted">
+            {EXPLICACION_SIN_IDENTIFICAR}
+          </p>
+          {sinIdentificar && (
+            <input
+              type="text"
+              value={alias}
+              placeholder={NOMBRE_SIN_IDENTIFICAR}
+              aria-label={`Alias de ${item.name} mientras no está identificado`}
+              onChange={(e) => setAlias(e.target.value)}
+              onBlur={() => {
+                // Fix round 1 (B10) — **sin cambios, sin `PATCH`.** Tabular por el campo sin
+                // haber tocado nada disparaba igualmente la escritura (y con ella el recálculo
+                // de CA y el parpadeo de `aria-busy`): comparar contra el alias que ya trae la
+                // fila es lo que distingue «salió del campo» de «lo cambió y salió».
+                const normalizado = alias.trim() === "" ? null : alias.trim();
+                if (normalizado === (item.unidentifiedName ?? null)) return;
+                onIdentificar({ unidentifiedName: normalizado });
+              }}
+              className={`mt-1 ml-6 ${fieldControlClass}`}
+            />
+          )}
+        </div>
       )}
       {children}
     </li>

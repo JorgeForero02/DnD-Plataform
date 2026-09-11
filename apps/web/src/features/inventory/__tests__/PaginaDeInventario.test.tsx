@@ -7,6 +7,7 @@ import { PaginaDeInventario } from "../PaginaDeInventario";
 import * as inventoryApi from "../api";
 import type { InventoryResponse, InventoryRow } from "../api";
 import { ApiError } from "../../../lib/api";
+import * as members from "../../campaigns/members";
 
 // Carril B1 — la pantalla de inventario (pantalla 20 del prototipo). Se prueba lo que puede
 // romperse en silencio: que las tres zonas pinten lo que les toca, que equipar/quitar mande el
@@ -103,6 +104,8 @@ function filaCruda(overrides: Partial<InventoryItemRow> = {}): InventoryItemRow 
     attuned: false,
     storedAt: null,
     note: null,
+    identified: true,
+    unidentifiedName: null,
     ...overrides,
   };
 }
@@ -507,5 +510,155 @@ describe("pelear con dos armas (paso 1, tarea 11)", () => {
         location: "EQUIPPED",
       }),
     );
+  });
+});
+
+// D-CF-15 (migración 7) — «lo tengo pero no sé qué es». Lo que estas dos pruebas defienden no es
+// la redacción en sí —eso ya lo prueba `inventory.service.spec.ts` contra el servidor— sino que
+// la pantalla **pinta lo que llega y no reconstruye el nombre real por su cuenta**, y que el
+// control del DM solo aparece para quien de verdad puede usarlo.
+describe("PaginaDeInventario — identificación (D-CF-15)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Lo que el SERVIDOR manda a un jugador: `name` ya sustituido, sin `unidentifiedName`. */
+  const anilloParaElJugador = objeto({
+    name: "Anillo de aspecto extraño",
+    kind: "OTHER",
+    weightOz: 0,
+    requiresAttunement: true,
+    slot: "RING_1",
+    effects: [{ kind: "ac", amount: 1 }],
+    identified: false,
+  });
+
+  /** Lo que el SERVIDOR manda al DM: `name` real, más el estado y el alias sueltos. */
+  const anilloParaElDM = objeto({
+    name: "Anillo de protección",
+    kind: "OTHER",
+    weightOz: 0,
+    requiresAttunement: true,
+    slot: "RING_1",
+    effects: [{ kind: "ac", amount: 1 }],
+    identified: false,
+    unidentifiedName: "Anillo de aspecto extraño",
+  });
+
+  it("el jugador ve el alias que ya trae la fila, y «Anillo de protección» no aparece en el DOM", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "PLAYER",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    const filas = [fila({ id: "eq-1", location: "EQUIPPED", item: anilloParaElJugador })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+
+    expect(await screen.findByText("Anillo de aspecto extraño")).toBeInTheDocument();
+    expect(screen.getByText("Sin identificar")).toBeInTheDocument();
+    expect(screen.queryByText("Anillo de protección")).not.toBeInTheDocument();
+    // Ningún control de identificación: esconder el botón no es el control de acceso, pero
+    // tampoco hay motivo para ofrecerlo a quien el servidor rechazaría con 403.
+    expect(screen.queryByRole("checkbox", { name: /Sin identificar/i })).not.toBeInTheDocument();
+  });
+
+  it("el DM ve el nombre real, el estado y el control para identificarlo", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "DM",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    const filas = [fila({ id: "eq-1", location: "EQUIPPED", item: anilloParaElDM })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({ id: "eq-1", identified: true, unidentifiedName: null }),
+      acBefore: 12,
+      ac: 12,
+    });
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+
+    expect(await screen.findByText("Anillo de protección")).toBeInTheDocument();
+    const casilla = screen.getByRole("checkbox", { name: "Sin identificar" });
+    expect(casilla).toBeChecked();
+
+    fireEvent.click(casilla);
+
+    await waitFor(() =>
+      expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith("c1", "ch1", "eq-1", {
+        identified: true,
+      }),
+    );
+  });
+
+  // Fix round 1 (B9/B10) — el campo de alias no tenía ninguna prueba propia, y el `PATCH` que
+  // manda al perder el foco tenía que compararse contra lo que la fila YA trae antes de
+  // escribir nada.
+  it("fix round 1 (B10): el DM cambia el alias y el `PATCH` sale al perder el foco, con el valor nuevo", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "DM",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    const filas = [fila({ id: "eq-1", location: "EQUIPPED", item: anilloParaElDM })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockResolvedValue({
+      item: filaCruda({
+        id: "eq-1",
+        identified: false,
+        unidentifiedName: "Anillo de aire caliente",
+      }),
+      acBefore: 12,
+      ac: 12,
+    });
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+
+    const alias = await screen.findByLabelText(/Alias de Anillo de protección/);
+    fireEvent.change(alias, { target: { value: "Anillo de aire caliente" } });
+    fireEvent.blur(alias);
+
+    await waitFor(() =>
+      expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith("c1", "ch1", "eq-1", {
+        unidentifiedName: "Anillo de aire caliente",
+      }),
+    );
+  });
+
+  it("fix round 1 (B10): perder el foco SIN cambiar el alias no manda ningún `PATCH`", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "DM",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    const filas = [fila({ id: "eq-1", location: "EQUIPPED", item: anilloParaElDM })];
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    const patchEspiado = vi.spyOn(inventoryApi, "updateInventoryItem");
+
+    render(<PaginaDeInventario campaignId="c1" characterId="ch1" />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+
+    const alias = await screen.findByLabelText(/Alias de Anillo de protección/);
+    // Ni siquiera se toca el valor: solo entra y sale del campo con el foco, como al tabular.
+    fireEvent.focus(alias);
+    fireEvent.blur(alias);
+
+    // Un `waitFor` que falla no demuestra nada aquí, así que se da tiempo real a que un
+    // `PATCH` de sobra pudiera dispararse antes de comprobar que no lo hizo.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(patchEspiado).not.toHaveBeenCalled();
   });
 });

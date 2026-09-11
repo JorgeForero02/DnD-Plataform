@@ -94,7 +94,10 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     },
     // Fase 2B: la hoja lee el equipo **equipado** para derivar. Por defecto, sin equipo — que es
     // el estado de todas las pruebas escritas antes de que el inventario existiera.
-    inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
+    inventoryItem: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
     // 2C.4: la hoja lee el reloj para saber qué condiciones siguen vivas y si el agotamiento
     // parte los PG máximos. Reloj a cero por defecto: nada ha vencido todavía.
@@ -174,7 +177,10 @@ function montarTransaccion(prisma: { transaction: jest.Mock }, fila: Character) 
     // **Ficha P2-0b**: derivar la hoja dentro de la transacción lee el equipo equipado y el visor
     // por ESTE cliente. Un `Prisma.TransactionClient` de verdad tiene los dos modelos; este doble
     // no los tenía, y por eso el hueco no se veía desde aquí.
-    inventoryItem: { findMany: jest.fn().mockResolvedValue([]) },
+    inventoryItem: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     user: { findUnique: jest.fn().mockResolvedValue({ isAdmin: false }) },
   };
   prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
@@ -1427,6 +1433,9 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
       "p1",
       "c1",
       expect.objectContaining({ expression: "1d20+4", mode: "ADVANTAGE", characterId: "ch1" }),
+      // Fix round 1 (M6): el `ref` del arma, para casar el crítico del daño sin depender del
+      // nombre.
+      { attackRef: "SRD:long-sword" },
     );
   });
 
@@ -1453,6 +1462,8 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     // 2026-09-05). El `payload` es el que `RollsService` escribe en el suceso de esa tirada.
     prisma.gameEvent.findFirst.mockResolvedValue({
       payload: { natural: "TWENTY", reason: "Ataque con Espada larga" },
+      // Fix round 1 (M6): el crítico se casa por `attackRef`, no por `reason`.
+      attackRef: "SRD:long-sword",
     });
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
@@ -1479,6 +1490,7 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     const { service, rolls, prisma } = conEspada();
     prisma.gameEvent.findFirst.mockResolvedValue({
       payload: { natural: "TWENTY", reason: RAZON_DEL_ATAQUE },
+      attackRef: "SRD:long-sword",
     });
 
     await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
@@ -1597,6 +1609,139 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
         attackRollEventId: "ev-ajeno",
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  // Fix round 1 (M6) — el nombre de mesa, sea quien sea quien tira.
+  it("fix round 1 (M6) — si el DM tira por el jugador con un arma sin identificar, la etiqueta pública lleva el alias", async () => {
+    const { service, rolls, prisma, membership } = conEspada();
+    const filaEspada = filaDeInventario("long-sword", {
+      slot: "MAIN_HAND",
+      identified: false,
+      unidentifiedName: "Espada de aspecto extraño",
+    });
+    // `equipoEquipado` la lee por `findMany` (para construir el cuadro); `nombreDeMesaParaAtaque`
+    // la vuelve a buscar por `findFirst` (para el nombre de mesa) — misma fila, dos caminos.
+    prisma.inventoryItem.findMany.mockResolvedValue([filaEspada]);
+    prisma.inventoryItem.findFirst.mockResolvedValue(filaEspada);
+    // El DM tira por el personaje del jugador (`characters.requireEditable` ya lo permite —
+    // dueño o DM), y su propio visor SÍ ve el nombre real: por eso `ataque.name` (interno, no
+    // el que llega a la tirada) sería "Espada larga" si no se corrigiera.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await service.rollAttack("dm1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "ATTACK",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "dm1",
+      "c1",
+      expect.objectContaining({ label: "Ataque con Espada de aspecto extraño" }),
+      { attackRef: "SRD:long-sword" },
+    );
+    // Nunca el nombre real, ni siquiera de refilón en algún otro campo de la llamada.
+    expect(JSON.stringify(rolls.roll.mock.calls.at(-1))).not.toContain("Espada larga");
+  });
+
+  it("fix round 1 (M6) — el crítico se casa por `attackRef`, no por el nombre: sigue detectándolo aunque el nombre haya cambiado entre las dos tiradas", async () => {
+    const { service, rolls, prisma } = conEspada();
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      // El `reason` es el de una tirada de ATAQUE anterior a que el DM identificara el arma a
+      // mitad de combate: ya no coincide con lo que `rollAttack` escribiría ahora («Ataque con
+      // Espada larga»). Con el criterio viejo (comparar por nombre) esto rompía el crítico
+      // silenciosamente; con `attackRef` no debería importarle.
+      payload: { natural: "TWENTY", reason: "Ataque con Espada de aspecto extraño" },
+      attackRef: "SRD:long-sword",
+    });
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+      attackRollEventId: "ev-atk-20",
+    });
+
+    // 1d8+2 crítico es 2d8+2: si el crítico no se hubiera detectado, seguiría en 1d8+2.
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d8+2" }),
+      { attackRollEventId: "ev-atk-20" },
+    );
+  });
+
+  it("fix round 2 (R3) — el crítico se casa por el `ref` REAL de la fila, no por el del visor: el DM tira el ataque y el JUGADOR cobra el crítico del daño de un arma sin identificar", async () => {
+    const { service, rolls, prisma, membership } = conEspada();
+    const filaEspada = filaDeInventario("long-sword", {
+      slot: "MAIN_HAND",
+      identified: false,
+      unidentifiedName: "Espada de aspecto extraño",
+    });
+    prisma.inventoryItem.findMany.mockResolvedValue([filaEspada]);
+    prisma.inventoryItem.findFirst.mockResolvedValue(filaEspada);
+
+    // El DM tira el ATAQUE: su propio visor ve el `ref` real, y `datosDeMesaParaAtaque` lo
+    // resuelve por la RANURA (no por ese `ref`), así que guarda `attackRef: "SRD:long-sword"`
+    // sea quien sea quien pregunte — comprobado ya en el test de arriba.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    await service.rollAttack("dm1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "ATTACK",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+    });
+
+    // Ahora el JUGADOR (no DM) pide el DAÑO citando esa misma tirada. Con la versión de fix
+    // round 1 (`attackRef: ataque.ref` del visor de quien tira), el DM habría guardado
+    // `SRD:long-sword` y el jugador compararía contra `SRD:objeto-sin-identificar` — el mismo
+    // objeto, dos `ref` de visor distintos, crítico perdido. Con el `ref` real (R3), no importa.
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      payload: { natural: "TWENTY" },
+      attackRef: "SRD:long-sword",
+    });
+
+    // Su propia `key` es la redactada: es lo que SU cuadro de ataques le enseña.
+    await service.rollAttack("p1", "c1", "ch1", "SRD:objeto-sin-identificar:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+      attackRollEventId: "ev-atk-20",
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d8+2" }),
+      { attackRollEventId: "ev-atk-20" },
+    );
+  });
+
+  it("fix round 2 (R3) — sin `attackRef` (suceso histórico, anterior a la columna), el crítico se casa por el nombre, como antes de fix round 1 (M6)", async () => {
+    const { service, rolls, prisma } = conEspada();
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      payload: { natural: "TWENTY", reason: "Ataque con Espada larga" },
+      attackRef: null,
+    });
+
+    await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      part: "DAMAGE",
+      spendInspiration: false,
+      mode: "NORMAL",
+      versatile: false,
+      attackRollEventId: "ev-viejo",
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d8+2" }),
+      { attackRollEventId: "ev-viejo" },
+    );
   });
 
   it("el daño nunca hereda la ventaja: la ventaja es del d20", async () => {
@@ -1887,7 +2032,13 @@ describe("2B — la hoja no enseña la identidad de un objeto que quien mira no 
     return montado;
   }
 
-  it("un jugador ve el efecto en la CA, pero no el nombre ni el identificador del objeto", async () => {
+  it("fix round 2 (R2) — el DUEÑO (p1) ve el efecto en la CA y su `ref`, pero nunca el nombre real: está REDACTADO, no oculto", async () => {
+    // Antes de M4a/R2 esta prueba decía que el jugador dueño no veía ni «ci-1»: eso era
+    // `redactado()` («Objeto oculto») para CUALQUIER visor sin `canView`. Desde M4a (fix round
+    // 1) el DUEÑO de la fila ya no desaparece —ni en `list()` ni, desde R2, en la hoja—: se ve
+    // por el mismo camino que un objeto sin identificar (`filaComoLaVeElViewer`), así que su
+    // `ref` de CAMPAÑA (un cuid, no dice nada por sí solo) sigue en la traza y su nombre pasa a
+    // ser el título genérico, nunca el real.
     const { service } = conAnilloSecreto("PLAYER");
 
     const res = await service.getSheet("p1", "c1", "ch1");
@@ -1895,6 +2046,20 @@ describe("2B — la hoja no enseña la identidad de un objeto que quien mira no 
     const traza = JSON.stringify(res.sheet!.derived.ac);
     // El número sí: quitarlo daría una CA distinta a cada persona que mira la MISMA hoja, y
     // entonces la hoja mentiría a alguien. Lo que se quita es la identidad.
+    expect(res.sheet!.derived.ac.total).toBe(12);
+    expect(traza).toContain("ci-1");
+    expect(traza).not.toContain("Anillo del Traidor");
+    expect(JSON.stringify(res)).not.toContain("Anillo del Traidor");
+  });
+
+  it("fix round 2 (R2) — un COMPAÑERO de mesa (no el dueño) sigue sin ver ni el `ref`: sigue siendo «Objeto oculto»", async () => {
+    // La excepción de M4a es SOLO del dueño: un tercero sin concesión (aquí, "p2", que no es
+    // "p1") sigue recibiendo `redactado()` entero — ni nombre, ni `ref` real, ni «ci-1».
+    const { service } = conAnilloSecreto("PLAYER");
+
+    const res = await service.getSheet("p2", "c1", "ch1");
+
+    const traza = JSON.stringify(res.sheet!.derived.ac);
     expect(res.sheet!.derived.ac.total).toBe(12);
     expect(traza).not.toContain("Anillo del Traidor");
     expect(traza).not.toContain("ci-1");
@@ -1908,6 +2073,123 @@ describe("2B — la hoja no enseña la identidad de un objeto que quien mira no 
 
     expect(JSON.stringify(res.sheet!.derived.ac)).toContain("ci-1");
     expect(res.sheet!.derived.ac.total).toBe(12);
+  });
+});
+
+describe("D-CF-15 (migración 7) — un objeto sin identificar cambia de nombre para quien no es el DM", () => {
+  /** El mismo anillo, pero VISIBLE (`PLAYERS`) y sin identificar: la capa que se prueba aquí es
+   * ortogonal a `canView` — visible no es lo mismo que identificado. */
+  const anilloSinIdentificar = {
+    id: "ci-2",
+    campaignId: "c1",
+    name: "Anillo de protección",
+    kind: "OTHER",
+    description: "Un aro de plata pulida, cálido al tacto.",
+    weightOz: 1,
+    costCp: null,
+    effects: [{ kind: "ac", amount: 1 }],
+    requiresAttunement: false,
+    slot: "RING_1",
+    weaponCategory: null,
+    weaponRange: null,
+    damageDice: null,
+    damageType: null,
+    weaponProperties: [],
+    versatileDice: null,
+    rangeNormalFt: null,
+    rangeLongFt: null,
+    armorCategory: null,
+    baseAc: null,
+    dexCap: null,
+    strengthRequirement: 0,
+    stealthDisadvantage: false,
+    visibility: "PLAYERS",
+    createdById: "dm1",
+    createdAt: new Date(),
+    grants: [],
+  };
+
+  function conAnilloSinIdentificar(
+    rolDeQuienMira: "DM" | "PLAYER",
+    extraFila: Record<string, unknown> = {},
+  ) {
+    const montado = montar();
+    montado.prisma.character.findFirst.mockResolvedValue(personaje());
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("", {
+        srdKey: null,
+        campaignItemId: "ci-2",
+        slot: "RING_1",
+        identified: false,
+        unidentifiedName: "Anillo de aspecto extraño",
+        ...extraFila,
+      }),
+    ]);
+    montado.prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar);
+    montado.membership.getMembership.mockResolvedValue({ role: rolDeQuienMira });
+    return montado;
+  }
+
+  // **Un anillo (`OTHER`, sin arma) no tiene ningún camino por el que su NOMBRE llegue a la
+  // hoja** — ni identificado ni sin identificar: `rules/items.ts` solo mete `item.ref` en la
+  // traza de sus efectos (`labelKey: "item.<ref>"`, `sourceKey: item.ref`), nunca `item.name`
+  // (línea ~175). Es la misma razón por la que el test de visibilidad de arriba («2B — la hoja
+  // no enseña...») solo puede comprobar la ausencia del nombre, no su presencia: aquí se
+  // demuestra que identificar tampoco cambia el número ni el `ref`, que son justo lo que
+  // `conIdentificacion` promete no tocar. El camino donde el NOMBRE sí llega a la hoja —el
+  // cuadro de ataques— se prueba debajo, con un arma.
+  it("el efecto del anillo (el número) y su `ref` no cambian ni identificado ni sin identificar", async () => {
+    const identificado = await conAnilloSinIdentificar("PLAYER", {
+      identified: true,
+      unidentifiedName: null,
+    }).service.getSheet("p1", "c1", "ch1");
+    const sinIdentificar = await conAnilloSinIdentificar("PLAYER").service.getSheet(
+      "p1",
+      "c1",
+      "ch1",
+    );
+
+    expect(sinIdentificar.sheet!.derived.ac.total).toBe(identificado.sheet!.derived.ac.total);
+    expect(JSON.stringify(sinIdentificar.sheet!.derived.ac)).toContain("ci-2");
+    // Fix round 2 (R7/B9) — la respuesta ENTERA, no solo `derived.ac`: si algún campo nuevo de
+    // `getSheet` empezara a colar el nombre real de un objeto sin identificar, esta prueba
+    // fallaría (la de arriba, acotada a `derived.ac`, no lo habría visto).
+    expect(JSON.stringify(sinIdentificar)).not.toContain("Anillo de protección");
+  });
+
+  it("el cuadro de ataques también respeta el alias: un arma sin identificar no delata su nombre real", async () => {
+    const armaSinIdentificar = {
+      ...anilloSinIdentificar,
+      id: "ci-3",
+      name: "Espada larga +1",
+      kind: "WEAPON",
+      slot: "MAIN_HAND",
+      weaponCategory: "MARTIAL",
+      weaponRange: "MELEE",
+      damageDice: "1d8",
+      damageType: "SLASHING",
+      weaponProperties: [],
+      effects: [{ kind: "weaponAttack", amount: 1 }],
+    };
+    const { service, prisma, membership } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje());
+    prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("", {
+        srdKey: null,
+        campaignItemId: "ci-3",
+        slot: "MAIN_HAND",
+        identified: false,
+        unidentifiedName: "Espada de aspecto extraño",
+      }),
+    ]);
+    prisma.campaignItem.findFirst.mockResolvedValue(armaSinIdentificar);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    const json = JSON.stringify(res.attacks);
+    expect(json).not.toContain("Espada larga +1");
+    expect(json).toContain("Espada de aspecto extraño");
   });
 });
 
@@ -2661,6 +2943,7 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
       "p1",
       "c1",
       expect.objectContaining({ expression: "1d20+4", characterId: "ch1", mode: "NORMAL" }),
+      { attackRef: "SRD:long-sword" },
     );
   });
 
@@ -2897,6 +3180,57 @@ describe("2.5.3 — el ataque, comparado en el servidor", () => {
     expect(resolverParaHoja).toHaveBeenCalled();
     expect(res.verdict).toBe("HIT");
   });
+
+  // Fix round 3 (R9) — hasta este arreglo, ninguna prueba ejercitaba `ATTACK_RESOLVED.attackName`
+  // con un arma sin identificar: `rollAttack` tenía su M6/R3 (arriba), pero `resolveAttack`
+  // escribe su PROPIO suceso con su PROPIA llamada a `datosDeMesaParaAtaque` — un helper
+  // compartido no es lo mismo que un camino probado (mismo criterio que ya dejó R7).
+  it("D-CF-15 (R9): ATTACK_RESOLVED.attackName lleva el alias de un arma sin identificar, nunca el nombre real", async () => {
+    const { service, prisma, events, membership } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev-tirada",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 4,
+      total: 14,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+    const filaEspada = filaDeInventario("long-sword", {
+      slot: "MAIN_HAND",
+      identified: false,
+      unidentifiedName: "Espada de aspecto extraño",
+    });
+    // `equipoEquipado` la lee por `findMany` (para el cuadro de ataques); `datosDeMesaParaAtaque`
+    // la vuelve a buscar por `findFirst` (para el nombre de mesa del suceso) — misma fila, dos
+    // caminos, igual que en el M6 de `rollAttack`.
+    prisma.inventoryItem.findMany.mockImplementation(
+      ({ where }: { where: { characterId: string } }) =>
+        Promise.resolve(where.characterId === "ch1" ? [filaEspada] : []),
+    );
+    prisma.inventoryItem.findFirst.mockResolvedValue(filaEspada);
+    // Como en el M6 de `rollAttack`: quien pide el ataque es el DM (su visor SÍ ve el `ref`/
+    // nombre reales, así que `ataque.key` sigue siendo "SRD:long-sword:MAIN_HAND" — si atacara
+    // el propio dueño, sin ser DM, `equipoEquipado` ya le redactaría el `ref` del arma del SRD
+    // a `SRD:objeto-sin-identificar` y la clave del ataque cambiaría con él).
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await service.resolveAttack("dm1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+      spendInspiration: false,
+    });
+
+    const escrito = events.record.mock.calls.at(-1)!;
+    expect(escrito[2].payload).toMatchObject({
+      type: "ATTACK_RESOLVED",
+      attackName: "Espada de aspecto extraño",
+    });
+    expect(JSON.stringify(escrito[2].payload)).not.toContain("Espada larga");
+  });
 });
 
 // **Los cuatro que faltaban, y los cuatro los pidió la revisión de cierre.**
@@ -3042,6 +3376,7 @@ describe("2.5.3 — lo que la revisión de cierre dejó cubierto", () => {
       "p1",
       "c1",
       expect.objectContaining({ audience: "PUBLIC" }),
+      { attackRef: "SRD:long-sword" },
     );
   });
 });

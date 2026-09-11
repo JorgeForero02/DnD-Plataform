@@ -107,6 +107,20 @@ export function IconoAnadir({ className }: IconoProps) {
   );
 }
 
+/**
+ * Sin identificar: la interrogación — «lo tengo pero no sé qué es» (D-CF-15). Se dibuja con
+ * trazos, como el resto de la familia; nunca el glifo `?` de la fuente (`ui/__tests__/Iconos.
+ * test.tsx` no lo prohíbe por nombre, pero la regla de la carpeta es dibujar, no escribir).
+ */
+export function IconoSinIdentificar({ className }: IconoProps) {
+  return (
+    <Marco className={className}>
+      <path d="M5.8 6a2.2 2.2 0 1 1 3.4 1.9c-.8.5-1.2 1-1.2 1.9v.3" />
+      <circle cx="8" cy="12.2" r="0.15" fill="currentColor" stroke="none" />
+    </Marco>
+  );
+}
+
 /** La balanza de la carga: dos platillos. */
 export function IconoCarga({ className }: IconoProps) {
   return (

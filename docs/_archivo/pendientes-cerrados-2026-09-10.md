@@ -806,3 +806,19 @@ Misma ficha que I4, confirmada midiendo por la auditoría de 2B; cerrada con la 
 **Texto original:**
 
 | **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
+
+## I3 · «Lo tengo pero no sé qué hace» (migración 7 de D-CF-14, D-CF-15, 2026-09-11)
+
+`InventoryItem.identified` (por defecto `true`) y `unidentifiedName`, solo del DM (el dueño que los mande recibe 403; puede nacer sin identificar al entregar botín). Es una capa **ortogonal** a `canView`, con el principio de `redactado()`: se sustituye la identidad —nombre, descripción, referencia del catálogo— y se conservan los números, en el listado, la hoja, los ataques, la traza, los sucesos del hilo, los mensajes de error y las tiradas que lanza el DM en nombre del jugador (la primera versión filtraba el nombre real por los sucesos y por `temporary:<nombre>`; lo cazó la revisión). El dueño siempre ve sus filas, redactadas si hace falta, y el catálogo puede bajar a `DM_ONLY` mientras todas las filas en manos de jugadores estén sin identificar. Interruptor y alias en la fila del inventario para el DM; el jugador ve el alias con su marca. e2e `objeto-sin-identificar.spec.ts` en la tanda de cierre.
+
+**Texto original:**
+
+| **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
+
+## M2B-15 · (era I3) — ver la entrada anterior
+
+Misma ficha que I3 con la forma de Foundry (`identified` + nombre alternativo); cerrada con la migración 7.
+
+**Texto original:**
+
+| **M2B-15** | **«Lo tengo pero no sé qué hace» — la mitad que falta** | Revisa el motivo de la decisión D-2B-8: **es práctica estándar**, no exótica — Foundry lo trae de serie con una bandera `identified` y hay módulos dedicados. Y **media solución ya está construida**: la redacción de 2B (se tacha el nombre, se conserva el número) es el mismo mecanismo de presentación. Falta el interruptor del DM y un nombre alternativo («una espada de aspecto extraño») |

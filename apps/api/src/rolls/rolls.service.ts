@@ -83,16 +83,19 @@ export class RollsService {
 
   /**
    * @param interno Lo que **solo pone el servidor** y nunca viaja en el cuerpo de una petición.
-   *   Hoy es `attackRollEventId` (D-OP-15): la tirada de ataque cuyo daño se está cobrando. **No
+   *   `attackRollEventId` (D-OP-15): la tirada de ataque cuyo daño se está cobrando. **No
    *   está en `createRollSchema` a propósito** — si el cliente pudiera mandarlo, podría quemar el
    *   identificador de la tirada de otro y dejarla incobrable, que es la puerta de al lado del
-   *   problema que este campo cierra.
+   *   problema que este campo cierra. `attackRef` (migración 7, fix round 1, M6): el `ref` del
+   *   arma de una tirada de ATAQUE, para que su daño se pueda casar por identidad estable y no
+   *   por el nombre que lleva `label` — que cambia si el DM identifica el objeto entre las dos
+   *   tiradas.
    */
   async roll(
     userId: string,
     campaignId: string,
     input: PeticionDeTirada,
-    interno?: { attackRollEventId?: string },
+    interno?: { attackRollEventId?: string; attackRef?: string },
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
 
@@ -166,6 +169,7 @@ export class RollsService {
           subjectId: characterId ?? campaignId,
           visibility,
           ...(interno?.attackRollEventId ? { attackRollEventId: interno.attackRollEventId } : {}),
+          ...(interno?.attackRef ? { attackRef: interno.attackRef } : {}),
           payload: {
             type: "ABILITY_ROLL",
             expression: resultado.expression,

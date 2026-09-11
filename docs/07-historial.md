@@ -87,6 +87,15 @@ commit y su migración inversa está descrita en la cabecera del SQL.
   y la columna de Fuerza de la armadura ignorada cuando la variante manda —la primera versión la
   seguía restando y la desventaja salía en Persuasión: dos altos de la revisión, con SRD en mano—.
   El estado de carga lo calcula el servidor y el panel lo pinta.
+- **7 · «Lo tengo pero no sé qué hace»** (D-CF-15, I3/M2B-15): `identified` y alias por fila, del
+  DM, capa ortogonal a `canView` con el principio de `redactado()` —identidad fuera, números
+  dentro—. La revisión encontró que la primera versión filtraba el nombre real por los sucesos
+  del hilo, por `temporary:<nombre>`, por los mensajes de error y por las tiradas que lanza el
+  DM; la ronda los cerró en cada camino con una sola función de nombre visible. Decisión de
+  cierre: el catálogo puede bajar a `DM_ONLY` mientras las filas en manos de jugadores sigan sin
+  identificar, y el DM puede entregar un objeto `DM_ONLY` si nace sin identificar. Cuatro rondas de
+  revisión (dos Opus con caza de fugas camino por camino); de paso, `GameEvent.attackRef` (columna,
+  migración 8) casa el crítico con su ataque por la referencia real y no por el nombre.
 
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
 

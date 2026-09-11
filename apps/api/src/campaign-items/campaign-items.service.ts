@@ -161,10 +161,20 @@ export class CampaignItemsService {
     // Y la visibilidad tiene la misma regla que entregar (D-2B-7): **no se le puede quitar de
     // la vista a quien ya lo lleva**. Antes desaparecía de su inventario en silencio —y de su
     // peso total— mientras la hoja lo seguía sumando redactado: dos capas con dos políticas.
-    if (rest.visibility !== undefined && rest.visibility !== item.visibility) {
-      await this.rechazarSiSeLoQuitaDeLaVista(campaignId, itemId, rest.visibility, {
+    //
+    // Fix round 3 (R8) — el mismo candado saltaba solo cuando `visibility` CAMBIABA de valor:
+    // un `PATCH` que solo encoge `specificPlayerIds` (la visibilidad se queda tal cual en
+    // `SPECIFIC_PLAYERS`) le quita a un jugador nombrado su concesión sin que nadie lo mirase —
+    // el mismo "desaparece de la mochila sin avisar" que la comprobación de abajo ya existe
+    // para bajar la visibilidad, colándose por la puerta de al lado.
+    const visibilidadProspectiva = rest.visibility ?? item.visibility;
+    if (
+      (rest.visibility !== undefined && rest.visibility !== item.visibility) ||
+      (specificPlayerIds !== undefined && visibilidadProspectiva === "SPECIFIC_PLAYERS")
+    ) {
+      await this.rechazarSiSeLoQuitaDeLaVista(campaignId, itemId, visibilidadProspectiva, {
         ...item,
-        visibility: rest.visibility,
+        visibility: visibilidadProspectiva,
         grants: (specificPlayerIds ?? []).map((userId) => ({ userId })),
       });
     }
@@ -219,6 +229,28 @@ export class CampaignItemsService {
    * lo lleva encima. Es la misma regla que impide entregárselo (`InventoryService.add`), y por
    * el mismo motivo: lo que alguien no debe ver **no se le manda**, pero hacerlo desaparecer de
    * su mochila sin avisar tampoco es una respuesta — es una pantalla que miente.
+   *
+   * **Migración 7, fix round 1 (M4b) — una fila `identified === false` ya no cuenta como
+   * "desaparecería".** Desde `InventoryService.list()` (fix round 1, M4a), el DUEÑO de una fila
+   * nunca pierde de vista su propio objeto por la visibilidad del catálogo: se le enseña
+   * REDACTADO en vez de desaparecer. Si esa fila YA está sin identificar, bajar la visibilidad
+   * del catálogo no le cambia nada a su dueño —seguía viendo el alias, sigue viendo el alias—,
+   * así que ya no hace falta rechazar el cambio por su culpa.
+   *
+   * **Lo que esta comprobación SIGUE rechazando** es la fila que todavía dice `identified: true`
+   * en la base: bajar la visibilidad del catálogo la enseñaría redactada de todas formas (M4a
+   * no distingue), pero la fila mentiría —dice que está identificada y se ve como si no lo
+   * estuviera—, y el propio panel del DM (que sí lee `identified`) seguiría diciendo que el
+   * jugador la ve por su nombre real cuando ya no es cierto. **El flujo recomendado para el DM**
+   * que quiere esconder un objeto de campaña del todo: (1) crear el objeto con visibilidad que
+   * el jugador pueda ver (`PLAYERS`, o `SPECIFIC_PLAYERS` con su concesión) para poder
+   * dárselo desde el selector «Añadir objeto» —`canView` decide qué entra ahí, y eso no es una
+   * fuga, es la visibilidad del catálogo haciendo su trabajo (M4c)—; (2) marcar la fila sin
+   * identificar con su alias, en el propio inventario del personaje; (3) **entonces**, y solo
+   * entonces, bajar la visibilidad del catálogo a `DM_ONLY` si además se quiere que el objeto
+   * deje de listarse en `GET /campaigns/:id/items` para cualquiera que no sea el DM — la fila
+   * seguirá viéndose en la mochila, redactada, sin contradicción entre lo que dice `identified`
+   * y lo que se enseña.
    */
   private async rechazarSiSeLoQuitaDeLaVista(
     campaignId: string,
@@ -228,13 +260,15 @@ export class CampaignItemsService {
   ): Promise<void> {
     const filas = await this.prisma.inventoryItem.findMany({
       where: { campaignItemId: itemId },
-      select: { character: { select: { id: true, name: true, ownerId: true } } },
+      select: { identified: true, character: { select: { id: true, name: true, ownerId: true } } },
     });
     if (filas.length === 0) return;
 
     const grantedUserIds = prospectivo.grants.map((g) => g.userId);
     const sinVista: string[] = [];
     for (const fila of filas) {
+      // M4b: ya se ve por su alias; bajar la visibilidad del catálogo no le quita nada más.
+      if (fila.identified === false) continue;
       const viewer = await viewerFor(
         this.prisma,
         this.membership,
@@ -250,7 +284,7 @@ export class CampaignItemsService {
     }
     if (sinVista.length > 0) {
       throw new BadRequestException(
-        `${sinVista.join(", ")} lleva este objeto encima: bajarle la visibilidad se lo haría desaparecer del inventario. Quítaselo primero, o deja la visibilidad como está.`,
+        `${sinVista.join(", ")} lleva este objeto encima identificado: bajarle la visibilidad dejaría su fila diciendo "identificado" mientras se enseña redactada. Márcalo sin identificar en su inventario primero, o deja la visibilidad como está.`,
       );
     }
   }

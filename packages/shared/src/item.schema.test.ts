@@ -197,6 +197,9 @@ describe("inventario", () => {
       attuned: false,
       storedAt: null,
       note: null,
+      // Migración 7 (D-CF-15): la fila cruda lleva siempre los dos campos de identificación.
+      identified: true,
+      unidentifiedName: null,
     };
     expect(
       updateInventoryItemResponseSchema.safeParse({ item: fila, acBefore: 13, ac: 16 }).success,

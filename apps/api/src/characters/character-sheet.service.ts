@@ -48,6 +48,11 @@ import { buildAttacks, type Attack } from "../rules/attacks";
 import { CLAVE_FURIA_ACTIVA, SRD_CLASSES } from "../rules/catalog/classes";
 import { resolveContentRef } from "../inventory/common/resolve-item";
 import {
+  filaComoLaVeElViewer,
+  identificacionEfectiva,
+  nombreVisible,
+} from "../inventory/common/identification";
+import {
   deriveCharacter,
   findClass,
   findRace,
@@ -92,7 +97,7 @@ import {
 } from "../character-state/concentration/concentration";
 import { rollSuggestionsFor } from "../character-state/roll-mode/suggested-roll-mode";
 import { canView, loVeLaMesa, Viewer } from "../common/visibility";
-import { viewerFor } from "../common/character-viewer";
+import { viewerFor, viewerForCharacterOwner } from "../common/character-viewer";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
 //
@@ -445,13 +450,6 @@ export class CharacterSheetService {
           ref,
           cliente,
         );
-        const puedeVerlo =
-          !campaignItem ||
-          canView(viewer, {
-            visibility: campaignItem.visibility,
-            createdById: campaignItem.createdById,
-            grantedUserIds: campaignItem.grantedUserIds,
-          });
         // **La ranura que vale es la de la fila, no la del catálogo.** `findSrdItem` devuelve el
         // objeto con su ranura por defecto —toda arma dice `MAIN_HAND`—, así que dos dagas
         // equipadas, una en cada mano, llegaban al cuadro de ataques con la misma clave: dos
@@ -459,7 +457,27 @@ export class CharacterSheetService {
         // `key`. Y sin la ranura real no se puede saber si la otra mano está ocupada, que es lo
         // que decide si un arma versátil puede empuñarse a dos manos.
         const conRanura: ResolvedItem = { ...resolved, slot: fila.slot ?? resolved.slot };
-        items.push(puedeVerlo ? conRanura : redactado(conRanura, ++ocultos));
+        // Fix round 2 (R2) — **la MISMA función que usa `InventoryService.list()`**
+        // (`filaComoLaVeElViewer`), para que el dueño de un objeto sin identificar cuyo
+        // catálogo ya no le alcanza vea el mismo alias en la mochila, aquí, el cuadro de
+        // ataques y la traza — antes de este arreglo, la hoja seguía llamando a `redactado()`
+        // («Objeto oculto») para esa misma fila mientras el listado ya decía su alias: dos
+        // nombres para lo mismo en la misma pantalla.
+        const catalogo = campaignItem
+          ? {
+              visibility: campaignItem.visibility,
+              createdById: campaignItem.createdById,
+              grantedUserIds: campaignItem.grantedUserIds,
+            }
+          : null;
+        const resultado = filaComoLaVeElViewer(
+          conRanura,
+          fila,
+          catalogo,
+          viewer,
+          character.ownerId === userId,
+        );
+        items.push(resultado.visible ? resultado.item : redactado(conRanura, ++ocultos));
       } catch {
         warnings.push({
           code: "item_unresolved",
@@ -1898,6 +1916,90 @@ export class CharacterSheetService {
   }
 
   /**
+   * Fix round 1 (M6), extendido en fix round 2 (R3) — el nombre que oye LA MESA en una tirada
+   * de ataque, **sea quien sea quien la pide**, y el `ref` REAL y estable de la fila, para casar
+   * el crítico sin depender de ningún visor.
+   *
+   * `rollAttack`/`resolveAttack` montan el cuadro de ataques con el visor de QUIEN LLAMA
+   * (`buildResponse(userId, …)` → `equipoEquipado(userId, …)`): si el DM tira por un jugador
+   * (o le pide el daño), `ataque.name`/`ataque.ref` salen del visor del DM —el nombre y el
+   * `ref` REALES—, correctos para lo que el DM lee en su propia pantalla pero no para la
+   * etiqueta pública de la tirada ni para el suceso `ATTACK_RESOLVED` (registro COMPARTIDO). Y
+   * al revés: si es el DUEÑO quien tira un objeto sin identificar, `ataque.ref` ya viene
+   * REDACTADO (`SRD:objeto-sin-identificar`, el mismo para CUALQUIER SRD sin identificar) —
+   * bueno para el nombre de mesa, inservible para encontrar la fila o para casar un crítico
+   * entre dos visores distintos (R3: si el DM tira el ataque y el jugador pide el daño, o al
+   * revés, los dos `ref` de visor no coinciden aunque sea la MISMA fila).
+   *
+   * **Por eso la fila se busca por RANURA, no por `ref`**: la ranura nunca se redacta (solo
+   * `MAIN_HAND`/`OFF_HAND` llevan armas, y `claveDeArma` en `rules/attacks.ts` ya compone la
+   * `key` como `<ref>:<ranura>` para distinguir dos armas iguales, una en cada mano). Con la
+   * fila real en la mano, el `ref` que se guarda (`refReal`) y se compara siempre es
+   * `SRD:<srdKey>`/`CAMPAIGN:<campaignItemId>` — el mismo para cualquier visor, cualquier
+   * estado de identificación.
+   */
+  private async datosDeMesaParaAtaque(
+    campaignId: string,
+    characterId: string,
+    character: Pick<Character, "ownerId">,
+    ataque: Pick<Attack, "ref" | "name" | "key">,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ nombreMesa: string; refReal: string }> {
+    const cliente = tx ?? this.prisma;
+    const ranura = ataque.key.endsWith(":MAIN_HAND")
+      ? "MAIN_HAND"
+      : ataque.key.endsWith(":OFF_HAND")
+        ? "OFF_HAND"
+        : null;
+    const fila = await cliente.inventoryItem.findFirst({
+      where: {
+        characterId,
+        location: "EQUIPPED",
+        // Con ranura (el caso normal: solo se equipa un arma por mano), se busca por ranura —
+        // insensible a qué `ref` vea quien tira. Sin ranura (no debería pasar: toda arma va a
+        // una mano), se cae al `ref` del visor como mejor esfuerzo.
+        ...(ranura
+          ? { slot: ranura }
+          : ataque.ref.startsWith("SRD:")
+            ? { srdKey: ataque.ref.slice("SRD:".length) }
+            : { campaignItemId: ataque.ref.slice("CAMPAIGN:".length) }),
+      },
+    });
+    // No debería pasar —`ataque` sale de lo equipado—, pero un ataque sin fila detrás no puede
+    // fingir que la tiene: se cae al nombre y al `ref` que ya trae en vez de reventar una tirada.
+    if (!fila) return { nombreMesa: ataque.name, refReal: ataque.ref };
+    const ref = fila.srdKey
+      ? ({ source: "SRD", key: fila.srdKey } as const)
+      : ({ source: "CAMPAIGN", id: fila.campaignItemId as string } as const);
+    const { resolved, campaignItem } = await resolveContentRef(
+      this.prisma,
+      campaignId,
+      ref,
+      cliente,
+    );
+    const refReal = fila.srdKey ? `SRD:${fila.srdKey}` : `CAMPAIGN:${fila.campaignItemId}`;
+    // Fix round 3 (R8) — la etiqueta de la tirada y `ATTACK_RESOLVED.attackName` son
+    // infraestructura COMPARTIDA (el jugador las lee tanto como el DM), así que van con la
+    // identificación EFECTIVA de la fila —`row.identified` Y el dueño puede ver el catálogo—,
+    // nunca con `row.identified` en crudo.
+    const catalogo = campaignItem
+      ? {
+          visibility: campaignItem.visibility,
+          createdById: campaignItem.createdById,
+          grantedUserIds: campaignItem.grantedUserIds,
+        }
+      : null;
+    const ownerViewer = await viewerForCharacterOwner(
+      this.prisma,
+      this.membership,
+      campaignId,
+      character,
+    );
+    const filaEfectiva = identificacionEfectiva(fila, catalogo, ownerViewer);
+    return { nombreMesa: nombreVisible(resolved, filaEfectiva), refReal };
+  }
+
+  /**
    * Tira con un arma equipada: **el servidor compone la expresión**.
    *
    * Es la misma regla que la ventaja de 2A.13 y por el mismo motivo: si el cliente montara la
@@ -1925,6 +2027,15 @@ export class CharacterSheetService {
         "Ese ataque no está disponible: el arma no está equipada o ya no existe.",
       );
     }
+    // Fix round 1 (M6), extendido en fix round 2 (R3) — el nombre de la MESA y el `ref` REAL,
+    // ninguno de los dos del visor de quien llama: si el DM tira por un jugador con un arma sin
+    // identificar, `ataque.name`/`ataque.ref` de arriba son los reales/redactados de SU vista.
+    const { nombreMesa, refReal } = await this.datosDeMesaParaAtaque(
+      campaignId,
+      characterId,
+      character,
+      ataque,
+    );
 
     // **La audiencia por defecto sale de la visibilidad del personaje, no es `PUBLIC` fija.**
     // Un PNJ `DM_ONLY` que ataca escribía un suceso a la mesa entera con su nombre dentro —«Ataque
@@ -1941,17 +2052,25 @@ export class CharacterSheetService {
       // anulan y dos ventajas siguen siendo una. `combinarModo` ya es esa regla.
       const ayuda = await this.ayudaViva(campaignId, characterId);
       const modoConAyuda = ayuda ? combinarModo(input.mode, "ADVANTAGE") : input.mode;
-      const tirada = await this.rolls.roll(userId, campaignId, {
-        expression: conSigno("1d20", ataque.attackBonus.total),
-        label: `Ataque con ${ataque.name}`,
-        characterId,
-        mode: modoConAyuda,
-        // Pasa tal cual: el gasto y la tirada tienen que ir en la misma transacción, y quien la
-        // abre es `RollsService`. Componerlo aquí —gastar y luego pedir la tirada— dejaría el
-        // hueco de perder la inspiración sin tirar.
-        spendInspiration: input.spendInspiration,
-        audience: input.audience ?? audienciaPorDefecto,
-      });
+      const tirada = await this.rolls.roll(
+        userId,
+        campaignId,
+        {
+          expression: conSigno("1d20", ataque.attackBonus.total),
+          label: `Ataque con ${nombreMesa}`,
+          characterId,
+          mode: modoConAyuda,
+          // Pasa tal cual: el gasto y la tirada tienen que ir en la misma transacción, y quien la
+          // abre es `RollsService`. Componerlo aquí —gastar y luego pedir la tirada— dejaría el
+          // hueco de perder la inspiración sin tirar.
+          spendInspiration: input.spendInspiration,
+          audience: input.audience ?? audienciaPorDefecto,
+        },
+        // Fix round 1 (M6), fix round 2 (R3) — `attackRef` es el `ref` REAL de la fila (no el
+        // del visor de quien tira), lo que casa el crítico del daño con ESTA tirada (abajo,
+        // `esCriticoDesdeLaTirada`) sin importar quién tire cada mitad.
+        { attackRef: refReal },
+      );
       // **Se consume DESPUÉS de tirar**: si la tirada se hubiera rechazado, la ayuda sigue ahí.
       if (ayuda) {
         await this.consumirAyuda(userId, campaignId, characterId, character.visibility, ayuda);
@@ -1963,7 +2082,8 @@ export class CharacterSheetService {
     const esCritico = await this.esCriticoDesdeLaTirada(
       campaignId,
       characterId,
-      ataque.name,
+      refReal,
+      nombreMesa,
       input,
     );
     const dados = esCritico ? duplicarDados(dano.dice) : dano.dice;
@@ -1991,7 +2111,7 @@ export class CharacterSheetService {
 
     const peticion = {
       expression: conSigno(dados, dano.modifier + (bonoFuria?.valor ?? 0)),
-      label: `Daño de ${ataque.name}${esCritico ? " (crítico)" : ""}${bonoFuria ? " + Furia" : ""}`,
+      label: `Daño de ${nombreMesa}${esCritico ? " (crítico)" : ""}${bonoFuria ? " + Furia" : ""}`,
       characterId,
       // El daño no tiene ventaja: la ventaja es del d20. Mandarla aquí tiraría dos veces el
       // dado de daño y se quedaría con el mejor, que no es una regla de ninguna edición.
@@ -2107,7 +2227,8 @@ export class CharacterSheetService {
   private async esCriticoDesdeLaTirada(
     campaignId: string,
     characterId: string,
-    nombreDelAtaque: string,
+    refDelAtaque: string,
+    nombreMesaDelAtaque: string,
     input: RollAttackInput,
   ): Promise<boolean> {
     // **Sin tirada citada no hay crítico.** Aquí se devolvía `input.critical`, el campo que el
@@ -2125,18 +2246,31 @@ export class CharacterSheetService {
         // en memoria lo que la base filtra sola. Lo señaló la revisión de cierre.
         type: "ABILITY_ROLL",
       },
-      select: { payload: true },
+      select: { payload: true, attackRef: true },
     });
     if (!evento) {
       throw new BadRequestException("Esa tirada de ataque no existe en esta campaña.");
     }
     // **Y que sea la tirada de ESTE ataque, no un 20 cualquiera.** La primera versión aceptaba
     // cualquier `ABILITY_ROLL` del personaje con un 20 natural: un 20 en una prueba de Sigilo
-    // valía como crítico de la cimitarra. `RollsService` escribe el rótulo en `reason`, y el que
-    // pone `rollAttack` es «Ataque con <nombre>», así que se compara con el del ataque que se
-    // está cobrando. Es la revisión de cierre otra vez.
+    // valía como crítico de la cimitarra. **Fix round 1 (M6), corregido en fix round 2 (R3): se
+    // casa por `attackRef`, y es el `ref` REAL de la fila —el mismo para cualquier visor—, no el
+    // del visor de quien tira.** La primera versión de este arreglo guardaba `ataque.ref` tal
+    // cual, que SÍ cambia entre visores (el del DM ve el `ref` real; el del dueño de un objeto
+    // sin identificar ve `SRD:objeto-sin-identificar`, igual para cualquier SRD sin
+    // identificar): si el DM tiraba el ataque y el jugador pedía el daño —o al revés—, los dos
+    // `ref` de visor no casaban aunque fuera la MISMA fila. `datosDeMesaParaAtaque` ahora
+    // resuelve el `ref` real por la RANURA de la fila, no por el `ref` de quien pregunta.
     const payload = evento.payload as { natural?: string; reason?: string };
-    return payload.reason === `Ataque con ${nombreDelAtaque}` && payload.natural === "TWENTY";
+    if (evento.attackRef != null) {
+      return evento.attackRef === refDelAtaque && payload.natural === "TWENTY";
+    }
+    // **Histórico, sin `attackRef` (anterior a la columna).** Fix round 2 (R3): en vez de dar
+    // por hecho que una tirada vieja nunca puede ser el crítico de nada, se cae al criterio de
+    // antes de fix round 1 (M6) —casar por el nombre que `rollAttack` escribió en `reason`—,
+    // que es exactamente correcto para esas filas: ningún objeto sin identificar existía
+    // todavía cuando se escribieron, así que el nombre de mesa y el nombre real eran el mismo.
+    return payload.reason === `Ataque con ${nombreMesaDelAtaque}` && payload.natural === "TWENTY";
   }
 
   /**
@@ -2190,6 +2324,15 @@ export class CharacterSheetService {
         "Ese ataque no está disponible: el arma no está equipada o ya no existe.",
       );
     }
+    // Fix round 1 (M6), fix round 2 (R3) — mismo criterio que `rollAttack`: el nombre de mesa y
+    // el `ref` real, no los de quien ataca, para la etiqueta pública, el suceso
+    // `ATTACK_RESOLVED` y el `attackRef` de la tirada (por si `rollAttack` cobra su daño luego).
+    const { nombreMesa, refReal } = await this.datosDeMesaParaAtaque(
+      campaignId,
+      characterId,
+      character,
+      ataque,
+    );
     if (input.targetCharacterId === characterId) {
       throw new BadRequestException("No se puede atacar al propio personaje.");
     }
@@ -2249,14 +2392,22 @@ export class CharacterSheetService {
     // se arregla en los dos sitios.
     const audienciaPorDefecto = loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
-    const roll = await this.rolls.roll(userId, campaignId, {
-      expression: conSigno("1d20", ataque.attackBonus.total),
-      label: `Ataque con ${ataque.name}`,
-      characterId,
-      mode: modo,
-      spendInspiration: input.spendInspiration,
-      audience: input.audience ?? audienciaPorDefecto,
-    });
+    const roll = await this.rolls.roll(
+      userId,
+      campaignId,
+      {
+        expression: conSigno("1d20", ataque.attackBonus.total),
+        label: `Ataque con ${nombreMesa}`,
+        characterId,
+        mode: modo,
+        spendInspiration: input.spendInspiration,
+        audience: input.audience ?? audienciaPorDefecto,
+      },
+      // Fix round 1 (M6), fix round 2 (R3) — `roll.eventId` puede ser citado más tarde por
+      // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila
+      // escrito aquí para que el crítico se pueda casar sin depender del nombre ni del visor.
+      { attackRef: refReal },
+    );
     if (ayuda) {
       await this.consumirAyuda(userId, campaignId, characterId, character.visibility, ayuda);
     }
@@ -2301,7 +2452,7 @@ export class CharacterSheetService {
       payload: {
         type: "ATTACK_RESOLVED",
         attackerId: characterId,
-        attackName: ataque.name,
+        attackName: nombreMesa,
         verdict,
         rollEventId: roll.eventId,
       },

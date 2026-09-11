@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
-import type { ContentRefInput, ItemLocation } from "@dnd/shared";
+import { NOMBRE_SIN_IDENTIFICAR, type ContentRefInput, type ItemLocation } from "@dnd/shared";
 import { Button, fieldControlClass } from "../../ui";
 import { ApiError } from "../../lib/api";
 import { useCampaignItems } from "../campaign-items/hooks";
 import { useAddInventoryItem, useCatalogItems } from "./hooks";
 import { IconoAnadir, IconoBuscar, IconoObjeto } from "./iconos";
-import { NOMBRE_PROCEDENCIA, NOMBRE_ZONA, type ProcedenciaObjeto } from "./vocabulario";
+import {
+  EXPLICACION_SIN_IDENTIFICAR,
+  NOMBRE_PROCEDENCIA,
+  NOMBRE_ZONA,
+  type ProcedenciaObjeto,
+} from "./vocabulario";
 
 // Carril B4 — lo que une el catálogo (B2) y el inventario (B1): elegir un objeto y añadirlo.
 // Pantalla 22 del prototipo, revisión obligatoria: una sola lista con las dos procedencias
@@ -32,15 +37,29 @@ const ZONAS_ELEGIBLES: ItemLocation[] = ["CARRIED", "EQUIPPED", "STORED"];
 export function SelectorDeObjeto({
   campaignId,
   characterId,
+  /**
+   * Fix round 2 (M3) — **el botín también puede nacer sin identificar, desde la pantalla**.
+   * Hasta este arreglo, el servidor ya aceptaba `identified`/`unidentifiedName` en el `POST`
+   * (fix round 1) pero ningún camino de la interfaz los mandaba: el DM entregaba el objeto con
+   * su nombre real y solo podía esconderlo DESPUÉS, con un segundo gesto — el `ITEM_ADDED` de
+   * la entrega ya había dicho el nombre real. El control solo se ofrece al DM, en las dos
+   * pantallas que montan este selector (`PaginaDeInventario.tsx`, `DarObjeto.tsx`); esconderlo
+   * no es la autorización real, que sigue en el servidor (`inventory.service.ts`, 403 al
+   * dueño).
+   */
+  esDM,
 }: {
   campaignId: string;
   characterId: string;
+  esDM: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState("");
   const [elegido, setElegido] = useState<FilaDelSelector | null>(null);
   const [cantidad, setCantidad] = useState(1);
   const [ubicacion, setUbicacion] = useState<ItemLocation>("CARRIED");
+  const [sinIdentificar, setSinIdentificar] = useState(false);
+  const [alias, setAlias] = useState("");
 
   const catalogo = useCatalogItems({ enabled: abierto });
   // La lista de la campaña ya llega filtrada por `canView` — no se reimplementa ese filtro aquí,
@@ -83,13 +102,25 @@ export function SelectorDeObjeto({
   const confirmarAlta = () => {
     if (!elegido) return;
     añadir.mutate(
-      { ref: elegido.ref, quantity: cantidad, location: ubicacion },
+      {
+        ref: elegido.ref,
+        quantity: cantidad,
+        location: ubicacion,
+        // Fix round 2 (M3) — solo el DM manda estos dos campos, y solo cuando ha marcado la
+        // casilla: para cualquier otro caso ninguno de los dos viaja, exactamente como antes de
+        // este arreglo (un objeto nace identificado por defecto).
+        ...(esDM && sinIdentificar
+          ? { identified: false, unidentifiedName: alias.trim() === "" ? null : alias.trim() }
+          : {}),
+      },
       {
         onSuccess: () => {
           setElegido(null);
           setTexto("");
           setCantidad(1);
           setUbicacion("CARRIED");
+          setSinIdentificar(false);
+          setAlias("");
         },
       },
     );
@@ -230,6 +261,35 @@ export function SelectorDeObjeto({
               <IconoAnadir /> Añadir
             </Button>
           </div>
+
+          {/* Fix round 2 (M3) — solo el DM ve este control: puede entregar el objeto ya sin
+              identificar, en el mismo gesto de dárselo, en vez de un segundo `PATCH` después. */}
+          {esDM && (
+            <div className="border-t border-muted pt-s3">
+              <label className="flex items-center gap-2 font-chrome text-chrome-sm text-text">
+                <input
+                  type="checkbox"
+                  checked={sinIdentificar}
+                  onChange={(e) => setSinIdentificar(e.target.checked)}
+                  className="accent-[var(--accent)]"
+                />
+                Sin identificar
+              </label>
+              <p className="pl-6 font-chrome text-chrome-xs text-muted">
+                {EXPLICACION_SIN_IDENTIFICAR}
+              </p>
+              {sinIdentificar && (
+                <input
+                  type="text"
+                  value={alias}
+                  placeholder={NOMBRE_SIN_IDENTIFICAR}
+                  aria-label={`Alias de ${elegido.name} mientras no está identificado`}
+                  onChange={(e) => setAlias(e.target.value)}
+                  className={`mt-1 ml-6 ${fieldControlClass}`}
+                />
+              )}
+            </div>
+          )}
 
           {añadir.isError && (
             <p role="alert" className="font-chrome text-chrome-xs text-danger-text">

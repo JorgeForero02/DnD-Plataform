@@ -73,7 +73,9 @@ describe("SelectorDeObjeto", () => {
   });
 
   it("la lista mezcla las dos procedencias y las marca", async () => {
-    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" />, { wrapper: wrapper(nuevoQc()) });
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
     await abrirSelector();
 
     const filaEstoque = (await screen.findByText("Estoque")).closest("li")!;
@@ -84,7 +86,9 @@ describe("SelectorDeObjeto", () => {
   });
 
   it("la búsqueda filtra la lista en cliente", async () => {
-    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" />, { wrapper: wrapper(nuevoQc()) });
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
     await abrirSelector();
     await screen.findByText("Estoque");
 
@@ -109,7 +113,9 @@ describe("SelectorDeObjeto", () => {
       item: estoque,
     });
 
-    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" />, { wrapper: wrapper(nuevoQc()) });
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
     await abrirSelector();
     fireEvent.click(await screen.findByText("Estoque"));
     fireEvent.click(screen.getByRole("button", { name: /^Añadir$/ }));
@@ -135,7 +141,9 @@ describe("SelectorDeObjeto", () => {
       item: srdItem({ ref: "CAMPAIGN:ci-1", name: "Sello de la Casa Vhael", source: "CAMPAIGN" }),
     });
 
-    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" />, { wrapper: wrapper(nuevoQc()) });
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
     await abrirSelector();
     fireEvent.click(await screen.findByText("Sello de la Casa Vhael"));
     fireEvent.click(screen.getByRole("button", { name: /^Añadir$/ }));
@@ -152,12 +160,16 @@ describe("SelectorDeObjeto", () => {
   it("el 400 de un objeto DM_ONLY se enseña en línea y conserva lo elegido", async () => {
     vi.spyOn(inventoryApi, "addInventoryItem").mockRejectedValue(
       new ApiError(
-        'El dueño del personaje no puede ver "Sello de la Casa Vhael" todavía: súbele la visibilidad al objeto antes de dárselo.',
+        // Fix round 2 (R1): el servidor ya no cita el nombre real en este mensaje — nunca «Sello
+        // de la Casa Vhael», solo el mismo placeholder que `redactado()`.
+        'El dueño del personaje no puede ver "Objeto oculto" todavía: súbele la visibilidad al objeto antes de dárselo.',
         400,
       ),
     );
 
-    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" />, { wrapper: wrapper(nuevoQc()) });
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
     await abrirSelector();
     fireEvent.click(await screen.findByText("Sello de la Casa Vhael"));
     fireEvent.click(screen.getByRole("button", { name: /^Añadir$/ }));
@@ -170,9 +182,12 @@ describe("SelectorDeObjeto", () => {
   });
 
   it("ninguna enumeración cruda llega al DOM", async () => {
-    const { container } = render(<SelectorDeObjeto campaignId="c1" characterId="ch1" />, {
-      wrapper: wrapper(nuevoQc()),
-    });
+    const { container } = render(
+      <SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />,
+      {
+        wrapper: wrapper(nuevoQc()),
+      },
+    );
     await abrirSelector();
     await screen.findByText("Estoque");
     fireEvent.click(screen.getByText("Estoque"));
@@ -181,5 +196,54 @@ describe("SelectorDeObjeto", () => {
     for (const crudo of ["CARRIED", "EQUIPPED", "STORED", "SRD", "CAMPAIGN"]) {
       expect(texto).not.toContain(crudo);
     }
+  });
+
+  // Fix round 2 (M3, R7) — el botín nace sin identificar desde la propia pantalla de dar/añadir,
+  // y no solo desde el servidor (que ya lo aceptaba desde fix round 1): sin esto, el DM seguía
+  // teniendo que entregar el objeto con su nombre real y esconderlo después, con el `ITEM_ADDED`
+  // de la entrega ya delatado.
+  it("el DM ve el control «Sin identificar», y añadir con él marcado manda identified/unidentifiedName", async () => {
+    vi.spyOn(inventoryApi, "addInventoryItem").mockResolvedValue({
+      id: "row-3",
+      quantity: 1,
+      location: "CARRIED",
+      slot: null,
+      attuned: false,
+      storedAt: null,
+      note: null,
+      item: estoque,
+    });
+
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={true} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    await abrirSelector();
+    fireEvent.click(await screen.findByText("Estoque"));
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sin identificar" }));
+    fireEvent.change(screen.getByLabelText(/Alias de Estoque/), {
+      target: { value: "Espadín de aspecto extraño" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Añadir$/ }));
+
+    await waitFor(() =>
+      expect(inventoryApi.addInventoryItem).toHaveBeenCalledWith("c1", "ch1", {
+        ref: { source: "SRD", key: "estoque" },
+        quantity: 1,
+        location: "CARRIED",
+        identified: false,
+        unidentifiedName: "Espadín de aspecto extraño",
+      }),
+    );
+  });
+
+  it("quien no es DM no ve el control «Sin identificar»", async () => {
+    render(<SelectorDeObjeto campaignId="c1" characterId="ch1" esDM={false} />, {
+      wrapper: wrapper(nuevoQc()),
+    });
+    await abrirSelector();
+    fireEvent.click(await screen.findByText("Estoque"));
+
+    expect(screen.queryByRole("checkbox", { name: "Sin identificar" })).not.toBeInTheDocument();
   });
 });

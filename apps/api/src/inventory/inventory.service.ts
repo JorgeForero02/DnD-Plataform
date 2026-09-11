@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -16,6 +17,7 @@ import {
   type ItemEffect,
   type ItemKind,
   type ItemLocation,
+  type ContentRefInput,
   type ResolvedItem,
   type UpdateInventoryItemInput,
 } from "@dnd/shared";
@@ -33,6 +35,14 @@ import {
   viewerForCharacterOwner,
 } from "../common/character-viewer";
 import { resolveContentRef, resolveInventoryRowItem } from "./common/resolve-item";
+import {
+  filaComoLaVeElViewer,
+  filaCrudaVisible,
+  identificacionEfectiva,
+  nombreVisible,
+  refVisible,
+  type FilaConIdentificacion,
+} from "./common/identification";
 import { carriedWeightOz } from "./common/weight";
 import { umbralesDeSobrecarga, estadoDeSobrecarga } from "./common/encumbrance";
 import type { EncumbranceInfo } from "@dnd/shared";
@@ -112,6 +122,13 @@ function resolvePlacement(
   current: PlacementCurrent,
   input: PlacementInput,
   itemDef: ResolvedItem,
+  /**
+   * Fix round 1 (M5) — el nombre que llevan LOS MENSAJES de error de esta función, ya decidido
+   * por quien llama con `nombreVisible(itemDef, fila)`. Esta función es pura y no tiene la fila
+   * a mano para calcularlo ella misma; recibirlo ya resuelto evita que un 400 le diga a un
+   * jugador el nombre real de su propio anillo sin identificar.
+   */
+  nombreParaMensaje: string,
 ): Placement {
   const location = input.location ?? current.location;
 
@@ -122,13 +139,13 @@ function resolvePlacement(
     if (!slot) slot = itemDef.slot ?? null;
     if (!slot) {
       throw new BadRequestException(
-        `"${itemDef.name}" no tiene una ranura de equipo: no se puede llevar puesto.`,
+        `"${nombreParaMensaje}" no tiene una ranura de equipo: no se puede llevar puesto.`,
       );
     }
     const admitidas = RANURAS_POR_TIPO[itemDef.kind];
     if (admitidas && !admitidas.includes(slot)) {
       throw new BadRequestException(
-        `"${itemDef.name}" no se puede llevar en esa ranura: ${NOMBRE_DE_TIPO[itemDef.kind]} va en ${admitidas
+        `"${nombreParaMensaje}" no se puede llevar en esa ranura: ${NOMBRE_DE_TIPO[itemDef.kind]} va en ${admitidas
           .map((r) => NOMBRE_DE_RANURA[r])
           .join(" o ")}.`,
       );
@@ -144,7 +161,7 @@ function resolvePlacement(
     }
     if (!itemDef.requiresAttunement) {
       throw new BadRequestException(
-        `"${itemDef.name}" no es un objeto que requiera sintonización.`,
+        `"${nombreParaMensaje}" no es un objeto que requiera sintonización.`,
       );
     }
   }
@@ -197,17 +214,26 @@ export class InventoryService {
 
     // Lo que no se puede ver no se envía (regla del servidor): un `CampaignItem` cuya
     // visibilidad ya no alcanza a quien pregunta —aunque el objeto siga en la mochila— no sale
-    // ni en la fila, ni en el peso total, ni de ninguna otra forma.
-    const visibleRows = resolvedRows.filter(({ campaignItem }) => {
-      if (!campaignItem) return true;
-      return canView(viewer, {
-        visibility: campaignItem.visibility,
-        createdById: campaignItem.createdById,
-        grantedUserIds: campaignItem.grantedUserIds,
-      });
+    // ni en la fila, ni en el peso total, ni de ninguna otra forma. La única excepción es el
+    // DUEÑO del personaje (fix round 1, M4a): su fila no desaparece, se ve REDACTADA — y desde
+    // fix round 2 (R2) esta decisión la toma `filaComoLaVeElViewer`, la MISMA función que usa
+    // `character-sheet.service.ts` (`equipoEquipado`), para que el dueño vea el mismo nombre en
+    // el listado, la hoja, el cuadro de ataques y la traza — antes de este arreglo, la hoja
+    // seguía usando `redactado()` («Objeto oculto») para esta misma fila.
+    const esDueño = userId === character.ownerId;
+    const filasVistas = resolvedRows.map(({ row, resolved, campaignItem }) => {
+      const catalogo = campaignItem
+        ? {
+            visibility: campaignItem.visibility,
+            createdById: campaignItem.createdById,
+            grantedUserIds: campaignItem.grantedUserIds,
+          }
+        : null;
+      return { row, ...filaComoLaVeElViewer(resolved, row, catalogo, viewer, esDueño) };
     });
+    const visibleRows = filasVistas.filter((f) => f.visible);
 
-    const items = visibleRows.map(({ row, resolved }) => ({
+    const items = visibleRows.map(({ row, item }) => ({
       id: row.id,
       quantity: row.quantity,
       location: row.location,
@@ -215,10 +241,15 @@ export class InventoryService {
       attuned: row.attuned,
       storedAt: row.storedAt,
       note: row.note,
-      item: resolved,
+      item,
     }));
 
-    const totalWeightOz = carriedWeightOz(visibleRows, character);
+    // `carriedWeightOz` pide `{ row, resolved }`: `item` ya redactado sirve igual — la
+    // identidad cambia, el peso nunca.
+    const totalWeightOz = carriedWeightOz(
+      visibleRows.map(({ row, item }) => ({ row, resolved: item })),
+      character,
+    );
     const purse = {
       cp: character.cp,
       sp: character.sp,
@@ -258,15 +289,35 @@ export class InventoryService {
       campaignId,
       characterId,
     );
-    await requireOwnerOrDM(this.membership, campaignId, userId, character);
+    const esDM = await requireOwnerOrDM(this.membership, campaignId, userId, character);
+    // Fix round 1 (M3) — **el botín también puede nacer sin identificar.** Misma regla que
+    // `update()`: solo el DM puede mandar estos dos campos, esconder el control en la pantalla
+    // no es la autorización real.
+    if ((input.identified !== undefined || input.unidentifiedName !== undefined) && !esDM) {
+      throw new ForbiddenException("Solo el DM puede identificar o renombrar un objeto.");
+    }
+    const filaNueva: FilaConIdentificacion = {
+      identified: input.identified ?? true,
+      unidentifiedName: input.unidentifiedName ?? null,
+    };
 
     const { resolved, campaignItem } = await resolveContentRef(this.prisma, campaignId, input.ref);
 
-    // Regla 6: un objeto DM_ONLY de la campaña no se le puede dar a un personaje cuyo dueño no
-    // puede verlo. Se mira por los ojos del DUEÑO del personaje, no de quien hace el `POST`
-    // —puede ser el DM entregándolo—, porque la pregunta es si ese objeto le va a aparecer en
-    // su propia mochila sin que él pueda verlo.
-    if (campaignItem) {
+    // Regla 6: un objeto DM_ONLY de la campaña no se le puede dar YA IDENTIFICADO a un
+    // personaje cuyo dueño no puede verlo. Se mira por los ojos del DUEÑO del personaje, no de
+    // quien hace el `POST` —puede ser el DM entregándolo—, porque la pregunta es si ese objeto
+    // le va a aparecer en su propia mochila con su nombre REAL sin que él pueda ver de dónde
+    // sale.
+    //
+    // Fix round 4 — **solo cuando la fila nacería identificada.** Hasta este arreglo, el 400
+    // saltaba siempre que el catálogo fuera invisible, aunque el `POST` pidiera
+    // `identified: false`: eso cortaba en seco el flujo que M4b (fix round 1) recomienda para
+    // esconder un objeto de campaña del todo —catálogo `DM_ONLY` + fila sin identificar—, que
+    // es exactamente lo que este mismo bloque documenta más abajo como "el camino recomendado".
+    // Una fila que nace sin identificar no dice ningún nombre real (`nombreVisible` la redacta
+    // igual que M4a ya redacta la lectura), así que no hay nada que "ocultar sin que el dueño lo
+    // sepa": el 400 solo tiene sentido si la fila SÍ nacería hablando con su voz real.
+    if (campaignItem && filaNueva.identified) {
       const ownerViewer = await viewerForCharacterOwner(
         this.prisma,
         this.membership,
@@ -280,8 +331,18 @@ export class InventoryService {
           grantedUserIds: campaignItem.grantedUserIds,
         })
       ) {
+        // Fix round 2 (R1) — **nunca el nombre real.** Hasta este arreglo, este 400 citaba
+        // `resolved.name`, y M4 (fix round 1) dejó una fila redactada con su `ref`
+        // (`CAMPAIGN:<cuid>`) intacto en el listado del dueño: con ese cuid, un jugador podía
+        // pedir este mismo `POST` sobre sí mismo y leer el nombre real de un objeto que su
+        // propia mochila ya le escondía — la fuga era alcanzable desde M4a, aunque preexistente.
+        // Mismo placeholder que `redactado()`, y por el mismo motivo: no hay "quién sí" — ni
+        // siquiera el DM necesita que ESTE mensaje se lo diga, ya lo sabe por su propio catálogo.
+        //
+        // Fix round 4 — el texto ahora nombra las DOS salidas: subir la visibilidad, o dárselo
+        // sin identificar (que es justo el camino que este mismo `if` acaba de dejar abierto).
         throw new BadRequestException(
-          `El dueño del personaje no puede ver "${resolved.name}" todavía: súbele la visibilidad al objeto antes de dárselo.`,
+          `El dueño del personaje no puede ver "Objeto oculto" todavía: súbele la visibilidad al objeto antes de dárselo, o dáselo sin identificar.`,
         );
       }
     }
@@ -290,9 +351,17 @@ export class InventoryService {
       { location: "CARRIED", slot: null, attuned: false },
       { location: input.location, slot: input.slot, attuned: undefined },
       resolved,
+      nombreVisible(resolved, filaNueva),
     );
     if (placement.location === "EQUIPPED") {
-      await this.ensureSlotAllowed(characterId, campaignId, resolved, placement.slot as EquipSlot);
+      await this.ensureSlotAllowed(
+        characterId,
+        campaignId,
+        character,
+        resolved,
+        filaNueva,
+        placement.slot as EquipSlot,
+      );
     }
 
     const de = userId !== character.ownerId ? actor.displayName : undefined;
@@ -317,20 +386,29 @@ export class InventoryService {
             attuned: false,
             storedAt: input.storedAt ?? null,
             note: input.note ?? null,
+            identified: filaNueva.identified,
+            unidentifiedName: filaNueva.unidentifiedName,
           },
         });
         // **El objeto deja rastro, igual que el dinero.** Hasta la auditoría de mecánica de 2B
         // solo la bolsa escribía en la línea de tiempo, y con una semana entre sesiones eso
-        // significa que nadie puede responder «¿quién cogió la gema?».
+        // significa que nadie puede responder «¿quién cogió la gema?». Fix round 1 (M3): el
+        // nombre que se escribe ya es el VISIBLE (real o alias, según `filaNueva`) — el botín que
+        // el DM entrega ya escondido no se delata en su propio suceso de entrada.
         await this.registrarSuceso(userId, campaignId, character, tx, {
           type: "ITEM_ADDED",
-          item: resolved.name,
-          ref: resolved.ref,
+          item: nombreVisible(resolved, filaNueva),
+          // Fix round 2 (R5) — el `ref` también pasa por el visor de la mesa: para un `SRD:`
+          // sin identificar, el `ref` real ES el nombre (una clave pública), así que
+          // `refVisible` lo sustituye por el mismo genérico que ya usa `conIdentificacion`.
+          ref: refVisible(resolved, filaNueva),
           quantity: input.quantity,
           location: placement.location,
           ...(de ? { de } : {}),
         });
-        return fila;
+        // Fix round 2 (R5) — la fila cruda que se devuelve tampoco lleva `srdKey`/
+        // `campaignItemId` de un objeto sin identificar para quien no es el DM.
+        return filaCrudaVisible(fila, esDM);
       });
     } catch (error) {
       throw this.translateSlotConflict(error);
@@ -419,7 +497,52 @@ export class InventoryService {
       campaignId,
       characterId,
     );
-    await requireOwnerOrDM(this.membership, campaignId, userId, character);
+    const esDM = await requireOwnerOrDM(this.membership, campaignId, userId, character);
+    // D-CF-15 (migración 7) — **solo el DM identifica**. El dueño puede seguir cambiando
+    // cantidad, ranura o sintonía de su propio objeto (arriba, `requireOwnerOrDM`), pero
+    // esconder un control en la pantalla no es control de acceso: si el cuerpo trae
+    // `identified`/`unidentifiedName` y quien pregunta no es el DM, el servidor lo rechaza con
+    // 403 aunque sea su propio inventario.
+    if ((input.identified !== undefined || input.unidentifiedName !== undefined) && !esDM) {
+      throw new ForbiddenException("Solo el DM puede identificar o renombrar un objeto.");
+    }
+    // Fix round 3 (R8) — **el DM no puede marcar "identificado" lo que el dueño no puede ver.**
+    // M4b (fix anterior) ya bloqueaba el camino inverso (bajar la visibilidad del catálogo con
+    // la fila identificada); este era el hueco simétrico: nada impedía este mismo `PATCH` sobre
+    // una fila cuyo catálogo YA es invisible para el dueño, dejando `row.identified: true`
+    // mintiendo por debajo de una pantalla que sí la redacta bien (`list`/`equipoEquipado` usan
+    // `filaComoLaVeElViewer`, que fuerza "sin identificar" para el dueño) — el DM se queda sin
+    // aviso en vez de que el servidor se lo diga. Mismo texto 400 que la regla 6 de `add()`.
+    if (input.identified === true) {
+      const rowActual = await this.prisma.inventoryItem.findFirst({
+        where: { id: rowId, characterId },
+      });
+      if (rowActual?.campaignItemId) {
+        const { campaignItem } = await resolveContentRef(this.prisma, campaignId, {
+          source: "CAMPAIGN",
+          id: rowActual.campaignItemId,
+        });
+        if (campaignItem) {
+          const ownerViewer = await viewerForCharacterOwner(
+            this.prisma,
+            this.membership,
+            campaignId,
+            character,
+          );
+          if (
+            !canView(ownerViewer, {
+              visibility: campaignItem.visibility,
+              createdById: campaignItem.createdById,
+              grantedUserIds: campaignItem.grantedUserIds,
+            })
+          ) {
+            throw new BadRequestException(
+              `El dueño del personaje no puede ver "Objeto oculto" todavía: súbele la visibilidad al objeto antes de dárselo.`,
+            );
+          }
+        }
+      }
+    }
 
     // **Todo el cambio se decide y se escribe con la fila del personaje bloqueada.**
     //
@@ -461,26 +584,34 @@ export class InventoryService {
         }
       }
 
-      const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row, tx);
+      const { itemDef, filaEfectiva } = await this.resolverFilaEfectiva(
+        campaignId,
+        character,
+        row,
+        tx,
+      );
 
       const placement = resolvePlacement(
         { location: row.location, slot: row.slot, attuned: row.attuned },
         { location: input.location, slot: input.slot, attuned: input.attuned },
         itemDef,
+        nombreVisible(itemDef, filaEfectiva),
       );
 
       if (placement.location === "EQUIPPED") {
         await this.ensureSlotAllowed(
           characterId,
           campaignId,
+          character,
           itemDef,
+          filaEfectiva,
           placement.slot as EquipSlot,
           rowId,
           tx,
         );
       }
       if (placement.attuned && !row.attuned) {
-        await this.ensureAttunementAllowed(characterId, campaignId, rowId, tx);
+        await this.ensureAttunementAllowed(characterId, campaignId, character, rowId, tx);
       }
 
       // **`acBefore` se calcula ANTES de escribir** (fix round 1, Q-2): la pantalla que abre el
@@ -492,11 +623,33 @@ export class InventoryService {
       const acBefore = await this.characterSheet.armorClassInTransaction(userId, character, tx);
 
       const actualizado = await this.escribirColocacion(tx, rowId, placement, input);
+      // Fix round 1 (H1) — **el nombre que se escribe en el registro es el VISIBLE, con el
+      // estado de identificación de DESPUÉS de este `PATCH`** (`actualizado`, no `row`): si el
+      // mismo `PATCH` identifica el objeto Y lo mueve a la vez, el suceso ya dice su nombre
+      // real, porque eso es lo que la mesa acaba de saber. El registro es compartido —el
+      // jugador lo lee tanto como el DM (`game-events.service.ts`, filtrado solo por
+      // visibilidad del PERSONAJE)— y hasta este arreglo escribía siempre `itemDef.name`, el
+      // real, delatando cualquier objeto sin identificar en cuanto alguien lo movía, cambiaba
+      // su cantidad, lo soltaba o lo consumía.
+      // Fix round 3 (R8) — el nombre/ref del suceso pasan por la identificación EFECTIVA de la
+      // fila YA actualizada (no `filaEfectiva` de arriba, que es la de ANTES del `PATCH`): si
+      // este mismo `PATCH` acaba de identificar el objeto, el suceso debe decir su nombre real
+      // (H1 ya lo pedía); y si el catálogo sigue sin ser visible para el dueño, sigue redactado
+      // aunque `actualizado.identified` diga `true` en crudo.
+      const { filaEfectiva: filaEfectivaTrasEscribir } = await this.resolverFilaEfectiva(
+        campaignId,
+        character,
+        actualizado,
+        tx,
+      );
+      const nombreDelSuceso = nombreVisible(itemDef, filaEfectivaTrasEscribir);
+      // Fix round 2 (R5) — el `ref` del suceso también pasa por el visor de la mesa.
+      const refDelSuceso = refVisible(itemDef, filaEfectivaTrasEscribir);
       if (placement.location !== row.location || placement.attuned !== row.attuned) {
         await this.registrarSuceso(userId, campaignId, character, tx, {
           type: "ITEM_MOVED",
-          item: itemDef.name,
-          ref: itemDef.ref,
+          item: nombreDelSuceso,
+          ref: refDelSuceso,
           from: row.location,
           to: placement.location,
           ...(placement.slot ? { slot: placement.slot } : {}),
@@ -510,15 +663,19 @@ export class InventoryService {
       if (actualizado.quantity !== row.quantity) {
         await this.registrarSuceso(userId, campaignId, character, tx, {
           type: "ITEM_QUANTITY_CHANGED",
-          item: itemDef.name,
-          ref: itemDef.ref,
+          item: nombreDelSuceso,
+          ref: refDelSuceso,
           from: row.quantity,
           to: actualizado.quantity,
         });
       }
 
       const ac = await this.characterSheet.armorClassInTransaction(userId, character, tx);
-      return { item: actualizado, acBefore, ac };
+      // Fix round 2 (R5) — la fila cruda tampoco lleva `srdKey`/`campaignItemId` de un objeto
+      // del SRD sin identificar para quien no es el DM (además de `unidentifiedName`, ya
+      // filtrado desde fix round 1).
+      const item = filaCrudaVisible(actualizado, esDM);
+      return { item, acBefore, ac };
     });
   }
 
@@ -547,6 +704,13 @@ export class InventoryService {
         : {}),
       ...(input.storedAt !== undefined ? { storedAt: input.storedAt } : {}),
       ...(input.note !== undefined ? { note: input.note } : {}),
+      // D-CF-15 (migración 7). **No escribe ningún suceso** (a diferencia de `ITEM_MOVED` o
+      // `ITEM_QUANTITY_CHANGED` más abajo): que el DM revele "es un Anillo de Protección" es un
+      // momento de mesa, prosa que él mismo dice en voz alta — no un dato que el registro de la
+      // partida tenga que reconstruir. El único rastro es que `name` cambia para el jugador la
+      // próxima vez que la pantalla vuelva a pedir el inventario.
+      ...(input.identified !== undefined ? { identified: input.identified } : {}),
+      ...(input.unidentifiedName !== undefined ? { unidentifiedName: input.unidentifiedName } : {}),
     };
 
     try {
@@ -590,7 +754,12 @@ export class InventoryService {
         );
       }
 
-      const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row, tx);
+      const { itemDef, filaEfectiva } = await this.resolverFilaEfectiva(
+        campaignId,
+        character,
+        row,
+        tx,
+      );
       const restantes = row.quantity - input.amount;
 
       if (restantes === 0) {
@@ -604,6 +773,13 @@ export class InventoryService {
       // este fichero daba **cero**—, así que beberse una poción solo la borraba del inventario.
       // Los efectos solo se leían al derivar la hoja, y **desde lo equipado**.
       const { aplicables, noAplicables } = this.modificadoresDeEfectos(itemDef.effects ?? []);
+      // Fix round 1 (H2) — el mismo criterio que H1: el motivo del modificador temporal es
+      // infraestructura compartida (`character-sheet.service.ts` lo mete en la traza de
+      // `getSheet`, que el JUGADOR lee), así que lleva el nombre VISIBLE, no el real. Antes
+      // decía «bébete la poción y a ver qué pasa» y el jugador leía el nombre real en su
+      // propia traza en cuanto la bebía — justo el caso de fantasía que la migración quería
+      // resolver.
+      const nombreDelConsumo = nombreVisible(itemDef, filaEfectiva);
       for (const modificador of aplicables) {
         await tx.temporaryModifier.create({
           data: {
@@ -611,7 +787,7 @@ export class InventoryService {
             target: modificador.target,
             amount: modificador.amount,
             // El motivo se pinta en la traza, que es lo que impide un +2 sin origen.
-            reason: itemDef.name,
+            reason: nombreDelConsumo,
             expiresAtClock: null,
             grantedById: userId,
           },
@@ -620,8 +796,8 @@ export class InventoryService {
 
       await this.registrarSuceso(userId, campaignId, character, tx, {
         type: "ITEM_REMOVED",
-        item: itemDef.name,
-        ref: itemDef.ref,
+        item: nombreDelConsumo,
+        ref: refVisible(itemDef, filaEfectiva),
         quantity: input.amount,
         ...(aplicables.length > 0 ? { effectsApplied: aplicables.map((m) => m.target) } : {}),
         ...(noAplicables.length > 0 ? { effectsNotApplied: noAplicables } : {}),
@@ -643,7 +819,7 @@ export class InventoryService {
 
     const row = await this.prisma.inventoryItem.findFirst({ where: { id: rowId, characterId } });
     if (!row) throw new NotFoundException("Ese objeto no está en el inventario.");
-    const itemDef = await resolveInventoryRowItem(this.prisma, campaignId, row);
+    const { itemDef, filaEfectiva } = await this.resolverFilaEfectiva(campaignId, character, row);
 
     return this.prisma.transaction(async (tx) => {
       // **`deleteMany` y no `delete`**: soltar dos veces con mala red daba un 500 de Prisma
@@ -652,8 +828,8 @@ export class InventoryService {
       if (count > 0) {
         await this.registrarSuceso(userId, campaignId, character, tx, {
           type: "ITEM_REMOVED",
-          item: itemDef.name,
-          ref: itemDef.ref,
+          item: nombreVisible(itemDef, filaEfectiva),
+          ref: refVisible(itemDef, filaEfectiva),
           quantity: row.quantity,
         });
       }
@@ -750,6 +926,53 @@ export class InventoryService {
   }
 
   /**
+   * Fix round 3 (R8) — resuelve una fila cruda a `{ itemDef, filaEfectiva }`, donde
+   * `filaEfectiva` es `identificacionEfectiva(row, catalogo, ownerViewer)`: la MISMA verdad que
+   * usan los caminos de lectura, para que un escritor (evento, mensaje 409, motivo de un
+   * modificador temporal...) no pueda revelar por su cuenta un nombre que el catálogo ya le
+   * esconde al dueño. Sustituye a `resolveInventoryRowItem` en todo sitio donde el resultado
+   * fuera a alimentar `nombreVisible`/`refVisible`.
+   */
+  private async resolverFilaEfectiva(
+    campaignId: string,
+    character: Pick<Character, "ownerId">,
+    row: {
+      srdKey: string | null;
+      campaignItemId: string | null;
+      identified: boolean;
+      unidentifiedName: string | null;
+    },
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<{ itemDef: ResolvedItem; filaEfectiva: FilaConIdentificacion }> {
+    const ref: ContentRefInput = row.srdKey
+      ? { source: "SRD", key: row.srdKey }
+      : { source: "CAMPAIGN", id: row.campaignItemId as string };
+    const { resolved, campaignItem } = await resolveContentRef(
+      this.prisma,
+      campaignId,
+      ref,
+      client,
+    );
+    const catalogo = campaignItem
+      ? {
+          visibility: campaignItem.visibility,
+          createdById: campaignItem.createdById,
+          grantedUserIds: campaignItem.grantedUserIds,
+        }
+      : null;
+    const ownerViewer = await viewerForCharacterOwner(
+      this.prisma,
+      this.membership,
+      campaignId,
+      character,
+    );
+    return {
+      itemDef: resolved,
+      filaEfectiva: identificacionEfectiva(row, catalogo, ownerViewer),
+    };
+  }
+
+  /**
    * Comprueba las reglas de manos (regla 2) y, para cualquier otra ranura, que esté libre (regla
    * 1). Se comprueba ANTES de escribir para dar un 409 con un mensaje legible; el índice único
    * parcial de la migración es la red de seguridad para la carrera entre dos peticiones
@@ -758,7 +981,20 @@ export class InventoryService {
   private async ensureSlotAllowed(
     characterId: string,
     campaignId: string,
+    character: Pick<Character, "ownerId">,
     itemDef: ResolvedItem,
+    /**
+     * Fix round 1 (M5) — el estado de identificación del objeto que se está equipando, para su
+     * propio mensaje («es un arma a dos manos»). Un objeto que aún no tiene fila (recién creado
+     * en `add()`) pasa el estado que traerá su fila nueva; uno que ya existe pasa la fila que
+     * `update()` acaba de leer.
+     *
+     * Fix round 3 (R8) — para el objeto que se está equipando, quien llama ya pasa la
+     * identificación EFECTIVA (`filaEfectiva`), no la cruda: este parámetro no vuelve a
+     * recalcularla porque el propio objeto que se equipa no tiene todavía (en `add()`) o ya
+     * tiene (en `update()`) resuelto su `catalogo`/`ownerViewer` en la llamada.
+     */
+    filaItemDef: FilaConIdentificacion,
     slot: EquipSlot,
     excludeRowId?: string,
     client: PrismaService | Prisma.TransactionClient = this.prisma,
@@ -768,9 +1004,14 @@ export class InventoryService {
     if (slot === "MAIN_HAND" && isTwoHanded) {
       const offHand = await this.findEquippedInSlot(characterId, "OFF_HAND", excludeRowId, client);
       if (offHand) {
-        const offHandItem = await resolveInventoryRowItem(this.prisma, campaignId, offHand);
+        const { itemDef: offHandItem, filaEfectiva } = await this.resolverFilaEfectiva(
+          campaignId,
+          character,
+          offHand,
+          client,
+        );
         throw new ConflictException(
-          `La mano izquierda ya lleva "${offHandItem.name}"; un arma a dos manos necesita las dos manos libres.`,
+          `La mano izquierda ya lleva "${nombreVisible(offHandItem, filaEfectiva)}"; un arma a dos manos necesita las dos manos libres.`,
         );
       }
     }
@@ -783,7 +1024,7 @@ export class InventoryService {
       // encontró la auditoría de mecánica de 2B.
       if (isTwoHanded) {
         throw new ConflictException(
-          `"${itemDef.name}" es un arma a dos manos: se empuña en la mano principal, y ocupa las dos.`,
+          `"${nombreVisible(itemDef, filaItemDef)}" es un arma a dos manos: se empuña en la mano principal, y ocupa las dos.`,
         );
       }
       const mainHand = await this.findEquippedInSlot(
@@ -793,10 +1034,15 @@ export class InventoryService {
         client,
       );
       if (mainHand) {
-        const mainHandItem = await resolveInventoryRowItem(this.prisma, campaignId, mainHand);
+        const { itemDef: mainHandItem, filaEfectiva } = await this.resolverFilaEfectiva(
+          campaignId,
+          character,
+          mainHand,
+          client,
+        );
         if (mainHandItem.weapon?.properties.includes("TWO_HANDED")) {
           throw new ConflictException(
-            `La mano principal lleva "${mainHandItem.name}", un arma a dos manos: no queda hueco para la mano izquierda.`,
+            `La mano principal lleva "${nombreVisible(mainHandItem, filaEfectiva)}", un arma a dos manos: no queda hueco para la mano izquierda.`,
           );
         }
       }
@@ -804,8 +1050,15 @@ export class InventoryService {
 
     const occupant = await this.findEquippedInSlot(characterId, slot, excludeRowId, client);
     if (occupant) {
-      const occupantItem = await resolveInventoryRowItem(this.prisma, campaignId, occupant);
-      throw new ConflictException(`La ranura ya la ocupa "${occupantItem.name}".`);
+      const { itemDef: occupantItem, filaEfectiva } = await this.resolverFilaEfectiva(
+        campaignId,
+        character,
+        occupant,
+        client,
+      );
+      throw new ConflictException(
+        `La ranura ya la ocupa "${nombreVisible(occupantItem, filaEfectiva)}".`,
+      );
     }
   }
 
@@ -829,6 +1082,7 @@ export class InventoryService {
   private async ensureAttunementAllowed(
     characterId: string,
     campaignId: string,
+    character: Pick<Character, "ownerId">,
     excludeRowId?: string,
     client: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
@@ -842,7 +1096,9 @@ export class InventoryService {
     if (attunedRows.length >= MAX_ATTUNED_ITEMS) {
       const names = await Promise.all(
         attunedRows.map((r) =>
-          resolveInventoryRowItem(this.prisma, campaignId, r).then((i) => i.name),
+          this.resolverFilaEfectiva(campaignId, character, r, client).then(
+            ({ itemDef, filaEfectiva }) => nombreVisible(itemDef, filaEfectiva),
+          ),
         ),
       );
       throw new BadRequestException(

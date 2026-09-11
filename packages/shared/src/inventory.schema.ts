@@ -23,6 +23,15 @@ export const addInventoryItemSchema = z.object({
   /** Dónde está guardado, si lo está: «en la posada», «en el carro». */
   storedAt: z.string().max(120).optional(),
   note: z.string().max(280).optional(),
+  /**
+   * Migración 7, fix round 1 (M3) — nace sin identificar directamente, para el botín que el DM
+   * entrega ya escondido: sin esto, `ITEM_ADDED` mandaba el nombre real antes de que el DM
+   * pudiera esconderlo con un segundo `PATCH`, y el caso de uso principal («toma, no sé qué es»)
+   * era imposible sin una fuga de un suceso. Solo el DM puede mandar estos dos campos
+   * (`inventory.service.ts` responde 403 igual que en `updateInventoryItemSchema`).
+   */
+  identified: z.boolean().optional(),
+  unidentifiedName: z.string().trim().min(1).max(80).nullable().optional(),
 });
 export type AddInventoryItemInput = z.infer<typeof addInventoryItemSchema>;
 
@@ -51,6 +60,14 @@ export const updateInventoryItemSchema = z
     attuned: z.boolean().optional(),
     storedAt: z.string().max(120).nullable().optional(),
     note: z.string().max(280).nullable().optional(),
+    /**
+     * Migración 7 (D-CF-15) — solo el DM puede tocar estos dos campos (`inventory.service.ts`
+     * lo rechaza con 403 si los manda quien no lo es, aunque sea el dueño del personaje: la
+     * autorización se comprueba en el servidor, nunca escondiendo el control).
+     */
+    identified: z.boolean().optional(),
+    /** `null` la limpia y vuelve al título genérico (`NOMBRE_SIN_IDENTIFICAR`). */
+    unidentifiedName: z.string().trim().min(1).max(80).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, {
     message: "No hay nada que cambiar en esta petición.",
@@ -74,6 +91,15 @@ export const inventoryItemRowSchema = z.object({
   attuned: z.boolean(),
   storedAt: z.string().nullable(),
   note: z.string().nullable(),
+  /** Migración 7 (D-CF-15). Esta fila nunca lleva el nombre real del objeto (eso vive en el
+   * `ResolvedItem` del listado), así que enseñarla aquí no delata nada. */
+  identified: z.boolean(),
+  /**
+   * El alias, **solo para el DM**: quien no lo es recibe `null` aquí — no porque el dato sea
+   * secreto (es el alias, no el nombre real), sino porque esta fila no lo necesita dos veces:
+   * ya lo tiene como `name` en el objeto resuelto del listado.
+   */
+  unidentifiedName: z.string().nullable(),
 });
 export type InventoryItemRow = z.infer<typeof inventoryItemRowSchema>;
 

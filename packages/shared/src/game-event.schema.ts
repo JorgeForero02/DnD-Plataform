@@ -732,6 +732,16 @@ export const recordGameEventSchema = z.object({
    * tiene un índice único sobre él: el daño de una tirada se cobra **una vez**.
    */
   attackRollEventId: z.string().min(1).optional(),
+  /**
+   * Migración 7, fix round 1 (M6) — el `ref` del arma de ESTA tirada de ataque. **Solo lo pone
+   * el servidor**, igual que `attackRollEventId`, y por el mismo motivo: no viaja en el cuerpo
+   * de ninguna petición porque no es un dato que el cliente decida. Antes, `rollAttack` casaba
+   * el crítico del daño contra la tirada de ataque **comparando el nombre** que llevaba el
+   * `reason` de la tirada («Ataque con X») — y el nombre de un objeto sin identificar cambia el
+   * día que el DM lo identifica, así que un crítico legítimo dejaba de reconocerse a mitad de
+   * combate. El `ref` no cambia nunca aunque el nombre sí.
+   */
+  attackRef: z.string().min(1).optional(),
   payload: gameEventPayloadSchema,
 });
 export type RecordGameEventInput = z.infer<typeof recordGameEventSchema>;

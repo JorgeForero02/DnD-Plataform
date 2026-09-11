@@ -350,5 +350,30 @@ export const resolvedItemSchema = itemFieldsSchema.extend({
   /** `SRD:long-sword` o `CAMPAIGN:<cuid>`. Estable, y es lo que va en la traza. */
   ref: z.string().min(1),
   source: z.enum(["SRD", "CAMPAIGN"]),
+  /**
+   * Migración 7 (D-CF-15) — «lo tengo pero no sé qué es». Estado de identificación de LA FILA
+   * del inventario, no del objeto: la misma espada +1 puede estar identificada en la mochila de
+   * un personaje y sin identificar en la de otro. `undefined` (un objeto del catálogo, sin fila
+   * detrás — el selector, el catálogo de campaña) se trata como identificado: no hay nada que
+   * esconder de algo que todavía no es de nadie.
+   */
+  identified: z.boolean().optional(),
+  /**
+   * El alias que ve quien no es el DM mientras `identified` es `false`. **Solo viaja para el
+   * DM** (`inventory.service.ts`, `character-sheet.service.ts`): para cualquier otro visor la
+   * fila ya trae `name` sustituido por este mismo alias (o por `NOMBRE_SIN_IDENTIFICAR`), así
+   * que repetirlo aquí sería la segunda copia del mismo dato.
+   */
+  unidentifiedName: z.string().nullable().optional(),
 });
 export type ResolvedItem = z.infer<typeof resolvedItemSchema>;
+
+/**
+ * El título genérico de un objeto sin identificar al que el DM todavía no le ha puesto un
+ * alias. **Vive aquí, y no repetido en la API y en la pantalla**, porque es el mismo texto que
+ * sustituye a `name` en las dos capas que redactan una fila (`inventory.service.ts`,
+ * `character-sheet.service.ts`) y el que ofrece como marcador de posición el control del DM en
+ * la pantalla — la misma regla que ya sigue `COIN_KEYS` o `MAX_ATTUNED_ITEMS`: un dato del
+ * dominio se declara una vez, aunque sea prosa y no un número.
+ */
+export const NOMBRE_SIN_IDENTIFICAR = "Objeto sin identificar";

@@ -42,6 +42,9 @@ describe("InventoryService", () => {
       deleteMany: jest.fn(),
     },
     campaignItem: { findFirst: jest.fn() },
+    // D-CF-15 (migración 7): `list()` lee la variante de sobrecarga de la campaña incluso
+    // cuando no hace falta identificación — por defecto, apagada, para no calcularla de más.
+    campaign: { findUniqueOrThrow: jest.fn() },
     // `consume` aplica los efectos del objeto escribiendo aquí **directo con el `tx`**, sin pasar
     // por `TemporaryModifiersService.grant` — que desde el 2026-09-07 es solo del DM.
     temporaryModifier: { create: jest.fn() },
@@ -77,6 +80,10 @@ describe("InventoryService", () => {
     // «solo cuando quien actúa no es el dueño» las proteja, sino porque no habría ningún nombre
     // que poner. Con un nombre siempre disponible, la mutación que borra esa condición sí se ve.
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false, displayName: "Alguien" });
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({
+      id: "cmp1",
+      encumbranceVariant: false,
+    });
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.$queryRaw.mockImplementation(async () => {
       const actual = await prisma.character.findFirst.mock.results.at(-1)?.value;
@@ -200,6 +207,72 @@ describe("InventoryService", () => {
       expect(error).toBeInstanceOf(BadRequestException);
       expect((error as Error).message).toMatch(/no puede ver/);
       expect(prisma.inventoryItem.create).not.toHaveBeenCalled();
+    });
+
+    // Fix round 4 — el mismo objeto DM_ONLY, pero con `identified: false`: el flujo RECOMENDADO
+    // (M4b) para esconder un objeto de campaña del todo. La regla 6 solo tiene sentido cuando la
+    // fila nacería hablando con su nombre real; una fila sin identificar no lo hace, así que
+    // este `add()` debe funcionar.
+    it("D-CF-15 (fix round 4): el mismo objeto DM_ONLY, dado con `identified: false`, SÍ funciona", async () => {
+      prisma.campaignItem.findFirst.mockResolvedValue({
+        id: "ci1",
+        campaignId: "cmp1",
+        name: "Reliquia secreta",
+        kind: "OTHER",
+        description: null,
+        weightOz: 0,
+        costCp: null,
+        effects: null,
+        requiresAttunement: false,
+        slot: null,
+        weaponCategory: null,
+        weaponRange: null,
+        damageDice: null,
+        damageType: null,
+        weaponProperties: [],
+        versatileDice: null,
+        rangeNormalFt: null,
+        rangeLongFt: null,
+        armorCategory: null,
+        baseAc: null,
+        dexCap: null,
+        strengthRequirement: 0,
+        stealthDisadvantage: false,
+        visibility: "DM_ONLY",
+        createdById: "dm1",
+        grants: [],
+      });
+      membership.getMembership.mockImplementation((_c: string, userId: string) =>
+        Promise.resolve({ role: userId === "dm1" ? "DM" : "PLAYER" }),
+      );
+      prisma.inventoryItem.create.mockResolvedValue(
+        row({
+          srdKey: null,
+          campaignItemId: "ci1",
+          identified: false,
+          unidentifiedName: "Un sello frío al tacto",
+        }),
+      );
+
+      const res = await service.add("dm1", "cmp1", "c1", {
+        ref: { source: "CAMPAIGN", id: "ci1" },
+        quantity: 1,
+        location: "CARRIED",
+        identified: false,
+        unidentifiedName: "Un sello frío al tacto",
+      });
+
+      expect(prisma.inventoryItem.create).toHaveBeenCalled();
+      expect(events.record).toHaveBeenCalledWith(
+        "dm1",
+        "cmp1",
+        expect.objectContaining({
+          payload: expect.objectContaining({ type: "ITEM_ADDED", item: "Un sello frío al tacto" }),
+        }),
+        expect.anything(),
+      );
+      expect(JSON.stringify(events.record.mock.calls.at(-1))).not.toContain("Reliquia secreta");
+      expect(res).toBeDefined();
     });
 
     // B3 — dar algo a alguien dice quién lo dio. El rastro (actor, sujeto, qué) ya existía;
@@ -343,6 +416,57 @@ describe("InventoryService", () => {
       await expect(
         service.update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED" }),
       ).rejects.toMatchObject({ status: 400 });
+    });
+
+    // Fix round 3 (R9) — de los tres 400 de `resolvePlacement` (sin ranura, ranura equivocada,
+    // sintonización no pedida), ninguna prueba los ejercitaba con una fila SIN IDENTIFICAR: el
+    // camino que compone el mensaje (`nombreVisible`) es el mismo, pero "mismo helper" no es
+    // "mismo helper probado aquí" (mismo criterio que ya dejó fix round 2, R7).
+    it("D-CF-15 (R9): equipar sin ranura con la fila sin identificar dice el alias en el 400, nunca el nombre real", async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValueOnce(
+        row({
+          id: "row1",
+          srdKey: null,
+          campaignItemId: "ring1",
+          identified: false,
+          unidentifiedName: "Anillo de aspecto extraño",
+        }),
+      );
+      prisma.campaignItem.findFirst.mockResolvedValue({
+        id: "ring1",
+        campaignId: "cmp1",
+        name: "Anillo de protección",
+        kind: "OTHER",
+        description: "Un aro de plata pulida.",
+        weightOz: 0,
+        costCp: null,
+        effects: [{ kind: "ac", amount: 1 }],
+        requiresAttunement: true,
+        slot: null,
+        weaponCategory: null,
+        weaponRange: null,
+        damageDice: null,
+        damageType: null,
+        weaponProperties: [],
+        versatileDice: null,
+        rangeNormalFt: null,
+        rangeLongFt: null,
+        armorCategory: null,
+        baseAc: null,
+        dexCap: null,
+        strengthRequirement: 0,
+        stealthDisadvantage: false,
+        visibility: "PLAYERS",
+        createdById: "dm1",
+        grants: [],
+      });
+
+      const error = await service
+        .update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED" })
+        .catch((e: unknown) => e);
+      expect((error as { status?: number }).status).toBe(400);
+      expect((error as Error).message).toContain("Anillo de aspecto extraño");
+      expect((error as Error).message).not.toContain("Anillo de protección");
     });
   });
 
@@ -588,6 +712,227 @@ describe("InventoryService", () => {
     it("el personaje que no se puede ver es 404 al listar", async () => {
       prisma.character.findFirst.mockResolvedValue(null);
       await expect(service.list("x", "cmp1", "c1")).rejects.toThrow();
+    });
+  });
+
+  describe("D-CF-15 (migración 7) — identificación: «lo tengo pero no sé qué es»", () => {
+    /** Un anillo de campaña, sin identificar, en la mochila del personaje. */
+    function anilloSinIdentificar(over: Partial<Record<string, unknown>> = {}) {
+      return {
+        id: "ring1",
+        campaignId: "cmp1",
+        name: "Anillo de protección",
+        kind: "OTHER",
+        description: "Un aro de plata pulida.",
+        weightOz: 0,
+        costCp: null,
+        effects: [{ kind: "ac", amount: 1 }],
+        requiresAttunement: true,
+        slot: "RING_1",
+        weaponCategory: null,
+        weaponRange: null,
+        damageDice: null,
+        damageType: null,
+        weaponProperties: [],
+        versatileDice: null,
+        rangeNormalFt: null,
+        rangeLongFt: null,
+        armorCategory: null,
+        baseAc: null,
+        dexCap: null,
+        strengthRequirement: 0,
+        stealthDisadvantage: false,
+        visibility: "PLAYERS",
+        createdById: "dm1",
+        grants: [],
+        ...over,
+      };
+    }
+
+    function filaSinIdentificar(over: Partial<Record<string, unknown>> = {}) {
+      return row({
+        srdKey: null,
+        campaignItemId: "ring1",
+        identified: false,
+        unidentifiedName: "Anillo de aspecto extraño",
+        ...over,
+      });
+    }
+
+    describe("list()", () => {
+      it("un jugador ve el alias, y «Anillo de protección» no aparece en ningún sitio", async () => {
+        prisma.inventoryItem.findMany.mockResolvedValue([filaSinIdentificar()]);
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+        const res = await service.list("owner1", "cmp1", "c1");
+
+        expect(res.items).toHaveLength(1);
+        expect(res.items[0].item).toMatchObject({
+          name: "Anillo de aspecto extraño",
+          identified: false,
+        });
+        expect(JSON.stringify(res)).not.toContain("Anillo de protección");
+      });
+
+      it("sin alias del DM, el jugador ve el título genérico, nunca el nombre real", async () => {
+        prisma.inventoryItem.findMany.mockResolvedValue([
+          filaSinIdentificar({ unidentifiedName: null }),
+        ]);
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+        const res = await service.list("owner1", "cmp1", "c1");
+
+        expect(res.items[0].item.name).toBe("Objeto sin identificar");
+      });
+
+      it("el DM ve el nombre real, más el estado y el alias sueltos", async () => {
+        prisma.inventoryItem.findMany.mockResolvedValue([filaSinIdentificar()]);
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        membership.getMembership.mockResolvedValue({ role: "DM" });
+
+        const res = await service.list("dm1", "cmp1", "c1");
+
+        expect(res.items[0].item).toMatchObject({
+          name: "Anillo de protección",
+          identified: false,
+          unidentifiedName: "Anillo de aspecto extraño",
+        });
+      });
+
+      it("una fila identificada no cambia para nadie", async () => {
+        prisma.inventoryItem.findMany.mockResolvedValue([
+          filaSinIdentificar({ identified: true, unidentifiedName: null }),
+        ]);
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+        const res = await service.list("owner1", "cmp1", "c1");
+
+        expect(res.items[0].item.name).toBe("Anillo de protección");
+        expect(res.items[0].item.identified).toBe(true);
+      });
+    });
+
+    describe("update()", () => {
+      it("el dueño (que no es DM) NO puede identificar su propio objeto: 403, y no escribe", async () => {
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+        prisma.inventoryItem.findFirst.mockResolvedValue(filaSinIdentificar());
+
+        await expect(
+          service.update("owner1", "cmp1", "c1", "row1", { identified: true }),
+        ).rejects.toThrow(ForbiddenException);
+        expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+      });
+
+      it("el dueño NO puede ponerle un alias, aunque solo mande ese campo: 403", async () => {
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+        prisma.inventoryItem.findFirst.mockResolvedValue(filaSinIdentificar());
+
+        await expect(
+          service.update("owner1", "cmp1", "c1", "row1", {
+            unidentifiedName: "Otro alias",
+          }),
+        ).rejects.toThrow(ForbiddenException);
+        expect(prisma.inventoryItem.update).not.toHaveBeenCalled();
+      });
+
+      it("el dueño SIGUE pudiendo cambiar la cantidad de su objeto sin identificar", async () => {
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        prisma.inventoryItem.findFirst.mockResolvedValue(filaSinIdentificar({ quantity: 1 }));
+        prisma.inventoryItem.update.mockResolvedValue(filaSinIdentificar({ quantity: 2 }));
+
+        const res = await service.update("owner1", "cmp1", "c1", "row1", { quantity: 2 });
+
+        expect(res.item.quantity).toBe(2);
+      });
+
+      it("el DM sí puede marcarlo identificado y ponerle un alias, y no registra ningún suceso", async () => {
+        membership.getMembership.mockResolvedValue({ role: "DM" });
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        prisma.inventoryItem.findFirst.mockResolvedValue(filaSinIdentificar());
+        prisma.inventoryItem.update.mockResolvedValue(
+          filaSinIdentificar({ identified: false, unidentifiedName: "Un aro reluciente" }),
+        );
+
+        const res = await service.update("dm1", "cmp1", "c1", "row1", {
+          unidentifiedName: "Un aro reluciente",
+        });
+
+        expect(prisma.inventoryItem.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ unidentifiedName: "Un aro reluciente" }),
+          }),
+        );
+        // El DM SÍ ve el alias suelto en la respuesta cruda — lo necesita para poder editarlo.
+        expect(res.item.unidentifiedName).toBe("Un aro reluciente");
+        expect(events.record).not.toHaveBeenCalled();
+      });
+
+      it("cuando quien manda el PATCH no es el DM, la fila cruda de la respuesta nunca lleva el alias", async () => {
+        membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        prisma.inventoryItem.findFirst.mockResolvedValue(filaSinIdentificar({ quantity: 1 }));
+        prisma.inventoryItem.update.mockResolvedValue(filaSinIdentificar({ quantity: 2 }));
+
+        const res = await service.update("owner1", "cmp1", "c1", "row1", { quantity: 2 });
+
+        expect(res.item.unidentifiedName).toBeNull();
+      });
+    });
+
+    // Fix round 2 (R7) — el helper `nombreVisible` ya cubría `remove()` y los mensajes de
+    // manos/sintonía desde fix round 1, pero ninguna prueba los recorría con una fila sin
+    // identificar. El riesgo era nulo (mismo helper que ya prueban `update()`/`ensureSlotAllowed`
+    // arriba), pero "nulo" no es lo mismo que "probado".
+    describe("remove() y los mensajes de manos/sintonía, con una fila sin identificar", () => {
+      it("remove(): el ITEM_REMOVED usa el nombre visible, nunca el real", async () => {
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+        prisma.inventoryItem.findFirst.mockResolvedValue(filaSinIdentificar());
+        prisma.inventoryItem.deleteMany.mockResolvedValue({ count: 1 });
+
+        await service.remove("owner1", "cmp1", "c1", "row1");
+
+        expect(events.record).toHaveBeenCalledWith(
+          "owner1",
+          "cmp1",
+          expect.objectContaining({
+            payload: expect.objectContaining({
+              type: "ITEM_REMOVED",
+              item: "Anillo de aspecto extraño",
+              // Fix round 3 (R9) — `refVisible` es la pareja de `nombreVisible` (fix round 2,
+              // R5): la unitaria de `remove()` solo comprobaba `item`, y `ref` es la mitad que
+              // delata un objeto de campaña por su `cuid` real si alguien olvida pasarlo por el
+              // mismo visor. Aquí es `CAMPAIGN:ring1` (el `cuid` no dice nada por sí solo), pero
+              // la aserción existe para que un SRD sin identificar —que SÍ delataría su `ref`
+              // real— no pueda colarse sin que esta prueba lo note.
+              ref: "CAMPAIGN:ring1",
+            }),
+          }),
+          expect.anything(),
+        );
+      });
+
+      it("ensureSlotAllowed(): «la mano izquierda ya lleva» usa el alias del objeto sin identificar en OFF_HAND, y NUNCA el nombre real", async () => {
+        // Mismo patrón que "MUTACIÓN CLAVE: un arma a dos manos..." de arriba: un mandoble
+        // (`greatsword`, TWO_HANDED de verdad en el catálogo) intenta ir a MAIN_HAND con la
+        // OFF_HAND ya ocupada — aquí, por un anillo sin identificar.
+        prisma.inventoryItem.findFirst
+          .mockResolvedValueOnce(row({ id: "row1", srdKey: "greatsword" })) // fila a equipar
+          .mockResolvedValueOnce(filaSinIdentificar({ id: "off-1", slot: "OFF_HAND" })); // OFF_HAND ocupada
+        prisma.campaignItem.findFirst.mockResolvedValue(anilloSinIdentificar());
+
+        // Fix round 3 (R9) — `.rejects.toThrow(/regex/)` solo comprueba que el patrón APARECE:
+        // un mensaje que llevara el alias Y el nombre real a la vez seguiría pasando esa
+        // aserción sola. Se captura el error y se comprueban las dos cosas por separado.
+        const error = await service
+          .update("owner1", "cmp1", "c1", "row1", { location: "EQUIPPED", slot: "MAIN_HAND" })
+          .catch((e: unknown) => e);
+        expect((error as Error).message).toContain("Anillo de aspecto extraño");
+        expect((error as Error).message).not.toContain("Anillo de protección");
+      });
     });
   });
 

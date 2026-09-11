@@ -372,7 +372,11 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   legible se escribe **una sola vez por dominio** —`features/entities/resumen.ts` para los
   tipos de ficha, `features/entities/visibilidad.ts` para los niveles— y todo lo demás la
   importa. Si hace falta concordar en género («Nueva misión», no «Nuevo misión»), se escribe
-  la frase entera en la tabla en vez de concatenarla en la pantalla.
+  la frase entera en la tabla en vez de concatenarla en la pantalla. **Excepción declarada
+  (2026-09-11, D-CF-15):** `NOMBRE_SIN_IDENTIFICAR` vive en `@dnd/shared` y es prosa en español,
+  la primera en ese paquete; está ahí porque el servidor tiene que escribirla en los sucesos del
+  hilo y en los mensajes de error cuando el DM no puso alias, y la web tiene que reconocerla, así
+  que «una sola vez» pesó más que «el contrato no lleva prosa».
 
 - **Los iconos se dibujan.** Nada de `☾`, `☀`, `✓` ni emoji como icono: un glifo de fuente se
   pinta a todo color en unos sistemas, como un cuadrado vacío en otros, y nunca se parece al

@@ -20,6 +20,10 @@ export class CampaignsService {
         description: input.description,
         ownerId: userId,
         members: { create: { userId, role: "DM" } },
+        // MEDIA-2, fix round 1 — `createCampaignSchema` acepta `encumbranceVariant` desde la
+        // migración 6; hasta este arreglo se tiraba en silencio (un `POST` con `true` respondía
+        // `false`, sin escribirlo). `undefined` deja el default de Prisma (`false`) tal cual.
+        encumbranceVariant: input.encumbranceVariant,
       },
     });
     this.events.emit("campaign.created", { campaignId: campaign.id, ownerId: userId });
@@ -143,6 +147,10 @@ export class CampaignsService {
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data.name = input.name;
     if (input.description !== undefined) data.description = input.description;
+    // Migración 6 (D-CF-16): la variante de sobrecarga, apagada por defecto. Mismo patrón que
+    // `name`/`description` — solo se toca si viaja, así que un PATCH que no la menciona no la
+    // apaga por accidente.
+    if (input.encumbranceVariant !== undefined) data.encumbranceVariant = input.encumbranceVariant;
     const campaign = await this.prisma.campaign.update({ where: { id: campaignId }, data });
     this.events.emit("campaign.updated", { campaignId, actorId: userId });
     return campaign;

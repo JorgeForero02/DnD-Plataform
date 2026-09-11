@@ -134,6 +134,70 @@ describe("Campaigns (e2e)", () => {
     });
   });
 
+  // Migración 6 (D-CF-16, tickets I4/M2B-5) — la variante de sobrecarga (SRD 5.1, Variant:
+  // Encumbrance), interruptor por campaña, apagado por defecto.
+  describe("PATCH /campaigns/:id — encumbranceVariant (migración 6)", () => {
+    it("por defecto viaja apagada", async () => {
+      const server = app.getHttpServer();
+      const res = await request(server)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(res.status).toBe(200);
+      expect(res.body.encumbranceVariant).toBe(false);
+    });
+
+    it("un jugador (tokenC, ya miembro) no puede encenderla: 403", async () => {
+      const server = app.getHttpServer();
+      const res = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenC}`)
+        .send({ encumbranceVariant: true });
+      expect(res.status).toBe(403);
+    });
+
+    it("el DM la enciende: 200, y un GET posterior la lee en true", async () => {
+      const server = app.getHttpServer();
+      const res = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ encumbranceVariant: true });
+      expect(res.status).toBe(200);
+      expect(res.body.encumbranceVariant).toBe(true);
+
+      const read = await request(server)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.status).toBe(200);
+      expect(read.body.encumbranceVariant).toBe(true);
+
+      // Se deja tal como estaba (apagada) para no afectar a las pruebas que corren después.
+      await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ encumbranceVariant: false });
+    });
+
+    // MEDIA-2, fix round 1 — `createCampaignSchema` acepta `encumbranceVariant`, y hasta este
+    // arreglo `CampaignsService.create()` la tiraba en silencio: un `POST` con `true` respondía
+    // `false`, un contrato que miente.
+    it("POST /campaigns con encumbranceVariant: true la escribe, no la tira", async () => {
+      const server = app.getHttpServer();
+      const res = await request(server)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ name: "Con la variante ya encendida", encumbranceVariant: true });
+      expect(res.status).toBe(201);
+      expect(res.body.encumbranceVariant).toBe(true);
+
+      const read = await request(server)
+        .get(`/campaigns/${res.body.id}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.body.encumbranceVariant).toBe(true);
+
+      await prisma.campaign.deleteMany({ where: { id: res.body.id } });
+    });
+  });
+
   describe("DELETE /campaigns/:id", () => {
     it("as a player: 403", async () => {
       // tokenC's membership (not DM) was established and asserted (201 on accept) in the

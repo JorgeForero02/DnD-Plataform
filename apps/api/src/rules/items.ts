@@ -136,6 +136,16 @@ export function equipmentToEngineInput(
    * avisa (Tarea 15, I6).
    */
   armorProficiencies?: string[],
+  /**
+   * La variante de sobrecarga de la campaña (migración 6, D-CF-16, `Campaign.encumbranceVariant`),
+   * apagada por defecto. SRD 5.1, «Variant: Encumbrance»: *"When you use this variant, ignore the
+   * Strength column of the Armor table in chapter 5."* Esa columna es exactamente
+   * `strengthRequirement`, y de ella sale la penalización de diez pies de más abajo — con la
+   * variante encendida, esa penalización deja de aplicarse. El aviso
+   * (`armor_strength_requirement_unmet`) se queda: la mesa sigue queriendo saber que no llega al
+   * requisito, solo que ya no le cuesta velocidad por partida doble con la sobrecarga.
+   */
+  encumbranceVariant = false,
 ): EquipmentEngineInput {
   const modifiers: Modifier[] = [];
   const acFormulas: AcFormula[] = [];
@@ -251,12 +261,26 @@ export function equipmentToEngineInput(
       // Requisito de Fuerza incumplido: el SRD baja 10 pies la velocidad de caminar. **Eso sí es
       // un número** — se aplica como modificador — y además se avisa, porque es justo lo que la
       // mesa pregunta al ponerse la armadura.
-      if (item.armor.strengthRequirement > strengthScore) {
-        // **Salvo que la raza esté exenta.** El enano no pierde velocidad por armadura pesada
-        // (SRD 5.1), y hasta la auditoría de mecánica de 2B sí la perdía aquí: el arquetipo más
-        // común de la mesa —enano guerrero con armadura de bandas— corría 15 pies en la pantalla
-        // y 25 en el manual. El aviso se emite igual: la mesa quiere saber que no llega a la
-        // Fuerza que pide la armadura.
+      //
+      // **Salvo que la raza esté exenta, o que la campaña juegue con la variante de sobrecarga.**
+      // El enano no pierde velocidad por armadura pesada (SRD 5.1), y hasta la auditoría de
+      // mecánica de 2B sí la perdía aquí: el arquetipo más común de la mesa —enano guerrero con
+      // armadura de bandas— corría 15 pies en la pantalla y 25 en el manual. La variante de
+      // sobrecarga (migración 6, D-CF-16) es la segunda exención, y viene del propio SRD:
+      // «Variant: Encumbrance» dice *"ignore the Strength column of the Armor table"*, que es
+      // exactamente de donde sale este −10.
+      //
+      // **Fix round 2 (MEDIA-A) — con la variante encendida, tampoco se avisa.** La primera
+      // versión de este arreglo (fix round 1) seguía avisando —«la mesa quiere saber que no
+      // llega al requisito, aunque hoy no le cueste velocidad»—, y eso dejó
+      // `apps/web/src/features/character-sheet/vocabulario.ts` diciendo «la velocidad al caminar
+      // baja 10 pies» en una hoja donde la velocidad no bajaba: el texto explicando una regla del
+      // servidor que ya no es cierta. **Ignorar la columna de Fuerza** —lo que el SRD manda con
+      // la variante encendida— es ignorarla del todo: ni el número, ni el aviso sobre un número
+      // que no existe. Con la exención del enano (`heavyArmorSpeedExempt`), en cambio, el aviso
+      // SÍ se queda: esa es una regla de raza, no de la variante, y el SRD nunca dijo que dejara
+      // de avisarse — solo que a él no le cuesta velocidad.
+      if (item.armor.strengthRequirement > strengthScore && !encumbranceVariant) {
         if (!heavyArmorSpeedExempt) {
           modifiers.push({
             target: "speed.walk",

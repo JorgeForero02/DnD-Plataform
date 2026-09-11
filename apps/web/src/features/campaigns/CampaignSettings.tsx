@@ -158,6 +158,105 @@ export function CampaignSettings({ campaignId }: { campaignId: string }) {
         </div>
         {deleteError && <p className="text-chrome-sm text-danger-text">{deleteError}</p>}
       </form>
+
+      <InterruptorDeSobrecarga
+        campaignId={campaignId}
+        enabled={campaign.encumbranceVariant}
+        disabled={roleUnresolved || !isDM}
+      />
     </Panel>
+  );
+}
+
+/**
+ * La variante de sobrecarga (SRD 5.1, Variant: Encumbrance; migración 6, D-CF-16). **Va aquí y
+ * no junto a `InterruptorDeLaCasa`** (`features/dm-tables/PanelDeTablas.tsx`): esa pantalla
+ * escribe con el `PUT` propio de `dm-tables.service.ts`, y esta variante la escribe
+ * `PATCH /campaigns/:id` — el mismo endpoint que ya usa el nombre y la descripción de arriba.
+ * `campaign` (de `useCampaign`) ya trae el campo, y `useUpdateCampaign` ya invalida esa misma
+ * consulta: reutilizar los dos evita una segunda vía de escritura para el mismo dato.
+ *
+ * **Radio con su frase, no una casilla suelta** (docs/04-convenciones.md, «opciones con
+ * significado como radios con explicación»): activarla cambia una regla del juego para toda la
+ * mesa, así que el DM tiene que leer qué hace antes de tocarla, igual que con la regla de la
+ * casa.
+ */
+function InterruptorDeSobrecarga({
+  campaignId,
+  enabled,
+  disabled,
+}: {
+  campaignId: string;
+  /** `undefined` solo mientras la campaña carga (o en una respuesta vieja en caché). */
+  enabled: boolean | undefined;
+  disabled: boolean;
+}) {
+  const update = useUpdateCampaign(campaignId);
+  // Lo que acaba de responder el PATCH gana mientras la campaña se revalida, igual que
+  // `InterruptorDeLaCasa`: si no, el radio saltaría a la posición vieja un instante.
+  const conocido = update.data?.encumbranceVariant ?? enabled ?? false;
+
+  const opciones: readonly { valor: boolean; etiqueta: string; frase: string }[] = [
+    {
+      valor: false,
+      etiqueta: "Apagada",
+      frase: "El peso llevado no cambia nada: ni la velocidad, ni las tiradas.",
+    },
+    {
+      valor: true,
+      etiqueta: "Encendida",
+      // Fix round 1 (BAJA-3): la cita en inglés del SRD va en el código (`effective-speed.ts`,
+      // `suggested-roll-mode.ts`), no en lo que lee el DM. «5x»/«10x» y no «5×»/«10×»: ver el
+      // comentario de `vocabulario.ts` junto a `encumbrance.encumbered` sobre por qué.
+      frase:
+        "Regla opcional del SRD 5.1 (sobrecarga). Por encima de 5x Fuerza (en libras) el personaje va cargado y su velocidad baja 10 pies; por encima de 10x Fuerza va muy cargado, baja 20 pies y tiene desventaja en pruebas, ataques y salvaciones de Fuerza, Destreza o Constitución.",
+    },
+  ];
+
+  return (
+    <fieldset className="mt-4 rounded-radius-sm border border-muted bg-surface p-s3">
+      <legend className="px-1 font-chrome text-chrome-sm text-text">
+        Variante de sobrecarga, en esta campaña
+      </legend>
+      <div className="space-y-1">
+        {opciones.map((opcion) => {
+          const elegida = conocido === opcion.valor;
+          return (
+            <label
+              key={String(opcion.valor)}
+              className={[
+                "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
+                elegida
+                  ? "border-accent bg-[color:var(--accent-tint)]"
+                  : "border-transparent hover:bg-bg",
+                disabled ? "cursor-not-allowed opacity-60" : "",
+              ].join(" ")}
+            >
+              <input
+                type="radio"
+                name="encumbrance-variant"
+                checked={elegida}
+                disabled={disabled || update.isPending}
+                onChange={() => update.mutate({ encumbranceVariant: opcion.valor })}
+                className="mt-1 accent-[var(--accent)]"
+              />
+              <span className="min-w-0">
+                <span className="block font-chrome text-chrome-sm text-text">
+                  {opcion.etiqueta}
+                </span>
+                <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
+                  {opcion.frase}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {update.isError && (
+        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
+          {(update.error as Error).message}
+        </p>
+      )}
+    </fieldset>
   );
 }

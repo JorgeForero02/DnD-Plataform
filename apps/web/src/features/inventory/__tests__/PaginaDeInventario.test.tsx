@@ -113,6 +113,10 @@ function respuesta(items: InventoryRow[]): InventoryResponse {
     purse: { cp: 32, sp: 15, ep: 0, gp: 200, pp: 0 },
     totalWeightOz: items.reduce((s, r) => s + r.item.weightOz * r.quantity, 0),
     carryCapacityOz: 120 * 16,
+    // Fix round 1 (BAJA-1): la variante de sobrecarga no es lo que esta suite prueba; `null`
+    // (apagada) es el valor por defecto de una campaña real y el que `PanelCarga.test.tsx`
+    // ya cubre a fondo por su cuenta.
+    encumbrance: null,
   };
 }
 

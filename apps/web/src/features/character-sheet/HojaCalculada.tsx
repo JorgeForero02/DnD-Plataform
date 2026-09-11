@@ -281,10 +281,16 @@ export function HojaCalculada({
                           etiqueta={NOMBRE_HABILIDAD[skill]}
                           modificador={sheet.derived[`skill.${skill}`].total}
                           derivado={sheet.derived[`skill.${skill}`]}
-                          // Una habilidad es una **prueba de característica**: las dieciocho
-                          // comparten sugerencia, porque ninguna regla del SRD distingue entre
-                          // ellas para esto.
-                          sugerencia={data?.rollSuggestions?.check}
+                          // **Fix round 1 (ALTA-2).** Esto decía que ninguna regla del SRD
+                          // distingue característica en una prueba, y dejó de ser verdad con la
+                          // migración 6: "muy cargado" (SRD 5.1, Variant: Encumbrance) solo
+                          // penaliza Fuerza, Destreza y Constitución, así que una tirada de
+                          // Persuasión (Carisma) no puede compartir sugerencia con una de
+                          // Atletismo (Fuerza). `checks[ability]` es la entrada que sí distingue
+                          // —`rollSuggestions.checks`, una por característica igual que
+                          // `saves`—, y `ability` ya es la característica de ESTA habilidad
+                          // porque el bucle de fuera itera `ABILITY_KEYS.flatMap(...)`.
+                          sugerencia={data?.rollSuggestions?.checks?.[ability]}
                         />
                       }
                     />

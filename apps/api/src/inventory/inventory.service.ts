@@ -6,7 +6,6 @@ import {
 } from "@nestjs/common";
 import {
   COIN_KEYS,
-  COIN_WEIGHT_OZ,
   MAX_ATTUNED_ITEMS,
   WEIGHT_OZ_PER_LB,
   type AddInventoryItemInput,
@@ -20,7 +19,7 @@ import {
   type ResolvedItem,
   type UpdateInventoryItemInput,
 } from "@dnd/shared";
-import { Prisma, type Character, type InventoryItem } from "@prisma/client";
+import { Prisma, type Character } from "@prisma/client";
 import type { GameEventPayload } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -34,6 +33,9 @@ import {
   viewerForCharacterOwner,
 } from "../common/character-viewer";
 import { resolveContentRef, resolveInventoryRowItem } from "./common/resolve-item";
+import { carriedWeightOz } from "./common/weight";
+import { umbralesDeSobrecarga, estadoDeSobrecarga } from "./common/encumbrance";
+import type { EncumbranceInfo } from "@dnd/shared";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 
 // Carril A4 — el inventario de un personaje, equipar, sintonizar y la bolsa (hueco H1).
@@ -216,7 +218,7 @@ export class InventoryService {
       item: resolved,
     }));
 
-    const totalWeightOz = this.carriedWeightOz(visibleRows, character);
+    const totalWeightOz = carriedWeightOz(visibleRows, character);
     const purse = {
       cp: character.cp,
       sp: character.sp,
@@ -230,21 +232,22 @@ export class InventoryService {
     // porque `str` ya es una columna cruda de `Character` y leerla no es acoplarse al motor.
     const carryCapacityOz = character.str != null ? character.str * 15 * WEIGHT_OZ_PER_LB : null;
 
-    return { items, purse, totalWeightOz, carryCapacityOz };
-  }
+    // Fix round 1 (BAJA-1) — el estado de sobrecarga, calculado por el servidor con el peso
+    // SIN filtrar por `canView` (`resolvedRows`, no `visibleRows`): un objeto de campaña
+    // `DM_ONLY` que empuja al personaje sobre el umbral tiene que seguir contando, aunque este
+    // visor no pueda ver ni la fila ni su peso. Lo único que sale es el ESTADO — nunca el peso
+    // real ni el de la fila escondida, que seguirían revelando que hay algo ahí.
+    let encumbrance: EncumbranceInfo | null = null;
+    const campaign = await this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+    if (campaign.encumbranceVariant && character.str != null) {
+      const pesoRealOz = carriedWeightOz(resolvedRows, character);
+      encumbrance = {
+        state: estadoDeSobrecarga(pesoRealOz, character.str),
+        ...umbralesDeSobrecarga(character.str),
+      };
+    }
 
-  private carriedWeightOz(
-    rows: { row: InventoryItem; resolved: ResolvedItem }[],
-    character: Character,
-  ): number {
-    const itemsWeight = rows.reduce(
-      (sum, { row, resolved }) =>
-        row.location === "STORED" ? sum : sum + resolved.weightOz * row.quantity,
-      0,
-    );
-    const coinCount = character.cp + character.sp + character.ep + character.gp + character.pp;
-    const coinsWeight = Math.round(coinCount * COIN_WEIGHT_OZ);
-    return itemsWeight + coinsWeight;
+    return { items, purse, totalWeightOz, carryCapacityOz, encumbrance };
   }
 
   async add(userId: string, campaignId: string, characterId: string, input: AddInventoryItemInput) {

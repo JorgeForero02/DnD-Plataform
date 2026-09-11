@@ -84,7 +84,7 @@ export function PaginaDeInventario({
     );
   }
 
-  const { items, purse, totalWeightOz, carryCapacityOz } = inventario.data;
+  const { items, purse, totalWeightOz, carryCapacityOz, encumbrance } = inventario.data;
   const equipados = items.filter((r) => r.location === "EQUIPPED");
   const encima = items.filter((r) => r.location === "CARRIED");
   const guardados = items.filter((r) => r.location === "STORED");
@@ -270,7 +270,11 @@ export function PaginaDeInventario({
       </div>
 
       <div className="flex w-full flex-col gap-s4 lg:w-72 lg:shrink-0">
-        <PanelCarga totalWeightOz={totalWeightOz} carryCapacityOz={carryCapacityOz} />
+        <PanelCarga
+          totalWeightOz={totalWeightOz}
+          carryCapacityOz={carryCapacityOz}
+          encumbrance={encumbrance}
+        />
         <PanelMonedas
           key={Object.values(purse).join("-")}
           purse={purse}

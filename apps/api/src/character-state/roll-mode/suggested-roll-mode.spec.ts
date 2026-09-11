@@ -1,3 +1,4 @@
+import { CLAVE_MUY_CARGADO } from "@dnd/shared";
 import { rollSuggestionsFor, suggestedRollMode } from "./suggested-roll-mode";
 
 // Tarea 2.5.5, hueco M16 — las cifras del SRD 5.1, verificadas en **inglés** contra
@@ -192,5 +193,74 @@ describe("rollSuggestionsFor()", () => {
     const s = rollSuggestionsFor([]);
     expect(s.saves.wis!.ability).toBe("wis");
     expect(s.attack.ability).toBeUndefined();
+  });
+
+  // Fix round 1 (ALTA-2) — `checks`, una prueba por característica, igual que `saves`.
+  it("«muy cargado»: `checks.str` en desventaja, `checks.cha` normal — y el `check` genérico sigue sin distinguir", () => {
+    const s = rollSuggestionsFor([{ key: CLAVE_MUY_CARGADO }]);
+    expect(s.checks.str!.mode).toBe("DISADVANTAGE");
+    expect(s.checks.cha!.mode).toBe("NORMAL");
+    // El genérico no sabe de qué característica es, así que no se anota nada por esta causa —
+    // es justo la razón de que `checks` exista.
+    expect(s.check.mode).toBe("NORMAL");
+  });
+
+  it("envenenado sí toca las seis entradas de `checks`, porque no distingue característica", () => {
+    const s = rollSuggestionsFor([{ key: "poisoned" }]);
+    expect(Object.values(s.checks).every((c) => c.mode === "DISADVANTAGE")).toBe(true);
+  });
+});
+
+// Migración 6 (D-CF-16) — SRD 5.1, Variant: Encumbrance: "disadvantage on ability checks,
+// attack rolls, and saving throws that use Strength, Dexterity, or Constitution". La causa no
+// es una condición del SRD guardada en `CharacterCondition` (de ahí `CLAVE_MUY_CARGADO`, no
+// "heavily_encumbered" a mano): `character-sheet.service.ts` la añade a la lista de condiciones
+// vivas solo cuando la variante de campaña está encendida y el peso llevado supera 10×Fuerza.
+describe("muy cargado (variante de sobrecarga, SRD 5.1)", () => {
+  it("ataque: desventaja", () => {
+    const r = suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "ATTACK" });
+    expect(r.mode).toBe("DISADVANTAGE");
+    expect(claves(r)).toEqual([CLAVE_MUY_CARGADO]);
+  });
+
+  // Fix round 1 (ALTA-2) — la primera versión daba desventaja en CUALQUIER prueba, como el
+  // agotamiento. El SRD nombra tres de las seis características, así que una prueba de
+  // Persuasión (Carisma) no puede enseñar la misma desventaja que una de Atletismo (Fuerza).
+  it.each([["str"], ["dex"], ["con"]] as const)("prueba de %s: desventaja", (ability) => {
+    expect(suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "CHECK", ability }).mode).toBe(
+      "DISADVANTAGE",
+    );
+  });
+
+  it.each([["int"], ["wis"], ["cha"]] as const)(
+    "prueba de %s: NO cambia — el SRD solo nombra Fuerza, Destreza y Constitución",
+    (ability) => {
+      expect(suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "CHECK", ability }).mode).toBe(
+        "NORMAL",
+      );
+    },
+  );
+
+  it("una prueba sin decir de qué característica es no se ve afectada, igual que una salvación sin característica", () => {
+    expect(suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "CHECK" }).mode).toBe("NORMAL");
+  });
+
+  it.each([["str"], ["dex"], ["con"]] as const)("salvación de %s: desventaja", (ability) => {
+    expect(suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "SAVE", ability }).mode).toBe(
+      "DISADVANTAGE",
+    );
+  });
+
+  it.each([["int"], ["wis"], ["cha"]] as const)(
+    "salvación de %s: NO cambia — el SRD solo nombra Fuerza, Destreza y Constitución",
+    (ability) => {
+      expect(suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "SAVE", ability }).mode).toBe(
+        "NORMAL",
+      );
+    },
+  );
+
+  it("una salvación sin característica no se ve afectada: no se puede saber si es de las tres", () => {
+    expect(suggestedRollMode([{ key: CLAVE_MUY_CARGADO }], { kind: "SAVE" }).mode).toBe("NORMAL");
   });
 });

@@ -36,6 +36,13 @@ const CONDICIONES_A_CERO = new Set([
 ]);
 
 /**
+ * Migración 6 (D-CF-16) — la variante de sobrecarga del SRD 5.1 ("Variant: Encumbrance"), con
+ * interruptor por campaña apagado por defecto (`Campaign.encumbranceVariant`). Quien llama decide
+ * cuál de los dos toca, o no pasa nada (variante apagada, o el personaje sin Fuerza asignada).
+ */
+export type EncumbranceLevel = "encumbered" | "heavily";
+
+/**
  * La velocidad efectiva de un tipo de movimiento, dada su base en pies y las condiciones
  * activas del personaje.
  *
@@ -52,6 +59,7 @@ const CONDICIONES_A_CERO = new Set([
 export function effectiveSpeed(
   baseFeet: number,
   conditions: EffectiveSpeedCondition[],
+  encumbrance?: EncumbranceLevel | null,
 ): EffectiveSpeedResult {
   const steps: TraceStep[] = [
     {
@@ -62,6 +70,24 @@ export function effectiveSpeed(
       labelKey: "speed.base",
     },
   ];
+
+  // **La sobrecarga se aplica primero, y las condiciones actúan DESPUÉS sobre el resultado**
+  // (SRD 5.1, Variant: Encumbrance): "your speed drops by 10 feet" / "by 20 feet" es un recorte
+  // de la velocidad, no una condición aparte, así que el resto del cálculo (a cero, a mitad) usa
+  // esta base ya reducida en vez de `baseFeet`. La velocidad no baja de 0.
+  let base = baseFeet;
+  if (encumbrance === "encumbered" || encumbrance === "heavily") {
+    const recorte = encumbrance === "encumbered" ? -10 : -20;
+    const nuevaBase = Math.max(0, base + recorte);
+    steps.push({
+      op: "add",
+      amount: nuevaBase - base,
+      sourceType: "manual",
+      sourceKey: "encumbrance",
+      labelKey: encumbrance === "encumbered" ? "speed.encumbered" : "speed.heavily-encumbered",
+    });
+    base = nuevaBase;
+  }
 
   const causasACero: string[] = [];
   const causasAMitad: string[] = [];
@@ -99,7 +125,7 @@ export function effectiveSpeed(
     causasACero.forEach((causa, i) => {
       steps.push({
         op: "override",
-        amount: i === 0 ? -baseFeet : 0,
+        amount: i === 0 ? -base : 0,
         sourceType: "manual",
         sourceKey: causa,
         labelKey: "speed.condition.zero",
@@ -109,11 +135,11 @@ export function effectiveSpeed(
   }
 
   if (causasAMitad.length > 0) {
-    const mitad = Math.floor(baseFeet / 2);
+    const mitad = Math.floor(base / 2);
     causasAMitad.forEach((causa, i) => {
       steps.push({
         op: "cap",
-        amount: i === 0 ? mitad - baseFeet : 0,
+        amount: i === 0 ? mitad - base : 0,
         sourceType: "manual",
         sourceKey: causa,
         labelKey: "speed.condition.half",
@@ -122,5 +148,5 @@ export function effectiveSpeed(
     return { total: mitad, steps };
   }
 
-  return { total: baseFeet, steps };
+  return { total: base, steps };
 }

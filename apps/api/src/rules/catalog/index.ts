@@ -168,8 +168,10 @@ export function deriveCharacter(
    * sin las pruebas del motor.
    */
   extraModifiers: Modifier[] = [],
+  /** Migración 6 (D-CF-16): ver `resolveBuild`. Apagada por defecto. */
+  opciones?: { encumbranceVariant?: boolean },
 ): CharacterSheet {
-  const resuelto = resolveBuild(build);
+  const resuelto = resolveBuild(build, opciones);
   const derivado = derive({
     ...resuelto.input,
     modifiers: [...resuelto.input.modifiers, ...extraModifiers],

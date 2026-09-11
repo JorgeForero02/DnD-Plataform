@@ -111,4 +111,51 @@ describe("effectiveSpeed()", () => {
     const res = effectiveSpeed(25, [{ key: "grappled" }]);
     expect(res.steps[0]).toMatchObject({ op: "base", amount: 25 });
   });
+
+  // Migración 6 (D-CF-16) — SRD 5.1, Variant: Encumbrance. La reducción de velocidad se aplica
+  // ANTES de que las condiciones actúen sobre el resultado (spec §5 de
+  // docs/superpowers/specs/2026-09-02-distancias-y-movimiento-design.md sigue el mismo orden que
+  // el SRD dicta implícitamente: primero la sobrecarga cambia la velocidad "de partida", luego
+  // una condición la recorta o la anula).
+  describe("la sobrecarga (variante SRD 5.1, tercer parámetro opcional)", () => {
+    it("sin el parámetro, nada cambia (variante apagada por defecto)", () => {
+      expect(effectiveSpeed(30, []).total).toBe(30);
+      expect(effectiveSpeed(30, [], null).total).toBe(30);
+    });
+
+    it("cargado (encumbered): la velocidad baja 10 pies", () => {
+      const res = effectiveSpeed(30, [], "encumbered");
+      expect(res.total).toBe(20);
+      expect(res.steps.find((s) => s.sourceKey === "encumbrance")).toMatchObject({
+        op: "add",
+        amount: -10,
+        labelKey: "speed.encumbered",
+      });
+    });
+
+    it("muy cargado (heavily): la velocidad baja 20 pies", () => {
+      const res = effectiveSpeed(30, [], "heavily");
+      expect(res.total).toBe(10);
+      expect(res.steps.find((s) => s.sourceKey === "encumbrance")).toMatchObject({
+        op: "add",
+        amount: -20,
+        labelKey: "speed.heavily-encumbered",
+      });
+    });
+
+    it("la velocidad no baja de 0 (muy cargado con una base menor que 20)", () => {
+      expect(effectiveSpeed(15, [], "heavily").total).toBe(0);
+    });
+
+    it("muy cargado Y derribado: la mitad se calcula SOBRE la velocidad ya reducida, no sobre la base", () => {
+      // 30 -20 (muy cargado) = 10; derribado la deja a la mitad redondeando hacia abajo: 5.
+      // NUNCA 15 (mitad de la base) ni 30 - 20 - 15 (restar dos veces sobre la base).
+      const res = effectiveSpeed(30, [{ key: "prone" }], "heavily");
+      expect(res.total).toBe(5);
+    });
+
+    it("muy cargado Y una condición a 0: sigue en 0", () => {
+      expect(effectiveSpeed(30, [{ key: "grappled" }], "heavily").total).toBe(0);
+    });
+  });
 });

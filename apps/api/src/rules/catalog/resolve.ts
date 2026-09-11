@@ -197,7 +197,16 @@ export function findArmor(ref: ContentRef): SrdArmor {
 // competencias por el mismo mecanismo, y una segunda copia de esta tabla es exactamente cómo
 // dos fuentes acaban discrepando sobre quién gana.
 
-export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
+export function resolveBuild(
+  entrada: CharacterBuild,
+  /**
+   * La variante de sobrecarga de la campaña (migración 6, D-CF-16), apagada por defecto. Solo la
+   * usa `equipmentToEngineInput` (SRD 5.1, «Variant: Encumbrance»: ignorar la columna de Fuerza
+   * de la armadura) — un parámetro suelto y no parte de `CharacterBuild` porque no es un dato del
+   * personaje, es una regla de la mesa, y `CharacterBuild` la comparten pantallas (la previsualización de ficha) que no conocen la campaña.
+   */
+  opciones?: { encumbranceVariant?: boolean },
+): ResolvedBuild {
   // Se valida **aqui**, no solo en el borde: esta funcion es la puerta del catalogo y la
   // llaman tambien las pruebas y, en 2A.9, la subida de nivel, que calcula `level + 1` por
   // dentro y podria colarse en 21 sin pasar por ningun esquema HTTP.
@@ -514,6 +523,9 @@ export function resolveBuild(entrada: CharacterBuild): ResolvedBuild {
     race.heavyArmorSpeedExempt ?? false,
     // Tarea 15 (I6): con qué categorías de armadura es competente esta clase.
     characterClass.armorProficiencies,
+    // Migración 6 (D-CF-16): con la variante encendida, el SRD manda ignorar la columna de
+    // Fuerza de la armadura.
+    opciones?.encumbranceVariant ?? false,
   );
   modifiers.push(...equipo.modifiers);
   acFormulas.push(...equipo.acFormulas);

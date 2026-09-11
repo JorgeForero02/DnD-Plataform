@@ -1,4 +1,4 @@
-import { CLAVE_AYUDA, damageTypeSchema } from "@dnd/shared";
+import { CLAVE_AYUDA, CLAVE_MUY_CARGADO, damageTypeSchema } from "@dnd/shared";
 import type {
   AbilityKey,
   AttackVerdict,
@@ -255,10 +255,19 @@ export function claveDeConcentracion(conjuro: string): string {
   return `${PREFIJO_CONCENTRACION}-${slug}`.slice(0, 60);
 }
 
-/** La causa que anota `effective-speed.ts` en un paso `speed.condition.*`: una condición o `exhaustion:<nivel>`. */
+/**
+ * La causa que anota `effective-speed.ts` en un paso `speed.condition.*`: una condición o
+ * `exhaustion:<nivel>`. También la usa `features/rolls/sugerencia.ts` para el `sourceKey` de una
+ * sugerencia de tirada — de ahí `CLAVE_MUY_CARGADO` (migración 6, D-CF-16): **no entra en
+ * `NOMBRE_CONDICION`** aposta, porque esa tabla alimenta el desplegable de `Condiciones.tsx`
+ * (`CLAVES_CONOCIDAS`) y esto no es algo que un DM elija a mano — lo deriva el servidor del peso
+ * llevado, y solo puede aparecer como causa de una sugerencia de tirada, nunca como una fila que
+ * se pueda aplicar o quitar.
+ */
 export function nombreCausaVelocidad(sourceKey: string): string {
   const agotamiento = /^exhaustion:(\d+)$/.exec(sourceKey);
   if (agotamiento) return `Agotamiento nivel ${agotamiento[1]}`;
+  if (sourceKey === CLAVE_MUY_CARGADO) return "Muy cargado";
   return nombreCondicion(sourceKey);
 }
 
@@ -497,6 +506,10 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   "speed.base": "Velocidad base",
   "speed.condition.zero": "Una condición deja la velocidad en 0",
   "speed.condition.half": "Una condición reduce la velocidad a la mitad",
+  // Migración 6 (D-CF-16) — SRD 5.1, Variant: Encumbrance. Antes de las condiciones: la
+  // sobrecarga recorta la velocidad, y luego una condición actúa sobre el resultado.
+  "speed.encumbered": "Cargado: la velocidad baja 10 pies",
+  "speed.heavily-encumbered": "Muy cargado: la velocidad baja 20 pies",
   // **Faltaba, y se veía.** `character-sheet.service.ts` mete cada anulación del DM en la traza
   // con `labelKey: "override.manual"`, y aquí no estaba: el paso salía en pantalla como
   // «Sin traducir: override.manual». Nadie lo había visto porque la lista de claves que la
@@ -771,6 +784,18 @@ export function describirAviso(warning: {
     }
     case "item_unresolved":
       return "Hay un objeto equipado que ya no existe en el catálogo. Revísalo desde el inventario.";
+    // Migración 6 (D-CF-16) — SRD 5.1, Variant: Encumbrance. Solo aparece con la variante
+    // encendida en la campaña y el personaje sobre uno de los dos umbrales de peso.
+    // **`x` en minúscula, no `×`** (U+00D7): esta migración lo probó al revés en round 0 y
+    // `ui/__tests__/Iconos.test.tsx` lo cazó — ese glifo está en la lista de prohibidos
+    // (`GLIFOS_PROHIBIDOS`) y el barrido no distingue "úsalo como icono" de "está dentro de una
+    // frase": cualquier aparición fuera de un comentario cuenta. La revisión de fix round 1
+    // (BAJA-3) pedía volver a «×»; no se sigue esa parte porque rompería esa prueba, que no se
+    // toca (regla del encargo: nunca desactivar una prueba).
+    case "encumbrance.encumbered":
+      return "Cargado: llevas más de 5x Fuerza en libras. La velocidad baja 10 pies.";
+    case "encumbrance.heavily":
+      return "Muy cargado: llevas más de 10x Fuerza en libras. La velocidad baja 20 pies y hay desventaja en pruebas, ataques y salvaciones de Fuerza, Destreza o Constitución.";
     default:
       return `Sin traducir: ${warning.code}`;
   }

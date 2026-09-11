@@ -80,7 +80,21 @@ export type SuggestedRollMode = z.infer<typeof suggestedRollModeSchema>;
  */
 export const rollSuggestionsSchema = z.object({
   attack: suggestedRollModeSchema,
+  /**
+   * La prueba **sin distinguir característica** — lo que de verdad no la distingue:
+   * `frightened`, `poisoned`, el agotamiento. Fix round 1 (ALTA-2, migración 6): no vale para
+   * "muy cargado" (SRD 5.1, Variant: Encumbrance), que solo penaliza Fuerza, Destreza y
+   * Constitución — para eso está `checks`, más abajo.
+   */
   check: suggestedRollModeSchema,
+  /**
+   * **Una prueba por característica, igual que `saves`** (fix round 1, ALTA-2). Antes de la
+   * migración 6 nunca hacía falta: ninguna regla del catálogo distinguía la característica de
+   * una prueba, así que `check` solo bastaba. La sobrecarga sí distingue —el SRD nombra tres de
+   * las seis—, y una pantalla que enlaza una prueba con su habilidad (Atletismo → Fuerza,
+   * Persuasión → Carisma) tiene que preguntar por la suya, no por la genérica.
+   */
+  checks: z.record(abilityKeySchema, suggestedRollModeSchema),
   saves: z.record(abilityKeySchema, suggestedRollModeSchema),
 });
 export type RollSuggestions = z.infer<typeof rollSuggestionsSchema>;

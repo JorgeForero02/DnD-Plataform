@@ -184,6 +184,17 @@ export const CLAVE_FURIA_ACTIVA = "raging";
 export const CLAVE_ESTABLE = "stable";
 
 /**
+ * **La causa sintética que `character-sheet.service.ts` añade a las condiciones vivas cuando la
+ * variante de sobrecarga (migración 6, D-CF-16) deja a un personaje muy cargado** — nunca se
+ * guarda en `CharacterCondition`, así que no pasa por `esClaveReservada`: es un dato derivado del
+ * peso llevado y de la campaña, no algo que un jugador o el DM escriban. Vive en `@dnd/shared`
+ * (como `CLAVE_AYUDA`) porque la escribe la API (`suggested-roll-mode.ts`) y la lee la web
+ * (`vocabulario.ts`, para traducir la causa de una sugerencia de tirada) — dos literales
+ * `"heavily_encumbered"` en dos paquetes es la misma duplicación que ya se evitó con `CLAVE_AYUDA`.
+ */
+export const CLAVE_MUY_CARGADO = "heavily_encumbered";
+
+/**
  * **¿Esta clave la INTERPRETA el servidor?** (paso 1, tarea 1).
  *
  * Las quince del SRD cambian el modo de tirada sugerido y la velocidad efectiva; `helped` concede

@@ -82,6 +82,11 @@ commit y su migración inversa está descrita en la cabecera del SQL.
   árbol; cada uno tiene su SQL—. El `PATCH` de cantidad deja «Ajusta Antorcha: 3 → 5»; la muerte se
   escribe una sola vez, en la transición, por sus tres puertas, con causa cerrada y la tirada que
   la decidió (J5).
+- **6 · La sobrecarga como variante por campaña** (D-CF-16, I4/M2B-5): apagada por defecto, del
+  DM; −10/−20 pies con traza, desventaja solo en Fuerza/Destreza/Constitución por característica,
+  y la columna de Fuerza de la armadura ignorada cuando la variante manda —la primera versión la
+  seguía restando y la desventaja salía en Persuasión: dos altos de la revisión, con SRD en mano—.
+  El estado de carga lo calcula el servidor y el panel lo pinta.
 
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11)
 

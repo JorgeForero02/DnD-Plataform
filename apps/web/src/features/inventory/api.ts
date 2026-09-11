@@ -2,6 +2,7 @@ import type {
   AddInventoryItemInput,
   ChangeMoneyInput,
   CoinPurse,
+  EncumbranceInfo,
   EquipSlot,
   ItemLocation,
   ResolvedItem,
@@ -30,6 +31,15 @@ export interface InventoryResponse {
   purse: CoinPurse;
   totalWeightOz: number;
   carryCapacityOz: number | null;
+  /**
+   * Migración 6, fix round 1 (BAJA-1) — el estado de sobrecarga, **ya decidido por el
+   * servidor con el peso sin filtrar por visibilidad**. `null` cuando la variante de la
+   * campaña está apagada o el personaje no tiene Fuerza asignada; en los dos casos `PanelCarga`
+   * no pinta nada nuevo. Nunca se deriva en el cliente a partir de `totalWeightOz` —ese número
+   * SÍ está filtrado por lo que este visor puede ver, y dividir sobre él es exactamente el
+   * fallo que este campo corrige.
+   */
+  encumbrance: EncumbranceInfo | null;
 }
 
 export function fetchInventory(

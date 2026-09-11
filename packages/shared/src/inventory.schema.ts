@@ -141,6 +141,40 @@ export const COIN_VALUE_CP: Record<CoinKey, number> = {
 /** Una moneda pesa **un tercio de onza**: cincuenta monedas, una libra (SRD 5.1). */
 export const COIN_WEIGHT_OZ = 1 / 3;
 
+/**
+ * Migración 6, fix round 1 (BAJA-1) — el estado de sobrecarga (SRD 5.1, Variant: Encumbrance),
+ * **calculado por el servidor con el peso SIN filtrar por visibilidad**.
+ *
+ * Hasta este arreglo, `PanelCarga.tsx` derivaba los umbrales dividiendo `carryCapacityOz` (una
+ * suposición sobre que la capacidad es exactamente 15×Fuerza, que además ya viaja) y los
+ * comparaba contra `totalWeightOz`, que `InventoryService.list()` calcula **filtrado por
+ * `canView`**: un objeto de campaña `DM_ONLY` que empuja a un personaje sobre el umbral no cuenta
+ * en ese número para un jugador sin concesión, así que su panel podía decir «Sin cargar» mientras
+ * la hoja (que sí suma el peso real) ya decía −10 pies. El estado viaja ya decidido, y **nunca
+ * los números que lo causan** cuando esos números vienen de algo que el visor no puede ver — la
+ * misma doctrina que ya sigue `entityCount` en `campaigns.service.ts`.
+ *
+ * `"none"` y no solo `encumbered`/`heavily` ausentes: al panel le hace falta un tercer estado
+ * explícito para "por debajo de los dos umbrales", que es distinto de "la variante está
+ * apagada" (`null`, más abajo) — los dos se pintan distinto.
+ */
+export const ENCUMBRANCE_STATES = ["none", "encumbered", "heavily"] as const;
+export const encumbranceStateSchema = z.enum(ENCUMBRANCE_STATES);
+export type EncumbranceState = z.infer<typeof encumbranceStateSchema>;
+
+/**
+ * `null` cuando la variante de la campaña está apagada, o el personaje no tiene Fuerza asignada
+ * todavía — los mismos dos casos en los que `character-sheet.service.ts` no calcula nada.
+ * `encumberedAtOz`/`heavilyAtOz` son los umbrales (5×/10×Fuerza en onzas): el panel los enseña
+ * porque son del propio personaje, nunca del inventario de otro.
+ */
+export const encumbranceInfoSchema = z.object({
+  state: encumbranceStateSchema,
+  encumberedAtOz: z.number().nonnegative(),
+  heavilyAtOz: z.number().nonnegative(),
+});
+export type EncumbranceInfo = z.infer<typeof encumbranceInfoSchema>;
+
 export const coinPurseSchema = z.object({
   cp: z.number().int().min(0).max(1000000),
   sp: z.number().int().min(0).max(1000000),

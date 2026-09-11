@@ -4,6 +4,11 @@ import { roleSchema } from "./visibility.schema";
 export const createCampaignSchema = z.object({
   name: z.string().min(1).max(120),
   description: z.string().max(5000).optional(),
+  // Migración 6 (D-CF-16): la variante de sobrecarga del SRD 5.1, apagada por defecto. Opcional
+  // porque `updateCampaignSchema` la reutiliza vía `.partial()` (regla del DM que la enciende
+  // más tarde) y porque crear una campaña sin decidirla todavía deja el valor por defecto de
+  // Prisma (`false`), el mismo patrón que ya usa `houseTablesEnabled` en `dm-table.schema.ts`.
+  encumbranceVariant: z.boolean().optional(),
 });
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 

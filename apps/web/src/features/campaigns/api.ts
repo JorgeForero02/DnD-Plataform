@@ -37,6 +37,15 @@ export interface Campaign {
    * distinguirlas contaría que hay una crónica escondida.
    */
   lastRecap?: { text: string; sessionTitle: string; endedAt: string | null };
+  /**
+   * Migración 6 (D-CF-16): la variante de sobrecarga del SRD 5.1, apagada por defecto. La
+   * escribe el DM con `PATCH /campaigns/:id` (`updateCampaignSchema`), igual que el nombre o la
+   * descripción — a diferencia de `houseTablesEnabled`, que vive en su propio endpoint de
+   * `dm-tables`. Opcional como `entityCount`: el servidor siempre la manda, pero una respuesta
+   * antigua en caché (o un mock de prueba que no la incluye) no la trae todavía — quien lo lee
+   * lo trata como "apagada" (`?? false`), nunca como un error.
+   */
+  encumbranceVariant?: boolean;
 }
 
 export function fetchCampaigns(): Promise<Campaign[]> {

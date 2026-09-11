@@ -160,6 +160,11 @@ modelo no hace en ningún sitio, y la traza de la CA delataría el número igual
   Nace **`DM_ONLY`** —preparar la mazmorra no puede ser filtrarla— y cuelga de la campaña en
   cascada, contado de verdad en la prueba de borrado.
 
+- **`Campaign.encumbranceVariant`** (D-CF-16, 2026-09-11): la sobrecarga del SRD como variante,
+  apagada por defecto y solo del DM. Encendida, el motor resta 10/20 pies por encima de 5×/10×
+  Fuerza de peso llevado, ignora la columna de Fuerza de la armadura (lo manda la variante) y
+  sugiere desventaja solo en Fuerza, Destreza y Constitución; `GET …/inventory` devuelve el
+  estado calculado en el servidor para que el panel no lo recalcule sobre filas filtradas.
 - **`DmTable`** y **`DmTableEntry`** con **`Campaign.houseTablesEnabled`** (2C.6): las tablas de la
   casa, apagadas por defecto. Un **índice único parcial** —`("campaignId", trigger) WHERE trigger
   <> 'NONE'`, escrito a mano en la migración porque Prisma no sabe expresarlo— garantiza como mucho

@@ -64,6 +64,9 @@ colapsaría en «solo el DM» y prometería algo que no da. Razonado en
   cualquier personaje, y **nacen escondidos**: los subes a «jugadores» cuando la mesa los ve.
 - **Tus tablas de la casa** (pifias, botín, rumores) están apagadas por defecto y se anuncian
   como lo que son: reglas tuyas, no del manual.
+- **La sobrecarga** es una variante del manual y va apagada: si la enciendes en los ajustes de la
+  campaña, cargar más de cinco veces la Fuerza resta 10 pies y más de diez veces resta 20 y
+  sugiere desventaja en lo físico; el panel de carga lo dice y la traza de velocidad lo enseña.
 - **El motor de reglas** deja que escribas «cuando pase esto, si se cumple aquello, haz esto
   otro». Se puede ensayar en seco sin que ocurra nada.
 - **Puedes anular cualquier número** de una hoja. La anulación sale en la traza con su motivo:

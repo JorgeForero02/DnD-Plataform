@@ -293,6 +293,68 @@ describe("armadura: el requisito de Fuerza y el sigilo", () => {
     );
   });
 
+  // Migración 6, fix round 1 (ALTA-1) — SRD 5.1, «Variant: Encumbrance»: *"When you use this
+  // variant, ignore the Strength column of the Armor table in chapter 5."* Con la variante de
+  // sobrecarga encendida, el motor no resta los 10 pies por Fuerza insuficiente.
+  //
+  // Fix round 2 (MEDIA-A) — **tampoco emite el aviso.** La primera versión de este arreglo lo
+  // dejaba («la mesa sigue queriendo saber que no llega al requisito»), y eso dejó
+  // `vocabulario.ts` diciendo «la velocidad al caminar baja 10 pies» en una hoja donde la
+  // velocidad no bajó: el texto mintiendo sobre una regla del servidor, justo lo que
+  // `04-convenciones.md` prohíbe. Con la columna de Fuerza ignorada del todo (que es lo que pide
+  // el SRD), no hay nada que avisar: ni número, ni aviso sobre un número que no existe.
+  it("con la variante de sobrecarga encendida: SIN penalización de velocidad Y sin aviso — no hay nada que avisar", () => {
+    const r = equipmentToEngineInput(
+      [
+        objeto({
+          ref: "chain-mail",
+          kind: "ARMOR",
+          armor: {
+            category: "HEAVY",
+            baseAc: 16,
+            dexCap: 0,
+            strengthRequirement: 13,
+            stealthDisadvantage: false,
+          },
+        }),
+      ],
+      10, // Fuerza 10, por debajo de 13
+      false, // heavyArmorSpeedExempt
+      undefined, // armorProficiencies
+      true, // encumbranceVariant
+    );
+    expect(r.modifiers.some((m) => m.target === "speed.walk")).toBe(false);
+    expect(r.warnings).toHaveLength(0);
+  });
+
+  it("con la variante de sobrecarga APAGADA (por defecto): el aviso se queda, junto con la penalización", () => {
+    const r = equipmentToEngineInput(
+      [
+        objeto({
+          ref: "chain-mail",
+          kind: "ARMOR",
+          armor: {
+            category: "HEAVY",
+            baseAc: 16,
+            dexCap: 0,
+            strengthRequirement: 13,
+            stealthDisadvantage: false,
+          },
+        }),
+      ],
+      10,
+      false,
+      undefined,
+      false, // encumbranceVariant apagada
+    );
+    expect(r.modifiers).toContainEqual(
+      expect.objectContaining({ target: "speed.walk", op: "add", amount: -10 }),
+    );
+    expect(r.warnings).toContainEqual(
+      expect.objectContaining({ code: "armor_strength_requirement_unmet" }),
+    );
+  });
+
   it("con la Fuerza suficiente, ni penalización ni aviso", () => {
     const r = equipmentToEngineInput(
       [

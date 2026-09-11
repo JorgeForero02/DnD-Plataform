@@ -30,6 +30,7 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
   let tokenPL = "";
   let tokenPL2 = "";
   let tokenX = "";
+  let userIdPL2 = "";
   let campaignId = "";
   let characterId = "";
 
@@ -53,11 +54,11 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
         .post("/auth/register")
         .send({ email: emailPL, password: "password123", displayName: "PL" })
     ).body.token;
-    tokenPL2 = (
-      await request(s)
-        .post("/auth/register")
-        .send({ email: emailPL2, password: "password123", displayName: "PL2" })
-    ).body.token;
+    const regPL2 = await request(s)
+      .post("/auth/register")
+      .send({ email: emailPL2, password: "password123", displayName: "PL2" });
+    tokenPL2 = regPL2.body.token;
+    userIdPL2 = regPL2.body.user.id;
     tokenX = (
       await request(s)
         .post("/auth/register")
@@ -571,5 +572,83 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
     expect(suceso.payload.effectsApplied).toEqual(["ac"]);
     // **Y el que no se pudo aplicar se NOMBRA, en vez de descartarse en silencio.**
     expect(suceso.payload.effectsNotApplied).toEqual(["saveProficiency"]);
+  });
+
+  // Migración 6, fix round 1 (BAJA-1) — el estado de sobrecarga lo calcula el servidor con el
+  // peso REAL (sin filtrar por `canView`), y solo enseña el ESTADO — nunca el peso de un objeto
+  // que el visor no puede ver. Personaje de PL2 (Fuerza 14: cargado por encima de 70 lb =
+  // 1120 oz) con un objeto `SPECIFIC_PLAYERS` concedido SOLO a su dueño; PL (compañero de mesa,
+  // sin concesión) lo mira y no puede ver ni la fila ni su peso — el mismo `canView` que ya
+  // filtra `items`/`totalWeightOz`. (No se usa el camino de "esconder un objeto que ya llevaba
+  // puesto": `campaign-items.service.ts` lo rechaza a propósito, D-2B-7 — "no se le puede quitar
+  // de la vista a quien ya lo lleva". Este objeto nace ya restringido, y su dueño SÍ lo ve desde
+  // el principio, así que esa regla no aplica aquí.)
+  describe("el estado de sobrecarga no revela lo que un compañero de mesa no puede ver", () => {
+    let cargadaId = "";
+
+    beforeAll(async () => {
+      cargadaId = (
+        await request(s())
+          .post(`/campaigns/${campaignId}/characters`)
+          .set("Authorization", `Bearer ${tokenPL2}`)
+          .send({ name: "Con algo escondido", level: 1, visibility: "PLAYERS" })
+      ).body.id;
+      await prisma.character.update({ where: { id: cargadaId }, data: { str: 14 } });
+      await request(s())
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ encumbranceVariant: true })
+        .expect(200);
+
+      // Concedido solo a PL2 (el dueño): PL2 lo puede recibir (regla 6 de `add()`) y PL no lo verá.
+      const objetoId = (
+        await request(s())
+          .post(`/campaigns/${campaignId}/items`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({
+            name: "Yunque portátil",
+            kind: "OTHER",
+            weightOz: 1600,
+            visibility: "SPECIFIC_PLAYERS",
+            specificPlayerIds: [userIdPL2],
+          })
+      ).body.id;
+      await request(s())
+        .post(`/campaigns/${campaignId}/characters/${cargadaId}/inventory`)
+        .set("Authorization", `Bearer ${tokenPL2}`)
+        .send({ ref: { source: "CAMPAIGN", id: objetoId }, quantity: 1 })
+        .expect(201);
+    });
+
+    afterAll(async () => {
+      await request(s())
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ encumbranceVariant: false });
+    });
+
+    it("un compañero de mesa (PL) sin concesión no ve ni la fila ni su peso, pero el estado dice «cargado» igual", async () => {
+      const res = await request(s())
+        .get(`/campaigns/${campaignId}/characters/${cargadaId}/inventory`)
+        .set("Authorization", `Bearer ${tokenPL}`)
+        .expect(200);
+
+      expect(res.body.items).toHaveLength(0);
+      expect(res.body.totalWeightOz).toBe(0);
+      // El estado es del peso REAL (1600 oz > 1120 oz de umbral): «cargado», aunque PL vea
+      // 0 onzas y ninguna fila.
+      expect(res.body.encumbrance).toMatchObject({ state: "encumbered" });
+    });
+
+    it("el dueño (PL2), que sí lo ve, coincide en el estado — y ve también el peso y la fila", async () => {
+      const res = await request(s())
+        .get(`/campaigns/${campaignId}/characters/${cargadaId}/inventory`)
+        .set("Authorization", `Bearer ${tokenPL2}`)
+        .expect(200);
+
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.totalWeightOz).toBe(1600);
+      expect(res.body.encumbrance).toMatchObject({ state: "encumbered" });
+    });
   });
 });

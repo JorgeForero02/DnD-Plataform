@@ -1,4 +1,4 @@
-import { ABILITY_KEYS, CLAVE_AYUDA } from "@dnd/shared";
+import { ABILITY_KEYS, CLAVE_AYUDA, CLAVE_MUY_CARGADO } from "@dnd/shared";
 import type {
   AbilityKey,
   RollKind,
@@ -148,6 +148,34 @@ export function suggestedRollMode(
       continue;
     }
 
+    // Migración 6 (D-CF-16) — SRD 5.1, Variant: Encumbrance: *"disadvantage on ability checks,
+    // attack rolls, and saving throws that use Strength, Dexterity, or Constitution"*. No es una
+    // de las quince condiciones del SRD ni se guarda en `CharacterCondition`:
+    // `character-sheet.service.ts` añade esta clave a la lista de condiciones vivas solo cuando
+    // la variante de campaña está encendida y el peso llevado supera 10×Fuerza.
+    //
+    // **Fix round 1 (ALTA-2).** La primera versión anotaba el ataque Y la prueba sin mirar la
+    // característica, como el agotamiento — pero el agotamiento SÍ penaliza las dieciocho
+    // pruebas sin distinción (*"Disadvantage on ability checks"*, sin más), y esta regla NO: el
+    // SRD nombra tres de las seis. El ataque en 5.ª edición siempre es de Fuerza o Destreza (una
+    // de las tres), así que ahí sí vale la comparación con el agotamiento; la prueba y la
+    // salvación se miran igual, con `roll.ability`, y sin él no se anota nada — el mismo criterio
+    // que ya usa la salvación de más abajo, y el que exige `rollSuggestionsFor` para calcular
+    // `checks` (una por característica, igual que `saves`) además del `check` genérico que
+    // siguen usando `frightened`/`poisoned`/el agotamiento (esas sí son ability-agnostic de
+    // verdad).
+    if (condition.key === CLAVE_MUY_CARGADO) {
+      if (roll.kind === "ATTACK") {
+        anota("DISADVANTAGE", condition.key);
+      } else if (
+        roll.ability !== undefined &&
+        (["str", "dex", "con"] as AbilityKey[]).includes(roll.ability)
+      ) {
+        anota("DISADVANTAGE", condition.key);
+      }
+      continue;
+    }
+
     if (roll.kind === "ATTACK") {
       if (VENTAJA_EN_ATAQUE.has(condition.key)) anota("ADVANTAGE", condition.key);
       else if (DESVENTAJA_EN_ATAQUE.has(condition.key)) anota("DISADVANTAGE", condition.key);
@@ -205,12 +233,21 @@ export function suggestedRollMode(
  */
 export function rollSuggestionsFor(conditions: SuggestedRollModeCondition[]): RollSuggestions {
   const saves = {} as Record<AbilityKey, SuggestedRollMode>;
+  // Fix round 1 (ALTA-2) — **una prueba por característica, igual que las salvaciones**, porque
+  // ahora hay una regla («muy cargado») que distingue característica en la prueba y no solo en
+  // la salvación: una sola entrada `check` tendría que elegir entre mentir en las que el SRD no
+  // nombra o callarse en las que sí. `check` (sin característica) se queda para lo que de
+  // verdad no distingue — `frightened`, `poisoned`, el agotamiento — y una pantalla que enlaza
+  // una habilidad concreta (Percepción, Atletismo…) usa `checks[esaCaracterística]`.
+  const checks = {} as Record<AbilityKey, SuggestedRollMode>;
   for (const ability of ABILITY_KEYS) {
     saves[ability] = suggestedRollMode(conditions, { kind: "SAVE", ability });
+    checks[ability] = suggestedRollMode(conditions, { kind: "CHECK", ability });
   }
   return {
     attack: suggestedRollMode(conditions, { kind: "ATTACK" }),
     check: suggestedRollMode(conditions, { kind: "CHECK" }),
+    checks,
     saves,
   };
 }

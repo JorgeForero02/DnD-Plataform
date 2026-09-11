@@ -790,3 +790,19 @@ Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 medi
 **Texto original:**
 
 | **J5** | **Curar deja de registrar la muerte**: no hay evento `DEATH` propio; hay que deducirla de un `HP_CHANGED massive` | Abierto. Un `GameEventType` de muerte cerraría el «¿de qué murió Elara?» que el log no contesta. **Apunte del 2026-09-11, no ficha:** el `rollEventId` de un `HP_CHANGED` se guarda y ningún componente del hilo lo pinta —solo `ATTACK_RESOLVED` enlaza su tirada (`HiloDeSesion.tsx`)—; cuando la muerte tenga suceso, que el daño enlace su tirada igual |
+
+## I4 · La sobrecarga como variante (migración 6 de D-CF-14, D-CF-16, 2026-09-11)
+
+`Campaign.encumbranceVariant`, apagada por defecto; solo el DM la enciende (`PATCH /campaigns/:id`, jugador 403). Con ella, el motor deriva −10 pies por encima de 5×Fuerza y −20 por encima de 10×Fuerza sobre el peso llevado (equipado y cargado, no guardado, monedas incluidas; una sola función de peso para hoja e inventario), con paso de traza registrado (`speed.encumbered`, `speed.heavily-encumbered`) y **sin** el −10 de la columna de Fuerza de la armadura, que la variante manda ignorar (SRD 5.1, *Variant: Encumbrance*; lo cazó la revisión). Muy cargado sugiere desventaja solo en pruebas, ataques y salvaciones de Fuerza, Destreza o Constitución (`RollSuggestions.checks` por característica; Persuasión no la enseña). El panel de carga enseña el estado que calcula el servidor, no uno recalculado sobre lo que `canView` filtró. Interruptor en los ajustes de campaña con su explicación; e2e `sobrecarga.spec.ts` en la tanda de cierre.
+
+**Texto original:**
+
+| **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
+
+## M2B-5 · (era I4) — ver la entrada anterior
+
+Misma ficha que I4, confirmada midiendo por la auditoría de 2B; cerrada con la migración 6.
+
+**Texto original:**
+
+| **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |

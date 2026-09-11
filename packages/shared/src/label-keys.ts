@@ -62,6 +62,11 @@ export const LABEL_KEYS = [
   "speed.base",
   "speed.condition.zero",
   "speed.condition.half",
+  // Migración 6 (D-CF-16) — el paso de la sobrecarga, ANTES de las condiciones (SRD 5.1,
+  // Variant: Encumbrance): la velocidad baja 10 o 20 pies, y las condiciones actúan después
+  // sobre el resultado. Solo aparece con la variante encendida en la campaña.
+  "speed.encumbered",
+  "speed.heavily-encumbered",
   // apply-damage-modifiers.ts (tarea 2.5.1) — la traza de daño tras resistencias/inmunidades.
   "damage.raw",
   "damage.modifier.immune",

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { LABEL_KEYS } from "@dnd/shared";
-import { describirAviso, explicacionSubclase, traducirLabelKey } from "../vocabulario";
+import { CLAVE_MUY_CARGADO, LABEL_KEYS } from "@dnd/shared";
+import {
+  describirAviso,
+  explicacionSubclase,
+  NOMBRE_CONDICION,
+  nombreCausaVelocidad,
+  traducirLabelKey,
+} from "../vocabulario";
 
 // Tarea 2A.10 — "toda labelKey que el motor puede devolver tiene traducción (recórrelas y
 // compruébalo)". La lista dejó de vivir aquí a mano (tarea 34, tandas 2-5): `LABEL_KEYS` es
@@ -45,6 +51,12 @@ describe("ningún aviso del servidor puede salir «Sin traducir»", () => {
     "stale_choice",
     // Encargo A8 (2026-09-07) — `apps/api/src/rules/catalog/resolve.ts`.
     "subclass_not_chosen",
+    // MEDIA-3, fix round 1 (migración 6) — `character-sheet.service.ts` los emite en
+    // `sheet.warnings` cuando la variante de sobrecarga está encendida y el peso llevado supera
+    // uno de los dos umbrales. No estaban aquí: borrar su `case` en `describirAviso` seguía
+    // dejando esta suite en verde.
+    "encumbrance.encumbered",
+    "encumbrance.heavily",
   ];
 
   it.each(CODIGOS_QUE_EMITE_LA_API)("«%s» tiene frase en español", (code) => {
@@ -113,5 +125,22 @@ describe("cada subclase del catálogo tiene su propia frase, no el fallback gen�
   it("una clave que de verdad no está en el catálogo sí cae en el fallback", () => {
     // El fallback existe para algo: comprobar que sigue ahí para lo que de verdad no se conoce.
     expect(explicacionSubclase("esto-no-existe-en-ningun-catalogo")).toBe(FALLBACK);
+  });
+});
+
+// MEDIA-3, fix round 1 (migración 6) — `nombreCausaVelocidad(CLAVE_MUY_CARGADO)` no tenía
+// prueba ni aquí ni en `rolls/__tests__/sugerencia.test.ts`: si alguien borraba el `if` que la
+// intercepta antes de `nombreCondicion`, la sugerencia de tirada pintaría
+// «Sin traducir: heavily_encumbered» delante del jugador y ninguna suite se enteraría.
+describe("nombreCausaVelocidad — la causa sintética de la sobrecarga", () => {
+  it(`traduce ${CLAVE_MUY_CARGADO} sin caer en «Sin traducir»`, () => {
+    expect(nombreCausaVelocidad(CLAVE_MUY_CARGADO)).toBe("Muy cargado");
+  });
+
+  it("NO se cuela en NOMBRE_CONDICION: no es algo que un DM pueda aplicar a mano", () => {
+    // `CLAVES_CONOCIDAS` de `Condiciones.tsx` sale de `NOMBRE_CONDICION` (el desplegable de
+    // condiciones que el DM elige y aplica); esto es derivado del peso llevado, nunca una fila
+    // que se aplique o se quite a mano, así que no puede vivir en esa tabla.
+    expect(Object.keys(NOMBRE_CONDICION)).not.toContain(CLAVE_MUY_CARGADO);
   });
 });

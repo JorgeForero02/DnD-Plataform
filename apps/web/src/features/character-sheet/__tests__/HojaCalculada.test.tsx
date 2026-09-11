@@ -14,6 +14,7 @@ import type {
   ResourceRow,
   SheetResponse,
 } from "../api";
+import type { RollSuggestions, SuggestedRollMode } from "@dnd/shared";
 
 // Tarea 2A.10 — "ninguna clave de enumeración aparece en pantalla": la hoja completa, con datos
 // que a propósito incluyen claves crudas del motor (`half-elf`, `wizard`, `LONG_REST`,
@@ -608,5 +609,73 @@ describe("Actividades llega a la hoja de verdad (importante I1)", () => {
 
     await screen.findByText("Salvaciones", { exact: true });
     expect(screen.queryByRole("region", { name: "actividades" })).not.toBeInTheDocument();
+  });
+});
+
+// Fix round 1 (ALTA-2, migración 6) — «muy cargado» (SRD 5.1, Variant: Encumbrance) solo
+// penaliza pruebas de Fuerza, Destreza o Constitución. Una prueba de Atletismo (Fuerza) tiene
+// que enseñar la sugerencia; una de Persuasión (Carisma), NO — antes de este arreglo, las
+// dieciocho habilidades compartían `rollSuggestions.check` y las dieciocho la enseñaban.
+describe("Fix round 1 (ALTA-2) — la desventaja de «muy cargado» solo en pruebas de FUE/DES/CON", () => {
+  const NORMAL: SuggestedRollMode = {
+    kind: "CHECK",
+    mode: "NORMAL",
+    cancelled: false,
+    autoFail: false,
+    reasons: [],
+  };
+  const MUY_CARGADO: SuggestedRollMode = {
+    kind: "CHECK",
+    ability: "str",
+    mode: "DISADVANTAGE",
+    cancelled: false,
+    autoFail: false,
+    reasons: [
+      {
+        effect: "DISADVANTAGE",
+        sourceKey: "heavily_encumbered",
+        labelKey: "rollMode.condition.disadvantage",
+      },
+    ],
+  };
+  const rollSuggestions: RollSuggestions = {
+    attack: NORMAL,
+    // El genérico se queda en NORMAL a propósito: no sabe de qué característica es la prueba,
+    // así que no puede anotar una regla que distingue por característica.
+    check: NORMAL,
+    checks: {
+      str: MUY_CARGADO,
+      dex: NORMAL,
+      con: NORMAL,
+      int: NORMAL,
+      wis: NORMAL,
+      cha: NORMAL,
+    },
+    saves: { str: NORMAL, dex: NORMAL, con: NORMAL, int: NORMAL, wis: NORMAL, cha: NORMAL },
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
+      ...sheetResponse,
+      rollSuggestions,
+    });
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue([]);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue([]);
+  });
+
+  it("Atletismo (Fuerza) enseña la desventaja de «muy cargado»", async () => {
+    pintarHoja(false);
+    fireEvent.click(await screen.findByRole("button", { name: "Tirada de Atletismo" }));
+    const panel = screen.getByRole("group", { name: "Tirada de Atletismo" });
+    expect(within(panel).getByRole("radio", { name: "Desventaja" })).toBeChecked();
+  });
+
+  it("Persuasión (Carisma) NO enseña ninguna sugerencia — el SRD no la nombra", async () => {
+    pintarHoja(false);
+    fireEvent.click(await screen.findByRole("button", { name: "Tirada de Persuasión" }));
+    const panel = screen.getByRole("group", { name: "Tirada de Persuasión" });
+    expect(within(panel).getByRole("radio", { name: "Normal" })).toBeChecked();
+    expect(within(panel).queryByRole("status")).not.toBeInTheDocument();
   });
 });

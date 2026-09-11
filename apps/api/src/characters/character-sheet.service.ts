@@ -7,10 +7,11 @@ import {
   Optional,
   Inject,
 } from "@nestjs/common";
-import type { Character } from "@prisma/client";
+import type { Character, InventoryItem } from "@prisma/client";
 import {
   CLAVE_AYUDA,
   CLAVE_ESTABLE,
+  CLAVE_MUY_CARGADO,
   normalizeOverride,
   overrideValueSchema,
   RANGO_DE_ANULACION,
@@ -70,7 +71,10 @@ import { ResourcesService } from "../character-state/resources/resources.service
 import {
   effectiveSpeed,
   type EffectiveSpeedResult,
+  type EncumbranceLevel,
 } from "../character-state/speed/effective-speed";
+import { carriedWeightOz } from "../inventory/common/weight";
+import { estadoDeSobrecarga } from "../inventory/common/encumbrance";
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
 import {
   combinarModo,
@@ -180,9 +184,11 @@ function construirBuild(
 function derivarOMotivo(
   build: CharacterBuild,
   overrides: Modifier[] = [],
+  /** Migración 6 (D-CF-16): ver `resolveBuild`. Apagada por defecto. */
+  encumbranceVariant = false,
 ): { sheet: CharacterSheet } | { reason: string } {
   try {
-    return { sheet: deriveCharacter(build, overrides) };
+    return { sheet: deriveCharacter(build, overrides, { encumbranceVariant }) };
   } catch (error) {
     if (error instanceof UnknownContentError || error instanceof InvalidEquipmentError) {
       return { reason: `La hoja no se puede calcular: ${error.message}` };
@@ -617,9 +623,18 @@ export class CharacterSheetService {
       throw new NotFoundException("Character not found");
     }
     const respuesta = await this.buildResponse(userId, character);
+    const derivado = await this.loQueDerivanLasCondiciones(character, respuesta.sheet);
     return {
       ...respuesta,
-      ...(await this.loQueDerivanLasCondiciones(characterId, campaignId, respuesta.sheet)),
+      sheet:
+        respuesta.sheet && derivado.encumbranceWarnings.length > 0
+          ? {
+              ...respuesta.sheet,
+              warnings: [...respuesta.sheet.warnings, ...derivado.encumbranceWarnings],
+            }
+          : respuesta.sheet,
+      effectiveSpeeds: derivado.effectiveSpeeds,
+      rollSuggestions: derivado.rollSuggestions,
     };
   }
 
@@ -668,13 +683,15 @@ export class CharacterSheetService {
    * caliente para un dato que ninguna de ellas mueve.
    */
   private async loQueDerivanLasCondiciones(
-    characterId: string,
-    campaignId: string,
+    character: FilaPersonaje,
     sheet: CharacterSheet | null,
   ): Promise<{
     effectiveSpeeds: Record<string, EffectiveSpeedResult>;
     rollSuggestions: RollSuggestions;
+    encumbranceWarnings: DerivationWarning[];
   }> {
+    const characterId = character.id;
+    const campaignId = character.campaignId;
     // **Solo las que siguen vivas** (2C.4): una condición vencida sigue en la hoja, marcada, pero
     // ya no calcula nada. Filtrar aquí es lo que impide que la caducidad dependa de que alguien
     // haya abierto la pantalla de condiciones.
@@ -686,14 +703,78 @@ export class CharacterSheetService {
       this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
     ]);
     const conditions = condicionesActivas(todas, campana.clockSeconds);
+
+    // Migración 6 (D-CF-16, tickets I4/M2B-5) — SRD 5.1, Variant: Encumbrance, con interruptor
+    // por campaña (`encumbranceVariant`) apagado por defecto: con él apagado, o sin Fuerza
+    // asignada todavía, no se calcula nada — ni un solo paso nuevo en la traza.
+    let encumbrance: EncumbranceLevel | null = null;
+    if (campana.encumbranceVariant && character.str != null) {
+      const pesoLlevadoOz = await this.pesoLlevado(character);
+      // SRD 5.1, Variant: Encumbrance: por encima de 5×Fuerza (en libras) → cargado, la velocidad
+      // baja 10 pies; por encima de 10×Fuerza → muy cargado, baja 20 pies y hay desventaja en
+      // pruebas, ataques y salvaciones de Fuerza, Destreza o Constitución. Fix round 1 (BAJA-1):
+      // los umbrales viven en `inventory/common/encumbrance.ts`, y no repetidos a mano aquí —
+      // es la misma fórmula que ahora también expone `InventoryService.list()` para el panel de
+      // carga. `estadoDeSobrecarga` devuelve `"none"` cuando no llega a ningún umbral; aquí eso
+      // se traduce a `null`, que es lo que entiende `effectiveSpeed`.
+      const estado = estadoDeSobrecarga(pesoLlevadoOz, character.str);
+      encumbrance = estado === "none" ? null : estado;
+    }
+
     const effectiveSpeeds: Record<string, EffectiveSpeedResult> = {};
     // Las velocidades necesitan una base que solo la hoja da; la sugerencia de modo **no**, y por
     // eso sale igual cuando no hay hoja: un personaje a medio crear con la condición «apresado»
     // puesta sigue tirando en la mesa.
     for (const [movimiento, pies] of Object.entries(sheet?.speeds ?? {})) {
-      if (typeof pies === "number") effectiveSpeeds[movimiento] = effectiveSpeed(pies, conditions);
+      if (typeof pies === "number") {
+        effectiveSpeeds[movimiento] = effectiveSpeed(pies, conditions, encumbrance);
+      }
     }
-    return { effectiveSpeeds, rollSuggestions: rollSuggestionsFor(conditions) };
+
+    // La desventaja de "muy cargado" se anota como una condición viva más (`CLAVE_MUY_CARGADO`,
+    // `@dnd/shared`) en vez de una rama aparte en `rollSuggestionsFor`: es exactamente la misma
+    // forma —una clave y, si hiciera falta, un nivel— y así el motor de sugerencias no necesita
+    // saber que la sobrecarga existe, solo reconocer una clave más (`suggested-roll-mode.ts`).
+    const condicionesParaTiradas =
+      encumbrance === "heavily" ? [...conditions, { key: CLAVE_MUY_CARGADO }] : conditions;
+
+    const encumbranceWarnings: DerivationWarning[] =
+      encumbrance != null ? [{ code: `encumbrance.${encumbrance}` }] : [];
+
+    return {
+      effectiveSpeeds,
+      rollSuggestions: rollSuggestionsFor(condicionesParaTiradas),
+      encumbranceWarnings,
+    };
+  }
+
+  /**
+   * El peso llevado de verdad (equipado o en la mochila, nunca lo guardado), para la sobrecarga
+   * (migración 6). **Misma fórmula que `InventoryService.list()`** (`carriedWeightOz`,
+   * `inventory/common/weight.ts`) — vive una sola vez para que la ficha y la pantalla de
+   * inventario nunca calculen dos pesos distintos para el mismo personaje.
+   *
+   * Una fila que ya no se puede resolver —una clave del SRD que el catálogo dejó de tener— no
+   * aporta peso ni rompe la hoja: el mismo criterio que `equipoEquipado` con `item_unresolved`.
+   */
+  private async pesoLlevado(character: FilaPersonaje): Promise<number> {
+    const filas = await this.prisma.inventoryItem.findMany({
+      where: { characterId: character.id, location: { not: "STORED" } },
+    });
+    const resueltas: { row: InventoryItem; resolved: ResolvedItem }[] = [];
+    for (const fila of filas) {
+      try {
+        const ref: ContentRefInput = fila.srdKey
+          ? { source: "SRD", key: fila.srdKey }
+          : { source: "CAMPAIGN", id: fila.campaignItemId as string };
+        const { resolved } = await resolveContentRef(this.prisma, character.campaignId, ref);
+        resueltas.push({ row: fila, resolved });
+      } catch {
+        // Objeto ya no resoluble: no pesa nada aquí. `equipoEquipado` ya avisa por su lado
+        // (`item_unresolved`) cuando la fila en cuestión está equipada.
+      }
+    }
+    return carriedWeightOz(resueltas, character);
   }
 
   /**
@@ -1062,7 +1143,7 @@ export class CharacterSheetService {
 
     const base = character.statblockRef
       ? await this.hojaDeStatblock(viewer, character, extras)
-      : this.hojaDePersonaje(character, items, extras);
+      : this.hojaDePersonaje(character, items, extras, campana.encumbranceVariant);
     if (!("sheet" in base)) return { ...base, exhaustion: nivel, stable };
     if (nivel === 0) return { ...base, exhaustion: nivel, stable };
     return {
@@ -1164,10 +1245,16 @@ export class CharacterSheetService {
     /** Los temporales vivos (M8). Van **detrás** de las anulaciones porque el motor ordena por
      * operación, no por posición: los `add` se aplican todos antes que cualquier `override`. */
     temporales: Modifier[] = [],
+    /** Migración 6 (D-CF-16): la variante de sobrecarga de la campaña. Apagada por defecto. */
+    encumbranceVariant = false,
   ): { sheet: CharacterSheet } | { reason: string } {
     const resuelto = construirBuild(character, items);
     if (!("build" in resuelto)) return { reason: resuelto.reason };
-    return derivarOMotivo(resuelto.build, [...modificadoresDeAnulacion(character), ...temporales]);
+    return derivarOMotivo(
+      resuelto.build,
+      [...modificadoresDeAnulacion(character), ...temporales],
+      encumbranceVariant,
+    );
   }
 
   /**

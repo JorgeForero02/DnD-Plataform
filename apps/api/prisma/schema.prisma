@@ -231,6 +231,11 @@ model Campaign {
   // cambia una regla lo hace a la vista.
   houseTablesEnabled Boolean @default(false)
 
+  // Migración 6 (D-CF-16, tickets I4/M2B-5): la sobrecarga del SRD 5.1 entra como variante con
+  // interruptor por campaña, **apagada por defecto** — el mismo patrón que `houseTablesEnabled`.
+  // Con ella apagada nada cambia: la velocidad y las tiradas siguen sin mirar el peso llevado.
+  encumbranceVariant Boolean @default(false)
+
   // El reloj de la campana (2C.3): **segundos de juego**, no una fecha. Un asalto son seis, asi
   // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
   // es una capa de presentacion encima; al reves no se puede.

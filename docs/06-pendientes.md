@@ -128,7 +128,7 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 >
 > | Ficha | Qué se decidió | Dónde se hace |
 > |---|---|---|
-> | ~~X1 `RestKind`~~ · ~~enlaces sin rótulo~~ · ~~J5 muerte~~ · I4/M2B-5 sobrecarga · I3/M2B-15 identificado · ~~`race`/`class`~~ · ~~suceso de cambio de cantidad~~ (hechas) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
+> | ~~X1 `RestKind`~~ · ~~enlaces sin rótulo~~ · ~~J5 muerte~~ · ~~I4/M2B-5 sobrecarga~~ · I3/M2B-15 identificado · ~~`race`/`class`~~ · ~~suceso de cambio de cantidad~~ (hechas) | D-CF-14 a 16: una migración cada una | **Tanda de migraciones** al cerrar la fase 2; `race`/`class` **se borran sin medir** (D-CF-27, 2026-09-11: el diálogo ya usa el catálogo). J7 salió de la tanda: es unión sin migración, D-CF-24 |
 > | S4 rasgos raciales · M2B-4 cargas | D-CF-20/21: por el conversor de Foundry | **Paso 3**, tareas 2b y `uses` de objeto |
 > | R1 límite por IP · D8 correo · P3 archivar en la mesa · H7 rearmar · E0 TipTap · P6 Node | D-CF-12, 13, 17, 18, 19 y H7 «se rearma editando» | **Esta sesión**, con código |
 > | P2 mesa a 390 px | **Aplazada por el autor el 2026-09-11** (D-CF-26): quiere un diseño responsive nuevo y busca referencias él | Cuando el autor traiga el diseño; ninguna de las tres salidas de abajo se toca |
@@ -321,7 +321,6 @@ son decisiones tomadas a conciencia, no olvidos.
 | | Qué | Por qué importa, y qué cuesta cambiarlo |
 |---|---|---|
 | **I3** | **No se modela «lo tengo pero no sé qué hace»** (identificado ≠ visible) | Es visibilidad **por campo**, y el modelo no la hace en ningún sitio: hoy la visibilidad es de la fila entera. Además la traza delataría el número igual —«CA 15 = … +1 anillo»— así que media solución sería peor que ninguna. Lo que sí funciona hoy: el DM crea el objeto `DM_ONLY` mientras prepara y le sube la visibilidad al entregarlo |
-| **I4** | **La carga se enseña y no penaliza** | La sobrecarga (Fuerza×5 y Fuerza×10) es una **regla variante** del SRD, y aplicarla sin que la mesa la haya elegido es cambiarle las reglas a alguien. Falta un interruptor por campaña; el dato —peso de cada objeto y capacidad— ya está, que era la parte cara |
 | **I7** | **El tabú del druida se perdió al pasar las competencias a claves** | El SRD dice «ligera, media y escudos, **no metálicos**». Eso no es una competencia menos —un druida *sabe* usar una cota de escamas, pero no quiere— y modelarlo como competencia le negaría una armadura que la regla sí permite. Hoy vive en un comentario de `classes.ts`; su sitio es el texto de la aptitud, cuando exista dónde ponerlo |
 
 **Lo que la revisión de 2B encontró y se arregló el mismo día** (no queda deuda, se anota porque
@@ -361,7 +360,6 @@ arregló el mismo día y lo que el refutador corrigió, está en
 |---|---|---|
 | **M2B-4** | **Quedan las cargas** (una varita de siete usos que se repone en el descanso) | La munición del SRD ya está sembrada (flechas, virotes, balas, agujas) y **gastar un consumible existe** (`POST .../inventory/:rowId/consume`, con su rastro en la línea de tiempo y la fila que desaparece al llegar a cero). Lo que falta son las **cargas**: columnas `chargesCurrent`/`chargesMax`/`rechargeOn` en `InventoryItem` y reponerlas dentro de la transacción del descanso. Es una migración, y por eso no entró de madrugada |
 | **M2B-15** | **«Lo tengo pero no sé qué hace» — la mitad que falta** | Revisa el motivo de la decisión D-2B-8: **es práctica estándar**, no exótica — Foundry lo trae de serie con una bandera `identified` y hay módulos dedicados. Y **media solución ya está construida**: la redacción de 2B (se tacha el nombre, se conserva el número) es el mismo mecanismo de presentación. Falta el interruptor del DM y un nombre alternativo («una espada de aspecto extraño») |
-| **M2B-5** | **La carga se enseña y no penaliza** (ya era I4; la auditoría lo confirma midiendo) | El grupo saquea 400 libras y nada cambia. Falta el interruptor por campaña y derivar la sobrecarga como causa de velocidad |
 
 ## Iluminación y visión (pregunta del autor, 2026-09-02)
 

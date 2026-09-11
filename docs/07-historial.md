@@ -65,6 +65,9 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **H7** — rearmar una regla sin tocar sus efectos revalida los guardados: contra una ficha
+  borrada es 400 (`rules-engine.service.ts`, `update`). **Revertir:** quitar la rama de
+  `status === "ARMED"` sin `effects`.
 - **M2B-14** — **no se cierra con código: se cierra como decisión** (D-CF-22). Un *Weapon +1* del
   SRD no es un objeto sino una plantilla sobre un arma base —encantar, paso 3—, y el DM ya crea
   «Espada larga +1» como objeto de campaña con `weaponAttack`/`weaponDamage`. La recomendación

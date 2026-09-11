@@ -339,6 +339,51 @@ describe("Motor de reglas (e2e)", () => {
     });
   });
 
+  describe("rearmar una regla comprueba el efecto guardado, no solo el que llega (ficha H7)", () => {
+    // Ficha H7 (decidido: se rearma editando el objetivo, y el servidor lo comprueba). J11 solo
+    // valida `effects` cuando llegan en el cuerpo: un `PATCH { status: "ARMED" }` sin `effects`
+    // sobre una regla cuyo efecto guardado apunta a una ficha borrada la rearmaba contra nada.
+    it("PATCH { status: ARMED } sin effects sobre un efecto guardado que apunta a una ficha borrada es 400, y con un efecto válido es 200", async () => {
+      const s = app.getHttpServer();
+      const muro = await crearFicha("Muro de H7");
+      const objetivo = await crearFicha("Ficha que se borra (H7)");
+      const regla = await request(s)
+        .post(`/campaigns/${campaignId}/rules`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Regla de H7",
+          mode: "AUTOMATIC",
+          trigger: { kind: "ENTITY_OPENED", entityId: muro },
+          effects: [{ kind: "REVEAL_ENTITY", entityId: objetivo, visibility: "PLAYERS" }],
+        });
+      expect(regla.status).toBe(201);
+
+      const borrado = await request(s)
+        .delete(`/campaigns/${campaignId}/entities/${objetivo}`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(borrado.status).toBe(200);
+
+      const rearmarSinEffects = await request(s)
+        .patch(`/campaigns/${campaignId}/rules/${regla.body.id}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ status: "ARMED" });
+      expect(rearmarSinEffects.status).toBe(400);
+      expect(rearmarSinEffects.body.message).toBe(
+        "Un efecto apunta a una ficha que no pertenece a esta campaña.",
+      );
+
+      const reemplazo = await crearFicha("Ficha de reemplazo (H7)");
+      const rearmarConEffects = await request(s)
+        .patch(`/campaigns/${campaignId}/rules/${regla.body.id}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          status: "ARMED",
+          effects: [{ kind: "REVEAL_ENTITY", entityId: reemplazo, visibility: "PLAYERS" }],
+        });
+      expect(rearmarConEffects.status).toBe(200);
+    });
+  });
+
   describe("la revelación automática cuenta QUÉ se reveló (ficha J6)", () => {
     it("el ENTITY_REVEALED que escribe el motor lleva el nombre de la ficha, como el de la pantalla", async () => {
       // Ficha J6 (2026-09-02): el camino de la pantalla (`entities.service.ts`) escribe

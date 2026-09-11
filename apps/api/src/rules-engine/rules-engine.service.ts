@@ -93,7 +93,7 @@ export class RulesEngineService {
    * auditar una cascada vieja no depende de que nadie haya vuelto a tocar la regla. */
   async update(dmUserId: string, campaignId: string, ruleId: string, input: UpdateRuleInput) {
     await this.membership.requireDM(campaignId, dmUserId);
-    await this.requireRule(campaignId, ruleId);
+    const rule = await this.requireRule(campaignId, ruleId);
     const data: Record<string, unknown> = { version: { increment: 1 } };
     if (input.name !== undefined) data.name = input.name;
     if (input.trigger !== undefined) data.trigger = input.trigger;
@@ -105,12 +105,19 @@ export class RulesEngineService {
     if (input.mode !== undefined) data.mode = input.mode;
     if (input.maxFires !== undefined) data.maxFires = input.maxFires;
     if (input.status !== undefined) {
+      // Ficha H7: rearmar sin mandar `effects` no exime de la comprobación de J11 — se valida el
+      // efecto que YA está guardado, o un `PATCH { status: "ARMED" }` a secas rearma una regla
+      // contra una ficha borrada sin que el servidor diga nada.
+      if (input.status === "ARMED" && input.effects === undefined) {
+        const efectosGuardados = z.array(ruleEffectSchema).parse(rule.effects);
+        await this.requireEffectEntitiesInCampaign(campaignId, efectosGuardados);
+      }
       data.status = input.status;
       // Salir de BROKEN a mano borra el motivo: quien la reactiva ha decidido que ya no aplica.
       if (input.status !== "BROKEN") data.brokenReason = null;
     }
-    const rule = await this.prisma.rule.update({ where: { id: ruleId }, data });
-    return withReachability(rule);
+    const actualizada = await this.prisma.rule.update({ where: { id: ruleId }, data });
+    return withReachability(actualizada);
   }
 
   async remove(dmUserId: string, campaignId: string, ruleId: string) {

@@ -252,3 +252,11 @@ ya no manda esos sucesos, así que no habría nada que filtrar.
 Es hermano de **P3-archivar** del plan 03 —que arregla a **quién** llega el suceso
 (`grantedUserIds`)— pero no el mismo: aquel es de visibilidad y este de **encuadre**. Los dos
 tienen que estar para que el registro cuente la verdad.
+
+## H7 · Una regla que apunta a una ficha borrada
+
+**Cerrada el 2026-09-11 (decisión: se rearma editando el objetivo, y el servidor lo comprueba).** `rules-engine.service.ts`, `update`: si llega `status: "ARMED"` sin `effects`, los efectos **guardados** pasan por `requireEffectEntitiesInCampaign` (J11); una regla cuyo objetivo se borró no se rearma contra nada (400, misma frase), y con un efecto válido en el cuerpo sí (200). Prueba: `apps/api/test/rules-engine.e2e-spec.ts`, describe «ficha H7», roja antes (200). Mutación: quitar la comprobación enrojece. Lo que la ficha dejaba sin decidir —«si se puede seguir armando»— queda decidido por el código: no sin arreglar el objetivo. Subagente Sonnet, revisión Opus.
+
+**Texto original:**
+
+| **H7** | Una regla que apunta a una ficha **borrada** | Queda **rota y marcada**, nunca se descarta en silencio. Falta decidir si se puede seguir armando |

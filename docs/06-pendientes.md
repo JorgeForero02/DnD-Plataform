@@ -275,13 +275,6 @@ entra redefiniéndolos en `[data-theme="reading"]` y añadiendo los que falten.
 Mientras tanto la vitela de Lectura es oscura y los tres temas pasan las 19 mediciones de
 `e2e/tokens-contrast.spec.ts`. Declarado también en [04-convenciones.md](./04-convenciones.md).
 
-## P3 · El tema Claro del prototipo es papel cálido; el nuestro es gris frío (2026-09-04, B0)
-
-`prototipo/src/index.css` da al tema claro `#e6e1d4` (papel), y aquí vale `#dfe5e9` (gris
-azulado). No se tocó en B0 **porque el nuestro está medido** y cambiar la paleta obliga a
-volver a medir las 19 comprobaciones de contraste en esa mitad. Es una decisión de identidad,
-no un defecto: si la mesa nueva se ve fría al lado de la maqueta, esta es la ficha.
-
 ## La pantalla de juego con mapa — alcance nuevo, sin decidir (2026-09-02)
 
 **Lo que el autor quiere, en sus palabras:** *«yo no quiero un juego plano; quiero que los
@@ -423,15 +416,6 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 | | Qué | Por qué aquí y no después |
 |---|---|---|
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
-
-## Reseño de interfaz (2026-09-02) — lo que dejó abierto
-
-Lo entregado está en [07-historial](./07-historial.md) y su porqué en
-[la auditoría](./superpowers/specs/2026-09-02-auditoria-interfaz.md). Lo que **no** entró:
-
-| | Qué | Por qué importa |
-|---|---|---|
-| **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
 
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 
@@ -685,7 +669,6 @@ Tres patrones se repitieron, y merece la pena nombrarlos porque van a volver:
 
 | # | Qué falta | Por qué importa |
 |---|---|---|
-| **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
 | **S11** | **Los tipos de respuesta del motor y del previo de nivel viven dos veces**: en `apps/api/src/rules-engine/engine/types.ts` y `level-up.service.ts`, y calcados a mano en `apps/web/src/features/rules/api.ts` y `features/level-up/api.ts`. **Tercer caso medido (2026-09-06):** `CharacterSheet`, `PendingChoice` y `ResolvedFeature` (`apps/api/src/rules/catalog/index.ts`) y `Attack` (`apps/api/src/rules/attacks.ts`) se calcan a mano en `apps/web/src/features/character-sheet/api.ts:24-28` (`CalculatedSheet`, `PendingChoiceDto`, `ResolvedFeatureDto`, líneas 74-100) y `:131-143` (`AttackDto`), con el mismo comentario que ya anticipaba el problema («la web no puede — ni debe — importar de `apps/api`») | Si el servidor cambia esa forma, **nada lo detecta**. Es el mismo patrón que ya se aceptó para la hoja, y ahora hay tres capas midiéndolo por separado en vez de una. Candidato claro a `@dnd/shared` |
 | **X1** | **`RestKind` es un enum muerto en la base**: no lo usa ningún modelo ni campo | O se borra con su migración, o se declara por qué se deja. Hoy no está escrito ninguna de las dos cosas |
 

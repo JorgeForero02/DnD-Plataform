@@ -15,6 +15,7 @@ describe("CampaignsService", () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    entity: { findMany: jest.fn() },
     user: { findUnique: jest.fn() },
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), removeMember: jest.fn() };
@@ -146,6 +147,7 @@ describe("CampaignsService", () => {
 
     function conUltimaSesion(sessions: unknown[], role = "PLAYER") {
       prisma.user.findUnique.mockResolvedValue({ id: "p1", isAdmin: false });
+      prisma.entity.findMany.mockResolvedValue([]);
       prisma.campaign.findMany.mockResolvedValue([
         {
           id: "c1",

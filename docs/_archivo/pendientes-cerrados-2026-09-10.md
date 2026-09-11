@@ -681,3 +681,32 @@ ficha **U6** de este documento.
 > contradecía con su propia ficha U6 doce secciones más abajo y con un fichero de pruebas que
 > lleva meses en verde. **Dos frases del mismo documento que no se leen la una a la otra es la
 > forma más barata de mentir.**
+
+## U4 · El panel de campañas no dice cuánto mundo tiene cada una
+
+**Cerrada el 2026-09-11 (Task 33).** `GET /campaigns` devuelve `entityCount` contado **con `canView`** para quien pregunta (el jugador cuenta menos que el DM cuando hay fichas `DM_ONLY`), declarado en `@dnd/shared`; la lista pinta «12 fichas» con su singular. e2e roja antes; mutación: contar sin `canView` enrojece la del jugador.
+
+**Texto original:**
+
+| **U4** | **El panel de campañas no dice cuánto mundo tiene cada una** | Contar fichas bien exige aplicar la matriz de visibilidad, cuyo dueño único es `canView`. Es una tarea con su ficha, no un efecto colateral: hoy se muestran rol, personas y fecha, que no delatan nada |
+
+## S10-vocabulario · La lista de `labelKey` de `vocabulario.ts` se escribe a mano
+
+**Cerrada el 2026-09-11 (Task 34).** La lista de claves que el motor puede emitir tiene una sola fuente: `packages/shared/src/label-keys.ts` (claves exactas más las familias dinámicas con prefijo), con `apps/api/src/rules/label-keys-sweep.spec.ts` barriendo `apps/api/src/rules` para que el catálogo no estrene una clave sin registrar, y la prueba de la web la consume en vez de copiarla a mano. Mutación: clave falsa en el catálogo → rojo.
+
+**Texto original:**
+
+| **S10-vocabulario** | **La lista de `labelKey` de `vocabulario.ts` se escribe a mano.** Nada falla si el catálogo estrena una clave nueva | Es la mitad que quedó de S5. La prueba que hace falta compara el conjunto de `labelKey` que el catálogo puede emitir contra las claves del diccionario |
+
+## P3 · El tema Claro del prototipo es papel cálido; el nuestro es gris frío
+
+**Cerrada el 2026-09-11 (Task 35, D-OP-10).** El tema Claro pasa al papel cálido del prototipo (`--bg-ch`/`--surface-ch` en los dos bloques de `tokens.css`: `prefers-color-scheme: light` y `[data-theme="light"]`), reajustando solo los canales de texto que hiciera falta para que las mediciones de `tokens-contrast.spec.ts` sigan en verde; la tabla de contrastes calculada va en el informe de la tarea, y la medición real en navegador la corre el orquestador con la tanda de pantalla.
+
+**Texto original:**
+
+## P3 · El tema Claro del prototipo es papel cálido; el nuestro es gris frío (2026-09-04, B0)
+
+`prototipo/src/index.css` da al tema claro `#e6e1d4` (papel), y aquí vale `#dfe5e9` (gris
+azulado). No se tocó en B0 **porque el nuestro está medido** y cambiar la paleta obliga a
+volver a medir las 19 comprobaciones de contraste en esa mitad. Es una decisión de identidad,
+no un defecto: si la mesa nueva se ve fría al lado de la maqueta, esta es la ficha.

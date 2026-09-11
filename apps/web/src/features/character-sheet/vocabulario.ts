@@ -482,6 +482,18 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   halfProficiency: "Media competencia",
   expertise: "Pericia (duplica la competencia)",
   "spellSaveDc.base": "Base de la CD de conjuro",
+  // Fix round 1 (tarea 34) — `resolverOrigen` (engine.ts) tiene tres kinds que hasta ahora no
+  // tenían frase: "fijo" (un número escrito a mano en una actividad), "nivelDeEspacio" (el nivel
+  // del hueco con el que se lanzó un conjuro) y "cdDeConjuro" (una CD ya derivada, tomada como
+  // dato). Los tres son alcanzables desde `character-sheet.service.ts`, no solo desde el camino
+  // de actividades sin pantalla todavía.
+  fixedValue: "Valor fijo",
+  spellSlotLevel: "Nivel del hueco de conjuro",
+  spellSaveDc: "CD de conjuro (valor ya derivado)",
+  // `character-sheet.service.ts:1916` — el daño extra de Furia por nivel
+  // (`resolverOrigen({ tipo: "escala", clave: "rage-damage" })`). Única tabla de escala que se
+  // resuelve hoy fuera del catálogo genérico de clases.
+  "scale.rage-damage": "Daño de Furia (por nivel)",
   "speed.base": "Velocidad base",
   "speed.condition.zero": "Una condición deja la velocidad en 0",
   "speed.condition.half": "Una condición reduce la velocidad a la mitad",
@@ -497,6 +509,15 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   // (`exhaustion:<nivel>`), que se lee con `nivelDeAgotamientoDeSourceKey`. Escribir «nivel 4»
   // aquí mentiría en cuanto alguien llegara al 5.
   "maxHp.exhaustion.half": "Agotamiento: los puntos de golpe máximos, a la mitad",
+  // Fix round 1 (tarea 34, tandas 2-5) — cuatro claves de `apps/api/src/rules/monster.ts` que el
+  // camino de PNJ SÍ emite (un PNJ es una fila de `Character`, y su hoja pasa por la misma
+  // `Traza.tsx`/`PuntosDeGolpe.tsx`) y que no tenían frase: se habrían visto como «Sin traducir»
+  // en la ficha de cualquier monstruo. La prueba de completitud del catálogo
+  // (`apps/api/src/rules/label-keys-catalog.spec.ts`) es lo que las sacó a la luz.
+  "proficiencyBonus.byChallenge": "Bonificador de competencia por valor de desafío",
+  "ac.statblock": "Clase de Armadura del manual",
+  "maxHp.hitDiceAverage": "Media de los dados de golpe",
+  "maxHp.conPerHitDie": "Constitución por dado de golpe",
   // Tarea 2.5.1 — la traza de daño (`apps/api/src/character-state/damage/apply-damage-modifiers.ts`).
   // **Faltaban las cuatro**, y no se notaba porque ninguna pantalla pintaba esa traza: el
   // servidor la devolvía en `changeHp` y no la leía nadie. Al pintarla, cada paso habría salido
@@ -540,6 +561,15 @@ export function traducirLabelKey(labelKey: string): Traduccion {
 
   if (labelKey === "skill.perception") {
     return { texto: NOMBRE_HABILIDAD.perception, conocida: true };
+  }
+
+  // Fix round 1 (tarea 34) — `engine.ts` deriva una velocidad BASE por tipo de movimiento
+  // (`speed.<movimiento>.base`), distinta de `speed.base`/`speed.condition.*` de
+  // `effective-speed.ts` (la velocidad ya efectiva, tras condiciones). Era alcanzable y no tenía
+  // frase: se habría visto como «Sin traducir: speed.fly.base» en cualquier ficha con vuelo.
+  m = /^speed\.(walk|climb|swim|fly|burrow)\.base$/.exec(labelKey);
+  if (m) {
+    return { texto: `Velocidad base (${NOMBRE_DE_MOVIMIENTO[m[1]]})`, conocida: true };
   }
 
   // **El recorte nombra la característica que recorta, y no la escribe a fuego.** Hasta el
@@ -755,6 +785,18 @@ export const NOMBRE_VEREDICTO: Record<AttackVerdict, string> = {
   HIT: "Impacta",
   MISS: "Falla",
   CRITICAL: "¡Crítico!",
+};
+
+/**
+ * Los cinco tipos de movimiento (`Movement` en `packages/shared/src/item.schema.ts`), para
+ * `speed.<movimiento>.base` (fix round 1, tarea 34).
+ */
+const NOMBRE_DE_MOVIMIENTO: Record<string, string> = {
+  walk: "caminar",
+  climb: "trepar",
+  swim: "nadar",
+  fly: "volar",
+  burrow: "excavar",
 };
 
 /** Los valores derivados que el DM puede anular a mano (`OVERRIDABLE_KEYS` de `@dnd/shared`). */

@@ -11,6 +11,21 @@ export const updateCampaignSchema = createCampaignSchema.partial();
 export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>;
 
 /**
+ * **`entityCount` del listado** (U4, plan tandas 2–5, tarea 33).
+ *
+ * `GET /campaigns` no cuenta las fichas del mundo con un `_count` de Prisma porque una ficha
+ * tiene cinco niveles de visibilidad: contar todas las filas le diría a un jugador cuánto hay
+ * escondido de él. El número que viaja es el que resulta de aplicar `canView`
+ * (`apps/api/src/common/visibility.ts`) fila a fila para QUIEN PREGUNTA — así que dos personas en
+ * la misma mesa pueden ver un número distinto para la misma campaña, y es correcto que así sea.
+ *
+ * El campo se declara aquí y no en `apps/api` ni en `apps/web` porque es el único contrato: la
+ * API lo calcula y la web solo lo pinta.
+ */
+export const campaignEntityCountSchema = z.number().int().nonnegative();
+export type CampaignEntityCount = z.infer<typeof campaignEntityCountSchema>;
+
+/**
  * **Cambiar el papel de un miembro** (plan 11, ficha D2).
  *
  * Hasta hoy **el rol era inmutable de por vida**: para cambiarlo habia que expulsar y reinvitar, y

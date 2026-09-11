@@ -1,4 +1,4 @@
-import type { CreateCampaignInput, UpdateCampaignInput } from "@dnd/shared";
+import type { CampaignEntityCount, CreateCampaignInput, UpdateCampaignInput } from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 export interface Campaign {
@@ -10,11 +10,23 @@ export interface Campaign {
   // Reseño 2026-09-02 — only present on the LIST endpoint (campaigns.service.ts#listForUser),
   // which is why both are optional: /campaigns/:id returns the campaign on its own. `members`
   // holds the VIEWER's membership row and nobody else's, so it says what you are at this
-  // table without listing who else is at it. No entity/session counts here on purpose — see
-  // the comment in listForUser: counting objects that carry five visibility levels would leak
-  // the existence of the ones you cannot see.
+  // table without listing who else is at it.
+  //
+  // Entity counts (see `entityCount` below) DO travel now (U4, tarea 33) — the comment that used
+  // to sit here said they never would, on the grounds that counting objects with five visibility
+  // levels leaks the existence of the ones you cannot see. That is still true of a raw `_count`;
+  // the fix is that `entityCount` is never a raw count — `campaigns.service.ts#listForUser` runs
+  // every entity through `canView` for THIS viewer before counting it, so the number is already
+  // scoped to what this viewer alone can see.
   members?: { role: string }[];
   _count?: { members: number };
+  /**
+   * **Cuánto mundo puede ver QUIEN PREGUNTA** (U4, tarea 33). Ya viene contado con `canView` en
+   * el servidor — dos personas en la misma mesa pueden traer un número distinto para la misma
+   * campaña, y es así a propósito. Opcional solo por si una respuesta antigua en caché no lo
+   * trae todavía.
+   */
+  entityCount?: CampaignEntityCount;
   /**
    * **Dónde se quedó la partida** (D-OP-17): la crónica de la última sesión cerrada, **ya filtrada
    * por el servidor** con la visibilidad propia de la crónica.

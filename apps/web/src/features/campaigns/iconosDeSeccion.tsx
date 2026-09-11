@@ -50,6 +50,28 @@ export function IconoPersonajes({ className = "" }: Props) {
   );
 }
 
+/** Fichas del mundo: el libro abierto. Es cuánto mundo tiene la campaña, ya filtrado por canView. */
+export function IconoFichas({ className = "" }: Props) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={["h-[1em] w-[1em] shrink-0", className].join(" ")}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M12 6.2c-1.6-1.1-3.6-1.7-5.6-1.7-.6 0-1.1.5-1.1 1.1v11.9c0 .6.5 1 1.1 1 2 0 4 .6 5.6 1.7"
+        {...TRAZO}
+      />
+      <path
+        d="M12 6.2c1.6-1.1 3.6-1.7 5.6-1.7.6 0 1.1.5 1.1 1.1v11.9c0 .6-.5 1-1.1 1-2 0-4 .6-5.6 1.7"
+        {...TRAZO}
+      />
+      <path d="M12 6.2v14.1" {...TRAZO} />
+    </svg>
+  );
+}
+
 // **El signo de más, dibujado.** Vivía en `CampaignList.tsx` como el carácter «＋» de ancho
 // completo, que es exactamente lo que la regla de iconos prohíbe: un glifo de fuente se pinta a
 // todo color en unos sistemas y como un cuadrado vacío en otros. La maqueta lo pone dentro del

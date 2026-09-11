@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useCampaigns } from "./hooks";
 import { EmptyState } from "../../ui/Collection";
 import { tiempoRelativo } from "./tiempoRelativo";
-import { IconoPersonajes, IconoSesiones } from "./iconosDeSeccion";
+import { IconoFichas, IconoPersonajes, IconoSesiones } from "./iconosDeSeccion";
 import { IconoMas } from "../../ui/Iconos";
 
 // **La tarjeta de la maqueta, adoptada entera (2026-09-03).**
@@ -22,14 +22,26 @@ import { IconoMas } from "../../ui/Iconos";
 // adorno que parte en dos una tarjeta de cuatro líneas compite en vez de enmarcar.
 //
 // Lo que la maqueta no enseña y aquí sí es la **descripción**: es dato real que tenemos y que
-// dice de qué va la campaña. Lo que sigue sin enseñarse es cuánto mundo hay dentro — ver
-// campaigns.service.ts#listForUser: contar entidades es contar cosas que algunos jugadores no
-// pueden ver.
+// dice de qué va la campaña. Cuánto mundo hay dentro (U4, tarea 33) también se enseña ahora,
+// ya contado con canView en campaigns.service.ts#listForUser — el número que llega es el que
+// PUEDE VER quien pregunta, nunca el total de la tabla.
 
 const ROL: Record<string, string> = {
   DM: "Diriges",
   PLAYER: "Juegas",
 };
+
+/**
+ * **La forma legible de `entityCount`, escrita una sola vez** (U4, tarea 33). El número ya llega
+ * contado con `canView` desde `campaigns.service.ts#listForUser`; aquí solo se decide cómo se
+ * lee — singular, plural, y el caso cero, que no es "0 fichas" sino que no hay nada que contar
+ * todavía.
+ */
+function textoDeFichas(entityCount: number | undefined): string | null {
+  if (entityCount === undefined) return null;
+  if (entityCount === 0) return "Sin fichas todavía";
+  return entityCount === 1 ? "1 ficha" : `${entityCount} fichas`;
+}
 
 export function CampaignList({ onCreate }: { onCreate?: () => void }) {
   const { data, isLoading, isError, error } = useCampaigns();
@@ -59,6 +71,7 @@ export function CampaignList({ onCreate }: { onCreate?: () => void }) {
         const rol = c.members?.[0]?.role;
         const miembros = c._count?.members;
         const desde = tiempoRelativo(c.createdAt);
+        const fichas = textoDeFichas(c.entityCount);
         return (
           <li key={c.id} className="group relative flex">
             {/* Stretched link: the whole card is clickable, but the LINK is only the name.
@@ -102,6 +115,12 @@ export function CampaignList({ onCreate }: { onCreate?: () => void }) {
                   <span className="flex items-center gap-s2">
                     <IconoSesiones />
                     <span className="font-data">{desde}</span>
+                  </span>
+                )}
+                {fichas && (
+                  <span className="flex items-center gap-s2">
+                    <IconoFichas />
+                    <span className="font-data">{fichas}</span>
                   </span>
                 )}
               </div>

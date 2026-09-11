@@ -467,4 +467,100 @@ describe("Campaigns (e2e)", () => {
       expect(delDm.lastRecap).toMatchObject({ text: "Lo que el DM se guarda" });
     });
   });
+
+  describe("el listado dice cuánto mundo hay dentro, contado con canView (U4)", () => {
+    let mesaId = "";
+    let tokenJugador = "";
+    let userIdJugador = "";
+    const emailJ = `pl-count${Date.now()}${Math.floor(Math.random() * 1e6)}@b.com`;
+
+    beforeAll(async () => {
+      const s = app.getHttpServer();
+      const regJugador = await request(s)
+        .post("/auth/register")
+        .send({ email: emailJ, password: "password123", displayName: "Jugadora" });
+      tokenJugador = regJugador.body.token;
+      userIdJugador = regJugador.body.user.id;
+      // Sin registrar un sexto usuario: `AUTH_RATE_LIMIT` es 5/minuto y este fichero ya registra
+      // cinco (dmA, plB, plC, la jugadora de «dónde se quedó» y esta) — un sexto `POST
+      // /auth/register` se lanzaría contra el límite y el fallo se leería como un test roto, no
+      // como lo que sería: el mismo aviso que `rate-limit.constants.ts` deja escrito para
+      // `auth.e2e-spec.ts`. `tokenB` (emailB) ya existe desde el principio del fichero y no se
+      // ha unido a ninguna campaña que sobreviva hasta aquí: sirve de sobra como «jugador sin
+      // concesión».
+      mesaId = (
+        await request(s)
+          .post("/campaigns")
+          .set("Authorization", `Bearer ${tokenA}`)
+          .send({ name: "La mesa que se cuenta" })
+      ).body.id;
+      const invite = (
+        await request(s)
+          .post(`/campaigns/${mesaId}/invites`)
+          .set("Authorization", `Bearer ${tokenA}`)
+      ).body.token;
+      await request(s)
+        .post(`/invites/${invite}/accept`)
+        .set("Authorization", `Bearer ${tokenJugador}`);
+      const invite2 = (
+        await request(s)
+          .post(`/campaigns/${mesaId}/invites`)
+          .set("Authorization", `Bearer ${tokenA}`)
+      ).body.token;
+      await request(s).post(`/invites/${invite2}/accept`).set("Authorization", `Bearer ${tokenB}`);
+
+      // Cuatro fichas: dos que cualquier jugador ve, una DM_ONLY que nadie más ve, y una
+      // SPECIFIC_PLAYERS que solo ve quien está en la lista de concesión (la jugadora, no el
+      // jugador sin concesión) — el caso que la ficha U4 no cubría todavía.
+      await request(s)
+        .post(`/campaigns/${mesaId}/entities`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ type: "LOCATION", name: "Barovia", visibility: "PLAYERS" });
+      await request(s)
+        .post(`/campaigns/${mesaId}/entities`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ type: "LOCATION", name: "Vallaki", visibility: "PUBLIC" });
+      await request(s)
+        .post(`/campaigns/${mesaId}/entities`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ type: "NPC", name: "Strahd", visibility: "DM_ONLY" });
+      await request(s)
+        .post(`/campaigns/${mesaId}/entities`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          type: "NPC",
+          name: "Un secreto de Ireena",
+          visibility: "SPECIFIC_PLAYERS",
+          specificPlayerIds: [userIdJugador],
+        });
+    });
+
+    afterAll(async () => {
+      if (mesaId) await prisma.campaign.deleteMany({ where: { id: mesaId } });
+      await prisma.user.deleteMany({ where: { email: emailJ } });
+    });
+
+    const laMesaDeConteo = async (token: string) => {
+      const r = await request(app.getHttpServer())
+        .get("/campaigns")
+        .set("Authorization", `Bearer ${token}`);
+      expect(r.status).toBe(200);
+      return (r.body as Record<string, unknown>[]).find((c) => c.id === mesaId)!;
+    };
+
+    it("el DM cuenta las cuatro fichas", async () => {
+      const campana = await laMesaDeConteo(tokenA);
+      expect(campana.entityCount).toBe(4);
+    });
+
+    it("la jugadora con concesión cuenta tres: PLAYERS + PUBLIC + su SPECIFIC_PLAYERS, la DM_ONLY no se le suma", async () => {
+      const campana = await laMesaDeConteo(tokenJugador);
+      expect(campana.entityCount).toBe(3);
+    });
+
+    it("el jugador SIN concesión (tokenB) cuenta dos: la SPECIFIC_PLAYERS ajena tampoco se le suma", async () => {
+      const campana = await laMesaDeConteo(tokenB);
+      expect(campana.entityCount).toBe(2);
+    });
+  });
 });

@@ -280,9 +280,25 @@
  * before this stylesheet loads, so there is no flash of the wrong theme on first paint. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg-ch: 223 229 233;
-    --surface-ch: 237 241 243;
-    --vellum-ch: 244 239 226;
+    /* Tarea 35 (tandas 2-5, D-OP-10/P3): papel cálido, del prototipo
+     * (prototipo/src/index.css, [data-theme="light"], #e6e1d4/#f3efe6). Sustituye el gris
+     * azulado anterior (223 229 233 / 237 241 243). El resto de los canales de este bloque
+     * (texto, muted, *-text, voces) ya despejaban 4.5:1 de sobra contra el papel nuevo — medido
+     * con la fórmula WCAG de tokens-contrast.spec.ts en un script desechable, tabla en el
+     * informe de la tarea — así que no hace falta tocar ninguno.
+     *
+     * Fix round 1: `--vellum-ch` SÍ se tocó. Con `--bg-ch`/`--surface-ch` nuevos, el `--vellum`
+     * de antes (244 239 226) quedaba a ~1.00:1 de `--surface` — el mismo tono, imperceptible
+     * como «segunda piel» de lectura. Se oscurece y se satura un poco más (más rojo/amarillo,
+     * bastante menos azul) hasta que se ve como papel distinto; el contraste WCAG entre dos
+     * superficies de luminancia parecida y tono distinto nunca sube mucho (1.15:1 aquí, 1.01:1
+     * contra `--bg`) porque esa fórmula es solo luminancia, no diferencia de tono — la
+     * separación real la da el ojo, no ese número. Lo que SÍ se midió es que ningún texto
+     * pierda su 4.5:1 sobre el vellum nuevo: el más justo es `--copper-text`/`--copper`, en
+     * 4.66:1 (era 5.37:1 sobre el vellum viejo). Tabla completa en el informe. */
+    --bg-ch: 230 225 212;
+    --surface-ch: 243 239 230;
+    --vellum-ch: 234 223 199;
     --text-ch: 22 35 43;
     --muted-ch: 76 93 102;
     --accent-ch: 31 92 115;
@@ -315,9 +331,12 @@
 }
 
 :root[data-theme="light"] {
-  --bg-ch: 223 229 233;
-  --surface-ch: 237 241 243;
-  --vellum-ch: 244 239 226;
+  /* Tarea 35 — el mismo papel cálido que arriba, para cuando el tema es una elección
+   * explícita y no la del sistema. Debe quedar idéntico al bloque de la media query, incluido
+   * el `--vellum-ch` del fix round 1 (ver el comentario largo de ese bloque). */
+  --bg-ch: 230 225 212;
+  --surface-ch: 243 239 230;
+  --vellum-ch: 234 223 199;
   --text-ch: 22 35 43;
   --muted-ch: 76 93 102;
   --accent-ch: 31 92 115;

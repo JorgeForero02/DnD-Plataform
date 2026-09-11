@@ -501,7 +501,7 @@ Comprobado por mutación: al devolver `copper` a `var(--copper)`, la medición d
 
 ## Tres temas, y sus nombres dicen lo que son (B0, 2026-09-04)
 
-**Oscuro** (el instrumento), **Claro** (papel de día) y **Lectura** (vitela cálida). Hasta hoy
+**Oscuro** (el instrumento), **Claro** (papel de día — **papel cálido desde el 2026-09-11**, D-OP-10, con las mediciones de contraste calculadas y remedidas en el navegador al cerrar la tanda) y **Lectura** (vitela cálida). Hasta hoy
 eran dos y la interfaz llamaba «Lectura (vitela)» al claro, que es gris frío: el rótulo mentía,
 y lo arrastraba desde que existe la capa de tokens. Los rótulos viven **una sola vez** en
 `ETIQUETA_DE_TEMA` (`ui/theme.ts`), y el conmutador pasó de alternador a **grupo de tres

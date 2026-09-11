@@ -66,6 +66,11 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 5 (d)** (un lote, tres fichas): las campañas dicen cuántas fichas ve quien mira (U4,
+  contado con `canView`); las claves de traza del motor tienen una sola fuente y una prueba que
+  caza una clave sin frase (S10-vocabulario); y el tema Claro es papel cálido como el prototipo
+  (D-OP-10), con sus contrastes remedidos. Y las migas de pan ganan el anillo de foco de la casa.
+  **Revertir:** una pieza cada uno; los canales del tema Claro vuelven al gris frío.
 - **Tanda 5 (c), medir en el navegador** (un lote, cuatro fichas): fuera los 21
   `JSON.stringify({})`; el aviso «no puedes editar» medido en la pantalla de un jugador con dos
   navegadores; la subida de nivel en `tokens-contrast`; y un recorrido de teclado. **Revertir:**

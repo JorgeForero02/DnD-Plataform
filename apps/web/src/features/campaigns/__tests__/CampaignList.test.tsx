@@ -88,6 +88,41 @@ describe("CampaignList", () => {
     expect(screen.getAllByText("anteayer")).toHaveLength(2);
   });
 
+  // U4 (tarea 33): el conteo llega ya filtrado por canView desde el servidor — la tarjeta solo
+  // decide cómo se lee, en singular/plural/cero, sin generar ningún plural a mano en el JSX.
+  it("dice cuántas fichas del mundo puede ver quien mira, en forma legible", async () => {
+    vi.spyOn(api, "fetchCampaigns").mockResolvedValue([
+      {
+        id: "c1",
+        name: "Doce fichas",
+        description: null,
+        ownerId: "u1",
+        createdAt: "2026-01-01",
+        entityCount: 12,
+      },
+      {
+        id: "c2",
+        name: "Una ficha",
+        description: null,
+        ownerId: "u1",
+        createdAt: "2026-01-01",
+        entityCount: 1,
+      },
+      {
+        id: "c3",
+        name: "Sin fichas",
+        description: null,
+        ownerId: "u1",
+        createdAt: "2026-01-01",
+        entityCount: 0,
+      },
+    ]);
+    renderList();
+    expect(await screen.findByText("12 fichas")).toBeInTheDocument();
+    expect(screen.getByText("1 ficha")).toBeInTheDocument();
+    expect(screen.getByText("Sin fichas todavía")).toBeInTheDocument();
+  });
+
   // El "+" era el carácter de ancho completo, que es un glifo de fuente usado como icono —
   // justo lo que la regla de interfaz prohíbe. Ahora es un dibujo.
   it("el botón que crea lleva un dibujo, no un glifo de fuente", async () => {

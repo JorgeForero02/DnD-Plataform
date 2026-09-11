@@ -1,6 +1,7 @@
 export * from "./auth.schema";
 export * from "./visibility.schema";
 export * from "./campaign.schema";
+export * from "./label-keys";
 export * from "./entity.schema";
 export * from "./session.schema";
 export * from "./character.schema";

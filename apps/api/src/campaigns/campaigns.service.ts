@@ -31,14 +31,11 @@ export class CampaignsService {
   // are safe to add — the viewer's OWN role, and how many people are at the table — plus the
   // campaign's own timestamps, which the client already had a right to.
   //
-  // What it deliberately does NOT add is a count of entities, sessions or characters, and the
-  // reason is the whole point of this product: those objects carry five visibility levels, and
-  // "12 lugares" told to a player who may only see 4 of them leaks the existence of the other
-  // 8. Counting them correctly means applying the visibility matrix, and
-  // common/visibility.ts's canView is its single owner — a Prisma where-clause that
-  // re-derives it here would be exactly the duplication CLAUDE.md forbids. A per-viewer count
-  // is its own task, built on canView, not a side effect of a dashboard tidy-up.
-  // Recorded in docs/06-pendientes.md.
+  // U4 (tarea 33, tandas 2-5): the entity count that this comment used to say was deliberately
+  // left out is now added, but ONLY per-viewer: "12 lugares" told to a player who may only see
+  // 4 of them would leak the existence of the other 8, so the count below runs every entity
+  // through canView (common/visibility.ts, its single owner) for THIS viewer before counting
+  // it. Never a Prisma `_count`, which would count rows the viewer cannot see.
   /**
    * **«Dónde se quedó»** (D-OP-17, 2026-09-05). Cada campaña trae **la crónica de su última sesión
    * cerrada**, que es lo que convierte esta pantalla en «partidas guardadas» y no en una lista de
@@ -76,6 +73,19 @@ export class CampaignsService {
       this.prisma.user.findUnique({ where: { id: userId } }),
     ]);
 
+    // U4 (tarea 33): `entityCount` es cuánto mundo de la campaña PUEDE VER quien pregunta, y eso
+    // exige `canView` fila a fila — un `_count` de Prisma contaría también las `DM_ONLY` ajenas.
+    // Una única consulta trae las fichas de TODAS las campañas del usuario (no una por campaña) y
+    // el conteo se agrupa en memoria; a la escala de tabla de este producto es barato y evita el
+    // N+1 de repetir la consulta por campaña.
+    const campaignIds = campanas.map((campana) => campana.id);
+    const entidades = campaignIds.length
+      ? await this.prisma.entity.findMany({
+          where: { campaignId: { in: campaignIds } },
+          select: { campaignId: true, visibility: true, createdById: true, grants: true },
+        })
+      : [];
+
     return campanas.map((campana) => {
       const { sessions, ...resto } = campana;
       const ultima = sessions[0];
@@ -96,9 +106,20 @@ export class CampaignsService {
           createdById: "",
           grantedUserIds: [],
         });
-      if (!seVe) return resto;
+      const entityCount = entidades.filter(
+        (e) =>
+          e.campaignId === campana.id &&
+          canView(viewer, {
+            visibility: e.visibility,
+            createdById: e.createdById,
+            grantedUserIds: e.grants.map((g) => g.userId),
+          }),
+      ).length;
+
+      if (!seVe) return { ...resto, entityCount };
       return {
         ...resto,
+        entityCount,
         lastRecap: {
           text: ultima.recap as string,
           sessionTitle: ultima.title,

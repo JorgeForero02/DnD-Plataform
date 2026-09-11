@@ -45,36 +45,27 @@ import { NOMBRE_TAMANO, NOMBRE_TIPO_CRIATURA } from "./vocabulario";
 // verlo cambiar al cambiar el tamaño es lo que evita la pregunta «¿de dónde sale ese d10?».
 
 /**
- * Los cinco niveles menos `SPECIFIC_PLAYERS` **y menos `OWNER_DM`**: los dos que un statblock no
- * puede cumplir.
+ * Los cinco niveles menos `SPECIFIC_PLAYERS`: el único que un statblock no puede cumplir, porque
+ * no tiene tabla de concesiones por jugador y nombrar a alguien no tendría dónde guardarse.
  *
- * `SPECIFIC_PLAYERS` se retiró primero, y por lo evidente: un statblock no tiene tabla de
- * concesiones por jugador, así que nombrar a alguien no tendría dónde guardarse.
+ * **`OWNER_DM` volvió aquí en la tarea 25 (cerrar fichas, 2026-09-11).** Se había retirado en la
+ * Ola 2 (2026-09-04) porque el servidor lo traicionaba: `statblocks.service.ts` llamaba a
+ * `canView` con `createdById: ""` fijo, y `canView` resuelve `OWNER_DM` comparando
+ * `resource.createdById === viewer.userId` — contra `""` eso es **siempre falso**, así que
+ * `OWNER_DM` se comportaba exactamente como `DM_ONLY` mientras esta pantalla prometía «Tú y quien
+ * lo creó». Ofrecer una frontera que el servidor no aplicaba era el defecto; retirar la opción
+ * era el parche, no el arreglo.
  *
- * `OWNER_DM` es la misma mentira un paso más sutil, y se retira en la Ola 2 (2026-09-04)
- * **después de leer el servidor, no de suponerlo**:
+ * El arreglo de verdad es que `puedeVer()` reciba la fila entera y le pase `fila.createdById` a
+ * `canView` en vez de `""`. Con eso, `OWNER_DM` significa lo que dice: la ve el DM, y la ve quien
+ * la creó (`create()` ya escribe `createdById: userId`, sin tocar).
  *
- *   · `apps/api/src/statblocks/statblocks.service.ts:163-170` — `puedeVer()` llama a `canView`
- *     pasándole `createdById: ""` fijo, con el comentario «un statblock no tiene creador
- *     nominal».
- *   · `apps/api/src/common/visibility.ts:26-27` — `canView` resuelve `OWNER_DM` como
- *     `resource.createdById === viewer.userId`, y contra `""` eso es **siempre falso** para
- *     cualquier jugador.
- *
- * O sea que `OWNER_DM` en una criatura **se comporta exactamente como `DM_ONLY`** mientras esta
- * pantalla promete «Tú y quien lo creó». Ofrecer una frontera que el servidor no aplica es el
- * defecto que este reseño existe para corregir, y la regla de interfaz lo dice sin rodeos: si el
- * texto explica una regla del servidor y discrepan, **miente el texto**.
- *
- * **No se toca el servidor desde aquí.** La fila **sí** tiene columna `createdById` —se escribe
- * en `create()` (`:59`)—, así que el arreglo bueno es que `puedeVer` la pase en vez de `""`, y
- * ese día `OWNER_DM` vuelve a esta lista con una línea. Queda ficha en `docs/06-pendientes.md`.
- *
- * Las criaturas ya guardadas con `OWNER_DM` **no pierden su valor**: `VisibilityChooser` añade al
- * final el nivel guardado que no esté en la lista, marcado y no seleccionable, en vez de hacerlo
- * desaparecer al guardar.
+ * Las criaturas ya guardadas con `OWNER_DM` mientras estuvo retirado **no perdieron su valor**:
+ * `VisibilityChooser` añade al final el nivel guardado que no esté en la lista, marcado y no
+ * seleccionable, en vez de hacerlo desaparecer al guardar — y ahora, con la opción de vuelta,
+ * simplemente aparecen ya seleccionables.
  */
-const NIVELES_DE_CRIATURA: Visibility[] = ["PUBLIC", "PLAYERS", "DM_ONLY"];
+const NIVELES_DE_CRIATURA: Visibility[] = ["PUBLIC", "PLAYERS", "OWNER_DM", "DM_ONLY"];
 
 const NOMBRE_EFECTO_DE_DANO: Record<DamageModifier["effect"], string> = {
   RESIST: "Resiste (la mitad)",
@@ -544,9 +535,9 @@ export function EditorDeStatblock({
           // **Sin `children`**: un statblock no tiene concesiones por jugador, así que
           // `SPECIFIC_PLAYERS` no se ofrece (`niveles`) — el servidor guarda el nivel, pero no
           // hay tabla de concesiones donde nombrar a nadie, y ofrecerlo sería prometer una
-          // frontera que nada aplica. **`OWNER_DM` tampoco se ofrece desde la Ola 2**, por el
-          // mismo motivo medido en `NIVELES_DE_CRIATURA`: el servidor lo evalúa contra un
-          // creador vacío y se comporta como `DM_ONLY`.
+          // frontera que nada aplica. **`OWNER_DM` sí se ofrece de nuevo, desde la tarea 25**
+          // (ver `NIVELES_DE_CRIATURA`): el servidor ya lo evalúa contra el `createdById` real de
+          // la fila, así que la frase «Tú y quien lo creó» vuelve a ser cierta.
           <VisibilityChooser
             value={b.visibility ?? "DM_ONLY"}
             niveles={NIVELES_DE_CRIATURA}

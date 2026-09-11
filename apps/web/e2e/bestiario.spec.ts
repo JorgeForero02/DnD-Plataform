@@ -166,3 +166,26 @@ test("el botón dice lo que hace, y no promete un combate que no existe", async 
   await expect(page.getByRole("button", { name: /Bajar a la mesa/i }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Meter al combate/i })).toHaveCount(0);
 });
+
+// Tarea 25 (cerrar fichas, tanda 2026-09-11) — **`OWNER_DM` vuelve a ofrecerse y a guardarse.**
+// `statblocks.service.ts` mandaba `createdById: ""` a `canView`, así que el nivel se retiró de
+// esta pantalla en la Ola 2. Ahora que el servidor compara con el creador real, «DM y creador»
+// vuelve a la lista y elegirlo tiene que guardar de verdad contra la API.
+test("escribir una criatura con «DM y creador», y que se guarde así", async ({ page }) => {
+  await abrirBestiario(page);
+  await page.getByRole("button", { name: "Escribir una criatura" }).click();
+  await expect(page.getByRole("heading", { name: "Escribir una criatura" })).toBeVisible();
+
+  await page.getByLabel("Cómo se llama").fill("Espíritu del pantano");
+  // El nivel ya no está retirado: se ofrece con su frase, no solo con el nombre del enum.
+  await expect(page.getByText("Tú y quien lo creó")).toBeVisible();
+  await page.getByRole("radio", { name: /DM y creador/ }).check();
+  await page.getByRole("button", { name: "Guardar la criatura" }).click();
+
+  await expect(page.getByRole("heading", { name: "Escribir una criatura" })).toBeHidden();
+  await page.getByPlaceholder("Buscar una criatura").fill("Espíritu del pantano");
+  const ficha = page.getByTestId("ficha-de-criatura").filter({ hasText: "Espíritu del pantano" });
+  await ficha.getByRole("button", { name: "Editar" }).click();
+  await expect(page.getByRole("heading", { name: /Editar Espíritu del pantano/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /DM y creador/ })).toBeChecked();
+});

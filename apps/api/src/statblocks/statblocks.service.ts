@@ -51,7 +51,7 @@ export class StatblocksService {
     });
     return {
       srd: SRD_STATBLOCKS,
-      campaign: filas.filter((f) => this.puedeVer(viewer, f.visibility)).map(aStatblock),
+      campaign: filas.filter((f) => this.puedeVer(viewer, f)).map(aStatblock),
     };
   }
 
@@ -116,7 +116,7 @@ export class StatblocksService {
       where: { id: origen.id, campaignId },
     });
     if (!fila) return null;
-    if (viewer && !this.puedeVer(viewer, fila.visibility)) return null;
+    if (viewer && !this.puedeVer(viewer, fila)) return null;
     return aStatblock(fila);
   }
 
@@ -153,7 +153,7 @@ export class StatblocksService {
       where: { id: origen.id, campaignId },
     });
     if (!fila) return { ausente: true };
-    if (!this.puedeVer(viewer, fila.visibility)) return { oculto: true };
+    if (!this.puedeVer(viewer, fila)) return { oculto: true };
     return { statblock: aStatblock(fila) };
   }
 
@@ -173,12 +173,21 @@ export class StatblocksService {
     return fila;
   }
 
-  private puedeVer(viewer: Viewer, visibility: string): boolean {
-    // Un statblock no tiene creador nominal ni concesiones: o lo ve tu nivel, o no. El DM lo ve
-    // siempre, y eso ya lo decide `canView`.
+  /**
+   * Tarea 25 (cerrar fichas, tanda 2026-09-11) — **`createdById` real, no `""`.**
+   *
+   * `OWNER_DM` significa «el DM y quien lo creó», y `canView` decide eso comparando
+   * `resource.createdById` con `viewer.userId`. Mandar `""` a propósito o por descuido hace que
+   * esa comparación **nunca** coincida con nadie —ningún usuario tiene id vacío—, así que
+   * `OWNER_DM` se comportaba como «solo el DM»: el jugador que creó su propio monstruo dejaba de
+   * verlo en cuanto alguien elegía ese nivel. El editor (`EditorDeStatblock.tsx`) dejó de
+   * ofrecerlo por lo mismo: mostrar una opción que el servidor luego traiciona es peor que no
+   * ofrecerla.
+   */
+  private puedeVer(viewer: Viewer, fila: { visibility: string; createdById: string }): boolean {
     return canView(viewer, {
-      visibility: visibility as Visibility,
-      createdById: "",
+      visibility: fila.visibility as Visibility,
+      createdById: fila.createdById,
       grantedUserIds: [],
     });
   }

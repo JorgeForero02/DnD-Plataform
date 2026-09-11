@@ -266,3 +266,134 @@ describe("Statblocks de PNJ (e2e)", () => {
     expect(vuelta.visibility).toBe("PUBLIC");
   });
 });
+
+// Tarea 25 (cerrar fichas, tanda 2026-09-11) — **`OWNER_DM` vuelve a valer.**
+//
+// `statblocks.service.ts:181` mandaba `createdById: ""` a `canView`, así que `OWNER_DM` se
+// comportaba como `DM_ONLY`: ni siquiera quien lo había creado lo veía. La prueba que distingue
+// esto de «el DM lo ve porque es DM» necesita un statblock cuyo `createdById` sea un JUGADOR, no
+// el DM — y el editor de la web solo deja crear al DM, así que esta fila se escribe por Prisma
+// directamente, como el encargo pide.
+describe("OWNER_DM en un statblock (tarea 25)", () => {
+  let app: NestFastifyApplication;
+  let prisma: PrismaService;
+  const marca = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const emailDM = `dm-owner${marca}@b.com`;
+  const emailP = `jug-p${marca}@b.com`;
+  const emailQ = `jug-q${marca}@b.com`;
+  let tokenDM = "";
+  let tokenP = "";
+  let tokenQ = "";
+  let userIdP = "";
+  let campaignId = "";
+  let statblockId = "";
+
+  const auth = (t: string) => `Bearer ${t}`;
+  const url = () => `/campaigns/${campaignId}/statblocks`;
+
+  beforeAll(async () => {
+    const ref = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = ref.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+    prisma = app.get(PrismaService);
+    const s = app.getHttpServer();
+
+    const dm = await request(s)
+      .post("/auth/register")
+      .send({ email: emailDM, password: "password123", displayName: "DM Owner" });
+    tokenDM = dm.body.token;
+
+    const p = await request(s)
+      .post("/auth/register")
+      .send({ email: emailP, password: "password123", displayName: "Jugadora P" });
+    tokenP = p.body.token;
+    userIdP = p.body.user.id;
+
+    const q = await request(s)
+      .post("/auth/register")
+      .send({ email: emailQ, password: "password123", displayName: "Jugador Q" });
+    tokenQ = q.body.token;
+
+    campaignId = (
+      await request(s)
+        .post("/campaigns")
+        .set("Authorization", auth(tokenDM))
+        .send({ name: "Campaña OWNER_DM" })
+    ).body.id;
+
+    for (const token of [tokenP, tokenQ]) {
+      const invite = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/invites`)
+          .set("Authorization", auth(tokenDM))
+      ).body.token;
+      await request(s).post(`/invites/${invite}/accept`).set("Authorization", auth(token));
+    }
+
+    // Creado por Prisma directamente: `createdById` es el de la jugadora P, no el del DM, que es
+    // justo lo que distingue «lo ve porque es DM» de «lo ve porque es su creador».
+    const fila = await prisma.campaignStatblock.create({
+      data: {
+        campaignId,
+        createdById: userIdP,
+        name: "Familiar de P",
+        size: "SMALL",
+        type: "FEY",
+        ac: 12,
+        hitDiceCount: 2,
+        str: 6,
+        dex: 15,
+        con: 10,
+        int: 10,
+        wis: 12,
+        cha: 8,
+        saveProficiencies: [],
+        skillProficiencies: {},
+        damageResistances: [],
+        damageImmunities: [],
+        damageVulnerabilities: [],
+        conditionImmunities: [],
+        otherSenses: [],
+        speeds: { walk: 20 },
+        cr: 0.125,
+        traits: [],
+        actions: [],
+        reactions: [],
+        legendaryActions: [],
+        visibility: "OWNER_DM",
+      },
+    });
+    statblockId = fila.id;
+  });
+
+  afterAll(async () => {
+    if (campaignId) await prisma.campaign.delete({ where: { id: campaignId } }).catch(() => {});
+    await prisma.user
+      .deleteMany({ where: { email: { in: [emailDM, emailP, emailQ] } } })
+      .catch(() => {});
+    await app.close();
+  });
+
+  it("lo ve la jugadora P, que lo creó", async () => {
+    const r = await request(app.getHttpServer()).get(url()).set("Authorization", auth(tokenP));
+    expect(r.status).toBe(200);
+    const visto = r.body.campaign.find((c: { ref: string }) => c.ref === `CAMPAIGN:${statblockId}`);
+    expect(visto).toBeDefined();
+    expect(visto.name).toBe("Familiar de P");
+  });
+
+  it("no lo ve el jugador Q, que no lo creó y no es DM", async () => {
+    const r = await request(app.getHttpServer()).get(url()).set("Authorization", auth(tokenQ));
+    expect(r.status).toBe(200);
+    const visto = r.body.campaign.find((c: { ref: string }) => c.ref === `CAMPAIGN:${statblockId}`);
+    expect(visto).toBeUndefined();
+  });
+
+  it("lo ve el DM, aunque no sea quien lo creó", async () => {
+    const r = await request(app.getHttpServer()).get(url()).set("Authorization", auth(tokenDM));
+    expect(r.status).toBe(200);
+    const visto = r.body.campaign.find((c: { ref: string }) => c.ref === `CAMPAIGN:${statblockId}`);
+    expect(visto).toBeDefined();
+  });
+});

@@ -556,3 +556,37 @@ found`; el `shell: true` de `scripts/db-slot.mjs` tropieza con el `&` de la ruta
 
 - **El taller dispara hasta 18 consultas de enlaces al abrir**, y `refetchOnWindowFocus` las repite.
   La respuesta buena es una ruta de enlaces por campaña.
+
+## Segunda tanda · El diálogo de creación de personaje pide raza y clase como texto libre
+
+**Cerrada el 2026-09-11 (Task 24, D-OP-20 parte 1).** El diálogo ofrece raza (con subraza) y clase del catálogo reutilizando el selector que ya existía, y guarda claves, no texto; el botón de guardar ya iba por `aria-disabled` (el `Button` compartido). RTL roja antes; recorrido Playwright `apps/web/e2e/crear-personaje.spec.ts` (elegir «Enano» y «Guerrero», verlos en la hoja, el diálogo cabe a 1280 y a 390) corrido por el orquestador en la tanda de pantalla. Con esto queda desbloqueada la migración que borra `race`/`class` (D-CF-14).
+
+**Texto original:**
+
+- **El diálogo de creación de personaje todavía pide raza y clase como texto libre.** Desde que
+  `descriptor.ts` prefiere las claves del catálogo, un personaje creado ahí nace con las columnas
+  heredadas y **sin clave**, que es el caso menos bueno de los dos. Debería ofrecer los
+  desplegables del catálogo. Y su botón de guardar sigue con `disabled` mientras envía, que roza
+  la regla de que un botón de guardar no se deshabilita.
+
+## P2 · `OWNER_DM` en un statblock se comporta como `DM_ONLY`
+
+**Cerrada el 2026-09-11 (Task 25).** `statblocks.service.ts` pasa `fila.createdById` a `canView` en vez de `""`, y `OWNER_DM` vuelve al editor del bestiario con su frase. e2e: un statblock `OWNER_DM` creado por el jugador P lo ve P y no Q, y lo ve el DM (rojo antes); RTL: el editor lo ofrece; Playwright `bestiario.spec.ts` lo elige y guarda (tanda de pantalla). Mutación: volver a `""` enrojece. **Límite medido por la revisión:** por la interfaz solo el DM crea statblocks (`create` exige `requireDM`), así que hoy `OWNER_DM` solo se distingue de `DM_ONLY` con una fila creada fuera de la interfaz; el servidor la respeta y es lo que la ficha pedía. Si algún día un jugador crea criaturas, la frontera ya está.
+
+**Texto original:**
+
+## P2 · `OWNER_DM` en un statblock se comporta como `DM_ONLY` (2026-09-04)
+
+`statblocks.service.ts:163-171` pasa `createdById: ""` a `canView`, y `canView:26-27` resuelve
+`OWNER_DM` comparando con el espectador → **siempre falso para un jugador**. El editor lo ofrece, o
+sea que la pantalla promete una frontera que el servidor no aplica. La fila **sí** tiene columna
+`createdById`; el arreglo es pasarla. Es la misma clase de mentira que ya se retiró con
+`SPECIFIC_PLAYERS` para las criaturas.
+
+**Ola 2 (2026-09-04): media ficha cerrada por el lado de la pantalla.** `EditorDeStatblock.tsx`
+**ya no ofrece `OWNER_DM`** (`NIVELES_DE_CRIATURA` es `PUBLIC`/`PLAYERS`/`DM_ONLY`), igual que se
+hizo con `SPECIFIC_PLAYERS`: una pantalla no puede prometer una frontera que el servidor no
+aplica. Las criaturas ya guardadas con ese nivel conservan su valor —`VisibilityChooser` lo pinta
+al final, marcado y no seleccionable—. **Lo que sigue abierto es el hueco de servidor**: pasar
+`fila.createdById` en vez de `""` en `puedeVer()`. El día que se haga, `OWNER_DM` vuelve a la
+lista del editor con una línea.

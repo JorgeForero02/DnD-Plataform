@@ -313,11 +313,6 @@ trae, y el hueco está declarado en
 
 ## Dejado por la segunda tanda de la ronda de interfaz (2026-09-02, madrugada)
 
-- **El diálogo de creación de personaje todavía pide raza y clase como texto libre.** Desde que
-  `descriptor.ts` prefiere las claves del catálogo, un personaje creado ahí nace con las columnas
-  heredadas y **sin clave**, que es el caso menos bueno de los dos. Debería ofrecer los
-  desplegables del catálogo. Y su botón de guardar sigue con `disabled` mientras envía, que roza
-  la regla de que un botón de guardar no se deshabilita.
 - **Las columnas `race`/`class` se pueden retirar en cuanto el autor confirme** que no queda
   ningún personaje escrito a mano antes del catálogo. Hoy siguen ahí a propósito.
 
@@ -648,22 +643,6 @@ en comentarios.
 **Cierra cuando** se quiten los dieciocho `JSON.stringify({})` y la unitaria que fija la forma
 vieja, en una tanda sola y con la suite de navegador en verde detrás — porque **esto solo lo caza
 el navegador**: supertest no pone la cabecera si no hay `.send()`.
-
-## P2 · `OWNER_DM` en un statblock se comporta como `DM_ONLY` (2026-09-04)
-
-`statblocks.service.ts:163-171` pasa `createdById: ""` a `canView`, y `canView:26-27` resuelve
-`OWNER_DM` comparando con el espectador → **siempre falso para un jugador**. El editor lo ofrece, o
-sea que la pantalla promete una frontera que el servidor no aplica. La fila **sí** tiene columna
-`createdById`; el arreglo es pasarla. Es la misma clase de mentira que ya se retiró con
-`SPECIFIC_PLAYERS` para las criaturas.
-
-**Ola 2 (2026-09-04): media ficha cerrada por el lado de la pantalla.** `EditorDeStatblock.tsx`
-**ya no ofrece `OWNER_DM`** (`NIVELES_DE_CRIATURA` es `PUBLIC`/`PLAYERS`/`DM_ONLY`), igual que se
-hizo con `SPECIFIC_PLAYERS`: una pantalla no puede prometer una frontera que el servidor no
-aplica. Las criaturas ya guardadas con ese nivel conservan su valor —`VisibilityChooser` lo pinta
-al final, marcado y no seleccionable—. **Lo que sigue abierto es el hueco de servidor**: pasar
-`fila.createdById` en vez de `""` en `puedeVer()`. El día que se haga, `OWNER_DM` vuelve a la
-lista del editor con una línea.
 
 ## P3 · Deuda menor abierta por el reseño de la mesa (2026-09-04)
 

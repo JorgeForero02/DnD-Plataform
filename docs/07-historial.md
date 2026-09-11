@@ -66,6 +66,10 @@ mutación. Texto y medición en
   revisión). `/rolls?sessionId=` se ensancha igual. **Revertir:** volver al filtro estricto por
   `sessionId`. Primera tarea ejecutada por subagente en esta sesión: implementador Sonnet, revisor
   Opus, una ronda de arreglo.
+- **Tanda 5 (a), pantalla** (un lote, dos fichas): el diálogo de crear personaje usa el catálogo
+  (raza, subraza, clase) y guarda claves —desbloquea la migración de `race`/`class`—, y
+  `OWNER_DM` en un statblock vuelve a valer (el servidor pasaba `createdById: ""`). Sus recorridos
+  de navegador se corren al final de la tanda. **Revertir:** una pieza cada uno.
 - **Tanda 4 (e)**: los enlaces del taller se piden una vez por campaña (`GET /campaigns/:id/links`,
   filtrado por `canView` en los dos extremos) en vez de una consulta por ficha. **Revertir:** el
   taller vuelve a `useLinks` por ficha; la ruta puede quedarse.

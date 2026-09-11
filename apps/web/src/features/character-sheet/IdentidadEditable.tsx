@@ -3,6 +3,7 @@ import { NumeroEditable, RadiosEditables, SelectorEditable } from "./EdicionEnSi
 import { useCatalog, useUpdateSheet } from "./hooks";
 import type { CharacterRow } from "./api";
 import { resumenDeAjustes } from "./formula";
+import { opcionesDeClase, opcionesDeRaza, opcionesDeSubraza } from "./opcionesDeCatalogo";
 import {
   explicacionSubclase,
   NOMBRE_CARACTERISTICA,
@@ -47,11 +48,9 @@ export function FichaEditable({
   const actualizar = useUpdateSheet(campaignId, characterId);
   const { data: catalogo } = useCatalog();
 
-  const razas = (catalogo?.races ?? []).map((r) => ({ valor: r.key, texto: r.name }));
-  const subrazas = (catalogo?.races.find((r) => r.key === character.raceKey)?.subraces ?? []).map(
-    (s) => ({ valor: s.key, texto: s.name }),
-  );
-  const clases = (catalogo?.classes ?? []).map((c) => ({ valor: c.key, texto: c.name }));
+  const razas = opcionesDeRaza(catalogo);
+  const subrazas = opcionesDeSubraza(catalogo, character.raceKey);
+  const clases = opcionesDeClase(catalogo);
 
   // Encargo A8 (2026-09-07) — el camino (subclase) de la clase actual, y a qué nivel se elige.
   // **Ninguna subclase se elige antes de `chosenAtLevel`**, así que el selector ni se pinta hasta

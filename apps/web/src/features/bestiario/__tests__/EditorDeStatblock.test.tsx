@@ -75,3 +75,23 @@ describe("el editor de criaturas y quién la ve (paso 1, tarea 12)", () => {
     expect(screen.getByRole("radio", { name: /Solo el DM/ })).toBeChecked();
   });
 });
+
+// Tarea 25 (cerrar fichas, tanda 2026-09-11) — `OWNER_DM` vuelve a ofrecerse: el servidor ya
+// compara con el `createdById` real de la fila en vez de `""`, así que «DM y creador» deja de
+// mentir.
+describe("OWNER_DM vuelve a la lista (tarea 25)", () => {
+  it("se ofrece «DM y creador», con su frase", () => {
+    montar(undefined);
+    expect(screen.getByRole("radio", { name: /DM y creador/ })).toBeInTheDocument();
+    expect(screen.getByText(/Tú y quien lo creó/)).toBeInTheDocument();
+  });
+
+  it("elegirlo lo manda al guardar", () => {
+    const { onGuardar } = montar({ ...OGRO, visibility: "DM_ONLY" });
+
+    fireEvent.click(screen.getByRole("radio", { name: /DM y creador/ }));
+    fireEvent.click(screen.getByRole("button", { name: /guardar/i }));
+
+    expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ visibility: "OWNER_DM" }));
+  });
+});

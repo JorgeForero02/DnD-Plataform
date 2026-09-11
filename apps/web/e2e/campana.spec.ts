@@ -278,8 +278,9 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeVisible();
   await page.getByLabel("Nombre").fill("Kaelith");
-  await page.getByLabel("Raza").fill("Tiefling");
-  await page.getByLabel("Clase").fill("Brujo");
+  // Tarea 24 (2026-09-11): raza y clase salen del mismo catálogo que la hoja, no de texto libre.
+  await page.getByLabel("Raza", { exact: true }).selectOption({ label: "Tiefling" });
+  await page.getByLabel("Clase", { exact: true }).selectOption({ label: "Brujo" });
   await page.getByLabel("Nivel").fill("3");
   await page.getByLabel("Biografía").fill("Pactó con un demonio para salvar a su aldea");
   await page.getByRole("radio", { name: /Público/ }).check();
@@ -298,10 +299,12 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(page.getByRole("heading", { name: "Kaelith" })).toBeVisible();
 
   // **Ya no hay diálogo.** La hoja se toca donde se lee, así que lo que se comprueba es que los
-  // campos en el sitio traen lo guardado: nivel y la historia, que antes ni se veían fuera del
-  // formulario. La raza y la clase de este personaje son texto libre heredado y no claves del
-  // catálogo, así que sus desplegables salen «sin elegir» a propósito.
+  // campos en el sitio traen lo guardado: nivel, la historia, y —desde la tarea 24— raza y clase,
+  // que el diálogo de creación manda como claves del catálogo (`PATCH .../sheet`) y esta misma
+  // hoja las enseña ya elegidas.
   await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("3");
+  await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("tiefling");
+  await expect(page.getByLabel("Clase", { exact: true })).toHaveValue("warlock");
   await expect(page.getByText("Pactó con un demonio para salvar a su aldea")).toBeVisible();
 
   // Guardar de verdad: subir el nivel a 4 saliendo del campo, y comprobar en la lista que el

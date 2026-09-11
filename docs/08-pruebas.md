@@ -81,7 +81,15 @@ subida de nivel, y **un fallo de producto de verdad**: el filete del panel de vi
 daba 2,78:1 porque compartía canal con la tinta sobre el pliego, y un borde se mide contra lo que
 hay detrás del panel (ahora `--vellum-border`)—; los nueve cerrados y verdes en dos pasadas
 seguidas del trío de ficheros. `mesa-en-estrecho` sigue siendo el `test.fail` declarado de
-D-CF-26.
+D-CF-26. **Y al cerrar la tanda de migraciones, la misma noche, son 153 en 44 ficheros**
+(`sobrecarga` y `objeto-sin-identificar` nuevos): 150 en verde, 1 saltado y 2 rojos —uno de
+maqueta en el spec nuevo (la frase «muy cargado» está a propósito en dos nodos, el aviso del
+panel y el resumen de la caja de velocidad; se acotó al `alert`) y el contraste de `hoja` en
+oscuro por carga, verde solo en la pasada siguiente—. **Trampa nueva de esa tanda:** con
+`reuseExistingServer`, Playwright dio por API **lo que hubiera en el puerto 3000** —era otro
+proyecto de esta máquina— y pintó 135 rojos falsos en los que `/api` devolvía HTML; la señal es
+un `Unexpected token '<'` en el primer formulario. La salida es `WORKTREE_SLOT=1` (puerto y base
+propios, `pnpm db:slot` antes), no matar el proceso ajeno.
 
 > **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
 > navegador» y son **20**; antes había dicho «116 e2e de API en 22 suites» olvidando

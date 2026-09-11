@@ -126,10 +126,12 @@ test("el DM enciende la variante, y un personaje con demasiado peso sale «muy c
   await llevarEnLaMochila(page, "Armadura de placas", 3);
 
   // El panel de carga dice «muy cargado», con el mismo texto que ya prueba
-  // `PanelCarga.test.tsx` a nivel de componente.
-  await expect(page.getByText(/muy cargado: la velocidad baja 20 pies/i)).toBeVisible({
-    timeout: 15_000,
-  });
+  // `PanelCarga.test.tsx` a nivel de componente. Acotado al `role="alert"` del panel: la caja
+  // de velocidad de la hoja repite la misma frase en su resumen de traza («30 velocidad base
+  // −20 muy cargado…»), y son dos nodos a propósito — lo midió la tanda del 2026-09-11.
+  await expect(
+    page.getByRole("alert").filter({ hasText: /muy cargado: la velocidad baja 20 pies/i }),
+  ).toBeVisible({ timeout: 15_000 });
 
   // Y la velocidad de la hoja lo confirma: 30 pies de base menos 20 son 10, no 30.
   const cajaDeVelocidad = page.getByText("Caminar (pies)", { exact: true }).locator("..");

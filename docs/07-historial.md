@@ -60,6 +60,13 @@ tablas colgando» en 05 cuando arrastra `Encounter` desde 2.5.2; dos citas de l�
 05 (el código dice que no lo son); y en 09, que una fecha no se puede quitar y que el agotamiento
 no automatiza nada. Corregidas con la fecha. **Revertir:** no procede; son correcciones de hechos.
 
+## La tanda de Playwright que cierra las migraciones (2026-09-11, noche)
+
+153 recorridos en 44 ficheros en `WORKTREE_SLOT=1`: 150 verdes, 1 saltado, 2 rojos cerrados en la
+pasada siguiente (un localizador ambiguo en `sobrecarga` y un rojo por carga en `hoja`). Antes,
+135 rojos falsos porque el puerto 3000 lo tenía otro proyecto de esta máquina y Playwright lo
+reutilizó como API; declarado en `08-pruebas.md`. **Revertir:** no procede.
+
 ## La tanda de migraciones de D-CF-14, un commit por migración (2026-09-11)
 
 Sobre `main`, después de fusionar `ficha/tanda-2-a-5`. Cada migración es SQL escrito a mano con su

@@ -122,6 +122,8 @@ export const NOMBRE_PROCEDENCIA: Record<ProcedenciaObjeto, string> = {
 
 /** La etiqueta que ve quien no es el DM junto al nombre de un objeto sin identificar. */
 export const ETIQUETA_SIN_IDENTIFICAR = "Sin identificar";
+/** HP-8: el estado de un objeto sintonizado, junto a su nombre (fila y detalle). */
+export const ETIQUETA_SINTONIZADO = "Sintonizado";
 
 /**
  * La explicación bajo el interruptor del DM — por qué existe el control, no solo su nombre.

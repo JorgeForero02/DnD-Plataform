@@ -148,14 +148,15 @@ propósito**: nada de esto bloqueaba una tarea y todo se anotó en el ledger par
 pregunta 1 del §10 de la spec del 2026-09-06 —qué pestaña abre por defecto— **no estaba aquí**:
 vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota al pie.
 
-> **HP-3 a HP-7 se cerraron el 2026-09-12 en la ronda de cierre del plan** y están, enteras, en
+> **HP-3 a HP-7 se cerraron el 2026-09-12 en la ronda de cierre del plan, y HP-1 y HP-8 en la
+> ronda de cierre 2 del mismo día**, con la decisión del autor (D-CF-45, D-CF-46). Las siete,
+> enteras, en
 > [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
-> Quedan aquí las dos que **decide el autor**: HP-1 y HP-8.
+> Queda aquí la que abrió HP-8 al mirar qué hace hoy la sintonización: HP-9, **decisión del autor**.
 
 | | Qué | Dónde y qué costaría |
 |---|---|---|
-| **HP-1** | **El nombre se pinta dos veces en el cajón del DM**: el título del diálogo (`features/sessions/elenco/MandosDeCombatiente.tsx:165`, `title={nombre}`) y la `Cabecera` en disposición «mesa» (`features/character-sheet/Cabecera.tsx:51-53`), que lo pinta porque la mesa no tiene `PageHeader` | Decidir cuál sobra: o el diálogo pasa un `sinNombre` a la hoja, o el título del cajón deja de ser el nombre. Una línea y su RTL |
-| **HP-8** | **El orden de los botones de la fila no es el del prototipo**: la pantalla 20 del 09-06 ponía «sintonizar» ANTES de la acción principal, y la fila nunca lo hizo —`features/inventory/accionesDeObjeto.ts` pinta principal · sintonizar · gastar · soltar, y el detalle hereda ese orden por ser la misma lista—. Nadie lo decidió: la fila nació así en 2B y el prototipo es de revisión obligatoria | Decidir si el prototipo pierde (la acción principal primero es lo que hoy se usa en la mesa) o se reordena la lista; en cualquier caso, escribirlo en ese fichero. Una línea de código y la prueba de orden |
+| **HP-9** | **Objetos mágicos con efecto — decisión del autor pendiente.** Medido el 2026-09-12: la sintonización es hoy **solo un marcador de estado**. `apps/api/src/inventory/inventory.service.ts:158` la acepta solo sobre un objeto equipado, `:172` la quita al desequipar y `:1081-1096` aplica `MAX_ATTUNED_ITEMS` (tres) con el mensaje que nombra los tres; el motor de reglas (`apps/api/src/rules/`) **no lee `attuned` en ningún sitio** —un objeto sintonizado da los mismos números que sin sintonizar—; no hay requisito de descanso corto (el cambio es instantáneo); no hay ruptura a las 24 h ni a los 100 pies; y el catálogo del SRD tiene **0 objetos con `requiresAttunement: true`** (`rules/catalog/items-srd.ts`): solo los objetos que crea el DM lo llevan. No es del paso 3 (conjuros) | Una tanda de objetos mágicos: catálogo SRD de objetos mágicos + efectos de objeto en el motor (+N, resistencias) + la puerta del descanso corto para sintonizar (SRD 5.1 «Attunement»). **La abre el autor**: ningún agente la coge por su cuenta |
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 

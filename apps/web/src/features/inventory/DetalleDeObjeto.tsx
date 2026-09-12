@@ -6,7 +6,12 @@ import { EmptyState } from "../../ui/EmptyState";
 import { datoDeObjeto } from "./FilaObjeto";
 import { IconoSinIdentificar } from "./iconos";
 import { formatearKg } from "./peso";
-import { ETIQUETA_SIN_IDENTIFICAR, NOMBRE_ZONA, subtituloDeObjeto } from "./vocabulario";
+import {
+  ETIQUETA_SIN_IDENTIFICAR,
+  ETIQUETA_SINTONIZADO,
+  NOMBRE_ZONA,
+  subtituloDeObjeto,
+} from "./vocabulario";
 
 // Tarea 9 (spec 2026-09-11, «la hoja a página completa») — el panel de detalle de la pestaña
 // Objetos a página: lo que la fila de una línea no puede enseñar (la descripción, el peso por
@@ -103,6 +108,12 @@ function Contenido({
         <h3 className="font-title text-chrome-lg text-text">
           {item.name}
           {cantidad}
+          {/* HP-8: el mismo distintivo que la fila, junto al nombre. */}
+          {row.attuned && (
+            <span className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text">
+              {ETIQUETA_SINTONIZADO}
+            </span>
+          )}
         </h3>
         <p className="font-chrome text-chrome-xs text-muted">
           {subtituloDeObjeto(
@@ -135,10 +146,9 @@ function Contenido({
         </dd>
       </dl>
 
+      {/* HP-8: el estado ya lo dice el distintivo del título; aquí solo queda el requisito. */}
       {item.requiresAttunement && (
-        <p className="font-chrome text-chrome-xs text-text">
-          Requiere sintonización{row.attuned ? " · sintonizado" : ""}
-        </p>
+        <p className="font-chrome text-chrome-xs text-text">Requiere sintonización</p>
       )}
 
       {sinIdentificar && (

@@ -23,16 +23,32 @@ describe("accionesDeObjeto", () => {
       onSintonizar: vi.fn(),
     };
     const acciones = accionesDeObjeto(fila({ attuned: true }), manos);
+    // HP-8 (2026-09-12, opción C del autor): el rótulo del objeto ya sintonizado pasa de
+    // «Sintonizado» a «Desintonizar». **Es un cambio declarado del rótulo, no un aflojamiento**:
+    // el estado lo pinta ahora un distintivo junto al nombre (`FilaObjeto`, `DetalleDeObjeto`) y
+    // el botón dice lo que hace, como su `aria-label` decía desde el principio. El orden no cambia.
     expect(acciones.map((a) => [a.id, a.rotulo])).toEqual([
       ["principal", "Equipar"],
-      ["sintonizar", "Sintonizado"],
+      ["sintonizar", "Desintonizar"],
       ["gastar", "Gastar"],
       ["soltar", "Soltar"],
     ]);
     expect(acciones[1].pressed).toBe(true);
+    expect(acciones[1].ariaLabel).toBe("Desintonizar Daga");
     expect(acciones[3].ariaLabel).toBe("Soltar Daga");
     acciones[0].ejecutar();
     expect(manos.onAccionPrincipal).toHaveBeenCalled();
+  });
+
+  it("sin sintonizar, el botón dice «Sintonizar» y no va pulsado", () => {
+    const acciones = accionesDeObjeto(fila({ attuned: false }), {
+      onAccionPrincipal: vi.fn(),
+      onSoltar: vi.fn(),
+      onSintonizar: vi.fn(),
+    });
+    expect(acciones[1].rotulo).toBe("Sintonizar");
+    expect(acciones[1].pressed).toBe(false);
+    expect(acciones[1].ariaLabel).toBe("Sintonizar con Daga");
   });
 
   it("sin manos opcionales, solo principal y soltar", () => {

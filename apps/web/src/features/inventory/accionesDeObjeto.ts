@@ -1,6 +1,13 @@
 import type { InventoryRow } from "./api";
 import { NOMBRE_ACCION_ZONA } from "./vocabulario";
 
+// HP-8 (2026-09-12, opción C del autor). La pantalla 20 del prototipo (09-06) ponía la
+// sintonización ANTES de la acción principal; lo que quería enseñar era el **estado** del objeto
+// junto a su nombre, no un orden de botones. Ese estado lo pinta ahora un distintivo
+// «Sintonizado» junto al nombre (`FilaObjeto`, `DetalleDeObjeto`), y **la acción principal sigue
+// primero**, que es lo que la mesa usa: principal · sintonizar · gastar · soltar. Para no decir
+// «Sintonizado» dos veces, el botón dice lo que hace: «Sintonizar» o «Desintonizar».
+
 export interface AccionDeObjeto {
   id: "principal" | "sintonizar" | "gastar" | "soltar";
   rotulo: string; // lo que se lee en el botón
@@ -33,7 +40,7 @@ export function accionesDeObjeto(row: InventoryRow, manos: ManosDeObjeto): Accio
   if (manos.onSintonizar) {
     acciones.push({
       id: "sintonizar",
-      rotulo: row.attuned ? "Sintonizado" : "Sintonizar",
+      rotulo: row.attuned ? "Desintonizar" : "Sintonizar",
       ariaLabel: row.attuned ? `Desintonizar ${item.name}` : `Sintonizar con ${item.name}`,
       variant: row.attuned ? "secondary" : "ghost",
       pressed: row.attuned,

@@ -8,6 +8,7 @@ import { IconoObjeto, IconoSinIdentificar } from "./iconos";
 import {
   danioCorto,
   ETIQUETA_SIN_IDENTIFICAR,
+  ETIQUETA_SINTONIZADO,
   EXPLICACION_SIN_IDENTIFICAR,
   subtituloDeObjeto,
 } from "./vocabulario";
@@ -158,6 +159,13 @@ export function FilaObjeto({
               item.name
             )}
             {cantidad}
+            {/* HP-8: el ESTADO de sintonización va junto al nombre (pantalla 20 del prototipo),
+                con el mismo patrón que la marca de abajo; el botón del final dice lo que hace. */}
+            {row.attuned && (
+              <span className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text">
+                {ETIQUETA_SINTONIZADO}
+              </span>
+            )}
             {/* El jugador ve la etiqueta dibujada junto al alias que ya le mandó el servidor
                 (`item.name` ya viene sustituido); el DM la ve además del nombre real, porque el
                 interruptor de abajo ya se lo dice — no hace falta repetirla dos veces para él. */}

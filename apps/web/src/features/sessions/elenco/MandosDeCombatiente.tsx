@@ -159,11 +159,14 @@ export function MandosDeCombatiente({
         enCombate={enCombate}
         onCerrar={() => setPanel(null)}
       />
+      {/* HP-1 (2026-09-12, opción A del autor): el cajón se llama «Su hoja», simétrico con el
+          «Tu hoja» del jugador (`MesaDeSesion.tsx`). El nombre y el descriptor los pinta UNA
+          vez la `Cabecera` de la hoja en disposición «mesa»; antes el título los repetía. */}
       <Dialog
         open={panel === "hoja"}
         onClose={() => setPanel(null)}
-        title={nombre}
-        subtitulo="Su hoja, sin salir de la mesa."
+        title="Su hoja"
+        subtitulo="Sin salir de la mesa."
         size="xl"
       >
         {panel === "hoja" && (

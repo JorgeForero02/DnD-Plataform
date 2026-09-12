@@ -121,6 +121,20 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   y su texto original, en
   [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md);
   HP-1 y HP-8 siguen en 06 porque las decide el autor. **Revertir:** `git revert` del commit.
+- **Ronda de cierre 2 — HP-1 y HP-8, con la decisión del autor (2026-09-12).** El cajón de la
+  hoja que abre el DM desde el elenco se llama **«Su hoja»** («Sin salir de la mesa.»), simétrico
+  con el «Tu hoja» del jugador; el nombre y el descriptor los pinta una sola vez la `Cabecera`
+  en disposición «mesa» (HP-1, D-CF-46). Y la sintonización se enseña como **estado junto al
+  nombre** —distintivo «Sintonizado» en `FilaObjeto` y `DetalleDeObjeto`, mismo patrón que «Sin
+  identificar»—, que es lo que la pantalla 20 del prototipo quería decir; la lista de acciones
+  conserva su orden, principal primero, y el botón del objeto sintonizado dice lo que hace,
+  «Desintonizar», para no repetir el estado (HP-8, D-CF-45; SRD 5.1 «Attunement»). Al medirlo se
+  vio que la sintonización es hoy solo un marcador —el motor no lee `attuned`, no hay descanso
+  corto, 0 objetos del SRD la piden— y quedó escrito como **HP-9** en 06, decisión del autor.
+  Localizador e2e cambiado: `sesion.spec.ts`, el cajón por «Su hoja». Las dos fichas, con su texto
+  original, en
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  **Revertir:** `git revert` del commit.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 

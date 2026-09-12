@@ -370,7 +370,8 @@ test("la hoja dentro del cajón: la tira fija no se come su cuerpo, y la bolsa c
   // 2 · El botón de una moneda, medido contra SU tarjeta, en la columna estrecha del cajón. Las
   //     monedas son de la pestaña «Objetos» de la hoja (Tarea 7, spec 2026-09-11), y la pestaña
   //     se abre DENTRO del cajón, que tiene su propia tira.
-  const cajon = page.getByRole("dialog", { name: "Borin Barbaférrea" });
+  // HP-1 (2026-09-12): el cajón del DM se llama «Su hoja», no el nombre del personaje.
+  const cajon = page.getByRole("dialog", { name: "Su hoja" });
   await cajon.getByRole("tab", { name: "Objetos" }).click();
   await expect(cajon.getByRole("tab", { name: "Objetos", selected: true })).toBeVisible();
   const boton = cajon.getByRole("button", { name: "Aplicar cambio de cobre" }).first();

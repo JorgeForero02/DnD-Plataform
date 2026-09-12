@@ -61,6 +61,39 @@ describe("DetalleDeObjeto", () => {
     expect(within(panel).queryByText("CARRIED")).toBeNull();
   });
 
+  // HP-8 (2026-09-12, opción C): el ESTADO «Sintonizado» va junto al nombre, como en la pantalla
+  // 20 del prototipo; el botón dice lo que hace («Desintonizar») y no repite el estado.
+  it("sintonizado: el distintivo va junto al nombre y el botón dice «Desintonizar»", () => {
+    const manos = { onAccionPrincipal: vi.fn(), onSoltar: vi.fn(), onSintonizar: vi.fn() };
+    const row = fila({
+      attuned: true,
+      location: "EQUIPPED",
+      slot: "MAIN_HAND",
+      item: { ...espadaMagica, requiresAttunement: true },
+    });
+    render(<DetalleDeObjeto row={row} acciones={accionesDeObjeto(row, manos)} esDM={false} />);
+    const panel = screen.getByRole("complementary", { name: "detalle del objeto" });
+    const titulo = within(panel).getByRole("heading", { level: 3 });
+    expect(within(titulo).getByText("Sintonizado")).toBeInTheDocument();
+    const boton = within(panel).getByRole("button", { name: "Desintonizar Espada larga +1" });
+    expect(boton).toHaveAttribute("aria-pressed", "true");
+    expect(boton).toHaveTextContent("Desintonizar");
+    // «Requiere sintonización» sigue, pero sin el « · sintonizado» de antes: lo dice el distintivo.
+    expect(within(panel).getByText("Requiere sintonización")).toBeInTheDocument();
+    expect(within(panel).getAllByText(/sintonizado/i)).toHaveLength(1);
+  });
+
+  it("sin sintonizar no hay distintivo, y el botón dice «Sintonizar»", () => {
+    const manos = { onAccionPrincipal: vi.fn(), onSoltar: vi.fn(), onSintonizar: vi.fn() };
+    const row = fila({ item: { ...espadaMagica, requiresAttunement: true } });
+    render(<DetalleDeObjeto row={row} acciones={accionesDeObjeto(row, manos)} esDM={false} />);
+    const panel = screen.getByRole("complementary", { name: "detalle del objeto" });
+    expect(within(panel).queryByText("Sintonizado")).toBeNull();
+    expect(
+      within(panel).getByRole("button", { name: "Sintonizar con Espada larga +1" }),
+    ).toHaveTextContent("Sintonizar");
+  });
+
   it("con dos unidades enseña el peso unitario y el total, y el dato en cifras", () => {
     const row = fila({ quantity: 2 });
     render(

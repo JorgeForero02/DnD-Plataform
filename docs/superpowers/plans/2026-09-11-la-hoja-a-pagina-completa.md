@@ -20,7 +20,7 @@
 - **Conjuros solo se pinta si el personaje lanza** (`spellSlots.length > 0` o rasgo racial de conjuro). Las demás pestañas se pintan siempre, con su `EmptyState`.
 - **Pestaña activa en la URL** (`?pestana=objetos`) en `"pagina"`; en `"mesa"` siempre abre en Números. Sin `localStorage`.
 - **Ninguna prueba se borra ni se afloja**: las de `HojaCalculada.test.tsx` se mueven con su tarjeta.
-- **Lo que solo se ve maquetado se mide en el navegador** (`boundingBox`), y toda pantalla nueva pasa por `tokens-contrast.spec.ts` y `teclado.spec.ts`.
+- **Lo que solo se ve maquetado se mide en el navegador** (`boundingBox`), riguroso sobre las secciones nuevas y **acotado a ellas**: se corren los ficheros de Playwright que se tocan, uno a uno, nunca la suite entera por este plan (decisión del autor, 2026-09-11).
 - **Sin imagen de objeto, sin maniquí, sin trueque, sin conjuros reales** (paso 3). **«Dar a…» queda fuera de este plan** (desviación declarada de la spec del 09-06): `DarObjeto.tsx` es un componente de la sesión (necesita `miPersonajeId` y contexto de mesa) y la hoja a página completa no tiene sesión; entra cuando el botín tenga entrega fuera de la mesa.
 - **La fila de objeto NO pasa a un menú «…»**: ya enseña sus acciones en línea y funciona; el menú escondería lo que hoy se ve. La lista única de acciones (`accionesDeObjeto.ts`) alimenta la fila y el detalle.
 - **Un implementador por árbol.** Tasks 2–11 tocan `character-sheet/` e `inventory/`: **nunca dos a la vez**. Task 1 (API) puede ir en paralelo con Task 2 si va en otro worktree.
@@ -53,7 +53,7 @@
 | `apps/web/src/features/inventory/FiltrosDeObjetos.tsx` (nuevo) | `FilterChip` × (dónde · qué · sintonizados) + buscar |
 | `apps/web/src/features/inventory/PaginaDeInventario.tsx` (mod) | `disposicion`; en `"pagina"` dos columnas: lista con filtros \| detalle |
 | `apps/web/src/pages/CharacterDetailPage.tsx`, `features/sessions/MesaDeSesion.tsx`, `features/sessions/elenco/MandosDeCombatiente.tsx` (mod) | pasan `disposicion` |
-| `apps/web/e2e/hoja-pestanas.spec.ts` (nuevo), `e2e/tokens-contrast.spec.ts`, `e2e/teclado.spec.ts` (mod) | medición en navegador |
+| `apps/web/e2e/hoja-pestanas.spec.ts` (nuevo), `e2e/tokens-contrast.spec.ts`, `e2e/hoja.spec.ts` (mod) | medición en navegador, por pestaña |
 | `docs/01-arquitectura.md`, `05-datos.md`, `06-pendientes.md`, `07-historial.md`, `08-pruebas.md`, `decisiones.md` | documentación en el mismo commit |
 
 ---
@@ -890,68 +890,108 @@ it("a página: dos columnas, la primera fila queda seleccionada y el detalle la 
 
 ---
 
-### Task 10: Medir en el navegador
+### Task 10: Medir en el navegador — riguroso en lo nuevo, acotado a lo nuevo
+
+**Decisión del autor (2026-09-11):** e2e **rigurosos sobre las secciones nuevas** (cada pestaña y
+Objetos con detalle), componentes con RTL, y **no** se corre la suite entera de Playwright por esto:
+solo los tres ficheros que se tocan, uno a uno.
 
 **Files:**
 - Create: `apps/web/e2e/hoja-pestanas.spec.ts`
-- Modify: `apps/web/e2e/tokens-contrast.spec.ts` (la hoja con pestañas: visita `?pestana=objetos` y `?pestana=estado` además de la hoja por defecto, en los tres temas), `apps/web/e2e/teclado.spec.ts` (el recorrido pasa por las pestañas con `Tab`/`Enter`/flechas), `apps/web/e2e/hoja.spec.ts` (los recorridos existentes que buscan «Puntos de golpe» o el inventario abren antes su pestaña — **sin quitar ninguna aserción**)
+- Modify: `apps/web/e2e/tokens-contrast.spec.ts` (la hoja se visita también con `?pestana=objetos` y `?pestana=estado`, en los tres temas), `apps/web/e2e/hoja.spec.ts` (los recorridos que buscan «Puntos de golpe» o el inventario abren antes su pestaña — **sin quitar ninguna aserción**)
 
-**Interfaces:** ninguna nueva. Usa los helpers de arranque (`registrar`, `crearCampana`, `crearPersonaje`…) que `hoja.spec.ts` ya usa; léelos en `e2e/helpers/`.
+**Interfaces:** ninguna nueva. Usa los helpers de arranque que `hoja.spec.ts` ya usa (léelos en `e2e/helpers/`); el personaje de prueba lleva clase con espacios de conjuro (mago) y dos objetos, uno con `requiresAttunement` y una armadura.
 
-- [ ] **Step 1: Escribir el spec**
+- [ ] **Step 1: Escribir el spec, un `test` por pestaña**
 
 ```ts
 import { expect, test } from "@playwright/test";
-// helpers como en hoja.spec.ts
+// helpers como en hoja.spec.ts: registrar, crearCampana, crearPersonaje(mago), añadir objetos
 
-test("a 1280 las tres columnas de Números caben sin scroll horizontal y el detalle de Objetos queda a la derecha de la lista", async ({ page }) => {
-  // arranque: usuario, campaña, personaje con clase y dos objetos (como hoja.spec.ts:127)
+const PESTANAS: Array<{ id: string; rotulo: string; dentro: string[]; fuera: string[] }> = [
+  { id: "numeros", rotulo: "Números", dentro: ["Características", "Salvaciones", "Habilidades"], fuera: ["Puntos de golpe", "Rasgos y aptitudes"] },
+  { id: "objetos", rotulo: "Objetos", dentro: ["Equipado", "Encima", "Guardado"], fuera: ["Salvaciones"] },
+  { id: "ataques", rotulo: "Ataques", dentro: ["Ataques y lanzamiento", "Competencias con armas"], fuera: ["Habilidades"] },
+  { id: "recursos", rotulo: "Recursos", dentro: ["Puntos de golpe", "Dados de golpe", "Salvaciones de muerte", "Recursos y descansos"], fuera: ["Salvaciones"] },
+  { id: "estado", rotulo: "Estado", dentro: ["Modificadores temporales", "Condiciones activas", "Clase de armadura", "Velocidad y sentidos"], fuera: ["Habilidades"] },
+  { id: "rasgos", rotulo: "Rasgos", dentro: ["Rasgos y aptitudes", "Ficha", "Personalidad"], fuera: ["Salvaciones"] },
+  { id: "conjuros", rotulo: "Conjuros", dentro: ["Espacios de conjuro", "Los conjuros llegan con el paso 3"], fuera: ["Salvaciones"] },
+];
+
+for (const p of PESTANAS) {
+  test(`pestaña ${p.rotulo}: sus secciones están, las ajenas no, la URL la recuerda y los cinco números siguen arriba`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`/campaigns/${campaignId}/characters/${characterId}`);
+    await page.getByRole("tab", { name: p.rotulo }).click();
+    await expect(page).toHaveURL(new RegExp(`pestana=${p.id}`));
+    for (const t of p.dentro) await expect(page.getByText(t, { exact: false }).first()).toBeVisible();
+    for (const t of p.fuera) await expect(page.getByText(t, { exact: true })).toHaveCount(0);
+    const resumen = page.getByRole("region", { name: "resumen de combate" });
+    await expect(resumen).toBeVisible();
+    for (const n of ["CA", "Inic.", "PG", "Comp."]) await expect(resumen.getByText(n, { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280);
+    await page.reload();
+    await expect(page.getByRole("tab", { name: p.rotulo, selected: true })).toBeVisible();
+  });
+}
+
+test("Números a 1280: las tres columnas van lado a lado", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(`/campaigns/${campaignId}/characters/${characterId}`);
-  const numeros = page.locator('[data-pestana="numeros"]');
-  await expect(numeros).toBeVisible();
-  const carac = numeros.getByText("Características").locator("xpath=ancestor::section[1]");
-  const habil = numeros.getByText("Habilidades").locator("xpath=ancestor::section[1]");
+  await page.goto(`/campaigns/${campaignId}/characters/${characterId}?pestana=numeros`);
+  const carac = page.getByText("Características", { exact: true }).locator("xpath=ancestor::section[1]");
+  const habil = page.getByText("Habilidades", { exact: true }).locator("xpath=ancestor::section[1]");
   const a = await carac.boundingBox(); const b = await habil.boundingBox();
-  expect(a && b && b.x > a.x + a.width - 1).toBeTruthy(); // lado a lado, no apiladas
-  const anchoDoc = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(anchoDoc).toBeLessThanOrEqual(1280);
+  expect(a && b && b.x > a.x + a.width - 1).toBeTruthy();
+});
 
-  await page.getByRole("tab", { name: "Objetos" }).click();
-  await expect(page).toHaveURL(/pestana=objetos/);
+test("Objetos a 1280: lista a la izquierda, detalle a la derecha, filtros que filtran, y equipar desde el detalle cambia la CA de arriba", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/campaigns/${campaignId}/characters/${characterId}?pestana=objetos`);
   const lista = page.getByRole("region", { name: "inventario" });
   const detalle = page.getByRole("complementary", { name: "detalle del objeto" });
   const l = await lista.boundingBox(); const d = await detalle.boundingBox();
   expect(l && d && d.x >= l.x + l.width - 1).toBeTruthy();
+
+  // Filtro «qué es»: solo armaduras → la daga desaparece de la lista, la armadura sigue.
+  await page.getByRole("button", { name: "Armadura" }).click();
+  await expect(lista.getByText("Daga")).toHaveCount(0);
+  await expect(lista.getByText("Armadura de cuero")).toBeVisible();
+  await page.getByRole("button", { name: "Armadura" }).click();
+
+  // Seleccionar y equipar desde el detalle: la CA de la cabecera cambia delante de quien lo hace.
+  const resumen = page.getByRole("region", { name: "resumen de combate" });
+  const caAntes = await resumen.getByLabel("CA").textContent();
+  await lista.getByRole("button", { name: /ver detalle de Armadura de cuero/i }).click();
+  await expect(detalle.getByText("Armadura de cuero")).toBeVisible();
+  await detalle.getByRole("button", { name: "Equipar" }).click();
+  await expect(resumen.getByLabel("CA")).not.toHaveText(caAntes ?? "");
+
+  // Buscar por texto sin acentos.
+  await page.getByRole("searchbox", { name: "Buscar objeto" }).fill("pocion");
+  await expect(lista.getByText("Poción de curación")).toBeVisible();
+  await expect(lista.getByText("Daga")).toHaveCount(0);
 });
 
-test("en la mesa (390×844) la tira de pestañas y la fila de objeto no se cortan", async ({ page }) => {
+test("en la mesa (390×844) la tira de pestañas y la fila de objeto no se cortan, y no hay panel de detalle", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  // abrir la sesión y el cajón «Tu hoja» como hace mesa-mide / tirada.spec.ts
+  // abrir la sesión y el cajón «Tu hoja» como hace tirada.spec.ts
   const tablist = page.getByRole("tablist");
   const t = await tablist.boundingBox();
   expect(t && t.x + t.width <= 390).toBeTruthy();
   await page.getByRole("tab", { name: "Objetos" }).click();
-  const fila = page.getByRole("region", { name: "inventario" }).locator("li").first();
-  const f = await fila.boundingBox();
+  const f = await page.getByRole("region", { name: "inventario" }).locator("li").first().boundingBox();
   expect(f && f.x + f.width <= 390).toBeTruthy();
   await expect(page.getByRole("complementary", { name: "detalle del objeto" })).toHaveCount(0);
 });
-
-test("recargar con ?pestana=rasgos abre Rasgos, y los cinco números siguen arriba", async ({ page }) => {
-  await page.goto(`/campaigns/${campaignId}/characters/${characterId}?pestana=rasgos`);
-  await expect(page.getByRole("tab", { name: "Rasgos", selected: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "resumen de combate" })).toBeVisible();
-});
 ```
 
-- [ ] **Step 2: Correr solo este fichero** — `pnpm --filter @dnd/web e2e -- e2e/hoja-pestanas.spec.ts` → 3 passed. Si falla por maquetación (las columnas se estrangulan a 1280), el arreglo es CSS (`minmax(0,1fr)` en las columnas), no aflojar la medida.
+Ajusta los rótulos exactos («Equipado/Encima/Guardado», «Armadura», «Buscar objeto», el aria-label de «ver detalle de…», cómo `ValorDerivado` expone la CA) a lo que `vocabulario.ts`, `Traza.tsx` y Tasks 8–9 pinten de verdad; si la CA de la cabecera no cambia con la armadura del fixture, usa un escudo. **Ninguna aserción se afloja para que pase.**
 
-- [ ] **Step 3: Ajustar `hoja.spec.ts`, `tokens-contrast.spec.ts`, `teclado.spec.ts`** y correr los tres: `pnpm --filter @dnd/web e2e -- e2e/hoja.spec.ts e2e/tokens-contrast.spec.ts e2e/teclado.spec.ts` → todo passed, con las líneas de resumen pegadas en el informe.
+- [ ] **Step 2: Correr solo este fichero** — `pnpm --filter @dnd/web e2e -- e2e/hoja-pestanas.spec.ts` → 10 passed. Si falla por maquetación (columnas estranguladas), el arreglo es CSS (`minmax(0,1fr)`), no la medida.
 
-- [ ] **Step 4: Suite entera** — `pnpm --filter @dnd/web e2e` (con `WORKTREE_SLOT=1` si `:3000` está ocupado) → resumen pegado. Los `test.fail` de `mesa-en-estrecho.spec.ts` siguen siendo `test.fail`.
+- [ ] **Step 3: Ajustar `hoja.spec.ts` y `tokens-contrast.spec.ts` y correrlos uno a uno** — `pnpm --filter @dnd/web e2e -- e2e/hoja.spec.ts` y `… e2e/tokens-contrast.spec.ts` → passed, con la línea de resumen de cada uno en el informe. **No se corre la suite entera**: la decisión del autor es medir lo nuevo, no volver a medir la casa.
 
-- [ ] **Step 5: Commit** — `"test(web): the tabbed sheet measured in the browser at 1280 and 390, in three themes and by keyboard"`.
+- [ ] **Step 4: Commit** — `"test(web): the tabbed sheet measured tab by tab in the browser, at 1280 and 390"`.
 
 ---
 
@@ -967,6 +1007,6 @@ test("recargar con ?pestana=rasgos abre Rasgos, y los cinco números siguen arri
 
 ## Self-review
 
-- **Cobertura de la spec:** §3 enfoque → Tasks 3–7; §4 cabecera → Task 3 (con la desviación «nombre solo en mesa», justificada por `PageHeader`); §5 siete pestañas, Números por defecto, Conjuros condicional, URL → Tasks 4–7; §6 fila + detalle + lista única + filtros → Tasks 8–9 («Dar a…» y menú «…» fuera, declarado en Global Constraints); §7 permisos → nada nuevo, `puedeEditar` fluye por `PropsDePestana`; §8 pruebas → RTL en cada task, navegador en Task 10; ficha del token → Task 1; §11 decisiones → Task 11.
+- **Cobertura de la spec:** §3 enfoque → Tasks 3–7; §4 cabecera → Task 3 (con la desviación «nombre solo en mesa», justificada por `PageHeader`); §5 siete pestañas, Números por defecto, Conjuros condicional, URL → Tasks 4–7; §6 fila + detalle + lista única + filtros → Tasks 8–9 («Dar a…» y menú «…» fuera, declarado en Global Constraints); §7 permisos → nada nuevo, `puedeEditar` fluye por `PropsDePestana`; §8 pruebas → RTL en cada task, navegador por pestaña en Task 10 (sin suite entera, decisión del autor); ficha del token → Task 1; §11 decisiones → Task 11.
 - **Placeholders:** los bloques «el bloque de salvaciones de HojaCalculada, tal cual» son mudanzas literales de código que ya existe en `HojaCalculada.tsx:200-260`, con su línea citada; no son huecos.
 - **Tipos:** `PropsDePestana`, `Disposicion`, `PestanaId`, `PESTANAS_DE_LA_HOJA` definidos en Task 3/7 y usados igual en 4–9; `accionesDeObjeto`/`ManosDeObjeto`/`AccionDeObjeto` definidos en Task 8 y consumidos en 9; `datoDeObjeto` se exporta en Task 9 desde `FilaObjeto.tsx`.

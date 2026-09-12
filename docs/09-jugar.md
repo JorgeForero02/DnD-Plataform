@@ -29,6 +29,14 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
      días si no eliges otra cosa.
 4. **Prepara tus monstruos**, si los vas a necesitar. La pestaña «Bestiario» trae criaturas del
    manual básico y admite las tuyas.
+5. **Pega la sala del tablero, si usáis mapa.** En Ajustes → «Sala del tablero», pega la
+   dirección de vuestra partida en PlanarAlly (`https://tablero.supportive.pro/game/…`, la que
+   ves al abrir o crear vuestra partida allí). Con la dirección guardada, la mesa enmarca el
+   tablero en el centro y el registro en vivo pasa a un cajón inferior plegable, con un contador
+   de cuántas líneas nuevas llegaron mientras estaba plegado (D-CF-63). **Cada jugador inicia
+   sesión en PlanarAlly dentro de ese marco**, con su propia cuenta, una vez por navegador — el
+   marco lo dice siempre, debajo del mapa. Sin sala guardada, la mesa es la de siempre: el hilo
+   ocupa el centro y no hay marco.
 
 ## Los cinco niveles de visibilidad
 

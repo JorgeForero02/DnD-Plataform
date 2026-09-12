@@ -7,6 +7,7 @@ import { TiradasPendientes } from "../../roll-requests/TiradasPendientes";
 import { selloDeSuceso } from "../linea-de-log";
 import * as sessionsApi from "../api";
 import * as logApi from "../log-api";
+import * as campaignsApi from "../../campaigns/api";
 import * as members from "../../campaigns/members";
 import * as charactersApi from "../../characters/api";
 import * as sheetApi from "../../character-sheet/api";
@@ -380,6 +381,46 @@ describe("el registro en vivo", () => {
 
     await screen.findByRole("region", { name: "Registro de la sesión" });
     expect(screen.queryByLabelText("Ver el registro como")).not.toBeInTheDocument();
+  });
+});
+
+describe("el tablero enmarcado (C1 bis)", () => {
+  it("con boardRoomUrl, la mesa monta el marco y el registro en su cajón", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "La costa de la espada",
+      description: null,
+      ownerId: "u-dm",
+      createdAt: "2026-09-01",
+      boardRoomUrl: "https://tablero.example/game/la-mesa",
+    } as never);
+
+    montar();
+
+    expect(await screen.findByTitle("Sala del tablero")).toHaveAttribute(
+      "src",
+      "https://tablero.example/game/la-mesa",
+    );
+    expect(screen.getByRole("region", { name: "Registro en vivo" })).toBeInTheDocument();
+    // El hilo sigue montado, dentro del cajón: no se pierde por enmarcar el tablero.
+    expect(screen.getByRole("region", { name: "Registro de la sesión" })).toBeInTheDocument();
+  });
+
+  it("sin boardRoomUrl, el hilo va a pelo y no hay marco ni cajón", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "La costa de la espada",
+      description: null,
+      ownerId: "u-dm",
+      createdAt: "2026-09-01",
+      boardRoomUrl: null,
+    } as never);
+
+    montar();
+
+    await screen.findByRole("region", { name: "Registro de la sesión" });
+    expect(screen.queryByTitle("Sala del tablero")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Registro en vivo" })).not.toBeInTheDocument();
   });
 });
 

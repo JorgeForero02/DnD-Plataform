@@ -7,6 +7,8 @@ import { BandaDeMesa } from "./BandaDeMesa";
 import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { ColumnaElenco } from "./elenco/ColumnaElenco";
 import { HiloDeSesion } from "./hilo/HiloDeSesion";
+import { MarcoDelTablero } from "./tablero/MarcoDelTablero";
+import { CajonDelRegistro } from "./tablero/CajonDelRegistro";
 import { HerramientasDeNarracion } from "./dm/HerramientasDeNarracion";
 import { ConsultaDelMundo } from "./dm/ConsultaDelMundo";
 import { TallerDelDM } from "./taller/TallerDelDM";
@@ -233,12 +235,30 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
               />
             </div>
 
-            <HiloDeSesion
-              campaignId={campaignId}
-              eventos={eventos}
-              esDm={esDm}
-              comoUsuario={comoUsuario}
-            />
+            {/* **C1 bis (2026-09-12): con `boardRoomUrl`, el tablero PlanarAlly ocupa el centro
+                y el registro pasa a un cajón inferior plegable.** Sin sala guardada, el hilo
+                sigue a pelo, exactamente como antes — es la rama que `mesa-mide.spec.ts` sigue
+                midiendo sin cambios (D-CF-63). */}
+            {campana?.boardRoomUrl ? (
+              <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
+                <MarcoDelTablero url={campana.boardRoomUrl} />
+                <CajonDelRegistro eventos={eventos}>
+                  <HiloDeSesion
+                    campaignId={campaignId}
+                    eventos={eventos}
+                    esDm={esDm}
+                    comoUsuario={comoUsuario}
+                  />
+                </CajonDelRegistro>
+              </div>
+            ) : (
+              <HiloDeSesion
+                campaignId={campaignId}
+                eventos={eventos}
+                esDm={esDm}
+                comoUsuario={comoUsuario}
+              />
+            )}
 
             {esDm && (
               <aside className="scroll-quiet flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3">

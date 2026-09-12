@@ -196,6 +196,7 @@ líneas que solo coloca ranuras**:
 | `sessions/hilo/` | El registro con sus cinco formas de mensaje y su compositor |
 | `sessions/dm/` | La columna de herramientas de narración y la consulta del mundo |
 | `sessions/taller/` | Lo que ocupa la mesa cuando el DM está en reposo |
+| `sessions/tablero/` | C1 bis (2026-09-12): el tablero PlanarAlly enmarcado en el centro (`MarcoDelTablero`) y el registro en vivo como cajón inferior plegable con contador (`CajonDelRegistro`), cuando la campaña tiene `boardRoomUrl` (D-CF-63) |
 | `apps/web/src/features/sessions/BandaDeMesa.tsx` · `PanelDeMesa.tsx` | La banda superior y la tarjeta común |
 
 **La mesa es la única pantalla que NO va dentro de `AppShell`.** `SesionPage` no lo monta a

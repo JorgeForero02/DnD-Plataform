@@ -1090,6 +1090,65 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Tarea 6 (spec 2026-09-12, «el tablero dentro de la mesa», C1 bis) — **el botón del cajón del
+// registro**, la única superficie nueva de esa tarea. Se mide plegado (con su contador de
+// líneas nuevas, `bg-accent`/`text-bg`) y desplegado, en los tres temas — el mismo patrón que el
+// resto del fichero: `boardRoomUrl` se escribe por API para no repetir el recorrido de Ajustes,
+// y lo que se mide son colores reales, no la maquetación.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en el botón del cajón del registro (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuenta("cajon-contraste");
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+    const headers = { Authorization: `Bearer ${token}` };
+    const campana = await page.request.post("/api/campaigns", {
+      headers,
+      data: { name: "Campaña de contraste (cajón)" },
+    });
+    expect(campana.ok()).toBe(true);
+    const campaignId: string = (await campana.json()).id;
+    const sala = await page.request.patch(`/api/campaigns/${campaignId}`, {
+      headers,
+      data: { boardRoomUrl: `${new URL(page.url()).origin}/acerca-de` },
+    });
+    expect(sala.ok()).toBe(true);
+    const sesion = await page.request.post(`/api/campaigns/${campaignId}/sessions`, {
+      headers,
+      data: { title: "El almacén cuatro" },
+    });
+    expect(sesion.ok()).toBe(true);
+    const sessionId: string = (await sesion.json()).id;
+    const iniciada = await page.request.post(
+      `/api/campaigns/${campaignId}/sessions/${sessionId}/start`,
+      { headers, data: {} },
+    );
+    expect(iniciada.ok()).toBe(true);
+
+    await page.goto(`/campaigns/${campaignId}/sesion`);
+    const plegar = page.getByRole("button", { name: "Plegar el registro" });
+    await expect(plegar).toBeVisible();
+    {
+      const { color, bg } = await effectiveTextColours(plegar);
+      record(theme, "cajón del registro: botón plegado texto", contrastRatio(color, bg), 4.5);
+    }
+    await plegar.click();
+    const desplegar = page.getByRole("button", { name: "Desplegar el registro" });
+    await expect(desplegar).toBeVisible();
+    {
+      const { color, bg } = await effectiveTextColours(desplegar);
+      record(theme, "cajón del registro: botón desplegado texto", contrastRatio(color, bg), 4.5);
+    }
+  });
+}
+
 // Fix round 2 (post-1.19b review): fix round 1's "computed size, not explicitness"
 // argument was correct about the test, then lost to the very cascade it was reasoning
 // about -- the element-selector override it shipped in tokens.css never beat

@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { HojaCalculada } from "../HojaCalculada";
 import * as characterSheetApi from "../api";
 import * as members from "../../campaigns/members";
 import type { Catalog, ConditionRow, ResourceRow, SheetResponse } from "../api";
 import type { RollSuggestions, SuggestedRollMode } from "@dnd/shared";
-import { sheet, sheetResponse, wrapper } from "./fixtures/hoja.fixture";
+import { renderHoja, sheet, sheetResponse, wrapper } from "./fixtures/hoja.fixture";
 
 // Tarea 2A.10 — "ninguna clave de enumeración aparece en pantalla": la hoja completa, con datos
 // que a propósito incluyen claves crudas del motor (`half-elf`, `wizard`, `LONG_REST`,
@@ -76,6 +76,9 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
       },
     );
 
+    // Tarea 7 — raza y clase se leen en la «Ficha» (pestaña `Rasgos`); la reposición de recursos
+    // en `Recursos`. Cada tramo abre antes su pestaña; las aserciones son las de siempre.
+    await abrirPestana("Rasgos");
     await waitFor(() => expect(screen.getByText(/Semielfo/)).toBeInTheDocument());
 
     // Nombres traducidos presentes. Recursos y condiciones cuelgan de sus propias consultas
@@ -89,19 +92,37 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
     await waitFor(() =>
       expect(screen.getAllByText("Agotamiento (nivel 2)").length).toBeGreaterThan(0),
     );
+    // «descanso largo» en minúscula es el título «Espacios de conjuro (descanso largo)», que
+    // desde la Tarea 6 vive en `Conjuros` (la lista de recursos dice «Descanso largo», con
+    // mayúscula, y `getByText` con regex distingue).
+    await abrirPestana("Conjuros");
     await waitFor(() => expect(screen.getByText(/descanso largo/)).toBeInTheDocument());
 
-    const cuerpo = document.body.textContent ?? "";
-    // Ninguna clave cruda del motor, ni de la base de datos, llega al texto de la pantalla.
-    for (const clave of [
-      "half-elf",
-      "wizard",
-      "LONG_REST",
-      "SHORT_REST",
-      "exhaustion",
-      "PLAYERS",
-    ]) {
-      expect(cuerpo.includes(clave), `«${clave}» no debería aparecer en pantalla`).toBe(false);
+    // Tarea 7 — con una sola pestaña montada a la vez, «la pantalla» es la cabecera más la
+    // pestaña abierta: la comprobación se repite en cada una para seguir cubriendo la hoja
+    // entera, que es lo que cubría cuando todo estaba en una página.
+    const lista = await screen.findByRole("tablist");
+    const pestanas = within(lista)
+      .getAllByRole("tab")
+      .map((t) => t.textContent?.trim() ?? "");
+    for (const pestana of pestanas) {
+      await abrirPestana(pestana);
+      await screen.findByRole("tabpanel");
+      const cuerpo = document.body.textContent ?? "";
+      // Ninguna clave cruda del motor, ni de la base de datos, llega al texto de la pantalla.
+      for (const clave of [
+        "half-elf",
+        "wizard",
+        "LONG_REST",
+        "SHORT_REST",
+        "exhaustion",
+        "PLAYERS",
+      ]) {
+        expect(
+          cuerpo.includes(clave),
+          `«${clave}» no debería aparecer en pantalla (pestaña ${pestana})`,
+        ).toBe(false);
+      }
     }
   });
 
@@ -153,6 +174,17 @@ function pintarHoja(puedeEditar = false) {
   );
 }
 
+/**
+ * Tarea 7 — la hoja es cabecera + `Tabs`, y `Tabs` monta SOLO la pestaña activa. Una `it` que
+ * mire una tarjeta que no vive en `Números` (la abierta por defecto) abre antes su pestaña con
+ * esto; las aserciones que siguen son las de siempre, sin cambiar su texto. Es `function` y no
+ * `const` a propósito: se usa desde el primer `describe`, que está más arriba.
+ */
+async function abrirPestana(nombre: string) {
+  const lista = await screen.findByRole("tablist");
+  fireEvent.click(within(lista).getByRole("tab", { name: nombre }));
+}
+
 describe("H3 — la cabecera fija y las dos columnas", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -174,25 +206,33 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     // CUERPO de la hoja, no de la cabecera — hace falta `puedeEditar` para que se pinte.
     pintarHoja(true);
     const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
+    // Tarea 7 — `PuntosDeGolpe` vive en la pestaña `Recursos`.
+    await abrirPestana("Recursos");
     const campo = await screen.findByLabelText("Cambio de puntos de golpe");
     expect(cabecera.contains(campo)).toBe(false);
   });
 
   // «características → salvaciones → habilidades bajan seguidas por la misma columna» se movió a
   // `Numeros.test.tsx` (Tarea 4), ahora que las tres tarjetas son la pestaña `Numeros`. Su
-  // último tramo («nada accionable entre medias») queda aquí, sin mover: es sobre la disposición
-  // de HojaCalculada (`Numeros` en la columna izquierda, `Condiciones` en la derecha), no sobre
-  // el contenido de la pestaña — `Numeros.tsx` no monta `Condiciones`, así que esa aserción no
-  // tiene nada que comprobar allí. Fix round 1 (revisión de la Tarea 4): se había perdido al
-  // mover el resto de la `it`; texto de la aserción sin cambiar.
+  // último tramo («nada accionable entre medias») queda aquí, sin mover: es sobre el reparto de
+  // HojaCalculada (`Numeros` en su pestaña, `Condiciones` en `Estado` desde la Tarea 7), no
+  // sobre el contenido de la pestaña — `Numeros.tsx` no monta `Condiciones`, así que esa
+  // aserción no tiene nada que comprobar allí. Fix round 1 (revisión de la Tarea 4): se había
+  // perdido al mover el resto de la `it`; texto de la aserción sin cambiar.
   it("nada accionable se intercala en la columna de Números: condiciones, descansos y PG viven en la otra", async () => {
     const { container } = pintarHoja();
     await screen.findByRole("region", { name: "características" });
-    // La raíz de la pestaña `Numeros` (`data-pestana="numeros"`) es hija directa de
-    // «columna-izquierda» en `HojaCalculada.tsx`: su `parentElement` ES esa columna.
-    const numeros = container.querySelector('[data-pestana="numeros"]')!;
-    const columna = numeros.parentElement!;
+    // Tarea 7 — «la otra columna» ya no existe: `Condiciones` vive en la pestaña `Estado`
+    // (`[data-pestana="estado"]`) y `Numeros` es otra pestaña. Solo cambia el localizador: la
+    // «columna» era el padre de `[data-pestana="numeros"]` y ahora es la propia raíz de la
+    // pestaña — el `tabpanel` de `Tabs` no sirve, porque React reutiliza ese mismo nodo para la
+    // pestaña siguiente. La tarjeta de condiciones solo aparece al abrir `Estado`.
+    const columna = container.querySelector<HTMLElement>('[data-pestana="numeros"]')!;
+    expect(within(columna).queryByRole("region", { name: "condiciones" })).toBeNull();
+    await abrirPestana("Estado");
     const condiciones = await screen.findByRole("region", { name: "condiciones" });
+    expect(condiciones.closest('[data-pestana="estado"]')).not.toBeNull();
+    expect(condiciones.closest('[data-pestana="numeros"]')).toBeNull();
     expect(columna.contains(condiciones)).toBe(false);
   });
 
@@ -202,6 +242,8 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
   // sitio que la hoja llevaba reservado desde 2A.
   it("el inventario se monta dentro de la hoja, con su región nombrada", async () => {
     pintarHoja();
+    // Tarea 7 — el inventario es la pestaña `Objetos`.
+    await abrirPestana("Objetos");
     const inventario = await screen.findByRole("region", { name: "inventario" });
     expect(inventario.textContent).not.toMatch(/fase 2B/);
     // Un segundo `<h1>` en la misma página deja dos títulos a quien navega con lector de
@@ -271,6 +313,9 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
   // `resumen de combate`), no sobre el cuerpo, así que no tiene sitio en `Estado.tsx`.
   it("la Clase de Armadura no repite su fórmula en la casilla de la tira", async () => {
     pintarHoja();
+    // Tarea 7 — la tarjeta «Clase de armadura» vive en la pestaña `Estado`; se abre para que la
+    // comparación siga siendo «la tira no repite lo que la tarjeta sí dice».
+    await abrirPestana("Estado");
     await screen.findByRole("region", { name: "clase de armadura" });
 
     // La casilla de la tira NO repite la fórmula: es lo que la hace compacta.
@@ -333,7 +378,9 @@ describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la 
     // ahora lo contrario de lo que comprobaba, que es exactamente lo que pide no dejar mentir al
     // texto.
     expect(aviso.textContent).not.toMatch(/registro de la partida/);
-    const anulaciones = screen.getByRole("region", { name: "anulaciones del DM" });
+    // Tarea 7 — la tarjeta de anulaciones vive en la pestaña `Estado`.
+    await abrirPestana("Estado");
+    const anulaciones = await screen.findByRole("region", { name: "anulaciones del DM" });
     expect(anulaciones.textContent).toMatch(/el motivo es opcional/i);
     expect(anulaciones.textContent).not.toMatch(/no va a la traza/);
     expect(anulaciones.textContent).toMatch(/registro de la partida/);
@@ -386,6 +433,8 @@ describe("Actividades llega a la hoja de verdad (importante I1)", () => {
 
   it("la tarjeta «Actividades» y su botón «Usar Furia» llegan a la pantalla montados dentro de la hoja", async () => {
     pintarHoja(true);
+    // Tarea 7 — `Actividades` vive en la pestaña `Recursos`.
+    await abrirPestana("Recursos");
 
     const tarjeta = await screen.findByRole("region", { name: "actividades" });
     expect(within(tarjeta).getByText("Furia")).toBeInTheDocument();
@@ -397,6 +446,10 @@ describe("Actividades llega a la hoja de verdad (importante I1)", () => {
     pintarHoja(true);
 
     await screen.findByText("Salvaciones", { exact: true });
+    // Tarea 7 — se abre `Recursos`, que es donde SE MONTARÍA: sin abrirla la ausencia no
+    // demostraría nada.
+    await abrirPestana("Recursos");
+    await screen.findByText("Puntos de golpe");
     expect(screen.queryByRole("region", { name: "actividades" })).not.toBeInTheDocument();
   });
 });
@@ -495,6 +548,10 @@ describe("Fix round 1 — `Conjuros` solo se monta para quien lanza", () => {
     pintarHoja(false);
 
     await screen.findByText("Salvaciones", { exact: true });
+    // Tarea 7 — «no se monta» es ahora «no hay pestaña»: `Tabs` solo monta la activa, así que la
+    // ausencia del `data-pestana` por sí sola no demostraría nada.
+    const lista = await screen.findByRole("tablist");
+    expect(within(lista).queryByRole("tab", { name: "Conjuros" })).toBeNull();
     expect(document.querySelector('[data-pestana="conjuros"]')).not.toBeInTheDocument();
   });
 
@@ -505,6 +562,67 @@ describe("Fix round 1 — `Conjuros` solo se monta para quien lanza", () => {
     pintarHoja(false);
 
     await screen.findByText("Salvaciones", { exact: true });
+    // Tarea 7 — la pestaña existe y, abierta, monta su contenido.
+    await abrirPestana("Conjuros");
     expect(document.querySelector('[data-pestana="conjuros"]')).toBeInTheDocument();
+  });
+});
+
+// Tarea 7 (spec 2026-09-11, «la hoja a página completa») — la hoja es una cabecera más `Tabs`:
+// carril lateral en la página, tira en la mesa. `Tabs` monta SOLO el contenido de la pestaña
+// activa (`ui/Tabs.tsx`, `panel`), así que «no está en esta pestaña» se comprueba con
+// `queryByText(...).toBeNull()` y no con `toBeVisible()`.
+describe("La hoja en pestañas", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("cada tarjeta está en su pestaña y en ninguna otra", async () => {
+    // Sin Conjuros: la armadura de `hoja.fixture.tsx` SÍ trae 4 espacios de nivel 1 (Elowen es
+    // maga), así que aquí se apagan para que la lista sea la de quien no lanza — la `it` de
+    // abajo cubre la otra mitad.
+    renderHoja({ disposicion: "pagina" }, { sheet: { ...sheet, spellSlots: [] } });
+    const lista = await screen.findByRole("tablist");
+    const nombres = within(lista)
+      .getAllByRole("tab")
+      .map((t) => t.textContent?.trim());
+    expect(nombres).toEqual(["Números", "Objetos", "Ataques", "Recursos", "Estado", "Rasgos"]);
+    // Números abierta por defecto: Salvaciones sí, Puntos de golpe no.
+    expect(screen.getByText("Salvaciones")).toBeInTheDocument();
+    expect(screen.queryByText("Puntos de golpe")).toBeNull();
+    fireEvent.click(within(lista).getByRole("tab", { name: "Recursos" }));
+    expect(await screen.findByText("Puntos de golpe")).toBeInTheDocument();
+    expect(screen.queryByText("Salvaciones")).toBeNull();
+  });
+
+  it("Conjuros aparece para quien lanza", async () => {
+    renderHoja(
+      { disposicion: "pagina" },
+      { sheet: { ...sheet, spellSlots: [{ spellLevel: 1, slots: 2 }] } },
+    );
+    expect(await screen.findByRole("tab", { name: "Conjuros" })).toBeInTheDocument();
+  });
+
+  it("?pestana=objetos abre Objetos, y una desconocida cae en Números", async () => {
+    renderHoja({ disposicion: "pagina" }, {}, "/campaigns/c1/characters/ch1?pestana=objetos");
+    expect(await screen.findByRole("region", { name: "inventario" })).toBeInTheDocument();
+    cleanup();
+    renderHoja({ disposicion: "pagina" }, {}, "/campaigns/c1/characters/ch1?pestana=loquesea");
+    expect(await screen.findByText("Salvaciones")).toBeInTheDocument();
+  });
+
+  it("en la mesa las pestañas son una tira y siempre arranca en Números aunque la URL diga otra cosa", async () => {
+    renderHoja({ disposicion: "mesa" }, {}, "/sessions/s1?pestana=objetos");
+    await screen.findByRole("tablist");
+    expect(screen.getByText("Salvaciones")).toBeInTheDocument();
+  });
+
+  it("los cinco números siguen fuera de las pestañas, en cualquiera de ellas", async () => {
+    renderHoja({ disposicion: "pagina" });
+    const lista = await screen.findByRole("tablist");
+    for (const tab of ["Rasgos", "Estado"]) {
+      fireEvent.click(within(lista).getByRole("tab", { name: tab }));
+      expect(screen.getByRole("region", { name: "resumen de combate" })).toBeInTheDocument();
+    }
   });
 });

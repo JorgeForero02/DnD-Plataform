@@ -14,3 +14,19 @@ export interface PropsDePestana {
   puedeEditar: boolean;
   disposicion: Disposicion;
 }
+
+// Tarea 7 (spec 2026-09-11) — las pestañas de la hoja, en el orden de la spec. El `id` es lo que
+// viaja en la URL (`?pestana=objetos`, sin acentos a propósito) y el `label` lo que lee quien
+// mira la pantalla: la forma legible se escribe aquí UNA vez y `HojaCalculada` la importa, que
+// es la regla de «ningún valor de enumeración llega a la pantalla».
+export const PESTANAS_DE_LA_HOJA = [
+  { id: "numeros", label: "Números" },
+  { id: "objetos", label: "Objetos" },
+  { id: "ataques", label: "Ataques" },
+  { id: "recursos", label: "Recursos" },
+  { id: "estado", label: "Estado" },
+  { id: "rasgos", label: "Rasgos" },
+  { id: "conjuros", label: "Conjuros" },
+] as const satisfies readonly { id: string; label: string }[];
+
+export type PestanaId = (typeof PESTANAS_DE_LA_HOJA)[number]["id"];

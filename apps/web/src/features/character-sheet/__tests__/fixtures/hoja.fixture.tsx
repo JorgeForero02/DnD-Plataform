@@ -12,6 +12,7 @@ import type {
   SheetResponse,
 } from "../../api";
 import type { Disposicion, PropsDePestana } from "../../pestanas/tipos";
+import { HojaCalculada } from "../../HojaCalculada";
 
 // Tarea 4 (spec 2026-09-11, «la hoja a página completa») — la armadura de la hoja de personaje
 // («Elowen», nivel 3, semielfa maga) que `Cabecera.test.tsx` y `HojaCalculada.test.tsx`
@@ -147,16 +148,49 @@ export const sheetResponse: SheetResponse & { sheet: CalculatedSheet } = {
   deathSaves: { successes: 0, failures: 0, status: "alive" },
 };
 
-export function wrapper(qc: QueryClient) {
+export function wrapper(qc: QueryClient, ruta?: string) {
   return function Wrapper({ children }: { children: ReactNode }) {
     // `LegalNotice` (ui/) usa `<Link>` de react-router: hace falta un Router alrededor aunque el
-    // componente bajo prueba no navegue por sí mismo.
+    // componente bajo prueba no navegue por sí mismo. `ruta` fija la URL inicial: desde la
+    // Tarea 7 la hoja lee `?pestana=` con `useSearchParams`, y una prueba que quiera abrir una
+    // pestaña concreta la pone aquí.
     return (
       <QueryClientProvider client={qc}>
-        <MemoryRouter>{children}</MemoryRouter>
+        <MemoryRouter initialEntries={ruta ? [ruta] : undefined}>{children}</MemoryRouter>
       </QueryClientProvider>
     );
   };
+}
+
+/**
+ * Tarea 7 (spec 2026-09-11) — monta `HojaCalculada` entera (carga + cabecera + pestañas) con la
+ * armadura de arriba: `fetchSheet` responde `{ ...sheetResponse, ...overrides }` y, como en
+ * `renderPestana`, `resources`/`conditions` mockean sus consultas propias (por defecto, `[]`).
+ * `ruta` es la URL inicial del `MemoryRouter`: es lo que decide la pestaña abierta en "pagina"
+ * (`?pestana=`), y lo que la hoja tiene que IGNORAR en "mesa".
+ */
+export function renderHoja(
+  { disposicion, puedeEditar = false }: { disposicion: Disposicion; puedeEditar?: boolean },
+  overrides?: Partial<SheetResponse> & { resources?: ResourceRow[]; conditions?: ConditionRow[] },
+  ruta = "/campaigns/c1/characters/ch1",
+): ReturnType<typeof render> {
+  const { resources, conditions, ...datosDeLaHoja } = overrides ?? {};
+  vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
+    ...sheetResponse,
+    ...datosDeLaHoja,
+  });
+  vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(resources ?? []);
+  vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions ?? []);
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <HojaCalculada
+      campaignId="c1"
+      characterId="ch1"
+      puedeEditar={puedeEditar}
+      disposicion={disposicion}
+    />,
+    { wrapper: wrapper(qc, ruta) },
+  );
 }
 
 /**

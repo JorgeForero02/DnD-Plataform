@@ -143,6 +143,12 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   deja de restaurar el cuero en un `finally` —captura, restaura y relanza el primer error— para
   que una vuelta por la API que falle no tape el fallo del recorrido. Sin cambio de aserciones.
   **Revertir:** `git revert` del commit.
+- **El botón de sintonizar es una acción llana (2026-09-12, revisión de la ronda 2).** Pierde
+  `aria-pressed`: el conmutador de la APG lleva rótulo fijo y el estado en `pressed`; el nuestro
+  es el patrón contrario (rótulo «Sintonizar»/«Desintonizar», estado en el distintivo), y mezclar
+  los dos anunciaba «Desintonizar, pulsado». `variant` y `aria-label` no cambian; el
+  `aria-pressed` de «Ver detalle de X» (HP-4) tampoco. Y el índice de `_archivo/README.md` gana
+  la fila del archivo del 2026-09-06 que le faltaba. **Revertir:** `git revert` del commit.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 

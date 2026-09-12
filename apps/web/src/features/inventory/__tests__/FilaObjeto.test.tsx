@@ -58,7 +58,9 @@ describe("FilaObjeto — el estado de sintonización (HP-8)", () => {
     expect(within(nombre).getByText("Sintonizado")).toBeInTheDocument();
     const boton = within(item).getByRole("button", { name: "Desintonizar Anillo de protección" });
     expect(boton).toHaveTextContent("Desintonizar");
-    expect(boton).toHaveAttribute("aria-pressed", "true");
+    // Sin `aria-pressed` (ronda 2): el conmutador de la APG lleva rótulo fijo + estado en
+    // `pressed`; el nuestro es el patrón contrario, y el estado lo dice el par de rótulos.
+    expect(boton).not.toHaveAttribute("aria-pressed");
     // El estado se dice una vez: el distintivo. El botón ya no lo repite.
     expect(within(item).getAllByText(/sintonizado/i)).toHaveLength(1);
   });
@@ -69,7 +71,7 @@ describe("FilaObjeto — el estado de sintonización (HP-8)", () => {
     expect(within(item).queryByText("Sintonizado")).toBeNull();
     const boton = within(item).getByRole("button", { name: "Sintonizar con Anillo de protección" });
     expect(boton).toHaveTextContent("Sintonizar");
-    expect(boton).toHaveAttribute("aria-pressed", "false");
+    expect(boton).not.toHaveAttribute("aria-pressed");
   });
 
   it("el orden de las acciones no cambia: principal primero, sintonizar después", () => {

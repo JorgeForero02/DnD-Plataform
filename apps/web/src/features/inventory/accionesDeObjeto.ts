@@ -7,13 +7,17 @@ import { NOMBRE_ACCION_ZONA } from "./vocabulario";
 // «Sintonizado» junto al nombre (`FilaObjeto`, `DetalleDeObjeto`), y **la acción principal sigue
 // primero**, que es lo que la mesa usa: principal · sintonizar · gastar · soltar. Para no decir
 // «Sintonizado» dos veces, el botón dice lo que hace: «Sintonizar» o «Desintonizar».
+//
+// Y por eso el botón **no lleva `aria-pressed`** (revisión de la ronda 2): el patrón de botón
+// conmutador de la APG es rótulo constante + `pressed` que lleva el estado; el nuestro es el
+// contrario —rótulo que cambia y estado en el distintivo—, y mezclar los dos anunciaría
+// «Desintonizar, pulsado». Es una acción llana con dos nombres.
 
 export interface AccionDeObjeto {
   id: "principal" | "sintonizar" | "gastar" | "soltar";
   rotulo: string; // lo que se lee en el botón
   ariaLabel?: string; // con el nombre del objeto, como hoy
   variant: "secondary" | "ghost";
-  pressed?: boolean; // sintonizado
   ejecutar: () => void;
 }
 
@@ -43,7 +47,6 @@ export function accionesDeObjeto(row: InventoryRow, manos: ManosDeObjeto): Accio
       rotulo: row.attuned ? "Desintonizar" : "Sintonizar",
       ariaLabel: row.attuned ? `Desintonizar ${item.name}` : `Sintonizar con ${item.name}`,
       variant: row.attuned ? "secondary" : "ghost",
-      pressed: row.attuned,
       ejecutar: manos.onSintonizar,
     });
   }

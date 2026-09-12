@@ -198,7 +198,6 @@ export function FilaObjeto({
             type="button"
             variant={a.variant}
             aria-busy={ocupado}
-            aria-pressed={a.pressed}
             aria-label={a.ariaLabel}
             onClick={a.ejecutar}
           >

@@ -76,7 +76,8 @@ describe("DetalleDeObjeto", () => {
     const titulo = within(panel).getByRole("heading", { level: 3 });
     expect(within(titulo).getByText("Sintonizado")).toBeInTheDocument();
     const boton = within(panel).getByRole("button", { name: "Desintonizar Espada larga +1" });
-    expect(boton).toHaveAttribute("aria-pressed", "true");
+    // Sin `aria-pressed` (ronda 2): rótulo que cambia + estado en el distintivo, no conmutador APG.
+    expect(boton).not.toHaveAttribute("aria-pressed");
     expect(boton).toHaveTextContent("Desintonizar");
     // «Requiere sintonización» sigue, pero sin el « · sintonizado» de antes: lo dice el distintivo.
     expect(within(panel).getByText("Requiere sintonización")).toBeInTheDocument();

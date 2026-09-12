@@ -33,7 +33,9 @@ describe("accionesDeObjeto", () => {
       ["gastar", "Gastar"],
       ["soltar", "Soltar"],
     ]);
-    expect(acciones[1].pressed).toBe(true);
+    // Sin `pressed` (ronda 2): el conmutador de la APG es rótulo fijo + `aria-pressed`; aquí el
+    // rótulo cambia y el estado va en el distintivo, así que el estado lo dice el par de rótulos.
+    expect(acciones[1]).not.toHaveProperty("pressed");
     expect(acciones[1].ariaLabel).toBe("Desintonizar Daga");
     expect(acciones[3].ariaLabel).toBe("Soltar Daga");
     acciones[0].ejecutar();
@@ -47,7 +49,7 @@ describe("accionesDeObjeto", () => {
       onSintonizar: vi.fn(),
     });
     expect(acciones[1].rotulo).toBe("Sintonizar");
-    expect(acciones[1].pressed).toBe(false);
+    expect(acciones[1]).not.toHaveProperty("pressed");
     expect(acciones[1].ariaLabel).toBe("Sintonizar con Daga");
   });
 

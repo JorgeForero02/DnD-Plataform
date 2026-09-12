@@ -95,7 +95,12 @@ la cifra la imprimió la suite entera que la Task 10 corrió **por accidente** �
 <fichero>` no filtra, ver abajo—: 155 en verde, 10 rojos y 1 saltado a la primera. Los rojos eran
 tarjetas que ahora viven detrás de una pestaña que el recorrido no abría, dos localizadores del
 spec nuevo y la banda fija en 412 px; cerrados uno a uno con `exec playwright test` sobre los
-diecinueve ficheros que la hoja toca (18 en verde en la segunda pasada, `hoja-pestanas` 10 de 10
+diecinueve ficheros que la hoja toca —los doce del plan y del grep (`hoja-pestanas`, `hoja`,
+`tokens-contrast`, `inventario`, `objeto-sin-identificar`, `sobrecarga`, `furia`,
+`capturas-comparacion`, `condiciones-con-duracion`, `condiciones-en-la-mesa`, `tablas-del-dm`,
+`tirada`), los cinco que la pasada entera destapó (`elegir-camino`, `subir-nivel`,
+`paso-1-goteras`, `sesion`, `mesa-en-estrecho`) y dos re-corridos porque `Cabecera` cambió
+(`combate`, `final-propuesto`)— (18 en verde en la segunda pasada, `hoja-pestanas` 10 de 10
 en la tercera y otra vez tras el pulido; `mesa-en-estrecho` sigue siendo el `test.fail` de
 D-CF-26). Ninguna aserción se aflojó: solo aperturas de pestaña, localizadores más
 específicos y las tres del ruling de la banda (D-CF-38), que son más fuertes.
@@ -408,4 +413,5 @@ pnpm --filter @dnd/web exec playwright test e2e/hoja.spec.ts   # una sola, por R
 Una tarea está terminada solo si: los criterios de aceptación pasan · las unitarias y los e2e
 que le tocan pasan **y se ha visto la salida** · `pnpm build` está limpio · la arquitectura y
 las convenciones se respetan · **la documentación está actualizada** · y, si tocó una pantalla,
-**se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde.
+**se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde. Para el trabajo por tarea,
+D-CF-44: fichero a fichero con `exec playwright test`, en [decisiones.md](./decisiones.md).

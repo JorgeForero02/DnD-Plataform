@@ -80,7 +80,8 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   `disposicion` decide lateral a página o tira en la mesa, la pestaña activa en `?pestana=`, y
   **una pestaña que la hoja no ofrece cae a Números** —`?pestana=conjuros` en un no lanzador
   dejaba el panel vacío— (D-CF-42). Diez `it` de `HojaCalculada.test.tsx` abren la pestaña antes
-  de afirmar; ninguna aserción cambió.
+  de afirmar: solo aperturas de pestaña y un localizador reescrito con comentario; ninguna
+  aserción cambió.
 - **Task 8 — Las acciones de un objeto son una lista** (`0a3a31a`): `features/inventory/accionesDeObjeto.ts`
   alimenta la fila, que pinta desde ella.
 - **Task 9 — Objetos a página filtra y enseña el detalle** (`f7e8b24`, `e11db5e`):

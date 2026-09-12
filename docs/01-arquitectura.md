@@ -224,8 +224,8 @@ las reglas vinculantes de [04-convenciones.md](./04-convenciones.md), y repetirl
 como empiezan a discrepar. `IdentidadEditable.tsx` las usa para raza, subraza, clase, nivel y
 las seis características, y sustituyó al antiguo `EditorFicha.tsx`, que ya no existe.
 
-**Y desde la hoja a página completa (2026-09-12), `HojaCalculada.tsx` es un compositor de ~150
-líneas**: carga la hoja, monta `features/character-sheet/Cabecera.tsx` y reparte las tarjetas en pestañas.
+**Y desde la hoja a página completa (2026-09-12), `HojaCalculada.tsx` es un compositor**: carga la
+hoja, monta `features/character-sheet/Cabecera.tsx` y reparte las tarjetas en pestañas.
 Dos disposiciones y un solo componente (D-CF-29): `disposicion: "mesa" | "pagina"` decide tira
 arriba o columna lateral, y la pestaña activa vive en la URL (`?pestana=`).
 

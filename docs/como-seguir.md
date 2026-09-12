@@ -36,7 +36,7 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 Las once tareas del [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) de la
 [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) están en la rama
-`hoja/pagina-completa`, con revisión limpia cada una y el navegador medido fichero a fichero
+`hoja/pagina-completa`, revisadas una a una y con el navegador medido fichero a fichero
 ([07-historial.md](./07-historial.md), «La hoja a página completa»). **No está en `main` ni en
 producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..44 en
 [decisiones.md](./decisiones.md); lo que las revisiones dejaron abierto, HP-1..7 en

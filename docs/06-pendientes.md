@@ -159,7 +159,7 @@ vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota 
 | | Qué | Dónde y qué costaría |
 |---|---|---|
 | **HP-9a** | **«Sintonizar cuenta» — defecto, no espera al paso 3** (decisión del autor, 2026-09-12). Un objeto del DM con `effects` y `requiresAttunement: true` da su bono **sin estar sintonizado**: el motor no lee `attuned`. Medición, alcance y tres tareas en la subsección de abajo | **Sesión corta, antes o justo después de fusionar la rama** (decide el autor el orden). 2–3 h con revisión entre tareas |
-| **HP-9b** | **Catálogo SRD +N y descanso corto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). La forma del +N ya existe en `effects`; falta el catálogo estructurado y el gancho al descanso corto. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente (menos HP-9a) menos la parte del defecto, plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
+| **HP-9b** | **Catálogo SRD +N y descanso corto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). La forma del +N ya existe en `effects`; falta el catálogo estructurado y el gancho al descanso corto. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente menos lo que cierre HP-9a, plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
 
 ### HP-9a · «Sintonizar cuenta» — defecto, sesión corta (2026-09-12)
 

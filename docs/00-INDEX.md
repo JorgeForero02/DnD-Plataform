@@ -22,12 +22,13 @@ contenedores de la API y de la web.
 > **Hasta el 2026-09-05 aquí ponía que el reseño de la mesa NO estaba desplegado y que producción
 > iba por detrás de los dos `main`.** Las dos frases caducaron con ese despliegue.
 
-**Lo que hay sin desplegar es la hoja a página completa** —rama `hoja/pagina-completa`, cerrada en
-local el 2026-09-12 y **sin fusionar a `main`**; el autor fusiona y despliega a mano, ver
-[07-historial.md](./07-historial.md)—: `git diff --name-only f9579b2..HEAD -- apps packages` toca
-**60 ficheros**, medido el 2026-09-12 sobre esa rama en `0d304ea` (eran 55 al cerrar la Task 11; la
-revisión final, las dos rondas de cierre y los residuales añadieron cinco), y ninguno es una migración. Empujar a GitHub
-**no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión del autor: ver
+**`main` lleva la hoja a página completa sin desplegar** —fusionada el 2026-09-12 en `e43038f`
+(merge `--no-ff` de `hoja/pagina-completa`, 38 commits)—; el autor despliega a mano, ver
+[07-historial.md](./07-historial.md). Producción sigue sirviendo `f9579b2` —lo comprobó el autor el
+2026-09-11—, y `git diff --name-only f9579b2..HEAD -- apps packages` toca **80 ficheros**, medido
+el 2026-09-12 sobre `main` en `e43038f`, y ninguno es una migración (`git diff --name-only
+f9579b2..HEAD -- '*prisma*'` no devuelve nada). Empujar a GitHub **no despliega nada** — el CI solo
+prueba, y el despliegue es manual por decisión del autor: ver
 [03-despliegue.md](./03-despliegue.md).
 
 > **Hasta este mismo bloque, hasta el 2026-09-06, aquí ponía que «no hay ningún cambio de código
@@ -116,7 +117,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `f2a1b8c` **(rama `hoja/pagina-completa`)** — instantánea de la
+> - **Generado sobre el commit** `e43038f` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

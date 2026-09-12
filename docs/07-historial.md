@@ -57,13 +57,17 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ## La hoja a página completa (2026-09-11 y 12)
 
+**Fusión a `main` (2026-09-12):** qué — merge `--no-ff` de `hoja/pagina-completa` en `main`,
+`e43038f`, 38 commits; por qué — el autor ordenó pasar a `main` y empujar antes de desplegar;
+revertir — `git revert -m 1 e43038f`. `main` no está en producción: despliega el autor, a mano.
+
 Rama `hoja/pagina-completa` sobre `main` `80a9243`, **veintiséis commits** hasta `0d304ea`
 —veinticuatro de código, pruebas y la fusión de la Task 1, dos de documentación; medido con
 `git log --oneline 80a9243..HEAD | wc -l` el 2026-09-12; el de esta ronda de documentación de
 cierre hace veintisiete—: las once tareas
 del plan, la ola de arreglos de la revisión final de la rama, las dos rondas de cierre de las
-fichas HP y los dos residuales. Cerrada en local el 2026-09-12 y **sin fusionar ni desplegar**
-(lo hace el autor a mano). La
+fichas HP y los dos residuales. Cerrada en local el 2026-09-12 y **fusionada a `main` el mismo
+día, sin desplegar** (lo hace el autor a mano). La
 [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) y el
 [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) mandan; las decisiones que la
 ejecución obligó a tomar son D-CF-38..46 en [decisiones.md](./decisiones.md), y la que el autor

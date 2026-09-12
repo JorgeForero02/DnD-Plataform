@@ -32,29 +32,26 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 ## Qué sigue, en este orden
 
-### 0 · La hoja a página completa — **hecha en local el 2026-09-12, sin fusionar ni desplegar**
+### 0 · La hoja a página completa — **fusionada a `main` el 2026-09-12 (`e43038f`); sin desplegar — lo despliega el autor**
 
 Las once tareas del [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) de la
-[spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) están en la rama
-`hoja/pagina-completa` sobre `main` `80a9243` —el último commit de código es el de la revisión de HP-10; la documentación
-de cierre va detrás, y el conteo lo da `git log --oneline 80a9243..HEAD`, no esta página—,
-revisadas una a una y medidas fichero a fichero en el navegador; después pasaron
-la revisión final de la rama entera, dos rondas de cierre de sus fichas y dos residuales
-([07-historial.md](./07-historial.md), «La hoja a página completa»). **No está en `main` ni en
-producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..48 en
-[decisiones.md](./decisiones.md); de las ocho fichas que dejaron las revisiones no queda ninguna
-abierta, y la que salió al medir la sintonización se partió en dos el mismo día (D-CF-47
-enmendada): **HP-9a («sintonizar cuenta») se cerró el mismo 2026-09-12 en tres commits sobre la
-misma rama** (D-CF-48; el motor filtra los `effects` de un objeto sin sintonizar, la pantalla tacha
-el bono y la cabecera avisa, con su recorrido de navegador en `inventario.spec.ts`) y dejó HP-10
-(la fila solo ponía cifra al efecto `ac`), **cerrada también el 2026-09-12** (la fila resume los nueve
-tipos de efecto y los tacha enteros); HP-9b sigue en [06-pendientes.md](./06-pendientes.md) con
-su estimación.
+[spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md), revisadas una a una y
+medidas fichero a fichero en el navegador, más la revisión final de la rama entera, dos rondas de
+cierre de sus fichas y dos residuales, se fusionaron a `main` en `e43038f` (merge `--no-ff`, 38
+commits; [07-historial.md](./07-historial.md), «La hoja a página completa»). **`main` no está en
+producción: despliega el autor, a mano.** Decisiones D-CF-29..48 en [decisiones.md](./decisiones.md);
+de las ocho fichas que dejaron las revisiones no queda ninguna abierta, y la que salió al medir la
+sintonización se partió en dos el mismo día (D-CF-47 enmendada): **HP-9a («sintonizar cuenta») se
+cerró el mismo 2026-09-12** (D-CF-48; el motor filtra los `effects` de un objeto sin sintonizar, la
+pantalla tacha el bono y la cabecera avisa, con su recorrido de navegador en `inventario.spec.ts`)
+y dejó HP-10 (la fila solo ponía cifra al efecto `ac`), **cerrada también el 2026-09-12** (la fila
+resume los nueve tipos de efecto y los tacha enteros); HP-9b sigue en
+[06-pendientes.md](./06-pendientes.md) con su estimación.
 
-**Lo siguiente es del autor: fusionar la rama y desplegar, a mano** → **el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y S6 dentro —la
-«tanda L»— → **después, HP-9b, catálogo SRD +N y descanso corto (D-CF-47)** → higiene → jugar una
-partida → fase 3. A2 aplazada. El paso 3 asume la pestaña Conjuros hecha, y lo está: hoy enseña
-espacios y el hueco declarado (D-CF-34).
+**Lo siguiente es del autor: desplegar** → **el paso 3 (D-CF-37):** conjuros y aptitudes por el
+conversor, con S11, E1, L5 y S6 dentro —la «tanda L»— → **después, HP-9b, catálogo SRD +N y
+descanso corto (D-CF-47)** → higiene → jugar una partida → fase 3. A2 aplazada. El paso 3 asume la
+pestaña Conjuros hecha, y lo está: hoy enseña espacios y el hueco declarado (D-CF-34).
 
 ### 1 · Terminar la poda del tablero — **lo mecánico ya está; queda lo del autor**
 

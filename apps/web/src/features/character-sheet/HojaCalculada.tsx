@@ -54,13 +54,11 @@ export function HojaCalculada({
 }) {
   const { data, isLoading, isError } = useCharacterSheet(campaignId, characterId);
   // En la página la pestaña vive en la URL (enlazable, sin estado escondido); en la mesa es
-  // local y arranca siempre en Números: un cajón que se abre no hereda la pestaña de otra vez.
-  // Los dos hooks van ANTES de cualquier `return` temprano (rules-of-hooks).
+  // local y arranca en Números: un cajón que se abre no hereda la pestaña de otra vez. Hooks
+  // ANTES de cualquier `return` temprano (rules-of-hooks); la activa se resuelve más abajo.
   const [searchParams, setSearchParams] = useSearchParams();
   const [activaEnMesa, setActivaEnMesa] = useState<PestanaId>("numeros");
-  const deUrl = searchParams.get("pestana");
-  const activa: PestanaId =
-    disposicion === "pagina" ? (esPestana(deUrl) ? deUrl : "numeros") : activaEnMesa;
+  const pedida = disposicion === "pagina" ? searchParams.get("pestana") : activaEnMesa;
   const cambiar = (id: string) => {
     if (!esPestana(id)) return;
     if (disposicion === "pagina") setSearchParams({ pestana: id }, { replace: true });
@@ -82,7 +80,6 @@ export function HojaCalculada({
   if (!sheet) {
     // La rama «a medias» se queda como estaba: Ficha + Características + el aviso, y **una ficha
     // a medias se completa aquí, no en otra pantalla** (antes un botón abría un diálogo aparte).
-    //
     // Las claves emparejan estos hermanos DENTRO de esta rama, para que un reordenado no desmonte
     // el `<input>` que alguien está usando («element was detached from the DOM», lo decía el
     // navegador). El salto hacia la rama derivable de abajo ya NO está protegido desde la Tarea
@@ -130,6 +127,9 @@ export function HojaCalculada({
       return { id: p.id, label: p.label, content: <Pestana {...props} /> };
     },
   );
+  // «Desconocida → Números» es «no ofrecida → Números»: se resuelve contra lo que ESTA hoja
+  // ofrece — `?pestana=conjuros` en quien no lanza dejaba a `Tabs` sin activa y el cuerpo vacío.
+  const activa: PestanaId = items.find((p) => p.id === pedida)?.id ?? "numeros";
 
   return (
     <div className="flex flex-col gap-s4">

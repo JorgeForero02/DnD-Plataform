@@ -107,7 +107,11 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
       .map((t) => t.textContent?.trim() ?? "");
     for (const pestana of pestanas) {
       await abrirPestana(pestana);
-      await screen.findByRole("tabpanel");
+      // Fix round 1 — esperar al `tabpanel` no espera nada: React reutiliza ese nodo entre
+      // pestañas. La marca de que ESTA pestaña está montada es su raíz `data-pestana`, cuyo id
+      // sale del `id="tab-<id>"` del botón que se acaba de pulsar.
+      const id = within(lista).getByRole("tab", { name: pestana }).id.replace(/^tab-/, "");
+      await waitFor(() => expect(document.querySelector(`[data-pestana="${id}"]`)).not.toBeNull());
       const cuerpo = document.body.textContent ?? "";
       // Ninguna clave cruda del motor, ni de la base de datos, llega al texto de la pantalla.
       for (const clave of [
@@ -233,6 +237,8 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     const condiciones = await screen.findByRole("region", { name: "condiciones" });
     expect(condiciones.closest('[data-pestana="estado"]')).not.toBeNull();
     expect(condiciones.closest('[data-pestana="numeros"]')).toBeNull();
+    // La línea original se conserva, pero ya no pesa: la raíz de Números está desmontada en
+    // cuanto se abre Estado. Las dos `closest()` de arriba son las que demuestran la intención.
     expect(columna.contains(condiciones)).toBe(false);
   });
 
@@ -609,6 +615,25 @@ describe("La hoja en pestañas", () => {
     cleanup();
     renderHoja({ disposicion: "pagina" }, {}, "/campaigns/c1/characters/ch1?pestana=loquesea");
     expect(await screen.findByText("Salvaciones")).toBeInTheDocument();
+  });
+
+  it("?pestana=conjuros en quien no lanza cae en Números, no en un cuerpo vacío", async () => {
+    // Fix round 1 — `esPestana` validaba contra la lista entera y `items` iba filtrada por
+    // `lanzaConjuros`: `Tabs` no encontraba la activa y no pintaba ningún panel.
+    renderHoja(
+      { disposicion: "pagina" },
+      { sheet: { ...sheet, spellSlots: [] } },
+      "/campaigns/c1/characters/ch1?pestana=conjuros",
+    );
+    const lista = await screen.findByRole("tablist");
+    expect(within(lista).queryByRole("tab", { name: "Conjuros" })).toBeNull();
+    expect(await screen.findByText("Salvaciones")).toBeInTheDocument();
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.querySelector('[data-pestana="numeros"]')).not.toBeNull();
+    expect(within(lista).getByRole("tab", { name: "Números" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("en la mesa las pestañas son una tira y siempre arranca en Números aunque la URL diga otra cosa", async () => {

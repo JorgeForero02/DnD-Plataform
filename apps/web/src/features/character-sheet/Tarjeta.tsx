@@ -43,6 +43,7 @@ export function TarjetaDeHoja({
   children,
   className = "",
   cuerpo = "p-s3",
+  pie,
 }: {
   titulo: string;
   etiqueta?: string;
@@ -52,6 +53,8 @@ export function TarjetaDeHoja({
   className?: string;
   /** Las clases del cuerpo, para la tarjeta que quiere pegar su contenido al filete (una tabla). */
   cuerpo?: string;
+  /** Pie fijo de la tarjeta, separado del cuerpo por su propio filete. Ausente si no se pasa. */
+  pie?: ReactNode;
 }) {
   return (
     <section
@@ -65,6 +68,7 @@ export function TarjetaDeHoja({
         {accion}
       </header>
       <div className={cuerpo}>{children}</div>
+      {pie && <footer className="border-t border-muted px-s3 py-s2">{pie}</footer>}
     </section>
   );
 }

@@ -7,7 +7,7 @@ import { EleccionesPendientes } from "./EleccionesPendientes";
 import { AvisoDeDm } from "./AvisoDeDm";
 import { useEsVistaDeDm } from "./hooks";
 import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
-import { ROTULO_DE_CASILLA } from "./Tarjeta";
+import { Casilla } from "./Casilla";
 import type { PropsDePestana } from "./pestanas/tipos";
 
 // Tarea 3 (spec 2026-09-11, «la hoja a página completa») — la cabecera fija de la hoja: lo que
@@ -51,7 +51,7 @@ export function Cabecera({
           parase 64px por debajo del borde del cajón y **se solapase 72px con su propio cuerpo**. */}
       <section
         aria-label="resumen de combate"
-        className="sticky top-[var(--tira-fija-top,0px)] z-20 -mx-s2 mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
+        className="sticky top-[var(--tira-fija-top,0px)] z-20 mx-[var(--tira-fija-mx,0px)] mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--tira-fija-bg,var(--chrome-veil))] px-s2 py-s2 backdrop-blur"
       >
         <div className="flex flex-wrap items-start gap-s3">
           <Retrato personaje={character} />
@@ -81,15 +81,9 @@ export function Cabecera({
             {/* Los PG de la cabecera son **solo lectura**: el delta —recibo daño, me curo— se
               aplica en su tarjeta, que es donde está la acción. Repetir aquí el control sería el
               mismo dato en dos sitios, que es como se acaba con uno de los dos mintiendo. */}
-            <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
-              <p className={`${ROTULO_DE_CASILLA} leading-tight`}>PG</p>
-              <p className="font-data text-chrome-lg leading-none text-text">
-                {hp.current ?? "—"} / {hp.max ?? "—"}
-              </p>
-              {hp.temp > 0 && (
-                <p className="font-chrome text-chrome-xs text-accent-text">+{hp.temp} temporales</p>
-              )}
-            </div>
+            <Casilla rotulo="PG" nota={hp.temp > 0 ? `+${hp.temp} temporales` : undefined}>
+              {hp.current ?? "—"} / {hp.max ?? "—"}
+            </Casilla>
             {sheet.derived.proficiencyBonus && (
               <ValorDerivado
                 variante="compacta"

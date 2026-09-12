@@ -336,7 +336,7 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   // Y son exactamente cinco casillas en la banda: se cuentan las cajas reales (la caja compacta
   // de `ValorDerivado` y la de PG comparten el mismo ancho mínimo), no la lista de arriba, que
   // tiene cinco por construcción. Una sexta casilla colada —o una menos— se ve aquí.
-  await expect(cabecera.locator('[class*="min-w-[4.75rem]"]')).toHaveCount(5);
+  await expect(cabecera.locator('[class*="w-[4.75rem]"]')).toHaveCount(5);
   expect(Math.max(...casillas) - Math.min(...casillas)).toBeLessThanOrEqual(2);
   // Y la cabecera entera cabe en lo que ocupaba antes una sola de sus tarjetas con fórmula.
   expect(cabeceraDespues.height).toBeLessThanOrEqual(96);
@@ -968,4 +968,117 @@ test("M8 — un modificador temporal sube el número y sale en la traza, y al ve
   // **No ha desaparecido**: sigue en la lista, dicho con palabras y no solo tachado.
   await expect(panelDespues.getByText("Vencido")).toBeVisible({ timeout: 15_000 });
   await expect(panelDespues).toContainText("Poción de fuerza de gigante");
+});
+
+// --- Pulido 2026-09-12 — `Casilla` y la banda anclada (anexos #3 y #4 de la nota de diseño de
+// UI de juegos). Ninguna de las dos afirmaciones se puede medir en `jsdom`: la primera es
+// maquetación real (cinco cajas, comparadas en píxeles), y la segunda es un color COMPUTADO
+// dentro de un cajón montado de verdad. ---
+
+test("las cinco casillas de la tira miden lo mismo, con y sin temporales (anexo #4)", async ({
+  page,
+}) => {
+  await registrarse(page);
+  await crearPersonajeYAbrirFicha(page, "Sora Yunquefrío");
+  await completarFichaDeGuerreroEnano(page);
+
+  // **PG temporales, puestos por la API.** No hay ningún control en esta pantalla que escriba
+  // `tempHp` —solo `PATCH .../hp` lo acepta, y el único gesto que lo usa hoy es «Dar temporales»
+  // a un PNJ del bestiario, fuera de esta pantalla—, así que se pone por la misma vía que usaría
+  // cualquier otro cliente del endpoint: con el token que la sesión ya tiene en `localStorage`
+  // (mismo patrón que `inventario.spec.ts`).
+  const ruta = new URL(page.url()).pathname;
+  const [, campaignId, characterId] = ruta.match(/\/campaigns\/([^/]+)\/personajes\/([^/]+)/)!;
+  const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+  const headers = { Authorization: `Bearer ${token}` };
+  const hojaAntes = await page.request.get(
+    `/api/campaigns/${campaignId}/characters/${characterId}/sheet`,
+    { headers },
+  );
+  expect(hojaAntes.ok(), "leer la hoja para saber la versión de sus PG").toBe(true);
+  const { hp } = await hojaAntes.json();
+  const puestos = await page.request.patch(
+    `/api/campaigns/${campaignId}/characters/${characterId}/hp`,
+    { headers, data: { tempHp: 5, expectedVersion: hp.version } },
+  );
+  expect(puestos.ok(), "poner PG temporales").toBe(true);
+
+  await page.reload();
+  await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  const tira = page.getByRole("region", { name: "resumen de combate" });
+  // La nota de la casilla de PG es la prueba de que el dato de verdad llegó, antes de medir cajas.
+  await expect(tira.getByText("+5 temporales")).toBeVisible();
+
+  const cajas = await tira.locator("[class*='w-[4.75rem]']").all();
+  expect(cajas.length).toBeGreaterThanOrEqual(4);
+  const medidas = await Promise.all(cajas.map((c) => c.boundingBox()));
+  const anchos = new Set(medidas.map((m) => Math.round(m!.width)));
+  const altos = new Set(medidas.map((m) => Math.round(m!.height)));
+  expect(anchos.size, `anchos distintos: ${[...anchos]}`).toBe(1);
+  expect(altos.size, `altos distintos: ${[...altos]}`).toBe(1);
+});
+
+test("dentro del cajón «Su hoja» la banda va a ras y sobre fondo opaco (anexo #3)", async ({
+  page,
+}) => {
+  // **El mismo camino que abre el cajón en `sesion.spec.ts`**: campaña con sesión, personaje con
+  // hoja, sesión empezada, mesa abierta, y el DM pulsa el ojo de su propio combatiente. La
+  // receta está copiada a propósito —igual que ya lo está en ese fichero y en `inventario.spec.ts`—
+  // porque cada spec de e2e es autónomo (ver `docs/08-pruebas.md`).
+  const cuenta = await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("La mesa del cajón");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "La mesa del cajón" }).click();
+  await expect(page.getByRole("heading", { name: "La mesa del cajón" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Nueva sesión" }).click();
+  await page.getByLabel("Título").fill("La ronda de prueba");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  const nombrePersonaje = "Ilda Portaescudo";
+  await page.getByRole("button", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Nuevo personaje" }).click();
+  await page.getByLabel("Nombre").fill(nombrePersonaje);
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+  await page.getByRole("link", { name: new RegExp(nombrePersonaje) }).click();
+  await expect(page.getByRole("heading", { name: nombrePersonaje })).toBeVisible();
+  await completarFichaDeGuerreroEnano(page);
+
+  await page.getByRole("link", { name: "La mesa del cajón" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByLabel(cuenta.displayName).check();
+  await page
+    .getByLabel(`Personaje de ${cuenta.displayName}`)
+    .selectOption({ label: nombrePersonaje });
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  await page
+    .getByRole("button", { name: `Abrir la ficha de ${nombrePersonaje}` })
+    .click({ timeout: 20_000 });
+
+  const dialogo = page.getByRole("dialog", { name: "Su hoja" });
+  await expect(dialogo).toBeVisible();
+  const banda = dialogo.getByRole("region", { name: "resumen de combate" });
+  await expect(banda).toBeVisible({ timeout: 15_000 });
+
+  // A ras: la banda empieza en la misma `x` que el cuerpo de las pestañas, sin el medio paso que
+  // se sale hacia los lados a página completa.
+  const cuerpo = await dialogo.locator("[data-piel='cromado']").first().boundingBox();
+  const caja = await banda.boundingBox();
+  expect(Math.round(caja!.x)).toBe(Math.round(cuerpo!.x));
+
+  // Opaca: el `--surface` del cajón, no el `--chrome-veil` translúcido de la página.
+  const fondo = await banda.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(fondo).not.toMatch(/rgba\(.*,\s*0(\.\d+)?\)$/);
 });

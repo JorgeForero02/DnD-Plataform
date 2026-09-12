@@ -4,6 +4,7 @@ import type { AbilityKey, DerivedValue, TraceStep } from "@dnd/shared";
 import { NOMBRE_CARACTERISTICA, NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
 import { formulaDeUnaLinea } from "./formula";
 import { CAJA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
+import { Casilla } from "./Casilla";
 
 // **Ninguna clase de opacidad de Tailwind compila en este proyecto** (P1 de docs/06-pendientes.md):
 // los colores se declaran como `var(--x)` sin `<alpha-value>`, así que Tailwind descarta la
@@ -295,30 +296,18 @@ export function ValorDerivado({
   // --- La tira compacta de la cabecera ---
   if (variante === "compacta") {
     return (
-      <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
-        {/* Cuando el rótulo visible va abreviado, **el que se anuncia es el largo**: el `<p>` se
-            esconde de la accesibilidad y el nombre entero viaja en un `sr-only` hermano. Es
-            hermano y no hijo a propósito — dentro, el texto del `<p>` dejaría de ser exactamente
-            «Inic.» y ni una prueba ni una persona podrían señalar ese rótulo por su nombre. */}
-        <p
-          aria-hidden={etiquetaLarga ? "true" : undefined}
-          title={etiquetaLarga ?? etiqueta}
-          className={`${ROTULO_DE_CASILLA} leading-tight`}
-        >
-          {etiqueta}
-        </p>
-        {etiquetaLarga && <span className="sr-only">{etiquetaLarga}</span>}
+      <Casilla rotulo={etiqueta} rotuloLargo={etiquetaLarga}>
         <button
           type="button"
           onClick={() => setAbierta((v) => !v)}
           aria-expanded={abierta}
           aria-controls={listId}
-          className="w-full font-data text-chrome-lg leading-none text-text hover:text-accent-text"
+          className="w-full hover:text-accent-text"
         >
           {valor.total}
         </button>
         {abierta && listaDeTraza}
-      </div>
+      </Casilla>
     );
   }
 

@@ -211,7 +211,16 @@ export function Dialog({
         // heredar su altura deja la tira flotando 64px por debajo del borde. Se reponen a cero
         // **aquí y no en cada contenido**: quien abre un cajón no tiene por qué saber que dentro
         // cambian las reglas de lo que se pega.
-        style={{ "--tira-fija-top": "0px", "--tira-fija-pull": "0px" } as CSSProperties}
+        style={
+          {
+            "--tira-fija-top": "0px",
+            "--tira-fija-pull": "0px",
+            // Anexo #3: dentro del cajón la banda va a ras y sobre superficie OPACA, anclada al
+            // cajón con su filete inferior; el velo del 95 % la hacía «flotar sin estar anclada».
+            "--tira-fija-mx": "0px",
+            "--tira-fija-bg": "var(--surface)",
+          } as CSSProperties
+        }
         className={[
           // `relative` para que el aviso de U8 se ancle al cajón y no al documento.
           "relative flex h-full w-full flex-col border-l border-copper font-chrome text-chrome-sm shadow-2xl outline-none",

@@ -240,7 +240,7 @@ for (const p of PESTANAS) {
 
     const resumen = page.getByRole("region", { name: "resumen de combate" });
     await expect(resumen).toBeVisible();
-    for (const n of ["CA", "Inic.", "PG", "Comp."]) {
+    for (const n of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
       await expect(resumen.getByText(n, { exact: true })).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

@@ -333,7 +333,10 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
     const casilla = cabecera.getByText(rotulo, { exact: true }).locator("..");
     casillas.push(Math.round((await casilla.boundingBox())!.y));
   }
-  expect(casillas.length).toBe(5);
+  // Y son exactamente cinco casillas en la banda: se cuentan las cajas reales (la caja compacta
+  // de `ValorDerivado` y la de PG comparten el mismo ancho mínimo), no la lista de arriba, que
+  // tiene cinco por construcción. Una sexta casilla colada —o una menos— se ve aquí.
+  await expect(cabecera.locator('[class*="min-w-[4.75rem]"]')).toHaveCount(5);
   expect(Math.max(...casillas) - Math.min(...casillas)).toBeLessThanOrEqual(2);
   // Y la cabecera entera cabe en lo que ocupaba antes una sola de sus tarjetas con fórmula.
   expect(cabeceraDespues.height).toBeLessThanOrEqual(96);

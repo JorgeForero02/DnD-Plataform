@@ -38,8 +38,10 @@ async function comoLaSesion(page: Page) {
 
 /**
  * Una campaña con sesión **empezada** y el hilo **lleno** — copiado de `mesa-mide.spec.ts`
- * (mismos nombres, mismo gesto): sin un hilo real, plegar el registro y ver su contador subir no
- * se puede comprobar.
+ * (mismos nombres, mismo gesto, **las mismas doce anotaciones**): con menos líneas un hilo roto
+ * y uno correcto miden igual, y esta suite necesita exactamente eso para comprobar que el hilo
+ * scrollea por dentro del cajón (IMPORTANT #2 de la ronda de revisión) en vez de comerse el
+ * marco.
  */
 async function campanaConSesionYHiloLargo(page: Page) {
   await page.getByRole("button", { name: "Nueva campaña" }).first().click();
@@ -62,7 +64,7 @@ async function campanaConSesionYHiloLargo(page: Page) {
   await page.getByRole("button", { name: "Anotar" }).click();
   const campo = page.getByLabel("Qué anotar");
   const sellarCombate = page.getByRole("button", { name: /Combate/ }).first();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 12; i++) {
     await expect(campo).toHaveValue("");
     await campo.fill(`la línea número ${i + 1} del almacén`);
     await expect(sellarCombate).toBeEnabled();
@@ -74,7 +76,7 @@ async function campanaConSesionYHiloLargo(page: Page) {
     timeout: 10_000,
   });
   await expect(
-    page.getByRole("list", { name: "Sucesos de la sesión" }).getByText(/la línea número 3/),
+    page.getByRole("list", { name: "Sucesos de la sesión" }).getByText(/la línea número 12/),
   ).toBeVisible({ timeout: 15_000 });
 }
 
@@ -106,13 +108,45 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
   await guardarSalaPropia(page, campaignId);
 
   await page.goto(`/campaigns/${campaignId}/sesion`);
+  const marcoLocator = page.locator("iframe[title='Sala del tablero']");
   const marco = page.frameLocator("iframe[title='Sala del tablero']");
   await expect(marco.getByRole("heading", { level: 1 })).toBeVisible();
 
+  // La raíz de la mesa es `h-screen overflow-hidden`: esta medida es **vacía por construcción**
+  // —nunca podría fallar, la raíz no scrollea aunque el marco esté a 0 px—, y se deja solo por
+  // paridad con `mesa-mide.spec.ts`. Las tres de abajo (marco, hilo, compositor) son las que de
+  // verdad demuestran que el cajón no se come el marco (ronda de revisión, IMPORTANT #1/#2).
   const scrollDePagina = await page.evaluate(
     () => document.documentElement.scrollHeight > window.innerHeight + 2,
   );
   expect(scrollDePagina).toBe(false);
+
+  // --- Con el cajón DESPLEGADO (estado inicial) ---
+  //
+  // (c) El marco no se ha desplomado a 0 px: ocupa al menos el 40 % de la altura de la ventana,
+  //     la misma cota (`max-h-[40vh]`) que `CajonDelRegistro.tsx` le impone al cajón.
+  const marcoBox = await marcoLocator.boundingBox();
+  expect(marcoBox).not.toBeNull();
+  expect(marcoBox!.height).toBeGreaterThanOrEqual(800 * 0.4);
+
+  // (d) El hilo, dentro del cajón, scrollea POR DENTRO — la misma sonda de `mesa-mide.spec.ts`
+  //     (`overflowY` resuelto y `scrollHeight > clientHeight`), copiada tal cual: doce líneas no
+  //     caben en `max-h-[40vh]`, así que si esto pasa es porque el `overflow-y-auto` del propio
+  //     hilo se activó, y no la rejilla estirándose para hacerle sitio.
+  const hilo = page.getByRole("list", { name: "Sucesos de la sesión" });
+  const medidaHilo = await hilo.evaluate((el) => ({
+    overflowY: getComputedStyle(el).overflowY,
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  }));
+  expect(["auto", "scroll"]).toContain(medidaHilo.overflowY);
+  expect(medidaHilo.scrollHeight).toBeGreaterThan(medidaHilo.clientHeight);
+
+  // (e) El compositor («Qué anotar», el mismo textarea de `HiloDeSesion`) sigue DENTRO de la
+  //     ventana: no lo recorta el `overflow-hidden` de la raíz de la mesa.
+  const compositor = await page.getByLabel("Qué anotar").boundingBox();
+  expect(compositor).not.toBeNull();
+  expect(compositor!.y + compositor!.height).toBeLessThanOrEqual(800);
 
   await page.getByRole("button", { name: "Plegar el registro" }).click();
 

@@ -238,7 +238,13 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
             {/* **C1 bis (2026-09-12): con `boardRoomUrl`, el tablero PlanarAlly ocupa el centro
                 y el registro pasa a un cajón inferior plegable.** Sin sala guardada, el hilo
                 sigue a pelo, exactamente como antes — es la rama que `mesa-mide.spec.ts` sigue
-                midiendo sin cambios (D-CF-63). */}
+                midiendo sin cambios (D-CF-63).
+
+                **Ronda de revisión (2026-09-12): la fila de abajo se queda en `auto` a
+                propósito.** El techo de un hilo largo no lo pone esta rejilla — lo pone
+                `CajonDelRegistro.tsx` (`max-h-[40vh]` desplegado): la fila `auto` se mide por el
+                tamaño YA acotado de esa sección, así que nunca vuelve a comerse la fila `1fr`
+                del marco. Ver el comentario de `CajonDelRegistro.tsx` para el porqué completo. */}
             {campana?.boardRoomUrl ? (
               <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
                 <MarcoDelTablero url={campana.boardRoomUrl} />

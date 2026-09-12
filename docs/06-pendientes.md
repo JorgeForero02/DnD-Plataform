@@ -197,6 +197,13 @@ llega en la Task 10, junto con la misma bandeja para #10, #11 y #14. Hasta enton
 sigue siendo el formulario largo de expresión + atajos + radios + motivo + CD, solo que ahora
 comparte rejilla y altura con «pedir» en vez de ir apilado debajo del reloj.
 
+## Tablero: sandbox del iframe (2026-09-12, ronda de revisión de la Tarea 6)
+
+`MarcoDelTablero.tsx` monta el `<iframe>` de PlanarAlly sin `sandbox` (solo `referrerPolicy` y
+`allow`). Aplazado a propósito, no un olvido: hay que medir contra `tablero.supportive.pro` de
+verdad —qué necesita el `sandbox` de PlanarAlly (popups de su propio login, almacenamiento,
+formularios) antes de escribirlo a ciegas y romper la sesión del jugador dentro del marco.
+
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 
 **Medido:** búsqueda de cualquier conjuro concreto en `apps/api/src` y `packages/shared/src` —

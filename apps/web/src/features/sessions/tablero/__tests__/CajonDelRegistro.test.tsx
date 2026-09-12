@@ -16,8 +16,12 @@ describe("CajonDelRegistro", () => {
         <p>hilo</p>
       </CajonDelRegistro>,
     );
-    expect(screen.getByRole("button", { name: /desplegar el registro/i })).toHaveTextContent("2");
-    fireEvent.click(screen.getByRole("button", { name: /desplegar el registro/i }));
+    const boton = screen.getByRole("button", { name: /desplegar el registro/i });
+    expect(boton).toHaveTextContent("2");
+    // MINOR #4 (revisión 2026-09-12): el contador va en el propio nombre accesible, no en un
+    // `aria-label` suelto que nadie leía — sin esto, un lector de pantalla nunca oía la cifra.
+    expect(boton).toHaveAccessibleName("Desplegar el registro, 2 líneas nuevas");
+    fireEvent.click(boton);
     expect(screen.getByText("hilo")).toBeVisible();
   });
 });

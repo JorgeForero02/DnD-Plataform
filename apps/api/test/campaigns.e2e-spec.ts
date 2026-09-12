@@ -198,6 +198,53 @@ describe("Campaigns (e2e)", () => {
     });
   });
 
+  // Pulido 2026-09-12, C1 bis (spec del tablero § 2 ter): la partida de PlanarAlly que la mesa
+  // enmarca. Mismo endpoint que el nombre y la sobrecarga (`PATCH /campaigns/:id`); tokenA es el
+  // DM, tokenC un jugador ya miembro de esta misma campaña (aceptó una invitación más arriba).
+  describe("PATCH /campaigns/:id — boardRoomUrl (pulido, C1 bis)", () => {
+    it("el DM guarda la partida del tablero y la ve al leer la campaña; un jugador no puede", async () => {
+      const server = app.getHttpServer();
+      const patch = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ boardRoomUrl: "https://tablero.supportive.pro/game/abc" });
+      expect(patch.status).toBe(200);
+
+      const read = await request(server)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.status).toBe(200);
+      expect(read.body.boardRoomUrl).toBe("https://tablero.supportive.pro/game/abc");
+
+      const asPlayer = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenC}`)
+        .send({ boardRoomUrl: "https://x.example" });
+      expect(asPlayer.status).toBe(403);
+    });
+
+    it("rechaza una URL que no sea http(s) y acepta null para quitarla", async () => {
+      const server = app.getHttpServer();
+      const rejected = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ boardRoomUrl: "javascript:alert(1)" });
+      expect(rejected.status).toBe(400);
+
+      const cleared = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ boardRoomUrl: null });
+      expect(cleared.status).toBe(200);
+
+      const read = await request(server)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.status).toBe(200);
+      expect(read.body.boardRoomUrl).toBeNull();
+    });
+  });
+
   describe("DELETE /campaigns/:id", () => {
     it("as a player: 403", async () => {
       // tokenC's membership (not DM) was established and asserted (201 on accept) in the

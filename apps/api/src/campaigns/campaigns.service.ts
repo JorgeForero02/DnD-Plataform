@@ -151,6 +151,10 @@ export class CampaignsService {
     // `name`/`description` — solo se toca si viaja, así que un PATCH que no la menciona no la
     // apaga por accidente.
     if (input.encumbranceVariant !== undefined) data.encumbranceVariant = input.encumbranceVariant;
+    // Pulido 2026-09-12 (C1 bis): la partida de PlanarAlly. Mismo patrón — solo se toca si
+    // viaja, así que un PATCH que no la menciona no la borra por accidente. `null` sí se
+    // escribe (borra la sala); solo `undefined` se ignora.
+    if (input.boardRoomUrl !== undefined) data.boardRoomUrl = input.boardRoomUrl;
     const campaign = await this.prisma.campaign.update({ where: { id: campaignId }, data });
     this.events.emit("campaign.updated", { campaignId, actorId: userId });
     return campaign;

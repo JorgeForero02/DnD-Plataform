@@ -91,3 +91,54 @@ describe("CampaignSettings — la variante de sobrecarga (migración 6)", () => 
     await waitFor(() => expect(encendida).toBeChecked());
   });
 });
+
+// Pulido 2026-09-12, C1 bis (spec del tablero § 2 ter): la partida de PlanarAlly que la mesa
+// enmarca, guardada con el mismo `PATCH /campaigns/:id`.
+describe("CampaignSettings — la Sala del tablero (pulido, C1 bis)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({ user: { id: YO, email: "dm@b.com", displayName: "DM" } } as never);
+  });
+
+  it("el DM ve “Sala del tablero”, pulsa Guardar y el PATCH lleva boardRoomUrl", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(campana({ boardRoomUrl: null }));
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: YO, displayName: "DM", role: "DM" },
+    ]);
+    const update = vi
+      .spyOn(campaignsApi, "updateCampaign")
+      .mockResolvedValue(campana({ boardRoomUrl: "https://tablero.supportive.pro/game/abc" }));
+
+    montar();
+
+    expect(await screen.findByText("Sala del tablero")).toBeInTheDocument();
+    const input = screen.getByLabelText("Dirección de la sala");
+    fireEvent.change(input, { target: { value: "https://tablero.supportive.pro/game/abc" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar la sala" }));
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith("c1", {
+        boardRoomUrl: "https://tablero.supportive.pro/game/abc",
+      }),
+    );
+  });
+
+  it("con sala guardada aparece “Quitar la sala” y manda null", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(
+      campana({ boardRoomUrl: "https://tablero.supportive.pro/game/abc" }),
+    );
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: YO, displayName: "DM", role: "DM" },
+    ]);
+    const update = vi
+      .spyOn(campaignsApi, "updateCampaign")
+      .mockResolvedValue(campana({ boardRoomUrl: null }));
+
+    montar();
+
+    const quitar = await screen.findByRole("button", { name: "Quitar la sala" });
+    fireEvent.click(quitar);
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith("c1", { boardRoomUrl: null }));
+  });
+});

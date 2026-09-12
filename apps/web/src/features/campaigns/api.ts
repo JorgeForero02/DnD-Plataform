@@ -46,6 +46,12 @@ export interface Campaign {
    * lo trata como "apagada" (`?? false`), nunca como un error.
    */
   encumbranceVariant?: boolean;
+  /**
+   * Pulido 2026-09-12 (C1 bis): la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`)
+   * que la mesa enmarca. La escribe el DM con `PATCH /campaigns/:id`, igual que
+   * `encumbranceVariant`. `null` significa "sin sala"; ausente, una respuesta vieja en caché.
+   */
+  boardRoomUrl?: string | null;
 }
 
 export function fetchCampaigns(): Promise<Campaign[]> {

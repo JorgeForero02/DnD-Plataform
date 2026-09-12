@@ -9,6 +9,16 @@ export const createCampaignSchema = z.object({
   // más tarde) y porque crear una campaña sin decidirla todavía deja el valor por defecto de
   // Prisma (`false`), el mismo patrón que ya usa `houseTablesEnabled` en `dm-table.schema.ts`.
   encumbranceVariant: z.boolean().optional(),
+  // Pulido 2026-09-12, C1 bis (spec del tablero § 2 ter): la partida de PlanarAlly que la mesa
+  // enmarca. Solo `http(s)`: el valor va a un `src` de `<iframe>`, y `javascript:` no es una sala.
+  // `null` la quita; ausente no la toca (`.partial()` en `updateCampaignSchema`).
+  boardRoomUrl: z
+    .string()
+    .url()
+    .max(500)
+    .refine((u) => /^https?:\/\//i.test(u), "La sala tiene que ser una dirección http(s).")
+    .nullable()
+    .optional(),
 });
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 

@@ -164,6 +164,12 @@ export function CampaignSettings({ campaignId }: { campaignId: string }) {
         enabled={campaign.encumbranceVariant}
         disabled={roleUnresolved || !isDM}
       />
+
+      <SalaDelTablero
+        campaignId={campaignId}
+        url={campaign.boardRoomUrl ?? null}
+        disabled={roleUnresolved || !isDM}
+      />
     </Panel>
   );
 }
@@ -258,5 +264,73 @@ function InterruptorDeSobrecarga({
         </p>
       )}
     </fieldset>
+  );
+}
+
+/**
+ * C1 bis (2026-09-12) — la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`) que la mesa
+ * enmarca. Guardar es explícito (escribir es un proceso: Guardar/Quitar), con el mismo
+ * `PATCH /campaigns/:id` que el nombre. Solo DM; el servidor lo exige (`requireDM`).
+ */
+function SalaDelTablero({
+  campaignId,
+  url,
+  disabled,
+}: {
+  campaignId: string;
+  url: string | null;
+  disabled: boolean;
+}) {
+  const update = useUpdateCampaign(campaignId);
+  const [valor, setValor] = useState(url ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const guardar = (siguiente: string | null) => {
+    setError(null);
+    update.mutate({ boardRoomUrl: siguiente }, { onError: (e) => setError((e as Error).message) });
+  };
+  return (
+    <section aria-label="Sala del tablero" className="mt-s5 border-t border-muted pt-s4">
+      <h3 className="font-title text-chrome-md text-text">Sala del tablero</h3>
+      <p className="mt-1 font-chrome text-chrome-xs text-muted">
+        La dirección de vuestra partida en el tablero (PlanarAlly). Con ella, la mesa enseña el mapa
+        en el centro y el registro se pliega abajo. Sin ella, la mesa es la de siempre.
+      </p>
+      <Field
+        label="Dirección de la sala"
+        hint="https://tablero.supportive.pro/game/…"
+        error={error ?? undefined}
+        reservaEspacio
+      >
+        <input
+          type="url"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          disabled={disabled}
+          className={fieldControlClass}
+        />
+      </Field>
+      <div className="mt-s2 flex gap-s2">
+        <Button
+          type="button"
+          onClick={() => guardar(valor.trim())}
+          disabled={disabled || valor.trim() === ""}
+        >
+          Guardar la sala
+        </Button>
+        {url && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setValor("");
+              guardar(null);
+            }}
+            disabled={disabled}
+          >
+            Quitar la sala
+          </Button>
+        )}
+      </div>
+    </section>
   );
 }

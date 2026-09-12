@@ -46,6 +46,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-07-tanda-b.md`](./_archivo/historial-2026-09-07-tanda-b.md) | **Tanda B — tres arreglos de API** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la Tarea 3 del pulido: el fichero quedaba en 1009 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-10-decisiones-cubo-d.md`](./_archivo/historial-2026-09-10-decisiones-cubo-d.md) | **Las decisiones del autor sobre el cubo D**, movida entera el 2026-09-12 al escribir la línea de la Tarea 4 del pulido (`e2e/espacios.spec.ts`): el fichero quedaba en 1012 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-10-tanda-1-api-pura.md`](./_archivo/historial-2026-09-10-tanda-1-api-pura.md) | **Cerrar fichas, tanda 1 — las de API puras**, movida entera el 2026-09-12 al añadir la línea de la ronda de arreglo de la Tarea 4 (los dos defectos que la medición encontró): el fichero quedaba en 1004 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-11-tanda-migraciones-d-cf-14.md`](./_archivo/historial-2026-09-11-tanda-migraciones-d-cf-14.md) | **La tanda de migraciones de D-CF-14, un commit por migración**, movida entera el 2026-09-12 al escribir la línea de la Tarea 5 del pulido (`Campaign.boardRoomUrl`): el fichero quedaba en 995 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -58,6 +59,36 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## Tarea 5 del pulido: `Campaign.boardRoomUrl` (2026-09-12, C1 bis)
+
+Qué — la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`) que la mesa enmarcará
+(spec del tablero § 2 ter). Migración escrita a mano
+(`20260912120000_campaign_board_room_url`, `ADD COLUMN "boardRoomUrl" TEXT`), aplicada con
+`migrate deploy` contra el Postgres de Docker y el cliente regenerado; el contrato
+(`packages/shared/src/campaign.schema.ts`) solo acepta `http(s)` hasta 500 caracteres —el valor va
+a un `src` de `<iframe>`, y `javascript:` no es una sala—, `null` la quita y ausente no la toca
+(mismo patrón que `encumbranceVariant`, D-CF-16). El servicio (`campaigns.service.ts#update`) la
+escribe solo si viaja; `createCampaign` no la acepta —se pone después, desde ajustes—. La web
+añade un bloque «Sala del tablero» bajo el interruptor de sobrecarga en `CampaignSettings.tsx`,
+con Guardar/Quitar explícitos sobre el mismo `PATCH /campaigns/:id`; solo el DM puede escribir, y
+el servidor lo exige (`requireDM`), no el botón deshabilitado.
+
+Por qué — el tablero es autohospedado y cada mesa tiene su propia partida; la URL vive en la
+campaña, no en código ni en variable de entorno, porque cada DM la pega una vez desde su PlanarAlly
+y la mesa la usa desde ahí en adelante (fuera de esta tarea: la propia pantalla de la mesa que la
+consume).
+
+Evidencia — e2e de API (`campaigns.e2e-spec.ts`): el DM guarda y lee la URL, un jugador miembro
+recibe 403, `javascript:alert(1)` da 400 y `null` la borra — 21/21 en verde. Mutación: quitar el
+`refine` del `http(s)` hace fallar el caso de `javascript:` (200 en vez de 400) — confirma que la
+prueba depende de esa línea, no de la forma del contrato. Unitarias web (RTL): el DM ve «Sala del
+tablero», pulsa Guardar y el PATCH lleva `boardRoomUrl`; con sala guardada aparece «Quitar la sala»
+y manda `null`. `pnpm verify` en verde.
+
+**Revertir:** migración inversa `DROP COLUMN "boardRoomUrl"` (descrita en la cabecera del SQL) y
+quitar el bloque `SalaDelTablero` de `CampaignSettings.tsx`, la línea del servicio y el campo del
+contrato y del esquema de Prisma.
 
 ## Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición (2026-09-12, tres rondas)
 
@@ -498,42 +529,15 @@ pasada siguiente (un localizador ambiguo en `sobrecarga` y un rojo por carga en 
 135 rojos falsos porque el puerto 3000 lo tenía otro proyecto de esta máquina y Playwright lo
 reutilizó como API; declarado en `08-pruebas.md`. **Revertir:** no procede.
 
-## La tanda de migraciones de D-CF-14, un commit por migración (2026-09-11)
+## La tanda de migraciones de D-CF-14, un commit por migración (2026-09-11) — archivada
 
-Sobre `main`, después de fusionar `ficha/tanda-2-a-5`. Cada migración es SQL escrito a mano con su
-cabecera, aplicada en local con `migrate deploy`; nada se despliega. **Revertir:** cada una es su
-commit y su migración inversa está descrita en la cabecera del SQL.
-
-- **1 · `DROP TYPE "RestKind"`** (X1): nadie lo usaba. Queda `no-dead-enum.spec.ts`, que hace
-  fallar el próximo enum sin campo.
-- **2 · Índice único parcial en `EntityLink` (`fromId`, `toId`) `WHERE label IS NULL`**: dos
-  enlaces sin rótulo entre las mismas fichas entraban porque Postgres no iguala dos `NULL`. La
-  migración borra duplicados quedándose con el más antiguo (en local había cero) y crea el índice;
-  Prisma no lo sabe expresar, así que vive solo en el SQL y el esquema lo dice en un comentario.
-  El segundo enlace igual ya es 409 (e2e en `links`).
-- **3 · `DROP COLUMN race, class`** (D-CF-27): sin medir filas, por decisión del autor. El contrato
-  de creación y edición descarta el texto libre y `tsc` barrió los lectores en API y web. Quien
-  solo tuviera texto libre y ninguna clave del catálogo se queda sin raza ni clase en pantalla.
-- **4 y 5 · `ITEM_QUANTITY_CHANGED` y `CHARACTER_DIED`**, dos migraciones en **un** commit —se
-  declara la desviación de la letra de D-CF-14: los dos valores comparten el enum, la lista de
-  `@dnd/shared`, el renderizador del hilo y sus pruebas, y partir esos hunks a mano arriesgaba el
-  árbol; cada uno tiene su SQL—. El `PATCH` de cantidad deja «Ajusta Antorcha: 3 → 5»; la muerte se
-  escribe una sola vez, en la transición, por sus tres puertas, con causa cerrada y la tirada que
-  la decidió (J5).
-- **6 · La sobrecarga como variante por campaña** (D-CF-16, I4/M2B-5): apagada por defecto, del
-  DM; −10/−20 pies con traza, desventaja solo en Fuerza/Destreza/Constitución por característica,
-  y la columna de Fuerza de la armadura ignorada cuando la variante manda —la primera versión la
-  seguía restando y la desventaja salía en Persuasión: dos altos de la revisión, con SRD en mano—.
-  El estado de carga lo calcula el servidor y el panel lo pinta.
-- **7 · «Lo tengo pero no sé qué hace»** (D-CF-15, I3/M2B-15): `identified` y alias por fila, del
-  DM, capa ortogonal a `canView` con el principio de `redactado()` —identidad fuera, números
-  dentro—. La revisión encontró que la primera versión filtraba el nombre real por los sucesos
-  del hilo, por `temporary:<nombre>`, por los mensajes de error y por las tiradas que lanza el
-  DM; la ronda los cerró en cada camino con una sola función de nombre visible. Decisión de
-  cierre: el catálogo puede bajar a `DM_ONLY` mientras las filas en manos de jugadores sigan sin
-  identificar, y el DM puede entregar un objeto `DM_ONLY` si nace sin identificar. Cuatro rondas de
-  revisión (dos Opus con caza de fugas camino por camino); de paso, `GameEvent.attackRef` (columna,
-  migración 8) casa el crítico con su ataque por la referencia real y no por el nombre.
+**Movida entera** a
+[`_archivo/historial-2026-09-11-tanda-migraciones-d-cf-14.md`](./_archivo/historial-2026-09-11-tanda-migraciones-d-cf-14.md)
+el 2026-09-12, al escribir la línea de la Tarea 5 del pulido (`Campaign.boardRoomUrl`): el fichero
+quedaba en 995 de 1000 y era la entrada completa más antigua. En una línea: ocho migraciones
+escritas a mano sobre `main` —un tipo muerto, un índice único parcial, dos columnas borradas, dos
+valores de enum nuevos en un commit, la sobrecarga como variante y «lo tengo pero no sé qué hace»—,
+cada una con su commit y su reversa en la cabecera del SQL.
 
 ## Cerrar fichas, tanda de las decididas — con código (2026-09-11) — archivada
 

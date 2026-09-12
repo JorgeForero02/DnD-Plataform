@@ -236,6 +236,10 @@ model Campaign {
   // Con ella apagada nada cambia: la velocidad y las tiradas siguen sin mirar el peso llevado.
   encumbranceVariant Boolean @default(false)
 
+  // Pulido 2026-09-12 (C1 bis): la URL de la partida de PlanarAlly que la mesa enmarca. Sin
+  // ella, la mesa es la de siempre. Texto libre validado en el contrato (http(s), ≤ 500).
+  boardRoomUrl String?
+
   // El reloj de la campana (2C.3): **segundos de juego**, no una fecha. Un asalto son seis, asi
   // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
   // es una capa de presentacion encima; al reves no se puede.

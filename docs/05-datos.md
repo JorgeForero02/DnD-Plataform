@@ -187,6 +187,11 @@ documento. Lo que **quitaron**, y por eso ya no aparece en ninguna:
   la referencia real del objeto y no por el nombre, que ahora puede cambiar entre el ataque y el
   daño; es interna —no sale a quien no es DM— y los sucesos anteriores, sin ella, siguen casando
   por nombre.
+- **`Campaign.boardRoomUrl`** (`String?`, pulido 2026-09-12, C1 bis, spec del tablero § 2 ter): la
+  URL de la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`) que la mesa enmarca.
+  Texto libre validado en el contrato —`http(s)` únicamente, ≤ 500 caracteres—, porque el valor va
+  a un `src` de `<iframe>` y `javascript:` no es una sala. La escribe el DM con
+  `PATCH /campaigns/:id`, igual que `encumbranceVariant`; `null` la quita, ausente no la toca.
 - **`Campaign.encumbranceVariant`** (D-CF-16, 2026-09-11): la sobrecarga del SRD como variante,
   apagada por defecto y solo del DM. Encendida, el motor resta 10/20 pies por encima de 5×/10×
   Fuerza de peso llevado, ignora la columna de Fuerza de la armadura (lo manda la variante) y

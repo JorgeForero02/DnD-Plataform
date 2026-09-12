@@ -241,8 +241,9 @@ export interface ValorDerivadoProps {
   etiquetaLarga?: string;
   /**
    * La tercera línea de la casilla compacta: la unidad de una cifra que no cabe en su rótulo
-   * («pies» junto a «Vel.», en vez de metida en «Vel. (pies)», que partía línea a 6rem). **Solo
-   * la reenvía la variante `"compacta"`**; las demás la ignoran porque no pasan por `Casilla`.
+   * («pies» junto a «Vel.», en vez de metida en «Vel. (pies)», que partía línea a 4,75rem — el
+   * ancho que se abandonó por eso, no el que trae este arreglo). **Solo la reenvía la variante
+   * `"compacta"`**; las demás la ignoran porque no pasan por `Casilla`.
    */
   nota?: ReactNode;
 }
@@ -303,7 +304,12 @@ export function ValorDerivado({
   // --- La tira compacta de la cabecera ---
   if (variante === "compacta") {
     return (
-      <Casilla rotulo={etiqueta} rotuloLargo={etiquetaLarga} nota={nota}>
+      <Casilla
+        rotulo={etiqueta}
+        rotuloLargo={etiquetaLarga}
+        nota={nota}
+        desplegable={abierta ? listaDeTraza : undefined}
+      >
         <button
           type="button"
           onClick={() => setAbierta((v) => !v)}
@@ -313,7 +319,6 @@ export function ValorDerivado({
         >
           {valor.total}
         </button>
-        {abierta && listaDeTraza}
       </Casilla>
     );
   }

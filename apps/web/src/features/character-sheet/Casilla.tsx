@@ -22,6 +22,7 @@ export function Casilla({
   rotulo,
   rotuloLargo,
   nota,
+  desplegable,
   className = "",
   children,
 }: {
@@ -30,6 +31,17 @@ export function Casilla({
   rotuloLargo?: string;
   /** La tercera línea: «+5 temporales». Reservada aunque falte. */
   nota?: ReactNode;
+  /**
+   * Ronda de arreglo (revisión, 2026-09-12) — **la traza abierta, en su PROPIA fila, debajo de
+   * todo lo demás.** Antes vivía como segundo hijo del `<div>` de la cifra
+   * (`flex items-center justify-center whitespace-nowrap`): en fila por defecto, `whitespace-nowrap`
+   * heredado y sin poder encogerse dentro de una caja de 6rem, la lista se salía a la DERECHA del
+   * botón en vez de crecer hacia abajo. Esta ranura es una cuarta fila del `grid` (solo cuando hay
+   * algo que pintar, para que la caja en reposo no cambie de alto) con `whitespace-normal` —
+   * ninguna herencia del `nowrap` de las otras tres líneas: la traza es prosa que puede partir
+   * línea, no una cifra que no puede.
+   */
+  desplegable?: ReactNode;
   className?: string;
   /** La cifra, o el botón que la abre en traza. */
   children: ReactNode;
@@ -39,7 +51,8 @@ export function Casilla({
       className={[
         ANCHO_CASILLA,
         ALTO_CASILLA,
-        "grid grid-rows-[auto_1fr_auto] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
+        desplegable ? "grid-rows-[auto_1fr_auto_auto]" : "grid-rows-[auto_1fr_auto]",
+        "grid rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
         className,
       ].join(" ")}
     >
@@ -60,6 +73,14 @@ export function Casilla({
       >
         {nota}
       </p>
+      {desplegable && (
+        <div
+          data-testid="casilla-desplegable"
+          className="whitespace-normal text-left leading-normal"
+        >
+          {desplegable}
+        </div>
+      )}
     </div>
   );
 }

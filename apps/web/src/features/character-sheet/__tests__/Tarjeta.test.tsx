@@ -7,8 +7,10 @@ import { TarjetaDeHoja } from "../Tarjeta";
 // afirma por `getByText` y no por `getByRole("contentinfo")`.
 describe("TarjetaDeHoja", () => {
   it("sin pie, no pinta ningún footer", () => {
-    render(<TarjetaDeHoja titulo="Salvaciones">contenido</TarjetaDeHoja>);
-    expect(screen.queryByText("pie de prueba")).not.toBeInTheDocument();
+    // Revisión (2026-09-12): buscar el texto de otra prueba no afirmaba nada — ese texto no se
+    // renderiza en ningún caso sin pasarlo. Se busca el elemento que `pie` monta de verdad.
+    const { container } = render(<TarjetaDeHoja titulo="Salvaciones">contenido</TarjetaDeHoja>);
+    expect(container.querySelector("footer")).toBeNull();
   });
 
   it("con pie, lo pinta separado del cuerpo por su propio filete", () => {

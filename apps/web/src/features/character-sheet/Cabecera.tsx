@@ -72,9 +72,10 @@ export function Cabecera({
               etiquetaLarga="Iniciativa"
               valor={sheet.derived.initiative}
             />
-            {/* Ronda de arreglo (2026-09-12): «Vel. (pies)» partía línea a 6rem. La unidad baja
-              a la tercera línea de la casilla —la misma que reserva «+N temporales»— en vez de
-              vivir pegada al rótulo. */}
+            {/* Ronda de arreglo (2026-09-12): «Vel. (pies)» partía línea a 4,75rem (el ancho de
+              casilla que se abandonó por eso); 6rem es la corrección, no el problema. La unidad
+              baja a la tercera línea de la casilla —la misma que reserva «+N temporales»— en vez
+              de vivir pegada al rótulo. */}
             <ValorDerivado
               variante="compacta"
               etiqueta="Vel."

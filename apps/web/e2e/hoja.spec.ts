@@ -1017,6 +1017,32 @@ test("las cinco casillas de la tira miden lo mismo, con y sin temporales (anexo 
   const altos = new Set(medidas.map((m) => Math.round(m!.height)));
   expect(anchos.size, `anchos distintos: ${[...anchos]}`).toBe(1);
   expect(altos.size, `altos distintos: ${[...altos]}`).toBe(1);
+
+  // **La traza abierta, medida (revisión, 2026-09-12).** El defecto real: vivía como segundo
+  // hijo del `flex` de la cifra —fila por defecto, `nowrap` heredado, sin sitio para encogerse en
+  // 6rem— y se salía a la DERECHA del botón en vez de crecer hacia abajo. `jsdom` no maqueta, así
+  // que solo el navegador lo puede ver: se comprueba que la lista aterriza DEBAJO del botón que
+  // la abre, y que la tira entera no se ensancha al abrirla.
+  const casillaCA = tira.getByText("CA", { exact: true }).locator("..");
+  const botonCA = casillaCA.getByRole("button");
+  const anchoTiraAntes = (await tira.boundingBox())!.width;
+  const cajaBoton = (await botonCA.boundingBox())!;
+  await botonCA.click();
+  const desplegable = casillaCA.locator('[data-testid="casilla-desplegable"]');
+  await expect(desplegable).toBeVisible();
+  const cajaDesplegable = (await desplegable.boundingBox())!;
+  expect(
+    cajaDesplegable.y,
+    "la traza abierta tiene que quedar DEBAJO del botón, no a su lado",
+  ).toBeGreaterThanOrEqual(cajaBoton.y + cajaBoton.height);
+  const anchoTiraDespues = (await tira.boundingBox())!.width;
+  expect(Math.round(anchoTiraDespues), "abrir una traza no puede ensanchar la tira").toBe(
+    Math.round(anchoTiraAntes),
+  );
+  // Se cierra de nuevo: la prueba deja la hoja en el mismo estado en que la encontró, y ninguna
+  // prueba posterior de este fichero depende de que la CA quede abierta.
+  await botonCA.click();
+  await expect(desplegable).toBeHidden();
 });
 
 test("dentro del cajón «Su hoja» la banda va a ras y sobre fondo opaco (anexo #3)", async ({

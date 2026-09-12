@@ -26,22 +26,28 @@ describe("Numeros — características, salvaciones y habilidades", () => {
     expect(mesa.className).not.toContain("lg:grid-cols");
   });
 
-  // Movida de `HojaCalculada.test.tsx` (describe «H3 — la cabecera fija y las dos columnas»),
-  // tal cual. Nota: la aserción original mira el orden DOM dentro de UNA columna; en
-  // `disposicion: "pagina"` Números vive en tres columnas (características, salvaciones+pasivos
-  // y habilidades ya no comparten una), así que se corre en "mesa" (una sola columna) para que
-  // la aserción de contigüidad siga siendo literalmente cierta.
+  // Movida de `HojaCalculada.test.tsx` (describe «H3 — la cabecera fija y las dos columnas»).
+  // Nota: la aserción original mira el orden DOM dentro de UNA columna; en `disposicion:
+  // "pagina"` Números vive en tres columnas (características, salvaciones+pasivos y habilidades
+  // ya no comparten una), así que se corre en "mesa" (una sola columna) para que la aserción de
+  // contigüidad siga siendo literalmente cierta.
   it("características → salvaciones → habilidades bajan seguidas por la misma columna", async () => {
-    renderPestana(Numeros, { disposicion: "mesa" });
+    const { container } = renderPestana(Numeros, { disposicion: "mesa" });
+    const raiz = container.querySelector('[data-pestana="numeros"]')!;
     const caracteristicas = await screen.findByRole("region", { name: "características" });
     const salvaciones = screen.getByRole("region", { name: "salvaciones" });
     const habilidades = screen.getByRole("region", { name: "habilidades" });
+    // `Salvaciones` vive dentro de un `<div>` que también envuelve `PercepcionPasiva`
+    // (`Numeros.tsx`): ese `<div>`, no la región misma, es el hermano de las otras dos tarjetas.
+    const envolturaDeSalvaciones = salvaciones.parentElement!;
 
-    // Las tres en la MISMA columna (la raíz de la pestaña, en "mesa"). Si alguien parte la
-    // cadena entre dos columnas, esto se rompe.
-    const columna = salvaciones.closest('[data-pestana="numeros"]')!;
-    expect(columna.contains(caracteristicas)).toBe(true);
-    expect(columna.contains(habilidades)).toBe(true);
+    // Las tres, HERMANAS directas de la raíz (revisión fix round 1: `raiz.contains(x)` es
+    // trivialmente cierto para cualquier nodo del árbol, así que no demostraba nada; los
+    // hermanos directos sí demuestran que ninguna quedó anidada dentro de otra tarjeta).
+    const hijosDeLaRaiz = Array.from(raiz.children);
+    expect(hijosDeLaRaiz).toContain(caracteristicas);
+    expect(hijosDeLaRaiz).toContain(envolturaDeSalvaciones);
+    expect(hijosDeLaRaiz).toContain(habilidades);
 
     // Y en ese orden: la contigüidad es la explicación, así que el orden es parte del contrato.
     const orden = (a: Element, b: Element) =>

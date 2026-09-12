@@ -179,7 +179,22 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
   });
 
   // «características → salvaciones → habilidades bajan seguidas por la misma columna» se movió a
-  // `Numeros.test.tsx` (Tarea 4), ahora que las tres tarjetas son la pestaña `Numeros`.
+  // `Numeros.test.tsx` (Tarea 4), ahora que las tres tarjetas son la pestaña `Numeros`. Su
+  // último tramo («nada accionable entre medias») queda aquí, sin mover: es sobre la disposición
+  // de HojaCalculada (`Numeros` en la columna izquierda, `Condiciones` en la derecha), no sobre
+  // el contenido de la pestaña — `Numeros.tsx` no monta `Condiciones`, así que esa aserción no
+  // tiene nada que comprobar allí. Fix round 1 (revisión de la Tarea 4): se había perdido al
+  // mover el resto de la `it`; texto de la aserción sin cambiar.
+  it("nada accionable se intercala en la columna de Números: condiciones, descansos y PG viven en la otra", async () => {
+    const { container } = pintarHoja();
+    await screen.findByRole("region", { name: "características" });
+    // La raíz de la pestaña `Numeros` (`data-pestana="numeros"`) es hija directa de
+    // «columna-izquierda» en `HojaCalculada.tsx`: su `parentElement` ES esa columna.
+    const numeros = container.querySelector('[data-pestana="numeros"]')!;
+    const columna = numeros.parentElement!;
+    const condiciones = await screen.findByRole("region", { name: "condiciones" });
+    expect(columna.contains(condiciones)).toBe(false);
+  });
 
   // **El hueco del inventario dejó de ser un hueco (2B).** Esta prueba comprobaba que el
   // recuadro punteado decía «llega en la fase 2B»; ahora comprueba que lo que hay es el
@@ -299,8 +314,12 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
   });
 
   // Las dos `it`s de «Ataques y lanzamiento» (con arma equipada y sin ella) se movieron a
-  // `Ataques.test.tsx`, y «el pie trae competencias con armas, rasgos y personalidad…» a
-  // `Rasgos.test.tsx` — Tarea 4, ahora que esos bloques son las pestañas `Ataques` y `Rasgos`.
+  // `Ataques.test.tsx` — Tarea 4, ahora que ese bloque es la pestaña `Ataques`. «El pie trae
+  // competencias con armas, rasgos y personalidad…» se repartió entre las dos pestañas del pie:
+  // su tercio de competencias (`CompetenciasConArmas` vive en `Ataques.tsx`) quedó en
+  // `Ataques.test.tsx`, y sus dos tercios de rasgos+personalidad (`Rasgos.tsx`) en
+  // `Rasgos.test.tsx` — fix round 1 corrigió este comentario, que decía que la `it` entera había
+  // ido a `Rasgos.test.tsx`.
 });
 
 describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la maqueta prometía", () => {

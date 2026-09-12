@@ -91,17 +91,26 @@ export function HojaCalculada({
 
   const { sheet, reason, hp, deathSaves, character } = data;
 
-  // **Las dos tarjetas de identidad se pintan SIEMPRE, y desde el mismo sitio del árbol.**
+  // **`identidad` solo evita el remonte DENTRO del `return` de abajo — ya no entre los dos
+  // `return`s.**
   //
-  // Antes esto era un `return` temprano con su propia copia de «Ficha» y «Características», y el
-  // resto de la hoja era otro `return`. En cuanto la hoja pasaba a ser derivable —al teclear la
-  // última característica— React desmontaba un árbol entero y montaba el otro, así que **el
-  // campo que tenías bajo el cursor desaparecía a media escritura**. El navegador lo dijo con
-  // todas las letras en un recorrido: «element was detached from the DOM». No era un problema de
-  // la prueba: le pasa igual a quien rellena una ficha nueva.
+  // Esto nació como un `return` temprano con su propia copia de «Ficha» y «Características», y
+  // el resto de la hoja era otro `return`. React empareja por posición del árbol, así que al
+  // volverse derivable la hoja desmontaba un árbol entero y montaba el otro: **el campo que
+  // tenías bajo el cursor desaparecía a media escritura** («element was detached from the DOM»,
+  // lo decía el navegador con todas las letras). Compartir esta misma constante entre las dos
+  // ramas, en la misma posición, arregló eso.
   //
-  // Ahora hay un solo `return`: lo que cambia con `sheet` es lo que se añade alrededor, nunca la
-  // identidad de estos dos campos.
+  // **Desde la Tarea 4 (2026-09-11, «la hoja a página completa») ese arreglo ya no cubre el
+  // salto entre ramas.** La rama `!sheet` de abajo sigue pintando `identidad` tal cual, pero la
+  // rama derivable ya no la usa: `Características` vive dentro de la pestaña `Numeros` y `Ficha`
+  // dentro de `Rasgos` (`pestanas/Rasgos.tsx`) — otro tipo de elemento en esa posición del árbol.
+  // React vuelve a desmontar y montar al pasar de una rama a la otra, y el campo que se estaba
+  // tecleando en ese instante SÍ puede perder su indicador transitorio de «guardando…»/error.
+  // **Es un coste aceptado, no un descuido**: `EdicionEnSitio.tsx` guarda cada campo al perder
+  // el foco (`onBlur`), así que lo único que se pierde es ese indicador de un campo que ya se
+  // guardó — nunca el valor. Task 7 no puede evitarlo sin romper el propio diseño de pestañas
+  // (Ficha vive en su pestaña, no en la posición de `identidad`), así que no se intenta.
   const identidad = (
     <>
       <TarjetaDeHoja titulo="Ficha" etiqueta="ficha del personaje">
@@ -126,16 +135,23 @@ export function HojaCalculada({
 
   if (!sheet) {
     return (
-      // **Las claves no son adorno: son lo que evita que el campo desaparezca bajo la mano.**
+      // **Las claves no son adorno: dentro de ESTA rama, evitan que el campo desaparezca bajo la
+      // mano — ya no protegen el salto hacia la rama derivable de más abajo.**
       //
-      // Esta rama y la de abajo son dos `return` distintos, y colocan los elementos en
-      // posiciones distintas —aquí el cuerpo va el primero, allí va después de la tira de
-      // cabecera—. React empareja por posición, así que al volverse derivable la hoja
-      // desmontaba todo y lo montaba de nuevo: el `<input>` que estabas usando **se
-      // desprendía del DOM a media escritura**. Lo dijo el navegador con todas las letras en
-      // un recorrido —«element was detached from the DOM»—, y le pasa igual a quien rellena
-      // las seis características de un personaje nuevo. Con clave, React empareja por nombre
-      // y conserva los nodos que son los mismos.
+      // Esta rama y la de abajo son dos `return` distintos. Dentro de una lista o fragmento con
+      // el mismo padre, React empareja por `key`, así que si algo reordena estos hermanos (o el
+      // día de mañana se les añade uno) el nodo que ya existía no se desmonta: la clave conserva
+      // qué nodo es cuál. Es lo que evitaba, cuando esta rama y la de abajo compartían la misma
+      // constante `identidad` en la misma posición del árbol, que **el `<input>` que estabas
+      // usando se desprendiera del DOM a media escritura** al volverse derivable la hoja —el
+      // navegador lo decía con todas las letras en un recorrido: «element was detached from the
+      // DOM»—, y le pasaba igual a quien rellena las seis características de un personaje nuevo.
+      //
+      // **Desde la Tarea 4 (2026-09-11) ese salto entre ramas ya no está protegido**: la rama
+      // derivable no vuelve a pintar `identidad` en esta posición — `Características` y `Ficha`
+      // viven en pestañas distintas (`Numeros`/`Rasgos`). Las claves siguen siendo correctas
+      // DENTRO de esta rama; lo que ya no pueden hacer es emparejar contra un árbol de forma
+      // distinta. Ver la nota completa, y el coste aceptado, junto a `identidad` más arriba.
       <div className="flex flex-col gap-s4">
         <div key="cuerpo" data-piel="cromado" className="flex flex-col gap-s4">
           <div key="rejilla" className="grid items-start gap-s4 lg:grid-cols-2">

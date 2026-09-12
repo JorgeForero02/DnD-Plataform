@@ -19,9 +19,14 @@ export function Rasgos({
     <div data-pestana="rasgos" className={`grid items-start gap-s4 ${columnas}`}>
       <TarjetaDeHoja key="ficha" titulo="Ficha" etiqueta="ficha del personaje">
         {/* La misma tarjeta que pinta el `return` temprano de `HojaCalculada.tsx` (para cuando
-            la hoja aún no es derivable) y **en la misma posición del árbol** dentro de ESTA
-            pestaña: es lo que hace que el campo que se está tecleando sobreviva al momento en
-            que la hoja pasa a ser derivable — la clave no es adorno. */}
+            la hoja aún no es derivable), pero YA NO en la misma posición del árbol: aquella
+            vive dentro del `if (!sheet)` de `HojaCalculada.tsx`, y esta pestaña solo se monta
+            en la rama derivable. Desde la Tarea 4 (2026-09-11) React desmonta y vuelve a
+            montar `FichaEditable` al pasar de una rama a la otra — la nota completa, y el
+            coste aceptado (se pierde como mucho el indicador transitorio de «guardando…» de un
+            campo que ya se guardó al perder el foco, nunca el valor), está junto a `identidad`
+            en `HojaCalculada.tsx`. El `key="ficha"` de aquí solo mantiene la identidad de ESTE
+            nodo frente a sus hermanos dentro de esta pestaña, no frente a la otra rama. */}
         <FichaEditable
           campaignId={campaignId}
           characterId={characterId}

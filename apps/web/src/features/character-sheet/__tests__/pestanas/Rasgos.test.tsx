@@ -23,7 +23,7 @@ describe("Rasgos — rasgos y aptitudes, ficha y personalidad", () => {
   // «competencias con armas» vive en `Ataques.test.tsx` — `CompetenciasConArmas` la monta
   // `Ataques.tsx` (Step 3 del brief), no esta pestaña — así que esa aserción viaja allí y aquí se
   // quedan las dos que sí son de `Rasgos`.
-  it("el pie trae competencias con armas, rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {
+  it("el pie trae rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {
     renderPestana(Rasgos, { disposicion: "pagina" });
     const rasgos = await screen.findByRole("region", { name: "rasgos y aptitudes" });
     expect(within(rasgos).getByText("Lanzamiento de conjuros")).toBeInTheDocument();

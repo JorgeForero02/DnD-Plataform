@@ -4,7 +4,7 @@ import { ValorDerivado } from "./Traza";
 import { Condiciones } from "./Condiciones";
 import { Avisos } from "./Avisos";
 import { EleccionesPendientes } from "./EleccionesPendientes";
-import { AvisoDeDm } from "./AvisoDeDm";
+import { AvisoDeDm, useEsVistaDeDm } from "./AvisoDeDm";
 import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
 import { ROTULO_DE_CASILLA } from "./Tarjeta";
 import type { PropsDePestana } from "./pestanas/tipos";
@@ -31,6 +31,15 @@ export function Cabecera({
   // la base sin traza en vez de recalcular aquí una regla del juego que vive en la API.
   const velocidad = data.effectiveSpeeds?.walk ?? { total: sheet.speeds.walk ?? 0, steps: [] };
   const descripcion = descriptorDePersonaje(character);
+  // HP-7 (2026-09-12) — **la fila de avisos se decide aquí, con los mismos datos que usan los
+  // cuatro avisos**, y no con `empty:hidden` sobre un `<div>` siempre montado. Aquello dependía
+  // de que `Avisos`, `EleccionesPendientes`, `AvisoDeDm` y el botón devolvieran `null` cuando
+  // no tenían nada que decir: un envoltorio que devolviera un `<div>` vacío habría vuelto a
+  // pintar la fila con su hueco. Las cuatro condiciones, una por aviso, en el mismo orden en que
+  // se pintan; la del DM cuelga de una consulta y por eso es un hook compartido con el aviso.
+  const esVistaDeDm = useEsVistaDeDm(campaignId);
+  const hayAvisos =
+    sheet.warnings.length > 0 || sheet.pendingChoices.length > 0 || esVistaDeDm || puedeEditar;
 
   return (
     <>
@@ -107,24 +116,28 @@ export function Cabecera({
         nivel 1 del DM la tira fija ocupaba **412 px** de una ventana de 720
         (`e2e/hoja.spec.ts`, «la cabecera entera cabe…»). Siguen siendo de la cabecera —se pintan
         antes que cualquier pestaña—, pero son hermanos de la `section`, así que ni se pegan ni
-        entran en la región «resumen de combate». */}
-      <div className="flex flex-col gap-s2 empty:hidden">
-        <Avisos warnings={sheet.warnings} />
-        <EleccionesPendientes
-          campaignId={campaignId}
-          characterId={characterId}
-          pendingChoices={sheet.pendingChoices}
-          choicesActuales={character.choices ?? {}}
-        />
-        <AvisoDeDm campaignId={campaignId} />
-        {puedeEditar && (
-          <BotonSubirNivel
+        entran en la región «resumen de combate». Solo se monta si `hayAvisos` (HP-7); sin
+        `empty:hidden`, que era la muleta que esta decisión sustituye — con ella, un aviso que
+        devolviera un envoltorio vacío habría pasado desapercibido detrás de la clase. */}
+      {hayAvisos && (
+        <div className="flex flex-col gap-s2">
+          <Avisos warnings={sheet.warnings} />
+          <EleccionesPendientes
             campaignId={campaignId}
             characterId={characterId}
-            level={character.level}
+            pendingChoices={sheet.pendingChoices}
+            choicesActuales={character.choices ?? {}}
           />
-        )}
-      </div>
+          <AvisoDeDm campaignId={campaignId} />
+          {puedeEditar && (
+            <BotonSubirNivel
+              campaignId={campaignId}
+              characterId={characterId}
+              level={character.level}
+            />
+          )}
+        </div>
+      )}
     </>
   );
 }

@@ -762,9 +762,18 @@ describe("PaginaDeInventario — a página (tarea 9)", () => {
     });
     renderInventario({ disposicion: "pagina" });
     const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
-    fireEvent.click(screen.getByRole("button", { name: /ver detalle de Poción/i }));
-    const fila = screen.getByRole("button", { name: /ver detalle de Poción/i }).closest("li")!;
-    expect(fila).toHaveAttribute("aria-selected", "true");
+    const verPocion = screen.getByRole("button", { name: /ver detalle de Poción/i });
+    fireEvent.click(verPocion);
+    const fila = verPocion.closest("li")!;
+    // HP-4 (2026-09-12): la selección la anuncia el BOTÓN como conmutador (`aria-pressed`), no el
+    // `<li>` con `aria-selected` — ese atributo solo vale en `option`/`tab`/`row`/`gridcell`, y
+    // la lista es un `<ul>` sin papel. El `<li>` conserva la marca visual en `data-seleccionada`.
+    expect(verPocion).toHaveAttribute("aria-pressed", "true");
+    expect(fila).toHaveAttribute("data-seleccionada", "true");
+    expect(fila).not.toHaveAttribute("aria-selected");
+    const verDaga = screen.getByRole("button", { name: /ver detalle de Daga/i });
+    expect(verDaga).toHaveAttribute("aria-pressed", "false");
+    expect(verDaga.closest("li")!).not.toHaveAttribute("data-seleccionada");
 
     const enFila = within(fila)
       .getAllByRole("button")

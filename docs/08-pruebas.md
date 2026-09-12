@@ -140,7 +140,9 @@ tarjeta a tarjeta vive ahora en `features/character-sheet/__tests__/Cabecera.tes
 `Estado`, `Conjuros` y `lanzaConjuros`), con **un solo fixture compartido** —«Elowen», nivel 3,
 semielfa maga— en `features/character-sheet/__tests__/fixtures/hoja.fixture.tsx`; `HojaCalculada.test.tsx`
 se queda con las `it` que cruzan tarjetas de varias pestañas, y abren la pestaña que toque antes
-de afirmar. Un test de pestaña nuevo importa el fixture, no lo copia.
+de afirmar. Un test de pestaña nuevo importa el fixture, no lo copia. **El fixture no importa
+ningún componente de la hoja** (HP-5, 2026-09-12): su `renderHoja` volvió a
+`HojaCalculada.test.tsx`, así que montar `Numeros` no carga `HojaCalculada` de forma transitiva.
 
 ## Lo que las pruebas de hoy NO cubren
 

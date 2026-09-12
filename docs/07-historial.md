@@ -109,6 +109,18 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   Pruebas: `user-or-ip-throttler.guard.spec.ts` (nueva) y el e2e existente
   `login-bucket-por-ip.e2e-spec.ts`. **Revertir:** `git revert` del commit; el guard vuelve a
   clavar el cubo solo por firma.
+- **Ronda de cierre — HP-3 a HP-7 (2026-09-12).** Un commit que cierra las cinco fichas que
+  las revisiones dejaron abiertas a propósito y no eran del autor: el e2e de Objetos deja el cuero
+  sin equipar por la API al entrar y en un `finally` (HP-3); la fila seleccionada la anuncia el
+  botón «Ver detalle de X» con `aria-pressed` y el `<li>` guarda solo la marca visual
+  (`data-seleccionada`, HP-4); `renderHoja` sale del fixture y vuelve a `HojaCalculada.test.tsx`
+  para que las pruebas de pestaña no carguen la hoja entera (HP-5); el guard de cuota separa el
+  fallo de base del de firma y acota el caché de sellos a `TOPE_SELLOS` con barrido de vencidos
+  (HP-6); y `Cabecera` calcula `hayAvisos` antes de montar la fila, con la condición del DM en
+  `useEsVistaDeDm` compartido con el aviso, sin `empty:hidden` (HP-7). Las cinco, con su medición
+  y su texto original, en
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md);
+  HP-1 y HP-8 siguen en 06 porque las decide el autor. **Revertir:** `git revert` del commit.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 

@@ -887,3 +887,43 @@ como ficha con su coste escrito. No es urgente para una mesa de cinco.
 **Texto original:**
 
 | **HP-2** | **«Equipar» desde el panel de detalle abre `ElegirMano` en la fila de la izquierda**, no en el panel: la acción principal de una fila «encima» hace `setManoPara(row.id)` (`features/inventory/PaginaDeInventario.tsx:263-265`) y `ElegirMano` solo se monta dentro de `FilaObjeto` (`:354-361`); `DetalleDeObjeto` ejecuta la misma lista de acciones (`features/inventory/DetalleDeObjeto.tsx:143`). El e2e de Objetos lo cubre porque confirma en la fila | Montar `ElegirMano` también en el detalle cuando `manoPara` es la fila seleccionada. Maqueta, no lógica |
+
+## HP-3 · El recorrido de Objetos mutaba su fixture compartido y no era a prueba de reintento (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `apps/web/e2e/hoja-pestanas.spec.ts`: nueva `dejarElCueroSinEquipar(page)`, que lee el inventario por la API y, si la armadura de cuero no está en la mochila, la devuelve con `PATCH { location: "CARRIED", slot: null }`. Se llama **al entrar** en el `test` de Objetos a 1280 —un reintento tras un timeout no pasa por ningún `finally`— y en el `finally` de un `try` que envuelve equipar → medir → quitar. Las aserciones son las mismas. Sin prueba unitaria posible (es el propio e2e); lo corre el controlador.
+
+**Texto original:**
+
+| **HP-3** | **El recorrido de Objetos muta su fixture compartido** —equipa y luego quita (`e2e/hoja-pestanas.spec.ts:333` y `:344`)— y **no es a prueba de reintento**: un retry a medias arranca con la armadura ya puesta | Sembrar un personaje propio para ese `test`, o dejar el estado como estaba en un `finally` |
+
+## HP-4 · `aria-selected` en un `<li>` fuera de un `listbox` (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `features/inventory/FilaObjeto.tsx`: el `<li>` pierde `aria-selected` y gana `data-seleccionada="true"` solo cuando está seleccionada (la marca visual sigue en él); el botón «Ver detalle de X» lleva `aria-pressed={seleccionada}` —patrón de botón conmutador, válido en un `<ul>` sin papel—. Prueba: `PaginaDeInventario.test.tsx`, «el detalle ofrece las mismas acciones…», que ahora exige `aria-pressed="true"` en el botón de la fila elegida, `false` en otra, `data-seleccionada` solo en la elegida y **ningún** `aria-selected` en el `<li>` (roja antes: el botón no tenía `aria-pressed`). `hoja-pestanas.spec.ts` no leía `aria-selected` en filas; no cambia.
+
+**Texto original:**
+
+| **HP-4** | **`aria-selected` en un `<li>` fuera de un `listbox`**: `FilaObjeto.tsx:117` lo pone cuando la fila es seleccionable y `ZonaDeObjetos.tsx:35` la lista es un `<ul>` sin `role`. El atributo solo tiene sentido en `option`, `tab`, `row` o `gridcell` | O `role="listbox"`/`option` en la zona a página, o `aria-pressed` en el botón «Ver detalle de X» y fuera el atributo del `<li>` |
+
+## HP-5 · `hoja.fixture.tsx` importaba `HojaCalculada` (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `renderHoja` —lo único del fixture que necesitaba `HojaCalculada`— se mudó a `HojaCalculada.test.tsx`, su único usuario (función local del fichero). `fixtures/hoja.fixture.tsx` queda con los datos, `wrapper` y `renderPestana`, e importa solo tipos y el espacio de nombres mockeable de `api`; ninguna prueba de pestaña carga ya la hoja entera de forma transitiva. Sin cambio de aserciones: 338 unitarias de `features/character-sheet` en verde antes y después de la mudanza.
+
+**Texto original:**
+
+| **HP-5** | **`hoja.fixture.tsx` importa `HojaCalculada`** (`features/character-sheet/__tests__/fixtures/hoja.fixture.tsx:15`) para su `renderHoja`, así que **cada test de pestaña carga la hoja entera** de forma transitiva aunque solo monte `Numeros` | Partir el fixture en datos (sin imports de componentes) y montadores; los tests de pestaña importan solo el primero |
+
+## HP-6 · Menores del guard de cuota por usuario (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `common/user-or-ip-throttler.guard.ts`: **dos `catch`, dos motivos** —la firma que no verifica devuelve la IP con su comentario de siempre, y el fallo de la base al leer el sello devuelve la IP con el suyo («no se sabe si está revocado; la cuota no decide si la petición entra»), sin lanzar—; y el `Map` de sellos tiene tope: `TOPE_SELLOS = 10_000` (cien veces la mesa de D-CF-17; unos cientos de KB en el peor caso), al alcanzarlo `barrerVencidos` quita las entradas con `hasta <= ahora` antes de escribir. Conducta idéntica en el camino feliz. Pruebas nuevas en `user-or-ip-throttler.guard.spec.ts`: usuario inexistente → `user:<sub>` y una consulta (el `null` se cachea); token sin `iat` → usuario; firma inválida → IP sin tocar la base; base que lanza → IP y no lanza; y el tope (10 000 entradas vigentes siguen creciendo, pasada la ventana la siguiente escritura deja una). **Roja antes** solo la del tope (`10002` en vez de `1`); las otras cuatro son la caracterización que faltaba y pasaban ya. `src/common src/auth`: 142/142; e2e `login-bucket-por-ip`: 1/1.
+
+**Texto original:**
+
+| **HP-6** | **Menores del guard de cuota por usuario** (`common/user-or-ip-throttler.guard.ts`): un fallo de base de datos dentro del `try` (`:96`) cae al `catch` de firma inválida (`:99`) y cuenta por IP sin decirlo; y el `Map` de sellos (`:63`) no evicta nunca —un sello por usuario que haya pedido algo, sin tope—. (La ventana de 60 s del token robado ya está escrita como coste aceptado junto al `Map`, revisión final del 2026-09-12) | Separar el `catch` en dos y un `Map` con tope o evicción al leer. Sin prueba de usuario inexistente cacheado como `null`, ni de `iat` indefinido |
+
+## HP-7 · `Cabecera.tsx` escondía la fila de avisos con `empty:hidden` (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `Cabecera.tsx` calcula `hayAvisos` antes de montar —`warnings.length`, `pendingChoices.length`, `esVistaDeDm` y `puedeEditar`, una condición por aviso y en su orden— y solo entonces monta la fila; `empty:hidden` se quitó (era la muleta que esto sustituye). La condición del DM cuelga de una consulta, así que vive una sola vez como `useEsVistaDeDm(campaignId)` en `AvisoDeDm.tsx`, que el aviso y la cabecera comparten. Pruebas en `Cabecera.test.tsx`: sin advertencias, sin elecciones, sin vista de DM y sin poder editar, la banda fija **no tiene hermano detrás** (`resumen.nextElementSibling === null`; roja antes: `expected <div> to be null`); y basta la vista de DM para que la fila exista y contenga el aviso. `e2e/sesion.spec.ts`, punto 1, ya medía contra el primer hermano que se pinta: vale en los dos casos y solo cambió su comentario.
+
+**Texto original:**
+
+| **HP-7** | **`Cabecera.tsx` esconde la fila de avisos con `empty:hidden`** (`features/character-sheet/Cabecera.tsx:111`), que depende de que los cuatro avisos devuelvan `null` cuando no tienen nada que decir; un envoltorio que devuelva un `<div>` vacío la vuelve a pintar con su hueco | Un `hayAvisos` calculado antes de montar, o mantener la regla como comentario junto a los cuatro |

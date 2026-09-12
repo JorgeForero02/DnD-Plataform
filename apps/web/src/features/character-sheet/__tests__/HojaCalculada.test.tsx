@@ -7,7 +7,8 @@ import * as inventoryApi from "../../inventory/api";
 import * as members from "../../campaigns/members";
 import type { Catalog, ConditionRow, ResourceRow, SheetResponse } from "../api";
 import type { RollSuggestions, SuggestedRollMode } from "@dnd/shared";
-import { renderHoja, sheet, sheetResponse, wrapper } from "./fixtures/hoja.fixture";
+import { sheet, sheetResponse, wrapper } from "./fixtures/hoja.fixture";
+import type { Disposicion } from "../pestanas/tipos";
 
 // Tarea 2A.10 — "ninguna clave de enumeración aparece en pantalla": la hoja completa, con datos
 // que a propósito incluyen claves crudas del motor (`half-elf`, `wizard`, `LONG_REST`,
@@ -15,6 +16,39 @@ import { renderHoja, sheet, sheetResponse, wrapper } from "./fixtures/hoja.fixtu
 //
 // Tarea 4 — el personaje, la hoja calculada y el `wrapper` de React Query + Router se movieron a
 // `fixtures/hoja.fixture.tsx`, compartidos con `Cabecera.test.tsx` y las pruebas de pestaña.
+// HP-5 (2026-09-12) — `renderHoja` volvió aquí desde ese fixture: es lo único que necesita
+// `HojaCalculada`, y tenerlo allí hacía que cada prueba de pestaña cargara la hoja entera.
+
+/**
+ * Tarea 7 (spec 2026-09-11) — monta `HojaCalculada` entera (carga + cabecera + pestañas) con la
+ * armadura de `fixtures/hoja.fixture.tsx`: `fetchSheet` responde `{ ...sheetResponse, ...overrides }` y, como en
+ * `renderPestana`, `resources`/`conditions` mockean sus consultas propias (por defecto, `[]`).
+ * `ruta` es la URL inicial del `MemoryRouter`: es lo que decide la pestaña abierta en "pagina"
+ * (`?pestana=`), y lo que la hoja tiene que IGNORAR en "mesa".
+ */
+function renderHoja(
+  { disposicion, puedeEditar = false }: { disposicion: Disposicion; puedeEditar?: boolean },
+  overrides?: Partial<SheetResponse> & { resources?: ResourceRow[]; conditions?: ConditionRow[] },
+  ruta = "/campaigns/c1/characters/ch1",
+): ReturnType<typeof render> {
+  const { resources, conditions, ...datosDeLaHoja } = overrides ?? {};
+  vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
+    ...sheetResponse,
+    ...datosDeLaHoja,
+  });
+  vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(resources ?? []);
+  vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions ?? []);
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <HojaCalculada
+      campaignId="c1"
+      characterId="ch1"
+      puedeEditar={puedeEditar}
+      disposicion={disposicion}
+    />,
+    { wrapper: wrapper(qc, ruta) },
+  );
+}
 
 const resources: ResourceRow[] = [
   {

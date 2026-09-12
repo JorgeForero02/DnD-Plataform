@@ -100,7 +100,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-12** (la hoja a página completa deja siete fichas menores, en su sección de abajo — eran HP-1..7; la revisión final del plan cerró HP-2 con código, entera en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md), y abrió HP-8; antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+Última revisión: **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código y la ronda de cierre del mismo día cerró HP-3 a HP-7, todas enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); quedan HP-1 y HP-8, que decide el autor; antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
 código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
 cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
 entero en
@@ -148,14 +148,13 @@ propósito**: nada de esto bloqueaba una tarea y todo se anotó en el ledger par
 pregunta 1 del §10 de la spec del 2026-09-06 —qué pestaña abre por defecto— **no estaba aquí**:
 vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota al pie.
 
+> **HP-3 a HP-7 se cerraron el 2026-09-12 en la ronda de cierre del plan** y están, enteras, en
+> [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+> Quedan aquí las dos que **decide el autor**: HP-1 y HP-8.
+
 | | Qué | Dónde y qué costaría |
 |---|---|---|
 | **HP-1** | **El nombre se pinta dos veces en el cajón del DM**: el título del diálogo (`features/sessions/elenco/MandosDeCombatiente.tsx:165`, `title={nombre}`) y la `Cabecera` en disposición «mesa» (`features/character-sheet/Cabecera.tsx:51-53`), que lo pinta porque la mesa no tiene `PageHeader` | Decidir cuál sobra: o el diálogo pasa un `sinNombre` a la hoja, o el título del cajón deja de ser el nombre. Una línea y su RTL |
-| **HP-3** | **El recorrido de Objetos muta su fixture compartido** —equipa y luego quita (`e2e/hoja-pestanas.spec.ts:333` y `:344`)— y **no es a prueba de reintento**: un retry a medias arranca con la armadura ya puesta | Sembrar un personaje propio para ese `test`, o dejar el estado como estaba en un `finally` |
-| **HP-4** | **`aria-selected` en un `<li>` fuera de un `listbox`**: `FilaObjeto.tsx:117` lo pone cuando la fila es seleccionable y `ZonaDeObjetos.tsx:35` la lista es un `<ul>` sin `role`. El atributo solo tiene sentido en `option`, `tab`, `row` o `gridcell` | O `role="listbox"`/`option` en la zona a página, o `aria-pressed` en el botón «Ver detalle de X» y fuera el atributo del `<li>` |
-| **HP-5** | **`hoja.fixture.tsx` importa `HojaCalculada`** (`features/character-sheet/__tests__/fixtures/hoja.fixture.tsx:15`) para su `renderHoja`, así que **cada test de pestaña carga la hoja entera** de forma transitiva aunque solo monte `Numeros` | Partir el fixture en datos (sin imports de componentes) y montadores; los tests de pestaña importan solo el primero |
-| **HP-6** | **Menores del guard de cuota por usuario** (`common/user-or-ip-throttler.guard.ts`): un fallo de base de datos dentro del `try` (`:96`) cae al `catch` de firma inválida (`:99`) y cuenta por IP sin decirlo; y el `Map` de sellos (`:63`) no evicta nunca —un sello por usuario que haya pedido algo, sin tope—. (La ventana de 60 s del token robado ya está escrita como coste aceptado junto al `Map`, revisión final del 2026-09-12) | Separar el `catch` en dos y un `Map` con tope o evicción al leer. Sin prueba de usuario inexistente cacheado como `null`, ni de `iat` indefinido |
-| **HP-7** | **`Cabecera.tsx` esconde la fila de avisos con `empty:hidden`** (`features/character-sheet/Cabecera.tsx:111`), que depende de que los cuatro avisos devuelvan `null` cuando no tienen nada que decir; un envoltorio que devuelva un `<div>` vacío la vuelve a pintar con su hueco | Un `hayAvisos` calculado antes de montar, o mantener la regla como comentario junto a los cuatro |
 | **HP-8** | **El orden de los botones de la fila no es el del prototipo**: la pantalla 20 del 09-06 ponía «sintonizar» ANTES de la acción principal, y la fila nunca lo hizo —`features/inventory/accionesDeObjeto.ts` pinta principal · sintonizar · gastar · soltar, y el detalle hereda ese orden por ser la misma lista—. Nadie lo decidió: la fila nació así en 2B y el prototipo es de revisión obligatoria | Decidir si el prototipo pierde (la acción principal primero es lo que hoy se usa en la mesa) o se reordena la lista; en cualquier caso, escribirlo en ese fichero. Una línea de código y la prueba de orden |
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)

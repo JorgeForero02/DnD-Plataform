@@ -37,16 +37,18 @@ const conditions: ConditionRow[] = [
 function renderCabecera({
   disposicion,
   puedeEditar = false,
+  data = sheetResponse,
 }: {
   disposicion: Disposicion;
   puedeEditar?: boolean;
+  data?: typeof sheetResponse;
 }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <Cabecera
       campaignId="c1"
       characterId="ch1"
-      data={sheetResponse}
+      data={data}
       puedeEditar={puedeEditar}
       disposicion={disposicion}
     />,
@@ -166,5 +168,46 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     renderCabecera({ disposicion: "pagina", puedeEditar: false });
     await screen.findByRole("region", { name: "resumen de combate" });
     expect(screen.queryByRole("button", { name: /subir a nivel/i })).toBeNull();
+  });
+
+  // HP-7 (2026-09-12) — la fila de avisos se decide ANTES de montar, con los datos que usan los
+  // cuatro avisos, en vez de fiarse de `empty:hidden` y de que los cuatro devuelvan `null`. Sin
+  // nada que avisar, la banda fija no tiene ningún hermano detrás dentro de la cabecera.
+  it("sin advertencias, sin elecciones, sin vista de DM y sin poder editar, no hay fila de avisos en el DOM", async () => {
+    renderCabecera({
+      disposicion: "pagina",
+      puedeEditar: false,
+      data: {
+        ...sheetResponse,
+        sheet: { ...sheetResponse.sheet, warnings: [], pendingChoices: [] },
+      },
+    });
+    const resumen = await screen.findByRole("region", { name: "resumen de combate" });
+    await within(resumen).findByRole("list", { name: "condiciones activas" });
+    expect(resumen.nextElementSibling).toBeNull();
+    expect(screen.queryByRole("region", { name: "elecciones pendientes" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "vista de DM" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /subir a nivel/i })).toBeNull();
+  });
+
+  it("basta la vista de DM para que la fila de avisos exista, detrás de la banda fija", async () => {
+    vi.spyOn(members, "useMyRole").mockReturnValue({
+      role: "DM",
+      isLoading: false,
+      isError: false,
+      retry: () => {},
+    });
+    renderCabecera({
+      disposicion: "pagina",
+      puedeEditar: false,
+      data: {
+        ...sheetResponse,
+        sheet: { ...sheetResponse.sheet, warnings: [], pendingChoices: [] },
+      },
+    });
+    const resumen = await screen.findByRole("region", { name: "resumen de combate" });
+    const aviso = await screen.findByRole("region", { name: "vista de DM" });
+    expect(resumen.nextElementSibling).not.toBeNull();
+    expect(resumen.nextElementSibling!.contains(aviso)).toBe(true);
   });
 });

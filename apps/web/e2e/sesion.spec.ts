@@ -353,9 +353,10 @@ test("la hoja dentro del cajón: la tira fija no se come su cuerpo, y la bolsa c
   // 1 · La tira fija y el cuerpo de la hoja son HERMANOS: el borde de abajo de una no puede
   //     pasarse del borde de arriba del otro. Con el defecto había 72px de solape; sin él, aire.
   //     **Cambiado por decisión del controlador (Tarea 10, ruling A, 2026-09-12):** detrás de
-  //     la tira va ahora el bloque de avisos de la cabecera (fuera de la banda fija), que se
-  //     esconde con `empty:hidden` cuando no hay nada que avisar. Se mide contra el primer
-  //     hermano que se PINTA, que es lo que la frase de arriba siempre quiso decir.
+  //     la tira va ahora el bloque de avisos de la cabecera (fuera de la banda fija), que
+  //     desde HP-7 (2026-09-12) ni se monta cuando no hay nada que avisar (`hayAvisos` en
+  //     `Cabecera.tsx`; antes lo escondía `empty:hidden`). Se mide contra el primer hermano que
+  //     se PINTA, que es lo que la frase de arriba siempre quiso decir y vale en los dos casos.
   const tira = page.locator('section[aria-label="resumen de combate"]');
   await expect(tira).toBeVisible({ timeout: 20_000 });
   const solape = await tira.evaluate((el) => {

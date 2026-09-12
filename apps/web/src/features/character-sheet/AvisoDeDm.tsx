@@ -29,9 +29,19 @@ import { NOMBRE_ANULABLE } from "./vocabulario";
 // Regla vinculante que esto aplica (docs/04-convenciones.md): *si la interfaz explica una regla
 // del servidor y discrepan, el que miente es el texto.*
 
-export function AvisoDeDm({ campaignId }: { campaignId: string }) {
+/**
+ * La condición del aviso, en un solo sitio (HP-7, 2026-09-12): `Cabecera` la necesita ANTES de
+ * montar para decidir si la fila de avisos existe, y el aviso la necesita para pintarse. Mientras
+ * la consulta carga no se sabe, y no saber es «no» — la misma regla que ya aplicaba el aviso.
+ */
+export function useEsVistaDeDm(campaignId: string): boolean {
   const { role, isLoading } = useMyRole(campaignId);
-  if (isLoading || role !== "DM") return null;
+  return !isLoading && role === "DM";
+}
+
+export function AvisoDeDm({ campaignId }: { campaignId: string }) {
+  const esVistaDeDm = useEsVistaDeDm(campaignId);
+  if (!esVistaDeDm) return null;
 
   const anulables = OVERRIDABLE_KEYS.map((k) => NOMBRE_ANULABLE[k] ?? k);
 

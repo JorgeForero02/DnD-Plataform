@@ -140,6 +140,31 @@ test.beforeAll(async ({ browser }: { browser: Browser }) => {
 
 const urlDeLaHoja = () => `/campaigns/${campaignId}/personajes/${characterId}`;
 
+/**
+ * HP-3 (2026-09-12) — **deja la armadura de cuero SIN equipar, por la API.** El recorrido de
+ * Objetos la equipa y la quita desde el detalle; si un reintento arrancaba a medias, la armadura
+ * ya estaba puesta y «Equipar» no existía. Se llama al ENTRAR (un retry tras un timeout no pasa
+ * por ningún `finally`) y al SALIR (`finally`, para las pruebas que siguen). Es idempotente: si
+ * ya está en la mochila, no manda nada.
+ */
+async function dejarElCueroSinEquipar(page: Page) {
+  const headers = await comoLaSesion(page);
+  const base = `/api/campaigns/${campaignId}/characters/${characterId}/inventory`;
+  const inventario = await page.request.get(base, { headers });
+  expect(inventario.ok()).toBe(true);
+  const filas: Array<{ id: string; location: string; item: { name: string } }> = (
+    await inventario.json()
+  ).items;
+  const cuero = filas.find((f) => f.item.name === "Cuero");
+  expect(cuero, "la armadura de cuero sigue en el inventario").toBeDefined();
+  if (cuero!.location === "CARRIED") return;
+  const vuelta = await page.request.patch(`${base}/${cuero!.id}`, {
+    headers,
+    data: { location: "CARRIED", slot: null },
+  });
+  expect(vuelta.ok(), "devolver el cuero a la mochila").toBe(true);
+}
+
 /** La cifra de la CA en la tira fija: `ValorDerivado` compacta la pinta en el botón de la traza. */
 function cifraDeCA(resumen: Locator) {
   return resumen.getByText("CA", { exact: true }).locator("..").getByRole("button");
@@ -296,6 +321,8 @@ test("Objetos a 1280: lista a la izquierda, detalle a la derecha, filtros que fi
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await iniciarSesion(page, cuenta);
+  // HP-3: a prueba de reintento — el estado que la prueba asume se impone, no se supone.
+  await dejarElCueroSinEquipar(page);
   await page.goto(`${urlDeLaHoja()}?pestana=objetos`);
 
   const inventario = page.getByRole("region", { name: "inventario" });
@@ -324,25 +351,31 @@ test("Objetos a 1280: lista a la izquierda, detalle a la derecha, filtros que fi
   await expect(lista.getByText("Daga")).toBeVisible();
 
   // Seleccionar y equipar desde el detalle: la CA de la cabecera cambia delante de quien lo hace.
+  // HP-3: equipar → medir → quitar va dentro de un `try/finally` que devuelve el cuero a la
+  // mochila por la API pase lo que pase; las aserciones son las mismas de antes.
   const resumen = page.getByRole("region", { name: "resumen de combate" });
   const ca = cifraDeCA(resumen);
   const caAntes = (await ca.textContent())!.trim();
   expect(caAntes).toMatch(/^\d+$/);
-  await lista.getByRole("button", { name: /ver detalle de Cuero/i }).click();
-  await expect(detalle.getByRole("heading", { name: "Cuero" })).toBeVisible();
-  await detalle.getByRole("button", { name: "Equipar" }).click();
-  await expect(ca, "la CA de la tira sube al equipar la armadura").not.toHaveText(caAntes, {
-    timeout: 15_000,
-  });
-  const caDespues = (await ca.textContent())!.trim();
-  expect(Number(caDespues)).toBeGreaterThan(Number(caAntes));
-  // Y la fila se ha ido a «Equipado» sin perder la selección: el detalle sigue siendo el suyo.
-  await expect(detalle.getByRole("heading", { name: "Cuero" })).toBeVisible();
+  try {
+    await lista.getByRole("button", { name: /ver detalle de Cuero/i }).click();
+    await expect(detalle.getByRole("heading", { name: "Cuero" })).toBeVisible();
+    await detalle.getByRole("button", { name: "Equipar" }).click();
+    await expect(ca, "la CA de la tira sube al equipar la armadura").not.toHaveText(caAntes, {
+      timeout: 15_000,
+    });
+    const caDespues = (await ca.textContent())!.trim();
+    expect(Number(caDespues)).toBeGreaterThan(Number(caAntes));
+    // Y la fila se ha ido a «Equipado» sin perder la selección: el detalle sigue siendo el suyo.
+    await expect(detalle.getByRole("heading", { name: "Cuero" })).toBeVisible();
 
-  // El camino de vuelta, desde el mismo detalle: quitarla devuelve la CA a la de antes. Es la
-  // otra mitad del gesto, y de paso deja el personaje como estaba para las pruebas que siguen.
-  await detalle.getByRole("button", { name: "Quitar" }).click();
-  await expect(ca).toHaveText(caAntes, { timeout: 15_000 });
+    // El camino de vuelta, desde el mismo detalle: quitarla devuelve la CA a la de antes. Es la
+    // otra mitad del gesto, y de paso deja el personaje como estaba para las pruebas que siguen.
+    await detalle.getByRole("button", { name: "Quitar" }).click();
+    await expect(ca).toHaveText(caAntes, { timeout: 15_000 });
+  } finally {
+    await dejarElCueroSinEquipar(page);
+  }
 
   // Buscar por texto sin acentos.
   // `exact`: el selector de alta, si estuviera abierto, tiene su propio «Buscar objeto por nombre».

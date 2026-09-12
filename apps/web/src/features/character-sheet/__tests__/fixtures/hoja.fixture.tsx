@@ -12,7 +12,6 @@ import type {
   SheetResponse,
 } from "../../api";
 import type { Disposicion, PropsDePestana } from "../../pestanas/tipos";
-import { HojaCalculada } from "../../HojaCalculada";
 
 // Tarea 4 (spec 2026-09-11, «la hoja a página completa») — la armadura de la hoja de personaje
 // («Elowen», nivel 3, semielfa maga) que `Cabecera.test.tsx` y `HojaCalculada.test.tsx`
@@ -23,6 +22,11 @@ import { HojaCalculada } from "../../HojaCalculada";
 // No es un fichero `.test.tsx` a propósito — no tiene ningún `it` — así que Vitest no lo recoge
 // como suite (`vite.config.ts` filtra por `*.{test,spec}.{ts,tsx}`); de llamarse así, fallaría
 // por no tener ninguna prueba dentro.
+//
+// **Datos y `renderPestana`, sin ningún componente de la hoja** (HP-5, 2026-09-12). Hasta aquí
+// vivía también `renderHoja`, que importaba `HojaCalculada`: cada prueba de pestaña cargaba la
+// hoja entera de forma transitiva aunque solo montara `Numeros`. `renderHoja` está ahora en
+// `HojaCalculada.test.tsx`, su único usuario; este fichero importa solo tipos y la API mockeable.
 
 export function paso(labelKey: string, amount = 1, op: "base" | "add" = "add") {
   return { op, amount, sourceType: "manual" as const, sourceKey: "x", labelKey };
@@ -160,37 +164,6 @@ export function wrapper(qc: QueryClient, ruta?: string) {
       </QueryClientProvider>
     );
   };
-}
-
-/**
- * Tarea 7 (spec 2026-09-11) — monta `HojaCalculada` entera (carga + cabecera + pestañas) con la
- * armadura de arriba: `fetchSheet` responde `{ ...sheetResponse, ...overrides }` y, como en
- * `renderPestana`, `resources`/`conditions` mockean sus consultas propias (por defecto, `[]`).
- * `ruta` es la URL inicial del `MemoryRouter`: es lo que decide la pestaña abierta en "pagina"
- * (`?pestana=`), y lo que la hoja tiene que IGNORAR en "mesa".
- */
-export function renderHoja(
-  { disposicion, puedeEditar = false }: { disposicion: Disposicion; puedeEditar?: boolean },
-  overrides?: Partial<SheetResponse> & { resources?: ResourceRow[]; conditions?: ConditionRow[] },
-  ruta = "/campaigns/c1/characters/ch1",
-): ReturnType<typeof render> {
-  const { resources, conditions, ...datosDeLaHoja } = overrides ?? {};
-  vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
-    ...sheetResponse,
-    ...datosDeLaHoja,
-  });
-  vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(resources ?? []);
-  vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions ?? []);
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <HojaCalculada
-      campaignId="c1"
-      characterId="ch1"
-      puedeEditar={puedeEditar}
-      disposicion={disposicion}
-    />,
-    { wrapper: wrapper(qc, ruta) },
-  );
 }
 
 /**

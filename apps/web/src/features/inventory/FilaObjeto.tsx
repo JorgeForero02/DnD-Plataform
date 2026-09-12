@@ -87,8 +87,13 @@ export function FilaObjeto({
   /**
    * Tarea 9 (spec 2026-09-11) — la fila es seleccionable **solo a página**, donde hay un panel
    * de detalle que enseña la seleccionada. Las dos props van juntas: si faltan, la fila se pinta
-   * exactamente como en la mesa —sin botón sobre el nombre y sin `aria-selected`—, porque un
-   * `aria-selected="false"` en una lista sin selección anunciaría un control que no existe.
+   * exactamente como en la mesa —sin botón sobre el nombre y sin conmutador—, porque un
+   * `aria-pressed="false"` en una lista sin selección anunciaría un control que no existe.
+   *
+   * HP-4 (2026-09-12): la selección la anuncia el **botón** «Ver detalle de X» con
+   * `aria-pressed` (patrón de botón conmutador), no el `<li>` con `aria-selected`: ese atributo
+   * solo tiene sentido en `option`, `tab`, `row` o `gridcell`, y la lista es un `<ul>` sin papel
+   * (`ZonaDeObjetos.tsx`). El `<li>` conserva la marca visual vía `data-seleccionada`.
    */
   seleccionada?: boolean;
   /** El nombre es un botón («Ver detalle de X»), no la fila entera: dentro ya hay otros botones. */
@@ -123,7 +128,7 @@ export function FilaObjeto({
 
   return (
     <li
-      aria-selected={seleccionable ? seleccionada : undefined}
+      data-seleccionada={seleccionable && seleccionada ? "true" : undefined}
       className={[
         "border-b border-[color:var(--copper-rule)] py-s2 last:border-b-0",
         // La seleccionada se marca con el tinte del acento y un filo a la izquierda: se ve cuál
@@ -143,6 +148,7 @@ export function FilaObjeto({
               <button
                 type="button"
                 aria-label={`Ver detalle de ${item.name}`}
+                aria-pressed={seleccionada}
                 onClick={onSeleccionar}
                 className="max-w-full truncate rounded-radius-sm text-left align-baseline hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >

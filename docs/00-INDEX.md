@@ -10,9 +10,10 @@ funciona.
 propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 
 **Sí tiene, y está desplegado: las fases 2 y 2.5, el reseño de la mesa, los quince planes del
-2026-09-05, la sesión de cerrar fichas y las ocho migraciones de D-CF-14.** `dnd.supportive.pro`
-sirve la imagen etiquetada **`f9579b2`** — lo comprobó el autor el 2026-09-11 en `vps1new`, en los
-contenedores de la API y de la web.
+2026-09-05, la sesión de cerrar fichas, las ocho migraciones de D-CF-14 y ahora la hoja a página
+completa.** `dnd.supportive.pro` sirve la imagen etiquetada **`6d2b2ca`** — lo comprobó el
+controlador el 2026-09-12 en `vps1new` con `docker ps` (API y web `healthy`) y con `curl` contra el
+dominio (200).
 
 > **Hasta el 2026-09-12 aquí ponía que producción servía `6eb2590`**, la imagen del 2026-09-05, y
 > el párrafo de abajo contaba la distancia contra ella (70 ficheros). El autor desplegó después y
@@ -22,24 +23,24 @@ contenedores de la API y de la web.
 > **Hasta el 2026-09-05 aquí ponía que el reseño de la mesa NO estaba desplegado y que producción
 > iba por detrás de los dos `main`.** Las dos frases caducaron con ese despliegue.
 
-**`main` lleva la hoja a página completa sin desplegar** —fusionada el 2026-09-12 en `e43038f`
-(merge `--no-ff` de `hoja/pagina-completa`, 38 commits)—; el autor despliega a mano, ver
-[07-historial.md](./07-historial.md). Producción sigue sirviendo `f9579b2` —lo comprobó el autor el
-2026-09-11—, y `git diff --name-only f9579b2..HEAD -- apps packages` toca **80 ficheros**, medido
-el 2026-09-12 sobre `main` en `e43038f`, y ninguno es una migración (`git diff --name-only
-f9579b2..HEAD -- '*prisma*'` no devuelve nada). Empujar a GitHub **no despliega nada** — el CI solo
-prueba, y el despliegue es manual por decisión del autor: ver
-[03-despliegue.md](./03-despliegue.md).
-
 > **Hasta este mismo bloque, hasta el 2026-09-06, aquí ponía que «no hay ningún cambio de código
 > sin desplegar».** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
 > caducidad que ya avisó el párrafo de arriba sobre el reseño de la mesa.
 
+> **Hasta el 2026-09-12 este párrafo decía que producción servía `f9579b2` y que `main` (en
+> `e43038f`) le llevaba 80 ficheros de ventaja sin desplegar.** Las dos frases eran ciertas hasta
+> que el autor desplegó ese mismo día: `git diff --name-only 6d2b2ca..HEAD -- apps packages` está
+> vacío, así que no queda nada sin desplegar.
+
+**`main` y producción coinciden en `6d2b2ca`.** Empujar a GitHub **no despliega nada** — el CI solo
+prueba, y el despliegue es manual por decisión del autor: ver
+[03-despliegue.md](./03-despliegue.md).
+
 **Los quince planes del 2026-09-05 están cerrados**, uno por fichero, en
 [superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md), y lo que
 decidieron mientras se ejecutaban está en [decisiones.md](./decisiones.md). **Lo que queda por hacer
-no es un plan, es jugar**: la partida de prueba con dos cuentas de jugador (D-OP-3) — y ahora, para
-jugarla en producción, primero desplegar lo de arriba.
+no es un plan, es jugar**: la partida de prueba con dos cuentas de jugador (D-OP-3), y ahora sí en
+producción, con el despliegue del 2026-09-12 ya hecho.
 
 
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta

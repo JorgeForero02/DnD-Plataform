@@ -1,9 +1,9 @@
 # Despliegue
 
-> **Producción va POR DETRÁS de `main`, y CUÁNTO no se escribe aquí: se mide.**
+> **Si producción va por detrás de `main`, y cuánto, no se escribe aquí: se mide.**
 > `git diff --name-only <imagen desplegada>..HEAD`, y qué imagen corre se comprueba en el
 > servidor (`docker ps`), nunca de memoria. Nada de lo de abajo cambia; lo que cambia es **qué
-> versión hay arriba**.
+> versión hay arriba**. Medido el 2026-09-12: producción sirve `6d2b2ca` y coincide con `main`.
 >
 > **Esta cabecera volvió a caducar, y van cuatro.** Hasta el 2026-09-07 decía que producción
 > servía «lo que se subió el 2026-09-02» y que la fase 2.5 y el reseño de la mesa (B0–B5) estaban

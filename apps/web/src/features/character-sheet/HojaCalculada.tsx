@@ -9,6 +9,8 @@ import { Ataques } from "./pestanas/Ataques";
 import { Rasgos } from "./pestanas/Rasgos";
 import { Recursos } from "./pestanas/Recursos";
 import { Estado } from "./pestanas/Estado";
+import { Conjuros } from "./pestanas/Conjuros";
+import { lanzaConjuros } from "./pestanas/lanzaConjuros";
 import type { Disposicion } from "./pestanas/tipos";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje: lee `GET .../sheet` y enseña la traza de
@@ -216,26 +218,18 @@ export function HojaCalculada({
               disposicion={disposicion}
             />
 
-            {/* **Espacios de conjuro** no entra en ninguna pestaña de la Tarea 5 (ni `Recursos` ni
-                `Estado` la reclaman en el brief): se queda aquí, donde vivía, entre las dos. */}
-            {sheet.spellSlots.length > 0 && (
-              <TarjetaDeHoja
-                titulo={`Espacios de conjuro (${
-                  sheet.spellSlotResetOn === "SHORT_REST" ? "descanso corto" : "descanso largo"
-                })`}
-                etiqueta="espacios de conjuro"
-              >
-                <ul className="flex flex-wrap gap-s2">
-                  {sheet.spellSlots.map((s) => (
-                    <li
-                      key={s.spellLevel}
-                      className="rounded-radius-sm border border-muted px-s2 py-1 font-data text-chrome-sm text-text"
-                    >
-                      Nivel {s.spellLevel}: {s.slots}
-                    </li>
-                  ))}
-                </ul>
-              </TarjetaDeHoja>
+            {/* Tarea 6 (spec 2026-09-11) — «Espacios de conjuro» se mudó tal cual a la pestaña
+                `Conjuros` (`pestanas/Conjuros.tsx`), que solo se monta para quien lanza
+                (`lanzaConjuros`): un guerrero sin trucos raciales no tiene nada que ver aquí.
+                Todavía sin `Tabs` (llegan en la Tarea 7): se monta donde vivía la tarjeta. */}
+            {lanzaConjuros(sheet) && (
+              <Conjuros
+                campaignId={campaignId}
+                characterId={characterId}
+                data={{ ...data, sheet }}
+                puedeEditar={puedeEditar}
+                disposicion={disposicion}
+              />
             )}
 
             {/* Tarea 5 — modificadores temporales, condiciones, CA con fórmula, velocidad y

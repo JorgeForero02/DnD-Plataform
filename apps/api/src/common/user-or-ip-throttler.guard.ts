@@ -10,6 +10,9 @@ import {
   type ThrottlerStorage,
 } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { UsersService } from "../users/users.service";
+
+const TTL_SELLO_MS = 60_000;
 
 /**
  * El cubo del límite de peticiones es **por usuario cuando hay sesión iniciada** y por IP cuando
@@ -41,15 +44,30 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
  * ruta autenticada; con la firma comprobada, un token falso cuenta como su IP. La verificación es
  * un HMAC, más barato que la consulta que `JwtStrategy` hará después de todos modos.
  *
+ * **Un token revocado por cambio de contraseña tampoco cuenta como su dueño** (ficha P3,
+ * 2026-09-11). Verificar solo la firma no bastaba: un token robado sigue firmado aunque la
+ * víctima ya haya cambiado la contraseña para invalidarlo — `JwtStrategy` lo rechazará con 401,
+ * pero si aquí contara contra `user:<sub>`, quien lo robó podría agotar el cubo de la víctima con
+ * peticiones que nunca llegan a entrar. Se compara `iat` con `passwordChangedAt`, con la misma
+ * regla de empate que `jwt.strategy.ts` (`iat <= sello` es viejo), y el sello se cachea un
+ * minuto por usuario para no sumar una consulta a cada petición — la ventana del caché es del
+ * mismo tamaño que el cubo.
+ *
  * La IP la sigue poniendo Fastify según `TRUST_PROXY` (ver `configure-app.ts`); aquí no se toca.
  */
 @Injectable()
 export class UserOrIpThrottlerGuard extends ThrottlerGuard {
+  // Sello de cambio de contraseña por usuario, en segundos epoch (o `null` si nunca cambió),
+  // cacheado un minuto. Es la salida medida en la ficha: una consulta por usuario y minuto en
+  // vez de una por petición, y la ventana de un minuto es el mismo tamaño que el cubo.
+  private readonly sellos = new Map<string, { sello: number | null; hasta: number }>();
+
   constructor(
     @InjectThrottlerOptions() options: ThrottlerModuleOptions,
     @InjectThrottlerStorage() storage: ThrottlerStorage,
     reflector: Reflector,
     private readonly jwt: JwtService,
+    private readonly users: UsersService,
   ) {
     super(options, storage, reflector);
   }
@@ -67,13 +85,34 @@ export class UserOrIpThrottlerGuard extends ThrottlerGuard {
     const auth = cabecera?.["authorization"];
     if (auth?.startsWith("Bearer ")) {
       try {
-        const { sub } = await this.jwt.verifyAsync<{ sub?: string }>(auth.slice("Bearer ".length));
-        if (typeof sub === "string" && sub) return `user:${sub}`;
+        const { sub, iat } = await this.jwt.verifyAsync<{ sub?: string; iat?: number }>(
+          auth.slice("Bearer ".length),
+        );
+        if (typeof sub === "string" && sub) {
+          // **Un token revocado por cambio de contraseña no es el usuario.** `JwtStrategy` lo
+          // rechazará después con 401; si aquí contara contra `user:<sub>`, quien robó el
+          // token podría agotar el cubo de la víctima con peticiones que nunca entran. La
+          // regla del empate es la misma que en jwt.strategy.ts: `iat <= sello` es viejo.
+          const sello = await this.selloDeCambio(sub);
+          if (sello === null || iat === undefined || iat > sello) return `user:${sub}`;
+        }
       } catch {
         // Firma inválida o caducado: es una petición anónima a efectos de cuota.
       }
     }
     return super.getTracker(req);
+  }
+
+  private async selloDeCambio(sub: string): Promise<number | null> {
+    const ahora = Date.now();
+    const cacheado = this.sellos.get(sub);
+    if (cacheado && cacheado.hasta > ahora) return cacheado.sello;
+    const user = await this.users.findById(sub);
+    const sello = user?.passwordChangedAt
+      ? Math.floor(user.passwordChangedAt.getTime() / 1000)
+      : null;
+    this.sellos.set(sub, { sello, hasta: ahora + TTL_SELLO_MS });
+    return sello;
   }
 
   // `@UseGuards(JwtAuthGuard)` deja la CLASE del guard (no una instancia) en GUARDS_METADATA,

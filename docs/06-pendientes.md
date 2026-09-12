@@ -100,7 +100,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); queda HP-9 —objetos mágicos con efecto—, que el autor mandó **después del paso 3** (D-CF-47); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+Última revisión: **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (los bonos de arma no salen en la fila); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
 código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
 cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
 entero en
@@ -154,53 +154,14 @@ vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota 
 > [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
 > Queda aquí la que abrió HP-8 al mirar qué hace hoy la sintonización: HP-9, que el autor decidió el
 > mismo día —**se hace después del paso 3** (D-CF-47)— y que **el 2026-09-12, más tarde, el autor
-> partió en dos** (D-CF-47 enmendada): la mitad que es un defecto (HP-9a) no espera al paso 3.
+> partió en dos** (D-CF-47 enmendada): la mitad que es un defecto (HP-9a) no esperó al paso 3 y **se
+> cerró ese mismo día en tres tareas** (D-CF-48; entera en el mismo archivo). Queda HP-9b, y HP-10,
+> que salió al cerrar HP-9a.
 
 | | Qué | Dónde y qué costaría |
 |---|---|---|
-| **HP-9a** | **«Sintonizar cuenta» — defecto, no espera al paso 3** (decisión del autor, 2026-09-12). Un objeto del DM con `effects` y `requiresAttunement: true` da su bono **sin estar sintonizado**: el motor no lee `attuned`. Medición, alcance y tres tareas en la subsección de abajo | **Sesión corta, antes o justo después de fusionar la rama** (decide el autor el orden). 2–3 h con revisión entre tareas |
-| **HP-9b** | **Catálogo SRD +N y descanso corto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). La forma del +N ya existe en `effects`; falta el catálogo estructurado y el gancho al descanso corto. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente menos lo que cierre HP-9a, plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
-
-### HP-9a · «Sintonizar cuenta» — defecto, sesión corta (2026-09-12)
-
-**Es un defecto, no una funcionalidad nueva.** Un objeto creado por el DM con `effects` (por
-ejemplo, un +1) y `requiresAttunement: true` aplica su efecto **sin que nadie lo haya
-sintonizado**: el servidor declara la regla —`apps/api/src/inventory/inventory.service.ts:158-172`
-acepta y quita la sintonización, y `:1081-1096` aplica el tope de `MAX_ATTUNED_ITEMS`— pero el
-motor de reglas nunca la lee. `apps/api/src/rules/` no tiene ni una aparición de `attuned`, y
-`character-sheet.service.ts` (~L459) construye el `ResolvedItem` que llega al motor **sin ese
-campo**: un anillo +1 sin sintonizar da +1 igual que uno sintonizado.
-
-**Arreglo mínimo, tres tareas:**
-1. ~~`ResolvedItem` lleva `attuned`.~~ **Hecho el 2026-09-12** (Task 1, commit `fix(rules): an
-   item that requires attunement gives its magical effects only when attuned`):
-   `attuned: z.boolean().default(false)` en `resolvedItemSchema`, y `equipoEquipado` lo copia de
-   la fila. En el listado del inventario el `attuned` que vale sigue siendo el de la fila
-   (`items[].attuned`); el `item.attuned` que va dentro es `false` porque sale del catálogo.
-2. ~~`rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
-   `!requiresAttunement || attuned`~~ **Hecho el 2026-09-12**, por una sola puerta:
-   `efectosActivos(item)` en `rules/items.ts`, que `attacks.ts` importa. **En vez del paso de traza
-   «inactivo»** que decía esta ficha, la hoja emite el aviso `item_not_attuned`
-   (`key: ref`, `data: { ref, name }`) por cada objeto equipado con `requiresAttunement && !attuned
-   && effects.length > 0` — un paso de traza con `amount: 0` habría ensuciado la suma de la traza,
-   y los avisos ya son el sitio donde la hoja explica por qué un número no se movió
-   (`item_unresolved`, `versatile_needs_both_hands`).
-3. ~~`describirAviso` necesita el `case "item_not_attuned"`; la fila y el detalle muestran «Efecto
-   inactivo: requiere sintonización» cuando aplica; RTL~~ **Hecho el 2026-09-12** (Task 2, commit
-   `feat(web): an unattuned item shows its magical effect as inactive, and the sheet says why`):
-   el aviso dice «"{nombre}" requiere sintonización: sus efectos no cuentan hasta sintonizarlo»;
-   `datoDeObjeto` devuelve `{ mundano, magico }` y la mitad mágica va tachada (`<s
-   data-efecto="inactivo">`) con la marca al lado cuando `efectoInactivoPorSintonizacion(row)`
-   (`features/inventory/sintonizacion.ts`, único sitio del predicado en la web, sobre `row.attuned`); el
-   servidor emite el aviso con `sintonizacionPendiente(item)` junto a la puerta, no con una copia
-   del predicado. **Pendiente (Task 3):** `inventario.spec.ts` en Playwright (un solo fichero, con
-   `exec playwright test`) — la marca y el `<s>` con el texto exacto de arriba.
-
-**Estimación dada al autor (controlador, 2026-09-12): 2–3 h, con revisión entre tareas.** Sin
-migración, sin catálogo nuevo, sin tocar el descanso corto. Fuente: SRD 5.1 §*Attunement* — el
-objeto no da sus propiedades mágicas hasta que la criatura está sintonizada con él (verificar la
-cita exacta en el commit si el repositorio trae el texto en inglés; si no, se cita como «según SRD
-5.1 §Attunement» sin inventar literal).
+| **HP-9b** | **Catálogo SRD +N y descanso corto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). La forma del +N ya existe en `effects`; falta el catálogo estructurado y el gancho al descanso corto. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente (HP-9a, **cerrada el 2026-09-12**, ya puso la puerta `efectosActivos` y `ResolvedItem.attuned`), plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
+| **HP-10** | **La fila no pinta los bonos de arma, así que una espada +1 sin sintonizar enseña la marca sin nada tachado.** `datoDeObjeto` (`features/inventory/FilaObjeto.tsx`) solo suma los `effects` de `kind: "ac"` en su mitad `magico`; `weaponAttack` y `weaponDamage` no salen en cifras, ni en limpio ni tachados, aunque el servidor sí los deja de aplicar sin sintonizar (`efectosActivos`) y la marca «Efecto inactivo: requiere sintonización» sí aparece. Encontrado al cerrar HP-9a | **Corta** (media hora, RTL dentro): `magico` añade `+N atq` / `+N dñ` sumando esos dos `kind`, y `DatoEnCifras` los tacha igual que el `+N CA`. Sin tocar el servidor |
 
 ### HP-9b · Catálogo SRD +N y descanso corto — medición, estimación y alcance (2026-09-12)
 
@@ -217,8 +178,9 @@ guarda la lista que valida `itemEffectSchema` en `packages/shared/src/item.schem
 `rules/attacks.ts` al ataque y al daño). Comprobado: **no hace falta migración** para el +N; la
 habría solo si se añade una columna nueva (rareza, cargas), y eso queda fuera.
 
-**Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente menos HP-9a, plan de 6–8
-tareas.** Catálogo SRD 5.1: solo los +N son estructurables (~12: arma, armadura, escudo), el resto
+**Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente menos HP-9a —cerrada el
+2026-09-12, entera en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md)—,
+plan de 6–8 tareas.** Catálogo SRD 5.1: solo los +N son estructurables (~12: arma, armadura, escudo), el resto
 es prosa; sintonizar pasa por el descanso corto (el flujo de descansos de 2C). **Fuera:** cargas,
 rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24 h o a los 100 pies.
 

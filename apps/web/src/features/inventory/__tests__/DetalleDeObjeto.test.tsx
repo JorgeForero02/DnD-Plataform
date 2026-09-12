@@ -151,6 +151,8 @@ describe("DetalleDeObjeto — el efecto de un objeto sin sintonizar se enseña i
     expect(bono).toHaveAttribute("data-efecto", "inactivo");
     const marca = within(panel).getByText(MARCA);
     expect(marca.closest("p")).toHaveTextContent(/no cuentan hasta que lo sintonices/);
+    // T3: el bono tachado apunta a la frase entera para quien no ve el tachado.
+    expect(bono).toHaveAccessibleDescription(/no cuentan hasta que lo sintonices/);
     // El requisito fijo sigue diciéndose aparte, como antes.
     expect(within(panel).getByText("Requiere sintonización")).toBeInTheDocument();
   });

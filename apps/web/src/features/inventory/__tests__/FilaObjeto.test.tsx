@@ -109,7 +109,10 @@ describe("FilaObjeto — el efecto de un objeto sin sintonizar se enseña inacti
     const bono = within(item).getByText("+1 CA");
     expect(bono.tagName).toBe("S");
     expect(bono).toHaveAttribute("data-efecto", "inactivo");
-    expect(within(item).getByText(MARCA)).toBeInTheDocument();
+    const marca = within(item).getByText(MARCA);
+    // T3: el tachado no lo anuncia un lector de pantalla; el bono apunta a su explicación.
+    expect(marca).toHaveAttribute("id", "efecto-inactivo-row-1");
+    expect(bono).toHaveAccessibleDescription(MARCA);
   });
 
   it("sintonizado: «+1 CA» en limpio y sin marca", () => {

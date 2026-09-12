@@ -141,6 +141,97 @@ test("equipar una armadura cambia la CA de la hoja y añade su paso a la traza",
   await expect(tarjetaCa.getByText(/cota de malla/i).first()).toBeVisible();
 });
 
+// HP-9a (2026-09-12) — «Sintonizar cuenta». El servidor deja de aplicar los `effects` de un
+// objeto que exige sintonización hasta que la fila está sintonizada (SRD 5.1 §Attunement); la
+// pantalla tacha el bono, lo marca, y la cabecera avisa. Lo que aquí se mide y `jsdom` no puede:
+// que el número de la tira fija NO se mueva al equipar y SÍ al sintonizar, y que a 390 la fila
+// con la marca crece hacia abajo y no hacia los lados.
+test("un objeto que requiere sintonización no cuenta hasta sintonizarlo", async ({ page }) => {
+  test.setTimeout(90_000);
+  await registrarse(page);
+  await crearPersonajeConFicha(page, "Ondra Cerrojo");
+
+  // El anillo se crea y se entrega por la API: el SRD 5.1 no trae nada que pida sintonización
+  // (`hoja-pestanas.spec.ts`), y el alta a clics ya la recorre la prueba del catálogo de arriba.
+  const ruta = new URL(page.url()).pathname;
+  const [, campaignId, characterId] = ruta.match(/\/campaigns\/([^/]+)\/personajes\/([^/]+)/)!;
+  const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+  const headers = { Authorization: `Bearer ${token}` };
+  const anillo = await page.request.post(`/api/campaigns/${campaignId}/items`, {
+    headers,
+    data: {
+      name: "Anillo de protección",
+      kind: "OTHER",
+      weightOz: 0,
+      requiresAttunement: true,
+      effects: [{ kind: "ac", amount: 1 }],
+      slot: "RING_1",
+    },
+  });
+  expect(anillo.ok(), "crear el anillo en el catálogo de la campaña").toBe(true);
+  const alta = await page.request.post(
+    `/api/campaigns/${campaignId}/characters/${characterId}/inventory`,
+    {
+      headers,
+      data: {
+        ref: { source: "CAMPAIGN", id: (await anillo.json()).id },
+        quantity: 1,
+        location: "CARRIED",
+      },
+    },
+  );
+  expect(alta.ok(), "dar el anillo al personaje").toBe(true);
+
+  await page.goto(`${ruta}?pestana=objetos`);
+  const resumen = page.getByRole("region", { name: "resumen de combate" });
+  const ca = resumen.getByText("CA", { exact: true }).locator("..").getByRole("button");
+  await expect(ca).toHaveText(/^\d+$/);
+  const caAntes = (await ca.textContent())!.trim();
+
+  const inventario = page.getByRole("region", { name: "inventario" });
+  const fila = inventario.getByRole("listitem").filter({ hasText: "Anillo de protección" });
+  await expect(fila).toBeVisible();
+  const MARCA = "Efecto inactivo: requiere sintonización";
+  const avisos = page.getByRole("region", { name: "advertencia" });
+  const avisoDeLaHoja = avisos.getByText(
+    /"Anillo de protección" requiere sintonización: sus efectos no cuentan hasta sintonizarlo/,
+  );
+
+  // **Equipar no basta.** La fila pasa a «Equipado» (aparece «Sintonizar con…», que solo se
+  // ofrece ahí), la hoja se recalcula y avisa, y la CA de la tira sigue siendo la de antes: el
+  // aviso llega con la hoja recalculada, así que leer la CA después de verlo no es leerla antes
+  // de tiempo.
+  await fila.getByRole("button", { name: "Equipar" }).click();
+  const sintonizar = fila.getByRole("button", { name: "Sintonizar con Anillo de protección" });
+  await expect(sintonizar).toBeVisible({ timeout: 15_000 });
+  await expect(avisoDeLaHoja).toBeVisible({ timeout: 15_000 });
+  await expect(ca).toHaveText(caAntes);
+  const tachado = fila.locator('s[data-efecto="inactivo"]');
+  await expect(tachado).toHaveText("+1 CA");
+  await expect(fila.getByText(MARCA, { exact: true })).toBeVisible();
+  // «Equipaste … CA» no se pinta: la CA no cambió, y avisar de un cambio que no hubo mentiría.
+  await expect(page.getByText(/Equipaste/)).toHaveCount(0);
+
+  // A 390 la fila envuelve (`flex-wrap`): la marca la hace más alta, no más ancha.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(fila.getByText(MARCA, { exact: true })).toBeVisible();
+  const caja = (await fila.boundingBox())!;
+  expect(caja.x, "la fila empieza dentro de la ventana").toBeGreaterThanOrEqual(0);
+  expect(caja.x + caja.width, "la fila con la marca cabe en 390").toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  // **Sintonizar sí cuenta:** la CA sube uno, el bono va en limpio y no queda marca ni aviso.
+  await sintonizar.click();
+  await expect(ca).toHaveText(String(Number(caAntes) + 1), { timeout: 15_000 });
+  await expect(
+    fila.getByRole("button", { name: "Desintonizar Anillo de protección" }),
+  ).toBeVisible();
+  await expect(tachado).toHaveCount(0);
+  await expect(fila.getByText("+1 CA", { exact: true })).toBeVisible();
+  await expect(fila.getByText(MARCA, { exact: true })).toHaveCount(0);
+  await expect(avisoDeLaHoja).toHaveCount(0);
+});
+
 test("un arma equipada aparece en el cuadro de ataques, se tira, y la tabla no desborda la página", async ({
   page,
 }) => {

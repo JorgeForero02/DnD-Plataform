@@ -48,17 +48,33 @@ export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
   return { mundano, magico };
 }
 
+/** El `id` de la explicación del efecto inactivo de una fila: uno por fila, para `aria-describedby`. */
+export function idDeEfectoInactivo(rowId: string): string {
+  return `efecto-inactivo-${rowId}`;
+}
+
 /**
  * Las dos mitades pintadas: la mágica en limpio, o **tachada** (`<s>`, con `data-efecto`) si el
  * efecto está inactivo por falta de sintonización. Un solo sitio para la fila y el detalle.
+ *
+ * Un lector de pantalla no anuncia el tachado, así que el `<s>` apunta con `aria-describedby` a
+ * la marca que lo explica (`explicacionId`, el `id` que quien pinta pone en esa marca).
  */
-export function DatoEnCifras({ dato, inactivo }: { dato: DatoDeObjeto; inactivo: boolean }) {
+export function DatoEnCifras({
+  dato,
+  inactivo,
+  explicacionId,
+}: {
+  dato: DatoDeObjeto;
+  inactivo: boolean;
+  explicacionId?: string;
+}) {
   return (
     <>
       {dato.mundano && <span>{dato.mundano}</span>}
       {dato.magico &&
         (inactivo ? (
-          <s data-efecto="inactivo" className="text-muted">
+          <s data-efecto="inactivo" className="text-muted" aria-describedby={explicacionId}>
             {dato.magico}
           </s>
         ) : (
@@ -147,6 +163,7 @@ export function FilaObjeto({
   // HP-9a: el bono mágico de un objeto que exige sintonización y no la tiene no lo suma el
   // servidor; aquí se tacha y se marca, en vez de pintarlo como si contara.
   const efectoInactivo = efectoInactivoPorSintonizacion(row);
+  const idExplicacion = idDeEfectoInactivo(row.id);
   const pesoTotalOz = item.weightOz * row.quantity;
   // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
   // (`ui/__tests__/Iconos.test.tsx`) porque hacía de icono en otra pantalla — aquí es solo
@@ -225,11 +242,14 @@ export function FilaObjeto({
         </div>
         {hayDato && (
           <span className="inline-flex items-baseline gap-1 whitespace-nowrap font-data text-chrome-sm text-accent-text">
-            <DatoEnCifras dato={dato} inactivo={efectoInactivo} />
+            <DatoEnCifras dato={dato} inactivo={efectoInactivo} explicacionId={idExplicacion} />
           </span>
         )}
         {efectoInactivo && (
-          <span className="inline-flex items-center align-middle font-chrome text-chrome-xs text-muted">
+          <span
+            id={idExplicacion}
+            className="inline-flex items-center align-middle font-chrome text-chrome-xs text-muted"
+          >
             {ETIQUETA_EFECTO_INACTIVO}
           </span>
         )}

@@ -76,7 +76,10 @@ datos:
 - **Los datos de arma y de armadura son columnas, no un `Json`.** La convención lo pide (un
   `Json` no se consulta nunca por dentro) y además evita el `Entity.body` de nuevo. El único
   `Json` es `effects`, una lista **validada al escribir y al leer** por la unión discriminada de
-  Zod.
+  Zod. Desde HP-9a (2026-09-12) el `ResolvedItem` equipado lleva además `attuned`, copiado de la
+  fila de `InventoryItem`, y el motor solo aplica `effects` si el objeto no exige sintonización o
+  está sintonizado (`efectosActivos`). **Sin migración**: `effects` es el `Json` que ya existía y
+  `attuned` la columna que ya existía; lo nuevo es que viajan juntos hasta el motor.
 - **El peso en onzas (`weightOz`) y el precio en cobres (`costCp`), enteros.** Es el mismo
   principio que los pies de la especificación de distancias: la unidad íntegra abajo, la legible
   arriba. **En libras, los pesos del SRD tienen fracciones (¼ de libra); en onzas son enteros**, y

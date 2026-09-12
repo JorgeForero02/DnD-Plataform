@@ -41,14 +41,16 @@ de cierre va detrás, y el conteo lo da `git log --oneline 80a9243..HEAD`, no es
 revisadas una a una y medidas fichero a fichero en el navegador; después pasaron
 la revisión final de la rama entera, dos rondas de cierre de sus fichas y dos residuales
 ([07-historial.md](./07-historial.md), «La hoja a página completa»). **No está en `main` ni en
-producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..47 en
+producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..48 en
 [decisiones.md](./decisiones.md); de las ocho fichas que dejaron las revisiones no queda ninguna
 abierta, y la que salió al medir la sintonización se partió en dos el mismo día (D-CF-47
-enmendada): HP-9a y HP-9b, ambas en [06-pendientes.md](./06-pendientes.md) con su estimación.
+enmendada): **HP-9a («sintonizar cuenta») se cerró el mismo 2026-09-12 en tres commits sobre la
+misma rama** (D-CF-48; el motor filtra los `effects` de un objeto sin sintonizar, la pantalla tacha
+el bono y la cabecera avisa, con su recorrido de navegador en `inventario.spec.ts`) y dejó HP-10
+(los bonos de arma no salen en la fila); HP-9b sigue en [06-pendientes.md](./06-pendientes.md) con
+su estimación.
 
-**Lo siguiente, si el autor así lo manda, es HP-9a («sintonizar cuenta»)** —sesión corta, defecto,
-no espera al paso 3— **antes o justo después de fusionar la rama** (decide el autor el orden) →
-**el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y S6 dentro —la
+**Lo siguiente es del autor: fusionar la rama y desplegar, a mano** → **el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y S6 dentro —la
 «tanda L»— → **después, HP-9b, catálogo SRD +N y descanso corto (D-CF-47)** → higiene → jugar una
 partida → fase 3. A2 aplazada. El paso 3 asume la pestaña Conjuros hecha, y lo está: hoy enseña
 espacios y el hueco declarado (D-CF-34).

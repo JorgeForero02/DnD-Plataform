@@ -39,6 +39,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md) | **`CLAUDE.md` deja de narrar el estado**, movida entera el 2026-09-12 al escribir la línea de la ronda de documentación de cierre de la hoja (el fichero iba a pasar de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md) | **La poda del tablero y el nacimiento de `como-seguir.md`**, movida entera el 2026-09-12 al escribir la línea de HP-9a (el fichero estaba en 997 de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md) | **Botín y reparto** —una tabla entrega, y decir quién dio—, movida entera el 2026-09-12 al escribir la línea de HP-9a Task 2 (el fichero quedaba en 1007 de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-paso-2-actividad.md`](./_archivo/historial-2026-09-06-paso-2-actividad.md) | **Paso 2 — la actividad, sus cinco formas y la economía de la mesa** (2026-09-06/07), movida entera el 2026-09-12 al escribir la línea de cierre de HP-9a: el fichero quedaba en 1005 de 1000 y era la entrada completa más antigua |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -221,6 +222,24 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   del predicado. Diez pruebas nuevas (2 de vocabulario, 4 + 4 RTL); dos mutaciones —el predicado
   siempre falso tumbó dos, quitar el `case` tumbó dos—. Queda la Task 3 (Playwright).
   **Revertir:** `git revert` del commit; la pantalla vuelve a pintar el +1 como si contara.
+- **Sintonizar cuenta (HP-9a, 2026-09-12) — cerrada en tres commits:** `11ea5d9` (Task 1, el
+  servidor), `6d2fc9c` (Task 2, la pantalla) y el de la Task 3, `feat: attunement counts in the
+  browser too, and HP-9a closes`. **Qué** cerró la Task 3: el `<s>` del bono tachado apunta con
+  `aria-describedby` a su marca (`idDeEfectoInactivo(row.id)`, un `id` por fila; en el detalle con
+  prefijo `detalle-` porque las dos cajas conviven en la página), porque un lector de pantalla no
+  anuncia el tachado —dos aserciones RTL (`toHaveAccessibleDescription`), rojas antes—; y el
+  recorrido de navegador que ninguna unitaria puede hacer, `apps/web/e2e/inventario.spec.ts` «un
+  objeto que requiere sintonización no cuenta hasta sintonizarlo»: un anillo de protección de la
+  campaña (`requiresAttunement`, `effects: [{ kind: "ac", amount: 1 }]`) se equipa por la pantalla
+  y la CA de la tira fija **no se mueve**, la fila enseña `s[data-efecto="inactivo"]` con «+1 CA»
+  y la marca, la cabecera avisa; a 390×844 la fila con la marca cabe (borde derecho ≤ 390, crece
+  hacia abajo por `flex-wrap`); «Sintonizar» sube la CA en uno y se van el tachado, la marca y el
+  aviso. **Por qué:** SRD 5.1 §Attunement — un objeto que requiere sintonización da sus propiedades
+  mágicas solo a la criatura sintonizada; sin sintonizar es su versión mundana. La ficha entera va a
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) y
+  deja **HP-10** en 06 (la fila no pinta los bonos de arma, así que una espada +1 sin sintonizar
+  enseña la marca sin nada tachado). D-CF-48. **Revertir:** `git revert` de los tres commits, del
+  más nuevo al más viejo; el motor vuelve a sumar el +1 sin mirar `attuned`.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
@@ -746,42 +765,12 @@ P2-0 sin revertir P2-0b, sí.
 
 ---
 
-## Paso 2 — la actividad, sus cinco formas y la economía de la mesa (2026-09-06/07)
+## Paso 2 — la actividad, sus cinco formas y la economía de la mesa (2026-09-06/07) — archivada
 
-**Qué.** Las once tareas del plan [`2026-09-06-paso-2-actividad.md`](./superpowers/plans/2026-09-06-paso-2-actividad.md),
-en nueve commits de tarea —dos de ellos juntan dos tareas cada uno (9+10 y 3+11)— más dos commits
-de corrección de sus e2e: la economía de acciones del combate (`Combatant.actionUsed/bonusUsed/reactionUsed/movementUsed`,
-repuesta al empezar el turno de quien entra); `Origen`, un número que nunca miente sobre su
-procedencia; las cinco actividades del SRD (`ataque`, `salvacion`, `dados`, `utilidad`, `prueba`)
-con su propio `dados`; usarla gastando por las puertas que ya existían (`changeHp`,
-`RollRequestsService.create`, `ConditionsService.apply`, con el patrón `tx?` extendido a los
-tres — con un hueco real que quedó abierto en uno de ellos, ver
-[06-pendientes.md](./06-pendientes.md)); una subclase por personaje y no todas a la vez; conceder
-una actividad desde el catálogo con sus usos y sus escalas; y la Furia de punta a punta, con la
-economía visible en la mesa.
-
-**Por qué.** Un mago sigue sin hechizos hasta el paso 3, y este paso existía para que quepan: la
-tarea 0 mapeó diez conjuros a mano contra el borrador del plan y ocho no cabían, así que el esquema
-se corrigió antes de escribir código (D-P2-1 a D-P2-6 en [decisiones.md](./decisiones.md)).
-
-**Cómo se comprobó.** Trece de trece tareas de la tanda con implementador —contando también el
-plan botín, más abajo, y sin contar la tarea 0, que fue papel sin implementador— mordieron algo
-real en su primera revisión con contexto limpio; ninguno de los hallazgos lo vio quien implementó. Los tres más graves de este plan: una fuga por 403 en `gastar` sobre un PNJ
-escondido; `raging` interpretada por el servidor sin estar en la lista de claves reservadas —un
-jugador se llevaba +2 de daño permanente gratis—, reincidencia exacta del agujero que se cerró para
-`helped`; y un interbloqueo real en el orden de los candados de `changeHp`. Detalle completo, tarea
-a tarea, en el bloque «Avance» del plan y en `.superpowers/sdd/2026-09-06-tanda-paso2-y-botin/progress.md`
-(local, no viaja con el clon).
-
-**Cómo revertir.** Once commits independientes de `2bd7769` a `2228341`/`8d4de37`
-(`git log --oneline 7e7f92b..HEAD`); revertir uno deshace su tarea. Dos llevan migración:
-`combatant_action_economy` (las cuatro columnas de `Combatant`) y `character_subclass`
-(`Character.subclassKey`) — revertir el código deja las columnas sin escritor, sin dato que
-perder. **`character_subclass` tiene efecto sobre datos ya en producción**: un personaje de nivel
-≥ `chosenAtLevel` pierde los rasgos de su camino hasta que alguien elija uno, que es el arreglo y no
-una regresión — ver [05-datos.md](./05-datos.md). Nueve fichas de deuda quedaron abiertas en
-[06-pendientes.md](./06-pendientes.md), la más urgente antes del paso 3 siendo la autorización de
-`changeHp` y de `RollRequestsService.create` sobre actividades de otro personaje.
+**Movida entera** a [`_archivo/historial-2026-09-06-paso-2-actividad.md`](./_archivo/historial-2026-09-06-paso-2-actividad.md)
+el 2026-09-12, al escribir la línea de cierre de HP-9a: el fichero quedaba en 1005 de 1000. En una
+línea: once tareas en nueve commits (`2bd7769`…`2228341`/`8d4de37`) —la economía de acciones, `Origen`,
+las cinco actividades del SRD, una subclase por personaje y la Furia de punta a punta—.
 
 ## Botín y reparto — una tabla entrega, y decir quién dio (2026-09-06) — archivada
 

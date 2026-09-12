@@ -943,3 +943,52 @@ como ficha con su coste escrito. No es urgente para una mesa de cinco.
 **Texto original:**
 
 | **HP-8** | **El orden de los botones de la fila no es el del prototipo**: la pantalla 20 del 09-06 ponía «sintonizar» ANTES de la acción principal, y la fila nunca lo hizo —`features/inventory/accionesDeObjeto.ts` pinta principal · sintonizar · gastar · soltar, y el detalle hereda ese orden por ser la misma lista—. Nadie lo decidió: la fila nació así en 2B y el prototipo es de revisión obligatoria | Decidir si el prototipo pierde (la acción principal primero es lo que hoy se usa en la mesa) o se reordena la lista; en cualquier caso, escribirlo en ese fichero. Una línea de código y la prueba de orden |
+
+## HP-9a · «Sintonizar cuenta» — un objeto que exige sintonización daba su bono sin estar sintonizado (2026-09-12)
+
+**Cerrada el 2026-09-12 (HP-9a, tres tareas).** Fuente: SRD 5.1 §*Attunement* — el objeto no da sus propiedades mágicas hasta que la criatura está sintonizada con él; sin sintonizar funciona como su versión mundana. **Task 1** (`11ea5d9`, `fix(rules): an item that requires attunement gives its magical effects only when attuned`): `ResolvedItem.attuned` (`packages/shared/src/item.schema.ts`), una sola puerta `efectosActivos(item)` en `apps/api/src/rules/items.ts` que `attacks.ts` importa, `character-sheet.service.ts` copia `attuned` de la fila al objeto equipado y emite el aviso `item_not_attuned` (`key: ref`, `data: { ref, name }`) por cada objeto equipado con efectos y sin sintonizar. Once pruebas rojas antes (`Expected: 11 Received: 12` en la CA; `Expected: 6 Received: 7` en el ataque), verdes después; mutación (`return item.effects`) las vuelve a poner rojas. **Task 2** (`6d2fc9c`, `feat(web): an unattuned item shows its magical effect as inactive, and the sheet says why`): `describirAviso` traduce el aviso («"X" requiere sintonización: sus efectos no cuentan hasta sintonizarlo.»); `datoDeObjeto` devuelve `{ mundano, magico }` y la mitad mágica va tachada (`<s data-efecto="inactivo">`) con la marca «Efecto inactivo: requiere sintonización» en la fila y el detalle cuando `efectoInactivoPorSintonizacion(row)` (`features/inventory/sintonizacion.ts`, único sitio del predicado en la web). Ocho RTL rojas antes, verdes después; dos mutaciones. **Task 3** (este cierre): el `<s>` apunta con `aria-describedby` a la marca (un `id` por fila, `idDeEfectoInactivo`), porque un lector de pantalla no anuncia el tachado; y el recorrido de navegador `apps/web/e2e/inventario.spec.ts`, «un objeto que requiere sintonización no cuenta hasta sintonizarlo»: equipar el anillo por la pantalla **no mueve** la CA de la tira fija, aparece el tachado, la marca y el aviso de la cabecera; a 390×844 la fila con la marca cabe (borde derecho ≤ 390); sintonizar sube la CA en uno y se van el tachado, la marca y el aviso. Lo que quedó fuera va en **HP-10** (06): la fila nunca pintó los bonos de arma (`weaponAttack`/`weaponDamage`), así que una espada +1 sin sintonizar enseña la marca sin nada tachado.
+
+**Texto original:**
+
+| **HP-9a** | **«Sintonizar cuenta» — defecto, no espera al paso 3** (decisión del autor, 2026-09-12). Un objeto del DM con `effects` y `requiresAttunement: true` da su bono **sin estar sintonizado**: el motor no lee `attuned`. Medición, alcance y tres tareas en la subsección de abajo | **Sesión corta, antes o justo después de fusionar la rama** (decide el autor el orden). 2–3 h con revisión entre tareas |
+
+### HP-9a · «Sintonizar cuenta» — defecto, sesión corta (2026-09-12)
+
+**Es un defecto, no una funcionalidad nueva.** Un objeto creado por el DM con `effects` (por
+ejemplo, un +1) y `requiresAttunement: true` aplica su efecto **sin que nadie lo haya
+sintonizado**: el servidor declara la regla —`apps/api/src/inventory/inventory.service.ts:158-172`
+acepta y quita la sintonización, y `:1081-1096` aplica el tope de `MAX_ATTUNED_ITEMS`— pero el
+motor de reglas nunca la lee. `apps/api/src/rules/` no tiene ni una aparición de `attuned`, y
+`character-sheet.service.ts` (~L459) construye el `ResolvedItem` que llega al motor **sin ese
+campo**: un anillo +1 sin sintonizar da +1 igual que uno sintonizado.
+
+**Arreglo mínimo, tres tareas:**
+1. ~~`ResolvedItem` lleva `attuned`.~~ **Hecho el 2026-09-12** (Task 1, commit `fix(rules): an
+   item that requires attunement gives its magical effects only when attuned`):
+   `attuned: z.boolean().default(false)` en `resolvedItemSchema`, y `equipoEquipado` lo copia de
+   la fila. En el listado del inventario el `attuned` que vale sigue siendo el de la fila
+   (`items[].attuned`); el `item.attuned` que va dentro es `false` porque sale del catálogo.
+2. ~~`rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
+   `!requiresAttunement || attuned`~~ **Hecho el 2026-09-12**, por una sola puerta:
+   `efectosActivos(item)` en `rules/items.ts`, que `attacks.ts` importa. **En vez del paso de traza
+   «inactivo»** que decía esta ficha, la hoja emite el aviso `item_not_attuned`
+   (`key: ref`, `data: { ref, name }`) por cada objeto equipado con `requiresAttunement && !attuned
+   && effects.length > 0` — un paso de traza con `amount: 0` habría ensuciado la suma de la traza,
+   y los avisos ya son el sitio donde la hoja explica por qué un número no se movió
+   (`item_unresolved`, `versatile_needs_both_hands`).
+3. ~~`describirAviso` necesita el `case "item_not_attuned"`; la fila y el detalle muestran «Efecto
+   inactivo: requiere sintonización» cuando aplica; RTL~~ **Hecho el 2026-09-12** (Task 2, commit
+   `feat(web): an unattuned item shows its magical effect as inactive, and the sheet says why`):
+   el aviso dice «"{nombre}" requiere sintonización: sus efectos no cuentan hasta sintonizarlo»;
+   `datoDeObjeto` devuelve `{ mundano, magico }` y la mitad mágica va tachada (`<s
+   data-efecto="inactivo">`) con la marca al lado cuando `efectoInactivoPorSintonizacion(row)`
+   (`features/inventory/sintonizacion.ts`, único sitio del predicado en la web, sobre `row.attuned`); el
+   servidor emite el aviso con `sintonizacionPendiente(item)` junto a la puerta, no con una copia
+   del predicado. **Pendiente (Task 3):** `inventario.spec.ts` en Playwright (un solo fichero, con
+   `exec playwright test`) — la marca y el `<s>` con el texto exacto de arriba.
+
+**Estimación dada al autor (controlador, 2026-09-12): 2–3 h, con revisión entre tareas.** Sin
+migración, sin catálogo nuevo, sin tocar el descanso corto. Fuente: SRD 5.1 §*Attunement* — el
+objeto no da sus propiedades mágicas hasta que la criatura está sintonizada con él (verificar la
+cita exacta en el commit si el repositorio trae el texto en inglés; si no, se cita como «según SRD
+5.1 §Attunement» sin inventar literal).

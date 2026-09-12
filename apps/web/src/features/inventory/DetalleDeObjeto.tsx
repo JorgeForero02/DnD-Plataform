@@ -3,7 +3,7 @@ import type { InventoryRow } from "./api";
 import type { AccionDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
-import { DatoEnCifras, datoDeObjeto } from "./FilaObjeto";
+import { DatoEnCifras, datoDeObjeto, idDeEfectoInactivo } from "./FilaObjeto";
 import { IconoSinIdentificar } from "./iconos";
 import { formatearKg } from "./peso";
 import { efectoInactivoPorSintonizacion } from "./sintonizacion";
@@ -102,6 +102,8 @@ function Contenido({
   const hayDato = dato.mundano !== null || dato.magico !== null;
   // HP-9a: mismo predicado que la fila (`sintonizacion.ts`); aquí además cabe la frase entera.
   const efectoInactivo = efectoInactivoPorSintonizacion(row);
+  // Distinto del `id` de la fila (`detalle-`): las dos pueden estar en la misma página.
+  const idExplicacion = idDeEfectoInactivo(`detalle-${row.id}`);
   // D-CF-15: `undefined` cuenta como identificado, igual que en la fila.
   const sinIdentificar = item.identified === false;
   // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
@@ -137,7 +139,7 @@ function Contenido({
           <>
             <dt className="text-muted">Dato</dt>
             <dd className="inline-flex items-baseline gap-1 font-data text-accent-text">
-              <DatoEnCifras dato={dato} inactivo={efectoInactivo} />
+              <DatoEnCifras dato={dato} inactivo={efectoInactivo} explicacionId={idExplicacion} />
             </dd>
           </>
         )}
@@ -157,7 +159,7 @@ function Contenido({
       {/* HP-9a: por qué el número de arriba va tachado — la misma verdad que el aviso
           `item_not_attuned` de la hoja, dicha donde está el botón «Sintonizar». */}
       {efectoInactivo && (
-        <p className="font-chrome text-chrome-xs text-muted">
+        <p id={idExplicacion} className="font-chrome text-chrome-xs text-muted">
           <span className="text-text">{ETIQUETA_EFECTO_INACTIVO}</span>
           {". "}
           {EXPLICACION_EFECTO_INACTIVO}

@@ -1,8 +1,4 @@
-import type { AbilityKey, SkillKey } from "@dnd/shared";
-import { ABILITY_KEYS, SKILLS } from "@dnd/shared";
 import { useCharacterSheet } from "./hooks";
-import { ValorDerivado } from "./Traza";
-import { TirarBoton } from "./TirarBoton";
 import { PuntosDeGolpe } from "./PuntosDeGolpe";
 import { ModificadoresTemporales } from "./ModificadoresTemporales";
 import { RecursosYDescansos } from "./RecursosYDescansos";
@@ -10,15 +6,16 @@ import { Actividades } from "./Actividades";
 import { Condiciones } from "./Condiciones";
 import { VelocidadYSentidos } from "./VelocidadYSentidos";
 import { Anulaciones } from "./Anulaciones";
-import { AtaquesYLanzamiento } from "./AtaquesYLanzamiento";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { DadosDeGolpe, PercepcionPasiva, SalvacionesDeMuerte } from "./TarjetasDeEstado";
-import { CompetenciasConArmas, Personalidad, RasgosYAptitudes } from "./BloquesDelPie";
 import { Caracteristicas, FichaEditable } from "./IdentidadEditable";
 import { EmptyState } from "../../ui/Collection";
-import { ABREVIATURA_CARACTERISTICA, NOMBRE_CARACTERISTICA, NOMBRE_HABILIDAD } from "./vocabulario";
+import { ValorDerivado } from "./Traza";
 import { TarjetaDeHoja } from "./Tarjeta";
 import { Cabecera } from "./Cabecera";
+import { Numeros } from "./pestanas/Numeros";
+import { Ataques } from "./pestanas/Ataques";
+import { Rasgos } from "./pestanas/Rasgos";
 import type { Disposicion } from "./pestanas/tipos";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje: lee `GET .../sheet` y enseña la traza de
@@ -65,16 +62,6 @@ import type { Disposicion } from "./pestanas/tipos";
 // La atribución del SRD que `catalog/index.ts` pide ver en pantalla no se repite aquí: ya la pinta
 // `AppShell` en el pie de TODA pantalla con sesión, y esta hoja se monta dentro de un `AppShell`.
 
-const HABILIDADES_POR_CARACTERISTICA: Record<AbilityKey, SkillKey[]> = ABILITY_KEYS.reduce(
-  (acc, ability) => {
-    acc[ability] = (Object.entries(SKILLS) as [SkillKey, AbilityKey][])
-      .filter(([, a]) => a === ability)
-      .map(([skill]) => skill);
-    return acc;
-  },
-  {} as Record<AbilityKey, SkillKey[]>,
-);
-
 export function HojaCalculada({
   campaignId,
   characterId,
@@ -84,8 +71,9 @@ export function HojaCalculada({
   campaignId: string;
   characterId: string;
   puedeEditar: boolean;
-  // Tarea 3 (spec 2026-09-11) — todavía sin usar aquí abajo: la recibe y se la pasa a `Cabecera`
-  // tal cual. Las pestañas que vengan después (Tarea 4+) sí la necesitarán para su propia forma.
+  // Tarea 3 (spec 2026-09-11) — se la pasa a `Cabecera` tal cual. Desde la Tarea 4 también se la
+  // pasa a `Numeros`, `Ataques` y `Rasgos`, sus propias pestañas: cada una decide su rejilla
+  // (una columna en "mesa", varias en "pagina") con este mismo valor.
   disposicion: Disposicion;
 }) {
   const { data, isLoading, isError } = useCharacterSheet(campaignId, characterId);
@@ -187,73 +175,17 @@ export function HojaCalculada({
           {/* --- Columna izquierda: la cadena que explica los números. NO se intercala nada
               entre características, salvaciones y habilidades. --- */}
           <div key="columna-izquierda" className="flex min-w-0 flex-col gap-s4">
-            {/* La misma pareja que pinta la rama de arriba, y **en la misma posición del
-                árbol**: es lo que hace que el campo que se está tecleando sobreviva al momento
-                en que la hoja pasa a ser derivable. */}
-            {identidad}
-
-            {/* **Las salvaciones, en dos columnas de una línea** — como la maqueta. Seis valores
-                que se leen de un vistazo no necesitan seis bandas. */}
-            <TarjetaDeHoja titulo="Salvaciones">
-              <div className="grid gap-x-s5 gap-y-1 sm:grid-cols-2">
-                {ABILITY_KEYS.map((ability) => (
-                  <ValorDerivado
-                    key={ability}
-                    variante="linea"
-                    etiqueta={NOMBRE_CARACTERISTICA[ability]}
-                    valor={sheet.derived[`save.${ability}`]}
-                    accion={
-                      <TirarBoton
-                        campaignId={campaignId}
-                        characterId={characterId}
-                        etiqueta={`Salvación de ${NOMBRE_CARACTERISTICA[ability]}`}
-                        modificador={sheet.derived[`save.${ability}`].total}
-                        derivado={sheet.derived[`save.${ability}`]}
-                        // **Una salvación por característica, y no una sola para las seis.**
-                        // `restrained` solo penaliza las de Destreza y el fallo automático de
-                        // paralizado alcanza solo Fuerza y Destreza: una entrada única tendría
-                        // que mentir en cuatro o callarse en dos.
-                        sugerencia={data?.rollSuggestions?.saves?.[ability]}
-                      />
-                    }
-                  />
-                ))}
-              </div>
-            </TarjetaDeHoja>
-
-            <TarjetaDeHoja titulo="Habilidades">
-              <div className="flex flex-col gap-1">
-                {ABILITY_KEYS.flatMap((ability) =>
-                  HABILIDADES_POR_CARACTERISTICA[ability].map((skill) => (
-                    <ValorDerivado
-                      key={skill}
-                      variante="linea"
-                      etiqueta={`${NOMBRE_HABILIDAD[skill]} (${ABREVIATURA_CARACTERISTICA[ability]})`}
-                      valor={sheet.derived[`skill.${skill}`]}
-                      accion={
-                        <TirarBoton
-                          campaignId={campaignId}
-                          characterId={characterId}
-                          etiqueta={NOMBRE_HABILIDAD[skill]}
-                          modificador={sheet.derived[`skill.${skill}`].total}
-                          derivado={sheet.derived[`skill.${skill}`]}
-                          // **Fix round 1 (ALTA-2).** Esto decía que ninguna regla del SRD
-                          // distingue característica en una prueba, y dejó de ser verdad con la
-                          // migración 6: "muy cargado" (SRD 5.1, Variant: Encumbrance) solo
-                          // penaliza Fuerza, Destreza y Constitución, así que una tirada de
-                          // Persuasión (Carisma) no puede compartir sugerencia con una de
-                          // Atletismo (Fuerza). `checks[ability]` es la entrada que sí distingue
-                          // —`rollSuggestions.checks`, una por característica igual que
-                          // `saves`—, y `ability` ya es la característica de ESTA habilidad
-                          // porque el bucle de fuera itera `ABILITY_KEYS.flatMap(...)`.
-                          sugerencia={data?.rollSuggestions?.checks?.[ability]}
-                        />
-                      }
-                    />
-                  )),
-                )}
-              </div>
-            </TarjetaDeHoja>
+            {/* Tarea 4 (spec 2026-09-11) — características, salvaciones y habilidades son ahora
+                la pestaña `Numeros`, con la MISMA tarjeta de siempre movida sin reescribir.
+                Todavía sin `Tabs` (llegan en la Tarea 7): se monta aquí, donde vivían sus
+                tarjetas, con la misma `disposicion` que ya recibe `Cabecera`. */}
+            <Numeros
+              campaignId={campaignId}
+              characterId={characterId}
+              data={{ ...data, sheet }}
+              puedeEditar={puedeEditar}
+              disposicion={disposicion}
+            />
           </div>
 
           {/* --- Columna derecha: lo accionable. --- */}
@@ -382,12 +314,15 @@ export function HojaCalculada({
           />
         </section>
 
-        <AtaquesYLanzamiento
+        {/* Tarea 4 — «Ataques y lanzamiento» y «Competencias con armas» son ahora la pestaña
+            `Ataques`, montada aquí donde vivía la primera (la segunda vivía en el pie, más
+            abajo, y se mueve con ella para no repetirla). */}
+        <Ataques
           campaignId={campaignId}
           characterId={characterId}
-          sheet={sheet}
-          attacks={data.attacks ?? []}
-          visibilidadDelPersonaje={data.character.visibility}
+          data={{ ...data, sheet }}
+          puedeEditar={puedeEditar}
+          disposicion={disposicion}
         />
 
         {/* **El hueco del inventario, relleno (fase 2B).** Aquí hubo hasta hoy un recuadro
@@ -400,12 +335,17 @@ export function HojaCalculada({
             El hueco marcaba el sitio, no la anchura. */}
         <PaginaDeInventario campaignId={campaignId} characterId={characterId} />
 
-        {/* El pie: lo que se lee una vez por sesión y no se consulta en mitad de un turno. */}
-        <div className="grid items-start gap-s4 lg:grid-cols-3">
-          <CompetenciasConArmas weaponProficiencies={sheet.weaponProficiencies} />
-          <RasgosYAptitudes features={sheet.features} />
-          <Personalidad bio={character.bio} />
-        </div>
+        {/* El pie: lo que se lee una vez por sesión y no se consulta en mitad de un turno.
+            Tarea 4 — «Ficha», «Rasgos y aptitudes» y «Personalidad» son ahora la pestaña
+            `Rasgos` (su «Competencias con armas» se mudó con `Ataques`, arriba, para no
+            repetirla). */}
+        <Rasgos
+          campaignId={campaignId}
+          characterId={characterId}
+          data={{ ...data, sheet }}
+          puedeEditar={puedeEditar}
+          disposicion={disposicion}
+        />
       </div>
     </div>
   );

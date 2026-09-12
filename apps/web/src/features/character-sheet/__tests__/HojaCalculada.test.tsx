@@ -1,161 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-import type { ReactNode } from "react";
+import { QueryClient } from "@tanstack/react-query";
 import { HojaCalculada } from "../HojaCalculada";
 import * as characterSheetApi from "../api";
 import * as members from "../../campaigns/members";
-import type {
-  Catalog,
-  CalculatedSheet,
-  CharacterRow,
-  ConditionRow,
-  ResourceRow,
-  SheetResponse,
-} from "../api";
+import type { Catalog, ConditionRow, ResourceRow, SheetResponse } from "../api";
 import type { RollSuggestions, SuggestedRollMode } from "@dnd/shared";
+import { sheet, sheetResponse, wrapper } from "./fixtures/hoja.fixture";
 
 // Tarea 2A.10 — "ninguna clave de enumeración aparece en pantalla": la hoja completa, con datos
 // que a propósito incluyen claves crudas del motor (`half-elf`, `wizard`, `LONG_REST`,
 // `exhaustion`, `stealth`…), no debe imprimir ninguna de ellas — todo pasa por `vocabulario.ts`.
-
-function wrapper(qc: QueryClient) {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    // `LegalNotice` (ui/) usa `<Link>` de react-router: hace falta un Router alrededor aunque
-    // este componente no navegue por sí mismo.
-    return (
-      <QueryClientProvider client={qc}>
-        <MemoryRouter>{children}</MemoryRouter>
-      </QueryClientProvider>
-    );
-  };
-}
-
-function paso(labelKey: string, amount = 1, op: "base" | "add" = "add") {
-  return { op, amount, sourceType: "manual" as const, sourceKey: "x", labelKey };
-}
-
-function valor(total: number, labelKey: string) {
-  return { key: labelKey, total, steps: [paso(labelKey, total, "base")] };
-}
-
-const character: CharacterRow = {
-  id: "ch1",
-  campaignId: "c1",
-  ownerId: "u1",
-  name: "Elowen",
-  level: 3,
-  archivedAt: null,
-
-  color: null,
-  bio: null,
-  visibility: "PLAYERS",
-  str: 10,
-  dex: 14,
-  con: 12,
-  int: 16,
-  wis: 10,
-  cha: 18,
-  raceKey: "half-elf",
-  subraceKey: null,
-  classKey: "wizard",
-  subclassKey: null,
-  choices: { "half-elf-skills": ["stealth", "perception"] },
-  currentHp: 15,
-  tempHp: 0,
-  version: 2,
-  deathSaveSuccesses: 0,
-  deathSaveFailures: 0,
-  overrides: null,
-};
-
-const sheet: CalculatedSheet = {
-  derived: {
-    // La CA lleva dos pasos a propósito: uno **sin** causa editable (la armadura llega en 2B) y
-    // otro que sí la tiene (el modificador de Destreza). Es lo que H5 tiene que distinguir.
-    ac: {
-      key: "ac",
-      total: 12,
-      steps: [paso("ac.unarmored", 10, "base"), paso("abilityMod.dex", 2)],
-    },
-    initiative: valor(2, "abilityMod.dex"),
-    passivePerception: valor(10, "passive.base"),
-    "abilityMod.str": valor(0, "abilityMod.str"),
-    "abilityMod.dex": valor(2, "abilityMod.dex"),
-    "abilityMod.con": valor(1, "abilityMod.con"),
-    "abilityMod.int": valor(3, "abilityMod.int"),
-    "abilityMod.wis": valor(0, "abilityMod.wis"),
-    "abilityMod.cha": valor(4, "abilityMod.cha"),
-    "save.str": valor(0, "abilityMod.str"),
-    "save.dex": valor(2, "abilityMod.dex"),
-    "save.con": valor(1, "abilityMod.con"),
-    "save.int": valor(5, "abilityMod.int"),
-    "save.wis": valor(2, "abilityMod.wis"),
-    "save.cha": valor(4, "abilityMod.cha"),
-    "skill.acrobatics": valor(2, "abilityMod.dex"),
-    "skill.animal-handling": valor(0, "abilityMod.wis"),
-    "skill.arcana": valor(5, "abilityMod.int"),
-    "skill.athletics": valor(0, "abilityMod.str"),
-    "skill.deception": valor(4, "abilityMod.cha"),
-    "skill.history": valor(3, "abilityMod.int"),
-    "skill.insight": valor(0, "abilityMod.wis"),
-    "skill.intimidation": valor(4, "abilityMod.cha"),
-    "skill.investigation": valor(3, "abilityMod.int"),
-    "skill.medicine": valor(0, "abilityMod.wis"),
-    "skill.nature": valor(3, "abilityMod.int"),
-    "skill.perception": valor(2, "skill.perception"),
-    "skill.performance": valor(4, "abilityMod.cha"),
-    "skill.persuasion": valor(4, "abilityMod.cha"),
-    "skill.religion": valor(3, "abilityMod.int"),
-    "skill.sleight-of-hand": valor(4, "abilityMod.dex"),
-    "skill.stealth": valor(4, "abilityMod.dex"),
-    "skill.survival": valor(0, "abilityMod.wis"),
-    "senses.darkvision": valor(60, "senses.darkvision"),
-    "attack.melee": valor(2, "abilityMod.str"),
-    "attack.ranged": valor(4, "abilityMod.dex"),
-    "attack.spell": valor(5, "abilityMod.int"),
-    spellSaveDc: valor(13, "spellSaveDc.base"),
-    proficiencyBonus: valor(2, "proficiencyBonus"),
-  },
-  warnings: [
-    { code: "unresolved_choice", key: "human-language", data: { needed: 1, picked: 0 } },
-    {
-      code: "ac_formula_discarded",
-      key: "ac",
-      data: { formula: "leather", labelKey: "armor.leather", total: 13 },
-    },
-  ],
-  pendingChoices: [
-    {
-      grantId: "human-language",
-      labelKey: "race.human.language",
-      kind: "skillChoice",
-      choose: 1,
-      from: ["stealth"],
-    },
-  ],
-  features: [
-    { sourceKey: "wizard", labelKey: "class.wizard.spellcasting", name: "Lanzamiento de conjuros" },
-  ],
-  speeds: { walk: 30 },
-  raceKey: "half-elf",
-  subraceKey: undefined,
-  classKey: "wizard",
-  attacksPerAction: 1,
-  weaponProficiencies: ["simple"],
-  spellSlots: [{ spellLevel: 1, slots: 4 }],
-  spellSlotResetOn: "LONG_REST",
-};
-
-const sheetResponse: SheetResponse = {
-  character,
-  sheet,
-  attacks: [],
-  money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
-  hp: { current: 15, max: 22, temp: 0, version: 2, exceedsMax: false },
-  deathSaves: { successes: 0, failures: 0, status: "alive" },
-};
+//
+// Tarea 4 — el personaje, la hoja calculada y el `wrapper` de React Query + Router se movieron a
+// `fixtures/hoja.fixture.tsx`, compartidos con `Cabecera.test.tsx` y las pruebas de pestaña.
 
 const resources: ResourceRow[] = [
   {
@@ -320,27 +178,8 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     expect(cabecera.contains(campo)).toBe(false);
   });
 
-  it("características → salvaciones → habilidades bajan seguidas por la misma columna", async () => {
-    pintarHoja();
-    const caracteristicas = await screen.findByRole("region", { name: "características" });
-    const salvaciones = screen.getByRole("region", { name: "salvaciones" });
-    const habilidades = screen.getByRole("region", { name: "habilidades" });
-
-    // Las tres en la MISMA columna. Si alguien parte la cadena entre dos columnas, esto se rompe.
-    const columna = salvaciones.parentElement!;
-    expect(columna.contains(caracteristicas)).toBe(true);
-    expect(columna.contains(habilidades)).toBe(true);
-
-    // Y en ese orden: la contigüidad es la explicación, así que el orden es parte del contrato.
-    const orden = (a: Element, b: Element) =>
-      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(orden(caracteristicas, salvaciones)).toBe(true);
-    expect(orden(salvaciones, habilidades)).toBe(true);
-
-    // Nada accionable entre medias: condiciones, descansos y PG viven en la otra columna.
-    const condiciones = await screen.findByRole("region", { name: "condiciones" });
-    expect(columna.contains(condiciones)).toBe(false);
-  });
+  // «características → salvaciones → habilidades bajan seguidas por la misma columna» se movió a
+  // `Numeros.test.tsx` (Tarea 4), ahora que las tres tarjetas son la pestaña `Numeros`.
 
   // **El hueco del inventario dejó de ser un hueco (2B).** Esta prueba comprobaba que el
   // recuadro punteado decía «llega en la fase 2B»; ahora comprueba que lo que hay es el
@@ -459,62 +298,9 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
     expect(screen.getAllByText("Dados de golpe (d6)")).toHaveLength(1);
   });
 
-  it("«Ataques y lanzamiento» es una tabla con sus columnas y una fila por arma equipada", async () => {
-    // Carril B3 — el cuadro real sale de `attacks`, no de los tres bonificadores genéricos del
-    // motor: esos ya no se pintan como filas.
-    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
-      ...sheetResponse,
-      attacks: [
-        {
-          key: "SRD:rapier",
-          name: "Estoque",
-          ref: "SRD:rapier",
-          ability: "dex",
-          attackBonus: valor(5, "abilityMod.dex"),
-          damage: { expression: "1d8+3", dice: "1d8", modifier: 3, type: "PIERCING" },
-          properties: ["FINESSE"],
-          proficient: true,
-        },
-      ],
-    });
-    pintarHoja();
-    const seccion = await screen.findByRole("region", { name: "ataques y lanzamiento" });
-    const tabla = within(seccion).getByRole("table");
-
-    for (const columna of ["Nombre", "Bonif.", "Daño / tipo", "Notas"]) {
-      expect(within(tabla).getByRole("columnheader", { name: columna })).toBeInTheDocument();
-    }
-    expect(within(tabla).getByRole("rowheader", { name: "Estoque" })).toBeInTheDocument();
-    expect(within(tabla).getByText("+5")).toBeInTheDocument();
-    expect(within(tabla).getByText(/1d8\+3/)).toBeInTheDocument();
-    expect(within(tabla).getByText("perforante")).toBeInTheDocument();
-    // Y cada una se puede tirar desde su fila: es la tabla de la maqueta, con nuestro dado.
-    expect(within(tabla).getByRole("button", { name: "Tirada de Estoque" })).toBeInTheDocument();
-    // La CD de conjuro sigue acompañando a la tabla en vez de ser una casilla suelta más.
-    expect(within(seccion).getByText(/CD de salvación de conjuro 13/)).toBeInTheDocument();
-  });
-
-  it("«Ataques y lanzamiento» sin arma equipada dice qué hacer, no deja un hueco", async () => {
-    pintarHoja(); // sheetResponse trae attacks: []
-    const seccion = await screen.findByRole("region", { name: "ataques y lanzamiento" });
-    expect(within(seccion).queryByRole("table")).not.toBeInTheDocument();
-    expect(within(seccion).getByText(/no llevas ningún arma equipada/i)).toBeInTheDocument();
-    expect(within(seccion).getByRole("link", { name: /bolsa/i })).toBeInTheDocument();
-  });
-
-  it("el pie trae competencias con armas, rasgos y personalidad, y la personalidad dice qué le falta en vez de inventarlo", async () => {
-    pintarHoja();
-    const competencias = await screen.findByRole("region", { name: "competencias con armas" });
-    expect(within(competencias).getByText("Armas sencillas")).toBeInTheDocument();
-
-    const rasgos = screen.getByRole("region", { name: "rasgos y aptitudes" });
-    expect(within(rasgos).getByText("Lanzamiento de conjuros")).toBeInTheDocument();
-
-    const personalidad = screen.getByRole("region", { name: "personalidad" });
-    expect(personalidad.textContent).toMatch(/Rasgo · Ideal · Vínculo · Defecto/);
-    // Sin biografía guardada NO se finge un rasgo: se dice dónde se escribe.
-    expect(personalidad.textContent).toMatch(/Sin nota de personalidad/);
-  });
+  // Las dos `it`s de «Ataques y lanzamiento» (con arma equipada y sin ella) se movieron a
+  // `Ataques.test.tsx`, y «el pie trae competencias con armas, rasgos y personalidad…» a
+  // `Rasgos.test.tsx` — Tarea 4, ahora que esos bloques son las pestañas `Ataques` y `Rasgos`.
 });
 
 describe("El aviso de la vista de DM dice lo que el servidor hace, no lo que la maqueta prometía", () => {

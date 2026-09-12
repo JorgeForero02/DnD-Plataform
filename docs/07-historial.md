@@ -44,6 +44,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-11-tanda-de-las-decididas.md`](./_archivo/historial-2026-09-11-tanda-de-las-decididas.md) | **Las tandas 2–6 de cerrar fichas, tarea a tarea**, movidas enteras el 2026-09-12 cuando la entrada de la revisión de producción dejó el fichero en 1014. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-07-tanda-b.md`](./_archivo/historial-2026-09-07-tanda-b.md) | **Tanda B — tres arreglos de API** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la Tarea 3 del pulido: el fichero quedaba en 1009 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-10-decisiones-cubo-d.md`](./_archivo/historial-2026-09-10-decisiones-cubo-d.md) | **Las decisiones del autor sobre el cubo D**, movida entera el 2026-09-12 al escribir la línea de la Tarea 4 del pulido (`e2e/espacios.spec.ts`): el fichero quedaba en 1012 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -56,6 +57,26 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición (2026-09-12)
+
+Qué — anexo #17, y cierra la medida de #6 y #8: seis pruebas de navegador sobre lo que las
+Tareas 1–3 dejaron construido. `medirHermanas(rejilla)` mide, entre los hijos directos de una
+rejilla, el hueco vertical máximo entre hermanas consecutivas de una misma columna y el desnivel
+máximo entre vecinas de una misma fila; cuatro pruebas la corren a 1280px sobre `[data-pestana]`
+de Números, Rasgos, Recursos y Estado contra `HUECO_MAX_PX=48` / `DESNIVEL_MAX_PX=24` (nota de
+diseño de la Tarea 0, § 7). Una quinta abre la pestaña Objetos con doce objetos dados por la API
+(mismo atajo que `inventario.spec.ts`) y comprueba que el panel `aside "detalle del objeto"`
+(sticky de la Tarea 2) se pega justo bajo la banda fija tras desplazar, nunca por debajo con
+solape. Las dos últimas escriben una expresión inválida y comprueban que el alto de la tarjeta no
+cambia al aparecer el error — en la pantalla «Dados» (`region "Tirada nueva"`, botón «Tirar»), y
+en el cajón angosto «La mesa tira» (`region "Tirada"`, botón «Tirar el dado»; extra al brief, del
+controlador), que es donde una pista larga tendría más motivo para envolver si `reservaEspacio`
+(Tarea 2) no estuviera. Los helpers de registro/campaña/personaje son copias literales, con el
+mismo nombre, de `hoja.spec.ts` — los e2e no comparten módulo hoy, anotado así en el propio
+fichero. Por qué — Tarea 4 del
+[plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), cierra el
+anexo #17 y las medidas de #6 y #8; revertir — `git revert` del commit (no toca componentes).
 
 ## Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla (2026-09-12)
 
@@ -487,26 +508,14 @@ P6, H7, M2B-14, D8), movidas enteras a
 el 2026-09-12 por el tope de 1000 líneas. Su hito se queda: **~35 fichas con código, 9 por decisión,
 3 falsas, en `main` el 2026-09-11**.
 
-## Las decisiones del autor sobre el cubo D, y nueve fichas que cierran solas (2026-09-10)
+## Las decisiones del autor sobre el cubo D, y nueve fichas que cierran solas (2026-09-10) — archivada
 
-**Qué.** Se le llevaron al autor las ~28 fichas que la clasificación dejó en «decide el autor»,
-cada una con opciones y una recomendación medida contra el código y el SRD; **aprobó todas**, con
-una corrección: *«las que digan hasta jugar me gustaría cerrar antes; no quiero cosas molestas en
-una partida»*. Salen veinte filas nuevas en [decisiones.md](./decisiones.md) (`D-CF-2`–`D-CF-21`),
-**nueve fichas se archivan sin código** porque el código ya las decidía —M10b (no hay
-`ENTITY_UPDATED`), H8 (medido: ~6,5 ms por regla y apertura), H9, D6, D7, A3-invitaciones, M11,
-retención y «el taller convive»—, y el resto queda con su decisión escrita esperando manos: una
-tanda de migraciones al cerrar la fase 2, dos cosas al paso 3, seis con código en esta sesión y la
-mesa a 390 px a la fase 3. Con ello `05-datos.md` gana retención, `ownerId`, `isAdmin` y la hidra
-falsa, **y pierde una frase falsa desde el 2026-09-03**: decía que el dueño no ve su personaje
-`DM_ONLY`, y `character-viewer.ts` se lo enseña desde entonces.
-
-**Por qué.** Una ficha «decide el autor» que no lleva opciones ni medición se queda abierta para
-siempre; las nueve que cierran solas llevaban meses esperando una decisión que ya estaba tomada en
-otro fichero.
-
-**Cómo revertir.** `git revert`: las nueve vuelven al 06 y las filas `D-CF-*` desaparecen. Las
-decisiones seguirían siendo del autor; solo perderían su registro.
+**Movida entera** a
+[`_archivo/historial-2026-09-10-decisiones-cubo-d.md`](./_archivo/historial-2026-09-10-decisiones-cubo-d.md)
+el 2026-09-12, al escribir la línea de la Tarea 4 del pulido: el fichero quedaba en 1012 de 1000 y
+era la entrada completa más antigua. En una línea: al autor se le llevaron ~28 fichas «decide el
+autor», las aprobó todas, salieron veinte decisiones (`D-CF-2`–`D-CF-21`) y nueve se archivaron
+sin código.
 
 ## Cerrar fichas, tanda 1 — las de API puras (2026-09-10)
 

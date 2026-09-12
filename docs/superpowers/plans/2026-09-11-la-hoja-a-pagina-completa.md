@@ -1010,3 +1010,11 @@ Ajusta los rótulos exactos («Equipado/Encima/Guardado», «Armadura», «Busca
 - **Cobertura de la spec:** §3 enfoque → Tasks 3–7; §4 cabecera → Task 3 (con la desviación «nombre solo en mesa», justificada por `PageHeader`); §5 siete pestañas, Números por defecto, Conjuros condicional, URL → Tasks 4–7; §6 fila + detalle + lista única + filtros → Tasks 8–9 («Dar a…» y menú «…» fuera, declarado en Global Constraints); §7 permisos → nada nuevo, `puedeEditar` fluye por `PropsDePestana`; §8 pruebas → RTL en cada task, navegador por pestaña en Task 10 (sin suite entera, decisión del autor); ficha del token → Task 1; §11 decisiones → Task 11.
 - **Placeholders:** los bloques «el bloque de salvaciones de HojaCalculada, tal cual» son mudanzas literales de código que ya existe en `HojaCalculada.tsx:200-260`, con su línea citada; no son huecos.
 - **Tipos:** `PropsDePestana`, `Disposicion`, `PestanaId`, `PESTANAS_DE_LA_HOJA` definidos en Task 3/7 y usados igual en 4–9; `accionesDeObjeto`/`ManosDeObjeto`/`AccionDeObjeto` definidos en Task 8 y consumidos en 9; `datoDeObjeto` se exporta en Task 9 desde `FilaObjeto.tsx`.
+
+---
+
+> **Nota al pie (2026-09-12).** Ejecutado entero en la rama `hoja/pagina-completa`. **El comando de
+> la Task 10 está mal escrito:** `pnpm --filter @dnd/web e2e -- e2e/<fichero>.spec.ts` **no
+> filtra** —pnpm no pasa el argumento— y corrió la suite entera una vez (18,7 min). El que filtra
+> es `pnpm --filter @dnd/web exec playwright test e2e/<fichero>.spec.ts` (D-CF-44, y
+> [08-pruebas.md](../../08-pruebas.md)). Los rulings de la ejecución son D-CF-38..44.

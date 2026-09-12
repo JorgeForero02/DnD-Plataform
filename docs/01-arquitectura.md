@@ -224,6 +224,28 @@ las reglas vinculantes de [04-convenciones.md](./04-convenciones.md), y repetirl
 como empiezan a discrepar. `IdentidadEditable.tsx` las usa para raza, subraza, clase, nivel y
 las seis características, y sustituyó al antiguo `EditorFicha.tsx`, que ya no existe.
 
+**Y desde la hoja a página completa (2026-09-12), `HojaCalculada.tsx` es un compositor de ~150
+líneas**: carga la hoja, monta `features/character-sheet/Cabecera.tsx` y reparte las tarjetas en pestañas.
+Dos disposiciones y un solo componente (D-CF-29): `disposicion: "mesa" | "pagina"` decide tira
+arriba o columna lateral, y la pestaña activa vive en la URL (`?pestana=`).
+
+| Fichero | Qué ocupa |
+|---|---|
+| `features/character-sheet/Cabecera.tsx` | La banda fija —retrato, identidad solo en la mesa, cinco números, chips de condiciones— y, **debajo y fuera del `sticky`**, los avisos (D-CF-38) |
+| `features/character-sheet/pestanas/tipos.ts` | `PestanaId`, `PESTANAS_DE_LA_HOJA`, `Disposicion` y `PropsDePestana`, la forma que reciben todas las pestañas (`data`, `puedeEditar`, `disposicion`) |
+| `pestanas/Numeros` · `Objetos` · `Ataques` · `Recursos` · `Estado` · `Rasgos` · `Conjuros` | Una pestaña por fichero, cada una montando las tarjetas que ya existían; `Objetos` monta `PaginaDeInventario` con la disposición |
+| `features/character-sheet/pestanas/lanzaConjuros.ts` | Si el personaje lanza (espacios o rasgo racial de conjuro): la pestaña Conjuros existe solo entonces (D-CF-34) |
+| `features/character-sheet/habilidades.ts` | Las veinticuatro líneas de habilidad, fuera de la tarjeta que las pinta |
+| `features/inventory/accionesDeObjeto.ts` | **La lista única de acciones de un objeto**; la fila y el panel de detalle pintan desde ella (D-CF-33) |
+| `features/inventory/filtrarObjetos.ts` · `FiltrosDeObjetos.tsx` | El filtro por texto, zona y `ItemKind`; los rótulos salen de `features/inventory/vocabulario.ts` (D-CF-40, D-CF-41) |
+| `features/inventory/DetalleDeObjeto.tsx` | El panel de la derecha a página: el objeto elegido, sus números y las mismas acciones que la fila |
+
+> **`inventory` no importa de `character-sheet`, y es una frontera declarada**, no una casualidad:
+> `features/inventory/hooks.ts:32` escribe literal la clave de la hoja en vez de importarla, y
+> `PaginaDeInventario.tsx` declara su propia unión `"mesa" | "pagina"` en vez de importar
+> `Disposicion` de `features/character-sheet/pestanas/tipos.ts`. La revisión de la Task 9 vio romperse la frontera con un
+> `import type` y se deshizo: un tipo también es una dependencia.
+
 **`ui/Dialog.tsx` es un cajón lateral, no un cuadro centrado**, desde el reseño de la mesa. Entra
 por la derecha a altura completa con `border-l` de cobre, en tres anchuras (`sm` 26rem, `lg` 40rem,
 `xl` 58rem), con variante `pergamino` y ranuras de subtítulo y de acciones. El motivo no es

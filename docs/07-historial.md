@@ -49,7 +49,54 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## La hoja a página completa (2026-09-11)
+## La hoja a página completa (2026-09-11 y 12)
+
+Rama `hoja/pagina-completa` sobre `main` `80a9243`, dieciocho commits, cerrada en local el
+2026-09-12 y **sin fusionar ni desplegar** (lo hace el autor a mano). La
+[spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) y el
+[plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) mandan; las decisiones que la
+ejecución obligó a tomar son D-CF-38..44 en [decisiones.md](./decisiones.md). **Revertir cualquier
+tanda = `git revert` de sus commits; las tarjetas no cambiaron**: cada pestaña monta las mismas
+tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
+
+- **Task 2 — Las condiciones saben pintarse como chips de solo lectura** (`4c965ed`, `8aff6e6`).
+  `Condiciones.tsx` gana una variante para la cabecera. La revisión cazó un chip vacío para la
+  concentración (`NOMBRE_CONDICION` en vez de `tituloDe`) y dejó dicho que **una condición vencida
+  no es chip**: arriba se enseña lo activo, lo vencido sigue tachado en Estado (D-CF-43).
+- **Task 3 — La cabecera vive en `Cabecera.tsx`** (`ae98951`, `e9ed5a5`): retrato, identidad
+  solo en la mesa (en la página ya la pinta `PageHeader`), cinco números, chips y avisos, con
+  `PropsDePestana` en `features/character-sheet/pestanas/tipos.ts`. La revisión devolvió fuerza a la `it` movida de los PG
+  (`puedeEditar` verdadero, el control de daño ausente para quien edita) y probó el gating de
+  `BotonSubirNivel`.
+- **Tasks 4 a 6 — Números, Ataques, Rasgos, Recursos, Estado y Conjuros son pestañas**
+  (`742f7e1`..`212eb76`). Fixture compartido en
+  `features/character-sheet/__tests__/fixtures/hoja.fixture.tsx`; `habilidades.ts` saca las
+  veinticuatro líneas de la tarjeta. Conjuros existe solo para quien lanza (`lanzaConjuros.ts`)
+  y la revisión de la 6 devolvió el guard `spellSlots > 0`: un alto elfo sin espacios veía una
+  tarjeta vacía. **Ruling de la 4:** las tarjetas de identidad (Ficha/Características) **se
+  remontan** cuando la hoja se vuelve derivable porque ahora viven en una pestaña; lo guardado en
+  blur ya está guardado y solo se pierde el indicador transitorio «guardando» (D-CF-39).
+- **Task 7 — `HojaCalculada` es cabecera + pestañas** (`b7a0987`, `a9f9bfd`): 149 líneas,
+  `disposicion` decide lateral a página o tira en la mesa, la pestaña activa en `?pestana=`, y
+  **una pestaña que la hoja no ofrece cae a Números** —`?pestana=conjuros` en un no lanzador
+  dejaba el panel vacío— (D-CF-42). Diez `it` de `HojaCalculada.test.tsx` abren la pestaña antes
+  de afirmar; ninguna aserción cambió.
+- **Task 8 — Las acciones de un objeto son una lista** (`0a3a31a`): `features/inventory/accionesDeObjeto.ts`
+  alimenta la fila, que pinta desde ella.
+- **Task 9 — Objetos a página filtra y enseña el detalle** (`f7e8b24`, `e11db5e`):
+  `FiltrosDeObjetos`, `filtrarObjetos`, `DetalleDeObjeto`. El filtro «qué es» usa el `ItemKind`
+  real —seis chips— y no el tipo ad hoc del brief (D-CF-41); los chips de zona hablan el
+  vocabulario de zona (D-CF-40); y `inventory` declara su propia unión `disposicion` porque **no
+  importa de `character-sheet`** (`features/inventory/hooks.ts:32`), frontera que la revisión vio romperse.
+- **Task 10 — Medido en el navegador, fichero a fichero** (`65bb5c1`, `5158ad1`):
+  `hoja-pestanas.spec.ts` nuevo y dieciséis e2e adaptados abriendo la pestaña que toque —solo
+  aperturas y localizadores más específicos—. **Incidente:** `pnpm --filter @dnd/web e2e --
+  <fichero>` **no filtra** —pnpm no pasa el argumento— y corrió la suite entera una vez, 18,7 min;
+  el comando que sí filtra es `pnpm --filter @dnd/web exec playwright test e2e/<fichero>.spec.ts`
+  (D-CF-44). Esa pasada midió la **banda fija en 412 px** con los avisos dentro, y de ahí el
+  **ruling A**: el `sticky` lleva solo lo que cambia por turno —retrato, identidad en mesa, cinco
+  números, chips—; los avisos van justo debajo, fuera del `sticky`; ≤ 96 px después
+  (`hoja.spec.ts`, punto 5b) (D-CF-38).
 
 - **Task 1 — El cubo por usuario no se clava a un token revocado (API).**
   `common/user-or-ip-throttler.guard.ts` compara `iat` con `passwordChangedAt` (misma regla de

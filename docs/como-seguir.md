@@ -32,18 +32,19 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 ## Qué sigue, en este orden
 
-### 0 · La hoja a página completa — **spec aprobada y plan escrito el 2026-09-11**
+### 0 · La hoja a página completa — **hecha en local el 2026-09-12, sin fusionar ni desplegar**
 
-El autor aprobó la [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md)
-—pestañas laterales a columnas, cabecera fija, Objetos con detalle, una sola `HojaCalculada` con
-`disposicion`— y hay [plan por tareas](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)
-(11 tareas; la primera cierra de paso la ficha del token revocado). **Va antes del paso 3** y
-después de la tanda de fichas, que cerró esa misma noche. Decisiones D-CF-29..36 en
-[decisiones.md](./decisiones.md). Un implementador por árbol: toca `character-sheet/` e
-`inventory/` de arriba abajo.
+Las once tareas del [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) de la
+[spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) están en la rama
+`hoja/pagina-completa`, con revisión limpia cada una y el navegador medido fichero a fichero
+([07-historial.md](./07-historial.md), «La hoja a página completa»). **No está en `main` ni en
+producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..44 en
+[decisiones.md](./decisiones.md); lo que las revisiones dejaron abierto, HP-1..7 en
+[06-pendientes.md](./06-pendientes.md).
 
-**Después de la hoja, en este orden (D-CF-37):** paso 3 —con S11, E1, L5 y S6 dentro, que
-eran la «tanda L»— → higiene → jugar una partida → fase 3. A2 aplazada.
+**Lo siguiente es el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y
+S6 dentro —la «tanda L»— → higiene → jugar una partida → fase 3. A2 aplazada. El paso 3 asume la
+pestaña Conjuros hecha, y lo está: hoy enseña espacios y el hueco declarado (D-CF-34).
 
 ### 1 · Terminar la poda del tablero — **lo mecánico ya está; queda lo del autor**
 

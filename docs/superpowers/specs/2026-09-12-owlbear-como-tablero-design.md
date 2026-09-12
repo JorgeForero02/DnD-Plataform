@@ -1,4 +1,4 @@
-# Owlbear Rodeo como tablero — nuestra mesa dentro de su sala
+# El tablero provisional — de Owlbear a PlanarAlly, y nuestra mesa alrededor
 
 > Escrito el 2026-09-12 con el autor: *«mientras no haya tablero usaremos una plataforma externa; un
 > solo enlace, se guarda y se carga para cada persona; barato y con visión clara. Usaremos
@@ -50,6 +50,32 @@ viven en el navegador de quien los sube (IndexedDB), no en el servidor.
   cuando; (2) jugadores tras NAT estricto pueden necesitar un TURN (`backend/ice.json`), no
   configurado; (3) es software sin mantenimiento: si un día no arranca, se reconstruye la imagen
   o se pasa al camino C.
+
+## 2 ter · Y la misma tarde, Legacy se sustituye por **PlanarAlly** (decisión del autor)
+
+Comparados con datos de GitHub el 2026-09-12: **PlanarAlly** (MIT, último commit ese mismo día,
+releases 3–4 al año, 546★, un desarrollador principal) frente a Owlbear Legacy (sin mantenimiento
+desde 2023-12, sin licencia formal) y Dungeon Revealer (última versión 2022-02). Reseñas
+([Pi Stack 2026](https://www.pistack.xyz/posts/2026-06-06-self-hosted-virtual-tabletop-rpg-maptool-foundryvtt-planarally/)):
+«el mejor mapa táctico y gestor de fichas», luz dinámica y visión por muros, multipiso, el más
+ligero; sin hoja ni reglas (**lo que ponemos nosotros**), móvil flojo, «en desarrollo activo».
+
+- **Desplegado** en el **mismo servicio y dominio** (`tablero.supportive.pro`, servicio renombrado
+  `tablero-planarally`, imagen `kruptein/planarally:v2026.1.2`, tres volúmenes en el servidor:
+  datos, assets, mods). **Los mapas y usuarios viven en el servidor**: desaparece la trampa del
+  particionado. Legacy dado de baja (imágenes borradas; su compose guardado en
+  `vps1new:/root/docs/compose/owlbear-legacy.yml` para revertir).
+- **Medido:** 200, WebSocket 200, sin cabeceras de marco, y **registro + login dentro de un
+  `iframe`** desde otro origen con Chromium: el panel «Dungeon Master / New game» carga en el marco.
+- **Cuentas:** PlanarAlly tiene usuario y contraseña propios; cada jugador se registra una vez.
+  **El registro queda abierto hasta que la mesa tenga sus cuentas; después `allow_signups = false`**
+  en la configuración del servidor (pendiente, lo hace el controlador cuando el autor diga).
+- **Mods:** sistema muy nuevo, sin API oficial ([ejemplos](https://github.com/Kruptein/planarally-mods):
+  `simple-char-sheet`, `obfuscated-trackers`, `wildsea`, `api`). Hoy no aportan nada que no
+  tengamos. A medio plazo, un mod nuestro que sincronice los PG de un token con
+  `dnd.supportive.pro` sería el equivalente a §3.2 por la API de PlanarAlly. Posibilidad, no tarea.
+- **Para la tarea C1 bis del pulido:** el `iframe` apunta a la URL de la partida de PlanarAlly
+  (`…/game/<nombre>`), no a la raíz; el DM la pega en «Sala del tablero».
 
 **Con esto hay dos caminos, no excluyentes:** **A · Legacy dentro de nuestra mesa** (la maqueta del
 autor; una tarea del pulido: ajuste «Sala del tablero» con la URL, el centro de la mesa como

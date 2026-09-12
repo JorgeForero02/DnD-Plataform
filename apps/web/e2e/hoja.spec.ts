@@ -1024,7 +1024,10 @@ test("las cinco casillas de la tira miden lo mismo, con y sin temporales (anexo 
   // que solo el navegador lo puede ver: se comprueba que la lista aterriza DEBAJO del botón que
   // la abre, y que la tira entera no se ensancha al abrirla.
   const casillaCA = tira.getByText("CA", { exact: true }).locator("..");
-  const botonCA = casillaCA.getByRole("button");
+  // Solo la cifra lleva `aria-expanded`: con la traza abierta, `getByRole("button")` también
+  // pescaría el paso «Modificador de Destreza» (un botón `data-causa`) y el cierre fallaría en
+  // modo estricto. El mismo localizador sirve para abrir y para cerrar.
+  const botonCA = casillaCA.locator("button[aria-expanded]");
   const anchoTiraAntes = (await tira.boundingBox())!.width;
   const cajaBoton = (await botonCA.boundingBox())!;
   await botonCA.click();

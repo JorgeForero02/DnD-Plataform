@@ -6,9 +6,19 @@
 
 ## 1 · Baldur's Gate 3
 
-- **Hoja**: se abre con TAB y reparte tres pestañas arriba —Inventario, Grimorio, Hoja de
-  personaje— más pestañas propias del personaje seleccionado abajo; cada bloque se completa en
-  cualquier orden — fuente: <https://gamerant.com/baldurs-gate-3-character-creation-guide-ui-explained/>.
+- **Hoja**: la fuente citada en el primer borrador de esta nota (una guía de **creación** de
+  personaje) no describe la hoja en partida — se retira esa cita por no sostener lo que decía.
+  Lo que sí sostiene una fuente: `TAB` es la tecla oficial de **«Toggle Party / Character
+  Overview»**, distinta de `I` («Toggle Inventory») y `K` («Toggle Spell») — tres toggles
+  separados, no tres pestañas de una sola pantalla — fuente:
+  <https://baldursgate3.wiki.fextralife.com/Controls>. Que la hoja de cada personaje **tiene
+  pestañas internas propias** —una de ellas «Character Features», donde el parche 8 movió las
+  pasivas activables («*Toggleable passives are now listed in the Character Features tab*»)— y
+  que existe **una hoja por personaje**, incluida la de un compañero recién reclutado («*Inventory
+  sorting options in the Character Sheets of newly recruited companions*»), lo confirman las notas
+  de ese parche — fuente: <https://baldursgate3.wiki.fextralife.com/Patch+8>. **Sin fuente
+  citable**: la disposición exacta de esa hoja (qué campo va en qué columna, la densidad visual
+  concreta) — no se afirma.
 - **Barra de acciones**: tres zonas fijas separadas por divisores rojos —Acciones, Acciones
   adicionales, Objetos—, con una pestaña «Pasivas» aparte para lo que solo se activa/desactiva
   (no ocupa hueco de turno); + / − junto a «Terminar turno» añade filas cuando la barra se llena
@@ -99,8 +109,14 @@
 | HUECO_MAX_PX | 48 px | Propuesto por la spec § 3 (C1); sin cita externa mejor — es una medida de la casa, no un dato de un juego de referencia |
 | DESNIVEL_MAX_PX | 24 px | Ídem, spec § 3 (C1) |
 | ANCHO_CASILLA_REM | 4.75rem | Ya es el ancho mínimo de la casilla PG hoy (`apps/web/src/features/character-sheet/Cabecera.tsx:84`, `min-w-[4.75rem]`); se fija como ancho **fijo** de las cinco casillas en vez de mínimo, para que dejen de ser asimétricas (anexo #4) |
-| ALTO_CASILLA_REM | 3.75rem | Calculado para caber rótulo + valor + la línea de «+N temporales» sin romper la caja (anexo #4): ronda casi cuadrada con el ancho de arriba, en la línea de las casillas de característica cuadradas de D&D Beyond (§ 4) |
+| ALTO_CASILLA_REM | 3.75rem | El anexo #4 pide «mismo ancho y alto en las cinco»: lo que exige es que las cinco casillas midan **igual entre sí**, no que la casilla sea cuadrada — «ancho y alto iguales» describe uniformidad entre casillas, no una proporción 1:1 dentro de una. No hay una suma de las tres líneas (rótulo, valor, «+N temporales») que dé 3.75rem exacto desde los tokens de `tokens.css` — la casilla PG es la única de las cinco con tres líneas y las otras cuatro solo tienen dos, así que ese alto no sale de sumar líneas de una casilla concreta, sino de comprobar a ojo que las tres líneas de la casilla más cargada (PG) caben dentro sin recortarse. Es el valor por defecto que trae el propio encargo, aceptado tal cual en vez de forzar un cálculo de precisión que los tokens no permiten |
 | ACCIONES_VISIBLES | 2 | spec § 2, regla 2; confirmado por BG3 (categorías fijas, lo raro a un menú, § 1) y DOS2 (menú contextual en vez de fila, § 2) |
+
+**Aviso para las tareas 1 y 4:** los fragmentos de código de ejemplo del plan de pulido
+(`docs/superpowers/plans/`) todavía traen el valor por defecto viejo, `5.5rem`, para
+`ANCHO_CASILLA_REM`. Esta nota lo sustituye por `4.75rem` (razón arriba, y ya en
+`04-convenciones.md`): **gana el número de esta nota**, no el de un fragmento de plan que quedó
+desactualizado al escribirla.
 
 ## 8 · Las cinco reglas (texto final que entra en 04-convenciones)
 

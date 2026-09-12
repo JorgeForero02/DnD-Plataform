@@ -47,6 +47,16 @@ export function efectosActivos(item: ResolvedItem): ItemEffect[] {
   return item.effects;
 }
 
+/**
+ * HP-9a (Task 2) — «tenía efectos y la puerta los dejó fuera». Es lo que la hoja avisa como
+ * `item_not_attuned` (`character-sheet.service.ts`), y se define AQUÍ, al lado de la puerta y
+ * en sus términos, para que el aviso y el filtro no puedan discrepar: si un día la puerta cambia
+ * (una excepción, otra condición), el aviso cambia con ella sin tocar el servicio.
+ */
+export function sintonizacionPendiente(item: ResolvedItem): boolean {
+  return item.effects.length > 0 && efectosActivos(item).length === 0;
+}
+
 /** Equipo que no puede llevarse a la vez. **Se traduce a 400 en el borde** (2A.6). */
 export class InvalidEquipmentError extends Error {
   constructor(message: string) {

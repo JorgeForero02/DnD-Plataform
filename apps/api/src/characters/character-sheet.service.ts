@@ -45,6 +45,7 @@ import {
   type Modifier,
 } from "../rules/engine";
 import { buildAttacks, type Attack } from "../rules/attacks";
+import { sintonizacionPendiente } from "../rules/items";
 import { CLAVE_FURIA_ACTIVA, SRD_CLASSES } from "../rules/catalog/classes";
 import { resolveContentRef } from "../inventory/common/resolve-item";
 import {
@@ -488,9 +489,11 @@ export class CharacterSheetService {
         items.push(visto);
         // HP-9a — la hoja dice **por qué** el número no se movió. Solo cuando había algo que
         // dejara de contar: un objeto sintonizable sin `effects` no cambia ningún número, y
-        // avisar sería ruido. Se usa `visto`, ya redactado o con su alias, para no delatar por
-        // el aviso el nombre que la fila acaba de esconder.
-        if (visto.requiresAttunement && !visto.attuned && visto.effects.length > 0) {
+        // avisar sería ruido. El predicado es el de la puerta (`rules/items.ts`,
+        // `sintonizacionPendiente`), no una copia a mano: aviso y filtro no pueden discrepar.
+        // Se usa `visto`, ya redactado o con su alias, para no delatar por el aviso el nombre
+        // que la fila acaba de esconder.
+        if (sintonizacionPendiente(visto)) {
           warnings.push({
             code: "item_not_attuned",
             key: visto.ref,

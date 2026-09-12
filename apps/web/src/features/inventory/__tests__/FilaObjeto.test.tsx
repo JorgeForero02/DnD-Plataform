@@ -82,3 +82,63 @@ describe("FilaObjeto — el estado de sintonización (HP-8)", () => {
     expect(botones).toEqual(["Quitar", "Desintonizar", "Soltar"]);
   });
 });
+
+// HP-9a (2026-09-12) — «Sintonizar cuenta»: el servidor ya no aplica los `effects` de un objeto
+// que exige sintonización hasta que la fila está sintonizada (`rules/items.ts`,
+// `efectosActivos`). La fila pintaba «+1 CA» igual en los dos casos, así que mentía sobre el
+// número. Ahora lo mundano (`CA base N`, el dado) se queda y lo mágico se tacha, con la marca
+// «Efecto inactivo: requiere sintonización» al lado — el mismo patrón que «Sin identificar».
+describe("FilaObjeto — el efecto de un objeto sin sintonizar se enseña inactivo (HP-9a)", () => {
+  const armaduraMasUno = {
+    ref: "CAMPAIGN:cota-1",
+    source: "CAMPAIGN",
+    kind: "ARMOR",
+    name: "Cota de malla +1",
+    weightOz: 880,
+    effects: [{ kind: "ac", amount: 1 }],
+    requiresAttunement: true,
+    attuned: false,
+    armor: { category: "HEAVY", baseAc: 16, stealthDisadvantage: true, strengthRequirement: 13 },
+  } as unknown as ResolvedItem;
+  const MARCA = "Efecto inactivo: requiere sintonización";
+
+  it("sin sintonizar: la CA base sigue, el «+1 CA» va tachado y la marca está al lado", () => {
+    montar(fila({ item: armaduraMasUno, slot: "ARMOR", attuned: false }));
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText("CA base 16").tagName).not.toBe("S");
+    const bono = within(item).getByText("+1 CA");
+    expect(bono.tagName).toBe("S");
+    expect(bono).toHaveAttribute("data-efecto", "inactivo");
+    expect(within(item).getByText(MARCA)).toBeInTheDocument();
+  });
+
+  it("sintonizado: «+1 CA» en limpio y sin marca", () => {
+    montar(fila({ item: armaduraMasUno, slot: "ARMOR", attuned: true }));
+    const item = screen.getByRole("listitem");
+    const bono = within(item).getByText("+1 CA");
+    expect(bono.tagName).not.toBe("S");
+    expect(bono).not.toHaveAttribute("data-efecto");
+    expect(within(item).queryByText(MARCA)).toBeNull();
+  });
+
+  it("un +1 que no exige sintonización: en limpio y sin marca", () => {
+    montar(
+      fila({
+        item: { ...armaduraMasUno, requiresAttunement: false },
+        slot: "ARMOR",
+        attuned: false,
+      }),
+    );
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText("+1 CA").tagName).not.toBe("S");
+    expect(within(item).queryByText(MARCA)).toBeNull();
+  });
+
+  it("exige sintonización pero no tiene efectos: nada que tachar, sin marca", () => {
+    montar(fila({ item: { ...armaduraMasUno, effects: [] }, slot: "ARMOR", attuned: false }));
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText("CA base 16")).toBeInTheDocument();
+    expect(within(item).queryByText("+1 CA")).toBeNull();
+    expect(within(item).queryByText(MARCA)).toBeNull();
+  });
+});

@@ -7,30 +7,65 @@ import { fieldControlClass } from "../../ui/Field";
 import { IconoObjeto, IconoSinIdentificar } from "./iconos";
 import {
   danioCorto,
+  ETIQUETA_EFECTO_INACTIVO,
   ETIQUETA_SIN_IDENTIFICAR,
   ETIQUETA_SINTONIZADO,
   EXPLICACION_SIN_IDENTIFICAR,
   subtituloDeObjeto,
 } from "./vocabulario";
 import { formatearKg } from "./peso";
+import { efectoInactivoPorSintonizacion } from "./sintonizacion";
 
 // Carril B1 — la fila de una línea: nombre + subtítulo tenue, dato en cifras, peso, acción.
 // Pantalla 20 del prototipo: "nombre + subtítulo; a la derecha, dato en tipografía de cifras
 // (1d8 perf., +11 CA), peso, y la acción".
 
-/** El dato en cifras a la derecha del nombre — lo único que se sabe sin recalcular la hoja. */
-export function datoDeObjeto(item: ResolvedItem): string | null {
-  if (item.weapon) return danioCorto(item.weapon.damageDice, item.weapon.damageType);
-  if (item.armor) {
-    return item.armor.category === "SHIELD"
-      ? `+${item.armor.baseAc} CA`
-      : `CA base ${item.armor.baseAc}`;
+/**
+ * El dato en cifras a la derecha del nombre — lo único que se sabe sin recalcular la hoja — en
+ * dos mitades, porque el servidor las trata distinto (HP-9a): **lo mundano** (el dado del arma,
+ * la CA base de la armadura, el bono del escudo) cuenta siempre; **lo mágico** (el bono a la CA
+ * de `effects`) solo cuenta si el objeto no exige sintonización o está sintonizado. Quien pinta
+ * decide con `efectoInactivoPorSintonizacion(row)` si la mitad mágica va en limpio o tachada.
+ *
+ * Antes era una sola cadena y la armadura +1 se quedaba en «CA base 16» sin enseñar su +1; el
+ * anillo +1 sí lo enseñaba, y en los dos casos sin saber si contaba.
+ */
+export type DatoDeObjeto = { mundano: string | null; magico: string | null };
+
+export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
+  let mundano: string | null = null;
+  if (item.weapon) mundano = danioCorto(item.weapon.damageDice, item.weapon.damageType);
+  else if (item.armor) {
+    mundano =
+      item.armor.category === "SHIELD"
+        ? `+${item.armor.baseAc} CA`
+        : `CA base ${item.armor.baseAc}`;
   }
   const bonoCa = item.effects
     .filter((e) => e.kind === "ac")
     .reduce((suma, e) => suma + e.amount, 0);
-  if (bonoCa !== 0) return `${bonoCa > 0 ? "+" : ""}${bonoCa} CA`;
-  return null;
+  const magico = bonoCa !== 0 ? `${bonoCa > 0 ? "+" : ""}${bonoCa} CA` : null;
+  return { mundano, magico };
+}
+
+/**
+ * Las dos mitades pintadas: la mágica en limpio, o **tachada** (`<s>`, con `data-efecto`) si el
+ * efecto está inactivo por falta de sintonización. Un solo sitio para la fila y el detalle.
+ */
+export function DatoEnCifras({ dato, inactivo }: { dato: DatoDeObjeto; inactivo: boolean }) {
+  return (
+    <>
+      {dato.mundano && <span>{dato.mundano}</span>}
+      {dato.magico &&
+        (inactivo ? (
+          <s data-efecto="inactivo" className="text-muted">
+            {dato.magico}
+          </s>
+        ) : (
+          <span>{dato.magico}</span>
+        ))}
+    </>
+  );
 }
 
 export function FilaObjeto({
@@ -108,6 +143,10 @@ export function FilaObjeto({
 }) {
   const { item } = row;
   const dato = datoDeObjeto(item);
+  const hayDato = dato.mundano !== null || dato.magico !== null;
+  // HP-9a: el bono mágico de un objeto que exige sintonización y no la tiene no lo suma el
+  // servidor; aquí se tacha y se marca, en vez de pintarlo como si contara.
+  const efectoInactivo = efectoInactivoPorSintonizacion(row);
   const pesoTotalOz = item.weightOz * row.quantity;
   // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
   // (`ui/__tests__/Iconos.test.tsx`) porque hacía de icono en otra pantalla — aquí es solo
@@ -184,9 +223,14 @@ export function FilaObjeto({
             {row.storedAt ? ` · ${row.storedAt}` : ""}
           </p>
         </div>
-        {dato && (
-          <span className="whitespace-nowrap font-data text-chrome-sm text-accent-text">
-            {dato}
+        {hayDato && (
+          <span className="inline-flex items-baseline gap-1 whitespace-nowrap font-data text-chrome-sm text-accent-text">
+            <DatoEnCifras dato={dato} inactivo={efectoInactivo} />
+          </span>
+        )}
+        {efectoInactivo && (
+          <span className="inline-flex items-center align-middle font-chrome text-chrome-xs text-muted">
+            {ETIQUETA_EFECTO_INACTIVO}
           </span>
         )}
         <span className="whitespace-nowrap font-data text-chrome-xs text-muted">

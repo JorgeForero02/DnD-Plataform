@@ -38,6 +38,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md) | **El cero de tipos comodín** y **el proceso pasa a medirse**, movidas enteras el 2026-09-12 al pasarse el fichero (1002 de 1000) con los retoques de la revisión de la hoja. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md) | **`CLAUDE.md` deja de narrar el estado**, movida entera el 2026-09-12 al escribir la línea de la ronda de documentación de cierre de la hoja (el fichero iba a pasar de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md) | **La poda del tablero y el nacimiento de `como-seguir.md`**, movida entera el 2026-09-12 al escribir la línea de HP-9a (el fichero estaba en 997 de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md) | **Botín y reparto** —una tabla entrega, y decir quién dio—, movida entera el 2026-09-12 al escribir la línea de HP-9a Task 2 (el fichero quedaba en 1007 de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -206,6 +207,20 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   objeto no da sus propiedades mágicas. Once pruebas nuevas (motor, ataques y costura del
   servicio); mutación «devolver `item.effects` siempre» tumbó cinco. **La pantalla es la Task 2**:
   `describirAviso` aún dice «Sin traducir: item_not_attuned». **Revertir:** `git revert` del commit.
+- **HP-9a · Task 2 — la pantalla deja de mentir sobre el número (2026-09-12)**, commit `feat(web):
+  an unattuned item shows its magical effect as inactive, and the sheet says why`. La hoja traduce
+  `item_not_attuned` («"{nombre}" requiere sintonización: sus efectos no cuentan hasta
+  sintonizarlo», con el `name` ya redactado por el servidor) y el código entra en
+  `CODIGOS_QUE_EMITE_LA_API`. `datoDeObjeto` pasa de una cadena a `{ mundano, magico }` —antes la
+  armadura +1 se quedaba en «CA base 16» y el anillo +1 decía «+1 CA» sin saber si contaba—; la
+  fila y el detalle pintan la mitad mágica **tachada** (`<s data-efecto="inactivo">`) con la marca
+  «Efecto inactivo: requiere sintonización» al lado (el detalle añade la frase entera) cuando
+  `efectoInactivoPorSintonizacion(row)` (`features/inventory/sintonizacion.ts`, el único sitio del
+  predicado en la web, sobre `row.attuned` y nunca `item.attuned`). En el servidor el aviso se
+  decide con `sintonizacionPendiente(item)` junto a `efectosActivos` en vez de con una copia a mano
+  del predicado. Diez pruebas nuevas (2 de vocabulario, 4 + 4 RTL); dos mutaciones —el predicado
+  siempre falso tumbó dos, quitar el `case` tumbó dos—. Queda la Task 3 (Playwright).
+  **Revertir:** `git revert` del commit; la pantalla vuelve a pintar el +1 como si contara.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
@@ -768,33 +783,12 @@ una regresión — ver [05-datos.md](./05-datos.md). Nueve fichas de deuda queda
 [06-pendientes.md](./06-pendientes.md), la más urgente antes del paso 3 siendo la autorización de
 `changeHp` y de `RollRequestsService.create` sobre actividades de otro personaje.
 
-## Botín y reparto — una tabla entrega, y decir quién dio (2026-09-06)
+## Botín y reparto — una tabla entrega, y decir quién dio (2026-09-06) — archivada
 
-**Qué.** Cinco tareas del plan [`2026-09-06-botin-y-reparto-plan.md`](./superpowers/plans/2026-09-06-botin-y-reparto-plan.md),
-en tres commits: una fila de `DmTable` puede llevar `entrega` (objetos por `ContentRef` y las cinco
-monedas), y tirarla devuelve esos objetos ya resueltos por nombre; dar un objeto o dinero dice
-**quién** lo dio, con un campo opcional `de` sobre los sucesos que ya existían; y «Dar…» se hace
-desde la mesa y desde el resultado de una tirada, sin abrir la ficha de quien recibe.
-
-**Por qué.** La premisa del plan —«hoy un objeto aparece en una bolsa y nadie sabe de dónde
-salió»— era falsa: el rastro (`ITEM_ADDED`, `MONEY_CHANGED`) ya existía, y no hacía falta un tipo
-de suceso nuevo (D-P2-7). Y lo que la mesa decide, la mesa decide: no hay «dar a todos», ni
-repartir oro a partes iguales, ni comercio — las dos primeras las cubre una prueba de ausencia;
-el comercio no se construyó, así que no hay pantalla de la que medir su ausencia.
-
-**Cómo se comprobó.** Un `catch` que tragaba cualquier fallo de Postgres y lo presentaba como «ese
-objeto ya no existe» dentro de la transacción del disparo automático, borrando la pista del error
-real. Nueve mutaciones de aflojamiento sobre el campo `entrega`, las nueve en verde antes del
-arreglo. Y una clave de catálogo inventada (`shortsword`, que no existe — es `short-sword`) citada
-tres veces por un encargo del orquestador y corregida las tres contra el catálogo real.
-
-**Cómo revertir.** Tres commits (`eaa333e`, `cbbfebf`, `c36a099`), independientes entre sí y del
-paso 2. `eaa333e` lleva la migración `dm_table_entry_loot` (columna `entrega Json?`); revertir el
-código deja la columna sin escritores, sin fila sembrada fuera de las pruebas que la use. Dos
-fichas quedaron abiertas: el formulario de crear tablas no tiene campo para redactar `entrega`, y
-un jugador con un PNJ cedido ve la lista de destinatarios vacía al abrir «Dar…».
-
----
+**Movida entera** a [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md)
+el 2026-09-12, al escribir la línea de HP-9a Task 2: el fichero quedaba en 1007 de 1000. En una línea:
+una fila de `DmTable` puede llevar `entrega`, dar dice **quién** dio, y «Dar…» se hace desde la mesa;
+tres commits (`eaa333e`, `cbbfebf`, `c36a099`).
 
 ## Poda del tablero, y una página que dice por dónde entrar (2026-09-06) — archivada
 

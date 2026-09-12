@@ -120,3 +120,60 @@ describe("DetalleDeObjeto", () => {
     expect(within(panel).queryAllByRole("button")).toEqual([]);
   });
 });
+
+// HP-9a (2026-09-12) — el detalle dice lo mismo que la fila (`FilaObjeto.test.tsx`): lo mundano
+// se queda, lo mágico se tacha y una frase entera explica por qué el número no se movió.
+describe("DetalleDeObjeto — el efecto de un objeto sin sintonizar se enseña inactivo (HP-9a)", () => {
+  const armaduraMasUno: ResolvedItem = {
+    ref: "CAMPAIGN:cota-1",
+    source: "CAMPAIGN",
+    kind: "ARMOR",
+    name: "Cota de malla +1",
+    weightOz: 880,
+    effects: [{ kind: "ac", amount: 1 }],
+    requiresAttunement: true,
+    attuned: false,
+    armor: { category: "HEAVY", baseAc: 16, stealthDisadvantage: true, strengthRequirement: 13 },
+  };
+  const MARCA = "Efecto inactivo: requiere sintonización";
+  const manos = () => ({ onAccionPrincipal: vi.fn(), onSoltar: vi.fn(), onSintonizar: vi.fn() });
+
+  function montar(row: InventoryRow) {
+    render(<DetalleDeObjeto row={row} acciones={accionesDeObjeto(row, manos())} esDM={false} />);
+    return screen.getByRole("complementary", { name: "detalle del objeto" });
+  }
+
+  it("sin sintonizar: CA base en limpio, «+1 CA» tachado y la explicación entera", () => {
+    const panel = montar(fila({ item: armaduraMasUno, location: "EQUIPPED", slot: "ARMOR" }));
+    expect(within(panel).getByText("CA base 16").tagName).not.toBe("S");
+    const bono = within(panel).getByText("+1 CA");
+    expect(bono.tagName).toBe("S");
+    expect(bono).toHaveAttribute("data-efecto", "inactivo");
+    const marca = within(panel).getByText(MARCA);
+    expect(marca.closest("p")).toHaveTextContent(/no cuentan hasta que lo sintonices/);
+    // El requisito fijo sigue diciéndose aparte, como antes.
+    expect(within(panel).getByText("Requiere sintonización")).toBeInTheDocument();
+  });
+
+  it("sintonizado: «+1 CA» en limpio y sin explicación", () => {
+    const panel = montar(
+      fila({ item: armaduraMasUno, location: "EQUIPPED", slot: "ARMOR", attuned: true }),
+    );
+    const bono = within(panel).getByText("+1 CA");
+    expect(bono.tagName).not.toBe("S");
+    expect(within(panel).queryByText(MARCA)).toBeNull();
+  });
+
+  it("un +1 que no exige sintonización: en limpio y sin explicación", () => {
+    const panel = montar(fila({ item: { ...armaduraMasUno, requiresAttunement: false } }));
+    expect(within(panel).getByText("+1 CA").tagName).not.toBe("S");
+    expect(within(panel).queryByText(MARCA)).toBeNull();
+  });
+
+  it("exige sintonización pero no tiene efectos: solo el requisito, sin explicación", () => {
+    const panel = montar(fila({ item: { ...armaduraMasUno, effects: [] } }));
+    expect(within(panel).queryByText("+1 CA")).toBeNull();
+    expect(within(panel).queryByText(MARCA)).toBeNull();
+    expect(within(panel).getByText("Requiere sintonización")).toBeInTheDocument();
+  });
+});

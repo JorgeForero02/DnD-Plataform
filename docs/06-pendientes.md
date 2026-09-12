@@ -179,18 +179,22 @@ campo**: un anillo +1 sin sintonizar da +1 igual que uno sintonizado.
    (`items[].attuned`); el `item.attuned` que va dentro es `false` porque sale del catálogo.
 2. ~~`rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
    `!requiresAttunement || attuned`~~ **Hecho el 2026-09-12**, por una sola puerta:
-   `efectosActivos(item)` en `rules/items.ts`, que importa `attacks.ts`. **En vez del paso de traza
+   `efectosActivos(item)` en `rules/items.ts`, que `attacks.ts` importa. **En vez del paso de traza
    «inactivo»** que decía esta ficha, la hoja emite el aviso `item_not_attuned`
    (`key: ref`, `data: { ref, name }`) por cada objeto equipado con `requiresAttunement && !attuned
    && effects.length > 0` — un paso de traza con `amount: 0` habría ensuciado la suma de la traza,
    y los avisos ya son el sitio donde la hoja explica por qué un número no se movió
    (`item_unresolved`, `versatile_needs_both_hands`).
-3. **Pendiente (Task 2).** `describirAviso` (`vocabulario.ts`) necesita el `case
-   "item_not_attuned"` —hoy pinta «Sin traducir: item_not_attuned»— y añadirlo a
-   `CODIGOS_QUE_EMITE_LA_API` en `vocabulario.test.ts`; la fila y el detalle del objeto muestran
-   «Efecto inactivo: requiere sintonización» cuando aplica (con `fila.attuned` +
-   `item.requiresAttunement` + `item.effects.length > 0`); RTL + `inventario.spec.ts` (un solo
-   fichero, con `exec playwright test`).
+3. ~~`describirAviso` necesita el `case "item_not_attuned"`; la fila y el detalle muestran «Efecto
+   inactivo: requiere sintonización» cuando aplica; RTL~~ **Hecho el 2026-09-12** (Task 2, commit
+   `feat(web): an unattuned item shows its magical effect as inactive, and the sheet says why`):
+   el aviso dice «"{nombre}" requiere sintonización: sus efectos no cuentan hasta sintonizarlo»;
+   `datoDeObjeto` devuelve `{ mundano, magico }` y la mitad mágica va tachada (`<s
+   data-efecto="inactivo">`) con la marca al lado cuando `efectoInactivoPorSintonizacion(row)`
+   (`features/inventory/sintonizacion.ts`, único sitio del predicado en la web, sobre `row.attuned`); el
+   servidor emite el aviso con `sintonizacionPendiente(item)` junto a la puerta, no con una copia
+   del predicado. **Pendiente (Task 3):** `inventario.spec.ts` en Playwright (un solo fichero, con
+   `exec playwright test`) — la marca y el `<s>` con el texto exacto de arriba.
 
 **Estimación dada al autor (controlador, 2026-09-12): 2–3 h, con revisión entre tareas.** Sin
 migración, sin catálogo nuevo, sin tocar el descanso corto. Fuente: SRD 5.1 §*Attunement* — el

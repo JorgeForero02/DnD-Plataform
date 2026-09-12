@@ -3,12 +3,15 @@ import type { InventoryRow } from "./api";
 import type { AccionDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
-import { datoDeObjeto } from "./FilaObjeto";
+import { DatoEnCifras, datoDeObjeto } from "./FilaObjeto";
 import { IconoSinIdentificar } from "./iconos";
 import { formatearKg } from "./peso";
+import { efectoInactivoPorSintonizacion } from "./sintonizacion";
 import {
+  ETIQUETA_EFECTO_INACTIVO,
   ETIQUETA_SIN_IDENTIFICAR,
   ETIQUETA_SINTONIZADO,
+  EXPLICACION_EFECTO_INACTIVO,
   NOMBRE_ZONA,
   subtituloDeObjeto,
 } from "./vocabulario";
@@ -96,6 +99,9 @@ function Contenido({
 }) {
   const { item } = row;
   const dato = datoDeObjeto(item);
+  const hayDato = dato.mundano !== null || dato.magico !== null;
+  // HP-9a: mismo predicado que la fila (`sintonizacion.ts`); aquí además cabe la frase entera.
+  const efectoInactivo = efectoInactivoPorSintonizacion(row);
   // D-CF-15: `undefined` cuenta como identificado, igual que en la fila.
   const sinIdentificar = item.identified === false;
   // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
@@ -127,10 +133,12 @@ function Contenido({
       </header>
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-s3 gap-y-s1 font-chrome text-chrome-sm">
-        {dato && (
+        {hayDato && (
           <>
             <dt className="text-muted">Dato</dt>
-            <dd className="font-data text-accent-text">{dato}</dd>
+            <dd className="inline-flex items-baseline gap-1 font-data text-accent-text">
+              <DatoEnCifras dato={dato} inactivo={efectoInactivo} />
+            </dd>
           </>
         )}
         <dt className="text-muted">Peso</dt>
@@ -145,6 +153,16 @@ function Contenido({
           )}
         </dd>
       </dl>
+
+      {/* HP-9a: por qué el número de arriba va tachado — la misma verdad que el aviso
+          `item_not_attuned` de la hoja, dicha donde está el botón «Sintonizar». */}
+      {efectoInactivo && (
+        <p className="font-chrome text-chrome-xs text-muted">
+          <span className="text-text">{ETIQUETA_EFECTO_INACTIVO}</span>
+          {". "}
+          {EXPLICACION_EFECTO_INACTIVO}
+        </p>
+      )}
 
       {/* HP-8: el estado ya lo dice el distintivo del título; aquí solo queda el requisito. */}
       {item.requiresAttunement && (

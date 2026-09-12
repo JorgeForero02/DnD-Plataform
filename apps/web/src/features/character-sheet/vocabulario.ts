@@ -784,6 +784,14 @@ export function describirAviso(warning: {
     }
     case "item_unresolved":
       return "Hay un objeto equipado que ya no existe en el catálogo. Revísalo desde el inventario.";
+    case "item_not_attuned": {
+      // HP-9a (2026-09-12) — SRD 5.1 §Attunement: un objeto que exige sintonización no da sus
+      // propiedades mágicas hasta que la criatura está sintonizada con él; lo mundano (CA base,
+      // dado del arma) sigue contando. `name` llega ya redactado del servidor (alias si el
+      // objeto no está identificado), así que se imprime tal cual.
+      const nombre = typeof d.name === "string" ? d.name : "Un objeto equipado";
+      return `"${nombre}" requiere sintonización: sus efectos no cuentan hasta sintonizarlo.`;
+    }
     // Migración 6 (D-CF-16) — SRD 5.1, Variant: Encumbrance. Solo aparece con la variante
     // encendida en la campaña y el personaje sobre uno de los dos umbrales de peso.
     // **`x` en minúscula, no `×`** (U+00D7): esta migración lo probó al revés en round 0 y

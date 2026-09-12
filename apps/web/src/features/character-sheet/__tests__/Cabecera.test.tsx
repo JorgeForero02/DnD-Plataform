@@ -38,10 +38,12 @@ function renderCabecera({
   disposicion,
   puedeEditar = false,
   data = sheetResponse,
+  onAlto,
 }: {
   disposicion: Disposicion;
   puedeEditar?: boolean;
   data?: typeof sheetResponse;
+  onAlto?: (px: number) => void;
 }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -51,6 +53,7 @@ function renderCabecera({
       data={data}
       puedeEditar={puedeEditar}
       disposicion={disposicion}
+      onAlto={onAlto}
     />,
     { wrapper: wrapper(qc) },
   );
@@ -209,5 +212,44 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     const aviso = await screen.findByRole("region", { name: "vista de DM" });
     expect(resumen.nextElementSibling).not.toBeNull();
     expect(resumen.nextElementSibling!.contains(aviso)).toBe(true);
+  });
+
+  // Anexo #6/#17 (ronda de arreglo, 2026-09-12) — `e2e/espacios.spec.ts` midió el panel de
+  // detalle de Objetos metido 60px bajo la banda: `--tira-fija-top` es el escalón de `AppShell`,
+  // no el alto real de esta banda. `Cabecera` reporta ese alto con `ResizeObserver`, y esta
+  // prueba es la que demuestra que el hook lo hace, sin montar toda la hoja.
+  it("reporta su alto real por `onAlto`, al montar y en cada cambio de tamaño", async () => {
+    const onAlto = vi.fn();
+    let callback: ResizeObserverCallback | null = null;
+    class FakeResizeObserver implements ResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        callback = cb;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    const medida = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue({ height: 123 } as DOMRect);
+
+    renderCabecera({ disposicion: "pagina", onAlto });
+    await screen.findByRole("region", { name: "resumen de combate" });
+
+    // 1. Al montar, sin esperar a ningún resize: `jsdom` no dispara `ResizeObserver` solo, así
+    //    que sin esta llamada inicial una hoja que nunca cambia de tamaño nunca reportaría nada.
+    expect(onAlto).toHaveBeenCalledWith(123);
+
+    // 2. Y en un cambio de tamaño real: el alto se vuelve a leer del propio elemento (no del
+    //    `contentRect` del observador), porque el consumidor necesita la caja completa —con
+    //    borde y relleno— y no solo el contenido.
+    onAlto.mockClear();
+    medida.mockReturnValue({ height: 200 } as DOMRect);
+    callback!([], {} as ResizeObserver);
+    expect(onAlto).toHaveBeenCalledWith(200);
+
+    medida.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

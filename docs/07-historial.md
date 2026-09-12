@@ -45,6 +45,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-11-tanda-de-las-decididas.md`](./_archivo/historial-2026-09-11-tanda-de-las-decididas.md) | **Las tandas 2–6 de cerrar fichas, tarea a tarea**, movidas enteras el 2026-09-12 cuando la entrada de la revisión de producción dejó el fichero en 1014. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-07-tanda-b.md`](./_archivo/historial-2026-09-07-tanda-b.md) | **Tanda B — tres arreglos de API** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la Tarea 3 del pulido: el fichero quedaba en 1009 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-10-decisiones-cubo-d.md`](./_archivo/historial-2026-09-10-decisiones-cubo-d.md) | **Las decisiones del autor sobre el cubo D**, movida entera el 2026-09-12 al escribir la línea de la Tarea 4 del pulido (`e2e/espacios.spec.ts`): el fichero quedaba en 1012 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-10-tanda-1-api-pura.md`](./_archivo/historial-2026-09-10-tanda-1-api-pura.md) | **Cerrar fichas, tanda 1 — las de API puras**, movida entera el 2026-09-12 al añadir la línea de la ronda de arreglo de la Tarea 4 (los dos defectos que la medición encontró): el fichero quedaba en 1004 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -74,9 +75,14 @@ en el cajón angosto «La mesa tira» (`region "Tirada"`, botón «Tirar el dado
 controlador), que es donde una pista larga tendría más motivo para envolver si `reservaEspacio`
 (Tarea 2) no estuviera. Los helpers de registro/campaña/personaje son copias literales, con el
 mismo nombre, de `hoja.spec.ts` — los e2e no comparten módulo hoy, anotado así en el propio
-fichero. Por qué — Tarea 4 del
+fichero. **La medida encontró dos defectos reales (42px en Números; el detalle se metía 60px bajo
+la banda) y se arreglaron en la misma tanda**: `Numeros.tsx` pasa a `items-stretch` a página
+(igualando el alto de las tres columnas; a mesa sigue en `items-start`), y la banda fija ahora
+reporta su alto real por `ResizeObserver` (`Cabecera.tsx` → `onAlto` → `HojaCalculada.tsx` →
+variable `--banda-fija-alto` → `DetalleDeObjeto.tsx`), en vez de que el sticky sumara solo el
+escalón de `AppShell`. Por qué — Tarea 4 del
 [plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), cierra el
-anexo #17 y las medidas de #6 y #8; revertir — `git revert` del commit (no toca componentes).
+anexo #17 y las medidas de #6 y #8; revertir — `git revert` del commit.
 
 ## Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla (2026-09-12)
 
@@ -517,53 +523,14 @@ era la entrada completa más antigua. En una línea: al autor se le llevaron ~28
 autor», las aprobó todas, salieron veinte decisiones (`D-CF-2`–`D-CF-21`) y nueve se archivaron
 sin código.
 
-## Cerrar fichas, tanda 1 — las de API puras (2026-09-10)
+## Cerrar fichas, tanda 1 — las de API puras (2026-09-10) — archivada
 
-Una por commit, cada una con su prueba roja antes y su mutación. El texto entero de cada ficha y
-su medición están en
-[`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
-
-- **J6** — el `ENTITY_REVEALED` del motor lleva `entityName`, como el de la pantalla
-  (`rules-engine.service.ts`, `applyRealEffects`). **Por qué:** era el camino de la revelación
-  automática y el hilo no podía decir qué apareció. **Revertir:** quitar el `findFirst` y el campo
-  del payload; el esquema lo tiene opcional, nada más se rompe.
-- **J11** — armar una regla comprueba que la ficha de cada efecto es de esta campaña, y devuelve
-  400 sin distinguir «no existe» de «ajena» (`rules-engine.service.ts`,
-  `requireEffectEntitiesInCampaign`). **Por qué:** la regla quedaba `BROKEN` e inerte al disparar,
-  o sea un botón que el servidor iba a rechazar. **Revertir:** quitar el método y sus dos
-  llamadas; las tres pruebas J11 del e2e se ponen rojas.
-- **N4** — cada propuesta llega con `ruleName` (`listProposals`, `include` de la regla) y la
-  pantalla deja de cruzar el id contra la lista de reglas. **Por qué:** el aviso ya lo llevaba y
-  el listado no; el «regla borrada» de respaldo era un caso imposible. **Revertir:** quitar el
-  `include` y devolver a `Propuestas` la prop `reglas`.
-- **P3 · enlace duplicado** — el `P2002` del índice único sale como 409 legible en vez de 500
-  (`links.service.ts`, `create`). **Revertir:** quitar el `try/catch`. **De paso, medido y no
-  arreglado:** dos enlaces **sin rótulo** entre las mismas fichas siguen entrando, porque Postgres
-  no iguala dos `NULL` en el índice; cerrarlo es un índice parcial, o sea una migración del autor.
-- **P3 · aceptar una invitación** — gastar el enlace y sentar al miembro van en una transacción,
-  y el gasto es un `updateMany` condicional que decide la carrera (`invites.service.ts`).
-  **Por qué:** tres peticiones a la vez entraban las tres por un enlace de un solo uso.
-  **Revertir:** volver a los tres viajes sueltos; la prueba de carrera del e2e enrojece.
-- **P3 · concesiones a no miembros** — `requireGrantsToMembers` en `create` y `update` de
-  entidades: un id que no sea miembro tumba la petición entera con 400. **Por qué:** se guardaba
-  una concesión inerte que se activaría sola el día que esa cuenta entrara. **Revertir:** quitar el
-  método y sus dos llamadas.
-- **P3 · grants inertes** — conceder a jugadores concretos con otra visibilidad es 400, no un
-  descarte en silencio ni una fila inerte (`requireGrantsToMembers`, con la visibilidad
-  resultante). **Revertir:** quitar la comprobación de visibilidad del método.
-- **1.18a · `/auth/me`** — la rama muerta se va con la consulta repetida: `JwtStrategy.validate`
-  devuelve `displayName` y el controlador contesta con `req.user`. **Revertir:** volver a
-  `findById` en `me()`.
-- **D4** — la lista de sesiones va por `scheduledAt` (desc, sin fecha al final) y no por
-  `createdAt` (`sessions.service.ts`, `list`; D-CF-1). **Revertir:** volver al `orderBy` viejo.
-- **P2 · `start()` con dos DM** — «suyos» es «su dueño es DM de la campaña», no «quien pulsó»
-  (`encounters.service.ts`). Salió de «decide el autor» porque su premisa —no hay segundo DM—
-  caducó con el plan 11. **Revertir:** volver a comparar con `userId`.
-- **changeHp · rollEventId** — **no se cierra, vuelve a «decide el autor»**: «de ese personaje»
-  rechazaría la tirada del atacante, y «reciente» pide un umbral que ninguna regla da.
-- **J7** — **no se cierra, vuelve a «decide el autor»**: el motivo de una anulación no se guarda
-  en ningún sitio (`overrides` es `{clave: número}`) y enseñarlo en la traza es un cambio de forma
-  de un `Json` con datos escritos. Medición en el 06.
+**Movida entera** a
+[`_archivo/historial-2026-09-10-tanda-1-api-pura.md`](./_archivo/historial-2026-09-10-tanda-1-api-pura.md)
+el 2026-09-12, al añadir la línea de la ronda de arreglo de la Tarea 4: el fichero quedaba en
+1004 de 1000 y era la entrada completa más antigua. En una línea: once fichas de API pura, una
+por commit con su prueba roja antes; nueve cierran, dos vuelven a «decide el autor» (`changeHp ·
+rollEventId`, `J7`).
 
 ## La poda: treinta y nueve bloques fuera del tablero, y doce decisiones con fila (2026-09-10)
 

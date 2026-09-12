@@ -25,8 +25,14 @@ export function Numeros({
 }: PropsDePestana) {
   const { sheet, character } = data;
   const columnas = disposicion === "pagina" ? "lg:grid-cols-3" : "";
+  // Anexo #17, medido: a página las tres columnas son una sola fila y con `items-start` la del
+  // medio (Salvaciones + Percepción pasiva) quedaba 42px más corta que sus vecinas — un desnivel
+  // por encima del umbral de la medida (`e2e/espacios.spec.ts`, DESNIVEL_MAX_PX=24). A página se
+  // igualan las tres al alto de la más alta (`items-stretch`); a mesa, una sola columna, se deja
+  // `items-start` como estaba.
+  const alineacion = disposicion === "pagina" ? "items-stretch" : "items-start";
   return (
-    <div data-pestana="numeros" className={`grid items-start gap-s4 ${columnas}`}>
+    <div data-pestana="numeros" className={`grid ${alineacion} gap-s4 ${columnas}`}>
       <TarjetaDeHoja titulo="Características" etiqueta="características">
         <Caracteristicas
           campaignId={campaignId}

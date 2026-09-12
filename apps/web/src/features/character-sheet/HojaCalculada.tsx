@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from "react";
+import { useState, type ComponentType, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs } from "../../ui/Tabs";
 import { EmptyState } from "../../ui/Collection";
@@ -58,6 +58,12 @@ export function HojaCalculada({
   // ANTES de cualquier `return` temprano (rules-of-hooks); la activa se resuelve más abajo.
   const [searchParams, setSearchParams] = useSearchParams();
   const [activaEnMesa, setActivaEnMesa] = useState<PestanaId>("numeros");
+  // Anexo #6/#17 — el alto REAL de la banda fija, medido por `Cabecera` (`ResizeObserver`) y no
+  // supuesto. `--tira-fija-top` (el escalón de `AppShell`) no incluye el alto de la banda misma:
+  // un sticky que solo sumara el escalón se metía 60px bajo ella, porque la banda mide más que
+  // el escalón. Se publica como variable CSS en el envoltorio de abajo para que cualquier sticky
+  // de una pestaña (hoy, `DetalleDeObjeto.tsx`) la lea sin que esta pantalla conozca a sus hijos.
+  const [altoDeBanda, setAltoDeBanda] = useState(0);
   const pedida = disposicion === "pagina" ? searchParams.get("pestana") : activaEnMesa;
   const cambiar = (id: string) => {
     if (!esPestana(id)) return;
@@ -132,10 +138,13 @@ export function HojaCalculada({
   const activa: PestanaId = items.find((p) => p.id === pedida)?.id ?? "numeros";
 
   return (
-    <div className="flex flex-col gap-s4">
+    <div
+      className="flex flex-col gap-s4"
+      style={{ "--banda-fija-alto": `${altoDeBanda}px` } as CSSProperties}
+    >
       {/* La cabecera fija es HERMANA del cuerpo, nunca su padre — `sticky` se pega dentro de su
           padre; la nota completa está en `Cabecera.tsx`. */}
-      <Cabecera {...props} />
+      <Cabecera {...props} onAlto={setAltoDeBanda} />
       <div data-piel="cromado">
         <Tabs
           items={items}

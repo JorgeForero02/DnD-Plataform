@@ -240,6 +240,20 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   deja **HP-10** en 06 (la fila pone cifra solo al efecto `ac`; para los otros ocho tipos de
   `itemEffectSchema` la marca sale sin nada tachado). D-CF-48. **Revertir:** `git revert` de los tres commits, del
   más nuevo al más viejo; el motor vuelve a sumar el +1 sin mirar `attuned`.
+- **HP-10 — la fila resume todos los tipos de efecto, y la espada +1 inactiva tacha su +1
+  (2026-09-12)**, commit `feat(web): the item row summarises every effect kind, so an inactive
+  sword strikes its +1 too`. **Qué:** `resumirEfecto(efecto)` junto a `describirEfecto` en
+  `features/campaign-items/vocabulario.ts` (única casa del vocabulario de efectos: `inventory` ya
+  importaba de ahí), `switch` exhaustivo con `never` sobre los nueve tipos de `itemEffectSchema`
+  —«+1 CA», «+1 atq», «+1 dñ», «FUE 19», «+1 salv. SAB», «+5 PG máx.», «+10 pies», «pericia en
+  Sigilo», «competencia en salv. CON»—; `datoDeObjeto.magico` compone la lista entera unida por
+  « · » y `DatoEnCifras` la tacha igual que tachaba el «+N CA», así que el detalle hereda.
+  **Por qué:** desde HP-9a una espada +1 o un cinturón de fuerza sin sintonizar enseñaban la marca
+  «Efecto inactivo» sin ninguna cifra que tachar. 24 pruebas nuevas (18 de vocabulario, 3 + 3 RTL),
+  rojas antes; mutación (`weaponDamage` sin su «dñ») tumbó 5. «+1 CA» del anillo no cambia, así
+  que `inventario.spec.ts` sigue igual. La ficha entera va a
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  **Revertir:** `git revert` del commit; la fila vuelve a poner cifra solo al `ac`.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 

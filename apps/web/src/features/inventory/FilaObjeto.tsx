@@ -14,6 +14,7 @@ import {
   subtituloDeObjeto,
 } from "./vocabulario";
 import { formatearKg } from "./peso";
+import { resumirEfecto } from "../campaign-items/vocabulario";
 import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizacion";
 
 // Carril B1 — la fila de una línea: nombre + subtítulo tenue, dato en cifras, peso, acción.
@@ -23,8 +24,9 @@ import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizac
 /**
  * El dato en cifras a la derecha del nombre — lo único que se sabe sin recalcular la hoja — en
  * dos mitades, porque el servidor las trata distinto (HP-9a): **lo mundano** (el dado del arma,
- * la CA base de la armadura, el bono del escudo) cuenta siempre; **lo mágico** (el bono a la CA
- * de `effects`) solo cuenta si el objeto no exige sintonización o está sintonizado. Quien pinta
+ * la CA base de la armadura, el bono del escudo) cuenta siempre; **lo mágico** (todos los
+ * `effects`, resumidos uno a uno y separados por « · ») solo cuenta si el objeto no exige
+ * sintonización o está sintonizado. Quien pinta
  * decide con `efectoInactivoPorSintonizacion(row)` si la mitad mágica va en limpio o tachada.
  *
  * Antes era una sola cadena y la armadura +1 se quedaba en «CA base 16» sin enseñar su +1; el
@@ -41,10 +43,10 @@ export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
         ? `+${item.armor.baseAc} CA`
         : `CA base ${item.armor.baseAc}`;
   }
-  const bonoCa = item.effects
-    .filter((e) => e.kind === "ac")
-    .reduce((suma, e) => suma + e.amount, 0);
-  const magico = bonoCa !== 0 ? `${bonoCa > 0 ? "+" : ""}${bonoCa} CA` : null;
+  // HP-10: TODOS los efectos, no solo el `ac` — antes una espada +1 o un cinturón de fuerza
+  // llevaban la marca «Efecto inactivo» sin ninguna cifra que tachar. La forma corta de cada tipo
+  // vive una vez en `campaign-items/vocabulario.ts` (`resumirEfecto`), exhaustiva sobre la unión.
+  const magico = item.effects.length > 0 ? item.effects.map(resumirEfecto).join(" · ") : null;
   return { mundano, magico };
 }
 

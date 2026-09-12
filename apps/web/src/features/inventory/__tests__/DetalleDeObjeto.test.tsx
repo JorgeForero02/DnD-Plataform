@@ -179,3 +179,58 @@ describe("DetalleDeObjeto — el efecto de un objeto sin sintonizar se enseña i
     expect(within(panel).getByText("Requiere sintonización")).toBeInTheDocument();
   });
 });
+
+// HP-10 (2026-09-12) — el detalle hereda `datoDeObjeto`/`DatoEnCifras` de la fila, así que la
+// espada +1 y el cinturón se resumen y se tachan igual aquí (`FilaObjeto.test.tsx`).
+describe("DetalleDeObjeto — todos los tipos de efecto llevan cifra (HP-10)", () => {
+  const MARCA = "Efecto inactivo: requiere sintonización";
+  const manos = () => ({ onAccionPrincipal: vi.fn(), onSoltar: vi.fn(), onSintonizar: vi.fn() });
+  const espadaMasUno: ResolvedItem = {
+    ...espadaMagica,
+    effects: [
+      { kind: "weaponAttack", amount: 1 },
+      { kind: "weaponDamage", amount: 1 },
+    ],
+    requiresAttunement: true,
+  };
+  const cinturon: ResolvedItem = {
+    ref: "CAMPAIGN:cinturon-1",
+    source: "CAMPAIGN",
+    kind: "OTHER",
+    name: "Cinturón de fuerza",
+    weightOz: 16,
+    effects: [{ kind: "abilityScore", ability: "str", mode: "set", amount: 19 }],
+    requiresAttunement: true,
+    attuned: false,
+  };
+
+  function montar(row: InventoryRow) {
+    render(<DetalleDeObjeto row={row} acciones={accionesDeObjeto(row, manos())} esDM={false} />);
+    return screen.getByRole("complementary", { name: "detalle del objeto" });
+  }
+
+  it("una espada +1 sin sintonizar: «+1 atq · +1 dñ» tachado con la explicación", () => {
+    const panel = montar(
+      fila({ item: espadaMasUno, location: "EQUIPPED", slot: "MAIN_HAND", attuned: false }),
+    );
+    const bono = within(panel).getByText("+1 atq · +1 dñ");
+    expect(bono.tagName).toBe("S");
+    expect(bono).toHaveAttribute("data-efecto", "inactivo");
+    expect(within(panel).getByText(MARCA)).toBeInTheDocument();
+  });
+
+  it("la misma espada sintonizada: en limpio y sin explicación", () => {
+    const panel = montar(
+      fila({ item: espadaMasUno, location: "EQUIPPED", slot: "MAIN_HAND", attuned: true }),
+    );
+    expect(within(panel).getByText("+1 atq · +1 dñ").tagName).not.toBe("S");
+    expect(within(panel).queryByText(MARCA)).toBeNull();
+  });
+
+  it("un cinturón que fija FUE a 19 sin sintonizar: «FUE 19» tachado", () => {
+    const panel = montar(fila({ item: cinturon, location: "EQUIPPED", slot: "OTHER" }));
+    const bono = within(panel).getByText("FUE 19");
+    expect(bono.tagName).toBe("S");
+    expect(within(panel).getByText(MARCA)).toBeInTheDocument();
+  });
+});

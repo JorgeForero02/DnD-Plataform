@@ -318,6 +318,70 @@ export function describirEfecto(efecto: ItemEffect): string {
   }
 }
 
+/** «+1», «-1»: el signo explícito de un bono, que un `${n}` a secas pierde en los positivos. */
+const conSigno = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
+
+/**
+ * El nivel de competencia en su forma corta y en minúscula, para componer «pericia en Sigilo».
+ * `NOMBRE_NIVEL_COMPETENCIA` es la forma larga del selector («Pericia (doble)») y no cabe en
+ * un dato en cifras.
+ */
+const NIVEL_COMPETENCIA_CORTO: Record<ProficiencyLevel, string> = {
+  none: "sin competencia",
+  half: "media competencia",
+  proficient: "competencia",
+  expertise: "pericia",
+};
+
+/**
+ * HP-10 — la forma **CORTA** de un efecto, la que cabe en el dato en cifras de la fila del
+ * inventario junto al «1d8 cort.» o al «CA base 16»: «+1 CA», «+1 atq», «+1 dñ», «FUE 19»,
+ * «+1 salv. SAB», «+5 PG máx.», «+10 pies», «pericia en Sigilo», «competencia en salv. CON».
+ * `describirEfecto` es la frase entera para la ficha del catálogo; esta es la que `DatoEnCifras`
+ * (`features/inventory/FilaObjeto.tsx`) pinta en limpio o tacha cuando el efecto está inactivo
+ * por sintonización.
+ *
+ * **Exhaustiva sobre la unión** (`never` al final): un décimo tipo en `itemEffectSchema` rompe
+ * el typecheck aquí en vez de llegar a la fila como marca sin cifra — que es justo el defecto
+ * que abrió HP-10.
+ */
+export function resumirEfecto(efecto: ItemEffect): string {
+  switch (efecto.kind) {
+    case "ac":
+      return `${conSigno(efecto.amount)} CA`;
+    case "weaponAttack":
+      return `${conSigno(efecto.amount)} atq`;
+    case "weaponDamage":
+      return `${conSigno(efecto.amount)} dñ`;
+    case "abilityScore": {
+      const abrev = ABREVIATURA_CARACTERISTICA[efecto.ability];
+      return efecto.mode === "set"
+        ? `${abrev} ${efecto.amount}`
+        : `${conSigno(efecto.amount)} ${abrev}`;
+    }
+    case "save":
+      return efecto.ability
+        ? `${conSigno(efecto.amount)} salv. ${ABREVIATURA_CARACTERISTICA[efecto.ability]}`
+        : `${conSigno(efecto.amount)} salvaciones`;
+    case "maxHp":
+      return `${conSigno(efecto.amount)} PG máx.`;
+    case "speed":
+      // Caminar es la velocidad por defecto y no se nombra; las demás sí, porque «+30 pies» a
+      // secas en unas botas de vuelo diría lo que no es.
+      return efecto.movement === "walk"
+        ? `${conSigno(efecto.amount)} pies`
+        : `${conSigno(efecto.amount)} pies al ${nombreMovimiento(efecto.movement)}`;
+    case "skillProficiency":
+      return `${NIVEL_COMPETENCIA_CORTO[efecto.level]} en ${nombreHabilidad(efecto.skill)}`;
+    case "saveProficiency":
+      return `competencia en salv. ${ABREVIATURA_CARACTERISTICA[efecto.ability]}`;
+    default: {
+      const nunca: never = efecto;
+      throw new Error(`Efecto sin resumen: ${JSON.stringify(nunca)}`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Procedencia — «catálogo» frente a «de la campaña». El endpoint que consume este carril
 // (`GET /campaigns/:id/items`) solo trae objetos propios de la campaña todavía: el catálogo SRD

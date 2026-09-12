@@ -145,3 +145,70 @@ describe("FilaObjeto — el efecto de un objeto sin sintonizar se enseña inacti
     expect(within(item).queryByText(MARCA)).toBeNull();
   });
 });
+
+// HP-10 (2026-09-12) — la fila ponía cifra solo al efecto `ac`; para los otros ocho tipos de
+// `itemEffectSchema` la marca «Efecto inactivo» salía sin nada tachado. Ahora `datoDeObjeto.magico`
+// resume TODOS los efectos con `resumirEfecto` (campaign-items/vocabulario.ts), y `DatoEnCifras`
+// tacha la cadena entera igual que tachaba el «+N CA».
+describe("FilaObjeto — todos los tipos de efecto llevan cifra (HP-10)", () => {
+  const MARCA = "Efecto inactivo: requiere sintonización";
+  const espadaMasUno = {
+    ref: "CAMPAIGN:espada-1",
+    source: "CAMPAIGN",
+    kind: "WEAPON",
+    name: "Espada larga +1",
+    weightOz: 48,
+    effects: [
+      { kind: "weaponAttack", amount: 1 },
+      { kind: "weaponDamage", amount: 1 },
+    ],
+    requiresAttunement: true,
+    attuned: false,
+    weapon: {
+      category: "MARTIAL",
+      range: "MELEE",
+      damageDice: "1d8",
+      damageType: "SLASHING",
+      properties: [],
+    },
+  } as unknown as ResolvedItem;
+  const cinturon = {
+    ref: "CAMPAIGN:cinturon-1",
+    source: "CAMPAIGN",
+    kind: "WONDROUS",
+    name: "Cinturón de fuerza",
+    weightOz: 16,
+    effects: [{ kind: "abilityScore", ability: "str", mode: "set", amount: 19 }],
+    requiresAttunement: true,
+    attuned: false,
+  } as unknown as ResolvedItem;
+
+  it("una espada +1 sin sintonizar: el dado en limpio, «+1 atq · +1 dñ» tachado y la marca", () => {
+    montar(fila({ item: espadaMasUno, slot: "MAIN_HAND", attuned: false }));
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText("1d8 cort.").tagName).not.toBe("S");
+    const bono = within(item).getByText("+1 atq · +1 dñ");
+    expect(bono.tagName).toBe("S");
+    expect(bono).toHaveAttribute("data-efecto", "inactivo");
+    expect(bono).toHaveAccessibleDescription(MARCA);
+    expect(within(item).getByText(MARCA)).toBeInTheDocument();
+  });
+
+  it("la misma espada sintonizada: «+1 atq · +1 dñ» en limpio y sin marca", () => {
+    montar(fila({ item: espadaMasUno, slot: "MAIN_HAND", attuned: true }));
+    const item = screen.getByRole("listitem");
+    const bono = within(item).getByText("+1 atq · +1 dñ");
+    expect(bono.tagName).not.toBe("S");
+    expect(bono).not.toHaveAttribute("data-efecto");
+    expect(within(item).queryByText(MARCA)).toBeNull();
+  });
+
+  it("un cinturón que fija FUE a 19 sin sintonizar: «FUE 19» tachado y la marca", () => {
+    montar(fila({ item: cinturon, slot: "OTHER", attuned: false }));
+    const item = screen.getByRole("listitem");
+    const bono = within(item).getByText("FUE 19");
+    expect(bono.tagName).toBe("S");
+    expect(bono).toHaveAttribute("data-efecto", "inactivo");
+    expect(within(item).getByText(MARCA)).toBeInTheDocument();
+  });
+});

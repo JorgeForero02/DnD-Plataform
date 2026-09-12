@@ -465,6 +465,7 @@ Decisiones pequeñas tomadas al cerrar fichas del cubo B, una por commit.
 | D-CF-34 | **Conjuros existe solo para quien lanza** (espacios o rasgo racial de conjuro) y hoy enseña espacios + hueco declarado; el paso 3 la llena sin mover nada |
 | D-CF-35 | **La hoja va antes del paso 3**, que asume la pestaña Conjuros hecha; y después de la tanda de fichas. Fase 3 y lo que dependa de ella (mapa, L1/L2/L4) se aplaza hasta cerrar el resto de fichas |
 | D-CF-36 | **El cubo por usuario no se clava a un token revocado**: el guard compara `iat` con `passwordChangedAt`, cacheado 60 s por usuario (una consulta por usuario y minuto, no por petición). OWASP: el límite se clava a la identidad autenticada válida |
+| D-CF-37 | **La «tanda L» (S11 tipos en shared, E1 buscar cruzado, L5 «este personaje no ve», S6 ASI como elección) entra dentro del paso 3**, no como tanda aparte: comparten `@dnd/shared` y el catálogo. **A2 (invitar por correo) queda aplazada** por el autor el 2026-09-11: «no viene al caso ahora». Orden tras la hoja: paso 3 → higiene (partir `character-sheet.service.ts`, CVEs + Renovate, cobertura medida) → jugar → fase 3 |
 | D-CF-1 | **La lista de sesiones va por cuándo se juega**: con fecha primero, de la más lejana a la más cercana —la próxima arriba, como el resto de listas de la casa ponen lo más reciente primero—, y las sin fecha detrás, por creación. Cierra D4 |
 
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)

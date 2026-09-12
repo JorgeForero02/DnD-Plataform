@@ -393,7 +393,7 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 
 | | Qué | Por qué aquí y no después |
 |---|---|---|
-| **A2** | **Invitar por correo a un usuario que ya tiene cuenta**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
+| **A2** | **Invitar por correo a un usuario que ya tiene cuenta** — **aplazada por el autor el 2026-09-11 (D-CF-37): «no viene al caso ahora»**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
 
 ## P3 · Un token robado y ya revocado sigue gastando el cubo de su dueño (2026-09-11)
 

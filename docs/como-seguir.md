@@ -42,6 +42,9 @@ después de la tanda de fichas, que cerró esa misma noche. Decisiones D-CF-29..
 [decisiones.md](./decisiones.md). Un implementador por árbol: toca `character-sheet/` e
 `inventory/` de arriba abajo.
 
+**Después de la hoja, en este orden (D-CF-37):** paso 3 —con S11, E1, L5 y S6 dentro, que
+eran la «tanda L»— → higiene → jugar una partida → fase 3. A2 aplazada.
+
 ### 1 · Terminar la poda del tablero — **lo mecánico ya está; queda lo del autor**
 
 El 2026-09-06 salieron las tres fichas que llevaban «Cerrado» en su propio título, y **el

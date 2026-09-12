@@ -468,3 +468,43 @@ describe("Fix round 1 (ALTA-2) — la desventaja de «muy cargado» solo en prue
     expect(within(panel).queryByRole("status")).not.toBeInTheDocument();
   });
 });
+
+// Fix round 1 (revisión de Tarea 6) — la pestaña `Conjuros` solo se monta para quien lanza
+// (`lanzaConjuros(sheet)`), y nada la probaba a este nivel: `Conjuros.test.tsx` monta el
+// componente directo, nunca a través de `HojaCalculada`. La armadura por defecto (`sheet` de
+// `hoja.fixture.tsx`) SÍ lanza (4 espacios de nivel 1), así que la comprobación de "no se monta"
+// necesita apagar los espacios y confirmar que tampoco queda ningún truco racial de conjuro en
+// sus `features` (solo trae `class.wizard.spellcasting`, que no termina en `.cantrip`/`.spell`).
+describe("Fix round 1 — `Conjuros` solo se monta para quien lanza", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sin espacios de conjuro y sin truco racial, la pestaña `Conjuros` no se monta", async () => {
+    // La armadura por defecto no trae ningún `labelKey` que termine en `.cantrip`/`.spell` —
+    // solo `class.wizard.spellcasting` — así que apagar `spellSlots` basta para dejar de lanzar.
+    expect(
+      sheet.features.some((f) => f.labelKey.endsWith(".cantrip") || f.labelKey.endsWith(".spell")),
+    ).toBe(false);
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue({
+      ...sheetResponse,
+      sheet: { ...sheet, spellSlots: [] },
+    });
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue([]);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue([]);
+    pintarHoja(false);
+
+    await screen.findByText("Salvaciones", { exact: true });
+    expect(document.querySelector('[data-pestana="conjuros"]')).not.toBeInTheDocument();
+  });
+
+  it("con espacios de conjuro (armadura por defecto: 4 de nivel 1), la pestaña `Conjuros` se monta", async () => {
+    vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
+    vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue([]);
+    vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue([]);
+    pintarHoja(false);
+
+    await screen.findByText("Salvaciones", { exact: true });
+    expect(document.querySelector('[data-pestana="conjuros"]')).toBeInTheDocument();
+  });
+});

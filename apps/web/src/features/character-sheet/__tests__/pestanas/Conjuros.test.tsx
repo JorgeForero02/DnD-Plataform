@@ -26,4 +26,24 @@ describe("Conjuros", () => {
     expect(screen.getByText("Los conjuros llegan con el paso 3")).toBeInTheDocument();
     expect(screen.queryByText("LONG_REST")).toBeNull();
   });
+
+  // Fix round 1 (revisión de Tarea 6) — un lanzador SOLO racial (alto elfo guerrero) no tiene
+  // espacios: `lanzaConjuros` igual monta esta pestaña (el truco racial cuenta), pero la tarjeta
+  // de espacios no debe pintarse vacía diciendo un descanso que el servidor no reconoce.
+  it("un truco racial sin espacios no pinta la tarjeta vacía, solo el aviso del paso 3", async () => {
+    renderPestana(
+      Conjuros,
+      { disposicion: "pagina" },
+      {
+        sheet: {
+          ...sheet,
+          spellSlots: [],
+          spellSlotResetOn: "NONE",
+          features: [{ sourceKey: "high-elf", labelKey: "subrace.elfHigh.cantrip", name: "Truco" }],
+        },
+      },
+    );
+    expect(await screen.findByText("Los conjuros llegan con el paso 3")).toBeInTheDocument();
+    expect(screen.queryByText(/Espacios de conjuro/)).toBeNull();
+  });
 });

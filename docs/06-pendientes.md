@@ -172,12 +172,25 @@ motor de reglas nunca la lee. `apps/api/src/rules/` no tiene ni una aparición d
 campo**: un anillo +1 sin sintonizar da +1 igual que uno sintonizado.
 
 **Arreglo mínimo, tres tareas:**
-1. `ResolvedItem` lleva `attuned`.
-2. `rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
-   `!requiresAttunement || attuned`, con un paso de traza «requiere sintonización — inactivo»
-   cuando no se cumple.
-3. La fila y el detalle del objeto muestran «Efecto inactivo: requiere sintonización» cuando
-   aplica; RTL + `inventario.spec.ts` (un solo fichero, con `exec playwright test`).
+1. ~~`ResolvedItem` lleva `attuned`.~~ **Hecho el 2026-09-12** (Task 1, commit `fix(rules): an
+   item that requires attunement gives its magical effects only when attuned`):
+   `attuned: z.boolean().default(false)` en `resolvedItemSchema`, y `equipoEquipado` lo copia de
+   la fila. En el listado del inventario el `attuned` que vale sigue siendo el de la fila
+   (`items[].attuned`); el `item.attuned` que va dentro es `false` porque sale del catálogo.
+2. ~~`rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
+   `!requiresAttunement || attuned`~~ **Hecho el 2026-09-12**, por una sola puerta:
+   `efectosActivos(item)` en `rules/items.ts`, que importa `attacks.ts`. **En vez del paso de traza
+   «inactivo»** que decía esta ficha, la hoja emite el aviso `item_not_attuned`
+   (`key: ref`, `data: { ref, name }`) por cada objeto equipado con `requiresAttunement && !attuned
+   && effects.length > 0` — un paso de traza con `amount: 0` habría ensuciado la suma de la traza,
+   y los avisos ya son el sitio donde la hoja explica por qué un número no se movió
+   (`item_unresolved`, `versatile_needs_both_hands`).
+3. **Pendiente (Task 2).** `describirAviso` (`vocabulario.ts`) necesita el `case
+   "item_not_attuned"` —hoy pinta «Sin traducir: item_not_attuned»— y añadirlo a
+   `CODIGOS_QUE_EMITE_LA_API` en `vocabulario.test.ts`; la fila y el detalle del objeto muestran
+   «Efecto inactivo: requiere sintonización» cuando aplica (con `fila.attuned` +
+   `item.requiresAttunement` + `item.effects.length > 0`); RTL + `inventario.spec.ts` (un solo
+   fichero, con `exec playwright test`).
 
 **Estimación dada al autor (controlador, 2026-09-12): 2–3 h, con revisión entre tareas.** Sin
 migración, sin catálogo nuevo, sin tocar el descanso corto. Fuente: SRD 5.1 §*Attunement* — el

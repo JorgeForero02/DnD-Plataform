@@ -2076,6 +2076,83 @@ describe("2B — la hoja no enseña la identidad de un objeto que quien mira no 
   });
 });
 
+// HP-9a (2026-09-12) — la costura que ningún otro sitio puede probar: que el `attuned` de LA FILA
+// llegue al motor. SRD 5.1 §Attunement: sin sintonizar, el objeto no da sus propiedades mágicas.
+describe("HP-9a — la sintonización de la fila llega al motor, y la hoja dice por qué el número no se movió", () => {
+  const anilloQueRequiere = {
+    id: "ci-3",
+    campaignId: "c1",
+    name: "Anillo de protección",
+    kind: "OTHER",
+    description: null,
+    weightOz: 1,
+    costCp: null,
+    effects: [{ kind: "ac", amount: 1 }],
+    requiresAttunement: true,
+    slot: "RING_1",
+    weaponCategory: null,
+    weaponRange: null,
+    damageDice: null,
+    damageType: null,
+    weaponProperties: [],
+    versatileDice: null,
+    rangeNormalFt: null,
+    rangeLongFt: null,
+    armorCategory: null,
+    baseAc: null,
+    dexCap: null,
+    strengthRequirement: 0,
+    stealthDisadvantage: false,
+    visibility: "PLAYERS",
+    createdById: "dm1",
+    createdAt: new Date(),
+    grants: [],
+  };
+
+  function conAnillo(attuned: boolean) {
+    const montado = montar();
+    montado.prisma.character.findFirst.mockResolvedValue(personaje());
+    montado.prisma.inventoryItem.findMany.mockResolvedValue([
+      filaDeInventario("", { srdKey: null, campaignItemId: "ci-3", slot: "RING_1", attuned }),
+    ]);
+    montado.prisma.campaignItem.findFirst.mockResolvedValue(anilloQueRequiere);
+    montado.membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    return montado;
+  }
+
+  it("sin sintonizar: la CA se queda en 11 y sale el aviso `item_not_attuned` con el nombre del anillo", async () => {
+    const { service } = conAnillo(false);
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    // Sin equipo la CA de esta ficha es 11 (10 + Destreza 12). Antes de HP-9a aquí salía 12.
+    expect(res.sheet!.derived.ac.total).toBe(11);
+    expect(res.sheet!.warnings).toContainEqual({
+      code: "item_not_attuned",
+      key: "CAMPAIGN:ci-3",
+      data: { ref: "CAMPAIGN:ci-3", name: "Anillo de protección" },
+    });
+  });
+
+  it("sintonizado: la CA sube a 12 y NO hay aviso", async () => {
+    const { service } = conAnillo(true);
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.sheet!.derived.ac.total).toBe(12);
+    expect(res.sheet!.warnings.some((a) => a.code === "item_not_attuned")).toBe(false);
+  });
+
+  it("un objeto que requiere sintonización pero no tiene efectos no avisa: no hay nada que dejara de contar", async () => {
+    const montado = conAnillo(false);
+    montado.prisma.campaignItem.findFirst.mockResolvedValue({ ...anilloQueRequiere, effects: [] });
+
+    const res = await montado.service.getSheet("p1", "c1", "ch1");
+
+    expect(res.sheet!.warnings.some((a) => a.code === "item_not_attuned")).toBe(false);
+  });
+});
+
 describe("D-CF-15 (migración 7) — un objeto sin identificar cambia de nombre para quien no es el DM", () => {
   /** El mismo anillo, pero VISIBLE (`PLAYERS`) y sin identificar: la capa que se prueba aquí es
    * ortogonal a `canView` — visible no es lo mismo que identificado. */

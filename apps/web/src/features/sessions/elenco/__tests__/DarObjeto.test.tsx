@@ -119,6 +119,7 @@ describe("DarObjeto", () => {
         weightOz: 32,
         effects: [],
         requiresAttunement: false,
+        attuned: false,
       },
     ]);
     vi.spyOn(inventoryApi, "addInventoryItem").mockResolvedValue({} as never);

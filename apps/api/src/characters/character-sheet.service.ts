@@ -456,7 +456,14 @@ export class CharacterSheetService {
         // filas indistinguibles, `rollAttack` tirando siempre la primera y React repitiendo
         // `key`. Y sin la ranura real no se puede saber si la otra mano está ocupada, que es lo
         // que decide si un arma versátil puede empuñarse a dos manos.
-        const conRanura: ResolvedItem = { ...resolved, slot: fila.slot ?? resolved.slot };
+        // HP-9a — **y la sintonización también es de la fila.** El catálogo no sabe quién lo
+        // lleva; el motor (`rules/items.ts`, `efectosActivos`) decide con este campo si los
+        // `effects` cuentan (SRD 5.1 §Attunement: sin sintonizar, solo lo mundano).
+        const conRanura: ResolvedItem = {
+          ...resolved,
+          slot: fila.slot ?? resolved.slot,
+          attuned: fila.attuned,
+        };
         // Fix round 2 (R2) — **la MISMA función que usa `InventoryService.list()`**
         // (`filaComoLaVeElViewer`), para que el dueño de un objeto sin identificar cuyo
         // catálogo ya no le alcanza vea el mismo alias en la mochila, aquí, el cuadro de
@@ -477,7 +484,19 @@ export class CharacterSheetService {
           viewer,
           character.ownerId === userId,
         );
-        items.push(resultado.visible ? resultado.item : redactado(conRanura, ++ocultos));
+        const visto = resultado.visible ? resultado.item : redactado(conRanura, ++ocultos);
+        items.push(visto);
+        // HP-9a — la hoja dice **por qué** el número no se movió. Solo cuando había algo que
+        // dejara de contar: un objeto sintonizable sin `effects` no cambia ningún número, y
+        // avisar sería ruido. Se usa `visto`, ya redactado o con su alias, para no delatar por
+        // el aviso el nombre que la fila acaba de esconder.
+        if (visto.requiresAttunement && !visto.attuned && visto.effects.length > 0) {
+          warnings.push({
+            code: "item_not_attuned",
+            key: visto.ref,
+            data: { ref: visto.ref, name: visto.name },
+          });
+        }
       } catch {
         warnings.push({
           code: "item_unresolved",

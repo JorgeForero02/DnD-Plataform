@@ -2,6 +2,7 @@ import type { ResolvedItem } from "@dnd/shared";
 import { derive } from "./engine";
 import {
   assertValidArmorSet,
+  efectosActivos,
   equipmentToEngineInput,
   InvalidEquipmentError,
   type ArmorLike,
@@ -20,6 +21,7 @@ function objeto(parcial: Partial<ResolvedItem> = {}): ResolvedItem {
     weightOz: 0,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     ...parcial,
   };
 }
@@ -571,5 +573,88 @@ describe("`assertValidArmorSet`, el guardia que comparten las dos puertas del eq
     const escudo: ArmorLike = { category: "SHIELD", baseAc: 2 };
     expect(() => assertValidArmorSet([armadura])).not.toThrow();
     expect(() => assertValidArmorSet([armadura, escudo])).not.toThrow();
+  });
+});
+
+// HP-9a (2026-09-12) — SRD 5.1 §Attunement: un objeto que requiere sintonización solo da sus
+// propiedades mágicas a la criatura sintonizada con él; sin sintonizar, es su versión mundana.
+// Antes de este arreglo el motor nunca leía `attuned`: un anillo +1 sin sintonizar daba +1.
+describe("HP-9a — los efectos de un objeto que requiere sintonización solo cuentan sintonizado", () => {
+  const anilloDeProteccion = (attuned: boolean) =>
+    objeto({
+      ref: "CAMPAIGN:anillo-1",
+      source: "CAMPAIGN",
+      name: "Anillo de protección",
+      effects: [{ kind: "ac", amount: 1 }],
+      requiresAttunement: true,
+      attuned,
+    });
+
+  const caCon = (items: ResolvedItem[]) => {
+    const equipo = equipmentToEngineInput(items, 10);
+    return derive({
+      abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+      level: 1,
+      hitDieSize: 10,
+      modifiers: equipo.modifiers,
+      saveProficiencies: [],
+      skillProficiencies: {},
+      acFormulas: equipo.acFormulas,
+      acBonuses: equipo.acBonuses,
+    }).derived.ac;
+  };
+
+  it("sin sintonizar: la CA no se mueve y no hay paso `item` del anillo en la traza", () => {
+    const ca = caCon([anilloDeProteccion(false)]);
+    expect(ca.total).toBe(10);
+    expect(ca.steps.some((p) => p.sourceType === "item")).toBe(false);
+    expect(equipmentToEngineInput([anilloDeProteccion(false)], 10).acBonuses).toHaveLength(0);
+  });
+
+  it("sintonizado: +1 a la CA, con su paso en la traza", () => {
+    const ca = caCon([anilloDeProteccion(true)]);
+    expect(ca.total).toBe(11);
+    expect(ca.steps).toContainEqual(
+      expect.objectContaining({ op: "add", amount: 1, sourceKey: "CAMPAIGN:anillo-1" }),
+    );
+  });
+
+  it("un objeto que NO requiere sintonización suma igual, sintonizado o no", () => {
+    const brazales = objeto({
+      ref: "brazales",
+      effects: [{ kind: "ac", amount: 1 }],
+      requiresAttunement: false,
+      attuned: false,
+    });
+    expect(caCon([brazales]).total).toBe(11);
+  });
+
+  it("efectosActivos: vacío cuando requiere sintonización y no está; la lista entera si no", () => {
+    expect(efectosActivos(anilloDeProteccion(false))).toEqual([]);
+    expect(efectosActivos(anilloDeProteccion(true))).toEqual([{ kind: "ac", amount: 1 }]);
+    expect(
+      efectosActivos(
+        objeto({ effects: [{ kind: "maxHp", amount: 5 }], requiresAttunement: false }),
+      ),
+    ).toEqual([{ kind: "maxHp", amount: 5 }]);
+  });
+
+  it("lo mundano del objeto sigue contando: una armadura que requiere sintonización da su CA base aunque no esté sintonizada", () => {
+    const cotaMagica = objeto({
+      ref: "cota-magica",
+      kind: "ARMOR",
+      armor: {
+        category: "HEAVY",
+        baseAc: 16,
+        dexCap: 0,
+        strengthRequirement: 0,
+        stealthDisadvantage: false,
+      },
+      effects: [{ kind: "ac", amount: 1 }],
+      requiresAttunement: true,
+      attuned: false,
+    });
+    // 16 de la cota (mundano) y nada del +1 (mágico, sin sintonizar).
+    expect(caCon([cotaMagica]).total).toBe(16);
   });
 });

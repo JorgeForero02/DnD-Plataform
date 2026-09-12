@@ -236,6 +236,7 @@ describe("armor_not_proficient viaja desde la clase hasta el aviso (Tarea 15, I6
     weightOz: 0,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     armor: {
       category: "HEAVY",
       baseAc: 18,

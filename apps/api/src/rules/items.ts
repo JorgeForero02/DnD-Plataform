@@ -21,11 +21,31 @@
 import type {
   AbilityKey,
   DerivationWarning,
+  ItemEffect,
   ProficiencyLevel,
   ResolvedItem,
   SkillKey,
 } from "@dnd/shared";
 import type { AcFormula, EngineInput, Modifier } from "./engine";
+
+/**
+ * HP-9a (2026-09-12) — los efectos de un objeto **que cuentan ahora mismo**.
+ *
+ * SRD 5.1, «Magic Items → Attunement»: un objeto que requiere sintonización solo da sus
+ * propiedades mágicas a la criatura sintonizada con él; sin sintonizar, el objeto se comporta
+ * como su versión mundana (la espada sigue siendo una espada, la armadura sigue dando su CA
+ * base). Por eso esta función filtra **solo `effects`** —lo mágico— y no toca `armor.baseAc`
+ * ni `weapon.damageDice`, que son lo mundano y siguen contando.
+ *
+ * Es la ÚNICA puerta por la que el motor lee `effects` de un objeto equipado: la CA y el resto
+ * de efectos pasan por aquí (`equipmentToEngineInput`) y el +N al ataque y al daño también
+ * (`attacks.ts`, `sumaDeEfecto`). Antes de HP-9a ninguno de los dos leía `attuned`, y un anillo
+ * +1 sin sintonizar daba +1 igual que uno sintonizado.
+ */
+export function efectosActivos(item: ResolvedItem): ItemEffect[] {
+  if (item.requiresAttunement && !item.attuned) return [];
+  return item.effects;
+}
 
 /** Equipo que no puede llevarse a la vez. **Se traduce a 400 en el borde** (2A.6). */
 export class InvalidEquipmentError extends Error {
@@ -174,7 +194,7 @@ export function equipmentToEngineInput(
   for (const item of items) {
     const labelKey = `item.${item.ref}`;
 
-    for (const effect of item.effects) {
+    for (const effect of efectosActivos(item)) {
       switch (effect.kind) {
         case "ac":
           acBonuses.push({

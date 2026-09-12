@@ -18,6 +18,7 @@ const espadaMagica: ResolvedItem = {
   weightOz: 48,
   effects: [],
   requiresAttunement: false,
+  attuned: false,
   weapon: {
     category: "MARTIAL",
     range: "MELEE",

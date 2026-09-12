@@ -37,6 +37,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md) | **El cero de tipos comodín** y **el proceso pasa a medirse**, movidas enteras el 2026-09-12 al pasarse el fichero (1002 de 1000) con los retoques de la revisión de la hoja. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md) | **`CLAUDE.md` deja de narrar el estado**, movida entera el 2026-09-12 al escribir la línea de la ronda de documentación de cierre de la hoja (el fichero iba a pasar de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md) | **La poda del tablero y el nacimiento de `como-seguir.md`**, movida entera el 2026-09-12 al escribir la línea de HP-9a (el fichero estaba en 997 de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -193,6 +194,18 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   rama—; **HP-9b** (catálogo SRD +N estructurado y descanso corto) conserva el texto y el orden
   originales, después del paso 3. D-CF-47 enmendada, `06-pendientes.md` y `como-seguir.md`
   actualizados. **Revertir:** `git revert` del commit; HP-9 vuelve a su ficha única.
+- **HP-9a · Task 1 — el servidor deja de contar lo mágico de un objeto sin sintonizar
+  (2026-09-12)**, commit `fix(rules): an item that requires attunement gives its magical effects
+  only when attuned`. `ResolvedItem` gana `attuned` (`z.boolean().default(false)`, estado de la
+  fila como `identified`); `equipoEquipado` lo copia de la fila; `rules/items.ts` estrena
+  `efectosActivos(item)` —`[]` si `requiresAttunement && !attuned`, la lista si no— y es la ÚNICA
+  puerta por la que la CA (`equipmentToEngineInput`) y el +N al ataque y al daño (`attacks.ts`,
+  `sumaDeEfecto`) leen `effects`; lo mundano (`armor.baseAc`, el dado del arma) no pasa por el
+  filtro. La hoja emite `item_not_attuned` (`key: ref`, `data: { ref, name }`, con el nombre ya
+  redactado) solo si el objeto tenía `effects`. Fuente: SRD 5.1 §Attunement — sin sintonizar, el
+  objeto no da sus propiedades mágicas. Once pruebas nuevas (motor, ataques y costura del
+  servicio); mutación «devolver `item.effects` siempre» tumbó cinco. **La pantalla es la Task 2**:
+  `describirAviso` aún dice «Sin traducir: item_not_attuned». **Revertir:** `git revert` del commit.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
@@ -783,28 +796,11 @@ un jugador con un PNJ cedido ve la lista de destinatarios vacía al abrir «Dar�
 
 ---
 
-## Poda del tablero, y una página que dice por dónde entrar (2026-09-06)
+## Poda del tablero, y una página que dice por dónde entrar (2026-09-06) — archivada
 
-**Qué:** las **tres fichas que llevaban «Cerrado» en su propio título** salen de
-[06-pendientes.md](./06-pendientes.md) a
-[`_archivo/pendientes-cerrados-2026-09-06-poda.md`](./_archivo/pendientes-cerrados-2026-09-06-poda.md),
-**enteras y sin tocar una coma**. Y se añade [como-seguir.md](./como-seguir.md), que dice qué
-andamiaje ya está puesto —para que nadie lo vuelva a montar—, qué sigue y en qué orden, y qué no
-decide un agente.
-
-**Por qué solo tres:** la regla del tablero es mecánica —lo cerrado sale, lo abierto se queda— y
-solo tres cumplían el criterio de forma comprobable. Quedan dos docenas de secciones fechadas
-antes del 2026-09-04 y varias **sin fecha en el título**, pero saber cuál sigue viva **no se
-deduce del código**: es del autor, y forzarlo habría sido enterrar deuda en vez de podarla. El
-criterio y las candidatas están en el punto 1 de `como-seguir.md`.
-
-**Dos de las tres archivadas explican un error de medición** —una ficha afirmaba que nadie podía
-curar a nadie, y el grep que lo hizo creer— y por eso se archivan en vez de borrarse: ese registro
-es lo que evita volver a creérsela.
-
-**Cómo revertir:** devolver las tres secciones del fichero de archivo a `06-pendientes.md` y
-borrar `docs/como-seguir.md` con sus dos punteros.
-
+**Movida entera** a [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md)
+el 2026-09-12, al escribir la línea de HP-9a: el fichero estaba en 997 de 1000. En una línea: las
+tres fichas con «Cerrado» en el título salen de 06 a su archivo, y nace `como-seguir.md`.
 
 ## `CLAUDE.md` deja de narrar el estado (2026-09-06) — archivada
 

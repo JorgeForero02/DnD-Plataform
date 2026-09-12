@@ -15,6 +15,7 @@ function objeto(parcial: Partial<ResolvedItem> & { name: string }): ResolvedItem
     weightOz: 16,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     ...parcial,
   };
 }

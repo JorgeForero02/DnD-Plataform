@@ -32,6 +32,9 @@ export function campaignItemToResolvedItem(row: CampaignItem): ResolvedItem {
     costCp: row.costCp ?? undefined,
     effects: itemEffectsSchema.parse(row.effects ?? []),
     requiresAttunement: row.requiresAttunement,
+    // El catálogo no sabe de filas: la sintonización la pone quien tiene la fila delante
+    // (`character-sheet.service.ts`, `equipoEquipado`). HP-9a.
+    attuned: false,
     slot: row.slot ?? undefined,
     // El bloque de arma solo existe si están sus cuatro columnas obligatorias: media arma no se
     // puede tirar, y devolverla a medias haría que el cuadro de ataques pintara una fila muerta.

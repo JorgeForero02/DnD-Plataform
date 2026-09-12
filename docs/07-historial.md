@@ -49,6 +49,19 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
+
+Con el autor, en otra sesión y mientras la tanda de fichas cerraba: la hoja fuera de la mesa se
+rehace como **una sola `HojaCalculada` con `disposicion`** —cabecera fija con retrato, cinco
+números, condiciones y avisos; siete pestañas laterales a columnas; Objetos con lista + detalle
+desde una lista única de acciones; Conjuros solo para quien lanza—. Cinco preguntas contestadas y
+un enfoque elegido (D-CF-29..35), [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md)
+y [plan de 11 tareas](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md); la Task 1
+cierra de paso la ficha del token revocado (D-CF-36). **Y dos huecos de la auditoría de docs de
+esa noche, tapados aquí:** 05-datos no contaba qué quitaron las migraciones (`RestKind`,
+`race`/`class`) y el ledger global decía «push pendiente» con el push hecho. **Revertir:** borrar
+la spec y el plan; las decisiones se quedan como registro.
+
 ## Relectura de 01–05 y 09 al cerrar la rama: diez frases falsas (2026-09-11)
 
 Auditoría de deriva contra el código tras fusionar `ficha/tanda-2-a-5`, por un agente de solo

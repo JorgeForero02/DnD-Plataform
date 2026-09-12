@@ -32,6 +32,16 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 ## Qué sigue, en este orden
 
+### 0 · La hoja a página completa — **spec aprobada y plan escrito el 2026-09-11**
+
+El autor aprobó la [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md)
+—pestañas laterales a columnas, cabecera fija, Objetos con detalle, una sola `HojaCalculada` con
+`disposicion`— y hay [plan por tareas](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)
+(11 tareas; la primera cierra de paso la ficha del token revocado). **Va antes del paso 3** y
+después de la tanda de fichas, que cerró esa misma noche. Decisiones D-CF-29..36 en
+[decisiones.md](./decisiones.md). Un implementador por árbol: toca `character-sheet/` e
+`inventory/` de arriba abajo.
+
 ### 1 · Terminar la poda del tablero — **lo mecánico ya está; queda lo del autor**
 
 El 2026-09-06 salieron las tres fichas que llevaban «Cerrado» en su propio título, y **el

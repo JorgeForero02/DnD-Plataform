@@ -408,6 +408,10 @@ usuario un minuto lo deja en una consulta por usuario y minuto. Por los cuatro p
 cambio rápido (añade una consulta al camino caliente) y ninguna regla lo contesta, así que queda
 como ficha con su coste escrito. No es urgente para una mesa de cinco.
 
+> **Decidida el 2026-09-11 (D-CF-36) y colocada como Task 1 del
+> [plan de la hoja a página completa](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)**:
+> caché de `passwordChangedAt` por usuario, 60 s. Se archiva cuando esa tarea cierre.
+
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 
 Hay servidor (`vps1new`), dominio (`dnd.supportive.pro`) y autorización, y existe

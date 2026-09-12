@@ -119,6 +119,20 @@ igual es un agujero de `canView`, y pintarle una fila fantasma es una pantalla q
 que **no** se modela es «lo tengo pero no sé qué hace»: eso es visibilidad **por campo**, que el
 modelo no hace en ningún sitio, y la traza de la CA delataría el número igual.
 
+## Lo que la tanda de migraciones del 2026-09-11 quitó (D-CF-14)
+
+Las ocho migraciones de esa noche están en [07-historial.md](./07-historial.md) con su porqué.
+Lo que **añadieron** (identified/unidentifiedName, attackRef, encumbranceVariant, los dos
+`GameEventType` nuevos y el índice parcial de enlaces) se describe cada uno en su sección de este
+documento. Lo que **quitaron**, y por eso ya no aparece en ninguna:
+
+- **`enum RestKind`** (`SHORT`/`LONG`): nunca fue tipo de ningún campo. `DROP TYPE` en
+  `20260911100000_drop_rest_kind`, y una prueba (`prisma/no-dead-enum.spec.ts`) impide que vuelva
+  a haber un enum sin campo.
+- **`Character.race` y `Character.class`**, texto libre heredado de antes del catálogo. Se borraron
+  **sin medir datos** por decisión del autor (D-CF-27): la verdad son `raceKey`/`subraceKey`/
+  `classKey`/`subclassKey`. `20260911…_drop_character_free_text_race_class`.
+
 ## Lo que 2C añadió a la base, en una línea cada cosa
 
 - **`Campaign.clockSeconds`** y **`Character.lastLongRestClock`** (2C.3): el reloj, y cuándo

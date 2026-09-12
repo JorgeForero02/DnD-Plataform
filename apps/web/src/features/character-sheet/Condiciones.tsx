@@ -192,17 +192,26 @@ export function Condiciones({
   // **Variante chips**, para la cabecera fija: solo el nombre legible de cada condición activa,
   // sin controles — aplicar y quitar siguen siendo cosa de la tarjeta. Todos los hooks de arriba
   // se llaman igual en las dos variantes: lo único que cambia es qué se pinta con sus datos.
+  //
+  // **El nombre sale de `tituloDe`**, la misma función que usa la tarjeta, para que chip y
+  // tarjeta no puedan divergir: ya resuelve la concentración («Concentración en <conjuro>») y el
+  // nivel de agotamiento («(nivel N)»), así que aquí no hace falta repetir ninguna de las dos
+  // reglas a mano — `NOMBRE_CONDICION[c.key]` a secas se queda `undefined` para la concentración,
+  // que no es una clave del SRD.
+  //
+  // **Las vencidas no entran**: la cabecera dice qué está activo ahora mismo; una condición
+  // vencida se gestiona y se ve tachada en la tarjeta de Estado, no aquí.
   if (variante === "chips") {
-    if (!condiciones || condiciones.length === 0) return null;
+    const activas = (condiciones ?? []).filter((c) => !c.expired);
+    if (activas.length === 0) return null;
     return (
       <ul aria-label="condiciones activas" className="flex flex-wrap gap-s1">
-        {condiciones.map((c) => (
+        {activas.map((c) => (
           <li
             key={c.id}
             className="rounded-radius-sm border border-warning-text px-s2 py-0.5 font-chrome text-chrome-xs text-warning-text"
           >
-            {NOMBRE_CONDICION[c.key]}
-            {c.key === "exhaustion" && c.level ? ` · nivel ${c.level}` : ""}
+            {tituloDe(c)}
           </li>
         ))}
       </ul>

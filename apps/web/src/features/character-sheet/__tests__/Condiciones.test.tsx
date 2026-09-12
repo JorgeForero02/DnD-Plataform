@@ -367,4 +367,29 @@ describe("Condiciones — la concentración (ficha M17)", () => {
     const { container } = renderCondiciones({ variante: "chips" });
     await waitFor(() => expect(container.querySelector("ul")).toBeNull());
   });
+
+  it("variante chips: la concentración lleva su nombre completo, nunca un chip vacío", async () => {
+    mockConditions([{ ...fila("concentrating-bendicion"), note: "Bendición" }]);
+    renderCondiciones({ variante: "chips" });
+    const lista = await screen.findByRole("list", { name: "condiciones activas" });
+    expect(within(lista).getByText("Concentración en Bendición")).toBeInTheDocument();
+    // Ningún <li> se queda vacío: NOMBRE_CONDICION no conoce la clave de concentración.
+    for (const li of within(lista).getAllByRole("listitem")) {
+      expect(li.textContent).not.toBe("");
+    }
+  });
+
+  it("variante chips: el agotamiento lleva su nivel", async () => {
+    mockConditions([fila("exhaustion", 3)]);
+    renderCondiciones({ variante: "chips" });
+    const lista = await screen.findByRole("list", { name: "condiciones activas" });
+    expect(within(lista).getByText(/nivel 3/)).toBeInTheDocument();
+  });
+
+  it("variante chips: una condición vencida no aparece — se gestiona en la tarjeta de Estado", async () => {
+    mockConditions([filaConVencimiento("poisoned", { expiresAtClock: 100, expired: true })]);
+    const { container } = renderCondiciones({ variante: "chips" });
+    await waitFor(() => expect(container.querySelector("ul")).toBeNull());
+    expect(screen.queryByText("Envenenado")).toBeNull();
+  });
 });

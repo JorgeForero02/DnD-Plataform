@@ -123,15 +123,22 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
 
   // --- Con el cajón DESPLEGADO (estado inicial) ---
   //
-  // (c) El marco no se ha desplomado a 0 px: ocupa al menos el 40 % de la altura de la ventana,
-  //     la misma cota (`max-h-[40vh]`) que `CajonDelRegistro.tsx` le impone al cajón.
+  // (c) El marco no se ha desplomado a 0 px: **el tablero manda sobre el registro** (decisión
+  //     del autor, ronda de revisión 2) — el marco nunca es más pequeño que el propio cajón
+  //     abierto, y además ocupa al menos un cuarto de la altura de la ventana (200 px a 800, con
+  //     el cajón topado en `max-h-[32vh]` = 256 px). No se exige un 40 % fijo: a 1280×800 la
+  //     banda de escena y la línea de combate ya se comen ~160 px por encima de la rejilla, y esa
+  //     cota era inalcanzable con el cajón abierto a su vez reclamando su sitio.
   const marcoBox = await marcoLocator.boundingBox();
+  const registroBox = await page.getByRole("region", { name: "Registro en vivo" }).boundingBox();
   expect(marcoBox).not.toBeNull();
-  expect(marcoBox!.height).toBeGreaterThanOrEqual(800 * 0.4);
+  expect(registroBox).not.toBeNull();
+  expect(marcoBox!.height).toBeGreaterThanOrEqual(registroBox!.height);
+  expect(marcoBox!.height).toBeGreaterThanOrEqual(800 * 0.25);
 
   // (d) El hilo, dentro del cajón, scrollea POR DENTRO — la misma sonda de `mesa-mide.spec.ts`
   //     (`overflowY` resuelto y `scrollHeight > clientHeight`), copiada tal cual: doce líneas no
-  //     caben en `max-h-[40vh]`, así que si esto pasa es porque el `overflow-y-auto` del propio
+  //     caben en `max-h-[32vh]`, así que si esto pasa es porque el `overflow-y-auto` del propio
   //     hilo se activó, y no la rejilla estirándose para hacerle sitio.
   const hilo = page.getByRole("list", { name: "Sucesos de la sesión" });
   const medidaHilo = await hilo.evaluate((el) => ({

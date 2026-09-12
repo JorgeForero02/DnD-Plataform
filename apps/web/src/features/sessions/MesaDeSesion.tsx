@@ -242,7 +242,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
 
                 **Ronda de revisión (2026-09-12): la fila de abajo se queda en `auto` a
                 propósito.** El techo de un hilo largo no lo pone esta rejilla — lo pone
-                `CajonDelRegistro.tsx` (`max-h-[40vh]` desplegado): la fila `auto` se mide por el
+                `CajonDelRegistro.tsx` (`max-h-[32vh]` desplegado): la fila `auto` se mide por el
                 tamaño YA acotado de esa sección, así que nunca vuelve a comerse la fila `1fr`
                 del marco. Ver el comentario de `CajonDelRegistro.tsx` para el porqué completo. */}
             {campana?.boardRoomUrl ? (

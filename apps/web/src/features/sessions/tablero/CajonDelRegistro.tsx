@@ -20,12 +20,19 @@ import { IconoFlechaIzquierda } from "../../../ui/Iconos";
 //  2. Con eso resuelto, la fila `auto` de la rejilla de `MesaDeSesion.tsx` seguía sin techo: un
 //     hilo largo podía pedir tanta altura como quisiera y esa fila crecía a su costa, comiéndose
 //     el marco (que vive en la fila `1fr`) hasta dejarlo en 0 px. La sección de este cajón
-//     **desplegada** lleva ahora `max-h-[40vh]` además de su `min-h-[14rem]`: la fila `auto` de
+//     **desplegada** lleva ahora `max-h-[32vh]` además de su `min-h-[14rem]`: la fila `auto` de
 //     la rejilla se mide por el tamaño de este elemento, y un elemento con `max-height` no puede
 //     pedir más allá de esa cota aunque su contenido sea más alto — lo que sobra lo absorbe el
 //     `overflow-y-auto` del propio hilo, no la rejilla. Plegada, la sección vuelve a ser solo el
 //     botón (~2.5rem): sin `min-h`/`max-h`, la fila `auto` se ajusta a ese tamaño y el marco
 //     recupera casi toda la altura.
+//
+//     **Ronda de revisión 2 (2026-09-12): 40vh bajó a 32vh — el marco manda.** A 1280×800 la
+//     banda de escena y la línea de combate se comen ~160 px por encima de la rejilla, así que
+//     un cajón a 40vh (320 px) podía dejar al marco por debajo de él; el autor decidió que **el
+//     tablero domina el registro**, nunca al revés. `32vh` dan 256 px a 800 (por encima de los
+//     224 px de `min-h-[14rem]`, que sigue siendo el suelo) y 345 px a 1080 — sigue habiendo hilo
+//     de sobra para leer plegando poco, y el marco se queda con la mayoría de la fila `1fr`.
 export function CajonDelRegistro({
   eventos,
   children,
@@ -62,7 +69,7 @@ export function CajonDelRegistro({
   return (
     <section
       aria-label="Registro en vivo"
-      className={["flex min-h-0 flex-col", plegado ? "" : "min-h-[14rem] max-h-[40vh]"].join(" ")}
+      className={["flex min-h-0 flex-col", plegado ? "" : "min-h-[14rem] max-h-[32vh]"].join(" ")}
     >
       <button
         type="button"

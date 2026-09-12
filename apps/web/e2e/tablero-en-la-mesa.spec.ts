@@ -30,6 +30,12 @@ async function registrarse(page: Page) {
   return cuenta;
 }
 
+/** Copiado de `hoja-pestanas.spec.ts` (mismo nombre): la cabecera de sesión para llamar a la API. */
+async function comoLaSesion(page: Page) {
+  const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+  return { Authorization: `Bearer ${token}` };
+}
+
 /**
  * Una campaña con sesión **empezada** y el hilo **lleno** — copiado de `mesa-mide.spec.ts`
  * (mismos nombres, mismo gesto): sin un hilo real, plegar el registro y ver su contador subir no
@@ -109,12 +115,20 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
   expect(scrollDePagina).toBe(false);
 
   await page.getByRole("button", { name: "Plegar el registro" }).click();
-  await page.getByRole("button", { name: "Anotar" }).click();
-  await page.getByLabel("Qué anotar").fill("una línea con el registro plegado");
-  await page
-    .getByRole("button", { name: /Combate/ })
-    .first()
-    .click();
+
+  // «Anotar» es el compositor del hilo (BandaDeSesion/HiloDeSesion), y con el registro plegado
+  // ese carril no está montado — no hay ningún «Anotar» al que pulsar. La única puerta que queda
+  // es la que usa el propio compositor: `POST .../sessions/notes` (sin `sessionId`: el servidor
+  // busca la sesión en curso). El hilo sondea cada ~15 s, de ahí el margen de 20 s de abajo.
+  const sello = await page.request.post(`/api/campaigns/${campaignId}/sessions/notes`, {
+    headers: await comoLaSesion(page),
+    data: {
+      kind: "COMBAT",
+      text: "una línea con el registro plegado",
+      visibility: "PLAYERS",
+    },
+  });
+  expect(sello.ok()).toBe(true);
   await expect(page.getByRole("button", { name: "Desplegar el registro" })).toContainText("1", {
     timeout: 20_000,
   });
@@ -125,10 +139,18 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
   await expect(page.getByRole("button", { name: "Plegar el registro" })).not.toContainText(/\d/);
 });
 
+// **La mesa a 390 px sigue aplazada (D-CF-26): la rejilla de tres columnas no se apila ahí, y la
+// columna central queda estrujada a un ancho inútil.** Por eso todo el montaje —registro,
+// campaña, sesión, hilo lleno, sala guardada, abrir la mesa y esperar el marco— se hace a
+// 1280×800, donde la mesa sí funciona, y **solo entonces** se cambia el tamaño de la ventana:
+// esperar líneas del hilo visibles a 390 px no podría pasar nunca, porque la columna que las
+// contiene no tiene ancho útil ahí. Lo único que esta prueba comprueba a 390 px es el ORDEN
+// dentro de esa columna estrecha —el marco arriba, el cajón debajo—, no que la columna quepa o
+// se lea.
 test("a 390 px el marco va arriba y el registro debajo (la mesa a 390 sigue aplazada: D-CF-26)", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await registrarse(page);
   await campanaConSesionYHiloLargo(page);
   const campaignId = campaignIdDeLaMesa(page);
@@ -136,7 +158,16 @@ test("a 390 px el marco va arriba y el registro debajo (la mesa a 390 sigue apla
   await guardarSalaPropia(page, campaignId);
 
   await page.goto(`/campaigns/${campaignId}/sesion`);
-  const marco = await page.locator("iframe[title='Sala del tablero']").boundingBox();
+  const marcoLocator = page.locator("iframe[title='Sala del tablero']");
+  await expect(marcoLocator).toBeAttached();
+  await expect(
+    page.frameLocator("iframe[title='Sala del tablero']").getByRole("heading", { level: 1 }),
+  ).toBeVisible();
+
+  // La mesa a 390 sigue aplazada (D-CF-26): aquí solo se comprueba que, dentro de la columna
+  // central, el marco va arriba y el registro debajo — no que la columna tenga ancho útil.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const marco = await marcoLocator.boundingBox();
   const registro = await page.getByRole("region", { name: "Registro en vivo" }).boundingBox();
   expect(marco).not.toBeNull();
   expect(registro).not.toBeNull();

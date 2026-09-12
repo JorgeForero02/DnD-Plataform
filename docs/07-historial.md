@@ -56,6 +56,25 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Ronda de arreglo de la tarea 1: `Casilla` a 6rem, medida en el navegador (2026-09-12)
+
+Qué — Playwright contra `e2e/hoja.spec.ts` (corrido por el controlador, no por el agente) tumbó
+la primera versión de la tarea 1: a `4.75rem` («VEL. (PIES)», «13 / 13» y «+5 temporales» partían
+línea), midió tres casillas de 60/75/95px en vez de una sola altura. Corrección —
+`ANCHO_CASILLA` pasa a `w-[6rem]` con `whitespace-nowrap` en rótulo, cifra y nota (`Casilla.tsx`);
+la etiqueta de velocidad se acorta de «Vel. (pies)» a «Vel.», con «pies» en la tercera línea vía
+un `nota?: ReactNode` nuevo en `ValorDerivadoProps` que solo reenvía la variante `compacta`
+(`Traza.tsx`, `Cabecera.tsx`); los dos selectores de `e2e/hoja.spec.ts` que contaban las cinco
+cajas por clase pasan de `w-[4.75rem]` a `w-[6rem]`, y las dos listas de rótulos de esa misma
+suite y de `Cabecera.test.tsx` cambian «Vel. (pies)» por «Vel.». Números corregidos en
+`docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md` § 7, `04-convenciones.md`
+(regla «Reparto interno de tarjeta») y `decisiones.md` (D-CF-58); por qué — el número que trajo
+la nota de diseño de la tarea 0 era un mínimo (`min-w-[4.75rem]`) nunca puesto a prueba como
+ancho fijo con contenido real, y solo el navegador lo pudo ver. **`e2e/hoja-pestanas.spec.ts:268`
+sigue comprobando el rótulo viejo «Vel. (pies)»** y no se tocó: cae fuera de la frontera de esta
+tarea (solo `hoja.spec.ts`), queda anotado en el informe de la tarea para que lo arregle quien
+tenga ese fichero en su encargo; revertir — `git revert` del commit de esta ronda de arreglo.
+
 ## Tarea 1 del pulido: `Casilla` y la banda anclada (2026-09-12)
 
 Qué — `Casilla` (nuevo componente, `apps/web/src/features/character-sheet/Casilla.tsx`), con las

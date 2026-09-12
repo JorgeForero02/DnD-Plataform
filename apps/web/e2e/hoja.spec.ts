@@ -315,7 +315,7 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   // 5. Los cinco números siguen legibles con la hoja desplazada hasta el final. Los rótulos van
   //    abreviados desde que la cabecera es la **tira compacta** de la maqueta; el nombre entero
   //    viaja en un `sr-only` hermano, y de eso se ocupa la prueba de componente.
-  for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+  for (const rotulo of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
     await expect(cabecera.getByText(rotulo, { exact: true })).toBeInViewport();
   }
 
@@ -329,14 +329,14 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   //     la cabecera lleva además el retrato y una segunda fila con las condiciones y los avisos,
   //     y «los hijos de los hijos» ya no son las cinco casillas. El rótulo es lo que las define.
   const casillas: number[] = [];
-  for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+  for (const rotulo of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
     const casilla = cabecera.getByText(rotulo, { exact: true }).locator("..");
     casillas.push(Math.round((await casilla.boundingBox())!.y));
   }
   // Y son exactamente cinco casillas en la banda: se cuentan las cajas reales (la caja compacta
   // de `ValorDerivado` y la de PG comparten el mismo ancho mínimo), no la lista de arriba, que
   // tiene cinco por construcción. Una sexta casilla colada —o una menos— se ve aquí.
-  await expect(cabecera.locator('[class*="w-[4.75rem]"]')).toHaveCount(5);
+  await expect(cabecera.locator('[class*="w-[6rem]"]')).toHaveCount(5);
   expect(Math.max(...casillas) - Math.min(...casillas)).toBeLessThanOrEqual(2);
   // Y la cabecera entera cabe en lo que ocupaba antes una sola de sus tarjetas con fórmula.
   expect(cabeceraDespues.height).toBeLessThanOrEqual(96);
@@ -1010,7 +1010,7 @@ test("las cinco casillas de la tira miden lo mismo, con y sin temporales (anexo 
   // La nota de la casilla de PG es la prueba de que el dato de verdad llegó, antes de medir cajas.
   await expect(tira.getByText("+5 temporales")).toBeVisible();
 
-  const cajas = await tira.locator("[class*='w-[4.75rem]']").all();
+  const cajas = await tira.locator("[class*='w-[6rem]']").all();
   expect(cajas.length).toBeGreaterThanOrEqual(4);
   const medidas = await Promise.all(cajas.map((c) => c.boundingBox()));
   const anchos = new Set(medidas.map((m) => Math.round(m!.width)));

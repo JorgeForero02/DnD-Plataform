@@ -74,7 +74,7 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
   it("reúne los cinco números, las condiciones como chips y el aviso de elección pendiente", async () => {
     renderCabecera({ disposicion: "pagina" });
     const resumen = await screen.findByRole("region", { name: "resumen de combate" });
-    for (const etiqueta of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+    for (const etiqueta of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
       expect(within(resumen).getByText(etiqueta)).toBeInTheDocument();
     }
     // Los chips cuelgan de `useConditions`, una consulta propia (igual que en el resto de la
@@ -129,7 +129,7 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     // quepan en una fila, y el nombre entero viaja en un `sr-only` hermano — abreviar en
     // pantalla sin decir el nombre completo en alguna parte sería cambiar densidad por
     // accesibilidad. Se comprueban los dos, o la abreviatura podría quedarse sola.
-    for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+    for (const rotulo of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
       expect(texto.includes(rotulo), `«${rotulo}» tiene que estar en la cabecera`).toBe(true);
     }
     for (const largo of ["Iniciativa", "Velocidad efectiva en pies", "Competencia"]) {

@@ -72,10 +72,14 @@ export function Cabecera({
               etiquetaLarga="Iniciativa"
               valor={sheet.derived.initiative}
             />
+            {/* Ronda de arreglo (2026-09-12): «Vel. (pies)» partía línea a 6rem. La unidad baja
+              a la tercera línea de la casilla —la misma que reserva «+N temporales»— en vez de
+              vivir pegada al rótulo. */}
             <ValorDerivado
               variante="compacta"
-              etiqueta="Vel. (pies)"
+              etiqueta="Vel."
               etiquetaLarga="Velocidad efectiva en pies"
+              nota="pies"
               valor={{ key: "speed.walk", total: velocidad.total, steps: velocidad.steps }}
             />
             {/* Los PG de la cabecera son **solo lectura**: el delta —recibo daño, me curo— se

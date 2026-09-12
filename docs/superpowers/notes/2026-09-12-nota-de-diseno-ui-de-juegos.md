@@ -108,15 +108,16 @@
 |---|---|---|
 | HUECO_MAX_PX | 48 px | Propuesto por la spec § 3 (C1); sin cita externa mejor — es una medida de la casa, no un dato de un juego de referencia |
 | DESNIVEL_MAX_PX | 24 px | Ídem, spec § 3 (C1) |
-| ANCHO_CASILLA_REM | 4.75rem | Ya es el ancho mínimo de la casilla PG hoy (`apps/web/src/features/character-sheet/Cabecera.tsx:84`, `min-w-[4.75rem]`); se fija como ancho **fijo** de las cinco casillas en vez de mínimo, para que dejen de ser asimétricas (anexo #4) |
+| ANCHO_CASILLA_REM | 6rem | **Corregido el 2026-09-12, medido en el navegador tras implementar la tarea 1.** El valor original de esta fila —4.75rem, el ancho mínimo que ya tenía la casilla de PG— resultó ser un mínimo que nunca había tenido que sostener contenido de verdad como ancho FIJO: al fijarlo, Playwright (`e2e/hoja.spec.ts`) midió tres casillas partidas en dos líneas —«VEL. (PIES)», «13 / 13», «+5 temporales»— con alturas 60/75/95px en vez de una sola. 6rem es el número con el que las cinco casillas caben sin partir ninguna línea, con `whitespace-nowrap` en las tres (rótulo, cifra, nota) para que no vuelvan a partir en silencio. La etiqueta de velocidad además se acortó de «Vel. (pies)» a «Vel.», con «pies» en la tercera línea (la misma que reserva «+N temporales»), en vez de intentar que quepa todo en el rótulo |
 | ALTO_CASILLA_REM | 3.75rem | El anexo #4 pide «mismo ancho y alto en las cinco»: lo que exige es que las cinco casillas midan **igual entre sí**, no que la casilla sea cuadrada — «ancho y alto iguales» describe uniformidad entre casillas, no una proporción 1:1 dentro de una. No hay una suma de las tres líneas (rótulo, valor, «+N temporales») que dé 3.75rem exacto desde los tokens de `tokens.css` — la casilla PG es la única de las cinco con tres líneas y las otras cuatro solo tienen dos, así que ese alto no sale de sumar líneas de una casilla concreta, sino de comprobar a ojo que las tres líneas de la casilla más cargada (PG) caben dentro sin recortarse. Es el valor por defecto que trae el propio encargo, aceptado tal cual en vez de forzar un cálculo de precisión que los tokens no permiten |
 | ACCIONES_VISIBLES | 2 | spec § 2, regla 2; confirmado por BG3 (categorías fijas, lo raro a un menú, § 1) y DOS2 (menú contextual en vez de fila, § 2) |
 
 **Aviso para las tareas 1 y 4:** los fragmentos de código de ejemplo del plan de pulido
 (`docs/superpowers/plans/`) todavía traen el valor por defecto viejo, `5.5rem`, para
-`ANCHO_CASILLA_REM`. Esta nota lo sustituye por `4.75rem` (razón arriba, y ya en
-`04-convenciones.md`): **gana el número de esta nota**, no el de un fragmento de plan que quedó
-desactualizado al escribirla.
+`ANCHO_CASILLA_REM`. Esta nota lo sustituye por `6rem` (razón arriba, medida en el navegador el
+2026-09-12, y ya en `04-convenciones.md`): **gana el número de esta nota**, no el de un
+fragmento de plan que quedó desactualizado al escribirla, ni tampoco `4.75rem`, que fue el primer
+valor que trajo esta misma nota y que la propia tarea 1 midió insuficiente.
 
 ## 8 · Las cinco reglas (texto final que entra en 04-convenciones)
 

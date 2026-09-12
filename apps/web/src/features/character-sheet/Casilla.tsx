@@ -5,11 +5,17 @@ import { ROTULO_DE_CASILLA } from "./Tarjeta";
 // más ancha y más alta que las otras cuatro porque «+5 temporales» le añadía una línea; las
 // demás no la tenían. Aquí la tercera línea existe SIEMPRE (`min-h`) y el ancho y el alto son
 // fijos: la nota entra sin romper la caja (regla «reparto interno de tarjeta», 04-convenciones).
-// Los dos números vienen de la nota de diseño de la tarea 0 (docs/superpowers/notes/
-// 2026-09-12-nota-de-diseno-ui-de-juegos.md §7): **4,75rem × 3,75rem**, no los 5,5rem que traía
-// el primer borrador del encargo — 4,75rem ya era el ancho mínimo de la casilla de PG antes de
-// este cambio, así que fijarlo no mueve a las otras cuatro, solo deja de dejar crecer a la quinta.
-export const ANCHO_CASILLA = "w-[4.75rem]";
+//
+// **Corrección medida en el navegador (2026-09-12, ronda de arreglo de la tarea 1).** La primera
+// cifra, 4,75rem, salía de `min-w-[4.75rem]` — un MÍNIMO que nunca había tenido que sostener
+// «VEL. (PIES)», «13 / 13» o «+5 temporales» a la vez, porque antes el contenido decidía cuánto
+// crecer. Al fijarlo como ancho, Playwright midió tres cajas de alturas distintas —60, 75 y
+// 95px— porque esas tres líneas partían en dos. **6rem** es el número que las cuatro cupieron sin
+// partir, y `whitespace-nowrap` en las tres líneas es lo que impide que un contenido más largo
+// vuelva a partir silenciosamente y a engañar la medida. Los dos ficheros que citan estos números
+// —docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md §7 y 04-convenciones.md,
+// regla «Reparto interno de tarjeta»— se actualizaron en el mismo commit que este comentario.
+export const ANCHO_CASILLA = "w-[6rem]";
 export const ALTO_CASILLA = "min-h-[3.75rem]";
 
 export function Casilla({
@@ -40,17 +46,17 @@ export function Casilla({
       <p
         aria-hidden={rotuloLargo ? "true" : undefined}
         title={rotuloLargo ?? rotulo}
-        className={`${ROTULO_DE_CASILLA} leading-tight`}
+        className={`${ROTULO_DE_CASILLA} whitespace-nowrap leading-tight`}
       >
         {rotulo}
       </p>
       {rotuloLargo && <span className="sr-only">{rotuloLargo}</span>}
-      <div className="flex items-center justify-center font-data text-chrome-lg leading-none text-text">
+      <div className="flex items-center justify-center whitespace-nowrap font-data text-chrome-lg leading-none text-text">
         {children}
       </div>
       <p
         data-testid="casilla-nota"
-        className="min-h-[1rem] font-chrome text-chrome-xs leading-4 text-accent-text"
+        className="min-h-[1rem] whitespace-nowrap font-chrome text-chrome-xs leading-4 text-accent-text"
       >
         {nota}
       </p>

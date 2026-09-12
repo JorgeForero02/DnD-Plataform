@@ -479,9 +479,11 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   hueco vertical entre tarjetas hermanas mayor de **48 px** (`HUECO_MAX_PX`), ninguna tarjeta más
   baja que su vecina de fila en más de **24 px** (`DESNIVEL_MAX_PX`) salvo la última. Las cinco
   casillas de la cabecera (PG, CA, Iniciativa, Velocidad, Competencia) pasan a un ancho y alto
-  fijos de **4.75rem** (`ANCHO_CASILLA_REM`) por **3.75rem** (`ALTO_CASILLA_REM`), en vez del
-  `min-w` asimétrico de hoy — números salidos de la
-  [nota de diseño](./superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md).
+  fijos de **6rem** (`ANCHO_CASILLA_REM`) por **3.75rem** (`ALTO_CASILLA_REM`), en vez del
+  `min-w` asimétrico de hoy, con `whitespace-nowrap` en rótulo, cifra y nota — números salidos de
+  la [nota de diseño](./superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md) y **corregidos
+  el 2026-09-12** (4.75rem partía «VEL. (PIES)», «13 / 13» y «+5 temporales» en dos líneas, medido
+  en el navegador por `e2e/hoja.spec.ts`).
 
 - **Acciones de una fila: hasta 2 visibles (`ACCIONES_VISIBLES`), el resto en un menú «…»
   dibujado.** Nunca una fila de cinco botones (anexo #1). El menú es

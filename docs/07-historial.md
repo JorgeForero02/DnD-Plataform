@@ -52,13 +52,17 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ## La hoja a página completa (2026-09-11 y 12)
 
-Rama `hoja/pagina-completa` sobre `main` `80a9243`, veintiún commits —diecinueve de código y
-pruebas, dos de documentación; medido con `git log 80a9243..HEAD`, el último es la revisión
-final del plan, que cerró HP-2 y llevó `puedeEditar` al inventario—, cerrada en local el
-2026-09-12 y **sin fusionar ni desplegar** (lo hace el autor a mano). La
+Rama `hoja/pagina-completa` sobre `main` `80a9243`, **veintiséis commits** hasta `0d304ea`
+—veinticuatro de código, pruebas y la fusión de la Task 1, dos de documentación; medido con
+`git log --oneline 80a9243..HEAD | wc -l` el 2026-09-12; el de esta ronda de documentación de
+cierre hace veintisiete—: las once tareas
+del plan, la ola de arreglos de la revisión final de la rama, las dos rondas de cierre de las
+fichas HP y los dos residuales. Cerrada en local el 2026-09-12 y **sin fusionar ni desplegar**
+(lo hace el autor a mano). La
 [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) y el
 [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) mandan; las decisiones que la
-ejecución obligó a tomar son D-CF-38..44 en [decisiones.md](./decisiones.md). **Revertir cualquier
+ejecución obligó a tomar son D-CF-38..46 en [decisiones.md](./decisiones.md), y la que el autor
+tomó al cerrar, D-CF-47 (HP-9 después del paso 3). **Revertir cualquier
 tanda = `git revert` de sus commits; las tarjetas no cambiaron**: cada pestaña monta las mismas
 tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
 
@@ -101,6 +105,21 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   **ruling A**: el `sticky` lleva solo lo que cambia por turno —retrato, identidad en mesa, cinco
   números, chips—; los avisos van justo debajo, fuera del `sticky`; ≤ 96 px después
   (`hoja.spec.ts`, punto 5b) (D-CF-38).
+- **Task 11 — La documentación alcanza a la rama** (`a58ae03`, `7591a9e`): 07, D-CF-38..44,
+  HP-1..7 en 06, 08, 01, `00-INDEX` (producción `f9579b2`, no `6eb2590`), `como-seguir` §0 y las
+  notas al pie de la spec del 09-06 y del plan del 09-11. La revisión devolvió D-CF-44 a lo que el
+  autor decidió (la costumbre de 08 no era parte del ruling) y nombró los diecinueve ficheros de
+  navegador. **Revertir:** `git revert`; nada de código dentro.
+- **Revisión final de la rama — una sola ola de arreglos** (`75bab98`, sobre `7591a9e`, 2026-09-12).
+  Cuatro Important: **`puedeEditar` llega al inventario** (spec §7: en un personaje ajeno ni las
+  filas ni el detalle pintan botones; mirar no es editar); **las acciones del detalle contestan en
+  el detalle** —`ElegirMano` se monta una sola vez, bajo la fila en la mesa y dentro de
+  `DetalleDeObjeto` a página, y el error del servidor sale bajo sus botones— (cierra HP-2); la RTL
+  «cada tarjeta en su pestaña» **recorre las siete** con la misma tabla que el e2e, 23 rótulos; y
+  la spec lleva su nota al pie con las cuatro desviaciones (§4, §6, §4 chips, §10). Más nueve
+  minors: el coste de 60 s del guard escrito junto al `Map`, títulos de prueba que prometían lo que
+  no comprobaban, `data.rollSuggestions?.` sin el `?` de más, el rango de combinantes escapado en
+  `filtrarObjetos.ts`. **Revertir:** `git revert` del commit; HP-2 volvería a 06.
 
 - **Task 1 — El cubo por usuario no se clava a un token revocado (API).**
   `common/user-or-ip-throttler.guard.ts` compara `iat` con `passwordChangedAt` (misma regla de

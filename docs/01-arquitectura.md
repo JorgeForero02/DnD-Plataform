@@ -233,12 +233,14 @@ arriba o columna lateral, y la pestaña activa vive en la URL (`?pestana=`).
 |---|---|
 | `features/character-sheet/Cabecera.tsx` | La banda fija —retrato, identidad solo en la mesa, cinco números, chips de condiciones— y, **debajo y fuera del `sticky`**, los avisos (D-CF-38) |
 | `features/character-sheet/pestanas/tipos.ts` | `PestanaId`, `PESTANAS_DE_LA_HOJA`, `Disposicion` y `PropsDePestana`, la forma que reciben todas las pestañas (`data`, `puedeEditar`, `disposicion`) |
-| `pestanas/Numeros` · `Objetos` · `Ataques` · `Recursos` · `Estado` · `Rasgos` · `Conjuros` | Una pestaña por fichero, cada una montando las tarjetas que ya existían; `Objetos` monta `PaginaDeInventario` con la disposición |
+| `pestanas/Numeros` · `Objetos` · `Ataques` · `Recursos` · `Estado` · `Rasgos` · `Conjuros` | Una pestaña por fichero, cada una montando las tarjetas que ya existían; `Objetos` monta `PaginaDeInventario` con la disposición y con `puedeEditar` (en un personaje ajeno, ni filas ni detalle pintan acciones) |
+| `features/character-sheet/hooks.ts` | Los hooks de la hoja, y desde la ronda de cierre también `useEsVistaDeDm`, el único dueño de «esto lo mira el DM»: lo comparten `Cabecera` (para decidir si la fila de avisos existe) y `AvisoDeDm`. Un fichero de componente no exporta hooks |
 | `features/character-sheet/pestanas/lanzaConjuros.ts` | Si el personaje lanza (espacios o rasgo racial de conjuro): la pestaña Conjuros existe solo entonces (D-CF-34) |
 | `features/character-sheet/habilidades.ts` | Las veinticuatro líneas de habilidad, fuera de la tarjeta que las pinta |
 | `features/inventory/accionesDeObjeto.ts` | **La lista única de acciones de un objeto**; la fila y el panel de detalle pintan desde ella (D-CF-33) |
 | `features/inventory/filtrarObjetos.ts` · `FiltrosDeObjetos.tsx` | El filtro por texto, zona y `ItemKind`; los rótulos salen de `features/inventory/vocabulario.ts` (D-CF-40, D-CF-41) |
 | `features/inventory/DetalleDeObjeto.tsx` | El panel de la derecha a página: el objeto elegido, sus números y las mismas acciones que la fila |
+| `features/character-sheet/__tests__/fixtures/hoja.fixture.tsx` | **Datos y `renderPestana`, sin ningún componente de la hoja** (HP-5): «Elowen» y el `wrapper` que comparten las pruebas de pestaña. `renderHoja` vive en `features/character-sheet/__tests__/HojaCalculada.test.tsx`, el único que monta la hoja entera |
 
 > **`inventory` no importa de `character-sheet`, y es una frontera declarada**, no una casualidad:
 > `features/inventory/hooks.ts:32` escribe literal la clave de la hoja en vez de importarla, y

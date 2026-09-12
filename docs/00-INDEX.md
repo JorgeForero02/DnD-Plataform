@@ -25,7 +25,8 @@ contenedores de la API y de la web.
 **Lo que hay sin desplegar es la hoja a página completa** —rama `hoja/pagina-completa`, cerrada en
 local el 2026-09-12 y **sin fusionar a `main`**; el autor fusiona y despliega a mano, ver
 [07-historial.md](./07-historial.md)—: `git diff --name-only f9579b2..HEAD -- apps packages` toca
-**55 ficheros**, medido el 2026-09-12 sobre esa rama, y ninguno es una migración. Empujar a GitHub
+**60 ficheros**, medido el 2026-09-12 sobre esa rama en `0d304ea` (eran 55 al cerrar la Task 11; la
+revisión final, las dos rondas de cierre y los residuales añadieron cinco), y ninguno es una migración. Empujar a GitHub
 **no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión del autor: ver
 [03-despliegue.md](./03-despliegue.md).
 
@@ -115,7 +116,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `fac5062` **(rama `hoja/pagina-completa`)** — instantánea de la
+> - **Generado sobre el commit** `0d304ea` **(rama `hoja/pagina-completa`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

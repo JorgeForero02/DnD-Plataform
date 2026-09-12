@@ -61,8 +61,8 @@ no al copiar la plantilla local.
 ```bash
 pnpm verify                            # build + lint + formato + check:docs + check:estado + check:historial + unitarias. Lo exige el pre-commit
 pnpm check:docs                        # rutas citadas que no existen, fichero:NN fuera de rango y conteos
-pnpm check:historial                   # falla si docs/07-historial.md pasa de 1000 lineas (era 400 hasta el 2026-09-05)
                                        # fuera de docs/08-pruebas.md. NO mira enlaces Markdown: eso no lo comprueba nada
+pnpm check:historial                   # falla si docs/07-historial.md pasa de 1000 lineas (era 400 hasta el 2026-09-05)
 pnpm update:estado                     # regenera el bloque de estado de docs/00-INDEX.md (conteos de unitarias)
 pnpm test                              # solo las unitarias de los tres paquetes
 pnpm --filter @dnd/api test:e2e        # e2e de API contra el Postgres real (docker arriba)

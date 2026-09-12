@@ -36,6 +36,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md) | **El nervio medido en producción** y **el PNJ sin nombre en la pantalla**, movidas enteras el 2026-09-10 en el segundo corte de la sesión de cerrar fichas. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md) | **El cero de tipos comodín** y **el proceso pasa a medirse**, movidas enteras el 2026-09-12 al pasarse el fichero (1002 de 1000) con los retoques de la revisión de la hoja. Sus hitos se quedan arriba |
+> | [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md) | **`CLAUDE.md` deja de narrar el estado**, movida entera el 2026-09-12 al escribir la línea de la ronda de documentación de cierre de la hoja (el fichero iba a pasar de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -175,6 +176,15 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   está abierto para la anterior cancela esa pregunta pendiente (`setManoPara(null)` en
   `onSeleccionar`, solo cuando el id cambia): antes reaparecía sola al volver a la fila que la
   había abierto. **Revertir:** `git revert` del commit.
+- **Ronda de documentación de cierre (2026-09-12, ciclo FIN del protocolo).** Lo que la rama dejó
+  fuera de la documentación, puesto en su sitio: `02-entorno.md` decía que `check:historial` fallaba a
+  las 400 líneas cuando el tope es 1000 desde el 2026-09-05, y enseña las formas que de verdad
+  filtran un fichero (`exec playwright test`, `exec vitest run`; las dos medidas); `04-convenciones.md`
+  gana la regla de `verify` en primer plano para los implementadores; `decisiones.md` D-CF-47 (HP-9
+  después del paso 3) y la cláusula «sin `aria-pressed`» en D-CF-45; HP-9 reescrita en 06 con lo que
+  se midió al estimarla —`CampaignItem.effects` e `itemEffectSchema` ya guardan el +N y el motor lo
+  aplica sin mirar `attuned`, así que no hace falta migración—; 01, 08, `como-seguir` y `00-INDEX`
+  al día. **Revertir:** `git revert` del commit; no toca código.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
@@ -788,29 +798,12 @@ es lo que evita volver a creérsela.
 borrar `docs/como-seguir.md` con sus dos punteros.
 
 
-## `CLAUDE.md` deja de narrar el estado (2026-09-06)
+## `CLAUDE.md` deja de narrar el estado (2026-09-06) — archivada
 
-**Qué:** el fichero que se manda leer primero pierde sus ~40 líneas de prosa de estado —qué trae
-cada fase, qué imagen sirve producción, qué separa `main` del despliegue— y las sustituye por una
-tabla que dice **dónde vive cada dato de verdad**: el bloque generado de
-[00-INDEX.md](./00-INDEX.md) para estado y conteos, este fichero para lo entregado,
-[06-pendientes.md](./06-pendientes.md) para lo abierto, y **una medición** —`git diff` contra la
-imagen desplegada— para saber qué falta por desplegar. Se queda lo que sigue siendo cierto
-mañana: qué es el producto, qué no es, y las reglas.
-
-**Por qué:** ese fichero **caducó tres veces en cinco días**, y las tres se anotaron dentro de él.
-Una de ellas lo dice con todas las letras: *«es el mismo fallo de siempre: prosa de estado escrita
-a mano en el fichero que se manda leer primero»*. El repositorio ya tenía la solución a medias
-—`update-estado.mjs` genera el bloque de `00-INDEX` y `check:estado` falla si alguien lo edita—
-pero `CLAUDE.md` estaba fuera de su alcance, así que ahí el estado se seguía tecleando.
-
-**Los tres avisos no se borran.** Se mueven **enteros y sin reescribir** a una sección al final,
-como justificación de la regla: un registro fechado no se resume. Y `D-OP-3` —la partida de
-prueba que cierra la fase 2— no se pierde: vive en [00-INDEX.md](./00-INDEX.md) y en
-[decisiones.md](./decisiones.md), que son sus sitios.
-
-**Cómo revertir:** `git show` del commit anterior a este sobre `CLAUDE.md`. No toca código.
-
+**Movida entera** a [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md)
+el 2026-09-12. En una línea: el fichero que se manda leer primero pierde su prosa de estado —había
+caducado tres veces en cinco días— y apunta a donde cada dato se genera o se mide; los tres avisos
+se conservan enteros al final como justificación. **Revertir:** `git show` del commit anterior sobre `CLAUDE.md`.
 
 ## El cero de tipos comodín deja de depender de la costumbre (2026-09-06) — archivada
 

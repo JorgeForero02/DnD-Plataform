@@ -36,8 +36,9 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 Las once tareas del [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) de la
 [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) están en la rama
-`hoja/pagina-completa` —26 commits sobre `main` `80a9243`, HEAD `0d304ea`, medido con `git log`
-el 2026-09-12—, revisadas una a una y medidas fichero a fichero en el navegador; después pasaron
+`hoja/pagina-completa` sobre `main` `80a9243` —último commit de código `0d304ea`; la documentación
+de cierre va detrás, y el conteo lo da `git log --oneline 80a9243..HEAD`, no esta página—,
+revisadas una a una y medidas fichero a fichero en el navegador; después pasaron
 la revisión final de la rama entera, dos rondas de cierre de sus fichas y dos residuales
 ([07-historial.md](./07-historial.md), «La hoja a página completa»). **No está en `main` ni en
 producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..47 en

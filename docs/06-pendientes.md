@@ -157,7 +157,38 @@ vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota 
 
 | | Qué | Dónde y qué costaría |
 |---|---|---|
-| **HP-9** | **Objetos mágicos con efecto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). Medido el 2026-09-12: la sintonización es hoy **solo un marcador de estado**. `apps/api/src/inventory/inventory.service.ts:158` la acepta solo sobre un objeto equipado, `:172` la quita al desequipar y `:1081-1096` aplica `MAX_ATTUNED_ITEMS` (tres) con el mensaje que nombra los tres; el motor de reglas (`apps/api/src/rules/`) **no lee `attuned` en ningún sitio** —un objeto sintonizado da los mismos números que sin sintonizar, y la fila equipada llega al motor sin ese campo (`character-sheet.service.ts`, `location: "EQUIPPED"`)—; no hay requisito de descanso corto (el cambio es instantáneo); no hay ruptura a las 24 h ni a los 100 pies; y el catálogo del SRD tiene **0 objetos con `requiresAttunement: true`** (`rules/catalog/items-srd.ts`): solo los objetos que crea el DM lo llevan. **La forma del +N ya existe**: `CampaignItem.effects` (`Json`, `prisma/schema.prisma`) guarda la lista que valida `itemEffectSchema` en `packages/shared/src/item.schema.ts` —`ac`, `weaponAttack`, `weaponDamage`, entre otros—, y el motor ya la aplica (`rules/items.ts` a la CA, `rules/attacks.ts` al ataque y al daño) **sin mirar la sintonización**. Comprobado: **no hace falta migración** para el +N; haría falta solo si se añade una columna nueva (p. ej. rareza o cargas), y eso queda fuera. **Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente, plan de 6–8 tareas.** Motor acotado a dos puertas —`rules/items.ts` (CA) y `rules/attacks.ts` (ataque/daño)— leyendo el bono solo si `!requiresAttunement \|\| attuned`, lo que exige que `attuned` viaje con la fila equipada hasta el motor; forma del dato en `item.schema.ts` (los efectos ya existentes valen para +1/+2/+3; si se prefiere un `magicBonus` explícito es un campo más del mismo `Json`); catálogo SRD 5.1: solo los +N son estructurables (~12: arma, armadura, escudo), el resto es prosa; sintonizar pasa por el descanso corto (el flujo de descansos de 2C). **Fuera:** cargas, rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24 h o a los 100 pies. | **Orden: después del paso 3** (D-CF-37 → D-CF-47): la mitad del catálogo mágico concede conjuros y sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o también resistencias y ventajas? ¿descanso corto real (el de 2C, con su hora de reloj) o un clic? **La abre el autor**: ningún agente la coge por su cuenta |
+| **HP-9** | **Objetos mágicos con efecto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). Hoy la sintonización es solo un marcador y el motor no la lee; la forma del +N ya existe en `effects`. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente, plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
+
+### HP-9 · Objetos mágicos con efecto — medición, estimación y alcance (2026-09-12)
+
+**Medido.** La sintonización es hoy **solo un marcador de estado**:
+`apps/api/src/inventory/inventory.service.ts:158` la acepta solo sobre un objeto equipado, `:172` la
+quita al desequipar y `:1081-1096` aplica `MAX_ATTUNED_ITEMS` (tres) con el mensaje que nombra los
+tres. El motor de reglas (`apps/api/src/rules/`) **no lee `attuned` en ningún sitio** —un objeto
+sintonizado da los mismos números que sin sintonizar, y la fila equipada llega al motor sin ese campo
+(`character-sheet.service.ts`, `location: "EQUIPPED"`)—; no hay requisito de descanso corto (el
+cambio es instantáneo); no hay ruptura a las 24 h ni a los 100 pies; y el catálogo del SRD tiene
+**0 objetos con `requiresAttunement: true`** (`rules/catalog/items-srd.ts`): solo los objetos que crea
+el DM lo llevan.
+
+**La forma del +N ya existe.** `CampaignItem.effects` (`Json?`, en `apps/api/prisma/schema.prisma`)
+guarda la lista que valida `itemEffectSchema` en `packages/shared/src/item.schema.ts` —`ac`,
+`weaponAttack`, `weaponDamage`, entre otros— y el motor ya la aplica (`rules/items.ts` a la CA,
+`rules/attacks.ts` al ataque y al daño) **sin mirar la sintonización**. Comprobado: **no hace falta
+migración** para el +N; la habría solo si se añade una columna nueva (rareza, cargas), y eso queda fuera.
+
+**Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente, plan de 6–8 tareas.**
+Motor acotado a dos puertas —`rules/items.ts` (CA) y `rules/attacks.ts` (ataque/daño)— leyendo el
+bono solo si `!requiresAttunement || attuned`, lo que exige que `attuned` viaje con la fila equipada
+hasta el motor; forma del dato en `item.schema.ts` (los efectos que ya existen valen para +1/+2/+3; un
+`magicBonus` explícito sería un campo más del mismo `Json`); catálogo SRD 5.1: solo los +N son
+estructurables (~12: arma, armadura, escudo), el resto es prosa; sintonizar pasa por el descanso corto
+(el flujo de descansos de 2C). **Fuera:** cargas, rarezas, objetos que conceden conjuros (dependen del
+paso 3) y romperse a las 24 h o a los 100 pies.
+
+**Orden: después del paso 3** (D-CF-37 → D-CF-47): la mitad del catálogo mágico concede conjuros y
+sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o
+también resistencias y ventajas? ¿descanso corto real (el de 2C, con su hora de reloj) o un clic?
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 

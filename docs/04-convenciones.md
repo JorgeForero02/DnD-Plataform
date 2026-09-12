@@ -666,12 +666,11 @@ varios agentes trabajando el mismo árbol, quien corre la suite tiene que ver el
 para que un fallo signifique algo. Cuando cada carril viva en su propio worktree, entonces sí:
 cada uno su ranura.
 
-**Dos reglas que salieron de la tabla de observabilidad del plan de la hoja (2026-09-12).** (a) El
-comando de Playwright por fichero es `pnpm --filter @dnd/web exec playwright test e2e/<f>.spec.ts`;
-la forma `pnpm --filter @dnd/web e2e -- <f>` **no filtra** —pnpm no pasa el argumento— y corrió la
-suite entera una vez, 18,7 minutos (D-CF-44; [08-pruebas.md](./08-pruebas.md), § *Cómo se corren*).
-(b) **Los implementadores corren `pnpm verify` en primer plano**, nunca con `run_in_background`:
-dos se quedaron parados esperando una notificación que no llegó, y el encargo lo dice desde entonces.
+**Y dos que salieron de la tabla de observabilidad del plan de la hoja (2026-09-12).** El comando
+de Playwright por fichero es uno solo y vive en [08-pruebas.md](./08-pruebas.md), § *Cómo se corren*
+(D-CF-44): la otra forma corrió la suite entera una vez. Y **los implementadores corren `pnpm verify`
+en primer plano**, nunca con `run_in_background`: dos se quedaron parados esperando una notificación
+que no llegó, y el encargo lo dice desde entonces.
 
 **Techo de cinco agentes.** Por encima, las compilaciones se comen la máquina y el cuello deja de
 ser el modelo. La recomendación general es 3-5; cinco es sostenible en un equipo con 32 GB.

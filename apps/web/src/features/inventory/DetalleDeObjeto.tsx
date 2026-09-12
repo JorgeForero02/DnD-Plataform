@@ -58,7 +58,7 @@ export function DetalleDeObjeto({
   return (
     <aside
       aria-label="detalle del objeto"
-      className="rounded-radius-sm border border-muted bg-surface p-s4 lg:sticky lg:top-s4"
+      className="rounded-radius-sm border border-muted bg-surface p-s4 lg:sticky lg:top-[calc(var(--tira-fija-top,0px)+var(--space-4))]"
     >
       {row === null ? (
         <EmptyState title="Elige un objeto">

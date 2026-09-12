@@ -176,6 +176,7 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
                 label="Qué se tira"
                 hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
                 error={error ?? undefined}
+                reservaEspacio
               >
                 <input
                   type="text"

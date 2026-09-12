@@ -51,4 +51,24 @@ describe("Field", () => {
     expect(input).toHaveAttribute("aria-describedby", "level-hint");
     expect(screen.getByText("Entre 1 y 20.")).toHaveAttribute("id", "level-hint");
   });
+
+  it("con reservaEspacio, la línea de pista existe aunque no haya pista ni error (anexo #8)", () => {
+    render(
+      <Field label="Qué se tira" reservaEspacio>
+        <input />
+      </Field>,
+    );
+    const linea = screen.getByTestId("field-linea");
+    expect(linea).toBeEmptyDOMElement();
+    expect(linea.className).toMatch(/min-h-/);
+  });
+
+  it("sin reservaEspacio, no pinta la línea vacía", () => {
+    render(
+      <Field label="Motivo">
+        <input />
+      </Field>,
+    );
+    expect(screen.queryByTestId("field-linea")).toBeNull();
+  });
 });

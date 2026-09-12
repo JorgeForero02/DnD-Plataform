@@ -6,6 +6,10 @@ import { PanelDeDados } from "../PanelDeDados";
 import * as rollsApi from "../api";
 import type { FilaDeTirada, PaginaDeTiradas } from "../api";
 import * as rollRequestsApi from "../../roll-requests/api";
+import * as membersApi from "../../campaigns/members";
+import * as clockApi from "../../game-clock/api";
+import * as charactersApi from "../../characters/api";
+import { useAuthStore } from "../../../store/auth.store";
 import { ApiError } from "../../../lib/api";
 
 // Tarea 2C.2 — la pantalla de dados. Se prueba **lo que puede romperse en silencio**:
@@ -291,5 +295,22 @@ describe("RegistroDeTiradas", () => {
     const leer = vi.spyOn(rollsApi, "fetchRolls").mockResolvedValue(REGISTRO_VACIO);
     pintar();
     await waitFor(() => expect(leer).toHaveBeenCalledWith(CAMPANA, {}));
+  });
+});
+
+describe("PanelDeDados — la rejilla del DM (anexo #16)", () => {
+  it("con rol DM, el reloj, pedir y tirar están los tres", async () => {
+    useAuthStore.setState({ user: { id: "u-dm", email: "dm@x.y", displayName: "DM" } as never });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "u-dm", displayName: "DM", role: "DM" },
+    ]);
+    vi.spyOn(clockApi, "fetchClock").mockResolvedValue({ seconds: 0 } as never);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+
+    pintar();
+
+    expect(await screen.findByRole("heading", { name: "El reloj" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pedir una tirada" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Tirada nueva" })).toBeInTheDocument();
   });
 });

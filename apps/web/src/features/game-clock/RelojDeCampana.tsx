@@ -44,7 +44,17 @@ function mensajeDeErrorAlPedir(error: unknown): string {
  */
 const SALVACION_DE_MARCHA = "save.con";
 
-export function RelojDeCampana({ campaignId }: { campaignId: string }) {
+export function RelojDeCampana({
+  campaignId,
+  className,
+}: {
+  campaignId: string;
+  /**
+   * Sustituye el `max-w-[40rem]` de por defecto (no lo añade): quien monta el reloj en una
+   * rejilla ya decide su ancho, y las dos anchuras máximas a la vez no significan nada.
+   */
+  className?: string;
+}) {
   const reloj = useGameClock(campaignId);
   const { role } = useMyRole(campaignId);
   const avanzar = useAdvanceClock(campaignId);
@@ -145,7 +155,7 @@ export function RelojDeCampana({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <Panel className="max-w-[40rem]">
+    <Panel className={className ?? "max-w-[40rem]"}>
       <section aria-label="El reloj de la campaña">
         <h3 className="font-title text-chrome-lg leading-tight text-text">El reloj</h3>
         <p className="mt-1 font-data text-chrome-xl text-text">
@@ -158,97 +168,103 @@ export function RelojDeCampana({ campaignId }: { campaignId: string }) {
 
         {esDm && (
           <>
-            <div className="mt-s3">
-              <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                Pasa el tiempo
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {SALTOS_DE_RELOJ.map((salto) => (
+            {/* Anexo #16: «avanzar el tiempo» y «o viajáis» pasaban de apilados a compartir
+                fila cuando hay sitio — la misma media pantalla que antes ocupaba solo el
+                primero. El «Qué pasa» opcional se queda a todo lo ancho, debajo de los dos:
+                describe cualquiera de los dos gestos y no pertenece más a uno que a otro. */}
+            <div className="mt-s3 md:grid md:grid-cols-2 md:gap-s4">
+              <div>
+                <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                  Pasa el tiempo
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SALTOS_DE_RELOJ.map((salto) => (
+                    <Button
+                      key={salto.segundos}
+                      type="button"
+                      variant="secondary"
+                      disabled={avanzar.isPending}
+                      onClick={() =>
+                        avanzar.mutate({
+                          kind: "TIME",
+                          seconds: salto.segundos,
+                          ...(motivo.trim() ? { reason: motivo.trim() } : {}),
+                        })
+                      }
+                    >
+                      {salto.etiqueta}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-s3 md:mt-0">
+                <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                  O viajáis
+                </p>
+                {/* **Radios con su frase, no un desplegable**: el ritmo es una decisión con
+                    consecuencias —el rápido cuesta −5 a la Percepción pasiva— y esconderla en un
+                    selector la convierte en un ajuste. Regla vinculante de docs/04-convenciones.md. */}
+                <fieldset className="space-y-1">
+                  <legend className="sr-only">Ritmo de viaje</legend>
+                  {RITMOS.map((ritmo) => (
+                    <label
+                      key={ritmo.pace}
+                      className={[
+                        "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
+                        pace === ritmo.pace
+                          ? "border-accent bg-[color:var(--accent-tint)]"
+                          : "border-transparent hover:bg-bg",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="radio"
+                        name="ritmo-de-viaje"
+                        checked={pace === ritmo.pace}
+                        onChange={() => setPace(ritmo.pace)}
+                        className="mt-1 accent-[var(--accent)]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-chrome text-chrome-sm text-text">
+                          {ritmo.etiqueta}
+                        </span>
+                        <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
+                          {ritmo.frase}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <div className="mt-s2 flex items-end gap-s2">
+                  <div className="w-24">
+                    <Field label="Horas" hint="Más de ocho es marcha forzada.">
+                      <input
+                        type="number"
+                        min={1}
+                        max={24}
+                        value={horas}
+                        onChange={(e) => setHoras(e.target.value)}
+                        className={`${fieldControlClass} font-data`}
+                      />
+                    </Field>
+                  </div>
                   <Button
-                    key={salto.segundos}
                     type="button"
-                    variant="secondary"
+                    variant="primary"
                     disabled={avanzar.isPending}
                     onClick={() =>
                       avanzar.mutate({
-                        kind: "TIME",
-                        seconds: salto.segundos,
+                        kind: "TRAVEL",
+                        pace,
+                        hours: Number(horas),
                         ...(motivo.trim() ? { reason: motivo.trim() } : {}),
                       })
                     }
                   >
-                    {salto.etiqueta}
+                    Viajar
                   </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-s3">
-              <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                O viajáis
-              </p>
-              {/* **Radios con su frase, no un desplegable**: el ritmo es una decisión con
-                  consecuencias —el rápido cuesta −5 a la Percepción pasiva— y esconderla en un
-                  selector la convierte en un ajuste. Regla vinculante de docs/04-convenciones.md. */}
-              <fieldset className="space-y-1">
-                <legend className="sr-only">Ritmo de viaje</legend>
-                {RITMOS.map((ritmo) => (
-                  <label
-                    key={ritmo.pace}
-                    className={[
-                      "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
-                      pace === ritmo.pace
-                        ? "border-accent bg-[color:var(--accent-tint)]"
-                        : "border-transparent hover:bg-bg",
-                    ].join(" ")}
-                  >
-                    <input
-                      type="radio"
-                      name="ritmo-de-viaje"
-                      checked={pace === ritmo.pace}
-                      onChange={() => setPace(ritmo.pace)}
-                      className="mt-1 accent-[var(--accent)]"
-                    />
-                    <span className="min-w-0">
-                      <span className="block font-chrome text-chrome-sm text-text">
-                        {ritmo.etiqueta}
-                      </span>
-                      <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
-                        {ritmo.frase}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-
-              <div className="mt-s2 flex items-end gap-s2">
-                <div className="w-24">
-                  <Field label="Horas" hint="Más de ocho es marcha forzada.">
-                    <input
-                      type="number"
-                      min={1}
-                      max={24}
-                      value={horas}
-                      onChange={(e) => setHoras(e.target.value)}
-                      className={`${fieldControlClass} font-data`}
-                    />
-                  </Field>
                 </div>
-                <Button
-                  type="button"
-                  variant="primary"
-                  disabled={avanzar.isPending}
-                  onClick={() =>
-                    avanzar.mutate({
-                      kind: "TRAVEL",
-                      pace,
-                      hours: Number(horas),
-                      ...(motivo.trim() ? { reason: motivo.trim() } : {}),
-                    })
-                  }
-                >
-                  Viajar
-                </Button>
               </div>
             </div>
 

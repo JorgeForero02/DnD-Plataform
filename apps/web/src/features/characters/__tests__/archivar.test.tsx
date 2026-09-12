@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AjustesDePersonaje } from "../AjustesDePersonaje";
 import { ArchivoDePersonajes } from "../ArchivoDePersonajes";
@@ -125,6 +125,18 @@ describe("Archivar — el gesto fácil, en la ficha del personaje", () => {
     expect(screen.getByText(/No se puede deshacer/)).toBeInTheDocument();
     expect(screen.getByText(/archívalo/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sí, borrar definitivamente" })).toBeInTheDocument();
+  });
+
+  it("ordena color · visibilidad · archivar/borrar, y lo destructivo va en el pie (anexo #9)", () => {
+    montarAjustes();
+    const tarjeta = screen.getByRole("region", { name: "ajustes del personaje" });
+    const color = within(tarjeta).getByRole("group", { name: /color/i });
+    const visibilidad = within(tarjeta).getByRole("group", { name: /quién puede verlo/i });
+    const archivar = within(tarjeta).getByRole("button", { name: /archivar/i });
+    // `compareDocumentPosition`: 4 = el argumento va DESPUÉS del receptor.
+    expect(color.compareDocumentPosition(visibilidad) & 4).toBeTruthy();
+    expect(visibilidad.compareDocumentPosition(archivar) & 4).toBeTruthy();
+    expect(archivar.closest("footer")).not.toBeNull();
   });
 });
 

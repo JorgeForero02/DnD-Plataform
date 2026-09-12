@@ -43,6 +43,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-07-tanda-corta.md`](./_archivo/historial-2026-09-07-tanda-corta.md) | **Tanda corta — los seis arreglos que dejó abiertos el paso 2** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la revisión de HP-10: el fichero quedaba en 1002 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 > | [`_archivo/historial-2026-09-11-tanda-de-las-decididas.md`](./_archivo/historial-2026-09-11-tanda-de-las-decididas.md) | **Las tandas 2–6 de cerrar fichas, tarea a tarea**, movidas enteras el 2026-09-12 cuando la entrada de la revisión de producción dejó el fichero en 1014. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-07-tanda-b.md`](./_archivo/historial-2026-09-07-tanda-b.md) | **Tanda B — tres arreglos de API** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la Tarea 3 del pulido: el fichero quedaba en 1009 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -55,6 +56,28 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla (2026-09-12)
+
+Qué — anexo #9: `AjustesDePersonaje.tsx` pasa de una pila de `div` a una `TarjetaDeHoja` (Task 1)
+con `etiqueta="ajustes del personaje"`; color y visibilidad se quedan en el cuerpo, y archivar +
+borrar (con sus errores en línea) se mueven al `pie`, separados por su propio filete. Anexo #16:
+`PanelDeDados.tsx` mete el reloj en la misma rejilla que pedir una tirada y tirar
+(`grid items-stretch gap-s5 xl:grid-cols-2`, reloj con `xl:col-span-2`) en vez de apilarlo aparte
+en `mb-s5`; `RelojDeCampana` gana `className?` que **sustituye** su `max-w-[40rem]` por defecto
+(no lo añade), y sus dos bloques «Pasa el tiempo» / «O viajáis» pasan de apilados a
+`md:grid md:grid-cols-2 md:gap-s4`, con el «Qué pasa (opcional)» debajo a todo lo ancho. **La
+bandeja compacta de #16 no está aquí** — sigue en el formulario largo de siempre; llega en la
+Task 10 (nota en `docs/06-pendientes.md`). Unitarias: una de orden en `archivar.test.tsx`
+(`compareDocumentPosition` entre color, visibilidad y archivar, y `archivar.closest("footer")`
+no nulo) y una en `PanelDeDados.test.tsx` («con rol DM, el reloj, pedir y tirar están los tres»).
+Verificado por mutación: `cp AjustesDePersonaje.tsx …bak`, se sacó `BotonArchivar` del `pie` al
+cuerpo → la unitaria de orden FAIL (el botón deja de estar bajo un `footer`), restaurado con
+`cp`. (Sacar solo `DeleteButton`, como decía el brief al pie de la letra, no rompe esa unitaria
+— la aserción mira `archivar`, no `borrar` — así que la mutación real se hizo sobre
+`BotonArchivar`, que sí prueba el pie.) Por qué — Tarea 3 del
+[plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), anexos #9 y
+#16 de la lista del autor; revertir — `git revert` del commit de esta tarea.
 
 ## Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos (2026-09-12)
 
@@ -735,34 +758,14 @@ mejor estado que el de partida.
 
 ---
 
-## Tanda B — tres arreglos de API, y una ficha que se equivocaba de tamaño (2026-09-07)
+## Tanda B — tres arreglos de API, y una ficha que se equivocaba de tamaño (2026-09-07) — archivada
 
-**Qué.** Las tres fichas que la tanda corta dejó abiertas, en tres commits, cada una con su
-mutación pieza a pieza:
-
-- **P2-8** — `buildResponse` cierra el camino feliz de `changeHp` y hablaba con `this.prisma`
-  aunque `equipoEquipado` y `viewerFor` ya sabían aceptar un cliente. Acepta el `tx?` y se lo
-  reenvía; se lo pasan los **cuatro** llamadores que corren dentro de una transacción —uno más de
-  los tres contados, y el que faltaba era el de `changeHpEnTransaccion`, que es el que la ficha
-  nombra—. Su prueba se mide sobre un `changeHp` que **termina**: la de P2-0b no podía.
-- **P2-1** — la red que exige que toda clave de condición que el motor lee esté en
-  `esClaveReservada`, con la opción (c) de la ficha. Mira **las tres formas** —comparación
-  literal, pertenencia a un conjunto y consulta a la base—, y cazarla solo por literales habría
-  perdido los siete `Set` y con ellos la única lectura de `helped`.
-- **P2-10** — la ficha se quedaba corta **en el tamaño**, y es la razón de escribir esta entrada
-  aparte. Decía «dos pruebas lentas»; medido, son **veintitrés suites y 204 pruebas**, casi todas
-  cayendo en el `beforeAll` que monta la aplicación y registra cuentas con `argon2`. **Arreglar
-  las dos que nombraba habría dejado veintiuna suites igual de frágiles y la ficha tachada.** Se
-  mide antes de arreglar, aunque la ficha diga que ya midió.
-
-**Cómo se verificó.** `pnpm verify` en verde en cada commit. P2-10 no lleva paso 1 —no hay
-comportamiento incorrecto que ver fallar— y se demuestra al revés: la misma contención que dejó 23
-suites rojas las deja **todas verdes** después, sin bajar el paralelismo ni abaratar `argon2`, que
-es una defensa. P2-1 se cazó por mutación cinco veces, incluida la más importante: la propia red
-estrechada contra sí misma.
-
-**Cómo revertir.** Los tres commits son independientes. Revertir el de P2-1 solo quita una red;
-revertir el de P2-10 devuelve la fragilidad de diagnóstico, no un defecto de producto.
+**Movida entera** a [`_archivo/historial-2026-09-07-tanda-b.md`](./_archivo/historial-2026-09-07-tanda-b.md)
+el 2026-09-12, al escribir la línea de la Tarea 3 del pulido: el fichero quedaba en 1009 de 1000 y
+esta era la entrada completa más antigua. En una línea: tres commits de API —`changeHp` acepta
+`tx?` y lo reenvía a sus cuatro llamadores en transacción, la red de claves reservadas cazada por
+sus tres formas, y P2-10 medida en 23 suites y 204 pruebas antes de arreglarla, no en las «dos»
+que decía la ficha—.
 
 ---
 

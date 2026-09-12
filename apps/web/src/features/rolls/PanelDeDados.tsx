@@ -142,27 +142,30 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
           No se escondió ninguna opción para arreglarlo —los radios con su frase son regla
           vinculante—: se cambió dónde caen. Y en una pantalla estrecha vuelven a apilarse, que
           es lo único que cabe. */}
-      {/* **El reloj, arriba y para todos.** Va en esta pestaña y no en otra porque es donde el DM
-          ya está cuando arbitra —pedir una tirada y hacer que pasen ocho horas son el mismo gesto
-          de mesa—, y lo lee cualquiera porque qué hora es en el mundo no es información
-          privilegiada: un jugador que viera caducar su condición sin saber que ha pasado la noche
-          se quedaría con el «qué» y sin el «por qué». */}
-      <div className="mb-s5">
-        <RelojDeCampana campaignId={campaignId} />
-      </div>
+      {/* **El reloj, en la misma rejilla que pedir y tirar, no encima de las dos** (anexo #16).
+          Apilarlo aparte en `mb-s5` es lo que dejaba la mitad de la pantalla ocupada por una
+          tarjeta y la otra mitad repartida en dos columnas desiguales — la misma queja que #14
+          hace del cajón de la mesa. En rejilla, `xl:col-span-2` le deja las dos columnas cuando
+          las hay (es la más ancha de las tres) y `items-stretch` iguala la altura de pedir y
+          tirar, que es lo que #16 pide de la rejilla. Para quien no es DM no hay ni rejilla ni
+          «pedir»: el reloj solo se lee. */}
+      <div className={role === "DM" ? "grid items-stretch gap-s5 xl:grid-cols-2" : undefined}>
+        <RelojDeCampana
+          campaignId={campaignId}
+          className={role === "DM" ? "xl:col-span-2" : undefined}
+        />
 
-      <div className={role === "DM" ? "grid items-start gap-s5 xl:grid-cols-2" : undefined}>
         {role === "DM" && <PedirTirada campaignId={campaignId} />}
 
         {/* Una región con nombre, como ya lo era el registro de abajo: sin nombre, las dos zonas
             que enseñan un resultado son indistinguibles para quien navega por regiones — y
             también para una prueba de navegador, que fue como se notó. */}
-        <section aria-label="Tirada nueva">
+        <section aria-label="Tirada nueva" className="min-w-0">
           {/* **Pegada a la izquierda, no centrada.** Se comprobó mirando las dos capturas al
             lado: en el prototipo la tarjeta arranca en el mismo filo que el título y la frase de
             para-qué, y centrarla abría un pasillo vacío a la izquierda que hacía que la cabecera
             y la tarjeta parecieran dos pantallas distintas. El ancho también sale de ahí. */}
-          <Panel className="max-w-[40rem]">
+          <Panel className={role === "DM" ? "h-full" : "max-w-[40rem]"}>
             <div className="flex flex-col items-center gap-s2">
               {/* El dado, dibujado y en cobre: el cobre significa «esto pertenece al mundo», y este
               dibujo enmarca la tarjeta sin pedir que se pulse. Nada de glifos de fuente. */}

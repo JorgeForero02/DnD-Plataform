@@ -1,21 +1,14 @@
 import { useCharacterSheet } from "./hooks";
-import { PuntosDeGolpe } from "./PuntosDeGolpe";
-import { ModificadoresTemporales } from "./ModificadoresTemporales";
-import { RecursosYDescansos } from "./RecursosYDescansos";
-import { Actividades } from "./Actividades";
-import { Condiciones } from "./Condiciones";
-import { VelocidadYSentidos } from "./VelocidadYSentidos";
-import { Anulaciones } from "./Anulaciones";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
-import { DadosDeGolpe, PercepcionPasiva, SalvacionesDeMuerte } from "./TarjetasDeEstado";
 import { Caracteristicas, FichaEditable } from "./IdentidadEditable";
 import { EmptyState } from "../../ui/Collection";
-import { ValorDerivado } from "./Traza";
 import { TarjetaDeHoja } from "./Tarjeta";
 import { Cabecera } from "./Cabecera";
 import { Numeros } from "./pestanas/Numeros";
 import { Ataques } from "./pestanas/Ataques";
 import { Rasgos } from "./pestanas/Rasgos";
+import { Recursos } from "./pestanas/Recursos";
+import { Estado } from "./pestanas/Estado";
 import type { Disposicion } from "./pestanas/tipos";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje: lee `GET .../sheet` y enseña la traza de
@@ -89,7 +82,10 @@ export function HojaCalculada({
     );
   }
 
-  const { sheet, reason, hp, deathSaves, character } = data;
+  // Tarea 5 (spec 2026-09-11) — `hp` y `deathSaves` ya no se leen aquí: viajaban a `PuntosDeGolpe`
+  // y `SalvacionesDeMuerte`, que ahora vive en la pestaña `Recursos` y los lee de `data` (el
+  // spread `{ ...data, sheet }` de más abajo ya los lleva, sin desestructurarlos aparte).
+  const { sheet, reason, character } = data;
 
   // **`identidad` solo evita el remonte DENTRO del `return` de abajo — ya no entre los dos
   // `return`s.**
@@ -206,71 +202,22 @@ export function HojaCalculada({
 
           {/* --- Columna derecha: lo accionable. --- */}
           <div className="flex min-w-0 flex-col gap-s4">
-            <TarjetaDeHoja titulo="Puntos de golpe">
-              <PuntosDeGolpe
-                campaignId={campaignId}
-                characterId={characterId}
-                hp={hp}
-                // La traza de los PG máximos, para poder decir por qué son la mitad cuando el
-                // agotamiento los parte (2C.4). La cifra sigue saliendo de `hp.max`.
-                maxHp={sheet.derived.maxHp}
-                puedeEditar={puedeEditar}
-              />
-            </TarjetaDeHoja>
+            {/* Tarea 5 (spec 2026-09-11) — PG, dados de golpe, salvaciones de muerte, recursos y
+                descansos, y actividades son ahora la pestaña `Recursos`, con las MISMAS tarjetas
+                movidas sin reescribir (incluida la fila de tarjetas pequeñas: percepción pasiva
+                se quedó en `Numeros` desde la Tarea 4, y dados+muerte se mudan aquí, así que esa
+                fila desaparece — vivía SOLO por ellas). Todavía sin `Tabs` (llegan en la Tarea
+                7): se monta donde vivían sus tarjetas, con la misma `disposicion`. */}
+            <Recursos
+              campaignId={campaignId}
+              characterId={characterId}
+              data={{ ...data, sheet }}
+              puedeEditar={puedeEditar}
+              disposicion={disposicion}
+            />
 
-            {/* **La Clase de Armadura, con su fórmula en línea.** La cifra sale también arriba en
-                la tira, y eso está bien: son el mismo valor derivado leído del mismo sitio, así
-                que no pueden discrepar. Lo que aporta esta tarjeta es la explicación a tamaño de
-                lectura, que en una casilla de la tira no cabe. */}
-            <TarjetaDeHoja titulo="Clase de armadura" etiqueta="clase de armadura">
-              <ValorDerivado
-                variante="tarjeta"
-                etiqueta="Clase de armadura"
-                valor={sheet.derived.ac}
-              />
-            </TarjetaDeHoja>
-
-            <TarjetaDeHoja titulo="Recursos y descansos" etiqueta="recursos y descansos">
-              <RecursosYDescansos
-                campaignId={campaignId}
-                characterId={characterId}
-                puedeEditar={puedeEditar}
-              />
-            </TarjetaDeHoja>
-
-            {/* Paso 2, tarea A11 — el botón de usar una actividad (hoy, solo la Furia). Solo se
-                monta cuando el catálogo concede alguna: un personaje sin clase, o de una clase
-                sin actividades completas, no tiene nada que enseñar aquí. */}
-            {(sheet.activities ?? []).length > 0 && (
-              <TarjetaDeHoja titulo="Actividades" etiqueta="actividades">
-                <Actividades
-                  campaignId={campaignId}
-                  characterId={characterId}
-                  activities={sheet.activities ?? []}
-                  puedeEditar={puedeEditar}
-                />
-              </TarjetaDeHoja>
-            )}
-
-            {/* **Modificadores temporales** (plan 13, M8), junto a las condiciones y no dentro de
-                ellas: comparten la caducidad, pero una condición es una regla del SRD con nombre
-                cerrado y esto es un número arbitrario con un motivo escrito a mano. */}
-            <TarjetaDeHoja titulo="Modificadores temporales" etiqueta="modificadores temporales">
-              <ModificadoresTemporales
-                campaignId={campaignId}
-                characterId={characterId}
-                puedeEditar={puedeEditar}
-              />
-            </TarjetaDeHoja>
-
-            <TarjetaDeHoja titulo="Condiciones activas" etiqueta="condiciones">
-              <Condiciones
-                campaignId={campaignId}
-                characterId={characterId}
-                puedeEditar={puedeEditar}
-              />
-            </TarjetaDeHoja>
-
+            {/* **Espacios de conjuro** no entra en ninguna pestaña de la Tarea 5 (ni `Recursos` ni
+                `Estado` la reclaman en el brief): se queda aquí, donde vivía, entre las dos. */}
             {sheet.spellSlots.length > 0 && (
               <TarjetaDeHoja
                 titulo={`Espacios de conjuro (${
@@ -291,18 +238,14 @@ export function HojaCalculada({
               </TarjetaDeHoja>
             )}
 
-            <TarjetaDeHoja titulo="Velocidad y sentidos" etiqueta="velocidad y sentidos">
-              <VelocidadYSentidos
-                speeds={sheet.speeds}
-                effectiveSpeeds={data.effectiveSpeeds}
-                darkvision={sheet.derived["senses.darkvision"]}
-              />
-            </TarjetaDeHoja>
-
-            <Anulaciones
+            {/* Tarea 5 — modificadores temporales, condiciones, CA con fórmula, velocidad y
+                sentidos, y anulaciones son ahora la pestaña `Estado`, mismas tarjetas movidas. */}
+            <Estado
               campaignId={campaignId}
               characterId={characterId}
-              overrides={data.character.overrides}
+              data={{ ...data, sheet }}
+              puedeEditar={puedeEditar}
+              disposicion={disposicion}
             />
 
             {/* **La bolsa se pinta una sola vez, y la pinta el inventario.** Aquí hubo una
@@ -312,23 +255,6 @@ export function HojaCalculada({
                 actualiza y el otro no. Se queda el que además deja hacer algo. */}
           </div>
         </div>
-
-        {/* **La fila de tarjetas pequeñas** de la maqueta, a todo lo ancho y por debajo de las dos
-            columnas: lo que se consulta de un vistazo y no se decide en un turno. */}
-        <section aria-label="valores pasivos" className="grid gap-s3 sm:grid-cols-3">
-          <PercepcionPasiva valor={sheet.derived.passivePerception} />
-          <DadosDeGolpe
-            campaignId={campaignId}
-            characterId={characterId}
-            puedeEditar={puedeEditar}
-          />
-          <SalvacionesDeMuerte
-            campaignId={campaignId}
-            characterId={characterId}
-            deathSaves={deathSaves}
-            puedeEditar={puedeEditar}
-          />
-        </section>
 
         {/* Tarea 4 — «Ataques y lanzamiento» y «Competencias con armas» son ahora la pestaña
             `Ataques`, montada aquí donde vivía la primera (la segunda vivía en el pie, más

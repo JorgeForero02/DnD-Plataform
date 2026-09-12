@@ -1,8 +1,16 @@
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import type { CalculatedSheet, CharacterRow, SheetResponse } from "../../api";
+import * as characterSheetApi from "../../api";
+import type {
+  CalculatedSheet,
+  CharacterRow,
+  ConditionRow,
+  ResourceRow,
+  SheetResponse,
+} from "../../api";
 import type { Disposicion, PropsDePestana } from "../../pestanas/tipos";
 
 // Tarea 4 (spec 2026-09-11, «la hoja a página completa») — la armadura de la hoja de personaje
@@ -155,14 +163,26 @@ export function wrapper(qc: QueryClient) {
  * Monta una pestaña de la hoja (`PropsDePestana`) con la armadura de arriba. `overrides` sustituye
  * campos sueltos de `sheetResponse` (p. ej. `attacks` para `Ataques.test.tsx`) sin tener que
  * reconstruir el objeto entero en cada prueba.
+ *
+ * Tarea 5 — `Recursos` y `Estado` cuelgan de consultas propias (`useResources`/`useConditions`,
+ * como ya hacía `HojaCalculada.test.tsx`), no del `data` de `GET .../sheet`. `resources` y
+ * `conditions` en `overrides` mockean esas dos por su espacio de nombres (`characterSheetApi.
+ * fetchResources`/`fetchConditions`) — la misma trampa documentada en `hooks.ts`— y no llegan al
+ * objeto `data` que reciben las pestañas. Sin ellas, ambas responden `[]`.
  */
 export function renderPestana(
   Componente: (props: PropsDePestana) => ReactNode,
   { disposicion, puedeEditar = false }: { disposicion: Disposicion; puedeEditar?: boolean },
-  overrides?: Partial<SheetResponse & { sheet: CalculatedSheet }>,
+  overrides?: Partial<SheetResponse & { sheet: CalculatedSheet }> & {
+    resources?: ResourceRow[];
+    conditions?: ConditionRow[];
+  },
 ): ReturnType<typeof render> {
+  const { resources, conditions, ...datosDeLaHoja } = overrides ?? {};
+  vi.spyOn(characterSheetApi, "fetchResources").mockResolvedValue(resources ?? []);
+  vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(conditions ?? []);
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const data: SheetResponse & { sheet: CalculatedSheet } = { ...sheetResponse, ...overrides };
+  const data: SheetResponse & { sheet: CalculatedSheet } = { ...sheetResponse, ...datosDeLaHoja };
   return render(
     <Componente
       campaignId="c1"

@@ -266,52 +266,31 @@ describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y 
     vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
   });
 
-  it("la Clase de Armadura tiene su tarjeta con la fórmula en línea, y la tira solo la cifra", async () => {
+  // La mitad «tarjeta con la fórmula» de esta `it` se movió a `Estado.test.tsx` (Tarea 5), ahora
+  // que esa tarjeta es la pestaña `Estado`. Esta mitad se queda: es sobre la CABECERA (la tira de
+  // `resumen de combate`), no sobre el cuerpo, así que no tiene sitio en `Estado.tsx`.
+  it("la Clase de Armadura no repite su fórmula en la casilla de la tira", async () => {
     pintarHoja();
-    const tarjeta = await screen.findByRole("region", { name: "clase de armadura" });
+    await screen.findByRole("region", { name: "clase de armadura" });
 
-    // La fórmula de una línea —lo que la maqueta pone bajo el número— vive aquí, no en la tira.
-    // La fórmula de una línea pone los nombres en minúscula («10 sin armadura +2 modificador
-    // de destreza»): es una frase, no una lista de rótulos.
-    expect(tarjeta.textContent).toMatch(/sin armadura/i);
-    expect(tarjeta.textContent).toMatch(/modificador de destreza/i);
-    expect(tarjeta.textContent).toContain("12");
-
-    // Y la casilla de la tira NO la repite: es lo que la hace compacta.
+    // La casilla de la tira NO repite la fórmula: es lo que la hace compacta.
     const cabecera = screen.getByRole("region", { name: "resumen de combate" });
     const casillaCa = within(cabecera).getByText("CA", { exact: true }).parentElement!;
     expect(casillaCa.textContent).not.toMatch(/sin armadura/i);
   });
 
-  it("la fila de tarjetas pequeñas trae percepción pasiva, dados de golpe y salvaciones de muerte", async () => {
-    pintarHoja();
-    const fila = await screen.findByRole("region", { name: "valores pasivos" });
+  // «la fila de tarjetas pequeñas trae percepción pasiva, dados de golpe y salvaciones de
+  // muerte» se repartió, Tarea 5, porque la fila desapareció con el traslado de sus tres
+  // tarjetas: percepción pasiva ya se comprobaba en `Numeros.test.tsx` (Tarea 4, «a página:
+  // características, salvaciones+pasivos…»); dados de golpe y salvaciones de muerte se movieron,
+  // con las dos `it`s de abajo, a `Recursos.test.tsx`.
 
-    expect(within(fila).getByText("Percepción pasiva")).toBeInTheDocument();
-    await waitFor(() => expect(within(fila).getByText("Dados de golpe (d6)")).toBeInTheDocument());
-    expect(within(fila).getByText("Salvaciones de muerte")).toBeInTheDocument();
-  });
+  // «las salvaciones de muerte se ven con el personaje vivo, no solo cuando ya es tarde» se
+  // movió a `Recursos.test.tsx` (Tarea 5), ahora que `SalvacionesDeMuerte` es parte de la
+  // pestaña `Recursos`.
 
-  it("las salvaciones de muerte se ven con el personaje vivo, no solo cuando ya es tarde", async () => {
-    pintarHoja();
-    const tarjeta = await screen.findByRole("region", { name: "valores pasivos" });
-    // Un contador que solo existe a 0 PG no se puede consultar antes de llegar ahí.
-    expect(within(tarjeta).getByText("Éxitos")).toBeInTheDocument();
-    expect(within(tarjeta).getByText("Fallos")).toBeInTheDocument();
-    // Y el estado no depende solo del relleno de los círculos: se dice con palabras.
-    expect(within(tarjeta).getAllByText("0 de 3")).toHaveLength(2);
-  });
-
-  it("los dados de golpe salen UNA vez: en su tarjeta, no también en la lista de recursos", async () => {
-    pintarHoja();
-    const recursos = await screen.findByRole("region", { name: "recursos y descansos" });
-
-    await waitFor(() =>
-      expect(within(recursos).getByText("Espacios de conjuro de nivel 1")).toBeInTheDocument(),
-    );
-    expect(within(recursos).queryByText("Dados de golpe (d6)")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Dados de golpe (d6)")).toHaveLength(1);
-  });
+  // «los dados de golpe salen UNA vez: en su tarjeta, no también en la lista de recursos» se
+  // movió a `Recursos.test.tsx` (Tarea 5), misma razón.
 
   // Las dos `it`s de «Ataques y lanzamiento» (con arma equipada y sin ella) se movieron a
   // `Ataques.test.tsx` — Tarea 4, ahora que ese bloque es la pestaña `Ataques`. «El pie trae

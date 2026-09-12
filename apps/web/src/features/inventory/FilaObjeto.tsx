@@ -46,7 +46,13 @@ export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
   // HP-10: TODOS los efectos, no solo el `ac` — antes una espada +1 o un cinturón de fuerza
   // llevaban la marca «Efecto inactivo» sin ninguna cifra que tachar. La forma corta de cada tipo
   // vive una vez en `campaign-items/vocabulario.ts` (`resumirEfecto`), exhaustiva sobre la unión.
-  const magico = item.effects.length > 0 ? item.effects.map(resumirEfecto).join(" · ") : null;
+  // Revisión HP-10: **se lista, no se suma** (cada efecto es una línea que escribió el DM: dos
+  // «+1 CA» son dos «+1 CA»), y una cantidad 0 no se resume — «+0 CA» no dice nada y la fila de
+  // antes tampoco lo pintaba. `abilityScore` en modo `set` no es una suma, así que su 0 sí cuenta.
+  const conEfecto = item.effects.filter(
+    (e) => !("amount" in e) || e.amount !== 0 || (e.kind === "abilityScore" && e.mode === "set"),
+  );
+  const magico = conEfecto.length > 0 ? conEfecto.map(resumirEfecto).join(" · ") : null;
   return { mundano, magico };
 }
 
@@ -66,16 +72,19 @@ export function DatoEnCifras({
   inactivo: boolean;
   explicacionId?: string;
 }) {
+  // Revisión HP-10: lo mundano («1d8 cort.», «CA base 16») no parte; lo mágico es una lista sin
+  // tope desde que resume los nueve tipos, así que **envuelve** — el `nowrap` va aquí, mitad a
+  // mitad, y no en el contenedor de quien pinta.
   return (
     <>
-      {dato.mundano && <span>{dato.mundano}</span>}
+      {dato.mundano && <span className="whitespace-nowrap">{dato.mundano}</span>}
       {dato.magico &&
         (inactivo ? (
-          <s data-efecto="inactivo" className="text-muted" aria-describedby={explicacionId}>
+          <s data-efecto="inactivo" className="min-w-0 text-muted" aria-describedby={explicacionId}>
             {dato.magico}
           </s>
         ) : (
-          <span>{dato.magico}</span>
+          <span className="min-w-0">{dato.magico}</span>
         ))}
     </>
   );
@@ -238,7 +247,7 @@ export function FilaObjeto({
           </p>
         </div>
         {hayDato && (
-          <span className="inline-flex items-baseline gap-1 whitespace-nowrap font-data text-chrome-sm text-accent-text">
+          <span className="inline-flex min-w-0 flex-wrap items-baseline gap-1 font-data text-chrome-sm text-accent-text">
             <DatoEnCifras dato={dato} inactivo={efectoInactivo} explicacionId={idExplicacion} />
           </span>
         )}

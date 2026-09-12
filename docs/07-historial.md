@@ -40,6 +40,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md) | **La poda del tablero y el nacimiento de `como-seguir.md`**, movida entera el 2026-09-12 al escribir la línea de HP-9a (el fichero estaba en 997 de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md) | **Botín y reparto** —una tabla entrega, y decir quién dio—, movida entera el 2026-09-12 al escribir la línea de HP-9a Task 2 (el fichero quedaba en 1007 de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-paso-2-actividad.md`](./_archivo/historial-2026-09-06-paso-2-actividad.md) | **Paso 2 — la actividad, sus cinco formas y la economía de la mesa** (2026-09-06/07), movida entera el 2026-09-12 al escribir la línea de cierre de HP-9a: el fichero quedaba en 1005 de 1000 y era la entrada completa más antigua |
+> | [`_archivo/historial-2026-09-07-tanda-corta.md`](./_archivo/historial-2026-09-07-tanda-corta.md) | **Tanda corta — los seis arreglos que dejó abiertos el paso 2** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la revisión de HP-10: el fichero quedaba en 1002 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -254,6 +255,18 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   que `inventario.spec.ts` sigue igual. La ficha entera va a
   [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
   **Revertir:** `git revert` del commit; la fila vuelve a poner cifra solo al `ac`.
+- **Revisión de HP-10 — la mitad mágica envuelve, lista cada efecto y salta los ceros
+  (2026-09-12)**, commit `fix(web): the magic half of an item's figures wraps, lists each effect and
+  skips zeros`. **Qué:** el `whitespace-nowrap` sale del contenedor del dato (fila y detalle,
+  ahora `flex-wrap min-w-0`) y `DatoEnCifras` lo pone solo en lo mundano; la mitad mágica, que
+  desde HP-10 es una lista sin tope, envuelve (RTL: la clase no está en el `<s>`/`<span>` mágico ni
+  en su padre). **Cambio semántico declarado:** el `datoDeObjeto` de antes SUMABA los `ac` («+2 CA»,
+  `null` si 0); el de HP-10 los LISTA («+1 CA · +1 CA») porque cada efecto es una línea que
+  escribió el DM, y esta revisión añade que una cantidad 0 no se resume (antes «+0 CA» se pintaba;
+  el `set` de `abilityScore` no es una suma y su 0 sí cuenta). Dos `it` nuevos para las dos cosas y
+  uno para el envoltorio; los fixtures `kind: "WONDROUS"` (inexistente, escondido por el `as`)
+  pasan a `"OTHER"`; `describirEfecto` usa el mismo `conSigno`. **Revertir:** `git revert` del
+  commit; la lista vuelve a poder pintar «+0 CA» y a no partir.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
@@ -743,41 +756,15 @@ revertir el de P2-10 devuelve la fragilidad de diagnóstico, no un defecto de pr
 
 ---
 
-## Tanda corta — los seis arreglos que dejó abiertos el paso 2 (2026-09-07)
+## Tanda corta — los seis arreglos que dejó abiertos el paso 2 (2026-09-07) — archivada
 
-**Qué.** Seis fichas de [06-pendientes.md](./06-pendientes.md) cerradas en seis commits, cada una
-con su prueba escrita **antes** del arreglo, corrida en rojo, y **verificada por mutación**:
-revirtiendo el arreglo pieza a pieza y comprobando que la prueba enrojece **por la aserción que
-tenía que enrojecer**, no solo que enrojece. Nueve mutaciones en total sobre las seis tareas.
-
-| Ficha | Qué se arregló |
-|---|---|
-| **P2-0** | `ConditionsService.apply` recibía un `tx` y lo usaba solo para escribir: `requireVisibleCharacter` e `inmunidadesDe` iban por el pool. `viewerFor` / `requireVisibleCharacter(WithViewer)` (`common/character-viewer.ts`) y `StatblocksService.resolver` aceptan ahora el mismo cliente opcional |
-| **P2-0b** | Lo mismo un piso más abajo: `construirODenegar` reenviaba el `tx` solo a `hojaOMotivo`. `equipoEquipado` y `viewerFor` no declaraban siquiera el parámetro; ahora lo declaran, y los tres llamadores que ya corrían dentro de una transacción le pasan el suyo |
-| **P2-6** | `ActivitiesService.consumir` leía con `findUnique` y escribía con `update`: tres usos simultáneos de la Furia leían los mismos 3 y escribían los mismos 2. Ahora toma `SELECT … FOR UPDATE`, el mismo candado que `changeHp` ya usaba a un metro |
-| **A11-usos-sin-tope** | `max: null` («Unlimited» en el SRD) no significaba nada: `RestService` no reponía esas filas y `consumir` las gastaba de un contador finito. Las dos miran ahora `max === null` **antes** que `current`. El marcador se queda —`ResourcesService.adjust` sigue moviendo `current` a mano— y su nota lo dice en vez de afirmar que nadie lee el `null` |
-| **P2-7** | Los dos guardianes que no sujetaba nadie: que un `entrega` malformado no rompa la tirada (era `entregaSchema.safeParse`, verificado solo por ejecución), y que `record()` **rechace** una clave que su esquema no conoce en vez de descartarla en silencio, que es lo que hace `.parse()` de Zod |
-| **P2-3** | «Dar…» abría el cajón sin destinatarios para quien maneja un PNJ: el selector se construía solo con `fetchCharacters`, que filtra `statblockRef: null` a propósito. Ahora suma la lista de PNJ (`GET /npcs`, filtrada por `canView` en el servidor), con **el mismo filtro para las dos** |
-
-**Cómo se verificó.** `pnpm verify` en verde en cada commit (lo exige el gancho). Además: **toda la suite de e2e de API** entera para el guardián estricto de `record()` —era el cambio que podía
-romper a cualquier llamador, y no rompió a ninguno— y **una sola tanda de Playwright**, la de
-P2-3, con la API precompilada antes de lanzarla.
-
-**Lo que NO entró, y está anotado en vez de arreglado.** Cuatro fichas nuevas en
-[06-pendientes.md](./06-pendientes.md): **P2-8** (`buildResponse` sigue leyendo por el pool dentro
-de la transacción de `changeHp` — el mismo defecto que P2-0b, un tramo más abajo), **P2-9** (**no
-existe ninguna puerta para ceder un PNJ a un jugador**, así que el caso que P2-3 nombra no se puede
-montar usando el producto y su recorrido de navegador mide la otra mitad del mismo carril) y
-**P2-10** (dos pruebas que se pasan del tiempo por defecto solo cuando la suite entera corre junta,
-y cuyo rojo parece un defecto del cambio recién hecho). La cuarta es la medición que faltaba en el
-cuerpo de **P2-0**: tres de las seis consultas de `apply` siguen yendo por el pool porque
-`MembershipService` no acepta un cliente.
-
-**Cómo revertir.** Los seis commits son independientes entre sí salvo P2-0b, que se apoya en el
-`tx?` que P2-0 añadió a `character-viewer.ts`. Revertir uno solo no deja el árbol roto; revertir
-P2-0 sin revertir P2-0b, sí.
-
----
+Entera en
+[`_archivo/historial-2026-09-07-tanda-corta.md`](./_archivo/historial-2026-09-07-tanda-corta.md),
+movida el 2026-09-12 al pasarse este fichero de sus 1000 líneas con la línea de la revisión de
+HP-10. **El hito:** seis fichas (P2-0, P2-0b, P2-6, A11-usos-sin-tope, P2-7, P2-3) cerradas en seis
+commits con prueba en rojo antes y mutación después —transacciones que no viajaban, la Furia que
+se gastaba dos veces, el `max: null` que no era ilimitado, el `record()` que tragaba claves— y
+cuatro fichas nuevas anotadas en vez de arregladas (P2-8, P2-9, P2-10 y la medición de P2-0).
 
 ## Paso 2 — la actividad, sus cinco formas y la economía de la mesa (2026-09-06/07) — archivada
 

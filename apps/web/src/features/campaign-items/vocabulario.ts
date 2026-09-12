@@ -281,6 +281,9 @@ export const EXPLICACION_EFECTO: Record<EffectKind, string> = {
 
 export const nombreEfecto = (k: string) => traducir(NOMBRE_EFECTO, k);
 
+/** «+1», «-1»: el signo explícito de un bono, que un `${n}` a secas pierde en los positivos. */
+const conSigno = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
+
 /**
  * La frase completa de un efecto ya resuelto, con sus números — «12 + DES (máx 2)», «+1 a la
  * Clase de Armadura». Es lo que enseña la ficha y la fila del efecto en el formulario.
@@ -288,38 +291,35 @@ export const nombreEfecto = (k: string) => traducir(NOMBRE_EFECTO, k);
 export function describirEfecto(efecto: ItemEffect): string {
   switch (efecto.kind) {
     case "ac":
-      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} a la Clase de Armadura`;
+      return `${conSigno(efecto.amount)} a la Clase de Armadura`;
     case "abilityScore": {
       const abrev = ABREVIATURA_CARACTERISTICA[efecto.ability];
       return efecto.mode === "set"
         ? `Fija ${abrev} a ${efecto.amount}`
-        : `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} a ${abrev}`;
+        : `${conSigno(efecto.amount)} a ${abrev}`;
     }
     case "save": {
       const objetivo = efecto.ability
         ? `a las salvaciones de ${ABREVIATURA_CARACTERISTICA[efecto.ability]}`
         : "a todas las salvaciones";
-      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} ${objetivo}`;
+      return `${conSigno(efecto.amount)} ${objetivo}`;
     }
     case "maxHp":
-      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} a los puntos de golpe máximos`;
+      return `${conSigno(efecto.amount)} a los puntos de golpe máximos`;
     case "speed":
-      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} pies a la velocidad al ${nombreMovimiento(efecto.movement)}`;
+      return `${conSigno(efecto.amount)} pies a la velocidad al ${nombreMovimiento(efecto.movement)}`;
     case "skillProficiency":
       return `${nombreNivelCompetencia(efecto.level)} en ${nombreHabilidad(efecto.skill)}`;
     case "saveProficiency":
       return `Competencia en la salvación de ${nombreCaracteristica(efecto.ability)}`;
     case "weaponAttack":
-      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} al ataque con esta arma`;
+      return `${conSigno(efecto.amount)} al ataque con esta arma`;
     case "weaponDamage":
-      return `${efecto.amount >= 0 ? "+" : ""}${efecto.amount} al daño de esta arma`;
+      return `${conSigno(efecto.amount)} al daño de esta arma`;
     default:
       return `Sin traducir: ${(efecto as { kind: string }).kind}`;
   }
 }
-
-/** «+1», «-1»: el signo explícito de un bono, que un `${n}` a secas pierde en los positivos. */
-const conSigno = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
 
 /**
  * El nivel de competencia en su forma corta y en minúscula, para componer «pericia en Sigilo».

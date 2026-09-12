@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import type { ResolvedItem } from "@dnd/shared";
 import type { InventoryRow } from "../api";
-import { FilaObjeto } from "../FilaObjeto";
+import { datoDeObjeto, FilaObjeto } from "../FilaObjeto";
 
 // HP-8 (2026-09-12, opción C del autor) — la pantalla 20 del prototipo (09-06) pone el ESTADO
 // «sintonizado» junto al nombre del objeto; la fila solo lo decía en un botón al final. Ahora el
@@ -13,7 +13,7 @@ import { FilaObjeto } from "../FilaObjeto";
 const anillo = {
   ref: "CAMPAIGN:anillo-1",
   source: "CAMPAIGN",
-  kind: "WONDROUS",
+  kind: "OTHER",
   name: "Anillo de protección",
   weightOz: 0,
   effects: [{ kind: "ac", amount: 1 }],
@@ -175,7 +175,7 @@ describe("FilaObjeto — todos los tipos de efecto llevan cifra (HP-10)", () => 
   const cinturon = {
     ref: "CAMPAIGN:cinturon-1",
     source: "CAMPAIGN",
-    kind: "WONDROUS",
+    kind: "OTHER",
     name: "Cinturón de fuerza",
     weightOz: 16,
     effects: [{ kind: "abilityScore", ability: "str", mode: "set", amount: 19 }],
@@ -210,5 +210,55 @@ describe("FilaObjeto — todos los tipos de efecto llevan cifra (HP-10)", () => 
     expect(bono.tagName).toBe("S");
     expect(bono).toHaveAttribute("data-efecto", "inactivo");
     expect(within(item).getByText(MARCA)).toBeInTheDocument();
+  });
+});
+
+// Revisión de HP-10 (2026-09-12) — tres cosas que la primera entrega dejó sin decir:
+// (1) la mitad mágica ya no es «+N CA» sino una lista sin tope, así que **envuelve** (el
+// `whitespace-nowrap` se queda solo en lo mundano); (2) listar es la verdad —cada efecto es una
+// línea que escribió el DM—, no sumar; (3) un efecto de cantidad 0 no se resume: «+0 CA» no
+// dice nada y antes tampoco se pintaba.
+describe("FilaObjeto — la mitad mágica envuelve, lista y salta los ceros (revisión HP-10)", () => {
+  const base = { ...anillo, requiresAttunement: false } as ResolvedItem;
+
+  it("dos efectos `ac` se listan uno a uno, no se suman", () => {
+    const item = {
+      ...base,
+      effects: [
+        { kind: "ac", amount: 1 },
+        { kind: "ac", amount: 1 },
+      ],
+    };
+    expect(datoDeObjeto(item as ResolvedItem).magico).toBe("+1 CA · +1 CA");
+  });
+
+  it("un efecto con cantidad 0 no aparece; si todos son 0, no hay mitad mágica", () => {
+    const conCero = {
+      ...base,
+      effects: [
+        { kind: "ac", amount: 0 },
+        { kind: "weaponAttack", amount: 1 },
+      ],
+    };
+    expect(datoDeObjeto(conCero as ResolvedItem).magico).toBe("+1 atq");
+    const soloCero = { ...base, effects: [{ kind: "maxHp", amount: 0 }] };
+    expect(datoDeObjeto(soloCero as ResolvedItem).magico).toBeNull();
+  });
+
+  it("lo mundano no parte; lo mágico puede envolver (sin `whitespace-nowrap`)", () => {
+    const cota = {
+      ...base,
+      kind: "ARMOR",
+      armor: { category: "HEAVY", baseAc: 16, stealthDisadvantage: true, strengthRequirement: 13 },
+      effects: [{ kind: "ac", amount: 1 }],
+    } as unknown as ResolvedItem;
+    montar(fila({ item: cota, slot: "ARMOR" }));
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText("CA base 16").className).toMatch(/\bwhitespace-nowrap\b/);
+    expect(within(item).getByText("+1 CA").className).not.toMatch(/\bwhitespace-nowrap\b/);
+    // Tampoco el contenedor: si él no parte, da igual lo que digan los hijos.
+    expect(within(item).getByText("+1 CA").parentElement?.className).not.toMatch(
+      /\bwhitespace-nowrap\b/,
+    );
   });
 });

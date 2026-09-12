@@ -138,7 +138,7 @@ function Contenido({
         {hayDato && (
           <>
             <dt className="text-muted">Dato</dt>
-            <dd className="inline-flex items-baseline gap-1 font-data text-accent-text">
+            <dd className="inline-flex min-w-0 flex-wrap items-baseline gap-1 font-data text-accent-text">
               <DatoEnCifras dato={dato} inactivo={efectoInactivo} explicacionId={idExplicacion} />
             </dd>
           </>

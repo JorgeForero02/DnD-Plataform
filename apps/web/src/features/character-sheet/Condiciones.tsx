@@ -161,10 +161,12 @@ export function Condiciones({
   campaignId,
   characterId,
   puedeEditar,
+  variante = "tarjeta",
 }: {
   campaignId: string;
   characterId: string;
   puedeEditar: boolean;
+  variante?: "tarjeta" | "chips";
 }) {
   const { data: condiciones, isLoading } = useConditions(campaignId, characterId);
   const aplicar = useApplyCondition(campaignId, characterId);
@@ -186,6 +188,26 @@ export function Condiciones({
   const { data: reloj } = useGameClock(campaignId, { enabled: hayCuentaAtras });
 
   if (isLoading) return null;
+
+  // **Variante chips**, para la cabecera fija: solo el nombre legible de cada condición activa,
+  // sin controles — aplicar y quitar siguen siendo cosa de la tarjeta. Todos los hooks de arriba
+  // se llaman igual en las dos variantes: lo único que cambia es qué se pinta con sus datos.
+  if (variante === "chips") {
+    if (!condiciones || condiciones.length === 0) return null;
+    return (
+      <ul aria-label="condiciones activas" className="flex flex-wrap gap-s1">
+        {condiciones.map((c) => (
+          <li
+            key={c.id}
+            className="rounded-radius-sm border border-warning-text px-s2 py-0.5 font-chrome text-chrome-xs text-warning-text"
+          >
+            {NOMBRE_CONDICION[c.key]}
+            {c.key === "exhaustion" && c.level ? ` · nivel ${c.level}` : ""}
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   const efectoDeLaNueva = efectoCondicion(nueva);
 

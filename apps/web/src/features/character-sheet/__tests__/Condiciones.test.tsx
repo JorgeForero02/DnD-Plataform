@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Condiciones, EFECTO_CONDICION } from "../Condiciones";
@@ -39,6 +39,25 @@ function pintar(filas: ConditionRow[], puedeEditar = true) {
   render(<Condiciones campaignId="c1" characterId="ch1" puedeEditar={puedeEditar} />, {
     wrapper: wrapper(qc),
   });
+}
+
+function mockConditions(filas: ConditionRow[]) {
+  vi.spyOn(characterSheetApi, "fetchConditions").mockResolvedValue(filas);
+}
+
+function renderCondiciones(
+  opciones: { variante?: "tarjeta" | "chips"; puedeEditar?: boolean } = {},
+) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <Condiciones
+      campaignId="c1"
+      characterId="ch1"
+      puedeEditar={opciones.puedeEditar ?? true}
+      variante={opciones.variante}
+    />,
+    { wrapper: wrapper(qc) },
+  );
 }
 
 describe("Condiciones — el efecto bajo el nombre", () => {
@@ -334,5 +353,18 @@ describe("Condiciones — la concentración (ficha M17)", () => {
     const entrada = await screen.findByRole("listitem");
     expect(entrada).toHaveTextContent("Concentración");
     expect(entrada).not.toHaveTextContent("Sin traducir");
+  });
+
+  it("variante chips: solo los nombres legibles, sin botones, y nada si no hay condiciones", async () => {
+    mockConditions([fila("poisoned")]);
+    renderCondiciones({ variante: "chips" });
+    const lista = await screen.findByRole("list", { name: "condiciones activas" });
+    expect(within(lista).getByText("Envenenado")).toBeInTheDocument();
+    expect(within(lista).queryByRole("button")).toBeNull();
+    expect(screen.queryByText("poisoned")).toBeNull();
+
+    mockConditions([]);
+    const { container } = renderCondiciones({ variante: "chips" });
+    await waitFor(() => expect(container.querySelector("ul")).toBeNull());
   });
 });

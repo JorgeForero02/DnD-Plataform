@@ -155,14 +155,20 @@ const conditions: ConditionRow[] = [
   },
 ];
 
-function renderCabecera({ disposicion }: { disposicion: Disposicion }) {
+function renderCabecera({
+  disposicion,
+  puedeEditar = false,
+}: {
+  disposicion: Disposicion;
+  puedeEditar?: boolean;
+}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <Cabecera
       campaignId="c1"
       characterId="ch1"
       data={sheetResponse}
-      puedeEditar={false}
+      puedeEditar={puedeEditar}
       disposicion={disposicion}
     />,
     { wrapper: wrapper(qc) },
@@ -246,14 +252,27 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
   });
 
   it("los PG de la cabecera no traen el control de daño: la acción vive en su bloque", async () => {
-    renderCabecera({ disposicion: "pagina" });
+    // Fix round 1 (revisión de la Tarea 3) — la original comprobaba esto con `puedeEditar={true}`,
+    // el único caso donde el control de daño podría llegar a existir; con `false` la prueba no
+    // demostraba nada. También cambia la aserción: `querySelector('input[type="number"]')`
+    // adivinaba el tipo del control — se comprueba por el nombre accesible real del campo
+    // (`PuntosDeGolpe.tsx`), que además sigue vacío aquí porque `Cabecera` no monta esa tarjeta.
+    renderCabecera({ disposicion: "pagina", puedeEditar: true });
     const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
-    // Desviación del brief: la aserción original era `querySelector("input")).toBeNull()`, sin
-    // más — válida cuando la cabecera solo tenía la tira de números. Ahora también vive aquí
-    // `EleccionesPendientes`, que trae su propio `<input type="checkbox">` para elegir una
-    // habilidad (nada que ver con el daño). Se acota al tipo de control que sí sería un delta de
-    // PG — `type="number"`, como usa `PuntosDeGolpe.tsx` — para no confundir un checkbox ajeno
-    // con el control de daño que este `it` de verdad prueba que no está.
-    expect(cabecera.querySelector('input[type="number"]')).toBeNull();
+    expect(within(cabecera).queryByLabelText("Cambio de puntos de golpe")).toBeNull();
+  });
+
+  it("el botón de subir de nivel solo aparece cuando puedeEditar es verdadero", async () => {
+    renderCabecera({ disposicion: "pagina", puedeEditar: true });
+    const resumen = await screen.findByRole("region", { name: "resumen de combate" });
+    expect(
+      await within(resumen).findByRole("button", { name: /subir a nivel/i }),
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    renderCabecera({ disposicion: "pagina", puedeEditar: false });
+    await screen.findByRole("region", { name: "resumen de combate" });
+    expect(screen.queryByRole("button", { name: /subir a nivel/i })).toBeNull();
   });
 });

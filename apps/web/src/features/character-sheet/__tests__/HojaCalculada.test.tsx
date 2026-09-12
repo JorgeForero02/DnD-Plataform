@@ -309,6 +309,17 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
   // `Cabecera.test.tsx` en la Tarea 3, ahora que la cabecera es su propio componente. Estas dos
   // se quedan: comprueban la estructura del CUERPO de la hoja, no la cabecera.
 
+  it("el control de daño de los PG vive en su propia tarjeta, fuera de la cabecera", async () => {
+    // Fix round 1 (revisión de la Tarea 3) — la mitad de la `it` original de H3 que decía
+    // «el control sí existe, pero fuera de la cabecera» se perdió al mover la otra mitad a
+    // `Cabecera.test.tsx`. Vive aquí porque el control (`PuntosDeGolpe`) sigue siendo del
+    // CUERPO de la hoja, no de la cabecera — hace falta `puedeEditar` para que se pinte.
+    pintarHoja(true);
+    const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
+    const campo = await screen.findByLabelText("Cambio de puntos de golpe");
+    expect(cabecera.contains(campo)).toBe(false);
+  });
+
   it("características → salvaciones → habilidades bajan seguidas por la misma columna", async () => {
     pintarHoja();
     const caracteristicas = await screen.findByRole("region", { name: "características" });

@@ -879,3 +879,11 @@ como ficha con su coste escrito. No es urgente para una mesa de cinco.
 > **Decidida el 2026-09-11 (D-CF-36) y colocada como Task 1 del
 > [plan de la hoja a página completa](../superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)**:
 > caché de `passwordChangedAt` por usuario, 60 s.
+
+## HP-2 · «Equipar» desde el detalle preguntaba la mano en la fila, y el rechazo del servidor solo se leía en la fila (2026-09-12)
+
+**Cerrada el 2026-09-12 (revisión final del plan de la hoja).** `features/inventory/PaginaDeInventario.tsx`: la pregunta de la mano (`ElegirMano`) se pinta **en un solo sitio** —bajo la fila en la mesa; a página, dentro de `DetalleDeObjeto`, y «Equipar» sobre un arma selecciona esa fila para que el detalle sea el suyo—, porque montarla en los dos sería un solo grupo de radios (mismo `name`) repartido en dos cajas. Y el detalle recibe `error` (la misma clave de `erroresPorFila` que la fila) y lo pinta con el mismo `role="alert"` bajo sus botones. Pruebas: `PaginaDeInventario.test.tsx`, «HP-2: un rechazo del servidor a «Sintonizar» desde el detalle se lee DENTRO del detalle» (roja antes: `Unable to find role="alert"` dentro del `complementary`) y «HP-2: a página, equipar un arma desde la lista pregunta la mano en el detalle, una sola vez» (roja antes: el detalle seguía enseñando la poción). Verdes después.
+
+**Texto original:**
+
+| **HP-2** | **«Equipar» desde el panel de detalle abre `ElegirMano` en la fila de la izquierda**, no en el panel: la acción principal de una fila «encima» hace `setManoPara(row.id)` (`features/inventory/PaginaDeInventario.tsx:263-265`) y `ElegirMano` solo se monta dentro de `FilaObjeto` (`:354-361`); `DetalleDeObjeto` ejecuta la misma lista de acciones (`features/inventory/DetalleDeObjeto.tsx:143`). El e2e de Objetos lo cubre porque confirma en la fila | Montar `ElegirMano` también en el detalle cuando `manoPara` es la fila seleccionada. Maqueta, no lógica |

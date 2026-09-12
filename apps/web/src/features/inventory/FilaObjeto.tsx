@@ -47,10 +47,15 @@ export function FilaObjeto({
   children,
 }: {
   row: InventoryRow;
-  /** El botón de la derecha: equipar, quitar o traer, según la zona en la que vive la fila. */
-  onAccionPrincipal: () => void;
+  /**
+   * El botón de la derecha: equipar, quitar o traer, según la zona en la que vive la fila.
+   * **Sin manos, sin botones** (spec 2026-09-11 §7): quien mira un personaje ajeno recibe la fila
+   * sin `onAccionPrincipal` ni `onSoltar`, y la fila no pinta ninguna acción — no un botón que
+   * el servidor rechazaría. Van las dos juntas o ninguna.
+   */
+  onAccionPrincipal?: () => void;
   /** Soltar el objeto — siempre detrás de una confirmación en pantalla, nunca aquí mismo. */
-  onSoltar: () => void;
+  onSoltar?: () => void;
   /**
    * Gastar una unidad. **Solo donde tiene sentido**: un consumible, o una pila de varios. Sin
    * esto, beber la segunda poción de tres y beber la última eran dos gestos distintos —cambiar
@@ -111,6 +116,10 @@ export function FilaObjeto({
   const [alias, setAlias] = useState(item.unidentifiedName ?? "");
 
   const seleccionable = seleccionada !== undefined && onSeleccionar !== undefined;
+  const acciones =
+    onAccionPrincipal && onSoltar
+      ? accionesDeObjeto(row, { onAccionPrincipal, onSoltar, onGastar, onSintonizar })
+      : [];
 
   return (
     <li
@@ -169,7 +178,7 @@ export function FilaObjeto({
         <span className="whitespace-nowrap font-data text-chrome-xs text-muted">
           {formatearKg(pesoTotalOz)}
         </span>
-        {accionesDeObjeto(row, { onAccionPrincipal, onSoltar, onGastar, onSintonizar }).map((a) => (
+        {acciones.map((a) => (
           <Button
             key={a.id}
             type="button"

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient } from "@tanstack/react-query";
 import { HojaCalculada } from "../HojaCalculada";
 import * as characterSheetApi from "../api";
+import * as inventoryApi from "../../inventory/api";
 import * as members from "../../campaigns/members";
 import type { Catalog, ConditionRow, ResourceRow, SheetResponse } from "../api";
 import type { RollSuggestions, SuggestedRollMode } from "@dnd/shared";
@@ -305,7 +306,7 @@ describe("H5 — cada paso de la traza lleva a su causa editable", () => {
 // que la tabla no desborde, que el modificador se lea más que la puntuación— se mide en
 // `apps/web/e2e/hoja.spec.ts`.
 
-describe("La hoja de la maqueta: tira, tarjeta de CA, fila de tarjetas, tabla y pie", () => {
+describe("La cabecera: la casilla de la CA en la tira de «resumen de combate»", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(characterSheetApi, "fetchSheet").mockResolvedValue(sheetResponse);
@@ -599,6 +600,86 @@ describe("La hoja en pestañas", () => {
     fireEvent.click(within(lista).getByRole("tab", { name: "Recursos" }));
     expect(await screen.findByText("Puntos de golpe")).toBeInTheDocument();
     expect(screen.queryByText("Salvaciones")).toBeNull();
+    cleanup();
+
+    // Spec 2026-09-11 §8, «una prueba que recorre las siete y cuenta». La misma tabla que
+    // `e2e/hoja-pestanas.spec.ts` (`PESTANAS`): los rótulos de cada pestaña, buscados por su papel
+    // de encabezado (`TarjetaDeHoja` pinta un `<h3>`, cada zona del inventario un `<h2>`) o por
+    // texto cuando la tarjeta no lleva encabezado. `fuera` no se escribe a mano: es la unión de los
+    // `dentro` de las otras seis, así que una tarjeta que se cuele en dos pestañas enrojece aquí
+    // sin que nadie tenga que acordarse de anotarla. Se recorre con una lanzadora: siete de verdad.
+    type Rotulo = string | RegExp | { texto: string | RegExp };
+    const PESTANAS: Array<{ rotulo: string; dentro: Rotulo[] }> = [
+      { rotulo: "Números", dentro: ["Características", "Salvaciones", "Habilidades"] },
+      // Los `<h2>` de zona llevan su subtítulo detrás («Equipado · …»): se anclan al principio.
+      { rotulo: "Objetos", dentro: ["Inventario", /^Equipado/, /^Encima/, /^Guardado/] },
+      { rotulo: "Ataques", dentro: ["Ataques y lanzamiento", "Competencias con armas"] },
+      {
+        rotulo: "Recursos",
+        dentro: [
+          "Puntos de golpe",
+          { texto: /^Dados de golpe \(d\d+\)$/ },
+          { texto: "Salvaciones de muerte" },
+          "Recursos y descansos",
+        ],
+      },
+      {
+        rotulo: "Estado",
+        dentro: [
+          "Modificadores temporales",
+          "Condiciones activas",
+          "Clase de armadura",
+          "Velocidad y sentidos",
+        ],
+      },
+      { rotulo: "Rasgos", dentro: ["Rasgos y aptitudes", "Ficha", "Personalidad"] },
+      {
+        rotulo: "Conjuros",
+        dentro: [/^Espacios de conjuro/, { texto: "Los conjuros llegan con el paso 3" }],
+      },
+    ];
+    const buscar = (t: Rotulo) =>
+      typeof t === "object" && "texto" in t
+        ? screen.queryAllByText(t.texto)
+        : screen.queryAllByRole("heading", { name: t });
+
+    // La armadura ya lanza (4 espacios de nivel 1): así Conjuros existe y son siete de verdad.
+    expect(sheet.spellSlots.length).toBeGreaterThan(0);
+    // El inventario tiene consulta propia y `renderHoja` no la mockea: vacío, para que las tres
+    // zonas se pinten con su rótulo y sin filas.
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue({
+      items: [],
+      purse: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+      totalWeightOz: 0,
+      carryCapacityOz: 2400,
+      encumbrance: null,
+    });
+    renderHoja({ disposicion: "pagina" }, { resources: recursosConDados });
+    const siete = await screen.findByRole("tablist");
+    expect(
+      within(siete)
+        .getAllByRole("tab")
+        .map((t) => t.textContent?.trim()),
+    ).toEqual(PESTANAS.map((p) => p.rotulo));
+
+    let contadas = 0;
+    for (const pestana of PESTANAS) {
+      fireEvent.click(within(siete).getByRole("tab", { name: pestana.rotulo }));
+      for (const t of pestana.dentro) {
+        await waitFor(() => expect(buscar(t), `${pestana.rotulo}: ${t}`).toHaveLength(1));
+        contadas += 1;
+      }
+      for (const otra of PESTANAS.filter((p) => p !== pestana)) {
+        for (const t of otra.dentro) {
+          expect(buscar(t), `${otra.rotulo}: ${t} no debería verse en ${pestana.rotulo}`).toEqual(
+            [],
+          );
+        }
+      }
+      // Solo la activa está montada: siete raíces serían siete árboles calculándose.
+      expect(document.querySelectorAll("[data-pestana]")).toHaveLength(1);
+    }
+    expect(contadas).toBe(PESTANAS.reduce((n, p) => n + p.dentro.length, 0));
   });
 
   it("Conjuros aparece para quien lanza", async () => {

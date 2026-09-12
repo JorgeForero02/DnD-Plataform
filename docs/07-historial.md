@@ -51,7 +51,9 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ## La hoja a página completa (2026-09-11 y 12)
 
-Rama `hoja/pagina-completa` sobre `main` `80a9243`, dieciocho commits, cerrada en local el
+Rama `hoja/pagina-completa` sobre `main` `80a9243`, veintiún commits —diecinueve de código y
+pruebas, dos de documentación; medido con `git log 80a9243..HEAD`, el último es la revisión
+final del plan, que cerró HP-2 y llevó `puedeEditar` al inventario—, cerrada en local el
 2026-09-12 y **sin fusionar ni desplegar** (lo hace el autor a mano). La
 [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) y el
 [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) mandan; las decisiones que la

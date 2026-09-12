@@ -7,6 +7,7 @@ import * as members from "../../campaigns/members";
 import type { ConditionRow } from "../api";
 import type { Disposicion } from "../pestanas/tipos";
 import { sheetResponse, wrapper } from "./fixtures/hoja.fixture";
+import { descriptorDePersonaje } from "../../characters/descriptor";
 
 // Tarea 3 (spec 2026-09-11) — la cabecera fija, ahora componente propio. Las dos primeras
 // pruebas del bloque «reúne los cinco números…» y «no trae control de daño…» vienen de
@@ -99,12 +100,19 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
   });
 
   it("en la mesa lleva el nombre y la clase; en la página no, porque ya los pinta la cabecera de la página", async () => {
+    // El descriptor es el mismo que pinta la página («Elfa alta · Maga» o lo que diga la
+    // armadura): se calcula con la misma función, no se copia a mano, para que un cambio de
+    // vocabulario no deje esta prueba mintiendo.
+    const descriptor = descriptorDePersonaje(sheetResponse.character);
+    expect(descriptor).not.toBe("");
     renderCabecera({ disposicion: "mesa" });
     expect(await screen.findByText("Elowen")).toBeInTheDocument();
+    expect(screen.getByText(descriptor)).toBeInTheDocument();
     cleanup();
     renderCabecera({ disposicion: "pagina" });
     await screen.findByRole("region", { name: "resumen de combate" });
     expect(screen.queryByText("Elowen")).toBeNull();
+    expect(screen.queryByText(descriptor)).toBeNull();
   });
 
   // --- Las dos `it`s movidas de `HojaCalculada.test.tsx` («H3 — la cabecera fija y las dos

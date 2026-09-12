@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { InventoryRow } from "./api";
 import type { AccionDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
@@ -21,6 +22,8 @@ export function DetalleDeObjeto({
   esDM,
   onIdentificar,
   ocupado = false,
+  error,
+  children,
 }: {
   /** La fila seleccionada, o `null` si la lista visible está vacía. */
   row: InventoryRow | null;
@@ -32,6 +35,17 @@ export function DetalleDeObjeto({
   onIdentificar?: Identificar;
   /** La fila tiene una escritura en vuelo: los botones lo anuncian igual que en la lista. */
   ocupado?: boolean;
+  /**
+   * HP-2 — el rechazo del servidor para esta fila, tal cual llegó. Antes se pintaba solo bajo la
+   * fila, y quien pulsaba «Sintonizar» aquí veía cómo el botón volvía a su sitio sin explicación:
+   * la respuesta a un botón se lee junto al botón.
+   */
+  error?: string;
+  /**
+   * Lo que la acción principal despliega cuando necesita una decisión más —hoy, `ElegirMano`—.
+   * A página la pregunta vive aquí y no bajo la fila, en un solo sitio (`PaginaDeInventario`).
+   */
+  children?: ReactNode;
 }) {
   return (
     <aside
@@ -49,7 +63,10 @@ export function DetalleDeObjeto({
           esDM={esDM}
           onIdentificar={onIdentificar}
           ocupado={ocupado}
-        />
+          error={error}
+        >
+          {children}
+        </Contenido>
       )}
     </aside>
   );
@@ -61,12 +78,16 @@ function Contenido({
   esDM,
   onIdentificar,
   ocupado,
+  error,
+  children,
 }: {
   row: InventoryRow;
   acciones: AccionDeObjeto[];
   esDM: boolean;
   onIdentificar?: Identificar;
   ocupado: boolean;
+  error?: string;
+  children?: ReactNode;
 }) {
   const { item } = row;
   const dato = datoDeObjeto(item);
@@ -159,6 +180,13 @@ function Contenido({
           </Button>
         )}
       </div>
+      {/* El mismo `role="alert"` y el mismo texto que bajo la fila (`FilaObjeto.tsx`). */}
+      {error && (
+        <p role="alert" className="font-chrome text-chrome-xs text-danger-text">
+          {error}
+        </p>
+      )}
+      {children}
     </div>
   );
 }

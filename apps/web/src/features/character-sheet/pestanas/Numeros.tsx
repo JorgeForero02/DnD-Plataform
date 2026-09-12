@@ -59,7 +59,7 @@ export function Numeros({
                     // `restrained` solo penaliza las de Destreza y el fallo automático de
                     // paralizado alcanza solo Fuerza y Destreza: una entrada única tendría
                     // que mentir en cuatro o callarse en dos.
-                    sugerencia={data?.rollSuggestions?.saves?.[ability]}
+                    sugerencia={data.rollSuggestions?.saves?.[ability]}
                   />
                 }
               />
@@ -94,7 +94,7 @@ export function Numeros({
                     // —`rollSuggestions.checks`, una por característica igual que
                     // `saves`—, y `ability` ya es la característica de ESTA habilidad
                     // porque el bucle de fuera itera `ABILITY_KEYS.flatMap(...)`.
-                    sugerencia={data?.rollSuggestions?.checks?.[ability]}
+                    sugerencia={data.rollSuggestions?.checks?.[ability]}
                   />
                 }
               />

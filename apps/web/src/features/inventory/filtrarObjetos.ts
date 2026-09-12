@@ -24,7 +24,13 @@ export const SIN_FILTRO: FiltroDeObjetos = {
 
 /** «Poción» y «pocion» son la misma búsqueda: se quitan las marcas diacríticas y las mayúsculas. */
 export function normalizarTexto(texto: string): string {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  // El rango de marcas diacríticas se escribe escapado: los dos caracteres combinantes en crudo
+  // eran invisibles en el editor y un formateador los podía «arreglar».
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 /**

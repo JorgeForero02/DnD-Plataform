@@ -220,3 +220,26 @@ comparte árbol con nada que toque `character-sheet/` o `inventory/`.
 
 Aprobada por el autor el 2026-09-11 en esta conversación, con las cinco respuestas de §11. Su plan
 por tareas se escribe con `writing-plans` cuando la tanda de fichas suelte el árbol.
+
+---
+
+> **Nota al pie (2026-09-12, revisión final de la rama `hoja/pagina-completa`).** La spec se
+> ejecutó entera; estas son las **desviaciones declaradas**, con la decisión que las sostiene. Lo
+> de arriba no se reescribe: es un documento fechado.
+>
+> - **§4, identidad en la cabecera.** No hay `FichaEditable` en modo compacto: la cabecera pinta
+>   el **nombre y el descriptor en solo lectura, y solo en «mesa»** (en la página ya los pinta
+>   `PageHeader`). La identidad se edita en la pestaña **Rasgos**, con el resto de la ficha (plan,
+>   Task 3; D-CF-31).
+> - **§6, «dar a…» y el menú «…».** «Dar a…» queda **fuera**: `DarObjeto.tsx` es un componente de
+>   la sesión (necesita `miPersonajeId` y contexto de mesa) y la hoja a página no tiene sesión. Y
+>   la fila en «mesa» **no abre un menú «…»**: ya enseña sus acciones en línea y el menú escondería
+>   lo que hoy se ve; la lista única (`accionesDeObjeto.ts`) alimenta la fila y el detalle (plan,
+>   Global Constraints; D-CF-33).
+> - **§4, condiciones a 390 px.** Los chips **se envuelven en varias líneas**, no scrollean de
+>   lado: la excepción a «el cuerpo no scrollea de lado» no hizo falta (D-CF-38).
+> - **§10, el diálogo de crear personaje.** La premisa «la cabecera edita nombre, raza y clase en
+>   sitio» **ya no es cierta** por la primera desviación: la identidad se edita en la pestaña
+>   Rasgos. «Crear = nombre → hoja» sigue siendo posible, pero hay que **volver a pensarlo contra
+>   eso** —la hoja recién creada abre en Números, y raza y clase están una pestaña más allá— cuando
+>   se hable del diálogo.

@@ -43,6 +43,7 @@ export function PaginaDeInventario({
   campaignId,
   characterId,
   disposicion = "mesa",
+  puedeEditar = true,
 }: {
   campaignId: string;
   characterId: string;
@@ -58,6 +59,14 @@ export function PaginaDeInventario({
    * el tipo de la pestaña es estructuralmente el mismo, así que `Objetos.tsx` lo pasa tal cual.
    */
   disposicion?: "mesa" | "pagina";
+  /**
+   * Spec 2026-09-11 §7 — «en un personaje ajeno el detalle no pinta botones». Viene de la página
+   * (dueño o DM, `CharacterDetailPage`) a través de la pestaña `Objetos`; a `false`, ni el
+   * detalle ni las filas ofrecen equipar, sintonizar, gastar ni soltar. **Es la mitad de
+   * pantalla, no el control de acceso**: el servidor sigue rechazando con `requireOwnerOrDM`.
+   * Por defecto `true`, que es lo que los dos diálogos de la mesa montaban hasta ahora.
+   */
+  puedeEditar?: boolean;
 }) {
   const inventario = useInventory(campaignId, characterId);
   // D-CF-15 — solo el DM identifica. Igual que en `RecursosYDescansos.tsx`: mientras el rol no
@@ -260,10 +269,14 @@ export function PaginaDeInventario({
         return {
           // **Un arma pregunta la mano; lo demás va a su ranura de siempre.** Preguntarla para
           // una armadura sería un paso que no decide nada.
-          onAccionPrincipal: () =>
-            esArma(row)
-              ? (setManoElegida("MAIN_HAND"), setManoPara(row.id))
-              : cambiarZona(row, "EQUIPPED"),
+          onAccionPrincipal: () => {
+            if (!esArma(row)) return cambiarZona(row, "EQUIPPED");
+            setManoElegida("MAIN_HAND");
+            setManoPara(row.id);
+            // A página la pregunta se abre en el detalle (ver `elegirManoDe`), así que el
+            // detalle pasa a ser el de esta fila: la pregunta vive junto al objeto que la motiva.
+            if (aPagina) setSeleccionadaId(row.id);
+          },
           onSoltar: () => setFilaASoltar(row),
           onGastar: sePuedeGastar(row) ? () => gastar(row) : undefined,
         };
@@ -275,6 +288,24 @@ export function PaginaDeInventario({
     }
   };
 
+  /**
+   * **La pregunta de la mano se pinta en un solo sitio.** `ElegirMano` lleva radios con el mismo
+   * `name`, así que montarla a la vez en la fila y en el detalle sería un solo grupo de radios
+   * repartido en dos cajas. En la mesa va bajo la fila (no hay detalle); a página, en el detalle
+   * de esa fila, que `onAccionPrincipal` acaba de seleccionar. `null` si no toca preguntar.
+   */
+  const elegirManoDe = (row: InventoryRow) =>
+    manoPara === row.id ? (
+      <ElegirMano
+        nombre={row.item.name}
+        aDosManos={aDosManos(row)}
+        valor={manoElegida}
+        onElegir={setManoElegida}
+        onConfirmar={() => cambiarZona(row, "EQUIPPED", manoElegida)}
+        onCancelar={() => setManoPara(null)}
+      />
+    ) : null;
+
   /** Lo que cada `FilaObjeto` recibe además de sus manos; la selección solo existe a página. */
   const propsDeFila = (row: InventoryRow) => ({
     row,
@@ -283,7 +314,8 @@ export function PaginaDeInventario({
     esDM,
     onIdentificar: (input: { identified?: boolean; unidentifiedName?: string | null }) =>
       identificar(row, input),
-    ...manosDe(row),
+    // Sin permiso de edición la fila no recibe manos y, por tanto, no pinta botones (spec §7).
+    ...(puedeEditar ? manosDe(row) : {}),
     ...(aPagina
       ? {
           seleccionada: row.id === seleccionada?.id,
@@ -351,16 +383,7 @@ export function PaginaDeInventario({
         <ZonaDeObjetos ubicacion="CARRIED" vacia={encima.length === 0}>
           {encima.map((row) => (
             <FilaObjeto key={row.id} {...propsDeFila(row)}>
-              {manoPara === row.id && (
-                <ElegirMano
-                  nombre={row.item.name}
-                  aDosManos={aDosManos(row)}
-                  valor={manoElegida}
-                  onElegir={setManoElegida}
-                  onConfirmar={() => cambiarZona(row, "EQUIPPED", manoElegida)}
-                  onCancelar={() => setManoPara(null)}
-                />
-              )}
+              {!aPagina && elegirManoDe(row)}
             </FilaObjeto>
           ))}
         </ZonaDeObjetos>
@@ -378,11 +401,18 @@ export function PaginaDeInventario({
       {aPagina ? (
         <DetalleDeObjeto
           row={seleccionada}
-          acciones={seleccionada ? accionesDeObjeto(seleccionada, manosDe(seleccionada)) : []}
+          acciones={
+            seleccionada && puedeEditar ? accionesDeObjeto(seleccionada, manosDe(seleccionada)) : []
+          }
           esDM={esDM}
           onIdentificar={seleccionada ? (input) => identificar(seleccionada, input) : undefined}
           ocupado={seleccionada !== null && filaEnVuelo === seleccionada.id}
-        />
+          // HP-2: lo que la acción provoca se contesta donde se pulsó. El error es el mismo de la
+          // fila (misma clave), así que sale en los dos sitios; la pregunta de la mano, solo aquí.
+          error={seleccionada ? erroresPorFila[seleccionada.id] || undefined : undefined}
+        >
+          {seleccionada && elegirManoDe(seleccionada)}
+        </DetalleDeObjeto>
       ) : (
         columnaDeCargaYMonedas
       )}

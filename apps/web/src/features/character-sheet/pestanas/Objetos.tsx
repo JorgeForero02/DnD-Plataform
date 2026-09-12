@@ -15,15 +15,17 @@ import type { PropsDePestana } from "./tipos";
 // discrepando en cuanto uno de los dos se actualiza y el otro no. Se queda el que deja hacer algo.
 //
 // `disposicion` baja al inventario (tarea 9): a página va en dos columnas con el panel de
-// detalle; en la mesa, como siempre. `puedeEditar` no se usa: `PaginaDeInventario` decide por su
-// cuenta quién edita (D-CF-15, `useMyRole`).
-export function Objetos({ campaignId, characterId, disposicion }: PropsDePestana) {
+// detalle; en la mesa, como siempre. `puedeEditar` también baja (spec §7): en un personaje
+// ajeno ni el detalle ni las filas pintan botones. `useMyRole`, dentro del inventario, solo
+// decide otra cosa —quién identifica (D-CF-15)—, no quién edita.
+export function Objetos({ campaignId, characterId, disposicion, puedeEditar }: PropsDePestana) {
   return (
     <div data-pestana="objetos" className="flex min-w-0 flex-col gap-s4">
       <PaginaDeInventario
         campaignId={campaignId}
         characterId={characterId}
         disposicion={disposicion}
+        puedeEditar={puedeEditar}
       />
     </div>
   );

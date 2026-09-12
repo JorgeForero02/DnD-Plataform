@@ -60,6 +60,8 @@ export class UserOrIpThrottlerGuard extends ThrottlerGuard {
   // Sello de cambio de contraseña por usuario, en segundos epoch (o `null` si nunca cambió),
   // cacheado un minuto. Es la salida medida en la ficha: una consulta por usuario y minuto en
   // vez de una por petición, y la ventana de un minuto es el mismo tamaño que el cubo.
+  // Coste aceptado (D-CF-36): un token robado antes de un cambio de contraseña puede seguir
+  // gastando el cubo de su dueño hasta 60 s después del cambio — una ventana de cubo, no más.
   private readonly sellos = new Map<string, { sello: number | null; hasta: number }>();
 
   constructor(

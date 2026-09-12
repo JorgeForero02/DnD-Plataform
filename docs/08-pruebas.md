@@ -103,7 +103,10 @@ diecinueve ficheros que la hoja toca —los doce del plan y del grep (`hoja-pest
 (`combate`, `final-propuesto`)— (18 en verde en la segunda pasada, `hoja-pestanas` 10 de 10
 en la tercera y otra vez tras el pulido; `mesa-en-estrecho` sigue siendo el `test.fail` de
 D-CF-26). Ninguna aserción se aflojó: solo aperturas de pestaña, localizadores más
-específicos y las tres del ruling de la banda (D-CF-38), que son más fuertes.
+específicos y las tres del ruling de la banda (D-CF-38), que son más fuertes. `teclado.spec.ts`
+**no se ajustó a propósito**: las pestañas de la hoja son el `Tabs` compartido de `ui/`, cuyo
+recorrido con `Tab`/`ArrowRight`/`Enter` ya exigen ese mismo fichero y `ui/__tests__/Tabs.test.tsx`;
+una pasada más por la hoja repetiría la prueba del componente, no la de la pantalla.
 
 > **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
 > navegador» y son **20**; antes había dicho «116 e2e de API en 22 suites» olvidando

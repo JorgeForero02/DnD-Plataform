@@ -66,6 +66,22 @@ Cierra **#3, #4, #6, #7, #8, #9, #16, #17** y la parte de «tablas y tarjetas» 
   entre tarjetas hermanas, ninguna tarjeta más baja que su vecina en la misma fila por más de 24 px
   salvo la última. Los números salen de la tarea 0 (#17).
 
+### C1 bis · El tablero dentro de la mesa (Owlbear Legacy en `iframe`)
+
+Cierra la maqueta del autor (captura #13 del anexo): el mapa en el hueco del registro, el registro
+como cajón plegable tipo chat, elenco y herramientas a los lados. Medido el 2026-09-12: Legacy
+autoalojado en `tablero.supportive.pro` **se enmarca** (ver
+[Owlbear como tablero §2 bis](./2026-09-12-owlbear-como-tablero-design.md)).
+- Ajuste de campaña **«Sala del tablero»** (URL, solo DM); sin URL, la mesa queda como hoy.
+- Con URL: el centro es un `<iframe>` a la sala (`allow="clipboard-read; clipboard-write"`,
+  `referrerpolicy="no-referrer"`), y el **registro en vivo** pasa a un cajón inferior plegable con
+  contador de líneas nuevas — el mismo patrón de cajón del rail. Escribir en el registro sigue
+  igual, dentro del cajón.
+- Aviso fijo bajo el marco, una sola vez por navegador: «Los mapas se guardan en tu navegador;
+  usa la sala siempre desde aquí».
+- Se mide: el marco ocupa el centro sin scroll de la página; a 390 px el marco va arriba y el
+  registro debajo (y se anota que la mesa a 390 sigue aplazada, D-CF-26).
+
 ### C2 · Acciones de fila con menú (`ui/MenuDeAcciones.tsx`, nuevo)
 
 Cierra **#1** y **#14**, y prepara el menú «Acciones» del paso 3.

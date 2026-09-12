@@ -28,6 +28,34 @@ entradas** en el menú de una ficha del mapa.
 | Qué deja hacer la API de extensiones | `OBR.action` (botón en su barra que abre nuestro panel), `OBR.contextMenu` (entradas en el clic derecho de una ficha), `OBR.tool` (herramienta propia), `OBR.modal` / `OBR.popover` / `OBR.notification`, `OBR.scene.items` (leer y escribir fichas del mapa **con metadatos propios sincronizados a todos**), `OBR.player` / `OBR.party` (rol GM o jugador), `OBR.broadcast`, `OBR.theme` ([APIs](https://docs.owlbear.rodeo/extensions/apis/), [Items](https://docs.owlbear.rodeo/extensions/apis/scene/items/)) |
 | Qué **no** deja | quitar o cambiar su interfaz nativa (chat, barra, hojas suyas). Se convive |
 
+## 2 bis · Lo que se hizo la misma tarde: Owlbear **Legacy** autoalojado, y sí se enmarca
+
+El autor quería su maqueta —el mapa **dentro** de nuestra mesa, en el hueco del registro, y el
+registro plegado como un chat— y Owlbear 2.0 no lo permite. **Owlbear Rodeo 1.0 «Legacy»** está
+liberado para uso privado no comercial ([repo](https://github.com/owlbear-rodeo/owlbear-rodeo-legacy),
+[anuncio](https://blog.owlbear.rodeo/owlbear-rodeo-legacy-edition/)): mapas, fichas, niebla, medida,
+dibujo y dados 3D; multijugador P2P por WebRTC; **sin cuentas ni API de extensiones**; los mapas
+viven en el navegador de quien los sube (IndexedDB), no en el servidor.
+
+- **Desplegado el 2026-09-12** en `vps1new`, Coolify, proyecto D&D, servicio `owlbear-legacy`
+  (`aloj51hvldbfcmvbxfkumfpq`): `web` (build estático + nginx que reenvía `/socket.io/` e
+  `/iceservers` al broker) y `broker` (Node, señalización). **`https://tablero.supportive.pro`**,
+  TLS por Traefik, sin puertos publicados. Documentado en `vps1new:/root/docs/07-historial.md`.
+- **Medido:** 200, WebSocket 200, `iceservers` con el STUN de Google, **sin `X-Frame-Options` ni
+  CSP**, y **cargado dentro de un `iframe`** desde una página ajena con Chromium (7 controles
+  vivos). El camino A del autor es viable.
+- **Trampas para la mesa:** (1) Chrome particiona IndexedDB por sitio de arriba — los mapas subidos
+  en `tablero.supportive.pro` a pelo **no son** los subidos dentro del marco en
+  `dnd.supportive.pro`; se usa siempre desde el mismo sitio y se exporta la biblioteca de vez en
+  cuando; (2) jugadores tras NAT estricto pueden necesitar un TURN (`backend/ice.json`), no
+  configurado; (3) es software sin mantenimiento: si un día no arranca, se reconstruye la imagen
+  o se pasa al camino C.
+
+**Con esto hay dos caminos, no excluyentes:** **A · Legacy dentro de nuestra mesa** (la maqueta del
+autor; una tarea del pulido: ajuste «Sala del tablero» con la URL, el centro de la mesa como
+`iframe`, el registro como cajón plegable) y **C · nuestra mesa dentro de Owlbear 2.0** (§3, para
+la integración con fichas del mapa). El autor prueba A primero.
+
 ## 3 · La forma: Owlbear pone el tablero, nosotros todo lo demás por encima
 
 ```

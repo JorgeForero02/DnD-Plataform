@@ -24,7 +24,6 @@ import { DetalleDeObjeto } from "./DetalleDeObjeto";
 import { FiltrosDeObjetos } from "./FiltrosDeObjetos";
 import { filtrarObjetos, SIN_FILTRO, type FiltroDeObjetos } from "./filtrarObjetos";
 import { useMyRole } from "../campaigns/members";
-import type { Disposicion } from "../character-sheet/pestanas/tipos";
 
 // Carril B1 — la pantalla de inventario (pantalla 20 del prototipo, revisión obligatoria).
 // **Tres zonas rotuladas**, un aviso de confirmación arriba al equipar, carga y monedas en la
@@ -53,8 +52,12 @@ export function PaginaDeInventario({
    * `"mesa"` (el valor por defecto, que es lo que montaba todo hasta ahora) no hay detalle: la
    * ficha de la mesa es estrecha y la fila de una línea ya dice lo que hace falta en un turno.
    * Los filtros existen en las dos: son baratos y en la mesa también se busca «la poción».
+   *
+   * Se declara aquí como literal y no se importa `Disposicion` de `character-sheet/pestanas`:
+   * esta feature no importa de `features/character-sheet` (frontera del carril, `hooks.ts`), y
+   * el tipo de la pestaña es estructuralmente el mismo, así que `Objetos.tsx` lo pasa tal cual.
    */
-  disposicion?: Disposicion;
+  disposicion?: "mesa" | "pagina";
 }) {
   const inventario = useInventory(campaignId, characterId);
   // D-CF-15 — solo el DM identifica. Igual que en `RecursosYDescansos.tsx`: mientras el rol no

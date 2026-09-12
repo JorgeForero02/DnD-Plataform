@@ -592,8 +592,9 @@ for (const tema of ["dark", "light"] as const) {
       const { color, bg } = await effectiveTextColours(
         page
           .getByRole("region", { name: "inventario" })
-          .getByText(/Encima/)
-          .first(),
+          // El encabezado de la zona, no cualquier «Encima»: desde la tarea 9 la ficha de filtro
+          // es un botón con el mismo texto, y lo que aquí se mide es el rótulo.
+          .getByRole("heading", { name: /^Encima\b/ }),
       );
       record(`[${tema}] hoja: rótulo de una zona del inventario`, contrastRatio(color, bg), 4.5);
     }

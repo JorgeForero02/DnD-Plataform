@@ -122,7 +122,9 @@ export function FilaObjeto({
         seleccionable && seleccionada
           ? "-ml-s2 border-l-2 border-l-accent bg-[color:var(--accent-tint)] pl-s2"
           : "",
-      ].join(" ")}
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <div className="flex flex-wrap items-center gap-s2 sm:gap-s3">
         <IconoObjeto className="shrink-0 text-muted" />

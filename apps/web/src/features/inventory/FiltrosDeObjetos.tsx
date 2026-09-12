@@ -2,14 +2,15 @@ import type { ItemKind, ItemLocation } from "@dnd/shared";
 import { FilterChip } from "../../ui/FilterChip";
 import { fieldControlClass } from "../../ui/Field";
 import type { FiltroDeObjetos } from "./filtrarObjetos";
-import { NOMBRE_FILTRO_ZONA, NOMBRE_TIPO_OBJETO } from "./vocabulario";
+import { NOMBRE_TIPO_OBJETO, NOMBRE_ZONA } from "./vocabulario";
 
 // Tarea 9 (spec 2026-09-11, «la hoja a página completa») — la barra de filtros de la pestaña
 // Objetos. Tres grupos de fichas y un buscador; **cada ficha alterna**: pulsar la activa la
 // quita, porque «ninguna» es el estado normal y no merece una ficha propia («Todos») que
 // compita con las de verdad.
 //
-// Las etiquetas salen de `vocabulario.ts`: ningún `WEAPON` ni `EQUIPPED` llega a la pantalla.
+// Las etiquetas salen de `vocabulario.ts` —**la misma forma legible que los rótulos de zona**
+// (`NOMBRE_ZONA`): una forma por dominio—; ningún `WEAPON` ni `EQUIPPED` llega a la pantalla.
 
 const ZONAS: ItemLocation[] = ["EQUIPPED", "CARRIED", "STORED"];
 const TIPOS: ItemKind[] = ["WEAPON", "ARMOR", "SHIELD", "CONSUMABLE", "GEAR", "OTHER"];
@@ -38,7 +39,7 @@ export function FiltrosDeObjetos({
             active={filtro.donde === zona}
             onClick={() => onCambiar({ ...filtro, donde: filtro.donde === zona ? null : zona })}
           >
-            {NOMBRE_FILTRO_ZONA[zona]}
+            {NOMBRE_ZONA[zona]}
           </FilterChip>
         ))}
         <span aria-hidden="true" className="mx-s1 h-4 w-px bg-[color:var(--copper-rule)]" />

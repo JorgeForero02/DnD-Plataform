@@ -20,18 +20,6 @@ export const SUBTITULO_ZONA: Record<ItemLocation, string> = {
   STORED: "en otro sitio",
 };
 
-/**
- * La ficha de filtro de una zona (tarea 9): «solo los equipados». **A propósito distinta del
- * rótulo de la zona** («Equipado»): el rótulo nombra el sitio y la ficha nombra el conjunto que
- * deja ver, y además las dos conviven en la misma pantalla —un texto idéntico en un botón y en
- * un titular es lo que hace que quien busca «Equipado» (una persona o una prueba) dé con dos.
- */
-export const NOMBRE_FILTRO_ZONA: Record<ItemLocation, string> = {
-  EQUIPPED: "Equipados",
-  CARRIED: "En la mochila",
-  STORED: "Guardados",
-};
-
 export const NOMBRE_ACCION_ZONA: Record<ItemLocation, string> = {
   EQUIPPED: "Quitar",
   CARRIED: "Equipar",

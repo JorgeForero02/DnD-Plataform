@@ -145,15 +145,17 @@ describe("PaginaDeInventario", () => {
     expect(screen.getByText("Cofre con monedas")).toBeInTheDocument();
 
     // Cada objeto vive en su zona, con la acción que le toca.
-    const zonaEquipado = screen.getByText("Equipado").closest("section")!;
+    // Por rol y no por texto: la ficha de filtro «Equipado» (tarea 9) es un botón con el mismo
+    // texto; el rótulo de la zona es el único encabezado que empieza así.
+    const zonaEquipado = screen.getByRole("heading", { name: /^Equipado\b/ }).closest("section")!;
     expect(within(zonaEquipado).getByText("Anillo de protección")).toBeInTheDocument();
     expect(within(zonaEquipado).getByRole("button", { name: "Quitar" })).toBeInTheDocument();
 
-    const zonaEncima = screen.getByText("Encima").closest("section")!;
+    const zonaEncima = screen.getByRole("heading", { name: /^Encima\b/ }).closest("section")!;
     expect(within(zonaEncima).getByText("Cuerda de seda")).toBeInTheDocument();
     expect(within(zonaEncima).getByRole("button", { name: "Equipar" })).toBeInTheDocument();
 
-    const zonaGuardado = screen.getByText("Guardado").closest("section")!;
+    const zonaGuardado = screen.getByRole("heading", { name: /^Guardado\b/ }).closest("section")!;
     expect(within(zonaGuardado).getByText("Cofre con monedas")).toBeInTheDocument();
     expect(within(zonaGuardado).getByRole("button", { name: "Traer" })).toBeInTheDocument();
   });
@@ -741,7 +743,7 @@ describe("PaginaDeInventario — a página (tarea 9)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Consumible" }));
     expect(within(inventario).getByRole("button", { name: /ver detalle de Daga/i })).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: "Guardados" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardado" }));
     expect(within(detalle).getByText("Cuerda de seda")).toBeInTheDocument();
   });
 

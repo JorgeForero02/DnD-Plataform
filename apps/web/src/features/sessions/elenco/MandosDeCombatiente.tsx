@@ -167,7 +167,12 @@ export function MandosDeCombatiente({
         size="xl"
       >
         {panel === "hoja" && (
-          <HojaCalculada campaignId={campaignId} characterId={characterId} puedeEditar />
+          <HojaCalculada
+            campaignId={campaignId}
+            characterId={characterId}
+            puedeEditar
+            disposicion="mesa"
+          />
         )}
       </Dialog>
     </>

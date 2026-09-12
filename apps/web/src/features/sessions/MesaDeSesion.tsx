@@ -459,7 +459,12 @@ function PanelesSuperpuestos({
         size="xl"
       >
         {personajeId && (
-          <HojaCalculada campaignId={campaignId} characterId={personajeId} puedeEditar />
+          <HojaCalculada
+            campaignId={campaignId}
+            characterId={personajeId}
+            puedeEditar
+            disposicion="mesa"
+          />
         )}
       </Dialog>
 

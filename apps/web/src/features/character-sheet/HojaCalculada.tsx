@@ -3,8 +3,6 @@ import { ABILITY_KEYS, SKILLS } from "@dnd/shared";
 import { useCharacterSheet } from "./hooks";
 import { ValorDerivado } from "./Traza";
 import { TirarBoton } from "./TirarBoton";
-import { Avisos } from "./Avisos";
-import { EleccionesPendientes } from "./EleccionesPendientes";
 import { PuntosDeGolpe } from "./PuntosDeGolpe";
 import { ModificadoresTemporales } from "./ModificadoresTemporales";
 import { RecursosYDescansos } from "./RecursosYDescansos";
@@ -16,12 +14,12 @@ import { AtaquesYLanzamiento } from "./AtaquesYLanzamiento";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { DadosDeGolpe, PercepcionPasiva, SalvacionesDeMuerte } from "./TarjetasDeEstado";
 import { CompetenciasConArmas, Personalidad, RasgosYAptitudes } from "./BloquesDelPie";
-import { AvisoDeDm } from "./AvisoDeDm";
-import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
 import { Caracteristicas, FichaEditable } from "./IdentidadEditable";
 import { EmptyState } from "../../ui/Collection";
 import { ABREVIATURA_CARACTERISTICA, NOMBRE_CARACTERISTICA, NOMBRE_HABILIDAD } from "./vocabulario";
-import { ROTULO_DE_CASILLA, TarjetaDeHoja } from "./Tarjeta";
+import { TarjetaDeHoja } from "./Tarjeta";
+import { Cabecera } from "./Cabecera";
+import type { Disposicion } from "./pestanas/tipos";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje: lee `GET .../sheet` y enseña la traza de
 // cada número derivado, los avisos, las elecciones pendientes, los PG con su delta, recursos y
@@ -81,10 +79,14 @@ export function HojaCalculada({
   campaignId,
   characterId,
   puedeEditar,
+  disposicion,
 }: {
   campaignId: string;
   characterId: string;
   puedeEditar: boolean;
+  // Tarea 3 (spec 2026-09-11) — todavía sin usar aquí abajo: la recibe y se la pasa a `Cabecera`
+  // tal cual. Las pestañas que vengan después (Tarea 4+) sí la necesitarán para su propia forma.
+  disposicion: Disposicion;
 }) {
   const { data, isLoading, isError } = useCharacterSheet(campaignId, characterId);
 
@@ -165,68 +167,22 @@ export function HojaCalculada({
     );
   }
 
-  // La velocidad de la cabecera es la **efectiva** —la que ya tiene en cuenta las condiciones—,
-  // que calcula el servidor. Si la respuesta no la trae (una mutación, que no la manda), se pinta
-  // la base sin traza en vez de recalcular aquí una regla del juego que vive en la API.
-  const velocidad = data.effectiveSpeeds?.walk ?? { total: sheet.speeds.walk ?? 0, steps: [] };
-
   return (
     <div className="flex flex-col gap-s4">
-      {/* **La tira de la cabecera, pegada al nombre.** `top-16` es la altura de la cabecera de la
-          aplicación (`ui/AppShell.tsx`, `h-16`), que también es fija: esta se apoya justo debajo
-          en vez de deslizarse por detrás. El `-mt-s5` la sube hasta la banda del nombre, que
-          pinta la página: en la maqueta las dos cosas viven en la misma línea, y el hueco que
-          había entre ellas era el defecto que el autor señaló. */}
-      <section
-        aria-label="resumen de combate"
-        // **El escalón lo declara quien lo tiene, no esta hoja.** `AppShell` pone
-        // `--tira-fija-top: 4rem` porque su cabecera mide `h-16`, y `--tira-fija-pull: -1.5rem`
-        // para subir la tira a la banda del nombre. Dentro de un cajón no hay ninguna de las
-        // dos cosas y las variables valen **cero**: escribir `top-16` aquí hacía que la tira se
-        // parase 64px por debajo del borde del cajón y **se solapase 72px con su propio cuerpo**.
-        className="sticky top-[var(--tira-fija-top,0px)] z-20 -mx-s2 mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
-      >
-        <div className="flex flex-wrap items-start justify-end gap-s2">
-          <ValorDerivado variante="compacta" etiqueta="CA" valor={sheet.derived.ac} />
-          <ValorDerivado
-            variante="compacta"
-            etiqueta="Inic."
-            etiquetaLarga="Iniciativa"
-            valor={sheet.derived.initiative}
-          />
-          <ValorDerivado
-            variante="compacta"
-            etiqueta="Vel. (pies)"
-            etiquetaLarga="Velocidad efectiva en pies"
-            valor={{ key: "speed.walk", total: velocidad.total, steps: velocidad.steps }}
-          />
-          {/* Los PG de la cabecera son **solo lectura**: el delta —recibo daño, me curo— se
-              aplica en su tarjeta, que es donde está la acción. Repetir aquí el control sería el
-              mismo dato en dos sitios, que es como se acaba con uno de los dos mintiendo. */}
-          <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
-            <p className={`${ROTULO_DE_CASILLA} leading-tight`}>PG</p>
-            <p className="font-data text-chrome-lg leading-none text-text">
-              {hp.current ?? "—"} / {hp.max ?? "—"}
-            </p>
-            {hp.temp > 0 && (
-              <p className="font-chrome text-chrome-xs text-accent-text">+{hp.temp} temporales</p>
-            )}
-          </div>
-          {sheet.derived.proficiencyBonus && (
-            <ValorDerivado
-              variante="compacta"
-              etiqueta="Comp."
-              etiquetaLarga="Competencia"
-              valor={sheet.derived.proficiencyBonus}
-            />
-          )}
-        </div>
-      </section>
+      {/* La cabecera fija vive en su propio componente desde la Tarea 3 (spec 2026-09-11): es
+          HERMANA del cuerpo de abajo, nunca su padre — la nota completa sobre por qué está en
+          `Cabecera.tsx`. */}
+      <Cabecera
+        campaignId={campaignId}
+        characterId={characterId}
+        data={{ ...data, sheet }}
+        puedeEditar={puedeEditar}
+        disposicion={disposicion}
+      />
 
-      {/* El cuerpo. Es HERMANO de la tira de arriba, nunca su padre — ver la nota del `sticky`. */}
+      {/* El cuerpo. Es HERMANO de la cabecera de arriba, nunca su padre — ver la nota del `sticky`
+          en `Cabecera.tsx`. */}
       <div key="cuerpo" data-piel="cromado" className="flex flex-col gap-s4">
-        <AvisoDeDm campaignId={campaignId} />
-
         <div key="rejilla" className="grid items-start gap-s4 lg:grid-cols-2">
           {/* --- Columna izquierda: la cadena que explica los números. NO se intercala nada
               entre características, salvaciones y habilidades. --- */}
@@ -302,14 +258,6 @@ export function HojaCalculada({
 
           {/* --- Columna derecha: lo accionable. --- */}
           <div className="flex min-w-0 flex-col gap-s4">
-            <Avisos warnings={sheet.warnings} />
-            <EleccionesPendientes
-              campaignId={campaignId}
-              characterId={characterId}
-              pendingChoices={sheet.pendingChoices}
-              choicesActuales={character.choices ?? {}}
-            />
-
             <TarjetaDeHoja titulo="Puntos de golpe">
               <PuntosDeGolpe
                 campaignId={campaignId}
@@ -414,17 +362,6 @@ export function HojaCalculada({
                 la misma hoja enseñaba el dinero dos veces —una para leer y otra para mover—, que
                 es la clase de duplicado que acaba discrepando en cuanto uno de los dos se
                 actualiza y el otro no. Se queda el que además deja hacer algo. */}
-
-            {/* La subida de nivel vive en su propia feature (2A.11): esta hoja solo la monta.
-                En la maqueta es un botón del bloque accionable, no un adorno suelto flotando
-                sobre la cabecera, y ahí se lee mejor: al lado de lo que cambia al pulsarlo. */}
-            {puedeEditar && (
-              <BotonSubirNivel
-                campaignId={campaignId}
-                characterId={characterId}
-                level={character.level}
-              />
-            )}
           </div>
         </div>
 

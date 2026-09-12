@@ -211,9 +211,12 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
 
   it("traduce raza, subclase, clase, reposición de recursos y condiciones", async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<HojaCalculada campaignId="c1" characterId="ch1" puedeEditar={false} />, {
-      wrapper: wrapper(qc),
-    });
+    render(
+      <HojaCalculada campaignId="c1" characterId="ch1" puedeEditar={false} disposicion="pagina" />,
+      {
+        wrapper: wrapper(qc),
+      },
+    );
 
     await waitFor(() => expect(screen.getByText(/Semielfo/)).toBeInTheDocument());
 
@@ -221,7 +224,13 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
     // (`useResources`/`useConditions`), independientes de la de la hoja: cada una espera su
     // propio asentamiento en vez de asumir que ya resolvió porque la hoja lo hizo.
     expect(screen.getByText(/Mago/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText("Agotamiento (nivel 2)")).toBeInTheDocument());
+    // Desde la Tarea 3 el nombre de una condición activa aparece DOS veces: el chip de la
+    // cabecera (`Cabecera.tsx`) y la tarjeta "Condiciones activas" del cuerpo. `getByText`
+    // exige una sola coincidencia; se usa `getAllByText` porque lo que importa aquí es que la
+    // traducción llegó a pantalla, no en cuántos sitios.
+    await waitFor(() =>
+      expect(screen.getAllByText("Agotamiento (nivel 2)").length).toBeGreaterThan(0),
+    );
     await waitFor(() => expect(screen.getByText(/descanso largo/)).toBeInTheDocument());
 
     const cuerpo = document.body.textContent ?? "";
@@ -240,9 +249,12 @@ describe("HojaCalculada — ninguna clave de enumeración llega a pantalla", () 
 
   it("muestra el aviso de elección pendiente como tarea, y el de fórmula de CA descartada", async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<HojaCalculada campaignId="c1" characterId="ch1" puedeEditar={false} />, {
-      wrapper: wrapper(qc),
-    });
+    render(
+      <HojaCalculada campaignId="c1" characterId="ch1" puedeEditar={false} disposicion="pagina" />,
+      {
+        wrapper: wrapper(qc),
+      },
+    );
 
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "elecciones pendientes" })).toBeInTheDocument(),
@@ -269,9 +281,18 @@ const catalogo: Catalog = {
 
 function pintarHoja(puedeEditar = false) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<HojaCalculada campaignId="c1" characterId="ch1" puedeEditar={puedeEditar} />, {
-    wrapper: wrapper(qc),
-  });
+  // La disposición no cambia nada de lo que estas pruebas comprueban (columnas, traza,
+  // inventario…) — las dos que sí dependían de ella, sobre la cabecera fija, se movieron a
+  // `Cabecera.test.tsx` (Tarea 3). Se fija a "pagina", como monta `CharacterDetailPage.tsx`.
+  return render(
+    <HojaCalculada
+      campaignId="c1"
+      characterId="ch1"
+      puedeEditar={puedeEditar}
+      disposicion="pagina"
+    />,
+    { wrapper: wrapper(qc) },
+  );
 }
 
 describe("H3 — la cabecera fija y las dos columnas", () => {
@@ -283,37 +304,10 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
   });
 
-  it("la cabecera reúne los cinco números que se consultan en mitad de un turno", async () => {
-    pintarHoja();
-    const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
-    const texto = cabecera.textContent ?? "";
-
-    // **La tira compacta de la maqueta**: los rótulos van abreviados para que cinco casillas
-    // quepan en una fila, y el nombre entero viaja en un `sr-only` hermano — abreviar en
-    // pantalla sin decir el nombre completo en alguna parte sería cambiar densidad por
-    // accesibilidad. Se comprueban los dos, o la abreviatura podría quedarse sola.
-    for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
-      expect(texto.includes(rotulo), `«${rotulo}» tiene que estar en la cabecera`).toBe(true);
-    }
-    for (const largo of ["Iniciativa", "Velocidad efectiva en pies", "Competencia"]) {
-      expect(texto.includes(largo), `«${largo}» tiene que anunciarse entero`).toBe(true);
-    }
-    // Y sus valores, no solo los rótulos: la CA (12) y la velocidad (30) se despliegan desde
-    // aquí, y los PG se leen enteros.
-    const dentro = within(cabecera);
-    expect(dentro.getByRole("button", { name: "12" })).toBeInTheDocument();
-    expect(dentro.getByRole("button", { name: "30" })).toBeInTheDocument();
-    expect(texto).toContain("15 / 22");
-  });
-
-  it("los PG de la cabecera no traen el control de daño: la acción vive en su bloque", async () => {
-    pintarHoja(true);
-    const cabecera = await screen.findByRole("region", { name: "resumen de combate" });
-    expect(cabecera.querySelector("input")).toBeNull();
-    // El control sí existe, pero fuera de la cabecera.
-    const campo = await screen.findByLabelText("Cambio de puntos de golpe");
-    expect(cabecera.contains(campo)).toBe(false);
-  });
+  // Las dos `it`s de este describe que hablaban de la cabecera fija («reúne los cinco
+  // números…» y «los PG de la cabecera no traen el control de daño…») se movieron a
+  // `Cabecera.test.tsx` en la Tarea 3, ahora que la cabecera es su propio componente. Estas dos
+  // se quedan: comprueban la estructura del CUERPO de la hoja, no la cabecera.
 
   it("características → salvaciones → habilidades bajan seguidas por la misma columna", async () => {
     pintarHoja();

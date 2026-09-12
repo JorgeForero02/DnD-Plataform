@@ -141,7 +141,12 @@ export function CharacterDetailPage() {
       />
 
       <div className="space-y-s6">
-        <HojaCalculada campaignId={id} characterId={characterId} puedeEditar={puedeEditar} />
+        <HojaCalculada
+          campaignId={id}
+          characterId={characterId}
+          puedeEditar={puedeEditar}
+          disposicion="pagina"
+        />
 
         <section>
           <OrnamentRule className="mb-s3">Historia</OrnamentRule>

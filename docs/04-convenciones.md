@@ -472,6 +472,33 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   **en el servidor**, filtrada por `canView` antes que por el texto (ficha U3, 2026-09-05/06), y
   no ampliando este filtro de cliente para que reciba más de lo que debería.
 
+- **Reparto interno de tarjeta (pulido 2026-09-12).** Cabecera · cuerpo · pie, con un solo
+  relleno (`p-s3`); los números alineados a una rejilla de columnas; **una tarjeta no crece para
+  llenar un hueco: la rejilla la coloca** (`items-start`, y alturas iguales por fila solo donde
+  haga falta con `grid-rows`). Lo mide `e2e/espacios.spec.ts`<!-- docs-lint-ignore -->: ningún
+  hueco vertical entre tarjetas hermanas mayor de **48 px** (`HUECO_MAX_PX`), ninguna tarjeta más
+  baja que su vecina de fila en más de **24 px** (`DESNIVEL_MAX_PX`) salvo la última. Las cinco
+  casillas de la cabecera (PG, CA, Iniciativa, Velocidad, Competencia) pasan a un ancho y alto
+  fijos de **4.75rem** (`ANCHO_CASILLA_REM`) por **3.75rem** (`ALTO_CASILLA_REM`), en vez del
+  `min-w` asimétrico de hoy — números salidos de la
+  [nota de diseño](./superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md).
+
+- **Acciones de una fila: hasta 2 visibles (`ACCIONES_VISIBLES`), el resto en un menú «…»
+  dibujado.** Nunca una fila de cinco botones (anexo #1). El menú es
+  `ui/MenuDeAcciones.tsx`<!-- docs-lint-ignore -->: se abre hacia donde hay sitio, flechas y
+  `Escape`, y devuelve el foco.
+
+- **Espacio reservado.** Lo que puede cambiar de tamaño al escribir —la línea de error de un
+  campo, un contador, un aviso— reserva su alto (`min-height`) para que la tarjeta no salte
+  (anexo #8). `Field` lo hace con `reservaEspacio`.
+
+- **Sticky con escalón.** Todo lo pegado respeta `--tira-fija-top`, y dentro de un cajón las
+  variables `--tira-fija-*` valen lo que el cajón declara. Se mide con `boundingBox` (anexo #6).
+
+- **Un dado, una forma.** Seis dibujos (`IconoDado`, `ui/Iconos.tsx`): d4 tetraedro, d6 cubo,
+  d8 octaedro, d10/d100 trapezoedro, d12 dodecaedro, d20 icosaedro. Un resultado enseña **cada
+  dado** con su forma y su cara; los descartados tachados (anexo #11, #12).
+
 ## Los tokens de color se declaran por CANALES (B0, 2026-09-04)
 
 **La causa de los 49 defectos invisibles está arreglada, y la prohibición que la tapaba se

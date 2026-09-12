@@ -1,4 +1,4 @@
-# La puerta de efectos — curar a otro, el daño de una salvación, y «hasta el próximo descanso»
+# La puerta de efectos — curar a otro, el daño de una salvación, la bandeja de daño, y «hasta el próximo descanso»
 
 > Escrito el 2026-09-12 con el autor, al descubrir que tres huecos que él creía cerrados en el paso
 > 2 seguían abiertos: P2-4 y P2-5 de [06-pendientes.md](../../06-pendientes.md) y una duración que
@@ -161,6 +161,105 @@ si peticion.pendingEffect y peticion.dc no es null:
 No existe en el SRD (nadie salva contra una curación). `signo: 1` con `siSalva` se acepta por
 simetría del esquema pero **no se siembra**; si el paso 3 lo necesita, el mismo camino vale.
 
+## 4 bis · La bandeja de daño: el daño de un ataque se aplica con un clic, no a mano
+
+**Añadido el 2026-09-12 por decisión del autor**, tras investigar cómo lo hace Foundry: «es tedioso
+tener que estar cambiando a mano; al menos así da tiempo al DM de revisar si da, y al jugador
+también».
+
+### 4b.1 · Qué hace Foundry (sistema oficial dnd5e, sin módulos)
+
+No aplica el daño solo. Al tirar daño, la tarjeta del chat trae una **bandeja** con «la lista fija
+de las criaturas que estaban marcadas al tirar», un **preview por objetivo** que ya descuenta
+resistencias, inmunidades y vulnerabilidades —cada una un interruptor que el DM puede ignorar o
+rebajar—, y un botón **aplicar** (dnd5e 3.1.0). Al aplicar, si el objetivo se concentraba, pide la
+salvación de concentración. Hasta la 6.0 la bandeja era solo del DM; los jugadores pidieron
+aplicarla a **sus propios** personajes y se aceptó (issue #3300). Aplicar a un enemigo sigue siendo
+del DM. Fuentes en el commit.
+
+### 4b.2 · Lo que hay hoy, medido
+
+- `resolveAttack` (`character-sheet.service.ts`, ~L2340-2420) ya conoce el objetivo, mira su CA
+  real y escribe `ATTACK_RESOLVED` con `subjectId = target.id`, `verdict` y `rollEventId` (la
+  tirada de ataque). **El objetivo no viaja en el payload** —a propósito, para no filtrar la CA—,
+  pero es el sujeto del suceso, así que se recupera sin cambiar el esquema.
+- `rollAttack` con `part: "DAMAGE"` recibe `attackRollEventId`, encuentra la tirada de ataque
+  (`esCriticoDesdeLaTirada`, ~L2140) y dobla los dados si fue 20 natural. **No sabe nada del
+  objetivo**: el daño sale al hilo y ahí se queda.
+- Aplicarlo hoy es `PonerDano` en el elenco (`sessions/elenco/PonerDano.tsx`): abrir el objetivo,
+  teclear la cifra, elegir el tipo, citar la tirada. Cuatro gestos por ataque, y solo el DM.
+- `changeHp` ya aplica resistencia, vulnerabilidad e inmunidad por tipo (2.5.1), PG temporales,
+  daño masivo y pide la salvación de concentración. **El cálculo existe; falta el clic.**
+
+### 4b.3 · La regla
+
+No se automatiza el descuento: **se propone y alguien lo confirma**. Es la doctrina D-2.5-2 («el
+daño lo aplican el DM y el dueño») con el trabajo de sumar hecho por la máquina. El fantasma del
+autor: resistencia a contundente, perforante y cortante **no mágicos** (SRD 5.1, *Ghost*), inmune
+a frío, necrótico y veneno. La bandeja diría «11 cortante → **5** (resistencia: no mágico)» con una
+espada normal y «→ 11» con una +1; el DM lo ve antes de pulsar.
+
+### 4b.4 · El dato: `RollEvent` de daño sabe a quién
+
+El daño de un ataque **resuelto contra un objetivo** guarda en su suceso (`ABILITY_ROLL`, el que ya
+escribe `rolls.roll`) dos campos nuevos y opcionales en el payload:
+
+```ts
+// game-event.schema.ts — payload del ABILITY_ROLL de daño
+pendingDamage: z.object({
+  targetCharacterId: z.string().min(1),   // subjectId del ATTACK_RESOLVED que lo justifica
+  attackResolvedEventId: z.string().min(1),
+  damageType: damageTypeSchema,
+  amount: z.number().int().min(0),         // el total tirado, ya con crítico y Furia
+  appliedEventId: z.string().min(1).optional(), // el HP_CHANGED cuando se aplique; ausente = pendiente
+}).optional(),
+```
+
+`rollAttack` (`part: "DAMAGE"`) lo rellena **solo si** `attackRollEventId` apunta a una tirada con
+un `ATTACK_RESOLVED` colgando y el veredicto fue `HIT` o `CRITICAL`; un daño tirado «al aire» o sobre
+un fallo no lleva `pendingDamage`. La salvación con `pendingEffect` (§4) es el mismo concepto por la
+otra puerta: **una tirada que sabe a quién le toca**.
+
+### 4b.5 · El preview y el clic
+
+Endpoint nuevo, **de solo lectura y de aplicación**, ambos en `character-sheet.controller.ts`:
+
+- `GET /campaigns/:id/rolls/:rollEventId/damage-preview` → `{ target, amount, damageType,
+  resulting: { taken, absorbedByTemp, modifier: "resistant" | "vulnerable" | "immune" | null,
+  reason }, canApply: boolean }`. Lo calcula la misma función que `changeHp` usa para reducir
+  (`character-state/damage/`), sin escribir nada. **Solo lo ve quien podría aplicarlo** (§4b.6);
+  para los demás, 404 — enseñar «resistente» a un jugador que no ve el statblock es filtrar.
+- `POST /campaigns/:id/rolls/:rollEventId/apply-damage` → llama a `changeHpFromEffect(tx,
+  actorUserId = quien tiró el daño, targetCharacterId, { delta: -amount, damageType, rollEventId,
+  reason: "Ataque: <arma>" })` y marca `pendingDamage.appliedEventId`. **Idempotente**: un segundo
+  clic es 409 «ya aplicado» (la marca se escribe en la misma transacción que el `HP_CHANGED`, con
+  `updateMany … where appliedEventId IS NULL`, el mismo patrón que `resolvedAt` en las peticiones).
+
+Pantalla (`sessions/hilo/`): la tarjeta de un daño con `pendingDamage` enseña la línea del preview
+—«Espectro: 11 cortante → 5 · resistencia a no mágico»— y un botón **Aplicar** para quien pueda.
+Aplicado, la tarjeta dice «aplicado» y enlaza el `HP_CHANGED`. Si el DM quiere otra cosa (ignorar
+la resistencia, como el interruptor de Foundry), usa `PonerDano` como hoy: **no se construye un
+segundo formulario**; la bandeja es el camino corto, no el único.
+
+### 4b.6 · Quién pulsa
+
+| Quién | Sobre quién | Por qué |
+|---|---|---|
+| El DM | cualquiera | como hoy (D-2.5-2) |
+| El dueño del objetivo | su propio personaje | Foundry 6.0, issue #3300: aplicarse el daño que te hicieron es tuyo |
+| El atacante | nadie | el atacante no toca los PG de otro; eso sigue siendo la puerta cerrada |
+
+Se comprueba en el servidor con `requireOwnerOrDM` sobre el **objetivo**, no sobre el atacante. El
+`HP_CHANGED` lo firma **quien tiró el daño** (el atacante, `actorUserId`), porque la crónica dice
+quién lo causó, no quién pulsó.
+
+### 4b.7 · Lo que NO entra
+
+- Interruptores por resistencia en la bandeja (el «ignorar» de Foundry): `PonerDano` ya lo cubre.
+- Aplicar a varios objetivos desde un ataque: un ataque de arma tiene un objetivo. El área es la
+  salvación (§4), que ya reparte por objetivo.
+- Daño automático sin clic. Descartado por el autor: revisar antes de pulsar es el punto.
+
 ## 5 · «Hasta el próximo descanso» es una duración que el descanso resuelve
 
 ### 5.1 · La regla
@@ -220,6 +319,7 @@ valor `SHORT`/`LONG` llega a pantalla: pasa por `vocabulario.ts`.
 | `changeHpFromEffect` | solo código con `tx`, tras `canView` en `usar` | e2e: jugador A cura a B con actividad → 200 y `HP_CHANGED` firmado por A; jugador A `PATCH` PG de B → 403 (sin cambios) |
 | `createFromEffect` | ídem | e2e: A lanza salvación a B → B ve la petición; A `POST /roll-requests` directo → 403 (sin cambios) |
 | Objetivo invisible | `requireVisibleCharacter` ya en `usar` | e2e: A usa actividad sobre un PNJ `DM_ONLY` → 404, sin gastar el recurso (ya existe la garantía L117) |
+| Bandeja de daño | DM sobre cualquiera; dueño solo sobre sí; el atacante nunca | e2e: el atacante pulsa «aplicar» sobre el enemigo → 403; el DM → 200 y `HP_CHANGED` firmado por el atacante; segundo clic → 409 |
 | Daño al responder | solo con `pendingEffect` que escribió `usar` | unitaria: `answer` con `pendingEffect` inyectado a mano en la base **no** es posible por HTTP; el esquema de `create` por HTTP **no acepta** `pendingEffect` (se quita del input público) |
 
 ## 7 · Pruebas
@@ -227,7 +327,7 @@ valor `SHORT`/`LONG` llega a pantalla: pasa por `vocabulario.ts`.
 | Capa | Qué |
 |---|---|
 | Unitarias API | `changeHp` delega en `changeHpFromEffect` (misma mecánica, prueba de igualdad de resultado); `createFromEffect` sin DM; `answer` aplica entero/mitad/nada según `total` vs `dc` y `siSalva`, con `floor`; descanso corto retira SHORT, largo retira SHORT+LONG, interrumpido nada; `refine` de excluyentes |
-| e2e API | los cuatro de §6 + «bola de fuego a dos objetivos: el mismo `amount` para los dos, uno salva y recibe la mitad» |
+| e2e API | los de §6 + «bola de fuego a dos objetivos: el mismo `amount` para los dos, uno salva y recibe la mitad» + «espada normal contra el fantasma: preview 5 de 11; espada +1: 11» |
 | Unitarias web | el selector ofrece los dos radios y manda `expiresOnRest`; la línea y el chip lo traducen |
 | Navegador | un e2e: el clérigo cura al guerrero desde su hoja; la CA/PG del guerrero cambia en su navegador (dos contextos, como `no-puedes-editar.spec.ts`) |
 | Mutación | quitar el `>=` por `>` en `answer` → enrojece el caso «empate salva»; quitar `"SHORT"` del largo → enrojece |
@@ -251,6 +351,7 @@ valor `SHORT`/`LONG` llega a pantalla: pasa por `vocabulario.ts`.
 | Empate | `total >= dc` salva (SRD) | — |
 | «Hasta el descanso» | columna `expiresOnRest`, excluyente con `durationSeconds`; el descanso **borra** con suceso | marcar «vencida»; un número grande de segundos |
 | Alcance | solo condiciones | modificadores temporales (cuando el paso 3 lo pida) |
+| Bandeja de daño | preview calculado por el servidor + un clic para el DM o el dueño del objetivo; el atacante nunca; sin descuento automático | daño automático al impactar (descartado por el autor: revisar antes de pulsar); un segundo formulario con interruptores (lo cubre `PonerDano`) |
 
 ## 10 · Cuándo
 
@@ -262,4 +363,4 @@ se ejecuta cuando la hoja cierre. Dos migraciones (`RollRequest.pendingEffect`,
 ## Definición de terminado del diseño
 
 Aprobado por el autor cuando lo lea. Su plan por tareas se escribe con `writing-plans` (estimado:
-5 tareas, una sesión).
+7 tareas, una sesión larga: las cinco de antes más `pendingDamage` + preview/aplicar y su tarjeta en el hilo).

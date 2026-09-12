@@ -32,6 +32,7 @@ function srdItem(parcial: Partial<ResolvedItem> & { name: string; ref: string })
     weightOz: 16,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     ...parcial,
   };
 }

@@ -23,6 +23,7 @@ function objeto(overrides: Partial<ResolvedItem> & { weapon: WeaponData }): Reso
     weightOz: 48,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     ref: "SRD:test-weapon",
     source: "SRD",
     ...overrides,
@@ -280,6 +281,7 @@ describe("buildAttacks", () => {
       weightOz: 32,
       effects: [],
       requiresAttunement: false,
+      attuned: false,
       ref: "SRD:backpack",
       source: "SRD",
     };
@@ -324,6 +326,7 @@ describe("lo que encontró la auditoría de mecánica de 2B", () => {
     weightOz: 48,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     slot: "MAIN_HAND",
     weapon: {
       category: "MARTIAL",
@@ -342,6 +345,7 @@ describe("lo que encontró la auditoría de mecánica de 2B", () => {
     weightOz: 96,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     slot: "OFF_HAND",
     armor: { category: "SHIELD", baseAc: 2, strengthRequirement: 0, stealthDisadvantage: false },
   };
@@ -415,6 +419,7 @@ describe("el arma mágica (M2B-1, la ficha que abrió la auditoría de mecánica
       { kind: "weaponDamage", amount: 1 },
     ],
     requiresAttunement: false,
+    attuned: false,
     slot: "MAIN_HAND",
     weapon: {
       category: "MARTIAL",
@@ -460,5 +465,53 @@ describe("el arma mágica (M2B-1, la ficha que abrió la auditoría de mecánica
 
     expect(r.attacks[0].attackBonus.total).toBe(6);
     expect(r.attacks[0].damage.expression).toBe("1d8+5");
+  });
+});
+
+// HP-9a (2026-09-12) — SRD 5.1 §Attunement: el +1 al ataque y al daño es propiedad mágica y
+// solo cuenta con el arma sintonizada; el dado del arma es mundano y se queda siempre.
+describe("HP-9a — el arma que requiere sintonización solo suma su +N sintonizada", () => {
+  const espadaQueRequiere = (attuned: boolean): ResolvedItem => ({
+    ref: "CAMPAIGN:espada-atada",
+    source: "CAMPAIGN",
+    name: "Espada larga +1 (requiere sintonización)",
+    kind: "WEAPON",
+    weightOz: 48,
+    effects: [
+      { kind: "weaponAttack", amount: 1 },
+      { kind: "weaponDamage", amount: 1 },
+    ],
+    requiresAttunement: true,
+    attuned,
+    slot: "MAIN_HAND",
+    weapon: arma({ properties: [] }),
+  });
+  const mods = { str: 3, dex: 1, con: 2, int: 0, wis: 0, cha: -1 };
+  const tirar = (item: ResolvedItem) =>
+    buildAttacks({
+      items: [item],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    }).attacks[0];
+
+  it("sin sintonizar: +6 al ataque y 1d8+3 — el arma pega como una espada larga corriente, sin paso `item`", () => {
+    const ataque = tirar(espadaQueRequiere(false));
+    expect(ataque.attackBonus.total).toBe(6);
+    expect(ataque.attackBonus.steps.some((p) => p.sourceType === "item")).toBe(false);
+    expect(ataque.damage.expression).toBe("1d8+3");
+  });
+
+  it("sintonizada: +7 al ataque con su paso `item`, y 1d8+4", () => {
+    const ataque = tirar(espadaQueRequiere(true));
+    expect(ataque.attackBonus.total).toBe(7);
+    expect(ataque.attackBonus.steps.some((p) => p.sourceType === "item")).toBe(true);
+    expect(ataque.damage.expression).toBe("1d8+4");
+  });
+
+  it("un arma +1 que NO requiere sintonización suma igual sin estar sintonizada", () => {
+    const ataque = tirar({ ...espadaQueRequiere(false), requiresAttunement: false });
+    expect(ataque.attackBonus.total).toBe(7);
+    expect(ataque.damage.expression).toBe("1d8+4");
   });
 });

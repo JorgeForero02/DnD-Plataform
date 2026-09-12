@@ -19,6 +19,10 @@ import { PanelMonedas } from "./PanelMonedas";
 import { FilaObjeto } from "./FilaObjeto";
 import { SelectorDeObjeto } from "./SelectorDeObjeto";
 import { ZonaDeObjetos } from "./ZonaDeObjetos";
+import { accionesDeObjeto, type ManosDeObjeto } from "./accionesDeObjeto";
+import { DetalleDeObjeto } from "./DetalleDeObjeto";
+import { FiltrosDeObjetos } from "./FiltrosDeObjetos";
+import { filtrarObjetos, SIN_FILTRO, type FiltroDeObjetos } from "./filtrarObjetos";
 import { useMyRole } from "../campaigns/members";
 
 // Carril B1 — la pantalla de inventario (pantalla 20 del prototipo, revisión obligatoria).
@@ -38,9 +42,31 @@ function mensajeDeError(error: unknown): string {
 export function PaginaDeInventario({
   campaignId,
   characterId,
+  disposicion = "mesa",
+  puedeEditar = true,
 }: {
   campaignId: string;
   characterId: string;
+  /**
+   * Tarea 9 (spec 2026-09-11, «la hoja a página completa») — a `"pagina"` el inventario va en
+   * dos columnas, con la fila seleccionada abierta en un panel de detalle a la derecha; en la
+   * `"mesa"` (el valor por defecto, que es lo que montaba todo hasta ahora) no hay detalle: la
+   * ficha de la mesa es estrecha y la fila de una línea ya dice lo que hace falta en un turno.
+   * Los filtros existen en las dos: son baratos y en la mesa también se busca «la poción».
+   *
+   * Se declara aquí como literal y no se importa `Disposicion` de `character-sheet/pestanas`:
+   * esta feature no importa de `features/character-sheet` (frontera del carril, `hooks.ts`), y
+   * el tipo de la pestaña es estructuralmente el mismo, así que `Objetos.tsx` lo pasa tal cual.
+   */
+  disposicion?: "mesa" | "pagina";
+  /**
+   * Spec 2026-09-11 §7 — «en un personaje ajeno el detalle no pinta botones». Viene de la página
+   * (dueño o DM, `CharacterDetailPage`) a través de la pestaña `Objetos`; a `false`, ni el
+   * detalle ni las filas ofrecen equipar, sintonizar, gastar ni soltar. **Es la mitad de
+   * pantalla, no el control de acceso**: el servidor sigue rechazando con `requireOwnerOrDM`.
+   * Por defecto `true`, que es lo que los dos diálogos de la mesa montaban hasta ahora.
+   */
+  puedeEditar?: boolean;
 }) {
   const inventario = useInventory(campaignId, characterId);
   // D-CF-15 — solo el DM identifica. Igual que en `RecursosYDescansos.tsx`: mientras el rol no
@@ -67,6 +93,10 @@ export function PaginaDeInventario({
   const [filaASoltar, setFilaASoltar] = useState<InventoryRow | null>(null);
   const [errorMoneda, setErrorMoneda] = useState<{ key: CoinKey; mensaje: string } | undefined>();
   const [monedaEnVuelo, setMonedaEnVuelo] = useState<CoinKey | null>(null);
+  const [filtro, setFiltro] = useState<FiltroDeObjetos>(SIN_FILTRO);
+  // El id, no la fila: la fila cambia con cada respuesta del servidor (equipar, sintonizar) y
+  // la selección tiene que sobrevivir a eso. Si el filtro la esconde, cae a la primera visible.
+  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
 
   // **La región con su nombre existe también mientras carga y cuando falla.** Si el envoltorio
   // solo apareciera con datos, el sitio del inventario dentro de la hoja se movería de golpe al
@@ -90,10 +120,17 @@ export function PaginaDeInventario({
   }
 
   const { items, purse, totalWeightOz, carryCapacityOz, encumbrance } = inventario.data;
-  const equipados = items.filter((r) => r.location === "EQUIPPED");
-  const encima = items.filter((r) => r.location === "CARRIED");
-  const guardados = items.filter((r) => r.location === "STORED");
+  const aPagina = disposicion === "pagina";
+  // Las tres zonas se alimentan de lo filtrado; el contador de sintonía, del total: el tope de
+  // tres cuenta lo que hay, no lo que se está mirando.
+  const visibles = filtrarObjetos(items, filtro);
+  const equipados = visibles.filter((r) => r.location === "EQUIPPED");
+  const encima = visibles.filter((r) => r.location === "CARRIED");
+  const guardados = visibles.filter((r) => r.location === "STORED");
   const sintonizados = items.filter((r) => r.attuned).length;
+  const seleccionada = aPagina
+    ? (visibles.find((r) => r.id === seleccionadaId) ?? visibles[0] ?? null)
+    : null;
 
   const cambiarZona = (row: InventoryRow, destino: "EQUIPPED" | "CARRIED", slot?: EquipSlot) => {
     setErroresPorFila((e) => ({ ...e, [row.id]: "" }));
@@ -212,6 +249,117 @@ export function PaginaDeInventario({
     );
   };
 
+  /**
+   * Las cuatro manos de una fila, según la zona en la que vive. **Una sola función**: la fila y
+   * el panel de detalle la comparten, así que no pueden ofrecer cosas distintas ni cablear ids
+   * distintos —que es lo que tres copias inline por zona permitían.
+   */
+  const manosDe = (row: InventoryRow): ManosDeObjeto => {
+    switch (row.location) {
+      case "EQUIPPED":
+        return {
+          onAccionPrincipal: () => cambiarZona(row, "CARRIED"),
+          onSoltar: () => setFilaASoltar(row),
+          // **Solo donde el servidor la acepta**: equipado y que el objeto la pida. En «Encima»
+          // o «Guardado» el botón devolvería «Para sintonizar un objeto, primero hay que
+          // llevarlo puesto», que es un rechazo evitable.
+          onSintonizar: row.item.requiresAttunement ? () => alternarSintonia(row) : undefined,
+        };
+      case "CARRIED":
+        return {
+          // **Un arma pregunta la mano; lo demás va a su ranura de siempre.** Preguntarla para
+          // una armadura sería un paso que no decide nada.
+          onAccionPrincipal: () => {
+            if (!esArma(row)) return cambiarZona(row, "EQUIPPED");
+            setManoElegida("MAIN_HAND");
+            setManoPara(row.id);
+            // A página la pregunta se abre en el detalle (ver `elegirManoDe`), así que el
+            // detalle pasa a ser el de esta fila: la pregunta vive junto al objeto que la motiva.
+            if (aPagina) setSeleccionadaId(row.id);
+          },
+          onSoltar: () => setFilaASoltar(row),
+          onGastar: sePuedeGastar(row) ? () => gastar(row) : undefined,
+        };
+      case "STORED":
+        return {
+          onAccionPrincipal: () => cambiarZona(row, "CARRIED"),
+          onSoltar: () => setFilaASoltar(row),
+        };
+    }
+  };
+
+  /**
+   * **La pregunta de la mano se pinta en un solo sitio.** `ElegirMano` lleva radios con el mismo
+   * `name`, así que montarla a la vez en la fila y en el detalle sería un solo grupo de radios
+   * repartido en dos cajas. En la mesa va bajo la fila (no hay detalle); a página, en el detalle
+   * de esa fila, que `onAccionPrincipal` acaba de seleccionar. `null` si no toca preguntar.
+   */
+  const elegirManoDe = (row: InventoryRow) =>
+    manoPara === row.id ? (
+      <ElegirMano
+        nombre={row.item.name}
+        aDosManos={aDosManos(row)}
+        valor={manoElegida}
+        onElegir={setManoElegida}
+        onConfirmar={() => cambiarZona(row, "EQUIPPED", manoElegida)}
+        onCancelar={() => setManoPara(null)}
+      />
+    ) : null;
+
+  /**
+   * Residual del reseño final — a página, el rechazo de la fila SELECCIONADA ya lo anuncia el
+   * detalle (`error` más abajo en el JSX); pintarlo también aquí duplicaba el `role="alert"` y
+   * un lector de pantalla anunciaba el mismo mensaje dos veces. Las filas no seleccionadas
+   * conservan el suyo, y en la mesa (sin detalle) nada cambia.
+   */
+  const errorDeFila = (row: InventoryRow) =>
+    aPagina && row.id === seleccionada?.id ? undefined : erroresPorFila[row.id] || undefined;
+
+  /** Lo que cada `FilaObjeto` recibe además de sus manos; la selección solo existe a página. */
+  const propsDeFila = (row: InventoryRow) => ({
+    row,
+    ocupado: filaEnVuelo === row.id,
+    error: errorDeFila(row),
+    esDM,
+    onIdentificar: (input: { identified?: boolean; unidentifiedName?: string | null }) =>
+      identificar(row, input),
+    // Sin permiso de edición la fila no recibe manos y, por tanto, no pinta botones (spec §7).
+    ...(puedeEditar ? manosDe(row) : {}),
+    ...(aPagina
+      ? {
+          seleccionada: row.id === seleccionada?.id,
+          onSeleccionar: () => {
+            // Residual del reseño final — cambiar de fila cancela la pregunta de la mano
+            // pendiente de OTRA fila: el usuario se fue de esa pregunta. Reseleccionar la misma
+            // fila (manoPara ya vale su id) la deja intacta.
+            setManoPara((actual) => (actual !== null && actual !== row.id ? null : actual));
+            setSeleccionadaId(row.id);
+          },
+        }
+      : {}),
+  });
+
+  const columnaDeCargaYMonedas = (
+    <div
+      className={
+        aPagina ? "flex flex-col gap-s4" : "flex w-full flex-col gap-s4 lg:w-72 lg:shrink-0"
+      }
+    >
+      <PanelCarga
+        totalWeightOz={totalWeightOz}
+        carryCapacityOz={carryCapacityOz}
+        encumbrance={encumbrance}
+      />
+      <PanelMonedas
+        key={Object.values(purse).join("-")}
+        purse={purse}
+        onCambiar={aplicarDelta}
+        aplicando={monedaEnVuelo}
+        error={errorMoneda}
+      />
+    </div>
+  );
+
   return (
     // **Una región con nombre, no un `<div>` suelto y no un `<h1>`.** Esta pantalla se monta
     // dentro de la hoja de personaje, que ya tiene su titular: un segundo `<h1>` deja a quien
@@ -219,7 +367,11 @@ export function PaginaDeInventario({
     <section
       id="inventario"
       aria-label="inventario"
-      className="flex flex-col gap-s4 lg:flex-row lg:items-start"
+      className={
+        aPagina
+          ? "grid gap-s4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start"
+          : "flex flex-col gap-s4 lg:flex-row lg:items-start"
+      }
     >
       <div className="min-w-0 flex-1">
         <h2 className="mb-s4 font-title text-chrome-lg text-text">Inventario</h2>
@@ -235,88 +387,50 @@ export function PaginaDeInventario({
           Sintonización: {sintonizados} de {MAX_ATTUNED_ITEMS}
         </p>
 
+        <FiltrosDeObjetos filtro={filtro} onCambiar={setFiltro} />
+
         <ZonaDeObjetos ubicacion="EQUIPPED" vacia={equipados.length === 0}>
           {equipados.map((row) => (
-            <FilaObjeto
-              key={row.id}
-              row={row}
-              ocupado={filaEnVuelo === row.id}
-              error={erroresPorFila[row.id] || undefined}
-              onAccionPrincipal={() => cambiarZona(row, "CARRIED")}
-              onSoltar={() => setFilaASoltar(row)}
-              esDM={esDM}
-              onIdentificar={(input) => identificar(row, input)}
-              // **Solo donde el servidor la acepta**: equipado y que el objeto la pida. En
-              // «Encima» o «Guardado» el botón devolvería «Para sintonizar un objeto, primero
-              // hay que llevarlo puesto», que es un rechazo evitable.
-              onSintonizar={row.item.requiresAttunement ? () => alternarSintonia(row) : undefined}
-            />
+            <FilaObjeto key={row.id} {...propsDeFila(row)} />
           ))}
         </ZonaDeObjetos>
 
         <ZonaDeObjetos ubicacion="CARRIED" vacia={encima.length === 0}>
           {encima.map((row) => (
-            <FilaObjeto
-              key={row.id}
-              row={row}
-              ocupado={filaEnVuelo === row.id}
-              error={erroresPorFila[row.id] || undefined}
-              onAccionPrincipal={() =>
-                // **Un arma pregunta la mano; lo demás va a su ranura de siempre.** Preguntarla
-                // para una armadura sería un paso que no decide nada.
-                esArma(row)
-                  ? (setManoElegida("MAIN_HAND"), setManoPara(row.id))
-                  : cambiarZona(row, "EQUIPPED")
-              }
-              onSoltar={() => setFilaASoltar(row)}
-              esDM={esDM}
-              onIdentificar={(input) => identificar(row, input)}
-              onGastar={sePuedeGastar(row) ? () => gastar(row) : undefined}
-            >
-              {manoPara === row.id && (
-                <ElegirMano
-                  nombre={row.item.name}
-                  aDosManos={aDosManos(row)}
-                  valor={manoElegida}
-                  onElegir={setManoElegida}
-                  onConfirmar={() => cambiarZona(row, "EQUIPPED", manoElegida)}
-                  onCancelar={() => setManoPara(null)}
-                />
-              )}
+            <FilaObjeto key={row.id} {...propsDeFila(row)}>
+              {!aPagina && elegirManoDe(row)}
             </FilaObjeto>
           ))}
         </ZonaDeObjetos>
 
         <ZonaDeObjetos ubicacion="STORED" vacia={guardados.length === 0}>
           {guardados.map((row) => (
-            <FilaObjeto
-              key={row.id}
-              row={row}
-              ocupado={filaEnVuelo === row.id}
-              error={erroresPorFila[row.id] || undefined}
-              onAccionPrincipal={() => cambiarZona(row, "CARRIED")}
-              onSoltar={() => setFilaASoltar(row)}
-              esDM={esDM}
-              onIdentificar={(input) => identificar(row, input)}
-            />
+            <FilaObjeto key={row.id} {...propsDeFila(row)} />
           ))}
         </ZonaDeObjetos>
+
+        {/* A página, carga y monedas cierran la columna de la lista; la derecha es del detalle. */}
+        {aPagina && columnaDeCargaYMonedas}
       </div>
 
-      <div className="flex w-full flex-col gap-s4 lg:w-72 lg:shrink-0">
-        <PanelCarga
-          totalWeightOz={totalWeightOz}
-          carryCapacityOz={carryCapacityOz}
-          encumbrance={encumbrance}
-        />
-        <PanelMonedas
-          key={Object.values(purse).join("-")}
-          purse={purse}
-          onCambiar={aplicarDelta}
-          aplicando={monedaEnVuelo}
-          error={errorMoneda}
-        />
-      </div>
+      {aPagina ? (
+        <DetalleDeObjeto
+          row={seleccionada}
+          acciones={
+            seleccionada && puedeEditar ? accionesDeObjeto(seleccionada, manosDe(seleccionada)) : []
+          }
+          esDM={esDM}
+          onIdentificar={seleccionada ? (input) => identificar(seleccionada, input) : undefined}
+          ocupado={seleccionada !== null && filaEnVuelo === seleccionada.id}
+          // HP-2: lo que la acción provoca se contesta donde se pulsó. El error es el mismo de la
+          // fila (misma clave), así que sale en los dos sitios; la pregunta de la mano, solo aquí.
+          error={seleccionada ? erroresPorFila[seleccionada.id] || undefined : undefined}
+        >
+          {seleccionada && elegirManoDe(seleccionada)}
+        </DetalleDeObjeto>
+      ) : (
+        columnaDeCargaYMonedas
+      )}
 
       {filaASoltar && (
         <ConfirmarSoltar

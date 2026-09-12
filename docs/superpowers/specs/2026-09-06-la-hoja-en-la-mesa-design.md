@@ -238,3 +238,11 @@ Está terminado cuando el autor apruebe la disposición, el reparto de pestañas
 lo gobiernan: **los cinco números no entran en ninguna pestaña**, y **el menú solo ofrece lo que el
 servidor ya sabe hacer**. Su plan por tareas se escribe cuando el paso 2 y el botín hayan soltado
 esos ficheros.
+
+---
+
+> **Nota al pie (2026-09-12).** Implementada por el
+> [plan del 2026-09-11](../plans/2026-09-11-la-hoja-a-pagina-completa.md) junto con la página:
+> pestañas, fila con sus acciones y filtros. **§10 contestado**: abre **Números** (D-CF-32) y las
+> pestañas son tira en la mesa y columna lateral a página (D-CF-30). «Dar a…» sigue fuera hasta que
+> el botín entregue fuera de la mesa (D-CF-33).

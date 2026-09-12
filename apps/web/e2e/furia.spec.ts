@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Paso 2, tarea A11 — la Furia, de punta a punta en un navegador de verdad. **Se escribe, no se
 // corre**: lo corre el orquestador, uno a la vez (docs/08-pruebas.md), y por eso este fichero se
@@ -77,17 +77,37 @@ async function completarFichaDeBarbaroHumano(page: Page) {
   await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
-/** Equipa el hacha grande desde el inventario que la hoja monta (fase 2B). */
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
+}
+
+/** Equipa el hacha grande desde el inventario que la hoja monta (fase 2B), en «Objetos». */
 async function equiparHachaGrande(page: Page) {
+  await abrirPestana(page, "Objetos");
   const inventario = page.getByRole("region", { name: "inventario" });
   await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
-  await inventario.getByLabel(/Buscar/).fill("Hacha grande");
+  // El buscador del selector por su nombre entero: desde la tarea 9 el inventario tiene
+  // además su propio «Buscar objeto» (el filtro de la lista), y `/Buscar/` casaba con los dos.
+  await inventario.getByLabel("Buscar objeto por nombre").fill("Hacha grande");
   await inventario
     .getByRole("button", { name: /Hacha grande/ })
     .first()
     .click();
   await inventario.getByRole("radio", { name: /Equipado/ }).check();
   await inventario.getByRole("button", { name: "Añadir", exact: true }).click();
+  // La fila existe ANTES de cambiar de pestaña (la de Objetos se desmonta al salir); se espera
+  // la fila real de la lista —su botón de selección, que solo pinta la página—, no la del
+  // catálogo del selector, que sigue abierto.
+  await expect(inventario.getByRole("button", { name: "Ver detalle de Hacha grande" })).toBeVisible(
+    { timeout: 15_000 },
+  );
+  await abrirPestana(page, "Ataques");
   await expect(
     page.getByRole("region", { name: "ataques y lanzamiento" }).getByRole("table"),
   ).toBeVisible({ timeout: 15_000 });
@@ -101,7 +121,8 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   await completarFichaDeBarbaroHumano(page);
   await equiparHachaGrande(page);
 
-  // --- La actividad, con sus usos, ya en la ficha standalone ---
+  // --- La actividad, con sus usos, ya en la ficha standalone (pestaña «Recursos») ---
+  await abrirPestana(page, "Recursos");
   const actividades = page.getByRole("region", { name: "actividades" });
   await expect(actividades).toBeVisible();
   // `exact: true`: sin él, «Furia» también casa con el botón «Usar Furia» y con la frase que
@@ -147,6 +168,9 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   const cajonDeLaHoja = page.getByRole("dialog", { name: "Tu hoja" });
   await expect(cajonDeLaHoja).toBeVisible();
 
+  // En la mesa la hoja abre siempre en «Números»; la actividad vive en «Recursos». La pestaña
+  // se abre DENTRO del cajón, que tiene su propia tira.
+  await abrirPestana(cajonDeLaHoja, "Recursos");
   const actividadesEnLaMesa = cajonDeLaHoja.getByRole("region", { name: "actividades" });
   await actividadesEnLaMesa.getByRole("button", { name: "Usar Furia" }).click();
   // Un uso menos: de 3 a 2.
@@ -162,6 +186,11 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   // aplicada de verdad — su fila de lista, `<li>` en `Condiciones.tsx` — y no cualquier texto
   // que la mencione (misma trampa que ya avisa el encargo, y la misma de «Furia» más arriba, y
   // el mismo patrón de `condiciones-en-la-mesa.spec.ts` para "Concentración").
+  //
+  // La tarjeta de condiciones vive en «Estado» desde la Tarea 7; la cabecera fija lleva además
+  // un chip por condición (`ul "condiciones activas"`), pero lo que aquí se afirma sigue siendo
+  // la fila de la tarjeta, que es la que dice el efecto.
+  await abrirPestana(cajonDeLaHoja, "Estado");
   await expect(condiciones.getByRole("listitem").filter({ hasText: "En furia" })).toBeVisible({
     timeout: 10_000,
   });
@@ -175,6 +204,8 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   // --- El daño del hacha, con la Furia activa: se tira de verdad y queda escrito en el registro ---
   await page.getByRole("button", { name: /^Hoja/ }).click();
   const cajonDeLaHojaOtraVez = page.getByRole("dialog", { name: "Tu hoja" });
+  // Un cajón que se vuelve a abrir arranca otra vez en «Números»: la pestaña no se hereda.
+  await abrirPestana(cajonDeLaHojaOtraVez, "Ataques");
   const cuadroDeAtaques = cajonDeLaHojaOtraVez.getByRole("region", {
     name: "ataques y lanzamiento",
   });

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Tarea 2A.11 — la subida de nivel contra la API real (Docker + Postgres).
 //
@@ -17,6 +17,16 @@ function nuevaCuenta() {
     password: "password123",
     displayName: `Nivel ${marca}`,
   };
+}
+
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
 }
 
 async function registrarse(page: Page) {
@@ -92,8 +102,12 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
   await registrarse(page);
   await crearPersonajeYAbrirFicha(page, "Dain Yunquefirme");
   await completarFichaDeGuerreroEnano(page);
+  // Raza y nivel se leen en la tarjeta «Ficha», pestaña «Rasgos» (Tarea 7, spec 2026-09-11);
+  // los PG, en «Recursos». Solo se monta la pestaña activa.
+  await abrirPestana(page, "Rasgos");
   await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("dwarf");
   await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
+  await abrirPestana(page, "Recursos");
 
   // Los PG máximos de partida, leídos de la hoja antes de tocar nada: el diff tiene que
   // coincidir con ellos, no con un número inventado por la prueba.
@@ -128,6 +142,7 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
   await expect(dialogo.getByText(/Nivel 1 → 2/)).toBeVisible();
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(dialogo).toBeHidden();
+  await abrirPestana(page, "Rasgos");
   await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("dwarf");
   await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
   await expect(page.getByRole("button", { name: "Subir a nivel 2" })).toBeVisible();
@@ -142,6 +157,7 @@ test("subir de nivel: el servidor propone el diff, tirar no aplica nada, y confi
   // aserción se hiciera tras un `reload()`, pasaría por construcción y no probaría nada.
   // El nivel nuevo se lee en su propio campo, que es ahora la única fuente en pantalla.
   await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("2", { timeout: 10_000 });
+  await abrirPestana(page, "Recursos");
   await expect(bloquePg).toContainText(`/ ${maximoAntes + 9}`, { timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Subir a nivel 3" })).toBeVisible();
 });

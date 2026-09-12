@@ -9,20 +9,26 @@ funciona.
 **No es** mapas, ni tiempo real, ni 3D, ni IA: eso son las fases 3–5 y cada una recibe su
 propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 
-**Sí tiene, y está desplegado: las fases 2 y 2.5, el reseño de la mesa y los quince planes del
-2026-09-05.** El autor desplegó dos veces ese día y `dnd.supportive.pro` sirve la imagen etiquetada
-**`6eb2590`** — comprobado en el servidor: `docker ps` en `vps1new` da
-`5awvsn1dnkexhcjzg7kjwom6_api:6eb259008369192543f9323ca928ed252e10ca18`.
+**Sí tiene, y está desplegado: las fases 2 y 2.5, el reseño de la mesa, los quince planes del
+2026-09-05, la sesión de cerrar fichas y las ocho migraciones de D-CF-14.** `dnd.supportive.pro`
+sirve la imagen etiquetada **`f9579b2`** — lo comprobó el autor el 2026-09-11 en `vps1new`, en los
+contenedores de la API y de la web.
+
+> **Hasta el 2026-09-12 aquí ponía que producción servía `6eb2590`**, la imagen del 2026-09-05, y
+> el párrafo de abajo contaba la distancia contra ella (70 ficheros). El autor desplegó después y
+> este fichero no se enteró: la misma caducidad de siempre, escrita a mano en el que se manda leer
+> primero.
 
 > **Hasta el 2026-09-05 aquí ponía que el reseño de la mesa NO estaba desplegado y que producción
 > iba por detrás de los dos `main`.** Las dos frases caducaron con ese despliegue.
 
-**Y desde el 2026-09-05/06 hay un plan más, ya cerrado en local y SIN desplegar: la iniciativa la
-piden los jugadores, y el DM elige el bando** —quince tareas propias, ver
-[07-historial.md](./07-historial.md)—. **`main` local ya no va solo por delante en documentación**:
-`git diff --name-only 6eb2590..HEAD` toca **70 ficheros de `apps/` y `packages/`**, con dos
-migraciones incluidas. Empujar a GitHub **no despliega nada** — el CI solo prueba, y el despliegue
-es manual por decisión del autor: ver [03-despliegue.md](./03-despliegue.md).
+**Lo que hay sin desplegar es la hoja a página completa** —rama `hoja/pagina-completa`, cerrada en
+local el 2026-09-12 y **sin fusionar a `main`**; el autor fusiona y despliega a mano, ver
+[07-historial.md](./07-historial.md)—: `git diff --name-only f9579b2..HEAD -- apps packages` toca
+**60 ficheros**, medido el 2026-09-12 sobre esa rama en `0d304ea` (eran 55 al cerrar la Task 11; la
+revisión final, las dos rondas de cierre y los residuales añadieron cinco), y ninguno es una migración. Empujar a GitHub
+**no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión del autor: ver
+[03-despliegue.md](./03-despliegue.md).
 
 > **Hasta este mismo bloque, hasta el 2026-09-06, aquí ponía que «no hay ningún cambio de código
 > sin desplegar».** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
@@ -110,12 +116,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `f9579b2` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `f2a1b8c` **(rama `hoja/pagina-completa`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Declaraciones de prueba unitaria:** 2664 (shared 192, api 1334, web 1138). **Es una cota inferior, no lo
+> - **Declaraciones de prueba unitaria:** 2755 (shared 192, api 1354, web 1209). **Es una cota inferior, no lo
 >   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no
 >   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número
 >   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice

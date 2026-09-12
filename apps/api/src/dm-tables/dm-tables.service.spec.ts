@@ -44,6 +44,7 @@ const espadaCortaResuelta: ResolvedItem = {
   costCp: 1000,
   effects: [],
   requiresAttunement: false,
+  attuned: false,
 };
 
 const tablaDeBotin = {

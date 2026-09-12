@@ -57,12 +57,32 @@ describe("ningún aviso del servidor puede salir «Sin traducir»", () => {
     // dejando esta suite en verde.
     "encumbrance.encumbered",
     "encumbrance.heavily",
+    // HP-9a (2026-09-12) — `character-sheet.service.ts` lo emite por cada objeto equipado que
+    // exige sintonización, no está sintonizado y tiene `effects`: la CA o el ataque no se
+    // movieron y la hoja dice por qué (SRD 5.1 §Attunement).
+    "item_not_attuned",
   ];
 
   it.each(CODIGOS_QUE_EMITE_LA_API)("«%s» tiene frase en español", (code) => {
     const frase = describirAviso({ code, key: "x", data: { name: "Espada larga", item: "SRD:x" } });
     expect(frase).not.toMatch(/Sin traducir/);
     expect(frase.length).toBeGreaterThan(10);
+  });
+});
+
+// HP-9a (2026-09-12) — el aviso nombra el objeto con el `name` que ya viene redactado del
+// servidor (alias si no está identificado), y dice qué no cuenta y hasta cuándo.
+describe("item_not_attuned nombra el objeto y dice que sus efectos no cuentan", () => {
+  it("con el nombre que manda el servidor", () => {
+    const frase = describirAviso({
+      code: "item_not_attuned",
+      key: "CAMPAIGN:anillo-1",
+      data: { ref: "CAMPAIGN:anillo-1", name: "Anillo de protección" },
+    });
+    expect(frase).toBe(
+      '"Anillo de protección" requiere sintonización: sus efectos no cuentan hasta sintonizarlo.',
+    );
+    expect(frase).not.toContain("CAMPAIGN:");
   });
 });
 

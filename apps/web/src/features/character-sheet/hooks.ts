@@ -17,6 +17,7 @@ import { useCurrentSession } from "../sessions/hooks";
 import { encountersKey, useCurrentEncounter } from "../encounters/hooks";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
+import { useMyRole } from "../campaigns/members";
 
 // Tarea 2A.10. Claves jerárquicas bajo la raíz `["campaigns", campaignId, ...]`
 // (docs/04-convenciones.md): invalidar `sheetKey` invalida solo la hoja de este personaje, y
@@ -88,6 +89,18 @@ export function useCatalog() {
  * sitio: había diez intervalos con cuatro valores, y once ediciones para cambiar uno.
  */
 export const SONDEO_DE_MESA_MS = SONDEO_DE_RED_DE_SEGURIDAD_MS;
+
+/**
+ * La condición del aviso de la vista de DM, en un solo sitio (HP-7, 2026-09-12): `Cabecera` la
+ * necesita ANTES de montar para decidir si la fila de avisos existe, y `AvisoDeDm` la necesita
+ * para pintarse. Mientras la consulta carga no se sabe, y no saber es «no». Vive aquí y no en
+ * `AvisoDeDm.tsx` porque un fichero de componente no exporta más que componentes
+ * (`react-refresh/only-export-components`; misma costumbre que `formula.ts` y `entities/body.ts`).
+ */
+export function useEsVistaDeDm(campaignId: string): boolean {
+  const { role, isLoading } = useMyRole(campaignId);
+  return !isLoading && role === "DM";
+}
 
 export function useCharacterSheet(campaignId: string, characterId: string) {
   return useQuery({

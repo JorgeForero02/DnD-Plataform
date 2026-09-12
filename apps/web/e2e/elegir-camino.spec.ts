@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Encargo A8 (2026-09-07) — el camino (subclase) contra la API real (Docker + Postgres).
 //
@@ -18,6 +18,16 @@ function nuevaCuenta() {
     password: "password123",
     displayName: `Camino ${marca}`,
   };
+}
+
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
 }
 
 async function registrarse(page: Page) {
@@ -91,6 +101,9 @@ test("elegir camino en la hoja hace aparecer su rasgo, sin recargar", async ({ p
   await expect(page.getByText(/Todavía no has elegido un camino/)).toBeVisible({
     timeout: 10_000,
   });
+  // La tarjeta de rasgos Y el selector de camino (en «Ficha», `IdentidadEditable`) viven en la
+  // pestaña «Rasgos» desde la Tarea 7 (spec 2026-09-11); el aviso de arriba es de la cabecera.
+  await abrirPestana(page, "Rasgos");
   const rasgos = page.getByRole("region", { name: "rasgos y aptitudes" });
   await expect(rasgos.getByText("Frenesí")).not.toBeVisible();
 

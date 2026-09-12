@@ -122,6 +122,19 @@ export const NOMBRE_PROCEDENCIA: Record<ProcedenciaObjeto, string> = {
 
 /** La etiqueta que ve quien no es el DM junto al nombre de un objeto sin identificar. */
 export const ETIQUETA_SIN_IDENTIFICAR = "Sin identificar";
+/** HP-8: el estado de un objeto sintonizado, junto a su nombre (fila y detalle). */
+export const ETIQUETA_SINTONIZADO = "Sintonizado";
+/**
+ * HP-9a (2026-09-12) — la marca junto al bono tachado de un objeto que exige sintonización y no
+ * la tiene (`sintonizacion.ts`, `efectoInactivoPorSintonizacion`). Misma familia visual que
+ * «Sin identificar». Es la misma verdad que el aviso `item_not_attuned` de la hoja
+ * (`character-sheet/vocabulario.ts`): el servidor no suma esos efectos.
+ */
+export const ETIQUETA_EFECTO_INACTIVO = "Efecto inactivo: requiere sintonización";
+/** La frase entera del detalle, detrás de la marca: qué no cuenta y qué sí. */
+export const EXPLICACION_EFECTO_INACTIVO =
+  "Sus efectos mágicos no cuentan hasta que lo sintonices; lo mundano (CA base, dado de daño) " +
+  "sigue contando.";
 
 /**
  * La explicación bajo el interruptor del DM — por qué existe el control, no solo su nombre.

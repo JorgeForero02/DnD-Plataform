@@ -74,6 +74,7 @@ const objetoDelSrd = {
   costCp: 1500,
   effects: [],
   requiresAttunement: false,
+  attuned: false,
   slot: "MAIN_HAND" as const,
   weapon: {
     category: "MARTIAL" as const,

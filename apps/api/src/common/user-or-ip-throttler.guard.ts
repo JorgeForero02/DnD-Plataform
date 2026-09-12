@@ -10,6 +10,18 @@ import {
   type ThrottlerStorage,
 } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { UsersService } from "../users/users.service";
+
+const TTL_SELLO_MS = 60_000;
+/**
+ * Tope del caché de sellos (HP-6, 2026-09-12). Antes el `Map` no evictaba nunca: una entrada por
+ * usuario que hubiera pedido algo desde el arranque, sin límite. Al alcanzar este tamaño se barren
+ * las entradas vencidas antes de escribir la siguiente. Diez mil es cien veces la mesa más grande
+ * que este servidor va a ver (D-CF-17: una mesa son cinco jugadores y un DM) y unos cientos de KB de memoria en el peor
+ * caso; no es un límite duro —dentro de la ventana de 60 s todas pueden estar vigentes y el mapa
+ * crece igual—, es el umbral a partir del cual cada escritura paga un barrido lineal.
+ */
+const TOPE_SELLOS = 10_000;
 
 /**
  * El cubo del límite de peticiones es **por usuario cuando hay sesión iniciada** y por IP cuando
@@ -41,15 +53,33 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
  * ruta autenticada; con la firma comprobada, un token falso cuenta como su IP. La verificación es
  * un HMAC, más barato que la consulta que `JwtStrategy` hará después de todos modos.
  *
+ * **Un token revocado por cambio de contraseña tampoco cuenta como su dueño** (ficha P3,
+ * 2026-09-11). Verificar solo la firma no bastaba: un token robado sigue firmado aunque la
+ * víctima ya haya cambiado la contraseña para invalidarlo — `JwtStrategy` lo rechazará con 401,
+ * pero si aquí contara contra `user:<sub>`, quien lo robó podría agotar el cubo de la víctima con
+ * peticiones que nunca llegan a entrar. Se compara `iat` con `passwordChangedAt`, con la misma
+ * regla de empate que `jwt.strategy.ts` (`iat <= sello` es viejo), y el sello se cachea un
+ * minuto por usuario para no sumar una consulta a cada petición — la ventana del caché es del
+ * mismo tamaño que el cubo.
+ *
  * La IP la sigue poniendo Fastify según `TRUST_PROXY` (ver `configure-app.ts`); aquí no se toca.
  */
 @Injectable()
 export class UserOrIpThrottlerGuard extends ThrottlerGuard {
+  // Sello de cambio de contraseña por usuario, en segundos epoch (o `null` si nunca cambió),
+  // cacheado un minuto. Es la salida medida en la ficha: una consulta por usuario y minuto en
+  // vez de una por petición, y la ventana de un minuto es el mismo tamaño que el cubo.
+  // Coste aceptado (D-CF-36): un token robado antes de un cambio de contraseña puede seguir
+  // gastando el cubo de su dueño hasta 60 s después del cambio — una ventana de cubo, no más.
+  // Con tope: al llegar a `TOPE_SELLOS` entradas se barren las vencidas (`barrerVencidos`).
+  private readonly sellos = new Map<string, { sello: number | null; hasta: number }>();
+
   constructor(
     @InjectThrottlerOptions() options: ThrottlerModuleOptions,
     @InjectThrottlerStorage() storage: ThrottlerStorage,
     reflector: Reflector,
     private readonly jwt: JwtService,
+    private readonly users: UsersService,
   ) {
     super(options, storage, reflector);
   }
@@ -65,15 +95,58 @@ export class UserOrIpThrottlerGuard extends ThrottlerGuard {
 
     const cabecera = req["headers"] as Record<string, string | undefined> | undefined;
     const auth = cabecera?.["authorization"];
-    if (auth?.startsWith("Bearer ")) {
-      try {
-        const { sub } = await this.jwt.verifyAsync<{ sub?: string }>(auth.slice("Bearer ".length));
-        if (typeof sub === "string" && sub) return `user:${sub}`;
-      } catch {
-        // Firma inválida o caducado: es una petición anónima a efectos de cuota.
-      }
+    if (!auth?.startsWith("Bearer ")) return super.getTracker(req);
+
+    // Tres salidas y tres motivos distintos (HP-6, 2026-09-12): antes las dos primeras y el fallo
+    // de la base compartían un `catch` rotulado «firma inválida», y la salida era la misma pero
+    // el motivo escrito era falso. La conducta no cambia; cada `catch` dice ahora lo suyo.
+    let sub: string | undefined;
+    let iat: number | undefined;
+    try {
+      ({ sub, iat } = await this.jwt.verifyAsync<{ sub?: string; iat?: number }>(
+        auth.slice("Bearer ".length),
+      ));
+    } catch {
+      // Firma inválida o caducado: es una petición anónima a efectos de cuota.
+      return super.getTracker(req);
     }
+    if (typeof sub !== "string" || !sub) return super.getTracker(req);
+
+    // **Un token revocado por cambio de contraseña no es el usuario.** `JwtStrategy` lo rechazará
+    // después con 401; si aquí contara contra `user:<sub>`, quien robó el token podría agotar el
+    // cubo de la víctima con peticiones que nunca entran. La regla del empate es la misma que en
+    // jwt.strategy.ts: `iat <= sello` es viejo.
+    let sello: number | null;
+    try {
+      sello = await this.selloDeCambio(sub);
+    } catch {
+      // La base no respondió y no se sabe si el token está revocado. Se cuenta por IP —la misma
+      // salida que un token que no verifica— y NO se lanza: la cuota no es quien decide si la
+      // petición entra; `JwtStrategy` la juzgará después contra la misma base y fallará solo.
+      return super.getTracker(req);
+    }
+    if (sello === null || iat === undefined || iat > sello) return `user:${sub}`;
     return super.getTracker(req);
+  }
+
+  private async selloDeCambio(sub: string): Promise<number | null> {
+    const ahora = Date.now();
+    const cacheado = this.sellos.get(sub);
+    if (cacheado && cacheado.hasta > ahora) return cacheado.sello;
+    const user = await this.users.findById(sub);
+    const sello = user?.passwordChangedAt
+      ? Math.floor(user.passwordChangedAt.getTime() / 1000)
+      : null;
+    if (this.sellos.size >= TOPE_SELLOS) this.barrerVencidos(ahora);
+    this.sellos.set(sub, { sello, hasta: ahora + TTL_SELLO_MS });
+    return sello;
+  }
+
+  /** Quita del caché los sellos cuya ventana ya pasó. Lineal; solo se paga al tocar el tope. */
+  private barrerVencidos(ahora: number): void {
+    for (const [sub, { hasta }] of this.sellos) {
+      if (hasta <= ahora) this.sellos.delete(sub);
+    }
   }
 
   // `@UseGuards(JwtAuthGuard)` deja la CLASE del guard (no una instancia) en GUARDS_METADATA,

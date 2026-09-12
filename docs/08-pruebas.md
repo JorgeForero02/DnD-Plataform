@@ -42,7 +42,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
 > - **Ficheros de e2e de API:** 56 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
-> - **Ficheros de e2e de navegador:** 44 (`apps/web/e2e/*.spec.ts`), contados del disco.
+> - **Ficheros de e2e de navegador:** 45 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
 > arriba se dice por qué. Existe porque este documento llegó a decir 21 especificaciones de
@@ -90,6 +90,23 @@ oscuro por carga, verde solo en la pasada siguiente—. **Trampa nueva de esa ta
 proyecto de esta máquina— y pintó 135 rojos falsos en los que `/api` devolvía HTML; la señal es
 un `Unexpected token '<'` en el primer formulario. La salida es `WORKTREE_SLOT=1` (puerto y base
 propios, `pnpm db:slot` antes), no matar el proceso ajeno.
+**Y el 2026-09-12, con la hoja a página completa, son 166 en 45 ficheros** (`hoja-pestanas` nuevo):
+la cifra la imprimió la suite entera que la Task 10 corrió **por accidente** —la forma `e2e --
+<fichero>` no filtra, ver abajo—: 155 en verde, 10 rojos y 1 saltado a la primera. Los rojos eran
+tarjetas que ahora viven detrás de una pestaña que el recorrido no abría, dos localizadores del
+spec nuevo y la banda fija en 412 px; cerrados uno a uno con `exec playwright test` sobre los
+diecinueve ficheros que la hoja toca —los doce del plan y del grep (`hoja-pestanas`, `hoja`,
+`tokens-contrast`, `inventario`, `objeto-sin-identificar`, `sobrecarga`, `furia`,
+`capturas-comparacion`, `condiciones-con-duracion`, `condiciones-en-la-mesa`, `tablas-del-dm`,
+`tirada`), los cinco que la pasada entera destapó (`elegir-camino`, `subir-nivel`,
+`paso-1-goteras`, `sesion`, `mesa-en-estrecho`) y dos re-corridos porque `Cabecera` cambió
+(`combate`, `final-propuesto`)— (18 en verde en la segunda pasada, `hoja-pestanas` 10 de 10
+en la tercera y otra vez tras el pulido; `mesa-en-estrecho` sigue siendo el `test.fail` de
+D-CF-26). Ninguna aserción se aflojó: solo aperturas de pestaña, localizadores más
+específicos y las tres del ruling de la banda (D-CF-38), que son más fuertes. `teclado.spec.ts`
+**no se ajustó a propósito**: las pestañas de la hoja son el `Tabs` compartido de `ui/`, cuyo
+recorrido con `Tab`/`ArrowRight`/`Enter` ya exigen ese mismo fichero y `ui/__tests__/Tabs.test.tsx`;
+una pasada más por la hoja repetiría la prueba del componente, no la de la pantalla.
 
 > **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
 > navegador» y son **20**; antes había dicho «116 e2e de API en 22 suites» olvidando
@@ -116,6 +133,25 @@ propios, `pnpm db:slot` antes), no matar el proceso ajeno.
 RTL con los módulos `api.ts` simulados y los hooks reales dentro de `QueryClientProvider` +
 `MemoryRouter`. Se prueba lo que hace el usuario: escribir, elegir, enviar — y que la mutación
 recibe la carga correcta. **Y `pnpm build` limpio**, que es lo que hace de type-check del `tsx`.
+
+**La hoja, desde el 2026-09-12, se prueba por piezas.** Lo que `HojaCalculada.test.tsx` cubría
+tarjeta a tarjeta vive ahora en `features/character-sheet/__tests__/Cabecera.test.tsx` y en
+`features/character-sheet/__tests__/pestanas/` (`Numeros`, `Ataques`, `Rasgos`, `Recursos`,
+`Estado`, `Conjuros` y `lanzaConjuros`), con **un solo fixture compartido** —«Elowen», nivel 3,
+semielfa maga— en `features/character-sheet/__tests__/fixtures/hoja.fixture.tsx`; `HojaCalculada.test.tsx`
+se queda con las `it` que cruzan tarjetas de varias pestañas, y abren la pestaña que toque antes
+de afirmar. Un test de pestaña nuevo importa el fixture, no lo copia. **El fixture no importa
+ningún componente de la hoja** (HP-5, 2026-09-12): su `renderHoja` volvió a
+`HojaCalculada.test.tsx`, así que montar `Numeros` no carga `HojaCalculada` de forma transitiva.
+**Y el inventario a página tiene su prueba por pieza**, en `features/inventory/__tests__/`:
+`accionesDeObjeto.test.ts` (la lista única), `filtrarObjetos.test.ts`, `DetalleDeObjeto.test.tsx`,
+`FilaObjeto.test.tsx` —**existe desde la ronda de cierre 2 del 2026-09-12**; el brief de la Task 8
+lo citaba cuando aún no existía, y la fila la cubría solo `PaginaDeInventario.test.tsx`— y
+`PaginaDeInventario.test.tsx`, que es donde viven `puedeEditar=false` (spec §7), el detalle que
+contesta en el detalle (HP-2), el único `role="alert"` por rechazo a página y la pregunta de la
+mano que se cancela al cambiar de fila. La selección de fila la anuncia el botón «Ver detalle de X»
+con `aria-pressed`, no un `aria-selected` en el `<li>` (HP-4); el botón de sintonizar no lleva
+`aria-pressed` (D-CF-45).
 
 ## Lo que las pruebas de hoy NO cubren
 
@@ -293,8 +329,9 @@ en verde.
 | `condiciones-en-la-mesa` | **Las dos mitades con las que el motor de condiciones llega a la mesa** (fichas M16 y M17), que se habían dado por cerradas con el servidor hecho y ninguna pantalla usándolo. Marcar la concentración desde la hoja y que **entonces** 25 de daño hagan que el servidor pida la salvación con CD 12, vista donde el jugador la sondea — el nivel 8 del personaje es parte de la prueba: a nivel 1 esos 25 son muerte masiva. Y que una condición ponga su aviso **donde se decide el modo de la tirada**, preseleccionado y **editable**, sin aviso donde la regla no aplica (envenenado no toca las salvaciones de Fuerza). |
 | `combate` | **El combate entero desde la mesa** (2.5.6): entrar en combate, ver el orden, pasar turno hasta subir de asalto, recargar la página y que el combate siga, y salir. Lo que se demuestra aquí y no en `jsdom` es que **no se navega a ninguna parte** —la URL no cambia y el elenco y el registro siguen visibles debajo de la tira—, que **uno y solo uno tiene el turno**, y que la tira **no arrastra la página a lo ancho**. Y de paso caza lo que ninguna otra capa podía: **`apiFetch` mandaba `Content-Type: application/json` sin cuerpo**, y Fastify rechaza eso con un 400 — o sea que **todos los POST sin cuerpo estaban rotos desde el navegador** mientras los e2e de API pasaban en verde, porque supertest no pone esa cabecera si no hay `.send()`. |
 | `sesion` | La sesión entera desde la interfaz: empezar, sellar, verla en la mesa y cerrarla con la crónica; el elenco leyendo los PG de la hoja calculada; una anotación desde la mesa. **Y desde B1.2: las dos disposiciones del elenco medidas con dos navegadores** —el jugador ve el suyo delante y **sobre el de otro no hay mandos**, el DM ve la parrilla entera con mandos sobre cada uno—, y la franja de «desde aquí te perdiste», que solo se puede medir aquí porque la marca vive en `localStorage`. **Y desde B1.3: el estrato superpuesto** —los paneles se abren encima, uno a la vez, y Escape devuelve el foco al control que los abrió, medido sobre `document.activeElement`—. **Y el recorrido donde los dos carriles se juntan**: el DM sube un lugar de `DM_ONLY` a `PLAYERS` y la cabecera de escena pasa a decirlo **sin que nadie tocara la pantalla** — la promesa de la ficha P1, comprobada de punta a punta. Desde B1.1: que a la mesa se llega desde la campaña SIN sesión abierta** —el defecto de arquitectura que el reseño señaló— y que la cabecera de escena nombra la sesión y no se solapa con la banda de estado, medido en los dos ejes. |
-| `hoja` | La hoja con datos reales: completar, ver la traza, tirar, cambiar PG. Y lo que solo se ve maquetado: la cabecera fija, **un paso de la traza llevando el foco a su causa**, que lo editable se distinga de lo derivado, y que las veinticuatro líneas de habilidad quepan. |
-| `inventario` | Equipar una armadura **cambia la CA y añade su paso a la traza**; un arma equipada llega al cuadro de ataques y se tira; el catálogo propio se distingue del SRD. |
+| `hoja` | La hoja con datos reales: completar, ver la traza, tirar, cambiar PG. Y lo que solo se ve maquetado: la cabecera fija, **un paso de la traza llevando el foco a su causa**, que lo editable se distinga de lo derivado, y que las veinticuatro líneas de habilidad quepan. **Desde la hoja a página completa (2026-09-12), la banda fija se mide con los avisos fuera**: ≤ 96 px, después de que la primera pasada la midiera en 412 con los avisos dentro (punto 5b). |
+| `hoja-pestanas` | **La hoja en pestañas, medida pestaña por pestaña** (plan del 2026-09-11, Task 10), diez pruebas: una por cada una de las siete pestañas —sus secciones están, las ajenas no, la URL la recuerda y **los cinco números siguen arriba**—; Números a 1280 con **sus tres columnas lado a lado**, medidas con `boundingBox`; Objetos a 1280 con lista a la izquierda, detalle a la derecha, filtros que filtran y **equipar desde el detalle cambia la CA de la cabecera**; y la mesa a 390×844, donde la tira de pestañas y la fila de objeto no se cortan y **no hay panel de detalle**. Se corre sola, con `exec playwright test`: es el fichero que destapó el incidente de D-CF-44. **A prueba de reintento** desde la ronda de cierre (HP-3): el recorrido de Objetos deja el cuero sin equipar por la API al entrar y al salir, por los dos caminos, y si solo falla la restauración con el recorrido en rojo lo anota y relanza el error original. |
+| `inventario` | Equipar una armadura **cambia la CA y añade su paso a la traza**; un arma equipada llega al cuadro de ataques y se tira; el catálogo propio se distingue del SRD; **un objeto que requiere sintonización no cuenta hasta sintonizarlo** (HP-9a): equipar un anillo +1 de la campaña NO mueve la CA de la tira fija, la fila lo tacha (`s[data-efecto="inactivo"]`) con la marca y la cabecera avisa, a 390×844 la fila con la marca cabe, y «Sintonizar» sube la CA en uno y quita tachado, marca y aviso. |
 | `subir-nivel` | El servidor propone el diff, **tirar no aplica nada**, y confirmar deja la hoja en el nivel nuevo. |
 | `dados` y `tirada` | El desglose y no solo el total; **el dado descartado pintado tachado** —que solo se puede medir en un navegador—; el motivo del evaluador real junto al campo; y **a ciegas, el total no viaja: se mide sobre la respuesta HTTP, no sobre el DOM**. |
 | `peticion-de-tirada` | El DM pide, **a la jugadora le aparece sin recargar**, tira, y el DM ve el resultado. |
@@ -373,12 +410,15 @@ docker compose up -d                     # Postgres 16 en :5432 — los e2e de A
 pnpm --filter @dnd/api test:e2e          # todos los de API
 pnpm --filter @dnd/api test:e2e -- rolls # una suite
 pnpm --filter @dnd/web e2e               # todos los de navegador (Chromium)
-pnpm --filter @dnd/web e2e -- e2e/hoja.spec.ts   # una sola, por RUTA
+pnpm --filter @dnd/web exec playwright test e2e/hoja.spec.ts   # una sola, por RUTA
 ```
 
-> **Dos trampas que ya costaron tiempo.** El filtro de Playwright es una expresión sobre la ruta:
-> `-- hoja` también engancha otras suites, así que para correr **una sola** hay que dar la ruta
-> entera. Y `reuseExistingServer` reaprovecha un servidor ya levantado: **si se cambia una variable
+> **Tres trampas que ya costaron tiempo.** **`pnpm --filter @dnd/web e2e -- e2e/hoja.spec.ts` NO
+> filtra**: pnpm no le pasa el argumento al script y corre la suite entera sin avisar —así se
+> gastaron 18,7 minutos el 2026-09-12 creyendo correr un fichero (D-CF-44)—; hasta ese día este
+> documento recomendaba justo esa forma. La que filtra es `exec playwright test <ruta>`. El filtro
+> de Playwright es una expresión sobre la ruta: `hoja` también engancha `hoja-pestanas`, así que
+> para correr **una sola** hay que dar la ruta entera. Y `reuseExistingServer` reaprovecha un servidor ya levantado: **si se cambia una variable
 > de entorno del servidor hay que matar el proceso viejo**, o la tanda corre contra la
 > configuración anterior sin decirlo.
 
@@ -387,4 +427,5 @@ pnpm --filter @dnd/web e2e -- e2e/hoja.spec.ts   # una sola, por RUTA
 Una tarea está terminada solo si: los criterios de aceptación pasan · las unitarias y los e2e
 que le tocan pasan **y se ha visto la salida** · `pnpm build` está limpio · la arquitectura y
 las convenciones se respetan · **la documentación está actualizada** · y, si tocó una pantalla,
-**se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde.
+**se abrió el navegador**: `pnpm --filter @dnd/web e2e` en verde. Para el trabajo por tarea,
+D-CF-44: fichero a fichero con `exec playwright test`, en [decisiones.md](./decisiones.md).

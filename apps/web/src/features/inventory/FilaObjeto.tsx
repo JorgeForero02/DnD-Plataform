@@ -1,35 +1,93 @@
 import { NOMBRE_SIN_IDENTIFICAR, type ResolvedItem } from "@dnd/shared";
 import { useState, type ReactNode } from "react";
 import type { InventoryRow } from "./api";
+import { accionesDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { IconoObjeto, IconoSinIdentificar } from "./iconos";
 import {
   danioCorto,
+  ETIQUETA_EFECTO_INACTIVO,
   ETIQUETA_SIN_IDENTIFICAR,
+  ETIQUETA_SINTONIZADO,
   EXPLICACION_SIN_IDENTIFICAR,
-  NOMBRE_ACCION_ZONA,
   subtituloDeObjeto,
 } from "./vocabulario";
 import { formatearKg } from "./peso";
+import { resumirEfecto } from "../campaign-items/vocabulario";
+import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizacion";
 
 // Carril B1 — la fila de una línea: nombre + subtítulo tenue, dato en cifras, peso, acción.
 // Pantalla 20 del prototipo: "nombre + subtítulo; a la derecha, dato en tipografía de cifras
 // (1d8 perf., +11 CA), peso, y la acción".
 
-/** El dato en cifras a la derecha del nombre — lo único que se sabe sin recalcular la hoja. */
-function datoDeObjeto(item: ResolvedItem): string | null {
-  if (item.weapon) return danioCorto(item.weapon.damageDice, item.weapon.damageType);
-  if (item.armor) {
-    return item.armor.category === "SHIELD"
-      ? `+${item.armor.baseAc} CA`
-      : `CA base ${item.armor.baseAc}`;
+/**
+ * El dato en cifras a la derecha del nombre — lo único que se sabe sin recalcular la hoja — en
+ * dos mitades, porque el servidor las trata distinto (HP-9a): **lo mundano** (el dado del arma,
+ * la CA base de la armadura, el bono del escudo) cuenta siempre; **lo mágico** (todos los
+ * `effects`, resumidos uno a uno y separados por « · ») solo cuenta si el objeto no exige
+ * sintonización o está sintonizado. Quien pinta
+ * decide con `efectoInactivoPorSintonizacion(row)` si la mitad mágica va en limpio o tachada.
+ *
+ * Antes era una sola cadena y la armadura +1 se quedaba en «CA base 16» sin enseñar su +1; el
+ * anillo +1 sí lo enseñaba, y en los dos casos sin saber si contaba.
+ */
+export type DatoDeObjeto = { mundano: string | null; magico: string | null };
+
+export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
+  let mundano: string | null = null;
+  if (item.weapon) mundano = danioCorto(item.weapon.damageDice, item.weapon.damageType);
+  else if (item.armor) {
+    mundano =
+      item.armor.category === "SHIELD"
+        ? `+${item.armor.baseAc} CA`
+        : `CA base ${item.armor.baseAc}`;
   }
-  const bonoCa = item.effects
-    .filter((e) => e.kind === "ac")
-    .reduce((suma, e) => suma + e.amount, 0);
-  if (bonoCa !== 0) return `${bonoCa > 0 ? "+" : ""}${bonoCa} CA`;
-  return null;
+  // HP-10: TODOS los efectos, no solo el `ac` — antes una espada +1 o un cinturón de fuerza
+  // llevaban la marca «Efecto inactivo» sin ninguna cifra que tachar. La forma corta de cada tipo
+  // vive una vez en `campaign-items/vocabulario.ts` (`resumirEfecto`), exhaustiva sobre la unión.
+  // Revisión HP-10: **se lista, no se suma** (cada efecto es una línea que escribió el DM: dos
+  // «+1 CA» son dos «+1 CA»), y una cantidad 0 no se resume — «+0 CA» no dice nada y la fila de
+  // antes tampoco lo pintaba. `abilityScore` en modo `set` no es una suma, así que su 0 sí cuenta.
+  const conEfecto = item.effects.filter(
+    (e) => !("amount" in e) || e.amount !== 0 || (e.kind === "abilityScore" && e.mode === "set"),
+  );
+  const magico = conEfecto.length > 0 ? conEfecto.map(resumirEfecto).join(" · ") : null;
+  return { mundano, magico };
+}
+
+/**
+ * Las dos mitades pintadas: la mágica en limpio, o **tachada** (`<s>`, con `data-efecto`) si el
+ * efecto está inactivo por falta de sintonización. Un solo sitio para la fila y el detalle.
+ *
+ * Un lector de pantalla no anuncia el tachado, así que el `<s>` apunta con `aria-describedby` a
+ * la marca que lo explica (`explicacionId`, el `id` que quien pinta pone en esa marca).
+ */
+export function DatoEnCifras({
+  dato,
+  inactivo,
+  explicacionId,
+}: {
+  dato: DatoDeObjeto;
+  inactivo: boolean;
+  explicacionId?: string;
+}) {
+  // Revisión HP-10: lo mundano («1d8 cort.», «CA base 16») no parte; lo mágico es una lista sin
+  // tope desde que resume los nueve tipos, así que **envuelve** — el `nowrap` va aquí, mitad a
+  // mitad, y no en el contenedor de quien pinta.
+  return (
+    <>
+      {dato.mundano && <span className="whitespace-nowrap">{dato.mundano}</span>}
+      {dato.magico &&
+        (inactivo ? (
+          <s data-efecto="inactivo" className="min-w-0 text-muted" aria-describedby={explicacionId}>
+            {dato.magico}
+          </s>
+        ) : (
+          <span className="min-w-0">{dato.magico}</span>
+        ))}
+    </>
+  );
 }
 
 export function FilaObjeto({
@@ -42,13 +100,20 @@ export function FilaObjeto({
   onIdentificar,
   ocupado,
   error,
+  seleccionada,
+  onSeleccionar,
   children,
 }: {
   row: InventoryRow;
-  /** El botón de la derecha: equipar, quitar o traer, según la zona en la que vive la fila. */
-  onAccionPrincipal: () => void;
+  /**
+   * El botón de la derecha: equipar, quitar o traer, según la zona en la que vive la fila.
+   * **Sin manos, sin botones** (spec 2026-09-11 §7): quien mira un personaje ajeno recibe la fila
+   * sin `onAccionPrincipal` ni `onSoltar`, y la fila no pinta ninguna acción — no un botón que
+   * el servidor rechazaría. Van las dos juntas o ninguna.
+   */
+  onAccionPrincipal?: () => void;
   /** Soltar el objeto — siempre detrás de una confirmación en pantalla, nunca aquí mismo. */
-  onSoltar: () => void;
+  onSoltar?: () => void;
   /**
    * Gastar una unidad. **Solo donde tiene sentido**: un consumible, o una pila de varios. Sin
    * esto, beber la segunda poción de tres y beber la última eran dos gestos distintos —cambiar
@@ -78,6 +143,20 @@ export function FilaObjeto({
   /** El rechazo del servidor para esta fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
   /**
+   * Tarea 9 (spec 2026-09-11) — la fila es seleccionable **solo a página**, donde hay un panel
+   * de detalle que enseña la seleccionada. Las dos props van juntas: si faltan, la fila se pinta
+   * exactamente como en la mesa —sin botón sobre el nombre y sin conmutador—, porque un
+   * `aria-pressed="false"` en una lista sin selección anunciaría un control que no existe.
+   *
+   * HP-4 (2026-09-12): la selección la anuncia el **botón** «Ver detalle de X» con
+   * `aria-pressed` (patrón de botón conmutador), no el `<li>` con `aria-selected`: ese atributo
+   * solo tiene sentido en `option`, `tab`, `row` o `gridcell`, y la lista es un `<ul>` sin papel
+   * (`ZonaDeObjetos.tsx`). El `<li>` conserva la marca visual vía `data-seleccionada`.
+   */
+  seleccionada?: boolean;
+  /** El nombre es un botón («Ver detalle de X»), no la fila entera: dentro ya hay otros botones. */
+  onSeleccionar?: () => void;
+  /**
    * Lo que la fila despliega debajo cuando la acción principal necesita una decisión más — hoy,
    * **en qué mano va un arma** (paso 1, tarea 11). Va aquí dentro y no en un diálogo: se toca
    * donde se lee, y la mano es una propiedad de esta fila.
@@ -86,6 +165,11 @@ export function FilaObjeto({
 }) {
   const { item } = row;
   const dato = datoDeObjeto(item);
+  const hayDato = dato.mundano !== null || dato.magico !== null;
+  // HP-9a: el bono mágico de un objeto que exige sintonización y no la tiene no lo suma el
+  // servidor; aquí se tacha y se marca, en vez de pintarlo como si contara.
+  const efectoInactivo = efectoInactivoPorSintonizacion(row);
+  const idExplicacion = idDeEfectoInactivo(row.id);
   const pesoTotalOz = item.weightOz * row.quantity;
   // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
   // (`ui/__tests__/Iconos.test.tsx`) porque hacía de icono en otra pantalla — aquí es solo
@@ -99,14 +183,51 @@ export function FilaObjeto({
   // disparar un `PATCH` por cada letra tecleada de un alias que la mesa todavía está pensando.
   const [alias, setAlias] = useState(item.unidentifiedName ?? "");
 
+  const seleccionable = seleccionada !== undefined && onSeleccionar !== undefined;
+  const acciones =
+    onAccionPrincipal && onSoltar
+      ? accionesDeObjeto(row, { onAccionPrincipal, onSoltar, onGastar, onSintonizar })
+      : [];
+
   return (
-    <li className="border-b border-[color:var(--copper-rule)] py-s2 last:border-b-0">
+    <li
+      data-seleccionada={seleccionable && seleccionada ? "true" : undefined}
+      className={[
+        "border-b border-[color:var(--copper-rule)] py-s2 last:border-b-0",
+        // La seleccionada se marca con el tinte del acento y un filo a la izquierda: se ve cuál
+        // es la que enseña el panel sin leer el panel.
+        seleccionable && seleccionada
+          ? "-ml-s2 border-l-2 border-l-accent bg-[color:var(--accent-tint)] pl-s2"
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="flex flex-wrap items-center gap-s2 sm:gap-s3">
         <IconoObjeto className="shrink-0 text-muted" />
         <div className="min-w-0 flex-1 basis-40">
           <p className="truncate font-chrome text-chrome-sm text-text">
-            {item.name}
+            {seleccionable ? (
+              <button
+                type="button"
+                aria-label={`Ver detalle de ${item.name}`}
+                aria-pressed={seleccionada}
+                onClick={onSeleccionar}
+                className="max-w-full truncate rounded-radius-sm text-left align-baseline hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {item.name}
+              </button>
+            ) : (
+              item.name
+            )}
             {cantidad}
+            {/* HP-8: el ESTADO de sintonización va junto al nombre (pantalla 20 del prototipo),
+                con el mismo patrón que la marca de abajo; el botón del final dice lo que hace. */}
+            {row.attuned && (
+              <span className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text">
+                {ETIQUETA_SINTONIZADO}
+              </span>
+            )}
             {/* El jugador ve la etiqueta dibujada junto al alias que ya le mandó el servidor
                 (`item.name` ya viene sustituido); el DM la ve además del nombre real, porque el
                 interruptor de abajo ya se lo dice — no hace falta repetirla dos veces para él. */}
@@ -125,51 +246,34 @@ export function FilaObjeto({
             {row.storedAt ? ` · ${row.storedAt}` : ""}
           </p>
         </div>
-        {dato && (
-          <span className="whitespace-nowrap font-data text-chrome-sm text-accent-text">
-            {dato}
+        {hayDato && (
+          <span className="inline-flex min-w-0 flex-wrap items-baseline gap-1 font-data text-chrome-sm text-accent-text">
+            <DatoEnCifras dato={dato} inactivo={efectoInactivo} explicacionId={idExplicacion} />
+          </span>
+        )}
+        {efectoInactivo && (
+          <span
+            id={idExplicacion}
+            className="inline-flex items-center align-middle font-chrome text-chrome-xs text-muted"
+          >
+            {ETIQUETA_EFECTO_INACTIVO}
           </span>
         )}
         <span className="whitespace-nowrap font-data text-chrome-xs text-muted">
           {formatearKg(pesoTotalOz)}
         </span>
-        <Button type="button" variant="secondary" aria-busy={ocupado} onClick={onAccionPrincipal}>
-          {NOMBRE_ACCION_ZONA[row.location]}
-        </Button>
-        {/* **Antes de la acción principal**: sintonizar es lo que hace que el objeto haga algo,
-            y en la fila del prototipo el estado va pegado al nombre, no al final. */}
-        {onSintonizar && (
+        {acciones.map((a) => (
           <Button
+            key={a.id}
             type="button"
-            variant={row.attuned ? "secondary" : "ghost"}
+            variant={a.variant}
             aria-busy={ocupado}
-            aria-pressed={row.attuned}
-            onClick={onSintonizar}
-            aria-label={row.attuned ? `Desintonizar ${item.name}` : `Sintonizar con ${item.name}`}
+            aria-label={a.ariaLabel}
+            onClick={a.ejecutar}
           >
-            {row.attuned ? "Sintonizado" : "Sintonizar"}
+            {a.rotulo}
           </Button>
-        )}
-        {onGastar && (
-          <Button
-            type="button"
-            variant="ghost"
-            aria-busy={ocupado}
-            onClick={onGastar}
-            aria-label={`Gastar una unidad de ${item.name}`}
-          >
-            Gastar
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          aria-busy={ocupado}
-          onClick={onSoltar}
-          aria-label={`Soltar ${item.name}`}
-        >
-          Soltar
-        </Button>
+        ))}
       </div>
       {error && (
         <p role="alert" className="mt-1 pl-s6 font-chrome text-chrome-xs text-danger-text">

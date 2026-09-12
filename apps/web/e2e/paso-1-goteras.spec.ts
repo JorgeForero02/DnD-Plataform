@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // **Paso 1 «las goteras» — la tanda única de navegador de las tareas de pantalla.**
 //
@@ -21,6 +21,16 @@ function nuevaCuenta() {
     password: "password123",
     displayName: `Goteras ${marca}`,
   };
+}
+
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
 }
 
 async function registrarse(page: Page) {
@@ -78,6 +88,8 @@ test("el DM crea «Furia 2/2» desde la hoja, y la gasta", async ({ page }) => {
   await crearCampana(page, "La mesa de los recursos");
   await crearPersonajeConFicha(page, "Brann Yunque");
 
+  // La tarjeta de recursos es de la pestaña «Recursos» (Tarea 7, spec 2026-09-11).
+  await abrirPestana(page, "Recursos");
   const recursos = page.getByRole("region", { name: /recursos/i });
   await recursos.getByRole("button", { name: /Nuevo recurso/i }).click();
   await recursos.getByRole("textbox", { name: "Nombre" }).fill("Furia");
@@ -104,6 +116,9 @@ test("el DM crea «Furia 2/2» desde la hoja, y la gasta", async ({ page }) => {
  * primera tanda.
  */
 async function anadirDelCatalogo(page: Page, nombre: string) {
+  // El inventario es la pestaña «Objetos» de la hoja (Tarea 7, spec 2026-09-11). Abrirla dos
+  // veces no cierra el selector: la pestaña ya activa no se remonta.
+  await abrirPestana(page, "Objetos");
   const abrir = page.getByRole("button", { name: "Añadir objeto", exact: true });
   const panel = page.locator('section[aria-label="Añadir objeto"]');
   // **Abrir y comprobar que abrió, reintentando.** La primera versión pulsaba una vez y seguía: el
@@ -162,6 +177,7 @@ test("dos dagas, una en cada mano, y el cuadro de ataques enseña las dos", asyn
   // **La prueba de que el `slot` llegó al servidor no es la fila del inventario: es el CUADRO DE
   // ATAQUES**, que lo compone el motor a partir de lo equipado. Dos filas «Daga» ahí significan
   // dos manos ocupadas de verdad.
+  await abrirPestana(page, "Ataques");
   const ataques = page.getByRole("region", { name: /ataques/i });
   await expect(ataques.getByRole("row", { name: /Daga/ })).toHaveCount(2, { timeout: 20_000 });
 });
@@ -214,6 +230,8 @@ test("el botón «Aplicar» de la bolsa no se sale de su tarjeta", async ({ page
   await crearCampana(page, "La mesa de la bolsa");
   await crearPersonajeConFicha(page, "Brann Yunque");
 
+  // Las monedas son del inventario, pestaña «Objetos» (Tarea 7, spec 2026-09-11).
+  await abrirPestana(page, "Objetos");
   const boton = page.getByRole("button", { name: /Aplicar cambio de cobre/i }).first();
   await expect(boton).toBeVisible({ timeout: 15_000 });
   // **La tarjeta no es una `region`**: es el `div` que encabeza «Monedas», y se localiza por su

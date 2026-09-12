@@ -864,6 +864,232 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Tarea 10 (spec 2026-09-11, «la hoja a página completa») — **las dos pestañas nuevas de la
+// hoja, medidas en los tres temas.** «Objetos» a página trae piezas que no existían: el carril
+// de pestañas, las fichas de filtro, el buscador, la fila seleccionada sobre `--accent-tint` y
+// el panel de detalle; «Estado» reúne tarjetas que ya se medían sueltas, pero ahora en su
+// columna y con el chip de condición de la cabecera fija encima. Es exactamente el momento en el
+// que un contraste se cae sin que nadie mire: tokens conocidos en contextos nuevos. Todo pasa
+// por `record()` y frena la corrida por debajo del umbral, como el resto del fichero.
+//
+// El personaje se **monta por la API y se mide en pantalla** (patrón de
+// `condiciones-con-duracion.spec.ts`): lo que se mide son colores, no el camino de la ficha.
+function nuevaCuentaPestanas() {
+  return nuevaCuenta("pestanas-contraste");
+}
+
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en las pestañas Objetos y Estado de la hoja (${theme})`, async ({
+    page,
+  }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuentaPestanas();
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+    const headers = { Authorization: `Bearer ${token}` };
+    const campana = await page.request.post("/api/campaigns", {
+      headers,
+      data: { name: "Campaña de contraste (pestañas)" },
+    });
+    expect(campana.ok()).toBe(true);
+    const campaignId: string = (await campana.json()).id;
+    const personaje = await page.request.post(`/api/campaigns/${campaignId}/characters`, {
+      headers,
+      data: { name: "Nessa Tintaclara" },
+    });
+    expect(personaje.ok()).toBe(true);
+    const characterId: string = (await personaje.json()).id;
+    const hoja = await page.request.patch(
+      `/api/campaigns/${campaignId}/characters/${characterId}/sheet`,
+      {
+        headers,
+        data: {
+          abilities: { str: 10, dex: 14, con: 12, int: 15, wis: 12, cha: 8 },
+          race: { source: "SRD", key: "human" },
+          class: { source: "SRD", key: "fighter" },
+          level: 1,
+          choices: { "fighter-skills": ["athletics", "perception"] },
+        },
+      },
+    );
+    expect(hoja.ok()).toBe(true);
+    // Dos objetos: uno queda seleccionado (el primero) y el otro es lo que se filtra.
+    for (const key of ["dagger", "leather"]) {
+      const alta = await page.request.post(
+        `/api/campaigns/${campaignId}/characters/${characterId}/inventory`,
+        { headers, data: { ref: { source: "SRD", key }, quantity: 1, location: "CARRIED" } },
+      );
+      expect(alta.ok()).toBe(true);
+    }
+
+    // --- Objetos ---
+    await page.goto(`/campaigns/${campaignId}/personajes/${characterId}?pestana=objetos`);
+    await expect(page.getByRole("tab", { name: "Objetos", selected: true })).toBeVisible();
+    const inventario = page.getByRole("region", { name: "inventario" });
+    const detalle = page.getByRole("complementary", { name: "detalle del objeto" });
+    await expect(detalle.getByRole("heading", { name: "Daga" })).toBeVisible();
+
+    {
+      // El carril: la pestaña activa va en `--accent-text` sobre `--accent-tint`, que es un
+      // fondo translúcido compuesto sobre la página y no un token sólido.
+      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "Objetos" }));
+      record(theme, "hoja: pestaña activa del carril texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(page.getByRole("tab", { name: "Números" }));
+      record(theme, "hoja: pestaña inactiva del carril texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      // Una ficha de filtro en reposo: `--muted` sobre la superficie de la lista.
+      const ficha = page.getByRole("button", { name: "Encima", exact: true });
+      const { color, bg } = await effectiveTextColours(ficha);
+      record(theme, "hoja: ficha de filtro inactiva texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: fondo } = await borderColourAgainstBg(ficha);
+      record(theme, "hoja: ficha de filtro inactiva borde", contrastRatio(border, fondo), 3);
+    }
+    {
+      // Y pulsada: es el mismo par que la pestaña activa, en otro tamaño de letra.
+      const ficha = page.getByRole("button", { name: "Armadura", exact: true });
+      await ficha.click();
+      await expect(ficha).toHaveAttribute("aria-pressed", "true");
+      const { color, bg } = await effectiveTextColours(ficha);
+      record(theme, "hoja: ficha de filtro activa texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: fondo } = await borderColourAgainstBg(ficha);
+      record(theme, "hoja: ficha de filtro activa borde", contrastRatio(border, fondo), 3);
+      await ficha.click();
+      await expect(ficha).toHaveAttribute("aria-pressed", "false");
+    }
+    {
+      const buscador = page.getByRole("searchbox", { name: "Buscar objeto", exact: true });
+      const { border, bg } = await borderColourAgainstBg(buscador);
+      record(theme, "hoja: borde del buscador de objetos", contrastRatio(border, bg), 3);
+    }
+    {
+      // La fila seleccionada: el nombre, en `--text`, sobre el `--accent-tint` de la selección.
+      const nombre = inventario.getByRole("button", { name: "Ver detalle de Daga" });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "hoja: nombre de la fila seleccionada texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const sinSeleccionar = inventario.getByRole("button", { name: "Ver detalle de Cuero" });
+      const { color, bg } = await effectiveTextColours(sinSeleccionar);
+      record(
+        theme,
+        "hoja: nombre de una fila sin seleccionar texto",
+        contrastRatio(color, bg),
+        4.5,
+      );
+    }
+    {
+      // El panel de detalle: su título, su subtítulo tenue, la cifra en `--accent-text`, y el
+      // filete que lo separa de la lista.
+      const { color, bg } = await effectiveTextColours(
+        detalle.getByRole("heading", { name: "Daga" }),
+      );
+      record(theme, "hoja: título del detalle del objeto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(detalle.locator("header p").first());
+      record(theme, "hoja: subtítulo del detalle del objeto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(detalle.locator("dd").first());
+      record(theme, "hoja: dato del detalle del objeto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { border, bg } = await borderColourAgainstBg(detalle);
+      record(theme, "hoja: filete del detalle del objeto", contrastRatio(border, bg), 3);
+    }
+    for (const name of ["Equipar", "Soltar Daga"]) {
+      const { color, bg } = await effectiveTextColours(detalle.getByRole("button", { name }));
+      record(theme, `hoja: botón "${name}" del detalle texto`, contrastRatio(color, bg), 4.5);
+    }
+
+    // --- Estado ---
+    await page.goto(`/campaigns/${campaignId}/personajes/${characterId}?pestana=estado`);
+    await expect(page.getByRole("tab", { name: "Estado", selected: true })).toBeVisible();
+    const condiciones = page.locator('section[aria-label="condiciones"]');
+    await expect(condiciones).toBeVisible();
+
+    {
+      const { color, bg } = await effectiveTextColours(condiciones.getByRole("heading"));
+      record(theme, "hoja: rótulo de la tarjeta de condiciones", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        condiciones.getByText("Sin condiciones activas."),
+      );
+      record(theme, "hoja: texto de «sin condiciones»", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const nueva = page.getByLabel("Nueva condición");
+      const { color, bg } = await effectiveTextColours(nueva);
+      record(theme, "hoja: desplegable de nueva condición texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: fondo } = await borderColourAgainstBg(nueva);
+      record(theme, "hoja: desplegable de nueva condición borde", contrastRatio(border, fondo), 3);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        condiciones.getByRole("button", { name: "Aplicar condición" }),
+      );
+      record(theme, "hoja: botón «Aplicar condición» texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page
+          .getByRole("region", { name: "modificadores temporales" })
+          .getByText("Ninguno ahora mismo."),
+      );
+      record(theme, "hoja: texto de «ningún modificador»", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const cifra = page.getByRole("region", { name: "clase de armadura" }).locator("span").first();
+      const { color, bg } = await effectiveTextColours(cifra);
+      record(
+        theme,
+        "hoja: cifra de la tarjeta de clase de armadura",
+        contrastRatio(color, bg),
+        4.5,
+      );
+    }
+    {
+      const { color, bg } = await effectiveTextColours(
+        page.getByText("Caminar (pies)", { exact: true }),
+      );
+      record(theme, "hoja: rótulo de una casilla de velocidad", contrastRatio(color, bg), 4.5);
+    }
+
+    // --- El chip de la cabecera fija, que solo existe con una condición puesta. Es texto en
+    //     `--warning-text` sobre la banda translúcida de la tira, el par nuevo de la Tarea 3.
+    await page.getByLabel("Nueva condición").selectOption("prone");
+    await condiciones.getByRole("button", { name: "Aplicar condición" }).click();
+    const chip = page
+      .getByRole("region", { name: "resumen de combate" })
+      .getByRole("list", { name: "condiciones activas" })
+      .getByRole("listitem")
+      .filter({ hasText: "Derribado" });
+    await expect(chip).toBeVisible({ timeout: 10_000 });
+    {
+      const { color, bg } = await effectiveTextColours(chip);
+      record(theme, "hoja: chip de condición de la cabecera texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: fondo } = await borderColourAgainstBg(chip);
+      record(
+        theme,
+        "hoja: chip de condición de la cabecera borde",
+        contrastRatio(border, fondo),
+        3,
+      );
+    }
+  });
+}
+
 // Fix round 2 (post-1.19b review): fix round 1's "computed size, not explicitness"
 // argument was correct about the test, then lost to the very cascade it was reasoning
 // about -- the element-selector override it shipped in tokens.css never beat

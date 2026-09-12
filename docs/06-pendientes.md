@@ -100,7 +100,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-11** (la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+Última revisión: **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
 código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
 cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
 entero en
@@ -140,6 +140,52 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > reciente a lo más viejo» y no es cierto: hay bloques del 2026-09-04 y del 05 incrustados en medio
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
+
+## Dejado por la hoja a página completa (2026-09-12)
+
+Lo que las revisiones de las diez tareas de la rama `hoja/pagina-completa` dejaron abierto **a
+propósito**: nada de esto bloqueaba una tarea y todo se anotó en el ledger para llegar aquí. La
+pregunta 1 del §10 de la spec del 2026-09-06 —qué pestaña abre por defecto— **no estaba aquí**:
+vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota al pie.
+
+> **HP-3 a HP-7 se cerraron el 2026-09-12 en la ronda de cierre del plan, y HP-1 y HP-8 en la
+> ronda de cierre 2 del mismo día**, con la decisión del autor (D-CF-45, D-CF-46). Las siete,
+> enteras, en
+> [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+> Queda aquí la que abrió HP-8 al mirar qué hace hoy la sintonización: HP-9, que el autor decidió el
+> mismo día —**se hace después del paso 3** (D-CF-47)— y que **el 2026-09-12, más tarde, el autor
+> partió en dos** (D-CF-47 enmendada): la mitad que es un defecto (HP-9a) no esperó al paso 3 y **se
+> cerró ese mismo día en tres tareas** (D-CF-48; entera en el mismo archivo). HP-10, que salió al
+> cerrar HP-9a, **se cerró también el 2026-09-12** (una tarea; entera en el mismo archivo). Queda HP-9b.
+
+| | Qué | Dónde y qué costaría |
+|---|---|---|
+| **HP-9b** | **Catálogo SRD +N y descanso corto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). La forma del +N ya existe en `effects`; falta el catálogo estructurado y el gancho al descanso corto. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente (HP-9a, **cerrada el 2026-09-12**, ya puso la puerta `efectosActivos` y `ResolvedItem.attuned`), plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
+
+### HP-9b · Catálogo SRD +N y descanso corto — medición, estimación y alcance (2026-09-12)
+
+**Medido.** La sintonización es hoy **solo un marcador de estado**:
+`apps/api/src/inventory/inventory.service.ts:158` la acepta solo sobre un objeto equipado, `:172` la
+quita al desequipar y `:1081-1096` aplica `MAX_ATTUNED_ITEMS` (tres) con el mensaje que nombra los
+tres. No hay requisito de descanso corto (el cambio es instantáneo); no hay ruptura a las 24 h ni a
+los 100 pies; y el catálogo del SRD tiene **0 objetos con `requiresAttunement: true`**
+(`rules/catalog/items-srd.ts`): solo los objetos que crea el DM lo llevan.
+
+**La forma del +N ya existe.** `CampaignItem.effects` (`Json?`, en `apps/api/prisma/schema.prisma`)
+guarda la lista que valida `itemEffectSchema` en `packages/shared/src/item.schema.ts` —`ac`,
+`weaponAttack`, `weaponDamage`, entre otros— y el motor ya la aplica (`rules/items.ts` a la CA,
+`rules/attacks.ts` al ataque y al daño). Comprobado: **no hace falta migración** para el +N; la
+habría solo si se añade una columna nueva (rareza, cargas), y eso queda fuera.
+
+**Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente menos HP-9a —cerrada el
+2026-09-12, entera en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md)—,
+plan de 6–8 tareas.** Catálogo SRD 5.1: solo los +N son estructurables (~12: arma, armadura, escudo), el resto
+es prosa; sintonizar pasa por el descanso corto (el flujo de descansos de 2C). **Fuera:** cargas,
+rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24 h o a los 100 pies.
+
+**Orden: después del paso 3** (D-CF-37 → D-CF-47): la mitad del catálogo mágico concede conjuros y
+sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o
+también resistencias y ventajas? ¿descanso corto real (el de 2C, con su hora de reloj) o un clic?
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 
@@ -394,23 +440,6 @@ Los puntos 4 (modales) y 5 (líneas del acceso) ya están hechos; el 6 entró en
 | | Qué | Por qué aquí y no después |
 |---|---|---|
 | **A2** | **Invitar por correo a un usuario que ya tiene cuenta** — **aplazada por el autor el 2026-09-11 (D-CF-37): «no viene al caso ahora»**, sin pegar enlaces. **La respuesta del servidor debe ser idéntica exista o no la cuenta**, o se convierte en un comprobador de padrón | Es lo que el autor pedía de verdad al hablar de «amigos», por una fracción del coste. Un grafo social duplica la pertenencia a campaña, que es la unidad real del producto |
-
-## P3 · Un token robado y ya revocado sigue gastando el cubo de su dueño (2026-09-11)
-
-**Medido en la revisión final de `ficha/tanda-2-a-5`.** El límite por usuario
-(`user-or-ip-throttler.guard.ts`) verifica la **firma** del JWT para clavar el cubo a `user:<sub>`,
-pero no mira `passwordChangedAt`: un token sustraído y revocado por cambio de contraseña sigue
-firmado, así que en una ruta con `JwtAuthGuard` cuenta contra el cubo de la víctima (y luego recibe
-401 de `JwtStrategy`, que sí lo mira). Solo lo explota quien ya tiene un token robado, y lo peor
-que consigue es agotar 100/min de una cuenta. **Salidas medidas:** leer `passwordChangedAt` en
-el guard es una consulta más por petición (hoy el guard no toca la base); cachear el sello por
-usuario un minuto lo deja en una consulta por usuario y minuto. Por los cuatro pasos: no es un
-cambio rápido (añade una consulta al camino caliente) y ninguna regla lo contesta, así que queda
-como ficha con su coste escrito. No es urgente para una mesa de cinco.
-
-> **Decidida el 2026-09-11 (D-CF-36) y colocada como Task 1 del
-> [plan de la hoja a página completa](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)**:
-> caché de `passwordChangedAt` por usuario, 60 s. Se archiva cuando esa tarea cierre.
 
 ## Despliegue — abierto tras escribir la pila (2026-09-02)
 

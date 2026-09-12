@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // **Las dos mitades que faltaban para que el motor de condiciones llegue a la mesa** (fichas M16
 // y M17). Las dos se habían dado por cerradas con el servidor hecho y **ninguna pantalla usándolo**,
@@ -22,6 +22,16 @@ function nuevaCuenta() {
 }
 
 /** Se usa para MONTAR, nunca para comprobar: lo que se mide sigue pasando en pantalla. */
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
+}
+
 async function comoLaSesion(page: Page) {
   const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
   return { Authorization: `Bearer ${token}` };
@@ -70,6 +80,9 @@ async function abrirHoja(page: Page) {
   );
   expect(hoja.ok()).toBe(true);
   await page.reload();
+  // La tarjeta de condiciones es de la pestaña «Estado» (Tarea 7, spec 2026-09-11); solo se
+  // monta la pestaña activa, y la de arranque es «Números».
+  await abrirPestana(page, "Estado");
   await expect(page.getByLabel("Nueva condición")).toBeVisible();
   return { campaignId, characterId };
 }
@@ -84,7 +97,13 @@ test("marcar la concentración desde la hoja hace que el daño pida la salvació
   await page.getByLabel("Conjuro en el que se concentra").fill("Bendición");
   await page.getByRole("button", { name: "Aplicar condición" }).click();
 
-  const entrada = page.getByRole("listitem").filter({ hasText: "Concentración" });
+  // La fila de la TARJETA: la cabecera fija pinta además un chip por condición (`ul
+  // "condiciones activas"`, Tarea 3) con el mismo título, y un `listitem` sin acotar ve dos.
+  // Lo que se afirma —el efecto escrito debajo del nombre— solo lo dice la tarjeta.
+  const entrada = page
+    .locator('section[aria-label="condiciones"]')
+    .getByRole("listitem")
+    .filter({ hasText: "Concentración" });
   await expect(entrada).toBeVisible({ timeout: 10_000 });
   // Dice EN QUÉ se concentra, y nunca la clave del enumerado.
   await expect(entrada).toContainText("Concentración en Bendición");
@@ -92,7 +111,8 @@ test("marcar la concentración desde la hoja hace que el daño pida la salvació
   // Y dice lo que el servidor de verdad hace, no una promesa distinta.
   await expect(entrada).toContainText(/salvación de Constitución/i);
 
-  // --- Y ahora el daño dispara la regla del servidor ---
+  // --- Y ahora el daño dispara la regla del servidor (los PG viven en «Recursos») ---
+  await abrirPestana(page, "Recursos");
   await page.getByLabel("Cambio de puntos de golpe").fill("25");
   await page.getByRole("button", { name: "Recibo daño" }).click();
 
@@ -112,7 +132,8 @@ test("una condición pone su aviso donde se decide el modo de la tirada (ficha M
 }) => {
   await abrirHoja(page);
 
-  // Sin condiciones, el panel no inventa ningún aviso.
+  // Sin condiciones, el panel no inventa ningún aviso. Las habilidades están en «Números».
+  await abrirPestana(page, "Números");
   await page.getByRole("button", { name: "Tirada de Percepción" }).click();
   const panel = page.getByRole("group", { name: "Tirada de Percepción" });
   await expect(panel).toBeVisible();
@@ -120,13 +141,19 @@ test("una condición pone su aviso donde se decide el modo de la tirada (ficha M
   await expect(panel.getByRole("radio", { name: "Normal" })).toBeChecked();
   await page.keyboard.press("Escape");
 
-  // Envenenado: desventaja en pruebas de característica (SRD 5.1).
+  // Envenenado: desventaja en pruebas de característica (SRD 5.1). Se pone en «Estado» y se
+  // vuelve a «Números» para tirar.
+  await abrirPestana(page, "Estado");
   await page.getByLabel("Nueva condición").selectOption("poisoned");
   await page.getByRole("button", { name: "Aplicar condición" }).click();
-  await expect(page.getByRole("listitem").filter({ hasText: "Envenenado" })).toBeVisible({
-    timeout: 10_000,
-  });
+  await expect(
+    page
+      .locator('section[aria-label="condiciones"]')
+      .getByRole("listitem")
+      .filter({ hasText: "Envenenado" }),
+  ).toBeVisible({ timeout: 10_000 });
 
+  await abrirPestana(page, "Números");
   await page.getByRole("button", { name: "Tirada de Percepción" }).click();
   const conAviso = page.getByRole("group", { name: "Tirada de Percepción" });
   await expect(conAviso.getByRole("status")).toContainText("Desventaja sugerida: Envenenado", {

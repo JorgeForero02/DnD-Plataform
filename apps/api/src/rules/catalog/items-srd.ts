@@ -40,6 +40,7 @@ function weaponToResolvedItem(weapon: (typeof SRD_WEAPONS)[number]): ResolvedIte
       rangeLongFt: weapon.rangeLongFt,
     },
     requiresAttunement: false,
+    attuned: false,
     // El arma por defecto va a la mano principal, empuñada a una o dos manos — 2B no modela
     // todavía la ocupación de las dos ranuras de mano de un arma `TWO_HANDED` (eso es inventario
     // equipado, no el catálogo).
@@ -65,6 +66,7 @@ function armorToResolvedItem(armor: (typeof SRD_ARMOR)[number]): ResolvedItem {
       stealthDisadvantage: armor.stealthDisadvantage,
     },
     requiresAttunement: false,
+    attuned: false,
     slot: armor.category === "SHIELD" ? "OFF_HAND" : "ARMOR",
   };
 }
@@ -79,6 +81,7 @@ function gearToResolvedItem(gear: (typeof SRD_GEAR)[number]): ResolvedItem {
     costCp: gear.costCp,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     // Sin ranura: el equipo de aventura se lleva, no se equipa.
   };
 }

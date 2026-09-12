@@ -1,4 +1,4 @@
-import { test, expect, type Browser, type Page } from "@playwright/test";
+import { test, expect, type Browser, type Locator, type Page } from "@playwright/test";
 
 // D-CF-15 (migración 7, tickets I3 / M2B-15) — «lo tengo pero no sé qué es». Vuelve a un objeto
 // por lo que hace el juego con él (Foundry): un interruptor de identificación y un alias, por
@@ -41,6 +41,16 @@ function nuevaCuenta(prefijo: string) {
     password: "password123",
     displayName: `${prefijo} ${marca}`,
   };
+}
+
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
 }
 
 async function registrarse(page: Page, prefijo: string) {
@@ -169,10 +179,14 @@ test("el DM marca un anillo sin identificar con un alias, el jugador solo ve el 
   await crearPersonajeConFicha(playerPage, "Portador del Anillo");
 
   // Y le mete el anillo en la mochila desde el selector — el mismo camino que
-  // `inventario.spec.ts` usa para un objeto de campaña.
+  // `inventario.spec.ts` usa para un objeto de campaña. Desde la Tarea 7 el inventario es la
+  // pestaña «Objetos» de la hoja, y solo se monta la activa.
+  await abrirPestana(playerPage, "Objetos");
   const inventarioJugador = playerPage.getByRole("region", { name: "inventario" });
   await inventarioJugador.getByRole("button", { name: /Añadir objeto/ }).click();
-  await inventarioJugador.getByLabel(/Buscar/).fill("Anillo de protección");
+  // El buscador del selector por su nombre entero: desde la tarea 9 el inventario tiene
+  // además su propio «Buscar objeto» (el filtro de la lista), y `/Buscar/` casaba con los dos.
+  await inventarioJugador.getByLabel("Buscar objeto por nombre").fill("Anillo de protección");
   await inventarioJugador
     .getByRole("button", { name: /Anillo de protección/ })
     .first()
@@ -195,8 +209,13 @@ test("el DM marca un anillo sin identificar con un alias, el jugador solo ve el 
   await dmPage.getByRole("link", { name: /Portador del Anillo/ }).click();
   await expect(dmPage.getByRole("heading", { name: "Portador del Anillo" })).toBeVisible();
 
+  await abrirPestana(dmPage, "Objetos");
   const inventarioDM = dmPage.getByRole("region", { name: "inventario" });
-  await expect(inventarioDM.getByText("Anillo de protección")).toBeVisible({ timeout: 15_000 });
+  // La fila de la lista, no cualquier texto: a página el panel de detalle (tarea 9) repite el
+  // nombre del objeto seleccionado dentro de la misma región, y un `getByText` a secas ve dos.
+  await expect(
+    inventarioDM.getByRole("listitem").filter({ hasText: "Anillo de protección" }),
+  ).toBeVisible({ timeout: 15_000 });
 
   // El DM marca el anillo sin identificar — el `PATCH` sale al marcar la casilla (`onChange`,
   // sin blur de por medio). Fix round 2 (R4): el checkbox es CONTROLADO (`checked={
@@ -224,11 +243,14 @@ test("el DM marca un anillo sin identificar con un alias, el jugador solo ve el 
 
   // Solo AHORA recarga el jugador: los dos `PATCH` del DM ya han terminado, así que no hay
   // carrera entre su `GET` y la escritura del DM.
+  // La recarga conserva `?pestana=objetos` en la URL, así que el jugador vuelve a su lista.
   await playerPage.reload();
   await expect(playerPage.getByRole("heading", { name: "Portador del Anillo" })).toBeVisible();
-  await expect(playerPage.getByText("Anillo de aspecto extraño")).toBeVisible({
-    timeout: 15_000,
-  });
+  // La fila con el alias (el detalle a página lo repite; se afirma la fila) y, en TODA la
+  // página —fila, detalle, lo que sea—, ni rastro del nombre real.
+  await expect(
+    inventarioJugador.getByRole("listitem").filter({ hasText: "Anillo de aspecto extraño" }),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(playerPage.getByText("Anillo de protección")).toHaveCount(0);
 
   // El DM lo identifica de vuelta — de nuevo, se espera la respuesta antes de que el jugador
@@ -246,7 +268,9 @@ test("el DM marca un anillo sin identificar con un alias, el jugador solo ve el 
   // cambio llegó es del lado del JUGADOR, no releer lo que el DM ya sabía.
   await playerPage.reload();
   await expect(playerPage.getByRole("heading", { name: "Portador del Anillo" })).toBeVisible();
-  await expect(playerPage.getByText("Anillo de protección")).toBeVisible({ timeout: 15_000 });
+  await expect(
+    inventarioJugador.getByRole("listitem").filter({ hasText: "Anillo de protección" }),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(playerPage.getByText("Anillo de aspecto extraño")).toHaveCount(0);
 
   await dmContext.close();

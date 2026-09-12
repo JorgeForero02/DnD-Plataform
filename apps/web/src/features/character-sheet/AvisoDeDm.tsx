@@ -1,5 +1,5 @@
 import { OVERRIDABLE_KEYS } from "@dnd/shared";
-import { useMyRole } from "../campaigns/members";
+import { useEsVistaDeDm } from "./hooks";
 import { NOMBRE_ANULABLE } from "./vocabulario";
 
 // **El aviso de la vista de DM**, tomado de la maqueta de Figma — que lo pone arriba del todo,
@@ -30,8 +30,8 @@ import { NOMBRE_ANULABLE } from "./vocabulario";
 // del servidor y discrepan, el que miente es el texto.*
 
 export function AvisoDeDm({ campaignId }: { campaignId: string }) {
-  const { role, isLoading } = useMyRole(campaignId);
-  if (isLoading || role !== "DM") return null;
+  const esVistaDeDm = useEsVistaDeDm(campaignId);
+  if (!esVistaDeDm) return null;
 
   const anulables = OVERRIDABLE_KEYS.map((k) => NOMBRE_ANULABLE[k] ?? k);
 

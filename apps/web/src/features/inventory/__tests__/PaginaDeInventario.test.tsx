@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { InventoryItemRow, ResolvedItem } from "@dnd/shared";
@@ -32,6 +32,7 @@ function objeto(parcial: Partial<ResolvedItem> & { name: string }): ResolvedItem
     weightOz: 16,
     effects: [],
     requiresAttunement: false,
+    attuned: false,
     ...parcial,
   };
 }
@@ -145,15 +146,17 @@ describe("PaginaDeInventario", () => {
     expect(screen.getByText("Cofre con monedas")).toBeInTheDocument();
 
     // Cada objeto vive en su zona, con la acción que le toca.
-    const zonaEquipado = screen.getByText("Equipado").closest("section")!;
+    // Por rol y no por texto: la ficha de filtro «Equipado» (tarea 9) es un botón con el mismo
+    // texto; el rótulo de la zona es el único encabezado que empieza así.
+    const zonaEquipado = screen.getByRole("heading", { name: /^Equipado\b/ }).closest("section")!;
     expect(within(zonaEquipado).getByText("Anillo de protección")).toBeInTheDocument();
     expect(within(zonaEquipado).getByRole("button", { name: "Quitar" })).toBeInTheDocument();
 
-    const zonaEncima = screen.getByText("Encima").closest("section")!;
+    const zonaEncima = screen.getByRole("heading", { name: /^Encima\b/ }).closest("section")!;
     expect(within(zonaEncima).getByText("Cuerda de seda")).toBeInTheDocument();
     expect(within(zonaEncima).getByRole("button", { name: "Equipar" })).toBeInTheDocument();
 
-    const zonaGuardado = screen.getByText("Guardado").closest("section")!;
+    const zonaGuardado = screen.getByRole("heading", { name: /^Guardado\b/ }).closest("section")!;
     expect(within(zonaGuardado).getByText("Cofre con monedas")).toBeInTheDocument();
     expect(within(zonaGuardado).getByRole("button", { name: "Traer" })).toBeInTheDocument();
   });
@@ -660,5 +663,211 @@ describe("PaginaDeInventario — identificación (D-CF-15)", () => {
     // `PATCH` de sobra pudiera dispararse antes de comprobar que no lo hizo.
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(patchEspiado).not.toHaveBeenCalled();
+  });
+});
+
+// Tarea 9 (spec 2026-09-11, «la hoja a página completa») — la pestaña Objetos a página: dos
+// columnas, filtros sobre la lista y un panel de detalle de la fila seleccionada. En la mesa la
+// pantalla sigue siendo la de siempre —sin detalle—, y por eso el ayudante de abajo monta
+// `"mesa"` por defecto: cada afirmación anterior de este fichero se queda literal.
+describe("PaginaDeInventario — a página (tarea 9)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const daga = objeto({
+    name: "Daga",
+    kind: "WEAPON",
+    weightOz: 16,
+    weapon: {
+      category: "SIMPLE",
+      range: "MELEE",
+      damageDice: "1d4",
+      damageType: "PIERCING",
+      properties: ["FINESSE", "LIGHT"],
+    },
+  });
+  const pocion = objeto({ name: "Poción de curación", kind: "CONSUMABLE", weightOz: 8 });
+
+  function renderInventario({
+    disposicion = "mesa",
+    puedeEditar,
+    filas = [
+      fila({ id: "eq-daga", location: "EQUIPPED", slot: "MAIN_HAND", item: daga }),
+      fila({ id: "ca-pocion", location: "CARRIED", item: pocion }),
+      fila({ id: "st-cuerda", location: "STORED", storedAt: "En la posada", item: cuerda }),
+    ],
+  }: { disposicion?: "mesa" | "pagina"; puedeEditar?: boolean; filas?: InventoryRow[] } = {}) {
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue(respuesta(filas));
+    return render(
+      <PaginaDeInventario
+        campaignId="c1"
+        characterId="ch1"
+        disposicion={disposicion}
+        puedeEditar={puedeEditar}
+      />,
+      { wrapper: wrapper(nuevoQc()) },
+    );
+  }
+
+  it("a página: dos columnas, la primera fila queda seleccionada y el detalle la enseña; en mesa no hay detalle", async () => {
+    renderInventario({ disposicion: "pagina" });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    expect(within(detalle).getByText("Daga")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /ver detalle de Poción/i }));
+    expect(within(detalle).getByText("Poción de curación")).toBeInTheDocument();
+    cleanup();
+    renderInventario({ disposicion: "mesa" });
+    await screen.findByRole("region", { name: "inventario" });
+    expect(screen.queryByRole("complementary", { name: "detalle del objeto" })).toBeNull();
+    // En la mesa la fila tampoco ofrece el botón de seleccionar: se pinta como siempre.
+    expect(screen.queryByRole("button", { name: /ver detalle de/i })).toBeNull();
+  });
+
+  it("los filtros recortan las tres zonas y la selección cae a la primera fila visible", async () => {
+    renderInventario({ disposicion: "pagina" });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    expect(within(detalle).getByText("Daga")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar objeto" }), {
+      target: { value: "pocion" },
+    });
+    const inventario = screen.getByRole("region", { name: "inventario" });
+    expect(within(inventario).queryByRole("button", { name: /ver detalle de Daga/i })).toBeNull();
+    expect(
+      within(inventario).getByRole("button", { name: /ver detalle de Poción/i }),
+    ).toBeVisible();
+    // La daga ya no está: la selección pasa a la primera fila que sí se ve.
+    expect(within(detalle).getByText("Poción de curación")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar objeto" }), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Consumible" }));
+    expect(screen.getByRole("button", { name: "Consumible" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(inventario).queryByRole("button", { name: /ver detalle de Daga/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Consumible" }));
+    expect(within(inventario).getByRole("button", { name: /ver detalle de Daga/i })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardado" }));
+    expect(within(detalle).getByText("Cuerda de seda")).toBeInTheDocument();
+  });
+
+  it("el detalle ofrece las mismas acciones que la fila y la misma llamada al servidor", async () => {
+    vi.spyOn(inventoryApi, "consumeInventoryItem").mockResolvedValue({
+      remaining: 0,
+      deleted: true,
+    });
+    renderInventario({ disposicion: "pagina" });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    const verPocion = screen.getByRole("button", { name: /ver detalle de Poción/i });
+    fireEvent.click(verPocion);
+    const fila = verPocion.closest("li")!;
+    // HP-4 (2026-09-12): la selección la anuncia el BOTÓN como conmutador (`aria-pressed`), no el
+    // `<li>` con `aria-selected` — ese atributo solo vale en `option`/`tab`/`row`/`gridcell`, y
+    // la lista es un `<ul>` sin papel. El `<li>` conserva la marca visual en `data-seleccionada`.
+    expect(verPocion).toHaveAttribute("aria-pressed", "true");
+    expect(fila).toHaveAttribute("data-seleccionada", "true");
+    expect(fila).not.toHaveAttribute("aria-selected");
+    const verDaga = screen.getByRole("button", { name: /ver detalle de Daga/i });
+    expect(verDaga).toHaveAttribute("aria-pressed", "false");
+    expect(verDaga.closest("li")!).not.toHaveAttribute("data-seleccionada");
+
+    const enFila = within(fila)
+      .getAllByRole("button")
+      .map((b) => b.textContent);
+    const enDetalle = within(detalle)
+      .getAllByRole("button")
+      .map((b) => b.textContent);
+    expect(enDetalle).toEqual(enFila.filter((t) => t !== "Poción de curación"));
+
+    fireEvent.click(within(detalle).getByRole("button", { name: /Gastar una unidad de Poción/ }));
+    await waitFor(() =>
+      expect(inventoryApi.consumeInventoryItem).toHaveBeenCalledWith("c1", "ch1", "ca-pocion", 1),
+    );
+  });
+
+  it("spec §7: en un personaje ajeno (puedeEditar=false) ni el detalle ni las filas pintan botones de acción; por defecto sí", async () => {
+    renderInventario({ disposicion: "pagina", puedeEditar: false });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    expect(within(detalle).getByText("Daga")).toBeInTheDocument();
+    expect(within(detalle).queryAllByRole("button")).toEqual([]);
+    const inventario = screen.getByRole("region", { name: "inventario" });
+    for (const nombre of [/^Quitar$/, /^Equipar$/, /^Traer$/, /^Soltar /, /^Gastar /]) {
+      expect(within(inventario).queryByRole("button", { name: nombre })).toBeNull();
+    }
+    // Seleccionar sigue siendo posible: mirar no es editar.
+    expect(
+      within(inventario).getByRole("button", { name: /ver detalle de Poción/i }),
+    ).toBeVisible();
+
+    cleanup();
+    renderInventario({ disposicion: "pagina" });
+    const detallePorDefecto = await screen.findByRole("complementary", {
+      name: "detalle del objeto",
+    });
+    expect(within(detallePorDefecto).getByRole("button", { name: "Quitar" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Equipar" })).toBeVisible();
+  });
+
+  it("HP-2: un rechazo del servidor a «Sintonizar» desde el detalle se lee DENTRO del detalle", async () => {
+    vi.spyOn(inventoryApi, "updateInventoryItem").mockRejectedValue(
+      new ApiError("Ya hay tres objetos sintonizados.", 400),
+    );
+    renderInventario({
+      disposicion: "pagina",
+      filas: [fila({ id: "eq-anillo", location: "EQUIPPED", slot: "RING_1", item: anillo })],
+    });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    fireEvent.click(within(detalle).getByRole("button", { name: /Sintonizar con Anillo/ }));
+    expect(await within(detalle).findByRole("alert")).toHaveTextContent(
+      "Ya hay tres objetos sintonizados.",
+    );
+    // Residual del reseño final: la fila seleccionada compartía el mismo rechazo con el
+    // detalle, y un lector de pantalla anunciaba el mismo mensaje dos veces.
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it("residual: seleccionar otra fila cancela la pregunta de la mano pendiente", async () => {
+    renderInventario({
+      disposicion: "pagina",
+      filas: [
+        fila({ id: "ca-pocion", location: "CARRIED", item: pocion }),
+        fila({ id: "ca-daga", location: "CARRIED", item: daga }),
+      ],
+    });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    const filaDaga = screen.getByRole("button", { name: /ver detalle de Daga/i }).closest("li")!;
+    fireEvent.click(within(filaDaga).getByRole("button", { name: "Equipar" }));
+    expect(within(detalle).getByRole("radio", { name: "Mano izquierda" })).toBeInTheDocument();
+
+    // Se selecciona otra fila: la pregunta pendiente para la daga —que ya no se ve— se cancela.
+    fireEvent.click(screen.getByRole("button", { name: /ver detalle de Poción/i }));
+    expect(within(detalle).queryByRole("radio", { name: "Mano izquierda" })).toBeNull();
+
+    // Se vuelve a seleccionar la daga: la pregunta no reaparece sola.
+    fireEvent.click(within(filaDaga).getByRole("button", { name: /ver detalle de Daga/i }));
+    expect(screen.queryByRole("radio", { name: "Mano izquierda" })).toBeNull();
+  });
+
+  it("HP-2: a página, equipar un arma desde la lista pregunta la mano en el detalle, una sola vez", async () => {
+    renderInventario({
+      disposicion: "pagina",
+      filas: [
+        fila({ id: "ca-pocion", location: "CARRIED", item: pocion }),
+        fila({ id: "ca-daga", location: "CARRIED", item: daga }),
+      ],
+    });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    expect(within(detalle).getByText("Poción de curación")).toBeInTheDocument();
+    const filaDaga = screen.getByRole("button", { name: /ver detalle de Daga/i }).closest("li")!;
+    fireEvent.click(within(filaDaga).getByRole("button", { name: "Equipar" }));
+    // La pregunta vive en el panel del objeto al que se refiere, y ese panel pasa a ser el suyo.
+    expect(within(detalle).getByText("Daga")).toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: "Mano izquierda" })).toHaveLength(1);
+    expect(within(detalle).getByRole("radio", { name: "Mano izquierda" })).toBeInTheDocument();
   });
 });

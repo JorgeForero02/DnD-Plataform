@@ -7,6 +7,12 @@ import * as sheetApi from "../../../character-sheet/api";
 import * as encountersApi from "../../../encounters/api";
 import type { Character } from "../../../characters/api";
 
+// HP-1 — la hoja de verdad necesita router y media API; aquí solo se mide el **título del
+// cajón**, así que se sustituye por una marca. Lo que pinta la hoja lo prueban sus suites.
+vi.mock("../../../character-sheet/HojaCalculada", () => ({
+  HojaCalculada: () => <p>hoja calculada (doble)</p>,
+}));
+
 // Tarea 10 (2026-09-05, iniciativa y bando) — **corregir el bando desde la ficha del elenco**,
 // donde el prototipo ya lo resuelve al empezar el combate («un aliado te traiciona en el segundo
 // asalto» es lo que le falta). Ver `.superpowers/sdd/2026-09-05-iniciativa-y-bando/task-10-report.md`.
@@ -140,6 +146,22 @@ describe("el mando «Dar» aparece con los mandos del DM (B4)", () => {
   it("sin mandos, un jugador no ve «Dar»", () => {
     montar({ conMandos: false });
     expect(screen.queryByRole("button", { name: /dar/i })).not.toBeInTheDocument();
+  });
+});
+
+// HP-1 (2026-09-12, opción A del autor) — **el cajón del DM se llama «Su hoja»**, simétrico
+// con el «Tu hoja» del jugador (`MesaDeSesion.tsx`). El nombre lo pintaba dos veces: el título
+// del diálogo y la `Cabecera` de la hoja en disposición «mesa». Se queda la `Cabecera`, que es
+// la que lleva el descriptor; el título dice para qué es el cajón.
+describe("el cajón de la hoja del DM (HP-1)", () => {
+  it("se abre con el ojo y se llama «Su hoja», no el nombre del personaje", async () => {
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir la ficha de Corvin Vhael" }));
+    const cajon = await screen.findByRole("dialog", { name: "Su hoja" });
+    expect(cajon).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Corvin Vhael" })).not.toBeInTheDocument();
+    expect(cajon).toHaveTextContent("Sin salir de la mesa.");
+    expect(cajon).toHaveTextContent("hoja calculada (doble)");
   });
 });
 

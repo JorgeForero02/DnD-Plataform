@@ -851,3 +851,152 @@ empujar es una acción hacia fuera.
 
 Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
 sí mismo**.
+
+## P3 · Un token robado y ya revocado sigue gastando el cubo de su dueño (2026-09-11)
+
+**Cerrada el 2026-09-11 (Task 1 del plan de la hoja).** `common/user-or-ip-throttler.guard.ts`
+compara ahora `iat` con `passwordChangedAt` del usuario (misma regla de empate que
+`jwt.strategy.ts`: `iat <= sello` es viejo), con el sello cacheado 60 s por usuario para no
+sumar una consulta por petición. Pruebas: `user-or-ip-throttler.guard.spec.ts` (empate, antes y
+después del cambio, y una consulta por usuario y minuto) y el e2e
+`test/login-bucket-por-ip.e2e-spec.ts`. **Mutación:** cambiar `iat > sello` por `iat >= sello`
+no la rompía con las tres pruebas originales — hacía falta el caso de empate exacto, añadido a
+la suite, para que enrojeciera.
+
+**Texto original:**
+
+**Medido en la revisión final de `ficha/tanda-2-a-5`.** El límite por usuario
+(`user-or-ip-throttler.guard.ts`) verifica la **firma** del JWT para clavar el cubo a `user:<sub>`,
+pero no mira `passwordChangedAt`: un token sustraído y revocado por cambio de contraseña sigue
+firmado, así que en una ruta con `JwtAuthGuard` cuenta contra el cubo de la víctima (y luego recibe
+401 de `JwtStrategy`, que sí lo mira). Solo lo explota quien ya tiene un token robado, y lo peor
+que consigue es agotar 100/min de una cuenta. **Salidas medidas:** leer `passwordChangedAt` en
+el guard es una consulta más por petición (hoy el guard no toca la base); cachear el sello por
+usuario un minuto lo deja en una consulta por usuario y minuto. Por los cuatro pasos: no es un
+cambio rápido (añade una consulta al camino caliente) y ninguna regla lo contesta, así que queda
+como ficha con su coste escrito. No es urgente para una mesa de cinco.
+
+> **Decidida el 2026-09-11 (D-CF-36) y colocada como Task 1 del
+> [plan de la hoja a página completa](../superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)**:
+> caché de `passwordChangedAt` por usuario, 60 s.
+
+## HP-2 · «Equipar» desde el detalle preguntaba la mano en la fila, y el rechazo del servidor solo se leía en la fila (2026-09-12)
+
+**Cerrada el 2026-09-12 (revisión final del plan de la hoja).** `features/inventory/PaginaDeInventario.tsx`: la pregunta de la mano (`ElegirMano`) se pinta **en un solo sitio** —bajo la fila en la mesa; a página, dentro de `DetalleDeObjeto`, y «Equipar» sobre un arma selecciona esa fila para que el detalle sea el suyo—, porque montarla en los dos sería un solo grupo de radios (mismo `name`) repartido en dos cajas. Y el detalle recibe `error` (la misma clave de `erroresPorFila` que la fila) y lo pinta con el mismo `role="alert"` bajo sus botones. Pruebas: `PaginaDeInventario.test.tsx`, «HP-2: un rechazo del servidor a «Sintonizar» desde el detalle se lee DENTRO del detalle» (roja antes: `Unable to find role="alert"` dentro del `complementary`) y «HP-2: a página, equipar un arma desde la lista pregunta la mano en el detalle, una sola vez» (roja antes: el detalle seguía enseñando la poción). Verdes después.
+
+**Texto original:**
+
+| **HP-2** | **«Equipar» desde el panel de detalle abre `ElegirMano` en la fila de la izquierda**, no en el panel: la acción principal de una fila «encima» hace `setManoPara(row.id)` (`features/inventory/PaginaDeInventario.tsx:263-265`) y `ElegirMano` solo se monta dentro de `FilaObjeto` (`:354-361`); `DetalleDeObjeto` ejecuta la misma lista de acciones (`features/inventory/DetalleDeObjeto.tsx:143`). El e2e de Objetos lo cubre porque confirma en la fila | Montar `ElegirMano` también en el detalle cuando `manoPara` es la fila seleccionada. Maqueta, no lógica |
+
+## HP-3 · El recorrido de Objetos mutaba su fixture compartido y no era a prueba de reintento (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `apps/web/e2e/hoja-pestanas.spec.ts`: nueva `dejarElCueroSinEquipar(page)`, que lee el inventario por la API y, si la armadura de cuero no está en la mochila, la devuelve con `PATCH { location: "CARRIED", slot: null }`. Se llama **al entrar** en el `test` de Objetos a 1280 —un reintento tras un timeout no pasa por ningún `finally`— y en el `finally` de un `try` que envuelve equipar → medir → quitar. Las aserciones son las mismas. Sin prueba unitaria posible (es el propio e2e); lo corre el controlador. **Retoque del mismo día (revisión de la ronda 1):** ya no es un `finally` —una restauración que lanzara ahí taparía el fallo del recorrido, y `no-unsafe-finally` no deja relanzar—; el recorrido se captura, el cuero se devuelve, y se relanza el primer error que hubo; si solo falla la vuelta se anota en el informe de Playwright.
+
+**Texto original:**
+
+| **HP-3** | **El recorrido de Objetos muta su fixture compartido** —equipa y luego quita (`e2e/hoja-pestanas.spec.ts:333` y `:344`)— y **no es a prueba de reintento**: un retry a medias arranca con la armadura ya puesta | Sembrar un personaje propio para ese `test`, o dejar el estado como estaba en un `finally` |
+
+## HP-4 · `aria-selected` en un `<li>` fuera de un `listbox` (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `features/inventory/FilaObjeto.tsx`: el `<li>` pierde `aria-selected` y gana `data-seleccionada="true"` solo cuando está seleccionada (la marca visual sigue en él); el botón «Ver detalle de X» lleva `aria-pressed={seleccionada}` —patrón de botón conmutador, válido en un `<ul>` sin papel—. Prueba: `PaginaDeInventario.test.tsx`, «el detalle ofrece las mismas acciones…», que ahora exige `aria-pressed="true"` en el botón de la fila elegida, `false` en otra, `data-seleccionada` solo en la elegida y **ningún** `aria-selected` en el `<li>` (roja antes: el botón no tenía `aria-pressed`). `hoja-pestanas.spec.ts` no leía `aria-selected` en filas; no cambia.
+
+**Texto original:**
+
+| **HP-4** | **`aria-selected` en un `<li>` fuera de un `listbox`**: `FilaObjeto.tsx:117` lo pone cuando la fila es seleccionable y `ZonaDeObjetos.tsx:35` la lista es un `<ul>` sin `role`. El atributo solo tiene sentido en `option`, `tab`, `row` o `gridcell` | O `role="listbox"`/`option` en la zona a página, o `aria-pressed` en el botón «Ver detalle de X» y fuera el atributo del `<li>` |
+
+## HP-5 · `hoja.fixture.tsx` importaba `HojaCalculada` (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `renderHoja` —lo único del fixture que necesitaba `HojaCalculada`— se mudó a `HojaCalculada.test.tsx`, su único usuario (función local del fichero). `fixtures/hoja.fixture.tsx` queda con los datos, `wrapper` y `renderPestana`, e importa solo tipos y el espacio de nombres mockeable de `api`; ninguna prueba de pestaña carga ya la hoja entera de forma transitiva. Sin cambio de aserciones: 338 unitarias de `features/character-sheet` en verde antes y después de la mudanza.
+
+**Texto original:**
+
+| **HP-5** | **`hoja.fixture.tsx` importa `HojaCalculada`** (`features/character-sheet/__tests__/fixtures/hoja.fixture.tsx:15`) para su `renderHoja`, así que **cada test de pestaña carga la hoja entera** de forma transitiva aunque solo monte `Numeros` | Partir el fixture en datos (sin imports de componentes) y montadores; los tests de pestaña importan solo el primero |
+
+## HP-6 · Menores del guard de cuota por usuario (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `common/user-or-ip-throttler.guard.ts`: **dos `catch`, dos motivos** —la firma que no verifica devuelve la IP con su comentario de siempre, y el fallo de la base al leer el sello devuelve la IP con el suyo («no se sabe si está revocado; la cuota no decide si la petición entra»), sin lanzar—; y el `Map` de sellos tiene tope: `TOPE_SELLOS = 10_000` (cien veces la mesa de D-CF-17; unos cientos de KB en el peor caso), al alcanzarlo `barrerVencidos` quita las entradas con `hasta <= ahora` antes de escribir. Conducta idéntica en el camino feliz. Pruebas nuevas en `user-or-ip-throttler.guard.spec.ts`: usuario inexistente → `user:<sub>` y una consulta (el `null` se cachea); token sin `iat` → usuario; firma inválida → IP sin tocar la base; base que lanza → IP y no lanza; y el tope (10 000 entradas vigentes siguen creciendo, pasada la ventana la siguiente escritura deja una). **Roja antes** solo la del tope (`10002` en vez de `1`); las otras cuatro son la caracterización que faltaba y pasaban ya. `src/common src/auth`: 142/142; e2e `login-bucket-por-ip`: 1/1.
+
+**Texto original:**
+
+| **HP-6** | **Menores del guard de cuota por usuario** (`common/user-or-ip-throttler.guard.ts`): un fallo de base de datos dentro del `try` (`:96`) cae al `catch` de firma inválida (`:99`) y cuenta por IP sin decirlo; y el `Map` de sellos (`:63`) no evicta nunca —un sello por usuario que haya pedido algo, sin tope—. (La ventana de 60 s del token robado ya está escrita como coste aceptado junto al `Map`, revisión final del 2026-09-12) | Separar el `catch` en dos y un `Map` con tope o evicción al leer. Sin prueba de usuario inexistente cacheado como `null`, ni de `iat` indefinido |
+
+## HP-7 · `Cabecera.tsx` escondía la fila de avisos con `empty:hidden` (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `Cabecera.tsx` calcula `hayAvisos` antes de montar —`warnings.length`, `pendingChoices.length`, `esVistaDeDm` y `puedeEditar`, una condición por aviso y en su orden— y solo entonces monta la fila; `empty:hidden` se quitó (era la muleta que esto sustituye). La condición del DM cuelga de una consulta, así que vive una sola vez como `useEsVistaDeDm(campaignId)` en `AvisoDeDm.tsx`, que el aviso y la cabecera comparten. Pruebas en `Cabecera.test.tsx`: sin advertencias, sin elecciones, sin vista de DM y sin poder editar, la banda fija **no tiene hermano detrás** (`resumen.nextElementSibling === null`; roja antes: `expected <div> to be null`); y basta la vista de DM para que la fila exista y contenga el aviso. `e2e/sesion.spec.ts`, punto 1, ya medía contra el primer hermano que se pinta: vale en los dos casos y solo cambió su comentario.
+
+**Texto original:**
+
+| **HP-7** | **`Cabecera.tsx` esconde la fila de avisos con `empty:hidden`** (`features/character-sheet/Cabecera.tsx:111`), que depende de que los cuatro avisos devuelvan `null` cuando no tienen nada que decir; un envoltorio que devuelva un `<div>` vacío la vuelve a pintar con su hueco | Un `hayAvisos` calculado antes de montar, o mantener la regla como comentario junto a los cuatro |
+
+## HP-1 · El nombre se pintaba dos veces en el cajón del DM (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre 2 del plan de la hoja).** Opción A del autor, D-CF-46: el cajón del DM se llama **«Su hoja»** —`features/sessions/elenco/MandosDeCombatiente.tsx`, `title="Su hoja"` y `subtitulo="Sin salir de la mesa."`—, simétrico con el «Tu hoja» del jugador (`MesaDeSesion.tsx`). El nombre y el descriptor los sigue pintando **una vez** la `Cabecera` de la hoja en disposición «mesa». Prueba: `FichaDeElenco.test.tsx`, «se abre con el ojo y se llama «Su hoja», no el nombre del personaje» (roja antes: `Unable to find role="dialog" and name "Su hoja"`; la hoja se dobla con `vi.mock` porque el título es lo único que se mide). E2E: `sesion.spec.ts:373` pasa de `getByRole("dialog", { name: "Borin Barbaférrea" })` a `{ name: "Su hoja" }` —el único localizador que abría ese cajón por el nombre (`furia.spec.ts` y `hoja-pestanas.spec.ts` abren el del jugador, «Tu hoja», y no cambian)—. Los cajones «Daño», «Curar» y «Condición» no se tocan.
+
+**Texto original:**
+
+| **HP-1** | **El nombre se pinta dos veces en el cajón del DM**: el título del diálogo (`features/sessions/elenco/MandosDeCombatiente.tsx:165`, `title={nombre}`) y la `Cabecera` en disposición «mesa» (`features/character-sheet/Cabecera.tsx:51-53`), que lo pinta porque la mesa no tiene `PageHeader` | Decidir cuál sobra: o el diálogo pasa un `sinNombre` a la hoja, o el título del cajón deja de ser el nombre. Una línea y su RTL |
+
+## HP-8 · El orden de los botones de la fila no era el del prototipo (2026-09-12)
+
+**Cerrada el 2026-09-12 (ronda de cierre 2 del plan de la hoja).** Opción C del autor, D-CF-45: lo que la pantalla 20 del prototipo enseñaba junto al nombre era el **estado** «sintonizado», no un orden de botones. `features/inventory/FilaObjeto.tsx` y `DetalleDeObjeto.tsx` pintan ahora un distintivo `ETIQUETA_SINTONIZADO` («Sintonizado», `vocabulario.ts`) junto al nombre cuando `row.attuned`, con el mismo patrón que la marca «Sin identificar» de la fila; el detalle deja «Requiere sintonización» sin el « · sintonizado» de antes. `accionesDeObjeto.ts` **conserva el orden** principal · sintonizar · gastar · soltar y lo escribe en su cabecera; para no decir «Sintonizado» dos veces, el rótulo del botón sobre un objeto sintonizado pasa a **«Desintonizar»** (su `aria-label` ya lo decía; `pressed` se mantiene). La prueba de orden cambia su rótulo esperado de `"Sintonizado"` a `"Desintonizar"`: **cambio declarado del rótulo, no aflojamiento**, dicho en su comentario. Pruebas nuevas: `FilaObjeto.test.tsx` (tres: distintivo + «Desintonizar» pulsado; sin distintivo + «Sintonizar»; orden intacto) y dos en `DetalleDeObjeto.test.tsx` (distintivo en el `h3` y un solo «sintonizado» en el panel; sin distintivo). Rojas antes (`Unable to find an element with the text: Sintonizado`, `expected ['Quitar','Sintonizado','Soltar']`), verdes después. E2E: ningún localizador de `apps/web/e2e` usaba «Sintonizado» ni «Sintonizar» como nombre de botón; nada que cambiar. Fuente: SRD 5.1 «Attunement» — *a creature can be attuned to no more than three magic items at a time*; *spends a short rest focused on only that item*. Al medir qué hace hoy la sintonización se abrió **HP-9** en 06 (objetos mágicos con efecto, decisión del autor). **Retoque del mismo día (revisión de la ronda 2, fallo del controlador):** `pressed` ya **no** se mantiene — el botón pierde `aria-pressed` porque el conmutador de la APG es rótulo constante + estado en `pressed`, y el nuestro es el patrón contrario (rótulo que cambia, estado en el distintivo); las pruebas afirman el par de rótulos y la ausencia del atributo. El `aria-pressed` de «Ver detalle de X» (HP-4) no se toca.
+
+**Texto original:**
+
+| **HP-8** | **El orden de los botones de la fila no es el del prototipo**: la pantalla 20 del 09-06 ponía «sintonizar» ANTES de la acción principal, y la fila nunca lo hizo —`features/inventory/accionesDeObjeto.ts` pinta principal · sintonizar · gastar · soltar, y el detalle hereda ese orden por ser la misma lista—. Nadie lo decidió: la fila nació así en 2B y el prototipo es de revisión obligatoria | Decidir si el prototipo pierde (la acción principal primero es lo que hoy se usa en la mesa) o se reordena la lista; en cualquier caso, escribirlo en ese fichero. Una línea de código y la prueba de orden |
+
+## HP-9a · «Sintonizar cuenta» — un objeto que exige sintonización daba su bono sin estar sintonizado (2026-09-12)
+
+**Cerrada el 2026-09-12 (HP-9a, tres tareas).** Fuente: SRD 5.1 §*Attunement* — el objeto no da sus propiedades mágicas hasta que la criatura está sintonizada con él; sin sintonizar funciona como su versión mundana. **Task 1** (`11ea5d9`, `fix(rules): an item that requires attunement gives its magical effects only when attuned`): `ResolvedItem.attuned` (`packages/shared/src/item.schema.ts`), una sola puerta `efectosActivos(item)` en `apps/api/src/rules/items.ts` que `attacks.ts` importa, `character-sheet.service.ts` copia `attuned` de la fila al objeto equipado y emite el aviso `item_not_attuned` (`key: ref`, `data: { ref, name }`) por cada objeto equipado con efectos y sin sintonizar. Once pruebas rojas antes (`Expected: 11 Received: 12` en la CA; `Expected: 6 Received: 7` en el ataque), verdes después; mutación (`return item.effects`) las vuelve a poner rojas. **Task 2** (`6d2fc9c`, `feat(web): an unattuned item shows its magical effect as inactive, and the sheet says why`): `describirAviso` traduce el aviso («"X" requiere sintonización: sus efectos no cuentan hasta sintonizarlo.»); `datoDeObjeto` devuelve `{ mundano, magico }` y la mitad mágica va tachada (`<s data-efecto="inactivo">`) con la marca «Efecto inactivo: requiere sintonización» en la fila y el detalle cuando `efectoInactivoPorSintonizacion(row)` (`features/inventory/sintonizacion.ts`, único sitio del predicado en la web). Ocho RTL rojas antes, verdes después; dos mutaciones. **Task 3** (`1373c56`, `feat: attunement counts in the browser too, and HP-9a closes`): el `<s>` apunta con `aria-describedby` a la marca (un `id` por fila, `idDeEfectoInactivo`), porque un lector de pantalla no anuncia el tachado; y el recorrido de navegador `apps/web/e2e/inventario.spec.ts`, «un objeto que requiere sintonización no cuenta hasta sintonizarlo»: equipar el anillo por la pantalla **no mueve** la CA de la tira fija, aparece el tachado, la marca y el aviso de la cabecera; a 390×844 la fila con la marca cabe (borde derecho ≤ 390); sintonizar sube la CA en uno y se van el tachado, la marca y el aviso. Lo que quedó fuera va en **HP-10** (06): la fila nunca pintó los bonos de arma (`weaponAttack`/`weaponDamage`), así que una espada +1 sin sintonizar enseña la marca sin nada tachado.
+
+**Texto original:**
+
+| **HP-9a** | **«Sintonizar cuenta» — defecto, no espera al paso 3** (decisión del autor, 2026-09-12). Un objeto del DM con `effects` y `requiresAttunement: true` da su bono **sin estar sintonizado**: el motor no lee `attuned`. Medición, alcance y tres tareas en la subsección de abajo | **Sesión corta, antes o justo después de fusionar la rama** (decide el autor el orden). 2–3 h con revisión entre tareas |
+
+### HP-9a · «Sintonizar cuenta» — defecto, sesión corta (2026-09-12)
+
+**Es un defecto, no una funcionalidad nueva.** Un objeto creado por el DM con `effects` (por
+ejemplo, un +1) y `requiresAttunement: true` aplica su efecto **sin que nadie lo haya
+sintonizado**: el servidor declara la regla —`apps/api/src/inventory/inventory.service.ts:158-172`
+acepta y quita la sintonización, y `:1081-1096` aplica el tope de `MAX_ATTUNED_ITEMS`— pero el
+motor de reglas nunca la lee. `apps/api/src/rules/` no tiene ni una aparición de `attuned`, y
+`character-sheet.service.ts` (~L459) construye el `ResolvedItem` que llega al motor **sin ese
+campo**: un anillo +1 sin sintonizar da +1 igual que uno sintonizado.
+
+**Arreglo mínimo, tres tareas:**
+1. ~~`ResolvedItem` lleva `attuned`.~~ **Hecho el 2026-09-12** (Task 1, commit `fix(rules): an
+   item that requires attunement gives its magical effects only when attuned`):
+   `attuned: z.boolean().default(false)` en `resolvedItemSchema`, y `equipoEquipado` lo copia de
+   la fila. En el listado del inventario el `attuned` que vale sigue siendo el de la fila
+   (`items[].attuned`); el `item.attuned` que va dentro es `false` porque sale del catálogo.
+2. ~~`rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
+   `!requiresAttunement || attuned`~~ **Hecho el 2026-09-12**, por una sola puerta:
+   `efectosActivos(item)` en `rules/items.ts`, que `attacks.ts` importa. **En vez del paso de traza
+   «inactivo»** que decía esta ficha, la hoja emite el aviso `item_not_attuned`
+   (`key: ref`, `data: { ref, name }`) por cada objeto equipado con `requiresAttunement && !attuned
+   && effects.length > 0` — un paso de traza con `amount: 0` habría ensuciado la suma de la traza,
+   y los avisos ya son el sitio donde la hoja explica por qué un número no se movió
+   (`item_unresolved`, `versatile_needs_both_hands`).
+3. ~~`describirAviso` necesita el `case "item_not_attuned"`; la fila y el detalle muestran «Efecto
+   inactivo: requiere sintonización» cuando aplica; RTL~~ **Hecho el 2026-09-12** (Task 2, commit
+   `feat(web): an unattuned item shows its magical effect as inactive, and the sheet says why`):
+   el aviso dice «"{nombre}" requiere sintonización: sus efectos no cuentan hasta sintonizarlo»;
+   `datoDeObjeto` devuelve `{ mundano, magico }` y la mitad mágica va tachada (`<s
+   data-efecto="inactivo">`) con la marca al lado cuando `efectoInactivoPorSintonizacion(row)`
+   (`features/inventory/sintonizacion.ts`, único sitio del predicado en la web, sobre `row.attuned`); el
+   servidor emite el aviso con `sintonizacionPendiente(item)` junto a la puerta, no con una copia
+   del predicado. **Pendiente (Task 3):** `inventario.spec.ts` en Playwright (un solo fichero, con
+   `exec playwright test`) — la marca y el `<s>` con el texto exacto de arriba.
+
+**Estimación dada al autor (controlador, 2026-09-12): 2–3 h, con revisión entre tareas.** Sin
+migración, sin catálogo nuevo, sin tocar el descanso corto. Fuente: SRD 5.1 §*Attunement* — el
+objeto no da sus propiedades mágicas hasta que la criatura está sintonizada con él (verificar la
+cita exacta en el commit si el repositorio trae el texto en inglés; si no, se cita como «según SRD
+5.1 §Attunement» sin inventar literal).
+
+## HP-10 · La fila ponía cifra solo al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado (2026-09-12)
+
+**Cerrada el 2026-09-12 (HP-10).** Una tarea, commit `feat(web): the item row summarises every effect kind, so an inactive sword strikes its +1 too`. El vocabulario de los efectos ya tenía una sola casa —`inventory` importa de `campaign-items` desde `inventory/hooks.ts`—, así que la forma corta no abrió un módulo nuevo: `resumirEfecto(efecto)` vive junto a `describirEfecto` en `apps/web/src/features/campaign-items/vocabulario.ts`, es un `switch` **exhaustivo sobre la unión** (`never` en el `default`: un décimo tipo en `itemEffectSchema` rompe el typecheck en vez de llegar a la fila como marca sin cifra) y reutiliza `ABREVIATURA_CARACTERISTICA`, `nombreHabilidad` y `nombreMovimiento` del mismo fichero: «+1 CA», «+1 atq», «+1 dñ», «+2 FUE» / «FUE 19» (sumar / fijar), «+1 salv. SAB» / «+1 salvaciones», «+5 PG máx.», «+10 pies» (caminar) / «+30 pies al volar» (las demás velocidades se nombran), «competencia en Sigilo» / «pericia en Sigilo» / «media competencia en …» / «sin competencia en …», «competencia en salv. CON»; los negativos conservan el signo. `datoDeObjeto.magico` (`features/inventory/FilaObjeto.tsx`) pasa de sumar solo los `ac` a la lista de `resumirEfecto` de **todos** los `effects` unida por « · »; lo mundano no cambia y `DatoEnCifras` tacha la cadena entera, así que el detalle hereda. Pruebas: 18 en `campaign-items/__tests__/vocabulario.test.ts` (`it.each` con la cadena exacta por tipo y una que recorre `itemEffectSchema.options` y exige un resumen no vacío, sin «Sin traducir» y sin la clave cruda), 3 RTL en `FilaObjeto.test.tsx` y 3 en `DetalleDeObjeto.test.tsx` (espada +1 `weaponAttack`+`weaponDamage` sin sintonizar → `<s data-efecto="inactivo">+1 atq · +1 dñ</s>` con la marca y la descripción accesible; sintonizada → en limpio y sin marca; cinturón `abilityScore set 19 str` → «FUE 19» tachado). 24 rojas antes (`resumirEfecto is not a function`, `Unable to find an element with the text: FUE 19`), 48/48 verdes después; mutación —el `case "weaponDamage"` devuelve el número a secas— tumbó 5, restaurada con `cp`. E2E: `inventario.spec.ts` sigue afirmando «+1 CA» para el anillo, y esa cadena no cambió. La frase de esta ficha «hasta que se cierre, para esos ocho tipos la marca sola es la verdad» deja de serlo con este commit.
+
+**Texto original:**
+
+| **HP-10** | **La fila pone cifra solo al efecto `ac`; para los otros ocho tipos la marca «Efecto inactivo» sale sin nada tachado.** `datoDeObjeto` (`apps/web/src/features/inventory/FilaObjeto.tsx:44-47`) suma en su mitad `magico` únicamente los `effects` con `kind === "ac"`, y `itemEffectSchema` (`packages/shared/src/item.schema.ts:133-186`) define **nueve**: `ac` y otros ocho — `abilityScore`, `save`, `maxHp`, `speed`, `skillProficiency`, `saveProficiency`, `weaponAttack`, `weaponDamage`—. El predicado de la marca (`features/inventory/sintonizacion.ts`, `effects.length > 0`) dispara para cualquiera de ellos —y el servidor los filtra todos por `efectosActivos`—, así que una espada +1, un cinturón de fuerza o una capa de protección sin sintonizar enseñan la marca **sin ningún número tachado** ni en limpio. **Hasta que se cierre, para esos ocho tipos la marca sola es la verdad**: no hay cifra que mienta, pero tampoco cifra que diga qué se pierde. Encontrado al cerrar HP-9a; el controlador la remidió en la revisión de la Task 3 (la ficha decía solo «bonos de arma») | **Corta pero no trivial** (vocabulario, media jornada con RTL): `resumenDeEfecto(kind, amount…)` en `features/inventory/vocabulario.ts` —legible por tipo, una vez: «+1 atq», «+1 dñ», «FUE 19», «+1 salv. SAB», «+5 PG máx.», «+10 pies»—, que `datoDeObjeto.magico` compone y `DatoEnCifras` tacha igual que el «+N CA». Sin tocar el servidor. Una prueba por tipo, y la del «marca sin cifra» deja de ser verdad |

@@ -183,6 +183,7 @@ describe("build.items — carril A2: el equipo equipado entra por la misma puert
             weightOz: 16,
             effects: [{ kind: "speed", movement: "walk", amount: 10 }],
             requiresAttunement: false,
+            attuned: false,
           },
         ],
       }),
@@ -205,6 +206,7 @@ describe("build.items — carril A2: el equipo equipado entra por la misma puert
       weightOz: 0,
       effects: [],
       requiresAttunement: false,
+      attuned: false,
       armor: {
         category: "SHIELD" as const,
         baseAc: 2,
@@ -232,6 +234,7 @@ describe("build.items — carril A2: el equipo equipado entra por la misma puert
             weightOz: 16,
             effects: [{ kind: "skillProficiency", skill: "athletics", level: "expertise" }],
             requiresAttunement: false,
+            attuned: false,
           },
         ],
       }),
@@ -292,6 +295,7 @@ describe("lo que encontró la auditoría de mecánica de 2B", () => {
           weightOz: 1_000,
           effects: [],
           requiresAttunement: false,
+          attuned: false,
           armor: {
             category: "HEAVY" as const,
             baseAc: 17,
@@ -324,6 +328,7 @@ describe("lo que encontró la auditoría de mecánica de 2B", () => {
           weightOz: 1_000,
           effects: [],
           requiresAttunement: false,
+          attuned: false,
           armor: {
             category: "HEAVY" as const,
             baseAc: 17,

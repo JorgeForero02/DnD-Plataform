@@ -35,6 +35,12 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-paseo-de-uso.md`](./_archivo/historial-2026-09-05-paseo-de-uso.md) | **El paseo de uso contra producción**, movida entera el 2026-09-11 (tercer corte). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md) | **El nervio medido en producción** y **el PNJ sin nombre en la pantalla**, movidas enteras el 2026-09-10 en el segundo corte de la sesión de cerrar fichas. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md) | **El cero de tipos comodín** y **el proceso pasa a medirse**, movidas enteras el 2026-09-12 al pasarse el fichero (1002 de 1000) con los retoques de la revisión de la hoja. Sus hitos se quedan arriba |
+> | [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md) | **`CLAUDE.md` deja de narrar el estado**, movida entera el 2026-09-12 al escribir la línea de la ronda de documentación de cierre de la hoja (el fichero iba a pasar de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md) | **La poda del tablero y el nacimiento de `como-seguir.md`**, movida entera el 2026-09-12 al escribir la línea de HP-9a (el fichero estaba en 997 de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md) | **Botín y reparto** —una tabla entrega, y decir quién dio—, movida entera el 2026-09-12 al escribir la línea de HP-9a Task 2 (el fichero quedaba en 1007 de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-paso-2-actividad.md`](./_archivo/historial-2026-09-06-paso-2-actividad.md) | **Paso 2 — la actividad, sus cinco formas y la economía de la mesa** (2026-09-06/07), movida entera el 2026-09-12 al escribir la línea de cierre de HP-9a: el fichero quedaba en 1005 de 1000 y era la entrada completa más antigua |
+> | [`_archivo/historial-2026-09-07-tanda-corta.md`](./_archivo/historial-2026-09-07-tanda-corta.md) | **Tanda corta — los seis arreglos que dejó abiertos el paso 2** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la revisión de HP-10: el fichero quedaba en 1002 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -48,6 +54,219 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > archivadas, que es para lo que está el archivo.
 
 ---
+
+## La hoja a página completa (2026-09-11 y 12)
+
+Rama `hoja/pagina-completa` sobre `main` `80a9243`, **veintiséis commits** hasta `0d304ea`
+—veinticuatro de código, pruebas y la fusión de la Task 1, dos de documentación; medido con
+`git log --oneline 80a9243..HEAD | wc -l` el 2026-09-12; el de esta ronda de documentación de
+cierre hace veintisiete—: las once tareas
+del plan, la ola de arreglos de la revisión final de la rama, las dos rondas de cierre de las
+fichas HP y los dos residuales. Cerrada en local el 2026-09-12 y **sin fusionar ni desplegar**
+(lo hace el autor a mano). La
+[spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) y el
+[plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) mandan; las decisiones que la
+ejecución obligó a tomar son D-CF-38..46 en [decisiones.md](./decisiones.md), y la que el autor
+tomó al cerrar, D-CF-47 (HP-9 después del paso 3). **Revertir cualquier
+tanda = `git revert` de sus commits; las tarjetas no cambiaron**: cada pestaña monta las mismas
+tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
+
+- **Task 2 — Las condiciones saben pintarse como chips de solo lectura** (`4c965ed`, `8aff6e6`).
+  `Condiciones.tsx` gana una variante para la cabecera. La revisión cazó un chip vacío para la
+  concentración (`NOMBRE_CONDICION` en vez de `tituloDe`) y dejó dicho que **una condición vencida
+  no es chip**: arriba se enseña lo activo, lo vencido sigue tachado en Estado (D-CF-43).
+- **Task 3 — La cabecera vive en `Cabecera.tsx`** (`ae98951`, `e9ed5a5`): retrato, identidad
+  solo en la mesa (en la página ya la pinta `PageHeader`), cinco números, chips y avisos, con
+  `PropsDePestana` en `features/character-sheet/pestanas/tipos.ts`. La revisión devolvió fuerza a la `it` movida de los PG
+  (`puedeEditar` verdadero, el control de daño ausente para quien edita) y probó el gating de
+  `BotonSubirNivel`.
+- **Tasks 4 a 6 — Números, Ataques, Rasgos, Recursos, Estado y Conjuros son pestañas**
+  (`742f7e1`..`212eb76`). Fixture compartido en
+  `features/character-sheet/__tests__/fixtures/hoja.fixture.tsx`; `habilidades.ts` saca las
+  veinticuatro líneas de la tarjeta. Conjuros existe solo para quien lanza (`lanzaConjuros.ts`)
+  y la revisión de la 6 devolvió el guard `spellSlots > 0`: un alto elfo sin espacios veía una
+  tarjeta vacía. **Ruling de la 4:** las tarjetas de identidad (Ficha/Características) **se
+  remontan** cuando la hoja se vuelve derivable porque ahora viven en una pestaña; lo guardado en
+  blur ya está guardado y solo se pierde el indicador transitorio «guardando» (D-CF-39).
+- **Task 7 — `HojaCalculada` es cabecera + pestañas** (`b7a0987`, `a9f9bfd`): 149 líneas,
+  `disposicion` decide lateral a página o tira en la mesa, la pestaña activa en `?pestana=`, y
+  **una pestaña que la hoja no ofrece cae a Números** —`?pestana=conjuros` en un no lanzador
+  dejaba el panel vacío— (D-CF-42). Diez `it` de `HojaCalculada.test.tsx` abren la pestaña antes
+  de afirmar: solo aperturas de pestaña y un localizador reescrito con comentario; ninguna
+  aserción cambió.
+- **Task 8 — Las acciones de un objeto son una lista** (`0a3a31a`): `features/inventory/accionesDeObjeto.ts`
+  alimenta la fila, que pinta desde ella.
+- **Task 9 — Objetos a página filtra y enseña el detalle** (`f7e8b24`, `e11db5e`):
+  `FiltrosDeObjetos`, `filtrarObjetos`, `DetalleDeObjeto`. El filtro «qué es» usa el `ItemKind`
+  real —seis chips— y no el tipo ad hoc del brief (D-CF-41); los chips de zona hablan el
+  vocabulario de zona (D-CF-40); y `inventory` declara su propia unión `disposicion` porque **no
+  importa de `character-sheet`** (`features/inventory/hooks.ts:32`), frontera que la revisión vio romperse.
+- **Task 10 — Medido en el navegador, fichero a fichero** (`65bb5c1`, `5158ad1`):
+  `hoja-pestanas.spec.ts` nuevo y dieciséis e2e adaptados abriendo la pestaña que toque —solo
+  aperturas y localizadores más específicos—. **Incidente:** `pnpm --filter @dnd/web e2e --
+  <fichero>` **no filtra** —pnpm no pasa el argumento— y corrió la suite entera una vez, 18,7 min;
+  el comando que sí filtra es `pnpm --filter @dnd/web exec playwright test e2e/<fichero>.spec.ts`
+  (D-CF-44). Esa pasada midió la **banda fija en 412 px** con los avisos dentro, y de ahí el
+  **ruling A**: el `sticky` lleva solo lo que cambia por turno —retrato, identidad en mesa, cinco
+  números, chips—; los avisos van justo debajo, fuera del `sticky`; ≤ 96 px después
+  (`hoja.spec.ts`, punto 5b) (D-CF-38).
+- **Task 11 — La documentación alcanza a la rama** (`a58ae03`, `7591a9e`): 07, D-CF-38..44,
+  HP-1..7 en 06, 08, 01, `00-INDEX` (producción `f9579b2`, no `6eb2590`), `como-seguir` §0 y las
+  notas al pie de la spec del 09-06 y del plan del 09-11. La revisión devolvió D-CF-44 a lo que el
+  autor decidió (la costumbre de 08 no era parte del ruling) y nombró los diecinueve ficheros de
+  navegador. **Revertir:** `git revert`; nada de código dentro.
+- **Revisión final de la rama — una sola ola de arreglos** (`75bab98`, sobre `7591a9e`, 2026-09-12).
+  Cuatro Important: **`puedeEditar` llega al inventario** (spec §7: en un personaje ajeno ni las
+  filas ni el detalle pintan botones; mirar no es editar); **las acciones del detalle contestan en
+  el detalle** —`ElegirMano` se monta una sola vez, bajo la fila en la mesa y dentro de
+  `DetalleDeObjeto` a página, y el error del servidor sale bajo sus botones— (cierra HP-2); la RTL
+  «cada tarjeta en su pestaña» **recorre las siete** con la misma tabla que el e2e, 23 rótulos; y
+  la spec lleva su nota al pie con las cuatro desviaciones (§4, §6, §4 chips, §10). Más nueve
+  minors: el coste de 60 s del guard escrito junto al `Map`, títulos de prueba que prometían lo que
+  no comprobaban, `data.rollSuggestions?.` sin el `?` de más, el rango de combinantes escapado en
+  `filtrarObjetos.ts`. **Revertir:** `git revert` del commit; HP-2 volvería a 06.
+
+- **Task 1 — El cubo por usuario no se clava a un token revocado (API).**
+  `common/user-or-ip-throttler.guard.ts` compara `iat` con `passwordChangedAt` (misma regla de
+  empate que `jwt.strategy.ts`), cacheado 60 s por usuario. Cierra la ficha P3 del
+  2026-09-11 (D-CF-36), archivada en
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  Pruebas: `user-or-ip-throttler.guard.spec.ts` (nueva) y el e2e existente
+  `login-bucket-por-ip.e2e-spec.ts`. **Revertir:** `git revert` del commit; el guard vuelve a
+  clavar el cubo solo por firma.
+- **Ronda de cierre — HP-3 a HP-7 (2026-09-12).** Un commit que cierra las cinco fichas que
+  las revisiones dejaron abiertas a propósito y no eran del autor: el e2e de Objetos deja el cuero
+  sin equipar por la API al entrar y en un `finally` (HP-3); la fila seleccionada la anuncia el
+  botón «Ver detalle de X» con `aria-pressed` y el `<li>` guarda solo la marca visual
+  (`data-seleccionada`, HP-4); `renderHoja` sale del fixture y vuelve a `HojaCalculada.test.tsx`
+  para que las pruebas de pestaña no carguen la hoja entera (HP-5); el guard de cuota separa el
+  fallo de base del de firma y acota el caché de sellos a `TOPE_SELLOS` con barrido de vencidos
+  (HP-6); y `Cabecera` calcula `hayAvisos` antes de montar la fila, con la condición del DM en
+  `useEsVistaDeDm` compartido con el aviso, sin `empty:hidden` (HP-7). Las cinco, con su medición
+  y su texto original, en
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md);
+  HP-1 y HP-8 siguen en 06 porque las decide el autor. **Revertir:** `git revert` del commit.
+- **Ronda de cierre 2 — HP-1 y HP-8, con la decisión del autor (2026-09-12).** El cajón de la
+  hoja que abre el DM desde el elenco se llama **«Su hoja»** («Sin salir de la mesa.»), simétrico
+  con el «Tu hoja» del jugador; el nombre y el descriptor los pinta una sola vez la `Cabecera`
+  en disposición «mesa» (HP-1, D-CF-46). Y la sintonización se enseña como **estado junto al
+  nombre** —distintivo «Sintonizado» en `FilaObjeto` y `DetalleDeObjeto`, mismo patrón que «Sin
+  identificar»—, que es lo que la pantalla 20 del prototipo quería decir; la lista de acciones
+  conserva su orden, principal primero, y el botón del objeto sintonizado dice lo que hace,
+  «Desintonizar», para no repetir el estado (HP-8, D-CF-45; SRD 5.1 «Attunement»). Al medirlo se
+  vio que la sintonización es hoy solo un marcador —el motor no lee `attuned`, no hay descanso
+  corto, 0 objetos del SRD la piden— y quedó escrito como **HP-9** en 06, decisión del autor.
+  Localizador e2e cambiado: `sesion.spec.ts`, el cajón por «Su hoja». Las dos fichas, con su texto
+  original, en
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  **Revertir:** `git revert` del commit.
+- **Tres retoques de la revisión de la ronda 1 (2026-09-12).** `useEsVistaDeDm` se muda de
+  `AvisoDeDm.tsx` a `features/character-sheet/hooks.ts` (un fichero de componente no exporta más que
+  componentes; el aviso de `react-refresh` vuelve a su cifra anterior); los ayudantes del spec del
+  guard de cuota viven una vez a nivel de fichero; y el recorrido de Objetos del e2e de pestañas
+  deja de restaurar el cuero en un `finally` —captura, restaura y relanza el primer error— para
+  que una vuelta por la API que falle no tape el fallo del recorrido. Sin cambio de aserciones.
+  **Revertir:** `git revert` del commit.
+- **El botón de sintonizar es una acción llana (2026-09-12, revisión de la ronda 2).** Pierde
+  `aria-pressed`: el conmutador de la APG lleva rótulo fijo y el estado en `pressed`; el nuestro
+  es el patrón contrario (rótulo «Sintonizar»/«Desintonizar», estado en el distintivo), y mezclar
+  los dos anunciaba «Desintonizar, pulsado». `variant` y `aria-label` no cambian; el
+  `aria-pressed` de «Ver detalle de X» (HP-4) tampoco. Y el índice de `_archivo/README.md` gana
+  la fila del archivo del 2026-09-06 que le faltaba. **Revertir:** `git revert` del commit.
+- **Dos residuales de la revisión final (2026-09-12).** A página, un rechazo del servidor sobre
+  la fila SELECCIONADA ya no se anuncia dos veces: `PaginaDeInventario` deja de pasarle `error` a
+  esa fila (`FilaObjeto`) porque el detalle (`DetalleDeObjeto`) ya lo enseña — un lector de
+  pantalla oía el mismo mensaje por partida doble. Y seleccionar otra fila mientras `ElegirMano`
+  está abierto para la anterior cancela esa pregunta pendiente (`setManoPara(null)` en
+  `onSeleccionar`, solo cuando el id cambia): antes reaparecía sola al volver a la fila que la
+  había abierto. **Revertir:** `git revert` del commit.
+- **Ronda de documentación de cierre (2026-09-12, ciclo FIN del protocolo).** Lo que la rama dejó
+  fuera de la documentación, puesto en su sitio: `02-entorno.md` decía que `check:historial` fallaba a
+  las 400 líneas cuando el tope es 1000 desde el 2026-09-05, y enseña las formas que de verdad
+  filtran un fichero (`exec playwright test`, `exec vitest run`; las dos medidas); `04-convenciones.md`
+  gana la regla de `verify` en primer plano para los implementadores; `decisiones.md` D-CF-47 (HP-9
+  después del paso 3) y la cláusula «sin `aria-pressed`» en D-CF-45; HP-9 reescrita en 06 con lo que
+  se midió al estimarla —`CampaignItem.effects` e `itemEffectSchema` ya guardan el +N y el motor lo
+  aplica sin mirar `attuned`, así que no hace falta migración—; 01, 08, `como-seguir` y `00-INDEX`
+  al día. **Revertir:** `git revert` del commit; no toca código.
+- **HP-9 se parte en dos, decisión del autor (2026-09-12).** Al releer HP-9 con «espera al paso 3»
+  quedó claro que la mitad de lo que describía no es una funcionalidad futura sino un defecto ya
+  vivo: un objeto del DM con `effects` y `requiresAttunement: true` aplica su bono sin estar
+  sintonizado, porque el motor nunca lee `attuned`. **HP-9a** («sintonizar cuenta») se separa como
+  ese defecto y no espera al paso 3 —sesión corta de 2–3 h, antes o justo después de fusionar la
+  rama—; **HP-9b** (catálogo SRD +N estructurado y descanso corto) conserva el texto y el orden
+  originales, después del paso 3. D-CF-47 enmendada, `06-pendientes.md` y `como-seguir.md`
+  actualizados. **Revertir:** `git revert` del commit; HP-9 vuelve a su ficha única.
+- **HP-9a · Task 1 — el servidor deja de contar lo mágico de un objeto sin sintonizar
+  (2026-09-12)**, commit `fix(rules): an item that requires attunement gives its magical effects
+  only when attuned`. `ResolvedItem` gana `attuned` (`z.boolean().default(false)`, estado de la
+  fila como `identified`); `equipoEquipado` lo copia de la fila; `rules/items.ts` estrena
+  `efectosActivos(item)` —`[]` si `requiresAttunement && !attuned`, la lista si no— y es la ÚNICA
+  puerta por la que la CA (`equipmentToEngineInput`) y el +N al ataque y al daño (`attacks.ts`,
+  `sumaDeEfecto`) leen `effects`; lo mundano (`armor.baseAc`, el dado del arma) no pasa por el
+  filtro. La hoja emite `item_not_attuned` (`key: ref`, `data: { ref, name }`, con el nombre ya
+  redactado) solo si el objeto tenía `effects`. Fuente: SRD 5.1 §Attunement — sin sintonizar, el
+  objeto no da sus propiedades mágicas. Once pruebas nuevas (motor, ataques y costura del
+  servicio); mutación «devolver `item.effects` siempre» tumbó cinco. **La pantalla es la Task 2**:
+  `describirAviso` aún dice «Sin traducir: item_not_attuned». **Revertir:** `git revert` del commit.
+- **HP-9a · Task 2 — la pantalla deja de mentir sobre el número (2026-09-12)**, commit `feat(web):
+  an unattuned item shows its magical effect as inactive, and the sheet says why`. La hoja traduce
+  `item_not_attuned` («"{nombre}" requiere sintonización: sus efectos no cuentan hasta
+  sintonizarlo», con el `name` ya redactado por el servidor) y el código entra en
+  `CODIGOS_QUE_EMITE_LA_API`. `datoDeObjeto` pasa de una cadena a `{ mundano, magico }` —antes la
+  armadura +1 se quedaba en «CA base 16» y el anillo +1 decía «+1 CA» sin saber si contaba—; la
+  fila y el detalle pintan la mitad mágica **tachada** (`<s data-efecto="inactivo">`) con la marca
+  «Efecto inactivo: requiere sintonización» al lado (el detalle añade la frase entera) cuando
+  `efectoInactivoPorSintonizacion(row)` (`features/inventory/sintonizacion.ts`, el único sitio del
+  predicado en la web, sobre `row.attuned` y nunca `item.attuned`). En el servidor el aviso se
+  decide con `sintonizacionPendiente(item)` junto a `efectosActivos` en vez de con una copia a mano
+  del predicado. Diez pruebas nuevas (2 de vocabulario, 4 + 4 RTL); dos mutaciones —el predicado
+  siempre falso tumbó dos, quitar el `case` tumbó dos—. Queda la Task 3 (Playwright).
+  **Revertir:** `git revert` del commit; la pantalla vuelve a pintar el +1 como si contara.
+- **Sintonizar cuenta (HP-9a, 2026-09-12) — cerrada en tres commits:** `11ea5d9` (Task 1, el
+  servidor), `6d2fc9c` (Task 2, la pantalla) y `1373c56` (Task 3, `feat: attunement counts in the
+  browser too, and HP-9a closes`). **Qué** cerró la Task 3: el `<s>` del bono tachado apunta con
+  `aria-describedby` a su marca (`idDeEfectoInactivo(row.id)`, un `id` por fila; en el detalle con
+  prefijo `detalle-` porque las dos cajas conviven en la página), porque un lector de pantalla no
+  anuncia el tachado —dos aserciones RTL (`toHaveAccessibleDescription`), rojas antes—; y el
+  recorrido de navegador que ninguna unitaria puede hacer, `apps/web/e2e/inventario.spec.ts` «un
+  objeto que requiere sintonización no cuenta hasta sintonizarlo»: un anillo de protección de la
+  campaña (`requiresAttunement`, `effects: [{ kind: "ac", amount: 1 }]`) se equipa por la pantalla
+  y la CA de la tira fija **no se mueve**, la fila enseña `s[data-efecto="inactivo"]` con «+1 CA»
+  y la marca, la cabecera avisa; a 390×844 la fila con la marca cabe (borde derecho ≤ 390, crece
+  hacia abajo por `flex-wrap`); «Sintonizar» sube la CA en uno y se van el tachado, la marca y el
+  aviso. **Por qué:** SRD 5.1 §Attunement — un objeto que requiere sintonización da sus propiedades
+  mágicas solo a la criatura sintonizada; sin sintonizar es su versión mundana. La ficha entera va a
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) y
+  deja **HP-10** en 06 (la fila pone cifra solo al efecto `ac`; para los otros ocho tipos de
+  `itemEffectSchema` la marca sale sin nada tachado). D-CF-48. **Revertir:** `git revert` de los tres commits, del
+  más nuevo al más viejo; el motor vuelve a sumar el +1 sin mirar `attuned`.
+- **HP-10 — la fila resume todos los tipos de efecto, y la espada +1 inactiva tacha su +1
+  (2026-09-12)**, commit `feat(web): the item row summarises every effect kind, so an inactive
+  sword strikes its +1 too`. **Qué:** `resumirEfecto(efecto)` junto a `describirEfecto` en
+  `features/campaign-items/vocabulario.ts` (única casa del vocabulario de efectos: `inventory` ya
+  importaba de ahí), `switch` exhaustivo con `never` sobre los nueve tipos de `itemEffectSchema`
+  —«+1 CA», «+1 atq», «+1 dñ», «FUE 19», «+1 salv. SAB», «+5 PG máx.», «+10 pies», «pericia en
+  Sigilo», «competencia en salv. CON»—; `datoDeObjeto.magico` compone la lista entera unida por
+  « · » y `DatoEnCifras` la tacha igual que tachaba el «+N CA», así que el detalle hereda.
+  **Por qué:** desde HP-9a una espada +1 o un cinturón de fuerza sin sintonizar enseñaban la marca
+  «Efecto inactivo» sin ninguna cifra que tachar. 24 pruebas nuevas (18 de vocabulario, 3 + 3 RTL),
+  rojas antes; mutación (`weaponDamage` sin su «dñ») tumbó 5. «+1 CA» del anillo no cambia, así
+  que `inventario.spec.ts` sigue igual. La ficha entera va a
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  **Revertir:** `git revert` del commit; la fila vuelve a poner cifra solo al `ac`.
+- **Revisión de HP-10 — la mitad mágica envuelve, lista cada efecto y salta los ceros
+  (2026-09-12)**, commit `fix(web): the magic half of an item's figures wraps, lists each effect and
+  skips zeros`. **Qué:** el `whitespace-nowrap` sale del contenedor del dato (fila y detalle,
+  ahora `flex-wrap min-w-0`) y `DatoEnCifras` lo pone solo en lo mundano; la mitad mágica, que
+  desde HP-10 es una lista sin tope, envuelve (RTL: la clase no está en el `<s>`/`<span>` mágico ni
+  en su padre). **Cambio semántico declarado:** el `datoDeObjeto` de antes SUMABA los `ac` («+2 CA»,
+  `null` si 0); el de HP-10 los LISTA («+1 CA · +1 CA») porque cada efecto es una línea que
+  escribió el DM, y esta revisión añade que una cantidad 0 no se resume (antes «+0 CA» se pintaba;
+  el `set` de `abilityScore` no es una suma y su 0 sí cuenta). Dos `it` nuevos para las dos cosas y
+  uno para el envoltorio; los fixtures `kind: "WONDROUS"` (inexistente, escondido por el `as`)
+  pasan a `"OTHER"`; `describirEfecto` usa el mismo `conSigno`. **Revertir:** `git revert` del
+  commit; la lista vuelve a poder pintar «+0 CA» y a no partir.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
@@ -537,204 +756,54 @@ revertir el de P2-10 devuelve la fragilidad de diagnóstico, no un defecto de pr
 
 ---
 
-## Tanda corta — los seis arreglos que dejó abiertos el paso 2 (2026-09-07)
+## Tanda corta — los seis arreglos que dejó abiertos el paso 2 (2026-09-07) — archivada
 
-**Qué.** Seis fichas de [06-pendientes.md](./06-pendientes.md) cerradas en seis commits, cada una
-con su prueba escrita **antes** del arreglo, corrida en rojo, y **verificada por mutación**:
-revirtiendo el arreglo pieza a pieza y comprobando que la prueba enrojece **por la aserción que
-tenía que enrojecer**, no solo que enrojece. Nueve mutaciones en total sobre las seis tareas.
+Entera en
+[`_archivo/historial-2026-09-07-tanda-corta.md`](./_archivo/historial-2026-09-07-tanda-corta.md),
+movida el 2026-09-12 al pasarse este fichero de sus 1000 líneas con la línea de la revisión de
+HP-10. **El hito:** seis fichas (P2-0, P2-0b, P2-6, A11-usos-sin-tope, P2-7, P2-3) cerradas en seis
+commits con prueba en rojo antes y mutación después —transacciones que no viajaban, la Furia que
+se gastaba dos veces, el `max: null` que no era ilimitado, el `record()` que tragaba claves— y
+cuatro fichas nuevas anotadas en vez de arregladas (P2-8, P2-9, P2-10 y la medición de P2-0).
 
-| Ficha | Qué se arregló |
-|---|---|
-| **P2-0** | `ConditionsService.apply` recibía un `tx` y lo usaba solo para escribir: `requireVisibleCharacter` e `inmunidadesDe` iban por el pool. `viewerFor` / `requireVisibleCharacter(WithViewer)` (`common/character-viewer.ts`) y `StatblocksService.resolver` aceptan ahora el mismo cliente opcional |
-| **P2-0b** | Lo mismo un piso más abajo: `construirODenegar` reenviaba el `tx` solo a `hojaOMotivo`. `equipoEquipado` y `viewerFor` no declaraban siquiera el parámetro; ahora lo declaran, y los tres llamadores que ya corrían dentro de una transacción le pasan el suyo |
-| **P2-6** | `ActivitiesService.consumir` leía con `findUnique` y escribía con `update`: tres usos simultáneos de la Furia leían los mismos 3 y escribían los mismos 2. Ahora toma `SELECT … FOR UPDATE`, el mismo candado que `changeHp` ya usaba a un metro |
-| **A11-usos-sin-tope** | `max: null` («Unlimited» en el SRD) no significaba nada: `RestService` no reponía esas filas y `consumir` las gastaba de un contador finito. Las dos miran ahora `max === null` **antes** que `current`. El marcador se queda —`ResourcesService.adjust` sigue moviendo `current` a mano— y su nota lo dice en vez de afirmar que nadie lee el `null` |
-| **P2-7** | Los dos guardianes que no sujetaba nadie: que un `entrega` malformado no rompa la tirada (era `entregaSchema.safeParse`, verificado solo por ejecución), y que `record()` **rechace** una clave que su esquema no conoce en vez de descartarla en silencio, que es lo que hace `.parse()` de Zod |
-| **P2-3** | «Dar…» abría el cajón sin destinatarios para quien maneja un PNJ: el selector se construía solo con `fetchCharacters`, que filtra `statblockRef: null` a propósito. Ahora suma la lista de PNJ (`GET /npcs`, filtrada por `canView` en el servidor), con **el mismo filtro para las dos** |
+## Paso 2 — la actividad, sus cinco formas y la economía de la mesa (2026-09-06/07) — archivada
 
-**Cómo se verificó.** `pnpm verify` en verde en cada commit (lo exige el gancho). Además: **toda la suite de e2e de API** entera para el guardián estricto de `record()` —era el cambio que podía
-romper a cualquier llamador, y no rompió a ninguno— y **una sola tanda de Playwright**, la de
-P2-3, con la API precompilada antes de lanzarla.
+**Movida entera** a [`_archivo/historial-2026-09-06-paso-2-actividad.md`](./_archivo/historial-2026-09-06-paso-2-actividad.md)
+el 2026-09-12, al escribir la línea de cierre de HP-9a: el fichero quedaba en 1005 de 1000. En una
+línea: once tareas en nueve commits (`2bd7769`…`2228341`/`8d4de37`) —la economía de acciones, `Origen`,
+las cinco actividades del SRD, una subclase por personaje y la Furia de punta a punta—.
 
-**Lo que NO entró, y está anotado en vez de arreglado.** Cuatro fichas nuevas en
-[06-pendientes.md](./06-pendientes.md): **P2-8** (`buildResponse` sigue leyendo por el pool dentro
-de la transacción de `changeHp` — el mismo defecto que P2-0b, un tramo más abajo), **P2-9** (**no
-existe ninguna puerta para ceder un PNJ a un jugador**, así que el caso que P2-3 nombra no se puede
-montar usando el producto y su recorrido de navegador mide la otra mitad del mismo carril) y
-**P2-10** (dos pruebas que se pasan del tiempo por defecto solo cuando la suite entera corre junta,
-y cuyo rojo parece un defecto del cambio recién hecho). La cuarta es la medición que faltaba en el
-cuerpo de **P2-0**: tres de las seis consultas de `apply` siguen yendo por el pool porque
-`MembershipService` no acepta un cliente.
+## Botín y reparto — una tabla entrega, y decir quién dio (2026-09-06) — archivada
 
-**Cómo revertir.** Los seis commits son independientes entre sí salvo P2-0b, que se apoya en el
-`tx?` que P2-0 añadió a `character-viewer.ts`. Revertir uno solo no deja el árbol roto; revertir
-P2-0 sin revertir P2-0b, sí.
+**Movida entera** a [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md)
+el 2026-09-12, al escribir la línea de HP-9a Task 2: el fichero quedaba en 1007 de 1000. En una línea:
+una fila de `DmTable` puede llevar `entrega`, dar dice **quién** dio, y «Dar…» se hace desde la mesa;
+tres commits (`eaa333e`, `cbbfebf`, `c36a099`).
 
----
+## Poda del tablero, y una página que dice por dónde entrar (2026-09-06) — archivada
 
-## Paso 2 — la actividad, sus cinco formas y la economía de la mesa (2026-09-06/07)
+**Movida entera** a [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md)
+el 2026-09-12, al escribir la línea de HP-9a: el fichero estaba en 997 de 1000. En una línea: las
+tres fichas con «Cerrado» en el título salen de 06 a su archivo, y nace `como-seguir.md`.
 
-**Qué.** Las once tareas del plan [`2026-09-06-paso-2-actividad.md`](./superpowers/plans/2026-09-06-paso-2-actividad.md),
-en nueve commits de tarea —dos de ellos juntan dos tareas cada uno (9+10 y 3+11)— más dos commits
-de corrección de sus e2e: la economía de acciones del combate (`Combatant.actionUsed/bonusUsed/reactionUsed/movementUsed`,
-repuesta al empezar el turno de quien entra); `Origen`, un número que nunca miente sobre su
-procedencia; las cinco actividades del SRD (`ataque`, `salvacion`, `dados`, `utilidad`, `prueba`)
-con su propio `dados`; usarla gastando por las puertas que ya existían (`changeHp`,
-`RollRequestsService.create`, `ConditionsService.apply`, con el patrón `tx?` extendido a los
-tres — con un hueco real que quedó abierto en uno de ellos, ver
-[06-pendientes.md](./06-pendientes.md)); una subclase por personaje y no todas a la vez; conceder
-una actividad desde el catálogo con sus usos y sus escalas; y la Furia de punta a punta, con la
-economía visible en la mesa.
+## `CLAUDE.md` deja de narrar el estado (2026-09-06) — archivada
 
-**Por qué.** Un mago sigue sin hechizos hasta el paso 3, y este paso existía para que quepan: la
-tarea 0 mapeó diez conjuros a mano contra el borrador del plan y ocho no cabían, así que el esquema
-se corrigió antes de escribir código (D-P2-1 a D-P2-6 en [decisiones.md](./decisiones.md)).
+**Movida entera** a [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md)
+el 2026-09-12. En una línea: el fichero que se manda leer primero pierde su prosa de estado —había
+caducado tres veces en cinco días— y apunta a donde cada dato se genera o se mide; los tres avisos
+se conservan enteros al final como justificación. **Revertir:** `git show` del commit anterior sobre `CLAUDE.md`.
 
-**Cómo se comprobó.** Trece de trece tareas de la tanda con implementador —contando también el
-plan botín, más abajo, y sin contar la tarea 0, que fue papel sin implementador— mordieron algo
-real en su primera revisión con contexto limpio; ninguno de los hallazgos lo vio quien implementó. Los tres más graves de este plan: una fuga por 403 en `gastar` sobre un PNJ
-escondido; `raging` interpretada por el servidor sin estar en la lista de claves reservadas —un
-jugador se llevaba +2 de daño permanente gratis—, reincidencia exacta del agujero que se cerró para
-`helped`; y un interbloqueo real en el orden de los candados de `changeHp`. Detalle completo, tarea
-a tarea, en el bloque «Avance» del plan y en `.superpowers/sdd/2026-09-06-tanda-paso2-y-botin/progress.md`
-(local, no viaja con el clon).
+## El cero de tipos comodín deja de depender de la costumbre (2026-09-06) — archivada
 
-**Cómo revertir.** Once commits independientes de `2bd7769` a `2228341`/`8d4de37`
-(`git log --oneline 7e7f92b..HEAD`); revertir uno deshace su tarea. Dos llevan migración:
-`combatant_action_economy` (las cuatro columnas de `Combatant`) y `character_subclass`
-(`Character.subclassKey`) — revertir el código deja las columnas sin escritor, sin dato que
-perder. **`character_subclass` tiene efecto sobre datos ya en producción**: un personaje de nivel
-≥ `chosenAtLevel` pierde los rasgos de su camino hasta que alguien elija uno, que es el arreglo y no
-una regresión — ver [05-datos.md](./05-datos.md). Nueve fichas de deuda quedaron abiertas en
-[06-pendientes.md](./06-pendientes.md), la más urgente antes del paso 3 siendo la autorización de
-`changeHp` y de `RollRequestsService.create` sobre actividades de otro personaje.
+**Movida entera** a [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md)
+el 2026-09-12. En una línea: `no-explicit-any` pasa de aviso a **error** en el código de
+aplicación de los tres paquetes, porque ya daba cero y nada sostenía ese cero; verificado por mutación.
 
-## Botín y reparto — una tabla entrega, y decir quién dio (2026-09-06)
+## El proceso pasa a medirse, y la frontera del encargo deja de ser solo de ficheros (2026-09-06) — archivada
 
-**Qué.** Cinco tareas del plan [`2026-09-06-botin-y-reparto-plan.md`](./superpowers/plans/2026-09-06-botin-y-reparto-plan.md),
-en tres commits: una fila de `DmTable` puede llevar `entrega` (objetos por `ContentRef` y las cinco
-monedas), y tirarla devuelve esos objetos ya resueltos por nombre; dar un objeto o dinero dice
-**quién** lo dio, con un campo opcional `de` sobre los sucesos que ya existían; y «Dar…» se hace
-desde la mesa y desde el resultado de una tirada, sin abrir la ficha de quien recibe.
-
-**Por qué.** La premisa del plan —«hoy un objeto aparece en una bolsa y nadie sabe de dónde
-salió»— era falsa: el rastro (`ITEM_ADDED`, `MONEY_CHANGED`) ya existía, y no hacía falta un tipo
-de suceso nuevo (D-P2-7). Y lo que la mesa decide, la mesa decide: no hay «dar a todos», ni
-repartir oro a partes iguales, ni comercio — las dos primeras las cubre una prueba de ausencia;
-el comercio no se construyó, así que no hay pantalla de la que medir su ausencia.
-
-**Cómo se comprobó.** Un `catch` que tragaba cualquier fallo de Postgres y lo presentaba como «ese
-objeto ya no existe» dentro de la transacción del disparo automático, borrando la pista del error
-real. Nueve mutaciones de aflojamiento sobre el campo `entrega`, las nueve en verde antes del
-arreglo. Y una clave de catálogo inventada (`shortsword`, que no existe — es `short-sword`) citada
-tres veces por un encargo del orquestador y corregida las tres contra el catálogo real.
-
-**Cómo revertir.** Tres commits (`eaa333e`, `cbbfebf`, `c36a099`), independientes entre sí y del
-paso 2. `eaa333e` lleva la migración `dm_table_entry_loot` (columna `entrega Json?`); revertir el
-código deja la columna sin escritores, sin fila sembrada fuera de las pruebas que la use. Dos
-fichas quedaron abiertas: el formulario de crear tablas no tiene campo para redactar `entrega`, y
-un jugador con un PNJ cedido ve la lista de destinatarios vacía al abrir «Dar…».
-
----
-
-## Poda del tablero, y una página que dice por dónde entrar (2026-09-06)
-
-**Qué:** las **tres fichas que llevaban «Cerrado» en su propio título** salen de
-[06-pendientes.md](./06-pendientes.md) a
-[`_archivo/pendientes-cerrados-2026-09-06-poda.md`](./_archivo/pendientes-cerrados-2026-09-06-poda.md),
-**enteras y sin tocar una coma**. Y se añade [como-seguir.md](./como-seguir.md), que dice qué
-andamiaje ya está puesto —para que nadie lo vuelva a montar—, qué sigue y en qué orden, y qué no
-decide un agente.
-
-**Por qué solo tres:** la regla del tablero es mecánica —lo cerrado sale, lo abierto se queda— y
-solo tres cumplían el criterio de forma comprobable. Quedan dos docenas de secciones fechadas
-antes del 2026-09-04 y varias **sin fecha en el título**, pero saber cuál sigue viva **no se
-deduce del código**: es del autor, y forzarlo habría sido enterrar deuda en vez de podarla. El
-criterio y las candidatas están en el punto 1 de `como-seguir.md`.
-
-**Dos de las tres archivadas explican un error de medición** —una ficha afirmaba que nadie podía
-curar a nadie, y el grep que lo hizo creer— y por eso se archivan en vez de borrarse: ese registro
-es lo que evita volver a creérsela.
-
-**Cómo revertir:** devolver las tres secciones del fichero de archivo a `06-pendientes.md` y
-borrar `docs/como-seguir.md` con sus dos punteros.
-
-
-## `CLAUDE.md` deja de narrar el estado (2026-09-06)
-
-**Qué:** el fichero que se manda leer primero pierde sus ~40 líneas de prosa de estado —qué trae
-cada fase, qué imagen sirve producción, qué separa `main` del despliegue— y las sustituye por una
-tabla que dice **dónde vive cada dato de verdad**: el bloque generado de
-[00-INDEX.md](./00-INDEX.md) para estado y conteos, este fichero para lo entregado,
-[06-pendientes.md](./06-pendientes.md) para lo abierto, y **una medición** —`git diff` contra la
-imagen desplegada— para saber qué falta por desplegar. Se queda lo que sigue siendo cierto
-mañana: qué es el producto, qué no es, y las reglas.
-
-**Por qué:** ese fichero **caducó tres veces en cinco días**, y las tres se anotaron dentro de él.
-Una de ellas lo dice con todas las letras: *«es el mismo fallo de siempre: prosa de estado escrita
-a mano en el fichero que se manda leer primero»*. El repositorio ya tenía la solución a medias
-—`update-estado.mjs` genera el bloque de `00-INDEX` y `check:estado` falla si alguien lo edita—
-pero `CLAUDE.md` estaba fuera de su alcance, así que ahí el estado se seguía tecleando.
-
-**Los tres avisos no se borran.** Se mueven **enteros y sin reescribir** a una sección al final,
-como justificación de la regla: un registro fechado no se resume. Y `D-OP-3` —la partida de
-prueba que cierra la fase 2— no se pierde: vive en [00-INDEX.md](./00-INDEX.md) y en
-[decisiones.md](./decisiones.md), que son sus sitios.
-
-**Cómo revertir:** `git show` del commit anterior a este sobre `CLAUDE.md`. No toca código.
-
-
-## El cero de tipos comodín deja de depender de la costumbre (2026-09-06)
-
-**Qué:** `no-explicit-any` pasa de **aviso heredado** a **error** en `apps/api/src`,
-`apps/web/src` y `packages/shared/src`. Las pruebas siguen exentas, con el motivo que ya estaba
-escrito.
-
-**Por qué:** la medición del día contradijo a la sospecha. Se auditó el repositorio esperando
-encontrar la regla apagada y deuda escondida, y lo que hay es **cero** comodines en código de
-aplicación: la excepción de `eslint.config.mjs` estaba acotada a las pruebas desde el principio.
-Lo que no había era nada que **sostuviera** ese cero — un aviso no frena un commit, y
-`pnpm verify` pasa con avisos. Poner en error una regla que hoy da cero cuesta cero y convierte
-una costumbre en una propiedad comprobada.
-
-**Verificado por mutación:** se añadió `(x: any) => x` en un fichero de la web, `eslint` lo
-rechazó **como error** —no como aviso— y se restauró.
-
-**Cómo revertir:** quitar el bloque de reglas nuevo de `eslint.config.mjs`. No toca ni una línea
-de código de aplicación.
-
-
-## El proceso pasa a medirse, y la frontera del encargo deja de ser solo de ficheros (2026-09-06)
-
-**Qué:** cuatro cosas, todas documentación y ninguna toca comportamiento.
-
-1. **Los cuatro pasos antes de abrir una ficha son regla del repositorio**, en
-   [04-convenciones.md](./04-convenciones.md), con **la frontera** de cuatro casos en los que el
-   paso 1 no aplica. Hasta hoy vivían solo en los prompts de arranque, fuera del repositorio.
-2. **La frontera del encargo pasa a ser también de herramientas**: bloque de prohibiciones
-   obligatorio, superficie mínima por rol, y la comprobación de que lo prohibido no ocurrió.
-3. **Tabla de observabilidad de la tanda** en el ledger: vueltas por tarea, qué encontró la
-   revisión, tiempo perdido y en qué.
-4. **[10-banco-de-tareas.md](./10-banco-de-tareas.md)** y **[prompts.md](./prompts.md)**: tres
-   tareas fijas que miden si un cambio del proceso mejora o empeora, y los prompts que hasta hoy
-   vivían en la carpeta de al lado.
-
-**Por qué:** este repositorio tiene la puerta más completa de los tres del PC —siete pasos en
-`verify`, conteos generados, seis reglas de lint de documentación—, pero **el proceso que escribe
-ese código se seguía ajustando por intuición**: cada regla nacía de un golpe real y ninguna se
-contrastó nunca contra una tarea repetible. Y la frontera del encargo declaraba rutas pero no
-herramientas, así que un implementador acotado a `apps/api` seguía pudiendo desplegar, empujar o
-lanzar una segunda tanda de Playwright encima de la primera — que es justo lo que ya costó 82
-fallos falsos.
-
-**Las tres tareas del banco salen de fallos ya pagados aquí:** la prosa de estado caducada del
-fichero que se lee primero, la prueba que hay que ver fallar antes de tocar `normalizar`, y
-`jsdom` dando 871 pruebas verdes con la mesa rota.
-
-**Cómo revertir:** quitar las tres secciones nuevas de `04-convenciones.md`, borrar
-`docs/10-banco-de-tareas.md` y `docs/prompts.md`, y sus filas en `00-INDEX.md` y `CLAUDE.md`.
-
+**Movida entera** al mismo archivo el 2026-09-12. En una línea: los cuatro pasos antes de abrir
+una ficha y la frontera del encargo por herramientas entran en `04-convenciones.md`, la tabla de
+observabilidad en el ledger, y nacen `10-banco-de-tareas.md` y `prompts.md`.
 
 ## Paso 1 · Las goteras — los números dejan de mentir (2026-09-06) — archivada
 

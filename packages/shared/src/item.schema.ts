@@ -365,6 +365,15 @@ export const resolvedItemSchema = itemFieldsSchema.extend({
    * que repetirlo aquí sería la segunda copia del mismo dato.
    */
   unidentifiedName: z.string().nullable().optional(),
+  /**
+   * HP-9a (2026-09-12) — si LA FILA está sintonizada. Como `identified`, es estado de la fila
+   * del inventario, no del objeto; un objeto del catálogo sin fila detrás (el selector, el
+   * catálogo de campaña) nunca lo está, y por eso el defecto es `false` y no `undefined`: el
+   * motor lo lee (`rules/items.ts`, `efectosActivos`) y un valor que puede faltar sería una
+   * tercera verdad. SRD 5.1 §Attunement: sin sintonizar, el objeto solo da sus propiedades
+   * mundanas.
+   */
+  attuned: z.boolean().default(false),
 });
 export type ResolvedItem = z.infer<typeof resolvedItemSchema>;
 

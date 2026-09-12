@@ -227,8 +227,15 @@ test("tirar una tabla de botín enseña el objeto por su nombre y dárselo lo me
   // patrón que `inventario.spec.ts`).
   await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("link", { name: "Marta" }).click();
+  // Desde la Tarea 7 (spec 2026-09-11) el inventario es la pestaña «Objetos» de la hoja.
+  await page.getByRole("tab", { name: "Objetos" }).click();
+  await expect(page.getByRole("tab", { name: "Objetos", selected: true })).toBeVisible();
   const inventarioDeMarta = page.getByRole("region", { name: "inventario" });
-  await expect(inventarioDeMarta.getByText("Espada corta")).toBeVisible();
+  // La fila de la lista, no cualquier texto: a página el panel de detalle (tarea 9) repite el
+  // nombre del objeto seleccionado dentro de la misma región, y un `getByText` a secas ve dos.
+  await expect(
+    inventarioDeMarta.getByRole("listitem").filter({ hasText: "Espada corta" }),
+  ).toBeVisible();
   // Y las monedas, no solo el objeto (arreglo de vuelta 1, I3): el puente
   // `ResultadoDeTabla` → `DarObjeto` → `changeMoney` es una petición aparte de la del objeto, y
   // hasta este arreglo nada, ni en unitarias ni aquí, comprobaba que el oro llegara de verdad.

@@ -8,6 +8,7 @@ import {
   type TraceStep,
   type WeaponProperty,
 } from "@dnd/shared";
+import { efectosActivos } from "./items";
 
 // Carril A5 (fase 2C) — el cuadro de ataques. **Puro**: sin Nest, sin Prisma, sin dados de
 // verdad. Entra qué hay equipado más lo que ya derivó el motor (modificadores y bono de
@@ -239,9 +240,13 @@ function paso(
 /**
  * Lo que suman los efectos de un tipo concreto **de este objeto**. Los objetos mágicos del SRD
  * no se copian (`NOTICE.md`); lo que esta función hace posible es que el DM escriba los suyos.
+ *
+ * HP-9a — se lee por `efectosActivos` (`items.ts`) y no por `item.effects`: el +N es propiedad
+ * mágica y, si el arma requiere sintonización, solo cuenta sintonizada (SRD 5.1 §Attunement).
+ * El dado del arma es mundano y no pasa por ese filtro.
  */
 function sumaDeEfecto(item: ResolvedItem, kind: "weaponAttack" | "weaponDamage"): number {
-  return item.effects.reduce(
+  return efectosActivos(item).reduce(
     (suma, efecto) => (efecto.kind === kind ? suma + efecto.amount : suma),
     0,
   );

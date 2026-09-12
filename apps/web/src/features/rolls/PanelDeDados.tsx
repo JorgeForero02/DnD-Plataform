@@ -147,9 +147,11 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
           tarjeta y la otra mitad repartida en dos columnas desiguales — la misma queja que #14
           hace del cajón de la mesa. En rejilla, `xl:col-span-2` le deja las dos columnas cuando
           las hay (es la más ancha de las tres) y `items-stretch` iguala la altura de pedir y
-          tirar, que es lo que #16 pide de la rejilla. Para quien no es DM no hay ni rejilla ni
-          «pedir»: el reloj solo se lee. */}
-      <div className={role === "DM" ? "grid items-stretch gap-s5 xl:grid-cols-2" : undefined}>
+          tirar, que es lo que #16 pide de la rejilla. Para quien no es DM no hay ni «pedir» ni
+          dos columnas, pero SÍ sigue habiendo `gap-s5` de separación entre el reloj y la tirada:
+          quitar la rejilla entera (el `undefined` de antes de la revisión) dejaba ambas tarjetas
+          sin el hueco que traía el `mb-s5` que sustituyó. */}
+      <div className={role === "DM" ? "grid items-stretch gap-s5 xl:grid-cols-2" : "grid gap-s5"}>
         <RelojDeCampana
           campaignId={campaignId}
           className={role === "DM" ? "xl:col-span-2" : undefined}

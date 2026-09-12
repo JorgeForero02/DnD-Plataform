@@ -37,17 +37,19 @@ function montarAjustes({
   puedeEditar = true,
   puedeArchivar = true,
   onArchived = () => {},
+  character = personaje,
 }: {
   puedeEditar?: boolean;
   puedeArchivar?: boolean;
   onArchived?: () => void;
+  character?: Character;
 } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <AjustesDePersonaje
         campaignId="c1"
-        character={personaje}
+        character={character}
         puedeEditar={puedeEditar}
         puedeArchivar={puedeArchivar}
         motivo={puedeEditar ? undefined : MOTIVO}
@@ -133,10 +135,31 @@ describe("Archivar — el gesto fácil, en la ficha del personaje", () => {
     const color = within(tarjeta).getByRole("group", { name: /color/i });
     const visibilidad = within(tarjeta).getByRole("group", { name: /quién puede verlo/i });
     const archivar = within(tarjeta).getByRole("button", { name: /archivar/i });
+    // El nombre accesible real de `DeleteButton` con sus props por defecto es «Borrar» a secas
+    // (`label = "Borrar"`); el ancla exacta (`^…$`) evita que capture algo que no sea él —
+    // «Archivar» no contiene «borrar» y viceversa, pero un nombre exacto es lo que de verdad
+    // ata esta prueba al botón que borra, no a cualquier botón que lo mencione.
+    const borrar = within(tarjeta).getByRole("button", { name: /^borrar$/i });
     // `compareDocumentPosition`: 4 = el argumento va DESPUÉS del receptor.
     expect(color.compareDocumentPosition(visibilidad) & 4).toBeTruthy();
     expect(visibilidad.compareDocumentPosition(archivar) & 4).toBeTruthy();
     expect(archivar.closest("footer")).not.toBeNull();
+    // Sin esto, mover SOLO `DeleteButton` fuera del pie deja la prueba en verde: la mutación
+    // que el brief pedía en el paso 5 no la habría cazado, porque ninguna aserción anterior
+    // mira a `borrar`. Estas dos sí.
+    expect(borrar.closest("footer")).not.toBeNull();
+    expect(archivar.compareDocumentPosition(borrar) & 4).toBeTruthy();
+  });
+
+  it("un personaje ARCHIVADO no deja un pie vacío: sin nada que ofrecer, no hay footer", () => {
+    const { container } = montarAjustes({
+      character: { ...personaje, archivedAt: "2026-09-01T00:00:00.000Z" },
+    });
+    // Ni archivar ni borrar se ofrecen a un personaje ya archivado (ambos se apagan con
+    // `estaArchivado`), y sin ningún error de archivar/borrar tampoco hay nada más que poner en
+    // el pie. `TarjetaDeHoja` no debe pintar el filete ni el relleno de un `<footer>` vacío
+    // debajo del aviso de «Devolver a la mesa».
+    expect(container.querySelector("footer")).toBeNull();
   });
 });
 

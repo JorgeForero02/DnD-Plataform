@@ -313,4 +313,26 @@ describe("PanelDeDados — la rejilla del DM (anexo #16)", () => {
     expect(await screen.findByRole("heading", { name: "Pedir una tirada" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Tirada nueva" })).toBeInTheDocument();
   });
+
+  it("con rol PLAYER no hay «pedir», pero el reloj y la tirada siguen con su hueco", async () => {
+    useAuthStore.setState({
+      user: { id: "u-jugador", email: "j@x.y", displayName: "Jugador" } as never,
+    });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "u-jugador", displayName: "Jugador", role: "PLAYER" },
+    ]);
+    vi.spyOn(clockApi, "fetchClock").mockResolvedValue({ seconds: 0 } as never);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+
+    pintar();
+
+    const tiradaNueva = await screen.findByRole("region", { name: "Tirada nueva" });
+    expect(screen.queryByRole("heading", { name: "Pedir una tirada" })).not.toBeInTheDocument();
+    // Sin rol DM no hay rejilla de dos columnas, pero el hueco entre el reloj y la tirada tiene
+    // que seguir existiendo: antes de esta revisión el envoltorio se quedaba sin clase alguna
+    // (`undefined`) y el reloj y la tarjeta de tirar quedaban pegados, sin el margen que traía
+    // el `mb-s5` de antes de la rejilla. `tiradaNueva` es la propia sección con `aria-label`, así
+    // que su padre directo es el envoltorio de la rejilla.
+    expect(tiradaNueva.parentElement).toHaveClass("gap-s5");
+  });
 });

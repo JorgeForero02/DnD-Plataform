@@ -890,7 +890,7 @@ como ficha con su coste escrito. No es urgente para una mesa de cinco.
 
 ## HP-3 · El recorrido de Objetos mutaba su fixture compartido y no era a prueba de reintento (2026-09-12)
 
-**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `apps/web/e2e/hoja-pestanas.spec.ts`: nueva `dejarElCueroSinEquipar(page)`, que lee el inventario por la API y, si la armadura de cuero no está en la mochila, la devuelve con `PATCH { location: "CARRIED", slot: null }`. Se llama **al entrar** en el `test` de Objetos a 1280 —un reintento tras un timeout no pasa por ningún `finally`— y en el `finally` de un `try` que envuelve equipar → medir → quitar. Las aserciones son las mismas. Sin prueba unitaria posible (es el propio e2e); lo corre el controlador.
+**Cerrada el 2026-09-12 (ronda de cierre del plan de la hoja).** `apps/web/e2e/hoja-pestanas.spec.ts`: nueva `dejarElCueroSinEquipar(page)`, que lee el inventario por la API y, si la armadura de cuero no está en la mochila, la devuelve con `PATCH { location: "CARRIED", slot: null }`. Se llama **al entrar** en el `test` de Objetos a 1280 —un reintento tras un timeout no pasa por ningún `finally`— y en el `finally` de un `try` que envuelve equipar → medir → quitar. Las aserciones son las mismas. Sin prueba unitaria posible (es el propio e2e); lo corre el controlador. **Retoque del mismo día (revisión de la ronda 1):** ya no es un `finally` —una restauración que lanzara ahí taparía el fallo del recorrido, y `no-unsafe-finally` no deja relanzar—; el recorrido se captura, el cuero se devuelve, y se relanza el primer error que hubo; si solo falla la vuelta se anota en el informe de Playwright.
 
 **Texto original:**
 

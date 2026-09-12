@@ -1,5 +1,5 @@
 import { OVERRIDABLE_KEYS } from "@dnd/shared";
-import { useMyRole } from "../campaigns/members";
+import { useEsVistaDeDm } from "./hooks";
 import { NOMBRE_ANULABLE } from "./vocabulario";
 
 // **El aviso de la vista de DM**, tomado de la maqueta de Figma — que lo pone arriba del todo,
@@ -28,16 +28,6 @@ import { NOMBRE_ANULABLE } from "./vocabulario";
 //
 // Regla vinculante que esto aplica (docs/04-convenciones.md): *si la interfaz explica una regla
 // del servidor y discrepan, el que miente es el texto.*
-
-/**
- * La condición del aviso, en un solo sitio (HP-7, 2026-09-12): `Cabecera` la necesita ANTES de
- * montar para decidir si la fila de avisos existe, y el aviso la necesita para pintarse. Mientras
- * la consulta carga no se sabe, y no saber es «no» — la misma regla que ya aplicaba el aviso.
- */
-export function useEsVistaDeDm(campaignId: string): boolean {
-  const { role, isLoading } = useMyRole(campaignId);
-  return !isLoading && role === "DM";
-}
 
 export function AvisoDeDm({ campaignId }: { campaignId: string }) {
   const esVistaDeDm = useEsVistaDeDm(campaignId);

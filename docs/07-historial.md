@@ -35,6 +35,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-05-paseo-de-uso.md`](./_archivo/historial-2026-09-05-paseo-de-uso.md) | **El paseo de uso contra producción**, movida entera el 2026-09-11 (tercer corte). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md`](./_archivo/historial-2026-09-05-nervio-en-produccion-y-pnj.md) | **El nervio medido en producción** y **el PNJ sin nombre en la pantalla**, movidas enteras el 2026-09-10 en el segundo corte de la sesión de cerrar fichas. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-seed-demo.md`](./_archivo/historial-2026-09-05-seed-demo.md) | **La campaña de demostración que se siembra sola**, movida entera el 2026-09-10 al pasarse el fichero con la entrada de la tanda 1 de cerrar fichas. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md) | **El cero de tipos comodín** y **el proceso pasa a medirse**, movidas enteras el 2026-09-12 al pasarse el fichero (1002 de 1000) con los retoques de la revisión de la hoja. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-05-nervio-en-vivo.md`](./_archivo/historial-2026-09-05-nervio-en-vivo.md) | **La entrega del canal en vivo** (plan 12 · 12.3), movida entera el mismo 2026-09-08: la entrada del reconocimiento creció al recoger los tres documentos de estado que también mentían, y el fichero volvió a pasarse. Era la siguiente entrada completa más antigua. **No confundirla con su hermana**, que sigue arriba: aquella es la comprobación en producción detrás de nginx y Traefik. Su hito se queda arriba
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -134,6 +135,13 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   Localizador e2e cambiado: `sesion.spec.ts`, el cajón por «Su hoja». Las dos fichas, con su texto
   original, en
   [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  **Revertir:** `git revert` del commit.
+- **Tres retoques de la revisión de la ronda 1 (2026-09-12).** `useEsVistaDeDm` se muda de
+  `AvisoDeDm.tsx` a `features/character-sheet/hooks.ts` (un fichero de componente no exporta más que
+  componentes; el aviso de `react-refresh` vuelve a su cifra anterior); los ayudantes del spec del
+  guard de cuota viven una vez a nivel de fichero; y el recorrido de Objetos del e2e de pestañas
+  deja de restaurar el cuero en un `finally` —captura, restaura y relanza el primer error— para
+  que una vuelta por la API que falle no tape el fallo del recorrido. Sin cambio de aserciones.
   **Revertir:** `git revert` del commit.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
@@ -772,56 +780,17 @@ prueba que cierra la fase 2— no se pierde: vive en [00-INDEX.md](./00-INDEX.md
 **Cómo revertir:** `git show` del commit anterior a este sobre `CLAUDE.md`. No toca código.
 
 
-## El cero de tipos comodín deja de depender de la costumbre (2026-09-06)
+## El cero de tipos comodín deja de depender de la costumbre (2026-09-06) — archivada
 
-**Qué:** `no-explicit-any` pasa de **aviso heredado** a **error** en `apps/api/src`,
-`apps/web/src` y `packages/shared/src`. Las pruebas siguen exentas, con el motivo que ya estaba
-escrito.
+**Movida entera** a [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md)
+el 2026-09-12. En una línea: `no-explicit-any` pasa de aviso a **error** en el código de
+aplicación de los tres paquetes, porque ya daba cero y nada sostenía ese cero; verificado por mutación.
 
-**Por qué:** la medición del día contradijo a la sospecha. Se auditó el repositorio esperando
-encontrar la regla apagada y deuda escondida, y lo que hay es **cero** comodines en código de
-aplicación: la excepción de `eslint.config.mjs` estaba acotada a las pruebas desde el principio.
-Lo que no había era nada que **sostuviera** ese cero — un aviso no frena un commit, y
-`pnpm verify` pasa con avisos. Poner en error una regla que hoy da cero cuesta cero y convierte
-una costumbre en una propiedad comprobada.
+## El proceso pasa a medirse, y la frontera del encargo deja de ser solo de ficheros (2026-09-06) — archivada
 
-**Verificado por mutación:** se añadió `(x: any) => x` en un fichero de la web, `eslint` lo
-rechazó **como error** —no como aviso— y se restauró.
-
-**Cómo revertir:** quitar el bloque de reglas nuevo de `eslint.config.mjs`. No toca ni una línea
-de código de aplicación.
-
-
-## El proceso pasa a medirse, y la frontera del encargo deja de ser solo de ficheros (2026-09-06)
-
-**Qué:** cuatro cosas, todas documentación y ninguna toca comportamiento.
-
-1. **Los cuatro pasos antes de abrir una ficha son regla del repositorio**, en
-   [04-convenciones.md](./04-convenciones.md), con **la frontera** de cuatro casos en los que el
-   paso 1 no aplica. Hasta hoy vivían solo en los prompts de arranque, fuera del repositorio.
-2. **La frontera del encargo pasa a ser también de herramientas**: bloque de prohibiciones
-   obligatorio, superficie mínima por rol, y la comprobación de que lo prohibido no ocurrió.
-3. **Tabla de observabilidad de la tanda** en el ledger: vueltas por tarea, qué encontró la
-   revisión, tiempo perdido y en qué.
-4. **[10-banco-de-tareas.md](./10-banco-de-tareas.md)** y **[prompts.md](./prompts.md)**: tres
-   tareas fijas que miden si un cambio del proceso mejora o empeora, y los prompts que hasta hoy
-   vivían en la carpeta de al lado.
-
-**Por qué:** este repositorio tiene la puerta más completa de los tres del PC —siete pasos en
-`verify`, conteos generados, seis reglas de lint de documentación—, pero **el proceso que escribe
-ese código se seguía ajustando por intuición**: cada regla nacía de un golpe real y ninguna se
-contrastó nunca contra una tarea repetible. Y la frontera del encargo declaraba rutas pero no
-herramientas, así que un implementador acotado a `apps/api` seguía pudiendo desplegar, empujar o
-lanzar una segunda tanda de Playwright encima de la primera — que es justo lo que ya costó 82
-fallos falsos.
-
-**Las tres tareas del banco salen de fallos ya pagados aquí:** la prosa de estado caducada del
-fichero que se lee primero, la prueba que hay que ver fallar antes de tocar `normalizar`, y
-`jsdom` dando 871 pruebas verdes con la mesa rota.
-
-**Cómo revertir:** quitar las tres secciones nuevas de `04-convenciones.md`, borrar
-`docs/10-banco-de-tareas.md` y `docs/prompts.md`, y sus filas en `00-INDEX.md` y `CLAUDE.md`.
-
+**Movida entera** al mismo archivo el 2026-09-12. En una línea: los cuatro pasos antes de abrir
+una ficha y la frontera del encargo por herramientas entran en `04-convenciones.md`, la tabla de
+observabilidad en el ledger, y nacen `10-banco-de-tareas.md` y `prompts.md`.
 
 ## Paso 1 · Las goteras — los números dejan de mentir (2026-09-06) — archivada
 

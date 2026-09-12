@@ -144,7 +144,7 @@ const urlDeLaHoja = () => `/campaigns/${campaignId}/personajes/${characterId}`;
  * HP-3 (2026-09-12) — **deja la armadura de cuero SIN equipar, por la API.** El recorrido de
  * Objetos la equipa y la quita desde el detalle; si un reintento arrancaba a medias, la armadura
  * ya estaba puesta y «Equipar» no existía. Se llama al ENTRAR (un retry tras un timeout no pasa
- * por ningún `finally`) y al SALIR (`finally`, para las pruebas que siguen). Es idempotente: si
+ * por ningún `finally`) y al SALIR (pase lo que pase en el recorrido, para las pruebas que siguen). Es idempotente: si
  * ya está en la mochila, no manda nada.
  */
 async function dejarElCueroSinEquipar(page: Page) {
@@ -351,12 +351,17 @@ test("Objetos a 1280: lista a la izquierda, detalle a la derecha, filtros que fi
   await expect(lista.getByText("Daga")).toBeVisible();
 
   // Seleccionar y equipar desde el detalle: la CA de la cabecera cambia delante de quien lo hace.
-  // HP-3: equipar → medir → quitar va dentro de un `try/finally` que devuelve el cuero a la
-  // mochila por la API pase lo que pase; las aserciones son las mismas de antes.
+  // HP-3: equipar → medir → quitar va dentro de un `try` y el cuero vuelve a la mochila por la
+  // API pase lo que pase; las aserciones son las mismas de antes.
   const resumen = page.getByRole("region", { name: "resumen de combate" });
   const ca = cifraDeCA(resumen);
   const caAntes = (await ca.textContent())!.trim();
   expect(caAntes).toMatch(/^\d+$/);
+  // Si el recorrido falla Y la vuelta por la API también, el fallo que se lee es el del
+  // recorrido: una restauración que lanzara dentro de un `finally` taparía el error original
+  // (y `no-unsafe-finally` no deja relanzar desde ahí). Por eso: se captura, se restaura, y
+  // se relanza el primero que hubo.
+  let falloDelRecorrido: unknown = null;
   try {
     await lista.getByRole("button", { name: /ver detalle de Cuero/i }).click();
     await expect(detalle.getByRole("heading", { name: "Cuero" })).toBeVisible();
@@ -373,9 +378,19 @@ test("Objetos a 1280: lista a la izquierda, detalle a la derecha, filtros que fi
     // otra mitad del gesto, y de paso deja el personaje como estaba para las pruebas que siguen.
     await detalle.getByRole("button", { name: "Quitar" }).click();
     await expect(ca).toHaveText(caAntes, { timeout: 15_000 });
-  } finally {
-    await dejarElCueroSinEquipar(page);
+  } catch (error) {
+    falloDelRecorrido = error;
   }
+  try {
+    await dejarElCueroSinEquipar(page);
+  } catch (error) {
+    if (falloDelRecorrido === null) throw error;
+    test.info().annotations.push({
+      type: "restauración fallida",
+      description: `dejarElCueroSinEquipar: ${String(error)}`,
+    });
+  }
+  if (falloDelRecorrido !== null) throw falloDelRecorrido;
 
   // Buscar por texto sin acentos.
   // `exact`: el selector de alta, si estuviera abierto, tiene su propio «Buscar objeto por nombre».

@@ -5,44 +5,40 @@ import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { UserOrIpThrottlerGuard } from "./user-or-ip-throttler.guard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
+// Los dos `describe` de abajo usan el mismo guard, el mismo secreto y la misma forma de llamar a
+// `getTracker`; los ayudantes viven una vez, a nivel de fichero.
+const jwt = new JwtService({ secret: "test-secret" });
+const ahora = Math.floor(Date.now() / 1000);
+
+function contextoConJwtGuard(): ExecutionContext {
+  class Handler {}
+  const handler = () => undefined;
+  Reflect.defineMetadata(GUARDS_METADATA, [JwtAuthGuard], handler);
+  return {
+    getHandler: () => handler,
+    getClass: () => Handler,
+  } as unknown as ExecutionContext;
+}
+
+function guardCon(users: { findById: jest.Mock }) {
+  // `options`, `storage` y `reflector` no se usan en `getTracker`: bastan dobles vacíos.
+  return new UserOrIpThrottlerGuard([] as never, {} as never, new Reflector(), jwt, users as never);
+}
+
+async function tracker(guard: UserOrIpThrottlerGuard, token: string) {
+  // `getTracker` es protected: se llama por índice, como hace @nestjs/throttler en runtime.
+  return (
+    guard as unknown as { getTracker: (r: unknown, c: ExecutionContext) => Promise<string> }
+  ).getTracker(
+    { headers: { authorization: `Bearer ${token}` }, ip: "10.0.0.7" },
+    contextoConJwtGuard(),
+  );
+}
+
 // La ficha P3 del 2026-09-11: el guard verificaba la FIRMA para clavar el cubo a `user:<sub>`,
 // pero un token robado y revocado por cambio de contraseña sigue firmado. Ahora mira también
 // `passwordChangedAt`, con caché de un minuto para no añadir una consulta a cada petición.
 describe("UserOrIpThrottlerGuard — un token revocado no gasta el cubo de su dueño", () => {
-  const jwt = new JwtService({ secret: "test-secret" });
-  const ahora = Math.floor(Date.now() / 1000);
-
-  function contextoConJwtGuard(): ExecutionContext {
-    class Handler {}
-    const handler = () => undefined;
-    Reflect.defineMetadata(GUARDS_METADATA, [JwtAuthGuard], handler);
-    return {
-      getHandler: () => handler,
-      getClass: () => Handler,
-    } as unknown as ExecutionContext;
-  }
-
-  function guardCon(users: { findById: jest.Mock }) {
-    // `options`, `storage` y `reflector` no se usan en `getTracker`: bastan dobles vacíos.
-    return new UserOrIpThrottlerGuard(
-      [] as never,
-      {} as never,
-      new Reflector(),
-      jwt,
-      users as never,
-    );
-  }
-
-  async function tracker(guard: UserOrIpThrottlerGuard, token: string) {
-    // `getTracker` es protected: se llama por índice, como hace @nestjs/throttler en runtime.
-    return (
-      guard as unknown as { getTracker: (r: unknown, c: ExecutionContext) => Promise<string> }
-    ).getTracker(
-      { headers: { authorization: `Bearer ${token}` }, ip: "10.0.0.7" },
-      contextoConJwtGuard(),
-    );
-  }
-
   it("un token emitido ANTES del cambio de contraseña cuenta como su IP, no como el usuario", async () => {
     const token = jwt.sign({ sub: "u1", iat: ahora - 100 });
     const users = {
@@ -89,38 +85,6 @@ describe("UserOrIpThrottlerGuard — un token revocado no gasta el cubo de su du
 // importa— una base de datos caída, que antes caía en el `catch` de «firma inválida» y contaba
 // por IP sin decirlo. La conducta es la misma; ahora cada salida tiene su motivo y su prueba.
 describe("UserOrIpThrottlerGuard — las salidas que no son el camino feliz", () => {
-  const jwt = new JwtService({ secret: "test-secret" });
-  const ahora = Math.floor(Date.now() / 1000);
-
-  function contextoConJwtGuard(): ExecutionContext {
-    class Handler {}
-    const handler = () => undefined;
-    Reflect.defineMetadata(GUARDS_METADATA, [JwtAuthGuard], handler);
-    return {
-      getHandler: () => handler,
-      getClass: () => Handler,
-    } as unknown as ExecutionContext;
-  }
-
-  function guardCon(users: { findById: jest.Mock }) {
-    return new UserOrIpThrottlerGuard(
-      [] as never,
-      {} as never,
-      new Reflector(),
-      jwt,
-      users as never,
-    );
-  }
-
-  async function tracker(guard: UserOrIpThrottlerGuard, token: string) {
-    return (
-      guard as unknown as { getTracker: (r: unknown, c: ExecutionContext) => Promise<string> }
-    ).getTracker(
-      { headers: { authorization: `Bearer ${token}` }, ip: "10.0.0.7" },
-      contextoConJwtGuard(),
-    );
-  }
-
   it("un usuario que ya no existe cuenta como el `sub` del token, y se consulta UNA vez", async () => {
     // `JwtStrategy` lo rechazará con 401; aquí no hay sello contra el que comparar, así que el
     // token firmado cuenta contra su `sub` (nunca contra la IP compartida de una mesa) y el

@@ -24,6 +24,9 @@ export class CampaignsService {
         // migración 6; hasta este arreglo se tiraba en silencio (un `POST` con `true` respondía
         // `false`, sin escribirlo). `undefined` deja el default de Prisma (`false`) tal cual.
         encumbranceVariant: input.encumbranceVariant,
+        // Revisión de fichas, IMPORTANT #2 (mismo defecto que MEDIA-2 arriba): el contrato
+        // acepta `boardRoomUrl` desde el alta y el servicio la tiraba en silencio.
+        boardRoomUrl: input.boardRoomUrl,
       },
     });
     this.events.emit("campaign.created", { campaignId: campaign.id, ownerId: userId });

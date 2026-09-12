@@ -284,10 +284,34 @@ function SalaDelTablero({
   const update = useUpdateCampaign(campaignId);
   const [valor, setValor] = useState(url ?? "");
   const [error, setError] = useState<string | null>(null);
-  const guardar = (siguiente: string | null) => {
+
+  // Revisión de fichas, IMPORTANT #1 (docs/04-convenciones.md:460, «el botón de guardar nunca
+  // se deshabilita»): un campo vacío no bloquea el botón, se explica con el error del propio
+  // `Field` y no llega a llamar al PATCH.
+  const onGuardar = () => {
+    const siguiente = valor.trim();
+    if (siguiente === "") {
+      setError("Escribe la dirección de la sala, o pulsa «Quitar la sala».");
+      return;
+    }
     setError(null);
     update.mutate({ boardRoomUrl: siguiente }, { onError: (e) => setError((e as Error).message) });
   };
+
+  // Minor #3 — un rechazo conserva lo tecleado: el input no se vacía antes de mandar la
+  // petición, solo si el PATCH responde bien; si falla, el valor escrito sigue ahí junto al
+  // error.
+  const onQuitar = () => {
+    setError(null);
+    update.mutate(
+      { boardRoomUrl: null },
+      {
+        onSuccess: () => setValor(""),
+        onError: (e) => setError((e as Error).message),
+      },
+    );
+  };
+
   return (
     <section aria-label="Sala del tablero" className="mt-s5 border-t border-muted pt-s4">
       <h3 className="font-title text-chrome-md text-text">Sala del tablero</h3>
@@ -310,23 +334,11 @@ function SalaDelTablero({
         />
       </Field>
       <div className="mt-s2 flex gap-s2">
-        <Button
-          type="button"
-          onClick={() => guardar(valor.trim())}
-          disabled={disabled || valor.trim() === ""}
-        >
+        <Button type="button" onClick={onGuardar} disabled={disabled}>
           Guardar la sala
         </Button>
         {url && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setValor("");
-              guardar(null);
-            }}
-            disabled={disabled}
-          >
+          <Button type="button" variant="secondary" onClick={onQuitar} disabled={disabled}>
             Quitar la sala
           </Button>
         )}

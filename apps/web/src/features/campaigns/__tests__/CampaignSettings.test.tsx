@@ -141,4 +141,47 @@ describe("CampaignSettings — la Sala del tablero (pulido, C1 bis)", () => {
 
     await waitFor(() => expect(update).toHaveBeenCalledWith("c1", { boardRoomUrl: null }));
   });
+
+  // Revisión de fichas, IMPORTANT #1 — docs/04-convenciones.md:460, «el botón de guardar nunca
+  // se deshabilita»: un campo vacío se explica con el error del propio `Field`, no bloqueando
+  // el botón, y no llama al PATCH.
+  it("Guardar con el campo vacío no llama al PATCH y explica el error", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(campana({ boardRoomUrl: null }));
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: YO, displayName: "DM", role: "DM" },
+    ]);
+    const update = vi.spyOn(campaignsApi, "updateCampaign");
+
+    montar();
+
+    const guardarBtn = await screen.findByRole("button", { name: "Guardar la sala" });
+    expect(guardarBtn).not.toBeDisabled();
+    fireEvent.click(guardarBtn);
+
+    expect(
+      await screen.findByText("Escribe la dirección de la sala, o pulsa «Quitar la sala»."),
+    ).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  // Minor #3 — un rechazo de "Quitar la sala" conserva lo tecleado: el input no se vacía antes
+  // de la respuesta, y si el PATCH falla se queda con el valor que tenía.
+  it("si Quitar la sala falla, el input conserva su valor", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(
+      campana({ boardRoomUrl: "https://tablero.supportive.pro/game/abc" }),
+    );
+    vi.spyOn(members, "fetchMembers").mockResolvedValue([
+      { userId: YO, displayName: "DM", role: "DM" },
+    ]);
+    vi.spyOn(campaignsApi, "updateCampaign").mockRejectedValue(new Error("fallo de red"));
+
+    montar();
+
+    const quitar = await screen.findByRole("button", { name: "Quitar la sala" });
+    fireEvent.click(quitar);
+
+    await screen.findByText("fallo de red");
+    const input = screen.getByLabelText("Dirección de la sala") as HTMLInputElement;
+    expect(input.value).toBe("https://tablero.supportive.pro/game/abc");
+  });
 });

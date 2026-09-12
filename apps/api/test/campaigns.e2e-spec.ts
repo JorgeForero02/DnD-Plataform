@@ -196,6 +196,28 @@ describe("Campaigns (e2e)", () => {
 
       await prisma.campaign.deleteMany({ where: { id: res.body.id } });
     });
+
+    // Revisión de fichas, IMPORTANT #2: mismo defecto que MEDIA-2 pero con `boardRoomUrl` —
+    // `createCampaignSchema` la acepta y el servicio la tiraba en silencio.
+    it("POST /campaigns con boardRoomUrl válida la escribe, no la tira", async () => {
+      const server = app.getHttpServer();
+      const res = await request(server)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          name: "Con la sala ya puesta",
+          boardRoomUrl: "https://tablero.supportive.pro/game/desde-el-alta",
+        });
+      expect(res.status).toBe(201);
+      expect(res.body.boardRoomUrl).toBe("https://tablero.supportive.pro/game/desde-el-alta");
+
+      const read = await request(server)
+        .get(`/campaigns/${res.body.id}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.body.boardRoomUrl).toBe("https://tablero.supportive.pro/game/desde-el-alta");
+
+      await prisma.campaign.deleteMany({ where: { id: res.body.id } });
+    });
   });
 
   // Pulido 2026-09-12, C1 bis (spec del tablero § 2 ter): la partida de PlanarAlly que la mesa

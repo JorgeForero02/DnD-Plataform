@@ -47,6 +47,10 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-10-decisiones-cubo-d.md`](./_archivo/historial-2026-09-10-decisiones-cubo-d.md) | **Las decisiones del autor sobre el cubo D**, movida entera el 2026-09-12 al escribir la línea de la Tarea 4 del pulido (`e2e/espacios.spec.ts`): el fichero quedaba en 1012 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-10-tanda-1-api-pura.md`](./_archivo/historial-2026-09-10-tanda-1-api-pura.md) | **Cerrar fichas, tanda 1 — las de API puras**, movida entera el 2026-09-12 al añadir la línea de la ronda de arreglo de la Tarea 4 (los dos defectos que la medición encontró): el fichero quedaba en 1004 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-11-tanda-migraciones-d-cf-14.md`](./_archivo/historial-2026-09-11-tanda-migraciones-d-cf-14.md) | **La tanda de migraciones de D-CF-14, un commit por migración**, movida entera el 2026-09-12 al escribir la línea de la Tarea 5 del pulido (`Campaign.boardRoomUrl`): el fichero quedaba en 995 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-11-tanda-playwright-migraciones.md`](./_archivo/historial-2026-09-11-tanda-playwright-migraciones.md) | **La tanda de Playwright que cierra las migraciones**, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1011 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-11-origin-alcanza-main.md`](./_archivo/historial-2026-09-11-origin-alcanza-main.md) | **`origin/main` alcanza a `main`**, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1013 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-11-relectura-diez-frases-falsas.md`](./_archivo/historial-2026-09-11-relectura-diez-frases-falsas.md) | **Relectura de 01–05 y 09 al cerrar la rama: diez frases falsas**, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1015 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-11-y-12-hoja-a-pagina-completa.md`](./_archivo/historial-2026-09-11-y-12-hoja-a-pagina-completa.md) | **La hoja a página completa** —fusión, despliegue y las once tareas del plan, HP-1 a HP-10—, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1013 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -69,10 +73,20 @@ Qué — la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`) que l
 (`packages/shared/src/campaign.schema.ts`) solo acepta `http(s)` hasta 500 caracteres —el valor va
 a un `src` de `<iframe>`, y `javascript:` no es una sala—, `null` la quita y ausente no la toca
 (mismo patrón que `encumbranceVariant`, D-CF-16). El servicio (`campaigns.service.ts#update`) la
-escribe solo si viaja; `createCampaign` no la acepta —se pone después, desde ajustes—. La web
+escribe solo si viaja; se acepta al crear y desde ajustes —el mismo defecto de MEDIA-2 con
+`encumbranceVariant` reapareció con este campo en la revisión y se cerró igual—. La web
 añade un bloque «Sala del tablero» bajo el interruptor de sobrecarga en `CampaignSettings.tsx`,
 con Guardar/Quitar explícitos sobre el mismo `PATCH /campaigns/:id`; solo el DM puede escribir, y
 el servidor lo exige (`requireDM`), no el botón deshabilitado.
+
+Ronda de revisión (mismo día) — dos Important, los dos contra el propio boceto del brief: el
+botón «Guardar la sala» se deshabilitaba con el campo vacío, contra
+`docs/04-convenciones.md:460` («el botón de guardar nunca se deshabilita»); ahora un campo vacío
+se explica con el error del `Field` y no llama al PATCH, y «Quitar la sala» ya no vacía el input
+antes de la respuesta —si el PATCH falla, lo tecleado se queda—. Y `campaigns.service.ts#create`
+tiraba `boardRoomUrl` en silencio pese a que el contrato la acepta desde el alta —el mismo defecto
+de MEDIA-2 que ya se había cerrado una vez con `encumbranceVariant`—; ahora se persiste también
+al crear.
 
 Por qué — el tablero es autohospedado y cada mesa tiene su propia partida; la URL vive en la
 campaña, no en código ni en variable de entorno, porque cada DM la pega una vez desde su PlanarAlly
@@ -80,11 +94,13 @@ y la mesa la usa desde ahí en adelante (fuera de esta tarea: la propia pantalla
 consume).
 
 Evidencia — e2e de API (`campaigns.e2e-spec.ts`): el DM guarda y lee la URL, un jugador miembro
-recibe 403, `javascript:alert(1)` da 400 y `null` la borra — 21/21 en verde. Mutación: quitar el
-`refine` del `http(s)` hace fallar el caso de `javascript:` (200 en vez de 400) — confirma que la
-prueba depende de esa línea, no de la forma del contrato. Unitarias web (RTL): el DM ve «Sala del
-tablero», pulsa Guardar y el PATCH lleva `boardRoomUrl`; con sala guardada aparece «Quitar la sala»
-y manda `null`. `pnpm verify` en verde.
+recibe 403, `javascript:alert(1)` da 400 y `null` la borra, y un `POST` con `boardRoomUrl` la
+persiste desde el alta — 22/22 en verde. Mutación: quitar el `refine` del `http(s)` hace fallar
+el caso de `javascript:` (200 en vez de 400) — confirma que la prueba depende de esa línea, no
+de la forma del contrato. Unitarias web (RTL, 7 en total): el DM ve «Sala del tablero», pulsa
+Guardar y el PATCH lleva `boardRoomUrl`; con sala guardada aparece «Quitar la sala» y manda
+`null`; Guardar con el campo vacío no llama al PATCH y muestra el error; si «Quitar la sala»
+falla, el input conserva su valor. `pnpm verify` en verde.
 
 **Revertir:** migración inversa `DROP COLUMN "boardRoomUrl"` (descrita en la cabecera del SQL) y
 quitar el bloque `SalaDelTablero` de `CampaignSettings.tsx`, la línea del servicio y el campo del
@@ -238,226 +254,15 @@ caja de PG en `Cabecera.tsx` a su marcado anterior (`git revert` del commit de e
 
 Qué — nota de diseño de UI de juegos ([docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md](./superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md), con cita o URL por referencia: BG3, Divinity: Original Sin 2, Foundry VTT/Dice So Nice, D&D Beyond, Owlbear Rodeo, dddice/dice-box) y cinco reglas nuevas en [04-convenciones.md](./04-convenciones.md) § *Reglas de interfaz* (reparto interno de tarjeta, acciones de fila con menú, espacio reservado, sticky con escalón, un dado una forma), con sus cinco constantes fijadas (`HUECO_MAX_PX` 48 px, `DESNIVEL_MAX_PX` 24 px, `ANCHO_CASILLA_REM` 4.75rem, `ALTO_CASILLA_REM` 3.75rem, `ACCIONES_VISIBLES` 2) y sus decisiones D-CF-58 a D-CF-62; por qué — tarea 0 del [plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md) (investigar antes de tocar, pedido tres veces por el autor), para que las tareas 1, 4 y 8 lean los números de un solo sitio; revertir — `git revert` del commit de esta tarea, sin código tocado.
 
-## La hoja a página completa (2026-09-11 y 12)
+## La hoja a página completa (2026-09-11 y 12) — archivada
 
-**Fusión a `main` (2026-09-12):** qué — merge `--no-ff` de `hoja/pagina-completa` en `main`,
-`e43038f`, 38 commits; por qué — el autor ordenó pasar a `main` y empujar antes de desplegar;
-revertir — `git revert -m 1 e43038f`.
-
-**Despliegue (2026-09-12):** el autor desplegó `6d2b2ca` a mano; comprobado con `docker ps` en
-`vps1new` (api y web `healthy`) y `curl` 200; revertir = redesplegar la imagen anterior
-(`f9579b2`) desde Coolify.
-
-Rama `hoja/pagina-completa` sobre `main` `80a9243`, **veintiséis commits** hasta `0d304ea`
-—veinticuatro de código, pruebas y la fusión de la Task 1, dos de documentación; medido con
-`git log --oneline 80a9243..HEAD | wc -l` el 2026-09-12; el de esta ronda de documentación de
-cierre hace veintisiete—: las once tareas
-del plan, la ola de arreglos de la revisión final de la rama, las dos rondas de cierre de las
-fichas HP y los dos residuales. Cerrada en local el 2026-09-12, **fusionada a `main` el mismo
-día** y **desplegada a producción también el 2026-09-12** (`6d2b2ca`, a mano por el autor). La
-[spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md) y el
-[plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) mandan; las decisiones que la
-ejecución obligó a tomar son D-CF-38..46 en [decisiones.md](./decisiones.md), y la que el autor
-tomó al cerrar, D-CF-47 (HP-9 después del paso 3). **Revertir cualquier
-tanda = `git revert` de sus commits; las tarjetas no cambiaron**: cada pestaña monta las mismas
-tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
-
-- **Task 2 — Las condiciones saben pintarse como chips de solo lectura** (`4c965ed`, `8aff6e6`).
-  `Condiciones.tsx` gana una variante para la cabecera. La revisión cazó un chip vacío para la
-  concentración (`NOMBRE_CONDICION` en vez de `tituloDe`) y dejó dicho que **una condición vencida
-  no es chip**: arriba se enseña lo activo, lo vencido sigue tachado en Estado (D-CF-43).
-- **Task 3 — La cabecera vive en `Cabecera.tsx`** (`ae98951`, `e9ed5a5`): retrato, identidad
-  solo en la mesa (en la página ya la pinta `PageHeader`), cinco números, chips y avisos, con
-  `PropsDePestana` en `features/character-sheet/pestanas/tipos.ts`. La revisión devolvió fuerza a la `it` movida de los PG
-  (`puedeEditar` verdadero, el control de daño ausente para quien edita) y probó el gating de
-  `BotonSubirNivel`.
-- **Tasks 4 a 6 — Números, Ataques, Rasgos, Recursos, Estado y Conjuros son pestañas**
-  (`742f7e1`..`212eb76`). Fixture compartido en
-  `features/character-sheet/__tests__/fixtures/hoja.fixture.tsx`; `habilidades.ts` saca las
-  veinticuatro líneas de la tarjeta. Conjuros existe solo para quien lanza (`lanzaConjuros.ts`)
-  y la revisión de la 6 devolvió el guard `spellSlots > 0`: un alto elfo sin espacios veía una
-  tarjeta vacía. **Ruling de la 4:** las tarjetas de identidad (Ficha/Características) **se
-  remontan** cuando la hoja se vuelve derivable porque ahora viven en una pestaña; lo guardado en
-  blur ya está guardado y solo se pierde el indicador transitorio «guardando» (D-CF-39).
-- **Task 7 — `HojaCalculada` es cabecera + pestañas** (`b7a0987`, `a9f9bfd`): 149 líneas,
-  `disposicion` decide lateral a página o tira en la mesa, la pestaña activa en `?pestana=`, y
-  **una pestaña que la hoja no ofrece cae a Números** —`?pestana=conjuros` en un no lanzador
-  dejaba el panel vacío— (D-CF-42). Diez `it` de `HojaCalculada.test.tsx` abren la pestaña antes
-  de afirmar: solo aperturas de pestaña y un localizador reescrito con comentario; ninguna
-  aserción cambió.
-- **Task 8 — Las acciones de un objeto son una lista** (`0a3a31a`): `features/inventory/accionesDeObjeto.ts`
-  alimenta la fila, que pinta desde ella.
-- **Task 9 — Objetos a página filtra y enseña el detalle** (`f7e8b24`, `e11db5e`):
-  `FiltrosDeObjetos`, `filtrarObjetos`, `DetalleDeObjeto`. El filtro «qué es» usa el `ItemKind`
-  real —seis chips— y no el tipo ad hoc del brief (D-CF-41); los chips de zona hablan el
-  vocabulario de zona (D-CF-40); y `inventory` declara su propia unión `disposicion` porque **no
-  importa de `character-sheet`** (`features/inventory/hooks.ts:32`), frontera que la revisión vio romperse.
-- **Task 10 — Medido en el navegador, fichero a fichero** (`65bb5c1`, `5158ad1`):
-  `hoja-pestanas.spec.ts` nuevo y dieciséis e2e adaptados abriendo la pestaña que toque —solo
-  aperturas y localizadores más específicos—. **Incidente:** `pnpm --filter @dnd/web e2e --
-  <fichero>` **no filtra** —pnpm no pasa el argumento— y corrió la suite entera una vez, 18,7 min;
-  el comando que sí filtra es `pnpm --filter @dnd/web exec playwright test e2e/<fichero>.spec.ts`
-  (D-CF-44). Esa pasada midió la **banda fija en 412 px** con los avisos dentro, y de ahí el
-  **ruling A**: el `sticky` lleva solo lo que cambia por turno —retrato, identidad en mesa, cinco
-  números, chips—; los avisos van justo debajo, fuera del `sticky`; ≤ 96 px después
-  (`hoja.spec.ts`, punto 5b) (D-CF-38).
-- **Task 11 — La documentación alcanza a la rama** (`a58ae03`, `7591a9e`): 07, D-CF-38..44,
-  HP-1..7 en 06, 08, 01, `00-INDEX` (producción `f9579b2`, no `6eb2590`), `como-seguir` §0 y las
-  notas al pie de la spec del 09-06 y del plan del 09-11. La revisión devolvió D-CF-44 a lo que el
-  autor decidió (la costumbre de 08 no era parte del ruling) y nombró los diecinueve ficheros de
-  navegador. **Revertir:** `git revert`; nada de código dentro.
-- **Revisión final de la rama — una sola ola de arreglos** (`75bab98`, sobre `7591a9e`, 2026-09-12).
-  Cuatro Important: **`puedeEditar` llega al inventario** (spec §7: en un personaje ajeno ni las
-  filas ni el detalle pintan botones; mirar no es editar); **las acciones del detalle contestan en
-  el detalle** —`ElegirMano` se monta una sola vez, bajo la fila en la mesa y dentro de
-  `DetalleDeObjeto` a página, y el error del servidor sale bajo sus botones— (cierra HP-2); la RTL
-  «cada tarjeta en su pestaña» **recorre las siete** con la misma tabla que el e2e, 23 rótulos; y
-  la spec lleva su nota al pie con las cuatro desviaciones (§4, §6, §4 chips, §10). Más nueve
-  minors: el coste de 60 s del guard escrito junto al `Map`, títulos de prueba que prometían lo que
-  no comprobaban, `data.rollSuggestions?.` sin el `?` de más, el rango de combinantes escapado en
-  `filtrarObjetos.ts`. **Revertir:** `git revert` del commit; HP-2 volvería a 06.
-
-- **Task 1 — El cubo por usuario no se clava a un token revocado (API).**
-  `common/user-or-ip-throttler.guard.ts` compara `iat` con `passwordChangedAt` (misma regla de
-  empate que `jwt.strategy.ts`), cacheado 60 s por usuario. Cierra la ficha P3 del
-  2026-09-11 (D-CF-36), archivada en
-  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
-  Pruebas: `user-or-ip-throttler.guard.spec.ts` (nueva) y el e2e existente
-  `login-bucket-por-ip.e2e-spec.ts`. **Revertir:** `git revert` del commit; el guard vuelve a
-  clavar el cubo solo por firma.
-- **Ronda de cierre — HP-3 a HP-7 (2026-09-12).** Un commit que cierra las cinco fichas que
-  las revisiones dejaron abiertas a propósito y no eran del autor: el e2e de Objetos deja el cuero
-  sin equipar por la API al entrar y en un `finally` (HP-3); la fila seleccionada la anuncia el
-  botón «Ver detalle de X» con `aria-pressed` y el `<li>` guarda solo la marca visual
-  (`data-seleccionada`, HP-4); `renderHoja` sale del fixture y vuelve a `HojaCalculada.test.tsx`
-  para que las pruebas de pestaña no carguen la hoja entera (HP-5); el guard de cuota separa el
-  fallo de base del de firma y acota el caché de sellos a `TOPE_SELLOS` con barrido de vencidos
-  (HP-6); y `Cabecera` calcula `hayAvisos` antes de montar la fila, con la condición del DM en
-  `useEsVistaDeDm` compartido con el aviso, sin `empty:hidden` (HP-7). Las cinco, con su medición
-  y su texto original, en
-  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md);
-  HP-1 y HP-8 siguen en 06 porque las decide el autor. **Revertir:** `git revert` del commit.
-- **Ronda de cierre 2 — HP-1 y HP-8, con la decisión del autor (2026-09-12).** El cajón de la
-  hoja que abre el DM desde el elenco se llama **«Su hoja»** («Sin salir de la mesa.»), simétrico
-  con el «Tu hoja» del jugador; el nombre y el descriptor los pinta una sola vez la `Cabecera`
-  en disposición «mesa» (HP-1, D-CF-46). Y la sintonización se enseña como **estado junto al
-  nombre** —distintivo «Sintonizado» en `FilaObjeto` y `DetalleDeObjeto`, mismo patrón que «Sin
-  identificar»—, que es lo que la pantalla 20 del prototipo quería decir; la lista de acciones
-  conserva su orden, principal primero, y el botón del objeto sintonizado dice lo que hace,
-  «Desintonizar», para no repetir el estado (HP-8, D-CF-45; SRD 5.1 «Attunement»). Al medirlo se
-  vio que la sintonización es hoy solo un marcador —el motor no lee `attuned`, no hay descanso
-  corto, 0 objetos del SRD la piden— y quedó escrito como **HP-9** en 06, decisión del autor.
-  Localizador e2e cambiado: `sesion.spec.ts`, el cajón por «Su hoja». Las dos fichas, con su texto
-  original, en
-  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
-  **Revertir:** `git revert` del commit.
-- **Tres retoques de la revisión de la ronda 1 (2026-09-12).** `useEsVistaDeDm` se muda de
-  `AvisoDeDm.tsx` a `features/character-sheet/hooks.ts` (un fichero de componente no exporta más que
-  componentes; el aviso de `react-refresh` vuelve a su cifra anterior); los ayudantes del spec del
-  guard de cuota viven una vez a nivel de fichero; y el recorrido de Objetos del e2e de pestañas
-  deja de restaurar el cuero en un `finally` —captura, restaura y relanza el primer error— para
-  que una vuelta por la API que falle no tape el fallo del recorrido. Sin cambio de aserciones.
-  **Revertir:** `git revert` del commit.
-- **El botón de sintonizar es una acción llana (2026-09-12, revisión de la ronda 2).** Pierde
-  `aria-pressed`: el conmutador de la APG lleva rótulo fijo y el estado en `pressed`; el nuestro
-  es el patrón contrario (rótulo «Sintonizar»/«Desintonizar», estado en el distintivo), y mezclar
-  los dos anunciaba «Desintonizar, pulsado». `variant` y `aria-label` no cambian; el
-  `aria-pressed` de «Ver detalle de X» (HP-4) tampoco. Y el índice de `_archivo/README.md` gana
-  la fila del archivo del 2026-09-06 que le faltaba. **Revertir:** `git revert` del commit.
-- **Dos residuales de la revisión final (2026-09-12).** A página, un rechazo del servidor sobre
-  la fila SELECCIONADA ya no se anuncia dos veces: `PaginaDeInventario` deja de pasarle `error` a
-  esa fila (`FilaObjeto`) porque el detalle (`DetalleDeObjeto`) ya lo enseña — un lector de
-  pantalla oía el mismo mensaje por partida doble. Y seleccionar otra fila mientras `ElegirMano`
-  está abierto para la anterior cancela esa pregunta pendiente (`setManoPara(null)` en
-  `onSeleccionar`, solo cuando el id cambia): antes reaparecía sola al volver a la fila que la
-  había abierto. **Revertir:** `git revert` del commit.
-- **Ronda de documentación de cierre (2026-09-12, ciclo FIN del protocolo).** Lo que la rama dejó
-  fuera de la documentación, puesto en su sitio: `02-entorno.md` decía que `check:historial` fallaba a
-  las 400 líneas cuando el tope es 1000 desde el 2026-09-05, y enseña las formas que de verdad
-  filtran un fichero (`exec playwright test`, `exec vitest run`; las dos medidas); `04-convenciones.md`
-  gana la regla de `verify` en primer plano para los implementadores; `decisiones.md` D-CF-47 (HP-9
-  después del paso 3) y la cláusula «sin `aria-pressed`» en D-CF-45; HP-9 reescrita en 06 con lo que
-  se midió al estimarla —`CampaignItem.effects` e `itemEffectSchema` ya guardan el +N y el motor lo
-  aplica sin mirar `attuned`, así que no hace falta migración—; 01, 08, `como-seguir` y `00-INDEX`
-  al día. **Revertir:** `git revert` del commit; no toca código.
-- **HP-9 se parte en dos, decisión del autor (2026-09-12).** Al releer HP-9 con «espera al paso 3»
-  quedó claro que la mitad de lo que describía no es una funcionalidad futura sino un defecto ya
-  vivo: un objeto del DM con `effects` y `requiresAttunement: true` aplica su bono sin estar
-  sintonizado, porque el motor nunca lee `attuned`. **HP-9a** («sintonizar cuenta») se separa como
-  ese defecto y no espera al paso 3 —sesión corta de 2–3 h, antes o justo después de fusionar la
-  rama—; **HP-9b** (catálogo SRD +N estructurado y descanso corto) conserva el texto y el orden
-  originales, después del paso 3. D-CF-47 enmendada, `06-pendientes.md` y `como-seguir.md`
-  actualizados. **Revertir:** `git revert` del commit; HP-9 vuelve a su ficha única.
-- **HP-9a · Task 1 — el servidor deja de contar lo mágico de un objeto sin sintonizar
-  (2026-09-12)**, commit `fix(rules): an item that requires attunement gives its magical effects
-  only when attuned`. `ResolvedItem` gana `attuned` (`z.boolean().default(false)`, estado de la
-  fila como `identified`); `equipoEquipado` lo copia de la fila; `rules/items.ts` estrena
-  `efectosActivos(item)` —`[]` si `requiresAttunement && !attuned`, la lista si no— y es la ÚNICA
-  puerta por la que la CA (`equipmentToEngineInput`) y el +N al ataque y al daño (`attacks.ts`,
-  `sumaDeEfecto`) leen `effects`; lo mundano (`armor.baseAc`, el dado del arma) no pasa por el
-  filtro. La hoja emite `item_not_attuned` (`key: ref`, `data: { ref, name }`, con el nombre ya
-  redactado) solo si el objeto tenía `effects`. Fuente: SRD 5.1 §Attunement — sin sintonizar, el
-  objeto no da sus propiedades mágicas. Once pruebas nuevas (motor, ataques y costura del
-  servicio); mutación «devolver `item.effects` siempre» tumbó cinco. **La pantalla es la Task 2**:
-  `describirAviso` aún dice «Sin traducir: item_not_attuned». **Revertir:** `git revert` del commit.
-- **HP-9a · Task 2 — la pantalla deja de mentir sobre el número (2026-09-12)**, commit `feat(web):
-  an unattuned item shows its magical effect as inactive, and the sheet says why`. La hoja traduce
-  `item_not_attuned` («"{nombre}" requiere sintonización: sus efectos no cuentan hasta
-  sintonizarlo», con el `name` ya redactado por el servidor) y el código entra en
-  `CODIGOS_QUE_EMITE_LA_API`. `datoDeObjeto` pasa de una cadena a `{ mundano, magico }` —antes la
-  armadura +1 se quedaba en «CA base 16» y el anillo +1 decía «+1 CA» sin saber si contaba—; la
-  fila y el detalle pintan la mitad mágica **tachada** (`<s data-efecto="inactivo">`) con la marca
-  «Efecto inactivo: requiere sintonización» al lado (el detalle añade la frase entera) cuando
-  `efectoInactivoPorSintonizacion(row)` (`features/inventory/sintonizacion.ts`, el único sitio del
-  predicado en la web, sobre `row.attuned` y nunca `item.attuned`). En el servidor el aviso se
-  decide con `sintonizacionPendiente(item)` junto a `efectosActivos` en vez de con una copia a mano
-  del predicado. Diez pruebas nuevas (2 de vocabulario, 4 + 4 RTL); dos mutaciones —el predicado
-  siempre falso tumbó dos, quitar el `case` tumbó dos—. Queda la Task 3 (Playwright).
-  **Revertir:** `git revert` del commit; la pantalla vuelve a pintar el +1 como si contara.
-- **Sintonizar cuenta (HP-9a, 2026-09-12) — cerrada en tres commits:** `11ea5d9` (Task 1, el
-  servidor), `6d2fc9c` (Task 2, la pantalla) y `1373c56` (Task 3, `feat: attunement counts in the
-  browser too, and HP-9a closes`). **Qué** cerró la Task 3: el `<s>` del bono tachado apunta con
-  `aria-describedby` a su marca (`idDeEfectoInactivo(row.id)`, un `id` por fila; en el detalle con
-  prefijo `detalle-` porque las dos cajas conviven en la página), porque un lector de pantalla no
-  anuncia el tachado —dos aserciones RTL (`toHaveAccessibleDescription`), rojas antes—; y el
-  recorrido de navegador que ninguna unitaria puede hacer, `apps/web/e2e/inventario.spec.ts` «un
-  objeto que requiere sintonización no cuenta hasta sintonizarlo»: un anillo de protección de la
-  campaña (`requiresAttunement`, `effects: [{ kind: "ac", amount: 1 }]`) se equipa por la pantalla
-  y la CA de la tira fija **no se mueve**, la fila enseña `s[data-efecto="inactivo"]` con «+1 CA»
-  y la marca, la cabecera avisa; a 390×844 la fila con la marca cabe (borde derecho ≤ 390, crece
-  hacia abajo por `flex-wrap`); «Sintonizar» sube la CA en uno y se van el tachado, la marca y el
-  aviso. **Por qué:** SRD 5.1 §Attunement — un objeto que requiere sintonización da sus propiedades
-  mágicas solo a la criatura sintonizada; sin sintonizar es su versión mundana. La ficha entera va a
-  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) y
-  deja **HP-10** en 06 (la fila pone cifra solo al efecto `ac`; para los otros ocho tipos de
-  `itemEffectSchema` la marca sale sin nada tachado). D-CF-48. **Revertir:** `git revert` de los tres commits, del
-  más nuevo al más viejo; el motor vuelve a sumar el +1 sin mirar `attuned`.
-- **HP-10 — la fila resume todos los tipos de efecto, y la espada +1 inactiva tacha su +1
-  (2026-09-12)**, commit `feat(web): the item row summarises every effect kind, so an inactive
-  sword strikes its +1 too`. **Qué:** `resumirEfecto(efecto)` junto a `describirEfecto` en
-  `features/campaign-items/vocabulario.ts` (única casa del vocabulario de efectos: `inventory` ya
-  importaba de ahí), `switch` exhaustivo con `never` sobre los nueve tipos de `itemEffectSchema`
-  —«+1 CA», «+1 atq», «+1 dñ», «FUE 19», «+1 salv. SAB», «+5 PG máx.», «+10 pies», «pericia en
-  Sigilo», «competencia en salv. CON»—; `datoDeObjeto.magico` compone la lista entera unida por
-  « · » y `DatoEnCifras` la tacha igual que tachaba el «+N CA», así que el detalle hereda.
-  **Por qué:** desde HP-9a una espada +1 o un cinturón de fuerza sin sintonizar enseñaban la marca
-  «Efecto inactivo» sin ninguna cifra que tachar. 24 pruebas nuevas (18 de vocabulario, 3 + 3 RTL),
-  rojas antes; mutación (`weaponDamage` sin su «dñ») tumbó 5. «+1 CA» del anillo no cambia, así
-  que `inventario.spec.ts` sigue igual. La ficha entera va a
-  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
-  **Revertir:** `git revert` del commit; la fila vuelve a poner cifra solo al `ac`.
-- **Revisión de HP-10 — la mitad mágica envuelve, lista cada efecto y salta los ceros
-  (2026-09-12)**, commit `fix(web): the magic half of an item's figures wraps, lists each effect and
-  skips zeros`. **Qué:** el `whitespace-nowrap` sale del contenedor del dato (fila y detalle,
-  ahora `flex-wrap min-w-0`) y `DatoEnCifras` lo pone solo en lo mundano; la mitad mágica, que
-  desde HP-10 es una lista sin tope, envuelve (RTL: la clase no está en el `<s>`/`<span>` mágico ni
-  en su padre). **Cambio semántico declarado:** el `datoDeObjeto` de antes SUMABA los `ac` («+2 CA»,
-  `null` si 0); el de HP-10 los LISTA («+1 CA · +1 CA») porque cada efecto es una línea que
-  escribió el DM, y esta revisión añade que una cantidad 0 no se resume (antes «+0 CA» se pintaba;
-  el `set` de `abilityScore` no es una suma y su 0 sí cuenta). Dos `it` nuevos para las dos cosas y
-  uno para el envoltorio; los fixtures `kind: "WONDROUS"` (inexistente, escondido por el `as`)
-  pasan a `"OTHER"`; `describirEfecto` usa el mismo `conSigno`. **Revertir:** `git revert` del
-  commit; la lista vuelve a poder pintar «+0 CA» y a no partir.
+**Movida entera** a
+[`_archivo/historial-2026-09-11-y-12-hoja-a-pagina-completa.md`](./_archivo/historial-2026-09-11-y-12-hoja-a-pagina-completa.md)
+el 2026-09-12, en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1013 de
+1000 y era la entrada completa más antigua. En una línea: fusión (`e43038f`) y despliegue
+(`6d2b2ca`) de `hoja/pagina-completa` a producción, veintiséis commits de las once tareas del
+plan, la ola de revisión final de la rama, y las tandas HP-1 a HP-10 (sintonización cuenta,
+la fila resume todos los tipos de efecto) cerradas hasta HP-9b.
 
 ## La revisión de producción del autor: 24 puntos y tres specs (2026-09-12, tarde)
 
@@ -504,30 +309,29 @@ esa noche, tapados aquí:** 05-datos no contaba qué quitaron las migraciones (`
 `race`/`class`) y el ledger global decía «push pendiente» con el push hecho. **Revertir:** borrar
 la spec y el plan; las decisiones se quedan como registro.
 
-## Relectura de 01–05 y 09 al cerrar la rama: diez frases falsas (2026-09-11)
+## Relectura de 01–05 y 09 al cerrar la rama: diez frases falsas (2026-09-11) — archivada
 
-Auditoría de deriva contra el código tras fusionar `ficha/tanda-2-a-5`, por un agente de solo
-lectura con la lista de lo que la rama tocó. Diez frases caducadas, ninguna sobre lo que la rama
-cambió —todas anteriores—: Node ≥ 20 en 02; siete eventos y tres `@OnEvent` en 01 (son nueve y
-cinco); la búsqueda por texto como hipótesis en 04 cuando ya vive en el servidor; `Session` «sin
-tablas colgando» en 05 cuando arrastra `Encounter` desde 2.5.2; dos citas de línea podridas y
-«diecisiete tablas» (dieciocho) en 05; los niveles de visibilidad como cadena de superconjuntos en
-05 (el código dice que no lo son); y en 09, que una fecha no se puede quitar y que el agotamiento
-no automatiza nada. Corregidas con la fecha. **Revertir:** no procede; son correcciones de hechos.
+**Movida entera** a
+[`_archivo/historial-2026-09-11-relectura-diez-frases-falsas.md`](./_archivo/historial-2026-09-11-relectura-diez-frases-falsas.md)
+el 2026-09-12, en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1015 de
+1000 y era la entrada completa más antigua. En una línea: auditoría de deriva tras fusionar
+`ficha/tanda-2-a-5`, diez frases caducadas en 01, 02, 04, 05 y 09, corregidas con la fecha.
 
-## `origin/main` alcanza a `main` (2026-09-11, noche)
+## `origin/main` alcanza a `main` (2026-09-11, noche) — archivada
 
-`git push origin main`, `8467fed..89e2575`, 43 commits: las tandas 2 a 6 de cerrar fichas, la ola
-de la revisión final, la relectura de los docs y las ocho migraciones. Lo hizo el agente con
-`pnpm verify` en verde, autorizado por el autor (D-CF-28); cierra la ficha P1 del worktree que
-salía de una base de julio. **Revertir:** no procede.
+**Movida entera** a
+[`_archivo/historial-2026-09-11-origin-alcanza-main.md`](./_archivo/historial-2026-09-11-origin-alcanza-main.md)
+el 2026-09-12, en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1013 de
+1000 y era la entrada completa más antigua. En una línea: `origin/main` alcanzó a `main`,
+43 commits, `pnpm verify` en verde, autorizado por el autor (D-CF-28).
 
-## La tanda de Playwright que cierra las migraciones (2026-09-11, noche)
+## La tanda de Playwright que cierra las migraciones (2026-09-11, noche) — archivada
 
-153 recorridos en 44 ficheros en `WORKTREE_SLOT=1`: 150 verdes, 1 saltado, 2 rojos cerrados en la
-pasada siguiente (un localizador ambiguo en `sobrecarga` y un rojo por carga en `hoja`). Antes,
-135 rojos falsos porque el puerto 3000 lo tenía otro proyecto de esta máquina y Playwright lo
-reutilizó como API; declarado en `08-pruebas.md`. **Revertir:** no procede.
+**Movida entera** a
+[`_archivo/historial-2026-09-11-tanda-playwright-migraciones.md`](./_archivo/historial-2026-09-11-tanda-playwright-migraciones.md)
+el 2026-09-12, en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1011 de
+1000 y era la entrada completa más antigua. En una línea: 153 recorridos de Playwright en 44
+ficheros, 150 verdes tras cerrar los 2 rojos que quedaban.
 
 ## La tanda de migraciones de D-CF-14, un commit por migración (2026-09-11) — archivada
 

@@ -90,31 +90,99 @@ async function personajeCompleto(page: Page, nombre: string) {
   return { campaignId, characterId };
 }
 
-/** Huecos verticales entre hijos directos, y desnivel entre vecinos de la misma fila. */
-async function medirHermanas(rejilla: Locator) {
-  const cajas = (
-    await Promise.all((await rejilla.locator(":scope > *").all()).map((h) => h.boundingBox()))
+// Ronda de arreglo 2 (2026-09-12) — **medía ciega**. La primera versión de `medirHermanas` medía
+// `:scope > *`, los hijos DIRECTOS de `[data-pestana]`. Eso funciona para Números (tres tarjetas
+// como hijos directos), pero desde las Tareas 2 y 3 Rasgos y Recursos meten dos tarjetas en una
+// sub-rejilla de una columna (`Rasgos.tsx`: `<div className="grid gap-s4">` con Ficha +
+// Personalidad dentro) para apilarlas sin dejar un hueco de rejilla bajo la más corta — y esa
+// sub-rejilla, no sus tarjetas, es el hijo directo. Mutar su `gap-s4` a `gap-[10rem]` (160px de
+// hueco real bajo «Ficha») seguía en verde: el hueco vivía DENTRO del hijo directo, invisible
+// desde fuera. El controlador lo destapó con esa mutación exacta.
+//
+// **La unidad que se mide ahora es la TARJETA, esté donde esté en el árbol**, no el hijo directo
+// de la rejilla. Dos formas de tarjeta en esta hoja, confirmadas leyendo cada pestaña y cada
+// componente que monta (ninguna anida la otra dentro de las cuatro pestañas que mide esta
+// suite):
+//
+//  - `section[aria-label]` — toda `TarjetaDeHoja` (`Tarjeta.tsx`): Características, Salvaciones,
+//    Habilidades, Ficha, Personalidad, Rasgos y aptitudes, Puntos de golpe, Recursos y
+//    descansos, Actividades, Modificadores temporales, Condiciones activas, Clase de armadura,
+//    Velocidad y sentidos, Anulaciones del DM.
+//  - `[data-tarjeta]` — la caja pequeña (`CAJA_DE_HOJA`, `TarjetasDeEstado.tsx`) que se apila
+//    JUNTO a una `TarjetaDeHoja` en la misma columna en vez de ir dentro de ella: Percepción
+//    pasiva (bajo Salvaciones, en Números), Dados de golpe y Salvaciones de muerte (bajo Puntos
+//    de golpe, en Recursos). Las seis casillas de característica (`IdentidadEditable.tsx`) usan
+//    la MISMA clase pero SIN `data-tarjeta` — a propósito, para no confundirlas con esto: viven
+//    DENTRO de la tarjeta «Características», no apiladas junto a ella, y contarlas como tarjeta
+//    propia mediría la rejilla interna de una tarjeta, no el hueco entre tarjetas.
+type Caja = { x: number; y: number; width: number; height: number };
+
+async function medirHermanas(raiz: Locator) {
+  const cajas: Caja[] = (
+    await Promise.all(
+      (await raiz.locator("section[aria-label], [data-tarjeta]").all()).map((h) => h.boundingBox()),
+    )
   ).filter((b): b is NonNullable<typeof b> => b !== null && b.height > 0);
+
+  // --- Huecos: sin cambios de fondo, solo sobre el conjunto de tarjetas más amplio. Dos
+  //     tarjetas de la misma columna (`|x diff| < 4`) que son vecinas verticales inmediatas —
+  //     ninguna otra tarjeta de esa columna cae entre ellas. Esto es lo que atrapa la mutación
+  //     del controlador: Ficha y Personalidad son ambas `section[aria-label]`, comparten `x`
+  //     (están en la misma sub-rejilla de una columna, y el `x` es de pantalla, no de padre en
+  //     el árbol), y con `gap-[10rem]` el hueco entre ellas mide 160px > 48px.
   let huecoMax = 0;
-  let desnivelMax = 0;
   for (let i = 0; i < cajas.length; i++) {
     for (let j = i + 1; j < cajas.length; j++) {
       const a = cajas[i],
         b = cajas[j];
-      const mismaFila = Math.abs(a.y - b.y) < 4;
-      const mismaColumna = Math.abs(a.x - b.x) < 4;
-      if (mismaFila && j < cajas.length - 1)
-        desnivelMax = Math.max(desnivelMax, Math.abs(a.height - b.height));
-      if (mismaColumna) {
-        const [arriba, abajo] = a.y < b.y ? [a, b] : [b, a];
-        // Solo hermanas consecutivas en la columna: otra caja en medio no cuenta como hueco.
-        const hayAlgoEnMedio = cajas.some(
-          (c) => c !== a && c !== b && Math.abs(c.x - a.x) < 4 && c.y > arriba.y && c.y < abajo.y,
-        );
-        if (!hayAlgoEnMedio) huecoMax = Math.max(huecoMax, abajo.y - (arriba.y + arriba.height));
-      }
+      if (Math.abs(a.x - b.x) >= 4) continue;
+      const [arriba, abajo] = a.y < b.y ? [a, b] : [b, a];
+      const hayAlgoEnMedio = cajas.some(
+        (c) => c !== a && c !== b && Math.abs(c.x - a.x) < 4 && c.y > arriba.y && c.y < abajo.y,
+      );
+      if (!hayAlgoEnMedio) huecoMax = Math.max(huecoMax, abajo.y - (arriba.y + arriba.height));
     }
   }
+
+  // --- Desnivel: **una tarjeta con otra tarjeta debajo, en su misma columna, queda exenta.**
+  //     Es la regla del controlador, hecha explícita: en Números, Salvaciones y Percepción
+  //     pasiva comparten columna con `items-stretch` (Ronda de arreglo de la Tarea 4) — la
+  //     COLUMNA se estira para llenar la fila, no cada tarjeta suya, así que Salvaciones (más
+  //     baja que Características/Habilidades porque Percepción pasiva se lleva el resto del
+  //     alto) NO es un desnivel real: es media columna comparada contra una columna entera.
+  //     Sin esta exención, activar la comparación sobre TODAS las tarjetas (en vez de solo los
+  //     tres hijos directos) habría convertido este falso desnivel en un fallo nuevo.
+  //
+  //     Lo que SÍ se compara, tarjeta a tarjeta: la que queda última en su columna (o la única).
+  //     Se agrupan por «fila» las que comparten techo (`|y diff| < 4`) y se mide el desnivel
+  //     dentro de cada fila con 2+ tarjetas. Se descarta la fila más baja SOLO si hay más de una
+  //     fila comparable — nunca la única, porque en Números esa fila única (Características vs.
+  //     Habilidades, ambas sin nada debajo) es exactamente lo que esta prueba existe para vigilar
+  //     y descartarla la dejaría sin comprobar nada.
+  const cajasConAlgoDebajoEnSuColumna = new Set(
+    cajas.filter((c) => cajas.some((d) => d !== c && Math.abs(d.x - c.x) < 4 && d.y > c.y + 4)),
+  );
+  const comparables = cajas
+    .filter((c) => !cajasConAlgoDebajoEnSuColumna.has(c))
+    .sort((a, b) => a.y - b.y);
+  const filas: Caja[][] = [];
+  const restantes = [...comparables];
+  while (restantes.length) {
+    const cabeza = restantes.shift()!;
+    const fila = [cabeza];
+    for (let i = restantes.length - 1; i >= 0; i--) {
+      if (Math.abs(restantes[i].y - cabeza.y) < 4) fila.push(...restantes.splice(i, 1));
+    }
+    filas.push(fila);
+  }
+  const filasAComparar = filas.length > 1 ? filas.slice(0, -1) : filas;
+  let desnivelMax = 0;
+  for (const fila of filasAComparar) {
+    if (fila.length < 2) continue;
+    const altos = fila.map((c) => c.height);
+    desnivelMax = Math.max(desnivelMax, Math.max(...altos) - Math.min(...altos));
+  }
+
   return { huecoMax, desnivelMax };
 }
 

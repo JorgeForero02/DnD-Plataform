@@ -1,6 +1,7 @@
 import { NOMBRE_SIN_IDENTIFICAR, type ResolvedItem } from "@dnd/shared";
 import { useState, type ReactNode } from "react";
 import type { InventoryRow } from "./api";
+import { accionesDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { IconoObjeto, IconoSinIdentificar } from "./iconos";
@@ -8,7 +9,6 @@ import {
   danioCorto,
   ETIQUETA_SIN_IDENTIFICAR,
   EXPLICACION_SIN_IDENTIFICAR,
-  NOMBRE_ACCION_ZONA,
   subtituloDeObjeto,
 } from "./vocabulario";
 import { formatearKg } from "./peso";
@@ -133,43 +133,19 @@ export function FilaObjeto({
         <span className="whitespace-nowrap font-data text-chrome-xs text-muted">
           {formatearKg(pesoTotalOz)}
         </span>
-        <Button type="button" variant="secondary" aria-busy={ocupado} onClick={onAccionPrincipal}>
-          {NOMBRE_ACCION_ZONA[row.location]}
-        </Button>
-        {/* **Antes de la acción principal**: sintonizar es lo que hace que el objeto haga algo,
-            y en la fila del prototipo el estado va pegado al nombre, no al final. */}
-        {onSintonizar && (
+        {accionesDeObjeto(row, { onAccionPrincipal, onSoltar, onGastar, onSintonizar }).map((a) => (
           <Button
+            key={a.id}
             type="button"
-            variant={row.attuned ? "secondary" : "ghost"}
+            variant={a.variant}
             aria-busy={ocupado}
-            aria-pressed={row.attuned}
-            onClick={onSintonizar}
-            aria-label={row.attuned ? `Desintonizar ${item.name}` : `Sintonizar con ${item.name}`}
+            aria-pressed={a.pressed}
+            aria-label={a.ariaLabel}
+            onClick={a.ejecutar}
           >
-            {row.attuned ? "Sintonizado" : "Sintonizar"}
+            {a.rotulo}
           </Button>
-        )}
-        {onGastar && (
-          <Button
-            type="button"
-            variant="ghost"
-            aria-busy={ocupado}
-            onClick={onGastar}
-            aria-label={`Gastar una unidad de ${item.name}`}
-          >
-            Gastar
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          aria-busy={ocupado}
-          onClick={onSoltar}
-          aria-label={`Soltar ${item.name}`}
-        >
-          Soltar
-        </Button>
+        ))}
       </div>
       {error && (
         <p role="alert" className="mt-1 pl-s6 font-chrome text-chrome-xs text-danger-text">

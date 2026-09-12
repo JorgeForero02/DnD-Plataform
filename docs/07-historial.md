@@ -149,6 +149,13 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   los dos anunciaba «Desintonizar, pulsado». `variant` y `aria-label` no cambian; el
   `aria-pressed` de «Ver detalle de X» (HP-4) tampoco. Y el índice de `_archivo/README.md` gana
   la fila del archivo del 2026-09-06 que le faltaba. **Revertir:** `git revert` del commit.
+- **Dos residuales de la revisión final (2026-09-12).** A página, un rechazo del servidor sobre
+  la fila SELECCIONADA ya no se anuncia dos veces: `PaginaDeInventario` deja de pasarle `error` a
+  esa fila (`FilaObjeto`) porque el detalle (`DetalleDeObjeto`) ya lo enseña — un lector de
+  pantalla oía el mismo mensaje por partida doble. Y seleccionar otra fila mientras `ElegirMano`
+  está abierto para la anterior cancela esa pregunta pendiente (`setManoPara(null)` en
+  `onSeleccionar`, solo cuando el id cambia): antes reaparecía sola al volver a la fila que la
+  había abierto. **Revertir:** `git revert` del commit.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 

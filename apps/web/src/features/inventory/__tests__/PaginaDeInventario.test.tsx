@@ -825,6 +825,31 @@ describe("PaginaDeInventario — a página (tarea 9)", () => {
     expect(await within(detalle).findByRole("alert")).toHaveTextContent(
       "Ya hay tres objetos sintonizados.",
     );
+    // Residual del reseño final: la fila seleccionada compartía el mismo rechazo con el
+    // detalle, y un lector de pantalla anunciaba el mismo mensaje dos veces.
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it("residual: seleccionar otra fila cancela la pregunta de la mano pendiente", async () => {
+    renderInventario({
+      disposicion: "pagina",
+      filas: [
+        fila({ id: "ca-pocion", location: "CARRIED", item: pocion }),
+        fila({ id: "ca-daga", location: "CARRIED", item: daga }),
+      ],
+    });
+    const detalle = await screen.findByRole("complementary", { name: "detalle del objeto" });
+    const filaDaga = screen.getByRole("button", { name: /ver detalle de Daga/i }).closest("li")!;
+    fireEvent.click(within(filaDaga).getByRole("button", { name: "Equipar" }));
+    expect(within(detalle).getByRole("radio", { name: "Mano izquierda" })).toBeInTheDocument();
+
+    // Se selecciona otra fila: la pregunta pendiente para la daga —que ya no se ve— se cancela.
+    fireEvent.click(screen.getByRole("button", { name: /ver detalle de Poción/i }));
+    expect(within(detalle).queryByRole("radio", { name: "Mano izquierda" })).toBeNull();
+
+    // Se vuelve a seleccionar la daga: la pregunta no reaparece sola.
+    fireEvent.click(within(filaDaga).getByRole("button", { name: /ver detalle de Daga/i }));
+    expect(screen.queryByRole("radio", { name: "Mano izquierda" })).toBeNull();
   });
 
   it("HP-2: a página, equipar un arma desde la lista pregunta la mano en el detalle, una sola vez", async () => {

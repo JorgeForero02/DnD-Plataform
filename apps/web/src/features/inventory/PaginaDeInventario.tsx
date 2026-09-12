@@ -306,11 +306,20 @@ export function PaginaDeInventario({
       />
     ) : null;
 
+  /**
+   * Residual del reseño final — a página, el rechazo de la fila SELECCIONADA ya lo anuncia el
+   * detalle (`error` más abajo en el JSX); pintarlo también aquí duplicaba el `role="alert"` y
+   * un lector de pantalla anunciaba el mismo mensaje dos veces. Las filas no seleccionadas
+   * conservan el suyo, y en la mesa (sin detalle) nada cambia.
+   */
+  const errorDeFila = (row: InventoryRow) =>
+    aPagina && row.id === seleccionada?.id ? undefined : erroresPorFila[row.id] || undefined;
+
   /** Lo que cada `FilaObjeto` recibe además de sus manos; la selección solo existe a página. */
   const propsDeFila = (row: InventoryRow) => ({
     row,
     ocupado: filaEnVuelo === row.id,
-    error: erroresPorFila[row.id] || undefined,
+    error: errorDeFila(row),
     esDM,
     onIdentificar: (input: { identified?: boolean; unidentifiedName?: string | null }) =>
       identificar(row, input),
@@ -319,7 +328,13 @@ export function PaginaDeInventario({
     ...(aPagina
       ? {
           seleccionada: row.id === seleccionada?.id,
-          onSeleccionar: () => setSeleccionadaId(row.id),
+          onSeleccionar: () => {
+            // Residual del reseño final — cambiar de fila cancela la pregunta de la mano
+            // pendiente de OTRA fila: el usuario se fue de esa pregunta. Reseleccionar la misma
+            // fila (manoPara ya vale su id) la deja intacta.
+            setManoPara((actual) => (actual !== null && actual !== row.id ? null : actual));
+            setSeleccionadaId(row.id);
+          },
         }
       : {}),
   });

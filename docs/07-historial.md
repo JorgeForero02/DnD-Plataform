@@ -289,7 +289,10 @@ PG, permitidos y oro, con dados o fijo— y son la spec de
 [reglas de la mesa](./superpowers/specs/2026-09-12-reglas-de-la-mesa-design.md); uno era la línea
 de tiempo ramificada de D4, que el autor quiere **dibujada por el DM** y no generada del log:
 [mapa de historia](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md). Dados 3D
-aplazados. Orden nuevo antes del paso 3: D-CF-52..55. Auditoría de los docs del cierre de la hoja:
+aplazados. Orden nuevo antes del paso 3: D-CF-52..55. **Y el tablero provisional:** Owlbear no se
+deja enmarcar (medido), así que nuestra mesa irá **dentro** de su sala como extensión oficial
+([spec](./superpowers/specs/2026-09-12-owlbear-como-tablero-design.md), D-CF-56), tras un spike
+del autor. Auditoría de los docs del cierre de la hoja:
 alineados (tres checks en verde, producción verificada en `vps1new`). **Revertir:** borrar las specs;
 las decisiones se quedan.
 

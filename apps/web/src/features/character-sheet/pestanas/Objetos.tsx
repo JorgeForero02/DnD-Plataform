@@ -14,12 +14,17 @@ import type { PropsDePestana } from "./tipos";
 // el dinero dos veces —una para leer y otra para mover—, que es la clase de duplicado que acaba
 // discrepando en cuanto uno de los dos se actualiza y el otro no. Se queda el que deja hacer algo.
 //
-// `disposicion` y `puedeEditar` no se usan todavía: la Tarea 9 le da al inventario su rejilla
-// por disposición. `PaginaDeInventario` decide por su cuenta quién edita (D-CF-15, `useMyRole`).
-export function Objetos({ campaignId, characterId }: PropsDePestana) {
+// `disposicion` baja al inventario (tarea 9): a página va en dos columnas con el panel de
+// detalle; en la mesa, como siempre. `puedeEditar` no se usa: `PaginaDeInventario` decide por su
+// cuenta quién edita (D-CF-15, `useMyRole`).
+export function Objetos({ campaignId, characterId, disposicion }: PropsDePestana) {
   return (
     <div data-pestana="objetos" className="flex min-w-0 flex-col gap-s4">
-      <PaginaDeInventario campaignId={campaignId} characterId={characterId} />
+      <PaginaDeInventario
+        campaignId={campaignId}
+        characterId={characterId}
+        disposicion={disposicion}
+      />
     </div>
   );
 }

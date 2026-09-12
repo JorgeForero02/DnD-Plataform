@@ -18,7 +18,7 @@ import { formatearKg } from "./peso";
 // (1d8 perf., +11 CA), peso, y la acción".
 
 /** El dato en cifras a la derecha del nombre — lo único que se sabe sin recalcular la hoja. */
-function datoDeObjeto(item: ResolvedItem): string | null {
+export function datoDeObjeto(item: ResolvedItem): string | null {
   if (item.weapon) return danioCorto(item.weapon.damageDice, item.weapon.damageType);
   if (item.armor) {
     return item.armor.category === "SHIELD"
@@ -42,6 +42,8 @@ export function FilaObjeto({
   onIdentificar,
   ocupado,
   error,
+  seleccionada,
+  onSeleccionar,
   children,
 }: {
   row: InventoryRow;
@@ -78,6 +80,15 @@ export function FilaObjeto({
   /** El rechazo del servidor para esta fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
   /**
+   * Tarea 9 (spec 2026-09-11) — la fila es seleccionable **solo a página**, donde hay un panel
+   * de detalle que enseña la seleccionada. Las dos props van juntas: si faltan, la fila se pinta
+   * exactamente como en la mesa —sin botón sobre el nombre y sin `aria-selected`—, porque un
+   * `aria-selected="false"` en una lista sin selección anunciaría un control que no existe.
+   */
+  seleccionada?: boolean;
+  /** El nombre es un botón («Ver detalle de X»), no la fila entera: dentro ya hay otros botones. */
+  onSeleccionar?: () => void;
+  /**
    * Lo que la fila despliega debajo cuando la acción principal necesita una decisión más — hoy,
    * **en qué mano va un arma** (paso 1, tarea 11). Va aquí dentro y no en un diálogo: se toca
    * donde se lee, y la mano es una propiedad de esta fila.
@@ -99,13 +110,36 @@ export function FilaObjeto({
   // disparar un `PATCH` por cada letra tecleada de un alias que la mesa todavía está pensando.
   const [alias, setAlias] = useState(item.unidentifiedName ?? "");
 
+  const seleccionable = seleccionada !== undefined && onSeleccionar !== undefined;
+
   return (
-    <li className="border-b border-[color:var(--copper-rule)] py-s2 last:border-b-0">
+    <li
+      aria-selected={seleccionable ? seleccionada : undefined}
+      className={[
+        "border-b border-[color:var(--copper-rule)] py-s2 last:border-b-0",
+        // La seleccionada se marca con el tinte del acento y un filo a la izquierda: se ve cuál
+        // es la que enseña el panel sin leer el panel.
+        seleccionable && seleccionada
+          ? "-ml-s2 border-l-2 border-l-accent bg-[color:var(--accent-tint)] pl-s2"
+          : "",
+      ].join(" ")}
+    >
       <div className="flex flex-wrap items-center gap-s2 sm:gap-s3">
         <IconoObjeto className="shrink-0 text-muted" />
         <div className="min-w-0 flex-1 basis-40">
           <p className="truncate font-chrome text-chrome-sm text-text">
-            {item.name}
+            {seleccionable ? (
+              <button
+                type="button"
+                aria-label={`Ver detalle de ${item.name}`}
+                onClick={onSeleccionar}
+                className="max-w-full truncate rounded-radius-sm text-left align-baseline hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {item.name}
+              </button>
+            ) : (
+              item.name
+            )}
             {cantidad}
             {/* El jugador ve la etiqueta dibujada junto al alias que ya le mandó el servidor
                 (`item.name` ya viene sustituido); el DM la ve además del nombre real, porque el

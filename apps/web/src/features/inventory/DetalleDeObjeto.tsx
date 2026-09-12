@@ -1,0 +1,164 @@
+import type { InventoryRow } from "./api";
+import type { AccionDeObjeto } from "./accionesDeObjeto";
+import { Button } from "../../ui/Button";
+import { EmptyState } from "../../ui/EmptyState";
+import { datoDeObjeto } from "./FilaObjeto";
+import { IconoSinIdentificar } from "./iconos";
+import { formatearKg } from "./peso";
+import { ETIQUETA_SIN_IDENTIFICAR, NOMBRE_ZONA, subtituloDeObjeto } from "./vocabulario";
+
+// Tarea 9 (spec 2026-09-11, «la hoja a página completa») — el panel de detalle de la pestaña
+// Objetos a página: lo que la fila de una línea no puede enseñar (la descripción, el peso por
+// unidad, si pide sintonización) y **las mismas acciones que la fila**. La lista de botones
+// llega hecha (`accionesDeObjeto`, un solo sitio) para que el detalle y la fila no puedan
+// ofrecer cosas distintas.
+
+type Identificar = (input: { identified?: boolean; unidentifiedName?: string | null }) => void;
+
+export function DetalleDeObjeto({
+  row,
+  acciones,
+  esDM,
+  onIdentificar,
+  ocupado = false,
+}: {
+  /** La fila seleccionada, o `null` si la lista visible está vacía. */
+  row: InventoryRow | null;
+  /** Las acciones de esa fila, ya construidas: `accionesDeObjeto(row, manosDe(row))`. */
+  acciones: AccionDeObjeto[];
+  /** Solo el DM ve el alias real (D-CF-15); la autorización vive en el servidor. */
+  esDM: boolean;
+  /** Identifica el objeto desde aquí. Ausente si `esDM` es falso. */
+  onIdentificar?: Identificar;
+  /** La fila tiene una escritura en vuelo: los botones lo anuncian igual que en la lista. */
+  ocupado?: boolean;
+}) {
+  return (
+    <aside
+      aria-label="detalle del objeto"
+      className="rounded-radius-sm border border-muted bg-surface p-s4 lg:sticky lg:top-s4"
+    >
+      {row === null ? (
+        <EmptyState title="Elige un objeto">
+          La lista de la izquierda enseña su detalle aquí.
+        </EmptyState>
+      ) : (
+        <Contenido
+          row={row}
+          acciones={acciones}
+          esDM={esDM}
+          onIdentificar={onIdentificar}
+          ocupado={ocupado}
+        />
+      )}
+    </aside>
+  );
+}
+
+function Contenido({
+  row,
+  acciones,
+  esDM,
+  onIdentificar,
+  ocupado,
+}: {
+  row: InventoryRow;
+  acciones: AccionDeObjeto[];
+  esDM: boolean;
+  onIdentificar?: Identificar;
+  ocupado: boolean;
+}) {
+  const { item } = row;
+  const dato = datoDeObjeto(item);
+  // D-CF-15: `undefined` cuenta como identificado, igual que en la fila.
+  const sinIdentificar = item.identified === false;
+  // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
+  // (`ui/__tests__/Iconos.test.tsx`).
+  const cantidad = row.quantity > 1 ? ` x${row.quantity}` : "";
+
+  return (
+    <div className="flex flex-col gap-s3">
+      <header>
+        <h3 className="font-title text-chrome-lg text-text">
+          {item.name}
+          {cantidad}
+        </h3>
+        <p className="font-chrome text-chrome-xs text-muted">
+          {subtituloDeObjeto(
+            item.kind,
+            row.location === "EQUIPPED" ? (row.slot ?? undefined) : undefined,
+          )}
+          {" · "}
+          {NOMBRE_ZONA[row.location]}
+          {row.storedAt ? ` · ${row.storedAt}` : ""}
+        </p>
+      </header>
+
+      <dl className="grid grid-cols-[auto_1fr] gap-x-s3 gap-y-s1 font-chrome text-chrome-sm">
+        {dato && (
+          <>
+            <dt className="text-muted">Dato</dt>
+            <dd className="font-data text-accent-text">{dato}</dd>
+          </>
+        )}
+        <dt className="text-muted">Peso</dt>
+        <dd className="font-data text-text">
+          <span>{formatearKg(item.weightOz)}</span>
+          {row.quantity > 1 && (
+            <span className="text-muted">
+              {" por unidad · "}
+              <span className="text-text">{formatearKg(item.weightOz * row.quantity)}</span>
+              {" en total"}
+            </span>
+          )}
+        </dd>
+      </dl>
+
+      {item.requiresAttunement && (
+        <p className="font-chrome text-chrome-xs text-text">
+          Requiere sintonización{row.attuned ? " · sintonizado" : ""}
+        </p>
+      )}
+
+      {sinIdentificar && (
+        <p className="inline-flex items-center gap-1 font-chrome text-chrome-xs text-muted">
+          <IconoSinIdentificar />
+          {esDM && item.unidentifiedName
+            ? `${ETIQUETA_SIN_IDENTIFICAR} · el jugador lo ve como «${item.unidentifiedName}»`
+            : ETIQUETA_SIN_IDENTIFICAR}
+        </p>
+      )}
+
+      {item.description && <p className="font-world text-text">{item.description}</p>}
+
+      <div className="flex flex-wrap gap-s2">
+        {acciones.map((a) => (
+          <Button
+            key={a.id}
+            type="button"
+            variant={a.variant}
+            aria-busy={ocupado}
+            aria-pressed={a.pressed}
+            aria-label={a.ariaLabel}
+            onClick={a.ejecutar}
+          >
+            {a.rotulo}
+          </Button>
+        ))}
+        {/* El DM identifica desde donde lee la descripción. Es la misma mutación que la casilla
+            de la fila, no una segunda regla; el servidor sigue siendo quien dice que no (403). */}
+        {esDM && onIdentificar && sinIdentificar && (
+          <Button
+            type="button"
+            variant="ghost"
+            aria-busy={ocupado}
+            aria-label={`Identificar ${item.name}`}
+            onClick={() => onIdentificar({ identified: true })}
+          >
+            Identificar
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

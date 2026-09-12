@@ -14,7 +14,7 @@ import {
   subtituloDeObjeto,
 } from "./vocabulario";
 import { formatearKg } from "./peso";
-import { efectoInactivoPorSintonizacion } from "./sintonizacion";
+import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizacion";
 
 // Carril B1 — la fila de una línea: nombre + subtítulo tenue, dato en cifras, peso, acción.
 // Pantalla 20 del prototipo: "nombre + subtítulo; a la derecha, dato en tipografía de cifras
@@ -46,11 +46,6 @@ export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
     .reduce((suma, e) => suma + e.amount, 0);
   const magico = bonoCa !== 0 ? `${bonoCa > 0 ? "+" : ""}${bonoCa} CA` : null;
   return { mundano, magico };
-}
-
-/** El `id` de la explicación del efecto inactivo de una fila: uno por fila, para `aria-describedby`. */
-export function idDeEfectoInactivo(rowId: string): string {
-  return `efecto-inactivo-${rowId}`;
 }
 
 /**

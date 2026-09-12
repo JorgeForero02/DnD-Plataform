@@ -47,7 +47,7 @@ abierta, y la que salió al medir la sintonización se partió en dos el mismo d
 enmendada): **HP-9a («sintonizar cuenta») se cerró el mismo 2026-09-12 en tres commits sobre la
 misma rama** (D-CF-48; el motor filtra los `effects` de un objeto sin sintonizar, la pantalla tacha
 el bono y la cabecera avisa, con su recorrido de navegador en `inventario.spec.ts`) y dejó HP-10
-(los bonos de arma no salen en la fila); HP-9b sigue en [06-pendientes.md](./06-pendientes.md) con
+(la fila solo pone cifra al efecto `ac`; los otros ocho tipos llevan la marca sin nada tachado); HP-9b sigue en [06-pendientes.md](./06-pendientes.md) con
 su estimación.
 
 **Lo siguiente es del autor: fusionar la rama y desplegar, a mano** → **el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y S6 dentro —la

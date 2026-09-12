@@ -223,8 +223,8 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   siempre falso tumbó dos, quitar el `case` tumbó dos—. Queda la Task 3 (Playwright).
   **Revertir:** `git revert` del commit; la pantalla vuelve a pintar el +1 como si contara.
 - **Sintonizar cuenta (HP-9a, 2026-09-12) — cerrada en tres commits:** `11ea5d9` (Task 1, el
-  servidor), `6d2fc9c` (Task 2, la pantalla) y el de la Task 3, `feat: attunement counts in the
-  browser too, and HP-9a closes`. **Qué** cerró la Task 3: el `<s>` del bono tachado apunta con
+  servidor), `6d2fc9c` (Task 2, la pantalla) y `1373c56` (Task 3, `feat: attunement counts in the
+  browser too, and HP-9a closes`). **Qué** cerró la Task 3: el `<s>` del bono tachado apunta con
   `aria-describedby` a su marca (`idDeEfectoInactivo(row.id)`, un `id` por fila; en el detalle con
   prefijo `detalle-` porque las dos cajas conviven en la página), porque un lector de pantalla no
   anuncia el tachado —dos aserciones RTL (`toHaveAccessibleDescription`), rojas antes—; y el
@@ -237,8 +237,8 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   aviso. **Por qué:** SRD 5.1 §Attunement — un objeto que requiere sintonización da sus propiedades
   mágicas solo a la criatura sintonizada; sin sintonizar es su versión mundana. La ficha entera va a
   [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) y
-  deja **HP-10** en 06 (la fila no pinta los bonos de arma, así que una espada +1 sin sintonizar
-  enseña la marca sin nada tachado). D-CF-48. **Revertir:** `git revert` de los tres commits, del
+  deja **HP-10** en 06 (la fila pone cifra solo al efecto `ac`; para los otros ocho tipos de
+  `itemEffectSchema` la marca sale sin nada tachado). D-CF-48. **Revertir:** `git revert` de los tres commits, del
   más nuevo al más viejo; el motor vuelve a sumar el +1 sin mirar `attuned`.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)

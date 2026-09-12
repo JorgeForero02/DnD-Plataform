@@ -3,10 +3,10 @@ import type { InventoryRow } from "./api";
 import type { AccionDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
-import { DatoEnCifras, datoDeObjeto, idDeEfectoInactivo } from "./FilaObjeto";
+import { DatoEnCifras, datoDeObjeto } from "./FilaObjeto";
 import { IconoSinIdentificar } from "./iconos";
 import { formatearKg } from "./peso";
-import { efectoInactivoPorSintonizacion } from "./sintonizacion";
+import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizacion";
 import {
   ETIQUETA_EFECTO_INACTIVO,
   ETIQUETA_SIN_IDENTIFICAR,

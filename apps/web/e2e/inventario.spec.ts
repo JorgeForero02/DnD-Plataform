@@ -212,12 +212,21 @@ test("un objeto que requiere sintonización no cuenta hasta sintonizarlo", async
   // «Equipaste … CA» no se pinta: la CA no cambió, y avisar de un cambio que no hubo mentiría.
   await expect(page.getByText(/Equipaste/)).toHaveCount(0);
 
-  // A 390 la fila envuelve (`flex-wrap`): la marca la hace más alta, no más ancha.
+  // A 390 la fila envuelve (`flex-wrap`): la marca la hace más alta, no más ancha. Se mide la
+  // MARCA, no el `<li>` —la caja de la fila nunca supera a su contenedor aunque su contenido se
+  // salga—, y además que ni el inventario ni el documento se desplazan a lo ancho.
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(fila.getByText(MARCA, { exact: true })).toBeVisible();
-  const caja = (await fila.boundingBox())!;
-  expect(caja.x, "la fila empieza dentro de la ventana").toBeGreaterThanOrEqual(0);
-  expect(caja.x + caja.width, "la fila con la marca cabe en 390").toBeLessThanOrEqual(390);
+  const marca = fila.getByText(MARCA, { exact: true });
+  await expect(marca).toBeVisible();
+  const caja = (await marca.boundingBox())!;
+  expect(caja.x, "la marca empieza dentro de la ventana").toBeGreaterThanOrEqual(0);
+  expect(caja.x + caja.width, "la marca cabe en 390").toBeLessThanOrEqual(390);
+  const desbordaElInventario = await inventario.evaluate((el) => {
+    const nodos = [el, ...Array.from(el.querySelectorAll<HTMLElement>("li"))];
+    return nodos.some((n) => n.scrollWidth > n.clientWidth + 1);
+  });
+  expect(desbordaElInventario, "el inventario no se desplaza en horizontal").toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // **Sintonizar sí cuenta:** la CA sube uno, el bono va en limpio y no queda marca ni aviso.

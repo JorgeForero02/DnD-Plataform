@@ -20,3 +20,12 @@ export function efectoInactivoPorSintonizacion(
 ): boolean {
   return row.item.requiresAttunement && !row.attuned && row.item.effects.length > 0;
 }
+
+/**
+ * El `id` de la marca «Efecto inactivo: requiere sintonización» de una fila, al que el bono
+ * tachado apunta con `aria-describedby` (un lector de pantalla no anuncia el tachado). Uno por
+ * fila; el detalle le antepone `detalle-` porque convive con la fila en la misma página.
+ */
+export function idDeEfectoInactivo(rowId: string): string {
+  return `efecto-inactivo-${rowId}`;
+}

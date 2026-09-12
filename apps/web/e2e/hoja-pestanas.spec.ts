@@ -265,7 +265,9 @@ for (const p of PESTANAS) {
 
     const resumen = page.getByRole("region", { name: "resumen de combate" });
     await expect(resumen).toBeVisible();
-    for (const n of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+    // Ronda de arreglo del pulido (2026-09-12): el rótulo visible pasó a «Vel.» y la unidad a la
+    // tercera línea de la casilla — el nombre accesible sigue siendo «Velocidad efectiva en pies».
+    for (const n of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
       await expect(resumen.getByText(n, { exact: true })).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

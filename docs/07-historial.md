@@ -70,10 +70,11 @@ suite y de `Cabecera.test.tsx` cambian «Vel. (pies)» por «Vel.». Números co
 `docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md` § 7, `04-convenciones.md`
 (regla «Reparto interno de tarjeta») y `decisiones.md` (D-CF-58); por qué — el número que trajo
 la nota de diseño de la tarea 0 era un mínimo (`min-w-[4.75rem]`) nunca puesto a prueba como
-ancho fijo con contenido real, y solo el navegador lo pudo ver. **`e2e/hoja-pestanas.spec.ts:268`
-sigue comprobando el rótulo viejo «Vel. (pies)»** y no se tocó: cae fuera de la frontera de esta
-tarea (solo `hoja.spec.ts`), queda anotado en el informe de la tarea para que lo arregle quien
-tenga ese fichero en su encargo; revertir — `git revert` del commit de esta ronda de arreglo.
+ancho fijo con contenido real, y solo el navegador lo pudo ver. **Segunda pasada de Playwright**:
+`e2e/hoja.spec.ts` pasó a 11/12 (el timeout de L151 era flaky, verde al repetirlo) pero
+`e2e/hoja-pestanas.spec.ts` cayó 7 de 7 en su propia lista de rótulos — se había quedado con el
+literal viejo, «Vel. (pies)» — y se actualizó **en esta misma ronda** a «Vel.»; revertir —
+`git revert` de los commits de esta ronda de arreglo.
 
 ## Tarea 1 del pulido: `Casilla` y la banda anclada (2026-09-12)
 

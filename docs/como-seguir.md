@@ -43,13 +43,15 @@ la revisión final de la rama entera, dos rondas de cierre de sus fichas y dos r
 ([07-historial.md](./07-historial.md), «La hoja a página completa»). **No está en `main` ni en
 producción: fusiona y despliega el autor, a mano.** Decisiones D-CF-29..47 en
 [decisiones.md](./decisiones.md); de las ocho fichas que dejaron las revisiones no queda ninguna
-abierta, y la que salió al medir la sintonización, HP-9, espera en
-[06-pendientes.md](./06-pendientes.md) con su estimación.
+abierta, y la que salió al medir la sintonización se partió en dos el mismo día (D-CF-47
+enmendada): HP-9a y HP-9b, ambas en [06-pendientes.md](./06-pendientes.md) con su estimación.
 
-**Lo siguiente es el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y
-S6 dentro —la «tanda L»— → **después, HP-9, objetos mágicos con efecto (D-CF-47)** → higiene →
-jugar una partida → fase 3. A2 aplazada. El paso 3 asume la pestaña Conjuros hecha, y lo está:
-hoy enseña espacios y el hueco declarado (D-CF-34).
+**Lo siguiente, si el autor así lo manda, es HP-9a («sintonizar cuenta»)** —sesión corta, defecto,
+no espera al paso 3— **antes o justo después de fusionar la rama** (decide el autor el orden) →
+**el paso 3 (D-CF-37):** conjuros y aptitudes por el conversor, con S11, E1, L5 y S6 dentro —la
+«tanda L»— → **después, HP-9b, catálogo SRD +N y descanso corto (D-CF-47)** → higiene → jugar una
+partida → fase 3. A2 aplazada. El paso 3 asume la pestaña Conjuros hecha, y lo está: hoy enseña
+espacios y el hueco declarado (D-CF-34).
 
 ### 1 · Terminar la poda del tablero — **lo mecánico ya está; queda lo del autor**
 

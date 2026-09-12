@@ -153,38 +153,57 @@ vivía solo en la spec, y la contesta D-CF-32 (Números); la spec lleva su nota 
 > enteras, en
 > [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
 > Queda aquí la que abrió HP-8 al mirar qué hace hoy la sintonización: HP-9, que el autor decidió el
-> mismo día —**se hace después del paso 3** (D-CF-47)— y que aquí espera con su medición y su estimación.
+> mismo día —**se hace después del paso 3** (D-CF-47)— y que **el 2026-09-12, más tarde, el autor
+> partió en dos** (D-CF-47 enmendada): la mitad que es un defecto (HP-9a) no espera al paso 3.
 
 | | Qué | Dónde y qué costaría |
 |---|---|---|
-| **HP-9** | **Objetos mágicos con efecto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). Hoy la sintonización es solo un marcador y el motor no la lee; la forma del +N ya existe en `effects`. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente, plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
+| **HP-9a** | **«Sintonizar cuenta» — defecto, no espera al paso 3** (decisión del autor, 2026-09-12). Un objeto del DM con `effects` y `requiresAttunement: true` da su bono **sin estar sintonizado**: el motor no lee `attuned`. Medición, alcance y tres tareas en la subsección de abajo | **Sesión corta, antes o justo después de fusionar la rama** (decide el autor el orden). 2–3 h con revisión entre tareas |
+| **HP-9b** | **Catálogo SRD +N y descanso corto — pendiente, espera al paso 3** (decisión del autor, 2026-09-12; D-CF-47). La forma del +N ya existe en `effects`; falta el catálogo estructurado y el gancho al descanso corto. Medición, estimación y alcance en la subsección de abajo | Después del paso 3: 3–4 días de agente (menos HP-9a) menos la parte del defecto, plan de 6–8 tareas, precedido de una spec con dos preguntas. **La abre el autor**: ningún agente la coge por su cuenta |
 
-### HP-9 · Objetos mágicos con efecto — medición, estimación y alcance (2026-09-12)
+### HP-9a · «Sintonizar cuenta» — defecto, sesión corta (2026-09-12)
+
+**Es un defecto, no una funcionalidad nueva.** Un objeto creado por el DM con `effects` (por
+ejemplo, un +1) y `requiresAttunement: true` aplica su efecto **sin que nadie lo haya
+sintonizado**: el servidor declara la regla —`apps/api/src/inventory/inventory.service.ts:158-172`
+acepta y quita la sintonización, y `:1081-1096` aplica el tope de `MAX_ATTUNED_ITEMS`— pero el
+motor de reglas nunca la lee. `apps/api/src/rules/` no tiene ni una aparición de `attuned`, y
+`character-sheet.service.ts` (~L459) construye el `ResolvedItem` que llega al motor **sin ese
+campo**: un anillo +1 sin sintonizar da +1 igual que uno sintonizado.
+
+**Arreglo mínimo, tres tareas:**
+1. `ResolvedItem` lleva `attuned`.
+2. `rules/items.ts` (CA) y `rules/attacks.ts` (ataque y daño) aplican los `effects` solo si
+   `!requiresAttunement || attuned`, con un paso de traza «requiere sintonización — inactivo»
+   cuando no se cumple.
+3. La fila y el detalle del objeto muestran «Efecto inactivo: requiere sintonización» cuando
+   aplica; RTL + `inventario.spec.ts` (un solo fichero, con `exec playwright test`).
+
+**Estimación dada al autor (controlador, 2026-09-12): 2–3 h, con revisión entre tareas.** Sin
+migración, sin catálogo nuevo, sin tocar el descanso corto. Fuente: SRD 5.1 §*Attunement* — el
+objeto no da sus propiedades mágicas hasta que la criatura está sintonizada con él (verificar la
+cita exacta en el commit si el repositorio trae el texto en inglés; si no, se cita como «según SRD
+5.1 §Attunement» sin inventar literal).
+
+### HP-9b · Catálogo SRD +N y descanso corto — medición, estimación y alcance (2026-09-12)
 
 **Medido.** La sintonización es hoy **solo un marcador de estado**:
 `apps/api/src/inventory/inventory.service.ts:158` la acepta solo sobre un objeto equipado, `:172` la
 quita al desequipar y `:1081-1096` aplica `MAX_ATTUNED_ITEMS` (tres) con el mensaje que nombra los
-tres. El motor de reglas (`apps/api/src/rules/`) **no lee `attuned` en ningún sitio** —un objeto
-sintonizado da los mismos números que sin sintonizar, y la fila equipada llega al motor sin ese campo
-(`character-sheet.service.ts`, `location: "EQUIPPED"`)—; no hay requisito de descanso corto (el
-cambio es instantáneo); no hay ruptura a las 24 h ni a los 100 pies; y el catálogo del SRD tiene
-**0 objetos con `requiresAttunement: true`** (`rules/catalog/items-srd.ts`): solo los objetos que crea
-el DM lo llevan.
+tres. No hay requisito de descanso corto (el cambio es instantáneo); no hay ruptura a las 24 h ni a
+los 100 pies; y el catálogo del SRD tiene **0 objetos con `requiresAttunement: true`**
+(`rules/catalog/items-srd.ts`): solo los objetos que crea el DM lo llevan.
 
 **La forma del +N ya existe.** `CampaignItem.effects` (`Json?`, en `apps/api/prisma/schema.prisma`)
 guarda la lista que valida `itemEffectSchema` en `packages/shared/src/item.schema.ts` —`ac`,
 `weaponAttack`, `weaponDamage`, entre otros— y el motor ya la aplica (`rules/items.ts` a la CA,
-`rules/attacks.ts` al ataque y al daño) **sin mirar la sintonización**. Comprobado: **no hace falta
-migración** para el +N; la habría solo si se añade una columna nueva (rareza, cargas), y eso queda fuera.
+`rules/attacks.ts` al ataque y al daño). Comprobado: **no hace falta migración** para el +N; la
+habría solo si se añade una columna nueva (rareza, cargas), y eso queda fuera.
 
-**Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente, plan de 6–8 tareas.**
-Motor acotado a dos puertas —`rules/items.ts` (CA) y `rules/attacks.ts` (ataque/daño)— leyendo el
-bono solo si `!requiresAttunement || attuned`, lo que exige que `attuned` viaje con la fila equipada
-hasta el motor; forma del dato en `item.schema.ts` (los efectos que ya existen valen para +1/+2/+3; un
-`magicBonus` explícito sería un campo más del mismo `Json`); catálogo SRD 5.1: solo los +N son
-estructurables (~12: arma, armadura, escudo), el resto es prosa; sintonizar pasa por el descanso corto
-(el flujo de descansos de 2C). **Fuera:** cargas, rarezas, objetos que conceden conjuros (dependen del
-paso 3) y romperse a las 24 h o a los 100 pies.
+**Estimación dada al autor (controlador, 2026-09-12): 3–4 días de agente menos HP-9a, plan de 6–8
+tareas.** Catálogo SRD 5.1: solo los +N son estructurables (~12: arma, armadura, escudo), el resto
+es prosa; sintonizar pasa por el descanso corto (el flujo de descansos de 2C). **Fuera:** cargas,
+rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24 h o a los 100 pies.
 
 **Orden: después del paso 3** (D-CF-37 → D-CF-47): la mitad del catálogo mágico concede conjuros y
 sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o

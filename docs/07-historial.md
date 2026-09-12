@@ -185,6 +185,14 @@ tarjetas que antes vivían en `HojaCalculada.tsx`, movidas y no reescritas.
   se midió al estimarla —`CampaignItem.effects` e `itemEffectSchema` ya guardan el +N y el motor lo
   aplica sin mirar `attuned`, así que no hace falta migración—; 01, 08, `como-seguir` y `00-INDEX`
   al día. **Revertir:** `git revert` del commit; no toca código.
+- **HP-9 se parte en dos, decisión del autor (2026-09-12).** Al releer HP-9 con «espera al paso 3»
+  quedó claro que la mitad de lo que describía no es una funcionalidad futura sino un defecto ya
+  vivo: un objeto del DM con `effects` y `requiresAttunement: true` aplica su bono sin estar
+  sintonizado, porque el motor nunca lee `attuned`. **HP-9a** («sintonizar cuenta») se separa como
+  ese defecto y no espera al paso 3 —sesión corta de 2–3 h, antes o justo después de fusionar la
+  rama—; **HP-9b** (catálogo SRD +N estructurado y descanso corto) conserva el texto y el orden
+  originales, después del paso 3. D-CF-47 enmendada, `06-pendientes.md` y `como-seguir.md`
+  actualizados. **Revertir:** `git revert` del commit; HP-9 vuelve a su ficha única.
 
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 

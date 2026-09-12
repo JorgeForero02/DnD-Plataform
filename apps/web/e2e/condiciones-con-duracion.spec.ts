@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Tarea 2C.4 — **la condición que caduca sola, medida en un navegador y contra la API real.**
 //
@@ -23,6 +23,16 @@ function nuevaCuenta() {
  * clics son quince pasos que `hoja.spec.ts` ya recorre, y repetirlos aquí solo alargaría el
  * recorrido sin medir nada nuevo. Lo que se mide sigue siendo lo que pasa en pantalla.
  */
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
+}
+
 async function comoLaSesion(page: Page) {
   const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
   return { Authorization: `Bearer ${token}` };
@@ -71,6 +81,9 @@ async function abrirHoja(page: Page) {
   );
   expect(hoja.ok()).toBe(true);
   await page.reload();
+  // La tarjeta de condiciones es de la pestaña «Estado» (Tarea 7, spec 2026-09-11); solo se
+  // monta la pestaña activa, y la de arranque es «Números».
+  await abrirPestana(page, "Estado");
   await expect(page.getByLabel("Nueva condición")).toBeVisible();
   return { campaignId, characterId };
 }
@@ -102,8 +115,10 @@ test("una condición con duración se marca como vencida al pasar su hora, **y n
   await page.getByRole("button", { name: "1 hora" }).click();
   await expect(page.getByText(/pasan 1 hora/i)).toBeVisible();
 
-  // 3 · Y en la hoja, la condición **sigue en la lista** y se ve vencida.
-  await page.goto(`/campaigns/${campaignId}/personajes/${characterId}`);
+  // 3 · Y en la hoja, la condición **sigue en la lista** y se ve vencida. La URL nombra la
+  //     pestaña: es el enlace que se guardaría alguien para volver a esa tarjeta.
+  await page.goto(`/campaigns/${campaignId}/personajes/${characterId}?pestana=estado`);
+  await expect(page.getByRole("tab", { name: "Estado", selected: true })).toBeVisible();
   await expect(page.getByText(/vencida: ya no se aplica/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Renovar" })).toBeVisible();
   await expect(page.getByRole("button", { name: /quitar derribado/i })).toBeVisible();
@@ -112,10 +127,13 @@ test("una condición con duración se marca como vencida al pasar su hora, **y n
 test("**los PG máximos partidos por agotamiento se explican en la hoja**", async ({ page }) => {
   await abrirHoja(page);
 
+  // Las cifras de PG están en la tarjeta de «Recursos»; la condición se pone en «Estado».
+  await abrirPestana(page, "Recursos");
   const cifras = page.locator('[data-hp="cifras"]').first();
   const maximoSano = Number((await cifras.innerText()).split("/")[1].trim());
   expect(maximoSano).toBeGreaterThan(0);
 
+  await abrirPestana(page, "Estado");
   await page.getByLabel("Nueva condición").selectOption({ label: "Agotamiento" });
   await page.getByLabel("Nivel de agotamiento").fill("4");
   await page
@@ -127,6 +145,7 @@ test("**los PG máximos partidos por agotamiento se explican en la hoja**", asyn
   // caen a la mitad son la pregunta que más se hace en una mesa.
   // `toContainText` y no `toHaveText`: con una expresión regular, `toHaveText` exige que
   // **toda** la cadena case, y aquí la cadena es «7 / 7».
+  await abrirPestana(page, "Recursos");
   await expect(cifras).toContainText(`/ ${Math.floor(maximoSano / 2)}`);
   await expect(page.getByText(/a la mitad/i).first()).toBeVisible();
 });

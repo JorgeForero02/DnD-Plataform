@@ -129,13 +129,24 @@ test("capturas: las pantallas nuestras, para comparar con el prototipo", async (
   // --- Fase 2B: el inventario con cosas dentro, que es como hay que mirarlo. Vacío se compara
   //     con el prototipo sin decir nada: lo que se juzga es la fila, la marca de procedencia y
   //     cómo conviven las tres zonas.
+  // El inventario es la pestaña «Objetos» de la hoja desde la Tarea 7 (spec 2026-09-11).
+  await page.getByRole("tab", { name: "Objetos" }).click();
+  await expect(page.getByRole("tab", { name: "Objetos", selected: true })).toBeVisible();
   const inventario = page.getByRole("region", { name: "inventario" });
+  // La pestaña recién abierta carga su inventario («Cargando inventario…») antes de pintar el
+  // botón; el `isVisible()` del bucle mira UNA vez y sin esperar, así que hay que esperar aquí
+  // o la primera vuelta no abre nada y el buscador no llega nunca (fallo de la ronda 1).
+  await expect(inventario.getByRole("button", { name: /Añadir objeto/ })).toBeVisible({
+    timeout: 15_000,
+  });
   for (const objeto of ["Cota de malla", "Espada larga", "Raciones"]) {
     // El panel se queda abierto entre altas: solo se abre si está cerrado, o el segundo clic
     // caería sobre «Cerrar».
     const abrir = inventario.getByRole("button", { name: /Añadir objeto/ });
     if (await abrir.isVisible().catch(() => false)) await abrir.click();
-    await inventario.getByLabel(/Buscar/).fill(objeto);
+    // El buscador del selector por su nombre entero: el inventario tiene además su propio
+    // «Buscar objeto» (el filtro de la lista, tarea 9), y `/Buscar/` casaba con los dos.
+    await inventario.getByLabel("Buscar objeto por nombre").fill(objeto);
     await inventario
       .getByRole("button", { name: new RegExp(objeto) })
       .first()

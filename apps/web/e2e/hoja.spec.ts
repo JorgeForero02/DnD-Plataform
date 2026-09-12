@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Tarea 2A.10 — la pantalla de la hoja de personaje, contra la API real (Docker + Postgres).
 // Cubre lo que ninguna prueba unitaria puede: que la hoja carga con datos reales de principio a
@@ -32,6 +32,20 @@ function nuevaCuenta() {
  */
 async function fijarTema(page: Page, tema: "dark" | "light") {
   await page.addInitScript((t) => localStorage.setItem("dnd-theme", t), tema);
+}
+
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa.
+ *
+ * **Desde la Tarea 7 (spec 2026-09-11) la hoja son una cabecera fija y siete pestañas, y solo se
+ * monta el contenido de la activa.** Cada recorrido de este fichero abre la pestaña que toca
+ * antes de buscar una tarjeta; `Números` es la de arranque, así que las tarjetas de salvaciones,
+ * habilidades y características se encuentran sin abrir nada. `donde` es la página o el cajón
+ * de la mesa, que tienen cada uno su `tablist`.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
 }
 
 async function registrarse(page: Page) {
@@ -70,15 +84,25 @@ async function crearPersonajeYAbrirFicha(page: Page, nombrePersonaje: string) {
  * tener dónde vivir el día que las filas pasaron a ser armas de verdad.
  */
 async function equiparEspadaLarga(page: Page) {
+  await abrirPestana(page, "Objetos");
   const inventario = page.getByRole("region", { name: "inventario" });
   await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
-  await inventario.getByLabel(/Buscar/).fill("Espada larga");
+  // El buscador del selector de alta, por su nombre entero: desde la tarea 9 el inventario tiene
+  // además su propio «Buscar objeto» (el filtro de la lista), y `/Buscar/` casaba con los dos.
+  await inventario.getByLabel("Buscar objeto por nombre").fill("Espada larga");
   await inventario
     .getByRole("button", { name: /Espada larga/ })
     .first()
     .click();
   await inventario.getByRole("radio", { name: /Equipado/ }).check();
   await inventario.getByRole("button", { name: "Añadir", exact: true }).click();
+  // La fila existe ANTES de cambiar de pestaña: la de Objetos se desmonta al salir, y lo que se
+  // espera es la fila real de la lista (su botón de selección, que solo pinta la página), no la
+  // del catálogo del selector, que sigue abierto.
+  await expect(inventario.getByRole("button", { name: "Ver detalle de Espada larga" })).toBeVisible(
+    { timeout: 15_000 },
+  );
+  await abrirPestana(page, "Ataques");
   await expect(
     page.getByRole("region", { name: "ataques y lanzamiento" }).getByRole("table"),
   ).toBeVisible({ timeout: 15_000 });
@@ -138,13 +162,16 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
 
   // Identidad calculada, en español — nunca "dwarf" ni "fighter".
   // **El resumen en prosa ya no existe**: repetía lo que dicen los controles editables, y dos
-  // sitios con el mismo dato acaban con uno de los dos mintiendo. Se comprueba en la fuente.
+  // sitios con el mismo dato acaban con uno de los dos mintiendo. Se comprueba en la fuente,
+  // que con la hoja ya derivada vive en la pestaña «Rasgos» (la tarjeta «Ficha»).
+  await abrirPestana(page, "Rasgos");
   await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("dwarf");
   await expect(page.getByLabel("Clase", { exact: true })).toHaveValue("fighter");
   await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
   const cuerpoTrasCompletar = await page.locator("body").innerText();
   expect(cuerpoTrasCompletar).not.toContain("dwarf");
   expect(cuerpoTrasCompletar).not.toContain("fighter");
+  await abrirPestana(page, "Números");
 
   // La traza: al desplegar la CA, se ve de dónde sale el número (§4.3 de la especificación).
   const casillaCA = page.getByText("CA", { exact: true }).locator("..").getByRole("button");
@@ -180,6 +207,7 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   await expect(filaFuerza.getByRole("status")).toContainText(/\d+ = \d+ dado/);
 
   // PG: un delta, no un número absoluto. Se lee el actual/máximo antes y después del clic.
+  await abrirPestana(page, "Recursos");
   const bloquePg = page.getByRole("region", { name: "puntos de golpe" });
   const textoPgAntes = await bloquePg.innerText();
   const [actualAntes, maximo] = textoPgAntes
@@ -200,6 +228,7 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
   await expect(page.getByText(/^Dados de golpe \(d\d+\)$/)).toBeVisible();
 
   // Condiciones: aplicar una y verla traducida, nunca la clave cruda del SRD.
+  await abrirPestana(page, "Estado");
   await page.getByLabel("Nueva condición").selectOption("prone");
   // **Acotado a su sección desde 2B.** El inventario trae cinco botones «Aplicar cambio de …»
   // para las monedas, y `getByRole` casa por subcadena: sin acotar, «Aplicar» resuelve a seis
@@ -234,6 +263,24 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   //    `overflow` la clase seguiría escrita y el pegado no ocurriría.
   expect(await cabecera.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
 
+  // **El cuerpo de la hoja es el bloque de pestañas** (`data-piel="cromado"`, hermano de la
+  // cabecera). Antes el final de la hoja era el inventario, que cerraba la rejilla; desde la
+  // Tarea 7 el inventario vive en su pestaña y en «Números» —la de arranque, la única con la
+  // tarjeta de salvaciones que se mide abajo— la hoja es más corta que una ventana de 720. Un
+  // `sticky` solo se observa con el cuerpo más alto que la ventana, así que la ventana se
+  // dimensiona a partir de dónde acaba la hoja: 400 px menos, para que «hasta el final de la
+  // hoja» sea un desplazamiento real y no un paso de pocos píxeles. Es una condición de medida,
+  // no una aserción: las que siguen son las mismas.
+  const hoja = page.locator('[data-piel="cromado"]');
+  await expect(hoja).toBeVisible();
+  const finalDeLaHoja = await hoja.evaluate(
+    (el) => el.getBoundingClientRect().bottom + window.scrollY,
+  );
+  await page.setViewportSize({
+    width: 1280,
+    height: Math.max(360, Math.floor(finalDeLaHoja) - 400),
+  });
+
   const cabeceraAntes = (await cabecera.boundingBox())!;
   const salvaciones = page.getByText("Salvaciones", { exact: true });
   const cuerpoAntes = (await salvaciones.boundingBox())!;
@@ -246,7 +293,6 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   //    prueba desplazaba a `document.body.scrollHeight`, se metía en esos dos bloques y medía
   //    la cabecera en `y = -106`, o sea suelta — y estaba en lo cierto: ahí ya no tiene por qué
   //    seguir pegada. El punto 7 fija ese límite en vez de dejarlo al azar.
-  const hoja = page.getByRole("region", { name: "inventario" });
   await hoja.evaluate((el) => el.scrollIntoView({ block: "end" }));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
 
@@ -278,9 +324,15 @@ test("H3/H5 — la cabecera se queda fija al desplazar, y un paso de la traza ll
   //     cinco tarjetas en una rejilla de dos o tres columnas según el ancho, y en un portátil
   //     ocupaban tres filas de la cabecera fija — que es la parte de la pantalla que no se
   //     recupera nunca. Se comparan las `y` REALES, no las clases declaradas.
-  const casillas = await cabecera
-    .locator("> div > div")
-    .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+  //
+  //     **Cada casilla se señala por su rótulo**, no por su posición en el árbol: desde la Tarea 3
+  //     la cabecera lleva además el retrato y una segunda fila con las condiciones y los avisos,
+  //     y «los hijos de los hijos» ya no son las cinco casillas. El rótulo es lo que las define.
+  const casillas: number[] = [];
+  for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+    const casilla = cabecera.getByText(rotulo, { exact: true }).locator("..");
+    casillas.push(Math.round((await casilla.boundingBox())!.y));
+  }
   expect(casillas.length).toBe(5);
   expect(Math.max(...casillas) - Math.min(...casillas)).toBeLessThanOrEqual(2);
   // Y la cabecera entera cabe en lo que ocupaba antes una sola de sus tarjetas con fórmula.
@@ -579,7 +631,9 @@ for (const tema of ["dark", "light"] as const) {
     }
     {
       // La cifra de una tarjeta pequeña: la percepción pasiva, que es el número que el DM
-      // pregunta sin avisar y ahora se lee a tamaño grande sobre el papel.
+      // pregunta sin avisar y ahora se lee a tamaño grande sobre el papel. Vive en «Números»,
+      // y `equiparEspadaLarga` dejó la hoja en «Ataques».
+      await abrirPestana(page, "Números");
       const pasiva = page.locator('[data-tarjeta="percepcion-pasiva"]').locator("p").nth(1);
       const { color, bg } = await effectiveTextColours(pasiva);
       record(`[${tema}] hoja: cifra de una tarjeta pequeña`, contrastRatio(color, bg), 4.5);
@@ -589,6 +643,7 @@ for (const tema of ["dark", "light"] as const) {
     //     rótulo de una de sus tres zonas: es texto en `--muted` sobre la superficie de la hoja,
     //     exactamente el par que medía la prosa del hueco que había aquí antes.
     {
+      await abrirPestana(page, "Objetos");
       const { color, bg } = await effectiveTextColours(
         page
           .getByRole("region", { name: "inventario" })
@@ -610,7 +665,10 @@ for (const tema of ["dark", "light"] as const) {
       record(`[${tema}] hoja: aviso borde`, contrastRatio(border, borderBg), 3);
     }
 
-    // --- El chip de una condición activa, con su filete.
+    // --- El chip de una condición activa, con su filete. Se aplica desde su tarjeta, en
+    //     «Estado», y se mide la fila de esa tarjeta (la cabecera fija pinta además un chip
+    //     propio, `ul "condiciones activas"`, que no es lo que aquí se mide).
+    await abrirPestana(page, "Estado");
     await page.getByLabel("Nueva condición").selectOption("prone");
     await page
       .locator('section[aria-label="condiciones"]')
@@ -715,6 +773,7 @@ test("la maqueta adoptada: la tabla de ataques cabe, y la página no se desplaza
   // derivaba el motor cuando no había inventario. Ahora un personaje sin arma no tiene tabla:
   // tiene la frase que dice qué hacer, y eso es lo que se comprueba aquí. La tabla con su
   // desplazamiento propio se mide en `inventario.spec.ts`, que sí equipa un arma.
+  await abrirPestana(page, "Ataques");
   const ataques = page.getByRole("region", { name: "ataques y lanzamiento" });
   await expect(ataques).toBeVisible();
   await expect(ataques.getByText(/no llevas ningún arma equipada/i)).toBeVisible();
@@ -866,6 +925,7 @@ test("M8 — un modificador temporal sube el número y sale en la traza, y al ve
   await completarFichaDeGuerreroEnano(page);
   const urlHoja = page.url();
 
+  await abrirPestana(page, "Estado");
   const panel = page.getByRole("region", { name: "modificadores temporales" });
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("Ninguno ahora mismo.");
@@ -881,9 +941,11 @@ test("M8 — un modificador temporal sube el número y sale en la traza, y al ve
   // La ficha se escribió con Fuerza 16; con el +2 la hoja tiene que decir 18.
   const salvaciones = page.getByRole("region", { name: "salvaciones" });
   await expect(panel.getByRole("listitem")).toContainText("Poción de fuerza de gigante");
-  await expect(page.getByText("18").first()).toBeVisible({ timeout: 15_000 });
   // Y **la traza lo dice**: el motivo aparece en la pantalla, no solo el número.
   await expect(page.getByText("Poción de fuerza de gigante").first()).toBeVisible();
+  // El 18 se lee en la casilla de Fuerza, que vive en «Números» con las salvaciones.
+  await abrirPestana(page, "Números");
+  await expect(page.getByText("18").first()).toBeVisible({ timeout: 15_000 });
   await expect(salvaciones).toBeVisible();
 
   // --- Vencido: deja de sumar y SIGUE AHÍ, marcado (D-2C-2) ---
@@ -898,6 +960,7 @@ test("M8 — un modificador temporal sube el número y sale en la traza, y al ve
   await reloj.getByRole("button", { name: "1 minuto" }).click();
 
   await page.goto(urlHoja);
+  await abrirPestana(page, "Estado");
   const panelDespues = page.getByRole("region", { name: "modificadores temporales" });
   // **No ha desaparecido**: sigue en la lista, dicho con palabras y no solo tachado.
   await expect(panelDespues.getByText("Vencido")).toBeVisible({ timeout: 15_000 });

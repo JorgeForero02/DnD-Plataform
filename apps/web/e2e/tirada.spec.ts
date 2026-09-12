@@ -238,10 +238,15 @@ test("Task 26 — el DM tira un ataque con un PNJ «A ciegas» y el jugador no l
   await expect(dmPage.getByRole("heading", { name: "Goblin" })).toBeVisible();
 
   // --- Se equipa un arma: sin arma no hay fila que tirar (`AtaquesYLanzamiento.tsx`, la misma
-  // regla que `equiparEspadaLarga` en `hoja.spec.ts`). ---
+  // regla que `equiparEspadaLarga` en `hoja.spec.ts`). El inventario es la pestaña «Objetos»
+  // de la hoja desde la Tarea 7 (spec 2026-09-11), y solo se monta la activa. ---
+  await dmPage.getByRole("tab", { name: "Objetos" }).click();
+  await expect(dmPage.getByRole("tab", { name: "Objetos", selected: true })).toBeVisible();
   const inventario = dmPage.getByRole("region", { name: "inventario" });
   await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
-  await inventario.getByLabel(/Buscar/).fill("Cimitarra");
+  // El buscador del selector por su nombre entero: el inventario tiene además su propio
+  // «Buscar objeto» (el filtro de la lista, tarea 9), y `/Buscar/` casaba con los dos.
+  await inventario.getByLabel("Buscar objeto por nombre").fill("Cimitarra");
   await inventario
     .getByRole("button", { name: /Cimitarra/ })
     .first()
@@ -252,6 +257,13 @@ test("Task 26 — el DM tira un ataque con un PNJ «A ciegas» y el jugador no l
   // `confirmarAlta` solo limpia lo elegido): se cierra a mano, con SU PROPIO «Cerrar», para que
   // no queden dos botones «Cerrar» en la página cuando se abra el panel de la tirada más abajo.
   await inventario.getByRole("button", { name: "Cerrar", exact: true }).click();
+  // La fila ya está en la lista antes de cambiar de pestaña (la de Objetos se desmonta al
+  // salir), y el cuadro de ataques vive en «Ataques».
+  await expect(inventario.getByRole("button", { name: "Ver detalle de Cimitarra" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await dmPage.getByRole("tab", { name: "Ataques" }).click();
+  await expect(dmPage.getByRole("tab", { name: "Ataques", selected: true })).toBeVisible();
 
   const tablaAtaques = dmPage.getByRole("region", { name: "ataques y lanzamiento" });
   await expect(tablaAtaques.getByRole("table")).toBeVisible({ timeout: 15_000 });

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Fase 2B — el recorrido que ninguna prueba unitaria puede hacer: **meter un objeto, ponérselo,
 // y ver cambiar el número de la hoja**. Es la promesa entera de esta fase en una pantalla, y
@@ -60,11 +60,29 @@ async function crearPersonajeConFicha(page: Page, nombre: string) {
   await expect(page.getByText("Salvaciones", { exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
-/** Añade un objeto del catálogo del SRD por su nombre, y lo deja en la zona indicada. */
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
+}
+
+/**
+ * Añade un objeto del catálogo del SRD por su nombre, y lo deja en la zona indicada. Abre
+ * antes la pestaña «Objetos», y al salir deja la fila YA en la lista: la pestaña se desmonta
+ * al cambiar, y lo que se espera es la fila real (su botón de selección, que solo pinta la
+ * página), no la del catálogo del selector, que sigue abierto.
+ */
 async function anadirObjeto(page: Page, nombre: string, zona: "mochila" | "equipado") {
+  await abrirPestana(page, "Objetos");
   const inventario = page.getByRole("region", { name: "inventario" });
   await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
-  await inventario.getByLabel(/Buscar/).fill(nombre);
+  // El buscador del selector por su nombre entero: desde la tarea 9 el inventario tiene
+  // además su propio «Buscar objeto» (el filtro de la lista), y `/Buscar/` casaba con los dos.
+  await inventario.getByLabel("Buscar objeto por nombre").fill(nombre);
   await inventario
     .getByRole("button", { name: new RegExp(nombre) })
     .first()
@@ -73,6 +91,9 @@ async function anadirObjeto(page: Page, nombre: string, zona: "mochila" | "equip
     await inventario.getByRole("radio", { name: /Equipado/ }).check();
   }
   await inventario.getByRole("button", { name: "Añadir", exact: true }).click();
+  await expect(inventario.getByRole("button", { name: `Ver detalle de ${nombre}` })).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 test("equipar una armadura cambia la CA de la hoja y añade su paso a la traza", async ({
@@ -83,7 +104,8 @@ test("equipar una armadura cambia la CA de la hoja y añade su paso a la traza",
 
   // La CA antes de tener nada puesto: 10 + Destreza. Se lee del propio DOM, no de un número
   // escrito aquí — si la fórmula cambiara, esta prueba seguiría midiendo lo que importa: que
-  // **ponerse la armadura la sube**.
+  // **ponerse la armadura la sube**. La tarjeta vive en «Estado».
+  await abrirPestana(page, "Estado");
   const tarjetaCa = page.getByRole("region", { name: "clase de armadura" });
   await expect(tarjetaCa).toBeVisible();
   const cifraCa = tarjetaCa.locator("span").first();
@@ -100,15 +122,17 @@ test("equipar una armadura cambia la CA de la hoja y añade su paso a la traza",
     .getByRole("button", { name: "Equipar" })
     .click();
 
+  // **El aviso que conecta el gesto con el número.** Es la razón de que el inventario viva
+  // dentro de la hoja y no en otra pantalla. Se mira ANTES de cambiar de pestaña: el aviso
+  // es estado de la pestaña «Objetos» y se va con ella al desmontarse.
+  await expect(page.getByText(/Equipaste/)).toBeVisible({ timeout: 15_000 });
+
+  await abrirPestana(page, "Estado");
   await expect
     .poll(async () => Number((await cifraCa.textContent())!.replace(/\D/g, "")), {
       timeout: 15_000,
     })
     .toBeGreaterThan(caAntes);
-
-  // **El aviso que conecta el gesto con el número.** Es la razón de que el inventario viva
-  // dentro de la hoja y no en otra pantalla.
-  await expect(page.getByText(/Equipaste/)).toBeVisible();
 
   // Y la traza gana el paso del objeto: sin esto, la CA sería un número que sube solo.
   await tarjetaCa.getByRole("button").first().click();
@@ -125,6 +149,7 @@ test("un arma equipada aparece en el cuadro de ataques, se tira, y la tabla no d
 
   await anadirObjeto(page, "Espada larga", "equipado");
 
+  await abrirPestana(page, "Ataques");
   const ataques = page.getByRole("region", { name: "ataques y lanzamiento" });
   const tabla = ataques.getByRole("table");
   await expect(tabla).toBeVisible({ timeout: 15_000 });

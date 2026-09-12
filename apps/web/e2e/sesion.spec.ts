@@ -352,17 +352,27 @@ test("la hoja dentro del cajón: la tira fija no se come su cuerpo, y la bolsa c
 
   // 1 · La tira fija y el cuerpo de la hoja son HERMANOS: el borde de abajo de una no puede
   //     pasarse del borde de arriba del otro. Con el defecto había 72px de solape; sin él, aire.
+  //     **Cambiado por decisión del controlador (Tarea 10, ruling A, 2026-09-12):** detrás de
+  //     la tira va ahora el bloque de avisos de la cabecera (fuera de la banda fija), que se
+  //     esconde con `empty:hidden` cuando no hay nada que avisar. Se mide contra el primer
+  //     hermano que se PINTA, que es lo que la frase de arriba siempre quiso decir.
   const tira = page.locator('section[aria-label="resumen de combate"]');
   await expect(tira).toBeVisible({ timeout: 20_000 });
   const solape = await tira.evaluate((el) => {
-    const cuerpo = el.nextElementSibling;
+    let cuerpo = el.nextElementSibling;
+    while (cuerpo && cuerpo.getClientRects().length === 0) cuerpo = cuerpo.nextElementSibling;
     if (!cuerpo) throw new Error("la tira no tiene cuerpo detrás");
     return el.getBoundingClientRect().bottom - cuerpo.getBoundingClientRect().top;
   });
   expect(solape).toBeLessThanOrEqual(0);
 
-  // 2 · El botón de una moneda, medido contra SU tarjeta, en la columna estrecha del cajón.
-  const boton = page.getByRole("button", { name: "Aplicar cambio de cobre" }).first();
+  // 2 · El botón de una moneda, medido contra SU tarjeta, en la columna estrecha del cajón. Las
+  //     monedas son de la pestaña «Objetos» de la hoja (Tarea 7, spec 2026-09-11), y la pestaña
+  //     se abre DENTRO del cajón, que tiene su propia tira.
+  const cajon = page.getByRole("dialog", { name: "Borin Barbaférrea" });
+  await cajon.getByRole("tab", { name: "Objetos" }).click();
+  await expect(cajon.getByRole("tab", { name: "Objetos", selected: true })).toBeVisible();
+  const boton = cajon.getByRole("button", { name: "Aplicar cambio de cobre" }).first();
   await boton.scrollIntoViewIfNeeded();
   const desborde = await boton.evaluate((el) => {
     const tarjeta = el.closest("div.rounded-radius-sm.border");

@@ -83,9 +83,13 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     // Desviación del brief: el texto visible de la tarjeta es "Elecciones por hacer (N)", no
     // "elección pendiente" — esa frase solo vive en comentarios y descripciones de prueba. Se
     // comprueba por la región nombrada, como hace `HojaCalculada.test.tsx`.
-    expect(
-      within(resumen).getByRole("region", { name: "elecciones pendientes" }),
-    ).toBeInTheDocument();
+    //
+    // **Cambiado por decisión del controlador (Tarea 10, ruling A, 2026-09-12):** el aviso lo
+    // pinta `Cabecera`, pero FUERA de la banda fija —medida dentro, la tira ocupaba 412 px—.
+    // Antes se exigía dentro de la región; ahora se exige que exista y que NO esté dentro.
+    const elecciones = screen.getByRole("region", { name: "elecciones pendientes" });
+    expect(elecciones).toBeInTheDocument();
+    expect(resumen.contains(elecciones)).toBe(false);
   });
 
   it("no trae control de daño: los PG son solo lectura", async () => {
@@ -140,12 +144,14 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     expect(within(cabecera).queryByLabelText("Cambio de puntos de golpe")).toBeNull();
   });
 
-  it("el botón de subir de nivel solo aparece cuando puedeEditar es verdadero", async () => {
+  it("el botón de subir de nivel solo aparece cuando puedeEditar es verdadero, y debajo de la banda fija", async () => {
     renderCabecera({ disposicion: "pagina", puedeEditar: true });
     const resumen = await screen.findByRole("region", { name: "resumen de combate" });
-    expect(
-      await within(resumen).findByRole("button", { name: /subir a nivel/i }),
-    ).toBeInTheDocument();
+    // **Cambiado por decisión del controlador (Tarea 10, ruling A, 2026-09-12):** el botón lo
+    // pinta `Cabecera` debajo de la banda, no dentro de la región «resumen de combate».
+    const subir = await screen.findByRole("button", { name: /subir a nivel/i });
+    expect(subir).toBeInTheDocument();
+    expect(resumen.contains(subir)).toBe(false);
 
     cleanup();
 

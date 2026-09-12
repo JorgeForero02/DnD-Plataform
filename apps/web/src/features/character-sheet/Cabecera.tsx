@@ -33,69 +33,82 @@ export function Cabecera({
   const descripcion = descriptorDePersonaje(character);
 
   return (
-    // **El escalón lo declara quien lo tiene, no esta hoja.** `AppShell` pone
-    // `--tira-fija-top: 4rem` porque su cabecera mide `h-16`, y `--tira-fija-pull: -1.5rem` para
-    // subir la tira a la banda del nombre. Dentro de un cajón no hay ninguna de las dos cosas y
-    // las variables valen **cero**: escribir `top-16` aquí hacía que la tira se parase 64px por
-    // debajo del borde del cajón y **se solapase 72px con su propio cuerpo**.
-    <section
-      aria-label="resumen de combate"
-      className="sticky top-[var(--tira-fija-top,0px)] z-20 -mx-s2 mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
-    >
-      <div className="flex flex-wrap items-start gap-s3">
-        <Retrato personaje={character} />
-        {/* El nombre y la descripción solo en la mesa: en la página ya los pinta `PageHeader`
+    <>
+      {/* **El escalón lo declara quien lo tiene, no esta hoja.** `AppShell` pone
+          `--tira-fija-top: 4rem` porque su cabecera mide `h-16`, y `--tira-fija-pull: -1.5rem`
+          para subir la tira a la banda del nombre. Dentro de un cajón no hay ninguna de las dos
+          cosas y las variables valen **cero**: escribir `top-16` aquí hacía que la tira se
+          parase 64px por debajo del borde del cajón y **se solapase 72px con su propio cuerpo**. */}
+      <section
+        aria-label="resumen de combate"
+        className="sticky top-[var(--tira-fija-top,0px)] z-20 -mx-s2 mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
+      >
+        <div className="flex flex-wrap items-start gap-s3">
+          <Retrato personaje={character} />
+          {/* El nombre y la descripción solo en la mesa: en la página ya los pinta `PageHeader`
             (fuera de la frontera de esta tarea), y repetirlos aquí sería el mismo dato en dos
             sitios. */}
-        {disposicion === "mesa" && (
-          <div className="min-w-0">
-            <p className="truncate font-title text-chrome-md text-text">{character.name}</p>
-            {descripcion && <p className="font-world text-chrome-sm text-muted">{descripcion}</p>}
-          </div>
-        )}
-        <div className="ml-auto flex flex-wrap items-start justify-end gap-s2">
-          <ValorDerivado variante="compacta" etiqueta="CA" valor={sheet.derived.ac} />
-          <ValorDerivado
-            variante="compacta"
-            etiqueta="Inic."
-            etiquetaLarga="Iniciativa"
-            valor={sheet.derived.initiative}
-          />
-          <ValorDerivado
-            variante="compacta"
-            etiqueta="Vel. (pies)"
-            etiquetaLarga="Velocidad efectiva en pies"
-            valor={{ key: "speed.walk", total: velocidad.total, steps: velocidad.steps }}
-          />
-          {/* Los PG de la cabecera son **solo lectura**: el delta —recibo daño, me curo— se
-              aplica en su tarjeta, que es donde está la acción. Repetir aquí el control sería el
-              mismo dato en dos sitios, que es como se acaba con uno de los dos mintiendo. */}
-          <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
-            <p className={`${ROTULO_DE_CASILLA} leading-tight`}>PG</p>
-            <p className="font-data text-chrome-lg leading-none text-text">
-              {hp.current ?? "—"} / {hp.max ?? "—"}
-            </p>
-            {hp.temp > 0 && (
-              <p className="font-chrome text-chrome-xs text-accent-text">+{hp.temp} temporales</p>
-            )}
-          </div>
-          {sheet.derived.proficiencyBonus && (
+          {disposicion === "mesa" && (
+            <div className="min-w-0">
+              <p className="truncate font-title text-chrome-md text-text">{character.name}</p>
+              {descripcion && <p className="font-world text-chrome-sm text-muted">{descripcion}</p>}
+            </div>
+          )}
+          <div className="ml-auto flex flex-wrap items-start justify-end gap-s2">
+            <ValorDerivado variante="compacta" etiqueta="CA" valor={sheet.derived.ac} />
             <ValorDerivado
               variante="compacta"
-              etiqueta="Comp."
-              etiquetaLarga="Competencia"
-              valor={sheet.derived.proficiencyBonus}
+              etiqueta="Inic."
+              etiquetaLarga="Iniciativa"
+              valor={sheet.derived.initiative}
             />
-          )}
+            <ValorDerivado
+              variante="compacta"
+              etiqueta="Vel. (pies)"
+              etiquetaLarga="Velocidad efectiva en pies"
+              valor={{ key: "speed.walk", total: velocidad.total, steps: velocidad.steps }}
+            />
+            {/* Los PG de la cabecera son **solo lectura**: el delta —recibo daño, me curo— se
+              aplica en su tarjeta, que es donde está la acción. Repetir aquí el control sería el
+              mismo dato en dos sitios, que es como se acaba con uno de los dos mintiendo. */}
+            <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
+              <p className={`${ROTULO_DE_CASILLA} leading-tight`}>PG</p>
+              <p className="font-data text-chrome-lg leading-none text-text">
+                {hp.current ?? "—"} / {hp.max ?? "—"}
+              </p>
+              {hp.temp > 0 && (
+                <p className="font-chrome text-chrome-xs text-accent-text">+{hp.temp} temporales</p>
+              )}
+            </div>
+            {sheet.derived.proficiencyBonus && (
+              <ValorDerivado
+                variante="compacta"
+                etiqueta="Comp."
+                etiquetaLarga="Competencia"
+                valor={sheet.derived.proficiencyBonus}
+              />
+            )}
+          </div>
         </div>
-      </div>
-      <div className="mt-s2 flex flex-col gap-s2">
-        <Condiciones
-          campaignId={campaignId}
-          characterId={characterId}
-          puedeEditar={false}
-          variante="chips"
-        />
+        <div className="mt-s2 flex flex-col gap-s2 empty:hidden">
+          <Condiciones
+            campaignId={campaignId}
+            characterId={characterId}
+            puedeEditar={false}
+            variante="chips"
+          />
+        </div>
+      </section>
+      {/* **Los avisos van DEBAJO de la banda fija, no dentro** (Tarea 10, decisión del controlador
+        sobre §4/§9 de la spec, 2026-09-12). En la banda solo se queda lo que cambia cada turno:
+        retrato, identidad, los cinco números y los chips de condición. Las advertencias, las
+        elecciones pendientes, la vista de DM y el botón de subir de nivel se leen una vez y no
+        hace falta llevarlos pegados al desplazar; medidos dentro de la banda, con un guerrero de
+        nivel 1 del DM la tira fija ocupaba **412 px** de una ventana de 720
+        (`e2e/hoja.spec.ts`, «la cabecera entera cabe…»). Siguen siendo de la cabecera —se pintan
+        antes que cualquier pestaña—, pero son hermanos de la `section`, así que ni se pegan ni
+        entran en la región «resumen de combate». */}
+      <div className="flex flex-col gap-s2 empty:hidden">
         <Avisos warnings={sheet.warnings} />
         <EleccionesPendientes
           campaignId={campaignId}
@@ -112,6 +125,6 @@ export function Cabecera({
           />
         )}
       </div>
-    </section>
+    </>
   );
 }

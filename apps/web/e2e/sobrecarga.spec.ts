@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Migración 6 (D-CF-16, tickets I4/M2B-5) — la variante de sobrecarga (SRD 5.1, Variant:
 // Encumbrance), interruptor por campaña, apagada por defecto.
@@ -89,11 +89,24 @@ async function encenderVarianteDeSobrecarga(page: Page) {
   await expect(interruptor.getByRole("radio", { name: "Encendida" })).toBeChecked();
 }
 
-/** Añade `n` copias de un objeto del catálogo del SRD a la mochila. */
+/**
+ * Abre una pestaña de la hoja y espera a que sea la activa. Desde la Tarea 7 (spec 2026-09-11)
+ * la hoja son una cabecera fija y siete pestañas, y **solo se monta el contenido de la activa**:
+ * cada tarjeta se busca después de abrir la suya. «Números» es la de arranque.
+ */
+async function abrirPestana(donde: Page | Locator, nombre: string) {
+  await donde.getByRole("tab", { name: nombre }).click();
+  await expect(donde.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
+}
+
+/** Añade `n` copias de un objeto del catálogo del SRD a la mochila (pestaña «Objetos»). */
 async function llevarEnLaMochila(page: Page, nombre: string, cantidad: number) {
+  await abrirPestana(page, "Objetos");
   const inventario = page.getByRole("region", { name: "inventario" });
   await inventario.getByRole("button", { name: /Añadir objeto/ }).click();
-  await inventario.getByLabel(/Buscar/).fill(nombre);
+  // El buscador del selector por su nombre entero: desde la tarea 9 el inventario tiene
+  // además su propio «Buscar objeto» (el filtro de la lista), y `/Buscar/` casaba con los dos.
+  await inventario.getByLabel("Buscar objeto por nombre").fill(nombre);
   await inventario
     .getByRole("button", { name: new RegExp(nombre) })
     .first()
@@ -111,7 +124,9 @@ test("el DM enciende la variante, y un personaje con demasiado peso sale «muy c
   await registrarse(page);
   await crearPersonajeConFicha(page, "Borin Mochilas");
 
-  // Antes de encender nada: el panel de carga no habla de sobrecarga.
+  // Antes de encender nada: el panel de carga no habla de sobrecarga. El panel vive en la
+  // pestaña «Objetos» de la hoja.
+  await abrirPestana(page, "Objetos");
   const panelDeCarga = page.getByText("Carga", { exact: true }).locator("..");
   await expect(panelDeCarga.getByText(/variante de sobrecarga/i)).toBeHidden();
 
@@ -133,7 +148,9 @@ test("el DM enciende la variante, y un personaje con demasiado peso sale «muy c
     page.getByRole("alert").filter({ hasText: /muy cargado: la velocidad baja 20 pies/i }),
   ).toBeVisible({ timeout: 15_000 });
 
-  // Y la velocidad de la hoja lo confirma: 30 pies de base menos 20 son 10, no 30.
+  // Y la velocidad de la hoja lo confirma: 30 pies de base menos 20 son 10, no 30. La tarjeta
+  // de velocidad y sentidos vive en «Estado».
+  await abrirPestana(page, "Estado");
   const cajaDeVelocidad = page.getByText("Caminar (pies)", { exact: true }).locator("..");
   await expect(cajaDeVelocidad.getByRole("button", { name: "10" })).toBeVisible();
 

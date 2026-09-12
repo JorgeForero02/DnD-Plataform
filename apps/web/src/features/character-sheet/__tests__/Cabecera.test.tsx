@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { Cabecera } from "../Cabecera";
@@ -72,6 +72,16 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
       isError: false,
       retry: () => {},
     });
+  });
+
+  // Minor 7 (ronda de arreglo 3) — `vi.stubGlobal` no lo deshace `vi.restoreAllMocks()` (son
+  // dos mecanismos de vitest distintos): sin este `afterEach`, un `ResizeObserver` falso
+  // filtraría a la prueba siguiente del fichero. Se centraliza aquí —junto al `restoreAllMocks`
+  // que hasta ahora solo se llamaba manualmente al final de una prueba— para que ninguna prueba
+  // tenga que acordarse de limpiar a mano.
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("reúne los cinco números, las condiciones como chips y el aviso de elección pendiente", async () => {
@@ -218,8 +228,9 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
   // detalle de Objetos metido 60px bajo la banda: `--tira-fija-top` es el escalón de `AppShell`,
   // no el alto real de esta banda. `Cabecera` reporta ese alto con `ResizeObserver`, y esta
   // prueba es la que demuestra que el hook lo hace, sin montar toda la hoja.
-  it("reporta su alto real por `onAlto`, al montar y en cada cambio de tamaño", async () => {
+  it("reporta su alto real por `onAlto`, al montar y en cada cambio de tamaño, y se desconecta al desmontar", async () => {
     const onAlto = vi.fn();
+    const alDesconectar = vi.fn();
     let callback: ResizeObserverCallback | null = null;
     class FakeResizeObserver implements ResizeObserver {
       constructor(cb: ResizeObserverCallback) {
@@ -227,14 +238,14 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
       }
       observe() {}
       unobserve() {}
-      disconnect() {}
+      disconnect = alDesconectar;
     }
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     const medida = vi
       .spyOn(HTMLElement.prototype, "getBoundingClientRect")
       .mockReturnValue({ height: 123 } as DOMRect);
 
-    renderCabecera({ disposicion: "pagina", onAlto });
+    const { unmount } = renderCabecera({ disposicion: "pagina", onAlto });
     await screen.findByRole("region", { name: "resumen de combate" });
 
     // 1. Al montar, sin esperar a ningún resize: `jsdom` no dispara `ResizeObserver` solo, así
@@ -249,7 +260,11 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     callback!([], {} as ResizeObserver);
     expect(onAlto).toHaveBeenCalledWith(200);
 
-    medida.mockRestore();
-    vi.unstubAllGlobals();
+    // 3. Minor 7 — y al desmontar, el observador se desconecta. Sin la función de limpieza del
+    //    `useLayoutEffect`, cada navegación que sale de la hoja dejaría un `ResizeObserver`
+    //    vivo observando un `<section>` que ya no existe.
+    expect(alDesconectar).not.toHaveBeenCalled();
+    unmount();
+    expect(alDesconectar).toHaveBeenCalledTimes(1);
   });
 });

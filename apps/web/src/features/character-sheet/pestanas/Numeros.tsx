@@ -30,6 +30,14 @@ export function Numeros({
   // por encima del umbral de la medida (`e2e/espacios.spec.ts`, DESNIVEL_MAX_PX=24). A página se
   // igualan las tres al alto de la más alta (`items-stretch`); a mesa, una sola columna, se deja
   // `items-start` como estaba.
+  //
+  // **`items-stretch` por sí solo no basta.** Estira el envoltorio invisible de la columna del
+  // medio (`flex min-w-0 flex-col gap-s4`, más abajo) a la altura de la fila, pero sus DOS
+  // hijos —Salvaciones y Percepción pasiva— seguían con su alto natural: la columna crecía y
+  // los dos seguían pegados arriba, dejando un hueco vacío sin tarjeta debajo de Percepción
+  // pasiva. Ronda de arreglo 3: **la tarjeta visible que se reparte el sobrante es Salvaciones**
+  // (`className="flex-1"`, más abajo) — crece para llenar lo que sobra, y Percepción pasiva
+  // queda pegada al final de la columna en vez de flotando con hueco debajo.
   const alineacion = disposicion === "pagina" ? "items-stretch" : "items-start";
   return (
     <div data-pestana="numeros" className={`grid ${alineacion} gap-s4 ${columnas}`}>
@@ -45,8 +53,10 @@ export function Numeros({
 
       <div className="flex min-w-0 flex-col gap-s4">
         {/* **Las salvaciones, en dos columnas de una línea** — como la maqueta. Seis valores
-            que se leen de un vistazo no necesitan seis bandas. */}
-        <TarjetaDeHoja titulo="Salvaciones">
+            que se leen de un vistazo no necesitan seis bandas. `flex-1` (ronda de arreglo 3):
+            esta tarjeta, no el envoltorio de la columna, es la que crece para tomar el sobrante
+            de alto que deja Percepción pasiva, dejando a esta pegada al final de la columna. */}
+        <TarjetaDeHoja titulo="Salvaciones" className="flex-1">
           <div className="grid gap-x-s5 gap-y-1 sm:grid-cols-2">
             {ABILITY_KEYS.map((ability) => (
               <ValorDerivado

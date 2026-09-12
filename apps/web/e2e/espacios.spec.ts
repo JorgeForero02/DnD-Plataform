@@ -145,20 +145,26 @@ async function medirHermanas(raiz: Locator) {
   }
 
   // --- Desnivel: **una tarjeta con otra tarjeta debajo, en su misma columna, queda exenta.**
-  //     Es la regla del controlador, hecha explícita: en Números, Salvaciones y Percepción
-  //     pasiva comparten columna con `items-stretch` (Ronda de arreglo de la Tarea 4) — la
-  //     COLUMNA se estira para llenar la fila, no cada tarjeta suya, así que Salvaciones (más
-  //     baja que Características/Habilidades porque Percepción pasiva se lleva el resto del
-  //     alto) NO es un desnivel real: es media columna comparada contra una columna entera.
-  //     Sin esta exención, activar la comparación sobre TODAS las tarjetas (en vez de solo los
-  //     tres hijos directos) habría convertido este falso desnivel en un fallo nuevo.
+  //     Es la regla del controlador, hecha explícita. Ronda de arreglo 3: en Números,
+  //     Salvaciones ya no es la exención por accidente de un envoltorio estirado — **es la
+  //     propia tarjeta la que crece** (`className="flex-1"`, `Numeros.tsx`) para repartirse el
+  //     alto sobrante con Percepción pasiva, que queda pegada al final de la columna. Sigue
+  //     siendo más baja que Características/Habilidades (Percepción pasiva se queda con su
+  //     parte), así que sigue exenta, y sigue siendo lo correcto: es media columna comparada
+  //     contra una columna entera, no un desnivel real. Sin esta exención, comparar TODAS las
+  //     tarjetas (en vez de solo los tres hijos directos, ronda de arreglo 2) convertiría este
+  //     reparto correcto en un fallo falso.
   //
   //     Lo que SÍ se compara, tarjeta a tarjeta: la que queda última en su columna (o la única).
   //     Se agrupan por «fila» las que comparten techo (`|y diff| < 4`) y se mide el desnivel
-  //     dentro de cada fila con 2+ tarjetas. Se descarta la fila más baja SOLO si hay más de una
-  //     fila comparable — nunca la única, porque en Números esa fila única (Características vs.
-  //     Habilidades, ambas sin nada debajo) es exactamente lo que esta prueba existe para vigilar
-  //     y descartarla la dejaría sin comprobar nada.
+  //     dentro de cada fila con 2+ tarjetas. **No se descarta ninguna fila**: la ronda de
+  //     arreglo 2 traía un descarte de «la fila más baja, salvo que sea la única», y era lógica
+  //     muerta — en las cuatro pestañas de hoy nunca hay una segunda fila comparable que
+  //     descartar (los apilados de Rasgos/Recursos/Estado tienen profundidades de columna
+  //     distintas y sus techos no coinciden), así que la condición nunca se ejecutaba. Se deja
+  //     escrito en vez de mantenido en silencio: si algún día SÍ aparecen dos filas comparables
+  //     alineadas, la de más abajo se mide igual que la de arriba, y un desnivel real ahí
+  //     también cuenta.
   const cajasConAlgoDebajoEnSuColumna = new Set(
     cajas.filter((c) => cajas.some((d) => d !== c && Math.abs(d.x - c.x) < 4 && d.y > c.y + 4)),
   );
@@ -175,9 +181,8 @@ async function medirHermanas(raiz: Locator) {
     }
     filas.push(fila);
   }
-  const filasAComparar = filas.length > 1 ? filas.slice(0, -1) : filas;
   let desnivelMax = 0;
-  for (const fila of filasAComparar) {
+  for (const fila of filas) {
     if (fila.length < 2) continue;
     const altos = fila.map((c) => c.height);
     desnivelMax = Math.max(desnivelMax, Math.max(...altos) - Math.min(...altos));
@@ -187,14 +192,20 @@ async function medirHermanas(raiz: Locator) {
 }
 
 test.describe("los espacios de la hoja a página", () => {
-  for (const pestana of ["numeros", "rasgos", "recursos", "estado"]) {
+  // Ronda de arreglo 3 — `ataques` se une a la lista: `Ataques.tsx:9-11` es también
+  // `lg:grid-cols-2 items-start` con dos tarjetas («Ataques y lanzamiento», «Competencias con
+  // armas»), la misma forma que Números/Rasgos/Recursos/Estado. `objetos` y `conjuros` siguen
+  // fuera, y por qué: `objetos` es la rejilla propia del inventario (`PaginaDeInventario`, lista
+  // + panel de detalle sticky), que ya mide su propia prueba (anexo #6, más abajo); `conjuros`
+  // solo se monta para quien lanza conjuros (`lanzaConjuros`), y el guerrero de esta suite no.
+  for (const pestana of ["numeros", "rasgos", "recursos", "estado", "ataques"]) {
     test(`pestaña ${pestana}: sin huecos > ${HUECO_MAX_PX}px ni desniveles > ${DESNIVEL_MAX_PX}px`, async ({
       page,
     }) => {
-      // Ancho de escritorio a propósito: las cuatro rejillas solo se parten en columnas desde
+      // Ancho de escritorio a propósito: las cinco rejillas solo se parten en columnas desde
       // `lg` (Tailwind, 1024px) — `disposicion === "pagina"` añade `lg:grid-cols-N` — y es
       // precisamente el reparto en columnas donde puede aparecer un hueco o un desnivel entre
-      // vecinas. Por debajo de `lg` las cuatro son una sola columna sin nada que medir aquí.
+      // vecinas. Por debajo de `lg` las cinco son una sola columna sin nada que medir aquí.
       await page.setViewportSize({ width: 1280, height: 800 });
       const { campaignId, characterId } = await personajeCompleto(page, `Midetodo ${pestana}`);
       await page.goto(`/campaigns/${campaignId}/personajes/${characterId}?pestana=${pestana}`);
@@ -250,14 +261,36 @@ test("el detalle de Objetos se pega bajo la banda fija, no debajo de ella (anexo
 
   await page.mouse.wheel(0, 600);
   // La banda fija (`Cabecera.tsx`, `resumen de combate`) se queda pegada arriba; el detalle
-  // (`DetalleDeObjeto.tsx`, `lg:sticky lg:top-[calc(var(--tira-fija-top,0px)+var(--space-4))]`)
-  // se pega justo debajo de ella, nunca la solapa ni queda por encima.
+  // (`DetalleDeObjeto.tsx`, `lg:sticky lg:top-[calc(var(--tira-fija-top,0px)+var(--banda-fija-alto,0px)+var(--space-4))]`
+  // — el alto real de la banda, medido por `ResizeObserver`, más el espacio de separación —)
+  // se pega justo debajo de ella: nunca la solapa (cota de abajo) y nunca queda flotando muy
+  // por debajo de ella tampoco (cota de arriba, IMPORTANTE #2 de la ronda de arreglo 3 — la
+  // primera versión de esta prueba solo tenía la cota de abajo, y un `--banda-fija-alto` roto
+  // que reportara siempre 0 habría dejado pasar el detalle pegado a 16px de la banda sin que
+  // nada lo notara).
   await expect.poll(async () => (await page.evaluate(() => window.scrollY)) > 0).toBe(true);
   const banda = await page.getByRole("region", { name: "resumen de combate" }).boundingBox();
   const cajaDetalle = await detalle.boundingBox();
   expect(banda).not.toBeNull();
   expect(cajaDetalle).not.toBeNull();
+  // `--space-4`, resuelto a píxeles por el propio navegador y no por el texto del token
+  // (`tokens.css` lo declara en `rem`, y `getComputedStyle(...).getPropertyValue` de una
+  // variable CSS devuelve el texto tal cual se escribió — "1rem", no "16px" — así que un
+  // `parseFloat` directo habría medido 1 en vez de 16). Se resuelve igual que resolvería
+  // cualquier propiedad real: una caja de prueba con `width: var(--space-4)`, cuyo `width`
+  // computado SÍ llega ya convertido a píxeles.
+  const espacio4 = await page.evaluate(() => {
+    const sonda = document.createElement("div");
+    sonda.style.width = "var(--space-4)";
+    sonda.style.position = "absolute";
+    sonda.style.visibility = "hidden";
+    document.body.appendChild(sonda);
+    const px = parseFloat(getComputedStyle(sonda).width) || 0;
+    sonda.remove();
+    return px;
+  });
   expect(cajaDetalle!.y).toBeGreaterThanOrEqual(banda!.y + banda!.height - 1);
+  expect(cajaDetalle!.y).toBeLessThanOrEqual(banda!.y + banda!.height + espacio4 + 2);
 });
 
 test("escribir una expresión inválida no cambia el alto de la tarjeta de tirar, en la pantalla de Dados (anexo #8)", async ({

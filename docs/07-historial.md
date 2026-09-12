@@ -49,6 +49,17 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La hoja a página completa (2026-09-11)
+
+- **Task 1 — El cubo por usuario no se clava a un token revocado (API).**
+  `common/user-or-ip-throttler.guard.ts` compara `iat` con `passwordChangedAt` (misma regla de
+  empate que `jwt.strategy.ts`), cacheado 60 s por usuario. Cierra la ficha P3 del
+  2026-09-11 (D-CF-36), archivada en
+  [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md).
+  Pruebas: `user-or-ip-throttler.guard.spec.ts` (nueva) y el e2e existente
+  `login-bucket-por-ip.e2e-spec.ts`. **Revertir:** `git revert` del commit; el guard vuelve a
+  clavar el cubo solo por firma.
+
 ## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
 
 Con el autor, en otra sesión y mientras la tanda de fichas cerraba: la hoja fuera de la mesa se

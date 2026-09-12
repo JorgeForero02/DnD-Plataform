@@ -851,3 +851,31 @@ empujar es una acción hacia fuera.
 
 Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
 sí mismo**.
+
+## P3 · Un token robado y ya revocado sigue gastando el cubo de su dueño (2026-09-11)
+
+**Cerrada el 2026-09-11 (Task 1 del plan de la hoja).** `common/user-or-ip-throttler.guard.ts`
+compara ahora `iat` con `passwordChangedAt` del usuario (misma regla de empate que
+`jwt.strategy.ts`: `iat <= sello` es viejo), con el sello cacheado 60 s por usuario para no
+sumar una consulta por petición. Pruebas: `user-or-ip-throttler.guard.spec.ts` (empate, antes y
+después del cambio, y una consulta por usuario y minuto) y el e2e
+`test/login-bucket-por-ip.e2e-spec.ts`. **Mutación:** cambiar `iat > sello` por `iat >= sello`
+no la rompía con las tres pruebas originales — hacía falta el caso de empate exacto, añadido a
+la suite, para que enrojeciera.
+
+**Texto original:**
+
+**Medido en la revisión final de `ficha/tanda-2-a-5`.** El límite por usuario
+(`user-or-ip-throttler.guard.ts`) verifica la **firma** del JWT para clavar el cubo a `user:<sub>`,
+pero no mira `passwordChangedAt`: un token sustraído y revocado por cambio de contraseña sigue
+firmado, así que en una ruta con `JwtAuthGuard` cuenta contra el cubo de la víctima (y luego recibe
+401 de `JwtStrategy`, que sí lo mira). Solo lo explota quien ya tiene un token robado, y lo peor
+que consigue es agotar 100/min de una cuenta. **Salidas medidas:** leer `passwordChangedAt` en
+el guard es una consulta más por petición (hoy el guard no toca la base); cachear el sello por
+usuario un minuto lo deja en una consulta por usuario y minuto. Por los cuatro pasos: no es un
+cambio rápido (añade una consulta al camino caliente) y ninguna regla lo contesta, así que queda
+como ficha con su coste escrito. No es urgente para una mesa de cinco.
+
+> **Decidida el 2026-09-11 (D-CF-36) y colocada como Task 1 del
+> [plan de la hoja a página completa](../superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md)**:
+> caché de `passwordChangedAt` por usuario, 60 s.

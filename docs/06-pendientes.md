@@ -556,29 +556,6 @@ mejora, no compromiso.
 Ninguna es un agujero de lectura —nadie ve contenido ajeno—, pero todas degradan el
 comportamiento:
 
-## P1 · Un worktree de agente se ramifica de `origin/main`, que lleva desde julio sin actualizarse (2026-09-04)
-
-**Encontrado al fusionar 2.5.5, y le costó a esa tanda una tarde de trabajo sobre una base que ya
-no existía.** El worktree de la tarea salió de `origin/main`, no de `main` local. Como este
-repositorio **nunca se ha empujado**, `origin/main` se quedó en el commit del arranque de la
-sesión: el agente trabajó sin B0, sin 2.5.1, sin 2.5.2, sin B1.x, sin 2.5.3 ni 2.5.4. Se notó en
-tres sitios y los tres son del mismo tipo:
-
-- **Escribió en su informe que «no existe ningún `advanceTurn`, no hay módulo de encuentros»**, y
-  era verdad en su base y falso en `main`. Lo dejó escrito en una ficha de `06-pendientes.md`, que
-  es documentación que miente sin que nadie mienta.
-- **Numeró su primera decisión `D-2.5-5`**, que ya estaba ocupada por 2.5.3. Se renumeró al fusionar.
-- **Midió los recorridos de navegador en 88** —la cifra de la noche anterior— cuando ya eran 104.
-
-**Puesto `worktree.baseRef: head` el mismo día**, en `.claude/settings.local.json`, así que los
-worktrees nuevos salen del `HEAD` local. **Pero ese fichero está en `.gitignore`**: es de esta
-máquina y no viaja con el clon, igual que `.superpowers/sdd/progress.md`. La otra mitad —empujar
-`main` a `origin`, que lleva sin actualizarse desde julio— **no se ha hecho y es del autor**:
-empujar es una acción hacia fuera.
-
-Mientras `origin` siga atrasado, **cada informe de agente hay que leerlo contra `main`, no contra
-sí mismo**.
-
 ## P4 — Limpieza
 
 ## Decisiones abiertas

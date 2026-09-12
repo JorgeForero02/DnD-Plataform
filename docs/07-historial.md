@@ -60,6 +60,13 @@ tablas colgando» en 05 cuando arrastra `Encounter` desde 2.5.2; dos citas de l�
 05 (el código dice que no lo son); y en 09, que una fecha no se puede quitar y que el agotamiento
 no automatiza nada. Corregidas con la fecha. **Revertir:** no procede; son correcciones de hechos.
 
+## `origin/main` alcanza a `main` (2026-09-11, noche)
+
+`git push origin main`, `8467fed..89e2575`, 43 commits: las tandas 2 a 6 de cerrar fichas, la ola
+de la revisión final, la relectura de los docs y las ocho migraciones. Lo hizo el agente con
+`pnpm verify` en verde, autorizado por el autor (D-CF-28); cierra la ficha P1 del worktree que
+salía de una base de julio. **Revertir:** no procede.
+
 ## La tanda de Playwright que cierra las migraciones (2026-09-11, noche)
 
 153 recorridos en 44 ficheros en `WORKTREE_SLOT=1`: 150 verdes, 1 saltado, 2 rojos cerrados en la

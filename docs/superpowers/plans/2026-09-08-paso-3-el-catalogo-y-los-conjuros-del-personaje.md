@@ -4,6 +4,12 @@
 > con su **mutación de una pieza cada vez**. Un commit por tarea, `pnpm verify` en verde antes de
 > cada uno, mensaje en inglés (Conventional Commits).
 
+> **Ampliado el 2026-09-12 por el autor: este plan es el cierre de la «primera parte»** —todas las
+> mecánicas de D&D 5.ª edición que no necesitan tablero, conectadas y usables desde la mesa—. Lo que
+> se añadió ese día está en los bloques **E** y **F** y en la nota de las tareas 5 y 6; el contraste
+> con el índice del SRD 5.1 que lo justifica está en [decisiones.md](../../decisiones.md) (D-CF-49..51).
+> **Lo que necesita tablero queda fuera** (fase 3), declarado abajo.
+
 **Goal:** que un mago exista. Hoy hay espacios de conjuro y **ni un hechizo**; al terminar, los 320
 conjuros del SRD 5.1 están en el catálogo, un personaje puede decir cuáles son suyos, y lanzarlos
 usa el motor de actividades que el paso 2 ya construyó.
@@ -167,6 +173,11 @@ nivel 5 juega exactamente igual que un guerrero.
 
 **Este bloque existe porque el catálogo importa conjuros que el motor no sabe ejecutar.** Las tres
 primeras son fichas abiertas del paso 2.
+
+> **Tareas 5 y 6: SALEN de este plan el 2026-09-12.** Se hacen **antes**, como tanda propia, con la
+> spec [la puerta de efectos](../specs/2026-09-12-la-puerta-de-efectos-design.md) —que además trae la
+> bandeja de daño y «hasta el próximo descanso»—. Se conservan aquí tal cual por si esa tanda no
+> cerrara antes de arrancar este plan; si ya está hecha, se saltan y se dice en el ledger.
 
 ### Tarea 5 · La segunda puerta (ficha **P2-4**, decidida como `D-P2-11`)
 
@@ -362,10 +373,154 @@ esta ficha*».
 
 ---
 
+## Bloque E — la magia completa y la tanda L (añadido 2026-09-12)
+
+Lo que el contraste con el SRD 5.1 (*Spellcasting*) dejó sin tarea. Cada una es un `RED` con la cita
+del SRD en el commit.
+
+### Tarea 16 · Conjuros innatos: trucos raciales y «una vez por descanso largo»
+
+**Ficha:** los rasgos raciales de conjuro (alto elfo: un truco de mago; tiefling: *thaumaturgy* y
+*hellish rebuke* / *darkness* a nivel 3 y 5; gnomo de las rocas: *minor illusion*) entran como
+actividades del rasgo, **no** como `CharacterSpell`: no se preparan, no gastan espacio, y los que
+dicen *«once with this trait… regain when you finish a long rest»* llevan `consumption` de un
+`CharacterResource` con `resetOn: "LONG_REST"`, igual que la Furia.
+- RED: un tiefling de nivel 3 tiene «Reprensión infernal» con 1 uso, sin espacio; tras el descanso
+  largo, 1 otra vez; un alto elfo tiene su truco en «Siempre» sin contar contra los trucos de clase.
+- Se pintan en la sección «Siempre» del menú de conjuros (Tarea 22).
+
+### Tarea 17 · Reacciones: se marcan, y su momento es fuera del turno
+
+**Ficha:** *Shield*, *Counterspell*, *Hellish Rebuke*, *Feather Fall* (`activation: reaction`).
+SRD 5.1, *Combat › Reactions*: una por asalto, como respuesta a un desencadenante.
+- El servidor sabe que una actividad es reacción (viene en el YAML) y **la economía del turno ya
+  tiene la reacción** (plan 2.5): usarla la gasta; sin reacción disponible → 409 con el motivo.
+- La pantalla la muestra **marcada** con «reacción — se usa cuando te ataquen / cuando alguien lance»,
+  no oculta (regla de interfaz: lo no disponible se ve marcado).
+- RED: usar *Shield* en tu propio turno con la reacción gastada → 409; fuera de combate → se usa y
+  no gasta nada (misma doctrina que Ayudar).
+
+### Tarea 18 · Elegir el espacio al lanzar (nivel superior)
+
+**Ficha:** hoy `consumption` es fijo por actividad (`activities.service.ts`, comentario I4: «elegir
+QUÉ espacio pagar… es una tarea futura»). SRD 5.1, *Casting a Spell at a Higher Level*.
+- `UsarActividadInput.nivelDeEspacio` pasa a **elegir** entre los espacios ≥ nivel del conjuro que
+  el personaje tenga; el servidor descuenta **ese**, y `ctx.nivelDeEspacio` sigue saliendo de lo
+  gastado de verdad (la guarda de I4 no se toca).
+- Los `scaling` de Foundry (dados por nivel superior) ya vienen en el YAML: el conversor (Tarea 3)
+  los conserva y `tirarDados` los aplica.
+- Pantalla: al pulsar «Lanzar» en un conjuro con espacios de varios niveles disponibles, radios
+  «Nivel 3 (8d6) · Nivel 4 (9d6)» con la explicación; si solo hay uno, no se pregunta.
+- RED: *Bola de fuego* con espacio de nivel 4 → 9d6 y descuenta un espacio de nivel 4, no de 3.
+
+### Tarea 19 · Ataque de conjuro contra la CA
+
+**Ficha:** `case "ataque"` en `usar` resuelve el bono y su traza y **no el impacto** («no hay una
+puerta de tirada de ataque contra la CA desligada de un arma equipada»). *Rayo de escarcha*,
+*Rayo abrasador*, *Toque vampírico* la necesitan.
+- Extraer de `resolveAttack` (`character-sheet.service.ts`) la pieza «tirar 1d20+bono contra la CA
+  del objetivo, veredicto, `ATTACK_RESOLVED`» a una función que reciba **un bono y un objetivo**, y
+  que `resolveAttack` (arma) y `usar` (actividad `ataque`) la llamen las dos. Una sola mecánica.
+- El daño del conjuro va por la bandeja de daño (puerta de efectos, §4 bis): la tirada sabe a quién.
+- RED: *Rayo de escarcha* contra un objetivo con CA 15: total 14 → «falla»; 15 → «impacta» y el daño
+  lleva `pendingDamage` con ese objetivo; 20 natural → dados dobles.
+
+### Tarea 20 · Tanda L: `S11` tipos en `@dnd/shared`, `E1` buscar cruzado, `L5` «este personaje no ve», `S6` ASI como elección
+
+Cuatro fichas viejas que comparten `@dnd/shared` y el catálogo (D-CF-37). Cada una con su ficha en
+[06-pendientes.md](../../06-pendientes.md):
+- **S11**: `CharacterSheet`, `PendingChoice`, `ResolvedFeature`, `Attack` y los tipos del motor
+  dejan de calcarse a mano en `apps/web/…/api.ts`; viven en `@dnd/shared` y los dos lados importan.
+  Una prueba impide que vuelva la copia.
+- **E1**: `GET /campaigns/:id/search?q=` devuelve una unión con `kind` (entidad · sesión · personaje),
+  filtrada por `canView` en el servidor; la pestaña del mundo la consume.
+- **L5**: condición de clave reservada `cannot-see` que el DM declara, con chip en la hoja y en el
+  elenco que dice **«ficción, no permiso»**; no toca `canView`.
+- **S6**: la mejora de característica (`asiLevels`, con los niveles reales del guerrero y el pícaro)
+  como `Grant` de `kind: "abilityScoreImprovement"` con dos modos («+2 a una» / «+1 a dos»), radios
+  con explicación en la subida de nivel. SRD 5.1, *Ability Score Improvement*.
+
+## Bloque F — la mesa: acciones, combate sin tablero, y las legendarias (añadido 2026-09-12)
+
+### Tarea 21 · La lista de acciones, una sola forma
+
+**Ficha:** ataque de arma, actividad (Furia), conjuro preparado, consumible («beber poción»), y desde
+la Tarea 22 las acciones básicas: **la misma fila** — nombre · coste (acción / adicional / reacción ·
+espacio de nivel N · uso restante) · dado · botón — y **el servidor dice cuáles se pueden usar
+ahora** (`GET …/characters/:id/actions`: preparado + espacio disponible + uso restante + economía del
+turno si hay encuentro). Lo que no se puede usar viaja **marcado con su motivo**, no se omite.
+- RED (API): un mago sin espacios de nivel 3 recibe *Bola de fuego* con `disponible: false,
+  motivo: "sin espacios de nivel 3"`; un bárbaro con la Furia gastada, igual.
+- RED (RTL): la fila pinta el motivo y el botón deshabilitado; ningún enum llega a pantalla.
+
+### Tarea 22 · «Acciones» en la mesa: cuatro menús que suben
+
+**Decisión del autor (2026-09-12), contrastada con el SRD y con BG3**: no una barra que el jugador
+ordena (Divinity), sino **menús derivados de las reglas**. Cajón del rail «Acciones» (con tecla e
+icono dibujado) y, en el elenco, pegado a tu personaje. Cuatro botones que despliegan hacia arriba:
+- **Ataques** → armas equipadas (+ «Ataque adicional» dicho) + ataque desarmado (Tarea 23).
+- **Conjuros** → «Siempre» (trucos e innatos) y luego **por nivel** con sus espacios («nivel 2 ·
+  2/3»); sin espacio, el nivel marcado; reacciones al final, marcadas (Tarea 17); al pulsar, la
+  elección de espacio si procede (Tarea 18).
+- **Aptitudes** → actividades con usos (Furia 2/3, Segundo aliento…).
+- **Objetos** → consumibles que llevas encima.
+- Y las **acciones básicas** (Tarea 23) en el menú que les toque.
+Todo sale de `GET …/actions` (Tarea 21). Teclado: flechas, `Escape`; a 390 px sube como hoja
+inferior. Un e2e por menú, y `tokens-contrast` sobre el cajón.
+
+### Tarea 23 · Las acciones de combate que no son atacar
+
+SRD 5.1, *Combat › Actions in Combat*. Hoy solo existe **Ayudar**. Entran, cada una con su efecto en
+el motor y su suceso en el hilo:
+- **Esquivar**: condición reservada `dodging` hasta tu próximo turno → desventaja a quien te ataque y
+  ventaja en salvaciones de Destreza (`modoContraObjetivo` ya lee condiciones del objetivo).
+- **Esconderse**: prueba de Sigilo contra la percepción pasiva de los enemigos que la mesa ve →
+  condición `hidden`; atacar la quita (SRD: *Unseen Attackers*).
+- **Preparar**: registra la reacción preparada y su desencadenante en el hilo; gasta la acción.
+- **Correr, Destrabarse, Buscar, Usar objeto**: gastan la acción y dejan su línea; el movimiento
+  extra no se resuelve (sin tablero, es un aviso).
+- **Ataque desarmado**: fila fija en Ataques, `1 + FUE` contundente, competente siempre.
+- **Lucha con dos armas**: con un arma ligera en cada mano, ataque con la mano torpe como acción
+  adicional **sin el modificador de característica al daño** (salvo negativo). El cuadro ya distingue
+  `OFF_HAND`; falta la regla y el coste de acción adicional.
+- **Sorpresa**: bandera por combatiente en el primer asalto (no actúa); la pone el DM.
+- **Dejar inconsciente**: en «Poner daño», interruptor «no letal» cuando el golpe llega a 0.
+- **Caída**: `1d6` contundente por cada 10 pies (máx. 20d6), como daño con tipo desde el DM.
+
+### Tarea 24 · Pruebas enfrentadas y de grupo; agarrar y empujar
+
+SRD 5.1, *Using Ability Scores › Contests* y *Group Checks*; *Combat › Grappling*, *Shoving*.
+- **Prueba enfrentada**: el servidor pide dos tiradas (atacante: Atletismo; defensor: Atletismo o
+  Acrobacias, a su elección) y compara; empate = sin cambio. Reutiliza `roll-requests` con un
+  `contestId` que enlaza las dos.
+- **Agarrar** → `grappled` al objetivo (velocidad 0, ya en el motor); **Empujar** → `prone` o
+  «5 pies» (aviso, sin tablero). Escapar es otra enfrentada.
+- **Prueba de grupo**: el DM pide la misma prueba a varios; pasa si al menos la mitad supera la CD.
+- **Dote Grappler** (la única del SRD): entra como aptitud con su ventaja en ataques a quien agarras.
+
+### Tarea 25 · Acciones legendarias y de guarida
+
+SRD 5.1, *Monsters › Legendary Creatures*. El modelo ya tiene `legendaryActions: []` en los
+statblocks.
+- Contador de acciones legendarias por asalto (3, se reponen al inicio del turno de la criatura);
+  usarlas al final del turno de otro; cada una con su coste.
+- Acciones de guarida: en iniciativa 20 del encuentro, una entrada del DM en el orden de turnos.
+- RED: el dragón usa dos legendarias en un asalto y la tercera no; al empezar su turno vuelve a 3.
+
 ## Lo que este plan NO hace
 
 - **No toca la fase 3** —mapas, tablero, posiciones—. `teleport` (1 conjuro) es distancia y es de
-  ahí.
+  ahí. **Y por lo mismo, contrastado con el SRD 5.1 el 2026-09-12 (decisión del autor: «lo que
+  necesita tablero lo dejamos fuera»):** ataques de oportunidad, alcance, distancia larga y
+  desventaja a distancia en cuerpo a cuerpo, cobertura, terreno difícil, salto, tamaño y espacio,
+  flanqueo, y la **resolución** de las áreas de efecto (cono, cubo, esfera, línea, cilindro) — las
+  formas entran como datos (H10), resolverlas no.
+- **No hace multiclase** (*Beyond 1st Level › Multiclassing*): toca el motor entero y nadie en la
+  mesa la ha pedido; si alguien la pide, es su propia spec.
+- **No hace entorno ni tiempo muerto** (asfixia, comida y agua, estilo de vida, actividades entre
+  aventuras), ni montura ni combate bajo el agua, ni objetos malditos: arbitraje, sin mecánica que
+  ganar. La caída sí (Tarea 23), porque es un número.
+- **No hace componentes** (V/S/M): entran como texto del conjuro.
 - **No importa las carpetas con sufijo `24`.**
 - **No reemplaza `items` ni `monsters`.** Están transcritos a mano, en español oficial, con
   invariantes probadas. **Reemplazar algo que funciona por algo equivalente es riesgo sin ganancia**,
@@ -387,6 +542,10 @@ esta ficha*».
    un mago de nivel bajo.
 
 ## Si esto es demasiado, córtalo por aquí
+
+**Con los bloques E y F (2026-09-12), los cortes son cinco y cada uno deja algo jugable:** A (el
+mago existe) → C + E16-19 (el mago lanza de verdad) → F21-23 (se juega desde la mesa) → B + E20 (la
+deuda vieja) → D + F24-25 (temporal, enfrentadas, legendarias: **lo aplazable**).
 
 **Los bloques A + C son «un mago existe y puede jugar».** El bloque B son fichas viejas que se
 pueden hacer antes o después, salvo la **tarea 5**, que la **tarea 6 necesita**. El bloque D sube la

@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CreateCampaignInput, UpdateCampaignInput } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "./membership.service";
 import { canView, comoRecursoVisible, Viewer } from "../common/visibility";
+import { DiceExpressionError, rollExpression } from "../dice/dice";
 
 @Injectable()
 export class CampaignsService {
@@ -158,6 +159,21 @@ export class CampaignsService {
     // viaja, así que un PATCH que no la menciona no la borra por accidente. `null` sí se
     // escribe (borra la sala); solo `undefined` se ignora.
     if (input.boardRoomUrl !== undefined) data.boardRoomUrl = input.boardRoomUrl;
+    // Reglas de la mesa (D-CF-53). Zod ya dio forma y defaults; lo único que Zod no sabe es si la
+    // expresión de dados existe, porque la gramática vive en `dice.ts` (E-RM-4): se evalúa una vez
+    // con un tirador fijo y se tira el resultado — aquí solo interesa si se acepta.
+    if (input.tableRules !== undefined) {
+      if (input.tableRules.abilities.metodo === "DADOS") {
+        try {
+          rollExpression(input.tableRules.abilities.expresion, () => 1);
+        } catch (error) {
+          if (error instanceof DiceExpressionError)
+            throw new BadRequestException({ code: error.code, message: error.message });
+          throw error;
+        }
+      }
+      data.tableRules = input.tableRules;
+    }
     const campaign = await this.prisma.campaign.update({ where: { id: campaignId }, data });
     this.events.emit("campaign.updated", { campaignId, actorId: userId });
     return campaign;

@@ -27,3 +27,4 @@ export * from "./action-economy.schema";
 export * from "./origen.schema";
 export * from "./activity.schema";
 export * from "./level-up.schema";
+export * from "./table-rules.schema";

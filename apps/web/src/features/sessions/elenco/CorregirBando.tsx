@@ -2,6 +2,7 @@ import { useId } from "react";
 import type { CombatantSide } from "@dnd/shared";
 import { BANDOS } from "../../../dominio/combate";
 import { useSetSide } from "../../encounters/hooks";
+import type { AccionDeMenu } from "../../../ui/MenuDeAcciones";
 
 /**
  * **Corregir el bando de un combatiente** (tarea 10, 2026-09-05 — «un aliado te traiciona en el
@@ -115,4 +116,47 @@ export function CorregirBando({
       )}
     </div>
   );
+}
+
+/**
+ * **El bando, como ítems de `MenuDeAcciones`** (tarea 8 del pulido, C2: #1). Mismo gesto que
+ * `CorregirBando` de arriba —tres bandos, el actual desactivado y diciéndolo en su propio
+ * rótulo, «Neutral» con su frase enganchada— pero como datos (`AccionDeMenu[]`) en vez de una
+ * fila propia: `MandosDeCombatiente` los añade al final de su menú «…» junto a «Condición»,
+ * «Dar…» y «Su hoja», así la fila del elenco no lleva dos controles de menú distintos.
+ *
+ * **No es una segunda implementación del gesto**: usa el mismo `useSetSide` y el mismo `BANDOS`
+ * que la variante de fila; solo cambia la forma en la que se enseña. `CorregirBando` (la fila)
+ * se queda tal cual para quien la use así —y para no borrar su propia prueba—, y las dos
+ * comparten el vocabulario de `../../../dominio/combate`.
+ */
+export function useAccionesDeBando(p: {
+  campaignId: string;
+  sessionId: string;
+  encounterId: string;
+  combatanteId: string;
+  bando: CombatantSide;
+  nombre: string;
+}): AccionDeMenu[] {
+  const cambiarBando = useSetSide(p.campaignId, p.sessionId);
+  return BANDOS.map((b) => ({
+    id: `bando-${b.valor}`,
+    // **El rótulo dice qué hace el ítem, no de quién es** (misma regla que la fila): «Marcar
+    // como Enemigo», no «Enemigo». El nombre de `p.nombre` ya lo dice el propio menú, en su
+    // `aria-label` («Más acciones sobre {nombre}»).
+    rotulo: b.valor === p.bando ? `${b.nombre} (su bando actual)` : `Marcar como ${b.nombre}`,
+    disabled: b.valor === p.bando || cambiarBando.isPending,
+    motivo:
+      b.valor === p.bando
+        ? "Ya es su bando"
+        : cambiarBando.isPending
+          ? "Enviando el cambio de bando"
+          : undefined,
+    onSelect: () =>
+      cambiarBando.mutate({
+        encounterId: p.encounterId,
+        combatantId: p.combatanteId,
+        side: b.valor,
+      }),
+  }));
 }

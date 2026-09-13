@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
@@ -222,13 +222,37 @@ describe("el elenco enseña a los PNJ combatientes (tarea 9b)", () => {
 // que `ColumnaElenco` de verdad le pase `sessionId`/`encounterId`/`combatanteId`, y ese hueco es
 // literalmente por qué el crítico (el PNJ sin mando de bando) pasó desapercibido. Esto prueba el
 // cableado real, para el personaje de jugador Y para el PNJ.
+// **Desde la tarea 8 del pulido, el bando ya no es un `group` de fila** — sus ítems viven en el
+// menú «…» de `MandosDeCombatiente`. Se cambia el camino (abrir el menú de cada uno) y se sigue
+// demostrando lo mismo: el cableado real desde la columna, para el jugador Y para el PNJ.
 describe("el DM corrige el bando desde la columna de verdad (C-1, I-5)", () => {
-  it("el grupo «Bando de …» aparece para el personaje de jugador y para el PNJ combatiente", async () => {
+  it("el menú de acciones trae los tres ítems de bando para el personaje de jugador y para el PNJ combatiente", async () => {
     montar([GOBLIN]);
 
-    expect(await screen.findByRole("group", { name: "Bando de Corvin Vhael" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    const menuCorvin = screen.getByRole("menu", { name: "Más acciones sobre Corvin Vhael" });
+    // `await`: los ítems de bando llegan por `useAccionesDeBando`, que depende del encuentro en
+    // marcha (`useCurrentEncounter`) — una consulta más, así que el menú puede abrirse un
+    // instante antes de que esos tres ítems se añadan a la lista. Corvin es `ALLY`: el ítem que
+    // no es «su bando actual» es único, «Marcar como Enemigo».
     expect(
-      await screen.findByRole("group", { name: "Bando de Goblin capataz" }),
+      await within(menuCorvin).findByRole("menuitem", { name: "Marcar como Enemigo" }),
+    ).toBeInTheDocument();
+    // El motivo del bando actual («Ya es su bando») viaja dentro del propio botón —para que
+    // `aria-describedby` lo enlace—, así que su nombre accesible completo lo incluye: se
+    // comprueba con un patrón, no con el texto exacto.
+    expect(
+      within(menuCorvin).getByRole("menuitem", { name: /^Aliado \(su bando actual\)/ }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Más acciones sobre Goblin capataz" }),
+    );
+    const menuGoblin = screen.getByRole("menu", { name: "Más acciones sobre Goblin capataz" });
+    // El Goblin es `ENEMY`: su bando actual se dice «Enemigo (su bando actual)».
+    expect(
+      await within(menuGoblin).findByRole("menuitem", { name: /^Enemigo \(su bando actual\)/ }),
     ).toBeInTheDocument();
   });
 });
@@ -263,7 +287,12 @@ describe("un PNJ cedido a un jugador es suyo en la pantalla (paso 1, tarea 15)",
   it("el dueño de un PNJ cedido no ve al resto del elenco como destinatario al dar (no es DM)", async () => {
     montarComo("u-pl", { ...GOBLIN, ownerId: "u-pl" });
 
-    fireEvent.click(await screen.findByRole("button", { name: /dar/i }));
+    // **Desde la tarea 8 del pulido, «Dar…» es un ítem del menú «…»**: se abre el menú de
+    // Goblin capataz y se elige «Dar…» en vez de pulsar un botón «Dar» de la fila.
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Más acciones sobre Goblin capataz" }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: /dar/i }));
     // Corvin Vhael es un personaje de jugador ajeno a "u-pl": si `soyDm` volviera a fijarse en
     // `true`, aparecería aquí como una opción más.
     expect(screen.queryByRole("radio", { name: /Corvin Vhael/i })).not.toBeInTheDocument();

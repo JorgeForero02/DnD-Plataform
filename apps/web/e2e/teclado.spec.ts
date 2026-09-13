@@ -155,3 +155,88 @@ test("de la lista de campañas a una ficha y de vuelta, solo con teclado", async
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: nombreCampana })).toBeVisible();
 });
+
+// Tarea 8 del pulido (C2: #1) — **el menú «…» de la fila del elenco, solo con teclado.** La
+// fila plegó «Condición», «Dar…», «Su hoja» y el bando en `ui/MenuDeAcciones.tsx`
+// (`docs/04-convenciones.md`, `ACCIONES_VISIBLES`); este recorrido demuestra que el menú entero
+// se abre, se recorre y se cierra sin tocar el ratón — la misma disciplina que el resto de este
+// fichero.
+test("el menú «Más acciones sobre …» del elenco, con teclado: Tab, Enter, flechas y Escape", async ({
+  page,
+}) => {
+  const cuenta = nuevaCuenta("menu-teclado");
+  const nombrePersonaje = "Ilda Portaescudo";
+
+  // --- Preparación por ratón: una campaña, un personaje y una sesión con la mesa abierta ---
+  await page.goto("/register");
+  await page.getByLabel("Nombre").fill(cuenta.displayName);
+  await page.getByLabel("Correo").fill(cuenta.email);
+  await page.getByLabel("Contraseña").fill(cuenta.password);
+  await page.getByRole("button", { name: "Crear cuenta" }).click();
+  await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("Campaña del menú por teclado");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "Campaña del menú por teclado" }).click();
+  await expect(page.getByRole("heading", { name: "Campaña del menú por teclado" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Nuevo personaje" }).click();
+  await page.getByLabel("Nombre").fill(nombrePersonaje);
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Nueva sesión" }).click();
+  await page.getByLabel("Título").fill("La sesión del menú por teclado");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByLabel(cuenta.displayName).check();
+  await page
+    .getByLabel(`Personaje de ${cuenta.displayName}`)
+    .selectOption({ label: nombrePersonaje });
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const elenco = page.getByRole("region", { name: "En la mesa" });
+  await expect(elenco.getByText(nombrePersonaje).first()).toBeVisible({ timeout: 15_000 });
+
+  // --- Aquí empieza el recorrido de teclado propiamente dicho ---
+  const botonMenu = elenco.getByRole("button", { name: `Más acciones sobre ${nombrePersonaje}` });
+  await tabHasta(page, botonMenu);
+  await estaEnfocadoConAnilloVisible(botonMenu);
+
+  // Enter abre el menú, y el foco entra en su primer ítem («Condición») — no se queda en el
+  // botón: `MenuDeAcciones` mueve el foco al abrir, como cualquier menú de verdad.
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("menu", { name: `Más acciones sobre ${nombrePersonaje}` });
+  await expect(menu).toBeVisible();
+  const itemCondicion = menu.getByRole("menuitem", { name: "Condición" });
+  await estaEnfocadoConAnilloVisible(itemCondicion);
+
+  // ArrowDown mueve el foco al siguiente ítem («Dar…»), sin seleccionar nada todavía.
+  const itemDar = menu.getByRole("menuitem", { name: "Dar…" });
+  await page.keyboard.press("ArrowDown");
+  await estaEnfocadoConAnilloVisible(itemDar);
+
+  // Escape cierra el menú SIN seleccionar nada, y devuelve el foco al botón que lo abrió.
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await estaEnfocadoConAnilloVisible(botonMenu);
+
+  // Se reabre, y esta vez Enter selecciona el ítem enfocado (el primero, «Condición»): abre su
+  // cajón de verdad, no solo mueve el foco.
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("menu", { name: `Más acciones sobre ${nombrePersonaje}` }),
+  ).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("dialog", { name: `Poner condición · ${nombrePersonaje}` }),
+  ).toBeVisible();
+});

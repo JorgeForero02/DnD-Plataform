@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
@@ -97,6 +97,10 @@ beforeEach(() => {
   vi.spyOn(sheetApi, "fetchConditions").mockResolvedValue([]);
 });
 
+// **Desde la tarea 8 del pulido (C2: #1), el bando ya no es un `group` de fila**: sus tres ítems
+// viven en el menú «…» de `MandosDeCombatiente`, junto a «Condición», «Dar…» y «Su hoja». Estas
+// pruebas se cambian de camino —abrir el menú, mirar sus `menuitem`— y **no se borran**: siguen
+// demostrando lo mismo, que el DM corrige el bando y el servidor recibe el combatiente correcto.
 describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
   it("un aliado se marca enemigo, y el servidor recibe el combatiente correcto", async () => {
     const cambiarBando = vi
@@ -105,13 +109,16 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
 
     montar();
 
-    expect(await screen.findByRole("group", { name: "Bando de Corvin Vhael" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    const menu = screen.getByRole("menu", { name: "Más acciones sobre Corvin Vhael" });
     // El bando actual se ve, no solo se infiere del color (regla vinculante de la interfaz).
-    expect(screen.getByRole("button", { name: /Aliado \(su bando actual\)/i })).toBeDisabled();
+    expect(
+      within(menu).getByRole("menuitem", { name: /Aliado \(su bando actual\)/i }),
+    ).toHaveAttribute("aria-disabled", "true");
 
-    // **El rótulo accesible dice qué hace el botón** (ronda de arreglo 1, I-menor): «Marcar a
-    // Corvin Vhael como Enemigo», no «Enemigo a Corvin Vhael».
-    fireEvent.click(screen.getByRole("button", { name: /Marcar a Corvin Vhael como Enemigo/i }));
+    // **El rótulo accesible dice qué hace el ítem** (ronda de arreglo 1, I-menor): «Marcar como
+    // Enemigo», no «Enemigo».
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /Marcar como Enemigo/i }));
 
     await waitFor(() =>
       expect(cambiarBando).toHaveBeenCalledWith("c1", "s1", "enc-1", "cb-corvin", {
@@ -123,29 +130,36 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
   it("el jugador no ve el mando de bando: la puerta está en el servidor, no en el botón", () => {
     montar({ conMandos: false });
 
-    expect(screen.queryByRole("group", { name: "Bando de Corvin Vhael" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /enemigo/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Más acciones sobre Corvin Vhael/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("fuera de combate no hay bando que corregir: el mando no se pinta", () => {
+  it("fuera de combate no hay bando que corregir: el ítem del menú no aparece", async () => {
     montar({ enCombate: false, bando: undefined, encounterId: undefined, combatanteId: undefined });
 
-    expect(screen.queryByRole("group", { name: /Bando de/i })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    expect(screen.queryByRole("menuitem", { name: /enemigo/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /su bando actual/i })).not.toBeInTheDocument();
   });
 });
 
 // Arreglo de vuelta 1 sobre B4 (I2, I4) — **`DarObjeto` montado de verdad, no solo probado
 // aislado.** Devolver `MandosDeCombatiente` a no llevar «Dar», o fijar su `soyDm` a `true` sin
 // mirar el rol real, dejaba esta suite (y la de `DarObjeto.test.tsx`) en verde por separado.
+//
+// **Desde la tarea 8 del pulido, «Dar…» es un ítem del menú «…»**, no un botón de la fila: se
+// cambia el camino (abrir el menú primero) y se sigue demostrando lo mismo.
 describe("el mando «Dar» aparece con los mandos del DM (B4)", () => {
-  it("con mandos, el DM ve «Dar»", async () => {
+  it("con mandos, el DM ve «Dar…» en el menú", async () => {
     montar({ conMandos: true });
-    expect(await screen.findByRole("button", { name: /dar/i })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    expect(screen.getByRole("menuitem", { name: /dar/i })).toBeInTheDocument();
   });
 
-  it("sin mandos, un jugador no ve «Dar»", () => {
+  it("sin mandos, un jugador no ve el menú de acciones", () => {
     montar({ conMandos: false });
-    expect(screen.queryByRole("button", { name: /dar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones sobre/i })).not.toBeInTheDocument();
   });
 });
 
@@ -154,9 +168,12 @@ describe("el mando «Dar» aparece con los mandos del DM (B4)", () => {
 // del diálogo y la `Cabecera` de la hoja en disposición «mesa». Se queda la `Cabecera`, que es
 // la que lleva el descriptor; el título dice para qué es el cajón.
 describe("el cajón de la hoja del DM (HP-1)", () => {
-  it("se abre con el ojo y se llama «Su hoja», no el nombre del personaje", async () => {
+  // **Desde la tarea 8 del pulido, el ojo dejó de ser un botón de la fila**: «Su hoja» es un
+  // ítem del menú «…», junto a «Condición» y «Dar…».
+  it("se abre desde el menú y se llama «Su hoja», no el nombre del personaje", async () => {
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Abrir la ficha de Corvin Vhael" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Su hoja" }));
     const cajon = await screen.findByRole("dialog", { name: "Su hoja" });
     expect(cajon).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Corvin Vhael" })).not.toBeInTheDocument();

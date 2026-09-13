@@ -364,3 +364,73 @@ test("escribir una expresión inválida no cambia el alto del panel, en el cajó
   expect(despues).not.toBeNull();
   expect(Math.round(despues!.height)).toBe(Math.round(antes!.height));
 });
+
+// Tarea 8 del pulido (C2: #1) — **la fila de mandos del elenco no se sale de su tarjeta.** La
+// fila llegó a tener siete controles («Daño», «Curar», «Condición», «Dar», el ojo y hasta tres
+// del bando) y se salía de la tarjeta (anexo #1); ahora solo «Daño» y «Curar» quedan como
+// botones y el resto vive en `MenuDeAcciones.tsx`. Esta es la medida de verdad: la fila plegada
+// cabe DENTRO del rectángulo de su propia tarjeta, con el mismo margen de ±1px por redondeo que
+// usa el resto de este fichero.
+test("la fila de mandos del elenco no se sale de su tarjeta (C2 #1)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const cuenta = await registrarse(page);
+
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("La fila del elenco");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "La fila del elenco" }).click();
+  await expect(page.getByRole("heading", { name: "La fila del elenco" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Personajes" }).click();
+  await page.getByRole("button", { name: "Nuevo personaje" }).click();
+  await page.getByLabel("Nombre").fill("Rannoc Piedraverde");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Nueva sesión" }).click();
+  await page.getByLabel("Título").fill("La sesión de la fila");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByLabel(cuenta.displayName).check();
+  await page
+    .getByLabel(`Personaje de ${cuenta.displayName}`)
+    .selectOption({ label: "Rannoc Piedraverde" });
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const elenco = page.getByRole("region", { name: "En la mesa" });
+  await expect(elenco.getByText("Rannoc Piedraverde", { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // La tarjeta es el `<li>` que envuelve el nombre; la fila de mandos se llega por el botón
+  // «Daño a …», que es su primer hijo, y se mide su envoltorio directo (el `<div>` de la fila),
+  // no el botón suelto.
+  const tarjeta = elenco
+    .getByText("Rannoc Piedraverde", { exact: true })
+    .locator("xpath=ancestor::li[1]");
+  const filaDeMandos = elenco
+    .getByRole("button", { name: "Daño a Rannoc Piedraverde" })
+    .locator("xpath=..");
+
+  const cajaDeLaTarjeta = await tarjeta.boundingBox();
+  const cajaDeLaFila = await filaDeMandos.boundingBox();
+  expect(cajaDeLaTarjeta).not.toBeNull();
+  expect(cajaDeLaFila).not.toBeNull();
+
+  // `boundingBox()` da `{x, y, width, height}`, no `{left, right, top, bottom}`: se calculan
+  // los bordes a mano, como ya hace `medirHermanas` más arriba en este mismo fichero.
+  expect(cajaDeLaFila!.x).toBeGreaterThanOrEqual(cajaDeLaTarjeta!.x - 1);
+  expect(cajaDeLaFila!.x + cajaDeLaFila!.width).toBeLessThanOrEqual(
+    cajaDeLaTarjeta!.x + cajaDeLaTarjeta!.width + 1,
+  );
+  expect(cajaDeLaFila!.y).toBeGreaterThanOrEqual(cajaDeLaTarjeta!.y - 1);
+  expect(cajaDeLaFila!.y + cajaDeLaFila!.height).toBeLessThanOrEqual(
+    cajaDeLaTarjeta!.y + cajaDeLaTarjeta!.height + 1,
+  );
+});

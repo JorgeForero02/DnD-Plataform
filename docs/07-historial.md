@@ -64,6 +64,58 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Tarea 8 del pulido: `MenuDeAcciones` y la fila del elenco (2026-09-12, C2 #1)
+
+Qué — `ui/MenuDeAcciones.tsx`, nuevo: el menú «…» genérico que la regla de
+`docs/04-convenciones.md` ya nombraba (`ACCIONES_VISIBLES` = 2, D-CF-59). Consume `IconoMenu`
+(Tarea 7); `<AccionDeMenu>` trae `id`, `rotulo`, `icono?`, `onSelect`, `disabled?`, `motivo?`
+(leído por `aria-describedby`) y `tono?`. Teclado completo: flechas mueven el foco entre ítems
+con vuelta al principio/final, Home/End al primero/último, Enter/Espacio seleccionan, Escape
+cierra y devuelve el foco al botón, Tab lo cierra sin devolverlo, y un clic fuera también lo
+cierra. Se abre hacia donde mide que hay sitio (`medirSitio`, costura de prueba documentada en
+la firma — no una prop de producto).
+
+`MandosDeCombatiente.tsx` (siete controles antes, hasta salirse de la tarjeta — anexo #1): solo
+«Daño» y «Curar» quedan como botones; «Condición», «Dar…» y «Su hoja» pasan al menú, y
+`accionesDeBando` (prop nueva, `AccionDeMenu[]`, `[]` por defecto) se añade al final. `DarObjeto`
+gana `controlado?: { abierto; onCerrar }`: con él no pinta su propio botón «Dar» —el ítem del
+menú ya lo abre y lo cierra—; sin él (`ResultadoDeTabla.tsx`, botín de una tabla del DM) se
+comporta exactamente como antes. `CorregirBando.tsx` gana `useAccionesDeBando(p)`, que devuelve
+los mismos tres ítems que su variante de fila (que se queda intacta, para no borrar su prueba,
+y para quien la use así) usando el mismo `useSetSide`/`BANDOS` — no una segunda implementación.
+`FichaDeElenco`/`FichaDePnj` dejan de montar `<CorregirBando />` aparte y llaman al hook siempre
+(valores de repuesto cuando falta encuentro/bando/sesión, por la regla de los hooks), pasando la
+lista real al menú solo cuando la misma puerta que antes decidía montar la fila —`conMandos`/
+`esDm` + `enCombate` + `bando` + `sessionId` + `encounterId` + `combatanteId`— sigue abierta.
+
+Pruebas — TDD: `MenuDeAcciones.test.tsx` (5), `fireEvent` en vez de `userEvent` porque
+`@testing-library/user-event` no es dependencia del paquete (comprobado antes de escribir, no
+se añadió). `FichaDeElenco.test.tsx`, `ColumnaElenco.test.tsx` y `DarObjeto.test.tsx`: las
+aserciones que buscaban el `group`/botón de fila **cambiaron de camino** (abrir el menú, mirar
+sus `menuitem`) y **no se borró ninguna** — dos de ellas necesitaron `findByRole` en vez de
+`getByRole` porque los ítems de bando llegan por una consulta más (`useCurrentEncounter`) que
+puede resolver después de que el menú ya esté abierto. `DarObjeto.test.tsx` suma tres casos del
+modo `controlado`. Mutación: quitar la rama `Escape` de `MenuDeAcciones.tsx` (`cp` de por medio)
+puso roja la unitaria del foco; restaurado con `cp`. 1499 unitarias en verde, ninguna desactivada.
+
+e2e (editados, no corridos por el implementador — los corre el orquestador):
+`teclado.spec.ts` gana un recorrido nuevo, el menú por teclado entero (Tab hasta «Más acciones
+sobre …», Enter abre y mueve el foco al primer ítem, ArrowDown al segundo, Escape cierra y
+devuelve el foco, Enter+Enter selecciona y abre «Condición»). `combate.spec.ts` no citaba
+«Condición»/«Dar»/el ojo — no necesitó cambios. `dar-a-un-pnj.spec.ts`: el clic en «Dar» de la
+fila pasó a abrir «Más acciones sobre Borin Barbaférrea» y elegir el `menuitem` «Dar…».
+`espacios.spec.ts` gana la medida del anexo #1: la fila de mandos de una tarjeta no se sale de
+su rectángulo, a 1280×800. `tokens-contrast.spec.ts` gana una superficie: el menú abierto sobre
+un combatiente real, en los tres temas.
+
+Documentación — 04 ya nombraba el componente (Tarea 0); se le añadió la línea de qué se plegó
+y cuándo. 08: fila nueva `teclado` (no tenía fila propia pese a existir desde antes) y se
+corrigió una frase que decía que Playwright no cubría teclado, cuando `teclado.spec.ts` ya
+existía; `espacios`, `dar-a-un-pnj` y `tokens-contrast` ganan una frase cada una sobre su
+medida/camino nuevos.
+
+---
+
 ## Tarea 7 del pulido: seis dados dibujados y el barrido de iconos (2026-09-12, C3 #12 y #22)
 
 Qué — `ui/Iconos.tsx` gana `IconoDado({ caras })` —seis siluetas, «un dado, una forma»

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DarObjeto } from "../DarObjeto";
 import * as charactersApi from "../../../characters/api";
@@ -193,5 +193,62 @@ describe("DarObjeto", () => {
     fireEvent.click(await screen.findByRole("button", { name: /dar/i }));
     expect(await screen.findByText("Espada corta x2")).toBeInTheDocument();
     expect(screen.queryByText(/short-sword/)).not.toBeInTheDocument();
+  });
+
+  // **Tarea 8 del pulido (C2: #1) — modo `controlado`.** `MandosDeCombatiente` ya no monta su
+  // propio botón «Dar»: lo abre desde el ítem «Dar…» de `MenuDeAcciones`, así que `DarObjeto`
+  // tiene que poder vivir sin disparador propio y obedecer a quien lo abre y lo cierra.
+  describe("modo controlado (tarea 8 del pulido)", () => {
+    it("con `controlado`, no pinta su propio botón «Dar»", () => {
+      render(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <DarObjeto
+            campaignId="c1"
+            soyDm
+            miPersonajeId="ch-brann"
+            controlado={{ abierto: false, onCerrar: vi.fn() }}
+          />
+        </QueryClientProvider>,
+      );
+      expect(screen.queryByRole("button", { name: /dar/i })).not.toBeInTheDocument();
+    });
+
+    it("con `controlado.abierto`, el cajón se abre sin que nadie haya pulsado un botón aquí", async () => {
+      const onCerrar = vi.fn();
+      render(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <DarObjeto
+            campaignId="c1"
+            soyDm
+            miPersonajeId="ch-brann"
+            controlado={{ abierto: true, onCerrar }}
+          />
+        </QueryClientProvider>,
+      );
+      expect(await screen.findByRole("dialog", { name: "Dar…" })).toBeInTheDocument();
+    });
+
+    it("cerrar desde dentro llama a `controlado.onCerrar`, no a un estado propio", async () => {
+      const onCerrar = vi.fn();
+      render(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <DarObjeto
+            campaignId="c1"
+            soyDm
+            miPersonajeId="ch-brann"
+            controlado={{ abierto: true, onCerrar }}
+          />
+        </QueryClientProvider>,
+      );
+      const cajon = await screen.findByRole("dialog", { name: "Dar…" });
+      fireEvent.click(within(cajon).getByRole("button", { name: "Cerrar (Escape)" }));
+      expect(onCerrar).toHaveBeenCalledTimes(1);
+    });
   });
 });

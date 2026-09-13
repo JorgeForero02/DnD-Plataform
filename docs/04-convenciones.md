@@ -491,9 +491,11 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   en el navegador por `e2e/hoja.spec.ts`).
 
 - **Acciones de una fila: hasta 2 visibles (`ACCIONES_VISIBLES`), el resto en un menú «…»
-  dibujado.** Nunca una fila de cinco botones (anexo #1). El menú es
-  `ui/MenuDeAcciones.tsx`<!-- docs-lint-ignore -->: se abre hacia donde hay sitio, flechas y
-  `Escape`, y devuelve el foco.
+  dibujado.** Nunca una fila de cinco botones (anexo #1). El menú es `ui/MenuDeAcciones.tsx`: se
+  abre hacia donde hay sitio, flechas y `Escape`, y devuelve el foco. **Desde la tarea 8 del
+  pulido (2026-09-12)**, la fila de mandos del elenco es su primer consumidor: «Daño» y «Curar»
+  se quedan visibles, y «Condición», «Dar…», «Su hoja» y el bando (`useAccionesDeBando`,
+  `CorregirBando.tsx`) se pliegan en él.
 
 - **Espacio reservado.** Lo que puede cambiar de tamaño al escribir —la línea de error de un
   campo, un contador, un aviso— reserva su alto (`min-height`) para que la tarjeta no salte

@@ -616,6 +616,74 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Tarea 8 del pulido (C2: #1) — **el menú «…» del elenco, medido abierto.** La fila de mandos
+// plegó «Condición», «Dar…», «Su hoja» y el bando en `ui/MenuDeAcciones.tsx`; es una superficie
+// nueva (`bg-surface` flotante sobre la tarjeta del elenco) que ninguna medida anterior cubría.
+// Real screen, no /design-tokens: se navega hasta la mesa, se abre el menú de un combatiente de
+// verdad y se mide su texto y su borde, en los tres temas.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en el menú de acciones del elenco (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuentaContraste();
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+    await page.getByLabel("Nombre").fill("Campaña del menú");
+    await page.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("link", { name: "Campaña del menú" }).click();
+    await expect(page.getByRole("heading", { name: "Campaña del menú" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Personajes" }).click();
+    await page.getByRole("button", { name: "Nuevo personaje" }).click();
+    await page.getByLabel("Nombre").fill("Ren Sombrafiel");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+
+    await page.getByRole("tab", { name: "Sesiones" }).click();
+    await page.getByRole("button", { name: "Nueva sesión" }).click();
+    await page.getByLabel("Título").fill("La sesión del menú");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+    await page.getByRole("button", { name: "Empezar" }).click();
+    await page.getByLabel(cuenta.displayName).check();
+    await page
+      .getByLabel(`Personaje de ${cuenta.displayName}`)
+      .selectOption({ label: "Ren Sombrafiel" });
+    await page.getByRole("button", { name: "Empezar la sesión" }).click();
+
+    const barra = page.getByRole("status", { name: "Sesión en curso" });
+    await expect(barra).toBeVisible({ timeout: 10_000 });
+    await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+    const elenco = page.getByRole("region", { name: "En la mesa" });
+    await expect(elenco.getByText("Ren Sombrafiel", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await elenco.getByRole("button", { name: "Más acciones sobre Ren Sombrafiel" }).click();
+    const menu = page.getByRole("menu", { name: "Más acciones sobre Ren Sombrafiel" });
+    await expect(menu).toBeVisible();
+
+    {
+      const item = menu.getByRole("menuitem", { name: "Condición" });
+      const { color, bg } = await effectiveTextColours(item);
+      record(theme, "menú de acciones: ítem texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { border, bg } = await borderColourAgainstBg(menu);
+      record(theme, "menú de acciones: borde del panel", contrastRatio(border, bg), 3);
+    }
+
+    await page.keyboard.press("Escape");
+  });
+}
+
 // Task 1.18b — the two new screens (hallazgo 6 + the account screen), measured the same
 // disciplined way: real navigation, real computed colours, both themes.
 function nuevaCuentaCuenta() {

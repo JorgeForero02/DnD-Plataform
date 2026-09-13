@@ -26,9 +26,4 @@ cuerpo → la unitaria de orden FAIL (el botón deja de estar bajo un `footer`),
 — la aserción mira `archivar`, no `borrar` — así que la mutación real se hizo sobre
 `BotonArchivar`, que sí prueba el pie.) Por qué — Tarea 3 del
 [plan de pulido](../superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), anexos #9 y
-#16 de la lista del autor; revertir — `git revert` del commit de esta tarea. **Corrección (Tarea
-15, 2026-09-13): esta línea no decía que `git revert` no deshace por sí solo el bloque de estado
-de `docs/00-INDEX.md`** (se regenera aparte con `pnpm update:estado` en el siguiente commit) **ni
-que, si algún punto del anexo que esta tarea cerraba ya se había archivado como cerrado en
-`docs/_archivo/`, revertir el código no restaura esa nota**: haría falta deshacer también la
-entrada de archivo a mano.
+#16 de la lista del autor; revertir — `git revert` del commit de esta tarea.

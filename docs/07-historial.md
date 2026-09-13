@@ -161,6 +161,18 @@ de cada uno vive en el ledger de la tanda, no aquí. Unitarias: 1588 de web (147
 rama), shared 192 y api sin tocar; `pnpm verify` limpio en el commit final; `check:docs` sin
 hallazgos.
 
+**Tres frases de entradas ya archivadas quedaron falsas, y `docs/_archivo/` no se edita —se
+corrigen aquí, no allí**: la ronda 4 de la Tarea 8 (`historial-2026-09-12-tarea-8-menu-de-acciones.md`)
+decía que «la de la pantalla «Dados» no monta esa guía y se queda igual» — **también la espera**,
+porque `PedirTirada` la monta bajo el mismo `items-stretch` que `PanelDeDados`; la Tarea 2
+(`historial-2026-09-12-tarea-2-field-reserva-espacio.md`) decía que «el DOM accesible no cambia,
+solo el envoltorio» — **el orden sí cambia**: Personalidad pasa a vivir dentro de la sub-rejilla
+de Ficha, antes de RasgosYAptitudes, y antes era hermana suelta de las dos; la Tarea 3
+(`historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md`) decía «revertir — `git revert` del
+commit de esta tarea» sin más — **revertir también implica regenerar el bloque de `00-INDEX.md`
+con `pnpm update:estado`** y, si el anexo que esa tarea cerraba ya se archivó como cerrado en
+`docs/_archivo/`, deshacer esa nota a mano.
+
 Revertir — la rama entera se revierte con `git revert 0ebdd9f..0a8689e` sobre `main`, **una vez
 fusionada** (hoy no lo está: revertir antes de fusionar es simplemente no fusionar). Por causa, si
 solo una debe deshacerse: C1 son las Tareas 1–4 (`cae172f..ee4eaa6`); C1 bis las Tareas 5–6

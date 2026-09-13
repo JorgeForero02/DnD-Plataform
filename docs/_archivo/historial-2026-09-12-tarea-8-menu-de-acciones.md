@@ -77,8 +77,4 @@ Ronda de arreglo 4 (controlador): el arreglo 2 de `espacios.spec.ts` («…La me
 decía que la carrera era una tipografía tardía de Google Fonts; era falso — la guía de CD
 (`useGuiaDeCd`, solo en `PanelDeDadosDeLaMesa.tsx`) llega del servidor después del primer pintado y
 suma 33.5 px si la medida se toma antes, así que esa prueba espera ahora a que su primer botón
-(«Muy fácil…») esté visible. **Corrección (Tarea 15, 2026-09-13): esta línea decía que «la de la
-pantalla «Dados» no monta esa guía y se queda igual» — era falsa desde la ronda 5 de la Tarea 8
-(commit `4af7dad`): `PedirTirada`, hermano de `PanelDeDados` bajo el mismo `items-stretch`, monta
-la misma guía de CD (`useGuiaDeCd`) y la altura compartida por la fila la arrastra igual, así que
-la pantalla «Dados» también necesitó esperar a que «Muy fácil…» esté visible antes de medir.**
+(«Muy fácil…») esté visible; la de la pantalla «Dados» no monta esa guía y se queda igual.

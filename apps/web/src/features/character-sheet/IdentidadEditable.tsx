@@ -4,6 +4,9 @@ import { useCatalog, useUpdateSheet } from "./hooks";
 import type { CharacterRow } from "./api";
 import { resumenDeAjustes } from "./formula";
 import { opcionesDeClase, opcionesDeRaza, opcionesDeSubraza } from "./opcionesDeCatalogo";
+import { AsignarCaracteristicas } from "./AsignarCaracteristicas";
+import { useCampaign } from "../campaigns/hooks";
+import { reglasCompletas } from "../campaigns/reglas";
 import {
   explicacionSubclase,
   NOMBRE_CARACTERISTICA,
@@ -47,10 +50,13 @@ export function FichaEditable({
 }) {
   const actualizar = useUpdateSheet(campaignId, characterId);
   const { data: catalogo } = useCatalog();
+  // Reglas de la mesa (Task 6, D-CF-53) — el catálogo se filtra por lo que el DM permitió.
+  const { data: campaign } = useCampaign(campaignId);
+  const { permitidos } = reglasCompletas(campaign?.tableRules);
 
-  const razas = opcionesDeRaza(catalogo);
+  const razas = opcionesDeRaza(catalogo, permitidos.razas);
   const subrazas = opcionesDeSubraza(catalogo, character.raceKey);
-  const clases = opcionesDeClase(catalogo);
+  const clases = opcionesDeClase(catalogo, permitidos.clases);
 
   // Encargo A8 (2026-09-07) — el camino (subclase) de la clase actual, y a qué nivel se elige.
   // **Ninguna subclase se elige antes de `chosenAtLevel`**, así que el selector ni se pinta hasta
@@ -60,7 +66,12 @@ export function FichaEditable({
   const subclases = claseActual?.subclasses ?? [];
   const chosenAtLevel =
     subclases.length > 0 ? Math.min(...subclases.map((s) => s.chosenAtLevel)) : undefined;
-  const caminosDeLaClase = subclases.map((s) => ({
+  // La lista vacía deja todo, misma semántica que `opcionesDeRaza`/`opcionesDeClase`.
+  const caminosPermitidos =
+    permitidos.subclases.length === 0
+      ? subclases
+      : subclases.filter((s) => permitidos.subclases.includes(s.key));
+  const caminosDeLaClase = caminosPermitidos.map((s) => ({
     valor: s.key,
     texto: s.name,
     explicacion: explicacionSubclase(s.key),
@@ -195,6 +206,7 @@ export function Caracteristicas({
   character,
   sheet,
   puedeEditar,
+  esDM = false,
 }: {
   campaignId: string;
   characterId: string;
@@ -202,9 +214,21 @@ export function Caracteristicas({
   /** `null` mientras la hoja no se puede derivar: falta raza, clase o alguna característica. */
   sheet: CalculatedSheet | null;
   puedeEditar: boolean;
+  /**
+   * Reglas de la mesa (Task 6, D-CF-53). **Solo el DM conserva la llave tras elegir con dados**
+   * (E-RM-13): con una regla distinta de `LIBRE`, el jugador ve las casillas bloqueadas y el
+   * bloque de abajo para fijarlas; el DM sigue editando las seis directamente, como siempre.
+   * `false` por defecto: quien no sabe el rol de quien mira se queda con el trato de jugador,
+   * que es el más restrictivo.
+   */
+  esDM?: boolean;
 }) {
   const actualizar = useUpdateSheet(campaignId, characterId);
   const motivo = "Solo el dueño del personaje o el DM pueden editarlo.";
+  const { data: campaign } = useCampaign(campaignId);
+  const regla = reglasCompletas(campaign?.tableRules).abilities;
+  const fijaLaMesa = regla.metodo !== "LIBRE" && !esDM;
+  const motivoBloqueo = "Las características las fija la regla de la mesa";
 
   return (
     <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
@@ -240,8 +264,8 @@ export function Caracteristicas({
               min={1}
               max={30}
               ancho="w-12"
-              disabled={!puedeEditar}
-              motivoDeshabilitado={motivo}
+              disabled={!puedeEditar || fijaLaMesa}
+              motivoDeshabilitado={fijaLaMesa ? motivoBloqueo : motivo}
               onGuardar={async (n) => actualizar.mutateAsync({ abilities: { [ability]: n } })}
             />
             {/* Cuando la raza sube la puntuación, la casilla enseñaría un 14 con un +3 al
@@ -255,6 +279,16 @@ export function Caracteristicas({
           </div>
         );
       })}
+      {fijaLaMesa && (
+        <div className="col-span-full">
+          <AsignarCaracteristicas
+            campaignId={campaignId}
+            characterId={characterId}
+            regla={regla}
+            puedeEditar={puedeEditar}
+          />
+        </div>
+      )}
     </div>
   );
 }

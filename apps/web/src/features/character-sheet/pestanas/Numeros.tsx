@@ -22,6 +22,7 @@ export function Numeros({
   data,
   puedeEditar,
   disposicion,
+  esDM,
 }: PropsDePestana) {
   const { sheet, character } = data;
   const columnas = disposicion === "pagina" ? "lg:grid-cols-3" : "";
@@ -48,6 +49,7 @@ export function Numeros({
           character={character}
           sheet={sheet}
           puedeEditar={puedeEditar}
+          esDM={esDM}
         />
       </TarjetaDeHoja>
 

@@ -281,7 +281,8 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // Tarea 24 (2026-09-11): raza y clase salen del mismo catálogo que la hoja, no de texto libre.
   await page.getByLabel("Raza", { exact: true }).selectOption({ label: "Tiefling" });
   await page.getByLabel("Clase", { exact: true }).selectOption({ label: "Brujo" });
-  await page.getByLabel("Nivel").fill("3");
+  // D-CF-65: el diálogo de creación ya no pide el nivel — lo fija la mesa, y nace a 1 (la regla
+  // por defecto de una campaña sin «Reglas de la mesa» propias).
   await page.getByLabel("Biografía").fill("Pactó con un demonio para salvar a su aldea");
   await page.getByRole("radio", { name: /Público/ }).check();
   await page.getByRole("button", { name: "Guardar" }).click();
@@ -289,7 +290,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeHidden();
   const characterRow = page.getByRole("link", { name: /Kaelith/ });
   await expect(characterRow).toBeVisible();
-  await expect(characterRow).toContainText("Nivel 3");
+  await expect(characterRow).toContainText("Nivel 1");
 
   // Abrir el personaje en modo edición y comprobar que raza, clase y biografía —
   // los campos que la interfaz de solo lectura ni siquiera mostraba — precargan de verdad.
@@ -302,7 +303,7 @@ test("crear una sesion y un personaje desde sus pestañas, con su visibilidad", 
   // campos en el sitio traen lo guardado: nivel, la historia, y —desde la tarea 24— raza y clase,
   // que el diálogo de creación manda como claves del catálogo (`PATCH .../sheet`) y esta misma
   // hoja las enseña ya elegidas.
-  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("3");
+  await expect(page.getByLabel("Nivel", { exact: true })).toHaveValue("1");
   await expect(page.getByLabel("Raza", { exact: true })).toHaveValue("tiefling");
   await expect(page.getByLabel("Clase", { exact: true })).toHaveValue("warlock");
   await expect(page.getByText("Pactó con un demonio para salvar a su aldea")).toBeVisible();

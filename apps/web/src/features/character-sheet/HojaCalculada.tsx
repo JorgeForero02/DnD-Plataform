@@ -46,11 +46,14 @@ export function HojaCalculada({
   characterId,
   puedeEditar,
   disposicion,
+  esDM = false,
 }: {
   campaignId: string;
   characterId: string;
   puedeEditar: boolean;
   disposicion: Disposicion;
+  /** Reglas de la mesa (Task 6, D-CF-53) — ver `PropsDePestana.esDM`. */
+  esDM?: boolean;
 }) {
   const { data, isLoading, isError } = useCharacterSheet(campaignId, characterId);
   // En la página la pestaña vive en la URL (enlazable, sin estado escondido); en la mesa es
@@ -110,6 +113,7 @@ export function HojaCalculada({
             character={character}
             sheet={null}
             puedeEditar={puedeEditar}
+            esDM={esDM}
           />
         </TarjetaDeHoja>
         <EmptyState key="aviso" title="La hoja de 5.ª edición está a medias">
@@ -125,6 +129,7 @@ export function HojaCalculada({
     data: { ...data, sheet },
     puedeEditar,
     disposicion,
+    esDM,
   };
   // `Conjuros` solo para quien lanza (`lanzaConjuros`): un guerrero sin trucos no tiene nada aquí.
   const items = PESTANAS_DE_LA_HOJA.filter((p) => p.id !== "conjuros" || lanzaConjuros(sheet)).map(

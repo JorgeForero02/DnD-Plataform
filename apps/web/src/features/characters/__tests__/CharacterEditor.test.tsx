@@ -7,6 +7,7 @@ import type { Character } from "../api";
 import { useCharacters } from "../hooks";
 import * as characterSheetApi from "../../character-sheet/api";
 import { sheetKey } from "../../character-sheet/hooks";
+import * as campaignsApi from "../../campaigns/api";
 
 // H6: este diálogo ya solo crea. Las pruebas de edición y de borrado que vivían aquí se han ido
 // con el modo que probaban — lo que hacían ahora lo hace la página del personaje, que edita en el
@@ -58,20 +59,52 @@ describe("CharacterEditor (crear)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(catalogo);
+    // Reglas de la mesa (Task 6, D-CF-53) — una campaña sin reglas propias: los defaults de
+    // `reglasCompletas` (LIBRE, nivel 1, sin catálogo acotado).
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Campaña de prueba",
+      description: null,
+      ownerId: "u1",
+      createdAt: "x",
+    });
   });
 
-  it("sends level as a number, not a string (the schema 400s on a string)", async () => {
+  // D-CF-65: el diálogo de creación ya no pide el nivel — lo fija la mesa (`nivelInicial`), y el
+  // servidor lo ignora aunque se mande (E-RM-1).
+  it("no manda level: lo fija la mesa, y lo dice en pantalla", async () => {
     const spy = vi.spyOn(charactersApi, "createCharacter").mockResolvedValue(created);
     renderEditor();
 
+    expect(await screen.findByText("Nivel 1 — lo fija la mesa")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nivel")).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Tordek" } });
-    fireEvent.change(screen.getByLabelText("Nivel"), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
     const [, input] = spy.mock.calls[0];
-    expect(input.level).toBe(5);
-    expect(typeof input.level).toBe("number");
+    expect(input).not.toHaveProperty("level");
+  });
+
+  it("con nivelInicial 3, el diálogo dice «Nivel 3 — lo fija la mesa»", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Campaña de prueba",
+      description: null,
+      ownerId: "u1",
+      createdAt: "x",
+      tableRules: {
+        abilities: { metodo: "LIBRE" },
+        nivelInicial: 3,
+        pgNivelesSiguientes: "MEDIA",
+        permitidos: { razas: [], clases: [], subclases: [] },
+        oroInicial: { modo: "EQUIPO" },
+      },
+    });
+    renderEditor();
+
+    expect(await screen.findByText("Nivel 3 — lo fija la mesa")).toBeInTheDocument();
   });
 
   it("elige la visibilidad por su frase, nunca por el valor del enum", async () => {
@@ -114,6 +147,28 @@ describe("CharacterEditor (crear)", () => {
     expect(screen.getByRole("option", { name: "Guerrero" })).toBeInTheDocument();
     // Ninguna clave cruda del catálogo puede leerse en pantalla.
     expect(screen.queryByText(/dwarf|fighter|wizard/)).not.toBeInTheDocument();
+  });
+
+  // Reglas de la mesa (Task 6) — `permitidos` acota el catálogo, misma semántica que la hoja.
+  it("con permitidos.razas fijado, solo ofrece esas razas", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
+      id: "c1",
+      name: "Campaña de prueba",
+      description: null,
+      ownerId: "u1",
+      createdAt: "x",
+      tableRules: {
+        abilities: { metodo: "LIBRE" },
+        nivelInicial: 1,
+        pgNivelesSiguientes: "MEDIA",
+        permitidos: { razas: ["dwarf"], clases: [], subclases: [] },
+        oroInicial: { modo: "EQUIPO" },
+      },
+    });
+    renderEditor();
+
+    expect(await screen.findByRole("option", { name: "Enano" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Elfo" })).not.toBeInTheDocument();
   });
 
   it("al elegir raza y clase, crea el personaje y luego manda las claves a la hoja (no race/class)", async () => {

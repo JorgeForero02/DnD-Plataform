@@ -53,9 +53,9 @@ resume los nueve tipos de efecto y los tacha enteros); HP-9b sigue en
 modulares antes del paso 3** — **pulido** ([spec](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md):
 24 puntos por causa, con tarea 0 de investigación de UI de juegos) → **reglas de la mesa**
 ([spec](./superpowers/specs/2026-09-12-reglas-de-la-mesa-design.md): características, nivel, PG,
-permitidos y oro iniciales, a mano o con los dados que el DM diga) → **puerta de efectos** → **mapa de
-historia del DM** ([spec](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md), sustituye
-al tablero telaraña) → paso 3. Cada spec tiene su plan con `writing-plans` cuando el autor la apruebe. **Aparte y sin
+permitidos y oro iniciales, a mano o con los dados que el DM diga) → **puerta de efectos** → paso 3. **El mundo como árbol +
+detalle (T14 bis, D-CF-64) sustituyó al tablero telaraña; el mapa de historia queda aplazado por el
+autor** (su [spec](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md) se queda tal cual). Cada spec tiene su plan con `writing-plans` cuando el autor la apruebe. **Aparte y sin
 orden fijo:** [Owlbear como tablero](./superpowers/specs/2026-09-12-owlbear-como-tablero-design.md)
 (D-CF-56), que empieza con un spike del autor en su sala real.
 El orden previo, que ya no manda, sigue debajo:

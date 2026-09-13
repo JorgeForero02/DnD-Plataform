@@ -131,6 +131,22 @@ scroll propio siempre, así que por debajo de `lg` las mitades no se apilaban co
 se queda tal cual y su comentario dice qué prueba y qué no (la rejilla exterior del taller a 390
 sigue en D-CF-26). Revertir: quitar el prefijo `lg:` de esas clases.
 
+**Ronda 1 de revisión (2026-09-13).** Cinco importantes: (1) un par con dos rótulos de jerarquía
+daba dos nodos con el mismo id bajo el mismo padre —ahora cuelga una vez, por el primero de
+`ROTULOS_DE_JERARQUIA`—; (2) una raíz cuyas fichas cuelgan todas de otra decía «Ninguna todavía»:
+ahora «Todas cuelgan de otra ficha.», y la nota es `role="none"`; (3) de Aldea → Bosque ↔ Ciudad se
+levantaba Aldea como raíz fantasma —se levanta una ficha DEL ciclo (la primera por nombre de las
+que están en él), nunca una que cuelgue de él—; (4) **«custodia» sale de la jerarquía** (decisión
+del orquestador: el árbol enseña contención; custodiar es lateral) — la frase «los seis, ninguno
+se descartó» de arriba fue cierta hasta esta ronda; (5) `como-seguir.md` seguía poniendo el mapa
+de historia como sustituto del tablero. Menores: `aria-selected` en las raíces, «Guardar el rótulo»
+sin cambio no manda nada, una línea gris explica por qué los hilos que entran no tienen lápiz, el
+comentario de `wikilinks.test.ts` ya no cita `posiciones.ts`, y si el `DELETE` falla tras el
+`POST` el aviso dice que el nuevo existe y el viejo se quita a mano. Aplazado al ledger: solape
+del anillo con 9+ vecinos, «Leer más» cuando el cuerpo cabe, el chip por encima del buscador,
+rótulo libre >80 en cliente, invalidación de la otra ficha al quitar, raíces vacías plegadas, el
+editor bajo el pliegue a 1280×800.
+
 ---
 
 ## Tarea 12 del pulido: salir de la mesa vuelve a la campaña (2026-09-13, anexo #18)

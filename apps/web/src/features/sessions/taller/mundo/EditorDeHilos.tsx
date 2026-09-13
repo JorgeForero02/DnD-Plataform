@@ -260,12 +260,25 @@ export function EditorDeHilos({
     }
     setError(null);
     const label = rotulo?.trim() || undefined;
+    // Un rótulo sin cambiar no se manda: crear y quitar el mismo hilo no es «guardar».
+    if (modo.tipo === "cambiar" && label === (modo.vecino.label?.trim() || undefined)) {
+      cerrar();
+      return;
+    }
+    let creado = false;
     try {
       await crear.mutateAsync({ toId: destino.id, label });
+      creado = true;
       if (modo.tipo === "cambiar") await quitar.mutateAsync(modo.vecino.hiloId);
       cerrar();
     } catch (err) {
-      setError(mensajeDeError(err));
+      const mensaje = mensajeDeError(err);
+      // Crear salió bien y quitar no: hay dos hilos a la vista y el viejo hay que quitarlo a mano.
+      setError(
+        creado
+          ? `El hilo nuevo ya existe, pero el viejo no se pudo quitar (${mensaje}). Quítalo a mano desde la lista.`
+          : mensaje,
+      );
     }
   };
 
@@ -321,6 +334,12 @@ export function EditorDeHilos({
             </li>
           ))}
         </ul>
+      )}
+
+      {vecinos.some((v) => v.direccion === "entra") && (
+        <p className="font-chrome text-chrome-xs text-muted">
+          Los hilos que entran se cambian desde su ficha.
+        </p>
       )}
 
       {modo.tipo === "cerrado" ? (

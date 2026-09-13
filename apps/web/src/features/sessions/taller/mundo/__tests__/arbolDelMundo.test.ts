@@ -92,6 +92,41 @@ describe("arbolDelMundo", () => {
     expect(lugares.hijos[0].hijos[0].hijos[0].cicloCortado).toBe(true);
   });
 
+  it("un par con dos rótulos de jerarquía cuelga la hija UNA vez, por el primero de la lista", () => {
+    // Ronda 1: «vive en» + «se encuentra en» del mismo Corvin a la misma Torre daban dos nodos
+    // con el mismo id bajo la Torre — claves de React repetidas y foco rotatorio roto.
+    const a = arbolDelMundo(
+      [lugar, pnj],
+      [hilo("n1", "l1", "se encuentra en"), hilo("n1", "l1", "vive en")],
+    );
+    const bajoLaTorre = a.raices.find((r) => r.type === "LOCATION")!.hijos[0].hijos;
+    expect(bajoLaTorre.map((h) => [h.name, h.rotulo])).toEqual([["Corvin", "vive en"]]);
+    expect(bajoLaTorre[0].tambienEn).toEqual([]);
+  });
+
+  it("de un ciclo con una hija colgando se levanta UNA ficha del ciclo, y la hija no se duplica", () => {
+    // Ronda 1: Aldea forma parte de Bosque, Bosque y Ciudad forman parte una de otra. Ninguna es
+    // raíz. La primera versión levantaba a Aldea (la primera por nombre entre las no alcanzadas)
+    // y Aldea salía DOS veces: como raíz fantasma y bajo Bosque.
+    const aldea = ent("al", "Aldea", "LOCATION");
+    const bosque = ent("bo", "Bosque", "LOCATION");
+    const ciudad = ent("ci", "Ciudad", "LOCATION");
+    const a = arbolDelMundo(
+      [aldea, bosque, ciudad],
+      [
+        hilo("al", "bo", "forma parte de"),
+        hilo("bo", "ci", "forma parte de"),
+        hilo("ci", "bo", "forma parte de"),
+      ],
+    );
+    const lugares = a.raices.find((r) => r.type === "LOCATION")!;
+    expect(lugares.hijos.map((h) => h.name)).toEqual(["Bosque"]);
+    expect(lugares.hijos[0].hijos.map((h) => h.name)).toEqual(["Aldea", "Ciudad"]);
+    const ciudadBajoBosque = lugares.hijos[0].hijos[1];
+    expect(ciudadBajoBosque.hijos.map((h) => [h.name, h.cicloCortado])).toEqual([["Bosque", true]]);
+    expect(JSON.stringify(a).match(/"name":"Aldea"/g)).toHaveLength(1);
+  });
+
   it("sinHilos lista las fichas sin ningún hilo", () => {
     expect(
       arbolDelMundo([lugar, suelto], [hilo("n2x", "l1", "vive en")]).sinHilos.map((s) => s.name),

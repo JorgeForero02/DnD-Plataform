@@ -1,7 +1,12 @@
 import type { CampaignLinkRow, EntityType } from "@dnd/shared";
 import type { Entity } from "../../../entities/api";
 import { ROTULO_PLURAL } from "../../../entities/resumen";
-import { esRotuloDeJerarquia, lecturaEntrante, lecturaSaliente } from "../../../links/relaciones";
+import {
+  ROTULOS_DE_JERARQUIA,
+  esRotuloDeJerarquia,
+  lecturaEntrante,
+  lecturaSaliente,
+} from "../../../links/relaciones";
 
 // **El mundo como árbol, y por qué un árbol y no una telaraña** (Task 14 bis, D-CF-64).
 //
@@ -19,10 +24,15 @@ import { esRotuloDeJerarquia, lecturaEntrante, lecturaSaliente } from "../../../
 //    «Corvin vive en la Torre Gris» pone a Corvin debajo de la Torre.
 //  · **Dos padres no pierden a la hija.** Corvin «vive en» la Torre y «pertenece a» el Gremio:
 //    aparece bajo los dos, y cada aparición dice «también en …» con los otros padres.
+//  · **Un par, un nodo.** Si Corvin «vive en» la Torre y además «se encuentra en» la Torre, cuelga
+//    UNA vez, por el primer rótulo en el orden de `ROTULOS_DE_JERARQUIA` (ronda 1: dos nodos con
+//    el mismo id bajo el mismo padre rompían las claves de React y el foco rotatorio).
 //  · **Un ciclo termina.** A «forma parte de» B y B «forma parte de» A no tiene raíz: una de las
 //    dos se levanta como raíz de su tipo, y donde el camino vuelve a pasar por una ficha que ya
 //    está en él se corta y se marca (`cicloCortado`). Visitados **por camino**, no globales: un
-//    rombo (dos caminos distintos a la misma ficha) no es un ciclo.
+//    rombo (dos caminos distintos a la misma ficha) no es un ciclo. **Lo que se levanta es una
+//    ficha DEL ciclo, no una que cuelgue de él** (ronda 1: Aldea → Bosque ↔ Ciudad levantaba a
+//    Aldea, que salía dos veces — raíz fantasma y bajo Bosque).
 //  · **Un hilo con un extremo que no llegó** (el servidor filtró esa ficha por `canView`) no
 //    cuelga nada. No se inventa un padre invisible.
 //
@@ -89,14 +99,25 @@ export function arbolDelMundo(entidades: Entity[], hilos: CampaignLinkRow[]): Ar
   const padresDe = new Map<string, Padre[]>();
   const hijosDe = new Map<string, { hijoId: string; rotulo: string }[]>();
   const tocadas = new Set<string>();
+  // Un par (hija, padre) cuelga por UN rótulo: el primero de `ROTULOS_DE_JERARQUIA`. Determinista,
+  // no «el primer hilo que llegó».
+  const rotuloDelPar = new Map<string, string>();
+  const prioridad = (rotulo: string) => ROTULOS_DE_JERARQUIA.indexOf(rotulo.toLowerCase());
   for (const h of hilos) {
     tocadas.add(h.fromId);
     tocadas.add(h.toId);
     if (!esRotuloDeJerarquia(h.label)) continue;
     if (h.fromId === h.toId || !porId.has(h.fromId) || !porId.has(h.toId)) continue;
     const rotulo = (h.label as string).trim();
-    padresDe.set(h.fromId, [...(padresDe.get(h.fromId) ?? []), { padreId: h.toId, rotulo }]);
-    hijosDe.set(h.toId, [...(hijosDe.get(h.toId) ?? []), { hijoId: h.fromId, rotulo }]);
+    const par = `${h.fromId}|${h.toId}`;
+    const previo = rotuloDelPar.get(par);
+    if (previo === undefined || prioridad(rotulo) < prioridad(previo))
+      rotuloDelPar.set(par, rotulo);
+  }
+  for (const [par, rotulo] of rotuloDelPar) {
+    const [hijoId, padreId] = par.split("|");
+    padresDe.set(hijoId, [...(padresDe.get(hijoId) ?? []), { padreId, rotulo }]);
+    hijosDe.set(padreId, [...(hijosDe.get(padreId) ?? []), { hijoId, rotulo }]);
   }
 
   const alcanzadas = new Set<string>();
@@ -139,9 +160,20 @@ export function arbolDelMundo(entidades: Entity[], hilos: CampaignLinkRow[]): Ar
     totales.set(ficha.type, (totales.get(ficha.type) ?? 0) + 1);
     if ((padresDe.get(ficha.id) ?? []).length === 0) colgar(ficha);
   }
-  // Las que tienen padre pero ningún camino llega a ellas —un ciclo sin raíz— se levantan como
-  // raíz de su tipo. Sin esto, A parte de B parte de A desaparecería del mundo.
-  for (const ficha of ordenadas) if (!alcanzadas.has(ficha.id)) colgar(ficha);
+  // Las que tienen padre pero ningún camino llega a ellas —un ciclo sin raíz— no pueden
+  // desaparecer del mundo. Se levanta, de las no alcanzadas, la primera por nombre que NO tenga
+  // ningún padre sin alcanzar; y si no hay ninguna así (un ciclo puro), la primera por nombre de
+  // las que están DENTRO de un ciclo. Una que solo cuelgue del ciclo (Aldea → Bosque ↔ Ciudad)
+  // nunca se levanta: saldría dos veces. Se repite hasta alcanzarlas todas.
+  for (;;) {
+    const sinAlcanzar = ordenadas.filter((f) => !alcanzadas.has(f.id));
+    if (sinAlcanzar.length === 0) break;
+    const pendientes = new Set(sinAlcanzar.map((f) => f.id));
+    const sinPadrePendiente = sinAlcanzar.find(
+      (f) => !(padresDe.get(f.id) ?? []).some((p) => pendientes.has(p.padreId)),
+    );
+    colgar(sinPadrePendiente ?? sinAlcanzar.find((f) => enCiclo(f.id, padresDe)) ?? sinAlcanzar[0]);
+  }
 
   const raices: RaizDeTipo[] = ORDEN_DE_TIPO.map((type) => ({
     type,
@@ -155,6 +187,20 @@ export function arbolDelMundo(entidades: Entity[], hilos: CampaignLinkRow[]): Ar
     .map((e) => ({ id: e.id, name: e.name, type: e.type }));
 
   return { raices, sinHilos };
+}
+
+/** Si desde la ficha se vuelve a ella subiendo por sus padres: está dentro de un ciclo. */
+function enCiclo(id: string, padresDe: Map<string, Padre[]>): boolean {
+  const vistos = new Set<string>();
+  const pila = (padresDe.get(id) ?? []).map((p) => p.padreId);
+  while (pila.length > 0) {
+    const actual = pila.pop() as string;
+    if (actual === id) return true;
+    if (vistos.has(actual)) continue;
+    vistos.add(actual);
+    for (const p of padresDe.get(actual) ?? []) pila.push(p.padreId);
+  }
+  return false;
 }
 
 export interface Vecino {

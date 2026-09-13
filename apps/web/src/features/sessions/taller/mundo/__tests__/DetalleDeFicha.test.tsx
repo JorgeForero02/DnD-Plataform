@@ -229,9 +229,49 @@ describe("DetalleDeFicha", () => {
     await waitFor(() => expect(llamadas).toEqual(["create n1 l1 vigila", "delete n1->l1"]));
   });
 
-  it("un hilo que entra no ofrece cambiar el rótulo: lo escribió la otra ficha", () => {
+  it("un hilo que entra no ofrece cambiar el rótulo: lo escribió la otra ficha, y se dice", () => {
     montar(torre, [hilo(corvin, torre, "vive en")]);
     expect(screen.queryByRole("button", { name: /Cambiar el rótulo/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Quitar el hilo con Corvin" })).toBeVisible();
+    expect(screen.getByText("Los hilos que entran se cambian desde su ficha.")).toBeVisible();
+  });
+
+  it("guardar el rótulo sin cambiarlo no manda nada", async () => {
+    const crear = vi.spyOn(linksApi, "createLink");
+    const borrar = vi.spyOn(linksApi, "deleteLink");
+    montar(corvin, [hilo(corvin, torre, "vive en")]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cambiar el rótulo del hilo con Torre Gris" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Guardar el rótulo" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Guardar el rótulo" })).toBeNull(),
+    );
+    expect(crear).not.toHaveBeenCalled();
+    expect(borrar).not.toHaveBeenCalled();
+  });
+
+  it("si el nuevo se crea y el viejo no se puede quitar, el aviso dice que hay dos y cuál quitar", async () => {
+    vi.spyOn(linksApi, "createLink").mockResolvedValue({
+      id: "nuevo",
+      fromId: "n1",
+      toId: "l1",
+      label: "vigila",
+    });
+    vi.spyOn(linksApi, "deleteLink").mockRejectedValue(new Error("Forbidden"));
+    montar(corvin, [hilo(corvin, torre, "vive en")]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cambiar el rótulo del hilo con Torre Gris" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Rótulo/ }));
+    fireEvent.change(screen.getByLabelText("Buscar o escribir un rótulo"), {
+      target: { value: "vigila" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Usar «vigila»" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar el rótulo" }));
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent("El hilo nuevo ya existe");
+    expect(aviso).toHaveTextContent("Forbidden");
+    expect(aviso).toHaveTextContent("Quítalo a mano");
   });
 });

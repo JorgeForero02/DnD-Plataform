@@ -514,9 +514,13 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 - **Un árbol enseña un padre; los demás hilos van en la ficha** (Task 14 bis, D-CF-64). El
   desglose del mundo cuelga cada ficha de la de destino de un hilo cuyo rótulo está en
   `ROTULOS_DE_JERARQUIA` (`apps/web/src/features/links/relaciones.ts`, la lista única: «vive en», «se encuentra en»,
-  «forma parte de», «ocurrió en», «pertenece a», «custodia»); todo lo demás —«es aliado de»,
-  «menciona», «protege a»— es lateral y se lee en el detalle de la ficha, no en el árbol. Dos
-  padres se enseñan en los dos, marcados «también en …»; un ciclo se corta y se marca. Un rótulo
+  «forma parte de», «ocurrió en», «pertenece a» — **contención**, nada más; «custodia» salió en la
+  ronda 1 porque custodiar es lateral); todo lo demás —«es aliado de», «custodia», «menciona»,
+  «protege a»— es lateral y se lee en el detalle de la ficha, no en el árbol. Dos padres se
+  enseñan en los dos, marcados «también en …»; un mismo par con dos rótulos de jerarquía cuelga
+  UNA vez, por el primero de la lista; un ciclo se corta y se marca, y de un ciclo sin raíz se
+  levanta una sola ficha —la primera por nombre de las que están en el ciclo—, nunca una que
+  cuelgue de él. Un rótulo
   de jerarquía tiene que existir como `desde` de `RELACIONES`: un padre que nadie puede elegir
   desde el selector sería un padre secreto. Y los desplegables de «hacia qué ficha» y «rótulo»
   son datos, no opciones con significado: por eso son listas con buscador y no radios.

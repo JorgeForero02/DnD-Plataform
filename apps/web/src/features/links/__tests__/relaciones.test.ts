@@ -86,6 +86,11 @@ describe("ROTULOS_DE_JERARQUIA", () => {
     expect(ROTULOS_DE_JERARQUIA.length).toBeGreaterThan(0);
   });
 
+  it("el árbol enseña contención: «custodia» es lateral y no cuelga nada (ronda 1, Task 14 bis)", () => {
+    expect(ROTULOS_DE_JERARQUIA).not.toContain("custodia");
+    expect(esRotuloDeJerarquia("custodia")).toBe(false);
+  });
+
   it("esRotuloDeJerarquia ignora mayúsculas y espacios, y lo lateral no cuenta", () => {
     expect(esRotuloDeJerarquia("  Vive En ")).toBe(true);
     expect(esRotuloDeJerarquia("es aliado de")).toBe(false);

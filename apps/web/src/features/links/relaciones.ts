@@ -89,11 +89,15 @@ export const RELACIONES: Relacion[] = [
  * mueve nada (regla de `docs/04-convenciones.md`: «un árbol enseña un padre; los demás hilos van
  * en la ficha»).
  *
- * Los seis son `desde` de `RELACIONES` —lo comprueba `relaciones.test.ts`— y no se inventa
+ * Los cinco son `desde` de `RELACIONES` —lo comprueba `relaciones.test.ts`— y no se inventa
  * ninguno: un rótulo que cuelga y que nadie puede escribir desde el selector sería un padre
- * secreto. «custodia» cuelga a quien custodia bajo lo custodiado, que es lo que dice el hilo
- * («Corvin custodia el Cofre» pone a Corvin bajo el Cofre); se lee al revés de los otros cinco
- * y se deja anotado aquí en vez de inventar una excepción de dirección.
+ * secreto. **El árbol enseña CONTENCIÓN** —vivir en, estar en, formar parte de, pertenecer a,
+ * ocurrir en—; «custodia» estuvo en la lista hasta la ronda 1 de la Task 14 bis y se quitó por
+ * decisión del orquestador: custodiar es una relación lateral (quien custodia no está DENTRO de
+ * lo custodiado), y colgaba al guardián bajo el cofre, al revés de los otros cinco.
+ *
+ * **El orden importa:** cuando un mismo par de fichas tiene dos hilos de jerarquía, el árbol
+ * cuelga la hija UNA vez, por el primero de esta lista (`arbolDelMundo.ts`).
  */
 export const ROTULOS_DE_JERARQUIA: readonly string[] = [
   "vive en",
@@ -101,7 +105,6 @@ export const ROTULOS_DE_JERARQUIA: readonly string[] = [
   "forma parte de",
   "ocurrió en",
   "pertenece a",
-  "custodia",
 ] as const;
 
 /** Si un rótulo, tal y como lo escribió el DM, cuelga la ficha de su padre. */

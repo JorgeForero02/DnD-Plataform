@@ -373,6 +373,7 @@ export function DesgloseDelMundo({
                 }}
                 role="treeitem"
                 aria-label={r.etiqueta}
+                aria-selected={false}
                 aria-expanded={fila.expandido}
                 aria-level={1}
                 tabIndex={focoEfectivo === r.type ? 0 : -1}
@@ -393,8 +394,18 @@ export function DesgloseDelMundo({
                 {fila.expandido && (
                   <ul role="group">
                     {r.hijos.length === 0 ? (
-                      <li className="px-s2 py-1 pl-s5 font-chrome text-chrome-xs text-muted">
-                        {soloSinHilos ? "Todas tienen algún hilo." : "Ninguna todavía."}
+                      // `role="none"`: es una nota, no un elemento del árbol; sin él un lector de
+                      // pantalla la contaría como hijo. Y no miente: con fichas del tipo que cuelgan
+                      // todas de otra ficha, «Ninguna todavía» era falso (ronda 1).
+                      <li
+                        role="none"
+                        className="px-s2 py-1 pl-s5 font-chrome text-chrome-xs text-muted"
+                      >
+                        {soloSinHilos
+                          ? "Todas tienen algún hilo."
+                          : r.total > 0
+                            ? "Todas cuelgan de otra ficha."
+                            : "Ninguna todavía."}
                       </li>
                     ) : (
                       r.hijos.map((h) => nodo(h, r.type, 1))

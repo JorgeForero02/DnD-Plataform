@@ -378,8 +378,10 @@ async function main() {
     suyos[ficha.nombre] = personaje;
     // La hoja se deriva del motor: raza, clase y las seis puntuaciones. Es idempotente por sí
     // misma —es un `PATCH` con los mismos valores—, así que no hace falta comprobar antes.
+    // Con el token de la DM: desde D-CF-66 el nivel solo lo fija el DM, ni siquiera el dueño vía
+    // PATCH de la hoja (`requireEditable` deja a la DM editar el resto de campos igual).
     await api("PATCH", `/campaigns/${C}/characters/${personaje.id}/sheet`, {
-      token: ficha.duena.token,
+      token: dm.token,
       body: {
         race: ficha.race,
         class: ficha.class,

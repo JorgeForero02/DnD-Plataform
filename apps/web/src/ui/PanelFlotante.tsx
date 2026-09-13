@@ -91,7 +91,9 @@ export function PanelFlotante({
     // `menuitem`) manda: robárselo para dárselo al propio contenedor es la regresión que
     // `e2e/teclado.spec.ts` cazó — Enter abría el menú, pero el foco real quedaba en el `div`
     // del portal, no en «Condición». Solo se enfoca el contenedor cuando el foco NO está ya
-    // dentro (el caso de `TirarAtaqueBoton`, que no mueve el foco por su cuenta).
+    // dentro (el caso de `TirarAtaqueBoton`, que no mueve el foco por su cuenta). Ver también
+    // el efecto de más abajo, keyed en `pos`: esto se repite ahí como red de seguridad —ver su
+    // comentario para el porqué.
     if (!caja.current?.contains(document.activeElement)) caja.current?.focus();
     const onScroll = () => colocar();
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
@@ -119,6 +121,26 @@ export function PanelFlotante({
     abiertoAntes.current = abierto;
   }, [abierto, disparador]);
 
+  // Regresión cazada por `e2e/teclado.spec.ts:226` y verificada sobre una foto del DOM: MIENTRAS
+  // `pos` es `null` (el primer render, antes de que `colocar` mida el disparador) el panel se
+  // pintaba con `visibility: hidden` — y un subárbol oculto así **no puede recibir el foco**:
+  // ni `MenuDeAcciones` enfocando su primer `menuitem`, ni el efecto de arriba enfocando el
+  // propio contenedor, conseguían nada en ese primer commit, y nadie reintentaba después de que
+  // `colocar` fijara `pos` y el panel se volviera visible — el foco se quedaba, en silencio, en
+  // el botón que abrió el menú. Por eso el render de abajo ya no usa `visibility: hidden` para
+  // el estado "todavía sin colocar" (usa `opacity`/`pointerEvents`, que sí permiten el foco), y
+  // este efecto es el reintento: en cuanto `pos` deja de ser `null`, si nadie de dentro se ha
+  // quedado con el foco (sigue en el disparador, o en el `body` porque nada lo tomó), se lo
+  // damos al contenedor; si ya hay un hijo enfocado (el `menuitem` de `MenuDeAcciones`), no se
+  // toca — el hijo manda, igual que en el efecto de arriba.
+  useEffect(() => {
+    if (!abierto || !pos) return;
+    const activo = document.activeElement;
+    if (activo === disparador.current || activo === document.body) {
+      caja.current?.focus();
+    }
+  }, [abierto, pos, disparador]);
+
   if (!abierto) return null;
   // Con `sinRol`, el hijo ya trae su propia caja visual completa (borde, fondo, sombra —
   // `MenuDeAcciones`: el `ul[role="menu"]` no cambia su aspecto al migrar) y este `div` es solo
@@ -139,10 +161,16 @@ export function PanelFlotante({
           (onEscape ?? onCerrar)();
         }
       }}
+      // Nunca `visibility: hidden` aquí: oculta así, esta caja (y todo lo que pinte dentro,
+      // como el primer `menuitem` de `MenuDeAcciones`) deja de poder recibir el foco por
+      // completo, y ese primer commit —antes de que `colocar` mida el disparador y fije
+      // `pos`— es exactamente cuando el consumidor intenta enfocar su primer hijo. `opacity: 0`
+      // + `pointerEvents: "none"` deja la caja invisible e inerte al ratón sin tocar su
+      // focusabilidad, así que ese primer intento de foco ya no cae en el vacío.
       style={
         pos
           ? { position: "fixed", top: pos.top, left: pos.left }
-          : { position: "fixed", top: 0, left: 0, visibility: "hidden" }
+          : { position: "fixed", top: 0, left: 0, opacity: 0, pointerEvents: "none" }
       }
       className={`z-50 ${ancho} ${claseVisual} ${className}`}
     >

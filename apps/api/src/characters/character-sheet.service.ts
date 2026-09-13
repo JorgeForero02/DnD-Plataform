@@ -13,8 +13,10 @@ import {
   CLAVE_ESTABLE,
   CLAVE_MUY_CARGADO,
   normalizeOverride,
+  ORDEN_DE_CARACTERISTICAS,
   overrideValueSchema,
   RANGO_DE_ANULACION,
+  tableRulesSchema,
 } from "@dnd/shared";
 import type {
   AbilityKey,
@@ -65,7 +67,7 @@ import {
   type CharacterSheet,
   deriveNpc,
 } from "../rules/catalog";
-import { rollExpression, type Roller } from "../dice/dice";
+import { rollExpression, type DiceRollResult, type Roller } from "../dice/dice";
 import { DICE_ROLLER, RollsService } from "../rolls/rolls.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -73,6 +75,14 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { StatblocksService } from "../statblocks/statblocks.service";
 import { CharactersService } from "./characters.service";
+import { AbilityRollsService } from "./ability-rolls.service";
+import {
+  comprobarPermitido,
+  desgloseDeTirada,
+  oroInicialDe,
+  pgDeLosNivelesSiguientes,
+  validarCaracteristicas,
+} from "../rules/table-rules";
 import { ResourcesService } from "../character-state/resources/resources.service";
 import {
   effectiveSpeed,
@@ -318,6 +328,12 @@ export class CharacterSheetService {
     private readonly events: GameEventsService,
     private readonly characters: CharactersService,
     private readonly rolls: RollsService,
+    /**
+     * Reglas de la mesa (Tarea 4): para comprobar un `attemptId` de DADOS. No hay ciclo de
+     * inyección — `AbilityRollsService` depende de `CharactersService`, no de este servicio,
+     * y los dos viven en el mismo módulo (`characters.module.ts` la exporta).
+     */
+    private readonly abilityRolls: AbilityRollsService,
     // Mismo patrón que `RollsService`: inyectable solo en pruebas, `undefined` en producción.
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
     /**
@@ -839,9 +855,56 @@ export class CharacterSheetService {
     await this.membership.requireMember(campaignId, userId);
     const character = await this.characters.requireEditable(userId, campaignId, characterId);
 
+    // Reglas de la mesa (D-CF-53): lo que el DM decidió antes de que nadie hiciera su hoja.
+    // `{}` por defecto — una campaña que nunca tocó esta columna no cambia de comportamiento.
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { tableRules: true },
+    });
+    const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
+
     const data: Record<string, unknown> = {};
+    // El intento de dados que hay que marcar `chosen: true` si la escritura llega a completarse
+    // — se fija DENTRO de la misma transacción que el resto, para que un personaje no pueda
+    // acabar con las características guardadas y el intento sin marcar (o al revés).
+    let intentoAFijar: string | null = null;
     if (input.abilities) {
-      for (const clave of ["str", "dex", "con", "int", "wis", "cha"] as const) {
+      const seisEnviadas = ORDEN_DE_CARACTERISTICAS.filter(
+        (k) => input.abilities![k] !== undefined,
+      );
+      if (regla.abilities.metodo !== "LIBRE") {
+        // Con dados y un intento ya elegido, las seis están fijadas: solo `overrides` del DM las
+        // mueve a partir de ahí (la puerta que ya existe en `setOverride`).
+        if (regla.abilities.metodo === "DADOS" && !input.attemptId) {
+          const elegido = await this.prisma.abilityRollAttempt.findFirst({
+            where: { characterId, chosen: true },
+          });
+          if (elegido) {
+            throw new BadRequestException(
+              "Las características se fijaron con dados; el DM puede anularlas desde la hoja.",
+            );
+          }
+        }
+        if (seisEnviadas.length !== 6) {
+          throw new BadRequestException(
+            "Con esta regla las seis características se fijan juntas: manda las seis a la vez.",
+          );
+        }
+        const seis = Object.fromEntries(
+          ORDEN_DE_CARACTERISTICAS.map((k) => [k, input.abilities![k]!]),
+        ) as Record<AbilityKey, number>;
+        const intento = input.attemptId
+          ? await this.abilityRolls.requireAttempt(characterId, input.attemptId)
+          : undefined;
+        if (intento?.chosen) throw new BadRequestException("Ese intento ya se eligió.");
+        validarCaracteristicas(
+          regla.abilities,
+          seis,
+          intento ? { values: intento.values as number[] } : undefined,
+        );
+        if (intento) intentoAFijar = intento.id;
+      }
+      for (const clave of ORDEN_DE_CARACTERISTICAS) {
         const valor = input.abilities[clave];
         if (valor !== undefined) data[clave] = valor;
       }
@@ -850,7 +913,8 @@ export class CharacterSheetService {
     try {
       if (input.race !== undefined) {
         const raceKey = claveSrd(input.race);
-        findRace(input.race);
+        const raza = findRace(input.race);
+        comprobarPermitido(regla.permitidos.razas, raceKey, raza.name, "raza");
         data.raceKey = raceKey;
       }
       if (input.subrace !== undefined) {
@@ -867,7 +931,8 @@ export class CharacterSheetService {
       }
       if (input.class !== undefined) {
         const classKey = claveSrd(input.class);
-        findClass(input.class);
+        const clase = findClass(input.class);
+        comprobarPermitido(regla.permitidos.clases, classKey, clase.name, "clase");
         data.classKey = classKey;
         // **Cambiar de clase borra la subclase**, con el mismo motivo que cambiar de raza borra
         // la subraza: un bárbaro que pasa a ser guerrero no puede seguir teniendo "berserker"
@@ -884,8 +949,10 @@ export class CharacterSheetService {
           if (!classKeyEfectiva)
             throw new BadRequestException("No se puede fijar una subclase sin clase.");
           const clase = findClass({ source: "SRD", key: classKeyEfectiva });
-          if (!clase.subclasses.some((s) => s.key === subclassKey))
+          const subclase = clase.subclasses.find((s) => s.key === subclassKey);
+          if (!subclase)
             throw new BadRequestException("Esa subclase no pertenece a la clase del personaje.");
+          comprobarPermitido(regla.permitidos.subclases, subclassKey, subclase.name, "subclase");
           data.subclassKey = subclassKey;
         }
       }
@@ -943,13 +1010,98 @@ export class CharacterSheetService {
       }
     }
 
-    const actualizado = await this.prisma.character.update({
-      where: { id: characterId },
-      data,
+    // Reglas de la mesa (E-RM-2): la primera vez que el personaje tiene clase se resuelven los PG
+    // de los niveles 2..N y el oro inicial, una sola vez. Un cambio de clase posterior no los
+    // toca — es la lectura literal de `character.classKey === null`: solo pasa por aquí quien
+    // hasta este momento NO tenía clase.
+    const sucesosDeNacimiento: Array<Parameters<GameEventsService["record"]>[2]> = [];
+    if (character.classKey === null && typeof data.classKey === "string") {
+      const clase = findClass({ source: "SRD", key: data.classKey });
+      const nivel = (data.level as number | undefined) ?? character.level;
+      const pg = pgDeLosNivelesSiguientes(
+        clase.hitDie,
+        nivel,
+        regla.pgNivelesSiguientes,
+        this.roller,
+      );
+      if (pg) {
+        data.hitPointsPerLevel = pg.valores;
+        sucesosDeNacimiento.push(
+          ...pg.tiradas.map((t) =>
+            this.sucesoDeTirada(characterId, character.visibility, t, "Puntos de golpe al nacer"),
+          ),
+        );
+      }
+      const oro = oroInicialDe(regla.oroInicial, clase, this.roller);
+      if (oro) {
+        data.gp = { increment: oro.gp };
+        if (oro.tirada) {
+          sucesosDeNacimiento.push(
+            this.sucesoDeTirada(characterId, character.visibility, oro.tirada, "Oro inicial"),
+          );
+        }
+        sucesosDeNacimiento.push({
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: character.visibility,
+          payload: {
+            type: "MONEY_CHANGED",
+            gp: oro.gp,
+            reason:
+              regla.oroInicial.modo === "ORO_TABLA"
+                ? "Oro inicial (tabla del SRD)"
+                : "Oro inicial (fijado por el DM)",
+          },
+        });
+      }
+    }
+
+    // **La escritura entera va en una transacción**: la ficha, el intento de dados que se marca
+    // `chosen` y los sucesos de nacimiento son un solo gesto de mesa — a medias sería un personaje
+    // con las características guardadas y el intento libre para volver a tirarse, o con oro sin
+    // su línea en el registro.
+    const actualizado = await this.prisma.transaction(async (tx) => {
+      const fila = await tx.character.update({ where: { id: characterId }, data });
+      if (intentoAFijar) {
+        await tx.abilityRollAttempt.update({
+          where: { id: intentoAFijar },
+          data: { chosen: true },
+        });
+      }
+      for (const suceso of sucesosDeNacimiento) {
+        await this.events.record(userId, campaignId, suceso, tx);
+      }
+      return fila;
     });
     const respuesta = await this.buildResponse(userId, actualizado);
     await this.sembrarRecursos(characterId, respuesta.sheet, actualizado.level);
     return respuesta;
+  }
+
+  /**
+   * El mismo desglose que ya escribe `AbilityRollsService.roll`, envuelto en un `GameEvent` de
+   * tipo `ABILITY_ROLL` con `reason` propio. Se usa aquí para los PG y el oro que nacen con la
+   * clase — dos hechos de mesa más, con la misma visibilidad que ya tiene el personaje (no la
+   * `OWNER_DM` fija de las seis características: nacer con 8 PG no es un secreto entre dados).
+   */
+  private sucesoDeTirada(
+    characterId: string,
+    visibility: Visibility,
+    resultado: DiceRollResult,
+    reason: string,
+  ): Parameters<GameEventsService["record"]>[2] {
+    return {
+      subjectType: "character",
+      subjectId: characterId,
+      visibility,
+      payload: {
+        type: "ABILITY_ROLL",
+        ...desgloseDeTirada(resultado),
+        natural: "NONE",
+        outcome: "NO_DC",
+        reason,
+      },
+    };
   }
 
   /**

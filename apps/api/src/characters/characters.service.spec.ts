@@ -17,6 +17,8 @@ describe("CharactersService", () => {
       delete: jest.fn(),
     },
     user: { findUnique: jest.fn() },
+    // Reglas de la mesa (D-CF-53): `create()` lee `tableRules` para fijar el nivel de nacimiento.
+    campaign: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
@@ -39,6 +41,9 @@ describe("CharactersService", () => {
     membership.getMembership.mockResolvedValue({ role: "DM" });
     // Crear pasa por `prisma.transaction` desde I8: el personaje y su inspiración nacen juntos.
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    // Por defecto, sin reglas de la mesa (LIBRE/nivelInicial 1) — el estado de toda campaña que
+    // no ha tocado esa columna.
+    prisma.campaign.findUnique.mockResolvedValue({ id: "c1", tableRules: {} });
   });
 
   function txMock(updateResult: unknown) {
@@ -56,6 +61,15 @@ describe("CharactersService", () => {
         visibility: "PLAYERS",
       }),
     });
+  });
+
+  it("create ignora el level del cuerpo y pone el nivelInicial de la mesa", async () => {
+    prisma.campaign.findUnique.mockResolvedValue({ id: "c1", tableRules: { nivelInicial: 5 } });
+    prisma.character.create.mockResolvedValue({ id: "ch1" });
+    await service.create("pl", "c1", { name: "X", level: 1, visibility: "PLAYERS" } as any);
+    expect(prisma.character.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ level: 5 }) }),
+    );
   });
 
   it("list() applies canView: player sees PLAYERS and own OWNER_DM, hides others' OWNER_DM and DM_ONLY", async () => {

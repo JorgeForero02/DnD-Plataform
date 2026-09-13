@@ -77,7 +77,13 @@ decidió el mismo día: **el nivel es del DM**, D-CF-66). **Después, «desborde
 `desbordes/antes-del-paso-3` sobre la anterior** ([07-historial.md](./07-historial.md), «Desbordes»):
 `ui/PanelFlotante` en portal para el panel de ataque y el menú del elenco, la traza de «Comp.»
 dentro de su casilla, y `desbordes.spec.ts` con captura por caso; recortada por el autor a «solo
-arreglo + reconocimiento visual» (D-CF-67). **Las dos se fusionaron a `main` el 2026-09-13 (`5bab60f` y `d83b9c8`, `--no-ff`) y se empujaron; el despliegue lo lanza Coolify desde `main` — comprobar en el servidor qué sirve `dnd.supportive.pro`.** **Lo siguiente es
+arreglo + reconocimiento visual» (D-CF-67). **Las dos se fusionaron a `main` el 2026-09-13 (`5bab60f` y `d83b9c8`, `--no-ff`) y se
+empujaron. `main` va por delante de producción: `dnd.supportive.pro` sigue sirviendo `6d2b2ca`
+(hoja a página) y el despliegue **lo lanza el autor a mano, más tarde**
+([03-despliegue.md](./03-despliegue.md), § *El despliegue es MANUAL*). Cuando lo lance: la API
+ejecuta `prisma migrate deploy` al arrancar (aplica `20260913100000_table_rules`, aditiva, sin
+datos que migrar); no hay variables de entorno nuevas; después, `docker ps` (API y web `healthy`) y
+`curl` en 200, y comprobar a mano las tres capturas de desbordes y «Reglas de la mesa» en Ajustes.** **Lo siguiente es
 la «puerta de efectos»**, bajo D-CF-65 tal cual, con su plan por `writing-plans` cuando el autor lo
 pida. El orden previo, que ya no manda, sigue debajo:
 

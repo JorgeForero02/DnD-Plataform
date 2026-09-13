@@ -143,7 +143,18 @@ puerta de efectos porque comparte `character-sheet.service`, la mesa, el hilo y 
 (`encounters.service`), y no toca el catálogo del paso 3. Se añade a la spec de puerta de efectos
 antes de escribir su plan.
 
-## Dejado por «reglas de la mesa» (2026-09-13) — cerrada en rama, sin fusionar
+## Desplegar `main` (`84ed965`): reglas de la mesa + desbordes — lo hace el autor, a mano
+
+**Abierta, del autor.** `main` lleva dos tandas fusionadas el 2026-09-13 que producción (`6d2b2ca`) no
+tiene. Qué trae el despliegue: **una migración aditiva** (`20260913100000_table_rules`: tres columnas/
+tabla nuevas con defaults; la API la aplica sola al arrancar con `prisma migrate deploy`), **ninguna
+variable de entorno nueva**, y ningún cambio de topología (`TRUST_PROXY` sigue en 2). Comprobar
+después: `docker ps` con API y web `healthy`, `curl` 200, el bloque «Reglas de la mesa» en Ajustes de
+una campaña, y el panel de ataque entero sobre un PNJ con encuentro activo (el caso que abrió la
+tanda de desbordes). Cierra cuando `docs/00-INDEX.md` y esta ficha digan el commit que sirve el
+servidor, medido allí y no de memoria.
+
+## Dejado por «reglas de la mesa» (2026-09-13) — fusionada a `main` el mismo día, sin desplegar
 
 Rama `reglas-de-la-mesa/antes-del-paso-3`; revisión Opus de la rama entera en
 `.superpowers/sdd/2026-09-13-reglas-de-la-mesa/final-review.md` (0 críticos, 4 importantes —los

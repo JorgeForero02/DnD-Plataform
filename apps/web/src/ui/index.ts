@@ -9,6 +9,8 @@ export { Dialog } from "./Dialog";
 export type { DialogProps } from "./Dialog";
 export { MenuDeAcciones } from "./MenuDeAcciones";
 export type { AccionDeMenu } from "./MenuDeAcciones";
+export { PanelFlotante } from "./PanelFlotante";
+export type { PanelFlotanteProps } from "./PanelFlotante";
 export { Tabs } from "./Tabs";
 export type { TabItem, TabsProps } from "./Tabs";
 export { ThemeToggle } from "./ThemeToggle";

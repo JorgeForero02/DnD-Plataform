@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   loVeLaMesa,
   type AttackVerdict,
@@ -15,6 +15,7 @@ import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
 import { TiradaACiegas } from "../rolls/TiradaACiegas";
 import { Button } from "../../ui/Button";
+import { PanelFlotante } from "../../ui/PanelFlotante";
 import { PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 import { NOMBRE_VEREDICTO } from "./vocabulario";
 import { NOMBRE_BANDO } from "../../dominio/combate";
@@ -122,24 +123,19 @@ export function TirarAtaqueBoton({
   /** Lo que de verdad se enseña: el veredicto del servidor si lo hay, la cuenta local si no. */
   const criticoMostrado = veredicto ? veredicto === "CRITICAL" : criticoDeLaTirada;
   const dado = useRef<HTMLButtonElement>(null);
-  const caja = useRef<HTMLDivElement>(null);
   const grupoMano = useId();
   const idBase = useId();
   const idCargando = `${idBase}-cargando`;
   const idEnviando = `${idBase}-enviando`;
   const [gastarInspiracion, setGastarInspiracion] = useState(false);
 
-  useEffect(() => {
-    if (abierto) caja.current?.focus();
-  }, [abierto]);
-
   const cerrar = () => {
     setAbierto(false);
     // Menor, ronda de arreglo 1: sin esto, la lista de objetivos quedaba abierta en el estado y
     // reaparecía ya desplegada —con su `aria-expanded` heredado— la próxima vez que se abriera
-    // el panel, aunque nadie hubiera vuelto a pulsar «Atacar».
+    // el panel, aunque nadie hubiera vuelto a pulsar «Atacar». El foco al disparador ya lo
+    // devuelve `PanelFlotante` al cerrarse.
     setObjetivoAbierto(false);
-    dado.current?.focus();
   };
 
   const tirarAtaque = () =>
@@ -251,7 +247,7 @@ export function TirarAtaqueBoton({
     );
 
   return (
-    <span className="relative inline-flex shrink-0">
+    <span className="inline-flex shrink-0">
       <button
         ref={dado}
         type="button"
@@ -264,265 +260,251 @@ export function TirarAtaqueBoton({
         <DadoDibujado />
       </button>
 
-      {abierto && (
-        <div
-          ref={caja}
-          tabIndex={-1}
-          role="group"
-          aria-label={`Tirada de ${ataque.name}`}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.stopPropagation();
-              // Menor, ronda de arreglo 1: con la lista de objetivos abierta, Escape la cierra a
-              // ELLA — un cierre a la vez, como cualquier menú anidado — y solo cierra el panel
-              // entero en la segunda pulsación, cuando ya no hay nada más pequeño que cerrar.
-              if (objetivoAbierto) {
-                setObjetivoAbierto(false);
-              } else {
-                cerrar();
-              }
-            }
-          }}
-          className="absolute right-0 top-[calc(100%+0.25rem)] z-30 w-[21rem] max-w-[calc(100vw-2rem)] rounded-radius-md border border-accent bg-surface p-s3 text-left shadow-[0_18px_40px_-24px_var(--sheet-shadow)]"
-        >
-          <div className="mb-s2 flex items-baseline justify-between gap-s2">
-            <p className="font-chrome text-chrome-sm font-semibold text-text">{ataque.name}</p>
-            <Button type="button" variant="ghost" onClick={cerrar}>
-              Cerrar
-            </Button>
-          </div>
+      <PanelFlotante
+        abierto={abierto}
+        disparador={dado}
+        onCerrar={cerrar}
+        // Menor, ronda de arreglo 1: con la lista de objetivos abierta, Escape la cierra a ELLA
+        // — un cierre a la vez, como cualquier menú anidado — y solo cierra el panel entero en
+        // la segunda pulsación, cuando ya no hay nada más pequeño que cerrar.
+        onEscape={() => (objetivoAbierto ? setObjetivoAbierto(false) : cerrar())}
+        etiqueta={`Tirada de ${ataque.name}`}
+        ancho="w-[21rem] max-w-[calc(100vw-2rem)]"
+      >
+        <div className="mb-s2 flex items-baseline justify-between gap-s2">
+          <p className="font-chrome text-chrome-sm font-semibold text-text">{ataque.name}</p>
+          <Button type="button" variant="ghost" onClick={cerrar}>
+            Cerrar
+          </Button>
+        </div>
 
-          <section aria-label={`Ataque con ${ataque.name}`} className="mb-s3">
-            <p className={`mb-1 ${ROTULO_DE_CASILLA}`}>Ataque</p>
-            <SelectorDeVentaja
-              value={modoAtaque}
-              onChange={setModoAtaque}
-              etiqueta={`ataque con ${ataque.name}`}
-              disabled={tirar.isPending}
-            />
-            <GastarInspiracion
-              campaignId={campaignId}
-              characterId={characterId}
-              modo={modoAtaque}
-              value={gastarInspiracion}
-              onChange={setGastarInspiracion}
-              disabled={tirar.isPending}
-            />
-            {/* Task 26 — la misma audiencia para el ataque, el objetivo resuelto y el daño: es
+        <section aria-label={`Ataque con ${ataque.name}`} className="mb-s3">
+          <p className={`mb-1 ${ROTULO_DE_CASILLA}`}>Ataque</p>
+          <SelectorDeVentaja
+            value={modoAtaque}
+            onChange={setModoAtaque}
+            etiqueta={`ataque con ${ataque.name}`}
+            disabled={tirar.isPending}
+          />
+          <GastarInspiracion
+            campaignId={campaignId}
+            characterId={characterId}
+            modo={modoAtaque}
+            value={gastarInspiracion}
+            onChange={setGastarInspiracion}
+            disabled={tirar.isPending}
+          />
+          {/* Task 26 — la misma audiencia para el ataque, el objetivo resuelto y el daño: es
                 un solo gesto de mesa (ocultar ESTE golpe), no tres decisiones sueltas. */}
-            <div className="mt-s2">
-              <SelectorDeAudiencia
-                value={audiencia}
-                onChange={setAudiencia}
-                disabled={tirar.isPending || resolver.isPending}
-              />
-            </div>
-            <div className="mt-s2">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={alPulsarAtacar}
-                disabled={tirar.isPending || resolver.isPending || cargando}
-                aria-expanded={enCombate && combatientes.length > 0 ? objetivoAbierto : undefined}
-                aria-label={`Atacar con ${ataque.name}`}
-                aria-describedby={
-                  [
-                    cargando ? idCargando : null,
-                    tirar.isPending || resolver.isPending ? idEnviando : null,
-                  ]
-                    .filter((x): x is string => x !== null)
-                    .join(" ") || undefined
-                }
-              >
-                Atacar
-              </Button>
-              {/* **El botón que se apaga dice su motivo, asociado** (regla vinculante de
+          <div className="mt-s2">
+            <SelectorDeAudiencia
+              value={audiencia}
+              onChange={setAudiencia}
+              disabled={tirar.isPending || resolver.isPending}
+            />
+          </div>
+          <div className="mt-s2">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={alPulsarAtacar}
+              disabled={tirar.isPending || resolver.isPending || cargando}
+              aria-expanded={enCombate && combatientes.length > 0 ? objetivoAbierto : undefined}
+              aria-label={`Atacar con ${ataque.name}`}
+              aria-describedby={
+                [
+                  cargando ? idCargando : null,
+                  tirar.isPending || resolver.isPending ? idEnviando : null,
+                ]
+                  .filter((x): x is string => x !== null)
+                  .join(" ") || undefined
+              }
+            >
+              Atacar
+            </Button>
+            {/* **El botón que se apaga dice su motivo, asociado** (regla vinculante de
                   interfaz) — no un botón mudo mientras la carrera de carga (I-2) todavía no sabe
                   si hay combate. */}
-              <span id={idCargando} className="sr-only">
-                Comprobando si hay combate en marcha.
-              </span>
-              <span id={idEnviando} className="sr-only">
-                Enviando la tirada.
-              </span>
-            </div>
+            <span id={idCargando} className="sr-only">
+              Comprobando si hay combate en marcha.
+            </span>
+            <span id={idEnviando} className="sr-only">
+              Enviando la tirada.
+            </span>
+          </div>
 
-            {/* **Con combate en marcha, elegir objetivo — se propone primero el bando
+          {/* **Con combate en marcha, elegir objetivo — se propone primero el bando
                 contrario, pero cualquiera de la lista se puede pulsar.** El servidor no impide
                 atacar a un aliado (confusión, un hechizo que domina, una traición): esta lista
                 solo ordena, nunca cierra una opción. */}
-            {objetivoAbierto && (
-              <ul
-                role="listbox"
-                aria-label={`Objetivo del ataque con ${ataque.name}`}
-                className="mt-s2 flex flex-col gap-1 rounded-radius-sm border border-muted p-1"
-              >
-                {combatientes.map((c) => (
-                  // `role="presentation"` — el `<li>` no es un hijo ARIA válido de `listbox`; el
-                  // hijo válido es el `option` de dentro, y esto lo saca de en medio sin cambiar
-                  // el marcado semántico HTML (menor, ronda de arreglo 1).
-                  <li key={c.characterId} role="presentation">
-                    {/* `Button` y no un `<button>` a mano: **aria-disabled, no `disabled`**
+          {objetivoAbierto && (
+            <ul
+              role="listbox"
+              aria-label={`Objetivo del ataque con ${ataque.name}`}
+              className="mt-s2 flex flex-col gap-1 rounded-radius-sm border border-muted p-1"
+            >
+              {combatientes.map((c) => (
+                // `role="presentation"` — el `<li>` no es un hijo ARIA válido de `listbox`; el
+                // hijo válido es el `option` de dentro, y esto lo saca de en medio sin cambiar
+                // el marcado semántico HTML (menor, ronda de arreglo 1).
+                <li key={c.characterId} role="presentation">
+                  {/* `Button` y no un `<button>` a mano: **aria-disabled, no `disabled`**
                         (ficha U9, `ui/Button.tsx`) — un botón desactivado sale del recorrido de
                         teclado con el atributo nativo, y esto es exactamente el mismo apagado
                         temporal que ya usa «Atacar» mientras vuela la mutación. */}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      role="option"
-                      aria-selected="false"
-                      onClick={() => atacarObjetivo(c.characterId)}
-                      disabled={resolver.isPending}
-                      aria-describedby={resolver.isPending ? idEnviando : undefined}
-                      className="!flex w-full items-baseline justify-between gap-s2 text-left font-normal hover:bg-[color:var(--accent-tint)]"
-                    >
-                      <span>{c.nombre}</span>
-                      <span className="text-chrome-xs text-muted">{NOMBRE_BANDO[c.side]}</span>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    role="option"
+                    aria-selected="false"
+                    onClick={() => atacarObjetivo(c.characterId)}
+                    disabled={resolver.isPending}
+                    aria-describedby={resolver.isPending ? idEnviando : undefined}
+                    className="!flex w-full items-baseline justify-between gap-s2 text-left font-normal hover:bg-[color:var(--accent-tint)]"
+                  >
+                    <span>{c.nombre}</span>
+                    <span className="text-chrome-xs text-muted">{NOMBRE_BANDO[c.side]}</span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
 
-            {errorAtaque && (
-              <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
-                {errorAtaque}
-              </p>
-            )}
-            {resultadoAtaque && (
-              <div className="mt-s2">
-                {resultadoAtaque.revealed ? (
-                  <>
-                    <ResultadoDeTirada
-                      resultado={resultadoAtaque}
-                      etiqueta={`Ataque con ${ataque.name}`}
-                      derivado={ataque.attackBonus}
-                    />
-                    {veredicto && (
-                      <p
-                        className={`mt-1 font-chrome text-chrome-sm font-semibold ${
-                          veredicto === "MISS" ? "text-muted" : "text-accent-text"
-                        }`}
-                      >
-                        {NOMBRE_VEREDICTO[veredicto]}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <TiradaACiegas
+          {errorAtaque && (
+            <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
+              {errorAtaque}
+            </p>
+          )}
+          {resultadoAtaque && (
+            <div className="mt-s2">
+              {resultadoAtaque.revealed ? (
+                <>
+                  <ResultadoDeTirada
+                    resultado={resultadoAtaque}
                     etiqueta={`Ataque con ${ataque.name}`}
-                    expresion={resultadoAtaque.expression}
+                    derivado={ataque.attackBonus}
                   />
-                )}
-              </div>
-            )}
-          </section>
+                  {veredicto && (
+                    <p
+                      className={`mt-1 font-chrome text-chrome-sm font-semibold ${
+                        veredicto === "MISS" ? "text-muted" : "text-accent-text"
+                      }`}
+                    >
+                      {NOMBRE_VEREDICTO[veredicto]}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <TiradaACiegas
+                  etiqueta={`Ataque con ${ataque.name}`}
+                  expresion={resultadoAtaque.expression}
+                />
+              )}
+            </div>
+          )}
+        </section>
 
-          <section aria-label={`Daño de ${ataque.name}`} className="border-t border-muted pt-s2">
-            <p className={`mb-1 ${ROTULO_DE_CASILLA}`}>Daño</p>
-            {/* La audiencia no se elige dos veces: es la misma decisión de arriba, en
+        <section aria-label={`Daño de ${ataque.name}`} className="border-t border-muted pt-s2">
+          <p className={`mb-1 ${ROTULO_DE_CASILLA}`}>Daño</p>
+          {/* La audiencia no se elige dos veces: es la misma decisión de arriba, en
                 «Ataque», y este texto lo dice donde se lee el daño — no solo en un comentario
                 que nadie ve en pantalla. */}
-            <p className={`mb-s2 ${PROSA_DE_HOJA}`}>
-              Se publica con la misma audiencia que el ataque, elegida arriba.
-            </p>
+          <p className={`mb-s2 ${PROSA_DE_HOJA}`}>
+            Se publica con la misma audiencia que el ataque, elegida arriba.
+          </p>
 
-            {/* **Las dos manos, como radios con su explicación** (regla vinculante de interfaz):
+          {/* **Las dos manos, como radios con su explicación** (regla vinculante de interfaz):
                 un arma versátil ofrece las dos, no un desplegable ni un checkbox que se adivina. */}
-            {ataque.versatileDamage && (
-              <fieldset className="mb-s2" disabled={tirar.isPending}>
-                <legend className="sr-only">Con cuántas manos empuñas {ataque.name}</legend>
-                <div className="flex flex-col gap-1">
-                  {(
-                    [
-                      { manos: false, texto: "Una mano", dado: ataque.damage.dice },
-                      { manos: true, texto: "A dos manos", dado: ataque.versatileDamage.dice },
-                    ] as const
-                  ).map((opcion) => {
-                    const id = `${grupoMano}-${opcion.manos ? "dos" : "una"}`;
-                    return (
-                      <div
-                        key={id}
-                        className={[
-                          "flex items-baseline gap-s2 rounded-radius-sm border px-s2 py-1",
-                          dosManos === opcion.manos
-                            ? "border-accent bg-[color:var(--accent-tint)]"
-                            : "border-muted",
-                        ].join(" ")}
+          {ataque.versatileDamage && (
+            <fieldset className="mb-s2" disabled={tirar.isPending}>
+              <legend className="sr-only">Con cuántas manos empuñas {ataque.name}</legend>
+              <div className="flex flex-col gap-1">
+                {(
+                  [
+                    { manos: false, texto: "Una mano", dado: ataque.damage.dice },
+                    { manos: true, texto: "A dos manos", dado: ataque.versatileDamage.dice },
+                  ] as const
+                ).map((opcion) => {
+                  const id = `${grupoMano}-${opcion.manos ? "dos" : "una"}`;
+                  return (
+                    <div
+                      key={id}
+                      className={[
+                        "flex items-baseline gap-s2 rounded-radius-sm border px-s2 py-1",
+                        dosManos === opcion.manos
+                          ? "border-accent bg-[color:var(--accent-tint)]"
+                          : "border-muted",
+                      ].join(" ")}
+                    >
+                      <input
+                        id={id}
+                        type="radio"
+                        name={grupoMano}
+                        checked={dosManos === opcion.manos}
+                        onChange={() => setDosManos(opcion.manos)}
+                        className="accent-[var(--accent)]"
+                      />
+                      <label
+                        htmlFor={id}
+                        className="cursor-pointer font-chrome text-chrome-sm text-text"
                       >
-                        <input
-                          id={id}
-                          type="radio"
-                          name={grupoMano}
-                          checked={dosManos === opcion.manos}
-                          onChange={() => setDosManos(opcion.manos)}
-                          className="accent-[var(--accent)]"
-                        />
-                        <label
-                          htmlFor={id}
-                          className="cursor-pointer font-chrome text-chrome-sm text-text"
-                        >
-                          {opcion.texto}
-                        </label>
-                        <span className="font-data text-chrome-xs text-muted">{opcion.dado}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </fieldset>
-            )}
+                        {opcion.texto}
+                      </label>
+                      <span className="font-data text-chrome-xs text-muted">{opcion.dado}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
 
-            {/* **El crítico se enseña, no se elige.** Era una casilla que el jugador marcaba a
+          {/* **El crítico se enseña, no se elige.** Era una casilla que el jugador marcaba a
                 mano y el servidor se creía; ahora sale del `natural` de la tirada de ataque de
                 arriba, leído en el servidor sobre el suceso que esa tirada dejó escrito. */}
-            <p className={`mt-1 ${PROSA_DE_HOJA}`}>
-              {resultadoAtaque === null
-                ? "Tira primero el ataque: el daño se cobra sobre esa tirada, y de ella sale si fue crítico."
-                : veredicto
-                  ? // Con objetivo, lo dice el veredicto del servidor — no un 20 natural recalculado
-                    // aquí, que un día podría discrepar (I-3, ronda de arreglo 1).
-                    criticoMostrado
-                    ? "El servidor dice que fue crítico: el daño duplicará los dados. El modificador no cambia."
-                    : "El servidor dice que no fue crítico, así que el daño va sin duplicar."
-                  : criticoMostrado
-                    ? "Fue un 20 natural: el daño duplicará los dados. El modificador no cambia."
-                    : "No fue un 20 natural, así que el daño va sin duplicar."}
-            </p>
+          <p className={`mt-1 ${PROSA_DE_HOJA}`}>
+            {resultadoAtaque === null
+              ? "Tira primero el ataque: el daño se cobra sobre esa tirada, y de ella sale si fue crítico."
+              : veredicto
+                ? // Con objetivo, lo dice el veredicto del servidor — no un 20 natural recalculado
+                  // aquí, que un día podría discrepar (I-3, ronda de arreglo 1).
+                  criticoMostrado
+                  ? "El servidor dice que fue crítico: el daño duplicará los dados. El modificador no cambia."
+                  : "El servidor dice que no fue crítico, así que el daño va sin duplicar."
+                : criticoMostrado
+                  ? "Fue un 20 natural: el daño duplicará los dados. El modificador no cambia."
+                  : "No fue un 20 natural, así que el daño va sin duplicar."}
+          </p>
 
+          <div className="mt-s2">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={tirarDano}
+              disabled={tirar.isPending}
+              aria-label={`Tirar daño de ${ataque.name}`}
+            >
+              Tirar daño
+            </Button>
+          </div>
+          {errorDano && (
+            <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
+              {errorDano}
+            </p>
+          )}
+          {resultadoDano && (
             <div className="mt-s2">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={tirarDano}
-                disabled={tirar.isPending}
-                aria-label={`Tirar daño de ${ataque.name}`}
-              >
-                Tirar daño
-              </Button>
+              {resultadoDano.revealed ? (
+                <ResultadoDeTirada resultado={resultadoDano} etiqueta={`Daño de ${ataque.name}`} />
+              ) : (
+                <TiradaACiegas
+                  etiqueta={`Daño de ${ataque.name}`}
+                  expresion={resultadoDano.expression}
+                />
+              )}
             </div>
-            {errorDano && (
-              <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
-                {errorDano}
-              </p>
-            )}
-            {resultadoDano && (
-              <div className="mt-s2">
-                {resultadoDano.revealed ? (
-                  <ResultadoDeTirada
-                    resultado={resultadoDano}
-                    etiqueta={`Daño de ${ataque.name}`}
-                  />
-                ) : (
-                  <TiradaACiegas
-                    etiqueta={`Daño de ${ataque.name}`}
-                    expresion={resultadoDano.expression}
-                  />
-                )}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
+          )}
+        </section>
+      </PanelFlotante>
     </span>
   );
 }

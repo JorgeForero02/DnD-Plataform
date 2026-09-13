@@ -274,40 +274,36 @@ async function irALaMesa(page: Page) {
 // → lista de objetivos · TirarAtaqueBoton.tsx:357 (ul[aria-label="Objetivo del ataque con X"])
 // · recorta AtaquesYLanzamiento.tsx:192 (div.overflow-x-auto) · 71 px fuera (abajo) · ventana
 // 1280|1024 (mismo resultado en los dos anchos). Lo arregla la Tarea 2.
-test.fail(
-  "hoja de PJ (Brann): la lista de objetivos al atacar cabe en el cliente de su ancestro",
-  async ({ page }) => {
-    await abrirHojaDePj(page);
-    await abrirPestana(page, "Ataques");
-    await page
-      .getByRole("button", { name: /^Tirada de /i })
-      .first()
-      .click();
-    await page.getByRole("button", { name: /^Atacar con /i }).click();
-    await expect(page.locator('[aria-label^="Objetivo del ataque"]')).toBeVisible();
-    await nadaSeSale(page, "hoja de PJ (Brann): lista de objetivos al atacar");
-  },
-);
+test("hoja de PJ (Brann): la lista de objetivos al atacar cabe en el cliente de su ancestro", async ({
+  page,
+}) => {
+  await abrirHojaDePj(page);
+  await abrirPestana(page, "Ataques");
+  await page
+    .getByRole("button", { name: /^Tirada de /i })
+    .first()
+    .click();
+  await page.getByRole("button", { name: /^Atacar con /i }).click();
+  await expect(page.locator('[aria-label^="Objetivo del ataque"]')).toBeVisible();
+  await nadaSeSale(page, "hoja de PJ (Brann): lista de objetivos al atacar");
+});
 
 // Desborde conocido (T0): [panel] Mesa → elenco → menú «…» de una fila (MandosDeCombatiente.tsx:
 // 118, «Más acciones sobre X») · MenuDeAcciones.tsx:152
 // (ul[role="menu"][aria-label="Más acciones sobre X"]) · recorta PanelDeMesa.tsx:48
 // (div.min-h-0.min-w-0.flex-1, el carril scrollable del elenco «En la mesa») · 79 px fuera
 // (abajo) a 1280×800 sobre la fila más baja de la lista. Lo arregla la Tarea 2.
-test.fail(
-  "mesa: el menú «…» de la fila más baja del elenco cabe en su carril",
-  async ({ page }) => {
-    await irALaMesa(page);
-    const elenco = page.getByRole("region", { name: "En la mesa" });
-    // La fila más baja VISUALMENTE es la PRIMERA del DOM (el elenco no ordena el marcado en el
-    // mismo sentido que lo pinta) — y el orden de combatientes depende de la iniciativa, tirada
-    // al azar por la semilla, así que no es un nombre fijo.
-    const menuFilaMasBaja = elenco.getByRole("button", { name: /^Más acciones sobre /i }).first();
-    await menuFilaMasBaja.click();
-    await expect(page.getByRole("menu")).toBeVisible();
-    await nadaSeSale(page, "mesa: menú de la fila más baja del elenco");
-  },
-);
+test("mesa: el menú «…» de la fila más baja del elenco cabe en su carril", async ({ page }) => {
+  await irALaMesa(page);
+  const elenco = page.getByRole("region", { name: "En la mesa" });
+  // La fila más baja VISUALMENTE es la PRIMERA del DOM (el elenco no ordena el marcado en el
+  // mismo sentido que lo pinta) — y el orden de combatientes depende de la iniciativa, tirada
+  // al azar por la semilla, así que no es un nombre fijo.
+  const menuFilaMasBaja = elenco.getByRole("button", { name: /^Más acciones sobre /i }).first();
+  await menuFilaMasBaja.click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await nadaSeSale(page, "mesa: menú de la fila más baja del elenco");
+});
 
 // Desborde conocido (T0): [texto] Cabecera de la hoja (cualquiera: PJ, PNJ, «Su hoja») · traza
 // de la casilla «Comp.» (la última de la tira, pegada al borde derecho) · Traza.tsx:311

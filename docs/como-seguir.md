@@ -58,7 +58,13 @@ detalle (T14 bis, D-CF-64) sustituyó al tablero telaraña; el mapa de historia 
 autor** (su [spec](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md) se queda tal cual). Cada spec tiene su plan con `writing-plans` cuando el autor la apruebe. **Aparte y sin
 orden fijo:** [Owlbear como tablero](./superpowers/specs/2026-09-12-owlbear-como-tablero-design.md)
 (D-CF-56), que empieza con un spike del autor en su sala real.
-El orden previo, que ya no manda, sigue debajo:
+
+**La tanda «pulido» quedó cerrada en la rama el 2026-09-13** (Tarea 15, 43 commits sobre `0ebdd9f`,
+[07-historial.md](./07-historial.md) — «Pulido antes del paso 3»): los 24 puntos del anexo pasados
+uno a uno en [06-pendientes.md](./06-pendientes.md), sin fusionar todavía. **No se fusiona ni se
+despliega sola**: eso lo hace el autor a mano, como siempre. **Lo siguiente es «reglas de la
+mesa»**, y no arranca hasta que el autor la apruebe con su propio plan (`writing-plans` sobre la
+spec de arriba). El orden previo, que ya no manda, sigue debajo:
 
 Antes → la tanda **«puerta de efectos»**
 ([spec](./superpowers/specs/2026-09-12-la-puerta-de-efectos-design.md): curar a otro, daño de

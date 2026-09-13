@@ -76,6 +76,13 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md`](./_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md) | **Tarea 9 del pulido: el servidor dice qué dado cayó, `dice[]` por dado**, movida entera el 2026-09-13 al escribir la entrada de la Task 14 bis (el mundo como árbol con detalle): el fichero estaba en 977 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-13-tarea-10-bandeja-de-dados.md`](./_archivo/historial-2026-09-13-tarea-10-bandeja-de-dados.md) | **Tarea 10 del pulido: la bandeja de dados, pulsar y no escribir**, movida entera el 2026-09-13 al escribir la ronda 1 de la Task 14 bis: el fichero quedaba en 1002 de 1000 y era la entrada completa más antigua. Sus rondas de arreglo y su hito se quedan arriba |
 > | [`_archivo/historial-2026-09-13-ronda-arreglo-tarea-10.md`](./_archivo/historial-2026-09-13-ronda-arreglo-tarea-10.md) | **La ronda de arreglo 1 de la tarea 10 del pulido** —el d20 al principio, plegar devuelve el control, la pila se distingue—, movida entera el 2026-09-13 al escribir la entrada de la revisión final de la rama: el fichero estaba en 983 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-13-tarea-11-hilo-nombra-personajes.md`](./_archivo/historial-2026-09-13-tarea-11-hilo-nombra-personajes.md) | **Tarea 11 del pulido: el hilo habla de personajes**, movida entera el 2026-09-13 al escribir el hito «Pulido antes del paso 3» (Tarea 15). Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-13-tarea-12-salir-de-la-mesa.md`](./_archivo/historial-2026-09-13-tarea-12-salir-de-la-mesa.md) | **Tarea 12 del pulido: salir de la mesa vuelve a la campaña**, movida entera el 2026-09-13 en el mismo corte. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-13-tarea-13-pg-temporales-bestiario.md`](./_archivo/historial-2026-09-13-tarea-13-pg-temporales-bestiario.md) | **Tarea 13 del pulido: PG temporales del bestiario, y su ronda de arreglo**, movida entera el 2026-09-13 en el mismo corte. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-13-tarea-14-filtros-catalogo.md`](./_archivo/historial-2026-09-13-tarea-14-filtros-catalogo.md) | **Tarea 14 del pulido: filtros del catálogo de objetos**, movida entera el 2026-09-13 en el mismo corte. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-13-tarea-14bis-mundo-arbol.md`](./_archivo/historial-2026-09-13-tarea-14bis-mundo-arbol.md) | **Task 14 bis del pulido: el mundo como árbol con detalle**, movida entera el 2026-09-13 en el mismo corte. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-13-ronda-arreglo-2-tarea-10.md`](./_archivo/historial-2026-09-13-ronda-arreglo-2-tarea-10.md) | **La ronda de arreglo 2 de la tarea 10 del pulido** —el radio de ventaja se queda montado, apagado con su motivo—, movida entera el 2026-09-13 en el mismo corte. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-13-revision-final-de-la-rama.md`](./_archivo/historial-2026-09-13-revision-final-de-la-rama.md) | **Revisión final de la rama pulido/antes-del-paso-3**, movida entera el 2026-09-13 al escribir el hito «Pulido antes del paso 3» (Tarea 15): las siete de este corte se movieron para dejar sitio al hito de la tanda entera. Su resumen se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -89,294 +96,139 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## Revisión final de la rama: ningún atacante inventado, caras desconocidas en texto, iconos dibujados en el modificador, «Tirar» nunca se apaga (2026-09-13)
+## Pulido antes del paso 3 (2026-09-12/13)
 
-Qué — cuatro hallazgos de la revisión de toda la rama `pulido/antes-del-paso-3`, en un commit.
-**(1)** `origenDeGolpe` (`linea-de-log.ts`) trataba «hay `rollEventId`» como «se citó un origen» y
-ponía «← Alguien» a un daño cuya tirada no tenía ningún `ATTACK_RESOLVED` detrás —la hoja cita
-«2d6 de caída» desde `PuntosDeGolpe`—: un atacante inventado para una caída. Ahora «Alguien» sale
-**solo** cuando el DM citó un `sourceCharacterId` que este espectador no ve; con `rollEventId`
-solo, se nombra al atacante deducido o no se dice nada. **(2)** `ResultadoDeTirada` colaba con un
-`as Caras` cualquier número de caras a `IconoDado`, que solo dibuja siete, y `2d7` o `1d1000`
-(escritos en «Modo avanzado»; el servidor admite hasta 1000) pintaban un `<svg data-icono="d7">`
-vacío. `esCaraConocida(n): n is Caras` vive en `bandeja.ts` junto al tipo; conocida → icono,
-desconocida → la etiqueta `d7` en `font-data` —nunca un d20 disfrazado, «un dado, una forma»
-(D-CF-62)—. Se van los casts: `DADOS_DE_ATAJO` es `readonly Caras[]` e `IconoDado` recibe `Caras`.
-**(3)** Los botones del modificador de `BandejaDeDados` eran un «−» y un «+» de fuente —lo que el
-barrido de la Tarea 7 prohíbe— y el barrido no los vio porque su regex `<Button[^>]*>` se paraba
-en el `>` del `=>` del `onClick`. `IconoMenos` nuevo (trazo 1.6, `data-icono="menos"`), `IconoMas`
-en el otro, `aria-label` intactos; y el regex del barrido tolera `=>` en los atributos
-(`(?:[^>]|=>)*`) y el glifo seguido de `<`, con una prueba que lo demuestra contra el fixture
-`<Button onClick={() => x()}>+</Button>`. **(4)** «Tirar» se deshabilitaba con la bandeja vacía
-(`PanelDeDados`, `PanelDeDadosDeLaMesa`), y «Dárselos»/«Quedarse con los N nuevos»
-(`DarTemporales`) con un 0 o un campo vacío — contra `04-convenciones.md` («el botón de guardar
-nunca se deshabilita: no recibe foco de teclado») y contra cómo T5 resolvió «Guardar la sala».
-Ahora siguen habilitados; pulsar con nada que tirar escribe en línea, junto a «Qué se tira»,
-«Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.» y no manda nada; los del
-bestiario escriben «Escribe cuántos PG temporales nuevos son.» con `aria-invalid` en el campo. Se
-retira el `sr-only` con `aria-describedby` que solo existía para el estado apagado. La única
-razón de apagar que queda es la petición en curso (y, en el bestiario, la hoja sin `version`).
+Qué — rama `pulido/antes-del-paso-3`, base `0ebdd9f`, 43 commits hasta `0a8689e`, todavía sin
+fusionar. Catorce tareas y media (14 + 14 bis) más la revisión final de toda la rama, agrupadas en
+cinco causas que el autor reportó tras revisar producción el 2026-09-12
+(`docs/superpowers/specs/2026-09-12-pulido-anexo-lista-del-autor.md`, 24 puntos), más una sexta que
+nació a mitad de la tanda:
 
-Por qué — (1) y (2) son mentiras en pantalla: un origen que no hubo y un dado sin forma ni nombre.
-(3) es la regla de iconos con un agujero en su propio control. (4) es una convención vinculante
-que tres pantallas nuevas contradecían mientras una cuarta, de la misma rama, la cumplía.
+- **C1 — la hoja** (Tareas 1–4, anexo #3, #4, #6, #7, #8, #9, #16, #17, parte de #2): `Casilla`
+  fija a 6rem para los cinco números de cabecera, `Field.reservaEspacio` contra el *tearing*,
+  `AjustesDePersonaje` a tarjeta con pie, y `espacios.spec.ts` auditando huecos y desniveles en
+  toda pestaña.
+- **C1 bis — el tablero provisional** (Tareas 5–6, sobre D-CF-57): `Campaign.boardRoomUrl` guarda
+  la sala de PlanarAlly, que se enmarca en el centro de la mesa con el registro en vivo plegado a
+  un cajón.
+- **C3 — los iconos** (Tarea 7, anexo #12, #22): seis siluetas de dado (`IconoDado`) y un barrido
+  que encontró quince botones sin dibujo o con un glifo de fuente.
+- **C2 — el menú de la fila del elenco** (Tarea 8, anexo #1, parte de #14): `MenuDeAcciones` pliega
+  cinco controles a dos, con teclado completo.
+- **C5 — la bandeja de dados** (Tareas 9–10, anexo #10, #11, #14): `dice[]` por dado desde el
+  servidor y una bandeja que se pulsa en vez de escribirse.
+- **C4 — el hilo nombra personajes** (Tarea 11, anexo #15): sujeto y objetivo por su nombre, no
+  solo el verbo.
+- **Sueltos** (Tareas 12–14, anexo #18, #20, #21): salir de la mesa vuelve a la campaña, el bug de
+  PG temporales del bestiario, filtros del catálogo de objetos.
+- **T14 bis** (anexo #23, D-CF-64, nacida a mitad de tanda por mensaje del autor): el mundo como
+  árbol + detalle sustituye al tablero telaraña; el mapa de historia queda aplazado por el autor.
+- **Revisión final de toda la rama** (`0a8689e`): cuatro hallazgos de integración que ninguna
+  revisión por tarea podía ver — un atacante inventado, un dado sin forma, un glifo de fuente que
+  el barrido no veía, y un botón deshabilitado contra la propia regla que otra tarea de la misma
+  rama ya aplicaba.
 
-Pruebas — TDD, rojo primero en las cuatro: `linea-de-log-con-nombres.test.ts` +1 («tirada citada
-sin ataque → sin origen»); `ResultadoDeTirada.test.tsx` +1 (caras 7: texto `d7`, ningún
-`data-icono="d7"` ni `d20`); `bandeja.test.ts` +2 (`esCaraConocida`); `botones-con-icono.test.tsx`
-+1 (el fixture con `=>`) y el barrido amplía a «−»; `Iconos.test.tsx` cuenta 31; `PanelDeDados.test.tsx`
-+1, `PanelDeDadosDeLaMesa.test.tsx` +1 y `DarTemporales.test.tsx` +2 −1 (la del candado pasa a
-«habilitado + error + sin petición»). Mutación con `cp`: devolver el guard viejo a `origenDeGolpe`
-enrojece la nueva de (1); hacer que `esCaraConocida` devuelva siempre `true` enrojece dos de (2).
-`pnpm --filter @dnd/web test -- src/features/rolls src/features/sessions src/features/bestiario
-src/ui`: 56 ficheros, 532/532. Playwright (dados, tirada, espacios, bestiario, sesion, combate,
-tokens-contrast) a cargo del orquestador.
+Por qué — el autor recorrió producción el 2026-09-12 y reportó 24 puntos concretos; D-CF-52 puso
+esta tanda primera de cuatro antes del paso 3.
 
-Revertir — `git revert` del commit; ningún dato ni migración de por medio.
+Los 43 commits, por tarea — rango completo `0ebdd9f..0a8689e`:
 
----
+- **Tarea 0** (nota de diseño, D-CF-58..62): `70bb3d6`, `565a19b`
+- **Tarea 1** (`Casilla`, banda anclada): `cae172f`, `bf6d718`, `25814cb`, `0537bfd`, `2bce0e0`
+- **Tarea 2** (`Field.reservaEspacio`, Rasgos): `6253b2f`
+- **Tarea 3** (Ajustes del personaje, Dados en rejilla): `9933b5e`, `2bf1a85`
+- **Tarea 4** (`espacios.spec.ts`): `a3ec1bf`, `8cca54d`, `695d200`, `ee4eaa6`
+- **Tarea 5** (`Campaign.boardRoomUrl`): `b27a13e`, `ad580bd`
+- **Tarea 6** (tablero enmarcado, cajón del registro): `ad68f3c`, `ec734e2`, `72d3827`, `ea28fff`
+- **Tarea 7** (seis dados, barrido de iconos): `c1677f3`, `1c30fe8`
+- **Tarea 8** (`MenuDeAcciones`): `e61b865`, `59c216a`, `6b54aa4`, `43db619`, `da1e527`, `4af7dad`
+  (más `fa2e963`, inserción de la Tarea 14 bis en el texto del plan)
+- **Tarea 9** (`dice[]` por dado): `12af590`
+- **Tarea 10** (bandeja de dados): `430e703`, `847ec27`, `fb72ed0`
+- **Tarea 11** (el hilo nombra personajes): `64330ac`, `cdf8d00`
+- **Tareas 12–14** (lote): `aabd016` (T12), `28e4afb` + `3dd2786` (T13), `df15c30` (T14)
+- **Tarea 14 bis** (el mundo como árbol): `f38823b`, `ae23304`, `a69d069`
+- **Revisión final de la rama**: `0a8689e`
 
-## Task 14 bis del pulido: el mundo como árbol con detalle — sustituye al tablero telaraña (2026-09-13, #23, D-CF-64)
+Evidencia — Playwright, corrido por el orquestador tarea a tarea (nunca por el agente
+implementador, regla de `04-convenciones.md`): `hoja.spec.ts` y `hoja-pestanas.spec.ts` (Tarea 1),
+`espacios.spec.ts` (Tarea 4, nuevo), `mesa-mide.spec.ts` y `tokens-contrast.spec.ts` (Tareas 5, 6,
+8, 14 bis), `tablero-en-la-mesa.spec.ts` (Tarea 6, nuevo), `dados.spec.ts` y `tirada.spec.ts`
+(Tareas 7, 10), `combate.spec.ts`, `sesion.spec.ts` y `teclado.spec.ts` (Tarea 8),
+`bestiario.spec.ts` (Tareas 7, 13), `mundo-arbol.spec.ts` (Tarea 14 bis, nuevo) e
+`inventario.spec.ts` (Tarea 14) — todos en verde tras sus rondas de arreglo; el detalle rojo→verde
+de cada uno vive en el ledger de la tanda, no aquí. Unitarias: 1588 de web (1471 al empezar la
+rama), shared 192 y api sin tocar; `pnpm verify` limpio en el commit final; `check:docs` sin
+hallazgos.
 
-Qué — `features/sessions/taller/mundo/`: `arbolDelMundo.ts` (puro: cuelga cada ficha de su padre
-por un rótulo de `ROTULOS_DE_JERARQUIA`, dos padres → «también en …», ciclos cortados y marcados,
-`sinHilos`, y `vecinosDe` leído desde la ficha abierta), `DesgloseDelMundo.tsx` (`tree` WAI-ARIA
-con tabindex rotatorio: flechas, → despliega, ← pliega, Enter elige; buscador sin tildes; chip
-«Sin hilos»), `DetalleDeFicha.tsx` (cabecera · vitela recortada con «Leer más» · anillo · hilos),
-`AnilloDeVecinos.tsx` (SVG propio, posiciones fijas `2π·i/n`, cada vecino un `<button>`),
-`EditorDeHilos.tsx` (fila ficha · rótulo · cambiar · quitar; dos desplegables con buscador,
-rótulo sugerido por `relacionesSugeridas` o libre; **cambiar = crear y luego quitar**, porque no
-hay `PATCH` de enlaces) y `ElMundo.tsx` (las dos mitades, `lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]`).
-`ROTULOS_DE_JERARQUIA` y `esRotuloDeJerarquia` en `apps/web/src/features/links/relaciones.ts`: los seis son `desde` de
-`RELACIONES`, ninguno se descartó. `TallerDelDM.tsx` monta `ElMundo` donde iba el tablero, con la
-cabecera «El mundo»; la selección sigue alimentando «Escribir ficha». **Se borran** `TableroTelarana.tsx`,
-`posiciones.ts` y sus dos pruebas (**D4**, 2026-09-02: «el tablero telaraña se retira»); es la única
-baja de pruebas de la tanda y va en el mismo commit. Desviación del brief: el componente del árbol
-se llama `DesgloseDelMundo.tsx` y no `ArbolDelMundo.tsx` porque en Windows `./ArbolDelMundo` resolvía
-al módulo puro `arbolDelMundo.ts` (`.ts` antes que `.tsx`, sin distinguir mayúsculas).
-
-Por qué — el autor, tras cuatro maquetas (2026-09-12), aplazó el mapa de historia y cerró el #23
-con desglose + detalle. La regla nueva de `04-convenciones.md`: *un árbol enseña un padre; los
-demás hilos van en la ficha*.
-
-Evidencia — unitarias nuevas: `arbolDelMundo.test.ts` (11), `DetalleDeFicha.test.tsx` (11),
-`ElMundo.test.tsx` (7), y dos en `relaciones.test.ts`; `pnpm --filter @dnd/web test -- taller links`
-en verde. Mutación: quitar la comprobación de `ROTULOS_DE_JERARQUIA` (todo rótulo cuelga) hace
-fallar exactamente «un hilo lateral no mueve nada»; restaurado con `cp`. e2e nuevo
-`mundo-arbol.spec.ts` (tender «vive en» desde los desplegables cuelga a Corvin de la Torre Gris,
-persiste tras recargar; a 390 px el detalle va debajo y `scrollWidth <= 390`) y el mundo en
-`tokens-contrast.spec.ts` en los tres temas — **no corridos en esta sesión, a cargo del orquestador**
-junto a `mesa-mide.spec.ts`.
-
-**Revertir:** `git revert` del commit devuelve el tablero, `posiciones.ts` y sus dos pruebas; no
-hay migración ni dato que limpiar (los hilos ya existían tal cual).
-
-**Ronda 1 (2026-09-13).** El orquestador corrió `mesa-mide` 3/3, `tokens-contrast` 37/37 y
-`mundo-arbol` 1/2: a 390 px el detalle empezaba 64 px antes del final del árbol. Causa: la
-rejilla de `ElMundo` llevaba `min-h-0` dentro de la columna de scroll del taller y el árbol tenía
-scroll propio siempre, así que por debajo de `lg` las mitades no se apilaban como bloques. Ahora
-`min-h-0` y `overflow-y-auto` solo en `lg:`; la aserción `detalle.y >= árbol.y + árbol.height - 1`
-se queda tal cual y su comentario dice qué prueba y qué no (la rejilla exterior del taller a 390
-sigue en D-CF-26). Revertir: quitar el prefijo `lg:` de esas clases.
-
-**Ronda 1 de revisión (2026-09-13).** Cinco importantes: (1) un par con dos rótulos de jerarquía
-daba dos nodos con el mismo id bajo el mismo padre —ahora cuelga una vez, por el primero de
-`ROTULOS_DE_JERARQUIA`—; (2) una raíz cuyas fichas cuelgan todas de otra decía «Ninguna todavía»:
-ahora «Todas cuelgan de otra ficha.», y la nota es `role="none"`; (3) de Aldea → Bosque ↔ Ciudad se
-levantaba Aldea como raíz fantasma —se levanta una ficha DEL ciclo (la primera por nombre de las
-que están en él), nunca una que cuelgue de él—; (4) **«custodia» sale de la jerarquía** (decisión
-del orquestador: el árbol enseña contención; custodiar es lateral) — la frase «los seis, ninguno
-se descartó» de arriba fue cierta hasta esta ronda; (5) `como-seguir.md` seguía poniendo el mapa
-de historia como sustituto del tablero. Menores: `aria-selected` en las raíces, «Guardar el rótulo»
-sin cambio no manda nada, una línea gris explica por qué los hilos que entran no tienen lápiz, el
-comentario de `wikilinks.test.ts` ya no cita `posiciones.ts`, y si el `DELETE` falla tras el
-`POST` el aviso dice que el nuevo existe y el viejo se quita a mano. Aplazado al ledger: solape
-del anillo con 9+ vecinos, «Leer más» cuando el cuerpo cabe, el chip por encima del buscador,
-rótulo libre >80 en cliente, invalidación de la otra ficha al quitar, raíces vacías plegadas, el
-editor bajo el pliegue a 1280×800.
+Revertir — la rama entera se revierte con `git revert 0ebdd9f..0a8689e` sobre `main`, **una vez
+fusionada** (hoy no lo está: revertir antes de fusionar es simplemente no fusionar). Por causa, si
+solo una debe deshacerse: C1 son las Tareas 1–4 (`cae172f..ee4eaa6`); C1 bis las Tareas 5–6
+(`b27a13e..ea28fff`); C3 la Tarea 7 (`c1677f3..1c30fe8`); C2 la Tarea 8 (`e61b865..4af7dad` +
+`fa2e963`); C5 las Tareas 9–10 (`12af590..fb72ed0`); C4 la Tarea 11 (`64330ac..cdf8d00`); los
+sueltos las Tareas 12–14 (`aabd016..df15c30`); T14 bis (`f38823b..a69d069`) devuelve
+`TableroTelarana.tsx` y `posiciones.ts`. **Una migración de por medio**: `Campaign.boardRoomUrl`
+(Tarea 5) — revertir esa tarea sin revertir la migración deja una columna sin escritor; la
+migración lleva su propia reversa en la cabecera del SQL. **Producción no se toca**: sigue
+sirviendo `6d2b2ca`, y esta rama no se despliega hasta que el autor lo pida.
 
 ---
 
-## Tarea 12 del pulido: salir de la mesa vuelve a la campaña (2026-09-13, anexo #18)
+## Revisión final de la rama: ningún atacante inventado, caras desconocidas en texto, iconos dibujados en el modificador, «Tirar» nunca se apaga (2026-09-13) — archivada
 
-Qué — la primera miga de `BandaDeMesa.tsx` era «Tus crónicas» y llevaba a `/`, la lista entera de
-campañas: salir de una mesa en juego mandaba a cero en vez de a la campaña que se estaba jugando.
-Ahora la flecha va con el nombre de la campaña a `/campaigns/:id?seccion=sessions` —el mismo
-enlace que `MesaDeSesion.tsx` ya usaba para «Entrar a la mesa», que `CampaignDetailPage.tsx`
-resuelve a la pestaña Sesiones— y «Tus crónicas» pasa a miga secundaria, detrás de un filete, sin
-perder su enlace a `/`.
-
-Por qué — el anexo #18 lo pedía tal cual: el gesto de «salir» de una pantalla anidada debe volver
-al contenedor inmediato, no saltar todos los niveles.
-
-Evidencia — unitaria nueva en `sesion-en-juego.test.tsx` (describe «la banda de la mesa (anexo
-#18)»): la primera miga tiene `href="/campaigns/c1?seccion=sessions"` y texto «La mesa», y «Tus
-crónicas» sigue apuntando a `/` (15/15 del fichero). e2e nuevo en `sesion.spec.ts`: desde una mesa
-en reposo, pulsar el primer enlace de la banda deja la pestaña Sesiones seleccionada (no corrido
-en esta sesión, a cargo del orquestador junto a `mesa-mide.spec.ts`). Mutación: devolver `to="/"`
-al primer enlace hace fallar la unitaria nueva (restaurado con `cp`). Los recorridos que ya
-pulsaban «Tus crónicas» desde la mesa (`campana.spec.ts:590`) siguen valiendo: el enlace existe,
-solo cambió su orden.
-
-**Revertir:** en `BandaDeMesa.tsx`, devolver el primer `Link` a `to="/"` con el texto «Tus
-crónicas» y el segundo a `to={`/campaigns/${campaignId}`}` con el nombre de la campaña; quitar la
-unitaria y el e2e nuevos.
+**Movida entera** a [`_archivo/historial-2026-09-13-revision-final-de-la-rama.md`](./_archivo/historial-2026-09-13-revision-final-de-la-rama.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: cuatro hallazgos de integración de toda la rama corregidos en un
+commit — ningún atacante inventado, ninguna cara de dado sin forma, ningún glifo de fuente que el
+barrido no viera, y «Tirar» nunca deshabilitado.
 
 ---
 
-## Tarea 13 del pulido: PG temporales del bestiario — la pregunta solo tras pulsar (2026-09-13, anexo #20)
+## Task 14 bis del pulido: el mundo como árbol con detalle — sustituye al tablero telaraña (2026-09-13, #23, D-CF-64) — archivada
 
-Qué — en `DarTemporales.tsx`, `hayConflicto = actuales > 0 && nuevos > 0` se evaluaba con
-`cuantos` ya en su valor por defecto ("5"), así que en cuanto un PNJ tenía algún PG temporal el
-`alertdialog` estaba **siempre** puesto y el botón «Dárselos» desaparecía — parecía que la
-pantalla no hacía nada. Y «Dejar los N que tenía» mandaba `tempHpEleccion: "mayor"`, que el
-servidor resuelve con `Math.max`: si los nuevos eran más que los que tenía, «dejar los que tenía»
-cambiaba igualmente el PG temporal. Ahora `preguntando` es estado explícito que solo se pone a
-`true` al pulsar «Dárselos» con temporales previos; «Quedarse con los N nuevos» manda
-`tempHpEleccion: "los-nuevos"`; y «Dejar los N que tenía» **no manda ninguna petición** — solo
-cierra la pregunta. `hayConflicto` se quita.
-
-Por qué — SRD 5.1, *Temporary Hit Points*: *"you decide whether to keep the ones you have or to
-gain the new ones"*. Conservar es no cambiar nada; mandar `"mayor"` (que el servidor traduce a
-`Math.max`) era la elección equivocada cuando los nuevos eran mayores que los que ya tenía el PNJ.
-
-Evidencia — unitarias nuevas en `DarTemporales.test.tsx`: con temporales previos el `alertdialog`
-no está hasta pulsar «Dárselos»; «Dejar los que tenía» no llama a `fijar.mutate` y cierra la
-pregunta; «Quedarse con los nuevos» manda `tempHpEleccion: "los-nuevos"` y cierra al resolver.
-e2e nuevo en `bestiario.spec.ts` (no corrido en esta sesión, a cargo del orquestador). Mutación:
-hacer que «Dejar los que tenía» llame a `mandar("mayor")` hace fallar la unitaria «no manda nada»
-(restaurado con `cp`).
-
-**Revertir:** en `DarTemporales.tsx`, devolver `hayConflicto` y pintar el `alertdialog` con esa
-condición en vez de `preguntando`; hacer que «Dejar los que tenía» llame a `mandar("mayor")`;
-quitar las unitarias y el e2e nuevos.
+**Movida entera** a [`_archivo/historial-2026-09-13-tarea-14bis-mundo-arbol.md`](./_archivo/historial-2026-09-13-tarea-14bis-mundo-arbol.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: `taller/mundo/` cuelga cada ficha de un padre por
+`ROTULOS_DE_JERARQUIA` y sustituye al tablero telaraña (D4), con detalle, anillo de vecinos y
+editor de hilos; «custodia» sale de la jerarquía por ser relación lateral.
 
 ---
 
-## Ronda de arreglo de la tarea 13: la aserción de «no manda nada» esperaba en el momento equivocado, y «Quedarse con los nuevos» gana el candado de «Dárselos» (2026-09-13)
+## Tarea 12 del pulido: salir de la mesa vuelve a la campaña (2026-09-13, anexo #18) — archivada
 
-Qué — revisión de ronda 1 (`cdf8d00..df15c30`) encontró que `expect(fijar).not.toHaveBeenCalled()`
-en «Dejar los que tenía no manda nada» corría **justo tras el `fireEvent.click`**, de forma
-síncrona: TanStack Query espera a que `onMutate` resuelva antes de invocar `mutationFn`, así que
-la aserción pasaba **aunque `mandar()` estuviera siendo llamada** — un mutante que hace
-`mandar("mayor")` y luego `setPreguntando(false)` sobrevivía sin que ninguna prueba lo notara. El
-espía de `setHp` tampoco tenía `mockResolvedValue`, lo que agravaba la carrera. Arreglo: el espía
-gana `mockResolvedValue(hoja(8))`, y la aserción se mueve DESPUÉS de un `waitFor` que observa el
-`alertdialog` cerrado, más un `await new Promise(r => setTimeout(r, 0))` de margen para cualquier
-microtask de React Query pendiente. Repetida la mutación del `cp` (`mandar("mayor")` +
-`setPreguntando(false)`) contra el arreglo: **esta vez la aserción cae** (`setHp` llamada 1 vez,
-con `tempHpEleccion: "mayor"`), confirmando que ahora sí la cazaba.
-
-Hallazgo menor de la misma revisión: «Quedarse con los N nuevos» no llevaba el candado numérico
-que sí tiene «Dárselos» (`!Number.isFinite(nuevos) || nuevos <= 0`), así que vaciar el campo o
-ponerlo en 0 mientras la pregunta estaba abierta permitía mandar `tempHp: 0` o `NaN` — ninguno de
-los dos montones que el SRD pide elegir. Mismo candado añadido a ese botón, con su `title`;
-unitaria nueva: con el campo en «0», el botón queda `aria-disabled` y el clic no llama a `setHp`.
-
-Por qué — revisión de ronda 1 sobre las tareas 12–14 del pulido; hallazgo «Important» (aserción
-que no prueba lo que dice) y un menor barato de corregir en el mismo fichero.
-
-Evidencia — `DarTemporales.test.tsx`: 5/5 en verde (era 4/4; +1 del candado nuevo). Mutación
-repetida con el `cp` de la tarea 13 (`mandar("mayor")` en «Dejar los que tenía»): la unitaria
-arreglada cae, confirmando que la aserción ahora sí depende de la llamada real. `pnpm verify` en
-verde (168 ficheros, 1558 pruebas). Sin Playwright — el orquestador vuelve a correr
-`bestiario.spec.ts`.
-
-**Revertir:** en `DarTemporales.test.tsx`, quitar el `mockResolvedValue` del espía de `setHp` en
-esa prueba y devolver la aserción a justo después del `fireEvent.click`; quitar la unitaria del
-candado nuevo. En `DarTemporales.tsx`, quitar `disabled`/`title` del botón «Quedarse con los N
-nuevos».
+**Movida entera** a [`_archivo/historial-2026-09-13-tarea-12-salir-de-la-mesa.md`](./_archivo/historial-2026-09-13-tarea-12-salir-de-la-mesa.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: la primera miga de `BandaDeMesa.tsx` deja de llevar a todas las
+campañas y pasa a la pestaña Sesiones de la campaña que se estaba jugando.
 
 ---
 
-## Tarea 14 del pulido: filtros del catálogo de objetos (2026-09-13, anexo #21)
+## Tarea 13 del pulido: PG temporales del bestiario — la pregunta solo tras pulsar, y su ronda de arreglo (2026-09-13, anexo #20) — archivada
 
-Qué — `CampaignItemsCatalogPage.tsx` solo filtraba por el texto del buscador; con un catálogo
-mixto (objetos propios de la campaña + SRD) no había forma de acotar por tipo de objeto ni por
-origen, a diferencia del bestiario, que ya tiene sus chips. Dos filas nuevas de `FilterChip`
-dentro de `Toolbar` (`ui/Collection.tsx`, igual que `PanelDeBestiario.tsx`): una por `ItemKind`
-—«Todos» + `TIPOS_DE_OBJETO.map(...)` con `NOMBRE_TIPO`— y otra por origen —«De todas partes» /
-«Del catálogo» / «De la campaña», con `esDelSrd(id)` decidiendo el segundo grupo. El filtrado es
-de cliente, nunca control de acceso: la lista que llega ya viene filtrada por `canView` en el
-servidor. El `EmptyState` de «ningún objeto se llama así» pasa a nombrar también los filtros
-cuando hay alguno activo.
-
-Por qué — el anexo #21 lo pedía por paridad con el bestiario, que ya resolvió el mismo problema
-con el mismo patrón de chips.
-
-Evidencia — unitarias nuevas (anexo #21): con 1 objeto propio + 2 del SRD, pulsar «Arma» deja 2
-filas y pulsar además «De la campaña» deja 1 («Daga de la casa»); y el `EmptyState` nombra los
-filtros cuando no hay coincidencia. e2e (`inventario.spec.ts`, el recorrido que ya crea un objeto
-propio y lo distingue del SRD — no hay fichero dedicado al catálogo): tras crear «Farol de
-marea», pulsar «Armadura» deja «Cota de malla» (SRD) y quita «Daga» (SRD, arma) — no corrido en
-esta sesión, a cargo del orquestador. Mutación: quitar la condición de `tipo` del filtro hace
-fallar las dos unitarias nuevas (restaurado con `cp`).
-
-**Revertir:** en `CampaignItemsCatalogPage.tsx`, quitar los dos `useState` de `tipo`/`origen`, sus
-condiciones en el filtro y los dos `<Toolbar>` de `FilterChip`; devolver el `EmptyState` a su
-texto sin mencionar filtros; quitar la unitaria y el e2e nuevos.
+**Movida entera** a [`_archivo/historial-2026-09-13-tarea-13-pg-temporales-bestiario.md`](./_archivo/historial-2026-09-13-tarea-13-pg-temporales-bestiario.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: `preguntando` pasa a ser estado explícito en `DarTemporales.tsx` —el
+`alertdialog` ya no aparecía siempre con un PNJ con temporales previos—, y la ronda de arreglo
+corrigió una aserción que no esperaba el flush de la mutación.
 
 ---
 
-## Tarea 11 del pulido: el hilo habla de personajes (2026-09-13, C4: #15)
+## Tarea 14 del pulido: filtros del catálogo de objetos (2026-09-13, anexo #21) — archivada
 
-Qué — hasta esta tarea el hilo de sesión decía QUÉ pasó y nunca A QUIÉN ni DE QUIÉN: «Pierde 7 PG
-(24 → 17)» y «Espadazo: impacta» no nombran a nadie, y el hueco #15 pedía justo esa mitad.
-`changeHpSchema.sourceCharacterId` (`packages/shared/src/character-sheet.schema.ts`) y
-`HP_CHANGED.sourceCharacterId` (`game-event.schema.ts`) son el nuevo campo opcional —«de quién
-viene», cuando el DM pone daño a mano sin que cuelgue de ninguna tirada—; `changeHp`
-(`character-sheet.service.ts`) lo valida con `requireVisibleCharacter`
-(`apps/api/src/common/character-viewer.ts`, el mismo helper que ya usan `activities`,
-`conditions`, `resources`, `rest`, `temporary-modifiers` e `inventory`) antes de escribirlo en el
-suceso — 404 uniforme si el id no existe o no se ve, nunca una causa inventada.
+**Movida entera** a [`_archivo/historial-2026-09-13-tarea-14-filtros-catalogo.md`](./_archivo/historial-2026-09-13-tarea-14-filtros-catalogo.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: `CampaignItemsCatalogPage.tsx` gana `FilterChip` por tipo de objeto y
+por origen, con el mismo patrón que ya resolvió el bestiario.
 
-En la web, `nombres-del-hilo.ts` (nuevo) resuelve un id a nombre contra `useCharacters` +
-`useNpcs` —las mismas listas ya filtradas por `canView`—, con `null` como «este espectador no lo
-ve»; `atacanteDeLaTirada` recorre la ventana de sucesos buscando el `ATTACK_RESOLVED` que citó esa
-tirada. `lineaDeLog(p, ctx?)` (`linea-de-log.ts`) sigue con un solo argumento para las 33 frases
-de siempre —`linea-de-log-sin-claves.test.ts` no se ha tocado—; con `ctx: { sujeto, nombres }`,
-`HP_CHANGED` dice «Sylas pierde 7 PG (cortante) ← Klarg» (o «← ataque de Klarg» si el origen sale
-de `rollEventId`) y `ATTACK_RESOLVED` dice «Klarg ataca a Sylas con Cimitarra: impacta» — **el
-objetivo se nombra a propósito**: el suceso se escribe a la visibilidad del objetivo, así que
-quien lo lee ya lo ve por definición, y el comentario que decía lo contrario en `linea-de-log.ts`
-estaba caducado desde 2.5.3. `ACTIVITY_USED` no existe en el esquema — se buscó y se anotó, no se
-inventó.
+---
 
-`HiloDeSesion.tsx` construye `nombres` con `personajes` + la nueva prop `pnjs` (que `MesaDeSesion`
-ya tenía de `useNpcs`, pasada en vez de pedida dos veces) y compone `linea` para cada mensaje, que
-`MensajeDelHilo.tsx` recibe ya hecha en vez de llamar a `lineaDeLog` por su cuenta. Su cabecera de
-tipo «personaje» pinta el NOMBRE DEL PERSONAJE cuando `vozDe` resolvió uno real, y la persona baja
-a una firma con su hora — sin personaje, la persona sigue en la cabecera, como siempre.
-`PonerDano.tsx` gana un `<select>` «¿De quién viene?» con `<option value="">Sin decir</option>`:
-es una lista de personajes y PNJ —datos, no una opción con significado—, así que un `<select>`
-nativo es correcto y no una desviación de la regla de los radios con explicación; manda
-`sourceCharacterId` solo si se elige.
+## Tarea 11 del pulido: el hilo habla de personajes (2026-09-13, C4: #15) — archivada
 
-Por qué — «¿de qué murió Elara?» (hueco M15, cerrado en 2.5.4) respondía el tipo de daño y la
-tirada, pero el registro seguía sin decir QUIÉN. Con el objetivo ya protegido por `canView` desde
-que el suceso nace, ocultar su nombre en la frase no protegía nada — protegía menos que decir
-«Alguien pierde 7 PG» delante de quien ya lo está viendo.
-
-Evidencia — e2e de API (`dano-con-su-traza.e2e-spec.ts`, 9/9): el DM cita el origen y
-`HP_CHANGED.sourceCharacterId` lo lleva; un origen que no existe en la campaña es 404 y no escribe
-nada (comprobado con el PG sin cambiar). Unitarias de servicio (`character-sheet.service.spec.ts`,
-157/157) sin tocar. Unitarias web: `linea-de-log-con-nombres.test.ts` (nuevo, 6/6) —el daño con
-origen directo, con origen de tirada, el ataque con y sin atacante visible, y que sin `ctx` las
-frases de siempre no cambian—; el resto de `sessions` en verde (1542/1542 de la suite completa).
-Mutación: quitar el `← ${origen}` de `HP_CHANGED` y el `${atacante} ataca a...` de `ATTACK_RESOLVED`
-hace fallar las pruebas nuevas correspondientes (restaurado con `cp`); comentar la llamada a
-`requireVisibleCharacter` en `changeHp` hace fallar el 404 del origen inexistente (restaurado con
-`cp`). `combate.spec.ts` gana una comprobación de extremo a extremo: Thora ataca a Brann por API
-(equipar, resolver el ataque, aplicar daño citando la tirada) y el hilo real muestra «Thora ataca
-a Brann con … : impacta/falla» y «Brann pierde 3 PG ← ataque de Thora» — no ejecutado en esta
-sesión (frontera: solo se corrió el e2e de API una vez), a correr por el orquestador.
-`sesion.spec.ts` actualizado: el golpe real a Borin ahora se lee «Borin Barbaférrea pierde 5 PG»
-en vez de «Pierde 5 PG (13 → 8)», porque su sujeto SÍ se resuelve en ese recorrido.
-
-**Revertir:** quitar `sourceCharacterId` de los dos esquemas y de `changeHp`; borrar
-`nombres-del-hilo.ts` y su prueba; devolver `lineaDeLog`, `HiloDeSesion.tsx` y `MensajeDelHilo.tsx`
-a su forma de un argumento; quitar el `<select>` de `PonerDano.tsx`; deshacer las aserciones nuevas
-de `combate.spec.ts` y la frase cambiada de `sesion.spec.ts`.
+**Movida entera** a [`_archivo/historial-2026-09-13-tarea-11-hilo-nombra-personajes.md`](./_archivo/historial-2026-09-13-tarea-11-hilo-nombra-personajes.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: `HP_CHANGED.sourceCharacterId` y `nombres-del-hilo.ts` hacen que el
+registro diga «Sylas pierde 7 PG ← ataque de Klarg» en vez de «Pierde 7 PG», con el objetivo
+nombrado a propósito porque el suceso ya se escribe a su visibilidad.
 
 ---
 
@@ -399,38 +251,14 @@ bandeja, y la pila se distingue de los atajos.
 
 ---
 
-## Ronda de arreglo 2 de la tarea 10: el radio de ventaja se queda montado, apagado con su motivo (2026-09-13)
 
-Qué — round 1 arregló que la ventaja mintiera, pero **la escondió**: `ofreceVentaja &&` montaba
-y desmontaba el `radiogroup` letra a letra al escribir en el modo avanzado, y el controlador lo
-cazó con `espacios.spec.ts` (los dos tearing de anexo #8, rojos: 840→812, −28px) — exactamente
-el defecto que esa suite existe para cazar y que `jsdom` no puede ver. Arreglo por la regla del
-proyecto («se deshabilita, nunca se esconde, con su motivo», `04-convenciones.md`): el
-`radiogroup` de `BandejaDeDados.tsx` se queda **siempre montado**; cuando no admite ventaja se
-apaga (`disabled`) y una línea con `min-h-[1.125rem]` —reservada también cuando está vacía— dice
-«Solo con un d20 al principio de la tirada.». El botón «Tirar» de los dos paneles cambia su
-motivo de `title` (invisible para lectores de pantalla) a un `span` `sr-only` siempre montado con
-`aria-describedby`, mismo patrón que ya usa `TirarAtaqueBoton.tsx`.
+## Ronda de arreglo 2 de la tarea 10: el radio de ventaja se queda montado, apagado con su motivo (2026-09-13) — archivada
 
-Por qué — el elemento que se movía era el `radiogroup` «Ventaja»: al escribir una expresión que
-no empieza por `d20` (`admiteVentajaEnTexto` en falso), `ofreceVentaja` pasaba a `false` y el
-`{ofreceVentaja && (...)}` de round 1 desmontaba el bloque entero, encogiendo la tarjeta lo que
-medía ese bloque. El botón «Tirar» no cambiaba de alto —su motivo ya vivía en un `title`, que no
-ocupa espacio—, pero se corrigió igual porque un `title` no lo anuncia ningún lector de pantalla
-de forma fiable.
-
-Pruebas — reproducido primero: RTL que abre el modo avanzado, escribe una expresión que no
-admite ventaja y comprueba que el mismo conjunto de roles sigue presente antes y después
-(`PanelDeDados.test.tsx`, nueva); confirma que el culpable era el `radiogroup`. Dos pruebas de
-`BandejaDeDados.test.tsx` que antes esperaban `queryByRole(...).toBeNull()` pasan a esperar
-`toBeInTheDocument()` + `toBeDisabled()`. `PanelDeDadosDeLaMesa.test.tsx` (nuevo fichero, no
-existía prueba unitaria de este componente): mismo reproductor para el cajón compacto.
-`pnpm --filter @dnd/web test -- src/features/rolls`: 91/91 (12 ficheros). `pnpm verify`: verde
-(shared/api/web). E2E (no corridos por el agente; el controlador ya los tiene en su tanda):
-`espacios.spec.ts` queda intacto — no hizo falta tocarlo, porque medía bien: el defecto estaba en
-el componente, no en la medida.
-
-Revertir — `git revert` del commit; ningún dato ni migración de por medio.
+**Movida entera** a [`_archivo/historial-2026-09-13-ronda-arreglo-2-tarea-10.md`](./_archivo/historial-2026-09-13-ronda-arreglo-2-tarea-10.md)
+el 2026-09-13, al escribir el hito «Pulido antes del paso 3» (Tarea 15): su resumen ya vive en ese
+hito, arriba. En una línea: `SelectorDeVentaja` deja de desmontarse cuando la expresión no admite
+ventaja —se apaga con su motivo, siempre montado—, que es la regla de casa contra el *tearing* que
+`espacios.spec.ts` había cazado.
 
 ---
 

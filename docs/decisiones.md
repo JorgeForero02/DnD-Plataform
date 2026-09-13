@@ -495,6 +495,32 @@ Decisiones pequeñas tomadas al cerrar fichas del cubo B, una por commit.
 | D-CF-64 | **El mundo se muestra como árbol + detalle; la telaraña se retira (D4); el mapa de historia queda aplazado por el autor** (2026-09-12, tras ver cuatro maquetas; cierra el #23 del anexo). Un árbol enseña UN padre —los rótulos de `ROTULOS_DE_JERARQUIA`, `apps/web/src/features/links/relaciones.ts`— y los demás hilos van en la ficha; dos padres se enseñan en los dos con «también en …»; un ciclo se corta y se marca. Task 14 bis del pulido; la spec del mapa (`superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md`) se queda tal cual, sin fecha |
 | D-CF-1 | **La lista de sesiones va por cuándo se juega**: con fecha primero, de la más lejana a la más cercana —la próxima arriba, como el resto de listas de la casa ponen lo más reciente primero—, y las sin fecha detrás, por creación. Cierra D4 |
 
+## Ejecución del pulido antes del paso 3 (2026-09-12/13) · [spec](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md) · [plan](./superpowers/plans/2026-09-12-pulido-antes-del-paso-3.md) · [ledger](../.superpowers/sdd/2026-09-12-pulido-antes-del-paso-3/progress.md)
+
+Lo que la ejecución obligó a decidir contra el texto del plan o de la spec, leído de las líneas
+«Ruling:» del ledger. Se omiten las de proceso puro (orden de agentes, cuándo relanzar una
+revisión), que quedan solo en el ledger.
+
+| | Decisión |
+|---|---|
+| E-PL-1 | **`ANCHO_CASILLA_REM` sube de 4.75rem (nota de la Tarea 0) a 6rem, con `nowrap`**: medido en el navegador, 4.75rem partía «Vel. (pies)», «13 / 13» y «+5 temporales» en dos líneas; la velocidad usa la tercera línea de la casilla para «pies» |
+| E-PL-2 | **En Números, la fila usa `items-stretch` para nivelar por fila** (permitido por la regla de casa) y **Salvaciones se queda con el sobrante de la columna central** (`flex-1`); Ataques entra en el mismo bucle de medida que el resto de pestañas |
+| E-PL-3 | **La medida de huecos recorre toda `section[aria-label]` de la pestaña, no solo los hijos directos de la rejilla**: una tarjeta que tiene otra debajo en su misma columna queda exenta del desnivel porque es la columna la que llena la fila, no la tarjeta suelta — la medida original (solo hijos directos) era ciega a ese caso, y lo confirmó una mutación del orquestador |
+| E-PL-4 | **El cajón del registro, abierto, se acota a `max-h-[32vh]`**: el tablero manda sobre el registro, y la medida pasa a comprobar que el marco del tablero ocupa al menos el cajón y al menos un cuarto de la ventana, en vez de un umbral fijo del 40 % que no sobrevivía a la banda de escena |
+| E-PL-5 | **Audiencia y CD del anexo #14 se resuelven con un `<details>` plegable, no un `<select>`**: la spec decía «desplegable», y la regla vinculante de radios con explicación de `04-convenciones.md` no deja un `<select>` para una opción con significado — «desplegable» se lee como «plegable» |
+| E-PL-6 | **El d20 único va siempre al principio de la expresión compuesta**: es el único punto donde el servidor aplica ventaja/desventaja, así que ofrecer el radio de Ventaja sin el d20 en cabeza mentiría |
+| E-PL-7 | **`SelectorDeVentaja` se queda siempre montado y se apaga con su motivo cuando no aplica**, en vez de desmontarse: la regla de casa es «se deshabilita, nunca se esconde», y desmontarlo encogía la tarjeta al escribir (el *tearing* que `espacios.spec.ts` existe para cazar) |
+| E-PL-8 | **«Tirar» (y «Dárselos» / «Quedarse con los N nuevos») no se deshabilitan nunca con la entrada vacía**, contra el texto original de las Tareas 5 y 13: manda `04-convenciones.md:466` («el botón de guardar nunca se deshabilita: no recibe foco de teclado») y el precedente ya sentado por la Tarea 5 sobre «Guardar la sala». Pulsar sin nada que tirar escribe el error en línea y no manda ninguna petición |
+| E-PL-9 | **`ATTACK_RESOLVED` nombra al objetivo desde `subjectId`, contra el comentario que decía «sin nombre del objetivo a propósito»**: el suceso ya se escribe a la visibilidad del objetivo, así que quien lo lee ya lo ve por definición — nombrarlo en la frase no abre nada que `canView` no hubiera abierto ya |
+| E-PL-10 | **Cada tarjeta del hilo se lee como una sola oración**: la cabecera lleva el sujeto y la frase empieza por el verbo cuando `ctx.sujetoEnCabecera` es cierto (el mismo personaje que ya nombra la cabecera), en vez de repetir el nombre en cabecera y en la frase |
+| E-PL-11 | **El mapa de nombres del hilo (`nombres-del-hilo.ts`) incluye a los PNJ, no solo a los personajes de jugador**: sin ellos, un ataque o un daño con sujeto PNJ se quedaba sin nombre en la cabecera |
+| E-PL-12 | **«Custodia» sale de `ROTULOS_DE_JERARQUIA`**: el árbol del mundo enseña contención (vive en / se encuentra en / forma parte de / pertenece a / ocurrió en), y custodiar es una relación lateral, no de contención — el autor la reañade con una línea y un test si la quiere de vuelta |
+| E-PL-13 | **Task 14 bis (el mundo como árbol) ocupa la columna izquierda del taller, donde iba el tablero telaraña**, con sus dos mitades (desglose + detalle) dentro de esa columna, y la selección sigue alimentando «Escribir ficha» sin cambios |
+| E-PL-14 | **`HP_CHANGED.sourceCharacterId` sigue el precedente de `ATTACK_RESOLVED.attackerId`**: un campo opcional que dice «de quién viene» cuando el DM pone daño a mano sin que cuelgue de una tirada, validado con el mismo `requireVisibleCharacter` que ya usan seis servicios |
+| E-PL-15 | **«Alguien» solo aparece cuando el DM citó un `sourceCharacterId` explícito que este espectador no ve**: la versión anterior trataba «hay `rollEventId`» como «se citó un origen» e inventaba un atacante (una caída de 2d6 se atribuía a «Alguien»); con `rollEventId` solo, se nombra al atacante deducido o no se dice nada |
+| E-PL-16 | **La lista de traza abierta de una `Casilla` gana su propio `slot desplegable`, debajo de la cifra y nunca al lado**: el slot `nowrap` que reserva la tercera línea no tenía sitio para una lista que crece, y se colaba a la derecha del número |
+| E-PL-17 | **`CorregirBando` (fila de mandos) se borra en vez de arreglarse**: su prueba se reescribió al menú de acciones con motivo declarado — no es aflojar un control, es sustituir un camino muerto por el que ya existe |
+
 ## Los planes de implementación (2026-09-05) · [índice](./superpowers/plans/2026-09-05-planes/00-INDICE.md)
 
 **Quince planes, uno por fichero**, escritos para atacarse de uno en uno. Cada uno trae pasos con

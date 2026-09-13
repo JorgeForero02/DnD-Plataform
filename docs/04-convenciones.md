@@ -725,6 +725,14 @@ de Playwright por fichero es uno solo y vive en [08-pruebas.md](./08-pruebas.md)
 en primer plano**, nunca con `run_in_background`: dos se quedaron parados esperando una notificación
 que no llegó, y el encargo lo dice desde entonces.
 
+**Todo Bash de un agente que pueda pasar de 120 s lleva `timeout` explícito (600000): el harness
+lo manda al fondo si no, y el agente se queda esperando una notificación que no llega — ~40 min
+perdidos en la tanda del pulido (2026-09-12/13).** No es la misma regla que la de arriba (esa dice
+«no uses `run_in_background`»; esta dice «si no lo usas, dile igualmente al harness cuánto vas a
+tardar»): un `pnpm verify` o un `git commit` con gancho de pre-commit sin `timeout` en la llamada
+pasa a segundo plano por su cuenta pasados los 120 s por defecto, y el agente no se entera. El
+`timeout` va como **parámetro de la herramienta**, no como prefijo de comando de shell.
+
 **Techo de cinco agentes.** Por encima, las compilaciones se comen la máquina y el cuello deja de
 ser el modelo. La recomendación general es 3-5; cinco es sostenible en un equipo con 32 GB.
 

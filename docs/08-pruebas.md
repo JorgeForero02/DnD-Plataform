@@ -108,6 +108,20 @@ específicos y las tres del ruling de la banda (D-CF-38), que son más fuertes. 
 recorrido con `Tab`/`ArrowRight`/`Enter` ya exigen ese mismo fichero y `ui/__tests__/Tabs.test.tsx`;
 una pasada más por la hoja repetiría la prueba del componente, no la de la pantalla.
 
+**Y el 2026-09-13, al cerrar el pulido antes del paso 3, son 48 ficheros** (`espacios`,
+`mundo-arbol` y `tablero-en-la-mesa` nuevos sobre los 45 de la hoja a página completa) — cifra que
+ya lleva el bloque generado de arriba. **Esta vez no la imprimió el corredor**: la regla de esta
+sección («la cifra buena es la que imprime el corredor») no se pudo seguir porque esta tanda no
+corrió Playwright con el agente —lo prohíbe `04-convenciones.md`—, así que la cuenta es la de
+`grep -c '^test(\|^  test(' apps/web/e2e/*.spec.ts`: **160 declaraciones** en los 48 ficheros. Es
+una cota inferior, no lo que ejecuta el corredor, por el mismo motivo que las unitarias:
+`tokens-contrast.spec.ts` declara sus bloques dentro de `for (const theme of ["dark", "light",
+"reading"])`, así que una sola línea `test(` corre tres veces. El orquestador corrió, tarea a
+tarea, `dados`, `tirada`, `espacios`, `bestiario`, `sesion`, `combate`, `mundo-arbol`, `mesa-mide`,
+`tablero-en-la-mesa` y `tokens-contrast`, todos en verde tras sus rondas de arreglo —el detalle de
+cada corrida, con sus rojos y sus causas, vive en el ledger de la tanda
+(`.superpowers/sdd/2026-09-12-pulido-antes-del-paso-3/progress.md`), no aquí.
+
 > **Y por eso la mitad contable se generó.** Este documento decía «21 especificaciones de
 > navegador» y son **20**; antes había dicho «116 e2e de API en 22 suites» olvidando
 > `rate-limit`, y «64 recorridos en quince especificaciones» en un párrafo mientras otro decía

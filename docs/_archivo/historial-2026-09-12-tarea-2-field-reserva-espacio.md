@@ -20,8 +20,13 @@ fija (`--tira-fija-top`, 4rem en `AppShell`, 0px en `Dialog`) en vez de clavarse
 `Rasgos.tsx` (anexo #7) mete Ficha y Personalidad en una sub-rejilla de una columna a la
 izquierda y `RasgosYAptitudes` sola a la derecha — antes las tres eran hermanas de una rejilla a
 dos columnas y el motor de rejilla repartía dos-y-una, dejando un hueco vacío bajo la tarjeta más
-corta; el DOM accesible no cambia, solo el envoltorio, y la unitaria de las tres regiones
-(`Rasgos.test.tsx`) sigue en verde sin tocarla. Dos casos nuevos en `Field.test.tsx`: con
+corta. **Corrección (Tarea 15, 2026-09-13): esta línea decía «el DOM accesible no cambia, solo el
+envoltorio» — era falsa. El orden SÍ cambia: Personalidad pasa de ser hermana suelta de Ficha y
+RasgosYAptitudes a vivir dentro de la sub-rejilla junto a Ficha, así que un lector de pantalla que
+recorra el DOM encuentra Personalidad inmediatamente después de Ficha y antes de
+RasgosYAptitudes — antes las tres eran hermanas en un orden distinto. El contenido de cada tarjeta
+no cambia, y por eso** la unitaria de las tres regiones (`Rasgos.test.tsx`) sigue en verde sin
+tocarla. Dos casos nuevos en `Field.test.tsx`: con
 `reservaEspacio` la línea existe vacía con `min-h-`, sin él no se pinta. Verificado por mutación:
 `cp Field.tsx Field.tsx.bak`, se quitó `min-h-[1.125rem]` de las tres clases condicionales →
 `con reservaEspacio, la línea de pista existe...` FAIL (`expected 'font-chrome text-chrome-xs'

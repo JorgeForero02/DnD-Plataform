@@ -303,7 +303,10 @@ test("escribir una expresión inválida no cambia el alto de la tarjeta de tirar
   await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
 
   const tarjeta = page.getByRole("region", { name: "Tirada nueva" });
-  const campo = page.getByLabel("Qué se tira");
+  // Task 10 — «Qué se tira» vive ahora bajo «Modo avanzado» (`BandejaDeDados.tsx`), plegado por
+  // defecto: se abre antes de medir nada, para que el campo exista cuando se lo busca.
+  await tarjeta.getByText("Modo avanzado").click();
+  const campo = tarjeta.getByLabel("Qué se tira");
   // Fix round 2 (controlador) — **la primera medida es intermitente sin esto**: una tipografía
   // que llega tarde de Google Fonts cambia el alto de la línea después del primer pintado, y si
   // `antes` se toma antes de que la fuente cargue, el reflujo que trae la fuente se atribuye por
@@ -367,6 +370,11 @@ test("escribir una expresión inválida no cambia el alto del panel, en el cajó
   await page.getByRole("button", { name: /^Dados/ }).click();
   const panel = page.getByRole("region", { name: "Tirada" });
   await expect(panel).toBeVisible();
+  // Task 10 — «Qué se tira» y la guía del SRD se plegaron bajo «Modo avanzado» y «Audiencia y
+  // CD» respectivamente (`BandejaDeDados.tsx`, `PanelDeDadosDeLaMesa.tsx`): los dos se abren
+  // antes de medir, o ni el campo ni la guía existen todavía para buscarlos.
+  await panel.getByText("Modo avanzado").click();
+  await panel.getByText(/^Audiencia y CD/).click();
   const campo = panel.getByLabel("Qué se tira");
   // Fix round 2 (controlador) — misma carrera que en la pantalla de Dados: una tipografía que
   // llega tarde de Google Fonts cambia el alto de la línea después del primer pintado, así que
@@ -383,7 +391,8 @@ test("escribir una expresión inválida no cambia el alto del panel, en el cajó
   expect(antes).not.toBeNull();
 
   await campo.fill("4d");
-  await panel.getByRole("button", { name: "Tirar el dado" }).click();
+  // Task 10 — el botón pasó a decir «Tirar», sin «el dado».
+  await panel.getByRole("button", { name: "Tirar", exact: true }).click();
   await expect(panel.getByRole("alert")).toBeVisible({ timeout: 10_000 });
   const despues = await panel.boundingBox();
   expect(despues).not.toBeNull();

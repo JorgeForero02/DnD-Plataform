@@ -20,7 +20,9 @@ y las **dieciocho que el reconocimiento del 2026-09-08 encontró falsas** —cua
 diez con un barrido o una cita de línea dentro— en
 [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md),
 y los **39 bloques de la poda del 2026-09-10** —falsas, tachadas y decididas— en
-[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md).
+[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md),
+y **el anexo #16 de la bandeja compacta**, cerrado por la Task 10 del pulido, en
+[`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -187,15 +189,18 @@ rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24
 sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o
 también resistencias y ventajas? ¿descanso corto real (el de 2C, con su hora de reloj) o un clic?
 
-## Pulido antes del paso 3 — anexo #16, la bandeja compacta (2026-09-12)
+## #13 · Dados en 3D con física de verdad (aplazado, de la nota de Task 0)
 
-La Tarea 3 del plan de pulido reordenó «Ajustes» del personaje (anexo #9, cerrado) y puso el
-reloj, pedir una tirada y tirar en una sola rejilla de dos columnas con alturas iguales (anexo
-#16, parte de rejilla). **Lo que #16 pide y esta tarea NO entrega es la bandeja de dados
-compacta** —pulsar un dado para añadirlo, verlo con su forma, quitarlo con un clic—: esa parte
-llega en la Task 10, junto con la misma bandeja para #10, #11 y #14. Hasta entonces, «tirar»
-sigue siendo el formulario largo de expresión + atajos + radios + motivo + CD, solo que ahora
-comparte rejilla y altura con «pedir» en vez de ir apilado debajo del reloj.
+**Coste investigado, no se hace.** La nota de diseño del pulido
+(`docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md` § 6) mira `dice-box`
+(MIT, BabylonJS + AmmoJS, acepta notación simple y devuelve el resultado por dado:
+<https://github.com/3d-dice/dice-box>) y `dddice-js` (SDK de un servicio en la nube, no
+autoalojable, coste de integración mayor). Lo que hoy pinta el dado en la mesa es
+`DadoTridimensional.tsx` — un cubo CSS que rueda hacia el total, no una física de dados de
+verdad — y Task 10 no lo toca: pinta la bandeja de composición (`BandejaDeDados.tsx`), no la
+animación del resultado. Si algún día se retoma: `dice-box` es la opción autoalojable y la que
+no ata la mesa a un servicio de terceros; el coste es el peso de BabylonJS/AmmoJS y reescribir
+`DadoTridimensional.tsx` sobre su API en vez del CSS actual.
 
 ## Tablero: sandbox del iframe (2026-09-12, ronda de revisión de la Tarea 6)
 

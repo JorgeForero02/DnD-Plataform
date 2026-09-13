@@ -55,6 +55,9 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-07-bahia-normaliza-diacriticos.md`](./_archivo/historial-2026-09-07-bahia-normaliza-diacriticos.md) | **`[[bahia]]` encuentra «Bahía»** (ficha P4), movida entera el 2026-09-13 al escribir la línea de la Tarea 9 del pulido (`dice[]` por dado): el fichero quedaba en 1007 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-07-mesa-390px.md`](./_archivo/historial-2026-09-07-mesa-390px.md) | **La mesa a 390 px, demostrada y no arreglada** (ficha P2 de estrecho), movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el primer archivado. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-07-poda-desbloquea-tres-fichas.md`](./_archivo/historial-2026-09-07-poda-desbloquea-tres-fichas.md) | **Tres fichas que la poda ya había cerrado sin que nadie lo notara**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los dos primeros archivados. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-08-start-devuelve-por-get.md`](./_archivo/historial-2026-09-08-start-devuelve-por-get.md) | **`start()` devuelve por `get()`, como sus tres hermanos** (ficha P3), movida entera el 2026-09-13 al escribir la línea de la Task 10 del pulido: el fichero estaba en 999 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-08-advanceturn-setinitiative.md`](./_archivo/historial-2026-09-08-advanceturn-setinitiative.md) | **`advanceTurn()` y `setInitiative()` devuelven por `get()` también**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el primer archivado. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-08-el-reconocimiento.md`](./_archivo/historial-2026-09-08-el-reconocimiento.md) | **El reconocimiento: dieciocho fichas que el código desmentía**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los dos primeros archivados. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -65,6 +68,48 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Tarea 10 del pulido: la bandeja de dados — pulsar, no escribir (2026-09-13, C5 web: #10, #11, #14, anexo #16)
+
+Qué — `bandeja.ts` (nuevo, `apps/web/src/features/rolls/`): `Bandeja { dados: Caras[];
+modificador: number }` y sus cuatro operaciones puras (`conDado`, `sinDado`, `conModificador`,
+`expresionDeBandeja`, `admiteVentaja`), probadas solas. `BandejaDeDados.tsx` (nuevo): pinta los
+siete dados como botones, la pila con un botón por dado (`aria-label="Quitar el d6 (posición
+N)"`), el modificador con `−`/`+`, `SelectorDeVentaja` solo si `admiteVentaja`, y un `<details>`
+«Modo avanzado» —controlado a mano, no nativo: jsdom no implementa el clic-para-abrir de
+`<summary>`— con el campo «Qué se tira» de siempre; la expresión escrita manda mientras el modo
+avanzado está abierto y alguien ha tecleado, y pulsar un dado siempre devuelve el control a la
+bandeja. Un rechazo del servidor abre el modo avanzado solo (derivado, no con un efecto: el
+`react-hooks/set-state-in-effect` del linter lo prohíbe). `desglose.ts`: `dadosDeLaTirada` acepta
+`dice[]` (Tarea 9) y devuelve `caras` por dado (`null` sin él); `ResultadoDeTirada.tsx` dibuja
+cada dado con `IconoDado caras={dado.caras ?? 20}` en vez de siempre el d20. `PanelDeDados.tsx` y
+`PanelDeDadosDeLaMesa.tsx` sustituyen su bloque «Qué se tira» + «Atajos» + `SelectorDeVentaja` por
+`<BandejaDeDados>`; en el cajón compacto de la mesa, audiencia y CD (con su guía del SRD) se
+pliegan en un `<details>` «Audiencia y CD» cuyo `summary` dice lo elegido, y el botón pasa a decir
+«Tirar» a secas.
+
+Por qué — el autor quiere ver muchos dados a la vez (4, 6, 9, 10 mezclados) y pulsarlos, no
+escribir `4d6+1d8+1d20-2` a mano; el anexo #16 dejaba pendiente justo esta pieza de la rejilla de
+dos columnas de la Tarea 3. `conDadoAnadido`/`expresion.ts` dejan de usarse en los paneles y se
+conservan con su prueba, declarados como tal.
+
+Pruebas — `bandeja.test.ts` (6), `BandejaDeDados.test.tsx` (8, con `fireEvent` y no `userEvent`:
+el proyecto no tiene esa dependencia), `desglose.test.ts` (+3 con `dice[]`),
+`ResultadoDeTirada.test.tsx` (+1, dos formas distintas en el mismo resultado),
+`PanelDeDados.test.tsx` (los tres que escribían en «Qué se tira» abren «Modo avanzado» primero —
+camino ajustado, aserción intacta). `pnpm --filter @dnd/web test -- src/features/rolls`: 77/77.
+Mutación: `expresionDeBandeja` sin agrupar por caras (`1d6+1d6` en vez de `2d6`) enrojece
+`bandeja.test.ts` **y** `PanelDeDados.test.tsx` — restaurada con `cp`. E2E actualizados (no
+corridos por el agente): `dados.spec.ts` (nueva prueba de la bandeja contra la API real, y los
+seis recorridos que escribían en «Qué se tira» abren «Modo avanzado» antes), `tirada.spec.ts`
+(nueva: el cajón compacto cabe en 17rem sin desbordar), `espacios.spec.ts` (las dos medidas de
+altura abren «Modo avanzado» y, en el cajón, «Audiencia y CD», antes de medir), `tokens-contrast.spec.ts`
+(nuevo bloque: el botón de un dado, la pila, el rótulo «Modo avanzado» y el borde del campo
+abierto, en los tres temas).
+
+Revertir — `git revert` del commit; ningún dato ni migración de por medio.
 
 ---
 
@@ -631,95 +676,42 @@ de la cabecera del 06, que nadie había vuelto a aplicar desde el 2026-09-05.
 **Cómo revertir.** `git revert` del commit: el archivo desaparece y el 06 vuelve a `4ced2bc`.
 Ningún bloque se reescribió, así que la vuelta es exacta.
 
-## El reconocimiento: dieciocho fichas que el código desmentía (2026-09-08)
+## El reconocimiento: dieciocho fichas que el código desmentía (2026-09-08) — archivada
 
-**Qué.** Se leyeron unas cincuenta y cinco fichas de [06-pendientes.md](./06-pendientes.md) contra
-el árbol —las que llevaban dentro una cita, un símbolo o un barrido, porque esas se verifican o se
-caen solas—. **Dieciocho eran falsas**, cuatro de ellas P1, y se archivaron enteras en
-[`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md)
-con la medición de cada una. El resto de las tocadas se corrigió en sitio: **ocho citas de línea
-desplazadas**, dos enunciados al revés (`J6` y `N4`), la lista de `viewerFor` que había crecido de
-cinco servicios a trece, y varias mitades falsas retiradas de fichas que siguen abiertas por la
-otra mitad. **Y el veredicto del DM de la mesa de agentes del 2026-09-02 se anotó en vez de
-archivarse** —un veredicto fechado no se reescribe—: sus tres motivos para «el combate no aguanta
-el sábado» son hoy dos cerrados y uno a medias, y **los tres identificadores que cita (`M13`, `M14`
-y `J4`) no existen en el documento**, así que su «ya están fichadas arriba» llevaba tiempo sin
-llevar a ninguna parte. **Y tres documentos de estado mentían por su cuenta**, corregidos también:
-[01-arquitectura.md](./01-arquitectura.md) negaba la bandeja de avisos y remitía a una ficha que ya
-no existía; [05-datos.md](./05-datos.md) decía —con un «esto sí es cierto hoy» delante— que no hay
-`features/notifications` ni pantalla de estado del mundo, y las dos existen; y
-[como-seguir.md](./como-seguir.md) enlazaba a un índice de superpowers que nunca se escribió. Sin
-tocar código.
+**Movida entera** a
+[`_archivo/historial-2026-09-08-el-reconocimiento.md`](./_archivo/historial-2026-09-08-el-reconocimiento.md)
+el 2026-09-13, en el mismo corte que sus dos hermanas de encuentros: el fichero seguía por encima
+de 1000 y era la entrada completa más antigua. En una línea: una lectura de ~55 fichas con cita o
+barrido contra el árbol encontró **dieciocho falsas** (cuatro P1), ocho citas de línea
+desplazadas, dos enunciados al revés, y tres documentos de estado (`01-arquitectura.md`,
+`05-datos.md`, `como-seguir.md`) que mentían por su cuenta — corregidos todos sin tocar código.
 
-**Por qué.** `E2` —«los enlaces del mundo no se pueden recorrer»— era P1 y su propia tabla la
-llamaba «el hallazgo más importante de la pasada»: llevaba cerrada, con página de detalle, enlaces
-entrantes y todo. Una ficha falsa de prioridad alta es trabajo que se hace dos veces, o un arreglo
-que deshace el que ya existe. **Y el patrón que las explica casi todas:** una ficha que describe
-con precisión el arreglo que le falta **no se vuelve a leer el día que ese arreglo se entrega**.
-`U8-glifos` pedía la prueba que hoy existe, `D9` la pantalla que hoy existe, `J9` el filtro que hoy
-cita la ficha desde dentro del código.
+---
 
-**Lo que ningún control iba a cazar, y por qué.** `pnpm check:docs` comprueba que una cita
-`fichero.ts:NN` no se pase del final del fichero. Las ocho desplazadas apuntaban **dentro**, a
-código de otra cosa: bien formadas y falsas. Y `05-datos.md` llevaba tres días declarando `D2` y
-`D9` cerradas **mientras `06-pendientes.md` las listaba abiertas** — una contradicción entre dos
-documentos del mismo directorio que ningún barrido de rutas puede ver. Es la mitad semántica que
-[04-convenciones.md](./04-convenciones.md) ya declara que solo caza una lectura deliberada.
+## Los dos que quedaban: `advanceTurn()` y `setInitiative()` (2026-09-08) — archivada
 
-**Y la pasada estuvo a punto de mentir dos veces**, las dos por creer un acierto de `grep` sin leer
-qué lo rodea: se rebajó la lista de `viewerFor` a cuatro servicios con un barrido truncado por un
-`head` cuando son trece, y se dio `N4` por cerrada al encontrar `ruleName` en el **aviso** de una
-propuesta, que no es su **listado**. Las dos se deshicieron midiendo otra vez; queda escrito en la
-ficha de los barridos que envejecen, porque el modo de fallo lo cometió quien venía a arreglarlo.
+**Movida entera** a
+[`_archivo/historial-2026-09-08-advanceturn-setinitiative.md`](./_archivo/historial-2026-09-08-advanceturn-setinitiative.md)
+el 2026-09-13, en el mismo corte que archivó a su hermana «`start()` devuelve por `get()`»: el
+fichero seguía por encima de 1000 y era la entrada completa más antigua. En una línea:
+`advanceTurn()` y `setInitiative()` pasan a devolver por `get()` también, cerrando del todo la
+deuda que la ficha P3 había dejado a medias; `roundAdvanced` viaja al lado del encuentro porque
+nadie en la web lo consume del propio objeto.
 
-**Cómo revertirlo.** Solo documentación: `git revert` del commit devuelve las dieciocho fichas a
-`06-pendientes.md`, restaura las correcciones en sitio y en los tres documentos de estado, y borra
-los dos ficheros nuevos de `_archivo/` — el del reconocimiento y el de la bandeja de avisos, que
-salió de `07` para hacer sitio a esta entrada.
+---
 
-## Los dos que quedaban: `advanceTurn()` y `setInitiative()` (2026-09-08)
+## `start()` devuelve por `get()`, como sus tres hermanos (2026-09-08, ficha P3) — archivada
 
-El resto de la deuda que la entrada de abajo dio por cerrada nombrando mal a un hermano. Los dos
-devuelven ya por `get()`, y con eso **ningún endpoint de encuentros devuelve filas crudas**.
+**Movida entera** a
+[`_archivo/historial-2026-09-08-start-devuelve-por-get.md`](./_archivo/historial-2026-09-08-start-devuelve-por-get.md)
+el 2026-09-13, al escribir la línea de la Task 10 del pulido (la bandeja de dados): el fichero
+estaba en 999 de 1000 y era la entrada completa más antigua. En una línea: `start()` pasa a
+devolver por `get()`, como sus tres hermanos (`current()`, `setSide()`, `forceStart()`); el
+defecto de verdad estaba en cuatro pruebas que afirmaban sobre el valor de retorno por comodidad,
+no sobre lo que `start()` escribe, y la deuda real —`advanceTurn()` y `setInitiative()` siguen sin
+devolver por `get()`— quedó con ficha propia en [06-pendientes.md](./06-pendientes.md).
 
-**La pregunta que quedaba para el autor la contestó una medición:** `roundAdvanced` **no lo consume
-nadie** —cero usos en `apps/web`—, así que derivarlo sería inventar trabajo para nadie y borrarlo
-tiraría un dato real que cuatro pruebas fijan. Viaja **al lado**, fuera del encuentro, y el tipo
-del cliente lo dice: `Encounter & { roundAdvanced: boolean }`.
-
-**Dos cosas que aparecieron al hacerlo**, ninguna prevista: `get()` usa el pool, así que la
-composición de la respuesta tuvo que salir **fuera** de la transacción —el mismo defecto que este
-proyecto arregló tres veces en septiembre— y en los dos métodos el `return this.prisma.transaction`
-hacía **inalcanzable** la línea nueva. Y el arnés del spec arrastraba `mockResolvedValueOnce` sin
-consumir entre pruebas, porque `clearAllMocks` no vacía esa cola: una prueba fallaba por lo que
-encolaba otra.
-
-**Revertir:** un commit. Toca `encounters.service.ts`, su spec, un e2e y el tipo del cliente.
-
-## `start()` devuelve por `get()`, como sus tres hermanos (2026-09-08, ficha P3)
-
-La ficha se abrió anoche **al revertir este mismo arreglo**, y el revert era correcto con lo que se
-sabía: devolver por `get()` tumbaba cuatro pruebas del servicio. Lo que faltaba era un dato —
-`current()`, `setSide()` y `forceStart()` **ya devolvían por `get()`**—, y con él `start()` no era
-un diseño alternativo sino un endpoint fuera del patrón mayoritario de su fichero.
-
-> **Ese dato se escribió mal y la revisión lo cazó**: decía `advanceTurn()`, que **no** devuelve
-> por `get()`. El nombre se puso de memoria sobre tres números de línea. La línea sigue siendo
-> correcta, pero **la deuda no estaba cerrada del todo**: sobrevive en `advanceTurn()` y
-> `setInitiative()`, con ficha propia en [06-pendientes.md](./06-pendientes.md).
-
-**El defecto estaba en las cuatro pruebas**, no en la línea: afirmaban sobre el valor devuelto por
-comodidad, no porque fuera lo que probaban. Reapuntadas a lo que `start()` **escribe** siguen
-siendo pruebas de comportamiento. La mutación lo separa en los dos sentidos: volver a las filas
-crudas enrojece solo la del esquema; romper el agrupado por `statblockRef`, solo las suyas.
-
-**Comprobado y no supuesto**, que era la duda que quedaba: `get()` filtra por `canView`, pero
-`start()` empieza por `requireDM` y `visibility.ts:24` devuelve `true` para el DM, así que no se
-recorta ningún combatiente. Y las posiciones no cambian de valor: `recolocar` ya las escribe
-densas, de modo que para el DM el renumerado es la identidad — lo confirmaron los e2e que afirman
-`[0, 1, 2]` sin tocarlos.
-
-**Revertir:** un commit. Solo toca `encounters.service.ts` y su spec.
+---
 
 ## Lo que la poda desbloqueó: tres fichas que ya se podían cerrar (2026-09-07) — archivada
 

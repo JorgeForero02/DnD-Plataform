@@ -2,15 +2,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
 import { ApiError } from "../../../lib/api";
 import { Button, Field, fieldControlClass } from "../../../ui";
-import { IconoCerrar, IconoDado } from "../../../ui/Iconos";
+import { IconoCerrar } from "../../../ui/Iconos";
 import { DadoDibujado } from "../DadoDibujado";
 import { ResultadoDeTirada } from "../ResultadoDeTirada";
 import { TiradaACiegas } from "../TiradaACiegas";
-import { SelectorDeVentaja } from "../SelectorDeVentaja";
 import { SelectorDeAudiencia } from "../SelectorDeAudiencia";
+import { BandejaDeDados } from "../BandejaDeDados";
+import { BANDEJA_VACIA, conDado, type Bandeja } from "../bandeja";
 import { GastarInspiracion } from "./GastarInspiracion";
-import { conDadoAnadido } from "../expresion";
-import { DADOS_DE_ATAJO } from "../vocabulario";
 import { useCreateRoll } from "../hooks";
 import { useGuiaDeCd } from "../../roll-requests/hooks";
 import { nombreDeCd } from "../../roll-requests/vocabulario";
@@ -76,6 +75,25 @@ function mensajeDeError(error: unknown): string {
   return "No se pudo tirar.";
 }
 
+/**
+ * Task 10 — lo que dice el `summary` del `<details>` «Audiencia y CD» cuando está plegado:
+ * «Para la mesa entera · sin CD». Plegar no esconde la decisión — se lee sin abrir.
+ *
+ * **No reutiliza la `etiqueta` de `AUDIENCIAS_DE_TIRADA`** («Pública», «Privada del DM», «A
+ * ciegas»): esas son el nombre del radio: cortas, y pensadas para ir junto a su frase. Aquí hace
+ * falta la frase entera para que el resumen tenga sentido solo, sin nada al lado.
+ */
+function resumenAudienciaYCd(audiencia: RollAudience, cd: string): string {
+  const audienciaTexto =
+    audiencia === "PUBLIC"
+      ? "Para la mesa entera"
+      : audiencia === "DM_PRIVATE"
+        ? "Privada del DM"
+        : "A ciegas";
+  const cdTexto = cd.trim() === "" ? "sin CD" : `CD ${cd.trim()}`;
+  return `${audienciaTexto} · ${cdTexto}`;
+}
+
 /** Quien pide menos movimiento no recibe ninguno: tampoco la espera de 1,1 s. */
 function prefiereMenosMovimiento(): boolean {
   return (
@@ -103,6 +121,13 @@ export function PanelDeDadosDeLaMesa({
   onCerrar: () => void;
 }) {
   const idGuia = useId();
+  // Task 10 — la bandeja empieza con un d20 cuando nadie pidió otra cosa (el «1d20» de siempre);
+  // si quien abre el panel trae SU PROPIA expresión (un ataque, «1d8+5»), no hay bandeja que la
+  // represente sin inventarse una composición que nadie pidió, así que empieza vacía y el texto
+  // se lleva tal cual al modo avanzado (`textoInicial`, más abajo) — nada se pierde.
+  const [bandeja, setBandeja] = useState<Bandeja>(() =>
+    expresionInicial === "1d20" ? conDado(BANDEJA_VACIA, 20) : BANDEJA_VACIA,
+  );
   const [expresion, setExpresion] = useState(expresionInicial);
   const [motivo, setMotivo] = useState(motivoInicial);
   const [cd, setCd] = useState("");
@@ -241,58 +266,21 @@ export function PanelDeDadosDeLaMesa({
 
         {momento === "antes" && (
           <div className="mt-s3 flex flex-col gap-s3">
-            <Field
-              label="Qué se tira"
-              hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
+            {/* Task 10 (anexo #16) — la misma bandeja de la pantalla «Dados», en `compacta`: los
+                siete dados en una fila, sin el rótulo «Atajos» que aquí sobra por estrecho. */}
+            <BandejaDeDados
+              valor={bandeja}
+              onChange={({ bandeja: siguiente, expresion: siguienteExpresion }) => {
+                setBandeja(siguiente);
+                setExpresion(siguienteExpresion);
+              }}
+              compacta
+              modo={modo}
+              onModoChange={setModo}
               error={error ?? undefined}
-              reservaEspacio
-            >
-              <input
-                type="text"
-                value={expresion}
-                onChange={(e) => setExpresion(e.target.value)}
-                spellCheck={false}
-                autoComplete="off"
-                className={`${fieldControlClass} font-data`}
-              />
-            </Field>
-
-            <div>
-              <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                Atajos
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {DADOS_DE_ATAJO.map((caras) => (
-                  <Button
-                    key={caras}
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
-                    aria-label={`Añadir un d${caras}`}
-                  >
-                    {/* Tarea 7 — el atajo dibuja SU dado, no siempre el icosaedro: cada `caras`
-                        tiene su propia forma («un dado, una forma», docs/decisiones.md D-CF-62,
-                        con la regla de texto en 04-convenciones.md). */}
-                    <IconoDado caras={caras as 4 | 6 | 8 | 10 | 12 | 20 | 100} />
-                    <span className="font-data">d{caras}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-s3 sm:grid-cols-2">
-              <SelectorDeVentaja
-                value={modo}
-                onChange={setModo}
-                etiqueta="esta tirada"
-                disabled={tirar.isPending}
-              />
-              <SelectorDeAudiencia
-                value={audiencia}
-                onChange={setAudiencia}
-                disabled={tirar.isPending}
-              />
-            </div>
+              disabled={tirar.isPending}
+              textoInicial={expresionInicial !== "1d20" ? expresionInicial : undefined}
+            />
 
             <GastarInspiracion
               campaignId={campaignId}
@@ -303,65 +291,89 @@ export function PanelDeDadosDeLaMesa({
               disabled={tirar.isPending}
             />
 
-            <div className="grid gap-s3 sm:grid-cols-[2fr_1fr]">
-              <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">
-                <input
-                  type="text"
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  maxLength={120}
-                  className={fieldControlClass}
-                />
-              </Field>
-              <Field
-                label="CD (opcional)"
-                hint="Sin ella el servidor no dicta éxito ni fallo: solo da el total."
-              >
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={cd}
-                  onChange={(e) => setCd(e.target.value)}
-                  aria-describedby={idGuia}
-                  className={`${fieldControlClass} font-data`}
-                />
-              </Field>
-            </div>
+            <Field label="Motivo (opcional)" hint="«Percepción», «Daño de la daga».">
+              <input
+                type="text"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                maxLength={120}
+                className={fieldControlClass}
+              />
+            </Field>
 
-            {/* **La guía del SRD es una ayuda, no una jaula**, y es la misma que ya usa
-                `PedirTirada`: la tabla «Typical Difficulty Classes» del SRD 5.1 da seis
-                escalones, pero el propio manual dice que *the DM sets the DC*. Por eso las seis
-                filas **rellenan** el campo en vez de sustituirlo — se puede escribir encima
-                cualquier número, incluido uno que no esté en la tabla. */}
-            <div id={idGuia}>
-              <p className="mb-1 font-chrome text-chrome-xs text-muted">
-                Guía del SRD; puedes escribir cualquier número.
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(guia.data ?? []).map((fila) => (
-                  <Button
-                    key={fila.key}
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setCd(String(fila.dc))}
-                    aria-label={`${nombreDeCd(fila.key)}: CD ${fila.dc}`}
-                  >
-                    <span>{nombreDeCd(fila.key)}</span>
-                    <span className="font-data text-muted">{fila.dc}</span>
-                  </Button>
-                ))}
+            {/* Task 10 — audiencia y CD, plegadas: el cajón es angosto (`max-w-[46rem]`, sin la
+                rejilla de dos columnas de la pantalla «Dados»), y las dos eran la mitad de este
+                formulario. El `summary` dice lo elegido, así que plegado no esconde nada: se lee
+                antes de abrir. Los radios de audiencia y la guía del SRD siguen siendo radios y
+                botones dentro, tal cual. */}
+            <details>
+              <summary className="cursor-pointer font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+                Audiencia y CD · {resumenAudienciaYCd(audiencia, cd)}
+              </summary>
+              <div className="mt-s2 flex flex-col gap-s3">
+                <SelectorDeAudiencia
+                  value={audiencia}
+                  onChange={setAudiencia}
+                  disabled={tirar.isPending}
+                />
+
+                <Field
+                  label="CD (opcional)"
+                  hint="Sin ella el servidor no dicta éxito ni fallo: solo da el total."
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={cd}
+                    onChange={(e) => setCd(e.target.value)}
+                    aria-describedby={idGuia}
+                    className={`${fieldControlClass} font-data`}
+                  />
+                </Field>
+
+                {/* **La guía del SRD es una ayuda, no una jaula**, y es la misma que ya usa
+                    `PedirTirada`: la tabla «Typical Difficulty Classes» del SRD 5.1 da seis
+                    escalones, pero el propio manual dice que *the DM sets the DC*. Por eso las
+                    seis filas **rellenan** el campo en vez de sustituirlo — se puede escribir
+                    encima cualquier número, incluido uno que no esté en la tabla. */}
+                <div id={idGuia}>
+                  <p className="mb-1 font-chrome text-chrome-xs text-muted">
+                    Guía del SRD; puedes escribir cualquier número.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(guia.data ?? []).map((fila) => (
+                      <Button
+                        key={fila.key}
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setCd(String(fila.dc))}
+                        aria-label={`${nombreDeCd(fila.key)}: CD ${fila.dc}`}
+                      >
+                        <span>{nombreDeCd(fila.key)}</span>
+                        <span className="font-data text-muted">{fila.dc}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            </details>
+
+            <p className="font-chrome text-chrome-xs leading-snug text-muted">
+              El número lo decide el servidor. El dado solo lo representa.
+            </p>
 
             <div className="flex items-center gap-s2">
-              <Button type="button" variant="primary" onClick={alTirar} disabled={tirar.isPending}>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={alTirar}
+                disabled={tirar.isPending || expresion.trim() === ""}
+                title={expresion.trim() === "" ? "Añade al menos un dado para tirar." : undefined}
+              >
                 <DadoDibujado />
-                {tirar.isPending ? "Tirando…" : "Tirar el dado"}
+                {tirar.isPending ? "Tirando…" : "Tirar"}
               </Button>
-              <p className="font-chrome text-chrome-xs leading-snug text-muted">
-                El número lo decide el servidor. El dado solo lo representa.
-              </p>
             </div>
           </div>
         )}

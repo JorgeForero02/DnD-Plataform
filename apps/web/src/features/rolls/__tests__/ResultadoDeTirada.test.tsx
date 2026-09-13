@@ -122,7 +122,30 @@ describe("ResultadoDeTirada", () => {
     const { container } = render(<ResultadoDeTirada resultado={tirada()} etiqueta="Percepción" />);
     // Tarea 7 — `data-icono` pasó de "dado" a "d20": DadoDibujado ahora delega en
     // IconoDado caras={20}, que es el mismo dibujo con el nombre de la familia de seis dados.
+    // Sin `dice[]` (este resultado no lo trae) se cae al d20 de siempre para las dos posiciones.
     expect(container.querySelectorAll('svg[data-icono="d20"]')).toHaveLength(2);
+  });
+
+  it("Task 10 — con dice[], cada dado se dibuja con SU forma, no siempre el icosaedro", () => {
+    const { container } = render(
+      <ResultadoDeTirada
+        resultado={tirada({
+          expression: "2d6+1d20",
+          rolls: [3, 5, 17],
+          kept: [3, 5, 17],
+          dropped: [],
+          total: 25,
+          dice: [
+            { sides: 6, value: 3, kept: true },
+            { sides: 6, value: 5, kept: true },
+            { sides: 20, value: 17, kept: true },
+          ],
+        })}
+        etiqueta="Daño"
+      />,
+    );
+    expect(container.querySelectorAll('svg[data-icono="d6"]')).toHaveLength(2);
+    expect(container.querySelectorAll('svg[data-icono="d20"]')).toHaveLength(1);
   });
 });
 

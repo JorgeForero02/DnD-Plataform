@@ -1,5 +1,5 @@
 import type { DerivedValue, RollResultRevealed } from "@dnd/shared";
-import { DadoDibujado } from "./DadoDibujado";
+import { IconoDado } from "../../ui/Iconos";
 import { dadosDeLaTirada, lineaDeDesglose, sumandosDeLaTirada } from "./desglose";
 import { fraseDeResultado, palabraDeNatural, rotuloDeConservacion } from "./vocabulario";
 
@@ -36,6 +36,9 @@ export type DesgloseDeTirada = Pick<
   | "rolls"
   | "kept"
   | "dropped"
+  // Task 10 (C5) — opcional, como en el contrato: un suceso escrito antes de la Tarea 9 no lo
+  // trae, y `dadosDeLaTirada` se cae al d20 de siempre cuando falta.
+  | "dice"
   | "modifier"
   | "total"
   | "dc"
@@ -101,7 +104,10 @@ export function ResultadoDeTirada({
                   "text-muted line-through decoration-[1.5px]",
             ].join(" ")}
           >
-            <DadoDibujado />
+            {/* Task 10 — **cada dado con su forma**, no siempre el icosaedro: `dado.caras` sale
+                de `dice[]` (Tarea 9) cuando el servidor lo manda, y se cae al d20 de siempre
+                —el dibujo de antes— cuando el suceso es viejo y no lo trae. */}
+            <IconoDado caras={(dado.caras ?? 20) as 4 | 6 | 8 | 10 | 12 | 20 | 100} />
             {dado.valor}
             {!dado.conservado && <span className="sr-only"> (descartado)</span>}
           </span>

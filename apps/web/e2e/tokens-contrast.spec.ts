@@ -1223,6 +1223,67 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Task 10 (pulido, C5 web) — **la bandeja de dados y el `<details>` abierto**, medidos como el
+// resto del fichero: pantalla real, colores reales, en los tres temas. La bandeja pinta un botón
+// por dado (secundario, como «Guardar»/«Cancelar» de arriba) y su pila; el `<details>` «Modo
+// avanzado» aporta una superficie que ninguna medida anterior cubría — el propio `<summary>`, en
+// `--muted`, y el campo «Qué se tira» una vez abierto.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en la bandeja de dados (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuenta("bandeja-contraste");
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+    await page.getByLabel("Nombre").fill("Campaña de contraste (bandeja)");
+    await page.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("link", { name: "Campaña de contraste (bandeja)" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Campaña de contraste (bandeja)" }),
+    ).toBeVisible();
+    await page.getByRole("tab", { name: "Dados" }).click();
+    await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
+
+    const tarjeta = page.getByRole("region", { name: "Tirada nueva" });
+
+    {
+      const boton = tarjeta.getByRole("button", { name: "Añadir un d6" });
+      const { color, bg } = await effectiveTextColours(boton);
+      record(theme, "bandeja: botón de dado texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(boton);
+      record(theme, "bandeja: botón de dado borde", contrastRatio(border, borderBg), 3);
+    }
+
+    // La bandeja empieza con un d20 (el «1d20» de siempre); el d6 que se añade aquí entra en la
+    // segunda posición de la pila.
+    await tarjeta.getByRole("button", { name: "Añadir un d6" }).click();
+    {
+      const pila = tarjeta.getByRole("button", { name: "Quitar el d6 (posición 2)" });
+      const { color, bg } = await effectiveTextColours(pila);
+      record(theme, "bandeja: botón de la pila texto", contrastRatio(color, bg), 4.5);
+    }
+
+    {
+      const summary = tarjeta.getByText("Modo avanzado");
+      const { color, bg } = await effectiveTextColours(summary);
+      record(theme, "bandeja: rótulo «Modo avanzado» texto", contrastRatio(color, bg), 4.5);
+    }
+
+    await tarjeta.getByText("Modo avanzado").click();
+    {
+      const campo = tarjeta.getByLabel("Qué se tira");
+      const { border, bg } = await borderColourAgainstBg(campo);
+      record(theme, "bandeja: campo «Qué se tira» abierto, borde", contrastRatio(border, bg), 3);
+    }
+  });
+}
+
 // Fix round 2 (post-1.19b review): fix round 1's "computed size, not explicitness"
 // argument was correct about the test, then lost to the very cascade it was reasoning
 // about -- the element-selector override it shipped in tokens.css never beat

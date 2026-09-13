@@ -160,9 +160,13 @@ merece la pena contar.
 
 ## Durante la partida
 
-- **Tirar.** Desde la hoja, para lo que sea tuyo; o desde la pantalla de dados, escribiendo la
-  expresión que quieras. El desglose se ve entero, con los dados descartados tachados. **El azar
-  lo hace el servidor**, no tu navegador.
+- **Tirar.** Desde la hoja, para lo que sea tuyo; o desde la pantalla de dados y el cajón de la
+  mesa, **pulsando los dados de la bandeja** (d4 … d100) en vez de escribir `1d6` a mano — cada
+  uno se añade a una pila que se ve con su forma, y se quita con un clic en el mismo dado de la
+  pila. Quien prefiera escribir la expresión sigue pudiendo: el «Modo avanzado» tiene el campo
+  libre de siempre (`1d20`, `2d6+3`, `4d6kh3`), y lo que se escriba ahí manda sobre la bandeja
+  hasta el próximo dado que se pulse. El desglose se ve entero, con cada dado dibujado con su
+  forma y los descartados tachados. **El azar lo hace el servidor**, no tu navegador.
 - **Ventaja y desventaja** son una elección al tirar, no algo que haya que escribir a mano.
 - **Ayudar cuesta tu acción del turno.** Es la regla del manual —Ayudar es una acción— y desde el
   2026-09-07 la mesa la cobra: se descuenta y se anuncia. **Fuera de combate no cuesta nada**,

@@ -9,6 +9,12 @@
 // **No valida nada.** Quien decide si una expresión es válida es el evaluador del servidor
 // (`apps/api/src/dice/dice.ts`), y su rechazo se pinta en línea. Una segunda validación en el
 // cliente sería una segunda fuente de verdad sobre la gramática de los dados.
+//
+// **Task 10 — ya no la llama ningún panel.** `PanelDeDados` y `PanelDeDadosDeLaMesa` pulsan
+// dados de una `Bandeja` (`bandeja.ts`, `conDado`) en vez de componer texto sobre la marcha; el
+// campo «Qué se tira» del modo avanzado sigue siendo un campo de texto libre, pero ya no tiene
+// atajos propios que le añadan un término. Se conserva con su prueba, declarado a propósito: no
+// es una función que sobre por descuido, es la que hacía el trabajo antes de esta tarea.
 
 /**
  * Añade un dado a la expresión que ya hay.

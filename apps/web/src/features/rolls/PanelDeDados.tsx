@@ -4,10 +4,8 @@ import { Button, Field, fieldControlClass, Panel } from "../../ui";
 import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
 import { ApiError } from "../../lib/api";
 import { DadoDibujado } from "./DadoDibujado";
-import { IconoDado } from "../../ui/Iconos";
 import { ResultadoDeTirada } from "./ResultadoDeTirada";
 import { TiradaACiegas } from "./TiradaACiegas";
-import { SelectorDeVentaja } from "./SelectorDeVentaja";
 import { SelectorDeAudiencia } from "./SelectorDeAudiencia";
 import { RegistroDeTiradas } from "./RegistroDeTiradas";
 import { RelojDeCampana } from "../game-clock/RelojDeCampana";
@@ -15,8 +13,8 @@ import { useCreateRoll } from "./hooks";
 import { useMyRole } from "../campaigns/members";
 import { PedirTirada } from "../roll-requests/PedirTirada";
 import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
-import { conDadoAnadido } from "./expresion";
-import { DADOS_DE_ATAJO } from "./vocabulario";
+import { BandejaDeDados } from "./BandejaDeDados";
+import { BANDEJA_VACIA, conDado, type Bandeja } from "./bandeja";
 
 // Tarea 2C.2 — **la pantalla de dados de la campaña: se tira desde donde estás.**
 //
@@ -34,9 +32,10 @@ import { DADOS_DE_ATAJO } from "./vocabulario";
 //     alcance de 2C sí lo exige, y con razón — «tira 2d6+3 porque lo digo yo» es la mitad de lo
 //     que pasa en una mesa, y sin campo esa mitad se resuelve con dados de plástico al lado del
 //     portátil, que es la imagen que esta herramienta existe para quitar.
-//  2. **Los siete dados como atajos** (d4 … d100). Son la otra mitad: escribir `1d6` a mano para
-//     el daño de una daga, veinte veces por combate, es exactamente el trabajo que un programa
-//     debería ahorrar. La composición vive en `expresion.ts` y se prueba sola.
+//  2. **Los siete dados como atajos** (d4 … d100), pulsables en la bandeja (`BandejaDeDados.tsx`,
+//     Task 10). Son la otra mitad: escribir `1d6` a mano para el daño de una daga, veinte veces
+//     por combate, es exactamente el trabajo que un programa debería ahorrar. La composición
+//     vive en `bandeja.ts` y se prueba sola.
 //  3. **Audiencia de la tirada.** El prototipo no la tiene y el contrato de 2C.1 sí
 //     (`rollAudienceSchema`). Va como **tres radios visibles con su frase**, nunca en un
 //     desplegable: regla vinculante de `docs/04-convenciones.md`, y aquí pesa el doble porque
@@ -71,6 +70,9 @@ function mensajeDeError(error: unknown): string {
 }
 
 export function PanelDeDados({ campaignId }: { campaignId: string }) {
+  // Task 10 — la bandeja empieza con un d20, como el «1d20» de siempre: es lo que hace que
+  // «Ventaja» siga visible desde el primer render, igual que antes de esta tarea.
+  const [bandeja, setBandeja] = useState<Bandeja>(() => conDado(BANDEJA_VACIA, 20));
   const [expresion, setExpresion] = useState("1d20");
   const [motivo, setMotivo] = useState("");
   const [cd, setCd] = useState("");
@@ -178,49 +180,20 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
             </div>
 
             <div className="mt-s3 flex flex-col gap-s3">
-              <Field
-                label="Qué se tira"
-                hint="Escribe la expresión: 1d20, 2d6+3, 4d6kh3."
+              {/* Task 10 — pulsar un dado lo añade a la pila; pulsar uno de la pila lo quita.
+                  «Qué se tira» sigue existiendo, y sigue siendo el campo que manda cuando alguien
+                  escribe encima, pero ahora plegado bajo «Modo avanzado» — y ahí sigue viviendo
+                  el error del servidor, junto al campo, con su `aria-invalid`/`aria-describedby`
+                  de siempre (regla de docs/04-convenciones.md: nunca flotando). */}
+              <BandejaDeDados
+                valor={bandeja}
+                onChange={({ bandeja: siguiente, expresion: siguienteExpresion }) => {
+                  setBandeja(siguiente);
+                  setExpresion(siguienteExpresion);
+                }}
+                modo={modo}
+                onModoChange={setModo}
                 error={error ?? undefined}
-                reservaEspacio
-              >
-                <input
-                  type="text"
-                  value={expresion}
-                  onChange={(e) => setExpresion(e.target.value)}
-                  spellCheck={false}
-                  autoComplete="off"
-                  className={`${fieldControlClass} font-data`}
-                />
-              </Field>
-
-              <div>
-                <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
-                  Atajos
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {DADOS_DE_ATAJO.map((caras) => (
-                    <Button
-                      key={caras}
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
-                      aria-label={`Añadir un d${caras}`}
-                    >
-                      {/* Tarea 7 — el atajo dibuja SU dado, no siempre el icosaedro: cada
-                          `caras` tiene su propia forma («un dado, una forma», docs/decisiones.md
-                          D-CF-62, con la regla de texto en 04-convenciones.md). */}
-                      <IconoDado caras={caras as 4 | 6 | 8 | 10 | 12 | 20 | 100} />
-                      <span className="font-data">d{caras}</span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <SelectorDeVentaja
-                value={modo}
-                onChange={setModo}
-                etiqueta="esta tirada"
                 disabled={tirar.isPending}
               />
 
@@ -257,7 +230,8 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
                   type="button"
                   variant="primary"
                   onClick={alTirar}
-                  disabled={tirar.isPending}
+                  disabled={tirar.isPending || expresion.trim() === ""}
+                  title={expresion.trim() === "" ? "Añade al menos un dado para tirar." : undefined}
                 >
                   Tirar
                 </Button>

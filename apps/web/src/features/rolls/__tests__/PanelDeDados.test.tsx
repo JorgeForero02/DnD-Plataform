@@ -72,6 +72,9 @@ describe("PanelDeDados — tirar", () => {
 
     pintar();
 
+    // Task 10 — «Qué se tira» vive ahora bajo «Modo avanzado», plegado por defecto: se abre
+    // antes de escribir en él. El camino cambia; la aserción de qué se manda, no.
+    fireEvent.click(screen.getByText("Modo avanzado"));
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20+3" } });
     fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
     fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
@@ -158,6 +161,8 @@ describe("PanelDeDados — tirar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
     await screen.findByText("17 = 17 dado");
 
+    // Task 10 — mismo motivo que arriba: se abre «Modo avanzado» antes de escribir encima.
+    fireEvent.click(screen.getByText("Modo avanzado"));
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20++" } });
     fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
 
@@ -174,17 +179,20 @@ describe("PanelDeDados — tirar", () => {
     expect(document.querySelectorAll("[data-dado]")).toHaveLength(0);
   });
 
-  it("un atajo de dado compone la expresión: vacía da 1d6, y otro atajo lo suma", () => {
+  it("Task 10 — un dado de la bandeja compone la expresión, agrupando por caras", () => {
     pintar();
-
+    // La bandeja empieza con un d20 (el «1d20» de siempre): se abre el modo avanzado para ver
+    // la expresión compuesta sin escribir nada en el campo.
+    fireEvent.click(screen.getByText("Modo avanzado"));
     const campo = screen.getByLabelText("Qué se tira");
-    fireEvent.change(campo, { target: { value: "" } });
+    expect(campo).toHaveValue("1d20");
 
     fireEvent.click(screen.getByRole("button", { name: "Añadir un d6" }));
-    expect(campo).toHaveValue("1d6");
+    expect(campo).toHaveValue("1d20+1d6");
 
+    // Un segundo d20 se agrupa con el primero, no se suma como término aparte.
     fireEvent.click(screen.getByRole("button", { name: "Añadir un d20" }));
-    expect(campo).toHaveValue("1d6+1d20");
+    expect(campo).toHaveValue("2d20+1d6");
   });
 });
 

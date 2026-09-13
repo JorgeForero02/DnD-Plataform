@@ -368,6 +368,12 @@ test("escribir una expresión inválida no cambia el alto del panel, en el cajó
   // se espera a que las fuentes estén listas y el campo visible ANTES de la primera medida.
   await page.evaluate(() => document.fonts.ready);
   await expect(campo).toBeVisible();
+  // Fix round 4 (controlador) — la carrera real no eran las fuentes: la guía de CD
+  // (`useGuiaDeCd`, «Guía del SRD…» + seis botones «Muy fácil 5» … «Casi imposible 30») llega
+  // del servidor después del primer pintado y añade 33.5 px al panel si la medida se toma
+  // antes de que aparezca. Se espera a que el primer botón de la guía esté visible antes de
+  // `antes` para que las dos medidas partan del mismo alto.
+  await expect(panel.getByRole("button", { name: /Muy fácil/ })).toBeVisible();
   const antes = await panel.boundingBox();
   expect(antes).not.toBeNull();
 

@@ -591,6 +591,18 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
     expect("hitPointsPerLevel" in data).toBe(false);
     expect("gp" in data).toBe(false);
   });
+
+  it("E-RM-16: un PNJ instanciado (statblockRef) no está sujeto a MATRIZ — una característica sola pasa", async () => {
+    const { service, prisma, characters } = montar();
+    const pnj = { ...personajeBase, statblockRef: "SRD:goblin" } as unknown as Character;
+    prep(prisma, characters, { abilities: { metodo: "MATRIZ" } }, pnj);
+
+    await expect(
+      service.updateSheet("dm", "c1", "ch1", { abilities: { str: 16 } }),
+    ).resolves.toBeDefined();
+    const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
+    expect(data.str).toBe(16);
+  });
 });
 
 describe("CharacterSheetService — 2A.7 PG mutables", () => {

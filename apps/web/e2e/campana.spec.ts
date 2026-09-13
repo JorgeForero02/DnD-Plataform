@@ -504,7 +504,7 @@ test("editar el nombre, expulsar a un jugador y borrar una segunda campaña, tod
   const nameInput = dmPage.getByLabel("Nombre");
   await expect(nameInput).toHaveValue("La Ciudadela de los Vientos");
   await nameInput.fill("La Ciudadela de los Vientos Eternos");
-  await dmPage.getByRole("button", { name: "Guardar" }).click();
+  await dmPage.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(
     dmPage.getByRole("heading", { name: "La Ciudadela de los Vientos Eternos" }),
   ).toBeVisible();

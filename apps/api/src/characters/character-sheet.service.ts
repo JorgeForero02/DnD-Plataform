@@ -861,7 +861,12 @@ export class CharacterSheetService {
       where: { id: campaignId },
       select: { tableRules: true },
     });
-    const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
+    // E-RM-16: un PNJ instanciado (`statblockRef` no nulo, ver el comentario en
+    // `schema.prisma`) es del DM, no nace en la mesa — ve las reglas por defecto siempre, así
+    // que MATRIZ/PUNTOS/DADOS, "las seis juntas" y `comprobarPermitido` no le aplican.
+    const regla = character.statblockRef
+      ? tableRulesSchema.parse({})
+      : tableRulesSchema.parse(campaign?.tableRules ?? {});
 
     const data: Record<string, unknown> = {};
     // El intento de dados que hay que marcar `chosen: true` si la escritura llega a completarse

@@ -1253,7 +1253,7 @@ for (const theme of ["dark", "light", "reading"] as const) {
     const tarjeta = page.getByRole("region", { name: "Tirada nueva" });
 
     {
-      const boton = tarjeta.getByRole("button", { name: "Añadir un d6" });
+      const boton = tarjeta.getByRole("button", { name: "Añadir un d6", exact: true });
       const { color, bg } = await effectiveTextColours(boton);
       record(theme, "bandeja: botón de dado texto", contrastRatio(color, bg), 4.5);
       const { border, bg: borderBg } = await borderColourAgainstBg(boton);
@@ -1261,12 +1261,21 @@ for (const theme of ["dark", "light", "reading"] as const) {
     }
 
     // La bandeja empieza con un d20 (el «1d20» de siempre); el d6 que se añade aquí entra en la
-    // segunda posición de la pila.
-    await tarjeta.getByRole("button", { name: "Añadir un d6" }).click();
+    // segunda posición de la pila. Round 1 de revisión (anexo #10): la pila pinta en superficie
+    // de cobre, distinta del contorno de los atajos — se mide aparte y no se confunde con el
+    // botón de arriba.
+    await tarjeta.getByRole("button", { name: "Añadir un d6", exact: true }).click();
     {
-      const pila = tarjeta.getByRole("button", { name: "Quitar el d6 (posición 2)" });
+      const pila = tarjeta.getByRole("button", { name: "Quitar el d6 (posición 2)", exact: true });
       const { color, bg } = await effectiveTextColours(pila);
       record(theme, "bandeja: botón de la pila texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(pila);
+      record(theme, "bandeja: botón de la pila borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const rotuloPila = tarjeta.getByText("En la bandeja · 2 dados");
+      const { color, bg } = await effectiveTextColours(rotuloPila);
+      record(theme, "bandeja: rótulo «En la bandeja» texto", contrastRatio(color, bg), 4.5);
     }
 
     {

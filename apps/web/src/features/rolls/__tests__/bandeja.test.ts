@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BANDEJA_VACIA,
   admiteVentaja,
+  admiteVentajaEnTexto,
   conDado,
   conModificador,
   expresionDeBandeja,
@@ -9,15 +10,34 @@ import {
 } from "../bandeja";
 
 // Task 10 — **la composición de la bandeja, probada sola.** `BandejaDeDados.tsx` solo llama a
-// estas cinco funciones; lo que puede romperse en silencio vive aquí, no en el componente:
-// agrupar por caras en el orden de entrada, el signo del modificador, quitar por índice (no por
-// valor, que confundiría dos dados iguales) y cuándo se ofrece ventaja.
+// estas funciones; lo que puede romperse en silencio vive aquí, no en el componente: agrupar
+// por caras, el signo del modificador, quitar por índice (no por valor, que confundiría dos
+// dados iguales) y cuándo se ofrece ventaja.
 
 describe("expresionDeBandeja", () => {
-  it("compone 2d6+1d20+3 agrupando por caras y respetando el orden de entrada", () => {
+  it("agrupa por caras en el orden de entrada cuando no hay d20", () => {
+    const b = conDado(conDado(BANDEJA_VACIA, 6), 6);
+    expect(expresionDeBandeja(b)).toBe("2d6");
+  });
+
+  // Round 1 de revisión (IMPORTANT #1) — **el d20 va PRIMERO cuando hay exactamente uno**, sin
+  // importar cuándo se pulsó: el servidor solo convierte un `d20` en ventaja/desventaja cuando
+  // está al principio de la expresión (`conVentaja`, `apps/api/src/rolls/rolls.service.ts:436`).
+  // Componer `2d6+1d20+3` —el orden de entrada, sin más— ofrecería el radio de «Ventaja» sobre
+  // una expresión que el servidor tira normal: el defecto que este caso fija.
+  it("con exactamente un d20, su grupo va primero aunque se haya pulsado el último", () => {
     let b = conDado(conDado(conDado(BANDEJA_VACIA, 6), 20), 6);
     b = conModificador(b, 3);
-    expect(expresionDeBandeja(b)).toBe("2d6+1d20+3");
+    expect(expresionDeBandeja(b)).toBe("1d20+2d6+3");
+  });
+
+  it("el caso mínimo del defecto: d6 y luego d20 da 1d20+1d6, no 1d6+1d20", () => {
+    expect(expresionDeBandeja(conDado(conDado(BANDEJA_VACIA, 6), 20))).toBe("1d20+1d6");
+  });
+
+  it("con dos d20 no se reordena: ninguno de los dos ofrece ventaja por sí solo", () => {
+    const b = conDado(conDado(conDado(BANDEJA_VACIA, 6), 20), 20);
+    expect(expresionDeBandeja(b)).toBe("1d6+2d20");
   });
 
   it("un modificador negativo va con su signo y la bandeja vacía es la cadena vacía", () => {
@@ -27,6 +47,31 @@ describe("expresionDeBandeja", () => {
 
   it("un modificador de cero no se escribe: ni +0 ni -0", () => {
     expect(expresionDeBandeja(conDado(BANDEJA_VACIA, 6))).toBe("1d6");
+  });
+
+  // Round 1 de revisión (extra pedido) — **sin dados, la cadena vacía, incluso con
+  // modificador**: un modificador solo no es una tirada, y dejarlo pasar como `"+3"` sería
+  // inventar una expresión que nadie compuso (y que el evaluador del servidor rechazaría igual).
+  it("sin dados no hay expresión, ni siquiera con el modificador puesto", () => {
+    expect(expresionDeBandeja(conModificador(BANDEJA_VACIA, 3))).toBe("");
+    expect(expresionDeBandeja(conModificador(BANDEJA_VACIA, -5))).toBe("");
+  });
+});
+
+describe("admiteVentajaEnTexto", () => {
+  it("un d20 al principio del texto la ofrece, con o sin el 1 explícito", () => {
+    expect(admiteVentajaEnTexto("1d20")).toBe(true);
+    expect(admiteVentajaEnTexto("d20")).toBe(true);
+    expect(admiteVentajaEnTexto("1d20+3")).toBe(true);
+  });
+
+  it("un d20 que no abre la expresión no la ofrece — el servidor tampoco la daría", () => {
+    expect(admiteVentajaEnTexto("1d6+1d20")).toBe(false);
+    expect(admiteVentajaEnTexto("3+1d20")).toBe(false);
+  });
+
+  it("un dado de más caras que empieza igual (d200) no cuenta como d20", () => {
+    expect(admiteVentajaEnTexto("1d200")).toBe(false);
   });
 });
 

@@ -365,8 +365,8 @@ test("el cajón «La mesa tira» compacto cabe en 17rem de ancho sin desbordar",
   }
 
   // La pila: se añade un d20 y un d100 (los dos extremos de la fila) y ninguno desborda tampoco.
-  await panel.getByRole("button", { name: "Añadir un d20" }).click();
-  await panel.getByRole("button", { name: "Añadir un d100" }).click();
+  await panel.getByRole("button", { name: "Añadir un d20", exact: true }).click();
+  await panel.getByRole("button", { name: "Añadir un d100", exact: true }).click();
   const pila = panel.getByRole("list", { name: "Dados en la bandeja" });
   await expect(pila).toBeVisible();
   const cajaPila = await pila.boundingBox();

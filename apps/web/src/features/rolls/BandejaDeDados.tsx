@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import type { RollMode } from "@dnd/shared";
 import { Button, Field, fieldControlClass } from "../../ui";
-import { IconoDado } from "../../ui/Iconos";
+import { IconoDado, IconoQuitar } from "../../ui/Iconos";
 import { SelectorDeVentaja } from "./SelectorDeVentaja";
 import { DADOS_DE_ATAJO } from "./vocabulario";
 import {
   type Bandeja,
   type Caras,
   admiteVentaja,
+  admiteVentajaEnTexto,
   conDado,
   conModificador,
   expresionDeBandeja,
@@ -22,12 +24,15 @@ import {
 //
 // **La expresión escrita manda sobre la bandeja, pero solo mientras el modo avanzado está
 // abierto y alguien ha tecleado en el campo.** Sin eso, la bandeja es la fuente. Pulsar un dado
-// de la fila SIEMPRE devuelve el control a la bandeja — es lo que hace que «pulsar, ver la pila,
-// quitar con un clic» funcione aunque el modo avanzado esté abierto y alguien mirase el campo
-// hace un momento.
+// de la fila SIEMPRE devuelve el control a la bandeja, y **plegar el modo avanzado también**: lo
+// que había escrito a mano no se queda como fuente escondida — round 1 de revisión lo encontró
+// mandando en silencio con el campo ya fuera de la vista.
 //
 // **El autor quiere ver muchos dados a la vez** (4, 6, 9, 10 mezclados): la pila es
-// `flex-wrap`, así que un ataque con `9d6` no se sale de la fila, se envuelve.
+// `flex-wrap`, así que un ataque con `9d6` no se sale de la fila, se envuelve. Y la pila **se ve
+// distinta de los atajos** (anexo #10, round 1): superficie de cobre, no el contorno de los
+// botones de arriba, con su rótulo propio y una «×» dibujada en cada dado — sin eso, la fila de
+// pulsados y la de disponibles eran la misma silueta.
 
 export function BandejaDeDados({
   valor,
@@ -44,9 +49,10 @@ export function BandejaDeDados({
   /** En la mesa: los siete dados en una fila, sin el rótulo «Atajos». */
   compacta?: boolean;
   /**
-   * **Ventaja, si `admiteVentaja(valor)`.** Es el mismo `RollMode` que ya vivía en el panel — la
-   * bandeja solo decide CUÁNDO se ofrece el control, nunca compone la conversión. Opcional: un
-   * consumidor que no ofrezca ventaja en ningún sitio no tiene que pasar nada.
+   * **Ventaja, si `admiteVentaja(valor)` (o, con texto escrito, `admiteVentajaEnTexto`).** Es el
+   * mismo `RollMode` que ya vivía en el panel — la bandeja solo decide CUÁNDO se ofrece el
+   * control, nunca compone la conversión. Opcional: un consumidor que no ofrezca ventaja en
+   * ningún sitio no tiene que pasar nada.
    */
   modo?: RollMode;
   onModoChange?: (siguiente: RollMode) => void;
@@ -82,6 +88,22 @@ export function BandejaDeDados({
 
   const campoTexto = editadoAMano ? texto : expresionDeBandeja(valor);
 
+  // Round 1 de revisión (IMPORTANT #1) — **de dónde sale el radio de ventaja depende de quién
+  // manda.** Con el campo escrito a mano, se lee el propio texto con el mismo criterio que usa
+  // el servidor (`admiteVentajaEnTexto`: un d20 al principio, ni más ni menos); con la bandeja al
+  // mando, `admiteVentaja` ya garantiza que su expresión compuesta pone el d20 primero
+  // (`expresionDeBandeja`). Ofrecerlo por la bandeja cuando el texto manda mentiría: alguien
+  // pudo escribir `1d6+1d20` a mano, y ahí el servidor no da ventaja aunque el radio la ofrezca.
+  const ofreceVentaja = editadoAMano ? admiteVentajaEnTexto(campoTexto) : admiteVentaja(valor);
+
+  // Round 1 (extra pedido) — **si el radio desaparece, que no se quede pegado en Ventaja.** Sin
+  // esto, quitar el d20 (o escribir encima de un texto que ya no empieza por él) dejaba `modo`
+  // en `ADVANTAGE`/`DISADVANTAGE` sin ningún control visible que lo explicara, y la próxima
+  // tirada saldría con un modo que nadie eligió a propósito para ella.
+  useEffect(() => {
+    if (!ofreceVentaja && modo !== "NORMAL") onModoChange("NORMAL");
+  }, [ofreceVentaja, modo, onModoChange]);
+
   function aplicar(siguiente: Bandeja) {
     setEditadoAMano(false);
     onChange({ bandeja: siguiente, expresion: expresionDeBandeja(siguiente) });
@@ -91,6 +113,22 @@ export function BandejaDeDados({
     setTexto(siguiente);
     setEditadoAMano(true);
     onChange({ bandeja: valor, expresion: siguiente });
+  }
+
+  /**
+   * Round 1 de revisión (IMPORTANT #2) — **plegar el modo avanzado también devuelve el control
+   * a la bandeja.** Sin esto, escribir `4d6kh3`, plegar el `<details>` y pulsar «Tirar» mandaba
+   * esa expresión escondida — el campo que la explicaba ya no estaba a la vista, y nada en
+   * pantalla decía que seguía siendo la fuente.
+   */
+  function alPulsarResumen(e: MouseEvent) {
+    e.preventDefault();
+    const siguienteAbierto = !abierto;
+    setAbierto(siguienteAbierto);
+    if (!siguienteAbierto) {
+      setEditadoAMano(false);
+      onChange({ bandeja: valor, expresion: expresionDeBandeja(valor) });
+    }
   }
 
   return (
@@ -118,28 +156,49 @@ export function BandejaDeDados({
         </div>
       </div>
 
-      {/* **La pila. Vacía no se pinta nada** — una `<ul>` vacía con su rótulo sería una caja que
-          dice «aquí no hay nada», y eso ya se ve porque no hay nada. */}
+      {/* **La pila. Vacía no se pinta nada** — un rótulo y una lista vacíos serían una caja que
+          dice «aquí no hay nada», y eso ya se ve porque no hay nada.
+          Round 1 (anexo #10, IMPORTANT #3): **una superficie distinta de los atajos**, no el
+          mismo contorno — cobre en vez de `border-muted`, con su propio rótulo («En la
+          bandeja · N dados») y una equis dibujada (`IconoQuitar`, nunca un glifo de fuente) en
+          cada dado, para que pulsado y disponible no se confundan de un vistazo. */}
       {valor.dados.length > 0 && (
-        <ul aria-label="Dados en la bandeja" className="flex flex-wrap gap-1.5">
-          {valor.dados.map((caras, indice) => (
-            <li key={`${caras}-${indice}`}>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={disabled}
-                onClick={() => aplicar(sinDado(valor, indice))}
-                aria-label={`Quitar el d${caras} (posición ${indice + 1})`}
-              >
-                <IconoDado caras={caras} />
-                <span className="font-data">d{caras}</span>
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <div>
+          <p
+            className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-copper-text"
+            aria-live="polite"
+          >
+            En la bandeja · {valor.dados.length} {valor.dados.length === 1 ? "dado" : "dados"}
+          </p>
+          <ul aria-label="Dados en la bandeja" className="flex flex-wrap gap-1.5">
+            {valor.dados.map((caras, indice) => (
+              <li key={`${caras}-${indice}`}>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => aplicar(sinDado(valor, indice))}
+                  aria-label={`Quitar el d${caras} (posición ${indice + 1})`}
+                  className={[
+                    "inline-flex items-center justify-center gap-2 rounded-radius-sm border px-3 py-1.5",
+                    "font-chrome text-chrome-sm font-semibold text-copper-text transition-colors",
+                    "border-copper bg-[color:var(--copper-tint)] hover:border-accent",
+                    "disabled:cursor-not-allowed disabled:text-muted",
+                  ].join(" ")}
+                >
+                  <IconoDado caras={caras} />
+                  <span className="font-data">d{caras}</span>
+                  <IconoQuitar className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="flex items-center gap-s2">
+        <span className="font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
+          Modificador
+        </span>
         <Button
           type="button"
           variant="secondary"
@@ -163,11 +222,11 @@ export function BandejaDeDados({
         </Button>
       </div>
 
-      {/* **Solo con exactamente un d20** (`admiteVentaja`, `bandeja.ts`): pedir ventaja sobre
-          `4d6kh3` no significa nada, y `conVentaja` en el servidor la ignoraría igual. El `div`
-          con `role="radiogroup"` es lo que da nombre al grupo entero; `SelectorDeVentaja` ya
-          trae su propio `fieldset` con la leyenda visualmente oculta. */}
-      {admiteVentaja(valor) && (
+      {/* **Solo cuando el d20 manda de verdad** (`ofreceVentaja`, arriba): pedir ventaja sobre
+          `4d6kh3` — o sobre `1d6+1d20` escrito a mano, que el servidor tampoco reescribe— no
+          significa nada. El `div` con `role="radiogroup"` es lo que da nombre al grupo entero;
+          `SelectorDeVentaja` ya trae su propio `fieldset` con la leyenda visualmente oculta. */}
+      {ofreceVentaja && (
         <div role="radiogroup" aria-label="Ventaja">
           <SelectorDeVentaja
             value={modo}
@@ -185,10 +244,7 @@ export function BandejaDeDados({
           el estado a mano, que funciona igual en jsdom y en un navegador de verdad. */}
       <details open={mostrarModoAvanzado}>
         <summary
-          onClick={(e) => {
-            e.preventDefault();
-            setAbierto((actual) => !actual);
-          }}
+          onClick={alPulsarResumen}
           className="cursor-pointer font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted"
         >
           Modo avanzado

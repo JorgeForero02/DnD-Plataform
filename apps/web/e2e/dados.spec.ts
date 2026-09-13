@@ -88,13 +88,15 @@ test("la bandeja compone la tirada a golpes: d6, d6, d20 y el modificador a 3", 
 
   // La bandeja empieza con un d20 (el «1d20» de siempre): se quita antes de componer la de esta
   // prueba, para que el total no dependa de un cuarto dado que nadie pidió.
-  await tarjeta(page).getByRole("button", { name: "Quitar el d20 (posición 1)" }).click();
-  await tarjeta(page).getByRole("button", { name: "Añadir un d6" }).click();
-  await tarjeta(page).getByRole("button", { name: "Añadir un d6" }).click();
-  await tarjeta(page).getByRole("button", { name: "Añadir un d20" }).click();
-  await tarjeta(page).getByRole("button", { name: "Subir el modificador" }).click();
-  await tarjeta(page).getByRole("button", { name: "Subir el modificador" }).click();
-  await tarjeta(page).getByRole("button", { name: "Subir el modificador" }).click();
+  await tarjeta(page)
+    .getByRole("button", { name: "Quitar el d20 (posición 1)", exact: true })
+    .click();
+  await tarjeta(page).getByRole("button", { name: "Añadir un d6", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Añadir un d6", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Añadir un d20", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Subir el modificador", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Subir el modificador", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Subir el modificador", exact: true }).click();
 
   await tarjeta(page).getByRole("button", { name: "Tirar" }).click();
 

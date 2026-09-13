@@ -58,6 +58,14 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-08-start-devuelve-por-get.md`](./_archivo/historial-2026-09-08-start-devuelve-por-get.md) | **`start()` devuelve por `get()`, como sus tres hermanos** (ficha P3), movida entera el 2026-09-13 al escribir la línea de la Task 10 del pulido: el fichero estaba en 999 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-08-advanceturn-setinitiative.md`](./_archivo/historial-2026-09-08-advanceturn-setinitiative.md) | **`advanceTurn()` y `setInitiative()` devuelven por `get()` también**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el primer archivado. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-08-el-reconocimiento.md`](./_archivo/historial-2026-09-08-el-reconocimiento.md) | **El reconocimiento: dieciocho fichas que el código desmentía**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los dos primeros archivados. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-10-la-poda-treinta-y-nueve-bloques.md`](./_archivo/historial-2026-09-10-la-poda-treinta-y-nueve-bloques.md) | **La poda: treinta y nueve bloques fuera del tablero**, movida entera el 2026-09-13 al escribir la ronda de arreglo de la Task 10 del pulido (round 1): el fichero volvía a pasarse de 1000. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-11-hoja-a-pagina-spec-y-plan.md`](./_archivo/historial-2026-09-11-hoja-a-pagina-spec-y-plan.md) | **La hoja a página completa: spec aprobada y plan escrito, sin código**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-paso-3-cierre-primera-parte.md`](./_archivo/historial-2026-09-12-paso-3-cierre-primera-parte.md) | **El paso 3 se convierte en el cierre de la primera parte**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-revision-de-produccion-24-puntos.md`](./_archivo/historial-2026-09-12-revision-de-produccion-24-puntos.md) | **La revisión de producción del autor: 24 puntos y tres specs**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-0-nota-de-diseno.md`](./_archivo/historial-2026-09-12-tarea-0-nota-de-diseno.md) | **Tarea 0 del pulido: nota de diseño y cinco reglas**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-1-casilla-banda-anclada.md`](./_archivo/historial-2026-09-12-tarea-1-casilla-banda-anclada.md) | **Tarea 1 del pulido: `Casilla` y la banda anclada**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-ronda-arreglo-tarea-1-casilla-6rem.md`](./_archivo/historial-2026-09-12-ronda-arreglo-tarea-1-casilla-6rem.md) | **Ronda de arreglo de la tarea 1: `Casilla` a 6rem**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md`](./_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md) | **Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -96,10 +104,13 @@ dos columnas de la Tarea 3. `conDadoAnadido`/`expresion.ts` dejan de usarse en l
 conservan con su prueba, declarados como tal.
 
 Pruebas — `bandeja.test.ts` (6), `BandejaDeDados.test.tsx` (8, con `fireEvent` y no `userEvent`:
-el proyecto no tiene esa dependencia), `desglose.test.ts` (+3 con `dice[]`),
+el proyecto no tiene esa dependencia), `desglose.test.ts` (+2 con `dice[]`),
 `ResultadoDeTirada.test.tsx` (+1, dos formas distintas en el mismo resultado),
-`PanelDeDados.test.tsx` (los tres que escribían en «Qué se tira» abren «Modo avanzado» primero —
-camino ajustado, aserción intacta). `pnpm --filter @dnd/web test -- src/features/rolls`: 77/77.
+`PanelDeDados.test.tsx` (dos de los tres que escribían en «Qué se tira» abren «Modo avanzado»
+primero —camino ajustado, aserción intacta—; el tercero, «un atajo de dado compone la
+expresión», tenía la aserción sobre un camino que ya no existe —vaciar el campo a mano— y se
+reescribió sobre el nuevo: la bandeja empieza con un d20 y un atajo la agranda). `pnpm --filter
+@dnd/web test -- src/features/rolls`: 77/77.
 Mutación: `expresionDeBandeja` sin agrupar por caras (`1d6+1d6` en vez de `2d6`) enrojece
 `bandeja.test.ts` **y** `PanelDeDados.test.tsx` — restaurada con `cp`. E2E actualizados (no
 corridos por el agente): `dados.spec.ts` (nueva prueba de la bandeja contra la API real, y los
@@ -108,6 +119,48 @@ seis recorridos que escribían en «Qué se tira» abren «Modo avanzado» antes
 altura abren «Modo avanzado» y, en el cajón, «Audiencia y CD», antes de medir), `tokens-contrast.spec.ts`
 (nuevo bloque: el botón de un dado, la pila, el rótulo «Modo avanzado» y el borde del campo
 abierto, en los tres temas).
+
+Revertir — `git revert` del commit; ningún dato ni migración de por medio.
+
+---
+
+## Ronda de arreglo de la tarea 10: el d20 al principio, plegar devuelve el control, la pila se distingue (2026-09-13)
+
+Qué — tres defectos de la revisión (round 1) sobre la bandeja de dados. **El grave**: `admiteVentaja`
+ofrecía el radio con «exactamente un d20 en cualquier posición», pero el servidor
+(`conVentaja`, `apps/api/src/rolls/rolls.service.ts:436`) solo reescribe un `d20` **al
+principio** de la expresión; pulsar d6 y luego d20 componía `1d6+1d20`, ofrecía «Ventaja» y el
+servidor la tiraba normal, sin avisar a nadie. `expresionDeBandeja` antepone el grupo del d20
+cuando hay exactamente uno, sin importar cuándo se pulsó; y cuando el campo escrito a mano es la
+fuente, el radio deja de mirar la bandeja y mira el propio texto (`admiteVentajaEnTexto`, mismo
+criterio que el servidor: `/^\s*1?d20(\b|[^0-9])/`). Extra: `modo` vuelve a `NORMAL` solo cuando
+el radio deja de ofrecerse, para que no se quede pegado en Ventaja sin ningún control que lo
+explique. **Plegar «Modo avanzado» también devuelve el control a la bandeja**: antes, escribir
+`4d6kh3` y plegar el `<details>` dejaba esa expresión mandando escondida; ahora plegar hace lo
+mismo que pulsar un dado. **La pila ya no se confunde con los atajos** (anexo #10): rótulo
+propio «En la bandeja · N dados», superficie de cobre (`border-copper`,
+`bg-[color:var(--copper-tint)]`) en vez del contorno de los atajos, y una «×» dibujada
+(`IconoQuitar`) en cada dado de la pila. De regalo: `expresionDeBandeja` da `""` con la bandeja
+vacía aunque haya modificador puesto (un modificador solo no es una tirada); los dados del
+resultado (`ResultadoDeTirada.tsx`) pasan de números pegados al icono a fichas con borde,
+icono a `h-5 w-5` y valor en `text-chrome-md`, envueltas con `flex-wrap`.
+
+Por qué — el defecto del d20 lo encontró la revisión leyendo el regex de `conVentaja` contra lo
+que la bandeja componía; sin el arreglo, la mitad de la promesa de esta tarea —pulsar dados en
+vez de escribir, y que la ventaja siga siendo real— quedaba rota en el caso más obvio (un ataque:
+el dado de daño primero, el d20 después). La pila sin distinguir de los atajos era el propio
+anexo #10 sin cerrar del todo: «pulsado» y «disponible» tenían la misma silueta.
+
+Pruebas — `bandeja.test.ts`: +7 (el reordenado del d20, dos d20 no se reordenan,
+`admiteVentajaEnTexto` con sus tres casos, la bandeja vacía con modificador). `BandejaDeDados.test.tsx`:
++5 (el caso d6-luego-d20 ofrece ventaja de verdad; el texto manda sobre la bandeja para el
+radio; plegar devuelve el control; `modo` vuelve a Normal; el rótulo de la pila). Dos pruebas
+existentes con su expectativa corregida al nuevo orden (`"1d6+1d20"` → `"1d20+1d6"`). `pnpm
+--filter @dnd/web test -- src/features/rolls`: 89/89. Mutación (ya hecha en la tarea, sigue
+válida: agrupar sin `Map` enrojece `bandeja.test.ts` y `PanelDeDados.test.tsx`). E2E actualizados
+(no corridos por el agente, mismo alcance que la tarea): `exact: true` en los botones de la
+bandeja que ya escribían pruebas de la tarea, y `tokens-contrast.spec.ts` mide también el borde
+de la pila y el rótulo «En la bandeja».
 
 Revertir — `git revert` del commit; ningún dato ni migración de por medio.
 
@@ -465,77 +518,50 @@ cuerpo → la unitaria de orden FAIL (el botón deja de estar bajo un `footer`),
 [plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), anexos #9 y
 #16 de la lista del autor; revertir — `git revert` del commit de esta tarea.
 
-## Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos (2026-09-12)
+## Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos (2026-09-12) — archivada
 
-Qué — `Field` gana `reservaEspacio?: boolean` (anexo #8): con él, la línea de pista/error
-(`data-testid="field-linea"`) se pinta siempre con `min-h-[1.125rem]`, vacía si no hay nada que
-decir, para que el control no salte de alto cuando el evaluador de la expresión de dados hace
-aparecer y desaparecer el error mientras se escribe; los dos `Field label="Qué se tira"`
-(`apps/web/src/features/rolls/PanelDeDados.tsx` y
-`apps/web/src/features/rolls/panel/PanelDeDadosDeLaMesa.tsx`) lo activan. `DetalleDeObjeto.tsx` (panel
-sticky de la pestaña Objetos) pasa de `lg:top-s4` a
-`lg:top-[calc(var(--tira-fija-top,0px)+var(--space-4))]` para respetar el escalón de la banda
-fija (`--tira-fija-top`, 4rem en `AppShell`, 0px en `Dialog`) en vez de clavarse siempre a 1rem.
-`Rasgos.tsx` (anexo #7) mete Ficha y Personalidad en una sub-rejilla de una columna a la
-izquierda y `RasgosYAptitudes` sola a la derecha — antes las tres eran hermanas de una rejilla a
-dos columnas y el motor de rejilla repartía dos-y-una, dejando un hueco vacío bajo la tarjeta más
-corta; el DOM accesible no cambia, solo el envoltorio, y la unitaria de las tres regiones
-(`Rasgos.test.tsx`) sigue en verde sin tocarla. Dos casos nuevos en `Field.test.tsx`: con
-`reservaEspacio` la línea existe vacía con `min-h-`, sin él no se pinta. Verificado por mutación:
-`cp Field.tsx Field.tsx.bak`, se quitó `min-h-[1.125rem]` de las tres clases condicionales →
-`con reservaEspacio, la línea de pista existe...` FAIL (`expected 'font-chrome text-chrome-xs'
-to match /min-h-/`), restaurado con `cp` y borrado el `.bak`; por qué — tarea 2 del
-[plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), anexos #6, #7
-y #8 de la nota de diseño de la tarea 0; la medida en navegador de #6 (escalón del sticky) y #8
-(salto de alto del Field) la escribe la Tarea 4 en `espacios.spec.ts`, no esta; revertir —
-`git revert` del commit de esta tarea.
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md`](./_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: `Field` gana
+`reservaEspacio?` (la línea de pista/error nunca cambia de alto), el panel sticky de Objetos
+respeta el escalón de la banda fija, y `Rasgos.tsx` corrige el hueco de su rejilla con una
+sub-rejilla para Ficha y Personalidad.
 
-## Ronda de arreglo de la tarea 1: `Casilla` a 6rem, medida en el navegador (2026-09-12)
+---
 
-Qué — Playwright contra `e2e/hoja.spec.ts` (corrido por el controlador, no por el agente) tumbó
-la primera versión de la tarea 1: a `4.75rem` («VEL. (PIES)», «13 / 13» y «+5 temporales» partían
-línea), midió tres casillas de 60/75/95px en vez de una sola altura. Corrección —
-`ANCHO_CASILLA` pasa a `w-[6rem]` con `whitespace-nowrap` en rótulo, cifra y nota (`Casilla.tsx`);
-la etiqueta de velocidad se acorta de «Vel. (pies)» a «Vel.», con «pies» en la tercera línea vía
-un `nota?: ReactNode` nuevo en `ValorDerivadoProps` que solo reenvía la variante `compacta`
-(`Traza.tsx`, `Cabecera.tsx`); los dos selectores de `e2e/hoja.spec.ts` que contaban las cinco
-cajas por clase pasan de `w-[4.75rem]` a `w-[6rem]`, y las dos listas de rótulos de esa misma
-suite y de `Cabecera.test.tsx` cambian «Vel. (pies)» por «Vel.». Números corregidos en
-`docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md` § 7, `04-convenciones.md`
-(regla «Reparto interno de tarjeta») y `decisiones.md` (D-CF-58); por qué — el número que trajo
-la nota de diseño de la tarea 0 era un mínimo (`min-w-[4.75rem]`) nunca puesto a prueba como
-ancho fijo con contenido real, y solo el navegador lo pudo ver. **Segunda pasada de Playwright**:
-`e2e/hoja.spec.ts` pasó a 11/12 (el timeout de L151 era flaky, verde al repetirlo) pero
-`e2e/hoja-pestanas.spec.ts` cayó 7 de 7 en su propia lista de rótulos — se había quedado con el
-literal viejo, «Vel. (pies)» — y se actualizó **en esta misma ronda** a «Vel.»; revertir —
-`git revert` de los commits de esta ronda de arreglo.
+## Ronda de arreglo de la tarea 1: `Casilla` a 6rem, medida en el navegador (2026-09-12) — archivada
 
-## Tarea 1 del pulido: `Casilla` y la banda anclada (2026-09-12)
+**Movida entera** a
+[`_archivo/historial-2026-09-12-ronda-arreglo-tarea-1-casilla-6rem.md`](./_archivo/historial-2026-09-12-ronda-arreglo-tarea-1-casilla-6rem.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: Playwright tumbó la primera
+`Casilla` a `4.75rem` (líneas partidas); corregida a `w-[6rem]` con `whitespace-nowrap` y «Vel.»
+en vez de «Vel. (pies)», con los selectores de `hoja.spec.ts` y `hoja-pestanas.spec.ts` al día.
 
-Qué — `Casilla` (nuevo componente, `apps/web/src/features/character-sheet/Casilla.tsx`), con las
-constantes de la tarea 0 (`ANCHO_CASILLA` `w-[4.75rem]`, `ALTO_CASILLA` `min-h-[3.75rem]`) y su
-tercera línea (`data-testid="casilla-nota"`) SIEMPRE reservada, con o sin nota: la casilla de PG
-era la única de las cinco de la tira con «+N temporales» y por eso era la única más ancha y más
-alta (anexo #4). La usan la variante `compacta` de `ValorDerivado` (`Traza.tsx`) y la caja de PG
-de `Cabecera.tsx`, que deja de llevar su propio marcado. `TarjetaDeHoja` gana un `pie?: ReactNode`
-opcional, separado del cuerpo por su propio filete (`Tarjeta.tsx`, sin consumidor todavía). Y la
-banda fija se ancla al hueco que la contiene con dos variables CSS nuevas que declara quien la
-tiene, no la propia banda (mismo patrón que `--tira-fija-top`/`--tira-fija-pull`):
-`--tira-fija-mx` y `--tira-fija-bg` (`AppShell.tsx`: medio paso hacia fuera y `--chrome-veil`
-translúcido; `Dialog.tsx`: cero y `--surface` opaco — anexo #3, el velo del 95 % dentro de un
-cajón «flotaba sin estar anclada»). Dos `test` de navegador nuevos en `e2e/hoja.spec.ts` (las
-cinco casillas miden lo mismo con y sin temporales; la banda va a ras y sobre fondo opaco dentro
-de «Su hoja») y la aserción existente de esa suite que contaba las cinco cajas por su clase pasa
-de `min-w-[4.75rem]` a `w-[4.75rem]` porque la clase real cambió de mínimo a fijo. Unitarias
-nuevas: `Casilla.test.tsx` (tres casos) y `Tarjeta.test.tsx` (dos, para `pie`). Verificado por
-mutación: quitar `min-h-[1rem]` de la nota tumba la primera unitaria de `Casilla`, restaurado con
-`cp`; por qué — tarea 1 del [plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md),
-anexos #3 y #4 de la nota de diseño de la tarea 0; revertir — quitar `Casilla.tsx` y restaurar la
-caja de PG en `Cabecera.tsx` a su marcado anterior (`git revert` del commit de esta tarea).
+---
 
-## Tarea 0 del pulido: nota de diseño y cinco reglas (2026-09-12)
+## Tarea 1 del pulido: `Casilla` y la banda anclada (2026-09-12) — archivada
 
-Qué — nota de diseño de UI de juegos ([docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md](./superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md), con cita o URL por referencia: BG3, Divinity: Original Sin 2, Foundry VTT/Dice So Nice, D&D Beyond, Owlbear Rodeo, dddice/dice-box) y cinco reglas nuevas en [04-convenciones.md](./04-convenciones.md) § *Reglas de interfaz* (reparto interno de tarjeta, acciones de fila con menú, espacio reservado, sticky con escalón, un dado una forma), con sus cinco constantes fijadas (`HUECO_MAX_PX` 48 px, `DESNIVEL_MAX_PX` 24 px, `ANCHO_CASILLA_REM` 4.75rem, `ALTO_CASILLA_REM` 3.75rem, `ACCIONES_VISIBLES` 2) y sus decisiones D-CF-58 a D-CF-62; por qué — tarea 0 del [plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md) (investigar antes de tocar, pedido tres veces por el autor), para que las tareas 1, 4 y 8 lean los números de un solo sitio; revertir — `git revert` del commit de esta tarea, sin código tocado.
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-1-casilla-banda-anclada.md`](./_archivo/historial-2026-09-12-tarea-1-casilla-banda-anclada.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: `Casilla` (nuevo componente)
+reserva siempre su tercera línea de nota; `TarjetaDeHoja` gana un `pie?`; la banda fija se ancla
+con dos variables CSS que declara quien la contiene (`--tira-fija-mx`/`--tira-fija-bg`).
+
+---
+
+## Tarea 0 del pulido: nota de diseño y cinco reglas (2026-09-12) — archivada
+
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-0-nota-de-diseno.md`](./_archivo/historial-2026-09-12-tarea-0-nota-de-diseno.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: nota de diseño de UI de
+juegos (BG3, Divinity OS2, Foundry, D&D Beyond, Owlbear Rodeo, dddice/dice-box) y cinco reglas de
+interfaz nuevas con sus constantes fijadas (D-CF-58..62).
+
+---
 
 ## La hoja a página completa (2026-09-11 y 12) — archivada
 
@@ -547,50 +573,40 @@ el 2026-09-12, en la ronda de revisión de la Tarea 5 del pulido: el fichero que
 plan, la ola de revisión final de la rama, y las tandas HP-1 a HP-10 (sintonización cuenta,
 la fila resume todos los tipos de efecto) cerradas hasta HP-9b.
 
-## La revisión de producción del autor: 24 puntos y tres specs (2026-09-12, tarde)
+## La revisión de producción del autor: 24 puntos y tres specs (2026-09-12, tarde) — archivada
 
-El autor recorrió producción (`6d2b2ca`) y reportó 24 puntos con captura; su diagnóstico —«espacios
-desaprovechados, centrados no hechos, cards mal distribuidas, un largo etc.»— convirtió la lista en
-**causas** en vez de arreglos: [pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md)
-(tarjeta y rejilla, acciones de fila con menú, iconos, hilo que nombra personajes, bandeja de dados;
-con tarea 0 de investigación de UI de juegos y [anexo](./superpowers/specs/2026-09-12-pulido-anexo-lista-del-autor.md)).
-Dos puntos eran mecánica pedida y no hecha —el DM decide cómo se determinan características, nivel,
-PG, permitidos y oro, con dados o fijo— y son la spec de
-[reglas de la mesa](./superpowers/specs/2026-09-12-reglas-de-la-mesa-design.md); uno era la línea
-de tiempo ramificada de D4, que el autor quiere **dibujada por el DM** y no generada del log:
-[mapa de historia](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md). Dados 3D
-aplazados. Orden nuevo antes del paso 3: D-CF-52..55. **Y el tablero provisional:** Owlbear no se
-deja enmarcar (medido), así que nuestra mesa irá **dentro** de su sala como extensión oficial
-([spec](./superpowers/specs/2026-09-12-owlbear-como-tablero-design.md), D-CF-56), tras un spike
-del autor. Auditoría de los docs del cierre de la hoja:
-alineados (tres checks en verde, producción verificada en `vps1new`). **Revertir:** borrar las specs;
-las decisiones se quedan.
+**Movida entera** a
+[`_archivo/historial-2026-09-12-revision-de-produccion-24-puntos.md`](./_archivo/historial-2026-09-12-revision-de-produccion-24-puntos.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: el autor recorrió producción
+y reportó 24 puntos, convertidos en tres specs (el pulido de esta rama, reglas de la mesa, el
+mapa de historia del DM) más el tablero provisional dentro de Owlbear (D-CF-52..56).
 
-## El paso 3 se convierte en el cierre de la primera parte (2026-09-12)
+---
 
-Con el autor, contrastando el índice del SRD 5.1 contra el código y los planes: **P2-4, P2-5 y
-«hasta el próximo descanso» no estaban hechos** (el paso 2 los planificó, no los construyó) y salen
-a una tanda propia, la [puerta de efectos](./superpowers/specs/2026-09-12-la-puerta-de-efectos-design.md),
-que además trae la **bandeja de daño** (preview con resistencias + un clic; investigado en Foundry
-3.1/6.0). El plan del paso 3 gana los bloques **E** (innatos, reacciones, espacio superior, ataque
-de conjuro contra CA, tanda L) y **F** (lista única de acciones, menú «Acciones» en la mesa,
-acciones de combate que no son atacar, enfrentadas y de grupo, legendarias): ~26 tareas en cinco
-cortes. **Fuera por decisión del autor:** lo que necesita tablero, multiclase, entorno, montura,
-malditos, componentes. D-CF-49..51. **Revertir:** quitar los bloques E y F del plan; las decisiones
-se quedan como registro.
+## El paso 3 se convierte en el cierre de la primera parte (2026-09-12) — archivada
 
-## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche)
+**Movida entera** a
+[`_archivo/historial-2026-09-12-paso-3-cierre-primera-parte.md`](./_archivo/historial-2026-09-12-paso-3-cierre-primera-parte.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: P2-4, P2-5 y «hasta el
+próximo descanso» salen a una tanda propia (la puerta de efectos, con la bandeja de daño); el
+plan del paso 3 gana los bloques E y F, ~26 tareas en cinco cortes, con lo que necesita tablero
+fuera por decisión del autor (D-CF-49..51).
 
-Con el autor, en otra sesión y mientras la tanda de fichas cerraba: la hoja fuera de la mesa se
-rehace como **una sola `HojaCalculada` con `disposicion`** —cabecera fija con retrato, cinco
-números, condiciones y avisos; siete pestañas laterales a columnas; Objetos con lista + detalle
-desde una lista única de acciones; Conjuros solo para quien lanza—. Cinco preguntas contestadas y
-un enfoque elegido (D-CF-29..35), [spec](./superpowers/specs/2026-09-11-la-hoja-a-pagina-completa-design.md)
-y [plan de 11 tareas](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md); la Task 1
-cierra de paso la ficha del token revocado (D-CF-36). **Y dos huecos de la auditoría de docs de
-esa noche, tapados aquí:** 05-datos no contaba qué quitaron las migraciones (`RestKind`,
-`race`/`class`) y el ledger global decía «push pendiente» con el push hecho. **Revertir:** borrar
-la spec y el plan; las decisiones se quedan como registro.
+---
+
+## La hoja a página completa: spec aprobada y plan escrito, sin código (2026-09-11, noche) — archivada
+
+**Movida entera** a
+[`_archivo/historial-2026-09-11-hoja-a-pagina-spec-y-plan.md`](./_archivo/historial-2026-09-11-hoja-a-pagina-spec-y-plan.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: la hoja fuera de la mesa se
+rediseña como una sola `HojaCalculada` con `disposicion` —cabecera fija, siete pestañas
+laterales, Objetos con lista + detalle, Conjuros solo para quien lanza—; spec y plan de 11 tareas
+aprobados con el autor, sin código todavía.
+
+---
 
 ## Relectura de 01–05 y 09 al cerrar la rama: diez frases falsas (2026-09-11) — archivada
 
@@ -652,29 +668,17 @@ el 2026-09-12, al añadir la línea de la ronda de arreglo de la Tarea 4: el fic
 por commit con su prueba roja antes; nueve cierran, dos vuelven a «decide el autor» (`changeHp ·
 rollEventId`, `J7`).
 
-## La poda: treinta y nueve bloques fuera del tablero, y doce decisiones con fila (2026-09-10)
+## La poda: treinta y nueve bloques fuera del tablero, y doce decisiones con fila (2026-09-10) — archivada
 
-**Qué.** Se clasificaron **todas** las secciones abiertas de [06-pendientes.md](./06-pendientes.md)
-contra el árbol en `4ced2bc` —falsa, cerrable, absorbida por el paso 3, o del autor— y se aplicó la
-poda que [como-seguir.md](./como-seguir.md) tenía pendiente: **dieciséis fichas o mitades que el
-código desmentía**, **doce tachadas** que seguían en el documento contra su propia regla, y
-**once que los cuatro pasos de [04-convenciones.md](./04-convenciones.md) convirtieron en decisión
-declarada o en «no es ficha»**, todas enteras en
-[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md)
-con su medición. Las decisiones tienen fila en [decisiones.md](./decisiones.md) (`D-POD-1` a
-`D-POD-12`), la densidad de 14 px pasa a regla en `04`, y **tres fichas salen de «decide el autor»
-sin salir del 06** porque los cuatro pasos las contestan: `start()` con dos DM, `U10` y `M2B-14`.
-El 06 baja de 1496 a ~1100 líneas. Sin tocar código.
+**Movida entera** a
+[`_archivo/historial-2026-09-10-la-poda-treinta-y-nueve-bloques.md`](./_archivo/historial-2026-09-10-la-poda-treinta-y-nueve-bloques.md)
+el 2026-09-13, al escribir la ronda de arreglo de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: se clasificaron todas las
+secciones abiertas de `06-pendientes.md` contra el árbol —dieciséis fichas falsas, doce tachadas
+que seguían listadas, once resueltas por los cuatro pasos— y el documento bajó de 1496 a ~1100
+líneas, sin tocar código.
 
-**Por qué.** Dos hallazgos de paso justifican por sí solos la pasada: la «corrección» del
-2026-09-08 a la ficha de concesiones afirmaba que `specificPlayerIds` «ya no existe en ninguna
-capa», y existe en `packages/shared/src/entity.schema.ts` y en `entities.service.ts` — **una
-corrección que miente es peor que la ficha que corregía**; y `D5` (restaurar una copia) llevaba
-días contradiciendo la decisión de la cabecera del mismo documento. Lo demás es la regla mecánica
-de la cabecera del 06, que nadie había vuelto a aplicar desde el 2026-09-05.
-
-**Cómo revertir.** `git revert` del commit: el archivo desaparece y el 06 vuelve a `4ced2bc`.
-Ningún bloque se reescribió, así que la vuelta es exacta.
+---
 
 ## El reconocimiento: dieciocho fichas que el código desmentía (2026-09-08) — archivada
 

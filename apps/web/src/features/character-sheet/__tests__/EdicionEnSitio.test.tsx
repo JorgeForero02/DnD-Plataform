@@ -412,6 +412,51 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
   });
 });
 
+// D-CF-66: el nivel lo fija el DM. La casilla se deshabilita con su motivo, nunca se esconde.
+describe("FichaEditable — D-CF-66, el nivel es DM-only", () => {
+  const montarFicha = (esDM: boolean) => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <IdentidadEditable
+          campaignId="c1"
+          characterId="ch1"
+          character={
+            {
+              id: "ch1",
+              level: 3,
+              raceKey: "dwarf",
+              subraceKey: null,
+              classKey: "fighter",
+              str: 16,
+              dex: 12,
+              con: 14,
+              int: 10,
+              wis: 10,
+              cha: 8,
+            } as never
+          }
+          sheet={null}
+          puedeEditar
+          esDM={esDM}
+        />
+      </QueryClientProvider>,
+    );
+  };
+
+  it("el dueño (no DM) ve «Nivel» deshabilitado con el motivo a la vista", () => {
+    montarFicha(false);
+    const campo = screen.getByLabelText("Nivel");
+    expect(campo).toBeDisabled();
+    expect(screen.getByTitle("El nivel lo fija el DM")).toBeInTheDocument();
+  });
+
+  it("el DM ve «Nivel» editable", () => {
+    montarFicha(true);
+    expect(screen.getByLabelText("Nivel")).not.toBeDisabled();
+  });
+});
+
 describe("las dos reglas de la identidad que solo se ven al usarla", () => {
   const montar = async (over: Record<string, unknown>, sheet: unknown) => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -12,6 +12,7 @@ export function Rasgos({
   data,
   puedeEditar,
   disposicion,
+  esDM = false,
 }: PropsDePestana) {
   const { character, sheet } = data;
   const columnas = disposicion === "pagina" ? "lg:grid-cols-2" : "";
@@ -37,6 +38,7 @@ export function Rasgos({
             characterId={characterId}
             character={character}
             puedeEditar={puedeEditar}
+            esDM={esDM}
           />
         </TarjetaDeHoja>
         <Personalidad bio={character.bio} />

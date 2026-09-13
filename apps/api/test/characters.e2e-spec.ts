@@ -74,9 +74,10 @@ describe("Characters (e2e)", () => {
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("Aragorn");
     aragornId = res.body.id;
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     const conNivel = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
-      .set("Authorization", `Bearer ${tokenP1}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 3 });
     expect(conNivel.status).toBe(200);
     // seed more: P2 OWNER_DM, P1 DM_ONLY
@@ -133,19 +134,35 @@ describe("Characters (e2e)", () => {
     const forbidden = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
       .set("Authorization", `Bearer ${tokenP2}`)
-      .send({ level: 20 });
+      .send({ bio: "hax" });
     expect(forbidden.status).toBe(403);
     const owner = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
       .set("Authorization", `Bearer ${tokenP1}`)
-      .send({ level: 4 });
+      .send({ bio: "del dueño" });
     expect(owner.status).toBe(200);
-    expect(owner.body.level).toBe(4);
+    expect(owner.body.bio).toBe("del dueño");
+    const dm = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ bio: "del DM" });
+    expect(dm.status).toBe(200);
+  });
+
+  // D-CF-66: el nivel lo fija el DM, ni siquiera el dueño puede subirlo desde este endpoint.
+  it("el nivel es DM-only: el dueño recibe 403, el DM lo cambia", async () => {
+    const s = app.getHttpServer();
+    const owner = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
+      .set("Authorization", `Bearer ${tokenP1}`)
+      .send({ level: 4 });
+    expect(owner.status).toBe(403);
     const dm = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 5 });
     expect(dm.status).toBe(200);
+    expect(dm.body.level).toBe(5);
   });
 
   // 2.5.8 (ficha M9) — archivar en vez de borrar. «Cierra con: un personaje archivado
@@ -228,9 +245,10 @@ describe("Characters (e2e)", () => {
         .set("Authorization", `Bearer ${tokenP1}`)
         .send({ name: "Faramir", level: 3, visibility: "OWNER_DM" });
       expect(mio.status).toBe(201);
+      // D-CF-66: el nivel lo fija el DM, no el dueño.
       const conNivel = await request(s)
         .patch(`/campaigns/${campaignId}/characters/${mio.body.id}`)
-        .set("Authorization", `Bearer ${tokenP1}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
         .send({ level: 3 });
       expect(conNivel.status).toBe(200);
 

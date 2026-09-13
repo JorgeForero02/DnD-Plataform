@@ -67,9 +67,10 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Mira", level: 3, visibility: "PLAYERS" })
     ).body.id;
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${characterId}`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 3 });
   });
 

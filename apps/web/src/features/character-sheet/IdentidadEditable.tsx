@@ -42,11 +42,18 @@ export function FichaEditable({
   characterId,
   character,
   puedeEditar,
+  esDM = false,
 }: {
   campaignId: string;
   characterId: string;
   character: CharacterRow;
   puedeEditar: boolean;
+  /**
+   * D-CF-66: el nivel lo fija el DM, ni siquiera el dueño puede tocarlo desde aquí. `false` por
+   * defecto — quien no sabe el rol de quien mira se queda con el trato más restrictivo, igual
+   * que `Caracteristicas.esDM`.
+   */
+  esDM?: boolean;
 }) {
   const actualizar = useUpdateSheet(campaignId, characterId);
   const { data: catalogo } = useCatalog();
@@ -154,8 +161,8 @@ export function FichaEditable({
             min={1}
             max={20}
             ancho="w-14"
-            disabled={!puedeEditar}
-            motivoDeshabilitado={motivo}
+            disabled={!puedeEditar || !esDM}
+            motivoDeshabilitado={esDM ? motivo : "El nivel lo fija el DM"}
             onGuardar={async (n) => actualizar.mutateAsync({ level: n })}
           />
         </label>

@@ -104,6 +104,7 @@ export function HojaCalculada({
             characterId={characterId}
             character={character}
             puedeEditar={puedeEditar}
+            esDM={esDM}
           />
         </TarjetaDeHoja>
         <TarjetaDeHoja key="caracteristicas" titulo="Características" etiqueta="características">

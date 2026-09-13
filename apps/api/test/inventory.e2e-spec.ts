@@ -89,9 +89,10 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Duernor", level: 3, visibility: "PLAYERS" })
     ).body.id;
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${characterId}`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 3 });
     await prisma.character.update({ where: { id: characterId }, data: { str: 14 } });
   });

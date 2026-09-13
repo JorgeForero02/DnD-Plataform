@@ -125,7 +125,7 @@ describe("El daño, con su traza (e2e)", () => {
     const elaraId = jugador.body.id;
     await request(s)
       .patch(`${ficha(elaraId)}/sheet`)
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
         level: 8,
         abilities: { str: 10, dex: 12, con: 14, int: 15, wis: 10, cha: 8 },
@@ -278,7 +278,7 @@ describe("El daño, con su traza (e2e)", () => {
     ).body.id;
     await request(s)
       .patch(`${ficha(enano)}/sheet`)
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
         level: 8,
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
@@ -325,7 +325,7 @@ describe("El daño, con su traza (e2e)", () => {
     ).body.id;
     await request(s)
       .patch(`${ficha(enano)}/sheet`)
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
         level: 8,
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },

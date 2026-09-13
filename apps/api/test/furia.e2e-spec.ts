@@ -103,9 +103,10 @@ describe("La Furia, de punta a punta (e2e)", () => {
         .set("Authorization", auth(tokenPL))
         .send({ name: "Grosk", level: 3, visibility: "PLAYERS" })
     ).body.id;
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s())
       .patch(sheetUrl())
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
         level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },

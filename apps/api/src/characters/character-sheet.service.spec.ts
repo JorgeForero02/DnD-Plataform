@@ -285,6 +285,35 @@ describe("CharacterSheetService — 2A.6 la hoja calculada", () => {
       service.updateSheet("p1", "c1", "ch1", { race: { source: "SRD", key: "no-existe" } }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  // D-CF-66: el nivel lo fija el DM, no el dueño — ni siquiera vía PATCH de la hoja.
+  it("updateSheet() rechaza al dueño no-DM que manda level (403)", async () => {
+    const { service, characters, membership } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(service.updateSheet("p1", "c1", "ch1", { level: 2 })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it("updateSheet() permite al DM mandar level", async () => {
+    const { service, characters, membership } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(service.updateSheet("dm1", "c1", "ch1", { level: 2 })).resolves.toBeDefined();
+  });
+
+  it("updateSheet() sigue dejando al dueño cambiar otros campos (level es lo único que exige DM)", async () => {
+    const { service, characters, membership } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.updateSheet("p1", "c1", "ch1", { abilities: { str: 16 } }),
+    ).resolves.toBeDefined();
+  });
 });
 
 describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
@@ -1209,12 +1238,14 @@ describe("la siembra de recursos al terminar la ficha", () => {
   // suite.
 
   it("al fijar clase y nivel, siembra con la hoja derivada y el nivel guardado", async () => {
-    const { service, prisma, characters, resources } = montar();
+    const { service, prisma, characters, resources, membership } = montar();
     const guardado = personaje({ classKey: "wizard", level: 3 });
     characters.requireEditable.mockResolvedValue(guardado);
     prisma.character.update.mockResolvedValue(guardado);
+    // D-CF-66: el nivel lo fija el DM — quien llama aquí es el DM, no el dueño.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
 
-    await service.updateSheet("owner1", "cmp1", "ch1", { level: 3 });
+    await service.updateSheet("dm1", "cmp1", "ch1", { level: 3 });
 
     expect(resources.seedResourcesFor).toHaveBeenCalledWith(
       "ch1",
@@ -1224,12 +1255,14 @@ describe("la siembra de recursos al terminar la ficha", () => {
   });
 
   it("una ficha a medias no siembra nada — no hay clase de la que sembrar", async () => {
-    const { service, prisma, characters, resources } = montar();
+    const { service, prisma, characters, resources, membership } = montar();
     const aMedias = personaje({ classKey: null, raceKey: null });
     characters.requireEditable.mockResolvedValue(aMedias);
     prisma.character.update.mockResolvedValue(aMedias);
+    // D-CF-66: el nivel lo fija el DM.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
 
-    await service.updateSheet("owner1", "cmp1", "ch1", { level: 2 });
+    await service.updateSheet("dm1", "cmp1", "ch1", { level: 2 });
 
     expect(resources.seedResourcesFor).not.toHaveBeenCalled();
   });
@@ -1551,7 +1584,7 @@ describe("las elecciones se validan al escribir, no solo al derivar", () => {
     // La otra mitad de la regla, y la que hace que no sea una simple validación: cambiar de
     // clase deja elecciones viejas en la fila. Si eso rechazara cualquier edición posterior, el
     // personaje quedaría bloqueado por un dato que él mismo dejó atrás. Al derivar es un aviso.
-    const { service, prisma, characters } = montar();
+    const { service, prisma, characters, membership } = montar();
     const guardado = personaje({
       classKey: "rogue",
       raceKey: "human",
@@ -1560,8 +1593,10 @@ describe("las elecciones se validan al escribir, no solo al derivar", () => {
     });
     characters.requireEditable.mockResolvedValue(guardado);
     prisma.character.update.mockResolvedValue(guardado);
+    // D-CF-66: el nivel lo fija el DM.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
 
-    await expect(service.updateSheet("owner1", "cmp1", "ch1", { level: 2 })).resolves.toBeDefined();
+    await expect(service.updateSheet("dm1", "cmp1", "ch1", { level: 2 })).resolves.toBeDefined();
     expect(prisma.character.update).toHaveBeenCalled();
   });
 });

@@ -324,7 +324,8 @@ export class LevelUpService {
     characterId: string,
     roll: boolean,
   ): Promise<LevelUpPreview> {
-    await this.membership.requireMember(campaignId, userId);
+    // D-CF-66: solo el DM decide cuándo sube de nivel la mesa — ni siquiera el propio dueño.
+    await this.membership.requireDM(campaignId, userId);
     const character = await this.requireEditable(userId, campaignId, characterId);
     const { preview, tiradaParaRegistrar } = this.calcularDiff(
       character,
@@ -368,7 +369,8 @@ export class LevelUpService {
    * en el informe de la tarea.
    */
   async apply(userId: string, campaignId: string, characterId: string) {
-    await this.membership.requireMember(campaignId, userId);
+    // D-CF-66: solo el DM decide cuándo sube de nivel la mesa — ni siquiera el propio dueño.
+    await this.membership.requireDM(campaignId, userId);
     await this.requireEditable(userId, campaignId, characterId);
 
     return this.prisma.transaction(async (tx) => {

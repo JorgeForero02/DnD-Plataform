@@ -83,9 +83,10 @@ describe("Usar una actividad (e2e)", () => {
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Brann", level: 5 })
     ).body.id;
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${personajeDelJugador}`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 5 });
   });
 

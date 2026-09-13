@@ -72,7 +72,7 @@ describe("BotonSubirNivel", () => {
 
   it("pinta el diff con los números que manda el previo, y traduce las enumeraciones", async () => {
     vi.spyOn(levelUpApi, "fetchLevelUpPreview").mockResolvedValue(previoMedia);
-    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} />, {
+    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} esDM />, {
       wrapper: wrapper(nuevoCliente()),
     });
     await abrirDialogo();
@@ -99,7 +99,7 @@ describe("BotonSubirNivel", () => {
       .mockResolvedValueOnce(previoTirado);
     const aplicar = vi.spyOn(levelUpApi, "applyLevelUp");
 
-    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} />, {
+    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} esDM />, {
       wrapper: wrapper(nuevoCliente()),
     });
     await abrirDialogo();
@@ -121,7 +121,7 @@ describe("BotonSubirNivel", () => {
     const qc = nuevoCliente();
     const invalidar = vi.spyOn(qc, "invalidateQueries");
 
-    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} />, {
+    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} esDM />, {
       wrapper: wrapper(qc),
     });
     await abrirDialogo();
@@ -150,12 +150,41 @@ describe("BotonSubirNivel", () => {
     expect(previo).not.toHaveBeenCalled();
   });
 
+  // D-CF-66: solo el DM decide cuándo sube de nivel la mesa. El botón se deshabilita, nunca se
+  // esconde: el dueño lo sigue viendo, apagado y con su motivo.
+  it("D-CF-66: para quien no es DM, el botón sale deshabilitado con su motivo, sin abrir el diálogo", async () => {
+    const previo = vi.spyOn(levelUpApi, "fetchLevelUpPreview");
+    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} esDM={false} />, {
+      wrapper: wrapper(nuevoCliente()),
+    });
+
+    const boton = screen.getByRole("button", { name: "Subir a nivel 4" });
+    expect(boton).toHaveAttribute("aria-disabled", "true");
+    expect(boton).toHaveAttribute("title", "Lo lanza el DM");
+    expect(screen.getByText("Lo lanza el DM")).toBeInTheDocument();
+
+    fireEvent.click(boton);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(previo).not.toHaveBeenCalled();
+  });
+
+  it("D-CF-66: para el DM, el botón sigue activo y abre el diálogo de siempre", async () => {
+    vi.spyOn(levelUpApi, "fetchLevelUpPreview").mockResolvedValue(previoMedia);
+    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} esDM />, {
+      wrapper: wrapper(nuevoCliente()),
+    });
+
+    const boton = screen.getByRole("button", { name: "Subir a nivel 4" });
+    expect(boton).not.toHaveAttribute("aria-disabled");
+    await abrirDialogo();
+  });
+
   it("un rechazo del servidor se ve con el mensaje del servidor, no con uno inventado", async () => {
     vi.spyOn(levelUpApi, "fetchLevelUpPreview").mockRejectedValue(
       new ApiError("No se puede subir de nivel: faltan con, raza.", 400),
     );
 
-    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} />, {
+    render(<BotonSubirNivel campaignId="c1" characterId="ch1" level={3} esDM />, {
       wrapper: wrapper(nuevoCliente()),
     });
     await abrirDialogo();

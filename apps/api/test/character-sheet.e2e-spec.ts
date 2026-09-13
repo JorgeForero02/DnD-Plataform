@@ -145,9 +145,10 @@ describe("Hoja de personaje y PG (e2e)", () => {
     ).body.id;
     const otraSheetUrl = `/campaigns/${campaignId}/characters/${otroId}/sheet`;
 
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s)
       .patch(otraSheetUrl)
-      .set("Authorization", `Bearer ${tokenA}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({
         level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
@@ -176,9 +177,10 @@ describe("Hoja de personaje y PG (e2e)", () => {
     ).body.id;
     const otraSheetUrl = `/campaigns/${campaignId}/characters/${otroId}/sheet`;
 
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s)
       .patch(otraSheetUrl)
-      .set("Authorization", `Bearer ${tokenA}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({
         level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },

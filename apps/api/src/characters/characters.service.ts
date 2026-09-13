@@ -125,6 +125,16 @@ export class CharactersService {
   ) {
     await this.membership.requireMember(campaignId, userId);
     await this.requireEditable(userId, campaignId, characterId);
+    // D-CF-66: el nivel lo fija el DM, nunca el dueño desde este endpoint. Solo se comprueba
+    // cuando `level` viene en el cuerpo — el resto de campos del dueño siguen funcionando igual.
+    if (input.level !== undefined) {
+      const membresia = await this.membership.getMembership(campaignId, userId);
+      if (membresia?.role !== "DM") {
+        throw new ForbiddenException(
+          "El nivel lo fija el DM: se sube con «Subir de nivel» cuando el DM lo lance.",
+        );
+      }
+    }
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data.name = input.name;
     if (input.level !== undefined) data.level = input.level;

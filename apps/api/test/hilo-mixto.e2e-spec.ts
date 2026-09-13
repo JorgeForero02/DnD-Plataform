@@ -84,7 +84,7 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
     ).body;
     const nivelFijado = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${personaje.id}`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 3 });
     expect(nivelFijado.status).toBe(200);
 
@@ -175,7 +175,7 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
     ).body;
     const nivelFijado = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${otroPersonaje.id}`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 3 });
     expect(nivelFijado.status).toBe(200);
     const archivadoTrasCierre = await request(s)
@@ -218,7 +218,7 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
     ).body;
     const nivelFijado = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${otroPersonaje.id}`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 3 });
     expect(nivelFijado.status).toBe(200);
     const archivado = await request(s)

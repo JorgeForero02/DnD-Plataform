@@ -104,9 +104,10 @@ describe("La partida (integración, e2e)", () => {
     idBeto = await crear(tokenBeto, "Lyra");
 
     // Enano de las colinas bárbaro: el caso de mesa nº 1 del catálogo, con sus 16 PG.
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     const hojaAna = await request(s)
       .patch(`/campaigns/${campaignId}/characters/${idAna}/sheet`)
-      .set(como(tokenAna))
+      .set(como(tokenDM))
       .send({
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 12, cha: 8 },
         race: { source: "SRD", key: "dwarf" },
@@ -129,9 +130,10 @@ describe("La partida (integración, e2e)", () => {
   it("3 · una hoja a medias avisa, y NO altera ninguna característica", async () => {
     const s = app.getHttpServer();
     // Semielfo: +2 Carisma fijo, y «+1 a dos a tu elección» sin resolver.
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${idBeto}/sheet`)
-      .set(como(tokenBeto))
+      .set(como(tokenDM))
       .send({
         abilities: { str: 10, dex: 14, con: 12, int: 13, wis: 10, cha: 15 },
         race: { source: "SRD", key: "half-elf" },

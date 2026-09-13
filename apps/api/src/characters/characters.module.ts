@@ -8,6 +8,8 @@ import { CharactersService } from "./characters.service";
 import { CharactersController } from "./characters.controller";
 import { CharacterSheetService } from "./character-sheet.service";
 import { CharacterSheetController } from "./character-sheet.controller";
+import { AbilityRollsService } from "./ability-rolls.service";
+import { AbilityRollsController } from "./ability-rolls.controller";
 
 @Module({
   // `GameEventsModule` entra por 2A.7: los PG mutables y las salvaciones de muerte escriben
@@ -17,10 +19,12 @@ import { CharacterSheetController } from "./character-sheet.controller";
   // `RollsModule` entra en 2B: tirar con un arma equipada compone la expresion en el servidor y
   // la ejecuta el mismo tirador que todo lo demas. No hay ciclo: `rolls` no importa `characters`.
   imports: [CampaignsModule, GameEventsModule, CharacterStateModule, RollsModule, StatblocksModule],
-  controllers: [CharactersController, CharacterSheetController],
-  providers: [CharactersService, CharacterSheetService],
+  controllers: [CharactersController, CharacterSheetController, AbilityRollsController],
+  providers: [CharactersService, CharacterSheetService, AbilityRollsService],
   // 2C.5: la peticion de tirada deriva la hoja de quien tira **en el momento de tirar**, para que
   // el modificador sea el de ahora y no el de cuando el DM la pidio.
-  exports: [CharacterSheetService],
+  // Reglas de la mesa (Tarea 3): `AbilityRollsService` sale exportado porque la Tarea 4
+  // (`CharacterSheetService`, mismo módulo) lo inyecta para validar un intento elegido.
+  exports: [CharacterSheetService, AbilityRollsService],
 })
 export class CharactersModule {}

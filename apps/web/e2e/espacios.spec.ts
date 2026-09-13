@@ -303,13 +303,21 @@ test("escribir una expresión inválida no cambia el alto de la tarjeta de tirar
   await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
 
   const tarjeta = page.getByRole("region", { name: "Tirada nueva" });
+  const campo = page.getByLabel("Qué se tira");
+  // Fix round 2 (controlador) — **la primera medida es intermitente sin esto**: una tipografía
+  // que llega tarde de Google Fonts cambia el alto de la línea después del primer pintado, y si
+  // `antes` se toma antes de que la fuente cargue, el reflujo que trae la fuente se atribuye por
+  // error al mensaje de rechazo. Se espera a que las fuentes estén listas y el campo visible
+  // ANTES de la primera medida, no solo antes de escribir.
+  await page.evaluate(() => document.fonts.ready);
+  await expect(campo).toBeVisible();
   const antes = await tarjeta.boundingBox();
   expect(antes).not.toBeNull();
 
   // «4d» no es una expresión que el evaluador entienda (`dice.ts`), y el rechazo se pinta junto
   // al campo (`Field`, `reservaEspacio`) — que es exactamente lo que esta prueba mide: la línea
   // de pista ya reservaba su alto ANTES del error, así que el error no debería mover nada debajo.
-  await page.getByLabel("Qué se tira").fill("4d");
+  await campo.fill("4d");
   await page.getByRole("button", { name: "Tirar", exact: true }).click();
   await expect(tarjeta.getByRole("alert")).toBeVisible();
   const despues = await tarjeta.boundingBox();
@@ -354,10 +362,16 @@ test("escribir una expresión inválida no cambia el alto del panel, en el cajó
   await page.getByRole("button", { name: /^Dados/ }).click();
   const panel = page.getByRole("region", { name: "Tirada" });
   await expect(panel).toBeVisible();
+  const campo = panel.getByLabel("Qué se tira");
+  // Fix round 2 (controlador) — misma carrera que en la pantalla de Dados: una tipografía que
+  // llega tarde de Google Fonts cambia el alto de la línea después del primer pintado, así que
+  // se espera a que las fuentes estén listas y el campo visible ANTES de la primera medida.
+  await page.evaluate(() => document.fonts.ready);
+  await expect(campo).toBeVisible();
   const antes = await panel.boundingBox();
   expect(antes).not.toBeNull();
 
-  await panel.getByLabel("Qué se tira").fill("4d");
+  await campo.fill("4d");
   await panel.getByRole("button", { name: "Tirar el dado" }).click();
   await expect(panel.getByRole("alert")).toBeVisible({ timeout: 10_000 });
   const despues = await panel.boundingBox();

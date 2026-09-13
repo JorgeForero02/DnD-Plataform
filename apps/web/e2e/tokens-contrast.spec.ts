@@ -644,6 +644,12 @@ for (const theme of ["dark", "light", "reading"] as const) {
     await page.getByLabel("Nombre").fill("Ren Sombrafiel");
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+    // Fix round 2 (controlador) — **se cierra el cajón, no se navega**: «Personajes» abre un
+    // diálogo que se queda ENCIMA de la pestaña «Sesiones» si no se cierra; sin este clic, la
+    // pestaña existe en el DOM pero no es visible, y el clic siguiente se queda esperando para
+    // siempre. Mismo gesto que `e2e/dar-a-un-pnj.spec.ts` (y el mismo arreglo de la ronda 1
+    // sobre `teclado.spec.ts`/`espacios.spec.ts`).
+    await page.getByRole("button", { name: "Cerrar (Escape)" }).click();
 
     await page.getByRole("tab", { name: "Sesiones" }).click();
     await page.getByRole("button", { name: "Nueva sesión" }).click();

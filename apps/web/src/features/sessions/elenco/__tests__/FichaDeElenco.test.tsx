@@ -6,6 +6,7 @@ import { FichaDeElenco } from "../FichaDeElenco";
 import * as sheetApi from "../../../character-sheet/api";
 import * as encountersApi from "../../../encounters/api";
 import type { Character } from "../../../characters/api";
+import { BANDOS } from "../../../../dominio/combate";
 
 // HP-1 — la hoja de verdad necesita router y media API; aquí solo se mide el **título del
 // cajón**, así que se sustituye por una marca. Lo que pinta la hoja lo prueban sus suites.
@@ -124,6 +125,34 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
       expect(cambiarBando).toHaveBeenCalledWith("c1", "s1", "enc-1", "cb-corvin", {
         side: "ENEMY",
       }),
+    );
+  });
+
+  // Fix round 3 — **el rechazo del servidor se ve.** La fila vieja pintaba el mensaje con
+  // `role="alert"`; el primer `useAccionesDeBando` lo perdía y el DM se quedaba mirando un menú
+  // cerrado sin saber que nada había cambiado.
+  it("si el servidor rechaza el cambio de bando, su mensaje se ve como alerta bajo la fila", async () => {
+    vi.spyOn(encountersApi, "setSide").mockRejectedValue(
+      new Error("Solo el DM puede cambiar el bando"),
+    );
+
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Marcar como Enemigo/i }));
+
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent("Solo el DM puede cambiar el bando");
+  });
+
+  // Fix round 3 — **«Neutral» conserva su frase** al pasar de la fila al menú: es el único
+  // bando que no se explica solo, y la fila la enganchaba por `aria-describedby`.
+  it("«Marcar como Neutral» lleva su explicación en la descripción accesible", async () => {
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    const neutral = screen.getByRole("menuitem", { name: "Marcar como Neutral" });
+    expect(neutral).toHaveAccessibleDescription(
+      BANDOS.find((b) => b.valor === "NEUTRAL")!.explicacion,
     );
   });
 

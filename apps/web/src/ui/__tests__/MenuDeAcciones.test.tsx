@@ -75,6 +75,44 @@ describe("MenuDeAcciones", () => {
     expect(document.getElementById(idDescripcion!)).toHaveTextContent("Cargando");
   });
 
+  // Fix round 3 — **«Neutral» perdió su frase al pasar de la fila al menú**: la fila la
+  // enganchaba con `aria-describedby` y el hook no. `descripcion` es independiente de `motivo`
+  // (una explica la acción siempre; el otro, por qué está apagada) y si hay los dos se leen los
+  // dos. Y **la frase no entra en el nombre**: el `menuitem` sigue llamándose solo por su rótulo.
+  it("un ítem con `descripcion` la lleva en su descripción accesible, sin que entre en su nombre", () => {
+    render(
+      <MenuDeAcciones
+        etiqueta="Más"
+        acciones={[
+          {
+            id: "neutral",
+            rotulo: "Marcar como Neutral",
+            onSelect: vi.fn(),
+            descripcion: "Sin bando declarado: el servidor no lo trata como indiferente.",
+          },
+          {
+            id: "ambos",
+            rotulo: "Apagada y explicada",
+            onSelect: vi.fn(),
+            disabled: true,
+            motivo: "Enviando",
+            descripcion: "Qué hace de verdad",
+          },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Más" }));
+
+    const neutral = screen.getByRole("menuitem", { name: "Marcar como Neutral" });
+    expect(neutral).toHaveAccessibleDescription(
+      "Sin bando declarado: el servidor no lo trata como indiferente.",
+    );
+
+    const ambos = screen.getByRole("menuitem", { name: "Apagada y explicada" });
+    expect(ambos).toHaveAttribute("aria-disabled", "true");
+    expect(ambos).toHaveAccessibleDescription("Qué hace de verdad Enviando");
+  });
+
   it("clic fuera del menú lo cierra", () => {
     render(
       <div>

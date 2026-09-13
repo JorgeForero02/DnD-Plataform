@@ -382,9 +382,10 @@ test("escribir una expresión inválida no cambia el alto del panel, en el cajó
 // Tarea 8 del pulido (C2: #1) — **la fila de mandos del elenco no se sale de su tarjeta.** La
 // fila llegó a tener siete controles («Daño», «Curar», «Condición», «Dar», el ojo y hasta tres
 // del bando) y se salía de la tarjeta (anexo #1); ahora solo «Daño» y «Curar» quedan como
-// botones y el resto vive en `MenuDeAcciones.tsx`. Esta es la medida de verdad: la fila plegada
-// cabe DENTRO del rectángulo de su propia tarjeta, con el mismo margen de ±1px por redondeo que
-// usa el resto de este fichero.
+// botones y el resto vive en `MenuDeAcciones.tsx`. Esta es la medida de verdad: cada mando de
+// la fila plegada cabe DENTRO del rectángulo de su propia tarjeta (no la fila, que es una caja
+// de bloque y cabe siempre), con el mismo margen de ±1px por redondeo que usa el resto de este
+// fichero.
 test("la fila de mandos del elenco no se sale de su tarjeta (C2 #1)", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const cuenta = await registrarse(page);
@@ -428,8 +429,7 @@ test("la fila de mandos del elenco no se sale de su tarjeta (C2 #1)", async ({ p
   });
 
   // La tarjeta es el `<li>` que envuelve el nombre; la fila de mandos se llega por el botón
-  // «Daño a …», que es su primer hijo, y se mide su envoltorio directo (el `<div>` de la fila),
-  // no el botón suelto.
+  // «Daño a …», que es su primer hijo: su padre es el `<div>` de la fila.
   const tarjeta = elenco
     .getByText("Rannoc Piedraverde", { exact: true })
     .locator("xpath=ancestor::li[1]");
@@ -438,18 +438,32 @@ test("la fila de mandos del elenco no se sale de su tarjeta (C2 #1)", async ({ p
     .locator("xpath=..");
 
   const cajaDeLaTarjeta = await tarjeta.boundingBox();
-  const cajaDeLaFila = await filaDeMandos.boundingBox();
   expect(cajaDeLaTarjeta).not.toBeNull();
-  expect(cajaDeLaFila).not.toBeNull();
 
-  // `boundingBox()` da `{x, y, width, height}`, no `{left, right, top, bottom}`: se calculan
-  // los bordes a mano, como ya hace `medirHermanas` más arriba en este mismo fichero.
-  expect(cajaDeLaFila!.x).toBeGreaterThanOrEqual(cajaDeLaTarjeta!.x - 1);
-  expect(cajaDeLaFila!.x + cajaDeLaFila!.width).toBeLessThanOrEqual(
-    cajaDeLaTarjeta!.x + cajaDeLaTarjeta!.width + 1,
-  );
-  expect(cajaDeLaFila!.y).toBeGreaterThanOrEqual(cajaDeLaTarjeta!.y - 1);
-  expect(cajaDeLaFila!.y + cajaDeLaFila!.height).toBeLessThanOrEqual(
-    cajaDeLaTarjeta!.y + cajaDeLaTarjeta!.height + 1,
-  );
+  // Fix round 3 (revisión) — **se miden los HIJOS de la fila, no la fila.** El `<div>` de la
+  // fila es una caja de bloque que ocupa el ancho de su tarjeta y nunca puede sobresalir de
+  // ella: medirla a ella era una prueba vacía, en verde también con los siete botones del anexo
+  // #1, porque lo que se salía eran los hijos. Así que cada mando de la fila tiene que terminar
+  // dentro del borde derecho de la tarjeta (±1px por redondeo, como el resto del fichero), y
+  // además la fila no puede tener desbordamiento oculto: `scrollWidth` ≤ `clientWidth`.
+  const mandos = filaDeMandos.locator("xpath=./*");
+  const cuantos = await mandos.count();
+  expect(cuantos).toBeGreaterThanOrEqual(3); // «Daño», «Curar» y el botón «…» del menú.
+  for (let i = 0; i < cuantos; i++) {
+    const caja = await mandos.nth(i).boundingBox();
+    expect(caja, `mando ${i} de la fila`).not.toBeNull();
+    expect(caja!.x, `mando ${i}: borde izquierdo`).toBeGreaterThanOrEqual(cajaDeLaTarjeta!.x - 1);
+    expect(caja!.x + caja!.width, `mando ${i}: borde derecho`).toBeLessThanOrEqual(
+      cajaDeLaTarjeta!.x + cajaDeLaTarjeta!.width + 1,
+    );
+    expect(caja!.y, `mando ${i}: borde superior`).toBeGreaterThanOrEqual(cajaDeLaTarjeta!.y - 1);
+    expect(caja!.y + caja!.height, `mando ${i}: borde inferior`).toBeLessThanOrEqual(
+      cajaDeLaTarjeta!.y + cajaDeLaTarjeta!.height + 1,
+    );
+  }
+  const desbordamiento = await filaDeMandos.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+  }));
+  expect(desbordamiento.scrollWidth).toBeLessThanOrEqual(desbordamiento.clientWidth);
 });

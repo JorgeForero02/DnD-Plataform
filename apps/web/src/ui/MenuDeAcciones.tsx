@@ -28,6 +28,12 @@ export interface AccionDeMenu {
   disabled?: boolean;
   /** Por qué está apagada, para quien no ve el estado visual: se lee con `aria-describedby`. */
   motivo?: string;
+  /**
+   * Qué significa de verdad la acción, cuando el rótulo solo no lo dice (p. ej. «Neutral» del
+   * bando: el servidor lo trata como «no se ha dicho», no como «indiferente»). Se lee con
+   * `aria-describedby`, esté o no apagado el ítem; si además hay `motivo`, se leen los dos.
+   */
+  descripcion?: string;
   tono?: "normal" | "peligro";
 }
 
@@ -46,7 +52,11 @@ export function MenuDeAcciones({
 }) {
   const [abierto, setAbierto] = useState(false);
   const [direccion, setDireccion] = useState<"abajo" | "arriba">("abajo");
-  const [activo, setActivo] = useState(0);
+  const [activoPedido, setActivo] = useState(0);
+  // Si la lista encoge con el menú abierto (p. ej. el bando desaparece al acabar el combate),
+  // el índice activo no puede señalar a un ítem que ya no existe: se acota al pintar, sin efecto
+  // ni segundo render.
+  const activo = Math.min(activoPedido, Math.max(acciones.length - 1, 0));
   const botonRef = useRef<HTMLButtonElement>(null);
   const contenedorRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -96,13 +106,16 @@ export function MenuDeAcciones({
     const n = acciones.length;
     if (e.key === "Escape") {
       e.preventDefault();
+      // Que no suba: dentro de un `Dialog` (el menú «Acciones» del paso 3, D-CF-50) Escape
+      // cierra el menú, no el cajón que lo contiene.
+      e.stopPropagation();
       cerrar();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActivo((i) => (i + 1) % n);
+      setActivo((activo + 1) % n);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActivo((i) => (i - 1 + n) % n);
+      setActivo((activo - 1 + n) % n);
     } else if (e.key === "Home") {
       e.preventDefault();
       setActivo(0);
@@ -147,43 +160,56 @@ export function MenuDeAcciones({
             direccion === "arriba" ? "bottom-full mb-1" : "top-full mt-1",
           ].join(" ")}
         >
-          {acciones.map((a, i) => (
-            <li key={a.id} role="none">
-              <button
-                ref={(el) => {
-                  itemsRef.current[i] = el;
-                }}
-                type="button"
-                role="menuitem"
-                tabIndex={i === activo ? 0 : -1}
-                aria-disabled={a.disabled || undefined}
-                aria-describedby={a.disabled && a.motivo ? `${id}-${a.id}-motivo` : undefined}
-                onClick={() => {
-                  if (a.disabled) return;
-                  cerrar();
-                  a.onSelect();
-                }}
-                className={[
-                  "flex w-full items-center gap-s2 px-s3 py-1.5 text-left font-chrome text-chrome-sm",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent",
-                  a.disabled
-                    ? "cursor-not-allowed text-muted"
-                    : a.tono === "peligro"
-                      ? "text-danger-text hover:bg-[color:var(--danger-tint)]"
-                      : "text-text hover:bg-bg",
-                ].join(" ")}
-              >
-                {a.icono && <span className="[&>svg]:size-4">{a.icono}</span>}
-                {a.rotulo}
-                {a.disabled && a.motivo && (
-                  <span id={`${id}-${a.id}-motivo`} className="sr-only">
-                    {" "}
-                    — {a.motivo}
+          {acciones.map((a, i) => {
+            // Descripción y motivo son independientes: la primera explica la acción siempre,
+            // el segundo solo mientras está apagada. Si hay los dos, se leen los dos.
+            const idDescripcion = a.descripcion ? `${id}-${a.id}-descripcion` : null;
+            const idMotivo = a.disabled && a.motivo ? `${id}-${a.id}-motivo` : null;
+            const describedBy = [idDescripcion, idMotivo].filter((x) => x !== null).join(" ");
+            return (
+              <li key={a.id} role="none">
+                <button
+                  ref={(el) => {
+                    itemsRef.current[i] = el;
+                  }}
+                  type="button"
+                  role="menuitem"
+                  tabIndex={i === activo ? 0 : -1}
+                  aria-disabled={a.disabled || undefined}
+                  aria-describedby={describedBy || undefined}
+                  onClick={() => {
+                    if (a.disabled) return;
+                    cerrar();
+                    a.onSelect();
+                  }}
+                  className={[
+                    "flex w-full items-center gap-s2 px-s3 py-1.5 text-left font-chrome text-chrome-sm",
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent",
+                    a.disabled
+                      ? "cursor-not-allowed text-muted"
+                      : a.tono === "peligro"
+                        ? "text-danger-text hover:bg-[color:var(--danger-tint)]"
+                        : "text-text hover:bg-bg",
+                  ].join(" ")}
+                >
+                  {a.icono && <span className="[&>svg]:size-4">{a.icono}</span>}
+                  {a.rotulo}
+                </button>
+                {/* Fuera del botón a propósito: dentro entrarían en su nombre accesible, y el
+                  nombre tiene que ser solo el rótulo («Marcar como Neutral»), no la frase. */}
+                {idDescripcion && (
+                  <span id={idDescripcion} className="sr-only">
+                    {a.descripcion}
                   </span>
                 )}
-              </button>
-            </li>
-          ))}
+                {idMotivo && (
+                  <span id={idMotivo} className="sr-only">
+                    {a.motivo}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

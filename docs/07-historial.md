@@ -81,8 +81,11 @@ la firma — no una prop de producto).
 gana `controlado?: { abierto; onCerrar }`: con él no pinta su propio botón «Dar» —el ítem del
 menú ya lo abre y lo cierra—; sin él (`ResultadoDeTabla.tsx`, botín de una tabla del DM) se
 comporta exactamente como antes. `CorregirBando.tsx` gana `useAccionesDeBando(p)`, que devuelve
-los mismos tres ítems que su variante de fila (que se queda intacta, para no borrar su prueba,
-y para quien la use así) usando el mismo `useSetSide`/`BANDOS` — no una segunda implementación.
+los mismos tres ítems que su variante de fila usando el mismo `useSetSide`/`BANDOS` — no una
+segunda implementación. La fila quedó sustituida por el menú: sus aserciones se movieron a los
+`menuitem` con su razón escrita en cada prueba, y el componente de fila, sin consumidor ni
+prueba propia, se borró en la ronda de arreglo 3 (abajo). *(Esta frase decía «se queda
+intacta, para no borrar su prueba» hasta esa ronda; era falsa: la prueba ya se había movido.)*
 `FichaDeElenco`/`FichaDePnj` dejan de montar `<CorregirBando />` aparte y llaman al hook siempre
 (valores de repuesto cuando falta encuentro/bando/sesión, por la regla de los hooks), pasando la
 lista real al menú solo cuando la misma puerta que antes decidía montar la fila —`conMandos`/
@@ -96,7 +99,8 @@ sus `menuitem`) y **no se borró ninguna** — dos de ellas necesitaron `findByR
 `getByRole` porque los ítems de bando llegan por una consulta más (`useCurrentEncounter`) que
 puede resolver después de que el menú ya esté abierto. `DarObjeto.test.tsx` suma tres casos del
 modo `controlado`. Mutación: quitar la rama `Escape` de `MenuDeAcciones.tsx` (`cp` de por medio)
-puso roja la unitaria del foco; restaurado con `cp`. 1499 unitarias en verde, ninguna desactivada.
+puso roja la unitaria del foco; restaurado con `cp`. Unitarias en verde, ninguna desactivada
+(el conteo lo escribe el bloque generado de [00-INDEX.md](./00-INDEX.md), no esta línea).
 
 e2e (editados, no corridos por el implementador — los corre el orquestador):
 `teclado.spec.ts` gana un recorrido nuevo, el menú por teclado entero (Tab hasta «Más acciones
@@ -113,6 +117,19 @@ y cuándo. 08: fila nueva `teclado` (no tenía fila propia pese a existir desde 
 corrigió una frase que decía que Playwright no cubría teclado, cuando `teclado.spec.ts` ya
 existía; `espacios`, `dar-a-un-pnj` y `tokens-contrast` ganan una frase cada una sobre su
 medida/camino nuevos.
+
+Ronda de arreglo 3 (revisión de `1c30fe8..6b54aa4`) — cuatro hallazgos. (1) La medida de
+`espacios.spec.ts` era **vacía**: medía el `<div>` de la fila, caja de bloque que nunca sobresale
+de su tarjeta; lo que se salía en el anexo #1 eran sus hijos. Ahora mide cada hijo directo contra
+el borde de la tarjeta (±1px) y `scrollWidth ≤ clientWidth` en la fila. (2) `useAccionesDeBando`
+**tragaba el error** que la fila pintaba con `role="alert"`: devuelve `{ acciones, error }` y
+`MandosDeCombatiente` (prop `errorDeBando`) lo pinta bajo la fila; RTL con `setSide` rechazando.
+(3) El componente de fila `CorregirBando` **se borró** (sin consumidor ni prueba). (4) «Neutral»
+**perdió su frase**: `AccionDeMenu` gana `descripcion?`, leída por `aria-describedby` aparte de
+`motivo` (con los dos, se enlazan los dos ids) y pintada FUERA del botón para no entrar en su
+nombre; el hook la pone en NEUTRAL. Menores: `activo` se acota si la lista encoge; Escape hace
+`stopPropagation` para no cerrar un `Dialog` que lo contenga (D-CF-50). Mutación: sin `error` ni
+`descripcion` en el hook, dos unitarias en rojo; restaurado.
 
 ---
 

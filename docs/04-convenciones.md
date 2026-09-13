@@ -495,7 +495,10 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   abre hacia donde hay sitio, flechas y `Escape`, y devuelve el foco. **Desde la tarea 8 del
   pulido (2026-09-12)**, la fila de mandos del elenco es su primer consumidor: «Daño» y «Curar»
   se quedan visibles, y «Condición», «Dar…», «Su hoja» y el bando (`useAccionesDeBando`,
-  `CorregirBando.tsx`) se pliegan en él.
+  `CorregirBando.tsx`) se pliegan en él. La fila de bando que existía antes quedó sustituida por
+  el menú y se borró en la ronda de arreglo 3: sus aserciones se movieron a los `menuitem` con
+  la razón escrita en cada prueba. Un ítem que necesite explicarse lleva `descripcion` (leída
+  por `aria-describedby`), aparte del `motivo` de por qué está apagado.
 
 - **Espacio reservado.** Lo que puede cambiar de tamaño al escribir —la línea de error de un
   campo, un contador, un aviso— reserva su alto (`min-height`) para que la tarjeta no salte

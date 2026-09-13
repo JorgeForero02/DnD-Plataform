@@ -105,7 +105,7 @@ export function FichaDePnj({
   const hayBandoQueCorregir = Boolean(
     esDm && enCombate && sessionId && encounterId && combatanteId,
   );
-  const accionesDeBando = useAccionesDeBando({
+  const { acciones: accionesDeBando, error: errorDeBando } = useAccionesDeBando({
     campaignId,
     sessionId: sessionId ?? "",
     encounterId: encounterId ?? "",
@@ -166,6 +166,7 @@ export function FichaDePnj({
           // siendo solo del DM (`esDm`, no `puedeManejarlo`) — la misma puerta más estrecha que
           // ya tenía `<CorregirBando />` cuando vivía aparte.
           accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
+          errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
         />
       )}
     </li>

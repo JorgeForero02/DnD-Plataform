@@ -57,6 +57,7 @@ export function MandosDeCombatiente({
   enCombate,
   soyDm,
   accionesDeBando = [],
+  errorDeBando = null,
 }: {
   campaignId: string;
   characterId: string;
@@ -76,6 +77,12 @@ export function MandosDeCombatiente({
    * pintaba antes de esta tarea.
    */
   accionesDeBando?: AccionDeMenu[];
+  /**
+   * Lo que dijo el servidor al rechazar un cambio de bando, del mismo `useAccionesDeBando`. La
+   * fila vieja lo pintaba con `role="alert"`; el menú se cierra al elegir, así que el aviso va
+   * aquí, bajo la fila de mandos, donde sigue a la vista (fix round 3 de la tarea 8).
+   */
+  errorDeBando?: string | null;
 }) {
   const [panel, setPanel] = useState<"dano" | "curar" | "condicion" | "dar" | "hoja" | null>(null);
   // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
@@ -128,6 +135,11 @@ export function MandosDeCombatiente({
           ]}
         />
       </div>
+      {errorDeBando && (
+        <p role="alert" className="mt-s1 font-chrome text-chrome-xs text-danger-text">
+          {errorDeBando}
+        </p>
+      )}
 
       {/* «Dar…» no reparte NADA para {nombre} en particular — el destinatario se elige dentro,
           entre todo el elenco. Vive controlado desde el menú de arriba: `DarObjeto` no pinta su

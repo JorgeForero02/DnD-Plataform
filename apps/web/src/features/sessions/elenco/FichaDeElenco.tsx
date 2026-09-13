@@ -138,7 +138,7 @@ export function FichaDeElenco({
   const hayBandoQueCorregir = Boolean(
     conMandos && enCombate && bando && sessionId && encounterId && combatanteId,
   );
-  const accionesDeBando = useAccionesDeBando({
+  const { acciones: accionesDeBando, error: errorDeBando } = useAccionesDeBando({
     campaignId,
     sessionId: sessionId ?? "",
     encounterId: encounterId ?? "",
@@ -266,6 +266,7 @@ export function FichaDeElenco({
           // mismo», lo mismo que ya exige `PonerCondicion` con su `enCombate` para contar
           // asaltos.
           accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
+          errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
         />
       )}
     </li>

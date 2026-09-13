@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Que la interfaz deje de parecer «una sección de tablas y tarjetas»: cuatro causas arregladas una vez en las primitivas (tarjeta y rejilla, acciones de fila con menú, iconos completos, bandeja de dados), el hilo hablando de personajes, el tablero PlanarAlly dentro de la mesa, y los tres bugs sueltos (#18, #20, #21) — todo medido en el navegador antes de construir el paso 3 encima.
+**Goal (16 tareas + T14 bis añadida el 2026-09-12):** Que la interfaz deje de parecer «una sección de tablas y tarjetas»: cuatro causas arregladas una vez en las primitivas (tarjeta y rejilla, acciones de fila con menú, iconos completos, bandeja de dados), el hilo hablando de personajes, el tablero PlanarAlly dentro de la mesa, y los tres bugs sueltos (#18, #20, #21) — todo medido en el navegador antes de construir el paso 3 encima.
 
 **Architecture:** Primero **investigación sin código** (Task 0) que deja cinco reglas nuevas en `docs/04-convenciones.md` y una nota de diseño. Después las causas: `Casilla` y `--tira-fija-*` para la cabecera (C1), `e2e/espacios.spec.ts` como red de medición (#17), `Campaign.boardRoomUrl` + `<iframe>` + registro como cajón (C1 bis), `IconoDado` con seis formas y barrido de botones (C3), `ui/MenuDeAcciones.tsx` consumido por el elenco (C2), `dice[]` por dado en el resultado del servidor y `BandejaDeDados` en la web (C5), y `sourceCharacterId` + frases con sujeto y objetivo en `linea-de-log.ts` (C4). Cada tarea lleva su prueba roja antes, su mutación y su documentación en el mismo commit.
 
@@ -1909,6 +1909,101 @@ y bajo el buscador:
 ```bash
 git add apps/web/src/features/campaign-items apps/web/e2e docs/07-historial.md
 git commit -m "feat(catalog): filter chips by item kind and by origin, like the bestiary"
+```
+
+---
+
+### Task 14 bis: El mundo como árbol con detalle — sustituye al tablero telaraña (#23)
+
+> **Añadida el 2026-09-12 durante la ejecución**, por decisión del autor tras ver cuatro maquetas
+> (transmitida por la otra sesión y confirmada por el autor en esta): el mapa de historia **se
+> aplaza**; el #23 se cierra ahora con el mundo como **desglose + detalle**. Maqueta aprobada (opción
+> A para el árbol, C para el detalle): `https://claude.ai/code/artifact/6036f524-4f93-4a86-95fe-a417bf9e7fe1`.
+> **Es la única baja de pruebas de la tanda, y está declarada por D4** (2026-09-02: «el tablero
+> telaraña se retira»): `TableroTelarana.test.tsx` y `posiciones.test.ts` salen **en el mismo commit**
+> que las sustituye, con D4 citada en el mensaje.
+
+**Files:**
+- Delete: `apps/web/src/features/sessions/taller/TableroTelarana.tsx`, `posiciones.ts`, `__tests__/TableroTelarana.test.tsx`, `__tests__/posiciones.test.ts`
+- Create: `apps/web/src/features/sessions/taller/mundo/arbolDelMundo.ts` (función pura), `ArbolDelMundo.tsx` (desglose), `DetalleDeFicha.tsx` (cabecera · vitela · anillo · hilos), `AnilloDeVecinos.tsx` (SVG propio), `EditorDeHilos.tsx` (lista + dos desplegables con buscador), `ElMundo.tsx` (las dos mitades), `__tests__/arbolDelMundo.test.ts`, `__tests__/DetalleDeFicha.test.tsx`, `__tests__/ElMundo.test.tsx`
+- Modify: `apps/web/src/features/links/relaciones.ts` (constante única `ROTULOS_DE_JERARQUIA`), `apps/web/src/features/sessions/taller/TallerDelDM.tsx:80-100` (monta `ElMundo` donde iba el tablero; la selección sigue alimentando `setElegida` para que «Escribir ficha» de la derecha siga funcionando)
+- Create: `apps/web/e2e/mundo-arbol.spec.ts`; Modify: `apps/web/e2e/tokens-contrast.spec.ts` (la pantalla en los tres temas)
+- Modify: `docs/01-arquitectura.md` (taller), `docs/04-convenciones.md` (regla nueva: «un árbol enseña un padre; los demás hilos van en la ficha»), `docs/06-pendientes.md` (#23 cerrado; mapa de historia aplazado por el autor), `docs/decisiones.md` (fila nueva D-CF-64: «El mundo se muestra como árbol + detalle; la telaraña se retira (D4); el mapa de historia queda aplazado»), `docs/08-pruebas.md` (suite nueva; las dos suites retiradas, con D4), `docs/07-historial.md`
+
+**Interfaces:**
+- Consumes: `useAllEntities(campaignId)` (`entities/hooks.ts:42`), `useCampaignLinks(campaignId)` → `CampaignLinkRow[]` (`links/hooks.ts:25`, `GET /campaigns/:id/links`, filtrado por `canView` en los dos extremos), `useCreateLink`/`useDeleteLink` (`links/hooks.ts:32,45`), `RELACIONES` (`links/relaciones.ts`), `ETIQUETA_DE_TIPO` (`entities/resumen.ts:31`), los iconos por tipo de `entities/iconos.tsx`, `Panel tone="vellum"`, `Badge` de visibilidad, `Markdown` (`entities/Markdown.tsx`), el patrón de desplegable con buscador de `inventory/SelectorDeObjeto.tsx`, `EmptyState`, `Tabs` (teclado).
+- Produces:
+
+```ts
+// links/relaciones.ts — la lista ÚNICA de rótulos que cuelgan una ficha de su padre en el árbol.
+// Todo lo demás es lateral y no mueve nada.
+export const ROTULOS_DE_JERARQUIA: readonly string[] = [
+  "vive en", "se encuentra en", "forma parte de", "ocurrió en", "pertenece a", "custodia",
+] as const; // el implementador cruza esta lista con RELACIONES: solo rótulos `desde` existentes; anota los que añada
+
+// taller/mundo/arbolDelMundo.ts
+export interface NodoDelMundo {
+  id: string; name: string; type: EntityType;
+  rotulo: string | null;          // el hilo por el que cuelga de su padre; null bajo la raíz de tipo
+  tambienEn: string[];            // nombres de los OTROS padres (aparece en cada uno, marcado «también en …»)
+  hijos: NodoDelMundo[];
+  cicloCortado?: boolean;         // A parte de B parte de A: se corta aquí y se marca
+}
+export interface RaizDeTipo { type: EntityType; etiqueta: string; total: number; hijos: NodoDelMundo[] }
+export interface ArbolDelMundo { raices: RaizDeTipo[]; sinHilos: { id: string; name: string; type: EntityType }[] }
+export function arbolDelMundo(entidades: Entity[], hilos: CampaignLinkRow[]): ArbolDelMundo;
+export function vecinosDe(id: string, entidades: Entity[], hilos: CampaignLinkRow[]): { id: string; name: string; type: EntityType; rotulo: string; direccion: "sale" | "entra" }[];
+```
+
+`ElMundo({ campaignId, seleccionId, onSeleccion })`: `grid gap-s4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]`; en estrecho el detalle **debajo**. Izquierda `ArbolDelMundo` (`<ul role="tree">` con `<li role="treeitem" aria-expanded aria-selected>`, raíces por tipo con contador, hijo con su rótulo en gris a la derecha, «también en …» cuando `tambienEn.length > 0`, buscador arriba que filtra y despliega solo lo que encaja, chip «Sin hilos»; flechas ↑↓ mueven, → despliega, ← pliega, Enter selecciona — el patrón de teclado de `ui/Tabs`). Derecha `DetalleDeFicha`: cabecera (icono · nombre · tipo legible · `Badge` de visibilidad · botón «Abrir ficha» que enlaza a `/campaigns/:id/entidades/:eid`), cuerpo en vitela recortado a ~6 líneas con «Leer más» (enlaza a la ficha), `AnilloDeVecinos` (SVG propio: la ficha en el centro, vecinos en círculo a posiciones fijas `2π·i/n`, rótulo sobre cada radio, cada vecino un `<button>` que llama a `onSeleccion` y el árbol lo revela; con 0 hilos, `EmptyState` «Esta ficha no tiene hilos todavía»), `EditorDeHilos` (fila «ficha · rótulo · ✎ ✕» con iconos dibujados; añadir con dos desplegables con buscador — hacia qué ficha, rótulo entre `relacionesSugeridas` + libre — y botón «Añadir hilo»; **la autorización la impone el servidor** (`links` exige DM o creador): la pantalla solo pinta y muestra el rechazo en línea). Vacío: «Elige una ficha del desglose» + contadores por tipo.
+
+- [ ] **Step 1: Unitarias que fallan** (`arbolDelMundo.test.ts`):
+
+```ts
+const lugar = ent("l1", "Torre Gris", "LOCATION"), pnj = ent("n1", "Corvin", "NPC"), faccion = ent("f1", "Gremio", "FACTION"), suelto = ent("n2", "Errante", "NPC");
+it("agrupa por tipo con contador y cuelga por rótulo de jerarquía", () => {
+  const a = arbolDelMundo([lugar, pnj, faccion, suelto], [hilo("n1", "l1", "vive en")]);
+  const lugares = a.raices.find((r) => r.type === "LOCATION")!;
+  expect(lugares.total).toBe(1);
+  expect(lugares.hijos[0].hijos.map((h) => [h.name, h.rotulo])).toEqual([["Corvin", "vive en"]]);
+  const pnjs = a.raices.find((r) => r.type === "NPC")!;
+  expect(pnjs.hijos.map((h) => h.name)).toEqual(["Errante"]);   // sin padre: bajo su tipo
+});
+it("un hilo lateral no mueve nada", () => {
+  const a = arbolDelMundo([pnj, faccion], [hilo("n1", "f1", "es aliado de")]);
+  expect(a.raices.find((r) => r.type === "NPC")!.hijos[0].name).toBe("Corvin");
+});
+it("dos padres: aparece en los dos, marcada «también en»", () => {
+  const a = arbolDelMundo([lugar, faccion, pnj], [hilo("n1", "l1", "vive en"), hilo("n1", "f1", "pertenece a")]);
+  const bajoLugar = a.raices.find((r) => r.type === "LOCATION")!.hijos[0].hijos[0];
+  const bajoFaccion = a.raices.find((r) => r.type === "FACTION")!.hijos[0].hijos[0];
+  expect(bajoLugar.tambienEn).toEqual(["Gremio"]);
+  expect(bajoFaccion.tambienEn).toEqual(["Torre Gris"]);
+});
+it("un ciclo se corta y se marca", () => {
+  const a = ent("a", "A", "LOCATION"), b = ent("b", "B", "LOCATION");
+  const arbol = arbolDelMundo([a, b], [hilo("a", "b", "forma parte de"), hilo("b", "a", "forma parte de")]);
+  const texto = JSON.stringify(arbol);
+  expect(texto).toContain('"cicloCortado":true');
+  expect(texto.length).toBeLessThan(5000);                      // termina
+});
+it("sinHilos lista las fichas sin ningún hilo", () => {
+  expect(arbolDelMundo([lugar, suelto], [hilo("n2x", "l1", "vive en")]).sinHilos.map((s) => s.name)).toEqual(["Errante"]);
+});
+```
+
+- [ ] **Step 2: Run → FAIL** (módulo inexistente). **Step 3:** implementar `arbolDelMundo.ts` (BFS desde las raíces; visitados por camino para el ciclo). **Step 4:** unitarias en verde.
+- [ ] **Step 5: RTL del detalle** (`DetalleDeFicha.test.tsx`): anillo con N vecinos pinta N `button` con el nombre y el rótulo; hilos listados sin enums (`ETIQUETA_DE_TIPO`); «Añadir hilo» abre los dos desplegables y llama a `useCreateLink` con `{ toId, label }`; vacío → «Elige una ficha del desglose». `ElMundo.test.tsx`: seleccionar en el árbol pinta el detalle; el chip «Sin hilos» filtra.
+- [ ] **Step 6: Montar en `TallerDelDM`** y **borrar** el tablero, `posiciones.ts` y sus dos pruebas (D4 en el mensaje del commit). Ningún otro fichero importa `TableroTelarana` (grep).
+- [ ] **Step 7: e2e `mundo-arbol.spec.ts`** (lo corre el orquestador): DM crea un lugar y un PNJ; en el taller, selecciona el PNJ, «Añadir hilo» → ficha «Torre Gris», rótulo «vive en» → el PNJ aparece bajo el lugar en el árbol; recarga y persiste; a 390 px el detalle va debajo y `document.documentElement.scrollWidth <= 390`. `tokens-contrast.spec.ts`: el árbol y el detalle en los tres temas.
+- [ ] **Step 8: Mutación** — `cp arbolDelMundo.ts …bak`; quitar la comprobación de `ROTULOS_DE_JERARQUIA` (todo rótulo cuelga); «un hilo lateral no mueve nada» → FAIL; restaurar con `cp`.
+- [ ] **Step 9: Documentar** — 01, 04 (regla), 06 (#23 cerrado; mapa aplazado), decisiones (D-CF-64), 08 (suite nueva y las dos retiradas con D4), 07.
+- [ ] **Step 10: `pnpm verify`** → exit 0. Orquestador: `exec playwright test e2e/mundo-arbol.spec.ts`, `e2e/tokens-contrast.spec.ts`, `e2e/mesa-mide.spec.ts` (el taller sigue midiendo) → verde.
+- [ ] **Step 11: Commit**
+
+```bash
+git add apps/web/src/features/sessions/taller apps/web/src/features/links/relaciones.ts apps/web/e2e docs
+git commit -m "feat(world): the world as a tree with detail — replaces the cobweb board (D4); story map deferred by the author"
 ```
 
 ---

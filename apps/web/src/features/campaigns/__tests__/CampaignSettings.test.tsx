@@ -5,7 +5,12 @@ import { MemoryRouter } from "react-router-dom";
 import { CampaignSettings } from "../CampaignSettings";
 import * as campaignsApi from "../api";
 import * as members from "../members";
+import * as characterSheetApi from "../../character-sheet/api";
 import { useAuthStore } from "../../../store/auth.store";
+
+// Task 5 (D-CF-53) — el bloque «Reglas de la mesa» que ahora monta CampaignSettings llama a
+// `useCatalog`, así que estas pruebas necesitan un catálogo mínimo para no golpear la red real.
+const CATALOGO_VACIO = { races: [], classes: [], armor: [] };
 
 // Migración 6 (D-CF-16, tickets I4/M2B-5) — la variante de sobrecarga (SRD 5.1, Variant:
 // Encumbrance), interruptor por campaña, apagada por defecto.
@@ -43,6 +48,7 @@ describe("CampaignSettings — la variante de sobrecarga (migración 6)", () => 
   beforeEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({ user: { id: YO, email: "dm@b.com", displayName: "DM" } } as never);
+    vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(CATALOGO_VACIO);
   });
 
   it("el DM ve el interruptor, apagado por defecto", async () => {
@@ -98,6 +104,7 @@ describe("CampaignSettings — la Sala del tablero (pulido, C1 bis)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({ user: { id: YO, email: "dm@b.com", displayName: "DM" } } as never);
+    vi.spyOn(characterSheetApi, "fetchCatalog").mockResolvedValue(CATALOGO_VACIO);
   });
 
   it("el DM ve “Sala del tablero”, pulsa Guardar y el PATCH lleva boardRoomUrl", async () => {
